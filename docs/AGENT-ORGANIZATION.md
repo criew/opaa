@@ -8,37 +8,30 @@ Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselb
 
 | Rolle | Verantwortung | Läuft als |
 |---|---|---|
-| **Orchestrator** | Einziger menschenzugewandter Einstiegspunkt. Nimmt Ziele vom Maintainer entgegen, priorisiert den Backlog (Projektmanager-Rolle), delegiert Arbeit an die nachfolgenden Agenten, überwacht PRs und eskaliert nur Entscheidungen, die einen Menschen erfordern. | Claude Code Hauptsitzung (Opus/Fable) |
-| **Product Manager** | Verantwortlich für die funktionale Definition: hält Vision und Realität synchron (`docs/VISION.md`, `docs/fortschritt/gesamtstand.md`), schreibt Feature-Spezifikationen in `docs/features/`, erstellt und priorisiert GitHub-Issues. | Subagent `product-manager` (Sonnet) |
-| **Developer** | Implementiert ein Issue vollständig (Backend **und** Frontend) in einem isolierten Git-Worktree, auf einem `feature/<issue-id>_<desc>`-Branch, und öffnet einen PR. | Subagent `developer` (Sonnet), möglicherweise mehrere Instanzen parallel — eine pro Issue |
-| **Code Reviewer** | Adversariales Review jedes PRs mit frischem Kontext (keine Implementierungs-Bias): Korrektheit, ADR-Compliance, Wiederverwendung, fehlende Dokumentation. Entwirft ADRs, wenn er eine Architekturentscheidung erkennt. | Subagent `code-reviewer` (Opus) |
-| **QA Engineer** | Produktqualität über das jeweilige PR-Review hinaus: alleiniger Eigentümer der E2E-Suite (implementiert die dedizierten `test(e2e)`-Issues, die zum Spezifikationszeitpunkt erstellt wurden), RAG-Antwortqualitäts-Evaluierung (Golden Dataset + Evaluatoren), Coverage-/Flakiness-Trends, Release-Bewertung. | Subagent `qa-engineer` (Sonnet) |
-| **Marketing** | Positionierung zuerst: schärft Pitch und Mission, pflegt die Messaging-Quelle der Wahrheit (`docs/market/MESSAGING.md`), leitet stakeholder-spezifische Assets davon ab — Landing Page (`page/`), Pitch-Decks, One-Pager, README-Messaging, Website-i18n. Positionierungsentscheidungen verbleiben beim Maintainer. | Subagent `marketing` (Opus) |
-| **UX-Designer** | Gestaltet die Bedienung vor der Implementierung: Interaktionskonzepte in `docs/design/` für Issues mit nennenswerter UI-Fläche, Begriffs- und Textkonventionen (`docs/design/GLOSSAR.md`), UX-Review nach dem Merge. Kein Produktivcode, keine Funktionsdefinition. | Subagent `ux-designer` (Sonnet) |
+| **Orchestrator** | Einziger menschenzugewandter Einstiegspunkt. Nimmt Ziele vom Maintainer entgegen, priorisiert den Backlog (Projektmanager-Rolle), delegiert Arbeit an die nachfolgenden Agenten, überwacht PRs und eskaliert nur Entscheidungen, die einen Menschen erfordern. | Hauptsitzung |
+| **Product Manager** | Verantwortlich für die funktionale Definition: hält Vision und Realität synchron (`docs/VISION.md`, `docs/fortschritt/gesamtstand.md`), schreibt Feature-Spezifikationen in `docs/features/`, erstellt und priorisiert GitHub-Issues. | Subagent `product-manager` |
+| **Developer** | Implementiert ein Issue vollständig (Backend **und** Frontend) in einem isolierten Git-Worktree, auf einem `feature/<issue-id>_<desc>`-Branch, und öffnet einen PR. | Subagent `developer`, möglicherweise mehrere Instanzen parallel — eine pro Issue |
+| **Code Reviewer** | Adversariales Review jedes PRs mit frischem Kontext (keine Implementierungs-Bias): Korrektheit, ADR-Compliance, Wiederverwendung, fehlende Dokumentation. Entwirft ADRs, wenn er eine Architekturentscheidung erkennt. | Subagent `code-reviewer` |
+| **QA Engineer** | Produktqualität über das jeweilige PR-Review hinaus: alleiniger Eigentümer der E2E-Suite (implementiert die dedizierten `test(e2e)`-Issues, die zum Spezifikationszeitpunkt erstellt wurden), RAG-Antwortqualitäts-Evaluierung (Golden Dataset + Evaluatoren), Coverage-/Flakiness-Trends, Release-Bewertung. | Subagent `qa-engineer` |
+| **Marketing** | Positionierung zuerst: schärft Pitch und Mission, pflegt die Messaging-Quelle der Wahrheit (`docs/market/MESSAGING.md`), leitet stakeholder-spezifische Assets davon ab — Landing Page (`page/`), Pitch-Decks, One-Pager, README-Messaging, Website-i18n. Positionierungsentscheidungen verbleiben beim Maintainer. | Subagent `marketing` |
+| **UX-Designer** | Gestaltet die Bedienung vor der Implementierung: Interaktionskonzepte in `docs/design/` für Issues mit nennenswerter UI-Fläche, Begriffs- und Textkonventionen (`docs/design/GLOSSAR.md`), UX-Review nach dem Merge. Kein Produktivcode, keine Funktionsdefinition. | Subagent `ux-designer` |
 
 Neben diesen Liefer-Rollen gibt es **Stakeholder-Rollen**, die nichts herstellen, sondern bewerten — siehe [Stakeholder-Review](#stakeholder-review).
 
-Designprinzipien hinter dieser Struktur (basierend auf Multi-Agenten-Forschung und Anthropic-Leitfäden):
-
-- **Ein Agent, eine Spur** — enge Geltungsbereiche halten den Kontext sauber und Ergebnisse zuverlässig.
-- **Artefakte statt Dialog** — Agenten übergeben Arbeit durch Spezifikationen, Issues und PRs, niemals durch informelle Gespräche.
-- **Schreibvorgänge sind single-threaded** — Parallelismus entsteht durch mehrere Entwickler an *verschiedenen* Issues, nicht durch Aufteilung eines Features auf Agenten.
-- **Reviewer ist immer vom Implementierer getrennt** — der am besten dokumentierte Qualitätshebel in der Multi-Agenten-Entwicklung.
+Designprinzip: Ein Agent hat eine Spur, Arbeit wird über Artefakte (Spezifikationen, Issues, PRs) statt Dialog übergeben, Schreibvorgänge sind single-threaded (Parallelität nur über *verschiedene* Issues), und der Reviewer ist immer vom Implementierer getrennt.
 
 ## Stakeholder-Review
 
-Die Liefer-Rollen bauen das Produkt. Sie teilen jedoch eine Schwäche: Sie bewerten Konzepte aus der Perspektive derer, die sie entwerfen. Die Menschen, die OPAA in einer Behörde tatsächlich benutzen, betreiben und verantworten müssen, kommen darin nicht vor — und genau an deren Wirklichkeit scheitern Einführungsprojekte.
-
-Die Stakeholder-Rollen schließen diese Lücke. Jede vertritt eine benannte Perspektive aus der öffentlichen Verwaltung und liefert eine schriftliche fachliche Bewertung.
+Die Liefer-Rollen bewerten Konzepte aus der Perspektive derer, die sie entwerfen; die Stakeholder-Rollen vertreten die Menschen, die OPAA in einer Behörde benutzen, betreiben und verantworten, und liefern je eine schriftliche fachliche Bewertung aus dieser Perspektive.
 
 | Rolle | Perspektive | Läuft als |
 |---|---|---|
-| **Sachbearbeiter** | Tagesgeschäft: Aufwand pro Vorgang, Verständlichkeit der Begriffe, Folgen von Fehlbedienung. Umgeht, was ihn ausbremst. | Subagent `stakeholder-sachbearbeiter` (Sonnet) |
-| **Referatsleitung** | Verantwortung für fachliche Richtigkeit, Nachvollziehbarkeit über Jahre, Kontrolle über das, was das Referat abgibt und aufnimmt. | Subagent `stakeholder-referatsleitung` (Sonnet) |
-| **KI-Champion** | Treibt die Einführung: Zeit bis zum ersten sichtbaren Nutzen, Verbreitungsfähigkeit, Selbstständigkeit der Fachbereiche, Umgehungswege. | Subagent `stakeholder-ki-champion` (Sonnet) |
-| **Betriebsverantwortlicher** | Betrieb und Informationssicherheit: Migrierbarkeit, Nachweisbarkeit gegenüber Prüfern, Rechteexplosion, Wiederherstellbarkeit, laufender Aufwand. | Subagent `stakeholder-betrieb` (Opus) |
-| **Skeptiker** | Notorischer Kritiker: wohin die Arbeit verschoben wird, was im dritten Jahr passiert, wer die unbezahlte Pflegearbeit macht. | Subagent `stakeholder-skeptiker` (Opus) |
-| **Personalrat** | Mitbestimmung: Eignung zur Leistungs- und Verhaltenskontrolle, Sichtbarkeit unter Kollegen, Aufbewahrung, Bedingungen für eine Dienstvereinbarung. | Subagent `stakeholder-personalrat` (Opus) |
+| **Sachbearbeiter** | Tagesgeschäft: Aufwand pro Vorgang, Verständlichkeit der Begriffe, Folgen von Fehlbedienung. Umgeht, was ihn ausbremst. | Subagent `stakeholder-sachbearbeiter` |
+| **Referatsleitung** | Verantwortung für fachliche Richtigkeit, Nachvollziehbarkeit über Jahre, Kontrolle über das, was das Referat abgibt und aufnimmt. | Subagent `stakeholder-referatsleitung` |
+| **KI-Champion** | Treibt die Einführung: Zeit bis zum ersten sichtbaren Nutzen, Verbreitungsfähigkeit, Selbstständigkeit der Fachbereiche, Umgehungswege. | Subagent `stakeholder-ki-champion` |
+| **Betriebsverantwortlicher** | Betrieb und Informationssicherheit: Migrierbarkeit, Nachweisbarkeit gegenüber Prüfern, Rechteexplosion, Wiederherstellbarkeit, laufender Aufwand. | Subagent `stakeholder-betrieb` |
+| **Skeptiker** | Notorischer Kritiker: wohin die Arbeit verschoben wird, was im dritten Jahr passiert, wer die unbezahlte Pflegearbeit macht. | Subagent `stakeholder-skeptiker` |
+| **Personalrat** | Mitbestimmung: Eignung zur Leistungs- und Verhaltenskontrolle, Sichtbarkeit unter Kollegen, Aufbewahrung, Bedingungen für eine Dienstvereinbarung. | Subagent `stakeholder-personalrat` |
 
 ### Wann ein Stakeholder-Review läuft
 
@@ -92,10 +85,10 @@ flowchart TD
 3. **Genehmigung** — Der Maintainer prüft die Issues, bevor die Implementierung beginnt.
 4. **Implementierung** — Für jedes genehmigte Issue arbeitet ein Entwickler-Agent in einem isolierten Worktree auf einem `feature/<issue-id>_<desc>`-Branch und öffnet einen PR unter Verwendung des PR-Templates (einschließlich KI-Agenten-Offenlegung).
 5. **Review** — Der Code Reviewer und CI agieren als Schranken. Befunde gehen zurück zum Entwickler; der PR ist nur bereit, wenn beide bestehen. Ein formales Approval in GitHub ist nicht erforderlich — die Schranke ist der Reviewer selbst, nicht der Klick darauf.
-   - **Befunde werden im selben PR behoben — Folge-Issues sind die Ausnahme.** Das gilt auch für vorbestehende Defekte und benachbarte Kleinigkeiten, auf die Review oder Implementierung stoßen: Wer ohnehin an einer Stelle arbeitet, schaut links und rechts und nimmt mit, was dort liegt. Ein Folge-Issue ist nur zulässig, wenn der Befund einen sehr großen Umbau erfordert oder einen komplett anderen Scope hat. Lieber ein paar Issues weniger im Backlog als billige Korrekturen, die auf später verschoben werden. (Anweisung des Maintainers vom 20.08.2026.)
-6. **Merge** — Gemergt wird von einem Maintainer des Projekts — oder, seit der Lockerung vom 20.08.2026, vom **Koordinator mit ausdrücklicher Maintainer-Freigabe**: Er darf reviewte PRs per `gh pr merge --auto --squash` zum Auto-Merge freigeben; GitHub merged dann selbst, sobald die Required Checks grün sind. Entwickler- und Review-Agenten mergen weiterhin nie. (Jede weitere Änderung dieser Richtlinie muss hier festgehalten werden.)
+   - **Befunde werden im selben PR behoben — Folge-Issues sind die Ausnahme.** Das gilt auch für vorbestehende Defekte und benachbarte Kleinigkeiten, auf die Review oder Implementierung stoßen: Wer ohnehin an einer Stelle arbeitet, schaut links und rechts und nimmt mit, was dort liegt. Ein Folge-Issue ist nur zulässig, wenn der Befund einen sehr großen Umbau erfordert oder einen komplett anderen Scope hat. Lieber ein paar Issues weniger im Backlog als billige Korrekturen, die auf später verschoben werden.
+6. **Merge** — Gemergt wird von einem Maintainer des Projekts oder vom **Koordinator mit ausdrücklicher Maintainer-Freigabe**: Er darf reviewte PRs per `gh pr merge --auto --squash` zum Auto-Merge freigeben; GitHub merged dann selbst, sobald die Required Checks grün sind. Entwickler- und Review-Agenten mergen nie. Jede weitere Änderung dieser Richtlinie wird hier festgehalten.
 
-Technisch durchgesetzt sind auf `main` die Status-Checks `changes`, `backend`, `backend-integration` und `frontend` (`changes` ist der Pfadfilter-Job aus `ci.yml`; als Required Check verhindert er, dass sein Fehlschlag die abhängigen Jobs stillschweigend als „skipped = bestanden" durchwinkt), das Auflösen offener Konversationen sowie der Schutz gegen Force-Push und Löschen. Ein PR muss nicht up to date mit `main` sein (seit 20.08.2026, Issue #644) — der CI-Lauf auf `main` nach dem Merge prüft den kombinierten Stand. Schreibzugriff haben ausschließlich die Maintainer; dass niemand sonst mergen kann, folgt daraus und braucht keine zusätzliche Regel.
+Auf `main` sind die Required Checks `changes` (der Pfadfilter-Job aus `ci.yml`, damit sein Fehlschlag die abhängigen Jobs nicht als „skipped = bestanden" durchwinkt), `backend`, `backend-integration` und `frontend`, das Auflösen offener Konversationen sowie der Schutz gegen Force-Push und Löschen technisch durchgesetzt. Ein PR muss nicht up to date mit `main` sein, weil der CI-Lauf auf `main` nach dem Merge den kombinierten Stand prüft; Schreibzugriff und damit Merge haben nur die Maintainer.
 
 ### Wo QA passt: zwei Qualitätsschleifen
 
@@ -121,19 +114,18 @@ Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein,
 - **Abhängigkeiten** — blockierende Issues
 - **Labels** — einschließlich `size:S/M/L`
 
-**Epics grob schneiden.** Ein Epic wird in wenige, größere Sub-Issues zerlegt — Richtwert höchstens acht. Viele kleine Tickets kosten je Ticket denselben Fixaufwand (Kontext einlesen, Worktree, PR, Review, CI) und verleiten dazu, Entscheidungen in immer neue Folge-Issues zu verschieben. Ein Sub-Issue darf deshalb einen zusammenhängenden Block umfassen, in dem der Entwickler kleinere Entscheidungen selbst trifft; was fachlich in derselben Ecke liegt, wird im selben Issue miterledigt statt ausgegliedert (siehe Schritt 5 des Workflows). Bereits angelegte Issues derselben Ecke darf der Koordinator einem Entwickler gebündelt geben (siehe Koordinator-Betrieb, „Bündelung"). (Anweisung des Maintainers vom 24.09.2026.)
+**Epics grob schneiden.** Ein Epic wird in wenige, größere Sub-Issues zerlegt, Richtwert höchstens acht, weil jedes Ticket denselben Fixaufwand kostet (Kontext, Worktree, PR, Review, CI) und dazu verleitet, Entscheidungen in Folge-Issues zu verschieben. Ein Sub-Issue umfasst einen zusammenhängenden Block, in dem der Entwickler kleinere Entscheidungen selbst trifft und miterledigt, was fachlich in derselben Ecke liegt (Schritt 5). Bereits angelegte Issues derselben Ecke darf der Koordinator einem Entwickler gebündelt geben (Koordinator-Betrieb, „Bündelung“).
 
 #### Bearbeitung anzeigen: Issue selbst zuweisen
 
-Wer ein Issue bearbeitet — Mensch oder Agent —, weist es sich **vor Arbeitsbeginn** selbst zu. So arbeiten nicht mehrere Personen unbemerkt am selben Thema. Das gilt für jedes Issue, das ein PR mit `Closes` schließt, auch bei gebündelten Aufträgen.
+Wer ein Issue bearbeitet — Mensch oder Agent —, weist es sich **vor Arbeitsbeginn** selbst zu, auch jedes weitere Issue, das ein gebündelter PR mit `Closes` schließt. Vorher wird die Zuweisung geprüft: Ist das Issue einem anderen Account zugewiesen, wird nicht angefangen; ein Agent meldet das mit dem Namen des Accounts seinem Koordinator, der es an den Maintainer weitergibt, ein Mensch spricht die zugewiesene Person an. Weil Agenten unter dem Account ihres Betreibers arbeiten, prüft ein Agent bei einem schon dem eigenen Account zugewiesenen, aber nicht gerade zugeteilten Issue, ob es Branch oder PR dazu gibt, und meldet einen Fund, statt anzufangen. Bricht die Arbeit ohne PR ab, wird die Zuweisung entfernt; der Koordinator weist beim Verteilen zu, Renovate-PRs sind ausgenommen.
 
-1. **Zuweisung prüfen:** `gh issue view <nr> --json assignees --jq '[.assignees[].login]'`
-2. **Ist das Issue einem anderen Account zugewiesen, wird nicht angefangen.** Ein Agent meldet das seinem Koordinator (mit dem Namen des Accounts), der es an den Maintainer weitergibt; ein Mensch spricht die zugewiesene Person an.
-3. **Sonst selbst zuweisen:** `gh issue edit <nr> --add-assignee @me`.
+#### Befehle
 
-Agenten arbeiten unter dem GitHub-Account ihres Betreibers. Die Zuweisung schützt deshalb nur gegen **andere Accounts**, nicht gegen parallele Sessions desselben Betreibers. Ist ein Issue schon dem eigenen Account zugewiesen, ohne dass der Koordinator es gerade zugeteilt hat, prüft der Agent vor Arbeitsbeginn, ob es bereits einen Branch oder PR dazu gibt (`git ls-remote --heads origin "feature/<nr>_*"`, `gh pr list --search "<nr> in:body"`), und meldet einen Fund dem Koordinator, statt anzufangen.
-
-Wird die Arbeit abgebrochen, ohne dass ein PR entsteht, wird die Zuweisung wieder entfernt (`--remove-assignee @me`). Der Koordinator weist Issues, die er an Entwickler-Agenten verteilt, beim Verteilen zu. Renovate-PRs haben kein Issue und sind ausgenommen.
+- Zuweisung prüfen: `gh issue view <nr> --json assignees --jq '[.assignees[].login]'`; selbst zuweisen: `gh issue edit <nr> --add-assignee @me`; zurücknehmen: `--remove-assignee @me`
+- Vorhandene Arbeit finden: `git ls-remote --heads origin "feature/<nr>_*"`, `gh pr list --search "<nr> in:body"`
+- Sub-Issue an ein Epic hängen: `gh api -X POST repos/{owner}/{repo}/issues/{epic}/sub_issues -F sub_issue_id={id}`, wobei `{id}` die Objekt-ID des Kind-Issues ist (`gh api repos/{owner}/{repo}/issues/{nr} --jq .id`), nicht seine Nummer
+- Offene Sub-Issues eines Epics zählen: `gh api repos/{owner}/{repo}/issues/{epic}/sub_issues --jq '[.[] | select(.state=="open")] | length'`
 
 ### Dokumentation
 
@@ -143,19 +135,13 @@ Wird die Arbeit abgebrochen, ohne dass ein PR entsteht, wird die Zuweisung wiede
 
 ### Koordinator-Betrieb
 
-Betriebsregeln für den Koordinator/Orchestrator, unabhängig von der Umgebung, in der er läuft (lokaler Rechner, VPS, Cloud-Session):
+Regeln für den Koordinator/Orchestrator, unabhängig von der Umgebung, in der er läuft:
 
-- **PR-Wächter melden Merge und Fehlschlag.** Nach jeder Auto-Merge-Freigabe richtet der Koordinator eine Überwachung ein, die sowohl den vollzogenen Merge als auch rote Required Checks meldet — nie nur den Erfolgsfall, denn Stille sieht aus wie „läuft noch". Ergänzend behält er alle offenen PRs im Blick, nicht nur die zuletzt freigegebenen: Entwickler-Agenten eröffnen PRs bereits vor ihrer Abschlussmeldung.
-- **Wartefallen sofort auflösen.** Meldet ein Agent, er „warte auf einen Hintergrundlauf", stupst der Koordinator ihn unmittelbar an mit der Anweisung, den Lauf im Vordergrund zu wiederholen und aktiv abzuwarten. Das ist das Koordinator-Gegenstück zur Vordergrund-Regel in der Pre-Push-Checkliste (AGENTS.md), die die Agenten selbst bindet — sie ist erfahrungsgemäß nicht selbstdurchsetzend.
-- **Vollbuilds staffeln.** Parallel arbeitende Agenten dürfen parallel editieren, aber gleichzeitige `./gradlew build`-Vollläufe sind teuer (Heap, Spring-Testkontexte, Testcontainers) und bringen eine Maschine schnell ins Speicher-Thrashing. Die Zahl paralleler Vollbuilds ist an die Ressourcen der jeweiligen Maschine anzupassen (Richtwert: 2–3); der Koordinator vergibt Build-Slots nacheinander, statt alle Agenten gleichzeitig bauen zu lassen.
-- **Statusrhythmus in autonomen Phasen.** Arbeitet der Koordinator länger ohne Maintainer-Interaktion, meldet er etwa alle 45 Minuten einen kompakten Stand: Fertiges mit zwei, drei Sätzen Inhalt (nicht nur Ticketnummern), aufgetretene Probleme, neu angelegte Issues. Keine Review-Runden-Details — der Maintainer will steuern können, nicht mitlesen müssen.
-- **Lage-Monitor über alle offenen PRs.** Zusätzlich zu den Merge-Wächtern je PR läuft ein dauerhafter Monitor über sämtliche offenen PRs, der Merge-Konflikte und rote Required Checks im Minutentakt erkennt und nur Änderungen meldet — damit nichts still stecken bleibt, auch nicht PRs, die ein Agent vor seiner Abschlussmeldung eröffnet hat oder die ein fremder Merge nachträglich in Konflikt setzt.
-- **Prozess- und Worktree-Hygiene.** Niemals ein globales `gradlew --stop` — es trifft die Daemons parallel arbeitender Agenten; nur den eigenen Prozess beenden. Überlebende Prozesse (Gradle-Daemons, Testcontainers, Watcher) können Worktree-Verzeichnisse sperren: Nach dem Merge zuerst Branch löschen und `git worktree prune`, das Verzeichnis notfalls später entfernen, statt mit Gewalt gegen gesperrte Handles zu arbeiten.
-- **Modellwahl je Gewicht.** Entwickler-Agenten laufen standardmäßig auf Opus; wichtige oder komplexe Issues (Epic-Kernteile, Migrations-/Löschsemantik, verzahnte Verträge) darf der Koordinator wahlweise mit Fable starten. Bei Störungen eines Modells (z. B. Überlastung) weicht er auf das jeweils andere aus, statt zu warten — Reviews bleiben immer auf einem der beiden starken Modelle.
-- **Bündelung eng zusammenhängender Issues.** Der Koordinator darf mehrere Issues desselben Subsystems demselben Agenten als einen Auftrag geben — ein PR mit mehreren `Closes`-Verweisen. Die Issues bleiben einzeln angelegt (Nachvollziehbarkeit), aber Fixkosten je PR (CI-Läufe, Review-Anläufe, Merge-Konflikte paralleler Klein-PRs) fallen nur einmal an. Vorbild: Konnektor-Anschlüsse, die dieselbe Mechanik in zwei Executors ziehen.
-- **Review startet mit der PR-Eröffnung, nicht nach grüner CI.** Code Reviewer und CI sind unabhängige Schranken: Das Review arbeitet auf dem Diff und braucht kein CI-Ergebnis. Der Koordinator startet das Review in dem Moment, in dem ein PR eröffnet ist — nicht erst mit der Abschlussmeldung des Entwickler-Agenten, die den CI-Lauf abwartet. Beide Ergebnisse laufen dann parallel ein; ein roter CI-Lauf und Review-Befunde gehen gemeinsam in dieselbe Nachbesserungsrunde. (Anweisung des Maintainers vom 04.09.2026.)
-- **Handbuch nach Abhängigkeits-Updates prüfen.** Ändert ein gemergter Renovate-PR eine Version oder einen Default, den das Handbuch nennt (Betriebskapitel: Images in `betrieb.md`, Datenbank, Modelle, Umgebungsvariablen in `konfiguration.md`), prüft der Koordinator das Kapitel und zieht es nach — der einzige Weg, auf dem ein Kapitel ohne eigenen Code-PR veraltet.
-- **Security-Arbeit wird delegiert.** Der Koordinator führt Security-Analysen, -Fixes und -Issues nicht selbst aus, sondern delegiert sie an Agenten — dieselbe Rollentrennung, die auch Implementierung und Review trennt.
+- **Vollbuilds staffeln:** Der Koordinator vergibt Build-Slots nacheinander, nach den Ressourcen der Maschine (Richtwert 2–3 parallele `./gradlew build`), statt alle Agenten gleichzeitig bauen zu lassen.
+- **Modellwahl je Gewicht:** Entwickler-Agenten laufen auf Opus, wichtige oder komplexe Issues (Epic-Kernteile, Migrations-/Löschsemantik, verzahnte Verträge) wahlweise auf Fable, bei Störung eines Modells auf dem anderen, und Reviews immer auf einem der beiden.
+- **Bündelung:** Eng zusammenhängende Issues desselben Subsystems darf der Koordinator einem Agenten als einen Auftrag geben, ein PR mit mehreren `Closes`, die Issues bleiben einzeln angelegt.
+- **Review ab PR-Eröffnung:** Das Review startet, sobald ein PR eröffnet ist, nicht nach grüner CI; ein roter CI-Lauf und Review-Befunde gehen in dieselbe Nachbesserungsrunde.
+- **Prozess- und Worktree-Hygiene:** Nie ein globales `gradlew --stop`, nur den eigenen Prozess beenden, und nach dem Merge zuerst Branch löschen und `git worktree prune`, ein gesperrtes Verzeichnis später entfernen.
 
 ### Autonomie und Eskalation
 
