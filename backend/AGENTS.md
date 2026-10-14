@@ -95,9 +95,11 @@ Der Test prüft außerdem:
   `paket.Äußere$Innere` oder `paket.Klasse#methode` aus allen Konstanten von `ModularArchitecture`
   auf; ein Eintrag, der nach einer Umbenennung ins Leere zeigt, lässt den Test fehlschlagen, statt
   dass seine Regel still nichts mehr prüft.
-- **Blinder Fleck:** Der Test sieht nur den Bytecode. Liest ein Paket von einem anderen nur eine
-  `static final`-Konstante, die der Compiler einfaltet, ist das für ihn keine Kante. Dasselbe gilt
-  für Verweise, die nur im Javadoc stehen.
+- **Blinder Fleck:** Der Test sieht nur den Bytecode. Was dort fehlt, prüft `SourceReferenceTest`
+  im Quelltext nach denselben Regeln: jeden Import, auch `import static`, und jedes
+  `{@link io.opaa.…}`, `{@linkplain …}`, `{@value …}` und `@see io.opaa.…`. Ein Javadoc-Verweis
+  nach oben steht deshalb als `{@code …}`. Ungeprüft bleibt eine einfaltbare Konstante, die der
+  Code vollqualifiziert ohne Import liest.
 
 **Neues Top-Level-Paket:** in `LAYERS` oberhalb aller Pakete eintragen, die es nutzt, und in
 `MODULES` einem Modul zuordnen. Fehlt der Eintrag, nennt der Test das Paket und beide Stellen.

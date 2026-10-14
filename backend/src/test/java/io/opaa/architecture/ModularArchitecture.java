@@ -48,7 +48,8 @@ import org.springframework.stereotype.Controller;
  * web layer, as ArchUnit rules over a root package. {@link ModularArchitectureTest} applies them to
  * the main classes under {@code io.opaa}; {@link ModularArchitectureFixtureTest} to example trees
  * that break one rule each. Only compiled dependencies count: a type named only in Javadoc, or only
- * through a {@code static final} constant the compiler inlines, is none.
+ * through a {@code static final} constant the compiler inlines, is none; {@link
+ * SourceReferenceTest} holds those names in the source to the layering and the modules.
  */
 public final class ModularArchitecture {
 
@@ -612,20 +613,20 @@ public final class ModularArchitecture {
   ArchRule noPackageDependsOnAHigherLayer() {
     return classes()
         .that(areInTheRoot())
-        .should(
-            dependOnly(
-                "depend on no higher layer",
-                (origin, target) -> {
-                  int from = isInAWebPackage(origin) ? -1 : indexOf(layerOf(origin));
-                  int to = indexOf(layerOf(target));
-                  return from < 0 || to <= from
-                      ? null
-                      : layerOf(origin)
-                          + " -> "
-                          + layerOf(target)
-                          + " points upward in ModularArchitecture.LAYERS";
-                }))
+        .should(dependOnly("depend on no higher layer", this::upwardEdge))
         .allowEmptyShould(true);
+  }
+
+  /** Why the edge from {@code origin} to {@code target} points upward, or {@code null}. */
+  String upwardEdge(JavaClass origin, JavaClass target) {
+    int from = isInAWebPackage(origin) ? -1 : indexOf(layerOf(origin));
+    int to = indexOf(layerOf(target));
+    return from < 0 || to <= from
+        ? null
+        : layerOf(origin)
+            + " -> "
+            + layerOf(target)
+            + " points upward in ModularArchitecture.LAYERS";
   }
 
   ArchRule modulesDependOnlyOnAllowedModules() {
@@ -634,21 +635,21 @@ public final class ModularArchitecture {
         .should(
             dependOnly(
                 "depend only on the modules ModularArchitecture.ALLOWED_MODULE_EDGES allows",
-                (origin, target) -> {
-                  Module from = moduleOf(origin);
-                  Module to = moduleOf(target);
-                  return from == null
-                          || to == null
-                          || from == to
-                          || ALLOWED_MODULE_EDGES.get(from).contains(to)
-                      ? null
-                      : "module "
-                          + from
-                          + " -> "
-                          + to
-                          + " is no allowed edge in ModularArchitecture.ALLOWED_MODULE_EDGES";
-                }))
+                this::forbiddenModuleEdge))
         .allowEmptyShould(true);
+  }
+
+  /** Why the edge from {@code origin} to {@code target} leaves the allowed modules, or null. */
+  String forbiddenModuleEdge(JavaClass origin, JavaClass target) {
+    Module from = moduleOf(origin);
+    Module to = moduleOf(target);
+    return from == null || to == null || from == to || ALLOWED_MODULE_EDGES.get(from).contains(to)
+        ? null
+        : "module "
+            + from
+            + " -> "
+            + to
+            + " is no allowed edge in ModularArchitecture.ALLOWED_MODULE_EDGES";
   }
 
   /** Each web package forms a slice of its own, apart from its top-level package. */
