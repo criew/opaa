@@ -42,14 +42,13 @@ import {
 } from './subjectSelection'
 import { getGrantedGroupMembers } from '../../services/assetApi'
 import { resolveSelectableGroup } from '../../services/groupApi'
+import { allAccountsLabel, assetRoleLabel } from '../../utils/labels'
 import {
-  allAccountsLabel,
   assetGrantScopeHint,
   assetRoleDescription,
-  assetRoleLabel,
   groupMemberCountLabel,
   permissionSubjectTypeLabel,
-} from '../../utils/labels'
+} from '../assets/assetLabels'
 import { assetTypeLabel } from '../assets/assetTypeRegistry'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']

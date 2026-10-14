@@ -16,7 +16,8 @@ import {
   type SubjectSelection,
 } from '../permissions/subjectSelection'
 import type { AssetRole } from '@/shared/api/types'
-import { assetRoleLabel, permissionSubjectTypeLabel } from '../../utils/labels'
+import { assetRoleLabel } from '../../utils/labels'
+import { permissionSubjectTypeLabel } from './assetLabels'
 import type { PendingGrant } from './pendingGrants'
 
 const GRANT_ROLES: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER']

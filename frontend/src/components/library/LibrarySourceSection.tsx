@@ -19,14 +19,13 @@ import type {
   SourceBlock,
 } from '@/shared/api/types'
 import { useIndexingStore } from '../../stores/indexingStore'
+import { formatCalendarDay, formatFileSize } from '../../utils/labels'
 import {
-  formatCalendarDay,
-  formatFileSize,
   indexingRunEventCategoryLabel,
   indexingRunModeLabel,
   indexingTriggerSourceLabel,
-  scheduleFrequencyLabel,
-} from '../../utils/labels'
+} from './indexingLabels'
+import { scheduleFrequencyLabel } from './scheduleLabels'
 import EditLibrarySourceDialog from '../EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../EditLibraryScheduleDialog'
 import PageSection from '@/shared/ui/PageSection'

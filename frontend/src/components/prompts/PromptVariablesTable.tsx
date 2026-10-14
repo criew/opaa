@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography'
 import { Fragment, useState } from 'react'
 import type { PromptVariable, PromptVariableType } from '@/shared/api/types'
 import { fontFamily } from '../../theme/tokens'
-import { promptVariableTypeLabel, promptVariableTypes } from '../../utils/labels'
+import { promptVariableTypeLabel, promptVariableTypes } from './promptLabels'
 import PromptVariableInput from './PromptVariableInput'
 
 interface PromptVariablesTableProps {

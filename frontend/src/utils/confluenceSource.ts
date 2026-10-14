@@ -118,3 +118,15 @@ export function confluenceSpaceLabel(
   const name = spaces?.find((space) => space.key === key)?.name
   return name ? `${name} (${key})` : key
 }
+
+const confluenceEditionLabels: Record<ConfluenceEdition, string> = {
+  CLOUD: 'Cloud',
+  DATA_CENTER: 'Data Center',
+}
+
+export function confluenceEditionLabel(
+  edition: ConfluenceEdition | string | null | undefined,
+): string {
+  if (!edition) return ''
+  return confluenceEditionLabels[edition as ConfluenceEdition] ?? edition
+}

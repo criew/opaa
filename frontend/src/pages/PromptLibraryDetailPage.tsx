@@ -12,7 +12,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { AssetRole, PromptLibraryResponse, PromptResponse } from '@/shared/api/types'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { confirmAction } from '../stores/confirmStore'
-import { assetRoleLabel, promptVariableTypeLabel } from '../utils/labels'
+import { assetRoleLabel } from '../utils/labels'
+import { promptVariableTypeLabel } from '../components/prompts/promptLabels'
 import { fontFamily } from '../theme/tokens'
 import {
   CATALOG_ROUTE,

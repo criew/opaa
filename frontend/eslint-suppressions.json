@@ -168,20 +168,5 @@
     "boundaries/dependencies": {
       "count": 8
     }
-  },
-  "src/utils/labels.feature.test.ts": {
-    "boundaries/dependencies": {
-      "count": 3
-    }
-  },
-  "src/utils/labels.test.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/utils/labels.ts": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
   }
 }

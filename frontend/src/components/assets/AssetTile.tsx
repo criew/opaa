@@ -6,7 +6,7 @@ import { alpha } from '@mui/material/styles'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import { blue } from '../../theme/tokens'
-import { catalogStatusLabel } from '../../utils/labels'
+import { catalogStatusLabel } from './assetLabels'
 import { assetTypeDefinition } from './assetTypeRegistry'
 import type { AssetTileData, AssetTileStatus } from './assetTileData'
 import {
