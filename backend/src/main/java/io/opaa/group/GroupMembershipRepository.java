@@ -25,7 +25,7 @@ public interface GroupMembershipRepository
 
   Optional<GroupMembership> findByGroupIdAndUserId(UUID groupId, UUID userId);
 
-  /** How many groups the account is a member of - part of what a handover moves (#1563). */
+  /** How many groups the account is a member of - part of what a handover moves. */
   long countByUserId(UUID userId);
 
   @Override
@@ -55,10 +55,10 @@ public interface GroupMembershipRepository
   Set<UUID> findDeactivatedGroupIdsIn(@Param("groupIds") Collection<UUID> groupIds);
 
   /**
-   * One counting query instead of the member ids plus their accounts (#1820): the figure sits on
-   * the list path of every space and every selection. The active-account half of the condition is
-   * {@link ActiveAccountSql#PREDICATE}, so this query and {@code AccountActivityService} state the
-   * same definition in one place each.
+   * One counting query instead of the member ids plus their accounts: the figure sits on the list
+   * path of every space and every selection. The active-account half of the condition is {@link
+   * ActiveAccountSql#PREDICATE}, so this query and {@code AccountActivityService} state the same
+   * definition in one place each.
    */
   @Override
   @Query(
@@ -73,7 +73,7 @@ public interface GroupMembershipRepository
       @Param("now") Instant now);
 
   /**
-   * The same condition one page at a time, ordered by the name the answer shows (#1880) - {@code
+   * The same condition one page at a time, ordered by the name the answer shows - {@code
    * lower(...)} so the order does not depend on the database's collation for capital letters, and
    * the id as the tie-breaker so two accounts of the same name keep a stable position across pages.
    */

@@ -23,8 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Sets, takes back and reads a library's Freigabe für Fremdzugänge (#1731,
- * docs/features/external-access.md, "Die Freigabe der Bibliothek").
+ * Sets, takes back and reads a library's Freigabe für Fremdzugänge
+ * (docs/features/external-access.md, "Die Freigabe der Bibliothek").
  *
  * <p>Two rules this class exists for. <b>Who may set it:</b> whoever may hand out read access to
  * the library - {@link AssetRole#MANAGER} and above, which includes the system administration
@@ -32,8 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
  * approval stage above that was decided against on 18.09.2026. <b>That it ends:</b> a release
  * carries a mandatory expiry of at most {@link ExternalAccessProperties#maxReleaseDays}; it stops
  * taking effect on its own ({@link LibraryExternalAccessExpiryService}), and renewing it is a
- * deliberate act. Nothing here consults the installation-wide channel switch (#1717): the release
- * is an attribute of the library, its enforcement is a separate question (#1720/#1721).
+ * deliberate act. Nothing here consults the installation-wide channel switch: the release is an
+ * attribute of the library, its enforcement is a separate question.
  *
  * <p>The write itself goes through {@link KnowledgeLibrary#updateExternalAccess}, which only this
  * class may call ({@code KnowledgeLibraryReachWriterTest}), and every change publishes {@link

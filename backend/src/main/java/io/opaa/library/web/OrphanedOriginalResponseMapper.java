@@ -15,8 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Maps the two steps of both orphan cleanup runs onto their generated API responses (#860: the
- * domain service never sees a DTO). Package-private like every other mapper here.
+ * Maps the two steps of both orphan cleanup runs onto their generated API responses (the domain
+ * service never sees a DTO). Package-private like every other mapper here.
  */
 final class OrphanedOriginalResponseMapper {
 

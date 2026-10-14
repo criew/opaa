@@ -3,7 +3,7 @@ package io.opaa.eval;
 import java.util.List;
 
 /**
- * Chunk-level retrieval metric family (issue #721, ADR-0012 Nachtrag) — deliberately separate from
+ * Chunk-level retrieval metric family (ADR-0012, Entscheidung 9) — deliberately separate from
  * {@link RetrievalMetrics}, not a variant of it: the two measure different things over different
  * ground truth.
  *

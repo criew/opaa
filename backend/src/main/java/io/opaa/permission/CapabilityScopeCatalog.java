@@ -4,9 +4,9 @@ import io.opaa.api.types.Capability;
 import java.util.List;
 
 /**
- * The scopes a scoped capability may be granted in, with their German names (ADR-0036, Nachtrag of
- * 03.10.2026). rights stores a scope and never interprets it; the module that owns the targets
- * implements this port.
+ * The scopes a scoped capability may be granted in, with their German names (ADR-0036, Entscheidung
+ * 5). rights stores a scope and never interprets it; the module that owns the targets implements
+ * this port.
  */
 public interface CapabilityScopeCatalog {
 

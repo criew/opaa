@@ -1,8 +1,8 @@
 package io.opaa.permission;
 
 /**
- * The operation that opened or closed a {@link GroupMembershipHistory} interval (#238). Mirrored by
- * the database check constraint {@code chk_group_membership_history_cause} (baseline).
+ * The operation that opened or closed a {@link GroupMembershipHistory} interval. Mirrored by the
+ * database check constraint {@code chk_group_membership_history_cause} (baseline).
  *
  * <p>The directory-sync causes exist separately from the manual ones because a synchronisation run
  * has no acting user and is, per

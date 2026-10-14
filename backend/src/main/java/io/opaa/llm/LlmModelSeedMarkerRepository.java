@@ -3,7 +3,7 @@ package io.opaa.llm;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-/** Persistence for the singleton {@link LlmModelSeedMarker} row (#756). */
+/** Persistence for the singleton {@link LlmModelSeedMarker} row. */
 @Repository
 public interface LlmModelSeedMarkerRepository extends JpaRepository<LlmModelSeedMarker, Integer> {
 

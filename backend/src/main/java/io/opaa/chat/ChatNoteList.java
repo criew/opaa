@@ -7,10 +7,9 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * What the Gesprächsnotiz does with new candidates, independently of where the note is stored
- * (#1487): the persistent path applies it to database rows, the multi-turn evaluation harness to an
- * in-memory list, and both must behave identically or the harness measures a note production never
- * builds.
+ * What the Gesprächsnotiz does with new candidates, independently of where the note is stored: the
+ * persistent path applies it to database rows, the multi-turn evaluation harness to an in-memory
+ * list, and both must behave identically or the harness measures a note production never builds.
  *
  * <p>Two rules, both from docs/features/conversation-memory.md, "Lebenszyklus": a candidate equal
  * to a point the note <em>currently</em> holds - ignoring case and punctuation - is not appended

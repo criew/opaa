@@ -39,10 +39,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The connector's own rules (ADR-0040, Nachtrag „SharePoint“): only a profile signs in, with client
- * credentials at the tenant's token endpoint, the address is fixed, the settings it accepts, the
- * connection test per document library, the listing in stages, and the original through Graph from
- * a library the settings still name.
+ * The connector's own rules (ADR-0047): only a profile signs in, with client credentials at the
+ * tenant's token endpoint, the address is fixed, the settings it accepts, the connection test per
+ * document library, the listing in stages, and the original through Graph from a library the
+ * settings still name.
  */
 class SharePointSourceConnectorTest {
 

@@ -23,9 +23,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * What every group of one organization holds and reaches, read in one pass - the basis of the two
- * group tabs of the operational list (#1819, ADR-0036 Entscheidung 6). Both ask the same three
- * questions and draw opposite conclusions, so they share this reader rather than each running its
- * own five queries.
+ * group tabs of the operational list (ADR-0036 Entscheidung 6). Both ask the same three questions
+ * and draw opposite conclusions, so they share this reader rather than each running its own five
+ * queries.
  */
 @Component
 class GroupEffectReader {

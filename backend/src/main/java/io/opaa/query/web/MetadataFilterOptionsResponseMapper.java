@@ -8,7 +8,7 @@ import io.opaa.api.dto.MetadataFilterLibraryFieldValueOption;
 import io.opaa.api.dto.MetadataFilterOptionsResponse;
 import io.opaa.query.filter.MetadataFilterOptions;
 
-/** Maps {@link MetadataFilterOptions} onto its generated response (#1070; ADR-0006). */
+/** Maps {@link MetadataFilterOptions} onto its generated response (ADR-0006). */
 final class MetadataFilterOptionsResponseMapper {
 
   private MetadataFilterOptionsResponseMapper() {}

@@ -3,9 +3,9 @@ package io.opaa.auth;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 /**
- * Builds the {@link JwtDecoder} for one provider (#1329) - an interface so {@link
- * OidcProviderRegistry} is testable without an identity provider on the network. {@link
- * NimbusOidcJwtDecoderFactory} is the production implementation.
+ * Builds the {@link JwtDecoder} for one provider - an interface so {@link OidcProviderRegistry} is
+ * testable without an identity provider on the network. {@link NimbusOidcJwtDecoderFactory} is the
+ * production implementation.
  */
 public interface OidcJwtDecoderFactory {
 

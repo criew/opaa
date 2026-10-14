@@ -659,7 +659,7 @@ Bereiche als `bucket/prefix` und den Zeitpunkt des letzten vollständigen Laufs)
 Objektobergrenze je Lauf beendet eine zu große Bibliothek sichtbar als Fehler, nie als stiller
 Schnitt.
 
-**Löschsemantik — Löschung braucht einen positiven Befund der Quelle** (Nachtrag zu ADR-0017,
+**Löschsemantik — Löschung braucht einen positiven Befund der Quelle** (ADR-0017,
 Entscheidung 5, und ADR-0023, Entscheidung 4). Für S3 ist der Befund das Fehlen in einer
 **vollständigen** Auflistung aller Bereiche oder ein `404 NoSuchKey` — eindeutig nur, weil
 `s3:ListBucket` Pflichtrecht jeder S3-Bibliothek ist; ohne das Recht antwortet ein `HeadObject` auf

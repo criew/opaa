@@ -12,7 +12,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
  * Contributes the fallback {@link RerankRoleStatusProvider} for a deployment in which the rerank
- * role itself (#1050) is not built yet. The fallback reads {@code opaa.rerank.enabled} ({@code
+ * role itself is not built yet. The fallback reads {@code opaa.rerank.enabled} ({@code
  * OPAA_RERANK_ENABLED}), so a deployment that switches the role on before it exists is told so as a
  * Störung rather than being shown a reassuring "aus".
  *

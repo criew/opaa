@@ -13,9 +13,9 @@ import java.util.UUID;
  * everybody at once without a second decision.
  *
  * <p>{@code unmaintained} is the third: a token group of a provider that has since switched to the
- * directory run (#1816, ADR-0036 Entscheidung 3). Its membership is frozen - the change of
- * mechanism deliberately revokes nothing - but frozen membership is exactly why it must not become
- * a new grant target: nobody would ever join or leave it again.
+ * directory run (ADR-0036 Entscheidung 3). Its membership is frozen - the change of mechanism
+ * deliberately revokes nothing - but frozen membership is exactly why it must not become a new
+ * grant target: nobody would ever join or leave it again.
  *
  * <p>{@code internal} separates a group of this installation from one of a provider - the one
  * property that decides who is responsible for it: an internal group has stewards, a provider group

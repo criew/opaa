@@ -13,11 +13,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The Stichtagsauskunft (#1822), a subresource of {@code AuditController}. No
- * {@code @PreAuthorize}, and {@code reason} is bound {@code required = false}: the AUDITOR role and
- * the mandatory reason are checked inside {@link PointInTimeAccessService}, so the rejected attempt
- * is itself an entry, which it could not be if a security interceptor or the binding turned it away
- * first.
+ * The Stichtagsauskunft, a subresource of {@code AuditController}. No {@code @PreAuthorize}, and
+ * {@code reason} is bound {@code required = false}: the AUDITOR role and the mandatory reason are
+ * checked inside {@link PointInTimeAccessService}, so the rejected attempt is itself an entry,
+ * which it could not be if a security interceptor or the binding turned it away first.
  */
 @RestController
 @RequestMapping("/api/v1/audit")

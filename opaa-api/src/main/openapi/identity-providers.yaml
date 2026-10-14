@@ -10,9 +10,9 @@ paths:
       tags: [identity-provider]
       summary: List the identity providers (system admin only)
       description: >
-        ADR-0025 (#1329): every provider a deployment accepts sign-ins from, in sign-in page order.
+        ADR-0025: every provider a deployment accepts sign-ins from, in sign-in page order.
         The provider itself is a public client and has no secret; the directory access some of them
-        carry (directoryConnector, #1817) does, and that one is never part of a response - only
+        carry (directoryConnector) does, and that one is never part of a response - only
         which service account and which address. registryState says whether the backend could build
         the provider's token decoder (READY), could not (UNAVAILABLE - discovery unreachable,
         address blocked; registryMessage says why) or did not try because the provider is disabled
@@ -481,7 +481,7 @@ components:
     OidcProviderResponse:
       type: object
       description: >
-        An identity provider (ADR-0025, #1329) or, for the one row with providerType LOCAL, the
+        An identity provider (ADR-0025) or, for the one row with providerType LOCAL, the
         local account management (ADR-0033). A public client - there is no secret.
       required:
         [
@@ -562,7 +562,7 @@ components:
             - $ref: "#/components/schemas/DirectoryConnectorResponse"
           nullable: true
           description: >
-            The stored directory access of this provider (#1817), or null while none is stored -
+            The stored directory access of this provider, or null while none is stored -
             in which case every run reports the directory as unreachable and revokes nothing.
         registryState:
           $ref: "#/components/schemas/OidcProviderRegistryState"

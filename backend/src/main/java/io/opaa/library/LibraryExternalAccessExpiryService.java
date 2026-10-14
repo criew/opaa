@@ -20,8 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Lets an expired Freigabe für Fremdzugänge stop taking effect without anyone acting (#1731,
- * docs/features/external-access.md): the mandatory Befristung is the one measure that keeps the
+ * Lets an expired Freigabe für Fremdzugänge stop taking effect without anyone acting
+ * (docs/features/external-access.md): the mandatory Befristung is the one measure that keeps the
  * Bestand of releases from ratcheting upwards, and it only is one if nobody has to remember it.
  *
  * <p>Writes both halves the specification requires, the way {@code
@@ -36,8 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
  * leaves a release in effect past its own end. What this run adds is the recorded fact.
  *
  * <p>Idempotent: a release already out of effect is not selected, so a second run in the same
- * minute writes nothing. The Anlass is the Fristablauf; "gesenkte Freigabe-Obergrenze" comes with
- * #797.
+ * minute writes nothing. The Anlass is the Fristablauf.
  */
 @Service
 public class LibraryExternalAccessExpiryService {

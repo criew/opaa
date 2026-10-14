@@ -15,11 +15,11 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one state {@link AssetGrant} was in
- * (#238, see docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten).
- * {@code validTo == null} means the interval is still open, i.e. the grant is in this state right
- * now. Written and closed exclusively by {@link PermissionHistoryService}, never updated in place
- * except to set {@link #close}: a change closes the currently open row and opens a new one, so the
- * table is append-only from the outside.
+ * (see docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). {@code
+ * validTo == null} means the interval is still open, i.e. the grant is in this state right now.
+ * Written and closed exclusively by {@link PermissionHistoryService}, never updated in place except
+ * to set {@link #close}: a change closes the currently open row and opens a new one, so the table
+ * is append-only from the outside.
  *
  * <p>{@link #expiresAt} is a copy of the live {@link AssetGrant#getExpiresAt()} at the moment this
  * interval was opened - not itself a bound on {@link #validTo}, so a Stichtag reconstruction can
@@ -73,9 +73,9 @@ public class AssetGrantHistory {
   private Instant validTo;
 
   /**
-   * The transfer this interval belongs to (#1834), {@code null} for every ordinary change. Both
-   * sides of a transfer carry the same value and the same boundary instant, so the
-   * Stichtagsauskunft shows one subject on every day.
+   * The transfer this interval belongs to, {@code null} for every ordinary change. Both sides of a
+   * transfer carry the same value and the same boundary instant, so the Stichtagsauskunft shows one
+   * subject on every day.
    */
   @Column(name = "transfer_id")
   private UUID transferId;

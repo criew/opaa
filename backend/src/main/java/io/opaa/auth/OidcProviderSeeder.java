@@ -12,8 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The one-time takeover of the {@code OPAA_OIDC_*} configuration into the first provider row
- * (#1329, ADR-0025 Entscheidung 3): on the first start in the {@code oidc} mode, the configured
- * issuer becomes the enabled default provider named {@value #SEEDED_DISPLAY_NAME}, with the JWK set
+ * (ADR-0025 Entscheidung 3): on the first start in the {@code oidc} mode, the configured issuer
+ * becomes the enabled default provider named {@value #SEEDED_DISPLAY_NAME}, with the JWK set
  * override and client id taken over unchanged. Afterwards the database leads; the environment
  * variables are not read again.
  *

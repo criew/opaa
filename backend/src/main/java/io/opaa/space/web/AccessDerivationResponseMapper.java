@@ -4,7 +4,7 @@ import io.opaa.api.dto.SpaceAccessDerivationResponse;
 import io.opaa.permission.web.AccessPathResponseMapper;
 import io.opaa.space.SpaceAccessDerivation;
 
-/** Maps the Herleitung of a space onto its generated response (#1822, ADR-0006). */
+/** Maps the Herleitung of a space onto its generated response (ADR-0006). */
 final class AccessDerivationResponseMapper {
 
   private AccessDerivationResponseMapper() {}

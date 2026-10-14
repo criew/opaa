@@ -4,9 +4,9 @@ import io.opaa.api.types.MailEncryption;
 import org.springframework.util.StringUtils;
 
 /**
- * The SMTP configuration in the form {@link MailSenderProvider} builds a transport from (#1536,
- * ADR-0033 Entscheidung 10): detached from the persistence context, with the password already
- * decrypted, so no send path opens a transaction or touches the encryption key.
+ * The SMTP configuration in the form {@link MailSenderProvider} builds a transport from (ADR-0033
+ * Entscheidung 10): detached from the persistence context, with the password already decrypted, so
+ * no send path opens a transaction or touches the encryption key.
  *
  * <p>{@link #toString()} is overridden to keep the password out of every log line, stack trace and
  * debugger label a record's generated {@code toString} would otherwise put it in.

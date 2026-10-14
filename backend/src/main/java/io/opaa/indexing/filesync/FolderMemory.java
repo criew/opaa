@@ -17,9 +17,9 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * The folder markers of one round (ADR-0040): what a store is recalled, which markers its listing
- * reported or carried over, and which folders stay unsettled. A marker seen first in a round is
- * kept over a later one: everything below it was listed after it was seen.
+ * The folder markers of one round (ADR-0045, Entscheidung 4): what a store is recalled, which
+ * markers its listing reported or carried over, and which folders stay unsettled. A marker seen
+ * first in a round is kept over a later one: everything below it was listed after it was seen.
  */
 final class FolderMemory {
 

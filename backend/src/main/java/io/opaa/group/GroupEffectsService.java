@@ -58,7 +58,7 @@ public class GroupEffectsService {
    *
    * <p><b>A fixed number of queries whatever the list's length.</b> Every one of the five effect
    * kinds is read for the whole set at once; a count per group would make an organization with a
-   * few hundred directory units a thousand-query page (#1821).
+   * few hundred directory units a thousand-query page.
    */
   @Transactional(readOnly = true)
   public List<GroupEffectsView> listEffects(

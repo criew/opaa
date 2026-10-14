@@ -12,7 +12,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The quota of one access token (#1720, docs/features/external-access.md, "Kontingente und der
+ * The quota of one access token (docs/features/external-access.md, "Kontingente und der
  * Abflussalarm"): a sliding hour window per token, its size read from the channel settings on every
  * call so a raised limit takes effect without a restart.
  *

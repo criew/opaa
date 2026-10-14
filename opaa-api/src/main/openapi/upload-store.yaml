@@ -10,7 +10,7 @@ paths:
       tags: [upload-store]
       summary: >
         List the stored originals of one library that no document row points to (system admin
-        only, #1478, ADR-0030 "Konsequenzen")
+        only, ADR-0030 "Konsequenzen")
       description: >
         Walks the storage of uploaded originals - the library's own subdirectory on the filesystem,
         its own key level in the bucket; never anything nested below either, which this storage
@@ -52,7 +52,7 @@ paths:
       tags: [upload-store]
       summary: >
         Remove explicitly named orphaned originals of one library from the storage (system admin
-        only, #1478)
+        only)
       description: >
         The second step after the report: removes exactly the originals named by locators - never
         anything the report found in the meantime. Rows and storage are read once per call, right
@@ -93,7 +93,7 @@ paths:
       tags: [upload-store]
       summary: >
         List the storage areas of the caller's own organization that no library row belongs to any
-        more (system admin only, #1518, ADR-0030 "Konsequenzen")
+        more (system admin only, ADR-0030 "Konsequenzen")
       description: >
         The counterpart of orphan-originals/report for the case that run cannot reach: a library
         deleted after the removal of one of its originals had failed leaves bytes behind that no
@@ -139,7 +139,7 @@ paths:
       tags: [upload-store]
       summary: >
         Remove explicitly named originals from the storage area of a deleted library (system admin
-        only, #1518)
+        only)
       description: >
         The second step after orphan-libraries/report, and the same rules as
         orphan-originals/delete: exactly the originals named by locators go, at most 500 per call,

@@ -20,10 +20,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The containment check of the filesystem adapter (ADR-0030, Entscheidung 1 and the addendum to
- * Entscheidung 4) and the store/read/delete contract built on it. Everything here is about what a
- * tampered, foreign or vanished {@code file_path} may reach: no read and no deletion ever gets past
- * {@code managedFile}, and that check now spans both segments - organization and library.
+ * The containment check of the filesystem adapter (ADR-0030, Entscheidung 1 and Entscheidung 4) and
+ * the store/read/delete contract built on it. Everything here is about what a tampered, foreign or
+ * vanished {@code file_path} may reach: no read and no deletion ever gets past {@code managedFile},
+ * and that check now spans both segments - organization and library.
  */
 class FilesystemUploadedOriginalStoreTest {
 
@@ -181,7 +181,7 @@ class FilesystemUploadedOriginalStoreTest {
       throws IOException {
     // The library segment alone would match here - same library id, same random name. Only the
     // organization segment tells the two apart, and it must, or a walk over the whole storage area
-    // could not draw the tenant boundary without a database row (ADR-0030, Nachtrag zu 4).
+    // could not draw the tenant boundary without a database row (ADR-0030, Entscheidung 4).
     UUID otherOrganizationId = UUID.randomUUID();
     UploadedOriginalRef foreign =
         store.accept(otherOrganizationId, libraryId, ".pdf", bytes("fremde Organisation")).store();

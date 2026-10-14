@@ -2,10 +2,9 @@ package io.opaa.api.types;
 
 /**
  * The graded asset role an {@code AssetGrant} carries - a ranking deliberately separate from {@link
- * SpaceRole} (see #202, docs/features/spaces-and-assets.md#asset-rollen). No role name occurs in
- * both role systems: the managing asset role is {@link #MANAGER}, not {@code ADMIN}, so "I have
- * admin rights here" always refers to a space and "I have manager/owner rights" always refers to an
- * asset.
+ * SpaceRole} (docs/features/spaces-and-assets.md#asset-rollen). No role name occurs in both role
+ * systems: the managing asset role is {@link #MANAGER}, not {@code ADMIN}, so "I have admin rights
+ * here" always refers to a space and "I have manager/owner rights" always refers to an asset.
  *
  * <p>Declared in ascending order so {@link #atLeast(AssetRole)} can compare via {@link #ordinal()}.
  *
@@ -14,9 +13,9 @@ package io.opaa.api.types;
  * enforceable, because whoever may invoke it can ask it for its own instructions, and for a library
  * it runs largely empty, because cited answers expose the document titles anyway.
  *
- * <p>Exception for a knowledge library (#507): its source connection detail - internal server
- * paths, source URLs and proxy hosts, not merely "configuration" in the #330 sense above - stays
- * hidden from a VIEWER and even an EDITOR, matching the {@link #MANAGER} bar {@code
+ * <p>Exception for a knowledge library: its source connection detail - internal server paths,
+ * source URLs and proxy hosts, not merely "configuration" in the #330 sense above - stays hidden
+ * from a VIEWER and even an EDITOR, matching the {@link #MANAGER} bar {@code
  * KnowledgeLibraryService#updateLibrary} already enforces for changing it.
  */
 public enum AssetRole {

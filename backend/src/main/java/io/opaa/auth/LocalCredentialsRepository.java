@@ -27,7 +27,7 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
   /** The one bootstrap account ({@code ux_local_credentials_single_bootstrap}), if it exists. */
   Optional<LocalCredentials> findByBootstrapTrue();
 
-  /** The accounts expiring in {@code [from, to)} - the expiry reminder's window (#1537). */
+  /** The accounts expiring in {@code [from, to)} - the expiry reminder's window. */
   List<LocalCredentials> findByExpiresAtGreaterThanEqualAndExpiresAtLessThan(
       Instant from, Instant to);
 

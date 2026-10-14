@@ -23,23 +23,22 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * A persistent, space-owned chat (#525, docs/features/spaces-and-assets.md#chats). Composition, not
+ * A persistent, space-owned chat (docs/features/spaces-and-assets.md#chats). Composition, not
  * association: {@link #spaceId} is set once at construction and never changes - a chat cannot be
  * moved to another space. Visible only to {@link #authorId}; not even a space or system admin may
  * read it while {@link #status} is {@link ChatStatus#PRIVATE} - the only value that currently
  * exists, see that enum's Javadoc.
  *
- * <p><b>#561 review: {@link #title}/{@link #titleSource}/{@link #updatedAt} are never mutated on an
- * instance loaded long before the write, then written back with a full {@code
- * chatRepository.save(chat)} merge</b> - only {@link #applyUpdate} does that, and only because the
- * load and the save happen in the same short {@code @Transactional} method ({@code
- * ChatService#updateChat}), not across the multi-second gap {@code QueryService#query} leaves
- * between loading a chat and {@code ChatService#appendTurn} eventually writing to it (during which
- * a concurrent {@code PATCH} could rename the chat). Both {@code appendTurn}'s
- * prefix-fallback/{@code touch} and {@code ChatTitleGenerationService}'s LLM-derived title instead
- * go through {@link ChatRepository}'s targeted, atomic {@code @Modifying} update methods, which
- * read and write the current database row in one statement rather than trusting a possibly-stale
- * in-memory snapshot.
+ * <p><b>{@link #title}/{@link #titleSource}/{@link #updatedAt} are never mutated on an instance
+ * loaded long before the write, then written back with a full {@code chatRepository.save(chat)}
+ * merge</b> - only {@link #applyUpdate} does that, and only because the load and the save happen in
+ * the same short {@code @Transactional} method ({@code ChatService#updateChat}), not across the
+ * multi-second gap {@code QueryService#query} leaves between loading a chat and {@code
+ * ChatService#appendTurn} eventually writing to it (during which a concurrent {@code PATCH} could
+ * rename the chat). Both {@code appendTurn}'s prefix-fallback/{@code touch} and {@code
+ * ChatTitleGenerationService}'s LLM-derived title instead go through {@link ChatRepository}'s
+ * targeted, atomic {@code @Modifying} update methods, which read and write the current database row
+ * in one statement rather than trusting a possibly-stale in-memory snapshot.
  */
 @Entity
 @Table(name = "chats")
@@ -60,9 +59,9 @@ public class Chat {
   private String title;
 
   /**
-   * Where {@link #title} came from (#557) - see {@link TitleSource}'s Javadoc. {@code GENERATED}
-   * unless the constructor or {@link #applyUpdate} set it to {@code CUSTOM} because a title was
-   * explicitly supplied.
+   * Where {@link #title} came from - see {@link TitleSource}'s Javadoc. {@code GENERATED} unless
+   * the constructor or {@link #applyUpdate} set it to {@code CUSTOM} because a title was explicitly
+   * supplied.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "title_source", nullable = false, length = 20)
@@ -81,25 +80,24 @@ public class Chat {
    * chat_library_references join table, not an array column, so both foreign keys are enforced at
    * the database level.
    *
-   * <p><b>#677: chat_library_references also carries organization_id, which this collection
-   * deliberately never sets.</b> A BEFORE INSERT trigger, {@code
-   * trg_chat_library_references_set_organization}, derives it unconditionally from the row's own
-   * {@code chat_id} on every insert - the composite foreign keys {@code
-   * fk_chat_library_references_chat_organization}/{@code
+   * <p><b>Chat_library_references also carries organization_id, which this collection deliberately
+   * never sets.</b> A BEFORE INSERT trigger, {@code trg_chat_library_references_set_organization},
+   * derives it unconditionally from the row's own {@code chat_id} on every insert - the composite
+   * foreign keys {@code fk_chat_library_references_chat_organization}/{@code
    * fk_chat_library_references_library_organization} then reject a chat_id/library_id pair whose
    * organizations differ, at the database level, without the application ever naming an
    * organization_id itself. Widening this {@code @ElementCollection<UUID>} to a {@code
-   * Set<Embeddable>} carrying organization_id was considered and rejected (PR #680 review): it
-   * would make the column application-settable, and therefore application-misassignable, for a
-   * value whose entire point is to be derivable and unforgeable. If this collection ever needs a
-   * second attribute for an unrelated reason, keep organization_id out of the Java model and let
-   * the trigger keep owning it.
+   * Set<Embeddable>} carrying organization_id was considered and rejected: it would make the column
+   * application-settable, and therefore application-misassignable, for a value whose entire point
+   * is to be derivable and unforgeable. If this collection ever needs a second attribute for an
+   * unrelated reason, keep organization_id out of the Java model and let the trigger keep owning
+   * it.
    *
-   * <p>{@code EAGER} (#525 review round 2, finding A; kept under #889's read phase/LLM call/write
-   * phase pipeline - {@code QueryService#effectiveLibraryScope} still reads this collection on a
-   * detached {@link Chat} in the read phase, never inside the write phase's transaction): the
-   * default {@code LAZY} fetch would throw {@code LazyInitializationException} there. Safe to pay
-   * unconditionally - the collection is small and read on essentially every load.
+   * <p>{@code EAGER} (under the read phase/LLM call/write phase pipeline - {@code
+   * QueryService#effectiveLibraryScope} still reads this collection on a detached {@link Chat} in
+   * the read phase, never inside the write phase's transaction): the default {@code LAZY} fetch
+   * would throw {@code LazyInitializationException} there. Safe to pay unconditionally - the
+   * collection is small and read on essentially every load.
    */
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "chat_library_references", joinColumns = @JoinColumn(name = "chat_id"))
@@ -107,9 +105,9 @@ public class Chat {
   private Set<UUID> referencedLibraryIds = new LinkedHashSet<>();
 
   /**
-   * The chat's sticky core-field filter (#1070) as {@link MetadataFilterJson} writes it; {@code
-   * null} for no filter. Applied to every question of this chat next to the search scope above -
-   * the Kontext der Unterhaltung the specification names as one of the two sources of a filter
+   * The chat's sticky core-field filter as {@link MetadataFilterJson} writes it; {@code null} for
+   * no filter. Applied to every question of this chat next to the search scope above - the Kontext
+   * der Unterhaltung the specification names as one of the two sources of a filter
    * (metadata-schema.md, Wirkstelle 1).
    */
   @JdbcTypeCode(SqlTypes.JSON)
@@ -144,9 +142,9 @@ public class Chat {
     this.authorId = authorId;
     this.organizationId = organizationId;
     this.title = title;
-    // #557: a title supplied at creation - even an explicit blank string - is CUSTOM and must
-    // never be overwritten by the prefix fallback or LLM-derived title generation, see
-    // TitleSource's Javadoc.
+    // A title supplied at creation - even an explicit blank string - is CUSTOM and must never be
+    // overwritten by the prefix fallback or LLM-derived title generation, see TitleSource's
+    // Javadoc.
     this.titleSource = title != null ? TitleSource.CUSTOM : TitleSource.GENERATED;
     this.useKnowledge = useKnowledge;
     this.status = ChatStatus.PRIVATE;
@@ -201,8 +199,8 @@ public class Chat {
   }
 
   /**
-   * The same PATCH with the metadata filter (#1070): {@code null} leaves it unchanged, an empty
-   * filter clears it - the one field whose "omitted" and "cleared" are told apart by emptiness.
+   * The same PATCH with the metadata filter: {@code null} leaves it unchanged, an empty filter
+   * clears it - the one field whose "omitted" and "cleared" are told apart by emptiness.
    */
   public void applyUpdate(
       String newTitle,
@@ -214,8 +212,8 @@ public class Chat {
     }
     if (newTitle != null) {
       this.title = newTitle;
-      // #557: a user-initiated rename is CUSTOM from here on - permanent, see TitleSource's
-      // Javadoc, regardless of whether this happens before or after the chat's first answer.
+      // A user-initiated rename is CUSTOM from here on - permanent, see TitleSource's Javadoc,
+      // regardless of whether this happens before or after the chat's first answer.
       this.titleSource = TitleSource.CUSTOM;
     }
     if (newUseKnowledge != null) {

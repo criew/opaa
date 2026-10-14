@@ -82,8 +82,8 @@ public class ExternalAccessTokenService {
   }
 
   /**
-   * The ceiling an issuance is checked against, from the channel settings (#1717) - read per call,
-   * so a lowered ceiling takes effect on the next issuance without anything being invalidated.
+   * The ceiling an issuance is checked against, from the channel settings - read per call, so a
+   * lowered ceiling takes effect on the next issuance without anything being invalidated.
    */
   public Duration maxLifetime() {
     return Duration.ofDays(settings.current().values().tokenMaxLifetimeDays());

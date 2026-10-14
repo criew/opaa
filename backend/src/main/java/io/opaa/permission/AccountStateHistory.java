@@ -12,9 +12,9 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one period an account was {@link
- * AccountState#ACTIVE} or {@link AccountState#LOCKED} (#1818, ADR-0036 Entscheidung 8). {@code
- * validTo == null} means the account is in that state right now. Written and closed exclusively by
- * {@link AccountStateHistoryService}; never updated in place except to set {@link #close}.
+ * AccountState#ACTIVE} or {@link AccountState#LOCKED} (ADR-0036 Entscheidung 8). {@code validTo ==
+ * null} means the account is in that state right now. Written and closed exclusively by {@link
+ * AccountStateHistoryService}; never updated in place except to set {@link #close}.
  *
  * <p>An account whose state never changed has no row at all - see {@link
  * AccountStateHistoryCause#ACCOUNT_CREATED} for why.

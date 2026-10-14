@@ -75,13 +75,13 @@ public record MetadataFilter(
     }
   }
 
-  /** The core-field half alone - the shape every caller before built. */
+  /** The core-field half alone, without library and format fields. */
   public MetadataFilter(
       Set<String> documentTypes, LocalDate documentDateFrom, LocalDate documentDateTo) {
     this(documentTypes, documentDateFrom, documentDateTo, List.of(), List.of());
   }
 
-  /** The core-field and library-field halves - the shape every caller before #1242 built. */
+  /** The core-field and library-field halves, without format fields. */
   public MetadataFilter(
       Set<String> documentTypes,
       LocalDate documentDateFrom,

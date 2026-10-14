@@ -16,7 +16,7 @@ public enum SpaceMembershipHistoryCause {
    */
   SPACE_DELETED,
 
-  /** The membership was handed to another subject by a transfer (#1834) - closes the source. */
+  /** The membership was handed to another subject by a transfer - closes the source. */
   TRANSFERRED_OUT,
 
   /** The counterpart of {@link #TRANSFERRED_OUT}: the interval the target holds from then on. */

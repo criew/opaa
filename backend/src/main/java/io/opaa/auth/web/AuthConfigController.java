@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  * conjunction is not repeated here: it is read from {@link LocalSelfServiceAvailability}, the same
  * answer the authorization rule and the rate limiter act on, and the switch above it from the same
  * {@link OidcProviderRegistry} that answer rests on - one source for the whole {@code
- * localAccounts} object, so this endpoint can report no state the paths do not hold (#1592).
+ * localAccounts} object, so this endpoint can report no state the paths do not hold.
  *
  * <p>{@code features} carries every installation-wide feature flag (ADR-0044) from {@link
  * FeatureFlags}, so the frontend knows them before and after sign-in.
@@ -85,8 +85,8 @@ public class AuthConfigController {
   private LocalAccountsConfig localAccounts(String mode) {
     // The mode is this endpoint's own condition - neither the registry nor the flows know that the
     // whole oidc chain is absent outside that profile. Everything else is read where the request
-    // paths read it, never recomputed from the rows: the switch from the registry the flows rest
-    // on themselves, so no field of this object can contradict another (#1592).
+    // paths read it, never recomputed from the rows: the switch from the registry the flows rest on
+    // themselves, so no field of this object can contradict another.
     boolean oidc = OIDC_MODE.equals(mode);
     LocalSelfServiceAvailability flows =
         selfServiceFlows.getIfAvailable(() -> LocalSelfServiceAvailability.NONE);

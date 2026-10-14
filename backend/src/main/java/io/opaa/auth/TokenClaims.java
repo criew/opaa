@@ -10,10 +10,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
  * the provider's mapping points at.
  *
  * <p>Neither {@link #roles()} nor {@link #groups()} is a list: a token that carries no usable claim
- * must not read like one that carries an empty claim (#1807, #1830) - an empty role list would mean
- * {@code USER} and an empty group list revokes every membership. The distinction lives in {@link
- * TokenRoles} and {@link TokenGroups}; a mapping that names no such claim yields their {@code
- * CLAIM_MISSING}.
+ * must not read like one that carries an empty claim - an empty role list would mean {@code USER}
+ * and an empty group list revokes every membership. The distinction lives in {@link TokenRoles} and
+ * {@link TokenGroups}; a mapping that names no such claim yields their {@code CLAIM_MISSING}.
  */
 public record TokenClaims(
     String subject,

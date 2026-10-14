@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * What the filter interface of the chat offers (#1070). Absent while the metadata feature is off
+ * What the filter interface of the chat offers. Absent while the metadata feature is off
  * (ADR-0044); the question itself stays with {@link QueryController}.
  */
 @RestController

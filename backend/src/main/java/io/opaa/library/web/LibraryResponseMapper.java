@@ -137,7 +137,7 @@ final class LibraryResponseMapper {
   }
 
   /**
-   * The detail view additionally names the transfer that last touched this library (#1834, ADR-0036
+   * The detail view additionally names the transfer that last touched this library (ADR-0036
    * Entscheidung 10), or nothing if none ever did.
    */
   static LibraryResponse toResponse(LibraryDetail detail, PermissionTransferMark lastTransfer) {
@@ -242,8 +242,8 @@ final class LibraryResponseMapper {
   }
 
   /**
-   * #1940: {@code null} stays {@code null} - the absence of the field is what says "never indexed".
-   * {@link IndexingStatus#IDLE} is therefore never produced here.
+   * {@code null} stays {@code null} - the absence of the field is what says "never indexed". {@link
+   * IndexingStatus#IDLE} is therefore never produced here.
    */
   private static IndexingStatus toIndexingStatus(JobStatus status) {
     if (status == null) {
@@ -260,7 +260,7 @@ final class LibraryResponseMapper {
     return summaries.stream().map(LibraryResponseMapper::toListResponse).toList();
   }
 
-  /** The derived reach (#1931) - three figures, no stored level. */
+  /** The derived reach - three figures, no stored level. */
   private static AssetReachResponse toReachResponse(AssetReach reach) {
     return new AssetReachResponse(reach.allAccounts(), reach.groupCount(), reach.userCount());
   }

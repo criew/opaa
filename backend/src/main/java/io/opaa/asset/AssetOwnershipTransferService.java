@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Handing one asset to another owner (#1941) - the per-asset counterpart of the transfer that moves
+ * Handing one asset to another owner - the per-asset counterpart of the transfer that moves
  * everything a subject holds ({@code PermissionTransferService}). Only {@link AssetRole#OWNER} may
  * do it, and only within their own organization.
  *

@@ -19,9 +19,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * What {@link FileSync} does with a full sync that spans several runs, beyond the contract
- * (ADR-0040, Nachtrag Abgleichsrunde): what an event run confirms and what a failed run leaves, the
- * order after an expired checkpoint, the entry bound of a round, the stall note, and the revisits
- * of a round.
+ * (ADR-0045, Entscheidung 6): what an event run confirms and what a failed run leaves, the order
+ * after an expired checkpoint, the entry bound of a round, the stall note, and the revisits of a
+ * round.
  */
 class FileSyncRoundTest {
 

@@ -38,13 +38,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Admin API for the identity providers (#1329, ADR-0025), {@code SYSTEM_ADMIN} only - the same
- * access bar and {@code @Caller} pattern as {@code LlmModelController}. A provider is a public
- * client: no response carries a secret because none exists. Every response carries the registry's
- * view of the provider ({@link OidcProviderRegistry#healthOf}), so the Anbieterverwaltung can show
- * a provider whose decoder could not be built. Disabling or deleting the last enabled OIDC provider
- * needs {@code acknowledgeLastProvider=true} (ADR-0033, Entscheidung 4), and wherever persons may
- * have connections {@code confirmConnections=true} (ADR-0041, Entscheidung 4); the LOCAL row's
+ * Admin API for the identity providers (ADR-0025), {@code SYSTEM_ADMIN} only - the same access bar
+ * and {@code @Caller} pattern as {@code LlmModelController}. A provider is a public client: no
+ * response carries a secret because none exists. Every response carries the registry's view of the
+ * provider ({@link OidcProviderRegistry#healthOf}), so the Anbieterverwaltung can show a provider
+ * whose decoder could not be built. Disabling or deleting the last enabled OIDC provider needs
+ * {@code acknowledgeLastProvider=true} (ADR-0033, Entscheidung 4), and wherever persons may have
+ * connections {@code confirmConnections=true} (ADR-0041, Entscheidung 4); the LOCAL row's
  * enable/disable is the switch of the local account management.
  */
 @RestController

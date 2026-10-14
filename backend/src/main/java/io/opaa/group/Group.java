@@ -87,7 +87,7 @@ public class Group {
   private Instant updatedAt;
 
   /**
-   * Set when directory synchronisation (#237) no longer sees this {@link GroupKind#ORG_UNIT} in the
+   * Set when directory synchronisation no longer sees this {@link GroupKind#ORG_UNIT} in the
    * directory - a merge or reorganisation, not a deletion. Existing grants to a dissolved group
    * keep working for its current members; the group's membership is simply frozen at its
    * last-known-good state and never grows again through synchronisation. Always {@code false} for
@@ -194,17 +194,17 @@ public class Group {
   }
 
   /**
-   * Applies a rename that originates from the directory (#237), never from a user - only the name
-   * changes, because {@code description} is not a directory-owned field for {@link
-   * GroupKind#ORG_UNIT} groups.
+   * Applies a rename that originates from the directory, never from a user - only the name changes,
+   * because {@code description} is not a directory-owned field for {@link GroupKind#ORG_UNIT}
+   * groups.
    */
   public void renameFromDirectory(String name) {
     this.name = name;
   }
 
   /**
-   * Marks this group as no longer present in the directory (#237). Deliberately does not touch
-   * {@link #memberships} - the group's reach is frozen at its last-known-good state, not revoked.
+   * Marks this group as no longer present in the directory. Deliberately does not touch {@link
+   * #memberships} - the group's reach is frozen at its last-known-good state, not revoked.
    */
   public void dissolve(Instant dissolvedAt) {
     this.dissolved = true;
@@ -222,17 +222,17 @@ public class Group {
   }
 
   /**
-   * Updates the parent organizational unit from directory synchronisation (#237). Applied in a
-   * second pass after every group in a sync run has a persisted id, so it works regardless of the
-   * order the directory reported groups in, and to existing groups (a reorganisation that reassigns
-   * a unit under a different parent), not only newly created ones.
+   * Updates the parent organizational unit from directory synchronisation. Applied in a second pass
+   * after every group in a sync run has a persisted id, so it works regardless of the order the
+   * directory reported groups in, and to existing groups (a reorganisation that reassigns a unit
+   * under a different parent), not only newly created ones.
    */
   public void updateParentGroup(UUID parentGroupId) {
     this.parentGroupId = parentGroupId;
   }
 
   /**
-   * Updates the path the directory reports for this group (#1817). Display-only, so it is refreshed
+   * Updates the path the directory reports for this group. Display-only, so it is refreshed
    * silently in the same second pass as the parent link: a path changes without the group itself
    * changing - renaming a parent moves every descendant's path.
    */

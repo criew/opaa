@@ -27,12 +27,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class UserService {
 
-  // #778 review, finding 4: bounds for searchInOrganization below - see its Javadoc.
+  // Bounds for searchInOrganization below - see its Javadoc.
   private static final int SEARCH_RESULT_LIMIT = 20;
   private static final int SEARCH_MIN_QUERY_LENGTH = 2;
 
-  // Throttles lastLoginAt writes to at most once per user per interval (#833) - 5 minutes of
-  // staleness is an acceptable trade for dropping the per-request UPDATE.
+  // Throttles lastLoginAt writes to at most once per user per interval - 5 minutes of staleness is
+  // an acceptable trade for dropping the per-request UPDATE.
   private static final Duration LAST_LOGIN_UPDATE_THRESHOLD = Duration.ofMinutes(5);
 
   private static final String BOOTSTRAP_ROLE_MESSAGE =
@@ -83,7 +83,7 @@ public class UserService {
    *
    * <p>What the token said travels as a {@link TokenRoles} and a {@link TokenGroups}: a token that
    * carries no usable claim must not reach the role synchronizer as "this account has no elevated
-   * role" (#1830) nor a listener as "this account has no groups" (#1807).
+   * role" nor a listener as "this account has no groups".
    */
   public User provisionFromToken(Jwt jwt) {
     String issuer = JwtUserClaims.issuer(jwt);
@@ -165,7 +165,7 @@ public class UserService {
    * {@code lastLoginAt} is refreshed only after {@link #LAST_LOGIN_UPDATE_THRESHOLD}; {@code
    * email}/{@code displayName} (identity-provider claims) are written immediately whenever they
    * differ from the stored value. No {@link UserRepository#save} call when none of the three
-   * changed (#833).
+   * changed.
    */
   private User updateExistingUser(User existing, String email, String displayName) {
     Instant now = clock.instant();
@@ -202,7 +202,7 @@ public class UserService {
 
   /**
    * Creates a new user, tolerating the race of two concurrent first logins for the same {@code
-   * subject}/{@code issuer} pair racing past the {@code findBySubjectAndIssuer} check above (#293).
+   * subject}/{@code issuer} pair racing past the {@code findBySubjectAndIssuer} check above.
    *
    * <p>Because {@link #findOrCreateUser} is deliberately not {@code @Transactional} (see its
    * Javadoc), {@link #insertUser} below runs in its own short-lived, implicit transaction on its
@@ -213,7 +213,7 @@ public class UserService {
    * SpaceService#ensureDefaultSpace}, but without that method's {@code REQUIRES_NEW} - there is no
    * ambient transaction here to escape from in the first place.
    *
-   * <p>#307: also reports whether the insert attempt actually won, via {@link
+   * <p>Also reports whether the insert attempt actually won, via {@link
    * UserCreationResult#createdHere()} - see {@link #findOrCreateUser}'s Javadoc for why the caller
    * needs to tell a genuine winner apart from a race loser here.
    */
@@ -247,22 +247,21 @@ public class UserService {
   }
 
   /**
-   * Scopes the admin user list to the caller's own organization (#271) - {@code findAll()} used to
-   * return every organization's users, including to a SYSTEM_ADMIN, whose reach the organization
-   * boundary must stop at just as it does everywhere else (#199), and whose acting person is
-   * resolved by {@code AdminController#listUsers}.
+   * Scopes the admin user list to the caller's own organization: the organization boundary stops a
+   * SYSTEM_ADMIN's reach just as it does everywhere else. The acting person is resolved by {@code
+   * AdminController#listUsers}.
    */
   public List<User> findAllInOrganization(UUID organizationId) {
     return userRepository.findByOrganizationId(organizationId);
   }
 
   /**
-   * Backs {@code UserSearchController#listUsers} (#777, gated after #778 review finding 4). A
-   * missing or too-short (below {@link #SEARCH_MIN_QUERY_LENGTH}) query returns an empty list
-   * rather than falling back to the unbounded {@link #findAllInOrganization} - the caller is
-   * expected to be a type-ahead picker that never even issues a request before the caller has typed
-   * enough to narrow the result, not a page-load preload. Matches are capped at {@link
-   * #SEARCH_RESULT_LIMIT} rows via {@link UserRepository#searchByOrganizationId}.
+   * Backs {@code UserSearchController#listUsers} (query-gated). A missing or too-short (below
+   * {@link #SEARCH_MIN_QUERY_LENGTH}) query returns an empty list rather than falling back to the
+   * unbounded {@link #findAllInOrganization} - the caller is expected to be a type-ahead picker
+   * that never even issues a request before the caller has typed enough to narrow the result, not a
+   * page-load preload. Matches are capped at {@link #SEARCH_RESULT_LIMIT} rows via {@link
+   * UserRepository#searchByOrganizationId}.
    */
   public List<User> searchInOrganization(UUID organizationId, String query) {
     String trimmed = query == null ? "" : query.trim();
@@ -274,27 +273,26 @@ public class UserService {
   }
 
   /**
-   * #392 code review, finding 3: the specification names "Erteilung und Entzug der
-   * System-Admin-Rolle" explicitly in the first-stage event list, and this is the one method that
-   * already performs it - {@code actor} is the person making the change (the {@code SYSTEM_ADMIN}
-   * caller {@code AdminController#changeRole} enforces via {@code @PreAuthorize}), {@code
-   * userId}/{@code role} describe the change itself. {@code @Transactional} (already present on
-   * this method beforehand) is what makes the audit write commit or roll back together with the
-   * role change itself, the same as every other write this method makes.
+   * The specification names "Erteilung und Entzug der System-Admin-Rolle" explicitly in the
+   * first-stage event list, and this is the one method that already performs it - {@code actor} is
+   * the person making the change (the {@code SYSTEM_ADMIN} caller {@code
+   * AdminController#changeRole} enforces via {@code @PreAuthorize}), {@code userId}/{@code role}
+   * describe the change itself. {@code @Transactional} (already present on this method beforehand)
+   * is what makes the audit write commit or roll back together with the role change itself, the
+   * same as every other write this method makes.
    *
-   * <p><b>#392/#444 re-review: object and subject are the same person here</b> - {@code userId} is
-   * both the account the event is about and the rights subject the role change affects. The first
-   * version of this method used the real {@code userId} as {@code objectId} and {@code
-   * saved.getEmail()} as {@code objectLabel} while {@code subjectRef} carried that same person's
-   * pseudonym - the same row then held both the plain id/email and the pseudonym for the identical
-   * person, trivially reversing this person's pseudonymisation everywhere else in the log, and (via
-   * the email in {@code object_label}) surviving an account deletion that is supposed to make the
-   * log unattributable again (docs/features/security-and-compliance.md, "Unveraenderlichkeit und
-   * Loeschrecht"). Both {@code objectId} and {@code subjectId} now resolve to the same pseudonym
-   * ({@link AuditEventRecorder#pseudonymFor}, called once and reused for both), and {@code
-   * objectLabel} is {@code null} - there is no non-identifying label for "this one account" that
-   * would not just be another name for the pseudonym already carried in {@code object_id}/{@code
-   * subject_ref}.
+   * <p><b>Object and subject are the same person here</b> - {@code userId} is both the account the
+   * event is about and the rights subject the role change affects. The first version of this method
+   * used the real {@code userId} as {@code objectId} and {@code saved.getEmail()} as {@code
+   * objectLabel} while {@code subjectRef} carried that same person's pseudonym - the same row then
+   * held both the plain id/email and the pseudonym for the identical person, trivially reversing
+   * this person's pseudonymisation everywhere else in the log, and (via the email in {@code
+   * object_label}) surviving an account deletion that is supposed to make the log unattributable
+   * again (docs/features/security-and-compliance.md, "Unveraenderlichkeit und Loeschrecht"). Both
+   * {@code objectId} and {@code subjectId} now resolve to the same pseudonym ({@link
+   * AuditEventRecorder#pseudonymFor}, called once and reused for both), and {@code objectLabel} is
+   * {@code null} - there is no non-identifying label for "this one account" that would not just be
+   * another name for the pseudonym already carried in {@code object_id}/{@code subject_ref}.
    *
    * <p>{@code actor} carries the acting SYSTEM_ADMIN's {@code organizationId} to reject a target
    * user from another organization the same way {@code SpaceService#requireUserInOrganization}
@@ -336,7 +334,7 @@ public class UserService {
     user.setSystemRole(role);
     User saved = userRepository.save(user);
     if (previousRole != role) {
-      // #393 code review, finding 1: with three roles (USER/SYSTEM_ADMIN/AUDITOR), a single
+      // With three roles (USER/SYSTEM_ADMIN/AUDITOR), a single
       // "granted vs. revoked" branch on the *new* role alone is wrong - it mislabelled every
       // AUDITOR grant as SYSTEM_ADMIN_ROLE_REVOKED (USER -> AUDITOR: role != SYSTEM_ADMIN, so the
       // old two-valued branch always chose REVOKED, regardless of what actually happened). Instead,

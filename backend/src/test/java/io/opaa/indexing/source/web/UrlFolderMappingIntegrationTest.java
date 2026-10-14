@@ -56,13 +56,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * End-to-end coverage (ADR-0020 Nachtrag): an {@code HTTP_DIRECTORY} library mirrors the crawled
- * directory structure into {@code library_folders}, with the same materialize/prune rules {@code
- * FILESYSTEM} already follows - pruning only after a complete run. Drives the real, Spring-wired
- * bean graph against a loopback {@code com.sun.net.httpserver.HttpServer} serving a {@code
- * <ul>}-style autoindex; only the executor itself is hand-built, so crawler and downloader can use
- * {@link TargetAddressValidator#disabled()} without a context-splitting property override (mirrors
- * {@link UrlAttachmentIndexingIntegrationTest}).
+ * End-to-end coverage (ADR-0020, Entscheidung 7): an {@code HTTP_DIRECTORY} library mirrors the
+ * crawled directory structure into {@code library_folders}, with the same materialize/prune rules
+ * {@code FILESYSTEM} already follows - pruning only after a complete run. Drives the real,
+ * Spring-wired bean graph against a loopback {@code com.sun.net.httpserver.HttpServer} serving a
+ * {@code <ul>}-style autoindex; only the executor itself is hand-built, so crawler and downloader
+ * can use {@link TargetAddressValidator#disabled()} without a context-splitting property override
+ * (mirrors {@link UrlAttachmentIndexingIntegrationTest}).
  *
  * <p>{@code servedFiles} is keyed by the <em>raw</em> (still percent-encoded) path below the start
  * URL, and the stub answers on {@code getRawPath()}: only that way can a directory name whose

@@ -3,8 +3,8 @@ package io.opaa.library;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * The systemwide bounds of a library's Fremdzugangsfreigabe (#1731,
- * docs/features/external-access.md, "Die Freigabe der Bibliothek").
+ * The systemwide bounds of a library's Fremdzugangsfreigabe (docs/features/external-access.md, "Die
+ * Freigabe der Bibliothek").
  *
  * @param maxReleaseDays the longest admissible Befristung. One year by default and deliberately
  *     configurable only downwards in practice - a longer bound would give back the ratchet the

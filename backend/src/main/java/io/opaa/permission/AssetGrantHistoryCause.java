@@ -1,7 +1,7 @@
 package io.opaa.permission;
 
 /**
- * The operation that opened or closed an {@link AssetGrantHistory} interval (#238) - every interval
+ * The operation that opened or closed an {@link AssetGrantHistory} interval - every interval
  * carries one, so a Stichtag reconstruction can say not just "this grant existed" but "because it
  * was granted" or "because it was role-changed". Mirrored by the database check constraint {@code
  * chk_asset_grant_history_cause}.
@@ -38,9 +38,9 @@ public enum AssetGrantHistoryCause {
   ASSET_DELETED,
 
   /**
-   * The grant was handed to another subject by a transfer (#1834, ADR-0036 Entscheidung 10) -
-   * closes the source's side, exactly like {@link #REVOKED}, but names the operation that did it.
-   * The row carries the transfer id the target's {@link #TRANSFERRED_IN} interval carries too.
+   * The grant was handed to another subject by a transfer (ADR-0036 Entscheidung 10) - closes the
+   * source's side, exactly like {@link #REVOKED}, but names the operation that did it. The row
+   * carries the transfer id the target's {@link #TRANSFERRED_IN} interval carries too.
    */
   TRANSFERRED_OUT,
 

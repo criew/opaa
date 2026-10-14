@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * JPA converter for {@link DirectoryConnector#getClientSecret()} (#1817, ADR-0036 Entscheidung 3):
+ * JPA converter for {@link DirectoryConnector#getClientSecret()} (ADR-0036 Entscheidung 3):
  * encrypts on the way to the database, decrypts on the way back, transparent to the connector that
  * signs in with it. Same shape as {@code SourceCredentialsConverter}, and deliberately the same
  * encryptor the issue names - one key per deployment for stored access credentials, not a second

@@ -11,11 +11,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Persists the Zählwerk of the model-backed extraction and the discarded values behind it (#1073).
- * The counting row is upserted with additive increments, so two concurrent ingests of the same
- * library cannot lose a call; the rejection log is capped per library ({@link #REJECTION_CAP}) and
- * rotates, because its purpose is the current confidence distribution, not a permanent archive of
- * every value the model ever proposed.
+ * Persists the Zählwerk of the model-backed extraction and the discarded values behind it. The
+ * counting row is upserted with additive increments, so two concurrent ingests of the same library
+ * cannot lose a call; the rejection log is capped per library ({@link #REJECTION_CAP}) and rotates,
+ * because its purpose is the current confidence distribution, not a permanent archive of every
+ * value the model ever proposed.
  */
 @Component
 public class ModelExtractionCounters {

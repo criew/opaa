@@ -9,10 +9,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A managed chat model (Stufe 1, #756,
+ * A managed chat model (Stufe 1,
  * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung): a row in {@code
- * llm_models} replacing what used to be environment variables only ({@code spring.ai.model.chat}
- * plus the {@code ollama}/{@code openai} blocks in {@code application.yml}).
+ * llm_models}, not environment variables.
  *
  * <p><b>Exactly one row may be {@link #active} at a time</b>, enforced by the partial unique index
  * {@code ux_llm_models_single_active} - the database backstop for {@link
@@ -27,9 +26,9 @@ import java.util.UUID;
  *
  * <p><b>{@link #apiKeyCiphertext} is write-only and encrypted</b> ({@link
  * io.opaa.security.SettingsEncryptor}, AES-256-GCM, {@code OPAA_SETTINGS_ENCRYPTION_KEY}) -
- * optional, because locally operated endpoints regularly run without authentication (#756). It
- * never appears decrypted outside {@link LlmModelService}, and no read path built on top of this
- * entity is expected to return it at all.
+ * optional, because locally operated endpoints regularly run without authentication. It never
+ * appears decrypted outside {@link LlmModelService}, and no read path built on top of this entity
+ * is expected to return it at all.
  */
 @Entity
 @Table(name = "llm_models")

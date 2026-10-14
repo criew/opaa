@@ -25,7 +25,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * are bound without {@code @Valid} on purpose: their field rules are checked behind the
  * availability gate. Exists in the {@code oidc} profile only.
  *
- * <p><b>A switched-off flow never reaches these methods without a session</b> (#1592): {@code
+ * <p><b>A switched-off flow never reaches these methods without a session</b>: {@code
  * OidcSecurityConfig} permits the two paths only while their flow is served, so a switched-off one
  * falls through to the {@code /api/**} rule and is answered by the same decision, entry point and
  * headers as any unknown route. The check repeated here is what a caller <em>with</em> a token

@@ -6,12 +6,12 @@ import java.util.UUID;
 
 /**
  * Domain counterpart of the generated {@code ChatUpdateRequest} at the {@link
- * ChatService#updateChat} boundary (#860 Teil 4) - mirrors its fluent {@code withX}-style setters.
- * Every field is optional and only overwrites the chat when non-null (PATCH semantics), matching
- * {@link Chat#applyUpdate}. {@code ChatController} builds one of these from the generated request
- * DTO; {@link ChatService#updateChat} is where {@code referencedLibraryIds} actually turns from
- * this record's {@code List} into the {@code Set} the entity works with - {@code null} means
- * "omitted", an empty set means "clear".
+ * ChatService#updateChat} boundary - mirrors its fluent {@code withX}-style setters. Every field is
+ * optional and only overwrites the chat when non-null (PATCH semantics), matching {@link
+ * Chat#applyUpdate}. {@code ChatController} builds one of these from the generated request DTO;
+ * {@link ChatService#updateChat} is where {@code referencedLibraryIds} actually turns from this
+ * record's {@code List} into the {@code Set} the entity works with - {@code null} means "omitted",
+ * an empty set means "clear".
  */
 public final class ChatPatch {
 
@@ -23,9 +23,8 @@ public final class ChatPatch {
   public ChatPatch() {}
 
   /**
-   * The chat's core-field filter (#1070): {@code null} means "omitted", an empty filter means
-   * "clear" - the same omitted/cleared distinction {@code referencedLibraryIds} draws with an empty
-   * list.
+   * The chat's core-field filter: {@code null} means "omitted", an empty filter means "clear" - the
+   * same omitted/cleared distinction {@code referencedLibraryIds} draws with an empty list.
    */
   public ChatPatch metadataFilter(MetadataFilter metadataFilter) {
     this.metadataFilter = metadataFilter;

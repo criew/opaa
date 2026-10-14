@@ -80,11 +80,11 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
   /**
    * The status of the newest run per library in one grouped query - the overview's "Letzte
    * Aktualisierung" needs it because {@link #findLastCompletedByLibraryIdIn} above only ever sees
-   * successful runs, leaving a failed last run indistinguishable from none at all (#1940). Native
-   * because {@code DISTINCT ON} picks the newest row per library in one pass; JPQL has no
-   * equivalent that avoids a correlated subquery per row. Deliberately not schema-qualified
-   * (ADR-0034) - the search_path of the connection resolves {@code indexing_jobs}. A library
-   * without any run simply has no row here.
+   * successful runs, leaving a failed last run indistinguishable from none at all. Native because
+   * {@code DISTINCT ON} picks the newest row per library in one pass; JPQL has no equivalent that
+   * avoids a correlated subquery per row. Deliberately not schema-qualified (ADR-0034) - the
+   * search_path of the connection resolves {@code indexing_jobs}. A library without any run simply
+   * has no row here.
    */
   @Query(
       value =

@@ -83,10 +83,11 @@ import java.util.function.ToIntFunction;
  * drop from rank 1 to rank 3 — no lost hit required — to breach the mean tolerance more than twice
  * over.
  *
- * <p><b>Fix (issue #306, ADR-0013 Nachtrag):</b> {@link #metricCheck} determines, per group/metric
- * pair and dynamically (not from a hardcoded pair list — see {@link #usesCaseBasedCheck}), whether
- * {@code toleranceFor(baselineValue, nEff) < 1.0 / n}. Where that holds, the pair must clear
- * <b>both</b> of the following (a conjunction, not a replacement — see "Review correction" below):
+ * <p><b>Konjunktionsregel (ADR-0013, Entscheidung 7):</b> {@link #metricCheck} determines, per
+ * group/metric pair and dynamically (not from a hardcoded pair list — see {@link
+ * #usesCaseBasedCheck}), whether {@code toleranceFor(baselineValue, nEff) < 1.0 / n}. Where that
+ * holds, the pair must clear <b>both</b> of the following (a conjunction, not a replacement — see
+ * "Review correction" below):
  *
  * <ol>
  *   <li>A case-count test: the number of cases in the group scoring above zero ({@link
@@ -121,9 +122,9 @@ import java.util.function.ToIntFunction;
  * baseline, so populating them requires no new measurement, only reading a number that was already
  * implicitly present in the run that produced the current baseline. The counts used for {@code
  * eval/baseline/comic-characters.json} were read from the byte-identical, artifact-verified {@code
- * checkRetrievalBaseline} run on GitHub Actions' own runner hardware referenced in ADR-0013's
- * Nachtrag (run id {@code 32442551477}, commit {@code 45faad2}) — not invented or back-calculated
- * from the committed means, which (see below) would not have been possible exactly.
+ * checkRetrievalBaseline} run on GitHub Actions' own runner hardware (run id {@code 32442551477},
+ * commit {@code 45faad2}; ADR-0013, Konsequenzen) — not invented or back-calculated from the
+ * committed means, which (see below) would not have been possible exactly.
  *
  * <p><b>Rejected alternative: derive the historical count from the baseline's already-committed
  * mean and {@code n}</b> (e.g. {@code round(baselineValue * n)}), avoiding the schema addition
@@ -145,7 +146,7 @@ import java.util.function.ToIntFunction;
  * <p>The evidence that the *mean*-tolerance formula itself is tight enough to need this fix rests
  * on four bit-identical {@code checkRetrievalBaseline} runs across three different machines
  * reproducing these exact tolerance-vs-one-case numbers with zero delta in the affected groups —
- * see ADR-0013's Nachtrag. That evidence is real but comes entirely from developer/reviewer
+ * see ADR-0013, Konsequenzen. That evidence is real but comes entirely from developer/reviewer
  * machines; the scheduled run on GitHub Actions' own runner hardware referenced above is the first
  * confirmation that this tightness holds outside that sample.
  *
@@ -205,8 +206,7 @@ public final class BaselineComparator {
 
   /**
    * Baseline-relative component of the hard floor applied only to the four overall (micro-averaged)
-   * metrics — see class Javadoc and ADR-0013, decision 4, plus the correction recorded in the ADR's
-   * Nachtrag from the second PR #301 review round.
+   * metrics — see class Javadoc and ADR-0013, Entscheidung 4.
    *
    * <p><b>Deliberately combined with {@link #HARD_FLOOR_ABSOLUTE_HIT_RATE} et al. via {@code
    * max(...)}, not used alone.</b> A purely baseline-relative floor turned out to be two different
@@ -428,7 +428,7 @@ public final class BaselineComparator {
         "chunkSizeMatchesApplicationDefault",
         String.valueOf(fp.chunkSizeMatchesApplicationDefault()),
         String.valueOf(cfg.chunkSizeMatchesApplicationDefault()));
-    // Issue #721, ADR-0012 Nachtrag: chunkOverlap and the document-bound k-window are now
+    // ADR-0012, Entscheidungen 8 and 10: chunkOverlap and the document-bound k-window are now
     // measurement-contract fixed points — see FixedPoints' Javadoc for why.
     addIfDiffers(
         mismatches,
@@ -663,9 +663,9 @@ public final class BaselineComparator {
     } else {
       withinTolerance = meanWithinTolerance;
     }
-    // ADR-0013 Nachtrag (second PR #301 review round): the hard floor combines a baseline-relative
-    // component with a fixed absolute one via max(...) — see HARD_FLOOR_FRACTION_OF_BASELINE's
-    // Javadoc for why neither alone is sufficient.
+    // ADR-0013, Entscheidung 4: the hard floor combines a baseline-relative component with a fixed
+    // absolute one via max(...) — see HARD_FLOOR_FRACTION_OF_BASELINE's Javadoc for why neither
+    // alone is sufficient.
     double hardFloor =
         absoluteHardFloor == null
             ? Double.NEGATIVE_INFINITY

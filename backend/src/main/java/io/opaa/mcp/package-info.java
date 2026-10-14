@@ -1,7 +1,7 @@
 /**
- * The MCP server of the external-access channel (#1721, ADR-0035): Streamable HTTP in the
- * <b>stateless</b> mode, under one path, with the three tools {@code search}, {@code fetch} and
- * {@code list_libraries}.
+ * The MCP server of the external-access channel (ADR-0035): Streamable HTTP in the <b>stateless</b>
+ * mode, under one path, with the three tools {@code search}, {@code fetch} and {@code
+ * list_libraries}.
  *
  * <p>A translation layer and nothing else. Every tool call resolves the caller's effective view
  * through {@code io.opaa.search} - the same domain services {@code POST /api/v1/search} and {@code

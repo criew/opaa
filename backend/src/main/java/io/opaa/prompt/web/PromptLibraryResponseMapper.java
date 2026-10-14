@@ -52,7 +52,7 @@ final class PromptLibraryResponseMapper {
     return views.stream().map(PromptLibraryResponseMapper::toResponse).toList();
   }
 
-  /** The derived reach (#1931) - three figures, no stored level. */
+  /** The derived reach - three figures, no stored level. */
   private static AssetReachResponse toReachResponse(AssetReach reach) {
     return new AssetReachResponse(reach.allAccounts(), reach.groupCount(), reach.userCount());
   }

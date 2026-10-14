@@ -14,10 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Records and reconstructs the space-membership history (#1815, ADR-0036 Entscheidung 8): every
- * admission, role change and removal becomes a half-open interval with the operation that caused
- * it, so "was X a member of space Z on day Y" - and above all its negation - stays answerable after
- * the audit log's own retention period has taken the event away.
+ * Records and reconstructs the space-membership history (ADR-0036 Entscheidung 8): every admission,
+ * role change and removal becomes a half-open interval with the operation that caused it, so "was X
+ * a member of space Z on day Y" - and above all its negation - stays answerable after the audit
+ * log's own retention period has taken the event away.
  *
  * <p>Every recording method runs inside the caller's own transaction (default propagation): the
  * membership change and its interval commit or roll back together. The interval contract is the one
@@ -86,8 +86,8 @@ public class SpaceMembershipHistoryService {
   }
 
   /**
-   * The source's side of a transfer (#1834, ADR-0036 Entscheidung 10): closes the open interval at
-   * the boundary the whole transfer shares and writes the {@link
+   * The source's side of a transfer (ADR-0036 Entscheidung 10): closes the open interval at the
+   * boundary the whole transfer shares and writes the {@link
    * SpaceMembershipHistoryCause#TRANSFERRED_OUT} marker naming the operation. Call before the
    * source's membership row is deleted; {@code membership} must still carry its last role.
    */
@@ -138,9 +138,9 @@ public class SpaceMembershipHistoryService {
 
   /**
    * Every membership interval of one space overlapping {@code [from, to)} - the object entry of the
-   * Stichtagsauskunft (#1822), and the inverse of {@link #spaceIdsAsOf}: that one asks "which
-   * spaces did this person reach", this one "who was a member of this space". Without an own person
-   * filter, which is what keeps it free of a Vollmacht.
+   * Stichtagsauskunft, and the inverse of {@link #spaceIdsAsOf}: that one asks "which spaces did
+   * this person reach", this one "who was a member of this space". Without an own person filter,
+   * which is what keeps it free of a Vollmacht.
    */
   @Transactional(readOnly = true)
   public List<SpaceMembershipHistory> membershipIntervalsBetween(

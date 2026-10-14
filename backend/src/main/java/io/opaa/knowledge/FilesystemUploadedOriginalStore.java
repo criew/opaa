@@ -20,8 +20,8 @@ import org.slf4j.LoggerFactory;
  * <storage-path>/<organizationId>/<libraryId>/<uuid><extension>}, one file per document under a
  * random name, and the absolute path of that file as the locator. The organization segment is what
  * lets a walk over the whole storage area tell the tenants apart without a database row (ADR-0030,
- * addendum to Entscheidung 4). A network share the operator mounts onto that directory is this
- * adapter too - it only ever sees a directory.
+ * Entscheidung 4). A network share the operator mounts onto that directory is this adapter too - it
+ * only ever sees a directory.
  *
  * <p>Serving hands out the file itself rather than a stream, so the controller keeps answering HTTP
  * range requests from {@code FileSystemResource}, and a caller that needs a local file gets the

@@ -17,8 +17,8 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 
 /**
- * The first productive directory connector (#1817, ADR-0036 Entscheidung 3): the Keycloak Admin
- * REST API read as a {@link DirectorySnapshot}.
+ * The first productive directory connector (ADR-0036 Entscheidung 3): the Keycloak Admin REST API
+ * read as a {@link DirectorySnapshot}.
  *
  * <p><b>Why Keycloak first.</b> A Keycloak user's id <em>is</em> the {@code sub} of the token it
  * issues, so {@link DirectoryGroup#memberSubjects()} needs no mapping rule at all and the mismatch
@@ -36,9 +36,9 @@ import tools.jackson.databind.JsonNode;
  * children come from {@code /groups/{id}/children}. Only groups that report children are asked for
  * them.
  *
- * <p><b>The account status comes from the same read</b> (#1818): {@code /users} reports every
- * account of the realm with its {@code enabled} flag, and the id it carries is the same {@code sub}
- * a membership names - so the account status needs no mapping rule either.
+ * <p><b>The account status comes from the same read</b>: {@code /users} reports every account of
+ * the realm with its {@code enabled} flag, and the id it carries is the same {@code sub} a
+ * membership names - so the account status needs no mapping rule either.
  *
  * <p><b>A truncated read is a failure, not a smaller directory.</b> Every ceiling of {@link
  * KeycloakDirectoryProperties} raises {@link DirectoryUnavailableException} instead of returning
@@ -68,7 +68,7 @@ public class KeycloakDirectoryConnector {
 
   /**
    * Signs in with the service account and reads the realm's complete group tree with its direct
-   * memberships, plus every account with its {@code enabled} flag (#1818).
+   * memberships, plus every account with its {@code enabled} flag.
    */
   public DirectorySnapshot fetchSnapshot(
       KeycloakRealmAddress address, String clientId, String clientSecret)
@@ -104,9 +104,9 @@ public class KeycloakDirectoryConnector {
   }
 
   /**
-   * The realm's accounts with their state (#1818). A user without an id is skipped the way a group
-   * without one is - it identifies nobody; {@code enabled} absent is read as enabled, so a Keycloak
-   * version that omits the field for an enabled account never locks anyone.
+   * The realm's accounts with their state. A user without an id is skipped the way a group without
+   * one is - it identifies nobody; {@code enabled} absent is read as enabled, so a Keycloak version
+   * that omits the field for an enabled account never locks anyone.
    */
   private List<DirectoryAccount> accounts(KeycloakAdminApi api)
       throws DirectoryUnavailableException {

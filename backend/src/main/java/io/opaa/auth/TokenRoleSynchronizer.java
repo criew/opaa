@@ -30,10 +30,10 @@ import org.springframework.transaction.annotation.Transactional;
  * AuditEventType#SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED}); the account keeps the role the provider
  * withdrew. {@code AUDITOR} has no such protection: a claim that no longer names it withdraws it.
  *
- * <p>Only a claim the token actually carried is authoritative (#1830): a claim that names none of
- * the configured role values is the provider withdrawing the elevated role, but a token whose claim
- * is absent, of another shape or replaced by an overage reference leaves the stored role as it is
- * and is logged per provider and cause at most once per {@link #INCIDENT_WINDOW_SECONDS} seconds.
+ * <p>Only a claim the token actually carried is authoritative: a claim that names none of the
+ * configured role values is the provider withdrawing the elevated role, but a token whose claim is
+ * absent, of another shape or replaced by an overage reference leaves the stored role as it is and
+ * is logged per provider and cause at most once per {@link #INCIDENT_WINDOW_SECONDS} seconds.
  * Without that distinction a removed role mapper at the provider would demote every auditor and
  * every administrator but the last one, one sign-in at a time.
  */

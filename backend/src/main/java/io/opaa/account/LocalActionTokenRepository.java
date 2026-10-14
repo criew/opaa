@@ -40,7 +40,7 @@ public interface LocalActionTokenRepository extends JpaRepository<LocalActionTok
       @Param("purpose") ActionTokenPurpose purpose,
       @Param("now") Instant now);
 
-  /** Removes every link of the account - what a redeemed handover leaves behind (#1563). */
+  /** Removes every link of the account - what a redeemed handover leaves behind. */
   @Transactional
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("DELETE FROM LocalActionToken t WHERE t.userId = :userId")

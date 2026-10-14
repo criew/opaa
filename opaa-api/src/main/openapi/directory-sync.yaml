@@ -74,7 +74,7 @@ paths:
       tags: [directory-sync]
       summary: Store a provider's directory connection (system admin only)
       description: >
-        The access this provider's directory run uses (#1817, ADR-0036 Entscheidung 3). The realm
+        The access this provider's directory run uses (ADR-0036 Entscheidung 3). The realm
         is never configured here: it is derived from the provider's own issuer URI, so the run can
         only ever read the realm the tokens of this provider come from (ADR-0025). The admin API
         address passes the same address policy as the issuer. The service account's secret is
@@ -119,7 +119,7 @@ paths:
       description: >
         Deletes the stored access, its secret included. The directory run itself stays switched on
         if it was: without a connection it reports the directory as unreachable, which revokes
-        nothing (#237). Removing an absent connection is not an error.
+        nothing. Removing an absent connection is not an error.
       parameters:
         - name: providerId
           in: path
@@ -492,7 +492,7 @@ components:
       type: object
       required: [type, baseUrl, realm, clientId, updatedAt]
       description: >
-        A provider's stored directory access (#1817). Carries no secret - only that one is stored.
+        A provider's stored directory access. Carries no secret - only that one is stored.
         A secret this deployment's key can no longer decrypt does not change this answer; it shows
         up when the access is used, as an unreachable directory, and on a probe.
       properties:
@@ -606,7 +606,7 @@ components:
           description: >
             The accounts this run takes the access away from: the directory reports them as
             disabled, or it no longer reports them at all - which is what leaving the organization
-            looks like from here (#1818, ADR-0036 Entscheidung 3). A lock is reversible and
+            looks like from here (ADR-0036 Entscheidung 3). A lock is reversible and
             revokes no membership; the next run gives the access back once the directory reports
             the account as enabled again.
           items:
@@ -662,8 +662,8 @@ components:
     DirectorySyncStatusResponse:
       type: object
       description: >
-        The status line of one provider's directory run (ADR-0036, Entscheidung 3) - per provider
-        since #1816, not per organization. Every field but the provider's own is null until that
+        The status line of one provider's directory run (ADR-0036, Entscheidung 3) - per provider,
+        not per organization. Every field but the provider's own is null until that
         provider has run once.
       required: [providerId, providerDisplayName, providerEnabled, enabled]
       properties:
@@ -734,7 +734,7 @@ components:
         accountsLocked:
           type: integer
           description: >
-            How many accounts this plan would lock (#1818) - the second number that makes a
+            How many accounts this plan would lock - the second number that makes a
             pending plan loud on the management overview, next to the withdrawn memberships.
           example: 40
 

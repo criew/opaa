@@ -18,7 +18,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param bucket the one bucket every original lies in
  * @param keyPrefix prepended to every key, empty by default; {@code
  *     <keyPrefix><organizationId>/<libraryId>/<uuid>} mirrors the directory layout of the
- *     filesystem adapter (ADR-0030, Entscheidung 4 and its addendum)
+ *     filesystem adapter (ADR-0030, Entscheidung 4)
  * @param pathStyle {@code endpoint/bucket/key} when {@code true} (MinIO, Ceph, the default), {@code
  *     bucket.endpoint/key} otherwise (AWS, Hetzner)
  * @param tempDirectory where working files and local copies are written; {@code null} means the

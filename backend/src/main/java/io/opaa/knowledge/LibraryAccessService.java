@@ -56,7 +56,7 @@ public class LibraryAccessService {
 
   /**
    * Requires at least {@code required}: {@code 404} for a person the library does not reach at all,
-   * {@code 403} for one it reaches too weakly (#436) - see {@link AssetAuthorization#requireRole}.
+   * {@code 403} for one it reaches too weakly - see {@link AssetAuthorization#requireRole}.
    */
   public AssetRole requireRole(
       KnowledgeLibrary library, UUID userId, boolean systemAdmin, AssetRole required) {
@@ -91,10 +91,10 @@ public class LibraryAccessService {
   }
 
   /**
-   * Requires the permission a library's <b>content</b> needs (#1828), the shell's rule for every
-   * asset type ({@link AssetAuthorization#requireContentRole}): a person the library does not reach
-   * keeps its {@code 404}, a system admin without a grant gets {@code 403} - administering a
-   * library is not reading it.
+   * Requires the permission a library's <b>content</b> needs, the shell's rule for every asset type
+   * ({@link AssetAuthorization#requireContentRole}): a person the library does not reach keeps its
+   * {@code 404}, a system admin without a grant gets {@code 403} - administering a library is not
+   * reading it.
    */
   public void requireContentRead(KnowledgeLibrary library, UUID userId, boolean systemAdmin) {
     authorization.requireContentRole(library, userId, systemAdmin, AssetRole.VIEWER);
@@ -122,7 +122,7 @@ public class LibraryAccessService {
 
   /**
    * Every library id a <b>permission profile</b> may read - the search scope the administration's
-   * diagnosis runs a Rechteprofil in (#1053, docs/features/hybrid-retrieval.md).
+   * diagnosis runs a Rechteprofil in (docs/features/hybrid-retrieval.md).
    */
   public Set<UUID> readableLibraryIdsForGroup(UUID groupId, UUID organizationId) {
     return assetAccessService.readableAssetIdsForGroup(
@@ -159,7 +159,7 @@ public class LibraryAccessService {
 
   /**
    * How far each of {@code libraries} reaches right now - the figures the overview turns into its
-   * reach badge (#1931). One grouped read for the whole page.
+   * reach badge. One grouped read for the whole page.
    */
   public Map<UUID, AssetReach> reachOf(List<KnowledgeLibrary> libraries) {
     return assetAccessService.reachByAsset(

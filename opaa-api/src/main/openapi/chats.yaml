@@ -16,7 +16,7 @@ paths:
     get:
       operationId: listSpaceChats
       tags: [chat]
-      summary: List the current user's own active chats in this space (#525 - a chat is visible only to its author)
+      summary: List the current user's own active chats in this space (a chat is visible only to its author)
       description: >
         Only the chats the caller has not archived (docs/features/chat-list.md, "Archivieren");
         the archived ones come page by page from GET /api/v1/spaces/{spaceId}/chats/archived.
@@ -39,7 +39,7 @@ paths:
       tags: [chat]
       summary: >
         Create a new chat in this space (requires space membership). Rejected with 409 if the
-        space is archived (#543) - an archived space accepts no new content. Rejected with 400 if
+        space is archived - an archived space accepts no new content. Rejected with 400 if
         referencedLibraryIds names a library the caller may not read, or one that is not associated
         with the space.
       requestBody:
@@ -121,7 +121,7 @@ paths:
     get:
       operationId: getChat
       tags: [chat]
-      summary: Get a chat with its messages - only the author may retrieve it, not even a space or system admin (#525)
+      summary: Get a chat with its messages - only the author may retrieve it, not even a space or system admin
       responses:
         "200":
           description: Chat with messages
@@ -137,7 +137,7 @@ paths:
       tags: [chat]
       summary: >
         Update a chat's title, useKnowledge switch or sticky library references - author only.
-        Rejected with 409 if the chat's space is archived (#543) - an archived space accepts no
+        Rejected with 409 if the chat's space is archived - an archived space accepts no
         changes to existing chats either. Rejected with 400 if referencedLibraryIds names a library
         the caller may not read, or one that is not associated with the chat's space.
       requestBody:
@@ -366,8 +366,8 @@ paths:
       operationId: deleteChatNoteItem
       tags: [chat]
       summary: >
-        Remove one point of a chat's Gesprächsnotiz (#1487) - author only, and rejected with 409
-        while the chat's space is archived, like every other change to an existing chat (#543).
+        Remove one point of a chat's Gesprächsnotiz - author only, and rejected with 409
+        while the chat's space is archived, like every other change to an existing chat.
       description: >
         Immediate and without a confirmation step: the point stops reaching the prompts with the
         next question. It is deliberately not blocked for the future - if the person states the
@@ -387,7 +387,7 @@ components:
     ChatStatus:
       type: string
       description: >
-        Single-value for now (#525) - the SHARED/WITHDRAWN axis from the specification's sharing
+        Single-value for now - the SHARED/WITHDRAWN axis from the specification's sharing
         model belongs to #205 and is deliberately not built here; the column exists so it can be
         added without a further migration.
       enum: [PRIVATE]
@@ -462,7 +462,7 @@ components:
             type: string
             format: uuid
           description: >
-            Sticky @-references (epic #523). Used as the search scope when useKnowledge is false;
+            Sticky @-references. Used as the search scope when useKnowledge is false;
             ignored when it is true. Only the references that are still associated with the chat's
             space and readable by the caller are searched.
         metadataFilter:
@@ -470,7 +470,7 @@ components:
           allOf:
             - $ref: "#/components/schemas/MetadataFilter"
           description: >
-            The chat's sticky core-field filter (#1070) - the Kontext der Unterhaltung every
+            The chat's sticky core-field filter - the Kontext der Unterhaltung every
             question of this chat is searched with, next to its search scope. Null: no filter.
             While the installation has switched metadata off (ADR-0044) a stored filter is still
             reported here but not applied.
@@ -587,7 +587,7 @@ components:
           allOf:
             - $ref: "#/components/schemas/MetadataFilter"
           description: >
-            The chat's sticky core-field filter (#1070), null without one. While the installation
+            The chat's sticky core-field filter, null without one. While the installation
             has switched metadata off (ADR-0044) a stored filter is still reported here but not
             applied.
         status:
@@ -599,7 +599,7 @@ components:
         noteItems:
           type: array
           description: >
-            The chat's Gesprächsnotiz (#1487), oldest point first - always present, empty while
+            The chat's Gesprächsnotiz, oldest point first - always present, empty while
             nothing has been condensed yet. Optional in the schema rather than required so a client
             written before the note existed still type-checks; the server always sends it. Only the
             author may remove a point, via DELETE /api/v1/chats/{chatId}/note-items/{itemId}.
@@ -794,7 +794,7 @@ components:
           allOf:
             - $ref: "#/components/schemas/MetadataFilter"
           description: >
-            The chat's initial core-field filter (#1070); absent or empty means none. Ignored while
+            The chat's initial core-field filter; absent or empty means none. Ignored while
             the installation has switched metadata off (ADR-0044): nothing is stored and an
             unknown code is no error then.
 
@@ -825,7 +825,7 @@ components:
           allOf:
             - $ref: "#/components/schemas/MetadataFilter"
           description: >
-            Replaces the chat's core-field filter (#1070). Omitted or null leaves it unchanged; an
+            Replaces the chat's core-field filter. Omitted or null leaves it unchanged; an
             object without any condition clears it. Ignored while the installation has switched
             metadata off (ADR-0044): the stored filter stays as it is and an unknown code is no
             error then.

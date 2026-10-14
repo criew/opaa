@@ -8,7 +8,7 @@ import io.opaa.api.dto.AccountResponse;
 import io.opaa.auth.OidcProvider;
 
 /**
- * Entity to response mapping of the account list (#1601). A local account carries the very {@link
+ * Entity to response mapping of the account list. A local account carries the very {@link
  * io.opaa.api.dto.LocalUserResponse} of the local account management, mapped by {@link
  * LocalUserResponseMapper}, so that the two lists never disagree about a local account; the
  * activity timestamp itself has no field to land in.
@@ -27,9 +27,9 @@ final class AccountResponseMapper {
             account.providerType(),
             account.user().getIssuer(),
             account.roleManagedByProvider(),
-            // Für ein lokales Konto die Zeile der Zugangsdaten, wie die Schwesterliste sie nennt:
-            // Beide entstehen heute in derselben Transaktion, laufen aber mit der Übergabe aus
-            // Entscheidung 12 auseinander - dann zeigten zwei Listen zwei Daten für dasselbe Konto.
+            // For a local account the credentials row, as the sibling list names it: both are
+            // created in the same transaction, but the handover of ADR-0033, Entscheidung 12
+            // separates them - two lists would then show two dates for the same account.
             account.local() == null
                 ? account.user().getCreatedAt()
                 : account.local().credentials().getCreatedAt());

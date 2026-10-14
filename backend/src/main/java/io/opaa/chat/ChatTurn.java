@@ -6,12 +6,12 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Domain counterpart of the generated {@code ChatMessageResponse} (#860 Teil 4) - one persisted
- * {@link ChatMessage}, with its JSON-serialized {@code sources} column already parsed back into
- * {@link ChatSource}s. Built by {@link ChatService} for {@link ChatConversation#getMessages()};
- * immutable, since a turn is read once it is persisted and never mutated in place afterwards
- * (unlike {@link ChatSource}, which {@code ChatSourceAssembler} still mutates while ranking/merging
- * before a turn is ever built).
+ * Domain counterpart of the generated {@code ChatMessageResponse} - one persisted {@link
+ * ChatMessage}, with its JSON-serialized {@code sources} column already parsed back into {@link
+ * ChatSource}s. Built by {@link ChatService} for {@link ChatConversation#getMessages()}; immutable,
+ * since a turn is read once it is persisted and never mutated in place afterwards (unlike {@link
+ * ChatSource}, which {@code ChatSourceAssembler} still mutates while ranking/merging before a turn
+ * is ever built).
  */
 public final class ChatTurn {
 

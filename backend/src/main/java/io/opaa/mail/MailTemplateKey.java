@@ -7,8 +7,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * The closed registry of mail templates OPAA knows, each with the German text it ships with (#1536,
- * ADR-0033 Entscheidung 10). A {@code mail_templates} row overrides the text of one key for one
+ * The closed registry of mail templates OPAA knows, each with the German text it ships with
+ * (ADR-0033 Entscheidung 10). A {@code mail_templates} row overrides the text of one key for one
  * locale; it never adds a key, and deleting it restores the text below - which is why the registry
  * is an enum in code and not a seeded table: a deployment can always be brought back to a working,
  * translated set of mails without a migration.

@@ -46,8 +46,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Reads and changes the identity providers (#1329, ADR-0025) - the persistence and audit layer
- * {@code LlmModelService} is modelled after. Every write records one audit event ({@link
+ * Reads and changes the identity providers (ADR-0025) - the persistence and audit layer {@code
+ * LlmModelService} is modelled after. Every write records one audit event ({@link
  * AuditEventType#OIDC_PROVIDER_CREATED} and siblings) and publishes {@link
  * OidcProvidersChangedEvent}, so {@link OidcProviderRegistry} rebuilds after the commit and a
  * change is effective without a restart.
@@ -303,8 +303,8 @@ public class OidcProviderService implements LocalAccountsSwitch {
    * and a login-capable local administrator.
    *
    * <p>Its groups go with it - but only while none of them still carries a right (ADR-0036,
-   * Entscheidung 2). Until the transfer operation exists (#1834) the only way past this 409 is to
-   * remove those rights; disabling the provider stays possible at any time.
+   * Entscheidung 2). Until the transfer operation exists the only way past this 409 is to remove
+   * those rights; disabling the provider stays possible at any time.
    *
    * <p>Its accounts count as deactivated afterwards: their connections end at once and the deletion
    * period of their private libraries begins with this deletion, even after an earlier one of the
@@ -459,7 +459,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
 
   /**
    * The interval a switch-on takes when the caller names none: the provider's current one if it has
-   * one, otherwise the shipped default of six hours (ADR-0036, "Zahlen, die dieser ADR setzt").
+   * one, otherwise the shipped default of six hours (ADR-0036, "Zahlen").
    */
   private int resolveInterval(OidcProvider provider, Integer requested) {
     if (requested != null) {
@@ -577,9 +577,9 @@ public class OidcProviderService implements LocalAccountsSwitch {
 
   /**
    * The management switch by value rather than by row id - the settings endpoint of the local
-   * account management (#1537) flips it and quotes how many regular accounts lost a session. A
-   * missing LOCAL row (an installation whose seed never ran, the {@code dev} mode) is created
-   * switched off first, so the change is audited like any other.
+   * account management flips it and quotes how many regular accounts lost a session. A missing
+   * LOCAL row (an installation whose seed never ran, the {@code dev} mode) is created switched off
+   * first, so the change is audited like any other.
    */
   @Override
   @Transactional

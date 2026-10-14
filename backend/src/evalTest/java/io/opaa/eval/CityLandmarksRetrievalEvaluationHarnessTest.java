@@ -98,8 +98,8 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>Also carries out the domain's chunk-count invariant check ADR-0010 assigns to this harness
  * (see {@link ChunkCountExpectation}) — for {@code city-landmarks} that is the
- * Mehr-Chunk-Invariante (ADR-0010 Nachtrag, issue #721): the generator's own size heuristics are
- * only an approximation, this is the proof.
+ * Mehr-Chunk-Invariante (ADR-0010, Entscheidung 3): the generator's own size heuristics are only an
+ * approximation, this is the proof.
  *
  * <p>The measurement contract this harness implements (gain function, IDCG basis, k-windows,
  * threshold handling, micro- vs. macro-averaging, the document-bound window from {@link
@@ -533,7 +533,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
                 queryProperties.queryDecompositionEnabled() ? 2 : 1,
                 log);
 
-    // 3. Chunk-count invariant (ADR-0010, Nachtrag #721): the real, production-configured
+    // 3. Chunk-count invariant (ADR-0010, Entscheidung 3): the real, production-configured
     //    TokenTextSplitter just ran. Verify every document satisfies the domain's declared
     //    expectation — for comic-characters that is still, unchanged, "exactly one chunk".
     List<Document> documents = documentRepository.findAll();
@@ -584,7 +584,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
 
     // 4. Run every golden query directly against the vector store — retrieval only, no LLM. The
     //    chunk-search window is sized so deduplication (DocumentRanking) can reach documentTopK
-    //    distinct documents (ADR-0012 Nachtrag, issue #721) — for comic-characters chunkTopK ==
+    //    distinct documents (ADR-0012, Entscheidung 8) — for comic-characters chunkTopK ==
     //    documentTopK == 10 because maxChunksPerDocument == 1, so this is the same search as before
     //    #721 in every observable way.
     List<GoldenCase> goldenCases = GoldenDataset.load(goldenFile);

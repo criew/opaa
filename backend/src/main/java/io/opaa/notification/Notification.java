@@ -13,9 +13,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A minimal, persisted in-app notification (#203) - just enough to satisfy "der Eigentümer wird
- * aktiv benachrichtigt" (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren)
- * without building the in-app postbox (notifications + todos) the maintainer has not specified yet.
+ * A minimal, persisted in-app notification - just enough to satisfy "der Eigentümer wird aktiv
+ * benachrichtigt" (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren) without
+ * building the in-app postbox (notifications + todos) the maintainer has not specified yet.
  * Deliberately narrow, but shaped so a future postbox can grow from this table rather than replace
  * it: recipient/type/objectType/objectId/title/body/readAt/createdAt is the same shape a
  * todo-capable postbox entry would need.

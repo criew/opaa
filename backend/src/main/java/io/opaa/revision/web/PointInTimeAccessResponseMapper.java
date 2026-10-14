@@ -5,7 +5,7 @@ import io.opaa.api.dto.AccessAsOfPage;
 import io.opaa.revision.AccessAsOfResult;
 import java.util.List;
 
-/** Maps the Stichtagsauskunft onto its generated response (#1822, ADR-0006). */
+/** Maps the Stichtagsauskunft onto its generated response (ADR-0006). */
 final class PointInTimeAccessResponseMapper {
 
   private PointInTimeAccessResponseMapper() {}

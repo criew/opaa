@@ -64,9 +64,9 @@ class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
   }
 
   /**
-   * A token group whose provider has since switched to the directory run (#1816, ADR-0036
-   * Entscheidung 3): the run reports it as no longer maintained and leaves its membership frozen,
-   * so it may hold what it holds but must not become a new grant target.
+   * A token group whose provider has since switched to the directory run (ADR-0036 Entscheidung 3):
+   * the run reports it as no longer maintained and leaves its membership frozen, so it may hold
+   * what it holds but must not become a new grant target.
    */
   private boolean unmaintained(Group group, OidcProvider provider) {
     return provider != null

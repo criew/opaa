@@ -44,11 +44,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A Windows file share (ADR-0040, Nachtrag SMB): {@code sourceUrl} is {@code
- * smb://server/freigabe}, stored normalised; the credentials are the service account's {@code
- * DOMÄNE\Benutzer:Passwort}, used with NTLM and only against that server; the folders are the
- * connector settings. A document has no deep link, its original is read from the share. Rights on
- * the share are not taken over; the library decides who reads.
+ * A Windows file share (ADR-0046): {@code sourceUrl} is {@code smb://server/freigabe}, stored
+ * normalised; the credentials are the service account's {@code DOMÄNE\Benutzer:Passwort}, used with
+ * NTLM and only against that server; the folders are the connector settings. A document has no deep
+ * link, its original is read from the share. Rights on the share are not taken over; the library
+ * decides who reads.
  */
 public class SmbSourceConnector implements SourceConnector, SourceBrowser, OriginalAccess {
 

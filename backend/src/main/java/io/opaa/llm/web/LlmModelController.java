@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Admin API for managed chat models (Stufe 1, #757,
+ * Admin API for managed chat models (Stufe 1,
  * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), {@code
  * SYSTEM_ADMIN} only - the same access bar and {@code currentUser} pattern {@link GroupController}
  * already establishes for admin-only resources.
@@ -44,18 +44,17 @@ import org.springframework.web.bind.annotation.RestController;
  * carries an {@code apiKey} field at all (see the OpenAPI schema) - only {@code apiKeySet}, the
  * same convention {@code BrandingResponse} uses for the logo.
  *
- * <p><b>Concurrent activation (#757 review of #763).</b> {@link LlmModelService#activateModel}
- * deactivates the previously active model and flushes before activating the new one, but two
- * concurrent activations of two different models can still collide on {@code
- * ux_llm_models_single_active} when both flush their own "activate" write around the same time.
- * {@link #activateModel} catches that {@link DataIntegrityViolationException} and turns it into a
- * clean 409 rather than letting it surface as an unhandled 500 - the caller is told to retry, not
- * shown a stack trace.
+ * <p><b>Concurrent activation.</b> {@link LlmModelService#activateModel} deactivates the previously
+ * active model and flushes before activating the new one, but two concurrent activations of two
+ * different models can still collide on {@code ux_llm_models_single_active} when both flush their
+ * own "activate" write around the same time. {@link #activateModel} catches that {@link
+ * DataIntegrityViolationException} and turns it into a clean 409 rather than letting it surface as
+ * an unhandled 500 - the caller is told to retry, not shown a stack trace.
  *
- * <p><b>Delete guard for the active model (#757, review of the first version of this PR).</b>
- * {@link LlmModelService#deleteModel} itself rejects deleting the active model with 409 - not a
- * separate {@code getModel}/{@code deleteModel} check-then-act pair composed here, which would
- * reopen the exact TOCTOU window a concurrent activation could slip through between the two calls.
+ * <p><b>Delete guard for the active model.</b> {@link LlmModelService#deleteModel} itself rejects
+ * deleting the active model with 409 - not a separate {@code getModel}/{@code deleteModel}
+ * check-then-act pair composed here, which would reopen the exact TOCTOU window a concurrent
+ * activation could slip through between the two calls.
  */
 @RestController
 @RequestMapping("/api/v1/admin/models")
@@ -134,11 +133,11 @@ public class LlmModelController {
       LlmModel model = llmModelService.activateModel(caller.organizationId(), caller.id(), modelId);
       return toResponse(model);
     } catch (DataIntegrityViolationException e) {
-      // #757 review of #763: without this, the concurrency window still ends in a 409 (Spring's
-      // built-in DataIntegrityViolationException handler already falls back to CONFLICT), but with
-      // a generic "Ein Eintrag mit diesen Werten existiert bereits" that says nothing about what
-      // actually happened. This catch trades that generic fallback for a message specific to what
-      // a caller can actually do about it: retry the activation.
+      // Without this, the concurrency window still ends in a 409 (Spring's built-in
+      // DataIntegrityViolationException handler already falls back to CONFLICT), but with a generic
+      // "Ein Eintrag mit diesen Werten existiert bereits" that says nothing about what actually
+      // happened. This catch trades that generic fallback for a message specific to what a caller
+      // can actually do about it: retry the activation.
       throw new ConflictException(
           "Ein anderes Chat-Modell wurde gleichzeitig aktiviert. Bitte erneut versuchen.", e);
     }

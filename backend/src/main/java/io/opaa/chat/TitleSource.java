@@ -1,7 +1,7 @@
 package io.opaa.chat;
 
 /**
- * Where a {@link Chat}'s current {@link Chat#getTitle() title} came from (#557). Purely internal
+ * Where a {@link Chat}'s current {@link Chat#getTitle() title} came from. Purely internal
  * bookkeeping - not exposed via the API - that lets {@link ChatTitleGenerationService}'s
  * asynchronous, LLM-derived title generation and {@link
  * ChatRepository#deriveTitleFromFirstQuestionIfAbsent} both operate on the same chat without ever
@@ -23,7 +23,7 @@ public enum TitleSource {
    * via a later {@code PATCH} ({@code ChatUpdateRequest#getTitle()}), including an explicit blank
    * string. Permanent for the life of the chat: neither the prefix fallback nor the LLM-derived
    * title generation ever overwrites a {@code CUSTOM} title, no matter when either would otherwise
-   * run (#557 acceptance criterion).
+   * run.
    */
   CUSTOM
 }

@@ -8,10 +8,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Navigational structure inside a {@link KnowledgeLibrary} (#820, Epic #520 Phase 2, ADR-0020) - a
- * real entity with a self-referencing parent, not a virtual path prefix derived from document
- * names. {@code null} {@link #parentFolderId} means the folder sits at the library's root; {@code
- * documents.folder_id} uses the identical convention one level down.
+ * Navigational structure inside a {@link KnowledgeLibrary} (ADR-0020) - a real entity with a
+ * self-referencing parent, not a virtual path prefix derived from document names. {@code null}
+ * {@link #parentFolderId} means the folder sits at the library's root; {@code documents.folder_id}
+ * uses the identical convention one level down.
  *
  * <p><b>Ordner sind reine Navigation, keine Rechtegrenze</b> (ADR-0020, Entscheidung 3): this
  * entity carries no permission of its own. Every access check for a folder resolves through {@link

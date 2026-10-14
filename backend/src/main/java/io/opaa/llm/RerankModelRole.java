@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
  * #degradedCallCount()}). The last known state alone cannot answer "did reranking work throughout
  * this measurement?": an endpoint that fails and recovers looks {@link RerankRoleState#READY}
  * afterwards, and a run measured across that outage would be reported under the name of the
- * configuration with reranking (issue #1050, docs/features/retrieval-benchmark.md §2).
+ * configuration with reranking (docs/features/retrieval-benchmark.md §2).
  *
  * <p><b>Neither {@link #currentStatus()} nor {@link #usable()} ever probes.</b> Both answer from
  * configuration and the last known endpoint state: the first is on the path of an administration
@@ -194,8 +194,8 @@ public class RerankModelRole implements RerankRoleStatusProvider {
     } catch (RuntimeException e) {
       // Deliberately every runtime failure, not just RerankUnavailableException: the promise above
       // is absolute, and a client-side fault (an unserializable request body, say) must cost the
-      // ordering exactly as an unreachable endpoint does. A timeout is still reported distinctly
-      // (#1154): the endpoint answered the connection, it simply did not finish in time.
+      // ordering exactly as an unreachable endpoint does. A timeout is still reported distinctly:
+      // the endpoint answered the connection, it simply did not finish in time.
       degradedCalls.incrementAndGet();
       boolean timedOut = e instanceof RerankClient.RerankTimeoutException;
       record(status(RerankRoleState.UNREACHABLE, e.getMessage(), timedOut));

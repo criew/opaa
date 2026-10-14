@@ -19,14 +19,12 @@ repositories {
 }
 
 // The generated DTOs live in this module's own build directory and are never checked in - same
-// rationale as backend/build.gradle.kts before the module split (issue #896). Consuming modules
-// (currently only :backend) get them transitively through this module's main sourceSet, so a
-// spec-only change now only invalidates this module's compileJava/openApiGenerate, not the whole
-// backend (issue #826 T2 / #896's whole point).
-// The spec is kept as one fragment per topic under src/main/openapi and merged into
-// build/openapi-bundle/openapi/opaa-api.yaml. The generator and the tests (classpath resource
-// /openapi/opaa-api.yaml) read only that bundle; the frontend merges the same fragments with
-// frontend/scripts/bundle-openapi.mjs by the same rules.
+// rationale as backend/build.gradle.kts. Consuming modules (currently only :backend) get them
+// transitively through this module's main sourceSet, so a spec-only change only invalidates this
+// module's compileJava/openApiGenerate, not the whole backend. The spec is kept as one fragment per
+// topic under src/main/openapi and merged into build/openapi-bundle/openapi/opaa-api.yaml. The
+// generator and the tests (classpath resource /openapi/opaa-api.yaml) read only that bundle; the
+// frontend merges the same fragments with frontend/scripts/bundle-openapi.mjs by the same rules.
 val bundler by sourceSets.creating
 
 val openApiFragmentDir = layout.projectDirectory.dir("src/main/openapi")
@@ -58,7 +56,7 @@ dependencies {
     // Version alignment only, not the Spring Boot plugin/autoconfiguration machinery: a plain
     // platform import of the BOM keeps the annotation libraries below on the exact versions Spring
     // Boot 4.1 resolves, instead of hand-pinned versions silently drifting out of sync on a future
-    // Spring Boot upgrade (issue #896 review).
+    // Spring Boot upgrade.
     implementation(platform(libs.spring.boot.dependencies))
 
     // The generated io.opaa.api.dto classes (spring generator) reference these annotation types
@@ -66,9 +64,9 @@ dependencies {
     // comment above junit-jupiter for why the main sourceSet is not actually Spring-free.
     implementation(libs.bundles.opaa.api.generated.dto.deps)
 
-    // Deliberately Spring-free (issue #896 leitplanke): plain JUnit Jupiter/AssertJ plus
-    // SnakeYAML for the parity tests' direct spec parsing, not the Spring Boot-managed
-    // test-deps bundle backend/build.gradle.kts uses.
+    // Deliberately Spring-free: plain JUnit Jupiter/AssertJ plus SnakeYAML for the parity tests'
+    // direct spec parsing, not the Spring Boot-managed test-deps bundle backend/build.gradle.kts
+    // uses.
     "bundlerImplementation"(libs.snakeyaml)
 
     testImplementation(libs.bundles.opaa.api.test.deps)
@@ -100,12 +98,12 @@ tasks.withType<JavaCompile> {
     options.compilerArgs.add("-parameters")
 }
 
-// Script-level val (not read inside a task action closure, so it stays configuration-cache-safe
-// as a plain data literal) instead of reading it back off the task's typeMappings property: the
-// :test task below passes its key set to SpecEnumParityTest as a system property, so that test's
+// Script-level val (not read inside a task action closure, so it stays configuration-cache-safe as
+// a plain data literal) instead of reading it back off the task's typeMappings property: the :test
+// task below passes its key set to SpecEnumParityTest as a system property, so that test's
 // hand-maintained enum list is checked against the actual typeMappings keys rather than able to
-// silently drift from them (issue #896 review) - a future typeMappings entry without a matching
-// parity test case now fails the build instead of going unnoticed.
+// silently drift from them - a future typeMappings entry without a matching parity test case now
+// fails the build instead of going unnoticed.
 val typeMappingsConfig = mapOf(
     "DateTime" to "Instant",
     "SpaceRole" to "SpaceRole",
@@ -310,16 +308,15 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
     // class), or the closure drags the whole build script into the configuration cache, which
     // Gradle rejects ("cannot serialize Gradle script object references").
     val generatedDtoDir = project.layout.buildDirectory.dir("generated/openapi/src/main/java/io/opaa/api/dto")
-    // Candidate file names to remove are derived from typeMappings (issue #835) instead of a
-    // hand-maintained list. With the currently pinned generator version, a schema fully covered by
-    // typeMappings emits no model file at all, so this list is empty in practice - it is a safety
-    // net for a future generator version that goes back to emitting one (an earlier version of
-    // this plugin did; that mismatch is the whole reason this doLast block exists). Both the
-    // OpenAPI schema name (the typeMappings key, e.g. "AuditActorKind") and the mapped Java type
-    // name (the value, e.g. "ActorKind") are included defensively, since it is not contractually
-    // specified which one a future generator version would use for the file name. "DateTime"/
-    // "Instant" is excluded: it is a scalar substitution, not a domain enum, and names no
-    // generated model file.
+    // Candidate file names to remove are derived from typeMappings instead of a hand-maintained
+    // list. With the currently pinned generator version, a schema fully covered by typeMappings
+    // emits no model file at all, so this list is empty in practice - it is a safety net for a
+    // future generator version that goes back to emitting one (an earlier version of this plugin
+    // did; that mismatch is the whole reason this doLast block exists). Both the OpenAPI schema
+    // name (the typeMappings key, e.g. "AuditActorKind") and the mapped Java type name (the value,
+    // e.g. "ActorKind") are included defensively, since it is not contractually specified which one
+    // a future generator version would use for the file name. "DateTime"/ "Instant" is excluded: it
+    // is a scalar substitution, not a domain enum, and names no generated model file.
     val generatedEnumFileNames =
         typeMappings.map { mappings ->
             (mappings.keys + mappings.values)

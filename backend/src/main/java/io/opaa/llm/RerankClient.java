@@ -156,8 +156,8 @@ public class RerankClient {
    * The request ran into {@link RerankProperties#timeout()} before the endpoint answered - distinct
    * from every other {@link RerankUnavailableException}, whose causes (refused connection, unknown
    * host, TLS failure) mean the endpoint could not be reached at all. A timeout means the opposite:
-   * something answered the connection, it simply did not finish within budget (#1154) - a CPU
-   * reranker under its normal candidate load is the expected case, not a failure of the same kind.
+   * something answered the connection, it simply did not finish within budget - a CPU reranker
+   * under its normal candidate load is the expected case, not a failure of the same kind.
    */
   public static class RerankTimeoutException extends RerankUnavailableException {
     public RerankTimeoutException(String message, Throwable cause) {

@@ -23,8 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Stores, removes and probes the directory access of one identity provider (#1817, ADR-0036
- * Entscheidung 3) - the write side of {@link ProviderDirectoryClient}'s read.
+ * Stores, removes and probes the directory access of one identity provider (ADR-0036 Entscheidung
+ * 3) - the write side of {@link ProviderDirectoryClient}'s read.
  *
  * <p><b>The realm is never an input.</b> It is derived from the provider's own issuer URI, so a run
  * structurally reads the realm this provider's tokens come from (ADR-0025). A provider whose issuer

@@ -10,7 +10,7 @@ paths:
       tags: [model]
       summary: List managed chat models (system admin only)
       description: >
-        Stufe 1 (#757, docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
+        Stufe 1 (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
         Never carries an apiKey value - only apiKeySet, whether one is stored.
       responses:
         "200":
@@ -212,7 +212,7 @@ paths:
       tags: [model]
       summary: Get the current embedding model configuration (system admin only)
       description: >
-        Read-only (#759). Unlike chat models, the embedding model is not managed through this API -
+        Read-only. Unlike chat models, the embedding model is not managed through this API -
         a change requires a full re-index because existing vectors become incomparable
         (docs/features/llm-integration.md#sofortige-wirkung), so it stays a configuration value,
         not a writable admin resource.
@@ -231,7 +231,7 @@ components:
     LlmModelResponse:
       type: object
       description: >
-        A managed chat model (Stufe 1, #757). Never carries the API key itself, even redacted -
+        A managed chat model (Stufe 1). Never carries the API key itself, even redacted -
         only apiKeySet, whether one is stored (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
       required:
         [
@@ -503,7 +503,7 @@ components:
     EmbeddingInfoResponse:
       type: object
       description: >
-        The embedding model actually configured (#759), read-only - see
+        The embedding model actually configured, read-only - see
         docs/features/llm-integration.md#sofortige-wirkung for why it is not editable here.
       required: [provider, model, dimensions]
       properties:

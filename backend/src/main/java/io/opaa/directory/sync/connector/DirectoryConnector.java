@@ -13,10 +13,10 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * The access one provider's directory run signs in with (#1817, ADR-0036 Entscheidung 3). At most
- * one row per provider ({@code uk_directory_connectors_provider}) and gone with it ({@code ON
- * DELETE CASCADE}): a provider has exactly one directory, and a stored secret has no reason to
- * outlive the row it belongs to.
+ * The access one provider's directory run signs in with (ADR-0036 Entscheidung 3). At most one row
+ * per provider ({@code uk_directory_connectors_provider}) and gone with it ({@code ON DELETE
+ * CASCADE}): a provider has exactly one directory, and a stored secret has no reason to outlive the
+ * row it belongs to.
  *
  * <p><b>No realm column.</b> The realm a run reads is derived from the provider's own issuer URI
  * (see {@code KeycloakRealmAddress}), never configured here - a second, independently editable

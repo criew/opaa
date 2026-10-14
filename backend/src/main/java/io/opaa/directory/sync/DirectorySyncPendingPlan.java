@@ -9,8 +9,8 @@ import java.util.UUID;
 
 /**
  * A synchronisation plan above the plausibility threshold, waiting for a system administrator to
- * confirm or discard it (#1816, ADR-0036 Entscheidung 3). Before #1816 such a run was simply
- * aborted, which left a legitimate large run - a reorganisation - permanently inapplicable.
+ * confirm or discard it (ADR-0036 Entscheidung 3), so a legitimate large run - a reorganisation -
+ * stays applicable.
  *
  * <p><b>At most one per provider</b> ({@code uk_directory_sync_pending_plans_provider}): a new run
  * replaces the pending plan rather than queueing behind it, otherwise one would pile up every six
@@ -46,7 +46,7 @@ public class DirectorySyncPendingPlan {
   @Column(name = "memberships_removed", nullable = false)
   private int membershipsRemoved;
 
-  /** How many accounts this plan would lock (#1818) - the second number that makes it loud. */
+  /** How many accounts this plan would lock - the second number that makes it loud. */
   @Column(name = "accounts_locked", nullable = false)
   private int accountsLocked;
 

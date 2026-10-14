@@ -5,35 +5,34 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Configuration for the REST document upload endpoint (#420,
- * docs/features/knowledge-sources.md#upload).
+ * Configuration for the REST document upload endpoint (docs/features/knowledge-sources.md#upload).
  *
  * @param storagePath filesystem path where uploaded files are stored, as {@code
  *     <storagePath>/<organizationId>/<libraryId>/<uuid><extension>} so files of different tenants
  *     and libraries never collide and every file names its own organization without a database row
- *     being read. Deliberately separate from a FILESYSTEM library's own {@code sourcePath} (#207,
- *     ADR-0018): that directory is crawled by the filesystem indexing path and is operator-managed,
- *     whereas this one is written to exclusively by {@code LibraryDocumentService}. Read by {@link
- *     FilesystemUploadedOriginalStore} alone (ADR-0030).
+ *     being read. Deliberately separate from a FILESYSTEM library's own {@code sourcePath}
+ *     (ADR-0018): that directory is crawled by the filesystem indexing path and is
+ *     operator-managed, whereas this one is written to exclusively by {@code
+ *     LibraryDocumentService}. Read by {@link FilesystemUploadedOriginalStore} alone (ADR-0030).
  * @param store which storage backend holds the uploaded originals (ADR-0030, Entscheidung 1):
  *     {@code filesystem} (the default) or {@code s3} ({@link UploadS3Properties}); {@link
  *     UploadStorageConfiguration} refuses the start on any other value.
  * @param maxFileSize maximum accepted upload size in bytes. Default 50 MiB (52 428 800): generous
  *     enough for a typical scanned Dienstanweisung while still bounding memory and disk use per
  *     upload; see #420's acceptance criteria for the resulting 413 response.
- * @param threadPool thread pool settings for {@code IndexingConfiguration#uploadTaskExecutor}
- *     (#434). Deliberately its own property block, not a reuse of {@code opaa.indexing.thread-pool}
- *     (#614, PR #589 second review round): {@code uploadTaskExecutor} and {@code
- *     indexingTaskExecutor} are two independent {@code ThreadPoolTaskExecutor} beans - an operator
- *     raising {@code opaa.indexing.thread-pool.max-size} to cap total indexing concurrency would,
- *     while both executors read the same properties, actually double it instead, since the upload
- *     pool grew by the same amount unnoticed. Defaults (core=2, max=4, queue=20) mirror {@code
+ * @param threadPool thread pool settings for {@code IndexingConfiguration#uploadTaskExecutor}.
+ *     Deliberately its own property block, not a reuse of {@code opaa.indexing.thread-pool}: {@code
+ *     uploadTaskExecutor} and {@code indexingTaskExecutor} are two independent {@code
+ *     ThreadPoolTaskExecutor} beans - an operator raising {@code
+ *     opaa.indexing.thread-pool.max-size} to cap total indexing concurrency would, while both
+ *     executors read the same properties, actually double it instead, since the upload pool grew by
+ *     the same amount unnoticed. Defaults (core=2, max=4, queue=20) mirror {@code
  *     opaa.indexing.thread-pool}'s own conservative defaults.
  * @param pendingRecoveryThresholdMinutes how long a document may stay {@code PENDING} before {@code
  *     UploadPendingRecoveryRunner} treats it as abandoned by a process that died mid-task and sets
- *     it to {@code FAILED} at the next application startup (#614). Default 30 minutes: comfortably
- *     longer than parsing/embedding even a large upload should ever take, so a row is only ever
- *     caught here because nothing is actually still working on it.
+ *     it to {@code FAILED} at the next application startup. Default 30 minutes: comfortably longer
+ *     than parsing/embedding even a large upload should ever take, so a row is only ever caught
+ *     here because nothing is actually still working on it.
  * @param orphanGraceMinutes how old a stored original must be before {@code
  *     OrphanedOriginalCleanupService} may report or remove it as orphaned (ADR-0030,
  *     "Konsequenzen"): the window between storing the bytes and inserting the row, and the whole

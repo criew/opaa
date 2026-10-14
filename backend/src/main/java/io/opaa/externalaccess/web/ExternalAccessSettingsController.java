@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The channel settings of the external access (#1717, ADR-0035), {@code SYSTEM_ADMIN} only: the
+ * The channel settings of the external access (ADR-0035), {@code SYSTEM_ADMIN} only: the
  * installation-wide switch, the token lifetime ceiling, the per-token quota, the networks of the
  * channel, the threshold of the mass retrieval alert and the instructions text for foreign tools.
  */

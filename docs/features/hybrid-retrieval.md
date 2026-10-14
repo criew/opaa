@@ -1651,7 +1651,7 @@ gilt:
 
 > **Was nach einer Kontolöschung von der Befugnis bleibt**
 > ([#1509](https://github.com/criew/opaa/issues/1509), Maintainer-Entscheidung vom 11.09.2026;
-> Einordnung im Nachtrag zu [ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)). Die
+> Einordnung in [ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md), Entscheidung 4). Die
 > Befugnis ist ein **Betriebsrecht der Gegenwart**, kein Historienartefakt: Wird ein daran beteiligtes
 > Konto gelöscht — Inhaber, Ausstellender oder Widerrufender —, verschwindet die Vollmachtszeile mit
 > ihm; dasselbe gilt für die Löschung der Gruppe, die ihren Geltungsbereich bildet. Über die

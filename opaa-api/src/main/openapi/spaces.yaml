@@ -134,7 +134,7 @@ paths:
       summary: >
         Delete a space (owner or system admin only). Rejected with 409 while the space still
         contains any chat, including one a fellow member authored and the caller cannot see or
-        remove themselves (#543) - archiveSpace is the way out of that situation.
+        remove themselves - archiveSpace is the way out of that situation.
       responses:
         "204":
           description: Space deleted
@@ -191,7 +191,7 @@ paths:
       operationId: getSpaceAccessDerivation
       tags: [space]
       summary: >
-        Why one person reaches this space - the Herleitung of ADR-0036, Entscheidung 9 (#1822)
+        Why one person reaches this space - the Herleitung of ADR-0036, Entscheidung 9
       description: >
         Without userId the answer is about the caller themselves: every own way to the effective
         role - own membership, a membership of one of their groups (with the group's name, origin,
@@ -237,7 +237,7 @@ paths:
       operationId: listSpaceMembers
       tags: [space]
       summary: >
-        List space members - persons and groups (#144, #1815). Restricted to ADMIN, the owner and
+        List space members - persons and groups. Restricted to ADMIN, the owner and
         system admins; MEMBER and CURATOR only ever see the aggregated roleCounts on
         SpaceResponse. A group is therefore named only to those who manage its membership here
         (ADR-0036 Entscheidung 9).
@@ -259,10 +259,10 @@ paths:
       operationId: addSpaceMember
       tags: [space]
       summary: >
-        Add a member - a person or a group - to a space (admin only, #1815). A group's members
+        Add a member - a person or a group - to a space (admin only). A group's members
         hold the role without a row of their own, and lose it the moment they leave the group.
         409 when the space is the default space (it is private), when the space is
-        archived (#543 - an archived space accepts no new members), when the subject already
+        archived (an archived space accepts no new members), when the subject already
         holds a membership, or when the group is not effective (dissolved, or
         belonging to a switched-off identity provider; ADR-0036 Entscheidung 6). An effective but
         empty group is admitted on purpose and answers with emptyGroup = true.
@@ -310,7 +310,7 @@ paths:
       tags: [space]
       summary: >
         The members of a group that is a member of this space - "wer ein Recht gibt, sieht, an
-        wen" (#1880, ADR-0036 Entscheidung 9)
+        wen" (ADR-0036 Entscheidung 9)
       description: >
         Requires ADMIN, the owner or a system administrator - the same bar the member list itself
         carries - and only while the group is still a member of this space. What the answer
@@ -554,7 +554,7 @@ components:
         archived:
           type: boolean
           description: >
-            #543: an archived space accepts no new content (chats, messages, renames, members) and
+            An archived space accepts no new content (chats, messages, renames, members) and
             is left out of this list for members who have no chat of their own in it and are
             neither the owner nor a system admin - see
             docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen.
@@ -571,7 +571,7 @@ components:
         libraryCount:
           type: integer
           description: >
-            #682: number of assets associated with the space that the caller may read - the
+            Number of assets associated with the space that the caller may read - the
             "Quellen" figure of the overview card. Follows the same rule as the space's association
             list and applies to every role: an association the caller cannot read is never
             counted (ADR-0039, Entscheidung 2). Optional so older clients keep working.
@@ -579,8 +579,8 @@ components:
         chatCount:
           type: integer
           description: >
-            #682: number of chats the caller owns in this space. Chats are private to their
-            author (#525), so this is the caller's view, not a space-wide total. Optional so
+            Number of chats the caller owns in this space. Chats are private to their
+            author, so this is the caller's view, not a space-wide total. Optional so
             older clients keep working.
           example: 12
         userRole:
@@ -641,7 +641,7 @@ components:
       type: object
       required: [id, subjectType, subjectId, role, createdAt]
       description: >
-        One membership of a space - a person or a group (#1815, ADR-0036 Entscheidung 6). A group
+        One membership of a space - a person or a group (ADR-0036 Entscheidung 6). A group
         row carries the role every member of that group holds in the space without a row of their
         own; a person who also holds a direct membership keeps both rows and reaches the space
         with the better of the two roles.
@@ -728,7 +728,7 @@ components:
         archived:
           type: boolean
           description: >
-            #543: an archived space accepts no new content (chats, messages, renames, members).
+            An archived space accepts no new content (chats, messages, renames, members).
             See docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-
             löschen.
           example: false
@@ -773,7 +773,7 @@ components:
           $ref: "#/components/schemas/PermissionTransferMarkResponse"
         succession:
           description: >
-            Set while this object has no capable responsible party (#1819, ADR-0036 Entscheidung
+            Set while this object has no capable responsible party (ADR-0036 Entscheidung
             6) - state and addressee, deliberately without date, previous owner or reason. The
             object stays usable and keeps every right it has; only its reach is frozen.
           nullable: true
@@ -832,7 +832,7 @@ components:
       type: object
       required: [subjectType, subjectId]
       description: >
-        Admits a person or a group to the space (#1815). Same subject shape as
+        Admits a person or a group to the space. Same subject shape as
         AssetGrantRequest, so both rights axes are addressed the same way.
       properties:
         subjectType:

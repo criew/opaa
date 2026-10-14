@@ -85,8 +85,8 @@ public class ForeignDiagnosticContextService {
    */
   // Deliberately not @Transactional: every step reads through its own transactional boundary, and
   // the protocol entry is written with Propagation.NOT_SUPPORTED anyway - an ambient transaction
-  // would add no atomicity, only a connection held for the whole execution, which since #1150 is a
-  // full retrieval run including embedding and rerank calls to external endpoints.
+  // would add no atomicity, only a connection held for the whole execution, which is a full
+  // retrieval run including embedding and rerank calls to external endpoints.
   public <T> ForeignDiagnosticOutcome<T> execute(
       CurrentUser actor,
       ForeignDiagnosticRequest request,

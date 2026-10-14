@@ -11,7 +11,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * The contract of a store with a change log (ADR-0040, Entscheidung 6), run through the change run
+ * The contract of a store with a change log (ADR-0045, Entscheidung 3), run through the change run
  * of {@link FileSync}: a change after the start cursor appears, a stream is read to its last page
  * before its cursor moves on, an expired cursor drops the stream, the placeholder start cursor of
  * an unreachable container ({@link ChangeFeed#UNREACHABLE_AT_START}) expires without a request, a

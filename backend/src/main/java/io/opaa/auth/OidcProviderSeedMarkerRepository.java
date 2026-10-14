@@ -3,7 +3,7 @@ package io.opaa.auth;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-/** Persistence for the singleton {@link OidcProviderSeedMarker} row (#1329). */
+/** Persistence for the singleton {@link OidcProviderSeedMarker} row. */
 @Repository
 public interface OidcProviderSeedMarkerRepository
     extends JpaRepository<OidcProviderSeedMarker, Integer> {

@@ -20,9 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Reads and changes the single, system-wide branding configuration (#582, #1910,
- * docs/design/guidelines.md#7) - product name, claim, accent colour, default colour scheme and the
- * operator's three images (app logo, sign-in logo, sign-in background).
+ * Reads and changes the single, system-wide branding configuration (docs/design/guidelines.md#7) -
+ * product name, claim, accent colour, default colour scheme and the operator's three images (app
+ * logo, sign-in logo, sign-in background).
  *
  * <p><b>Reading never fails for want of configuration.</b> {@link #currentBranding()} resolves each
  * field individually against {@link BrandingDefaults}, so a deployment that has configured nothing
@@ -30,13 +30,13 @@ import org.springframework.transaction.annotation.Transactional;
  * product name. That per-field resolution is why the stored row keeps {@code null}s rather than
  * being seeded with the defaults - see {@link BrandingSettings}'s own Javadoc.
  *
- * <p><b>Writing is validated here, before the database sees it</b> (#582: "Validierung an der
+ * <p><b>Writing is validated here, before the database sees it</b> ("Validierung an der
  * Systemgrenze"), with German-language messages: the database's own {@code chk_branding_settings_*}
  * constraints of the baseline are the backstop that catches a future direct write, not the primary
  * defense that a caller is expected to hit. The images' own rules live in {@link
  * BrandingImageValidator}.
  *
- * <p>Every change records an {@link AuditEventType#BRANDING_SETTINGS_CHANGED} event (#582: "Audit-
+ * <p>Every change records an {@link AuditEventType#BRANDING_SETTINGS_CHANGED} event ("Audit-
  * Ereignis für Branding-Änderungen"). The {@code before}/{@code after} maps carry the <em>effective
  * </em> values, not the raw stored ones: what an auditor needs to reconstruct is what the
  * operator's users saw change, and "productName: OPAA → Landesamt-Assistent" says that where "null
@@ -48,9 +48,9 @@ public class BrandingSettingsService {
 
   /**
    * Six-digit hex triplet with a leading '#'. Deliberately no three-digit short form and no named
-   * colours: the frontend derives hover/press/focus states from this value by darkening it (#581),
-   * and one canonical input form keeps that derivation - and the contrast check in #583 - from
-   * having to parse variants.
+   * colours: the frontend derives hover/press/focus states from this value by darkening it, and one
+   * canonical input form keeps that derivation - and the contrast check in #583 - from having to
+   * parse variants.
    */
   private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
@@ -101,9 +101,9 @@ public class BrandingSettingsService {
 
   /**
    * Replaces the four non-binary branding fields. A {@code null} argument means "back to the OPAA
-   * default" rather than "leave unchanged" - {@code PUT}'s own semantics (#582), and the only way
-   * an operator can undo a customisation without a dedicated reset endpoint. Blank strings are
-   * treated as {@code null} for the same reason: a cleared form field means "default", not "a name
+   * default" rather than "leave unchanged" - {@code PUT}'s own semantics, and the only way an
+   * operator can undo a customisation without a dedicated reset endpoint. Blank strings are treated
+   * as {@code null} for the same reason: a cleared form field means "default", not "a name
    * consisting of spaces".
    */
   @Transactional

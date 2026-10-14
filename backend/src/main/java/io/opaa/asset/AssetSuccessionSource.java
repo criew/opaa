@@ -24,9 +24,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * An asset without a capable owner (#1819, ADR-0036 Entscheidung 6), for every asset type in one
- * query: a person whose account is no longer active, or a group that is dissolved, switched off or
- * has lost its last active account. Every type of the shell is reported, as {@link
+ * An asset without a capable owner (ADR-0036 Entscheidung 6), for every asset type in one query: a
+ * person whose account is no longer active, or a group that is dissolved, switched off or has lost
+ * its last active account. Every type of the shell is reported, as {@link
  * SuccessionObjectType#ASSET} with its own asset type - there is no active type this source skips.
  * An owner-only asset has no succession and is never reported.
  *

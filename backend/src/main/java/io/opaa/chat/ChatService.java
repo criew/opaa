@@ -41,31 +41,30 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Chats as persistent, space-owned objects (#525, docs/features/spaces-and-assets.md#chats).
- * Chatting requires space membership; a chat itself is visible only to its author - not even a
- * space or system admin, see {@link ChatRepository#findByIdAndAuthorId}'s Javadoc, which every
- * chat-scoped read/write in this class goes through.
+ * Chats as persistent, space-owned objects (docs/features/spaces-and-assets.md#chats). Chatting
+ * requires space membership; a chat itself is visible only to its author - not even a space or
+ * system admin, see {@link ChatRepository#findByIdAndAuthorId}'s Javadoc, which every chat-scoped
+ * read/write in this class goes through.
  *
- * <p><b>#860 Teil 4 (DTO-Leak):</b> every public method below takes and returns domain types only -
- * {@link Chat} itself, the enriched {@link ChatConversation}/{@link ChatTurn} read views, and the
- * {@link ChatCreation}/{@link ChatPatch} parameter records - never a generated {@code
- * io.opaa.api.dto} type. {@code ChatController} converts to/from the generated request/response
- * DTOs via {@code ChatResponseMapper} in {@code io.opaa.api}, mirroring the convention {@code
- * SpaceService} established (AGENTS.md, "API &amp; DTO-Konvention"). This also keeps this class
- * usable by {@code QueryService}, which needs the {@link Chat} entity itself and the {@link
- * ChatSource}/{@link ChatSourceLocation} domain shapes, never a response DTO.
+ * <p><b>No DTOs:</b> every public method below takes and returns domain types only - {@link Chat}
+ * itself, the enriched {@link ChatConversation}/{@link ChatTurn} read views, and the {@link
+ * ChatCreation}/{@link ChatPatch} parameter records - never a generated {@code io.opaa.api.dto}
+ * type. {@code ChatController} converts to/from the generated request/response DTOs via {@code
+ * ChatResponseMapper} in {@code io.opaa.api}, mirroring the convention {@code SpaceService}
+ * established (AGENTS.md, "API &amp; DTO-Konvention"). This also keeps this class usable by {@code
+ * QueryService}, which needs the {@link Chat} entity itself and the {@link ChatSource}/{@link
+ * ChatSourceLocation} domain shapes, never a response DTO.
  *
  * <p><b>{@link #getChat}/{@link #updateChat}/{@link #deleteChat} deliberately stay author-exclusive
- * even without space membership</b> (#525 review, finding 4) - a chat's private content belongs to
- * its author per docs/features/spaces-and-assets.md#private-inhalte-sind-nicht-teil-der-akte
- * regardless of whether that author is still a space member, mirroring how a departed employee's
- * private mail is not thrown away the moment their department changes. {@link
- * #requireStillSpaceMember} is the one exception: <b>querying is chatting</b>, and chatting
- * requires membership - a departed author must not be able to keep running new questions through a
- * space's knowledge scope after losing access to it, even though their existing chat and its
- * history remain theirs to read.
+ * even without space membership</b> - a chat's private content belongs to its author per
+ * docs/features/spaces-and-assets.md#private-inhalte-sind-nicht-teil-der-akte regardless of whether
+ * that author is still a space member, mirroring how a departed employee's private mail is not
+ * thrown away the moment their department changes. {@link #requireStillSpaceMember} is the one
+ * exception: <b>querying is chatting</b>, and chatting requires membership - a departed author must
+ * not be able to keep running new questions through a space's knowledge scope after losing access
+ * to it, even though their existing chat and its history remain theirs to read.
  *
- * <p>No class-level {@code @Transactional} (#889): every reading method carries its own explicit
+ * <p>No class-level {@code @Transactional}: every reading method carries its own explicit
  * {@code @Transactional(readOnly = true)}. {@link #appendTurn} carries {@link
  * Propagation#NOT_SUPPORTED} - not because a class-level default needs overriding anymore, but to
  * structurally guarantee its retry loop never runs inside a caller's ambient transaction (the
@@ -85,9 +84,9 @@ public class ChatService {
   static final int SEARCH_MAX_PAGE_SIZE = 50;
 
   /**
-   * Upper bound on {@link #appendTurn}'s retry loop - see that method's Javadoc (#525 review round
-   * 2, finding/nit 2). Three is generous for a two-row insert colliding on a per-chat sequence: the
-   * realistic contention is "one other concurrent question in the very same chat", never a herd.
+   * Upper bound on {@link #appendTurn}'s retry loop - see that method's Javadoc. Three is generous
+   * for a two-row insert colliding on a per-chat sequence: the realistic contention is "one other
+   * concurrent question in the very same chat", never a herd.
    */
   private static final int APPEND_TURN_MAX_ATTEMPTS = 3;
 
@@ -146,7 +145,7 @@ public class ChatService {
   @Transactional
   public ChatConversation createChat(UUID spaceId, UUID authorId, ChatCreation creation) {
     Space space = requireMembership(spaceId, authorId);
-    // #543: an archived space accepts no new content - see docs/features/spaces-and-assets.md#
+    // An archived space accepts no new content - see docs/features/spaces-and-assets.md#
     // einen-space-stilllegen-archivieren-statt-löschen.
     if (space.isArchived()) {
       throw new ConflictException("Der Space ist archiviert und lässt keine neuen Chats mehr zu");
@@ -387,10 +386,10 @@ public class ChatService {
   @Transactional
   public ChatConversation updateChat(UUID chatId, UUID authorId, ChatPatch patch) {
     Chat chat = getOwnedChat(chatId, authorId);
-    // #613 review, finding 2: an archived space accepts no new content - not only no new chats,
-    // but also no renaming, useKnowledge toggling or reference changes on an existing one. The
-    // chat itself stays readable (getChat/deleteChat are deliberately not gated here - reading and
-    // withdrawing are not "new content"), just frozen.
+    // An archived space accepts no new content - not only no new chats, but also no renaming,
+    // useKnowledge toggling or reference changes on an existing one. The chat itself stays readable
+    // (getChat/deleteChat are deliberately not gated here - reading and withdrawing are not "new
+    // content"), just frozen.
     requireSpaceNotArchived(chat.getSpaceId());
     Set<UUID> referencedLibraryIds =
         patch.getReferencedLibraryIds() == null
@@ -420,9 +419,8 @@ public class ChatService {
 
   /**
    * Loads a chat the caller authored, or throws 404 - deliberately the same status for "no such
-   * chat" and "exists but belongs to someone else" (#525 acceptance criterion: a foreign user,
-   * including a space or system admin, gets 404, not 403, which would confirm the chat's
-   * existence).
+   * chat" and "exists but belongs to someone else" (a foreign user, including a space or system
+   * admin, gets 404, not 403, which would confirm the chat's existence).
    */
   private Chat getOwnedChat(UUID chatId, UUID authorId) {
     return chatRepository
@@ -446,7 +444,7 @@ public class ChatService {
   /**
    * Verifies the chat's author still belongs to the chat's space - see this class's Javadoc for why
    * only the query path requires this and {@link #getChat}/{@link #updateChat}/{@link #deleteChat}
-   * deliberately do not (#525 review, finding 4).
+   * deliberately do not.
    */
   @Transactional(readOnly = true)
   public void requireStillSpaceMember(Chat chat) {
@@ -536,42 +534,41 @@ public class ChatService {
    * one from the question (#525's "Titel-Default aus der ersten Frage ableiten"). Called from
    * {@code QueryService#query} after generating the answer - the caller has already verified {@code
    * chat} belongs to the requesting user via {@link #findOwnedChat}. This is the write phase of
-   * that pipeline (#889): {@link Propagation#NOT_SUPPORTED} suspends any ambient transaction of the
-   * caller for this method's whole duration - {@code QueryService#query}'s read phase and LLM call
-   * that precede it already run with none of their own, but this annotation makes that a structural
+   * that pipeline: {@link Propagation#NOT_SUPPORTED} suspends any ambient transaction of the caller
+   * for this method's whole duration - {@code QueryService#query}'s read phase and LLM call that
+   * precede it already run with none of their own, but this annotation makes that a structural
    * guarantee rather than one this method's behaviour merely depends on. Only {@link
    * ChatMessageWriter#writeTurnOnce}, called per retry attempt below, actually opens a transaction.
    *
-   * <p><b>Retries on a {@code sequence} collision</b> (#525 review round 2, finding/nit 2; #889:
-   * the sequence is now {@code MAX(sequence) + 1}, not a row count, so it tolerates a gap left by a
-   * deleted message - see {@code ChatMessageWriter#nextSequenceFor}): the sequence lookup is not a
-   * locking read - two turns appended to the same chat at nearly the same instant (e.g. a user
-   * double-submitting, or two browser tabs on the same chat) can both compute the same next
-   * sequence and race to insert it, and {@code uk_chat_messages_chat_sequence} then rejects the
-   * loser with a {@link DataIntegrityViolationException} - after its answer had already been
-   * generated by the LLM call in {@code QueryService#query}, so simply failing the request would
-   * discard a real answer over a retriable persistence collision. Each attempt calls {@link
-   * ChatMessageWriter#writeTurnOnce} fresh, isolated in its own transaction, and recomputes the
-   * sequence from scratch, so a retry after losing the race simply picks the number the winner just
-   * took.
+   * <p><b>Retries on a {@code sequence} collision</b> (the sequence is now {@code MAX(sequence) +
+   * 1}, not a row count, so it tolerates a gap left by a deleted message - see {@code
+   * ChatMessageWriter#nextSequenceFor}): the sequence lookup is not a locking read - two turns
+   * appended to the same chat at nearly the same instant (e.g. a user double-submitting, or two
+   * browser tabs on the same chat) can both compute the same next sequence and race to insert it,
+   * and {@code uk_chat_messages_chat_sequence} then rejects the loser with a {@link
+   * DataIntegrityViolationException} - after its answer had already been generated by the LLM call
+   * in {@code QueryService#query}, so simply failing the request would discard a real answer over a
+   * retriable persistence collision. Each attempt calls {@link ChatMessageWriter#writeTurnOnce}
+   * fresh, isolated in its own transaction, and recomputes the sequence from scratch, so a retry
+   * after losing the race simply picks the number the winner just took.
    *
-   * <p><b>#557 - asynchronous LLM title generation.</b> Once the retry loop above has committed the
-   * turn and the synchronous prefix-derived fallback title, this method triggers {@link
+   * <p><b>Asynchronous LLM title generation.</b> Once the retry loop above has committed the turn
+   * and the synchronous prefix-derived fallback title, this method triggers {@link
    * ChatTitleGenerationService#generateTitleAsync} - but only when this turn was the chat's very
    * first ({@code nextSequence == 0} on the attempt that finally succeeded) and a fresh read (see
    * below) confirms the title is still {@link TitleSource#GENERATED} <em>right now</em>, not merely
-   * trusted from the possibly seconds-stale {@code chat} parameter (#561 review, finding 1/2 - see
-   * {@link ChatRepository}'s Javadoc on its {@code @Modifying} methods for the full staleness
-   * story). The trigger happens after the retry loop, i.e. after the writing transaction has
-   * already committed - {@code @Async} dispatches to a genuinely separate thread with no ambient
-   * transaction of its own regardless of where it is called from, but calling it only once the turn
-   * is durably persisted keeps the ordering easy to reason about.
+   * trusted from the possibly seconds-stale {@code chat} parameter (see {@link ChatRepository}'s
+   * Javadoc on its {@code @Modifying} methods for the full staleness story). The trigger happens
+   * after the retry loop, i.e. after the writing transaction has already committed - {@code @Async}
+   * dispatches to a genuinely separate thread with no ambient transaction of its own regardless of
+   * where it is called from, but calling it only once the turn is durably persisted keeps the
+   * ordering easy to reason about.
    *
-   * <p><b>Return value</b> (#561 review, finding 2): the chat's title exactly as this method itself
-   * committed it - {@code chat.getTitle()} would not do, since {@link
-   * ChatMessageWriter#writeTurnOnce} no longer mutates {@code chat} in place (see its Javadoc); a
-   * plain, read-only {@code findById} after the write is the only way to see what was actually
-   * written, and carries none of the merge-clobber risk a write via that same read would.
+   * <p><b>Return value</b>: the chat's title exactly as this method itself committed it - {@code
+   * chat.getTitle()} would not do, since {@link ChatMessageWriter#writeTurnOnce} no longer mutates
+   * {@code chat} in place (see its Javadoc); a plain, read-only {@code findById} after the write is
+   * the only way to see what was actually written, and carries none of the merge-clobber risk a
+   * write via that same read would.
    *
    * @return the chat's current title after this turn, or {@code null} if it no longer exists
    */
@@ -588,12 +585,12 @@ public class ChatService {
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public String appendTurn(
       Chat chat, String question, UsedPrompt usedPrompt, String answer, List<ChatSource> sources) {
-    // #613 review, finding 2 / #840: an archived space accepts no new content - including a new
-    // turn in an existing chat, or the space could keep gaining fresh content forever and never
-    // actually empty out into a state deleteSpace would accept. The early check now lives in
-    // QueryService#query, before retrieval/the LLM call (see requireSpaceNotArchived's Javadoc);
-    // this call here is the race guard for the window between that early check and this method's
-    // write - a space archived in between still must not be able to add a turn.
+    // An archived space accepts no new content - including a new turn in an existing chat, or the
+    // space could keep gaining fresh content forever and never actually empty out into a state
+    // deleteSpace would accept. The early check now lives in QueryService#query, before
+    // retrieval/the LLM call (see requireSpaceNotArchived's Javadoc); this call here is the race
+    // guard for the window between that early check and this method's write - a space archived in
+    // between still must not be able to add a turn.
     requireSpaceNotArchived(chat.getSpaceId());
     String serializedSources = serializeSources(sources);
     String derivedTitle = deriveTitle(question);
@@ -632,10 +629,10 @@ public class ChatService {
   }
 
   /**
-   * Removes one point of a chat's Gesprächsnotiz (#1487) - author only, like every other
-   * chat-scoped operation, and refused while the chat's space is archived, like every other change
-   * to an existing chat (#613 review, finding 2). A point of another chat, or of a chat the caller
-   * does not author, is a 404 either way: the same lookup that hides a foreign chat hides its note.
+   * Removes one point of a chat's Gesprächsnotiz - author only, like every other chat-scoped
+   * operation, and refused while the chat's space is archived, like every other change to an
+   * existing chat. A point of another chat, or of a chat the caller does not author, is a 404
+   * either way: the same lookup that hides a foreign chat hides its note.
    */
   @Transactional
   public void deleteNoteItem(UUID chatId, UUID itemId, UUID authorId) {
@@ -746,16 +743,16 @@ public class ChatService {
   }
 
   /**
-   * #613 review, finding 2: the shared guard {@link #updateChat} and {@link #appendTurn} both use -
-   * a chat's space always exists (fk_chats_space_organization is ON DELETE RESTRICT and composite),
-   * so this never needs to reason about a missing space the way {@link #requireMembership} does.
+   * The shared guard {@link #updateChat} and {@link #appendTurn} both use - a chat's space always
+   * exists (fk_chats_space_organization is ON DELETE RESTRICT and composite), so this never needs
+   * to reason about a missing space the way {@link #requireMembership} does.
    *
-   * <p>#840: also called from {@code QueryService#query}, before retrieval/the LLM call, for a
-   * persisted chat - so the ordinary case ("space was already archived") never pays for an LLM call
-   * whose answer {@link #appendTurn} would discard anyway. Widened to public for that caller rather
-   * than duplicating the rule; {@link #appendTurn}'s own call stays in place as the race guard for
-   * a space archived after this early check ran but before the turn was persisted (see that
-   * method's Javadoc).
+   * <p>Also called from {@code QueryService#query}, before retrieval/the LLM call, for a persisted
+   * chat - so the ordinary case ("space was already archived") never pays for an LLM call whose
+   * answer {@link #appendTurn} would discard anyway. Widened to public for that caller rather than
+   * duplicating the rule; {@link #appendTurn}'s own call stays in place as the race guard for a
+   * space archived after this early check ran but before the turn was persisted (see that method's
+   * Javadoc).
    */
   @Transactional(readOnly = true)
   public void requireSpaceNotArchived(UUID spaceId) {
@@ -770,22 +767,21 @@ public class ChatService {
 
   /**
    * Rejects any id in {@code referencedLibraryIds} the caller may not read - including one that
-   * does not exist at all, with the identical message for both cases (#525 review, finding/nit b):
-   * distinguishing "not readable" from "does not exist" would let a caller probe for library ids
-   * they have no rights on, and a bare foreign-key violation from {@code chat_library_references}
-   * would otherwise surface as an opaque 500 instead of a 400. Only then is a readable library
-   * outside the space's associations rejected with its own message - that reveals nothing the
-   * caller could not read anyway.
+   * does not exist at all, with the identical message for both cases: distinguishing "not readable"
+   * from "does not exist" would let a caller probe for library ids they have no rights on, and a
+   * bare foreign-key violation from {@code chat_library_references} would otherwise surface as an
+   * opaque 500 instead of a 400. Only then is a readable library outside the space's associations
+   * rejected with its own message - that reveals nothing the caller could not read anyway.
    *
-   * <p>#677 (PR #680 review, finding 3): {@code chat_library_references} now also carries
-   * organization_id, backed by a BEFORE INSERT trigger and enforced via composite foreign keys -
-   * see {@link Chat#getReferencedLibraryIds()}'s Javadoc. That layer is unreachable from this
-   * method: the chat itself is always persisted in the same transaction before this check's result
-   * is used, so chat_id is never dangling here, and {@code readableLibraryIds} is already scoped to
-   * {@code organizationId}, so a library from another organization never reaches this far to begin
-   * with. The trigger's {@code SELECT ... INTO STRICT} does change which exception class a raw SQL
-   * insert with a nonexistent chat_id would hit (plpgsql {@code NO_DATA_FOUND}, SQLState P0002,
-   * instead of the composite foreign key's SQLState 23503) - a case this method never produces.
+   * <p>{@code chat_library_references} now also carries organization_id, backed by a BEFORE INSERT
+   * trigger and enforced via composite foreign keys - see {@link Chat#getReferencedLibraryIds()}'s
+   * Javadoc. That layer is unreachable from this method: the chat itself is always persisted in the
+   * same transaction before this check's result is used, so chat_id is never dangling here, and
+   * {@code readableLibraryIds} is already scoped to {@code organizationId}, so a library from
+   * another organization never reaches this far to begin with. The trigger's {@code SELECT ... INTO
+   * STRICT} does change which exception class a raw SQL insert with a nonexistent chat_id would hit
+   * (plpgsql {@code NO_DATA_FOUND}, SQLState P0002, instead of the composite foreign key's SQLState
+   * 23503) - a case this method never produces.
    */
   private void requireUsableReferences(
       Set<UUID> referencedLibraryIds, UUID spaceId, UUID authorId, UUID organizationId) {

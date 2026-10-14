@@ -9,7 +9,7 @@ paths:
       operationId: getMailSettings
       tags: [mail]
       summary: >
-        Read the systemwide SMTP configuration (SYSTEM_ADMIN only, #1536, ADR-0033 Entscheidung
+        Read the systemwide SMTP configuration (SYSTEM_ADMIN only, ADR-0033 Entscheidung
         10). The password is never returned - only the mask "***" and passwordSet.
       responses:
         "200":
@@ -74,7 +74,7 @@ paths:
       tags: [mail]
       summary: >
         The twelve known mail templates with their effective subject and where it comes from
-        (SYSTEM_ADMIN only, #1536). The registry is closed - a template cannot be created or
+        (SYSTEM_ADMIN only). The registry is closed - a template cannot be created or
         deleted, only overridden and reset.
       responses:
         "200":
@@ -232,7 +232,7 @@ components:
     MailSettingsResponse:
       type: object
       description: >
-        The systemwide SMTP configuration (#1536, ADR-0033 Entscheidung 10), SYSTEM_ADMIN only.
+        The systemwide SMTP configuration (ADR-0033 Entscheidung 10), SYSTEM_ADMIN only.
         The password is never returned: passwordSet says whether one is stored, and password
         carries the literal mask "***" when it is, so a management form can round-trip the value
         without the secret ever passing through the browser. The three status fields are written by

@@ -21,8 +21,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * The space answer to {@link AssetOwnershipDirectory} - the port through which a succession hands
- * somebody's spaces to their successor (#1834) without {@code io.opaa.permission} knowing this
- * package.
+ * somebody's spaces to their successor without {@code io.opaa.permission} knowing this package.
  *
  * <p><b>A space owner is always a natural person</b> (ADR-0036, Entscheidung 6), so a group neither
  * owns a space nor becomes one's owner: {@link #existsAssetOwnedByGroup} answers false by

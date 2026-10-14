@@ -79,8 +79,8 @@ public class LocalAccountMailer {
   }
 
   /**
-   * The self-service reset link (#1538). No link fallback: the flow exists only with a public base
-   * URL, and its caller must never learn whether a mail left (ADR-0033, Entscheidung 11).
+   * The self-service reset link. No link fallback: the flow exists only with a public base URL, and
+   * its caller must never learn whether a mail left (ADR-0033, Entscheidung 11).
    */
   public SendResult sendPasswordReset(User user, IssuedActionToken token) {
     return send(
@@ -93,7 +93,7 @@ public class LocalAccountMailer {
             until(token.expiresAt())));
   }
 
-  /** The verification link of a self-registration (#1538); no link fallback, as above. */
+  /** The verification link of a self-registration; no link fallback, as above. */
   public SendResult sendRegistrationVerification(User user, IssuedActionToken token) {
     return send(
         MailTemplateKey.REGISTRATION_VERIFICATION,

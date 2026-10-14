@@ -30,10 +30,10 @@ import java.util.stream.Collectors;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Runs a SharePoint library (ADR-0040, Nachtrag „SharePoint“): a full sync that lists every
- * document library, possibly over several runs, and removes what neither it nor the change log saw;
- * or a change run that reads each library's delta from its cursor. The change run is the default
- * while a full sync completed within the rhythm and every library has a cursor.
+ * Runs a SharePoint library (ADR-0047): a full sync that lists every document library, possibly
+ * over several runs, and removes what neither it nor the change log saw; or a change run that reads
+ * each library's delta from its cursor. The change run is the default while a full sync completed
+ * within the rhythm and every library has a cursor.
  */
 public class SharePointIndexingExecutor implements SourceIndexingExecutor {
 

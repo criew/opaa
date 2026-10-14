@@ -23,14 +23,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The read side of the account list of the administration (#1601): every account of an
- * organization, local and identity-provider accounts alike. Like {@code LocalUserAdminService} it
- * filters, sorts and pages in memory over the organization's accounts - the population of one
- * organization is loaded by {@code UserRepository#findByOrganizationId} in one query anyway, and
- * the state of a local account comes from {@link LocalUserOverview} so that no second derivation of
- * state or activity class exists. A {@code Pageable} query is the step when the population outgrows
- * a single load. Writes stay where they are: local accounts in {@code LocalUserService}, roles in
- * {@code UserService#updateRole}.
+ * The read side of the account list of the administration: every account of an organization, local
+ * and identity-provider accounts alike. Like {@code LocalUserAdminService} it filters, sorts and
+ * pages in memory over the organization's accounts - the population of one organization is loaded
+ * by {@code UserRepository#findByOrganizationId} in one query anyway, and the state of a local
+ * account comes from {@link LocalUserOverview} so that no second derivation of state or activity
+ * class exists. A {@code Pageable} query is the step when the population outgrows a single load.
+ * Writes stay where they are: local accounts in {@code LocalUserService}, roles in {@code
+ * UserService#updateRole}.
  */
 @Service
 public class AccountAdminService {
@@ -158,10 +158,10 @@ public class AccountAdminService {
           case EXPIRES_AT ->
               Comparator.comparing(
                   AccountAdminService::expiresAt, Comparator.nullsLast(Comparator.naturalOrder()));
-          // dieselbe Quelle, nach der die Spalte anzeigt (AccountResponseMapper)
+          // the same source the column displays (AccountResponseMapper)
           case CREATED_AT -> Comparator.comparing(AccountAdminService::createdAt);
-          // Erst der Typ, dann der Anbietername: Die Spalte zeigt eine Kategorie („Lokal") neben
-          // Eigennamen, und eine rein alphabetische Ordnung stellte „Kein Anbieter" zwischen sie.
+          // The kind first, then the provider name: the column shows a category ("Lokal") next to
+          // proper names, and a purely alphabetical order would put "Kein Anbieter" among them.
           case ORIGIN ->
               Comparator.<AccountOverview, Integer>comparing(AccountAdminService::originRank)
                   .thenComparing(AccountAdminService::providerName, String.CASE_INSENSITIVE_ORDER);
@@ -171,10 +171,10 @@ public class AccountAdminService {
     if (query.descending()) {
       comparator = comparator.reversed();
     }
-    // Zweitordnung nach dem Anzeigenamen, erst danach nach der ID: Die drei Rangfolgen unten
-    // ordnen Kategorien, in denen viele Zeilen gleichauf liegen - ohne diesen Schritt stünden sie
-    // in der Reihenfolge zufälliger UUIDs, und zwei gleiche Anfragen lieferten zwei Reihenfolgen.
-    // Die Zweitordnung bleibt aufsteigend, auch wenn die erste umgedreht wurde.
+    // Secondary order by display name, only then by id: the three rankings below order
+    // categories in which many rows tie - without this step they would stand in the order of
+    // random UUIDs, and two identical requests would return two orders. The secondary order
+    // stays ascending even when the first one is reversed.
     return comparator
         .thenComparing(
             a -> a.user().getDisplayName() == null ? "" : a.user().getDisplayName(),

@@ -67,32 +67,32 @@ public class DevSecurityConfig {
                     .requestMatchers(
                         "/actuator/health",
                         // the two probes a load balancer or a container health check reads; they
-                        // answer a status, never details (#1710)
+                        // answer a status, never details
                         "/actuator/health/readiness",
                         "/actuator/health/liveness",
                         "/actuator/info",
                         "/actuator/metrics",
                         "/actuator/prometheus")
                     .permitAll()
-                    // Every other health group needs a token (#1710): the endpoint computes its
+                    // Every other health group needs a token: the endpoint computes its
                     // contributors before it decides what to show, so an anonymous call to
                     // embedding-model or vector-store would trigger a real embedding call and a
-                    // real similarity search - outside the rate limit, which only covers /api.
-                    // Two stars, not one: the health endpoint selector matches all remaining path
+                    // real similarity search - outside the rate limit, which only covers /api. Two
+                    // stars, not one: the health endpoint selector matches all remaining path
                     // segments, so a single star would leave /actuator/health/<group>/<component>
                     // on anyRequest().permitAll().
                     .requestMatchers("/actuator/health/**")
                     .authenticated()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
-                    // #582/#583/#1910: branding is readable without authentication. The sign-in
-                    // page is the first thing a user sees and has to carry the operator's own
-                    // product name, claim, logo and background - it renders before there is a
-                    // session, so an authenticated-only endpoint could not brand it at all. What
-                    // this exposes is deliberate and bounded: the name, claim, accent colour and
-                    // images of the deployment - that is, which Behörde runs it, which anyone
-                    // reaching its sign-in page in the first place can already tell. No user,
-                    // space, library or configuration data is reachable through these paths.
+                    // Branding is readable without authentication. The sign-in page is the first
+                    // thing a user sees and has to carry the operator's own product name, claim,
+                    // logo and background - it renders before there is a session, so an
+                    // authenticated-only endpoint could not brand it at all. What this exposes is
+                    // deliberate and bounded: the name, claim, accent colour and images of the
+                    // deployment - that is, which Behörde runs it, which anyone reaching its
+                    // sign-in page in the first place can already tell. No user, space, library or
+                    // configuration data is reachable through these paths.
                     .requestMatchers(
                         "/api/v1/branding",
                         "/api/v1/branding/logo",

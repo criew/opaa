@@ -73,7 +73,7 @@ describe('the source registry (ADR-0038)', () => {
     expect(
       mockSourceTypes.find((descriptor) => descriptor.type === 'FILESYSTEM')?.profileSupport,
     ).toBe('FORBIDDEN')
-    // SharePoint signs in only through a profile, at the fixed Graph address (ADR-0040)
+    // SharePoint signs in only through a profile, at the fixed Graph address (ADR-0047)
     expect(mockSourceTypes.find((descriptor) => descriptor.type === 'SHAREPOINT')).toMatchObject({
       profileSupport: 'REQUIRED',
       profileRequired: true,
@@ -83,7 +83,7 @@ describe('the source registry (ADR-0038)', () => {
     })
   })
 
-  describe('SharePoint (#2153, ADR-0040)', () => {
+  describe('SharePoint (ADR-0047)', () => {
     const library = {
       sourceType: 'SHAREPOINT',
       sourceUrl: 'https://graph.microsoft.com',

@@ -51,7 +51,7 @@ public final class ConversationReportWriter {
     sb.append(format("\n=== Mehrrunden-Messpfad: %s ===\n\n", pipeline.domain()));
     sb.append(
         format(
-            "Mehrrunden-Messvertrag-Version: %d (siehe ADR-0012, Nachtrag Mehrrunden-Messpfad)\n",
+            "Mehrrunden-Messvertrag-Version: %d (siehe ADR-0012, Entscheidung 38)\n",
             report.conversationMeasurementContractVersion()));
     sb.append(format("Fenster: %s\n\n", report.metricWindowNote()));
 

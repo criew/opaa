@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * A grant of an {@link AssetRole} on one asset to a {@link PermissionSubject} - the actual
- * mechanism behind "readable assets" (#202, see
+ * mechanism behind "readable assets" (see
  * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten). Every grant carries an
  * optional {@code expiresAt} from the start, even though recertification only arrives with #241:
  * adding the field later is cheap, assessing an existing body of grants without one is not.
@@ -30,7 +30,7 @@ import java.util.UUID;
  * real foreign key to its own target table instead of an unenforced UUID. {@code
  * chk_asset_grants_subject} enforces that exactly the column matching {@link #subjectType} is
  * non-null - and that both stay empty for {@link AssetGrantSubjectType#ALL_ACCOUNTS}, which names
- * no row at all (#1931, ADR-0037).
+ * no row at all (ADR-0037).
  */
 @Entity
 @Table(name = "asset_grants")

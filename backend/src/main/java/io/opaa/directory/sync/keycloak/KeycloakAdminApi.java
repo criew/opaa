@@ -24,15 +24,15 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The raw calls of the Keycloak Admin REST API one directory run needs (#1817): a service-account
- * sign-in and the three paginated reads {@code /groups}, {@code /groups/{id}/children} and {@code
+ * The raw calls of the Keycloak Admin REST API one directory run needs: a service-account sign-in
+ * and the three paginated reads {@code /groups}, {@code /groups/{id}/children} and {@code
  * /groups/{id}/members}. No redirect is ever followed - the address passed the policy, a redirect
  * target would not have.
  *
  * <p><b>Every failure is a {@link DirectoryUnavailableException}</b>, including a rejected sign-in
  * and a {@code 403} from a service account that lacks {@code view-users}/{@code query-groups}.
  * Anything else would let a rights problem at the source look like "this directory has no groups",
- * and that is the one reading a synchronisation must never act on (#237).
+ * and that is the one reading a synchronisation must never act on.
  *
  * <p>The access token lives about five minutes; a large realm outlasts it. The token is therefore
  * re-fetched once whenever the current one is within {@link #TOKEN_REFRESH_MARGIN} of expiry, so a
@@ -100,9 +100,9 @@ class KeycloakAdminApi {
   }
 
   /**
-   * One page of the realm's accounts with their {@code enabled} flag (#1818). {@code
-   * briefRepresentation} keeps id and {@code enabled} and drops the attributes, credentials and
-   * role mappings a run has no business reading.
+   * One page of the realm's accounts with their {@code enabled} flag. {@code briefRepresentation}
+   * keeps id and {@code enabled} and drops the attributes, credentials and role mappings a run has
+   * no business reading.
    */
   List<JsonNode> users(int first, int max) throws DirectoryUnavailableException {
     return array(adminGet("/users?first=" + first + "&max=" + max + "&briefRepresentation=true"));

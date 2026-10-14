@@ -23,8 +23,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Maps the metadata correction's domain records (#1068) onto their generated API types and the
- * request body onto {@link MetadataValueInput} (#860: the domain services never see a DTO).
+ * Maps the metadata correction's domain records onto their generated API types and the request body
+ * onto {@link MetadataValueInput} (the domain services never see a DTO).
  */
 final class DocumentMetadataResponseMapper {
 
@@ -49,7 +49,7 @@ final class DocumentMetadataResponseMapper {
         null);
   }
 
-  /** An absent state means "set a value" - the request body of every client before #1069. */
+  /** An absent state means "set a value", so a client that sends no state keeps working. */
   private static MetadataValueState toState(MetadataValueRequest.StateEnum state) {
     return state == MetadataValueRequest.StateEnum.NOT_DETERMINABLE
         ? MetadataValueState.NOT_DETERMINABLE
@@ -110,7 +110,7 @@ final class DocumentMetadataResponseMapper {
         .libraryFieldType(view.libraryFieldType());
   }
 
-  /** An absent row is the empty state - the row itself never carries {@code EMPTY} (#1069). */
+  /** An absent row is the empty state - the row itself never carries {@code EMPTY}. */
   private static MetadataFieldState fieldStateOf(MetadataValueSnapshot value) {
     if (value == null) {
       return MetadataFieldState.EMPTY;

@@ -3,7 +3,7 @@ import type { LibraryResponse } from '@/shared/api/types'
 
 /**
  * The connector settings of a NEXTCLOUD library as the API carries them in `sourceSettings`
- * (ADR-0040): the folders of the technical user that are read, never how it signs in.
+ * (ADR-0045, Entscheidung 11): the folders of the technical user that are read, never how it signs in.
  */
 export type NextcloudSettings = {
   folders?: string[] | null

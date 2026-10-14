@@ -160,12 +160,12 @@ public class AnswerGenerationService {
   }
 
   /**
-   * Generates the answer, with the chat's Gesprächsnotiz (#1487): <b>all</b> of its points, unlike
-   * the sub-question decomposition, which only sees the {@code RAHMEN} ones - a Darstellungswunsch
-   * is noise for the search and the whole point for the answer. Rendered as its own block between
-   * the citation rules and the passages, the fifth part of the call
-   * (docs/features/llm-integration.md, "Übergabe der Passagen"); without a point there is no block.
-   * See {@link #CONTEXT_SECTION} for why it must not follow the passages.
+   * Generates the answer, with the chat's Gesprächsnotiz: <b>all</b> of its points, unlike the
+   * sub-question decomposition, which only sees the {@code RAHMEN} ones - a Darstellungswunsch is
+   * noise for the search and the whole point for the answer. Rendered as its own block between the
+   * citation rules and the passages, the fifth part of the call (docs/features/llm-integration.md,
+   * "Übergabe der Passagen"); without a point there is no block. See {@link #CONTEXT_SECTION} for
+   * why it must not follow the passages.
    *
    * <p>The instruction of the chat's space comes first after the fixed rules, as its own block
    * ({@link SpaceInstructionBlock}), so the note - the current wishes of the asking person -

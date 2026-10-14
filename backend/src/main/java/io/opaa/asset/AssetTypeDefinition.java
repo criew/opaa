@@ -36,9 +36,9 @@ public interface AssetTypeDefinition {
 
   /**
    * Refuses a grant to "Alle Konten" the type does not allow for this asset, with a {@code 409}
-   * naming the limit (#1931, ADR-0037 Entscheidung 5). Called before the grant is written - this is
-   * where a connector library's share cap takes effect now that organization-wide reach is a grant
-   * and no longer a field of the shell.
+   * naming the limit (ADR-0037 Entscheidung 5). Called before the grant is written - this is where
+   * a connector library's share cap takes effect now that organization-wide reach is a grant and no
+   * longer a field of the shell.
    */
   default void requireAllAccountsGrantAllowed(Asset asset) {}
 

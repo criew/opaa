@@ -3,8 +3,7 @@ package io.opaa.common;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * The address under which this installation is reachable from outside (#1536, ADR-0033 Entscheidung
- * 10).
+ * The address under which this installation is reachable from outside (ADR-0033 Entscheidung 10).
  *
  * @param publicBaseUrl read from {@code OPAA_PUBLIC_BASE_URL}. Deliberately an environment variable
  *     and not an administrable setting: it is a property of the deployment, like {@code

@@ -42,7 +42,7 @@ public class PermissionHistoryRetentionSettings {
   /** 10 years, mirrored by the same check constraint. */
   public static final int MAX_RETENTION_MONTHS = 120;
 
-  /** 3 years - what a fresh installation is delivered with (ADR-0036, Zahlentabelle). */
+  /** 3 years - what a fresh installation is delivered with (ADR-0036, "Zahlen"). */
   public static final int DEFAULT_RETENTION_MONTHS = 36;
 
   @Id private Integer id;

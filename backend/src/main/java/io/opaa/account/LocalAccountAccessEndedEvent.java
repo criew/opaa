@@ -6,10 +6,10 @@ import java.util.UUID;
 
 /**
  * Published inside the transaction of an act that takes a person's access away - the lock of an
- * account (by an administrator, by the daily inactivity run, or by the directory synchronisation,
- * #1818) and the redeemed handover to a provider identity. Every merkmal that outlives such an act
- * would be the most convenient way around the account lifecycle (access-control.md, "Offboarding"),
- * so each one is ended by a listener of this event instead of by a call the next such act could
+ * account (by an administrator, by the daily inactivity run, or by the directory synchronisation)
+ * and the redeemed handover to a provider identity. Every merkmal that outlives such an act would
+ * be the most convenient way around the account lifecycle (access-control.md, "Offboarding"), so
+ * each one is ended by a listener of this event instead of by a call the next such act could
  * forget.
  *
  * <p>A plain {@code @EventListener} therefore runs in the publisher's transaction: the lock and the

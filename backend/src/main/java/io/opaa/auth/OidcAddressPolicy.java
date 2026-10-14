@@ -9,9 +9,9 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * SSRF policy for every address the backend fetches for a provider (#1329, ADR-0025 Entscheidung
- * 3): the issuer, the JWK set override and the {@code jwks_uri} a discovery document names. Its
- * {@link TargetAddressValidator} is built from the anmeldeseitige block {@code
+ * SSRF policy for every address the backend fetches for a provider (ADR-0025 Entscheidung 3): the
+ * issuer, the JWK set override and the {@code jwks_uri} a discovery document names. Its {@link
+ * TargetAddressValidator} is built from the anmeldeseitige block {@code
  * opaa.auth.oidc.target-validation} - deliberately not from the indexing one, so switching a
  * connector's check off never switches the sign-in check off. On top of the allowlist, exactly the
  * two bootstrap addresses {@code OPAA_OIDC_ISSUER_URI}/{@code OPAA_OIDC_JWK_SET_URI} are always

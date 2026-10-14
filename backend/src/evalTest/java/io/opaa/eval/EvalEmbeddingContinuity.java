@@ -20,8 +20,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Proves before any measurement that the eval Ollama embeds a long input continuously across the
- * batch boundary of {@value #BATCH_BOUNDARY_TOKENS} tokens (ADR-0012, Nachtrag Ollama-Fassung). An
- * Ollama that evaluates such an input in several batches computes a bidirectional encoder wrongly:
+ * batch boundary of {@value #BATCH_BOUNDARY_TOKENS} tokens (ADR-0012, Entscheidung 69). An Ollama
+ * that evaluates such an input in several batches computes a bidirectional encoder wrongly:
  * appending ten characters across the boundary turns the vector instead of nudging it. The probe
  * embeds growing prefixes of one fixed corpus text that straddle the boundary and requires every
  * neighbouring pair to stay at or above {@value #MIN_NEIGHBOUR_COSINE}.
@@ -131,7 +131,7 @@ final class EvalEmbeddingContinuity {
                   + " tokens) has cosine %.4f to the one %d characters shorter, below %.2f. This"
                   + " Ollama evaluates long inputs in several batches, which a bidirectional"
                   + " encoder cannot; every chunk beyond %d tokens gets a wrong vector, so no run"
-                  + " on it is a measurement (ADR-0012, Nachtrag Ollama-Fassung).",
+                  + " on it is a measurement (ADR-0012, Entscheidung 69).",
               EvalOllamaEndpoint.describeImageOrEndpoint(),
               model,
               worstAfter.chars(),

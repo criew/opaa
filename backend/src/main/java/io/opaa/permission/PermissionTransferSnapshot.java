@@ -7,7 +7,7 @@ import java.util.UUID;
 /**
  * The rows one transfer would move, read once: the preview counts and prints them, the execution
  * moves them. Read only after the work limit has been checked with plain counts, so the load itself
- * is bounded (#1834).
+ * is bounded.
  *
  * <p>{@code grants} carries the source's grant rows including the expired ones - they are ended
  * like every other row of the source, only not granted to the target again.

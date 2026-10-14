@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-/** Persistence for {@link LlmModel} (#756). */
+/** Persistence for {@link LlmModel}. */
 @Repository
 public interface LlmModelRepository extends JpaRepository<LlmModel, UUID> {
 

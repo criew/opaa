@@ -51,7 +51,7 @@ public class MetadataMaintenanceAdminController {
   }
 
   /**
-   * One batch of the deterministic core-metadata backfill (#1067). The library is the explicit,
+   * One batch of the deterministic core-metadata backfill. The library is the explicit,
    * library-wise release the specification demands; a library of another organization is absent
    * (404), decided in the service. Pausing is not calling again; the next call resumes.
    */
@@ -86,9 +86,9 @@ public class MetadataMaintenanceAdminController {
   }
 
   /**
-   * One batch of the Kontextpräfix-Nachlauf (#1072). The library is the explicit, library-wise
-   * release the specification demands; saving a schema change never starts it. Pausing is not
-   * calling again; the next call resumes at the next unprocessed document.
+   * One batch of the Kontextpräfix-Nachlauf. The library is the explicit, library-wise release the
+   * specification demands; saving a schema change never starts it. Pausing is not calling again;
+   * the next call resumes at the next unprocessed document.
    */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/context-prefix-rerun")

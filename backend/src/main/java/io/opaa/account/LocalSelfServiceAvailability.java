@@ -5,8 +5,7 @@ import io.opaa.ratelimit.SelfServiceEndpointAvailability;
 /**
  * Whether the two switchable self-service flows exist right now (ADR-0033, Entscheidung 11) - the
  * same answer {@code GET /api/v1/auth/config} publishes as {@code passwordResetEnabled} and {@code
- * selfRegistrationEnabled}, which stays the only channel through which the state is readable
- * (#1592).
+ * selfRegistrationEnabled}, which stays the only channel through which the state is readable.
  *
  * <p>Two decisions outside the flows themselves need the answer before any handler runs, so that a
  * switched-off flow is answered exactly like an unknown route: the authorization rules of {@code

@@ -64,7 +64,7 @@ public class SourceSyncState {
   private Instant incrementalAnchor;
 
   /**
-   * The change cursors per stream of a connector with a change log (ADR-0040, Entscheidung 6), as
+   * The change cursors per stream of a connector with a change log (ADR-0045, Entscheidung 3), as
    * {@link ChangeCursors} JSON; {@code null} for every other connector.
    */
   @JdbcTypeCode(SqlTypes.JSON)
@@ -343,8 +343,8 @@ public class SourceSyncState {
   }
 
   /**
-   * What the last complete full sync remembered of a store's folders (ADR-0040). A memory written
-   * under an older basis may carry fields this one no longer has; they are ignored.
+   * What the last complete full sync remembered of a store's folders (ADR-0045, Entscheidung 4). A
+   * memory written under an older basis may carry fields this one no longer has; they are ignored.
    *
    * @param basis what the markers were judged under (size bound, formats); another basis voids them
    * @param establishedAt when a full sync last listed every folder without them
@@ -378,7 +378,7 @@ public class SourceSyncState {
   }
 
   /**
-   * The round of a file sync that may span several runs (ADR-0040).
+   * The round of a file sync that may span several runs (ADR-0045, Entscheidung 6).
    *
    * @param scanId names the round, also in the presence it writes
    * @param basis what the round's folder markers were judged under (size bound, formats)

@@ -12,11 +12,10 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one period a user was a member of a
- * group (#238, see
- * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). {@code
- * validTo == null} means the interval is still open, i.e. the user is a member right now. Written
- * and closed exclusively by {@link PermissionHistoryService}, which combines this table with {@link
- * AssetGrantHistory} into the grant half of the Stichtag reconstruction.
+ * group (see docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten).
+ * {@code validTo == null} means the interval is still open, i.e. the user is a member right now.
+ * Written and closed exclusively by {@link PermissionHistoryService}, which combines this table
+ * with {@link AssetGrantHistory} into the grant half of the Stichtag reconstruction.
  */
 @Entity
 @Table(name = "group_membership_history")

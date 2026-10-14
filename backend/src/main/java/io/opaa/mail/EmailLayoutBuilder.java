@@ -3,9 +3,9 @@ package io.opaa.mail;
 import org.springframework.stereotype.Component;
 
 /**
- * Wraps a rendered content fragment in the branded HTML frame every OPAA mail shares (#1536,
- * ADR-0033 Entscheidung 10): product name and accent colour from {@code BrandingSettings}, no logo
- * in this phase.
+ * Wraps a rendered content fragment in the branded HTML frame every OPAA mail shares (ADR-0033
+ * Entscheidung 10): product name and accent colour from {@code BrandingSettings}, no logo in this
+ * phase.
  *
  * <p>Built for mail clients, not browsers: one centred table with a fixed maximum width, inline
  * styles only, a declared light colour scheme, and a hidden preheader.

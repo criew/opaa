@@ -6,8 +6,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The connector release for tests that are not about it: a test connector or a new profile is off
- * by default (ADR-0036, Nachtrag of 03.10.2026), so such a test releases its scope to all accounts
- * of the default organization and withdraws it afterwards. Writes the grant row only, no interval.
+ * by default (ADR-0036, Entscheidung 5), so such a test releases its scope to all accounts of the
+ * default organization and withdraws it afterwards. Writes the grant row only, no interval.
  */
 public final class ConnectorReleases {
 

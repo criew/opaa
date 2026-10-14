@@ -1,7 +1,7 @@
 package io.opaa.indexing.filesync;
 
 /**
- * The change log of a store that has one (ADR-0040, Entscheidung 6). A store serves its containers
+ * The change log of a store that has one (ADR-0045, Entscheidung 3). A store serves its containers
  * from one or more streams, each read from a cursor the store hands out.
  */
 public interface ChangeFeed {

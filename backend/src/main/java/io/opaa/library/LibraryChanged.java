@@ -6,8 +6,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Domain event for the library's own double bookkeeping (#238/#892, #1731): a change of the release
- * for Fremdzugaenge writes one reach interval through {@code
+ * Domain event for the library's own double bookkeeping: a change of the release for Fremdzugaenge
+ * writes one reach interval through {@code
  * AssetVisibilityHistoryService#recordExternalAccessChanged} and one audit entry, side by side -
  * {@link PermissionHistoryListener} and {@link AuditListener} each write their half. Creation is
  * the asset shell's ({@code io.opaa.asset.AssetChanged}).

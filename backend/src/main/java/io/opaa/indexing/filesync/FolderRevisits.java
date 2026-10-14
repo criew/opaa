@@ -13,9 +13,9 @@ import java.util.UUID;
 
 /**
  * The documents of one library deleted outside a run whose folders no full sync has listed since
- * (ADR-0040): no folder marker in or above one is handed over or remembered. A revisit is consumed
- * once a round listed its container from scratch to the end with the revisit already visible at
- * that start; one that became visible later stays for the next round.
+ * (ADR-0045, Entscheidung 5): no folder marker in or above one is handed over or remembered. A
+ * revisit is consumed once a round listed its container from scratch to the end with the revisit
+ * already visible at that start; one that became visible later stays for the next round.
  */
 final class FolderRevisits {
 

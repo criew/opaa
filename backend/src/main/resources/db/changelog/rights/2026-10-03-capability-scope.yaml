@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: rights-2026-10-03-capability-scope
       author: opaa
-      comment: "CREATE_CONNECTOR_LIBRARY gets a scope, TYPE:<key> or PROFILE:<id> (ADR-0036, Nachtrag of 03.10.2026; ADR-0041; #2161). Every existing grant and interval of it is multiplied into the five connector types delivered before, the uniqueness covers the scope, and the organization seed delivers the five types instead of the unscoped grant. A new type or profile has no row and is therefore off."
+      comment: "CREATE_CONNECTOR_LIBRARY gets a scope, TYPE:<key> or PROFILE:<id> (ADR-0036, Entscheidung 5; ADR-0041). Every existing grant and interval of it is multiplied into the five connector types delivered before, the uniqueness covers the scope, and the organization seed delivers the five types instead of the unscoped grant. A new type or profile has no row and is therefore off."
       changes:
         - sql:
             splitStatements: false

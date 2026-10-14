@@ -12,10 +12,10 @@ import java.util.Map;
  *
  * <p><b>A separate type and a separate file, like the pipeline path itself.</b> The single-question
  * path measures standalone questions and this one measures turns of a conversation; a shared report
- * shape would invite exactly the unlabelled side-by-side comparison ADR-0012's Nachtrag zum
- * Pipeline-Messpfad rules out. The metric mathematics is <b>not</b> duplicated: a turn is measured
- * by {@link RetrievalMetrics} and aggregated by {@link PipelineMetricsAggregate} at this path's own
- * windows, which are the pipeline path's (Hit Rate@5, MRR@20, nDCG@20, Recall@20).
+ * shape would invite exactly the unlabelled side-by-side comparison ADR-0012, Entscheidung 12 rules
+ * out. The metric mathematics is <b>not</b> duplicated: a turn is measured by {@link
+ * RetrievalMetrics} and aggregated by {@link PipelineMetricsAggregate} at this path's own windows,
+ * which are the pipeline path's (Hit Rate@5, MRR@20, nDCG@20, Recall@20).
  *
  * @param singlePathNote records once per report that this measurement runs on the pipeline path
  *     alone - see {@link #SINGLE_PATH_NOTE}.
@@ -53,8 +53,8 @@ public record ConversationEvaluationReport(
     List<ConversationCaseResult> cases) {
 
   /**
-   * Version of the multi-turn path's own measurement contract (ADR-0012, Nachtrag
-   * Mehrrunden-Messpfad). Counted independently of the pipeline path's {@link
+   * Version of the multi-turn path's own measurement contract (ADR-0012, Entscheidung 16). Counted
+   * independently of the pipeline path's {@link
    * PipelineEvaluationReport#PIPELINE_MEASUREMENT_CONTRACT_VERSION}, for the same reason that one
    * is counted independently of the raw-vector path's: raising a contract version invalidates every
    * committed baseline of that path, and this path's arrival changes nothing about what the other
@@ -62,14 +62,14 @@ public record ConversationEvaluationReport(
    *
    * <p>Version 2 (issue #1522): {@code ollamaImage} became a checked fixed point of the shared
    * pipeline block, so a committed baseline of this path states which Ollama produced its vectors
-   * (ADR-0012, Nachtrag Ollama-Herkunft). No measured value moves.
+   * (ADR-0012, Entscheidung 68). No measured value moves.
    *
    * <p>Version 3 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point of the shared
    * pipeline block - the ggml CPU kernel set inside that image, which decides the greedy
-   * decomposition of every turn (ADR-0012, Nachtrag CPU-Backend).
+   * decomposition of every turn (ADR-0012, Entscheidung 54).
    *
    * <p>Version 4 (issue #1650): {@code contextPrefixFingerprint} became a checked fixed point of
-   * the shared pipeline block (ADR-0012, Nachtrag Kontextpräfix-Form).
+   * the shared pipeline block (ADR-0012, Entscheidung 57).
    *
    * <p>Version 5 (issue #1684): a turn can expect no search. Such a turn enters no metric aggregate
    * - {@code overall}, {@code byCategory} and {@code byTurn} count turns with search only - and is

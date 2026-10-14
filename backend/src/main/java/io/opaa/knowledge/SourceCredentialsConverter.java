@@ -8,8 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * JPA {@link AttributeConverter} for {@link KnowledgeLibrary#getSourceCredentials()} (#483,
- * ADR-0018 Entscheidung 4): encrypts on the way to the database, decrypts on the way back, entirely
+ * JPA {@link AttributeConverter} for {@link KnowledgeLibrary#getSourceCredentials()} (ADR-0018
+ * Entscheidung 4): encrypts on the way to the database, decrypts on the way back, entirely
  * transparent to callers of {@link KnowledgeLibrary#getSourceCredentials()} - {@code
  * UrlIndexingExecutor}/{@code RssFeedIndexingExecutor} keep reading the plain {@code
  * KnowledgeLibrary} entity and see the decrypted value, exactly as before this issue.
@@ -25,12 +25,12 @@ import org.slf4j.LoggerFactory;
  * instance rather than instantiating it itself - normal constructor injection of {@link
  * CredentialsEncryptor} here works.
  *
- * <p><b>Read failures fail soft, write failures fail hard (PR #504 review):</b> {@link
- * #convertToEntityAttribute} runs on every hydration of a {@link KnowledgeLibrary} row, including
- * every {@code GET /api/v1/libraries} list entry - a single row whose {@code sourceCredentials} can
- * no longer be decrypted (key lost, key rotated without re-encrypting existing rows, corrupted
- * value) must not take the whole read down with a {@code 503}, since that would also break the one
- * repair path ({@code PATCH /api/v1/libraries/{id}} setting new credentials) documented in {@code
+ * <p><b>Read failures fail soft, write failures fail hard:</b> {@link #convertToEntityAttribute}
+ * runs on every hydration of a {@link KnowledgeLibrary} row, including every {@code GET
+ * /api/v1/libraries} list entry - a single row whose {@code sourceCredentials} can no longer be
+ * decrypted (key lost, key rotated without re-encrypting existing rows, corrupted value) must not
+ * take the whole read down with a {@code 503}, since that would also break the one repair path
+ * ({@code PATCH /api/v1/libraries/{id}} setting new credentials) documented in {@code
  * docs/handbuch/betrieb.md}, which loads the same row first. This converter therefore catches
  * {@link CredentialsEncryptionKeyMissingException} on read and treats the field as absent (logs a
  * warning with no library id - the converter is not given the owning entity's identity - and,
@@ -38,8 +38,8 @@ import org.slf4j.LoggerFactory;
  * failing hard: silently dropping credentials on write would be far worse than a clear {@code 503}.
  *
  * <p>That the field reads as absent must not make it absent: {@code KnowledgeLibrary} carries
- * {@code @DynamicUpdate} (#1806) so an unrelated change to the library writes only the columns it
- * changed, leaving the stored ciphertext readable again once the key returns.
+ * {@code @DynamicUpdate} so an unrelated change to the library writes only the columns it changed,
+ * leaving the stored ciphertext readable again once the key returns.
  */
 @Converter(autoApply = false)
 public class SourceCredentialsConverter implements AttributeConverter<String, String> {

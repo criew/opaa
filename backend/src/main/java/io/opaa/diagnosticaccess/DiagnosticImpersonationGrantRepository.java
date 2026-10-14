@@ -50,10 +50,10 @@ public interface DiagnosticImpersonationGrantRepository
 
   /**
    * The scope groups of the grants that still confer something at {@code at}, one entry per grant -
-   * what deleting those groups together with their identity provider has to refuse (#1812). Same
-   * "unspent" definition as {@link #findUnspentIssuedBy}: a revoked grant already carries its
-   * revocation event, and one whose window has run out confers nothing any more, so neither would
-   * lose anything to the cascade.
+   * what deleting those groups together with their identity provider has to refuse. Same "unspent"
+   * definition as {@link #findUnspentIssuedBy}: a revoked grant already carries its revocation
+   * event, and one whose window has run out confers nothing any more, so neither would lose
+   * anything to the cascade.
    */
   @Query(
       "SELECT g.scopeGroupId FROM DiagnosticImpersonationGrant g WHERE g.scopeGroupId IN :groupIds"

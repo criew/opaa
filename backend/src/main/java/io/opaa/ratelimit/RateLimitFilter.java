@@ -61,8 +61,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
    * <p>{@code served} answers, per request, whether the endpoint behind the rule exists at all
    * right now; it is {@link #ALWAYS_SERVED} for every rule whose endpoint cannot be switched off. A
    * rule that reports its endpoint as unserved is matched but <b>not counted</b>: such a request is
-   * answered exactly like an unknown route (#1592), and an unknown route has no budget - a 429 here
-   * against a 401 there would be the one difference a probe would find.
+   * answered exactly like an unknown route, and an unknown route has no budget - a 429 here against
+   * a 401 there would be the one difference a probe would find.
    *
    * @param name the stable label of the rule in logs and metrics
    */

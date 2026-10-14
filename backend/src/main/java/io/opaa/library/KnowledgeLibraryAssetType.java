@@ -14,10 +14,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * The knowledge library's declaration on the asset shell, and its one restriction: the share cap of
- * a connector library (#797, Maintainer-Festlegung vom 21.09.2026). A request above the cap is a
- * {@code 409}, not a {@code 403} - the caller's role is not in question, the requested state
- * conflicts with a ceiling the system administration set on this library. An upload library never
- * carries a narrower cap ({@code chk_knowledge_libraries_share_cap_upload_unrestricted}).
+ * a connector library (Maintainer-Festlegung vom 21.09.2026). A request above the cap is a {@code
+ * 409}, not a {@code 403} - the caller's role is not in question, the requested state conflicts
+ * with a ceiling the system administration set on this library. An upload library never carries a
+ * narrower cap ({@code chk_knowledge_libraries_share_cap_upload_unrestricted}).
  */
 @Component
 class KnowledgeLibraryAssetType implements AssetTypeDefinition {
@@ -55,8 +55,8 @@ class KnowledgeLibraryAssetType implements AssetTypeDefinition {
   }
 
   /**
-   * Organization-wide reach is a grant to "Alle Konten" (#1931), so the ceiling is asked where that
-   * grant is written.
+   * Organization-wide reach is a grant to "Alle Konten", so the ceiling is asked where that grant
+   * is written.
    */
   @Override
   public void requireAllAccountsGrantAllowed(Asset asset) {

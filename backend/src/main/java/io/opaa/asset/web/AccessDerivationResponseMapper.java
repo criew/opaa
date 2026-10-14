@@ -4,7 +4,7 @@ import io.opaa.api.dto.AssetAccessDerivationResponse;
 import io.opaa.asset.AssetAccessDerivation;
 import io.opaa.permission.web.AccessPathResponseMapper;
 
-/** Maps the Herleitung of an asset onto its generated response (#1822, ADR-0006). */
+/** Maps the Herleitung of an asset onto its generated response (ADR-0006). */
 final class AccessDerivationResponseMapper {
 
   private AccessDerivationResponseMapper() {}

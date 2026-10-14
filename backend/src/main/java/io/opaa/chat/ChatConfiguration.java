@@ -24,8 +24,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  *
  * <p>Deliberately tiny: both are a single short LLM call, never a queue-worthy background job.
  *
- * <p><b>#561 review nit: {@code queueCapacity} of 0, not a large number.</b> {@link
- * ThreadPoolTaskExecutor} only grows past {@code corePoolSize} once its queue is full ({@link
+ * <p><b>{@code queueCapacity} of 0, not a large number.</b> {@link ThreadPoolTaskExecutor} only
+ * grows past {@code corePoolSize} once its queue is full ({@link
  * java.util.concurrent.ThreadPoolExecutor}'s documented behaviour) - a sizeable queue capacity
  * would let every submission queue up behind the two core threads and {@code maxPoolSize} would
  * never actually be reached in practice, making it a dead setting. {@code 0} makes the queue a

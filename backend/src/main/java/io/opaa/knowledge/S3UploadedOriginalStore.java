@@ -44,9 +44,9 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * object per document under {@code <keyPrefix><organizationId>/<libraryId>/<uuid><extension>},
  * {@code s3://<bucket>/<key>} as the locator, one client for the whole lifetime of the application,
  * no request budget. The organization segment is what lets a walk over the whole bucket tell the
- * tenants apart without a database row (ADR-0030, addendum to Entscheidung 4), and it is the same
- * structure the filesystem adapter writes - that keeps the migration between the two a prefix
- * replacement (Entscheidung 5).
+ * tenants apart without a database row (ADR-0030, Entscheidung 4), and it is the same structure the
+ * filesystem adapter writes - that keeps the migration between the two a prefix replacement
+ * (Entscheidung 5).
  *
  * <p>Accepting writes a working file under {@code tempDirectory}; only {@link
  * AcceptedUpload#store()} puts it into the bucket, so an upload the checks between the two reject

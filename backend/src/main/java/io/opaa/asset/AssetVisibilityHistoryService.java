@@ -11,10 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The asset half of the permission history: the {@link AssetVisibilityHistory} intervals of the
- * release for Fremdzugaenge (#238, #1731, see
+ * release for Fremdzugaenge (see
  * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Who may
  * read the asset is not here - that follows from the grants alone and is historised with them
- * (#1931, ADR-0037). Both tables take their interval boundaries from the one {@link
+ * (ADR-0037). Both tables take their interval boundaries from the one {@link
  * PermissionHistoryClock}, so the interval contract holds across them.
  *
  * <p>Every recording method runs inside the caller's own transaction (default propagation): a
@@ -85,9 +85,9 @@ public class AssetVisibilityHistoryService {
   }
 
   /**
-   * Whether the asset was released for Fremdzugaenge at {@code asOf} (#1731). The Befristung counts
-   * at {@code asOf} itself, not at the moment the expiry run wrote it down; {@code false} for an
-   * asset no interval covers at that instant - an asset that did not exist was not released.
+   * Whether the asset was released for Fremdzugaenge at {@code asOf}. The Befristung counts at
+   * {@code asOf} itself, not at the moment the expiry run wrote it down; {@code false} for an asset
+   * no interval covers at that instant - an asset that did not exist was not released.
    */
   @Transactional(readOnly = true)
   public boolean externalAccessActiveAsOf(AssetType assetType, UUID assetId, Instant asOf) {

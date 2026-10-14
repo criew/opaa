@@ -3,7 +3,7 @@ package io.opaa.directory.sync;
 import java.util.Objects;
 
 /**
- * One account as the directory reports it for a single synchronisation snapshot (#1818, ADR-0036
+ * One account as the directory reports it for a single synchronisation snapshot (ADR-0036
  * Entscheidung 3).
  *
  * @param subject the OIDC {@code subject} of the account, matched against {@code User.subject}

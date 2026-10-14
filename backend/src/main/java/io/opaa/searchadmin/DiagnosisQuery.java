@@ -17,11 +17,11 @@ import java.util.UUID;
  *     DiagnosisContextType#USER}, {@code null} otherwise.
  * @param justification the free-text justification Leitplanke (d) demands for a person context;
  *     required for {@link DiagnosisContextType#USER}, ignored otherwise.
- * @param spaceId the space whose Suchbereich to intersect the profile's readable libraries with
- *     (#1835); only for {@link DiagnosisContextType#PERMISSION_PROFILE}, {@code null} otherwise.
+ * @param spaceId the space whose Suchbereich to intersect the profile's readable libraries with;
+ *     only for {@link DiagnosisContextType#PERMISSION_PROFILE}, {@code null} otherwise.
  * @param trackedDocumentId a document to follow through every stage, or {@code null}.
- * @param metadataFilter the core-field filter to run with (#1070), applied exactly as a chat query
- *     applies it; {@link MetadataFilter#NONE} or {@code null} for none.
+ * @param metadataFilter the core-field filter to run with, applied exactly as a chat query applies
+ *     it; {@link MetadataFilter#NONE} or {@code null} for none.
  */
 public record DiagnosisQuery(
     String question,

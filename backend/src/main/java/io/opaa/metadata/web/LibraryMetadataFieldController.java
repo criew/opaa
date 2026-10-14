@@ -64,9 +64,8 @@ public class LibraryMetadataFieldController {
   }
 
   /**
-   * The Folgekosten of a planned schema change, asked before it is saved (#1072). A literal path
-   * segment beside {@code /{fieldKey}} - no field key can look like it, its pattern forbids the
-   * hyphen.
+   * The Folgekosten of a planned schema change, asked before it is saved. A literal path segment
+   * beside {@code /{fieldKey}} - no field key can look like it, its pattern forbids the hyphen.
    */
   @GetMapping("/change-impact")
   public MetadataChangeImpactResponse getMetadataChangeImpact(
@@ -86,7 +85,7 @@ public class LibraryMetadataFieldController {
         fieldService.changeImpact(libraryId, fieldKey, kind, caller));
   }
 
-  /** Switches the Kontextpräfix-Wirkstelle of the two switchable core fields (#1072). */
+  /** Switches the Kontextpräfix-Wirkstelle of the two switchable core fields. */
   @PutMapping("/core-context-prefix")
   public CoreContextPrefixResponse updateCoreContextPrefix(
       @PathVariable UUID libraryId,
@@ -129,23 +128,23 @@ public class LibraryMetadataFieldController {
   }
 
   /**
-   * Retires the field and works its documents off in Chargen (#1361). 204 when the bestand fit into
-   * the first Charge and the field is already gone, 202 with the remaining work otherwise - the run
-   * is then continued over {@link #runLibraryMetadataSchemaChanges}.
+   * Retires the field and works its documents off in Chargen. 204 when the bestand fit into the
+   * first Charge and the field is already gone, 202 with the remaining work otherwise - the run is
+   * then continued over {@link #runLibraryMetadataSchemaChanges}.
    */
   @DeleteMapping("/{fieldKey}")
   public ResponseEntity<LibraryMetadataSchemaRunResponse> deleteLibraryMetadataField(
       @PathVariable UUID libraryId, @PathVariable String fieldKey, @Caller CurrentUser caller) {
     LibraryMetadataSchemaRunResult result = fieldService.deleteField(libraryId, fieldKey, caller);
-    // Die eigene Löschung entscheidet, nicht der Zustand der Bibliothek: Läuft daneben noch eine
-    // Abbildung an einem anderen Feld, ist diese Löschung trotzdem fertig.
+    // This deletion decides, not the state of the library: if a remapping of another field is
+    // still running alongside, this deletion is complete all the same.
     if (result.confirmedChangeComplete()) {
       return ResponseEntity.noContent().build();
     }
     return ResponseEntity.accepted().body(LibraryMetadataFieldResponseMapper.toRunResponse(result));
   }
 
-  /** One Charge of the library's pending value mappings and field deletions (#1361). */
+  /** One Charge of the library's pending value mappings and field deletions. */
   @PostMapping("/schema-changes/run")
   public LibraryMetadataSchemaRunResponse runLibraryMetadataSchemaChanges(
       @PathVariable UUID libraryId,

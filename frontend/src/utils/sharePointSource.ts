@@ -1,7 +1,7 @@
 import type { LibraryResponse } from '@/shared/api/types'
 import type { LibrarySourceConfigPayload } from './librarySourceConfig'
 
-/** The fixed address of a SharePoint library, Microsoft Graph (ADR-0040); the form never shows it. */
+/** The fixed address of a SharePoint library, Microsoft Graph (ADR-0047); the form never shows it. */
 export const SHAREPOINT_API = 'https://graph.microsoft.com'
 
 export const MAX_SHAREPOINT_LIBRARIES = 50
@@ -27,7 +27,7 @@ export interface SharePointLibraryChoice {
 }
 
 /**
- * Everything the form edits (ADR-0040, Nachtrag „SharePoint“): the document libraries with their
+ * Everything the form edits (ADR-0047): the document libraries with their
  * folders and the library's own full-sync rhythm. No secret - the profile signs in.
  */
 export interface SharePointSourceValues {

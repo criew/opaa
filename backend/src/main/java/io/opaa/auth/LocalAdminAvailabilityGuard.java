@@ -72,8 +72,8 @@ public class LocalAdminAvailabilityGuard {
 
   /**
    * The same check for an act that would take several administrators at once - the directory
-   * synchronisation, which plans every lock of one run before applying any of them (#1818). Asking
-   * once per account would let two departing administrators each count the other as remaining.
+   * synchronisation, which plans every lock of one run before applying any of them. Asking once per
+   * account would let two departing administrators each count the other as remaining.
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public void requireLoginCapableAdminBesides(UUID organizationId, Set<UUID> excludedUserIds) {

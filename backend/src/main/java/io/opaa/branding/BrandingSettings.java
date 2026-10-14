@@ -10,10 +10,10 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 /**
- * The single, system-wide branding configuration row (#582, docs/design/guidelines.md#7) - a
- * singleton, not one row per organization, for the same reason {@link
- * io.opaa.audit.AuditRetentionSettings} is one: OPAA is deployed once per Behörde (ADR-0015), and
- * "das Branding" is what that one deployment looks like.
+ * The single, system-wide branding configuration row (docs/design/guidelines.md#7) - a singleton,
+ * not one row per organization, for the same reason {@link io.opaa.audit.AuditRetentionSettings} is
+ * one: OPAA is deployed once per Behörde (ADR-0015), and "das Branding" is what that one deployment
+ * looks like.
  *
  * <p><b>Every field is nullable, and that is the point.</b> {@code null} means "never configured",
  * not "empty", and {@link BrandingSettingsService} resolves it to the {@link BrandingDefaults OPAA
@@ -144,9 +144,9 @@ public class BrandingSettings {
 
   /**
    * Replaces the four non-binary fields wholesale - a {@code null} argument means "back to the OPAA
-   * default", matching {@code PUT}'s own replace-everything semantics (#582). Deliberately one
-   * method rather than four setters: there is no code path that legitimately changes one of these
-   * without deciding about the other three, and four setters would invite one.
+   * default", matching {@code PUT}'s own replace-everything semantics. Deliberately one method
+   * rather than four setters: there is no code path that legitimately changes one of these without
+   * deciding about the other three, and four setters would invite one.
    */
   void replaceSettings(
       String productName, String claim, String primaryColor, ColorScheme defaultColorScheme) {

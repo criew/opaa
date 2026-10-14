@@ -540,10 +540,10 @@ class AsyncIndexingExecutorTest {
   @Test
   void attachmentsOfAChecksumSkippedMailArePreservedRecursivelyFromTheDatabase()
       throws IOException {
-    // The Nachtragsfall of ADR-0022, Entscheidung 3: an unchanged (checksum-skipped) mail is
-    // never re-parsed, so the executor reports it present but not reprocessed - and the
-    // reconciliation preserves its attachment rows, including a grandchild of a nested mail,
-    // from the database regardless of row order.
+    // The backfill case of ADR-0022, Entscheidung 3: an unchanged (checksum-skipped) mail is never
+    // re-parsed, so the executor reports it present but not reprocessed - and the reconciliation
+    // preserves its attachment rows, including a grandchild of a nested mail, from the database
+    // regardless of row order.
     Path mailFile = documentDir.resolve("unveraendert.eml");
     Files.writeString(mailFile, "mail content");
     String mailPath = mailFile.toAbsolutePath().toString();

@@ -37,7 +37,7 @@ export const sharePointSource: SourceRegistration = {
       }
     },
     isDirty: (values: SharePointSourceValues) => values.libraries.length > 0,
-    // ADR-0040, Nachtrag „SharePoint“: only a profile signs in; the library holds no secret
+    // ADR-0047: only a profile signs in; the library holds no secret
     validate: (values: SharePointSourceValues, context) =>
       context.mode === 'create' && !context.connection
         ? formIssue('SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.')

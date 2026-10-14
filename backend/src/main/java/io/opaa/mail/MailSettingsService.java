@@ -24,8 +24,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.StringUtils;
 
 /**
- * Reads and changes the systemwide SMTP configuration (#1536, ADR-0033 Entscheidung 10) and owns
- * the process-local snapshot every send path reads.
+ * Reads and changes the systemwide SMTP configuration (ADR-0033 Entscheidung 10) and owns the
+ * process-local snapshot every send path reads.
  *
  * <p>{@link #snapshot()} answers from memory, so sending opens no transaction; it is rebuilt on
  * first use and on every {@link MailSettingsChangedEvent} <em>after</em> its transaction committed,

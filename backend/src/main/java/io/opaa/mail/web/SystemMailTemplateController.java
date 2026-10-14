@@ -26,8 +26,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The wording of the mails this installation sends (#1536, ADR-0033 Entscheidung 10), {@code
- * SYSTEM_ADMIN} only.
+ * The wording of the mails this installation sends (ADR-0033 Entscheidung 10), {@code SYSTEM_ADMIN}
+ * only.
  *
  * <p><b>The registry is closed</b>: there is no create and no delete, only override ({@code PUT})
  * and reset ({@code DELETE}) of one of the twelve keys {@link MailTemplateKey} declares. That is

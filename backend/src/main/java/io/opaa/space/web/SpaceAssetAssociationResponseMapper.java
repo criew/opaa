@@ -45,9 +45,8 @@ final class SpaceAssetAssociationResponseMapper {
   }
 
   /**
-   * Below MANAGER the entry carries the space alone (#1939): {@link
-   * AssetSpaceLink#managementDetail} is the one place that decides it, so a reduced link can never
-   * leak a field through this mapper.
+   * Below MANAGER the entry carries the space alone: {@link AssetSpaceLink#managementDetail} is the
+   * one place that decides it, so a reduced link can never leak a field through this mapper.
    */
   static AssetSpaceAssociationResponse toAssetSpaceResponse(AssetSpaceLink link) {
     SpaceAssetAssociation association = link.association();

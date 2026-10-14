@@ -8,8 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The Herleitung "warum sehe ich das" for the caller themselves, for an asset of any type (#1822).
- * It requires {@link AssetRole#VIEWER} like the asset's own view, so an asset the caller does not
+ * The Herleitung "warum sehe ich das" for the caller themselves, for an asset of any type. It
+ * requires {@link AssetRole#VIEWER} like the asset's own view, so an asset the caller does not
  * reach answers {@code 404} rather than an empty derivation that would confirm its existence.
  */
 @Service

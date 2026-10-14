@@ -13,7 +13,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * The production {@link OidcJwtDecoderFactory} (#1329, ADR-0025 Entscheidung 1 and 3): a {@link
+ * The production {@link OidcJwtDecoderFactory} (ADR-0025 Entscheidung 1 and 3): a {@link
  * NimbusJwtDecoder} on a fixed JWK set address - the provider's override, or the {@code jwks_uri}
  * of a discovery document the {@link OidcDiscoveryClient} fetched and address-checked - with the
  * standard validators (expiry, issuer - byte for byte against the stored issuer, as OIDC requires)

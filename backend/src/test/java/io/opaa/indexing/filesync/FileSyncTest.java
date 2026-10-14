@@ -15,7 +15,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * What {@link FileSync} offers a store beyond the contract (ADR-0040, Entscheidungen 1 and 6): the
+ * What {@link FileSync} offers a store beyond the contract (ADR-0045, Entscheidungen 1 and 3): the
  * start cursors of a change log, held from the first begin of a full sync until it completes, and
  * subtrees a store reports unchanged instead of listing them.
  */

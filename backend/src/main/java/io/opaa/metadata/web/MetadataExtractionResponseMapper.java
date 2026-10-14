@@ -15,8 +15,8 @@ import io.opaa.metadata.LibraryMetadataSample;
 import io.opaa.metadata.ModelExtractionStats;
 
 /**
- * Maps the model-backed extraction's domain records (#1073) onto their generated API types. The
- * chat role is mapped without any access key, and the Stichprobe carries no Schlagwort.
+ * Maps the model-backed extraction's domain records onto their generated API types. The chat role
+ * is mapped without any access key, and the Stichprobe carries no Schlagwort.
  */
 public final class MetadataExtractionResponseMapper {
 
