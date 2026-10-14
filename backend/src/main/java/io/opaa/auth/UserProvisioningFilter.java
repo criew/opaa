@@ -20,10 +20,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class UserProvisioningFilter extends OncePerRequestFilter {
 
   /**
-   * The {@code error_description} of an account the directory synchronisation locked (#1818) - the
-   * same channel the local issuer's refusals use ({@code io.opaa.account.LocalTokenMarkers}), so
-   * the SPA tells it apart from an expired token, starts no renewal and names reason and contact
-   * instead of redirecting silently.
+   * The {@code error_description} of an account the directory synchronisation locked - the same
+   * channel the local issuer's refusals use ({@code io.opaa.account.LocalTokenMarkers}), so the SPA
+   * tells it apart from an expired token, starts no renewal and names reason and contact instead of
+   * redirecting silently.
    */
   static final String ACCOUNT_LOCKED_BY_DIRECTORY = "account_locked:directory";
 
@@ -40,7 +40,7 @@ public class UserProvisioningFilter extends OncePerRequestFilter {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
       User user = userService.provisionFromToken(jwt);
-      // #1818: a still valid token of a locked account reaches nothing. Checked here rather than
+      // A still valid token of a locked account reaches nothing. Checked here rather than
       // at every endpoint, and on every request rather than once per session, so the lock takes
       // effect with the next request instead of with the next sign-in.
       if (user.isDirectoryLocked()) {

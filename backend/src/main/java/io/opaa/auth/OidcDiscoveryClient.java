@@ -20,7 +20,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Fetches a provider's discovery document and JWK set with the address policy applied before every
- * request and no redirects followed at all (#1329, ADR-0025 Entscheidung 3): the {@code jwks_uri} a
+ * request and no redirects followed at all (ADR-0025 Entscheidung 3): the {@code jwks_uri} a
  * discovery document names is operator-independent content of the provider and must pass the same
  * check as the issuer the operator typed, before the first byte is read from it. Shared by the
  * connection test and the decoder factory, so both see exactly the same provider.

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
  * requires {@code SYSTEM_ADMIN}, unchanged): the member/grant pickers of the frontend ({@code
  * UserPicker}, {@code SubjectPicker}, {@code SpaceCreatePage}) need to search for a user to add,
  * and every caller reaching those pages is an ordinary space/library member, not necessarily a
- * system admin (#777). Before this endpoint, those pickers called the admin-only list, got a
+ * system admin. Before this endpoint, those pickers called the admin-only list, got a
  * silently-swallowed 403 for anyone without {@code SYSTEM_ADMIN}, and rendered a permanently empty,
  * dead-looking search field - "Mitglied hinzufügen" was unusable for every non-admin. Same
  * precedent as {@code MeController#myGroups} (any authenticated user needs their own group

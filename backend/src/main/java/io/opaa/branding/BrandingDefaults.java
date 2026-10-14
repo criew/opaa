@@ -3,13 +3,13 @@ package io.opaa.branding;
 import io.opaa.api.types.ColorScheme;
 
 /**
- * The OPAA standard every unconfigured branding field falls back to (#582). Kept in one place, and
+ * The OPAA standard every unconfigured branding field falls back to. Kept in one place, and
  * resolved per field rather than per row: an operator who only replaces the logo keeps the standard
  * product name, and a later change to the standard reaches every deployment that never overrode it.
  *
  * <p>The values mirror docs/design/guidelines.md - {@link #PRIMARY_COLOR} is the accent {@code
- * blue.500} the token layer already carries ({@code frontend/src/shared/theme/tokens.ts}, #581).
- * Changing one here without changing it there would split the standard in two.
+ * blue.500} the token layer already carries ({@code frontend/src/shared/theme/tokens.ts}). Changing
+ * one here without changing it there would split the standard in two.
  */
 public final class BrandingDefaults {
 

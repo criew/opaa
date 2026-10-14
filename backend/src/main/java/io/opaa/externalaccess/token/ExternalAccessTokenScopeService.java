@@ -20,9 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
  * without anyone touching the token.
  *
  * <p>Two of the four are seams into neighbouring issues: {@link
- * ExternalAccessSettingsService#isEnabled()} (#1717) and {@link ExternalAccessLibraryRelease}
- * (#1731). Adding them here rather than in front of the search means there is exactly one place the
- * intersection is formed - a second filtering site would be a second truth.
+ * ExternalAccessSettingsService#isEnabled()} and {@link ExternalAccessLibraryRelease}. Adding them
+ * here rather than in front of the search means there is exactly one place the intersection is
+ * formed - a second filtering site would be a second truth.
  *
  * <p>A library whose release is gone is not merely filtered out: its selection entry is
  * extinguished, so a later release does not revive it. That is the one write on this read path, and

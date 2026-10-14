@@ -23,7 +23,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * A persistent, space-owned chat (#525, docs/features/spaces-and-assets.md#chats). Composition, not
+ * A persistent, space-owned chat (docs/features/spaces-and-assets.md#chats). Composition, not
  * association: {@link #spaceId} is set once at construction and never changes - a chat cannot be
  * moved to another space. Visible only to {@link #authorId}; not even a space or system admin may
  * read it while {@link #status} is {@link ChatStatus#PRIVATE} - the only value that currently
@@ -60,9 +60,9 @@ public class Chat {
   private String title;
 
   /**
-   * Where {@link #title} came from (#557) - see {@link TitleSource}'s Javadoc. {@code GENERATED}
-   * unless the constructor or {@link #applyUpdate} set it to {@code CUSTOM} because a title was
-   * explicitly supplied.
+   * Where {@link #title} came from - see {@link TitleSource}'s Javadoc. {@code GENERATED} unless
+   * the constructor or {@link #applyUpdate} set it to {@code CUSTOM} because a title was explicitly
+   * supplied.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "title_source", nullable = false, length = 20)
@@ -81,11 +81,10 @@ public class Chat {
    * chat_library_references join table, not an array column, so both foreign keys are enforced at
    * the database level.
    *
-   * <p><b>#677: chat_library_references also carries organization_id, which this collection
-   * deliberately never sets.</b> A BEFORE INSERT trigger, {@code
-   * trg_chat_library_references_set_organization}, derives it unconditionally from the row's own
-   * {@code chat_id} on every insert - the composite foreign keys {@code
-   * fk_chat_library_references_chat_organization}/{@code
+   * <p><b>Chat_library_references also carries organization_id, which this collection deliberately
+   * never sets.</b> A BEFORE INSERT trigger, {@code trg_chat_library_references_set_organization},
+   * derives it unconditionally from the row's own {@code chat_id} on every insert - the composite
+   * foreign keys {@code fk_chat_library_references_chat_organization}/{@code
    * fk_chat_library_references_library_organization} then reject a chat_id/library_id pair whose
    * organizations differ, at the database level, without the application ever naming an
    * organization_id itself. Widening this {@code @ElementCollection<UUID>} to a {@code
@@ -107,9 +106,9 @@ public class Chat {
   private Set<UUID> referencedLibraryIds = new LinkedHashSet<>();
 
   /**
-   * The chat's sticky core-field filter (#1070) as {@link MetadataFilterJson} writes it; {@code
-   * null} for no filter. Applied to every question of this chat next to the search scope above -
-   * the Kontext der Unterhaltung the specification names as one of the two sources of a filter
+   * The chat's sticky core-field filter as {@link MetadataFilterJson} writes it; {@code null} for
+   * no filter. Applied to every question of this chat next to the search scope above - the Kontext
+   * der Unterhaltung the specification names as one of the two sources of a filter
    * (metadata-schema.md, Wirkstelle 1).
    */
   @JdbcTypeCode(SqlTypes.JSON)
@@ -144,7 +143,7 @@ public class Chat {
     this.authorId = authorId;
     this.organizationId = organizationId;
     this.title = title;
-    // #557: a title supplied at creation - even an explicit blank string - is CUSTOM and must
+    // A title supplied at creation - even an explicit blank string - is CUSTOM and must
     // never be overwritten by the prefix fallback or LLM-derived title generation, see
     // TitleSource's Javadoc.
     this.titleSource = title != null ? TitleSource.CUSTOM : TitleSource.GENERATED;
@@ -201,8 +200,8 @@ public class Chat {
   }
 
   /**
-   * The same PATCH with the metadata filter (#1070): {@code null} leaves it unchanged, an empty
-   * filter clears it - the one field whose "omitted" and "cleared" are told apart by emptiness.
+   * The same PATCH with the metadata filter: {@code null} leaves it unchanged, an empty filter
+   * clears it - the one field whose "omitted" and "cleared" are told apart by emptiness.
    */
   public void applyUpdate(
       String newTitle,
@@ -214,7 +213,7 @@ public class Chat {
     }
     if (newTitle != null) {
       this.title = newTitle;
-      // #557: a user-initiated rename is CUSTOM from here on - permanent, see TitleSource's
+      // A user-initiated rename is CUSTOM from here on - permanent, see TitleSource's
       // Javadoc, regardless of whether this happens before or after the chat's first answer.
       this.titleSource = TitleSource.CUSTOM;
     }

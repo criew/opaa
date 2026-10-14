@@ -14,14 +14,14 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * One identity provider a deployment accepts sign-ins from (#1329, ADR-0025). {@link
- * #getIssuerUri()} is the provider's identity: unique per row ({@code
- * uq_oidc_providers_issuer_uri}), the {@code iss} a token must carry, and the authority the SPA
- * runs the code flow against. Public clients only - there is no secret. {@link #getJwkSetUri()}
- * optionally names the backend-side address of the JWK set when it differs from what discovery
- * under the issuer would yield (the Compose split between {@code keycloak:8180} and {@code
- * localhost:8180}). At most one row is the default provider ({@code
- * ux_oidc_providers_single_default}), the one {@code opaa.auth.initial-admin-email} applies to.
+ * One identity provider a deployment accepts sign-ins from (ADR-0025). {@link #getIssuerUri()} is
+ * the provider's identity: unique per row ({@code uq_oidc_providers_issuer_uri}), the {@code iss} a
+ * token must carry, and the authority the SPA runs the code flow against. Public clients only -
+ * there is no secret. {@link #getJwkSetUri()} optionally names the backend-side address of the JWK
+ * set when it differs from what discovery under the issuer would yield (the Compose split between
+ * {@code keycloak:8180} and {@code localhost:8180}). At most one row is the default provider
+ * ({@code ux_oidc_providers_single_default}), the one {@code opaa.auth.initial-admin-email} applies
+ * to.
  *
  * <p>Since ADR-0033 the local account management is one row of this table too ({@link
  * #localProvider}, {@link ProviderType#LOCAL}, at most one - {@code
@@ -75,9 +75,9 @@ public class OidcProvider {
 
   /**
    * Whether this provider's groups come from a scheduled directory run instead of its tokens'
-   * groups claim (ADR-0036, Entscheidung 2 and 3, #1816). A provider has exactly one group
-   * mechanism: {@code chk_oidc_providers_directory_sync} holds "enabled implies an empty groups
-   * claim, an OIDC row and an interval" against a write past the application too.
+   * groups claim (ADR-0036, Entscheidung 2 and 3). A provider has exactly one group mechanism:
+   * {@code chk_oidc_providers_directory_sync} holds "enabled implies an empty groups claim, an OIDC
+   * row and an interval" against a write past the application too.
    */
   @Column(name = "directory_sync_enabled", nullable = false)
   private boolean directorySyncEnabled;
@@ -206,8 +206,8 @@ public class OidcProvider {
   }
 
   /**
-   * Switches this provider's directory run on or off (#1816). The caller has already established
-   * that the mechanisms do not collide - this method only keeps the entity consistent with {@code
+   * Switches this provider's directory run on or off. The caller has already established that the
+   * mechanisms do not collide - this method only keeps the entity consistent with {@code
    * chk_oidc_providers_directory_sync}: a switched-off run carries no interval.
    */
   public void configureDirectorySync(boolean enabled, int intervalMinutes) {

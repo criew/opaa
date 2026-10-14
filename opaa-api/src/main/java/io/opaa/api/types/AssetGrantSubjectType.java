@@ -12,8 +12,8 @@ public enum AssetGrantSubjectType {
   /**
    * Every account of the organization, without naming one - "Alle Konten". Replaces the former
    * release level {@code AssetVisibility.ORGANIZATION}: organization-wide reach is a grant like any
-   * other, in the same list and the same history (#1931). Not a synthetic group object, for the
-   * reason {@link CapabilitySubjectType#ALL_ACCOUNTS} already gives.
+   * other, in the same list and the same history. Not a synthetic group object, for the reason
+   * {@link CapabilitySubjectType#ALL_ACCOUNTS} already gives.
    */
   ALL_ACCOUNTS
 }

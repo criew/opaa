@@ -3,10 +3,9 @@ package io.opaa.retrieval;
 import java.util.List;
 
 /**
- * The Gesprächsnotiz block of a system prompt (#1487, docs/features/conversation-memory.md, "Wie
- * die Notiz ins Modell kommt"): the same header and the same bullet form for both calls,
- * differently filled - the sub-question decomposition gets the {@code RAHMEN} points, the answer
- * all of them.
+ * The Gesprächsnotiz block of a system prompt (docs/features/conversation-memory.md, "Wie die Notiz
+ * ins Modell kommt"): the same header and the same bullet form for both calls, differently filled -
+ * the sub-question decomposition gets the {@code RAHMEN} points, the answer all of them.
  *
  * <p>The header names the block as Angaben of the asking person and explicitly denies it the status
  * of a source, so a model cannot mistake a note point for retrieved context worth citing.

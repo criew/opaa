@@ -14,9 +14,9 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one period a subject - a person or a
- * group - held a role in a space (#1815, ADR-0036 Entscheidung 8). {@code validTo == null} means
- * the interval is open, i.e. the membership exists right now. Written and closed exclusively by
- * {@link SpaceMembershipHistoryService}.
+ * group - held a role in a space (ADR-0036 Entscheidung 8). {@code validTo == null} means the
+ * interval is open, i.e. the membership exists right now. Written and closed exclusively by {@link
+ * SpaceMembershipHistoryService}.
  *
  * <p>Lives in this package for the same reason {@code io.opaa.asset.AssetVisibilityHistory} lives
  * in the asset shell: a space membership is space state. It shares the interval contract and the
@@ -69,7 +69,7 @@ public class SpaceMembershipHistory {
   private Instant validTo;
 
   /**
-   * The transfer this interval belongs to (#1834) - see {@code
+   * The transfer this interval belongs to - see {@code
    * io.opaa.permission.AssetGrantHistory#getTransferId}.
    */
   @Column(name = "transfer_id")

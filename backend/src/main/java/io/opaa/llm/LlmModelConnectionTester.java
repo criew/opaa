@@ -25,7 +25,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Probes a managed chat model's OpenAI-compatible endpoint (Stufe 1, #757,
+ * Probes a managed chat model's OpenAI-compatible endpoint (Stufe 1,
  * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung: "Verbindungstest
  * je Eintrag. Eine falsch eingetragene Adresse fällt sonst erst dem nächsten fragenden Menschen
  * auf") with a short, bounded chat completion request - the same shape {@code
@@ -80,8 +80,8 @@ public class LlmModelConnectionTester {
    *
    * @throws NotFoundException 404 when {@code modelId} is set but no such model exists
    * @throws ValidationException 400 when the stored key would have to be sent to an address other
-   *     than the model's own, or when {@code baseUrl} itself carries credentials (#1147) - the
-   *     probe URI is logged on failure, so such an address must not reach the probe at all
+   *     than the model's own, or when {@code baseUrl} itself carries credentials - the probe URI is
+   *     logged on failure, so such an address must not reach the probe at all
    */
   public TestOutcome test(
       String baseUrl, String modelIdentifier, String apiKey, UUID modelId, BigDecimal temperature) {
@@ -217,7 +217,7 @@ public class LlmModelConnectionTester {
    * baseUrl} is tolerated, never doubled. Any query string on {@code baseUrl} (e.g. an Azure {@code
    * api-version} parameter) is preserved and moved to the end of the resulting URI rather than
    * ending up in the middle of the path (#757 review). Shared with the rerank role through {@link
-   * ModelEndpointUri}, which also enforces the "no credentials in the address" rule (#1147).
+   * ModelEndpointUri}, which also enforces the "no credentials in the address" rule.
    */
   private static URI chatCompletionsUri(String baseUrl) throws URISyntaxException {
     return ModelEndpointUri.append(baseUrl, "/chat/completions");

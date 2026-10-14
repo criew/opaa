@@ -8,8 +8,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One administrator override of a delivered mail template, for one key and one locale (#1536,
- * ADR-0033 Entscheidung 10). The table holds overrides only: which templates exist is {@link
+ * One administrator override of a delivered mail template, for one key and one locale (ADR-0033
+ * Entscheidung 10). The table holds overrides only: which templates exist is {@link
  * MailTemplateKey}, so deleting this row restores the delivered German text rather than leaving a
  * template without content.
  */

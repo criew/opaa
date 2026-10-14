@@ -20,8 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Lets an expired Freigabe für Fremdzugänge stop taking effect without anyone acting (#1731,
- * docs/features/external-access.md): the mandatory Befristung is the one measure that keeps the
+ * Lets an expired Freigabe für Fremdzugänge stop taking effect without anyone acting
+ * (docs/features/external-access.md): the mandatory Befristung is the one measure that keeps the
  * Bestand of releases from ratcheting upwards, and it only is one if nobody has to remember it.
  *
  * <p>Writes both halves the specification requires, the way {@code

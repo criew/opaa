@@ -47,11 +47,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An RSS 2.0 feed (#474). The connection test fetches and parses the feed the way a run does,
- * bounded by {@code opaa.indexing.rss.max-feed-size-bytes}, and counts at most {@code max-entries}
- * entries - never more than a run would process. A changed feed address discards the
- * conditional-GET state, so the next run fetches the feed in full. The original of an indexed entry
- * is streamed from its stored URL ({@link RemoteOriginalAccess}).
+ * An RSS 2.0 feed. The connection test fetches and parses the feed the way a run does, bounded by
+ * {@code opaa.indexing.rss.max-feed-size-bytes}, and counts at most {@code max-entries} entries -
+ * never more than a run would process. A changed feed address discards the conditional-GET state,
+ * so the next run fetches the feed in full. The original of an indexed entry is streamed from its
+ * stored URL ({@link RemoteOriginalAccess}).
  */
 public class RssFeedSourceConnector
     implements SourceConnector, OriginalAccess, RowDeclaredProperties {

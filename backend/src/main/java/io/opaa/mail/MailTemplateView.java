@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * One template's effective content plus the delivered default alongside it (#1536), for the
- * administration API. A domain record, not the JPA entity: the effective content is often not a
- * stored row at all, and the delivered default has no row by definition.
+ * One template's effective content plus the delivered default alongside it, for the administration
+ * API. A domain record, not the JPA entity: the effective content is often not a stored row at all,
+ * and the delivered default has no row by definition.
  *
  * @param source where the effective content came from - a stored override or the delivered default
  * @param defaultBodyHtml the delivered fragment already inside the branded frame, placeholders

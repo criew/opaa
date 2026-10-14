@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The one transfer of rights from one subject to another (#1834, ADR-0036 Entscheidung 10) - four
+ * The one transfer of rights from one subject to another (ADR-0036 Entscheidung 10) - four
  * occasions, one mechanic: reorganisation, provider replacement, change of group mechanism and
  * succession.
  *

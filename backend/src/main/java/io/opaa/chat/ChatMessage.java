@@ -14,8 +14,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * One persisted question/answer turn of a {@link Chat} (#525). The source of truth for conversation
- * memory - see {@code QueryService} - replacing the purely in-memory, TTL-evicted {@code
+ * One persisted question/answer turn of a {@link Chat}. The source of truth for conversation memory
+ * - see {@code QueryService} - replacing the purely in-memory, TTL-evicted {@code
  * CaffeineChatMemoryRepository} for chats that have a persisted chat id; that cache may remain in
  * front of it as a pure read optimisation.
  *

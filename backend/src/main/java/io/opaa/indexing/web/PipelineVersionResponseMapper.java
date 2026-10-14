@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  * Maps {@code io.opaa.indexing}'s pipeline-version domain types onto their generated API responses
- * (#860: the domain services never see a DTO).
+ * (the domain services never see a DTO).
  */
 final class PipelineVersionResponseMapper {
 

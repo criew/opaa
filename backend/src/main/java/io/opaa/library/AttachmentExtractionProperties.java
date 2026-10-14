@@ -4,8 +4,8 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Bounds the synchronous re-extraction of attachment bytes an "Im Dokument öffnen" click triggers
- * (#1243) - see {@link AttachmentExtractionLimiter} for what the two values actually guard.
+ * Bounds the synchronous re-extraction of attachment bytes an "Im Dokument öffnen" click triggers -
+ * see {@link AttachmentExtractionLimiter} for what the two values actually guard.
  *
  * @param maxConcurrent how many attachment re-extractions may <em>run</em> at the same time across
  *     the whole instance - it bounds the parsing and downloading, not how long an already extracted

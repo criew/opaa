@@ -54,7 +54,7 @@ public class GroupMembershipResolver {
     // invalidation and its next read, never too little - invalidateUser/invalidateUsers below,
     // called post-commit, are the primary correctness mechanism. The time-based expiry is a
     // safety net for eviction paths this class does not yet know about (e.g. a future bulk
-    // directory sync, see #237).
+    // directory sync).
     this.groupIdsByUser =
         Caffeine.newBuilder().maximumSize(50_000).expireAfterWrite(Duration.ofMinutes(10)).build();
   }
@@ -78,13 +78,13 @@ public class GroupMembershipResolver {
    * PermissionSubject#organizationId()} in both branches: for a {@code GROUP} subject it is the
    * group's current membership, filtered to that organization at the query in {@link
    * GroupMembershipSource#findUserIdsByGroupIdAndOrganizationId} - membership is never inherited
-   * downward beyond what is recorded there (see #237, #208). For a {@code USER} subject it is that
-   * one user, but only if the user actually belongs to the given organization; otherwise the empty
-   * set. A deactivated group reaches nobody (ADR-0036, Entscheidung 14). This is the one place
-   * every future caller (#202) goes through, so it is deliberately not left to each caller to
-   * re-check the boundary for the {@code USER} case - the extra lookup costs one indexed hit on the
-   * hot path, which is cheaper than repeating the organization-boundary bug class that #199 had to
-   * fix in review.
+   * downward beyond what is recorded there. For a {@code USER} subject it is that one user, but
+   * only if the user actually belongs to the given organization; otherwise the empty set. A
+   * deactivated group reaches nobody (ADR-0036, Entscheidung 14). This is the one place every
+   * future caller goes through, so it is deliberately not left to each caller to re-check the
+   * boundary for the {@code USER} case - the extra lookup costs one indexed hit on the hot path,
+   * which is cheaper than repeating the organization-boundary bug class that #199 had to fix in
+   * review.
    */
   public Set<UUID> resolveUserIds(PermissionSubject subject) {
     return switch (subject.type()) {
@@ -100,15 +100,15 @@ public class GroupMembershipResolver {
    * the figure ADR-0036, Entscheidung 9 stores at the moment of the grant and compares against
    * "today", and the one ADR-0036, Entscheidung 7 measures a Rechteprofil against.
    *
-   * <p><b>Counted are accounts, not membership rows</b> (#1818): the membership of a locked account
-   * stays in force, and it is this count - not the rights resolution - that leaves it out. What
-   * counts as active is {@link AccountActivityService}, the one place that joins the directory lock
-   * with the derived state of a local credential; no caller carries a notion of its own.
+   * <p><b>Counted are accounts, not membership rows</b>: the membership of a locked account stays
+   * in force, and it is this count - not the rights resolution - that leaves it out. What counts as
+   * active is {@link AccountActivityService}, the one place that joins the directory lock with the
+   * derived state of a local credential; no caller carries a notion of its own.
    *
-   * <p>Counted in the database (#1820): a join of {@code group_memberships} with the accounts,
-   * carrying the same condition as {@link #activeMemberIds} - the figure sits on the list path of
-   * every space and every subject selection, where the member ids plus their accounts were paid for
-   * a single number. A parity test holds the two encodings of "active" together.
+   * <p>Counted in the database: a join of {@code group_memberships} with the accounts, carrying the
+   * same condition as {@link #activeMemberIds} - the figure sits on the list path of every space
+   * and every subject selection, where the member ids plus their accounts were paid for a single
+   * number. A parity test holds the two encodings of "active" together.
    */
   public int activeMemberCount(UUID groupId, UUID organizationId) {
     return membershipSource.countActiveMembers(groupId, organizationId, accountActivity.now());
@@ -116,9 +116,9 @@ public class GroupMembershipResolver {
 
   /**
    * The active accounts a group reaches - {@link #activeMemberCount}'s sibling for a caller that
-   * has to intersect them with something else (#1835: the Mindestgruppengröße counts the members
-   * who also reach one space). Same definition of "active", by construction: the count is this
-   * set's size, except for a deactivated group, which reaches nobody while it still has members.
+   * has to intersect them with something else (the Mindestgruppengröße counts the members who also
+   * reach one space). Same definition of "active", by construction: the count is this set's size,
+   * except for a deactivated group, which reaches nobody while it still has members.
    */
   public Set<UUID> activeMemberIds(UUID groupId, UUID organizationId) {
     return accountActivity.activeAmong(
@@ -127,9 +127,9 @@ public class GroupMembershipResolver {
 
   /**
    * One page of those active accounts, ordered by name - the read the grant giver of ADR-0036,
-   * Entscheidung 9 gets (#1880). Paged and capped in the database rather than in the caller, so the
-   * one path that hands out names never loads a whole group; {@link #activeMemberCount} says how
-   * far the paging reaches. Same definition of "active" as its siblings above.
+   * Entscheidung 9 gets. Paged and capped in the database rather than in the caller, so the one
+   * path that hands out names never loads a whole group; {@link #activeMemberCount} says how far
+   * the paging reaches. Same definition of "active" as its siblings above.
    */
   public List<UUID> activeMemberIdsPage(UUID groupId, UUID organizationId, int limit, int offset) {
     return membershipSource.findActiveMemberIdsPage(

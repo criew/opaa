@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 /**
  * Triggers {@link LlmModelSeeder#seedIfNeeded()} once, at application startup, before any request
  * can be served - the same shape {@code UploadPendingRecoveryRunner} already uses for its own
- * one-shot startup migration (#756).
+ * one-shot startup migration.
  *
  * <p>Deliberately thin: the actual transactional seeding logic lives in {@link LlmModelSeeder}, a
  * separate bean, because {@code @Transactional} only takes effect on a call that goes through that
@@ -25,8 +25,8 @@ import org.springframework.stereotype.Component;
  * left to propagate.
  *
  * <p>A missing {@code OPAA_SETTINGS_ENCRYPTION_KEY} while taking over a configured {@code openai}
- * API key is deliberately <em>not</em> among those (#771, PR #763 review's own scope was narrower
- * than the deployment docs it referenced): {@link LlmModelSeeder#seedIfNeeded()} catches that case
+ * API key is deliberately <em>not</em> among those (PR #763 review's own scope was narrower than
+ * the deployment docs it referenced): {@link LlmModelSeeder#seedIfNeeded()} catches that case
  * itself and logs an operator-facing error instead of throwing, so the application still starts -
  * see that method's own Javadoc. Only this class ever needs to distinguish "startup may proceed"
  * from "startup must abort"; {@link LlmModelSeeder} never decides that for itself beyond this one

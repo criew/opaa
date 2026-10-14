@@ -12,7 +12,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * The single settings row of the external access channel (#1717, ADR-0035; pattern {@code
+ * The single settings row of the external access channel (ADR-0035; pattern {@code
  * LocalAuthSettings}). {@code enabled} is the installation-wide switch and at the same time the
  * emergency stop; it is stored, never derived. The bounds of every value are enforced here and by
  * the table's CHECKs, so no write path can weaken them.

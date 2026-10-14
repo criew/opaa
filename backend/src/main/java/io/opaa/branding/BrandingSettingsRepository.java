@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 /**
- * Persistence for the singleton {@link BrandingSettings} row (#582).
+ * Persistence for the singleton {@link BrandingSettings} row.
  *
  * <p><b>No read path loads a {@code bytea} column it does not serve.</b> The three image columns
  * together are up to three megabytes, and both read paths are reachable without a session and

@@ -14,8 +14,8 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one period an asset belonged to one
- * owner (#1815, ADR-0036 Entscheidung 8). {@code validTo == null} means the interval is open, i.e.
- * that owner holds the asset right now. Written and closed exclusively by {@link
+ * owner (ADR-0036 Entscheidung 8). {@code validTo == null} means the interval is open, i.e. that
+ * owner holds the asset right now. Written and closed exclusively by {@link
  * AssetOwnershipHistoryService}; never updated in place except to set {@link #close}.
  *
  * <p>Type-independent like {@link AssetGrantHistory}: the asset is named by {@link AssetType} plus
@@ -61,9 +61,7 @@ public class AssetOwnershipHistory {
   @Column(name = "valid_to")
   private Instant validTo;
 
-  /**
-   * The transfer this interval belongs to (#1834) - see {@link AssetGrantHistory#getTransferId}.
-   */
+  /** The transfer this interval belongs to - see {@link AssetGrantHistory#getTransferId}. */
   @Column(name = "transfer_id")
   private UUID transferId;
 

@@ -1,5 +1,5 @@
 /**
- * Befugnis- und Protokollmodell für „Sicht als" in der Suchdiagnose (#1052) - the Baubedingung the
+ * Befugnis- und Protokollmodell für „Sicht als" in der Suchdiagnose - the Baubedingung the
  * Berechtigungs-Leitplanken (a)-(j) of docs/features/hybrid-retrieval.md put in front of shipping
  * "Sicht als (Person)". This package holds the rules and their enforcement, not the diagnosis
  * itself and no user interface for it.

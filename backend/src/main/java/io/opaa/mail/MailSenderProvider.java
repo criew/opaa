@@ -10,7 +10,7 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
 
 /**
- * Builds the {@link JavaMailSender} the current {@code mail_settings} describe (#1536, ADR-0033
+ * Builds the {@link JavaMailSender} the current {@code mail_settings} describe (ADR-0033
  * Entscheidung 10) and caches it <b>together with the snapshot it was built from</b>: a corrected
  * SMTP host takes effect on the next message, without a restart and without a second {@code
  * AFTER_COMMIT} listener whose order relative to the snapshot rebuild would be undefined.

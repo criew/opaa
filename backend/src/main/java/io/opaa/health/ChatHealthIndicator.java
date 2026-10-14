@@ -8,8 +8,8 @@ import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 /**
- * Reports the systemwide active chat model (#758,
- * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), not the static
+ * Reports the systemwide active chat model
+ * (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), not the static
  * Spring AI OpenAI autoconfiguration this indicator used to introspect - a health check that names
  * a different model than the one actually answering would be worse than none at all (see the
  * issue's own motivation). {@link ActiveChatModelResolver#resolveDescription()} reads {@code

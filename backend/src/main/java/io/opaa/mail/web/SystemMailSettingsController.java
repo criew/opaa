@@ -19,9 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The SMTP configuration of the installation (#1536, ADR-0033 Entscheidung 10), {@code
- * SYSTEM_ADMIN} only - under {@code /api/v1/system/} like branding, because it is an administrative
- * act rather than something every signed-in user reads.
+ * The SMTP configuration of the installation (ADR-0033 Entscheidung 10), {@code SYSTEM_ADMIN} only
+ * - under {@code /api/v1/system/} like branding, because it is an administrative act rather than
+ * something every signed-in user reads.
  *
  * <p><b>The password is write-only in both directions.</b> Responses carry the mask {@code ***},
  * and the same mask sent back means "unverändert" - a secret never travels to the browser and back

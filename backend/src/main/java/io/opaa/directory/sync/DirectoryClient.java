@@ -14,9 +14,9 @@ public interface DirectoryClient {
 
   /**
    * Reads the current, complete state of <b>one identity provider's</b> directory: its group list
-   * and, if the connector reports it, the state of its accounts (#1818). Since #1816 the run is
-   * bound to a provider row rather than to the organization alone, so an implementation is told
-   * which directory to read - an installation with two providers has two directories, and an
+   * and, if the connector reports it, the state of its accounts. Since #1816 the run is bound to a
+   * provider row rather than to the organization alone, so an implementation is told which
+   * directory to read - an installation with two providers has two directories, and an
    * organization-wide call could not tell them apart.
    *
    * @throws DirectoryUnavailableException if the directory cannot be reached or answered with an

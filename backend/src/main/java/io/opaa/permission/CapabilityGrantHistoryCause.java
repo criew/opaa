@@ -1,8 +1,8 @@
 package io.opaa.permission;
 
 /**
- * The operation that opened or closed a {@link CapabilityGrantHistory} interval (#1813). Mirrored
- * by the database check constraint {@code chk_capability_grant_history_cause}.
+ * The operation that opened or closed a {@link CapabilityGrantHistory} interval. Mirrored by the
+ * database check constraint {@code chk_capability_grant_history_cause}.
  */
 public enum CapabilityGrantHistoryCause {
   /**
@@ -19,7 +19,7 @@ public enum CapabilityGrantHistoryCause {
   /** A system administrator withdrew the capability from this subject. */
   REVOKED,
 
-  /** The capability was handed to another subject by a transfer (#1834) - closes the source. */
+  /** The capability was handed to another subject by a transfer - closes the source. */
   TRANSFERRED_OUT,
 
   /** The counterpart of {@link #TRANSFERRED_OUT}: the interval the target holds from then on. */

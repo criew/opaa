@@ -28,14 +28,14 @@ import org.springframework.transaction.annotation.Transactional;
  * and shares the one {@link PermissionHistoryClock} with this class, so the interval contract below
  * holds across both tables.
  *
- * <p><b>Interval contract</b> (#1497, ADR-0032), holding for every row written from that change on
- * - rows written before it can still carry the empty intervals it prevents, and are not repaired:
+ * <p><b>Interval contract</b> (ADR-0032), holding for every row written from that change on - rows
+ * written before it can still carry the empty intervals it prevents, and are not repaired:
  * successive <i>state</i> intervals of the same object have strictly increasing boundaries - two
  * changes that fall into the same clock tick still get different ones, because every boundary comes
  * from {@link PermissionHistoryClock} rather than from the wall clock directly. A state interval is
  * therefore never empty, and {@code validFrom <= asOf < validTo} has a solution for every state the
  * object held inside the retention period - a closed interval that ended before {@link
- * PermissionHistoryRetentionService#retentionCutoff()} is deleted and has none (#1833). Successive
+ * PermissionHistoryRetentionService#retentionCutoff()} is deleted and has none. Successive
  * intervals stay gapless: closing one and opening the next share a single boundary value.
  * Zero-length rows exist on purpose, but only as event markers ({@link AssetGrantHistory#terminal},
  * {@link GroupMembershipHistory#terminal}, {@link CapabilityGrantHistory#terminal}) recording a
@@ -133,8 +133,8 @@ public class PermissionHistoryService {
   }
 
   /**
-   * The source's side of a transfer (#1834, ADR-0036 Entscheidung 10): closes the open interval at
-   * {@code at} and writes the {@link AssetGrantHistoryCause#TRANSFERRED_OUT} marker carrying {@code
+   * The source's side of a transfer (ADR-0036 Entscheidung 10): closes the open interval at {@code
+   * at} and writes the {@link AssetGrantHistoryCause#TRANSFERRED_OUT} marker carrying {@code
    * transferId}. Call before the source grant row is deleted, with the boundary the whole transfer
    * shares - both sides must name the same instant, so the Stichtagsauskunft shows exactly one
    * subject on every day.
@@ -333,14 +333,14 @@ public class PermissionHistoryService {
    * Every asset id of {@code assetType} that a grant covered at {@code asOf} for {@code userId} -
    * directly, to a group they belonged to, or to "Alle Konten". The complete formula {@link
    * AssetAccessService#readableAssetIds} evaluates for "now", evaluated against the history tables
-   * (#1931: the third way is a grant too, so nothing is composed on top of this answer any more).
+   * (the third way is a grant too, so nothing is composed on top of this answer any more).
    *
-   * <p><b>Only inside the retention period</b> (#1833). A closed interval whose {@code validTo}
-   * lies before {@link PermissionHistoryRetentionService#retentionCutoff()} is deleted, so an
-   * {@code asOf} before that cutoff yields an <b>empty</b> answer, not a negative one: "no access"
-   * and "no longer on record" are indistinguishable in the return value. Every caller that turns
-   * this into an Auskunft has to compare its {@code asOf} against the cutoff first and say which of
-   * the two it is - the reading path #1822 builds is the one that owes this.
+   * <p><b>Only inside the retention period</b>. A closed interval whose {@code validTo} lies before
+   * {@link PermissionHistoryRetentionService#retentionCutoff()} is deleted, so an {@code asOf}
+   * before that cutoff yields an <b>empty</b> answer, not a negative one: "no access" and "no
+   * longer on record" are indistinguishable in the return value. Every caller that turns this into
+   * an Auskunft has to compare its {@code asOf} against the cutoff first and say which of the two
+   * it is - the reading path #1822 builds is the one that owes this.
    */
   @Transactional(readOnly = true)
   public Set<UUID> readableAssetIdsAsOf(
@@ -365,7 +365,7 @@ public class PermissionHistoryService {
 
   /**
    * Every grant state interval on one asset overlapping {@code [from, to)} - the object entry of
-   * the Stichtagsauskunft (#1822, ADR-0036 Entscheidung 8), and the inverse of {@link
+   * the Stichtagsauskunft (ADR-0036 Entscheidung 8), and the inverse of {@link
    * #readableAssetIdsAsOf}: that one asks "what did this person reach", this one "who reached this
    * object". Deliberately without an own person filter, which is what keeps it free of a Vollmacht.
    * The same retention caveat holds: what is no longer on record is simply absent.

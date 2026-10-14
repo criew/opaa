@@ -28,10 +28,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A directory on the server (ADR-0018). The operator's {@link FilesystemPathAllowlist} is the
- * security boundary against path enumeration (#484, ADR-0018 Entscheidung 6): an empty allowlist
- * disables the type, and both saving and testing check a path against it before anything on disk is
- * touched. A test only opens the directory itself - it reads nothing below it and reports neither a
- * count nor a file name.
+ * security boundary against path enumeration (ADR-0018 Entscheidung 6): an empty allowlist disables
+ * the type, and both saving and testing check a path against it before anything on disk is touched.
+ * A test only opens the directory itself - it reads nothing below it and reports neither a count
+ * nor a file name.
  *
  * <p>An original is served only when its path resolves - symlinks included - underneath the
  * library's own {@code sourcePath}, and only while that path is still inside the allowlist: an

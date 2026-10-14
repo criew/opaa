@@ -15,8 +15,8 @@ import org.springframework.util.StringUtils;
 
 /**
  * Performs the one-time takeover of the existing environment configuration into {@code llm_models}
- * as the initial active model (#756,
- * docs/features/llm-integration.md#übergang-aus-der-heutigen-konfiguration): "Beim ersten Start
+ * as the initial active model
+ * (docs/features/llm-integration.md#übergang-aus-der-heutigen-konfiguration): "Beim ersten Start
  * nach der Umstellung wird die vorhandene Konfiguration als initiales, aktives Modell übernommen,
  * sofern noch kein Modell hinterlegt ist."
  *
@@ -185,7 +185,7 @@ class LlmModelSeeder {
       return;
     }
     if (seeded != null && ModelEndpointUri.containsCredentials(seeded.getBaseUrl())) {
-      // #1147: this class writes to the repository directly, so LlmModelService's own rejection
+      // This class writes to the repository directly, so LlmModelService's own rejection
       // does not cover it. Skipped without a marker, like the missing-encryption-key case above -
       // a corrected environment variable is taken over on the next start. The address itself is
       // not logged; naming it would put the credentials into the very log this rule protects.
@@ -353,8 +353,8 @@ class LlmModelSeeder {
 
   /**
    * Thrown by {@link #seedFromOpenAi()} when a configured API key would need to be encrypted but
-   * {@code OPAA_SETTINGS_ENCRYPTION_KEY} is missing, invalid Base64 or the wrong length (#771,
-   * every case {@link io.opaa.security.SettingsEncryptor#encrypt} itself reports as an {@link
+   * {@code OPAA_SETTINGS_ENCRYPTION_KEY} is missing, invalid Base64 or the wrong length (every case
+   * {@link io.opaa.security.SettingsEncryptor#encrypt} itself reports as an {@link
    * IllegalStateException}). A configuration problem, not a fatal one: caught within {@link
    * #seedIfNeeded()} itself, before it ever reaches {@link LlmModelSeedRunner}, so this one-time
    * takeover is simply skipped for this start - no {@link LlmModelSeedMarker} is written, so it is

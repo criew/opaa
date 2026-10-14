@@ -12,9 +12,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Wires the directory connectors (#1817). The {@link HttpClient} is one shared instance that never
- * follows a redirect: every address it is given has passed {@link OidcAddressPolicy}, a redirect
- * target would not have.
+ * Wires the directory connectors. The {@link HttpClient} is one shared instance that never follows
+ * a redirect: every address it is given has passed {@link OidcAddressPolicy}, a redirect target
+ * would not have.
  */
 @Configuration
 @EnableConfigurationProperties(KeycloakDirectoryProperties.class)

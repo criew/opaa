@@ -46,7 +46,7 @@ public interface AssetGrantHistoryRepository
 
   /**
    * The open interval of the one grant to "Alle Konten" on an asset - named without a subject,
-   * because that subject names no row (#1931).
+   * because that subject names no row.
    */
   Optional<AssetGrantHistory> findByAssetTypeAndAssetIdAndSubjectTypeAndValidToIsNull(
       AssetType assetType, UUID assetId, AssetGrantSubjectType subjectType);
@@ -90,10 +90,10 @@ public interface AssetGrantHistoryRepository
 
   /**
    * Every <i>state</i> interval on one asset that overlaps {@code [from, to)} - the object-entry
-   * half of the Stichtagsauskunft (#1822). The zero-length event markers are excluded by {@code
-   * validTo > validFrom}: they record a revocation, and the state interval they belong to is in the
-   * result already. The grant's own {@code expiresAt} is <b>not</b> applied here; the caller cuts
-   * each interval to it, because an expiry ends a state without closing its row.
+   * half of the Stichtagsauskunft. The zero-length event markers are excluded by {@code validTo >
+   * validFrom}: they record a revocation, and the state interval they belong to is in the result
+   * already. The grant's own {@code expiresAt} is <b>not</b> applied here; the caller cuts each
+   * interval to it, because an expiry ends a state without closing its row.
    */
   @Query(
       "select h from AssetGrantHistory h "
@@ -124,10 +124,10 @@ public interface AssetGrantHistoryRepository
       @Param("asOf") Instant asOf);
 
   /**
-   * The "Alle Konten" counterpart of {@link #findReadableAssetIdsByDirectGrantAsOf} (#1931,
-   * ADR-0037 Entscheidung 8) - the third way of the readable-asset formula, evaluated against the
-   * history. It reaches every account of {@code organizationId} without naming one, so unlike the
-   * two above it takes no subject.
+   * The "Alle Konten" counterpart of {@link #findReadableAssetIdsByDirectGrantAsOf} (ADR-0037
+   * Entscheidung 8) - the third way of the readable-asset formula, evaluated against the history.
+   * It reaches every account of {@code organizationId} without naming one, so unlike the two above
+   * it takes no subject.
    */
   @Query(
       "select h.assetId from AssetGrantHistory h "

@@ -41,7 +41,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Moves every effect one subject has onto another in a single, recorded operation (#1834, ADR-0036
+ * Moves every effect one subject has onto another in a single, recorded operation (ADR-0036
  * Entscheidung 10) - the one mechanic behind reorganisation, provider replacement, a change of
  * group mechanism and succession.
  *
@@ -290,7 +290,7 @@ public class PermissionTransferService {
                         new PermissionTransferObject(
                             transfer.getId(), parties.organizationId(), assetType, assetId))));
 
-    // #1819: the Übernahme is this operation - so it ends the succession record of every object it
+    // The Übernahme is this operation - so it ends the succession record of every object it
     // touched and names the person who did it, instead of leaving the run to close it anonymously.
     touched.forEach(
         (assetType, assetIds) ->

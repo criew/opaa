@@ -23,13 +23,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Directory synchronisation as a rights event (#237, #1816): the public entry point and the
- * boundary to an actual directory. Deliberately holds no {@code @Transactional} annotation anywhere
- * in this class - {@link DirectoryClient#fetchSnapshot} runs here, outside any transaction of the
- * application's transaction manager, so a slow or failing real directory connector never holds a
- * work transaction open for the duration of a network call (review of PR #297). The transactional
- * plan computation and, if applicable, application live in {@link DirectorySyncPlanExecutor}, a
- * separate bean called from here through Spring's proxy.
+ * Directory synchronisation as a rights event: the public entry point and the boundary to an actual
+ * directory. Deliberately holds no {@code @Transactional} annotation anywhere in this class -
+ * {@link DirectoryClient#fetchSnapshot} runs here, outside any transaction of the application's
+ * transaction manager, so a slow or failing real directory connector never holds a work transaction
+ * open for the duration of a network call (review of PR #297). The transactional plan computation
+ * and, if applicable, application live in {@link DirectorySyncPlanExecutor}, a separate bean called
+ * from here through Spring's proxy.
  *
  * <p><b>Bound to an identity provider row</b> (ADR-0036, Entscheidung 2 and 3). A run exists only
  * for a provider whose row is enabled and whose directory run is switched on; both are refused with

@@ -389,7 +389,7 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Backs the model step's one call per document (#1073) - deliberately not the common {@code
+   * Backs the model step's one call per document - deliberately not the common {@code
    * ForkJoinPool}: that pool is shared with everything else in the JVM, and a saturated one would
    * let the 30-second limit expire on a call that never started, counted as a model failure nobody
    * caused. Sized for every thread that can ingest at once (indexing plus upload pool), so a

@@ -126,11 +126,11 @@ public class LibraryController {
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  // #514/#1856: without libraryId, there is no library yet for a role to be checked against, so
+  // Without libraryId, there is no library yet for a role to be checked against, so
   // SourceConnectionTestService requires the capability CREATE_CONNECTOR_LIBRARY instead - the same
   // right createLibrary needs for the library this probe is a step towards (ADR-0036, Entscheidung
   // 5). The path allowlist and the address validator stay independent of any permission, as before.
-  // With libraryId set (#544), SourceConnectionTestService instead enforces the MANAGER bar on that
+  // With libraryId set, SourceConnectionTestService instead enforces the MANAGER bar on that
   // library, passed the same systemAdmin flag updateLibrary below gets - a SYSTEM_ADMIN who can
   // save
   // the quellkonfiguration without a grant must not have "Verbindung testen" fail 404 right before
@@ -165,7 +165,7 @@ public class LibraryController {
   }
 
   /**
-   * Sets a connector library's share cap (#797) - SYSTEM_ADMIN only, enforced in {@code
+   * Sets a connector library's share cap - SYSTEM_ADMIN only, enforced in {@code
    * KnowledgeLibraryService#updateShareCap}, not here.
    */
   @PutMapping("/{libraryId}/share-cap")
@@ -294,8 +294,8 @@ public class LibraryController {
   }
 
   /**
-   * #1943: the selection's ids travel in the body, so this is a POST - each id is deleted on its
-   * own and reported on its own; see {@code LibraryDocumentService#deleteDocuments}.
+   * The selection's ids travel in the body, so this is a POST - each id is deleted on its own and
+   * reported on its own; see {@code LibraryDocumentService#deleteDocuments}.
    */
   @PostMapping("/{libraryId}/documents/bulk-delete")
   public BulkDocumentDeleteResponse bulkDeleteDocuments(
@@ -407,7 +407,7 @@ public class LibraryController {
         .metrics(toIndexingRunMetrics(job.getMetrics()));
   }
 
-  /** #1141: "unvollständig, wird fortgesetzt" is part of the sentence, not only a flag. */
+  /** "unvollständig, wird fortgesetzt" is part of the sentence, not only a flag. */
   private static String completedMessage(IndexingJob job) {
     String base =
         "Indizierung abgeschlossen: "
@@ -477,7 +477,7 @@ public class LibraryController {
     return toIndexingStatusResponse(job, true);
   }
 
-  // #507/#659: a FAILED job's errorMessage is the raw exception message from the executor that
+  // A FAILED job's errorMessage is the raw exception message from the executor that
   // ran it - a NoSuchFileException's absolute server path, a ConnectException's/
   // UnknownHostException's host:port - exactly the internal-infrastructure leak #507 already
   // closes for the source configuration display. canSeeErrorDetail (MANAGER+, from

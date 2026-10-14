@@ -24,8 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The channel settings of the external access (#1717, ADR-0035; docs/features/external-access.md,
- * "Der Schalter der Installation"). {@link #isEnabled()} is the read the later access paths make on
+ * The channel settings of the external access (ADR-0035; docs/features/external-access.md, "Der
+ * Schalter der Installation"). {@link #isEnabled()} is the read the later access paths make on
  * <em>every</em> call, which is why it stays a single row lookup without a cache: a cache here
  * would only buy an invalidation question and could let an emergency stop lag behind.
  *

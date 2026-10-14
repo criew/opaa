@@ -43,12 +43,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * the {@value #IDENTITY_PROVIDER_ACTOR} system actor; the user's cached group set is evicted after
  * the commit. ORG_UNIT and AD_HOC groups are never touched.
  *
- * <p>Only a claim the token actually carried is authoritative (#1807): an empty claim is the
- * provider ending every membership of its namespace, but a token whose claim is absent, of another
- * shape or replaced by an overage reference leaves the last known memberships as they are and is
- * logged per provider and cause at most once per {@link #INCIDENT_WINDOW_SECONDS} seconds. Without
- * that distinction a removed group mapper at the provider would silently revoke every account's
- * access on its next sign-in. One call writes at most one such entry.
+ * <p>Only a claim the token actually carried is authoritative: an empty claim is the provider
+ * ending every membership of its namespace, but a token whose claim is absent, of another shape or
+ * replaced by an overage reference leaves the last known memberships as they are and is logged per
+ * provider and cause at most once per {@link #INCIDENT_WINDOW_SECONDS} seconds. Without that
+ * distinction a removed group mapper at the provider would silently revoke every account's access
+ * on its next sign-in. One call writes at most one such entry.
  */
 @Component
 public class TokenGroupSynchronizer {
@@ -94,7 +94,7 @@ public class TokenGroupSynchronizer {
 
   /**
    * Cheap when the token's groups equal the stored memberships; otherwise a resync. A token that
-   * named no usable claim changes nothing at all and is only reported (#1807).
+   * named no usable claim changes nothing at all and is only reported.
    */
   @Transactional
   public void apply(User user, OidcProvider provider, TokenGroups groups) {

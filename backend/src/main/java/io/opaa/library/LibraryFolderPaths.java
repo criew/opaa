@@ -11,9 +11,9 @@ import java.util.stream.Collectors;
 
 /**
  * Derives a folder's display path (e.g. {@code "Protokolle/2026"}) from {@link LibraryFolder}'s
- * self-referencing {@code parentFolderId} chain (#821, Epic #520 Phase 2, ADR-0020) - never stored,
- * always computed from the current folder rows, exactly as ADR-0020's Entscheidung 2 promises ("der
- * Anzeigepfad wird abgeleitet").
+ * self-referencing {@code parentFolderId} chain (ADR-0020) - never stored, always computed from the
+ * current folder rows, exactly as ADR-0020's Entscheidung 2 promises ("der Anzeigepfad wird
+ * abgeleitet").
  *
  * <p>Two entry points for the two shapes this task needs:
  *

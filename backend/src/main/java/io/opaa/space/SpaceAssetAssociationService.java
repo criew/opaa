@@ -43,8 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Manages {@link SpaceAssetAssociation}s - the pure-curation link between a {@link Space} and an
- * asset of any type (#203/#686, #1900, docs/features/spaces-and-assets.md#assets-in-einen-space-
- * assoziieren). Every mutating method reads {@link Space#getMemberships()} through {@link
+ * asset of any type (docs/features/spaces-and-assets.md#assets-in-einen-space- assoziieren). Every
+ * mutating method reads {@link Space#getMemberships()} through {@link
  * SpaceRepository#findByIdWithMemberships}, mirroring {@code SpaceService}'s own loading pattern.
  *
  * <p><b>The association changes no one's effective permissions</b> - this class never writes an
@@ -98,11 +98,11 @@ public class SpaceAssetAssociationService {
   }
 
   /**
-   * Number of assets each of the given spaces shows the caller (#682) - the overview card's
-   * "Quellen" figure. Mirrors {@link #listForSpace}: only what the caller may read counts, in every
-   * role, so the figure never gives away how many associations are withheld (ADR-0039, Entscheidung
-   * 2). One query for all associations, one for their types and one readable-set lookup per type,
-   * never a query per space. Expects all spaces to belong to one organization, as {@code
+   * Number of assets each of the given spaces shows the caller - the overview card's "Quellen"
+   * figure. Mirrors {@link #listForSpace}: only what the caller may read counts, in every role, so
+   * the figure never gives away how many associations are withheld (ADR-0039, Entscheidung 2). One
+   * query for all associations, one for their types and one readable-set lookup per type, never a
+   * query per space. Expects all spaces to belong to one organization, as {@code
    * SpaceService#listSpaces} guarantees.
    */
   public Map<UUID, Long> countVisibleBySpace(List<Space> spaces, CurrentUser caller) {
@@ -187,8 +187,8 @@ public class SpaceAssetAssociationService {
   }
 
   /**
-   * Associates the asset with {@code spaceId} (#203/#686). Idempotent per (space, asset): an
-   * already-existing association is returned unchanged rather than duplicated or rejected.
+   * Associates the asset with {@code spaceId}. Idempotent per (space, asset): an already-existing
+   * association is returned unchanged rather than duplicated or rejected.
    */
   @Transactional
   public SpaceAssetLink associate(
@@ -274,8 +274,8 @@ public class SpaceAssetAssociationService {
 
   /**
    * Removes an association - allowed for a CURATOR or above on the space, or unilaterally for a
-   * MANAGER or above on the asset itself, regardless of the caller's own space membership (#203:
-   * "Der Eigentümer des Assets ... kann jede davon jederzeit einseitig lösen"). A no-op if no such
+   * MANAGER or above on the asset itself, regardless of the caller's own space membership ("Der
+   * Eigentümer des Assets ... kann jede davon jederzeit einseitig lösen"). A no-op if no such
    * association exists. Without read access and without managing the asset the caller gets the same
    * 404 as for an unknown asset, whatever their role in the space.
    */
@@ -318,10 +318,9 @@ public class SpaceAssetAssociationService {
   }
 
   /**
-   * The spaces the asset is associated with - the "Zuordnungen" view (#203, #1939), requiring
-   * VIEWER or above on the asset. For a caller who may manage the asset it is never filtered by
-   * their own space membership: they see every association, including in spaces they do not belong
-   * to.
+   * The spaces the asset is associated with - the "Zuordnungen" view, requiring VIEWER or above on
+   * the asset. For a caller who may manage the asset it is never filtered by their own space
+   * membership: they see every association, including in spaces they do not belong to.
    *
    * <p>Below MANAGER the answer carries the space and nothing else - neither the reader circle nor
    * the creator is resolved - and an association in a space the caller is no member of is not named
@@ -380,8 +379,8 @@ public class SpaceAssetAssociationService {
 
   /**
    * Every knowledge library associated with the space, without a rights filter of its own - the
-   * Suchbereich a Rechteprofil-Lauf intersects with the libraries that profile may read (#1835).
-   * The intersection is the rights decision, and it happens at the caller.
+   * Suchbereich a Rechteprofil-Lauf intersects with the libraries that profile may read. The
+   * intersection is the rights decision, and it happens at the caller.
    */
   public Set<UUID> libraryIdsInSpace(UUID spaceId) {
     return associationRepository.findAssetIdsBySpaceIdAndAssetType(
@@ -415,7 +414,7 @@ public class SpaceAssetAssociationService {
 
   /**
    * Notifies the owners (every member, if group-owned) of those {@code assets} that stand in a
-   * space with at least one member without read access to them (#203: "Benachrichtigung statt
+   * space with at least one member without read access to them ("Benachrichtigung statt
    * Zustimmung") - one notification per recipient, naming all of their assets. The caller who
    * created the association is never among the recipients - they know what they did. An asset of an
    * inactive type is never named.
@@ -498,7 +497,7 @@ public class SpaceAssetAssociationService {
 
   /**
    * The people a space actually reaches: its own member rows plus the members of every group that
-   * is a member (#1815).
+   * is a member.
    */
   private Set<UUID> personalMembersOf(Space space) {
     Set<UUID> members = new LinkedHashSet<>();

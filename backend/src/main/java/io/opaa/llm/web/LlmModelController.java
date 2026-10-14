@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Admin API for managed chat models (Stufe 1, #757,
+ * Admin API for managed chat models (Stufe 1,
  * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), {@code
  * SYSTEM_ADMIN} only - the same access bar and {@code currentUser} pattern {@link GroupController}
  * already establishes for admin-only resources.
@@ -52,10 +52,10 @@ import org.springframework.web.bind.annotation.RestController;
  * clean 409 rather than letting it surface as an unhandled 500 - the caller is told to retry, not
  * shown a stack trace.
  *
- * <p><b>Delete guard for the active model (#757, review of the first version of this PR).</b>
- * {@link LlmModelService#deleteModel} itself rejects deleting the active model with 409 - not a
- * separate {@code getModel}/{@code deleteModel} check-then-act pair composed here, which would
- * reopen the exact TOCTOU window a concurrent activation could slip through between the two calls.
+ * <p><b>Delete guard for the active model (review of the first version of this PR).</b> {@link
+ * LlmModelService#deleteModel} itself rejects deleting the active model with 409 - not a separate
+ * {@code getModel}/{@code deleteModel} check-then-act pair composed here, which would reopen the
+ * exact TOCTOU window a concurrent activation could slip through between the two calls.
  */
 @RestController
 @RequestMapping("/api/v1/admin/models")

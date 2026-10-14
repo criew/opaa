@@ -6,8 +6,7 @@ import java.util.UUID;
 
 /**
  * One group's membership as a grant giver may read it - the answer of {@link
- * GroupMemberDisclosureDirectory}, whose Javadoc carries the rule behind every withheld field
- * (#1880).
+ * GroupMemberDisclosureDirectory}, whose Javadoc carries the rule behind every withheld field.
  *
  * @param name null for a protected group.
  * @param activeMemberCount null for a protected group.

@@ -17,10 +17,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Centralizes the space-membership authorization decisions previously re-implemented, with subtly
- * different owner semantics, in {@code SpaceService} and {@code SpaceAssetAssociationService}
- * (#888).
+ * different owner semantics, in {@code SpaceService} and {@code SpaceAssetAssociationService}.
  *
- * <p><b>A membership names a subject, not a person</b> (#1815, ADR-0036 Entscheidung 6). {@link
+ * <p><b>A membership names a subject, not a person</b> (ADR-0036 Entscheidung 6). {@link
  * #effectiveRole} is therefore the best of three sources: the caller's own membership row, the
  * memberships of the groups they belong to, and ownership. A right held through a group ends the
  * moment the membership does - the group resolution runs through {@link GroupMembershipResolver},
@@ -30,9 +29,9 @@ import org.springframework.stereotype.Component;
  * silently under-grant, and every call site would have had to remember.
  *
  * <p><b>Owner ⇒ {@link SpaceRole#ADMIN}:</b> {@link #effectiveRole} always treats the space owner
- * as at least {@link SpaceRole#ADMIN}, regardless of their actual {@link SpaceMembership} role
- * (#888) - {@code SpaceService#transferOwnership} never raises the new owner's own membership role,
- * making "owner with a MEMBER or CURATOR membership" a legal and persistent state.
+ * as at least {@link SpaceRole#ADMIN}, regardless of their actual {@link SpaceMembership} role -
+ * {@code SpaceService#transferOwnership} never raises the new owner's own membership role, making
+ * "owner with a MEMBER or CURATOR membership" a legal and persistent state.
  *
  * <p>System-admin bypass is deliberately <em>not</em> folded into {@link #effectiveRole}: it is an
  * organization-wide privilege, orthogonal to a space's own membership, and each guard below only
@@ -143,9 +142,9 @@ public class SpaceAccessPolicy {
   }
 
   /**
-   * #144: the member list is restricted to ADMIN, the owner and system admins - and therefore a
-   * group is named only to those who manage its membership here (ADR-0036, Entscheidung 9). {@code
-   * MEMBER} and {@code CURATOR} only ever see the aggregated {@code roleCounts}.
+   * The member list is restricted to ADMIN, the owner and system admins - and therefore a group is
+   * named only to those who manage its membership here (ADR-0036, Entscheidung 9). {@code MEMBER}
+   * and {@code CURATOR} only ever see the aggregated {@code roleCounts}.
    */
   public void requireMemberListViewer(Space space, CurrentUser caller) {
     requireAtLeast(
@@ -174,11 +173,11 @@ public class SpaceAccessPolicy {
    * offen" (ADR-0036, Entscheidung 6) - derived on every read, never stored, so no write path can
    * forget to set or clear a flag.
    *
-   * <p><b>Both halves count active accounts</b> (#1819): a person ranks as {@code ADMIN} only while
-   * their account can actually be used - the same measure {@code AccountActivityService} applies to
-   * every other question of "who can act", and the same one the group half has applied since #1818.
-   * The asymmetry #1815 had to leave open (account state arrived with #1818) is closed here; with
-   * it "Nachfolge offen" becomes reachable for a space at all, which is what the lifecycle needs.
+   * <p><b>Both halves count active accounts</b>: a person ranks as {@code ADMIN} only while their
+   * account can actually be used - the same measure {@code AccountActivityService} applies to every
+   * other question of "who can act", and the same one the group half has applied since #1818. The
+   * asymmetry #1815 had to leave open (account state arrived with #1818) is closed here; with it
+   * "Nachfolge offen" becomes reachable for a space at all, which is what the lifecycle needs.
    */
   public boolean hasCapableAdmin(Space space) {
     return hasCapableAdminAfter(space, null, null);
@@ -186,7 +185,7 @@ public class SpaceAccessPolicy {
 
   /**
    * The same question for a whole list of spaces, with <b>one</b> account query for all of them
-   * (#682: never one lookup per space). Returns the ids of the spaces that still have somebody.
+   * (never one lookup per space). Returns the ids of the spaces that still have somebody.
    */
   public Set<UUID> spacesWithCapableAdmin(Collection<Space> spaces) {
     List<UUID> candidates =

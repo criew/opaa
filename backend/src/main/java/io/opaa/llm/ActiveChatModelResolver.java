@@ -20,13 +20,13 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Resolves the {@link ChatClient} for the systemwide active {@link LlmModel} at runtime (#758,
- * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), replacing what
+ * Resolves the {@link ChatClient} for the systemwide active {@link LlmModel} at runtime
+ * (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), replacing what
  * used to be a {@code ChatClient.Builder} built once at startup from the static Spring AI OpenAI
  * autoconfiguration. {@code AnswerGenerationService} and {@code ChatTitleGenerationService} both
  * call {@link #resolveChatClient()} on every request instead of holding a {@code ChatClient} field
- * built in their constructor - the only way an activation via the admin API (#764) can take effect
- * without a restart.
+ * built in their constructor - the only way an activation via the admin API can take effect without
+ * a restart.
  *
  * <p>Every client built here wraps the model in {@link ReasoningTextStrippingChatModel}: no caller
  * reads reasoning text a server put in front of the answer.
@@ -101,9 +101,9 @@ public class ActiveChatModelResolver {
   private final AtomicReference<Resolved> cache = new AtomicReference<>();
 
   /**
-   * The same client with a hard request timeout, for the model-backed metadata extraction (#1073):
-   * an abandoned call must end and free its thread. Cached beside {@link #cache} and invalidated
-   * with it; keyed by the timeout, of which there is one in practice.
+   * The same client with a hard request timeout, for the model-backed metadata extraction: an
+   * abandoned call must end and free its thread. Cached beside {@link #cache} and invalidated with
+   * it; keyed by the timeout, of which there is one in practice.
    */
   private final AtomicReference<TimedResolved> timedCache = new AtomicReference<>();
 
@@ -310,9 +310,8 @@ public class ActiveChatModelResolver {
 
   /**
    * How many times a {@link ChatClient} was actually (re)built - test-observable proof that
-   * repeated calls without an intervening change reuse the cache rather than rebuilding per call
-   * (#758 acceptance criterion), which a time-based assertion could not distinguish from "rebuilt,
-   * but fast".
+   * repeated calls without an intervening change reuse the cache rather than rebuilding per call,
+   * which a time-based assertion could not distinguish from "rebuilt, but fast".
    */
   int builtClientCount() {
     return buildCount.get();

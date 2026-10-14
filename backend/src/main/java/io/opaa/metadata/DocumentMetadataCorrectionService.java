@@ -375,8 +375,8 @@ public class DocumentMetadataCorrectionService {
     /**
      * A retired field takes no value any more, and a retired list value none either: both are on
      * their way out of the schema, and letting one in would extend a running Nachlauf by exactly
-     * the document it just finished (#1361). Removing a value stays possible - that is what the run
-     * itself does.
+     * the document it just finished. Removing a value stays possible - that is what the run itself
+     * does.
      */
     void requireWritable(MetadataValueInput validated) {
       for (LibraryMetadataSchemaChange change : pendingChanges) {

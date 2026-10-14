@@ -23,14 +23,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The read side of the account list of the administration (#1601): every account of an
- * organization, local and identity-provider accounts alike. Like {@code LocalUserAdminService} it
- * filters, sorts and pages in memory over the organization's accounts - the population of one
- * organization is loaded by {@code UserRepository#findByOrganizationId} in one query anyway, and
- * the state of a local account comes from {@link LocalUserOverview} so that no second derivation of
- * state or activity class exists. A {@code Pageable} query is the step when the population outgrows
- * a single load. Writes stay where they are: local accounts in {@code LocalUserService}, roles in
- * {@code UserService#updateRole}.
+ * The read side of the account list of the administration: every account of an organization, local
+ * and identity-provider accounts alike. Like {@code LocalUserAdminService} it filters, sorts and
+ * pages in memory over the organization's accounts - the population of one organization is loaded
+ * by {@code UserRepository#findByOrganizationId} in one query anyway, and the state of a local
+ * account comes from {@link LocalUserOverview} so that no second derivation of state or activity
+ * class exists. A {@code Pageable} query is the step when the population outgrows a single load.
+ * Writes stay where they are: local accounts in {@code LocalUserService}, roles in {@code
+ * UserService#updateRole}.
  */
 @Service
 public class AccountAdminService {

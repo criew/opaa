@@ -44,9 +44,9 @@ public interface GroupSubjectDirectory {
   String PROTECTED_GROUP_LABEL = "Geschützte Gruppe";
 
   /**
-   * The groups as the Herleitung names them (#1822) - name, origin, provider and mechanism in one
-   * lookup for the whole set. An id with no group is absent from the result: a group deleted since
-   * the grant was written has no attribution left to give, and the Herleitung says so by omission
+   * The groups as the Herleitung names them - name, origin, provider and mechanism in one lookup
+   * for the whole set. An id with no group is absent from the result: a group deleted since the
+   * grant was written has no attribution left to give, and the Herleitung says so by omission
    * rather than by inventing a name.
    */
   Map<UUID, GroupAttribution> attributionsById(Collection<UUID> groupIds);

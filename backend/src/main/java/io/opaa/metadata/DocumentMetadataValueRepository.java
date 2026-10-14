@@ -204,8 +204,8 @@ public interface DocumentMetadataValueRepository
 
   /**
    * Documents and chunks of {@code libraryId} carrying a value for {@code fieldKey} - the
-   * Folgekosten of a planned schema change, counted before it is saved (#1072). Only {@code SET}
-   * rows: a "kein Wert ermittelbar" row carries nothing into a Kontextpraefix.
+   * Folgekosten of a planned schema change, counted before it is saved. Only {@code SET} rows: a
+   * "kein Wert ermittelbar" row carries nothing into a Kontextpraefix.
    */
   @Query(
       "select count(d) as documentCount, coalesce(sum(d.chunkCount), 0) as chunkCount"

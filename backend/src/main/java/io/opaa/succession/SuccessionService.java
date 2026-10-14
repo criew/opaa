@@ -23,7 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The operational list and the state at one object (#1819, ADR-0036 Entscheidung 6).
+ * The operational list and the state at one object (ADR-0036 Entscheidung 6).
  *
  * <p><b>Derived on every read.</b> The entries come from the {@link SuccessionFindingSource}s, not
  * from the table: an object that has a capable responsible party again disappears from the list at
@@ -191,9 +191,9 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
 
   /**
    * Ends the open succession of one asset and names who ended it - called by an operation that
-   * knows its actor, today the transfer of ownership and responsibility (#1834). The transfer also
-   * names a space by its asset type, so the record is found by the object alone - its id is unique
-   * across every object type.
+   * knows its actor, today the transfer of ownership and responsibility. The transfer also names a
+   * space by its asset type, so the record is found by the object alone - its id is unique across
+   * every object type.
    */
   @Override
   @Transactional

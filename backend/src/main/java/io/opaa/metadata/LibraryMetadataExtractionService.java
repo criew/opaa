@@ -21,11 +21,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The operator's side of the model-backed extraction (#1073): the two switches, the Extraktionsgüte
- * and the Stichproben-Export. Changing a switch is a schema decision and needs the management right
- * at the library; reading the Güte needs no more than the right to read it, exactly like the
- * Pflege-Anker. Every figure is counted when asked, over the one library the caller may read
- * (metadata-schema.md, Rechte-Invariante).
+ * The operator's side of the model-backed extraction: the two switches, the Extraktionsgüte and the
+ * Stichproben-Export. Changing a switch is a schema decision and needs the management right at the
+ * library; reading the Güte needs no more than the right to read it, exactly like the Pflege-Anker.
+ * Every figure is counted when asked, over the one library the caller may read (metadata-schema.md,
+ * Rechte-Invariante).
  */
 @Service
 public class LibraryMetadataExtractionService {

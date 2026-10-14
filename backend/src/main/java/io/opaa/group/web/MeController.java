@@ -41,7 +41,7 @@ public class MeController {
   }
 
   /**
-   * The internal groups the caller is responsible for - what "Meine Gruppen" shows (#1814, ADR-0036
+   * The internal groups the caller is responsible for - what "Meine Gruppen" shows (ADR-0036
    * Entscheidung 4). Separate from {@link #myGroups} because a steward is no member: that endpoint
    * answers "which groups may I own a library through", this one "which groups do I maintain".
    */

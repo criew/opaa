@@ -159,7 +159,7 @@ public class SpaceController {
   }
 
   /**
-   * The Herleitung "warum bin ich in diesem Space" (#1822, ADR-0036 Entscheidung 9). Without {@code
+   * The Herleitung "warum bin ich in diesem Space" (ADR-0036 Entscheidung 9). Without {@code
    * userId} it is about the caller; naming somebody else is reserved for those who manage the
    * membership here, and hides every way through a protected group.
    */
@@ -180,8 +180,8 @@ public class SpaceController {
   }
 
   /**
-   * The members of a group that is a member of this space (#1880, ADR-0036 Entscheidung 9) - "wer
-   * ein Recht gibt, sieht, an wen", behind the same bar as the member list itself.
+   * The members of a group that is a member of this space (ADR-0036 Entscheidung 9) - "wer ein
+   * Recht gibt, sieht, an wen", behind the same bar as the member list itself.
    */
   @GetMapping("/{spaceId}/members/groups/{groupId}/members")
   public GroupMemberDisclosureResponse listSpaceGroupMembers(
@@ -199,7 +199,7 @@ public class SpaceController {
       @PathVariable UUID spaceId,
       @Valid @RequestBody SpaceAddMemberRequest request,
       @Caller CurrentUser caller) {
-    // The subject's organization is the caller's own - a request body never names one (#199).
+    // The subject's organization is the caller's own - a request body never names one.
     PermissionSubject subject =
         new PermissionSubject(
             request.getSubjectType(), request.getSubjectId(), caller.organizationId());

@@ -16,8 +16,8 @@ import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataAccessException;
 
 /**
- * The productive {@link DirectoryClient} (#1817): it looks up the directory access stored for the
- * provider a run is bound to and hands the read to that access's connector - today {@link
+ * The productive {@link DirectoryClient}: it looks up the directory access stored for the provider
+ * a run is bound to and hands the read to that access's connector - today {@link
  * KeycloakDirectoryConnector}, tomorrow LDAP and Microsoft Graph as further cases of {@link
  * io.opaa.api.types.DirectoryConnectorType} (ADR-0036, Entscheidung 3).
  *

@@ -11,8 +11,8 @@ import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 
 /**
- * Bounds what the synchronous attachment re-extraction path can cost at once (#1243): re-extracting
- * an attachment parses - and, for a connector Bestand, downloads - its parent original, and every
+ * Bounds what the synchronous attachment re-extraction path can cost at once: re-extracting an
+ * attachment parses - and, for a connector Bestand, downloads - its parent original, and every
  * VIEWER can trigger that repeatedly and in parallel.
  *
  * <p>Two guards, applied in this order:

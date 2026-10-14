@@ -5,11 +5,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 /**
- * Where a Keycloak directory run reads, derived from the provider's own issuer URI (#1817). A
- * Keycloak issuer is always {@code <base>/realms/<realm>}, so both halves are already in the one
- * value the sign-in verifies tokens against - and deriving them is what keeps the <em>realm</em> of
- * the read tied to the realm the accounts come from (ADR-0025: an account of provider B must never
- * receive the group memberships of the same-named subject of provider A).
+ * Where a Keycloak directory run reads, derived from the provider's own issuer URI. A Keycloak
+ * issuer is always {@code <base>/realms/<realm>}, so both halves are already in the one value the
+ * sign-in verifies tokens against - and deriving them is what keeps the <em>realm</em> of the read
+ * tied to the realm the accounts come from (ADR-0025: an account of provider B must never receive
+ * the group memberships of the same-named subject of provider A).
  *
  * <p><b>Where the tie ends:</b> {@code baseUrlOverride} names the host, so a wrong override can
  * still point at a different installation that happens to have a realm of the same name. What that

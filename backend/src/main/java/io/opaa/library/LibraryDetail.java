@@ -21,7 +21,7 @@ import io.opaa.permission.SuccessionFinding;
  *     io.opaa.knowledge.LibraryAccessService#holdsIndependentOwnerRole}), independent of {@code
  *     myRole} - a system admin's {@code myRole} bypasses to {@code OWNER} unconditionally, this
  *     field never does.
- * @param reach how far the library reaches right now, derived from its grants (#1931).
+ * @param reach how far the library reaches right now, derived from its grants.
  * @param ownerName the owner's display name, or {@code null} where it cannot be named - the same
  *     resolution {@link io.opaa.asset.AssetOwnerNames} performs for the overview.
  * @param connectorSettings the connector settings as every reader of the library may see them

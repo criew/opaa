@@ -1,8 +1,8 @@
 package io.opaa.asset;
 
 /**
- * The operation that opened or closed an {@link AssetVisibilityHistory} interval (#238), mirrored
- * by {@code chk_asset_visibility_history_cause}.
+ * The operation that opened or closed an {@link AssetVisibilityHistory} interval, mirrored by
+ * {@code chk_asset_visibility_history_cause}.
  */
 public enum AssetVisibilityHistoryCause {
   /** The asset was created. */
@@ -10,7 +10,7 @@ public enum AssetVisibilityHistoryCause {
 
   /**
    * The release for Fremdzugaenge was set or taken back - closes the previous interval and opens a
-   * new one with the new state (#1731).
+   * new one with the new state.
    */
   EXTERNAL_ACCESS_CHANGED,
 

@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * The text behind one hit (#1720): the passage with its adjoining passages, or - only on explicit
- * request - the whole extracted text of the document.
+ * The text behind one hit: the passage with its adjoining passages, or - only on explicit request -
+ * the whole extracted text of the document.
  *
  * @param whole whether {@code text} is the whole document rather than the passage with context.
  * @param truncated whether {@code text} was cut at {@code characterLimit}. Possible on both paths:

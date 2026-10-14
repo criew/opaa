@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
  * AssetRole#MANAGER} - never {@code OWNER}, which would grow with every member and could never be
  * downgraded.
  *
- * <p><b>How far the asset reaches is no longer the shell's</b> (#1931, ADR-0037): a grant to "Alle
+ * <p><b>How far the asset reaches is no longer the shell's</b> (ADR-0037): a grant to "Alle
  * Beschaeftigten" is an ordinary grant and runs through {@link AssetGrantService}, including its
  * own succession guard and its own cap check.
  */

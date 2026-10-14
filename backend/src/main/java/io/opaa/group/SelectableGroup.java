@@ -3,9 +3,9 @@ package io.opaa.group;
 import java.util.List;
 
 /**
- * One group as the Subjekt-Auswahl of ADR-0036, Entscheidung 9 shows it (#1820): name, origin and
- * the number of active accounts - never the members. The "kleine Gruppe" suppression is already
- * applied here, so no caller can hand out a figure this record withheld.
+ * One group as the Subjekt-Auswahl of ADR-0036, Entscheidung 9 shows it: name, origin and the
+ * number of active accounts - never the members. The "kleine Gruppe" suppression is already applied
+ * here, so no caller can hand out a figure this record withheld.
  *
  * @param name the name this answer may show: null for a protected group resolved by its id, where
  *     the caller did not name it and a name handed back would undo its namelessness.

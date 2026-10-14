@@ -6,16 +6,16 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.stereotype.Service;
 
 /**
- * Enforces the per-library storage quota (#119, Maintainer-Entscheidung: Standardkontingent je
+ * Enforces the per-library storage quota (Maintainer-Entscheidung: Standardkontingent je
  * Bibliothek, {@link LibraryProperties#quotaBytes}). Shared by every ingestion path that stores
  * document content - the upload endpoint ({@code LibraryDocumentService}) and the
  * FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths ({@code DocumentIngestService}) - so a library
  * cannot grow past its quota through either route.
  *
- * <p><b>Datenschutz (#216, "kein personenbezogener Auswertungspfad"):</b> every method here is
- * scoped to a library, never to an individual user - {@link
- * DocumentRepository#sumFileSizeByLibraryId} sums every document in the library regardless of who
- * uploaded it. There is deliberately no per-user usage query anywhere in this class.
+ * <p><b>Datenschutz ("kein personenbezogener Auswertungspfad"):</b> every method here is scoped to
+ * a library, never to an individual user - {@link DocumentRepository#sumFileSizeByLibraryId} sums
+ * every document in the library regardless of who uploaded it. There is deliberately no per-user
+ * usage query anywhere in this class.
  *
  * <p>The quota check compares the library's usage <em>at the moment of the call</em> against {@link
  * #quotaBytes()} plus the additional bytes a caller is about to add - it is not transactionally
@@ -58,9 +58,9 @@ public class LibraryStorageQuotaService {
   /**
    * The configured per-library quota in bytes ({@code application.yml}'s own default resolves to 10
    * GiB when unset), or {@code <= 0} if the operator has configured {@link
-   * LibraryProperties#quotaBytes} to mean <em>unbegrenzt</em> (#119, PR #700 review finding 2) -
-   * see that property's own Javadoc for why {@code 0}/negative is a real configuration here rather
-   * than being normalized away.
+   * LibraryProperties#quotaBytes} to mean <em>unbegrenzt</em> (PR #700 review finding 2) - see that
+   * property's own Javadoc for why {@code 0}/negative is a real configuration here rather than
+   * being normalized away.
    */
   public long quotaBytes() {
     return libraryProperties.quotaBytes();
@@ -84,11 +84,11 @@ public class LibraryStorageQuotaService {
 
   /**
    * Whether adding {@code additionalBytes} to {@code libraryId}'s current usage would exceed the
-   * configured quota - always {@code false} when {@link #quotaBytes()} is {@code <= 0} (unbegrenzt,
-   * #119). Callers that replace an existing document (a same-checksum retry, a connector re-index)
-   * should call this <em>after</em> removing the row/chunks being replaced, so {@link #usedBytes}
-   * already reflects the deletion and the check measures the true delta rather than double-counting
-   * the content being superseded.
+   * configured quota - always {@code false} when {@link #quotaBytes()} is {@code <= 0}
+   * (unbegrenzt). Callers that replace an existing document (a same-checksum retry, a connector
+   * re-index) should call this <em>after</em> removing the row/chunks being replaced, so {@link
+   * #usedBytes} already reflects the deletion and the check measures the true delta rather than
+   * double-counting the content being superseded.
    */
   public boolean wouldExceedQuota(UUID libraryId, long additionalBytes) {
     long quota = quotaBytes();
@@ -158,9 +158,9 @@ public class LibraryStorageQuotaService {
    * wording #119's acceptance criteria specify ("Speicherkontingent der Bibliothek erschöpft (X von
    * Y belegt)"), reused verbatim by both the upload endpoint's 413 response ({@code
    * LibraryDocumentService}) and the connector run protocol event ({@code
-   * IndexingEventCategory#REJECTED}, #604). Only ever called once {@link #wouldExceedQuota} has
-   * already returned {@code true} for the same library, so {@link #quotaBytes()} is guaranteed
-   * positive here - a caller never sees "0 von 0 GB".
+   * IndexingEventCategory#REJECTED}). Only ever called once {@link #wouldExceedQuota} has already
+   * returned {@code true} for the same library, so {@link #quotaBytes()} is guaranteed positive
+   * here - a caller never sees "0 von 0 GB".
    */
   public String quotaExceededMessage(UUID libraryId) {
     return quotaExceededMessage(libraryId, usedBytes(libraryId));

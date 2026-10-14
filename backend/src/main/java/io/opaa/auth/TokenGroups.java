@@ -4,11 +4,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * What a token says about its bearer's groups - and whether it says anything at all (#1807). A
- * provider's groups claim is authoritative: the names it carries are exactly the memberships in
- * that provider's namespace, an empty claim therefore ends all of them. A token that carries no
- * usable claim says nothing, and nothing may be derived from it. The two are different values here
- * so that no caller can fold them back into one empty list.
+ * What a token says about its bearer's groups - and whether it says anything at all. A provider's
+ * groups claim is authoritative: the names it carries are exactly the memberships in that
+ * provider's namespace, an empty claim therefore ends all of them. A token that carries no usable
+ * claim says nothing, and nothing may be derived from it. The two are different values here so that
+ * no caller can fold them back into one empty list.
  */
 public sealed interface TokenGroups {
 

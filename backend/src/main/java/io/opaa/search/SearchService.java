@@ -15,7 +15,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 
 /**
- * Hits instead of an answer (#1720, docs/features/external-access.md): the same retrieval {@code
+ * Hits instead of an answer (docs/features/external-access.md): the same retrieval {@code
  * QueryService} builds its answer from, returned as passages.
  *
  * <p>The invariant of this class is what it does <em>not</em> do. It resolves no scope of its own -
@@ -68,7 +68,7 @@ public class SearchService {
    * name. For a signed-in person that is every library she may read; for an access token it is the
    * intersection of rights, release and token selection, because it comes from the same {@link
    * SearchScopeSource} the search itself uses. It is the only place a foreign tool learns the
-   * extent of its access, and {@code list_libraries} of the MCP server (#1721) is built on it.
+   * extent of its access, and {@code list_libraries} of the MCP server is built on it.
    *
    * <p>Counts against the token quota and the channel alert like any other retrieval: it is a read
    * of the holdings' structure, not a free call.
@@ -82,7 +82,7 @@ public class SearchService {
 
   /**
    * The same effective view, resolved through the same {@link SearchScopeSource}: the MCP server
-   * builds its tool descriptions from it on every {@code tools/list} (#1721).
+   * builds its tool descriptions from it on every {@code tools/list}.
    *
    * <p><b>Counts against the quota like any other call</b> - {@code /mcp} lies outside the request
    * rate limit of {@code /api/*}, so the quota is the only brake this channel has, and an uncounted

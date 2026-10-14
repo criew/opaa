@@ -3,14 +3,13 @@ package io.opaa.knowledge;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Library-wide configuration that applies regardless of how a document entered the library (#1273:
- * split off {@link UploadProperties}, whose {@code opaa.upload} namespace misleadingly implied this
- * only governed the REST upload endpoint, when {@link LibraryStorageQuotaService} in fact enforces
- * it on every ingestion path - upload, FILESYSTEM, HTTP_DIRECTORY, RSS_FEED and mail attachments
- * alike).
+ * Library-wide configuration that applies regardless of how a document entered the library (split
+ * off {@link UploadProperties}, whose {@code opaa.upload} namespace misleadingly implied this only
+ * governed the REST upload endpoint, when {@link LibraryStorageQuotaService} in fact enforces it on
+ * every ingestion path - upload, FILESYSTEM, HTTP_DIRECTORY, RSS_FEED and mail attachments alike).
  *
  * @param quotaBytes the maximum total size, summed across every document a library holds, that
- *     library may occupy (#119, Maintainer-Entscheidung: Standardkontingent je Bibliothek). {@code
+ *     library may occupy (Maintainer-Entscheidung: Standardkontingent je Bibliothek). {@code
  *     application.yml}'s own default resolves the underlying env var to 10 GiB (10 737 418 240)
  *     when unset - generous for a working knowledge library while still bounding how much
  *     disk/vector-store space a single library - upload or connector-fed alike - can consume

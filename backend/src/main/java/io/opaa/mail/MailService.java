@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 /**
- * The one way OPAA sends mail (#1536, ADR-0033 Entscheidung 10).
+ * The one way OPAA sends mail (ADR-0033 Entscheidung 10).
  *
  * <p><b>{@link #send} never throws</b> - not for a missing encryption key, not for an unreadable
  * settings row, not for a mail server that refuses the connection. It returns a {@link SendResult},

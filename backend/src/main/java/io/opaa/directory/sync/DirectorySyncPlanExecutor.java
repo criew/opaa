@@ -51,11 +51,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * regardless of what the caller was doing - unlike a self-invoked private method on the same
  * instance would be.
  *
- * <p><b>Bound to one identity provider</b> (ADR-0036, Entscheidung 2, #1816). The {@link
- * SyncTarget} names the provider whose directory was read: members are resolved among the accounts
- * of that provider's issuer only, the diff is computed against that provider's {@code ORG_UNIT}
- * groups alone, and a group this run creates carries the provider as its origin. Another provider's
- * groups are invisible to this run - neither dissolved nor renamed by it.
+ * <p><b>Bound to one identity provider</b> (ADR-0036, Entscheidung 2). The {@link SyncTarget} names
+ * the provider whose directory was read: members are resolved among the accounts of that provider's
+ * issuer only, the diff is computed against that provider's {@code ORG_UNIT} groups alone, and a
+ * group this run creates carries the provider as its origin. Another provider's groups are
+ * invisible to this run - neither dissolved nor renamed by it.
  *
  * <p><b>Plan, then act.</b> {@link #buildPlan} computes the entire diff without mutating anything.
  * {@link #planOnly} and the threshold path inside {@link #handle} both stop there and only turn the
@@ -117,8 +117,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * mass-outage case this measure targets - would otherwise abort every run indefinitely, with no
  * per-run override available (a second regression review of PR #297 found and measured).
  *
- * <p>A third measure covers the account locks (#1818): the fraction of this provider's active
- * accounts the run would lock, against the same threshold but with a lower count floor ({@link
+ * <p>A third measure covers the account locks: the fraction of this provider's active accounts the
+ * run would lock, against the same threshold but with a lower count floor ({@link
  * #MIN_LOCKS_FOR_ACCOUNT_MEASURE}). A lock takes a person's access away, so it belongs under the
  * same confirmation path as a membership withdrawal (ADR-0036, Entscheidung 3) - and an empty
  * account list aborts the run outright, the way an empty group list does.
@@ -136,7 +136,7 @@ class DirectorySyncPlanExecutor {
 
   private static final int MIN_DISSOLUTIONS_FOR_GROUP_MEASURE = 5;
 
-  /** The population floor of the account measure (#1818), the same as the group one. */
+  /** The population floor of the account measure, the same as the group one. */
   private static final int MIN_ACTIVE_ACCOUNTS_FOR_ACCOUNT_MEASURE = 10;
 
   /**
@@ -225,10 +225,10 @@ class DirectorySyncPlanExecutor {
   }
 
   /**
-   * Drops a pending plan and records the decision in one transaction (#1816). The delete is scoped
-   * to the plan's own id, so a second, concurrent decision about the same plan removes no row - and
-   * then writes no entry either: an audit trail that claims two people discarded the same plan is
-   * worse than one that names the one who did.
+   * Drops a pending plan and records the decision in one transaction. The delete is scoped to the
+   * plan's own id, so a second, concurrent decision about the same plan removes no row - and then
+   * writes no entry either: an audit trail that claims two people discarded the same plan is worse
+   * than one that names the one who did.
    *
    * @return whether this call was the one that removed the plan
    */
@@ -273,7 +273,7 @@ class DirectorySyncPlanExecutor {
       UUID actorUserId,
       String reason) {
     UUID organizationId = target.organizationId();
-    // #392: one correlation id per run, shared by the header entry below and, if the run actually
+    // One correlation id per run, shared by the header entry below and, if the run actually
     // applies anything, by every DIRECTORY_SYNC_CHANGE_APPLIED entry applyPlan writes - "verbunden
     // ueber correlation_ref" (docs/features/security-and-compliance.md).
     UUID correlationRef = UUID.randomUUID();
@@ -286,7 +286,7 @@ class DirectorySyncPlanExecutor {
     List<DirectoryAccountState> providerAccounts =
         userRepository.findAccountStatesOf(organizationId, target.issuer());
 
-    // #1818: the account half of the empty-result protection. A directory that reports account
+    // The account half of the empty-result protection. A directory that reports account
     // status but not a single account is the same finding as an empty group list - it must never
     // lock everybody, and it is a hard abort with no plan to confirm (ADR-0036, Entscheidung 3).
     if (snapshot.reportsAccounts()
@@ -706,7 +706,7 @@ class DirectorySyncPlanExecutor {
             : 0.0;
 
     AccountPlan accounts = planAccounts(organizationId, snapshot, providerAccounts);
-    // The third measure (#1818), against the same threshold as the group one: a mass lock is the
+    // The third measure, against the same threshold as the group one: a mass lock is the
     // account-side equivalent of a mass dissolution, and a single departure must stay a routine,
     // applicable change. Its count floor is lower - see MIN_LOCKS_FOR_ACCOUNT_MEASURE.
     boolean accountMeasureApplies =
@@ -744,10 +744,10 @@ class DirectorySyncPlanExecutor {
   }
 
   /**
-   * Which accounts of this provider the run would lock or unlock (#1818). Desired state per
-   * account: locked when the directory reports it disabled <em>or</em> stops reporting it at all -
-   * leaving the organization looks exactly like the latter from here - and active otherwise. A
-   * directory that reports no account status at all changes nothing.
+   * Which accounts of this provider the run would lock or unlock. Desired state per account: locked
+   * when the directory reports it disabled <em>or</em> stops reporting it at all - leaving the
+   * organization looks exactly like the latter from here - and active otherwise. A directory that
+   * reports no account status at all changes nothing.
    *
    * <p>The last login-capable system administrator is never locked by a run (ADR-0036, Entscheidung
    * 6). That is decided here, over the whole planned set at once and through the one guard of
@@ -857,7 +857,7 @@ class DirectorySyncPlanExecutor {
     Set<UUID> affectedUserIds = new HashSet<>();
     List<Group> createdGroups = new ArrayList<>();
     // The origin of a directory group is the provider the run is bound to (ADR-0036,
-    // Entscheidung 2). Never null: without a provider row there is no run at all (#1816).
+    // Entscheidung 2). Never null: without a provider row there is no run at all.
     UUID providerId = target.providerId();
 
     for (PlannedCreate create : plan.creates()) {
@@ -883,7 +883,7 @@ class DirectorySyncPlanExecutor {
       }
       groupRepository.save(group);
       createdGroups.add(group);
-      // #238: recorded after the save above, so the group row is already present for the history
+      // Recorded after the save above, so the group row is already present for the history
       // row's FK - all of a newly created group's memberships are new, so every one is recorded.
       for (GroupMembership membership : group.getMemberships()) {
         permissionHistoryService.recordMembershipAdded(
@@ -893,7 +893,7 @@ class DirectorySyncPlanExecutor {
             GroupMembershipHistoryCause.DIRECTORY_SYNC_ADDED,
             null);
       }
-      // #392: one DIRECTORY_SYNC_CHANGE_APPLIED entry for the group's creation itself, not one per
+      // One DIRECTORY_SYNC_CHANGE_APPLIED entry for the group's creation itself, not one per
       // initial member - unlike an add/remove on an *existing* group (below), the group's own
       // existence is the effected change here, so a newly created group with zero initial members
       // still produces exactly one entry, never zero.
@@ -954,7 +954,7 @@ class DirectorySyncPlanExecutor {
         GroupMembership membership = new GroupMembership(member.id(), organizationId);
         change.group().addMembership(membership);
         affectedUserIds.add(member.id());
-        // #238: change.group() already exists in the database (unlike PlannedCreate's brand new
+        // Change.group() already exists in the database (unlike PlannedCreate's brand new
         // group above), so its FK is satisfied immediately.
         permissionHistoryService.recordMembershipAdded(
             change.group().getId(),
@@ -1040,14 +1040,14 @@ class DirectorySyncPlanExecutor {
   }
 
   /**
-   * Applies the account half of the plan (#1818): the lock takes the access away, the unlock gives
-   * it back, each with its interval in the account-state history and its own audit entry.
+   * Applies the account half of the plan: the lock takes the access away, the unlock gives it back,
+   * each with its interval in the account-state history and its own audit entry.
    *
    * <p>A lock is never refused for open ownership or responsibility questions (ADR-0036,
-   * Entscheidung 6) - it is the one act that may leave "Nachfolge offen" behind (#1819). What it
-   * does end is every other Merkmal of the account: {@code LocalAccountAccessEndedEvent} is what
-   * lapses the person's access tokens (ADR-0035), inside this transaction, so the lock and the end
-   * of the tokens commit together.
+   * Entscheidung 6) - it is the one act that may leave "Nachfolge offen" behind. What it does end
+   * is every other Merkmal of the account: {@code LocalAccountAccessEndedEvent} is what lapses the
+   * person's access tokens (ADR-0035), inside this transaction, so the lock and the end of the
+   * tokens commit together.
    *
    * <p>Only the accounts a run actually changes are loaded as entities - the plan itself is built
    * from a projection (see {@code UserRepository#findAccountStatesOf}).
@@ -1174,8 +1174,8 @@ class DirectorySyncPlanExecutor {
    * that reassigns an existing unit under a different parent used to be silently ignored).
    *
    * <p>The path is refreshed here rather than reported as a change of its own: it is display-only
-   * (#1812) and changes without the group itself changing - renaming a parent moves every
-   * descendant's path.
+   * and changes without the group itself changing - renaming a parent moves every descendant's
+   * path.
    */
   private void resolveAndApplyParentLinks(SyncPlan plan, List<Group> createdGroups) {
     Map<String, UUID> groupIdByExternalId = new HashMap<>();
@@ -1411,7 +1411,7 @@ class DirectorySyncPlanExecutor {
   private record PlannedDissolution(Group group, int memberCount) {}
 
   /**
-   * The account half of a plan (#1818): whom the run would lock, whom it would unlock, and the
+   * The account half of a plan: whom the run would lock, whom it would unlock, and the
    * administrator whose lock it withholds because no login-capable one would remain. {@code
    * activeAccountCount} is the denominator of the account risk measure - every account of this
    * provider that is not locked right now.

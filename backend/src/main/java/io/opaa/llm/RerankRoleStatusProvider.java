@@ -1,8 +1,8 @@
 package io.opaa.llm;
 
 /**
- * The single, narrow contract between the rerank model role (#1050) and everything that only wants
- * to know how that role is doing - today the administration page "Suche &amp; Indexierung" (#1053).
+ * The single, narrow contract between the rerank model role and everything that only wants to know
+ * how that role is doing - today the administration page "Suche &amp; Indexierung".
  *
  * <p>Implementations answer from configuration and the last known endpoint state; the call is on
  * the path of an administrative page load and must not block on a fresh network round trip of its

@@ -5,8 +5,8 @@ import java.util.regex.Pattern;
 
 /**
  * Keeps recipient addresses out of the application log, out of {@code
- * mail_settings.last_failure_reason} and out of every API response (#1536, ADR-0033 Entscheidung
- * 10): the local part is reduced to its first character, the domain stays.
+ * mail_settings.last_failure_reason} and out of every API response (ADR-0033 Entscheidung 10): the
+ * local part is reduced to its first character, the domain stays.
  */
 final class MailRecipients {
 

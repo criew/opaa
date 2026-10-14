@@ -16,8 +16,8 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * How the MCP endpoint answers a refused call (#1721, ADR-0035; the abnahme criteria of #1721 name
- * all three codes):
+ * How the MCP endpoint answers a refused call (ADR-0035; the abnahme criteria of #1721 name all
+ * three codes):
  *
  * <ul>
  *   <li>switch off, usable token - {@code 503} naming the cause, so operations and the person

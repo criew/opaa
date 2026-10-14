@@ -72,10 +72,10 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * that method's Javadoc for why a plain scalar read is safe to rely on once the advisory lock is
    * held.
    *
-   * <p><b>A grant to all accounts never counts (#1931):</b> it cannot hold {@code OWNER} in the
-   * first place - {@code AssetGrantService} refuses roles above {@code EDITOR} for that recipient -
-   * and the guard exists to keep a <em>named</em> owner on every asset. The condition is repeated
-   * here so the invariant holds at the query, not only at the service that writes.
+   * <p><b>A grant to all accounts never counts:</b> it cannot hold {@code OWNER} in the first place
+   * - {@code AssetGrantService} refuses roles above {@code EDITOR} for that recipient - and the
+   * guard exists to keep a <em>named</em> owner on every asset. The condition is repeated here so
+   * the invariant holds at the query, not only at the service that writes.
    *
    * <p><b>Scalar aggregate, not an entity list:</b> {@code AssetGrantService}'s caller resolves the
    * effective role first, which populates {@link AssetAccessService}'s cache via {@link
@@ -141,7 +141,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
 
   /**
    * Every asset of {@code assetType} in one organization granted to "Alle Konten" - the third way
-   * of {@link AssetAccessService#readableAssetIds} (#1931, ADR-0037). Bedient vom Teilindex {@code
+   * of {@link AssetAccessService#readableAssetIds} (ADR-0037). Bedient vom Teilindex {@code
    * idx_asset_grants_all_accounts}, der den abgelösten {@code idx_assets_organization_wide}
    * ersetzt.
    */
@@ -166,8 +166,8 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
 
   /**
    * How many unexpired grants of each subject kind an asset carries - the figures {@code
-   * AssetReach} turns into the reach badge of an overview (#1931). One grouped read for a whole
-   * page instead of one per row.
+   * AssetReach} turns into the reach badge of an overview. One grouped read for a whole page
+   * instead of one per row.
    */
   @Query(
       "select g.assetId, g.subjectType, count(g) from AssetGrant g "
@@ -183,7 +183,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * Every non-expired group grant of one organization on {@code assetType}, for {@link
    * AssetAccessService#readableAssetCountsForGroups} - one query for every profile at once instead
    * of one per profile, which would put a round trip per row onto the administration page's profile
-   * picker (#1053).
+   * picker.
    */
   @Query(
       "select g from AssetGrant g "
@@ -208,7 +208,7 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    */
   boolean existsBySubjectGroupId(UUID subjectGroupId);
 
-  /** How many grants one group holds - the count a transfer checks before it loads them (#1834). */
+  /** How many grants one group holds - the count a transfer checks before it loads them. */
   long countBySubjectGroupId(UUID subjectGroupId);
 
   /**

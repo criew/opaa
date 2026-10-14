@@ -17,10 +17,10 @@ import org.apache.tika.Tika;
 import org.springframework.stereotype.Component;
 
 /**
- * Everything that has to be true of an uploaded branding image before it is stored (#582:
- * "Validierung an der Systemgrenze ... Logo-MIME-Typ und -Größe" and "das hochgeladene Logo darf
- * kein Skript ausführen können"). Since #1910 the same rules cover the sign-in page's own logo and
- * its background image; only the ceilings differ, and they come from {@link BrandingImageKind}.
+ * Everything that has to be true of an uploaded branding image before it is stored ("Validierung an
+ * der Systemgrenze ... Logo-MIME-Typ und -Größe" and "das hochgeladene Logo darf kein Skript
+ * ausführen können"). Since #1910 the same rules cover the sign-in page's own logo and its
+ * background image; only the ceilings differ, and they come from {@link BrandingImageKind}.
  *
  * <p><b>SVG is rejected, not sanitised.</b> #582 allows either; rejecting is the choice that cannot
  * be wrong on a bad day. An SVG is a document, not an image file - it can carry {@code <script>},
@@ -41,7 +41,7 @@ import org.springframework.stereotype.Component;
  * <p><b>The declared content type is never trusted.</b> The bytes are what decides: Tika's
  * magic-byte detection runs over the uploaded content, and the detected type - not the {@code
  * Content-Type} header the uploader chose - is what gets stored and later served (the same rule
- * {@code LibraryDocumentService#requireContentMatchesExtension} applies to document uploads, #435).
+ * {@code LibraryDocumentService#requireContentMatchesExtension} applies to document uploads).
  */
 @Component
 public class BrandingImageValidator {

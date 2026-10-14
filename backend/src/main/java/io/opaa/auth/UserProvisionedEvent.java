@@ -41,7 +41,7 @@ public record UserProvisionedEvent(
 
   /**
    * {@code provider} declares a groups claim, and {@code tokenGroups} is what this sign-in's token
-   * said about it - which may be that it said nothing usable (#1807).
+   * said about it - which may be that it said nothing usable.
    */
   public static UserProvisionedEvent withTokenGroups(
       User user, boolean createdHere, OidcProvider provider, TokenGroups tokenGroups) {

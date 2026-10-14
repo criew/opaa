@@ -412,7 +412,7 @@ public class SearchStatusService {
 
   /**
    * Read through the {@link RerankRoleStatusProvider} contract only - this page observes the rerank
-   * role, it does not know how the role is built (#1050).
+   * role, it does not know how the role is built.
    */
   private ModelRoleStatus rerankRole() {
     RerankRoleStatus status = rerankRoleStatusProvider.currentStatus();
@@ -437,10 +437,10 @@ public class SearchStatusService {
   }
 
   /**
-   * A timed-out {@link RerankRoleState#UNREACHABLE} gets its own wording (#1154): "antwortet nicht"
-   * reads as a dead endpoint, which a CPU reranker still working within {@code opaa.rerank.timeout}
-   * is not - it is slow, and the remedy (raise the timeout for its hardware) differs from the
-   * remedy for an actually unreachable one.
+   * A timed-out {@link RerankRoleState#UNREACHABLE} gets its own wording: "antwortet nicht" reads
+   * as a dead endpoint, which a CPU reranker still working within {@code opaa.rerank.timeout} is
+   * not - it is slow, and the remedy (raise the timeout for its hardware) differs from the remedy
+   * for an actually unreachable one.
    */
   private static String rerankDetail(RerankRoleStatus status) {
     return switch (status.state()) {

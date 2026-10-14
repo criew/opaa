@@ -218,15 +218,15 @@ public class SpaceService {
             .filter(space -> space.getOrganizationId().equals(caller.organizationId()))
             .toList();
     List<UUID> spaceIds = memberSpaces.stream().map(Space::getId).toList();
-    // #682: the overview card's figures ("n Quellen · n Chats · n Mitglieder") come from two
+    // The overview card's figures ("n Quellen · n Chats · n Mitglieder") come from two
     // grouped queries for the whole list, never one lookup per space. The chat figure counts the
-    // caller's own chats only (#525) - which is exactly the "has a chat of their own" question
+    // caller's own chats only - which is exactly the "has a chat of their own" question
     // the #543 archived-space rule below asks, so it answers that too.
     Map<UUID, Long> chatCounts = ownChatCounts(spaceIds, caller.id());
     Map<UUID, Long> libraryCounts = associationService.countVisibleBySpace(memberSpaces, caller);
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(memberSpaces);
     return memberSpaces.stream()
-        // #543: an archived space is left out of this list unless the caller has a chat of their
+        // An archived space is left out of this list unless the caller has a chat of their
         // own in it, is the space's owner, or is a system admin - otherwise, in the typical #543
         // case where the owner has no chat of their own in the space they archived, the space
         // would vanish from their own list with no way back (#613 review, finding 3: no unarchive
@@ -284,7 +284,7 @@ public class SpaceService {
 
   public List<SpaceMemberView> listMembers(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    // #144: the member list names every member of the space - who else works in "Disziplinar-
+    // The member list names every member of the space - who else works in "Disziplinar-
     // verfahren" or "Umstrukturierung Abteilung 3" is itself sensitive. Unlike getSpace, which only
     // checks membership, this is restricted to ADMIN, the owner and system admins - see
     // SpaceAccessPolicy#requireMemberListViewer. A group row is therefore named only to those who
@@ -321,7 +321,7 @@ public class SpaceService {
 
   /**
    * The members of a group that is a member of this space, under the rule of {@link
-   * GroupMemberDisclosureDirectory} (#1880). This method carries what is its own: the bar of {@link
+   * GroupMemberDisclosureDirectory}. This method carries what is its own: the bar of {@link
    * #listMembers} and limit (a) - only while the group is a member here. Write-transactional
    * because a retrieval carried by the system role writes an audit event.
    */
@@ -345,10 +345,10 @@ public class SpaceService {
   }
 
   /**
-   * The space context of a Rechteprofil-Lauf (#1835, ADR-0036 Entscheidung 7) - the associated
-   * libraries and the size of the group's reach into this space, both read at the moment of the
-   * run. The caller decides what to do with the figure; this method takes no rights decision, which
-   * is why it is readable for the system administration alone through its one caller.
+   * The space context of a Rechteprofil-Lauf (ADR-0036 Entscheidung 7) - the associated libraries
+   * and the size of the group's reach into this space, both read at the moment of the run. The
+   * caller decides what to do with the figure; this method takes no rights decision, which is why
+   * it is readable for the system administration alone through its one caller.
    *
    * <p>Reach is counted on <b>every</b> path: an own membership, a membership of any group the
    * person belongs to, and ownership. Counted against "is in this group" it would be zero for a
@@ -378,9 +378,9 @@ public class SpaceService {
   }
 
   /**
-   * The Herleitung "warum bin ich in diesem Space" (#1822, ADR-0036 Entscheidung 9). {@code
-   * targetUserId} null asks about the caller; naming somebody else is reserved for those who manage
-   * the membership here - the same bar {@link #listMembers} carries - and hides every way through a
+   * The Herleitung "warum bin ich in diesem Space" (ADR-0036 Entscheidung 9). {@code targetUserId}
+   * null asks about the caller; naming somebody else is reserved for those who manage the
+   * membership here - the same bar {@link #listMembers} carries - and hides every way through a
    * protected group. A person this space does not reach at all is 404, like an unknown space: an
    * empty answer would confirm both the space and the absence.
    */
@@ -456,10 +456,10 @@ public class SpaceService {
   }
 
   /**
-   * Admits a person or a group to the space (#1815, ADR-0036 Entscheidung 6). A group's members
-   * hold the role without a row of their own; only an <em>effective</em> group may be admitted, and
-   * an effective but empty one may - with the warning the response carries. The default space
-   * admits nobody.
+   * Admits a person or a group to the space (ADR-0036 Entscheidung 6). A group's members hold the
+   * role without a row of their own; only an <em>effective</em> group may be admitted, and an
+   * effective but empty one may - with the warning the response carries. The default space admits
+   * nobody.
    */
   @Transactional
   public SpaceMemberView addMember(
@@ -516,9 +516,9 @@ public class SpaceService {
   /**
    * Only an effective group becomes a new space member (ADR-0036, Entscheidung 6, Schutzregel 4):
    * neither dissolved, nor belonging to a switched-off identity provider, nor a token group whose
-   * provider has since switched to the directory run (#1816) - otherwise the membership would reach
-   * nobody now and, with the provider switched back on, everybody at once without a second
-   * decision, or it would sit on a membership that is frozen for good. Same three reasons {@code
+   * provider has since switched to the directory run - otherwise the membership would reach nobody
+   * now and, with the provider switched back on, everybody at once without a second decision, or it
+   * would sit on a membership that is frozen for good. Same three reasons {@code
    * AssetGrantService#requireGrantableGroup} refuses a grant for; "wirksam" is one notion. An
    * <em>empty</em> effective group is admitted on purpose: otherwise "create the group, admit it,
    * then fill it" failed at the first step, and a group that only comes into existence with the
@@ -634,10 +634,10 @@ public class SpaceService {
    * the 400 the pre-#1815 owner protection used. A group counts as {@code ADMIN} while it is
    * capable of acting.
    *
-   * <p><b>It refuses the loss, not the state</b> (#1819): a space that already has no capable
-   * {@code ADMIN} - its succession is open - loses none through this change, and refusing here
-   * would freeze even the removal of an unrelated member, which takes reach away rather than adding
-   * it. Its group half is exercised directly in {@code SpaceAccessPolicyTest}.
+   * <p><b>It refuses the loss, not the state</b>: a space that already has no capable {@code ADMIN}
+   * - its succession is open - loses none through this change, and refusing here would freeze even
+   * the removal of an unrelated member, which takes reach away rather than adding it. Its group
+   * half is exercised directly in {@code SpaceAccessPolicyTest}.
    */
   private void requireCapableAdminRemains(Space space, SpaceMembership changed, SpaceRole newRole) {
     if (!accessPolicy.hasCapableAdminAfter(space, changed, newRole)
@@ -649,9 +649,9 @@ public class SpaceService {
   }
 
   /**
-   * Hands the space over to another member (#1815, ADR-0036 Entscheidung 6). <b>Behaviour change:
-   * every capable {@code ADMIN} member that is a natural person may do this</b> - to themselves or
-   * to another such member - where before only the owner or a system administrator could. A group
+   * Hands the space over to another member (ADR-0036 Entscheidung 6). <b>Behaviour change: every
+   * capable {@code ADMIN} member that is a natural person may do this</b> - to themselves or to
+   * another such member - where before only the owner or a system administrator could. A group
    * never becomes owner: "wirksam" is defined for groups alone and is the wrong yardstick here, and
    * the space owner stays a natural person.
    *
@@ -793,7 +793,7 @@ public class SpaceService {
           "Nur der Eigentümer oder ein Systemadministrator kann einen Space löschen");
     }
 
-    // #525: chats are composition, not association - docs/features/spaces-and-assets.md#chats-
+    // Chats are composition, not association - docs/features/spaces-and-assets.md#chats-
     // sind-vor-fremder-löschung-geschützt says a chat "bleibt für seinen Autor und im Nachweis
     // erhalten", so deleting the space they live in must not silently destroy them.
     // fk_chats_space_organization is ON DELETE RESTRICT (composite

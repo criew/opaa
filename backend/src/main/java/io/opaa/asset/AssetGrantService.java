@@ -61,12 +61,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <p>No new or widened grant targets a group that is no effective grant target any more (dissolved,
  * provider disabled, unmaintained token group); existing grants to it keep working.
  *
- * <p><b>"Alle Konten" is a recipient here, not a level elsewhere</b> (#1931, ADR-0037): it is the
- * subject {@link AssetGrantSubjectType#ALL_ACCOUNTS}, reaching every account of the asset's
- * organization. It passes the same escalation guard and the same succession guard as any other
- * recipient, and additionally the type's own ceiling ({@link
- * AssetTypeDefinition#requireAllAccountsGrantAllowed}) - which is where a connector library's share
- * cap (#797) takes effect now.
+ * <p><b>"Alle Konten" is a recipient here, not a level elsewhere</b> (ADR-0037): it is the subject
+ * {@link AssetGrantSubjectType#ALL_ACCOUNTS}, reaching every account of the asset's organization.
+ * It passes the same escalation guard and the same succession guard as any other recipient, and
+ * additionally the type's own ceiling ({@link AssetTypeDefinition#requireAllAccountsGrantAllowed})
+ * - which is where a connector library's share cap takes effect now.
  *
  * <p>Every response carries {@code subjectDisplayName} and {@code grantedByDisplayName}, resolved
  * here - see {@link #toViews(List)}.
@@ -76,13 +75,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class AssetGrantService {
 
   /**
-   * The highest role "Alle Konten" may hold (#1931, ADR-0037 Entscheidung 1). {@link
-   * AssetRole#MANAGER} and {@link AssetRole#OWNER} are responsibilities - vergeben von Rechten,
-   * Eigentum, Nachfolge - and a responsibility is borne by a named person or group, never by
-   * everybody. The same reasoning already keeps an owning group at {@code MANAGER} instead of
-   * {@code OWNER} in {@link AssetShellService#registerCreated}; here it goes one rank further,
-   * because {@code countOtherActiveOwnerGrants} would otherwise count a grant that answers for
-   * nobody and let the last named owner be removed.
+   * The highest role "Alle Konten" may hold (ADR-0037 Entscheidung 1). {@link AssetRole#MANAGER}
+   * and {@link AssetRole#OWNER} are responsibilities - vergeben von Rechten, Eigentum, Nachfolge -
+   * and a responsibility is borne by a named person or group, never by everybody. The same
+   * reasoning already keeps an owning group at {@code MANAGER} instead of {@code OWNER} in {@link
+   * AssetShellService#registerCreated}; here it goes one rank further, because {@code
+   * countOtherActiveOwnerGrants} would otherwise count a grant that answers for nobody and let the
+   * last named owner be removed.
    */
   private static final AssetRole HIGHEST_ROLE_FOR_ALL_ACCOUNTS = AssetRole.EDITOR;
 
@@ -141,10 +140,10 @@ public class AssetGrantService {
 
   /**
    * The members of a group that holds a grant on this asset, under the rule of {@link
-   * GroupMemberDisclosureDirectory} (#1880). This method carries what is its own: the {@code
-   * MANAGER} bar of {@link #requireManageable} and limit (a) - only while the group holds an
-   * <b>unexpired</b> grant here. Write-transactional because a retrieval carried by the system role
-   * writes an audit event.
+   * GroupMemberDisclosureDirectory}. This method carries what is its own: the {@code MANAGER} bar
+   * of {@link #requireManageable} and limit (a) - only while the group holds an <b>unexpired</b>
+   * grant here. Write-transactional because a retrieval carried by the system role writes an audit
+   * event.
    */
   @Transactional
   public GroupMemberDisclosure listGroupMembers(
@@ -434,11 +433,11 @@ public class AssetGrantService {
   }
 
   /**
-   * Takes back the grant to "Alle Konten" because the type's ceiling now forbids it (#797, #1931,
-   * ADR-0037 Entscheidung 5). Deliberately without the {@code MANAGER} check of {@link
-   * #revokeGrant}: the caller is the system administration, whose {@code SYSTEM_ADMIN} role it has
-   * already established, and the clamp must never be refused. Everything else is an ordinary
-   * revocation - one grant-history interval, one audit entry, one cache invalidation.
+   * Takes back the grant to "Alle Konten" because the type's ceiling now forbids it (ADR-0037
+   * Entscheidung 5). Deliberately without the {@code MANAGER} check of {@link #revokeGrant}: the
+   * caller is the system administration, whose {@code SYSTEM_ADMIN} role it has already
+   * established, and the clamp must never be refused. Everything else is an ordinary revocation -
+   * one grant-history interval, one audit entry, one cache invalidation.
    *
    * @return whether such a grant existed and was taken back.
    */

@@ -16,8 +16,8 @@ import io.opaa.library.LibraryFolderChild;
 /**
  * Maps {@link Document}, {@link LibraryDocumentEntry} and {@link LibraryDocumentPage} onto their
  * generated response counterparts (ADR-0006: API DTOs are generated from the specification, never
- * hand-written). Formerly {@code io.opaa.library.LibraryDocumentResponses} (#420), moved here as
- * part of #860 so a domain service never builds a generated response itself.
+ * hand-written). Formerly {@code io.opaa.library.LibraryDocumentResponses}, moved here as part of
+ * #860 so a domain service never builds a generated response itself.
  */
 final class LibraryDocumentResponseMapper {
 
@@ -26,7 +26,7 @@ final class LibraryDocumentResponseMapper {
   /**
    * {@code folderPath} left {@code null} - for a caller that has not resolved it (or has no use for
    * it, e.g. {@code LibraryDocumentService#deleteDocument} never returns a body). {@link
-   * #toResponse(LibraryDocumentEntry)} is the folder-aware counterpart (#821).
+   * #toResponse(LibraryDocumentEntry)} is the folder-aware counterpart.
    */
   static LibraryDocumentResponse toResponse(Document document) {
     return toResponse(document, null, null);
@@ -80,7 +80,7 @@ final class LibraryDocumentResponseMapper {
     return new LibraryFolderBreadcrumbItem(folder.getId(), folder.getName());
   }
 
-  /** #1943: both lists together cover every id of the request, each exactly once. */
+  /** Both lists together cover every id of the request, each exactly once. */
   static BulkDocumentDeleteResponse toBulkDeleteResponse(BulkDocumentDeletion deletion) {
     return new BulkDocumentDeleteResponse(
         deletion.deletedDocumentIds(),

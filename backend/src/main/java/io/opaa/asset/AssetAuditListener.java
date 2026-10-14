@@ -27,7 +27,7 @@ class AssetAuditListener {
   /**
    * A grant to "Alle Konten" carries <b>no</b> audit subject: it names neither a person nor a
    * group, and {@code chk_audit_log_subject} knows only those two. The recipient is in the payload
-   * instead, written by {@code AssetGrantService} (#1931, ADR-0037 Entscheidung 7) - and a grant to
+   * instead, written by {@code AssetGrantService} (ADR-0037 Entscheidung 7) - and a grant to
    * everyone has nothing to do in the pseudonym table.
    */
   @EventListener

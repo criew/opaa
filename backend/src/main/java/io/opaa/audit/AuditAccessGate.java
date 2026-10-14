@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
  * because a 403 thrown by a security interceptor would run before the funnel and so be invisible to
  * the entry the specification requires for the rejected attempt too. The entry itself is written by
  * the caller's {@code logEntry}, exactly once per call: {@link AuditQueryService} writes it against
- * {@code audit_log}, the Stichtagsauskunft (#1822) against the queried object.
+ * {@code audit_log}, the Stichtagsauskunft against the queried object.
  */
 @Component
 public class AuditAccessGate {

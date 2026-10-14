@@ -4,8 +4,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * Resolves the currently configured embedding model for the read-only admin block (#759,
- * docs/features/llm-integration.md#sofortige-wirkung). The embedding model is deliberately not
+ * Resolves the currently configured embedding model for the read-only admin block
+ * (docs/features/llm-integration.md#sofortige-wirkung). The embedding model is deliberately not
  * exposed as an editable resource: a change requires a full re-index because existing vectors
  * become incomparable, so it stays a configuration value picked at startup, not something the admin
  * API lets anyone edit.

@@ -3,7 +3,7 @@ package io.opaa.account;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-/** Persistence for the singleton {@link LocalAdminSeedMarker} row (#1534). */
+/** Persistence for the singleton {@link LocalAdminSeedMarker} row. */
 @Repository
 public interface LocalAdminSeedMarkerRepository
     extends JpaRepository<LocalAdminSeedMarker, Integer> {

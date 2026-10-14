@@ -14,8 +14,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ValueDeserializer;
 
 /**
- * Reads the generated {@code MetadataFilter} request object strictly (#1070): a JSON field it does
- * not declare - a keyword, a title, any field that is not a filterable core field - is a 400, not a
+ * Reads the generated {@code MetadataFilter} request object strictly: a JSON field it does not
+ * declare - a keyword, a title, any field that is not a filterable core field - is a 400, not a
  * silently ignored key. The application's mapper tolerates unknown properties everywhere else,
  * which is right for every other request but would turn "only core fields filter, keywords never"
  * into a filter that quietly does nothing.

@@ -2,7 +2,7 @@ package io.opaa.mail;
 
 /**
  * Published by {@link MailSettingsService} inside the transaction of every administrative change to
- * {@code mail_settings} (#1536, ADR-0033 Entscheidung 10).
+ * {@code mail_settings} (ADR-0033 Entscheidung 10).
  *
  * <p>{@link MailSettingsService} is the <b>only</b> listener, {@code AFTER_COMMIT}: it replaces the
  * snapshot, so a rolled-back change never takes effect. {@link MailSenderProvider} listens to

@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * Maps the generated {@code MetadataFilter} request/response shape onto the domain record and back
- * (#1070; ADR-0006). The domain parse rejects an impossible date with 400; an unknown JSON field is
+ * (ADR-0006). The domain parse rejects an impossible date with 400; an unknown JSON field is
  * rejected before this mapper runs (see {@link MetadataFilterDeserializer}).
  */
 public final class MetadataFilterMapper {

@@ -49,7 +49,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 /**
  * Manages groups as permission subjects. The right to maintain one is decided <b>per group</b>
- * rather than by role (#1814, ADR-0036 Entscheidung 4): its stewards may, and so may a system
+ * rather than by role (ADR-0036 Entscheidung 4): its stewards may, and so may a system
  * administrator; anybody else gets the answer an unknown group gets, {@code 404}. The organization
  * boundary is enforced on top of that the same way {@code SpaceService} does it, because a system
  * admin exists per organization and must never see or touch another organization's groups.
@@ -59,8 +59,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * so {@link #setProtection} refuses an administrator who is no steward.
  *
  * <p>Only {@link GroupKind#AD_HOC} groups can be created, renamed, deleted or have their membership
- * managed here. {@link GroupKind#ORG_UNIT} groups are synchronised from the directory (#237) and
- * are read-only through this service.
+ * managed here. {@link GroupKind#ORG_UNIT} groups are synchronised from the directory and are
+ * read-only through this service.
  *
  * <p>Deleting a group that owns an asset is blocked until ownership is transferred (see the feature
  * spec's "Eigentuemerschaft und Verwaisung" and issue #200's acceptance criteria). Which asset
@@ -83,7 +83,7 @@ public class GroupService {
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
 
-  /** The same floor and ceiling the account search carries, for the same reasons (#778). */
+  /** The same floor and ceiling the account search carries, for the same reasons. */
   private static final int MIN_SEARCH_QUERY_LENGTH = 2;
 
   private static final int MAX_SEARCH_RESULTS = 20;
@@ -227,9 +227,9 @@ public class GroupService {
    * <p>Excludes dissolved groups: a dissolved group's membership is frozen rather than cleared (see
    * {@link Group#isDissolved()}), so it would otherwise still surface here. {@code
    * KnowledgeLibraryService#createLibrary} does not currently check {@code isDissolved()} itself
-   * before writing the owner grant (see #201/#202) - so today, offering a dissolved group here is
-   * the only thing standing between the picker and a library owned by a group that no longer
-   * organisationally exists.
+   * before writing the owner grant - so today, offering a dissolved group here is the only thing
+   * standing between the picker and a library owned by a group that no longer organisationally
+   * exists.
    *
    * <p>Also filters to the caller's organization, mirroring {@link #listGroups}: as of migration
    * 047 this filter is structurally unreachable, not merely unexercised - {@code
@@ -238,11 +238,10 @@ public class GroupService {
    * organization_id}) together force a membership row's {@code organization_id} to match both the
    * member's and the group's actual organization, so no row this filter would ever reject can exist
    * in the first place - see {@code
-   * GroupServiceIntegrationTest#aMembershipRowCanNeverCrossAnOrganizationBoundaryAtTheDatabaseLevel}
-   * (#308), which proves the database rejects constructing one directly. Left in place anyway as a
-   * second, independent defense line the class Javadoc's philosophy calls for - one that does not
-   * rely on the schema invariant above continuing to hold, in case a future migration ever loosens
-   * it.
+   * GroupServiceIntegrationTest#aMembershipRowCanNeverCrossAnOrganizationBoundaryAtTheDatabaseLevel},
+   * which proves the database rejects constructing one directly. Left in place anyway as a second,
+   * independent defense line the class Javadoc's philosophy calls for - one that does not rely on
+   * the schema invariant above continuing to hold, in case a future migration ever loosens it.
    */
   public List<GroupOverview> listMyGroups(CurrentUser caller) {
     Set<UUID> groupIds = membershipRepository.findGroupIdsOfMember(caller.id());
@@ -257,10 +256,10 @@ public class GroupService {
   }
 
   /**
-   * The groups the caller may name as a grant subject or a space member (#1820, ADR-0036
-   * Entscheidung 9). Every provider group of the organization is offered; an internal group only
-   * once its stewards released it for use - unless the caller is a member, a steward or a system
-   * administrator, for whom it was never invisible.
+   * The groups the caller may name as a grant subject or a space member (ADR-0036 Entscheidung 9).
+   * Every provider group of the organization is offered; an internal group only once its stewards
+   * released it for use - unless the caller is a member, a steward or a system administrator, for
+   * whom it was never invisible.
    *
    * <p>A protected group is not findable by a substring: it appears only when the query is its
    * complete name, and then without any size. An ineffective group - dissolved, provider switched
@@ -303,11 +302,11 @@ public class GroupService {
   }
 
   /**
-   * One group by its id, under the rule {@link #searchSelectableGroups} applies (#1820). The way in
-   * for the caller who types a designation by hand: the group is resolved <b>before</b> a right is
-   * granted, so origin and provider reach the interface on that path too - without them, the
-   * question back for a group of an external provider would be missing on exactly the path that
-   * shows the least (ADR-0036, Entscheidung 2).
+   * One group by its id, under the rule {@link #searchSelectableGroups} applies. The way in for the
+   * caller who types a designation by hand: the group is resolved <b>before</b> a right is granted,
+   * so origin and provider reach the interface on that path too - without them, the question back
+   * for a group of an external provider would be missing on exactly the path that shows the least
+   * (ADR-0036, Entscheidung 2).
    *
    * <p>A group this caller may not name answers like one that does not exist. A protected group
    * comes back <b>without its name</b>: the caller did not name it here, and handing a name back
@@ -554,7 +553,7 @@ public class GroupService {
    * Dismisses a steward. A steward never leaves the group without one: handing responsibility over
    * means appointing the successor first (ADR-0036, Entscheidung 4). A system administrator may
    * dismiss the last one - an account leaving the house has to be releasable - and the group then
-   * carries no steward until one is appointed again (#1819).
+   * carries no steward until one is appointed again.
    */
   @Transactional
   public void dismissSteward(UUID groupId, UUID userId, CurrentUser caller) {
@@ -751,7 +750,7 @@ public class GroupService {
           GroupMembershipHistoryCause.GROUP_DELETED,
           caller.id());
     }
-    // #392: GROUP_DELETED also covers the group's dissolution ("Auflösung einer Gruppe") - one
+    // GROUP_DELETED also covers the group's dissolution ("Auflösung einer Gruppe") - one
     // entry for the group itself, not one per member removed above (those are already covered by
     // the group's own deletion, not a separate membership-removal action).
     auditEventRecorder.recordUserAction(

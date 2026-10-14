@@ -3,7 +3,7 @@ package io.opaa.mail;
 import io.opaa.api.types.MailEncryption;
 
 /**
- * The administrable SMTP fields as one replacement (#1536) - the domain parameter object {@code
+ * The administrable SMTP fields as one replacement - the domain parameter object {@code
  * SystemMailSettingsController} hands to {@link MailSettingsService}, so no service method grows a
  * nine-argument signature and no service sees an {@code io.opaa.api.dto} type (AGENTS.md,
  * "Domain-Services kennen keine io.opaa.api.dto-Typen").

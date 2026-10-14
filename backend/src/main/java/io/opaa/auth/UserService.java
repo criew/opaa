@@ -31,7 +31,7 @@ public class UserService {
   private static final int SEARCH_RESULT_LIMIT = 20;
   private static final int SEARCH_MIN_QUERY_LENGTH = 2;
 
-  // Throttles lastLoginAt writes to at most once per user per interval (#833) - 5 minutes of
+  // Throttles lastLoginAt writes to at most once per user per interval - 5 minutes of
   // staleness is an acceptable trade for dropping the per-request UPDATE.
   private static final Duration LAST_LOGIN_UPDATE_THRESHOLD = Duration.ofMinutes(5);
 
@@ -83,7 +83,7 @@ public class UserService {
    *
    * <p>What the token said travels as a {@link TokenRoles} and a {@link TokenGroups}: a token that
    * carries no usable claim must not reach the role synchronizer as "this account has no elevated
-   * role" (#1830) nor a listener as "this account has no groups" (#1807).
+   * role" nor a listener as "this account has no groups".
    */
   public User provisionFromToken(Jwt jwt) {
     String issuer = JwtUserClaims.issuer(jwt);
@@ -165,7 +165,7 @@ public class UserService {
    * {@code lastLoginAt} is refreshed only after {@link #LAST_LOGIN_UPDATE_THRESHOLD}; {@code
    * email}/{@code displayName} (identity-provider claims) are written immediately whenever they
    * differ from the stored value. No {@link UserRepository#save} call when none of the three
-   * changed (#833).
+   * changed.
    */
   private User updateExistingUser(User existing, String email, String displayName) {
     Instant now = clock.instant();
@@ -202,7 +202,7 @@ public class UserService {
 
   /**
    * Creates a new user, tolerating the race of two concurrent first logins for the same {@code
-   * subject}/{@code issuer} pair racing past the {@code findBySubjectAndIssuer} check above (#293).
+   * subject}/{@code issuer} pair racing past the {@code findBySubjectAndIssuer} check above.
    *
    * <p>Because {@link #findOrCreateUser} is deliberately not {@code @Transactional} (see its
    * Javadoc), {@link #insertUser} below runs in its own short-lived, implicit transaction on its
@@ -213,7 +213,7 @@ public class UserService {
    * SpaceService#ensureDefaultSpace}, but without that method's {@code REQUIRES_NEW} - there is no
    * ambient transaction here to escape from in the first place.
    *
-   * <p>#307: also reports whether the insert attempt actually won, via {@link
+   * <p>Also reports whether the insert attempt actually won, via {@link
    * UserCreationResult#createdHere()} - see {@link #findOrCreateUser}'s Javadoc for why the caller
    * needs to tell a genuine winner apart from a race loser here.
    */
@@ -247,22 +247,22 @@ public class UserService {
   }
 
   /**
-   * Scopes the admin user list to the caller's own organization (#271) - {@code findAll()} used to
-   * return every organization's users, including to a SYSTEM_ADMIN, whose reach the organization
-   * boundary must stop at just as it does everywhere else (#199), and whose acting person is
-   * resolved by {@code AdminController#listUsers}.
+   * Scopes the admin user list to the caller's own organization - {@code findAll()} used to return
+   * every organization's users, including to a SYSTEM_ADMIN, whose reach the organization boundary
+   * must stop at just as it does everywhere else, and whose acting person is resolved by {@code
+   * AdminController#listUsers}.
    */
   public List<User> findAllInOrganization(UUID organizationId) {
     return userRepository.findByOrganizationId(organizationId);
   }
 
   /**
-   * Backs {@code UserSearchController#listUsers} (#777, gated after #778 review finding 4). A
-   * missing or too-short (below {@link #SEARCH_MIN_QUERY_LENGTH}) query returns an empty list
-   * rather than falling back to the unbounded {@link #findAllInOrganization} - the caller is
-   * expected to be a type-ahead picker that never even issues a request before the caller has typed
-   * enough to narrow the result, not a page-load preload. Matches are capped at {@link
-   * #SEARCH_RESULT_LIMIT} rows via {@link UserRepository#searchByOrganizationId}.
+   * Backs {@code UserSearchController#listUsers} (gated after #778 review finding 4). A missing or
+   * too-short (below {@link #SEARCH_MIN_QUERY_LENGTH}) query returns an empty list rather than
+   * falling back to the unbounded {@link #findAllInOrganization} - the caller is expected to be a
+   * type-ahead picker that never even issues a request before the caller has typed enough to narrow
+   * the result, not a page-load preload. Matches are capped at {@link #SEARCH_RESULT_LIMIT} rows
+   * via {@link UserRepository#searchByOrganizationId}.
    */
   public List<User> searchInOrganization(UUID organizationId, String query) {
     String trimmed = query == null ? "" : query.trim();

@@ -21,12 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Creates, renames and (recursively) deletes {@link LibraryFolder}s (#820, Epic #520 Phase 2,
- * ADR-0020) - the CRUD counterpart to {@code LibraryDocumentService}'s document upload/delete,
- * sharing its permission floor ({@link AssetRole#EDITOR}, see {@link #requireEditable}) and its
- * "only an UPLOAD library accepts this" restriction (see {@link #requireUploadLibrary}): the
- * folders of a FILESYSTEM (#824) or HTTP_DIRECTORY (#1277) library are read-only, derived from the
- * crawled directory structure itself, not editable through this service.
+ * Creates, renames and (recursively) deletes {@link LibraryFolder}s (ADR-0020) - the CRUD
+ * counterpart to {@code LibraryDocumentService}'s document upload/delete, sharing its permission
+ * floor ({@link AssetRole#EDITOR}, see {@link #requireEditable}) and its "only an UPLOAD library
+ * accepts this" restriction (see {@link #requireUploadLibrary}): the folders of a FILESYSTEM or
+ * HTTP_DIRECTORY library are read-only, derived from the crawled directory structure itself, not
+ * editable through this service.
  *
  * <p>{@link #materializeFolderPath} and {@link #pruneOrphanedFolders} are the internal counterparts
  * such an indexing run uses to mirror that structure - deliberately bypassing {@link
@@ -193,9 +193,9 @@ public class LibraryFolderService {
 
   /**
    * Materializes (idempotently) the {@link LibraryFolder} chain for {@code segments} - one row per
-   * path component, reusing an existing folder at the same level instead of creating a duplicate
-   * (#824). The internal counterpart to {@link #createFolder} an indexing run uses to mirror its
-   * source directory structure - see this class's own Javadoc for why it bypasses {@link
+   * path component, reusing an existing folder at the same level instead of creating a duplicate.
+   * The internal counterpart to {@link #createFolder} an indexing run uses to mirror its source
+   * directory structure - see this class's own Javadoc for why it bypasses {@link
    * #requireUploadLibrary}/{@link #requireEditable}. Since #1277 an {@code HTTP_DIRECTORY} run uses
    * the same path, with the crawled URL path relative to the start URL as its segments.
    *
@@ -298,12 +298,12 @@ public class LibraryFolderService {
 
   /**
    * Resolves (idempotently creating as needed) the folder chain described by {@code pathSegments},
-   * relative to {@code baseFolderId} in an {@code UPLOAD} library (#823, Epic #520 Phase 4) - the
-   * upload-path counterpart to {@link #materializeFolderPath}'s connector-only mirroring. Unlike
-   * that method, this one enforces every check {@link #createFolder} itself enforces - permission,
-   * {@code UPLOAD}-only, name shape, depth - once for the whole chain, exactly as if each segment
-   * had been created one REST call at a time; an existing folder at any level is reused rather than
-   * duplicated, mirroring {@link #materializeSingleFolder}.
+   * relative to {@code baseFolderId} in an {@code UPLOAD} library - the upload-path counterpart to
+   * {@link #materializeFolderPath}'s connector-only mirroring. Unlike that method, this one
+   * enforces every check {@link #createFolder} itself enforces - permission, {@code UPLOAD}-only,
+   * name shape, depth - once for the whole chain, exactly as if each segment had been created one
+   * REST call at a time; an existing folder at any level is reused rather than duplicated,
+   * mirroring {@link #materializeSingleFolder}.
    *
    * @param baseFolderId the folder {@code pathSegments} is relative to; {@code null} means the
    *     library's root, mirroring {@link #createFolder}'s own {@code parentFolderId}
@@ -348,9 +348,9 @@ public class LibraryFolderService {
 
   /**
    * {@link #validateName} plus the extra checks a path segment needs beyond a single, manually
-   * typed folder name (#823): no {@code "\"} (a Windows-style separator {@code validateName}'s own
-   * {@code "/"} check does not catch) and no {@code ".."}/{@code "."} (a relative-path traversal
-   * segment that means something other than a literal folder name).
+   * typed folder name: no {@code "\"} (a Windows-style separator {@code validateName}'s own {@code
+   * "/"} check does not catch) and no {@code ".."}/{@code "."} (a relative-path traversal segment
+   * that means something other than a literal folder name).
    */
   private String validatePathSegment(String rawSegment) {
     String name = validateName(rawSegment);
@@ -373,11 +373,11 @@ public class LibraryFolderService {
   /**
    * Removes every {@link LibraryFolder} of {@code libraryId} that is both absent from {@code
    * currentFolderIds} (this indexing run's own directory walk never touched it - its source
-   * directory is gone) and empty, including transitively (#824, docs/features/knowledge-sources.md
+   * directory is gone) and empty, including transitively (docs/features/knowledge-sources.md
    * "Ordner in Konnektorbibliotheken"). Every calling executor calls {@code
-   * StaleDocumentCleanupService#cleanupVanished} before this method (#886): a document whose
-   * backing file disappeared is already gone by the time this runs, so a folder left holding only
-   * such a document is correctly treated as empty and pruned, not left standing.
+   * StaleDocumentCleanupService#cleanupVanished} before this method: a document whose backing file
+   * disappeared is already gone by the time this runs, so a folder left holding only such a
+   * document is correctly treated as empty and pruned, not left standing.
    *
    * <p>Walked leaf-first (post-order): a folder only qualifies once every one of its own subfolders
    * has already either survived (still referenced, or non-empty) or been removed - mirroring {@link
@@ -540,11 +540,11 @@ public class LibraryFolderService {
 
   /**
    * ADR-0020: only an {@code UPLOAD} library accepts folder creation/rename/deletion through this
-   * service - a {@code FILESYSTEM} (#824) or {@code HTTP_DIRECTORY} (#1277) library's folders
-   * mirror its crawled directory structure automatically, and {@code RSS_FEED} has no directory
-   * concept at all. {@code 409} rather than {@code 400}, mirroring {@code LibraryDocumentService#
-   * requireUploadLibrary}: the request is well-formed, it simply conflicts with this library's
-   * fixed, immutable source type.
+   * service - a {@code FILESYSTEM} or {@code HTTP_DIRECTORY} library's folders mirror its crawled
+   * directory structure automatically, and {@code RSS_FEED} has no directory concept at all. {@code
+   * 409} rather than {@code 400}, mirroring {@code LibraryDocumentService# requireUploadLibrary}:
+   * the request is well-formed, it simply conflicts with this library's fixed, immutable source
+   * type.
    */
   private void requireUploadLibrary(KnowledgeLibrary library) {
     if (!SourceType.UPLOAD.equals(library.getSourceType())) {

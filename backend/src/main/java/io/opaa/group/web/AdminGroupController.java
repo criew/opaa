@@ -24,8 +24,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The one group path that stayed under {@code /admin} (#1814, ADR-0036 Entscheidung 4): reading
- * every group of the organization regardless of who maintains it is an administrative act, not a
+ * The one group path that stayed under {@code /admin} (ADR-0036 Entscheidung 4): reading every
+ * group of the organization regardless of who maintains it is an administrative act, not a
  * stewardship. Everything that acts on a single group lives in {@link GroupController}, where the
  * right is decided per group.
  */

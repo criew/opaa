@@ -90,8 +90,8 @@ public final class ChatResponseMapper {
   }
 
   /**
-   * The Gesprächsnotiz (#1487). Also used by {@code QueryResponseMapper}, where {@code null} - no
-   * persisted chat - stays {@code null} rather than becoming an empty note.
+   * The Gesprächsnotiz. Also used by {@code QueryResponseMapper}, where {@code null} - no persisted
+   * chat - stays {@code null} rather than becoming an empty note.
    */
   public static List<ChatNoteItem> toNoteItems(List<ChatNotePoint> points) {
     return points == null ? null : points.stream().map(ChatResponseMapper::toNoteItem).toList();

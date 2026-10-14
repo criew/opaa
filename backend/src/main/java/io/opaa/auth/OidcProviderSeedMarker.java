@@ -8,8 +8,8 @@ import java.time.Instant;
 
 /**
  * The permanent record that {@link OidcProviderSeeder} attempted the one-time takeover of the
- * {@code OPAA_OIDC_*} configuration (#1329, ADR-0025 Entscheidung 3) - the same singleton shape as
- * {@code LlmModelSeedMarker}, for the same reason: "is the table empty?" would resurrect a stale
+ * {@code OPAA_OIDC_*} configuration (ADR-0025 Entscheidung 3) - the same singleton shape as {@code
+ * LlmModelSeedMarker}, for the same reason: "is the table empty?" would resurrect a stale
  * environment configuration the moment a Systemverwaltung deletes every provider.
  *
  * <p><b>Ablaufdatum:</b> einmalige Übernahme für Bestandsinstallationen, Kandidat zur Entfernung ab

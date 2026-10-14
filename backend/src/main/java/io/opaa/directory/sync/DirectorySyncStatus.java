@@ -12,8 +12,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The durable half of "last-known-good" (#237): one row per identity provider recording the outcome
- * of that provider's most recent synchronisation run, including dry runs and unreachable attempts.
+ * The durable half of "last-known-good": one row per identity provider recording the outcome of
+ * that provider's most recent synchronisation run, including dry runs and unreachable attempts.
  * Exists so an unreachable directory's state is reported persistently - visible to whoever checks
  * later, not only to whoever happened to trigger the run that discovered it.
  *

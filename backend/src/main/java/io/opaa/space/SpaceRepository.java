@@ -20,9 +20,9 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
   List<Space> findDistinctByMembershipsUserIdWithMemberships(@Param("userId") UUID userId);
 
   /**
-   * The spaces one of the caller's groups is a member of (#1815). Separate from the query above
-   * rather than one disjunction: a caller who belongs to no group would otherwise have to send an
-   * empty {@code IN} list. Never called with an empty set - see {@code SpaceService#listSpaces}.
+   * The spaces one of the caller's groups is a member of. Separate from the query above rather than
+   * one disjunction: a caller who belongs to no group would otherwise have to send an empty {@code
+   * IN} list. Never called with an empty set - see {@code SpaceService#listSpaces}.
    */
   @Query(
       "select distinct s from Space s "
@@ -46,7 +46,7 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
 
   boolean existsByOwnerIdAndIsDefaultTrue(UUID ownerId);
 
-  /** Every space the user owns - what deleting a local account has to be clear of (#1537). */
+  /** Every space the user owns - what deleting a local account has to be clear of. */
   List<Space> findByOwnerId(UUID ownerId);
 
   /**
@@ -64,13 +64,13 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
    * caller's membership insert is correctly skipped without a second query to find out whether it
    * lost, because both inserts happen in the one statement Postgres evaluates as a whole.
    *
-   * <p><b>No rights-history interval is written here</b> (#1815, ADR-0036 Entscheidung 8), and that
-   * is the same rule {@code UserRepository#countDeletionBlockers} already applies with {@code
-   * spaces ... AND is_default = false}: the personal space and everything provisioned with it are
-   * the account itself, not a right anybody decided, and they go with the account when it is
-   * deleted. Writing the intervals here would make every account that ever signed in permanently
-   * undeletable through their {@code RESTRICT} person columns, without any decision having been
-   * recorded. Consequence, named rather than hidden: a Stichtag reconstruction ({@link
+   * <p><b>No rights-history interval is written here</b> (ADR-0036 Entscheidung 8), and that is the
+   * same rule {@code UserRepository#countDeletionBlockers} already applies with {@code spaces ...
+   * AND is_default = false}: the personal space and everything provisioned with it are the account
+   * itself, not a right anybody decided, and they go with the account when it is deleted. Writing
+   * the intervals here would make every account that ever signed in permanently undeletable through
+   * their {@code RESTRICT} person columns, without any decision having been recorded. Consequence,
+   * named rather than hidden: a Stichtag reconstruction ({@link
    * SpaceMembershipHistoryService#spaceIdsAsOf}) does not report the personal space. Nobody else
    * becomes a member of it; every membership and ownership of another space is historised where it
    * is written ({@link SpaceService}, {@code SpaceAssetOwnershipDirectory}, {@code

@@ -105,7 +105,7 @@ public class LocalLoginService {
       // the one log line of a failed attempt (ADR-0033, Entscheidung 9): account id, never the
       // address, whether or not the attempt is counted
       log.info("Local sign-in of account {} refused: wrong password", user.getId());
-      // a locked account counts nothing (#1535): attempts during a lockout neither extend it nor
+      // a locked account counts nothing: attempts during a lockout neither extend it nor
       // spend the fresh budget the account has once the lockout has ended
       if (row.state(now) == LocalAccountState.LOCKED) {
         return Optional.empty();

@@ -12,7 +12,7 @@ import java.util.List;
  * @param grants how many grants those groups hold
  * @param grantedAssets across how many distinct assets those grants run
  * @param owningGroups how many of those groups own an asset themselves
- * @param spaceMemberships how many space memberships those groups hold (#1815) - {@code
+ * @param spaceMemberships how many space memberships those groups hold - {@code
  *     space_memberships.group_id} is {@code ON DELETE RESTRICT}, so without this count the deletion
  *     would run into the foreign key instead of into the refusal
  * @param spaces across how many distinct spaces those memberships run

@@ -29,8 +29,8 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
   /**
    * The caller the filter chain attached to {@code request}, or {@code null} when it carries none.
    * The one way to read this attribute from outside this package, for code that is not a controller
-   * method: the MCP endpoint (#1721) is a {@code RouterFunction} and has no {@code @Caller}
-   * parameter to resolve.
+   * method: the MCP endpoint is a {@code RouterFunction} and has no {@code @Caller} parameter to
+   * resolve.
    */
   public static CurrentUser callerOf(HttpServletRequest request) {
     Object attribute = request == null ? null : request.getAttribute(REQUEST_ATTRIBUTE);

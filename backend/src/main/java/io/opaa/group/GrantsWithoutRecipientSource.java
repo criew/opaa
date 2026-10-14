@@ -9,7 +9,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The tab "Freigaben ohne Empfänger" (#1819, ADR-0036 Entscheidung 6) - the visible signal for the
+ * The tab "Freigaben ohne Empfänger" (ADR-0036 Entscheidung 6) - the visible signal for the
  * unprotected token path: after a renamed group claim, the releases to the old group are dead, and
  * nothing else in the installation shows it.
  */

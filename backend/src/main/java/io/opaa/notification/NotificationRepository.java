@@ -25,8 +25,8 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
 
   /**
    * Removes every notification of one type created before {@code cutoff}, read or not - the shape a
-   * type with its own retention period needs (#1720). The table has no blanket retention policy;
-   * only a type that declares one is cleaned up.
+   * type with its own retention period needs. The table has no blanket retention policy; only a
+   * type that declares one is cleaned up.
    */
   int deleteByTypeAndCreatedAtBefore(NotificationType type, Instant cutoff);
 

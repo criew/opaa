@@ -50,8 +50,8 @@ public enum AuditEventType {
   LIBRARY_CHANGED,
   LIBRARY_DELETED,
   /**
-   * A private library was erased with its whole content (#2165): the proof, with the time it was
-   * requested, its cause and what was removed as counts, never a name, path or content.
+   * A private library was erased with its whole content: the proof, with the time it was requested,
+   * its cause and what was removed as counts, never a name, path or content.
    */
   PRIVATE_LIBRARY_ERASED,
   /** A prompt library was created, renamed or re-described, or deleted with its prompts. */
@@ -86,9 +86,9 @@ public enum AuditEventType {
   GROUP_MEMBER_ADDED,
   GROUP_MEMBER_REMOVED,
   /**
-   * Somebody was made responsible for an internal group (#1814, ADR-0036 Entscheidung 4).
-   * Deliberately an audit event and no history row: responsibility carries no read access and is
-   * therefore meaningless for "who could read what on day X" (ADR-0036, Entscheidung 8).
+   * Somebody was made responsible for an internal group (ADR-0036 Entscheidung 4). Deliberately an
+   * audit event and no history row: responsibility carries no read access and is therefore
+   * meaningless for "who could read what on day X" (ADR-0036, Entscheidung 8).
    */
   GROUP_STEWARD_APPOINTED,
   /** The reverse of {@link #GROUP_STEWARD_APPOINTED} - including handing responsibility over. */
@@ -180,7 +180,7 @@ public enum AuditEventType {
    */
   DIRECTORY_SYNC_RUN_COMPLETED,
   /**
-   * A plan above the plausibility threshold was discarded without being applied (#1816, ADR-0036
+   * A plan above the plausibility threshold was discarded without being applied (ADR-0036
    * Entscheidung 3). The counterpart of a confirmation, which is the run's own header entry - a
    * decision that leaves no trace is no decision.
    */
@@ -194,11 +194,11 @@ public enum AuditEventType {
   DIRECTORY_SYNC_REPORT_READ,
   /**
    * An account lost its access because the directory reports it as disabled or no longer reports it
-   * at all (#1818, ADR-0036 Entscheidung 3). One entry per account, linked to the run's header
-   * entry via {@code correlationRef}.
+   * at all (ADR-0036 Entscheidung 3). One entry per account, linked to the run's header entry via
+   * {@code correlationRef}.
    */
   DIRECTORY_ACCOUNT_LOCKED,
-  /** The directory reports the account as enabled again; the lock is taken back (#1818). */
+  /** The directory reports the account as enabled again; the lock is taken back. */
   DIRECTORY_ACCOUNT_UNLOCKED,
 
   // Systemeinstellungen
@@ -223,8 +223,8 @@ public enum AuditEventType {
   CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
   /**
    * The system administration set the house-wide storage quota across all private libraries of a
-   * person, or returned it to the configured default (#2166); {@code before} and {@code after}
-   * carry the value only.
+   * person, or returned it to the configured default; {@code before} and {@code after} carry the
+   * value only.
    */
   PRIVATE_STORAGE_QUOTA_CHANGED,
   /**
@@ -237,16 +237,16 @@ public enum AuditEventType {
   /** The reverse of {@link #CAPABILITY_GRANTED} - a capability grant withdrawn. */
   CAPABILITY_REVOKED,
   /**
-   * Somebody looked at what a transfer of rights would move (#1834, ADR-0036 Entscheidung 10).
-   * Written on every preview, including the ones nobody carries out: the preview is a reading of
-   * everything one subject holds, and that it was read is the record - exactly as for a retrieved
+   * Somebody looked at what a transfer of rights would move (ADR-0036 Entscheidung 10). Written on
+   * every preview, including the ones nobody carries out: the preview is a reading of everything
+   * one subject holds, and that it was read is the record - exactly as for a retrieved
    * Stichtagsauskunft.
    */
   PERMISSION_TRANSFER_PREVIEWED,
   /**
-   * The rights of one subject were transferred to another (#1834). Carries source, target, scope
-   * and the number of rows moved; the interval rows themselves carry the same transfer id and
-   * outlive this entry.
+   * The rights of one subject were transferred to another. Carries source, target, scope and the
+   * number of rows moved; the interval rows themselves carry the same transfer id and outlive this
+   * entry.
    */
   PERMISSION_TRANSFER_EXECUTED,
   /**
@@ -339,7 +339,7 @@ public enum AuditEventType {
    */
   LLM_MODEL_DEACTIVATED,
 
-  // Diagnose in fremdem Rechtekontext ("Sicht als", #1052)
+  // Diagnose in fremdem Rechtekontext ("Sicht als")
   /**
    * The separately granted "Sicht als" befugnis (scope plus expiry) was given to a person. Never
    * implied by {@link #SYSTEM_ADMIN_ROLE_GRANTED} - the befugnis is not derived from any role.
@@ -356,7 +356,7 @@ public enum AuditEventType {
    */
   LIBRARY_DIAGNOSTICS_LOCK_CHANGED,
   /**
-   * A Suchdiagnose ran in the rights context of a group <em>and</em> of a space (#1835, ADR-0036
+   * A Suchdiagnose ran in the rights context of a group <em>and</em> of a space (ADR-0036
    * Entscheidung 7): acting person, profile and space, one entry per run and none per query. A
    * profile run without a space context writes nothing - it says what a group reaches across the
    * organization, which is no statement about an individual. {@code target_ref} stays the group id,
@@ -428,7 +428,7 @@ public enum AuditEventType {
    */
   LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS,
 
-  // Mail-Infrastruktur (#1536, ADR-0033 Entscheidung 13)
+  // Mail-Infrastruktur (ADR-0033 Entscheidung 13)
   /**
    * The SMTP settings changed. The before/after payload never carries the password itself, only
    * whether one is stored - the same convention {@link #LLM_MODEL_CHANGED} uses for a model's
@@ -446,7 +446,7 @@ public enum AuditEventType {
    */
   MAIL_TEST_SENT,
 
-  // Verwaltung lokaler Konten (#1537, ADR-0033 Entscheidungen 11 and 13). Subject is the account
+  // Verwaltung lokaler Konten (ADR-0033 Entscheidungen 11 and 13). Subject is the account
   // as a pseudonym; no event carries an address, a name or the value of the creation reason.
   /** A local account was created by an administrator; {@code after} names mode and expiry. */
   LOCAL_USER_CREATED,
@@ -503,7 +503,7 @@ public enum AuditEventType {
    */
   LOCAL_USER_HANDED_OVER,
 
-  // Fremdzugaenge (#1717, ADR-0035, docs/features/external-access.md)
+  // Fremdzugaenge (ADR-0035, docs/features/external-access.md)
   /**
    * The channel settings of the external access changed - the installation-wide switch, the token
    * lifetime ceiling, the per-token quota, the networks of the channel or the threshold of the mass
@@ -514,7 +514,7 @@ public enum AuditEventType {
    */
   EXTERNAL_ACCESS_SETTINGS_CHANGED,
 
-  // Verbindungsprofile ("Zugänge", #2160, ADR-0041 Entscheidung 7)
+  // Verbindungsprofile ("Zugänge", ADR-0041 Entscheidung 7)
   /** A connection profile was created; the client secret appears only as whether one is set. */
   CONNECTION_PROFILE_CREATED,
   /**
@@ -527,7 +527,7 @@ public enum AuditEventType {
   /** The emergency shutdown "Alle Verbindungen trennen" discarded every secret of a profile. */
   CONNECTION_PROFILE_DISCONNECTED,
 
-  // Konnektor-Freigabe und Sperre (#2161, ADR-0041)
+  // Konnektor-Freigabe und Sperre (ADR-0041)
   /**
    * The system administration locked a connector type or a connection profile: no new library, no
    * run. A governance event; {@code after} names the type or the profile.

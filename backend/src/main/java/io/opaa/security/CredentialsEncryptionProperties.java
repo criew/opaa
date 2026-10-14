@@ -3,8 +3,8 @@ package io.opaa.security;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Configuration for {@link CredentialsEncryptor} (#483, ADR-0018 Entscheidung 4): the key used to
- * encrypt {@code KnowledgeLibrary.sourceCredentials} at rest.
+ * Configuration for {@link CredentialsEncryptor} (ADR-0018 Entscheidung 4): the key used to encrypt
+ * {@code KnowledgeLibrary.sourceCredentials} at rest.
  *
  * @param encryptionKey Base64-encoded AES-256 key (32 raw bytes) read from the environment variable
  *     {@code OPAA_CREDENTIALS_ENCRYPTION_KEY}. {@code null}/blank in the base configuration - the

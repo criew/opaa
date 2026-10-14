@@ -101,9 +101,9 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
 
   /**
    * What {@code GET /api/v1/auth/config} reports as {@code passwordResetEnabled}. Fails closed: the
-   * authorization rule and the rate limiter ask this before any handler runs (#1592), and an
-   * exception escaping there would answer 500 where an unknown route answers 401 - the disguise
-   * would fall exactly while the database is unreachable.
+   * authorization rule and the rate limiter ask this before any handler runs, and an exception
+   * escaping there would answer 500 where an unknown route answers 401 - the disguise would fall
+   * exactly while the database is unreachable.
    */
   @Override
   public boolean isPasswordResetAvailable() {

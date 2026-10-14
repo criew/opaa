@@ -5,7 +5,7 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The persisted form of a {@link SyncReport} in {@code directory_sync_pending_plans.report}: the
  * report exactly as the run presented it, so the management can show it again without reading the
- * directory a second time (#1816).
+ * directory a second time.
  *
  * <p>Read back by this class alone - never by another system - so round-trip fidelity is the whole
  * contract and the mapper's own defaults for records and {@code Instant} suffice. {@code

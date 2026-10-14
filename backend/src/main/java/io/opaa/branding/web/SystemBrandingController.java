@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * The write side of operator branding (#582), {@code SYSTEM_ADMIN} only. Separate from {@link
+ * The write side of operator branding, {@code SYSTEM_ADMIN} only. Separate from {@link
  * BrandingController} because the two have different audiences and different paths: reading is for
  * every signed-in user under {@code /api/v1/branding}, changing is an administrative act under
  * {@code /api/v1/system}.
@@ -82,7 +82,7 @@ public class SystemBrandingController {
     return remove(BrandingImageKind.LOGO, caller);
   }
 
-  /** Stores the sign-in page's own logo (#1910), under the same rules as the app logo. */
+  /** Stores the sign-in page's own logo, under the same rules as the app logo. */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PutMapping(path = "/login-logo", consumes = "multipart/form-data")
   public BrandingResponse updateBrandingLoginLogo(
@@ -97,7 +97,7 @@ public class SystemBrandingController {
     return remove(BrandingImageKind.LOGIN_LOGO, caller);
   }
 
-  /** Stores the sign-in page's background image (#1910); its own, larger ceilings apply. */
+  /** Stores the sign-in page's background image; its own, larger ceilings apply. */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PutMapping(path = "/login-background", consumes = "multipart/form-data")
   public BrandingResponse updateBrandingLoginBackground(

@@ -3,7 +3,7 @@ package io.opaa.llm;
 import io.opaa.common.ServiceUnavailableException;
 
 /**
- * Thrown by {@link ActiveChatModelResolver} when {@code llm_models} has no active row (#758) - a
+ * Thrown by {@link ActiveChatModelResolver} when {@code llm_models} has no active row - a
  * Systemverwaltung deleted every model, or a fresh installation has not activated one yet. A {@link
  * ServiceUnavailableException} subclass so it needs no special handling anywhere it can surface:
  * {@code GlobalExceptionHandler}'s existing {@code ServiceUnavailableException} handler turns it

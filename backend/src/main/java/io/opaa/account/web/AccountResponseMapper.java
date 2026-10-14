@@ -8,7 +8,7 @@ import io.opaa.api.dto.AccountResponse;
 import io.opaa.auth.OidcProvider;
 
 /**
- * Entity to response mapping of the account list (#1601). A local account carries the very {@link
+ * Entity to response mapping of the account list. A local account carries the very {@link
  * io.opaa.api.dto.LocalUserResponse} of the local account management, mapped by {@link
  * LocalUserResponseMapper}, so that the two lists never disagree about a local account; the
  * activity timestamp itself has no field to land in.

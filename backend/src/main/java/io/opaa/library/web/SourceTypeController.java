@@ -69,7 +69,7 @@ public class SourceTypeController {
   }
 
   /**
-   * Same permission bar (#1856), stored-credentials fallback and rate limit as the connection test;
+   * Same permission bar, stored-credentials fallback and rate limit as the connection test;
    * credentials travel in the body and never come back.
    */
   @PostMapping("/{sourceType}/browse")

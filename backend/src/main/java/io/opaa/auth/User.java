@@ -50,8 +50,8 @@ public class User {
 
   /**
    * When the directory synchronisation locked this account, {@code null} while it is not locked
-   * (#1818, ADR-0036 Entscheidung 3). The one stored fact the directory contributes about an
-   * account; everything else about its state stays derived (ADR-0033, Entscheidung 3).
+   * (ADR-0036 Entscheidung 3). The one stored fact the directory contributes about an account;
+   * everything else about its state stays derived (ADR-0033, Entscheidung 3).
    */
   @Column(name = "directory_locked_at")
   private Instant directoryLockedAt;
@@ -145,14 +145,14 @@ public class User {
 
   /**
    * Takes the access away because the directory reports the account as disabled or no longer
-   * reports it at all (#1818). Reversible: memberships, spaces and the system role stay untouched,
-   * and {@link #unlockFromDirectory()} restores the account unchanged.
+   * reports it at all. Reversible: memberships, spaces and the system role stay untouched, and
+   * {@link #unlockFromDirectory()} restores the account unchanged.
    */
   public void lockFromDirectory(Instant lockedAt) {
     this.directoryLockedAt = Objects.requireNonNull(lockedAt, "lockedAt");
   }
 
-  /** Gives the access back because the directory reports the account as enabled again (#1818). */
+  /** Gives the access back because the directory reports the account as enabled again. */
   public void unlockFromDirectory() {
     this.directoryLockedAt = null;
   }

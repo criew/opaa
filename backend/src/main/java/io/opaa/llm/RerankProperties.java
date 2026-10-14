@@ -25,7 +25,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param baseUrl base address of the rerank endpoint, without the {@code /rerank} path segment
  *     ({@code http://localhost:8081/v1}). Blank means the role is unbound. An address carrying
  *     userinfo ({@code https://user:secret@host/v1}) is rejected by {@link RerankModelRole} and
- *     leaves the role unusable; the access key belongs in {@link #apiKey} (#1147).
+ *     leaves the role unusable; the access key belongs in {@link #apiKey}.
  * @param model the model identifier sent with every request; blank means the role is unbound.
  * @param apiKey optional bearer token. Write-only in every sense that matters: it is never logged
  *     and never part of {@link RerankRoleStatus}, not even truncated.
@@ -33,9 +33,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     seconds: #1050 measured roughly three minutes per query for the default candidate window (50)
  *     on a 20-core CPU with {@code BAAI/bge-reranker-v2-m3} - the CPU case this project ships a
  *     rerank role for at all. A shorter default degrades every such query to {@link
- *     RerankRoleState#UNREACHABLE} on a schedule, not on a fault (#1154). An installation with a
- *     faster (typically GPU-backed) endpoint may lower {@code OPAA_RERANK_TIMEOUT}; this default
- *     trades a slower failure detection for not mistaking normal CPU latency for an outage.
+ *     RerankRoleState#UNREACHABLE} on a schedule, not on a fault. An installation with a faster
+ *     (typically GPU-backed) endpoint may lower {@code OPAA_RERANK_TIMEOUT}; this default trades a
+ *     slower failure detection for not mistaking normal CPU latency for an outage.
  * @param probeInterval the longest the role goes without a result from its endpoint before it
  *     probes, {@code OPAA_RERANK_PROBE_INTERVAL}. Every probe is a real rerank request and is
  *     billed by a paid endpoint; a real call resets the interval. At least {@value

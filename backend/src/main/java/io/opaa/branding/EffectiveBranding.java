@@ -6,9 +6,9 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * The branding actually in effect (#582, #1910): every text field carries either the operator's
- * configured value or the {@link BrandingDefaults OPAA default}, never {@code null} and never
- * "unset" - a caller renders from this alone without knowing what a default is.
+ * The branding actually in effect: every text field carries either the operator's configured value
+ * or the {@link BrandingDefaults OPAA default}, never {@code null} and never "unset" - a caller
+ * renders from this alone without knowing what a default is.
  *
  * <p>The images are the genuinely optional part, because "no image configured" cannot be expressed
  * as a value the way "no product name configured" can: {@link #image} is empty for every kind none

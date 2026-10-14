@@ -67,14 +67,14 @@ public class DevSecurityConfig {
                     .requestMatchers(
                         "/actuator/health",
                         // the two probes a load balancer or a container health check reads; they
-                        // answer a status, never details (#1710)
+                        // answer a status, never details
                         "/actuator/health/readiness",
                         "/actuator/health/liveness",
                         "/actuator/info",
                         "/actuator/metrics",
                         "/actuator/prometheus")
                     .permitAll()
-                    // Every other health group needs a token (#1710): the endpoint computes its
+                    // Every other health group needs a token: the endpoint computes its
                     // contributors before it decides what to show, so an anonymous call to
                     // embedding-model or vector-store would trigger a real embedding call and a
                     // real similarity search - outside the rate limit, which only covers /api.
@@ -85,7 +85,7 @@ public class DevSecurityConfig {
                     .authenticated()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
-                    // #582/#583/#1910: branding is readable without authentication. The sign-in
+                    // Branding is readable without authentication. The sign-in
                     // page is the first thing a user sees and has to carry the operator's own
                     // product name, claim, logo and background - it renders before there is a
                     // session, so an authenticated-only endpoint could not brand it at all. What

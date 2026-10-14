@@ -19,8 +19,8 @@ package io.opaa.api.types;
  *       Entscheidung 4): membership is refreshed on every sign-in, the {@code external_id} is
  *       namespaced per provider ({@code oidc:<provider-id>:<name>}), and the group is read-only in
  *       the group management and never a directory-sync subject. It <b>is</b> admissible as the
- *       scope of a "Sicht als" befugnis (#1879): a house that stays in token mode has no other kind
- *       to name.
+ *       scope of a "Sicht als" befugnis: a house that stays in token mode has no other kind to
+ *       name.
  * </ul>
  */
 public enum GroupKind {

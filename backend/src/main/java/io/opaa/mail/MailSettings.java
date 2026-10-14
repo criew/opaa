@@ -11,9 +11,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The single, system-wide SMTP configuration (#1536, ADR-0033 Entscheidung 10) - a singleton for
- * the same reason {@link io.opaa.branding.BrandingSettings} is one: OPAA is deployed once per
- * Behörde, and "der Mailversand" is what that one deployment does.
+ * The single, system-wide SMTP configuration (ADR-0033 Entscheidung 10) - a singleton for the same
+ * reason {@link io.opaa.branding.BrandingSettings} is one: OPAA is deployed once per Behörde, and
+ * "der Mailversand" is what that one deployment does.
  *
  * <p><b>The password is only ever held here as ciphertext</b> ({@code enc:v1:…}, written by {@code
  * io.opaa.security.SettingsEncryptor}); no code path stores or returns the clear value, and the API

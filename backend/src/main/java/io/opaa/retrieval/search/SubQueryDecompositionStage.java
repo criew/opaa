@@ -101,7 +101,7 @@ public class SubQueryDecompositionStage implements RetrievalStage {
 
   /**
    * The decomposition's context: question and search window, plus the rendered Gesprächsnotiz block
-   * when the chat has {@code RAHMEN} points (#1487).
+   * when the chat has {@code RAHMEN} points.
    *
    * <p><b>Through {@link DecompositionContext#withContextBlock}, never through the instruction
    * argument of {@link DecompositionContext#systemText}.</b> Only the former puts the note's points

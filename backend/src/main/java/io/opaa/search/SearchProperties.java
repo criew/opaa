@@ -4,8 +4,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * Parameters of the reading path (#1720). Ebene-1 values: overridable per environment variable,
- * absent from every administration surface.
+ * Parameters of the reading path. Ebene-1 values: overridable per environment variable, absent from
+ * every administration surface.
  *
  * @param defaultMaxHits hits a request without its own {@code maxHits} receives. Never more than
  *     what the retrieval pipeline selected - {@code opaa.query.top-k} remains the real ceiling.

@@ -8,11 +8,11 @@ import java.util.UUID;
 
 /**
  * Parameters for {@link SourceConnectionTestService#test(SourceConnectionTest, CurrentUser)} -
- * replaces the generated {@code SourceConnectionTestRequest} at the service boundary (#860), see
- * AGENTS.md "API &amp; DTO-Konvention".
+ * replaces the generated {@code SourceConnectionTestRequest} at the service boundary, see AGENTS.md
+ * "API &amp; DTO-Konvention".
  *
- * @param libraryId {@code null} for a standalone test (#514); set to test an existing library's
- *     stored quellkonfiguration without resending a credential the caller does not know (#544).
+ * @param libraryId {@code null} for a standalone test; set to test an existing library's stored
+ *     quellkonfiguration without resending a credential the caller does not know.
  * @param connectorSettings the connector settings the probe uses (ADR-0038), {@code null} for none
  *     - with {@code libraryId} the connector decides whether the stored ones stand in
  * @param connectionProfileId the profile the probe runs through; {@code null} for the library's

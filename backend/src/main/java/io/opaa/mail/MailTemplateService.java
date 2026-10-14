@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Resolves, renders and administers the mail templates (#1536, ADR-0033 Entscheidung 10).
+ * Resolves, renders and administers the mail templates (ADR-0033 Entscheidung 10).
  *
  * <p><b>Resolution is database before default</b>: the exact {@code (key, locale)} row, then the
  * row for the default locale, then the German text {@link MailTemplateKey} delivers. An override is

@@ -22,8 +22,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Serves the original file behind an indexed document (#736), so a search result or a library
- * listing can link straight to the source it was built from - the read counterpart to {@code
+ * Serves the original file behind an indexed document, so a search result or a library listing can
+ * link straight to the source it was built from - the read counterpart to {@code
  * LibraryController}'s upload/delete document endpoints, split into its own controller because the
  * library owning the document is resolved from {@code Document.libraryId} rather than named in the
  * path (see {@link LibraryDocumentService#loadContent}'s Javadoc for the full access, sourceType

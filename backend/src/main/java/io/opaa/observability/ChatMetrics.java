@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 
 /**
- * Micrometer metrics of the chat package: every outcome of the Gesprächsnotiz condensation (#1487),
+ * Micrometer metrics of the chat package: every outcome of the Gesprächsnotiz condensation,
  * separated by {@code reason} rather than spread over several metric names, mirroring {@code
  * opaa.query.decomposition.fallback}; and the duration of the chat search, which carries no tag at
  * all - neither the term nor the person may reach a metric (docs/features/chat-list.md).

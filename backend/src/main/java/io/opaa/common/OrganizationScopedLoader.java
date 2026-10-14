@@ -10,7 +10,7 @@ import java.util.function.Supplier;
  * not found rather than forbidden - the organization boundary is never revealed, not even to a
  * system administrator. Centralizes the {@code loadSpace}/{@code loadGroup}/{@code
  * requireUserInOrganization} pattern previously copied with identical shape across {@code
- * SpaceService}, {@code SpaceAssetAssociationService} and {@code GroupService} (#888).
+ * SpaceService}, {@code SpaceAssetAssociationService} and {@code GroupService}.
  */
 public final class OrganizationScopedLoader {
 

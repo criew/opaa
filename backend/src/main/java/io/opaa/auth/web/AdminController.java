@@ -28,8 +28,8 @@ public class AdminController {
     this.userService = userService;
   }
 
-  // #271: scoped to the acting SYSTEM_ADMIN's own organization - listing every organization's
-  // users used to be reachable here, the one place the organization boundary (#199) had not been
+  // Scoped to the acting SYSTEM_ADMIN's own organization - listing every organization's
+  // users used to be reachable here, the one place the organization boundary had not been
   // applied yet.
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/users")

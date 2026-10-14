@@ -73,7 +73,7 @@ public class AuditController {
     this.incidentScopeService = incidentScopeService;
   }
 
-  // #394: deliberately no @PreAuthorize on any of the five read endpoints below - the AUDITOR
+  // Deliberately no @PreAuthorize on any of the five read endpoints below - the AUDITOR
   // role check (and the mandatory reason check) happens inside AuditQueryService itself now, so a
   // denial can be logged there; see that class's Javadoc for why an annotation-only check would
   // make a role-based 403 invisible to the one class the specification requires to log it.
@@ -87,7 +87,7 @@ public class AuditController {
       @RequestParam(name = "size", defaultValue = "50") int size,
       // required=false (rather than the OpenAPI spec's own "required: true") so a missing reason
       // reaches AuditQueryService, which is where the mandatory-reason rejection is itself logged
-      // (#394) rather than short-circuited by Spring MVC's own binding error.
+      // rather than short-circuited by Spring MVC's own binding error.
       @RequestParam(name = "reason", required = false) String reason,
       @Caller CurrentUser caller) {
     Page<AuditLogEntry> result =

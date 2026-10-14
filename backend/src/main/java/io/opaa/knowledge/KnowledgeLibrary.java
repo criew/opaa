@@ -19,15 +19,15 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * The first asset type (#201, see docs/features/spaces-and-assets.md#assets): a document container
- * on the asset shell. Name, owner and release level are the shell's ({@link Asset}, table {@code
- * assets}); this entity and its table {@code knowledge_libraries} carry only what a library alone
- * has - its single quellentyp and quellkonfiguration (ADR-0018), the share cap, the release for
+ * The first asset type (see docs/features/spaces-and-assets.md#assets): a document container on the
+ * asset shell. Name, owner and release level are the shell's ({@link Asset}, table {@code assets});
+ * this entity and its table {@code knowledge_libraries} carry only what a library alone has - its
+ * single quellentyp and quellkonfiguration (ADR-0018), the share cap, the release for
  * Fremdzugaenge, the schedule and the index and metadata switches. A document belongs to exactly
  * one library; a library can be associated with any number of spaces without that association
  * granting any access.
  *
- * <p><b>{@code @DynamicUpdate} is part of the contract, not a tuning knob</b> (#1806): {@link
+ * <p><b>{@code @DynamicUpdate} is part of the contract, not a tuning knob</b>: {@link
  * #sourceCredentials} and {@link #webhookSecret} read as {@code null} while their key is missing
  * (see {@link SourceCredentialsConverter}), so an UPDATE covering every column would write that
  * {@code null} over a ciphertext the returning key could still decrypt. Only columns whose value
@@ -55,20 +55,19 @@ public class KnowledgeLibrary extends Asset {
   private UUID libraryOrganizationId;
 
   /**
-   * Whether this library may be granted to "Alle Konten" (#797, #1931) - {@code SYSTEM_ADMIN}-set,
-   * per library, meaningless for {@code UPLOAD} ({@code
-   * chk_knowledge_libraries_share_cap_upload_unrestricted} keeps it at its unrestricted default
-   * there). Delivered {@code true}: the migration day changes nothing until a system administrator
-   * actually lowers it.
+   * Whether this library may be granted to "Alle Konten" - {@code SYSTEM_ADMIN}-set, per library,
+   * meaningless for {@code UPLOAD} ({@code chk_knowledge_libraries_share_cap_upload_unrestricted}
+   * keeps it at its unrestricted default there). Delivered {@code true}: the migration day changes
+   * nothing until a system administrator actually lowers it.
    */
   @Column(name = "all_accounts_grant_allowed", nullable = false)
   private boolean allAccountsGrantAllowed = true;
 
   /**
    * The reach field beside the grants: whether this library may be used through a Fremdzugang, and
-   * where it may not, why not (#1731, docs/features/external-access.md). {@code NEVER_SET} for
-   * every new and every pre-existing library - a Bestand never leaves the house because nobody
-   * decided it should.
+   * where it may not, why not (docs/features/external-access.md). {@code NEVER_SET} for every new
+   * and every pre-existing library - a Bestand never leaves the house because nobody decided it
+   * should.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "external_access_state", nullable = false, length = 20)
@@ -122,7 +121,7 @@ public class KnowledgeLibrary extends Asset {
   /**
    * Never exposed by the API in any response (ADR-0018, Entscheidung 4) - {@code
    * KnowledgeLibraryService} must not read this field into any {@code LibraryResponse}/{@code
-   * LibraryListResponse}. Encrypted at rest (#483) via {@link SourceCredentialsConverter} - this
+   * LibraryListResponse}. Encrypted at rest via {@link SourceCredentialsConverter} - this
    * getter/field sees the decrypted plaintext, the same as before #483, unless the stored value can
    * no longer be decrypted (key lost/rotated, corrupted value), in which case the converter logs a
    * warning and this field reads as {@code null} rather than failing the whole load (PR #504
@@ -155,10 +154,10 @@ public class KnowledgeLibrary extends Asset {
   private String sourceSettings;
 
   /**
-   * Whether this library's indexing runs are triggered automatically on a schedule (#485) - always
-   * {@code false} for {@code UPLOAD} (no run exists for it at all, {@link SourceType#UPLOAD}) and
-   * enforced by {@code chk_knowledge_libraries_schedule} alongside {@link #scheduleCron}. See
-   * {@link #updateSchedule} for how the pair changes together.
+   * Whether this library's indexing runs are triggered automatically on a schedule - always {@code
+   * false} for {@code UPLOAD} (no run exists for it at all, {@link SourceType#UPLOAD}) and enforced
+   * by {@code chk_knowledge_libraries_schedule} alongside {@link #scheduleCron}. See {@link
+   * #updateSchedule} for how the pair changes together.
    */
   @Column(name = "schedule_enabled", nullable = false)
   private boolean scheduleEnabled;
@@ -166,15 +165,15 @@ public class KnowledgeLibrary extends Asset {
   /**
    * The schedule as a cron expression, non-null exactly when {@link #scheduleEnabled} is {@code
    * true} (a check constraint) - never a raw value a client sends: {@code LibraryScheduleCodec} is
-   * the only place that turns the four UI intervalstufen (#485, Zuschnitt 21.08.2026) into this
-   * string and back.
+   * the only place that turns the four UI intervalstufen (Zuschnitt 21.08.2026) into this string
+   * and back.
    */
   @Column(name = "schedule_cron", length = 100)
   private String scheduleCron;
 
   /**
-   * Diagnosesperre (#1052, docs/features/hybrid-retrieval.md, Leitplanke (e)): while {@code true},
-   * a search diagnosis in a <em>foreign</em> rights context ("Sicht als") yields nothing from this
+   * Diagnosesperre (docs/features/hybrid-retrieval.md, Leitplanke (e)): while {@code true}, a
+   * search diagnosis in a <em>foreign</em> rights context ("Sicht als") yields nothing from this
    * library - no hits, no titles, no counts. It says nothing about ordinary access; reading,
    * searching and answering in one's own context are unaffected.
    *
@@ -394,8 +393,8 @@ public class KnowledgeLibrary extends Asset {
   }
 
   /**
-   * Replaces the schedule in place (#485) - {@code scheduleCron} must already be {@code null} when
-   * {@code enabled} is {@code false} and non-null otherwise, matching {@code
+   * Replaces the schedule in place - {@code scheduleCron} must already be {@code null} when {@code
+   * enabled} is {@code false} and non-null otherwise, matching {@code
    * chk_knowledge_libraries_schedule}; {@code KnowledgeLibraryService} is responsible for that
    * validation before calling this, the same division of labour {@link #updateSourceConfiguration}
    * already has with its own caller.
@@ -424,10 +423,10 @@ public class KnowledgeLibrary extends Asset {
   }
 
   /**
-   * Sets the share cap alone (#797) - never the clamp its narrowing may require. {@code
+   * Sets the share cap alone - never the clamp its narrowing may require. {@code
    * KnowledgeLibraryService#updateShareCap} validates {@code SYSTEM_ADMIN} and the {@code UPLOAD}
    * exclusion before calling this, then revokes the grant to "Alle Konten" in the same transaction
-   * where the newly set cap forbids it (#1931).
+   * where the newly set cap forbids it.
    */
   public void updateShareCap(boolean allAccountsGrantAllowed) {
     this.allAccountsGrantAllowed = allAccountsGrantAllowed;
