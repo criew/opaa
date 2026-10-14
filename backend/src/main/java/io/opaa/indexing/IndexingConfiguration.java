@@ -258,6 +258,7 @@ public class IndexingConfiguration {
       ServiceAccountTokens serviceAccountTokens,
       KnowledgeLibraryRepository knowledgeLibraryRepository,
       ObjectProvider<SourceConnectorRegistry> sourceConnectorRegistry,
+      ObjectProvider<IndexingSourceExecutorRegistry> indexingSourceExecutorRegistry,
       Clock clock) {
     return new IndexingRunTemplate(
         indexingJobService,
@@ -269,7 +270,8 @@ public class IndexingConfiguration {
         clock,
         serviceAccountTokens,
         knowledgeLibraryRepository,
-        new SyncStateBasis(sourceConnectorRegistry::getObject));
+        new SyncStateBasis(sourceConnectorRegistry::getObject),
+        indexingSourceExecutorRegistry::getObject);
   }
 
   /** Signs service account assertions for the connectors that sign in with a key (ADR-0040). */

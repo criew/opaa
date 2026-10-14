@@ -8,6 +8,7 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.registry.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.IndexingRunProgress;
 import io.opaa.indexing.spi.ListingOutcome;
@@ -32,12 +33,15 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
- * The frame every connector run shares: it starts the job's progress and protocol, rejects a run
+ * The frame every connector run shares: it refuses an executor of another class than the one
+ * registered for the library's source type, starts the job's progress and protocol, rejects a run
  * mode the executor does not declare, resolves the library's source through the {@link
  * SourceConnectionResolver}, runs the connector's body, reconciles by absence when the body listed
  * the source completely and the mode allows it, notes throttling and a spent budget from the run's
@@ -82,6 +86,7 @@ public class IndexingRunTemplate {
   private final ServiceAccountTokens tokens;
   private final KnowledgeLibraryRepository libraries;
   private final SyncStateBasis settingsBasis;
+  private final Supplier<IndexingSourceExecutorRegistry> executors;
 
   /** {@code clock} measures how long a run reuses its secret. */
   public IndexingRunTemplate(
@@ -152,13 +157,16 @@ public class IndexingRunTemplate {
         clock,
         tokens,
         libraries,
-        SyncStateBasis.WHOLE_SETTINGS);
+        SyncStateBasis.WHOLE_SETTINGS,
+        null);
   }
 
   /**
    * {@code settingsBasis} fingerprints the settings a run begins with; a sync state written under
    * another fingerprint is not continued, and a run whose settings change meanwhile removes nothing
-   * for being absent.
+   * for being absent. {@code executors}, when given, admits a frame only for an executor of the
+   * class registered for the library's source type; anything else is refused before the library's
+   * source is resolved, so no connector reaches the secret of a library of another type.
    */
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -170,7 +178,9 @@ public class IndexingRunTemplate {
       Clock clock,
       ServiceAccountTokens tokens,
       KnowledgeLibraryRepository libraries,
-      SyncStateBasis settingsBasis) {
+      SyncStateBasis settingsBasis,
+      Supplier<IndexingSourceExecutorRegistry> executors) {
+    this.executors = executors;
     this.settingsBasis = settingsBasis;
     this.libraries = libraries;
     this.tokens = tokens;
@@ -190,6 +200,7 @@ public class IndexingRunTemplate {
       IndexingRunMode runMode,
       SourceIndexingExecutor executor,
       RunBody body) {
+    requireRegistered(executor, library);
     var progress = new IndexingRunProgress(indexingJobService, jobId);
     var events = new IndexingRunEventRecorder(eventRepository, indexingJobService, jobId);
     VanishedDocumentPolicy policy = executor.runModes().get(runMode);
@@ -373,6 +384,27 @@ public class IndexingRunTemplate {
    */
   private KnowledgeLibrary now(KnowledgeLibrary library) {
     return libraries == null ? library : libraries.findById(library.getId()).orElse(library);
+  }
+
+  /**
+   * A frame belongs to the executor the core hands a library of this source type to; a proxy counts
+   * as the class it wraps, since a body runs on the target. Neither the job nor the library is
+   * touched on a refusal: both may belong to another connector's run.
+   */
+  private void requireRegistered(SourceIndexingExecutor executor, KnowledgeLibrary library) {
+    if (executors == null) {
+      return;
+    }
+    Optional<Class<?>> registered =
+        executors.get().find(library.getSourceType()).map(AopUtils::getTargetClass);
+    if (registered.isEmpty() || registered.get() != AopUtils.getTargetClass(executor)) {
+      throw new IllegalArgumentException(
+          AopUtils.getTargetClass(executor).getName()
+              + " may not run library "
+              + library.getId()
+              + " of source type "
+              + library.getSourceType());
+    }
   }
 
   private void requireNotErased(KnowledgeLibrary library) {
