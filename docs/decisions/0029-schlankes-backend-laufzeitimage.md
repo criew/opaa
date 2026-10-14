@@ -66,10 +66,3 @@ von glibc hängt daran, dass Buildx den `FROM`-Verweis bei jedem Lauf neu auflö
 ## Offen
 
 —
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-10 | #1459, #1469 | Erstfassung | 1–2 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 2 |

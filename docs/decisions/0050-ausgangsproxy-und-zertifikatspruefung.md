@@ -116,12 +116,3 @@ abgelehnter Tunnel bei S3 erscheint als Antwort des Objektspeichers.
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-11 | #2496 (PR 1) | Globaler Ausgangsproxy als Nachtrag zu ADR-0041 | 1–3, 6 |
-| 2026-10-12 | #2496 (PR 2, 3) | Proxy je Bibliothek und Zugang entfernt | 4, 6 |
-| 2026-10-12 | #2537 | Zertifikatsprüfung nicht aussetzbar | 5, 6 |
-| 2026-10-14 | #2702 | Aus ADR-0041 herausgelöst und auf den Endstand neu gefasst | alle |

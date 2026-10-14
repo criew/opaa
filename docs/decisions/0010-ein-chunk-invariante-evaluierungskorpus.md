@@ -83,11 +83,3 @@ in den Festpunkten der Baseline erfasst (`IngestionPipelineFingerprint` führt n
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-02 | #249 | Erstfassung | 1, 2, 4 |
-| 2026-08-21 | #721 | Invariante wird Domänen-Eigenschaft (`ChunkCountExpectation`) | 3 |
-| 2026-10-14 | #2697 | Neufassung; Overlap und zeichenbasierter Markdown-Schnitt eingearbeitet | 2, 4 |

@@ -95,14 +95,3 @@ Material UI) ziehen Migrationen nach sich.
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-02-17 | — | Erstfassung | 1–8 |
-| 2026-02-18 | — | Technologiewahl abgeschlossen, PostgreSQL 18 | 1, 3 |
-| 2026-02-22 | — | Chunks im Spring-AI-`VectorStore` statt eigener Tabelle | 3 |
-| 2026-08-01 | #188, #189 | Spring Boot 4.1, Spring AI 2.0, Material UI 9, React Router 8, Vite 8 | 1, 2 |
-| 2026-09-06 | #653, #1372 | Frontend-Aufrufe über pnpm | 2, 7 |
-| 2026-10-14 | #2697 | Neufassung: Format-Modul, natives pgvector-SQL, nur OpenAI-Protokoll, Helm | 3, 4, 5, 7 |

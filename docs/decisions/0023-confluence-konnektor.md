@@ -45,8 +45,8 @@ Chunk-Kontext, ohne die Instanz zu fragen; eine Abbildung der Seitenhierarchie a
 
 ### 2. Die Edition wird erkannt, steht an der Bibliothek und ist danach unveränderlich
 
-Die Edition (`ConfluenceEdition`: `CLOUD`, `DATA_CENTER`) steht seit #1977 in
-`source_settings`; ein Zugang (ADR-0041) darf sie seit #2218 als Vorgabe tragen (`DefaultKey` der
+Die Edition (`ConfluenceEdition`: `CLOUD`, `DATA_CENTER`) steht in
+`source_settings`; ein Zugang (ADR-0041) darf sie als Vorgabe tragen (`DefaultKey` der
 `ProfileDeclaration`, ADR-0038, Entscheidung 7), dann steht sie an der Bibliothek nur lesbar. Die gespeicherte Basisadresse
 ist die Confluence-Wurzel — Cloud ohne `/wiki` (der Adapter hängt es an), Data Center samt
 Kontextpfad —, normalisiert (Schema und Host klein, kein abschließender Schrägstrich, kein
@@ -79,7 +79,7 @@ Center (`confluenceIntegrationTest`, #1171) ist eine zusätzliche Ebene.
 Confluence-Zugangsdaten gehören der Bibliothek und liegen ruhend verschlüsselt (AES-256-GCM,
 `OPAA_CREDENTIALS_ENCRYPTION_KEY`): bei eigener Adresse in `knowledge_libraries.source_credentials`
 (`SourceCredentialsConverter`/`CredentialsEncryptor`, `SecretOwner.LibraryOwned`), an einem Zugang
-seit #2273 als Zeile der Bibliothek im Token-Speicher `connection_tokens`
+als Zeile der Bibliothek im Token-Speicher `connection_tokens`
 (`SecretOwner.LibraryOnProfile`, `kind = 'PERSONAL_SECRET'`; ADR-0048, Entscheidung 9). Angenommen werden sie
 über das nur-schreibende Feld `sourceCredentials`.
 Das Format hängt von der Edition ab (`ConfluenceCredentials#parse`): Cloud `<E-Mail>:<API-Token>`
@@ -92,7 +92,7 @@ Zugangsdaten erscheinen in keiner API-Antwort, keinem Log, keiner Exception-Mess
 Fehlermeldung, auch nicht in verschachtelten Ursachen: `ConfluenceCredentials` gibt das Geheimnis
 nur über `authorizationHeader()` heraus, `toString()` nie; ein Test der Zugriffsschicht prüft, dass
 keine ihrer Exceptions das Token enthält. Die Ursprungsbindung der Zugangsdaten (ADR-0018,
-Entscheidung 4; seit #2218 über `SourceConnector#credentialBinding`, ADR-0038, Entscheidung 7)
+Entscheidung 4; über `SourceConnector#credentialBinding`, ADR-0038, Entscheidung 7)
 gilt; das Rotieren eines Tokens ist eine
 gewöhnliche Konfigurationsänderung.
 
@@ -138,7 +138,7 @@ wiedereingespielte Nachricht ändert nichts, was der Abruf nicht bestätigt.
 **Betriebsarten im Zeitplan** (`ConfluenceIndexingExecutor#defaultRunMode`): Ohne ausdrückliche
 Betriebsart ist ein Lauf ein Vollabgleich, wenn noch keiner abgeschlossen ist, der letzte
 unterbrochen wurde, die Einstellungen sich geändert haben (`SyncStateBasis`, `DefaultRunModes`)
-oder der Rhythmus abgelaufen ist — je Bibliothek `fullSyncIntervalDays` (1–365, seit #1200),
+oder der Rhythmus abgelaufen ist — je Bibliothek `fullSyncIntervalDays` (1–365),
 sonst `opaa.indexing.confluence.full-sync-interval` (sieben Tage); sonst inkrementell. Der
 Vollabgleich ist verlängerbar, nicht abschaltbar; ein fälliger Vollabgleich, der auf einen laufenden
 Lauf trifft, wird beim nächsten Tick genommen, nicht verworfen.
@@ -200,17 +200,3 @@ Zieladressprüfung ist eine Betriebseinstellung je Adresse, keine Eigenschaft de
 - Rechteabbildung Confluence → OPAA wäre ein eigenes Epic mit eigener Rechtequelle.
 - Weitere Inhaltsarten (Blogbeiträge, Kommentare, Whiteboards, Datenbanken) und archivierte Seiten als gekennzeichneter Bestand.
 - Seitenhierarchie als Bibliotheksordner — konkurrierte mit der Ordnerverwaltung aus ADR-0020.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-03 | #1139 | Vollabgleich-Rhythmus zunächst instanzweit (`full-sync-interval`) | 4 |
-| 2026-09-03 | #1140 | Webhook als Anlass zum Einzelabruf, zwei Authentisierungswege | 4 |
-| 2026-09-05 | #1200 | Rhythmus je Bibliothek (`fullSyncIntervalDays`, 1–365) | 4 |
-| 2026-09-26 | #1977 | Space-Auswahl, Edition und Rhythmus in `source_settings` (ADR-0038) | 1, 2, 4 |
-| 2026-10-04 | #2218 | Zugang darf die Edition vorgeben; Ursprungsbindung über `credentialBinding` (ADR-0038, Entscheidung 7) | 2, 3, 5 |
-| 2026-10-11 | #2273 | Geheimnis einer Bibliothek an einem Zugang liegt im Token-Speicher (ADR-0041) | 3, 5 |
-| 2026-10-12 | #2496 | Proxy je Bibliothek entfernt, hausweiter Ausgangsproxy (ADR-0041) | Kontext |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3, 5 |
-| 2026-10-14 | #2702 | Verweise auf ADR-0045/0048/0050 | — |

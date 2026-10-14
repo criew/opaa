@@ -100,14 +100,14 @@ Inaktivitätsschwelle gilt dort nicht).
 | `DEACTIVATED` | lokale Sperre durch die Verwaltung (nicht `FAILED_LOGINS`, nicht `INACTIVITY`), befristetes Konto abgelaufen, Verzeichnissperre, Anbieter des Issuers gelöscht (außer Dev-Issuer) |
 | `DORMANT_PROVIDER_DISABLED` | Anbieter deaktiviert |
 | `DORMANT_LOCAL_ACCOUNTS_DISABLED` | reguläres lokales Konto bei abgeschalteter lokaler Kontenverwaltung |
-| `DORMANT_INACTIVE` | keine Anmeldung seit der Inaktivitätsschwelle; lokale Sperre wegen Inaktivität (`LockReason.INACTIVITY`, seit #2260) |
+| `DORMANT_INACTIVE` | keine Anmeldung seit der Inaktivitätsschwelle; lokale Sperre wegen Inaktivität (`LockReason.INACTIVITY`) |
 | `LOCKED_OUT`, `INVITED` | vorübergehende Sperre nach Fehlversuchen, offene Einladung — weder nutzbar noch ruhend noch deaktiviert |
 | `USABLE` | sonst |
 
 - **Ruhen ist keine Deaktivierung:** Es stoppt Läufe und die Herausgabe von Geheimnissen, löscht
   nichts und startet keine Frist; mit „nutzbar“ geht es ohne Neuverbinden weiter. Ein deaktivierter
   Anbieter zählt als Ruhen, erst sein Löschen deaktiviert; der Löschzeitpunkt je Issuer steht in
-  `oidc_provider_removals` (identity, seit #2289) und beginnt die Frist beim letzten Löschen.
+  `oidc_provider_removals` (identity) und beginnt die Frist beim letzten Löschen.
 - **Abgleich** `ConnectionLifecycleReconciler`: täglich, beim Start und nach dem Commit von
   `LocalAccountAccessEndedEvent` (ein Konto) und `OidcProvidersChangedEvent` (alle), je Person in
   eigener Transaktion (`REQUIRES_NEW`). Deaktiviert: Geheimnisse löschen, beim Anbieter widerrufen,
@@ -123,7 +123,7 @@ Inaktivitätsschwelle gilt dort nicht).
   als Konstanten in `ConnectionLifecycleProperties`, ein Wert außerhalb bricht den Start ab).
   `connected_accounts.last_used_at` hält die Herausgabe höchstens einmal je Tag fest, in eigener
   Transaktion mit `SKIP LOCKED`.
-- **Anbieterverwaltung** (seit #2251): `GET /api/v1/admin/oidc-providers/{id}/impact` nennt nur, ob
+- **Anbieterverwaltung**: `GET /api/v1/admin/oidc-providers/{id}/impact` nennt nur, ob
   eine Bestätigung nötig ist und was die Handlung bewirkt (`CONNECTIONS_REST`, `CONNECTIONS_END`),
   nie eine Zahl je Anbieter — Zahlen je Anbieter und je Zugang ließen sich gegeneinander verrechnen.
   Deaktivieren und Löschen verlangen `confirmConnections=true`, sobald irgendein Zugang Personen
@@ -219,7 +219,7 @@ Entscheidung 11.
 Geheimnisse liest, speichert und verwirft nur `connection.token.ConnectionSecrets` über
 `SecretOwner.of`, das die Besitzart aus Anmeldeart und Bibliothek wählt: `LibraryOwned` (eigene
 Adresse, `source_credentials`), `LibraryOnProfile` (persönliches Geheimnis einer Bibliothek am
-Zugang, seit #2273 im Speicher), `PersonOwned` (verbundenes Konto), `ProfileOwned` (eigene
+Zugang im Speicher), `PersonOwned` (verbundenes Konto), `ProfileOwned` (eigene
 Anmeldung des Zugangs, keine Zeile), `SourceConsent` (OAuth-Zustimmung einer Bibliothek),
 `PendingConsent` (vor der Anlage). `ConnectionSecrets#current` wirft `SecretRefusedException` mit
 dem Sperrgrund; „ruhend“ und „deaktiviert“ werden bei jeder Herausgabe aus `AccountUsability`
@@ -249,10 +249,10 @@ und die Änderung der Quelleinstellungen einer Bibliothek am Zugang halten die P
 (`LibraryConnectionService#holdUnchanged`; abweichend `409 LIBRARY_CONNECTION_PROFILE_CHANGED`) —
 optimistisch, nach der Prüfung durch den Konnektor und vor dem ersten Schreiben, damit kein
 Netzzugriff unter der Sperre läuft. Dasselbe gilt für den Abschluss einer Zustimmung
-(ADR-0048, Entscheidung 3) und seit #2279 für das Verbinden mit persönlichem Geheimnis
+(ADR-0048, Entscheidung 3) und für das Verbinden mit persönlichem Geheimnis
 (`lockedVersion`, `409 CONNECTED_ACCOUNT_PROFILE_CHANGED`). Sperrreihenfolge überall: Profilzeile,
 dann Token-Zeile, dann Kontozeile; wer das Konto zuerst schreibt (`established`, `expire`), ruft
-vorher `ConnectionSecrets#lockHeld` (seit #2428).
+vorher `ConnectionSecrets#lockHeld`.
 Übergänge (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move` durch
 `SourceChangeGate`. `CONNECTION_PROFILE_RUN_IN_PROGRESS` lehnt eine Änderung ab, solange eine
 geteilte Bibliothek des Zugangs läuft; private halten sie nicht auf. Den Abgleichstand nach einer
@@ -320,40 +320,3 @@ bis zum Abgleich hält die Herausgabesperre im Port.
 - Der Schalter der lokalen Kontenverwaltung (`updateLocalAuthSettings`) fragt nicht nach; dort ruhen
   die Verbindungen nur.
 - Nutzungsfreigabe für MCP-Server und die Modulkante von assistant bzw. external (Folge-Epic zu #1747).
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-03 | #2159 | Erstfassung | 1–8 |
-| 2026-10-04 | #2163 | Verbindungsprotokoll angelegt | 7 |
-| 2026-10-04 | #2163 | Token-Speicher und verbundene Konten, maskierte Personenzahlen | 9 |
-| 2026-10-04 | #2163 | Lebenszyklus: Fristen als Start-Einstellungen, Abgleich je Person, Beginn festgehalten | 4, 7 |
-| 2026-10-04 | #2251 | Anbieterverwaltung nennt Wirkung statt Zahlen, `confirmConnections` | 4 |
-| 2026-10-04 | #2220 | Anmeldung des Zugangs (`ProfileOwned`, `ProfileSignIn`); heute ADR-0048, 1 | 9 |
-| 2026-10-05 | #2168 | OAuth-Kern (heute ADR-0048, 2–5) | — |
-| 2026-10-05 | #2164 | Private Bibliotheken anlegen und betreiben (heute ADR-0049, 1) | 6, 12 |
-| 2026-10-05 | #2165 | Löschung privater Bibliotheken (ADR-0049, 2) | 7 |
-| 2026-10-05 | #2166 | Speicherkontingent je Person (ADR-0049, 4) | — |
-| 2026-10-05 | #2276 | Element überspringen am Kontingent je Person (ADR-0049, 5) | — |
-| 2026-10-05 | #2270, #2165 | Löschnachweis vergröbert (ADR-0049, 2), Schwellenwarnung | 9 |
-| 2026-10-05 | #2246 | Schreibende Wege je Zugang serialisiert | 10 |
-| 2026-10-05 | #2169 | Quelle verbinden, `connection.consent` (ADR-0048, 6) | 8, 9 |
-| 2026-10-05 | #2173 | MCP-Grundlage: Profilart, Erkennung, Ressourcen-Indikator | 5 |
-| 2026-10-05 | #2260 | Inaktivitätssperre lokaler Konten ruht; Restrisiken der Personenzahlen | 4, 9 |
-| 2026-10-05 | #2167 | Nextcloud mit verbundenem Konto, Betriebslogs (ADR-0049, 6) | — |
-| 2026-10-09 | #2265 | Widerruf über einen begrenzten Pool (ADR-0048, 5) | — |
-| 2026-10-09 | #2266 | Mix-up-Schutz im Rücksprung (ADR-0048, 3) | 5 |
-| 2026-10-09 | #2289 | Löschzeitpunkt eines Anbieters je Issuer (`oidc_provider_removals`) | 4 |
-| 2026-10-10 | #2297 | Client-Secret folgt keinem Endpunkt des Zugangs (ADR-0048, 8) | 12 |
-| 2026-10-10 | #2428 | Sperrreihenfolge Token vor Konto | 10 |
-| 2026-10-10 | #2268 | Fingerabdruck statt `RunStateResets` (ADR-0045, 8) | 10 |
-| 2026-10-10 | #2279 | Verbinden mit persönlichem Geheimnis hält die Profilzeile; Endpunkte nur `https://` (ADR-0048, 8) | 10 |
-| 2026-10-10 | #2294 | Kontingent vor dem Download (ADR-0045, 9; ADR-0049, 5); Frist des Originalabrufs (#2417) als Einstellung, heute nur im Handbuch `konfiguration.md` | — |
-| 2026-10-10 | #2295 | Kontingent je Bibliothek hält Marken am Element (ADR-0049, 5) | — |
-| 2026-10-11 | #2273 | Eigenes Geheimnis einer Bibliothek im Token-Speicher (`LibraryOnProfile`) | 9 |
-| 2026-10-11 | #2494 | Zugangswunsch entfernt, `connection.request` entfällt | 8, 11 |
-| 2026-10-11 | #2495 | Assistent zeigt nur Nutzbares | 8, 11 |
-| 2026-10-12 | #2496 | Globaler Ausgangsproxy, Proxy je Bibliothek und Zugang entfernt (ADR-0050) | 1, 3a |
-| 2026-10-12 | #2537 | Zertifikatsprüfung nicht aussetzbar (ADR-0050) | 3a |
-| 2026-10-14 | #2702 | Auf den Endstand neu gefasst; OAuth, private Bibliotheken und Proxy in ADR-0048 bis 0050 | alle |

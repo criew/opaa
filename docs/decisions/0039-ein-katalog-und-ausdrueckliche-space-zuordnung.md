@@ -142,11 +142,3 @@ Asset-Typen; ein Vorschlag „weiteres Wissen zuordnen" bei leerer Suche.
 ## Offen
 
 —
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-02 | #2091 | Erstfassung, umgesetzt mit #2092–#2098, Seed #2103 | 1–8 |
-| 2026-10-03 | #2129 | Kompaktere Kachel, eine Filterzeile, feste Reihenfolge; API-Parameter `visibility`, `fromMyGroups`, `sort` entfallen | 1, 4 |
-| 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand; persönlicher Space heißt Standard-Space | 4 |

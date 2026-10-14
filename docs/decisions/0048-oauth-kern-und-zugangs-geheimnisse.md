@@ -200,19 +200,3 @@ mitgelieferter Konnektor bietet OAuth für Personen an; Dropbox bietet es nur f�
 ## Offen
 
 - Ob Dropbox den `BearerPost`-Widerruf mit leerem Formular-Body annimmt.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-04 | #2220 | Eigene Anmeldung des Zugangs (`ProfileOwned`, `ProfileSignIn`, Ablehnung) als Nachtrag zu ADR-0041 | 1 |
-| 2026-10-05 | #2168 | OAuth-Kern: Zustimmung ohne Sitzung, `OAuthClient`, Erneuerung, Widerruf nach dem Commit | 2–5 |
-| 2026-10-05 | #2169 | Quelle verbinden, `connection.consent` | 6 |
-| 2026-10-05 | #2173 | Ressourcen-Indikator und Erkennung für MCP-Server | 7 |
-| 2026-10-09 | #2265 | Widerruf über einen begrenzten Pool, `BearerPost` erneuert vorher | 5 |
-| 2026-10-09 | #2266 | Mix-up-Schutz im Rücksprung (`ResponseIssuer`) | 3 |
-| 2026-10-10 | #2297 | Client-Secret folgt keinem Endpunkt des Zugangs | 8 |
-| 2026-10-10 | #2279 | Endpunkte des Zugangs nur `https://`, Proxy-Regel entfällt | 8 |
-| 2026-10-11 | #2273 | Eigenes Geheimnis einer Bibliothek im Token-Speicher (T1) | 9 |
-| 2026-10-12 | #2496, #2537 | Kein Proxy und kein TLS-Schalter je Zugang (ADR-0050) | 1, 4 |
-| 2026-10-14 | #2702 | Aus ADR-0041 herausgelöst und auf den Endstand neu gefasst | alle |

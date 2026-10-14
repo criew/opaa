@@ -134,7 +134,7 @@ Leeren von `roles_claim` — eine Anbieteränderung, keine Rollenvergabe. Gruppe
 (`TokenGroupSynchronizer`), getrennt je Anbieter über `groups.provider_id` (ADR-0036,
 Entscheidung 2; `external_id` trägt den Gruppennamen, ein Name über 255 Zeichen wird übersprungen
 und protokolliert) — hebt die Festlegung von ADR-0005 auf, dass Gruppen nur über `DirectoryClient`
-kommen. Der Verzeichnisabgleich hängt seit #1816 an der Anbieterzeile (`directory_sync_enabled`,
+kommen. Der Verzeichnisabgleich hängt an der Anbieterzeile (`directory_sync_enabled`,
 ADR-0036, Entscheidungen 2 und 3), löst Mitglieder issuergebunden auf
 (`UserRepository#findByOrganizationIdAndIssuerAndSubjectIn`) und verwaltet nur `ORG_UNIT`-Gruppen.
 Alle Anbieter provisionieren in `Organization.DEFAULT_ID`.
@@ -190,15 +190,3 @@ braucht einen Frontend-Neustart; eine Organisation; der `dev`-Modus bleibt unver
 ## Offen
 
 - Anbieter-zu-Organisation-Bindung für Mehrmandantenbetrieb.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-12 | #1529, #1534 | Erstadministrator ist das lokale Notanker-Konto; letzter OIDC-Anbieter mit Guard deaktivierbar (ADR-0033) | 3 |
-| 2026-09-13 | #1631 | Automatischer Versuch mit `prompt=none`; jede OAuth-Absage endet still | 5 |
-| 2026-09-13 | #1629, #1630 | „Mit anderem Konto anmelden" entfällt | 5 |
-| 2026-09-20 | #1816 | Verzeichnisabgleich je Anbieter, `TrustedProvider` entfällt (ADR-0036) | 4 |
-| 2026-10-03 | #2159 | Token für Quellen und verbundene Konten im Token-Speicher (ADR-0041) | 1 |
-| 2026-10-09 | #2396 | Startmeldung ohne Anbieter nur `ERROR`, wenn kein lokaler Systemverwalter | 3 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 1–5 |
