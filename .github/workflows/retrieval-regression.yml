@@ -21,15 +21,15 @@ permissions:
   pull-requests: write
 
 concurrency:
-  # PR #301 review, Befund 2: a workflow-level concurrency group keyed only on the PR number
-  # cancelled an in-flight 'evaluation'-labeled run whenever *any other* label was added to the
-  # same PR afterwards, because both runs shared the same group and cancel-in-progress killed the
-  # earlier one before its job-level `if` (below) ever got a chance to skip the irrelevant one.
-  # Including the event name and the label name in the group key means only a genuine re-trigger
-  # of the *same* event (e.g. the 'evaluation' label removed and re-added) shares a group; a
-  # different label, workflow_dispatch and schedule never collide with each other or with a
-  # legitimate 'evaluation' run. cancel-in-progress stays false: a 17-minute run that used to be
-  # this specific key is worth letting finish, not killing pre-emptively.
+  # A workflow-level concurrency group keyed only on the PR number cancelled an in-flight
+  # 'evaluation'-labeled run whenever *any other* label was added to the same PR afterwards,
+  # because both runs shared the same group and cancel-in-progress killed the earlier one before
+  # its job-level `if` (below) ever got a chance to skip the irrelevant one. Including the event
+  # name and the label name in the group key means only a genuine re-trigger of the *same* event
+  # (e.g. the 'evaluation' label removed and re-added) shares a group; a different label,
+  # workflow_dispatch and schedule never collide with each other or with a legitimate
+  # 'evaluation' run. cancel-in-progress stays false: a 17-minute run that used to be this
+  # specific key is worth letting finish, not killing pre-emptively.
   group: retrieval-regression-${{ github.event_name }}-${{ github.event.pull_request.number || 'none' }}-${{ github.event.label.name || 'none' }}
   cancel-in-progress: false
 
@@ -150,9 +150,9 @@ jobs:
 
       # Verwaltet den Gradle-Cache selbst: PR-Laeufe restaurieren read-only,
       # nur Laeufe auf main schreiben - behebt das Einfrieren des alten
-      # actions/cache-Musters, das bei exaktem Key-Treffer nie neu speicherte
-      # (#832). Configuration-Cache-Daten werden bewusst nicht persistiert
-      # (braeuchte cache-encryption-key + build-root-directory).
+      # actions/cache-Musters, das bei exaktem Key-Treffer nie neu
+      # speicherte. Configuration-Cache-Daten werden bewusst nicht
+      # persistiert (braeuchte cache-encryption-key + build-root-directory).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       # Named Docker volume that RetrievalEvaluationHarnessTest bind-mounts into the Ollama
@@ -163,25 +163,25 @@ jobs:
       # key below), and every subsequent run restores it from GitHub's cache. Combined with
       # EvalOllamaModel#ensurePresent skipping 'ollama pull' entirely once the expected digest is
       # already present locally, a warm cache run does not need to download either model again.
-      # Narrower claim than "no third-party network access at all" (PR #301 review, second round):
-      # the pgvector/pgvector and ollama/ollama *base images* are still pulled from Docker Hub by
-      # Testcontainers regardless of this cache, independent of the models.
+      # Narrower claim than "no third-party network access at all": the pgvector/pgvector and
+      # ollama/ollama *base images* are still pulled from Docker Hub by Testcontainers regardless of
+      # this cache, independent of the models.
       #
       # The cache key is pinned to the exact expected digests
-      # (RetrievalEvaluationHarnessTest.EXPECTED_EMBEDDING_MODEL_DIGEST and, since #1085,
+      # (RetrievalEvaluationHarnessTest.EXPECTED_EMBEDDING_MODEL_DIGEST and
       # EvalChatModel.EXPECTED_DIGEST), not just the tags: a deliberate model re-pin changes a digest
       # constant, which changes this key, which means a stale cache for the old model is never
       # silently reused. Every matrix entry pins the same two models and therefore shares this exact
       # key — the Docker volume is reusable across domains, no per-domain cache entry needed.
       #
-      # Two models since #1085: the embedding model (~275 MB) and the chat model the
-      # Teilfragen-Zerlegung uses (qwen2.5:1.5b-instruct, ~986 MB). The chat model is pulled by every
-      # run, including the nightly one that measures the decomposition-off configuration, so a broken
-      # model pin surfaces here rather than only in a rare manual measurement run.
-      # actions/cache/restore + actions/cache/save (issue #311), not the combined actions/cache
-      # action: actions/cache's own save step only runs as a *post*-job step, and GitHub Actions
-      # skips post-job steps entirely when the job's own status is 'cancelled' — which is exactly
-      # what timeout-minutes produces. On a cold cache the very first scheduled run always times
+      # Two models: the embedding model (~275 MB) and the chat model the Teilfragen-Zerlegung uses
+      # (qwen2.5:1.5b-instruct, ~986 MB). The chat model is pulled by every run, including the
+      # nightly one that measures the decomposition-off configuration, so a broken model pin surfaces
+      # here rather than only in a rare manual measurement run. actions/cache/restore +
+      # actions/cache/save, not the combined actions/cache action: actions/cache's own save step only
+      # runs as a *post*-job step, and GitHub Actions skips post-job steps entirely when the job's
+      # own status is 'cancelled' — which is exactly what timeout-minutes produces. On a cold cache
+      # the very first scheduled run always times
       # out (indexing ~1.5k documents through the real Ollama container is itself the majority of
       # the runtime, see the timeout_minutes comment in the matrix above), so the combined action's
       # cache-key never got written, next night started cold again, timed out again, forever — a
@@ -214,12 +214,10 @@ jobs:
         if: always()
         run: df -h
 
-      # PR #301 review, Befund 3 (zweite Runde: die Größenprüfung allein reicht nicht — ein Pull,
-      # der z. B. bei ~60% abbricht, kann die 150-MB-Schwelle bereits überschreiten und würde
-      # trotzdem dauerhaft unter dem unveränderlichen Cache-Schlüssel landen; Ollama hinterlässt
-      # dabei unvollständige Blobs statt eines fertigen Manifests). Dieser Schritt lief zunächst
-      # unconditionally (always()) mit fixem Cache-Schlüssel und rein größenbasierter Prüfung.
-      # actions/cache-Schlüssel sind unveränderlich — ein unvollständig gespeicherter Export bliebe
+      # Die Größenprüfung allein reicht nicht: ein Pull, der z. B. bei ~60% abbricht, kann die
+      # 150-MB-Schwelle bereits überschreiten und würde trotzdem dauerhaft unter dem
+      # unveränderlichen Cache-Schlüssel landen; Ollama hinterlässt dabei unvollständige Blobs statt
+      # eines fertigen Manifests. actions/cache-Schlüssel sind unveränderlich — ein unvollständig gespeicherter Export bliebe
       # sonst für immer als vermeintlicher Treffer bestehen, ohne dass es auffällt. Die Prüfung
       # unten kombiniert deshalb zwei Signale: Größe (>1 GB, fängt den leeren, sehr kleinen und den
       # nur teilweise befüllten Fall — beide Modelle zusammen belegen rund 1,26 GB) UND
@@ -268,8 +266,8 @@ jobs:
 
       # Baseline-Absenkung gegenüber main (ADR-0013, Entscheidung 6) läuft NICHT hier: Sie hängt an
       # dieses Label-gated Docker-lastige Verfahren zu koppeln hieße, dass ein PR, der die Baseline
-      # absenkt, aber nie das Label 'evaluation' bekommt, überhaupt keinen Hinweis erzeugt (PR #301
-      # review, zweite Runde). Stattdessen läuft `eval/baseline/diff_baseline.py` für **jeden** PR,
+      # absenkt, aber nie das Label 'evaluation' bekommt, überhaupt keinen Hinweis erzeugt.
+      # Stattdessen läuft `eval/baseline/diff_baseline.py` für **jeden** PR,
       # der `eval/baseline/**` ändert, unabhängig vom Label — siehe
       # .github/workflows/baseline-diff.yml, ein separater, Docker-freier und daher sehr schneller
       # Workflow.
@@ -329,12 +327,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
-      # Bei Auslösung per PR-Label: Ergebnis als PR-Kommentar mit Delta-Tabelle (Issue #228,
-      # Umfang). Läuft unabhängig davon, ob der vorige Schritt bestanden hat oder nicht — genau dann
-      # ist der Kommentar am wichtigsten. continue-on-error (PR #301 review, Befund 5): löst ein
-      # Fork den Lauf aus, ist das Standard-GITHUB_TOKEN schreibgeschützt und dieser Schritt
-      # scheitert mit 403 — das darf den eigentlichen Retrieval-Befund (vorheriger Schritt) nicht
-      # überdecken.
+      # Bei Auslösung per PR-Label: Ergebnis als PR-Kommentar mit Delta-Tabelle. Läuft
+      # unabhängig davon, ob der vorige Schritt bestanden hat oder nicht — genau dann ist der
+      # Kommentar am wichtigsten. continue-on-error: löst ein Fork den Lauf aus, ist das
+      # Standard-GITHUB_TOKEN schreibgeschützt und dieser Schritt scheitert mit 403 — das darf den
+      # eigentlichen Retrieval-Befund (vorheriger Schritt) nicht überdecken.
       - name: Delta-Tabelle als PR-Kommentar posten
         if: always() && github.event_name == 'pull_request'
         continue-on-error: true
@@ -373,14 +370,14 @@ jobs:
       # Schritt wäre ein Regressionsfund für niemanden sichtbar, bis zufällig jemand in die
       # Actions-Läufe schaut. Sucht ein offenes, mit dem festen Marker versehenes Issue und
       # kommentiert es, statt bei jedem nächtlichen Fehlschlag ein weiteres Duplikat anzulegen oder
-      # (PR #301 review) eine bereits vorhandene Analyse im Body zu überschreiben. Der Marker ist
-      # je Domäne unterschiedlich (matrix.marker), sodass beide Domänen getrennte Alarm-Issues
-      # führen statt eines gemeinsamen.
+      # eine bereits vorhandene Analyse im Body zu überschreiben. Der Marker ist je Domäne
+      # unterschiedlich (matrix.marker), sodass beide Domänen getrennte Alarm-Issues führen statt
+      # eines gemeinsamen.
       #
-      # `if: failure() || cancelled()` statt nur `failure()` (Befund 6): Ein Abbruch durch
-      # `timeout-minutes` markiert den Job als cancelled, nicht als failed — `failure()` allein
-      # hätte einen reinen Timeout-Fehlschlag lautlos durchrutschen lassen, ohne Alarm-Issue und
-      # ohne Artefakt-Hinweis.
+      # `if: failure() || cancelled()` statt nur `failure()`: Ein Abbruch durch `timeout-minutes`
+      # markiert den Job als cancelled, nicht als failed — `failure()` allein hätte einen reinen
+      # Timeout-Fehlschlag lautlos durchrutschen lassen, ohne Alarm-Issue und ohne
+      # Artefakt-Hinweis.
       #
       # Seit #1040 führt der Lauf zwei Urteile (Rohvektor- und Pipeline-Messpfad, je eigene
       # Baseline). Das Alarm-Issue trägt deshalb beide Delta-Tabellen mit ihren eigenen
@@ -427,7 +424,7 @@ jobs:
             const issueBody = `${marker}\n\n${{ matrix.issue_intro }}\n\n${pathNote}\n\nWorkflow-Lauf: ${runUrl}\n\n${details}`;
 
             // per_page: 100 statt der 30er-Default-Seite, und ausdrücklicher Ausschluss von Pull
-            // Requests (PR #301 review): listForRepo mit label 'evaluation' liefert auch offene
+            // Requests: listForRepo mit label 'evaluation' liefert auch offene
             // PRs zurück, weil 'evaluation' zugleich das Auslöser-Label ist — ohne den Filter und
             // ohne ausreichende Seitengröße könnte das Alarm-Issue von der ersten Seite rutschen
             // und ein Duplikat entstehen.
@@ -442,7 +439,7 @@ jobs:
               i => !i.pull_request && i.body && i.body.includes(marker)
             );
             if (existing) {
-              // Nur kommentieren, nie den Body überschreiben (PR #301 review) — eine eingetragene
+              // Nur kommentieren, nie den Body überschreiben — eine eingetragene
               // Analyse des Maintainers im Issue-Body wäre sonst beim nächsten Fehlschlag weg.
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -476,7 +473,7 @@ jobs:
               labels: 'evaluation',
               per_page: 100,
             });
-            // Provenance check (PR #301 review): only ever touch an issue that actually carries
+            // Provenance check: only ever touch an issue that actually carries
             // this workflow's own marker — never assume "some open issue labeled evaluation" is
             // the one this workflow created.
             const existing = issuesAndPrs.find(
@@ -523,9 +520,9 @@ jobs:
             # Ein GitHub-Runner ist deutlich langsamer. Gemessene Anhaltspunkte: verwaltung
             # (Einzelfragen) lag im Lauf 34648243211 bei 16 min 28 s gegen rund 7 min lokal, also
             # Faktor ~2,4 einschließlich Modell-Zug; bei city-landmarks ist der Faktor deutlich
-            # größer. Gemessen (#1490): Der erste vollständige Lauf dieses Jobs (Lauf
-            # 34648243211, kalter Modell-Cache) brauchte 118 Minuten, davon 117 min 45 s für den
-            # Gradle-Schritt — 39 % des Budgets, Faktor ~2,3 gegenüber 52 Minuten lokal für
+            # größer. Gemessen: Der erste vollständige Lauf dieses Jobs (Lauf 34648243211, kalter
+            # Modell-Cache) brauchte 118 Minuten, davon 117 min 45 s für den Gradle-Schritt — 39 %
+            # des Budgets, Faktor ~2,3 gegenüber 52 Minuten lokal für
             # denselben Task-Lauf. Das Budget bleibt bei 300 Minuten, bis zwei bis drei weitere
             # nächtliche Läufe eine Verteilung zeigen: Es muss auch einen langsameren Runner und
             # einen kalten Cache überstehen (ADR-0012, Entscheidung 49).

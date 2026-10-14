@@ -21,9 +21,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Path filter for PR runs (issue #644): backend jobs only run when backend
-  # files changed, the frontend job only for frontend changes. The jobs below
-  # are required status checks, so they must exist in every run — skipped
+  # Path filter for PR runs: backend jobs only run when backend files
+  # changed, the frontend job only for frontend changes. The jobs below are
+  # required status checks, so they must exist in every run — skipped
   # required jobs count as passed for branch protection and the merge queue.
   # That cuts both ways: if this job itself failed, its dependents would all
   # be skipped and read as passed — which is why `changes` is a required
@@ -55,13 +55,13 @@ jobs:
           # each pattern independently, so a negated pattern alone already matches any
           # file that isn't the excluded path — it never actually excludes anything.
           # 'some-with-excludes' evaluates excludes against files that already matched
-          # a positive pattern instead (#1123). No other filter here uses negation, so
-          # this is a no-op for frontend, scripts, backendCore and bundleParity.
+          # a positive pattern instead. No other filter here uses negation, so this is
+          # a no-op for frontend, scripts, backendCore and bundleParity.
           predicate-quantifier: 'some-with-excludes'
           filters: |
             # backendCore gates the paid OpenAI integration tests (job
             # backend-integration): nothing under io.opaa.integration.* reads
-            # eval/, so a corpus-only PR must not trigger real API calls (#1123).
+            # eval/, so a corpus-only PR must not trigger real API calls.
             backendCore:
               - 'backend/**'
               - 'opaa-api/**'
@@ -70,10 +70,10 @@ jobs:
             # invariant tests that guard the corpora and golden datasets
             # (chunk-size dry runs, golden case curation, manifest checks) run
             # as part of the backend job's check task - a corpus-only PR would
-            # otherwise skip them (#1089). eval/README.md and eval/generator/**
-            # are excluded: no evalUnitTest-included test reads either at
-            # runtime, both are only referenced from Javadoc/error messages in
-            # the excluded *RetrievalEvaluationHarnessTest classes (#1123).
+            # otherwise skip them. eval/README.md and eval/generator/** are
+            # excluded: no evalUnitTest-included test reads either at runtime,
+            # both are only referenced from Javadoc/error messages in the
+            # excluded *RetrievalEvaluationHarnessTest classes.
             backend:
               - 'backend/**'
               - 'opaa-api/**'
@@ -144,8 +144,8 @@ jobs:
               - '.github/scripts/check_code_comments.sh'
             # keycloak/** belongs to the seed filter because demo/seed/test_seed.py
             # asserts the realm export keeps the audience mapper the seed's token
-            # path depends on (#1515) - otherwise only the nightly demo smoke run
-            # would notice its removal. demo/corpus/** belongs to it because
+            # path depends on - otherwise only the nightly demo smoke run would
+            # notice its removal. demo/corpus/** belongs to it because
             # demo/seed/test_chats.py asserts every document the demo chats cite
             # still exists in the corpus.
             seed:
@@ -159,11 +159,11 @@ jobs:
       # Guards the Corepack integrity hash that frontend/Dockerfile relies on
       # ("corepack enable", then "pnpm install --frozen-lockfile"): corepack verifies
       # the pnpm binary against it. Note pnpm/action-setup strips the hash and only
-      # reads the version, so no CI job would ever notice its loss (#1660).
-      # Lives in this job because `changes` is the only required status check that
-      # runs unfiltered on every PR and every push to main - a guard in a filtered
-      # job would be skipped for exactly the PRs that touch only e2e/package.json,
-      # and a non-required job would go red without stopping a Renovate auto-merge.
+      # reads the version, so no CI job would ever notice its loss. Lives in this job
+      # because `changes` is the only required status check that runs unfiltered on
+      # every PR and every push to main - a guard in a filtered job would be skipped
+      # for exactly the PRs that touch only e2e/package.json, and a non-required job
+      # would go red without stopping a Renovate auto-merge.
       - name: Corepack-Hash im packageManager-Feld prüfen
         run: .github/scripts/check_package_manager_hash.sh
 
@@ -207,9 +207,9 @@ jobs:
 
       # Verwaltet den Gradle-Cache selbst: PR-Laeufe restaurieren read-only,
       # nur Laeufe auf main schreiben - behebt das Einfrieren des alten
-      # actions/cache-Musters, das bei exaktem Key-Treffer nie neu speicherte
-      # (#832). Configuration-Cache-Daten werden bewusst nicht persistiert
-      # (braeuchte cache-encryption-key + build-root-directory).
+      # actions/cache-Musters, das bei exaktem Key-Treffer nie neu
+      # speicherte. Configuration-Cache-Daten werden bewusst nicht
+      # persistiert (braeuchte cache-encryption-key + build-root-directory).
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Build (ohne Testsuite)
@@ -357,7 +357,7 @@ jobs:
           distribution: temurin
           java-version: '25.0.4+101.0.LTS'
 
-      # Cache-Verwaltung wie im backend-Job: read-only auf PRs, Schreiben nur auf main (#832).
+      # Cache-Verwaltung wie im backend-Job: read-only auf PRs, Schreiben nur auf main.
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: OpenAI Integration Tests
@@ -388,8 +388,8 @@ jobs:
 
       # Der Tagesreport läuft nur nachts; ein Fehler fiele sonst erst dann auf.
       # Die Selbstprobe des Corepack-Guards liegt daneben, weil dessen CI-Lauf nur
-      # den grünen Zweig ausübt (#1660). Ebenso der :main-Filter von
-      # publish-images.yml, der nur auf main läuft, nie in einem PR.
+      # den grünen Zweig ausübt. Ebenso der :main-Filter von publish-images.yml,
+      # der nur auf main läuft, nie in einem PR.
       - name: Test
         run: pytest .github/scripts
 
