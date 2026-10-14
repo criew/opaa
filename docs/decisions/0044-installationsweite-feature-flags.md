@@ -64,7 +64,7 @@ einer im Werteschema hinzu (Entscheidung 8).
 
 Bedingung und `FeatureFlags` lesen über dieselbe Regel (Spring-Binder, gelockerte Schreibweise,
 Vorgabe an), es gibt kein `matchIfMissing`. Roh-`@ConditionalOnProperty` auf `opaa.features.*` wird
-nicht verwendet (`backend/src/main/java/io/opaa/common/AGENTS.md`).
+nicht verwendet: Es hätte eine eigene Vorgabe, die von der Regel abweichen kann.
 
 ### 7. Auslieferung an das Frontend über die Anmeldekonfiguration
 
@@ -109,4 +109,4 @@ still wirkungslos bleibt.
 |---|---|---|---|
 | 2026-10-13 | #2587 | Erstfassung mit `PROMPT_LIBRARIES` und `METADATA` (Wirkung: #2588, #2589) | 1–8 |
 | 2026-10-13 | #2629 | drittes Flag `SPEECH_INPUT` | 5 |
-| 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand | — |
+| 2026-10-14 | #2701 | Neufassung; drittes Flag `SPEECH_INPUT` in der Tabelle; Offen: Demo-Schalter `opaa.demo.chat-import.enabled` als Einzelschalter festgehalten | 5 |

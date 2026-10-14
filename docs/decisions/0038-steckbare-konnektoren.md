@@ -21,12 +21,12 @@ soll ohne Änderung an OpenAPI-Spezifikation, Datenbankschema und Verwaltung erg
 
 ### 1. Der Typ ist ein offener Schlüssel, die Registry die einzige Liste
 
-Die Quellart ist ein String aus Großbuchstaben, Ziffern und Unterstrich (`chk_knowledge_libraries_source_type`,
-`io.opaa.knowledge.SourceType`). Welche Schlüssel es gibt, weiß nur die `SourceConnectorRegistry`: Jeder
+Die Quellart ist ein String aus Großbuchstaben, Ziffern und Unterstrich, höchstens 20 Zeichen
+(`chk_knowledge_libraries_source_type`, `io.opaa.knowledge.SourceType.MAX_LENGTH`). Welche Schlüssel es gibt, weiß nur die `SourceConnectorRegistry`: Jeder
 Konnektor meldet seinen Schlüssel in seiner Beschreibung (`SourceConnectorDescriptor`), die Datenbank
-prüft nur die Form. `GET /api/v1/source-types` liefert je Konnektor Schlüssel, Anzeigename und
-Fähigkeiten (Lauf, Push-Eingang, Auflistung, Uploads, Vorgabe des Vollabgleichsrhythmus, Profilangabe,
-Anmeldearten, Adressregel, Vorgaben-Schema). Das Enum `DocumentSourceType` und das engere Lauf-Enum aus
+prüft nur die Form. Die Beschreibung nennt `indexingRun`, `remote`, `deepLink`, `uploads`,
+`pushIntake`, `fullSyncInterval` und `profileDeclaration`; `GET /api/v1/source-types` liefert je
+Konnektor Schlüssel, Anzeigename und diese Fähigkeiten. Das Enum `DocumentSourceType` und das engere Lauf-Enum aus
 ADR-0017 sind entfallen; der Kern kennt nur noch `UPLOAD` als Sonderfall.
 
 Konnektoren im Paket `io.opaa.indexing.source` (Handbuch: `docs/handbuch/konnektoren/`):
@@ -90,12 +90,17 @@ validiert und antwortet `400` mit deutscher Meldung. Leser sehen die Lesersicht 
 abdeckt), Verwaltende zusätzlich Verwaltungswerte. Push-Eingang (`POST /api/v1/libraries/{id}/push`),
 Push-Geheimnis (`…/push-secret`) und Auflistung (`POST /api/v1/source-types/{sourceType}/browse`) sind
 typneutral benannt; welcher Konnektor eine Push-Nachricht liest, entscheidet der Typ der Bibliothek.
+Der Verbindungstest liefert konnektoreigene Befunde im freien Objekt `details`.
 Kein JSON-Schema je Konnektor: Die Formularkomponente je Typ ist handgeschrieben und maßgeblich bleibt
 die Validierung im Konnektor; ein Schema ließe sich rückwärtskompatibel ergänzen. Preis: Grenzen wie
 `required` und `maxLength`, Bean-Validation und generierte Frontend-Typen entfallen für
 `sourceSettings`; die Form dokumentieren Handbuchkapitel und Formularkomponente.
 
-### 5. Frontend-Registrierung und Fähigkeiten
+### 5. Übergang in zwei Schritten
+
+Abgeschlossen: zuerst die interne Umstellung bei unveränderter API (#1986), dann der API-Bruch (#1997).
+
+### 6. Frontend-Registrierung und Fähigkeiten
 
 - Jede Quellart registriert sich an genau einer Stelle
   (`frontend/src/components/library/sources/registry.ts`): Name, Symbol, Formular mit Startwerten,
@@ -112,17 +117,21 @@ die Validierung im Konnektor; ein Schema ließe sich rückwärtskompatibel ergä
   Test-Konnektoren im Testcode weisen nach, dass ein Konnektor ohne Spec-Änderung über die API anlegbar,
   änderbar, testbar, auflistbar, planbar und indizierbar ist.
 
-### 6. Profilangabe und Anmeldearten in der Beschreibung (`ProfileDeclaration`)
+### 7. Profilangabe und Anmeldearten in der Beschreibung (`ProfileDeclaration`)
 
 - **Profilangabe:** verboten, optional oder Pflicht (`ConnectionProfileSupport`). Die Registry prüft
   beim Start: verboten bei `uploads` oder ohne `remote`; Pflicht genau dann, wenn OAuth oder
-  Client-Credentials angeboten werden; ein entfernter Konnektor ohne Uploads muss Profile zulassen.
+  Client-Credentials angeboten werden, weil die App-Registrierung nur am Profil steht (der
+  Dienstkonto-Schlüssel trägt sie selbst und macht keine Profilpflicht); ein entfernter Konnektor ohne
+  Uploads muss Profile zulassen.
 - **Anmeldearten** als `SignIn(method, owners, details)`: persönliches Geheimnis (Token oder
   Benutzername/Passwort), OAuth (Autorisierungscode mit PKCE, Endpunkte fest, mit Mandant aus dem
-  Profil oder relativ zur Server-Adresse), Client-Credentials (`ClientCredentialsAuth`, Token-Endpunkt
-  `Endpoint.Fixed` oder `WithTenant`) und Dienstkonto-Schlüssel (`ServiceAccountKeyAuth`, JWT-Assertion
-  nach RFC 7523, ADR-0040; Token-Endpunkt und Scopes fest, nur Besitzart Bibliothek, signiert wird im
-  Kern). `owners` nennt Bibliothek, Person oder beide. Ein Profil wählt nur eine Art, die sein
+  Profil oder relativ zur Server-Adresse), Client-Credentials (`ClientCredentialsAuth`, Besitzerin nur
+  die Bibliothek; Token-Endpunkt `Endpoint.Fixed`, `WithTenant` mit dem Mandanten des Profils oder
+  `FromProfile`, den nur das Profil auflöst) und Dienstkonto-Schlüssel (`ServiceAccountKeyAuth`,
+  JWT-Assertion nach RFC 7523, ADR-0040; Token-Endpunkt und Scopes fest, nur Besitzart Bibliothek;
+  ohne Profil in `source_credentials`, mit Profil am Platz des Client-Secrets; signiert wird im Kern,
+  ein Zugriffstoken lebt nur im Speicher des Laufs). `owners` nennt Bibliothek, Person oder beide. Ein Profil wählt nur eine Art, die sein
   Konnektor anbietet.
 - **Adressregel** `ServerAddressRule`: zulässige Schemata oder eine feste Adresse, die das Formular
   nicht abfragt.
@@ -165,14 +174,14 @@ es Bestandssysteme gibt.
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
-| 2026-09-26 | #1977 | Erstfassung; interne Umstellung (#1986) und API-Bruch (#1997) | 1–5 |
-| 2026-09-27 | #2000 | Grenze des Kerns sichert `ModularArchitectureTest` | 5 |
-| 2026-10-03 | #2159 | Profilangabe, Anmeldearten, vier Plätze für Geheimnisse, Ziel aus dem Profil (ADR-0041) | 3, 6 |
-| 2026-10-03 | #2177 | Anmeldeart Dienstkonto-Schlüssel (ADR-0040) | 6 |
-| 2026-10-04 | #2218 | `ProfileDeclaration`, Adressregel, Vorgaben-Schema | 6 |
-| 2026-10-04 | #2220 | `ClientCredentialsAuth`, Vorgabe nur des Profils, Dienstkonto-Schlüssel am Profil | 6 |
-| 2026-10-04 | #2219, #2253 | Entfernte Konnektoren lassen Profile zu, Registry prüft die Umkehrung | 6 |
-| 2026-10-03 bis 2026-10-11 | #2152, #2155, #2438, #2154 | Nextcloud, SMB, SharePoint und Dropbox kommen hinzu | 1 |
+| 2026-09-26 | #1977 | Erstfassung; interne Umstellung (#1986) und API-Bruch (#1997) | 1–6 |
+| 2026-09-27 | #2000 | Grenze des Kerns sichert `ModularArchitectureTest` | 6 |
+| 2026-10-03 | #2159 | Profilangabe, Anmeldearten, vier Plätze für Geheimnisse, Ziel aus dem Profil (ADR-0041) | 3, 7 |
+| 2026-10-03 | #2177 | Anmeldeart Dienstkonto-Schlüssel (ADR-0040) | 7 |
+| 2026-10-04 | #2218 | `ProfileDeclaration`, Adressregel, Vorgaben-Schema | 7 |
+| 2026-10-04 | #2220 | `ClientCredentialsAuth`, Vorgabe nur des Profils, Dienstkonto-Schlüssel am Profil | 7 |
+| 2026-10-04 | #2219, #2253 | Entfernte Konnektoren lassen Profile zu, Registry prüft die Umkehrung | 7 |
+| 2026-10-03 bis 2026-10-10 | #2152, #2155, #2438 | Nextcloud, SMB und SharePoint kommen hinzu | 1 |
 | 2026-10-11 | #2154 | Dropbox; zweiter fester Host ohne eigenes Feld | 1, 3 |
 | 2026-10-12 | #2496, #2541 | `source_proxy` und `source_insecure_ssl` entfallen | 2 |
 | 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand | — |

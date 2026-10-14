@@ -44,6 +44,7 @@ die Stakeholder-Berichte in
 | Systemrolle | Systemrolle | `SYSTEM_ADMIN`, `AUDITOR` |
 | Wirksame Gruppe | — | darf ein Recht **erhalten**: nicht aufgelöst, Anbieter aktiviert, bei internen Gruppen nicht deaktiviert (Entscheidung 14); darf leer sein |
 | Handlungsfähige Gruppe | — | wirksame Gruppe mit mindestens einem aktiven Konto; das Maß, ob sie als Eigentümerin oder Space-`ADMIN` **handeln** kann |
+| Betriebsliste | Ohne Zuständigkeit | die Liste der Systemverwaltung aus Entscheidung 6 |
 
 ### 1. Vorbilder und die Zusage „kein Lesebypass"
 
@@ -98,7 +99,8 @@ Mechanismus, Intervall und letzten Abgleich; die Betriebsliste zeigt „Freigabe
 gilt eine Verzeichnisänderung erst ab der nächsten Anmeldung).
 
 - **Erster Konnektor: Keycloak Admin REST API** (`io.opaa.directory.sync.keycloak`): Die
-  Keycloak-Nutzer-ID ist der `sub`, eine Abbildungsregel entfällt. Direkte Mitglieder, nicht transitiv;
+  Keycloak-Nutzer-ID ist der `sub`, eine Abbildungsregel entfällt; LDAP und Microsoft Graph folgen mit
+  ausdrücklicher Abbildungsregel. SCIM ist zurückgestellt, nicht abgelehnt. Direkte Mitglieder, nicht transitiv;
   Zugangsdaten des Dienstkontos verschlüsselt über `CredentialsEncryptor`; Verbindungstest und
   Adressprüfung wie beim Anbieter (`OidcProviderConnectionTester`).
 - **Ausstehender Plan** (`DirectorySyncPendingPlan`): Der Leerergebnis-Schutz bleibt ein harter Abbruch
@@ -125,7 +127,9 @@ gilt eine Verzeichnisänderung erst ab der nächsten Anmeldung).
 - Verantwortung abgeben ist ein sichtbarer eigener Schritt in „Meine Gruppen"
   (`GET /api/v1/me/stewarded-groups`), kein Automatismus aus Personendaten.
 - Anlegen ist die Fähigkeit `CREATE_INTERNAL_GROUP`, ausgeliefert an **niemanden**; das Handbuch
-  empfiehlt die Vergabe an eine Gruppe wie „Referatsleitungen".
+  empfiehlt die Vergabe an eine Gruppe wie „Referatsleitungen". Beim Anlegen weist die Oberfläche darauf
+  hin, dass „vor Kollegen verborgen" nicht „verborgen" heißt: Wer anlegt oder ein Recht gibt, sieht, an
+  wen (Entscheidung 9).
 - Anbietergruppen bleiben schreibgeschützt (`GroupService#rejectOrgUnit`) und haben keine
   Verantwortlichen; ihr Schutzkennzeichen setzt die Systemverwaltung (Entscheidung 9).
 - Mitglieder sehen ihre Verantwortlichen namentlich; Aufnahme und Entfernung werden der Person über
@@ -154,20 +158,24 @@ Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsw
   `SYSTEM_ADMIN ∨ ALL_ACCOUNTS ∨ Nutzer ∨ eine seiner Gruppen`, über `GroupMembershipResolver`.
 - **Geltungsbereich** (seit #2159, ADR-0041): `CREATE_CONNECTOR_LIBRARY` trägt `scope` =
   `TYPE:<Schlüssel>` oder `PROFILE:<Kennung>`, Pflicht für diese Fähigkeit, leer für alle anderen; rights
-  deutet den Wert nicht, connections prüft ihn und löscht die Grants eines gelöschten Profils. Ein neuer
-  Konnektortyp oder ein neues Profil hat keine Zeile und ist damit aus; der Seed vergibt die fünf
-  ursprünglichen Typen (`FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED`, `CONFLUENCE`, `S3`). `GET /api/v1/me`
-  führt die Fähigkeit als Zeichenkette, sobald sie in einem Geltungsbereich gilt; welcher Weg nutzbar ist,
-  liefern `GET /api/v1/source-types` und die Zugänge je Eintrag (seit #2495 nur noch nutzbare). Entzug
-  wirkt nur auf die Neuanlage; Läufe stoppt allein die Sperre von Typ oder Profil in connections.
+  deutet den Wert nicht, connections prüft ihn und löscht die Grants eines gelöschten Profils. Der
+  Geltungsbereich wählt einen Anlegepfad, ist kein Gegenstand im Sinn einer Befugnis und bleibt an Gruppen
+  und „Alle Konten" vergebbar. Ein neuer Konnektortyp oder ein neues Profil hat keine Zeile und ist damit
+  aus; der Seed vergibt die fünf ursprünglichen Typen (`FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED`,
+  `CONFLUENCE`, `S3`). `GET /api/v1/me/capabilities` führt die Fähigkeit als Zeichenkette, sobald sie in
+  einem Geltungsbereich gilt; welcher Weg nutzbar ist, liefern `GET /api/v1/source-types` und die Zugänge
+  je Eintrag (seit #2495 nur noch nutzbare). Entzug wirkt nur auf die Neuanlage — das Anlegen einer
+  Bibliothek und das erstmalige Verbinden eines Kontos auf einem Profil; neu verbinden, trennen und
+  löschen zählen nicht dazu. Läufe stoppt allein die Sperre von Typ oder Profil in connections.
 - **Verhältnis:** `SYSTEM_ADMIN` besitzt jede Fähigkeit implizit; Fähigkeiten sind nie Leserechte;
   `AUDITOR` verleiht keine Fähigkeit; „Sicht als" und Vorfallsbereich bleiben Vollmachten; keine neue
   Systemrolle — ein „Bibliotheksverwalter" ist eine Gruppe mit Fähigkeiten.
 - **Durchsetzung:** im Service (`SpaceService#createSpace`, `KnowledgeLibraryService#createLibrary`,
   `GroupService#createGroup`), `403` mit Grund, in der Spezifikation als eigene Entscheidung der Operation
   deklariert. Entzug wirkt ohne Neuanmeldung — die Zusage trägt nur unter
-  [ADR-0021](0021-single-instance-betrieb.md). `GET /api/v1/me/capabilities` liefert die eigenen
-  Fähigkeiten, damit die Oberfläche erklärt statt versteckt; die Verwaltungsübersicht zeigt je Fähigkeit
+  [ADR-0021](0021-single-instance-betrieb.md). `GET /api/v1/me/capabilities` (`MyCapabilitiesResponse`)
+  liefert die eigenen Fähigkeiten, damit die Oberfläche erklärt statt versteckt; die
+  Verwaltungsübersicht zeigt je Fähigkeit
   den Stand als Klartextzeile. Vergabe und Entzug sind Governance-Ereignisse
   (`CAPABILITY_GRANTED`/`_REVOKED`).
 - **Nur-Besitzerin-Regel** (seit #2159): `assets.owner_only`, beim Anlegen gesetzt, unveränderlich,
@@ -231,12 +239,19 @@ vorbehalten; wird sie je geöffnet, schaltet dieselbe Änderung die Diagnosesper
 `hybrid-retrieval.md`) auch für Profil-Läufe scharf. Leitplanke (b) bleibt: Die Diagnose ist kein
 Zugriffshistorien-Nachweis.
 
-Ein **Space-Kontext** im Profil ist nicht gebaut; `SearchDiagnosisRequest` nimmt keine Space-ID. Kommt
-er, gelten fünf Schutzpunkte einzeln: Suchbereich = zugeordnete ∩ lesbare Bibliotheken; die
-Mindestgruppengröße gilt für die Schnittmenge aus aktiven Mitgliedern und Zugang zum Space auf jedem
-Weg, geprüft zum Zeitpunkt des Laufs, sonst `403` (ist die Prüfung zu teuer, entfällt der Space-Kontext,
-nicht die Prüfung); gezählt werden aktive Konten; Profil-Läufe mit Space-Kontext werden protokolliert
-(eine Zeile je Lauf); `SYSTEM_ADMIN`-Vorbehalt wie oben.
+Der **Space-Kontext** im Profil ist gebaut (#1835: `spaceId` im Diagnose-Request,
+`SearchDiagnosisService`); fünf Schutzpunkte gelten einzeln:
+
+1. Suchbereich = dem Space zugeordnete ∩ für die Gruppe lesbare Bibliotheken.
+2. Die Mindestgruppengröße gilt für die Schnittmenge aus aktiven Mitgliedern der Gruppe und Zugang zum
+   Space auf jedem Weg, geprüft zum Zeitpunkt des Laufs, sonst `403`; ist die Prüfung zu teuer,
+   entfällt der Space-Kontext, nicht die Prüfung.
+3. Gezählt werden aktive Konten, nicht Mitgliedschaftszeilen.
+4. Profil-Läufe mit Space-Kontext werden protokolliert, eine Zeile je Lauf.
+5. `SYSTEM_ADMIN`-Vorbehalt wie oben.
+
+Die Mindestgruppengröße ist ein anderes Maß als das der Nutzungstransparenz in `spaces-and-assets.md`:
+Für ein Rechteprofil zählt der Rechtekontext, nicht die Nutzung.
 
 ### 8. Rechtehistorie, Stichtagsauskunft und Aufbewahrung
 
@@ -250,10 +265,11 @@ Protokollfrist gelöscht; eine Historienzeile sagt, *in welchem Zeitraum* ein Re
 | Gruppenmitgliedschaft, Deaktivierung einer internen Gruppe (Entscheidung 14) | `group_membership_history` | ja |
 | Fremdzugang am Asset | `asset_visibility_history` (ADR-0037, ADR-0039) | ja |
 | Space-Mitgliedschaft (Person oder Gruppe, mit Rolle) | `space_membership_history` | ja |
-| Eigentum an Asset | `asset_ownership_history` | ja |
+| Eigentum an Asset und Space | `asset_ownership_history` (Objekttyp `ASSET` oder `SPACE`) | ja |
 | Fähigkeit | `capability_grant_history` | ja, Governance-Ereignis |
 | Kontozustand (aktiv/gesperrt) | `account_state_history` | ja |
 | Verantwortliche interner Gruppen, Vollmachten, Nachfolgevorgänge | keine — Betriebsrechte der Gegenwart | ja |
+| Systemrolle | zugesagt, **nicht gebaut** (Offen); bis dahin nur Audit | ja |
 
 Alle Historientabellen tragen `valid_from`/`valid_to` nach ADR-0016: Subjektspalten `RESTRICT`,
 Objektspalten ohne Fremdschlüssel. **Die Personenspalten bleiben `RESTRICT` und werden nicht ab
@@ -325,8 +341,9 @@ Gruppenableitung.
 **Der Bericht des Verzeichnisabgleichs ist ein zweiter Weg zu den Namen und wird protokolliert, nicht
 maskiert** (seit #1991, `DirectorySyncReportDisclosure`): Jede Antwort an die Systemverwaltung, die
 Namen ausliefert (ausstehender Plan, Probelauf, Lauf von Hand, Bestätigung), schreibt vor der Antwort
-`DIRECTORY_SYNC_REPORT_READ` mit Weg, Anbieter, Zahl der Gruppen und Personen — nie den Namen; ein
-Bericht ohne Namen schreibt nichts; die Oberfläche ruft einen Plan einmal je Plan ab.
+`DIRECTORY_SYNC_REPORT_READ` mit Weg, Anbieter, Zahl der Gruppen und Personen — nie den Namen;
+scheitert der Eintrag, scheitert die Antwort. Ein Bericht ohne Namen schreibt nichts, der
+zeitgesteuerte Lauf liefert niemandem etwas aus, und die Oberfläche ruft einen Plan einmal je Plan ab.
 
 **Herleitung für die eigene Person** (`GET …/access-derivation`): Für jedes Asset und jeden Space zeigt
 die Oberfläche der Person ihren eigenen Weg zur effektiven Rolle (`AccessBasis`: direkter Grant, Grant
@@ -339,7 +356,7 @@ Zeile zeigt die heutige Zahl.
 ### 10. Die Übertragungsoperation
 
 Eine allgemeine, protokollierte Operation auf der Gruppenachse (`PermissionTransferService`,
-`POST /api/v1/permission-transfers`) überträgt Grants, Space-Mitgliedschaften, Fähigkeiten, Eigentum
+`POST /api/v1/permission-transfers`) überträgt Grants, Space-Mitgliedschaften, Fähigkeiten, Eigentum an Assets und Spaces
 und (intern) Verantwortliche (`PermissionTransferScope`) — mit Vorschau, Bestätigung, Audit
 (`PERMISSION_TRANSFER_PREVIEWED`/`_EXECUTED`) und sauberem Historienschnitt. Vier Anlässe, eine Mechanik:
 Reorganisation, Anbieterablösung, Mechanismuswechsel, Nachfolgeübernahme.
@@ -347,7 +364,9 @@ Reorganisation, Anbieterablösung, Mechanismuswechsel, Nachfolgeübernahme.
 - Quelle und Ziel: Gruppe → Gruppe (voller Umfang), Gruppe → Person, Person → Person. **Bei einer Person
   als Quelle nur Eigentum und Verantwortung**; Grants und Space-Mitgliedschaften einer Person sind weder
   übertragbar noch in der Vorschau aufzählbar — sonst wäre die Vorschau die personenbezogene
-  Rechteübersicht ohne Vollmacht. Das Ziel muss wirksam sein, darf leer sein.
+  Rechteübersicht ohne Vollmacht. Das Ziel muss wirksam sein, darf leer sein. Der Umfang ist bei
+  Gruppen wählbar: alle Wirkungen oder eine Teilmenge (nur Grants, nur Eigentum, nur die Wirkungen an
+  einem Anbieter).
 - Wer: `SYSTEM_ADMIN` organisationsweit; für „Eigentum und Verantwortung, die ich selbst trage" auch die
   Person selbst. Ein `MANAGER` ändert Grants an seinem Asset weiterhin einzeln.
 - Historienschnitt: je Zeile `valid_to` der Quelle und `valid_from` des Ziels mit demselben Zeitstempel
@@ -383,7 +402,8 @@ eine Tabelle, eine Entität, eine `AssetTypeDefinition` und ein Wert in `AssetTy
 `chk_audit_log_object_type` (seit #1901 die Prompt-Bibliothek). Das Inhaltsrecht
 (`AssetAuthorization#requireContentRole`), die Eigentümergruppe beim Anlegen
 (`AssetGrantService#requireOwnableGroup`) und die Eigentümernamen (`AssetOwnerNames`) leben in der Schale.
-`io.opaa.asset` hängt von `io.opaa.permission` ab, nicht umgekehrt. Die Historientabellen bleiben nach
+`io.opaa.asset` hängt von `io.opaa.permission` ab, nicht umgekehrt, und kennt weder `library` noch
+`space`, `group` oder `succession`. Die Historientabellen bleiben nach
 ADR-0016 ohne Fremdschlüssel auf `assets`.
 
 ### 13. Randbedingungen
@@ -391,8 +411,10 @@ ADR-0016 ohne Fremdschlüssel auf `assets`.
 Alles je Organisation: `groups.organization_id`, `capability_grants.organization_id`, Verantwortliche
 derselben Organisation, Nachfolgeliste je Organisation. `oidc_providers` trägt keine `organization_id`
 (#1442); sobald Anbieter einer Organisation zugeordnet werden, kommt die Prüfregel „Gruppe und Anbieter in
-derselben Organisation" als zusammengesetzter Fremdschlüssel hinzu. ADR-0016, ADR-0025, ADR-0033 und
-ADR-0034 gelten unverändert; jede API-Änderung beginnt in der Spezifikation (ADR-0006).
+derselben Organisation" als zusammengesetzter Fremdschlüssel hinzu. `kind` bleibt der Mechanismus-Enum
+(API-Typ, Prüfbedingung, Filter); `parentGroupId` bleibt Anzeige- und Aggregationsachse der
+Aufbauorganisation und trägt keine Mitgliedschaft. ADR-0016, ADR-0025, ADR-0033 und ADR-0034 gelten
+unverändert; jede API-Änderung beginnt in der Spezifikation (ADR-0006).
 
 ### 14. Deaktivieren einer internen Gruppe
 
@@ -447,11 +469,11 @@ Die Zusagen sind Teil der Entscheidung. Kennungen nach `discussion-berechtigungs
 | --- | --- | --- |
 | A1 Herleitung nennt Dritten den Gruppennamen nur, wo sie die Mitgliedschaft verwalten | gilt (Entscheidung 9) | geändert gegenüber der Forderung „nie", weil die Space-Mitgliederliste ohnehin nur `ADMIN`/Eigentümer sehen |
 | A2 „kleine Gruppe" statt Zahl unterhalb der Mindestgruppengröße | gilt nur in der Subjekt-Auswahl | #2134: an bestehender Freigabe/Mitgliedschaft heutige Zahl und Namen |
-| A3 geschützte Gruppen | gilt, namenlose Zeile in fremden Listen | #1978: Kennzeichen setzt die Systemverwaltung |
+| A3 geschützte Gruppen in keiner fremden Liste | geändert: namenlose Zeile in fremden Listen, damit ein Space-`ADMIN` eine Mitgliedschaft beenden kann | #1978: Kennzeichen setzt die Systemverwaltung |
 | A4 Mitglieder sehen Verantwortliche; Aufnahme/Entfernung werden angezeigt | gilt (Entscheidung 4) | — |
 | A5 Hinweis beim Anlegen einer internen Gruppe | gilt | — |
 | A6 Mitgliederabruf durch `SYSTEM_ADMIN` ist Audit-Ereignis | gilt (`GROUP_MEMBERS_READ`) | #1991: Abgleichsbericht als zweiter Weg protokolliert |
-| B1–B6 Mindestgruppengröße für Profile, Schnittmenge zum Laufzeitpunkt, Protokoll mit Space-Kontext, `SYSTEM_ADMIN`-Vorbehalt, erzwungene Untergrenze, Leitplanke (b) | gilt; Space-Kontext nicht gebaut (Entscheidung 7) | — |
+| B1–B6 Mindestgruppengröße für Profile, Schnittmenge zum Laufzeitpunkt, Protokoll mit Space-Kontext, `SYSTEM_ADMIN`-Vorbehalt, erzwungene Untergrenze, Leitplanke (b) | gilt (gebaut, #1835, Entscheidung 7) | — |
 | C1–C4 Sperren aus dem Abgleich: Schwelle und Bestätigung, rückholbar, Grund und Ansprechstelle, kein stiller Entzug | gilt (Entscheidung 3) | — |
 | D1 Höchstdauer als Vorbedingung weiterer Quellen | gilt (Entscheidung 8) | — |
 | D2 Personen-Einstieg nur mit Vier-Augen-Vollmacht | gilt; Personen-Einstieg nicht gebaut | — |
@@ -462,7 +484,7 @@ Die Zusagen sind Teil der Entscheidung. Kennungen nach `discussion-berechtigungs
 | D7 Pseudonymisierung | geändert: Voraussetzung des Personen-Einstiegs und der Kontolöschung, nicht des Schreibens | Entscheidung 8 |
 | E1–E7 objektbezogene Nachfolgeliste, Arbeit unberührt, Vorgänge unter Protokollfrist, Bestand statt Aktivität, Fähigkeitsvergabe als Governance-Ereignis, Fähigkeit ≠ Vollmacht, kein Lesebypass | gilt | — |
 | F1–F4 Auskunft über die Datenerhebung, Testzugang, Protokollpflicht für Wertänderungen, Ausweisung jeder Auflage | gilt (Entscheidung 8) | — |
-| Z1 Space-Kontext als eigenes Issue mit fünf Schutzpunkten | gilt | — |
+| Z1 Space-Kontext als eigenes Issue mit fünf Schutzpunkten | gilt (gebaut, #1835) | — |
 | Z2 geschützte Gruppen ohne Gruppenableitung für Dritte | gilt | — |
 | Z2b Ansprechstellen an Anbietergruppen | entfallen | #1978 |
 | Z3 Ein-Objekt-Regel der Stichtagsauskunft | gilt | — |
@@ -529,8 +551,10 @@ beseitigt sie nicht. Die Mindestgruppengröße in der Subjekt-Auswahl ist kein S
 
 ## Offen
 
-- Space-Kontext im Rechteprofil (Entscheidung 7) und Personen-Einstieg der Stichtagsauskunft
-  (Entscheidung 8) sind nicht gebaut; die Schutzpunkte stehen fest.
+- Personen-Einstieg der Stichtagsauskunft und Historientabelle für Systemrollen (Entscheidung 8)
+  sind nicht gebaut; die Schutzpunkte stehen fest.
+- Befristete Grants und Rezertifizierung (#241, nicht geplant; das Modell hindert sie nicht) und eine
+  allgemeine Autoren-Benachrichtigung bei wesentlicher Erweiterung des Leserkreises.
 - Pseudonymisierung der `RESTRICT`-Personenspalten der Rechtehistorie als Voraussetzung von
   Personen-Einstieg und Kontolöschung.
 - Anbieter je Organisation (`oidc_providers.organization_id`, #1442).
@@ -548,6 +572,7 @@ beseitigt sie nicht. Die Mindestgruppengröße in der Subjekt-Auswahl ist kein S
 | 2026-09-19 | #1810 | Erstfassung; Auslieferungswerte gesetzt | 1–13 |
 | 2026-09-20 | #1816 | Abgleich je Anbieterzeile, `TrustedProvider` entfällt, kein Abgleich im `dev`-Modus | 2, 3, 11 |
 | 2026-09-21 | #1818 | Kontozustandshistorie beginnt mit der ersten Zustandsänderung | 8 |
+| 2026-09-21 | #1835 | Space-Kontext im Rechteprofil gebaut, fünf Schutzpunkte gelten | 7 |
 | 2026-09-22 | #1828 | Download durch die Systemverwaltung ohne Grant geschlossen | 1, 5 |
 | 2026-09-22 | #1815, #1820 | Zahl aktiver Mitglieder am wirksamen Recht statt in der Historie | 9 |
 | 2026-09-24 | #1899, #1900, #1901 | Asset-Schale `assets`; `CREATE_PROMPT_LIBRARY` | 5, 12 |

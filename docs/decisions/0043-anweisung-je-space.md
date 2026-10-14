@@ -60,7 +60,9 @@ die Modellwahl. Kein Einfrieren je Gespräch.
 Reihenfolge: feste Regeln → Space-Block → Gesprächsnotiz-Block → Kontextabschnitt. Der Space-Block
 trägt eine statusklärende Kopfzeile zwischen zwei Markenzeilen: Er ist eine Vorgabe des Space, kein
 Beleg und keine Quelle; er darf Sprache, Tonfall, Form und fachlichen Rahmen festlegen; eine
-Sprachvorgabe geht der festen Regel „Deutsch" vor, weil Sprache keine Belegregel ist; Zitierpflicht,
+Sprachvorgabe geht der festen Regel „Deutsch" vor, weil Sprache keine Belegregel ist — die wiederholte
+Sprachzeile nach dem letzten Kontextabschnitt überlässt die Sprache dann der Anweisung
+(`AnswerGenerationService.SPACE_LANGUAGE_REMINDER`); Zitierpflicht,
 Zitatformat und das Verbot erfundener Quellen gelten unabhängig von seinem Wortlaut. Ein abweichender
 Wunsch der fragenden Person aus diesem Gespräch geht ihm vor, deshalb steht die Notiz hinter ihm.
 

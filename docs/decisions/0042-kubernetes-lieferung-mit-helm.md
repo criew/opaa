@@ -69,7 +69,8 @@ verwaltet der Betreiber.
 Die Proxy-Kette bleibt dieselbe wie im Compose-Betrieb. `trustedProxyCidrs`
 (`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS`) entscheidet über Rate-Limit, Fehlversuch-Grenzen der lokalen
 Anmeldung und `localAdminAllowedCidrs`. Pods haben keine feste Adresse, die Liste muss das Pod-Netz
-nennen — dann gilt jeder Pod als Proxy. Vertretbar nur, wenn beide Eingänge geschlossen sind:
+nennen — dann gilt jeder Pod als Proxy, auch ein fremder, der den Frontend-nginx direkt anspricht und
+`X-Forwarded-For` mitbringt. Vertretbar nur, wenn beide Eingänge geschlossen sind:
 
 - **Eingangs-Policy des Backends standardmäßig an:** nur Frontend-Pods (und auf Wunsch die
   Betriebsüberwachung) erreichen das Backend. Sie sperrt keinen Ausgang.
@@ -94,7 +95,8 @@ erzeugt und einmal protokolliert). Bei Werten lehnt `values.schema.json` fehlend
 beim Rendern ab; bei `existingSecret` sind die Pflichtschlüssel ohne `optional` per `secretKeyRef`
 eingebunden, ein fehlender Schlüssel hält den Pod mit `CreateContainerConfigError` an. Der Chart
 erzeugt keine Zufallsschlüssel: Sie gingen bei `helm template`, in GitOps und bei Neuinstallation
-verloren, und mit einem Verschlüsselungsschlüssel werden alle gespeicherten Geheimnisse unlesbar.
+verloren; geht einer der Verschlüsselungsschlüssel verloren, werden die damit gespeicherten Geheimnisse
+unlesbar (Zugangsdaten von Quellen und Verbindungen, Modellschlüssel, Kennwort des Mailservers).
 
 ### 6. Pod Security Standard `restricted` ohne Ausnahmen
 
@@ -141,7 +143,7 @@ jüngste Release ab. Was die Oberfläche verwaltet, ist nicht deklarativ.
 
 - Fremder PostgreSQL-Sub-Chart — kein verlässlicher freier Bezugsweg mehr.
 - Zufallsschlüssel bei `helm install` — gehen bei `helm template`, GitOps und Neuinstallation verloren.
-- Migration in Helm-Hook oder Job — abweichend vom Compose-Betrieb, kein Gewinn bei einer Instanz.
+- Migration in Helm-Hook oder Job — siehe Entscheidung 2.
 - Getrennte Chart-Versionierung — Zuordnungstabelle, die Betreiber pflegen müssten.
 
 ## Offen

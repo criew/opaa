@@ -2,8 +2,9 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-03 · ergänzt durch
-[ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) · ändert
+Akzeptiert · zuletzt geändert 2026-10-03 · geändert durch
+[ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (Entscheidung 4 und die
+`listed`-Teile von 5, 6, 7 und 9) · ändert
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidungen 5 und 12) · betrifft
 [ADR-0032](0032-zeitquelle-rechtehistorie.md) und die Freigabe-Obergrenze aus #797
 
@@ -82,7 +83,9 @@ allein am Freigabe-Pfad.
 `asset_visibility_history` bleibt bestehen und trägt seit #2091 nur noch die Fremdzugangsfreigabe
 (`external_access_state`, `external_access_expires_at`); Tabellen- und Klassennamen wurden bewusst nicht
 umbenannt. Die Freigabe an „Alle" wird über `ASSET_GRANT_GRANTED`/`_CHANGED`/`_REVOKED` protokolliert
-mit `"subjectType": "ALL_ACCOUNTS"` im Nutzinhalt und **ohne Subjekt im Audit-Eintrag**
+mit `"subjectType": "ALL_ACCOUNTS"` im Nutzinhalt (`ASSET_VISIBILITY_CHANGED` hat seit #2091 keinen
+Schreiber mehr; der Enum-Wert bleibt, damit alte Protokollzeilen lesbar bleiben) und **ohne Subjekt im
+Audit-Eintrag**
 (`audit_log.subject_kind` kennt `USER` und `GROUP`): Eine Freigabe an alle ist nicht personenbezogen und
 hat in der Pseudonymtabelle nichts verloren.
 
@@ -99,8 +102,9 @@ Negativantwort gegeben.
 
 „Alle Konten" ist ein eigener Eintrag im Empfänger-Picker mit **eigenem Bestätigungsschritt**, der die
 Reichweite ausspricht — die Gegenmaßnahme dagegen, dass eine Freigabe an alle nun ein Klick neben „Team
-Recht" ist. Übersichten tragen eine aus den Freigaben **abgeleitete** Reichweiten-Badge (öffentlich =
-Freigabe an „Alle", sonst geschlossen; `CatalogVisibility`), kein gespeichertes Feld.
+Recht" ist. Übersichten tragen eine aus den Freigaben **abgeleitete** Reichweite (`reach`,
+`AssetReach`: „Alle" oder „N Gruppen, M Personen"; im Katalog öffentlich = Freigabe an „Alle", sonst
+geschlossen, `CatalogVisibility`), kein gespeichertes Feld.
 
 ### 10. `SpaceVisibility`
 

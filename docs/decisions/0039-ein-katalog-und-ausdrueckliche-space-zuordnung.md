@@ -52,8 +52,8 @@ wenn deshalb nichts durchsucht werden kann, im Chat. In der Oberfläche heißt e
 
 `assets.listed`, `listed_cap`, `requireListedWithinLimits`, das Antwortfeld `accessible` und der
 Schalter „Im Katalog auffindbar" sind ersatzlos entfallen. **Sichtbar ist gleich lesbar.** Die Spalte
-`listed` ist auch aus `asset_visibility_history` entfernt, `ASSET_VISIBILITY_CHANGED` trägt sie nicht
-mehr; bestehende Intervalle wurden nicht überführt, weil alle Installationen neu aufgebaut wurden. Der
+`listed` ist auch aus `asset_visibility_history` entfernt, `ASSET_VISIBILITY_CHANGED` hat keinen
+Schreiber mehr (der Enum-Wert bleibt für alte Protokollzeilen); bestehende Intervalle wurden nicht überführt, weil alle Installationen neu aufgebaut wurden. Der
 Nachweis „war das Asset gelistet?" hat nie Zugriff belegt; „wer konnte lesen?" beantwortet die
 Grant-Historie unverändert. `asset_visibility_history` bleibt für die Fremdzugangsfreigabe (ADR-0035);
 die Freigabe-Obergrenze (#797) besteht nur noch aus `all_accounts_grant_allowed`.
@@ -65,11 +65,12 @@ lesbar ist, serverseitig durchgesetzt (`SpaceAssetAssociationService`):
 
 | Typ | Was die Zuordnung begrenzt |
 |---|---|
-| Wissensbibliothek | Suchbereich des Chats, Chip „@Space-Wissen", konkrete `@`-Chips |
+| Wissensbibliothek | Suchbereich des Chats, Chip „@Space-Wissen", konkrete `@`-Chips — ein Chip auf eine nicht zugeordnete Bibliothek ist nicht möglich |
 | Prompt-Bibliothek | `/`-Angebot (`GET /api/v1/prompts/available` verlangt den Space) und Einsetzen (`usedPromptId` gegen die Zuordnung geprüft) |
 | Agent (Zielbild) | das Angebot im Chat; die eigene Wissensbindung eines Agenten bleibt unberührt |
 
-- Die Übergangsregel entfällt, auch für den persönlichen Standard-Space: Ein Space ohne Wissen
+- Die Übergangsregel entfällt, auch für den persönlichen Standard-Space (die Abschaffung persönlicher
+  Spaces aus #2099 ist nicht umgesetzt; der persönliche Space bleibt als Standard-Space): Ein Space ohne Wissen
   durchsucht kein Wissen und startet leer. **Kein stiller Leerlauf:** Chat und Space-Seite zeigen einen
   Hinweis mit Direktlink zur Zuordnung (für `CURATOR`/`ADMIN`; andere erfahren, wer zuordnen kann); zwei
   getrennte Signale ohne Zahlen — „kein Wissen zugeordnet" und „zugeordnet, aber nichts davon lesbar".
@@ -107,8 +108,9 @@ Personalvertretung vor dem Rollout als geänderte Zusage vorzulegen.
 
 Jede Person markiert sichtbare Assets als Favorit (`asset_favorites`, `PUT …/favorite`); Favoriten
 stehen im Katalog oben und sind Filter in Katalog, Space-Assistent und Token-Auswahl. Weil eine
-Favoritenliste ein Interessenprofil ist: abrufbar nur für die Person selbst, keine Zählung je Asset,
-kein Protokolleintrag, keine Historie, nicht in Berichten; Löschung mit dem Konto, kein Löschblocker.
+Favoritenliste ein Interessenprofil ist: abrufbar nur für die Person selbst, keine Zählung oder Anzeige
+je Asset, auch nicht aggregiert, kein Protokolleintrag, keine Historie, nicht in Berichten und Exporten
+an Dritte, enthalten nur in der Selbstauskunft der Person; Löschung mit dem Konto, kein Löschblocker.
 Ein nicht mehr lesbares Asset erscheint nicht mehr.
 
 ### 8. Kein A/B-Parallelbetrieb
@@ -148,4 +150,4 @@ Asset-Typen; ein Vorschlag „weiteres Wissen zuordnen" bei leerer Suche.
 |---|---|---|---|
 | 2026-10-02 | #2091 | Erstfassung, umgesetzt mit #2092–#2098, Seed #2103 | 1–8 |
 | 2026-10-03 | #2129 | Kompaktere Kachel, eine Filterzeile, feste Reihenfolge; API-Parameter `visibility`, `fromMyGroups`, `sort` entfallen | 1, 4 |
-| 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand; persönliche Spaces sind der Standard-Space (#2099) | 4 |
+| 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand; persönlicher Space heißt Standard-Space | 4 |
