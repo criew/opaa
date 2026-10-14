@@ -17,7 +17,7 @@ import type {
   MailSettingsResponse,
   MailSettingsUpdateRequest,
 } from '@/shared/api/types'
-import { useMailStore } from '../../../stores/mailStore'
+import { useMailStore } from '../stores/mailStore'
 import { notify } from '@/shared/stores/notificationStore'
 import PageSection from '@/shared/ui/PageSection'
 import MailStatusCard from './MailStatusCard'

@@ -28,7 +28,7 @@ import { resetMockOidcProviders } from '../mocks/identityProviderFixtures'
 // model
 import { resetLlmModelMockState } from '../mocks/modelHandlers'
 // mail
-import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
+import { resetMockMailSettings, resetMockMailTemplates } from '@/features/mail/mocks/mailFixtures'
 // branding
 import { resetMockBranding } from '../mocks/brandingFixtures'
 // connection

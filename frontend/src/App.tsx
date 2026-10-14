@@ -76,7 +76,7 @@ import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
 // model
 import LlmModelManagementPage from './pages/LlmModelManagementPage'
 // mail
-import MailSettingsPage from './pages/MailSettingsPage'
+import { MailSettingsPage } from '@/features/mail/routes'
 // branding
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'

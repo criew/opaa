@@ -33,7 +33,7 @@ import { identityProviderHandlers } from './identityProviderHandlers'
 // model
 import { modelHandlers } from './modelHandlers'
 // mail
-import { mailHandlers } from './mailHandlers'
+import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 // branding
 import { brandingHandlers } from './brandingHandlers'
 // connection
