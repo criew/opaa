@@ -1,41 +1,59 @@
-import { healthHandlers } from './healthHandlers'
-import { indexingHandlers } from './indexingHandlers'
-import { libraryHandlers } from './libraryHandlers'
-import { queryHandlers } from './queryHandlers'
-import { searchHandlers } from './searchHandlers'
+// chat
 import { chatHandlers } from './chatHandlers'
+import { queryHandlers } from './queryHandlers'
+import { transcriptionHandlers } from './transcriptionHandlers'
+// space
 import { spaceHandlers } from './spaceHandlers'
+// asset
 import { assetHandlers } from './assetHandlers'
-import { userHandlers } from './userHandlers'
-import { groupHandlers } from './groupHandlers'
-import { modelHandlers } from './modelHandlers'
-import { connectionProfileHandlers } from './connectionProfileHandlers'
-import { connectedAccountHandlers } from './connectedAccountHandlers'
-import { connectionLogHandlers } from './connectionLogHandlers'
-import { identityProviderHandlers } from './identityProviderHandlers'
-import { searchAdminHandlers } from './searchAdminHandlers'
-import { diagnosticAccessHandlers } from './diagnosticAccessHandlers'
-import { externalAccessLibraryHandlers } from './externalAccessLibraryHandlers'
+import { catalogHandlers } from './catalogHandlers'
+// library
+import { libraryHandlers } from './libraryHandlers'
 import { libraryDocumentHandlers } from './libraryDocumentHandlers'
 import { libraryMetadataHandlers } from './libraryMetadataHandlers'
 import { documentMetadataHandlers } from './documentMetadataHandlers'
 import { libraryFolderHandlers } from './libraryFolderHandlers'
+import { indexingHandlers } from './indexingHandlers'
+import { privateStorageHandlers } from './privateStorageHandlers'
+// prompt
+import { promptLibraryHandlers } from './promptLibraryHandlers'
+// group
+import { groupHandlers } from './groupHandlers'
+import { groupAdminHandlers } from './groupAdminHandlers'
+// succession
+import { successionHandlers } from './successionHandlers'
+// capability
 import { capabilityHandlers } from './capabilityHandlers'
-import { transcriptionHandlers } from './transcriptionHandlers'
-import { authHandlers } from './authHandlers'
-import { brandingHandlers } from './brandingHandlers'
-import { mailHandlers } from './mailHandlers'
+// user
+import { userHandlers } from './userHandlers'
 import { localUserHandlers } from './localUserHandlers'
 import { accountHandlers } from './accountHandlers'
-import { localAuthHandlers } from './localAuthHandlers'
+// identity-provider
+import { identityProviderHandlers } from './identityProviderHandlers'
+// model
+import { modelHandlers } from './modelHandlers'
+// mail
+import { mailHandlers } from './mailHandlers'
+// branding
+import { brandingHandlers } from './brandingHandlers'
+// connection
+import { connectionProfileHandlers } from './connectionProfileHandlers'
+import { connectedAccountHandlers } from './connectedAccountHandlers'
+import { connectionLogHandlers } from './connectionLogHandlers'
+import { outboundProxyHandlers } from './outboundProxyHandlers'
+// external-access
 import { externalAccessHandlers } from './externalAccessHandlers'
 import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
-import { groupAdminHandlers } from './groupAdminHandlers'
-import { successionHandlers } from './successionHandlers'
-import { promptLibraryHandlers } from './promptLibraryHandlers'
-import { catalogHandlers } from './catalogHandlers'
-import { privateStorageHandlers } from './privateStorageHandlers'
-import { outboundProxyHandlers } from './outboundProxyHandlers'
+import { externalAccessLibraryHandlers } from './externalAccessLibraryHandlers'
+// search-admin
+import { searchHandlers } from './searchHandlers'
+import { searchAdminHandlers } from './searchAdminHandlers'
+import { diagnosticAccessHandlers } from './diagnosticAccessHandlers'
+// auth
+import { authHandlers } from './authHandlers'
+import { localAuthHandlers } from './localAuthHandlers'
+// app
+import { healthHandlers } from './healthHandlers'
 
 /**
  * All MSW handlers, one module per topic of the OpenAPI spec, for the browser worker and the test
@@ -45,42 +63,60 @@ import { outboundProxyHandlers } from './outboundProxyHandlers'
  * handler whose path could match another topic's belongs into that topic's module.
  */
 export const handlers = [
-  ...healthHandlers,
-  ...indexingHandlers,
-  ...libraryHandlers,
-  ...queryHandlers,
-  ...searchHandlers,
+  // chat
   ...chatHandlers,
+  ...queryHandlers,
+  ...transcriptionHandlers,
+  // space
   ...spaceHandlers,
+  // asset
   ...assetHandlers,
-  ...userHandlers,
-  ...groupHandlers,
-  ...modelHandlers,
-  ...connectionProfileHandlers,
-  ...connectedAccountHandlers,
-  ...connectionLogHandlers,
-  ...identityProviderHandlers,
-  ...searchAdminHandlers,
-  ...diagnosticAccessHandlers,
-  ...externalAccessLibraryHandlers,
+  ...catalogHandlers,
+  // library
+  ...libraryHandlers,
   ...libraryDocumentHandlers,
   ...libraryMetadataHandlers,
   ...documentMetadataHandlers,
   ...libraryFolderHandlers,
+  ...indexingHandlers,
+  ...privateStorageHandlers,
+  // prompt
+  ...promptLibraryHandlers,
+  // group
+  ...groupHandlers,
+  ...groupAdminHandlers,
+  // succession
+  ...successionHandlers,
+  // capability
   ...capabilityHandlers,
-  ...transcriptionHandlers,
-  ...authHandlers,
-  ...brandingHandlers,
-  ...mailHandlers,
+  // user
+  ...userHandlers,
   ...localUserHandlers,
   ...accountHandlers,
-  ...localAuthHandlers,
+  // identity-provider
+  ...identityProviderHandlers,
+  // model
+  ...modelHandlers,
+  // mail
+  ...mailHandlers,
+  // branding
+  ...brandingHandlers,
+  // connection
+  ...connectionProfileHandlers,
+  ...connectedAccountHandlers,
+  ...connectionLogHandlers,
+  ...outboundProxyHandlers,
+  // external-access
   ...externalAccessHandlers,
   ...externalAccessTokenHandlers,
-  ...groupAdminHandlers,
-  ...successionHandlers,
-  ...promptLibraryHandlers,
-  ...catalogHandlers,
-  ...privateStorageHandlers,
-  ...outboundProxyHandlers,
+  ...externalAccessLibraryHandlers,
+  // search-admin
+  ...searchHandlers,
+  ...searchAdminHandlers,
+  ...diagnosticAccessHandlers,
+  // auth
+  ...authHandlers,
+  ...localAuthHandlers,
+  // app
+  ...healthHandlers,
 ]
