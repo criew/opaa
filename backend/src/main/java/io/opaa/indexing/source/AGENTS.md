@@ -1,7 +1,7 @@
 # Modul connectors
 
 Pakete (`io.opaa.indexing.source.*`): confluence, dropbox, filesystem, googledrive, nextcloud, rss, s3, sharepoint, smb,
-upload, web. Aus `indexing` nutzt ein Konnektor nur `spi`, `run`, `job`, `attachment`, `document` und `filesync`.
+upload, web. Aus `indexing` nur `spi`, `run`, `job`, `attachment`, `document`, `filesync`, nie `registry`/`trigger`.
 
 ## Zweck und Grenze
 
@@ -33,9 +33,9 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
 - **Änderungen nur über `SourceChangeGate`**, auch Profiländerung, Zuordnen und Lösen; `stored` = effektiv,
   `applyChange` = eigener Teil. `validateChange` hängt nur von seinen Argumenten ab; Ziel nicht erreichbar oder
   Anmeldung abgelehnt lehnt er mit `SourceTargetRefusedException` ab.
-- **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur auf und meldet einen `ListingOutcome`;
-  Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen. Gelöscht wird nur über
-  `IndexingRun#removeWithAttachments`, `SourceSyncState` nur über `IndexingRun#adopt` (Fingerabdruck `SyncStateBasis`).
+- **Laufrahmen `IndexingRunTemplate`**, nur für die Executor-Klasse, die der Kern zum Quellentyp der Bibliothek führt:
+  Der Körper zählt auf und meldet `ListingOutcome`; Fortschritt, Protokoll, Abgleich durch Abwesenheit hat der Rahmen.
+  Löschen nur über `IndexingRun#removeWithAttachments`, `SourceSyncState` nur über `#adopt` (`SyncStateBasis`).
 - **Dateiablagen** implementieren `FileStore`/`ChangeFeed`; Abgleich über Läufe besitzt `FileSync` (ADR-0045).
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, Graph über

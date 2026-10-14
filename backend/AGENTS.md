@@ -85,9 +85,9 @@ Der Test prüft außerdem:
 - **Zyklen:** keine zwischen Top-Level-Paketen, ein `web`-Paket zählt dabei für sich, und keine
   zwischen den Unterpaketen eines Top-Level-Pakets.
 - **Kern von `indexing`:** `INDEXING_CORE` ordnet dessen Unterpakete, unten zuerst (Vertrag `spi`,
-  dann `credentials`, `registry`, `run`); ein Paket nutzt nur sich und die davor, nie das Wurzelpaket,
-  `indexing.web` oder einen Konnektor. Jedes weitere Unterpaket von `indexing` gehört in diese Liste,
-  sonst schlägt der Test fehl.
+  dann `credentials`, `registry`, `run`, zuoberst die Auslöser in `trigger`); ein Paket nutzt nur sich
+  und die davor, nie das Wurzelpaket, `indexing.web` oder einen Konnektor. Jedes weitere Unterpaket
+  von `indexing` gehört in diese Liste, sonst schlägt der Test fehl.
 - **Unterpakete von `connection`:** `CONNECTION_PACKAGES` ordnet sie ebenso; keines nennt das
   Wurzelpaket oder `connection.web`, und ein nicht eingetragenes schlägt fehl (ADR-0041).
 - **Konnektor-Freigabe:** `CREATE_CONNECTOR_LIBRARY` und die Methoden von `CapabilityService` mit
@@ -95,7 +95,9 @@ Der Test prüft außerdem:
 - **Konnektoren:** Kein Konnektor kennt einen anderen, und keine Klasse außerhalb eines Konnektors
   kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
   Ein Konnektor und der Datei-Abgleich nutzen aus `indexing` nur `CONNECTOR_IMPORTS`, also nie
-  `credentials` (Resolver, Dienstkonto-Schlüssel; ADR-0040, Entscheidung 2) oder `registry`.
+  `credentials` (Resolver, Dienstkonto-Schlüssel; ADR-0040, Entscheidung 2), `registry` oder `trigger`.
+  Der Laufrahmen `IndexingRunTemplate` löst Ziel und Geheimnis einer Bibliothek nur für die
+  Executor-Klasse auf, die die Registry für ihren Quellentyp führt.
 - Die Pakete des Gradle-Moduls `opaa-api` (`io.opaa.api.dto`, `io.opaa.api.types`) liegen
   außerhalb der Schichtung.
 - **Namen in den Listen:** `everyNamedCodeUnitExists` löst jeden Eintrag der Form `paket.Klasse`,
