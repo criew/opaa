@@ -14,15 +14,14 @@ import org.springframework.stereotype.Component;
 
 /**
  * Recovers uploads left stuck at {@code PENDING} by a process that died mid-{@code
- * uploadTaskExecutor} task (same class of defect as #501's {@code indexing_jobs.RUNNING} rows, but
- * for the upload path's own {@code PENDING} status instead). {@code
- * DocumentIngestService#processUploadedFileAsync} always leaves a row at either {@code INDEXED} or
- * {@code FAILED} when it runs to completion - but if the JVM stops before that (a crash, an
- * operator-initiated restart, an out-of-memory kill), the in-flight task simply vanishes with it,
- * and nothing was ever running to finish the row on the next start. Without this recovery, such a
- * row would poll {@code PENDING} forever in the frontend, and a retry of the same file would answer
- * {@code 409} because only a {@code FAILED} row is replaced by a new upload ({@code
- * LibraryDocumentService#uploadDocument}) - a dead end the caller cannot resolve on their own.
+ * uploadTaskExecutor} task. {@code DocumentIngestService#processUploadedFileAsync} always leaves a
+ * row at either {@code INDEXED} or {@code FAILED} when it runs to completion - but if the JVM stops
+ * before that (a crash, an operator-initiated restart, an out-of-memory kill), the in-flight task
+ * simply vanishes with it, and nothing was ever running to finish the row on the next start.
+ * Without this recovery, such a row would poll {@code PENDING} forever in the frontend, and a retry
+ * of the same file would answer {@code 409} because only a {@code FAILED} row is replaced by a new
+ * upload ({@code LibraryDocumentService#uploadDocument}) - a dead end the caller cannot resolve on
+ * their own.
  *
  * <p>Runs once, synchronously, at application startup, before any request can be served - so a row
  * genuinely still being processed by this same, freshly-started JVM can never be caught here: no

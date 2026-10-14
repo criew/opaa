@@ -19,8 +19,7 @@ import java.util.UUID;
  * AssetOwnershipHistoryService}; never updated in place except to set {@link #close}.
  *
  * <p>Type-independent like {@link AssetGrantHistory}: the asset is named by {@link AssetType} plus
- * id, so a second asset type needs no second table. Today {@code io.opaa.space} is the only writer
- * ({@code SPACE}); the ownership of a library follows with #1819.
+ * id, so a second asset type needs no second table.
  */
 @Entity
 @Table(name = "asset_ownership_history")

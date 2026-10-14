@@ -137,7 +137,7 @@ paths:
         Upload the operator's logo (SYSTEM_ADMIN only). Accepts PNG and JPEG only -
         SVG is rejected outright rather than sanitised, because an SVG is a document that can
         carry script and a sanitiser that is wrong once is worse than a format restriction that
-        is inconvenient always (#582 explicitly allows either). The declared content type is not
+        is inconvenient always. The declared content type is not
         trusted: the actual bytes are inspected, and a mismatch is rejected.
       requestBody:
         required: true

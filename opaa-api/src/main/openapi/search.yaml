@@ -677,8 +677,8 @@ components:
           items:
             $ref: "#/components/schemas/SourceMetadataEntry"
           description: >-
-            The cited document's schema metadata as a generic field-value list (Maintainer-
-            Beschluss vom 04.09.2026 am Epic #1065): the core fields first (Titel, Dokumentart,
+            The cited document's schema metadata as a generic field-value list: the core fields
+            first (Titel, Dokumentart,
             Datum/Stand), later a library's own fields appended. Read from the document
             itself - not from the chunk - so every chunk of a document reports the same values. A
             field without a value is simply absent, and a client renders the list without knowing
@@ -1530,7 +1530,7 @@ components:
             a "kein Wert ermittelbar" mark. The same figure GET
             /api/v1/libraries/{libraryId}/metadata/maintenance shows in the library's own settings,
             counted here over the organization instead (the administrative exception of the
-            Rechte-Invariante, Beschluss 1 am Epic #1065).
+            Rechte-Invariante).
           example: 12
         missingShare:
           type: number

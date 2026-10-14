@@ -16,8 +16,8 @@ public final class AdminListSortParams {
   private AdminListSortParams() {}
 
   /**
-   * The account list of #1601 sorts by three more fields than the local one: the columns it gained
-   * with the provider accounts. The activity is not among them here either.
+   * The account list sorts by three more fields than the local one: the columns of the provider
+   * accounts. The activity is not among them here either.
    */
   static AccountQuery.Sort accountSortOf(String sort) {
     return switch (sort == null ? "" : sort.trim()) {

@@ -489,8 +489,8 @@ paths:
       description: >
         Requires MANAGER role or above on the library - stricter than
         GET .../indexing/status's plain read grant, since an event's reference routinely carries
-        the library's own sourcePath/sourceUrl, the same internal-path leak #507 exists to close
-        for the source configuration display itself. Runs are ordered newest first; older runs
+        the library's own sourcePath/sourceUrl, the same internal path the source configuration
+        display hides below MANAGER. Runs are ordered newest first; older runs
         (beyond the last 10 for this library) are pruned together with their events, mirroring
         indexing_jobs' own existing retention (IndexingJobService). Every run's event list is
         capped (IndexingRunEventRecorder) - eventsTruncatedCount on a run names how many further
@@ -639,8 +639,7 @@ components:
             For status FAILED, the detail is only included if the caller holds at least MANAGER
             on the library - the underlying exception message routinely repeats the
             library's own sourcePath/sourceUrl (an absolute server path or a host:port), the same
-            internal-infrastructure leak #507 already closes for the source configuration display
-            itself. A caller below MANAGER gets a generic German message instead.
+            internal detail the source configuration display hides. A caller below MANAGER gets a generic German message instead.
           example: Indexing completed successfully
         failureCategory:
           type: string
@@ -691,7 +690,7 @@ components:
       type: string
       description: >
         Who started a run: a person via "Jetzt indizieren", the library's own schedule, or
-        an authenticated notification (#1140 Confluence webhook, #1381 S3 event) - a WEBHOOK run
+        an authenticated notification (Confluence webhook, S3 event) - a WEBHOOK run
         checks only the pages or objects the notification named and never removes anything the
         source does not itself confirm as gone.
       enum: [MANUAL, SCHEDULED, WEBHOOK]

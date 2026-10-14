@@ -220,14 +220,14 @@ public class SpaceService {
     List<UUID> spaceIds = memberSpaces.stream().map(Space::getId).toList();
     // The overview card's figures ("n Quellen · n Chats · n Mitglieder") come from two grouped
     // queries for the whole list, never one lookup per space. The chat figure counts the caller's
-    // own chats only - which is exactly the "has a chat of their own" question the #543
+    // own chats only - which is exactly the "has a chat of their own" question the
     // archived-space rule below asks, so it answers that too.
     Map<UUID, Long> chatCounts = ownChatCounts(spaceIds, caller.id());
     Map<UUID, Long> libraryCounts = associationService.countVisibleBySpace(memberSpaces, caller);
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(memberSpaces);
     return memberSpaces.stream()
         // An archived space is left out of this list unless the caller has a chat of their own in
-        // it, is the space's owner, or is a system admin - otherwise, in the typical #543 case
+        // it, is the space's owner, or is a system admin - otherwise, in the typical case
         // where the owner has no chat of their own in the space they archived, the space would
         // vanish from their own list with no way back (no unarchive endpoint exists, so this is the
         // only way the owner ever sees it again).
@@ -648,11 +648,10 @@ public class SpaceService {
   }
 
   /**
-   * Hands the space over to another member (ADR-0036 Entscheidung 6). <b>Behaviour change: every
-   * capable {@code ADMIN} member that is a natural person may do this</b> - to themselves or to
-   * another such member - where before only the owner or a system administrator could. A group
-   * never becomes owner: "wirksam" is defined for groups alone and is the wrong yardstick here, and
-   * the space owner stays a natural person.
+   * Hands the space over to another member (ADR-0036 Entscheidung 6). <b>Every capable {@code
+   * ADMIN} member that is a natural person may do this</b>, besides the owner and a system
+   * administrator - to themselves or to another such member. A group never becomes owner: the space
+   * owner stays a natural person.
    *
    * <p><b>The two sides are not symmetric, on purpose.</b> The caller only needs the ADMIN role,
    * which they may hold through a group. The <em>target</em> needs a membership row of their own:
@@ -905,14 +904,8 @@ public class SpaceService {
    * {@code UserProvisionedEvent} listener outside any transaction of the publisher.
    *
    * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
-   * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method
-   * through the Spring proxy opened an ambient read-only transaction (holding one JDBC connection)
-   * for this method's entire duration, while {@code requiresNewTransactionTemplate} below opened a
-   * <em>second</em>, independent connection for its {@code REQUIRES_NEW} transaction - two
-   * connections held by one caller at once, the same class of bug #299 fixed in {@code
-   * UserService.findOrCreateUser}. {@code NOT_SUPPORTED} suspends any ambient transaction for this
-   * method's duration and leaves only the one connection {@code requiresNewTransactionTemplate}
-   * actually needs.
+   * {@code @Transactional(readOnly = true)}:</b> an ambient transaction would hold a second
+   * connection next to the one {@code requiresNewTransactionTemplate} needs.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void ensureDefaultSpace(UUID userId, UUID organizationId) {

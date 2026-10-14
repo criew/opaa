@@ -98,8 +98,7 @@ public class MailDocumentFormat implements DocumentFormat {
   /**
    * Honours {@link DocumentFormatSource#attachmentIndex()} by handing it to the reader: the
    * extraction order is unchanged, but only the requested attachment is written to a temp file and
-   * reported - the whole message's worth of temporary disk an "open this attachment" click used to
-   * cost collapses to that one file.
+   * reported, so opening one attachment costs one temp file, not the whole message's.
    */
   @Override
   public DocumentFormatResult run(DocumentFormatSource source) {

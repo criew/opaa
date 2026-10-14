@@ -133,9 +133,9 @@ public class OidcSecurityConfig {
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
                     // ADR-0033: the local sign-in, the two cookie-bearing session endpoints and
-                    // the self-service of #1538 (link redemption, e-mail confirmation) have no
+                    // the self-service (link redemption, e-mail confirmation) have no
                     // bearer token yet (or no longer); change-password stays bearer-only.
-                    // ADR-0033, Entscheidung 12: the two handover endpoints of #1563 must stay
+                    // ADR-0033, Entscheidung 12: the two handover endpoints must stay
                     // bearer-free - a provider token in the header would be provisioned into a new
                     // account by UserProvisioningFilter before the controller runs, which is the
                     // one thing the redemption has to find absent. They verify the provider token

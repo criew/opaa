@@ -5,8 +5,7 @@ package io.opaa.directory.sync;
  * (connection failure, timeout, authentication failure against the directory itself). {@link
  * DirectorySyncService} treats this as last-known-good: nothing is changed, the previous
  * synchronisation's result stays in force, and the unreachable state is reported rather than
- * treated as "zero groups" (see #237's acceptance criteria - an unreachable directory must never be
- * able to revoke rights).
+ * treated as "zero groups": an unreachable directory must never be able to revoke rights.
  */
 public class DirectoryUnavailableException extends Exception {
 

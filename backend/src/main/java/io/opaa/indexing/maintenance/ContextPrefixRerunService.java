@@ -280,8 +280,8 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
 
   /**
    * Pending documents in stable id order, so the offset scans past what this call already found
-   * unadvanceable. A document without a stamp either never carried one - the bestand from before
-   * #1072 - or was handed back by a change to its own prefix.
+   * unadvanceable. A document without a stamp either never carried one or was handed back by a
+   * change to its own prefix.
    */
   private List<UUID> selectPendingDocuments(UUID libraryId, int limit, int offset) {
     return jdbcTemplate.query(

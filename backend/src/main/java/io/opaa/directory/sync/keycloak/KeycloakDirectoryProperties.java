@@ -14,7 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxGroups the ceiling on how many groups one run reads. Reached, the run fails as
  *     unreachable rather than continuing with a truncated group list: a truncated list looks
  *     exactly like a reorganisation that dissolved everything beyond it, and that must never be
- *     applied (#237's empty-result reasoning, one step further).
+ *     applied, the same reasoning as for an empty result.
  * @param maxMembersPerGroup the same ceiling per group's member list, for the same reason.
  * @param maxAccounts the same ceiling for the realm's account list, for the same reason: a
  *     truncated account list looks exactly like a mass departure, and the run would lock everyone

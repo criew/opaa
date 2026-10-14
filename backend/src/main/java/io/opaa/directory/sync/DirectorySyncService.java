@@ -34,12 +34,12 @@ import org.springframework.stereotype.Service;
  * <p><b>Bound to an identity provider row</b> (ADR-0036, Entscheidung 2 and 3). A run exists only
  * for a provider whose row is enabled and whose directory run is switched on; both are refused with
  * a {@link ConflictException} rather than silently doing nothing, so a caller learns why. The
- * {@code dev} mode has no provider row and therefore no synchronisation at all - #1816 decides that
- * open point of ADR-0036, Entscheidung 11 against a synthetic row: every row of {@code
- * oidc_providers} is a trust anchor of the sign-in, and adding one that authenticates nobody in
- * order to hold two settings columns would be the wrong price. A developer who wants to exercise
- * the run locally creates an ordinary provider row and switches the run on there; nothing about the
- * run depends on the operating mode any more.
+ * {@code dev} mode has no provider row and therefore no synchronisation at all, rather than a
+ * synthetic row (ADR-0036, Entscheidung 11): every row of {@code oidc_providers} is a trust anchor
+ * of the sign-in, and adding one that authenticates nobody in order to hold two settings columns
+ * would be the wrong price. A developer who wants to exercise the run locally creates an ordinary
+ * provider row and switches the run on there; nothing about the run depends on the operating mode
+ * any more.
  *
  * <p><b>One run per provider at a time.</b> Every entry point runs under {@link
  * DirectorySyncRunLock}, which holds an advisory lock keyed on the provider for the whole of {@link

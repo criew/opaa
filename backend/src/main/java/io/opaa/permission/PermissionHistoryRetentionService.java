@@ -54,8 +54,8 @@ public class PermissionHistoryRetentionService {
    * How far the deletion has got - every Stichtag before it lies outside the retention and cannot
    * be answered from the history any more. Deliberately without an actor, unlike {@link #read}:
    * this is the boundary of what an Auskunft can state, not the configured period, and the reading
-   * path #1822 builds needs it on every call to tell "no access" from "no longer on record" (see
-   * {@link PermissionHistoryService#readableAssetIdsAsOf}). Empty before the first pass.
+   * path needs it on every call to tell "no access" from "no longer on record" (see {@link
+   * PermissionHistoryService#readableAssetIdsAsOf}). Empty before the first pass.
    */
   @Transactional(readOnly = true)
   public Optional<Instant> retentionCutoff() {

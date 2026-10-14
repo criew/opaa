@@ -573,7 +573,7 @@ public class SearchStatusService {
     List<KnowledgeLibrary> libraries = libraryRepository.findSharedByOrganizationId(organizationId);
     // Only this organization's libraries are counted; an unfiltered progress read would scan the
     // whole vector store across organizations for rows this page never shows, even with the
-    // expression index added in #1119 (see FullTextIndexFillStateService#fillStateForLibraries).
+    // expression index (see FullTextIndexFillStateService#fillStateForLibraries).
     Set<UUID> libraryIds = new LinkedHashSet<>();
     for (KnowledgeLibrary library : libraries) {
       libraryIds.add(library.getId());

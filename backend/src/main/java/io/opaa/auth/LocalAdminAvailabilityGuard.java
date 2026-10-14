@@ -19,12 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Every path that could remove the last such administrator runs through here under the advisory
  * lock {@link UserRepository#lockRoleChanges} of the organization, so two concurrent changes never
  * both count the other one's account as remaining: the token-driven and the manual role withdrawal,
- * disabling or deleting the last enabled OIDC provider, and - with #1537 - locking, expiring or
- * deleting a local administrator. The count happens under the held lock and the write is a
- * conditional {@code UPDATE}; the lock lasts for the rest of the caller's transaction - which is
- * why the {@code require…} checks demand an existing transaction ({@code MANDATORY}): the caller's
- * own write must commit under the same lock, or the check protects nothing. Refusals carry {@value
- * #ERROR_CODE}.
+ * disabling or deleting the last enabled OIDC provider, and locking, expiring or deleting a local
+ * administrator. The count happens under the held lock and the write is a conditional {@code
+ * UPDATE}; the lock lasts for the rest of the caller's transaction - which is why the {@code
+ * require…} checks demand an existing transaction ({@code MANDATORY}): the caller's own write must
+ * commit under the same lock, or the check protects nothing. Refusals carry {@value #ERROR_CODE}.
  */
 @Component
 public class LocalAdminAvailabilityGuard {
@@ -62,8 +61,8 @@ public class LocalAdminAvailabilityGuard {
 
   /**
    * Refuses (409 {@value #ERROR_CODE}) when no login-capable administrator other than {@code
-   * excludedUserId} remains in the organization - the check before a manual role withdrawal and,
-   * with #1537, before locking, expiring or deleting a local administrator.
+   * excludedUserId} remains in the organization - the check before a manual role withdrawal and
+   * before locking, expiring or deleting a local administrator.
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public void requireAnotherLoginCapableAdmin(UUID organizationId, UUID excludedUserId) {

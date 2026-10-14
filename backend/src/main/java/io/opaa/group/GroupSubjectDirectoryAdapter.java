@@ -17,8 +17,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Answers {@link GroupSubjectDirectory} from {@link GroupRepository} - the one place a grant path
- * outside this package learns anything about a group, so {@code io.opaa.library} no longer holds a
- * {@link Group} or its repository (ADR-0036, Entscheidung 12).
+ * outside this package learns anything about a group, so no other package holds a {@link Group} or
+ * its repository (ADR-0036, Entscheidung 12).
  */
 @Component
 class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {

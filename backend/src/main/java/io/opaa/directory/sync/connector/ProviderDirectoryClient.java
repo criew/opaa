@@ -24,11 +24,10 @@ import org.springframework.dao.DataAccessException;
  * <p><b>Every failure of this method is a {@link DirectoryUnavailableException}</b>, the declared
  * one, never an unchecked one: no stored access, an issuer that is no Keycloak realm address, an
  * address the policy no longer allows, a secret this deployment's key cannot decrypt, and any
- * failure of the database read itself. That is the behaviour the removed {@code
- * NoOpDirectoryClient} had for the whole installation, now per provider - and it is load-bearing in
- * both directions: {@code DirectorySyncService} catches only the declared exception, so anything
- * else would skip the {@code UNREACHABLE} outcome, the audit entry and the status line, and leave
- * the scheduled run due again one minute later, forever.
+ * failure of the database read itself. That is load-bearing in both directions: {@code
+ * DirectorySyncService} catches only the declared exception, so anything else would skip the {@code
+ * UNREACHABLE} outcome, the audit entry and the status line, and leave the scheduled run due again
+ * one minute later, forever.
  *
  * <p><b>The address policy is applied at use time, not only at save time</b>, exactly as {@code
  * OidcProviderRegistry} does for the issuer: a narrowed allowlist or a row edited directly in the

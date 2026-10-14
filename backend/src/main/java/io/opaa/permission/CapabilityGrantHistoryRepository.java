@@ -46,8 +46,8 @@ public interface CapabilityGrantHistoryRepository
   /**
    * The subjects that held {@code capability} at {@code asOf} - the capability half of the Stichtag
    * reconstruction, shaped like {@code GroupMembershipHistoryRepository#findGroupIdsByUserIdAsOf}.
-   * Returns the subject types actually in force, so the reading path of #1822 can tell "everybody"
-   * from a named subject.
+   * Returns the subject types actually in force, so the reading path can tell "everybody" from a
+   * named subject.
    */
   @Query(
       "select h from CapabilityGrantHistory h "

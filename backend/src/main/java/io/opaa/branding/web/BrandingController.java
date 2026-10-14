@@ -21,13 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p><b>Reachable without authentication at all</b> - both security chains ({@code
  * DevSecurityConfig}/{@code OidcSecurityConfig}) list these paths among their {@code permitAll}
- * exceptions. #582 wrote "lesbar für alle angemeldeten Nutzer", which turned out to be one notch
- * too narrow once #583 came to build the sign-in page: it renders before there is a session and
- * still has to carry the operator's product name, claim and logo, so an authenticated-only endpoint
- * could not brand the one screen that most needs it. What this exposes is deliberate and bounded -
- * the name, claim, accent colour and images of the deployment, i.e. which Behörde runs it, which
- * anyone reaching its sign-in page can already tell. No user, space, library or configuration data
- * is reachable through either path, and every write still requires {@code SYSTEM_ADMIN} ({@link
+ * exceptions: the sign-in page renders before there is a session and still carries the operator's
+ * product name, claim and logo. What this exposes is deliberate and bounded - the name, claim,
+ * accent colour and images of the deployment, i.e. which Behörde runs it, which anyone reaching its
+ * sign-in page can already tell. No user, space, library or configuration data is reachable through
+ * either path, and every write still requires {@code SYSTEM_ADMIN} ({@link
  * SystemBrandingController}). {@code BrandingPublicAccessTest} proves both halves.
  */
 @RestController

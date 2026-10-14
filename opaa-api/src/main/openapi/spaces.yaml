@@ -160,7 +160,7 @@ paths:
       operationId: archiveSpace
       tags: [space]
       summary: >
-        Archive a space (owner or system admin only) - #543. An archived space accepts no new
+        Archive a space (owner or system admin only). An archived space accepts no new
         chats, is hidden from listSpaces for members without a chat of their own in it, and stays
         fully readable for its members' own chats. Idempotent: archiving an already-archived space
         just returns its current state. See docs/features/spaces-and-assets.md#archivieren-statt-
@@ -766,8 +766,8 @@ components:
             Entscheidung 6) - derived on every read, never stored, and from the same derivation
             the succession field below carries, so the two never disagree (the personal space has
             no succession and therefore neither flag). Carried for every reader, with neither a
-            date nor the previous owner: the operational list with those figures is #1819's. The
-            space stays fully usable; nothing is deleted.
+            date nor the previous owner: those figures belong to the operational list. The space
+            stays fully usable; nothing is deleted.
           example: false
         lastTransfer:
           $ref: "#/components/schemas/PermissionTransferMarkResponse"

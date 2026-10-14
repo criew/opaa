@@ -37,9 +37,9 @@ import org.springframework.stereotype.Service;
 /**
  * The Stichtagsauskunft: who reached one named object inside one bounded window (ADR-0036
  * Entscheidung 8). Exactly one object per query and no person parameter - that, and not a
- * Vollmacht, is what bounds this path (Personalrat Z3); the person entry stays closed until
- * #391/#395. Every call passes {@link AuditAccessGate} and leaves a {@code
- * PERMISSION_HISTORY_ACCESSED} entry against the queried object, the rejected attempt included.
+ * Vollmacht, is what bounds this path (Personalrat Z3); it has no person entry. Every call passes
+ * {@link AuditAccessGate} and leaves a {@code PERMISSION_HISTORY_ACCESSED} entry against the
+ * queried object, the rejected attempt included.
  *
  * <p>It reads the history, never today's rows: a group that has since been deleted still explains
  * an access, and a library deleted last week still gets an answer (ADR-0016). Two gaps are named in

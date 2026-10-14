@@ -18,8 +18,8 @@ import org.springframework.stereotype.Component;
  * <p>The tokens of such an account are already refused per call by {@code
  * ExternalAccessTokenAuthenticator}; this listener is about the other half of the promise. Without
  * it the token stays {@code ACTIVE} in the administration's Bestandsliste and its end produces no
- * entry at all - while {@code #1718} names {@code ACCOUNT_LIFECYCLE} as one of the two Anlässe of
- * the Ausserkrafttreten.
+ * entry at all, although {@code ACCOUNT_LIFECYCLE} is one of the two Anlässe of the
+ * Ausserkrafttreten.
  *
  * <p>A plain {@code @EventListener}, so it runs inside the transaction of the act that ended the
  * access: the lock and the end of the tokens commit together or not at all.

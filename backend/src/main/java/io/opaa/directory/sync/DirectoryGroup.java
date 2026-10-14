@@ -8,7 +8,7 @@ import java.util.Set;
  *
  * @param externalId the directory's stable identifier for this group (objectGUID or SCIM {@code
  *     externalId}) - what {@link DirectorySyncService} matches on instead of {@code name}, so a
- *     rename in the directory never orphans a grant (see #237 and {@code io.opaa.group.Group}).
+ *     rename in the directory never orphans a grant (see {@code io.opaa.group.Group}).
  * @param name the group's current display name in the directory
  * @param parentExternalId the parent organizational unit's {@code externalId}, or {@code null} at
  *     the top of the hierarchy. Recorded on {@code Group.parentGroupId} as reported - {@link
@@ -26,7 +26,7 @@ import java.util.Set;
  *     every direct member, matched against {@code User.subject} scoped to the organization (see
  *     {@code UserRepository#findByOrganizationIdAndSubjectIn}). A subject with no matching user
  *     (not yet provisioned, or provisioned under a different issuer) is skipped rather than treated
- *     as an error - SCIM user provisioning is out of scope for #237.
+ *     as an error; the synchronisation provisions no users.
  */
 public record DirectoryGroup(
     String externalId,

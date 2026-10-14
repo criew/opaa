@@ -24,7 +24,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
  * registered during scanning and is therefore always visible here.
  *
  * <p>The fallback logs its own activation, because the one failure mode the condition cannot rule
- * out is silent: if #1050's provider is itself conditional and its condition does not hold, this
+ * out is silent: if the real provider is itself conditional and its condition does not hold, this
  * fallback steps in and reports "ausdrücklich abgeschaltet" - exactly the reassuring answer the
  * contract exists to prevent. The log line is what makes that case findable.
  */

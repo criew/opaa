@@ -57,9 +57,9 @@ public class Group {
   /**
    * The source's stable identifier, matched on instead of the name so a rename at the source never
    * orphans grants: the directory's objectGUID or SCIM externalId for {@link GroupKind#ORG_UNIT},
-   * the group name as the token's claim carries it for {@link GroupKind#IDENTITY_PROVIDER} - since
-   * #1812 without a provider namespace, because {@link #providerId} carries the provider. Null only
-   * for {@link GroupKind#AD_HOC}, which has no source outside this system.
+   * the group name as the token's claim carries it for {@link GroupKind#IDENTITY_PROVIDER} -
+   * without a provider namespace, because {@link #providerId} carries the provider. Null only for
+   * {@link GroupKind#AD_HOC}, which has no source outside this system.
    */
   @Column(name = "external_id", length = 255)
   private String externalId;

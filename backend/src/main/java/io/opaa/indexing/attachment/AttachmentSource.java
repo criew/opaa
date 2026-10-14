@@ -6,8 +6,7 @@ import java.util.function.Supplier;
 
 /**
  * A source-agnostic description of one attachment for {@code AttachmentIndexer} to index (ADR-0022,
- * Entscheidung 8) - replaces the RSS-only {@code AttachmentCandidate} parameter the indexer used to
- * take directly.
+ * Entscheidung 8).
  */
 public sealed interface AttachmentSource {
 

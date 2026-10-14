@@ -28,11 +28,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The #393 revision access path (AUDITOR role only) - exactly the four bounded queries the
- * specification allows plus the one personenbezogene exception, all funnelled through {@link
- * AuditQueryService} so #394's self-logging has a single seam to hook into. Deliberately no generic
- * "search" endpoint and no {@code actor}/{@code sort} request parameter anywhere below - see {@link
- * AuditQueryService}'s own Javadoc for why.
+ * The revision access path (AUDITOR role only) - exactly the four bounded queries the specification
+ * allows plus the one personenbezogene exception, all funnelled through {@link AuditQueryService},
+ * the single seam of the self-logging. Deliberately no generic "search" endpoint and no {@code
+ * actor}/{@code sort} request parameter anywhere below - see {@link AuditQueryService}'s own
+ * Javadoc for why.
  *
  * <p>None of the five read endpoints below declares {@code @PreAuthorize} - both the AUDITOR role
  * and the mandatory {@code reason} are enforced inside {@link AuditQueryService} itself, the only
