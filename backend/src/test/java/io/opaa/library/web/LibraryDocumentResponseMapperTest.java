@@ -22,12 +22,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link LibraryDocumentResponseMapper} (#493, moved here from {@code
- * io.opaa.library.LibraryDocumentResponsesTest} by #860): {@code sourceEntryUrl} must round-trip
- * from {@link Document} into {@link LibraryDocumentResponse} exactly like the fields #420/#434
- * already established this mapper for ({@code uploadedByUserId}, {@code errorMessage}) - present
- * when the document carries one (an RSS attachment, #468), {@code null} for every document that
- * does not.
+ * Unit tests for {@link LibraryDocumentResponseMapper}: {@code sourceEntryUrl} must round-trip from
+ * {@link Document} into {@link LibraryDocumentResponse} exactly like the fields #420/#434 already
+ * established this mapper for ({@code uploadedByUserId}, {@code errorMessage}) - present when the
+ * document carries one (an RSS attachment), {@code null} for every document that does not.
  */
 class LibraryDocumentResponseMapperTest {
 
@@ -48,8 +46,8 @@ class LibraryDocumentResponseMapperTest {
         .isEqualTo("https://example.gov/aktuelles/dienstanweisung-2024");
   }
 
-  // ADR-0023 (#1136): the space key and hierarchy path a Confluence run stamps on every document
-  // must reach the document list - without them a reader cannot tell which space a row belongs to.
+  // ADR-0023: the space key and hierarchy path a Confluence run stamps on every document must
+  // reach the document list - without them a reader cannot tell which space a row belongs to.
   @Test
   void carriesSourceContainerKeyAndHierarchyPathForAConfluenceDocument() {
     Document document =
@@ -100,8 +98,8 @@ class LibraryDocumentResponseMapperTest {
     assertThat(response.getSourceEntryUrl()).isNull();
   }
 
-  // #738: HTTP_DIRECTORY carries no local file behind GET .../content (that endpoint answers 404
-  // for it) - the frontend needs the document's own remote location instead to open it.
+  // HTTP_DIRECTORY carries no local file behind GET .../content (that endpoint answers 404 for
+  // it) - the frontend needs the document's own remote location instead to open it.
   @Test
   void carriesFilePathAsSourceUrlForAnHttpDirectoryDocument() {
     Document document =
@@ -118,7 +116,7 @@ class LibraryDocumentResponseMapperTest {
         .isEqualTo("https://example.gov/verzeichnis/dienstanweisung-2024.pdf");
   }
 
-  // #738: an RSS attachment's filePath is its own remote file (not the entry page) - it is still
+  // An RSS attachment's filePath is its own remote file (not the entry page) - it is still
   // exposed as sourceUrl for completeness, but a frontend caller prefers sourceEntryUrl (asserted
   // separately above) since the entry page is more useful for tracing an attachment back to its
   // origin than the raw attachment URL.
@@ -137,7 +135,7 @@ class LibraryDocumentResponseMapperTest {
     assertThat(response.getSourceUrl()).isEqualTo("https://example.gov/feed/rundschreiben.pdf");
   }
 
-  // #738: the server-local storage path must never leak through this field for UPLOAD/FILESYSTEM.
+  // The server-local storage path must never leak through this field for UPLOAD/FILESYSTEM.
   @Test
   void leavesSourceUrlNullForAnUploadedDocument() {
     Document document =
@@ -176,7 +174,7 @@ class LibraryDocumentResponseMapperTest {
     assertThat(LibraryDocumentResponseMapper.toResponse(topLevel).getParentDocumentId()).isNull();
   }
 
-  // #821: the folder-aware overload - folderPath is always resolved by the caller
+  // The folder-aware overload - folderPath is always resolved by the caller
   // (LibraryFolderPaths),
   // never stored, so this pins that the mapper simply carries it through onto the response.
   @Test
@@ -230,7 +228,7 @@ class LibraryDocumentResponseMapperTest {
     assertThat(response.getFolders().get(0).getId()).isEqualTo(year.getId());
     assertThat(response.getFolders().get(0).getName()).isEqualTo("2026");
     assertThat(response.getFolders().get(0).getDocumentCount()).isEqualTo(3L);
-    // #821: breadcrumb is root-first, ending with the browsed folder itself - two levels deep here.
+    // Breadcrumb is root-first, ending with the browsed folder itself - two levels deep here.
     assertThat(response.getBreadcrumb()).hasSize(2);
     assertThat(response.getBreadcrumb().get(0).getId()).isEqualTo(root.getId());
     assertThat(response.getBreadcrumb().get(0).getName()).isEqualTo("Protokolle");
@@ -241,8 +239,8 @@ class LibraryDocumentResponseMapperTest {
 
   @Test
   void toPageResponseLeavesFolderIdNullAndListsEmptyWhileSearching() {
-    // #821: q ignores folderId entirely and stays bibliotheksweit - folders/breadcrumb are always
-    // empty for a search hit list, and folderId itself stays null.
+    // Q ignores folderId entirely and stays bibliotheksweit - folders/breadcrumb are always empty
+    // for a search hit list, and folderId itself stays null.
     LibraryDocumentPage page =
         new LibraryDocumentPage(List.of(), 0, 20, 0L, List.of(), List.of(), null);
 
@@ -256,8 +254,8 @@ class LibraryDocumentResponseMapperTest {
 
   @Test
   void toBulkDeleteResponseCarriesEveryIdWithItsReason() {
-    // #1943: both lists together cover every requested id exactly once - a failure without its
-    // German reason would leave the caller unable to say what stayed and why.
+    // Both lists together cover every requested id exactly once - a failure without its German
+    // reason would leave the caller unable to say what stayed and why.
     UUID deleted = UUID.randomUUID();
     UUID missing = UUID.randomUUID();
     UUID broken = UUID.randomUUID();

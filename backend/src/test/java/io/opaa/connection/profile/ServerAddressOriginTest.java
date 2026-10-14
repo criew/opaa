@@ -46,12 +46,12 @@ class ServerAddressOriginTest {
 
   @Test
   void twoUnrelatedUnderscoreHostnamesAreNotTheSameOrigin() {
-    // #615 review, finding 1: java.net.URI does not recognize an underscore as a valid reg-name
-    // character, so URI.create(...).getHost() returns null for both of these - a comparison that
-    // only checked Objects.equals(hostA, hostB) would wrongly call this "the same origin" because
-    // both sides are null, letting a caller reuse a stored credential against a completely
-    // unrelated server. Sanity check first: URI really does parse both hosts as null, otherwise
-    // this test would not exercise the case it claims to.
+    // java.net.URI does not recognize an underscore as a valid reg-name character, so
+    // URI.create(...).getHost() returns null for both of these - a comparison that only checked
+    // Objects.equals(hostA, hostB) would wrongly call this "the same origin" because both sides
+    // are null, letting a caller reuse a stored credential against a completely unrelated server.
+    // Sanity check first: URI really does parse both hosts as null, otherwise this test would not
+    // exercise the case it claims to.
     assertThat(java.net.URI.create("https://my_internal_host/documents/").getHost()).isNull();
     assertThat(java.net.URI.create("https://attacker_controlled_host/documents/").getHost())
         .isNull();

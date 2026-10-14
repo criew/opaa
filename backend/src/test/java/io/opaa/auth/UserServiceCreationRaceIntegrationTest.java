@@ -46,14 +46,14 @@ import org.springframework.beans.factory.annotation.Autowired;
  * so once the number of concurrent first logins reached the pool size, every connection was claimed
  * by an outer transaction waiting on the unique index and no insert attempt could obtain the second
  * connection it needed; the whole pool deadlocked until {@code connectionTimeout} instead of
- * failing fast (found in code review of #299). {@code findOrCreateUser} is deliberately not
- * {@code @Transactional} for exactly this reason - see its Javadoc - so this test also guards
- * against that regression, not only against the original unique-constraint 500.
+ * failing fast. {@code findOrCreateUser} is deliberately not {@code @Transactional} for exactly
+ * this reason - see its Javadoc - so this test also guards against that regression, not only
+ * against the original unique-constraint 500.
  *
  * <p>#201 temporarily extended this test to also race {@code KnowledgeLibraryService}'s personal
  * library provisioning alongside the personal space, guarded by its own partial unique index; #522
  * deleted that automatic personal library entirely, so this test is back to covering the user row
- * and the personal space alone, exactly as it did before #201.
+ * and the personal space alone.
  */
 @OpaaIntegrationTest
 class UserServiceCreationRaceIntegrationTest {
@@ -119,7 +119,7 @@ class UserServiceCreationRaceIntegrationTest {
       // Every one of the CONCURRENT_LOGINS calls provisions the personal space of the same user
       // through its own UserProvisionedEvent - unlike before this fix, where only the single winner
       // of the user-creation race ever got that far. SpaceService.ensureDefaultSpace's own race
-      // handling (#265) must still collapse all of those into exactly one personal space.
+      // handling must still collapse all of those into exactly one personal space.
       List<Space> spaces = spaceRepository.findDistinctByMembershipsUserId(persistedUser.getId());
       assertThat(spaces).hasSize(1);
       assertThat(spaces.getFirst().isDefault()).isEqualTo(true);

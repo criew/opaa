@@ -15,9 +15,9 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.pgvector.PgVectorFilterExpressionConverter;
 
 /**
- * The two query forms of a {@link MetadataFilter} state the same rule (#1070), and the metadata
- * filter is subordinate to the permission filter by construction - the AND with the library filter
- * is the outer operator, and an empty filter leaves the permission filter untouched.
+ * The two query forms of a {@link MetadataFilter} state the same rule, and the metadata filter is
+ * subordinate to the permission filter by construction - the AND with the library filter is the
+ * outer operator, and an empty filter leaves the permission filter untouched.
  */
 class MetadataFilterExpressionsTest {
 

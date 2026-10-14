@@ -51,9 +51,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * The two-phase value mapping and field deletion (#1361, metadata-schema.md "Nachlauf im Betrieb"):
- * the subject is retired first, the documents are rewritten in Chargen, each in its own
- * transaction, and the list entry respectively the field is removed only afterwards.
+ * The two-phase value mapping and field deletion (metadata-schema.md "Nachlauf im Betrieb"): the
+ * subject is retired first, the documents are rewritten in Chargen, each in its own transaction,
+ * and the list entry respectively the field is removed only afterwards.
  *
  * <p>The invariant every method here circles: <b>no document ever carries a value the schema does
  * not list</b>. During the run the retired value stays listed - that is the Festlegung of this

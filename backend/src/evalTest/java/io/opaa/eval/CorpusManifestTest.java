@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Docker-free unit tests for {@link CorpusManifest} (issue #227 review follow-up). Run via the
- * {@code evalUnitTest} Gradle task, part of {@code check}.
+ * Docker-free unit tests for {@link CorpusManifest}. Run via the {@code evalUnitTest} Gradle task,
+ * part of {@code check}.
  */
 class CorpusManifestTest {
 

@@ -45,9 +45,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * "Wer ein Recht gibt, sieht, an wen" (#1880, ADR-0036 Entscheidung 9) against the real schema, on
- * both objects that can carry a group: the grant on a library and the membership in a space. Every
- * limit of {@code GroupMemberDisclosureDirectory}'s rule is exercised here, as is the audit event a
+ * "Wer ein Recht gibt, sieht, an wen" (ADR-0036 Entscheidung 9) against the real schema, on both
+ * objects that can carry a group: the grant on a library and the membership in a space. Every limit
+ * of {@code GroupMemberDisclosureDirectory}'s rule is exercised here, as is the audit event a
  * retrieval by the system role leaves behind (Auflage A6).
  */
 @OpaaIntegrationTest
@@ -240,8 +240,8 @@ class GrantedGroupMembersIntegrationTest {
   }
 
   /**
-   * #2134: the minimum group size no longer withholds the list - whoever manages the right sees the
-   * names and the figure of a group of four, over a library and over a space alike.
+   * The minimum group size no longer withholds the list - whoever manages the right sees the names
+   * and the figure of a group of four, over a library and over a space alike.
    */
   @Test
   void aGroupBelowTheMinimumSizeDisclosesItsNamesAndFigure() {
@@ -352,7 +352,7 @@ class GrantedGroupMembersIntegrationTest {
         .hasSize(1);
   }
 
-  /** A locked account keeps its membership but is no longer part of the reach (#1818). */
+  /** A locked account keeps its membership but is no longer part of the reach. */
   @Test
   void aLockedAccountIsNoPartOfTheReachAndNoPartOfTheList() {
     UUID manager = createUser();
@@ -471,7 +471,7 @@ class GrantedGroupMembersIntegrationTest {
         .hasMessage("Gruppe nicht gefunden");
   }
 
-  /** Behind the same bar as the member list itself: a MEMBER never reads it (#144). */
+  /** Behind the same bar as the member list itself: a MEMBER never reads it. */
   @Test
   void aPlainMemberOfTheSpaceGetsNothing() {
     UUID owner = createUser();

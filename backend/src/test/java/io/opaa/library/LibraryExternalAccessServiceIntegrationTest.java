@@ -40,7 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The Freigabe einer Bibliothek für Fremdzugänge (#1731) against a real Postgres with the versioned
+ * The Freigabe einer Bibliothek für Fremdzugänge against a real Postgres with the versioned
  * Liquibase schema: who may set it, that it cannot be set without a Befristung within the
  * systemwide bound, that it stops taking effect on its own, and that every one of those leaves an
  * audit entry with no Klarname.
@@ -88,8 +88,8 @@ class LibraryExternalAccessServiceIntegrationTest {
             .toList();
     libraryRepository.deleteAll(ownLibraries);
     grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
-    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
-    // they have to go before the accounts that hold them.
+    // A library carries ownership intervals; their owner column is RESTRICT, so they have
+    // to go before the accounts that hold them.
     jdbcTemplate.update(
         "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     for (UUID userId : createdUserIds) {
@@ -241,9 +241,9 @@ class LibraryExternalAccessServiceIntegrationTest {
   }
 
   /**
-   * #1731 review, Befund 1: the Befristung takes effect the moment it passes, not when the nightly
-   * run gets round to writing it down. Between the two, a single instance can be down for days -
-   * and it is this predicate that the enforcement of #1720/#1721 will ask.
+   * The Befristung takes effect the moment it passes, not when the nightly run gets round to
+   * writing it down. Between the two, a single instance can be down for days - and it is this
+   * predicate that the enforcement of #1720/#1721 will ask.
    */
   @Test
   void theReleaseStopsTakingEffectAtItsExpiryEvenBeforeTheRunWritesItDown() {
@@ -272,9 +272,8 @@ class LibraryExternalAccessServiceIntegrationTest {
   }
 
   /**
-   * #1731 review, Befund 6: history ({@code actorUserId == null}) and protocol (system actor) both
-   * say "nobody acted" - the fact row must not contradict them by moving the last human act to the
-   * night of the run.
+   * History ({@code actorUserId == null}) and protocol (system actor) both say "nobody acted" - the
+   * fact row must not contradict them by moving the last human act to the night of the run.
    */
   @Test
   void theExpiryRunLeavesTheLastHumanActUntouched() {

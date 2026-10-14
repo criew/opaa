@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
  * The invariant every listener of {@link UserProvisionedEvent} relies on: provider and token groups
  * are present together or not at all, and {@link UserProvisionedEvent#hasGroupsClaim()} decides for
  * both - a half-filled event would reach {@code TokenGroupProvisioner} as a null dereference. That
- * a provider declares a groups claim is not the same as its token carrying one (#1807).
+ * a provider declares a groups claim is not the same as its token carrying one.
  */
 class UserProvisionedEventTest {
 

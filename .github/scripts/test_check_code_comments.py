@@ -1,5 +1,6 @@
-"""Self-check for check_code_comments.sh: each rule catches its form, and the forms the rule allows
-(an upstream reference, an HTML entity, the spike package, a string outside a comment) pass."""
+"""Self-check for check_code_comments.sh: each rule catches its form in every checked tree, and the
+forms the rule allows (an upstream reference, an HTML entity, the spike package, a string outside a
+comment, a test's regression guard) pass."""
 
 import shutil
 import subprocess
@@ -62,7 +63,12 @@ def test_allowed_comment_passes(repo: Path, comment: str) -> None:
         ("Aborted before #1816 changed it.", "History"),
         ("A spike aside, every library has an owner (#1073).", "Origin marker"),
         ("Every library has an owner (#1073).", "Origin marker"),
+        ("The connection log (#2163, ADR-0041): append-only.", "Origin marker"),
         ("#1184: top-level documents only.", "Origin marker"),
+        ("Issue #1070: the golden filters move the numbers.", "Origin marker"),
+        ("#583/#1910: the sign-in page renders before a session.", "Origin marker"),
+        ("A plain boolean cannot check it (#420 second code review round).", "Review protocol"),
+        ("Review finding on PR #827: only the unique index closes the race.", "Review protocol"),
     ],
 )
 def test_rejected_comment_fails(repo: Path, comment: str, kind: str) -> None:
@@ -86,6 +92,92 @@ def test_openapi_description_and_yaml_comment_are_checked(repo: Path) -> None:
     result = run(repo)
     assert result.returncode == 1
     assert "application.yml" in result.stdout
+
+
+TREES = {
+    "test": "backend/src/test/java/io/opaa/probe/ProbeTest.java",
+    "evalTest": "backend/src/evalTest/java/io/opaa/eval/ProbeTest.java",
+}
+WORKFLOW = ".github/workflows/probe.yml"
+CHANGELOG = "backend/src/main/resources/db/changelog/probe/2026-10-14-probe.yaml"
+
+
+def workflow(comment: str) -> str:
+    return f"on: push\n# {comment}\njobs: {{}}\n"
+
+
+def changelog(comment: str) -> str:
+    return f'databaseChangeLog:\n  - changeSet:\n      id: probe\n      comment: "{comment}"\n'
+
+
+@pytest.mark.parametrize("tree", TREES)
+def test_regression_guard_in_a_test_is_counted_apart(repo: Path, tree: str) -> None:
+    write(repo, TREES[tree], java("Regression guard for #307: a stale report never hides the last one."))
+    result = run(repo)
+    assert result.returncode == 0, result.stdout
+    assert f"{tree}: 0 checked lines still name an issue, 1 more as a regression guard" in result.stdout
+
+
+def test_regression_guard_counts_only_in_a_test(repo: Path) -> None:
+    write(repo, JAVA, java("Regression guard for #307: a stale report never hides the last one."))
+    assert "main: 1 checked lines still name an issue, 0 more" in run(repo).stdout
+
+
+@pytest.mark.parametrize(
+    "path, text",
+    [
+        *[(p, java("Regression guard for review of #2438: a 403 is no absence.")) for p in TREES.values()],
+        *[(p, java("#393 code review, finding 1: with three roles a check is needed.")) for p in TREES.values()],
+        (WORKFLOW, workflow("PR #301 review, Befund 2: the group key names the label.")),
+        (WORKFLOW, "on: push\njobs:\n  a:\n    steps:\n      - run: |\n          // Provenance check (PR #301 review): only our marker\n"),
+        (CHANGELOG, "databaseChangeLog:\n  # #1820 review: the count goes\n"),
+    ],
+)
+def test_review_protocol_fails_in_every_tree(repo: Path, path: str, text: str) -> None:
+    write(repo, path, text)
+    result = run(repo)
+    assert result.returncode == 1
+    assert "Review protocol" in result.stdout
+    assert path in result.stdout
+
+
+def test_german_history_fails_in_a_workflow(repo: Path) -> None:
+    write(repo, WORKFLOW, workflow("Seit #1040 führt der Lauf zwei Urteile."))
+    result = run(repo)
+    assert result.returncode == 1
+    assert "History" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "path, text",
+    [
+        *[(p, java("Every library has an owner (#1073).")) for p in TREES.values()],
+        (WORKFLOW, workflow("A corpus-only PR triggers no API calls (#1123).")),
+        (CHANGELOG, changelog("The connection log (#2163, ADR-0041): append-only.")),
+        (CHANGELOG, changelog("#2163: append-only.")),
+        (CHANGELOG, 'databaseChangeLog:\n  - changeSet:\n      comment: >-\n        Expression index\n        (#1073) on library_id.\n      runInTransaction: false\n'),
+    ],
+)
+def test_origin_marker_fails_in_every_tree(repo: Path, path: str, text: str) -> None:
+    write(repo, path, text)
+    result = run(repo)
+    assert result.returncode == 1
+    assert "Origin marker" in result.stdout
+    assert path in result.stdout
+
+
+@pytest.mark.parametrize(
+    "path, text",
+    [
+        (WORKFLOW, workflow("Workaround until #2042 is fixed upstream.")),
+        (CHANGELOG, changelog("The connection log (ADR-0041, Entscheidung 7): append-only.")),
+        (CHANGELOG, 'databaseChangeLog:\n  - changeSet:\n      comment: >-\n        Expression index.\n      sql: SELECT 1 -- (#1073)\n'),
+    ],
+)
+def test_allowed_workflow_and_changelog_comment_passes(repo: Path, path: str, text: str) -> None:
+    write(repo, path, text)
+    result = run(repo)
+    assert result.returncode == 0, result.stdout
 
 
 def test_no_comment_at_all_fails(repo: Path) -> None:

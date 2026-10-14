@@ -10,9 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
- * Unit tests for {@link LlmModelSeedRunner} (#756, PR #763 review) - a mocked {@link
- * LlmModelSeeder} lets these focus purely on which exceptions this thin wrapper swallows and which
- * it lets propagate.
+ * Unit tests for {@link LlmModelSeedRunner} - a mocked {@link LlmModelSeeder} lets these focus
+ * purely on which exceptions this thin wrapper swallows and which it lets propagate.
  */
 class LlmModelSeedRunnerTest {
 
@@ -35,7 +34,7 @@ class LlmModelSeedRunnerTest {
 
   @Test
   void letsEveryOtherExceptionPropagateAsARealFailure() {
-    // #771: a missing OPAA_SETTINGS_ENCRYPTION_KEY while taking over a configured API key is
+    // A missing OPAA_SETTINGS_ENCRYPTION_KEY while taking over a configured API key is
     // deliberately no longer among the exceptions reaching this class at all - LlmModelSeeder
     // catches that specific case itself (see LlmModelSeederTest). This test stands for every
     // other, genuinely unexpected failure, which must still abort startup.

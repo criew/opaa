@@ -10,9 +10,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free unit tests for the pipeline path's case evaluation and report assembly (issue #1039),
- * run via the {@code evalUnitTest} Gradle task. The pipeline itself is a plain function here, which
- * is the whole point of {@link PipelineRetrievalEvaluator} taking one.
+ * Docker-free unit tests for the pipeline path's case evaluation and report assembly, run via the
+ * {@code evalUnitTest} Gradle task. The pipeline itself is a plain function here, which is the
+ * whole point of {@link PipelineRetrievalEvaluator} taking one.
  */
 class PipelineRetrievalEvaluatorTest {
 

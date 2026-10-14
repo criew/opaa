@@ -68,7 +68,7 @@ class AssetAccessServiceTypeIndependenceIntegrationTest {
         .containsEntry(agentId, AssetRole.EDITOR);
   }
 
-  /** A grant to "Alle Konten" on the second type reaches everybody (#1931). */
+  /** A grant to "Alle Konten" on the second type reaches everybody. */
   @Test
   void anAssetOfASecondTypeGrantedToAllAccountsIsReadableWithoutAnOwnGrant() {
     UUID owner = createUser();

@@ -13,7 +13,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Compares the most recent {@code evaluateCityLandmarksRetrieval} report against the committed
- * {@code city-landmarks} baseline (issue #234) — the city-landmarks counterpart of {@link
+ * {@code city-landmarks} baseline — the city-landmarks counterpart of {@link
  * BaselineRegressionTest}. Own report file, own baseline file, own group (see {@link
  * EvalDomainConfig#CITY_LANDMARKS}): comic-characters' baseline and CI behavior are unaffected by
  * this class (issue #234 acceptance criterion "keine gemeinsame overall-Gruppe mit Comichelden").

@@ -78,7 +78,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The core-field filter in both search paths against a real PostgreSQL (#1070, metadata-schema.md
+ * The core-field filter in both search paths against a real PostgreSQL (metadata-schema.md
  * Wirkstelle 1): the values come from the production ingest, the vector filter runs inside {@code
  * similaritySearch}, the lexical filter inside the full-text SQL - nothing the assertions are about
  * is mocked. The fake embedding model embeds every text identically, so the vector path returns
@@ -469,7 +469,7 @@ class MetadataFilterSearchIntegrationTest {
   }
 
   /**
-   * #1242: the Absender of a mail is a filterable format field, and both paths carry the identical
+   * The Absender of a mail is a filterable format field, and both paths carry the identical
    * condition inside their query - a mail of another sender is out, a document that is no mail at
    * all has no value and stays in (Leerwert-Regel).
    */
@@ -494,7 +494,7 @@ class MetadataFilterSearchIntegrationTest {
     assertThat(stage(result, RetrievalStageName.METADATA_FILTER).notes())
         .contains("metadata filter: format field mail_sender in [max@stadt.de]");
     // The PDF is kept by the Leerwert rule but is not "ohne Angabe": the sender was never a
-    // question its format could answer (#1242). Only a mail without a sender would be.
+    // question its format could answer. Only a mail without a sender would be.
     assertThat(stage(result, RetrievalStageName.VECTOR_SEARCH).notes())
         .contains(RetrievalNote.METADATA_FILTER_NO_VALUE_CANDIDATES.format(0, 2));
   }

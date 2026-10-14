@@ -20,9 +20,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Docker-free guard for the curated {@code verwaltung} golden dataset (issue #1043): the rules of
- * {@link GoldenCaseCuration} applied to the committed file, plus the {@code answer_span} resolution
- * the Docker-requiring harness would otherwise be the first to notice — an unresolvable span is a
+ * Docker-free guard for the curated {@code verwaltung} golden dataset: the rules of {@link
+ * GoldenCaseCuration} applied to the committed file, plus the {@code answer_span} resolution the
+ * Docker-requiring harness would otherwise be the first to notice — an unresolvable span is a
  * broken fixture, and finding that out an hour into an indexing run is the expensive way to learn
  * it (ADR-0012 §9, {@code EvaluationReport.AnswerSpanResolutionResult}).
  *
@@ -177,7 +177,7 @@ class GoldenCaseCurationTest {
   /**
    * Every declared {@code answer_span} of <b>every</b> domain resolves to a chunk of its expected
    * document, chunked by the production {@link MarkdownDocumentFormat} — every domain's corpus is
-   * entirely Markdown (#1103), so this is the same pipeline {@code DocumentFormatRegistry} routes
+   * entirely Markdown, so this is the same pipeline {@code DocumentFormatRegistry} routes
    * production indexing to. Catches both failure modes the Docker-requiring harness would otherwise
    * be the first to report: a span that is not literally in its document (typo) and one that
    * straddles a chunk boundary.

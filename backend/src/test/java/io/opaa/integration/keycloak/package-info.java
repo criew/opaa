@@ -1,6 +1,6 @@
 /**
- * Integration tests against a <em>real</em> Keycloak started in Docker (#1817, ADR-0036
- * Entscheidung 3) - the acceptance level above the common test double ({@code
+ * Integration tests against a <em>real</em> Keycloak started in Docker (ADR-0036 Entscheidung 3) -
+ * the acceptance level above the common test double ({@code
  * io.opaa.directory.sync.keycloak.FakeKeycloakServer}), which stays the contract level.
  *
  * <p><b>Runs only via {@code ./gradlew keycloakIntegrationTest}</b>, never as part of {@code

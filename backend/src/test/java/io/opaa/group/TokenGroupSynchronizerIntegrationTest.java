@@ -27,11 +27,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * {@link TokenGroupSynchronizer} against a real Postgres (#1331, ADR-0025 Entscheidung 4): a
- * sign-in's groups claim becomes {@link GroupKind#IDENTITY_PROVIDER} memberships carrying the
- * provider in {@code groups.provider_id}, same-named groups of two providers stay two groups, a
- * token that drops a group ends the membership, an unchanged token writes nothing, and the group
- * management refuses to touch such a group.
+ * {@link TokenGroupSynchronizer} against a real Postgres (ADR-0025 Entscheidung 4): a sign-in's
+ * groups claim becomes {@link GroupKind#IDENTITY_PROVIDER} memberships carrying the provider in
+ * {@code groups.provider_id}, same-named groups of two providers stay two groups, a token that
+ * drops a group ends the membership, an unchanged token writes nothing, and the group management
+ * refuses to touch such a group.
  *
  * <p>And the distinction #1807 is about: an empty claim revokes, a claim that is absent, malformed
  * or replaced by an overage reference leaves memberships, rights history and audit log untouched.
@@ -63,7 +63,7 @@ class TokenGroupSynchronizerIntegrationTest {
     alice.setOrganizationId(organizationId);
     alice = userRepository.save(alice);
     OidcClaimMapping withGroups = new OidcClaimMapping(null, null, null, null, null, "groups");
-    // persisted: groups.provider_id is a foreign key on oidc_providers since #1812
+    // persisted: groups.provider_id is a foreign key on oidc_providers
     beschaeftigte =
         providerRepository.save(
             new OidcProvider(

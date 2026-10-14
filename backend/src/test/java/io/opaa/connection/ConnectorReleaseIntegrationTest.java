@@ -43,9 +43,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
- * The connector release and the lock through the API (#2161, spec "Konnektor-Freigabe und Sperre"):
- * a release per profile or type governs only a new library, a lock stops the runs, and a connector
- * or profile the installation did not ship with is off.
+ * The connector release and the lock through the API (spec "Konnektor-Freigabe und Sperre"): a
+ * release per profile or type governs only a new library, a lock stops the runs, and a connector or
+ * profile the installation did not ship with is off.
  */
 @OpaaIntegrationTest
 class ConnectorReleaseIntegrationTest {

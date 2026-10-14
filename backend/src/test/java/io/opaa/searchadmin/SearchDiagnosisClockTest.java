@@ -33,8 +33,8 @@ import org.springframework.ai.vectorstore.SearchRequest;
 /**
  * {@link SearchDiagnosisService#diagnose} takes its timestamp from the injected {@link Clock}
  * rather than {@code Clock.systemUTC()} - a constructor seam only, matching {@code
- * SearchStatusService} (#1120). Before this seam existed, the timestamp could not be pinned in a
- * test at all.
+ * SearchStatusService}. Before this seam existed, the timestamp could not be pinned in a test at
+ * all.
  */
 class SearchDiagnosisClockTest {
 

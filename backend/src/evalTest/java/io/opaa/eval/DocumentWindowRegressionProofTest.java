@@ -25,10 +25,8 @@ import org.slf4j.LoggerFactory;
  * could plausibly return, and feeds it through the same production code path (<code>
  * DocumentRanking.applyDocumentWindow</code> and <code>RetrievalMetrics.evaluate</code>) both
  * harness call sites use. What changes between "old" and "new" is exactly the one thing #721
- * changed: whether the chunk search was sized to widen for deduplication (issue #721 code review,
- * Wichtig 2 — coordinator decision to build this rather than a real Testcontainers fixture, given a
- * synthetic scenario constructed this way is fully mechanical and does not depend on embedding
- * behavior at all).
+ * changed: whether the chunk search was sized to widen for deduplication (a synthetic scenario
+ * constructed this way is fully mechanical and does not depend on embedding behavior at all).
  *
  * <h2>The synthetic corpus</h2>
  *
@@ -79,10 +77,9 @@ class DocumentWindowRegressionProofTest {
 
   @Test
   void oldChunkBoundTopKStarvesTheRankedListToThreeDistinctDocuments() {
-    // "Old" semantics (pre-#721): similaritySearch(topK=documentTopK) with no widening for
-    // deduplication — chunkTopK == documentTopK == 10, exactly what RetrievalEvaluationHarnessTest
-    // did before this PR. Deduplicating the first 10 raw chunk hits (doc-big x8 + doc-2 + doc-3)
-    // yields only 3 distinct documents.
+    // "Old" semantics (chunk-bound window): similaritySearch(topK=documentTopK) with no widening
+    // for deduplication — chunkTopK == documentTopK == 10. Deduplicating the first 10 raw chunk
+    // hits (doc-big x8 + doc-2 + doc-3) yields only 3 distinct documents.
     List<String> topTenRawChunks = rankedChunkFileNames().subList(0, DOCUMENT_TOP_K);
 
     var oldWindow = DocumentRanking.applyDocumentWindow(topTenRawChunks, DOCUMENT_TOP_K);
@@ -94,10 +91,10 @@ class DocumentWindowRegressionProofTest {
 
   @Test
   void newDocumentBoundWindowReachesAllTenDistinctDocuments() {
-    // "New" semantics (#721): chunkTopK = documentTopK * maxChunksPerDocument = 10 * 8 = 80 — wide
-    // enough to include every one of the corpus's 17 chunks, so deduplication reaches all 10
-    // distinct documents. Issue #721 acceptance criterion: "Der Harness erreicht auf einem
-    // mehrchunkigen Korpus nachweislich documentTopK=10 unterschiedliche Dokumente."
+    // "New" semantics: chunkTopK = documentTopK * maxChunksPerDocument = 10 * 8 = 80 — wide enough
+    // to include every one of the corpus's 17 chunks, so deduplication reaches all 10 distinct
+    // documents. Issue #721 acceptance criterion: "Der Harness erreicht auf einem mehrchunkigen
+    // Korpus nachweislich documentTopK=10 unterschiedliche Dokumente."
     int chunkTopK = DocumentRanking.documentTopKWindowSize(DOCUMENT_TOP_K, MAX_CHUNKS_PER_DOCUMENT);
     assertThat(chunkTopK).isEqualTo(80);
     // similaritySearch(topK=80) over a 17-chunk corpus returns all 17 chunks — simulated directly

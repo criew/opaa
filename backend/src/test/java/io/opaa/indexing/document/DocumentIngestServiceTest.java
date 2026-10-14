@@ -578,7 +578,7 @@ class DocumentIngestServiceTest {
       assertThat(savedDocument().getContentType()).isEqualTo("text/markdown");
       assertThat(storedChunks().getFirst().getMetadata())
           .containsEntry(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, ".md")
-          // The structure-aware cut records the target size it was cut at (#2612).
+          // The structure-aware cut records the target size it was cut at.
           .containsEntry(
               ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY,
               HeadingSectionSplitterFixture.DEFAULT.chunkingFingerprint());

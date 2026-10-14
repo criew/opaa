@@ -25,10 +25,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * {@code POST /api/v1/assets/{assetType}/{assetId}/transfer-ownership} (#1941): who may hand one
- * asset over, who may take it, and that the four things an owner change consists of - the owner
- * columns, the grant ownership goes with, the ownership interval and the audit entry - move
- * together.
+ * {@code POST /api/v1/assets/{assetType}/{assetId}/transfer-ownership}: who may hand one asset
+ * over, who may take it, and that the four things an owner change consists of - the owner columns,
+ * the grant ownership goes with, the ownership interval and the audit entry - move together.
  */
 @OpaaIntegrationTest
 class AssetOwnershipTransferControllerIntegrationTest {
@@ -99,7 +98,7 @@ class AssetOwnershipTransferControllerIntegrationTest {
         .andExpect(jsonPath("$.myRole").value("OWNER"));
   }
 
-  /** The new owner's display name reaches every reader of the library (#1941). */
+  /** The new owner's display name reaches every reader of the library. */
   @Test
   void theDetailResponseNamesTheOwner() throws Exception {
     String library = createLibrary(devAdmin());
@@ -121,7 +120,7 @@ class AssetOwnershipTransferControllerIntegrationTest {
     assertThat(ownerUserIdOf(library)).isEqualTo(userIdOf("admin@opaa.local"));
   }
 
-  /** Nobody who cannot reach the library at all learns that it exists (#436). */
+  /** Nobody who cannot reach the library at all learns that it exists. */
   @Test
   void aCallerWithoutAnyRoleGets404() throws Exception {
     String library = createLibrary(devAdmin());

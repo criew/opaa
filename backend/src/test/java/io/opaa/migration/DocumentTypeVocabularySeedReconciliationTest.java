@@ -20,10 +20,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Reconciles {@link TestVocabularies} - the database-free snapshot the unit tests and the Eval
- * corpus assertions run against - with the Dokumentart vocabulary the full changelog actually seeds
- * (#1325). Every code, label, sort order, synonym, Kompositum ending and exclusion must match; a
- * seed value added, removed or changed in any changeset fails here instead of drifting silently
- * past the snapshot.
+ * corpus assertions run against - with the Dokumentart vocabulary the full changelog actually
+ * seeds. Every code, label, sort order, synonym, Kompositum ending and exclusion must match; a seed
+ * value added, removed or changed in any changeset fails here instead of drifting silently past the
+ * snapshot.
  */
 class DocumentTypeVocabularySeedReconciliationTest extends AbstractMigrationTest {
 

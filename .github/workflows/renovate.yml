@@ -1,8 +1,8 @@
 name: Renovate
 
-# Self-hosted Renovate run (issue #751): the same docker invocation docs/renovate.md
-# documents for manual use, executed daily. Deliberately NOT the Mend cloud app - the run
-# happens entirely in this repository's own CI.
+# Self-hosted Renovate run: the same docker invocation docs/renovate.md documents for
+# manual use, executed daily. Deliberately NOT the Mend cloud app - the run happens
+# entirely in this repository's own CI.
 on:
   schedule:
     # Daily, before the working day (06:23 MESZ). Offset from the nightly e2e run (03:17 UTC)

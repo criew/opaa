@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-/** The answer parser of the model step (#1073): what it reads, and what it refuses to guess. */
+/** The answer parser of the model step: what it reads, and what it refuses to guess. */
 class ModelExtractionAnswerTest {
 
   @Test

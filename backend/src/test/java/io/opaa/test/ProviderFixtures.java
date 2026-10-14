@@ -6,9 +6,9 @@ import io.opaa.auth.OidcProviderRepository;
 import java.util.UUID;
 
 /**
- * An identity provider row for a test that needs one. Since #1816 every {@code ORG_UNIT} group
- * carries its provider ({@code chk_groups_provider_kind}), so a class using a directory group as a
- * fixture - a diagnostic scope, a read-only group, a membership - needs a provider to hang it on.
+ * An identity provider row for a test that needs one. Every {@code ORG_UNIT} group carries its
+ * provider ({@code chk_groups_provider_kind}), so a class using a directory group as a fixture - a
+ * diagnostic scope, a read-only group, a membership - needs a provider to hang it on.
  *
  * <p>Deliberately no Spring bean and no {@code @Import}: a class calls this with the repository it
  * already has, so nothing here enters the context's cache key. Each caller removes the row it

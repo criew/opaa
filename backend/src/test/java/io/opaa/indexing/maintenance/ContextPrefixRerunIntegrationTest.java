@@ -50,9 +50,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The Kontextpräfix and its Nachlauf end to end (#1072): a prefix-effective value reaches embedding
- * input and full-text index without ever entering the stored chunk text, the run selects by the
- * version pair, and it is idempotent, document-granular, resumable and destructive of nothing.
+ * The Kontextpräfix and its Nachlauf end to end: a prefix-effective value reaches embedding input
+ * and full-text index without ever entering the stored chunk text, the run selects by the version
+ * pair, and it is idempotent, document-granular, resumable and destructive of nothing.
  */
 @OpaaIntegrationTest
 class ContextPrefixRerunIntegrationTest {

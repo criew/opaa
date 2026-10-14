@@ -24,10 +24,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 
 /**
- * Guards the one thing the baseline checks cannot see for themselves (#1671): that a run which
- * writes no report leaves none behind. Both guarded measurement paths swallow their own failures,
- * so without this the previous run's report survives and the check - which only asks whether the
- * file exists - compares it as this run's measurement.
+ * Guards the one thing the baseline checks cannot see for themselves: that a run which writes no
+ * report leaves none behind. Both guarded measurement paths swallow their own failures, so without
+ * this the previous run's report survives and the check - which only asks whether the file exists -
+ * compares it as this run's measurement.
  */
 class StaleReportGuardTest {
 

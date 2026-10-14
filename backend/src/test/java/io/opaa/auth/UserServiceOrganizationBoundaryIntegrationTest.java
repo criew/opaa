@@ -21,15 +21,15 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Reproduces and guards the #271 organization-boundary gap in {@code AdminController} / {@link
  * UserService}, against a real Postgres database with the real, versioned Liquibase schema applied
  * ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - the same reasoning as {@code
- * SpaceServiceIntegrationTest} (#288): {@code users.organization_id} is a plain {@code UUID} column
+ * SpaceServiceIntegrationTest}: {@code users.organization_id} is a plain {@code UUID} column
  * without {@code @ManyToOne}, so only Liquibase (not Hibernate-generated DDL) creates {@code
  * fk_users_organization}.
  *
  * <p>Before the fix, {@code AdminController#listUsers} called {@code UserService#findAll()} (=
  * {@code userRepository.findAll()}), returning every organization's users to a SYSTEM_ADMIN whose
- * reach must stop at their own organization's boundary (#199) just like every other role, and
- * {@code AdminController#changeRole} called {@code UserService#updateRole} with a bare {@code
- * userId} lookup that never checked the target user's organization at all - reachable from another
+ * reach must stop at their own organization's boundary just like every other role, and {@code
+ * AdminController#changeRole} called {@code UserService#updateRole} with a bare {@code userId}
+ * lookup that never checked the target user's organization at all - reachable from another
  * organization's SYSTEM_ADMIN.
  */
 @OpaaIntegrationTest

@@ -7,9 +7,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Compares the most recent {@code evaluateRetrieval} run's pipeline report against the committed
- * {@code pipeline-comic-characters} baseline (issue #1040) — the pipeline path's counterpart of
- * {@link BaselineRegressionTest}, running beside it in the same {@code checkRetrievalBaseline} task
- * so both paths are judged on every nightly run, each against its own baseline.
+ * {@code pipeline-comic-characters} baseline — the pipeline path's counterpart of {@link
+ * BaselineRegressionTest}, running beside it in the same {@code checkRetrievalBaseline} task so
+ * both paths are judged on every nightly run, each against its own baseline.
  *
  * <p>Excluded from {@code evalUnitTest} for the same reason as its raw-vector counterpart: it
  * depends on a report file that only exists after a real, multi-minute evaluation run.

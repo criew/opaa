@@ -39,7 +39,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * {@link SystemMailSettingsController} in isolation (#1536): the {@code SYSTEM_ADMIN} bar on every
+ * {@link SystemMailSettingsController} in isolation: the {@code SYSTEM_ADMIN} bar on every
  * operation, the password mask in both directions, and that the test send goes to the caller's own
  * address rather than to one taken from the request.
  */

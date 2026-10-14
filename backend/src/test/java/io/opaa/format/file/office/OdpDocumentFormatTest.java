@@ -92,7 +92,7 @@ class OdpDocumentFormatTest {
   }
 
   // beispiel-praesentation.odp of the Handstichprobe: no dc:title, so the humanized file name
-  // became the Titel although the first slide names the presentation (#1360).
+  // became the Titel although the first slide names the presentation.
   @Test
   void theFirstSlideTitleIsTheFirstHeadingOnBothPaths() throws IOException {
     Path file = tempDir.resolve("beispiel-praesentation.odp");

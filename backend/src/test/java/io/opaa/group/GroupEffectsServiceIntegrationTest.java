@@ -34,9 +34,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * "Wo wirkt diese Gruppe" (#1821, ADR-0036 Entscheidung 2): the per-group counts the group
- * administration and the work list of one provider read. A group without any effect stays in the
- * answer - that it has none is exactly what makes it deletable with its provider.
+ * "Wo wirkt diese Gruppe" (ADR-0036 Entscheidung 2): the per-group counts the group administration
+ * and the work list of one provider read. A group without any effect stays in the answer - that it
+ * has none is exactly what makes it deletable with its provider.
  */
 @OpaaIntegrationTest
 class GroupEffectsServiceIntegrationTest {
@@ -200,7 +200,7 @@ class GroupEffectsServiceIntegrationTest {
 
   /**
    * The query count stays flat as the list grows - a count per group and effect kind would make an
-   * organization with a few hundred directory units a thousand-query page (#1821).
+   * organization with a few hundred directory units a thousand-query page.
    */
   @Test
   void theNumberOfQueriesDoesNotGrowWithTheNumberOfGroups() {

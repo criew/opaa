@@ -9,9 +9,9 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
- * A sync state only means something under the settings it was written with (#2268): a run under
- * other settings neither continues the round, nor reads the change cursors, nor reconciles against
- * the presence of that state, and a run whose settings change while it goes removes nothing.
+ * A sync state only means something under the settings it was written with: a run under other
+ * settings neither continues the round, nor reads the change cursors, nor reconciles against the
+ * presence of that state, and a run whose settings change while it goes removes nothing.
  */
 class FileSyncSettingsBasisTest {
 

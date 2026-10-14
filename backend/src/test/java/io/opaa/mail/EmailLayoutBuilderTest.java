@@ -5,9 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 /**
- * #1536: the branded frame carries the operator's product name and accent colour, renders the link
- * both as a button and as readable text, and escapes everything it places into the frame itself -
- * the content fragment arrives already escaped, these values do not.
+ * The branded frame carries the operator's product name and accent colour, renders the link both as
+ * a button and as readable text, and escapes everything it places into the frame itself - the
+ * content fragment arrives already escaped, these values do not.
  */
 class EmailLayoutBuilderTest {
 

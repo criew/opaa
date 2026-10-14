@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Docker-free unit tests for {@link PipelineBaseline#load(Path)} (issue #1040) — the same load-time
- * guards {@link BaselineTest} covers for the raw-vector path, at this path's windows. Part of
- * {@code evalUnitTest}, wired into {@code check}.
+ * Docker-free unit tests for {@link PipelineBaseline#load(Path)} — the same load-time guards {@link
+ * BaselineTest} covers for the raw-vector path, at this path's windows. Part of {@code
+ * evalUnitTest}, wired into {@code check}.
  */
 class PipelineBaselineTest {
 
@@ -96,9 +96,9 @@ class PipelineBaselineTest {
   }
 
   /**
-   * Issue #1522: a file drawn from a run against an external Ollama endpoint may never become a
-   * comparison point - the only correct outcome is to re-measure, which a fixed-point mismatch
-   * ("measurement grounds changed") would not say.
+   * A file drawn from a run against an external Ollama endpoint may never become a comparison point
+   * - the only correct outcome is to re-measure, which a fixed-point mismatch ("measurement grounds
+   * changed") would not say.
    */
   @Test
   void rejectsAPipelineBaselineDrawnFromAnExternalOllamaEndpoint() throws IOException {

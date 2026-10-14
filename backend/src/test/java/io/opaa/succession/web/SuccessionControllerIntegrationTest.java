@@ -12,9 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-/**
- * The endpoint of the operational list over HTTP (#1819): who may read it and what a tab answers.
- */
+/** The endpoint of the operational list over HTTP: who may read it and what a tab answers. */
 @OpaaIntegrationTest
 class SuccessionControllerIntegrationTest {
 

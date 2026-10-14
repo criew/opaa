@@ -20,7 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The lexical search path against a real PostgreSQL (#1048, docs/features/hybrid-retrieval.md,
+ * The lexical search path against a real PostgreSQL (docs/features/hybrid-retrieval.md,
  * Arbeitspaket 2). Nothing here is mocked away that the assertions are about: the {@code tsvector}
  * is built by the production write path, the query is the production query, and the permission
  * filter is enforced by the database - the specification demands exactly that ("Der Filter wird in
@@ -61,8 +61,7 @@ class FullTextChunkSearchIntegrationTest {
    * io.opaa.indexing.chunk.FullTextChunkStore#CURRENT_TSV_VERSION} stays searchable - every raise
    * of that constant so far only added lexemes, so the old row merely lacks the newest ones. The
    * version therefore drives the fill state and the re-index selection, never this query; a raised
-   * version must not empty the lexical path until the re-index has rewritten the whole corpus
-   * (#1346).
+   * version must not empty the lexical path until the re-index has rewritten the whole corpus.
    */
   @Test
   void aRowBelowTheCurrentTsvVersionIsStillFound() {
@@ -378,13 +377,13 @@ class FullTextChunkSearchIntegrationTest {
   }
 
   /**
-   * #1130 Befund 1, Querschnittsregel a: PostgreSQL's own parser keeps an email address as one
-   * {@code email}-class token, but the question path splits a question into individual word tokens
-   * ({@code io.opaa.retrieval.search.FullTextChunkSearch#wordTokens}) - without the undecomposed
-   * identifier lexeme {@link io.opaa.indexing.chunk.FullTextIdentifiers} now emits, a chunk whose
-   * only occurrence of "max", "mustermann", "example" or "org" is inside the email address would
-   * never be found by a question naming that address, exactly the asymmetry the file-number test
-   * above pins for Aktenzeichen.
+   * PostgreSQL's own parser keeps an email address as one {@code email}-class token, but the
+   * question path splits a question into individual word tokens ({@code
+   * io.opaa.retrieval.search.FullTextChunkSearch#wordTokens}) - without the undecomposed identifier
+   * lexeme {@link io.opaa.indexing.chunk.FullTextIdentifiers} now emits, a chunk whose only
+   * occurrence of "max", "mustermann", "example" or "org" is inside the email address would never
+   * be found by a question naming that address, exactly the asymmetry the file-number test above
+   * pins for Aktenzeichen.
    */
   @Test
   void anEmailAddressIsFoundThoughItOnlyOccursInsideTheAddressItself() {
@@ -457,7 +456,7 @@ class FullTextChunkSearchIntegrationTest {
    * come from the chunk's content, never from its id - a chunk id is a fresh UUID per indexing run,
    * so an id-based tie-break reshuffles the tail of every such result between two runs over the
    * same corpus, which is exactly what costs the retrieval benchmark its run-to-run reproducibility
-   * (#1049, ADR-0013).
+   * (ADR-0013).
    */
   @Test
   void chunksWithTheSameRankAreOrderedByTheirContentAndNotByTheirId() {

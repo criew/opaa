@@ -50,7 +50,7 @@ class AnswerGenerationServiceTest {
   }
 
   /**
-   * #1487: the answer sees <b>every</b> note point, including the ANTWORTFORM ones the sub-question
+   * The answer sees <b>every</b> note point, including the ANTWORTFORM ones the sub-question
    * decomposition never gets - a Darstellungswunsch is noise for the search and the whole point
    * here.
    */
@@ -602,8 +602,8 @@ class AnswerGenerationServiceTest {
   }
 
   /**
-   * #2376: the answer rules - only what the passages carry, a gap named as missing from the
-   * documents rather than filled or denied, deviations and differing reference values named.
+   * The answer rules - only what the passages carry, a gap named as missing from the documents
+   * rather than filled or denied, deviations and differing reference values named.
    */
   @Test
   void theAnswerRulesKeepTheAnswerToThePassagesAndNameGapsAndDeviations() {
@@ -801,9 +801,9 @@ class AnswerGenerationServiceTest {
   }
 
   /**
-   * #1486: the conversation window holds the answer without its citation markers, while the
-   * response the caller persists keeps them - the persisted text is the truth for footnotes, text
-   * anchors and the evidence drawer.
+   * The conversation window holds the answer without its citation markers, while the response the
+   * caller persists keeps them - the persisted text is the truth for footnotes, text anchors and
+   * the evidence drawer.
    */
   @Test
   void theWindowLosesTheCitationMarkersWhileTheReturnedAnswerKeepsThem() {
@@ -825,8 +825,8 @@ class AnswerGenerationServiceTest {
   }
 
   /**
-   * #1486: a marker of the previous turn must not reach the next prompt - that is the repetition
-   * the removal exists for.
+   * A marker of the previous turn must not reach the next prompt - that is the repetition the
+   * removal exists for.
    */
   @Test
   void theFollowUpPromptCarriesNoMarkerOfThePreviousAnswer() {
@@ -852,8 +852,8 @@ class AnswerGenerationServiceTest {
   }
 
   /**
-   * #1486: an answer that is nothing but a marker leaves no assistant message in the window at all.
-   * An empty assistant message is rejected with 400 by some providers, and the reload path would
+   * An answer that is nothing but a marker leaves no assistant message in the window at all. An
+   * empty assistant message is rejected with 400 by some providers, and the reload path would
    * rebuild it from the persisted text on every following turn of that chat.
    */
   @Test

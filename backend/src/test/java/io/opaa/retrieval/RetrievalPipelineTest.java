@@ -30,9 +30,9 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 
 /**
- * The structural guarantees of the staged pipeline (issue #1046, docs/features/hybrid-retrieval.md,
- * Arbeitspaket 1): every registered stage appears in the explanation protocol, a switched-off stage
- * is the identity, and no stage can widen the permission scope or the candidate pool.
+ * The structural guarantees of the staged pipeline (docs/features/hybrid-retrieval.md, Arbeitspaket
+ * 1): every registered stage appears in the explanation protocol, a switched-off stage is the
+ * identity, and no stage can widen the permission scope or the candidate pool.
  *
  * <p>What this class deliberately does <b>not</b> test is the selection itself - that is {@code
  * RetrievalPipelineParityTest}'s job, which pins it against the pre-refactoring algorithm - nor the

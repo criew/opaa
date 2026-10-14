@@ -33,11 +33,11 @@ class VariantComparisonDatasetTest {
   }
 
   /**
-   * Issue #1041 review, Befund 2: a typo in an override field name (here {@code mmrLamda} instead
-   * of {@code mmrLambda}) must fail the load instead of being silently dropped — a dropped field
-   * would run the variant unchanged against production and let it appear as a legitimate Δ0.000
-   * comparison point. Guards the deliberate absence of {@code @JsonIgnoreProperties(ignoreUnknown =
-   * true)} on {@link PipelineVariant.QueryOverrides}.
+   * A typo in an override field name (here {@code mmrLamda} instead of {@code mmrLambda}) must fail
+   * the load instead of being silently dropped — a dropped field would run the variant unchanged
+   * against production and let it appear as a legitimate Δ0.000 comparison point. Guards the
+   * deliberate absence of {@code @JsonIgnoreProperties(ignoreUnknown = true)} on {@link
+   * PipelineVariant.QueryOverrides}.
    */
   @Test
   void rejectsAnUnknownFieldInQueryOverrides() throws Exception {

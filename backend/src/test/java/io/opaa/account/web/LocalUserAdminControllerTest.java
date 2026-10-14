@@ -54,10 +54,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * {@link LocalUserAdminController} and {@link LocalAuthSettingsController} in isolation (#1537):
- * the {@code SYSTEM_ADMIN} bar on every operation, the translation of query and request DTOs into
- * the domain parameters, the response shapes, and the 404/409 mapping of the domain exceptions.
- * Everything behind the two services is proved by the integration tests.
+ * {@link LocalUserAdminController} and {@link LocalAuthSettingsController} in isolation: the {@code
+ * SYSTEM_ADMIN} bar on every operation, the translation of query and request DTOs into the domain
+ * parameters, the response shapes, and the 404/409 mapping of the domain exceptions. Everything
+ * behind the two services is proved by the integration tests.
  */
 @WebMvcTest({LocalUserAdminController.class, LocalAuthSettingsController.class})
 @ActiveProfiles("dev")

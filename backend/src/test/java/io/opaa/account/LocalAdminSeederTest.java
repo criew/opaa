@@ -392,7 +392,7 @@ class LocalAdminSeederTest {
     assertThat(row.state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
     // the restart sets a new password, so the sessions end with the reason that says so - the
-    // person reads "Passwort zurückgesetzt" exactly where one was (#1595)
+    // person reads "Passwort zurückgesetzt" exactly where one was
     verify(refreshTokens).revokeAllForUser(user.getId(), RevocationReason.ADMIN_RESET, NOW);
     verify(refreshTokens, never()).revokeAllForUser(user.getId(), RevocationReason.ADMIN, NOW);
     verify(providers, never()).save(any());

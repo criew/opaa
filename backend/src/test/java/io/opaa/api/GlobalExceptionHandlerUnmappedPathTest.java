@@ -14,14 +14,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * #456: a request to a path no controller serves falls through Spring's static resource handling,
- * which throws {@code NoResourceFoundException} - previously uncaught by {@link
- * GlobalExceptionHandler}, so it fell through to {@code handleGenericException}'s {@code 500}
- * instead of the {@code 404} an unmapped route should produce. Deliberately hits a path that
- * neither {@link HealthController} nor any other controller in this slice maps, so the exception
- * actually originates from the resource handler rather than from a controller method - a test that
- * only checked the status code against a controller-mapped path would not have caught the bug (see
- * AGENTS.md, "Reproduktionsnachweis").
+ * A request to a path no controller serves falls through Spring's static resource handling, which
+ * throws {@code NoResourceFoundException} - previously uncaught by {@link GlobalExceptionHandler},
+ * so it fell through to {@code handleGenericException}'s {@code 500} instead of the {@code 404} an
+ * unmapped route should produce. Deliberately hits a path that neither {@link HealthController} nor
+ * any other controller in this slice maps, so the exception actually originates from the resource
+ * handler rather than from a controller method - a test that only checked the status code against a
+ * controller-mapped path would not have caught the bug (see AGENTS.md, "Reproduktionsnachweis").
  */
 @WebMvcTest(HealthController.class)
 @Import(TestSecurityConfig.class)

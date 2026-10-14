@@ -34,9 +34,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The capability evaluation against the real schema (#1813, ADR-0036 Entscheidung 5): the delivered
- * state, the four ways a capability is reached, and that a withdrawal takes effect on the next
- * request rather than on the next sign-in.
+ * The capability evaluation against the real schema (ADR-0036 Entscheidung 5): the delivered state,
+ * the four ways a capability is reached, and that a withdrawal takes effect on the next request
+ * rather than on the next sign-in.
  *
  * <p>{@code SeededRowRestorer} puts the delivered grants and their intervals back after each
  * method, which is why withdrawing from "Alle Konten" here does not leave the next class unable to
@@ -335,8 +335,8 @@ class CapabilityServiceIntegrationTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 9 (#1820): Die Liste der Anlegerechte ist eine fremde Liste - eine
-   * geschuetzte Gruppe steht dort ohne ihren Namen.
+   * ADR-0036, Entscheidung 9: Die Liste der Anlegerechte ist eine fremde Liste - eine geschuetzte
+   * Gruppe steht dort ohne ihren Namen.
    */
   @Test
   void namesNoProtectedGroupInTheOverview() {

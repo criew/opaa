@@ -19,9 +19,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Docker-free guard for the CPU backend pin of the eval Ollama container (issue #1652): without it,
- * the same model digest computes with a different ggml kernel set on a host with AVX-512 than on
- * one without, and both greedy decomposition and embedding rankings diverge between runners.
+ * Docker-free guard for the CPU backend pin of the eval Ollama container: without it, the same
+ * model digest computes with a different ggml kernel set on a host with AVX-512 than on one
+ * without, and both greedy decomposition and embedding rankings diverge between runners.
  */
 class EvalOllamaCpuBackendTest {
 

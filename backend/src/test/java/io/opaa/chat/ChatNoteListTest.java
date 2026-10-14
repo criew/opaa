@@ -6,7 +6,7 @@ import io.opaa.api.types.ChatNoteItemKind;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** The two rules of the Gesprächsnotiz list (#1487): deduplication and the cap. */
+/** The two rules of the Gesprächsnotiz list: deduplication and the cap. */
 class ChatNoteListTest {
 
   private static ChatNoteCandidate rahmen(String text) {

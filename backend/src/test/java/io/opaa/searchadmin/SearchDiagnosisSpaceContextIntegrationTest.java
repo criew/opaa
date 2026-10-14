@@ -173,7 +173,7 @@ class SearchDiagnosisSpaceContextIntegrationTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 7, Schutzpunkt 3 (#1818): gezählt werden aktive Konten, nicht
+   * ADR-0036, Entscheidung 7, Schutzpunkt 3: gezählt werden aktive Konten, nicht
    * Mitgliedschaftszeilen. Six members, two of them locked by the directory synchronisation, are a
    * four-person context - and that is below the Mindestgruppengröße.
    */
@@ -325,7 +325,7 @@ class SearchDiagnosisSpaceContextIntegrationTest {
     memberIds.add(userId);
   }
 
-  /** Takes the access away the way the directory run does (#1818). */
+  /** Takes the access away the way the directory run does. */
   private void lockFromDirectory(UUID userId) {
     jdbcTemplate.update("UPDATE users SET directory_locked_at = now() WHERE id = ?", userId);
   }

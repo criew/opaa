@@ -210,7 +210,7 @@ class ConfluenceDataCenterAccessTest {
     assertThat(ids)
         .contains(confluence.pageId("Handbuch"), confluence.pageId("Onboarding"))
         .doesNotContain(confluence.trashedPageId(), confluence.pageId("Streng geheim"));
-    // the search carries the version the run compares before fetching (#1199 review)
+    // the search carries the version the run compares before fetching
     assertThat(admin.searchPagesModifiedSince(Set.of("ENG", "HR"), longAgo))
         .filteredOn(p -> p.id().equals(confluence.pageId("Handbuch")))
         .singleElement()

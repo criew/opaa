@@ -16,10 +16,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * The two-stage connection test and the space listing (#1134) against the common test double of
- * both editions: detection without credentials, verification with them, mismatch and refusal
- * reported as results (never as stack traces, never with credentials), and the creation-time
- * edition re-check.
+ * The two-stage connection test and the space listing against the common test double of both
+ * editions: detection without credentials, verification with them, mismatch and refusal reported as
+ * results (never as stack traces, never with credentials), and the creation-time edition re-check.
  */
 class ConfluenceConnectionServiceTest {
 

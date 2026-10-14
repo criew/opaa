@@ -81,8 +81,8 @@ class UploadPendingRecoveryRunnerIntegrationTest {
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId()));
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
-    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
-    // they have to go before the accounts that hold them.
+    // A library carries ownership intervals; their owner column is RESTRICT, so they have
+    // to go before the accounts that hold them.
     jdbcTemplate.update(
         "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     userRepository.deleteById(editor.getId());
@@ -120,7 +120,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
         documentRepository.findById(staleConnectorPendingId).orElseThrow();
     assertThat(staleConnectorPending.getStatus())
         .as(
-            "#614 covers only the upload path (PR #631 review, finding 2) - a stuck connector row"
+            "#614 covers only the upload path - a stuck connector row"
                 + " is #501's still-open RUNNING recovery to fix, not this runner's")
         .isEqualTo(DocumentStatus.PENDING);
   }

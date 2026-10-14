@@ -37,9 +37,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-// The local-auth limits (#1535) are widened for this shared context: every class drives its
-// sign-ins from MockMvc's one address, and the production defaults (login 10/60 s) would exhaust
-// within a single class. LocalAuthRateLimitIntegrationTest proves the limits in its own context.
+// The local-auth limits are widened for this shared context: every class drives its sign-ins
+// from MockMvc's one address, and the production defaults (login 10/60 s) would exhaust within a
+// single class. LocalAuthRateLimitIntegrationTest proves the limits in its own context.
 @SpringBootTest(
     properties = {
       "opaa.auth.local.jwt-secret=" + OpaaLocalAuthMockMvcTest.JWT_SECRET,
@@ -59,7 +59,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // Off for the same reason as under the canonical signature: a class of this family
       // creates provider rows, and a tick must not start a run behind its back.
       "opaa.directory-sync.schedule-enabled=false",
-      // #1563: the provider rows these classes create point at a host that exists nowhere. The
+      // The provider rows these classes create point at a host that exists nowhere. The
       // allowlist short-circuits the sign-in's address check before it would resolve it, so no
       // class of this family makes a DNS lookup for a fixture. The check itself stays on.
       "opaa.auth.oidc.target-validation.allowlist=" + OpaaLocalAuthMockMvcTest.PROVIDER_HOST,

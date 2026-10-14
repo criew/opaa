@@ -10,7 +10,7 @@ import io.opaa.group.GroupEffectsView;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** Pins the field-by-field behaviour of the effects mapper (#1821). */
+/** Pins the field-by-field behaviour of the effects mapper. */
 class GroupEffectsResponseMapperTest {
 
   @Test

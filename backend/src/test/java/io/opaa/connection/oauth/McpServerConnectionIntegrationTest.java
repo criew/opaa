@@ -66,8 +66,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * The MCP foundation (#2173) against two fake MCP servers with their own authorization servers:
- * discovery through the Protected Resource Metadata, the consent with the resource indicator in the
+ * The MCP foundation against two fake MCP servers with their own authorization servers: discovery
+ * through the Protected Resource Metadata, the consent with the resource indicator in the
  * authorization and the token request and in every renewal, a token of server A never handed out
  * for server B, revocation on every end, the connector paths blind to MCP servers, and no token,
  * code, state or secret in an answer, a log line or a protocol.

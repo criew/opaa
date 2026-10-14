@@ -38,10 +38,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * Controller-level wiring test for {@link DocumentController} (#736): the HTTP request is
- * translated into a {@link LibraryDocumentService#loadContent} call, and its result into the
- * expected status code, body and headers. The access/sourceType/traversal decisions themselves are
- * covered at the service level in {@code LibraryDocumentServiceIntegrationTest} - mirrors {@code
+ * Controller-level wiring test for {@link DocumentController}: the HTTP request is translated into
+ * a {@link LibraryDocumentService#loadContent} call, and its result into the expected status code,
+ * body and headers. The access/sourceType/traversal decisions themselves are covered at the service
+ * level in {@code LibraryDocumentServiceIntegrationTest} - mirrors {@code
  * LibraryControllerDocumentTest}'s own split between HTTP wiring and business logic.
  */
 @WebMvcTest(DocumentController.class)
@@ -117,9 +117,9 @@ class DocumentControllerTest {
   @Test
   void encodesAnUmlautFileNameAsAnRfc5987ExtValueWithAnAsciiFallback(@TempDir Path tempDir)
       throws Exception {
-    // #742 review, nit 4: filename* (RFC 5987/8187) is the whole point for a name outside ASCII -
-    // the earlier test's "bericht 2026.txt" only exercises the space-encoding case, never a
-    // genuinely non-ASCII byte.
+    // filename* (RFC 5987/8187) is the whole point for a name outside ASCII - the earlier test's
+    // "bericht 2026.txt" only exercises the space-encoding case, never a genuinely non-ASCII
+    // byte.
     UUID documentId = UUID.randomUUID();
     Path file = tempDir.resolve("original.txt");
     Files.writeString(file, "Originalinhalt", StandardCharsets.UTF_8);
@@ -139,12 +139,12 @@ class DocumentControllerTest {
 
   @Test
   void aStreamedRemoteContentBodyIsClosedOnceItHasBeenWritten() throws Exception {
-    // #748 review, finding 3: HTTP_DIRECTORY/RSS_FEED content is streamed straight from
-    // LibraryDocumentService's still-open remote response - there is no temp file for this
-    // controller to delete any more (see DocumentContent's Javadoc for why the previous
-    // temp-file-plus-delete-on-close approach was replaced). What this controller still owes the
-    // stream is closing it exactly once the response body has been written - asserted here via a
-    // wrapper that records whether close() was called.
+    // HTTP_DIRECTORY/RSS_FEED content is streamed straight from LibraryDocumentService's
+    // still-open remote response - there is no temp file for this controller to delete any more
+    // (see DocumentContent's Javadoc for why the previous temp-file-plus-delete-on-close
+    // approach was replaced). What this controller still owes the stream is closing it exactly
+    // once the response body has been written - asserted here via a wrapper that records whether
+    // close() was called.
     UUID documentId = UUID.randomUUID();
     AtomicBoolean closed = new AtomicBoolean(false);
     InputStream remoteBody =
@@ -171,8 +171,8 @@ class DocumentControllerTest {
   @Test
   void aContentTypeTheSourceDeclaresThatIsNotAValidMediaTypeFallsBackToOctetStream(
       @TempDir Path tempDir) throws Exception {
-    // #748 review, finding 2a: a stored/remote-declared Content-Type this class does not control
-    // the syntax of must never turn MediaType.parseMediaType's IllegalArgumentException into a 500
+    // A stored/remote-declared Content-Type this class does not control the syntax of must never
+    // turn MediaType.parseMediaType's IllegalArgumentException into a 500
     // - "the source sent something odd" stays a generic, successfully-served download instead of
     // an OPAA-side server error.
     UUID documentId = UUID.randomUUID();

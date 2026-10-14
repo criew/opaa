@@ -10,11 +10,10 @@ import java.util.TreeSet;
 import java.util.function.ToIntFunction;
 
 /**
- * Compares a freshly produced {@link EvaluationReport} against the committed {@link Baseline}
- * (issue #228). Two independent questions are answered, on purpose kept separate rather than
- * collapsed into a single pass/fail bit — conflating them is exactly the failure mode the issue
- * warns about ("Baseline ungültig" vs. "Retrieval ist schlechter geworden" are different
- * statements):
+ * Compares a freshly produced {@link EvaluationReport} against the committed {@link Baseline}. Two
+ * independent questions are answered, on purpose kept separate rather than collapsed into a single
+ * pass/fail bit — conflating them is exactly the failure mode the issue warns about ("Baseline
+ * ungültig" vs. "Retrieval ist schlechter geworden" are different statements):
  *
  * <ol>
  *   <li>{@link ComparisonResult#baselineValid()} — do the fixed points (measurement-contract
@@ -32,7 +31,7 @@ import java.util.function.ToIntFunction;
  * The tolerance policy in this class implements ADR-0013's decision, not an ad hoc formula: it is a
  * project-level statement of what "no regression" means, and any change to it is an ADR change, not
  * a code review comment. See {@code docs/decisions/0013-fehlerkriterium-retrieval-regression.md}
- * for the full rationale (including the PR #301 review this superseded). Summary:
+ * for the full rationale. Summary:
  *
  * <pre>
  *   tolerance = min( K_MIN / n_eff, RELATIVE_CAP_FRACTION * baselineValue )
@@ -59,8 +58,7 @@ import java.util.function.ToIntFunction;
  * relative (not absolute) cap avoids that collision. (The hard *floor* below is a separate concern
  * and does combine a relative and an absolute term — see {@link #HARD_FLOOR_FRACTION_OF_BASELINE}.)
  *
- * <h2>Case-based check for pairs where the mean tolerance is tighter than one case (issue #306)
- * </h2>
+ * <h2>Case-based check for pairs where the mean tolerance is tighter than one case </h2>
  *
  * ADR-0013's "Offen" section originally acknowledged a residual gap: whenever a group/metric pair's
  * mean tolerance ({@link #toleranceFor}) is tighter than the shift a single case can cause ({@code
@@ -102,14 +100,14 @@ import java.util.function.ToIntFunction;
  *       the unwidened tolerance, only ever loosened up to one case's worth of shift.
  * </ol>
  *
- * <p><b>Review correction (issue #306 review):</b> the version of this fix first proposed for issue
- * #306 <i>replaced</i> the mean-tolerance test with the case-count test for these six pairs,
- * dropping {@code toleranceFor(...)}'s 25%-relative-cap protection entirely. That protected against
- * lost hits but not against a same-hit-count regression that is nevertheless severe — confirmed
- * against this baseline's real per-case data: {@code numeric_range}'s {@code mrr} can drop 75% (all
- * four hitting cases sliding to rank 10, no hit lost, {@code hitCountAt10} unchanged) and would
- * have passed under the replaced version. The conjunction above closes that gap while still passing
- * the original issue #306 scenario (one case moving rank with no lost hit, shift {@code 0.5/16 =
+ * <p><b>Review correction:</b> the version of this fix first proposed for issue #306
+ * <i>replaced</i> the mean-tolerance test with the case-count test for these six pairs, dropping
+ * {@code toleranceFor(...)}'s 25%-relative-cap protection entirely. That protected against lost
+ * hits but not against a same-hit-count regression that is nevertheless severe — confirmed against
+ * this baseline's real per-case data: {@code numeric_range}'s {@code mrr} can drop 75% (all four
+ * hitting cases sliding to rank 10, no hit lost, {@code hitCountAt10} unchanged) and would have
+ * passed under the replaced version. The conjunction above closes that gap while still passing the
+ * original issue #306 scenario (one case moving rank with no lost hit, shift {@code 0.5/16 =
  * 0.03125 < 1/16 = 0.0625}) — the widened tolerance is loose enough for a single case's worth of
  * shift, but the un-widened {@code toleranceFor(...)} term inside the {@code max(...)} still
  * catches anything worse for pairs whose baseline tolerance is not much smaller than {@code 1/n},
@@ -152,15 +150,15 @@ import java.util.function.ToIntFunction;
  *
  * <p>Comparisons apply a small epsilon (see {@link #EPSILON}) so a boundary case that is
  * mathematically exactly on the tolerance line does not fail on floating-point rounding alone (PR
- * #301 review: {@code category:entity_description}'s {@code hitRateAt5} landed on {@code 12/20 −
- * 0.65 = −0.05000000000000004} against a tolerance of exactly {@code 0.05}).
+ * {@code category:entity_description}'s {@code hitRateAt5} landed on {@code 12/20 − 0.65 =
+ * −0.05000000000000004} against a tolerance of exactly {@code 0.05}).
  *
- * <p><b>Nachtrag (issue #1103, 2026-09-02):</b> the {@code comic-characters} baseline re-measured
- * after {@code MarkdownDocumentFormat} was registered no longer affects six pairs but four, all in
- * {@code category:numeric_range} — {@code category:multi_attribute_filter}'s {@code ndcgAt10}
- * (0.137 -&gt; 0.218) and {@code recallAt10} (0.159 -&gt; 0.245) rose enough that their relative
- * cap now exceeds {@code 1/n=0.0476} (0.0545 and 0.0613 respectively), demonstrating the
- * self-adjusting behaviour described above in practice rather than only in theory. See {@code
+ * <p><b>Nachtrag (2026-09-02):</b> the {@code comic-characters} baseline re-measured after {@code
+ * MarkdownDocumentFormat} was registered no longer affects six pairs but four, all in {@code
+ * category:numeric_range} — {@code category:multi_attribute_filter}'s {@code ndcgAt10} (0.137 -&gt;
+ * 0.218) and {@code recallAt10} (0.159 -&gt; 0.245) rose enough that their relative cap now exceeds
+ * {@code 1/n=0.0476} (0.0545 and 0.0613 respectively), demonstrating the self-adjusting behaviour
+ * described above in practice rather than only in theory. See {@code
  * BaselineComparatorTest#usesCaseBasedCheckIdentifiesExactlyTheFourKnownAffectedPairsInTheCommittedBaseline}
  * and {@code eval/baseline/README.md}'s matching Nachtrag for the current set.
  */
@@ -168,21 +166,20 @@ public final class BaselineComparator {
 
   /**
    * The golden dataset's {@code crosslingual} category is, by construction, exactly the set of
-   * {@code language:de} cases (issue #304): every {@code crosslingual} case is a German question
-   * against the English corpus, and there is no other source of German cases. The two groups are
-   * therefore never independent observations — comparing both doubles the number of checks over
-   * identical data without adding coverage. ADR-0013 ("Offen") and {@code eval/baseline/README.md}
-   * record the consolidation decision: keep {@code category:crosslingual} (it names the property
-   * under test), drop {@code language:de} as a baseline/comparison group. The report still computes
-   * a {@code language:de} entry from the (unchanged) golden dataset — this constant lets {@link
-   * #compare} skip just that one redundant group instead of requiring a golden-dataset or harness
-   * change.
+   * {@code language:de} cases: every {@code crosslingual} case is a German question against the
+   * English corpus, and there is no other source of German cases. The two groups are therefore
+   * never independent observations — comparing both doubles the number of checks over identical
+   * data without adding coverage. ADR-0013 ("Offen") and {@code eval/baseline/README.md} record the
+   * consolidation decision: keep {@code category:crosslingual} (it names the property under test),
+   * drop {@code language:de} as a baseline/comparison group. The report still computes a {@code
+   * language:de} entry from the (unchanged) golden dataset — this constant lets {@link #compare}
+   * skip just that one redundant group instead of requiring a golden-dataset or harness change.
    *
-   * <p><b>Self-healing (PR #673 review):</b> {@link #compare} only skips {@code language:de} while
-   * the baseline actually lacks an entry for it. If a future baseline re-measurement legitimately
-   * reintroduces a {@code language:de} group (e.g. once the golden dataset gains German cases that
-   * are not simply {@code crosslingual}'s twins), the skip stops applying on its own and the group
-   * is compared like any other — it is never silently discarded once the baseline tracks it again.
+   * <p><b>Self-healing:</b> {@link #compare} only skips {@code language:de} while the baseline
+   * actually lacks an entry for it. If a future baseline re-measurement legitimately reintroduces a
+   * {@code language:de} group (e.g. once the golden dataset gains German cases that are not simply
+   * {@code crosslingual}'s twins), the skip stops applying on its own and the group is compared
+   * like any other — it is never silently discarded once the baseline tracks it again.
    */
   static final String REDUNDANT_LANGUAGE_GROUP = Baseline.language("de");
 
@@ -190,14 +187,14 @@ public final class BaselineComparator {
   static final double K_MIN = 2.0;
 
   /**
-   * Issue #306: for group/metric pairs whose mean tolerance is tighter than one case's worth of
-   * shift ({@code 1/n}), the case-count check (see class Javadoc) tolerates the success count
-   * dropping by at most this many cases — one flipped case is noise, two is a finding. Kept at 1,
-   * not {@link #K_MIN}'s 2: the case-count check already uses the *actual* per-case hit/miss
-   * outcome rather than the mean-tolerance formula's coarser case-based term, so it does not need
-   * the same margin to avoid the boundary-rounding failure mode {@link #K_MIN} was raised to 2 for
-   * (PR #301 review, {@code category:entity_description}) — an exact integer comparison has no
-   * floating-point boundary to begin with.
+   * For group/metric pairs whose mean tolerance is tighter than one case's worth of shift ({@code
+   * 1/n}), the case-count check (see class Javadoc) tolerates the success count dropping by at most
+   * this many cases — one flipped case is noise, two is a finding. Kept at 1, not {@link #K_MIN}'s
+   * 2: the case-count check already uses the *actual* per-case hit/miss outcome rather than the
+   * mean-tolerance formula's coarser case-based term, so it does not need the same margin to avoid
+   * the boundary-rounding failure mode {@link #K_MIN} was raised to 2 for ({@code
+   * category:entity_description}) — an exact integer comparison has no floating-point boundary to
+   * begin with.
    */
   static final int MAX_CASE_COUNT_DROP = 1;
 
@@ -216,10 +213,10 @@ public final class BaselineComparator {
    * triggers first. And because it scales with whatever baseline is currently committed, it tracks
    * a baseline down if that baseline itself erodes over several PRs, instead of anchoring against
    * that erosion — the opposite of what a "hard floor" is for. A fixed absolute floor alone has the
-   * opposite problem (it erodes to irrelevance as scores improve over time, per the original PR
-   * #301 review). Combining both via {@code max} gives each term the job it can actually do: the
-   * relative term still matters once a future baseline is measured much lower than today's, the
-   * absolute term is the anchor that does not move when the baseline file itself is changed.
+   * opposite problem (it erodes to irrelevance as scores improve over time). Combining both via
+   * {@code max} gives each term the job it can actually do: the relative term still matters once a
+   * future baseline is measured much lower than today's, the absolute term is the anchor that does
+   * not move when the baseline file itself is changed.
    */
   static final double HARD_FLOOR_FRACTION_OF_BASELINE = 0.8;
 
@@ -263,7 +260,7 @@ public final class BaselineComparator {
       boolean withinTolerance,
       double hardFloor,
       boolean passesHardFloor,
-      // Issue #306 (review Befund 1 — conjunction, not replacement): true when this pair's mean
+      // Conjunction, not replacement: true when this pair's mean
       // tolerance was tighter than one case's worth of shift (1/n) and the case-count check (see
       // BaselineComparator's class Javadoc) was *additionally* required, on top of the
       // mean-tolerance test. tolerance() above always holds the effective mean tolerance actually
@@ -310,12 +307,12 @@ public final class BaselineComparator {
   }
 
   /**
-   * A report measured against an external Ollama endpoint (issue #1076, {@code
-   * opaa.eval.ollamaBaseUrl}) is never baseline-comparable — CPU/GPU embedding kernels are not
-   * guaranteed bit-identical, analogous to the {@code -Dopaa.eval.allowGpu} opt-out. Called by
-   * every {@code *BaselineRegressionTest} before {@link #compare(Baseline, EvaluationReport)}, so a
-   * stray external run fails loudly instead of being silently compared as if it were a
-   * Testcontainer/CPU run.
+   * A report measured against an external Ollama endpoint ({@code opaa.eval.ollamaBaseUrl}) is
+   * never baseline-comparable — CPU/GPU embedding kernels are not guaranteed bit-identical,
+   * analogous to the {@code -Dopaa.eval.allowGpu} opt-out. Called by every {@code
+   * *BaselineRegressionTest} before {@link #compare(Baseline, EvaluationReport)}, so a stray
+   * external run fails loudly instead of being silently compared as if it were a Testcontainer/CPU
+   * run.
    */
   public static void requireBaselineComparable(EvaluationReport report) {
     if (report.runConfiguration().externalOllamaEndpoint()) {
@@ -358,14 +355,14 @@ public final class BaselineComparator {
           .forEach(
               (name, agg) -> {
                 String key = Baseline.language(name);
-                // Issue #304: language:de is the redundant twin of category:crosslingual (see
+                // Language:de is the redundant twin of category:crosslingual (see
                 // REDUNDANT_LANGUAGE_GROUP's Javadoc) and, today, has no baseline entry — skip it
                 // rather than comparing against a group the baseline deliberately no longer
-                // carries. Self-healing (PR #673 review): only skip while the baseline actually
-                // lacks the entry. Should a future baseline re-measurement add a genuine
-                // language:de group back (e.g. once the golden dataset gains German cases that are
-                // not simply the crosslingual twins), this check falls through to the normal
-                // comparison instead of silently discarding it.
+                // carries. Self-healing: only skip while the baseline actually lacks the entry.
+                // Should a future baseline re-measurement add a genuine language:de group back
+                // (e.g. once the golden dataset gains German cases that are not simply the
+                // crosslingual twins), this check falls through to the normal comparison instead
+                // of silently discarding it.
                 if (key.equals(REDUNDANT_LANGUAGE_GROUP) && !baseline.groups().containsKey(key)) {
                   return;
                 }
@@ -373,14 +370,14 @@ public final class BaselineComparator {
                 visitedGroups.add(key);
               });
 
-      // Symmetric check (PR #301 review): the loops above only ever notice a group the *report*
-      // has that the baseline lacks (via the throw in checkGroup). A report whose byCategory (or
+      // Symmetric check: the loops above only ever notice a group the *report* has that the
+      // baseline lacks (via the throw in checkGroup). A report whose byCategory (or
       // byDifficulty/byLanguage) map came back empty or partial — a harness bug, not a legitimate
       // measurement — would otherwise silently run only the four overall checks and pass. Since
       // group names come from golden-dataset content and the golden dataset's hash is itself a
       // fixed point checked above, a mismatch here is only possible via a bug, never a legitimate
       // corpus/dataset change — so it is a hard failure, not a tolerance case. language:de is
-      // deliberately excluded above (issue #304) and must not trip this check.
+      // deliberately excluded above and must not trip this check.
       Set<String> missingFromReport = new TreeSet<>(baseline.groups().keySet());
       missingFromReport.removeAll(visitedGroups);
       if (!missingFromReport.isEmpty()) {
@@ -412,8 +409,8 @@ public final class BaselineComparator {
     addIfDiffers(mismatches, "embeddingModel", fp.embeddingModel(), cfg.embeddingModel());
     addIfDiffers(
         mismatches, "embeddingModelDigest", fp.embeddingModelDigest(), cfg.embeddingModelDigest());
-    // Issue #1522: the same model digest served from a different Ollama - another container tag, or
-    // an external (possibly GPU-backed) endpoint - is not guaranteed to embed bit-identically.
+    // The same model digest served from a different Ollama - another container tag, or an external
+    // (possibly GPU-backed) endpoint - is not guaranteed to embed bit-identically.
     addIfDiffers(mismatches, "ollamaImage", fp.ollamaImage(), cfg.ollamaImage());
     addIfDiffers(mismatches, "ollamaCpuBackend", fp.ollamaCpuBackend(), cfg.ollamaCpuBackend());
     addIfDiffers(
@@ -443,8 +440,8 @@ public final class BaselineComparator {
     addIfDiffers(
         mismatches, "chunkTopK", String.valueOf(fp.chunkTopK()), String.valueOf(cfg.chunkTopK()));
     // ADR-0012, decision 3: searchTopK=10 and the deliberate omission of the production similarity
-    // threshold are both part of the measurement contract (PR #301 review, Befund 4) — a change to
-    // either would silently change what every metric means, not just how well retrieval scored.
+    // threshold are both part of the measurement contract — a change to either would silently
+    // change what every metric means, not just how well retrieval scored.
     addIfDiffers(
         mismatches,
         "searchTopK",
@@ -473,9 +470,9 @@ public final class BaselineComparator {
         "goldenCaseCount",
         String.valueOf(fp.goldenCaseCount()),
         String.valueOf(cfg.goldenCaseCount()));
-    // Issue #1144: a pipeline change (routing, or a version bump on a pipeline the corpus uses)
-    // moves the produced chunks without moving corpusManifestSha256 (which describes the input
-    // files, not what processed them) — see IngestionPipelineFingerprint's Javadoc.
+    // A pipeline change (routing, or a version bump on a pipeline the corpus uses) moves the
+    // produced chunks without moving corpusManifestSha256 (which describes the input files, not
+    // what processed them) — see IngestionPipelineFingerprint's Javadoc.
     addIfDiffers(
         mismatches,
         "ingestionPipelineFingerprint",
@@ -488,8 +485,8 @@ public final class BaselineComparator {
         "contextPrefixFingerprint",
         fp.contextPrefixFingerprint(),
         cfg.contextPrefixFingerprint());
-    // Issue #1070: the golden filters move the metadata_filter class's numbers; a run that did not
-    // apply them measures a different thing, not a worse one.
+    // The golden filters move the metadata_filter class's numbers; a run that did not apply them
+    // measures a different thing, not a worse one.
     addIfDiffers(
         mismatches,
         "metadataFilterEnabled",
@@ -571,10 +568,9 @@ public final class BaselineComparator {
         MetricsAggregate::hitCountAt10,
         base,
         current);
-    // Issue #913 review: allExpectedDocumentsHitAt10 ("Recall pro Teilthema") was measured but not
-    // guarded — losing one of two expected documents only drops recallAt10 to 0.5, still within
-    // tolerance. No hard floor (not one of ADR-0013's four overall metrics); hitCountAt10 is a
-    // valid
+    // allExpectedDocumentsHitAt10 ("Recall pro Teilthema") was measured but not guarded — losing
+    // one of two expected documents only drops recallAt10 to 0.5, still within tolerance. No hard
+    // floor (not one of ADR-0013's four overall metrics); hitCountAt10 is a valid
     // hit-count proxy here too, same reasoning as for mrr/ndcgAt10/recallAt10 above.
     addMetricCheck(
         checks,
@@ -624,9 +620,8 @@ public final class BaselineComparator {
    * a claim two implementations could drift apart on.
    *
    * @param baseN the baseline's own, frozen case count — used for both the {@code 1/n} switch
-   *     condition and the widened tolerance (issue #306 review, Befund 4): the baseline is what the
-   *     tolerance and "affected pair" status are defined against, and the two sides must not
-   *     silently mix.
+   *     condition and the widened tolerance: the baseline is what the tolerance and "affected pair"
+   *     status are defined against, and the two sides must not silently mix.
    * @param absoluteHardFloor {@code null} for a metric without a hard floor (every group other than
    *     {@code overall}, and {@code allExpectedDocumentsHit…} everywhere).
    */
@@ -644,16 +639,16 @@ public final class BaselineComparator {
     double delta = currentValue - baselineValue;
     double meanTolerance = toleranceFor(baselineValue, nEff);
     boolean caseBasedCheck = usesCaseBasedCheck(meanTolerance, baseN);
-    // Issue #306 review, Befund 1: the case-count check alone caught only *lost hits*, not a
-    // severe rank or partial-recall degradation that leaves hitCountAt5/hitCountAt10 unchanged
-    // (verified against this baseline's real per-case data: numeric_range's mrr can drop 75% —
-    // all four hits sliding from their current ranks to rank 10 — without losing a single hit).
-    // Replacing the mean-tolerance test outright therefore silently gave up the 25%-relative-cap
-    // protection for exactly the six affected pairs. Fix: a conjunction, not a replacement — both
-    // the case-count check *and* a mean check must pass, the latter with its tolerance widened to
-    // at least one case's worth of shift (1/n) so the original issue #306 scenario (one case
-    // moving rank with no lost hit) still passes, while a same-hit-count-but-worse-ranked or
-    // partial-recall regression like the mrr example above (Δ ≈ 0.076 > 1/16 ≈ 0.0625) is caught.
+    // The case-count check alone caught only *lost hits*, not a severe rank or partial-recall
+    // degradation that leaves hitCountAt5/hitCountAt10 unchanged (verified against this
+    // baseline's real per-case data: numeric_range's mrr can drop 75% — all four hits sliding
+    // from their current ranks to rank 10 — without losing a single hit). Replacing the
+    // mean-tolerance test outright therefore silently gave up the 25%-relative-cap protection for
+    // exactly the six affected pairs. Fix: a conjunction, not a replacement — both the case-count
+    // check *and* a mean check must pass, the latter with its tolerance widened to at least one
+    // case's worth of shift (1/n) so the original issue #306 scenario (one case moving rank with
+    // no lost hit) still passes, while a same-hit-count-but-worse-ranked or partial-recall
+    // regression like the mrr example above (Δ ≈ 0.076 > 1/16 ≈ 0.0625) is caught.
     double tolerance = caseBasedCheck ? Math.max(meanTolerance, 1.0 / baseN) : meanTolerance;
     boolean meanWithinTolerance = delta >= -tolerance - EPSILON;
     boolean withinTolerance;
@@ -693,15 +688,15 @@ public final class BaselineComparator {
   }
 
   /**
-   * Issue #306: whether {@code meanTolerance} is tighter than the shift one flipped case causes
-   * ({@code 1/n}) — the condition under which {@link #metricCheck} additionally requires the
-   * case-count test (see class Javadoc) to pass, on top of the (widened) mean-tolerance test.
-   * Deliberately computed from the *current* {@code toleranceFor(...)} result and a raw case count
-   * rather than a hardcoded pair list, so it self-adjusts to whichever pairs qualify under a future
-   * baseline re-measurement — see the class Javadoc. The case count passed in is always the
-   * baseline's own {@code n} (issue #306 review, Befund 4) — see the {@code baseN} parameter of
-   * {@link #metricCheck} — matching the "1/n" wording in ADR-0013's "Offen" section and README
-   * table: it is the raw case count the *baseline's* mean was actually divided by.
+   * Whether {@code meanTolerance} is tighter than the shift one flipped case causes ({@code 1/n}) —
+   * the condition under which {@link #metricCheck} additionally requires the case-count test (see
+   * class Javadoc) to pass, on top of the (widened) mean-tolerance test. Deliberately computed from
+   * the *current* {@code toleranceFor(...)} result and a raw case count rather than a hardcoded
+   * pair list, so it self-adjusts to whichever pairs qualify under a future baseline re-measurement
+   * — see the class Javadoc. The case count passed in is always the baseline's own {@code n} — see
+   * the {@code baseN} parameter of {@link #metricCheck} — matching the "1/n" wording in ADR-0013's
+   * "Offen" section and README table: it is the raw case count the *baseline's* mean was actually
+   * divided by.
    */
   static boolean usesCaseBasedCheck(double meanTolerance, int n) {
     return n > 0 && meanTolerance < (1.0 / n) - EPSILON;

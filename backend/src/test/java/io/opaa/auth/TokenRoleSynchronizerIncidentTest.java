@@ -21,10 +21,10 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.LoggerFactory;
 
 /**
- * The incident report of {@link TokenRoleSynchronizer} (#1830): a token that carried no usable
- * roles claim reaches neither the repository nor the last-administrator guard, and the cause is
- * named once per provider and cause per window - a provider whose role mapper is gone sends every
- * one of its accounts through here.
+ * The incident report of {@link TokenRoleSynchronizer}: a token that carried no usable roles claim
+ * reaches neither the repository nor the last-administrator guard, and the cause is named once per
+ * provider and cause per window - a provider whose role mapper is gone sends every one of its
+ * accounts through here.
  */
 class TokenRoleSynchronizerIncidentTest {
 

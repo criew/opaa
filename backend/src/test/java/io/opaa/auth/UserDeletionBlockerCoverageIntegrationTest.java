@@ -22,10 +22,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Holds {@link UserRepository#countDeletionBlockers} to the invariant its Javadoc states (#1589):
- * every foreign key that refuses to let a {@code users} row go on {@code DELETE} has a sub-query
- * there. A reference the query misses is caught only by the constraint itself, so the refusal
- * cannot name its reason in the log.
+ * Holds {@link UserRepository#countDeletionBlockers} to the invariant its Javadoc states: every
+ * foreign key that refuses to let a {@code users} row go on {@code DELETE} has a sub-query there. A
+ * reference the query misses is caught only by the constraint itself, so the refusal cannot name
+ * its reason in the log.
  *
  * <p>Both sides are read, never spelled out: the schema's side from {@code pg_catalog} of the live
  * Liquibase schema, the query's side from the {@link Query} annotation Spring Data actually

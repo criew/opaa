@@ -10,9 +10,8 @@ import org.springframework.core.env.Environment;
 
 /**
  * Verifies that the application context loads when chat and embedding point at different
- * openai-compatible base URLs - since #762 there is only one provider ({@code openai}), but chat
- * and embedding remain independently configurable functions (different endpoints, different
- * models).
+ * openai-compatible base URLs - there is only one provider ({@code openai}), but chat and embedding
+ * remain independently configurable functions (different endpoints, different models).
  *
  * <p>The embedding base URL is stated explicitly by this class's signature, different from the
  * canonical signature's, to prove the override actually takes effect. The address is never called -

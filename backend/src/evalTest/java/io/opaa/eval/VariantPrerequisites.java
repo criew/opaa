@@ -49,20 +49,20 @@ final class VariantPrerequisites {
   }
 
   /**
-   * The full set of prerequisites, including the one only an existing index can answer (issue
-   * #1049): a variant that runs the lexical path needs the measured library's full-text index to be
-   * complete: a chunk without a full-text row is invisible to that path, and a row of an older
-   * {@code content_tsv_version} lacks the lexemes the current one adds. Such a variant would
-   * measure a diminished lexical contribution under a name that promises the full hybrid one — and
-   * a Δ near zero against the vector-only reference would read as "the lexical path changes
-   * nothing", the strongest possible wrong conclusion this comparison could produce.
+   * The full set of prerequisites, including the one only an existing index can answer: a variant
+   * that runs the lexical path needs the measured library's full-text index to be complete: a chunk
+   * without a full-text row is invisible to that path, and a row of an older {@code
+   * content_tsv_version} lacks the lexemes the current one adds. Such a variant would measure a
+   * diminished lexical contribution under a name that promises the full hybrid one — and a Δ near
+   * zero against the vector-only reference would read as "the lexical path changes nothing", the
+   * strongest possible wrong conclusion this comparison could produce.
    *
-   * <p>Since issue #1050 it also covers the rerank role: a variant that <b>declares</b> a non-zero
-   * rerank candidate window needs a usable rerank model role, for exactly the same reason - it
-   * would otherwise measure the configuration without reranking under the name of the one with it.
-   * Deliberately the declared override, not the effective value: the shipped configuration carries
-   * a candidate window of 50 with the role switched off, and a variant that merely inherits it
-   * claims nothing about reranking.
+   * <p>It also covers the rerank role: a variant that <b>declares</b> a non-zero rerank candidate
+   * window needs a usable rerank model role, for exactly the same reason - it would otherwise
+   * measure the configuration without reranking under the name of the one with it. Deliberately the
+   * declared override, not the effective value: the shipped configuration carries a candidate
+   * window of 50 with the role switched off, and a variant that merely inherits it claims nothing
+   * about reranking.
    */
   static Optional<String> unmetReason(
       PipelineVariant variant,

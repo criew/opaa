@@ -219,7 +219,7 @@ class S3UploadedOriginalStoreTest {
   @Test
   void aForbiddenHeadIsNotThereNotUnavailable() throws IOException {
     // Without s3:ListBucket AWS answers a HeadObject on a missing key with 403 - which must stay
-    // the same "not there" as a 404, or "does not exist" becomes distinguishable again (#736).
+    // the same "not there" as a 404, or "does not exist" becomes distinguishable again.
     UploadedOriginalRef ref = storedOriginal("inhalt");
     server.failNextMatching("HEAD", "/" + BUCKET + "/", 403, "AccessDenied");
 
@@ -359,8 +359,8 @@ class S3UploadedOriginalStoreTest {
         .isInstanceOf(UploadStoreUnavailableException.class);
     assertThatThrownBy(() -> store.belongsToLibrary(ref))
         .isInstanceOf(UploadStoreUnavailableException.class);
-    // #1805: the write direction of the same outage answers the same way - not as a failure of
-    // the application itself, which is what an IOException out of here would become.
+    // The write direction of the same outage answers the same way - not as a failure of the
+    // application itself, which is what an IOException out of here would become.
     assertThatThrownBy(pending::store)
         .isInstanceOf(UploadStoreUnavailableException.class)
         .hasMessageContaining("nicht erreichbar");

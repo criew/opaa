@@ -150,8 +150,8 @@ class CapabilityResponseMapperTest {
   }
 
   /**
-   * Since #1814 the capability has a creation path outside the system administration, so its line
-   * reads like every other one - no capability is qualified any more.
+   * The capability has a creation path outside the system administration, so its line reads like
+   * every other one - no capability is qualified any more.
    */
   @Test
   void statesTheInternalGroupCapabilityWithoutAnyReservation() {

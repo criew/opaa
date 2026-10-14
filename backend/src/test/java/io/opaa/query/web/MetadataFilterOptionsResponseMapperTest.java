@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Pins every field {@link MetadataFilterOptionsResponseMapper} copies (#1070; #860 convention). */
+/** Pins every field {@link MetadataFilterOptionsResponseMapper} copies. */
 class MetadataFilterOptionsResponseMapperTest {
 
   @Test
@@ -56,8 +56,8 @@ class MetadataFilterOptionsResponseMapperTest {
   }
 
   /**
-   * #1242: a filterable format field reaches the response with the addresses occurring in the
-   * scope, and it is offered exactly when at least one document carries one.
+   * A filterable format field reaches the response with the addresses occurring in the scope, and
+   * it is offered exactly when at least one document carries one.
    */
   @Test
   void copiesTheFormatFieldOptionsAndTheirOfferState() {
@@ -88,7 +88,7 @@ class MetadataFilterOptionsResponseMapperTest {
     assertThat(field.getTotalDocuments()).isEqualTo(20);
     assertThat(field.getOffered()).isTrue();
     assertThat(field.getValues().getFirst().getCode()).isEqualTo("max@stadt.de");
-    // The value set of a format field is open, so the response says when it was capped (#1242).
+    // The value set of a format field is open, so the response says when it was capped.
     assertThat(field.getValuesCapped()).isTrue();
 
     MetadataFilterOptions withoutSenders =

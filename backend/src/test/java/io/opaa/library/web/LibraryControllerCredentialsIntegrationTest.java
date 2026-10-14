@@ -26,8 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * PR #489 review, Befund 6a: {@code sourceCredentials} must appear in no API response - not the
- * success path (already asserted at the object level by {@code
+ * {@code sourceCredentials} must appear in no API response - not the success path (already asserted
+ * at the object level by {@code
  * KnowledgeLibraryServiceIntegrationTest#createLibraryAcceptsAnHttpDirectorySourceTypeWithAUrlAndNeverReturnsCredentials}
  * via {@code LibraryResponse#toString}) and, just as important, not the failure path either - a
  * validation error or a database constraint rejecting the row could otherwise surface the submitted
@@ -37,9 +37,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * MockMvc, not a Java object's toString(), because only the raw body is what an actual HTTP client
  * - and therefore any log or proxy that captures it - ever sees.
  *
- * <p><b>Also carries {@code POST /api/v1/libraries/source-test}'s HTTP-layer coverage (#514, PR
- * #537 review).</b> That endpoint originally had its own {@code
- * LibraryControllerSourceTestIntegrationTest} class - byte-for-byte the same
+ * <p><b>Also carries {@code POST /api/v1/libraries/source-test}'s HTTP-layer coverage.</b> That
+ * endpoint originally had its own {@code LibraryControllerSourceTestIntegrationTest} class -
+ * byte-for-byte the same
  * {@code @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("dev") @Testcontainers} shape as
  * this class, including its own {@code @Container} Postgres instance. Two test classes with an
  * identical shape still do <em>not</em> share a cached Spring context when each declares its own
@@ -141,9 +141,9 @@ class LibraryControllerCredentialsIntegrationTest {
 
     String rawResponseBody = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
     assertThat(rawResponseBody).doesNotContain(SECRET);
-    // The exact JSON key, not a bare substring match: PR #542 added the sibling field
-    // sourceCredentialsSet (a non-secret yes/no, never the credential itself, issue #516/#542
-    // review nit 3), which legitimately contains "sourceCredentials" as a prefix.
+    // The exact JSON key, not a bare substring match: the sibling field sourceCredentialsSet (a
+    // non-secret yes/no, never the credential itself), which legitimately contains
+    // "sourceCredentials" as a prefix.
     assertThat(rawResponseBody).doesNotContain("\"sourceCredentials\":");
     assertThat(rawResponseBody).contains("\"sourceCredentialsSet\":true");
   }
@@ -399,13 +399,13 @@ class LibraryControllerCredentialsIntegrationTest {
     assertThat(rawResponseBody).doesNotContain(SECRET);
   }
 
-  // --- POST /api/v1/libraries/source-test (#514) -------------------------------------------
+  // --- POST /api/v1/libraries/source-test -------------------------------------------
   //
   // Wiring, authentication, and that a caller need not own or hold any role on an (as yet
   // nonexistent) library - the same CREATE_CONNECTOR_LIBRARY capability bar POST /api/v1/libraries
-  // itself applies for a connector sourceType (#1856), delivered to "Alle Konten" and therefore
-  // held by dev-user in these tests; {@link CapabilityEnforcementIntegrationTest} covers its
-  // withdrawal for this endpoint and the two selection endpoints. {@link
+  // itself applies for a connector sourceType, delivered to "Alle Konten" and therefore held by
+  // dev-user in these tests; {@link CapabilityEnforcementIntegrationTest} covers its withdrawal
+  // for this endpoint and the two selection endpoints. {@link
   // io.opaa.library.SourceConnectionTestServiceTest} already covers the per-quellentyp behaviour
   // in depth; these only pin the HTTP layer around it. See this class's own Javadoc for why they
   // live here rather than in a dedicated test class.
@@ -491,8 +491,8 @@ class LibraryControllerCredentialsIntegrationTest {
   //
   // spring.jpa.open-in-view=false (application.yml): every response mapper runs strictly
   // after the @Transactional(readOnly = true) service method that loaded the entities it maps has
-  // already returned, exactly the boundary PR #870's review found a LazyInitializationException
-  // across (SpaceResponseMapper reading a not-fetch-joined getMemberships() there). These three
+  // already returned, exactly the boundary a LazyInitializationException crosses (a mapper reading
+  // a not-fetch-joined getMemberships()). These three
   // list endpoints - one per mapper this PR/series adds - go through the real service and mapper
   // against a real, Testcontainers-backed database, not a mock: a mapper that touched a collection
   // Hibernate had not already loaded would surface here as a 500, not as a passing test with a
@@ -556,8 +556,8 @@ class LibraryControllerCredentialsIntegrationTest {
             .getResponse()
             .getContentAsString(StandardCharsets.UTF_8);
     String libraryId = JsonPath.read(createResponse, "$.id");
-    // #860 review, finding 5: an empty library never exercises the mapper's document/folder
-    // branches at all - a document and a root-level folder make $.items/$.folders non-empty so
+    // An empty library never exercises the mapper's document/folder branches at all - a
+    // document and a root-level folder make $.items/$.folders non-empty so
     // LibraryDocumentResponseMapper actually runs against loaded entities, not empty lists.
     mockMvc
         .perform(

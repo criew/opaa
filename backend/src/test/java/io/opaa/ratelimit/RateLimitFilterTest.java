@@ -175,7 +175,7 @@ class RateLimitFilterTest {
 
   @Test
   void keysTheWebhookLimiterByLibraryAndReturns429WhenExceeded() throws Exception {
-    // #1140: the intake is reachable without a session, so the limiter is what bounds the
+    // The intake is reachable without a session, so the limiter is what bounds the
     // signature checks a stranger can cause - per library, like the indexing trigger.
     UUID library = UUID.randomUUID();
     when(webhookLimiter.tryAcquire(anyString())).thenReturn(REJECTED);
@@ -396,9 +396,9 @@ class RateLimitFilterTest {
   }
 
   /**
-   * #1592: a rule whose endpoint is switched off is matched but not counted. A switched-off
-   * self-service flow is answered exactly like an unknown route, and an unknown route has no budget
-   * - counting it would answer 429 where the unknown route answers 401.
+   * A rule whose endpoint is switched off is matched but not counted. A switched-off self-service
+   * flow is answered exactly like an unknown route, and an unknown route has no budget - counting
+   * it would answer 429 where the unknown route answers 401.
    */
   @Test
   void aRuleWhoseEndpointIsNotServedIsMatchedButNotCounted() throws Exception {

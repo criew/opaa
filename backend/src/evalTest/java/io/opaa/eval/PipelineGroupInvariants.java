@@ -6,10 +6,10 @@ import java.util.Map;
 /**
  * The load-time guards every committed baseline of a {@link PipelineMetricsAggregate}-shaped group
  * map has to satisfy - shared by {@link PipelineBaseline} and {@link ConversationBaseline} rather
- * than copied into each (issue #1484): a hand-edited group whose {@code
- * distinctExpectedDocumentSets } or case counts are missing or wrong would otherwise silently widen
- * (or under-protect) that group's tolerance instead of failing loudly, and a second copy of these
- * five inequalities is how one of the two quietly stops checking one of them.
+ * than copied into each: a hand-edited group whose {@code distinctExpectedDocumentSets } or case
+ * counts are missing or wrong would otherwise silently widen (or under-protect) that group's
+ * tolerance instead of failing loudly, and a second copy of these five inequalities is how one of
+ * the two quietly stops checking one of them.
  *
  * <p>Same derivations as {@link Baseline}'s corresponding methods, at this window: {@code
  * hitCountAt20} takes {@code hitCountAt10}'s role, because the ranked list of a pipeline run never

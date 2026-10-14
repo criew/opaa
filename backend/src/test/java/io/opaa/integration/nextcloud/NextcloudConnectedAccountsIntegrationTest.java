@@ -27,10 +27,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
- * Connected accounts against a real Nextcloud (#2167): two persons each connect their own app
- * password on one profile for persons and run a private library; each holds only what her own
- * Nextcloud account sees, and neither sees the other's library. A revoked app password lets the
- * connection expire.
+ * Connected accounts against a real Nextcloud: two persons each connect their own app password on
+ * one profile for persons and run a private library; each holds only what her own Nextcloud account
+ * sees, and neither sees the other's library. A revoked app password lets the connection expire.
  */
 @OpaaIntegrationTest
 class NextcloudConnectedAccountsIntegrationTest {

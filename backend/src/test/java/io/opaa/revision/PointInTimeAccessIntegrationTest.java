@@ -43,9 +43,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The Stichtagsauskunft (#1822, ADR-0036 Entscheidung 8): the right answer for one named object,
- * still answerable after the group is gone; the window and the paging bounds that reject rather
- * than trim; the AUDITOR bar; and the entry every attempt leaves, the rejected one included.
+ * The Stichtagsauskunft (ADR-0036 Entscheidung 8): the right answer for one named object, still
+ * answerable after the group is gone; the window and the paging bounds that reject rather than
+ * trim; the AUDITOR bar; and the entry every attempt leaves, the rejected one included.
  */
 @OpaaIntegrationTest
 class PointInTimeAccessIntegrationTest {
@@ -168,8 +168,8 @@ class PointInTimeAccessIntegrationTest {
         foreignLibraryId,
         foreignOrganizationId,
         foreignOwnerId);
-    // #1931: Die Reichweite ist eine Freigabe - die fremde Bibliothek ist an alle Konten
-    // ihrer Organisation freigegeben, und genau das darf hier nicht sichtbar werden.
+    // Die Reichweite ist eine Freigabe - die fremde Bibliothek ist an alle Konten ihrer
+    // Organisation freigegeben, und genau das darf hier nicht sichtbar werden.
     jdbcTemplate.update(
         "INSERT INTO asset_grant_history (id, asset_type, asset_id, organization_id, subject_type,"
             + " role, cause, valid_from, created_at)"
@@ -306,8 +306,8 @@ class PointInTimeAccessIntegrationTest {
   }
 
   /**
-   * #1833: before the cutoff the intervals are deleted, so an empty answer there is "no longer on
-   * record" rather than "no access" - and the answer says which of the two it is.
+   * Before the cutoff the intervals are deleted, so an empty answer there is "no longer on record"
+   * rather than "no access" - and the answer says which of the two it is.
    */
   @Test
   void anAnswerAboutATimeBeforeTheRetentionCutoffSaysSo() {

@@ -427,8 +427,8 @@ class QueryControllerTest {
   }
 
   /**
-   * #1242: the Betreff is a display field of the Aufnahmestrecke - a filter naming it is refused,
-   * not silently dropped, and an unknown format field likewise.
+   * The Betreff is a display field of the Aufnahmestrecke - a filter naming it is refused, not
+   * silently dropped, and an unknown format field likewise.
    */
   @Test
   void aFilterOnANonFilterableFormatFieldIsRejectedWith400() throws Exception {

@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: connections-2026-10-04-connection-log
       author: opaa
-      comment: "The connection log (#2163, ADR-0041 Entscheidung 7): append-only, partitioned by month and owned by opaa_audit_owner like audit_log (ADR-0015); the application account keeps INSERT and SELECT. Its retention (6-24 months, 12 by default) is a singleton row, and the SECURITY DEFINER function below is the only deletion path."
+      comment: "The connection log (ADR-0041 Entscheidung 7): append-only, partitioned by month and owned by opaa_audit_owner like audit_log (ADR-0015); the application account keeps INSERT and SELECT. Its retention (6-24 months, 12 by default) is a singleton row, and the SECURITY DEFINER function below is the only deletion path."
       changes:
         - sql:
             splitStatements: false

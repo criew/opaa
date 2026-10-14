@@ -10,8 +10,8 @@ import org.slf4j.Logger;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The pipeline path's baseline verdict for one domain (issue #1040), shared by both domains' test
- * classes so the two stay one implementation rather than two copies that can drift.
+ * The pipeline path's baseline verdict for one domain, shared by both domains' test classes so the
+ * two stay one implementation rather than two copies that can drift.
  *
  * <p><b>Own verdict, own test class, own Gradle test — deliberately not folded into the raw-vector
  * path's baseline test.</b> The two paths are not interconvertible, so a single pass/fail bit over

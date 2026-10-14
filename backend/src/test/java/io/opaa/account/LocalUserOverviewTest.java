@@ -27,9 +27,9 @@ class LocalUserOverviewTest {
   }
 
   /**
-   * The one rule behind the review filter (#1641): both account lists read it here, and the
-   * bootstrap account - exempt from the inactivity lock, so no candidate for a lock or a deletion -
-   * is never a match, however long it has been resting.
+   * The one rule behind the review filter: both account lists read it here, and the bootstrap
+   * account - exempt from the inactivity lock, so no candidate for a lock or a deletion - is never
+   * a match, however long it has been resting.
    */
   @Test
   void anAccountCountsAsInactiveUnlessItIsActiveOrTheBootstrapAccount() {

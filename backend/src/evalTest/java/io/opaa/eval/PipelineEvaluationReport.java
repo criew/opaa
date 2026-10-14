@@ -34,7 +34,7 @@ public record PipelineEvaluationReport(
     MetadataFilterAudit.Result metadataFilterAudit,
     List<PipelineQueryResult> worstQueries,
     List<PipelineQueryResult> allQueryResults,
-    // Issue #1151: how close to the window edge each group's solved cases sit — report-only, see
+    // How close to the window edge each group's solved cases sit — report-only, see
     // MarginAggregate's Javadoc for why this is deliberately not part of
     // pipelineMeasurementContractVersion or PipelineBaseline.
     MarginAggregate overallMargins,
@@ -68,17 +68,17 @@ public record PipelineEvaluationReport(
    * point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why {@code
    * corpusManifestSha256} alone did not already cover it.
    *
-   * <p>Version 5 (issue #1164, PR #1201 review): {@code MailDocumentFormat#version()} moved 2 → 3
-   * (mail_date truncated to whole seconds for lexicographic sortability), which shifted every
-   * committed baseline's {@code ingestionPipelineFingerprint} even though no corpus in this
-   * repository routes a document through that pipeline - the fingerprint is a collective fixed
-   * point over every registered pipeline, not only the ones a given corpus actually reaches.
+   * <p>Version 5: {@code MailDocumentFormat#version()} moved 2 → 3 (mail_date truncated to whole
+   * seconds for lexicographic sortability), which shifted every committed baseline's {@code
+   * ingestionPipelineFingerprint} even though no corpus in this repository routes a document
+   * through that pipeline - the fingerprint is a collective fixed point over every registered
+   * pipeline, not only the ones a given corpus actually reaches.
    *
-   * <p>Version 6 (issue #1183, ADR-0022): {@code MailDocumentFormat#version()} moved 3 → 4 (an
-   * attachment is now a separate, generalized-attachment-path {@code Document} instead of a chunk
-   * nested under its Mail parent) - same collective-fingerprint reasoning as version 5 above.
+   * <p>Version 6 (ADR-0022): {@code MailDocumentFormat#version()} moved 3 → 4 (an attachment is now
+   * a separate, generalized-attachment-path {@code Document} instead of a chunk nested under its
+   * Mail parent) - same collective-fingerprint reasoning as version 5 above.
    *
-   * <p>Version 7 (issue #1270): the fixed point {@code fullTextBackfillComplete} is named {@code
+   * <p>Version 7: the fixed point {@code fullTextBackfillComplete} is named {@code
    * fullTextIndexComplete}. The full-text backfill and its per-library gate are gone; what is
    * measured is unchanged - whether the measured library's full-text index was complete - so this
    * is a pure fixed-point rename, no re-measurement (see eval/baseline/README.md).
@@ -90,12 +90,12 @@ public record PipelineEvaluationReport(
    * selection of the {@code metadata_filter} class, and the {@code verwaltung} baseline was
    * re-drawn.
    *
-   * <p>Version 11 (issue #1357): {@code HtmlDocumentFormat#version()} moved 2 → 3 and {@code
+   * <p>Version 11: {@code HtmlDocumentFormat#version()} moved 2 → 3 and {@code
    * ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child keeps
    * its marker) - fingerprint-only, same collective-fingerprint reasoning as versions 5 and 6
    * above; no corpus in this repository routes a document through either pipeline.
    *
-   * <p>Version 12 (issue #1429): the fixed point {@code fullTextIndexComplete} is named {@code
+   * <p>Version 12: the fixed point {@code fullTextIndexComplete} is named {@code
    * fullTextIndexUpToDate} and its definition narrows. "Complete" covered two states, one of which
    * no longer exists: a chunk's full-text row is written in the same transaction as its vector row,
    * so only the row's {@code content_tsv_version} can lag behind. What the fixed point now records
@@ -104,40 +104,38 @@ public record PipelineEvaluationReport(
    * moves; on a freshly indexed eval corpus the value stays {@code true}, so no baseline is
    * re-measured (see eval/baseline/README.md).
    *
-   * <p>Version 13 (issue #1522): {@code ollamaImage} became a checked fixed point on this path too,
-   * so a committed baseline states which Ollama produced its vectors instead of leaving that to the
+   * <p>Version 13: {@code ollamaImage} became a checked fixed point on this path too, so a
+   * committed baseline states which Ollama produced its vectors instead of leaving that to the
    * {@code notes}. No measured value moves - the committed baselines record the pinned container
    * they were already measured with (ADR-0012, Entscheidung 68).
    *
-   * <p>Version 14 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point on this path
-   * too (ADR-0012, Entscheidung 54).
+   * <p>Version 14: {@code ollamaCpuBackend} became a checked fixed point on this path too
+   * (ADR-0012, Entscheidung 54).
    *
-   * <p>Version 15 (issue #1650): {@code contextPrefixFingerprint} became a checked fixed point on
-   * this path too (ADR-0012, Entscheidung 57).
+   * <p>Version 15: {@code contextPrefixFingerprint} became a checked fixed point on this path too
+   * (ADR-0012, Entscheidung 57).
    *
-   * <p>Version 16 (issue #2033): {@code PdfDocumentFormat#version()} moved 1 → 2 (ruled tables
-   * written one line per row) - fingerprint-only, same collective-fingerprint reasoning as versions
-   * 5 and 6 above; no corpus in this repository routes a document through that pipeline.
+   * <p>Version 16: {@code PdfDocumentFormat#version()} moved 1 → 2 (ruled tables written one line
+   * per row) - fingerprint-only, same collective-fingerprint reasoning as versions 5 and 6 above;
+   * no corpus in this repository routes a document through that pipeline.
    *
-   * <p>Version 17 (issue #2330): {@code PdfDocumentFormat#version()} moved 2 → 3 (raised sentence
-   * numbers separated from the following text) - fingerprint-only, as version 16.
+   * <p>Version 17: {@code PdfDocumentFormat#version()} moved 2 → 3 (raised sentence numbers
+   * separated from the following text) - fingerprint-only, as version 16.
    *
-   * <p>Version 18 (issues #2327/#2328): the chunking of oversized sections (split instead of
-   * truncated at 20,000 characters, pages, slides and row groups cut to the 4,000-character target)
-   * moved pdf 3 -> 4, docx, pptx, odt, odp, tabular, markdown, html and confluence -
-   * fingerprint-only, no block of any corpus document reaches 4,000 characters, so no measured
-   * chunk changes.
+   * <p>Version 18: the chunking of oversized sections (split instead of truncated at 20,000
+   * characters, pages, slides and row groups cut to the 4,000-character target) moved pdf 3 -> 4,
+   * docx, pptx, odt, odp, tabular, markdown, html and confluence - fingerprint-only, no block of
+   * any corpus document reaches 4,000 characters, so no measured chunk changes.
    *
-   * <p>Version 19 (issue #2331): runs of sections below 200 characters are combined under their
-   * common heading, row groups of very wide tables keep half the target size - nine format versions
-   * moved; fingerprint-only, every corpus chunk stays byte-identical.
+   * <p>Version 19: runs of sections below 200 characters are combined under their common heading,
+   * row groups of very wide tables keep half the target size - nine format versions moved;
+   * fingerprint-only, every corpus chunk stays byte-identical.
    *
-   * <p>Version 20 (issue #2373): the production top-k rose from 8 to 20, and with it this path's
-   * ranking window and every component name (MRR@20, nDCG@20, Recall@20). Re-measured.
+   * <p>Version 20: the production top-k rose from 8 to 20, and with it this path's ranking window
+   * and every component name (MRR@20, nDCG@20, Recall@20). Re-measured.
    *
-   * <p>Version 21 (issue #2386): {@code opaa.query.fusion.*} and {@code
-   * opaa.query.relevance-cutoff.*} became checked fixed points ({@link FusionSettings}, {@link
-   * RelevanceCutoffSettings}). Re-measured.
+   * <p>Version 21: {@code opaa.query.fusion.*} and {@code opaa.query.relevance-cutoff.*} became
+   * checked fixed points ({@link FusionSettings}, {@link RelevanceCutoffSettings}). Re-measured.
    */
   public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 21;
 
@@ -183,9 +181,9 @@ public record PipelineEvaluationReport(
    *     opaa.query.similarity-threshold} is a property of vector distance and has no counterpart in
    *     the lexical path.
    * @param fullTextSearchEnabled whether the lexical search path contributed its ranked lists to
-   *     the fusion in this run (issue #1049). A measured dimension since that path moves the
-   *     selection — a {@code vector-only} run would otherwise be indistinguishable from a hybrid
-   *     one here and its numbers would be judged against the committed baseline as a code change.
+   *     the fusion in this run. A measured dimension since that path moves the selection — a {@code
+   *     vector-only} run would otherwise be indistinguishable from a hybrid one here and its
+   *     numbers would be judged against the committed baseline as a code change.
    * @param fullTextIndexUpToDate whether the measured library's full-text index sat at the current
    *     {@code content_tsv_version} for every one of its chunks, i.e. whether the lexical path
    *     could contribute its full share - a row of another version lacks the current lexemes.
@@ -202,8 +200,7 @@ public record PipelineEvaluationReport(
       String embeddingModel,
       String embeddingModelDigest,
       String ollamaImage,
-      // Issue #1652: the ggml CPU variant verified by EvalOllamaCpuBackend, null for an external
-      // endpoint.
+      // The ggml CPU variant verified by EvalOllamaCpuBackend, null for an external endpoint.
       String ollamaCpuBackend,
       int embeddingDimensions,
       int chunkSize,
@@ -230,9 +227,9 @@ public record PipelineEvaluationReport(
       String goldenDatasetFile,
       String goldenDatasetSha256,
       int goldenCaseCount,
-      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
-      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
-      // Javadoc for why corpusManifestSha256 alone does not answer that question.
+      // Under which ingestion pipeline versions (all registered, not just the ones this corpus
+      // routes through) this was measured — see IngestionPipelineFingerprint's Javadoc for why
+      // corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint,
       // The form of the Kontextpräfix the corpus was embedded with, see
       // ContextPrefixFingerprint.
@@ -245,8 +242,8 @@ public record PipelineEvaluationReport(
       String searchScopeNote,
       String runStartedAt,
       double runDurationSeconds,
-      // Issue #1076: true when this run's underlying index/queries talked to an external Ollama
-      // endpoint (opaa.eval.ollamaBaseUrl) instead of the Testcontainer — see
+      // True when this run's underlying index/queries talked to an external Ollama endpoint
+      // (opaa.eval.ollamaBaseUrl) instead of the Testcontainer — see
       // EvaluationReport.RunConfiguration#externalOllamaEndpoint, which the raw-vector path already
       // carries; the pipeline path shares the same run and is therefore equally not
       // baseline-comparable.
@@ -296,8 +293,8 @@ public record PipelineEvaluationReport(
       double ndcgAt20,
       double recallAt20,
       double allExpectedDocumentsHitAt20,
-      // Issue #1151: the margin (RetrievalMetrics#marginAtK) this case's first relevant hit had
-      // against each window; null when no expected document appears anywhere in rankedFileNames.
+      // The margin (RetrievalMetrics#marginAtK) this case's first relevant hit had against each
+      // window; null when no expected document appears anywhere in rankedFileNames.
       Integer hitRateMargin,
       Integer rankingMargin,
       int chunksReturned,

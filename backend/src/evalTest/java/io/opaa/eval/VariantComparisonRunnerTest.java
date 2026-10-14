@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Docker-free unit tests for {@link VariantComparisonRunner#delta}, the paired per-case and
- * aggregated delta computation at the heart of the variant mechanism (issue #1041). {@link
+ * aggregated delta computation at the heart of the variant mechanism. {@link
  * VariantComparisonRunner#run} itself needs a real {@code RetrievalPipeline} via {@link
  * VariantRunner} and is exercised end to end only by the Docker-requiring {@code
  * RetrievalEvaluationHarnessTest}.
@@ -147,10 +147,10 @@ class VariantComparisonRunnerTest {
   }
 
   /**
-   * Issue #1041 review, Befund 7: a variant that (through a bug elsewhere, since {@link
-   * VariantRunner} always passes the same golden cases to every variant) evaluated a case the
-   * reference variant never saw must fail loudly — "gepaarte Messung" is the mechanism's whole
-   * premise, and silently skipping the stray case would hide exactly that breakage.
+   * A variant that (through a bug elsewhere, since {@link VariantRunner} always passes the same
+   * golden cases to every variant) evaluated a case the reference variant never saw must fail
+   * loudly — "gepaarte Messung" is the mechanism's whole premise, and silently skipping the stray
+   * case would hide exactly that breakage.
    */
   @Test
   void aCaseMissingFromTheReferenceFailsLoudly() {

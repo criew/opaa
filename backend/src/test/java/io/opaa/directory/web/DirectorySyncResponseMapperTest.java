@@ -99,8 +99,8 @@ class DirectorySyncResponseMapperTest {
   }
 
   /**
-   * #1817: a department that only holds subgroups arrives as a zero here - the number an operator
-   * decides on before applying, not one the mapper may drop.
+   * A department that only holds subgroups arrives as a zero here - the number an operator decides
+   * on before applying, not one the mapper may drop.
    */
   @Test
   void toGroupChangeCarriesAMemberCountOfZero() {

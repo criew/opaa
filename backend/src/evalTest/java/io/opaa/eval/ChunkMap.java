@@ -6,12 +6,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Builds the per-document chunk map the harness writes as a run artifact (issue #721): for a given
- * document, which chunks it split into, at which character positions, and which chunk (if any)
- * every applicable golden case's {@code answer_span} landed in. Nebenprodukt (byproduct) of a run,
- * not a generator assumption — computed from the real chunk texts the production {@code
- * ChunkingService} produced, never from a token count re-implemented here (ADR-0010's "der
- * Python-Generator zählt bewusst keine Tokens").
+ * Builds the per-document chunk map the harness writes as a run artifact: for a given document,
+ * which chunks it split into, at which character positions, and which chunk (if any) every
+ * applicable golden case's {@code answer_span} landed in. Nebenprodukt (byproduct) of a run, not a
+ * generator assumption — computed from the real chunk texts the production {@code ChunkingService}
+ * produced, never from a token count re-implemented here (ADR-0010's "der Python-Generator zählt
+ * bewusst keine Tokens").
  *
  * <p>Pure and Docker-free: takes the document's full text and its already-produced chunk texts (the
  * harness reads both from the real, production-configured pipeline — see {@code

@@ -8,8 +8,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The display layer of {@code search} (#1766): the excerpt around the found place and the summary
- * per document. Both decide what a foreign model pays for out of its context window.
+ * The display layer of {@code search}: the excerpt around the found place and the summary per
+ * document. Both decide what a foreign model pays for out of its context window.
  */
 class McpHitDigestTest {
 

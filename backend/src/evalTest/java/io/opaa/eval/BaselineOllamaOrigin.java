@@ -3,9 +3,9 @@ package io.opaa.eval;
 import java.nio.file.Path;
 
 /**
- * The load-time guard on the {@code ollamaImage} fixed point of every baseline type (issue #1522):
- * a file drawn from a run against an external Ollama endpoint is refused instead of becoming a
- * comparison point at all.
+ * The load-time guard on the {@code ollamaImage} fixed point of every baseline type: a file drawn
+ * from a run against an external Ollama endpoint is refused instead of becoming a comparison point
+ * at all.
  *
  * <p>This is a statement about the <b>file</b>, not about any later run. {@code
  * requireBaselineComparable} already stops an external <i>report</i> before it reaches a comparison

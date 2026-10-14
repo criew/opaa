@@ -48,10 +48,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * could not actually prove the {@link GroupService#deleteGroup} guard against {@code
  * fk_knowledge_libraries_owner_group_organization}: without the guard it failed with "expected a
  * throwable to be thrown" instead of the real foreign-key violation the guard exists to turn into a
- * clean 409 (see #200/#201/#305). {@code groups.organization_id} and {@code users.organization_id}
- * are also real, RESTRICT foreign keys to {@code organizations}, so every test below creates real
- * {@link Organization} rows instead of bare random UUIDs, mirroring {@code
- * SpaceServiceIntegrationTest} and {@code UserServicePersonalSpaceIntegrationTest} (#288).
+ * clean 409. {@code groups.organization_id} and {@code users.organization_id} are also real,
+ * RESTRICT foreign keys to {@code organizations}, so every test below creates real {@link
+ * Organization} rows instead of bare random UUIDs, mirroring {@code SpaceServiceIntegrationTest}
+ * and {@code UserServicePersonalSpaceIntegrationTest}.
  *
  * <p>Unlike the narrower JPA test slice this class used to be, plain {@code @SpringBootTest} test
  * methods are not wrapped in their own rollback transaction, so every {@code GroupService} call
@@ -66,7 +66,7 @@ class GroupServiceIntegrationTest {
   @Autowired private GroupRepository groupRepository;
   @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
 
-  /** Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind). */
+  /** Every ORG_UNIT group carries its provider (chk_groups_provider_kind). */
   private UUID directoryProviderId;
 
   @Autowired private GroupMembershipRepository membershipRepository;
@@ -97,7 +97,7 @@ class GroupServiceIntegrationTest {
   void tearDown() {
     // Shared @SpringBootTest context (see the class Javadoc): only clean up this test's own rows,
     // scoped by the two organizations it created, never a blanket deleteAll() - mirrors
-    // SpaceServiceIntegrationTest#tearDown and AuditEventRecordingIntegrationTest#tearDown (#305).
+    // SpaceServiceIntegrationTest#tearDown and AuditEventRecordingIntegrationTest#tearDown.
     grantRepository.deleteAll(
         grantRepository.findAll().stream()
             .filter(
@@ -112,9 +112,9 @@ class GroupServiceIntegrationTest {
                     l.getOrganizationId().equals(organizationA)
                         || l.getOrganizationId().equals(organizationB))
             .toList());
-    // #238: group_membership_history.user_id is ON DELETE RESTRICT - deleteGroup
-    // writes one row per removed member before the group itself is deleted, so those rows must be
-    // purged before the users below can go.
+    // group_membership_history.user_id is ON DELETE RESTRICT - deleteGroup writes one row per
+    // removed member before the group itself is deleted, so those rows must be purged before the
+    // users below can go.
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
     groupRepository.deleteAll(
         groupRepository.findAll().stream()
@@ -124,9 +124,9 @@ class GroupServiceIntegrationTest {
                         || g.getOrganizationId().equals(organizationB))
             .toList());
     userRepository.deleteAllById(createdUserIds);
-    // #392: GroupService writes real audit_log rows now that this class runs against the real
-    // schema - audit_log is insert-only at the application layer and fk_audit_log_organization is
-    // ON DELETE RESTRICT, so these must be purged via JdbcTemplate before the
+    // GroupService writes real audit_log rows now that this class runs against the real schema -
+    // audit_log is insert-only at the application layer and fk_audit_log_organization is ON
+    // DELETE RESTRICT, so these must be purged via JdbcTemplate before the
     // organizations below can go, exactly like AuditEventRecordingIntegrationTest#tearDown.
     jdbcTemplate.update(
         "DELETE FROM audit_log WHERE organization_id IN (?, ?)", organizationA, organizationB);
@@ -149,9 +149,9 @@ class GroupServiceIntegrationTest {
 
   /**
    * A system administrator, which is what every maintenance call below needs: the right to maintain
-   * a group is decided per group since #1814, and these fixtures create their groups through the
-   * repository, so none of them has a steward. Creating an internal group needs
-   * CREATE_INTERNAL_GROUP on top, which a SYSTEM_ADMIN holds implicitly (#1813).
+   * a group is decided per group, and these fixtures create their groups through the repository, so
+   * none of them has a steward. Creating an internal group needs CREATE_INTERNAL_GROUP on top,
+   * which a SYSTEM_ADMIN holds implicitly.
    */
   private UUID createAdmin(UUID organizationId) {
     User user =
@@ -238,12 +238,12 @@ class GroupServiceIntegrationTest {
 
   @Test
   void cannotDeleteAGroupThatStillOwnsALibrary() {
-    // #201/#305 code review, #308: deleting a group that still owns an asset must be blocked with
+    // Deleting a group that still owns an asset must be blocked with
     // a clean 409, not surface fk_knowledge_libraries_owner_group_organization as an unhandled
     // DataIntegrityViolationException (500). This is exactly the check the class Javadoc and
     // #200's acceptance criteria describe. Proving it requires the real, versioned Liquibase
     // schema - see the class Javadoc for why the previous Hibernate-generated schema could not
-    // exercise this at all (#308).
+    // exercise this at all.
     UUID admin = createAdmin(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     Group saved = groupRepository.save(group);
@@ -264,9 +264,9 @@ class GroupServiceIntegrationTest {
 
   @Test
   void cannotDeleteAGroupThatStillHoldsAGrantOnALibraryItDoesNotOwn() {
-    // #202 code review (blocker 2): "an Abteilung 5 freigeben" (feature spec's
-    // "Freigabestufen und Auffindbarkeit") is a grant TO the group, not ownership BY it - the
-    // everyday case, not the edge case. fk_asset_grants_subject_group_organization (migration
+    // "an Abteilung 5 freigeben" (feature spec's "Freigabestufen und Auffindbarkeit") is a
+    // grant TO the group, not ownership BY it - the everyday case, not the edge case.
+    // fk_asset_grants_subject_group_organization (migration
     // 013) is RESTRICT exactly like fk_knowledge_libraries_owner_group_organization, so without
     // GroupService#deleteGroup's second, independent check, this must fail with an unhandled
     // DataIntegrityViolationException (500) instead of a clean 409.
@@ -422,9 +422,9 @@ class GroupServiceIntegrationTest {
 
   @Test
   void listMyGroupsExcludesADissolvedGroupEvenThoughItsMembershipStaysFrozen() {
-    // #437 re-review, finding B: a dissolved group keeps its membership frozen rather than
-    // cleared (see Group#isDissolved()'s Javadoc), so it would otherwise still surface here and
-    // become pickable as a library owner for a group that no longer organisationally exists.
+    // A dissolved group keeps its membership frozen rather than cleared (see
+    // Group#isDissolved()'s Javadoc), so it would otherwise still surface here and become
+    // pickable as a library owner for a group that no longer organisationally exists.
     UUID member = createUser(organizationA);
     Group group = new Group(organizationA, GroupKind.AD_HOC, "Team", null, null, null, null, null);
     group.addMembership(new GroupMembership(member, organizationA));
@@ -439,9 +439,9 @@ class GroupServiceIntegrationTest {
 
   @Test
   void aMembershipRowCanNeverCrossAnOrganizationBoundaryAtTheDatabaseLevel() {
-    // #308: this test used to construct a cross-organization membership row directly against the
+    // This test used to construct a cross-organization membership row directly against the
     // repository (bypassing addMember's requireUserInOrganization check) to prove listMyGroups'
-    // own filter as a second, independent defense line - see #199/PR #305's review. Against the
+    // own filter as a second, independent defense line. Against the
     // real Liquibase schema, fk_group_memberships_user_organization (a composite key
     // on user_id, organization_id) now rejects such a row outright: organization_id can no longer
     // diverge from the member's actual organization at all, so there is nothing left for
@@ -492,12 +492,11 @@ class GroupServiceIntegrationTest {
   }
 
   /**
-   * Reproduces the race the review of PR #283 raised: {@code removeMember} runs inside an open,
-   * not-yet-committed transaction; a concurrent reader on a separate connection reads the
-   * membership in that window. Under {@code READ COMMITTED}, that reader cannot see the deletion
-   * until the transaction commits, so it (correctly, given the timing) repopulates the cache with
-   * the still-current, soon-to-be-stale membership. What matters is what happens to that entry
-   * afterwards.
+   * Reproduces a race: {@code removeMember} runs inside an open, not-yet-committed transaction; a
+   * concurrent reader on a separate connection reads the membership in that window. Under {@code
+   * READ COMMITTED}, that reader cannot see the deletion until the transaction commits, so it
+   * (correctly, given the timing) repopulates the cache with the still-current, soon-to-be-stale
+   * membership. What matters is what happens to that entry afterwards.
    *
    * <p>With invalidation deferred to {@code afterCompletion} (the fix), the entry the reader wrote
    * is evicted right after the transaction commits, so the assertion below passes. With inline

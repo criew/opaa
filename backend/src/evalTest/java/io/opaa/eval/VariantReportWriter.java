@@ -10,8 +10,8 @@ import java.util.Locale;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Writes the {@link VariantReport} as JSON and as a human-readable summary (issue #1041). Never
- * committed — see eval/README.md, "Der Bericht ist ein Artefakt, keine Baseline".
+ * Writes the {@link VariantReport} as JSON and as a human-readable summary. Never committed — see
+ * eval/README.md, "Der Bericht ist ein Artefakt, keine Baseline".
  */
 public final class VariantReportWriter {
 
@@ -34,9 +34,9 @@ public final class VariantReportWriter {
     sb.append(format("%s\n", report.comparisonDescription()));
     sb.append(format("Referenzvariante: %s\n\n", report.referenceVariant()));
 
-    // Column width sized to the actual variant names in this report (issue #1041 review, Befund
-    // 10) rather than a fixed guess: a name longer than a fixed width would not misalign the
-    // columns of every *other* row the way a too-narrow fixed width otherwise would.
+    // Column width sized to the actual variant names in this report rather than a fixed guess:
+    // a name longer than a fixed width would not misalign the columns of every *other* row the
+    // way a too-narrow fixed width otherwise would.
     int nameWidth =
         report.outcomes().stream().mapToInt(o -> o.variant().name().length()).max().orElse(0) + 2;
 
@@ -141,8 +141,8 @@ public final class VariantReportWriter {
   /**
    * Lists a variant's effectively changed parameters, or states there are none — a Δ0.000 line for
    * a variant with no listed parameter is then indistinguishable from one whose override happened
-   * to have no measurable effect (issue #1041 review, Befund 5), which the reader must be able to
-   * tell apart without opening the JSON report.
+   * to have no measurable effect, which the reader must be able to tell apart without opening the
+   * JSON report.
    */
   private static String describeOverrides(PipelineVariant.QueryOverrides overrides) {
     List<String> parts = new ArrayList<>();

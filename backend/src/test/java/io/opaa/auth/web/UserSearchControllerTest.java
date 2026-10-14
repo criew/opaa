@@ -25,10 +25,10 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * {@code GET /api/v1/users} carries no {@code @PreAuthorize}, unlike {@code
- * AdminController#listUsers}'s {@code GET /api/v1/admin/users} (#777). This test exercises the
- * actual endpoint with a plain {@code ROLE_USER} authority (no {@code SYSTEM_ADMIN}) - the same way
- * {@code MeControllerTest#myGroupsSucceedsForARegularUserWithoutTheSystemAdminRole} proves {@code
- * GET /api/v1/me/groups} is reachable for a regular user - so that adding a {@code SYSTEM_ADMIN}
+ * AdminController#listUsers}'s {@code GET /api/v1/admin/users}. This test exercises the actual
+ * endpoint with a plain {@code ROLE_USER} authority (no {@code SYSTEM_ADMIN}) - the same way {@code
+ * MeControllerTest#myGroupsSucceedsForARegularUserWithoutTheSystemAdminRole} proves {@code GET
+ * /api/v1/me/groups} is reachable for a regular user - so that adding a {@code SYSTEM_ADMIN}
  * restriction back to {@link UserSearchController#listUsers} would fail it. Before this endpoint
  * existed, every member/grant picker in the frontend called the admin-only list and silently
  * rendered an empty, dead search field for exactly this caller.
@@ -103,7 +103,7 @@ class UserSearchControllerTest {
         .andExpect(jsonPath("$[0].systemRole").doesNotExist());
   }
 
-  // #778 review, finding 4: the controller passes the raw query parameter straight through to
+  // The controller passes the raw query parameter straight through to
   // UserService#searchInOrganization, which owns the minimum-length/empty-query behaviour - this
   // just proves the controller does not short-circuit or default it itself.
   @Test

@@ -277,7 +277,7 @@ class PdfDocumentFormatTest {
 
   /**
    * The closing provisions of a Satzung sit on its first page but far below its head block, and the
-   * whole first page is therefore the head text both paths hand over (#1360).
+   * whole first page is therefore the head text both paths hand over.
    */
   @Test
   void theFirstPageIsTheHeadTextOnBothPaths() throws IOException {

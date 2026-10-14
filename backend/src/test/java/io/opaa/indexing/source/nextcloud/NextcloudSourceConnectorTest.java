@@ -136,7 +136,7 @@ class NextcloudSourceConnectorTest {
     assertThat(refused.message()).contains("401");
   }
 
-  /** One sign-in for both owners: a library's app password and a person's own (#2167). */
+  /** One sign-in for both owners: a library's app password and a person's own. */
   @Test
   void anAppPasswordSignsInForALibraryAndForAPerson() {
     SignIn signIn =

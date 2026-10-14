@@ -19,9 +19,9 @@ import tools.jackson.databind.json.JsonMapper;
  * force-pushed upstream, so the digest Ollama reports for the pulled model is pinned and checked as
  * well.
  *
- * <p>Model-agnostic since issue #1085: the embedding model and the chat model the decomposition
- * path needs are provisioned through this same class, so both are pinned the same way rather than
- * through two implementations that can drift.
+ * <p>Model-agnostic: the embedding model and the chat model the decomposition path needs are
+ * provisioned through this same class, so both are pinned the same way rather than through two
+ * implementations that can drift.
  */
 final class EvalOllamaModel {
 
@@ -46,9 +46,8 @@ final class EvalOllamaModel {
    * the {@code pgvector/pgvector} and {@code ollama/ollama} base images from Docker Hub regardless.
    *
    * @param container the Ollama Testcontainer, or {@code null} when {@link
-   *     EvalOllamaEndpoint#isExternal()} selects an already-running endpoint (issue #1076) — the
-   *     pull then goes through {@code POST /api/pull} instead of {@code ollama pull} in a
-   *     container.
+   *     EvalOllamaEndpoint#isExternal()} selects an already-running endpoint — the pull then goes
+   *     through {@code POST /api/pull} instead of {@code ollama pull} in a container.
    */
   static String ensurePresent(
       String endpoint,
@@ -134,8 +133,8 @@ final class EvalOllamaModel {
   }
 
   /**
-   * Pulls on an external Ollama endpoint (issue #1076) — {@code execInContainer} only works against
-   * a Testcontainer, so this equivalent goes through Ollama's {@code POST /api/pull} HTTP API
+   * Pulls on an external Ollama endpoint — {@code execInContainer} only works against a
+   * Testcontainer, so this equivalent goes through Ollama's {@code POST /api/pull} HTTP API
    * instead, non-streaming so the call blocks until the pull actually finishes (or fails).
    */
   private static void pullViaHttp(String endpoint, String model)

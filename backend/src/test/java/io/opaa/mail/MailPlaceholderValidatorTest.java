@@ -10,9 +10,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * #1536: what an administrator may put into a mail template. Plain variable tags from the key's
- * declared set and comments are accepted; every other Mustache construct is rejected with a message
- * naming the field.
+ * What an administrator may put into a mail template. Plain variable tags from the key's declared
+ * set and comments are accepted; every other Mustache construct is rejected with a message naming
+ * the field.
  */
 class MailPlaceholderValidatorTest {
 
@@ -37,9 +37,9 @@ class MailPlaceholderValidatorTest {
   }
 
   /**
-   * Regression guard for #1559 review, HIGH 3: these forms used to be silently skipped as "template
-   * structure". They are not: an unescaped tag puts raw HTML from a variable into the message, and
-   * the remaining forms render to nothing this subsystem can supply - every later send would have
+   * Regression guard for #1559: these forms used to be silently skipped as "template structure".
+   * They are not: an unescaped tag puts raw HTML from a variable into the message, and the
+   * remaining forms render to nothing this subsystem can supply - every later send would have
    * failed, discovered by the person waiting for their mail.
    */
   @ParameterizedTest

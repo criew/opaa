@@ -40,9 +40,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * {@link SystemMailTemplateController} in isolation (#1536): the {@code SYSTEM_ADMIN} bar, the 404
- * for a key outside the closed registry, and that an undeclared placeholder comes back as a 400
- * naming the field.
+ * {@link SystemMailTemplateController} in isolation: the {@code SYSTEM_ADMIN} bar, the 404 for a
+ * key outside the closed registry, and that an undeclared placeholder comes back as a 400 naming
+ * the field.
  */
 @WebMvcTest(SystemMailTemplateController.class)
 @ActiveProfiles("dev")

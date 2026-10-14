@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
 /**
  * #582's upload rules for the operator's branding images: format, size, pixel dimensions, and - the
  * one that carries the security argument - that the bytes themselves decide, not what an uploader
- * claims. Since #1910 the same validator serves three kinds, which is why the ceilings are read
- * from {@link BrandingImageKind} here rather than hard-coded: a kind whose limits drift away from
- * the ones the database's own constraints carry would otherwise pass unnoticed.
+ * claims. The same validator serves three kinds, which is why the ceilings are read from {@link
+ * BrandingImageKind} here rather than hard-coded: a kind whose limits drift away from the ones the
+ * database's own constraints carry would otherwise pass unnoticed.
  *
  * <p>Every image here is generated rather than checked in as a fixture: a test that proves "an SVG
  * is rejected" is only worth something if the SVG it feeds in is a real one, and a generated PNG
@@ -103,9 +103,8 @@ class BrandingImageValidatorTest {
   }
 
   /**
-   * #1910: the background image is a photograph covering half a screen, so an edge that the logo
-   * rules reject has to pass here - otherwise the new kind silently inherits a ceiling meant for
-   * chrome.
+   * The background image is a photograph covering half a screen, so an edge that the logo rules
+   * reject has to pass here - otherwise the new kind silently inherits a ceiling meant for chrome.
    */
   @Test
   void acceptsABackgroundLargerThanALogoMayBe() throws IOException {

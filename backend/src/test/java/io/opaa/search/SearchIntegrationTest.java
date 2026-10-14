@@ -60,8 +60,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The reading path without generation, end to end against a real Postgres (#1720): the hits, their
- * parity with the Fundstellen of {@code POST /api/v1/query}, the fetch of a passage and of a whole
+ * The reading path without generation, end to end against a real Postgres: the hits, their parity
+ * with the Fundstellen of {@code POST /api/v1/query}, the fetch of a passage and of a whole
  * document, and the three things that must not happen - a generation call, a hit outside the
  * caller's view, an audit entry.
  *
@@ -234,8 +234,8 @@ class SearchIntegrationTest {
   }
 
   /**
-   * The one barrier against two diverging search paths (#1720): the hits and the Fundstellen of the
-   * same question, in the same rights context, name the same documents in the same order.
+   * The one barrier against two diverging search paths: the hits and the Fundstellen of the same
+   * question, in the same rights context, name the same documents in the same order.
    *
    * <p>Should this ever become flaky, the answer is <b>not</b> to loosen it - a loosened equality
    * test is no barrier at all - but to find the divergence it is reporting.

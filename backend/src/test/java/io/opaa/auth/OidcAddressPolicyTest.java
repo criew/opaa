@@ -8,8 +8,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@link OidcAddressPolicy} (#1329, ADR-0025 Entscheidung 3): the bootstrap addresses are allowed
- * by scheme, host and port - never the bare host - the configured allowlist releases further hosts,
+ * {@link OidcAddressPolicy} (ADR-0025 Entscheidung 3): the bootstrap addresses are allowed by
+ * scheme, host and port - never the bare host - the configured allowlist releases further hosts,
  * and everything else on a blocked range is refused with the variable named.
  */
 class OidcAddressPolicyTest {

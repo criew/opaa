@@ -23,8 +23,8 @@ import org.slf4j.Logger;
 import org.springframework.ai.chat.memory.ChatMemory;
 
 /**
- * The opt-in multi-turn step of a harness run (issue #1484, docs/features/conversation-memory.md,
- * "Messung"), in one place instead of copied into each domain harness - the same split {@link
+ * The opt-in multi-turn step of a harness run (docs/features/conversation-memory.md, "Messung"), in
+ * one place instead of copied into each domain harness - the same split {@link
  * PipelineHarnessSupport} makes for the single-question pipeline path.
  *
  * <p>Runs at the very end of a harness run, on the corpus that run has already indexed and
@@ -34,8 +34,8 @@ import org.springframework.ai.chat.memory.ChatMemory;
  * <p><b>Opt-in, and switched on by its own task rather than by the caller.</b> Every turn costs a
  * decomposition and a note call, and under the Mehrfachlauf-Regel the whole dataset is measured
  * three times - far more than the single-question job's budget carries, which is why {@code
- * evaluate…Conversations} is a second task with its own CI job (issue #1553) rather than a flag on
- * the single-question one. It forces {@code -Dopaa.eval.runConversations=true} together with {@code
+ * evaluate…Conversations} is a second task with its own CI job rather than a flag on the
+ * single-question one. It forces {@code -Dopaa.eval.runConversations=true} together with {@code
  * -Dopaa.eval.queryDecomposition=true}; without the latter the run reports itself as not executed
  * rather than measuring the fallback (see {@link ConversationRunPrerequisites}).
  */
@@ -45,9 +45,9 @@ public final class ConversationHarnessSupport {
 
   /**
    * Overrides the Gesprächsnotiz cap this run measures under, for an ablation that needs the same
-   * production pipeline once with and once without a note (#1587). A property of the measurement
-   * path, not of the application: {@link ChatNoteProperties} keeps its floor of 1 and the note
-   * keeps having no on/off switch (ADR-0031, "Verworfene Alternativen").
+   * production pipeline once with and once without a note. A property of the measurement path, not
+   * of the application: {@link ChatNoteProperties} keeps its floor of 1 and the note keeps having
+   * no on/off switch (ADR-0031, "Verworfene Alternativen").
    *
    * <p>{@code 0} means the run keeps no note at all - the state {@link
    * ConversationMemoryProfile#NO_CONVERSATION_NOTE} already describes for a baseline drawn before

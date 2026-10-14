@@ -15,11 +15,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@link OidcProviderConnectionTester} (#1329) against a local HTTP double of an identity provider:
- * the discovery document must be reachable and name the configured issuer, and the JWK set
- * (discovered or overridden) must carry at least one key. Every failure has its own German message,
- * so a Systemverwaltung sees what to fix before saving; every address, including the discovered
- * {@code jwks_uri}, passes the address policy before it is fetched.
+ * {@link OidcProviderConnectionTester} against a local HTTP double of an identity provider: the
+ * discovery document must be reachable and name the configured issuer, and the JWK set (discovered
+ * or overridden) must carry at least one key. Every failure has its own German message, so a
+ * Systemverwaltung sees what to fix before saving; every address, including the discovered {@code
+ * jwks_uri}, passes the address policy before it is fetched.
  */
 class OidcProviderConnectionTesterTest {
 

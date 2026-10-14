@@ -8,7 +8,7 @@ import java.util.Map;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The committed baseline of the multi-turn measurement path (issue #1484), checked into {@code
+ * The committed baseline of the multi-turn measurement path, checked into {@code
  * eval/baseline/pipeline-<domain>-conversations.json}.
  *
  * <p><b>Its own type and its own file, never the pipeline path's.</b> The multi-turn run measures

@@ -8,10 +8,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The removal of the catalogue's findability flag (#2092): {@code assets.listed} with its partial
- * index, {@code asset_visibility_history.listed} with the cause that recorded a change of it, and
- * {@code knowledge_libraries.listed_cap}. Applied to an existing installation, i.e. the master
- * without these two files; the rows already there survive.
+ * The removal of the catalogue's findability flag: {@code assets.listed} with its partial index,
+ * {@code asset_visibility_history.listed} with the cause that recorded a change of it, and {@code
+ * knowledge_libraries.listed_cap}. Applied to an existing installation, i.e. the master without
+ * these two files; the rows already there survive.
  */
 class DropListedMigrationTest extends AbstractBaselineTest {
 
