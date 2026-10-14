@@ -89,20 +89,46 @@ public interface SourceConnector {
    * one as the core resolved it. The connection fields are only meaningful when {@code
    * replacesConnection}; absent connector settings, or an absent part of them, stay as stored.
    * Returns what {@link #applyChange} applies, the connection fields normalised.
+   *
+   * <p>By default a new connection passes {@link #validate} with the requested settings, or the
+   * stored ones when the request keeps them, and the result carries settings only when requested;
+   * settings changed on their own pass {@link #readSettings}.
    */
   default SourceSettings validateChange(
       SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
-    return replacesConnection ? validate(requested) : requested;
+    ConnectorData requestedSettings = requested.connectorSettings();
+    if (replacesConnection) {
+      SourceSettings validated =
+          validate(
+              requested.withConnectorSettings(
+                  requestedSettings != null ? requestedSettings : stored.connectorSettings()));
+      return requestedSettings == null ? validated.withConnectorSettings(null) : validated;
+    }
+    return requestedSettings == null
+        ? requested
+        : requested.withConnectorSettings(readSettings(requestedSettings));
   }
 
-  /** Writes the connector settings of {@link #validate}'s result onto an unsaved library. */
-  default void configureNew(KnowledgeLibrary library, SourceSettings validated) {}
+  /**
+   * Writes the connector settings of {@link #validate}'s result onto an unsaved library; by default
+   * stores them as they are, nothing when there are none.
+   */
+  default void configureNew(KnowledgeLibrary library, SourceSettings validated) {
+    if (validated.connectorSettings() != null) {
+      library.updateSourceSettings(validated.connectorSettings().toJson());
+    }
+  }
 
   /**
    * Writes the connector settings of {@link #validateChange}'s result; {@code own} are the ones
-   * {@code library} itself carries until then, without the defaults of its profile.
+   * {@code library} itself carries until then, without the defaults of its profile. By default
+   * present settings replace the own ones, absent ones leave them.
    */
-  default void applyChange(KnowledgeLibrary library, ConnectorData own, SourceSettings validated) {}
+  default void applyChange(KnowledgeLibrary library, ConnectorData own, SourceSettings validated) {
+    if (validated.connectorSettings() != null) {
+      library.updateSourceSettings(validated.connectorSettings().toJson());
+    }
+  }
 
   /**
    * The connector settings {@code stored} on {@code library} as a caller sees them, {@code null}

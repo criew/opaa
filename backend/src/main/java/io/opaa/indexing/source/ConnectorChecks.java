@@ -14,6 +14,7 @@ import java.net.UnknownHostException;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 import javax.net.ssl.SSLException;
 
 /**
@@ -80,6 +81,60 @@ public final class ConnectorChecks {
     if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
       throw new ValidationException("sourceUrl muss mit http:// oder https:// beginnen");
     }
+  }
+
+  /**
+   * The address of a request to a connector whose only target is {@code apiBase}: none, or {@code
+   * apiBase} with a trailing slash, is {@code apiBase}; anything else stays as sent.
+   */
+  public static String fixedSourceUrl(String apiBase, String requested) {
+    String url = blankToNull(requested);
+    if (url == null) {
+      return apiBase;
+    }
+    String trimmed = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    return trimmed.equals(apiBase) ? apiBase : url;
+  }
+
+  /**
+   * The configuration rule of a connector whose only target is {@code apiBase}: no {@code
+   * sourcePath}, no address but {@code apiBase} as {@link #fixedSourceUrl} reads it. Returns {@code
+   * apiBase}.
+   */
+  public static String requireFixedAddress(
+      SourceType sourceType, String apiBase, SourceSettings requested) {
+    if (blankToNull(requested.sourcePath()) != null) {
+      throw new ValidationException(
+          "sourcePath ist für sourceType " + sourceType + " nicht zulässig");
+    }
+    if (!fixedSourceUrl(apiBase, requested.sourceUrl()).equals(apiBase)) {
+      throw new ValidationException(
+          "sourceUrl ist für sourceType "
+              + sourceType
+              + " fest "
+              + apiBase
+              + " und nicht änderbar");
+    }
+    return apiBase;
+  }
+
+  /**
+   * {@link #requireFixedAddress} for a new library whose connector settings are required: returns
+   * {@code requested} at {@code apiBase} with its settings as {@code read} normalises them.
+   */
+  public static SourceSettings validateAtFixedAddress(
+      SourceType sourceType,
+      String apiBase,
+      SourceSettings requested,
+      UnaryOperator<ConnectorData> read) {
+    String url = requireFixedAddress(sourceType, apiBase, requested);
+    if (requested.connectorSettings() == null) {
+      throw new ValidationException(
+          "sourceSettings sind erforderlich, wenn sourceType " + sourceType + " ist");
+    }
+    return requested
+        .withSourceUrl(url)
+        .withConnectorSettings(read.apply(requested.connectorSettings()));
   }
 
   /** {@code sourceCredentials} ({@code user:password}) for Basic Auth. */

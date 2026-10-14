@@ -306,19 +306,6 @@ public class S3SourceConnector
     }
   }
 
-  @Override
-  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    library.updateSourceSettings(validated.connectorSettings().toJson());
-  }
-
-  @Override
-  public void applyChange(
-      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
-  }
-
   /**
    * A manager sees the whole record, every reader only the scopes - region, addressing style and
    * patterns are administration detail; the record carries no credential. A stored document the

@@ -132,40 +132,6 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
     return requested.withSourceUrl(address.url()).withConnectorSettings(settings.toData());
   }
 
-  @Override
-  public SourceSettings validateChange(
-      SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
-    if (replacesConnection) {
-      ConnectorData effective =
-          requested.connectorSettings() != null
-              ? requested.connectorSettings()
-              : stored.connectorSettings();
-      SourceSettings validated = validate(requested.withConnectorSettings(effective));
-      return requested.connectorSettings() == null
-          ? validated.withConnectorSettings(null)
-          : validated;
-    }
-    if (requested.connectorSettings() != null) {
-      return requested.withConnectorSettings(
-          SmbSourceSettings.read(requested.connectorSettings()).toData());
-    }
-    return requested;
-  }
-
-  @Override
-  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    library.updateSourceSettings(
-        SmbSourceSettings.read(validated.connectorSettings()).toData().toJson());
-  }
-
-  @Override
-  public void applyChange(
-      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
-  }
-
   /** The folders are what every reader sees of the library's scope; they carry no credential. */
   @Override
   public ConnectorData settingsView(
