@@ -1,7 +1,6 @@
 package io.opaa.knowledge;
 
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,10 +20,10 @@ public class PersonalStorageQuota {
   public PersonalStorageQuota(
       DocumentRepository documentRepository,
       PrivateStorageQuotaSettingRepository settingRepository,
-      @Value("${opaa.library.private-storage-quota-bytes}") long configuredDefault) {
+      LibraryProperties libraryProperties) {
     this.documentRepository = documentRepository;
     this.settingRepository = settingRepository;
-    this.configuredDefault = configuredDefault;
+    this.configuredDefault = libraryProperties.privateStorageQuotaBytes();
   }
 
   /**

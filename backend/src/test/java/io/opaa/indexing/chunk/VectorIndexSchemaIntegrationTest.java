@@ -10,8 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
-import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgIndexType;
+import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -55,8 +54,7 @@ class VectorIndexSchemaIntegrationTest {
         new VectorIndexSchema(
             jdbcTemplate,
             transactionManager,
-            PgIndexType.HNSW,
-            PgDistanceType.COSINE_DISTANCE,
+            new PgVectorStoreProperties(),
             new VectorTable(schemaName, TABLE));
   }
 

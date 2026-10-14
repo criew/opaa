@@ -19,7 +19,8 @@ class PersonalStorageQuotaTest {
       mock(PrivateStorageQuotaSettingRepository.class);
 
   private PersonalStorageQuota quota(long configuredDefault) {
-    return new PersonalStorageQuota(documentRepository, settings, configuredDefault);
+    return new PersonalStorageQuota(
+        documentRepository, settings, new LibraryProperties(0, configuredDefault));
   }
 
   @Test
