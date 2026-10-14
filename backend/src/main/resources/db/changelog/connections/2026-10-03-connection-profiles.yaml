@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: connections-2026-10-03-connection-profiles
       author: opaa
-      comment: "Connection profiles (Zugänge) and the profile a library is connected through (#2160, ADR-0041). The client secret is stored encrypted only; a deleted profile leaves the library's row with profile_id NULL, the state Zugang entfernt."
+      comment: "Connection profiles (Zugänge) and the profile a library is connected through (ADR-0041). The client secret is stored encrypted only; a deleted profile leaves the library's row with profile_id NULL, the state Zugang entfernt."
       changes:
         - sql:
             sql: |
