@@ -36,7 +36,7 @@ keinen Weg zu einem Thread- oder Heap-Dump; JFR allein lässt sich nur beim Star
 
 glibc und sonst nichts; `-nossl`, weil die JVM ihre eigene TLS-Implementierung mitbringt und
 `libssl` nie linkt. Zertifikate, Zeitzonen und Locale-Daten kommen aus der JDK-Laufzeit. Die glibc-Locale
-`C.utf8` wird aus `debian:13-slim` zurückkopiert und `LANG` darauf gesetzt — ohne kompilierte
+`C.utf8` wird aus `debian:13-slim` zurückkopiert und `LANG`/`LC_ALL` darauf gesetzt — ohne kompilierte
 Locale meldet glibc `ANSI_X3.4-1968`, das die JVM als `sun.jnu.encoding` übernimmt, und Dateinamen mit
 Umlauten wären unlesbar; `-Duser.language=en -Duser.country=US` im Entrypoint hält die
 Standard-`Locale` auf dem bisherigen Wert. Kein Paketmanager, kein `dist-upgrade`: Die Aktualität
@@ -71,3 +71,4 @@ von glibc hängt daran, dass Buildx den `FROM`-Verweis bei jedem Lauf neu auflö
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-09-10 | #1459, #1469 | Erstfassung | 1–2 |

@@ -39,8 +39,9 @@ bewusst nicht gesetzt, weil es native Abfragen nicht erfasst), `spring.liquibase
 `spring.ai.vectorstore.pgvector.schema-name`. `public` bleibt als Rückfall hinter dem Zielschema,
 damit eine vorab dort installierte Erweiterung `vector` auffindbar bleibt; eigene Objekte legt OPAA
 dort nicht an (`SchemaPortabilityMigrationTest`). `DatabaseSchemaGuard` lässt nur einfache
-Bezeichner in Kleinschreibung zu (`[a-z_][a-z0-9_]*`, höchstens 63 Zeichen; der Name wird unquotiert
-eingesetzt) und verweigert den Start, wenn die Vektortabelle auf ein anderes Schema zeigt.
+Bezeichner in Kleinschreibung zu (`[a-z_][a-z0-9_]*`, höchstens 63 Zeichen, keine
+PostgreSQL-Schlüsselwörter; der Name wird unquotiert eingesetzt) und verweigert den Start, wenn die
+Vektortabelle auf ein anderes Schema zeigt; die Prüfung läuft vor Datenquelle und Liquibase.
 
 ## Konsequenzen
 
@@ -50,9 +51,12 @@ eingesetzt) und verweigert den Start, wenn die Vektortabelle auf ein anderes Sch
   `current_schema()` ab.
 - **Schwieriger:** Die Checksummen aller Changesets haben sich geändert; bestehende Installationen
   werden neu aufgesetzt.
-- **Restrisiken:** Die Rolle `opaa_audit_owner` ist clusterweit — getrennte Installationen brauchen
-  getrennte Instanzen. Gehört das Zielschema dem Anwendungskonto, greift die Eigentümertrennung nach
-  ADR-0015 nicht; das Handbuch empfiehlt ein Schema im Besitz einer Verwaltungsrolle.
+- **Restrisiken:** Die Rolle `opaa_audit_owner` ist clusterweit — eine zweite Installation mit
+  anderem Konto in derselben Instanz scheitert an der Rollenvergabe, mit demselben Konto könnte sie
+  das Protokoll der ersten verändern; getrennte Installationen brauchen getrennte Instanzen. Gehört
+  das Zielschema dem Anwendungskonto, greift die Eigentümertrennung nach ADR-0015 nicht (für `public`
+  ebenso, wenn das Konto Eigentümer der Datenbank ist); das Handbuch empfiehlt ein Schema im Besitz
+  einer Verwaltungsrolle.
 
 ## Verworfene Alternativen
 
@@ -67,3 +71,4 @@ eingesetzt) und verweigert den Start, wenn die Vektortabelle auf ein anderes Sch
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-09-18 | #1366, #1730 | Erstfassung | 1–2 |

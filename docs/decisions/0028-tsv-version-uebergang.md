@@ -26,14 +26,14 @@ versionsunabhängig.
 `FullTextChunkSearch` liest `chunk_full_text` ohne Bedingung an `content_tsv_version`.
 `CURRENT_TSV_VERSION` steuert ausschließlich Füllstand und Reindex-Auswahl. Eine Zeile alter Fassung
 bleibt lexikalisch findbar; ihr fehlen nur die Lexeme der neueren Fassung, bis der Nachzug sie neu
-schreibt. Der Zähler `fullTextOutdatedChunks` der Zustandsübersicht (seit #1429, Zustand `OUTDATED`
+schreibt. Der Zähler `fullTextOutdatedChunks` der Zustandsübersicht (seit #1493, Zustand `OUTDATED`
 „Nachzug ausstehend") bedeutet: Abschnitte mit einer Zeile alter Fassung — findbar, nicht
 unsichtbar. Keine Migration, kein Backfill.
 
 ### 2. Bedingung für jede künftige Anhebung: additiv
 
 Eine Änderung, die die Lexemform bestehender Zeilen bricht (Wechsel der Textsuchkonfiguration
-`FullTextChunkStore.TEXT_SEARCH_CONFIGURATION`, anderes Stemming, andere Zerlegung), erzeugt Zeilen,
+`FullTextChunkStore.TEXT_SEARCH_CONFIGURATION`, heute `german`; anderes Stemming, andere Zerlegung), erzeugt Zeilen,
 deren Lexeme mit einer nach neuer Regel gebauten `tsquery` nicht mehr übereinstimmen. Eine solche
 Anhebung muss den Versionsfilter im Suchpfad wieder einführen (als Gleichheit oder Untergrenze),
 bevor sie ausgeliefert wird. Die Bedingung steht im Javadoc der Konstante; der PR, der sie anhebt,
