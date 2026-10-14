@@ -315,9 +315,19 @@ ein weiterer Start auch die fehlenden eingebettet hat.
 ## Reranking einschalten
 
 Reranking ist voreingestellt **aus** (`OPAA_RERANK_ENABLED=false`). Die Rolle braucht einen eigenen
-Endpunkt, und ob sie auf einem Bestand etwas bringt, wird gemessen und nicht vermutet: Der
-Qualitätsgewinn ist auf den Korpora des Projekts gezeigt, ein Latenz- und Hardwareprofil fehlt noch.
-Was die Stufe in der Suche tut, steht unter [Suche](suche.md#stufe-8-reranking).
+Endpunkt. **Empfohlen ist sie überall, wo ein schneller Endpunkt zur Verfügung steht:** Sie holt
+Fundstellen, die im Kandidatenfenster liegen, aber nicht weit genug oben, nach vorn. Was die Stufe in
+der Suche tut, steht unter [Suche](suche.md#stufe-8-reranking).
+
+Zur Wahl des Endpunkts:
+
+- **GPU im Haus:** ein Rerank-Modell auf eigener GPU; die Daten bleiben im Netz.
+- **Gehosteter Dienst:** jeder Endpunkt, der die übliche Rerank-Schnittstelle (`/rerank`) spricht,
+  etwa bei einem Modell-Vermittler; er wird ohne weitere Anpassung als Basisadresse eingetragen.
+  Er erhält Frage und Chunk-Texte der Kandidaten. Für Behördendaten nur, wenn der Dienst
+  datenschutzrechtlich zulässig ist; sonst bleibt der Endpunkt im eigenen Netz (siehe
+  [LLM-Anbieter](#llm-anbieter)).
+- **CPU:** nicht sinnvoll, die Antwortzeit steigt auf Minuten je Frage.
 
 Zum Einschalten gehören drei Angaben zusammen: `OPAA_RERANK_ENABLED=true`, `OPAA_RERANK_BASE_URL` und
 `OPAA_RERANK_MODEL`. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und
