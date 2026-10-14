@@ -2,119 +2,73 @@
 
 ## Status
 
-Vorgeschlagen
-
-**Nachtrag mit [ADR-0033](0033-lokale-benutzerverwaltung.md) (Epic #1529):** Mit der lokalen
-Benutzerverwaltung entsteht in `io.opaa.mail` ein Mail-Subsystem (SMTP-Einstellungen in der
-Datenbank, `MailService` mit `SendResult`, Vorlagen-Registry `MailTemplateKey` mit Überschreibung in
-`mail_templates`). Der Kanal E-Mail des Benachrichtigungssystems (#1297) nutzt dieses Subsystem
-unverändert und ergänzt nur Vorlagen und gegebenenfalls einen Digest; an der Tabelle `notifications`
-und den beiden Endpunkten dieses ADR ändert das nichts.
-
-**Hinweis (02.10.2026, [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):** Seit
-die Space-Zuordnung für alle Asset-Typen eine harte Grenze ist, gilt die Benachrichtigung bei Zuordnung
-zu einem gemischten Space nicht nur für Wissensbibliotheken, sondern für jeden Typ; wird ein Space mit
-vielen Zuordnungen angelegt, wird sie je Eigentümer gebündelt (#2097). #2097 hat dafür
-`LIBRARY_ASSOCIATED_TO_MIXED_SPACE` durch den typneutralen Wert `ASSET_ASSOCIATED_TO_MIXED_SPACE`
-ersetzt; eine gebündelte Benachrichtigung bezieht sich auf den Space statt auf einen Bestand.
+Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt durch ADR-0033 (Entscheidung 10) und ADR-0039
 
 ## Kontext
 
-`docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren` verlangt für #203/#686:
-Wird eine Bibliothek in einem Space bereitgestellt, dessen Mitglieder nicht alle Lesezugriff darauf
-haben, wird ihr Eigentümer **aktiv benachrichtigt** — ohne Zustimmungspflicht, aber ohne dass er in
-eine Liste schauen muss. Für diese eine Zusage gibt es im System noch keine Infrastruktur: kein
-Benachrichtigungsmodell, keine Ablage, keine Anzeige.
-
-Gleichzeitig ist absehbar, dass weitere Zusagen derselben Art folgen werden, die bereits an anderer
-Stelle der Spezifikation stehen, aber noch nicht gebaut sind — unter anderem:
-
-- „Der Autor wird benachrichtigt, wenn sich der Leserkreis eines von ihm geteilten Inhalts wesentlich
-  erweitert" (`docs/features/spaces-and-assets.md#chats`, Abschnitt „Konsequenz für die
-  Nutzerführung").
-- „Der Verantwortliche wird benachrichtigt, wenn das Original eine neue Version bekommt"
-  (`docs/features/spaces-and-assets.md#das-abdriften-von-abkömmlingen`).
-- Die spätere Prüfaufforderung mit Frist bei Deaktivierung eines Originals (dieselbe Stelle, bewusst
-  zurückgestellt).
-
-Diese Serie legt nahe, früher oder später ein gemeinsames **In-App-Postfach** zu bauen — mit
-Benachrichtigungen und, absehbar, auch Todos (offene Freigaben, ausstehende Prüfaufforderungen). Ein
-solches Postfach ist an keiner Stelle der Spezifikation spezifiziert; es existiert bislang nur als
-plausible Erwartung, nicht als Entscheidung. #203 selbst braucht nur die eine, konkrete
-Eigentümer-Benachrichtigung, keine allgemeine Infrastruktur.
-
-Die Frage dieser Entscheidung ist deshalb **nicht**, wie ein künftiges Postfach aussehen soll —
-das wäre eine verfrühte Festlegung ohne hinreichende Anforderungsbasis. Die Frage ist, wie schmal
-#203 seine eine Benachrichtigung bauen kann, ohne eine spätere Zusammenführung mehrerer
-Benachrichtigungsarten in ein gemeinsames Postfach unnötig zu erschweren.
+Die Spezifikation verlangt, dass der Eigentümer eines Assets aktiv benachrichtigt wird, wenn es in
+einem Space bereitgestellt wird, dessen Mitglieder nicht alle Lesezugriff darauf haben
+(`docs/features/spaces-and-assets.md`). Dafür gab es keine Infrastruktur: kein Modell, keine Ablage,
+keine Anzeige. Weitere Zusagen derselben Art standen bereits in der Spezifikation (Erweiterung des
+Leserkreises, neue Version eines Originals, Prüfaufforderungen), was ein gemeinsames In-App-Postfach
+mit Todos nahelegte. Ein solches Postfach war aber nirgends spezifiziert. Die Frage war, wie schmal die
+eine Benachrichtigung gebaut werden kann, ohne eine spätere Zusammenführung zu erschweren.
 
 ## Entscheidung
 
-#203 führt eine einzige, bewusst schmal geschnittene Tabelle `notifications` ein
-(`io.opaa.notification.Notification`), mit genau den Feldern, die die eine benötigte
-Benachrichtigung braucht: `recipientUserId`, `type` (geschlossenes Vokabular, aktuell nur
-`LIBRARY_ASSOCIATED_TO_MIXED_SPACE`), `objectType`/`objectId` (Bezug auf das betroffene Objekt,
-wiederverwendet aus `io.opaa.audit.AuditObjectType`), `title`, `body`, `readAt`, `createdAt`. Dazu
-zwei Endpunkte: `GET /v1/notifications` (die eigenen Benachrichtigungen, neueste zuerst, mit
-`limit`) und `POST /v1/notifications/{id}/read` (als gelesen markieren). Im Frontend eine einzelne
-Glocke mit Ungelesen-Badge (`NotificationBell`), ohne Filter, Sortierung, Kategorien oder
-Massenaktionen.
+### 1. Eine schmale Tabelle, zwei Endpunkte, eine Glocke
 
-Bewusst **nicht** gebaut: ein Postfach-Konzept, eine Todo-Achse, Kategorien/Filter, Gruppierung nach
-Objekt oder Auslöser, eine Zustellungsgarantie über den einfachen Datenbank-Insert hinaus, oder eine
-Vorwegnahme der weiteren, oben genannten Benachrichtigungszusagen — jede davon bekommt ihren eigenen
-`NotificationType`-Wert (und, falls nötig, weitere `notifications`-Spalten) erst, wenn sie selbst
-umgesetzt wird, nicht spekulativ jetzt.
+Die Tabelle `notifications` (`io.opaa.notification.Notification`) trägt `recipientUserId`, `type`,
+`objectType`/`objectId` (Bezug auf das betroffene Objekt, wiederverwendet aus `AuditObjectType`),
+`title`, `body`, `readAt`, `createdAt`. Dazu `GET /v1/notifications` (eigene Benachrichtigungen,
+neueste zuerst, mit `limit`) und `POST /v1/notifications/{id}/read`. Im Frontend eine Glocke mit
+Ungelesen-Badge (`NotificationBell`), ohne Filter, Sortierung, Kategorien oder Massenaktionen.
 
-Die Tabelle ist so geschnitten, dass ein künftiges Postfach **aus ihr heraus wachsen** kann, statt
-sie zu ersetzen: `type` ist bereits ein geschlossenes, erweiterbares Vokabular (dasselbe Muster wie
-`AuditEventType`), `objectType`/`objectId` binden bereits an ein
-beliebiges Objekt, und `readAt` trägt bereits die Grundunterscheidung gelesen/ungelesen, die auch
-ein Todo-Postfach braucht. Ein Todo-spezifisches Feld (z. B. eine Fälligkeit oder ein
-Erledigt-Status) kommt erst mit der Notwendigkeit, nicht vorab.
+### 2. Ein geschlossenes, wachsendes Typ-Vokabular
+
+`type` ist das Enum `NotificationType` (`io.opaa.api.types`), nach dem Muster von `AuditEventType`.
+Eine neue Benachrichtigungszusage ergänzt einen Wert, wenn sie umgesetzt wird, nicht vorab; seit #862
+gibt es keinen `CHECK` in der Datenbank, das Enum allein ist der Schreibschutz, eine Migration
+entfällt. Die Zuordnung zu einem gemischten Space ist typneutral `ASSET_ASSOCIATED_TO_MIXED_SPACE`
+und wird beim Anlegen eines Space mit vielen Zuordnungen je Eigentümer gebündelt (ADR-0039, #2097).
+
+### 3. Nicht gebaut
+
+Kein Postfach-Konzept, keine Todo-Achse, keine Kategorien oder Filter, keine Gruppierung nach Objekt
+oder Auslöser, keine Zustellungsgarantie über den Datenbank-Insert hinaus. Ein Postfach kann aus der
+Tabelle herauswachsen (`type`, Objektbezug und `readAt` sind bereits vorhanden), ohne sie zu ersetzen;
+ein Todo-Feld kommt mit der Notwendigkeit.
+
+### 4. Kanal E-Mail ist möglich, nicht beschlossen
+
+Mit ADR-0033 Entscheidung 10 gibt es das Subsystem `io.opaa.mail` (SMTP-Einstellungen in der
+Datenbank, `MailService` mit Versandergebnis statt Ausnahme, Vorlagen-Registry mit Überschreibung).
+Ob und für welche Typen zusätzlich eine Mail geht, entscheidet das Benachrichtigungs-Epic (#1297);
+ein solcher Kanal ergänzt Vorlagen und ruft `MailService`, ohne zweites Versandsubsystem. Der Versand
+ist synchron, ohne Outbox und ohne Wiederholung; ein Digest könnte eine Warteschlange davor setzen.
 
 ## Konsequenzen
 
-**Einfacher:**
+**Einfacher:** Jede weitere Benachrichtigungsart nutzt Tabelle und Endpunkte unverändert und ergänzt
+nur einen Enum-Wert.
 
-- #203 liefert seine eine Benachrichtigungszusage ohne eine unbegründete Vorwegnahme künftiger
-  Anforderungen — kein Rätselraten darüber, wie ein noch nicht spezifiziertes Postfach aussehen
-  soll.
-- Die nächste Benachrichtigungszusage (z. B. die Leserkreis-Erweiterung bei Chats) kann dieselbe
-  Tabelle und dieselben zwei Endpunkte wiederverwenden, indem sie nur einen neuen `NotificationType`
-  ergänzt — ohne eigene Migration, seit #862 `chk_notifications_type` ersatzlos entfernt hat und der
-  Java-Enum allein der Schreibschutz ist.
+**Schwieriger:** Ein echtes Postfach ist weiterhin zu spezifizieren. Ob ein einzelnes
+`objectType`/`objectId`-Paar für jede Art reicht, bleibt offen, bis eine Art mehrere Objektbezüge
+braucht.
 
-**Schwieriger / bewusst aufgeschoben:**
+## Verworfene Alternativen
 
-- Ein echtes Postfach mit Kategorien, Todos und Massenaktionen ist noch zu spezifizieren und zu
-  bauen; diese Entscheidung trifft dafür keine Vorfestlegung, verhindert eine spätere aber auch
-  nicht.
-- Solange nur eine Benachrichtigungsart existiert, bleibt ungeklärt, ob `objectType`/`objectId`
-  als einzelnes Paar für jede künftige Art ausreicht, oder ob ein Postfach mehrere Objektbezüge pro
-  Eintrag braucht (z. B. „Bibliothek X in Space Y") — diese Frage wird zurückgestellt, bis eine
-  zweite Benachrichtigungsart sie tatsächlich aufwirft, statt sie spekulativ vorwegzunehmen.
+- Postfach mit Kategorien und Todos vorab — Festlegung ohne Anforderungsbasis.
 
-## Nachtrag (11.09.2026, #1536): Es gibt jetzt einen Mail-Sender
+## Offen
 
-Diese Entscheidung entstand, als OPAA keinerlei Mailversand hatte — der Kontext oben setzt das
-stillschweigend voraus, und der Verzicht auf einen Zustellweg neben der Anzeige in der Anwendung war
-deshalb keine Wahl, sondern eine Gegebenheit.
+- Zusätzlicher Mail-Kanal und Digest (#1297).
 
-Mit [ADR-0033](0033-lokale-benutzerverwaltung.md), Entscheidung 10, hat OPAA das Subsystem
-`io.opaa.mail`: SMTP-Einstellungen in der Verwaltung, einen zur Laufzeit gebauten Sender, eine
-geschlossene Registry deutscher Vorlagen mit Überschreibung in der Datenbank und ein
-Versandergebnis (`Sent | Skipped | Failed`) statt einer Ausnahme.
+## Änderungsverlauf
 
-Was das für diesen ADR bedeutet:
-
-- **Diese Entscheidung bleibt unverändert gültig.** Die Tabelle `notifications` und ihre zwei
-  Endpunkte sind weiterhin der Weg, auf dem eine Benachrichtigung in der Anwendung sichtbar wird.
-- **Der Kanal E-Mail ist damit möglich, aber nicht beschlossen.** Ob und für welche
-  Benachrichtigungsarten zusätzlich eine Mail rausgeht, entscheidet das Benachrichtigungs-Epic
-  (#1297) — nicht dieser ADR. Ein solcher Kanal ergänzt dann Vorlagen in der Registry und ruft
-  `MailService`; er braucht kein zweites Versandsubsystem und ändert den Vertrag von
-  `MailService.send` nicht.
-- **Eine Warteschlange bleibt offen.** Der Versand ist synchron, ohne Outbox und ohne Wiederholung,
-  weil die Auth-Mails an eine Nutzeraktion gebunden sind. Ein Digest aus #1297 kann eine
-  Warteschlange davor setzen, ohne diesen Vertrag zu ändern.
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-08-21 | #706 | Erstfassung | 1–3 |
+| 2026-08-24 | #868 | `CHECK` auf `type` entfällt, Enum ist der Schreibschutz | 2 |
+| 2026-09-11 | #1536 | Mail-Subsystem vorhanden, Kanal E-Mail nicht beschlossen (ADR-0033) | 4 |
+| 2026-10-02 | #2097 | Typneutrale, gebündelte Benachrichtigung bei Space-Zuordnung (ADR-0039) | 2 |
