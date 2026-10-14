@@ -12,12 +12,10 @@
  * startup by {@link io.opaa.llm.LlmModelSeedRunner}) performs the one-time takeover of an existing
  * installation's environment configuration as the initial active model, so an upgrade never leaves
  * a deployment without one - guarded by the permanent {@link io.opaa.llm.LlmModelSeedMarker}, not
- * by whether {@code llm_models} happens to be empty. Since #762 removed the native Ollama
- * configuration block that takeover used to read from for an Ollama-configured installation, {@link
+ * by whether {@code llm_models} happens to be empty. For an Ollama-configured installation, {@link
  * io.opaa.llm.LlmModelSeeder} reads the raw, otherwise-obsolete {@code
  * OPAA_AI_CHAT_PROVIDER}/{@code OPAA_OLLAMA_*} environment variables directly as a legacy path, so
- * an installation upgrading past #762 in one step still takes over correctly before it removes
- * those variables.
+ * an upgrading installation still takes over correctly before it removes those variables.
  *
  * <p>#756 covers persistence, encryption and the seed migration only; the REST endpoints under
  * {@code /api/v1/admin/models} follow in #757, and the chat call path that actually resolves the

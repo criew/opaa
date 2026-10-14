@@ -167,6 +167,8 @@ Ein Kommentar beschreibt den Verhaltensvertrag oder eine nicht offensichtliche I
 
 In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z. B. `// regression guard for #307: ...`), sofern er die Invariante nennt und nicht den Review-Verlauf — sonst ist die Regel genau beim größten Bestand nicht durchsetzbar.
 
+`.github/scripts/check_code_comments.sh` prüft in der CI die Kommentare unter `backend/src/main` und `opaa-api/src/main` (samt `application.yml` und den OpenAPI-Beschreibungen): Review-Protokoll („#393 code review, finding 1“, „nit 4“), an Issue-Nummern hängende Historie („since #1931“, „pre-#888“) und reine Herkunftsmarker („(#1073)“, „#1073:“) lassen den Lauf fehlschlagen; übrige Issue-Verweise zählt er nur. Ausgenommen ist das Spike-Paket `query/spike`.
+
 **Negativbeispiel** (Nacherzählung statt Vertrag):
 
 ```java

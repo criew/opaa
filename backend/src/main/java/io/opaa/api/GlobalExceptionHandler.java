@@ -196,17 +196,16 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Since #766 moved chat/query calls onto {@code OpenAiChatModel}'s OpenAI-Java-SDK-based
-   * implementation (Spring AI 2.0), a connection failure (host unreachable, DNS failure, timeout)
-   * no longer throws {@link TransientAiException} - it throws {@link OpenAIIoException}, a plain
-   * {@code RuntimeException} neither {@link TransientAiException} nor {@link
-   * NonTransientAiException} extends (see {@code ActiveChatModelResolverIntegrationTest}, which
-   * documented this as a follow-up rather than fixing it as part of #758). {@link
-   * OpenAIRetryableException} is the SDK's own explicit "this is safe to retry" signal (its
-   * Javadoc: thrown for an error the SDK's built-in retry already exhausted) - both are as
-   * transient as the connection-level failures {@link #handleTransientAiException} already covers,
-   * and get the exact same {@code 503} and message rather than a second, differently worded one for
-   * what is the same situation from a caller's point of view.
+   * Under {@code OpenAiChatModel}'s OpenAI-Java-SDK-based implementation (Spring AI 2.0), a
+   * connection failure (host unreachable, DNS failure, timeout) does not throw {@link
+   * TransientAiException} - it throws {@link OpenAIIoException}, a plain {@code RuntimeException}
+   * neither {@link TransientAiException} nor {@link NonTransientAiException} extends (see {@code
+   * ActiveChatModelResolverIntegrationTest}). {@link OpenAIRetryableException} is the SDK's own
+   * explicit "this is safe to retry" signal (its Javadoc: thrown for an error the SDK's built-in
+   * retry already exhausted) - both are as transient as the connection-level failures {@link
+   * #handleTransientAiException} already covers, and get the exact same {@code 503} and message
+   * rather than a second, differently worded one for what is the same situation from a caller's
+   * point of view.
    */
   @ExceptionHandler({OpenAIIoException.class, OpenAIRetryableException.class})
   public ResponseEntity<ErrorResponse> handleOpenAiTransientException(RuntimeException ex) {

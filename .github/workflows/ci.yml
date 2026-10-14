@@ -137,6 +137,11 @@ jobs:
             adrs:
               - 'docs/decisions/**'
               - '.github/scripts/check_adr_style.sh'
+            # Step-level filter of the comment rule guard below, not a job output.
+            comments:
+              - 'backend/src/main/**'
+              - 'opaa-api/src/main/**'
+              - '.github/scripts/check_code_comments.sh'
             # keycloak/** belongs to the seed filter because demo/seed/test_seed.py
             # asserts the realm export keeps the audience mapper the seed's token
             # path depends on (#1515) - otherwise only the nightly demo smoke run
@@ -173,6 +178,12 @@ jobs:
       - name: ADR-Stil in docs/decisions prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
         run: .github/scripts/check_adr_style.sh
+
+      # Comments under backend/src/main and opaa-api/src/main carry no review protocol, no history
+      # anchored at an issue and no bare origin marker (AGENTS.md, "Code-Kommentare").
+      - name: Kommentarregel in backend/src/main und opaa-api/src/main prüfen
+        if: github.event_name != 'pull_request' || steps.filter.outputs.comments == 'true'
+        run: .github/scripts/check_code_comments.sh
 
   # The backend suite runs as three parallel package shards (see `testShards` in
   # backend/build.gradle.kts) plus one build job for everything `build` does besides the root

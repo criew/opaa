@@ -257,9 +257,9 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
   }
 
   /**
-   * Collapses chunks the same document/section (#1789 review) contributed across several tool calls
-   * in one turn to a single entry - two searches finding the same passage must not double its
-   * {@code ChatSourceAssembler#countMatchesPerDocument} tally.
+   * Collapses chunks the same document/section contributed across several tool calls in one turn to
+   * a single entry - two searches finding the same passage must not double its {@code
+   * ChatSourceAssembler#countMatchesPerDocument} tally.
    */
   private static List<Document> deduplicated(List<Document> chunks) {
     Map<String, Document> byKey = new LinkedHashMap<>();

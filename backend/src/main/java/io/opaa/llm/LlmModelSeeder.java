@@ -52,9 +52,9 @@ import org.springframework.util.StringUtils;
  *       OPAA_AI_CHAT_PROVIDER} at all): takes over {@code spring.ai.openai.chat.*} unchanged - base
  *       URL, model and access key - except the bundled {@code sk-placeholder} default (no real key
  *       configured at all), which is treated as no key rather than encrypted and stored as if it
- *       were a real secret. Since #762 this path's own defaults already point at a locally operated
- *       Ollama server, so a fresh installation seeds the same values the legacy path above would
- *       have produced for an equivalent existing installation.
+ *       were a real secret. This path's own defaults point at a locally operated Ollama server, so
+ *       a fresh installation seeds the same values the legacy path above would have produced for an
+ *       equivalent existing installation.
  * </ul>
  *
  * <p><b>This class only ever seeds the chat model.</b> There is no analogous takeover for the

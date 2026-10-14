@@ -150,8 +150,7 @@ paths:
         Exactly one named object per query, by construction: objectType plus objectId, never a
         space-wide, unit-wide or filtered query. Without that rule an AUDITOR would assemble the
         rights profile of every person of one unit from thirty object queries, without a Vollmacht.
-        The person entry ("what could person X read") is not part of this endpoint and stays closed
-        until #391/#395.
+        The person entry ("what could person X read") is not part of this endpoint.
 
         The time range is mandatory and bounded exactly as every other audit access path is (92
         days, page index 49, page size 200); a wider request is rejected, never trimmed. The bounds
