@@ -147,6 +147,7 @@ jobs:
               - 'e2e/**'
               - 'eval/**/*.py'
               - 'docker-compose*.yml'
+              - '.env*.example'
               - '**/Dockerfile'
               - 'backend/gradle/**'
               - 'backend/*.gradle.kts'
@@ -189,9 +190,8 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
         run: .github/scripts/check_adr_style.sh
 
-      # Comments in backend, opaa-api, the workflows and the Liquibase changelogs carry no review
-      # protocol, no history anchored at an issue and no bare origin marker (AGENTS.md,
-      # "Code-Kommentare").
+      # Comments in every tree listed in the script header carry no review protocol, no history
+      # anchored at an issue and no bare origin marker (AGENTS.md, "Code-Kommentare").
       - name: Kommentarregel prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.comments == 'true'
         run: .github/scripts/check_code_comments.sh

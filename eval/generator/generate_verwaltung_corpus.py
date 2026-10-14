@@ -317,7 +317,7 @@ class GeneratedDocument:
     titel: str
     amt: Amt | None
     aktenzeichen: str
-    # None only on the two Leerwert documents (Teil 2): rendered as YAML `null`,
+    # None only on the two Leerwert documents: rendered as YAML `null`,
     # which the extractor reads as "no value" — the corpus then carries one document without a
     # Datum/Stand and one without a Dokumentart, exactly what the Leerwert-Regel cases need.
     fassung: int | None

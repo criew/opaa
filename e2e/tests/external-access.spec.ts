@@ -428,7 +428,7 @@ test.describe.serial('Fremdzugänge', () => {
     expect(await mcpLibraryNames(mcp)).toEqual([LIBRARY_B])
 
     // Die Befristung wird auf wenige Sekunden verkürzt - eine Verwaltungsaktion, die den Ablauf
-    // auslöst, statt auf Kalenderzeit zu warten (technischer Hinweis).
+    // auslöst, statt auf Kalenderzeit zu warten.
     await setLibraryReleaseViaApi(personApi, libraryBId, true, new Date(Date.now() + 2_000))
     await expect
       .poll(async () => (await mcpLibraryNames(mcp)).length, { timeout: 20_000 })

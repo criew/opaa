@@ -164,8 +164,8 @@ _BARE_QID = re.compile(r"^Q\d+$")
 def label(binding: dict, key: str) -> str | None:
     """Like literal(), but for a wikibase:label SERVICE binding specifically: when no label
     exists in any requested language, the label service falls back to the entity's own QID
-    string rather than omitting the binding (technical hint "Rückfall: Objekt
-    auslassen, statt englisches Label in deutschen Text zu mischen" — a raw QID is worse than a
+    string rather than omitting the binding (rule: leave the object out rather than mix an
+    English label into German text — a raw QID is worse than a
     missing English label, since it is not even readable as a word). Treated as absent here so
     every caller's existing "field missing" branch handles it, instead of a QID like "Q30879538"
     leaking into German prose (e.g. "geht auf Pläne von Q30879538 zurück").
@@ -351,7 +351,7 @@ def build_cities() -> list[City]:
                 continue
             name = label(detail, "itemLabel")
             if name is None:
-                # Rückfall (technical hints): an item without a German or English
+                # Fallback: an item without a German or English
                 # label is left out entirely, rather than mixing an English label or a raw QID
                 # placeholder into German prose.
                 continue
@@ -620,8 +620,8 @@ def build_landmark_paragraph(
             f" verortet im Stadtgebiet von {city.name}."
         )
 
-    # Always-present context sentences (Größenbegrenzung "Untergrenze statt
-    # Byte-Deckel"): the optional Wikidata fields above vary a lot in coverage between
+    # Always-present context sentences (a size floor rather than a byte cap): the optional
+    # Wikidata fields above vary a lot in coverage between
     # landmarks, so this block keeps every landmark section substantial enough to reliably
     # contribute to the domain's mehr-Chunk property even when few optional fields are present.
     # Every sentence here is still derived from already-available, structured facts (landmark
@@ -681,7 +681,7 @@ def build_landmark_paragraph(
     if landmark.visitors is None:
         sentences.append(f"Besucherzahlen liegen für {landmark.name} nicht vor.")
 
-    # Cross-chunk comparison material (Fragetyp cross_chunk): a deterministic,
+    # Cross-chunk comparison material (question type cross_chunk): a deterministic,
     # source-grounded comparison between two landmarks of the same city, phrased so a question
     # about "which of X or Y is older/taller" can only be answered by combining information from
     # (at least) two different sections of the document.

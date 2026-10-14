@@ -343,7 +343,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
-    // Der Sofortstart gilt seit dem neuen Assistenten für jeden Konnektortyp und ist
+    // Der Sofortstart gilt im Assistenten für jeden Konnektortyp und ist
     // vorbelegt. Dieses Szenario braucht eine Bibliothek ohne einen einzigen Lauf - sonst prüft es
     // statt des Leerzustands den Bestand des ersten Laufs.
     await page

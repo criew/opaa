@@ -207,6 +207,8 @@ FILES = [
     ("eval", "eval/generator/probe.py", lambda c: f"# {c}\nX = 1\n"),
     ("eval", "eval/baseline/probe.py", docstring),
     ("build", "docker-compose.yml", lambda c: f"services:\n  # {c}\n  a: {{}}\n"),
+    ("build", ".env.example", hash_line),
+    ("build", ".env.docker.example", hash_line),
     ("build", "backend/Dockerfile", lambda c: f"# {c}\nFROM scratch\n"),
     ("build", "frontend/Dockerfile", lambda c: f"# {c}\nFROM scratch\n"),
     ("build", "backend/gradle/libs.versions.toml", lambda c: f"[versions]\n# {c}\na = \"1\"\n"),
@@ -257,7 +259,7 @@ def test_regression_guard_in_e2e_is_counted_apart(repo: Path) -> None:
     "text",
     [
         'X = "(#1073)"\n# Clean.\n',
-        '# Clean.\nTEMPLATE = """\n(#1073) is data, not a docstring.\n"""\n',
+        '# Clean.\nTEMPLATE = """\n(#1073) is data, not a docstring.\n"""\nY = "(#1073)"\n',
         '"""One-line docstring."""\nX = "(#1073)"\n',
     ],
 )
@@ -265,3 +267,10 @@ def test_python_string_outside_a_docstring_passes(repo: Path, text: str) -> None
     write(repo, "eval/generator/probe.py", text)
     result = run(repo)
     assert result.returncode == 0, result.stdout
+
+
+def test_docstring_after_a_data_string_is_checked(repo: Path) -> None:
+    write(repo, "eval/generator/probe.py", 'T = """\nx\n"""\n\ndef f():\n    """\n    Origin (#1075).\n    """\n')
+    result = run(repo)
+    assert result.returncode == 1
+    assert "Origin marker" in result.stdout

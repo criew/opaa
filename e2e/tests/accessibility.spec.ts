@@ -476,8 +476,8 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expect(list.first()).toBeVisible();
     await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Konten, dunkles Farbschema)");
 
-    // Das Schema vor dem Laden setzen, nicht auf der gerenderten Seite (adb95b5d): Ein
-    // Wechsel danach hat auf den Anmeldeseiten CI-eigene Kontrastbefunde erzeugt.
+    // Das Schema vor dem Laden setzen, nicht auf der gerenderten Seite: Ein
+    // Wechsel danach erzeugt auf den Anmeldeseiten CI-eigene Kontrastbefunde.
     const localSignInSwitch = page.getByRole("switch", {
       name: "Lokale Anmeldung aktiv",
     });
@@ -520,7 +520,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   });
 
   // Die dichteste Seite des Verwaltungsbereichs — die zehnspaltige Bibliothekstabelle und
-  // die Bereiche je Suchstufe. Sie liegen in eigenen Reitern, und axe prüft
+  // die Akkordeons je Suchstufe. Die Bereiche der Seite liegen in eigenen Reitern, und axe prüft
   // nur, was gerade sichtbar ist: Jeder Reiter wird deshalb einzeln besucht.
   test("Verwaltungsbereich: Suche & Indexierung in allen Reitern", async ({
     authenticatedPage: page,

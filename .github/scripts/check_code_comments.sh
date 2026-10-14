@@ -4,8 +4,8 @@
 # Checked trees (TREES): '//' and '/* */' comment lines of the Java sources under backend/src/main,
 # opaa-api/src/main, backend/src/test and backend/src/evalTest, of the e2e/ scripts (*.ts, *.mjs,
 # *.js) and of the Gradle build scripts (*.gradle.kts in backend/ and opaa-api/); '#' lines of
-# application*.yml, of e2e/*.yml|yaml|env|sh, docker-compose*.yml, the Dockerfiles and
-# backend/gradle/*.toml; '#' lines and docstrings of the Python scripts under eval/ and
+# application*.yml, of e2e/*.yml|yaml|env|sh, docker-compose*.yml, .env*.example, the Dockerfiles
+# and backend/gradle/*.toml; '#' lines and docstrings of the Python scripts under eval/ and
 # backend/src/test/resources/; '#' lines and '//' lines of inline scripts in the workflows
 # (.github/workflows/*.yml); every line of the OpenAPI fragments, whose summaries and descriptions
 # are the API documentation; the changeSet comment: values (folded ones with their continuation
@@ -43,6 +43,7 @@ TREES=(
   build=opaa-api/
   build=frontend/
   build=docker-compose
+  build=.env
 )
 # An issue reference; "owner/repo#123", "&#123;" and "page.md#123" are none.
 REF='(?<![\w.&#/-])#[0-9]{2,4}\b'
@@ -65,17 +66,23 @@ hash_comments() {
   git ls-files -z -- "$@" | xargs -0 -r grep -nHP '^\s*#' || true
 }
 
-# '#' lines and docstrings (a triple-quoted string opening a statement) of the Python files.
+# '#' lines and docstrings (a triple-quoted string opening a statement) of the Python files; any
+# other triple-quoted string (an odd count of one quote kind on a line) is skipped to its end.
 python_comments() {
   git ls-files -z -- "$@" | xargs -0 -r awk '
-    FNR == 1 { doc = 0 }
+    function count(s, t) { return gsub(t, "", s) }
+    FNR == 1 { doc = 0; data = 0 }
     doc { print FILENAME ":" FNR ":" $0; if (index($0, q)) doc = 0; next }
+    data { if (count($0, q) % 2) data = 0; next }
     /^[ \t]*#/ { print FILENAME ":" FNR ":" $0; next }
     /^[ \t]*[rRbBuU]?("""|\047\047\047)/ {
       print FILENAME ":" FNR ":" $0
       q = index($0, "\"\"\"") ? "\"\"\"" : "\047\047\047"
       if (!index(substr($0, index($0, q) + 3), q)) doc = 1
-    }'
+      next
+    }
+    count($0, "\"\"\"") % 2 { q = "\"\"\""; data = 1; next }
+    count($0, "\047\047\047") % 2 { q = "\047\047\047"; data = 1 }'
 }
 
 # '#' lines and the comment: value of a changeSet; a folded one (comment: >-) with its indented lines.
@@ -97,7 +104,7 @@ lines() {
     'backend/src/evalTest/*.java' 'e2e/*.ts' 'e2e/*.mjs' 'e2e/*.js' 'backend/*.gradle.kts' \
     'opaa-api/*.gradle.kts'
   hash_comments 'backend/src/main/resources/application*.yml' 'e2e/*.yml' 'e2e/*.yaml' 'e2e/*.env' \
-    'e2e/*.sh' 'docker-compose*.yml' '*Dockerfile' 'backend/gradle/*.toml'
+    'e2e/*.sh' 'docker-compose*.yml' '.env*.example' '*Dockerfile' 'backend/gradle/*.toml'
   python_comments 'eval/*.py' 'backend/src/test/resources/*.py'
   git ls-files -z -- '.github/workflows/*.yml' | xargs -0 -r grep -nHP '^\s*(#|//)' || true
   git ls-files -z -- 'opaa-api/src/main/openapi/*.yaml' | xargs -0 -r grep -nH '' || true
