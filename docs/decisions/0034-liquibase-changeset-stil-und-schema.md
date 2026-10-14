@@ -23,7 +23,8 @@ die native Changes nicht oder nur umständlich abbilden: partielle Unique-Indize
 SECURITY-DEFINER-Funktionen, Rollen und Rechtevergabe (ADR-0015), `CREATE INDEX CONCURRENTLY`.
 Native Changes würden eine Portabilität vortäuschen, die beim nächsten Changeset wieder in `sql:`
 endet. Ein Changeset liest sich als SQL genau so, wie PostgreSQL es ausführt. Regeln für neue
-Changesets: [backend/AGENTS.md](../../backend/AGENTS.md).
+Changesets: [backend/AGENTS.md](../../backend/AGENTS.md#liquibase), Herleitung in
+[backend/docs/liquibase.md](../../backend/docs/liquibase.md).
 
 ### 2. Kein Schemapräfix — das Zielschema kommt aus der Konfiguration
 

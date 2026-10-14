@@ -41,7 +41,7 @@ jedem Chunk ab dem zweiten die letzten `chunk-overlap` Tokens seines Vorgängers
 
 ### 3. Die Invariante ist eine Domänen-Eigenschaft
 
-Seit #721 deklariert jede Domäne in `EvalDomainConfig` eine `ChunkCountExpectation`: `ONE_CHUNK`
+Jede Domäne deklariert in `EvalDomainConfig` eine `ChunkCountExpectation`: `ONE_CHUNK`
 (`exactlyOneChunk()`, `comic-characters`) oder `MIN_CHUNKS_PER_DOCUMENT` (`atLeast(n)`, mehrchunkige
 Domänen wie `city-landmarks` und `verwaltung` mit mindestens 3). Beide Formen sind derselbe
 Mechanismus mit umgekehrter Richtung der Grenze; `ChunkCountExpectation.violations` ist eine reine
