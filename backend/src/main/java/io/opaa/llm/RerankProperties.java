@@ -34,6 +34,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     RerankRoleState#UNREACHABLE} on a schedule, not on a fault (#1154). An installation with a
  *     faster (typically GPU-backed) endpoint may lower {@code OPAA_RERANK_TIMEOUT}; this default
  *     trades a slower failure detection for not mistaking normal CPU latency for an outage.
+ * @param probeInterval the longest the role goes without a result from its endpoint before it
+ *     probes, {@code OPAA_RERANK_PROBE_INTERVAL}. Every probe is a real rerank request and is
+ *     billed by a paid endpoint; a real call resets the interval. At least {@value
+ *     #MIN_PROBE_INTERVAL_SECONDS} seconds, anything shorter fails the start.
  */
 @ConfigurationProperties(prefix = "opaa.rerank")
 public record RerankProperties(
@@ -41,10 +45,17 @@ public record RerankProperties(
     String baseUrl,
     String model,
     String apiKey,
-    @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") Duration timeout) {
+    @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") Duration timeout,
+    @DefaultValue(DEFAULT_PROBE_INTERVAL_SECONDS + "s") Duration probeInterval) {
 
   /** See {@link #timeout}. */
   static final int DEFAULT_TIMEOUT_SECONDS = 240;
+
+  /** See {@link #probeInterval}. */
+  static final int DEFAULT_PROBE_INTERVAL_SECONDS = 60;
+
+  /** See {@link #probeInterval}. */
+  static final int MIN_PROBE_INTERVAL_SECONDS = 10;
 
   public RerankProperties {
     baseUrl = baseUrl == null ? "" : baseUrl.strip();
@@ -52,6 +63,16 @@ public record RerankProperties(
     apiKey = apiKey == null ? "" : apiKey.strip();
     if (timeout == null || timeout.isZero() || timeout.isNegative()) {
       timeout = Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS);
+    }
+    if (probeInterval == null) {
+      probeInterval = Duration.ofSeconds(DEFAULT_PROBE_INTERVAL_SECONDS);
+    }
+    if (probeInterval.compareTo(Duration.ofSeconds(MIN_PROBE_INTERVAL_SECONDS)) < 0) {
+      throw new IllegalArgumentException(
+          "opaa.rerank.probe-interval must be at least "
+              + MIN_PROBE_INTERVAL_SECONDS
+              + "s, was "
+              + probeInterval);
     }
   }
 
@@ -97,6 +118,8 @@ public record RerankProperties(
         + ", apiKey=***"
         + ", timeout="
         + timeout
+        + ", probeInterval="
+        + probeInterval
         + "]";
   }
 }
