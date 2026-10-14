@@ -5,7 +5,7 @@ import {
   mockIndexingCompleted,
   mockIndexingRuns,
 } from './indexingFixtures'
-import { mockSearchStatus } from '../../../mocks/searchAdminFixtures'
+import { mockSearchStatus } from '../../search-admin/mocks/searchAdminFixtures'
 import { mockLibraryDetails, mockSourceTypes } from './libraryFixtures'
 import type { IndexingStatusResponse, PushSecretResponse } from '@/shared/api/types'
 

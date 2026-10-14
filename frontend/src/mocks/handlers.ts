@@ -47,7 +47,7 @@ import { externalAccessTokenHandlers } from '../features/external-access/mocks/e
 import { externalAccessLibraryHandlers } from '../features/external-access/mocks/externalAccessLibraryHandlers'
 // search-admin
 import { searchHandlers } from './searchHandlers'
-import { searchAdminHandlers } from './searchAdminHandlers'
+import { searchAdminHandlers } from '../features/search-admin/mocks/searchAdminHandlers'
 import { diagnosticAccessHandlers } from '../features/library/mocks/diagnosticAccessHandlers'
 // auth
 import { authHandlers } from './authHandlers'

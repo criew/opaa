@@ -7,7 +7,7 @@ import java.util.Locale;
  * enum for the same reason as {@link RetrievalNote} - the label stays a free technical field, but
  * the set of labels the backend can produce is enumerable so {@code RetrievalNoteTest} can hold it
  * against the German translation inventory in {@code
- * frontend/src/utils/retrievalProtocolText.test.ts}.
+ * frontend/src/features/search-admin/utils/retrievalProtocolText.test.ts}.
  */
 public enum RetrievalListLabel {
   VECTOR_SEARCH("vector search · sub-query %d"),

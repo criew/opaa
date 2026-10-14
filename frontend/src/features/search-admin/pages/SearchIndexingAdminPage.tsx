@@ -33,14 +33,14 @@ import SectionHead from '@/shared/ui/SectionHead'
 import PageSection from '@/shared/ui/PageSection'
 import KeyValueList from '@/shared/ui/KeyValueList'
 import StatusLine, { type StatusTone } from '@/shared/ui/StatusLine'
-import ChunkContent from '../components/searchadmin/ChunkContent'
-import DiagnosisForm from '../components/searchadmin/DiagnosisForm'
+import ChunkContent from '../components/ChunkContent'
+import DiagnosisForm from '../components/DiagnosisForm'
 import DocumentChunkSection, {
   type DocumentChunkSectionHandle,
-} from '../components/searchadmin/DocumentChunkSection'
-import LibraryStatusTable from '../components/searchadmin/LibraryStatusTable'
-import PrivateLibrariesSummary from '../components/searchadmin/PrivateLibrariesSummary'
-import EmbeddingIndexSection from '../components/searchadmin/EmbeddingIndexSection'
+} from '../components/DocumentChunkSection'
+import LibraryStatusTable from '../components/LibraryStatusTable'
+import PrivateLibrariesSummary from '../components/PrivateLibrariesSummary'
+import EmbeddingIndexSection from '../components/EmbeddingIndexSection'
 import { isUuid, plural } from '@/shared/utils/format'
 
 import type {
@@ -58,11 +58,11 @@ import type {
   TrackedDocumentResponse,
 } from '@/shared/api/types'
 import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
-import { getSearchChunk } from '../services/searchAdminApi'
+import { getSearchChunk } from '../api/searchAdminApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 import { contentWidth } from '@/shared/theme/tokens'
-import { catalogRoute } from '../shared/assetTypes'
+import { catalogRoute } from '../../../shared/assetTypes'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { visibleChunkMetadata } from '@/features/library'
 

@@ -11,8 +11,8 @@ import {
   getSearchDiagnosisContext,
   getSearchStatus,
   runSearchDiagnosis,
-} from '../services/searchAdminApi'
-import { runContextPrefixRerunBatch, runMetadataBackfillBatch } from '../services/searchAdminApi'
+} from '../api/searchAdminApi'
+import { runContextPrefixRerunBatch, runMetadataBackfillBatch } from '../api/searchAdminApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 

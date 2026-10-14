@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
-import { renderWithProviders } from '../../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
-import { mockSearchStatus } from '../../mocks/searchAdminFixtures'
+import { mockSearchStatus } from '../mocks/searchAdminFixtures'
 import DiagnosisForm from './DiagnosisForm'
 import LibraryStatusTable from './LibraryStatusTable'
 
 const { mockGetDocumentTypeVocabulary } = vi.hoisted(() => ({
   mockGetDocumentTypeVocabulary: vi.fn(async () => ({ items: [] })),
 }))
-vi.mock('../../features/library/api/libraryMetadataApi', () => ({
+vi.mock('../../library/api/libraryMetadataApi', () => ({
   getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
 }))
 

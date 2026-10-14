@@ -88,7 +88,7 @@ import { ConnectionCallbackPage } from '@/features/library/routes'
 import ConnectionsAdminPage from './app/areas/ConnectionsAdminPage'
 import { ConnectionLogPage, RightsHistoryPage } from '@/features/audit/routes'
 // search-admin
-import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
+import { SearchIndexingAdminPage } from '@/features/search-admin/routes'
 // audit
 
 const ADMIN_SECTIONS = [
