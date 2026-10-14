@@ -143,6 +143,7 @@ class IndexingRunTemplateTest {
       SourceConnectionResolver resolver, SourceIndexingExecutor registered) {
     IndexingSourceExecutorRegistry executors = mock(IndexingSourceExecutorRegistry.class);
     when(executors.find(SourceTypes.FILESYSTEM)).thenReturn(Optional.of(registered));
+    when(jobService.isRunningFor(jobId, library.getId())).thenReturn(true);
     return new IndexingRunTemplate(
         jobService,
         eventRepository,
@@ -200,15 +201,44 @@ class IndexingRunTemplateTest {
             null,
             "https://feed.example",
             null);
+    IndexingRunTemplate template = templateRegistering(resolver, own);
+    when(jobService.isRunningFor(jobId, feed.getId())).thenReturn(true);
+
+    assertThatThrownBy(() -> template.run(jobId, feed, IndexingRunMode.FULL, own, own.body(seen)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("may not run library " + feed.getId());
+
+    assertThat(seen.get()).isNull();
+    verifyNoInteractions(resolver);
+  }
+
+  @Test
+  void theRegisteredExecutorsOwnBodyIsRefusedForALibraryOfItsTypeTheRunWasNotStartedFor() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    AtomicReference<IndexingRun> seen = new AtomicReference<>();
+    FilesystemRun own = new FilesystemRun();
+    KnowledgeLibrary foreign =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Fremd",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.FILESYSTEM,
+            "/srv/fremd",
+            null,
+            null);
 
     assertThatThrownBy(
             () ->
                 templateRegistering(resolver, own)
-                    .run(jobId, feed, IndexingRunMode.FULL, own, own.body(seen)))
-        .isInstanceOf(IllegalArgumentException.class);
+                    .run(jobId, foreign, IndexingRunMode.FULL, own, own.body(seen)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("is not a running job of library " + foreign.getId());
 
     assertThat(seen.get()).isNull();
-    verifyNoInteractions(resolver);
+    verifyNoInteractions(resolver, eventRepository);
+    verify(jobService, never()).failJob(any(), any());
+    verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
   }
 
   @Test
