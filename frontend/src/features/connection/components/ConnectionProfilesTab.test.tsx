@@ -188,7 +188,7 @@ describe('ConnectionProfilesTab', () => {
     )
   })
 
-  // Review #2515, finding 1: the summary must not call a state good that it could not load.
+  // The summary must not call a state good that it could not load.
   const RELEASED_OVERVIEW = [
     {
       capability: 'CREATE_CONNECTOR_LIBRARY',

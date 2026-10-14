@@ -76,7 +76,7 @@ describe('AssetTilePicker', () => {
     ).not.toBeInTheDocument()
   })
 
-  /** #2131: the star is a control of its own - it marks the favorite and leaves the choice. */
+  /** The star is a control of its own - it marks the favorite and leaves the choice. */
   it('marks a favorite from a tile without changing the choice', async () => {
     const marked: string[] = []
     server.use(
@@ -114,7 +114,7 @@ describe('AssetTilePicker', () => {
     expect(screen.getByText('Ausgewählt: Erste Bibliothek')).toBeInTheDocument()
   })
 
-  /** Review #2145: after a star, the next page by offset would repeat one entry and skip another. */
+  /** After a star, a next page by offset would repeat one entry and skip another. */
   it('loads further pages after a star without repeating or skipping an entry', async () => {
     const names = Array.from({ length: 60 }, (_, i) => `Eintrag ${String(i).padStart(2, '0')}`)
     const favorites = new Set<string>(['Eintrag 55'])
@@ -154,7 +154,7 @@ describe('AssetTilePicker', () => {
     expect(screen.getByRole('checkbox', { name: 'Eintrag 49' })).toBeInTheDocument()
   })
 
-  /** Review #2145: narrowed to the chosen, a tile is the same full tile as in the list. */
+  /** Narrowed to the chosen, a tile is the same full tile as in the list. */
   it('shows the chosen as full catalog tiles and leaves out what is not readable', async () => {
     const requested: string[][] = []
     server.use(
@@ -206,7 +206,7 @@ describe('AssetTilePicker', () => {
     expect(requested).toContainEqual(expect.arrayContaining(['erste', 'fremde']))
   })
 
-  /** #2207: narrowed to the chosen, the catalog's order holds - favorites first, then by name. */
+  /** Narrowed to the chosen, the catalog's order holds - favorites first, then by name. */
   it('orders the chosen like the catalog, favorites first and then by name', async () => {
     const favorites = new Set(['zeta', 'beta'])
     server.use(
@@ -254,7 +254,7 @@ describe('AssetTilePicker', () => {
     )
   })
 
-  /** Review #2145: a filter change while a further page loads must not lock its buttons. */
+  /** A filter change while a further page loads must not lock its buttons. */
   it('keeps "Weitere laden" and "Erneut versuchen" usable after a filter change mid-load', async () => {
     let releaseStale: () => void = () => undefined
     const stale = new Promise<void>((resolve) => {

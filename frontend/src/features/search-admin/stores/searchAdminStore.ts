@@ -40,7 +40,7 @@ export const BATCH_RUN_STALLED_MESSAGE =
 
 /**
  * The state of one library's chargen run as this page drives it - the core-metadata backfill
- * (#1067) and the Kontextpräfix-Nachlauf (#1072) alike: the page loops batch calls while
+ * and the Kontextpräfix-Nachlauf alike: the page loops batch calls while
  * `running`; pausing clears the flag and the loop stops after the batch in flight - nothing
  * server-side keeps running, the next start simply calls again.
  */
@@ -126,8 +126,8 @@ const EMPTY: Omit<
 }
 
 /**
- * The state of the "Suche & Indexierung" administration page (#1053). Read-only except for the
- * two chargen runs - the core-metadata backfill (#1067) and the Kontextpraefix-Nachlauf (#1072) -
+ * The state of the "Suche & Indexierung" administration page. Read-only except for the
+ * two chargen runs - the core-metadata backfill and the Kontextpraefix-Nachlauf -
  * each an explicit, library-wise start on this page.
  *
  * A diagnosis result of a run in someone else's rights context is never persisted anywhere -
@@ -204,7 +204,7 @@ export const useSearchAdminStore = create<SearchAdminState>((set, get) => {
     reset: () => set({ ...EMPTY }),
 
     /**
-     * Status und Diagnosekontext werden getrennt geladen (#1616): Sie speisen verschiedene Reiter,
+     * Status und Diagnosekontext werden getrennt geladen: Sie speisen verschiedene Reiter,
      * und ein Reiter soll nur holen, was er zeigt. Vorher lief beides in einem `Promise.all` mit
      * einem gemeinsamen Fehlerzustand - ein nicht erreichbarer Diagnosekontext verdeckte damit den
      * Indexstatus, den er gar nicht betrifft.

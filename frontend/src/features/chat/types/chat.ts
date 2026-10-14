@@ -21,7 +21,7 @@ export interface ChatMessage {
    */
   noKnowledgeAvailableInSpace?: boolean
   /**
-   * The libraries the vector search actually ran against (#667, QueryMetadata#searchedLibraries)
+   * The libraries the vector search actually ran against (QueryMetadata#searchedLibraries)
    * - mockup 1a's "Durchsucht wurden: …" line under an answer that cites nothing. Only known for
    * answers of this session; persisted history does not carry it.
    */

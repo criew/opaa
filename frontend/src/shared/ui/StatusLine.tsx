@@ -30,7 +30,7 @@ interface StatusLineProps {
 }
 
 /**
- * Ein Zustand als Zeile (#1608): farbiger Punkt, Satz, darunter der Grund — **keine Statuskarte**.
+ * Ein Zustand als Zeile: farbiger Punkt, Satz, darunter der Grund — **keine Statuskarte**.
  *
  * Die Farbe steht im Punkt, nie im Text (Gestaltungsleitlinien 2.3). Der Punkt ist dekorativ und
  * für Screenreader ausgeblendet — die Aussage steht vollständig im Wort.

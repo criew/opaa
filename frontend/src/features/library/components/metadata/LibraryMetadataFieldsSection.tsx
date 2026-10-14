@@ -389,7 +389,7 @@ export default function LibraryMetadataFieldsSection({
         <Alert severity="warning" sx={{ mb: 2 }}>
           {`${plural(awaitingRerun, 'Dokument wartet', 'Dokumente warten')} auf Neu-Einbetten.`} Der
           Nachlauf wird von einer Systemadministratorin auf der Seite{' '}
-          {/* Direkt in den Reiter, der den Nachlauf trägt (#1616) - der nackte Pfad landete auf
+          {/* Direkt in den Reiter, der den Nachlauf trägt - der nackte Pfad landete auf
               dem Überblick, und von dort müsste man noch einmal weiterklicken. */}
           <Link component={RouterLink} to="/admin/search/index">
             Suche &amp; Indexierung

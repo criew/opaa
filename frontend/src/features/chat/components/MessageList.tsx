@@ -117,9 +117,9 @@ export default function MessageList({ messages, isLoading, targetMessageId }: Me
   }
 
   return (
-    // data-testid: the chat header (#658) repeats the first question as the fallback title, so
+    // data-testid: the chat header repeats the first question as the fallback title, so
     // the E2E suite anchors history assertions here instead of on <main> as a whole.
-    // position: 'relative' (#749): the live region below (visuallyHidden -> position: absolute)
+    // position: 'relative': the live region below (visuallyHidden -> position: absolute)
     // otherwise has no positioned ancestor, so its containing block is the viewport rather than
     // this scroll container - its "static position" grows with the message count and, without
     // this positioning context, escapes this box's overflow clipping. That inflates

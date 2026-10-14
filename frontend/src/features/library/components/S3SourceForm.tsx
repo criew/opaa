@@ -132,7 +132,7 @@ export default function S3SourceForm({
   const removeButtons = useRef<Array<HTMLButtonElement | null>>([])
   const addScopeButton = useRef<HTMLButtonElement | null>(null)
 
-  // #542 review finding 1, mirrored for S3: the backend carries the stored key forward only while
+  // The backend carries the stored key forward only while
   // the endpoint still names the same origin; a host change drops it.
   const originChanged =
     mode === 'edit' &&

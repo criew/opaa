@@ -142,7 +142,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
   })
 
   it('#777: offers the user picker on the Mitglieder step, powered by GET /v1/users', async () => {
-    // #778 review, finding 2: the shared /api/v1/admin/users MSW handler answers every request
+    // The shared /api/v1/admin/users MSW handler answers every request
     // unconditionally (it has to - handlers.ts must not import the auth store itself, see
     // src/test/setup.ts's own comment on why pulling the shared axios client in that early breaks
     // request interception for a dozen unrelated tests), so a plain assertion against the picker
@@ -151,7 +151,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     // real backend's SYSTEM_ADMIN-gated AdminController#listUsers would for this caller, so the
     // guard is meaningful: reverting getUserSummaries() back to getUsers() empties the picker and
     // fails this test, instead of passing vacuously against an MSW mock that never enforced the
-    // boundary #777 exists to work around.
+    // admin-only boundary of GET /admin/users.
     server.use(
       http.get('/api/v1/admin/users', () => {
         return HttpResponse.json({ error: 'Zugriff verweigert' }, { status: 403 })
@@ -162,13 +162,13 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
 
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    // #778 review, finding 4: the picker no longer preloads the whole organization - a query
+    // The picker does not preload the whole organization - a query
     // (min. 2 characters) has to be typed before GET /v1/users is even attempted.
     await user.type(screen.getByLabelText('Person oder Gruppe suchen'), 'al')
     expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
   })
 
-  /** #2131: Ohne Space-Verzeichnis bewirkt eine Sichtbarkeit nichts - jeder Space ist privat. */
+  /** Ohne Space-Verzeichnis bewirkt eine Sichtbarkeit nichts - jeder Space ist privat. */
   it('asks for no visibility, neither in the basics nor in the summary', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
@@ -182,7 +182,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(screen.queryByText(/Sichtbarkeit/)).not.toBeInTheDocument()
   })
 
-  /** #2131: Die Fristen stammen aus der Systemeinstellung, nicht aus dem Frontend. */
+  /** Die Fristen stammen aus der Systemeinstellung, nicht aus dem Frontend. */
   it('names the cleanup periods the operator configured', async () => {
     server.use(
       http.get('/api/v1/spaces/chat-auto-cleanup', () =>
@@ -209,7 +209,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     ).toBeInTheDocument()
   })
 
-  /** Review #2137: a failed lookup of the periods must not hide that the cleanup is on. */
+  /** A failed lookup of the periods must not hide that the cleanup is on. */
   it('names the cleanup without numbers when the periods cannot be loaded', async () => {
     server.use(http.get('/api/v1/spaces/chat-auto-cleanup', () => HttpResponse.error()))
     const user = userEvent.setup()
@@ -243,14 +243,14 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(screen.queryByText(/Inaktive Chats werden/)).not.toBeInTheDocument()
   })
 
-  /** #2131: Personen und Gruppen werden im Assistenten gleich aufgenommen. */
+  /** Personen und Gruppen werden im Assistenten gleich aufgenommen. */
   it('admits a group as a member, names it as a group and passes it on', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    // #2207: the step carries no hint on what a group passes on.
+    // The step carries no hint on what a group passes on.
     expect(screen.queryByText(/Gruppen geben ihre Rolle/)).not.toBeInTheDocument()
     await user.type(screen.getByLabelText('Person oder Gruppe suchen'), 'Projektteam')
     await user.click(await screen.findByRole('option', { name: /Referat 5 Projektteam · Gruppe/ }))

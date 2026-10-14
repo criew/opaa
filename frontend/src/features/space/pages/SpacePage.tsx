@@ -26,7 +26,7 @@ import { SuccessionStateNote } from '@/features/succession'
 import SpaceKnowledgeNotice from '../components/SpaceKnowledgeNotice'
 import { spaceKnowledgeGap } from '../components/spaceKnowledge'
 
-// #674 review: the owner is not always ADMIN - transferOwnership only reassigns Space.ownerId and
+// The owner is not always ADMIN - transferOwnership only reassigns Space.ownerId and
 // never touches the new owner's own SpaceMembership role (see SpaceService#requireMemberListViewer,
 // which checks the same two conditions on the backend). A non-ADMIN owner and a system admin
 // without their own membership (userRole null) must still see the full member list and the
@@ -67,8 +67,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
   // Zugeklappt: Die Herleitung ist eine Nachfrage, keine Dauerinformation - und sie kostet eine
   // eigene Anfrage, die nur stellt, wer sie aufklappt.
   const [derivationExpanded, setDerivationExpanded] = useState(false)
-  // #203 acceptance criterion "die UI erklärt einmal, sichtbar, warum die Liste je Mitglied
-  // unterschiedlich sein kann" - a dismissible hint, shown once per browser rather than every
+  // "Die UI erklärt einmal, sichtbar, warum die Liste je Mitglied unterschiedlich sein kann" -
+  // a dismissible hint, shown once per browser rather than every
   // visit, since a permanent warning banner on something that is by design (not an error) would
   // itself become the "warning sign attached to nearly every space" the spec explicitly rejects
   // for the mixed-audience case (docs/features/spaces-and-assets.md#geprüfte-und-verworfene-
@@ -97,7 +97,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
     }
   }, [navigate, selectSpace, spaceId, spaces])
 
-  // #144: the full member list is only fetched for ADMIN and the owner - anyone else would just
+  // The full member list is only fetched for ADMIN and the owner - anyone else would just
   // get a 403 from listSpaceMembers, so the accordion below shows the aggregated roleCounts to
   // them instead of an empty-looking list.
   useEffect(() => {
@@ -143,8 +143,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
         </Alert>
       )}
       <Stack spacing={2.5}>
-        {/* Der Kopf des Space stand bis #1609 in einem Kasten, während alles darunter durch Linien
-            gegliedert ist. Jetzt trägt ihn dieselbe Haarlinie wie jeden Abschnitt der Seite. */}
+        {/* Der Kopf des Space trägt dieselbe Haarlinie wie jeden Abschnitt der Seite, keinen
+            Kasten. */}
         <Box component="header" sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -166,7 +166,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
               <SuccessionStateNote succession={space.succession} />
             </Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              {/* #1917: Ein Kurator verwaltet zwar keine Mitglieder, aber das zugeordnete Wissen -
+              {/* Ein Kurator verwaltet zwar keine Mitglieder, aber das zugeordnete Wissen -
                   auch für ihn führt der Weg dorthin über die Einstellungen. */}
               {(canManage(space.userRole, isOwner) || space.userRole === 'CURATOR') && (
                 <Button
@@ -215,7 +215,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
                 <Stack spacing={1}>
                   {members.map((member) => (
                     <Box key={member.id} sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      {/* #1820: Eine geschützte Gruppe erscheint namenlos - der Dienst liefert
+                      {/* Eine geschützte Gruppe erscheint namenlos - der Dienst liefert
                           keinen Namen (ADR-0036, Entscheidung 9). */}
                       <Typography
                         sx={
@@ -239,7 +239,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
                 </Stack>
               )
             ) : (
-              // #144: non-admins no longer receive the full member list - only the aggregated
+              // non-admins do not receive the full member list - only the aggregated
               // count per role, which does not name anyone.
               <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
                 {Object.entries(space.roleCounts ?? {})
@@ -252,7 +252,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
           </AccordionDetails>
         </Accordion>
 
-        {/* #1822, ADR-0036 Entscheidung 9: der eigene Weg in diesen Space - für jede Person, nicht
+        {/* ADR-0036 Entscheidung 9: der eigene Weg in diesen Space - für jede Person, nicht
             nur für die Verwaltung. Die Mitglieder einer Gruppe werden dabei nicht genannt. */}
         <Accordion
           expanded={derivationExpanded}

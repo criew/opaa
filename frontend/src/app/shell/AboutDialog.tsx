@@ -9,7 +9,7 @@ import DemoNotice from './DemoNotice'
 
 /**
  * The version alone, as the build was given it (vite.config.ts); the product name in front of it
- * comes from the branding (#583).
+ * comes from the branding.
  */
 export const APP_VERSION = `v${__OPAA_VERSION__}`
 
@@ -19,9 +19,8 @@ interface AboutDialogProps {
 }
 
 /**
- * "Info zu OPAA" (#1921): product name, version and - on a demo instance - the demo notice the
- * page footer used to carry. Every value comes from the frontend itself; there is no build-info
- * endpoint behind this.
+ * "Info zu OPAA": product name, version and - on a demo instance - the demo notice. Every value
+ * comes from the frontend itself; there is no build-info endpoint behind this.
  */
 export default function AboutDialog({ open, onClose }: AboutDialogProps) {
   const productName = useBrandingStore((s) => s.branding.productName)
@@ -33,7 +32,7 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
         <Typography>
           {productName} {APP_VERSION}
         </Typography>
-        {/* Only rendered on demo instances (OPAA_DEMO_MODE), see DemoNotice.tsx / #230. */}
+        {/* Only rendered on demo instances (OPAA_DEMO_MODE), see DemoNotice.tsx. */}
         <DemoNotice />
       </DialogContent>
       <DialogActions>

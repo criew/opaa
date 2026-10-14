@@ -16,7 +16,7 @@ interface PageSectionProps {
 }
 
 /**
- * Ein Abschnitt einer Verwaltungsseite (#1608): Überschrift auf einer Haarlinie, darunter der
+ * Ein Abschnitt einer Verwaltungsseite: Überschrift auf einer Haarlinie, darunter der
  * Inhalt — **kein Kasten**.
  *
  * Das ist die Sprache, die die Kontenliste bereits spricht und die hier für den ganzen Bereich

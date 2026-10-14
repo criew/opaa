@@ -24,9 +24,9 @@ function optionLabel(user: UserSummary): string {
 }
 
 /**
- * Die serverseitige Kontensuche als Auswahlfeld (#777) — nutzbar für jedes angemeldete Konto,
+ * Die serverseitige Kontensuche als Auswahlfeld — nutzbar für jedes angemeldete Konto,
  * anders als die Kontenliste der Administration. Die Gruppenverwaltung der Verantwortlichen
- * (#1814) braucht genau das: Sie steht Konten ohne Systemrolle offen.
+ * braucht genau das: Sie steht Konten ohne Systemrolle offen.
  */
 export default function UserPicker({
   ariaLabel,
@@ -57,7 +57,7 @@ export default function UserPicker({
       inputValue={inputText}
       onInputChange={(_event, next, reason) => {
         // Das Feld zeigt immer, was MUI vorgibt - nach einer Auswahl das Label der Person. Eine
-        // neue Anfrage ist aber nur, was getippt wurde (#778): 'selectOption' und 'reset' als
+        // neue Anfrage ist aber nur, was getippt wurde: 'selectOption' und 'reset' als
         // Eingabe weiterzugeben suchte nach nie getipptem Text. 'clear' leert beides.
         setInputText(next)
         if (reason === 'input') setQuery(next)

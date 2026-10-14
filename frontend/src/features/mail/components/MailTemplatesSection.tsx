@@ -31,7 +31,7 @@ const templatePurposes: Record<string, string> = {
 }
 
 /**
- * Liste der zwölf Vorlagen und der Editor der ausgewählten (#1542). Die Registry ist
+ * Liste der zwölf Vorlagen und der Editor der ausgewählten. Die Registry ist
  * geschlossen: Eine Vorlage lässt sich überschreiben und zurücksetzen, nicht anlegen und nicht
  * löschen — deshalb gibt es hier keine „Neu“-Schaltfläche.
  */
@@ -66,7 +66,7 @@ export default function MailTemplatesSection() {
       )}
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ alignItems: 'flex-start' }}>
-        {/* Eine senkrechte Linie trennt die Auswahl vom Inhalt, kein Rahmen ringsum (#1608) -
+        {/* Eine senkrechte Linie trennt die Auswahl vom Inhalt, kein Rahmen ringsum -
             dieselbe Trennung, die die Bereichsnavigation der Seite links schon nutzt. */}
         <Box
           component="nav"

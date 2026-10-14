@@ -14,7 +14,7 @@ interface PathSourceFormProps {
 }
 
 /**
- * The one Verzeichnispfad-Formular of a FILESYSTEM library (#1940) - used by the Anlage-Assistent
+ * The one Verzeichnispfad-Formular of a FILESYSTEM library - used by the Anlage-Assistent
  * and by the Bearbeiten-Weg of the Reiter „Quelle" alike, so the fields, their hints and limits
  * exist exactly once. Shaped like {@link ConfluenceSourceForm}: controlled values in, a patch
  * out; the caller owns the state and decides what saving means.

@@ -1,5 +1,5 @@
 /**
- * What the OIDC callback hands the handover page (#1563, ADR-0033 Entscheidung 12): the provider's
+ * What the OIDC callback hands the handover page (ADR-0033 Entscheidung 12): the provider's
  * access token and the handover code, for the one `redeem` call and nothing else.
  *
  * Deliberately a module variable rather than storage: the callback page and the handover page are
@@ -35,7 +35,7 @@ export function clearPendingHandover(): void {
 }
 
 /**
- * The note that a handover redirect is under way in this tab (#1563). Unlike the two values above
+ * The note that a handover redirect is under way in this tab. Unlike the two values above
  * it has to survive the trip to the provider, so it lives in `sessionStorage` - it is not a secret,
  * only a flag, and it is per tab like everything else of the flow.
  *

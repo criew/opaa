@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * Guards the jsdom gap described in `jsdom-blob-stream.ts`: without `Blob.prototype.stream()`,
  * undici's multipart serialisation produces a body that never yields bytes, and a `FormData`
- * upload carrying a `File` hangs rather than failing (#1169). Both assertions fail cross-platform
+ * upload carrying a `File` hangs rather than failing. Both assertions fail cross-platform
  * if the polyfill is removed, unlike the upload tests, which only hang on some Node versions.
  */
 describe('jsdom Blob.stream()', () => {

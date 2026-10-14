@@ -191,7 +191,7 @@ function ProviderCard({
 }
 
 /**
- * Die Identitätsanbieter als Liste (#1625) — in der Reihenfolge der Anmeldeseite. Ab dem
+ * Die Identitätsanbieter als Liste — in der Reihenfolge der Anmeldeseite. Ab dem
  * `md`-Breakpoint als Tabelle, darunter als Karten: Sechs Spalten trägt ein schmales Fenster
  * nicht, und die Seite dürfte dafür nicht waagerecht rollen.
  *

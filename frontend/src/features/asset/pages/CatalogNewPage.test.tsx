@@ -68,7 +68,7 @@ describe('CatalogNewPage (ADR-0039, "Neu")', () => {
     expect(await screen.findByText('Assistent Prompts')).toBeInTheDocument()
   })
 
-  // #2588: a switched-off type is no option under "Neu", whatever rights the person holds.
+  // A switched-off type is no option under "Neu", whatever rights the person holds.
   describe('with prompt libraries switched off', () => {
     afterEach(() => {
       useAuthStore.setState({ features: {} })

@@ -6,7 +6,7 @@ import { MAIL_FAILING_HOST } from '../mocks/mailHandlers'
 import { useMailStore } from './mailStore'
 
 /**
- * Der Mail-Store (#1542): Laden, Speichern, die Statusfortschreibung nach einem Testversand und
+ * Der Mail-Store: Laden, Speichern, die Statusfortschreibung nach einem Testversand und
  * die Übernahme der Serverantwort in die Übersichtsliste.
  */
 describe('useMailStore', () => {

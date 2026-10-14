@@ -10,7 +10,7 @@ function previewOf(subject: string): MailTemplatePreviewResponse {
 }
 
 /**
- * Die beiden Zusicherungen der Vorschau (#1542): eine Eingabefolge ist eine Anfrage, und eine
+ * Die beiden Zusicherungen der Vorschau: eine Eingabefolge ist eine Anfrage, und eine
  * überholte Antwort schreibt die Vorschau nicht zurück.
  *
  * Die Antworten werden hier absichtlich von Hand freigegeben statt über Verzögerungen - die

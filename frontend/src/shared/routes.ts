@@ -4,10 +4,10 @@ export const SYSTEM_LOGIN_ROUTE = '/login/system'
 export const PASSWORD_ROUTE = '/account/password'
 export const FORGOT_PASSWORD_ROUTE = '/forgot-password'
 export const REGISTER_ROUTE = '/register'
-/** Target of both link kinds in the mails - an invitation and an administrative reset (#1540). */
+/** Target of both link kinds in the mails - an invitation and an administrative reset. */
 export const SET_PASSWORD_ROUTE = '/set-password'
 export const VERIFY_EMAIL_ROUTE = '/verify-email'
-/** Target of the handover link (#1563); the page redeems the code after the provider sign-in. */
+/** Target of the handover link; the page redeems the code after the provider sign-in. */
 export const HANDOVER_ROUTE = '/handover'
 /** Where every provider sign-in returns - the one route a running handover may pass through. */
 export const AUTH_CALLBACK_ROUTE = '/auth/callback'

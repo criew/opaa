@@ -1,11 +1,11 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Welche Spaces zuletzt genutzt wurden — die Ablage hinter dem Einstieg nach der Anmeldung (#1911)
- * und hinter der Liste im Space-Auswahlmenü (#1912). Eine Ablage für beides: Zwei getrennte
+ * Welche Spaces zuletzt genutzt wurden — die Ablage hinter dem Einstieg nach der Anmeldung
+ * und hinter der Liste im Space-Auswahlmenü. Eine Ablage für beides: Zwei getrennte
  * Merklisten könnten auseinanderlaufen, und „zuletzt genutzt" bedeutet an beiden Stellen dasselbe.
  *
- * Bewusst nur im Browser (`localStorage`, #1911: „kein Server-Feld"). Daraus folgt dreierlei, und
+ * Bewusst nur im Browser (`localStorage`, kein Server-Feld). Daraus folgt dreierlei, und
  * alles drei trägt diese Datei:
  *
  * - **Kein Zuschnitt auf ein Konto.** Die Liste enthält nur Space-Kennungen. Jede Leseseite gleicht
@@ -19,8 +19,8 @@ import { useSyncExternalStore } from 'react'
  *   Neuladen. Deshalb {@link useRecentSpaceIds} über `useSyncExternalStore`.
  *
  * Die Abmeldung räumt hier bewusst nichts weg — anders als bei den Sitzungsspeichern in
- * `resettableStores`. Genau das Gemerkte soll die Abmeldung überdauern, sonst beantwortet #1911
- * („beim nächsten Einstieg") sich selbst mit Nein.
+ * `resettableStores`. Genau das Gemerkte soll die Abmeldung überdauern und beim nächsten Einstieg
+ * noch da sein.
  */
 
 const STORAGE_KEY = 'opaa.spaces.recent'
@@ -31,7 +31,7 @@ const STORAGE_KEY = 'opaa.spaces.recent'
  */
 const MAX_REMEMBERED = 10
 
-/** Wie viele Einträge das Space-Auswahlmenü höchstens zeigt (#1912). */
+/** Wie viele Einträge das Space-Auswahlmenü höchstens zeigt. */
 export const MAX_RECENT_SPACES_IN_MENU = 5
 
 const listeners = new Set<() => void>()
@@ -107,7 +107,7 @@ export function rememberSpaceUse(spaceId: string): void {
 
 /**
  * Der zuletzt genutzte Space aus `spaces`, oder `null`, wenn keiner der gemerkten (noch) dabei ist
- * — der Rückfall auf den persönlichen Space liegt beim Aufrufer, der ihn ohnehin kennt (#1911).
+ * — der Rückfall auf den persönlichen Space liegt beim Aufrufer, der ihn ohnehin kennt.
  *
  * Der Abgleich gegen die ausgelieferte Liste ist die ganze Zugriffsprüfung, die es hier braucht:
  * Was der Dienst nicht ausliefert — archiviert, Mitgliedschaft entzogen, fremdes Konto —, kann
@@ -125,7 +125,7 @@ export function lastUsedSpace<T extends { id: string }>(
 }
 
 /**
- * Die Spaces für das Auswahlmenü (#1912): zuerst die zuletzt genutzten in Nutzungsreihenfolge,
+ * Die Spaces für das Auswahlmenü: zuerst die zuletzt genutzten in Nutzungsreihenfolge,
  * danach — bis `limit` erreicht ist — die übrigen in der Reihenfolge, in der sie hereinkommen.
  *
  * Das Auffüllen ist kein Beiwerk: Wer sich zum ersten Mal anmeldet, hat keine Nutzungsreihenfolge,

@@ -16,7 +16,7 @@ interface AuthNoticeProps {
 }
 
 /**
- * The outcome of a self-service step as a view of its own rather than a popup (#1540): the form is
+ * The outcome of a self-service step as a view of its own rather than a popup: the form is
  * gone, the sentence stands where the form stood, and there is one way on. A popup would vanish
  * after a few seconds from a screen that has no other content left. MUI's Alert carries
  * `role="alert"`, so the sentence is announced when it replaces the form.

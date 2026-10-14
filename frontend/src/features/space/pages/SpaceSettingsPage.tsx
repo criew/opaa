@@ -34,7 +34,7 @@ function canManageMembers(role: SpaceRole | undefined): boolean {
   return role === 'ADMIN'
 }
 
-// #203: a CURATOR may associate and detach assets, one level below ADMIN's member management -
+// A CURATOR may associate and detach assets, one level below ADMIN's member management -
 // docs/features/spaces-and-assets.md#space-rollen ("CURATOR: zusätzlich Assets assoziieren und
 // lösen").
 function canManageAssets(role: SpaceRole | undefined, isOwner: boolean): boolean {
@@ -42,7 +42,7 @@ function canManageAssets(role: SpaceRole | undefined, isOwner: boolean): boolean
 }
 
 /**
- * Die eine Einstellungsseite eines Space (#1917), erreichbar über das Zahnrad am Fuß der
+ * Die eine Einstellungsseite eines Space, erreichbar über das Zahnrad am Fuß der
  * Seitenleiste. Jeder Reiter ist eine eigene Route, damit ein Verweis im richtigen Bereich landet
  * und ein Neuladen ihn behält; geladen wird nur, was der sichtbare Reiter braucht.
  */
@@ -98,9 +98,9 @@ export default function SpaceSettingsPage() {
         </Box>
 
         {space.successionOpen && (
-          // #1815, ADR-0036 Entscheidung 6: state and addressee, deliberately without a date,
-          // without the previous owner and without a reason - those belong in the operational list
-          // (#1819), not beside a colleague's name. The space stays fully usable.
+          // ADR-0036 Entscheidung 6: state and addressee, deliberately without a date,
+          // without the previous owner and without a reason - those belong in the operational list,
+          // not beside a colleague's name. The space stays fully usable.
           <Alert severity="warning" sx={{ mb: 2 }}>
             Nachfolge offen — zuständig: Systemverwaltung. Der Space bleibt nutzbar, bestehende
             Rechte bleiben bestehen.

@@ -64,7 +64,7 @@ function Harness({
   )
 }
 
-/** Google Drive under a profile (#2220): the key and the imitated account are the profile's. */
+/** Google Drive under a profile: the key and the imitated account are the profile's. */
 describe('GoogleDriveSourceForm under a profile', () => {
   beforeEach(() => {
     mockTestLibrarySource.mockReset()

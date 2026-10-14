@@ -54,7 +54,7 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByRole('navigation', { name: 'Administration' })).toBeInTheDocument()
     })
-    // #2504: one entry for the connections area instead of three.
+    // One entry for the connections area instead of three.
     const navigation = screen.getByRole('navigation', { name: 'Administration' })
     expect(within(navigation).getByRole('link', { name: 'Anbindungen' })).toHaveAttribute(
       'href',
@@ -73,7 +73,7 @@ describe('App', () => {
     })
   })
 
-  // #1917: Die Verwaltungsseite heißt jetzt „Einstellungen" und ist in Reiter gegliedert. Ein
+  // Die Verwaltungsseite heißt jetzt „Einstellungen" und ist in Reiter gegliedert. Ein
   // Lesezeichen auf die alte Adresse darf deshalb nicht ins Leere laufen.
   it('sends a bookmark of the former management route to the first settings tab', async () => {
     window.history.pushState({}, '', '/spaces/space-1/manage')
@@ -98,7 +98,7 @@ describe('App', () => {
     window.history.pushState({}, '', '/')
   })
 
-  // #2588: switched off, no prompt page exists; every former address leads to the bare catalog.
+  // Switched off, no prompt page exists; every former address leads to the bare catalog.
   it.each(['/prompts', '/prompts/new', '/prompts/prompt-library-referat-50/freigaben'])(
     'sends %s to the catalog while prompt libraries are switched off',
     async (path) => {
@@ -115,7 +115,7 @@ describe('App', () => {
     },
   )
 
-  // #2504: Zugänge, Fremdzugänge und Fremdzugangsfreigaben sind ein Bereich „Anbindungen“. Ein
+  // Zugänge, Fremdzugänge und Fremdzugangsfreigaben sind ein Bereich „Anbindungen“. Ein
   // Lesezeichen auf eine frühere Seite landet am selben Inhalt.
   it.each([
     ['/admin/connection-profiles', '/admin/connections/access', '', ''],

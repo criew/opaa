@@ -6,7 +6,7 @@ import type { LibraryListResponse } from '@/shared/api/types'
 
 /** Resolves once resolve() is called - lets a test hold loadLibraries()'s request open until it
  * explicitly wants the response to arrive, so it can trigger resetAllStores() while the request
- * is still in flight (#575). */
+ * is still in flight. */
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((r) => {
@@ -57,7 +57,7 @@ describe('libraryStore', () => {
     expect(names).toEqual(['A', 'B'])
   })
 
-  // #575: loadLibraries is one of the explicitly named unguarded write paths (Issue #575) - a
+  // loadLibraries is one of the explicitly named unguarded write paths - a
   // response arriving after resetAllStores() must not resurrect the previous user's libraries
   // into the now-emptied store.
   it('a loadLibraries response arriving after a session reset does not resurrect libraries', async () => {

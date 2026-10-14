@@ -4,7 +4,7 @@ import { useDocumentStore } from './documentStore'
 import { resetAllStores } from '@/shared/session/resettableStores'
 import type { LibraryDocumentPageResponse, LibraryDocumentResponse } from '@/shared/api/types'
 
-// #822 review, finding 2: normalizeError (shared/api/api.ts) attaches the original AxiosError as
+// normalizeError (shared/api/api.ts) attaches the original AxiosError as
 // `cause` - mirrors that shape here so isNotFoundError (documentStore.ts) has something real to
 // distinguish a 404 from any other failure, the same way api.test.ts's axiosErrorWithResponse
 // stands in for a real AxiosError elsewhere in this codebase.
@@ -165,7 +165,7 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().error).toBeNull()
   })
 
-  // #822 review, finding 2: a bare 404 message string is not enough evidence to bounce a caller
+  // A bare 404 message string is not enough evidence to bounce a caller
   // out of the folder they were looking at - only an actual AxiosError-carried 404 status may
   // trigger the root fallback. Anything else (500, network outage, or - as here - an Error that
   // merely happens to read "nicht gefunden" without a 404 cause) must surface as a normal error
@@ -199,7 +199,7 @@ describe('documentStore', () => {
   })
 
   it('reloads the current page from the server after a successful upload', async () => {
-    // #517 code review, finding 2 (Szenario C): a local prepend cannot know whether the new
+    // A local prepend cannot know whether the new
     // document actually belongs on the page/search the user is looking at - only the server can.
     useDocumentStore.setState({
       documentsByLibrary: { 'library-1': [indexedDocument] },
@@ -221,7 +221,7 @@ describe('documentStore', () => {
 
     await useDocumentStore.getState().uploadNewDocument('library-1', new File(['x'], 'x.pdf'))
 
-    // #823: uploadDocumentRequest's signature grew a trailing folderPath - undefined here, since
+    // uploadDocumentRequest's signature grew a trailing folderPath - undefined here, since
     // no folderPath was passed to uploadNewDocument.
     expect(mockUploadDocument).toHaveBeenCalledWith('library-1', expect.any(File), null, undefined)
     expect(mockGetLibraryDocuments).toHaveBeenCalledWith('library-1', {
@@ -338,7 +338,7 @@ describe('documentStore', () => {
   })
 
   it('reportUploadError appends a message without going through a file upload', () => {
-    // #823 review, Befund 2: used by the folder-upload paths (LibraryDetailPage) for a
+    // Used by the folder-upload paths (LibraryDetailPage) for a
     // batch-level, client-side rejection (unsupported format, unreadable file) that names no
     // single uploadNewDocument call.
     useDocumentStore.getState().reportUploadError('3 Dateien wurden übersprungen.')
@@ -473,7 +473,7 @@ describe('documentStore', () => {
     expect(mockGetLibraryDocuments).not.toHaveBeenCalled()
   })
 
-  // #575: found while systematically checking the resettableStores registry for further
+  // Found while systematically checking the resettableStores registry for further
   // unguarded async set() paths beyond the ones the issue named explicitly.
   it('a loadDocuments response arriving after a session reset does not resurrect documents', async () => {
     mockGetLibraryDocuments.mockImplementationOnce(async () => {

@@ -13,16 +13,12 @@ import type { ReactElement } from 'react'
 import type { LibraryListResponse, SpaceAssetAssociationResponse } from '@/shared/api/types'
 
 /**
- * #783 review: the earlier version of these tests spied on useSpaceStore.getState() and swapped in
- * a mocked loadAssetAssociations - but zustand's set() shallow-merges by spreading the *current*
- * state object into a new one (Object.assign({}, state, partial)), so a spied property value, once
- * set, gets copied forward into every subsequent state object regardless of vi.restoreAllMocks() -
- * that call only restores the descriptor on the specific (by then stale) object it was originally
- * spied on, not the copy the store has moved on to. The mock silently outlived its own test and
- * broke an unrelated, later one that never touched the spy. Overriding the MSW handler per test
- * instead exercises the real api -> spaceStore -> ChatInput chain (also covers #783 review nit 2)
- * and cannot leak this way, since server.resetHandlers() (frontend/src/test/setup.ts) already runs
- * after every test.
+ * Overrides the MSW handler per test rather than spying on useSpaceStore.getState(): zustand's
+ * set() spreads the *current* state object into a new one, so a spied property is copied forward
+ * into every later state object, and vi.restoreAllMocks() only restores the stale original - the
+ * mock would outlive its own test. The MSW route exercises the real api -> spaceStore -> ChatInput
+ * chain and cannot leak, since server.resetHandlers() (frontend/src/test/setup.ts) runs after
+ * every test.
  */
 function mockAssociations(
   spaceId: string,
@@ -114,7 +110,7 @@ describe('ChatInput', () => {
     })
   })
 
-  // #1920: die Zeile unter der Eingabe nennt keine Bestandszahl mehr. Ein leerer Suchbereich steht
+  // Die Zeile unter der Eingabe nennt keine Bestandszahl mehr. Ein leerer Suchbereich steht
   // als Hinweis über der Chip-Leiste - kein Wissen zugeordnet, oder nichts davon lesbar -, noch
   // unbekannte Zuordnungen des aktuellen Space in der Zeile.
   describe('the line under the input (#1920)', () => {
@@ -231,7 +227,7 @@ describe('ChatInput', () => {
       expect(screen.queryByTestId('space-knowledge-notice')).not.toBeInTheDocument()
     })
 
-    // #783 review, finding 1: der Suchbereich eines gewechselten Space ist noch unbekannt - solange
+    // Der Suchbereich eines gewechselten Space ist noch unbekannt - solange
     // darf der vorige Stand nicht behauptet werden.
     it("shows a neutral notice, not the previous space's state, right after switching spaceId", async () => {
       useSpaceStore.setState({
@@ -258,7 +254,7 @@ describe('ChatInput', () => {
       expect(await screen.findByText('Suchbereich wird ermittelt …')).toBeInTheDocument()
     })
 
-    // #783 review nit 1: ein fehlgeschlagener Ladevorgang darf nicht als "keine Zuordnungen" gelten.
+    // Ein fehlgeschlagener Ladevorgang darf nicht als "keine Zuordnungen" gelten.
     it('does not fall back to the plain hint when the association load fails', async () => {
       server.use(
         http.get('/api/v1/spaces/space-gewerbeamt/assets', () =>
@@ -274,7 +270,7 @@ describe('ChatInput', () => {
     })
   })
 
-  // #1070: the chat's sticky core-field filter is visible as removable chips next to the scope
+  // The chat's sticky core-field filter is visible as removable chips next to the scope
   // chips; removing one chip drops only that field's condition.
   it('shows the active metadata filter as removable chips (#1070)', async () => {
     const user = userEvent.setup()
@@ -689,7 +685,7 @@ describe('ChatInput', () => {
       expect(screen.queryByText('Antwortet ohne Dokumente.')).not.toBeInTheDocument()
     })
 
-    // #564 review: scope "libraries" with an id that is not (yet, or no longer) in the loaded
+    // Scope "libraries" with an id that is not (yet, or no longer) in the loaded
     // library list must never look like an emptied bar - that would be indistinguishable from a
     // deliberate "ohne Wissen" and silently drop the reference from what the user sees.
     it("shows a loading chip for a referenced id while the space's associations are loading", () => {
@@ -888,7 +884,7 @@ describe('ChatInput', () => {
 
     expect(screen.getByText('Rechtsquellen Soziales')).toBeInTheDocument()
     // The default delete icon MUI renders carries aria-hidden, so the accessible name has to sit
-    // on the chip itself (review finding #539) - getByLabelText would find the hidden icon's own
+    // on the chip itself - getByLabelText would find the hidden icon's own
     // (unset) label and miss a regression there, so this specifically asserts the *chip*, exposed
     // via its role="button", carries the name. Deletion itself is exercised the way MUI's Chip
     // actually wires it for a focused, labelled chip: Backspace/Delete while focused, not a click

@@ -141,7 +141,7 @@ describe('MyGroupsSection', () => {
     await waitFor(() => expect(mockSetGroupRelease).toHaveBeenCalledWith('group-phoenix', true))
   })
 
-  // #1987: Verantwortliche deaktivieren ihre Gruppe selbst, nach einer bezifferten Rückfrage
+  // Verantwortliche deaktivieren ihre Gruppe selbst, nach einer bezifferten Rückfrage
   it('deaktiviert die Gruppe nach einer Rückfrage mit den Folgen', async () => {
     withGroups([group], ['CREATE_INTERNAL_GROUP'])
     mockGetGroupDeactivationPreview.mockResolvedValue({

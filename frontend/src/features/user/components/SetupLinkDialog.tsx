@@ -22,7 +22,7 @@ export interface SetupLinkHandover {
 }
 
 /**
- * Die einmalige Anzeige eines Einladungs- oder Rücksetzlinks (#1541, ADR-0033 Entscheidung 11).
+ * Die einmalige Anzeige eines Einladungs- oder Rücksetzlinks (ADR-0033 Entscheidung 11).
  * Sie erscheint nur, wenn die Mail nicht hinausgegangen ist; der Zustellweg steht als Satz dabei,
  * damit eine Übergabe außerhalb des Systems von einer Zustellung unterscheidbar bleibt.
  */
@@ -47,7 +47,7 @@ export default function SetupLinkDialog({
       maxWidth="sm"
       aria-labelledby="setup-link-title"
       // Ohne `onClose` schließt weder ein Klick daneben noch Escape: Beides würde den Wert
-      // vernichten, der genau einmal existiert (Review-Runde 1, LOW 7). Geschlossen wird allein
+      // vernichten, der genau einmal existiert. Geschlossen wird allein
       // über die Schaltfläche.
     >
       <DialogTitle id="setup-link-title">{title}</DialogTitle>

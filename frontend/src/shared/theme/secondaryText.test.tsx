@@ -32,7 +32,7 @@ function alsRgb(hex: string): string {
 
 describe('Sekundärtext', () => {
   /**
-   * #1617: `Typography` löst in MUI 9.4 nur noch die **Kurzformen** des `color`-Props auf
+   * `Typography` löst in MUI 9.4 nur noch die **Kurzformen** des `color`-Props auf
    * (`primary`, `error`). Ein **Palettenpfad** wie `text.secondary` fällt als ungültige CSS-Farbe
    * still weg, und der Text rendert in der geerbten Vorgabefarbe — die typografische Hierarchie
    * ist an der Stelle flach, ohne dass es beim Schreiben auffällt.

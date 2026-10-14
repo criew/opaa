@@ -104,22 +104,22 @@ describe('isGlobalAreaPath', () => {
     expect(isGlobalAreaPath('/admin/groups')).toBe(true)
     expect(isGlobalAreaPath('/admin')).toBe(true)
     expect(isGlobalAreaPath('/administrator')).toBe(false)
-    // #809: overview and create wizard are global views; a chosen space is not.
+    // Overview and create wizard are global views; a chosen space is not.
     expect(isGlobalAreaPath('/spaces')).toBe(true)
     expect(isGlobalAreaPath('/spaces/new')).toBe(true)
-    // #814: React Router rendert "/spaces/" ebenfalls als Übersicht - der Vergleich muss
+    // React Router rendert "/spaces/" ebenfalls als Übersicht - der Vergleich muss
     // Trailing Slashes genauso tolerieren.
     expect(isGlobalAreaPath('/spaces/')).toBe(true)
     expect(isGlobalAreaPath('/spaces/new/')).toBe(true)
     expect(isGlobalAreaPath('/libraries/')).toBe(true)
     expect(isGlobalAreaPath('/spaces/space-1')).toBe(false)
     expect(isGlobalAreaPath('/spaces/space-1/chats/chat-1')).toBe(false)
-    // Since #788 the user settings are a global area as well (mockup 2c).
+    // The user settings are a global area as well (mockup 2c).
     expect(isGlobalAreaPath('/settings')).toBe(true)
-    // Since #789 the library catalog is a global area as well (Schlussnotiz Abschnitt 2).
+    // The library catalog is a global area as well (Schlussnotiz Abschnitt 2).
     expect(isGlobalAreaPath('/libraries')).toBe(true)
     expect(isGlobalAreaPath('/libraries/lib-1')).toBe(true)
-    // #1822: die Stichtagsauskunft der Revision rendert ebenfalls im globalen Rahmen.
+    // Die Stichtagsauskunft der Revision rendert ebenfalls im globalen Rahmen.
     expect(isGlobalAreaPath('/revision/rechtehistorie')).toBe(true)
     expect(isGlobalAreaPath('/revisionen')).toBe(false)
   })

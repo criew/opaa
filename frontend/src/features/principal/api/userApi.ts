@@ -15,8 +15,8 @@ export async function getUsers(): Promise<UserInfo[]> {
 // SpaceCreatePage) need to search for a user to add,
 // and the caller reaching those pages is not necessarily a system admin.
 //
-//  review, finding 4: the backend requires `query` (min. 2 characters) and caps the result at
-// 20 rows - it no longer answers an unqualified "list everyone" call. A missing/blank query is
+// The backend requires `query` (min. 2 characters) and caps the result at 20 rows - it does not
+// answer an unqualified "list everyone" call. A missing/blank query is
 // passed straight through and yields an empty result (UserService#searchInOrganization), never a
 // fallback list, so a caller must always supply the person's typed input here.
 export async function getUserSummaries(query: string): Promise<UserSummary[]> {

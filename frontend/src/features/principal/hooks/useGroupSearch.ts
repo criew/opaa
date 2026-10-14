@@ -16,7 +16,7 @@ interface UseGroupSearchResult {
 }
 
 /**
- * Die serverseitige Gruppensuche der Subjekt-Auswahl (#1820) — dieselbe Mechanik wie
+ * Die serverseitige Gruppensuche der Subjekt-Auswahl — dieselbe Mechanik wie
  * {@link useUserSearch}: entprellt, mit eigener Kennzeichnung von „lädt noch" und „ist
  * fehlgeschlagen", und mit einem Abgleich der Anfragenummer, damit eine langsame Antwort auf einen
  * früheren Tastendruck keine veralteten Treffer einblendet.

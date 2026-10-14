@@ -75,7 +75,7 @@ describe('AuthLayout', () => {
       </AuthLayout>,
     )
 
-    // #583: Passwort-Festlegen und E-Mail-Bestaetigung werden kalt aus einer E-Mail erreicht - auf
+    // Passwort-Festlegen und E-Mail-Bestaetigung werden kalt aus einer E-Mail erreicht - auf
     // jeder Breite muss erkennbar bleiben, wessen Installation fragt.
     expect(screen.getAllByText('OPAA')).toHaveLength(1)
     expect(screen.getByText('Formular')).toBeInTheDocument()
@@ -92,7 +92,7 @@ describe('AuthLayout', () => {
     expect(screen.queryByRole('heading', { name: 'OPAA' })).toBeNull()
   })
 
-  /** #1910: Ohne hinterlegtes Bild bleibt die Fläche, wie sie war. */
+  /** Ohne hinterlegtes Bild bleibt die Fläche, wie sie war. */
   it('keeps today’s panel where no background image is configured', () => {
     renderWithProviders(
       <AuthLayout>
@@ -105,7 +105,7 @@ describe('AuthLayout', () => {
     expect(background).not.toContain('url(')
   })
 
-  /** #1910: Über einem hinterlegten Bild liegt der feste Schleier — vor dem Bild, nicht dahinter. */
+  /** Über einem hinterlegten Bild liegt der feste Schleier — vor dem Bild, nicht dahinter. */
   it('lays the fixed scrim over a configured background image', () => {
     useBrandingStore.setState({
       branding: {

@@ -5,12 +5,12 @@ import { server } from '@/test/server'
 import { setupAuthInterceptors } from './apiInterceptors'
 
 /**
- * #737: a 401 used to expire the whole session immediately (via a single onUnauthorized callback
- * that always meant "log the user out"), including background polls (indexingStore/documentStore)
- * that fire without any user action - a briefly expired access token felt like a random logout.
- * These tests exercise setupAuthInterceptors directly against a throwaway axios instance and msw
- * route - independent of authStore - to pin down the retry contract: one silent-renew attempt
- * with a request retry, and only a *second* 401 (or a failed renew) reaching onSessionExpired.
+ * A 401 must not expire the whole session immediately - background polls
+ * (indexingStore/documentStore) fire without any user action, and a briefly expired access token
+ * would feel like a random logout. These tests exercise setupAuthInterceptors directly against a
+ * throwaway axios instance and msw route - independent of authStore - to pin down the retry
+ * contract: one silent-renew attempt with a request retry, and only a *second* 401 (or a failed
+ * renew) reaching onSessionExpired.
  */
 describe('setupAuthInterceptors', () => {
   it('retries the request with a renewed token after a single 401, without expiring the session', async () => {

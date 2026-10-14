@@ -26,7 +26,7 @@ describe('usePageTitle', () => {
     expect(document.title).toBe('Wissensbibliotheken · OPAA')
   })
 
-  /** #583: the tab follows the operator's product name, not a compiled-in constant. */
+  /** The tab follows the operator's product name, not a compiled-in constant. */
   it('uses the configured product name', () => {
     useBrandingStore.setState({
       branding: { ...OPAA_BRANDING, productName: 'Landesamt-Assistent' },

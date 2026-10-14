@@ -29,7 +29,7 @@ export function accountOriginLabel(account: AccountResponse): string {
  * any more. Deliberately not the origin's word again: the two cells carry two statements.
  */
 export function providerStateText(account: AccountResponse): string {
-  // #1818: the one state of a provider account OPAA itself holds - it outranks the two below,
+  // The one state of a provider account OPAA itself holds - it outranks the two below,
   // because it is what stops this account right now, whatever the provider row says.
   if (account.directoryLocked) return 'Im Verzeichnis gesperrt'
   if (!account.provider) return 'Anmeldung nicht möglich'

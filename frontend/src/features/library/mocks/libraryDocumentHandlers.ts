@@ -78,7 +78,7 @@ function buildMockBreadcrumb(
   return chain
 }
 
-//  review, finding 6b: the real backend derives folderPath from the full folder chain (e.g.
+// The real backend derives folderPath from the full folder chain (e.g.
 // "Protokolle/2026"), not just the immediate folder's own name - reuses buildMockBreadcrumb above
 // so the two never drift apart.
 //
@@ -98,7 +98,7 @@ export function buildMockFolderPath(libraryId: string, folderId: string | null):
 //
 // Exported for the same reason as buildMockFolderPath above: handlers.test.ts cannot exercise a
 // real multipart upload request in this project's jsdom test environment.
-// Mirrors LibraryFolderService's MAX_DEPTH ( review, Befund 5d) - root counts as depth 1.
+// Mirrors LibraryFolderService's MAX_DEPTH - root counts as depth 1.
 const MOCK_MAX_FOLDER_DEPTH = 10
 
 export function resolveOrCreateMockFolderPath(
@@ -108,7 +108,7 @@ export function resolveOrCreateMockFolderPath(
 ): { folderId: string | null } | { error: string; status: number } {
   const segments = folderPath.split('/').filter((segment) => segment.trim() !== '')
 
-  //  review, Befund 1/5d: every segment (and the resulting depth) is validated in this own
+  // Every segment (and the resulting depth) is validated in this own
   // upfront pass, before any folder is created - mirrors LibraryFolderService#
   // resolveOrCreateFolderPath's identical two-pass structure (validate the whole chain, then
   // materialize it), so an invalid later segment or a depth overrun never leaves an earlier,
@@ -335,9 +335,9 @@ export const libraryDocumentHandlers = [
         { status: 400 },
       )
     }
-    // Mirrors DocumentIngestService#processUploadedFileAsync finding no extractable content
-    //: since the upload endpoint moved off the request thread, this is no longer a
-    // synchronous 422 - the row is returned PENDING like any other upload and only turns FAILED
+    // Mirrors DocumentIngestService#processUploadedFileAsync finding no extractable content:
+    // the upload endpoint processes off the request thread, so this is no synchronous 422 - the
+    // row is returned PENDING like any other upload and only turns FAILED
     // once the (simulated) asynchronous processing below resolves it, with the same German
     // errorMessage the real endpoint records.
     const textContent = await file.text()
@@ -383,7 +383,7 @@ export const libraryDocumentHandlers = [
     return HttpResponse.json(document, { status: 201 })
   }),
 
-  // #1943: Sammellöschen - jede Id für sich, Erfolge und Fehlschläge getrennt gemeldet.
+  // Sammellöschen - jede Id für sich, Erfolge und Fehlschläge getrennt gemeldet.
   http.post('/api/v1/libraries/:libraryId/documents/bulk-delete', async ({ params, request }) => {
     const libraryId = String(params.libraryId)
     const existing = mockLibraryDocuments[libraryId]

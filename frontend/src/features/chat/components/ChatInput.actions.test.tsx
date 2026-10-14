@@ -13,7 +13,7 @@ import type { ChatActionSource } from './chatActions'
 import { promptActionSource } from './promptActionSource'
 
 /**
- * The '/' menu as the chat input's one collection point for actions (#2588): it lists what the
+ * The '/' menu as the chat input's one collection point for actions: it lists what the
  * active action sources contribute. Prompt libraries are one source; switched off, they contribute
  * nothing, and without any source '/' opens nothing and the hint does not offer it.
  */

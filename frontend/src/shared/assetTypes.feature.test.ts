@@ -9,7 +9,7 @@ import {
   creatableAssetTypes,
 } from './assetTypes'
 
-/** Prompt libraries behind their installation-wide feature flag (ADR-0044, #2588). */
+/** Prompt libraries behind their installation-wide feature flag (ADR-0044). */
 describe('assetTypeRegistry with prompt libraries switched off', () => {
   afterEach(() => {
     useAuthStore.setState({ features: {} })

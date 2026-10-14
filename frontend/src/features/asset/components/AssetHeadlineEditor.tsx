@@ -36,7 +36,7 @@ export interface AssetHeadlineEditorProps {
 }
 
 /**
- * Name and description of an asset in the head of its detail page (#1939): read as a heading, with
+ * Name and description of an asset in the head of its detail page: read as a heading, with
  * a pencil that turns the two into a small form. Never click-into-the-text — the mode is explicit,
  * so a screen reader and a keyboard reach it the same way.
  *

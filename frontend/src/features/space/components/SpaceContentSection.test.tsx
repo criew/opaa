@@ -125,7 +125,7 @@ describe('SpaceContentSection', () => {
   // The space store outlives a test; a previous test's associations would show up in the next.
   beforeEach(() => resetAllStores())
 
-  // #2207: the tab already reads "Inhalte" - no heading repeats it, and no lead sentence.
+  // The tab already reads "Inhalte" - no heading repeats it, and no lead sentence.
   it('opens on the associated contents, with "Nur zugeordnete" switched on and no heading', async () => {
     serveAssociations([association('KNOWLEDGE_LIBRARY', 'library-referat-50')])
     renderSection()

@@ -29,13 +29,13 @@ import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownRendererProps {
   content: string
-  /** Footnote resolution for the answer's citation markers (#590); absent markers are stripped
+  /** Footnote resolution for the answer's citation markers; absent markers are stripped
    *  unless {@link preserveCitationMarkers} is set. */
   citations?: CitationIndex
   /** Fires with every footnote number a clicked marker covers - a range like "3–4" covers two
    *  Belege, all of which the Belegfenster marks. */
   onCitationClick?: (numbers: number[]) => void
-  /** #780/#781 review, Nit 6: `content` here is a chat answer the backend generated with its own
+  /** `content` here is a chat answer the backend generated with its own
    *  `【source: …】` marker syntax baked in, which the default behaviour above resolves into
    *  footnotes (or silently strips when no `citations` index matches). A document's own original
    *  content is neither - a coincidental `【…】` run in the source text is part of what was
@@ -89,7 +89,7 @@ function CitationTooltipContent({ citations }: { citations: ResolvedCitation[] }
 }
 
 /** Adjacent citations render as one group; contiguous number runs compress to a range ("1–3",
- *  mockup 1a/1i) so back-to-back markers stay readable (#590 Nachbesserung). */
+ *  mockup 1a/1i) so back-to-back markers stay readable. */
 function renderCitationGroup(
   group: ResolvedCitation[],
   key: string,
@@ -212,7 +212,7 @@ function makeProcessChildren(
   preserveCitationMarkers: boolean,
 ) {
   return function processChildren(children: React.ReactNode): React.ReactNode {
-    // #780/#781 review, Nit 6: a document preview's own content is not a chat answer - a
+    // A document preview's own content is not a chat answer - a
     // coincidental `【…】` run is part of what was indexed, not a citation marker to resolve or
     // strip.
     if (preserveCitationMarkers) {
@@ -239,7 +239,7 @@ function makeProcessChildren(
 function makeComponents(
   processChildren: (children: React.ReactNode) => React.ReactNode,
 ): Components {
-  // #1016: the element level comes from rehypeNormalizeHeadings (per-message rank compression
+  // The element level comes from rehypeNormalizeHeadings (per-message rank compression
   // starting at h2); the visual variant keeps following the ORIGINAL Markdown level, carried in
   // MD_LEVEL_PROPERTY - "## Zusammenfassung" looks exactly as before, whatever element it gets.
   const VARIANT_BY_MD_LEVEL: Record<string, React.ComponentProps<typeof Typography>['variant']> = {

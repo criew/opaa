@@ -3,7 +3,7 @@ import { alpha } from '@mui/material/styles'
 import { fontFamily } from '../theme/tokens'
 
 /**
- * Marks a surface as application-wide (#787, mockups 2b/2c): a quiet mono chip reading
+ * Marks a surface as application-wide (mockups 2b/2c): a quiet mono chip reading
  * "Global". Accent-derived (like the focus ring), so a branding override recolors it with the
  * rest of the app; the scope is carried by the visible text itself, never by color alone
  * (accessibility.md).

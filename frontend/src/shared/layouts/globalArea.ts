@@ -1,7 +1,7 @@
 import { catalogScopePrefixes } from '../assetTypes'
 
 /**
- * Route prefixes that render inside the global frame (#787, mockup 2b) - the navy space
+ * Route prefixes that render inside the global frame (mockup 2b) - the navy space
  * column disappears there (AppShell checks this). Every prefix must correspond to a
  * GlobalAreaLayout route in App.tsx and vice versa; the catalog and the asset types' pages come
  * from the type registry, the rest is listed here. Lives outside GlobalAreaLayout.tsx so that file
@@ -10,7 +10,7 @@ import { catalogScopePrefixes } from '../assetTypes'
 const OTHER_GLOBAL_AREA_PREFIXES = ['/admin', '/settings', '/revision']
 
 /**
- * Views where no space is selected yet (#809): the overview of all spaces and the create
+ * Views where no space is selected yet: the overview of all spaces and the create
  * wizard. Exact paths on purpose - /spaces/:spaceId and everything below stays space-scoped
  * with the navy column.
  */
@@ -19,7 +19,7 @@ const GLOBAL_AREA_EXACT_PATHS = ['/spaces', '/spaces/new']
 export function isGlobalAreaPath(pathname: string): boolean {
   // React Router matches routes tolerant of trailing slashes ("/spaces/" renders the
   // overview), so the comparison must be equally tolerant - otherwise a typed "/spaces/"
-  // brings the navy column back next to the overview (#814, review #811).
+  // brings the navy column back next to the overview.
   const path = pathname.replace(/\/+$/, '') || '/'
   return (
     GLOBAL_AREA_EXACT_PATHS.includes(path) ||

@@ -1,5 +1,5 @@
 /**
- * Session epoch counter (#575): resetAllStores() bumps this once per logout/reset, so an
+ * Session epoch counter: resetAllStores() bumps this once per logout/reset, so an
  * asynchronous store action that captured the epoch *before* the reset can recognize - once its
  * await resolves - that the user's session has since been torn down, and skip the write-back
  * set() call that would otherwise resurrect stale data into a store the reset just emptied.

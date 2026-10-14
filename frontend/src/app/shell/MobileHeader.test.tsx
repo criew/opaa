@@ -22,9 +22,9 @@ function expectedForeground(mode: PaletteMode) {
 }
 
 describe.each<PaletteMode>(['light', 'dark'])('MobileHeader (%s mode)', (mode) => {
-  // Regression test for #193: the AppBar only set `bgcolor`, so the foreground stayed the
+  // Regression guard for #193: setting only `bgcolor` on the AppBar leaves the foreground at the
   // inherited white `primary.contrastText` - white icon on a white surface in light mode. The
-  // fix touches the foreground in both schemes, so both are covered here.
+  // foreground is set in both schemes, so both are covered here.
   it('renders the menu icon with a readable foreground', () => {
     renderInMode(mode, <MobileHeader />)
 

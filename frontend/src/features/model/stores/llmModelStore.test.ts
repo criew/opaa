@@ -65,9 +65,8 @@ describe('llmModelStore', () => {
   })
 
   /**
-   * #759 review: the acceptance criterion for editing had no direct store coverage yet, and the
-   * update must patch `models` in place rather than reloading (a reload flips `isLoading`, which
-   * is exactly what made LlmModelManagementPage briefly unmount every open card after a save).
+   * The update must patch `models` in place rather than reloading: a reload flips `isLoading`,
+   * which makes LlmModelManagementPage briefly unmount every open card after a save.
    */
   it('updates a model in place, without a reload in between', async () => {
     await useLlmModelStore.getState().loadModels()
@@ -92,7 +91,7 @@ describe('llmModelStore', () => {
     expect(
       useLlmModelStore.getState().models.some((m) => m.displayName === 'Ollama umbenannt'),
     ).toBe(true)
-    // Never a reload in between (#759 review): isLoading must stay false throughout, otherwise
+    // Never a reload in between: isLoading must stay false throughout, otherwise
     // LlmModelManagementPage would briefly swap the whole list for a loading message and unmount
     // every open card.
     expect(isLoadingDuringUpdate.every((value) => value === false)).toBe(true)

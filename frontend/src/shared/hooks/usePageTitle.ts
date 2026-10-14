@@ -4,7 +4,7 @@ import { useBrandingStore } from '../branding/brandingStore'
 /**
  * The product name a page title is suffixed with. Only a fallback for callers outside React
  * (and for tests asserting the unbranded default) - the hook below reads the configured name
- * from the branding store, so the document title follows the operator's product name (#583).
+ * from the branding store, so the document title follows the operator's product name.
  */
 export const APP_TITLE = 'OPAA'
 

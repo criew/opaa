@@ -56,7 +56,7 @@ describe('checkAccentContrast', () => {
   })
 
   /**
-   * #1600: Die beiden Schema-Prüfungen bewerten seither die **abgeleitete** Textfarbe, also das,
+   * Die beiden Schema-Prüfungen bewerten seither die **abgeleitete** Textfarbe, also das,
    * was tatsächlich rendert. Ein sehr dunkles Blau wird im Dunkelschema so weit aufgehellt, wie
    * die sechs zugelassenen Schritte reichen — kommt es damit über die Schwelle, gibt es nichts zu
    * warnen; bleibt es darunter, meldet die Prüfung es weiterhin.
@@ -97,9 +97,8 @@ describe('checkAccentContrast', () => {
   })
 
   /**
-   * #634 closed the finding this test used to document: white on the raw standard accent
-   * (blue-500) reaches only 3,3:1, but filled surfaces render on the derived accent surface -
-   * so the button-label check now evaluates that surface and passes.
+   * White on the raw standard accent (blue-500) reaches only 3,3:1, but filled surfaces render on
+   * the derived accent surface - so the button-label check evaluates that surface and passes.
    */
   it('passes the button-label check for the OPAA standard accent via the derived surface', () => {
     const checks = checkAccentContrast(OPAA_BRANDING.primaryColor)

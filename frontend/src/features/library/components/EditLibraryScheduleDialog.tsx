@@ -21,7 +21,7 @@ interface EditLibraryScheduleDialogProps {
   onClose: () => void
   libraryId: string
   schedule: LibrarySchedule | null | undefined
-  /** Present only for a CONFLUENCE library - the dialog then offers the full-sync rhythm (#1200). */
+  /** Present only for a CONFLUENCE library - the dialog then offers the full-sync rhythm. */
   confluence?: ConfluenceFullSyncRhythm
   /** The stored settings a rhythm change resends whole, for a connector without partial updates. */
   settingsBase?: Record<string, unknown>
@@ -45,7 +45,7 @@ function withSettingsBase<T extends { sourceSettings?: Record<string, unknown> }
 }
 
 /**
- * The Bearbeiten-Weg of the Zeitplan (#485). The fields themselves live in {@link
+ * The Bearbeiten-Weg of the Zeitplan. The fields themselves live in {@link
  * LibraryScheduleForm}, which the Anlage-Assistent uses in its own Betriebsart; this dialog only
  * adds the save.
  */

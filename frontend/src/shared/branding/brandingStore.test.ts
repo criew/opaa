@@ -43,7 +43,7 @@ describe('brandingStore', () => {
   })
 
   /**
-   * #583: "bei Fehlern oder fehlender Konfiguration stiller Rückfall auf den OPAA-Standard".
+   * "bei Fehlern oder fehlender Konfiguration stiller Rückfall auf den OPAA-Standard".
    * Silent is the operative word - branding is decoration, and a failed request must neither keep
    * the application from rendering nor put a message in front of a user who cannot act on it.
    */
@@ -113,7 +113,7 @@ describe('brandingStore', () => {
     expect(useBrandingStore.getState().branding.logoUrl).toBeUndefined()
   })
 
-  /** #1910: Jede Bildart hat ihr eigenes Fach - und die Ablage trifft das richtige. */
+  /** Jede Bildart hat ihr eigenes Fach - und die Ablage trifft das richtige. */
   it('stores and removes each sign-in image in its own slot', async () => {
     const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'bild.png', {
       type: 'image/png',

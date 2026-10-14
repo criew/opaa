@@ -44,7 +44,7 @@ const REALM: SourceTypeDescriptor = {
   locked: false,
 }
 
-/** OAuth in the administration (#2168): endpoints the connector leaves to the profile. */
+/** OAuth in the administration: endpoints the connector leaves to the profile. */
 /** Chooses the source type of a new profile in the select of the dialog. */
 async function chooseSourceType(
   user: ReturnType<typeof userEvent.setup>,

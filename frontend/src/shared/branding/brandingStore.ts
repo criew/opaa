@@ -9,7 +9,7 @@ import {
 } from './brandingApi'
 
 /**
- * What an operator may upload, in the order the branding form shows it (#582, #1910). `maxBytes`
+ * What an operator may upload, in the order the branding form shows it. `maxBytes`
  * mirrors `BrandingImageKind` in the backend - rejected there too, just less pleasantly.
  */
 export const BRANDING_IMAGES = {
@@ -28,7 +28,7 @@ export type BrandingImageKind = keyof typeof BRANDING_IMAGES
  * The OPAA standard, mirroring `io.opaa.branding.BrandingDefaults` in the backend. Kept as a
  * literal here rather than fetched, because it has to be available before any request completes -
  * it is what the interface renders during the first paint and what it falls back to when the
- * request fails (#583: "bei Fehlern oder fehlender Konfiguration stiller Rückfall auf den
+ * request fails ("bei Fehlern oder fehlender Konfiguration stiller Rückfall auf den
  * OPAA-Standard").
  *
  * The backend resolves the same defaults field by field, so a successful response never contains

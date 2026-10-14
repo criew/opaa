@@ -33,10 +33,10 @@ interface Outcome {
 }
 
 /**
- * The one „Verbindung testen" of the Pfad- und URL-Formulare (#1940) - the same button and the same
+ * The one „Verbindung testen" of the Pfad- und URL-Formulare - the same button and the same
  * two result shapes in the Anlage-Assistent and on the Reiter „Quelle".
  *
- * <p>#514: a result belongs to the probe it was measured with - the source type, the library it was
+ * <p>A result belongs to the probe it was measured with - the source type, the library it was
  * aimed at and every entered field. Rather than clearing it from every field's onChange, the
  * outcome carries that probe and is simply not rendered once the current one differs: a stale
  * „erreichbar" survives neither a changed address nor a changed source type, including one changed

@@ -3,10 +3,10 @@ import type { PasswordChangeReason } from '../session/types'
 import { DEV_USER_HEADER, getDevUser } from '../session/devAuth'
 
 type TokenGetter = () => string | null | Promise<string | null>
-// #737: a single silent-renew attempt (refresh-token based, see authStore's UserManager
+// A single silent-renew attempt (refresh-token based, see authStore's UserManager
 // config); resolves whether the retry below should go ahead with a freshly renewed token.
 type RenewFn = () => Promise<boolean>
-// #737: the session is unrecoverable without a full sign-in - reset local state, but never
+// The session is unrecoverable without a full sign-in - reset local state, but never
 // signoutRedirect() from here (that would also tear down the IdP session for what might be a
 // single expired access token). A deliberate logout click keeps using its own full logout().
 // ADR-0025/ADR-0033: some 401s name a cause a renew can never fix - the provider of this session
@@ -112,9 +112,9 @@ export function setupAuthInterceptors(
     async (error) => {
       const original = error.config as RetryableRequestConfig | undefined
 
-      // #737: a 401 used to end the whole session immediately - including on background polls
-      // (indexingStore/documentStore) that fire without any user action, which is exactly what
-      // made the resulting logout feel random. Now: one signinSilent() attempt, then retry the
+      // A 401 does not end the session immediately - background polls
+      // (indexingStore/documentStore) fire without any user action, and the logout would feel
+      // random. Instead: one signinSilent() attempt, then retry the
       // original request once with the renewed token (_retry guards against retrying forever if
       // the retried request itself still comes back 401).
       const endingReason = error.response?.status === 401 ? sessionEndingReason(error) : null

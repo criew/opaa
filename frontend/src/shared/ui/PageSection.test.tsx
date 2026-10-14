@@ -87,8 +87,8 @@ const QUELLEN = {
 }
 
 /**
- * Die Dateien, für die die Regel gilt: der Verwaltungsbereich (#1608) und seit #1609 auch Chat,
- * Katalog und die Space-Ansichten. Nicht in der Liste steht, was gar keinen ruhenden Inhalt trägt
+ * Die Dateien, für die die Regel gilt: der Verwaltungsbereich, Chat, Katalog und die
+ * Space-Ansichten. Nicht in der Liste steht, was gar keinen ruhenden Inhalt trägt
  * (Dialoge als eigene Dateien, Formularseiten ohne Blöcke).
  */
 const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
@@ -97,9 +97,9 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
   if (pfad.startsWith('./list/') || pfad.startsWith('./markdown/')) return true
   if (pfad.startsWith('../../components/chat/') || pfad.startsWith('../../components/metadata/'))
     return true
-  // #1917: die Abschnitte der Space-Einstellungen sind eigene Komponenten.
+  // Die Abschnitte der Space-Einstellungen sind eigene Komponenten.
   if (pfad.startsWith('../../components/space/')) return true
-  // #1821: die Betriebsliste entsteht in einer eigenen Komponente, nicht auf der Seite.
+  // Die Betriebsliste entsteht in einer eigenen Komponente, nicht auf der Seite.
   if (pfad.startsWith('../../components/succession/')) return true
   // Freigabeabschnitt, Assistentenschritte und Prompt-Pflege, die jeder Asset-Typ teilt.
   if (pfad.startsWith('../../components/assets/') || pfad.startsWith('../../components/prompts/'))
@@ -110,7 +110,7 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'GroupManagementPage',
     'LlmModelManagementPage',
     'OidcProviderManagementPage',
-    // #1821: die drei neuen Seiten der Verwaltung
+    // Die drei neuen Seiten der Verwaltung
     'CapabilityManagementPage',
     'DirectorySyncPage',
     'ProviderGroupWorklistPage',
@@ -120,7 +120,7 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     // settings tab of the connections area and its private-storage section
     'ConnectionSettingsTab',
     'PrivateStorageSection',
-    // #1609: außerhalb der Administration
+    // außerhalb der Administration
     'LibraryDetailPage',
     'SpacePage',
     'SpaceSettingsPage',
@@ -141,8 +141,7 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  * - `GeneratedPasswordDialog`, `SetupLinkDialog`, `HandoverLinkDialog`: der einmalig angezeigte
  *   Wert zum Abschreiben — derselbe Fall wie ein Codeblock.
  *
- * Mit #1609 kommen die beiden Fälle des Chats dazu. Sie sind der vierte Grund, aus dem ein Rahmen
- * Bedeutung trägt, und in #1609 ausdrücklich benannt:
+ * Die beiden Fälle des Chats sind der vierte Grund, aus dem ein Rahmen Bedeutung trägt:
  *
  * - `MessageBubble`: die Blase grenzt zwei Sprecher voneinander ab. Nur die Frage trägt sie; die
  *   Antwort steht schon als Fließtext ohne Blase. Ohne diese eine Fläche verlöre der Verlauf
@@ -155,18 +154,18 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   keinen ruhenden Inhalt.
  * - `ChatInput`: die Eingabezeile ist ein Bedienelement, und ihr Vorschlagsfeld eine schwebende
  *   Ebene. Beides bringt seine Fläche zu Recht mit.
- * - `ChatActionMenu`: das Vorschlagsfeld des `/`-Befehls über derselben Eingabezeile (#1903,
- *   #2588) — dieselbe schwebende Ebene wie das `@`-Feld, nur in eine eigene Datei gezogen; das
+ * - `ChatActionMenu`: das Vorschlagsfeld des `/`-Befehls über derselben Eingabezeile —
+ *   dieselbe schwebende Ebene wie das `@`-Feld, nur in eine eigene Datei gezogen; das
  *   Etikett „mit Formular" ist ein Etikett am Eintrag wie ein Chip.
- * - `SpaceGeneralSection`: der Gefahrenbereich am Ende der Stammdaten (#1917). Der Rahmen setzt
+ * - `SpaceGeneralSection`: der Gefahrenbereich am Ende der Stammdaten. Der Rahmen setzt
  *   Archivieren und Löschen vom Formular darüber ab — er markiert eine Grenze, statt Inhalt zu
  *   bündeln.
  * - `PromptTextHighlight`, `PromptPreview`: der Wortlaut eines Prompts als Monospace-Block und der
  *   daraus eingesetzte Text als Ergebnisfläche — fremder Inhalt in der Seite, derselbe Fall wie
  *   beim `MailTemplateEditor`.
- * - `AssetTile`: die Kachel eines Assets im Katalog und in jeder Auswahl (#2131) — eine Karte im
+ * - `AssetTile`: die Kachel eines Assets im Katalog und in jeder Auswahl — eine Karte im
  *   Raster (Leitlinien 5.4), kein Inhaltsblock einer Seite; der umrandete Typ ist ein Etikett (5.5).
- * - `assetMarks`: das Typ-Etikett, das Kachel und Kopf der Detailseite teilen (#2208) — ein
+ * - `assetMarks`: das Typ-Etikett, das Kachel und Kopf der Detailseite teilen — ein
  *   Etikett wie ein Chip (5.5), kein Block.
  * - `HandoverScopeSummary`: die vier Kennzahl-Kacheln der Kontoübergabe (ADR-0033) — Karten im
  *   Raster wie `AssetTile`, auf einer Anmeldeseite außerhalb der Verwaltung, kein Inhaltsblock.
@@ -254,7 +253,7 @@ describe('PageSection', () => {
   })
 
   /**
-   * Die Regel aus #1608, maschinell gezogen: Kein ruhender Inhalt rahmt sich selbst ein. `Paper`
+   * Die Regel maschinell gezogen: Kein ruhender Inhalt rahmt sich selbst ein. `Paper`
    * ist die Fläche schwebender Ebenen — Dialoge, Menüs, Popover —, und die bringen sie selbst
    * mit; eine Seite, die sie wieder für einen Inhaltsblock benutzt, fällt hier auf.
    */
@@ -276,9 +275,7 @@ describe('PageSection', () => {
       // Ein voller Rahmen ringsum ist nur als gestrichelter Leerzustand zulässig („hier wäre
       // etwas"); die Trennung von Einträgen läuft über `borderBottom`. Wo ein Rahmen etwas
       // Fremdes markiert statt Inhalt zu bündeln, steht die Datei oben in AUSNAHMEN — mit Grund.
-      // Beide Schreibweisen zählen: `border: 1` und `border: '1px solid'` ergeben dieselbe Kante,
-      // und bis #1609 fiel die zweite durch das Raster (fünf Fundstellen, darunter der Kasten um
-      // „Metadaten-Pflege").
+      // Beide Schreibweisen zählen: `border: 1` und `border: '1px solid'` ergeben dieselbe Kante.
       const vollerRahmen =
         (quelltext.match(/border: 1,/g)?.length ?? 0) +
         (quelltext.match(/border: '1px solid/g)?.length ?? 0)

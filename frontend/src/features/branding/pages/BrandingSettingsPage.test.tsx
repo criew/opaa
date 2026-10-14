@@ -45,7 +45,7 @@ describe('BrandingSettingsPage', () => {
     })
   })
 
-  /** #583 acceptance criterion: "Formular nur für Systemverwaltung erreichbar". */
+  /** "Formular nur für Systemverwaltung erreichbar". */
   it('shows no form to a user who is not a system administrator', () => {
     signInAs('USER')
 
@@ -110,7 +110,7 @@ describe('BrandingSettingsPage', () => {
   })
 
   /**
-   * #583 acceptance criterion: "Kontrastwarnung erscheint bei unzureichender Primärfarbe, blockiert
+   * "Kontrastwarnung erscheint bei unzureichender Primärfarbe, blockiert
    * aber nicht". Both halves are asserted here - the warning appears *and* the save button stays
    * usable, because a Behörde's corporate colour is not this application's to veto.
    */
@@ -183,7 +183,7 @@ describe('BrandingSettingsPage', () => {
   })
 
   /**
-   * #1910: Drei Bildfelder statt eines - und jedes landet in seinem eigenen Fach. Ein Hintergrund,
+   * Drei Bildfelder statt eines - und jedes landet in seinem eigenen Fach. Ein Hintergrund,
    * der als Logo abgelegt wird, wäre an der Oberfläche nicht zu sehen, aber überall falsch.
    */
   it('stores each of the three images in its own slot', async () => {

@@ -148,7 +148,7 @@ describe('ConfirmHost', () => {
   })
 
   /**
-   * Die Regel aus #1610, maschinell gezogen: Der Browser-Dialog ist aus dem Produktivcode
+   * Die Regel maschinell gezogen: Der Browser-Dialog ist aus dem Produktivcode
    * verschwunden und kommt nicht durch die Hintertür zurück. Er blockiert den Haupt-Thread,
    * benennt seine Handlung nicht und lässt sich nicht gestalten.
    */

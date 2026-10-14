@@ -266,7 +266,7 @@ export default function SubjectPicker({
         onChange={(_event, next) => onChange(toSelection(next))}
         inputValue={inputText}
         onInputChange={(_event, next, reason) => {
-          // Only typed text is a new request (#778): 'selectOption' and 'reset' set the text to the
+          // Only typed text is a new request: 'selectOption' and 'reset' set the text to the
           // chosen label, 'clear' empties both.
           setInputText(next)
           if (reason === 'input') {

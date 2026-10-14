@@ -9,7 +9,7 @@ import type {
 import { canManageMockLibrary } from './libraryHandlers'
 
 /**
- * Die laufenden Schemaaenderungen je Bibliothek (#1361) - im Mock genau wie im Backend: die
+ * Die laufenden Schemaaenderungen je Bibliothek - im Mock genau wie im Backend: die
  * Bestaetigung legt sie an, jede Charge schreibt ein Dokument um, und erst die letzte entfernt den
  * Listenwert beziehungsweise das Feld.
  */
@@ -33,7 +33,7 @@ export const CORE_METADATA_LABELS: Record<string, string> = {
  */
 const mockLibraryMetadataFields: Record<string, LibraryMetadataFieldResponse[]> = {}
 
-// the model-backed extraction switches per library, off until a PUT turns them on (#1073).
+// the model-backed extraction switches per library, off until a PUT turns them on.
 const mockExtractionSettings: Record<
   string,
   { modelExtractionEnabled: boolean; keywordsEnabled: boolean }

@@ -208,7 +208,7 @@ describe('GroupManagementPage', () => {
     deactivationPreview.blockedReason = null
   })
 
-  // #1978: die Gruppen als Tabelle wie die Konten - Herkunft, Mitglieder, Zustand; eine eigene
+  // Die Gruppen als Tabelle wie die Konten - Herkunft, Mitglieder, Zustand; eine eigene
   // Spalte „Art" gibt es nicht, das Info-Symbol hinter dem Anbieter erklärt die Herkunft
   it('lists the groups as a table with origin, member count and state', async () => {
     serve([adHocGroup, orgUnitGroup])
@@ -239,7 +239,7 @@ describe('GroupManagementPage', () => {
   })
 
   // ADR-0036, Entscheidung 3: ein wartender Plan bleibt laut - sein Alter steht im Link selbst,
-  // die Einzelheiten im Popover; ein Hinweiskasten über der Liste entfällt (#1978)
+  // die Einzelheiten im Popover; ein Hinweiskasten über der Liste entfällt
   it('names a waiting directory plan in a warning link with its age', async () => {
     serve([adHocGroup])
     renderPage()
@@ -320,7 +320,7 @@ describe('GroupManagementPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  // ADR-0025, Entscheidung 4 (#1331): Name und Mitglieder pflegt die Quelle; die Erklärung nennt
+  // ADR-0025, Entscheidung 4: Name und Mitglieder pflegt die Quelle; die Erklärung nennt
   // die tatsächliche Quelle
   it('explains a provider group and offers only its protection', async () => {
     const tokenGroup: GroupListResponse = {
@@ -466,7 +466,7 @@ describe('GroupManagementPage', () => {
     expect(within(menu).getByText(/werden dort gepflegt/)).toBeInTheDocument()
   })
 
-  // #1978: Anlegen sieht aus wie Bearbeiten - Freigabe, Schutz und Verantwortliche gleich mit
+  // Anlegen sieht aus wie Bearbeiten - Freigabe, Schutz und Verantwortliche gleich mit
   it('creates a released, protected group with its stewards in one step', async () => {
     useAuthStore.setState({
       user: {
@@ -499,7 +499,7 @@ describe('GroupManagementPage', () => {
     )
   })
 
-  // #1821: Eine aufgelöste Gruppe ist gekennzeichnet und nennt den Grund - ihre bestehenden
+  // Eine aufgelöste Gruppe ist gekennzeichnet und nennt den Grund - ihre bestehenden
   // Berechtigungen bleiben.
   it('marks a dissolved group and names the reason behind its state', async () => {
     serve([{ ...orgUnitGroup, dissolved: true, state: 'DISSOLVED' }])
@@ -512,7 +512,7 @@ describe('GroupManagementPage', () => {
     ).toBeInTheDocument()
   })
 
-  // #1987: Deaktivieren im Zeilenmenü, mit einer Bestätigung, die die Folgen beziffert
+  // Deaktivieren im Zeilenmenü, mit einer Bestätigung, die die Folgen beziffert
   it('deactivates an internal group after a confirmation that counts the consequences', async () => {
     serve([adHocGroup])
     renderPage()

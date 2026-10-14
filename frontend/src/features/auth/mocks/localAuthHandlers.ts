@@ -12,7 +12,7 @@ import {
 } from './localAuthFixtures'
 
 /**
- * The four public self-service endpoints (#1538) as MSW handlers - the invariants the pages depend
+ * The four public self-service endpoints as MSW handlers - the invariants the pages depend
  * on, the same ones the backend enforces:
  *
  * - a link is redeemable exactly once, and every unusable link is the same 400 `TOKEN_INVALID` -
@@ -197,7 +197,7 @@ export const localAuthHandlers = [
     return new HttpResponse(null, { status: 202 })
   }),
 
-  // #1563: die Vorschau verbraucht nichts, die Einlösung genau einmal - und sie verlangt ein
+  // Die Vorschau verbraucht nichts, die Einlösung genau einmal - und sie verlangt ein
   // Anbieter-Token im Body, nie im Authorization-Header.
   http.post('/api/v1/auth/local/handover/preview', async ({ request }) => {
     const body = (await request.json()) as { token?: string }

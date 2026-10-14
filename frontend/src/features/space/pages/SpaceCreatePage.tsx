@@ -85,7 +85,7 @@ function SummaryItem({ icon, children }: { icon: ReactNode; children: ReactNode 
 const summaryListSx = { listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 0.5 } as const
 
 /**
- * The space creation wizard (#594, mockup 1b): Grunddaten, Mitglieder, Inhalte, Zusammenfassung.
+ * The space creation wizard (mockup 1b): Grunddaten, Mitglieder, Inhalte, Zusammenfassung.
  * "Inhalte" associates assets of every type from the catalog's tile list and may be skipped; the
  * space and its associations are created in one call.
  */

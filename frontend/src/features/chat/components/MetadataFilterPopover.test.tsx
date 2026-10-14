@@ -88,7 +88,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     })
   })
 
-  // Koordinator-Festlegung an #1070: a field below the threshold is not offered, but a condition
+  // A field below the threshold is not offered, but a condition
   // already set on it stays in force - applying a change to the other field must not drop it.
   it('carries a set condition of a field below the threshold through untouched', async () => {
     server.use(
@@ -172,7 +172,7 @@ describe('MetadataFilterPopover (#1070)', () => {
   })
 
   /**
-   * #1242: the Absender is a built-in format field - the popover offers the addresses occurring in
+   * The Absender is a built-in format field - the popover offers the addresses occurring in
    * the scope, and a chosen one travels as an exact value.
    */
   it('offers the Absender with the addresses of the scope and applies the chosen ones', async () => {
@@ -190,7 +190,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     })
   })
 
-  /** #1242: the value set is open, so an address outside the offered ones is typed exactly. */
+  /** The value set is open, so an address outside the offered ones is typed exactly. */
   it('takes an exact Absender from the free input beside the offered addresses', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
@@ -260,7 +260,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     )
   }
 
-  /** The field identity is (library, key): the same key in two libraries is two fields (#1071). */
+  /** The field identity is (library, key): the same key in two libraries is two fields. */
   it('offers a library field per library and applies the chosen values with their library', async () => {
     server.use(withLibraryFields())
     const user = userEvent.setup()
