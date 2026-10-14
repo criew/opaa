@@ -2,11 +2,12 @@
 // Proof of a pure move PR (frontend/AGENTS.md): node scripts/move-diff-check.mjs [<base-ref>]
 // Pairs every changed file under frontend/src/ with its counterpart (rename, or same normalized
 // content) and compares both after resolving relative and @/ module paths to the module they name,
-// mapped back through the renames; a new theme index.ts that re-exports a module counts as that
-// module, as does a new routes.ts re-exporting default exports of the theme's own pages.
-// Bindings and package paths compare literally. Any other change - outside frontend/src/, a new
-// file, an index.ts exporting a page, a routes.ts exporting anything else - is a finding.
-// No output means only files moved.
+// mapped back through the renames; a theme index.ts that re-exports a module counts as that
+// module, as does a routes.ts re-exporting default exports of the theme's own pages. An existing
+// index.ts or routes.ts may only gain re-exports. Line breaks count only where they may end a
+// statement, and the transition list may shrink. Bindings and package paths compare literally.
+// Any other change - outside frontend/src/, a new file, an index.ts exporting a page, a routes.ts
+// exporting anything else - is a finding. No output means only files moved.
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -126,6 +127,36 @@ function makeNormalizer({ files, toBase, entries = new Map() }) {
   }
 }
 
+// Comments, string and template literals, module tokens of the normalizer, words, single marks.
+const TOKEN =
+  /\/\/[^\n]*|\/\*[\s\S]*?\*\/|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\[\s\S]|[^`\\])*`|<(?:mod|path|pkg):[^>\n]*>|=>|[\w$]+|\n|\S/g
+// A line break after or before these marks never ends a statement.
+const CONTINUES_AFTER = new Set(['(', '[', '{', ',', '=', '=>', '<', ':', '?', '.', '|', '&'])
+const CONTINUES_BEFORE = new Set([')', ']', '}', ',', '.', '>', '?', ':', '=', '|', '&'])
+const CLOSERS = new Set([')', ']', '}', '>'])
+
+/**
+ * Tokens of a normalized source, independent of the layout Prettier chooses: whitespace only
+ * separates tokens, a line break counts only where it may end a statement, and a trailing comma
+ * before a closing bracket is dropped.
+ */
+export function codeTokens(text) {
+  const out = []
+  for (const token of text.match(TOKEN) ?? []) {
+    if (token === '\n') {
+      if (out.length > 0 && out.at(-1) !== '\n') out.push(token)
+      continue
+    }
+    if (out.at(-1) === '\n' && (CONTINUES_BEFORE.has(token) || CONTINUES_AFTER.has(out.at(-2)))) {
+      out.pop()
+    }
+    if (CLOSERS.has(token) && out.at(-1) === ',') out.pop()
+    out.push(token)
+  }
+  if (out.at(-1) === '\n') out.pop()
+  return out
+}
+
 /** Minimal line diff (LCS); returns '-'/'+' lines, empty when equal. */
 export function lineDiff(before, after) {
   const a = before.split('\n')
@@ -153,13 +184,65 @@ export function lineDiff(before, after) {
   return out
 }
 
-const canonical = (value) =>
-  value && typeof value === 'object'
-    ? `{${Object.keys(value)
-        .sort()
-        .map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`)
-        .join(',')}}`
-    : JSON.stringify(value)
+/**
+ * Reads a theme index.ts or routes.ts: which module (`toBase` applied) and export stands behind
+ * each exported name. `names` is null when the file holds more than re-exports of local modules.
+ */
+function readEntries(file, source, resolve, toBase) {
+  const routesTheme = file.match(THEME_ROUTES)?.[1]
+  const kind = routesTheme ? 'a routes.ts' : 'an index.ts'
+  const statements = parseStatements(source)
+  // whatever is left after removing the statements and real comments is code
+  const rest = source
+    .replace(STATEMENT, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .split('\n')
+    .filter((line) => line.trim())
+  if (rest.length > 0 || statements.some((s) => s.kind !== 'export' || !isLocal(s.spec))) {
+    return { names: null, findings: [`${file}: ${kind} holds re-exports of local modules only`] }
+  }
+  const findings = []
+  const names = new Map()
+  for (const statement of statements) {
+    const target = resolve(statement.spec, file)
+    if (!target.file) {
+      findings.push(`${file}: re-exports unresolvable ${statement.spec}`)
+      continue
+    }
+    const isPage = /(^|\/)pages\//.test(target.file)
+    if (!routesTheme && isPage) {
+      findings.push(`${file}: exports the page ${target.file}`)
+    }
+    if (routesTheme && !target.file.startsWith(`src/features/${routesTheme}/pages/`)) {
+      findings.push(`${file}: re-exports ${target.file}, no page of its theme`)
+      continue
+    }
+    for (const binding of statement.bindings) {
+      const [imported, exported = imported] = binding.replace(/^type /, '').split(' as ')
+      if (routesTheme && imported !== 'default') {
+        findings.push(`${file}: re-exports ${imported} of ${target.file}, not the page itself`)
+        continue
+      }
+      names.set(exported, { module: toBase(target.file), imported })
+    }
+  }
+  return { names, findings }
+}
+
+/** Entries of the transition list that grow against `before` (keys already renamed). */
+function growingSuppressions(file, before, after) {
+  const findings = []
+  for (const [key, rules] of Object.entries(after)) {
+    for (const [rule, entry] of Object.entries(rules)) {
+      const was = before[key]?.[rule]?.count ?? 0
+      if (!(entry.count <= was)) {
+        findings.push(`${file}: ${key} ${rule} grows from ${was} to ${entry.count}`)
+      }
+    }
+  }
+  return findings
+}
 
 /**
  * Checks a change set. `changes` are name-status entries ({ status, from, to }) with paths
@@ -210,70 +293,71 @@ export function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) 
     }
   }
 
-  // new theme index and routes files: which module and export stands behind each exported name
+  // theme index and routes files: which module and export stands behind each exported name
+  const isEntryFile = (file) => THEME_INDEX.test(file) || THEME_ROUTES.test(file)
   const entries = new Map()
+  const oldEntries = new Map()
   const resolveNew = makeResolver(newSet)
-  for (const file of added.filter((f) => THEME_INDEX.test(f) || THEME_ROUTES.test(f))) {
-    const routesTheme = file.match(THEME_ROUTES)?.[1]
-    const kind = routesTheme ? 'a routes.ts' : 'an index.ts'
-    const source = readNew(file)
-    const statements = parseStatements(source)
-    // whatever is left after removing the statements and real comments is code
-    const rest = source
-      .replace(STATEMENT, '')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/^\s*\/\/.*$/gm, '')
-      .split('\n')
-      .filter((line) => line.trim())
-    if (rest.length > 0 || statements.some((s) => s.kind !== 'export' || !isLocal(s.spec))) {
-      findings.push(`${file}: ${kind} holds re-exports of local modules only`)
-      continue
-    }
-    const names = new Map()
-    for (const statement of statements) {
-      const target = resolveNew(statement.spec, file)
-      if (!target.file) {
-        findings.push(`${file}: re-exports unresolvable ${statement.spec}`)
-        continue
-      }
-      const isPage = /(^|\/)pages\//.test(target.file)
-      if (!routesTheme && isPage) {
-        findings.push(`${file}: exports the page ${target.file}`)
-      }
-      if (routesTheme && !target.file.startsWith(`src/features/${routesTheme}/pages/`)) {
-        findings.push(`${file}: re-exports ${target.file}, no page of its theme`)
-        continue
-      }
-      for (const binding of statement.bindings) {
-        const [imported, exported = imported] = binding.replace(/^type /, '').split(' as ')
-        if (routesTheme && imported !== 'default') {
-          findings.push(`${file}: re-exports ${imported} of ${target.file}, not the page itself`)
-          continue
-        }
-        names.set(exported, { module: toBase(target.file), imported })
-      }
-    }
+  const resolveOld = makeResolver(oldSet)
+  for (const file of added.filter(isEntryFile)) {
+    const { names, findings: own } = readEntries(file, readNew(file), resolveNew, toBase)
+    findings.push(...own)
+    if (!names) continue
     entries.set(file, names)
     added.splice(added.indexOf(file), 1)
   }
+  // an existing one may only gain re-exports, each under the rules for a new file
+  const grownEntries = new Set()
+  for (const file of scoped.filter((c) => c.status === 'M' && isEntryFile(c.to)).map((c) => c.to)) {
+    const now = readEntries(file, readNew(file), resolveNew, toBase)
+    findings.push(...now.findings)
+    if (!now.names) continue
+    const before = readEntries(file, readOld(file), resolveOld, (f) => f)
+    if (!before.names) {
+      findings.push(`${file}: held more than re-exports before`)
+      continue
+    }
+    for (const [name, origin] of before.names) {
+      const current = now.names.get(name)
+      if (!current) {
+        findings.push(`${file}: removes the re-export ${name}`)
+      } else if (current.module !== origin.module || current.imported !== origin.imported) {
+        findings.push(`${file}: changes the re-export ${name}`)
+      }
+    }
+    entries.set(file, now.names)
+    oldEntries.set(file, before.names)
+    grownEntries.add(file)
+  }
   const normalizeNew = makeNormalizer({ files: newSet, toBase, entries })
+  const normalizeOldEntries = makeNormalizer({
+    files: oldSet,
+    toBase: (f) => f,
+    entries: oldEntries,
+  })
 
   const pairs = [...renames]
-  for (const c of scoped) if (c.status === 'M') pairs.push([c.from, c.from])
+  for (const c of scoped) {
+    if (c.status === 'M' && !grownEntries.has(c.from)) pairs.push([c.from, c.from])
+  }
   for (const [from, to] of pairs) {
     if (to === SUPPRESSIONS_FILE) {
       const old = JSON.parse(readOld(from))
       const renamed = Object.fromEntries(
         Object.entries(old).map(([k, v]) => [renames.get(k) ?? k, v]),
       )
-      if (canonical(renamed) !== canonical(JSON.parse(readNew(to)))) {
-        findings.push(`${to}: entries changed beyond the renamed files`)
-      }
+      findings.push(...growingSuppressions(to, renamed, JSON.parse(readNew(to))))
       continue
     }
-    const diff = SOURCE.test(to)
-      ? lineDiff(normalizeOld(readOld(from), from), normalizeNew(readNew(to), to))
-      : lineDiff(readOld(from), readNew(to))
+    let diff
+    if (SOURCE.test(to)) {
+      const before = normalizeOldEntries(readOld(from), from)
+      const after = normalizeNew(readNew(to), to)
+      const same = codeTokens(before).join('\0') === codeTokens(after).join('\0')
+      diff = same ? [] : lineDiff(before, after)
+    } else {
+      diff = lineDiff(readOld(from), readNew(to))
+    }
     if (diff.length > 0) {
       findings.push(`${from === to ? to : `${from} -> ${to}`}:\n${diff.join('\n')}`)
     }
