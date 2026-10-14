@@ -48,7 +48,7 @@ Eigentümer gewertet. `EDITOR` ist eine Nutzung und darum zulässig.
 beiden Subjektspalten leer (`chk_asset_grants_subject_type`, `chk_asset_grants_subject`, Teilindex
 `uk_asset_grants_all_accounts`) — dieselbe Form und Beschriftung wie bei den Anlegerechten. Damit gelten
 ohne eigene Regel: Organisationsgrenze (`fk_asset_grants_asset_organization`), der Verzeichnisabgleich
-fasst sie nie an, es gibt keine Mitgliederliste und keinen Sonderpfad in der Rechteformel.
+fasst sie nie an, es gibt keine Mitgliederliste und keinen weiteren Sonderpfad in der Rechteformel.
 
 ### 3. Eigenes Enum `AssetGrantSubjectType`
 

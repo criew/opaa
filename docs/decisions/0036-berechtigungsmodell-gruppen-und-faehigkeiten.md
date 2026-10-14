@@ -211,7 +211,7 @@ Vorgänge unterliegen der Aufbewahrungsfrist des Protokolls, nicht der Rechtehis
   Empfänger** (wirksame, nicht handlungsfähige Gruppen mit Wirkung) und **Gruppen ohne Wirkung**
   (interne Gruppen ohne Grant, Space-Mitgliedschaft, Eigentum und aktives Mitglied). Keine Frist, keine
   Mail, keine Eskalation; Einträge älter als `opaa.succession.aging-threshold-months` (Vorgabe 12)
-  werden hervorgehoben, sonst nichts (der Sichtungsvermerk ist mit #2336 entfallen).
+  werden hervorgehoben, sonst nichts; einen Sichtungsvermerk gibt es nicht.
 - **Am Objekt** sehen Leseberechtigte Zustand und Adressat, ohne Datum, früheren Eigentümer und Grund;
   Suchtreffer und Quellenverweise tragen keine Kennzeichnung.
 - **Objektbezogen in beide Richtungen:** keine Abfrage „was gehörte Person X" und keine Auswertungsachse
@@ -304,11 +304,15 @@ Schreibzeitpunkt nein.
 
 **Interne Gruppen sind Opt-in** (`groups.released_for_use`): Verantwortliche geben eine Gruppe zur
 Verwendung frei; erst dann ist sie für andere Rechtevergebende wählbar. Die Auswahl eines Empfängers
-setzt eine bewusste Handlung der Verantwortlichen voraus. Durchgesetzt im Service
-(`GroupService`, `GroupStates`), für jeden Weg einschließlich der Eingabe per ID: Eine nicht freigegebene
-interne Gruppe ist für einen Aufrufer, der weder Mitglied, Verantwortlicher noch `SYSTEM_ADMIN` ist,
-`404`. Die Migration setzte „freigegeben" für jede Bestandsgruppe mit Wirkung; „nicht freigegeben" gilt
-nur prospektiv.
+setzt eine bewusste Handlung der Verantwortlichen voraus. Drei Festlegungen:
+
+1. Die Migration setzte „freigegeben" für jede Bestandsgruppe mit Wirkung; „nicht freigegeben" gilt nur
+   prospektiv.
+2. Durchgesetzt im Service (`GroupService`, `GroupStates`), für jeden Weg einschließlich der Eingabe per
+   ID: Eine nicht freigegebene interne Gruppe ist für einen Aufrufer, der weder Mitglied,
+   Verantwortlicher noch `SYSTEM_ADMIN` ist, `404`.
+3. Die Bestandsänderung ist ausgesprochen: Ein `MANAGER` kann eine neue interne Gruppe erst als
+   Empfänger wählen, wenn ihre Verantwortlichen sie freigegeben haben.
 
 **Wer ein Recht gibt, sieht, an wen:**
 
@@ -332,7 +336,8 @@ Schutz für „Sicht als" und die Suchdiagnose.
 Gleichstellung, Personalvorgänge): Das Kennzeichen setzt und löst **allein die Systemverwaltung** (seit
 #1978, Audit `GROUP_PROTECTION_CHANGED`), für interne und Anbietergruppen; die Nachprüfbarkeit ist die
 Sicherung, nicht die Unverfügbarkeit für die Administration. Eine geschützte Gruppe ist nicht über
-Suche auffindbar, erscheint in fremden Listen als „Geschützte Gruppe" ohne Namen (damit ein
+Suche auffindbar, sondern nur über ihre vollständige Bezeichnung wählbar
+(`findProtectedByOrganizationIdAndName`), erscheint in fremden Listen als „Geschützte Gruppe" ohne Namen (damit ein
 Space-`ADMIN` eine Mitgliedschaft beenden kann, die er sonst nicht sähe), zeigt Grant-Gebern weder Zahl
 noch Mitglieder, sondern bei einer internen Gruppe die Verantwortlichen, bei einer Anbietergruppe
 niemanden (`GroupMemberDisclosure`); die Herleitung zeigt Dritten bei ihr nur die effektive Rolle, keine
@@ -347,11 +352,12 @@ zeitgesteuerte Lauf liefert niemandem etwas aus, und die Oberfläche ruft einen 
 
 **Herleitung für die eigene Person** (`GET …/access-derivation`): Für jedes Asset und jeden Space zeigt
 die Oberfläche der Person ihren eigenen Weg zur effektiven Rolle (`AccessBasis`: direkter Grant, Grant
-über Gruppe mit Name, Herkunft, Mechanismus und Zeitpunkt, Freigabe an „Alle Konten", Eigentum), ohne
+über Gruppe mit Name, Herkunft, Mechanismus und Zeitpunkt, Freigabe an „Alle Konten", direkte
+Space-Mitgliedschaft, Space-Mitgliedschaft über Gruppe, Eigentum), ohne
 Vollmacht, ohne Protokoll, ohne Mitglieder offenzulegen. Gegenüber anderen nennt die Herleitung den
 Gruppennamen nur dort, wo die Person die Mitgliedschaft verwaltet (Space-Mitgliederliste für
-`ADMIN`/Eigentümer). Ein Zuwachssignal („N bei Erteilung, heute M") gibt es nicht mehr (#2134); die
-Zeile zeigt die heutige Zahl.
+`ADMIN`/Eigentümer). Die Zeile einer Gruppe zeigt die heutige Zahl aktiver Konten, kein
+Zuwachssignal.
 
 ### 10. Die Übertragungsoperation
 
@@ -458,7 +464,7 @@ zwischen „Freigabe zurücknehmen" (Rechte bleiben wirksam) und „übertragen 
 | Alterungsschwelle der Nachfolgeliste | **12 Monate**, konfigurierbar (orientiert an `DiagnosticImpersonationGrant.MAX_VALIDITY_MONTHS`) | `opaa.succession.aging-threshold-months` |
 | Feststellungslauf | stündlich | `opaa.succession.detection-cron` |
 | Plausibilitätsschwelle des Abgleichs | **30 %** | `opaa.directory-sync.change-threshold-fraction` |
-| Abgleichintervall | je Anbieter, 5 Minuten bis 7 Tage | `oidc_providers.directory_sync_interval_minutes` |
+| Abgleichintervall | Vorgabe **6 Stunden**, je Anbieter 5 Minuten bis 7 Tage | `OidcProviderService.DEFAULT_SYNC_INTERVAL_MINUTES`, `oidc_providers.directory_sync_interval_minutes` |
 | Aufbewahrungshöchstdauer der Rechtehistorie | **12–120 Monate**, ausgeliefert **36** | `PermissionHistoryRetentionSettings` |
 
 ### Zusagen aus der Stakeholder-Runde
@@ -553,8 +559,7 @@ beseitigt sie nicht. Die Mindestgruppengröße in der Subjekt-Auswahl ist kein S
 
 - Personen-Einstieg der Stichtagsauskunft und Historientabelle für Systemrollen (Entscheidung 8)
   sind nicht gebaut; die Schutzpunkte stehen fest.
-- Befristete Grants und Rezertifizierung (#241, nicht geplant; das Modell hindert sie nicht) und eine
-  allgemeine Autoren-Benachrichtigung bei wesentlicher Erweiterung des Leserkreises.
+- Eine allgemeine Autoren-Benachrichtigung bei wesentlicher Erweiterung des Leserkreises.
 - Pseudonymisierung der `RESTRICT`-Personenspalten der Rechtehistorie als Voraussetzung von
   Personen-Einstieg und Kontolöschung.
 - Anbieter je Organisation (`oidc_providers.organization_id`, #1442).

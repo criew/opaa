@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-11 · ergänzt [ADR-0031](0031-gespraechsgedaechtnis.md)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0031](0031-gespraechsgedaechtnis.md)
 
 ## Kontext
 

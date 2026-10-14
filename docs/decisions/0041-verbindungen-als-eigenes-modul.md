@@ -25,7 +25,7 @@ Modulgraph (`ModularArchitecture`, `backend/AGENTS.md`) ist zyklenfrei und soll 
 Das Modul besitzt Profile, die Richtlinie je Konnektortyp (Sperre, Profilpflicht), Verbindungen
 samt verbundenen Konten, den Token-Speicher, den OAuth-Ablauf, das Verbindungsprotokoll und die
 Einstellungen der Fristen (Entscheidung 7). Die Freigabe selbst liegt nicht dort, sondern in rights
-(ADR-0036, Nachtrag vom 03.10.2026).
+(ADR-0036, Entscheidung 5).
 
 Ein bestehendes Modul passt nicht:
 
@@ -234,8 +234,8 @@ Begründung:
   mit dem ersten Konsumenten. `LocalAdminAvailabilityGuard` und `ExternalAccessTokenAuthenticator`
   stellen auf sie um, damit es nur eine Regel gibt. Die Verhaltensänderung des Authenticators steht
   in Entscheidung 4.
-- **Spezifikation zuerst (ADR-0006),** für den Geltungsbereich der Fähigkeit (ADR-0036, Nachtrag
-  vom 03.10.2026, Punkt 1):
+- **Spezifikation zuerst (ADR-0006),** für den Geltungsbereich der Fähigkeit (ADR-0036,
+  Entscheidung 5):
   - `GET /api/v1/me` führt `CREATE_CONNECTOR_LIBRARY` weiter als Zeichenkette, wenn die Person die
     Fähigkeit in mindestens einem Geltungsbereich hat. Die heutige Grobsteuerung im Frontend
     (`LibraryCreatePage.tsx`, `assetTypeRegistry.ts`) bleibt dadurch gültig.

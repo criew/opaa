@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-03 · ändert [ADR-0037](0037-reichweite-als-freigabe-an-alle.md)
+Akzeptiert · zuletzt geändert 2026-10-14 · ändert [ADR-0037](0037-reichweite-als-freigabe-an-alle.md)
 (Entscheidung 4 und die `listed`-Teile von 5, 6, 7 und 9),
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidung 9, Begründung) und
 [ADR-0035](0035-fremdzugaenge-mcp-server-und-zugangstokens.md) (Entscheidung 5, Gleichheitszusage)
@@ -69,8 +69,7 @@ lesbar ist, serverseitig durchgesetzt (`SpaceAssetAssociationService`):
 | Prompt-Bibliothek | `/`-Angebot (`GET /api/v1/prompts/available` verlangt den Space) und Einsetzen (`usedPromptId` gegen die Zuordnung geprüft) |
 | Agent (Zielbild) | das Angebot im Chat; die eigene Wissensbindung eines Agenten bleibt unberührt |
 
-- Die Übergangsregel entfällt, auch für den persönlichen Standard-Space (die Abschaffung persönlicher
-  Spaces aus #2099 ist nicht umgesetzt; der persönliche Space bleibt als Standard-Space): Ein Space ohne Wissen
+- Die Übergangsregel entfällt, auch für den persönlichen Standard-Space: Ein Space ohne Wissen
   durchsucht kein Wissen und startet leer. **Kein stiller Leerlauf:** Chat und Space-Seite zeigen einen
   Hinweis mit Direktlink zur Zuordnung (für `CURATOR`/`ADMIN`; andere erfahren, wer zuordnen kann); zwei
   getrennte Signale ohne Zahlen — „kein Wissen zugeordnet" und „zugeordnet, aber nichts davon lesbar".
@@ -92,7 +91,7 @@ lesbar ist, serverseitig durchgesetzt (`SpaceAssetAssociationService`):
 Der Fremdzugang (MCP-Server, Zugangstoken) bleibt ohne Space: lesbar ∩ Fremdzugangsfreigabe ∩
 Bibliotheksauswahl des Tokens (ADR-0035, Entscheidung 5), mit derselben Kachelauswahl wie der
 Space-Assistent. Ebenso `POST /api/v1/search`: lesbare Bibliotheken, enger über die mitgegebene
-Auswahl. Die Zusage aus ADR-0035 lautet jetzt: Beide Kanäle laufen über denselben Suchweg mit derselben
+Auswahl. Die Zusage aus ADR-0035 lautet: Beide Kanäle laufen über denselben Suchweg mit derselben
 Rechteprüfung; was sie durchsuchen, bestimmt im Chat die Zuordnung des Space, im Fremdzugang die Auswahl
 des Tokens. Eine nicht lesbare Bibliothek findet die Person in keinem Kanal.
 
