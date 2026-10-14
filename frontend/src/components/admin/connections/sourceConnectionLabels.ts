@@ -3,7 +3,7 @@ import type {
   SourceBlockReason,
   SourceConnectionResponsible,
 } from '@/shared/api/types'
-import { endCauseLabel } from '../audit/connectionLogLabels'
+import { endCauseLabel } from '../../audit/connectionLogLabels'
 
 /** Who answers for a library's source connection; a name the server withholds stays unnamed. */
 export function responsibleLabel(responsible: SourceConnectionResponsible): string {

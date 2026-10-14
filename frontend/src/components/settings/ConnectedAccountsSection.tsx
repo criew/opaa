@@ -21,7 +21,7 @@ import {
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { leaveFor } from '@/shared/api/leaveApp'
 import { forgetConsentIntent } from '../library/sourceConsent'
-import { useSourceTypes } from '../../hooks/useSourceTypes'
+import { useSourceTypes } from '../admin/connections/useSourceTypes'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'

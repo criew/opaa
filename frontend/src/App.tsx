@@ -10,7 +10,7 @@ import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useUiStore } from '@/shared/stores/uiStore'
-import SettingsPage from './pages/SettingsPage'
+import SettingsPage from './app/areas/SettingsPage'
 // shared
 import {
   CATALOG_ROUTE,
@@ -82,7 +82,7 @@ import { useBrandingStore } from '@/shared/branding/brandingStore'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
 // connection
 import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
-import ConnectionsAdminPage from './pages/ConnectionsAdminPage'
+import ConnectionsAdminPage from './app/areas/ConnectionsAdminPage'
 import ConnectionLogPage from './pages/ConnectionLogPage'
 // search-admin
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'

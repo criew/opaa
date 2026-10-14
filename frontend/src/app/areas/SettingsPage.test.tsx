@@ -2,13 +2,13 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Route, Routes } from 'react-router'
-import { renderWithProviders } from '../test/test-utils'
-import ChangePasswordPage from './ChangePasswordPage'
+import { renderWithProviders } from '../../test/test-utils'
+import ChangePasswordPage from '../../pages/ChangePasswordPage'
 import SettingsPage from './SettingsPage'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useUiStore } from '@/shared/stores/uiStore'
 import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
-import { mockLocalAccount } from '../mocks/authFixtures'
+import { mockLocalAccount } from '../../mocks/authFixtures'
 
 function renderPage() {
   return renderWithProviders(<SettingsPage />, { withRouter: true, initialRoute: '/settings' })

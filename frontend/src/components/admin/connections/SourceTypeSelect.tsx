@@ -3,7 +3,7 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { SourceTypeDescriptor, SourceTypeKey } from '@/shared/api/types'
-import SourceTypeIcon from '../../library/sourceTypeIcon'
+import SourceTypeIcon from './sourceTypeIcon'
 import { sourceRegistration } from '../../library/sources/registry'
 import { admitsProfiles, NO_PROFILES_REASON } from './connectionProfileLabels'
 

@@ -1,7 +1,7 @@
 import ExtensionIcon from '@mui/icons-material/Extension'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type { SourceTypeKey } from '@/shared/api/types'
-import { sourceRegistration } from './sources/registry'
+import { sourceRegistration } from '../../library/sources/registry'
 
 /**
  * Das eine Bildzeichen je Quellentyp (#1942): Kopf der Detailseite und Kachel des Assistenten

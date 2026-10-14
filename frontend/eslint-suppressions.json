@@ -14,7 +14,7 @@
       "count": 1
     }
   },
-  "src/components/admin/connections/PrivateStorageSection.tsx": {
+  "src/components/library/PrivateStorageSection.tsx": {
     "boundaries/dependencies": {
       "count": 1
     }
@@ -64,7 +64,7 @@
       "count": 1
     }
   },
-  "src/components/library/sourceConnectionLabels.ts": {
+  "src/components/admin/connections/sourceConnectionLabels.ts": {
     "boundaries/dependencies": {
       "count": 1
     }

@@ -19,6 +19,16 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
+  ...(import.meta.glob('../../app/areas/ConnectionSettingsTab.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
+  ...(import.meta.glob('../../components/library/PrivateStorageSection.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
   ...(import.meta.glob('../../components/searchadmin/*.tsx', {
     query: '?raw',
     import: 'default',
@@ -96,6 +106,9 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'SuccessionPage',
     'MailSettingsPage',
     'SearchIndexingAdminPage',
+    // settings tab of the connections area and its private-storage section
+    'ConnectionSettingsTab',
+    'PrivateStorageSection',
     // #1609: außerhalb der Administration
     'LibraryDetailPage',
     'SpacePage',
