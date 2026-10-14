@@ -199,8 +199,8 @@ Datenschutz können die Vorgaben innerhalb der Grenzen ändern, ohne dass dieser
 
 ### 8. Code-Struktur, Freigabe und Spezifikation
 
-`Module.CONNECTIONS` steht in `ModularArchitecture` direkt nach `CONNECTORS`; Schichtung und
-Paketreihenfolge stehen in `backend/AGENTS.md`. Modulkanten erst, wenn der Code sie nutzt
+`Module.CONNECTIONS` steht in `ModularArchitecture` direkt nach `CONNECTORS`, dort auch Schichtung und
+Paketreihenfolge (Regeln: `backend/AGENTS.md`). Modulkanten erst, wenn der Code sie nutzt
 (`everyAllowedModuleEdgeIsInUse`). Unterpakete, unten zuerst: `log`, `token`, `profile`, `consent`,
 `account`, `oauth`; das Wurzelpaket verdrahtet die Ports, `web` liegt darüber, nach oben nur über
 Ports (`LibrariesOnProfile`, `PersonAccounts`, `SecretIssuer`, `SourceConsentRejections`,

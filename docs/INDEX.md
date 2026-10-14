@@ -213,6 +213,9 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 - **[`../AGENTS.md`](../AGENTS.md)** — Anweisungen für KI-Agenten
 - **[`../backend/AGENTS.md`](../backend/AGENTS.md)** — Backend-Regeln für KI-Agenten
   (Abhängigkeitsverwaltung, API-/Mapper-Konvention, Spring-Testkontexte, Liquibase)
+- **[`../backend/docs/`](../backend/docs/)** — Nachschlagewissen dazu:
+  [Register des prozesslokalen Zustands](../backend/docs/prozesslokaler-zustand.md),
+  [Spring-Testkontexte](../backend/docs/testkontexte.md), [Liquibase](../backend/docs/liquibase.md)
 
 ### Überholt
 
