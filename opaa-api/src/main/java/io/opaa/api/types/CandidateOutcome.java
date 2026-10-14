@@ -1,4 +1,4 @@
-package io.opaa.retrieval;
+package io.opaa.api.types;
 
 /** What a stage did to a candidate: brought it in, passed it on, or dropped it. */
 public enum CandidateOutcome {

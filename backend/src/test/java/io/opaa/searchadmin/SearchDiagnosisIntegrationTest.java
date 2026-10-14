@@ -3,14 +3,15 @@ package io.opaa.searchadmin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.CandidateOutcome;
+import io.opaa.api.types.DiagnosisContextType;
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.RetrievalPipeline;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageStatus;
 import io.opaa.test.OpaaIntegrationTest;

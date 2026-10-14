@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.api.types.OwnAddressStock;
 import io.opaa.asset.AssetOwnerNames;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
