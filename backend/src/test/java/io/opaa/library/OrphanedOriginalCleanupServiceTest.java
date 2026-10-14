@@ -85,6 +85,21 @@ class OrphanedOriginalCleanupServiceTest {
   }
 
   @Test
+  void aPrivateLibraryIsAsAbsentAsOneOfAnotherOrganization() {
+    KnowledgeLibrary privateLibrary = mock(KnowledgeLibrary.class);
+    when(privateLibrary.isOwnerOnly()).thenReturn(true);
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(privateLibrary));
+
+    assertThatThrownBy(() -> service.report(organizationId, libraryId, null))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Bibliothek nicht gefunden");
+    assertThatThrownBy(() -> service.delete(organizationId, libraryId, List.of("x")))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Bibliothek nicht gefunden");
+  }
+
+  @Test
   void anOriginalNoRowPointsToIsReportedAndLeftInPlace() throws IOException {
     String orphan = stored("verwaist", now.minus(Duration.ofHours(2)));
     String owned = stored("gehört einer Zeile", now.minus(Duration.ofHours(2)));
