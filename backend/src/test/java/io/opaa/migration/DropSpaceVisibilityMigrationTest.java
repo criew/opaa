@@ -7,8 +7,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The removal of the space visibility (#2156): {@code spaces.visibility} and its check go, applied
- * to an existing installation, i.e. the master without this file. Spaces of every former visibility
+ * The removal of the space visibility: {@code spaces.visibility} and its check go, applied to an
+ * existing installation, i.e. the master without this file. Spaces of every former visibility
  * survive.
  */
 class DropSpaceVisibilityMigrationTest extends AbstractBaselineTest {

@@ -171,9 +171,9 @@ class FullTextIdentifiersTest {
   }
 
   /**
-   * The query path weighs only pure word forms by frequency (#2624). {@code all} is exactly what
-   * the write path stores, so both sides keep building the same lexemes; snake-case, camel-case and
-   * the other identifier kinds never count as word forms.
+   * The query path weighs only pure word forms by frequency. {@code all} is exactly what the write
+   * path stores, so both sides keep building the same lexemes; snake-case, camel-case and the other
+   * identifier kinds never count as word forms.
    */
   @Test
   void analyzeMarksOnlyUppercaseWordsAsWordFormsAndKeepsTheWritePathsLexemes() {

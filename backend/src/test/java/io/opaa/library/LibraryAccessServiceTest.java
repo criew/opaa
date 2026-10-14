@@ -72,8 +72,7 @@ class LibraryAccessServiceTest {
 
   /**
    * A library owned by someone other than {@link #userId} - used to exercise the
-   * fail-closed/opened-by-grant formula independent of ownership (#406, formerly exercised via the
-   * now-removed {@code SYSTEM} owner kind - see #521).
+   * fail-closed/opened-by-grant formula independent of ownership.
    */
   private KnowledgeLibrary foreignLibrary(UUID libraryId) {
     KnowledgeLibrary library =
@@ -115,9 +114,8 @@ class LibraryAccessServiceTest {
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of());
 
-    // The fail-closed default #201 originally asked for the now-removed SYSTEM owner kind (#521);
-    // an ordinary PRIVATE, ungranted library follows the same formula (#406) without any special
-    // case.
+    // The fail-closed default #201 originally asked for the now-removed SYSTEM owner kind; an
+    // ordinary PRIVATE, ungranted library follows the same formula without any special case.
     assertThat(accessService.canRead(library, userId, false)).isFalse();
     assertThat(accessService.canRead(library, userId, true)).isTrue();
   }
@@ -155,7 +153,7 @@ class LibraryAccessServiceTest {
 
   @Test
   void requireRoleAnswers404ForACallerWithNoAccessAtAll() {
-    // #436: no grant, no organization-wide floor - the caller cannot even tell the library exists.
+    // No grant, no organization-wide floor - the caller cannot even tell the library exists.
     UUID libraryId = UUID.randomUUID();
     KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
@@ -167,7 +165,7 @@ class LibraryAccessServiceTest {
 
   @Test
   void requireRoleAnswers403ForACallerWithSomeButInsufficientAccess() {
-    // #436: a real VIEWER grant exists, but MANAGER is required - the library's existence is
+    // A real VIEWER grant exists, but MANAGER is required - the library's existence is
     // already established, so this is the ordinary "not enough" case.
     UUID libraryId = UUID.randomUUID();
     KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
@@ -209,8 +207,8 @@ class LibraryAccessServiceTest {
 
   @Test
   void requireRoleBypassesToOwnerForASystemAdminEvenWithNoGrantAtAll() {
-    // #436: requireRole must fail-open a system admin exactly like effectiveRole already does
-    // (see systemAdminBypassesGrantsOnAnOrdinaryLibrary above) - the caller has no grant on this
+    // requireRole must fail-open a system admin exactly like effectiveRole already does (see
+    // systemAdminBypassesGrantsOnAnOrdinaryLibrary above) - the caller has no grant on this
     // library whatsoever, yet requireRole must neither answer 404 nor 403 for a system admin.
     UUID libraryId = UUID.randomUUID();
     KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
@@ -275,7 +273,7 @@ class LibraryAccessServiceTest {
 
   @Test
   void anEditorGrantAllowsEditingButNotManaging() {
-    // #420: uploading/deleting documents (io.opaa.library.LibraryDocumentService#requireEditable)
+    // uploading/deleting documents (io.opaa.library.LibraryDocumentService#requireEditable)
     // requires EDITOR, one level below MANAGER - a VIEWER may read a library's contents but not
     // change them. requireEditable reads effectiveRole directly (not a dedicated canEdit method -
     // it also needs to distinguish "no role at all" from "a role below EDITOR", which a boolean
@@ -458,9 +456,9 @@ class LibraryAccessServiceTest {
 
   @Test
   void effectiveRolesForReadableLibrariesResolvesEachRoleFromASingleBatchQuery() {
-    // #425 review, finding 1 and nit 4: this method exists so listLibraries never combines the
-    // uncached readableLibraryIds membership with the separately-cached, potentially stale
-    // effectiveRole - both must read grants from the exact same, single query.
+    // This method exists so listLibraries never combines the uncached readableLibraryIds
+    // membership with the separately-cached, potentially stale effectiveRole - both must read
+    // grants from the exact same, single query.
     UUID directGrantLibraryId = UUID.randomUUID();
     UUID groupGrantLibraryId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
@@ -493,7 +491,7 @@ class LibraryAccessServiceTest {
 
   @Test
   void effectiveRolesForReadableLibrariesFloorsAtViewerWhenNoGrantResolves() {
-    // The exact scenario finding 1 describes: a library that is a member of readableLibraryIds
+    // A library that is a member of readableLibraryIds
     // (by construction, at least VIEWER) but whose grant this batch query does not resolve to a
     // role - it must never surface as null against a required response field.
     UUID libraryId = UUID.randomUUID();
@@ -510,7 +508,7 @@ class LibraryAccessServiceTest {
   @Test
   void effectiveRolesForReadableLibrariesNeverBypassesToOwnerForASystemAdmin() {
     // Unlike effectiveRole, this method takes no systemAdmin parameter at all - listLibraries
-    // deliberately never bypasses (#425 review, orchestrator decision on nit 3).
+    // deliberately never bypasses.
     UUID libraryId = UUID.randomUUID();
     KnowledgeLibrary library = privateUserOwnedLibrary(libraryId);
     when(grantRepository.findByAssetTypeAndAssetIdIn(

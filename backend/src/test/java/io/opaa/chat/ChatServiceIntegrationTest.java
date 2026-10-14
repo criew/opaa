@@ -78,14 +78,14 @@ class ChatServiceIntegrationTest {
   @Autowired private ObjectMapper objectMapper;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
 
-  // #557: ChatService#appendTurn triggers ChatTitleGenerationService's real, Spring-managed LLM
-  // call on a chat's first turn. That job runs on chatTitleTaskExecutor, genuinely off the calling
-  // thread, and two tests below deliberately exercise that concurrency - which is why this class
-  // uses @OpaaMockedDocumentServiceIntegrationTest rather than the signature that runs the job
-  // inline. A class-local mock, not the shared ChatModel bean: a title job still in flight after
-  // the last test method here would otherwise race the next class's reset of that bean. Every stub
-  // on it uses doReturn/doAnswer/doThrow - not when(...) - because doReturn(...).when(mock) never
-  // invokes the mock while building the stub, so it cannot race a still in-flight title job (#623).
+  // ChatService#appendTurn triggers ChatTitleGenerationService's real, Spring-managed LLM call on a
+  // chat's first turn. That job runs on chatTitleTaskExecutor, genuinely off the calling thread,
+  // and two tests below deliberately exercise that concurrency - which is why this class uses
+  // @OpaaMockedDocumentServiceIntegrationTest rather than the signature that runs the job inline. A
+  // class-local mock, not the shared ChatModel bean: a title job still in flight after the last
+  // test method here would otherwise race the next class's reset of that bean. Every stub on it
+  // uses doReturn/doAnswer/doThrow - not when(...) - because doReturn(...).when(mock) never invokes
+  // the mock while building the stub, so it cannot race a still in-flight title job.
   private final ChatModel chatModel = mock(ChatModel.class);
 
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
@@ -95,9 +95,9 @@ class ChatServiceIntegrationTest {
   @BeforeEach
   void setUp() {
     // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null.
-    // doReturn, not when(...).thenReturn(...) (#623): a previous test's title generation job can
-    // still be in flight on chatTitleTaskExecutor when the next test's @BeforeEach runs and calls
-    // this getOptions() as well - see the chatModel field's Javadoc.
+    // doReturn, not when(...).thenReturn(...): a previous test's title generation job can still
+    // be in flight on chatTitleTaskExecutor when the next test's @BeforeEach runs and calls this
+    // getOptions() as well - see the chatModel field's Javadoc.
     doReturn(ChatOptions.builder().build()).when(chatModel).getOptions();
     doReturn(ChatClient.builder(chatModel).build())
         .when(activeChatModelResolver)
@@ -125,8 +125,8 @@ class ChatServiceIntegrationTest {
         id,
         organizationA,
         readerId);
-    // #202: ownership alone does not grant read access - LibraryAccessService#readableLibraryIds
-    // only ever consults asset_grants (plus group grants and ORGANIZATION visibility).
+    // Ownership alone does not grant read access - LibraryAccessService#readableLibraryIds only
+    // ever consults asset_grants (plus group grants and ORGANIZATION visibility).
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
             + " subject_user_id, role, created_at, updated_at)"
@@ -181,7 +181,7 @@ class ChatServiceIntegrationTest {
 
   @Test
   void creatingAChatInAnArchivedSpaceIsRejected() {
-    // #543: an archived space accepts no new content - docs/features/spaces-and-assets.md#einen-
+    // An archived space accepts no new content - docs/features/spaces-and-assets.md#einen-
     // space-stilllegen-archivieren-statt-löschen.
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
@@ -195,8 +195,8 @@ class ChatServiceIntegrationTest {
 
   @Test
   void updatingAChatInAnArchivedSpaceIsRejected() {
-    // #613 review, finding 2: an archived space accepts no new content - not only no new chats,
-    // but also no changes to an existing one.
+    // An archived space accepts no new content - not only no new chats, but also no changes to
+    // an existing one.
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     ChatConversation created =
@@ -214,8 +214,8 @@ class ChatServiceIntegrationTest {
 
   @Test
   void appendingATurnInAnArchivedSpaceIsRejected() {
-    // #613 review, finding 2: "kein neuer Inhalt" also means no new message in an existing chat -
-    // otherwise an archived space could never actually empty out into a state deleteSpace accepts.
+    // "kein neuer Inhalt" also means no new message in an existing chat - otherwise an archived
+    // space could never actually empty out into a state deleteSpace accepts.
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
@@ -307,8 +307,8 @@ class ChatServiceIntegrationTest {
         .isInstanceOf(ValidationException.class)
         .satisfies(
             ex ->
-                // #525 review, finding/nit b: identical message whether the library exists and is
-                // merely unreadable, or does not exist at all - no existence oracle.
+                // Identical message whether the library exists and is merely unreadable, or does
+                // not exist at all - no existence oracle.
                 assertThat(ex.getMessage())
                     .isEqualTo(
                         "referencedLibraryIds enthält eine Bibliothek, die nicht lesbar ist"));
@@ -488,7 +488,7 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
-    // doReturn, not when(...).thenReturn(...) - see the chatModel field's Javadoc (#623).
+    // doReturn, not when(...).thenReturn(...) - see the chatModel field's Javadoc.
     doReturn(
             new ChatResponse(
                 List.of(new Generation(new AssistantMessage("Rückstellung Altlastensanierung")))))
@@ -510,12 +510,12 @@ class ChatServiceIntegrationTest {
   }
 
   /**
-   * #557 acceptance criterion 2 / #561 review nit: a title the user set - even in the narrow window
-   * between the question being asked and the async title generation actually completing - always
-   * wins. Synchronized on an observable event, not a fixed wait: the mocked LLM call signals {@code
-   * llmCallStarted} the instant it is invoked, then blocks on {@code renameApplied} until this test
-   * explicitly releases it - so the rename below is deterministically guaranteed to commit while
-   * {@link ChatTitleGenerationService#generateTitleAsync} is genuinely still in flight, not merely
+   * A title the user set - even in the narrow window between the question being asked and the async
+   * title generation actually completing - always wins. Synchronized on an observable event, not a
+   * fixed wait: the mocked LLM call signals {@code llmCallStarted} the instant it is invoked, then
+   * blocks on {@code renameApplied} until this test explicitly releases it - so the rename below is
+   * deterministically guaranteed to commit while {@link
+   * ChatTitleGenerationService#generateTitleAsync} is genuinely still in flight, not merely
    * "probably, if the machine isn't too slow today" the way a fixed {@code pollDelay} against a
    * fixed {@code Thread.sleep} would only probabilistically guarantee.
    */
@@ -526,10 +526,10 @@ class ChatServiceIntegrationTest {
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
     CountDownLatch llmCallStarted = new CountDownLatch(1);
     CountDownLatch renameApplied = new CountDownLatch(1);
-    // doAnswer, not when(...).thenAnswer(...) - see the chatModel field's Javadoc (#623). This does
-    // not weaken the latch-based synchronization this test relies on: doAnswer merely avoids
-    // invoking the mock while the stub is being built, the returned Answer still runs exactly once,
-    // on the async job's own thread, when generateTitleAsync actually calls chatModel.call(...).
+    // doAnswer, not when(...).thenAnswer(...) - see the chatModel field's Javadoc. This does not
+    // weaken the latch-based synchronization this test relies on: doAnswer merely avoids invoking
+    // the mock while the stub is being built, the returned Answer still runs exactly once, on the
+    // async job's own thread, when generateTitleAsync actually calls chatModel.call(...).
     doAnswer(
             invocation -> {
               llmCallStarted.countDown();
@@ -558,11 +558,11 @@ class ChatServiceIntegrationTest {
   }
 
   /**
-   * #561 review, finding 2, Interleaving (a): {@code findById -> PATCH sets CUSTOM -> save writes
-   * the title AND title_source=GENERATED back}. Deterministic, no timing involved at all - the
-   * atomic {@link ChatRepository#applyGeneratedTitleIfGenerated} update itself is the fix, so
-   * simply performing the rename (fully committed) before attempting the generated-title write
-   * reproduces the exact interleaving regardless of when either would happen to run in production.
+   * {@code findById -> PATCH sets CUSTOM -> save writes the title AND title_source=GENERATED back}.
+   * Deterministic, no timing involved at all - the atomic {@link
+   * ChatRepository#applyGeneratedTitleIfGenerated} update itself is the fix, so simply performing
+   * the rename (fully committed) before attempting the generated-title write reproduces the exact
+   * interleaving regardless of when either would happen to run in production.
    */
   @Test
   void applyGeneratedTitleIfGeneratedNeverOverwritesATitleThatBecameCustomInTheMeantime() {
@@ -580,15 +580,15 @@ class ChatServiceIntegrationTest {
   }
 
   /**
-   * #561 review, finding 2, Interleaving (b): {@code QueryService#query} loads a {@link Chat}
-   * before retrieval and LLM answer generation (which can take seconds); a concurrent {@code PATCH}
-   * renaming the chat in that window used to be clobbered when {@code appendTurn} wrote that stale
-   * in-memory snapshot back via a full merge {@code save()}. {@code staleSnapshot} here plays
-   * exactly that role: it is handed to {@code appendTurn} still carrying {@code title = null}, even
-   * though the chat was already renamed (and is CUSTOM) in the database by the time this call
-   * happens - deterministic, no timing involved, since {@code appendTurn}'s targeted, atomic
-   * updates (see {@link ChatRepository}'s Javadoc) never read anything from the {@code Chat}
-   * argument's own title/titleSource fields in the first place.
+   * {@code QueryService#query} loads a {@link Chat} before retrieval and LLM answer generation
+   * (which can take seconds); a concurrent {@code PATCH} renaming the chat in that window used to
+   * be clobbered when {@code appendTurn} wrote that stale in-memory snapshot back via a full merge
+   * {@code save()}. {@code staleSnapshot} here plays exactly that role: it is handed to {@code
+   * appendTurn} still carrying {@code title = null}, even though the chat was already renamed (and
+   * is CUSTOM) in the database by the time this call happens - deterministic, no timing involved,
+   * since {@code appendTurn}'s targeted, atomic updates (see {@link ChatRepository}'s Javadoc)
+   * never read anything from the {@code Chat} argument's own title/titleSource fields in the first
+   * place.
    */
   @Test
   void appendTurnNeverClobbersAConcurrentRenameEvenGivenAStaleInMemoryChatSnapshot() {
@@ -614,7 +614,7 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
-    // doThrow, not when(...).thenThrow(...) - see the chatModel field's Javadoc (#623).
+    // doThrow, not when(...).thenThrow(...) - see the chatModel field's Javadoc.
     doThrow(new RuntimeException("LLM nicht erreichbar")).when(chatModel).call(any(Prompt.class));
 
     chatService.appendTurn(chat, "Wie hoch ist die Rückstellung?", "42.000 EUR.", List.of());
@@ -636,11 +636,11 @@ class ChatServiceIntegrationTest {
     Chat chat = chatRepository.findById(created.getId()).orElseThrow();
 
     chatService.appendTurn(chat, "Erste Frage", "Erste Antwort", List.of());
-    // #525 review round 2, finding/nit 1: the first turn's title-set already produces an UPDATE
-    // by itself (ChatRepository#deriveTitleFromFirstQuestionIfAbsent), so comparing against the
-    // pre-turn updatedAt would pass even without the separate touch() UPDATE - the assertion that
-    // actually exercises touch() must compare against the state *after* a turn that changes
-    // nothing else, i.e. the second one, whose only field-level change is that timestamp.
+    // The first turn's title-set already produces an UPDATE by itself
+    // (ChatRepository#deriveTitleFromFirstQuestionIfAbsent), so comparing against the pre-turn
+    // updatedAt would pass even without the separate touch() UPDATE - the assertion that actually
+    // exercises touch() must compare against the state *after* a turn that changes nothing else,
+    // i.e. the second one, whose only field-level change is that timestamp.
     Chat afterFirstTurn = chatRepository.findById(chat.getId()).orElseThrow();
     java.time.Instant updatedAtAfterFirstTurn = afterFirstTurn.getUpdatedAt();
 
@@ -653,19 +653,19 @@ class ChatServiceIntegrationTest {
     assertThat(messages.get(0).getContent()).isEqualTo("Erste Frage");
     assertThat(messages.get(2).getContent()).isEqualTo("Zweite Frage");
 
-    // #525 review, finding/nit d: updated_at must move even though appendTurn's second call
-    // changes no other field (the title was already set by the first call).
+    // updated_at must move even though appendTurn's second call changes no other field (the
+    // title was already set by the first call).
     Chat reloaded = chatRepository.findById(chat.getId()).orElseThrow();
     assertThat(reloaded.getUpdatedAt()).isAfter(updatedAtAfterFirstTurn);
   }
 
   /**
-   * #889 review: {@code MAX(sequence)} is not a locking read, so two turns appended to the same
-   * chat at nearly the same instant can still compute the same next sequence. Forces exactly that
-   * collision deterministically: stubs one {@code findMaxSequenceByChatId} call to return a stale
-   * value (as if read just before a concurrent turn's insert committed), while that concurrent row
-   * is already present in the database - {@code appendTurn} must recover via its retry loop rather
-   * than surfacing the {@code uk_chat_messages_chat_sequence} violation to the caller.
+   * {@code MAX(sequence)} is not a locking read, so two turns appended to the same chat at nearly
+   * the same instant can still compute the same next sequence. Forces exactly that collision
+   * deterministically: stubs one {@code findMaxSequenceByChatId} call to return a stale value (as
+   * if read just before a concurrent turn's insert committed), while that concurrent row is already
+   * present in the database - {@code appendTurn} must recover via its retry loop rather than
+   * surfacing the {@code uk_chat_messages_chat_sequence} violation to the caller.
    */
   @Test
   void appendTurnRetriesWhenAConcurrentTurnWinsTheRaceOnTheSameSequence() {
@@ -724,11 +724,11 @@ class ChatServiceIntegrationTest {
   }
 
   /**
-   * #1486: the conversation window is rebuilt from the <b>end</b> of a chat's history on a cache
-   * miss. Both halves are load-bearing and neither is visible from a mocked {@code ChatService}:
-   * the cut takes the newest {@code maxMessages} rows, and the result is handed over oldest first.
-   * Reading the tail ascending, or forgetting to reverse it, would answer every follow-up after a
-   * restart against the oldest turns of the chat.
+   * The conversation window is rebuilt from the <b>end</b> of a chat's history on a cache miss.
+   * Both halves are load-bearing and neither is visible from a mocked {@code ChatService}: the cut
+   * takes the newest {@code maxMessages} rows, and the result is handed over oldest first. Reading
+   * the tail ascending, or forgetting to reverse it, would answer every follow-up after a restart
+   * against the oldest turns of the chat.
    */
   @Test
   void historyAsSpringAiMessagesReturnsTheNewestMessagesInTurnOrder() {
@@ -888,7 +888,7 @@ class ChatServiceIntegrationTest {
    * (which only ever round-trips freshly written {@link ChatSource} JSON): {@code
    * ChatService#parseSources} silently swallows a deserialization failure (falls back to "no
    * sources" instead of throwing, see its Javadoc), so nothing else in this suite would catch a
-   * wire-compatibility regression against data written by a pre-#860 deployment.
+   * wire-compatibility regression against data written by an older deployment.
    */
   @Test
   void legacySourceReferenceJsonStillDeserializesIntoChatSource() throws Exception {

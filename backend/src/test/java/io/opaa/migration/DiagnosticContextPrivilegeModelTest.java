@@ -17,7 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The privilege model of the diagnostic context log (#1052, ADR-0015), as the baseline's workspace
+ * The privilege model of the diagnostic context log (ADR-0015), as the baseline's workspace
  * changeSet establishes it - the sibling of {@link AuditPrivilegeModelTest} for the second protocol
  * that uses the same non-superuser model. Two groups of assertions, matching the two things the
  * leitplanken make binding about it: a Personenkontext without Begründung cannot be stored at all,

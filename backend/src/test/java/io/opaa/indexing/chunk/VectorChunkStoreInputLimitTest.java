@@ -29,7 +29,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 /**
  * {@link VectorChunkStore} never stores a vector the endpoint cut short without saying so: an input
  * that could reach {@code opaa.embedding.max-input-tokens} is embedded alone and checked against
- * the endpoint's refusal or token count (#2611).
+ * the endpoint's refusal or token count.
  */
 class VectorChunkStoreInputLimitTest {
 

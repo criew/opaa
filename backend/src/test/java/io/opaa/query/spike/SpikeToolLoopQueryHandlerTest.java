@@ -228,11 +228,11 @@ class SpikeToolLoopQueryHandlerTest {
   }
 
   /**
-   * #1789 review, finding 1: {@code appendTurn} - and therefore {@code ChatMemory}, the chat title
-   * and the chat's full-text index - must never see the {@code "@test "} prefix or the
-   * "Suchschritte" line; both are display-only for the one response that carries them. Otherwise a
-   * follow-up turn's reload of the persisted history (after a restart or a cache eviction) would
-   * rebuild a conversation window the live process never actually sent.
+   * {@code appendTurn} - and therefore {@code ChatMemory}, the chat title and the chat's full-text
+   * index - must never see the {@code "@test "} prefix or the "Suchschritte" line; both are
+   * display-only for the one response that carries them. Otherwise a follow-up turn's reload of the
+   * persisted history (after a restart or a cache eviction) would rebuild a conversation window the
+   * live process never actually sent.
    */
   @Test
   void handlePersistsTheQuestionWithoutThePrefixAndTheAnswerWithoutTheSearchStepsLine() {
@@ -280,7 +280,7 @@ class SpikeToolLoopQueryHandlerTest {
    * SpikeToolLoopQueryHandler#MAX_TOOL_CALLS} real tool executions - Spring AI's own {@code
    * ToolCallingManager} limit ends the loop with a breach answer instead of calling forever. The
    * breach answer is the plain German {@link SpikeToolLoopQueryHandler#TOOL_CALL_LIMIT_MESSAGE},
-   * not Spring AI's own English sentence or a raw tool response (#1789 review, nit 1).
+   * not Spring AI's own English sentence or a raw tool response.
    */
   @Test
   void handleStopsAtTheHardToolCallLimitInsteadOfLoopingForever() {
@@ -313,9 +313,9 @@ class SpikeToolLoopQueryHandlerTest {
   }
 
   /**
-   * #1789 review, nit 2: a tool failure must abort the turn like any other production error - never
-   * be swallowed into a tool-response message that lets the loop continue and {@code
-   * QueryMetrics#recordSuccess} fire regardless.
+   * A tool failure must abort the turn like any other production error - never be swallowed into a
+   * tool-response message that lets the loop continue and {@code QueryMetrics#recordSuccess} fire
+   * regardless.
    */
   @Test
   void handlePropagatesAToolFailureRatherThanCountingItAsSuccess() {

@@ -41,10 +41,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The Confluence paths of {@link SourceConnectionTestService} (#1134): the connection test
- * delegates to {@link ConfluenceConnectionService} with the effective (possibly stored)
- * credentials, and the space listing applies the same MANAGER bar and same-origin fallback as the
- * test - through the same code, so this class pins the contract of that sharing.
+ * The Confluence paths of {@link SourceConnectionTestService}: the connection test delegates to
+ * {@link ConfluenceConnectionService} with the effective (possibly stored) credentials, and the
+ * space listing applies the same MANAGER bar and same-origin fallback as the test - through the
+ * same code, so this class pins the contract of that sharing.
  */
 class SourceConnectionTestServiceConfluenceTest {
 

@@ -52,9 +52,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * HTTP-level coverage for {@link ChatController} (#525 review, finding/nit e): status codes and
- * path-variable binding, with {@link ChatService} mocked - {@code ChatServiceIntegrationTest}
- * covers the actual authorization and persistence behaviour against a real database.
+ * HTTP-level coverage for {@link ChatController}: status codes and path-variable binding, with
+ * {@link ChatService} mocked - {@code ChatServiceIntegrationTest} covers the actual authorization
+ * and persistence behaviour against a real database.
  */
 @WebMvcTest(ChatController.class)
 @ActiveProfiles({"test", "dev"})

@@ -115,9 +115,9 @@ class AssetGrantServiceTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 9 (#1814): an internal group its stewards have not released for use is
-   * "not found" for a manager with no other relation to it - and on this path, the one where the id
-   * is typed by hand rather than picked from a list, exactly as much as in the list.
+   * ADR-0036, Entscheidung 9: an internal group its stewards have not released for use is "not
+   * found" for a manager with no other relation to it - and on this path, the one where the id is
+   * typed by hand rather than picked from a list, exactly as much as in the list.
    */
   @Test
   void upsertGrantAnswersNotFoundForAGroupTheCallerMayNotSelect() {
@@ -380,17 +380,17 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantRejectsGrantingARoleHigherThanTheCallersOwnRole() {
-    // #202 code review (blocker 3): being a MANAGER is enough to grant *some* role, not enough to
-    // grant OWNER - only an OWNER may hand out OWNER, or a MANAGER could grant itself OWNER and
-    // then delete the library or transfer ownership, rights the spec reserves for OWNER alone.
+    // Being a MANAGER is enough to grant *some* role, not enough to grant OWNER - only an OWNER
+    // may hand out OWNER, or a MANAGER could grant itself OWNER and then delete the library or
+    // transfer ownership, rights the spec reserves for OWNER alone.
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
         .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.MANAGER);
-    // #392 code review, finding 2: the subject must resolve (existence + organization boundary)
-    // before the escalation guard even runs - see AssetGrantService#upsertGrant. A subject id with
-    // no stubbed userRepository.findById would now fail with 404 before the guard is ever reached,
-    // testing the wrong thing; a real, resolvable subject in the same organization keeps this test
+    // The subject must resolve (existence + organization boundary) before the escalation guard
+    // even runs - see AssetGrantService#upsertGrant. A subject id with no stubbed
+    // userRepository.findById would now fail with 404 before the guard is ever reached, testing
+    // the wrong thing; a real, resolvable subject in the same organization keeps this test
     // exercising the escalation guard specifically.
     UUID subjectId = UUID.randomUUID();
     User subjectUser = new User("subject", "issuer", "subject@example.com", "Subject");
@@ -406,9 +406,9 @@ class AssetGrantServiceTest {
         .isInstanceOf(AccessDeniedException.class)
         .satisfies(
             ex -> {
-              // #448: the message names the role in German ("Eigentümer"), not the raw enum
-              // constant ("OWNER") - the escalation guard's whole point is a message an end user
-              // (not just a developer reading logs) can act on.
+              // The message names the role in German ("Eigentümer"), not the raw enum constant
+              // ("OWNER") - the escalation guard's whole point is a message an end user (not
+              // just a developer reading logs) can act on.
               assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die eigene Rolle reicht nicht aus, um die Rolle Eigentümer zu vergeben");
@@ -466,7 +466,7 @@ class AssetGrantServiceTest {
         .isInstanceOf(ValidationException.class)
         .satisfies(
             ex -> {
-              // #448: correct German umlaut ("aufgelöst"), not the umlaut-free "aufgeloest".
+              // Correct German umlaut ("aufgelöst"), not the umlaut-free "aufgeloest".
               assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die Gruppe ist aufgelöst und kann keine neuen Berechtigungen mehr"
@@ -476,9 +476,9 @@ class AssetGrantServiceTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 3 (#1816): a token group its provider no longer maintains keeps what it
-   * holds - its membership is frozen, not cleared - but exactly that is why it may not become a new
-   * grant target: nobody would ever join or leave it again.
+   * ADR-0036, Entscheidung 3: a token group its provider no longer maintains keeps what it holds -
+   * its membership is frozen, not cleared - but exactly that is why it may not become a new grant
+   * target: nobody would ever join or leave it again.
    */
   @Test
   void upsertGrantRejectsTargetingAGroupTheProviderNoLongerMaintains() {
@@ -549,7 +549,7 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantRejectsDowngradingTheLastActiveOwnerGrant() {
-    // #202 code review (blocker 3, extended to the update path): downgrading the sole active
+    // Downgrading the sole active
     // OWNER grant is exactly as dangerous as revoking it outright - both leave nobody able to
     // manage the library.
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
@@ -589,7 +589,7 @@ class AssetGrantServiceTest {
         .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
-              // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
+              // "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
               assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht"
@@ -629,7 +629,7 @@ class AssetGrantServiceTest {
         .isInstanceOf(ConflictException.class)
         .satisfies(
             ex -> {
-              // #448 code review: "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
+              // "Eigentümer", nicht die rohe Enum-Konstante "OWNER".
               assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die letzte Eigentümer-Berechtigung einer Bibliothek kann nicht entfernt"
@@ -672,12 +672,11 @@ class AssetGrantServiceTest {
 
   @Test
   void revokeGrantRejectsRemovingAGrantWithARoleHigherThanTheCallersOwnRoleEvenIfNotTheLastOwner() {
-    // #202 code review round 2 (Befund 1): the escalation guard on the *existing* grant's role
-    // must fire independently of the last-active-OWNER guard, before it - even when another active
-    // OWNER grant remains (so the last-owner guard alone would allow the removal), a caller who
-    // only holds MANAGER may still never remove a grant that already carries OWNER. Previously
-    // revokeGrant never called effectiveRole at all, so this scenario passed with a 200 instead of
-    // this 403.
+    // The escalation guard on the *existing* grant's role must fire independently of the
+    // last-active-OWNER guard, before it - even when another active OWNER grant remains (so the
+    // last-owner guard alone would allow the removal), a caller who only holds MANAGER may still
+    // never remove a grant that already carries OWNER. Previously revokeGrant never called
+    // effectiveRole at all, so this scenario passed with a 200 instead of this 403.
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
         .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
@@ -711,7 +710,7 @@ class AssetGrantServiceTest {
         .isInstanceOf(AccessDeniedException.class)
         .satisfies(
             ex -> {
-              // #448: the existing grant's role is named as "Eigentümer", not the raw "OWNER".
+              // The existing grant's role is named as "Eigentümer", not the raw "OWNER".
               assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die eigene Rolle reicht nicht aus, um eine bestehende"
@@ -760,7 +759,7 @@ class AssetGrantServiceTest {
         .isInstanceOf(AccessDeniedException.class)
         .satisfies(
             ex -> {
-              // #448: "ändern" with the correct umlaut, not the umlaut-free "aendern".
+              // "ändern" with the correct umlaut, not the umlaut-free "aendern".
               assertThat(ex.getMessage())
                   .isEqualTo(
                       "Die eigene Rolle reicht nicht aus, um eine bestehende"
@@ -771,10 +770,10 @@ class AssetGrantServiceTest {
 
   @Test
   void upsertGrantRejectsSettingTheLastActiveOwnerGrantsExpiryIntoThePast() {
-    // #202 code review round 2 (nit 1): "newRole == OWNER is always allowed" was too coarse - an
-    // OWNER renewing their own sole grant with role = OWNER but expiresAt in the past expires it
-    // immediately, leaving the library without any active OWNER. The count the guard protects must
-    // be taken after the intended change, including the new expiresAt, not just the new role.
+    // "newRole == OWNER is always allowed" was too coarse - an OWNER renewing their own sole grant
+    // with role = OWNER but expiresAt in the past expires it immediately, leaving the library
+    // without any active OWNER. The count the guard protects must be taken after the intended
+    // change, including the new expiresAt, not just the new role.
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
         .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
@@ -842,11 +841,11 @@ class AssetGrantServiceTest {
     verify(grantRepository, never()).countOtherActiveOwnerGrants(any(), any(), any(), any());
   }
 
-  // #423 code review, finding 1: subjectDisplayName/grantedByDisplayName must be resolved by the
-  // backend so a caller without SYSTEM_ADMIN - the threshold GET /v1/admin/users and
-  // /v1/admin/groups both require - still sees names instead of raw UUIDs. Every test in this class
-  // already calls listGrants/upsertGrant/revokeGrant with systemAdmin = false, so these tests below
-  // deliberately do the same: resolution must not depend on that flag.
+  // subjectDisplayName/grantedByDisplayName must be resolved by the backend so a caller without
+  // SYSTEM_ADMIN - the threshold GET /v1/admin/users and /v1/admin/groups both require - still sees
+  // names instead of raw UUIDs. Every test in this class already calls
+  // listGrants/upsertGrant/revokeGrant with systemAdmin = false, so these tests below deliberately
+  // do the same: resolution must not depend on that flag.
   @Test
   void listGrantsResolvesUserSubjectAndGranterDisplayNames() {
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
@@ -893,8 +892,8 @@ class AssetGrantServiceTest {
             managerId);
     when(grantRepository.findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, libraryId))
         .thenReturn(List.of(grant));
-    // #1820: Die Liste liest die Gruppe jetzt als Attribution - Name und Schutzkennzeichen in
-    // einem Zug, weil eine geschuetzte Gruppe hier namenlos bleibt.
+    // Die Liste liest die Gruppe jetzt als Attribution - Name und Schutzkennzeichen in einem
+    // Zug, weil eine geschuetzte Gruppe hier namenlos bleibt.
     when(groupDirectory.attributionsById(any()))
         .thenReturn(
             java.util.Map.of(
@@ -914,7 +913,7 @@ class AssetGrantServiceTest {
     assertThat(responses.get(0).protectedGroup()).isFalse();
   }
 
-  /** ADR-0036, Entscheidung 9 (#1820): eine geschuetzte Gruppe ist hier namenlos und ohne Zahl. */
+  /** ADR-0036, Entscheidung 9: eine geschuetzte Gruppe ist hier namenlos und ohne Zahl. */
   @Test
   void listGrantsLeavesAProtectedGroupNamelessAndWithoutASignal() {
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
@@ -952,8 +951,8 @@ class AssetGrantServiceTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 9 (#2134): Eine Gruppenfreigabe traegt die heutige Zahl aktiver Konten,
-   * auch unterhalb der Mindestgruppengroesse.
+   * ADR-0036, Entscheidung 9: Eine Gruppenfreigabe traegt die heutige Zahl aktiver Konten, auch
+   * unterhalb der Mindestgruppengroesse.
    */
   @Test
   void listGrantsCarriesTheGroupsCurrentMemberCountWhateverItsSize() {
@@ -991,11 +990,11 @@ class AssetGrantServiceTest {
 
   @Test
   void listGrantsFallsBackToEmailWhenTheSubjectsDisplayNameIsUnset() {
-    // #446 code review round 2: a User whose token never carried a name/preferred_username claim
-    // has displayName == null (UserService#findOrCreateUser only overwrites it when the incoming
-    // claim is non-null). Falling back to the raw subject id there would reopen the same
-    // "MANAGER sees a UUID" gap this whole resolution mechanism exists to close - email is
-    // required and always present, so it is the fallback instead.
+    // A User whose token never carried a name/preferred_username claim has displayName == null
+    // (UserService#findOrCreateUser only overwrites it when the incoming claim is non-null).
+    // Falling back to the raw subject id there would reopen the same "MANAGER sees a UUID" gap
+    // this whole resolution mechanism exists to close - email is required and always present, so
+    // it is the fallback instead.
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
         .thenReturn(AssetRole.OWNER);
     User subjectUser = new User("subject", "issuer", "subject@example.com", null);
@@ -1044,7 +1043,7 @@ class AssetGrantServiceTest {
     assertThat(responses.get(0).grantedByDisplayName()).isNull();
   }
 
-  // --- "Alle Konten" as a recipient (#1931, ADR-0037) ---------------------------------
+  // --- "Alle Konten" as a recipient (ADR-0037) ---------------------------------
 
   /** The recipient that names no row: both subject columns stay empty, the reach is everybody. */
   @Test

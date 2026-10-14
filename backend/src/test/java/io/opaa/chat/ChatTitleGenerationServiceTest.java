@@ -34,13 +34,13 @@ import org.springframework.ai.chat.prompt.Prompt;
  * io.opaa.query.QueryIntegrationTest} and {@code ChatServiceIntegrationTest} cover the genuinely
  * asynchronous, Spring-managed path end to end.
  *
- * <p>#561 review, finding 1/2: the CUSTOM-title guard and the write itself are no longer this
- * class's own load-check-{@code save()} cycle - they are one atomic {@code
- * ChatRepository#applyGeneratedTitleIfGenerated} {@code UPDATE}, so this class has nothing left to
- * unit-test about *whether* a CUSTOM title is protected (that guarantee now lives in the database
- * query itself, proved by {@code ChatServiceIntegrationTest}'s race tests) - only that it correctly
- * calls that method with the sanitized title, and handles "0 rows updated" (rejected, or the chat
- * no longer exists) without throwing.
+ * <p>The CUSTOM-title guard and the write itself are no longer this class's own load-check-{@code
+ * save()} cycle - they are one atomic {@code ChatRepository#applyGeneratedTitleIfGenerated} {@code
+ * UPDATE}, so this class has nothing left to unit-test about *whether* a CUSTOM title is protected
+ * (that guarantee now lives in the database query itself, proved by {@code
+ * ChatServiceIntegrationTest}'s race tests) - only that it correctly calls that method with the
+ * sanitized title, and handles "0 rows updated" (rejected, or the chat no longer exists) without
+ * throwing.
  */
 @ExtendWith(MockitoExtension.class)
 class ChatTitleGenerationServiceTest {
@@ -95,10 +95,10 @@ class ChatTitleGenerationServiceTest {
   }
 
   /**
-   * #561 review, finding 1/2: the CUSTOM guard is now the atomic {@code UPDATE}'s {@code WHERE}
-   * clause, not anything this class decides - this only proves the service does not throw or retry
-   * when the repository reports the update matched no row (0), which is exactly what a CUSTOM title
-   * - or a chat deleted in the meantime - looks like from here.
+   * The CUSTOM guard is now the atomic {@code UPDATE}'s {@code WHERE} clause, not anything this
+   * class decides - this only proves the service does not throw or retry when the repository
+   * reports the update matched no row (0), which is exactly what a CUSTOM title - or a chat deleted
+   * in the meantime - looks like from here.
    */
   @Test
   void generateTitleAsyncDoesNotThrowWhenTheAtomicUpdateMatchesNoRow() {

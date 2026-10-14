@@ -21,7 +21,7 @@ import org.mockito.ArgumentCaptor;
 
 /**
  * Pins the field mapping {@link AuditEventRecorder}'s three {@code recordXxx} methods perform from
- * an {@link AuditEvent} onto {@link AuditLogEntry} (#892) - the same fields the pre-builder,
+ * an {@link AuditEvent} onto {@link AuditLogEntry} - the same fields the pre-builder,
  * 10-13-positional-parameter signatures wrote, now assembled from named builder calls instead of
  * argument position. End-to-end field pinning against a real, versioned schema per calling service
  * lives in {@code AuditEventRecordingIntegrationTest}; this class instead pins {@link
@@ -204,7 +204,7 @@ class AuditEventRecorderTest {
 
   @Test
   void recordUserActionCarriesACorrelationRefOntoTheEntry() {
-    // #1068: the per-document entries of one person's Sammelzuweisung are linked by it.
+    // The per-document entries of one person's Sammelzuweisung are linked by it.
     UUID organizationId = UUID.randomUUID();
     UUID actorUserId = UUID.randomUUID();
     when(pseudonymService.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());

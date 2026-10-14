@@ -239,8 +239,8 @@ class FullTextSearchStageTest {
   }
 
   /**
-   * #1049: the stage's lists are handed on next to the vector path's, and its candidates extend the
-   * run's pool - the two properties that make them an input of the fusion and a source for document
+   * The stage's lists are handed on next to the vector path's, and its candidates extend the run's
+   * pool - the two properties that make them an input of the fusion and a source for document
    * completion. It adds; it never touches what was already in flight.
    */
   @Test
@@ -270,7 +270,7 @@ class FullTextSearchStageTest {
   /**
    * The switched-off path is the identity for the selection: a run with {@code
    * fullTextSearchEnabled = false} carries exactly the lists it carried before this stage - the
-   * {@code vector-only} measurement variant, and the state the committed pre-#1049 baselines were
+   * {@code vector-only} measurement variant, and the state the committed vector-only baselines were
    * drawn in.
    */
   @Test

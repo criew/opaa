@@ -7,10 +7,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * Every capability needs both German wordings (#1813): the label the refusal and the manual use,
- * and the sentence object the administration overview's plain-text line puts between "Alle Konten
- * dürfen" and "anlegen". A value added to {@link Capability} without them would otherwise reach the
- * user interface as the word "null".
+ * Every capability needs both German wordings: the label the refusal and the manual use, and the
+ * sentence object the administration overview's plain-text line puts between "Alle Konten dürfen"
+ * and "anlegen". A value added to {@link Capability} without them would otherwise reach the user
+ * interface as the word "null".
  */
 class CapabilityLabelTest {
 

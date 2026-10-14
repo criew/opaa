@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** Every field of the Herleitung reaches its response - the group attribution above all (#1822). */
+/** Every field of the Herleitung reaches its response - the group attribution above all. */
 class AccessDerivationResponseMapperTest {
 
   private static final Instant SINCE = Instant.parse("2026-03-01T10:15:00Z");

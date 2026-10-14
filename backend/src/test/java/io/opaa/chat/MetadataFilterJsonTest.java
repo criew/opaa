@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** The chat's persisted filter reads back as the record it was written from (#1070). */
+/** The chat's persisted filter reads back as the record it was written from. */
 class MetadataFilterJsonTest {
 
   @Test

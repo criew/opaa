@@ -31,7 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * Exercises {@link DirectorySyncService} against a real Postgres database with the real, versioned
  * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - not
- * Hibernate-generated DDL, the same pattern {@code GroupServiceIntegrationTest} (#308) and {@code
+ * Hibernate-generated DDL, the same pattern {@code GroupServiceIntegrationTest} and {@code
  * UserServicePersonalSpaceIntegrationTest} also follow: this class's dissolution/reactivation
  * scenarios and the {@code fk_group_memberships_group_organization} composite foreign key both
  * depend on real constraints that only the versioned changelog creates.
@@ -41,9 +41,9 @@ import org.springframework.beans.factory.annotation.Autowired;
  * order) - the one seam between the synchronisation policy under test and an actual directory, per
  * {@link DirectoryClient}'s own javadoc.
  *
- * <p>Since #1816 every run is bound to an identity provider row: this class creates one per test
- * method, switches its directory run on, and provisions its accounts under that provider's issuer.
- * That works in the {@code local,dev} context because the run reads issuer and origin from the row
+ * <p>Every run is bound to an identity provider row: this class creates one per test method,
+ * switches its directory run on, and provisions its accounts under that provider's issuer. That
+ * works in the {@code local,dev} context because the run reads issuer and origin from the row
  * rather than from the operating mode.
  */
 @OpaaIntegrationTest
@@ -112,8 +112,8 @@ class DirectorySyncServiceIntegrationTest {
         pendingPlanRepository.findByOrganizationId(Organization.DEFAULT_ID));
     statusRepository.deleteAll(statusRepository.findByOrganizationId(Organization.DEFAULT_ID));
     List<Group> groups = groupRepository.findByOrganizationId(Organization.DEFAULT_ID);
-    // #238 code review, finding 2+4: a sync run now historises every membership change it applies,
-    // and group_membership_history.user_id is ON DELETE RESTRICT (see
+    // A sync run now historises every membership change it applies, and
+    // group_membership_history.user_id is ON DELETE RESTRICT (see
     // ADR-0016) - history must go before the
     // users below.
     List<UUID> userIds = List.copyOf(createdUserIds);
@@ -174,7 +174,7 @@ class DirectorySyncServiceIntegrationTest {
     UUID trusted = createUser(organizationId, "member-1");
     UUID partnerAccount =
         createUser(organizationId, "member-1", "https://partner.example/realms/b");
-    // a token group names its provider row since #1812 (chk_groups_provider_kind)
+    // a token group names its provider row (chk_groups_provider_kind)
     OidcProvider tokenProvider =
         providerRepository.save(
             new OidcProvider(
@@ -375,7 +375,7 @@ class DirectorySyncServiceIntegrationTest {
   }
 
   /**
-   * #1817: the path the directory reports is recorded on the group - the only thing that tells two
+   * The path the directory reports is recorded on the group - the only thing that tells two
    * same-named subgroups of one directory apart - and the report names it alongside the member
    * count an operator decides on before applying.
    */
@@ -516,9 +516,9 @@ class DirectorySyncServiceIntegrationTest {
   }
 
   // ---------------------------------------------------------------------------------------
-  // Combined mechanisms - review of PR #297: the plausibility threshold must catch a partial
-  // outage that manifests as mass dissolution, and must not lose its denominator when the
-  // affected group was already dissolved and is reactivating in the same run that changes it.
+  // Combined mechanisms: the plausibility threshold must catch a partial outage that
+  // manifests as mass dissolution, and must not lose its denominator when the affected group
+  // was already dissolved and is reactivating in the same run that changes it.
   // ---------------------------------------------------------------------------------------
 
   @Test
@@ -580,7 +580,7 @@ class DirectorySyncServiceIntegrationTest {
   @Test
   void aMassDissolutionOfMemberlessGroupsIsCaughtByTheGroupCountMeasureEvenAtZeroMembershipRisk() {
     // 50 ORG_UNIT groups with no members at all (the routine state during an introduction phase,
-    // before curators and memberships are populated - review of PR #297). The directory now
+    // before curators and memberships are populated). The directory now
     // reports only one of them; the membership-based measure sees changedFraction = 0.0 either
     // way, since no membership row is at stake.
     List<DirectoryGroup> stillReported = new ArrayList<>();
@@ -606,7 +606,7 @@ class DirectorySyncServiceIntegrationTest {
 
   @Test
   void aLegitimateSingleDissolutionInASmallOrganizationPassesThroughUnblocked() {
-    // The exact scenario a second review of PR #297 measured against real Postgres: 3 active
+    // A scenario measured against real Postgres: 3 active
     // ORG_UNIT groups, well under MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE and
     // MIN_DISSOLUTIONS_FOR_GROUP_MEASURE, two of them unchanged with real members and one an
     // empty placeholder unit that legitimately disappears from the directory. No membership is at
@@ -643,8 +643,8 @@ class DirectorySyncServiceIntegrationTest {
   }
 
   // ---------------------------------------------------------------------------------------
-  // Dry run persists its outcome - review of PR #297: under the class-level readOnly transaction
-  // dryRun used to run in, Hibernate's FlushMode.MANUAL silently dropped the status insert.
+  // Dry run persists its outcome: under the class-level readOnly transaction dryRun used to run
+  // in, Hibernate's FlushMode.MANUAL silently dropped the status insert.
   // ---------------------------------------------------------------------------------------
 
   @Test
@@ -678,8 +678,8 @@ class DirectorySyncServiceIntegrationTest {
   }
 
   // ---------------------------------------------------------------------------------------
-  // Parent group resolution - review of PR #297: must not depend on directory response order,
-  // and must apply to existing groups across separate runs, not only at creation time.
+  // Parent group resolution: must not depend on directory response order, and must apply to
+  // existing groups across separate runs, not only at creation time.
   // ---------------------------------------------------------------------------------------
 
   @Test
@@ -735,10 +735,10 @@ class DirectorySyncServiceIntegrationTest {
   }
 
   // ---------------------------------------------------------------------------------------
-  // Failed apply must not be recorded as APPLIED - review of PR #297: an earlier version wrote
-  // the status via a REQUIRES_NEW transaction that committed before the surrounding apply
-  // transaction could roll back, so a run that failed to actually apply could still end up
-  // durably marked APPLIED.
+  // Failed apply must not be recorded as APPLIED: an earlier version wrote the status via a
+  // REQUIRES_NEW transaction that committed before the surrounding apply transaction could
+  // roll back, so a run that failed to actually apply could still end up durably marked
+  // APPLIED.
   // ---------------------------------------------------------------------------------------
 
   @Test
@@ -774,8 +774,8 @@ class DirectorySyncServiceIntegrationTest {
   }
 
   // ---------------------------------------------------------------------------------------
-  // The report must name who would lose membership, not only who would gain it - review of PR
-  // #297: the removed side used to carry a null display name unconditionally.
+  // The report must name who would lose membership, not only who would gain it: the removed
+  // side used to carry a null display name unconditionally.
   // ---------------------------------------------------------------------------------------
 
   @Test

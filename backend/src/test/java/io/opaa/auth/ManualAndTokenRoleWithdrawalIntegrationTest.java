@@ -27,7 +27,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The two ways a {@code SYSTEM_ADMIN} loses the role, against a real Postgres (#1349, ADR-0033
+ * The two ways a {@code SYSTEM_ADMIN} loses the role, against a real Postgres (ADR-0033
  * Entscheidung 4): the manual one ({@link UserService#updateRole}) and the token-driven one ({@link
  * TokenRoleSynchronizer}) count through the same {@link LocalAdminAvailabilityGuard} under the
  * organization's advisory lock, so with two enabled providers - one with a {@code roles_claim}, one

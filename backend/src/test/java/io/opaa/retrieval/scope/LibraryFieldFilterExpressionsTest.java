@@ -16,9 +16,9 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.pgvector.PgVectorFilterExpressionConverter;
 
 /**
- * A library-field condition (#1071) says the same thing in both search paths, and it says it
- * bracketed and under the permission filter: {@code (fremde Bibliothek) OR (Wert passt) OR (kein
- * Wert)}. The "kein Wert" branch reads the presence marker, never the value key - see {@code
+ * A library-field condition says the same thing in both search paths, and it says it bracketed and
+ * under the permission filter: {@code (fremde Bibliothek) OR (Wert passt) OR (kein Wert)}. The
+ * "kein Wert" branch reads the presence marker, never the value key - see {@code
  * LibraryMetadataFieldKeys} for why the value key cannot carry it.
  */
 class LibraryFieldFilterExpressionsTest {

@@ -159,9 +159,9 @@ class UserServicePersonalSpaceIntegrationTest {
     // UserProvisionedEvent now guarantees. Calling SpaceService directly (bypassing UserService)
     // isolates the partial-unique-index race from the user-creation race exercised above.
     //
-    // Inserted directly via userRepository, not userService.findOrCreateUser (#307): the latter
-    // would report this user as brand new and populate SpaceService's personalSpaceProvisioned
-    // cache before the delete below ever runs, so the two ensureDefaultSpace calls under test
+    // Inserted directly via userRepository, not userService.findOrCreateUser: the latter would
+    // report this user as brand new and populate SpaceService's personalSpaceProvisioned cache
+    // before the delete below ever runs, so the two ensureDefaultSpace calls under test
     // would hit that cache instead of exercising the race this test targets - a false negative this
     // test's own out-of-band delete would never see in production, where a default space is
     // never deleted (see SpaceService#deleteSpace's guard).

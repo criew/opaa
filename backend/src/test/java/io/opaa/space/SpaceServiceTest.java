@@ -31,14 +31,14 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 
 /**
- * {@link SpaceService#ensureDefaultSpace}'s race handling (#265) is now entirely delegated to
- * {@link SpaceRepository#insertDefaultSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING} (#201/
- * #305 code review) - there is no more application-level catch-and-reread branch to simulate here,
- * unlike the version of this test that predates that change. What remains testable at the unit
- * level is the one decision {@link SpaceService#ensureDefaultSpace} itself still makes: skip the
- * insert attempt entirely when {@code existsByOwnerIdAndKind} already reports a personal space,
- * otherwise delegate to the repository. A {@link PlatformTransactionManager} is still mocked here
- * (not a real one) because {@link SpaceService} constructs its own {@link
+ * {@link SpaceService#ensureDefaultSpace}'s race handling is now entirely delegated to {@link
+ * SpaceRepository#insertDefaultSpaceIfAbsent}'s {@code ON CONFLICT ... DO NOTHING} - there is no
+ * more application-level catch-and-reread branch to simulate here, unlike the version of this test
+ * that predates that change. What remains testable at the unit level is the one decision {@link
+ * SpaceService#ensureDefaultSpace} itself still makes: skip the insert attempt entirely when {@code
+ * existsByOwnerIdAndKind} already reports a personal space, otherwise delegate to the repository. A
+ * {@link PlatformTransactionManager} is still mocked here (not a real one) because {@link
+ * SpaceService} constructs its own {@link
  * org.springframework.transaction.support.TransactionTemplate} from it in the constructor; {@code
  * TransactionTemplate#executeWithoutResult} invokes the callback synchronously regardless of
  * whether the underlying transaction manager is real, so the mocked repository call inside it is
@@ -114,9 +114,9 @@ class SpaceServiceTest {
   }
 
   /**
-   * #1819: the rule refuses the <em>loss</em>, not the state. A space that already has no capable
-   * ADMIN loses none by removing somebody - and refusing there would freeze a change that takes
-   * reach away.
+   * The rule refuses the <em>loss</em>, not the state. A space that already has no capable ADMIN
+   * loses none by removing somebody - and refusing there would freeze a change that takes reach
+   * away.
    */
   @Test
   void aSpaceThatAlreadyHasNoCapableAdminStillLosesAMember() {
@@ -230,7 +230,7 @@ class SpaceServiceTest {
 
   @Test
   void ensureDefaultSpaceForNewUserSkipsTheExistenceCheck() {
-    // #307: a caller that already knows userId is brand new (PersonalSpaceProvisioner, for a
+    // A caller that already knows userId is brand new (PersonalSpaceProvisioner, for a
     // subject/issuer pair the sign-in's own insert just created) must not spend an extra pooled
     // connection confirming a fact it already knows - see ensureDefaultSpaceForNewUser's Javadoc.
     UUID userId = UUID.randomUUID();
@@ -246,9 +246,9 @@ class SpaceServiceTest {
 
   @Test
   void ensureDefaultSpaceCachesAProvisionedPersonalSpaceAcrossCalls() {
-    // #307/#137: once a personal space is known to exist for userId, a later ensureDefaultSpace
-    // call for the same user - the returning-user steady state, by far the common case - must not
-    // spend a pooled connection re-confirming it.
+    // Once a personal space is known to exist for userId, a later ensureDefaultSpace call for the
+    // same user - the returning-user steady state, by far the common case - must not spend a
+    // pooled connection re-confirming it.
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
     when(spaceRepository.existsByOwnerIdAndIsDefaultTrue(userId)).thenReturn(true);

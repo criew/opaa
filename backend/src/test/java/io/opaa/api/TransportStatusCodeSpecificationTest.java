@@ -53,12 +53,12 @@ import tools.jackson.databind.json.JsonMapper;
  * share, and the raw-body intakes from the call sites of the one {@code readBounded} they share -
  * both premises are read off the production side rather than listed. No Spring context.
  *
- * <p>What the raw-body scan cannot see (#1788): an intake that bounds its body with a copy of the
- * check instead of calling the shared method, and one that reaches the method through a static
- * import - today the production sources hold no static import from {@code io.opaa} at all. An
- * intake inside a nested class it sees only by accident: a member of the outer class before it
- * makes its body collection swallow the nested one, which trips the caller assertion on the
- * constructor; without such a member it stays silent.
+ * <p>What the raw-body scan cannot see: an intake that bounds its body with a copy of the check
+ * instead of calling the shared method, and one that reaches the method through a static import -
+ * today the production sources hold no static import from {@code io.opaa} at all. An intake inside
+ * a nested class it sees only by accident: a member of the outer class before it makes its body
+ * collection swallow the nested one, which trips the caller assertion on the constructor; without
+ * such a member it stays silent.
  */
 class TransportStatusCodeSpecificationTest {
 

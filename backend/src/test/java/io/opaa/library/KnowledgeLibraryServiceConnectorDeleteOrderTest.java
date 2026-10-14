@@ -73,8 +73,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  *
  * <p>The reverse order (chunks first, then rows - the state before this fix) leaves a window: a
  * concurrently RUNNING indexing job for the same library can write new chunks and have its
- * conditional status-transition UPDATE ({@code DocumentRepository#markIndexedFromSource}, #632)
- * still find the row - because {@code deleteLibrary} had not deleted it yet - after which those
+ * conditional status-transition UPDATE ({@code DocumentRepository#markIndexedFromSource}) still
+ * find the row - because {@code deleteLibrary} had not deleted it yet - after which those
  * freshly-written chunks are never caught by the already-completed bulk chunk delete and survive as
  * orphans. Deleting the rows first closes the window (see the reasoning in {@code deleteLibrary}
  * itself): any conditional UPDATE racing against this method's own row deletion either sees the row
@@ -83,7 +83,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * can land after the bulk chunk delete already ran while the row still appeared to exist to the
  * writer.
  *
- * <p>The chunk delete is also deferred to after commit (#636 review round 2, item 3) - {@link
+ * <p>The chunk delete is also deferred to after commit - {@link
  * #vectorStoreDeleteRunsOnlyAfterTheEnclosingTransactionCommits} and {@link
  * #aRolledBackDeleteNeverTouchesTheVectorStoreAtAll} drive {@link
  * TransactionSynchronizationManager} directly, the same way a real {@code @Transactional} AOP proxy
@@ -136,7 +136,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
     LibraryFolderRepository folderRepository = mock(LibraryFolderRepository.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
-    // #1200: every null/zero component falls back to the record's own defaults (7-day rhythm).
+    // Every null/zero component falls back to the record's own defaults (7-day rhythm).
     ConfluenceProperties confluenceProperties =
         new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     libraryService =
@@ -204,14 +204,14 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
         .thenReturn(Optional.of(library));
     when(accessService.requireRole(library, ownerId, false, AssetRole.OWNER))
         .thenReturn(AssetRole.OWNER);
-    // A non-empty connector library - the branch deleteLibrary reorders (#636).
+    // A non-empty connector library - the branch deleteLibrary reorders.
     when(documentRepository.countByLibraryId(library.getId())).thenReturn(3L);
     when(documentRepository.deleteByLibraryId(library.getId())).thenReturn(3L);
   }
 
   // Mirrors VectorChunkStore#deleteByLibraryId's own filter construction, so assertions here
-  // compare against the actual Filter.Expression the helper builds rather than the pre-#838 raw
-  // delete string.
+  // compare against the actual Filter.Expression the helper builds rather than a raw delete
+  // string.
   private static Filter.Expression libraryIdFilter(UUID libraryId) {
     return new FilterExpressionBuilder().eq("library_id", libraryId.toString()).build();
   }
@@ -237,8 +237,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
 
   @Test
   void vectorStoreDeleteRunsOnlyAfterTheEnclosingTransactionCommits() {
-    // #636 review round 2, item 3: drives TransactionSynchronizationManager directly to simulate
-    // the @Transactional AOP proxy deleteLibrary actually runs under in production.
+    // Drives TransactionSynchronizationManager directly to simulate the @Transactional AOP proxy
+    // deleteLibrary actually runs under in production.
     TransactionSynchronizationManager.initSynchronization();
 
     libraryService.deleteLibrary(library.getId(), ownerCaller);
@@ -256,7 +256,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
 
   @Test
   void aRolledBackDeleteNeverTouchesTheVectorStoreAtAll() {
-    // The scenario the fix exists for: had the chunk delete run eagerly (the pre-#636 behaviour),
+    // The scenario the fix exists for: had the chunk delete run eagerly (the old behaviour),
     // a rollback after it would leave the document rows behind (rolled back too) with no backing
     // chunks - permanently unfindable, since the next indexing run's checksum-based dedup would
     // skip them as unchanged. Simulated here by never invoking afterCommit at all, the same way a

@@ -54,9 +54,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The lifecycle of ownership and responsibility against the real schema (#1819, ADR-0036
- * Entscheidung 6): the derived state, the detection run behind the age, the frozen reach and the
- * three tabs of the operational list.
+ * The lifecycle of ownership and responsibility against the real schema (ADR-0036 Entscheidung 6):
+ * the derived state, the detection run behind the age, the frozen reach and the three tabs of the
+ * operational list.
  */
 @OpaaIntegrationTest
 class SuccessionLifecycleIntegrationTest {
@@ -450,7 +450,7 @@ class SuccessionLifecycleIntegrationTest {
 
   /**
    * The personal space has no succession - and the boolean of the response says exactly what the
-   * marking says, because both come from the one derivation (#1819 review finding 4).
+   * marking says, because both come from the one derivation.
    */
   @Test
   void thePersonalSpaceOfALockedAccountIsOpenInNeitherOfTheTwoFields() {
@@ -471,7 +471,7 @@ class SuccessionLifecycleIntegrationTest {
     assertThat(spaceService.listSpaces(admin))
         .filteredOn(overview -> overview.space().getId().equals(personal.getId()))
         .allSatisfy(overview -> assertThat(overview.successionOpen()).isFalse());
-    // #2585: nor does it appear under "Offene Nachfolgen"
+    // Nor does it appear under "Offene Nachfolgen"
     assertThat(
             successionService.list(organizationId, SuccessionKind.OPEN_SUCCESSION, 0, 50).entries())
         .noneMatch(entry -> entry.finding().objectId().equals(personal.getId()));
@@ -655,7 +655,7 @@ class SuccessionLifecycleIntegrationTest {
     assertThat(closed.getClosedByUserId()).isEqualTo(admin.id());
   }
 
-  /** An asset type no source answers for has no record to close (#1726) - and no exception. */
+  /** An asset type no source answers for has no record to close - and no exception. */
   @Test
   void anUnknownAssetTypeClosesNothingAndThrowsNothing() {
     successionService.closeForAsset(new AssetType("PROMPT_LIBRARY"), UUID.randomUUID(), admin.id());

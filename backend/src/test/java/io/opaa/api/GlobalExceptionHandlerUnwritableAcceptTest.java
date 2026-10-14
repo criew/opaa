@@ -35,7 +35,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * #1780: an error body a caller's {@code Accept} excludes cannot be written. {@code
+ * An error body a caller's {@code Accept} excludes cannot be written. {@code
  * AbstractMessageConverterMethodProcessor} raises a second {@code
  * HttpMediaTypeNotAcceptableException} while writing it, upon which {@code
  * ExceptionHandlerExceptionResolver} logs a full stacktrace and returns {@code null} - abandoning
@@ -45,7 +45,7 @@ import org.springframework.test.web.servlet.MockMvc;
  *
  * <p><b>The tap is on the ROOT logger, and the assertion is "no event carries a throwable".</b> The
  * stacktrace comes from a Spring logger at {@code WARN}; a tap on {@link GlobalExceptionHandler}'s
- * own logger would not see it - the mistake #1778 made first (#1707).
+ * own logger would not see it - the mistake #1778 made first.
  *
  * <p><b>Both directions are asserted.</b> Without the acceptable-{@code Accept} half, dropping the
  * body unconditionally would pass this class - and that is explicitly not the fix: with a usual
@@ -200,7 +200,7 @@ class GlobalExceptionHandlerUnwritableAcceptTest {
     assertBranchRan("Unsupported media type:");
   }
 
-  /** The case that predates #1707 - unknown path plus unwritable {@code Accept} (#456). */
+  /** The case that predates #1707 - unknown path plus unwritable {@code Accept}. */
   @Test
   void anUnmappedPathWithAnUnwritableAcceptLogsNoStacktrace() throws Exception {
     mockMvc

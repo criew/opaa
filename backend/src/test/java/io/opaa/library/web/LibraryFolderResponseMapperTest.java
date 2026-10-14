@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Pure JUnit tests (no Spring context) against a directly constructed entity - the mapper
- * counterpart of {@code SpaceResponseMapperTest} (#860): pins {@link LibraryFolderResponseMapper}'s
+ * counterpart of {@code SpaceResponseMapperTest}: pins {@link LibraryFolderResponseMapper}'s
  * field-by-field behaviour.
  */
 class LibraryFolderResponseMapperTest {

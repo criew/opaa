@@ -138,10 +138,9 @@ class LlmModelSeederTest {
 
   @Test
   void fallsThroughToTheOpenAiConfigurationWhenTheLegacyProviderIsSetButNeitherOllamaVariableIs() {
-    // PR #766 review, Befund 5: OPAA_AI_CHAT_PROVIDER=ollama left over on its own - both
-    // OPAA_OLLAMA_* variables already removed by the operator - must not seed the wrong
-    // (Ollama-shaped) defaults onto an installation that is actually configured via
-    // spring.ai.openai.chat.*.
+    // OPAA_AI_CHAT_PROVIDER=ollama left over on its own - both OPAA_OLLAMA_* variables
+    // already removed by the operator - must not seed the wrong (Ollama-shaped) defaults
+    // onto an installation that is actually configured via spring.ai.openai.chat.*.
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     MockEnvironment environment =
         new MockEnvironment()
@@ -161,10 +160,10 @@ class LlmModelSeederTest {
 
   @Test
   void seedsFromTheLegacyOllamaEnvironmentVariablesViaARealSystemEnvironmentPropertySource() {
-    // PR #766 review, Befund 7b: MockEnvironment.withProperty is a flat, exact-match property map
-    // and would pass even if production code accidentally relied on a lookup style real OS
-    // environment variables do not support. A SystemEnvironmentPropertySource is what an
-    // environment variable actually resolves through in production.
+    // MockEnvironment.withProperty is a flat, exact-match property map and would pass even if
+    // production code accidentally relied on a lookup style real OS environment variables do not
+    // support. A SystemEnvironmentPropertySource is what an environment variable actually
+    // resolves through in production.
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     Map<String, Object> systemEnvironment =
         Map.of(
@@ -192,8 +191,8 @@ class LlmModelSeederTest {
 
   @Test
   void skipsTheTakeoverWithoutWritingAMarkerWhenTheConfiguredBaseUrlCarriesCredentials() {
-    // #1147: this class writes to the repository directly, past LlmModelService's own rejection -
-    // a seeded row would carry the credentials into every API response and the audit log.
+    // This class writes to the repository directly, past LlmModelService's own rejection - a
+    // seeded row would carry the credentials into every API response and the audit log.
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     MockEnvironment environment =
         new MockEnvironment()
@@ -274,7 +273,7 @@ class LlmModelSeederTest {
 
   @Test
   void ignoresALeftoverOpaaAiChatProviderSetToOpenaiExplicitly() {
-    // An existing installation that already ran OPAA_AI_CHAT_PROVIDER=openai before #762 - the
+    // An existing installation that already ran OPAA_AI_CHAT_PROVIDER=openai - the
     // variable is obsolete now, but leaving it set (harmlessly ignored) must not divert the
     // takeover onto the legacy Ollama path.
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
@@ -314,10 +313,10 @@ class LlmModelSeederTest {
 
   @Test
   void skipsTheTakeoverWithoutWritingAMarkerWhenTheApiKeyIsConfiguredButTheEncryptionKeyIsNot() {
-    // #771: OPAA_SETTINGS_ENCRYPTION_KEY missing must not abort application startup - only skip
-    // this one-time takeover, without writing LlmModelSeedMarker, so it is retried automatically
-    // on the next start once the operator sets the key. Deliberately a *real* SettingsEncryptor
-    // here (not the mock used by the other tests in this class) with no key configured - a mocked
+    // OPAA_SETTINGS_ENCRYPTION_KEY missing must not abort application startup - only skip this
+    // one-time takeover, without writing LlmModelSeedMarker, so it is retried automatically on
+    // the next start once the operator sets the key. Deliberately a *real* SettingsEncryptor here
+    // (not the mock used by the other tests in this class) with no key configured - a mocked
     // encrypt() call would never exercise SettingsEncryptor#requireKey() and would not have
     // reproduced the original bug (the IllegalStateException propagating out of seedIfNeeded()
     // and aborting Application.run()).
@@ -341,7 +340,7 @@ class LlmModelSeederTest {
 
   @Test
   void skipsTheTakeoverWithoutWritingAMarkerWhenTheConfiguredEncryptionKeyIsInvalid() {
-    // #771 review, Befund "Sollte" 1: not just a missing key - a *set but malformed* one (bad
+    // Not just a missing key - a *set but malformed* one (bad
     // Base64 here; SettingsEncryptor#requireKey() reports a wrong byte length the same way) is
     // the same "Übernahme scheitert kontrolliert, Start nicht" category, not a reason to abort
     // startup. A real SettingsEncryptor again, for the same reason as the test above.
@@ -365,7 +364,7 @@ class LlmModelSeederTest {
 
   @Test
   void retriesAndCompletesTheTakeoverOnceTheEncryptionKeyIsSetOnANextStart() {
-    // #771 review, Befund "Optional" 3: the actual "Nachholfall" end to end, not just that the
+    // The actual "Nachholfall" end to end, not just that the
     // first, marker-less start does not throw (covered above) - a second seedIfNeeded() call
     // (standing in for the next application start) with the key now set must complete the
     // takeover and finally write the marker.
@@ -397,7 +396,7 @@ class LlmModelSeederTest {
 
   @Test
   void writesTheMarkerWithoutReSeedingWhenAModelWasAlreadyAddedByHandAfterAMarkerLessSkip() {
-    // #771 review, Befund "Blockierend": a marker-less skip (missing/invalid encryption key,
+    // A marker-less skip (missing/invalid encryption key,
     // above) is retried on every subsequent start until either it succeeds or the operator adds
     // a model by hand in the meantime - the very fallback this class's own ERROR log
     // recommends. Without this repository.count() guard, that hand-added model would collide

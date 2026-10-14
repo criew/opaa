@@ -104,9 +104,9 @@ class LocalSelfServiceServiceTest {
   }
 
   /**
-   * #1592: the authorization rule and the rate limiter ask these two before any handler runs. An
-   * exception escaping there would answer 500 where an unknown route answers 401 - so an unreadable
-   * switch means "not served", not "blew up".
+   * The authorization rule and the rate limiter ask these two before any handler runs. An exception
+   * escaping there would answer 500 where an unknown route answers 401 - so an unreadable switch
+   * means "not served", not "blew up".
    */
   @Test
   void aSwitchThatCannotBeReadMeansTheFlowIsNotServed() {

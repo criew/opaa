@@ -52,10 +52,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The catalog's filters, order and tile fields (#2093): type and search, the fixed order by name,
- * the caller's role, the owner, the status and the facts of a knowledge library - each filter
- * narrowing only the readable set, so an asset the caller may not read is absent under every
- * combination.
+ * The catalog's filters, order and tile fields: type and search, the fixed order by name, the
+ * caller's role, the owner, the status and the facts of a knowledge library - each filter narrowing
+ * only the readable set, so an asset the caller may not read is absent under every combination.
  */
 @OpaaIntegrationTest
 class AssetCatalogFilterIntegrationTest {

@@ -15,9 +15,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 /**
- * #1536: what {@link MailSenderProvider} builds from a snapshot - the encryption mode translated
- * into Jakarta Mail properties, the timeouts applied, the authentication flag derived from the
- * username - and that the cached transport lives exactly as long as the snapshot it was built from.
+ * What {@link MailSenderProvider} builds from a snapshot - the encryption mode translated into
+ * Jakarta Mail properties, the timeouts applied, the authentication flag derived from the username
+ * - and that the cached transport lives exactly as long as the snapshot it was built from.
  */
 @ExtendWith(MockitoExtension.class)
 class MailSenderProviderTest {
@@ -105,9 +105,9 @@ class MailSenderProviderTest {
   }
 
   /**
-   * Regression guard for #1559 review, MEDIUM 7: the cache used to be dropped by its own {@code
-   * AFTER_COMMIT} listener, whose order against the snapshot rebuild was undefined - an
-   * invalidation running first let a concurrent send re-cache the transport of the old settings.
+   * Regression guard for #1559: the cache used to be dropped by its own {@code AFTER_COMMIT}
+   * listener, whose order against the snapshot rebuild was undefined - an invalidation running
+   * first let a concurrent send re-cache the transport of the old settings.
    */
   @Test
   void keepsTheTransportWhileTheSnapshotIsTheSameOneAndRebuildsForAFreshSnapshot() {
@@ -122,7 +122,7 @@ class MailSenderProviderTest {
     assertThat(provider.current().sender()).isSameAs(second);
   }
 
-  /** The pair belongs together: the envelope must never be built from other settings (#1559). */
+  /** The pair belongs together: the envelope must never be built from other settings. */
   @Test
   void handsOutTheTransportTogetherWithTheSettingsItWasBuiltFrom() {
     currentSnapshot = snapshot(MailEncryption.STARTTLS, "kennung");

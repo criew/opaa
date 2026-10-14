@@ -15,10 +15,7 @@ import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.PropertySource;
 import org.springframework.core.io.ClassPathResource;
 
-/**
- * Unit tests for {@link QueryProperties}'s compact-constructor defaults and validation (#914, #923,
- * #1486).
- */
+/** Unit tests for {@link QueryProperties}'s compact-constructor defaults and validation. */
 class QueryPropertiesTest {
 
   @Test
@@ -226,7 +223,7 @@ class QueryPropertiesTest {
         .bindOrCreate("opaa.query", QueryProperties.class);
   }
 
-  /** {@code 1} is the documented opt-out value (#932) - it must not be rejected as "unset". */
+  /** {@code 1} is the documented opt-out value - it must not be rejected as "unset". */
   @Test
   void maxChunksPerDocumentOfOneIsAcceptedAsIs() {
     QueryProperties properties = new QueryProperties(8, 25, 1.0, 0.3, true, 3, 1, true, 50, 20, 2);

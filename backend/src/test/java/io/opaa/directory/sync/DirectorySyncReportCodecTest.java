@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The pending plan shows the report the run presented, read back from {@code
- * directory_sync_pending_plans.report} (#1816). Round-trip fidelity is the whole contract of the
- * codec, and a field lost in it would show up as a plan that silently understates what it does.
+ * directory_sync_pending_plans.report}. Round-trip fidelity is the whole contract of the codec, and
+ * a field lost in it would show up as a plan that silently understates what it does.
  */
 class DirectorySyncReportCodecTest {
 
@@ -81,9 +81,9 @@ class DirectorySyncReportCodecTest {
   }
 
   /**
-   * A plan stored before #1818 knows no account fields. Read back, they must be empty lists, not
-   * {@code null}: {@code DirectorySyncResponseMapper} streams over every one of them, so a row that
-   * predates a field would otherwise answer the management with a 500.
+   * A plan stored without account fields. Read back, they must be empty lists, not {@code null}:
+   * {@code DirectorySyncResponseMapper} streams over every one of them, so a row that predates a
+   * field would otherwise answer the management with a 500.
    */
   @Test
   void aPlanStoredBeforeTheAccountFieldsExistedStillReadsBack() {

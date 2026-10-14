@@ -204,7 +204,7 @@ class LlmModelControllerTest {
         .andExpect(status().isForbidden());
   }
 
-  // --- Embedding info (#759) ---
+  // --- Embedding info ---
 
   @Test
   void getEmbeddingInfoReturnsTheConfiguredEmbeddingModel() throws Exception {
@@ -276,7 +276,7 @@ class LlmModelControllerTest {
             isNull());
   }
 
-  // --- Delete guard for the active model (#757, review: the guard now lives in
+  // --- Delete guard for the active model (the guard lives in
   // LlmModelService#deleteModel itself, in the same transaction as the delete - see
   // LlmModelServiceIntegrationTest for the guard's own proof against a real database) ---
 
@@ -303,7 +303,7 @@ class LlmModelControllerTest {
     verify(llmModelService).deleteModel(actingAdminOrganizationId, actingAdminId, modelId);
   }
 
-  // --- Concurrent activation surfaces as 409, not 500 (#757 review of #763) ---
+  // --- Concurrent activation surfaces as 409, not 500 ---
 
   @Test
   void aConcurrentActivationConflictSurfacesAs409() throws Exception {
@@ -435,7 +435,7 @@ class LlmModelControllerTest {
         .andExpect(jsonPath("$.success").value(true));
   }
 
-  // --- Optional temperature (#2486) ---
+  // --- Optional temperature ---
 
   @Test
   void createWithoutTemperaturePassesNoTemperatureAndReturnsNull() throws Exception {

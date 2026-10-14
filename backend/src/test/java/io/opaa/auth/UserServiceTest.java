@@ -61,7 +61,7 @@ class UserServiceTest {
   private final List<UserProvisionedEvent> publishedEvents = new ArrayList<>();
 
   /**
-   * #833: a settable {@link Clock}, not {@link Clock#fixed}, so a test can advance time between two
+   * A settable {@link Clock}, not {@link Clock#fixed}, so a test can advance time between two
    * {@code findOrCreateUser} calls within the same test method to exercise the lastLoginAt-write
    * threshold - {@code Clock.fixed} would need a whole new {@code UserService} instance per
    * timestamp instead.
@@ -95,8 +95,8 @@ class UserServiceTest {
     authProperties = mock(AuthProperties.class);
     auditEventRecorder = mock(AuditEventRecorder.class);
     clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
-    // #1330: the initial-admin rule is issuer-bound (ADR-0025); in this mocked "dev" mode the dev
-    // issuer "issuer1" is the trusted one, so the address tests below keep their meaning.
+    // The initial-admin rule is issuer-bound (ADR-0025); in this mocked "dev" mode the dev issuer
+    // "issuer1" is the trusted one, so the address tests below keep their meaning.
     when(authProperties.mode()).thenReturn("dev");
     when(authProperties.dev()).thenReturn(new AuthProperties.DevAuth("issuer1", null, null));
     providerRegistry = mock(OidcProviderRegistry.class);
@@ -305,8 +305,8 @@ class UserServiceTest {
     assertThat(user.getSubject()).isEqualTo("sub1");
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
     assertThat(user.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
-    // #307: a genuinely new user (this call's own insert won) is announced as such, which is what
-    // lets PersonalSpaceProvisioner skip the otherwise-redundant existsBy round trip.
+    // A genuinely new user (this call's own insert won) is announced as such, which is what lets
+    // PersonalSpaceProvisioner skip the otherwise-redundant existsBy round trip.
     assertThat(onlyEvent().user()).isSameAs(user);
     assertThat(onlyEvent().createdHere()).isTrue();
   }
@@ -368,8 +368,8 @@ class UserServiceTest {
   }
 
   /**
-   * #833: a changed claim must be written immediately, even though {@code lastLoginAt} itself is
-   * still within the throttling threshold and would not by itself trigger a write.
+   * A changed claim must be written immediately, even though {@code lastLoginAt} itself is still
+   * within the throttling threshold and would not by itself trigger a write.
    */
   @Test
   void changedEmailWithinTheThresholdIsStillWrittenImmediately() {
@@ -457,8 +457,8 @@ class UserServiceTest {
 
   @Test
   void findOrCreateUserDoesNotGrantAdminThroughAnotherIssuer() {
-    // ADR-0025, Entscheidung 3 (#1330): the initial administrator's address issued by a provider
-    // other than the trusted one is a plain user - the rule cannot be captured.
+    // ADR-0025, Entscheidung 3: the initial administrator's address issued by a provider other
+    // than the trusted one is a plain user - the rule cannot be captured.
     when(userRepository.findBySubjectAndIssuer("sub1", "https://partner.example/realms/b"))
         .thenReturn(Optional.empty());
     when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -482,9 +482,9 @@ class UserServiceTest {
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
   }
 
-  // #778 review, finding 4: reproduces the "unbounded full list on every picker mount" behaviour
-  // this method replaces - reverting to `return findAllInOrganization(organizationId)` here
-  // (ignoring the query) would make searchInOrganizationRejectsAQueryBelowTheMinimumLength and
+  // Reproduces the "unbounded full list on every picker mount" behaviour this method replaces -
+  // reverting to `return findAllInOrganization(organizationId)` here (ignoring the query) would
+  // make searchInOrganizationRejectsAQueryBelowTheMinimumLength and
   // searchInOrganizationCapsTheResultAtTheConfiguredLimit fail: the first because
   // userRepository.searchByOrganizationId would never even be consulted (verifyNoInteractions),
   // the second because the unbounded findByOrganizationId path carries no Pageable to cap with.
@@ -558,15 +558,14 @@ class UserServiceTest {
   }
 
   /**
-   * #271: reproduces the exact organization-boundary gap the issue names - a target user existing,
-   * but in a different organization than the acting SYSTEM_ADMIN. Before the fix, {@code
-   * updateRole} looked the target up by id alone ({@code userRepository.findById}), so it would
-   * find and change this user's role regardless of organization; the {@code
-   * findByIdAndOrganizationId} stub below (scoped to the actor's organization, not the target
-   * user's) never matches, exactly reproducing that gap. Consistent with {@code
-   * SpaceService#requireUserInOrganization}, the rejection is a 404-mapped {@link
-   * UserNotFoundException}, not a 403, so a caller cannot distinguish "no such user" from "user in
-   * another organization".
+   * Reproduces the exact organization-boundary gap the issue names - a target user existing, but in
+   * a different organization than the acting SYSTEM_ADMIN. Before the fix, {@code updateRole}
+   * looked the target up by id alone ({@code userRepository.findById}), so it would find and change
+   * this user's role regardless of organization; the {@code findByIdAndOrganizationId} stub below
+   * (scoped to the actor's organization, not the target user's) never matches, exactly reproducing
+   * that gap. Consistent with {@code SpaceService#requireUserInOrganization}, the rejection is a
+   * 404-mapped {@link UserNotFoundException}, not a 403, so a caller cannot distinguish "no such
+   * user" from "user in another organization".
    */
   @Test
   void updateRoleRejectsATargetUserFromAnotherOrganization() {
@@ -577,7 +576,7 @@ class UserServiceTest {
     targetUser.setOrganizationId(targetOrganizationId);
     // The target user exists under its own organization - stubbing the pre-fix lookup
     // (findById(userId) alone) to find it too is what makes this test actually distinguish the
-    // fix from the bug: with the pre-#271 code, which looked the target up by id alone, this stub
+    // fix from the bug: with the old code, which looked the target up by id alone, this stub
     // is exactly what let it find and change a foreign-organization user's role regardless of the
     // actor's own organization. The fixed code never calls findById(userId) alone for this lookup,
     // only the org-scoped findByIdAndOrganizationId (deliberately left unstubbed for the actor's
@@ -593,11 +592,11 @@ class UserServiceTest {
   }
 
   /**
-   * #393 code review, finding 1: reproduces the exact scenario the review names - a plain USER
-   * granted AUDITOR. The pre-fix branch ({@code role == SYSTEM_ADMIN ? GRANTED : REVOKED}) wrote
-   * {@code SYSTEM_ADMIN_ROLE_REVOKED} here, a false statement about a person who never held that
-   * role. Reverting {@link UserService#updateRole}'s fix (restoring that two-valued branch) makes
-   * this test fail with exactly that wrong event type - the reproduction proof AGENTS.md requires.
+   * Reproduces the exact scenario the review names - a plain USER granted AUDITOR. The pre-fix
+   * branch ({@code role == SYSTEM_ADMIN ? GRANTED : REVOKED}) wrote {@code
+   * SYSTEM_ADMIN_ROLE_REVOKED} here, a false statement about a person who never held that role.
+   * Reverting {@link UserService#updateRole}'s fix (restoring that two-valued branch) makes this
+   * test fail with exactly that wrong event type - the reproduction proof AGENTS.md requires.
    */
   @Test
   void grantingAuditorToAPlainUserRecordsOnlyAuditorGrantedNeverSystemAdminRevoked() {
@@ -729,9 +728,9 @@ class UserServiceTest {
 
     assertThat(user).isEqualTo(winner);
     verify(userRepository, times(2)).findBySubjectAndIssuer("sub1", "issuer1");
-    // #307: a race loser did not itself create the row - the winner might already have provisioned
-    // the personal space - so it must be announced as not created here, which keeps the listener on
-    // the idempotent path instead of the fast path reserved for a genuine winner.
+    // A race loser did not itself create the row - the winner might already have provisioned the
+    // personal space - so it must be announced as not created here, which keeps the listener on the
+    // idempotent path instead of the fast path reserved for a genuine winner.
     assertThat(onlyEvent().user()).isSameAs(winner);
     assertThat(onlyEvent().createdHere()).isFalse();
   }

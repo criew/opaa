@@ -22,7 +22,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  *
  * <p>{@link SynchronousChatTitleExecutorConfiguration} belongs to the same reason: a class here
  * re-stubs the shared {@code ChatModel} mock mid-test, which must not race an asynchronous
- * chat-title call on it (#616). A class that needs the production timing instead uses {@link
+ * chat-title call on it. A class that needs the production timing instead uses {@link
  * OpaaMockedDocumentServiceIntegrationTest}.
  *
  * <p><b>Rider:</b> {@link OpaaS3UploadStoreInitializer} points the upload store at that store here

@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for {@link LibraryStorageQuotaService} (#119, #2166). */
+/** Unit tests for {@link LibraryStorageQuotaService}. */
 class LibraryStorageQuotaServiceTest {
 
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
@@ -136,7 +136,7 @@ class LibraryStorageQuotaServiceTest {
 
   @Test
   void zeroOrNegativeQuotaConfigurationMeansUnlimited() {
-    // #119, PR #700 review finding 2: 0/negative is a real "unbegrenzt" configuration, not a
+    // 0/negative is a real "unbegrenzt" configuration, not a
     // silent fallback to the 10 GiB default - important for an existing library already larger
     // than the default, which would otherwise be permanently blocked the moment this quota ships.
     LibraryStorageQuotaService zeroQuotaService = service(0);

@@ -100,7 +100,7 @@ import org.springframework.util.ClassUtils;
  *
  * <p>{@link #everyWritePathChangingReadabilityKeepsLiveAndHistoryInAgreement} additionally holds
  * every operation that changes the readable set against both formulas at once. It is what keeps the
- * history complete now that no drift probe runs on the query path any more (#1428).
+ * history complete now that no drift probe runs on the query path any more.
  */
 @OpaaIntegrationTest
 class PermissionHistoryServiceIntegrationTest {
@@ -122,8 +122,8 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private PermissionTransferService transferService;
   @Autowired private AssetVisibilityHistoryService visibilityHistoryService;
   // Every Stichtag below is drawn from the same monotonic source the recorded boundaries come
-  // from (#1497). Instant.now() would not do: its readings can be several milliseconds coarser
-  // than the boundaries, so an "after the change" stamp could land before the change it follows.
+  // from. Instant.now() would not do: its readings can be several milliseconds coarser than the
+  // boundaries, so an "after the change" stamp could land before the change it follows.
   @Autowired private PermissionHistoryClock historyClock;
   @Autowired private LibraryAccessService accessService;
   @Autowired private LibraryExternalAccessService externalAccessService;
@@ -149,7 +149,7 @@ class PermissionHistoryServiceIntegrationTest {
   private final List<UUID> createdGroupIds = new ArrayList<>();
   private final List<UUID> createdProviderIds = new ArrayList<>();
 
-  /** The provider every directory run of this class is bound to (#1816). */
+  /** The provider every directory run of this class is bound to. */
   private io.opaa.auth.OidcProvider syncProvider;
 
   @BeforeEach
@@ -187,12 +187,12 @@ class PermissionHistoryServiceIntegrationTest {
                         || createdGroupIds.contains(l.getOwnerGroupId()))
             .toList();
     libraryRepository.deleteAll(ownLibraries);
-    // #238 code review, finding 3+4: subject_user_id/user_id are ON DELETE RESTRICT - see
+    // subject_user_id/user_id are ON DELETE RESTRICT - see
     // KnowledgeLibraryServiceIntegrationTest#tearDown's identical comment.
     grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
-    // Same reasoning one table further since #1819: a library's ownership interval holds its owner
-    // through fk_asset_ownership_history_owner_user_organization (RESTRICT).
+    // Same reasoning one table further: a library's ownership interval holds its owner through
+    // fk_asset_ownership_history_owner_user_organization (RESTRICT).
     jdbcTemplate.update(
         "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     for (UUID groupId : createdGroupIds) {
@@ -209,8 +209,8 @@ class PermissionHistoryServiceIntegrationTest {
     for (UUID providerId : createdProviderIds) {
       providerRepository.deleteById(providerId);
     }
-    // #392: every library/grant/group operation this class exercises now also writes an audit_log
-    // row (fk_audit_log_organization is ON DELETE RESTRICT) - purged via
+    // Every library/grant/group operation this class exercises now also writes an audit_log row
+    // (fk_audit_log_organization is ON DELETE RESTRICT) - purged via
     // JdbcTemplate, same reasoning as AuditLogServiceIntegrationTest#tearDown.
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
@@ -233,7 +233,7 @@ class PermissionHistoryServiceIntegrationTest {
     User user =
         new User(
             UUID.randomUUID().toString(),
-            // the issuer the directory run of this class resolves members at (#1816)
+            // the issuer the directory run of this class resolves members at
             syncProvider.getIssuerUri(),
             "user@example.com",
             "Test User");
@@ -281,8 +281,8 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   /**
-   * #797: a real, persisted SYSTEM_ADMIN - the audit pseudonym write updateShareCap triggers needs
-   * a genuine {@code users} row for its actor, {@code fk_audit_actor_pseudonyms_user_organization}.
+   * A real, persisted SYSTEM_ADMIN - the audit pseudonym write updateShareCap triggers needs a
+   * genuine {@code users} row for its actor, {@code fk_audit_actor_pseudonyms_user_organization}.
    */
   private CurrentUser systemAdminCaller() {
     User admin = createUserEntity();
@@ -556,9 +556,9 @@ class PermissionHistoryServiceIntegrationTest {
 
   @Test
   void liveReadableLibraryIdsAndTheAsOfReconstructionAgreeForNowIncludingTheUsersOwnLibrary() {
-    // Code review of #427 (nit 1): the two formulas' central claim is that they agree - not just
+    // The two formulas' central claim is that they agree - not just
     // structurally, but on the same real fixture, at "now". This is also the test that would have
-    // caught finding 2 (a library's own creation never historising): before that fix, a freshly
+    // caught a library's own creation never historising: before that fix, a freshly
     // created library appeared in readableLibraryIds (via its direct OWNER grant) but never in
     // readableLibraryIdsAsOf, so this assertion would have failed.
     UUID user = createUser();
@@ -603,7 +603,7 @@ class PermissionHistoryServiceIntegrationTest {
 
   @Test
   void deletingALibraryClosesItsOpenGrantAndVisibilityIntervalsInsteadOfLeavingThemOpenForever() {
-    // Code review of #427, nit 3: library_id carries no foreign key on the history tables, so
+    // library_id carries no foreign key on the history tables, so
     // deleting the library must close these open intervals itself, or a Stichtag reconstruction
     // for "now" would keep reporting access to a library that no longer exists.
     UUID owner = createUser();
@@ -653,7 +653,7 @@ class PermissionHistoryServiceIntegrationTest {
 
   @Test
   void deletingAGroupClosesItsOpenMembershipIntervalsInsteadOfLeavingThemOpenForever() {
-    // Code review of #427, nit 3 - the group-side counterpart of the library test above.
+    // The group-side counterpart of the library test above.
     UUID owner = createUser();
     UUID member = createUser();
     Group savedGroup = createAdHocGroup("Referat", owner);
@@ -683,9 +683,9 @@ class PermissionHistoryServiceIntegrationTest {
   private record ExternalAccessChange(UUID libraryId, boolean releasedAfterwards) {}
 
   /**
-   * The release for Fremdzugaenge (#1731) is a reach field at the library with its own history
-   * interval - so every operation that changes it is held against both the live entity and the
-   * Stichtag reconstruction, exactly as {@link
+   * The release for Fremdzugaenge is a reach field at the library with its own history interval -
+   * so every operation that changes it is held against both the live entity and the Stichtag
+   * reconstruction, exactly as {@link
    * #everyWritePathChangingReadabilityKeepsLiveAndHistoryInAgreement} does for the readable set. It
    * deliberately does not go through {@code readabilityWritePaths}: the release changes no read
    * right today, its enforcement follows with the Zugangstokens.
@@ -764,9 +764,9 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   /**
-   * #1731 review, Befund 7: the release must not leak into the read rights. The comment classifying
-   * {@code LibraryExternalAccessService} as unable to change readability asserts exactly that -
-   * here it is measured, for a user who holds no grant on the library and for its own owner.
+   * The release must not leak into the read rights. The comment classifying {@code
+   * LibraryExternalAccessService} as unable to change readability asserts exactly that - here it is
+   * measured, for a user who holds no grant on the library and for its own owner.
    */
   @Test
   void releasingALibraryForExternalAccessLeavesTheReadableSetUntouched() {
@@ -794,9 +794,9 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   /**
-   * #1731 review, Befund 1: an interval that still reads ACTIVE because the run had not come round
-   * yet was, at an instant past its own expiry, not in effect - and the Stichtag answer is the
-   * proof purpose of the whole field.
+   * An interval that still reads ACTIVE because the run had not come round yet was, at an instant
+   * past its own expiry, not in effect - and the Stichtag answer is the proof purpose of the whole
+   * field.
    */
   @Test
   void theStichtagAnswerFollowsTheBefristungNotTheRun() {
@@ -993,17 +993,17 @@ class PermissionHistoryServiceIntegrationTest {
    * nearly all of them only to load a library by id, so the list would flag unrelated indexing work
    * without naming a write path. The remaining reach field at the library, the release for
    * Fremdzugaenge, is held by {@link #externalAccessWritePaths} instead. Who may read a library
-   * follows from the grants alone since #1931, and those are covered by the write paths above. A
-   * library's existence stays an observation: rows are created and removed through the repository,
-   * which every holder can call. The three beans outside the service that do save library rows
-   * ({@code LibraryDiagnosticsLockService}, {@code LibraryMetadataExtractionService}, {@code
+   * follows from the grants alone, and those are covered by the write paths above. A library's
+   * existence stays an observation: rows are created and removed through the repository, which
+   * every holder can call. The three beans outside the service that do save library rows ({@code
+   * LibraryDiagnosticsLockService}, {@code LibraryMetadataExtractionService}, {@code
    * LibraryMetadataFieldService}) each touch only their own fields. A write issued through {@code
    * JdbcTemplate} instead of a repository is out of reach of both checks.
    */
   @Test
   void everyBeanReachingTheGrantOrMembershipTablesIsAccountedFor() {
-    // The ports and the shared formula count as well as the repositories behind them (#1811): a
-    // bean reaching the grant or membership tables through io.opaa.permission is reaching them.
+    // The ports and the shared formula count as well as the repositories behind them: a bean
+    // reaching the grant or membership tables through io.opaa.permission is reaching them.
     Set<Class<?>> rightsRepositories =
         Set.of(
             AssetGrantRepository.class,
@@ -1040,57 +1040,57 @@ class PermissionHistoryServiceIntegrationTest {
    * group to validate a request, {@code GroupSubjectDirectoryAdapter} answers what a grant path
    * needs to know about a group, and {@link GroupMembershipResolver}, {@link AssetAccessService}
    * and {@link LibraryAccessService} are the read side of the live formula itself. {@code
-   * LocalAccountGroupDirectoryAdapter} (#1563) only counts for the handover: the preview tells the
-   * person how many memberships move with their account, and the handover itself rewrites the
-   * identity of a {@code users} row - it writes no membership and no grant, and everything keyed by
-   * {@code users.id} therefore survives it untouched. {@code ProviderGroupDirectoryAdapter} (#1812)
-   * does delete groups and their memberships when their identity provider is deleted, but only
-   * after reporting that none of them holds a grant or owns an asset - a group without either moves
-   * no library into or out of anybody's readable set. {@code CapabilityService} (#1813) resolves a
-   * group only to decide whether it may receive an Anlegerecht; a capability opens a creation path
-   * and never an existing content, which {@code
+   * LocalAccountGroupDirectoryAdapter} only counts for the handover: the preview tells the person
+   * how many memberships move with their account, and the handover itself rewrites the identity of
+   * a {@code users} row - it writes no membership and no grant, and everything keyed by {@code
+   * users.id} therefore survives it untouched. {@code ProviderGroupDirectoryAdapter} does delete
+   * groups and their memberships when their identity provider is deleted, but only after reporting
+   * that none of them holds a grant or owns an asset - a group without either moves no library into
+   * or out of anybody's readable set. {@code CapabilityService} resolves a group only to decide
+   * whether it may receive an Anlegerecht; a capability opens a creation path and never an existing
+   * content, which {@code
    * io.opaa.permission.CapabilityServiceIntegrationTest#noCapabilityWidensTheSetOfReadableLibraries}
-   * holds against this very formula. {@code SpaceAccessPolicy} and {@code SpaceService} (#1815)
-   * resolve a group to decide a space role - they write no grant and no group membership, and a
-   * space membership is not an input of the readable-library formula at all: a library associated
-   * to a space is shown to a member only if that member may already read it ({@code
+   * holds against this very formula. {@code SpaceAccessPolicy} and {@code SpaceService} resolve a
+   * group to decide a space role - they write no grant and no group membership, and a space
+   * membership is not an input of the readable-library formula at all: a library associated to a
+   * space is shown to a member only if that member may already read it ({@code
    * SpaceAssetAssociationService}), so admitting somebody to a space moves no library into
-   * anybody's readable set. {@code PointInTimeAccessService} (#1822) resolves a group only to name
-   * it in the Stichtagsauskunft; it reads the history and writes nothing but its own audit entry.
-   * {@code GroupStewardshipDirectoryAdapter} (#1834) reads groups only to hand responsibility for
-   * them over - responsibility carries no read right at all, which is why it produces audit events
-   * and no history rows. {@code PermissionTransferService} (#1834) is a writer and is covered by
-   * {@link #readabilityWritePaths}; {@code AssetShellOwnershipDirectory} writes the grant that goes
-   * with an asset's ownership and is reachable only through that one write path, never on its own.
+   * anybody's readable set. {@code PointInTimeAccessService} resolves a group only to name it in
+   * the Stichtagsauskunft; it reads the history and writes nothing but its own audit entry. {@code
+   * GroupStewardshipDirectoryAdapter} reads groups only to hand responsibility for them over -
+   * responsibility carries no read right at all, which is why it produces audit events and no
+   * history rows. {@code PermissionTransferService} is a writer and is covered by {@link
+   * #readabilityWritePaths}; {@code AssetShellOwnershipDirectory} writes the grant that goes with
+   * an asset's ownership and is reachable only through that one write path, never on its own.
    * {@code AssetShellService} writes the grants, reach and history of an asset's creation, reach
    * change and deletion and is covered by {@link #readabilityWritePaths} as well. {@code
    * AssetAuthorization} and {@code SpaceAssetAssociationService} only read the formula - the
    * association grants nothing. The four beans of #1819 - {@code GroupCapabilityService}, {@code
    * GroupEffectReader}, {@code AssetSuccessionSource} and {@code GroupSuccessionSource} - only
    * read: they derive whether anybody can still act for an object, and the one effect of that
-   * state, freezing the reach, takes rights away from nobody. {@code GroupEffectsService} (#1821)
-   * only counts: it answers "wo wirkt diese Gruppe" with figures per group and writes nothing at
-   * all. {@code GroupListService} (#1978) only reads: it filters, sorts and pages the group list of
-   * the administration. {@code GroupMemberDisclosureAdapter} (#1880) reads a group and one page of
-   * its active members for the person who granted it a right at an object; it writes nothing but
-   * its own audit entry for a system administrator's retrieval. {@code PromptLibraryService}
-   * (#1901) reads the formula to list prompt libraries; the grants, reach and history of a prompt
-   * library's creation, reach change and deletion it leaves to {@code AssetShellService}, covered
-   * above. {@code PromptService} (#1903) reads the formula to offer the prompts a person may insert
-   * in the chat and to check an inserted one; it writes prompts only. {@code AssetCatalogService}
-   * (#1904) reads the formula only to restrict the catalog to readable entries and writes nothing.
-   * {@code AssetOwnerNames} only reads the display names of owning groups; {@code
-   * KnowledgeLibraryService} reaches groups only through it and through {@code AssetGrantService},
-   * and its write paths are covered above. {@code AssetFavoriteService} (#2095) reads the formula
-   * only to refuse a favorite on an asset the caller cannot read; it writes favorites only. {@code
-   * ProfileFullSync} (#2220) only reads the grants of a library to tell its managers that a changed
-   * profile forces a full sync; it writes notifications only. {@code ConsentResponsibles} (#2169)
-   * only reads the grants and groups of a library to check who may answer for its source consent
-   * and to tell them; it writes nothing. {@code McpServerProfileService} (#2173) only reads a group
-   * to check that the group answering for an MCP server exists in the caller's organization; it
-   * writes no grant or membership. {@code GroupDeactivation} (#1987) is the writer behind {@code
-   * GroupService#setDeactivated}: it switches a group off or on and cuts its membership intervals,
-   * and is covered by {@link #readabilityWritePaths} through that method.
+   * state, freezing the reach, takes rights away from nobody. {@code GroupEffectsService} only
+   * counts: it answers "wo wirkt diese Gruppe" with figures per group and writes nothing at all.
+   * {@code GroupListService} only reads: it filters, sorts and pages the group list of the
+   * administration. {@code GroupMemberDisclosureAdapter} reads a group and one page of its active
+   * members for the person who granted it a right at an object; it writes nothing but its own audit
+   * entry for a system administrator's retrieval. {@code PromptLibraryService} reads the formula to
+   * list prompt libraries; the grants, reach and history of a prompt library's creation, reach
+   * change and deletion it leaves to {@code AssetShellService}, covered above. {@code
+   * PromptService} reads the formula to offer the prompts a person may insert in the chat and to
+   * check an inserted one; it writes prompts only. {@code AssetCatalogService} reads the formula
+   * only to restrict the catalog to readable entries and writes nothing. {@code AssetOwnerNames}
+   * only reads the display names of owning groups; {@code KnowledgeLibraryService} reaches groups
+   * only through it and through {@code AssetGrantService}, and its write paths are covered above.
+   * {@code AssetFavoriteService} reads the formula only to refuse a favorite on an asset the caller
+   * cannot read; it writes favorites only. {@code ProfileFullSync} only reads the grants of a
+   * library to tell its managers that a changed profile forces a full sync; it writes notifications
+   * only. {@code ConsentResponsibles} only reads the grants and groups of a library to check who
+   * may answer for its source consent and to tell them; it writes nothing. {@code
+   * McpServerProfileService} only reads a group to check that the group answering for an MCP server
+   * exists in the caller's organization; it writes no grant or membership. {@code
+   * GroupDeactivation} is the writer behind {@code GroupService#setDeactivated}: it switches a
+   * group off or on and cuts its membership intervals, and is covered by {@link
+   * #readabilityWritePaths} through that method.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1143,7 +1143,7 @@ class PermissionHistoryServiceIntegrationTest {
   private static final Set<String> CANNOT_CHANGE_READABILITY =
       Set.of(
           "AssetGrantService#listGrants",
-          // #1880: Wer ein Recht gibt, sieht, an wen - der Lesepfad nennt Mitglieder einer
+          // Wer ein Recht gibt, sieht, an wen - der Lesepfad nennt Mitglieder einer
           // Gruppe, die hier schon ein Recht haelt, und erteilt selbst keines.
           "AssetGrantService#listGroupMembers",
           // The checks a grant target and an owning group have to pass - they refuse, they grant
@@ -1158,31 +1158,31 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService#listMembers",
           "GroupService#listStewardedGroups",
           "GroupService#listStewards",
-          // #1820: Die Subjekt-Auswahl sucht und zaehlt, sie erteilt nichts - wer welche
+          // Die Subjekt-Auswahl sucht und zaehlt, sie erteilt nichts - wer welche
           // Bibliothek lesen darf, bleibt davon unberuehrt.
           "GroupService#searchSelectableGroups",
           "GroupService#resolveSelectableGroup",
-          // #1814: responsibility for a group carries no read right at all, and the release and
-          // the protection mark decide who may name the group and who sees its members - never
+          // Responsibility for a group carries no read right at all, and the release and the
+          // protection mark decide who may name the group and who sees its members - never
           // which libraries anybody may read.
           "GroupService#appointSteward",
           "GroupService#dismissSteward",
           "GroupService#setRelease",
           "GroupService#setProtection",
-          // #1987: the preview of a deactivation only counts; the switch itself is a write path
+          // The preview of a deactivation only counts; the switch itself is a write path
           // covered above.
           "GroupService#deactivationPreview",
-          // #1834: the preview only counts and writes its own audit entry, and markOf reads the
-          // note an object carries - neither moves a library into or out of anybody's set.
+          // The preview only counts and writes its own audit entry, and markOf reads the note
+          // an object carries - neither moves a library into or out of anybody's set.
           "PermissionTransferService#preview",
           "PermissionTransferService#markOf",
-          // #1931: Umbenennen und Quellkonfiguration - wer lesen darf, entscheiden allein die
+          // Umbenennen und Quellkonfiguration - wer lesen darf, entscheiden allein die
           // Freigaben, und die aendert dieser Pfad nicht.
           "KnowledgeLibraryService#updateLibrary",
-          // #2160: the profile a library is connected through changes no grant
+          // The profile a library is connected through changes no grant
           "KnowledgeLibraryService#connectProfile",
           "KnowledgeLibraryService#disconnectProfile",
-          // #2169: disconnecting a library's source consent changes no grant
+          // Disconnecting a library's source consent changes no grant
           "KnowledgeLibraryService#disconnectSource",
           "KnowledgeLibraryService#profileOptions",
           "KnowledgeLibraryService#getLibrary",
@@ -1190,13 +1190,13 @@ class PermissionHistoryServiceIntegrationTest {
           "KnowledgeLibraryService#listDocuments",
           "KnowledgeLibraryService#generatePushSecret",
           "KnowledgeLibraryService#removePushSecret",
-          // #1731: the release decides whether a Fremdzugang may reach the library, never whether
-          // a person may read it - the readable set is the same before and after.
+          // The release decides whether a Fremdzugang may reach the library, never whether a
+          // person may read it - the readable set is the same before and after.
           "LibraryExternalAccessService#describe",
           "LibraryExternalAccessService#listReleasedLibraries",
           "DirectorySyncService#dryRun",
-          // #1816: reading a pending plan and the status lines changes nothing, and discarding a
-          // plan is precisely the decision not to apply it.
+          // Reading a pending plan and the status lines changes nothing, and discarding a plan
+          // is precisely the decision not to apply it.
           "DirectorySyncService#getPendingPlan",
           "DirectorySyncService#listStatus",
           "DirectorySyncService#discardPlan");
@@ -1274,9 +1274,9 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   /**
-   * #1834: the grant of one group goes to another in one operation. The reconstruction has to
-   * follow it without a gap - the TRANSFERRED_OUT side closes the source's interval at the very
-   * instant the TRANSFERRED_IN side opens the target's.
+   * The grant of one group goes to another in one operation. The reconstruction has to follow it
+   * without a gap - the TRANSFERRED_OUT side closes the source's interval at the very instant the
+   * TRANSFERRED_IN side opens the target's.
    */
   private ReadabilityChange groupGrantTransferred() {
     UUID owner = createUser();
@@ -1481,7 +1481,7 @@ class PermissionHistoryServiceIntegrationTest {
     return new ReadabilityChange(member.getId(), libraryId, false);
   }
 
-  /** Persisted: a token group names its provider through {@code groups.provider_id} (#1812). */
+  /** Persisted: a token group names its provider through {@code groups.provider_id}. */
   private OidcProvider tokenProvider(String displayName) {
     OidcProvider provider =
         providerRepository.save(
@@ -1689,9 +1689,9 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   /**
-   * #797/#1931: the counterpart to {@link #visibilityNarrowed} for the share cap - a SYSTEM_ADMIN,
-   * not the owner, forbids the grant to "Alle Konten", which revokes the existing one in the very
-   * same call.
+   * The counterpart to {@link #visibilityNarrowed} for the share cap - a SYSTEM_ADMIN, not the
+   * owner, forbids the grant to "Alle Konten", which revokes the existing one in the very same
+   * call.
    */
   private ReadabilityChange shareCapLoweredClampsVisibility() {
     UUID owner = createUser();
@@ -1746,7 +1746,7 @@ class PermissionHistoryServiceIntegrationTest {
   }
 
   /**
-   * An internal group as it exists once somebody maintains it (#1814): released for use, so it is a
+   * An internal group as it exists once somebody maintains it: released for use, so it is a
    * possible grant subject for a caller who is no member of it, and with {@code steward} as its
    * responsible person, so that person may take members in and out.
    */

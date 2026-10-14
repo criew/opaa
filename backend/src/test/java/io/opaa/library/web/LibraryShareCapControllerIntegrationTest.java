@@ -25,10 +25,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * HTTP-layer coverage of {@code PUT /api/v1/libraries/{libraryId}/share-cap} (#797, in the shape
- * #1931 gave it): SYSTEM_ADMIN only, rejected for UPLOAD, and that withdrawing the permission takes
- * the grant to "Alle Konten" back at once. Runs through the real {@link
- * io.opaa.audit.AuditListener}, unlike the mocked-event-publisher unit coverage in {@code
+ * HTTP-layer coverage of {@code PUT /api/v1/libraries/{libraryId}/share-cap}: SYSTEM_ADMIN only,
+ * rejected for UPLOAD, and that withdrawing the permission takes the grant to "Alle Konten" back at
+ * once. Runs through the real {@link io.opaa.audit.AuditListener}, unlike the
+ * mocked-event-publisher unit coverage in {@code
  * io.opaa.library.KnowledgeLibraryServiceShareCapTest}.
  */
 @OpaaIntegrationTest
@@ -109,8 +109,8 @@ class LibraryShareCapControllerIntegrationTest {
   }
 
   /**
-   * #1931: withdrawing the permission revokes the grant that carried the organization-wide reach,
-   * in the same request.
+   * Withdrawing the permission revokes the grant that carried the organization-wide reach, in the
+   * same request.
    */
   @Test
   void succeedsForSystemAdminAndTakesTheWiderReachBackImmediately() throws Exception {
@@ -184,10 +184,10 @@ class LibraryShareCapControllerIntegrationTest {
   }
 
   /**
-   * #1870 review, finding "Testname behauptet mehr als er prüft": creates and grants as the actual
-   * owner ({@code dev-user}, no system role) rather than {@code devAdmin()} - only the cap itself
-   * is set by the system administration, matching what the name promises. #1931 moved the refusal
-   * from the update path to the grant path, which is where the wider reach is now asked for.
+   * Creates and grants as the actual owner ({@code dev-user}, no system role) rather than {@code
+   * devAdmin()} - only the cap itself is set by the system administration, matching what the name
+   * promises. #1931 moved the refusal from the update path to the grant path, which is where the
+   * wider reach is now asked for.
    */
   @Test
   void refusesTheRealOwnerGrantingToAllAccountsAboveTheNewCapWith409() throws Exception {

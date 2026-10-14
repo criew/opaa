@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Connection profiles through the API (#2160) with the test-only {@code PROFILE_PROBE} connector:
+ * Connection profiles through the API with the test-only {@code PROFILE_PROBE} connector:
  * administration, connected libraries, the port's answer in a run, and the discard of every secret
  * on an address change, the emergency shutdown and the deletion.
  */

@@ -624,9 +624,9 @@ class LocalSelfServiceIntegrationTest {
   // ---- switched-off flows
 
   /**
-   * ADR-0033, Entscheidung 11 (#1592): whichever of the three switches turns a flow off, its path
-   * answers a caller without a session exactly like a route nobody serves - same status, same body,
-   * same headers. Whether a flow exists stays readable through {@code /auth/config} alone.
+   * ADR-0033, Entscheidung 11: whichever of the three switches turns a flow off, its path answers a
+   * caller without a session exactly like a route nobody serves - same status, same body, same
+   * headers. Whether a flow exists stays readable through {@code /auth/config} alone.
    */
   @Test
   void aSwitchedOffFlowIsIndistinguishableFromAnUnknownRoute() throws Exception {
@@ -662,7 +662,7 @@ class LocalSelfServiceIntegrationTest {
    * A caller with a token learns nothing new from the answer: the endpoint belongs to the
    * documented API, and an unknown route is a 404 for them as well. What matters there is the
    * controller's own gate - without it the authorization rule would let a signed-in caller run a
-   * switched-off flow (#1592).
+   * switched-off flow.
    */
   @Test
   void aSwitchedOffFlowAnswersASignedInCallerLikeAnUnknownRouteAndRunsNothing() throws Exception {

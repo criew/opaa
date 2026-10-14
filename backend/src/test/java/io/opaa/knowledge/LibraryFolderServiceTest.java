@@ -31,9 +31,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 
 /**
- * Unit tests for {@link LibraryFolderService} (#820): name validation, the EDITOR/VIEWER permission
- * gates, the UPLOAD-only restriction (ADR-0020), name-conflict detection, the nesting depth limit,
- * and that {@link LibraryFolderService#deleteFolder} recurses leaf-first through {@link
+ * Unit tests for {@link LibraryFolderService}: name validation, the EDITOR/VIEWER permission gates,
+ * the UPLOAD-only restriction (ADR-0020), name-conflict detection, the nesting depth limit, and
+ * that {@link LibraryFolderService#deleteFolder} recurses leaf-first through {@link
  * LibraryDocumentService#deleteDocument} rather than deleting rows directly.
  */
 class LibraryFolderServiceTest {
@@ -59,10 +59,10 @@ class LibraryFolderServiceTest {
     accessService = mock(LibraryAccessService.class);
     documentRepository = mock(DocumentRepository.class);
     documentService = mock(LibraryDocumentService.class);
-    // #823 review, Befund 6: LibraryFolderService now builds a REQUIRES_NEW TransactionTemplate
-    // from this in its constructor - TransactionTemplate#execute invokes the callback synchronously
-    // regardless of whether the underlying manager is real, mirroring SpaceServiceTest's identical
-    // setup for the same reason.
+    // LibraryFolderService now builds a REQUIRES_NEW TransactionTemplate from this in its
+    // constructor - TransactionTemplate#execute invokes the callback synchronously regardless of
+    // whether the underlying manager is real, mirroring SpaceServiceTest's identical setup for the
+    // same reason.
     PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
 
@@ -222,7 +222,7 @@ class LibraryFolderServiceTest {
 
   @Test
   void renamingAFolderInAConnectorLibraryIsRejectedWithConflict() {
-    // #824: renameFolder shares requireUploadLibrary with createFolder (already covered by
+    // renameFolder shares requireUploadLibrary with createFolder (already covered by
     // creatingAFolderInAConnectorLibraryIsRejectedWithConflict above) - this pins the same
     // restriction on the rename entry point specifically, ahead of #824 wiring the internal
     // materializeFolderPath bypass into the same class.
@@ -237,7 +237,7 @@ class LibraryFolderServiceTest {
 
   @Test
   void deletingAFolderInAConnectorLibraryIsRejectedWithConflict() {
-    // #824: deleteFolder's own requireUploadLibrary check - the read-only floor a FILESYSTEM
+    // deleteFolder's own requireUploadLibrary check - the read-only floor a FILESYSTEM
     // library's folders sit behind through the public CRUD entry points.
     grantEditor();
     when(library.getSourceType()).thenReturn(SourceTypes.FILESYSTEM);
@@ -250,7 +250,7 @@ class LibraryFolderServiceTest {
 
   @Test
   void materializeFolderPathCreatesTheFullChainForANewNestedDirectory() {
-    // #824: the connector mirroring entry point - deliberately bypasses requireUploadLibrary/
+    // The connector mirroring entry point - deliberately bypasses requireUploadLibrary/
     // requireEditable (see this class's own Javadoc), so no grantEditor() stubbing is needed here,
     // unlike every CRUD test above. requireMirroredSourceLibrary is a real guard though, hence the
     // explicit FILESYSTEM stub.
@@ -303,7 +303,7 @@ class LibraryFolderServiceTest {
 
   @Test
   void materializeFolderPathAcceptsAnHttpDirectoryLibrary() {
-    // #1277: a crawled URL path below the start URL is mirrored exactly like a filesystem path.
+    // A crawled URL path below the start URL is mirrored exactly like a filesystem path.
     when(library.getSourceType()).thenReturn(SourceTypes.HTTP_DIRECTORY);
     when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "2026"))
         .thenReturn(Optional.empty());
@@ -331,7 +331,7 @@ class LibraryFolderServiceTest {
 
   @Test
   void pruneOrphanedFoldersRemovesAnEmptyFolderMissingFromTheCurrentRun() {
-    // #824: a source directory that disappeared between two runs and never held any document.
+    // A source directory that disappeared between two runs and never held any document.
     when(library.getSourceType()).thenReturn(SourceTypes.FILESYSTEM);
     LibraryFolder orphan = new LibraryFolder(libraryId, null, "Verschwunden", organizationId);
     when(folderRepository.findByLibraryId(libraryId)).thenReturn(List.of(orphan));
@@ -355,8 +355,8 @@ class LibraryFolderServiceTest {
 
   @Test
   void pruneOrphanedFoldersKeepsAnOrphanThatStillHoldsADocument() {
-    // #824: a FILESYSTEM run does not yet delete a document whose file disappeared - a folder that
-    // still (transitively) holds one must not be discarded underneath it.
+    // A FILESYSTEM run does not yet delete a document whose file disappeared - a folder that still
+    // (transitively) holds one must not be discarded underneath it.
     when(library.getSourceType()).thenReturn(SourceTypes.FILESYSTEM);
     LibraryFolder orphan = new LibraryFolder(libraryId, null, "Verschwunden", organizationId);
     when(folderRepository.findByLibraryId(libraryId)).thenReturn(List.of(orphan));
@@ -369,7 +369,7 @@ class LibraryFolderServiceTest {
 
   @Test
   void pruneOrphanedFoldersRemovesAnOrphanedParentOnlyAfterItsOwnEmptyOrphanedChild() {
-    // #824: leaf-first - the parent only becomes empty once its own orphaned, empty child is gone.
+    // Leaf-first - the parent only becomes empty once its own orphaned, empty child is gone.
     when(library.getSourceType()).thenReturn(SourceTypes.FILESYSTEM);
     LibraryFolder parent = new LibraryFolder(libraryId, null, "Archiv", organizationId);
     LibraryFolder child = new LibraryFolder(libraryId, parent.getId(), "2025", organizationId);
@@ -476,7 +476,7 @@ class LibraryFolderServiceTest {
         .isInstanceOf(NotFoundException.class);
   }
 
-  // #823: LibraryFolderService#resolveOrCreateFolderPath - the upload-path counterpart to
+  // LibraryFolderService#resolveOrCreateFolderPath - the upload-path counterpart to
   // materializeFolderPath above, but UPLOAD-only and permission-checked like createFolder.
 
   @Test

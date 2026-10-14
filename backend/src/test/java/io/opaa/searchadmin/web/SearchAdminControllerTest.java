@@ -249,7 +249,7 @@ class SearchAdminControllerTest {
     assertThat(query.contextType()).isEqualTo(DiagnosisContextType.PERMISSION_PROFILE);
     assertThat(query.permissionProfileId()).isEqualTo(profileId);
     assertThat(query.trackedDocumentId()).isEqualTo(trackedId);
-    // #1070: the diagnosis runs with the same filter a chat query would.
+    // The diagnosis runs with the same filter a chat query would.
     assertThat(query.metadataFilter().documentTypes()).containsExactly("VERMERK");
     assertThat(query.metadataFilter().documentDateTo())
         .isEqualTo(java.time.LocalDate.of(2024, 12, 31));
@@ -290,8 +290,7 @@ class SearchAdminControllerTest {
 
   /**
    * The person context reaches the service as a person context, with its target and its
-   * justification - without this mapping the context type is not even selectable at the endpoint
-   * (#1150).
+   * justification - without this mapping the context type is not even selectable at the endpoint.
    */
   @Test
   void aPersonContextRequestCarriesItsTargetAndJustificationToTheService() throws Exception {

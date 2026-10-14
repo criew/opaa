@@ -33,8 +33,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * 9): the eleventh sign-in from one address within a minute is {@code 429} with {@code
  * Retry-After}; a forged {@code X-Forwarded-For} from an untrusted connection does not change the
  * bucket, behind a trusted proxy the header names the client; the refresh and the password change
- * have their own budgets; a switched-off self-service flow has none at all (#1592); and the
- * diagnostics endpoint shows the address exactly as it was resolved for that request.
+ * have their own budgets; a switched-off self-service flow has none at all; and the diagnostics
+ * endpoint shows the address exactly as it was resolved for that request.
  */
 // Own context (AGENTS.md, "Spring-Testkontexte"): the shared oidc context widens the local-auth
 // limits so its many sign-ins from one address pass; this class needs the production defaults
@@ -52,7 +52,7 @@ class LocalAuthRateLimitIntegrationTest {
   private static final String REGISTER = "/api/v1/auth/local/register";
   private static final String UNKNOWN_ROUTE = "/api/v1/auth/local/unbekannt-1592";
 
-  /** Throttled attempts name no account: a known one would be locked after five (#1535). */
+  /** Throttled attempts name no account: a known one would be locked after five. */
   private static final String UNKNOWN = "niemand@stadt.example";
 
   @Autowired private MockMvc mockMvc;
@@ -166,10 +166,10 @@ class LocalAuthRateLimitIntegrationTest {
   }
 
   /**
-   * #1563: the two handover endpoints share one budget - a redemption is one preview plus one
-   * redemption by the same person, and an unauthenticated caller without a valid code gets nothing
-   * out of either. Driven with an unusable code, which the endpoints refuse long before they touch
-   * an account.
+   * The two handover endpoints share one budget - a redemption is one preview plus one redemption
+   * by the same person, and an unauthenticated caller without a valid code gets nothing out of
+   * either. Driven with an unusable code, which the endpoints refuse long before they touch an
+   * account.
    */
   @Test
   void thePreviewAndTheRedemptionOfAHandoverShareOneBudget() throws Exception {
@@ -195,10 +195,10 @@ class LocalAuthRateLimitIntegrationTest {
   }
 
   /**
-   * #1592: a switched-off self-service flow has no budget. It is answered exactly like an unknown
-   * route, and an unknown route is not counted either - a 429 on one and a 401 on the other would
-   * be the one difference a probe would find. This family has no public base URL, so both flows are
-   * off (ADR-0033, Entscheidung 10); the budget here is three per fifteen minutes.
+   * A switched-off self-service flow has no budget. It is answered exactly like an unknown route,
+   * and an unknown route is not counted either - a 429 on one and a 401 on the other would be the
+   * one difference a probe would find. This family has no public base URL, so both flows are off
+   * (ADR-0033, Entscheidung 10); the budget here is three per fifteen minutes.
    */
   @Test
   void aSwitchedOffSelfServiceFlowIsNeverCountedAndStaysA401() throws Exception {

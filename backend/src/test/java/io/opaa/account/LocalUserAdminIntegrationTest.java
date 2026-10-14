@@ -103,7 +103,7 @@ class LocalUserAdminIntegrationTest {
   @Autowired private GroupRepository groups;
   @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
 
-  /** Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind). */
+  /** Every ORG_UNIT group carries its provider (chk_groups_provider_kind). */
   private UUID directoryProvider;
 
   private UUID directoryProviderId() {
@@ -918,11 +918,11 @@ class LocalUserAdminIntegrationTest {
   }
 
   /**
-   * Diagnostic impersonation grants are no deletion blocker (#1697): the schema lets all their
-   * person columns cascade since #1509, and an account that once granted or revoked one would
-   * otherwise stay undeletable forever. What the account still confers on a holder who remains is
-   * revoked first, with the event a regular revocation writes - ADR-0016's Auflage, without which
-   * the cascade would take those grants in silence.
+   * Diagnostic impersonation grants are no deletion blocker: the schema lets all their person
+   * columns cascade, and an account that once granted or revoked one would otherwise stay
+   * undeletable forever. What the account still confers on a holder who remains is revoked first,
+   * with the event a regular revocation writes - ADR-0016's Auflage, without which the cascade
+   * would take those grants in silence.
    */
   @Test
   void deletionRevokesWhatTheAccountStillConfersAndIsNotBlockedByItsGrants() throws Exception {

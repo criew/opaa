@@ -112,7 +112,7 @@ class AccountUsabilityTest {
     assertThat(usability.stateOf(user)).isEqualTo(State.DEACTIVATED);
   }
 
-  /** Absence is no deactivation (#2260): the lock rests, also without a threshold asked. */
+  /** Absence is no deactivation: the lock rests, also without a threshold asked. */
   @Test
   void aLocalAccountLockedForInactivityRests() {
     User user = User.localAccount("abwesend@example.com", "Abwesend");

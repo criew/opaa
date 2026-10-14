@@ -204,9 +204,9 @@ class LocalAuthSettingsIntegrationTest {
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, userBearer))
         .andExpect(status().isUnauthorized())
-        // regression guard for #1595: the switch-off also revokes the family (#1534), and the
-        // switch has to outrank that revocation - the person reads why the management is closed,
-        // not that a password was reset
+        // regression guard for #1595: the switch-off also revokes the family, and the switch has
+        // to outrank that revocation - the person reads why the management is closed, not that a
+        // password was reset
         .andExpect(
             header()
                 .string(

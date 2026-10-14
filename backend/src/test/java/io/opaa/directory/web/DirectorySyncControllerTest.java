@@ -41,9 +41,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * {@link DirectorySyncController} in isolation (#1816): the {@code SYSTEM_ADMIN} bar on every
- * operation, the mandatory reason of a decision about a pending plan, and the pass-through of the
- * service's own 404s and 409s.
+ * {@link DirectorySyncController} in isolation: the {@code SYSTEM_ADMIN} bar on every operation,
+ * the mandatory reason of a decision about a pending plan, and the pass-through of the service's
+ * own 404s and 409s.
  */
 @WebMvcTest(DirectorySyncController.class)
 @ActiveProfiles("dev")

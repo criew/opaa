@@ -36,8 +36,8 @@ class CitationValidatorTest {
   }
 
   /**
-   * #697 review, finding 3: a model correcting the casing of a real file name (e.g. "Readme.md" for
-   * the indexed "readme.md") must not turn a genuine citation into a false-invalid verdict.
+   * A model correcting the casing of a real file name (e.g. "Readme.md" for the indexed
+   * "readme.md") must not turn a genuine citation into a false-invalid verdict.
    */
   @Test
   void validCitationWithDifferentCapitalisationOfTheSameFileName() {
@@ -50,10 +50,10 @@ class CitationValidatorTest {
   }
 
   /**
-   * #697 review, finding 3: the same visible file name can reach the retrieved chunk and the
-   * citation in different Unicode normal forms - e.g. an "ü" as a precomposed NFC code point in one
-   * and as a base letter plus a combining diaeresis (NFD) in the other, most commonly from a macOS
-   * upload. Both render identically and must compare equal.
+   * The same visible file name can reach the retrieved chunk and the citation in different Unicode
+   * normal forms - e.g. an "ü" as a precomposed NFC code point in one and as a base letter plus a
+   * combining diaeresis (NFD) in the other, most commonly from a macOS upload. Both render
+   * identically and must compare equal.
    */
   @Test
   void validCitationWhereFileNameDiffersOnlyInUnicodeNormalForm() {
@@ -166,7 +166,7 @@ class CitationValidatorTest {
   /**
    * #937 regression: the Drehbuch-Frage-1 case - a fee retrieval-valid citation whose cited chunk
    * does not actually contain the amount the answer names must be flagged invalid, even though it
-   * would pass the pre-#937 retrieval-only check.
+   * would pass a retrieval-only check.
    */
   @Test
   void flagsARetrievalValidCitationWhoseCitedChunkDoesNotContainTheStatedAmount() {
@@ -219,8 +219,8 @@ class CitationValidatorTest {
   }
 
   /**
-   * #937: the 2-arg overload (no answer text) never runs the content check - a caller with no
-   * answer text available keeps exactly the pre-#937 retrieval-only behaviour.
+   * The 2-arg overload (no answer text) never runs the content check - a caller with no answer text
+   * available keeps exactly the retrieval-only behaviour.
    */
   @Test
   void twoArgOverloadSkipsTheContentCheckEvenForAnUnsupportedAmount() {
@@ -236,9 +236,8 @@ class CitationValidatorTest {
   }
 
   /**
-   * #939 review, finding 1: a thousands-separator dot sits between two digits and must not end the
-   * statement early - a truncated statement ("234,50 €" instead of "1.234,50 €") would compare the
-   * wrong value.
+   * A thousands-separator dot sits between two digits and must not end the statement early - a
+   * truncated statement ("234,50 €" instead of "1.234,50 €") would compare the wrong value.
    */
   @Test
   void keepsValidAcrossAThousandsSeparatorInTheStatedAmount() {
@@ -252,7 +251,7 @@ class CitationValidatorTest {
     assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", true));
   }
 
-  /** #939 review, finding 1: a round-thousand amount ("1.000 €") must not be truncated either. */
+  /** A round-thousand amount ("1.000 €") must not be truncated either. */
   @Test
   void keepsValidForARoundThousandAmount() {
     String chunkText = "Der Zuschuss beträgt 1.000 €.";
@@ -266,9 +265,9 @@ class CitationValidatorTest {
   }
 
   /**
-   * #939 review, finding 1: the statement-boundary bug also broke date extraction end-to-end, since
-   * every numeric date's dots ended the statement right after its own last digit group - this is
-   * the end-to-end date check the fix restores.
+   * The statement-boundary bug also broke date extraction end-to-end, since every numeric date's
+   * dots ended the statement right after its own last digit group - this is the end-to-end date
+   * check the fix restores.
    */
   @Test
   void keepsValidForADateMatchingTheCitedChunk() {
@@ -295,9 +294,9 @@ class CitationValidatorTest {
   }
 
   /**
-   * #939 review, finding 3: a sentence enumerating two amounts from two different chunks of the
-   * <em>same</em> document, each named right before its own marker, must validate against the
-   * nearest fact and the document's full chunk set - not the whole sentence against a single chunk.
+   * A sentence enumerating two amounts from two different chunks of the <em>same</em> document,
+   * each named right before its own marker, must validate against the nearest fact and the
+   * document's full chunk set - not the whole sentence against a single chunk.
    */
   @Test
   void keepsValidForAnEnumerationAcrossTwoChunksOfTheSameDocument() {
@@ -315,9 +314,8 @@ class CitationValidatorTest {
   }
 
   /**
-   * #939 review, finding 2: an amount stated with a currency marker in the answer must still be
-   * recognised against the same bare number in a fee table whose column header alone carries the
-   * currency.
+   * An amount stated with a currency marker in the answer must still be recognised against the same
+   * bare number in a fee table whose column header alone carries the currency.
    */
   @Test
   void keepsValidForAnAmountWithoutACurrencyMarkerInTheCitedChunk() {
@@ -332,8 +330,8 @@ class CitationValidatorTest {
   }
 
   /**
-   * #939 review, finding 4: a statement naming an approximation ("rund") skips the content check
-   * entirely - a model rounding a real figure is not a fabrication.
+   * A statement naming an approximation ("rund") skips the content check entirely - a model
+   * rounding a real figure is not a fabrication.
    */
   @Test
   void keepsValidWhenTheStatementNamesAnApproximation() {
@@ -348,8 +346,8 @@ class CitationValidatorTest {
   }
 
   /**
-   * #939 review, finding 4: a statement naming a computed sum ("Zusammen sind das ...") skips the
-   * content check entirely - the sum need not appear verbatim in any single chunk.
+   * A statement naming a computed sum ("Zusammen sind das ...") skips the content check entirely -
+   * the sum need not appear verbatim in any single chunk.
    */
   @Test
   void keepsValidWhenTheStatementNamesAComputedSum() {
@@ -363,7 +361,7 @@ class CitationValidatorTest {
     assertThat(result).containsExactly(new ValidatedCitation("doc-1", 0, "a.md", true));
   }
 
-  /** #939 review, finding 2: "Paragraf" (without "h") is an equally correct German spelling. */
+  /** "Paragraf" (without "h") is an equally correct German spelling. */
   @Test
   void keepsValidForTheParagrafSpellingWithoutH() {
     String chunkText = "Nach Paragraf 3 PAuswG gilt ...";
@@ -377,10 +375,10 @@ class CitationValidatorTest {
   }
 
   /**
-   * #939 review, finding 5: two markers in one answer, each citing a different document, must each
-   * be checked against their own statement and their own cited document's chunks - this pins down
-   * the previously untested assumption that {@code citations.get(i)} lines up with the {@code i}-th
-   * marker actually found in {@code answer}.
+   * Two markers in one answer, each citing a different document, must each be checked against their
+   * own statement and their own cited document's chunks - this pins down the previously untested
+   * assumption that {@code citations.get(i)} lines up with the {@code i}-th marker actually found
+   * in {@code answer}.
    */
   @Test
   void validatesMultipleMarkersInOneAnswerIndependentlyAndInOrder() {
@@ -403,9 +401,9 @@ class CitationValidatorTest {
   }
 
   /**
-   * #939 review, finding 6: a Drehbuch-Frage-1-style answer citing the same amount from two
-   * different, independently retrieved documents - each marker's own document actually contains the
-   * value, so neither citation may be flagged.
+   * A Drehbuch-Frage-1-style answer citing the same amount from two different, independently
+   * retrieved documents - each marker's own document actually contains the value, so neither
+   * citation may be flagged.
    */
   @Test
   void keepsValidWhenTheSameAmountIsDoubleCitedFromTwoDifferentDocuments() {
@@ -438,9 +436,8 @@ class CitationValidatorTest {
   }
 
   /**
-   * #939 review, finding 6: a Drehbuch-Frage-4-style answer enumerating two fee variants in one
-   * sentence, cited once - only the nearer amount ("11,30 Euro") must be checked, and it is present
-   * in the cited chunk.
+   * A Drehbuch-Frage-4-style answer enumerating two fee variants in one sentence, cited once - only
+   * the nearer amount ("11,30 Euro") must be checked, and it is present in the cited chunk.
    */
   @Test
   void keepsValidForATwoAmountEnumerationCitedOnce() {

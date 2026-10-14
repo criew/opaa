@@ -134,9 +134,9 @@ class QueryServiceTest {
   @Mock private ChunkEmbeddingLookup chunkEmbeddingLookup;
   // Unstubbed by default: Mockito returns Optional.empty() for #decompose, which QueryService
   // treats
-  // as a decomposition failure and falls back to the pre-#923 single-query path (see
+  // as a decomposition failure and falls back to the single-query path (see
   // SubQueryDecompositionStage) - every test in this class relies on that unless it
-  // explicitly stubs this mock (see the "Query decomposition (#923)" nested class below).
+  // explicitly stubs this mock (see the "Query decomposition" nested class below).
   @Mock private QueryDecompositionService queryDecompositionService;
   @Mock private PromptService promptService;
 
@@ -294,8 +294,8 @@ class QueryServiceTest {
   }
 
   /**
-   * #1789: once the switch is on (the handler bean present), a question the handler declines (no
-   * {@code "@test "} prefix) still reaches the ordinary path unmodified - the weiche in {@code
+   * Once the switch is on (the handler bean present), a question the handler declines (no {@code
+   * "@test "} prefix) still reaches the ordinary path unmodified - the weiche in {@code
    * QueryService#query} only short-circuits on a present {@link Optional}.
    */
   @Test
@@ -323,9 +323,9 @@ class QueryServiceTest {
   }
 
   /**
-   * #1789: once the handler accepts (returns a present {@link Optional}), {@code QueryService}
-   * hands its result straight back and never touches the ordinary retrieval/answer path - the
-   * handler ran the whole turn itself.
+   * Once the handler accepts (returns a present {@link Optional}), {@code QueryService} hands its
+   * result straight back and never touches the ordinary retrieval/answer path - the handler ran the
+   * whole turn itself.
    */
   @Test
   void queryReturnsTheSpikeHandlersResultUnmodifiedWhenItAccepts() {
@@ -410,7 +410,7 @@ class QueryServiceTest {
   }
 
   /**
-   * #639: {@code sourceEntryUrl} is resolved via the same {@code document_id} -> DocumentRepository
+   * {@code sourceEntryUrl} is resolved via the same {@code document_id} -> DocumentRepository
    * lookup {@code indexedAt} already uses ({@code ChatSourceAssembler}), not carried on the chunk
    * metadata itself.
    */
@@ -444,8 +444,8 @@ class QueryServiceTest {
   }
 
   /**
-   * #667: every retrieved chunk's location rides along on its ChatSource, keyed by the chunk index
-   * the citation marker names - including a chunk the pipeline stored no location for, which still
+   * Every retrieved chunk's location rides along on its ChatSource, keyed by the chunk index the
+   * citation marker names - including a chunk the pipeline stored no location for, which still
    * needs its entry (location null) so the frontend knows the number is real.
    */
   @Test
@@ -674,7 +674,7 @@ class QueryServiceTest {
   }
 
   /**
-   * #739: a citation of a local original (FILESYSTEM/UPLOAD) carries {@code documentId} and {@code
+   * A citation of a local original (FILESYSTEM/UPLOAD) carries {@code documentId} and {@code
    * sourceType} so the client can open GET /api/v1/documents/{documentId}/content, but {@code
    * sourceUrl} stays null - there is no remote deep link, the download endpoint is the only way in.
    */
@@ -713,9 +713,9 @@ class QueryServiceTest {
   }
 
   /**
-   * #739: a citation of a remote-only document (HTTP_DIRECTORY/RSS_FEED, no local file behind the
+   * A citation of a remote-only document (HTTP_DIRECTORY/RSS_FEED, no local file behind the
    * download endpoint) carries {@code sourceUrl} - the document's own remote location, mirroring
-   * {@code LibraryDocumentResponse.sourceUrl} (#738).
+   * {@code LibraryDocumentResponse.sourceUrl}.
    */
   @Test
   void queryPopulatesSourceUrlForARemoteOnlyDocument() {
@@ -754,12 +754,11 @@ class QueryServiceTest {
   }
 
   /**
-   * #739: {@code mapSources}/{@code mergeSourceReferences} now dedupe by {@code document_id}, not
-   * {@code fileName} (previously the opposite, see the #666 review this test used to document below
-   * - superseded here) - two distinct documents that happen to share a file name (e.g. two RSS
-   * entries both attaching a same-named PDF) no longer collapse into one {@link ChatSource} row
-   * with the origin link dropped; each keeps its own row with its own {@code documentId} and {@code
-   * sourceEntryUrl}, since #739 needs every entry's own document id for its deep link.
+   * {@code mapSources}/{@code mergeSourceReferences} now dedupe by {@code document_id}, not {@code
+   * fileName} - two distinct documents that happen to share a file name (e.g. two RSS entries both
+   * attaching a same-named PDF) no longer collapse into one {@link ChatSource} row with the origin
+   * link dropped; each keeps its own row with its own {@code documentId} and {@code
+   * sourceEntryUrl}, since a deep link needs every entry's own document id.
    */
   @Test
   void queryKeepsTwoDocumentsThatShareAFileNameAsSeparateSources() {
@@ -810,13 +809,13 @@ class QueryServiceTest {
   }
 
   /**
-   * PR #745 review, nit 1: a chunk without {@code document_id} metadata (pre-#739 index entries)
-   * used to compute its match count under the literal string {@code "unknown"} in {@link
-   * #countMatchesPerDocument} but look it back up under {@code ""} in {@link #mapSources} - the
-   * lookup always missed and silently fell back to a match count of 1. It also collapsed two such
-   * chunks from <em>different</em> files into a single merged entry, since both shared the same
-   * empty key. Falling back to {@code file_name} in both places fixes both: each file gets its own
-   * entry with the correct match count.
+   * A chunk without {@code document_id} metadata (older index entries) used to compute its match
+   * count under the literal string {@code "unknown"} in {@link #countMatchesPerDocument} but look
+   * it back up under {@code ""} in {@link #mapSources} - the lookup always missed and silently fell
+   * back to a match count of 1. It also collapsed two such chunks from <em>different</em> files
+   * into a single merged entry, since both shared the same empty key. Falling back to {@code
+   * file_name} in both places fixes both: each file gets its own entry with the correct match
+   * count.
    */
   @Test
   void queryFallsBackToFileNameForMatchCountingWhenDocumentIdMetadataIsMissing() {
@@ -881,7 +880,7 @@ class QueryServiceTest {
     assertThat(response.answer()).contains("【source:");
     assertThat(response.sources()).hasSize(1);
     assertThat(response.sources().getFirst().getFileName()).isEqualTo("readme.md");
-    // #1102: the reciprocal of the fused rank, not the chunk's raw score.
+    // The reciprocal of the fused rank, not the chunk's raw score.
     assertThat(response.sources().getFirst().getRelevanceScore()).isEqualTo(1.0);
     assertThat(response.sources().getFirst().getCited()).isTrue();
     assertThat(response.sources().getFirst().getMatchCount()).isEqualTo(1);
@@ -978,7 +977,7 @@ class QueryServiceTest {
   }
 
   /**
-   * #561: {@code ChatService#appendTurn} now returns the chat's title after the turn (rather than
+   * {@code ChatService#appendTurn} now returns the chat's title after the turn (rather than
    * QueryService reading it back off the possibly-mutated {@link Chat} instance, which appendTurn
    * no longer mutates - see that method's Javadoc) - QueryService simply forwards whatever the
    * (here fully mocked) {@code chatService} returns.
@@ -1169,15 +1168,15 @@ class QueryServiceTest {
     assertThat(response.metadata().noSpaceContext()).isFalse();
     assertThat(response.sources()).isEmpty();
     org.mockito.Mockito.verifyNoInteractions(vectorChunkSearch, queryDecompositionService);
-    // #2514: told that nothing was searched, so the answer is not bound to absent passages.
+    // Told that nothing was searched, so the answer is not bound to absent passages.
     verify(answerGenerationService)
         .generateAnswer(eq("Question"), eq(List.of()), any(), any(), eq(false), eq(true), any());
   }
 
   @Test
   void queryRunsEphemerallyWhenChatIdDoesNotBelongToTheCaller() {
-    // Pre-#525 behaviour, preserved for callers that have not moved to persisted chats yet (see
-    // #527): a chatId that does not resolve to an owned chat is treated as a plain, non-persisted
+    // Behaviour preserved for callers that have not moved to persisted chats yet: a
+    // chatId that does not resolve to an owned chat is treated as a plain, non-persisted
     // conversation-cache key rather than being rejected - and it is echoed back unchanged, so a
     // client round-tripping it still gets multi-turn continuity without anything being persisted.
     UUID foreignChatId = UUID.randomUUID();
@@ -1195,15 +1194,14 @@ class QueryServiceTest {
     verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
   }
 
-  // #840: a space archived between a persisted chat's creation and this query must reject the
-  // query before retrieval/the LLM call, not merely at appendTurn afterwards - the whole point
-  // being that the ordinary case never pays for a paid LLM call whose answer would be discarded
-  // anyway. ChatService#requireSpaceNotArchived is mocked here (it is chatService's own
-  // production logic, exercised for real in ChatServiceIntegrationTest's
-  // appendingATurnInAnArchivedSpaceIsRejected, which still covers appendTurn's own race-guard
-  // call to the same method) purely as the trigger; this test's job is only to prove QueryService
-  // calls it before any of the readable-scope/retrieval/model work below, not to re-verify the
-  // archived-space rule itself.
+  // A space archived between a persisted chat's creation and this query must reject the query
+  // before retrieval/the LLM call, not merely at appendTurn afterwards - the whole point being
+  // that the ordinary case never pays for a paid LLM call whose answer would be discarded anyway.
+  // ChatService#requireSpaceNotArchived is mocked here (it is chatService's own production logic,
+  // exercised for real in ChatServiceIntegrationTest's appendingATurnInAnArchivedSpaceIsRejected,
+  // which still covers appendTurn's own race-guard call to the same method) purely as the
+  // trigger; this test's job is only to prove QueryService calls it before any of the
+  // readable-scope/retrieval/model work below, not to re-verify the archived-space rule itself.
   @Test
   void queryRejectsArchivedSpaceBeforeCallingTheModel() {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
@@ -1413,9 +1411,8 @@ class QueryServiceTest {
   }
 
   /**
-   * #1486: the reload asks for the conversation window's worth of messages, not the whole
-   * transcript - a long chat must not be read end to end for the handful of messages the window
-   * keeps.
+   * The reload asks for the conversation window's worth of messages, not the whole transcript - a
+   * long chat must not be read end to end for the handful of messages the window keeps.
    */
   @Test
   void theColdCacheReloadAsksOnlyForTheConversationWindowsWorthOfMessages() {
@@ -1441,9 +1438,9 @@ class QueryServiceTest {
   }
 
   /**
-   * #1486: the second entrance into the conversation window normalizes like the first one - the
-   * reloaded answer loses its citation markers, the question stays verbatim. Without this the same
-   * chat sends a different prompt after a restart than before it.
+   * The second entrance into the conversation window normalizes like the first one - the reloaded
+   * answer loses its citation markers, the question stays verbatim. Without this the same chat
+   * sends a different prompt after a restart than before it.
    */
   @Test
   void theColdCacheReloadStripsCitationMarkersFromPersistedAnswers() {
@@ -1774,9 +1771,9 @@ class QueryServiceTest {
   }
 
   /**
-   * #914: {@code similaritySearch} itself is called with {@code fetchK}, not {@code topK} - the
-   * larger candidate pool {@code MmrSelector} narrows down afterwards, in {@link
-   * QueryService#query} itself, not inside this mocked call.
+   * {@code similaritySearch} itself is called with {@code fetchK}, not {@code topK} - the larger
+   * candidate pool {@code MmrSelector} narrows down afterwards, in {@link QueryService#query}
+   * itself, not inside this mocked call.
    */
   @Test
   void queryPassesSearchRequestWithCorrectParameters() {
@@ -1863,8 +1860,8 @@ class QueryServiceTest {
     assertThat(response.metadata().noSpaceContext()).isFalse();
   }
 
-  // #739: two chunks sharing the same document_id (multiple chunks retrieved from one document) -
-  // the merge that still applies since the dedupe key changed from fileName to document_id.
+  // Two chunks sharing the same document_id (multiple chunks retrieved from one document) - the
+  // merge that still applies since the dedupe key changed from fileName to document_id.
   @Test
   void queryPreservesCitedFlagWhenDeduplicatingChunksFromSameFile() {
     when(chatMemory.get(any())).thenReturn(List.of());
@@ -1898,10 +1895,10 @@ class QueryServiceTest {
   }
 
   /**
-   * #739: the collision the previous test used to exercise (two <b>different</b> document ids
-   * sharing one file name) is now covered by {@link
-   * #queryKeepsTwoDocumentsThatShareAFileNameAsSeparateSources} instead - each keeps its own row,
-   * so neither collapses into the other and {@code cited} is per-document, not per-file-name.
+   * The collision the previous test used to exercise (two <b>different</b> document ids sharing one
+   * file name) is now covered by {@link #queryKeepsTwoDocumentsThatShareAFileNameAsSeparateSources}
+   * instead - each keeps its own row, so neither collapses into the other and {@code cited} is
+   * per-document, not per-file-name.
    */
   @Test
   void queryDoesNotMergeCitedFlagAcrossTwoDifferentDocumentsSharingAFileName() {
@@ -1961,9 +1958,9 @@ class QueryServiceTest {
   }
 
   /**
-   * #1486: the fallback prepends the <b>last</b> user question of the search window, not the first
-   * of the chat - after a topic change the oldest question in the window is the one the current
-   * question is least likely to continue.
+   * The fallback prepends the <b>last</b> user question of the search window, not the first of the
+   * chat - after a topic change the oldest question in the window is the one the current question
+   * is least likely to continue.
    */
   @Test
   void queryEnrichesThirdMessageWithTheLastUserQuestionOfTheSearchWindow() {
@@ -1991,8 +1988,8 @@ class QueryServiceTest {
   }
 
   /**
-   * #1486: a question older than the search window no longer reaches the fallback query at all -
-   * the search window is cut in {@code SubQueryDecompositionStage}, and the fallback reads the same
+   * A question older than the search window no longer reaches the fallback query at all - the
+   * search window is cut in {@code SubQueryDecompositionStage}, and the fallback reads the same
    * cut.
    */
   @Test
@@ -2041,14 +2038,13 @@ class QueryServiceTest {
   }
 
   /**
-   * #525 review round 2, finding A: {@code query()} deliberately carries no {@code @Transactional}
-   * annotation at all - an ambient (even read-only) transaction held for this method's whole
-   * duration, including the LLM call, would starve the connection pool once {@code
-   * ChatService#appendTurn} needed a second connection to write under load (see {@code
-   * QueryService#query}'s Javadoc for the full pool-deadlock reasoning, the same class of bug #299
-   * fixed in {@code UserService.findOrCreateUser}). This test pins the absence of the annotation
-   * itself, not merely its former {@code readOnly = true} value - the previous version of this test
-   * asserted the exact setting finding A required removing.
+   * {@code query()} deliberately carries no {@code @Transactional} annotation at all - an ambient
+   * (even read-only) transaction held for this method's whole duration, including the LLM call,
+   * would starve the connection pool once {@code ChatService#appendTurn} needed a second connection
+   * to write under load (see {@code QueryService#query}'s Javadoc for the full pool-deadlock
+   * reasoning, the same class of bug #299 fixed in {@code UserService.findOrCreateUser}). This test
+   * pins the absence of the annotation itself, not merely its former {@code readOnly = true} value
+   * - the previous version of this test asserted the exact setting finding A required removing.
    */
   @Test
   void queryMethodCarriesNoTransactionalAnnotation() throws NoSuchMethodException {
@@ -2161,9 +2157,9 @@ class QueryServiceTest {
   }
 
   /**
-   * Query decomposition and multi-search retrieval fusion (#923). {@link
-   * #queryDecompositionService} is unstubbed (the fallback) by every other test in this class - see
-   * that field's Javadoc - so these are the only tests here exercising the multi-sub-query path.
+   * Query decomposition and multi-search retrieval fusion. {@link #queryDecompositionService} is
+   * unstubbed (the fallback) by every other test in this class - see that field's Javadoc - so
+   * these are the only tests here exercising the multi-sub-query path.
    */
   @Nested
   class QueryDecomposition {
@@ -2191,8 +2187,8 @@ class QueryServiceTest {
       ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
       verify(vectorChunkSearch, times(1)).similaritySearch(captor.capture());
       assertThat(captor.getValue().getQuery()).isEqualTo("Umformulierte Frage");
-      // The single-search path uses fetchK (25), not the per-sub-query budget - unchanged from the
-      // pre-#923 behaviour MmrSelectorTest/this class's other tests already cover.
+      // The single-search path uses fetchK (25), not the per-sub-query budget - the behaviour
+      // MmrSelectorTest/this class's other tests already cover.
       assertThat(captor.getValue().getTopK()).isEqualTo(25);
     }
 
@@ -2274,7 +2270,7 @@ class QueryServiceTest {
     /**
      * An absent decomposition result (LLM failure or unparsable output, {@code
      * QueryDecompositionService#decompose}'s documented failure signal) falls back to {@link
-     * SubQueryDecompositionStage#buildSearchQuery}'s pre-#923 single-query behaviour unchanged.
+     * SubQueryDecompositionStage#buildSearchQuery}'s single-query behaviour unchanged.
      */
     @Test
     void emptyDecompositionResultFallsBackToBuildSearchQuery() {
@@ -2356,7 +2352,7 @@ class QueryServiceTest {
 
     /**
      * A search that found nothing is still a search: the answer is told it searched and that the
-     * message had something to search for, so it gets the answer rules (#2514).
+     * message had something to search for, so it gets the answer rules.
      */
     @Test
     void aSearchThatFoundNothingIsStillAnsweredAsASearch() {
@@ -2395,10 +2391,10 @@ class QueryServiceTest {
     }
 
     /**
-     * #923 review: every sub-query is independently MMR-narrowed to the full {@code topK}, not
-     * {@code topK} divided across sub-queries - the fused, deduplicated result is capped at {@code
-     * topK} afterwards, so a full overlap between sub-queries' results still yields exactly {@code
-     * topK} chunks instead of an under-filled result.
+     * Every sub-query is independently MMR-narrowed to the full {@code topK}, not {@code topK}
+     * divided across sub-queries - the fused, deduplicated result is capped at {@code topK}
+     * afterwards, so a full overlap between sub-queries' results still yields exactly {@code topK}
+     * chunks instead of an under-filled result.
      */
     @Test
     void eachSubQueryIsMmrNarrowedToTheFullTopKBeforeFusion() {
@@ -2432,7 +2428,7 @@ class QueryServiceTest {
   }
 
   /**
-   * Document completion after fusion (#932): a document already represented in the final selection
+   * Document completion after fusion: a document already represented in the final selection
    * preferably keeps up to {@code maxChunksPerDocument} of its chunks from the candidate pool,
    * evicting the RRF/MMR-weakest chunk of an already-≥2-chunk document rather than losing a chunk
    * to a completely unrelated document. Mirrors the #912 defect this fixes: a combined question
@@ -2495,10 +2491,10 @@ class QueryServiceTest {
     }
 
     /**
-     * The identical scenario through the decomposed, multi-sub-query path (#923): both sub-queries
-     * return the same permission/threshold-filtered candidates, so each independently MMR-narrows
-     * to the same top-8 window and RRF-fuses back to that unchanged set - completion then runs on
-     * the fused result exactly as it does on the single-query path.
+     * The identical scenario through the decomposed, multi-sub-query path: both sub-queries return
+     * the same permission/threshold-filtered candidates, so each independently MMR-narrows to the
+     * same top-8 window and RRF-fuses back to that unchanged set - completion then runs on the
+     * fused result exactly as it does on the single-query path.
      */
     @Test
     void multiQueryPathRecoversAFeeChunkByEvictingAnOverrepresentedDocumentsWeakerChunk() {
@@ -2539,19 +2535,18 @@ class QueryServiceTest {
     }
 
     /**
-     * Code review of #932's original PR: the two tests above give both sub-queries the identical
-     * candidate set, which never exercises fusion with two genuinely different, disjoint result
-     * lists. Here sub-query A carries {@code doc-x}/{@code doc-a}/five fillers, and sub-query B
-     * returns an entirely disjoint set of eight documents at a much lower, unrelated score range -
-     * own topic, own search vector, no shared ids. The shipped fusion scores by rank, not by the
-     * underlying score (comparing raw scores of different searches is the #912 failure mode), and
-     * fills the selection round-robin over the sub-queries - so A's and B's same-rank items
-     * interleave by rank tier (rank 1 pair, then rank 2 pair, ...). With {@code topK} = 8 that
-     * tier-by-tier cut lands after the rank-4 pair, well before sub-query A's own {@code doc-a}'s
-     * fee chunk (permanently excluded from every sub-query's own top-8 window, ranked 9th in
-     * sub-query A and absent from sub-query B entirely) ever has a chance to survive fusion on its
-     * own - completion is exactly what recovers it here, from the pooled raw candidates of
-     * <em>both</em> sub-queries.
+     * The two tests above give both sub-queries the identical candidate set, which never exercises
+     * fusion with two genuinely different, disjoint result lists. Here sub-query A carries {@code
+     * doc-x}/{@code doc-a}/five fillers, and sub-query B returns an entirely disjoint set of eight
+     * documents at a much lower, unrelated score range - own topic, own search vector, no shared
+     * ids. The shipped fusion scores by rank, not by the underlying score (comparing raw scores of
+     * different searches is the #912 failure mode), and fills the selection round-robin over the
+     * sub-queries - so A's and B's same-rank items interleave by rank tier (rank 1 pair, then rank
+     * 2 pair, ...). With {@code topK} = 8 that tier-by-tier cut lands after the rank-4 pair, well
+     * before sub-query A's own {@code doc-a}'s fee chunk (permanently excluded from every
+     * sub-query's own top-8 window, ranked 9th in sub-query A and absent from sub-query B entirely)
+     * ever has a chance to survive fusion on its own - completion is exactly what recovers it here,
+     * from the pooled raw candidates of <em>both</em> sub-queries.
      */
     @Test
     void multiQueryPathRecoversAFeeChunkAcrossTwoDisjointSubQueryCandidateSets() {

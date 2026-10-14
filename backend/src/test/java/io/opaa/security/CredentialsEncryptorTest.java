@@ -7,9 +7,9 @@ import java.util.Base64;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link CredentialsEncryptor} (#483) - no Spring context, no database, so these run
- * as fast unit tests rather than the {@code @Testcontainers} integration tests exercising the full
- * JPA round trip ({@code KnowledgeLibraryServiceIntegrationTest}).
+ * Unit tests for {@link CredentialsEncryptor} - no Spring context, no database, so these run as
+ * fast unit tests rather than the {@code @Testcontainers} integration tests exercising the full JPA
+ * round trip ({@code KnowledgeLibraryServiceIntegrationTest}).
  */
 class CredentialsEncryptorTest {
 
@@ -58,7 +58,7 @@ class CredentialsEncryptorTest {
 
   @Test
   void decryptingALegacyPreIssue483CleartextValueReturnsItUnchanged() {
-    // A value written before #483 carries no "enc:v1:" prefix at all.
+    // A legacy cleartext value carries no "enc:v1:" prefix at all.
     CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
 
     assertThat(encryptor.decrypt("admin:legacy-plaintext-secret"))
@@ -102,9 +102,9 @@ class CredentialsEncryptorTest {
 
   @Test
   void decryptingAValueWithAnUnknownVersionPrefixRaisesAClearExceptionInsteadOfPassingItThrough() {
-    // PR #504 review, finding 5: only the exact "enc:v1:" prefix is treated as encrypted-and-
-    // decryptable; anything else that still starts with "enc:" must never be returned as if it
-    // were cleartext, so future format/version changes cannot be silently misread.
+    // Only the exact "enc:v1:" prefix is treated as encrypted-and- decryptable; anything else
+    // that still starts with "enc:" must never be returned as if it were cleartext, so future
+    // format/version changes cannot be silently misread.
     CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
 
     assertThatThrownBy(() -> encryptor.decrypt("enc:v2:whatever-a-future-format-looks-like"))
@@ -114,10 +114,9 @@ class CredentialsEncryptorTest {
   @Test
   void
       decryptingAMalformedBase64PayloadRaisesTheSameClearExceptionRatherThanAnUncaughtIllegalArgumentException() {
-    // PR #504 review, finding 2: Base64.getDecoder().decode(...) must be caught alongside the
-    // other decrypt failure modes, not left to escape as a bare IllegalArgumentException that
-    // would otherwise be misrouted to GlobalExceptionHandler's generic 400 handler with a raw JDK
-    // message.
+    // Base64.getDecoder().decode(...) must be caught alongside the other decrypt failure modes,
+    // not left to escape as a bare IllegalArgumentException that would otherwise be misrouted to
+    // GlobalExceptionHandler's generic 400 handler with a raw JDK message.
     CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
 
     assertThatThrownBy(() -> encryptor.decrypt("enc:v1:not-valid-base64!!!"))

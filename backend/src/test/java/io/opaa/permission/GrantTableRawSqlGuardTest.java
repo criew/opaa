@@ -17,10 +17,10 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Raw SQL against the two grant tables must name the object the way the schema does since #1811:
- * {@code asset_type} plus {@code asset_id}, never the column that was renamed away. The compiler
- * cannot see inside a SQL string, and the source set that broke on exactly this ({@code evalTest})
- * is wired into neither {@code check} nor {@code build} - its first run is a nightly workflow on
+ * Raw SQL against the two grant tables must name the object the way the schema does: {@code
+ * asset_type} plus {@code asset_id}, never the column that was renamed away. The compiler cannot
+ * see inside a SQL string, and the source set that broke on exactly this ({@code evalTest}) is
+ * wired into neither {@code check} nor {@code build} - its first run is a nightly workflow on
  * {@code main}, long after the merge.
  *
  * <p>Reads every Java source root of this project, including the ones no CI job compiles, and

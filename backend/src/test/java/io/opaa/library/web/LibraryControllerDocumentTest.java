@@ -132,8 +132,8 @@ class LibraryControllerDocumentTest {
                 (Pageable p) ->
                     p.getPageNumber() == 1
                         && p.getPageSize() == 5
-                        // #517 code review, finding 1: LIMIT/OFFSET without a stable ORDER BY has
-                        // no guaranteed row order across separate requests in PostgreSQL.
+                        // LIMIT/OFFSET without a stable ORDER BY has no guaranteed row order
+                        // across separate requests in PostgreSQL.
                         && p.getSort()
                             .equals(Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id"))))))
         .thenReturn(response);
@@ -153,7 +153,7 @@ class LibraryControllerDocumentTest {
 
   @Test
   void listingDocumentsPassesFolderIdToTheService() throws Exception {
-    // #821: folderId is forwarded to the service as-is, distinct from the eq(null) default the
+    // folderId is forwarded to the service as-is, distinct from the eq(null) default the
     // no-param case above implicitly covers via any().
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
@@ -189,9 +189,8 @@ class LibraryControllerDocumentTest {
 
   @Test
   void listingDocumentsRejectsAnOutOfRangeSizeWith400() throws Exception {
-    // #517 code review, finding 2: the spec promises size in 1..100 - silently clamping an
-    // out-of-range value would contradict that, so it is rejected instead (see
-    // LibraryController#listDocuments).
+    // The spec promises size in 1..100 - silently clamping an out-of-range value would
+    // contradict that, so it is rejected instead (see LibraryController#listDocuments).
     UUID libraryId = UUID.randomUUID();
 
     mockMvc
@@ -228,7 +227,7 @@ class LibraryControllerDocumentTest {
     document.setStatus(DocumentStatus.INDEXED);
     document.setChunkCount(3);
     var response = new LibraryDocumentEntry(document, null);
-    // #823: the controller now calls LibraryDocumentService's 6-arg folderPath overload
+    // The controller now calls LibraryDocumentService's 6-arg folderPath overload
     // unconditionally (folderPath is simply null/omitted when the request does not send one).
     when(documentService.uploadDocument(eq(libraryId), any(), any(), any(), eq(caller)))
         .thenReturn(response);
@@ -274,7 +273,7 @@ class LibraryControllerDocumentTest {
 
   @Test
   void uploadingADocumentPassesFolderPathToTheService() throws Exception {
-    // #823: folderPath is forwarded to the service alongside folderId, letting a
+    // folderPath is forwarded to the service alongside folderId, letting a
     // dragged-and-dropped/webkitdirectory-selected folder tree materialize its structure.
     UUID libraryId = UUID.randomUUID();
     Document document =
@@ -315,8 +314,8 @@ class LibraryControllerDocumentTest {
 
   @Test
   void uploadingWithoutTheFilePartReturns400WithAGermanMessage() throws Exception {
-    // #420 code review, finding 2: without GlobalExceptionHandler#handleMissingServletRequestPart
-    // Exception, this reached handleGenericException and answered 500.
+    // Without GlobalExceptionHandler#handleMissingServletRequestPart Exception, this reached
+    // handleGenericException and answered 500.
     UUID libraryId = UUID.randomUUID();
 
     mockMvc
@@ -337,7 +336,7 @@ class LibraryControllerDocumentTest {
         .andExpect(status().isNoContent());
   }
 
-  // #1943: the bulk delete's own wiring - both lists in the body, the connector rejection, the
+  // The bulk delete's own wiring - both lists in the body, the connector rejection, the
   // permission rejection, and the declared ceiling of 200 ids.
   private String bulkDeleteBody(List<UUID> ids) {
     return ids.stream()

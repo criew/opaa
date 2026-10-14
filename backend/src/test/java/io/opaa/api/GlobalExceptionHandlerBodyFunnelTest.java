@@ -140,11 +140,11 @@ class GlobalExceptionHandlerBodyFunnelTest {
 
   /**
    * A selector on the advice - any of the three, {@code hasSelectors()} weighing all of them -
-   * would take the branches above off the paths they matter most on (#1786): {@code
-   * HandlerTypePredicate} rejects the {@code null} handler type every exception raised before a
-   * handler method is resolved carries, so the unmapped-path 404 (#456) and the 405 with its {@code
-   * Allow} header would answer from Spring Boot's own error page instead. Measured rather than
-   * assumed: six assertions of this package fall with a selector in place.
+   * would take the branches above off the paths they matter most on: {@code HandlerTypePredicate}
+   * rejects the {@code null} handler type every exception raised before a handler method is
+   * resolved carries, so the unmapped-path 404 and the 405 with its {@code Allow} header would
+   * answer from Spring Boot's own error page instead. Measured rather than assumed: six assertions
+   * of this package fall with a selector in place.
    */
   @Test
   void theAdviceIsDeclaredWithoutASelector() throws IOException {

@@ -6,8 +6,8 @@ import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@link EmbeddingRateEstimator} (#1072): the runtime estimate behind "4.812 Chunks, rund 40
- * Minuten" - configured until enough calls are measured, measured afterwards.
+ * {@link EmbeddingRateEstimator}: the runtime estimate behind "4.812 Chunks, rund 40 Minuten" -
+ * configured until enough calls are measured, measured afterwards.
  */
 class EmbeddingRateEstimatorTest {
 

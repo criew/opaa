@@ -34,11 +34,11 @@ import org.springframework.security.oauth2.server.resource.BearerTokenError;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 
 /**
- * {@link OidcProviderRegistry} (#1329, ADR-0025 Entscheidung 1): the process-local registry of
- * enabled providers the multi-issuer resolver consults per request. Only enabled rows get a
- * decoder; a row whose address the SSRF policy rejects or whose decoder cannot be built is skipped
- * with a log line instead of blocking the others and retried after the interval; an unknown issuer
- * gets a manager that refuses with {@code unknown_issuer}; a refresh replaces the whole set.
+ * {@link OidcProviderRegistry} (ADR-0025 Entscheidung 1): the process-local registry of enabled
+ * providers the multi-issuer resolver consults per request. Only enabled rows get a decoder; a row
+ * whose address the SSRF policy rejects or whose decoder cannot be built is skipped with a log line
+ * instead of blocking the others and retried after the interval; an unknown issuer gets a manager
+ * that refuses with {@code unknown_issuer}; a refresh replaces the whole set.
  */
 class OidcProviderRegistryTest {
 

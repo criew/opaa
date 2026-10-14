@@ -36,11 +36,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * {@code POST /api/v1/admin/indexing/pipeline-reindex} end to end (#1109, Epic #1054/#1110 review,
- * E4): {@link IndexingAdminControllerTest} mocks {@link
- * io.opaa.indexing.maintenance.PipelineReindexService} out entirely, so nothing ever proved the
- * real HTTP request actually reaches the real service and mutates real chunks - only that the
- * controller forwards whatever a stub happens to return.
+ * {@code POST /api/v1/admin/indexing/pipeline-reindex} end to end: {@link
+ * IndexingAdminControllerTest} mocks {@link io.opaa.indexing.maintenance.PipelineReindexService}
+ * out entirely, so nothing ever proved the real HTTP request actually reaches the real service and
+ * mutates real chunks - only that the controller forwards whatever a stub happens to return.
  */
 @OpaaIntegrationTest
 class PipelineReindexHttpIntegrationTest {

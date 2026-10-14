@@ -32,12 +32,12 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The OAuth client against a real Keycloak (#2168): a person's consent by the authorization code
- * flow with PKCE, an offline grant, rotation of the refresh token, refusal of a used or revoked
- * one, and a code without its verifier refused - what the fake authorization server asserts,
- * re-verified against the answers a real provider gives. The endpoints come from the profile, as
- * for any Keycloak. Keycloak announces and names {@code iss} (RFC 9207); a sign-in declaring its
- * issuer accepts that response, one declaring another refuses it.
+ * The OAuth client against a real Keycloak: a person's consent by the authorization code flow with
+ * PKCE, an offline grant, rotation of the refresh token, refusal of a used or revoked one, and a
+ * code without its verifier refused - what the fake authorization server asserts, re-verified
+ * against the answers a real provider gives. The endpoints come from the profile, as for any
+ * Keycloak. Keycloak announces and names {@code iss} (RFC 9207); a sign-in declaring its issuer
+ * accepts that response, one declaring another refuses it.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class KeycloakOAuthConsentTest {

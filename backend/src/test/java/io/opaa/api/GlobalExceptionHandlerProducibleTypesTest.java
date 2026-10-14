@@ -23,8 +23,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The one assumption {@link ErrorBodyNegotiator} rests on that no test held before (#1786): a
- * {@code produces=} on the matched mapping does not reach the error body. {@code
+ * The one assumption {@link ErrorBodyNegotiator} rests on that no test held before: a {@code
+ * produces=} on the matched mapping does not reach the error body. {@code
  * DispatcherServlet#processHandlerException} removes the producible media types - and the {@code
  * Content-Type} header with them - before any exception resolver runs, so the envelope is
  * negotiated against the converters alone and pre-check and writer cannot part ways. Were that to
@@ -88,9 +88,9 @@ class GlobalExceptionHandlerProducibleTypesTest {
 
   /**
    * The 406 such a mapping raises when the {@code Accept} cannot reach it. Its branch goes through
-   * the funnel like every other one since #1786, and the funnel settles this position by itself:
-   * the producible types are gone by the time it decides, so an {@code Accept} of JSON takes the
-   * envelope - the same answer the 404 above gives the same caller.
+   * the funnel like every other one, and the funnel settles this position by itself: the producible
+   * types are gone by the time it decides, so an {@code Accept} of JSON takes the envelope - the
+   * same answer the 404 above gives the same caller.
    */
   @Test
   void anAcceptTheProducesCannotSatisfyStillCarriesTheEnvelope() throws Exception {

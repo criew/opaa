@@ -43,8 +43,7 @@ import tools.jackson.databind.ObjectMapper;
  * {@link ActiveChatModelResolver} against a real Postgres (the canonical {@link
  * io.opaa.test.OpaaIntegrationTest} signature, AGENTS.md, "Spring-Testkontexte", shared with {@link
  * LlmModelServiceIntegrationTest}) and two real, local {@link HttpServer} instances standing in for
- * two managed chat models (#758) - the same building block {@link LlmModelConnectionTesterTest}
- * uses.
+ * two managed chat models - the same building block {@link LlmModelConnectionTesterTest} uses.
  *
  * <p>Proves what {@link LlmModelServiceIntegrationTest} cannot: that {@link LlmModelService} taking
  * effect at the database level actually changes which endpoint {@link
@@ -110,10 +109,10 @@ class ActiveChatModelResolverIntegrationTest {
     // Restore before anything that could throw: otherwise the catalogue stays emptied for every
     // following class, and the seeder never refills it (its marker is set).
     llmModelCatalogFixtures.restoreCatalog(foreignModels);
-    // #767 review, optional finding 4: without this, a cached client from this test method would
-    // keep pointing at serverA/serverB above, both now stopped - the next test method sharing this
-    // class's Spring context would see "connection refused" instead of the 503 its own fixtures
-    // expect, until it happened to trigger an activation of its own.
+    // Without this, a cached client from this test method would keep pointing at serverA/serverB
+    // above, both now stopped - the next test method sharing this class's Spring context would see
+    // "connection refused" instead of the 503 its own fixtures expect, until it happened to
+    // trigger an activation of its own.
     resolver.resetForTest();
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteById(userId);
@@ -122,8 +121,8 @@ class ActiveChatModelResolverIntegrationTest {
 
   @Test
   void aClientWithARequestTimeoutGivesUpOnAModelThatNeverAnswers() throws Exception {
-    // #1073: the model step's abandoned calls must end and give their thread back - the caller's
-    // own Future.get(timeout) bounds only its waiting, never the request. Without the timeout this
+    // The model step's abandoned calls must end and give their thread back - the caller's own
+    // Future.get(timeout) bounds only its waiting, never the request. Without the timeout this
     // call would sit on the socket until the SDK's own default (minutes), which is exactly the
     // state that fills a bounded extraction pool with hanging calls.
     CountDownLatch requestArrived = new CountDownLatch(1);
@@ -324,10 +323,9 @@ class ActiveChatModelResolverIntegrationTest {
   }
 
   /**
-   * #767 review, should-finding 1: every other test in this class uses {@code apiKey = null}, so
-   * the decrypt-and-send path was entirely untested - a resolver that silently dropped the key
-   * (e.g. forgot to decrypt, or built {@link OpenAiChatOptions} without it) would have passed every
-   * other test here.
+   * Every other test in this class uses {@code apiKey = null}, so the decrypt-and-send path was
+   * entirely untested - a resolver that silently dropped the key (e.g. forgot to decrypt, or built
+   * {@link OpenAiChatOptions} without it) would have passed every other test here.
    */
   @Test
   void anApiKeyIsDecryptedAndSentAsTheAuthorizationHeader() throws IOException {
@@ -440,23 +438,22 @@ class ActiveChatModelResolverIntegrationTest {
   }
 
   /**
-   * #767 review, should-finding 2: an unreachable active model must fail outright, never silently
-   * fall back to another configured model - {@code serverB} above is never contacted.
+   * An unreachable active model must fail outright, never silently fall back to another configured
+   * model - {@code serverB} above is never contacted.
    *
    * <p><b>Not {@code org.springframework.ai.retry.TransientAiException}.</b> The review assumed the
    * failure would land in {@code io.opaa.api.GlobalExceptionHandler}'s existing {@code
    * TransientAiException}/{@code NonTransientAiException} handling (503/502) - verified here to
-   * name what the SDK-based {@code OpenAiChatModel} (Spring AI 2.0, since #766's move off the
-   * legacy {@code RestClient}-based implementation) actually throws for a connection failure:
-   * {@code com.openai.errors.OpenAIIoException}, a plain {@code RuntimeException} neither of those
-   * two extends. Today that falls through to {@code GlobalExceptionHandler}'s generic {@code
-   * Exception} handler (a 500 "Interner Serverfehler") rather than the more specific status a
-   * caller gets for, say, an OpenAI 4xx/5xx response - a pre-existing gap from the #766 SDK
-   * migration, not something #758 introduces or is positioned to fix (mapping the {@code
-   * com.openai.errors.*} hierarchy is a change to shared exception handling, not to how the active
-   * model is resolved) - reported as a follow-up rather than fixed in this PR. What matters for
-   * #758's own acceptance criterion is proven regardless: the call fails loudly, and never reaches
-   * {@code serverB}.
+   * name what the SDK-based {@code OpenAiChatModel} (Spring AI 2.0, not the legacy {@code
+   * RestClient}-based implementation) actually throws for a connection failure: {@code
+   * com.openai.errors.OpenAIIoException}, a plain {@code RuntimeException} neither of those two
+   * extends. Today that falls through to {@code GlobalExceptionHandler}'s generic {@code Exception}
+   * handler (a 500 "Interner Serverfehler") rather than the more specific status a caller gets for,
+   * say, an OpenAI 4xx/5xx response - a pre-existing gap from the #766 SDK migration, not something
+   * #758 introduces or is positioned to fix (mapping the {@code com.openai.errors.*} hierarchy is a
+   * change to shared exception handling, not to how the active model is resolved) - reported as a
+   * follow-up rather than fixed in this PR. What matters for #758's own acceptance criterion is
+   * proven regardless: the call fails loudly, and never reaches {@code serverB}.
    */
   @Test
   void anUnreachableActiveModelFailsWithoutFallingBackToAnotherModel() {
@@ -471,9 +468,9 @@ class ActiveChatModelResolverIntegrationTest {
   }
 
   /**
-   * #767 review, blocking finding: reproduces the race this class's own Javadoc describes - a build
-   * already reading the (about to be superseded) active model must not overwrite the invalidation a
-   * concurrent activation triggers while that build is still in flight. {@link
+   * Reproduces the race this class's own Javadoc describes - a build already reading the (about to
+   * be superseded) active model must not overwrite the invalidation a concurrent activation
+   * triggers while that build is still in flight. {@link
    * ActiveChatModelResolver#setTestRaceWindowHook} pauses the build exactly between reading the
    * active model and committing the result to the cache, the same window the generation counter in
    * {@link ActiveChatModelResolver#buildAndCache} closes.

@@ -11,12 +11,11 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Guard test against regression of the statement form fixed in the #454 re-review (finding 2):
- * {@link AuditRetentionSettings} must stay read-only end to end, so a future {@code
- * repository.save(entity)} call can never reintroduce the dirty-checked, all-columns {@code UPDATE}
- * that fails against the real, restricted database grant (the application account has {@code
- * UPDATE} only on {@code retention_months}/{@code updated_at}, never {@code last_cutoff}/{@code
- * last_run_month}).
+ * Guard test against a regression of the statement form: {@link AuditRetentionSettings} must stay
+ * read-only end to end, so a future {@code repository.save(entity)} call can never reintroduce the
+ * dirty-checked, all-columns {@code UPDATE} that fails against the real, restricted database grant
+ * (the application account has {@code UPDATE} only on {@code retention_months}/{@code updated_at},
+ * never {@code last_cutoff}/{@code last_run_month}).
  *
  * <p>Plain reflection, not a database-backed test: the property being guarded ("every mapped column
  * is {@code insertable = false, updatable = false}, and there is no setter") is a static fact about

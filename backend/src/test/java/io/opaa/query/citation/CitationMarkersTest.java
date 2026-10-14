@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-/** Citation-marker removal on the way into the conversation window (#1486). */
+/** Citation-marker removal on the way into the conversation window. */
 class CitationMarkersTest {
 
   @Test
