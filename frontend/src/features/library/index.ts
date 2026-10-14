@@ -1,10 +1,3 @@
-export {
-  cancelEmbeddingReindex,
-  getEmbeddingReindexStatus,
-  runContextPrefixRerunBatch,
-  runMetadataBackfillBatch,
-  startEmbeddingReindex,
-} from './api/indexingApi'
 export { getDocumentTypeVocabulary } from './api/libraryMetadataApi'
 export { default as DocumentTextPreviewDialog } from './components/DocumentTextPreviewDialog'
 export { default as PrivateStorageSection } from './components/PrivateStorageSection'

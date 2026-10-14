@@ -1,9 +1,4 @@
 import type {
-  ContextPrefixRerunRequest,
-  ContextPrefixRerunResponse,
-  EmbeddingReindexStatusResponse,
-  MetadataBackfillRequest,
-  MetadataBackfillResponse,
   IndexingRunListResponse,
   IndexingStatusResponse,
   IndexingRunMode,
@@ -76,79 +71,6 @@ export async function getIndexingRuns(libraryId: string): Promise<IndexingRunLis
   try {
     const { data } = await client.get<IndexingRunListResponse>(
       `/v1/libraries/${libraryId}/indexing/runs`,
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/**
- * One batch of the deterministic core-metadata backfill of a library. Repeated until
- * `done`; the remaining work is re-derived server-side on every call, so stopping the repetition
- * is the pause and the next call the resumption.
- */
-export async function runMetadataBackfillBatch(
-  request: MetadataBackfillRequest,
-): Promise<MetadataBackfillResponse> {
-  try {
-    const { data } = await client.post<MetadataBackfillResponse>(
-      '/v1/admin/indexing/metadata-backfill',
-      request,
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/**
- * One batch of the Kontextpräfix-Nachlauf of a library, repeated until `done` exactly like the
- * backfill above: stopping the repetition is the pause, the next call the resumption.
- */
-export async function runContextPrefixRerunBatch(
-  request: ContextPrefixRerunRequest,
-): Promise<ContextPrefixRerunResponse> {
-  try {
-    const { data } = await client.post<ContextPrefixRerunResponse>(
-      '/v1/admin/indexing/context-prefix-rerun',
-      request,
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/** the vector index against the configured embedding model, and its re-embedding. */
-export async function getEmbeddingReindexStatus(): Promise<EmbeddingReindexStatusResponse> {
-  try {
-    const { data } = await client.get<EmbeddingReindexStatusResponse>(
-      '/v1/admin/indexing/embedding-reindex',
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/** starts or resumes the re-embedding; it runs in the background on the server. */
-export async function startEmbeddingReindex(): Promise<EmbeddingReindexStatusResponse> {
-  try {
-    const { data } = await client.post<EmbeddingReindexStatusResponse>(
-      '/v1/admin/indexing/embedding-reindex',
-    )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/** stops the running re-embedding; what it embedded is kept for the next start. */
-export async function cancelEmbeddingReindex(): Promise<EmbeddingReindexStatusResponse> {
-  try {
-    const { data } = await client.delete<EmbeddingReindexStatusResponse>(
-      '/v1/admin/indexing/embedding-reindex',
     )
     return data
   } catch (err) {

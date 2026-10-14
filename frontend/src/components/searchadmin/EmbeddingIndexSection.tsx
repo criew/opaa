@@ -12,7 +12,7 @@ import {
   cancelEmbeddingReindex,
   getEmbeddingReindexStatus,
   startEmbeddingReindex,
-} from '@/features/library'
+} from '../../services/searchAdminApi'
 import type {
   EmbeddingIndexIdentity,
   EmbeddingReindexRunStatus,
