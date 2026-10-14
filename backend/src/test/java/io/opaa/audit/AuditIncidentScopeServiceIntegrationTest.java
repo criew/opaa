@@ -340,7 +340,7 @@ class AuditIncidentScopeServiceIntegrationTest {
                     scopeStart,
                     AuditIncidentScopePurpose.SECURITY_INCIDENT,
                     "ungueltiger Zeitraum"))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   private AuditLogEntry writeAuditEntryForActor(UUID actorUserId, Instant recordedAt) {

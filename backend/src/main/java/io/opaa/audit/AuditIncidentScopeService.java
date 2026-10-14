@@ -56,11 +56,10 @@ public class AuditIncidentScopeService {
   }
 
   /**
-   * Approves a pending grant. Throws {@link ValidationException} on Selbstfreigabe and {@link
-   * IllegalArgumentException} on a grant that is not pending (both a 400 by {@code
-   * GlobalExceptionHandler}) - caller error, not "not found". {@code @Transactional} so two
-   * concurrent approval attempts against the same grant serialise on this row instead of both
-   * succeeding with an arbitrary "last write wins" {@code approved_by_user_id}.
+   * Approves a pending grant. Throws {@link ValidationException} on Selbstfreigabe or a grant that
+   * is not pending - caller error, not "not found". {@code @Transactional} so two concurrent
+   * approval attempts against the same grant serialise on this row instead of both succeeding with
+   * an arbitrary "last write wins" {@code approved_by_user_id}.
    */
   @Transactional
   public AuditIncidentScopeGrant approve(UUID organizationId, UUID scopeId, UUID approvedByUserId) {

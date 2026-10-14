@@ -83,9 +83,7 @@ public class IndexingAdminController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @Caller CurrentUser caller) {
-    // Validated here, not left to PageRequest.of's own IllegalArgumentException, whose English
-    // message would otherwise reach the response body verbatim via GlobalExceptionHandler - every
-    // user-facing API error is German (AGENTS.md, Projektsprache).
+    // Checked here so the 400 carries a specific German message rather than PageRequest's own.
     if (page < 0) {
       throw new ValidationException("page darf nicht negativ sein, war " + page);
     }

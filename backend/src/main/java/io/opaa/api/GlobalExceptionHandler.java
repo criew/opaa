@@ -152,6 +152,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
     log.warn(
         "Request rejected with illegal argument: {}", errorSanitizer.sanitize(ex.getMessage()));
+    log.debug("Request rejected with illegal argument", ex);
     return respond(HttpStatus.BAD_REQUEST, "Die Anfrage enthält ungültige Angaben");
   }
 

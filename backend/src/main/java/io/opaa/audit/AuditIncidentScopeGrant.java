@@ -96,7 +96,8 @@ public class AuditIncidentScopeGrant {
       String reason,
       UUID requestedByUserId) {
     if (scopeStart == null || scopeEnd == null || scopeStart.isAfter(scopeEnd)) {
-      throw new IllegalArgumentException("scopeStart must not be after scopeEnd");
+      throw new ValidationException(
+          "scopeStart und scopeEnd sind Pflichtangaben, scopeStart darf nicht nach scopeEnd liegen");
     }
     this.id = UUID.randomUUID();
     this.organizationId = organizationId;
@@ -124,7 +125,7 @@ public class AuditIncidentScopeGrant {
    */
   public void approve(UUID approvedByUserId) {
     if (status != AuditIncidentScopeStatus.PENDING) {
-      throw new IllegalArgumentException("Incident scope is not pending approval");
+      throw new ValidationException("Die Klärung wartet nicht auf eine Freigabe");
     }
     if (approvedByUserId.equals(requestedByUserId)) {
       throw new ValidationException("Selbstfreigabe ist nicht zulässig");
