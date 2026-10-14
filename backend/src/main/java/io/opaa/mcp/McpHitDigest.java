@@ -1,5 +1,7 @@
 package io.opaa.mcp;
 
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.search.SearchHit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Component;
  * the entry; the document's remaining passages become {@link Entry#further()}, so a model sees at a
  * glance that a document was found several times without paying for every passage.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 class McpHitDigest {
 

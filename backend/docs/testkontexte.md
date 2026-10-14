@@ -33,6 +33,8 @@ Familie des `local,dev`-Profils, fünf die des Betriebsmodus `oidc`:
   Prüfgegenstand sind (abweichende Embedding-Basis-URL, feste pgvector-Dimension ohne
   Schema-Initialisierung). Technischer Grund: eine Nachbarklasse prüft genau den Default, und der
   Abgleich des Einbettungsindex (`EmbeddingIndexReconciler`) zerstört und erzeugt `vector_store` neu.
+  Mit fährt das abgeschaltete Feature-Flag `EXTERNAL_ACCESS` (ADR-0044): Ob Filterkette, Routen und
+  MCP-Server fehlen, zeigt nur ein ohne sie gestarteter Kontext.
 
 Fünf weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können: Unter
 `local,dev` authentifiziert `DevAuthFilter` jede Anfrage, bevor ein Bearer-Token gelesen wird, eine
@@ -46,6 +48,8 @@ lokale Sitzung ist dort nicht fahrbar (ADR-0033, #1543):
   Basis-URL sind die Link-Flüsse abgeschaltet, und Klassen auf der Basis prüfen genau das.
 - **`@OpaaLocalAuthSeedTest`** — plus zustellbare Erstadministrator-Adresse und Netzbeschränkung;
   die Basis trägt den ausgelieferten Vorgabewert, den der Seed ablehnt, und eine Klasse prüft das.
+  Mit fährt das abgeschaltete Feature-Flag `EXTERNAL_ACCESS`: was ein Tokenwert unter `oidc` ohne
+  die Filterkette des Kanals trifft.
 - **`@OpaaLocalAuthRateLimitTest`** — mit den **echten** Grenzen, die hier Prüfgegenstand sind.
 - **`@OpaaLocalAuthProviderTest`** — plus `OidcProviderTokenTestConfiguration` (echter
   `NimbusJwtDecoder` über einen lokal erzeugten Schlüssel statt eines JWK-Sets aus dem Netz) für

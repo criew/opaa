@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import { useAuthStore } from '@/shared/session/authStore'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
@@ -24,10 +25,18 @@ const TAB_LABELS: Record<ConnectionsAdminTab, string> = {
   settings: 'Einstellungen',
 }
 
-const tabs = CONNECTIONS_ADMIN_TABS.map((value) => ({ value, label: TAB_LABELS[value] }))
+/** The tabs the installation offers: switched off (ADR-0044), the external tools have none. */
+function offeredTabs(externalAccess: boolean): readonly ConnectionsAdminTab[] {
+  return externalAccess
+    ? CONNECTIONS_ADMIN_TABS
+    : CONNECTIONS_ADMIN_TABS.filter((value) => value !== 'external-tools')
+}
 
-function isTab(value: string | undefined): value is ConnectionsAdminTab {
-  return (CONNECTIONS_ADMIN_TABS as readonly string[]).includes(value ?? '')
+function isTab(
+  value: string | undefined,
+  offered: readonly ConnectionsAdminTab[],
+): value is ConnectionsAdminTab {
+  return (offered as readonly string[]).includes(value ?? '')
 }
 
 function TabContent({ tab }: { tab: ConnectionsAdminTab }) {
@@ -51,13 +60,16 @@ function TabContent({ tab }: { tab: ConnectionsAdminTab }) {
  * Die Anbindungen: wie OPAA mit anderen Systemen verbunden ist, in beide Richtungen.
  * Zugänge und Quellarten bestimmen, woraus OPAA liest; externe KI-Werkzeuge lesen aus OPAA. Die
  * Reiter sind Routen; ein unbekannter Reiter führt auf den ersten, statt still einen anderen zu
- * zeigen.
+ * zeigen. Hat die Installation die Fremdzugänge abgeschaltet, gibt es den Reiter der externen
+ * KI-Werkzeuge nicht, und die Seite erwähnt sie nicht.
  */
 export default function ConnectionsAdminPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
+  const externalAccess = useFeatureEnabled('externalAccess')
   const { tab } = useParams()
+  const offered = offeredTabs(externalAccess)
 
-  if (!isTab(tab)) return <Navigate to={connectionsAdminRoute('access')} replace />
+  if (!isTab(tab, offered)) return <Navigate to={connectionsAdminRoute('access')} replace />
 
   if (!isSystemAdmin) {
     return (
@@ -77,10 +89,14 @@ export default function ConnectionsAdminPage() {
         <AreaPageHeader
           icon={CableOutlinedIcon}
           title="Anbindungen"
-          description="Wie OPAA mit anderen Systemen verbunden ist, in beide Richtungen: Über Zugänge liest OPAA Inhalte aus anderen Systemen, externe KI-Werkzeuge lesen Fundstellen aus OPAA."
+          description={
+            externalAccess
+              ? 'Wie OPAA mit anderen Systemen verbunden ist, in beide Richtungen: Über Zugänge liest OPAA Inhalte aus anderen Systemen, externe KI-Werkzeuge lesen Fundstellen aus OPAA.'
+              : 'Wie OPAA mit anderen Systemen verbunden ist: Über Zugänge liest OPAA Inhalte aus anderen Systemen.'
+          }
         />
         <AreaTabs
-          tabs={tabs}
+          tabs={offered.map((value) => ({ value, label: TAB_LABELS[value] }))}
           value={tab}
           href={connectionsAdminRoute}
           label="Bereiche der Anbindungen"

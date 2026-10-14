@@ -4,6 +4,8 @@ import io.opaa.api.dto.ExternalAccessSettingsResponse;
 import io.opaa.api.dto.ExternalAccessSettingsUpdateRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  * installation-wide switch, the token lifetime ceiling, the per-token quota, the networks of the
  * channel, the threshold of the mass retrieval alert and the instructions text for foreign tools.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @RestController
 @RequestMapping("/api/v1/system/external-access")
 public class ExternalAccessSettingsController {

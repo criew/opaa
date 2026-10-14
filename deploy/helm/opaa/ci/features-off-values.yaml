@@ -25,3 +25,5 @@ features:
     enabled: false
   metadata:
     enabled: false
+  externalAccess:
+    enabled: false

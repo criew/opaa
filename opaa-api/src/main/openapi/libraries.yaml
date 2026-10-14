@@ -2127,7 +2127,8 @@ components:
             bibliothek). Set only if myRole is at least MANAGER - the same threshold PUT
             /api/v1/libraries/{libraryId}/external-access enforces for changing it, and the
             tokenCount inside it is an input of the annual renewal decision, not something a
-            VIEWER needs. Absent (not merely null) below that role.
+            VIEWER needs. Absent (not merely null) below that role and while the installation
+            has switched the external access off (FeaturesConfig.externalAccess).
           nullable: true
           allOf:
             - $ref: "#/components/schemas/LibraryExternalAccessResponse"

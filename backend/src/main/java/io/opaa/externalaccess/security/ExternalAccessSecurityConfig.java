@@ -1,5 +1,7 @@
 package io.opaa.externalaccess.security;
 
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessNetworkPolicy;
 import io.opaa.externalaccess.ExternalAccessPathAllowlist;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator;
@@ -35,7 +37,13 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>No resource server, no session, no CSRF: the value is opaque, the bearer filter of the {@code
  * oidc} chain would reject it as a malformed JWT, and a bearer-only call carries no cookie a
  * cross-site request could ride on.
+ *
+ * <p>Absent while the installation has switched the feature off (ADR-0044). Nothing then claims
+ * {@code /mcp} or an access-token value: such a request meets the chain of the authentication mode
+ * like any request to an address that does not exist, and no MCP server is registered to serve it
+ * ({@code McpServerSwitch}).
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Configuration
 public class ExternalAccessSecurityConfig {
 

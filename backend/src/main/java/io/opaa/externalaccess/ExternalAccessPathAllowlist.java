@@ -1,5 +1,7 @@
 package io.opaa.externalaccess;
 
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import java.util.List;
 import java.util.stream.Stream;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Component;
  * twice could be authorised in one place and not in the other, and a method restriction here would
  * only duplicate the {@code 405} the transport already answers.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 public class ExternalAccessPathAllowlist {
 

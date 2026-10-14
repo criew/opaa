@@ -451,7 +451,7 @@ components:
         feature is switched on. Every flag is on unless the installation switched it off; the values
         are fixed at start-up and readable before sign-in. The property name is the camel-case form
         of the flag key, e.g. prompt-libraries -> promptLibraries.
-      required: [promptLibraries, metadata, speechInput]
+      required: [promptLibraries, metadata, speechInput, externalAccess]
       properties:
         promptLibraries:
           type: boolean
@@ -465,6 +465,12 @@ components:
             Dictating a chat question (opaa.features.speech-input.enabled). Switched on, the
             microphone still appears only while the transcription role is usable, see
             getTranscriptionAvailability.
+        externalAccess:
+          type: boolean
+          description: >
+            The external-access channel: access tokens, library releases and the MCP server
+            (opaa.features.external-access.enabled). Switched on, the channel is open only while
+            the installation switch of getExternalAccessSettings is on as well.
 
     LocalAccountsConfig:
       type: object

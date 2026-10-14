@@ -24,6 +24,8 @@ class AuthConfigFeaturesIntegrationTest {
         .perform(get("/api/v1/auth/config"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.features.promptLibraries").value(true))
-        .andExpect(jsonPath("$.features.metadata").value(true));
+        .andExpect(jsonPath("$.features.metadata").value(true))
+        .andExpect(jsonPath("$.features.speechInput").value(true))
+        .andExpect(jsonPath("$.features.externalAccess").value(true));
   }
 }

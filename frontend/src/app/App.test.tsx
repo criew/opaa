@@ -146,4 +146,29 @@ describe('App', () => {
     })
     window.history.pushState({}, '', '/')
   })
+
+  // ADR-0044: switched off, a bookmark of the external tools lands on the first tab of the area.
+  it.each(['/admin/external-access', '/admin/external-access/tokens', '/admin/library-releases'])(
+    'sends %s to the connections while the external access is switched off',
+    async (path) => {
+      useAuthStore.setState({
+        features: { externalAccess: false },
+        user: {
+          id: 'admin-1',
+          displayName: 'Dev Admin',
+          email: 'admin@opaa.local',
+          systemRole: 'SYSTEM_ADMIN',
+        },
+      })
+      setMockFeatures({ externalAccess: false })
+      window.history.pushState({}, '', path)
+      render(<App />)
+      await waitFor(() => {
+        expect(`${window.location.pathname}${window.location.search}${window.location.hash}`).toBe(
+          '/admin/connections/access',
+        )
+      })
+      window.history.pushState({}, '', '/')
+    },
+  )
 })

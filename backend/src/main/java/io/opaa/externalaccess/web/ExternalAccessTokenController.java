@@ -7,6 +7,8 @@ import io.opaa.api.dto.ExternalAccessChannelInfoResponse;
 import io.opaa.api.dto.OwnExternalAccessTokenListResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessSettings.Values;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
@@ -33,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
  * be changed - a change is a new token - so an attempt reaches no handler and is answered 405/404
  * by the framework rather than by a check someone could forget.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @RestController
 @RequestMapping("/api/v1/external-access")
 public class ExternalAccessTokenController {

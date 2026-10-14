@@ -1,5 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Component;
  * release expiring today should have been announced while it still ran, not be reminded about after
  * it already stopped.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 public class LibraryExternalAccessScheduler {
 

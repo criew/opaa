@@ -219,6 +219,8 @@ opaa:
       enabled: ${OPAA_FEATURES_METADATA_ENABLED:true}
     speech-input:
       enabled: ${OPAA_FEATURES_SPEECH_INPUT_ENABLED:true}
+    external-access:
+      enabled: ${OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED:true}
   # Demo seed only: POST /api/v1/spaces/{spaceId}/chat-imports writes prepared chat transcripts
   # without a model call. The route exists only while this is true; off everywhere else.
   demo:

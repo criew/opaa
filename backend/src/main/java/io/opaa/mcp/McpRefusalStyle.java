@@ -1,5 +1,7 @@
 package io.opaa.mcp;
 
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.security.ExternalAccessRefusalStyle;
 import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
@@ -26,6 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
  *       WWW-Authenticate}: a tool whose token expired needs to see that, not a missing page.
  * </ul>
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 class McpRefusalStyle implements ExternalAccessRefusalStyle {
 

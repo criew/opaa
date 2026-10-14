@@ -3,6 +3,8 @@ package io.opaa.externalaccess.token;
 import io.opaa.account.LocalAccountMaintenanceStep;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import java.time.Clock;
 import java.time.Instant;
@@ -35,6 +37,7 @@ import org.springframework.stereotype.Component;
  * run did not happen is a reminder not sent, not one sent twice - the same trade-off {@code
  * ExpiryReminderStep} makes for accounts.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 @Order(41)
 public class ExternalAccessTokenExpiryReminderStep implements LocalAccountMaintenanceStep {

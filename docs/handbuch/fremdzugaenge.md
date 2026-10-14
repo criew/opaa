@@ -117,6 +117,28 @@ meisten Häuser ausreichend. Er sagt dem fremden Modell, wann es den Kanal in Be
 und dass es seine Antworten mit Fundstellen zu belegen hat. Seine Änderung ändert keine Reichweite
 und wird deshalb **nicht** protokolliert — jede andere Änderung in diesem Panel schon.
 
+### Fremdzugänge ganz abschalten
+
+Über dem Schalter steht eine Entscheidung des Betriebs: Eine Installation kann Fremdzugänge ganz
+abschalten, etwa für eine Demo oder bis die Beteiligung der Personalvertretung geklärt ist
+(`OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED=false`, siehe
+[Konfiguration](konfiguration.md#funktionen-abschalten)). Offen ist der Kanal nur, wenn die Funktion
+an **und** der Schalter eingeschaltet ist. Ist die Funktion aus,
+
+- erwähnt die Oberfläche Fremdzugänge nirgends, auch nicht für die Systemverwaltung: Es gibt keinen
+  Reiter „Externe KI-Werkzeuge", keinen Bereich „Zugangstokens" in den eigenen Einstellungen und
+  keinen Abschnitt „Externer Zugang" an der Bibliothek;
+- antworten der MCP-Endpunkt und alle Adressen der Fremdzugänge wie eine Adresse, die es nicht gibt,
+  und kein Token wirkt — auch nicht bei eingeschaltetem Schalter;
+- geht keine Erinnerungsmail vor dem Ablauf eines Tokens hinaus, und die nächtliche Wiedervorlage
+  und der Ablauflauf der Bibliotheksfreigaben entfallen.
+
+Tokens, Freigaben und Einstellungen bleiben gespeichert. Wird die Funktion wieder eingeschaltet,
+gilt der frühere Stand; was inzwischen abgelaufen ist, wirkt nicht mehr. Die Löschfristen laufen
+dabei weiter: Abgelaufene Tokens treten wie gewohnt außer Kraft, und ihre Zeilen werden nach der
+Protokollfrist gelöscht (Abschnitt 6). Endet der Zugang einer Person, während die Funktion aus ist,
+enden ihre Tokens ebenfalls.
+
 ## 4. Die Freigabe einer Wissensbibliothek
 
 Freigabe-Einheit ist die **Wissensbibliothek**, nicht der Space. Jede Bibliothek trägt im Reiter
@@ -704,6 +726,7 @@ Namensauflösung findet dabei nicht statt.
 
 | Variable | Standard | Wirkung |
 |---|---|---|
+| `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `true` | `false` schaltet die Fremdzugänge für die Installation ab, unabhängig vom Schalter (Abschnitt 3, „Fremdzugänge ganz abschalten"); Tokens, Freigaben und Einstellungen bleiben gespeichert |
 | `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` | `365` | Längste zulässige Befristung einer Bibliotheksfreigabe in Tagen. Muss positiv sein — eine Freigabe ohne Obergrenze ist genau die Ratsche, die die Befristung verhindert |
 | `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `14` | Vorlauf der Wiedervorlage an die Person, die die Freigabe zuletzt gesetzt hat (Abschnitt 4). `0` schaltet die Erinnerung ab; die Freigabe erlischt trotzdem, nur unangekündigt |
 | `OPAA_MCP_DEFAULT_MAX_HITS` | `5` | Dokumente, die eine `search` über MCP ohne eigenes `maxHits` liefert. Bewusst niedriger als die Vorgabe des REST-Suchwegs: Hier ist ein Treffer eine Station auf dem Weg zum Abruf, nicht die Antwort |

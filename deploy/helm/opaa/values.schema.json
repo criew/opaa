@@ -445,6 +445,19 @@
             }
           },
           "description": "Dictation in the chat"
+        },
+        "externalAccess": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "description": "External access: access tokens, library releases and the MCP server"
         }
       }
     },

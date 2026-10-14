@@ -53,14 +53,19 @@ einer im Werteschema hinzu (Entscheidung 8).
 | `PROMPT_LIBRARIES` | Prompt-Bibliotheken aus Katalog, Chat und Oberfläche; der Asset-Typ bleibt für Bestandsdaten registriert (`AssetTypes#active`) | #2588 |
 | `METADATA` | Metadaten von Dokumenten und Bibliotheken; aus bleibt nur der Titel, kein Filter verengt | #2589 |
 | `SPEECH_INPUT` | Diktat im Chat; das Mikrofon erscheint nur, solange auch die Transkription konfiguriert ist | #2629 |
+| `EXTERNAL_ACCESS` | Fremdzugänge (ADR-0035): Zugangstokens, Bibliotheksfreigaben und der MCP-Server; aus gibt es weder die Filterkette des Kanals noch `/mcp` (`McpServerSwitch` hält den Starter heraus), offen ist der Kanal nur mit Flag und Schalter der Installation | #2749 |
 
 ### 6. Zwei Wege, ein Flag zu beachten
 
 - `@ConditionalOnFeature(Feature.X)` registriert eine Klasse oder `@Bean`-Methode nur bei
   eingeschaltetem Flag — für **Blatt-Beans**, die niemand injiziert (Controller, Scheduler, Runner,
-  Listener). Eine abgeschaltete Route existiert dann nicht und antwortet wie jede unbekannte Adresse.
+  Listener), oder einen Teilgraphen, dessen Abnehmer sämtlich bedingt sind. Eine abgeschaltete Route existiert dann nicht und antwortet wie jede unbekannte Adresse.
 - `FeatureFlags#isEnabled(Feature)` ist die Laufzeitprüfung für Beans, von denen andere abhängen, für
   gemeinsame Definitionen und für Prüfungen in Diensten.
+
+Eine Auto-Konfiguration einer Bibliothek kennt das Flag nicht. Registriert sie sonst Routen der
+abgeschalteten Funktion, schaltet ein `EnvironmentPostProcessor` sie über ihren eigenen Schalter ab
+und liest dafür dieselbe Regel (`FeatureFlags#isEnabled(Environment, Feature)`, `McpServerSwitch`).
 
 Bedingung und `FeatureFlags` lesen über dieselbe Regel (Spring-Binder, gelockerte Schreibweise,
 Vorgabe an), es gibt kein `matchIfMissing`. Roh-`@ConditionalOnProperty` auf `opaa.features.*` wird

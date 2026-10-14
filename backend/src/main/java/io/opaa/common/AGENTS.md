@@ -30,7 +30,7 @@ Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-
 - **Ratenbegrenzung:** `RateLimitService`: Gleitfenster je Geltungsbereich, gedeckelter Schlüsselraum, jenseits
   des Deckels offen. Ein Wildcard-Bereich in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` wird in jedem Profil abgewiesen.
 - **`TargetAddressValidator` kann DNS-Rebinding nicht ausschließen** — eine akzeptierte Grenze.
-- **Feature-Flags sind ohne Angabe an;** `@ConditionalOnFeature` nur an Blatt-Beans.
+- **Feature-Flags sind ohne Angabe an;** `@ConditionalOnFeature` an Blatt-Beans und rein bedingten Teilgraphen.
 - **`OutboundProxySelector` ist der Proxy-Standard der JVM:** nur `http`/`https` über den Proxy,
   `socket://` (SMB, SMTP, JDBC) und Loopback nie; das AWS SDK bekommt ihn über `proxyFor`.
 

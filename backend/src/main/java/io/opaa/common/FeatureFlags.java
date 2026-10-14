@@ -43,6 +43,15 @@ public class FeatureFlags {
     return flags.get(feature);
   }
 
+  /**
+   * The same rule for code that runs before any bean exists, such as an {@code
+   * EnvironmentPostProcessor} that has to keep an auto-configuration of a switched-off feature out
+   * of the context.
+   */
+  public static boolean isEnabled(Environment environment, Feature feature) {
+    return FeatureResolution.isEnabled(environment, feature);
+  }
+
   /** Every flag with its state, in the declaration order of {@link Feature}. */
   public Map<Feature, Boolean> asMap() {
     return flags;
