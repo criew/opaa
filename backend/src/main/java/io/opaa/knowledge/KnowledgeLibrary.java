@@ -124,10 +124,10 @@ public class KnowledgeLibrary extends Asset {
    * LibraryListResponse}. Encrypted at rest via {@link SourceCredentialsConverter} - this
    * getter/field sees the decrypted plaintext, the same as before #483, unless the stored value can
    * no longer be decrypted (key lost/rotated, corrupted value), in which case the converter logs a
-   * warning and this field reads as {@code null} rather than failing the whole load (PR #504
-   * review). The column itself holds {@code enc:v1:<base64>} (or a legacy pre-#483 cleartext value,
-   * see that converter's Javadoc). The column is {@code text}: the API admits 4096 plaintext
-   * characters, which their encrypted encoding exceeds.
+   * warning and this field reads as {@code null} rather than failing the whole load. The column
+   * itself holds {@code enc:v1:<base64>} (or a legacy pre-#483 cleartext value, see that
+   * converter's Javadoc). The column is {@code text}: the API admits 4096 plaintext characters,
+   * which their encrypted encoding exceeds.
    */
   @Convert(converter = SourceCredentialsConverter.class)
   @Column(name = "source_credentials", columnDefinition = "text")

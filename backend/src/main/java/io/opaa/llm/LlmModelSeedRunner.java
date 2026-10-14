@@ -25,12 +25,11 @@ import org.springframework.stereotype.Component;
  * left to propagate.
  *
  * <p>A missing {@code OPAA_SETTINGS_ENCRYPTION_KEY} while taking over a configured {@code openai}
- * API key is deliberately <em>not</em> among those (PR #763 review's own scope was narrower than
- * the deployment docs it referenced): {@link LlmModelSeeder#seedIfNeeded()} catches that case
- * itself and logs an operator-facing error instead of throwing, so the application still starts -
- * see that method's own Javadoc. Only this class ever needs to distinguish "startup may proceed"
- * from "startup must abort"; {@link LlmModelSeeder} never decides that for itself beyond this one
- * case.
+ * API key is deliberately <em>not</em> among those: {@link LlmModelSeeder#seedIfNeeded()} catches
+ * that case itself and logs an operator-facing error instead of throwing, so the application still
+ * starts - see that method's own Javadoc. Only this class ever needs to distinguish "startup may
+ * proceed" from "startup must abort"; {@link LlmModelSeeder} never decides that for itself beyond
+ * this one case.
  *
  * <p><b>Ablaufdatum:</b> einmalige Übernahme für Bestandsinstallationen, Kandidat zur Entfernung ab
  * v1.0.

@@ -27,9 +27,9 @@ import org.springframework.stereotype.Service;
  * directory. Deliberately holds no {@code @Transactional} annotation anywhere in this class -
  * {@link DirectoryClient#fetchSnapshot} runs here, outside any transaction of the application's
  * transaction manager, so a slow or failing real directory connector never holds a work transaction
- * open for the duration of a network call (review of PR #297). The transactional plan computation
- * and, if applicable, application live in {@link DirectorySyncPlanExecutor}, a separate bean called
- * from here through Spring's proxy.
+ * open for the duration of a network call. The transactional plan computation and, if applicable,
+ * application live in {@link DirectorySyncPlanExecutor}, a separate bean called from here through
+ * Spring's proxy.
  *
  * <p><b>Bound to an identity provider row</b> (ADR-0036, Entscheidung 2 and 3). A run exists only
  * for a provider whose row is enabled and whose directory run is switched on; both are refused with
@@ -293,7 +293,7 @@ public class DirectorySyncService {
     // If the executor's transaction fails to commit (e.g. a directory-supplied value that violates
     // a column constraint), the exception propagates from here and nothing below runs - so a failed
     // apply can never be recorded as APPLIED. See DirectorySyncPlanExecutor's class javadoc for the
-    // defect this replaced (review of PR #297).
+    // defect this replaced.
     SyncReport report = plan.apply(snapshot, now);
     recordStatusSafely(target, now, report.outcome(), report.message(), report.changedFraction());
     return report;
@@ -349,10 +349,10 @@ public class DirectorySyncService {
    * A failure here (e.g. the status row's own insert/update failing) must not turn an already
    * successful, already-committed plan/apply - or an already-built unreachable report - into an
    * error response: the group/membership changes (if any) are real regardless, and the caller still
-   * needs the report. Under-recording the status is the safer direction of the two failure modes
-   * (review of PR #297): a missing or stale status line is visible and prompts an operator to
-   * check, whereas swallowing the report behind an exception here would additionally invite a retry
-   * of a run that already applied.
+   * needs the report. Under-recording the status is the safer direction of the two failure modes: a
+   * missing or stale status line is visible and prompts an operator to check, whereas swallowing
+   * the report behind an exception here would additionally invite a retry of a run that already
+   * applied.
    */
   private void recordStatusSafely(
       SyncTarget target,

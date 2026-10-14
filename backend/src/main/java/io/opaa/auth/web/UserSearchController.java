@@ -20,9 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
  * silently-swallowed 403 for anyone without {@code SYSTEM_ADMIN}, and rendered a permanently empty,
  * dead-looking search field - "Mitglied hinzufügen" was unusable for every non-admin. Same
  * precedent as {@code MeController#myGroups} (any authenticated user needs their own group
- * memberships) and {@code AssetGrantService#toResponses}'s server-side name resolution (#423 code
- * review): the threshold this endpoint needs is "authenticated member of the organization", not
- * {@code SYSTEM_ADMIN}.
+ * memberships) and {@code AssetGrantService#toResponses}'s server-side name resolution: the
+ * threshold this endpoint needs is "authenticated member of the organization", not {@code
+ * SYSTEM_ADMIN}.
  *
  * <p>Returns {@link UserSummaryResponse} (id/email/displayName only, no {@code systemRole}) -
  * deliberately narrower than {@link io.opaa.api.dto.UserInfoResponse}, the admin list's response
@@ -40,8 +40,8 @@ public class UserSearchController {
     this.userService = userService;
   }
 
-  // #778 review, finding 4: query is required in practice - see UserService#searchInOrganization,
-  // which returns an empty list rather than the whole organization for a missing or too-short one.
+  // Query is required in practice - see UserService#searchInOrganization, which returns an empty
+  // list rather than the whole organization for a missing or too-short one.
   @GetMapping
   public List<UserSummaryResponse> listUsers(
       @Caller CurrentUser caller, @RequestParam(required = false) String query) {

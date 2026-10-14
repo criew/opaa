@@ -53,7 +53,7 @@ public class DocumentController {
    * opened inline - mirrors {@link BrandingController#getBrandingLogo}'s own three, except this
    * endpoint serves arbitrary indexed files rather than a format {@code BrandingImageValidator}
    * already forces to a real image, so these headers are the only line of defense here, not a
-   * second one (#742 review, finding 1):
+   * second one:
    *
    * <ul>
    *   <li>{@code X-Content-Type-Options: nosniff}
@@ -80,12 +80,11 @@ public class DocumentController {
 
   /**
    * {@link MediaType#parseMediaType} falls back to {@code application/octet-stream} instead of
-   * propagating {@link InvalidMediaTypeException} (#748 review, finding 2a) - that exception is an
-   * {@link IllegalArgumentException}, uncaught here would surface as a 500 for a stored or
-   * remote-declared {@code Content-Type} this class does not control the syntax of (a malformed
-   * value from a remote source proxied by {@link LibraryDocumentService#loadContent}), turning
-   * "source sent something odd" into an OPAA-side server error instead of a merely generic
-   * download.
+   * propagating {@link InvalidMediaTypeException} - that exception is an {@link
+   * IllegalArgumentException}, uncaught here would surface as a 500 for a stored or remote-declared
+   * {@code Content-Type} this class does not control the syntax of (a malformed value from a remote
+   * source proxied by {@link LibraryDocumentService#loadContent}), turning "source sent something
+   * odd" into an OPAA-side server error instead of a merely generic download.
    */
   private MediaType parseMediaTypeOrOctetStream(String contentType) {
     try {
@@ -99,10 +98,10 @@ public class DocumentController {
   /**
    * Builds an RFC 6266 {@code Content-Disposition} value carrying {@code fileName} twice: an ASCII
    * {@code filename} a client without RFC 5987 support falls back to, and the exact, UTF-8 {@code
-   * filename*} every modern browser actually uses (#742 review, nit 4). {@link java.net.URLEncoder}
-   * is deliberately not used for the latter - it targets {@code application/x-www-form-urlencoded},
-   * which leaves {@code *} unescaped even though RFC 8187's {@code attr-char} does not include it,
-   * and encodes a space as {@code +} rather than {@code %20}.
+   * filename*} every modern browser actually uses. {@link java.net.URLEncoder} is deliberately not
+   * used for the latter - it targets {@code application/x-www-form-urlencoded}, which leaves {@code
+   * *} unescaped even though RFC 8187's {@code attr-char} does not include it, and encodes a space
+   * as {@code +} rather than {@code %20}.
    */
   private String contentDisposition(String fileName) {
     return "inline; filename=\""
@@ -132,9 +131,9 @@ public class DocumentController {
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$&+-.^_`|~";
 
   /**
-   * Percent-encodes {@code fileName}'s UTF-8 bytes per RFC 8187's {@code attr-char} (#742 review,
-   * nit 4) - notably including {@code *} and {@code '}, which {@link java.net.URLEncoder} would
-   * leave unescaped even though neither is a valid {@code attr-char}.
+   * Percent-encodes {@code fileName}'s UTF-8 bytes per RFC 8187's {@code attr-char} - notably
+   * including {@code *} and {@code '}, which {@link java.net.URLEncoder} would leave unescaped even
+   * though neither is a valid {@code attr-char}.
    */
   private String rfc5987(String fileName) {
     StringBuilder result = new StringBuilder();

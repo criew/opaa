@@ -37,7 +37,7 @@ public class NotificationService {
         new Notification(organizationId, recipientUserId, type, objectType, objectId, title, body));
   }
 
-  /** The recipient's newest notifications, newest first, capped at {@code limit} (#706 review). */
+  /** The recipient's newest notifications, newest first, capped at {@code limit}. */
   public List<Notification> listForRecipient(UUID currentUserId, int limit) {
     return notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(
         currentUserId, PageRequest.of(0, limit));

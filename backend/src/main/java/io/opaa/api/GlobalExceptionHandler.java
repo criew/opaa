@@ -172,10 +172,10 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * #393 code review, nit 6: the sibling of {@link #handleMissingServletRequestParameterException}
-   * - a *malformed* required parameter (e.g. {@code ?from=gestern} or {@code ?objectType=FOO}
-   * against the #393 revision access paths) is still a caller error, not a server error, and fell
-   * through to {@link #handleGenericException}'s {@code 500} without this handler.
+   * The sibling of {@link #handleMissingServletRequestParameterException} - a *malformed* required
+   * parameter (e.g. {@code ?from=gestern} or {@code ?objectType=FOO} against the #393 revision
+   * access paths) is still a caller error, not a server error, and fell through to {@link
+   * #handleGenericException}'s {@code 500} without this handler.
    */
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
@@ -239,9 +239,9 @@ public class GlobalExceptionHandler {
           errorSanitizer.sanitize(ex.getMessage()));
       ResponseEntity.BodyBuilder responseBuilder =
           ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE);
-      // #768 review, should-finding 5: RateLimitException (429) is the one OpenAIServiceException
-      // subtype whose headers() routinely carries a Retry-After the provider actually computed -
-      // worth passing through to the caller rather than leaving them to guess a backoff.
+      // RateLimitException (429) is the one OpenAIServiceException subtype whose headers()
+      // routinely carries a Retry-After the provider actually computed - worth passing through to
+      // the caller rather than leaving them to guess a backoff.
       if (ex instanceof RateLimitException rateLimitException) {
         List<String> retryAfter = rateLimitException.headers().values(HttpHeaders.RETRY_AFTER);
         if (!retryAfter.isEmpty()) {
@@ -261,8 +261,8 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * #768 review, should-finding 1: the remaining direct {@link OpenAIException} subtypes - {@code
-   * OpenAIInvalidDataException} chief among them - are neither a connection-level failure ({@link
+   * The remaining direct {@link OpenAIException} subtypes - {@code OpenAIInvalidDataException}
+   * chief among them - are neither a connection-level failure ({@link
    * #handleOpenAiTransientException}) nor a genuine HTTP error response from the provider ({@link
    * #handleOpenAiServiceException}); the SDK throws this one when a response it received does not
    * match the shape it expects, which is exactly what an only OpenAI-*compatible* server (Ollama,
@@ -467,24 +467,23 @@ public class GlobalExceptionHandler {
 
   /**
    * The container-level counterpart to {@code LibraryDocumentService}'s own {@code
-   * opaa.upload.max-file-size} check (#420 code review, finding 2): {@code
-   * spring.servlet.multipart.max-file-size}/{@code max-request-size} are bound to the exact same
-   * configured value (application.yml), so this fires only for the same limit that check already
-   * enforces, or - because multipart request framing carries a little overhead beyond the raw file
-   * bytes - for a request just over {@code max-request-size} at a file size just under it. Without
-   * this handler, {@code ExceptionHandlerExceptionResolver} never reaches {@code
-   * DefaultHandlerExceptionResolver}'s own multipart handling (it runs first and {@code
-   * handleGenericException} below - the last-resort {@code Exception} handler - would otherwise
-   * catch this first), and the response was a bare {@code 500} instead of the required {@code 413}
-   * with a German message.
+   * opaa.upload.max-file-size} check: {@code spring.servlet.multipart.max-file-size}/{@code
+   * max-request-size} are bound to the exact same configured value (application.yml), so this fires
+   * only for the same limit that check already enforces, or - because multipart request framing
+   * carries a little overhead beyond the raw file bytes - for a request just over {@code
+   * max-request-size} at a file size just under it. Without this handler, {@code
+   * ExceptionHandlerExceptionResolver} never reaches {@code DefaultHandlerExceptionResolver}'s own
+   * multipart handling (it runs first and {@code handleGenericException} below - the last-resort
+   * {@code Exception} handler - would otherwise catch this first), and the response was a bare
+   * {@code 500} instead of the required {@code 413} with a German message.
    *
    * <p>The reported limit comes from {@link UploadProperties} rather than {@code
-   * ex.getMaxUploadSize()} (#420 second code review round, nit 2): {@code
-   * StandardServletMultipartResolver} only populates that field when the container's own error
-   * message happens to match its "size ... exceed" heuristic, and in practice usually reports
-   * {@code -1} instead - which would silently drop the figure from the message the acceptance
-   * criteria ask for. {@link UploadProperties} is the actual configured limit either way, since
-   * both this handler and the container's own check are bound to the same value.
+   * ex.getMaxUploadSize()}: {@code StandardServletMultipartResolver} only populates that field when
+   * the container's own error message happens to match its "size ... exceed" heuristic, and in
+   * practice usually reports {@code -1} instead - which would silently drop the figure from the
+   * message the acceptance criteria ask for. {@link UploadProperties} is the actual configured
+   * limit either way, since both this handler and the container's own check are bound to the same
+   * value.
    */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
@@ -511,12 +510,12 @@ public class GlobalExceptionHandler {
 
   /**
    * The remaining multipart failures that are neither a size overrun nor a missing part - a
-   * malformed body, an aborted transfer (#420 second code review round, nit 2). {@code
-   * StandardServletMultipartResolver} only throws the more specific {@link
-   * MaxUploadSizeExceededException} when the container's error message happens to match its own
-   * "size ... exceed" heuristic; anything else surfaces as a bare {@link MultipartException}, which
-   * - without this handler, declared after the two more specific ones above so Spring still prefers
-   * those - fell through to {@link #handleGenericException}'s {@code 500}.
+   * malformed body, an aborted transfer. {@code StandardServletMultipartResolver} only throws the
+   * more specific {@link MaxUploadSizeExceededException} when the container's error message happens
+   * to match its own "size ... exceed" heuristic; anything else surfaces as a bare {@link
+   * MultipartException}, which - without this handler, declared after the two more specific ones
+   * above so Spring still prefers those - fell through to {@link #handleGenericException}'s {@code
+   * 500}.
    */
   @ExceptionHandler(MultipartException.class)
   public ResponseEntity<ErrorResponse> handleMultipartException(MultipartException ex) {
@@ -592,10 +591,9 @@ public class GlobalExceptionHandler {
     if (credentialsCause != null) {
       return handleCredentialsEncryptionKeyMissingException(credentialsCause);
     }
-    // #768 review, optional finding 4: a com.openai.errors.* exception wrapped by something else
-    // (e.g. Spring AI's own retry/advisor machinery) would otherwise still land here uncaught by
-    // any of the dedicated handlers above, which only match against the exception actually thrown
-    // to this method - not its cause chain.
+    // A com.openai.errors.* exception wrapped by something else (e.g. Spring AI's own retry/advisor
+    // machinery) would otherwise still land here uncaught by any of the dedicated handlers above,
+    // which only match against the exception actually thrown to this method - not its cause chain.
     OpenAIException openAiCause = findCause(ex, OpenAIException.class);
     if (openAiCause != null) {
       if (openAiCause instanceof OpenAIServiceException serviceException) {

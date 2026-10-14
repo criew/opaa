@@ -48,7 +48,7 @@ public class MailSenderProvider {
   /**
    * A transport and the settings it was built from, handed out together: a caller that asked for
    * the two separately could compose an envelope from settings the transport was not built from, if
-   * a change committed between the two calls (#1559 review).
+   * a change committed between the two calls.
    */
   public record Transport(JavaMailSender sender, MailSettingsSnapshot settings) {}
 

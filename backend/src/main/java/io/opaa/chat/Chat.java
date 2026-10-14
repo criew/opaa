@@ -29,17 +29,16 @@ import org.hibernate.type.SqlTypes;
  * read it while {@link #status} is {@link ChatStatus#PRIVATE} - the only value that currently
  * exists, see that enum's Javadoc.
  *
- * <p><b>#561 review: {@link #title}/{@link #titleSource}/{@link #updatedAt} are never mutated on an
- * instance loaded long before the write, then written back with a full {@code
- * chatRepository.save(chat)} merge</b> - only {@link #applyUpdate} does that, and only because the
- * load and the save happen in the same short {@code @Transactional} method ({@code
- * ChatService#updateChat}), not across the multi-second gap {@code QueryService#query} leaves
- * between loading a chat and {@code ChatService#appendTurn} eventually writing to it (during which
- * a concurrent {@code PATCH} could rename the chat). Both {@code appendTurn}'s
- * prefix-fallback/{@code touch} and {@code ChatTitleGenerationService}'s LLM-derived title instead
- * go through {@link ChatRepository}'s targeted, atomic {@code @Modifying} update methods, which
- * read and write the current database row in one statement rather than trusting a possibly-stale
- * in-memory snapshot.
+ * <p><b>{@link #title}/{@link #titleSource}/{@link #updatedAt} are never mutated on an instance
+ * loaded long before the write, then written back with a full {@code chatRepository.save(chat)}
+ * merge</b> - only {@link #applyUpdate} does that, and only because the load and the save happen in
+ * the same short {@code @Transactional} method ({@code ChatService#updateChat}), not across the
+ * multi-second gap {@code QueryService#query} leaves between loading a chat and {@code
+ * ChatService#appendTurn} eventually writing to it (during which a concurrent {@code PATCH} could
+ * rename the chat). Both {@code appendTurn}'s prefix-fallback/{@code touch} and {@code
+ * ChatTitleGenerationService}'s LLM-derived title instead go through {@link ChatRepository}'s
+ * targeted, atomic {@code @Modifying} update methods, which read and write the current database row
+ * in one statement rather than trusting a possibly-stale in-memory snapshot.
  */
 @Entity
 @Table(name = "chats")
@@ -88,17 +87,17 @@ public class Chat {
    * fk_chat_library_references_library_organization} then reject a chat_id/library_id pair whose
    * organizations differ, at the database level, without the application ever naming an
    * organization_id itself. Widening this {@code @ElementCollection<UUID>} to a {@code
-   * Set<Embeddable>} carrying organization_id was considered and rejected (PR #680 review): it
-   * would make the column application-settable, and therefore application-misassignable, for a
-   * value whose entire point is to be derivable and unforgeable. If this collection ever needs a
-   * second attribute for an unrelated reason, keep organization_id out of the Java model and let
-   * the trigger keep owning it.
+   * Set<Embeddable>} carrying organization_id was considered and rejected: it would make the column
+   * application-settable, and therefore application-misassignable, for a value whose entire point
+   * is to be derivable and unforgeable. If this collection ever needs a second attribute for an
+   * unrelated reason, keep organization_id out of the Java model and let the trigger keep owning
+   * it.
    *
-   * <p>{@code EAGER} (#525 review round 2, finding A; kept under #889's read phase/LLM call/write
-   * phase pipeline - {@code QueryService#effectiveLibraryScope} still reads this collection on a
-   * detached {@link Chat} in the read phase, never inside the write phase's transaction): the
-   * default {@code LAZY} fetch would throw {@code LazyInitializationException} there. Safe to pay
-   * unconditionally - the collection is small and read on essentially every load.
+   * <p>{@code EAGER} (under the read phase/LLM call/write phase pipeline - {@code
+   * QueryService#effectiveLibraryScope} still reads this collection on a detached {@link Chat} in
+   * the read phase, never inside the write phase's transaction): the default {@code LAZY} fetch
+   * would throw {@code LazyInitializationException} there. Safe to pay unconditionally - the
+   * collection is small and read on essentially every load.
    */
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "chat_library_references", joinColumns = @JoinColumn(name = "chat_id"))

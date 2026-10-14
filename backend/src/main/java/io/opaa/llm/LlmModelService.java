@@ -146,10 +146,10 @@ public class LlmModelService {
   }
 
   /**
-   * Deletes a model - rejected with 409 while it is the systemwide active one (#757 review: the
-   * check and the delete must be the same transaction, not a {@code getModel}/{@code deleteModel}
-   * pair the controller composes itself, which left a TOCTOU window between "still active" and
-   * "gone" open to a concurrent {@link #activateModel}/{@link #updateModel} call).
+   * Deletes a model - rejected with 409 while it is the systemwide active one (the check and the
+   * delete must be the same transaction, not a {@code getModel}/{@code deleteModel} pair the
+   * controller composes itself, which left a TOCTOU window between "still active" and "gone" open
+   * to a concurrent {@link #activateModel}/{@link #updateModel} call).
    */
   @Transactional
   public void deleteModel(UUID organizationId, UUID actorUserId, UUID id) {
@@ -198,9 +198,9 @@ public class LlmModelService {
     for (LlmModel currentlyActive : repository.findAllByActiveTrue()) {
       currentlyActive.deactivate();
       repository.saveAndFlush(currentlyActive);
-      // #757 review of #763: the model that stops being active gets its own audit event, distinct
-      // from the LLM_MODEL_ACTIVATED event of whatever model replaces it - otherwise "wann hörte
-      // Modell X auf, aktiv zu sein" was only indirectly readable.
+      // The model that stops being active gets its own audit event, distinct from the
+      // LLM_MODEL_ACTIVATED event of whatever model replaces it - otherwise "wann hörte Modell X
+      // auf, aktiv zu sein" was only indirectly readable.
       recordChange(
           organizationId,
           actorUserId,

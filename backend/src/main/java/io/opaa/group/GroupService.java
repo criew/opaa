@@ -671,9 +671,9 @@ public class GroupService {
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
     if (nameChanged || descriptionChanged) {
-      // #392 code review, finding 4: changedFields names which fields changed without carrying the
-      // free-text description content itself into the append-only log - see
-      // KnowledgeLibraryService#updateLibrary's identical treatment.
+      // changedFields names which fields changed without carrying the free-text description content
+      // itself into the append-only log - see KnowledgeLibraryService#updateLibrary's identical
+      // treatment.
       List<String> changedFields = new ArrayList<>();
       if (nameChanged) {
         changedFields.add("name");

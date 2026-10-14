@@ -100,9 +100,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * (sharing and granting roles to others), <em>not</em> {@code OWNER}: every member automatically
  * holding {@code OWNER} would grow without a human decision point as a directory-synchronised
  * group's membership grows and could never be downgraded once it became the library's only {@code
- * OWNER} grant (#202 code review round 2). The accepted price is that the personal {@code OWNER}
- * grant is lost when its holder leaves - #240 (succession instead of blocking) is what regulates
- * that case, not this class.
+ * OWNER} grant. The accepted price is that the personal {@code OWNER} grant is lost when its holder
+ * leaves - #240 (succession instead of blocking) is what regulates that case, not this class.
  *
  * <p>A third owner kind, {@code SYSTEM}, existed from #201 until #521: exactly one library per
  * organization, seeded {@code PRIVATE} with no grants and reachable only to a system administrator.
@@ -480,9 +479,8 @@ public class KnowledgeLibraryService {
    * LibraryAccessService#effectiveRolesForReadableLibraries}, not {@link
    * LibraryAccessService#effectiveRole} - see that method's Javadoc for why: combining this
    * method's uncached membership with that one's cached, per-library role could leave a listed
-   * library with an unresolvable ({@code null}) role against a required response field (#425 code
-   * review, finding 1), and calling it once per library would cost one extra query per library on a
-   * cold cache (#425 code review, nit 4).
+   * library with an unresolvable ({@code null}) role against a required response field, and calling
+   * it once per library would cost one extra query per library on a cold cache.
    *
    * <p><b>{@code systemAdmin} is accepted for signature parity with the sibling endpoints ({@link
    * #getLibrary}, {@link #updateLibrary}, {@link #deleteLibrary}) but not used here</b>: unlike
@@ -585,14 +583,13 @@ public class KnowledgeLibraryService {
       throw new ValidationException(
           "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
     }
-    // #476 code review, finding 4: the typed configuration - unlike sourceType itself - can be
-    // updated (credential rotation, moving a crawl target) without deleting and recreating the
-    // library. Only actually replaced when the request carries at least one configuration field
-    // (hasSourceConfigurationFields) - a request that only renames the library (every existing
-    // caller, e.g. LibraryManagementPage) must leave a FILESYSTEM/HTTP_DIRECTORY/RSS_FEED
-    // library's configuration untouched rather than nulling it out because the fields were simply
-    // absent from that unrelated request. Connector-owned fields are replaced when present and
-    // left alone when absent.
+    // The typed configuration - unlike sourceType itself - can be updated (credential rotation,
+    // moving a crawl target) without deleting and recreating the library. Only actually replaced
+    // when the request carries at least one configuration field (hasSourceConfigurationFields) - a
+    // request that only renames the library (every existing caller, e.g. LibraryManagementPage)
+    // must leave a FILESYSTEM/HTTP_DIRECTORY/RSS_FEED library's configuration untouched rather than
+    // nulling it out because the fields were simply absent from that unrelated request.
+    // Connector-owned fields are replaced when present and left alone when absent.
     boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
     if (library.isOwnerOnly()
         && request.sourceCredentials() != null
@@ -694,10 +691,10 @@ public class KnowledgeLibraryService {
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
     if (nameChanged || descriptionChanged) {
-      // #392 code review, finding 4: before/after stay limited to which fields changed, not the
-      // free-text description content itself - the specification limits before/after to what is
-      // "rechtlich Erheblich" (role, deadline, visibility), and description is user-entered
-      // free text that can carry third-party personal data into an append-only log.
+      // Before/after stay limited to which fields changed, not the free-text description content
+      // itself - the specification limits before/after to what is "rechtlich Erheblich" (role,
+      // deadline, visibility), and description is user-entered free text that can carry third-party
+      // personal data into an append-only log.
       List<String> changedFields = new ArrayList<>();
       if (nameChanged) {
         changedFields.add("name");
@@ -810,12 +807,12 @@ public class KnowledgeLibraryService {
     boolean systemAdmin = caller.isSystemAdmin();
     KnowledgeLibrary library =
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());
-    // #202 code review round 3 (Blocker 1): deleting requires OWNER, not MANAGER - AssetRole's
-    // Javadoc reserves "delete the asset and transfer ownership" for OWNER alone, and canManage
-    // (MANAGER) was the wrong gate here: a group's MANAGER grant (round 2's fix for group-owned
-    // libraries) could otherwise delete the whole library, taking every grant on it - including the
-    // creator's OWNER grant - down with it via ON DELETE CASCADE, sidestepping the round-1/round-2
-    // escalation guards entirely instead of being blocked by them. See the requireRole call below.
+    // Deleting requires OWNER, not MANAGER - AssetRole's Javadoc reserves "delete the asset and
+    // transfer ownership" for OWNER alone, and canManage (MANAGER) was the wrong gate here: a
+    // group's MANAGER grant (round 2's fix for group-owned libraries) could otherwise delete the
+    // whole library, taking every grant on it - including the creator's OWNER grant - down with it
+    // via ON DELETE CASCADE, sidestepping the round-1/round-2 escalation guards entirely instead of
+    // being blocked by them. See the requireRole call below.
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.OWNER);
     // Deleting a library while an indexing run for it is RUNNING would let the run's
     // documentRepository.save fail against fk_documents_library_organization (RESTRICT) once the
@@ -873,8 +870,8 @@ public class KnowledgeLibraryService {
       // is
       // in the middle of removing.
       //
-      // The chunk delete itself is deferred to after commit, not run eagerly here (#636 review
-      // round 2, item 3, mirroring LibraryDocumentService#deleteDocument's own after-commit chunk
+      // The chunk delete itself is deferred to after commit, not run eagerly here (mirroring
+      // LibraryDocumentService#deleteDocument's own after-commit chunk
       // delete): if the transaction rolled back after an eager vectorStore.delete but before commit
       // - a later step in this method throwing, for instance - the document rows would still be
       // here (rolled back too), but their chunks would already be gone for good, leaving INDEXED
@@ -924,11 +921,10 @@ public class KnowledgeLibraryService {
 
   /**
    * Registers {@code cleanup} to run only once the enclosing transaction has committed - mirrors
-   * {@code LibraryDocumentService#deleteAfterCommit}'s reasoning (#636 review round 2, item 3):
-   * removing a connector library's vector store chunks before {@link #deleteLibrary}'s own
-   * transaction commits would destroy data a later rollback still considers live, leaving {@code
-   * INDEXED} document rows with no backing chunks. Falls back to running immediately when no
-   * transaction is active.
+   * {@code LibraryDocumentService#deleteAfterCommit}'s reasoning: removing a connector library's
+   * vector store chunks before {@link #deleteLibrary}'s own transaction commits would destroy data
+   * a later rollback still considers live, leaving {@code INDEXED} document rows with no backing
+   * chunks. Falls back to running immediately when no transaction is active.
    */
   private void deleteAfterCommit(Runnable cleanup) {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -957,11 +953,11 @@ public class KnowledgeLibraryService {
    * folderId} - it is not used to filter or scope the search itself (ADR-0020, Entscheidung 4 - no
    * folder-scoped retrieval yet) - {@code folders}/{@code breadcrumb} are both empty, and each
    * hit's own {@code folderId}/{@code folderPath} ({@link #toLibraryDocumentEntry}) show where it
-   * lives instead. A given {@code folderId} is still validated even then (#821 review round 1,
-   * finding 3): an unknown or foreign one answers 404 exactly as it would without {@code q}, so a
-   * caller cannot distinguish "this folder does not exist" from "it exists, but I only ever check
-   * it while browsing, not while searching" - it would otherwise be the one caller-supplied
-   * identifier on this endpoint that silently tolerates a value from another library.
+   * lives instead. A given {@code folderId} is still validated even then: an unknown or foreign one
+   * answers 404 exactly as it would without {@code q}, so a caller cannot distinguish "this folder
+   * does not exist" from "it exists, but I only ever check it while browsing, not while searching"
+   * - it would otherwise be the one caller-supplied identifier on this endpoint that silently
+   * tolerates a value from another library.
    *
    * <p><b>Backward compatibility.</b> A caller that omits {@code folderId} - every client before
    * this task - now lists the library's root rather than its whole bestand across every folder.
@@ -986,9 +982,9 @@ public class KnowledgeLibraryService {
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
-    // #821 review round 1, finding 3: validated unconditionally, before either branch below - a
-    // folderId from another library or one that does not exist answers 404 whether or not q is
-    // also set, instead of q silently bypassing the check.
+    // Validated unconditionally, before either branch below - a folderId from another library or
+    // one that does not exist answers 404 whether or not q is also set, instead of q silently
+    // bypassing the check.
     if (folderId != null) {
       requireFolderInLibrary(libraryId, folderId);
     }
@@ -1146,7 +1142,7 @@ public class KnowledgeLibraryService {
    * Backslash-escapes LIKE metacharacters ({@code \}, {@code %}, {@code _}) for {@code
    * DocumentRepository#searchTopLevelByFileNameOrAttachmentRoot}'s hand-written LIKE - preserving
    * the literal-match semantics the derived {@code ...ContainingIgnoreCase} finders apply
-   * automatically (#517 review, nit 3).
+   * automatically.
    */
   private static String escapeLike(String q) {
     return q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
@@ -1308,25 +1304,25 @@ public class KnowledgeLibraryService {
 
   /**
    * The change {@code request} asks for, as its connector validates it: the connection fields when
-   * {@code replacesConnection} (review finding 4 - password rotation or moving a crawl target must
-   * not force recreating the library), and every connector-owned field as sent. {@code sourceType}
-   * is always the library's own, never taken from the request.
+   * {@code replacesConnection} (password rotation or moving a crawl target must not force
+   * recreating the library), and every connector-owned field as sent. {@code sourceType} is always
+   * the library's own, never taken from the request.
    *
    * <p>{@code sourceCredentials} falls back to the library's currently stored value when the
    * request omits it <em>and</em> the new {@code sourceUrl} still names the same origin (scheme,
-   * host and port) as the currently stored one (PR #542 review finding 1): credentials are
-   * write-only (never returned by any API response, ADR-0018), so a client editing e.g. only the
-   * path portion of {@code sourceUrl} has no value it could resend even if it wanted to, and
-   * without this fallback that edit alone would silently wipe an unrelated, previously configured
-   * credential. The fallback is deliberately restricted to the same origin: {@code
-   * AutoindexCrawlerService} sends the stored {@code Authorization} header preemptively on the very
-   * first request (RFC 7617 does not require a 401 challenge first), so a caller who does not know
-   * a configured credential could otherwise redirect it to a host they control simply by changing
-   * {@code sourceUrl} and leaving the credentials field blank - turning "must know the credential"
-   * into "can exfiltrate the credential". A host change intentionally drops the stored credential
-   * instead (matching the pre-fallback behaviour of #476), forcing the caller to re-enter it for
-   * the new host. There is deliberately no way to explicitly clear a stored credential while
-   * keeping the same origin - blank input is indistinguishable from "leave unchanged" by design.
+   * host and port) as the currently stored one: credentials are write-only (never returned by any
+   * API response, ADR-0018), so a client editing e.g. only the path portion of {@code sourceUrl}
+   * has no value it could resend even if it wanted to, and without this fallback that edit alone
+   * would silently wipe an unrelated, previously configured credential. The fallback is
+   * deliberately restricted to the same origin: {@code AutoindexCrawlerService} sends the stored
+   * {@code Authorization} header preemptively on the very first request (RFC 7617 does not require
+   * a 401 challenge first), so a caller who does not know a configured credential could otherwise
+   * redirect it to a host they control simply by changing {@code sourceUrl} and leaving the
+   * credentials field blank - turning "must know the credential" into "can exfiltrate the
+   * credential". A host change intentionally drops the stored credential instead (matching the
+   * pre-fallback behaviour of #476), forcing the caller to re-enter it for the new host. There is
+   * deliberately no way to explicitly clear a stored credential while keeping the same origin -
+   * blank input is indistinguishable from "leave unchanged" by design.
    */
   private SourceSettings requestedSettingsChange(
       KnowledgeLibrary library, LibraryUpdate request, boolean replacesConnection) {
@@ -1492,8 +1488,8 @@ public class KnowledgeLibraryService {
         myRole.atLeast(AssetRole.MANAGER)
             ? toManagementDetail(library, connector)
             : LibraryManagementDetail.EMPTY;
-    // #1278 review: myRole alone cannot tell a client whether PUT .../diagnostics-lock will
-    // succeed - it bypasses to OWNER for a system admin, holdsIndependentOwnerRole never does.
+    // myRole alone cannot tell a client whether PUT .../diagnostics-lock will succeed - it bypasses
+    // to OWNER for a system admin, holdsIndependentOwnerRole never does.
     boolean diagnosticsLockToggleable =
         !library.isOwnerOnly() && accessService.holdsIndependentOwnerRole(library, userId);
     return new LibraryDetail(
@@ -1549,9 +1545,9 @@ public class KnowledgeLibraryService {
     return new LibraryManagementDetail(
         library.getSourcePath(),
         library.getSourceUrl(),
-        // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) - lets
-        // a client phrase an accurate "leave blank to keep the current credential" hint only when
-        // one is actually stored.
+        // A non-secret yes/no, not the credential itself (ADR-0018) - lets a client phrase an
+        // accurate "leave blank to keep the current credential" hint only when one is actually
+        // stored.
         connectionResolver.holdsCredentials(library),
         pushSecretSet,
         connector.settingsView(library, connectionResolver.effectiveSettings(library), true),

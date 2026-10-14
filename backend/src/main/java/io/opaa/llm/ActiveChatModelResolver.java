@@ -43,7 +43,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * org.springframework.ai.chat.client.observation.AdvisorObservationConvention)} - a client built
  * with the two-argument {@code ChatClient.builder(chatModel)} overload would silently use {@link
  * ObservationRegistry#NOOP} instead, and every chat span/metric this application otherwise exposes
- * on {@code /actuator/prometheus} would vanish without any error (#767 review, finding 3).
+ * on {@code /actuator/prometheus} would vanish without any error.
  *
  * <p><b>Cached per active model, invalidated on change.</b> Building a {@link ChatClient} means
  * constructing a real HTTP client (no network call happens until the first request, see {@code
@@ -55,23 +55,23 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * TransactionPhase#AFTER_COMMIT} - clears the cache in reaction, never before the change is
  * actually durable: a rolled-back activation must not have invalidated a still-correct cache.
  *
- * <p><b>Race between an in-flight build and a concurrent invalidation (#767 review, blocking
- * finding).</b> {@link #buildAndCache} is the only writer of {@link #cache} with a genuine value
- * (the listener only ever clears it), but it is not the only thing that can run concurrently with
- * it: {@link #onActiveModelChanged} fires on whatever thread commits the triggering change, fully
- * independently of any thread mid-build. Without a safeguard, this sequence is possible - Thread A
- * reads the (still) active model X inside {@link #buildAndCache}; a second model is activated and
- * committed, whose listener callback clears the cache; Thread A then finishes building its (already
- * outdated) client for X and overwrites the just-cleared cache with it - leaving a permanently
- * stale client behind that nothing but the *next* change would evict, silently and without any
- * error. {@link #generation} closes this window: {@link #buildAndCache} records the generation
- * before it starts reading {@code llm_models} and only commits its result to {@link #cache} if the
- * generation is still the same afterwards; {@link #onActiveModelChanged} increments it in the same
- * atomic step as clearing the cache. A build whose generation changed underneath it is discarded
- * (but still returned to its own caller - a single request served by a to-be-superseded client is
- * harmless; the next {@link #resolveChatClient()} call rebuilds against the now-current active
- * model) rather than cached, so no completed build can ever undo a concurrent invalidation,
- * regardless of the order the two threads happen to run in.
+ * <p><b>Race between an in-flight build and a concurrent invalidation.</b> {@link #buildAndCache}
+ * is the only writer of {@link #cache} with a genuine value (the listener only ever clears it), but
+ * it is not the only thing that can run concurrently with it: {@link #onActiveModelChanged} fires
+ * on whatever thread commits the triggering change, fully independently of any thread mid-build.
+ * Without a safeguard, this sequence is possible - Thread A reads the (still) active model X inside
+ * {@link #buildAndCache}; a second model is activated and committed, whose listener callback clears
+ * the cache; Thread A then finishes building its (already outdated) client for X and overwrites the
+ * just-cleared cache with it - leaving a permanently stale client behind that nothing but the
+ * *next* change would evict, silently and without any error. {@link #generation} closes this
+ * window: {@link #buildAndCache} records the generation before it starts reading {@code llm_models}
+ * and only commits its result to {@link #cache} if the generation is still the same afterwards;
+ * {@link #onActiveModelChanged} increments it in the same atomic step as clearing the cache. A
+ * build whose generation changed underneath it is discarded (but still returned to its own caller -
+ * a single request served by a to-be-superseded client is harmless; the next {@link
+ * #resolveChatClient()} call rebuilds against the now-current active model) rather than cached, so
+ * no completed build can ever undo a concurrent invalidation, regardless of the order the two
+ * threads happen to run in.
  *
  * <p><b>The decrypted access key never outlives {@link #buildAndCache}.</b> It is a local variable
  * used only to construct the {@link OpenAiChatOptions} handed to {@link OpenAiChatModel#builder()};
@@ -87,7 +87,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * underlying {@code OpenAIClient} itself (see {@code
  * org.springframework.ai.openai.setup.OpenAiSetup}) instead of delegating to {@link
  * OpenAiChatModel.Builder}, purely to hold a reference capable of closing it - a structural change
- * not justified by a resource that already bounds itself (#767 review, optional finding 8).
+ * not justified by a resource that already bounds itself.
  */
 @Component
 public class ActiveChatModelResolver {
@@ -112,9 +112,9 @@ public class ActiveChatModelResolver {
 
   /**
    * Whether the "no active model" condition was already logged at ERROR since it last cleared -
-   * {@link #activeModel()} is on the hot path of every chat request and of every health check poll
-   * (#767 review, finding 5), so without this an installation with no active model would produce
-   * one ERROR log line per second rather than one per actual state change.
+   * {@link #activeModel()} is on the hot path of every chat request and of every health check poll,
+   * so without this an installation with no active model would produce one ERROR log line per
+   * second rather than one per actual state change.
    */
   private final AtomicBoolean noActiveModelLogged = new AtomicBoolean(false);
 

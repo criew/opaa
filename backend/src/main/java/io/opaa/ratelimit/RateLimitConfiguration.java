@@ -92,11 +92,10 @@ public class RateLimitConfiguration {
     // the outbound probe budget. The listing of a source before it is saved is the same kind of
     // synchronous outbound probe as the connection test and shares its limit.
     String sourceTestPattern = "^/api/v1/(?:libraries/source-test|source-types/[^/]+/browse)$";
-    // #748 review, finding 1: a flat pattern, mirroring source-test above rather than the
-    // per-library indexing trigger's capture group - unlike triggering an indexing run, "Im
-    // Dokument öffnen" is a routine per-document click any VIEWER can make on any document, so
-    // keying the limiter by document id would let the same caller bypass the limit simply by
-    // clicking a different document each time.
+    // A flat pattern, mirroring source-test above rather than the per-library indexing trigger's
+    // capture group - unlike triggering an indexing run, "Im Dokument öffnen" is a routine
+    // per-document click any VIEWER can make on any document, so keying the limiter by document id
+    // would let the same caller bypass the limit simply by clicking a different document each time.
     String documentContentPattern = "^/api/v1/documents/[^/]+/content$";
     // The push intake is the only POST under /api/v1 reachable without a session. The capture
     // group keys the per-IP limiter by library, like the indexing trigger: one source notifying

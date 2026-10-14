@@ -8,7 +8,7 @@ import java.time.Instant;
 
 /**
  * The permanent record that {@link LlmModelSeeder} has already attempted the one-time takeover of
- * the environment-configured chat model into {@code llm_models} (PR #763 review).
+ * the environment-configured chat model into {@code llm_models}.
  *
  * <p>Deliberately not inferred from "is {@code llm_models} currently empty?" - a Systemverwaltung
  * deleting every managed model must not resurrect a stale environment configuration on the next

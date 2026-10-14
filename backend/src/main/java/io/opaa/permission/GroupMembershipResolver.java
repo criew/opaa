@@ -83,8 +83,7 @@ public class GroupMembershipResolver {
    * deactivated group reaches nobody (ADR-0036, Entscheidung 14). This is the one place every
    * future caller goes through, so it is deliberately not left to each caller to re-check the
    * boundary for the {@code USER} case - the extra lookup costs one indexed hit on the hot path,
-   * which is cheaper than repeating the organization-boundary bug class that #199 had to fix in
-   * review.
+   * which is cheaper than an organization-boundary leak.
    */
   public Set<UUID> resolveUserIds(PermissionSubject subject) {
     return switch (subject.type()) {

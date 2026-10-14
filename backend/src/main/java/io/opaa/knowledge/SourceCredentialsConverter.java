@@ -25,12 +25,12 @@ import org.slf4j.LoggerFactory;
  * instance rather than instantiating it itself - normal constructor injection of {@link
  * CredentialsEncryptor} here works.
  *
- * <p><b>Read failures fail soft, write failures fail hard (PR #504 review):</b> {@link
- * #convertToEntityAttribute} runs on every hydration of a {@link KnowledgeLibrary} row, including
- * every {@code GET /api/v1/libraries} list entry - a single row whose {@code sourceCredentials} can
- * no longer be decrypted (key lost, key rotated without re-encrypting existing rows, corrupted
- * value) must not take the whole read down with a {@code 503}, since that would also break the one
- * repair path ({@code PATCH /api/v1/libraries/{id}} setting new credentials) documented in {@code
+ * <p><b>Read failures fail soft, write failures fail hard:</b> {@link #convertToEntityAttribute}
+ * runs on every hydration of a {@link KnowledgeLibrary} row, including every {@code GET
+ * /api/v1/libraries} list entry - a single row whose {@code sourceCredentials} can no longer be
+ * decrypted (key lost, key rotated without re-encrypting existing rows, corrupted value) must not
+ * take the whole read down with a {@code 503}, since that would also break the one repair path
+ * ({@code PATCH /api/v1/libraries/{id}} setting new credentials) documented in {@code
  * docs/handbuch/betrieb.md}, which loads the same row first. This converter therefore catches
  * {@link CredentialsEncryptionKeyMissingException} on read and treats the field as absent (logs a
  * warning with no library id - the converter is not given the owning entity's identity - and,

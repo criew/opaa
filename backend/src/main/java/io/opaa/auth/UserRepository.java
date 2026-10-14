@@ -29,7 +29,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * How the given accounts are named to a human: the display name, the mail address where an
    * account carries none (a token without a name claim leaves it unset). An id with no account is
    * absent from the result rather than mapped to itself - the one encoding of this fallback, which
-   * four callers had each written out before (#1882 review).
+   * four callers had each written out before.
    */
   default Map<UUID, String> displayNamesById(Collection<UUID> userIds) {
     Map<UUID, String> byId = new HashMap<>();
@@ -60,9 +60,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   List<User> findByNormalizedIssuer(@Param("issuer") String normalizedIssuer);
 
   /**
-   * Used by {@code AuditIncidentScopeService#request} (#393 code review, finding 8) to reject an
-   * anlassbezogene Klärung named against a person outside the requester's own organization before a
-   * grant row - and later, at query time, a pseudonym - is ever created for them.
+   * Used by {@code AuditIncidentScopeService#request} to reject an anlassbezogene Klärung named
+   * against a person outside the requester's own organization before a grant row - and later, at
+   * query time, a pseudonym - is ever created for them.
    */
   Optional<User> findByIdAndOrganizationId(UUID id, UUID organizationId);
 
@@ -235,14 +235,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   List<User> findByOrganizationId(UUID organizationId);
 
   /**
-   * Used by {@code UserSearchController#listUsers} (capped and query-gated after #778 review
-   * finding 4) - unlike {@link #findByOrganizationId(UUID)} above (still unbounded, but only ever
-   * reached by the {@code SYSTEM_ADMIN}-only admin list), this backs an endpoint every
-   * authenticated organization member can call, so it is deliberately never allowed to return the
-   * whole organization: {@code pageable} caps the row count and the caller (see {@link
-   * UserService#searchInOrganization}) never invokes this without a query that already passed the
-   * minimum-length check. Matches case-insensitively against both displayName and email so a caller
-   * can find someone by either.
+   * Used by {@code UserSearchController#listUsers} (capped and query-gated) - unlike {@link
+   * #findByOrganizationId(UUID)} above (still unbounded, but only ever reached by the {@code
+   * SYSTEM_ADMIN}-only admin list), this backs an endpoint every authenticated organization member
+   * can call, so it is deliberately never allowed to return the whole organization: {@code
+   * pageable} caps the row count and the caller (see {@link UserService#searchInOrganization})
+   * never invokes this without a query that already passed the minimum-length check. Matches
+   * case-insensitively against both displayName and email so a caller can find someone by either.
    */
   @Query(
       "SELECT u FROM User u WHERE u.organizationId = :organizationId AND "

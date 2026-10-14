@@ -78,10 +78,10 @@ public class LibraryFolderService {
     this.accessService = accessService;
     this.documentRepository = documentRepository;
     this.documentService = documentService;
-    // #823 review (pre-existing #824 race, made user-reachable by #823's concurrent, request-
-    // driven callers): see materializeSingleFolder's own comment for why the insert attempt needs
-    // its own REQUIRES_NEW transaction rather than running inside the caller's ambient one -
-    // mirrors ChatService/SpaceService's identical constructor-built TransactionTemplate.
+    // Concurrent, request-driven callers race on the folder insert: see materializeSingleFolder's
+    // own comment for why the insert attempt needs its own REQUIRES_NEW transaction rather than
+    // running inside the caller's ambient one - mirrors ChatService/SpaceService's identical
+    // constructor-built TransactionTemplate.
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -108,16 +108,15 @@ public class LibraryFolderService {
     LibraryFolder folder =
         new LibraryFolder(libraryId, parentFolderId, name, library.getOrganizationId());
     try {
-      // saveAndFlush, not save (review finding #827): LibraryFolder assigns its own @Id in the
-      // constructor, so a plain save's INSERT does not have to happen before this method returns -
-      // Hibernate is free to defer it to the next flush, which could be well outside this try block
-      // (e.g. at transaction commit, or the next query). A deferred INSERT would let the unique
-      // index violation from a race ensureNameAvailable above missed surface as an unhandled
+      // saveAndFlush, not save: LibraryFolder assigns its own @Id in the constructor, so a plain
+      // save's INSERT does not have to happen before this method returns - Hibernate is free to
+      // defer it to the next flush, which could be well outside this try block (e.g. at transaction
+      // commit, or the next query). A deferred INSERT would let the unique index violation from a
+      // race ensureNameAvailable above missed surface as an unhandled
       // DataIntegrityViolationException/ConstraintViolationException far from here, turning into a
       // 500 instead of the 409 this catch is meant to produce - flushing here forces the INSERT
-      // (and
-      // therefore uk_library_folders_root_name/uk_library_folders_child_name) to run
-      // and either succeed or throw inside this try.
+      // (and therefore uk_library_folders_root_name/uk_library_folders_child_name) to run and
+      // either succeed or throw inside this try.
       folder = folderRepository.saveAndFlush(folder);
     } catch (DataIntegrityViolationException e) {
       // Race-safety net for ensureNameAvailable above (mirrors LibraryDocumentService#
@@ -199,10 +198,10 @@ public class LibraryFolderService {
    * #requireUploadLibrary}/{@link #requireEditable}. Since #1277 an {@code HTTP_DIRECTORY} run uses
    * the same path, with the crawled URL path relative to the start URL as its segments.
    *
-   * <p><b>{@link #validateName}/{@link #MAX_DEPTH} are bypassed too, deliberately</b> (#824 review,
-   * Befund 4b) - not just the permission/upload-type checks named above. A mirrored directory name
-   * is whatever the filesystem allows (which can differ from what {@link #validateName} accepts for
-   * a manually-typed {@code UPLOAD} folder name), and a real directory tree is free to nest deeper
+   * <p><b>{@link #validateName}/{@link #MAX_DEPTH} are bypassed too, deliberately</b> - not just
+   * the permission/upload-type checks named above. A mirrored directory name is whatever the
+   * filesystem allows (which can differ from what {@link #validateName} accepts for a
+   * manually-typed {@code UPLOAD} folder name), and a real directory tree is free to nest deeper
    * than {@link #MAX_DEPTH}; rejecting either would mean silently refusing to mirror part of the
    * source instead of representing it as-is. Every mirroring run judges its segments on its own
    * side through {@code SourceFolderPath} - a segment no folder row could carry leaves the item at
@@ -212,15 +211,14 @@ public class LibraryFolderService {
    * input.
    *
    * <p><b>A single {@code fk_documents_folder} violation can occur if two runs of the same library
-   * overlap</b> (#824 review, Befund 4b) - e.g. after {@code IndexingJobRecoveryScheduler} restarts
-   * a run whose previous attempt was merely stuck, not actually finished, past {@code
-   * staleJobTimeout}: if the stale run's own {@code LibraryDocumentService#deleteDocument}-driven
-   * document write races the fresh run's {@link #pruneOrphanedFolders} deleting the very folder
-   * that document is about to reference, the insert fails loudly (the constraint is {@code
-   * RESTRICT}, by design - see this class's own Javadoc). Not specifically guarded against here:
-   * the next run re-materializes the same folder from the still uncrawled directory and re-attempts
-   * the document, so the condition self-heals rather than leaving a permanently broken document
-   * behind.
+   * overlap</b> - e.g. after {@code IndexingJobRecoveryScheduler} restarts a run whose previous
+   * attempt was merely stuck, not actually finished, past {@code staleJobTimeout}: if the stale
+   * run's own {@code LibraryDocumentService#deleteDocument}-driven document write races the fresh
+   * run's {@link #pruneOrphanedFolders} deleting the very folder that document is about to
+   * reference, the insert fails loudly (the constraint is {@code RESTRICT}, by design - see this
+   * class's own Javadoc). Not specifically guarded against here: the next run re-materializes the
+   * same folder from the still uncrawled directory and re-attempts the document, so the condition
+   * self-heals rather than leaving a permanently broken document behind.
    *
    * @param segments the path components between the library's {@code sourcePath} and the file
    *     itself, outermost first; an empty list means the library's root
@@ -255,16 +253,16 @@ public class LibraryFolderService {
 
   /**
    * The insert attempt below runs in its own {@code REQUIRES_NEW} transaction ({@link
-   * #requiresNewTransactionTemplate}), not the caller's ambient one - a pre-existing #824 race
-   * (review, Befund 6) that #823 made user-reachable: on Postgres, a unique-constraint violation
-   * aborts the <em>whole</em> transaction it occurs in, not just the failing statement, so without
-   * this isolation, the retry lookup in the {@code catch} block below would itself fail against the
-   * same now-poisoned transaction/connection ("current transaction is aborted, commands ignored
-   * until end of transaction block") - turning a legitimate reuse into a loud 500 instead. Two
-   * concurrent uploads racing the same brand-new folder path (two browser tabs, or a whole
-   * dragged-and-dropped tree's parallel-enough requests) hit exactly this window. Isolating the
-   * insert into its own transaction means only that small transaction rolls back on a race; the
-   * retry lookup then runs against the resumed, still-healthy outer transaction instead.
+   * #requiresNewTransactionTemplate}), not the caller's ambient one - a pre-existing #824 race that
+   * #823 made user-reachable: on Postgres, a unique-constraint violation aborts the <em>whole</em>
+   * transaction it occurs in, not just the failing statement, so without this isolation, the retry
+   * lookup in the {@code catch} block below would itself fail against the same now-poisoned
+   * transaction/connection ("current transaction is aborted, commands ignored until end of
+   * transaction block") - turning a legitimate reuse into a loud 500 instead. Two concurrent
+   * uploads racing the same brand-new folder path (two browser tabs, or a whole dragged-and-dropped
+   * tree's parallel-enough requests) hit exactly this window. Isolating the insert into its own
+   * transaction means only that small transaction rolls back on a race; the retry lookup then runs
+   * against the resumed, still-healthy outer transaction instead.
    */
   private UUID materializeSingleFolder(KnowledgeLibrary library, UUID parentFolderId, String name) {
     Optional<LibraryFolder> existing = findByParentAndName(library.getId(), parentFolderId, name);
@@ -319,15 +317,13 @@ public class LibraryFolderService {
     requireUploadLibrary(library);
     resolveParent(libraryId, baseFolderId);
 
-    // #823 review, Befund 1 (follow-up to Befund 6): every segment is validated - and the
-    // resulting depth checked - in this own upfront pass, before materializeSingleFolder ever
-    // creates a single row. materializeSingleFolder's own insert now runs in its own REQUIRES_NEW
-    // transaction (see its Javadoc, Befund 6) and therefore commits independently the moment it
-    // succeeds; validating and materializing one segment at a time would let an earlier, valid
-    // segment's folder survive permanently even when a later segment's invalid name or a depth
-    // overrun aborts this call - exactly the partial folder skeleton this whole method exists to
-    // avoid, just one level further in than the original "resolved before any byte is written"
-    // ordering bug (LibraryDocumentService#uploadDocument's own Befund 1 fix).
+    // Every segment is validated - and the resulting depth checked - in this own upfront pass,
+    // before materializeSingleFolder ever creates a single row. materializeSingleFolder's own
+    // insert runs in its own REQUIRES_NEW transaction (see its Javadoc) and therefore commits
+    // independently the moment it succeeds; validating and materializing one segment at a time
+    // would let an earlier, valid segment's folder survive permanently even when a later segment's
+    // invalid name or a depth overrun aborts this call - exactly the partial folder skeleton this
+    // whole method exists to avoid.
     List<String> names = new ArrayList<>(pathSegments.size());
     int depth = baseFolderId == null ? 0 : depthOfParentChain(baseFolderId);
     for (String rawSegment : pathSegments) {
@@ -386,18 +382,17 @@ public class LibraryFolderService {
    *
    * @throws IllegalArgumentException if {@code library}'s source type does not mirror a directory
    *     structure - see {@link #materializeFolderPath}'s own Javadoc, which this method mirrors
-   *     (#824 review, Befund 4a/4b)
    */
   @Transactional
   public void pruneOrphanedFolders(KnowledgeLibrary library, Set<UUID> currentFolderIds) {
     requireMirroredSourceLibrary(library);
     UUID libraryId = library.getId();
     List<LibraryFolder> all = folderRepository.findByLibraryId(libraryId);
-    // Built by hand, not via Collectors.groupingBy (#824 review self-catch): groupingBy's
-    // classifier is required to return a non-null key, but LibraryFolder#getParentFolderId is
-    // null for exactly the root-level folders this method must also walk - java.util.HashMap
-    // itself has no such restriction, so a plain computeIfAbsent loop handles the null-parent
-    // (root) case the same way as every other parent id.
+    // Built by hand, not via Collectors.groupingBy: groupingBy's classifier is required to return a
+    // non-null key, but LibraryFolder#getParentFolderId is null for exactly the root-level folders
+    // this method must also walk - java.util.HashMap itself has no such restriction, so a plain
+    // computeIfAbsent loop handles the null-parent (root) case the same way as every other parent
+    // id.
     Map<UUID, List<LibraryFolder>> childrenByParent = new HashMap<>();
     for (LibraryFolder folder : all) {
       childrenByParent

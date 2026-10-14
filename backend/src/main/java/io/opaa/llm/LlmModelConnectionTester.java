@@ -41,15 +41,15 @@ import tools.jackson.databind.ObjectMapper;
  * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei) - so blocking private ranges here
  * would break the primary supported case rather than guard against one.
  *
- * <p><b>The stored key never leaves its own origin (#757 review, key-exfiltration finding).</b> An
- * earlier version of {@link #test} decrypted {@code modelId}'s stored key and then probed whatever
- * {@code baseUrl} the request carried - a {@code SYSTEM_ADMIN} could submit {@code modelId} for a
- * genuine model together with an attacker-controlled {@code baseUrl} and have the stored plaintext
- * key sent to that address in the {@code Authorization} header, which made the key not actually
- * write-only despite {@link LlmModel#getApiKeyCiphertext()} never being returned by any response.
- * {@link #test} now only ever uses the stored key when the request's {@code baseUrl} is same-origin
- * ({@link RedirectFollowingFetcher#sameOrigin}) with the model's own stored {@code baseUrl}; any
- * other combination is rejected with 400 before the key is even decrypted.
+ * <p><b>The stored key never leaves its own origin.</b> An earlier version of {@link #test}
+ * decrypted {@code modelId}'s stored key and then probed whatever {@code baseUrl} the request
+ * carried - a {@code SYSTEM_ADMIN} could submit {@code modelId} for a genuine model together with
+ * an attacker-controlled {@code baseUrl} and have the stored plaintext key sent to that address in
+ * the {@code Authorization} header, which made the key not actually write-only despite {@link
+ * LlmModel#getApiKeyCiphertext()} never being returned by any response. {@link #test} now only ever
+ * uses the stored key when the request's {@code baseUrl} is same-origin ({@link
+ * RedirectFollowingFetcher#sameOrigin}) with the model's own stored {@code baseUrl}; any other
+ * combination is rejected with 400 before the key is even decrypted.
  */
 @Service
 public class LlmModelConnectionTester {
@@ -216,7 +216,7 @@ public class LlmModelConnectionTester {
    * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei) - a trailing slash on {@code
    * baseUrl} is tolerated, never doubled. Any query string on {@code baseUrl} (e.g. an Azure {@code
    * api-version} parameter) is preserved and moved to the end of the resulting URI rather than
-   * ending up in the middle of the path (#757 review). Shared with the rerank role through {@link
+   * ending up in the middle of the path. Shared with the rerank role through {@link
    * ModelEndpointUri}, which also enforces the "no credentials in the address" rule.
    */
   private static URI chatCompletionsUri(String baseUrl) throws URISyntaxException {
@@ -224,9 +224,9 @@ public class LlmModelConnectionTester {
   }
 
   /**
-   * Built with Jackson rather than hand-assembled string concatenation (#757 review) - {@code
-   * modelIdentifier} is operator-entered free text and a hand-escaped string missed control
-   * characters a real JSON serializer never would.
+   * Built with Jackson rather than hand-assembled string concatenation - {@code modelIdentifier} is
+   * operator-entered free text and a hand-escaped string missed control characters a real JSON
+   * serializer never would.
    */
   private String buildRequestBody(String modelIdentifier, BigDecimal temperature) {
     Map<String, Object> message = new LinkedHashMap<>();

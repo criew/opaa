@@ -52,8 +52,7 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
   /**
    * Inserts the user's default space and its owner {@code ADMIN} membership in a single round trip,
    * silently doing nothing if a default space for {@code ownerId} already exists - see {@link
-   * SpaceService#ensureDefaultSpace} for the full reasoning (#201/#305 code review). The space
-   * carries no description.
+   * SpaceService#ensureDefaultSpace} for the full reasoning. The space carries no description.
    *
    * <p>The single native statement below is a CTE chain, not two independent inserts: {@code
    * new_space} attempts the {@code spaces} insert with {@code ON CONFLICT (owner_id) WHERE

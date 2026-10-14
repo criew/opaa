@@ -48,14 +48,14 @@ final class SpaceResponseMapper {
     }
     space.getMemberships().forEach(m -> roleCounts.merge(m.getRole().name(), 1L, Long::sum));
 
-    // The aggregated roleCounts stay visible to every member ("how big is this room"), but
-    // the full member list with identities and group names is not part of SpaceResponse - it is
-    // only available via listMembers, restricted to ADMIN, owner and system admins.
+    // The aggregated roleCounts stay visible to every member ("how big is this room"), but the full
+    // member list with identities and group names is not part of SpaceResponse - it is only
+    // available via listMembers, restricted to ADMIN, owner and system admins.
     //
-    // #891 review: userRole is the caller's *effective* role (SpaceAccessPolicy#effectiveRole,
-    // owner ⇒ at least ADMIN, and since #1815 possibly held through a group) - not their raw
-    // SpaceMembership row. roleCounts and SpaceMemberResponse deliberately keep showing the *raw*
-    // role of every membership row, including this caller's own.
+    // userRole is the caller's *effective* role (SpaceAccessPolicy#effectiveRole, owner ⇒ at least
+    // ADMIN, and since #1815 possibly held through a group) - not their raw SpaceMembership row.
+    // roleCounts and SpaceMemberResponse deliberately keep showing the *raw* role of every
+    // membership row, including this caller's own.
     return new SpaceResponse(
             space.getId(),
             space.getName(),

@@ -45,11 +45,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * Computes and, when requested and plausible, applies the diff between the database and an
  * already-fetched {@link DirectorySnapshot}. Split out from {@link DirectorySyncService} so the
  * directory fetch itself - the one call that can be slow or fail on a real deployment - never runs
- * inside a database transaction (review of PR #297): {@link DirectorySyncService} is not
- * transactional at all and fetches the snapshot before ever calling in here, and a call from one
- * Spring bean to another goes through the real proxy, so {@code @Transactional} below is honoured
- * regardless of what the caller was doing - unlike a self-invoked private method on the same
- * instance would be.
+ * inside a database transaction: {@link DirectorySyncService} is not transactional at all and
+ * fetches the snapshot before ever calling in here, and a call from one Spring bean to another goes
+ * through the real proxy, so {@code @Transactional} below is honoured regardless of what the caller
+ * was doing - unlike a self-invoked private method on the same instance would be.
  *
  * <p><b>Bound to one identity provider</b> (ADR-0036, Entscheidung 2). The {@link SyncTarget} names
  * the provider whose directory was read: members are resolved among the accounts of that provider's
@@ -75,10 +74,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * transaction did - so a run that failed to apply (e.g. a directory-supplied name too long for
  * {@code groups.name}, causing the surrounding transaction to roll back at commit) could still end
  * up with a durably recorded {@code APPLIED} status, exactly the "a change was made" claim {@link
- * DirectorySyncStatus#getLastAppliedAt()} exists to be trustworthy about (review of PR #297).
- * {@link DirectorySyncService} - itself not transactional - calls {@link
- * DirectorySyncStatusRecorder} only after {@link #planAndApply} has returned successfully, so a
- * roll back here never reaches the status table at all.
+ * DirectorySyncStatus#getLastAppliedAt()} exists to be trustworthy about. {@link
+ * DirectorySyncService} - itself not transactional - calls {@link DirectorySyncStatusRecorder} only
+ * after {@link #planAndApply} has returned successfully, so a roll back here never reaches the
+ * status table at all.
  *
  * <p><b>Matching:</b> exclusively by {@link Group#getExternalId()} - the directory's stable
  * identifier, never by name (see #237's acceptance criteria; a rename must be free of side
@@ -90,7 +89,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * in the feature spec and is deliberately left unresolved by this service - {@code parentGroupId}
  * is recorded as reported, resolved in a second pass in {@link #applyPlan} so it works regardless
  * of the order the directory reports groups in and applies to existing groups too, not only newly
- * created ones (review of PR #297).
+ * created ones.
  *
  * <p><b>Plausibility threshold ({@link #buildPlan}):</b> {@code changedFraction} is the worse of
  * two independent measures, each checked against the same configured threshold.
@@ -99,23 +98,22 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * exactly the same population of groups - every group this run actually touches
  * (matched-and-unchanged, renamed, membership-changed, reactivated, or about to be dissolved) - and
  * nothing else. A group that was already dissolved before this run and stays unreported keeps its
- * frozen membership out of both sides. Two things review of PR #297 found broken under the original
- * (name-only) computation are folded in explicitly: a group being dissolved this run contributes
- * its entire pre-run membership to the numerator (its reach is capped the same way a revoked grant
- * would be, even though no individual {@code group_memberships} row is deleted), and a group being
- * reactivated this run contributes its frozen pre-run membership to the denominator (it re-enters
- * "in play" in the very run that can remove from it).
+ * frozen membership out of both sides. Two cases a name-only computation would miss are folded in
+ * explicitly: a group being dissolved this run contributes its entire pre-run membership to the
+ * numerator (its reach is capped the same way a revoked grant would be, even though no individual
+ * {@code group_memberships} row is deleted), and a group being reactivated this run contributes its
+ * frozen pre-run membership to the denominator (it re-enters "in play" in the very run that can
+ * remove from it).
  *
  * <p>The second, group-count-based measure exists because the first is blind to a mass dissolution
  * of groups that have no members at all - routine during an introduction phase, before curators and
- * memberships are populated (residual risk flagged in review of PR #297). It is the fraction of
- * groups active before this run that this run would dissolve, independent of how many members any
- * of them have - but only once the population is large enough ({@link
- * #MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE}) or the dissolution count alarming enough on its own
- * ({@link #MIN_DISSOLUTIONS_FOR_GROUP_MEASURE}) for a fraction to mean anything; below that floor a
- * single legitimate dissolution in a small organisation - the normal case for a pilot, not the
- * mass-outage case this measure targets - would otherwise abort every run indefinitely, with no
- * per-run override available (a second regression review of PR #297 found and measured).
+ * memberships are populated. It is the fraction of groups active before this run that this run
+ * would dissolve, independent of how many members any of them have - but only once the population
+ * is large enough ({@link #MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE}) or the dissolution count alarming
+ * enough on its own ({@link #MIN_DISSOLUTIONS_FOR_GROUP_MEASURE}) for a fraction to mean anything;
+ * below that floor a single legitimate dissolution in a small organisation - the normal case for a
+ * pilot, not the mass-outage case this measure targets - would otherwise abort every run
+ * indefinitely, with no per-run override available.
  *
  * <p>A third measure covers the account locks: the fraction of this provider's active accounts the
  * run would lock, against the same threshold but with a lower count floor ({@link
@@ -130,7 +128,7 @@ class DirectorySyncPlanExecutor {
 
   /**
    * Floor for the group-count plausibility measure - see where it is used in {@link #buildPlan} for
-   * the reasoning (review of PR #297).
+   * the reasoning.
    */
   private static final int MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE = 10;
 
@@ -190,13 +188,13 @@ class DirectorySyncPlanExecutor {
     this.eventPublisher = eventPublisher;
   }
 
-  // #392 code review, finding 1: this can no longer be readOnly - handle() -> finish() now writes
-  // the run's DIRECTORY_SYNC_RUN_COMPLETED header entry unconditionally, including on the dry-run
-  // path this method serves. A readOnly transaction sets Hibernate's flush mode to MANUAL and the
-  // JDBC connection itself to read-only, so that insert would either be silently dropped at commit
-  // or rejected by Postgres with "cannot execute INSERT in a read-only transaction" (500) -
-  // dry-run's only other write in this method, none, made readOnly look safe until this entry
-  // needed writing too.
+  // This can no longer be readOnly - handle() -> finish() now writes the run's
+  // DIRECTORY_SYNC_RUN_COMPLETED header entry unconditionally, including on the dry-run path this
+  // method serves. A readOnly transaction sets Hibernate's flush mode to MANUAL and the JDBC
+  // connection itself to read-only, so that insert would either be silently dropped at commit or
+  // rejected by Postgres with "cannot execute INSERT in a read-only transaction" (500) - dry-run's
+  // only other write in this method, none, made readOnly look safe until this entry needed writing
+  // too.
   @Transactional
   SyncReport planOnly(SyncTarget target, Instant now, DirectorySnapshot snapshot) {
     return handle(target, now, snapshot, Mode.DRY_RUN, null, null, null);
@@ -530,17 +528,17 @@ class DirectorySyncPlanExecutor {
   }
 
   /**
-   * #392 code review, nit 1: the header entry's own {@code outcome} column now reflects whether the
-   * run actually did what it set out to do, not always {@code SUCCESS} - a filter on {@code outcome
-   * != SUCCESS} would otherwise never surface an aborted run, even though the human-readable result
-   * was always available in {@code after.outcome}/{@code reason}. {@code APPLIED} and {@code
-   * DRY_RUN} both did exactly what they were asked (write the diff, or only compute it); {@code
-   * ABORTED_THRESHOLD}, {@code ABORTED_EMPTY_RESULT} and {@code PENDING_CONFIRMATION} are the
-   * plausibility guard refusing to write anything it judged unsafe without a decision - a failure
-   * to complete, not a permission decision, hence {@code FAILURE} rather than {@code DENIED}; a
-   * filter on {@code outcome != SUCCESS} therefore surfaces a run still waiting for one. {@code
-   * UNREACHABLE} is handled by {@link DirectorySyncService} itself, which never reaches this class
-   * - see its own header entry.
+   * The header entry's own {@code outcome} column now reflects whether the run actually did what it
+   * set out to do, not always {@code SUCCESS} - a filter on {@code outcome != SUCCESS} would
+   * otherwise never surface an aborted run, even though the human-readable result was always
+   * available in {@code after.outcome}/{@code reason}. {@code APPLIED} and {@code DRY_RUN} both did
+   * exactly what they were asked (write the diff, or only compute it); {@code ABORTED_THRESHOLD},
+   * {@code ABORTED_EMPTY_RESULT} and {@code PENDING_CONFIRMATION} are the plausibility guard
+   * refusing to write anything it judged unsafe without a decision - a failure to complete, not a
+   * permission decision, hence {@code FAILURE} rather than {@code DENIED}; a filter on {@code
+   * outcome != SUCCESS} therefore surfaces a run still waiting for one. {@code UNREACHABLE} is
+   * handled by {@link DirectorySyncService} itself, which never reaches this class - see its own
+   * header entry.
    */
   private AuditOutcome toAuditOutcome(DirectorySyncOutcome outcome) {
     return switch (outcome) {
@@ -634,10 +632,9 @@ class DirectorySyncPlanExecutor {
       }
       Set<UUID> toRemoveIds = new HashSet<>(currentMemberIds);
       toRemoveIds.removeAll(desiredMembers.keySet());
-      // Resolved with a display name, not left null like an earlier version of this method did
-      // (review of PR #297): the report is exactly where an admin decides whether to let a run
-      // through that would remove access, and "who" matters most for the direction that costs
-      // rights.
+      // Resolved with a display name, not left null: the report is exactly where an admin decides
+      // whether to let a run through that would remove access, and "who" matters most for the
+      // direction that costs rights.
       Set<ResolvedUserRef> toRemove = resolveResolvedUserRefsById(toRemoveIds);
 
       if (!toAdd.isEmpty() || !toRemove.isEmpty()) {
@@ -684,19 +681,17 @@ class DirectorySyncPlanExecutor {
     // memberships are populated gradually), so a mass dissolution of empty groups is invisible to
     // membershipChangedFraction - its numerator and denominator are both driven by memberships,
     // which such a run never touches. changedFraction is the worse of the two so a run this
-    // implausible in either dimension is caught, not only one measured in memberships (residual
-    // risk flagged in review of PR #297).
+    // implausible in either dimension is caught, not only one measured in memberships.
     //
     // Only takes effect once the population is large enough to make a *fraction* meaningful
     // (MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE) or the absolute count is already alarming on its own
-    // (MIN_DISSOLUTIONS_FOR_GROUP_MEASURE) - without this floor, review of PR #297 measured a
-    // small, entirely legitimate organisation (3 active units, one empty placeholder correctly
-    // disappearing, zero memberships at risk) getting permanently stuck at ABORTED_THRESHOLD: 1 of
-    // 3 groups is 33%, above the default 30% threshold, with no per-run override available and no
-    // way for the fraction to ever improve on a later run of the same organisation. A single
-    // dissolved unit in a small authority - the common case for a pilot, not the exception - must
-    // stay a routine, applicable change; this measure exists for the *mass* case the numbers below
-    // are calibrated to.
+    // (MIN_DISSOLUTIONS_FOR_GROUP_MEASURE) - without this floor, a small, entirely legitimate
+    // organisation (3 active units, one empty placeholder correctly disappearing, zero memberships
+    // at risk) getting permanently stuck at ABORTED_THRESHOLD: 1 of 3 groups is 33%, above the
+    // default 30% threshold, with no per-run override available and no way for the fraction to ever
+    // improve on a later run of the same organisation. A single dissolved unit in a small authority
+    // - the common case for a pilot, not the exception - must stay a routine, applicable change;
+    // this measure exists for the *mass* case the numbers below are calibrated to.
     boolean groupMeasureApplies =
         activeGroupCount >= MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE
             || dissolutions.size() >= MIN_DISSOLUTIONS_FOR_GROUP_MEASURE;
@@ -1167,11 +1162,10 @@ class DirectorySyncPlanExecutor {
 
   /**
    * Resolves every group's parent link - and its reported path - in a second pass, after every
-   * group touched this run, new or existing, has a persisted id. Fixes two defects review of PR
-   * #297 found in the original single-pass version: it no longer depends on the order the directory
-   * reported groups in (a child reported before its parent used to resolve to a permanent {@code
-   * null}), and it applies to existing groups too, not only newly created ones (a reorganisation
-   * that reassigns an existing unit under a different parent used to be silently ignored).
+   * group touched this run, new or existing, has a persisted id. It does not depend on the order
+   * the directory reported groups in (a child reported before its parent still gets its parent),
+   * and it applies to existing groups too, not only newly created ones (a reorganisation that
+   * reassigns an existing unit under a different parent takes effect).
    *
    * <p>The path is refreshed here rather than reported as a change of its own: it is display-only
    * and changes without the group itself changing - renaming a parent moves every descendant's

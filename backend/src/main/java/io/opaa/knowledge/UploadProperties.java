@@ -21,9 +21,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     enough for a typical scanned Dienstanweisung while still bounding memory and disk use per
  *     upload; see #420's acceptance criteria for the resulting 413 response.
  * @param threadPool thread pool settings for {@code IndexingConfiguration#uploadTaskExecutor}.
- *     Deliberately its own property block, not a reuse of {@code opaa.indexing.thread-pool} (PR
- *     #589 second review round): {@code uploadTaskExecutor} and {@code indexingTaskExecutor} are
- *     two independent {@code ThreadPoolTaskExecutor} beans - an operator raising {@code
+ *     Deliberately its own property block, not a reuse of {@code opaa.indexing.thread-pool}: {@code
+ *     uploadTaskExecutor} and {@code indexingTaskExecutor} are two independent {@code
+ *     ThreadPoolTaskExecutor} beans - an operator raising {@code
  *     opaa.indexing.thread-pool.max-size} to cap total indexing concurrency would, while both
  *     executors read the same properties, actually double it instead, since the upload pool grew by
  *     the same amount unnoticed. Defaults (core=2, max=4, queue=20) mirror {@code

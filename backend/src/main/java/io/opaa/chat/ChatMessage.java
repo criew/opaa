@@ -29,9 +29,9 @@ import org.hibernate.type.SqlTypes;
  *
  * <p>{@link #sequence} is an application-assigned, per-chat ordinal, strictly monotonically
  * increasing - gaps are possible after a deletion, duplicates are not. {@code created_at} alone is
- * not a reliable ordering for two messages of the same turn written moments apart (#525 review,
- * finding/nit c), so every read orders by {@code (chat_id, sequence)}, never by {@code created_at}
- * alone. {@code uk_chat_messages_chat_sequence} enforces uniqueness at the database level too.
+ * not a reliable ordering for two messages of the same turn written moments apart, so every read
+ * orders by {@code (chat_id, sequence)}, never by {@code created_at} alone. {@code
+ * uk_chat_messages_chat_sequence} enforces uniqueness at the database level too.
  */
 @Entity
 @Table(name = "chat_messages")

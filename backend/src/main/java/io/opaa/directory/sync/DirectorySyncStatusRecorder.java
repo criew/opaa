@@ -15,9 +15,9 @@ import org.springframework.stereotype.Service;
  * rolled back) never reaches this class at all. An earlier version of this class ran under {@code
  * REQUIRES_NEW} to escape the caller's transaction; that requirement disappeared along with the
  * caller ever having one - see {@link DirectorySyncPlanExecutor}'s class javadoc for the defect
- * that motivated moving the call here (review of PR #297: a REQUIRES_NEW status write could commit
- * before the surrounding apply transaction later rolled back, durably recording {@code APPLIED} for
- * a run that never actually applied).
+ * that motivated moving the call here (a REQUIRES_NEW status write could commit before the
+ * surrounding apply transaction later rolled back, durably recording {@code APPLIED} for a run that
+ * never actually applied).
  */
 @Service
 public class DirectorySyncStatusRecorder {
@@ -42,8 +42,7 @@ public class DirectorySyncStatusRecorder {
    * attempt is deliberately <em>not</em> used: that construction has caused a defect twice in this
    * project already (#280's foreign-key violation against an uncommitted {@code users} row, #297's
    * status write committing ahead of an apply that later rolled back), and it would additionally
-   * make each caller hold two connections at once - the pool-exhaustion mode found in the review of
-   * #299.
+   * make each caller hold two connections at once - the pool-exhaustion mode.
    *
    * <p>Two callers updating an <em>existing</em> row concurrently remain last-writer-wins. That is
    * the intended semantics of a table holding "the outcome of the most recent run" and is unchanged

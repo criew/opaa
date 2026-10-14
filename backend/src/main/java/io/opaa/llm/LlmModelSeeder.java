@@ -20,13 +20,13 @@ import org.springframework.util.StringUtils;
  * nach der Umstellung wird die vorhandene Konfiguration als initiales, aktives Modell übernommen,
  * sofern noch kein Modell hinterlegt ist."
  *
- * <p><b>Guarded by {@link LlmModelSeedMarker}, not by "is {@code llm_models} empty?"</b> (PR #763
- * review): the takeover must happen at most once, ever - not once per empty table. Inferring it
- * from emptiness would re-seed a stale environment configuration the moment a Systemverwaltung
- * deletes every managed model, which contradicts the same section's "Danach ist die Datenbank für
- * das Chat-Modell führend. Die Umgebungsvariablen werden nicht mehr ausgewertet." The marker is
- * written in the same transaction as the seeded model (or alone, if there was nothing to seed), so
- * "attempted" and "succeeded in creating a model" are recorded atomically together.
+ * <p><b>Guarded by {@link LlmModelSeedMarker}, not by "is {@code llm_models} empty?"</b>: the
+ * takeover must happen at most once, ever - not once per empty table. Inferring it from emptiness
+ * would re-seed a stale environment configuration the moment a Systemverwaltung deletes every
+ * managed model, which contradicts the same section's "Danach ist die Datenbank für das Chat-Modell
+ * führend. Die Umgebungsvariablen werden nicht mehr ausgewertet." The marker is written in the same
+ * transaction as the seeded model (or alone, if there was nothing to seed), so "attempted" and
+ * "succeeded in creating a model" are recorded atomically together.
  *
  * <p><b>Two takeover paths, not one</b> - {@code spring.ai.model.chat} alone no longer decides
  * which, because #762 removed the native Ollama starter and fixed that property to {@code openai}
@@ -38,10 +38,10 @@ import org.springframework.util.StringUtils;
  *       environment variables, not through any {@code application.yml} property - the {@code
  *       ollama} blocks that variable used to select are gone): the takeover of an existing
  *       installation upgrading past #762 in one step, before the operator has removed the
- *       now-obsolete variables. The second condition matters (PR #766 review, Befund 5): {@code
- *       OPAA_AI_CHAT_PROVIDER=ollama} left over on its own, with neither Ollama variable still set,
- *       must not divert a genuinely fresh/openai-configured installation onto this path and seed it
- *       with the wrong (Ollama-shaped) defaults - see {@link #seedIfNeeded()}. Reads {@code
+ *       now-obsolete variables. The second condition matters: {@code OPAA_AI_CHAT_PROVIDER=ollama}
+ *       left over on its own, with neither Ollama variable still set, must not divert a genuinely
+ *       fresh/openai-configured installation onto this path and seed it with the wrong
+ *       (Ollama-shaped) defaults - see {@link #seedIfNeeded()}. Reads {@code
  *       OPAA_OLLAMA_BASE_URL}/{@code OPAA_OLLAMA_CHAT_MODEL} the same way it always has, with a
  *       {@code /v1} suffix appended to the base URL (unless already present) and no access key -
  *       Ollama's own OpenAI-compatible endpoint requires none. Falls back to the same
@@ -122,7 +122,7 @@ class LlmModelSeeder {
    * #LEGACY_OLLAMA_BASE_URL_ENV}/{@link #LEGACY_OLLAMA_CHAT_MODEL_ENV} do, for the chat takeover
    * path), but a value left over in any of them is equally silent otherwise - {@link
    * #warnAboutLeftoverLegacyVariables()} surfaces all five so an operator notices before assuming
-   * they still do something (PR #766 review, Befund 6).
+   * they still do something.
    */
   private static final List<String> LEGACY_ENVIRONMENT_VARIABLES =
       List.of(
@@ -155,15 +155,14 @@ class LlmModelSeeder {
       return;
     }
     if (repository.count() > 0) {
-      // #771 review, Befund 1: a marker-less skip (below, on a missing/invalid encryption key)
-      // is retried on every subsequent start until it either succeeds or the operator adds a
-      // model by hand in the meantime - the very fallback this class's own ERROR log recommends.
-      // Without this check, that hand-added model would collide with the retried takeover the
-      // next time it runs: ux_llm_models_single_active if the seeded model were
-      // activated too, or a silent second row - either way, a taken-over environment
-      // configuration the operator never asked for once the key finally is set. The marker
-      // still is the primary guard (PR #763 review) for the ordinary case; this is only reached
-      // when it was never written in the first place.
+      // A marker-less skip (below, on a missing/invalid encryption key) is retried on every
+      // subsequent start until it either succeeds or the operator adds a model by hand in the
+      // meantime - the very fallback this class's own ERROR log recommends. Without this check,
+      // that hand-added model would collide with the retried takeover the next time it runs:
+      // ux_llm_models_single_active if the seeded model were activated too, or a silent second row
+      // - either way, a taken-over environment configuration the operator never asked for once the
+      // key finally is set. The marker still is the primary guard for the ordinary case; this is
+      // only reached when it was never written in the first place.
       log.info(
           "Übernahme aus der Umgebungskonfiguration entfällt: Es sind bereits Chat-Modelle"
               + " hinterlegt (vermutlich manuell angelegt, nachdem eine frühere Übernahme mangels"
@@ -208,12 +207,12 @@ class LlmModelSeeder {
   }
 
   /**
-   * {@code OPAA_AI_CHAT_PROVIDER=ollama} alone is not enough (PR #766 review, Befund 5): left over
-   * on its own - both {@code OPAA_OLLAMA_*} variables already removed - it must not divert a
-   * takeover that should read {@code spring.ai.openai.chat.*} instead onto the Ollama-shaped
-   * defaults of {@link #seedFromLegacyOllamaEnv()}. At least one of the two Ollama variables still
-   * being set is what actually distinguishes "this is an existing installation upgrading past #762
-   * in one step" from "this leftover variable has no bearing on the current configuration anymore".
+   * {@code OPAA_AI_CHAT_PROVIDER=ollama} alone is not enough: left over on its own - both {@code
+   * OPAA_OLLAMA_*} variables already removed - it must not divert a takeover that should read
+   * {@code spring.ai.openai.chat.*} instead onto the Ollama-shaped defaults of {@link
+   * #seedFromLegacyOllamaEnv()}. At least one of the two Ollama variables still being set is what
+   * actually distinguishes "this is an existing installation upgrading past #762 in one step" from
+   * "this leftover variable has no bearing on the current configuration anymore".
    */
   private boolean legacyOllamaTakeoverApplies() {
     String legacyChatProvider = environment.getProperty(LEGACY_CHAT_PROVIDER_ENV, "");
@@ -227,9 +226,8 @@ class LlmModelSeeder {
   /**
    * Surfaces every environment variable #762 removed, so an operator who left one set (harmlessly
    * ignored otherwise, see this class's own Javadoc) notices instead of assuming it still has an
-   * effect (PR #766 review, Befund 6). Runs on every start, independent of {@link
-   * LlmModelSeedMarker} - the leftover variable itself does not stop existing once the one-time
-   * takeover has happened.
+   * effect. Runs on every start, independent of {@link LlmModelSeedMarker} - the leftover variable
+   * itself does not stop existing once the one-time takeover has happened.
    */
   private void warnAboutLeftoverLegacyVariables() {
     List<String> stillSet =
@@ -297,10 +295,10 @@ class LlmModelSeeder {
       try {
         apiKeyCiphertext = settingsEncryptor.encrypt(apiKey);
       } catch (IllegalStateException e) {
-        // #771 review, Befund "Sollte" 1: not just a missing key (SettingsEncryptor#requireKey()
-        // throws the same IllegalStateException for a set-but-malformed one - wrong Base64,
-        // wrong length) - both are the same "Übernahme scheitert kontrolliert" category the
-        // deployment docs promise, not a reason to abort startup.
+        // Not just a missing key (SettingsEncryptor#requireKey() throws the same
+        // IllegalStateException for a set-but-malformed one - wrong Base64, wrong length) - both
+        // are the same "Übernahme scheitert kontrolliert" category the deployment docs promise, not
+        // a reason to abort startup.
         throw new MissingEncryptionKeyException(e);
       }
     }

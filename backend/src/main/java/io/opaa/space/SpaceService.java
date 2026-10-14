@@ -226,11 +226,11 @@ public class SpaceService {
     Map<UUID, Long> libraryCounts = associationService.countVisibleBySpace(memberSpaces, caller);
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(memberSpaces);
     return memberSpaces.stream()
-        // An archived space is left out of this list unless the caller has a chat of their
-        // own in it, is the space's owner, or is a system admin - otherwise, in the typical #543
-        // case where the owner has no chat of their own in the space they archived, the space
-        // would vanish from their own list with no way back (#613 review, finding 3: no unarchive
-        // endpoint exists, so this is the only way the owner ever sees it again).
+        // An archived space is left out of this list unless the caller has a chat of their own in
+        // it, is the space's owner, or is a system admin - otherwise, in the typical #543 case
+        // where the owner has no chat of their own in the space they archived, the space would
+        // vanish from their own list with no way back (no unarchive endpoint exists, so this is the
+        // only way the owner ever sees it again).
         .filter(
             space ->
                 !space.isArchived()
@@ -470,8 +470,8 @@ public class SpaceService {
     successionGuard.requireReachNotFrozen(
         SuccessionObjectType.SPACE, space.getId(), "Die Aufnahme eines neuen Mitglieds");
     requireMembershipChangeable(space, caller);
-    // #613 review, finding 2: an archived space accepts no new content, and a new member is new
-    // content in the sense the specification means - see docs/features/spaces-and-assets.md#einen-
+    // An archived space accepts no new content, and a new member is new content in the sense the
+    // specification means - see docs/features/spaces-and-assets.md#einen-
     // space-stilllegen-archivieren-statt-löschen ("keine neuen Chats, Nachrichten, Umbenennungen
     // oder Mitglieder").
     requireNotArchived(space);
@@ -688,11 +688,11 @@ public class SpaceService {
         space.getId(),
         PermissionSubject.user(newOwnerUserId, space.getOrganizationId()),
         caller.id());
-    // #392 code review: ASSET_OWNER_CHANGED is in the closed list without a library-only
-    // restriction, and the spec's "Eigentuemerwechsel" line sits in the "Spaces, Bibliotheken und
-    // Gruppen" block, not a library-specific one - a space ownership transfer belongs under this
-    // event type, not the generic SPACE_CHANGED (which would hide it from a filter on
-    // event_type = ASSET_OWNER_CHANGED).
+    // ASSET_OWNER_CHANGED is in the closed list without a library-only restriction, and the spec's
+    // "Eigentuemerwechsel" line sits in the "Spaces, Bibliotheken und Gruppen" block, not a
+    // library-specific one - a space ownership transfer belongs under this event type, not the
+    // generic SPACE_CHANGED (which would hide it from a filter on event_type =
+    // ASSET_OWNER_CHANGED).
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(space.getOrganizationId())
@@ -1049,9 +1049,9 @@ public class SpaceService {
   }
 
   /**
-   * #613 review, finding 2: "kein neuer Inhalt" is not only "no new chats" (already enforced by
-   * {@code ChatService#createChat}) - it also covers adding a new member, which is why this is
-   * called from {@link #addMember} too. See docs/features/spaces-and-assets.md#einen-space-
+   * "kein neuer Inhalt" is not only "no new chats" (already enforced by {@code
+   * ChatService#createChat}) - it also covers adding a new member, which is why this is called from
+   * {@link #addMember} too. See docs/features/spaces-and-assets.md#einen-space-
    * stilllegen-archivieren-statt-löschen.
    */
   private void requireNotArchived(Space space) {

@@ -22,8 +22,7 @@ import org.springframework.stereotype.Component;
  * and nothing was ever running to finish the row on the next start. Without this recovery, such a
  * row would poll {@code PENDING} forever in the frontend, and a retry of the same file would answer
  * {@code 409} because only a {@code FAILED} row is replaced by a new upload ({@code
- * LibraryDocumentService#uploadDocument}, #589 review finding 3) - a dead end the caller cannot
- * resolve on their own.
+ * LibraryDocumentService#uploadDocument}) - a dead end the caller cannot resolve on their own.
  *
  * <p>Runs once, synchronously, at application startup, before any request can be served - so a row
  * genuinely still being processed by this same, freshly-started JVM can never be caught here: no

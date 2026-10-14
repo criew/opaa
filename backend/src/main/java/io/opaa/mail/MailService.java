@@ -88,7 +88,7 @@ public class MailService {
     }
 
     // Transport and settings come from one call: asked separately, the envelope could carry the
-    // sender address of settings the transport was not built from (#1559 review).
+    // sender address of settings the transport was not built from.
     MailSenderProvider.Transport transport = senderProvider.current();
     if (transport == null) {
       return new SendResult.Skipped(NOT_CONFIGURED);

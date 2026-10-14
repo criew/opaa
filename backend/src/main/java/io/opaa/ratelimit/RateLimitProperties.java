@@ -16,14 +16,14 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     would make every client a proxy.
  * @param query per-endpoint limits for the query endpoint
  * @param indexing per-endpoint limits for the indexing trigger endpoint
- * @param sourceTest per-endpoint limits for the source connection test endpoint (PR #537 review
- *     finding 3) - a synchronous probe with its own outbound connections and timeouts, the same
- *     reason the indexing trigger above is limited.
- * @param documentContent per-endpoint limits for the document content endpoint (#748 review,
- *     finding 1) - {@code GET /api/v1/documents/{documentId}/content} proxies a {@code
- *     HTTP_DIRECTORY}/{@code RSS_FEED} document's original from its remote source, the same kind of
- *     synchronous, outbound-connection-holding request {@code sourceTest} above is already limited
- *     for, except this one is VIEWER-reachable rather than gated by library creation.
+ * @param sourceTest per-endpoint limits for the source connection test endpoint - a synchronous
+ *     probe with its own outbound connections and timeouts, the same reason the indexing trigger
+ *     above is limited.
+ * @param documentContent per-endpoint limits for the document content endpoint - {@code GET
+ *     /api/v1/documents/{documentId}/content} proxies a {@code HTTP_DIRECTORY}/{@code RSS_FEED}
+ *     document's original from its remote source, the same kind of synchronous,
+ *     outbound-connection-holding request {@code sourceTest} above is already limited for, except
+ *     this one is VIEWER-reachable rather than gated by library creation.
  * @param webhook per-endpoint limits for the push intake - {@code POST
  *     /api/v1/libraries/{libraryId}/push} is reachable without a session, so the limiter is the
  *     bound on how much secret checking an unauthenticated caller can cause; keyed per library so a
