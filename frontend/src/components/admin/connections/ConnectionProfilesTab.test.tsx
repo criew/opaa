@@ -278,6 +278,17 @@ describe('ConnectionProfilesTab', () => {
     expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
   })
 
+  it('calls nothing good while the locks of the source types are still loading', async () => {
+    server.use(
+      http.get('/api/v1/admin/capabilities', () => HttpResponse.json(RELEASED_OVERVIEW)),
+      http.get('/api/v1/admin/connector-types', () => new Promise<never>(() => {})),
+    )
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    await screen.findByRole('row', { name: new RegExp(PROFILE) })
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+  })
+
   it('loads the list of profiles again after it failed', async () => {
     let calls = 0
     server.use(
