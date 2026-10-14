@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -66,7 +67,14 @@ class SourceConnectionTestServiceS3Test {
 
   @BeforeEach
   void setUp() {
-    libraryRepository = mock(KnowledgeLibraryRepository.class);
+    libraryRepository = mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
+    // The draft settings read the library by id, the service by id and organization: one row.
+    when(libraryRepository.findByIdAndOrganizationId(any(), any()))
+        .thenAnswer(
+            call ->
+                libraryRepository
+                    .findById(call.getArgument(0))
+                    .filter(found -> found.getOrganizationId().equals(call.getArgument(1))));
     libraryAccessService = mock(LibraryAccessService.class);
     s3ConnectionService = mock(S3ConnectionService.class);
     connectorRelease = mock(ConnectorReleaseService.class);

@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { DirectorySyncPendingPlanResponse } from '@/shared/api/types'
-import { ageSinceLabel } from '../../groups/groupOriginLabels'
+import { ageSinceLabel } from '@/features/principal'
 import DirectorySyncReportView from './DirectorySyncReportView'
 import { formatDateTime } from './directorySyncLabels'
 

@@ -326,7 +326,8 @@ class FileSyncPersonalQuotaIntegrationTest {
             cleanupService,
             documentRepository,
             quotaService,
-            new LibrarySourceConnectionResolver());
+            new LibrarySourceConnectionResolver(),
+            Clock.systemUTC());
     SourceSyncState state =
         syncStateRepository
             .findByLibraryId(library.getId())
@@ -347,7 +348,6 @@ class FileSyncPersonalQuotaIntegrationTest {
                   documentIngestService,
                   documentRepository,
                   folderService,
-                  cleanupService,
                   state,
                   scanJournal,
                   Clock.systemUTC(),

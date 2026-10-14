@@ -1,5 +1,7 @@
 package io.opaa.retrieval;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import io.opaa.api.types.RetrievalStageName;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -81,19 +83,14 @@ public record QueryProperties(
 
   @ConstructorBinding
   public QueryProperties {
-    if (topK <= 0) {
-      topK = 20;
-    }
+    topK = positiveOr(topK, 20);
     if (fusion == null) {
       fusion = Fusion.DEFAULT;
     }
     if (topK > 100) {
       throw new IllegalArgumentException("topK must be at most 100, got " + topK);
     }
-    if (fetchK <= 0) {
-      // max(25, topK), not a flat 25 - see #fetchK's Javadoc.
-      fetchK = Math.max(25, topK);
-    }
+    fetchK = positiveOr(fetchK, Math.max(25, topK)); // max(25, topK), see #fetchK's Javadoc
     if (fetchK > 200) {
       throw new IllegalArgumentException("fetchK must be at most 200, got " + fetchK);
     }

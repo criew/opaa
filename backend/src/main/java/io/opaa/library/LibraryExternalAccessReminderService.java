@@ -9,10 +9,9 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.InstantSource;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -21,7 +20,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,41 +52,21 @@ public class LibraryExternalAccessReminderService {
   private final MailService mail;
   private final PublicBaseUrl publicBaseUrl;
   private final ExternalAccessProperties properties;
-  private final InstantSource clock;
-  private final ZoneId zone;
+  private final Clock clock;
 
-  @Autowired
   public LibraryExternalAccessReminderService(
       KnowledgeLibraryRepository libraryRepository,
       UserRepository userRepository,
       MailService mail,
       PublicBaseUrl publicBaseUrl,
-      ExternalAccessProperties properties) {
-    this(
-        libraryRepository,
-        userRepository,
-        mail,
-        publicBaseUrl,
-        properties,
-        InstantSource.system(),
-        ZoneId.systemDefault());
-  }
-
-  LibraryExternalAccessReminderService(
-      KnowledgeLibraryRepository libraryRepository,
-      UserRepository userRepository,
-      MailService mail,
-      PublicBaseUrl publicBaseUrl,
       ExternalAccessProperties properties,
-      InstantSource clock,
-      ZoneId zone) {
+      Clock clock) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.mail = mail;
     this.publicBaseUrl = publicBaseUrl;
     this.properties = properties;
     this.clock = clock;
-    this.zone = zone;
   }
 
   /**
@@ -128,7 +106,7 @@ public class LibraryExternalAccessReminderService {
               "libraryName",
               library.getName(),
               "expiresAtDate",
-              DATE.format(library.getExternalAccessExpiresAt().atZone(zone)),
+              DATE.format(library.getExternalAccessExpiresAt().atZone(clock.getZone())),
               "actionUrl",
               publicBaseUrl.link("libraries/" + library.getId()).orElse("")));
       sent++;

@@ -2,198 +2,136 @@
 
 ## Status
 
-Vorgeschlagen (04.09.2026, Issue #1066, Epic #1065). Die Architekturannahmen stammen aus dem
-Baubeginn-Kommentar des Maintainers am Epic vom selben Tag; dieser ADR hält sie in der Form fest, in
-der #1066 sie umgesetzt hat.
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0026 (Kontextpräfix, modellgestützte Extraktion)
 
 ## Kontext
 
-[docs/features/metadata-schema.md](../features/metadata-schema.md) legt fest, **welche** Metadaten es
-gibt (drei Kernfelder Titel, Dokumentart, Datum/Stand; später Bibliotheksfelder und Schlagworte),
-**woher** sie kommen (deterministisch, dann Modell, dann leer) und **was sie bewirken** (Filter,
-Kontextpräfix, Beleg). Bis #1066 existierte davon nichts im Code: Chunk-Metadaten waren rein technisch,
-und es gab keinen Ort, an dem ein Wert je Dokument mit seiner Herkunft gespeichert wurde.
-
-Die Umsetzung des ersten Arbeitspakets musste sechs Fragen beantworten, die die Spezifikation offen
-lässt oder nur fachlich beantwortet — und deren Antwort alle Folgepakete (#1067 Bestandslauf, #1068
-manuelle Korrektur, #1069 Pflege-Anker, #1070 Filter, #1071 Bibliotheksfelder) tragen müssen.
+[metadata-schema.md](../features/metadata-schema.md) legt fest, **welche** Metadaten es gibt
+(Kernfelder Titel, Dokumentart, Datum/Stand; Bibliotheksfelder; Schlagworte), **woher** sie kommen
+(deterministisch, dann Modell, dann leer) und **was sie bewirken** (Filter, Kontextpräfix, Beleg).
+Vor #1066 existierte davon nichts im Code: Chunk-Metadaten waren rein technisch, und es gab keinen
+Ort, an dem ein Wert je Dokument mit seiner Herkunft gespeichert wurde. Dieser ADR beantwortet die
+Fragen, die die Spezifikation offen lässt und die alle Arbeitspakete des Epics #1065 tragen müssen.
 
 ## Entscheidung
 
 ### 1. Metadaten hängen am Dokument, nicht am Chunk
 
-Tabelle `document_metadata_values` (Migration 018): eine Zeile je `(document_id, field_key)`, mit
-`ON DELETE CASCADE` auf `documents`. Die Chunks in `vector_store` tragen keine eigene Fassung dieser
-Werte, sondern erben sie beim Schreiben. Das ist die fachliche Aussage der Spezifikation („eine Fassung
-gilt für das Dokument"), keine Speicheroptimierung — und die Voraussetzung dafür, dass eine
-Korrektur an genau einer Stelle stattfindet.
-
-Ein **leeres Feld ist die Abwesenheit der Zeile**, kein Nullwert. Der dritte Zustand „kein Wert
-ermittelbar" (#1069) ist im Schema als `value_state = 'NOT_DETERMINABLE'` vorgesehen — eine Zeile ohne
-Wert, die nur mit `origin = 'MANUAL'` gespeichert werden kann (CHECK-Constraint); #1066 schreibt ihn
-nicht.
+Tabelle `document_metadata_values`: eine Zeile je `(document_id, field_key)`, `ON DELETE CASCADE`
+auf `documents`. Chunks in `vector_store` tragen keine eigene Fassung, sondern erben beim
+Schreiben — eine Fassung gilt für das Dokument, und eine Korrektur findet an genau einer Stelle
+statt. Ein leeres Feld ist die Abwesenheit der Zeile; der dritte Zustand „kein Wert ermittelbar"
+ist `value_state = 'NOT_DETERMINABLE'` (`MetadataValueState`), eine Zeile ohne Wert, die nur mit
+`origin = 'MANUAL'` speicherbar ist (CHECK-Constraint).
 
 ### 2. Jeder Wert trägt seine Herkunft — auf Datenbankebene erzwungen
 
-Jede Zeile trägt `origin` (`DETERMINISTIC` / `DERIVED` / `MANUAL`), `extraction_version` (Pflicht für
-alles Nicht-Manuelle), `confidence` (nur bei `DERIVED` speicherbar), `actor_user_id` (bei `MANUAL`),
-`model_id` und `created_at`/`updated_at`. Die Regeln der Spezifikation sind CHECK-Constraints, nicht
-Servicelogik: Ein deterministischer Wert mit Konfidenz oder ein automatischer Wert ohne
-Extraktionsversion ist nicht speicherbar.
-
-**Ein manueller Wert wird von keiner Extraktion überschrieben** — `DocumentMetadataService` lässt eine
-Zeile mit `origin = MANUAL` bei jeder Reconciliation unangetastet, auch wenn die Extraktion für dasselbe
-Feld einen anderen oder keinen Wert liefert (abgesichert im Integrationstest). **Ein abgeleiteter Wert
-(`DERIVED`) weicht nur einem echten deterministischen Ergebnis:** Er füllt genau die Lücke, die Schritt 1
-lässt, und wird von einem leeren deterministischen Ergebnis nicht gelöscht — sonst müsste das Modell nach
-jeder Neuaufnahme derselben Datei erneut bezahlt werden. Gelöscht wird bei leerem Ergebnis nur eine
-`DETERMINISTIC`-Zeile.
-
-**Werte und Chunk-Nachzug sind eine Transaktion.** `DocumentMetadataService` schreibt über ein
-`TransactionTemplate` statt `@Transactional`: Das Parsen der Datei (PDFBox/POI) läuft außerhalb jeder
-Transaktion, damit keine Pool-Verbindung über die Parsedauer gehalten wird; Werte-Reconciliation,
-`metadata_extraction_version` und das JSON-Update der Chunks laufen danach gemeinsam — ein
-fehlgeschlagener Chunk-Nachzug lässt das Dokument unverändert (dokumentgranulare Idempotenz für #1067).
+Jede Zeile trägt `origin` (`DETERMINISTIC` / `DERIVED` / `MANUAL`), `extraction_version` (Pflicht
+für alles Nicht-Manuelle), `confidence` (nur bei `DERIVED`), `actor_user_id` (bei `MANUAL`),
+`model_id`, `created_at`/`updated_at`; die Regeln sind CHECK-Constraints, nicht Servicelogik.
+Ein manueller Wert wird von keiner Extraktion überschrieben. Ein abgeleiteter Wert weicht nur einem
+echten deterministischen Ergebnis, nicht einem leeren — sonst müsste das Modell nach jeder
+Neuaufnahme derselben Datei erneut bezahlt werden. Werte und Chunk-Nachzug sind eine Transaktion:
+`DocumentMetadataService` schreibt über ein `TransactionTemplate`, damit das Parsen der Datei
+außerhalb jeder Transaktion läuft und ein fehlgeschlagener Chunk-Nachzug das Dokument unverändert
+lässt.
 
 ### 3. Dokumentart ist eine Seed-Tabelle mit stabilen Codes, kein Enum und keine Freitextspalte
 
-`document_type_vocabulary` (Code, deutsches Label, Sortierung) plus `document_type_synonyms`. Der Wert am
-Dokument ist ein **Fremdschlüssel** auf den Code: Ein Wert außerhalb des Vokabulars ist nicht
-speicherbar — die Regel „nicht auf den nächstähnlichen abbilden, nicht auf einen Vorgabewert setzen"
-wird dort erzwungen, wo sie nicht vergessen werden kann. Stabile Codes (`SATZUNG_ORDNUNG`,
-`DIENSTANWEISUNG`, …) statt eines Java-Enums, weil die Spezifikation die Liste „je Installation
-erweiterbar" verlangt: Eine Erweiterung ist ein `INSERT`, kein Release. Die Abbildung eines Tokens auf
-einen Code ist eine **exakte**, groß-/kleinschreibungs- und umlautunempfindliche Übereinstimmung mit
-Code, Label oder Synonym — keine Ähnlichkeitsabbildung. Kein Synonym ist kürzer als vier Buchstaben: Eine
-kleingeschriebene Abkürzung wie „DA" ist vom Füllwort „da" nicht zu unterscheiden und würde als zweiter
-Code eine eindeutig benannte Dokumentart wieder leeren.
+`document_type_vocabulary` (Code, deutsches Label, Sortierung) plus `document_type_synonyms`; der
+Wert am Dokument ist ein Fremdschlüssel auf den Code, ein Wert außerhalb des Vokabulars ist nicht
+speicherbar. Stabile Codes statt eines Java-Enums, weil die Liste je Installation erweiterbar sein
+muss: Eine Erweiterung ist ein `INSERT`, kein Release. Die Abbildung eines Tokens ist eine exakte,
+groß-/kleinschreibungs- und umlautunempfindliche Übereinstimmung mit Code, Label oder Synonym —
+keine Ähnlichkeitsabbildung; kein Synonym ist kürzer als vier Buchstaben.
 
 ### 4. Datum/Stand ist ein Datum mit Genauigkeit
 
-`date_value` plus `date_precision` (`DAY` / `MONTH` / `YEAR`); der Wert ist auf den ersten Tag des
-unbekannten Teils aufgefüllt. „Fassung 2024" ist damit `(2024-01-01, YEAR)` — filterbar wie jedes andere
-Datum, im Beleg als „2024" darstellbar, nie als „01.01.2024". Ein Dateisystem-Änderungsdatum ist keine
-Quelle: Es sagt, wann eine Datei kopiert wurde, nicht welcher Stand gilt.
+`date_value` plus `date_precision` (`DAY` / `MONTH` / `YEAR`), aufgefüllt auf den ersten Tag des
+unbekannten Teils: „Fassung 2024" ist `(2024-01-01, YEAR)`, filterbar wie jedes Datum, im Beleg als
+„2024" dargestellt. Ein Dateisystem-Änderungsdatum ist keine Quelle.
 
 ### 5. Die filterbaren Werte stehen zusätzlich in den Chunk-Metadaten
 
-`FileProcessingService#storeChunks` schreibt `doc_type`, `doc_date` und `doc_date_precision` auf jeden
-Chunk — zentral, nicht über `passthroughMetadataKeys()` der Pipelines, weil die Werte am Dokument hängen
-und keine Pipeline sie kennt. Der Titel wird nicht dupliziert (nicht filterbar; der Beleg liest ihn vom
-Dokument). Damit können beide Suchpfade (#1070) dieselbe Bedingung tragen. Eine spätere Änderung
-(manuelle Korrektur, Bestandslauf) schreibt die Schlüssel per JSON-Update nach
-(`VectorChunkStore#updateDocumentMetadata`) — ohne Neu-Chunking und ohne Neu-Einbetten; der
-Ausdrucksindex `idx_vector_store_document_id` (Migration 018, nach dem Muster von 012) trägt diesen
-Pfad je Dokument. Keine Pipeline darf einen dieser Schlüssel über `passthroughMetadataKeys()`
-deklarieren — die Registry weist das beim Start zurück.
+`DocumentIngestService#storeChunks` schreibt `doc_type`, `doc_date` und `doc_date_precision`
+(`CoreMetadataChunkKeys`) zentral auf jeden Chunk, nicht über `passthroughMetadataKeys()` der
+Formate — die Registry weist ein Format zurück, das einen dieser Schlüssel deklariert. Der Titel
+wird nicht dupliziert. Eine spätere Änderung schreibt die Schlüssel per JSON-Update nach
+(`ChunkMetadataStore#updateDocumentMetadata`, Ausdrucksindex `idx_vector_store_document_id`), ohne
+Neu-Chunking und Neu-Einbetten; beide Suchpfade tragen dieselbe Bedingung.
 
-### 6. Die Extraktion ist ein Systemprozess des Ingest; die Pipelines raten nichts
+### 6. Die Extraktion ist ein Systemprozess des Ingest; die Formate raten nichts
 
-`CoreMetadataExtractor` ist der einzige Ort, an dem aus Rohquellen ein Feldwert wird. Die Pipelines
-liefern über `DocumentProperties` nur, was ihr Format selbst erklärt (Titel-Eigenschaft, Erstell-/
-Änderungsdatum, erste Überschrift, Markdown-Frontmatter, Mail-Betreff und -Datum) und über
-`DocumentPipeline#readProperties` dieselben Rohquellen **ohne Chunking** — der Baustein, den der
-Bestandslauf (#1067) je Dokument aufruft.
-
-Quellenreihenfolge (Version 1, `CoreMetadataExtractor.EXTRACTION_VERSION`):
-
-- **Titel:** Format-Eigenschaft → Frontmatter `titel` → erste Überschrift → humanisierter Dateiname.
-- **Dokumentart:** Frontmatter `dokumentart` (eine Deklaration außerhalb des Vokabulars lässt das Feld
-  leer und fällt nicht durch) → Dateinamens-Token (genau ein eindeutiger Code; zwei verschiedene lassen
-  das Feld leer).
-- **Datum/Stand:** Frontmatter `stand_datum`/`fassung` und das formateigene Dokumentdatum (Mail-Header,
-  RSS-Veröffentlichungsdatum) → erste Überschrift (Kopfbereich) → Dateiname → Änderungs- →
-  Erstell-Eigenschaft. Je Quelle werden alle Kandidaten einer Schreibweise geprüft; ein unmöglicher
-  Kalendertag (ein Aktenzeichen wie `12.34.5678`) wird übersprungen, nicht zum Abbruch. Ein nacktes Jahr
-  1900–2099 zählt nur im Dateinamen und im Frontmatter; in der Überschrift braucht ein Jahr einen Anker
-  („Stand 2026", „Fassung 2024") — eine unverankerte Zahl dort ist ein Betrag oder ein Paragraf, nie ein
-  Stand. Ein falsch gelesenes Datum mit Herkunft `DETERMINISTIC` wäre genau der unsichtbare Dauerschaden,
-  den die Spezifikation ausschließt.
-
-Die Quellenreihenfolge der **Dokumentart** ist mit #1263 auf Version 2 erweitert worden (Dateiname →
-Dokumentkopf → Dateiformat, samt Kompositum-Endungsregel im Seed) und mit #1289 auf Version 3
-korrigiert: Aus dem Dokument zählt nur noch die **Titelzeile**, nicht mehr der ganze Kopfbereich —
-eine Erwähnung darunter (Beschriftung, Zitat, Abschnittsüberschrift) ist eine Referenz auf ein
-anderes Dokument. Maßgeblich ist dafür
-[Umgesetzt (#1263)](../features/metadata-schema.md#umgesetzt-1263). Die Entscheidungen dieses ADR —
-exakte Abbildung gegen ein geseedetes Vokabular, kein Wert außerhalb davon, keine
-Ähnlichkeitsabbildung — gelten unverändert.
-
-Die Extraktion läuft ohne Personenrechtekontext (Beschluss 1 des Maintainers, Epic #1065): Sie zeigt
-niemandem Inhalte, sie liest, was der Ingest ohnehin liest. Die Rechte-Invariante der Spezifikation gilt
-für Aggregate, Stichproben und die modellgestützte Extraktion.
-
-**Regel (d) der Ingestion-Spezifikation bleibt unberührt:** Die `version()` keiner Pipeline steigt,
-obwohl sie neue Rohquellen liefert — die erzeugten Chunks ändern sich nicht. Die Nachrüstung des
-Bestands läuft über `documents.metadata_extraction_version` (NULL = nie extrahiert), nicht über die
-Pipeline-Version; das ist die Selektionsspalte von #1067.
+`CoreMetadataExtractor` ist der einzige Ort, an dem aus Rohquellen ein Feldwert wird. Die Formate
+liefern über `DocumentProperties` nur, was ihr Format selbst erklärt, und über
+`DocumentFormat#readProperties` dieselben Rohquellen ohne Chunking — der Baustein des Bestandslaufs.
+Die Quellenreihenfolge je Feld und ihre Fassung (`CoreMetadataExtractor.EXTRACTION_VERSION`) steht
+in [metadata-schema.md](../features/metadata-schema.md), Abschnitte „Umgesetzt"; die Regeln dieses
+ADR gelten für jede Fassung: exakte Abbildung gegen das Vokabular, kein Wert außerhalb davon (eine
+Frontmatter-Deklaration außerhalb des Vokabulars lässt das Feld leer und fällt nicht durch, zwei
+verschiedene Codes im Dateinamen ebenso), ein unmögliches Datum wird übersprungen, ein nacktes Jahr
+zählt nur in Dateiname und Frontmatter, in der Überschrift braucht es einen Anker. Die Extraktion
+läuft ohne Personenrechtekontext; sie liest, was der Ingest ohnehin liest. Die Rechte-Invariante der
+Spezifikation gilt für Aggregate, Stichproben und die modellgestützte Extraktion. Die
+`version()` keines Formats steigt wegen neuer Rohquellen; der Bestand wird über
+`documents.metadata_extraction_version` (NULL = nie extrahiert) nachgezogen, nicht über die
+Format-Version.
 
 ### 7. Der Beleg trägt Metadaten als generische Feld-Wert-Liste
 
-Maintainer-Beschluss vom 04.09.2026 (Kommentar am Epic #1065): `SourceReference.metadata` ist eine
-Liste selbstbeschreibender Einträge (`fieldKey`, deutsches `label`, maschinenlesbarer `value`,
-`displayValue`, `origin`, optional `datePrecision`), schemagetrieben gerendert — das Frontend kennt kein
-Feld. Die Kernfelder sind die ersten Einträge; #1071 hängt Bibliotheksfelder an dieselbe Liste. Ein
-leeres Feld ist nicht in der Liste, ein abgeleiteter Wert ist als solcher markiert. Die Anzeigeform
-(deutsches Vokabular-Label, Datum je Genauigkeit) entsteht im Backend (`ChatSourceMetadataEntry`), damit
-jeder Client dieselbe Darstellung zeigt. Keine weiteren formatspezifischen Felder am `SourceReference`;
-die vier Mail-Sonderfelder aus #1164 bleiben vorerst bestehen und werden in einem eigenen Sub-Issue nach
-#1071 durch Schemafelder abgelöst — kein Parallelbetrieb danach.
+`SourceReference.metadata` ist eine Liste selbstbeschreibender Einträge (`SourceMetadataEntry`:
+`fieldKey`, deutsches `label`, `value`, `displayValue`, `origin`, optional `datePrecision`),
+schemagetrieben gerendert — das Frontend kennt kein Feld. Kernfelder sind die ersten Einträge,
+Bibliotheksfelder (Entscheidung 8) und Formatfelder (`fmt:<key>`, #1242, Absender/An/Betreff einer
+Mail) hängen an derselben Liste; ein leeres Feld ist nicht in der Liste. Die Anzeigeform entsteht im Backend, damit jeder Client dieselbe
+Darstellung zeigt; es gibt keine formatspezifischen Felder mehr am `SourceReference`.
 
-### 8. Nachtrag (#1071): Bibliotheksfelder hängen an derselben Werte-Tabelle, mit Fremdschlüssel auf ihre Werteliste
+### 8. Bibliotheksfelder hängen an derselben Werte-Tabelle, mit Fremdschlüssel auf ihre Werteliste
 
-Die Konsequenzen oben kündigen für #1071 „einen weiteren Feldbezug an dieselbe Werte-Tabelle" an.
-So ist es gebaut, mit drei Festlegungen, die die Spezifikation offen lässt:
-
-**Der Feldschlüssel ist namensraumgetrennt statt tabellengetrennt.** Eine Zeile in
-`document_metadata_values` trägt für ein Bibliotheksfeld den Schlüssel `lib:<key>` und zusätzlich
-`library_field_id` (Migration 025, `ON DELETE CASCADE`); ein CHECK bindet Namensraum und Referenz in
-beide Richtungen aneinander. Damit gilt jede vorhandene Mechanik — Herkunftspflicht, dritter Zustand,
-Audit-Nutzlast, Pflege-Anker, Sammelzuweisung — unverändert auch für Bibliotheksfelder, statt für
-eine zweite Werte-Tabelle noch einmal geschrieben zu werden. Der Preis ist die Namensraum-Konvention,
-die jede Stelle kennen muss, die einen Feldschlüssel entgegennimmt; sie ist in
-`LibraryMetadataFieldKeys` an einer Stelle festgelegt.
-
-**Die Feldidentität ist `(Bibliothek, Feldschlüssel)`, nicht der Schlüssel.** Zwei Bibliotheken
-dürfen beide `fassung` führen, mit verschiedenen Wertelisten. Ein Filter trägt deshalb beides, und
-seine Bedingung enthält einen Bibliotheksvorbehalt (`fremde Bibliothek ODER …`), damit ein Dokument
-nie gegen die Werteliste einer fremden Bibliothek geprüft wird. Die Alternative — global eindeutige
-Schlüssel — wäre einfacher zu filtern und machte das Anlegen eines Feldes von den Feldern fremder
-Bibliotheken abhängig, die die anlegende Person womöglich nicht sehen darf.
-
-**Der Wert eines Auswahlfeldes ist ein echter Fremdschlüssel auf seinen Listeneintrag** — dieselbe
-Entscheidung wie 3 für die Dokumentart, aus demselben Grund: Der Zustand „Dokument trägt einen Wert,
-den es im Schema nicht mehr gibt" wird dort ausgeschlossen, wo er nicht vergessen werden kann. Aus
-`ON DELETE RESTRICT` folgt, dass es **keine** Operation gibt, die einen benutzten Listenwert ohne
-bestätigte Abbildung entfernt; die Abbildung selbst läuft in einer Transaktion und zieht die
-Chunk-Schlüssel darin mit.
-
-**Am Chunk trägt ein Bibliotheksfeld drei Schlüssel** statt einem: `lf_<key>` (Wert),
-`lfp_<key>` (Genauigkeit eines Datums) und `lfs_<key>` (Präsenzmarke). Die dritte ist nötig, weil
-beide Suchpfade „kein Wert" als `NOT IN` über eine **geschlossene** Wertemenge ausdrücken
-(Entscheidung 5; der pgvector-Konverter kennt kein `IS NULL`) — die Werte eines Auswahl- oder
-Kennungsfeldes sind zur Abfragezeit keine geschlossene Menge, die Präsenzmarke mit ihrem einen Wert
-ist es. Die drei Schlüssel gehören zu jedem Nachzug des Dokuments, **auch wenn das Feld gerade nicht
-filtert** — sonst überlebte eine Präsenzmarke das Abschalten oder Löschen des Feldes und schlösse ein
-Dokument ohne Wert von einem späteren Filter aus.
-
-**Das Muster eines Kennungsfeldes ist Nutzereingabe und wird unter einem Schrittbudget ausgewertet.**
-Das Verwaltungsrecht an einer Bibliothek ist keine Vertrauensgrenze, weil jede angemeldete Person
-eine Bibliothek anlegen und besitzen kann. Da `java.util.regex` kein Zeitlimit kennt, zählt eine
-begrenzende Zeichenfolge die Schritte des Matchers und bricht ab — beim Setzen eines Wertes und, gegen
-erzeugte Worst-Case-Eingaben, beim Anlegen des Feldes.
+- Der Feldschlüssel ist namensraumgetrennt: `lib:<key>` plus `library_field_id` (`ON DELETE
+  CASCADE`), ein CHECK bindet beide aneinander (`LibraryMetadataFieldKeys`). Damit gelten
+  Herkunftspflicht, dritter Zustand, Audit, Pflege-Anker und Sammelzuweisung unverändert, statt
+  für eine zweite Tabelle noch einmal geschrieben zu werden.
+- Die Feldidentität ist `(Bibliothek, Feldschlüssel)`: Zwei Bibliotheken dürfen beide `fassung`
+  führen. Ein Filter trägt beides, und seine Bedingung enthält einen Bibliotheksvorbehalt, damit
+  ein Dokument nie gegen die Werteliste einer fremden Bibliothek geprüft wird.
+- Der Wert eines Auswahlfeldes ist ein Fremdschlüssel auf seinen Listeneintrag (`ON DELETE
+  RESTRICT`): Keine Operation entfernt einen benutzten Listenwert ohne bestätigte Abbildung;
+  Umschlüsselung und Feldlöschung laufen zweiphasig und wiederaufnehmbar
+  (`LibraryMetadataSchemaChangeService`, #1361).
+- Am Chunk trägt ein Bibliotheksfeld drei Schlüssel: `lf_<key>` (Wert), `lfp_<key>`
+  (Datumsgenauigkeit), `lfs_<key>` (Präsenzmarke) — die dritte, weil beide Suchpfade „kein Wert"
+  als `NOT IN` über eine geschlossene Menge ausdrücken. Alle drei gehören zu jedem Nachzug, auch
+  wenn das Feld gerade nicht filtert.
+- Das Muster eines Kennungsfeldes ist Nutzereingabe und wird unter einem Schrittbudget
+  ausgewertet — beim Setzen eines Wertes und gegen erzeugte Worst-Case-Eingaben beim Anlegen des
+  Feldes —, weil jede angemeldete Person eine Bibliothek besitzen kann.
 
 ## Konsequenzen
 
-- **Einfacher:** #1068 setzt eine `MANUAL`-Zeile und ruft `updateDocumentMetadata`; #1067 ruft je Dokument
-  `DocumentMetadataService#reextractFromFile` und selektiert nach `metadata_extraction_version`; #1070
-  filtert auf `doc_type`/`doc_date`; #1071 hängt Bibliotheksfelder über einen weiteren Feldbezug an
-  dieselbe Werte-Tabelle.
+- **Einfacher:** Manuelle Korrektur, Bestandslauf (`DocumentMetadataService#reextractFromFile`),
+  Filter und Bibliotheksfelder benutzen dieselbe Tabelle und denselben Chunk-Nachzug.
 - **Schwieriger:** Jede Regeländerung im Extraktor ist eine neue `EXTRACTION_VERSION` und damit ein
-  Bestandslauf. Ein Vokabular-Code darf nie umbenannt werden, solange Dokumente ihn tragen (FK).
-- **Bewusst offen:** Die Erweiterung des Vokabulars je Organisation oder je Bibliothek (Offener Punkt der
-  Spezifikation) — die Tabelle ist heute installationsweit.
-- **Fortgeführt:** Die beiden letzten Arbeitspakete desselben Datenmodells — Kontextpräfix-Abdruck
-  je Dokument (#1072) und modellgestützte Extraktion mit freien Schlagworten (#1073) — stehen in
-  [ADR-0026](0026-kontextpraefix-abdruck-und-modellgestuetzte-extraktion.md). Die Entscheidungen 1
-  bis 8 dieses ADR gelten dort unverändert weiter.
+  Bestandslauf. Ein Vokabular-Code darf nie umbenannt werden, solange Dokumente ihn tragen.
+
+## Verworfene Alternativen
+
+- Metadaten je Chunk — eine Korrektur müsste jeden Chunk anfassen; die Fachaussage gilt je Dokument.
+- Dokumentart als Java-Enum oder Freitext — nicht je Installation erweiterbar bzw. nicht erzwingbar.
+- Chunk-Schlüssel über `passthroughMetadataKeys()` der Formate — kein Format kennt die Werte am Dokument.
+- Global eindeutige Schlüssel für Bibliotheksfelder — machte das Anlegen eines Feldes von fremden Bibliotheken abhängig.
+- Zweite Werte-Tabelle für Bibliotheksfelder — jede Mechanik ein zweites Mal.
+
+## Offen
+
+- Erweiterung des Vokabulars je Organisation oder je Bibliothek — die Tabelle ist installationsweit.
+
+## Änderungsverlauf
+
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-09-04 | #1263, #1289 | Dokumentart auch aus Titelzeile, Kompositum-Endung und Dateiformat (Version 2, 3) | 6 |
+| 2026-09-05 | #1071 | Bibliotheksfelder an derselben Werte-Tabelle | 8 |
+| 2026-09-05 | #1242 | Formatfelder (`fmt:`) lösen die Mail-Sonderfelder am Beleg ab | 7 |
+| 2026-09-17 | #1361, #1701 | Umschlüsselung und Feldlöschung zweiphasig und wiederaufnehmbar | 8 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 5, 6, 8 |

@@ -323,7 +323,8 @@ public final class FileSyncHarness {
             cleanupService,
             documentRepository,
             mock(LibraryStorageQuotaService.class),
-            new LibrarySourceConnectionResolver());
+            new LibrarySourceConnectionResolver(),
+            Clock.systemUTC());
     executor =
         new SourceIndexingExecutor() {
           @Override
@@ -581,7 +582,6 @@ public final class FileSyncHarness {
                       ingestService,
                       documentRepository,
                       folderService,
-                      cleanupService,
                       state,
                       new ScanJournal(syncStateRepository),
                       Clock.fixed(now, ZoneOffset.UTC),

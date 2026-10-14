@@ -110,7 +110,6 @@ class S3RunSecretContractTest extends RunSecretContract {
             ingestService,
             documentRepository,
             mock(LibraryFolderService.class),
-            cleanupService,
             new ScanJournal(syncState),
             Clock.systemUTC(),
             template,

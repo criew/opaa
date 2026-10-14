@@ -2,7 +2,6 @@ package io.opaa.indexing.source.nextcloud;
 
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSyncStateRepository;
@@ -41,10 +40,10 @@ public class NextcloudConnectorConfiguration {
       DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       LibraryFolderService libraryFolderService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new NextcloudIndexingExecutor(
         nextcloudProperties,
         targetAddressValidator,
@@ -52,9 +51,8 @@ public class NextcloudConnectorConfiguration {
         documentIngestService,
         documentRepository,
         libraryFolderService,
-        staleDocumentCleanupService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

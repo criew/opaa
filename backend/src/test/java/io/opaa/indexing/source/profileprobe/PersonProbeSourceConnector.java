@@ -140,20 +140,6 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
   }
 
   @Override
-  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
-  }
-
-  @Override
-  public void applyChange(KnowledgeLibrary library, ConnectorData own, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
-  }
-
-  @Override
   public String otherTypeMessage() {
     return "sourceType passt nicht zur Testquelle für Personen";
   }

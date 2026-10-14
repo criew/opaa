@@ -4,7 +4,6 @@ import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
@@ -74,8 +73,8 @@ public class ConfluenceConnectorConfiguration {
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
       SourceSyncStateRepository sourceSyncStateRepository,
-      StaleDocumentCleanupService staleDocumentCleanupService,
-      IndexingRunTemplate indexingRunTemplate) {
+      IndexingRunTemplate indexingRunTemplate,
+      Clock clock) {
     return new ConfluenceIndexingExecutor(
         confluenceClientFactory,
         confluenceProperties,
@@ -83,8 +82,7 @@ public class ConfluenceConnectorConfiguration {
         attachmentIndexer,
         documentRepository,
         sourceSyncStateRepository,
-        staleDocumentCleanupService,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate);
   }
 }

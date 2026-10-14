@@ -8,7 +8,6 @@ import io.opaa.asset.AssetShellService;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.NotFoundException;
 import io.opaa.connection.PrivateLibraryConnections;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingJobRepository;
@@ -132,11 +131,7 @@ public class PrivateLibraryErasure {
   public Optional<Outcome> eraseOwn(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
         transactions.execute(
-            status ->
-                libraries
-                    .findById(libraryId)
-                    .filter(found -> found.getOrganizationId().equals(caller.organizationId()))
-                    .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden")));
+            status -> libraries.requireInOrganization(libraryId, caller.organizationId()));
     if (!library.isOwnerOnly()) {
       return Optional.empty();
     }

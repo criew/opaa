@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -84,10 +85,12 @@ class OrphanedOriginalCleanupS3Test {
 
   @BeforeEach
   void setUp() {
-    KnowledgeLibraryRepository libraryRepository = mock(KnowledgeLibraryRepository.class);
+    KnowledgeLibraryRepository libraryRepository =
+        mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getOrganizationId()).thenReturn(organizationId);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryRepository.existsById(libraryId)).thenReturn(true);
     when(libraryRepository.findIdsByOrganizationId(organizationId)).thenReturn(List.of(libraryId));
     DocumentRepository documentRepository = mock(DocumentRepository.class);

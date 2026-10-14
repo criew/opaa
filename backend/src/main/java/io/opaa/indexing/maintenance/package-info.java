@@ -10,10 +10,10 @@
  *
  * <p>Uses {@code document} and {@code chunk} to read and rewrite, {@code format} and {@code
  * metadata} to redo what an ingest did, and the protocol of {@code job} to report what it removed.
- * Its callers sit outside this package: the administration endpoints, the search status page and
- * the connectors that remove a document themselves. The run frame in {@code source} reaches the
- * reconciliation by absence only through {@code VanishedDocumentReconciler}. {@code
- * io.opaa.metadata} lies below and reaches the Nachlauf only through {@link
- * io.opaa.metadata.ContextPrefixBacklog}.
+ * Its callers sit outside this package: the administration endpoints and the search status page.
+ * The run frame in {@code source} reaches the removals - the reconciliation by absence and a
+ * positive finding of a connector or the file sync - only through {@code
+ * VanishedDocumentReconciler}. {@code io.opaa.metadata} lies below and reaches the Nachlauf only
+ * through {@link io.opaa.metadata.ContextPrefixBacklog}.
  */
 package io.opaa.indexing.maintenance;

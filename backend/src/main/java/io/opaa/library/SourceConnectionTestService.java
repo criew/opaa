@@ -3,7 +3,6 @@ package io.opaa.library;
 import io.opaa.api.types.AssetRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
-import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
@@ -325,10 +324,7 @@ public class SourceConnectionTestService {
    */
   private KnowledgeLibrary requireManagedLibrary(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(l -> l.getOrganizationId().equals(caller.organizationId()))
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     libraryAccessService.requireRole(
         library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     return library;

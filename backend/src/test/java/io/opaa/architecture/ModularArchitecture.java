@@ -48,7 +48,8 @@ import org.springframework.stereotype.Controller;
  * web layer, as ArchUnit rules over a root package. {@link ModularArchitectureTest} applies them to
  * the main classes under {@code io.opaa}; {@link ModularArchitectureFixtureTest} to example trees
  * that break one rule each. Only compiled dependencies count: a type named only in Javadoc, or only
- * through a {@code static final} constant the compiler inlines, is none.
+ * through a {@code static final} constant the compiler inlines, is none; {@link
+ * SourceReferenceTest} holds those names in the source to the layering and the modules.
  */
 public final class ModularArchitecture {
 
@@ -89,10 +90,10 @@ public final class ModularArchitecture {
           "llm",
           "metadata",
           "indexing",
+          "health",
           "connection",
           "library",
           "retrieval",
-          "health",
           "prompt",
           "chat",
           "query",
@@ -149,6 +150,7 @@ public final class ModularArchitecture {
           entry("llm", KNOWLEDGE),
           entry("metadata", KNOWLEDGE),
           entry("indexing", KNOWLEDGE),
+          entry("health", KNOWLEDGE),
           entry("connection", CONNECTIONS),
           entry("space", WORKSPACE),
           entry("revision", WORKSPACE),
@@ -160,7 +162,6 @@ public final class ModularArchitecture {
           entry("query", ASSISTANT),
           entry("search", ASSISTANT),
           entry("searchadmin", ASSISTANT),
-          entry("health", ASSISTANT),
           entry("externalaccess", EXTERNAL),
           entry("mcp", EXTERNAL),
           entry("api", APP),
@@ -192,7 +193,7 @@ public final class ModularArchitecture {
               EnumSet.of(
                   FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE, WORKSPACE, LIBRARY, RETRIEVAL)),
           entry(EXTERNAL, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY, ASSISTANT)),
-          entry(APP, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY)));
+          entry(APP, EnumSet.of(FOUNDATION, KNOWLEDGE)));
 
   /**
    * The package edges, relative to the root, that lie on a cycle between the subpackages of one
@@ -200,11 +201,7 @@ public final class ModularArchitecture {
    * test; an edge that no longer lies on a cycle is removed from this list.
    */
   static final Set<String> KNOWN_SUBPACKAGE_CYCLE_EDGES =
-      Set.of(
-          "externalaccess -> externalaccess.token",
-          "externalaccess.token -> externalaccess",
-          "query -> query.spike",
-          "query.spike -> query");
+      Set.of("externalaccess -> externalaccess.token", "externalaccess.token -> externalaccess");
 
   /**
    * The core subpackages of {@code indexing}, lowest first. A core package depends only on itself
@@ -500,14 +497,12 @@ public final class ModularArchitecture {
           "indexing.maintenance.StaleDocumentCleanupService#reconcile",
           "indexing.maintenance.StaleDocumentCleanupService#cleanupVanished",
           "indexing.maintenance.StaleDocumentCleanupService#removeWithAttachments",
-          "indexing.source.VanishedDocumentReconciler#reconcile");
+          "indexing.source.VanishedDocumentReconciler#reconcile",
+          "indexing.source.VanishedDocumentReconciler#removeWithAttachments");
 
-  /** The run frame and the run bodies that remove through the cleanup service. */
+  /** The run frame, the only one that removes through the cleanup service or its port. */
   static final Set<String> RUN_REMOVERS =
-      Set.of(
-          "indexing.source.IndexingRunTemplate",
-          "indexing.filesync.FileSync",
-          "indexing.source.confluence.ConfluenceIndexingExecutor");
+      Set.of("indexing.source.IndexingRunTemplate", "indexing.source.IndexingRun");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
@@ -612,20 +607,20 @@ public final class ModularArchitecture {
   ArchRule noPackageDependsOnAHigherLayer() {
     return classes()
         .that(areInTheRoot())
-        .should(
-            dependOnly(
-                "depend on no higher layer",
-                (origin, target) -> {
-                  int from = isInAWebPackage(origin) ? -1 : indexOf(layerOf(origin));
-                  int to = indexOf(layerOf(target));
-                  return from < 0 || to <= from
-                      ? null
-                      : layerOf(origin)
-                          + " -> "
-                          + layerOf(target)
-                          + " points upward in ModularArchitecture.LAYERS";
-                }))
+        .should(dependOnly("depend on no higher layer", this::upwardEdge))
         .allowEmptyShould(true);
+  }
+
+  /** Why the edge from {@code origin} to {@code target} points upward, or {@code null}. */
+  String upwardEdge(JavaClass origin, JavaClass target) {
+    int from = isInAWebPackage(origin) ? -1 : indexOf(layerOf(origin));
+    int to = indexOf(layerOf(target));
+    return from < 0 || to <= from
+        ? null
+        : layerOf(origin)
+            + " -> "
+            + layerOf(target)
+            + " points upward in ModularArchitecture.LAYERS";
   }
 
   ArchRule modulesDependOnlyOnAllowedModules() {
@@ -634,21 +629,23 @@ public final class ModularArchitecture {
         .should(
             dependOnly(
                 "depend only on the modules ModularArchitecture.ALLOWED_MODULE_EDGES allows",
-                (origin, target) -> {
-                  Module from = moduleOf(origin);
-                  Module to = moduleOf(target);
-                  return from == null
-                          || to == null
-                          || from == to
-                          || ALLOWED_MODULE_EDGES.get(from).contains(to)
-                      ? null
-                      : "module "
-                          + from
-                          + " -> "
-                          + to
-                          + " is no allowed edge in ModularArchitecture.ALLOWED_MODULE_EDGES";
-                }))
+                this::forbiddenModuleEdge))
         .allowEmptyShould(true);
+  }
+
+  /**
+   * Why the edge from {@code origin} to {@code target} leaves the allowed modules, or {@code null}.
+   */
+  String forbiddenModuleEdge(JavaClass origin, JavaClass target) {
+    Module from = moduleOf(origin);
+    Module to = moduleOf(target);
+    return from == null || to == null || from == to || ALLOWED_MODULE_EDGES.get(from).contains(to)
+        ? null
+        : "module "
+            + from
+            + " -> "
+            + to
+            + " is no allowed edge in ModularArchitecture.ALLOWED_MODULE_EDGES";
   }
 
   /** Each web package forms a slice of its own, apart from its top-level package. */

@@ -44,6 +44,7 @@ import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -180,7 +181,8 @@ class RssFeedIndexingExecutorTest {
             mock(StaleDocumentCleanupService.class),
             documentRepository,
             storageQuotaService,
-            new LibrarySourceConnectionResolver()));
+            new LibrarySourceConnectionResolver(),
+            Clock.systemUTC()));
   }
 
   @AfterEach

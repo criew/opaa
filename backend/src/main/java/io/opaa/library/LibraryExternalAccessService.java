@@ -6,7 +6,6 @@ import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -19,7 +18,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,29 +52,7 @@ public class LibraryExternalAccessService {
   private final SuccessionReachGuard successionGuard;
   private final OwnerOnlyRule ownerOnlyRule;
 
-  @Autowired
   public LibraryExternalAccessService(
-      KnowledgeLibraryRepository libraryRepository,
-      LibraryAccessService accessService,
-      UserRepository userRepository,
-      ApplicationEventPublisher eventPublisher,
-      ExternalAccessProperties properties,
-      LibraryExternalAccessTokenCounter tokenCounter,
-      SuccessionReachGuard successionGuard,
-      OwnerOnlyRule ownerOnlyRule) {
-    this(
-        libraryRepository,
-        accessService,
-        userRepository,
-        eventPublisher,
-        properties,
-        tokenCounter,
-        successionGuard,
-        ownerOnlyRule,
-        InstantSource.system());
-  }
-
-  LibraryExternalAccessService(
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService accessService,
       UserRepository userRepository,
@@ -106,10 +82,7 @@ public class LibraryExternalAccessService {
   public LibraryExternalAccess setExternalAccess(
       CurrentUser actor, UUID libraryId, boolean enabled, Instant expiresAt) {
     KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(candidate -> actor.organizationId().equals(candidate.getOrganizationId()))
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+        libraryRepository.requireInOrganization(libraryId, actor.organizationId());
     accessService.requireRole(library, actor.id(), actor.isSystemAdmin(), AssetRole.MANAGER);
     ownerOnlyRule.requireShareable(library);
 

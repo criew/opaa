@@ -122,7 +122,6 @@ class S3IndexingExecutorIntegrationTest {
         documentIngestService,
         documentRepository,
         folderService,
-        cleanupService,
         new ScanJournal(syncStateRepository),
         Clock.fixed(Instant.parse("2026-09-06T20:00:00Z"), ZoneOffset.UTC),
         new IndexingRunTemplate(
@@ -131,7 +130,8 @@ class S3IndexingExecutorIntegrationTest {
             cleanupService,
             documentRepository,
             mock(LibraryStorageQuotaService.class),
-            new LibrarySourceConnectionResolver()),
+            new LibrarySourceConnectionResolver(),
+            Clock.systemUTC()),
         ProductionDocumentFormats.supportedFormats());
   }
 

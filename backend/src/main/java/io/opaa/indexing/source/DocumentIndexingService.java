@@ -4,7 +4,6 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
-import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.job.IndexingJob;
@@ -147,7 +146,8 @@ public class DocumentIndexingService {
   public IndexingStatusView getStatus(UUID libraryId, CurrentUser caller) {
     UUID currentUserId = caller.id();
     boolean systemAdmin = caller.isSystemAdmin();
-    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
     boolean canSeeErrorDetail = libraryAccessService.canManage(library, currentUserId, systemAdmin);
     List<String> unlistedScopeKeys =
@@ -169,7 +169,8 @@ public class DocumentIndexingService {
    * VIEWER} the server's internal filesystem layout or upstream URLs.
    */
   public List<IndexingRunDetail> getRecentRuns(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     libraryAccessService.requireRole(
         library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     return indexingJobService.getRecentJobs(libraryId, library.getOrganizationId()).stream()
@@ -238,19 +239,9 @@ public class DocumentIndexingService {
    * with {@code systemAdmin = false}, so the real grant formula decides, unconditionally.
    */
   private KnowledgeLibrary requireEditableLibrary(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     libraryAccessService.requireRole(library, caller.id(), false, AssetRole.EDITOR);
     return library;
-  }
-
-  /**
-   * Loads a library and enforces the organization boundary, treating a library from another
-   * organization as not found - mirrors {@code KnowledgeLibraryService#loadLibrary}.
-   */
-  private KnowledgeLibrary loadLibraryInOrganization(UUID libraryId, CurrentUser caller) {
-    return libraryRepository
-        .findById(libraryId)
-        .filter(l -> l.getOrganizationId().equals(caller.organizationId()))
-        .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
   }
 }

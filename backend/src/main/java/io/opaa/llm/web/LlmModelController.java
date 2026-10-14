@@ -9,6 +9,7 @@ import io.opaa.api.dto.LlmModelTestRequest;
 import io.opaa.api.dto.LlmModelTestResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConflictException;
 import io.opaa.group.web.GroupController;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
@@ -32,7 +33,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Admin API for managed chat models (Stufe 1, #757,
@@ -139,10 +139,8 @@ public class LlmModelController {
       // a generic "Ein Eintrag mit diesen Werten existiert bereits" that says nothing about what
       // actually happened. This catch trades that generic fallback for a message specific to what
       // a caller can actually do about it: retry the activation.
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
-          "Ein anderes Chat-Modell wurde gleichzeitig aktiviert. Bitte erneut versuchen.",
-          e);
+      throw new ConflictException(
+          "Ein anderes Chat-Modell wurde gleichzeitig aktiviert. Bitte erneut versuchen.", e);
     }
   }
 

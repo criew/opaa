@@ -11,6 +11,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.web.AuditedAdminCall;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ValidationException;
 import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.indexing.maintenance.EmbeddingReindexProgress;
@@ -82,14 +83,12 @@ public class IndexingAdminController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @Caller CurrentUser caller) {
-    // Validated here, not left to PageRequest.of's own IllegalArgumentException, whose English
-    // message would otherwise reach the response body verbatim via GlobalExceptionHandler - every
-    // user-facing API error is German (AGENTS.md, Projektsprache).
+    // Checked here so the 400 carries a specific German message rather than PageRequest's own.
     if (page < 0) {
-      throw new IllegalArgumentException("page darf nicht negativ sein, war " + page);
+      throw new ValidationException("page darf nicht negativ sein, war " + page);
     }
     if (size < 1 || size > 100) {
-      throw new IllegalArgumentException("size muss zwischen 1 und 100 liegen, war " + size);
+      throw new ValidationException("size muss zwischen 1 und 100 liegen, war " + size);
     }
     Pageable pageable =
         PageRequest.of(
@@ -140,10 +139,10 @@ public class IndexingAdminController {
                       .filter(candidate -> candidate.id().equals(pipelineId))
                       .findFirst()
                       .orElseThrow(
-                          () -> new IllegalArgumentException("Unbekannte Pipeline: " + pipelineId));
+                          () -> new ValidationException("Unbekannte Pipeline: " + pipelineId));
               Integer belowVersion = request.getBelowVersion();
               if (belowVersion == null || belowVersion < 1) {
-                throw new IllegalArgumentException(
+                throw new ValidationException(
                     "belowVersion muss mindestens 1 sein, war " + belowVersion);
               }
               // Above the pipeline's own version there is no version to re-index *to*: the run
@@ -154,7 +153,7 @@ public class IndexingAdminController {
               // is included regardless of this bound - see
               // PipelineReindexService#selectStaleDocuments.
               if (belowVersion > pipeline.version()) {
-                throw new IllegalArgumentException(
+                throw new ValidationException(
                     "belowVersion darf höchstens der aktuellen Version der Pipeline "
                         + pipelineId
                         + " entsprechen ("
@@ -273,7 +272,7 @@ public class IndexingAdminController {
 
   static int requireBatchSize(int batchSize) {
     if (batchSize < 1 || batchSize > MAX_REINDEX_BATCH_SIZE) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "batchSize muss zwischen 1 und " + MAX_REINDEX_BATCH_SIZE + " liegen, war " + batchSize);
     }
     return batchSize;

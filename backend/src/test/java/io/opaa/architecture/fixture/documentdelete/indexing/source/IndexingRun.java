@@ -1,9 +1,9 @@
-package io.opaa.architecture.fixture.documentdelete.indexing.filesync;
+package io.opaa.architecture.fixture.documentdelete.indexing.source;
 
 import io.opaa.architecture.fixture.documentdelete.indexing.maintenance.StaleDocumentCleanupService;
 
-/** A run body that removes a document the source confirmed gone. */
-public class FileSync {
+/** The run frame, which removes a document the source confirmed gone. */
+public class IndexingRun {
   void removeGone(StaleDocumentCleanupService cleanupService, Object document) {
     cleanupService.removeWithAttachments(document);
   }

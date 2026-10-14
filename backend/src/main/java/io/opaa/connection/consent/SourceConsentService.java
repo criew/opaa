@@ -574,8 +574,7 @@ public class SourceConsentService implements SourceConsentRejections, SourceCons
   private KnowledgeLibrary managedLibrary(CurrentUser caller, UUID libraryId) {
     KnowledgeLibrary library =
         libraries
-            .findById(libraryId)
-            .filter(found -> found.getOrganizationId().equals(caller.organizationId()))
+            .findByIdAndOrganizationId(libraryId, caller.organizationId())
             .filter(found -> access.canRead(found, caller.id(), caller.isSystemAdmin()))
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     access.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { searchSelectableGroups } from '../features/principal/api/groupLookupApi'
+import { searchSelectableGroups } from '../api/groupLookupApi'
 import type { SelectableGroupResponse } from '@/shared/api/types'
 
 const SEARCH_DEBOUNCE_MS = 300

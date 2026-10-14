@@ -1,5 +1,8 @@
 package io.opaa.indexing.source.googledrive;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+import static java.util.Objects.requireNonNullElse;
+
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -39,36 +42,18 @@ public record GoogleDriveProperties(
   public static final int MAX_PAGE_SIZE = 1000;
 
   public GoogleDriveProperties {
-    if (pageSize <= 0 || pageSize > MAX_PAGE_SIZE) {
-      pageSize = MAX_PAGE_SIZE;
-    }
-    if (maxFileSizeBytes <= 0) {
-      maxFileSizeBytes = 50L * 1024 * 1024;
-    }
-    if (requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative()) {
-      requestTimeout = Duration.ofSeconds(30);
-    }
-    if (downloadTimeout == null || downloadTimeout.isZero() || downloadTimeout.isNegative()) {
-      downloadTimeout = Duration.ofMinutes(10);
-    }
-    if (maxRetries == null) {
-      maxRetries = 5;
-    }
+    pageSize = Math.min(positiveOr(pageSize, MAX_PAGE_SIZE), MAX_PAGE_SIZE);
+    maxFileSizeBytes = positiveOr(maxFileSizeBytes, 50L * 1024 * 1024);
+    requestTimeout = positiveOr(requestTimeout, Duration.ofSeconds(30));
+    downloadTimeout = positiveOr(downloadTimeout, Duration.ofMinutes(10));
+    maxRetries = requireNonNullElse(maxRetries, 5);
     if (retryBackoff == null || retryBackoff.isNegative()) {
       retryBackoff = Duration.ofSeconds(1);
     }
-    if (requestBudgetPerRun <= 0) {
-      requestBudgetPerRun = 20_000;
-    }
-    if (maxFilesPerRun <= 0) {
-      maxFilesPerRun = 1_000_000;
-    }
-    if (downloadConcurrency <= 0) {
-      downloadConcurrency = 2;
-    }
-    if (fullSyncInterval == null || fullSyncInterval.isZero() || fullSyncInterval.isNegative()) {
-      fullSyncInterval = Duration.ofDays(7);
-    }
+    requestBudgetPerRun = positiveOr(requestBudgetPerRun, 20_000);
+    maxFilesPerRun = positiveOr(maxFilesPerRun, 1_000_000);
+    downloadConcurrency = positiveOr(downloadConcurrency, 2);
+    fullSyncInterval = positiveOr(fullSyncInterval, Duration.ofDays(7));
   }
 
   public static GoogleDriveProperties defaults() {

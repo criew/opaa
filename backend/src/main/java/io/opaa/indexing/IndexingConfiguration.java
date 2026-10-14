@@ -53,6 +53,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
@@ -62,6 +63,13 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
 @EnableAsync
+@EnableConfigurationProperties({
+  IndexingProperties.class,
+  SourceHttpProperties.class,
+  FilesystemProperties.class,
+  AttachmentProperties.class,
+  RemoteContentProperties.class
+})
 public class IndexingConfiguration {
 
   @Bean
@@ -71,8 +79,8 @@ public class IndexingConfiguration {
 
   @Bean
   IndexingJobService indexingJobService(
-      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository) {
-    return new IndexingJobService(indexingJobRepository, assetRepository);
+      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository, Clock clock) {
+    return new IndexingJobService(indexingJobRepository, assetRepository, clock);
   }
 
   @Bean
@@ -249,7 +257,8 @@ public class IndexingConfiguration {
       SourceConnectionResolver sourceConnectionResolver,
       ServiceAccountTokens serviceAccountTokens,
       KnowledgeLibraryRepository knowledgeLibraryRepository,
-      ObjectProvider<SourceConnectorRegistry> sourceConnectorRegistry) {
+      ObjectProvider<SourceConnectorRegistry> sourceConnectorRegistry,
+      Clock clock) {
     return new IndexingRunTemplate(
         indexingJobService,
         indexingRunEventRepository,
@@ -257,7 +266,7 @@ public class IndexingConfiguration {
         documentRepository,
         libraryStorageQuotaService,
         sourceConnectionResolver,
-        Clock.systemUTC(),
+        clock,
         serviceAccountTokens,
         knowledgeLibraryRepository,
         new SyncStateBasis(sourceConnectorRegistry::getObject));
@@ -421,29 +430,18 @@ public class IndexingConfiguration {
     return executor;
   }
 
-  /**
-   * Server local time - the same choice {@code io.opaa.audit.AuditRetentionScheduler}'s own
-   * {@code @Scheduled(cron = ...)} already makes implicitly. A named {@link Clock} bean, rather
-   * than {@code Clock.systemDefaultZone()} called directly in {@link LibraryIndexingScheduler}, so
-   * a test can substitute a fixed clock.
-   */
-  @Bean
-  Clock schedulingClock() {
-    return Clock.systemDefaultZone();
-  }
-
   @Bean
   LibraryIndexingScheduler libraryIndexingScheduler(
       KnowledgeLibraryRepository libraryRepository,
       DocumentIndexingService documentIndexingService,
       IndexingJobService indexingJobService,
       IndexingRunEventRepository indexingRunEventRepository,
-      Clock schedulingClock) {
+      Clock clock) {
     return new LibraryIndexingScheduler(
         libraryRepository,
         documentIndexingService,
         indexingJobService,
         indexingRunEventRepository,
-        schedulingClock);
+        clock);
   }
 }

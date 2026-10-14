@@ -1,5 +1,7 @@
 package io.opaa.indexing.attachment;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -17,15 +19,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record AttachmentProperties(int maxDepth, int maxPerParent, long maxSizeBytes) {
 
   public AttachmentProperties {
-    if (maxDepth <= 0) {
-      maxDepth = 5;
-    }
-    if (maxPerParent <= 0) {
-      maxPerParent = 10;
-    }
-    if (maxSizeBytes <= 0) {
-      maxSizeBytes = 20_971_520L;
-    }
+    maxDepth = positiveOr(maxDepth, 5);
+    maxPerParent = positiveOr(maxPerParent, 10);
+    maxSizeBytes = positiveOr(maxSizeBytes, 20_971_520L);
   }
 
   /** The count and size limits for a connector without numbers of its own. */

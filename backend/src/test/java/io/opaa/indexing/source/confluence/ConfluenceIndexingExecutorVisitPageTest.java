@@ -128,8 +128,12 @@ class ConfluenceIndexingExecutorVisitPageTest {
             SourceTypes.CONFLUENCE,
             new IndexingRunProgress(indexingJobService, jobId),
             new IndexingRunEventRecorder(eventRepository, indexingJobService, jobId),
+            new StaleDocumentCleanupService(
+                documentRepository, vectorChunkStore, mock(AssetRepository.class)),
             documentRepository,
-            mock(LibraryStorageQuotaService.class));
+            mock(LibraryStorageQuotaService.class),
+            rejected -> Secret.personal(library.getSourceCredentials()),
+            Clock.systemUTC());
     run = new ConfluenceRun(frame, client);
     ConfluenceProperties properties =
         new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, null, null, 0);
@@ -141,8 +145,6 @@ class ConfluenceIndexingExecutorVisitPageTest {
             mock(AttachmentIndexer.class),
             documentRepository,
             mock(SourceSyncStateRepository.class),
-            new StaleDocumentCleanupService(
-                documentRepository, vectorChunkStore, mock(AssetRepository.class)),
             Clock.systemUTC(),
             mock(IndexingRunTemplate.class));
   }

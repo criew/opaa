@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -54,7 +55,7 @@ class LibraryFolderServiceTest {
   @BeforeEach
   void setUp() {
     folderRepository = mock(LibraryFolderRepository.class);
-    libraryRepository = mock(KnowledgeLibraryRepository.class);
+    libraryRepository = mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
     accessService = mock(LibraryAccessService.class);
     documentRepository = mock(DocumentRepository.class);
     documentService = mock(LibraryDocumentService.class);
@@ -78,7 +79,8 @@ class LibraryFolderServiceTest {
     when(library.getId()).thenReturn(libraryId);
     when(library.getOrganizationId()).thenReturn(organizationId);
     when(library.getSourceType()).thenReturn(SourceType.UPLOAD);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
 
     when(folderRepository.saveAndFlush(any(LibraryFolder.class)))
         .thenAnswer(inv -> inv.getArgument(0));

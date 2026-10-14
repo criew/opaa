@@ -1,5 +1,7 @@
 package io.opaa.format.file.mail;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -24,14 +26,8 @@ public record MailProperties(
     int maxAttachmentsPerMessage, long maxAttachmentBytes, long maxMessageBytes) {
 
   public MailProperties {
-    if (maxAttachmentsPerMessage <= 0) {
-      maxAttachmentsPerMessage = 50;
-    }
-    if (maxAttachmentBytes <= 0) {
-      maxAttachmentBytes = 52_428_800L; // 50 MiB
-    }
-    if (maxMessageBytes <= 0) {
-      maxMessageBytes = 104_857_600L; // 100 MiB
-    }
+    maxAttachmentsPerMessage = positiveOr(maxAttachmentsPerMessage, 50);
+    maxAttachmentBytes = positiveOr(maxAttachmentBytes, 52_428_800L); // 50 MiB
+    maxMessageBytes = positiveOr(maxMessageBytes, 104_857_600L); // 100 MiB
   }
 }

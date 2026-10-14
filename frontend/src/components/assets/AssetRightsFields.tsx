@@ -6,15 +6,15 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
-import SubjectFormRow from '../permissions/SubjectFormRow'
-import SubjectPicker from '../permissions/SubjectPicker'
+import { SubjectFormRow } from '@/features/principal'
+import { SubjectPicker } from '@/features/principal'
 import {
   confirmExternalSubject,
   emptySubjectSelection,
   groupLabel,
   selectedSubjectId,
   type SubjectSelection,
-} from '../permissions/subjectSelection'
+} from '@/features/principal'
 import type { AssetRole } from '@/shared/api/types'
 import { assetRoleLabel } from '@/shared/utils/labels'
 import { permissionSubjectTypeLabel } from './assetLabels'

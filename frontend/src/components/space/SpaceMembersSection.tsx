@@ -11,14 +11,14 @@ import type { SpaceResponse, SpaceRole } from '@/shared/api/types'
 import { notify } from '@/shared/stores/notificationStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import { spaceRoleLabel } from '@/shared/utils/labels'
-import SubjectFormRow from '../permissions/SubjectFormRow'
-import SubjectPicker from '../permissions/SubjectPicker'
+import { SubjectFormRow } from '@/features/principal'
+import { SubjectPicker } from '@/features/principal'
 import {
   confirmExternalSubject,
   emptySubjectSelection,
   selectedSubjectId,
   type SubjectSelection,
-} from '../permissions/subjectSelection'
+} from '@/features/principal'
 import { successionAwareMessage } from '../succession/successionConflict'
 import SectionHead from '@/shared/ui/SectionHead'
 import SpaceMemberList from './SpaceMemberList'

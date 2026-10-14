@@ -71,24 +71,7 @@ public class IndexingRunTemplate {
   private final KnowledgeLibraryRepository libraries;
   private final SyncStateBasis settingsBasis;
 
-  public IndexingRunTemplate(
-      IndexingJobService indexingJobService,
-      IndexingRunEventRepository eventRepository,
-      VanishedDocumentReconciler staleDocumentCleanupService,
-      DocumentRepository documentRepository,
-      LibraryStorageQuotaService storageQuotaService,
-      SourceConnectionResolver connectionResolver) {
-    this(
-        indexingJobService,
-        eventRepository,
-        staleDocumentCleanupService,
-        documentRepository,
-        storageQuotaService,
-        connectionResolver,
-        Clock.systemUTC());
-  }
-
-  /** {@code clock} measures how long a run reuses its secret - for tests. */
+  /** {@code clock} measures how long a run reuses its secret. */
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
       IndexingRunEventRepository eventRepository,
@@ -241,6 +224,7 @@ public class IndexingRunTemplate {
             executor.sourceType(),
             progress,
             events,
+            staleDocumentCleanupService,
             documentRepository,
             storageQuotaService,
             rejected -> {

@@ -62,8 +62,10 @@ vi.mock('@/shared/session/capabilityApi', async () => {
   }
 })
 
-vi.mock('../services/userApi', async () => {
-  const actual = await vi.importActual<typeof import('../services/userApi')>('../services/userApi')
+vi.mock('@/features/principal/api/userApi', async () => {
+  const actual = await vi.importActual<typeof import('@/features/principal/api/userApi')>(
+    '@/features/principal/api/userApi',
+  )
   return {
     ...actual,
     getUserSummaries: mockGetUserSummaries,

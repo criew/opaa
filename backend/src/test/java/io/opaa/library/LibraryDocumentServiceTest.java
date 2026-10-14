@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
@@ -184,7 +185,7 @@ class LibraryDocumentServiceTest {
 
   @BeforeEach
   void setUp() {
-    libraryRepository = mock(KnowledgeLibraryRepository.class);
+    libraryRepository = mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
     accessService = mock(LibraryAccessService.class);
     documentRepository = mock(DocumentRepository.class);
     checksumService = mock(ChecksumService.class);
@@ -232,7 +233,8 @@ class LibraryDocumentServiceTest {
     // would otherwise reject every upload with 409 before reaching the behaviour under test,
     // since Mockito's default for an unstubbed getSourceType() is null, not UPLOAD.
     when(library.getSourceType()).thenReturn(SourceType.UPLOAD);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
 
     // #434: uploadDocument now saves the PENDING row itself (previously done inside the now-async
     // DocumentIngestService#processUploadedFileAsync) - every test exercises that save unless it
@@ -384,10 +386,9 @@ class LibraryDocumentServiceTest {
 
   @Test
   void uploadingIntoALibraryFromAnotherOrganizationLooksLikeItDoesNotExist() {
-    UUID otherOrganizationId = UUID.randomUUID();
-    KnowledgeLibrary foreignLibrary = mock(KnowledgeLibrary.class);
-    when(foreignLibrary.getOrganizationId()).thenReturn(otherOrganizationId);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(foreignLibrary));
+    // The lookup is scoped to the caller's organization; a library of another one is absent there.
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.empty());
 
     assertThatThrownBy(
             () ->
@@ -405,7 +406,8 @@ class LibraryDocumentServiceTest {
     when(connectorLibrary.getId()).thenReturn(libraryId);
     when(connectorLibrary.getOrganizationId()).thenReturn(organizationId);
     when(connectorLibrary.getSourceType()).thenReturn(SourceTypes.FILESYSTEM);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(connectorLibrary));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(connectorLibrary));
 
     assertThatThrownBy(
             () ->
@@ -974,7 +976,8 @@ class LibraryDocumentServiceTest {
     when(connector.getId()).thenReturn(libraryId);
     when(connector.getOrganizationId()).thenReturn(organizationId);
     when(connector.getSourceType()).thenReturn(SourceTypes.CONFLUENCE);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(connector));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(connector));
 
     assertThatThrownBy(() -> service.deleteDocuments(libraryId, List.of(UUID.randomUUID()), caller))
         .isInstanceOf(ConflictException.class);
@@ -1181,7 +1184,8 @@ class LibraryDocumentServiceTest {
     when(filesystemLibrary.getId()).thenReturn(libraryId);
     when(filesystemLibrary.getOrganizationId()).thenReturn(organizationId);
     when(filesystemLibrary.getSourcePath()).thenReturn("/data/documents");
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(filesystemLibrary));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(filesystemLibrary));
 
     Document doc =
         new Document(
@@ -1302,7 +1306,8 @@ class LibraryDocumentServiceTest {
         });
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
 
     Document entry =
         new Document(
@@ -1463,7 +1468,8 @@ class LibraryDocumentServiceTest {
           exchange.close();
         });
     KnowledgeLibrary library = remoteLibrary(null);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
     grantViewerOnUploadLibrary();
 
     Document entry =
@@ -1599,7 +1605,8 @@ class LibraryDocumentServiceTest {
         });
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
     Document document = remoteDocument(SourceTypes.HTTP_DIRECTORY, remoteBaseUrl + "/original.pdf");
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
@@ -1633,7 +1640,8 @@ class LibraryDocumentServiceTest {
         });
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary("libuser:libpass");
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
     Document document = remoteDocument(SourceTypes.RSS_FEED, remoteBaseUrl + "/original.pdf");
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
@@ -1662,7 +1670,8 @@ class LibraryDocumentServiceTest {
   void loadContentAnswers404WithAGermanMessageWhenTheRemoteSourceIsUnreachable() {
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
     // Port 1 is a privileged port nothing in this test listens on - the connection is refused
     // immediately, standing in for "the source is offline" without any real network access.
     Document document =
@@ -1730,7 +1739,8 @@ class LibraryDocumentServiceTest {
             mock(SourceSyncStateRepository.class));
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
     Document document = remoteDocument(SourceTypes.HTTP_DIRECTORY, remoteBaseUrl + "/original.pdf");
     UUID documentId = UUID.randomUUID();
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));

@@ -29,6 +29,7 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingRunCost;
@@ -69,7 +70,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/v1/libraries")
@@ -251,11 +251,10 @@ public class LibraryController {
     // value would contradict that promise (size=500 quietly answering 100, size=0 quietly
     // answering 1), so both bounds and page<0 are rejected the same way bean validation would.
     if (size < 1 || size > 100) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "size muss zwischen 1 und 100 liegen");
+      throw new ValidationException("size muss zwischen 1 und 100 liegen");
     }
     if (page < 0) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page darf nicht negativ sein");
+      throw new ValidationException("page darf nicht negativ sein");
     }
     // #517 code review, finding 1: LIMIT/OFFSET without ORDER BY has no stable row order across
     // separate statements in PostgreSQL - two pages fetched moments apart (or the same page

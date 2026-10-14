@@ -268,7 +268,6 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             syncStateRepository,
-            cleanupService,
             testClock(),
             runTemplate());
   }
@@ -322,7 +321,8 @@ class ConfluenceIndexingExecutorTest {
         cleanupService,
         documentRepository,
         storageQuotaService,
-        resolver);
+        resolver,
+        Clock.systemUTC());
   }
 
   /** The real generalized attachment path over the mocked processing. */
@@ -1008,7 +1008,6 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             syncStateRepository,
-            cleanupService,
             Clock.fixed(NOW, ZoneOffset.UTC),
             runTemplate());
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
@@ -1190,7 +1189,6 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             syncStateRepository,
-            cleanupService,
             testClock(),
             runTemplate());
     UUID second = UUID.randomUUID();
@@ -1449,7 +1447,6 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             syncStateRepository,
-            cleanupService,
             Clock.fixed(NOW, ZoneOffset.UTC),
             runTemplate());
     UUID second = UUID.randomUUID();

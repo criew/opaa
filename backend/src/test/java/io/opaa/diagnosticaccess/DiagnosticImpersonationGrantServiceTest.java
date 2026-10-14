@@ -198,9 +198,9 @@ class DiagnosticImpersonationGrantServiceTest {
   }
 
   /**
-   * The revocation the account deletion runs (ADR-0016, Nachtrag, #1697): one event per grant, of
-   * the same shape and under the same object as a regular revocation, recorded for the person
-   * deleting - which grants are affected is the repository query's part, not this one's.
+   * The revocation the account deletion runs (ADR-0016, Entscheidung 4, #1697): one event per
+   * grant, of the same shape and under the same object as a regular revocation, recorded for the
+   * person deleting - which grants are affected is the repository query's part, not this one's.
    */
   @Test
   void revokingWhatADeletedAccountIssuedWritesOneRegularRevocationPerGrant() {

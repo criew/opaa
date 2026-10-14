@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -1201,8 +1202,11 @@ class PipelineReindexServiceIntegrationTest {
         new IndexingRunProgress(jobService, jobId),
         new IndexingRunEventRecorder(
             org.mockito.Mockito.mock(IndexingRunEventRepository.class), jobService, jobId),
+        org.mockito.Mockito.mock(io.opaa.indexing.source.VanishedDocumentReconciler.class),
         documentRepository,
-        org.mockito.Mockito.mock(io.opaa.knowledge.LibraryStorageQuotaService.class));
+        org.mockito.Mockito.mock(io.opaa.knowledge.LibraryStorageQuotaService.class),
+        rejected -> Secret.personal(library.getSourceCredentials()),
+        Clock.systemUTC());
   }
 
   @Test

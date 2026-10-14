@@ -11,7 +11,6 @@ import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceSettings;
-import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.Set;
 import org.springframework.stereotype.Component;
@@ -57,19 +56,6 @@ public class ProbeSourceConnector implements SourceConnector {
       throw new ValidationException("sourceSettings.topic ist erforderlich");
     }
     return requested;
-  }
-
-  @Override
-  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    library.updateSourceSettings(validated.connectorSettings().toJson());
-  }
-
-  @Override
-  public void applyChange(
-      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
   }
 
   @Override

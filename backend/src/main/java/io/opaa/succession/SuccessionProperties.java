@@ -1,5 +1,7 @@
 package io.opaa.succession;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -15,9 +17,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record SuccessionProperties(int agingThresholdMonths, String detectionCron) {
 
   public SuccessionProperties {
-    if (agingThresholdMonths <= 0) {
-      agingThresholdMonths = 12;
-    }
+    agingThresholdMonths = positiveOr(agingThresholdMonths, 12);
     if (detectionCron == null || detectionCron.isBlank()) {
       detectionCron = "0 5 * * * *";
     }

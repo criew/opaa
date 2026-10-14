@@ -4,7 +4,6 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.NotFoundException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -214,10 +213,7 @@ public class LibraryMetadataExtractionService {
 
   private KnowledgeLibrary requireLibrary(UUID libraryId, CurrentUser caller, AssetRole role) {
     KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(candidate -> candidate.getOrganizationId().equals(caller.organizationId()))
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), role);
     return library;
   }

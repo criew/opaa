@@ -130,7 +130,6 @@ class NextcloudRunSecretContractTest extends RunSecretContract {
             ingestService,
             documentRepository,
             mock(LibraryFolderService.class),
-            cleanupService,
             new ScanJournal(syncState),
             Clock.systemUTC(),
             template,

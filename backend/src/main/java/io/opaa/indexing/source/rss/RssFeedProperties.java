@@ -1,5 +1,7 @@
 package io.opaa.indexing.source.rss;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import io.opaa.format.file.html.HtmlContentRoots;
 import io.opaa.indexing.attachment.AttachmentProfile;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -56,15 +58,9 @@ public record RssFeedProperties(
       HtmlContentRoots.DEFAULT_MAIN_CONTENT_SELECTOR;
 
   public RssFeedProperties {
-    if (maxEntries <= 0) {
-      maxEntries = 200;
-    }
-    if (maxFeedSizeBytes <= 0) {
-      maxFeedSizeBytes = 10_485_760L; // 10 MiB
-    }
-    if (maxPageSizeBytes <= 0) {
-      maxPageSizeBytes = 5_242_880L; // 5 MiB
-    }
+    maxEntries = positiveOr(maxEntries, 200);
+    maxFeedSizeBytes = positiveOr(maxFeedSizeBytes, 10_485_760L); // 10 MiB
+    maxPageSizeBytes = positiveOr(maxPageSizeBytes, 5_242_880L); // 5 MiB
     if (requestDelayMs < 0) {
       requestDelayMs = 1000L;
     }
@@ -74,11 +70,7 @@ public record RssFeedProperties(
     if (attachmentProfile == null) {
       attachmentProfile = AttachmentProfile.GENERIC;
     }
-    if (maxAttachmentsPerEntry <= 0) {
-      maxAttachmentsPerEntry = 10;
-    }
-    if (maxAttachmentSizeBytes <= 0) {
-      maxAttachmentSizeBytes = 20_971_520L; // 20 MiB
-    }
+    maxAttachmentsPerEntry = positiveOr(maxAttachmentsPerEntry, 10);
+    maxAttachmentSizeBytes = positiveOr(maxAttachmentSizeBytes, 20_971_520L); // 20 MiB
   }
 }

@@ -10,7 +10,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -42,13 +41,8 @@ public class S3ConnectionService {
   private final S3ClientFactory clientFactory;
   private final Clock clock;
 
-  @Autowired
-  public S3ConnectionService(S3ClientFactory clientFactory) {
-    this(clientFactory, Clock.systemUTC());
-  }
-
-  /** The clock only the deadline test sets; Spring takes the public constructor above. */
-  S3ConnectionService(S3ClientFactory clientFactory, Clock clock) {
+  /** {@code clock} bounds one connection test by {@link #PROBE_DEADLINE}. */
+  public S3ConnectionService(S3ClientFactory clientFactory, Clock clock) {
     this.clientFactory = clientFactory;
     this.clock = clock;
   }

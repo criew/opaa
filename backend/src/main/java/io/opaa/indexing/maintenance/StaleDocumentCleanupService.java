@@ -147,6 +147,7 @@ public class StaleDocumentCleanupService implements VanishedDocumentReconciler {
    * first as in {@link #sortedDeepestFirst}; a cyclic {@code parent_document_id} chain is walked
    * once.
    */
+  @Override
   public void removeWithAttachments(
       Document document, IndexingRunEventRecorder events, String message) {
     List<Document> subtree = new ArrayList<>();

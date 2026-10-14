@@ -3,11 +3,13 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilesystemUploadedOriginalStore;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -47,7 +49,7 @@ class OrphanedLibraryCleanupServiceTest {
   private final UUID organizationId = UUID.randomUUID();
   private final Instant now = Instant.parse("2026-09-11T12:00:00Z");
   private final KnowledgeLibraryRepository libraryRepository =
-      mock(KnowledgeLibraryRepository.class);
+      mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
 
   /** Every library row that exists, and the organization it belongs to. */
@@ -145,11 +147,11 @@ class OrphanedLibraryCleanupServiceTest {
     assertThatThrownBy(
             () ->
                 service.deleteInOrphanedLibrary(organizationId, foreignLibrary, List.of(misfiled)))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessage(rejection);
     assertThatThrownBy(
             () -> service.deleteInOrphanedLibrary(organizationId, ownLibrary, List.of(owned)))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessage(rejection);
     assertThat(Path.of(misfiled)).exists();
     assertThat(Path.of(owned)).exists();
@@ -271,7 +273,7 @@ class OrphanedLibraryCleanupServiceTest {
     assertThat(raised.minimumAgeMinutes()).isEqualTo(24 * 60);
 
     assertThatThrownBy(() -> service.reportOrphanedLibraries(organizationId, GRACE_MINUTES - 1))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Schonfrist");
   }
 
@@ -319,7 +321,7 @@ class OrphanedLibraryCleanupServiceTest {
 
     assertThatThrownBy(
             () -> service.deleteInOrphanedLibrary(organizationId, deletedLibrary, List.of()))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("leer");
     List<String> tooMany =
         java.util.stream.IntStream.rangeClosed(0, OrphanedOriginalCleanupService.MAX_LISTED)
@@ -327,7 +329,7 @@ class OrphanedLibraryCleanupServiceTest {
             .toList();
     assertThatThrownBy(
             () -> service.deleteInOrphanedLibrary(organizationId, deletedLibrary, tooMany))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining(String.valueOf(OrphanedOriginalCleanupService.MAX_LISTED));
   }
 

@@ -24,6 +24,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.test.SourceTypes;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -56,8 +57,11 @@ class IndexingRunTest {
           SourceTypes.HTTP_DIRECTORY,
           new IndexingRunProgress(jobService, jobId),
           new IndexingRunEventRecorder(eventRepository, jobService, jobId),
+          mock(VanishedDocumentReconciler.class),
           documentRepository,
-          quotaService);
+          quotaService,
+          rejected -> Secret.personal(library.getSourceCredentials()),
+          Clock.systemUTC());
 
   // --- the change check --------------------------------------------------------------------
 

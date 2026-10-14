@@ -133,7 +133,7 @@ public class DiagnosticImpersonationGrantService {
 
   /**
    * Revokes what {@code issuerUserId}'s account still confers on others, as the deletion of that
-   * account (ADR-0016, Nachtrag: the Auflage on a Kontolöschungsfunktion). Without this the
+   * account (ADR-0016, Entscheidung 4: the Auflage on a Kontolöschungsfunktion). Without this the
    * schema's cascade would take those rows from holders who remain - silently, and without the
    * revocation event every other end of a befugnis has. The event is the one {@link #revoke}
    * writes, so an evaluation reads both alike; the rows themselves then go with the cascade.

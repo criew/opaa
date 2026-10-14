@@ -21,6 +21,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -41,7 +42,9 @@ class LibraryDiagnosticsLockServiceTest {
 
   private static final UUID ORGANIZATION_ID = UUID.randomUUID();
 
-  @Mock private KnowledgeLibraryRepository libraryRepository;
+  @Mock(answer = Answers.CALLS_REAL_METHODS)
+  private KnowledgeLibraryRepository libraryRepository;
+
   @Mock private LibraryAccessService accessService;
   @Mock private AuditEventRecorder auditEventRecorder;
 
@@ -55,7 +58,8 @@ class LibraryDiagnosticsLockServiceTest {
     service =
         new LibraryDiagnosticsLockService(libraryRepository, accessService, auditEventRecorder);
     library = KnowledgeLibrary.ownedByUser(ORGANIZATION_ID, "Personalvorgänge", null, ownerId);
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), ORGANIZATION_ID))
+        .thenReturn(Optional.of(library));
     when(libraryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
   }
 

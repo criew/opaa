@@ -41,7 +41,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 
   /**
    * All {@link GroupKind#ORG_UNIT} groups of an organization, with their memberships eagerly
-   * fetched - what {@link io.opaa.directory.sync.DirectorySyncService} diffs the directory's
+   * fetched - what {@code io.opaa.directory.sync.DirectorySyncService} diffs the directory's
    * snapshot against. {@link GroupKind#AD_HOC} groups are never touched by synchronisation and are
    * excluded here rather than filtered by the caller.
    */

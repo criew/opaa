@@ -687,10 +687,7 @@ public class LibraryMetadataFieldService {
 
   private KnowledgeLibrary requireLibrary(UUID libraryId, CurrentUser caller, AssetRole required) {
     KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(candidate -> candidate.getOrganizationId().equals(caller.organizationId()))
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), required);
     return library;
   }

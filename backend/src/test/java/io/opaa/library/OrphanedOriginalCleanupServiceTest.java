@@ -3,6 +3,7 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.document.AttachmentFilePath;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilesystemUploadedOriginalStore;
@@ -54,7 +56,7 @@ class OrphanedOriginalCleanupServiceTest {
   private final UUID libraryId = UUID.randomUUID();
   private final Instant now = Instant.parse("2026-09-11T12:00:00Z");
   private final KnowledgeLibraryRepository libraryRepository =
-      mock(KnowledgeLibraryRepository.class);
+      mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
   private final List<String> rows = new ArrayList<>();
   private FilesystemUploadedOriginalStore store;
@@ -64,7 +66,8 @@ class OrphanedOriginalCleanupServiceTest {
   void setUp() {
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getOrganizationId()).thenReturn(organizationId);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
     when(documentRepository.findFilePathsByLibraryId(libraryId)).thenReturn(rows);
     store =
         spy(
@@ -80,6 +83,21 @@ class OrphanedOriginalCleanupServiceTest {
         withStore,
         new UploadProperties(storageDir.toString(), null, 1024L, null, 0, GRACE_MINUTES),
         Clock.fixed(now, ZoneOffset.UTC));
+  }
+
+  @Test
+  void aPrivateLibraryIsAsAbsentAsOneOfAnotherOrganization() {
+    KnowledgeLibrary privateLibrary = mock(KnowledgeLibrary.class);
+    when(privateLibrary.isOwnerOnly()).thenReturn(true);
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(privateLibrary));
+
+    assertThatThrownBy(() -> service.report(organizationId, libraryId, null))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Bibliothek nicht gefunden");
+    assertThatThrownBy(() -> service.delete(organizationId, libraryId, List.of("x")))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Bibliothek nicht gefunden");
   }
 
   @Test
@@ -155,7 +173,7 @@ class OrphanedOriginalCleanupServiceTest {
     assertThat(raised.minimumAgeMinutes()).isEqualTo(24 * 60);
 
     assertThatThrownBy(() -> service.report(organizationId, libraryId, GRACE_MINUTES - 1))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Schonfrist")
         .hasMessageContaining(String.valueOf(GRACE_MINUTES));
     assertThat(Path.of(twoHoursOld)).exists();
@@ -212,17 +230,17 @@ class OrphanedOriginalCleanupServiceTest {
   @Test
   void deletingRejectsAnEmptyListAndOneBeyondTheCap() {
     assertThatThrownBy(() -> service.delete(organizationId, libraryId, List.of()))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("leer");
     assertThatThrownBy(() -> service.delete(organizationId, libraryId, List.of(" ", "")))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("leer");
     List<String> tooMany = new ArrayList<>();
     for (int i = 0; i <= OrphanedOriginalCleanupService.MAX_LISTED; i++) {
       tooMany.add("locator-" + i);
     }
     assertThatThrownBy(() -> service.delete(organizationId, libraryId, tooMany))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining(String.valueOf(OrphanedOriginalCleanupService.MAX_LISTED));
   }
 

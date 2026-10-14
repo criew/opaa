@@ -39,7 +39,7 @@ nicht leistet, steht ebenso ausdrücklich da — geprüft wird die **Echtheit** 
 inhaltliche Deckung mit dem Satz, an dem er steht.
 
 Ein Modus, der bei fehlendem Beleg gar nicht erst antwortet, ist **bewusst nicht gebaut**
-([ADR-0014](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md), Nachtrag vom 21.08.2026). Das
+([ADR-0014](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md), Entscheidung 14). Das
 Modell sagt selbst, wenn es nichts gefunden hat, und fehlende Belege sind im Belegfenster unmittelbar
 sichtbar. Ein Zwangs- und Verweigerungsapparat darüber hätte einen zweiten, selbst fehlbaren Prüfweg
 gebraucht, dessen Fehlurteile — die Verweigerung einer ansonsten belegten Antwort — teurer sind als der

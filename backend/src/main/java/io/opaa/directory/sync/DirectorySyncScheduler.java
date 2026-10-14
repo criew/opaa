@@ -4,6 +4,7 @@ import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.organization.Organization;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -47,16 +48,19 @@ public class DirectorySyncScheduler {
   private final DirectorySyncStatusRepository statusRepository;
   private final DirectorySyncService directorySyncService;
   private final Executor executor;
+  private final Clock clock;
 
   public DirectorySyncScheduler(
       OidcProviderRepository providerRepository,
       DirectorySyncStatusRepository statusRepository,
       DirectorySyncService directorySyncService,
-      @Qualifier("directorySyncExecutor") Executor executor) {
+      @Qualifier("directorySyncExecutor") Executor executor,
+      Clock clock) {
     this.providerRepository = providerRepository;
     this.statusRepository = statusRepository;
     this.directorySyncService = directorySyncService;
     this.executor = executor;
+    this.clock = clock;
   }
 
   /**
@@ -66,7 +70,7 @@ public class DirectorySyncScheduler {
    */
   @Scheduled(cron = "0 * * * * *")
   public void triggerDueProviders() {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     for (OidcProvider provider :
         providerRepository
             .findByDirectorySyncEnabledTrueAndEnabledTrueOrderBySortOrderAscDisplayNameAsc()) {
