@@ -1,4 +1,4 @@
-package io.opaa.indexing.run;
+package io.opaa.indexing.trigger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;

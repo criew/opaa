@@ -211,7 +211,8 @@ public final class ModularArchitecture {
           "indexing.registry",
           "indexing.run",
           "indexing.maintenance",
-          "indexing.filesync");
+          "indexing.filesync",
+          "indexing.trigger");
 
   /** The root package of the module connections: it wires and implements the core's port. */
   static final String CONNECTION = "connection";
@@ -335,7 +336,7 @@ public final class ModularArchitecture {
   static final Set<String> LIBRARY_ENUMERATORS =
       Set.of(
           "indexing.maintenance.PipelineReindexService",
-          "indexing.run.LibraryIndexingScheduler",
+          "indexing.trigger.LibraryIndexingScheduler",
           "library.OrphanedOriginalCleanupService",
           "library.LibraryExternalAccessService",
           "library.LibraryExternalAccessExpiryService",
@@ -517,7 +518,11 @@ public final class ModularArchitecture {
 
   /**
    * The packages of indexing a connector and the file sync may use, relative to the root: neither
-   * sees the resolvers, the service account key or the registry (ADR-0040, Entscheidung 2).
+   * sees the resolvers, the service account key, the registry or the triggers (ADR-0040,
+   * Entscheidung 2). Not checked here but at run time: the frame in {@code indexing.run} resolves a
+   * library's source only for a body defined by the executor class registered for its source type,
+   * so a connector's body never sees the secret of a library of another type; one of its own type
+   * stays reachable until #2772.
    */
   static final Set<String> CONNECTOR_IMPORTS =
       Set.of(

@@ -21,7 +21,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.run.DocumentIndexingService;
+import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderDetail;
 import io.opaa.knowledge.LibraryFolderService;
