@@ -1,11 +1,9 @@
 import type {
   AccessBasis,
   AssetGrantSubjectType,
-  AssetReach,
   AssetRole,
   AssetType,
   CatalogEntryStatus,
-  GroupMechanism,
   PermissionSubjectType,
   SpaceMembershipCounts,
 } from '@/shared/api/types'
@@ -24,17 +22,6 @@ function groupsAndPersonsLabel(groupCount: number, userCount: number): string {
   if (groupCount > 0) parts.push(groupCount === 1 ? '1 Gruppe' : `${groupCount} Gruppen`)
   if (userCount > 0) parts.push(userCount === 1 ? '1 Person' : `${userCount} Personen`)
   return parts.join(', ')
-}
-
-/**
- * The reach of an asset as one short phrase, derived from its grants rather than from a stored
- * level (#1931, ADR-0037): "Alle" outranks the counts. The caller reads the asset, so a single
- * grant to a person is the caller's own.
- */
-export function assetReachLabel(reach: AssetReach | undefined): string {
-  if (!reach) return ''
-  if (reach.allAccounts) return 'Alle'
-  return groupsAndPersonsLabel(reach.groupCount, reach.userCount)
 }
 
 /**
@@ -112,20 +99,6 @@ const accessBasisLabels: Record<AccessBasis, string> = {
 /** Der Weg, über den jemand ein Objekt erreicht (ADR-0036, Entscheidung 9). */
 export function accessBasisLabel(basis: AccessBasis | string | undefined): string {
   return accessBasisLabels[basis as AccessBasis] ?? String(basis ?? '')
-}
-
-const groupMechanismLabels: Record<GroupMechanism, string> = {
-  TOKEN: 'Token',
-  DIRECTORY: 'Verzeichnisabgleich',
-  NONE: 'ohne Anbieter',
-}
-
-/**
- * Wodurch die Mitgliedschaft einer Gruppe gepflegt wird — Teil der Herleitung, weil die
- * Genauigkeit der Rechteauskunft daran hängt (ADR-0036, Entscheidung 3).
- */
-export function groupMechanismLabel(mechanism: GroupMechanism | string | undefined): string {
-  return groupMechanismLabels[mechanism as GroupMechanism] ?? String(mechanism ?? '')
 }
 
 /**
