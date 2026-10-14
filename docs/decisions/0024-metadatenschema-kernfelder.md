@@ -53,7 +53,7 @@ unbekannten Teils: „Fassung 2024" ist `(2024-01-01, YEAR)`, filterbar wie jede
 
 ### 5. Die filterbaren Werte stehen zusätzlich in den Chunk-Metadaten
 
-`DocumentMetadataService` schreibt `doc_type`, `doc_date` und `doc_date_precision`
+`DocumentIngestService#storeChunks` schreibt `doc_type`, `doc_date` und `doc_date_precision`
 (`CoreMetadataChunkKeys`) zentral auf jeden Chunk, nicht über `passthroughMetadataKeys()` der
 Formate — die Registry weist ein Format zurück, das einen dieser Schlüssel deklariert. Der Titel
 wird nicht dupliziert. Eine spätere Änderung schreibt die Schlüssel per JSON-Update nach
@@ -67,9 +67,12 @@ liefern über `DocumentProperties` nur, was ihr Format selbst erklärt, und übe
 `DocumentFormat#readProperties` dieselben Rohquellen ohne Chunking — der Baustein des Bestandslaufs.
 Die Quellenreihenfolge je Feld und ihre Fassung (`CoreMetadataExtractor.EXTRACTION_VERSION`) steht
 in [metadata-schema.md](../features/metadata-schema.md), Abschnitte „Umgesetzt"; die Regeln dieses
-ADR — exakte Abbildung gegen das Vokabular, kein Wert außerhalb davon, ein unmögliches Datum wird
-übersprungen, ein nacktes Jahr zählt nur in Dateiname und Frontmatter — gelten für jede Fassung.
-Die Extraktion läuft ohne Personenrechtekontext; sie liest, was der Ingest ohnehin liest. Die
+ADR gelten für jede Fassung: exakte Abbildung gegen das Vokabular, kein Wert außerhalb davon (eine
+Frontmatter-Deklaration außerhalb des Vokabulars lässt das Feld leer und fällt nicht durch, zwei
+verschiedene Codes im Dateinamen ebenso), ein unmögliches Datum wird übersprungen, ein nacktes Jahr
+zählt nur in Dateiname und Frontmatter, in der Überschrift braucht es einen Anker. Die Extraktion
+läuft ohne Personenrechtekontext; sie liest, was der Ingest ohnehin liest. Die Rechte-Invariante der
+Spezifikation gilt für Aggregate, Stichproben und die modellgestützte Extraktion. Die
 `version()` keines Formats steigt wegen neuer Rohquellen; der Bestand wird über
 `documents.metadata_extraction_version` (NULL = nie extrahiert) nachgezogen, nicht über die
 Format-Version.
@@ -80,7 +83,7 @@ Format-Version.
 `fieldKey`, deutsches `label`, `value`, `displayValue`, `origin`, optional `datePrecision`),
 schemagetrieben gerendert — das Frontend kennt kein Feld. Kernfelder sind die ersten Einträge,
 Bibliotheksfelder (Entscheidung 8) und Formatfelder (`fmt:<key>`, #1242, Absender/An/Betreff einer
-Mail) hängen an derselben Liste. Die Anzeigeform entsteht im Backend, damit jeder Client dieselbe
+Mail) hängen an derselben Liste; ein leeres Feld ist nicht in der Liste. Die Anzeigeform entsteht im Backend, damit jeder Client dieselbe
 Darstellung zeigt; es gibt keine formatspezifischen Felder mehr am `SourceReference`.
 
 ### 8. Bibliotheksfelder hängen an derselben Werte-Tabelle, mit Fremdschlüssel auf ihre Werteliste
@@ -101,7 +104,8 @@ Darstellung zeigt; es gibt keine formatspezifischen Felder mehr am `SourceRefere
   als `NOT IN` über eine geschlossene Menge ausdrücken. Alle drei gehören zu jedem Nachzug, auch
   wenn das Feld gerade nicht filtert.
 - Das Muster eines Kennungsfeldes ist Nutzereingabe und wird unter einem Schrittbudget
-  ausgewertet, weil jede angemeldete Person eine Bibliothek besitzen kann.
+  ausgewertet — beim Setzen eines Wertes und gegen erzeugte Worst-Case-Eingaben beim Anlegen des
+  Feldes —, weil jede angemeldete Person eine Bibliothek besitzen kann.
 
 ## Konsequenzen
 
@@ -129,3 +133,4 @@ Darstellung zeigt; es gibt keine formatspezifischen Felder mehr am `SourceRefere
 | 2026-09-04 | #1263, #1289 | Dokumentart auch aus Titelzeile, Kompositum-Endung und Dateiformat (Version 2, 3) | 6 |
 | 2026-09-05 | #1071 | Bibliotheksfelder an derselben Werte-Tabelle | 8 |
 | 2026-09-05 | #1242 | Formatfelder (`fmt:`) lösen die Mail-Sonderfelder am Beleg ab | 7 |
+| 2026-09-17 | #1361, #1701 | Umschlüsselung und Feldlöschung zweiphasig und wiederaufnehmbar | 8 |
