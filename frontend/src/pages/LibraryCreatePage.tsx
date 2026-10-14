@@ -33,12 +33,12 @@ import { PRIVATE_LIBRARY_NOTE } from '../components/library/privateLibrary'
 import SourceConsentPanel from '../components/library/SourceConsentPanel'
 import {
   connectsSource,
-  forgetConsentIntent,
   readConsentIntent,
   rememberConsentIntent,
   draftValues,
   type SourceConsentIntent,
 } from '../components/library/sourceConsent'
+import { forgetConsentIntent } from '../components/admin/connections/consentIntentStorage'
 import { startSourceAuthorization } from '../services/connectedAccountApi'
 import { leaveFor } from '@/shared/api/leaveApp'
 import { apiErrorCode } from '@/shared/api/apiErrorDetails'

@@ -1,5 +1,5 @@
-import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type { SourceTypeKey } from '@/shared/api/types'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import { confluenceSource } from './confluenceSource'
 import { dropboxSource } from './dropboxSource'
 import { filesystemSource, httpDirectorySource, rssFeedSource } from './genericSources'
@@ -11,10 +11,7 @@ import { smbSource } from './smbSource'
 import type { SourceRegistration } from './types'
 
 const uploadSource: SourceRegistration = {
-  label: 'Upload',
-  shortLabel: 'Upload',
-  description: 'Dateien auswählen oder hineinziehen; einzelne Dokumente pflegen.',
-  Icon: UploadFileIcon,
+  ...SOURCE_TYPE_DIRECTORY.UPLOAD,
   configuration: null,
 }
 

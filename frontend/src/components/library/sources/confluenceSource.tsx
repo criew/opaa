@@ -1,4 +1,3 @@
-import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import {
   confluenceCredentialsOf,
   confluenceSettingsOf,
@@ -11,13 +10,11 @@ import { confluenceEditionLabel } from '../../../utils/confluenceSource'
 import ConfluenceSourceForm from '../ConfluenceSourceForm'
 import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
 import { connectionFields } from './sourceConnection'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import type { SourceRegistration } from './types'
 
 export const confluenceSource: SourceRegistration = {
-  label: 'Confluence',
-  shortLabel: 'Confluence',
-  description: 'Ausgewählte Spaces eines Confluence (Cloud oder Data Center) werden eingelesen.',
-  Icon: AccountTreeIcon,
+  ...SOURCE_TYPE_DIRECTORY.CONFLUENCE,
   containerLabel: 'Space',
   opensAtSource: true,
   configuration: {

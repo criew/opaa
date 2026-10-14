@@ -20,7 +20,7 @@ import {
 } from '../../services/connectedAccountApi'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { leaveFor } from '@/shared/api/leaveApp'
-import { forgetConsentIntent } from '../library/sourceConsent'
+import { forgetConsentIntent } from '../admin/connections/consentIntentStorage'
 import { useSourceTypes } from '../admin/connections/useSourceTypes'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { confirmAction } from '@/shared/stores/confirmStore'

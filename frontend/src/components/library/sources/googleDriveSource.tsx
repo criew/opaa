@@ -1,4 +1,3 @@
-import FolderSharedIcon from '@mui/icons-material/FolderShared'
 import {
   EMPTY_GOOGLE_DRIVE_VALUES,
   googleDrivePayloadOf,
@@ -11,13 +10,11 @@ import {
 import GoogleDriveSourceForm from '../GoogleDriveSourceForm'
 import { GoogleDriveScopeView, GoogleDriveStoredView } from './GoogleDriveSourceViews'
 import { connectionFields } from './sourceConnection'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import type { SourceRegistration } from './types'
 
 export const googleDriveSource: SourceRegistration = {
-  label: 'Google Drive',
-  shortLabel: 'Google Drive',
-  description: 'Geteilte Ablagen und Ordner eines Google Workspace werden eingelesen.',
-  Icon: FolderSharedIcon,
+  ...SOURCE_TYPE_DIRECTORY.GOOGLE_DRIVE,
   containerLabel: 'Bereich',
   configuration: {
     empty: EMPTY_GOOGLE_DRIVE_VALUES,

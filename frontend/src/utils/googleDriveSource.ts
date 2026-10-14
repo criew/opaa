@@ -7,9 +7,6 @@ export const GOOGLE_DRIVE_API = 'https://www.googleapis.com'
 
 export const MAX_GOOGLE_DRIVE_SCOPES = 50
 
-/** The upper bound of the key file the API accepts, in characters. */
-export const MAX_GOOGLE_DRIVE_KEY_LENGTH = 4096
-
 export type GoogleDriveScopeKind = 'drive' | 'folder' | 'myDrive'
 
 /** One area of a Google Drive library: a shared drive, a folder or the imitated account's drive. */
@@ -89,32 +86,6 @@ export function googleDriveScopeKindLabel(kind: GoogleDriveScopeKind): string {
 /** The name a scope is shown under; its id when Drive gave none. */
 export function googleDriveScopeLabel(scope: GoogleDriveScope): string {
   return scope.name?.trim() || (scope.kind === 'myDrive' ? 'Meine Ablage' : scope.id)
-}
-
-/**
- * The account of a key file, or the German reason it is none. Only `client_email` is read here;
- * the backend checks the key itself.
- */
-export function readGoogleDriveKey(text: string): { account: string } | { error: string } {
-  if (text.length > MAX_GOOGLE_DRIVE_KEY_LENGTH) {
-    return { error: `Die Schlüsseldatei ist größer als ${MAX_GOOGLE_DRIVE_KEY_LENGTH} Zeichen.` }
-  }
-  try {
-    const parsed = JSON.parse(text) as Record<string, unknown>
-    if (
-      typeof parsed.client_email === 'string' &&
-      typeof parsed.private_key === 'string' &&
-      typeof parsed.private_key_id === 'string'
-    ) {
-      return { account: parsed.client_email }
-    }
-  } catch {
-    // reported below
-  }
-  return {
-    error:
-      'Die Datei ist keine JSON-Schlüsseldatei eines Dienstkontos (erwartet client_email, private_key_id und private_key).',
-  }
 }
 
 /** Whether a stored key still serves the values: a key is stored and the imitated account stays. */

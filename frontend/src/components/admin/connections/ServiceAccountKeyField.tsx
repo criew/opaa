@@ -5,7 +5,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
-import { readGoogleDriveKey } from '../../../utils/googleDriveSource'
+import { readGoogleDriveKey } from './serviceAccountKey'
 
 interface ServiceAccountKeyFieldProps {
   idPrefix: string
