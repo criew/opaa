@@ -233,13 +233,18 @@ Schalter bleibt ausgeliefert aus.
 - Die Oberfläche zeigt nichts davon, auch der Systemverwaltung nicht: keinen Reiter „Externe
   KI-Werkzeuge", keinen Bereich „Zugangstokens" in den eigenen Einstellungen, keinen Abschnitt
   „Externer Zugang" an der Bibliothek. Die Detailantwort einer Bibliothek nennt keine Freigabe.
-- **Alles ruht:** Kein Ablauf-, Erinnerungs- oder Aufbewahrungslauf fasst ein Token an, und der
-  nächtliche Lauf der Bibliotheksfreigaben (Wiedervorlage und Ablauf) entfällt.
+- **Es ruht, was den Kanal betreibt:** Die Erinnerungsmail vor dem Ablauf eines Tokens geht nicht
+  hinaus, und der nächtliche Lauf der Bibliotheksfreigaben (Wiedervorlage und Ablauf) entfällt.
 
 **Was weiterläuft und warum.** Tokens, Freigaben und Kanaleinstellungen bleiben unverändert
 gespeichert; wird das Flag wieder eingeschaltet, ist der frühere Stand zurück. Was in der Ruhezeit
 abgelaufen ist, wirkt trotzdem nicht mehr — Ablaufdatum und Befristung werden je Aufruf geprüft —,
-und die ruhenden Läufe tragen es beim nächsten Durchgang nach. Weiter wirkt das Ende der Tokens einer Person, deren
+und der Lauf der Bibliotheksfreigaben trägt es beim nächsten Durchgang nach. **Die Löschfristen der
+Tokens laufen weiter:** Das Außerkrafttreten eines abgelaufenen Tokens wird eingetragen und sein
+letzter Nutzungstag gelöscht, und eine tote Tokenzeile verschwindet, sobald die Protokollfrist über
+sie hinweggelaufen ist (siehe „Was von einem Token übrig bleibt"). Sonst wäre das Flag ein Weg,
+Tokenzeilen samt letztem Nutzungstag unbegrenzt zu behalten; Abschalten löscht nichts, hält aber
+auch keine Frist an. Weiter wirkt das Ende der Tokens einer Person, deren
 Zugang endet (Sperre, Übergabe, gelöschter Identitätsanbieter): Ohne diesen Schritt kämen ihre
 Tokens mit dem Wiedereinschalten zurück. Ebenso weiter läuft die feste Aufbewahrungsgrenze der
 Abflussalarm-Meldungen, die den Alarm mit „kein Verlauf" vereinbar macht; neue Meldungen entstehen

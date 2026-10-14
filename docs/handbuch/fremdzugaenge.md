@@ -130,13 +130,14 @@ an **und** der Schalter eingeschaltet ist. Ist die Funktion aus,
   keinen Abschnitt „Externer Zugang" an der Bibliothek;
 - antworten der MCP-Endpunkt und alle Adressen der Fremdzugänge wie eine Adresse, die es nicht gibt,
   und kein Token wirkt — auch nicht bei eingeschaltetem Schalter;
-- ruhen die Wartungsläufe: Kein Token wird als abgelaufen nachgetragen, erinnert oder gelöscht, und
-  die nächtliche Wiedervorlage und der Ablauflauf der Bibliotheksfreigaben entfallen.
+- geht keine Erinnerungsmail vor dem Ablauf eines Tokens hinaus, und die nächtliche Wiedervorlage
+  und der Ablauflauf der Bibliotheksfreigaben entfallen.
 
 Tokens, Freigaben und Einstellungen bleiben gespeichert. Wird die Funktion wieder eingeschaltet,
-gilt der frühere Stand; was inzwischen abgelaufen ist, wirkt nicht mehr und wird nachgetragen.
-Endet der Zugang einer Person, während die Funktion aus ist, enden ihre Tokens trotzdem
-(Abschnitt 6).
+gilt der frühere Stand; was inzwischen abgelaufen ist, wirkt nicht mehr. Die Löschfristen laufen
+dabei weiter: Abgelaufene Tokens treten wie gewohnt außer Kraft, und ihre Zeilen werden nach der
+Protokollfrist gelöscht (Abschnitt 6). Endet der Zugang einer Person, während die Funktion aus ist,
+enden ihre Tokens ebenfalls.
 
 ## 4. Die Freigabe einer Wissensbibliothek
 

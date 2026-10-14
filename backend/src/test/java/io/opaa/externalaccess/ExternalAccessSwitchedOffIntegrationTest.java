@@ -12,6 +12,7 @@ import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.opaa.account.LocalAccountMaintenanceStep;
 import io.opaa.account.LocalTokenCleanupService;
+import io.opaa.audit.AuditRetentionSettingsService;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -24,16 +25,19 @@ import io.opaa.externalaccess.token.ExternalAccessTokenExpiryReminderStep;
 import io.opaa.externalaccess.token.ExternalAccessTokenLapseStep;
 import io.opaa.externalaccess.token.ExternalAccessTokenRepository;
 import io.opaa.externalaccess.token.ExternalAccessTokenRetentionStep;
+import io.opaa.externalaccess.token.ExternalAccessTokenRevocationReason;
 import io.opaa.externalaccess.token.ExternalAccessTokenValues;
 import io.opaa.externalaccess.web.ExternalAccessSettingsController;
 import io.opaa.externalaccess.web.ExternalAccessTokenAdminController;
 import io.opaa.externalaccess.web.ExternalAccessTokenController;
 import io.opaa.library.LibraryExternalAccessScheduler;
+import io.opaa.mail.MailSettingsService;
 import io.opaa.mcp.McpEndpoint;
 import io.opaa.mcp.McpServerConfiguration;
 import io.opaa.organization.Organization;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
+import io.opaa.test.LocalMailbox;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.net.URI;
@@ -42,13 +46,16 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,13 +68,14 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.util.ClassUtils;
 
 /**
  * The external-access feature switched off (ADR-0044) in a whole application: the channel does not
  * exist for the installation. No filter chain claims {@code /mcp} or a bearer access token, the
  * Spring AI starter registers no MCP server, every route of the channel answers like an unknown
- * address, no value authenticates and no maintenance step touches a token - while tokens and
- * settings stay stored as they were.
+ * address, no value authenticates and no expiry reminder goes out - while tokens and settings stay
+ * stored as they were and their deletion periods keep running like every other.
  *
  * <p>The tokens here are real rows with a real lookup hash, i.e. values that would authenticate
  * with the feature on; the settings row has the installation switch on.
@@ -93,6 +101,8 @@ class ExternalAccessSwitchedOffIntegrationTest {
   @Autowired private ExternalAccessSettingsService settings;
   @Autowired private LocalTokenCleanupService maintenance;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+  @Autowired private MailSettingsService mailSettings;
+  @Autowired private AuditRetentionSettingsService retention;
   @Autowired private Clock clock;
 
   private final HttpClient http = HttpClient.newHttpClient();
@@ -116,6 +126,10 @@ class ExternalAccessSwitchedOffIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    jdbc.update(
+        "DELETE FROM audit_log WHERE object_id IN (SELECT id::text FROM external_access_tokens"
+            + " WHERE user_id = ?)",
+        ownerId);
     jdbc.update("DELETE FROM external_access_tokens WHERE user_id = ?", ownerId);
     jdbc.update("DELETE FROM audit_log WHERE object_id = ?", libraryId.toString());
     ownLibraryFixtures.removeLibraries(libraryId);
@@ -135,8 +149,6 @@ class ExternalAccessSwitchedOffIntegrationTest {
             McpStatelessSyncServer.class,
             McpSyncServer.class,
             ExternalAccessTokenExpiryReminderStep.class,
-            ExternalAccessTokenLapseStep.class,
-            ExternalAccessTokenRetentionStep.class,
             LibraryExternalAccessScheduler.class)) {
       assertThat(context.getBeanNamesForType(absent)).as(absent.getSimpleName()).isEmpty();
     }
@@ -145,7 +157,11 @@ class ExternalAccessSwitchedOffIntegrationTest {
     assertThat(context.getBeansOfType(SecurityFilterChain.class))
         .doesNotContainKey("externalAccessSecurityFilterChain");
     assertThat(context.getBeansOfType(LocalAccountMaintenanceStep.class).values())
-        .noneMatch(step -> step.getClass().getPackageName().startsWith("io.opaa.externalaccess"));
+        .filteredOn(step -> step.getClass().getPackageName().startsWith("io.opaa.externalaccess"))
+        .extracting(step -> ClassUtils.getUserClass(step).getSimpleName())
+        .containsExactlyInAnyOrder(
+            ExternalAccessTokenLapseStep.class.getSimpleName(),
+            ExternalAccessTokenRetentionStep.class.getSimpleName());
   }
 
   @Test
@@ -185,24 +201,25 @@ class ExternalAccessSwitchedOffIntegrationTest {
     int unknown = statusOf(get("/api/v1/gibt-es-nicht"), "dev-admin");
     assertThat(unknown).isEqualTo(404);
     String token = "/api/v1/admin/external-access/tokens";
-    List<MockHttpServletRequestBuilder> routes =
+    List<Supplier<MockHttpServletRequestBuilder>> routes =
         List.of(
-            get("/api/v1/system/external-access"),
-            put("/api/v1/system/external-access").content("{}"),
-            get("/api/v1/external-access/settings"),
-            get("/api/v1/external-access/tokens"),
-            post("/api/v1/external-access/tokens").content("{}"),
-            get("/api/v1/external-access/eligible-libraries"),
-            delete("/api/v1/external-access/tokens/" + tokenId),
-            get(token),
-            post(token + "/" + tokenId + "/block").content("{}"),
-            post(token + "/block-by-owner").content("{}"),
-            get("/api/v1/admin/external-access/libraries"),
-            put("/api/v1/libraries/" + libraryId + "/external-access")
-                .content("{\"enabled\":false}"));
-    for (MockHttpServletRequestBuilder route : routes) {
-      assertThat(statusOf(route, "dev-admin")).isEqualTo(unknown);
-      assertThat(statusOf(route, "dev-user")).isEqualTo(unknown);
+            () -> get("/api/v1/system/external-access"),
+            () -> put("/api/v1/system/external-access").content("{}"),
+            () -> get("/api/v1/external-access/settings"),
+            () -> get("/api/v1/external-access/tokens"),
+            () -> post("/api/v1/external-access/tokens").content("{}"),
+            () -> get("/api/v1/external-access/eligible-libraries"),
+            () -> delete("/api/v1/external-access/tokens/" + tokenId),
+            () -> get(token),
+            () -> post(token + "/" + tokenId + "/block").content("{}"),
+            () -> post(token + "/block-by-owner").content("{}"),
+            () -> get("/api/v1/admin/external-access/libraries"),
+            () ->
+                put("/api/v1/libraries/" + libraryId + "/external-access")
+                    .content("{\"enabled\":false}"));
+    for (Supplier<MockHttpServletRequestBuilder> route : routes) {
+      assertThat(statusOf(route.get(), "dev-admin")).isEqualTo(unknown);
+      assertThat(statusOf(route.get(), "dev-user")).isEqualTo(unknown);
     }
   }
 
@@ -219,19 +236,46 @@ class ExternalAccessSwitchedOffIntegrationTest {
         .andExpect(jsonPath("$.externalAccess").doesNotExist());
   }
 
+  /**
+   * Switching the feature off is no way to keep token rows: the lapse and the deletion period run
+   * on as with the feature on (ADR-0044, Entscheidung 3). Only the reminder mail pauses.
+   */
   @Test
-  void aMaintenanceRunLeavesEveryTokenAsItIs() {
-    UUID lapsed = insertToken(freshValue(), clock.instant().minus(Duration.ofDays(400)));
+  void theDeletionPeriodsRunOnAndNoReminderGoesOut() {
+    User owner = users.findById(ownerId).orElseThrow();
+    assertThat(owner.getEmail()).as("a reminder would have an address").isNotBlank();
+    ZoneId zone = clock.getZone();
+    UUID expiringSoon =
+        insertToken(
+            freshValue(), LocalDate.now(clock).plusDays(3).atTime(12, 0).atZone(zone).toInstant());
+    UUID expired = insertToken(freshValue(), clock.instant().minus(Duration.ofDays(1)));
+    UUID longGone = insertToken(freshValue(), clock.instant().minus(Duration.ofDays(2)));
+    UUID adminId =
+        users.findBySubjectAndIssuer("dev-admin", "opaa-dev").map(User::getId).orElseThrow();
+    LocalMailbox mailbox = new LocalMailbox(mailSettings, adminId);
+    mailbox.start();
+    try {
+      maintenance.runOnce();
+      jdbc.update(
+          "UPDATE external_access_tokens SET lapse_recorded_at = ? WHERE id = ?",
+          Timestamp.from(
+              clock
+                  .instant()
+                  .minus(Duration.ofDays(32L * retention.currentRetentionMonths() + 30))),
+          longGone);
+      maintenance.runOnce();
 
-    maintenance.runOnce();
-
-    for (UUID id : List.of(tokenId, lapsed)) {
-      Map<String, Object> row =
-          jdbc.queryForMap(
-              "SELECT revoked_at, lapse_recorded_at FROM external_access_tokens WHERE id = ?", id);
-      assertThat(row.get("revoked_at")).as("revoked_at of %s", id).isNull();
-      assertThat(row.get("lapse_recorded_at")).as("lapse_recorded_at of %s", id).isNull();
+      assertThat(mailbox.waitFor(1, 2000)).as("no expiry reminder").isFalse();
+    } finally {
+      mailbox.stop();
     }
+
+    ExternalAccessToken lapsed = tokens.findById(expired).orElseThrow();
+    assertThat(lapsed.getRevocationReason()).isEqualTo(ExternalAccessTokenRevocationReason.EXPIRED);
+    assertThat(lapsed.getLapseRecordedAt()).isNotNull();
+    assertThat(tokens.findById(longGone)).isEmpty();
+    assertThat(tokens.findById(expiringSoon).orElseThrow().getRevokedAt()).isNull();
+    assertThat(tokens.findById(tokenId).orElseThrow().getRevokedAt()).isNull();
   }
 
   private int statusOf(MockHttpServletRequestBuilder request, String devUser) throws Exception {
