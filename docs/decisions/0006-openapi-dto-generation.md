@@ -51,7 +51,7 @@ Spec-Änderung invalidiert nur dieses Modul; das Backend konsumiert die DTOs üb
 
 ### 7. Spezifikation als Datei je Thema, zur Build-Zeit gebündelt
 
-Seit #2002 liegt die Spezifikation als Fragmente unter `opaa-api/src/main/openapi/` (ein Thema je
+Die Spezifikation liegt als Fragmente unter `opaa-api/src/main/openapi/` (ein Thema je
 Datei, `root.yaml` für `openapi` und `info`, `common.yaml` für Bausteine ohne fachlichen Besitzer).
 Die Themen folgen den logischen Modulen aus `backend/AGENTS.md`, wo nötig feiner; ein Tag je Thema,
 deklariert in seiner Datei. Ein Fragment enthält nur `tags`, `paths` und `components`; alle `$ref`

@@ -59,7 +59,7 @@ for adr in ${ADRS[@]+"${ADRS[@]}"}; do
   while IFS=: read -r line content; do
     [ -n "$line" ] || continue
     report "$adr" "$line" "\"seit #NNNN\": describe the current state only, the history is git log"
-  done < <(grep -nE 'seit #[0-9]+' "$adr" || true)
+  done < <(grep -niE 'seit #[0-9]+' "$adr" || true)
 
   # (e) no change log section: git log is the history
   while IFS=: read -r line content; do
