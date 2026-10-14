@@ -6,7 +6,7 @@
 # The count must not exceed LIMIT; once it is lower, LIMIT is lowered to it.
 set -euo pipefail
 
-LIMIT=33
+LIMIT=0
 limit="${OPAA_RATCHET_LIMIT:-$LIMIT}"
 
 cd "$(git rev-parse --show-toplevel)"
