@@ -158,10 +158,10 @@ public class AccountAdminService {
           case EXPIRES_AT ->
               Comparator.comparing(
                   AccountAdminService::expiresAt, Comparator.nullsLast(Comparator.naturalOrder()));
-          // dieselbe Quelle, nach der die Spalte anzeigt (AccountResponseMapper)
+          // the same source the column displays (AccountResponseMapper)
           case CREATED_AT -> Comparator.comparing(AccountAdminService::createdAt);
-          // Erst der Typ, dann der Anbietername: Die Spalte zeigt eine Kategorie („Lokal") neben
-          // Eigennamen, und eine rein alphabetische Ordnung stellte „Kein Anbieter" zwischen sie.
+          // The kind first, then the provider name: the column shows a category ("Lokal") next to
+          // proper names, and a purely alphabetical order would put "Kein Anbieter" among them.
           case ORIGIN ->
               Comparator.<AccountOverview, Integer>comparing(AccountAdminService::originRank)
                   .thenComparing(AccountAdminService::providerName, String.CASE_INSENSITIVE_ORDER);
@@ -171,10 +171,10 @@ public class AccountAdminService {
     if (query.descending()) {
       comparator = comparator.reversed();
     }
-    // Zweitordnung nach dem Anzeigenamen, erst danach nach der ID: Die drei Rangfolgen unten
-    // ordnen Kategorien, in denen viele Zeilen gleichauf liegen - ohne diesen Schritt stünden sie
-    // in der Reihenfolge zufälliger UUIDs, und zwei gleiche Anfragen lieferten zwei Reihenfolgen.
-    // Die Zweitordnung bleibt aufsteigend, auch wenn die erste umgedreht wurde.
+    // Secondary order by display name, only then by id: the three rankings below order
+    // categories in which many rows tie - without this step they would stand in the order of
+    // random UUIDs, and two identical requests would return two orders. The secondary order
+    // stays ascending even when the first one is reversed.
     return comparator
         .thenComparing(
             a -> a.user().getDisplayName() == null ? "" : a.user().getDisplayName(),

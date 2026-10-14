@@ -136,8 +136,8 @@ public class LibraryMetadataFieldController {
   public ResponseEntity<LibraryMetadataSchemaRunResponse> deleteLibraryMetadataField(
       @PathVariable UUID libraryId, @PathVariable String fieldKey, @Caller CurrentUser caller) {
     LibraryMetadataSchemaRunResult result = fieldService.deleteField(libraryId, fieldKey, caller);
-    // Die eigene Löschung entscheidet, nicht der Zustand der Bibliothek: Läuft daneben noch eine
-    // Abbildung an einem anderen Feld, ist diese Löschung trotzdem fertig.
+    // This deletion decides, not the state of the library: if a remapping of another field is
+    // still running alongside, this deletion is complete all the same.
     if (result.confirmedChangeComplete()) {
       return ResponseEntity.noContent().build();
     }

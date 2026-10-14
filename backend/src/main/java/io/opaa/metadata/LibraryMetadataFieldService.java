@@ -454,9 +454,8 @@ public class LibraryMetadataFieldService {
         schemaChangeService.runBatch(library, change, batchSize, caller);
     schemaChanged(library);
     boolean toLeer = change.getTargetValueId() == null;
-    // Über die Änderung selbst, nicht über den Wertecode: Zwei Felder derselben Bibliothek dürfen
-    // denselben Code führen, und die Restmenge einer fremden Abbildung gehört nicht in diese
-    // Antwort.
+    // By the change itself, not by the value code: two fields of the same library may carry the
+    // same code, and the remainder of another field's remapping does not belong in this answer.
     long remaining =
         run.confirmedChange().map(LibraryMetadataSchemaChangeView::remainingDocuments).orElse(0L);
     return new LibraryFieldValueRemapResult(

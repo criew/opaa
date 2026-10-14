@@ -5,12 +5,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The metadata a document lends to every one of its chunks (ADR-0024, Entscheidung 5, erweitert um
- * Bibliotheksfelder in #1071 und den Kontextpräfix in #1072): the filterable values themselves, the
- * complete set of keys this document's library manages, and the parts that go into the chunk's
- * Kontextpräfix. A key of {@link #managedKeys()} that is absent from {@link #values()} is removed
- * from the chunks - which is how an emptied field stops filtering, and why the managed set must
- * list the library's fields even when none of them carries a value.
+ * The metadata a document lends to every one of its chunks (ADR-0024, Entscheidung 5, extended by
+ * the library fields and the Kontextpräfix): the filterable values themselves, the complete set of
+ * keys this document's library manages, and the parts that go into the chunk's Kontextpräfix. A key
+ * of {@link #managedKeys()} that is absent from {@link #values()} is removed from the chunks -
+ * which is how an emptied field stops filtering, and why the managed set must list the library's
+ * fields even when none of them carries a value.
  *
  * @param values the keys with a value - the absence of a key on a chunk is the absence of the value
  * @param managedKeys every key this rewrite owns; nothing outside it is touched on a chunk

@@ -62,9 +62,9 @@ public class TabularDocumentFormat implements DocumentFormat {
 
   /**
    * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
-   * gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): es gibt bis heute keine Tabellenblätter
-   * mit kuratierter Ground Truth, gegen die dieser Wert gemessen werden könnte. 50 teilt eine
-   * mittelgroße Gebühren- oder Zuständigkeitstabelle in noch les- und zitierbare Chunks.
+   * gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): there are no spreadsheets with curated
+   * ground truth to measure this value against. 50 splits a medium-sized fee or responsibility
+   * table into chunks that are still readable and citable.
    */
   static final int MAX_ROWS_PER_CHUNK = 50;
 

@@ -26,8 +26,8 @@ import org.springframework.data.repository.query.Param;
  * </ul>
  *
  * <p>No aggregate query of any kind is declared here - no {@code count}, no {@code group by}, no
- * {@code distinct} over {@code targetRef}. {@code DiagnosticContextLogPurposeLimitationTest} fails
- * the build if one is added.
+ * {@code distinct} over {@code targetRef}. {@code DiagnosticContextPurposeLimitationTest} fails the
+ * build if one is added.
  */
 public interface DiagnosticContextLogRepository
     extends JpaRepository<DiagnosticContextLogEntry, UUID> {
