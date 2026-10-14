@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.credentials;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;

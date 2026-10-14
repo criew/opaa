@@ -18,7 +18,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
-import io.opaa.indexing.source.ServiceAccountTokens;
+import io.opaa.indexing.credentials.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceListing;
 import io.opaa.indexing.source.TestSourceConnectors;

@@ -1,6 +1,8 @@
 package io.opaa.indexing.source;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.credentials.ServiceAccountTokens;
+import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;

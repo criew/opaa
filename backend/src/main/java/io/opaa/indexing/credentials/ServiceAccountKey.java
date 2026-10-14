@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.credentials;
 
 import io.opaa.common.ValidationException;
 import java.security.GeneralSecurityException;

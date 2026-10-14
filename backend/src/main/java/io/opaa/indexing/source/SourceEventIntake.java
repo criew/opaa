@@ -2,6 +2,7 @@ package io.opaa.indexing.source;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ConflictException;
+import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobTriggerSource;

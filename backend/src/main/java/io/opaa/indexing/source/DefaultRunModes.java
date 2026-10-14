@@ -1,6 +1,7 @@
 package io.opaa.indexing.source;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.Objects;
 import org.slf4j.Logger;

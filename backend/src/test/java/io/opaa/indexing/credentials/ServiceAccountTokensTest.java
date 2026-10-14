@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.credentials;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,6 +11,10 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.SignedJWT;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.Secret;
+import io.opaa.indexing.source.SecretKind;
+import io.opaa.indexing.source.ServiceAccountKeyAuth;
+import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.time.Clock;

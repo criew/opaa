@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;

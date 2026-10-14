@@ -13,7 +13,7 @@ import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.SourceBlocks;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.TestSecrets;
-import io.opaa.indexing.source.ServiceAccountTokens;
+import io.opaa.indexing.credentials.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;

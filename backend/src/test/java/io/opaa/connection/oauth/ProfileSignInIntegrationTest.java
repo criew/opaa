@@ -17,7 +17,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.SignedJWT;
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.indexing.source.ServiceAccountKeyFixture;
+import io.opaa.indexing.credentials.ServiceAccountKeyFixture;
 import io.opaa.indexing.source.profileprobe.ProfileKeyProbeIndexingExecutor;
 import io.opaa.indexing.source.profileprobe.ProfileKeyProbeSourceConnector;
 import io.opaa.indexing.source.profileprobe.ProfileProbeIndexingExecutor.Seen;

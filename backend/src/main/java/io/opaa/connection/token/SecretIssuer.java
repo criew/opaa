@@ -1,7 +1,7 @@
 package io.opaa.connection.token;
 
+import io.opaa.indexing.credentials.SignInRejectedException;
 import io.opaa.indexing.source.Secret;
-import io.opaa.indexing.source.SignInRejectedException;
 import io.opaa.indexing.source.SourceCredentialsException;
 import java.time.Instant;
 import java.util.UUID;

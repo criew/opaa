@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.credentials;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;

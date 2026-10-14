@@ -3,7 +3,7 @@ package io.opaa.indexing.source.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.SystemRole;
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;

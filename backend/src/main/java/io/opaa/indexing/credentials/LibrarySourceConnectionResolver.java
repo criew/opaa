@@ -1,5 +1,10 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.credentials;
 
+import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.Secret;
+import io.opaa.indexing.source.SecretKind;
+import io.opaa.indexing.source.SourceConnector;
+import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.Optional;

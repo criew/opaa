@@ -1,4 +1,6 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.credentials;
+
+import io.opaa.indexing.source.SourceCredentialsException;
 
 /**
  * The token endpoint refused the registration itself - an unknown, revoked or wrong key or client

@@ -16,6 +16,8 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
+import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;

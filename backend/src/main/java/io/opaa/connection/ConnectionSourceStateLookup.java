@@ -1,8 +1,8 @@
 package io.opaa.connection;
 
 import io.opaa.connection.profile.SourceBlocks;
+import io.opaa.indexing.credentials.SourceStateLookup;
 import io.opaa.indexing.source.SourceBlock;
-import io.opaa.indexing.source.SourceStateLookup;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.Collection;
 import java.util.Map;

@@ -6,6 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
+import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
 import java.util.Map;

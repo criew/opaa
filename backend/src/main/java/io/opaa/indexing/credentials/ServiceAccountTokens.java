@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.credentials;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
@@ -7,6 +7,13 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.Secret;
+import io.opaa.indexing.source.SecretKind;
+import io.opaa.indexing.source.ServiceAccountKeyAuth;
+import io.opaa.indexing.source.SourceConnector;
+import io.opaa.indexing.source.SourceCredentialsException;
+import io.opaa.indexing.source.SourceSettings;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceFormPost;

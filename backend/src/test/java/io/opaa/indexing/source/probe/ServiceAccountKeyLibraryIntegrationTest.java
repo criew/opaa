@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.indexing.source.ServiceAccountKey;
-import io.opaa.indexing.source.ServiceAccountKeyFixture;
+import io.opaa.indexing.credentials.ServiceAccountKey;
+import io.opaa.indexing.credentials.ServiceAccountKeyFixture;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;

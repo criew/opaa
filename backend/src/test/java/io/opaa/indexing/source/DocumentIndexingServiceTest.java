@@ -20,6 +20,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEvent;

@@ -6,6 +6,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunDetail;

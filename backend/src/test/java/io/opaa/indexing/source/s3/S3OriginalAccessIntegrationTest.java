@@ -3,7 +3,7 @@ package io.opaa.indexing.source.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Credentials;

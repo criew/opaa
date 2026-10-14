@@ -19,7 +19,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.ConnectorReleaseService;
-import io.opaa.indexing.source.ServiceAccountTokens;
+import io.opaa.indexing.credentials.ServiceAccountTokens;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.indexing.source.rss.RssFeedParser;

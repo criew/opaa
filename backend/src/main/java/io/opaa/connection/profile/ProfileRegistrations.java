@@ -2,12 +2,12 @@ package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.common.NotFoundException;
+import io.opaa.indexing.credentials.ServiceAccountTokens;
 import io.opaa.indexing.source.ClientAuthentication;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.Endpoint;
 import io.opaa.indexing.source.OAuthAuth;
 import io.opaa.indexing.source.Revocation;
-import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SignInDetails;
 import io.opaa.indexing.source.SourceConnector;

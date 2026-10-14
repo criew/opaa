@@ -2,10 +2,10 @@ package io.opaa.connection.oauth;
 
 import io.opaa.connection.profile.ClientRegistration;
 import io.opaa.connection.profile.ProfileEndpoints;
+import io.opaa.indexing.credentials.SignInRejectedException;
 import io.opaa.indexing.source.ClientCredentialsAuth;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SecretKind;
-import io.opaa.indexing.source.SignInRejectedException;
 import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.sourceaccess.SourceFormPost;
 import java.net.URI;

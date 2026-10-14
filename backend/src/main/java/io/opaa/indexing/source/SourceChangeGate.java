@@ -1,6 +1,7 @@
 package io.opaa.indexing.source;
 
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.HashMap;

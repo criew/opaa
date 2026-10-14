@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingJobService;

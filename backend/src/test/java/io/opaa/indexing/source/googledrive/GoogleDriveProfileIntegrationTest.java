@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.indexing.source.ServiceAccountKeyFixture;
+import io.opaa.indexing.credentials.ServiceAccountKeyFixture;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
