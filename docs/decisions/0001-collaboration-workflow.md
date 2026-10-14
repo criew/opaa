@@ -2,48 +2,97 @@
 
 ## Status
 
-Akzeptiert
+Akzeptiert · zuletzt geändert 2026-09-21
 
 ## Kontext
 
-OPAA ist ein Open-Source-Projekt, an dem Menschen und KI-Coding-Agenten gemeinsam arbeiten. Dabei kommt nicht ein einzelnes KI-Werkzeug zum Einsatz, sondern mehrere parallel — Claude Code, Codex, OpenCode und GitHub Copilot. Jedes bringt ein eigenes Format für Projektanweisungen und ein eigenes Konfigurationsschema für Subagenten mit (Modellwahl, Tool-Freigaben, Sandbox- und Worktree-Verhalten).
-
-Daraus folgen zwei Anforderungen, die nicht dieselbe sind:
-
-- **Ein Workflow für alle.** Branching, Commits, PRs und Review dürfen nicht davon abhängen, wer oder was den Beitrag erzeugt hat.
-- **Ein Verhalten je Rolle, unabhängig vom Werkzeug.** Was ein Entwickler- oder Reviewer-Agent tut, muss an einer Stelle definiert sein — sonst driften die Anweisungen pro Anbieter auseinander und niemand merkt es.
+An OPAA arbeiten Menschen und mehrere KI-Coding-Agenten parallel (Claude Code, Codex, OpenCode,
+GitHub Copilot). Jedes Werkzeug bringt ein eigenes Format für Projektanweisungen und ein eigenes
+Konfigurationsschema für Subagenten mit (Modellwahl, Tool-Freigaben, Sandbox, Worktree). Daraus
+folgen zwei getrennte Anforderungen: ein Workflow für alle Beiträge, unabhängig davon, wer oder was
+sie erzeugt hat, und ein Verhalten je Rolle, das an genau einer Stelle definiert ist, damit die
+Anweisungen je Anbieter nicht auseinanderdriften.
 
 ## Entscheidung
 
-Wir übernehmen den folgenden Workflow:
+### 1. Werkzeugneutrale Instruktionsdateien
 
-1. **Werkzeugneutrale Instruktionsdateien**: `AGENTS.md` im Repository-Stamm ist die verbindliche, von zahlreichen KI-Werkzeugen unterstützte Anweisungsdatei und die einzige Quelle der Projektkonventionen. Anbieterspezifische Dateien bleiben dünn und verweisen darauf: `CLAUDE.md` importiert `AGENTS.md`, `.github/copilot-instructions.md` verweist darauf. Eine Regel wird nie in zwei Dateien gepflegt. Regeln, die nur für ein Teilverzeichnis gelten, dürfen in einer verschachtelten `AGENTS.md` dort stehen (heute `backend/AGENTS.md`, daneben eine `CLAUDE.md`, die sie importiert): Werkzeuge laden sie erst bei Arbeit in diesem Verzeichnis, die Stamm-Datei verweist verbindlich darauf und bleibt für alles Übergreifende zuständig.
+`AGENTS.md` im Repository-Stamm ist die einzige Quelle der Projektkonventionen. Anbieterspezifische
+Dateien bleiben dünn und verweisen darauf: `CLAUDE.md` importiert `AGENTS.md`,
+`.github/copilot-instructions.md` verweist darauf. Eine Regel wird nie in zwei Dateien gepflegt.
+Regeln für ein Teilverzeichnis stehen in einer verschachtelten `AGENTS.md` dort (`backend/AGENTS.md`,
+`frontend/AGENTS.md`, `docs/handbuch/AGENTS.md`, je logischem Backend-Modul eine `AGENTS.md` im
+Hauptpaket), jeweils mit einer `CLAUDE.md` daneben, die sie importiert. Die Stamm-Datei verweist
+verbindlich darauf und bleibt für alles Übergreifende zuständig.
 
-2. **Gemeinsame Rollenverträge, dünne Client-Adapter**: Das fachliche Verhalten jeder Agenten-Rolle steht in `agents/roles/` und ist anbieterneutral. Jeder unterstützte Client erhält einen projektlokalen Adapter (`.claude/agents/`, `.codex/agents/`, `.opencode/agents/`), der ausschließlich clientspezifische Konfiguration liefert — Modell, Tools, Berechtigungen, Sandbox, Worktree-Isolierung — und auf den gemeinsamen Vertrag verweist. Eine Rolle existiert erst in `agents/roles/`, dann in den Adaptern. Rollenzuschnitt, Zusammenspiel und Eskalationswege beschreibt [docs/AGENT-ORGANIZATION.md](../AGENT-ORGANIZATION.md).
+### 2. Gemeinsame Rollenverträge, dünne Client-Adapter
 
-3. **Rollen statt Personen**: Anweisungen und Prozessdokumente benennen Rollen (Maintainer, Entwickler, Code Reviewer, QA Engineer), nicht Personen und nicht Produktnamen. Welches Werkzeug eine Rolle ausführt, ist eine Konfigurationsfrage im Adapter und keine Aussage des Prozesses.
+Das fachliche Verhalten jeder Agenten-Rolle steht anbieterneutral in `agents/roles/`. Jeder
+unterstützte Client hat einen projektlokalen Adapter (`.claude/agents/`, `.codex/agents/`,
+`.opencode/agents/`), der nur clientspezifische Konfiguration liefert (Modell, Tools, Berechtigungen,
+Sandbox, Worktree-Isolierung) und auf den Vertrag verweist. Eine Rolle existiert erst in
+`agents/roles/`, dann in den Adaptern. Rollenzuschnitt, Zusammenspiel und Eskalationswege beschreibt
+[docs/AGENT-ORGANIZATION.md](../AGENT-ORGANIZATION.md).
 
-4. **Dokumentationsaufteilung**: GitHub-Issues für Task-Tracking und Kollaboration. `docs/decisions/` für Architecture Decision Records (ADRs). `docs/features/` für Feature-Spezifikationen. Issues verlinken auf ihre entsprechende Feature-Spezifikation.
+### 3. Rollen statt Personen
 
-5. **Branch-Benennung**: Format `feature/<issue-id>_<kurze-beschreibung>` (z. B. `feature/42_user-auth`), ausnahmslos mit `feature/`-Präfix; die Art der Änderung drückt der Conventional-Commit-Typ aus. Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
+Anweisungen und Prozessdokumente benennen Rollen (Maintainer, Entwickler, Code Reviewer, QA
+Engineer), nicht Personen und nicht Produktnamen. Welches Werkzeug eine Rolle ausführt, entscheidet
+der Adapter, nicht der Prozess.
 
-6. **Conventional Commits**: Alle Commit-Nachrichten folgen der Conventional-Commits-Spezifikation. KI-Agenten fügen einen `Co-Authored-By`-Trailer ein.
+### 4. Dokumentationsaufteilung
 
-7. **PR-basierter Workflow**: Keine direkten Pushes zu `main`. Alle Änderungen durchlaufen Pull Requests mit Review. Das PR-Template enthält die KI-Agenten-Offenlegung. Gemergt wird ausschließlich von einem Maintainer.
+GitHub-Issues für Aufgaben und Kollaboration, `docs/decisions/` für ADRs, `docs/features/` für
+Feature-Spezifikationen. Issues verlinken auf ihre Feature-Spezifikation.
 
-8. **Transparenz**: KI-Beiträge werden durch Commit-Trailer und PR-Template-Offenlegung klar gekennzeichnet. Dies ist Provenienz-Tracking, keine Einschränkung.
+### 5. Branch-Benennung
+
+`feature/<issue-id>_<kurze-beschreibung>`, ausnahmslos mit `feature/`-Präfix; die Art der Änderung
+drückt der Conventional-Commit-Typ aus. Jeder Branch ist über seine ID mit einem Issue verknüpft.
+Einzige Ausnahme sind die Bot-Branches `renovate/<slug>` (`docs/renovate.md`).
+
+### 6. Conventional Commits
+
+Alle Commit-Nachrichten folgen der Conventional-Commits-Spezifikation. KI-Agenten fügen einen
+`Co-Authored-By`-Trailer ein.
+
+### 7. PR-basierter Workflow
+
+Keine direkten Pushes auf `main`. Jede Änderung durchläuft einen Pull Request mit Review; das
+PR-Template (`.github/PULL_REQUEST_TEMPLATE.md`) enthält die KI-Agenten-Offenlegung. Gemergt wird
+ausschließlich von einem Maintainer.
+
+### 8. Transparenz
+
+KI-Beiträge sind über Commit-Trailer und PR-Offenlegung gekennzeichnet. Das ist Provenienz, keine
+Einschränkung.
 
 ## Konsequenzen
 
-### Was einfacher wird
+Einfacher: Einarbeitung neuer Beitragender, ob Mensch oder Agent, über eine Datei; ein weiteres
+Werkzeug kostet nur einen Satz Adapter; eine Verhaltensänderung an einer Rolle wirkt für alle
+Werkzeuge zugleich.
 
-- Einarbeitung neuer Beitragender (Mensch oder KI) — klare Konventionen von Anfang an. Ein Agent liest `AGENTS.md` und versteht die Projektnormen sofort, unabhängig davon, mit welchem Werkzeug er läuft.
-- Ein weiteres KI-Werkzeug aufzunehmen kostet nur einen Satz dünner Adapter; die Rollenverträge bleiben unverändert.
-- Verhaltensänderungen an einer Rolle wirken für alle Werkzeuge gleichzeitig, weil sie nur an einer Stelle stehen.
-- Architekturentscheidungen sind dokumentiert und auffindbar.
+Schwieriger: etwas Aufwand je Beitrag (Branch-Name, PR-Template, Commit-Format); jeder weitere
+Client vergrößert die Zahl der Dateien je neuer Rolle.
 
-### Was schwieriger wird
+Restrisiken: Sobald anbieterspezifische Konfiguration in `agents/roles/` sickert oder fachliche
+Anweisungen in einen Adapter, ist die Trennung verloren. Der Code Reviewer prüft das mit.
 
-- Etwas mehr Aufwand pro Beitrag (Branch-Benennung, PR-Template, Commit-Format). Dieser Aufwand ist minimal und verhindert Verwirrung, wenn das Team wächst.
-- Die Trennung zwischen Rollenvertrag und Adapter muss diszipliniert eingehalten werden: Sobald anbieterspezifische Konfiguration in `agents/roles/` sickert oder fachliche Anweisungen in einen Adapter, ist der Vorteil verloren. Der Code Reviewer prüft das mit.
-- Jeder zusätzlich unterstützte Client vergrößert die Menge der Dateien, die bei einer neuen Rolle angelegt werden müssen.
+## Verworfene Alternativen
+
+- Je Werkzeug eine eigene vollständige Anweisungsdatei — Regeln driften unbemerkt auseinander.
+- Rollenverhalten direkt in den Client-Adaptern — dasselbe Verhalten müsste je Anbieter gepflegt werden.
+
+## Offen
+
+Nichts.
+
+## Änderungsverlauf
+
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-02-16 | — | Erstfassung | 1–8 |
+| 2026-08-14 | — | Rollenverträge und Adapter, `feature/`-Regel ohne Ausnahme | 2, 5 |
+| 2026-09-21 | #1865 | Verschachtelte `AGENTS.md` je Teilverzeichnis | 1 |
+| 2026-10-14 | #2697 | Neufassung nach ADR-Vorlage | — |

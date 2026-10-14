@@ -2,74 +2,100 @@
 
 ## Status
 
-Akzeptiert
+Akzeptiert · zuletzt geändert 2026-09-27
 
 ## Kontext
 
-OPAA stellt eine REST-API bereit, die durch eine OpenAPI-Spezifikation definiert ist (heute: Fragmente je Thema unter `opaa-api/src/main/openapi/`, siehe Nachtrag). Anfangs wurden Backend-DTOs als handgeschriebene Java-Records in `io.opaa.api.dto` erstellt. Als die API wuchs (Abfrage-, Indizierungs-, Workspace-Endpunkte), wurde es fehleranfällig und duplizierte Aufwand, handgeschriebene DTOs mit der OpenAPI-Spezifikation synchron zu halten.
-
-PR #134 führte OpenAPI-Code-Generierung für Nicht-Workspace-DTOs ein. Workspace-DTOs blieben handgeschrieben aufgrund ihrer Abhängigkeit von Domain-Enums (`WorkspaceRole`, `WorkspaceType`). Diese Inkonsistenz — einige DTOs generiert, einige handgeschrieben — schuf Verwirrung über die Quelle der Wahrheit.
-
-Das Frontend generiert bereits alle TypeScript-Typen aus derselben OpenAPI-Spezifikation über `openapi-typescript`, wodurch die Spezifikation der de-facto-Vertrag ist.
+Die REST-API ist durch eine OpenAPI-Spezifikation definiert. Anfangs waren Backend-DTOs
+handgeschriebene Records in `io.opaa.api.dto`; mit wachsender API wurde das Synchronhalten mit der
+Spezifikation fehleranfällig, und ein Mischzustand aus generierten und handgeschriebenen DTOs ließ
+offen, was die Quelle der Wahrheit ist. Das Frontend generiert seine Typen bereits aus derselben
+Spezifikation.
 
 ## Entscheidung
 
-**Alle API-DTOs MÜSSEN aus der OpenAPI-Spezifikation generiert werden.** Keine handgeschriebenen DTO-Klassen sind in `io.opaa.api.dto` erlaubt.
+### 1. Die Spezifikation ist die einzige Quelle der Wahrheit
 
-Konkret:
+Jede Änderung am API-Vertrag beginnt in der Spezifikation. Alle API-DTOs werden generiert; in
+`io.opaa.api.dto` gibt es keine handgeschriebenen Klassen.
 
-1. **Die OpenAPI-Spezifikation ist die einzige Quelle der Wahrheit** für alle Request-/Response-Schemas. Änderungen am API-Vertrag beginnen mit einer Spec-Änderung.
-2. **Backend-DTOs werden generiert** durch das OpenAPI-Generator-Gradle-Plugin (`spring`-Generator) in `build/generated/openapi/`. Generierter Code wird nicht in die Versionskontrolle eingecheckt.
-3. **Frontend-Typen werden generiert** durch `openapi-typescript` in `frontend/src/shared/api/generated/`. Generierter Code wird nicht in die Versionskontrolle eingecheckt.
-4. **Domain-Enums, die von DTOs referenziert werden** (z. B. `WorkspaceRole`, `WorkspaceType`), werden über `typeMappings`/`importMappings` in `build.gradle.kts` gemappt, sodass generierte DTOs die vorhandenen Domain-Typen direkt verwenden — keine Konvertierungsschicht benötigt.
-5. **Neue API-Endpunkte** müssen zunächst ihre Schemas in der OpenAPI-Spezifikation definieren, dann die generierten DTOs in Controllern und Services verwenden.
+### 2. Backend-DTOs werden generiert
 
-### Konfiguration
+Das OpenAPI-Generator-Gradle-Plugin (`spring`-Generator, `models` auf `""`) erzeugt die DTOs nach
+`opaa-api/build/generated/openapi/`; generierter Code wird nicht committet.
 
-Spec, OpenAPI-Generator und die von `typeMappings` referenzierten Domain-Enums leben im eigenen Gradle-Modul `opaa-api` (issue #896) — eine Spec-Änderung invalidiert dadurch nur dieses Modul, nicht das gesamte Backend-Sourceset. Der Generator ist in `opaa-api/build.gradle.kts` konfiguriert:
+### 3. Frontend-Typen werden generiert
 
-- `models` auf `""` gesetzt (alle Schemas generieren)
-- `typeMappings` mappt Domain-Enums und benutzerdefinierte Typen zu vorhandenen Klassen in `io.opaa.api.types`
-- `importMappings` liefert die vollqualifizierten Klassennamen für gemappte Typen
-- Ein `doLast`-Block entfernt generierte Enum-Dateien, die auf Domain-Enums gemappt sind (der Generator erstellt sie trotz `typeMappings`)
+`openapi-typescript` erzeugt `frontend/src/shared/api/generated/api.ts`
+(`pnpm run generate:api-types`, Teil von Build und Test); nicht committet (`.gitignore`).
 
-Das Backend konsumiert die generierten DTOs transitiv über `implementation(project(":opaa-api"))`, ohne selbst einen OpenAPI-Generator-Task zu besitzen.
+### 4. Domain-Enums werden gemappt
+
+Von DTOs referenzierte Domain-Enums liegen in `io.opaa.api.types` und werden über
+`typeMappings`/`importMappings` in `opaa-api/build.gradle.kts` eingesetzt; eine
+Konvertierungsschicht entfällt. `SpecEnumParityTest` prüft die Liste gegen die Spezifikation, ein
+`doLast`-Block entfernt die trotz Mapping erzeugten Enum-Dateien und leitet die Kandidaten aus
+`typeMappings` ab.
+
+### 5. Reihenfolge für neue Endpunkte
+
+Erst Schemas in der Spezifikation, dann generierte DTOs in Controllern und Mappern. Domain-Services
+kennen keine DTO-Typen; die Abbildung lebt in handgeschriebenen `*ResponseMapper` im `web`-Paket des
+Moduls (`backend/AGENTS.md`, „Web-Schicht je Modul“).
+
+### 6. Eigenes Gradle-Modul `opaa-api`
+
+Spezifikation, Generator und die geteilten Enums liegen im Modul `opaa-api` (seit #896). Eine
+Spec-Änderung invalidiert nur dieses Modul; das Backend konsumiert die DTOs über
+`implementation(project(":opaa-api"))` und hat keinen eigenen Generator-Task.
+
+### 7. Spezifikation als Datei je Thema, zur Build-Zeit gebündelt
+
+Seit #2002 liegt die Spezifikation als Fragmente unter `opaa-api/src/main/openapi/` (ein Thema je
+Datei, `root.yaml` für `openapi` und `info`, `common.yaml` für Bausteine ohne fachlichen Besitzer).
+Die Themen folgen den logischen Modulen aus `backend/AGENTS.md`, wo nötig feiner (`libraries.yaml`,
+`library-metadata.yaml`); ein Tag je Thema, deklariert in der Datei des Themas, keine Sammel-Tags
+und keine Doppelformen.
+Ein Fragment enthält nur `tags`, `paths` und `components`; alle `$ref` zeigen in das Bündel
+(`#/components/...`), es gibt keine Indexdatei. `:opaa-api:bundleOpenApi`
+(`io.opaa.api.bundler.OpenApiBundler`, SnakeYAML auf dem Knotenbaum) erzeugt
+`build/openapi-bundle/openapi/opaa-api.yaml`, Eingabe des Generators und im Klassenpfad als
+`/openapi/opaa-api.yaml`. Der Bundler bricht ab bei doppelten Schlüsseln, nicht lokalen oder nicht
+auflösbaren `$ref`, YAML-Ankern und -Aliasen und Operationen ohne genau ein Tag der eigenen Datei. Das
+Frontend bündelt dieselben Fragmente mit `frontend/scripts/bundle-openapi.mjs` nach denselben Regeln
+(auch dort keine Anker und Aliase), weil Frontend-CI und -Image keine JVM haben; der CI-Job
+`openapi-bundle-parity` erzeugt bei jeder Änderung an Fragmenten oder Bundlern beide Bündel,
+vergleicht sie nach YAML 1.1 als Wertebäume und fließt in den Pflicht-Check `backend` ein.
 
 ## Konsequenzen
 
-### Einfacher
+Einfacher: kein Drift zwischen DTOs und Spezifikation; kein Boilerplate; ein Workflow für Backend
+und Frontend; eine Spec-Änderung berührt in der Regel nur die Datei ihres Themas.
 
-- **Konsistenz garantiert:** DTOs stimmen immer mit der Spezifikation überein — kein Drift möglich
-- **Weniger Boilerplate:** Keine Notwendigkeit, Records, Getter, equals/hashCode oder Jackson-Annotationen zu schreiben
-- **Einziger Workflow:** Spezifikation ändern → neu generieren → Service-Code anpassen
-- **Frontend-Backend-Abgleich:** Beide Seiten generieren aus derselben Spezifikation
+Schwieriger: generierte DTOs sind veränderliche POJOs (`getName()` statt `name()`); der Build braucht
+eine gültige Spezifikation; neue Domain-Enums müssen in `typeMappings`/`importMappings` eingetragen
+werden; zwei Bundler mit denselben Regeln, die inhaltlichen Prüfungen laufen nur im Java-Bundler.
 
-### Schwieriger
+Restrisiken: Innerhalb eines Fragments zeigt ein Editor Verweise auf Schemas anderer Dateien als
+nicht auflösbar an; maßgeblich ist das Bündel.
 
-- **Generierter Code-Stil:** Generierte DTOs sind veränderliche POJOs mit Gettern/Settern anstatt prägnanter Java-Records. Service-Code verwendet `request.getName()` anstatt `request.name()`.
-- **Build-Abhängigkeit:** `compileJava` hängt von `openApiGenerate` ab; die Spezifikation muss gültig sein, damit der Build erfolgreich ist
-- **Enum-Mapping-Wartung:** Wenn neue Domain-Enums hinzugefügt werden, die in der API verwendet werden, müssen `typeMappings` und `importMappings` in `build.gradle.kts` aktualisiert werden; der `doLast`-Cleanup-Block leitet die zu entfernenden generierten Dateien mechanisch aus `typeMappings` ab und muss dafür nicht mehr separat gepflegt werden
+## Verworfene Alternativen
 
-## Nachtrag (09/2026, #2002): Spec in Dateien je Thema, zur Build-Zeit gebündelt
+- Handgeschriebene DTOs neben generierten — Mischzustand ohne klare Quelle der Wahrheit.
+- Redocly CLI `bundle` — braucht Node im Backend-Build und eine Wurzeldatei, die jeden Pfad aufzählt.
+- `swagger-parser` oder Multi-File-Modus des Generators — Tests und Frontend brauchen trotzdem eine
+  Datei, und die Normalisierung macht die Gleichheit mit der alten Spec unbelegbar.
+- Frontend bündelt über Gradle — Frontend-Image und -CI bräuchten ein JDK.
 
-Die Spec war auf rund 19.600 Zeilen gewachsen und wurde in 145 von 763 Commits aus 60 Tagen geändert. Parallele Stränge kollidierten in dieser einen Datei, und ein Agent musste für jede Änderung eine sehr große Datei lesen (Analyse in Epic #1906).
+## Offen
 
-### Entscheidung
+Nichts.
 
-- Die Spec liegt als eine Datei je Thema unter `opaa-api/src/main/openapi/`. Die Themen folgen den logischen Modulen aus `backend/AGENTS.md`, wo nötig feiner, zum Beispiel `libraries.yaml` und `library-metadata.yaml`. `root.yaml` trägt `openapi` und `info`. `common.yaml` trägt die Bausteine ohne fachlichen Besitzer: Fehlerhülle, übergreifende Enums, gemeinsame Parameter und Antworten.
-- Ein Fragment enthält nur `tags`, `paths` und `components`. Alle `$ref` zeigen in die gebündelte Spec (`#/components/...`). Es gibt keine Verweise zwischen Dateien und keine Indexdatei, die bei jedem Feature mitgeändert werden müsste.
-- Der Gradle-Task `:opaa-api:bundleOpenApi` führt die Fragmente zusammen (`io.opaa.api.bundler.OpenApiBundler`, SnakeYAML auf dem Knotenbaum, damit jeder Skalar seine Quellform behält). Das Ergebnis `build/openapi-bundle/openapi/opaa-api.yaml` ist Eingabe des Generators und liegt für die Tests unverändert als `/openapi/opaa-api.yaml` im Klassenpfad. Der Bundler bricht ab bei doppelten Schlüsseln, bei nicht lokalen oder nicht auflösbaren `$ref` und bei Operationen, die nicht genau ein Tag aus der eigenen Datei tragen.
-- Das Frontend bündelt dieselben Fragmente mit `frontend/scripts/bundle-openapi.mjs` (Paket `yaml`) nach denselben Regeln, bevor `openapi-typescript` läuft. Frontend-CI und Frontend-Image haben keine JVM.
-- Tags: ein Tag je Thema, deklariert in der Datei des Themas. Das Sammel-Tag `admin` und die Doppelformen `space`/`spaces` und `library`/`libraries` entfallen.
+## Änderungsverlauf
 
-### Verworfene Alternativen
-
-- **Redocly CLI `bundle`:** braucht Node im Backend-Build, über das Gradle-Node-Plugin oder über den Aufruf von pnpm im Frontend. `bundle` löst außerdem nur Verweise zwischen Dateien auf und braucht deshalb eine Wurzeldatei, die jeden Pfad und jedes Schema per `$ref` aufzählt. Diese Wurzeldatei wäre wieder eine Sammeldatei, die jedes Feature berührt.
-- **`swagger-parser` oder das Multi-File-Verhalten des OpenAPI-Generators:** Der Generator käme mit `$ref` zwischen Dateien zurecht. Die Tests und das Frontend brauchen aber trotzdem eine einzelne Datei. Das Serialisieren über das Modell von `swagger-parser` normalisiert die Spec außerdem und benennt externe Schemas gegebenenfalls um. Die Gleichheit mit der alten Datei wäre so nicht mehr belegbar.
-- **Frontend bündelt über Gradle:** Das Frontend-Image und der Frontend-CI-Job bräuchten dann ein JDK und den Gradle-Build.
-
-### Konsequenzen
-
-- Eine Spec-Änderung berührt in der Regel nur die Datei ihres Themas. Die größte Datei hat rund 2.100 Zeilen.
-- Es gibt zwei Bundler mit denselben Regeln. Wer die Regeln ändert, ändert beide. Die inhaltlichen Prüfungen laufen nur im Java-Bundler. Beide lehnen YAML-Anker und -Aliase ab. Der CI-Job `openapi-bundle-parity` erzeugt bei jeder Änderung an Fragmenten oder Bundlern beide Bündel. Er lädt sie nach YAML 1.1 und vergleicht die Wertebäume. Sein Ergebnis fließt in den Pflicht-Check `backend` ein.
-- Innerhalb eines Fragments zeigt ein Editor Verweise auf Schemas anderer Dateien als nicht auflösbar an. Maßgeblich ist das Bündel.
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-08-24 | #857 | Löschliste des `doLast`-Blocks aus `typeMappings` abgeleitet | 4 |
+| 2026-08-25 | #896 | Gradle-Modul `opaa-api` | 6 |
+| 2026-09-27 | #2002 | Spezifikation in Dateien je Thema, zur Build-Zeit gebündelt | 7 |
+| 2026-10-14 | #2697 | Neufassung nach ADR-Vorlage | — |

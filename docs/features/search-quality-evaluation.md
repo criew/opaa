@@ -466,8 +466,8 @@ Korpus auf eine laufende Instanz auszurollen. Das verkleinert Phase 2 erheblich.
 > „die Instanz läuft auf **OpenAI**" war jedoch selbst ungenau und ist inzwischen präzisiert:
 > **Das Chat-Modell stammt von Anthropic, die Einbettung läuft lokal über Ollama.** Alle Punkte hat
 > der Maintainer klargestellt.
-> Was das für die Begründung von ADR-0011 bedeutet, steht dort im
-> [Nachtrag](../decisions/0011-search-quality-evaluation-harness.md#nachtrag-korrigierte-tatsachenlage-zur-demo-instanz).
+> Für [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md) ändert das nichts: Der
+> Harness misst nur das Retrieval und teilt mit der Instanz weder Modell noch Betrieb.
 
 Drei Folgerungen:
 

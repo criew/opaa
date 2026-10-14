@@ -1,96 +1,109 @@
-# ADR-0002: MVP-Technologie-Stack
+# ADR-0002: Technologie-Stack
 
 ## Status
 
-Akzeptiert
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0005, ADR-0014, ADR-0021, ADR-0025, ADR-0033, ADR-0034, ADR-0042
 
 ## Kontext
 
-OPAA benötigt einen Technologie-Stack, um das damals in `docs/MVP.md` definierte MVP zu implementieren. Dieses Dokument ist inzwischen abgelöst — der Umsetzungsstand wird im [Gesamtstand](../fortschritt/gesamtstand.md), das Zielbild in [VISION.md](../VISION.md) geführt. Der hier beschriebene Kontext bleibt als Entscheidungsgrundlage stehen. Das MVP umfasste ein Frage-Antwort-System mit Dokument-Indizierung (RAG), ein Web-Frontend und eine LLM-Integrationsschicht. Kernanforderungen sind:
-
-- Enterprise-Tauglichkeit und langfristige Wartbarkeit
-- Starke KI/ML-Ökosystem-Unterstützung (LLM, Embeddings, Vektorsuche)
-- Saubere Trennung von Frontend und Backend über REST-API
-- Einfache lokale Entwicklung und Docker-basiertes Deployment
-- Kein Vendor-Lock-in für LLM-Anbieter
+OPAA brauchte für das MVP (Frage-Antwort über indizierte Dokumente, Web-Frontend, LLM-Anbindung)
+einen Stack mit Enterprise-Tauglichkeit, starker KI-Ökosystem-Unterstützung (LLM, Embeddings,
+Vektorsuche), sauberer Trennung von Frontend und Backend über eine REST-API, einfacher lokaler
+Entwicklung, Container-Deployment und ohne Vendor-Lock-in beim LLM-Anbieter. Der Umsetzungsstand
+steht im [Gesamtstand](../fortschritt/gesamtstand.md), das Zielbild in [VISION.md](../VISION.md).
 
 ## Entscheidung
 
-### Backend: Java 21 mit Spring Boot 4.x + Spring AI 2.0.0
+### 1. Backend: Java 21, Spring Boot 4.1, Spring AI 2.0, Gradle 9.8
 
-- **Spring Boot 4.x** bietet ein ausgereiftes, enterprise-taugliches Framework mit umfangreicher Ökosystem-Unterstützung. Der MVP startete auf Spring Boot 3.5.x; die Migration auf 4.1 (Spring Framework 7, Jakarta EE 11, Jackson 3) erfolgte mit Issue #188.
-- **Spring AI 2.0.0** bietet eingebaute Abstraktionen für LLM-Clients (OpenAI-kompatibel), Embedding-Modelle, Vektorspeicher (einschließlich pgvector) und Dokument-Reader (einschließlich Apache Tika). Spring AI 2.0 setzt Spring Boot 4 voraus, beide Bumps gehören daher zusammen.
-- **Gradle 9.6.1** (Kotlin DSL) wird als Build-System verwendet und bietet schnelle inkrementelle Builds und eine prägnante Build-Konfiguration.
-- Das Backend ist als **modularer Monolith** mit separaten Packages unter `io.opaa` für `indexing`, `query` und `api` strukturiert, was eine spätere Zerlegung in Microservices ermöglicht.
+Spring AI 2.0 setzt Spring Boot 4 voraus, beide Versionen werden gemeinsam angehoben. Modularer
+Monolith unter `io.opaa`, aufgeteilt in logische Module mit geprüften Grenzen
+(`backend/AGENTS.md`, je Modul eine `AGENTS.md` im Hauptpaket). Versionen stehen in
+`backend/gradle/libs.versions.toml` und `backend/gradle/wrapper/gradle-wrapper.properties`. Das
+Backend läuft bis auf Weiteres als genau eine Instanz (ADR-0021).
 
-### Frontend: React + TypeScript + Material UI 9.2.0
+### 2. Frontend: React 19, TypeScript 6, Material UI 9, Vite 8
 
-- **React** mit **TypeScript** ist der Industriestandard für moderne Web-Anwendungen. Der MVP startete auf TypeScript 5.9; die Anhebung auf TypeScript 6.0 erfolgte mit Issue #189.
-- **Material UI 9.2.0** bietet eine umfassende, zugängliche Komponentenbibliothek mit konsistentem Design. Der MVP startete auf Material UI 7.3.8; die Migration auf 9.2 erfolgte mit Issue #189 (v8 wurde vom MUI-Team zugunsten der MUI-X-Angleichung übersprungen). Seit v9 entfallen die System-Props auf `Typography`/`Stack` — Layout-Werte gehören in die `sx`-Prop.
-- **React Router 8** wird über das Paket `react-router` eingebunden; `react-router-dom` wurde in v8 entfernt.
-- **Vite 8** (Rolldown-Backend) dient als Build-Tool und Dev-Server. Das Frontend benötigt seit Issue #189 **Node 22+** (genauer: `^22.22.2 || ^24.15.0 || >=26.0.0`, die strengste transitive Anforderung stammt von `jsdom`).
-- **Vitest + React Testing Library** wird für Frontend-Unit-Tests verwendet und bietet schnelle Vite-native Testausführung mit einer Jest-kompatiblen API.
-- **MSW (Mock Service Worker)** ermöglicht Frontend-Entwicklung und -Tests ohne laufendes Backend durch Abfangen von HTTP-Anfragen.
-- Das Frontend kommuniziert ausschließlich über die REST-API des Backends, wodurch es einer von vielen möglichen Clients ist.
+React Router 8 (`react-router`), Zustand, Axios; Tests mit Vitest 5 und React Testing Library,
+Mocks mit MSW 3; Paketmanager pnpm (Version im `packageManager`-Feld der `frontend/package.json`),
+Node 22 oder neuer (`engines`). Das Frontend spricht ausschließlich die REST-API und ist damit einer
+von mehreren möglichen Clients. Material UI ab v9 kennt keine System-Props auf `Typography`/`Stack`;
+Layoutwerte gehören in `sx`.
 
-### Datenbank: PostgreSQL 18 + pgvector
+### 3. Datenbank: PostgreSQL 18 mit pgvector
 
-- **PostgreSQL 18** dient als einzelne Datenbank sowohl für relationale Daten als auch für Vektorspeicherung.
-- **pgvector** fügt Vektorsimilaritäts-Suchfähigkeiten hinzu, ohne eine separate Vektor-Datenbank zu benötigen.
-- **Liquibase** verwaltet anwendungsspezifische Schema-Migrationen (`documents`, `indexing_jobs`) und bietet XML/YAML-basierte Changesets mit Rollback-Unterstützung. Die `vector_store`-Tabelle wird von Spring AI über `initialize-schema: true` verwaltet.
-- Dies reduziert die Betriebskomplexität (eine zu verwaltende Datenbank) und bietet gleichzeitig ausreichende Leistung für MVP-Maßstab.
+Eine Datenbank für relationale Daten und Vektoren; pgvector 0.8 oder neuer, der Start bricht ohne
+ab (`PgVectorVersionGuard`, `DatabasePrerequisiteCheck`). Liquibase verwaltet das Anwendungsschema
+nach ADR-0034; die Tabelle `vector_store` legt Spring AI über `initialize-schema: true` an
+(HNSW-Index, Vorgabe Cosinus-Distanz). Schreibzugriff läuft über Spring AIs `PgVectorStore`
+(`indexing.chunk.VectorChunkStore`), die Suche über eigenes SQL mit `JdbcTemplate`
+(`retrieval.search.VectorChunkSearch`, iterativer HNSW-Scan innerhalb des Rechtefilters). pgvector
+ist der einzige unterstützte Vektorspeicher (ADR-0014); die dort genannte „portable Schnittstelle des
+Rahmenwerks“ gilt seit dem Suchumbau nur noch für das Schreiben.
 
-### Dokument-Parsing: Apache Tika über Spring AI
+### 4. Dokumentformate: eigenes Modul `io.opaa.format`
 
-- **Apache Tika** unterstützt alle gängigen Dokumentformate (Markdown, Klartext, PDF, Word, PowerPoint) über eine einzelne Integration.
-- Spring AIs `TikaDocumentReader` bietet nahtlose Integration.
-- Das Hinzufügen neuer Dokumentformate erfordert keine Code-Änderungen.
+Je Format ein Reader mit eigener Bibliothek (PDFBox, POI, Tika, mime4j, commons-csv) und eigenem
+Schnitt; Zulassung über `SupportedDocumentFormats`, Routing nach erkanntem Inhalt über
+`DocumentFormatRegistry`, Tika nur als Rückfall (`format.file.fallback.TikaFallbackFormat`). Ein
+neues Format ist eine Klasse plus eine Bean in `format.config.FormatConfiguration`.
 
-### LLM-Schnittstelle: OpenAI-kompatible API
+### 5. LLM-Anbindung: ausschließlich das OpenAI-kompatible Protokoll
 
-- Aller LLM- und Embedding-Zugang geht über den **OpenAI-kompatiblen API**-Standard.
-- Dies unterstützt sowohl Cloud-Anbieter (OpenAI) als auch lokale Modelle (Ollama) über dieselbe Schnittstelle.
-- LLM und Embedding-Modell sind **unabhängig konfiguriert**, was gemischte Setups ermöglicht (z. B. lokale Embeddings + Cloud-LLM).
+`spring.ai.model.chat` und `spring.ai.model.embedding` stehen fest auf `openai`; die Basis-URL zeigt
+standardmäßig auf ein lokales Ollama (`http://localhost:11434/v1`, im Compose-Stack der Dienst
+`ollama`). Chat- und Embedding-Endpunkt sind getrennt konfigurierbar (`OPAA_OPENAI_CHAT_*`,
+`OPAA_OPENAI_EMBEDDING_*`), Standard-Embedding ist `bge-m3`. Ein fremder Anbieter wird nur durch
+ausdrückliches Überschreiben erreicht; nichts zeigt stillschweigend nach außen.
 
-### Authentifizierung: Keycloak + OAuth2 Resource Server
+### 6. Authentifizierung
 
-- **Keycloak** dient als Identity Provider; das Backend ist ein OAuth2 Resource Server und validiert JWTs. Begründung und Alternativen: [ADR-0005](./0005-authentication-strategy.md).
+OIDC-Resource-Server mit Keycloak als Referenz, dazu Dev-Modus (ADR-0005), mehrere Anbieter
+(ADR-0025) und lokale Konten (ADR-0033).
 
-### Deployment: Docker Compose + Lokale Entwicklung
+### 7. Deployment: Docker Compose und Helm
 
-- **Docker Compose** mit vier Containern (Frontend, Backend, PostgreSQL, Keycloak) bietet ein Einbefehl-Deployment (`docker compose up`).
-- Lokale Entwicklung wird ohne Docker unterstützt (`./gradlew bootRun` + `npm run dev` + lokales PostgreSQL).
+`docker-compose.yml` liefert Postgres, Backend und Frontend, dazu Compose-Profile für Keycloak,
+Ollama, Objektspeicher, Mailpit und die Demo. Kubernetes wird über das Helm-Chart unter
+`deploy/helm/opaa/` beliefert (ADR-0042). Lokale Entwicklung ohne Docker: `./gradlew bootRun` mit
+Auth-Profil, `pnpm run dev`, lokales PostgreSQL.
 
-### Testing: Testcontainers + GitHub Actions
+### 8. Testing: Testcontainers und GitHub Actions
 
-- **Testcontainers** bietet wegwerfbare PostgreSQL-+pgvector-Instanzen für Backend-Integrationstests.
-- **GitHub Actions** führt die CI-Pipeline (Backend-Build/-Test + Frontend-Lint/-Test/-Build) bei jedem Push und PR aus.
+Backend-Integrationstests laufen gegen ein pgvector-Image per Testcontainers; die CI
+(`.github/workflows/ci.yml`) prüft Backend und Frontend bei jedem Push und PR, teure Suiten laufen
+nächtlich oder per Label (siehe `AGENTS.md`, „Build & Test“).
 
 ## Konsequenzen
 
-### Was einfacher wird
+Einfacher: Spring AI liefert die Abstraktionen für Chat, Embedding und Vektorspeicher; Java/Spring
+senkt die Hürde in Enterprise-Umgebungen; ein Wechsel zwischen lokalen und gehosteten Modellen ist
+Konfiguration; Testcontainers stellt echtes pgvector lokal und in der CI bereit; MSW erlaubt
+Frontend-Arbeit ohne Backend.
 
-- **KI-Integration**: Spring AI bietet fertige Abstraktionen für LLM, Embeddings, Vektorspeicher und Dokument-Parsing — reduziert Boilerplate erheblich.
-- **Enterprise-Akzeptanz**: Java/Spring Boot ist in Enterprise-Umgebungen weit verbreitet, was die Hürde für Beiträge und Deployments senkt.
-- **Deployment-Einfachheit**: Docker Compose macht es trivial, den vollständigen Stack lokal oder in Demos auszuführen.
-- **LLM-Flexibilität**: OpenAI-kompatible Schnittstelle bedeutet, dass der Wechsel zwischen Cloud- und lokalen Modellen nur Konfigurationsänderungen erfordert.
-- **Vektorspeicher-Portabilität**: Spring AIs `VectorStore`-Abstraktion ermöglicht den Wechsel des Vektor-Datenbank-Backends (pgvector, Milvus, Qdrant, usw.) ausschließlich durch Konfiguration — keine Code-Änderungen erforderlich.
-- **Dokumentformat-Unterstützung**: Apache Tika behandelt Formatvielfalt ohne per-Format-Implementierungsaufwand.
-- **Parallele Entwicklung**: MSW ermöglicht Frontend- und Backend-Entwicklung unabhängig voneinander gegen einen gemeinsamen API-Vertrag.
-- **Zuverlässiges Testing**: Testcontainers stellt sicher, dass Integrationstests gegen echtes PostgreSQL + pgvector laufen, sowohl lokal als auch in CI.
+Schwieriger: Pythons KI-Ökosystem ist breiter; zwei Sprachen verlangen breitere Fähigkeiten; pgvector
+stößt bei sehr großen Beständen an Grenzen, ein Wechsel ist nicht vorgesehen.
 
-### Was schwieriger wird
+Restrisiken: Spring AI ist jünger als die Python-Alternativen; Hauptversionswechsel (Spring Boot,
+Material UI) ziehen Migrationen nach sich.
 
-- **KI-Ökosystem-Breite**: Python hat ein breiteres KI/ML-Ökosystem (LangChain, LlamaIndex, HuggingFace). Einige Spitzenbibliotheken sind möglicherweise noch nicht in Java verfügbar. Spring AI mildert dies, ist aber neuer als Python-Alternativen.
-- **Frontend-Backend-Sprachteilung**: Zwei Sprachen (Java + TypeScript) erfordern breitere Fähigkeiten von Beitragenden. Dies wird durch saubere API-Trennung gemildert.
-- **pgvector-Skalierungsgrenzen**: Für sehr große Dokumentensammlungen (Millionen von Vektoren) kann schließlich eine dedizierte Vektor-Datenbank (Milvus, Qdrant) benötigt werden. pgvector ist für MVP und mittlere Deployments ausreichend.
+## Verworfene Alternativen
 
-## Nachträge
+- Python-Backend — schwächere Enterprise-Akzeptanz und Wartbarkeit trotz breiterem KI-Ökosystem.
+- Separate Vektor-Datenbank (Milvus, Qdrant) — eine zweite Datenbank im Betrieb ohne Bedarf.
+- Native Anbieter-Starter je LLM-Anbieter — ein Protokoll genügt für Cloud und lokale Modelle.
 
-### 06.09.2026 — Frontend-Aufrufe laufen über pnpm
+## Offen
 
-Mit der Migration des Frontend-Builds von npm auf pnpm (#653, PR #752) lautet der im Abschnitt
-„Deployment" genannte Befehl für die lokale Entwicklung `pnpm run dev`; Abhängigkeiten werden mit
-`pnpm install` installiert, die pnpm-Version ist über das `packageManager`-Feld der `package.json`
-gepinnt. An der Entscheidung selbst (Docker Compose plus lokale Entwicklung ohne Docker) ändert
-das nichts.
+Nichts.
+
+## Änderungsverlauf
+
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-02-17 | — | Erstfassung | 1–8 |
+| 2026-02-18 | — | Technologiewahl abgeschlossen, PostgreSQL 18 | 1, 3 |
+| 2026-02-22 | — | Chunks im Spring-AI-`VectorStore` statt eigener Tabelle | 3 |
+| 2026-08-01 | #188, #189 | Spring Boot 4.1, Spring AI 2.0, Material UI 9, React Router 8, Vite 8 | 1, 2 |
+| 2026-09-06 | #653, #1372 | Frontend-Aufrufe über pnpm | 2, 7 |
+| 2026-10-14 | #2697 | Neufassung: Format-Modul, natives pgvector-SQL, nur OpenAI-Protokoll, Helm | 3, 4, 5, 7 |
