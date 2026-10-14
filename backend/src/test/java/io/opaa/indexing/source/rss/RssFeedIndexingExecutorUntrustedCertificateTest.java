@@ -30,6 +30,7 @@ import io.opaa.test.LoopbackTls;
 import io.opaa.test.SourceTypes;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -110,7 +111,8 @@ class RssFeedIndexingExecutorUntrustedCertificateTest {
                 mock(io.opaa.indexing.maintenance.StaleDocumentCleanupService.class),
                 documentRepository,
                 mock(LibraryStorageQuotaService.class),
-                new LibrarySourceConnectionResolver()));
+                new LibrarySourceConnectionResolver(),
+                Clock.systemUTC()));
   }
 
   @Test

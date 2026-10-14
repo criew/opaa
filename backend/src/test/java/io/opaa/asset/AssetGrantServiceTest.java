@@ -32,6 +32,7 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionReachGuard;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -91,7 +92,8 @@ class AssetGrantServiceTest {
             auditEventRecorder,
             eventPublisher,
             successionGuard,
-            new OwnerOnlyRule(mock(AssetRepository.class), new AssetTypes(List.of(libraryType))));
+            new OwnerOnlyRule(mock(AssetRepository.class), new AssetTypes(List.of(libraryType))),
+            Clock.systemUTC());
 
     // KnowledgeLibrary.ownedByUser always assigns its own random id (like every other factory
     // method on that entity) - libraryId is read back from the constructed instance rather than

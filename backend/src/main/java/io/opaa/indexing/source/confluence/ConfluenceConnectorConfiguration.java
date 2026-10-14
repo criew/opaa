@@ -75,7 +75,8 @@ public class ConfluenceConnectorConfiguration {
       DocumentRepository documentRepository,
       SourceSyncStateRepository sourceSyncStateRepository,
       StaleDocumentCleanupService staleDocumentCleanupService,
-      IndexingRunTemplate indexingRunTemplate) {
+      IndexingRunTemplate indexingRunTemplate,
+      Clock clock) {
     return new ConfluenceIndexingExecutor(
         confluenceClientFactory,
         confluenceProperties,
@@ -84,7 +85,7 @@ public class ConfluenceConnectorConfiguration {
         documentRepository,
         sourceSyncStateRepository,
         staleDocumentCleanupService,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate);
   }
 }

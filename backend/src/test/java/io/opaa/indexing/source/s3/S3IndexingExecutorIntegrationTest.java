@@ -131,7 +131,8 @@ class S3IndexingExecutorIntegrationTest {
             cleanupService,
             documentRepository,
             mock(LibraryStorageQuotaService.class),
-            new LibrarySourceConnectionResolver()),
+            new LibrarySourceConnectionResolver(),
+            Clock.systemUTC()),
         ProductionDocumentFormats.supportedFormats());
   }
 

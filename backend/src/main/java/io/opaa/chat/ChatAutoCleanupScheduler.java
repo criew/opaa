@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import java.time.Clock;
 import java.time.Instant;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -12,13 +13,15 @@ import org.springframework.stereotype.Component;
 public class ChatAutoCleanupScheduler {
 
   private final ChatAutoCleanupService cleanupService;
+  private final Clock clock;
 
-  public ChatAutoCleanupScheduler(ChatAutoCleanupService cleanupService) {
+  public ChatAutoCleanupScheduler(ChatAutoCleanupService cleanupService, Clock clock) {
     this.cleanupService = cleanupService;
+    this.clock = clock;
   }
 
   @Scheduled(cron = "0 50 3 * * *")
   public void runDaily() {
-    cleanupService.runOnce(Instant.now());
+    cleanupService.runOnce(Instant.now(clock));
   }
 }

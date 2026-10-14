@@ -13,6 +13,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -50,6 +51,7 @@ class KeycloakAdminApi {
   private final String clientId;
   private final String clientSecret;
   private final Duration requestTimeout;
+  private final Clock clock;
 
   private String accessToken;
   private Instant accessTokenExpiry = Instant.EPOCH;
@@ -59,12 +61,14 @@ class KeycloakAdminApi {
       KeycloakRealmAddress address,
       String clientId,
       String clientSecret,
-      Duration requestTimeout) {
+      Duration requestTimeout,
+      Clock clock) {
     this.httpClient = httpClient;
     this.address = address;
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.requestTimeout = requestTimeout;
+    this.clock = clock;
   }
 
   /** One page of the realm's top-level groups. */
@@ -132,7 +136,7 @@ class KeycloakAdminApi {
   }
 
   private synchronized String accessToken() throws DirectoryUnavailableException {
-    if (accessToken != null && Instant.now().isBefore(accessTokenExpiry)) {
+    if (accessToken != null && Instant.now(clock).isBefore(accessTokenExpiry)) {
       return accessToken;
     }
     String url =
@@ -157,7 +161,7 @@ class KeycloakAdminApi {
     }
     long expiresIn = token.path("expires_in").asLong(60);
     accessToken = value;
-    accessTokenExpiry = Instant.now().plusSeconds(expiresIn).minus(TOKEN_REFRESH_MARGIN);
+    accessTokenExpiry = Instant.now(clock).plusSeconds(expiresIn).minus(TOKEN_REFRESH_MARGIN);
     return accessToken;
   }
 
