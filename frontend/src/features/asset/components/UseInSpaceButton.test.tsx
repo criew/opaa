@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '../../../test/test-utils'
 import { server } from '../../../mocks/server'
-import { mockSpaces } from '../../../mocks/spaceFixtures'
+import { mockSpaces } from '../../space/mocks/spaceFixtures'
 import type { SpaceListResponse } from '@/shared/api/types'
 import UseInSpaceButton from './UseInSpaceButton'
 

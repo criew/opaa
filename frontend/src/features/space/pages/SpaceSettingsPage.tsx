@@ -9,9 +9,9 @@ import { useSpaceStore } from '../stores/spaceStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import MetaBadge from '@/shared/ui/MetaBadge'
-import SpaceContentSection from '../components/space/SpaceContentSection'
-import SpaceGeneralSection from '../components/space/SpaceGeneralSection'
-import SpaceMembersSection from '../components/space/SpaceMembersSection'
+import SpaceContentSection from '../components/SpaceContentSection'
+import SpaceGeneralSection from '../components/SpaceGeneralSection'
+import SpaceMembersSection from '../components/SpaceMembersSection'
 import {
   FORMER_SPACE_SETTINGS_TABS,
   SPACE_SETTINGS_TABS,

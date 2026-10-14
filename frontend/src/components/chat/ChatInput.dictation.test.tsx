@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatInput from './ChatInput'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useChatStore } from '../../stores/chatStore'
-import { useSpaceStore } from '../../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 
 const mocks = vi.hoisted(() => ({
   available: true,

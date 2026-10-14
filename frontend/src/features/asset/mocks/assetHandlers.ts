@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { assetRoleLabel } from '@/shared/utils/labels'
 import { mockPromptLibraries } from '../../../mocks/promptLibraryFixtures'
 import { mockUser } from '../../../mocks/authFixtures'
-import { mockSpaceDetails } from '../../../mocks/spaceFixtures'
+import { mockSpaceDetails } from '../../space/mocks/spaceFixtures'
 import { mockLibraryDetails } from '../../../mocks/libraryFixtures'
 import {
   associationListOf,

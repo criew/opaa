@@ -14,7 +14,7 @@ import { useNotificationStore } from '@/shared/stores/notificationStore'
 import type { FeatureFlags, LocalAccountsConfig, SessionKind } from '@/shared/session/types'
 import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
 import { SpaceListContext, type SpaceListLoader } from '@/features/asset'
-import { getSpaces } from '../services/spaceApi'
+import { getSpaces } from '@/features/space'
 
 const theme = createAppTheme('dark')
 

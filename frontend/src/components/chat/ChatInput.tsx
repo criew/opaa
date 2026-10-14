@@ -23,9 +23,9 @@ import {
   metadataFilterScopeKey,
   useMetadataFilterOptionsStore,
 } from '../../stores/metadataFilterOptionsStore'
-import { useSpaceStore } from '../../stores/spaceStore'
-import SpaceKnowledgeNotice from '../space/SpaceKnowledgeNotice'
-import { spaceKnowledgeGap } from '../space/spaceKnowledge'
+import { useSpaceStore } from '@/features/space'
+import { SpaceKnowledgeNotice } from '@/features/space'
+import { spaceKnowledgeGap } from '@/features/space'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import MetadataFilterPopover from './MetadataFilterPopover'
 import ChatActionMenu from './ChatActionMenu'

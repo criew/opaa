@@ -3,7 +3,7 @@ import { chatHandlers } from './chatHandlers'
 import { queryHandlers } from './queryHandlers'
 import { transcriptionHandlers } from './transcriptionHandlers'
 // space
-import { spaceHandlers } from './spaceHandlers'
+import { spaceHandlers } from '../features/space/mocks/spaceHandlers'
 // asset
 import { assetHandlers } from '../features/asset/mocks/assetHandlers'
 import { catalogHandlers } from '../features/asset/mocks/catalogHandlers'

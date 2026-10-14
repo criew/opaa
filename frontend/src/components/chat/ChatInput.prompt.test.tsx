@@ -8,7 +8,7 @@ import { germanDate, todayIso } from '../../utils/promptTemplate'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
-import { useSpaceStore } from '../../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 
 /** The chat input's '/' command, against the MSW prompt fixtures. */
 describe('ChatInput: inserting a prompt', () => {

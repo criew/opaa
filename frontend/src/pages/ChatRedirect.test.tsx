@@ -5,7 +5,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import ChatRedirect from './ChatRedirect'
-import { useSpaceStore } from '../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 import { useChatListStore } from '../stores/chatListStore'
 
 const mockNavigate = vi.fn()

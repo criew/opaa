@@ -17,14 +17,14 @@ import { spaceSettingsRoute } from '@/shared/routes'
 import { AccessDerivation } from '@/features/asset'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { getSpaceAccessDerivation } from '../services/spaceApi'
+import { getSpaceAccessDerivation } from '../api/spaceApi'
 import { spaceRoleLabel } from '@/shared/utils/labels'
-import { assetTypeTitle } from '../shared/assetTypes'
+import { assetTypeTitle } from '../../../shared/assetTypes'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { SuccessionStateNote } from '@/features/succession'
-import SpaceKnowledgeNotice from '../components/space/SpaceKnowledgeNotice'
-import { spaceKnowledgeGap } from '../components/space/spaceKnowledge'
+import SpaceKnowledgeNotice from '../components/SpaceKnowledgeNotice'
+import { spaceKnowledgeGap } from '../components/spaceKnowledge'
 
 // #674 review: the owner is not always ADMIN - transferOwnership only reassigns Space.ownerId and
 // never touches the new owner's own SpaceMembership role (see SpaceService#requireMemberListViewer,

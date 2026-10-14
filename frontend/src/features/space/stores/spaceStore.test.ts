@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { ASSOCIATIONS_NOT_REFRESHED, MEMBERS_NOT_REFRESHED, useSpaceStore } from './spaceStore'
 import { resetAllStores } from '@/shared/session/resettableStores'
-import { getSpace, getSpaces, listSpaceMembers } from '../services/spaceApi'
+import { getSpace, getSpaces, listSpaceMembers } from '../api/spaceApi'
 import type { SpaceMemberResponse } from '@/shared/api/types'
 
 const mockCreateSpace = vi.fn()
@@ -71,7 +71,7 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   return { promise, resolve }
 }
 
-vi.mock('../services/spaceApi', () => ({
+vi.mock('../api/spaceApi', () => ({
   getSpaces: vi.fn(async () => mutableSpaces.map((space) => ({ ...space }))),
   getSpace: vi.fn(async (spaceId: string) => ({
     id: spaceId,
@@ -99,7 +99,7 @@ vi.mock('../services/spaceApi', () => ({
   archiveSpace: (...args: [string]) => mockArchiveSpace(...args),
 }))
 
-vi.mock('../features/asset/api/assetApi', () => ({
+vi.mock('../../asset/api/assetApi', () => ({
   getSpaceAssetAssociations: (spaceId: string) => mockGetSpaceAssetAssociations(spaceId),
   associateSpaceAsset: (spaceId: string, assetType: string, assetId: string) =>
     mockAssociateSpaceAsset(spaceId, assetType, assetId),

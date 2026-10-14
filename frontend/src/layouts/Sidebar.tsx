@@ -22,10 +22,10 @@ import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-r
 import { spaceSettingsRoute } from '@/shared/routes'
 import ChatList from '../components/chat/ChatList'
 import { useChatStore } from '../stores/chatStore'
-import { useSpaceStore } from '../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 import { SIDEBAR_DEFAULT_WIDTH, useUiStore } from '@/shared/stores/uiStore'
 import SidebarResizeHandle from './SidebarResizeHandle'
-import { rememberSpaceUse, spacesByRecentUse, useRecentSpaceIds } from '../utils/recentSpaces'
+import { rememberSpaceUse, spacesByRecentUse, useRecentSpaceIds } from '@/features/space'
 import { darkRoles, fontFamily, lightRoles, shadow } from '@/shared/theme/tokens'
 import { spaceMembershipLabel } from '@/features/asset'
 

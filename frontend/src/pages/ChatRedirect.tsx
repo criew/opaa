@@ -6,9 +6,9 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
-import { useSpaceStore } from '../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 import { usePageTitle } from '@/shared/hooks/usePageTitle'
-import { lastUsedSpace } from '../utils/recentSpaces'
+import { lastUsedSpace } from '@/features/space'
 
 /**
  * Resolves the global `/chat` entry point: it always lands on an empty, not-yet-persisted chat

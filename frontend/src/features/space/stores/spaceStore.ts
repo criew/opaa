@@ -22,7 +22,7 @@ import {
   transferSpaceOwnership,
   updateSpaceDetails,
   updateSpaceMemberRole,
-} from '../services/spaceApi'
+} from '../api/spaceApi'
 import { associateSpaceAsset, detachSpaceAsset, getSpaceAssetAssociations } from '@/features/asset'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'

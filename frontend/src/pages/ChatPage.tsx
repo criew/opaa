@@ -19,7 +19,7 @@ import { deletionDueLabel } from '../components/chat/deletionDueLabel'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { notify } from '@/shared/stores/notificationStore'
-import { useSpaceStore } from '../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 

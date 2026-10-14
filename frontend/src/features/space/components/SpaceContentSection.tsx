@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
-import { useSpaceStore } from '../../stores/spaceStore'
+import { useSpaceStore } from '../stores/spaceStore'
 import {
   notify,
   useNotificationStore,

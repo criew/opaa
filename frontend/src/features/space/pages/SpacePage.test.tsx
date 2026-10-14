@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { renderWithProviders } from '../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import SpacePage from './SpacePage'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -37,9 +37,8 @@ const { mockListSpaceMembers, mockGetSpaceAssetAssociations } = vi.hoisted(() =>
   })),
 }))
 
-vi.mock('../services/spaceApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/spaceApi')>('../services/spaceApi')
+vi.mock('../api/spaceApi', async () => {
+  const actual = await vi.importActual<typeof import('../api/spaceApi')>('../api/spaceApi')
   return {
     ...actual,
     getSpace: vi.fn(
@@ -49,9 +48,9 @@ vi.mock('../services/spaceApi', async () => {
   }
 })
 
-vi.mock('../features/asset/api/assetApi', async () => {
-  const actual = await vi.importActual<typeof import('../features/asset/api/assetApi')>(
-    '../features/asset/api/assetApi',
+vi.mock('../../asset/api/assetApi', async () => {
+  const actual = await vi.importActual<typeof import('../../asset/api/assetApi')>(
+    '../../asset/api/assetApi',
   )
   return {
     ...actual,

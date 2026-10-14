@@ -6,7 +6,7 @@ import { server } from '../../mocks/server'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useChatStore } from '../../stores/chatStore'
 import { useMetadataFilterOptionsStore } from '../../stores/metadataFilterOptionsStore'
-import { useSpaceStore } from '../../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 
 /**
  * ADR-0044: with metadata switched off the chat offers no filter and shows no stored one - a

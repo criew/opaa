@@ -28,7 +28,7 @@ import {
 import type { ChatSearchHandover } from '../hooks/useChatSearch'
 import { CHAT_PAGE_SIZE, useChatListStore } from '../stores/chatListStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
-import { useSpaceStore } from '../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 import type { ChatBulkAction, ChatSummary } from '@/shared/api/types'
 
 type ChatsTab = 'active' | 'archive'

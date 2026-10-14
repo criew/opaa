@@ -2,12 +2,12 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { answerConfirm, renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
 import SpaceSettingsPage from './SpaceSettingsPage'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useNotificationStore } from '@/shared/stores/notificationStore'
-import { getSpace } from '../services/spaceApi'
+import { getSpace } from '../api/spaceApi'
 import type { SpaceAssetAssociationListResponse, SpaceResponse } from '@/shared/api/types'
 
 // Der sichtbare Reiter ist eine Route (#1917); der Test setzt ihn wie die Adresszeile.
@@ -199,9 +199,8 @@ vi.mock('@/features/principal/api/userApi', async () => {
   }
 })
 
-vi.mock('../services/spaceApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/spaceApi')>('../services/spaceApi')
+vi.mock('../api/spaceApi', async () => {
+  const actual = await vi.importActual<typeof import('../api/spaceApi')>('../api/spaceApi')
   return {
     ...actual,
     getSpaces: vi.fn(async () => []),
@@ -232,9 +231,9 @@ vi.mock('@/features/principal/api/groupLookupApi', async () => {
   }
 })
 
-vi.mock('../features/asset/api/assetApi', async () => {
-  const actual = await vi.importActual<typeof import('../features/asset/api/assetApi')>(
-    '../features/asset/api/assetApi',
+vi.mock('../../asset/api/assetApi', async () => {
+  const actual = await vi.importActual<typeof import('../../asset/api/assetApi')>(
+    '../../asset/api/assetApi',
   )
   return {
     ...actual,

@@ -14,7 +14,7 @@ import { useLocation, useNavigate } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { AssetTilePicker } from '@/features/asset'
 import type { AssetPick, SpaceCreateLocationState } from '@/features/asset'
-import { assetTypeDefinition } from '../shared/assetTypes'
+import { assetTypeDefinition } from '../../../shared/assetTypes'
 import { SubjectFormRow } from '@/features/principal'
 import { SubjectPicker } from '@/features/principal'
 import {
@@ -24,14 +24,14 @@ import {
   selectedSubjectId,
   type SubjectSelection,
 } from '@/features/principal'
-import ChatAutoCleanupField from '../components/space/ChatAutoCleanupField'
+import ChatAutoCleanupField from '../components/ChatAutoCleanupField'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
-import { getChatAutoCleanupPeriods } from '../services/spaceApi'
+import { getChatAutoCleanupPeriods } from '../api/spaceApi'
 import { capabilityMissingMessage, spaceRoleLabel } from '@/shared/utils/labels'
 import type { ChatAutoCleanupPeriods, PermissionSubjectType, SpaceRole } from '@/shared/api/types'
 
