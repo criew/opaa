@@ -457,7 +457,15 @@ test.describe.serial('Fremdzugänge', () => {
     const confirmRevoke = adminPage
       .getByRole('dialog')
       .filter({ has: adminPage.locator('#confirm-question') })
+    // The dialog closes before the revocation is even sent; only the answer to the DELETE says the
+    // grant is gone, and from then on the very next MCP call must no longer see the library.
+    const revoked = adminPage.waitForResponse(
+      (response) =>
+        response.request().method() === 'DELETE' &&
+        /\/api\/v1\/assets\/[^/]+\/[^/]+\/grants\/[^/]+$/.test(new URL(response.url()).pathname),
+    )
     await confirmRevoke.locator('#confirm-accept').click()
+    expect((await revoked).status()).toBe(204)
     await expect(confirmRevoke).toHaveCount(0)
     await closeLibraryAccessDialog(adminPage)
 
