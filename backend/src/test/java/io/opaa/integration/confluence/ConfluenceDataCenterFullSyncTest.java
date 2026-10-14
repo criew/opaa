@@ -30,6 +30,7 @@ import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.RunFailureCategory;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -299,6 +300,7 @@ class ConfluenceDataCenterFullSyncTest {
             any());
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService, never()).failJob(eq(jobId), any());
+    verify(indexingJobService, never()).failJob(eq(jobId), any(), any());
   }
 
   @Test
@@ -309,7 +311,8 @@ class ConfluenceDataCenterFullSyncTest {
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
     ArgumentCaptor<String> message = ArgumentCaptor.forClass(String.class);
-    verify(indexingJobService).failJob(eq(jobId), message.capture());
+    verify(indexingJobService)
+        .failJob(eq(jobId), message.capture(), eq(RunFailureCategory.CREDENTIALS_REJECTED.name()));
     assertThat(message.getValue()).contains("anonym").doesNotContain("kein-gueltiges-token");
     verify(documentIngestService, never()).ingest(DocumentIngests.anyText(), any());
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
