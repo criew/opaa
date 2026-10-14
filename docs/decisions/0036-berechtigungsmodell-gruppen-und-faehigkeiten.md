@@ -119,7 +119,7 @@ ersten drei zusammen; **ADR, Oberfläche und Handbuch benutzen durchgehend die S
 | **Wirksame Gruppe** | — | eine Gruppe, der ein Recht **erteilt** werden darf: nicht aufgelöst und ihr Anbieter aktiviert (bei internen Gruppen entfällt das Zweite; an seine Stelle tritt seit dem Nachtrag vom 11.10.2026 „nicht deaktiviert“, Entscheidung 14). Sie **darf leer sein** |
 | **Handlungsfähige Gruppe** | — | eine wirksame Gruppe mit mindestens einem **aktiven** Konto — das Maß dafür, ob sie als Eigentümerin oder Space-`ADMIN` **handeln** kann |
 
-„Vollmacht" ist bereits Sprachgebrauch des Projekts (ADR-0016, Nachtrag: „Diagnose-Vollmacht");
+„Vollmacht" ist bereits Sprachgebrauch des Projekts (ADR-0016, Entscheidung 4: „Diagnose-Vollmacht");
 „Anlegerecht" ist neu und deckt die erste Liste der Fähigkeiten vollständig ab.
 
 ## Entscheidung
@@ -669,7 +669,7 @@ Historienzeile sagt, *in welchem Zeitraum* ein Recht galt, und trägt die Sticht
 | **Kontozustand** (aktiv/gesperrt) | **neu**, #1818 — Beleg der Kontenmenge zum Stichtag, zusammen mit `users` (siehe Nachtrag unten) | `RESTRICT` | ja |
 | Verantwortliche interner Gruppen | **keine** — Betriebsrecht der Gegenwart | — | ja |
 | Deaktivierung einer internen Gruppe (Nachtrag 11.10.2026) | `group_membership_history` — Schnitt aller Mitgliedschaftsintervalle der Gruppe (Entscheidung 14) | `RESTRICT` (bestehend) | ja |
-| Vollmachten | keine (ADR-0016, Nachtrag) | — | ja |
+| Vollmachten | keine (ADR-0016, Entscheidung 4) | — | ja |
 | Nachfolgevorgänge, Sichtungsvermerke (letztere mit dem Nachtrag vom 08.10.2026 entfallen) | keine | — | ja |
 
 Alle Historientabellen tragen `valid_from`/`valid_to` und folgen ADR-0016: Subjektspalten `RESTRICT`,

@@ -71,7 +71,7 @@ gemeinsamem Lauf-Helfer statt je Konnektor einer Kopie. `SourceFolderPath` beurt
 Ein Segment, das leer, `.` oder `..` ist, einen Pfadtrenner oder ein NUL-Byte enthält oder länger als
 255 Zeichen ist, verwirft den ganzen Pfad; die Datei landet in der Wurzel mit Warnung im
 Anwendungsprotokoll, nie unter erfundenem Namen. Dateisystem und Verzeichnisliste spiegeln beliebig
-tief; die Cloud-Konnektoren kappen die Kette bei `MAX_DEPTH`.
+tief; die `FileSync`-Konnektoren (u. a. SMB, Nextcloud, S3) kappen die Kette bei `MAX_DEPTH`.
 Für die Verzeichnisliste ist der Ordnerpfad der URL-Pfad relativ zur normalisierten Start-URL,
 segmentweise prozentdekodiert, ohne Query und Fragment. Leere Ordner werden nur nach einem
 vollständigen Lauf entfernt, nach der Bereinigung verschwundener Dokumente. Die Zuordnung geschieht

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · Entscheidung 6 ersetzt durch ADR-0036 Entscheidung 5 · ergänzt durch ADR-0023, ADR-0027, ADR-0038, ADR-0039, ADR-0041
+Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt durch ADR-0023, ADR-0027, ADR-0036 (Entscheidung 6), ADR-0038, ADR-0039, ADR-0041
 
 ## Kontext
 
@@ -62,16 +62,19 @@ Einzellöschung dort wirkungslos ist, solange der Ausschluss-Mechanismus aus
 [knowledge-sources.md](../features/knowledge-sources.md#lebenszyklus-der-dokumente) nicht gebaut
 ist: Der nächste Lauf nähme das Dokument wieder auf.
 
-### 6. Anlage für jeden Berechtigten
+### 6. Anlage über Fähigkeiten; Allowlist und Zieladressprüfung sichern unabhängig davon
 
-Entfallen mit #1810, siehe ADR-0036 Entscheidung 5, umgesetzt in `CapabilityService`: Die Anlage ist
-eine vergebbare Fähigkeit (`CREATE_LIBRARY`, `CREATE_CONNECTOR_LIBRARY`), ausgeliefert an „Alle
-Konten“. Die Obergrenze der Freigabe konnektorgespeister Bibliotheken regelt ADR-0037. Unabhängig davon
-sichern die Pfad-Allowlist (`opaa.indexing.filesystem.allowlist`, ohne Eintrag ist der Typ
-Dateisystem abgeschaltet) und die Zieladressprüfung (`TargetAddressValidator`,
-`opaa.indexing.target-validation`, siehe
-[betrieb.md](../handbuch/betrieb.md#zielprüfung-abrufe-des-servers)) jeden Serverpfad und jede
-Zieladresse, gleich wer die Bibliothek anlegt.
+Wer eine Bibliothek anlegen darf, bestimmt seit #1810 eine vergebbare Fähigkeit (`CREATE_LIBRARY`,
+`CREATE_CONNECTOR_LIBRARY`; ADR-0036 Entscheidung 5, umgesetzt in `CapabilityService`), ausgeliefert
+an „Alle Konten“, sodass sich für Bestandsinstallationen nichts ändert. Die Obergrenze der Freigabe
+konnektorgespeister Bibliotheken regelt ADR-0037. Unabhängig davon, wer anlegt, sichern zwei
+Mechanismen jeden Serverpfad und jede Zieladresse: die Pfad-Allowlist
+(`opaa.indexing.filesystem.allowlist`; ohne Eintrag ist der Typ Dateisystem abgeschaltet, die
+Prüfung läuft bei Anlage und erneut bei jedem Lauf) und die Zieladressprüfung
+(`TargetAddressValidator`, `opaa.indexing.target-validation`, lehnt aufgelöste Adressen im Loopback-,
+Link-Local-, privaten oder nicht routbaren Bereich ab, siehe
+[betrieb.md](../handbuch/betrieb.md#zielprüfung-abrufe-des-servers)). Die Fähigkeit ersetzt keine
+der beiden Sicherungen und macht keine entbehrlich.
 
 ### 7. Zeitplan je Bibliothek
 
@@ -120,7 +123,7 @@ neu indiziert. Ein Lauf je Bibliothek statt global einer.
 | 2026-08-21 | #485 | Zeitplan je Bibliothek | 7 |
 | 2026-09-03 | #1131 | Erster Listenwert der Konfiguration (Confluence-Spaces, ADR-0023) | 1 |
 | 2026-09-06 | #1373 | Typisiertes JSON-Feld `source_settings` (ADR-0027) | 1 |
-| 2026-09-19 | #1810 | Anlage als Fähigkeit (ADR-0036 Entscheidung 5) | 6 |
+| 2026-09-19 | #1810 | Anlage als Fähigkeit (ADR-0036 Entscheidung 5), Sicherungen bleiben | 6 |
 | 2026-09-26 | #1977 | Jeder Konnektor speichert in `source_settings`, offener Typschlüssel (ADR-0038) | 1 |
 | 2026-10-02 | ADR-0039 | Bibliotheksliste geht im Katalog auf | 3 |
 | 2026-10-11 | #2496 | `source_proxy` entfällt, hausweiter Ausgangsproxy | 1 |

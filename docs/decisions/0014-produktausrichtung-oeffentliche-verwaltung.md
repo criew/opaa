@@ -165,9 +165,9 @@ ausgeschlossen. Siehe [data-indexing-rag.md](../features/data-indexing-rag.md#be
 Die Organisationsgrenze wird in drei Schichten gehalten: Anwendung, Datenbank und ein struktureller
 Prüflauf gegen das tatsächliche Schema, der verlangt, dass jede Tabelle mit Organisationszugehörigkeit
 ihre Verweise auf organisationsgebundene Objekte zusammengesetzt führt. Der Prüflauf schließt die
-Fehlerklasse statt des Einzelfalls. Die einseitige Absicherung auf Datenbankebene (#289) und die
-fehlende Durchsetzung im Verwaltungspfad (#271) sind zu schließen, bevor überhaupt eine zweite
-Organisation angelegt wird. Siehe [spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird).
+Fehlerklasse statt des Einzelfalls. Die beidseitige Absicherung auf Datenbankebene (#289) und die
+Durchsetzung im Verwaltungspfad (#271) waren Voraussetzung für eine zweite Organisation und sind
+gebaut. Siehe [spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird).
 
 ## Konsequenzen
 

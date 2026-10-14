@@ -51,9 +51,9 @@ teilen sich keine Instanz.
 `CREATE ROLE` gewährt dem anlegenden `CREATEROLE`-Konto automatisch `ADMIN OPTION` auf die neue Rolle,
 mit der Bootstrap-Identität als Grantor. Ein vom Anwendungskonto ausgeführtes `REVOKE` entfernt diesen
 Eintrag nicht. Mit zwei Anweisungen (`GRANT opaa_audit_owner TO <konto> WITH SET TRUE; DELETE FROM
-audit_log;`) hebt das Anwendungskonto die Eigentümertrennung deshalb wieder auf, solange die Rolle von
-das Anwendungskonto `ADMIN OPTION` an der Rolle hält, sei es automatisch durch `CREATE ROLE` oder
-durch eine vorab angelegte Rolle. Die Append-only-Zusage auf Datenbankebene gilt damit vollständig
+audit_log;`) hebt das Anwendungskonto die Eigentümertrennung deshalb wieder auf, solange das Anwendungskonto
+`ADMIN OPTION` an der Rolle hält, sei es automatisch durch `CREATE ROLE` oder durch eine vorab
+angelegte Rolle. Die Append-only-Zusage auf Datenbankebene gilt damit vollständig
 erst, wenn `opaa_audit_owner` von einer Identität provisioniert wird, die dem Anwendungskonto nie
 `ADMIN OPTION` an ihr gibt, was ein vom Laufzeitkonto getrenntes Migrationskonto voraussetzt. Bis
 dahin ist das Abnahmekriterium „keine Rechte am Schema der Tabelle“ gegen eine eingeschleuste
