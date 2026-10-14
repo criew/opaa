@@ -41,7 +41,7 @@ Der Name eines Themas ist der Tag seiner Operationen in der OpenAPI-Spezifikatio
 
 Die Verstöße, die es beim Einführen der Regel schon gab, stehen in `eslint-suppressions.json` ([Bulk Suppressions](https://eslint.org/docs/latest/use/suppressions) von ESLint), je Datei mit ihrer Anzahl.
 
-- Die Liste darf nur schrumpfen. Der CI-Schritt „Themengrenzen prüfen“ im Job `frontend` (`node scripts/check-theme-boundaries.mjs`) vergleicht die Summe mit `main` und scheitert, wenn sie wächst oder eine andere Regel als `boundaries/dependencies` enthält.
+- Die Liste darf nur schrumpfen. Der CI-Schritt „Themengrenzen prüfen“ im Job `frontend` (`node scripts/check-theme-boundaries.mjs`) vergleicht die Summe mit der Basis des geprüften Commits (`HEAD^1`, nicht mit dem beweglichen `main`; lokal ist `origin/main` die Vorgabe) und scheitert, wenn sie wächst oder eine andere Regel als `boundaries/dependencies` enthält.
 - Die Grenzregel wird nie per Kommentar abgeschaltet: Derselbe Schritt scheitert an `eslint-disable`-Kommentaren, die `boundaries/…` nennen oder ohne Regelliste alles abschalten, und an Inline-Konfiguration für `boundaries/…`.
 - `pnpm run lint` scheitert bei jedem Verstoß über die Liste hinaus und bei Einträgen, die nicht mehr auftreten. Wer einen Verstoß behebt, verkleinert die Liste mit `pnpm exec eslint . --prune-suppressions`.
 - Nie `--suppress-rule` oder `--suppress-all` für neue Verstöße verwenden: die CI lehnt die gewachsene Liste ab.
