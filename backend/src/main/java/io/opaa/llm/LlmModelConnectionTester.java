@@ -3,7 +3,6 @@ package io.opaa.llm;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptor;
-import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -25,31 +24,11 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Probes a managed chat model's OpenAI-compatible endpoint (Stufe 1,
- * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung: "Verbindungstest
- * je Eintrag. Eine falsch eingetragene Adresse fällt sonst erst dem nächsten fragenden Menschen
- * auf") with a short, bounded chat completion request - the same shape {@code
- * SourceConnectionTestService} already uses for library sources: a synchronous probe with a tight
- * timeout, German user-facing outcomes, and a clean separation between "unreachable", "not
- * authenticated" and "model unknown", per the issue's technical hint.
+ * Probes a managed chat model's OpenAI-compatible endpoint with a bounded one-token chat completion
+ * and reports unreachable, not authenticated and unknown model apart, in German.
  *
- * <p><b>No target-address blocking here, deliberately</b> - unlike {@code
- * io.opaa.security.TargetAddressValidator}, which exists to stop a crawl from walking a public URL
- * onto an internal address it was never told to reach. A managed chat model's baseUrl is entered
- * directly by {@code SYSTEM_ADMIN} and is expected to routinely be an address on the operator's own
- * network - {@code http://ollama:11434/v1} is the specification's own example
- * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei) - so blocking private ranges here
- * would break the primary supported case rather than guard against one.
- *
- * <p><b>The stored key never leaves its own origin.</b> An earlier version of {@link #test}
- * decrypted {@code modelId}'s stored key and then probed whatever {@code baseUrl} the request
- * carried - a {@code SYSTEM_ADMIN} could submit {@code modelId} for a genuine model together with
- * an attacker-controlled {@code baseUrl} and have the stored plaintext key sent to that address in
- * the {@code Authorization} header, which made the key not actually write-only despite {@link
- * LlmModel#getApiKeyCiphertext()} never being returned by any response. {@link #test} now only ever
- * uses the stored key when the request's {@code baseUrl} is same-origin ({@link
- * RedirectFollowingFetcher#sameOrigin}) with the model's own stored {@code baseUrl}; any other
- * combination is rejected with 400 before the key is even decrypted.
+ * <p>No target-address blocking: a model address on the operator's own network is the normal case.
+ * The stored key is only ever sent to the origin of the model's own stored {@code baseUrl}.
  */
 @Service
 public class LlmModelConnectionTester {
@@ -70,13 +49,8 @@ public class LlmModelConnectionTester {
   }
 
   /**
-   * Tests {@code baseUrl}/{@code modelIdentifier} with {@code apiKey} as given. When {@code apiKey}
-   * is omitted or blank and {@code modelId} is set, the stored, decrypted key of that model is used
-   * instead - lets a caller re-test an already saved model's connection without having to re-enter
-   * a key the API never returns to begin with. That fallback only ever fires when {@code baseUrl}
-   * is same-origin with {@code modelId}'s own stored {@code baseUrl} (see this class's own Javadoc)
-   * - otherwise the request is rejected with 400 rather than silently probing without a key or,
-   * worse, sending the stored key to an address it was never meant for.
+   * Tests {@code baseUrl}/{@code modelIdentifier} with {@code apiKey}. A blank {@code apiKey} with
+   * a {@code modelId} uses that model's stored key, but only for a same-origin {@code baseUrl}.
    *
    * @throws NotFoundException 404 when {@code modelId} is set but no such model exists
    * @throws ValidationException 400 when the stored key would have to be sent to an address other
@@ -211,22 +185,15 @@ public class LlmModelConnectionTester {
   }
 
   /**
-   * Chat completions live at {@code {baseUrl}/chat/completions} for every OpenAI-compatible server
-   * this feature targets, including Ollama's own {@code /v1} endpoint
-   * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei) - a trailing slash on {@code
-   * baseUrl} is tolerated, never doubled. Any query string on {@code baseUrl} (e.g. an Azure {@code
-   * api-version} parameter) is preserved and moved to the end of the resulting URI rather than
-   * ending up in the middle of the path. Shared with the rerank role through {@link
-   * ModelEndpointUri}, which also enforces the "no credentials in the address" rule.
+   * {@code {baseUrl}/chat/completions}; a trailing slash is not doubled and a query string moves to
+   * the end. {@link ModelEndpointUri} also rejects credentials in the address.
    */
   private static URI chatCompletionsUri(String baseUrl) throws URISyntaxException {
     return ModelEndpointUri.append(baseUrl, "/chat/completions");
   }
 
   /**
-   * Built with Jackson rather than hand-assembled string concatenation - {@code modelIdentifier} is
-   * operator-entered free text and a hand-escaped string missed control characters a real JSON
-   * serializer never would.
+   * Serialised with Jackson: {@code modelIdentifier} is free text and may hold control characters.
    */
   private String buildRequestBody(String modelIdentifier, BigDecimal temperature) {
     Map<String, Object> message = new LinkedHashMap<>();

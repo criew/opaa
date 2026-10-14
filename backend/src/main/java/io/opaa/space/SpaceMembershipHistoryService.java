@@ -24,11 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code io.opaa.permission.PermissionHistoryService} states, and it holds across tables because
  * both share the one {@link PermissionHistoryClock}.
  *
- * <p><b>The reading path is not here.</b> {@link #spaceIdsAsOf} answers the reconstruction, but the
- * endpoint that turns it into an Auskunft - with the authorisation, the time window and the
- * retrieval event ADR-0036, Entscheidung 8 requires - belongs to #1822. Like every other
- * reconstruction, an {@code asOf} before the retention cutoff yields an <b>empty</b> answer, not a
- * negative one; the caller that publishes it owes that distinction.
+ * <p><b>The reading path is not here.</b> {@link #spaceIdsAsOf} answers the reconstruction; the
+ * endpoint that turns it into an Auskunft owns the authorisation, the time window and the retrieval
+ * event ADR-0036, Entscheidung 8 requires. Like every other reconstruction, an {@code asOf} before
+ * the retention cutoff yields an <b>empty</b> answer, not a negative one; the caller that publishes
+ * it owes that distinction.
  */
 @Service
 public class SpaceMembershipHistoryService {

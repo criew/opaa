@@ -72,7 +72,7 @@ public class GroupMembershipHistory {
    * io.opaa.permission.AssetGrantHistory#terminal} for why a removal needs its own marker row
    * rather than relying on the closed interval alone: the closed interval's own cause must stay
    * whatever it originally was (ADDED or a directory-sync add), and the removal is a separate,
-   * actor-bearing event #238's acceptance criteria require to be recorded.
+   * actor-bearing event that has to be recorded.
    */
   public static GroupMembershipHistory terminal(
       UUID groupId,

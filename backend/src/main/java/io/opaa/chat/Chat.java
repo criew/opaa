@@ -75,10 +75,9 @@ public class Chat {
   private ChatStatus status;
 
   /**
-   * Sticky @-references (epic #523 "Entschiedene Semantik"). Used as the search scope when {@link
-   * #useKnowledge} is {@code false}; ignored when it is {@code true}. Backed by the
-   * chat_library_references join table, not an array column, so both foreign keys are enforced at
-   * the database level.
+   * Sticky @-references. Used as the search scope when {@link #useKnowledge} is {@code false};
+   * ignored when it is {@code true}. Backed by the chat_library_references join table, not an array
+   * column, so both foreign keys are enforced at the database level.
    *
    * <p><b>Chat_library_references also carries organization_id, which this collection deliberately
    * never sets.</b> A BEFORE INSERT trigger, {@code trg_chat_library_references_set_organization},

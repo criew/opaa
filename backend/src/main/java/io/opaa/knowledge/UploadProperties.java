@@ -19,7 +19,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     UploadStorageConfiguration} refuses the start on any other value.
  * @param maxFileSize maximum accepted upload size in bytes. Default 50 MiB (52 428 800): generous
  *     enough for a typical scanned Dienstanweisung while still bounding memory and disk use per
- *     upload; see #420's acceptance criteria for the resulting 413 response.
+ *     upload; a larger file is refused with 413.
  * @param threadPool thread pool settings for {@code IndexingConfiguration#uploadTaskExecutor}.
  *     Deliberately its own property block, not a reuse of {@code opaa.indexing.thread-pool}: {@code
  *     uploadTaskExecutor} and {@code indexingTaskExecutor} are two independent {@code

@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 /**
  * The local-auth limits that need more than the request path (ADR-0033, Entscheidung 9): the
  * password change per authenticated account, and registration and password reset per e-mail address
- * (#1538 calls {@link #requireAddressAllowance} before it does anything with the address). A
+ * (callers ask {@link #requireAddressAllowance} before they do anything with the address). A
  * refusal is a {@link TooManyRequestsException} with the seconds to wait, which {@code
  * GlobalExceptionHandler} turns into {@code 429} with {@code Retry-After}. Addresses are keyed by a
  * hash of their lower-cased form and never held as text; with {@code opaa.rate-limit.enabled =

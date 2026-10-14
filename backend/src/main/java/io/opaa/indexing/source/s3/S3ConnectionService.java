@@ -13,11 +13,11 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 /**
- * The connection test and the bucket listing for an S3 library (ADR-0027, Entscheidung 8 and the
- * probe of #1376), on top of the access layer: every scope is probed in three steps - bucket
- * reachable, listing allowed, reading allowed - through {@link S3ObjectStore#testAccess}, and a
- * store problem is the test's <em>result</em>, never an exception; only a caller's own mistake (an
- * address that is no endpoint, missing settings) is a 400.
+ * The connection test and the bucket listing for an S3 library (ADR-0027, Entscheidung 8), on top
+ * of the access layer: every scope is probed in three steps - bucket reachable, listing allowed,
+ * reading allowed - through {@link S3ObjectStore#testAccess}, and a store problem is the test's
+ * <em>result</em>, never an exception; only a caller's own mistake (an address that is no endpoint,
+ * missing settings) is a 400.
  *
  * <p>The probe is bounded like every other synchronous connection test: its store uses {@link
  * S3ClientFactory#createForProbe} (short timeout, one retry) and the whole test stops after {@link

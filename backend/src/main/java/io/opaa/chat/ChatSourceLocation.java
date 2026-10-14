@@ -5,9 +5,8 @@ package io.opaa.chat;
  * its document. {@code ChatSourceAssembler} builds these while ranking search results; {@link
  * ChatService} persists them as part of a turn's sources ({@link ChatMessage#getSources()}) and
  * reads them back unchanged for {@code GET /chats/{chatId}}. Mutable, no-arg constructor included,
- * mirroring the generated DTO's bean shape so the JSON persisted in {@code chat_messages.sources}
- * before this change deserializes into this class unchanged - the property names below match the
- * DTO's {@code @JsonProperty} names exactly.
+ * mirroring the generated DTO's bean shape: the JSON in {@code chat_messages.sources} uses the
+ * DTO's {@code @JsonProperty} names, which the properties below match exactly.
  */
 public final class ChatSourceLocation {
 

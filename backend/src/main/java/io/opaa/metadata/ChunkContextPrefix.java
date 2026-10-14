@@ -176,8 +176,8 @@ public final class ChunkContextPrefix {
 
   /**
    * The embedding and full-text input of a chunk: its prefix in brackets, a blank line, the chunk
-   * text. Unchanged from the title-only prefix of #933/#940, so a document whose prefix did not
-   * change keeps a byte-identical input.
+   * text. The layout is fixed, so a document whose prefix did not change keeps a byte-identical
+   * input.
    */
   public static String format(String prefix, String chunkText) {
     return "[" + prefix + "]\n\n" + chunkText;

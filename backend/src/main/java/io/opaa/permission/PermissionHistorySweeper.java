@@ -9,10 +9,9 @@ import java.time.Instant;
  * this package and not the other way round; see {@code io.opaa.permission.package-info}.
  *
  * <p><b>What a further personal history source owes.</b> The maximum retention period is the
- * precondition under which #1813, #1818 and #1819 may add their tables at all. A new history table
- * therefore brings its own implementation of this interface; {@code
- * PermissionHistorySweeperCoverageTest} derives the expectation from the schema itself and fails
- * for a history table nobody sweeps.
+ * precondition for any further history table. A new history table therefore brings its own
+ * implementation of this interface; {@code PermissionHistorySweeperCoverageTest} derives the
+ * expectation from the schema itself and fails for a history table nobody sweeps.
  */
 public interface PermissionHistorySweeper {
 

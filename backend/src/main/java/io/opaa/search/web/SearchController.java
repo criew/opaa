@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>A regular endpoint of this API, open to every signed-in person with exactly the rights check
  * {@code POST /api/v1/query} applies. It deliberately does <b>not</b> hang on the external-access
  * switch: that switch is the emergency stop of the external-access channel, not of the search
- * endpoint - for a token call it applies, and #1718 enforces it where the token is read.
+ * endpoint - for a token call it applies, enforced where the token is read.
  */
 @RestController
 @RequestMapping("/api/v1/search")

@@ -95,14 +95,11 @@ paths:
         max-feed-size-bytes) - an unbounded read here would let a caller crash the server with
         a single oversized or endless response. This endpoint is rate-limited per IP and
         globally (opaa.rate-limit.source-test), same as the indexing trigger - it is a
-        synchronous probe with its own outbound connections and short timeouts, not a
-        replacement for #267's still-outstanding target validation (blocking internal/private
-        address ranges) for HTTP_DIRECTORY/RSS_FEED, which this endpoint makes cheaper to
-        reach than the indexing run it mirrors (see docs/features/knowledge-sources.md). With
+        synchronous probe with its own outbound connections and short timeouts. With
         libraryId set, sourceType must match that library's own sourceType (otherwise
         400) and a missing sourceCredentials falls back to the library's stored one, but only
-        if sourceUrl still names the same origin as the library's stored sourceUrl - the same
-        rule KnowledgeLibraryService already applies when saving.
+        while the connector's secret target still admits the new target (same origin and
+        binding) - the same rule KnowledgeLibraryService applies when saving.
       requestBody:
         required: true
         content:
@@ -582,7 +579,7 @@ paths:
         (Tika) and embedding run afterwards, asynchronously, through the same executor
         infrastructure the directory/URL indexing paths use. Poll GET on this library's document
         list to observe the transition to INDEXED or FAILED (errorMessage set on failure).
-        Malware scanning is explicitly out of scope - see #420.
+        There is no malware scanning.
 
         **folderId (ADR-0020):** optional; omitted or null uploads into
         the library's root, mirroring GET on this same path. When set, it must reference an
@@ -869,7 +866,7 @@ paths:
         request (Bearer token, like every other endpoint here per ADR-0005) rather than a direct
         browser navigation - a plain <a href> deep link has no way to attach that token, so a caller
         wanting an inline preview fetches this endpoint and renders the response itself (e.g. as a
-        Blob URL); see #738/#739 for that client-side piece. The library owning the document is
+        Blob URL). The library owning the document is
         resolved from Document.libraryId; VIEWER role or above on that library is required, the same
         floor GET /api/v1/libraries/{libraryId} itself uses. sourceType UPLOAD/FILESYSTEM stream a
         local file directly; HTTP_DIRECTORY/RSS_FEED are proxied server-side from the document's own
@@ -1232,7 +1229,7 @@ components:
           description: >
             Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute
             path, and must resolve underneath one of the operator-configured allowlist base
-            directories (opaa.indexing.filesystem.allowlist, #484/ADR-0018 Entscheidung 6) -
+            directories (opaa.indexing.filesystem.allowlist, ADR-0018 Entscheidung 6) -
             otherwise rejected with 400. An empty allowlist disables sourceType FILESYSTEM
             entirely.
           example: /data/documents/rechtsquellen
@@ -1333,7 +1330,7 @@ components:
           description: >
             Only for sourceType FILESYSTEM. Must be an absolute path, and must resolve
             underneath one of the operator-configured allowlist base directories
-            (opaa.indexing.filesystem.allowlist, #484/ADR-0018 Entscheidung 6) - otherwise
+            (opaa.indexing.filesystem.allowlist, ADR-0018 Entscheidung 6) - otherwise
             rejected with 400, without touching the filesystem at all. An empty allowlist
             disables sourceType FILESYSTEM entirely, identical to LibraryRequest.sourcePath.
           example: /data/documents/rechtsquellen
@@ -1634,7 +1631,7 @@ components:
         (HOURLY always runs at minute 0 of every hour), DAILY requires hour and minute, WEEKLY
         additionally requires weekday. A combination that contradicts frequency is rejected with
         400, the same shape LibraryRequest's sourceType-dependent fields already use. Rejected
-        with 400 for a sourceType UPLOAD library (#485 Zuschnitt: nur Konnektorbibliotheken).
+        with 400 for a sourceType UPLOAD library: only connector libraries have a schedule.
       properties:
         frequency:
           $ref: "#/components/schemas/ScheduleFrequency"
@@ -1687,15 +1684,14 @@ components:
           readOnly: true
           description: >
             The next time this schedule fires, computed from the stored cron expression at
-            server local time (opaa.scheduling.zone is not configurable yet - see the #485 PR
-            description for why server time was chosen). Null when frequency is DISABLED.
+            server local time. Null when frequency is DISABLED.
 
     LibraryUpdateRequest:
       type: object
       required: [name]
       description: >
         Body for updating an existing library. Deliberately narrower than LibraryRequest: owner
-        and ownerType cannot be changed here - transferring ownership is out of scope for #201.
+        and ownerType cannot be changed here.
         sourceType itself cannot be changed here (ADR-0018): the quellentyp is chosen once, at
         creation, and is permanent. sourceType is accepted as an optional field purely so a
         client that (mistakenly) resends the current value from LibraryResponse is not rejected
@@ -1730,7 +1726,7 @@ components:
           description: >
             Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute
             path, and must resolve underneath one of the operator-configured allowlist base
-            directories (opaa.indexing.filesystem.allowlist, #484/ADR-0018 Entscheidung 6) -
+            directories (opaa.indexing.filesystem.allowlist, ADR-0018 Entscheidung 6) -
             otherwise rejected with 400. An empty allowlist disables sourceType FILESYSTEM
             entirely.
           example: /data/documents/rechtsquellen
@@ -2085,9 +2081,8 @@ components:
           nullable: true
           description: >
             True when this library's two most recently completed scheduled runs both ended
-            FAILED (#485 Zuschnitt: "wiederholtes Scheitern wird ... sichtbar gemacht", without
-            automatically disabling the schedule - stille Ausfälle sollen aber nicht unbemerkt
-            bleiben). A single failed scheduled run, or any manually triggered run, does not set
+            FAILED, so repeated failure is visible without disabling the schedule. A single failed
+            scheduled run, or any manually triggered run, does not set
             this. Present only under the same conditions as schedule above.
         storageQuotaBytes:
           type: integer
@@ -2238,8 +2233,7 @@ components:
 
             Deliberately visible to every VIEWER, unlike LibraryResponse's own sourceUrl (masked
             below MANAGER): this field names one document's remote origin, the document deep
-            link that is the entire point of #738/#740, not the library's crawl configuration (host,
-            credentials) that #507 protects. Maintainer decision on PR #743.
+            link, not the library's crawl configuration (host, credentials).
           example: https://example.gov/verzeichnis/dienstanweisung-2024.pdf
         sourceContainerKey:
           type: string

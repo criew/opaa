@@ -3,7 +3,7 @@ package io.opaa.directory.sync;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Configuration for #237's directory synchronisation.
+ * Configuration of the directory synchronisation.
  *
  * @param changeThresholdFraction the plausibility threshold: if a run would remove more than this
  *     fraction of a group's existing memberships, nothing is written and the plan is left for a

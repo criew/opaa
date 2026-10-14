@@ -35,9 +35,8 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
   Optional<Space> findByIdWithMemberships(@Param("spaceId") UUID spaceId);
 
   /**
-   * Every space of one organization with its memberships - what the operational list of #1819 asks
-   * after a capable ADMIN of. The fetch join is the point: deciding that question per space without
-   * it is one query per row.
+   * Every space of one organization with its memberships, for the operational list's question after
+   * a capable ADMIN. The fetch join is the point: without it that is one query per row.
    */
   @Query(
       "select distinct s from Space s left join fetch s.memberships "

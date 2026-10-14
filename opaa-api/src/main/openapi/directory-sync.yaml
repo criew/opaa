@@ -189,7 +189,7 @@ paths:
         (DIRECTORY_SYNC_NOT_ENABLED), while the provider itself is disabled
         (DIRECTORY_SYNC_PROVIDER_DISABLED - a disabled provider is no anchor of trust, so its run
         pauses), and while another run or dry run of the same provider is still in flight
-        (DIRECTORY_SYNC_ALREADY_RUNNING). See #237 and #1816.
+        (DIRECTORY_SYNC_ALREADY_RUNNING).
         A report naming persons is recorded as one DIRECTORY_SYNC_REPORT_READ audit entry with the
         number of groups and persons it named (ADR-0036, Entscheidung 9).
       parameters:
@@ -224,7 +224,7 @@ paths:
         would be removed does not exceed the configured threshold. Above the threshold the run
         writes nothing and leaves a pending plan behind (outcome PENDING_CONFIRMATION), replacing
         any plan this provider already had; an empty group list stays a hard abort and leaves no
-        plan at all. Same 409s as the dry run. See #237 and #1816.
+        plan at all. Same 409s as the dry run.
         A report naming persons is recorded as one DIRECTORY_SYNC_REPORT_READ audit entry with the
         number of groups and persons it named (ADR-0036, Entscheidung 9).
       parameters:
@@ -379,7 +379,7 @@ components:
         ABORTED_THRESHOLD is the same measurement on a dry run, which never leaves a plan.
         ABORTED_EMPTY_RESULT stays a hard abort - "the source did not answer the way it should"
         is nothing anyone may click away - and UNREACHABLE keeps the last known good state in
-        force. See #237 and #1816.
+        force.
       enum:
         [
           APPLIED,
@@ -533,8 +533,8 @@ components:
       required: [externalId, name, added, removed]
       description: >
         Which users would gain or lose membership of one group - the level of detail an admin
-        needs to decide before a run that would revoke access is applied (see #237's acceptance
-        criteria: the dry-run report must show what would change, not only how much).
+        needs to decide before a run that would revoke access is applied: the dry-run report
+        shows what would change, not only how much.
       properties:
         externalId:
           type: string

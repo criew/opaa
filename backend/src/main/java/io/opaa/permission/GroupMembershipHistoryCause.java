@@ -30,7 +30,7 @@ public enum GroupMembershipHistoryCause {
   IDENTITY_PROVIDER_REMOVED,
 
   /**
-   * The interval was written by the #238 backfill for a membership that already existed before this
+   * The interval was written by the backfill for a membership that already existed before this
    * feature - reconstructed from {@code group_memberships.created_at}, with no actor - that column
    * does not record who added an existing membership.
    */

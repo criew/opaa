@@ -21,9 +21,9 @@ public enum AssetVisibilityHistoryCause {
   EXTERNAL_ACCESS_EXPIRED,
 
   /**
-   * Written by a migration, not by an operation: the #238 backfill for an asset that existed before
-   * the history did, and the #2092 rewrite of a former change of the findability flag, whose
-   * interval carries the release state of its predecessor unchanged.
+   * Written by a migration, not by an operation: the backfill for an asset that existed before the
+   * history did, and the rewrite of a former change of the findability flag, whose interval carries
+   * the release state of its predecessor unchanged.
    */
   BACKFILL,
 

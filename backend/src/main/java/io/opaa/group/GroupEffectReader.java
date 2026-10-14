@@ -102,7 +102,7 @@ class GroupEffectReader {
 
   private Effects effectsOf(UUID organizationId) {
     // With memberships, so the accounts of every group of the organization are decided in one
-    // query instead of one per group (#682's rule, applied to the two group tabs).
+    // query instead of one per group.
     List<Group> all = groups.findByOrganizationIdWithMemberships(organizationId);
     if (all.isEmpty()) {
       return new Effects(List.of(), Map.of(), Set.of(), Set.of());

@@ -23,7 +23,7 @@ paths:
         done, which is what lets the number reach zero. The figures are counted on every request in
         the rights context of the asking person and never precomputed or cached
         (metadata-schema.md, Rechte-Invariante) - reading needs VIEWER on the library, correcting a
-        value keeps the EDITOR right of #1068. GET
+        value needs EDITOR. GET
         /api/v1/libraries/{libraryId}/documents?missingMetadataField=... lists exactly the counted
         documents. A library of another organization or one the caller holds no right on is absent
         (404).

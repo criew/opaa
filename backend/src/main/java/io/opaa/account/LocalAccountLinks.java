@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
  * English paths like every route of the SPA, the raw token as the {@code token} query. A link is
  * absolute only with {@code OPAA_PUBLIC_BASE_URL}; without one it is a path relative to the
  * installation, so an invitation handed to the administrator stays redeemable where no mail could
- * ever carry a link. The pages behind the paths are #1539/#1540/#1541/#1563.
+ * ever carry a link.
  */
 public final class LocalAccountLinks {
 
@@ -26,7 +26,7 @@ public final class LocalAccountLinks {
   public static final String LOGIN_PATH = "login";
 
   /**
-   * The administration's list of local accounts - the SPA route of #1541, not the API path {@code
+   * The administration's list of local accounts - the SPA route, not the API path {@code
    * /api/v1/admin/local-users} the list is fed from. The quarterly review reminder links here.
    */
   public static final String ADMIN_LOCAL_USERS_PATH = "admin/users";

@@ -8,15 +8,14 @@ package io.opaa.api.types;
  *
  * <p>Declared in ascending order so {@link #atLeast(AssetRole)} can compare via {@link #ordinal()}.
  *
- * <p>An earlier draft placed a {@code USER} rank below {@link #VIEWER} that allowed using an asset
- * without seeing its configuration. It was dropped in #330: for an agent the guarantee is not
- * enforceable, because whoever may invoke it can ask it for its own instructions, and for a library
- * it runs largely empty, because cited answers expose the document titles anyway.
+ * <p>There is no rank below {@link #VIEWER} that allows using an asset without seeing its
+ * configuration: for an agent that is not enforceable, and for a library cited answers expose the
+ * document titles anyway.
  *
  * <p>Exception for a knowledge library: its source connection detail - internal server paths,
- * source URLs and proxy hosts, not merely "configuration" in the #330 sense above - stays hidden
- * from a VIEWER and even an EDITOR, matching the {@link #MANAGER} bar {@code
- * KnowledgeLibraryService#updateLibrary} already enforces for changing it.
+ * source URLs and proxy hosts, not merely "configuration" - stays hidden from a VIEWER and even an
+ * EDITOR, matching the {@link #MANAGER} bar {@code KnowledgeLibraryService#updateLibrary} already
+ * enforces for changing it.
  */
 public enum AssetRole {
   /** Use the asset (query a library, invoke an agent) and see its configuration. */

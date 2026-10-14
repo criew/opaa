@@ -67,11 +67,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   Optional<User> findByIdAndOrganizationId(UUID id, UUID organizationId);
 
   /**
-   * Resolves directory group members to their {@link User} rows for #237's directory
-   * synchronisation, scoped to the organization so a subject from another tenant can never be
-   * matched in - the same boundary {@code GroupMembershipRepository} enforces for group reads - and
-   * to {@code issuer}, the trusted provider's (ADR-0025, Entscheidung 4): a second provider's
-   * account with the same subject must never inherit the directory's memberships.
+   * Resolves directory group members to their accounts, scoped to the organization and to the
+   * synchronised provider's {@code issuer} (ADR-0025, Entscheidung 4): another tenant's or another
+   * provider's account with the same subject never inherits the directory's memberships.
    */
   List<User> findByOrganizationIdAndIssuerAndSubjectIn(
       UUID organizationId, String issuer, Collection<String> subjects);
@@ -112,12 +110,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   List<User> findByIssuer(String issuer);
 
   /**
-   * The columns a directory run needs to decide an account's state - a projection, not the entity:
-   * a realm may report tens of thousands of accounts (see {@code
-   * OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_ACCOUNTS}), and loading every one of them as a managed entity
-   * would keep them in the persistence context - and under dirty checking - for the whole of the
-   * run's transaction. The few accounts a run actually locks or unlocks are loaded by id
-   * afterwards.
+   * The columns a directory run needs to decide account states, as a projection: tens of thousands
+   * of managed entities would sit under dirty checking for the whole run.
    */
   @Query(
       "select u.id as id, u.subject as subject, u.systemRole as systemRole,"
@@ -234,13 +228,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   List<User> findByOrganizationId(UUID organizationId);
 
   /**
-   * Used by {@code UserSearchController#listUsers} (capped and query-gated) - unlike {@link
-   * #findByOrganizationId(UUID)} above (still unbounded, but only ever reached by the {@code
-   * SYSTEM_ADMIN}-only admin list), this backs an endpoint every authenticated organization member
-   * can call, so it is deliberately never allowed to return the whole organization: {@code
-   * pageable} caps the row count and the caller (see {@link UserService#searchInOrganization})
-   * never invokes this without a query that already passed the minimum-length check. Matches
-   * case-insensitively against both displayName and email so a caller can find someone by either.
+   * The member search every organization member may call: {@code pageable} caps the rows, and
+   * {@link UserService#searchInOrganization} only calls it with a long enough query. Matches
+   * display name and e-mail case-insensitively.
    */
   @Query(
       "SELECT u FROM User u WHERE u.organizationId = :organizationId AND "

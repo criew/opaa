@@ -308,7 +308,7 @@ opaa:
     base-url: ${OPAA_RERANK_BASE_URL:}
     model: ${OPAA_RERANK_MODEL:}
     api-key: ${OPAA_RERANK_API_KEY:}
-    # 240s carries the CPU case #1050 measured (~3 min/query, 50 candidates, 20 CPU cores,
+    # 240s carries the measured CPU case (~3 min/query, 50 candidates, 20 CPU cores,
     # BAAI/bge-reranker-v2-m3) - a shorter default reports normal CPU latency as UNREACHABLE.
     # Installations with a faster (typically GPU-backed) endpoint may lower this.
     timeout: ${OPAA_RERANK_TIMEOUT:240s}

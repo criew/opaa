@@ -11,9 +11,8 @@ import java.util.UUID;
  * retrofitting a subject type later would touch every grant, query and cache.
  *
  * <p>Carries {@code organizationId} so that {@link GroupMembershipResolver#resolveUserIds} can
- * enforce the organization boundary itself, at the one place every future caller goes through,
- * instead of leaving each caller in #202 to rebuild that check independently - the same class of
- * bug the boundary work in #199 exists to prevent.
+ * enforce the organization boundary itself, at the one place every caller goes through, instead of
+ * leaving each caller to rebuild that check independently.
  */
 public record PermissionSubject(PermissionSubjectType type, UUID id, UUID organizationId) {
 

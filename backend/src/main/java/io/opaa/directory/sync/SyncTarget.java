@@ -10,6 +10,6 @@ import java.util.UUID;
  *
  * <p>There is no target without a provider row: the {@code dev} mode has none, and the
  * synchronisation therefore does not run there at all - deliberately, rather than over a synthetic
- * provider row (#1816 decides this open point of ADR-0036, Entscheidung 11).
+ * provider row (ADR-0036, Entscheidung 11).
  */
 public record SyncTarget(UUID organizationId, UUID providerId, String issuer, String displayName) {}

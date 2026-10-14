@@ -1,7 +1,7 @@
 package io.opaa.api.types;
 
 /**
- * {@code AUDITOR} is #393's revision role: it grants read access to the four bounded revision query
+ * {@code AUDITOR} is the revision role: it grants read access to the four bounded revision query
  * paths and the anlassbezogene-Klärung workflow in {@code io.opaa.audit} (see
  * docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt) and
  * nothing else - it carries none of {@code SYSTEM_ADMIN}'s administrative privileges, and {@code

@@ -233,7 +233,7 @@ fun registerEvalDomain(
     registerEvalHarnessTask(
         conversationEvaluateTaskName,
         "Runs the same harness as evaluate${name}Retrieval but with the multi-turn step switched " +
-            "on (issue #1484): three measurements of the domain's conversation dataset over the " +
+            "on: three measurements of the domain's conversation dataset over the " +
             "corpus the run has just indexed; the single-question pipeline path is skipped. Needs " +
             "Docker; far longer than the single-question run, one chat call per turn. Not part " +
             "of build/check.",
@@ -245,8 +245,7 @@ fun registerEvalDomain(
     )
     tasks.register<Test>("check${name}ConversationBaseline") {
         description = "Runs evaluate${name}Conversations, then compares the multi-turn result " +
-            "against eval/baseline/pipeline-<domain>-conversations.json (issue #1553). Needs " +
-            "Docker."
+            "against eval/baseline/pipeline-<domain>-conversations.json. Needs Docker."
         group = "verification"
         dependsOn(conversationEvaluateTaskName)
         testClassesDirs = sourceSets["evalTest"].output.classesDirs
@@ -269,8 +268,8 @@ registerEvalDomain(
     evaluateDescription = "Runs the retrieval-quality evaluation harness (Hit Rate, MRR, nDCG, Recall) " +
         "against eval/corpus using Testcontainers (pgvector + Ollama). Not part of build/check.",
     checkDescription = "Runs evaluateRetrieval, then fails if the result regresses beyond tolerance " +
-        "against eval/baseline/comic-characters.json (raw-vector path, issue #228) or " +
-        "eval/baseline/pipeline-comic-characters.json (pipeline path, issue #1040). Needs Docker.",
+        "against eval/baseline/comic-characters.json (raw-vector path) or " +
+        "eval/baseline/pipeline-comic-characters.json (pipeline path). Needs Docker.",
     harnessTestClass = "io.opaa.eval.RetrievalEvaluationHarnessTest",
     baselineTestClass = "io.opaa.eval.BaselineRegressionTest",
     pipelineBaselineTestClass = "io.opaa.eval.PipelineBaselineRegressionTest",
@@ -286,8 +285,8 @@ registerEvalDomain(
         "against eval/corpus/city-landmarks using Testcontainers (pgvector + Ollama). Not part " +
         "of build/check.",
     checkDescription = "Runs evaluateCityLandmarksRetrieval, then fails if the result regresses " +
-        "beyond tolerance against eval/baseline/city-landmarks.json (raw-vector path, issue #234) " +
-        "or eval/baseline/pipeline-city-landmarks.json (pipeline path, issue #1081). Needs Docker.",
+        "beyond tolerance against eval/baseline/city-landmarks.json (raw-vector path) " +
+        "or eval/baseline/pipeline-city-landmarks.json (pipeline path). Needs Docker.",
     harnessTestClass = "io.opaa.eval.CityLandmarksRetrievalEvaluationHarnessTest",
     baselineTestClass = "io.opaa.eval.CityLandmarksBaselineRegressionTest",
     pipelineBaselineTestClass = "io.opaa.eval.CityLandmarksPipelineBaselineRegressionTest",
@@ -304,7 +303,7 @@ registerEvalDomain(
         "build/check.",
     checkDescription = "Runs evaluateVerwaltungRetrieval, then fails if the result regresses beyond " +
         "tolerance against eval/baseline/verwaltung.json (raw-vector path) or " +
-        "eval/baseline/pipeline-verwaltung.json (pipeline path), issue #1043. Needs Docker.",
+        "eval/baseline/pipeline-verwaltung.json (pipeline path). Needs Docker.",
     harnessTestClass = "io.opaa.eval.VerwaltungRetrievalEvaluationHarnessTest",
     baselineTestClass = "io.opaa.eval.VerwaltungBaselineRegressionTest",
     pipelineBaselineTestClass = "io.opaa.eval.VerwaltungPipelineBaselineRegressionTest",

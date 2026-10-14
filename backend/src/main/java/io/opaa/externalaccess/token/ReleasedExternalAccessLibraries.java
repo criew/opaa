@@ -10,8 +10,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The release of a library for external access as #1731 stores it: the Reichweitenfeld on the
- * library itself, read per call.
+ * The release of a library for external access as it is stored: the Reichweitenfeld on the library
+ * itself, read per call.
  *
  * <p>{@link KnowledgeLibrary#isExternalAccessActive} is the one reader - it treats a Befristung
  * that has passed as gone the moment it passes, not when the daily run writes it down. A single

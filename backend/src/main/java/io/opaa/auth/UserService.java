@@ -73,17 +73,10 @@ public class UserService {
   }
 
   /**
-   * The per-request provisioning behind {@link UserProvisioningFilter} (ADR-0025, Entscheidung 4):
-   * the token is read through the claim mapping of the enabled provider that owns its issuer - or
-   * the Keycloak-shaped defaults when no provider does, which is the {@code dev} mode - and the
-   * account is found or created as before. For a provider with a roles or groups claim, the
-   * provider is authoritative: the stored role is aligned with the token here, the token's group
-   * memberships by the {@link UserProvisionedEvent} this method publishes exactly once - as does
-   * the personal-space provisioning, which is why neither package is reached into from here.
-   *
-   * <p>What the token said travels as a {@link TokenRoles} and a {@link TokenGroups}: a token that
-   * carries no usable claim must not reach the role synchronizer as "this account has no elevated
-   * role" nor a listener as "this account has no groups".
+   * Per-request provisioning (ADR-0025, Entscheidung 4) through the claim mapping of the provider
+   * owning the issuer, Keycloak defaults otherwise. A provider with a roles or groups claim is
+   * authoritative; groups and personal space follow the {@link UserProvisionedEvent} published
+   * once. A token without a usable claim never reads as "no role" or "no groups".
    */
   public User provisionFromToken(Jwt jwt) {
     String issuer = JwtUserClaims.issuer(jwt);
@@ -109,12 +102,8 @@ public class UserService {
   }
 
   /**
-   * The local issuer is a finder, never a provisioner (ADR-0033, Entscheidung 8): the account must
-   * already exist under {@code (urn:opaa:local, users.id)} - the token validator has refused an
-   * unknown subject before this runs, and this is the second lock on the same door - and neither
-   * {@code email} nor {@code display_name} is written back from the token; the database is the
-   * source here, not the claim. {@link InitialAdminPolicy} is not consulted. Only the throttled
-   * activity timestamp and the provisioning event are shared with the provider path.
+   * The local issuer only finds, never provisions (ADR-0033, Entscheidung 8): the account must
+   * exist, nothing is written back from the token and {@link InitialAdminPolicy} is not consulted.
    */
   private User findLocalAccount(Jwt jwt) {
     User user =
@@ -128,12 +117,9 @@ public class UserService {
   }
 
   /**
-   * Deliberately <b>not</b> {@code @Transactional}: every {@link UserRepository} call below already
-   * commits in its own implicit transaction, so no caller ever holds two pooled connections at once
-   * - an earlier {@code @Transactional} version deadlocked the whole pool under concurrent first
-   * logins. Everything that follows the user row (personal space, token groups) therefore always
-   * sees a committed row, and runs as a listener of the {@link UserProvisionedEvent} published here
-   * rather than inside a transaction opened here.
+   * Not {@code @Transactional}: each repository call commits on its own, so no caller holds two
+   * pooled connections, and the listeners of {@link UserProvisionedEvent} always see a committed
+   * row.
    */
   public User findOrCreateUser(String subject, String issuer, String email, String displayName) {
     UserCreationResult result = findOrCreate(subject, issuer, email, displayName);
@@ -201,21 +187,9 @@ public class UserService {
   }
 
   /**
-   * Creates a new user, tolerating the race of two concurrent first logins for the same {@code
-   * subject}/{@code issuer} pair racing past the {@code findBySubjectAndIssuer} check above.
-   *
-   * <p>Because {@link #findOrCreateUser} is deliberately not {@code @Transactional} (see its
-   * Javadoc), {@link #insertUser} below runs in its own short-lived, implicit transaction on its
-   * own connection - not one shared with this method's caller. A {@link
-   * DataIntegrityViolationException} there rolls back only that one insert; nothing here is
-   * poisoned by it, so the loser can simply read the row the winner has by now committed, instead
-   * of surfacing a 500 for {@code uq_users_subject_issuer}. Same fallback-read pattern as {@code
-   * SpaceService#ensureDefaultSpace}, but without that method's {@code REQUIRES_NEW} - there is no
-   * ambient transaction here to escape from in the first place.
-   *
-   * <p>Also reports whether the insert attempt actually won, via {@link
-   * UserCreationResult#createdHere()} - see {@link #findOrCreateUser}'s Javadoc for why the caller
-   * needs to tell a genuine winner apart from a race loser here.
+   * Creates a new user; the loser of two concurrent first logins reads the winner's committed row,
+   * since the failed insert rolled back only its own implicit transaction. {@link
+   * UserCreationResult#createdHere()} tells winner from loser.
    */
   private UserCreationResult createOrFetchUser(
       String subject, String issuer, String email, String displayName) {
@@ -256,12 +230,8 @@ public class UserService {
   }
 
   /**
-   * Backs {@code UserSearchController#listUsers} (query-gated). A missing or too-short (below
-   * {@link #SEARCH_MIN_QUERY_LENGTH}) query returns an empty list rather than falling back to the
-   * unbounded {@link #findAllInOrganization} - the caller is expected to be a type-ahead picker
-   * that never even issues a request before the caller has typed enough to narrow the result, not a
-   * page-load preload. Matches are capped at {@link #SEARCH_RESULT_LIMIT} rows via {@link
-   * UserRepository#searchByOrganizationId}.
+   * The type-ahead search: a query shorter than {@link #SEARCH_MIN_QUERY_LENGTH} yields an empty
+   * list, never the whole organization; matches are capped at {@link #SEARCH_RESULT_LIMIT}.
    */
   public List<User> searchInOrganization(UUID organizationId, String query) {
     String trimmed = query == null ? "" : query.trim();
@@ -273,31 +243,9 @@ public class UserService {
   }
 
   /**
-   * The specification names "Erteilung und Entzug der System-Admin-Rolle" explicitly in the
-   * first-stage event list, and this is the one method that already performs it - {@code actor} is
-   * the person making the change (the {@code SYSTEM_ADMIN} caller {@code
-   * AdminController#changeRole} enforces via {@code @PreAuthorize}), {@code userId}/{@code role}
-   * describe the change itself. {@code @Transactional} (already present on this method beforehand)
-   * is what makes the audit write commit or roll back together with the role change itself, the
-   * same as every other write this method makes.
-   *
-   * <p><b>Object and subject are the same person here</b> - {@code userId} is both the account the
-   * event is about and the rights subject the role change affects. The first version of this method
-   * used the real {@code userId} as {@code objectId} and {@code saved.getEmail()} as {@code
-   * objectLabel} while {@code subjectRef} carried that same person's pseudonym - the same row then
-   * held both the plain id/email and the pseudonym for the identical person, trivially reversing
-   * this person's pseudonymisation everywhere else in the log, and (via the email in {@code
-   * object_label}) surviving an account deletion that is supposed to make the log unattributable
-   * again (docs/features/security-and-compliance.md, "Unveraenderlichkeit und Loeschrecht"). Both
-   * {@code objectId} and {@code subjectId} now resolve to the same pseudonym ({@link
-   * AuditEventRecorder#pseudonymFor}, called once and reused for both), and {@code objectLabel} is
-   * {@code null} - there is no non-identifying label for "this one account" that would not just be
-   * another name for the pseudonym already carried in {@code object_id}/{@code subject_ref}.
-   *
-   * <p>{@code actor} carries the acting SYSTEM_ADMIN's {@code organizationId} to reject a target
-   * user from another organization the same way {@code SpaceService#requireUserInOrganization}
-   * does: a 404, not a 403, so a caller cannot distinguish "no such user" from "user in another
-   * organization" even for the widest-reaching role in the system.
+   * Changes the system role and audits it in the same transaction. Object and subject of the entry
+   * are the same pseudonym and the label is {@code null}, so no plain id or e-mail sits next to the
+   * pseudonym. A user of another organization is a 404.
    */
   @Transactional
   public User updateRole(UUID userId, SystemRole role, CurrentUser actor) {
@@ -334,20 +282,8 @@ public class UserService {
     user.setSystemRole(role);
     User saved = userRepository.save(user);
     if (previousRole != role) {
-      // With three roles (USER/SYSTEM_ADMIN/AUDITOR), a single
-      // "granted vs. revoked" branch on the *new* role alone is wrong - it mislabelled every
-      // AUDITOR grant as SYSTEM_ADMIN_ROLE_REVOKED (USER -> AUDITOR: role != SYSTEM_ADMIN, so the
-      // old two-valued branch always chose REVOKED, regardless of what actually happened). Instead,
-      // write one event per elevated role actually left (previousRole) and one per elevated role
-      // actually entered (role) - 0, 1 or 2 events depending on the transition:
-      //   USER -> SYSTEM_ADMIN            : 1 event  (SYSTEM_ADMIN_ROLE_GRANTED)
-      //   SYSTEM_ADMIN -> USER            : 1 event  (SYSTEM_ADMIN_ROLE_REVOKED)
-      //   USER -> AUDITOR                 : 1 event  (AUDITOR_ROLE_GRANTED)
-      //   AUDITOR -> USER                 : 1 event  (AUDITOR_ROLE_REVOKED)
-      //   SYSTEM_ADMIN -> AUDITOR         : 2 events (SYSTEM_ADMIN_ROLE_REVOKED,
-      // AUDITOR_ROLE_GRANTED)
-      //   AUDITOR -> SYSTEM_ADMIN         : 2 events (AUDITOR_ROLE_REVOKED,
-      // SYSTEM_ADMIN_ROLE_GRANTED)
+      // One event per elevated role left and one per elevated role entered, so SYSTEM_ADMIN ->
+      // AUDITOR writes a revocation and a grant.
       UUID pseudonym = auditEventRecorder.pseudonymFor(saved.getId(), saved.getOrganizationId());
       if (previousRole == SystemRole.SYSTEM_ADMIN) {
         recordRoleChange(

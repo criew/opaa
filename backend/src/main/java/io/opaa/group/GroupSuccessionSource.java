@@ -18,10 +18,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * An internal group without an active steward (ADR-0036 Entscheidung 6) - including the groups the
- * migration of #1812 turned into internal ones <b>without</b> stewards: exactly the state the
- * provider-origin migration left behind on purpose, to be picked up here. A provider group never
- * counts: it is maintained where it comes from, and its protection mark is the system
- * administration's to decide.
+ * provider-origin migration turned into internal ones <b>without</b> stewards, on purpose, to be
+ * picked up here. A provider group never counts: it is maintained where it comes from, and its
+ * protection mark is the system administration's to decide.
  */
 @Component
 class GroupSuccessionSource implements SuccessionFindingSource {
@@ -51,7 +50,7 @@ class GroupSuccessionSource implements SuccessionFindingSource {
 
   /**
    * Three queries for the whole organization - its groups, the stewards of every internal one, and
-   * one account query over all of them - rather than that pair per group (#682's rule).
+   * one account query over all of them - rather than that pair per group.
    */
   @Override
   public List<SuccessionFinding> findingsOf(UUID organizationId) {

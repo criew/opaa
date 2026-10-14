@@ -52,16 +52,10 @@ public interface AssetGrantHistoryRepository
       AssetType assetType, UUID assetId, AssetGrantSubjectType subjectType);
 
   /**
-   * Test-only cleanup helper: {@code subject_user_id} is {@code ON DELETE RESTRICT} (deliberately,
-   * so an account deletion is blocked until a pseudonymisation mechanism exists), so an integration
-   * test that both provisions users through a path that historises a grant and deletes those users
-   * again in its own teardown must purge their history rows first. Production code never calls this
-   * - there is no account deletion feature yet (#391/#395 own that). {@code @Transactional} is
-   * required here (unlike {@link JpaRepository}'s own {@code delete}/{@code save} methods, which
-   * {@code SimpleJpaRepository} already wraps by default) - without it, a caller invoking this
-   * derived delete method outside an existing transaction hits {@code
-   * TransactionRequiredException}: Spring Data only auto-wraps its own base CRUD methods, not
-   * custom derived query methods declared on this interface.
+   * Test-only cleanup helper: {@code subject_user_id} is {@code ON DELETE RESTRICT}, so a test that
+   * deletes the users it provisioned purges their history rows first; production code never calls
+   * this. {@code @Transactional}, because Spring Data wraps only its base CRUD methods, not a
+   * derived delete.
    */
   @Transactional
   void deleteBySubjectUserIdIn(Collection<UUID> subjectUserIds);

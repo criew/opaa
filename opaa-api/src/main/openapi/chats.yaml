@@ -388,8 +388,7 @@ components:
       type: string
       description: >
         Single-value for now - the SHARED/WITHDRAWN axis from the specification's sharing
-        model belongs to #205 and is deliberately not built here; the column exists so it can be
-        added without a further migration.
+        model is not built; the column exists so it can be added without a further migration.
       enum: [PRIVATE]
       example: PRIVATE
 

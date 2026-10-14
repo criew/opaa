@@ -6,10 +6,9 @@
  *
  * <p>{@link io.opaa.externalaccess.ExternalAccessSettingsService} is the single entry point: it
  * validates a change, audits everything but the instructions text, and answers the per-call reads
- * ({@code isEnabled()}, {@code allowedCidrs()}) the access paths of #1718, #1720 and #1721 will
- * make. {@link io.opaa.externalaccess.ExternalAccessNetworkPolicy} is the one place that decides
- * whether a client address belongs to the channel's networks; its enforcement at {@code /mcp} comes
- * with #1721.
+ * ({@code isEnabled()}, {@code allowedCidrs()}) of the access paths. {@link
+ * io.opaa.externalaccess.ExternalAccessNetworkPolicy} is the one place that decides whether a
+ * client address belongs to the channel's networks.
  *
  * <p>{@code ExternalAccessSettingsController} exposes read and write path to {@code
  * SystemRole.SYSTEM_ADMIN} alone.

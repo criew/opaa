@@ -22,14 +22,13 @@ import org.springframework.stereotype.Component;
  * ausführen können"). The same rules cover the sign-in page's own logo and its background image;
  * only the ceilings differ, and they come from {@link BrandingImageKind}.
  *
- * <p><b>SVG is rejected, not sanitised.</b> #582 allows either; rejecting is the choice that cannot
- * be wrong on a bad day. An SVG is a document, not an image file - it can carry {@code <script>},
- * event handlers, external references and {@code <foreignObject>} - and a sanitiser that misses one
- * construct hands script execution to every user's browser under the deployment's own origin. A
- * format restriction is inconvenient once, when the operator converts their logo; a sanitiser bug
- * is a cross-site scripting hole in a page every user of the deployment loads. This is also why
- * #1910's wish for SVG on the sign-in page is not granted: that page is the one surface an
- * unauthenticated visitor reaches.
+ * <p><b>SVG is rejected, not sanitised:</b> rejecting is the choice that cannot be wrong on a bad
+ * day. An SVG is a document, not an image file - it can carry {@code <script>}, event handlers,
+ * external references and {@code <foreignObject>} - and a sanitiser that misses one construct hands
+ * script execution to every user's browser under the deployment's own origin. A format restriction
+ * is inconvenient once, when the operator converts their logo; a sanitiser bug is a cross-site
+ * scripting hole in a page every user of the deployment loads. The sign-in page, the one surface an
+ * unauthenticated visitor reaches, gets no SVG either.
  *
  * <p><b>PNG and JPEG, and nothing else</b> - narrower than the "images generally" one might expect,
  * and deliberately so: every accepted format is validated the same, complete way, and both of these

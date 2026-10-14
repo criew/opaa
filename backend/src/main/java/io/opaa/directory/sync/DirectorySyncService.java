@@ -34,12 +34,12 @@ import org.springframework.stereotype.Service;
  * <p><b>Bound to an identity provider row</b> (ADR-0036, Entscheidung 2 and 3). A run exists only
  * for a provider whose row is enabled and whose directory run is switched on; both are refused with
  * a {@link ConflictException} rather than silently doing nothing, so a caller learns why. The
- * {@code dev} mode has no provider row and therefore no synchronisation at all - #1816 decides that
- * open point of ADR-0036, Entscheidung 11 against a synthetic row: every row of {@code
- * oidc_providers} is a trust anchor of the sign-in, and adding one that authenticates nobody in
- * order to hold two settings columns would be the wrong price. A developer who wants to exercise
- * the run locally creates an ordinary provider row and switches the run on there; nothing about the
- * run depends on the operating mode any more.
+ * {@code dev} mode has no provider row and therefore no synchronisation at all, rather than a
+ * synthetic row (ADR-0036, Entscheidung 11): every row of {@code oidc_providers} is a trust anchor
+ * of the sign-in, and adding one that authenticates nobody in order to hold two settings columns
+ * would be the wrong price. A developer who wants to exercise the run locally creates an ordinary
+ * provider row and switches the run on there; nothing about the run depends on the operating mode
+ * any more.
  *
  * <p><b>One run per provider at a time.</b> Every entry point runs under {@link
  * DirectorySyncRunLock}, which holds an advisory lock keyed on the provider for the whole of {@link
@@ -59,7 +59,7 @@ public class DirectorySyncService {
 
   private static final Logger log = LoggerFactory.getLogger(DirectorySyncService.class);
 
-  /** Mirrors {@link DirectorySyncPlanExecutor}'s identical constant - see its Javadoc. */
+  /** Actor label of the run's audit entries, the same as {@link DirectorySyncPlanExecutor}'s. */
   private static final String DIRECTORY_SYNC_ACTOR = "directory-sync";
 
   /** The 409 code when the provider's directory run is switched off. */
@@ -292,8 +292,7 @@ public class DirectorySyncService {
 
     // If the executor's transaction fails to commit (e.g. a directory-supplied value that violates
     // a column constraint), the exception propagates from here and nothing below runs - so a failed
-    // apply can never be recorded as APPLIED. See DirectorySyncPlanExecutor's class javadoc for the
-    // defect this replaced.
+    // apply can never be recorded as APPLIED.
     SyncReport report = plan.apply(snapshot, now);
     recordStatusSafely(target, now, report.outcome(), report.message(), report.changedFraction());
     return report;
