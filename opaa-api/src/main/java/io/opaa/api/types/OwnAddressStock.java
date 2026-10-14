@@ -1,4 +1,4 @@
-package io.opaa.connection.profile;
+package io.opaa.api.types;
 
 /**
  * What happens to the libraries of a connector type with their own address once the type is usable

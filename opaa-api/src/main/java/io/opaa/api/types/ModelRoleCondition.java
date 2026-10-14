@@ -1,4 +1,4 @@
-package io.opaa.searchadmin;
+package io.opaa.api.types;
 
 /**
  * How a {@link ModelRole} is doing. {@link #UNCONFIGURED} and {@link #UNREACHABLE} are the

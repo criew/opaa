@@ -1,4 +1,4 @@
-package io.opaa.searchadmin;
+package io.opaa.api.types;
 
 /**
  * The model roles the status display covers. Reranking is a role on the same level as chat and

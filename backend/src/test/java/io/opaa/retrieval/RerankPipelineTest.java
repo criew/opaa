@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
