@@ -206,15 +206,245 @@ describe('move-diff-check', () => {
       check(
         {
           'src/extra.ts': 'export const extra = 1\n',
-          'eslint-suppressions.json': '{}',
+          'eslint-suppressions.json':
+            '{"src/features/notification/api/notificationApi.ts":{"boundaries/dependencies":{"count":2}}}',
         },
         changes,
       ),
     ).toEqual([
-      'eslint-suppressions.json: entries changed beyond the renamed files',
+      'eslint-suppressions.json: src/features/notification/api/notificationApi.ts boundaries/dependencies grows from 1 to 2',
       'src/extra.ts: added',
       'src/services/api.ts: deleted',
     ])
+  })
+})
+
+describe('move-diff-check with a shrinking transition list', () => {
+  const SUPPRESSIONS = 'eslint-suppressions.json'
+  const oldTree = {
+    ...OLD_TREE,
+    [SUPPRESSIONS]: JSON.stringify({
+      'src/services/notificationApi.ts': { 'boundaries/dependencies': { count: 2 } },
+      'src/layouts/GlobalRail.tsx': { 'boundaries/dependencies': { count: 1 } },
+    }),
+  }
+  const checkList = (list) =>
+    check({ [SUPPRESSIONS]: JSON.stringify(list, null, 2) }, CHANGES, oldTree)
+
+  it('accepts removed entries and lower counts next to the renames', () => {
+    expect(
+      checkList({
+        'src/features/notification/api/notificationApi.ts': {
+          'boundaries/dependencies': { count: 1 },
+        },
+      }),
+    ).toEqual([])
+    expect(checkList({})).toEqual([])
+  })
+
+  it.each([
+    [
+      'a higher count',
+      {
+        'src/features/notification/api/notificationApi.ts': {
+          'boundaries/dependencies': { count: 3 },
+        },
+      },
+      `${SUPPRESSIONS}: src/features/notification/api/notificationApi.ts boundaries/dependencies grows from 2 to 3`,
+    ],
+    [
+      'a new file',
+      { 'src/pages/ChatPage.tsx': { 'boundaries/dependencies': { count: 1 } } },
+      `${SUPPRESSIONS}: src/pages/ChatPage.tsx boundaries/dependencies grows from 0 to 1`,
+    ],
+    [
+      'a new rule',
+      { 'src/layouts/GlobalRail.tsx': { 'no-console': { count: 1 } } },
+      `${SUPPRESSIONS}: src/layouts/GlobalRail.tsx no-console grows from 0 to 1`,
+    ],
+    [
+      'an entry under its old name',
+      { 'src/services/notificationApi.ts': { 'boundaries/dependencies': { count: 1 } } },
+      `${SUPPRESSIONS}: src/services/notificationApi.ts boundaries/dependencies grows from 0 to 1`,
+    ],
+  ])('reports %s', (_, list, finding) => {
+    expect(checkList(list)).toEqual([finding])
+  })
+})
+
+describe('move-diff-check with Prettier re-wrapping changed module paths', () => {
+  const rail = (...lines) => ({
+    [RAIL]: [
+      "import { NotificationBell } from '@/features/notification'",
+      ...lines,
+      "const Lazy = lazy(() => import('@/pages/ChatPage'))",
+      '',
+    ].join('\n'),
+  })
+  const PATH = "'@/features/notification/api/notificationApi'"
+  const BODY = ['  return actual', '})']
+
+  it.each([
+    [
+      'after the assignment',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        '  const actual =',
+        `    await vi.importActual<typeof import(${PATH})>(${PATH})`,
+        ...BODY,
+      ],
+    ],
+    [
+      'inside the type argument',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        '  const actual = await vi.importActual<',
+        `    typeof import(${PATH})`,
+        `  >(${PATH})`,
+        ...BODY,
+      ],
+    ],
+    [
+      'inside the arguments with a trailing comma',
+      [
+        'vi.mock(',
+        `  ${PATH},`,
+        '  async () => {',
+        `    const actual = await vi.importActual<typeof import(${PATH})>(${PATH})`,
+        '    return actual',
+        '  },',
+        ')',
+      ],
+    ],
+  ])('accepts a call wrapped %s', (_, lines) => {
+    expect(check(rail(...lines))).toEqual([])
+  })
+
+  it.each([
+    [
+      'code appended in a wrapped line',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        '  const actual =',
+        `    await vi.importActual<typeof import(${PATH})>(${PATH}) && evil()`,
+        ...BODY,
+      ],
+    ],
+    [
+      'another module in a wrapped line',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        '  const actual =',
+        "    await vi.importActual<typeof import('@/services/api')>('@/services/api')",
+        ...BODY,
+      ],
+    ],
+    [
+      'a line break that changes the meaning',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        `  const actual = await vi.importActual<typeof import(${PATH})>(${PATH})`,
+        '  return',
+        '  actual',
+        '})',
+      ],
+    ],
+  ])('reports %s', (_, lines) => {
+    const findings = check(rail(...lines))
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toContain(RAIL)
+  })
+})
+
+describe('move-diff-check with an index.ts that existed before the move', () => {
+  const LABELS = 'src/features/notification/utils/labels.ts'
+  const OTHER = 'src/layouts/Other.tsx'
+  const OLD_INDEX = "export { label, type Label } from './utils/labels'\n"
+  const oldTree = {
+    ...OLD_TREE,
+    [LABELS]: 'export const label = 1\nexport type Label = string\n',
+    [INDEX]: OLD_INDEX,
+    [OTHER]: "import { label } from '@/features/notification'\n",
+  }
+  const newIndex = (...lines) => ({ [INDEX]: [...lines, ''].join('\n') })
+  const GROWN = [
+    'export {',
+    '  label,',
+    '  type Label,',
+    "} from './utils/labels'",
+    "export { default as NotificationBell } from './components/NotificationBell'",
+  ]
+  const changes = CHANGES.map((c) => (c.to === INDEX ? { ...c, status: 'M' } : c))
+  const checkIndex = (overrides) =>
+    check(
+      {
+        [LABELS]: oldTree[LABELS],
+        [OTHER]: oldTree[OTHER],
+        ...newIndex(...GROWN),
+        ...overrides,
+      },
+      changes,
+      oldTree,
+    )
+
+  it('accepts added re-exports and resolves imports through it on both sides', () => {
+    expect(checkIndex({})).toEqual([])
+  })
+
+  it('accepts a caller switching from the module to the index for an existing re-export', () => {
+    const oldWithDeepImport = {
+      ...oldTree,
+      [OTHER]: "import { label } from '../features/notification/utils/labels'\n",
+    }
+
+    expect(
+      check(
+        { [LABELS]: oldTree[LABELS], [OTHER]: oldTree[OTHER], ...newIndex(...GROWN) },
+        [...changes, { status: 'M', from: OTHER, to: OTHER }],
+        oldWithDeepImport,
+      ),
+    ).toEqual([])
+  })
+
+  it('reports code smuggled into it', () => {
+    expect(checkIndex(newIndex(...GROWN, 'export const leaked = 1'))).toContain(
+      `${INDEX}: an index.ts holds re-exports of local modules only`,
+    )
+  })
+
+  it('reports a page it newly exports', () => {
+    expect(
+      checkIndex(newIndex(...GROWN, "export { default as ChatPage } from '../../pages/ChatPage'")),
+    ).toEqual([`${INDEX}: exports the page src/pages/ChatPage.tsx`])
+  })
+
+  it.each([
+    [
+      'removed',
+      newIndex("export { default as NotificationBell } from './components/NotificationBell'"),
+      [`${INDEX}: removes the re-export label`, `${INDEX}: removes the re-export Label`],
+    ],
+    [
+      'pointed at another module',
+      newIndex(
+        "export { type Label } from './utils/labels'",
+        "export { default as NotificationBell, default as label } from './components/NotificationBell'",
+      ),
+      [`${INDEX}: changes the re-export label`],
+    ],
+    [
+      'pointed at another export',
+      newIndex(
+        "export { type Label, type Label as label } from './utils/labels'",
+        "export { default as NotificationBell } from './components/NotificationBell'",
+      ),
+      [`${INDEX}: changes the re-export label`],
+    ],
+  ])('reports a re-export %s', (_, overrides, expected) => {
+    const findings = checkIndex(overrides)
+
+    for (const finding of expected) expect(findings).toContain(finding)
   })
 })
 
