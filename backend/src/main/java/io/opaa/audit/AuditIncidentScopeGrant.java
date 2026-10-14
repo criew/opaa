@@ -2,6 +2,7 @@ package io.opaa.audit;
 
 import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.api.types.AuditIncidentScopeStatus;
+import io.opaa.common.ValidationException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -23,8 +24,8 @@ import java.util.UUID;
  *
  * <p>Vier-Augen-Prinzip: a grant is created {@code PENDING} by one AUDITOR ({@link
  * #requestedByUserId}) and stays unusable for querying until a <em>different</em> AUDITOR calls
- * {@link #approve}, which rejects a matching id (Selbstfreigabe) with an {@link
- * IllegalArgumentException}. There is no reject/revoke state on purpose - see {@link
+ * {@link #approve}, which rejects a matching id (Selbstfreigabe) with a {@link
+ * ValidationException}. There is no reject/revoke state on purpose - see {@link
  * AuditIncidentScopeStatus}'s Javadoc.
  */
 @Entity
@@ -118,7 +119,7 @@ public class AuditIncidentScopeGrant {
   /**
    * Approves this grant, making it usable for {@link AuditQueryService#byIncidentScope}.
    *
-   * @throws IllegalArgumentException if {@code approvedByUserId} equals {@link #requestedByUserId}
+   * @throws ValidationException if {@code approvedByUserId} equals {@link #requestedByUserId}
    *     (Selbstfreigabe) or the grant is not {@code PENDING}
    */
   public void approve(UUID approvedByUserId) {
@@ -126,7 +127,7 @@ public class AuditIncidentScopeGrant {
       throw new IllegalArgumentException("Incident scope is not pending approval");
     }
     if (approvedByUserId.equals(requestedByUserId)) {
-      throw new IllegalArgumentException("Selbstfreigabe ist nicht zulässig");
+      throw new ValidationException("Selbstfreigabe ist nicht zulässig");
     }
     this.approvedByUserId = approvedByUserId;
     this.approvedAt = Instant.now();

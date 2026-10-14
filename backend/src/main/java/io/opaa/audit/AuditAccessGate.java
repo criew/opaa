@@ -3,6 +3,7 @@ package io.opaa.audit;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.SystemRole;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ValidationException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
@@ -110,12 +111,12 @@ public class AuditAccessGate {
    */
   private void requireReason(String reason) {
     if (reason == null || reason.isBlank()) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "reason ist ein Pflichtfeld für den Zugriff auf Protokolldaten - eine Abfrage ohne"
               + " Anlass wird abgewiesen");
     }
     if (reason.length() > MAX_REASON_LENGTH) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "reason ist zu lang - maximal " + MAX_REASON_LENGTH + " Zeichen");
     }
   }
@@ -133,13 +134,13 @@ public class AuditAccessGate {
 
   public void validateTimeRange(Instant from, Instant to) {
     if (from == null || to == null) {
-      throw new IllegalArgumentException("from und to sind Pflichtangaben");
+      throw new ValidationException("from und to sind Pflichtangaben");
     }
     if (from.isAfter(to)) {
-      throw new IllegalArgumentException("from darf nicht nach to liegen");
+      throw new ValidationException("from darf nicht nach to liegen");
     }
     if (Duration.between(from, to).toDays() > MAX_TIME_RANGE_DAYS) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "Der Zeitraum ist zu weit gefasst - maximal "
               + MAX_TIME_RANGE_DAYS
               + " Tage je Abfrage; ein größerer Bedarf wird durch mehrere aufeinanderfolgende"
@@ -150,10 +151,10 @@ public class AuditAccessGate {
   /** The bounded page index and size every access path shares; {@code sort} is the path's own. */
   public Pageable pageable(int page, int size, Sort sort) {
     if (page < 0) {
-      throw new IllegalArgumentException("page darf nicht negativ sein");
+      throw new ValidationException("page darf nicht negativ sein");
     }
     if (page > MAX_PAGE_INDEX) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "page ist zu tief - maximal Seite "
               + MAX_PAGE_INDEX
               + " je Abfrage; ein größerer Bedarf wird durch mehrere aufeinanderfolgende"

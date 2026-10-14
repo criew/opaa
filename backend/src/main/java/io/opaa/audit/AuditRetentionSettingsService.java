@@ -3,6 +3,7 @@ package io.opaa.audit;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.common.ValidationException;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -65,7 +66,7 @@ public class AuditRetentionSettingsService {
   public AuditRetentionUpdateResult updateRetention(
       UUID organizationId, UUID actorUserId, int newRetentionMonths, String reason) {
     if (newRetentionMonths < MIN_RETENTION_MONTHS || newRetentionMonths > MAX_RETENTION_MONTHS) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "Die Aufbewahrungsfrist muss zwischen "
               + MIN_RETENTION_MONTHS
               + " und "
