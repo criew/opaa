@@ -377,6 +377,64 @@ class RerankModelRoleTest {
     verify(client, never()).probe(any());
   }
 
+  /** A probe interval shorter than the retry interval also shortens the retry. */
+  @Test
+  void aProbeIntervalBelowTheRetryIntervalShortensTheRetry() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any()))
+        .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    Duration shortInterval = Duration.ofSeconds(30);
+    RerankModelRole role =
+        new RerankModelRole(
+            new RerankProperties(true, ENDPOINT, "m", KEY, Duration.ofSeconds(5), shortInterval),
+            client,
+            clock);
+    role.refresh();
+
+    clock.advance(shortInterval.minusSeconds(1));
+    role.probePeriodically();
+    verify(client, times(1)).probe(any());
+
+    clock.advance(Duration.ofSeconds(1));
+    role.probePeriodically();
+    verify(client, times(2)).probe(any());
+  }
+
+  /** Nothing to score means no contact with the endpoint, so it must not postpone the probe. */
+  @Test
+  void aCallWithoutCandidatesIsNoSignOfLife() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any())).thenReturn(null);
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    RerankModelRole role = scheduledRole(client, clock);
+    role.refresh();
+
+    clock.advance(PROBE_INTERVAL.minusMinutes(1));
+    assertThat(role.rerank("Frage", List.of())).isEmpty();
+    clock.advance(Duration.ofMinutes(1));
+    role.probePeriodically();
+
+    verify(client, never()).rerank(any(), anyString(), any());
+    verify(client, times(2)).probe(any());
+    assertThat(role.degradedCallCount()).isZero();
+  }
+
+  /** A wall clock stepped back must not postpone the next probe by the size of the step. */
+  @Test
+  void aClockSteppedBackDoesNotPostponeTheProbe() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any())).thenReturn(null);
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    RerankModelRole role = scheduledRole(client, clock);
+    role.refresh();
+
+    clock.advance(Duration.ofHours(-6));
+    role.probePeriodically();
+
+    verify(client, times(2)).probe(any());
+  }
+
   @Test
   void noStateEverCarriesTheAccessKey() {
     RerankClient client = mock(RerankClient.class);

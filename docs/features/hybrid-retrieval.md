@@ -840,7 +840,8 @@ ausgäbe, statt sichtbar zu scheitern.
 >   [#1053](https://github.com/criew/opaa/issues/1053) liest genau diesen Vertrag; #1050
 >   liefert die Implementierung, nicht die Oberfläche. Weder die Zustandsabfrage noch die
 >   Prüfung auf dem Anfragepfad wartet dafür auf einen Netzaufruf: Der Erreichbarkeitszustand
->   wird beim Start, im Minutentakt und bei jedem echten Rerank-Aufruf fortgeschrieben.
+>   wird beim Start, bei jedem echten Rerank-Aufruf und ohne Aufrufe nach
+>   `OPAA_RERANK_PROBE_INTERVAL` fortgeschrieben (#2703).
 > - **Die Stufe** `RERANK` zwischen Fusion und Dokument-Vervollständigung, mit eigenem Eintrag im
 >   Erklärprotokoll — inklusive des Status `UNAVAILABLE` für „eingeschaltet, aber nicht nutzbar".
 > - **Die Kandidatenzahl** `OPAA_QUERY_RERANK_CANDIDATE_COUNT` (Wert 50, `0` schaltet die Stufe

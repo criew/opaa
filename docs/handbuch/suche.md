@@ -552,7 +552,9 @@ Administrationsseite unterscheiden:
 
 Den Zustand hält jede Rerank-Anfrage einer Frage aktuell. Kommt keine, prüft die Rolle den Endpunkt
 mit einer eigenen Anfrage, sobald die letzte Antwort länger als `OPAA_RERANK_PROBE_INTERVAL` zurückliegt.
-Ist der Endpunkt nicht nutzbar, prüft sie ihn bis zur Rückkehr spätestens jede Minute erneut.
+Antwortet der Endpunkt nicht, prüft sie ihn etwa eine Minute nach dem letzten Fehlschlag erneut,
+bis er wieder antwortet; eine hängende Prüfung braucht dabei selbst bis zu `OPAA_RERANK_TIMEOUT`.
+Eine Rolle ohne Endpunkt oder Modell wird nie geprüft.
 
 Fällt der Endpunkt **während** einer Frage aus oder überschreitet er das Zeitbudget, behält die
 Suche die fusionierte Reihenfolge und kürzt selbst auf `top-k`, mit den fest übernommenen

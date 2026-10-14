@@ -129,7 +129,10 @@ public class RerankModelRole implements RerankRoleStatusProvider {
     boolean ready = last.status() != null && last.status().state() == RerankRoleState.READY;
     Duration interval = properties.probeInterval();
     Duration due = ready || interval.compareTo(RETRY_INTERVAL) < 0 ? interval : RETRY_INTERVAL;
-    if (!clock.instant().isBefore(last.at().plus(due))) {
+    Instant now = clock.instant();
+    // A result stamped in the future means the wall clock stepped back; probing then keeps the
+    // recovery promise instead of waiting out the size of the step.
+    if (now.isBefore(last.at()) || !now.isBefore(last.at().plus(due))) {
       refresh();
     }
   }
@@ -175,7 +178,8 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    * afterwards.
    */
   public List<RerankClient.ScoredCandidate> rerank(String query, List<String> texts) {
-    if (!properties.enabled() || baseUrlRejected || !properties.bound()) {
+    if (!properties.enabled() || baseUrlRejected || !properties.bound() || texts.isEmpty()) {
+      // Nothing to score means no contact with the endpoint, and so no sign of life to record.
       return List.of();
     }
     try {
