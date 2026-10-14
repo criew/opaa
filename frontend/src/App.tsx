@@ -4,12 +4,12 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 // app
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
-import { createAppTheme } from './theme/theme'
-import { resolveThemeMode } from './theme/colorScheme'
+import { createAppTheme } from '@/shared/theme/theme'
+import { resolveThemeMode } from '@/shared/theme/colorScheme'
 import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
-import { useUiStore } from './stores/uiStore'
+import { useUiStore } from '@/shared/stores/uiStore'
 import SettingsPage from './pages/SettingsPage'
 // shared
 import {
@@ -69,25 +69,24 @@ import CapabilityManagementPage from './pages/CapabilityManagementPage'
 // user
 import UserManagementPage from './pages/UserManagementPage'
 // identity-provider
-import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
+import { OidcProviderManagementPage } from '@/features/identity-provider/routes'
 // directory-sync
 import DirectorySyncPage from './pages/DirectorySyncPage'
 import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
 // model
-import LlmModelManagementPage from './pages/LlmModelManagementPage'
+import { LlmModelManagementPage } from '@/features/model/routes'
 // mail
-import MailSettingsPage from './pages/MailSettingsPage'
+import { MailSettingsPage } from '@/features/mail/routes'
 // branding
-import { useBrandingStore } from './stores/brandingStore'
-import BrandingSettingsPage from './pages/BrandingSettingsPage'
+import { useBrandingStore } from '@/shared/branding/brandingStore'
+import { BrandingSettingsPage } from '@/features/branding/routes'
 // connection
 import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
 import ConnectionsAdminPage from './pages/ConnectionsAdminPage'
-import ConnectionLogPage from './pages/ConnectionLogPage'
+import { ConnectionLogPage, RightsHistoryPage } from '@/features/audit/routes'
 // search-admin
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 // audit
-import RightsHistoryPage from './pages/RightsHistoryPage'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },

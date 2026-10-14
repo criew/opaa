@@ -10,7 +10,7 @@ import {
   scheduleFrequencyLabel,
   scheduleWeekdays,
   scheduleWeekdayLabel,
-} from '../../utils/labels'
+} from './scheduleLabels'
 import type { ConfluenceFullSyncRhythm, LibraryScheduleValues } from '../../utils/librarySchedule'
 
 interface LibraryScheduleFormProps {

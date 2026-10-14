@@ -14,7 +14,7 @@ import NewPasswordField from '../components/auth/NewPasswordField'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import { useErrorFocus } from '../hooks/useErrorFocus'
+import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { FieldValidationError } from '@/shared/session/authApi'
 import { FlowUnavailableError, RateLimitedError, register } from '../services/selfServiceApi'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -27,7 +27,7 @@ import {
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
 } from '@/shared/session/authMessages'
-import { radius } from '../theme/tokens'
+import { radius } from '@/shared/theme/tokens'
 
 const HEADING = 'Konto registrieren'
 /** The fields this form can show an error at, in the order the focus walks them. */

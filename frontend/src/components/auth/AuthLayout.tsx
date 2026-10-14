@@ -5,8 +5,8 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { alpha, keyframes, useTheme } from '@mui/material/styles'
 import BrandMark from '@/shared/ui/BrandMark'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
-import { useBrandingStore } from '../../stores/brandingStore'
-import { navyRoles } from '../../theme/tokens'
+import { useBrandingStore } from '@/shared/branding/brandingStore'
+import { navyRoles } from '@/shared/theme/tokens'
 
 // One staged entrance for the form column (guidelines 4.5); the theme collapses it under
 // prefers-reduced-motion.

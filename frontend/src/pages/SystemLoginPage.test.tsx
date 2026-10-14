@@ -6,7 +6,7 @@ import { Route, Routes } from 'react-router'
 import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
-import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
+import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
 import SystemLoginPage from './SystemLoginPage'
 

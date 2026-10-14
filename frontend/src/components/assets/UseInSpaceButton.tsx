@@ -16,7 +16,7 @@ import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { AssetType, SpaceListResponse } from '@/shared/api/types'
 import { associateSpaceAsset, getAssetSpaceAssociations } from '../../services/assetApi'
 import { getSpaces } from '../../services/spaceApi'
-import { notify } from '../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { successionAwareMessage } from '../succession/successionConflict'
 import type { SpaceCreateLocationState } from './assetPick'
 

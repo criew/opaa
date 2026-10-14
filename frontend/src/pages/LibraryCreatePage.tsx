@@ -60,7 +60,7 @@ import {
   type LibraryScheduleValues,
 } from '../utils/librarySchedule'
 import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
-import { confirmAction } from '../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
@@ -73,7 +73,7 @@ import {
   applyPendingGrantsAfterCreation,
   type PendingGrant,
 } from '../components/assets/pendingGrants'
-import { capabilityMissingMessage } from '../utils/labels'
+import { capabilityMissingMessage } from '@/shared/utils/labels'
 import {
   documentSourceTypeLabel,
   documentSourceTypeDescription,

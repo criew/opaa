@@ -1,0 +1,417 @@
+import { describe, expect, test } from 'vitest'
+import { alpha, decomposeColor, getContrastRatio } from '@mui/material/styles'
+import { createAppTheme, createRailTheme } from './theme'
+import {
+  blue,
+  carbon,
+  darkRoles,
+  gray,
+  lightRoles,
+  markHighlight,
+  navy,
+  navyRoles,
+  radius,
+  railRoles,
+  white,
+} from './tokens'
+import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../utils/contrast'
+import { OPAA_BRANDING } from '../branding/brandingStore'
+
+/** Composites a possibly translucent text colour over its opaque surface, as the browser does. */
+function flatten(text: string, surface: string): string {
+  const fg = decomposeColor(text).values
+  const bg = decomposeColor(surface).values
+  const a = fg[3] ?? 1
+  const mix = (i: number) => Math.round(fg[i] * a + bg[i] * (1 - a))
+  return `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`
+}
+
+describe('tokens', () => {
+  test('light and dark schemes define the identical set of roles', () => {
+    expect(Object.keys(darkRoles).sort()).toEqual(Object.keys(lightRoles).sort())
+  })
+
+  test('accent surface states carry the sampled values (hover -8%, press -16%), #634', () => {
+    expect(lightRoles.accentSurface).toBe(blue[700])
+    expect(lightRoles.accentHover).toBe(blue[800])
+    expect(lightRoles.accentPress).toBe(blue[900])
+    expect(darkRoles.accentSurface).toBe(blue[700])
+  })
+
+  // #634: white on blue[500] only reached 3.3:1 - every filled action surface and every
+  // accent-as-text combination is proven here, so the guidelines' 2.4 claim and the tokens
+  // cannot drift apart again.
+  test('accentFg reaches 4.5:1 on the accent surface of every role set (#634)', () => {
+    for (const [label, roles] of [
+      ['light', lightRoles],
+      ['dark', darkRoles],
+      ['navy', navyRoles],
+      ['rail', railRoles],
+    ] as const) {
+      const ratio = contrastRatio(roles.accentFg, roles.accentSurface)
+      expect(ratio, `accentFg on accentSurface (${label})`).not.toBeNull()
+      expect(ratio, `accentFg on accentSurface (${label})`).toBeGreaterThanOrEqual(
+        TEXT_CONTRAST_MINIMUM,
+      )
+    }
+  })
+
+  test('accent works as text on every surface of its own scheme (#634)', () => {
+    for (const [label, roles] of [
+      ['light', lightRoles],
+      ['dark', darkRoles],
+    ] as const) {
+      for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+        const ratio = contrastRatio(roles.accent, background)
+        expect(ratio, `accent on ${background} (${label})`).not.toBeNull()
+        expect(ratio, `accent on ${background} (${label})`).toBeGreaterThanOrEqual(
+          TEXT_CONTRAST_MINIMUM,
+        )
+      }
+    }
+  })
+
+  test('the default radius is the 10px squircle from the guidelines', () => {
+    expect(radius.md).toBe(10)
+  })
+
+  // #725: the Wissensbibliotheken table's column head ("Stand") and secondary description text
+  // both render in fg-3, which axe-core flagged at 3.68:1 against white once the E2E suite
+  // started seeding a real row (test(e2e) #233 - before that the table was always empty and the
+  // violation never rendered). fg-3 is gray[400] with 3.69/3.47/3.28:1 against bg1/bg2/bg3
+  // respectively - all below the 4.5:1 WCAG AA floor; reassigning it to gray[500] fixes every
+  // surface that uses the role, not just this one table.
+  test('fg-3 meets the 4.5:1 text contrast floor against every light-scheme surface (#725)', () => {
+    const backgrounds: Array<[string, string]> = [
+      ['bg1', lightRoles.bg1],
+      ['bg2', lightRoles.bg2],
+      ['bg3', lightRoles.bg3],
+    ]
+
+    for (const [label, background] of backgrounds) {
+      const ratio = contrastRatio(lightRoles.fg3, background)
+      expect(ratio, `fg-3 on ${label}`).not.toBeNull()
+      expect(ratio, `fg-3 on ${label}`).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+    }
+  })
+
+  // #853: fg-3 ('#7A8BA0') only clears 4.5:1 against bg1 in both sets (verified: Sidebar.tsx/
+  // GlobalRail.tsx never render fg-3 text on bg2/bg3, see guidelines.md 2.2). The bg2/bg3
+  // ratios are pinned too, not asserted against the floor - a token edit that silently pushes
+  // one of them past 4.5:1 must re-open the verification, not slip through as a green diff.
+  test('fg-3 in navy/rail is pinned to its known bg1/bg2/bg3 ratios (#853)', () => {
+    const cases: Array<[string, string, string, number]> = [
+      ['navy fg-3 vs bg1', navyRoles.fg3, navyRoles.bg1, 4.65],
+      ['navy fg-3 vs bg2', navyRoles.fg3, navyRoles.bg2, 3.8],
+      ['navy fg-3 vs bg3', navyRoles.fg3, navyRoles.bg3, 2.99],
+      ['rail fg-3 vs bg1', railRoles.fg3, railRoles.bg1, 5.26],
+      ['rail fg-3 vs bg2', railRoles.fg3, railRoles.bg2, 4.65],
+      ['rail fg-3 vs bg3', railRoles.fg3, railRoles.bg3, 3.8],
+    ]
+
+    for (const [label, foreground, background, expected] of cases) {
+      const ratio = contrastRatio(foreground, background)
+      expect(ratio, label).not.toBeNull()
+      expect(ratio, label).toBeCloseTo(expected, 2)
+    }
+
+    expect(contrastRatio(navyRoles.fg3, navyRoles.bg1)).toBeGreaterThanOrEqual(
+      TEXT_CONTRAST_MINIMUM,
+    )
+    expect(contrastRatio(railRoles.fg3, railRoles.bg1)).toBeGreaterThanOrEqual(
+      TEXT_CONTRAST_MINIMUM,
+    )
+  })
+})
+
+describe('createAppTheme', () => {
+  // regression guard for #2150: error.main is the danger text colour (menu entries, helper texts,
+  // text buttons) and the surface of filled danger actions - both must reach 4.5:1.
+  test('danger works as text on every surface and carries its contrast text (#2150)', () => {
+    for (const [mode, roles] of [
+      ['light', lightRoles],
+      ['dark', darkRoles],
+    ] as const) {
+      const { error } = createAppTheme(mode).palette
+      for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+        expect(
+          contrastRatio(error.main, background),
+          `error.main on ${background} (${mode})`,
+        ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+      }
+      expect(
+        contrastRatio(error.contrastText, error.main),
+        `error.contrastText on error.main (${mode})`,
+      ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+    }
+  })
+
+  // regression guard for #2493: warning and success also colour text (tile reasons, status lines,
+  // outlined chips, alert icons), so like danger they must reach 4.5:1 on every surface of their
+  // scheme - the former shared amber reached only 1.78:1 on white.
+  test.each(['warning', 'success'] as const)(
+    '%s works as text on every surface of its scheme (#2493)',
+    (key) => {
+      for (const [label, theme, roles] of [
+        ['light', createAppTheme('light'), lightRoles],
+        ['dark', createAppTheme('dark'), darkRoles],
+        ['rail', createRailTheme('light'), railRoles],
+      ] as const) {
+        for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+          expect
+            .soft(
+              contrastRatio(theme.palette[key].main, background),
+              `${key}.main on ${background} (${label})`,
+            )
+            .toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+        }
+      }
+    },
+  )
+
+  test('text keeps 4.5:1 on the search-hit marker over every surface (#2493)', () => {
+    for (const roles of [lightRoles, darkRoles]) {
+      for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+        const marker = flatten(markHighlight, background)
+        expect(
+          getContrastRatio(roles.fg1, marker),
+          `fg1 on marker over ${background}`,
+        ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+      }
+    }
+  })
+
+  // regression guard for #2150: MUI paints the hover of contained buttons in `dark` with
+  // `contrastText`, and filled alerts in `dark` with `getContrastText(main)`. With dark text the
+  // hover tone has to get lighter, not darker.
+  test('filled status surfaces keep 4.5:1 text in every tone (#2150)', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const palette = createAppTheme(mode).palette
+      for (const key of ['error', 'warning', 'success'] as const) {
+        const color = palette[key]
+        const filledAlertText = palette.getContrastText(color.main)
+        const pairs = [
+          ['contrastText', color.contrastText, 'main', color.main],
+          ['contrastText', color.contrastText, 'dark', color.dark],
+          ['contrastText', color.contrastText, 'light', color.light],
+          ['getContrastText(main)', filledAlertText, 'dark', color.dark],
+        ] as const
+        for (const [textLabel, text, surfaceLabel, surface] of pairs) {
+          expect
+            .soft(
+              getContrastRatio(flatten(text, surface), surface),
+              `${key}.${textLabel} on ${key}.${surfaceLabel} (${mode})`,
+            )
+            .toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+        }
+      }
+    }
+  })
+
+  test('light scheme maps the semantic roles onto the MUI palette', () => {
+    const theme = createAppTheme('light')
+
+    expect(theme.palette.background.default).toBe(white)
+    expect(theme.palette.text.primary).toBe(navy[800])
+    expect(theme.palette.text.secondary).toBe(gray[600])
+    expect(theme.palette.primary.main).toBe(blue[700])
+    expect(theme.palette.divider).toBe(lightRoles.border)
+    expect(theme.palette.error.main).toBe(lightRoles.danger)
+  })
+
+  // The scrim behind a dialog or the Belegfenster takes the scheme's own ground: the dark scheme
+  // is neutral carbon, and a navy scrim over it read as a blue cast.
+  test.each([
+    ['light', alpha(navy[900], 0.42)],
+    ['dark', alpha(carbon[950], 0.72)],
+  ] as const)('the %s scheme dims behind a floating layer in its own tone', (mode, scrim) => {
+    const theme = createAppTheme(mode)
+    const backdrop = theme.components?.MuiBackdrop?.styleOverrides?.root as Record<
+      string,
+      { backgroundColor: string; backdropFilter: string }
+    >
+
+    expect(backdrop['&:not(.MuiBackdrop-invisible)'].backgroundColor).toBe(scrim)
+    expect(backdrop['&:not(.MuiBackdrop-invisible)'].backdropFilter).toBe('blur(2px)')
+  })
+
+  test('dark scheme maps the neutral carbon roles onto the MUI palette (#654)', () => {
+    const theme = createAppTheme('dark')
+
+    expect(theme.palette.background.default).toBe(carbon[950])
+    expect(theme.palette.text.primary).toBe(darkRoles.fg1)
+    expect(theme.palette.text.secondary).toBe(darkRoles.fg2)
+    expect(theme.palette.primary.main).toBe(blue[500])
+    expect(theme.palette.divider).toBe(darkRoles.border)
+  })
+
+  test('the navy roles keep the mockup sidebar values for the light scheme (#654)', () => {
+    expect(navyRoles.bg1).toBe(navy[800])
+    expect(navyRoles.fg1).toBe(white)
+    expect(Object.keys(navyRoles).sort()).toEqual(Object.keys(darkRoles).sort())
+  })
+
+  test('shape and typography come from the token layer', () => {
+    const theme = createAppTheme('light')
+
+    expect(theme.shape.borderRadius).toBe(radius.md)
+    expect(theme.typography.fontFamily).toContain('Inter')
+    expect(theme.typography.button.textTransform).toBe('none')
+    expect(theme.typography.button.fontWeight).toBe(500)
+  })
+
+  test('a branding primary color replaces the accent and derives hover/press states', () => {
+    const theme = createAppTheme('light', { primaryColor: '#7A1FA2' })
+
+    expect(theme.palette.primary.main).toBe('#7A1FA2')
+    // Derived, not hardwired to the blue scale: darker than the configured color.
+    expect(theme.palette.primary.dark).not.toBe(blue[700])
+    expect(theme.palette.primary.dark).not.toBe('#7A1FA2')
+  })
+
+  test('without branding the derived button states stay pixel-identical to the mockups', () => {
+    const theme = createAppTheme('light')
+
+    expect(theme.palette.primary.dark).toBe(blue[900])
+  })
+
+  // #634: a light branding colour cannot carry white button text; the filled surface derives
+  // as its bounded darkening while the accent itself stays the configured colour.
+  // #634 regression (found by the axe E2E run): the app always passes branding.primaryColor,
+  // and an unconfigured deployment gets the OPAA standard '#1292EE' from the backend's
+  // field-wise fallback - that must behave exactly like no branding, or the per-scheme accent
+  // split never takes effect anywhere.
+  test('the OPAA standard colour behaves like no branding at all (#634)', () => {
+    const light = createAppTheme('light', { primaryColor: OPAA_BRANDING.primaryColor })
+    const dark = createAppTheme('dark', { primaryColor: OPAA_BRANDING.primaryColor })
+
+    expect(light.palette.primary.main).toBe(blue[700])
+    expect(dark.palette.primary.main).toBe(blue[500])
+  })
+
+  test('the OPAA standard branding colour and the token accent are the same value', () => {
+    expect(OPAA_BRANDING.primaryColor.toUpperCase()).toBe(blue[500].toUpperCase())
+  })
+
+  test('a light branding colour gets a darkened action surface (#634)', () => {
+    const theme = createAppTheme('light', { primaryColor: '#61B5F6' })
+
+    // #1600: Als *Text* auf hellem Grund erreicht dieses Blau 4,5:1 nicht - die Rolle rückt
+    // deshalb vom Grund weg. Die Fläche darunter ist davon unberührt und folgt weiter #634.
+    expect(theme.palette.primary.main).not.toBe('#61B5F6')
+    const button = theme.components?.MuiButton?.styleOverrides?.root as {
+      variants: Array<{ style: { backgroundColor: string } }>
+    }
+    const surface = button.variants[0].style.backgroundColor
+    expect(surface).not.toBe('#61B5F6')
+    expect(contrastRatio('#FFFFFF', surface)).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+  })
+
+  test('a dark branding colour keeps its own colour as the action surface (#634)', () => {
+    const theme = createAppTheme('light', { primaryColor: '#7A1FA2' })
+    const button = theme.components?.MuiButton?.styleOverrides?.root as {
+      variants: Array<{ style: { backgroundColor: string } }>
+    }
+    expect(button.variants[0].style.backgroundColor).toBe('#7A1FA2')
+  })
+
+  // #1922: Die Seitenleiste des Space hat kein eigenes Thema mehr - sie folgt wie der Adminbereich
+  // dem Schema der Anwendung. Die Ableitung einer Hausfarbe auf dunklem Grund prüft deshalb das
+  // Dunkelschema der Anwendung selbst.
+  test('the dark scheme derives its accent from a branding color', () => {
+    const theme = createAppTheme('dark', { primaryColor: '#7A1FA2' })
+
+    // #1600: Ein dunkles Violett wäre auf dem dunklen Grund als Verweis nicht lesbar, also rückt
+    // es vom Grund weg - und ist deshalb *nicht* mehr die konfigurierte Farbe selbst.
+    expect(theme.palette.primary.main).not.toBe('#7A1FA2')
+    const vorher = contrastRatio('#7A1FA2', darkRoles.bg1) as number
+    const nachher = contrastRatio(theme.palette.primary.main, darkRoles.bg1) as number
+    expect(nachher).toBeGreaterThan(vorher)
+  })
+
+  // #1600: Dass die Ableitung nach den zugelassenen Schritten bewusst abbricht, statt eine
+  // Extremfarbe bis zur Unkenntlichkeit aufzuhellen, prüft utils/contrast.test.ts an
+  // `deriveAccentText` selbst - seit #1922 gibt es kein Thema mehr, in dem dieser Grenzfall
+  // über `buildTheme` erreichbar wäre.
+
+  /**
+   * #1600: Der gemessene Fall aus der Demo-Installation. `#1153EE` erreicht auf Weiß 6,0:1, im
+   * Dunkelschema aber nur 3,3:1 - jeder Verweis, jedes „Passwort vergessen?" und jeder aktive
+   * Reiter lag darunter, in der ganzen Anwendung.
+   */
+  test.each(['light', 'dark'] as const)(
+    'a house colour reaches the text threshold in the %s scheme (#1600)',
+    (mode) => {
+      const theme = createAppTheme(mode, { primaryColor: '#1153EE' })
+      const roles = mode === 'dark' ? darkRoles : lightRoles
+
+      for (const ground of [roles.bg1, roles.bg2, roles.bg3]) {
+        expect(contrastRatio(theme.palette.primary.main, ground)).toBeGreaterThanOrEqual(
+          TEXT_CONTRAST_MINIMUM,
+        )
+      }
+    },
+  )
+
+  /** #1600: Die Fläche folgt weiter #634 - die Anhebung des Textes fasst sie nicht an. */
+  test('the filled surface keeps its own derivation when the text colour moves (#1600)', () => {
+    const theme = createAppTheme('dark', { primaryColor: '#1153EE' })
+    const button = theme.components?.MuiButton?.styleOverrides?.root as {
+      variants: Array<{ style: { backgroundColor: string } }>
+    }
+
+    expect(button.variants[0].style.backgroundColor).toBe('#1153EE')
+    expect(theme.palette.primary.main).not.toBe('#1153EE')
+  })
+
+  test('an empty branding object behaves exactly like no branding', () => {
+    const branded = createAppTheme('light', {})
+    const plain = createAppTheme('light')
+
+    expect(branded.palette.primary.main).toBe(plain.palette.primary.main)
+    expect(branded.palette.primary.dark).toBe(plain.palette.primary.dark)
+  })
+
+  test('ButtonBase re-applies the focus ring that MUI resets with outline: 0', () => {
+    const theme = createAppTheme('light')
+    const root = theme.components?.MuiButtonBase?.styleOverrides?.root as Record<string, unknown>
+    const ring = root['&:focus-visible, &.Mui-focusVisible'] as Record<string, string>
+
+    expect(ring.outline).toMatch(/^3px solid /)
+    expect(ring.outlineOffset).toBe('2px')
+  })
+
+  test('the deDE MUI locale replaces English component defaults (#784)', () => {
+    const theme = createAppTheme('light')
+    const autocompleteDefaults = theme.components?.MuiAutocomplete?.defaultProps as Record<
+      string,
+      string
+    >
+
+    // Without the locale, MUI falls back to English ("No options", "Loading…", …); every
+    // Autocomplete in the app that doesn't set its own noOptionsText would show that default.
+    // The exact German wording isn't pinned here (it's MUI's, not ours, and could rephrase
+    // without a real defect) - the DOM-level tests are the actual guard for user-facing text.
+    expect(autocompleteDefaults.noOptionsText).toBeDefined()
+    expect(autocompleteDefaults.noOptionsText).not.toBe('No options')
+    expect(autocompleteDefaults.loadingText).toBeDefined()
+    expect(autocompleteDefaults.loadingText).not.toBe('Loading…')
+    expect(autocompleteDefaults.clearText).toBeDefined()
+    expect(autocompleteDefaults.clearText).not.toBe('Clear')
+    expect(autocompleteDefaults.openText).toBeDefined()
+    expect(autocompleteDefaults.openText).not.toBe('Open')
+    expect(autocompleteDefaults.closeText).toBeDefined()
+    expect(autocompleteDefaults.closeText).not.toBe('Close')
+  })
+
+  test('reduced motion also disables smooth scrolling', () => {
+    const theme = createAppTheme('dark')
+    const baseline = theme.components?.MuiCssBaseline?.styleOverrides as Record<string, unknown>
+    const reduced = baseline['@media (prefers-reduced-motion: reduce)'] as Record<
+      string,
+      Record<string, string>
+    >
+
+    expect(reduced['*, *::before, *::after'].scrollBehavior).toBe('auto !important')
+  })
+})

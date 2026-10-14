@@ -5,9 +5,9 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { LibrarySourceConnection } from '@/shared/api/types'
 import { disconnectLibrarySource } from '../../services/libraryApi'
-import { confirmAction } from '../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../../stores/libraryStore'
-import { notify } from '../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import KeyValueList from '@/shared/ui/KeyValueList'
 import {
   formatConsentTime,

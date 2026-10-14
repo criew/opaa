@@ -9,9 +9,9 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { LocalUserResponse, MailDeliveryPath } from '@/shared/api/types'
-import { fontFamily, radius } from '../../../theme/tokens'
+import { fontFamily, radius } from '@/shared/theme/tokens'
 import { MAIL_DELIVERY_PATH_TEXT, SHOWN_ONCE_HINT } from './localUserLabels'
-import { copyOnce } from '../../../utils/copyOnce'
+import { copyOnce } from '@/shared/utils/copyOnce'
 
 export interface SetupLinkHandover {
   user: LocalUserResponse

@@ -28,7 +28,7 @@ import type {
 } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { successionAwareMessage } from '../succession/successionConflict'
-import { confirmAction } from '../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetKey, useGrantStore } from '../../stores/grantStore'
 import GroupMembersDisclosure from './GroupMembersDisclosure'
 import SubjectPicker from './SubjectPicker'
@@ -42,14 +42,13 @@ import {
 } from './subjectSelection'
 import { getGrantedGroupMembers } from '../../services/assetApi'
 import { resolveSelectableGroup } from '../../services/groupApi'
+import { allAccountsLabel, assetRoleLabel } from '@/shared/utils/labels'
 import {
-  allAccountsLabel,
   assetGrantScopeHint,
   assetRoleDescription,
-  assetRoleLabel,
   groupMemberCountLabel,
   permissionSubjectTypeLabel,
-} from '../../utils/labels'
+} from '../assets/assetLabels'
 import { assetTypeLabel } from '../assets/assetTypeRegistry'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']

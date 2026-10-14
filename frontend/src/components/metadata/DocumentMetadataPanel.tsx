@@ -10,8 +10,8 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import type { DocumentMetadataFieldResponse } from '@/shared/api/types'
 import { deleteDocumentMetadataValue, getDocumentMetadata } from '../../services/libraryMetadataApi'
-import { confirmAction } from '../../stores/confirmStore'
-import { metadataOriginLabel } from '../../utils/labels'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { metadataOriginLabel } from './metadataLabels'
 import EditMetadataValueDialog from './EditMetadataValueDialog'
 
 interface DocumentMetadataPanelProps {

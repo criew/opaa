@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import Typography from '@mui/material/Typography'
 import type { TypographyProps } from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import { usePageTitle } from '../../../hooks/usePageTitle'
+import { usePageTitle } from '../../hooks/usePageTitle'
 
 export const MAIN_CONTENT_ID = 'main-content'
 

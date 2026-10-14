@@ -108,7 +108,7 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 `warning` und `success` führen wie `danger` je eine Hover- und eine hellere Stufe (MUI `dark` und
 `light`): Warnung hell `#6B4300`/`#9A6100`, dunkel `#F7C35D`/`#F8CC73`; Erfolg hell
 `#0B5A3B`/`#0E7A52`, dunkel `#38C18F`/`#5BCB9F`. Die Werte stehen in
-`frontend/src/theme/tokens.ts` (`SignalTones`).
+`frontend/src/shared/theme/tokens.ts` (`SignalTones`).
 
 `fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#778797`) erreicht gegen
 Weiß nur 3,68:1 — unter der 4,5:1-Anforderung für Fließtext (2.4) — und lag als Tertiärtext in
@@ -189,7 +189,7 @@ den Kontrast im PR nach.
 Fläche, im hellen und im dunklen Schema. Er steht in der Rolle selbst, nie in einem Skalenwert,
 einem Alpha-Ton oder unter gesenkter Deckkraft; ein gesperrtes Element darf ausgegraut sein,
 seine Begründung nicht (5.11). Wann Signalfarbe überhaupt im Text steht, regelt 2.3.
-`frontend/src/theme/theme.test.ts` weist die Rollen nach, die Barrierefreiheitsprüfung der
+`frontend/src/shared/theme/theme.test.ts` weist die Rollen nach, die Barrierefreiheitsprüfung der
 E2E-Suite misst die gescannten Seiten (#2493).
 
 Der Hover-Zustand gefüllter Flächen zählt mit: Er behält die Textfarbe der Fläche, und
@@ -453,7 +453,7 @@ Rückmeldungen auf einmalige Aktionen — ein fehlgeschlagener oder gestarteter 
 abgeschlossener Hintergrundschritt — erscheinen als **Popup-Benachrichtigung** unten mittig
 (Ebene 2: Rahmen plus Schatten auf `bg-1`), nach sechs Sekunden automatisch ausgeblendet und
 jederzeit per Schließen-Knopf verwerfbar. Sie laufen über den globalen Mechanismus
-(`frontend/src/stores/notificationStore.ts` → `notify(message, severity)`, gerendert genau
+(`frontend/src/shared/stores/notificationStore.ts` → `notify(message, severity)`, gerendert genau
 einmal durch `NotificationHost` in der AppShell) — nie über eine komponenteneigene Snackbar und
 **nie als Inline-Alert, der über einer Tabelle oder Liste eingeschoben wird** und dabei fremden
 Inhalt verdrängt.
@@ -476,7 +476,7 @@ Folge in denselben Textklumpen und lässt mit „OK" bestätigen — er benennt 
 was zugesagt wird.
 
 Der Mechanismus ist derselbe wie bei den Benachrichtigungen: `confirmAction(options)` aus
-`frontend/src/stores/confirmStore.ts`, gerendert genau einmal durch `ConfirmHost` in der
+`frontend/src/shared/stores/confirmStore.ts`, gerendert genau einmal durch `ConfirmHost` in der
 AppShell. Der Aufruf bleibt dadurch so kurz wie der ersetzte:
 
 ```ts

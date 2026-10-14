@@ -14,7 +14,7 @@ import {
   selectedSubjectId,
   type SubjectSelection,
 } from '../permissions/subjectSelection'
-import { confirmAction } from '../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { successionAwareMessage } from '../succession/successionConflict'
 import { transferAssetOwnership } from '../../services/assetApi'
 import type { AssetOwnerType, AssetType } from '@/shared/api/types'

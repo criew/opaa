@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 import SectionHead from '@/shared/ui/SectionHead'
 import UserPicker from './UserPicker'
 import type { GroupStewardResponse, UserSummary } from '@/shared/api/types'
-import { confirmAction } from '../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../../stores/groupStore'
 

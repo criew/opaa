@@ -1,5 +1,5 @@
 import Typography from '@mui/material/Typography'
-import { fontFamily } from '../../theme/tokens'
+import { fontFamily } from '@/shared/theme/tokens'
 
 /** The eyebrow that names a section of the sign-in card (guidelines 3.2). */
 export default function SectionEyebrow({ id, children }: { id: string; children: string }) {

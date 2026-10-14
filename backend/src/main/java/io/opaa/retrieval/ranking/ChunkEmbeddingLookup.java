@@ -1,11 +1,11 @@
 package io.opaa.retrieval.ranking;
 
 import com.pgvector.PGvector;
+import io.opaa.knowledge.VectorTable;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Component;
@@ -16,25 +16,16 @@ import org.springframework.stereotype.Component;
  * sits in the row {@code similaritySearch} read, but its {@code Document} result does not carry it.
  * The {@code id::text} cast keeps the query agnostic to {@code
  * spring.ai.vectorstore.pgvector.id-type}.
- *
- * <p>Schema and table name come from the same {@code spring.ai.vectorstore.pgvector.*} properties
- * {@link org.springframework.ai.vectorstore.pgvector.PgVectorStore} binds, with the same defaults -
- * never hardcoded independently of that configuration.
  */
 @Component
 public class ChunkEmbeddingLookup {
 
   private final JdbcTemplate jdbcTemplate;
-  private final String schemaName;
-  private final String tableName;
+  private final VectorTable vectorTable;
 
-  ChunkEmbeddingLookup(
-      JdbcTemplate jdbcTemplate,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+  ChunkEmbeddingLookup(JdbcTemplate jdbcTemplate, VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
-    this.schemaName = schemaName;
-    this.tableName = tableName;
+    this.vectorTable = vectorTable;
   }
 
   /**
@@ -48,9 +39,7 @@ public class ChunkEmbeddingLookup {
     }
     String sql =
         "SELECT id, embedding FROM "
-            + schemaName
-            + "."
-            + tableName
+            + vectorTable.qualifiedName()
             + " WHERE id::text = ANY(?) AND embedding IS NOT NULL";
     Map<String, float[]> embeddingsById = new HashMap<>();
     // RowCallbackHandler, not ResultSetExtractor: JdbcTemplate itself advances the cursor and

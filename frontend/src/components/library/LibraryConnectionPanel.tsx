@@ -4,9 +4,9 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { ConnectionProfileRef, SourceTypeKey } from '@/shared/api/types'
 import { useSourceTypes } from '../../hooks/useSourceTypes'
-import { confirmAction } from '../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../../stores/libraryStore'
-import { notify } from '../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import LibraryConnectionDialog, { type ConnectableLibrary } from './LibraryConnectionDialog'
 
 interface LibraryConnectionPanelProps {

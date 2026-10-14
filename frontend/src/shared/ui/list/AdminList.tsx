@@ -11,7 +11,7 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
-import { radius } from '../../../theme/tokens'
+import { radius } from '../../theme/tokens'
 
 /**
  * Die gemeinsamen Bausteine der Listen der Administration (Konten, Gruppen): Tabelle mit

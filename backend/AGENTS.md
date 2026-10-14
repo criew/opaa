@@ -131,6 +131,12 @@ Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der
   ein `web`-Paket, und zwischen `web`-Paketen gibt es keinen Zyklus. `PermissionPackageBoundaryTest`
   gilt für ein `web`-Paket wie für sein Fachpaket: Was die Web-Schicht eines Fachpakets zeigt, holt
   die Domäne über die Ports von `io.opaa.permission` in ihren Domain-Record.
+- **Admin-only-Endpunkte:** Die Prüfung auf Systemverwaltung steht entweder als
+  `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` am Controller oder, wenn der Service auch von anderen
+  Aufrufern erreichbar ist, im Service per `CurrentUser#requireSystemAdmin(String)` — dann ohne
+  `@PreAuthorize`, damit eine Stelle für jeden Aufrufer entscheidet (`PermissionHistoryRetentionController`);
+  steht kein Service dahinter, ruft der Controller die Methode selbst (`ClientAddressDiagnosticsController`).
+  Keine private Kopie der Prüfung.
 - **Mapper:** Die Abbildung Entity → Response lebt in einer package-private, handgeschriebenen
   Mapper-Klasse im Paket des Controllers (Vorbild `BrandingResponseMapper`, `SpaceResponseMapper`).
   Braucht ein anderes `web`-Paket sie, wird sie `public`, und nur mit den Methoden, die es aufruft
@@ -191,7 +197,7 @@ hier nicht: Es trüge auch über Instanzen.
 | `@Scheduled`-Erkennung ohne Sperre | `SuccessionScheduler` (stündlich) über `SuccessionDetectionService` | Zwei Läufe je Organisation gleichzeitig; keine Sperre über die eigene Transaktion hinaus |
 | Minütliche Ticks | `DirectorySyncScheduler`, `LibraryIndexingScheduler` (`lastTickAt`) | Doppelstart durch Datenbank verhindert; Rückschaufenster je Prozess |
 | Recovery beim Start und per Heartbeat | `IndexingJobRecoveryScheduler` (`recoverOnStartup`, `recoverStaleRunningJobs`), `UploadPendingRecoveryRunner` (+ `sweepTempDirectory`), `EmbeddingReindexService` (setzt `RUNNING` fort) | Ein Start failt die laufenden Jobs der anderen Instanz, räumt fremde Arbeitsdateien weg, bettet doppelt ein |
-| Sondierung auf eigenem Scheduler | `RerankModelRole`, `TranscriptionModelRole` (`lastKnown`, `degradedCalls`) | N-fache Sondierungslast, Ergebnis je Prozess |
+| Sondierung auf eigenem Scheduler | `RerankModelRole` (Abstand `opaa.rerank.probe-interval`), `TranscriptionModelRole` (`lastKnown`, `degradedCalls`) | N-fache Sondierungslast, Ergebnis je Prozess |
 | Task-Executor-Warteschlangen | `IndexingConfiguration` (`indexingTaskExecutor`, `embeddingTaskExecutor`, `modelExtractionTaskExecutor`, `uploadTaskExecutor`), `ChatConfiguration` (`chatTitleTaskExecutor`, `chatNoteTaskExecutor`), `GrantRevocations` | Eine `RUNNING`-Zeile heißt „läuft auf mir“; wartende Widerrufe gehen mit dem Prozess verloren |
 | Entprellung im Prozess | `SourceEventIntake.pending` auf `sourceEventScheduler` | Mehrere Entprellfenster; ein verworfener Stapel geht gegen einen fremden Lauf verloren |
 | Parallelitätsbudget als Semaphore oder Pool | `AttachmentExtractionLimiter`, `TranscriptionModelRole.slots`, `SearchStatusService.probeExecutor`, `FileSync.downloadPool`, `LlmModelDiscoverer` | Budget gilt N-fach (`TranscriptionClient` und `RerankClient` nutzen unbegrenzte virtuelle Threads, kein Budget) |

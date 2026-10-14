@@ -8,8 +8,8 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
-import type { ConfirmTone } from '../../../stores/confirmStore'
-import { useConfirmStore } from '../../../stores/confirmStore'
+import type { ConfirmTone } from '../../stores/confirmStore'
+import { useConfirmStore } from '../../stores/confirmStore'
 
 const TONE_COLOR: Record<ConfirmTone, string> = {
   danger: 'error.main',
@@ -25,7 +25,7 @@ const TONE_ICON: Record<ConfirmTone, typeof ErrorOutlineOutlinedIcon | null> = {
 
 /**
  * Das Bestätigungs-Overlay der Anwendung (#1610) — gerendert genau einmal, gespeist aus
- * {@link ../stores/confirmStore}. Es ersetzt `window.confirm`, das seine Frage in Systemschrift
+ * {@link ../../stores/confirmStore}. Es ersetzt `window.confirm`, das seine Frage in Systemschrift
  * stellte, die Folge im selben Textklumpen versteckte und mit „OK" bestätigen ließ.
  *
  * Drei Entscheidungen tragen die Form:

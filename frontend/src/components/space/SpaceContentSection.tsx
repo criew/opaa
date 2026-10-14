@@ -6,7 +6,7 @@ import {
   notify,
   useNotificationStore,
   type NotificationSeverity,
-} from '../../stores/notificationStore'
+} from '@/shared/stores/notificationStore'
 import AssetTilePicker from '../assets/AssetTilePicker'
 import { assetPickKey, type AssetPick } from '../assets/assetPick'
 import { successionAwareMessage } from '../succession/successionConflict'

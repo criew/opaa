@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
-import { fontFamily } from '../../theme/tokens'
+import { fontFamily } from '@/shared/theme/tokens'
 import { splitPromptText, type PromptTextSegment } from '../../utils/promptTemplate'
 
 type MarkedKind = Exclude<PromptTextSegment['kind'], 'text'>

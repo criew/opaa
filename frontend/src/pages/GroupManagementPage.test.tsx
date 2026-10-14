@@ -6,7 +6,7 @@ import GroupManagementPage from './GroupManagementPage'
 import { useGroupStore } from '../stores/groupStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupAdminListStore } from '../stores/groupAdminListStore'
-import { useNotificationStore } from '../stores/notificationStore'
+import { useNotificationStore } from '@/shared/stores/notificationStore'
 import type { GroupListResponse, GroupResponse } from '@/shared/api/types'
 import type { GroupListQuery } from '../services/groupAdminApi'
 

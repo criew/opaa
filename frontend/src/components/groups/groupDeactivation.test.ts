@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GroupDeactivationPreviewResponse } from '@/shared/api/types'
-import { groupNotSelectableReason } from '../../utils/labels'
+import { groupNotSelectableReason } from '@/components/permissions/subjectSelection'
 import { deactivationConsequence } from './groupDeactivation'
 
 const preview: GroupDeactivationPreviewResponse = {

@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import AuthLayout, { LOGIN_BACKDROP_SCRIM_OPACITY } from './AuthLayout'
-import { OPAA_BRANDING, useBrandingStore } from '../../stores/brandingStore'
+import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 
 // jsdom has no matchMedia, so `useMediaQuery` would always report the narrow branch and the wide
 // layout would never be under test. Both branches are exercised explicitly below.

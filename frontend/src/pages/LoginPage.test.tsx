@@ -6,7 +6,7 @@ import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
 import { spendSilentSignIn } from '@/shared/session/silentSignIn'
 import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
-import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
+import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 import LoginPage from './LoginPage'
 
 describe('LoginPage', () => {

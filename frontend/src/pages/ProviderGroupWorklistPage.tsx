@@ -10,13 +10,13 @@ import ChecklistOutlinedIcon from '@mui/icons-material/ChecklistOutlined'
 import type { GroupEffectsResponse } from '@/shared/api/types'
 import { getGroupEffects } from '../services/permissionTransferApi'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useOidcProviderStore } from '../stores/oidcProviderStore'
+import { useOidcProviderStore } from '@/features/identity-provider'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PermissionTransferDialog from '../components/permissions/PermissionTransferDialog'
 import { groupUsageDetails } from '../components/admin/groups/groupUsageLabels'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 /**
  * Die Arbeitsliste je Anbieter (#1821, ADR-0036 Entscheidung 2): Der `409` beim Löschen eines

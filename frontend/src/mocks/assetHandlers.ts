@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { assetRoleLabel } from '../utils/labels'
+import { assetRoleLabel } from '@/shared/utils/labels'
 import { mockPromptLibraries } from './promptLibraryFixtures'
 import { mockUser } from './authFixtures'
 import { mockSpaceDetails } from './spaceFixtures'

@@ -30,7 +30,7 @@ import type {
 } from '@/shared/api/types'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
-import { fontFamily } from '../../theme/tokens'
+import { fontFamily } from '@/shared/theme/tokens'
 
 interface SourceEvidenceDrawerProps {
   open: boolean

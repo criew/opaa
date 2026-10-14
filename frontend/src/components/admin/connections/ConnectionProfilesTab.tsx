@@ -9,8 +9,8 @@ import type {
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
 } from '@/shared/api/types'
-import { confirmAction } from '../../../stores/confirmStore'
-import { notify } from '../../../stores/notificationStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { useSourceTypes } from '../../../hooks/useSourceTypes'
 import { getCapabilityOverview } from '../../../services/capabilityAdminApi'
 import {

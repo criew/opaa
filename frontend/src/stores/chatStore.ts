@@ -10,7 +10,7 @@ import type {
 import { createChat, deleteChatNoteItem, getChat } from '../services/chatApi'
 import { sendQuery } from '../services/queryApi'
 import { useChatListStore } from './chatListStore'
-import { notify } from './notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import {
   settingsUpdateChains,

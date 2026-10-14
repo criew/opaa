@@ -5,7 +5,7 @@ import type {
   SourceBlock,
 } from '@/shared/api/types'
 import { assetTypeDefinition } from './assetTypeRegistry'
-import { formatCalendarDay } from '../../utils/labels'
+import { formatCalendarDay } from '@/shared/utils/labels'
 
 /** A state that needs attention; READY carries none. */
 export type AssetTileStatus = Exclude<CatalogEntryStatus, 'READY'>

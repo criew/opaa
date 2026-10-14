@@ -3,6 +3,7 @@ package io.opaa.retrieval.context;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.knowledge.VectorTable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,7 +24,7 @@ class NeighborChunkExpansionTest {
   private final List<Collection<ChunkPosition>> lookups = new ArrayList<>();
 
   private final NeighborChunkLookup lookup =
-      new NeighborChunkLookup(null, null, "public", "vector_store") {
+      new NeighborChunkLookup(null, null, new VectorTable("public", "vector_store")) {
         @Override
         public Map<ChunkPosition, Document> find(
             Collection<ChunkPosition> positions, Set<UUID> libraryIds) {
