@@ -200,11 +200,7 @@ public final class ModularArchitecture {
    * test; an edge that no longer lies on a cycle is removed from this list.
    */
   static final Set<String> KNOWN_SUBPACKAGE_CYCLE_EDGES =
-      Set.of(
-          "externalaccess -> externalaccess.token",
-          "externalaccess.token -> externalaccess",
-          "query -> query.spike",
-          "query.spike -> query");
+      Set.of("externalaccess -> externalaccess.token", "externalaccess.token -> externalaccess");
 
   /**
    * The core subpackages of {@code indexing}, lowest first. A core package depends only on itself

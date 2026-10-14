@@ -78,7 +78,7 @@ Der Test prüft außerdem:
   selbst und Pakete davor. Ausgenommen ist die Web-Schicht (siehe „Web-Schicht je Modul“).
 - **Zyklen:** keine zwischen Top-Level-Paketen; ein `web`-Paket zählt dabei für sich. Zwischen
   Unterpaketen sind die heutigen Zyklen als Paketkanten in `KNOWN_SUBPACKAGE_CYCLE_EDGES`
-  eingefroren, nur noch in `externalaccess` und `query`.
+  eingefroren, nur noch in `externalaccess`.
   Jede weitere Kante auf einem Zyklus lässt den Test fehlschlagen, also jeder neue Zyklus.
 - **Kern von `indexing`:** `INDEXING_CORE` ordnet dessen Unterpakete, unten zuerst; ein Paket nutzt
   nur sich und die davor, nie das Wurzelpaket, `indexing.web` oder einen Konnektor. Jedes weitere

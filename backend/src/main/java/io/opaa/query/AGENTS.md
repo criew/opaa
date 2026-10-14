@@ -33,8 +33,8 @@ allen Modulen außer connectors, connections, external und app ab.
   kennt `io.opaa.library` nicht, und kein Fachpaket kennt es. Das gilt auch für `prompt.web`: Die
   Prompts eines Space holt `PromptService` über den Port `SpaceAssetDirectory`.
 - **Web-Schicht:** `prompt.web`, `chat.web`, `query.web`, `search.web`, `searchadmin.web`.
-- **Zyklen:** Nur `query` ↔ `query.spike` ist in `KNOWN_SUBPACKAGE_CYCLE_EDGES` eingefroren; neue
-  Kanten auf einem Zyklus brechen den Test.
+- **Zyklen:** keine zwischen Unterpaketen. `query.spike` hängt an `query`, nicht umgekehrt:
+  `QueryService` kennt nur die Schnittstelle `ToolLoopQueryHandler`.
 
 ## Verweise
 
