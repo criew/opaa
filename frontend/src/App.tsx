@@ -74,7 +74,7 @@ import UserManagementPage from './pages/UserManagementPage'
 // identity-provider
 import { OidcProviderManagementPage } from '@/features/identity-provider/routes'
 // directory-sync
-import DirectorySyncPage from './pages/DirectorySyncPage'
+import { DirectorySyncPage } from '@/features/directory-sync/routes'
 import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
 // model
 import { LlmModelManagementPage } from '@/features/model/routes'

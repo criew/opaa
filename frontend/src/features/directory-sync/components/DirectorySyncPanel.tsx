@@ -22,7 +22,7 @@ import {
   runDirectorySync,
   runDirectorySyncDryRun,
   setDirectorySync,
-} from '../../../services/directorySyncApi'
+} from '../api/directorySyncApi'
 import { apiErrorCode, apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
 import MetaBadge from '@/shared/ui/MetaBadge'

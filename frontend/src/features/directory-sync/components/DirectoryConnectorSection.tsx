@@ -10,7 +10,7 @@ import {
   deleteDirectoryConnector,
   saveDirectoryConnector,
   testDirectoryConnector,
-} from '../../../services/directorySyncApi'
+} from '../api/directorySyncApi'
 import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'

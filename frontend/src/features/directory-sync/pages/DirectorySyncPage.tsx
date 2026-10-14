@@ -8,7 +8,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import SyncOutlinedIcon from '@mui/icons-material/SyncOutlined'
 import type { DirectorySyncStatusResponse } from '@/shared/api/types'
-import { getDirectorySyncStatus } from '../services/directorySyncApi'
+import { getDirectorySyncStatus } from '../api/directorySyncApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useOidcProviderStore } from '@/features/identity-provider'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
@@ -16,15 +16,15 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
 import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
-import DirectorySyncOverview from '../components/admin/directorysync/DirectorySyncOverview'
-import DirectorySyncPanel from '../components/admin/directorysync/DirectorySyncPanel'
-import { usePendingPlans } from '../components/admin/directorysync/usePendingPlans'
+import DirectorySyncOverview from '../components/DirectorySyncOverview'
+import DirectorySyncPanel from '../components/DirectorySyncPanel'
+import { usePendingPlans } from '../components/usePendingPlans'
 import {
   attentionOf,
   matchesFilter,
   type OverviewEntry,
   type OverviewFilter,
-} from '../components/admin/directorysync/directorySyncState'
+} from '../components/directorySyncState'
 import { contentWidth } from '@/shared/theme/tokens'
 
 /** From this many providers on, the overview offers a filter and a search. */

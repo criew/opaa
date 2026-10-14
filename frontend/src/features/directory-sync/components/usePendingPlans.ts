@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import type { DirectorySyncPendingPlanResponse } from '@/shared/api/types'
-import { getPendingPlan } from '../../../services/directorySyncApi'
+import { getPendingPlan } from '../api/directorySyncApi'
 
 /** The state of one provider's plan on this page; no entry means it is being loaded. */
 export type PlanState =
