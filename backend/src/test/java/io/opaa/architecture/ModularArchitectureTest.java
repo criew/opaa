@@ -2,7 +2,6 @@ package io.opaa.architecture;
 
 import static io.opaa.architecture.ModularArchitecture.ALLOWED_MODULE_EDGES;
 import static io.opaa.architecture.ModularArchitecture.API;
-import static io.opaa.architecture.ModularArchitecture.KNOWN_SUBPACKAGE_CYCLE_EDGES;
 import static io.opaa.architecture.ModularArchitecture.LAYERS;
 import static io.opaa.architecture.ModularArchitecture.MODULES;
 import static io.opaa.architecture.ModularArchitecture.SHARED_API_CLASSES;
@@ -31,8 +30,7 @@ import org.junit.jupiter.api.Test;
  */
 class ModularArchitectureTest {
 
-  private static final ModularArchitecture ARCHITECTURE =
-      new ModularArchitecture("io.opaa", KNOWN_SUBPACKAGE_CYCLE_EDGES);
+  private static final ModularArchitecture ARCHITECTURE = new ModularArchitecture("io.opaa");
 
   /** A class, a nested class or a member below the root, relative to it. */
   private static final Pattern NAMED_CODE_UNIT =
@@ -279,14 +277,6 @@ class ModularArchitectureTest {
             assertThat(used.getOrDefault(from, Set.of()))
                 .as("edges module %s uses - remove an unused one from ALLOWED_MODULE_EDGES", from)
                 .containsAll(targets));
-  }
-
-  /** An edge that no longer lies on a cycle leaves the list, so the cycle cannot return. */
-  @Test
-  void everyKnownSubpackageCycleEdgeStillLiesOnACycle() {
-    assertThat(ARCHITECTURE.subpackageCycleEdges(mainClasses).keySet())
-        .as("remove an edge that lies on no cycle any more from KNOWN_SUBPACKAGE_CYCLE_EDGES")
-        .containsAll(KNOWN_SUBPACKAGE_CYCLE_EDGES);
   }
 
   /** Guards the premise: a rule over an empty or stale package list proves nothing. */

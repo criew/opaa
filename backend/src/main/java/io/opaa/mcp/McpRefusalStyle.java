@@ -1,7 +1,7 @@
 package io.opaa.mcp;
 
-import io.opaa.externalaccess.ExternalAccessRefusalStyle;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
+import io.opaa.externalaccess.security.ExternalAccessRefusalStyle;
 import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

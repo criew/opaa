@@ -1,7 +1,9 @@
-package io.opaa.externalaccess;
+package io.opaa.externalaccess.security;
 
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.CurrentUserArgumentResolver;
+import io.opaa.externalaccess.ExternalAccessNetworkPolicy;
+import io.opaa.externalaccess.token.ExternalAccessSearchScopeSource;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator.Result;
 import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
@@ -57,10 +59,6 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
 
   /** The authority every access-token call carries, and the only one it carries. */
   public static final String AUTHORITY = "ROLE_EXTERNAL_ACCESS_TOKEN";
-
-  /** Request attribute holding the token id, for the per-call scope check of #1720/#1721. */
-  public static final String TOKEN_ID_ATTRIBUTE =
-      ExternalAccessTokenAuthenticationFilter.class.getName() + ".tokenId";
 
   private static final String UNAUTHENTICATED_MESSAGE = "Nicht angemeldet";
 
@@ -129,7 +127,7 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
     Result.Authenticated authenticated = (Result.Authenticated) result;
     UUID tokenId = authenticated.tokenId();
     CurrentUserArgumentResolver.bindExternalAccessCaller(request, authenticated.user());
-    request.setAttribute(TOKEN_ID_ATTRIBUTE, tokenId);
+    request.setAttribute(ExternalAccessSearchScopeSource.TOKEN_ID_ATTRIBUTE, tokenId);
     SecurityContextHolder.getContext()
         .setAuthentication(
             new ExternalAccessTokenAuthentication(authenticated.user().getId(), tokenId));

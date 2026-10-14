@@ -82,10 +82,8 @@ Der Test prüft außerdem:
 
 - **Schichtung:** `LAYERS` ordnet alle Top-Level-Pakete, unten zuerst. Ein Paket nutzt nur sich
   selbst und Pakete davor. Ausgenommen ist die Web-Schicht (siehe „Web-Schicht je Modul“).
-- **Zyklen:** keine zwischen Top-Level-Paketen; ein `web`-Paket zählt dabei für sich. Zwischen
-  Unterpaketen sind die heutigen Zyklen als Paketkanten in `KNOWN_SUBPACKAGE_CYCLE_EDGES`
-  eingefroren, nur noch in `externalaccess`.
-  Jede weitere Kante auf einem Zyklus lässt den Test fehlschlagen, also jeder neue Zyklus.
+- **Zyklen:** keine zwischen Top-Level-Paketen, ein `web`-Paket zählt dabei für sich, und keine
+  zwischen den Unterpaketen eines Top-Level-Pakets.
 - **Kern von `indexing`:** `INDEXING_CORE` ordnet dessen Unterpakete, unten zuerst; ein Paket nutzt
   nur sich und die davor, nie das Wurzelpaket, `indexing.web` oder einen Konnektor. Jedes weitere
   Unterpaket von `indexing` gehört in diese Liste, sonst schlägt der Test fehl.
@@ -110,9 +108,8 @@ Der Test prüft außerdem:
 
 **Neues Top-Level-Paket:** in `LAYERS` oberhalb aller Pakete eintragen, die es nutzt, und in
 `MODULES` einem Modul zuordnen. Fehlt der Eintrag, nennt der Test das Paket und beide Stellen.
-Umgekehrt schlägt er fehl, wenn ein gelistetes Paket verschwindet, eine erlaubte Modulkante nicht
-mehr genutzt wird oder eine eingefrorene Zykluskante auf keinem Zyklus mehr liegt. Dann wird der
-Eintrag entfernt.
+Umgekehrt schlägt er fehl, wenn ein gelistetes Paket verschwindet oder eine erlaubte Modulkante
+nicht mehr genutzt wird. Dann wird der Eintrag entfernt.
 
 **Eine neue Kante zwischen Modulen ist eine bewusste Entscheidung** und wird im PR begründet. Den
 Eintrag nicht nur ergänzen, damit der Test grün wird. Zuerst prüfen, ob eine Schnittstelle im
