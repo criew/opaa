@@ -16,8 +16,9 @@ function render() {
 }
 
 /**
- * Die Schaltfläche steht schon vor der Antwort da, aber gesperrt: Ohne die Höchstlaufzeit hätte der
- * Dialog keine Obergrenze. Ein Klick davor bliebe wirkungslos und ließe den Test ins Leere laufen.
+ * The button is there before the response already, but disabled: without the maximum lifetime
+ * the dialog would have no upper bound. A click before that would have no effect and let the
+ * test run into the void.
  */
 async function openCreateDialog(user: UserEvent) {
   const button = await screen.findByRole('button', { name: 'Token erzeugen' })
@@ -27,13 +28,13 @@ async function openCreateDialog(user: UserEvent) {
 }
 
 /**
- * Die eigenen Zugangstokens: die Liste samt „zuletzt benutzt" und ausgesetzter Auswahl,
- * der Anlegedialog mit Aufklärung und Pflichtfeldern, die einmalige Anzeige des Werts und der
- * Widerruf. Geprüft wird über die Schnittstelle, die auch das Backend anbietet (MSW).
+ * The own access tokens: the list including „zuletzt benutzt" and suspended selection,
+ * the creation dialog with explanation and mandatory fields, the one-time display of the value
+ * and the revocation. Checked through the interface the backend offers as well (MSW).
  */
 describe('OwnExternalAccessTokensSection', () => {
-  // Die ausgelieferte Voreinstellung der Installation ist „aus"; für alles außer dem eigenen Fall
-  // dazu ist der Kanal offen, sonst nimmt die Ausstellung nichts an.
+  // The installation's shipped default is „aus"; for everything except the dedicated case
+  // the channel is open, otherwise the issuance accepts nothing.
   beforeEach(() => {
     setMockExternalAccessSettings({ ...mockExternalAccessSettings, enabled: true })
   })
@@ -57,7 +58,7 @@ describe('OwnExternalAccessTokensSection', () => {
   it('weist auf den bevorstehenden Ablauf hin', async () => {
     render()
 
-    // Die Fixture „Cursor" läuft in sieben Tagen ab, also innerhalb der Warnfrist.
+    // The fixture „Cursor" expires in seven days, i.e. within the warning period.
     expect(await screen.findByText(/Läuft in \d+ Tagen ab/)).toBeInTheDocument()
   })
 
@@ -69,8 +70,8 @@ describe('OwnExternalAccessTokensSection', () => {
       await screen.findByText(/Fremdzugänge sind für diese Installation abgeschaltet/),
     ).toBeInTheDocument()
     expect(screen.getAllByText('wirkt derzeit nicht').length).toBeGreaterThan(0)
-    // Die Ausstellung weist bei geschlossenem Kanal jede Anfrage ab - die Schaltfläche
-    // führte also in eine Absage. Widerrufen bleibt möglich.
+    // With a closed channel the issuance rejects every request - so the button
+    // would lead to a refusal. Revoking stays possible.
     expect(screen.getByRole('button', { name: 'Token erzeugen' })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: 'Token „Claude Code (Dienst-PC)“ widerrufen' }),
@@ -114,7 +115,7 @@ describe('OwnExternalAccessTokensSection', () => {
       expect.stringContaining('Rechtsquellen Soziales'),
       expect.stringContaining('Dienstanweisungen'),
     ])
-    // Lesbar, aber nicht für Fremdzugänge freigegeben: erscheint nicht.
+    // Readable, but not released for external access: does not appear.
     expect(within(dialog).queryByText('Projektakte Phoenix')).not.toBeInTheDocument()
     for (const tile of tiles) {
       // The checkbox is named by the title; the end of the release is its description.
@@ -334,7 +335,7 @@ describe('OwnExternalAccessTokensSection', () => {
     expect(
       within(dialog).getByText('Bitte wählen Sie mindestens eine Bibliothek aus.'),
     ).toBeInTheDocument()
-    // Nichts wurde angelegt: der Dialog steht noch offen.
+    // Nothing was created: the dialog is still open.
     expect(screen.getByRole('dialog', { name: 'Token erzeugen' })).toBeInTheDocument()
   })
 
@@ -384,9 +385,9 @@ describe('OwnExternalAccessTokensSection', () => {
       'opaa_pat_new1_geheimer_wert_nur_dieses_eine_mal',
     )
     expect(within(valueDialog).getByText(/wird nur jetzt angezeigt/)).toBeInTheDocument()
-    // Der Einrichtungshinweis trägt den Wert - deshalb steht er hier und nirgends sonst, und
-    // zwar nur im Claude-Code-Befehl: Die beiden JSON-Schnipsel verweisen auf Eingabe bzw.
-    // Umgebungsvariable, damit der Wert nicht in einer teilbaren Datei landet.
+    // The setup hint carries the value - that is why it is here and nowhere else, and
+    // only in the Claude Code command: the two JSON snippets refer to input or
+    // an environment variable, so that the value does not end up in a shareable file.
     expect(
       within(valueDialog).getByText(/claude mcp add --scope user --transport http opaa/),
     ).toBeInTheDocument()

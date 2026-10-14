@@ -63,12 +63,12 @@ function addedSubjectLabel(subject: SubjectSelection): string {
 interface SpaceMembersSectionProps {
   spaceId: string
   space: SpaceResponse
-  /** Mitglieder und Rollen ändert nur ein Administrator des Space. */
+  /** Only an administrator of the space changes members and roles. */
   canManage: boolean
   isOwner: boolean
 }
 
-/** Der Reiter „Mitglieder" der Space-Einstellungen: Liste, Rollen und Aufnahme. */
+/** The „Mitglieder" tab of the space settings: list, roles and admission. */
 export default function SpaceMembersSection({
   spaceId,
   space,
@@ -228,8 +228,8 @@ export default function SpaceMembersSection({
                     disabled={!selectedSubjectId(subject)}
                     onClick={async () => {
                       const subjectId = selectedSubjectId(subject)
-                      // Eine Space-Mitgliedschaft kennt kein Subjekt „Alle“ (ADR-0037,
-                      // Entscheidung 3); die Auswahl bietet es hier nicht an.
+                      // A space membership knows no subject „Alle“ (ADR-0037,
+                      // Entscheidung 3); the selection does not offer it here.
                       if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
                       if (!(await confirmExternalSubject(subject))) return
                       clearFailure()

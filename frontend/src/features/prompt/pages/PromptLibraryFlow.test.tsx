@@ -59,24 +59,24 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     const user = userEvent.setup()
     renderApp()
 
-    // Stammdaten
+    // Master data
     await user.type(screen.getByLabelText(/^Name/), 'Formulierungshilfen Referat 50')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))
 
-    // Eigentümer: eine Gruppe, in der die Person Mitglied ist
+    // Owner: a group the person is a member of
     await user.click(screen.getByRole('radio', { name: 'Eine Gruppe' }))
     await user.click(await screen.findByLabelText('Gruppe'))
     await user.click(await screen.findByRole('option', { name: 'Projektbeteiligte Phoenix' }))
     await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
 
-    // Rechte
+    // Rights
     await user.type(await screen.findByLabelText('Person oder Gruppe suchen'), 'Referat')
     const [referat] = await screen.findAllByRole('option', { name: /Referat 50/ })
     await user.click(referat)
     await user.click(screen.getByRole('button', { name: 'Vormerken' }))
     await user.click(screen.getByRole('button', { name: 'Prompt-Bibliothek anlegen' }))
 
-    // Detailseite der neuen Bibliothek
+    // Detail page of the new library
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Formulierungshilfen Referat 50' }),
     ).toBeInTheDocument()
@@ -95,7 +95,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
       role: 'VIEWER',
     })
 
-    // Erster Prompt mit Pflicht-Variable vom Typ Datum
+    // First prompt with a mandatory variable of type date
     await user.click(await screen.findByRole('button', { name: 'Neuer Prompt' }))
     let dialog = await screen.findByRole('dialog', { name: 'Neuer Prompt' })
     await user.type(within(dialog).getByLabelText('Titel'), 'Anhörung')
@@ -107,7 +107,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Prompt speichern' }))
     await waitForDialogClosed()
 
-    // Zweiter Prompt ohne Variablen
+    // Second prompt without variables
     await user.click(screen.getByRole('button', { name: 'Neuer Prompt' }))
     dialog = await screen.findByRole('dialog', { name: 'Neuer Prompt' })
     await user.type(within(dialog).getByLabelText('Titel'), 'Vermerk')
@@ -158,7 +158,7 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
       await screen.findByText('Kein Zugriff auf die Prompts dieser Prompt-Bibliothek'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Neuer Prompt' })).not.toBeInTheDocument()
-    // Verwalten bleibt möglich: Freigaben und Zuordnungen stehen zur Verfügung.
+    // Managing stays possible: grants and associations are available.
     expect(tabNames()).toEqual(['Prompts', 'Freigaben', 'Zuordnungen'])
   })
 })
@@ -216,7 +216,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     expect(
       screen.queryByRole('button', { name: 'Name und Beschreibung bearbeiten' }),
     ).not.toBeInTheDocument()
-    // Keine Abschnittsüberschrift wiederholt den Reiternamen.
+    // No section heading repeats the tab name.
     expect(screen.queryByRole('heading', { name: 'Prompts' })).not.toBeInTheDocument()
     await user.click(screen.getByText('Ablehnungsbescheid'))
     expect(
@@ -231,7 +231,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
       screen.getByRole('heading', { name: 'Warum sehe ich diese Prompt-Bibliothek?' }),
     ).toBeInTheDocument()
 
-    // Lesen schließt das Verwenden nicht aus; Lösen hängt am Space, siehe AssetSpacesList.test.
+    // Reading does not rule out using; detaching depends on the space, see AssetSpacesList.test.
     await user.click(screen.getByRole('tab', { name: 'Zuordnungen' }))
     expect(await screen.findByText('Engineering')).toBeInTheDocument()
     expect(
@@ -254,7 +254,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     expect(
       screen.getByRole('heading', { name: 'Warum sehe ich diese Prompt-Bibliothek?' }),
     ).toBeInTheDocument()
-    // Die Zuordnungen haben einen eigenen Reiter, die Stammdaten stehen im Kopf.
+    // The associations have a tab of their own, the master data is in the header.
     expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Stammdaten' })).not.toBeInTheDocument()
   })
@@ -374,7 +374,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
       expect(await screen.findByText('administrativ')).toBeInTheDocument()
       unmount()
 
-      // Dieselbe Rolle wie nach der Formel: kein Etikett.
+      // The same role as by the formula: no label.
       renderDetail('/prompts/prompt-library-referat-50')
       expect(
         await screen.findByRole('button', {

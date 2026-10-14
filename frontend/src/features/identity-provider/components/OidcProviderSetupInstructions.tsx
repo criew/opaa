@@ -84,8 +84,8 @@ function Step({ number, icon, title, children }: StepProps) {
   return (
     <Box
       component="li"
-      // Ein Schritt einer Anleitung ist ein Listeneintrag, kein Kasten: Die Trennlinie
-      // unten scheidet ihn vom nächsten, das Symbol links führt das Auge.
+      // A step of an instruction is a list item, not a box: the divider
+      // below separates it from the next, the icon on the left guides the eye.
       sx={{
         listStyle: 'none',
         borderBottom: 1,

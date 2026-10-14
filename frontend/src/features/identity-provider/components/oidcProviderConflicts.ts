@@ -1,7 +1,7 @@
 /**
- * Die Konfliktcodes, die an jedem Deaktivieren oder Löschen auftreten können. Der
- * Aussperrschutz (`LAST_LOGIN_CAPABLE_ADMIN`) nennt den fehlenden Schritt, nicht nur die
- * Ablehnung (ADR-0033, Entscheidung 4).
+ * The conflict codes that can occur on any deactivation or deletion. The
+ * lockout protection (`LAST_LOGIN_CAPABLE_ADMIN`) names the missing step, not only the
+ * rejection (ADR-0033, Entscheidung 4).
  */
 export const PROVIDER_CONFLICT_MESSAGES: Readonly<Record<string, string>> = {
   LAST_LOGIN_CAPABLE_ADMIN:

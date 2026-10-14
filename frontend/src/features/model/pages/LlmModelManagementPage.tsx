@@ -23,20 +23,20 @@ function isLlmModelTab(value: string | undefined): value is LlmModelTab {
   return value === 'chat' || value === 'embedding'
 }
 
-// „Chat-Modelle" statt „Chat": Der Hauptbereich der Anwendung heißt ebenso, und gemeint ist hier
-// nicht das Gespräch, sondern das Modell, das es beantwortet.
+// „Chat-Modelle" instead of „Chat": the application's main area has that name too, and what is
+// meant here is not the conversation but the model that answers it.
 const tabs: Array<{ value: LlmModelTab; label: string }> = [
   { value: 'chat', label: 'Chat-Modelle' },
   { value: 'embedding', label: 'Einbettung' },
 ]
 
 /**
- * Die Chat-Modelle als Liste: eine Tabellenzeile je Modell, die Handlungen im Zeilenmenü,
- * Anlegen und Bearbeiten im selben Dialog — dasselbe Muster wie die Kontenliste unter „Benutzer".
+ * The chat models as a list: one table row per model, the actions in the row menu,
+ * creating and editing in the same dialog — the same pattern as the account list under „Benutzer".
  *
- * Zählung und „Neues Modell" stehen hier und nicht im Seitenkopf: Sie gelten nur für diesen
- * Bereich, und im Einbettungs-Reiter wäre beides eine Aussage über etwas, das dort nicht zu sehen
- * ist.
+ * Count and „Neues Modell" are here and not in the page header: they apply only to this
+ * area, and in the embedding tab both would be a statement about something not visible
+ * there.
  */
 function ChatModelsSection() {
   const models = useLlmModelStore((s) => s.models)
@@ -90,9 +90,9 @@ function ChatModelsSection() {
         <ModelList models={models} onEdit={(model) => setForm({ open: true, model })} />
       )}
 
-      {/* `key` je bearbeitetem Modell: MUI unmountet beim Schließen nur die Kinder des Dialogs,
-          nicht die Komponente - ohne den Schlüssel trüge der Entwurf des zuletzt geöffneten
-          Modells in das nächste. */}
+      {/* `key` per edited model: MUI only unmounts the dialog's children on close,
+         not the component - without the key the draft of the last opened
+         model would carry over into the next one. */}
       <LlmModelFormDialog
         key={form.model?.id ?? 'new'}
         open={form.open}
@@ -119,9 +119,9 @@ function EmbeddingInfoSection() {
 
   return (
     <>
-      {/* Keine eigene Überschrift: Der Reiter heißt bereits „Einbettung", und „Einbettungsmodell"
-          darunter wäre dieselbe Aussage ein zweites Mal. Benannt ist der Bereich über den Reiter,
-          auf den sein Panel zeigt. */}
+      {/* No heading of its own: the tab is already called „Einbettung", and „Einbettungsmodell"
+         below it would be the same statement a second time. The area is named via the tab
+         its panel points to. */}
       <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2.5, maxWidth: '80ch' }}>
         Anders als das Chat-Modell lässt sich das Einbettungsmodell hier nicht ändern: Ein Wechsel
         macht bestehende Vektoren unvergleichbar und würde eine vollständige Neuindizierung aller
@@ -139,13 +139,13 @@ function EmbeddingInfoSection() {
 }
 
 /**
- * Die Modellverwaltung der Systemverwaltung in zwei Bereichen: „Chat-Modelle" führt die
- * Modelle, die Fragen beantworten; „Einbettung" nennt das Modell, das den Index trägt - und das
- * sich bewusst nicht ändern lässt.
+ * The system administration's model management in two areas: „Chat-Modelle" lists the
+ * models that answer questions; „Einbettung" names the model that carries the index - and that
+ * deliberately cannot be changed.
  *
- * Die Bereiche sind eigene Routen (`/admin/models/chat`, `/admin/models/embedding`) wie auf den
- * übrigen Bereichsseiten: Ein Verweis soll im richtigen Bereich landen, und ein Neuladen ihn
- * behalten. Jeder Bereich lädt nur, was er zeigt.
+ * The areas are routes of their own (`/admin/models/chat`, `/admin/models/embedding`) as on the
+ * other area pages: a link should land in the right area, and a reload should keep
+ * it. Every area loads only what it shows.
  */
 export default function LlmModelManagementPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')

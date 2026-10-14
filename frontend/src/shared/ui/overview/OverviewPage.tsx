@@ -214,8 +214,8 @@ export default function OverviewPage<T>({
         </Box>
       )}
 
-      {/* Das Filtern verschiebt den Fokus nicht; ohne Live-Bereich bliebe das Ergebnis am
-          Screenreader unbemerkt (accessibility.md, Prüfpunkt 2.8). */}
+      {/* Filtering does not move focus; without a live region the result would go unnoticed
+         with a screen reader (accessibility.md, checkpoint 2.8). */}
       <Box role="status" aria-live="polite" sx={visuallyHidden}>
         {resultCurrent && (query.trim() || filtered)
           ? searchResultMessage(count, query.trim())

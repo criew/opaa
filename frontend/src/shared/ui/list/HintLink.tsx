@@ -6,9 +6,9 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 
 /**
- * Ein Hinweis der Admin-Listen: ein kurzer Link mit Symbol in der Zeile der primären
- * Handlung, dahinter ein Popover mit Titel und Einzelheiten - statt eines farbigen Kastens über
- * der Liste. `tone="warning"` für einen Zustand, der eine Entscheidung braucht.
+ * A hint of the admin lists: a short link with an icon in the row of the primary
+ * action, behind it a popover with title and details - instead of a coloured box above
+ * the list. `tone="warning"` for a state that needs a decision.
  */
 export default function HintLink({
   text,

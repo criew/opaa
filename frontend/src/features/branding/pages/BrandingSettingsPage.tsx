@@ -204,7 +204,7 @@ export default function BrandingSettingsPage() {
     try {
       await removeImage(kind)
     } catch {
-      // dito
+      // ditto
     }
   }
 

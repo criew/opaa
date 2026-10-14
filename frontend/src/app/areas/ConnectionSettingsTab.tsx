@@ -4,9 +4,9 @@ import { OutboundProxySection } from '@/features/connection'
 import { PrivateStorageSection } from '@/features/library'
 
 /**
- * Der Reiter „Einstellungen“ der Anbindungen: hausweite Werte, die keinem einzelnen Zugang gehören -
- * der Ausgangsproxy, das Speicherkontingent privater Bibliotheken und die Aufbewahrungsfrist des
- * Verbindungsprotokolls.
+ * The „Einstellungen“ tab of the connections area: installation-wide values that belong to no
+ * single connection profile - the outbound proxy, the storage quota of private libraries and the
+ * retention period of the connection log.
  */
 export default function ConnectionSettingsTab() {
   return (

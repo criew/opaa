@@ -31,7 +31,7 @@ vi.mock('react-router', async () => {
 
 const theme = createAppTheme('dark')
 
-/** Acht Spaces - mehr als das Menü zeigt, und damit die Grenze überhaupt prüfbar. */
+/** Eight spaces - more than the menu shows, which makes the limit testable at all. */
 function manySpaces() {
   return Array.from({ length: 8 }, (_, index) => ({
     id: `space-${index}`,
@@ -77,7 +77,7 @@ function renderSidebarAtRoute(initialPath: string, sidebar = <Sidebar />) {
 describe('Sidebar', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
-    // Die Nutzungsreihenfolge liegt im localStorage und überdauert sonst die Testfälle.
+    // The usage order lives in localStorage and would otherwise outlast the test cases.
     window.localStorage.clear()
     useUiStore.setState({ sidebarWidth: SIDEBAR_DEFAULT_WIDTH })
     useBrandingStore.setState({ branding: OPAA_BRANDING })
@@ -140,7 +140,7 @@ describe('Sidebar', () => {
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Wissensbibliotheken' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Benutzermenü' })).not.toBeInTheDocument()
-    // Der einzige „Einstellungen"-Link der Spalte gehört dem Space, nicht dem Konto.
+    // The column's only „Einstellungen" link belongs to the space, not to the account.
     expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
       'href',
       '/spaces/space-personal/settings/general',
@@ -223,8 +223,8 @@ describe('Sidebar', () => {
   })
 
   /**
-   * Das Menü bleibt kurz, damit die beiden Aktionen darunter sichtbar bleiben - und es
-   * beginnt mit dem zuletzt genutzten Space.
+   * The menu stays short so that the two actions below it remain visible - and it
+   * starts with the most recently used space.
    */
   it('shows at most five spaces, most recently used first', async () => {
     useSpaceStore.setState({ spaces: manySpaces(), isLoadingList: false })
@@ -242,15 +242,15 @@ describe('Sidebar', () => {
     expect(names[0]).toContain('Space 6')
     expect(names[1]).toContain('Space 3')
 
-    // Die beiden Aktionen stehen unabhängig davon immer im Menü.
+    // The two actions are always in the menu regardless.
     expect(screen.getByRole('menuitem', { name: 'Alle Spaces anzeigen' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Neuen Space anlegen/ })).toBeInTheDocument()
   })
 
   /**
-   * Ein Space, der über „Alle Spaces" geöffnet wird, steht sofort im Menü - ohne Neuladen.
-   * Die Nutzungsreihenfolge wird beim Betreten der Route geschrieben; läse das Menü sie nur beim
-   * Aufbau, zeigte es weiter die alten fünf.
+   * A space opened via „Alle Spaces" appears in the menu at once - without a reload.
+   * The usage order is written when the route is entered; if the menu read it only when
+   * mounting, it would keep showing the old five.
    */
   it('shows a space opened outside the menu immediately, without a reload', async () => {
     useSpaceStore.setState({ spaces: manySpaces(), isLoadingList: false })
@@ -263,11 +263,12 @@ describe('Sidebar', () => {
       .getAllByRole('menuitem')
       .find((item) => (item.textContent ?? '').startsWith('Space '))
     expect(first).toHaveTextContent('Space 7')
-    // Der Haken am aktiven Eintrag - ein MUI-Icon ohne eigene Rolle, deshalb über das Markup.
+    // The check mark on the active entry - an MUI icon without a role of its own, hence via the
+    // markup.
     expect(first?.querySelector('svg[data-testid="CheckIcon"]')).not.toBeNull()
   })
 
-  /** Gemerkt wird der Space der Route, nicht der Rückfall auf den persönlichen. */
+  /** What is remembered is the route's space, not the fallback to the personal one. */
   it('remembers the space named by the route, not the fallback', () => {
     renderSidebarAtRoute('/chat')
     expect(window.localStorage.getItem('opaa.spaces.recent')).toBeNull()
@@ -350,8 +351,8 @@ describe('Sidebar', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/new')
   })
 
-  // Ein Einstiegspunkt am Fuß der Spalte statt zweier - „Datenquellen dieses Space" ist
-  // entfallen, alles Verwaltende liegt hinter den Einstellungen.
+  // One entry point at the foot of the column instead of two - „Datenquellen dieses Space" is
+  // gone, everything administrative lies behind the settings.
   it('links the column foot to the settings of the active space, and to nothing else', () => {
     renderSidebarAtRoute('/spaces/space-engineering')
 
@@ -371,9 +372,9 @@ describe('Sidebar', () => {
   })
 
   /**
-   * Der Eintrag zeigt auf den ersten Reiter, ist aber auf jedem Reiter hervorgehoben -
-   * dann sagt `aria-current="true"` den Bereichstreffer an, „page" nur das eigene Ziel
-   * (docs/design/accessibility.md 2.3, wie auf der globalen Leiste).
+   * The entry points to the first tab but is highlighted on every tab -
+   * then `aria-current="true"` announces the area match, „page" only the own target
+   * (docs/design/accessibility.md 2.3, as on the global rail).
    */
   it('meldet den Einstellungs-Einstieg auf jedem Reiter als aktiv', () => {
     const { unmount } = renderSidebarAtRoute('/spaces/space-engineering/settings/general')
@@ -391,8 +392,8 @@ describe('Sidebar', () => {
   })
 
   /**
-   * Den Einstieg sieht jedes Mitglied; wer nicht verwalten darf, sieht die Einstellungen
-   * schreibgeschützt.
+   * Every member sees the entry point; whoever may not manage sees the settings
+   * read-only.
    */
   it('shows the settings entry to a plain member and to a curator', () => {
     useSpaceStore.setState({

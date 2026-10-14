@@ -78,9 +78,9 @@ import {
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
-  // „Benutzer & Gruppen" als zwei Einträge statt als Tabs auf einer Seite: die
-  // Sekundärspalte *ist* die Bereichsnavigation, und ein Tab-Paar darüber wäre eine zweite
-  // Navigation für dieselbe Entscheidung. Jedes Ziel bleibt so direkt verlinkbar.
+  // „Benutzer & Gruppen" as two entries instead of tabs on one page: the
+  // secondary column *is* the area navigation, and a pair of tabs above it would be a second
+  // navigation for the same decision. Every target thus stays directly linkable.
   { label: 'Benutzer', to: '/admin/users' },
   { label: 'Gruppen', to: '/admin/groups' },
   { label: 'Anlegerechte', to: '/admin/capabilities' },
@@ -89,7 +89,7 @@ const ADMIN_SECTIONS = [
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },
   { label: 'E-Mail', to: '/admin/mail' },
-  // Zugänge, Quellarten und externe KI-Werkzeuge als ein Bereich mit Reitern.
+  // Connection profiles, source types and external AI tools as one area with tabs.
   { label: 'Anbindungen', to: CONNECTIONS_ADMIN_ROUTE },
   { label: 'Suche & Indexierung', to: '/admin/search' },
 ]
@@ -123,7 +123,7 @@ function RevisionAreaLayout() {
   )
 }
 
-/** Leitet auf den ersten Reiter der Space-Einstellungen weiter - ohne den Space zu laden. */
+/** Redirects to the first tab of the space settings - without loading the space. */
 function SpaceSettingsRedirect() {
   const { spaceId } = useParams<{ spaceId: string }>()
   return <Navigate to={spaceId ? spaceSettingsRoute(spaceId) : '/spaces'} replace />
@@ -204,8 +204,8 @@ export default function App() {
                   path="spaces/:spaceId"
                   element={<SpacePage renderChats={renderSpaceChats} />}
                 />
-                {/* Die frühere Verwaltungsseite: Lesezeichen auf /manage landen auf dem ersten
-                  Reiter der Einstellungen. */}
+                {/* The former administration page: bookmarks to /manage land on the first
+                   tab of the settings. */}
                 <Route path="spaces/:spaceId/manage" element={<SpaceSettingsRedirect />} />
                 <Route path="spaces/:spaceId/settings" element={<SpaceSettingsRedirect />} />
                 <Route path="spaces/:spaceId/settings/:tab" element={<SpaceSettingsPage />} />
@@ -251,9 +251,9 @@ export default function App() {
                 {/* Global areas render inside the frame from mockup 2b: no space
                   column, a light secondary column with the area navigation instead. */}
                 <Route element={<AdminAreaLayout />}>
-                  {/* Die beiden Bereiche der Benutzerseite sind Routen wie bei der E-Mail-Seite:
-                    der Sprung aus dem Auflagen-Hinweis landet in der Kontenliste, der aus
-                    der Anmeldeseite in den Einstellungen, und ein Neuladen behält den Bereich. */}
+                  {/* The two areas of the user page are routes, as on the mail page:
+                     the jump from the requirements hint lands in the account list, the one from
+                     the login page in the settings, and a reload keeps the area. */}
                   <Route
                     path="admin/users"
                     element={<Navigate to="/admin/users/accounts" replace />}
@@ -277,8 +277,8 @@ export default function App() {
                     element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
                   />
                   <Route path="admin/connections/:tab" element={<ConnectionsAdminPage />} />
-                  {/* Die früheren Seiten der Anbindungen: Lesezeichen und Verweise landen
-                    am selben Inhalt im neuen Bereich. */}
+                  {/* The former pages of the connections area: bookmarks and links land
+                     on the same content in the new area. */}
                   <Route
                     path="admin/connection-profiles"
                     element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
@@ -326,8 +326,8 @@ export default function App() {
                     element={<Navigate to="/admin/succession/open" replace />}
                   />
                   <Route path="admin/succession/:tab" element={<SuccessionPage />} />
-                  {/* Die beiden Bereiche der E-Mail-Seite sind Routen, damit ein Verweis auf die
-                    Vorlagenverwaltung dort landet. */}
+                  {/* The two areas of the mail page are routes, so that a link to the
+                     template management lands there. */}
                   <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
                   <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
                   <Route
@@ -338,8 +338,8 @@ export default function App() {
                 </Route>
                 {/* Mockup 2c: the user settings render in the bare global frame -
                   no space column, no secondary column. */}
-                {/* Die Stichtagsauskunft der Revision: eigener Bereich, nicht unter
-                  /admin - sie gehoert der AUDITOR-Rolle, nicht der Systemverwaltung. */}
+                {/* The audit's point-in-time report: its own area, not under
+                   /admin - it belongs to the AUDITOR role, not to the system administration. */}
                 <Route element={<RevisionAreaLayout />}>
                   <Route path="revision/rechtehistorie" element={<RightsHistoryPage />} />
                   <Route path="revision/verbindungsprotokoll" element={<ConnectionLogPage />} />

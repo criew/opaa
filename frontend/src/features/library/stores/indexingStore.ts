@@ -153,8 +153,8 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
         runHistoryByLibrary: { ...get().runHistoryByLibrary, [libraryId]: response.runs },
       })
     } catch {
-      // Die Bibliotheks-Detailseite zeigt weiterhin den aktuellen Status (runsByLibrary) an, auch
-      // wenn das Protokoll früherer Läufe nicht geladen werden konnte.
+      // The library detail page keeps showing the current status (runsByLibrary), even
+      // when the log of earlier runs could not be loaded.
     }
   },
 

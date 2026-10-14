@@ -907,8 +907,8 @@ describe('ConnectionProfilesTab', () => {
     expect(await screen.findByText('Es sind noch keine Zugänge angelegt.')).toBeVisible()
   })
 
-  // Spezifikation „Konnektor-Freigabe und Sperre“: die Sperre eines Zugangs mit Rückfrage, die
-  // nennt, was mit Läufen und Inhalt geschieht; danach steht der Zugang als „Gesperrt“ in der Liste.
+  // Specification „Konnektor-Freigabe und Sperre“: locking a connection profile with a confirmation
+  // that names what happens to runs and content; afterwards the profile is listed as „Gesperrt“.
   it('locks a profile after naming what happens to its libraries, and unlocks it again', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
@@ -928,8 +928,8 @@ describe('ConnectionProfilesTab', () => {
     expect(within(panel).queryByText('Gesperrt')).not.toBeInTheDocument()
   })
 
-  // Eine Sperre der Quellart hat Vorrang: Wer nur den Zugang entsperrt, bekommt keinen Weiterlauf
-  // versprochen, und die Zeile zeigt die Sperre der Quellart.
+  // A lock of the source type takes precedence: whoever unlocks only the profile is not promised
+  // a resumption, and the row shows the source type's lock.
   it('does not promise a restart when the profile is unlocked while its source type stays locked', async () => {
     server.use(
       http.get('/api/v1/admin/connection-profiles', () =>
@@ -961,8 +961,8 @@ describe('ConnectionProfilesTab', () => {
     await answerConfirm(user, /aufheben\?/, 'Abbrechen')
   })
 
-  // „Zugang bearbeiten“ wartet auf die Beschreibung der Quellart: solange sie lädt, ist das kein
-  // Fehler, aber gespeichert wird erst danach.
+  // „Zugang bearbeiten“ waits for the source type's description: while it loads, that is no
+  // error, but saving happens only afterwards.
   it('shows the description of the source type as loading rather than missing', async () => {
     server.use(http.get('/api/v1/source-types', () => new Promise<never>(() => {})))
     const user = userEvent.setup()

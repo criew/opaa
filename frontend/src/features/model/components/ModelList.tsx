@@ -21,7 +21,7 @@ interface ModelListProps {
   onEdit: (model: LlmModelResponse) => void
 }
 
-/** Punkt plus Wort - die Farbe trägt nie allein, dieselbe Regel wie in `StatusLine`. */
+/** Dot plus word - the colour never carries alone, the same rule as in `StatusLine`. */
 function StateCell({ active }: { active: boolean }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75 }}>
@@ -42,14 +42,14 @@ function StateCell({ active }: { active: boolean }) {
 }
 
 /**
- * Die Chat-Modelle als Tabelle — eine Zeile je Modell, die Handlungen im Zeilenmenü.
+ * The chat models as a table — one row per model, the actions in the row menu.
  *
- * Temperatur und maximale Antwortlänge haben bewusst keine Spalte: Sie sind Feineinstellung, nach
- * der niemand eine Liste überfliegt, und stehen im Dialog. Eine Übersicht, die alles zeigt, zeigt
- * nichts.
+ * Temperature and maximum response length deliberately have no column: they are fine tuning
+ * nobody skims a list for, and are in the dialog. An overview that shows everything shows
+ * nothing.
  */
-/** Dieselben Angaben untereinander - auf einem schmalen Fenster ist eine fünfspaltige Tabelle
- *  nicht lesbar, und die Seite dürfte dafür nicht waagerecht rollen (Muster der Kontenliste). */
+/** The same details stacked - on a narrow window a five-column table is
+ *  not readable, and the page must not scroll horizontally for it (pattern of the account list). */
 function ModelCard({
   model,
   onEdit,
@@ -111,9 +111,9 @@ export default function ModelList({ models, onEdit }: ModelListProps) {
   }
 
   return (
-    // Die Endpunkte sind beliebig lang; statt die Zeile zu sprengen, rollt die Tabelle waagerecht.
-    // `tabIndex` und `role` machen den rollbaren Bereich mit der Tastatur erreichbar - ohne sie
-    // käme man an die rechten Spalten nur mit der Maus (Muster von LibraryStatusTable).
+    // The endpoints can be any length; instead of bursting the row, the table scrolls horizontally.
+    // `tabIndex` and `role` make the scrollable area reachable by keyboard - without them
+    // the right columns could only be reached with the mouse (pattern of LibraryStatusTable).
     <TableContainer
       tabIndex={0}
       role="region"

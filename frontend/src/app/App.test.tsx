@@ -69,13 +69,13 @@ describe('App', () => {
     render(<App />)
     await waitFor(() => {
       expect(screen.getByText('Chats')).toBeInTheDocument()
-      // Ein Einstieg für alle Asset-Typen (ADR-0039, Entscheidung 1).
+      // One entry point for all asset types (ADR-0039, Entscheidung 1).
       expect(screen.getByText('Katalog')).toBeInTheDocument()
     })
   })
 
-  // Die Verwaltungsseite heißt jetzt „Einstellungen" und ist in Reiter gegliedert. Ein
-  // Lesezeichen auf die alte Adresse darf deshalb nicht ins Leere laufen.
+  // The administration page is now called „Einstellungen" and is split into tabs. A
+  // bookmark to the old address must therefore not lead nowhere.
   it('sends a bookmark of the former management route to the first settings tab', async () => {
     window.history.pushState({}, '', '/spaces/space-1/manage')
     render(<App />)
@@ -116,8 +116,8 @@ describe('App', () => {
     },
   )
 
-  // Zugänge, Fremdzugänge und Fremdzugangsfreigaben sind ein Bereich „Anbindungen“. Ein
-  // Lesezeichen auf eine frühere Seite landet am selben Inhalt.
+  // Connection profiles, external access and external access grants form one area „Anbindungen“. A
+  // bookmark to a former page lands on the same content.
   it.each([
     ['/admin/connection-profiles', '/admin/connections/access', '', ''],
     ['/admin/connections', '/admin/connections/access', '', ''],

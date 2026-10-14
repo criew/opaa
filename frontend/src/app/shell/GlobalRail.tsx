@@ -90,8 +90,8 @@ export default function GlobalRail() {
           },
         ]
       : []),
-    // Die Revision hat einen eigenen Einstieg: Die Stichtagsauskunft haengt an der AUDITOR-Rolle,
-    // nicht an der Systemverwaltung, und beide Rollen schliessen einander aus.
+    // The audit has its own entry point: the point-in-time report depends on the AUDITOR role,
+    // not on the system administration, and the two roles exclude each other.
     ...(user?.systemRole === 'AUDITOR'
       ? [
           {
@@ -217,8 +217,8 @@ export default function GlobalRail() {
                   </ListItemIcon>
                   Einstellungen
                 </MenuItem>
-                {/* Produktname, Version und der Demo-Hinweis stehen hier statt dauerhaft
-                    unter jeder Seite. */}
+                {/* Product name, version and the demo hint are shown here instead of permanently
+                   under every page. */}
                 <MenuItem
                   onClick={() => {
                     closeUserMenu()

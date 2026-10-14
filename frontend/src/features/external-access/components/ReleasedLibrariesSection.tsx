@@ -55,10 +55,10 @@ function setBy(entry: ExternalAccessLibraryResponse): string {
 }
 
 /**
- * Die derzeit für externe KI-Werkzeuge freigegebenen Bibliotheken. Bewusst nur die
- * gültigen: Die Liste macht den Bestand prüfbar, und eine Liste aller je freigegebenen Bibliotheken
- * begrübe genau das. Sie nennt keine Person, die ein Zugangstoken hält - nur die Stelle, die
- * freigegeben hat, und die Zahl der Tokens.
+ * The libraries currently released for external AI tools. Deliberately only the
+ * valid ones: the list makes the inventory checkable, and a list of all libraries ever released
+ * would bury exactly that. It names no person holding an access token - only the party that
+ * released, and the number of tokens.
  */
 export default function ReleasedLibrariesSection({
   libraries,

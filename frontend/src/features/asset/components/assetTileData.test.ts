@@ -21,7 +21,7 @@ function libraryEntry(sourceBlock: SourceBlock | null): CatalogEntryResponse {
 }
 
 describe('tileFromCatalogEntry', () => {
-  // Spezifikation „Konnektor-Freigabe und Sperre“: die Bibliotheksliste trägt den Sperrhinweis.
+  // Specification „Konnektor-Freigabe und Sperre“: the library list carries the lock hint.
   it('carries the lock of a library as a line of the tile, naming who is in charge', () => {
     expect(
       tileFromCatalogEntry(

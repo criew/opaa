@@ -34,11 +34,11 @@ interface GroupRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü einer Gruppe, gebaut wie das eines Kontos: Bearbeiten, Mitglieder und
- * „Rechte übertragen" öffnen ihren Dialog; „Deaktivieren" bzw. „Reaktivieren" (nur interne
- * Gruppen) und „Löschen" stehen nachrangig unter einer Trennlinie und legen ihre bezifferte
- * Konsequenz vorher im Bestätigungs-Overlay vor. Ein Eintrag, der für diese Gruppe nicht gilt, ist
- * abgeblendet und nennt den Grund.
+ * A group's row menu, built like an account's: Bearbeiten, Mitglieder and
+ * „Rechte übertragen" open their dialog; „Deaktivieren" or „Reaktivieren" (internal
+ * groups only) and „Löschen" are subordinate below a divider and present their quantified
+ * consequence beforehand in the confirmation overlay. An entry that does not apply to this group
+ * is dimmed and names the reason.
  */
 export default function GroupRowMenu({
   group,
@@ -166,8 +166,8 @@ export default function GroupRowMenu({
           </Typography>
         </MenuItem>
         {deleteDisabled && (
-          // Ein `<li role="presentation">` statt eines Absatzes: Ein `<p>` unter `role="menu"`
-          // verletzt `aria-required-children`. Der abgeblendete Eintrag verweist hierher.
+          // An `<li role="presentation">` instead of a paragraph: a `<p>` under `role="menu"`
+          // violates `aria-required-children`. The dimmed entry refers to it.
           <Box
             component="li"
             role="presentation"

@@ -9,8 +9,8 @@ function render() {
 }
 
 /**
- * Die Verwaltungssicht der Zugangstokens: die Bestandsliste, ihre bewussten Lücken - kein
- * Nutzungsdatum, kein Filter nach Person - und die beiden Sperren.
+ * The administration view of the access tokens: the inventory list, its deliberate gaps - no
+ * usage date, no filter by person - and the two revocations.
  */
 describe('ExternalAccessTokenAdminSection', () => {
   it('zeigt Besitzer, Name, Bibliotheken, Ablauf und Zustand', async () => {

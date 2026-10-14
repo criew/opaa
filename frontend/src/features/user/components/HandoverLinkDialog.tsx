@@ -14,10 +14,10 @@ import { SHOWN_ONCE_HINT } from './localUserLabels'
 import { copyOnce } from '@/shared/utils/copyOnce'
 
 /**
- * Die einmalige Anzeige eines Übergabe-Links (ADR-0033 Entscheidung 12) - wie beim
- * Einladungslink nur dann, wenn die Mail nicht hinausgegangen ist. Ein eigener Dialog neben
- * {@link ./SetupLinkDialog}, weil dieser Link etwas anderes tut und die Warnung dazu eine andere
- * ist: Wer ihn einlöst, wechselt die Identität des Kontos.
+ * The one-time display of a handover link (ADR-0033 Entscheidung 12) - as with the
+ * invitation link only when the mail did not go out. A dialog of its own next to
+ * {@link ./SetupLinkDialog}, because this link does something else and the warning about it is
+ * a different one: whoever redeems it changes the account's identity.
  */
 export default function HandoverLinkDialog({
   handover,
@@ -35,8 +35,8 @@ export default function HandoverLinkDialog({
       fullWidth
       maxWidth="sm"
       aria-labelledby="handover-link-title"
-      // Ohne `onClose` schließt weder ein Klick daneben noch Escape: Beides vernichtete den Wert,
-      // den es genau einmal gibt - dasselbe Muster wie beim Einladungslink.
+      // Without `onClose` neither a click outside nor Escape closes it: both would destroy the
+      // value that exists exactly once - the same pattern as for the invitation link.
     >
       <DialogTitle id="handover-link-title">
         Link zur Kontoübergabe für „{user.displayName}“

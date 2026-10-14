@@ -25,7 +25,7 @@ export const DEFAULT_CONSEQUENCE =
   'Der Standardanbieter ist der einzige, der weder deaktiviert noch gelöscht werden kann; die ' +
   'Erstadministrator-Regel und der Verzeichnisabgleich gelten nur für seine Konten.'
 
-/** Warum am Standardanbieter zwei Handlungen fehlen — als Text, nicht als Tooltip. */
+/** Why two actions are missing on the default provider — as text, not as a tooltip. */
 export const DEFAULT_PROVIDER_HINT =
   'Der Standardanbieter lässt sich weder deaktivieren noch löschen. Machen Sie zuerst einen ' +
   'anderen aktivierten Anbieter zum Standard – als letzter Anbieter ist auch er beides.'
@@ -40,17 +40,17 @@ interface ProviderRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü eines Identitätsanbieters.
+ * The row menu of an identity provider.
  *
- * Zwei Regeln des Bereichs stecken hier drin. Erstens: Der Standardanbieter lässt sich weder
- * deaktivieren noch löschen, solange ein anderer existiert — die Einträge sind dann **gesperrt und
- * nennen ihren Grund**, statt einfach zu fehlen. Eine fehlende Handlung wirft die Frage auf, ob
- * sie je da war; eine gesperrte beantwortet sie.
+ * Two rules of the area live here. First: the default provider can neither be
+ * deactivated nor deleted as long as another one exists — the entries are then **disabled and
+ * name their reason** instead of simply being missing. A missing action raises the question
+ * whether it was ever there; a disabled one answers it.
  *
- * Zweitens: Beim letzten aktivierten Anbieter **ist die Rückfrage das Acknowledgement**, das das
- * Backend verlangt (ADR-0025). Der Zusatzabsatz und das Flag gehören deshalb zusammen — das Flag
- * geht erst hinaus, nachdem der Absatz gelesen wurde. Dasselbe gilt für die Folgen für verbundene
- * Konten ({@link ProviderShutdownDialog}).
+ * Second: for the last enabled provider **the confirmation is the acknowledgement** the
+ * backend requires (ADR-0025). The additional paragraph and the flag therefore belong together —
+ * the flag goes out only after the paragraph was read. The same applies to the consequences for
+ * connected accounts ({@link ProviderShutdownDialog}).
  */
 export default function ProviderRowMenu({
   provider,
@@ -88,7 +88,7 @@ export default function ProviderRowMenu({
       setShutdown('disable')
       return
     }
-    // Das Einschalten fragt nicht - es nimmt niemandem die Anmeldung.
+    // Switching on does not ask - it takes nobody's login away.
     await run(
       () => setProviderEnabled(provider.id, true),
       `„${provider.displayName}“ wurde aktiviert.`,
@@ -191,9 +191,9 @@ export default function ProviderRowMenu({
           </Typography>
         </MenuItem>
         {gesperrt && (
-          // Ein `<li role="presentation">` statt eines Absatzes: Ein `<p>` unter `role="menu"`
-          // verletzt `aria-required-children`. Die gesperrten Einträge verweisen über
-          // `aria-describedby` hierher, damit die Begründung auch vorgelesen wird.
+          // An `<li role="presentation">` instead of a paragraph: a `<p>` under `role="menu"`
+          // violates `aria-required-children`. The disabled entries refer here via
+          // `aria-describedby`, so that the reason is read out as well.
           <Box
             component="li"
             role="presentation"

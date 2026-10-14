@@ -259,7 +259,7 @@ describe('AccessDerivation (#1822, ADR-0036 Entscheidung 9)', () => {
       ).toBeInTheDocument()
     })
 
-    // Verwalten ist nicht Lesen: the administration grants no content role, so it neither
+    // Managing is not reading: the administration grants no content role, so it neither
     // makes the reader an owner nor takes part in "die höhere Rolle".
     it('names the administration alone as managing without a read right', async () => {
       answerAsset('OWNER', [assetPath('SYSTEM_ADMINISTRATION', 'OWNER')])

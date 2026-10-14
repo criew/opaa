@@ -178,8 +178,8 @@ export default function LibrarySourceSection({
           Bibliothek ordnen sie einem anderen Zugang zu oder löschen sie.
         </Alert>
       )}
-      {/* ADR-0023 / ADR-0027: Umfang und seine Freigabefolge gelten für alle
-          Leseberechtigten - sie stehen hier statt im Kopf, mit Erklärung. */}
+      {/* ADR-0023 / ADR-0027: scope and its release sequence apply to everyone
+         with read access - they are here instead of in the header, with an explanation. */}
       {Scope && (
         <PageSection
           title="Umfang"
@@ -261,7 +261,7 @@ export default function LibrarySourceSection({
             )}
           </PageSection>
 
-          {/* Zeitplan - dieselbe Schwelle wie die Anbindung (canEditSource). */}
+          {/* Schedule - the same threshold as the source connection (canEditSource). */}
           <PageSection
             title="Zeitplan"
             description="Wann diese Bibliothek automatisch indiziert wird."
@@ -439,9 +439,9 @@ function runStatusLabel(status: IndexingRunResponse['status']): string {
 // every render as a change and re-renders in an infinite loop.
 const EMPTY_RUN_HISTORY: IndexingRunResponse[] = []
 
-// Einklappbares Protokoll der letzten Läufe einer Bibliothek - Kopfdaten immer sichtbar, die
-// Ereignisliste nur nach dem Aufklappen. Getrennt von der Fortschrittsanzeige im Seitenkopf, deren
-// runsByLibrary nur den aktuellen/letzten Lauf trägt.
+// Collapsible log of a library's recent runs - header data always visible, the
+// event list only after expanding. Separate from the progress display in the page header, whose
+// runsByLibrary carries only the current/last run.
 function LibraryIndexingHistorySection({
   libraryId,
   sourceType,

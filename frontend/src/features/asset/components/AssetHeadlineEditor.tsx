@@ -145,8 +145,8 @@ export default function AssetHeadlineEditor({
       onKeyDown={handleKeyDown}
       sx={{ minWidth: 0, maxWidth: 640, width: '100%' }}
     >
-      {/* Die Abzeichen bleiben auch im Bearbeitungsmodus stehen; nur die Überschrift wird
-          unsichtbar, damit die Seite nie ohne ihre h1 dasteht. */}
+      {/* The badges stay in place in edit mode as well; only the heading becomes
+         invisible, so that the page is never left without its h1. */}
       {headingRow}
       {error && (
         <Alert

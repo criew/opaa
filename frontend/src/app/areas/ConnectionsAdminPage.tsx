@@ -57,11 +57,11 @@ function TabContent({ tab }: { tab: ConnectionsAdminTab }) {
 }
 
 /**
- * Die Anbindungen: wie OPAA mit anderen Systemen verbunden ist, in beide Richtungen.
- * Zugänge und Quellarten bestimmen, woraus OPAA liest; externe KI-Werkzeuge lesen aus OPAA. Die
- * Reiter sind Routen; ein unbekannter Reiter führt auf den ersten, statt still einen anderen zu
- * zeigen. Hat die Installation die Fremdzugänge abgeschaltet, gibt es den Reiter der externen
- * KI-Werkzeuge nicht, und die Seite erwähnt sie nicht.
+ * The connections area („Anbindungen“): how OPAA is connected to other systems, in both
+ * directions. Connection profiles and source types determine what OPAA reads from; external AI
+ * tools read from OPAA. The tabs are routes; an unknown tab leads to the first one instead of
+ * silently showing another. If the installation has switched off external access, the tab of the
+ * external AI tools does not exist, and the page does not mention them.
  */
 export default function ConnectionsAdminPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')

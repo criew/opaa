@@ -180,8 +180,8 @@ export async function archiveSpace(spaceId: string): Promise<SpaceResponse> {
 }
 
 /**
- * Dasselbe für eine Gruppe, die Mitglied dieses Raums ist — hinter derselben Schwelle wie
- * die Mitgliederliste selbst.
+ * The same for a group that is a member of this space — behind the same threshold as
+ * the member list itself.
  */
 export async function getSpaceGroupMembers(
   spaceId: string,
@@ -201,8 +201,8 @@ export async function getSpaceGroupMembers(
 }
 
 /**
- * Die Herleitung an einem Space. Ohne `userId` geht es um die eigene Person; mit `userId`
- * um ein Mitglied, und das ist denen vorbehalten, die die Mitgliedschaft hier verwalten.
+ * The derivation on a space. Without `userId` it concerns the own person; with `userId`
+ * a member, and that is reserved for those who manage the membership here.
  */
 export async function getSpaceAccessDerivation(
   spaceId: string,

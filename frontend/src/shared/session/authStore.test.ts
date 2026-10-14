@@ -108,9 +108,9 @@ describe('authStore', () => {
   })
 
   /**
-   * Das Nachladen der öffentlichen Anmeldekonfiguration beim Abmelden darf nicht über
-   * `initialize()` laufen. Das meldet im Betriebsmodus `dev` sofort wieder an und machte damit die
-   * gerade beendete Sitzung rückgängig.
+   * Reloading the public login configuration on logout must not go through
+   * `initialize()`. That signs in again at once in the `dev` operating mode and would thus undo
+   * the session that just ended.
    */
   it('does not sign in again while reloading the sign-in configuration on logout', async () => {
     await useAuthStore.getState().initialize()

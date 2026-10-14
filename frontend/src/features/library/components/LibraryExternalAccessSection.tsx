@@ -18,9 +18,9 @@ interface LibraryExternalAccessSectionProps {
 }
 
 /**
- * Bewusst ohne Ende angegebene Uhrzeit: das Datum wird in der Zeitzone des Aufrufers auf das Ende
- * des gewählten Kalendertags gelegt, damit die Freigabe an dem Tag endet, den die Person gewählt
- * hat - dieselbe Regel wie bei der Befristung eines Grants.
+ * Deliberately without a time of day: the date is placed at the end of the chosen calendar day
+ * in the caller's time zone, so that the release ends on the day the person chose -
+ * the same rule as for the time limit of a grant.
  */
 function toExpiresAt(dateInput: string): string | null {
   if (!dateInput) return null
@@ -39,7 +39,7 @@ function formatDate(value: string | null | undefined): string {
   return new Date(value).toLocaleDateString('de-DE')
 }
 
-/** Nie gesetzt · gültig bis · zurückgenommen · erloschen · ausgesetzt. */
+/** Never set · valid until · withdrawn · expired · suspended. */
 function stateLine(access: LibraryExternalAccessResponse): string {
   switch (access.state) {
     case 'ACTIVE':
@@ -56,10 +56,10 @@ function stateLine(access: LibraryExternalAccessResponse): string {
 }
 
 /**
- * Ein Tag weniger als die Obergrenze: `toExpiresAt` legt den gewählten Tag auf sein lokales Ende,
- * sodass der gesendete Zeitpunkt bis zu 24 Stunden hinter dem gewählten Datum liegt. Ohne den Abzug
- * böte das Feld genau den Wert als zulässig an, den das Backend mit „gilt höchstens N Tage"
- * abweist.
+ * One day less than the upper bound: `toExpiresAt` places the chosen day at its local end,
+ * so the point in time sent lies up to 24 hours after the chosen date. Without the deduction
+ * the field would offer as admissible exactly the value the backend rejects with
+ * „gilt höchstens N Tage".
  */
 function latestAdmissibleDate(maxReleaseDays: number): string {
   const latest = new Date()
@@ -68,10 +68,10 @@ function latestAdmissibleDate(maxReleaseDays: number): string {
 }
 
 /**
- * Die Freigabe einer Bibliothek für Fremdzugänge im Zugriffsbereich der Bibliothek:
- * Schalter, Pflicht-Ablaufdatum und die Anzahl der Zugangstokens, die die Bibliothek enthalten -
- * eine Zahl, keine Namen. Sichtbar für alle, die an der Bibliothek Rechte vergeben dürfen; unterhalb
- * dieser Rolle liefert das Backend das Feld gar nicht erst.
+ * A library's release for external access in the library's access area:
+ * switch, mandatory expiry date and the number of access tokens that contain the library -
+ * a number, no names. Visible to everyone who may grant rights on the library; below
+ * this role the backend does not deliver the field at all.
  */
 export default function LibraryExternalAccessSection({
   libraryId,
@@ -126,9 +126,9 @@ export default function LibraryExternalAccessSection({
   const released = access.state === 'ACTIVE'
   return (
     <Stack spacing={1}>
-      {/* Der Trenner gehört dieser Sektion, nicht dem Dialog: unterhalb der Verwalter-Rolle
-          liefert das Backend die Freigabe gar nicht, und ein Trenner ohne folgenden Abschnitt
-          wäre eine Linie, die nichts trennt. */}
+      {/* The divider belongs to this section, not to the dialog: below the manager role
+         the backend does not deliver the release at all, and a divider without a following section
+         would be a line that separates nothing. */}
       <Divider sx={{ my: 1 }} />
       <SectionHead component="h3">Fremdzugänge</SectionHead>
       {error && (

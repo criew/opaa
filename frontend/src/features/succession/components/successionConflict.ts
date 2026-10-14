@@ -1,6 +1,6 @@
 import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 
-/** Der Fehlercode, mit dem das Backend die eingefrorene Reichweite abweist (ADR-0036/6). */
+/** The error code with which the backend rejects the frozen reach (ADR-0036/6). */
 export const SUCCESSION_OPEN = 'SUCCESSION_OPEN'
 
 const TAKEOVER_HINT =
@@ -8,9 +8,9 @@ const TAKEOVER_HINT =
   'Administration → Ohne Zuständigkeit oder aus der Gruppenverwaltung.'
 
 /**
- * Die Ablehnung wegen offener Nachfolge als erklärte Grenze statt als roher Fehler: Die Meldung des
- * Backends nennt bereits die Handlung und die zuständige Stelle; hier kommt der Weg hinaus dazu.
- * Jeder andere Fehler behält seinen Text.
+ * The rejection because of an open succession as an explained boundary instead of a raw error: the
+ * backend's message already names the action and the responsible party; here the way out is added.
+ * Every other error keeps its text.
  */
 export function successionAwareMessage(err: unknown, fallback: string): string {
   const message = err instanceof Error && err.message ? err.message : fallback

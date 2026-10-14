@@ -71,9 +71,9 @@ export async function getAssetSpaceAssociations(
 }
 
 /**
- * Die Mitglieder einer Gruppe, der man an dieser Bibliothek ein Recht eingeräumt hat. Was
- * die Antwort zurückhält und warum, steht am Schema `GroupMemberDisclosureResponse`; was die Regel
- * verweigert, antwortet „nicht gefunden".
+ * The members of a group that was granted a right on this library. What
+ * the response withholds and why is stated on the schema `GroupMemberDisclosureResponse`; what
+ * the rule refuses answers „nicht gefunden".
  */
 export async function getGrantedGroupMembers(
   assetType: AssetType,
@@ -94,8 +94,8 @@ export async function getGrantedGroupMembers(
 }
 
 /**
- * Die eigene Herleitung an einem Asset: jeder eigene Weg zur wirksamen Rolle, ohne
- * Vollmacht, ohne Protokoll, ohne ein Mitglied einer Gruppe zu nennen.
+ * The caller's own derivation on an asset: every own path to the effective role, without
+ * delegation, without log, without naming a member of a group.
  */
 export async function getAssetAccessDerivation(
   assetType: AssetType,
@@ -154,8 +154,8 @@ export async function revokeAssetGrant(
 }
 
 /**
- * Übergibt genau dieses eine Objekt an eine andere zuständige Stelle — anders als die
- * Übertragung aller Wirkungen einer Person oder Gruppe, die `permissionTransferApi` fährt.
+ * Hands exactly this one object over to another responsible party — unlike the
+ * transfer of all effects of a person or group that `permissionTransferApi` performs.
  */
 export async function transferAssetOwnership(
   assetType: AssetType,

@@ -6,7 +6,7 @@ import SuccessionStateNote from './SuccessionStateNote'
 import { successionAwareMessage } from './successionConflict'
 
 describe('SuccessionStateNote', () => {
-  // ADR-0036, Entscheidung 6 / Personalrat Z5: Zustand und Adressat - und sonst nichts.
+  // ADR-0036, Entscheidung 6 / staff council Z5: state and addressee - and nothing else.
   it('names state and addressee and says that nothing is deleted', () => {
     renderWithProviders(
       <SuccessionStateNote

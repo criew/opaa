@@ -14,7 +14,7 @@ import SectionHead from '@/shared/ui/SectionHead'
 import { radius } from '@/shared/theme/tokens'
 import MailTemplateEditor from './MailTemplateEditor'
 
-/** Wofür eine Vorlage verwendet wird — der Zweck in einem Satz, in der Sprache der Verwaltung. */
+/** What a template is used for — the purpose in one sentence, in the administration's language. */
 const templatePurposes: Record<string, string> = {
   LOCAL_ACCOUNT_INVITATION: 'Geht an eine eingeladene Person, damit sie ihr Passwort festlegt.',
   PASSWORD_RESET: 'Antwort auf „Passwort vergessen“ auf der Anmeldeseite.',
@@ -31,9 +31,9 @@ const templatePurposes: Record<string, string> = {
 }
 
 /**
- * Liste der zwölf Vorlagen und der Editor der ausgewählten. Die Registry ist
- * geschlossen: Eine Vorlage lässt sich überschreiben und zurücksetzen, nicht anlegen und nicht
- * löschen — deshalb gibt es hier keine „Neu“-Schaltfläche.
+ * List of the twelve templates and the editor of the selected one. The registry is
+ * closed: a template can be overridden and reset, not created and not
+ * deleted — that is why there is no „Neu“ button here.
  */
 export default function MailTemplatesSection() {
   const templates = useMailStore((s) => s.templates)
@@ -66,8 +66,8 @@ export default function MailTemplatesSection() {
       )}
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ alignItems: 'flex-start' }}>
-        {/* Eine senkrechte Linie trennt die Auswahl vom Inhalt, kein Rahmen ringsum -
-            dieselbe Trennung, die die Bereichsnavigation der Seite links schon nutzt. */}
+        {/* A vertical line separates the selection from the content, no frame all around -
+           the same separation the page's area navigation on the left already uses. */}
         <Box
           component="nav"
           aria-label="Vorlagen"
@@ -144,9 +144,9 @@ export default function MailTemplatesSection() {
             </Box>
           )}
           {!isLoadingTemplate && template && (
-            // Der Schlüssel trägt den Stand: Nach Speichern oder Zurücksetzen ist die Antwort
-            // des Servers die Quelle des Entwurfs, und ein frisch montierter Editor übernimmt sie,
-            // ohne den Entwurf aus einem Effekt heraus nachzuziehen.
+            // The key carries the state: after saving or resetting, the server's response
+            // is the source of the draft, and a freshly mounted editor adopts it
+            // without catching up the draft from an effect.
             <MailTemplateEditor
               key={`${template.key}-${template.source}-${template.updatedAt ?? 'default'}`}
               template={template}

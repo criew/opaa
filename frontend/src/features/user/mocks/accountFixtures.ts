@@ -5,9 +5,9 @@ import type {
 } from '@/shared/api/types'
 
 /**
- * Fixtures der Kontenliste: die Anbieterkonten, die neben den lokalen Konten aus
- * `localUserFixtures.ts` erscheinen - zwei Anbieter, einer davon führt die Rollen über einen
- * Claim, und ein Konto, dessen Anbieterzeile inzwischen gelöscht ist (ADR-0025: das Konto bleibt).
+ * Fixtures of the account list: the provider accounts that appear next to the local accounts from
+ * `localUserFixtures.ts` - two providers, one of which manages the roles via a
+ * claim, and an account whose provider row has since been deleted (ADR-0025: the account stays).
  */
 
 export const DIRECTORY_PROVIDER: AccountProviderResponse = {

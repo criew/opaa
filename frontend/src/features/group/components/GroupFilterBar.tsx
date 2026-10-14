@@ -28,10 +28,10 @@ function originPatch(value: string): Partial<GroupFilters> {
 }
 
 /**
- * Suche und Filter der Gruppenliste, gebaut wie die der Kontenliste: das Suchfeld
- * entprellt, daneben Herkunft (alle, intern, alle Anbieter oder ein einzelner Anbieter) und
- * Zustand. Die primäre Handlung steht im Kopf des Bereichs darüber, damit diese Zeile nur Filter
- * trägt.
+ * Search and filters of the group list, built like those of the account list: the search field
+ * debounced, next to it origin (all, internal, all providers or a single provider) and
+ * state. The primary action is in the head of the area above, so that this row only carries
+ * filters.
  */
 export default function GroupFilterBar() {
   const filters = useGroupAdminListStore((s) => s.filters)

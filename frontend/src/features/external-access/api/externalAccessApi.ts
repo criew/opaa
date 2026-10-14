@@ -39,9 +39,9 @@ export async function updateExternalAccessSettings(
 }
 
 /**
- * Die zwei Kanalwerte, die eine Person für ihre eigenen Tokens braucht: ob der Kanal offen ist und
- * wie lange ein Token höchstens gelten darf. Die übrigen Kanaleinstellungen bleiben der
- * Systemverwaltung vorbehalten.
+ * The two channel values a person needs for their own tokens: whether the channel is open and
+ * how long a token may be valid at most. The remaining channel settings stay reserved for the
+ * system administration.
  */
 export async function getExternalAccessChannelInfo(): Promise<ExternalAccessChannelInfoResponse> {
   try {
@@ -55,8 +55,8 @@ export async function getExternalAccessChannelInfo(): Promise<ExternalAccessChan
 }
 
 /**
- * Genau die Bibliotheken, die eine Ausstellung annimmt - lesbar und freigegeben. Bei geschlossenem
- * Kanal leer, weil dann auch keine Ausstellung angenommen würde.
+ * Exactly the libraries an issuance accepts - readable and released. Empty when the channel is
+ * closed, because then no issuance would be accepted either.
  */
 export async function listEligibleExternalAccessLibraries(): Promise<
   EligibleExternalAccessLibraryResponse[]
@@ -80,7 +80,7 @@ export async function listOwnExternalAccessTokens(): Promise<OwnExternalAccessTo
   }
 }
 
-/** Die Antwort trägt den Klartextwert — hier und in keiner anderen, je. */
+/** The response carries the plain-text value — here and in no other, ever. */
 export async function createExternalAccessToken(
   request: CreateExternalAccessTokenRequest,
 ): Promise<CreatedExternalAccessTokenResponse> {
@@ -101,8 +101,8 @@ export async function revokeOwnExternalAccessToken(tokenId: string): Promise<voi
 }
 
 /**
- * Die Bestandsliste der Systemverwaltung. Gefiltert wird ausschließlich über Zustand und Ablauf —
- * einen Filter nach Person gibt es bewusst nicht.
+ * The system administration's inventory list. Filtering is by state and expiry only —
+ * a filter by person deliberately does not exist.
  */
 export async function listAllExternalAccessTokens(filter: {
   status?: ExternalAccessTokenStatus
@@ -132,7 +132,7 @@ export async function blockExternalAccessToken(tokenId: string): Promise<void> {
   }
 }
 
-/** Sperrt jedes noch wirksame Token einer Person; gibt zurück, wie viele das waren. */
+/** Revokes every still effective token of a person; returns how many that were. */
 export async function blockExternalAccessTokensOfOwner(ownerUserId: string): Promise<number> {
   try {
     const { data } = await apiClient.post<{ blocked: number }>(
@@ -146,9 +146,9 @@ export async function blockExternalAccessTokensOfOwner(ownerUserId: string): Pro
 }
 
 /**
- * Setzt oder nimmt die Freigabe der Bibliothek für Fremdzugänge zurück. `expiresAt` ist
- * beim Setzen Pflicht und darf beim Zurücknehmen nicht mitgegeben werden - das Backend weist beides
- * ab, statt es stillschweigend zu ergänzen.
+ * Sets or withdraws the library's release for external access. `expiresAt` is
+ * mandatory when setting and must not be passed when withdrawing - the backend rejects both
+ * instead of silently completing them.
  */
 export async function updateLibraryExternalAccess(
   libraryId: string,
@@ -166,7 +166,7 @@ export async function updateLibraryExternalAccess(
   }
 }
 
-/** Die aktuell für Fremdzugänge freigegebenen Bibliotheken (nur Systemverwaltung). */
+/** The libraries currently released for external access (system administration only). */
 export async function getExternalAccessLibraries(): Promise<ExternalAccessLibraryResponse[]> {
   try {
     const { data } = await apiClient.get<ExternalAccessLibraryResponse[]>(

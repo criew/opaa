@@ -50,10 +50,10 @@ function toInstant(localValue: string): string {
 }
 
 /**
- * Die Stichtagsauskunft aus der Rechtehistorie: wer durfte genau dieses Objekt in genau
- * diesem Zeitraum lesen. Es gibt hier bewusst keine Suche über mehrere Objekte und keinen Einstieg
- * über eine Person — beides setzte ohne Vollmacht ein Rechteprofil zusammen. Das Zeitfenster ist
- * Pflicht, der Anlass ebenfalls, und jeder Abruf steht anschließend im Protokoll.
+ * The point-in-time report from the rights history: who was allowed to read exactly this object
+ * in exactly this period. There is deliberately no search across several objects and no entry
+ * via a person — both would assemble a rights profile without authorization. The time window is
+ * mandatory, so is the reason, and every request is logged afterwards.
  */
 export default function RightsHistoryPage() {
   const isAuditor = useAuthStore((s) => s.user?.systemRole === 'AUDITOR')

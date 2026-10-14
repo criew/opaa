@@ -96,14 +96,14 @@ const accessBasisLabels: Record<AccessBasis, string> = {
   SYSTEM_ADMINISTRATION: 'Systemverwaltung',
 }
 
-/** Der Weg, über den jemand ein Objekt erreicht (ADR-0036, Entscheidung 9). */
+/** The path through which someone reaches an object (ADR-0036, Entscheidung 9). */
 export function accessBasisLabel(basis: AccessBasis | string | undefined): string {
   return accessBasisLabels[basis as AccessBasis] ?? String(basis ?? '')
 }
 
 /**
- * Die heutige Größe einer Gruppe an einer Freigabe oder Space-Mitgliedschaft, ohne
- * Mindestgruppengröße. Für eine geschützte Gruppe entfällt jede Angabe (ADR-0036, Entscheidung 9).
+ * A group's current size on a grant or space membership, without a minimum
+ * group size. For a protected group no figure is given (ADR-0036, Entscheidung 9).
  */
 export function groupMemberCountLabel(row: {
   activeMemberCount?: number | null

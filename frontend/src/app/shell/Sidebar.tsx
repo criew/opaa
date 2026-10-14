@@ -77,20 +77,20 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
   const activeChatSpaceId = routeSpaceId ?? chatSpaceId ?? defaultSpace?.id ?? null
   const activeSpace = spaces.find((space) => space.id === activeChatSpaceId)
 
-  // Gemerkt wird nur der Space, den die Route selbst nennt - nicht der Rückfall
-  // oben. Sonst stünde der persönliche Space als „zuletzt genutzt" in der Liste, sobald jemand
-  // eine Seite ohne Space-Bezug geöffnet hat.
+  // Only the space the route itself names is remembered - not the fallback
+  // above. Otherwise the personal space would appear as „zuletzt genutzt" in the list as soon as
+  // someone had opened a page without a space context.
   useEffect(() => {
     if (routeSpaceId) rememberSpaceUse(routeSpaceId)
   }, [routeSpaceId])
 
   const recentSpaceIds = useRecentSpaceIds()
 
-  // Das Menü bleibt kurz - die zuletzt genutzten Spaces, damit „Alle Spaces anzeigen" und
-  // „Neuen Space anlegen" darunter sichtbar bleiben, auch wenn jemand in dreißig Spaces Mitglied
-  // ist. Der ganze Bestand steht in der Übersicht. Die Reihenfolge kommt als Zustand herein, nicht
-  // als Lesezugriff: Sonst rechnete dieser Wert vor dem Effekt oben, und ein über „Alle Spaces"
-  // geöffneter Space stünde erst nach einem Neuladen im Menü.
+  // The menu stays short - the most recently used spaces, so that „Alle Spaces anzeigen" and
+  // „Neuen Space anlegen" below stay visible even when someone is a member of thirty spaces.
+  // The whole set is in the overview. The order comes in as state, not
+  // as a read: otherwise this value would be computed before the effect above, and a space opened
+  // via „Alle Spaces" would only appear in the menu after a reload.
   const menuSpaces = useMemo(
     () => spacesByRecentUse(spaces, recentSpaceIds),
     [spaces, recentSpaceIds],
@@ -297,9 +297,9 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
                   component={RouterLink}
                   to={settingsRoute}
                   selected={inSettings}
-                  // Wie auf der globalen Leiste: „page" nur für das eigene Ziel, „true" für
-                  // jeden anderen Reiter der Einstellungen - sonst wäre der Eintrag auf
-                  // .../settings/members hervorgehoben, ohne es anzusagen.
+                  // As on the global rail: „page" only for the own target, „true" for
+                  // every other tab of the settings - otherwise the entry would be highlighted on
+                  // .../settings/members without announcing it.
                   aria-current={
                     inSettings ? (location.pathname === settingsRoute ? 'page' : 'true') : undefined
                   }

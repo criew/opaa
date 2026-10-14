@@ -15,7 +15,7 @@ import { server } from '@/test/server'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '@/test/test-utils'
 import ExternalToolsTab from './ExternalToolsTab'
 
-/** Der Zeitpunkt der Fixture in der Zeitzone des Laufs - sonst hinge der Test an einer Zone. */
+/** The fixture's point in time in the run's time zone - otherwise the test depends on a zone. */
 const FIXTURE_DATE = new Date('2026-09-18T12:00:00Z').toLocaleDateString('de-DE', {
   day: '2-digit',
   month: '2-digit',
@@ -79,8 +79,8 @@ async function openSettings(user: ReturnType<typeof userEvent.setup>) {
 }
 
 /**
- * Der Reiter „Externe KI-Werkzeuge“: Zustand mit Notaus, die drei Schlüssel, die beiden
- * Listen und das Einstellungs-Panel mit den Kanaleinstellungen.
+ * The „Externe KI-Werkzeuge“ tab: state with emergency stop, the three keys, the two
+ * lists and the settings panel with the channel settings.
  */
 describe('ExternalToolsTab', () => {
   const originalMatchMedia = window.matchMedia

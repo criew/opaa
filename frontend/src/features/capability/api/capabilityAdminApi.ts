@@ -7,8 +7,8 @@ import type {
 import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
- * Die Anlegerechte der Installation (ADR-0036, Entscheidung 5). Die Übersicht liefert je Recht
- * eine Klartextzeile und die berechtigten Subjekte — auch für Rechte, die niemand hält.
+ * The installation's creation rights (ADR-0036, Entscheidung 5). The overview returns per right
+ * a plain-text line and the entitled subjects — also for rights nobody holds.
  */
 export async function getCapabilityOverview(): Promise<CapabilityOverviewResponse[]> {
   try {

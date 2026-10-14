@@ -638,8 +638,8 @@ export default function ChatInput({
           })}
         {scope === 'none' && (
           <>
-            {/* Die Aussage ist an sich schon eine Warnung; sie braucht keine Signalfarbe im Text
-                (Gestaltungsleitlinien 2.3). */}
+            {/* The statement is a warning in itself; it needs no signal colour in the text
+               (design guidelines 2.3). */}
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Antwortet ohne Dokumente.
             </Typography>

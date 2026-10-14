@@ -270,10 +270,10 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
 }
 
 /**
- * „Meine Gruppen" (ADR-0036 Entscheidung 4): die internen Gruppen, für die das eigene Konto
- * verantwortlich ist — mit dem sichtbaren Ausgang „Verantwortung abgeben". Anlegen setzt das
- * Anlegerecht „Interne Gruppen anlegen" voraus; fehlt es, erklärt die Seite das, statt die
- * Schaltfläche zu verstecken.
+ * „Meine Gruppen" (ADR-0036 Entscheidung 4): the internal groups the own account is
+ * responsible for — with the visible way out „Verantwortung abgeben". Creating requires the
+ * creation right „Interne Gruppen anlegen"; if it is missing, the page explains that instead of
+ * hiding the button.
  */
 export default function MyGroupsSection() {
   const groups = useGroupStore((s) => s.groups)
@@ -303,8 +303,8 @@ export default function MyGroupsSection() {
           Verwendung frei und geben die Verantwortung ab, wenn Sie die Aufgabe wechseln.
         </Typography>
         <Stack direction="row" spacing={1}>
-          {/* Verantwortung abgeben ist ein eigener Schritt (ADR-0036, Entscheidung 4/10): kein
-              Automatismus, sondern ein sichtbarer Ausgang beim Aufgabenwechsel. */}
+          {/* Handing over responsibility is a step of its own (ADR-0036, Entscheidung 4/10): no
+             automatism, but a visible way out on a change of duties. */}
           <Button variant="outlined" disabled={!currentUser} onClick={() => setHandoverOpen(true)}>
             Verantwortung und Eigentum abgeben
           </Button>

@@ -28,10 +28,10 @@ interface GroupMembersDialogProps {
 }
 
 /**
- * Die Mitglieder einer Gruppe als Tabelle. Ihr Abruf durch die Systemverwaltung ist ein
- * Audit-Ereignis (ADR-0036, Entscheidungen 4 und 9); das Öffnen des Dialogs ist der ausdrückliche
- * Wunsch, die Liste lädt deshalb sofort, und der Dialog nennt die Protokollierung. Aufnehmen und
- * entfernen lässt sich nur bei einer internen Gruppe - die übrigen pflegt ihre Quelle.
+ * The members of a group as a table. Their retrieval by the system administration is an
+ * audit event (ADR-0036, Entscheidungen 4 and 9); opening the dialog is the explicit
+ * request, so the list loads at once, and the dialog names the logging. Adding and
+ * removing is possible only for an internal group - its source maintains the others.
  */
 export default function GroupMembersDialog({ group, onClose }: GroupMembersDialogProps) {
   if (!group) return null

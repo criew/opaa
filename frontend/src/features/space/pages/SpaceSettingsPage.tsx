@@ -19,7 +19,7 @@ import {
   type SpaceSettingsTab,
 } from '@/shared/routes'
 
-/** Die Reiter in der Reihenfolge der Leiste; jeder Wert in {@link SPACE_SETTINGS_TABS} hat einen. */
+/** The tabs in the order of the bar; every value in {@link SPACE_SETTINGS_TABS} has one. */
 const tabs: Array<{ value: SpaceSettingsTab; label: string }> = [
   { value: 'general', label: 'Stammdaten' },
   { value: 'members', label: 'Mitglieder' },
@@ -42,9 +42,9 @@ function canManageAssets(role: SpaceRole | undefined, isOwner: boolean): boolean
 }
 
 /**
- * Die eine Einstellungsseite eines Space, erreichbar über das Zahnrad am Fuß der
- * Seitenleiste. Jeder Reiter ist eine eigene Route, damit ein Verweis im richtigen Bereich landet
- * und ein Neuladen ihn behält; geladen wird nur, was der sichtbare Reiter braucht.
+ * The one settings page of a space, reachable via the gear at the foot of the
+ * sidebar. Every tab is a route of its own, so that a link lands in the right area
+ * and a reload keeps it; only what the visible tab needs is loaded.
  */
 export default function SpaceSettingsPage() {
   const { spaceId, tab } = useParams()
@@ -71,8 +71,8 @@ export default function SpaceSettingsPage() {
     )
   }
 
-  // Ein Tippfehler im Pfad wird nicht stillschweigend als Stammdaten gelesen: Die Adresszeile
-  // sagt am Ende, was tatsächlich zu sehen ist.
+  // A typo in the path is not silently read as master data: the address bar
+  // says in the end what is actually shown.
   if (!isSpaceSettingsTab(tab)) {
     const successor = tab ? FORMER_SPACE_SETTINGS_TABS[tab] : undefined
     return <Navigate to={spaceSettingsRoute(spaceId, successor)} replace />
@@ -142,9 +142,9 @@ export default function SpaceSettingsPage() {
                     canManage={canManageAssets(space.userRole, isOwner)}
                   />
                 )
-              // Jeder Reiter hat seinen eigenen Zweig: Ein Wert in SPACE_SETTINGS_TABS ohne Zweig
-              // landet hier und wird sichtbar auf die Stammdaten zurückgeführt, statt
-              // stillschweigend den Inhalt eines anderen Reiters zu zeigen.
+              // Every tab has its own branch: a value in SPACE_SETTINGS_TABS without a branch
+              // lands here and is visibly led back to the master data instead of
+              // silently showing another tab's content.
               default:
                 return <Navigate to={spaceSettingsRoute(spaceId)} replace />
             }

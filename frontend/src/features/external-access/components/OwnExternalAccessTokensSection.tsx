@@ -39,8 +39,8 @@ import {
 } from './tokenLabels'
 
 /**
- * Eine ausgesetzte Auswahl wird gezeigt, nicht weggelassen: Die Person soll sehen, was ein neues
- * Token wieder enthalten müsste - und dass eine erneute Freigabe dieses Token nicht heilt.
+ * A suspended selection is shown, not omitted: the person should see what a new
+ * token would have to contain again - and that a renewed release does not heal this token.
  */
 function LibraryList({ libraries }: { libraries: ExternalAccessTokenLibraryResponse[] }) {
   if (libraries.length === 0) return <>—</>
@@ -75,12 +75,12 @@ function LibraryList({ libraries }: { libraries: ExternalAccessTokenLibraryRespo
 }
 
 /**
- * Die eigenen Zugangstokens in den persönlichen Einstellungen: anlegen, einmal ansehen,
- * widerrufen.
+ * The own access tokens in the personal settings: create, view once,
+ * revoke.
  *
- * „Zuletzt benutzt" steht nur hier und nur als Datum; eine Zählung gibt es nirgends. Bei
- * geschlossenem Kanal bleibt die Verwaltung bedienbar - ein Notaus, der die Einrichtung
- * unerreichbar macht, wird im Zweifel nicht benutzt.
+ * „Zuletzt benutzt" appears only here and only as a date; there is no count anywhere. With a
+ * closed channel the management stays usable - an emergency stop that makes the setup
+ * unreachable is, when in doubt, not used.
  */
 export default function OwnExternalAccessTokensSection() {
   const [tokens, setTokens] = useState<OwnExternalAccessTokenResponse[] | null>(null)
@@ -90,8 +90,8 @@ export default function OwnExternalAccessTokensSection() {
   const [isCreating, setIsCreating] = useState(false)
   const [created, setCreated] = useState<CreatedExternalAccessTokenResponse | null>(null)
 
-  // Die Zustandssetzung liegt in den Fortsetzungen der Zusage, nicht im Rumpf des Effekts: ein
-  // synchrones setState dort erzeugt eine Kaskade von Renderdurchläufen (react-hooks).
+  // The state updates live in the promise's continuations, not in the effect body: a
+  // synchronous setState there causes a cascade of renders (react-hooks).
   const load = useCallback(
     () =>
       Promise.all([getExternalAccessChannelInfo(), listOwnExternalAccessTokens()])
@@ -140,8 +140,8 @@ export default function OwnExternalAccessTokensSection() {
         title="Zugangstokens"
         description="Mit einem Zugangstoken durchsucht ein fremdes KI-Werkzeug - etwa Claude Code oder Cursor - die Bibliotheken, die Sie ihm erteilen. Es kann nie mehr als Sie selbst, und nur lesen und suchen."
         action={
-          /* Bei geschlossenem Kanal weist die Ausstellung jede Anfrage ab und die Auswahlmenge ist
-             leer - die Schaltfläche führte in eine Absage, statt zu einem Token. */
+          /* With a closed channel the issuance rejects every request and the selectable set is
+            empty - the button would lead to a refusal instead of a token. */
           <Tooltip title={channelEnabled === false ? CHANNEL_OFF_HINT : ''}>
             <Box component="span">
               <Button
@@ -234,8 +234,8 @@ export default function OwnExternalAccessTokensSection() {
         )}
       </PageSection>
 
-      {/* Je Vorgang neu montiert: Das Zurücksetzen des Entwurfs ist damit das Auswerfen der
-          Komponente und kein Effekt, der denselben Zustand einen Durchlauf später herstellt. */}
+      {/* Mounted anew per operation: resetting the draft is thus unmounting the
+         component and not an effect that produces the same state one render later. */}
       {isCreating && maxLifetimeDays !== null && channelEnabled === true && (
         <CreateExternalAccessTokenDialog
           tokenMaxLifetimeDays={maxLifetimeDays}

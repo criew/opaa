@@ -20,10 +20,10 @@ interface ProviderAccountRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü eines Anbieterkontos. Es bietet genau das, was OPAA an einem solchen
- * Konto tut - die Rolle (ADR-0033, Entscheidung 11: ein Rollenendpunkt für beide Kontotypen) -
- * und sagt, was beim Anbieter geschieht: Sperren, Befristen und Löschen kennt das Backend für
- * Anbieterkonten nicht, und ein Menü darf keine Handlung vortäuschen, die es nicht gibt.
+ * The row menu of a provider account. It offers exactly what OPAA does on such an
+ * account - the role (ADR-0033, Entscheidung 11: one role endpoint for both account types) -
+ * and says what happens at the provider: the backend does not know locking, time-limiting and
+ * deleting for provider accounts, and a menu must not pretend an action that does not exist.
  */
 export default function ProviderAccountRowMenu({
   account,

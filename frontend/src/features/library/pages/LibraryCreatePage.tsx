@@ -134,10 +134,10 @@ function restoredSourceValues(intent: DraftIntent | null): Record<SourceTypeKey,
 }
 
 /**
- * Der Anlage-Assistent für Wissensbibliotheken. Jeder Schritt
- * entspricht einem Reiter der Detailseite und verwendet dessen Formulare - Quellformulare,
- * Verbindungstest, Zeitplan und die Freigabebausteine sind gemeinsame Komponenten, keine eigenen
- * Felder dieser Seite.
+ * The creation wizard for knowledge libraries. Every step
+ * corresponds to a tab of the detail page and uses its forms - source forms,
+ * connection test, schedule and the release building blocks are shared components, not fields
+ * of this page.
  */
 export default function LibraryCreatePage() {
   const navigate = useNavigate()
@@ -196,8 +196,8 @@ export default function LibraryCreatePage() {
   const [connectingSource, setConnectingSource] = useState(false)
   const [responsibleIsGroup, setResponsibleIsGroup] = useState(draft?.responsibleIsGroup ?? false)
 
-  // Die Kacheln sind die Quellarten, für die das Backend einen Konnektor hat (ADR-0038), in der
-  // Reihenfolge der Eingabemasken; eine Art ohne Maske steht am Ende und ist nicht wählbar.
+  // The tiles are the source types the backend has a connector for (ADR-0038), in the
+  // order of the input forms; a type without a form is at the end and cannot be selected.
   const { sourceTypes, error: sourceTypesError, loaded: sourceTypesLoaded } = useSourceTypes()
   const offeredTypes: SourceTypeKey[] = [
     ...registeredSourceTypes.filter((type) => sourceTypes.some((d) => d.type === type)),
@@ -212,7 +212,7 @@ export default function LibraryCreatePage() {
   const capabilityFor = (type: SourceTypeKey): Capability =>
     acceptsUploads(type) ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
 
-  /** Die Begründung, warum diese Art hier nicht zu wählen ist - oder `null`, wenn sie es ist. */
+  /** The reason why this type cannot be chosen here - or `null` when it can. */
   function hasForm(type: SourceTypeKey): boolean {
     const registration = sourceRegistration(type)
     return (
@@ -257,11 +257,11 @@ export default function LibraryCreatePage() {
     sourceTypesLoaded && sourceTypesError == null && selectableTypes.length === 0
 
   /**
-   * Die tatsächlich gewählte Art. Die Anlegerechte kommen erst nach dem ersten Rendern an; was
-   * dann gesperrt ist, darf nicht ausgewählt stehen bleiben, sonst führte „Weiter" in einen Pfad,
-   * der nie anlegen kann. Die Wahl rückt auf die erste erlaubte Kachel - abgeleitet, nicht in
-   * einem Effekt nachgezogen. Ist gar keine erlaubt, bleibt sie stehen, und der Hinweis über der
-   * Schrittleiste erklärt, warum am Ende nichts angelegt wird.
+   * The type actually chosen. The creation rights arrive only after the first render; whatever
+   * is then disabled must not stay selected, otherwise „Weiter" would lead into a path that can
+   * never create. The choice moves to the first permitted tile - derived, not caught up in
+   * an effect. If none is permitted at all, it stays, and the hint above the
+   * stepper explains why nothing will be created in the end.
    */
   const sourceType =
     (missingFor(chosenType) !== null || !selectableTypes.includes(chosenType)) &&
@@ -275,8 +275,8 @@ export default function LibraryCreatePage() {
     : (sourceRegistration(sourceType)?.configuration ?? null)
   const valuesKey = configuration?.valuesKey ?? sourceType
 
-  // Der Zugang ist eine Wahl des Assistenten, nicht der Quellformulare: Sie steht über dem
-  // Formular und gibt ihm Adresse, Anmeldeart und Vorgaben mit.
+  // The connection profile is a choice of the wizard, not of the source forms: it stands above the
+  // form and hands it address, authentication type and defaults.
   const descriptor = sourceTypes.find((d) => d.type === sourceType)
   const admitsProfiles =
     configuration !== null && descriptor !== undefined && descriptor.profileSupport !== 'FORBIDDEN'
@@ -364,8 +364,8 @@ export default function LibraryCreatePage() {
       ? capabilityMissingMessage(requiredCapability)
       : releaseMissingFor(sourceType)
 
-  // Der Fokus folgt dem Schritt (WCAG 2.4.3): Nach „Weiter" steht er auf der Überschrift des neuen
-  // Schritts, nicht auf dem Knopf, der gerade verschwunden ist.
+  // Focus follows the step (WCAG 2.4.3): after „Weiter" it is on the heading of the new
+  // step, not on the button that has just disappeared.
   const stepHeadingRef = useRef<HTMLHeadingElement>(null)
   const firstRender = useRef(true)
   useEffect(() => {
@@ -498,7 +498,7 @@ export default function LibraryCreatePage() {
         setError(scheduleError)
         return
       }
-      // Der Name kommt, wo die Quelle ihn hergibt, aus ihr - solange niemand selbst getippt hat.
+      // Where the source provides it, the name comes from it - as long as nobody has typed one.
       if (!nameTouched && name.trim() === '') {
         setName(configuration.nameFromSource(values))
       }
@@ -532,8 +532,8 @@ export default function LibraryCreatePage() {
       const source = configuration
         ? payloadUnder(configuration.toPayload(values), connectionFields(formContext))
         : {}
-      // Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
-      // keinen (das Backend wiese alles außer DISABLED mit 400 ab).
+      // Creation and schedule are set atomically; an upload library gets none at all
+      // (the backend would reject anything but DISABLED with 400).
       const scheduled = !uploadLibrary
         ? scheduleUpdateFrom(schedule, confluenceRhythm, 'create')
         : undefined
@@ -612,7 +612,7 @@ export default function LibraryCreatePage() {
           </Alert>
         )}
 
-        {/* Ein Fehler eines Schritts wird angesagt, ohne den Fokus zu verschieben (WCAG 4.1.3). */}
+        {/* A step's error is announced without moving the focus (WCAG 4.1.3). */}
         <Box role="alert" aria-live="polite">
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -702,7 +702,7 @@ export default function LibraryCreatePage() {
               </Box>
             )}
 
-            {/* Zeitplan und Sofortstart gelten für jeden Konnektortyp. */}
+            {/* Schedule and immediate start apply to every connector type. */}
             <Box>
               <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
                 Zeitplan

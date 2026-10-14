@@ -16,17 +16,17 @@ interface PageSectionProps {
 }
 
 /**
- * Ein Abschnitt einer Verwaltungsseite: Überschrift auf einer Haarlinie, darunter der
- * Inhalt — **kein Kasten**.
+ * A section of an administration page: heading on a hairline, below it the
+ * content — **no box**.
  *
- * Das ist die Sprache, die die Kontenliste bereits spricht und die hier für den ganzen Bereich
- * gilt: Struktur entsteht aus Typografie, Weißraum und waagerechten Linien. Ein Rahmen ringsum
- * trägt keine Information; drei davon ineinander (Abschnitt, Eintrag, Eingabefeld) machen eine
- * Seite nur langsamer lesbar. Rahmen bleiben dort, wo sie Bedienbarkeit tragen: an Eingabefeldern,
- * Schaltflächen, Dialogen und am gestrichelten Leerzustand.
+ * This is the language the account list already speaks and that applies to the whole area
+ * here: structure comes from typography, white space and horizontal lines. A frame all around
+ * carries no information; three of them nested (section, entry, input field) only make a
+ * page slower to read. Frames remain where they carry usability: on input fields,
+ * buttons, dialogs and on the dashed empty state.
  *
- * Der Abschnitt ist auch für Screenreader einer: `section` mit `aria-labelledby` auf die
- * Überschrift — die Gliederung geht also nicht verloren, nur ihre Umrandung.
+ * The section is one for screen readers as well: `section` with `aria-labelledby` on the
+ * heading — so the outline is not lost, only its border.
  */
 export default function PageSection({
   title,
@@ -35,8 +35,8 @@ export default function PageSection({
   headingLevel = 'h2',
   children,
 }: PageSectionProps) {
-  // `useId` statt eines Modulzählers: stabil über Rendervorgänge und eindeutig auch dann, wenn
-  // zwei Abschnitte denselben Titel tragen.
+  // `useId` instead of a module counter: stable across renders and unique even when
+  // two sections carry the same title.
   const headId = useId()
   return (
     <Box component="section" aria-labelledby={headId} sx={{ mb: 4 }}>

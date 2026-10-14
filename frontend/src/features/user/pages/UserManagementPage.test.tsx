@@ -83,9 +83,9 @@ async function openRowMenu(
 }
 
 /**
- * Die Benutzerverwaltung (ADR-0033 Entscheidungen 4 und 11): zwei Bereiche, die
- * Liste aller Konten mit Herkunft und typabhängigen Handlungen, der stehende Hinweis zur Auflage,
- * die beiden einmaligen Anzeigen und die Schalter mit Konsequenz-Dialog.
+ * The user management (ADR-0033 Entscheidungen 4 and 11): two areas, the
+ * list of all accounts with origin and type-dependent actions, the standing hint about the
+ * requirement, the two one-time displays and the switches with a consequence dialog.
  */
 describe('UserManagementPage', () => {
   const originalMatchMedia = window.matchMedia
@@ -139,7 +139,7 @@ describe('UserManagementPage', () => {
     const table = await screen.findByRole('table', { name: 'Konten' })
     // local rows: state and marker; neither activity class nor creation reason
     expect(within(table).getByText('Eingeladen')).toBeInTheDocument()
-    // Nur „Gesperrt“ in der Zelle, der Grund hinter dem Info-Symbol
+    // Only „Gesperrt“ in the cell, the reason behind the info icon
     expect(within(table).getAllByText('Gesperrt').length).toBeGreaterThan(0)
     expect(within(table).queryByText(/Gesperrt (von|nach|wegen)|\(Verwalter\)/)).toBeNull()
     expect(
@@ -148,7 +148,7 @@ describe('UserManagementPage', () => {
     expect(within(table).getByText('Abgelaufen')).toBeInTheDocument()
     expect(within(table).getByText('Passwortwechsel ausstehend')).toBeInTheDocument()
     expect(within(table).queryByText(/Tage nicht|^nie$|^aktiv$/)).not.toBeInTheDocument()
-    // lokale Konten ohne Datum heißen „unbefristet“, Anbieterkonten tragen keinen Ablauf
+    // local accounts without a date are called „unbefristet“, provider accounts carry no expiry
     expect(within(table).getAllByText('unbefristet').length).toBeGreaterThan(0)
     expect(within(rowOf('Maria Weber')).queryByText('unbefristet')).not.toBeInTheDocument()
     expect(within(table).getByRole('columnheader', { name: /Ablauf/ })).not.toHaveTextContent(
@@ -168,7 +168,7 @@ describe('UserManagementPage', () => {
     expect(within(rowOf('P. Admin')).getByText('Vom Anbieter geführt')).toBeInTheDocument()
     const ohneAnbieter = within(rowOf('Alte Anbieterin'))
     expect(ohneAnbieter.getByText('Kein Anbieter')).toBeInTheDocument()
-    // Herkunft und Zustand tragen zwei Aussagen, nicht zweimal dieselbe
+    // Origin and state carry two statements, not the same one twice
     expect(ohneAnbieter.getByText('Anmeldung nicht möglich')).toBeInTheDocument()
 
     // No activity timestamp, no sort by activity and no export (ADR-0033, Entscheidung 11).
@@ -261,9 +261,9 @@ describe('UserManagementPage', () => {
   })
 
   /**
-   * Der Rollendialog beginnt für jedes Konto neu: MUI unmountet beim Schließen nur die Kinder, die
-   * zuletzt gewählte Rolle darf nicht in das nächste geöffnete Konto wandern — ein sofort aktives
-   * „Speichern" vergäbe dort mit einem Klick SYSTEM_ADMIN an das falsche Konto.
+   * The role dialog starts anew for every account: MUI only unmounts the children on close, the
+   * last chosen role must not wander into the next opened account — an immediately active
+   * „Speichern" would grant SYSTEM_ADMIN to the wrong account there with one click.
    */
   it('starts the role dialog fresh for the next account after an abandoned change', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -282,9 +282,9 @@ describe('UserManagementPage', () => {
     const second = await openRowMenu(user, 'Thomas Klein')
     await user.click(within(second).getByRole('menuitem', { name: /Rolle ändern/ }))
     const next = await screen.findByRole('dialog', { name: 'Rolle von „Thomas Klein“ ändern' })
-    // Die Auswahl zeigt die Rolle DIESES Kontos, nicht die verworfene des vorherigen …
+    // The select shows the role of THIS account, not the discarded one of the previous …
     expect(within(next).getByRole('combobox', { name: 'Rolle' })).toHaveTextContent('Nutzer')
-    // … und ohne eigene Änderung gibt es nichts zu speichern.
+    // … and without an own change there is nothing to save.
     expect(within(next).getByRole('button', { name: 'Speichern' })).toBeDisabled()
   }, 20000)
 
@@ -335,7 +335,7 @@ describe('UserManagementPage', () => {
     const user = userEvent.setup()
     renderAccounts()
 
-    // Kein Hinweiskasten mehr über der Liste, sondern ein Link in der Kopfzeile.
+    // No hint box above the list any more, but a link in the head row.
     const hint = await screen.findByRole('button', {
       name: '2 lokale Konten ohne Ablaufdatum · 1 offene Einladung',
     })
@@ -359,8 +359,8 @@ describe('UserManagementPage', () => {
         screen.queryByRole('dialog', { name: 'Hinweise zur Kontenprüfung' }),
       ).not.toBeInTheDocument(),
     )
-    // Die Zahl im Hinweis und die Zeilen hinter dem Sprung sind dieselbe Menge: Das
-    // Notanker-Konto bleibt unbefristet und steht in keiner von beiden.
+    // The number in the hint and the rows behind the jump are the same set: the
+    // emergency account stays unlimited and is in neither of them.
     await waitFor(() => {
       const accounts = useUserAdminStore.getState().accounts
       expect(accounts).toHaveLength(2)
@@ -446,8 +446,8 @@ describe('UserManagementPage', () => {
     expect(screen.queryByTestId('setup-link-value')).not.toBeInTheDocument()
   }, 20000)
 
-  // regression guard for #1543: MUIs Auswahl rendert eine Anzeige mit role="combobox", die ein
-  // <label for> nicht benennt - die E2E-Barrierefreiheitsprüfung des Dialogs fiel darüber
+  // regression guard for #1543: MUI's select renders a display with role="combobox" that a
+  // <label for> does not name - the dialog's E2E accessibility check failed on it
   // (axe aria-input-field-name, serious).
   it('gives the role selector an accessible name', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -486,7 +486,7 @@ describe('UserManagementPage', () => {
     const menu = await openRowMenu(user, 'T. Klein')
     await user.click(within(menu).getByRole('menuitem', { name: 'Sperren' }))
 
-    // Die Folge steht im Overlay, bevor gesperrt wird - sie ist die Entscheidungsgrundlage.
+    // The consequence is in the overlay before locking - it is the basis for the decision.
     const sperrfrage = await screen.findByRole('dialog', { name: /„T\. Klein“ sperren\?/ })
     expect(sperrfrage).toHaveTextContent('Sitzungen enden sofort')
     // neutral: no number, no hint whether this person connected anything
@@ -501,7 +501,7 @@ describe('UserManagementPage', () => {
         }),
       ).toBeInTheDocument(),
     )
-    // der Grund erscheint beim Überfahren als Tooltip
+    // the reason appears as a tooltip on hover
     await user.hover(within(rowOf('T. Klein')).getByRole('img', { name: /^Sperrgrund:/ }))
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Von der Verwaltung gesperrt')
     await user.unhover(within(rowOf('T. Klein')).getByRole('img', { name: /^Sperrgrund:/ }))
@@ -527,8 +527,8 @@ describe('UserManagementPage', () => {
       'aria-disabled',
       'true',
     )
-    // Die Übergabe ist an diesem Konto gar nicht erst anwählbar, und der Eintrag sagt warum
-    // - das Notanker-Konto muss ein lokales Konto bleiben.
+    // The handover cannot even be selected on this account, and the entry says why
+    // - the emergency account must stay a local account.
     const uebergabe = within(menu).getByRole('menuitem', {
       name: 'An Identitätsanbieter übergeben',
     })
@@ -537,9 +537,9 @@ describe('UserManagementPage', () => {
   }, 20000)
 
   /**
-   * Regressionsschutz zu #1640: Am Notanker-Konto bietet die Oberfläche Sperren, Rollenwechsel und
-   * Befristen gar nicht erst an – auch einem anderen Verwalter nicht, für den die Sperre des
-   * eigenen Kontos nicht greift.
+   * regression guard for #1640: on the emergency account the interface does not even offer
+   * locking, role change and time-limiting – not even to another administrator, for whom the
+   * lock of the own account does not apply.
    */
   it('offers another administrator no lock, role change or expiry on the bootstrap account', async () => {
     signInAs('SYSTEM_ADMIN', 'local-user-vogt')
@@ -567,9 +567,9 @@ describe('UserManagementPage', () => {
   }, 20000)
 
   /**
-   * Regressionsschutz zu #1988: Am Notanker-Konto bietet die Oberfläche weder einen Rücksetz-Link
-   * noch ein erzeugtes Passwort an und nennt den Grund; an einem regulären Konto bleiben beide
-   * anwählbar.
+   * regression guard for #1988: on the emergency account the interface offers neither a reset link
+   * nor a generated password and names the reason; on a regular account both stay
+   * selectable.
    */
   it('offers no reset link and no generated password on the bootstrap account', async () => {
     signInAs('SYSTEM_ADMIN', 'local-user-vogt')
@@ -596,9 +596,9 @@ describe('UserManagementPage', () => {
   }, 20000)
 
   /**
-   * Ein älteres Notanker-Konto kann ein Ablaufdatum und eine andere Rolle tragen. Der
-   * Dialog lässt genau die Rückkehr in den zugesagten Zustand zu: Datum entfernen, zurück zur
-   * Systemverwaltung – und nichts, was das Backend ablehnen würde.
+   * An older emergency account can carry an expiry date and another role. The
+   * dialog allows exactly the return to the promised state: remove the date, back to
+   * system administration – and nothing the backend would reject.
    */
   it('lets a bootstrap account from an older state return to no expiry and Systemverwaltung', async () => {
     setMockLocalUsers(
@@ -673,7 +673,7 @@ describe('UserManagementPage', () => {
     )
 
     const dialog = await screen.findByRole('dialog', { name: 'An Identitätsanbieter übergeben' })
-    // Der Dialog fragt nach Anbieter und Anlass - und nach keiner Kennung.
+    // The dialog asks for provider and reason - and for no identifier.
     expect(within(dialog).getByRole('combobox', { name: /Identitätsanbieter/ })).toBeInTheDocument()
     expect(within(dialog).getByRole('textbox', { name: /Anlass/ })).toBeInTheDocument()
     expect(within(dialog).getByText(/Einen Rückweg gibt es nicht/)).toBeInTheDocument()
@@ -697,9 +697,9 @@ describe('UserManagementPage', () => {
   })
 
   /**
-   * Das Notanker-Konto steht nicht im Hinweis zur Auflage – der Hilfetext unter „Kein
-   * Ablaufdatum" darf ihm deshalb keinen versprechen, einem regulären Konto dagegen schon. Beide
-   * Richtungen stehen hier, damit eine vertauschte Unterscheidung auffällt.
+   * The emergency account is not in the hint about the requirement – the help text below „Kein
+   * Ablaufdatum" must therefore not promise it one, but must for a regular account. Both
+   * directions are here, so that a swapped distinction is noticed.
    */
   it('tells the bootstrap account it stays unlimited and a regular one about the notice', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -714,11 +714,11 @@ describe('UserManagementPage', () => {
     expect(within(bootstrapDialog).getByText(/bleibt unbefristet/)).toBeInTheDocument()
     expect(within(bootstrapDialog).queryByText(/erscheint im Hinweis zur/)).not.toBeInTheDocument()
     await user.click(within(bootstrapDialog).getByRole('button', { name: 'Abbrechen' }))
-    // erst wenn der Dialog fort ist, ist die Tabelle wieder erreichbar
+    // only once the dialog is gone is the table reachable again
     await waitForDialogClosed()
 
-    // „M. Weber (Partner)" trägt ebenfalls kein Ablaufdatum, ist aber ein reguläres Konto
-    // der Zeilenname geht als RegExp in die Suche - die Klammern des Anzeigenamens nicht mit
+    // „M. Weber (Partner)" carries no expiry date either, but is a regular account
+    // the row name goes into the search as a RegExp - leave out the display name's parentheses
     const regularMenu = await openRowMenu(user, 'M. Weber (Partner)', 'M\\. Weber')
     await user.click(within(regularMenu).getByRole('menuitem', { name: 'Bearbeiten' }))
 
@@ -731,10 +731,10 @@ describe('UserManagementPage', () => {
   }, 20000)
 
   /**
-   * Der PATCH sendet `expiresAt` nur bei geändertem Tag — sonst, auf 23:59:59 Ortszeit
-   * zurückgerechnet, verschöbe eine reine Namensänderung das Ablaufdatum und stünde als
-   * Fristverschiebung im `LOCAL_USER_CHANGED`-Ereignis, das Vorher/Nachher ausschließlich für
-   * `expires_at` führt.
+   * The PATCH sends `expiresAt` only for a changed day — otherwise, recalculated to 23:59:59
+   * local time, a mere name change would shift the expiry date and appear as a
+   * period shift in the `LOCAL_USER_CHANGED` event, which records before/after only for
+   * `expires_at`.
    */
   it('leaves the expiry date out of a PATCH that only renames an account', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -862,9 +862,9 @@ describe('UserManagementPage', () => {
   })
 
   /**
-   * Der Schalter speichert den halb getippten Regel-Entwurf nicht mit — sonst spränge eine
-   * Ablauf-Vorbelegung etwa von 365 auf 3, und ein leeres Zahlenfeld ließe das Umschalten als
-   * `NaN` still scheitern.
+   * The switch does not save the half-typed rule draft along — otherwise an
+   * expiry default would jump from, say, 365 to 3, and an empty number field would let the toggle
+   * silently fail as `NaN`.
    */
   it('saves a switch from the server state, not from the half-typed rules draft', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -915,12 +915,12 @@ describe('UserManagementPage', () => {
     await answerConfirm(user, 'Selbstregistrierung einschalten?', 'Einschalten')
 
     await waitFor(() => expect(bodies).toHaveLength(1))
-    // Die Domänenliste ist die Vorbedingung genau dieses Schalters und reist deshalb mit.
+    // The domain list is the precondition of exactly this switch and therefore travels along.
     expect(bodies[0].selfRegistrationAllowedDomains).toEqual(['amt.example'])
     expect(bodies[0].selfRegistrationEnabled).toBe(true)
   }, 20000)
 
-  /** Nachprüfung N1: Beim **Ausschalten** ist die Domänenliste kein Teil der Handlung. */
+  /** Re-check N1: when switching **off**, the domain list is no part of the action. */
   it('leaves the typed domain list out of a self-registration switch-off', async () => {
     setMockLocalAuthSettings({ ...mockLocalAuthSettings, selfRegistrationEnabled: true })
     signInAs('SYSTEM_ADMIN')
@@ -945,8 +945,8 @@ describe('UserManagementPage', () => {
     await waitFor(() => expect(bodies).toHaveLength(1))
     expect(bodies[0].selfRegistrationEnabled).toBe(false)
     expect(bodies[0].selfRegistrationAllowedDomains).toEqual(['stadt.example'])
-    // Der halb getippte Eintrag steht weiter im Formular - ein Schalterklick verwirft ihn nicht
-    // (Nachprüfung N4).
+    // The half-typed entry is still in the form - a switch click does not discard it
+    // (re-check N4).
     expect(screen.getByLabelText(/Adress-Domänen/)).toHaveValue('stadt.exa')
   }, 20000)
 
@@ -986,7 +986,7 @@ describe('UserManagementPage', () => {
     expect(screen.getByText(/OPAA_PUBLIC_BASE_URL nicht gesetzt/)).toBeInTheDocument()
   })
 
-  /** Ein Schalter auf „ein" darf nicht behaupten, der Fluss wirke. */
+  /** A switch on „ein" must not claim that the flow is in effect. */
   it('says why a switched-on link flow is currently unreachable', async () => {
     setMockLocalAuthSettings({ ...mockLocalAuthSettings, enabled: false })
     signInAs('SYSTEM_ADMIN')
@@ -1050,8 +1050,8 @@ describe('UserManagementPage', () => {
     renderAccounts()
     const table = await screen.findByRole('table', { name: 'Konten' })
 
-    // Herkunft: lokale Konten zuerst, dann die Anbieter nach Namen, zuletzt ein Konto ohne
-    // Anbieterzeile - eine Kategorie neben Eigennamen ordnet sich nicht alphabetisch.
+    // Origin: local accounts first, then the providers by name, last an account without
+    // a provider row - a category next to proper names does not sort alphabetically.
     await user.click(within(table).getByRole('button', { name: /Herkunft/ }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.sort).toBe('origin'))
     await waitFor(() => {
@@ -1062,11 +1062,11 @@ describe('UserManagementPage', () => {
         )
       expect(origins[0]).toBe('LOKAL')
       expect(origins.at(-1)).toBe('OHNE')
-      // Partnerportal vor Verzeichnisdienst
+      // partner portal before directory service
       expect(origins.indexOf('Partnerportal')).toBeLessThan(origins.indexOf('Verzeichnisdienst'))
     })
 
-    // Rolle: nach Privileg, was zugleich die Reihenfolge der Beschriftungen ist
+    // Role: by privilege, which is also the order of the labels
     await user.click(within(table).getByRole('button', { name: /Rolle/ }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.sort).toBe('role'))
     await waitFor(() => {
@@ -1075,7 +1075,7 @@ describe('UserManagementPage', () => {
       expect(roles.at(-1)).toBe('SYSTEM_ADMIN')
     })
 
-    // Zustand: was Handlung braucht, zuerst; Anbieterkonten zuletzt, sie tragen keinen
+    // State: what needs action first; provider accounts last, they carry none
     await user.click(within(table).getByRole('button', { name: /Zustand/ }))
     await waitFor(() => expect(useUserAdminStore.getState().filters.sort).toBe('status'))
     await waitFor(() => {
@@ -1084,7 +1084,7 @@ describe('UserManagementPage', () => {
       expect(accounts.at(-1)?.local).toBeUndefined()
     })
 
-    // Nach der Aktivität lässt sich nicht sortieren – die Liste zeigt sie gar nicht.
+    // Sorting by activity is not possible – the list does not show it at all.
     expect(within(table).queryByRole('button', { name: /Aktivität/ })).not.toBeInTheDocument()
     expect(useUserAdminStore.getState().error).toBeNull()
   }, 20000)

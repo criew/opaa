@@ -44,7 +44,7 @@ function Harness({ onChange }: { onChange: (type: string) => void }) {
   )
 }
 
-/** Die Quellart eines neuen Zugangs als Auswahlfeld statt als Kacheln. */
+/** The source type of a new connection profile as a select field instead of tiles. */
 describe('SourceTypeSelect', () => {
   it('nennt je Eintrag Name und Beschreibung, im Feld nur den Namen, darunter die Beschreibung', async () => {
     const user = userEvent.setup()

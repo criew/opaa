@@ -42,10 +42,10 @@ const tabs: Array<{ value: UserManagementTab; label: string }> = [
 const FALLBACK_EXPIRY_DAYS = 365
 
 /**
- * Der Bereich „Konten": der Hinweis zur Auflage, Suche und Filter, die Liste
- * aller Konten - lokale wie die der Identitätsanbieter, mit ihrer Herkunft an jeder Zeile - und
- * die Dialoge der Handlungen. Kein Auswertungspfad: keine Aktivität in der Liste, kein Export,
- * Seitengröße höchstens 50.
+ * The „Konten" area: the hint about the requirement, search and filters, the list
+ * of all accounts - local ones as well as those of the identity providers, with their origin on
+ * every row - and the dialogs of the actions. No evaluation path: no activity in the list, no
+ * export, page size at most 50.
  */
 function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
   const error = useUserAdminStore((s) => s.error)
@@ -87,10 +87,10 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
         </Alert>
       )}
 
-      {/* Die primäre Handlung im Kopf des Bereichs, nicht in der Filterzeile: fünf Filter und
-          eine Schaltfläche in einer Reihe brechen um, und der Umbruch stellt die Handlung dann
-          unter einen halben Filtersatz. Links daneben, bündig mit der Tabelle, der Hinweis zur
-          Auflage – nur wenn es einen gibt. */}
+      {/* The primary action in the head of the area, not in the filter row: five filters and
+         a button in one row wrap, and the wrap then puts the action
+         below half a set of filters. To its left, flush with the table, the hint about the
+         requirement – only if there is one. */}
       <Stack
         direction="row"
         spacing={2}
@@ -99,9 +99,9 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
         <Box sx={{ minWidth: 0 }}>
           <LocalUserReviewHint
             summary={summary}
-            // Der Sprung setzt jeden anderen Filter zurück: Der Hinweis
-            // nennt eine Zahl über alle lokalen Konten, und eine stehende Herkunfts-, Rollen- oder
-            // Zustandsauswahl zeigte danach weniger Zeilen, als die Zahl verspricht.
+            // The jump resets every other filter: the hint
+            // names a number across all local accounts, and a standing origin, role or
+            // state selection would then show fewer rows than the number promises.
             onShowWithoutExpiry={() =>
               void setFilters({
                 review: 'WITHOUT_EXPIRY',
@@ -180,7 +180,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
         }}
       />
       <SetupLinkDialog handover={handover} onClose={() => setHandover(null)} />
-      {/* `key` wie beim UserFormDialog: Anbieterwahl und Anlass gehören zu genau einem Konto. */}
+      {/* `key` as for the UserFormDialog: provider choice and reason belong to one account. */}
       <HandoverDialog
         key={`handover-${handoverTarget?.user.id ?? 'none'}`}
         target={handoverTarget}
@@ -189,9 +189,9 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
       />
       <HandoverLinkDialog handover={handoverLink} onClose={() => setHandoverLink(null)} />
       <GeneratedPasswordDialog generated={generated} onClose={() => setGenerated(null)} />
-      {/* `key` wie beim UserFormDialog darüber: MUI unmountet beim Schließen nur die Kinder des
-          Dialogs, nicht die Komponente. Ohne den Schlüssel trüge die zuletzt gewählte Rolle in das
-          nächste geöffnete Konto — und „Speichern" wäre dort sofort aktiv. */}
+      {/* `key` as for the UserFormDialog above: MUI only unmounts the dialog's children on close,
+         not the component. Without the key the last chosen role would carry over into the
+         next opened account — and „Speichern" would be active there at once. */}
       <RoleChangeDialog
         key={roleChange?.id ?? 'none'}
         account={roleChange}
@@ -202,13 +202,13 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 }
 
 /**
- * Die Benutzerverwaltung der Systemverwaltung (ADR-0033 Entscheidungen 4 und 11)
- * in zwei Bereichen: „Konten" führt alle Konten der Installation, lokale wie die der
- * Identitätsanbieter, mit ihrer Herkunft und den je Typ möglichen Handlungen; „Einstellungen"
- * die Schalter und Regeln der lokalen Anmeldung.
+ * The system administration's user management (ADR-0033 Entscheidungen 4 and 11)
+ * in two areas: „Konten" lists all accounts of the installation, local ones as well as those of
+ * the identity providers, with their origin and the actions possible per type; „Einstellungen"
+ * the switches and rules of the local login.
  *
- * Die Bereiche sind eigene Routen (`/admin/users/accounts`, `/admin/users/settings`) wie bei der
- * E-Mail-Seite: Ein Verweis soll im richtigen Bereich landen, und ein Neuladen ihn behalten.
+ * The areas are routes of their own (`/admin/users/accounts`, `/admin/users/settings`) as on the
+ * mail page: a link should land in the right area, and a reload should keep it.
  */
 export default function UserManagementPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')

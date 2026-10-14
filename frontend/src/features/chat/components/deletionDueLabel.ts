@@ -3,16 +3,16 @@ import type { ChatAutoCleanupResponse } from '@/shared/api/types'
 const dateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' })
 
 /**
- * Wann die automatische Chat-Bereinigung des Space einen archivierten Chat löscht, als
- * Satz für die Anzeige am Chat; `null`, wenn kein Löschdatum ansteht.
+ * When the space's automatic chat cleanup deletes an archived chat, as a
+ * sentence for display on the chat; `null` when no deletion date is due.
  */
 export function deletionDueLabel(iso: string | null | undefined): string | null {
   return iso ? `Wird am ${dateFormat.format(new Date(iso))} gelöscht` : null
 }
 
 /**
- * Der Hinweis für alle Mitglieder, wo die Chats stehen: ob und nach welchen Fristen der Space
- * inaktive Chats archiviert und löscht; `null`, wenn die Bereinigung aus ist.
+ * The hint for all members about where the chats stand: whether and after which periods the
+ * space archives and deletes inactive chats; `null` when the cleanup is off.
  */
 export function chatAutoCleanupNotice(
   cleanup: ChatAutoCleanupResponse | null | undefined,

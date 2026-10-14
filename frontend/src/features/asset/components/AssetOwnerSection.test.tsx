@@ -92,7 +92,7 @@ describe('AssetOwnerSection (#1941)', () => {
     expect(screen.getByText('Nicht benannte Person')).toBeInTheDocument()
   })
 
-  // Übergeben darf nur der Eigentümer; für alle anderen ist der Abschnitt eine Auskunft.
+  // Only the owner may hand over; for everyone else the section is information.
   it('offers the handover only where the caller holds the ownership', () => {
     const { unmount } = renderSection({ canTransfer: false })
     expect(screen.queryByRole('button', { name: 'Eigentum übergeben' })).not.toBeInTheDocument()

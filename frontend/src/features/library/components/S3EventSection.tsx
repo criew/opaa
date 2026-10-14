@@ -78,8 +78,8 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
   )
   const insecureOrigin = window.location.protocol !== 'https:'
 
-  // Rotieren und Entfernen entwerten, was im Objektspeicher hinterlegt ist: Der sendet weiter,
-  // OPAA antwortet 401, und auf seiner Seite ist davon nichts zu sehen.
+  // Rotating and removing invalidate what is stored in the object storage: it keeps sending,
+  // OPAA answers 401, and nothing of that is visible on its side.
   const askRotate = async () => {
     const ok = await confirmAction({
       question: 'Token neu erzeugen?',

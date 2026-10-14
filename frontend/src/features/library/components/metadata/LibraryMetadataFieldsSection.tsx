@@ -60,9 +60,9 @@ function effectChips(field: LibraryMetadataFieldResponse) {
 }
 
 /**
- * Eine laufende Schemaänderung in einem Satz: was stillgelegt ist und wie weit der Lauf ist. Das
- * Feld wird mit seinem konfigurierten Namen genannt, nicht mit seinem Schlüssel — der Schlüssel ist
- * eine technische Kennung, die in der Oberfläche nichts zu suchen hat.
+ * A running schema change in one sentence: what is retired and how far the run is. The
+ * field is named with its configured name, not with its key — the key is a
+ * technical identifier that has no place in the interface.
  */
 function describeChange(
   change: LibraryMetadataSchemaChangeResponse,
@@ -188,9 +188,9 @@ export default function LibraryMetadataFieldsSection({
   const [awaitingRerun, setAwaitingRerun] = useState(0)
   const [pendingChanges, setPendingChanges] = useState<LibraryMetadataSchemaChangeResponse[]>([])
   const [running, setRunning] = useState(false)
-  // Kein State: der Lauf liest die Marken zwischen zwei Chargen, ein Re-Render braucht es nicht.
-  // Der Lauf überlebt das Verlassen der Seite (die laufende Charge wird zu Ende gefahren), schreibt
-  // danach aber in keine verschwundene Komponente mehr.
+  // No state: the run reads the marks between two batches, it needs no re-render.
+  // The run survives leaving the page (the running batch is completed), but afterwards
+  // no longer writes into a component that has gone.
   const paused = useRef(false)
   const unmounted = useRef(false)
   const [error, setError] = useState<string | null>(null)
@@ -294,10 +294,10 @@ export default function LibraryMetadataFieldsSection({
   }
 
   /**
-   * Der Nachlauf einer bestaetigten Abbildung oder Feldloeschung: eine Charge je Aufruf, bis nichts
-   * mehr offen ist. Anhalten heisst, die naechste Charge nicht mehr anzufordern; der bereits
-   * umgeschriebene Teil bleibt. Eine Charge ohne Fortschritt beendet den Lauf ebenfalls, sonst
-   * liefe er ueber Dokumente, die gerade niemand umschreiben kann, endlos weiter.
+   * The follow-up run of a confirmed mapping or field deletion: one batch per call until nothing
+   * is open any more. Pausing means no longer requesting the next batch; the part already
+   * rewritten stays. A batch without progress ends the run as well, otherwise
+   * it would run on endlessly over documents nobody can rewrite right now.
    */
   async function runPendingChanges() {
     if (running) return
@@ -389,8 +389,8 @@ export default function LibraryMetadataFieldsSection({
         <Alert severity="warning" sx={{ mb: 2 }}>
           {`${plural(awaitingRerun, 'Dokument wartet', 'Dokumente warten')} auf Neu-Einbetten.`} Der
           Nachlauf wird von einer Systemadministratorin auf der Seite{' '}
-          {/* Direkt in den Reiter, der den Nachlauf trägt - der nackte Pfad landete auf
-              dem Überblick, und von dort müsste man noch einmal weiterklicken. */}
+          {/* Directly into the tab that carries the follow-up run - the bare path would land on
+             the overview, and from there one would have to click on once more. */}
           <Link component={RouterLink} to="/admin/search/index">
             Suche &amp; Indexierung
           </Link>{' '}

@@ -56,10 +56,10 @@ describe('checkAccentContrast', () => {
   })
 
   /**
-   * Die beiden Schema-Prüfungen bewerten seither die **abgeleitete** Textfarbe, also das,
-   * was tatsächlich rendert. Ein sehr dunkles Blau wird im Dunkelschema so weit aufgehellt, wie
-   * die sechs zugelassenen Schritte reichen — kommt es damit über die Schwelle, gibt es nichts zu
-   * warnen; bleibt es darunter, meldet die Prüfung es weiterhin.
+   * The two scheme checks now evaluate the **derived** text colour, i.e. what
+   * actually renders. A very dark blue is lightened in the dark scheme as far as
+   * the six permitted steps reach — if that takes it above the threshold, there is nothing to
+   * warn about; if it stays below, the check still reports it.
    */
   it('judges the derived text colour of the dark scheme, not the raw accent', () => {
     const checks = checkAccentContrast('#1153EE')
@@ -67,16 +67,16 @@ describe('checkAccentContrast', () => {
     const onDark = checks.find((c) => c.label.includes('dunklen Schema'))
     expect(onDark).toBeDefined()
     expect(onDark?.required).toBe(TEXT_CONTRAST_MINIMUM)
-    // Die rohe Hausfarbe der Demo läge auf dem dunklen Grund darunter; die Ableitung hebt sie
-    // darüber, und genau das meldet die Prüfung - sie bewertet, was rendert.
+    // The demo's raw house colour would be below it on the dark ground; the derivation lifts it
+    // above, and exactly that is what the check reports - it evaluates what renders.
     expect(contrastRatio('#1153EE', darkRoles.bg3)).toBeLessThan(TEXT_CONTRAST_MINIMUM)
     expect(onDark?.passes).toBe(true)
   })
 
   /**
-   * Die Gegenprobe zur Begrenzung: Dieses sehr dunkle Blau bleibt auch nach den sechs zugelassenen
-   * Schritten unter der Schwelle (3,7:1). Die Ableitung hört dann auf, und das Formular sagt es -
-   * statt die Farbe bis zur Unkenntlichkeit aufzuhellen oder den Betreiber im Unklaren zu lassen.
+   * The counter-check for the limit: this very dark blue stays below the threshold (3.7:1) even
+   * after the six permitted steps. The derivation then stops, and the form says so -
+   * instead of lightening the colour beyond recognition or leaving the operator in the dark.
    */
   it('still warns when even the bounded derivation cannot reach the threshold', () => {
     const checks = checkAccentContrast('#02305E')
@@ -154,9 +154,9 @@ describe('deriveAccentText', () => {
   })
 
   /**
-   * Die Schwelle gilt für jede Fläche des Schemas, nicht nur für die der Seite: Ein Verweis steht
-   * genauso in einem Dialog oder einem Tabellenkopf. Gegen den Seitengrund allein reichte
-   * `#1153EE` nach drei Schritten; gegen die hellste Fläche braucht es fünf.
+   * The threshold applies to every surface of the scheme, not only to the page's: a link
+   * appears in a dialog or a table head just the same. Against the page ground alone
+   * `#1153EE` needed three steps; against the lightest surface it needs five.
    */
   it('measures against the least favourable ground, not just the first', () => {
     const nurSeitengrund = deriveAccentText('#1153EE', [DUNKLE_GRUENDE[0]])

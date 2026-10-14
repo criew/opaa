@@ -54,9 +54,9 @@ import { assetTypeLabel } from '../../../shared/assetTypes'
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
 /**
- * Was „Alle Konten" höchstens halten darf (ADR-0037 Entscheidung 1): Verwaltung und
- * Eigentum sind Zuständigkeiten und bleiben an eine benannte Person oder Gruppe gebunden. Das
- * Backend weist mehr mit 400 ab; hier steht es gar nicht erst zur Wahl.
+ * The most „Alle Konten" may hold (ADR-0037 Entscheidung 1): management and
+ * ownership are responsibilities and stay bound to a named person or group. The
+ * backend rejects more with 400; here it is not even offered.
  */
 const allAccountsRoles: AssetRole[] = ['VIEWER', 'EDITOR']
 
@@ -76,7 +76,7 @@ function isValidUuid(value: string): boolean {
 export interface AssetGrantsSectionProps {
   assetType: AssetType
   assetId: string
-  /** Die Obergrenze der Systemverwaltung, unter der Liste — nur wo es eine gibt. */
+  /** The system administration's upper bound, below the list — only where there is one. */
   capControl?: ReactNode
 }
 
@@ -116,9 +116,9 @@ function grantedByDisplayName(grant: AssetGrantResponse): string {
 }
 
 /**
- * Die Berechtigungen eines Assets als Abschnitt der Seite — Liste, Rollenwechsel, Entzug
- * und das Formular zum Freigeben, ohne Dialog davor. Der Abschnitt kennt vom Typ nur sein Wort;
- * was ein Typ darüber hinaus hat, kommt als Schacht herein.
+ * The permissions of an asset as a section of the page — list, role change, revocation
+ * and the form for sharing, without a dialog in front. The section knows only the type's word;
+ * whatever a type has beyond that comes in as a slot.
  */
 export default function AssetGrantsSection({
   assetType,
@@ -135,9 +135,9 @@ export default function AssetGrantsSection({
 
   const [showForm, setShowForm] = useState(false)
   const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
-  // Die Eingabe per Kennung bleibt der Rückfall, wenn die Suche nichts hergibt - für eine
-  // Gruppe unterliegt sie derselben Durchsetzung wie die Suche: eine nicht freigegebene Gruppe
-  // antwortet auch hier mit „nicht gefunden" (ADR-0036, Entscheidung 9).
+  // Entry by identifier stays the fallback when the search yields nothing - for a
+  // group it is subject to the same enforcement as the search: a group that is not shared
+  // answers „nicht gefunden" here as well (ADR-0036, Entscheidung 9).
   const [manualIdEntry, setManualIdEntry] = useState(false)
   const [manualId, setManualId] = useState('')
   const [role, setRole] = useState<AssetRole>('VIEWER')
@@ -162,9 +162,9 @@ export default function AssetGrantsSection({
 
   async function handleRoleChange(grant: AssetGrantResponse, newRole: AssetRole) {
     setRowError(null)
-    // ADR-0037 Entscheidung 9: Die Rückfrage hängt an der Reichweite, nicht am Formular.
-    // Wer die bestehende Zeile „Alle Konten" von „Lesen" auf „Bearbeiten" zieht, vergrößert sie
-    // genauso wie beim Erteilen - und wird genauso gefragt.
+    // ADR-0037 Entscheidung 9: the follow-up question depends on the reach, not on the form.
+    // Whoever moves the existing row „Alle Konten" from „Lesen" to „Bearbeiten" enlarges it
+    // just as when granting - and is asked just the same.
     if (
       grant.subjectType === 'ALL_ACCOUNTS' &&
       !(await confirmAllAccountsSubject(assetRoleLabel(newRole)))
@@ -251,10 +251,10 @@ export default function AssetGrantsSection({
       setFormError('Das Ablaufdatum darf nicht in der Vergangenheit liegen')
       return
     }
-    // Der Kennungsweg loest die Gruppe auf, bevor irgendetwas erteilt wird - sonst fehlte
-    // genau dort die Zwischenfrage fuer eine Gruppe eines externen Anbieters, wo Herkunft und
-    // Symbol ohnehin nicht zu sehen sind (ADR-0036, Entscheidung 2). Was sich fuer diesen
-    // Aufrufer nicht aufloesen laesst, wird nicht erteilt.
+    // The identifier path resolves the group before anything is granted - otherwise the
+    // confirmation question for a group of an external provider would be missing exactly where
+    // origin and symbol are not visible anyway (ADR-0036, Entscheidung 2). Whatever cannot be
+    // resolved for this caller is not granted.
     if (manualIdEntry && subject.type === 'GROUP') {
       setSubmitting(true)
       let resolved
@@ -340,10 +340,10 @@ export default function AssetGrantsSection({
                     {new Date(grant.updatedAt).toLocaleDateString('de-DE')}
                     {sizeHint ? ` · ${sizeHint}` : ''}
                   </Typography>
-                  {/* ADR-0036 Entscheidung 9: Wer einer Gruppe hier ein Recht eingeräumt
-                      hat, sieht, an wen — erst auf ausdrücklichen Wunsch, nie als Beiwerk dieser
-                      Liste. Eine abgelaufene Freigabe hält nichts mehr; der Dienst antwortet
-                      dann wie auf eine unbekannte Gruppe. */}
+                  {/* ADR-0036 Entscheidung 9: whoever granted a group a right here
+                       sees to whom — only on explicit request, never as a by-product of this
+                       list. An expired grant holds nothing any more; the service then answers
+                       as for an unknown group. */}
                   {grant.subjectType === 'GROUP' && grant.subjectId && !expired && (
                     <GroupMembersDisclosure
                       key={grant.subjectId}
@@ -452,7 +452,7 @@ export default function AssetGrantsSection({
               allowAllAccounts
               value={subject}
               onChange={(next) => {
-                // Der Deckel für „Alle Konten" gilt auch für eine vorher gewählte Rolle.
+                // The cap for „Alle Konten" applies to a previously chosen role as well.
                 if (!rolesFor(next.type).includes(role)) setRole('VIEWER')
                 setSubject(next)
               }}

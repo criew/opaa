@@ -28,11 +28,11 @@ function invitedText(count: number): string {
 }
 
 /**
- * Der Hinweis zur Auflage (ADR-0033 Entscheidung 11) als Link in der Kopfzeile der
- * Kontenliste: Die Zahlen stehen knapp im Link, Auflage und Sprünge in die zugehörigen Filter im
- * Popover dahinter – „die Prüfung der Auflage ist ein Vorgang, kein Zähler". Ohne Konten ohne
- * Ablaufdatum und ohne offene Einladung erscheint nichts; der Auflagensatz steht dann nicht als
- * Mahnung ohne Anlass.
+ * The hint about the requirement (ADR-0033 Entscheidung 11) as a link in the head row of the
+ * account list: the numbers are in the link briefly, the requirement and jumps into the matching
+ * filters in the popover behind it – „die Prüfung der Auflage ist ein Vorgang, kein Zähler".
+ * Without accounts without expiry date and without an open invitation nothing appears; the
+ * requirement sentence is then not shown as a reminder without cause.
  */
 export default function LocalUserReviewHint({
   summary,
@@ -96,7 +96,7 @@ function HintRow({
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
       <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>{text}</Typography>
-      {/* Sichtbar knapp, damit jede Zeile einzeilig bleibt; der Name sagt, wohin es geht. */}
+      {/* Visibly short, so that every row stays on one line; the name says where it leads. */}
       <Button
         size="small"
         variant="outlined"

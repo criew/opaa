@@ -93,11 +93,11 @@ function initialOidcProviders(): OidcProviderResponse[] {
       createdAt: '2026-09-03T08:00:00Z',
       updatedAt: '2026-09-03T08:00:00Z',
     },
-    // Die eine LOCAL-Zeile (ADR-0033, Entscheidung 4): sie steht in derselben Tabelle und kommt
-    // über dieselbe API, ist aber kein Anbieter der Anbieterseite - ihr `enabled` ist der
-    // Schalter der lokalen Benutzerverwaltung. `sortOrder: 0`, weil der Seed sie vor
-    // jedem Anbieter anlegt: damit liegt sie in der Sortierung **vor** den Anbietern und das
-    // Verschieben muss sie überspringen.
+    // The one LOCAL row (ADR-0033, Entscheidung 4): it is in the same table and comes
+    // via the same API, but is no provider of the provider page - its `enabled` is the
+    // switch of the local user management. `sortOrder: 0`, because the seed creates it before
+    // every provider: so it sorts **before** the providers and
+    // moving has to skip it.
     {
       id: 'oidc-provider-local',
       displayName: 'Lokale Konten',

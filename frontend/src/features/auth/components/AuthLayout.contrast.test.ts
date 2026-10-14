@@ -4,10 +4,10 @@ import { TEXT_CONTRAST_MINIMUM, compositeOver, contrastRatio } from '@/shared/ut
 import { navyRoles } from '@/shared/theme/tokens'
 
 /**
- * Über einem hinterlegten Hintergrundbild steht Text. Welches Bild eine Installation
- * hochlädt, weiß diese Anwendung nicht — prüfbar ist deshalb nur der schlechteste Fall: ein rein
- * weißes und ein rein schwarzes Bild unter dem festen Schleier. Erreicht die Schrift dort die
- * 4,5:1 aus docs/design/accessibility.md, erreicht sie sie über jedem Bild.
+ * Text sits on top of an uploaded background image. This application does not know which image
+ * an installation uploads — so only the worst case can be checked: a pure white and a pure black
+ * image under the fixed scrim. If the text reaches the 4.5:1 from
+ * docs/design/accessibility.md there, it reaches it on every image.
  */
 describe('Schleier über dem Hintergrundbild der Anmeldeseite', () => {
   const extremes = { 'ein rein weißes Bild': '#FFFFFF', 'ein rein schwarzes Bild': '#000000' }
@@ -30,7 +30,7 @@ describe('Schleier über dem Hintergrundbild der Anmeldeseite', () => {
     })
 
     it(`trägt den Claim über ${name}`, () => {
-      // Die Deckkraft des Claims wirkt auf dem schon zusammengerechneten Grund.
+      // The claim's opacity acts on the already composited ground.
       const grundfarbe = ground(image)
       const claim = compositeOver(navyRoles.fg1, grundfarbe, LOGIN_CLAIM_OPACITY) as string
 

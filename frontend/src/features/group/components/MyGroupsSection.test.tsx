@@ -141,7 +141,7 @@ describe('MyGroupsSection', () => {
     await waitFor(() => expect(mockSetGroupRelease).toHaveBeenCalledWith('group-phoenix', true))
   })
 
-  // Verantwortliche deaktivieren ihre Gruppe selbst, nach einer bezifferten Rückfrage
+  // Stewards deactivate their group themselves, after a quantified confirmation
   it('deaktiviert die Gruppe nach einer Rückfrage mit den Folgen', async () => {
     withGroups([group], ['CREATE_INTERNAL_GROUP'])
     mockGetGroupDeactivationPreview.mockResolvedValue({
@@ -182,8 +182,8 @@ describe('MyGroupsSection', () => {
     expect(await screen.findByRole('button', { name: 'Reaktivieren' })).toBeInTheDocument()
   })
 
-  // Über den Schutz entscheidet die Systemverwaltung (ADR-0036, Entscheidung 9) - Verantwortliche
-  // sehen dafür keinen Schalter.
+  // The system administration decides about the protection (ADR-0036, Entscheidung 9) - stewards
+  // see no switch for it.
   it('bietet Verantwortlichen keinen Schalter für den Schutz', async () => {
     withGroups([group], ['CREATE_INTERNAL_GROUP'])
     renderWithProviders(<MyGroupsSection />, { withRouter: true })
@@ -196,8 +196,8 @@ describe('MyGroupsSection', () => {
   })
 
   /**
-   * ADR-0036, Entscheidung 4: die Abgabe ist ein eigener Schritt - erst die Nachfolge, dann der
-   * Rücktritt. Solange man allein verantwortlich ist, gibt es nichts abzugeben.
+   * ADR-0036, Entscheidung 4: the handover is a step of its own - first the successor, then
+   * stepping down. As long as one is solely responsible, there is nothing to hand over.
    */
   it('lässt die Verantwortung erst abgeben, wenn eine zweite Person benannt ist', async () => {
     withGroups([group], ['CREATE_INTERNAL_GROUP'])
@@ -238,9 +238,9 @@ describe('MyGroupsSection', () => {
   })
 
   /**
-   * GroupService#dismissSteward erlaubt der Systemverwaltung genau das, was der letzten
-   * verantwortlichen Person selbst verwehrt ist: ein ausscheidendes Konto muss lösbar sein
-   * (group_stewards.user_id ist RESTRICT). Über die Oberfläche war dieser Ausgang unerreichbar.
+   * GroupService#dismissSteward allows the system administration exactly what is denied to the
+   * last steward themselves: a departing account must be removable
+   * (group_stewards.user_id is RESTRICT). This way out was unreachable via the interface.
    */
   it('lässt die Systemverwaltung die letzte verantwortliche Person entlassen', async () => {
     withGroups([group], ['CREATE_INTERNAL_GROUP'])
@@ -262,8 +262,8 @@ describe('MyGroupsSection', () => {
   })
 
   /**
-   * Nach der eigenen Abgabe darf die Person die Gruppe nicht mehr lesen; ein Nachladen der Details
-   * antwortet 404. Die gelungene Handlung darf dafür kein Fehlerband zeigen.
+   * After their own handover the person may no longer read the group; a reload of the details
+   * answers 404. The successful action must not show an error banner for that.
    */
   it('meldet keinen Fehler, wenn die Gruppe nach der eigenen Abgabe nicht mehr lesbar ist', async () => {
     const withSuccessor: GroupListResponse = {
@@ -294,7 +294,7 @@ describe('MyGroupsSection', () => {
     expect(useGroupStore.getState().error).toBeNull()
   })
 
-  // Wer ohne Systemrolle anlegt, bleibt verantwortlich und entscheidet nicht über den Schutz.
+  // Whoever creates without a system role stays responsible and does not decide on protection.
   it('legt eine Gruppe an, ohne Schutzschalter und mit sich selbst als Verantwortlicher', async () => {
     withGroups([], ['CREATE_INTERNAL_GROUP'])
     renderWithProviders(<MyGroupsSection />, { withRouter: true })

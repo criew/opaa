@@ -383,7 +383,7 @@ export const libraryDocumentHandlers = [
     return HttpResponse.json(document, { status: 201 })
   }),
 
-  // Sammellöschen - jede Id für sich, Erfolge und Fehlschläge getrennt gemeldet.
+  // Bulk deletion - every id on its own, successes and failures reported separately.
   http.post('/api/v1/libraries/:libraryId/documents/bulk-delete', async ({ params, request }) => {
     const libraryId = String(params.libraryId)
     const existing = mockLibraryDocuments[libraryId]

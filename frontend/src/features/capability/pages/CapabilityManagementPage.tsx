@@ -32,8 +32,8 @@ export default function CapabilityManagementPage() {
   const [isLoading, setIsLoading] = useState(isSystemAdmin)
   const [editing, setEditing] = useState<Capability | null>(null)
 
-  // Kein synchrones setState im Rumpf: Der Effekt unten ruft dieselbe Funktion, und ein synchrones
-  // setState von dort erzeugt eine Renderkaskade (react-hooks/set-state-in-effect).
+  // No synchronous setState in the body: the effect below calls the same function, and a
+  // synchronous setState from there causes a render cascade (react-hooks/set-state-in-effect).
   const load = useCallback(
     () =>
       getCapabilityOverview()

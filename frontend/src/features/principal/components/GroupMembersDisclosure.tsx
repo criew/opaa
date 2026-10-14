@@ -5,33 +5,33 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { GroupMemberDisclosureResponse } from '@/shared/api/types'
 
-/** Wie viele Namen eine Seite bringt — dieselbe Vorgabe wie im Dienst. */
+/** How many names a page brings — the same default as in the service. */
 const PAGE_SIZE = 50
 
 interface GroupMembersDisclosureProps {
   /**
-   * Wie die Gruppe in den aria-labels genannt wird. Der Aufrufer wählt ihn so, dass er für
-   * eine namenlose Zeile nicht die rohe Kennung vorliest.
+   * How the group is named in the aria-labels. The caller chooses it so that it does not
+   * read out the raw identifier for a nameless row.
    */
   groupLabel: string
-  /** Lädt eine Seite; erst auf ausdrücklichen Wunsch aufgerufen, nie beim Rendern. */
+  /** Loads a page; called only on explicit request, never while rendering. */
   load: (offset: number, limit: number) => Promise<GroupMemberDisclosureResponse>
   /**
-   * Der Wunsch ist schon geäußert (etwa über ein Zeilenmenü): Die erste Seite lädt sofort, und
-   * „Mitglieder ausblenden" meldet sich über `onHide`, statt den eigenen Aufruf zu zeigen.
+   * The request has already been made (e.g. via a row menu): the first page loads at once, and
+   * „Mitglieder ausblenden" reports via `onHide` instead of showing its own trigger.
    */
   requested?: boolean
   onHide?: () => void
 }
 
 /**
- * „Mitglieder anzeigen" an der Zeile einer Gruppe (ADR-0036 Entscheidung 9): Wer der Gruppe
- * an diesem Objekt ein Recht eingeräumt hat, sieht, an wen. Geladen wird **erst auf ausdrücklichen
- * Wunsch** — eine Mitgliederliste ist eine Aussage über Personen und entsteht nicht als Beiwerk
- * einer Übersicht.
+ * „Mitglieder anzeigen" on a group's row (ADR-0036 Entscheidung 9): whoever granted the group
+ * a right on this object sees to whom. Loading happens **only on explicit
+ * request** — a member list is a statement about persons and is not built as a by-product
+ * of an overview.
  *
- * <p>Was die Antwort zurückhält — bei einer geschützten Gruppe — entscheidet der Dienst; hier
- * steht nur, wie es erklärt wird.
+ * <p>What the response withholds — for a protected group — is decided by the service; here
+ * is only how it is explained.
  */
 export default function GroupMembersDisclosure({
   groupLabel,
@@ -42,9 +42,9 @@ export default function GroupMembersDisclosure({
   const [disclosure, setDisclosure] = useState<GroupMemberDisclosureResponse | null>(null)
   const [isLoading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Eine leere Folgeseite ist das Ende, auch wenn die Gesamtzahl noch hoeher steht: Zwischen zwei
-  // Klicks kann die Gruppe schrumpfen, und sonst bliebe der Ausloeser dauerhaft klickbar, ohne je
-  // etwas nachzuladen.
+  // An empty next page is the end, even when the total count is still higher: between two
+  // clicks the group can shrink, and otherwise the trigger would stay clickable forever without
+  // ever loading anything.
   const [reachedEnd, setReachedEnd] = useState(false)
 
   async function loadPage(offset: number) {

@@ -353,8 +353,8 @@ describe('AssetGrantsSection', () => {
     expect(await screen.findByText('Alle Konten')).toBeInTheDocument()
   })
 
-  // Die Rückfrage hängt an der Reichweite, nicht am Formular: Auch ein Rollenwechsel an der
-  // bestehenden Zeile „Alle Konten" vergrößert sie und wird deshalb genauso gefragt.
+  // The follow-up question depends on the reach, not on the form: a role change on the
+  // existing row „Alle Konten" enlarges it as well and is therefore asked just the same.
   it('asks back before raising the role of an existing all-accounts grant, and drops it on no', async () => {
     setSystemAdmin()
     setGrants(library.id, [
@@ -525,9 +525,9 @@ describe('AssetGrantsSection', () => {
 
   it('names a failed person search and offers the id field as the way out', async () => {
     // GET /v1/users is reachable for every authenticated caller now, not just SYSTEM_ADMIN.
-    // Der Rueckfall auf die Kennung wird ausdruecklich gewaehlt, statt sich selbst
-    // einzuschalten - ein gescheiterter Suchlauf sagt das im Feld, und der Weg daneben ist
-    // derselbe wie fuer eine Gruppe.
+    // The fallback to the identifier is chosen explicitly instead of switching itself
+    // on - a failed search says so in the field, and the path next to it is
+    // the same as for a group.
     setManager()
     mockGetUserSummaries.mockRejectedValueOnce(new Error('Netzwerkfehler'))
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
@@ -680,8 +680,8 @@ describe('AssetGrantsSection', () => {
       ...group,
       id: '22222222-3333-4444-8555-666666666666',
     })
-    // Die Eingabe per Kennung unterliegt derselben Durchsetzung wie die Suche - der Dienst
-    // antwortet auch dort mit nicht gefunden, wenn die Gruppe nicht freigegeben ist.
+    // Entry by identifier is subject to the same enforcement as the search - the service
+    // answers not found there as well when the group is not shared.
     setManager()
     mockUpsertAssetGrant.mockResolvedValueOnce({
       id: 'grant-other-group',
@@ -740,7 +740,7 @@ describe('AssetGrantsSection', () => {
 
     await userEventInstance.click(await screen.findByRole('button', { name: /entziehen/i }))
 
-    // Das Overlay liegt über dem Freigabe-Dialog; die Frage macht es eindeutig.
+    // The overlay lies over the sharing dialog; the question makes it unambiguous.
     const question = 'Freigabe für "Manager" entziehen?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
       /eigene freigabe/i,
@@ -750,7 +750,7 @@ describe('AssetGrantsSection', () => {
     expect(mockRevokeAssetGrant).not.toHaveBeenCalled()
   })
 
-  /** ADR-0036, Entscheidung 2: Das Erteilen an eine externe Gruppe verlangt eine Zwischenfrage. */
+  /** ADR-0036, Entscheidung 2: granting to an external group requires a confirmation question. */
   it('asks back before granting to a group of an external provider', async () => {
     setSystemAdmin()
     mockSearchSelectableGroups.mockResolvedValue([
@@ -788,7 +788,7 @@ describe('AssetGrantsSection', () => {
     expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
-  /** Eine Gruppenfreigabe nennt die heutige Mitgliederzahl, kein Zuwachssignal. */
+  /** A group grant names today's member count, no growth signal. */
   it('shows the current member count of a group grant', async () => {
     setManager()
     setGrants(library.id, [
@@ -815,8 +815,8 @@ describe('AssetGrantsSection', () => {
   })
 
   /**
-   * ADR-0036 Entscheidung 9: Wer der Gruppe hier ein Recht eingeräumt hat, sieht, an wen —
-   * und die Liste entsteht erst auf ausdrücklichen Wunsch, nicht beim Öffnen des Dialogs.
+   * ADR-0036 Entscheidung 9: whoever granted the group a right here sees to whom —
+   * and the list is only built on explicit request, not when the dialog opens.
    */
   it('offers the member list of a granted group and loads it only on request', async () => {
     setManager()
@@ -855,7 +855,7 @@ describe('AssetGrantsSection', () => {
     )
   })
 
-  /** Auch eine Gruppe unterhalb der Mindestgruppengröße zeigt ihre Zahl. */
+  /** A group below the minimum group size shows its number as well. */
   it('shows the figure of a small group too', async () => {
     setManager()
     setGrants(library.id, [
@@ -881,7 +881,7 @@ describe('AssetGrantsSection', () => {
     expect(screen.queryByText(/kleine Gruppe/)).not.toBeInTheDocument()
   })
 
-  /** ADR-0036, Entscheidung 9: namenlose Zeile, kein Signal - und trotzdem entziehbar. */
+  /** ADR-0036, Entscheidung 9: nameless row, no signal - and still revocable. */
   it('shows a protected group as a nameless row without any figure', async () => {
     setManager()
     setGrants(library.id, [
@@ -911,9 +911,9 @@ describe('AssetGrantsSection', () => {
   })
 
   /**
-   * ADR-0036, Entscheidung 2: Der Kennungsweg zeigt weder Herkunft noch Symbol - deshalb
-   * loest er die Gruppe vor dem Erteilen auf und stellt dieselbe Zwischenfrage. Ohne das waere die
-   * Zwischenfrage fuer externe Anbieter durch Eintippen der Kennung umgehbar.
+   * ADR-0036, Entscheidung 2: the identifier path shows neither origin nor symbol - so it
+   * resolves the group before granting and asks the same confirmation question. Without that, the
+   * question for external providers could be bypassed by typing the identifier.
    */
   it('asks back on the id path before granting to a group of an external provider', async () => {
     setManager()
@@ -942,7 +942,7 @@ describe('AssetGrantsSection', () => {
     const submitButtons = screen.getAllByRole('button', { name: /^freigeben$/i })
     await userEventInstance.click(submitButtons[submitButtons.length - 1])
 
-    // Erst die aufgeloeste Herkunft, dann die Zwischenfrage des externen Anbieters.
+    // First the resolved origin, then the external provider's confirmation question.
     await answerConfirm(userEventInstance, /Recht an .Referat 50. erteilen\?/, 'Weiter')
     const question = 'Sie geben für eine Gruppe eines externen Anbieters frei — fortfahren?'
     expect(await screen.findByRole('dialog', { name: question })).toHaveTextContent(
@@ -954,7 +954,7 @@ describe('AssetGrantsSection', () => {
     expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
-  /** Was sich fuer diesen Aufrufer nicht aufloesen laesst, wird nicht erteilt. */
+  /** Whatever cannot be resolved for this caller is not granted. */
   it('grants nothing when the typed id does not resolve for this caller', async () => {
     setManager()
     mockResolveSelectableGroup.mockRejectedValue(new Error('Gruppe nicht gefunden'))
@@ -975,7 +975,7 @@ describe('AssetGrantsSection', () => {
     expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
-  /** Eine Kennung gehoert zu genau einer Art von Empfaenger. */
+  /** An identifier belongs to exactly one kind of recipient. */
   it('clears a typed id when the subject type changes', async () => {
     setManager()
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)

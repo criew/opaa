@@ -39,8 +39,8 @@ function captureRequirementPuts(): Array<Record<string, unknown>> {
 }
 
 /**
- * Der Reiter „Quellarten“: Übersicht je Quellart, Sperre und „Nur über Zugänge“ im
- * Seitenpanel.
+ * The „Quellarten“ tab: overview per source type, lock and „Nur über Zugänge“ in the
+ * side panel.
  */
 describe('ConnectorTypesTab', () => {
   useDesktopViewport()

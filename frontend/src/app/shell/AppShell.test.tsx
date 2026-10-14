@@ -89,8 +89,8 @@ describe('AppShell', () => {
     expect(screen.getAllByText('OPAA').length).toBeGreaterThan(0)
   })
 
-  // Keine Fußzeile - Produktname und Version stehen im Profilmenü unter „Info zu …". Ein
-  // contentinfo-Landmark gibt es deshalb nicht.
+  // No footer - product name and version are in the profile menu under „Info zu …". A
+  // contentinfo landmark therefore does not exist.
   it('exposes the landmarks: global rail, chats navigation, main - and no footer', () => {
     renderShell()
     expect(screen.getByRole('navigation', { name: 'Globale Navigation' })).toBeInTheDocument()

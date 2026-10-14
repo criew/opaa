@@ -13,17 +13,17 @@ import type {
 
 const disabledRegistryStates = new Map<string, OidcProviderResponse['registryState']>()
 
-/** Die OIDC-Zeilen außer `providerId`; die LOCAL-Zeile ist kein Anbieter dieser Regeln. */
+/** The OIDC rows except `providerId`; the LOCAL row is no provider for these rules. */
 function otherOidcProviders(providerId: string) {
   return mockOidcProviders.filter((p) => p.id !== providerId && p.providerType === 'OIDC')
 }
 
-/** `acknowledgeLastProvider=true` aus der Anfrage (ADR-0033, Entscheidung 4). */
+/** `acknowledgeLastProvider=true` from the request (ADR-0033, Entscheidung 4). */
 function acknowledgesLastProvider(request: Request): boolean {
   return new URL(request.url).searchParams.get('acknowledgeLastProvider') === 'true'
 }
 
-/** Die 409 ohne `confirmConnections`, wo verbundene Konten möglich sind (ADR-0041, E. 4). */
+/** The 409 without `confirmConnections` where connected accounts are possible (ADR-0041, E. 4). */
 function unconfirmedConnections(providerId: string, request: Request) {
   const confirmed = new URL(request.url).searchParams.get('confirmConnections') === 'true'
   if (confirmed || !mockOidcProviderImpacts[providerId]?.confirmationRequired) return null
@@ -67,7 +67,7 @@ export const identityProviderHandlers = [
       displayName: body.displayName,
       enabled: true,
       isDefault: mockOidcProviders.length === 0,
-      // Vorgabe aus ADR-0036, Entscheidung 2: alles außer dem Standardanbieter ist extern
+      // Default from ADR-0036, Entscheidung 2: everything except the default provider is external
       isExternal: mockOidcProviders.length > 0,
       providerType: 'OIDC',
       directorySyncEnabled: false,
@@ -162,7 +162,7 @@ export const identityProviderHandlers = [
         { status: 409 },
       )
     }
-    // ADR-0033, Entscheidung 4: der letzte aktivierte Anbieter nur mit ausdrücklicher Bestätigung.
+    // ADR-0033, Entscheidung 4: the last enabled provider only with explicit confirmation.
     if (provider.enabled && !others.some((p) => p.enabled) && !acknowledgesLastProvider(request)) {
       return HttpResponse.json(
         {

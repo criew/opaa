@@ -18,11 +18,11 @@ import { PermissionTransferDialog } from '@/features/succession'
 import { contentWidth } from '@/shared/theme/tokens'
 
 /**
- * Die Gruppenverwaltung, gebaut wie die Kontenliste: Kopf, primäre Handlung,
- * Filterleiste, Tabelle mit Zeilenmenü und die Dialoge der Handlungen. Die Herkunft steht an
- * jeder Zeile, die Wirkung als Zusammenfassung; die Mitgliederliste lädt erst im Dialog
- * „Mitglieder" - ihr Abruf durch die Systemverwaltung ist ein Audit-Ereignis (ADR-0036,
- * Entscheidungen 2, 4 und 9).
+ * The group administration, built like the account list: head, primary action,
+ * filter bar, table with row menu and the dialogs of the actions. The origin is shown on
+ * every row, the effect as a summary; the member list loads only in the dialog
+ * „Mitglieder" - its retrieval by the system administration is an audit event (ADR-0036,
+ * Entscheidungen 2, 4 and 9).
  */
 export default function GroupManagementPage() {
   const error = useGroupAdminListStore((s) => s.error)
@@ -58,8 +58,8 @@ export default function GroupManagementPage() {
           </Alert>
         )}
 
-        {/* Wie bei den Konten: links, bündig mit der Tabelle, ein Hinweis - hier ein wartender
-            Verzeichnisplan -, rechts die primäre Handlung. */}
+        {/* As with the accounts: on the left, flush with the table, a hint - here a waiting
+           directory plan -, on the right the primary action. */}
         <Stack
           direction="row"
           spacing={2}
@@ -73,8 +73,8 @@ export default function GroupManagementPage() {
           </Button>
         </Stack>
         <GroupFilterBar />
-        {/* Nach einem Ladefehler steht nur die Meldung da - eine leere Liste darunter sähe aus wie
-            ein Filter ohne Treffer. */}
+        {/* After a loading error only the message is shown - an empty list below it would look like
+           a filter without matches. */}
         {!error && (
           <GroupList
             onEdit={setEditing}

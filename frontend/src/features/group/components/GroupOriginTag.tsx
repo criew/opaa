@@ -8,10 +8,10 @@ import { InfoHint } from '@/shared/ui/list/AdminList'
 import { groupOriginExplanation } from './groupListLabels'
 
 /**
- * Die Herkunft einer Gruppe, gebaut wie die Herkunft eines Kontos: „Intern" für eine
- * Gruppe dieser Installation, Gebäude und Anbietername für eine Gruppe eines Identitätsanbieters.
- * Hinter dem Anbieter erklärt ein Info-Symbol in ganzen Sätzen, was diese Herkunft für die
- * Mitglieder bedeutet - die Art einer Gruppe braucht damit keine eigene Spalte.
+ * The origin of a group, built like the origin of an account: „Intern" for a
+ * group of this installation, building and provider name for a group of an identity provider.
+ * Behind the provider an info icon explains in full sentences what this origin means for the
+ * members - so the kind of a group needs no column of its own.
  */
 export default function GroupOriginTag({ group }: { group: GroupListResponse }) {
   const internal = !group.provider

@@ -64,8 +64,8 @@ function canDeleteLibrary(role: AssetRole | undefined): boolean {
   return role === 'OWNER'
 }
 
-// ADR-0018, Entscheidung 2: auslösen darf, wer an der Bibliothek mindestens EDITOR ist - dieselbe
-// Schwelle wie beim Hoch- und Löschen von Dokumenten.
+// ADR-0018, Entscheidung 2: whoever is at least EDITOR on the library may trigger it - the same
+// threshold as for uploading and deleting documents.
 function canManageDocuments(role: AssetRole | undefined): boolean {
   return role === 'EDITOR' || role === 'MANAGER' || role === 'OWNER'
 }
@@ -170,9 +170,9 @@ interface ShareCapSwitchProps {
 }
 
 /**
- * Die Obergrenze, die die Systemverwaltung einer Konnektorbibliothek setzt: ob sie an „Alle Konten"
- * freigegeben werden darf. Sichtbar und setzbar nur hier, nie für den Eigentümer der Bibliothek:
- * Der sieht die Wirkung (eine Freigabe über der Grenze antwortet 409), nicht den Schalter.
+ * The upper bound the system administration sets for a connector library: whether it may be
+ * shared with „Alle Konten". Visible and settable only here, never for the library's owner:
+ * they see the effect (a release above the bound answers 409), not the switch.
  */
 function ShareCapSwitch({ label, description, checked, onSave }: ShareCapSwitchProps) {
   const [draft, setDraft] = useState(checked)
@@ -211,8 +211,8 @@ function ShareCapSwitch({ label, description, checked, onSave }: ShareCapSwitchP
           size="small"
           variant="outlined"
           disabled={saving || !changed}
-          // Beide Hälften der Obergrenze stehen auf derselben Seite; der sichtbare Text ist
-          // derselbe, der zugängliche Name nennt deshalb, welche Hälfte gespeichert wird.
+          // Both halves of the upper bound are on the same page; the visible text is
+          // the same, so the accessible name says which half is saved.
           aria-label={`Obergrenze „${label}“ speichern`}
           onClick={() => void handleSave()}
         >
@@ -376,15 +376,15 @@ export default function LibraryDetailPage() {
     await updateExistingLibrary(libraryId, {
       name: fields.name.trim(),
       description: fields.description?.trim() || undefined,
-      // Bewusst kein Quellkonfigurationsfeld gesetzt: das Backend lässt die gespeicherte
-      // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/
-      // sourceCredentials-Felder in der Anfrage vorhanden ist (ADR-0018). Das
-      // Bearbeiten der Quellkonfiguration selbst laeuft ueber EditLibrarySourceDialog weiter
-      // unten in dieser Datei - dieses Stammdaten-Formular hier ruehrt sie nicht an.
+      // Deliberately no source configuration field set: the backend leaves the stored
+      // configuration unchanged as long as none of the sourcePath/sourceUrl/
+      // sourceCredentials fields is present in the request (ADR-0018). Editing
+      // the source configuration itself goes through EditLibrarySourceDialog further
+      // down in this file - this master data form does not touch it.
     })
   }
 
-  /** Nach einem Eigentumswechsel: Liste und Detail neu, damit Name und Rolle wieder stimmen. */
+  /** After a change of ownership: list and detail anew, so that name and role are right again. */
   async function reloadLibrary() {
     if (!libraryId) return
     await Promise.all([loadLibraries(), loadLibraryDetails(libraryId)])
@@ -443,9 +443,9 @@ export default function LibraryDetailPage() {
 
   async function handleDelete() {
     if (!libraryId || !library) return
-    // ADR-0018, Entscheidung 5: das Löschen einer Konnektorbibliothek entfernt auch ihren
-    // gesamten indizierten Bestand - eine stärkere Wirkung als bei einer UPLOAD-Bibliothek, deren
-    // Löschung blockiert bleibt, solange sie noch Dokumente enthält.
+    // ADR-0018, Entscheidung 5: deleting a connector library also removes its
+    // entire indexed content - a stronger effect than for an UPLOAD library, whose
+    // deletion stays blocked as long as it still contains documents.
     const isConnectorLibrary = details != null && details.sourceType !== 'UPLOAD'
     const confirmed = await confirmAction({
       question: `Bibliothek "${library.name}" löschen?`,
@@ -483,7 +483,7 @@ export default function LibraryDetailPage() {
     }
   }
 
-  /** Eine Ablehnung wird weitergereicht - sie gehört in den Schalter, der sie ausgelöst hat. */
+  /** A rejection is passed on - it belongs in the switch that triggered it. */
   async function handleSaveShareCap(allAccountsGrantAllowed: boolean) {
     if (!libraryId) return
     await setLibraryShareCap(libraryId, { allAccountsGrantAllowed })
@@ -675,10 +675,10 @@ export default function LibraryDetailPage() {
           </>
         }
       >
-        {/* Der Umfang steht im Kopf nur noch als Kurzzeile mit Sprung in den Reiter
-            „Quelle"; dort steht er vollständig, für jede Rolle. Die Warnung über einen
-            unvollständig gelesenen Umfang bleibt dagegen hier: Sie betrifft den Bestand, den
-            jede Ansicht der Seite zeigt, nicht die Einstellung dahinter. */}
+        {/* The header shows the scope only as a short line with a jump into the „Quelle"
+           tab; it is complete there, for every role. The warning about a
+           partially read scope, by contrast, stays here: it concerns the content that
+           every view of the page shows, not the setting behind it. */}
         {details && connectorConfiguration?.scopeHero && (
           <Box
             sx={{
@@ -716,9 +716,10 @@ export default function LibraryDetailPage() {
                   pl: 1.5,
                   pr: 1.25,
                   py: 1,
-                  // Hervorhebung als Signalkante links statt als Rahmen ringsum (Regel 4):
-                  // dasselbe Mittel wie im Bestätigungs-Overlay, damit ein Hinweis überall gleich
-                  // aussieht. Die Signalfarbe bleibt in Kante und Symbol — nie im Fließtext.
+                  // Highlighting as a signal edge on the left instead of a frame all around
+                  // (rule 4): the same means as in the confirmation overlay, so that a hint
+                  // looks the same everywhere. The signal colour stays in edge and icon — never
+                  // in running text.
                   borderLeft: 3,
                   borderColor: 'warning.main',
                   bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
@@ -792,9 +793,9 @@ export default function LibraryDetailPage() {
           {storeError}
         </Alert>
       )}
-      {/* Ein Hinweis auf die eigene Rolle, nicht zwei — der Dokumentenbereich trägt
-          keinen zweiten mehr. Die beiden Stufen sagen Verschiedenes: Wer Dokumente pflegen darf,
-          liest nicht bloß. */}
+      {/* One hint about the own role, not two — the documents area no longer
+         carries a second one. The two levels say different things: whoever may maintain documents
+         does not merely read. */}
       {!canTrigger && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Sie haben in dieser Bibliothek nur Leserechte.
@@ -812,8 +813,8 @@ export default function LibraryDetailPage() {
         </Alert>
       )}
 
-      {/* Jeder Reiter ist ein Link auf dieselbe Seite mit anderem `?tab=` — Mittelklick und
-          „in neuem Tab öffnen" funktionieren, und ein Lesezeichen landet im richtigen Bereich. */}
+      {/* Every tab is a link to the same page with another `?tab=` — middle click and
+         „in neuem Tab öffnen" work, and a bookmark lands in the right area. */}
       <Tabs
         value={activeTab}
         aria-label="Bereiche dieser Bibliothek"
@@ -838,8 +839,8 @@ export default function LibraryDetailPage() {
             value={entry.value}
             component={RouterLink}
             to={{ search: tabSearch(entry.value) }}
-            // Der Bereich ist ein Zustand derselben Seite, kein eigener Halt: Wer vier Reiter
-            // durchsieht, soll die Seite mit einem „Zurück" verlassen, nicht mit vieren.
+            // The area is a state of the same page, not a stop of its own: whoever looks through
+            // four tabs should leave the page with one „Zurück", not with four.
             replace
             id={`library-tab-${entry.value}`}
             aria-controls={`library-tabpanel-${entry.value}`}
@@ -909,8 +910,9 @@ export default function LibraryDetailPage() {
             >
               <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
             </PageSection>
-            {/* Die Extraktionseinstellungen liest erst MANAGER (GET .../metadata/extraction-settings)
-              - für eine lesende Rolle bliebe hier nur eine Fehlermeldung stehen. */}
+            {/* The extraction settings are readable only from MANAGER on
+               (GET .../metadata/extraction-settings) - for a reading role only an error message
+               would remain here. */}
             {canEdit && (
               <PageSection
                 title="Modellgestützte Extraktion"
@@ -929,17 +931,17 @@ export default function LibraryDetailPage() {
         aria-labelledby="library-tab-freigaben"
         hidden={activeTab !== 'freigaben'}
       >
-        {/* Die Reihenfolge des Zielentwurfs: Eigentümer · Berechtigungen · Externer
-            Zugang · Diagnosesperre · Herleitung. Jeder Abschnitt speichert für sich;
-            es gibt keinen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg. */}
+        {/* The order of the target design: owner · permissions · external
+           access · diagnostics lock · derivation. Every section saves on its own;
+           there is no shared „Speichern" button across sections. */}
         <Stack>
           <AssetOwnerSection
             assetType="KNOWLEDGE_LIBRARY"
             assetId={libraryId}
             ownerType={library.ownerType}
             ownerName={library.ownerName}
-            // Übergeben darf nur, wer das Eigentum hält - myRole trägt für eine Systemverwaltung
-            // ohnehin OWNER, und genau die darf es laut Endpunkt auch.
+            // Only whoever holds the ownership may hand over - myRole carries OWNER for a system
+            // administration anyway, and the endpoint lets exactly that do so.
             canTransfer={library.myRole === 'OWNER' && !privateLibrary}
             onTransferred={() => reloadLibrary()}
           />

@@ -240,8 +240,8 @@ export default function LibraryDocumentList({
                 </Link>
               </Typography>
             )}
-            {/* sourceEntryUrl trägt nur eine Anlage aus einem RSS-Feed-Eintrag - der Link
-                macht sichtbar, aus welchem Eintrag sie stammt. */}
+            {/* sourceEntryUrl is carried only by an attachment from an RSS feed entry - the link
+               makes visible which entry it comes from. */}
             {document.sourceEntryUrl && (
               <Typography
                 variant="caption"

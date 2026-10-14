@@ -26,11 +26,11 @@ interface ModelRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü eines Chat-Modells. Bearbeiten öffnet den Dialog; Verbindungstest,
- * Aktivieren und Löschen wirken sofort und melden ihr Ergebnis als Benachrichtigung.
+ * The row menu of a chat model. Bearbeiten opens the dialog; connection test,
+ * activation and deletion take effect at once and report their result as a notification.
  *
- * Das Menü schließt sich, bevor eine Rückfrage aufgeht: Zwei übereinanderliegende Ebenen mit
- * eigenem Fokusfang wären weder mit der Tastatur noch mit einem Screenreader zu verlassen.
+ * The menu closes before a confirmation opens: two stacked layers with their own
+ * focus trap could be left neither with the keyboard nor with a screen reader.
  */
 export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
   const activateExistingModel = useLlmModelStore((s) => s.activateExistingModel)
@@ -57,8 +57,8 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
     close()
     setBusy(true)
     try {
-      // Ohne `apiKey`, aber mit `modelId`: Der Test greift damit auf den **gespeicherten**
-      // Schlüssel dieses Modells zurück, statt ohne einen zu laufen.
+      // Without `apiKey`, but with `modelId`: the test thus falls back to this model's **stored**
+      // key instead of running without one.
       const result = await testLlmModel({
         baseUrl: model.baseUrl,
         modelIdentifier: model.modelIdentifier,
@@ -153,10 +153,10 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
           </Typography>
         </MenuItem>
         {model.active && (
-          // Ein `<li role="presentation">` statt eines Absatzes: Ein `<p>` unter `role="menu"`
-          // verletzt `aria-required-children`. Der gesperrte Eintrag verweist über
-          // `aria-describedby` hierher, damit die Begründung auch vorgelesen wird - ein Tooltip
-          // fände nur eine Maus.
+          // An `<li role="presentation">` instead of a paragraph: a `<p>` under `role="menu"`
+          // violates `aria-required-children`. The disabled entry refers here via
+          // `aria-describedby`, so that the reason is read out as well - a tooltip
+          // would only be found by a mouse.
           <Box
             component="li"
             role="presentation"

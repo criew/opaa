@@ -331,7 +331,7 @@ export default function LibraryDocumentsSection({
       setAnchorRefreshToken((previous) => previous + 1)
       onDocumentsChanged()
     } catch {
-      // Die Fehlermeldung steht bereits über documentStore.deleteError.
+      // The error message is already shown via documentStore.deleteError.
     }
   }
 
@@ -420,7 +420,7 @@ export default function LibraryDocumentsSection({
       await removeFolder(libraryId, folder.id)
       onDocumentsChanged()
     } catch {
-      // Fehlermeldung wird bereits über documentStore.folderError angezeigt.
+      // The error message is already shown via documentStore.folderError.
     }
   }
 
@@ -436,8 +436,8 @@ export default function LibraryDocumentsSection({
         await uploadNewDocument(libraryId, entry.file, entry.relativePath || undefined)
         onDocumentsChanged()
       } catch {
-        // Der Fehler landet bereits gesammelt in documentStore.uploadErrors; die Schleife läuft
-        // weiter, damit ein Fehler bei einer Datei nicht die übrigen blockiert.
+        // The error is already collected in documentStore.uploadErrors; the loop keeps
+        // going, so that an error on one file does not block the others.
       }
     }
   }
@@ -507,7 +507,7 @@ export default function LibraryDocumentsSection({
       await removeDocument(libraryId, document.id)
       onDocumentsChanged()
     } catch {
-      // Fehlermeldung wird bereits über documentStore.deleteError angezeigt.
+      // The error message is already shown via documentStore.deleteError.
     }
   }
 

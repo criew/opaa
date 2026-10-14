@@ -23,10 +23,10 @@ const desktopMatchMedia = matchMediaWith((query) => query.includes('min-width'))
 const mobileMatchMedia = matchMediaWith(() => false)
 
 /**
- * Die Markenfläche ist über eine Emotion-Klasse gestaltet, nicht über ein `style`-Attribut — der
- * Wert steht deshalb im eingefügten Stylesheet, nicht am Element. Gelesen wird die eine
- * `background-image`-Deklaration, die zu dieser Fläche gehört; Emotions Stylesheet überdauert den
- * einzelnen Testfall, deshalb wird der Eintrag mit Bild zuerst gesucht.
+ * The brand area is styled via an Emotion class, not via a `style` attribute — the
+ * value is therefore in the injected stylesheet, not on the element. What is read is the one
+ * `background-image` declaration that belongs to this area; Emotion's stylesheet outlasts the
+ * single test case, so the entry with an image is looked for first.
  */
 function panelBackgroundImage(): string {
   const css = Array.from(document.querySelectorAll('style'))
@@ -61,8 +61,8 @@ describe('AuthLayout', () => {
       </AuthLayout>,
     )
 
-    // Genau einmal: Beide Zweige gleichzeitig zu bauen und einen davon zu verstecken, hinterliesse
-    // den Namen doppelt im Baum - fuer Screenreader und fuer Abfragen nach Text.
+    // Exactly once: building both branches at the same time and hiding one of them would leave
+    // the name twice in the tree - for screen readers and for queries by text.
     expect(screen.getAllByText('OPAA')).toHaveLength(1)
     expect(screen.getByText('Formular')).toBeInTheDocument()
   })
@@ -75,8 +75,8 @@ describe('AuthLayout', () => {
       </AuthLayout>,
     )
 
-    // Passwort-Festlegen und E-Mail-Bestaetigung werden kalt aus einer E-Mail erreicht - auf
-    // jeder Breite muss erkennbar bleiben, wessen Installation fragt.
+    // Setting a password and confirming an email are reached cold from an email - at
+    // every width it must stay recognizable whose installation is asking.
     expect(screen.getAllByText('OPAA')).toHaveLength(1)
     expect(screen.getByText('Formular')).toBeInTheDocument()
   })
@@ -92,7 +92,7 @@ describe('AuthLayout', () => {
     expect(screen.queryByRole('heading', { name: 'OPAA' })).toBeNull()
   })
 
-  /** Ohne hinterlegtes Bild bleibt die Fläche, wie sie war. */
+  /** Without an uploaded image the area stays as it was. */
   it('keeps today’s panel where no background image is configured', () => {
     renderWithProviders(
       <AuthLayout>
@@ -105,7 +105,7 @@ describe('AuthLayout', () => {
     expect(background).not.toContain('url(')
   })
 
-  /** Über einem hinterlegten Bild liegt der feste Schleier — vor dem Bild, nicht dahinter. */
+  /** On top of an uploaded image lies the fixed scrim — in front of the image, not behind it. */
   it('lays the fixed scrim over a configured background image', () => {
     useBrandingStore.setState({
       branding: {

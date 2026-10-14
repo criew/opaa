@@ -72,7 +72,7 @@ describe('RightsHistoryPage', () => {
     expect(screen.getByText('noch wirksam')).toBeInTheDocument()
   })
 
-  /** Eine Luecke vor der Aufbewahrungsgrenze ist kein Freispruch, und die Seite sagt das. */
+  /** A gap before the retention limit is no acquittal, and the page says so. */
   it('weist darauf hin, wenn der Zeitraum vor der Aufbewahrungsgrenze beginnt', async () => {
     signInAs('AUDITOR')
     mockGetAccessAsOf.mockResolvedValue({ ...answer, beyondRetention: true, entries: [] })
@@ -93,7 +93,7 @@ describe('RightsHistoryPage', () => {
     expect(await screen.findByText(/zu weit gefasst/)).toBeInTheDocument()
   })
 
-  /** Sollte (7): eine leere Liste darf nicht als "niemand hatte Zugriff" gelesen werden. */
+  /** Should (7): an empty list must not be read as "niemand hatte Zugriff". */
   it('nennt die Rechtequellen, die die Auskunft noch nicht abdeckt', async () => {
     signInAs('AUDITOR')
     mockGetAccessAsOf.mockResolvedValue({ ...answer, entries: [], totalElements: 0 })
@@ -105,7 +105,7 @@ describe('RightsHistoryPage', () => {
     expect(screen.getByText(/kein Beleg dafür/)).toBeInTheDocument()
   })
 
-  /** Sollte (8): Seite 2 muss erreichbar sein, sonst sieht eine gekürzte Liste vollständig aus. */
+  /** Should (8): page 2 must be reachable, otherwise a truncated list looks complete. */
   it('blättert zur nächsten Seite', async () => {
     const user = userEvent.setup()
     signInAs('AUDITOR')

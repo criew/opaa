@@ -17,17 +17,16 @@ import SectionHead from '@/shared/ui/SectionHead'
 interface SpaceGeneralSectionProps {
   spaceId: string
   space: SpaceResponse
-  /** Nur ein Administrator ändert Name, Beschreibung, Chat-Bereinigung und Anweisung. */
+  /** Only an administrator changes name, description, chat cleanup and instruction. */
   canManage: boolean
-  /** Archivieren und Löschen bleiben dem Eigentümer vorbehalten. */
+  /** Archiving and deleting stay reserved for the owner. */
   isOwner: boolean
 }
 
 /**
- * Der Reiter „Stammdaten" der Space-Einstellungen: Name, Beschreibung, der Schalter der
- * automatischen Chat-Bereinigung und die Anweisung an das Modell, die jedes Mitglied sieht, und am
- * Ende der abgesetzte
- * Gefahrenbereich mit Archivieren und Löschen.
+ * The „Stammdaten" tab of the space settings: name, description, the switch of the
+ * automatic chat cleanup and the instruction to the model that every member sees, and at the
+ * end the set-off danger zone with archiving and deleting.
  */
 export default function SpaceGeneralSection({
   spaceId,
@@ -146,9 +145,9 @@ export default function SpaceGeneralSection({
                 onClick={async () => {
                   setLocalError(null)
                   try {
-                    // Schalter und Anweisung gehen nur mit, wenn sie geändert wurden: Ein bloßes
-                    // Umbenennen setzt so keinen Stand zurück, den inzwischen jemand anderes
-                    // geändert hat.
+                    // Switch and instruction are sent only if they were changed: a mere
+                    // rename thus resets no state someone else has changed
+                    // in the meantime.
                     await updateDetails(
                       spaceId,
                       name,
@@ -174,9 +173,9 @@ export default function SpaceGeneralSection({
         </Stack>
       </Box>
 
-      {/* Gefahrenbereich nach dem Muster von GitLab: die beiden folgenreichen Handlungen
-          stehen abgesetzt am Ende der Stammdaten, nicht zwischen den Feldern. Wer sie nicht
-          ausführen darf, sieht den Bereich gar nicht. */}
+      {/* Danger zone after GitLab's pattern: the two consequential actions
+         are set off at the end of the master data, not between the fields. Whoever may not
+         perform them does not see the area at all. */}
       {isOwner && !space.isDefault && (
         <Box
           sx={{

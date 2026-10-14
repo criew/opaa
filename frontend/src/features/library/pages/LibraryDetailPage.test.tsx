@@ -336,8 +336,8 @@ describe('LibraryDetailPage', () => {
     useIndexingStore.getState().stopPolling('library-mine')
   })
 
-  // Reiterleiste und Kopf - welche Bereiche eine Rolle sieht, und wo Bearbeiten und
-  // Löschen stehen.
+  // Tab bar and header - which areas a role sees, and where edit and
+  // delete are.
   describe('Kopf und Reiterrahmen (#1939)', () => {
     async function tabNames(): Promise<string[]> {
       const tabs = await screen.findAllByRole('tab')
@@ -393,7 +393,7 @@ describe('LibraryDetailPage', () => {
       expect(
         await screen.findByRole('heading', { name: /warum sehe ich diese bibliothek/i }),
       ).toBeInTheDocument()
-      // Die Zuordnungen haben einen eigenen Reiter.
+      // The associations have a tab of their own.
       expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
     })
@@ -412,8 +412,8 @@ describe('LibraryDetailPage', () => {
       expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
     })
 
-    // Die Herleitung steht für beide Rollen im selben Reiter, aber aus zwei Zweigen - für eine
-    // verwaltende Rolle aus dem Freigabeabschnitt, sonst als eigener Abschnitt. Genau einer.
+    // The derivation is in the same tab for both roles, but from two branches - for a
+    // managing role from the sharing section, otherwise as a section of its own. Exactly one.
     it('shows the Herleitung exactly once for a MANAGER', async () => {
       setLibraryState(managerLibrary, detailsOf(managerLibrary))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -480,8 +480,8 @@ describe('LibraryDetailPage', () => {
 
       expect(screen.queryByLabelText(/name der bibliothek/i)).not.toBeInTheDocument()
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
-      // accessibility.md 2.1: Der Fokus kehrt zum auslösenden Element zurück, sonst beginnt die
-      // nächste Tabulatortaste wieder ganz oben auf der Seite.
+      // accessibility.md 2.1: focus returns to the triggering element, otherwise the
+      // next tab key starts again at the very top of the page.
       expect(screen.getByRole('button', { name: /name und beschreibung/i })).toHaveFocus()
     })
 
@@ -512,8 +512,8 @@ describe('LibraryDetailPage', () => {
 
       const alert = await screen.findByRole('alert')
       expect(alert).toHaveTextContent('Name bereits vergeben')
-      // accessibility.md 2.4: Nach einem Abschickfehler geht der Fokus auf die Fehlermeldung, und
-      // die Eingabe bleibt erhalten.
+      // accessibility.md 2.4: after a submit error focus moves to the error message, and
+      // the input is kept.
       expect(alert).toHaveFocus()
       expect(screen.getByLabelText(/name der bibliothek/i)).toBeInTheDocument()
     })
@@ -525,7 +525,7 @@ describe('LibraryDetailPage', () => {
 
     expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /name und beschreibung/i })).not.toBeInTheDocument()
-    // „⋯" trägt für jede lesende Rolle „In Space verwenden", das Löschen aber nicht.
+    // „⋯" carries „In Space verwenden" for every reading role, but not the deletion.
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /weitere aktionen/i }))
     const menu = await screen.findByRole('menu')
@@ -573,8 +573,8 @@ describe('LibraryDetailPage', () => {
     expect(within(menu).queryByRole('menuitem', { name: 'Löschen' })).not.toBeInTheDocument()
   })
 
-  // Die Berechtigungen stehen als Liste auf der Seite statt hinter „Rechte verwalten";
-  // eine lesende Rolle sieht den Abschnitt gar nicht, wohl aber den Eigentümer.
+  // The permissions are a list on the page instead of behind „Rechte verwalten";
+  // a reading role does not see the section at all, but does see the owner.
   it('lists the grants for a MANAGER and hides the whole section from a VIEWER', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -1154,7 +1154,7 @@ describe('LibraryDetailPage', () => {
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).toBeInTheDocument()
     expect(screen.getByText('https://wiki.behoerde.example/confluence')).toBeInTheDocument()
-    // Kopf-Kurzzeile und Umfang des Reiters nennen die Edition je einmal.
+    // The header's short line and the tab's scope name the edition once each.
     expect(screen.getAllByText(/Data Center/)).toHaveLength(2)
     expect(screen.getByText(/nach der Anlage nicht änderbar/)).toBeInTheDocument()
     expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
@@ -1396,7 +1396,7 @@ describe('LibraryDetailPage', () => {
     )
     // the scope itself - edition and spaces - is visible to the VIEWER, the address is not
     expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
-    // Die Edition steht zweimal: in der Umfangskurzzeile des Kopfes und im Reiter „Quelle".
+    // The edition appears twice: in the header's scope short line and in the „Quelle" tab.
     expect(screen.getAllByText(/Cloud/)).toHaveLength(2)
     unmount()
 
@@ -1510,9 +1510,9 @@ describe('LibraryDetailPage', () => {
     expect(await screen.findByText('/data/dokumente')).toBeInTheDocument()
     unmount()
 
-    // Der Reiter „Quelle" steht auch einem Leser offen, die Quellkonfiguration nicht:
-    // Das Backend liefert den Pfad nie an einen VIEWER, und die Seite zeigt
-    // auch keinen Platzhalter für Daten, die nie gesendet wurden.
+    // The „Quelle" tab is open to a reader as well, the source configuration is not:
+    // the backend never delivers the path to a VIEWER, and the page shows
+    // no placeholder for data that was never sent either.
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
@@ -2057,8 +2057,8 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    // Genau ein Hinweis auf die eigene Rolle, im Seitenkopf - der Dokumentenbereich
-    // trägt keinen zweiten mehr.
+    // Exactly one hint about the own role, in the page header - the documents area
+    // no longer carries a second one.
     expect(
       await screen.findByText('Sie haben in dieser Bibliothek nur Leserechte.'),
     ).toBeInTheDocument()
@@ -2100,8 +2100,8 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
   })
 
-  // Eine RSS-Anlage trägt ihren Herkunfts-Eintrag über sourceEntryUrl - die
-  // Detailseite muss ihn sichtbar machen, statt ihn nur zu speichern.
+  // An RSS attachment carries its originating entry via sourceEntryUrl - the
+  // detail page must make it visible instead of only storing it.
   it('shows the source entry URL for an RSS attachment, but not for a document without one', async () => {
     mockGetLibraryDocuments.mockResolvedValueOnce(
       pageOf([
@@ -2151,8 +2151,8 @@ describe('LibraryDetailPage', () => {
     })
     expect(link).toHaveAttribute('href', 'https://example.gov/aktuelles/dienstanweisung-2024')
 
-    // Nur die Anlage trägt sourceEntryUrl - kein zweiter "Herkunft:"-Hinweis für das
-    // FILESYSTEM-Dokument ohne diesen Wert.
+    // Only the attachment carries sourceEntryUrl - no second "Herkunft:" hint for the
+    // FILESYSTEM document without this value.
     expect(screen.getAllByText(/herkunft:/i)).toHaveLength(1)
   })
 
@@ -3752,8 +3752,8 @@ describe('LibraryDetailPage', () => {
     ).toBeInTheDocument()
   })
 
-  // Der Reiter „Quelle" in vier Abschnitten - Umfang für jeden Leser, Anbindung, Zeitplan
-  // und Läufe für Verwaltende.
+  // The „Quelle" tab in four sections - scope for every reader, source connection, schedule
+  // and runs for managers.
   describe('Reiter Quelle (#1940)', () => {
     const connectorLibrary: LibraryListResponse = {
       ...managerLibrary,
@@ -3845,8 +3845,8 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // Sammelaktionen der Auswahl - „Feld setzen" überall, „Löschen" nur wo eine Einzelzeile
-  // es auch anbietet.
+  // Bulk actions of the selection - „Feld setzen" everywhere, „Löschen" only where a single row
+  // offers it too.
   describe('Sammelloeschen (#1943)', () => {
     const uploads: LibraryDocumentResponse[] = [
       {
@@ -3896,8 +3896,8 @@ describe('LibraryDetailPage', () => {
           'doc-2',
         ]),
       )
-      // Ein Teilerfolg ist eine Warnung, kein grüner Erfolg, und gleiche Gründe werden gezählt
-      // statt aneinandergereiht.
+      // A partial success is a warning, not a green success, and identical reasons are counted
+      // instead of strung together.
       const result = await screen.findByText(
         '1 von 2 Dokumenten gelöscht. Nicht gelöscht — 1 Dokument: Dokument nicht gefunden.',
       )

@@ -19,17 +19,17 @@ import {
 } from './localUserFixtures'
 
 /**
- * Die Admin-API der lokalen Konten als MSW-Handler – mit genau den Invarianten, auf die
- * sich die Oberfläche verlässt:
+ * The admin API of the local accounts as MSW handlers – with exactly the invariants the
+ * interface relies on:
  *
- * - die Liste führt nur lokale Konten, hat keine Sortierung nach Aktivität und lehnt eine
- *   Seitengröße über 50 mit 400 ab,
- * - Einladung und Zurücksetzen liefern den Link **genau einmal** und nur, wenn die Mail nicht
- *   hinausgegangen ist (Adressen auf `@kaputt.example`),
- * - die Konfliktcodes fallen dort an, wo sie auch im Backend anfallen (eigenes Konto,
- *   Notanker-Konto, letzter anmeldefähiger Systemverwalter, besitzende Konten),
- * - das Einschalten von „Passwort vergessen"/Selbstregistrierung ohne öffentliche Basis-URL ist
- *   409, mit leerer Domänenliste 400.
+ * - the list holds only local accounts, has no sorting by activity and rejects a
+ *   page size above 50 with 400,
+ * - invitation and reset return the link **exactly once** and only when the mail did not
+ *   go out (addresses on `@kaputt.example`),
+ * - the conflict codes occur where they occur in the backend as well (own account,
+ *   emergency account, last login-capable system administrator, owning accounts),
+ * - switching on „Passwort vergessen"/self-registration without a public base URL is
+ *   409, with an empty domain list 400.
  */
 
 const SORT_KEYS = ['displayName', 'email', 'expiresAt', 'createdAt'] as const
@@ -114,9 +114,9 @@ function expiryFrom(request: {
 }
 
 /**
- * Die fünf Zahlengrenzen aus ADR-0033 in der Reihenfolge, in der das Backend sie prüft. `NaN` aus
- * einem leeren Eingabefeld fällt durch jeden Vergleich und ist damit ebenfalls ein 400 - genau das
- * Verhalten, das ein Schalterklick nicht auslösen darf.
+ * The five numeric bounds from ADR-0033 in the order in which the backend checks them. `NaN` from
+ * an empty input field fails every comparison and is thus a 400 as well - exactly the
+ * behaviour a switch click must not trigger.
  */
 function firstOutOfRange(
   body: LocalAuthSettingsUpdateRequest,
@@ -392,8 +392,8 @@ export const localUserHandlers = [
     })
   }),
 
-  // Der Anstoß nennt Anbieter und Anlass und nie eine Identität; das Notanker-Konto ist
-  // ausgeschlossen, und der Link erscheint - wie bei der Einladung - nur, wenn keine Mail ging.
+  // The initiation names provider and reason and never an identity; the emergency account is
+  // excluded, and the link appears - as with the invitation - only when no mail went out.
   http.post('/api/v1/admin/local-users/:id/handover', async ({ params, request }) => {
     const user = find(String(params.id))
     if (!user) return notFound()
@@ -482,8 +482,8 @@ export const localUserHandlers = [
     }
 
     const switchedOff = previous.enabled && !body.enabled
-    // `revokedSessions` gehört nur in die Antwort des abschaltenden PUT, nicht dauerhaft in die
-    // Einstellungen: ein GET danach würde sonst eine Zahl führen, die das Backend nie liefert.
+    // `revokedSessions` belongs only in the response of the switching-off PUT, not permanently in
+    // the settings: a GET afterwards would otherwise carry a number the backend never returns.
     setMockLocalAuthSettings({ ...body, publicBaseUrlConfigured: previous.publicBaseUrlConfigured })
     return HttpResponse.json(
       switchedOff

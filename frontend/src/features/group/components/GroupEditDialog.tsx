@@ -29,11 +29,11 @@ interface GroupEditDialogProps {
 }
 
 /**
- * Bearbeiten einer Gruppe, als Dialog wie beim Konto. Eine interne Gruppe hat Name,
- * Beschreibung, Freigabe und Schutz als Entwurf, den „Speichern" übernimmt, dazu ihre
- * Verantwortlichen, deren Ernennung sofort wirkt; eine Gruppe aus einem Anbieter oder Verzeichnis
- * nur den Schutz - den Rest pflegt die Quelle. Über den Schutz entscheidet allein die
- * Systemverwaltung (ADR-0036, Entscheidung 9).
+ * Editing a group, as a dialog as for an account. An internal group has name,
+ * description, sharing and protection as a draft that „Speichern" adopts, plus its
+ * stewards, whose appointment takes effect immediately; a group from a provider or directory
+ * only the protection - the source maintains the rest. Only the system administration decides
+ * about the protection (ADR-0036, Entscheidung 9).
  */
 export default function GroupEditDialog({ group, onClose }: GroupEditDialogProps) {
   if (!group) return null

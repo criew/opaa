@@ -4,10 +4,10 @@ import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceTypeEntry } from './sourceTypeDirectory'
 
 /**
- * Das eine Bildzeichen je Quellentyp: Kopf der Detailseite und Kachel des Assistenten
- * zeigen dasselbe Symbol, damit die Wahl im Assistenten und die angelegte Bibliothek sichtbar
- * dieselbe Sache sind. Immer schmückend — der Typ steht daneben als Text. Ein Typ ohne eigene
- * Registrierung trägt ein neutrales Zeichen.
+ * The one icon per source type: the detail page's header and the wizard's tile
+ * show the same symbol, so that the choice in the wizard and the created library are visibly
+ * the same thing. Always decorative — the type stands next to it as text. A type without its own
+ * registration carries a neutral icon.
  */
 export default function SourceTypeIcon({
   sourceType,

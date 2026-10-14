@@ -10,11 +10,11 @@ import {
 } from './localUserFixtures'
 
 /**
- * Die Kontenliste und der Rollenendpunkt als MSW-Handler - mit den Invarianten, auf die
- * sich die Oberfläche verlässt: lokale und Anbieterkonten in einer Liste, die drei lokalen Filter
- * grenzen auf lokale Konten ein, keine Sortierung nach Aktivität, Seitengröße über 50 ist 400;
- * die Rolle eines anbietergeführten Kontos lehnt der Rollenendpunkt mit 409 ab, der letzte
- * anmeldefähige Systemverwalter mit 409 `LAST_LOGIN_CAPABLE_ADMIN`.
+ * The account list and the role endpoint as MSW handlers - with the invariants the
+ * interface relies on: local and provider accounts in one list, the three local filters
+ * narrow to local accounts, no sorting by activity, a page size above 50 is 400;
+ * the role endpoint rejects the role of a provider-managed account with 409, the last
+ * login-capable system administrator with 409 `LAST_LOGIN_CAPABLE_ADMIN`.
  */
 
 const SORT_KEYS = [
@@ -28,8 +28,8 @@ const SORT_KEYS = [
 ] as const
 type SortKey = (typeof SORT_KEYS)[number]
 
-/** Dieselben Rangfolgen wie im Backend (AccountAdminService): Rolle nach Privileg, Zustand nach
- *  Dringlichkeit, Herkunft erst nach Typ und dann nach Anbietername. */
+/** The same rankings as in the backend (AccountAdminService): role by privilege, state by
+ *  urgency, origin first by type and then by provider name. */
 const ROLE_RANK: Record<string, number> = { USER: 0, AUDITOR: 1, SYSTEM_ADMIN: 2 }
 const STATUS_RANK: Record<string, number> = { LOCKED: 0, EXPIRED: 1, INVITED: 2, ACTIVE: 3 }
 
@@ -71,12 +71,12 @@ function sortValue(account: AccountResponse, key: SortKey): string {
     case 'role':
       return String(ROLE_RANK[account.systemRole] ?? 9)
     case 'status':
-      // Ein Anbieterkonto trägt keinen Zustand aus OPAAs Hand und sortiert zuletzt.
+      // A provider account carries no state from OPAA's hand and sorts last.
       return String(account.local ? (STATUS_RANK[account.local.status] ?? 9) : 4)
   }
 }
 
-/** Nur das Feld, nach dem sortiert wird - ohne Gleichstandsregel, damit `desc` genau dieses Ergebnis umdreht. */
+/** Only the sort field - without a tie-breaker, so that `desc` reverses exactly this result. */
 function comparePrimary(a: AccountResponse, b: AccountResponse, key: SortKey): number {
   const left = sortValue(a, key)
   const right = sortValue(b, key)
@@ -91,10 +91,10 @@ function comparePrimary(a: AccountResponse, b: AccountResponse, key: SortKey): n
 }
 
 /**
- * Die Gleichstandsregel des Backends (AccountAdminService#comparator): erst der Anzeigename, dann
- * die ID. Sie bleibt **aufsteigend**, auch wenn die Primärordnung umgedreht wurde - sonst lieferten
- * Doppel und Backend für `direction=desc` zwei verschiedene Reihenfolgen, und ein Test schriebe
- * eine fest, die es gegen das echte Backend nicht gibt.
+ * The backend's tie-breaker (AccountAdminService#comparator): first the display name, then
+ * the ID. It stays **ascending** even when the primary order was reversed - otherwise
+ * the double and the backend would return two different orders for `direction=desc`, and a test
+ * would pin one that does not exist against the real backend.
  */
 function compareTieBreak(a: AccountResponse, b: AccountResponse): number {
   const byName = (a.displayName ?? '').localeCompare(b.displayName ?? '', 'de-DE')

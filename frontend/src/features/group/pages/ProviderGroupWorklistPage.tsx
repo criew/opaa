@@ -19,10 +19,10 @@ import { groupUsageDetails } from '../components/groupUsageLabels'
 import { contentWidth } from '@/shared/theme/tokens'
 
 /**
- * Die Arbeitsliste je Anbieter (ADR-0036 Entscheidung 2): Der `409` beim Löschen eines
- * Anbieters verweist hierher. Je Gruppe steht, wofür sie verwendet wird, und der Ausgang — ihre
- * Rechte übertragen oder dort entfernen, wo sie vergeben sind. Nicht verwendete Gruppen gehen mit
- * dem Anbieter.
+ * The worklist per provider (ADR-0036 Entscheidung 2): the `409` when deleting a
+ * provider points here. Per group it shows what it is used for, and the way out — transfer its
+ * rights or remove it where it is granted. Groups not in use go with the
+ * provider.
  */
 export default function ProviderGroupWorklistPage() {
   const { providerId = '' } = useParams()
@@ -34,8 +34,8 @@ export default function ProviderGroupWorklistPage() {
   const [isLoading, setIsLoading] = useState(isSystemAdmin)
   const [transferSource, setTransferSource] = useState<GroupEffectsResponse | null>(null)
 
-  // Kein synchrones setState im Rumpf: Der Effekt unten ruft dieselbe Funktion, und ein synchrones
-  // setState von dort erzeugt eine Renderkaskade (react-hooks/set-state-in-effect).
+  // No synchronous setState in the body: the effect below calls the same function, and a
+  // synchronous setState from there causes a render cascade (react-hooks/set-state-in-effect).
   const reload = useCallback(
     () =>
       getGroupEffects({ providerId })

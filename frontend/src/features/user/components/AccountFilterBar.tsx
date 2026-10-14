@@ -45,12 +45,12 @@ function originPatch(value: string): Partial<AccountFilters> {
 }
 
 /**
- * Suche und Filter der Kontenliste; die primäre Handlung steht im Kopf des
- * Bereichs darüber, damit diese Zeile nur Filter trägt. Die Herkunft wählt
- * zwischen allen, lokalen und Anbieterkonten oder einem einzelnen Anbieter; die drei Prüffilter
- * der Auflage aus ADR-0033 - „Zustand: Eingeladen", „ohne Ablaufdatum", „länger als 90 Tage nicht
- * genutzt" - beschreiben lokale Konten und grenzen die Liste auf sie ein. Nach Aktivität wird
- * nicht sortiert, sie ist nur eine Klasse.
+ * Search and filters of the account list; the primary action is in the head of the
+ * area above, so that this row only carries filters. The origin chooses
+ * between all, local and provider accounts or a single provider; the three review filters
+ * of the requirement from ADR-0033 - „Zustand: Eingeladen", „ohne Ablaufdatum", „länger als 90
+ * Tage nicht genutzt" - describe local accounts and narrow the list to them. There is no
+ * sorting by activity, it is only a class.
  */
 export default function AccountFilterBar() {
   const filters = useUserAdminStore((s) => s.filters)
@@ -58,10 +58,10 @@ export default function AccountFilterBar() {
   const providers = useOidcProviderStore((s) => s.providers)
   const loadProviders = useOidcProviderStore((s) => s.loadProviders)
   /**
-   * Das Suchfeld ist während des Tippens lokal und folgt dem Store, sobald dessen `query` von
-   * anderer Stelle gesetzt wird (der Filter-Sprung des Auflagen-Hinweises). Abgeleitet beim
-   * Rendern statt in einem Effekt synchronisiert: `basedOn` hält fest, gegen welchen Store-Wert
-   * getippt wurde – ein von außen gesetzter Wert gewinnt damit sofort.
+   * The search field is local while typing and follows the store as soon as its `query` is set
+   * from elsewhere (the filter jump of the requirements hint). Derived while
+   * rendering instead of synchronized in an effect: `basedOn` records against which store value
+   * was typed – a value set from outside thus wins at once.
    */
   const [typed, setTyped] = useState<{ value: string; basedOn: string } | null>(null)
   const search = typed && typed.basedOn === filters.query ? typed.value : filters.query

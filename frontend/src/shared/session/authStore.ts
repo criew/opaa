@@ -570,13 +570,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     /**
-     * Die öffentliche Anmeldekonfiguration ist nach jedem Sitzungsende veraltet: Während
-     * einer Sitzung kann die Systemverwaltung die lokale Anmeldung, „Passwort vergessen", die
-     * Selbstregistrierung oder einen Identitätsanbieter umgeschaltet haben. Ohne dieses Nachladen
-     * zeigte die Anmeldeseite den Stand vom Anwendungsstart, bis jemand die Seite neu lud.
+     * The public login configuration is outdated after every end of session: during
+     * a session the system administration may have toggled the local login, „Passwort vergessen",
+     * the self-registration or an identity provider. Without this reload
+     * the login page would show the state as of application start until someone reloaded the page.
      *
-     * Bewusst **nicht** `initialize()`: Das meldet im Betriebsmodus `dev` sofort wieder an und
-     * machte die gerade beendete Sitzung rückgängig.
+     * Deliberately **not** `initialize()`: that signs in again at once in the `dev` operating mode
+     * and would undo the session that just ended.
      */
     refreshPublicAuthConfig: async () => {
       try {
@@ -588,8 +588,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
           features: config.features,
         })
       } catch {
-        // Der letzte bekannte Stand ist besser als keiner: Eine nicht erreichbare Konfiguration
-        // darf die Anmeldeseite nicht leer räumen, und das Abmelden gilt unabhängig davon.
+        // The last known state is better than none: an unreachable configuration
+        // must not clear the login page, and the logout applies regardless.
       }
     },
     loginOidc: async (providerId, options) => {
@@ -901,8 +901,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         // only the fallback without a provider redirect may reveal the login page now
         isSigningOut: redirectedToProvider,
       })
-      // Nach einem signoutRedirect() ist die Seite ohnehin fort; erreicht wird das hier auf dem
-      // Weg, auf dem der Anbieter keinen end_session_endpoint hat und die Anwendung stehen bleibt.
+      // After a signoutRedirect() the page is gone anyway; this is reached on the
+      // path where the provider has no end_session_endpoint and the application stays.
       await get().refreshPublicAuthConfig()
     },
 
@@ -1000,9 +1000,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
           .initialize()
           .then(() => set({ error: UNKNOWN_ISSUER_MESSAGE }))
       } else {
-        // Derselbe Grund wie beim Abmelden: Endet die Sitzung, weil die Systemverwaltung
-        // die lokale Anmeldung abgeschaltet hat, nennt die Anmeldeseite sonst weiter das Formular
-        // vom Anwendungsstart. Nicht abgewartet - das Sitzungsende gilt sofort.
+        // The same reason as on logout: if the session ends because the system administration
+        // switched off the local login, the login page would otherwise keep showing the form
+        // from application start. Not awaited - the end of session applies at once.
         void get().refreshPublicAuthConfig()
       }
     },

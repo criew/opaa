@@ -81,9 +81,9 @@ export default function EditLibraryScheduleDialog({
       await updateExistingLibrary(libraryId, {
         name: library.name,
         description: library.description ?? undefined,
-        // Bewusst kein Quellkonfigurationsfeld gesetzt - mirrors LibraryDetailPage's own
-        // Stammdaten-Formular: das Backend lässt die gespeicherte Quellkonfiguration unverändert,
-        // solange keines ihrer Felder in der Anfrage vorhanden ist.
+        // Deliberately no source configuration field set - mirrors LibraryDetailPage's own
+        // master data form: the backend leaves the stored source configuration unchanged
+        // as long as none of its fields is present in the request.
         ...withSettingsBase(scheduleUpdateFrom(values, confluence), settingsBase),
       })
       onClose()

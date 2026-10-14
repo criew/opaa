@@ -21,8 +21,8 @@ interface StatusLineProps {
   component?: 'h2' | 'h3' | 'p'
   /**
    * Names the line as a landmark, where it stands for a state a reader should be able to jump to
-   * („Versandstatus"). Ohne diesen Namen ist die Zeile nur Text - der Rahmen, der sie vorher zu
-   * einem benannten Bereich machte, ist weggefallen, die Semantik darf es nicht.
+   * („Versandstatus"). Without this name the line is just text - the frame that used to make it
+   * a named area is gone, the semantics must not be.
    */
   label?: string
   /** Details under the line - typically a KeyValueList. */
@@ -30,10 +30,10 @@ interface StatusLineProps {
 }
 
 /**
- * Ein Zustand als Zeile: farbiger Punkt, Satz, darunter der Grund — **keine Statuskarte**.
+ * A state as a line: coloured dot, sentence, below it the reason — **no status card**.
  *
- * Die Farbe steht im Punkt, nie im Text (Gestaltungsleitlinien 2.3). Der Punkt ist dekorativ und
- * für Screenreader ausgeblendet — die Aussage steht vollständig im Wort.
+ * The colour is in the dot, never in the text (design guidelines 2.3). The dot is decorative and
+ * hidden from screen readers — the statement is complete in the word.
  */
 export default function StatusLine({
   headline,

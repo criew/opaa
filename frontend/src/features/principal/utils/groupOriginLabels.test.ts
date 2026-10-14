@@ -35,8 +35,8 @@ describe('groupOriginLabels', () => {
     expect(groupOriginLabel({ origin: 'INTERNAL' })).toBe('intern')
   })
 
-  // ADR-0036, Entscheidung 2: Eine aufgelöste Gruppe und die eines deaktivierten Anbieters sind
-  // keine wirksamen Gruppen - bestehende Berechtigungen bleiben aber.
+  // ADR-0036, Entscheidung 2: a dissolved group and one of a deactivated provider are
+  // no effective groups - existing permissions remain, though.
   it('names why a group can no longer be chosen', () => {
     expect(groupIneffectiveReason(providerGroup)).toBeNull()
     expect(groupIneffectiveReason({ ...providerGroup, dissolved: true })).toMatch(/Aufgelöst/)

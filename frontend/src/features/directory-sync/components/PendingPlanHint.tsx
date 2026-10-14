@@ -10,10 +10,10 @@ import { ageSinceLabel, countLabel } from '@/features/principal'
 import HintLink from '@/shared/ui/list/HintLink'
 
 /**
- * Ein ausstehender Verzeichnisplan ist ein lauter Zustand (ADR-0036, Entscheidung 3): Sein Alter
- * steht auf der Verwaltungsübersicht, nicht nur in der Unterseite des Anbieters. Hier als
- * Warn-Link in der Zeile von „Gruppe anlegen", mit dem Alter schon im Linktext und den
- * Einzelheiten je Anbieter im Popover.
+ * A pending directory plan is a loud state (ADR-0036, Entscheidung 3): its age
+ * is shown on the administration overview, not only on the provider's sub-page. Here as a
+ * warning link in the row of „Gruppe anlegen", with the age already in the link text and the
+ * details per provider in the popover.
  */
 export default function PendingPlanHint() {
   const [statuses, setStatuses] = useState<DirectorySyncStatusResponse[]>([])

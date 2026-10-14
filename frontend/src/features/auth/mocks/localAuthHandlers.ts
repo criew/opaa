@@ -197,8 +197,8 @@ export const localAuthHandlers = [
     return new HttpResponse(null, { status: 202 })
   }),
 
-  // Die Vorschau verbraucht nichts, die Einlösung genau einmal - und sie verlangt ein
-  // Anbieter-Token im Body, nie im Authorization-Header.
+  // The preview consumes nothing, the redemption exactly once - and it requires a
+  // provider token in the body, never in the Authorization header.
   http.post('/api/v1/auth/local/handover/preview', async ({ request }) => {
     const body = (await request.json()) as { token?: string }
     if (body.token === MOCK_RATE_LIMITED_TOKEN) return tooManyRequests()

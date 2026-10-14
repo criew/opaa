@@ -29,8 +29,8 @@ describe('AreaTabs', () => {
     renderTabs('server')
 
     const leiste = screen.getByRole('tablist', { name: 'Bereiche der E-Mail-Einstellungen' })
-    // Links, keine Klick-Handler: Ein Verweis soll im richtigen Bereich landen, und „in neuem Tab
-    // öffnen" muss funktionieren.
+    // Links, no click handlers: a link should land in the right area, and „in neuem Tab
+    // öffnen" must work.
     expect(within(leiste).getByRole('tab', { name: 'SMTP-Zugang' })).toHaveAttribute(
       'href',
       '/admin/mail/server',
@@ -55,7 +55,7 @@ describe('AreaTabs', () => {
     const inhalt = renderTabs('server')
 
     expect(screen.getByText('Inhalt')).toBeInTheDocument()
-    // Ohne diese Regel liefen die Anfragen des unsichtbaren Bereichs im Hintergrund weiter.
+    // Without this rule the invisible area's requests would keep running in the background.
     expect(inhalt).toHaveBeenCalledTimes(1)
     expect(inhalt).toHaveBeenCalledWith('server')
   })
@@ -68,7 +68,7 @@ describe('AreaTabs', () => {
       expect(panelId).toBeTruthy()
       const panel = document.getElementById(panelId!)
       expect(panel).not.toBeNull()
-      // Und zurück: Das Panel nennt seinen Reiter, damit die Beziehung in beide Richtungen steht.
+      // And back: the panel names its tab, so that the relation holds in both directions.
       expect(panel!.getAttribute('aria-labelledby')).toBe(reiter.id)
     }
   })

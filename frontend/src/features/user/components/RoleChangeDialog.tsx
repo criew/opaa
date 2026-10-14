@@ -22,10 +22,10 @@ interface RoleChangeDialogProps {
 }
 
 /**
- * Die Rolle eines Kontos ändern - für Anbieterkonten der eine Weg, für lokale steht sie
- * auch im Bearbeiten-Dialog. Der Rollenendpunkt ist für beide derselbe (ADR-0033, Entscheidung
- * 11); seine beiden Ablehnungen - anbietergeführte Rolle, letzter anmeldefähiger Systemverwalter -
- * erscheinen hier als Satz mit dem nächsten Schritt statt als Statuscode.
+ * Change an account's role - for provider accounts the one path, for local ones it is
+ * also in the edit dialog. The role endpoint is the same for both (ADR-0033, Entscheidung
+ * 11); its two rejections - provider-managed role, last login-capable system administrator -
+ * appear here as a sentence with the next step instead of a status code.
  */
 export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogProps) {
   const changeRole = useUserAdminStore((s) => s.changeRole)
@@ -86,8 +86,8 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
             select
             fullWidth
             size="small"
-            // MUIs Auswahl rendert eine Anzeige mit role="combobox", die ihren Namen über
-            // aria-labelledby braucht (axe aria-input-field-name) - Muster wie in UserFormDialog.
+            // MUI's select renders a display with role="combobox" that needs its name via
+            // aria-labelledby (axe aria-input-field-name) - pattern as in UserFormDialog.
             slotProps={{
               select: { SelectDisplayProps: { 'aria-labelledby': 'role-change-role-label' } },
             }}

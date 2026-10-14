@@ -77,9 +77,9 @@ function sameDraft(a: Draft, b: Draft): boolean {
 }
 
 /**
- * Der gespeicherte Zustand steht bewusst neben und nicht in der Schalterbeschriftung: Solange eine
- * Änderung noch nicht gespeichert ist, meldete ein Name „derzeit aus“ neben `aria-checked="true"`
- * genau am Bedienelement, das den Weg öffnet, zwei verschiedene Zustände.
+ * The saved state deliberately stands next to and not in the switch label: as long as a
+ * change is not saved yet, a name „derzeit aus“ next to `aria-checked="true"` would report two
+ * different states right at the control that opens the path.
  */
 function storedStateLine(settings: ExternalAccessSettingsResponse): string {
   return `Gespeichert: ${settings.enabled ? 'ein' : 'aus'} — zuletzt geändert am ${formatDate(settings.updatedAt)} durch ${settings.updatedBy ?? 'die Installation selbst'}`
@@ -104,13 +104,13 @@ interface ExternalAccessSettingsPanelProps {
 }
 
 /**
- * Die Einstellungen für externe KI-Werkzeuge im Seitenpanel: der installationsweite Schalter, die
- * Grenzen samt Netzbereichen und der Einleitungstext für fremde Werkzeuge. Gespeichert wird alles
- * zusammen, weil die Schnittstelle die Einstellungen als Ganzes ersetzt.
+ * The settings for external AI tools in the side panel: the installation-wide switch, the
+ * limits including network ranges and the introduction text for external tools. Everything is
+ * saved together because the interface replaces the settings as a whole.
  *
- * Zustand und Zeitpunkt der letzten Änderung stehen oben: Eine Wiederherstellung aus einer
- * Sicherung rollt Schalter, Freigaben und Tokens gemeinsam zurück - samt dem Protokoll, das den
- * Notaus belegen würde. Ein sichtbares Änderungsdatum macht eine solche Rückdatierung erkennbar.
+ * State and time of the last change are at the top: a restore from a backup rolls back
+ * switch, releases and tokens together - including the log that would prove the emergency
+ * stop. A visible change date makes such a backdating recognizable.
  */
 export default function ExternalAccessSettingsPanel({
   settings,

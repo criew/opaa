@@ -4,7 +4,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { countLabel } from '@/features/principal'
 
-/** Was an der Gruppe hängt, als Aufzählung — leer, wenn sie nichts trägt. */
+/** What depends on the group, as an enumeration — empty when it carries nothing. */
 function effectParts(preview: GroupDeactivationPreviewResponse): string[] {
   const parts: string[] = []
   if (preview.assetGrants > 0) {
@@ -29,8 +29,8 @@ function joined(parts: string[]): string {
 }
 
 /**
- * Die bezifferten Folgen für die Bestätigung (ADR-0036, Entscheidung 14): was ruht bzw. wieder
- * gilt und wie viele Konten es betrifft.
+ * The quantified consequences for the confirmation (ADR-0036, Entscheidung 14): what rests or
+ * applies again and how many accounts it affects.
  */
 export function deactivationConsequence(
   preview: GroupDeactivationPreviewResponse,
@@ -58,11 +58,11 @@ export function deactivationConsequence(
 }
 
 /**
- * Fragt vor dem Deaktivieren oder Reaktivieren mit den bezifferten Folgen nach und führt die
- * Handlung aus. Steht dem Deaktivieren etwas im Weg (Eigentum, letzte handlungsfähige
- * Space-Verwaltung), nennt eine Meldung den Grund, statt zu fragen.
+ * Asks with the quantified consequences before deactivating or reactivating and performs the
+ * action. If something stands in the way of deactivating (ownership, last capable
+ * space administration), a message names the reason instead of asking.
  *
- * @returns ob sich der Zustand geändert hat
+ * @returns whether the state has changed
  */
 export async function confirmGroupDeactivation(
   group: { id: string; name: string; deactivated: boolean },

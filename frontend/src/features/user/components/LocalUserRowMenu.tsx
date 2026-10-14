@@ -71,15 +71,15 @@ interface LocalUserRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü eines lokalen Kontos. Jede Handlung außer „Entsperren" legt ihre
- * Konsequenz vorher im Bestätigungs-Overlay vor (Richtlinie 5.10); die einmaligen Anzeigen –
- * Link und erzeugtes Passwort – laufen über ihren eigenen Dialog.
+ * The row menu of a local account. Every action except „Entsperren" presents its
+ * consequence beforehand in the confirmation overlay (guideline 5.10); the one-time displays –
+ * link and generated password – run through their own dialog.
  *
- * Das Menü schließt sich, bevor das Overlay aufgeht: Zwei übereinanderliegende Ebenen mit
- * eigenem Fokusfang wären sonst weder mit der Tastatur noch mit einem Screenreader zu verlassen.
+ * The menu closes before the overlay opens: two stacked layers with their own
+ * focus trap could otherwise be left neither with the keyboard nor with a screen reader.
  *
- * „Entsperren" erscheint nur an einem gesperrten Konto (sonst 409 `NOT_LOCKED`), „Löschen" steht
- * nachrangig unter einer Trennlinie: Sperren ist der Regelweg (ADR-0033, Entscheidung 11).
+ * „Entsperren" appears only on a locked account (otherwise 409 `NOT_LOCKED`), „Löschen" is
+ * subordinate below a divider: locking is the regular path (ADR-0033, Entscheidung 11).
  */
 export default function LocalUserRowMenu({
   user,
@@ -252,9 +252,9 @@ export default function LocalUserRowMenu({
           <MenuItem
             onClick={() => void lock()}
             disabled={lockDisabled}
-            // Kein <span> um den Eintrag: Ein Zwischenelement im `menu` verletzt
-            // `aria-required-children`. Die Begründung hängt deshalb als
-            // `title` am Eintrag selbst und steht zusätzlich als Text darunter.
+            // No <span> around the entry: an intermediate element in the `menu` violates
+            // `aria-required-children`. The reason is therefore attached as
+            // `title` to the entry itself and additionally shown as text below it.
             title={lockDisabled ? disabledReason : undefined}
             aria-describedby={lockDisabled ? reasonId : undefined}
           >
@@ -339,9 +339,9 @@ export default function LocalUserRowMenu({
           </Typography>
         </MenuItem>
         {(lockDisabled || deleteDisabled) && (
-          // Ein `<li role="presentation">` statt eines Absatzes: Ein `<p>` unter `role="menu"`
-          // verletzt `aria-required-children` (Nachprüfung N3). Der deaktivierte Eintrag verweist
-          // über `aria-describedby` hierher, damit die Begründung auch vorgelesen wird.
+          // An `<li role="presentation">` instead of a paragraph: a `<p>` under `role="menu"`
+          // violates `aria-required-children` (re-check N3). The disabled entry refers here
+          // via `aria-describedby`, so that the reason is read out as well.
           <Box
             component="li"
             role="presentation"

@@ -112,7 +112,7 @@ describe('ChatRedirect', () => {
     })
   })
 
-  /** Der Einstieg öffnet den zuletzt genutzten Space, nicht immer den persönlichen. */
+  /** The entry point opens the most recently used space, not always the personal one. */
   it('opens the space last used instead of the personal one', async () => {
     useSpaceStore.setState({ spaces })
     window.localStorage.setItem('opaa.spaces.recent', JSON.stringify(['space-engineering']))
@@ -127,8 +127,8 @@ describe('ChatRedirect', () => {
   })
 
   /**
-   * Ein gemerkter Space, den der Dienst nicht mehr ausliefert - Mitgliedschaft entzogen,
-   * gelöscht, oder das Gemerkte stammt von einem anderen Konto am selben Rechner.
+   * A remembered space the service no longer delivers - membership revoked,
+   * deleted, or the remembered value comes from another account on the same machine.
    */
   it('falls back to the personal space when the remembered one is no longer delivered', async () => {
     useSpaceStore.setState({ spaces })
@@ -143,7 +143,7 @@ describe('ChatRedirect', () => {
     })
   })
 
-  /** Ein archivierter Space nimmt keinen neuen Chat an - er ist deshalb kein Einstieg. */
+  /** An archived space accepts no new chat - so it is no entry point. */
   it('falls back to the personal space when the remembered one is archived', async () => {
     useSpaceStore.setState({
       spaces: [spaces[0], { ...spaces[1], archived: true }],

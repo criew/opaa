@@ -35,9 +35,9 @@ interface GroupFormFieldsProps {
 }
 
 /**
- * Die Felder einer Gruppe, gemeinsam für „Gruppe anlegen“ und „Bearbeiten“: Name,
- * Beschreibung, Freigabe und - nur für die Systemverwaltung - der Schutz. Beide Dialoge sehen damit
- * gleich aus und sprechen dieselbe Sprache.
+ * The fields of a group, shared by „Gruppe anlegen“ and „Bearbeiten“: name,
+ * description, sharing and - only for the system administration - the protection. Both dialogs
+ * thus look alike and speak the same language.
  */
 export default function GroupFormFields({
   values,

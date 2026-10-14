@@ -5,8 +5,8 @@ import { renderWithProviders } from '../../test/test-utils'
 import PageSection from './PageSection'
 
 /**
- * Der Quelltext des Verwaltungsbereichs, von Vite eingelesen (`?raw`) — kein Dateisystemzugriff,
- * damit der Test ohne Node-Typen auskommt.
+ * The administration area's source text, read in by Vite (`?raw`) — no file system access,
+ * so that the test gets by without Node types.
  */
 const QUELLEN = {
   ...(import.meta.glob('../../pages/*.tsx', {
@@ -87,9 +87,9 @@ const QUELLEN = {
 }
 
 /**
- * Die Dateien, für die die Regel gilt: der Verwaltungsbereich, Chat, Katalog und die
- * Space-Ansichten. Nicht in der Liste steht, was gar keinen ruhenden Inhalt trägt
- * (Dialoge als eigene Dateien, Formularseiten ohne Blöcke).
+ * The files the rule applies to: the administration area, chat, catalog and the
+ * space views. Not in the list is whatever carries no resting content at all
+ * (dialogs as files of their own, form pages without blocks).
  */
 const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
   if (pfad.startsWith('../../components/admin/') || pfad.includes('/searchadmin/')) return true
@@ -97,11 +97,11 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
   if (pfad.startsWith('./list/') || pfad.startsWith('./markdown/')) return true
   if (pfad.startsWith('../../components/chat/') || pfad.startsWith('../../components/metadata/'))
     return true
-  // Die Abschnitte der Space-Einstellungen sind eigene Komponenten.
+  // The sections of the space settings are components of their own.
   if (pfad.startsWith('../../components/space/')) return true
-  // Die Betriebsliste entsteht in einer eigenen Komponente, nicht auf der Seite.
+  // The operations list is built in a component of its own, not on the page.
   if (pfad.startsWith('../../components/succession/')) return true
-  // Freigabeabschnitt, Assistentenschritte und Prompt-Pflege, die jeder Asset-Typ teilt.
+  // Sharing section, wizard steps and prompt maintenance that every asset type shares.
   if (pfad.startsWith('../../components/assets/') || pfad.startsWith('../../components/prompts/'))
     return true
   return [
@@ -110,7 +110,7 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     'GroupManagementPage',
     'LlmModelManagementPage',
     'OidcProviderManagementPage',
-    // Die drei neuen Seiten der Verwaltung
+    // The three new pages of the administration
     'CapabilityManagementPage',
     'DirectorySyncPage',
     'ProviderGroupWorklistPage',
@@ -120,7 +120,7 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
     // settings tab of the connections area and its private-storage section
     'ConnectionSettingsTab',
     'PrivateStorageSection',
-    // außerhalb der Administration
+    // outside the administration
     'LibraryDetailPage',
     'SpacePage',
     'SpaceSettingsPage',
@@ -129,48 +129,49 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
 })
 
 /**
- * Begründete Ausnahmen. Sie eint, dass ihr Rahmen nicht einen Inhaltsblock der Seite umschließt,
- * sondern etwas Fremdes darin markiert — die drei Fälle, in denen ein Rahmen Bedeutung trägt:
+ * Justified exceptions. What they have in common is that their frame does not enclose a content
+ * block of the page but marks something foreign within it — the three cases in which a frame
+ * carries meaning:
  *
- * - `BrandingPreview`: ein Abbild der Anwendung, wie ein Bilderrahmen.
- * - `MailTemplateEditor`, `MailTemplatePreviewPane`: der Wortlaut einer Nachricht als
- *   Monospace-Block und die HTML-Fassung in einem `iframe` — beides fremder Inhalt in der Seite,
- *   nicht Inhalt der Seite.
- * - `OidcProviderSetupInstructions`: das Symbolfeld eines Schritts, ein 32 px großes Quadrat mit
- *   Akzentkante, kein Block.
- * - `GeneratedPasswordDialog`, `SetupLinkDialog`, `HandoverLinkDialog`: der einmalig angezeigte
- *   Wert zum Abschreiben — derselbe Fall wie ein Codeblock.
+ * - `BrandingPreview`: an image of the application, like a picture frame.
+ * - `MailTemplateEditor`, `MailTemplatePreviewPane`: the wording of a message as a
+ *   monospace block and the HTML version in an `iframe` — both foreign content in the page,
+ *   not content of the page.
+ * - `OidcProviderSetupInstructions`: a step's icon field, a 32 px square with an
+ *   accent edge, no block.
+ * - `GeneratedPasswordDialog`, `SetupLinkDialog`, `HandoverLinkDialog`: the value shown once
+ *   for copying — the same case as a code block.
  *
- * Die beiden Fälle des Chats sind der vierte Grund, aus dem ein Rahmen Bedeutung trägt:
+ * The chat's cases are the fourth reason for which a frame carries meaning:
  *
- * - `MessageBubble`: die Blase grenzt zwei Sprecher voneinander ab. Nur die Frage trägt sie; die
- *   Antwort steht schon als Fließtext ohne Blase. Ohne diese eine Fläche verlöre der Verlauf
- *   seinen Wechsel.
- * - `CopyAnswerButton`: „Kopieren" unter einer Antwort ist ein geteiltes Bedienelement in derselben
- *   Pillenform wie „Belege anzeigen"; der Rahmen fasst Knopf und Variantenpfeil zu einer
- *   Trefferfläche zusammen.
- * - `EvidenceFooter`: „Belege anzeigen" unter einer Antwort ist ein Bedienelement in Pillenform;
- *   der Rahmen zeigt, wie weit die Trefferfläche mit den Fußnotenmarken reicht, und bündelt
- *   keinen ruhenden Inhalt.
- * - `ChatInput`: die Eingabezeile ist ein Bedienelement, und ihr Vorschlagsfeld eine schwebende
- *   Ebene. Beides bringt seine Fläche zu Recht mit.
- * - `ChatActionMenu`: das Vorschlagsfeld des `/`-Befehls über derselben Eingabezeile —
- *   dieselbe schwebende Ebene wie das `@`-Feld, nur in eine eigene Datei gezogen; das
- *   Etikett „mit Formular" ist ein Etikett am Eintrag wie ein Chip.
- * - `SpaceGeneralSection`: der Gefahrenbereich am Ende der Stammdaten. Der Rahmen setzt
- *   Archivieren und Löschen vom Formular darüber ab — er markiert eine Grenze, statt Inhalt zu
- *   bündeln.
- * - `PromptTextHighlight`, `PromptPreview`: der Wortlaut eines Prompts als Monospace-Block und der
- *   daraus eingesetzte Text als Ergebnisfläche — fremder Inhalt in der Seite, derselbe Fall wie
- *   beim `MailTemplateEditor`.
- * - `AssetTile`: die Kachel eines Assets im Katalog und in jeder Auswahl — eine Karte im
- *   Raster (Leitlinien 5.4), kein Inhaltsblock einer Seite; der umrandete Typ ist ein Etikett (5.5).
- * - `assetMarks`: das Typ-Etikett, das Kachel und Kopf der Detailseite teilen — ein
- *   Etikett wie ein Chip (5.5), kein Block.
- * - `HandoverScopeSummary`: die vier Kennzahl-Kacheln der Kontoübergabe (ADR-0033) — Karten im
- *   Raster wie `AssetTile`, auf einer Anmeldeseite außerhalb der Verwaltung, kein Inhaltsblock.
- * - `ExternalAccessTokenValueDialog`: der einmalig angezeigte Tokenwert und die Einrichtungsschnipsel
- *   als Monospace-Block — derselbe Fall wie `GeneratedPasswordDialog`.
+ * - `MessageBubble`: the bubble separates two speakers. Only the question carries it; the
+ *   answer is already running text without a bubble. Without this one surface the history would
+ *   lose its alternation.
+ * - `CopyAnswerButton`: „Kopieren" below an answer is a split control in the same
+ *   pill shape as „Belege anzeigen"; the frame joins button and variant arrow into one
+ *   hit area.
+ * - `EvidenceFooter`: „Belege anzeigen" below an answer is a control in pill shape;
+ *   the frame shows how far the hit area with the footnote marks reaches, and bundles
+ *   no resting content.
+ * - `ChatInput`: the input row is a control, and its suggestion field a floating
+ *   layer. Both rightly bring their surface along.
+ * - `ChatActionMenu`: the suggestion field of the `/` command above the same input row —
+ *   the same floating layer as the `@` field, only moved into a file of its own; the
+ *   label „mit Formular" is a label on the entry like a chip.
+ * - `SpaceGeneralSection`: the danger zone at the end of the master data. The frame sets
+ *   archiving and deleting off from the form above — it marks a boundary instead of bundling
+ *   content.
+ * - `PromptTextHighlight`, `PromptPreview`: a prompt's wording as a monospace block and the
+ *   text filled in from it as a result surface — foreign content in the page, the same case as
+ *   the `MailTemplateEditor`.
+ * - `AssetTile`: an asset's tile in the catalog and in every selection — a card in the
+ *   grid (guidelines 5.4), no content block of a page; the outlined type is a label (5.5).
+ * - `assetMarks`: the type label that tile and detail page header share — a
+ *   label like a chip (5.5), no block.
+ * - `HandoverScopeSummary`: the four key figure tiles of the account handover (ADR-0033) — cards
+ *   in the grid like `AssetTile`, on a login page outside the administration, no content block.
+ * - `ExternalAccessTokenValueDialog`: the token value shown once and the setup snippets
+ *   as a monospace block — the same case as `GeneratedPasswordDialog`.
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -195,16 +196,16 @@ const AUSNAHMEN = [
 ]
 
 /**
- * Dateien, die eine **schwebende Ebene** selbst bauen und dafür `Paper` zu Recht verwenden — die
- * Prüfung auf `<Paper` lässt nur sie aus, alle übrigen gelten ausnahmslos.
+ * Files that build a **floating layer** themselves and rightly use `Paper` for it — the
+ * check for `<Paper` skips only them, all others apply without exception.
  *
- * - `ChatInput`: das Vorschlagsfeld über der Eingabezeile (`elevation={4}`). Es liegt über dem
- *   Verlauf, nicht in ihm; genau dafür ist `Paper` da.
- * - `ChatActionMenu`: das Vorschlagsfeld des `/`-Befehls an derselben Stelle, aus demselben
- *   Grund.
+ * - `ChatInput`: the suggestion field above the input row (`elevation={4}`). It lies above the
+ *   history, not in it; that is exactly what `Paper` is for.
+ * - `ChatActionMenu`: the suggestion field of the `/` command in the same place, for the same
+ *   reason.
  *
- * Im Verwaltungsbereich steht diese Liste leer: Dort baut keine Datei eine schwebende Ebene
- * selbst, Dialoge und Menüs bringen ihre Fläche aus MUI mit.
+ * In the administration area this list is empty: no file there builds a floating layer
+ * itself, dialogs and menus bring their surface from MUI.
  */
 const SCHWEBENDE_EBENEN = ['ChatInput.tsx', 'ChatActionMenu.tsx']
 
@@ -247,15 +248,15 @@ describe('PageSection', () => {
 
     const abschnitte = screen.getAllByRole('region', { name: 'Verbindung' })
     expect(abschnitte).toHaveLength(2)
-    // zwei Überschriften, zwei verschiedene Kennungen - sonst benennt eine beide Bereiche
+    // two headings, two different identifiers - otherwise one names both areas
     const kennungen = abschnitte.map((el) => el.getAttribute('aria-labelledby'))
     expect(new Set(kennungen).size).toBe(2)
   })
 
   /**
-   * Die Regel maschinell gezogen: Kein ruhender Inhalt rahmt sich selbst ein. `Paper`
-   * ist die Fläche schwebender Ebenen — Dialoge, Menüs, Popover —, und die bringen sie selbst
-   * mit; eine Seite, die sie wieder für einen Inhaltsblock benutzt, fällt hier auf.
+   * The rule drawn mechanically: no resting content frames itself. `Paper`
+   * is the surface of floating layers — dialogs, menus, popovers —, and they bring it
+   * themselves; a page that uses it again for a content block is caught here.
    */
   it.each(VERWALTUNGSDATEIEN.filter((p) => !SCHWEBENDE_EBENEN.some((a) => p.endsWith(a))))(
     '%s uses no Paper for resting content',
@@ -272,10 +273,10 @@ describe('PageSection', () => {
       if (!SCHWEBENDE_EBENEN.some((a) => pfad.endsWith(a))) {
         expect(quelltext).not.toContain('<Paper')
       }
-      // Ein voller Rahmen ringsum ist nur als gestrichelter Leerzustand zulässig („hier wäre
-      // etwas"); die Trennung von Einträgen läuft über `borderBottom`. Wo ein Rahmen etwas
-      // Fremdes markiert statt Inhalt zu bündeln, steht die Datei oben in AUSNAHMEN — mit Grund.
-      // Beide Schreibweisen zählen: `border: 1` und `border: '1px solid'` ergeben dieselbe Kante.
+      // A full frame all around is admissible only as a dashed empty state („hier wäre
+      // etwas"); entries are separated via `borderBottom`. Where a frame marks something
+      // foreign instead of bundling content, the file is listed in AUSNAHMEN above — with a reason.
+      // Both notations count: `border: 1` and `border: '1px solid'` produce the same edge.
       const vollerRahmen =
         (quelltext.match(/border: 1,/g)?.length ?? 0) +
         (quelltext.match(/border: '1px solid/g)?.length ?? 0)

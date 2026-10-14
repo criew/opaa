@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import type { SuccessionKind } from '@/shared/api/types'
 import { mockSuccessionEntries } from './successionFixtures'
 
-/** Die Endpunkte der Betriebsliste. */
+/** The endpoints of the operations list. */
 export const successionHandlers = [
   http.get('/api/v1/admin/succession', ({ request }) => {
     const params = new URL(request.url).searchParams

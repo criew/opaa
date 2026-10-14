@@ -56,7 +56,7 @@ const fromDirectory: SelectableGroupResponse = {
   unmaintained: false,
 }
 
-/** Derselbe Name, ein anderer Anbieter - allein am Namen nicht zu unterscheiden. */
+/** The same name, another provider - indistinguishable by the name alone. */
 const fromPartner: SelectableGroupResponse = {
   ...fromDirectory,
   id: 'group-referat-50-partner',
@@ -91,7 +91,7 @@ const dissolved: SelectableGroupResponse = {
   deactivated: false,
 }
 
-/** Die Entprellung der beiden Suchen liegt bei 300 ms; hier wird sicher darueber hinaus gewartet. */
+/** The debounce of the two searches is 300 ms; here the wait safely exceeds it. */
 async function pastTheDebounce(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 400))
 }
@@ -203,7 +203,7 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
     expect(fromPartnerOption).toHaveTextContent('extern')
   })
 
-  /** Ein Zusatz allein genügt nicht: Die externe Gruppe trägt ein eigenes Symbol. */
+  /** An addition alone is not enough: the external group carries an icon of its own. */
   it('marks a group of an external provider with a symbol, not only with text', async () => {
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
@@ -382,8 +382,8 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
   })
 
   /**
-   * Nach der Auswahl setzt MUI den Eingabetext auf das Label der Option - als neue Eingabe
-   * weitergegeben loeste das eine zweite Suche nach nie getipptem Text aus.
+   * After the selection MUI sets the input text to the option's label - passed on as new input,
+   * that triggered a second search for text that was never typed.
    */
   it('runs no second search after a person was selected', async () => {
     renderWithProviders(<Harness />)
@@ -395,8 +395,8 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
     await waitFor(() =>
       expect(screen.getByTestId('selection')).toHaveTextContent('USER:user-alice'),
     )
-    // Ueber die Entprellung hinaus warten: Ohne den Schutz laeuft die zweite Suche erst danach an,
-    // und eine Behauptung davor bestuende auch auf dem fehlerhaften Stand.
+    // Wait beyond the debounce: without the guard the second search starts only afterwards,
+    // and an assertion before that would pass on the faulty state as well.
     await pastTheDebounce()
     expect(mockGetUserSummaries).toHaveBeenCalledTimes(1)
     expect(mockSearchSelectableGroups).toHaveBeenCalledTimes(1)

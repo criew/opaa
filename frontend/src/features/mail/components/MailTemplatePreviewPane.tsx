@@ -13,11 +13,11 @@ interface MailTemplatePreviewPaneProps {
 }
 
 /**
- * Betreff, Textfassung und gerenderte HTML-Fassung der Vorschau.
+ * Subject, text version and rendered HTML version of the preview.
  *
- * Das HTML läuft in einem `iframe` mit leerem `sandbox` — kein Skript, keine Formulare, kein
- * Zugriff auf das umgebende Dokument. Eine Vorlage ist bearbeitbarer Text; sie wird hier
- * angesehen, nicht ausgeführt.
+ * The HTML runs in an `iframe` with an empty `sandbox` — no script, no forms, no
+ * access to the surrounding document. A template is editable text; it is
+ * viewed here, not executed.
  */
 export default function MailTemplatePreviewPane({
   preview,

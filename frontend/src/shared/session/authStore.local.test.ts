@@ -535,10 +535,10 @@ describe('authStore - local session', () => {
   })
 
   /**
-   * Die öffentliche Anmeldekonfiguration ist nach jedem Sitzungsende veraltet: Wer die
-   * lokale Anmeldung umschaltet und sich dann abmeldet, bekam die Anmeldeseite im Stand vom
-   * Anwendungsstart zu sehen - ein Formular, das es nicht mehr gibt, oder keines, obwohl es
-   * wieder eines gibt. Erst ein echtes Neuladen der Seite zeigte den wahren Stand.
+   * The public login configuration is outdated after every end of session: whoever
+   * toggles the local login and then logs out got to see the login page as of
+   * application start - a form that no longer exists, or none although there
+   * is one again. Only a real reload of the page showed the true state.
    */
   it('reloads the sign-in configuration on logout, so the sign-in page needs no page reload', async () => {
     setCsrfCookie()
@@ -558,7 +558,7 @@ describe('authStore - local session', () => {
     await useAuthStore.getState().loginLocal('erika.muster@stadt.example', 'geheim')
     expect(useAuthStore.getState().localAccounts.enabled).toBe(true)
 
-    // Die Systemverwaltung schaltet die lokale Anmeldung ab, während diese Sitzung läuft.
+    // The system administration switches off the local login while this session is running.
     localAccountsEnabled = false
     await useAuthStore.getState().logout()
 
@@ -581,8 +581,8 @@ describe('authStore - local session', () => {
     await useAuthStore.getState().initialize()
     await useAuthStore.getState().loginLocal('erika.muster@stadt.example', 'geheim')
 
-    // Genau der Weg, den das Abschalten der lokalen Anmeldung für die eigene Sitzung nimmt: Sie
-    // endet serverseitig, ohne dass jemand auf „Abmelden" geklickt hat.
+    // Exactly the path that switching off the local login takes for the own session: it
+    // ends server-side without anyone having clicked „Abmelden".
     localAccountsEnabled = false
     useAuthStore.getState().expireSession('local_accounts_disabled')
 
@@ -607,8 +607,8 @@ describe('authStore - local session', () => {
     configFails = true
     await useAuthStore.getState().logout()
 
-    // Eine nicht erreichbare Konfiguration ist kein Grund, die Anmeldeseite leer zu räumen: Der
-    // letzte bekannte Stand ist besser als gar keiner, und das Abmelden gilt trotzdem.
+    // An unreachable configuration is no reason to clear the login page: the
+    // last known state is better than none, and the logout applies anyway.
     expect(useAuthStore.getState().localAccounts.enabled).toBe(true)
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
@@ -633,9 +633,9 @@ describe('authStore - local session', () => {
     expect(state.isAuthenticated).toBe(false)
     expect(state.sessionKind).toBeNull()
     expect(state.error).toMatch(expected)
-    // expireSession lädt die Anmeldekonfiguration bewusst ohne Abwarten nach. Ohne dieses
-    // Abwarten läuft die Anfrage in den nächsten Test hinein: Die Handler sind dort schon
-    // zurückgesetzt, und die späte Antwort überschreibt den Stand, den er selbst gesetzt hat.
+    // expireSession deliberately reloads the login configuration without awaiting it. Without this
+    // wait the request runs into the next test: the handlers there are already
+    // reset, and the late response overwrites the state that test set itself.
     await vi.waitFor(() => expect(useAuthStore.getState().localAccounts.enabled).toBe(true))
   })
 

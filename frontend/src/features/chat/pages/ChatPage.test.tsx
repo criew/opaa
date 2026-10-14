@@ -568,7 +568,7 @@ describe('ChatPage', () => {
       expect(screen.queryByRole('button', { name: /zurückholen/ })).not.toBeInTheDocument()
     })
   })
-  // Umbenennen ging bisher nur über das Kontextmenü der Chatliste.
+  // Renaming used to be possible only via the chat list's context menu.
   describe('Titel in der Kopfzeile umbenennen (#1919)', () => {
     beforeEach(() => {
       currentSpaceId = 'space-personal'

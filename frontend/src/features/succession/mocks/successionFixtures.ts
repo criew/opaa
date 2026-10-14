@@ -1,9 +1,9 @@
 import type { SuccessionEntryResponse, SuccessionKind } from '@/shared/api/types'
 
 /**
- * Die Betriebsliste des Lebenszyklus — eigene Datei, damit `fixtures.ts` nicht
- * weiter wächst. Die Zeilen sind absichtlich ohne Auswertungsachse Person: Der frühere Eigentümer
- * steht als Text in der Zeile und nirgends als Schlüssel.
+ * The life cycle's operations list — a file of its own, so that `fixtures.ts` does not
+ * keep growing. The rows deliberately have no person evaluation axis: the previous owner
+ * is text in the row and nowhere a key.
  */
 export const mockSuccessionEntries: Record<SuccessionKind, SuccessionEntryResponse[]> = {
   OPEN_SUCCESSION: [

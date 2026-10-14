@@ -23,12 +23,12 @@ function renderDialog() {
 }
 
 /**
- * Die Zielgruppe kommt aus der gemeinsamen Gruppensuche: serverseitig, ab zwei Zeichen und
- * hinter einer Entprellung von 300 ms.
+ * The target group comes from the shared group search: server-side, from two characters on and
+ * behind a debounce of 300 ms.
  */
 async function chooseTarget(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Zielgruppe'), 'Referat 5')
-  // „Referat 50" ist hier die Quelle und deshalb ausgeschlossen - gewählt wird das Projektteam.
+  // „Referat 50" is the source here and therefore excluded - the project team is chosen.
   const option = await screen.findByRole(
     'option',
     { name: /Referat 5 Projektteam/ },
@@ -38,7 +38,7 @@ async function chooseTarget(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('PermissionTransferDialog', () => {
-  // ADR-0036, Entscheidung 10: Die Vorschau ist Pflicht, die Bestätigung ausdrücklich.
+  // ADR-0036, Entscheidung 10: the preview is mandatory, the confirmation explicit.
   it('confirms only after a preview was shown', async () => {
     renderDialog()
     const user = userEvent.setup()
@@ -64,8 +64,8 @@ describe('PermissionTransferDialog', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
-  // ADR-0036, Entscheidung 2: Eine Gruppe eines externen Anbieters als Ziel verlangt eine
-  // ausdrückliche Zwischenfrage - abgebrochen geht keine Vorschau hinaus.
+  // ADR-0036, Entscheidung 2: a group of an external provider as target requires an
+  // explicit confirmation question - when cancelled, no preview goes out.
   it('asks back before previewing a transfer to a group of an external provider', async () => {
     let previews = 0
     server.use(
@@ -94,7 +94,7 @@ describe('PermissionTransferDialog', () => {
     expect(previews).toBe(0)
   })
 
-  // Der Stand hat sich seit der Vorschau geändert: nichts wurde übertragen, es wird neu vorgelegt.
+  // The state has changed since the preview: nothing was transferred, it is presented anew.
   it('explains a drifted preview instead of showing the raw conflict', async () => {
     server.use(
       http.post('/api/v1/permission-transfers', () =>

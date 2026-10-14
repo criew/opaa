@@ -64,8 +64,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
   const [membersExpanded, setMembersExpanded] = useState(true)
   const [chatsExpanded, setChatsExpanded] = useState(true)
   const [librariesExpanded, setLibrariesExpanded] = useState(true)
-  // Zugeklappt: Die Herleitung ist eine Nachfrage, keine Dauerinformation - und sie kostet eine
-  // eigene Anfrage, die nur stellt, wer sie aufklappt.
+  // Collapsed: the derivation is a follow-up question, not permanent information - and it costs a
+  // request of its own that only whoever expands it makes.
   const [derivationExpanded, setDerivationExpanded] = useState(false)
   // "Die UI erklärt einmal, sichtbar, warum die Liste je Mitglied unterschiedlich sein kann" -
   // a dismissible hint, shown once per browser rather than every
@@ -143,8 +143,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
         </Alert>
       )}
       <Stack spacing={2.5}>
-        {/* Der Kopf des Space trägt dieselbe Haarlinie wie jeden Abschnitt der Seite, keinen
-            Kasten. */}
+        {/* The space's header carries the same hairline as every section of the page, no
+           box. */}
         <Box component="header" sx={{ borderBottom: 1, borderColor: 'divider', pb: 2 }}>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -161,13 +161,13 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
               <Typography sx={{ color: 'text.secondary' }}>
                 {space.description || 'Keine Beschreibung hinterlegt.'}
               </Typography>
-              {/* ADR-0036, Entscheidung 6: Zustand und Adressat für jeden Leseberechtigten -
-                  ohne Datum, früheren Eigentümer oder Grund. */}
+              {/* ADR-0036, Entscheidung 6: state and addressee for everyone with read access -
+                 without date, previous owner or reason. */}
               <SuccessionStateNote succession={space.succession} />
             </Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              {/* Ein Kurator verwaltet zwar keine Mitglieder, aber das zugeordnete Wissen -
-                  auch für ihn führt der Weg dorthin über die Einstellungen. */}
+              {/* A curator does not manage members, but does manage the associated knowledge -
+                 for them, too, the way there leads through the settings. */}
               {(canManage(space.userRole, isOwner) || space.userRole === 'CURATOR') && (
                 <Button
                   variant="outlined"
@@ -215,8 +215,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
                 <Stack spacing={1}>
                   {members.map((member) => (
                     <Box key={member.id} sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      {/* Eine geschützte Gruppe erscheint namenlos - der Dienst liefert
-                          keinen Namen (ADR-0036, Entscheidung 9). */}
+                      {/* A protected group appears nameless - the service delivers
+                         no name (ADR-0036, Entscheidung 9). */}
                       <Typography
                         sx={
                           member.protectedGroup
@@ -252,8 +252,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
           </AccordionDetails>
         </Accordion>
 
-        {/* ADR-0036 Entscheidung 9: der eigene Weg in diesen Space - für jede Person, nicht
-            nur für die Verwaltung. Die Mitglieder einer Gruppe werden dabei nicht genannt. */}
+        {/* ADR-0036 Entscheidung 9: the own path into this space - for every person, not
+           only for the administration. The members of a group are not named. */}
         <Accordion
           expanded={derivationExpanded}
           onChange={(_, expanded) => setDerivationExpanded(expanded)}

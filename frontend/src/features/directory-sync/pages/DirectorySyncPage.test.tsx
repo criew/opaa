@@ -86,8 +86,8 @@ describe('DirectorySyncPage', () => {
     expect(within(partner).getByText('kein Lauf')).toBeInTheDocument()
   })
 
-  // ADR-0036, Entscheidung 3: Ein ausstehender Plan ist ein lauter Zustand - mit seinem Alter,
-  // schon in der Übersicht, ohne dass etwas aufgeklappt werden muss.
+  // ADR-0036, Entscheidung 3: a pending plan is a loud state - with its age,
+  // already in the overview, without anything having to be expanded.
   it('names the age of a pending plan and what it would do in the overview', async () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
 
@@ -103,8 +103,8 @@ describe('DirectorySyncPage', () => {
     expect(screen.getByText(/1 Anbieter braucht Ihre Entscheidung/)).toBeInTheDocument()
   })
 
-  // ADR-0036, Entscheidung 9: Jeder Abruf des Plans ist ein Protokolleintrag - die Übersicht allein
-  // ruft ihn deshalb nicht ab, erst das Öffnen des Anbieters.
+  // ADR-0036, Entscheidung 9: every retrieval of the plan is a log entry - so the overview alone
+  // does not retrieve it, only opening the provider does.
   it('fetches a pending plan only once the provider is opened', async () => {
     let planCalls = 0
     server.events.on('request:start', ({ request }) => {
@@ -123,8 +123,8 @@ describe('DirectorySyncPage', () => {
     server.events.removeAllListeners()
   })
 
-  // Der Differenzbericht nennt die Mitgliederzahl je Gruppe, bevor etwas angewendet
-  // wird - und die Konten, die der Lauf sperren würde.
+  // The difference report names the member count per group before anything is applied
+  // - and the accounts the run would lock.
   it('shows the diff report of a dry run with the member count per group', async () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
     const user = userEvent.setup()
@@ -153,8 +153,8 @@ describe('DirectorySyncPage', () => {
     expect(await within(panel).findByText(/bestätigte Plan wurde angewendet/)).toBeInTheDocument()
   })
 
-  // ADR-0036, Entscheidung 9: Ein neu geladener Status, der denselben Plan meldet, darf ihn nicht
-  // erneut abrufen - auch nicht, wenn das Seitenpanel geschlossen und wieder geöffnet wird.
+  // ADR-0036, Entscheidung 9: a reloaded status that reports the same plan must not retrieve it
+  // again - not even when the side panel is closed and reopened.
   it('fetches a pending plan once per plan id, not on every status reload', async () => {
     let statusCalls = 0
     let planCalls = 0
@@ -186,9 +186,9 @@ describe('DirectorySyncPage', () => {
     server.events.removeAllListeners()
   })
 
-  // ADR-0036, Entscheidung 3: Eine abgewiesene Bestätigung hinterlässt einen NEUEN Plan. Ohne das
-  // Nachladen stünde weiter der alte Bericht da, und die nächste Bestätigung liefe mit der alten
-  // Kennung ins Leere.
+  // ADR-0036, Entscheidung 3: a rejected confirmation leaves a NEW plan behind. Without the
+  // reload the old report would still be shown, and the next confirmation would run into the void
+  // with the old identifier.
   it('presents the new plan after the shown one has drifted', async () => {
     const confirmed: string[] = []
     server.use(
@@ -236,7 +236,7 @@ describe('DirectorySyncPage', () => {
     await user.type(within(panel).getByLabelText(/grund/i), 'Neuer Stand geprüft')
     await user.click(within(panel).getByRole('button', { name: 'Plan bestätigen' }))
 
-    // Die zweite Bestätigung trägt die Kennung des neu vorgelegten Plans, nicht die alte.
+    // The second confirmation carries the identifier of the newly presented plan, not the old one.
     await waitFor(() => expect(confirmed).toEqual(['plan-1', 'plan-2']))
   })
 

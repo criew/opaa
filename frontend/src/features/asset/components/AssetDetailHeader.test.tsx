@@ -81,8 +81,8 @@ describe('AssetDetailHeader (#2208)', () => {
     ).toBeInTheDocument()
   })
 
-  // Wie im Katalog: Solange ein Druck läuft, ist der Stern nur aria-disabled - ein nativ
-  // gesperrter Knopf verlöre den Fokus -, und ein zweiter Druck löst keinen zweiten Aufruf aus.
+  // As in the catalog: while a press is running, the star is only aria-disabled - a natively
+  // disabled button would lose focus -, and a second press triggers no second call.
   it('locks the star by a ref while a press is pending and keeps the focus', async () => {
     let finish: () => void = () => {}
     const onFavoriteChange = vi.fn(

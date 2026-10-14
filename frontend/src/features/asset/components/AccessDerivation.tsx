@@ -25,7 +25,7 @@ export type SpaceDerivationLoader = (
 ) => Promise<SpaceAccessDerivationResponse>
 
 interface DerivationSubject {
-  /** Wessen Zugriff erklärt wird; ohne Namen spricht die Herleitung die lesende Person an. */
+  /** Whose access is explained; without a name the derivation addresses the reading person. */
   subjectName?: string | null
 }
 
@@ -57,7 +57,7 @@ function loadDerivation(props: AccessDerivationProps) {
   }))
 }
 
-/** Woher ein Weg kommt, klein geschrieben für den Satzanschluss nach dem Gedankenstrich. */
+/** Where a path comes from, lower-cased to continue the sentence after the dash. */
 function originOf(path: AccessPathResponse): string {
   switch (path.basis) {
     case 'DIRECT_MEMBERSHIP':
@@ -101,7 +101,7 @@ const assetRolePhrases: Record<AssetRole, (noun: string) => [string, string]> = 
 
 const pluralVerbs: Record<string, string> = { darf: 'dürfen', ist: 'sind', hat: 'haben' }
 
-/** Der erste Satz ohne Schlusspunkt: wer welche wirksame Rolle am Objekt hat. */
+/** The first sentence without a full stop: who holds which effective role on the object. */
 function headline(
   target: DerivationTarget,
   subjectName: string | null,
@@ -129,7 +129,7 @@ function highestAssetRole(paths: AccessPathResponse[]): AssetRole | null {
   }, null)
 }
 
-/** Der Weg über die Systemverwaltung an einem Asset: verwalten, nicht lesen. */
+/** The path via the system administration on an asset: managing, not reading. */
 function administrationSentence(
   assetType: AssetType,
   subjectName: string | null,
@@ -141,10 +141,10 @@ function administrationSentence(
 }
 
 /**
- * „Warum hat … Zugriff?" / „Warum sehe ich …?" — die Herleitung von ADR-0036, Entscheidung 9:
- * ein Satz mit der wirksamen Rolle, bei genau einem Weg samt Herkunft; bei mehreren eine Zeile je
- * Weg und der Hinweis, dass die höhere Rolle gilt. Ein Weg über eine geschützte Gruppe, die eine
- * andere Person betrifft, bleibt ungenannt und zählt dennoch als Weg.
+ * „Warum hat … Zugriff?" / „Warum sehe ich …?" — the derivation of ADR-0036, Entscheidung 9:
+ * one sentence with the effective role, with exactly one path including its origin; with several,
+ * one line per path and the hint that the higher role applies. A path via a protected group that
+ * concerns another person stays unnamed and still counts as a path.
  */
 export default function AccessDerivation(props: AccessDerivationProps) {
   const { target, subjectName = null } = props
@@ -152,8 +152,8 @@ export default function AccessDerivation(props: AccessDerivationProps) {
     target.kind === 'asset'
       ? `asset:${target.assetType}:${target.assetId}`
       : `space:${target.spaceId}:${target.userId ?? 'self'}`
-  // Ein Zustand statt vier: Solange die Antwort nicht zum angefragten Objekt gehört, lädt die
-  // Ansicht noch - so kommt der Ladezustand ohne ein setState im Effektrumpf aus.
+  // One state instead of four: as long as the response does not belong to the requested object, the
+  // view is still loading - so the loading state needs no setState in the effect body.
   const [answer, setAnswer] = useState<{
     key: string
     paths: AccessPathResponse[]
@@ -181,8 +181,8 @@ export default function AccessDerivation(props: AccessDerivationProps) {
     return () => {
       active = false
     }
-    // Der Schlüssel fasst das angefragte Objekt zusammen; das Objektliteral selbst wechselt bei
-    // jedem Rendern die Identität und löste sonst eine Endlosschleife an Anfragen aus.
+    // The key condenses the requested object; the object literal itself changes its identity
+    // on every render and would otherwise trigger an endless loop of requests.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
@@ -194,8 +194,9 @@ export default function AccessDerivation(props: AccessDerivationProps) {
   }
 
   const { withheld } = answer
-  // Am Asset verwaltet die Systemverwaltung, ohne den Inhalt lesen zu dürfen: Ihr Weg steht für
-  // sich, die wirksame Rolle und „die höhere Rolle" folgen nur aus den Wegen der Formel.
+  // On an asset the system administration manages without being allowed to read the content: its
+  // path stands on its own, the effective role and „die höhere Rolle" follow only from the paths of
+  // the formula.
   const administration =
     target.kind === 'asset' && answer.paths.some((path) => path.basis === 'SYSTEM_ADMINISTRATION')
   const paths = administration

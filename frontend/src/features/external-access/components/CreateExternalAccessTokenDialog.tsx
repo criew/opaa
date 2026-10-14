@@ -38,7 +38,7 @@ import {
 } from './tokenLabels'
 
 interface CreateExternalAccessTokenDialogProps {
-  /** Die Höchstlaufzeit der Installation; sie ist zugleich die Vorgabe des Ablaufdatums. */
+  /** The installation's maximum lifetime; it is also the default of the expiry date. */
   tokenMaxLifetimeDays: number
   onClose: () => void
   onCreated: (created: CreatedExternalAccessTokenResponse) => void
@@ -104,15 +104,15 @@ function libraryTiles(
 }
 
 /**
- * Der Anlegedialog eines Zugangstokens.
+ * The creation dialog of an access token.
  *
- * Die Aufklärung steht als Fließtext im Formular und nicht in einer Fußnote: Sie ist der Grund,
- * aus dem dieser Dialog eine bewusste Handlung ist und kein Knopf - was hier erteilt wird, läuft
- * anschließend durch ein Werkzeug, über dessen Protokollierung OPAA nichts zusagen kann.
+ * The explanation stands as running text in the form and not in a footnote: it is the reason
+ * this dialog is a deliberate action and not a button - what is granted here afterwards runs
+ * through a tool about whose logging OPAA can promise nothing.
  *
- * Die Auswahl kommt aus `eligible-libraries` und ist damit genau die Menge, die die Ausstellung
- * annimmt - lesbar und freigegeben. Alles, was der Dialog anbietet, ist ausstellbar; eine
- * Bibliothek mehr anzubieten hieße, die Person in eine Abweisung laufen zu lassen.
+ * The selection comes from `eligible-libraries` and is thus exactly the set the issuance
+ * accepts - readable and released. Everything the dialog offers can be issued; offering one more
+ * library would mean letting the person run into a rejection.
  */
 export default function CreateExternalAccessTokenDialog({
   tokenMaxLifetimeDays,
@@ -126,8 +126,8 @@ export default function CreateExternalAccessTokenDialog({
   const [filters, setFilters] = useState<AssetFilters>(NO_FILTERS)
   const [selectedSnapshot, setSelectedSnapshot] = useState<string[]>([])
   const [favoritesSnapshot, setFavoritesSnapshot] = useState<string[]>([])
-  // Der Entwurf lebt nur, solange der Dialog montiert ist - der Aufrufer montiert ihn je Vorgang
-  // neu. Ein Zurücksetzen im Effekt wäre derselbe Zustand, nur einen Renderdurchlauf später.
+  // The draft lives only as long as the dialog is mounted - the caller mounts it anew per
+  // operation. A reset in an effect would be the same state, only one render later.
   const [expiresOn, setExpiresOn] = useState(() =>
     toDateInputValue(maxExpiryDate(tokenMaxLifetimeDays)),
   )
@@ -137,8 +137,8 @@ export default function CreateExternalAccessTokenDialog({
 
   const latest = maxExpiryDate(tokenMaxLifetimeDays)
   const latestValue = toDateInputValue(latest)
-  // Frühestens morgen - dasselbe, was die Prüfung unten verlangt. Ein im Feld wählbarer Tag, den
-  // die Prüfung daneben ablehnt, wäre eine Falle.
+  // Tomorrow at the earliest - the same the validation below requires. A day selectable in the
+  // field that the validation next to it rejects would be a trap.
   const earliestValue = toDateInputValue(earliestExpiryDate())
 
   useEffect(() => {

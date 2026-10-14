@@ -28,8 +28,8 @@ export function outcomeTone(outcome: DirectorySyncOutcome | null | undefined): S
 }
 
 /**
- * Der Mechanismuskonflikt als Satz statt als roher `409` (ADR-0036, Entscheidung 2): Je Anbieter
- * gibt es genau einen Gruppenmechanismus.
+ * The mechanism conflict as a sentence instead of a raw `409` (ADR-0036, Entscheidung 2): per
+ * provider there is exactly one group mechanism.
  */
 export const DIRECTORY_SYNC_CONFLICT_MESSAGES: Readonly<Record<string, string>> = {
   DIRECTORY_SYNC_MECHANISM_CONFLICT:

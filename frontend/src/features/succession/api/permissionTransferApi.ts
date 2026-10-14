@@ -8,8 +8,8 @@ import type {
 import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
- * Die Übertragung von Wirkungen (ADR-0036 Entscheidung 10). Die Vorschau ist Pflicht: Die
- * Ausführung verlangt deren `previewId` und eine ausdrückliche Bestätigung.
+ * The transfer of effects (ADR-0036 Entscheidung 10). The preview is mandatory: the
+ * execution requires its `previewId` and an explicit confirmation.
  */
 export async function previewPermissionTransfer(
   request: PermissionTransferPreviewRequest,
@@ -40,8 +40,8 @@ export async function executePermissionTransfer(
 }
 
 /**
- * „Wo wirkt diese Gruppe": mit `providerId` die Arbeitsliste eines Anbieters, mit
- * `groupIds` genau die Zeilen, die eine Liste anzeigt — ohne beides jede Gruppe der Organisation.
+ * „Wo wirkt diese Gruppe": with `providerId` a provider's worklist, with
+ * `groupIds` exactly the rows a list shows — without either, every group of the organization.
  */
 export async function getGroupEffects(options?: {
   providerId?: string
@@ -53,8 +53,8 @@ export async function getGroupEffects(options?: {
         ...(options?.providerId ? { providerId: options.providerId } : {}),
         ...(options?.groupIds?.length ? { groupId: options.groupIds } : {}),
       },
-      // Wiederholter Parameter statt Komma- oder Klammerform: `groupId=a&groupId=b` ist, was
-      // Spring an eine Listen-Bindung übergibt.
+      // A repeated parameter instead of comma or bracket form: `groupId=a&groupId=b` is what
+      // Spring passes to a list binding.
       paramsSerializer: { indexes: null },
     })
     return data

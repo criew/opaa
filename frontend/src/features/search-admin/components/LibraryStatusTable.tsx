@@ -199,9 +199,9 @@ function ContextPrefixCell({
 }
 
 /**
- * Die laufenden Umschluesselungen und Feldloeschungen einer Bibliothek. Nur Anzeige: den
- * Lauf treibt, wer das Verwaltungsrecht an der Bibliothek hat, aus deren Einstellungen - diese
- * Seite macht den Mischzustand sichtbar, in dem eine Bibliothek gerade steht.
+ * A library's running re-mappings and field deletions. Display only: the run is driven by
+ * whoever holds the management right on the library, from its settings - this
+ * page makes visible the mixed state a library is currently in.
  */
 function MetadataSchemaChangeCell({ library }: { library: LibrarySearchStatusResponse }) {
   const changes = library.metadataSchemaChanges

@@ -56,9 +56,9 @@ export const groupHandlers = [
     return HttpResponse.json(mockGroupDetails[id], { status: 201 })
   }),
 
-  // Vor '/api/v1/groups/:groupId': MSW waehlt den ersten passenden Handler, und der
-  // Einzelgruppen-Pfad faengt sonst 'selectable' als Gruppen-ID ab (im Backend entscheidet
-  // Springs Pfad-Spezifitaet, hier die Reihenfolge).
+  // Before '/api/v1/groups/:groupId': MSW picks the first matching handler, and the
+  // single-group path would otherwise catch 'selectable' as a group ID (in the backend
+  // Spring's path specificity decides, here the order).
   http.get('/api/v1/groups/selectable', ({ request }) => {
     const query = (new URL(request.url).searchParams.get('query') ?? '').trim().toLowerCase()
     if (query.length < 2) {
@@ -73,8 +73,8 @@ export const groupHandlers = [
     return HttpResponse.json(matches.slice(0, 20))
   }),
 
-  // Der Kennungsweg löst die Gruppe unter derselben Sichtbarkeitsregel auf; eine
-  // geschützte Gruppe kommt dabei ohne ihren Namen zurück.
+  // The identifier path resolves the group under the same visibility rule; a
+  // protected group comes back without its name.
   http.get('/api/v1/groups/selectable/:groupId', ({ params }) => {
     const group = mockSelectableGroups.find((candidate) => candidate.id === String(params.groupId))
     if (!group) {

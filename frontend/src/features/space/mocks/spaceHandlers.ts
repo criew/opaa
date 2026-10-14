@@ -265,8 +265,8 @@ export const spaceHandlers = [
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
     }
     const userId = new URL(request.url).searchParams.get('userId')
-    // Die Auskunft über eine andere Person nennt keine geschützte Gruppe, sondern nur die
-    // wirksame Rolle (ADR-0036, Entscheidung 9).
+    // Information about another person names no protected group, only the
+    // effective role (ADR-0036, Entscheidung 9).
     if (userId && userId !== 'mock-user-id') {
       return HttpResponse.json({
         spaceId,

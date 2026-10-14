@@ -24,7 +24,7 @@ describe('assetRoleDescription', () => {
   })
 })
 
-/** Die heutige Größe einer Gruppe an Freigabe und Mitgliedschaft, ohne Mindestgröße. */
+/** A group's current size on a grant and a membership, without a minimum size. */
 describe('groupMemberCountLabel', () => {
   it('nennt jede Zahl, auch unterhalb der Mindestgruppengröße', () => {
     expect(groupMemberCountLabel({ activeMemberCount: 41 })).toBe('41 Mitglieder')
