@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
 import Drawer from '@mui/material/Drawer'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -17,6 +17,7 @@ import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useUiStore } from '@/shared/stores/uiStore'
 import { SpaceListContext } from '@/features/asset'
 import { loadSpaceList } from '../themeSeams'
+import PageLoading from './PageLoading'
 
 export default function AppShell() {
   const theme = useTheme()
@@ -101,7 +102,9 @@ export default function AppShell() {
           }}
         >
           <SpaceListContext value={loadSpaceList}>
-            <Outlet />
+            <Suspense fallback={<PageLoading />}>
+              <Outlet />
+            </Suspense>
           </SpaceListContext>
         </Box>
       </Box>

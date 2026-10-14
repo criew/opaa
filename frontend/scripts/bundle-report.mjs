@@ -10,13 +10,14 @@ import { gzipSync, brotliCompressSync } from 'node:zlib'
 const distDir = fileURLToPath(new URL('../dist', import.meta.url))
 const outDir = process.argv[2] ?? fileURLToPath(new URL('../bundle-report', import.meta.url))
 
-// Route -> source module of the page. While a page is not split into its own chunk, the route
-// costs the entry alone; once it is, the page chunk and its not yet loaded imports are added.
+// Route -> module whose chunk renders the route: the `routes.ts` of the page's theme, which
+// src/app/lazyPages.ts loads on demand. The route costs the entry plus that chunk and its not yet
+// loaded imports; a module that is not a dynamic entry adds nothing.
 const ROUTES = {
-  '/login': 'src/features/auth/pages/LoginPage.tsx',
-  '/spaces/:spaceId/chats/:chatId': 'src/features/chat/pages/ChatPage.tsx',
-  '/catalog': 'src/features/asset/pages/CatalogPage.tsx',
-  '/admin/users': 'src/features/user/pages/UserManagementPage.tsx',
+  '/login': 'src/features/auth/routes.ts',
+  '/spaces/:spaceId/chats/:chatId': 'src/features/chat/routes.ts',
+  '/catalog': 'src/features/asset/routes.ts',
+  '/admin/users': 'src/features/user/routes.ts',
 }
 
 const manifest = JSON.parse(readFileSync(join(distDir, '.vite', 'manifest.json'), 'utf8'))

@@ -6,7 +6,8 @@ Ergänzt die Regeln in der [AGENTS.md im Wurzelverzeichnis](../AGENTS.md). Das F
 
 ```
 src/
-  app/                 Routenbaum (App.tsx), Einstieg (main.tsx), ErrorBoundary, ProtectedRoute
+  app/                 Routenbaum (App.tsx), nachgeladene Seiten (lazyPages.ts), Einstieg (main.tsx),
+                       ErrorBoundary, ProtectedRoute
     shell/             AppShell, Sidebar, GlobalRail, MobileHeader, Info-Dialog, Rahmen der globalen Bereiche
     areas/             Bereichsseiten aus mehreren Themen
     mocks/             MSW-Sammelstelle (handlers.ts) und Browser-Worker (browser.ts)
@@ -55,6 +56,7 @@ Die Angaben folgen dem Code, nicht der Erinnerung: Beim Ändern von `ALLOWED`, `
 
 - Ein Thema hängt nur von sich selbst, von `shared` und von den Themen in `ALLOWED` ab. `shared` hängt von nichts ab. `app` und `src/test/` dürfen alles.
 - Ein Thema ist von außen nur über seine `index.ts` erreichbar, `app` zusätzlich über `routes.ts`. `index.ts` exportiert keine Seiten.
+- `index.ts` und `routes.ts` enthalten nur Re-Exports, `routes.ts` nur die eigenen Seiten (`src/app/featureBarrels.test.ts`). Der Build behandelt jede `index.ts` als frei von Seiteneffekten (`vite.config.ts`): Wer einen Namen daraus importiert, bündelt nur dessen Modul. Seiten lädt `app` je Thema als eigenen Chunk über `src/app/lazyPages.ts` nach; ins Einstiegs-Bundle gehören nur die Shell und was sie braucht, darunter der Info-Dialog mit der Version, die der Image-Rauchtest dort sucht.
 - Imports über Themengrenzen schreiben den Alias `@/` (`import { SubjectPicker } from '@/features/principal'`), Imports innerhalb eines Themas sind relativ.
 - Tests und Mock-Handler dürfen die Fixtures und Handler aller Themen und von `shared` nutzen (`mocks/`), Produktivcode nie, auch nicht die des eigenen Themas; nur der Einstieg `src/app/main.tsx` lädt die MSW-Sammelstelle (`app/mocks/browser`).
 - Ein Test darf mit `vi.mock()` ein einzelnes Modul hinter der `index.ts` eines erlaubten Themas ersetzen; wer über die `index.ts` importiert, sieht den Mock ebenfalls.
@@ -94,7 +96,7 @@ Ein Umzugs-PR verschiebt Dateien in den Ordner eines anderen Themas oder Bereich
    ```
    Das Skript verschiebt per `git mv`, schreibt relative und `@/`-Pfade in Imports, Exporten, `import()`, `vi.mock()`, `vi.doMock()` und `vi.importActual()` aller Dateien unter `src/` um, die verschobenen eingeschlossen. Ein Pfad behält seine Form (relativ bleibt relativ, `@/` bleibt `@/`, eine weggelassene Endung oder `index` bleibt weggelassen). Meldet es `check glob`, findet ein `import.meta.glob()` danach andere Dateien als vorher; meldet es `check reference`, nennt eine Datei außerhalb von `src/` (`index.html`, `vite.config.ts`, `scripts/bundle-report.mjs`) einen verschobenen Pfad. Beides von Hand nachziehen.
    Die Quelltextprüfungen brauchen dafür keine Themenliste: `PageSection.test.tsx` und `AreaPageHeader.test.tsx` lesen `features/*/components/**` bzw. `features/*/pages/*`, `secondaryText.test.tsx`, `ConfirmHost.test.tsx` und `sessionStores.test.ts` lesen `**`. Ein `check glob` auf `PageSection` oder `AreaPageHeader` ist erwartet, wenn der Umzug Dateien unter deren Mustern bewegt. Ob danach dieselben Dateien geprüft werden, zeigt `vitest list` nicht, weil `it.each` dort nur die Vorlage nennt; dafür die Fälle beider Tests vorher und nachher mit `pnpm exec vitest run <test> --reporter=verbose` sammeln und vergleichen. Komponenten eines neuen Themas fallen damit unter die `PageSection`-Regel.
-4. `index.ts` anlegen und alles exportieren, was andere Themen brauchen. `pnpm run lint` zeigt jede Stelle, die noch in das Thema hineingreift; dort auf `@/features/<thema>` umstellen. Hat das Thema Seiten, zusätzlich `routes.ts` mit `export { default as X } from './pages/X'` je Seite anlegen und die Seitenimporte in `src/app/App.tsx` auf `import { X } from '@/features/<thema>/routes'` umstellen. Ein neues Thema bekommt in `themes.js` einen Eintrag in `THEMES` und seine Kanten in `ALLOWED` (abstimmen, siehe Regeln).
+4. `index.ts` anlegen und alles exportieren, was andere Themen brauchen. `pnpm run lint` zeigt jede Stelle, die noch in das Thema hineingreift; dort auf `@/features/<thema>` umstellen. Hat das Thema Seiten, zusätzlich `routes.ts` mit `export { default as X } from './pages/X'` je Seite anlegen und die Seiten in `src/app/lazyPages.ts` über den Loader des Themas (`themePages(() => import('@/features/<thema>/routes'))`) eintragen. Ein neues Thema bekommt in `themes.js` einen Eintrag in `THEMES` und seine Kanten in `ALLOWED` (abstimmen, siehe Regeln).
 5. `AGENTS.md` und `CLAUDE.md` (Inhalt `@AGENTS.md`) des Themas anlegen.
 6. Nachweis, alles aus `frontend/`:
    - `pnpm run format:check`, `pnpm run lint`, `pnpm run test`, `pnpm run build` grün;
