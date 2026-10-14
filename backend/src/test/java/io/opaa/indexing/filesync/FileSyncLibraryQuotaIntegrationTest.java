@@ -267,7 +267,7 @@ class FileSyncLibraryQuotaIntegrationTest {
     private Runnable afterNextIntake;
 
     AdjustableQuota(DocumentRepository documentRepository, PersonalStorageQuota personalQuota) {
-      super(documentRepository, new LibraryProperties(0), personalQuota);
+      super(documentRepository, new LibraryProperties(0, 0), personalQuota);
     }
 
     @Override
