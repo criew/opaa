@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic generator for the Rheinfurt demo corpus (Issue #711).
+"""Deterministic generator for the Rheinfurt demo corpus.
 
 Builds all seven demo libraries described in
 docs/features/demo-instance.md ("Behördenlandschaft, Bibliotheken und
@@ -91,8 +91,8 @@ PRESERVED_FILES = {
 HANDBOOK_FORMAT_CHAPTER = REPO_ROOT / "docs" / "handbuch" / "formate" / "README.md"
 _HANDBOOK_SECTION = "## Zugelassene Formate"
 _HANDBOOK_EXTENSION_ROW = re.compile(r"^\|\s*`(\.[a-z0-9]+)`\s*\|")
-# The Formatübersicht lists at least the formats of #1058/#1057/#1059/#1189; a parse finding fewer
-# than this read the wrong thing rather than a genuinely shrunken table.
+# The Formatübersicht lists at least ten formats; a parse finding fewer than this read the wrong
+# thing rather than a genuinely shrunken table.
 _MINIMUM_ADMITTED_EXTENSIONS = 10
 
 
@@ -246,14 +246,14 @@ def build_intern() -> list[tuple[str, str, bytes]]:
     return written
 
 
-# --- Validation: source text extraction per library (WICHTIG 2) ------------
+# --- Validation: source text extraction per library -------------------------
 #
 # Leistungen documents are validated against their actually rendered .md/.txt
 # bytes (see build_leistungen_meldewesen/build_leistungen_kfz above — the
 # third tuple element). Satzungen/Presse/Intern are hand-authored Python data,
 # never touched by the München→Rheinfurt transform, so they are validated at
-# the source-string level, before rendering, per the two acceptable
-# strategies named in the PR #717 review.
+# the source-string level, before rendering.
+
 
 
 def build_rat() -> list[tuple[str, str, bytes]]:

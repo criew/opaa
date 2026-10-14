@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Überführt das alte Layout der GitHub Page in das neue.
 #
-# Bis Issue #373 lag der Tagesreport im Wurzelverzeichnis des Branches
+# Im alten Layout liegt der Tagesreport im Wurzelverzeichnis des Branches
+
 # gh-pages; dort liegt jetzt die Landing Page aus page/, der Report darunter
 # in report/. Dieses Skript verschiebt einen noch im alten Layout
 # vorliegenden Bestand einmalig — die Rohdaten in data/ sind dabei das

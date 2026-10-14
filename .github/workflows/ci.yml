@@ -152,7 +152,11 @@ jobs:
               - 'backend/gradle/**'
               - 'backend/*.gradle.kts'
               - 'opaa-api/*.gradle.kts'
-              - '.github/scripts/check_code_comments.sh'
+              - 'renovate.json5'
+              - 'frontend/nginx.conf'
+              - 'demo/**/*.py'
+              - 'demo/**/*.conf'
+              - '**/*.sh'
             # Step-level filter of the ratchets below, not a job output.
             ratchets:
               - 'backend/src/main/**'

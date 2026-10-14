@@ -1,5 +1,6 @@
 """Final validation pass: aborts the generator run if any Rheinfurt document
-still carries a real Munich identifier (PR #717 review, WICHTIG 2).
+still carries a real Munich identifier.
+
 
 Runs against two kinds of text, per library:
 

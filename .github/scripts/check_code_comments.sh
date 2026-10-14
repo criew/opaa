@@ -3,13 +3,18 @@
 #
 # Checked trees (TREES): '//' and '/* */' comment lines of the Java sources under backend/src/main,
 # opaa-api/src/main, backend/src/test and backend/src/evalTest, of the e2e/ scripts (*.ts, *.mjs,
-# *.js) and of the Gradle build scripts (*.gradle.kts in backend/ and opaa-api/); '#' lines of
-# application*.yml, of e2e/*.yml|yaml|env|sh, docker-compose*.yml, .env*.example, the Dockerfiles
-# and backend/gradle/*.toml; '#' lines and docstrings of the Python scripts under eval/ and
+# *.js), of the Gradle build scripts (*.gradle.kts in backend/ and opaa-api/) and of
+# renovate.json5; '#' lines of application*.yml, of e2e/*.yml|yaml|env, every shell script (*.sh),
+# docker-compose*.yml, .env*.example, the Dockerfiles, backend/gradle/*.toml, frontend/nginx.conf
+# and demo/*.conf; '#' lines and docstrings of the Python scripts under eval/, demo/ and
 # backend/src/test/resources/; '#' lines and '//' lines of inline scripts in the workflows
 # (.github/workflows/*.yml); every line of the OpenAPI fragments, whose summaries and descriptions
 # are the API documentation; the changeSet comment: values (folded ones with their continuation
 # lines) and '#' lines of the Liquibase changelogs.
+#
+# Only a line that starts with its comment mark is read: a comment behind code stays unchecked, as
+# telling it from a '#' or '//' inside a string or URL needs a parser per language. A '#!' line is
+# no comment. This script is exempt itself: its header lists the rejected forms as examples.
 #
 # Rejected:
 # - review protocol: "#393 code review, finding 1", "#N second review", "#N (review)",
@@ -44,6 +49,11 @@ TREES=(
   build=frontend/
   build=docker-compose
   build=.env
+  build=renovate.json5
+  build=deploy/
+  build=examples/
+  demo=demo/
+  scripts=.github/scripts/
 )
 # An issue reference; "owner/repo#123", "&#123;" and "page.md#123" are none.
 REF='(?<![\w.&#/-])#[0-9]{2,4}\b'
@@ -52,7 +62,7 @@ AT='^[^:]+:[0-9]+:'
 REVIEW="(?i)${REF}\S*\s+((second|third|follow-up)\s+)?(code\s+|re-)?review\b|${REF}\s*\(review\)|\breview\s+(of|zu)\s+(PR\s+)?#[0-9]|\bre-review\b|\breview\s+(round|findings?)\b|\b(should-|optional\s+)?finding\s+[0-9]|\bnit\s+[0-9]|\b(Befund|Wichtig)\s+([0-9]|\")"
 HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|seit|before)\s+(epic\s+|PR\s+|issue\s+)?#[0-9]"
 MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\s*([);]|,\s*\S)|${AT}\s*(//|/?\*|#|comment:\s*\"?)?\s*(<p>|<b>)?\s*(([Ii]ssues?|PR)\s+)?${REF}(\s*[,/]\s*#[0-9]{2,4})*\s*:"
-EXEMPT="^backend/src/main/java/io/opaa/query/spike/|(?i)\bspike\s+\(?#[0-9]"
+EXEMPT="^backend/src/main/java/io/opaa/query/spike/|^\.github/scripts/check_code_comments\.sh:|(?i)\bspike\s+\(?#[0-9]"
 # The form a test may keep: it names the regression and, after the colon, the invariant it guards.
 GUARD="^(backend/src/(test|evalTest)|e2e)/[^:]+:[0-9]+:(?i).*\bregression\s+guard\s+for\s+#[0-9]+((\s*,\s*|\s+and\s+|/)#[0-9]+)*:\s*\S"
 
@@ -63,7 +73,7 @@ slash_comments() {
 
 # '#' comment lines of the files matching the pathspecs.
 hash_comments() {
-  git ls-files -z -- "$@" | xargs -0 -r grep -nHP '^\s*#' || true
+  git ls-files -z -- "$@" | xargs -0 -r grep -nHP '^\s*#(?!!)' || true
 }
 
 # '#' lines and docstrings (a triple-quoted string opening a statement) of the Python files; any
@@ -102,10 +112,11 @@ changelog_comments() {
 lines() {
   slash_comments 'backend/src/main/*.java' 'opaa-api/src/main/*.java' 'backend/src/test/*.java' \
     'backend/src/evalTest/*.java' 'e2e/*.ts' 'e2e/*.mjs' 'e2e/*.js' 'backend/*.gradle.kts' \
-    'opaa-api/*.gradle.kts'
+    'opaa-api/*.gradle.kts' 'renovate.json5'
   hash_comments 'backend/src/main/resources/application*.yml' 'e2e/*.yml' 'e2e/*.yaml' 'e2e/*.env' \
-    'e2e/*.sh' 'docker-compose*.yml' '.env*.example' '*Dockerfile' 'backend/gradle/*.toml'
-  python_comments 'eval/*.py' 'backend/src/test/resources/*.py'
+    '*.sh' 'docker-compose*.yml' '.env*.example' '*Dockerfile' 'backend/gradle/*.toml' \
+    'frontend/nginx.conf' 'demo/*.conf'
+  python_comments 'eval/*.py' 'demo/*.py' 'backend/src/test/resources/*.py'
   git ls-files -z -- '.github/workflows/*.yml' | xargs -0 -r grep -nHP '^\s*(#|//)' || true
   git ls-files -z -- 'opaa-api/src/main/openapi/*.yaml' | xargs -0 -r grep -nH '' || true
   changelog_comments

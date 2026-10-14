@@ -216,6 +216,15 @@ FILES = [
     ("build", "backend/build.gradle.kts", lambda c: f"/*\n * {c}\n */\nplugins {{}}\n"),
     ("build", "opaa-api/build.gradle.kts", lambda c: f"// {c}\nplugins {{}}\n"),
     ("test", "backend/src/test/resources/test-documents/generate-odf-fixtures.py", docstring),
+    ("build", "renovate.json5", lambda c: f"{{\n  // {c}\n  extends: [],\n}}\n"),
+    ("build", "frontend/nginx.conf", lambda c: f"server {{\n    # {c}\n    listen 8080;\n}}\n"),
+    ("build", "frontend/docker-entrypoint.d/05-probe.sh", lambda c: f"#!/bin/sh\n# {c}\nexit 0\n"),
+    ("build", "deploy/helm/ci/probe.sh", lambda c: f"#!/usr/bin/env bash\n  # {c}\nexit 0\n"),
+    ("build", "examples/kubernetes-trial/trial.sh", lambda c: f"#!/usr/bin/env bash\n# {c}\nexit 0\n"),
+    ("scripts", ".github/scripts/probe.sh", lambda c: f"#!/usr/bin/env bash\n# {c}\nexit 0\n"),
+    ("demo", "demo/seed/probe.py", lambda c: f"# {c}\nX = 1\n"),
+    ("demo", "demo/generator/probe.py", docstring),
+    ("demo", "demo/webserver/probe.conf", hash_line),
 ]
 FILE_IDS = [path for _, path, _ in FILES]
 
@@ -274,3 +283,24 @@ def test_docstring_after_a_data_string_is_checked(repo: Path) -> None:
     result = run(repo)
     assert result.returncode == 1
     assert "Origin marker" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "path, text",
+    [
+        ("frontend/nginx.conf", "server_tokens off; # (#1073)\n# Clean.\n"),
+        (".github/scripts/probe.sh", "#!/usr/bin/env bash\nexit 0 # #393 code review, finding 1\n# Clean.\n"),
+        ("renovate.json5", "{\n  extends: [], // (#1073)\n  // Clean.\n}\n"),
+    ],
+)
+def test_comment_behind_code_is_not_checked(repo: Path, path: str, text: str) -> None:
+    write(repo, path, text)
+    result = run(repo)
+    assert result.returncode == 0, result.stdout
+
+
+def test_the_checker_itself_is_exempt(repo: Path) -> None:
+    write(repo, ".github/scripts/check_code_comments.sh", "#!/usr/bin/env bash\n# origin markers: \"(#1073)\"\n")
+    write(repo, ".github/scripts/probe.sh", "#!/usr/bin/env bash\n# Clean.\n")
+    result = run(repo)
+    assert result.returncode == 0, result.stdout

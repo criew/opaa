@@ -1,4 +1,4 @@
-"""The two data profiles the seed mechanism knows (Issue #712, docs/features/demo-instance.md).
+"""The two data profiles the seed mechanism knows (docs/features/demo-instance.md).
 
 "Geteilt sind die Daten, nicht die Nutzerbereitstellung": both profiles describe the same kind of
 data (users, spaces, libraries, VIEWER grants, upload documents, source configurations) and are
@@ -12,10 +12,8 @@ obtained.
 - "e2e": the minimal, frozen profile for the E2E docker-compose stack (e2e/docker-compose.e2e.yml).
   Authenticates via the dev-auth header against the "dev-admin"/"dev-user"/"dev-outsider"/
   "dev-format-pipelines" accounts that stack already provisions (see docker-compose.e2e.yml's
-  OPAA_AUTH_DEV_USERS_* block). Since
-  #233, its data (this file plus e2e-data/) is the E2E suite's only source of pre-existing content -
-  e2e/fixtures/rss-feed/ and e2e/fixtures/test-documents/ used to be a second, independent way to
-  fill an instance and no longer exist; their content lives under e2e-data/ instead, next to the
+  OPAA_AUTH_DEV_USERS_* block). Its data
+  (this file plus e2e-data/) is the E2E suite's only source of pre-existing content, next to the
   profile that governs it. The library below uploads a single dedicated file
   (e2e-data/test-documents/seed/e2e-basisdokument.txt), not the files individual Playwright specs
   upload themselves through the UI (e2e-data/test-documents/*.txt) - those remain each spec's own
@@ -122,7 +120,7 @@ class GroupDef:
     # that library's own viewer_keys, so a member reads it *exclusively* through the group.
     library_grants: tuple[str, ...] = field(default_factory=tuple)
     # (SpaceDef.name, SpaceRole) - the group becomes a member of that space, carrying the role to
-    # every one of its own members without an individual space membership row of their own (#1815).
+    # every one of its own members without an individual space membership row of their own.
     space_membership: tuple[str, str] | None = None
 
 
@@ -718,7 +716,7 @@ DEMO_PROFILE = Profile(
             viewer_keys=("selin", "andrea"),
             upload_dir=DEMO_CORPUS_ROOT / "interne-dienstanweisungen-meldewesen",
         ),
-        # The S3 library (#1383, ADR-0027): reads the demo stack's object store (service "objectstore",
+        # The S3 library (ADR-0027): reads the demo stack's object store (service "objectstore",
         # path-style over the Compose network), bucket "rheinfurt-archiv" under the prefix the
         # "objectstore-seed" init step mirrors demo/corpus/ratsinformationen/ to. Public council
         # information, released to "Alle Konten".
@@ -736,7 +734,7 @@ DEMO_PROFILE = Profile(
             viewer_keys=(),
             expected_documents_dir=DEMO_CORPUS_ROOT / "ratsinformationen",
         ),
-        # The seventh library (#1520): a technical showcase, not a Fachablage - one document per
+        # The seventh library: a technical showcase, not a Fachablage - one document per
         # file extension OPAA admits, read over the S3 connector from the bucket "formattest" of
         # the same store. It stays with the admin account that creates it and gets no VIEWER grant;
         # only the admin's own personal space carries it, so it never widens what a fach account
@@ -762,8 +760,8 @@ DEMO_PROFILE = Profile(
         ),
     ),
     groups=(
-        # The internal-group scenario of ADR-0036, Entscheidung 4/9 and #1823's acceptance
-        # criteria: Maria is the named steward (not the admin account, see GroupDef's own
+        # The internal-group scenario of ADR-0036, Entscheidung 4/9: Maria is the named
+        # steward (not the admin account, see GroupDef's own
         # docstring), Thomas is the only member, and both his library read and his space role in
         # "Meldewesen & Ausweise" flow *exclusively* through this group - he is not also a member
         # of the space and not also on "Interne Dienstanweisungen Meldewesen"'s own viewer_keys.
@@ -919,7 +917,8 @@ E2E_PROFILE = Profile(
     admin=_E2E_ADMIN,
     # dev-outsider is provisioned (so listUsers/other assertions can rely on it existing) but is
     # deliberately given no space membership and no library grant - the negative case a permission
-    # test needs, mirroring e2e's own existing "outsider" concept (#424).
+    # test needs, mirroring e2e's own existing "outsider" concept.
+
     users=(_E2E_USER, _E2E_OUTSIDER),
     spaces=(
         SpaceDef(
