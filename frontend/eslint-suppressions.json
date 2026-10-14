@@ -99,14 +99,9 @@
       "count": 2
     }
   },
-  "src/components/succession/SuccessionRow.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
   "src/components/succession/successionPresentation.ts": {
     "boundaries/dependencies": {
-      "count": 2
+      "count": 1
     }
   },
   "src/hooks/useGroupSearch.ts": {
@@ -119,16 +114,6 @@
       "count": 1
     }
   },
-  "src/shared/layouts/globalArea.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/pages/CatalogAssetTypeRegistry.test.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
   "src/pages/LibraryCreatePage.test.tsx": {
     "boundaries/dependencies": {
       "count": 2
@@ -136,7 +121,7 @@
   },
   "src/pages/SearchIndexingAdminPage.tsx": {
     "boundaries/dependencies": {
-      "count": 2
+      "count": 1
     }
   },
   "src/pages/SpacePage.test.tsx": {

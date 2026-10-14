@@ -15,7 +15,7 @@ import {
   assetTypeDefinition,
   creatableAssetTypes,
   useActiveAssetTypes,
-} from '../components/assets/assetTypeRegistry'
+} from '../shared/assetTypes'
 import OverviewPage from '@/shared/ui/overview/OverviewPage'
 import AssetTile from '../components/assets/AssetTile'
 import { tileFromCatalogEntry } from '../components/assets/assetTileData'

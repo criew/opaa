@@ -21,7 +21,7 @@ import { detachSpaceAsset, getAssetSpaceAssociations } from '../../services/asse
 import { getSpaces } from '../../services/spaceApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
-import { assetTypeLabel } from './assetTypeRegistry'
+import { assetTypeLabel } from '../../shared/assetTypes'
 
 interface AssetSpacesListProps {
   assetType: AssetType

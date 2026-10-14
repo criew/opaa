@@ -7,7 +7,7 @@ import { getAssetAccessDerivation } from '../../services/assetApi'
 import { getSpaceAccessDerivation } from '../../services/spaceApi'
 import { accessBasisLabel } from '../assets/assetLabels'
 import { assetRoleLabel, spaceRoleLabel } from '@/shared/utils/labels'
-import { assetTypeLabel } from '../assets/assetTypeRegistry'
+import { assetTypeLabel } from '../../shared/assetTypes'
 
 type DerivationTarget =
   | { kind: 'asset'; assetType: AssetType; assetId: string }

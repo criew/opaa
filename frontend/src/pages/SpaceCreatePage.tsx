@@ -14,7 +14,7 @@ import { useLocation, useNavigate } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AssetTilePicker from '../components/assets/AssetTilePicker'
 import type { AssetPick, SpaceCreateLocationState } from '../components/assets/assetPick'
-import { assetTypeDefinition } from '../components/assets/assetTypeRegistry'
+import { assetTypeDefinition } from '../shared/assetTypes'
 import SubjectFormRow from '../components/permissions/SubjectFormRow'
 import SubjectPicker from '../components/permissions/SubjectPicker'
 import {

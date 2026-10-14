@@ -49,7 +49,7 @@ import {
   groupMemberCountLabel,
   permissionSubjectTypeLabel,
 } from '../assets/assetLabels'
-import { assetTypeLabel } from '../assets/assetTypeRegistry'
+import { assetTypeLabel } from '../../shared/assetTypes'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 

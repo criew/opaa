@@ -52,7 +52,7 @@ import SpaceSettingsPage from './pages/SpaceSettingsPage'
 // asset
 import CatalogPage from './pages/CatalogPage'
 import CatalogNewPage from './pages/CatalogNewPage'
-import { catalogRoute } from './components/assets/assetTypeRegistry'
+import { catalogRoute } from './shared/assetTypes'
 // library
 import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
