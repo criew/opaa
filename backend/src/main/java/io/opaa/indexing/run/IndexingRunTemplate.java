@@ -164,10 +164,8 @@ public class IndexingRunTemplate {
   /**
    * {@code settingsBasis} fingerprints the settings a run begins with; a sync state written under
    * another fingerprint is not continued, and a run whose settings change meanwhile removes nothing
-   * for being absent. {@code executors}, when given, admits only a body whose nest host is the
-   * executor class registered for the library's source type - a lambda or method reference belongs
-   * to the class that defines it - and only for a running job the core started for that library.
-   * Anything else fails the job before the library's source is resolved.
+   * for being absent. {@code executors}, when given, admits only the bodies and jobs described on
+   * this class; a lambda or method reference belongs to the class that defines it.
    */
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -388,24 +386,27 @@ public class IndexingRunTemplate {
   }
 
   /**
-   * The body must come from the class the core hands a library of this source type to - a proxy of
-   * the registered executor counts as the class it wraps - and {@code jobId} must be a running job
-   * the core started for this library. A refused job is failed at once, so it does not hold the
-   * library until the recovery.
+   * {@code jobId} must be a running job the core started for this library; another is refused
+   * untouched, it is not this library's to fail. The body must come from the class the core hands a
+   * library of this source type to - a proxy of the registered executor counts as the class it
+   * wraps; a refused job is failed at once, so it does not hold the library until the recovery.
    */
   private void requireRegistered(UUID jobId, KnowledgeLibrary library, RunBody body) {
     if (executors == null) {
       return;
     }
+    if (!indexingJobService.isRunningFor(jobId, library.getId())) {
+      throw new IllegalArgumentException(
+          "Job " + jobId + " is not a running job of library " + library.getId());
+    }
     Class<?> host = body.getClass().getNestHost();
     if (executors
-            .get()
-            .find(library.getSourceType())
-            .filter(registered -> AopUtils.getTargetClass(registered).getNestHost() == host)
-            .isEmpty()
-        || !indexingJobService.isRunningFor(jobId, library.getId())) {
+        .get()
+        .find(library.getSourceType())
+        .filter(registered -> AopUtils.getTargetClass(registered).getNestHost() == host)
+        .isEmpty()) {
       indexingJobService.failJob(
-          jobId, "Lauf abgelehnt: Der Kern hat ihn diesem Konnektor nicht übergeben");
+          jobId, "Lauf abgelehnt: Er stammt nicht vom Konnektor dieses Quellentyps");
       throw new IllegalArgumentException(
           host.getName()
               + " may not run library "

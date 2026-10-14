@@ -201,12 +201,12 @@ class IndexingRunTemplateTest {
             null,
             "https://feed.example",
             null);
+    IndexingRunTemplate template = templateRegistering(resolver, own);
+    when(jobService.isRunningFor(jobId, feed.getId())).thenReturn(true);
 
-    assertThatThrownBy(
-            () ->
-                templateRegistering(resolver, own)
-                    .run(jobId, feed, IndexingRunMode.FULL, own, own.body(seen)))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> template.run(jobId, feed, IndexingRunMode.FULL, own, own.body(seen)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("may not run library " + feed.getId());
 
     assertThat(seen.get()).isNull();
     verifyNoInteractions(resolver);
@@ -233,11 +233,11 @@ class IndexingRunTemplateTest {
                 templateRegistering(resolver, own)
                     .run(jobId, foreign, IndexingRunMode.FULL, own, own.body(seen)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("may not run library " + foreign.getId());
+        .hasMessageContaining("is not a running job of library " + foreign.getId());
 
     assertThat(seen.get()).isNull();
     verifyNoInteractions(resolver, eventRepository);
-    verify(jobService).failJob(eq(jobId), any());
+    verify(jobService, never()).failJob(any(), any());
     verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
   }
 
