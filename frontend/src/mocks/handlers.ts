@@ -16,7 +16,7 @@ import { libraryFolderHandlers } from './libraryFolderHandlers'
 import { indexingHandlers } from './indexingHandlers'
 import { privateStorageHandlers } from './privateStorageHandlers'
 // prompt
-import { promptLibraryHandlers } from './promptLibraryHandlers'
+import { promptLibraryHandlers } from '../features/prompt/mocks/promptLibraryHandlers'
 // group
 import { groupHandlers } from '../features/group/mocks/groupHandlers'
 import { groupAdminHandlers } from '../features/group/mocks/groupAdminHandlers'

@@ -16,7 +16,7 @@ import {
   getPrompts,
   updatePrompt,
   updatePromptLibrary,
-} from '../services/promptLibraryApi'
+} from '../api/promptLibraryApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 

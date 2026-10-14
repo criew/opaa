@@ -60,8 +60,8 @@ import { catalogRoute } from './shared/assetTypes'
 import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
 // prompt
-import PromptLibraryCreatePage from './pages/PromptLibraryCreatePage'
-import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
+import { PromptLibraryCreatePage } from '@/features/prompt/routes'
+import { PromptLibraryDetailPage } from '@/features/prompt/routes'
 // group
 import { GroupManagementPage } from '@/features/group/routes'
 // succession

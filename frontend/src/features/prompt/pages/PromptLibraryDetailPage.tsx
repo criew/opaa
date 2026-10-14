@@ -13,7 +13,7 @@ import type { AssetRole, PromptLibraryResponse, PromptResponse } from '@/shared/
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetRoleLabel } from '@/shared/utils/labels'
-import { promptVariableTypeLabel } from '../components/prompts/promptLabels'
+import { promptVariableTypeLabel } from '../components/promptLabels'
 import { fontFamily } from '@/shared/theme/tokens'
 import {
   CATALOG_ROUTE,
@@ -34,8 +34,8 @@ import { AssetSpacesSection } from '@/features/asset'
 import { responsibleParty } from '@/features/asset'
 import { useAssetCatalogEntry } from '@/features/asset'
 import { AssetGrantsSection } from '@/features/asset'
-import PromptEditorDialog from '../components/prompts/PromptEditorDialog'
-import PromptTextHighlight from '../components/prompts/PromptTextHighlight'
+import PromptEditorDialog from '../components/PromptEditorDialog'
+import PromptTextHighlight from '../components/PromptTextHighlight'
 
 const ROLE_ORDER: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 

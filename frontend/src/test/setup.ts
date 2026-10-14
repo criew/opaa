@@ -20,7 +20,7 @@ import { resetMockSpaceAssetAssociations } from '../features/asset/mocks/assetFi
 import { resetIndexingState } from '../mocks/indexingHandlers'
 import { resetDocumentMockState } from '../mocks/libraryDocumentHandlers'
 // prompt
-import { resetMockPromptLibraries } from '../mocks/promptLibraryFixtures'
+import { resetMockPromptLibraries } from '../features/prompt/mocks/promptLibraryFixtures'
 // user
 import {
   resetMockLocalAuthSettings,

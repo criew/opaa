@@ -12,7 +12,7 @@ import { mockLibraries, mockLibraryDetails } from '../../../mocks/libraryFixture
 import {
   mockPromptLibraries,
   mockUnreadablePromptLibraryIds,
-} from '../../../mocks/promptLibraryFixtures'
+} from '../../prompt/mocks/promptLibraryFixtures'
 
 /**
  * A knowledge library's own state, see CatalogEntryStatus. Upload libraries are approximated by

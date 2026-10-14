@@ -1,6 +1,6 @@
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
-import { getPrompt, listAvailablePrompts } from '../../services/promptLibraryApi'
-import { resolvePromptText } from '../../utils/promptTemplate'
+import { getPrompt, listAvailablePrompts } from '@/features/prompt'
+import { resolvePromptText } from '@/features/prompt'
 import type { ChatActionOption, ChatActionSource } from './chatActions'
 import PromptVariablesDialog from './PromptVariablesDialog'
 

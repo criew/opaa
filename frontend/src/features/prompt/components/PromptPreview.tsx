@@ -4,7 +4,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { PromptVariable } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
-import { resolvePromptText } from '../../utils/promptTemplate'
+import { resolvePromptText } from '../utils/promptTemplate'
 import PromptVariableInput from './PromptVariableInput'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 

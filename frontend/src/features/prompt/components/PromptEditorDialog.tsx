@@ -10,7 +10,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { PromptResponse, PromptVariable } from '@/shared/api/types'
-import { usePromptLibraryStore } from '../../stores/promptLibraryStore'
+import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import {
   PROMPT_DESCRIPTION_MAX_LENGTH,
@@ -21,7 +21,7 @@ import {
   suggestPromptName,
   validatePromptDraft,
   variablesForText,
-} from '../../utils/promptTemplate'
+} from '../utils/promptTemplate'
 import { fontFamily } from '@/shared/theme/tokens'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import SectionHead from '@/shared/ui/SectionHead'
