@@ -37,10 +37,3 @@ Schrift- und Icon-Updates sind npm-Updates statt automatisch.
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-02-19 | — | Erstfassung | 1 |
-| 2026-10-14 | #2697 | Neufassung nach ADR-Vorlage | — |

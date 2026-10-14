@@ -53,7 +53,7 @@ Zeitlimit, Größengrenze, keine Weiterleitung), das Zugriffstoken an `API_BASE`
 der Schlüsseldatei, aus `source_settings` oder einer Antwort; `exportLinks`, `webContentLink` und die
 Download-URI von `files.download` werden nie mit Token abgerufen. API-Aufrufe und Downloads nutzen
 `REJECT_OFF_ORIGIN`. Gespeicherte Zugangsdaten übernimmt der Kern nur bei gleichem, gegen die
-normalisierte Adresse verglichenem Ursprung (`KnowledgeLibraryService`), seit #2496 geprüft an einer
+normalisierte Adresse verglichenem Ursprung (`KnowledgeLibraryService`) geprüft an einer
 Änderung ohne Verbindungsfeld.
 
 ### 4. Profilangabe und domänenweite Delegation
@@ -70,7 +70,7 @@ Funktionskonto ist, kann OPAA nicht. Am Zugang setzt nur der Zugang `subject` (`
 ein Wert der Bibliothek ist `400`, fehlt er am Zugang, wird niemand imitiert. Eine Änderung verwirft
 den Abgleichstand aller Bibliotheken auf dem Zugang (ihr nächster Lauf ist ein Vollabgleich), nennt
 vorher die Zahl der Bibliotheken, benachrichtigt danach ihre Verwaltenden und wird abgelehnt,
-solange eine läuft; der Schlüssel bleibt am Zugang (seit #2220). Das Handbuch verlangt ein
+solange eine läuft; der Schlüssel bleibt am Zugang. Das Handbuch verlangt ein
 Funktionskonto und empfiehlt für Delegation einen Zugang. Die Prüfung einer Bibliothek vor dem
 Speichern meldet sich nicht bei Google an (`EffectiveSourceSettings#ofDraftToValidate`),
 Verbindungstest und Auflistung tun es. Persönliche Ablagen echter Personen sind nicht Teil dieses
@@ -190,20 +190,3 @@ Entscheidung 8) ihn verwirft.
 - `files.download` (LRO) als Ausweg für Exporte über 10 MB, sobald Grenze und Ziel-Host belegt sind.
 - Schlüssellose Anmeldung (Workload Identity Federation); persönliche Ablagen über verbundene Konten
   (Epic #2147); `changes.watch`.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-03 | #2148 | Erstfassung mit gemeinsamem Datei-Abgleich | 1–12 |
-| 2026-10-03 | #2152 | Nachtrag Ordnergedächtnis und Nextcloud (heute ADR-0045, Entscheidungen 4 und 11) | 1 |
-| 2026-10-04 | #2201 | Nachtrag lange Hierarchiepfade und Löschvermerk (ADR-0045, 5 und 10) | 1 |
-| 2026-10-04 | #2155 | Nachtrag SMB (heute ADR-0046) | — |
-| 2026-10-04 | #2202 | Nachtrag Abgleichsrunde über mehrere Läufe (ADR-0045, 6 und 7) | 1 |
-| 2026-10-04 | #2220 | Google Drive über Zugang: Schlüssel am Zugang, `subject` nur vom Zugang, Speichern fragt Google nicht | 2, 4 |
-| 2026-10-05 | #2153 | Nachtrag SharePoint (heute ADR-0047) | — |
-| 2026-10-09 | #2408 | Nachtrag `CHANGE_FEED`-Abschluss (ADR-0045, 7) | 1 |
-| 2026-10-10 | #2153 | Nachträge SharePoint gebaut und Formular (ADR-0047) | — |
-| 2026-10-10 | #2268 | Nachtrag Fingerabdruck der Einstellungen (ADR-0045, 8) | 1 |
-| 2026-10-12 | #2496 | Proxy je Bibliothek entfernt; Übernahme der Zugangsdaten ohne Verbindungsfeld geprüft | 3 |
-| 2026-10-14 | #2702 | Auf Drive beschränkt; Abgleich, SMB und SharePoint in ADR-0045 bis 0047 | alle |

@@ -28,7 +28,7 @@ Konnektor; die Datenbank prüft, dass `source_settings` ein JSON-Objekt ist, min
 einen Bereich sichert allein der Record. Was typübergreifend Regeln hat, bleibt Spalte: Endpoint in
 `source_url` (Zieladressprüfung, Ursprungsbindung), Zugangsdaten verschlüsselt in
 `source_credentials`, Zeitplan. **Geheimnisse stehen nie in `source_settings`** — die Spalte ist
-unverschlüsselt und erscheint in `LibraryResponse`. Seit #2496 gibt es keinen Proxy je Bibliothek
+unverschlüsselt und erscheint in `LibraryResponse`. Es gibt keinen Proxy je Bibliothek
 (hausweiter Ausgangsproxy, ADR-0050) und keinen Schalter zum Aussetzen der
 Zertifikatsprüfung; `S3SdkClient` setzt `TRUST_ALL_CERTIFICATES` nicht.
 
@@ -48,8 +48,8 @@ vor der Eingabe. Bereiche sind änderbar; Entfernen wirkt mit dem nächsten Voll
 
 `S3IndexingExecutor` deklariert `FULL → REMOVE_ON_ABSENCE` und `EVENT → KEEP_ON_ABSENCE`;
 `defaultRunMode` ist konstant `FULL`. Es gibt keine inkrementelle Betriebsart: Die vollständige
-Auflistung kostet tausend Aufrufe je Million Objekte und ist damit die Regelbetriebsart. Seit #2149
-läuft der Vollabgleich über den gemeinsamen Datei-Abgleich `indexing.filesync` (ADR-0045,
+Auflistung kostet tausend Aufrufe je Million Objekte und ist damit die Regelbetriebsart. Der
+Vollabgleich läuft über den gemeinsamen Datei-Abgleich `indexing.filesync` (ADR-0045,
 Entscheidung 1): `S3FileStore` ist der `FileStore` (ein Bereich ein Container, der Schlüssel die
 Kennung, `S3ChangeMarker` das Änderungsmerkmal), `S3FullSync` liefert Wortlaut und Grenzen aus
 `S3Properties`. Was dort für S3 gilt: Jeder gelistete Schlüssel ist vorhanden, auch ein
@@ -160,8 +160,8 @@ Entscheidung 8).
 
 `software.amazon.awssdk:s3` mit `apache5-client` statt des MinIO-SDK (kein Session-Token, kein Weg
 zur Instanzrolle, zweiter HTTP-Stack). Port `S3ObjectStore` mit einem Adapter `AwsSdkS3ObjectStore`;
-Testdoppel sind `FakeS3ObjectStore` und ein Container im regulären `./gradlew test`. Seit #1949 ist
-das **RustFS** (`S3TestFixture.IMAGE`), nicht MinIO, dessen Image nicht mehr frei beziehbar ist:
+Testdoppel sind `FakeS3ObjectStore` und ein Container im regulären `./gradlew test`, und zwar
+**RustFS** (`S3TestFixture.IMAGE`), nicht MinIO, dessen Image nicht mehr frei beziehbar ist:
 RustFS führt als einziger Kandidat eingeschränkte Schlüssel mit denselben IAM-Policy-Dokumenten und
 Fehlerformen. Der Ereignisweg wird gegen eine vom Test selbst zugestellte `Records`-Nutzlast
 geprüft; die Zustellung durch den Speicher selbst ist Dokumentation, kein Testnachweis.

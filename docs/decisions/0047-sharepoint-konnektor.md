@@ -115,12 +115,3 @@ Haltbarkeit der Token, Delta-Semantik bei Ordnern, `quickXorHash` für alle Date
 - Lauf gegen einen echten Tenant für die unsicheren Annahmen.
 - Nationale Clouds (feste Adresse), Freigabe je Bibliothek über `Lists.SelectedOperations.Selected`,
   delegierter Zugang für OneDrive, Rechte der Quelle.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-05 | #2153 | Zielbild und Maintainer-Entscheidungen M1–M3, K1 als Nachtrag zu ADR-0040 | 1–5 |
-| 2026-10-10 | #2153 (S1), #2430 | Konnektor gebaut: Fehlerabbildung, `~unreachable`, Ordnerkette, mehrfache Meldungen | 3–5 |
-| 2026-10-10 | #2153 (S2) | Formular: Ordner mit Anzeigename, Bibliotheksname, Mock-Mandant | 2 |
-| 2026-10-14 | #2702 | Aus ADR-0040 herausgelöst und auf den Endstand neu gefasst | alle |

@@ -2,16 +2,15 @@
 
 Ein ADR hält den **heute gültigen Endstand** einer Architekturentscheidung fest, nicht ihre
 Geschichte. Die Historie liefert `git log`; wer wissen will, was vorher galt, liest den Diff.
-Vorlage: [TEMPLATE.md](TEMPLATE.md). Statuszeile, Nachträge, Sub-Issue-Zuschnitte und der Abschnitt
-Änderungsverlauf werden in der CI geprüft (`.github/scripts/check_adr_style.sh`).
+Vorlage: [TEMPLATE.md](TEMPLATE.md). Statuszeile, Nachträge, Sub-Issue-Zuschnitte und Änderungsverläufe
+werden in der CI geprüft (`.github/scripts/check_adr_style.sh`).
 
 ## Fortschreiben statt anhängen
 
 - Eine Änderung an einer Entscheidung **ändert den Kerntext** der betroffenen Entscheidung. Es gibt
   keine Nachträge, keine „Überholt“-Kästen und keinen stehen bleibenden alten Wortlaut.
-- Eine geänderte Entscheidung trägt genau einen Halbsatz „seit #NNNN“, ohne Beschreibung des
-  früheren Zustands. Die Tabelle **Änderungsverlauf** bekommt eine Zeile: Datum, Issue/PR, eine
-  Zeile Inhalt, betroffene Entscheidungsnummern.
+- Eine geänderte Entscheidung beschreibt nur den neuen Zustand: kein „seit #NNNN“, kein
+  „vorher“, kein Abschnitt „Änderungsverlauf“. Wer die Historie braucht, liest `git log` der Datei.
 - Bringt eine Fortschreibung **eigene Entscheidungen** mit oder würde sie **mehr als etwa 40 Zeilen**
   umfassen, wird sie ein neuer ADR; der bestehende verweist in der Statuszeile („ergänzt durch
   ADR-XXXX“) und in der betroffenen Entscheidung darauf.
@@ -43,15 +42,16 @@ git grep -n "ADR-00NN"
 
 ## Status
 
-- **Vorgeschlagen** gilt nur, bis der PR gemergt ist, der den ADR einführt. Der Autor setzt den
-  Status im letzten Commit vor dem Merge auf „Akzeptiert · zuletzt geändert JJJJ-MM-TT“, sobald der
-  Maintainer zustimmt; das Datum ist das der letzten inhaltlichen Änderung und wird mit jeder
-  Fortschreibung nachgezogen. Eine spätere Umsetzung ändert den Status nicht mehr.
+- Ein ADR steht von der ersten Fassung an auf „Akzeptiert · zuletzt geändert JJJJ-MM-TT“. Der
+  Merge des einführenden PRs ist die Zustimmung des Maintainers; ein abgelehnter ADR wird nicht
+  gemergt, und einen Zwischenstatus gibt es nicht. Das Datum ist das der letzten inhaltlichen
+  Änderung und wird mit jeder Fortschreibung nachgezogen. Eine spätere Umsetzung ändert den Status
+  nicht mehr.
 - Sind **alle Entscheidungen** eines ADR abgelöst, wird er ein Stub von höchstens 20 Zeilen mit
   dem Status „Ersetzt durch ADR-XXXX · zuletzt geändert JJJJ-MM-TT“. Die Datei bleibt, damit
   Verweise weiter auflösen.
-- Die Statuszeile ist die erste Zeile unter `## Status`, beginnt mit „Akzeptiert“, „Vorgeschlagen“
-  oder „Ersetzt durch“ und enthält „zuletzt geändert JJJJ-MM-TT“; weitere Angaben folgen mit „·“
+- Die Statuszeile ist die erste Zeile unter `## Status`, beginnt mit „Akzeptiert“ oder „Ersetzt
+  durch“ und enthält „zuletzt geändert JJJJ-MM-TT“; weitere Angaben folgen mit „·“
   (etwa „ergänzt durch ADR-XXXX“, „ersetzt Entscheidung N von ADR-YYYY“).
 
 ## Form

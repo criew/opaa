@@ -86,7 +86,7 @@ Chunking-Varianten (Entscheidung 11). Report `retrieval-metrics[-<domäne>].json
 | MRR | Kehrwert des Rangs des ersten relevanten Treffers im Fenster, sonst 0 (faktisch MRR@10) |
 | Recall@k | `Treffer in top-k / |erwartete Dokumente|`, nicht auf `min(k, |erwartet|)` normiert; die erreichbare Obergrenze steht je Gruppe als `recallAt10Ceiling` im Report |
 | Fenster | Hit Rate@5 (was ein Nutzer bei kleinem `top-k` sieht), MRR@10, nDCG@10, Recall@10 (`RetrievalMetrics.HIT_RATE_K`, `NDCG_K`, `RECALL_K`); bewusst ungleich, eine Tabelle mit vier Spalten suggeriert sonst Vergleichbarkeit |
-| Mittelung | Mikro-Mittel über Anfragen, je Gruppe `overall`, `category:*`, `difficulty:*`, `language:*` (`MetricsAggregate`); `language:de` wird übersprungen, solange die Baseline die Gruppe nicht führt (`comic-characters` seit #304 nicht mehr, weil sie dort dieselbe Fallmenge wie `category:crosslingual` ist, ADR-0013); `city-landmarks` führt und vergleicht sie |
+| Mittelung | Mikro-Mittel über Anfragen, je Gruppe `overall`, `category:*`, `difficulty:*`, `language:*` (`MetricsAggregate`); `language:de` wird übersprungen, solange die Baseline die Gruppe nicht führt (`comic-characters` nicht mehr, weil sie dort dieselbe Fallmenge wie `category:crosslingual` ist, ADR-0013); `city-landmarks` führt und vergleicht sie |
 | Fallzähler | `hitCountAt5`, `hitCountAt10`, `distinctExpectedDocumentSets` (= `n_eff` von ADR-0013), `allExpectedDocumentsHitAt10` je Gruppe |
 | Einzelfälle | `allQueryResults` führt jede Anfrage mit ihren Metriken, damit Kreuzauswertungen ohne neuen Lauf möglich sind |
 
@@ -172,7 +172,7 @@ ungültig und keine Metrik wird verglichen.
 
 Der Pipeline-Pfad misst auf demselben einmal indizierten Korpus die Endauswahl der produktiven
 Pipeline über denselben Einstieg wie eine Chat-Anfrage: `RetrievalContextFactory#contextFor` und
-`RetrievalPipeline#run` (Entscheidung 37, seit #1455). Der Suchbereich wird übergeben, nicht
+`RetrievalPipeline#run` (Entscheidung 37). Der Suchbereich wird übergeben, nicht
 aufgelöst (Entscheidung 14): genau die Eval-Bibliothek mit dem ganzen Korpus; Rechtedurchsetzung
 ist nicht Messgegenstand. Die Ähnlichkeitsschwelle ist **angewandt**, das Fenster ist das
 produktive `top-k`. Der Pipeline-Pfad ersetzt den Rohvektor-Pfad nicht; er ist der einzige, der
@@ -213,12 +213,12 @@ Harness misst die Endauswahl ohne Nachbar-Chunks (Entscheidung 67).
 | `fetchK` | 25 | 2 (ausgewiesen seit 1) | Kandidatenzahl je Suchliste |
 | `topK` | 20 | 1 | das Fenster; der Harness verweigert einen Lauf, dessen `top-k` von `RANKING_K` abweicht |
 | `similarityThreshold` | 0,3 | 2 | hier angewandt, entfernt Dokumente aus der Liste |
-| `maxChunksPerDocument` | 1 | 2 | Dokument-Vervollständigung (Wert seit #2502) |
+| `maxChunksPerDocument` | 1 | 2 | Dokument-Vervollständigung |
 | `mmrLambda` | 1,0 | 2 | Diversifizierung |
 | `fusion.method`, `.subQueryQuota`, `.vectorWeight`, `.guaranteedPerList` | `RRF`, `true`, 0,7, 1 | 21 | wie die Listen zur Auswahl werden; auch wirkungslose Werte (`vectorWeight` nur unter `SCORE`) gehören dazu, weil ein Moduswechsel sie wirksam macht |
 | `relevanceCutoff.mode`, `.minChunks`, `.relativeThreshold`, `.kneeDrop` | `FIXED`, 10, 0,6, 0,25 | 21 | der Relevanzschnitt der Auswahl |
 | `fullTextSearchEnabled` | `true` | 3 | ob der lexikalische Pfad in die Fusion einging (Entscheidung 22) |
-| `fullTextIndexUpToDate` | `true` | 3 (umbenannt 7 und 12) | ob jede Zeile des Volltextindex der Bibliothek auf der aktuellen `content_tsv_version` stand; seit 12 nur noch der Fassungs-Rückstand, weil die Zeile selbst seit #1047 in derselben Transaktion wie der Vektor entsteht |
+| `fullTextIndexUpToDate` | `true` | 3 (umbenannt 7 und 12) | ob jede Zeile des Volltextindex der Bibliothek auf der aktuellen `content_tsv_version` stand; seit 12 nur noch der Fassungs-Rückstand, weil die Zeile selbst in derselben Transaktion wie der Vektor entsteht |
 | `queryDecompositionEnabled`, `maxSubQueries`, `chatModel` | `false`, 3, `null` | 1 (`maxSubQueries` 2) | Entscheidung 15: ohne Zerlegung gemessen; ein Modellname auf einer Seite allein macht die Baseline ungültig (Entscheidung 20) |
 | `hitRateK`, `rankingK` | 5, 20 | 2 | die Fenster, die die Feldnamen wörtlich führen |
 
@@ -562,7 +562,7 @@ bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `Co
 
 - `contextPrefixFingerprint` deckt nicht jede Stelle ab, die die Einbettungseingabe bewegt
   (Entscheidung 57); die Stetigkeitsprüfung prüft ein Modell an einem Text (Entscheidung 69).
-- Die Harnesse pinnen `nomic-embed-text:v1.5`, während das Produkt seit #2618 `bge-m3` ab Werk
+- Die Harnesse pinnen `nomic-embed-text:v1.5`, während das Produkt `bge-m3` ab Werk
   nutzt; die Baselines beschreiben nicht das ausgelieferte Embedding-Modell.
 - Die Anker der harten Untergrenze des Pipeline-Pfads sind vor der ersten Messung gesetzt und seither
   nicht neu bewertet.
@@ -593,39 +593,6 @@ bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `Co
 - Welches Chat-Modell der Einzelfragen-Pipeline-Pfad mit aktiver Zerlegung messen soll; die
   Entscheidung erhöht die Pipeline-Version und zieht die Pipeline-Baselines neu
   (`docs/features/retrieval-benchmark.md`, „Offene Punkte“).
-- Wechsel der Harnesse auf `bge-m3`, das Vorgabemodell des Produkts seit #2618.
+- Wechsel der Harnesse auf `bge-m3`, das Vorgabemodell des Produkts.
 - Wiederaufnahme der Rangreserve als Kriterium nur unter der in „Berichtsgrößen ohne
   Vertragscharakter“ genannten Bedingung.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-03 | #227 | Erste Fassung aus dem Review zu PR #292: Metriken, Fenster, Schwellenbehandlung, Mittelung, Version | 1–7 |
-| 2026-08-21 | #721 | Dokumentbezogenes k-Fenster, Chunkebene über `answer_span`, Rohvektor-Version 2 | 8–10 |
-| 2026-08-31 | #1039 | Pipeline-Messpfad mit eigener Vertragsversion | 11–16 |
-| 2026-08-31 | #1040 | Baselines je Pfad und Domäne, Festpunkte des Pipeline-Pfads durchgesetzt, eigene Anker, Pipeline-Version 2 | 17–20 |
-| 2026-09-01 | #1043 | Ein `answer_span` je Fall, nur bei einem erwarteten Dokument | 21 |
-| 2026-09-01 | #1049 | Volltextpfad in der Fusion: `fullTextSearchEnabled`, `fullTextBackfillComplete`, Pipeline-Version 3 | 22, 23 |
-| 2026-09-02 | #1103 | Markdown strukturbewusst gechunkt, Frontmatter verworfen; alle Baselines neu gemessen ohne Versionsschritt | 24–27 |
-| 2026-09-03 | #1144 | `ingestionPipelineFingerprint` auf beiden Pfaden, Rohvektor 3, Pipeline 4 | 28–30 |
-| 2026-09-03 | #1151 | Rangreserve als Berichtsgröße, kein Festpunkt | — |
-| 2026-09-03 | #1164 | Fingerabdruck-Schritt `email` 2→3, Rohvektor 4, Pipeline 5 | 31 |
-| 2026-09-04 | #1270 | `fullTextIndexComplete`, Pipeline 7 | 22 |
-| 2026-09-05 | #1070 | `metadataFilterEnabled`, Metadatenfilter-Audit, `confluence:1` nachgezogen; Rohvektor 6, Pipeline 8 | 32–35 |
-| 2026-09-05 | #1073 | Konfidenzschwelle vorab festgelegt (Wert in ADR-0026) | 36 |
-| 2026-09-10 | #1455 | Einstieg des Pipeline-Pfads über `RetrievalContextFactory`/`RetrievalPipeline` | 37 |
-| 2026-09-11 | #1484 | Mehrrunden-Messpfad mit eigener Vertragsversion | 38–44 |
-| 2026-09-11 | #1429 | `fullTextIndexUpToDate`, verengte Definition, Pipeline 12 | 22 |
-| 2026-09-11 | #1522 | `ollamaImage` als Festpunkt aller drei Pfade; Rohvektor 10, Pipeline 13, Mehrrunden 2 | 45–47 |
-| 2026-09-11 | #1553 | Mehrrunden-Vergleich verdrahtet, eigener CI-Job, Ausgang „nicht beurteilt“ (entfallen mit #1490) | 48–51 |
-| 2026-09-14 | #1658 | Erwarteter Zustand je Messpfad, `expected_state_exception` entfällt | 52, 53 |
-| 2026-09-15 | #1652 | ggml-CPU-Variante `haswell`, `ollamaCpuBackend`; Rohvektor 11, Pipeline 14, Mehrrunden 3; alle Baselines neu gemessen | 54–56 |
-| 2026-09-15 | #1650 | `contextPrefixFingerprint`; Rohvektor 12, Pipeline 15, Mehrrunden 4; Job `conversations` ohne Einzelfragen-Pipeline | 57–60 |
-| 2026-09-16 | #1210 | Rangreserve bleibt report-only | — |
-| 2026-09-17 | #1684 | Runden ohne Suchbedarf, Mehrrunden 5, Temperatur eines externen Befundlaufs | 61, 62 |
-| 2026-10-09 | #2373 | Fenster @20, Pipeline 20, Mehrrunden 10; vier Baselines neu gemessen | 63–65 |
-| 2026-10-11 | #2502 | `max-chunks-per-document` 1, kein Versionsschritt; vier Baselines neu gemessen | 66, 67 |
-| 2026-10-13 | #2343 | `ollama/ollama:0.40.3`, Stetigkeitsprüfung; alle Baselines neu gemessen | 68–70 |
-| 2026-10-14 | #2386 | `fusion` und `relevanceCutoff` als Festpunkte, Pipeline 21, Mehrrunden 11; alle Baselines neu gemessen | 71–73 |
-| 2026-10-14 | #2698 | Neufassung als Festpunkt-Katalog; Versionslücken aus `git log` geschlossen | alle |

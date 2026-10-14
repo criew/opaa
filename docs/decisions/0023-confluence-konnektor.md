@@ -32,7 +32,7 @@ Allowlist-Eintrag nennen.
 
 Eine Confluence-Bibliothek trägt mindestens einen und höchstens 500 Spaces
 (`ConfluenceSourceConnector.MAX_SPACES`), je Space Schlüssel und Anzeigename; eine Anlage ohne
-Auswahl wird abgelehnt. Seit #1977 liegt die Auswahl als Teil des Konnektor-Objekts
+Auswahl wird abgelehnt. Die Auswahl liegt als Teil des Konnektor-Objekts
 `ConfluenceSourceSettings` in `knowledge_libraries.source_settings` (ADR-0038, Entscheidung 2).
 Die Auswahl ist nach der Anlage als Ganzes ersetzbar; jede
 Änderung erzwingt als nächsten Lauf einen Vollabgleich (Entscheidung 4), weil nur er abgewählte

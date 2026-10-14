@@ -50,12 +50,3 @@ umstellen.
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-02-18 | — | Erstfassung | 1–3 |
-| 2026-02-20 | — | Prettier für das Frontend | 4 |
-| 2026-08-22 | #653 | Frontend-Aufrufe über pnpm statt npm | 4 |
-| 2026-10-14 | #2697 | Neufassung nach ADR-Vorlage | — |

@@ -150,11 +150,3 @@ jüngste Release ab. Was die Oberfläche verwaltet, ist nicht deklarativ.
 
 - Ein Operator, eine Kustomize-Basis oder plattformspezifische Pakete (OpenShift-Templates,
   Marketplace-Einträge).
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-08 | #2347 | Erstfassung; Pod-Netz nur bei geschlossenem Frontend- und Backend-Eingang | 1–8 |
-| 2026-10-09 | #2401 | Images für `linux/arm64` | 7 |
-| 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand | — |

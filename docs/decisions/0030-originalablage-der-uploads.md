@@ -29,7 +29,7 @@ ausgewählt über `opaa.upload.store` (`OPAA_UPLOAD_STORE`, Standard `filesystem
 nichts konfiguriert, verhält sich unverändert; S3 ist der zusätzliche Weg für Rechenzentrums- und
 Multiinstanzbetrieb, nicht der neue Normalfall. Operationen: Annehmen (Strom → Arbeitsdatei),
 Festschreiben, Freigeben der Arbeitsdatei, Verwerfen, Lesen zum Ausliefern, Lesen als lokale Kopie
-für die Dauer einer Aktion, Löschen, Auflösen eines Locators, Auflisten je Bibliothek (seit #1478).
+für die Dauer einer Aktion, Löschen, Auflösen eines Locators, Auflisten je Bibliothek.
 
 ### 2. Die Schreibseite nimmt den Strom und gibt eine Arbeitsdatei zurück
 
@@ -56,7 +56,7 @@ dasselbe `404`.
 ### 4. `documents.file_path` trägt weiter den Locator, seine Form gehört dem Adapter
 
 Dateisystem: absoluter Pfad. S3: `s3://<bucket>/<schlüssel>` wie bei Konnektor-Dokumenten; der
-`source_type` unterscheidet (`UPLOAD` gegen `S3`). Schlüsselschema seit #1544:
+`source_type` unterscheidet (`UPLOAD` gegen `S3`). Schlüsselschema:
 `<key-prefix><organizationId>/<libraryId>/<uuid><endung>` (`UploadS3Properties`) und
 `<storage-path>/<organizationId>/<libraryId>/<uuid><endung>` auf der Platte — dieselbe Struktur in
 beiden Ablagen, damit ein Bestand mit rekursivem Kopieren wandert. Das Organisationssegment trägt
@@ -158,12 +158,3 @@ Kein Zeitplan, der von selbst löscht.
 
 - Vorsigniert ausgelieferte URLs — eine URL, die ohne Anmeldung funktioniert, ist eine andere Zugriffseigenschaft.
 - Mehrere Ablagen nebeneinander (je Organisation oder Bibliothek ein Bucket) — das Schlüsselschema verbaut es nicht.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-11 | #1440 | Erstumsetzung (#1475, #1476, #1477) | 1–11 |
-| 2026-09-11 | #1478, #1518 | Aufräumlauf für verwaiste Originale, je Bibliothek und ohne Bibliotheksbezug | 1, 7, 11 |
-| 2026-09-11 | #1544 | Organisationssegment im Schlüssel beider Ablagen | 4 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 2, 5, 7 |

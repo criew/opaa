@@ -111,10 +111,3 @@ Frage kostet bis zu 1000 Zeichen mehr Eingabe.
 ## Offen
 
 - Ob fachliche Rahmenangaben aus dem Space-Text künftig auch die Teilfragen-Zerlegung erreichen sollen.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-11 | #1637 | Erstfassung | 1–9 |
-| 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand; persönlicher Space heißt Standard-Space (#2099) | 4 |

@@ -12,7 +12,7 @@ SCRIPT = Path(__file__).resolve().parent / "check_adr_style.sh"
 BASH = shutil.which("bash") or "bash"
 CLEAN = (
     "# ADR-0999: Probe\n\n## Status\n\nAkzeptiert · zuletzt geändert 2026-10-14\n\n"
-    "## Kontext\n\nx\n\n## Entscheidung\n\n### 1. A\n\nx\n\n## Änderungsverlauf\n\n| a |\n|---|\n"
+    "## Kontext\n\nx\n\n## Entscheidung\n\n### 1. A\n\nx\n"
 )
 
 
@@ -38,3 +38,30 @@ def test_rejects_plural_heading_and_indented_quote(repo: Path, block: str) -> No
     result = run_check(repo)
     assert result.returncode == 1
     assert "appended block" in result.stdout
+
+
+def test_rejects_proposed_status(repo: Path) -> None:
+    (repo / "docs/decisions/0999-probe.md").write_text(
+        CLEAN.replace("Akzeptiert ·", "Vorgeschlagen ·"), encoding="utf-8"
+    )
+    result = run_check(repo)
+    assert result.returncode == 1
+    assert "Akzeptiert" in result.stdout
+
+
+def test_rejects_change_log_section(repo: Path) -> None:
+    (repo / "docs/decisions/0999-probe.md").write_text(
+        CLEAN + "\n## Änderungsverlauf\n\n| a |\n|---|\n", encoding="utf-8"
+    )
+    result = run_check(repo)
+    assert result.returncode == 1
+    assert "Änderungsverlauf" in result.stdout
+
+
+def test_rejects_seit_marker(repo: Path) -> None:
+    (repo / "docs/decisions/0999-probe.md").write_text(
+        CLEAN.replace("### 1. A\n\nx", "### 1. A\n\nx (seit #12)"), encoding="utf-8"
+    )
+    result = run_check(repo)
+    assert result.returncode == 1
+    assert "seit #NNNN" in result.stdout

@@ -102,11 +102,3 @@ still wirkungslos bleibt.
 - `opaa.demo.chat-import.enabled` (Einspielweg der Demo-Instanz, `ChatImportController`) bleibt ein
   Einzelschalter mit Vorgabe **aus** und passt damit nicht in Entscheidung 2. Ob er Einzelschalter
   bleibt oder in ein Flag mit abweichender Vorgabe überführt wird, ist nicht entschieden.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-13 | #2587 | Erstfassung mit `PROMPT_LIBRARIES` und `METADATA` (Wirkung: #2588, #2589) | 1–8 |
-| 2026-10-13 | #2629 | drittes Flag `SPEECH_INPUT` | 5 |
-| 2026-10-14 | #2701 | Neufassung; drittes Flag `SPEECH_INPUT` in der Tabelle; Offen: Demo-Schalter `opaa.demo.chat-import.enabled` als Einzelschalter festgehalten | 5 |
