@@ -91,6 +91,10 @@ Der Test prüft außerdem:
   kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
 - Die Pakete des Gradle-Moduls `opaa-api` (`io.opaa.api.dto`, `io.opaa.api.types`) liegen
   außerhalb der Schichtung.
+- **Namen in den Listen:** `everyNamedCodeUnitExists` löst jeden Eintrag der Form `paket.Klasse`,
+  `paket.Äußere$Innere` oder `paket.Klasse#methode` aus allen Konstanten von `ModularArchitecture`
+  auf; ein Eintrag, der nach einer Umbenennung ins Leere zeigt, lässt den Test fehlschlagen, statt
+  dass seine Regel still nichts mehr prüft.
 - **Blinder Fleck:** Der Test sieht nur den Bytecode. Liest ein Paket von einem anderen nur eine
   `static final`-Konstante, die der Compiler einfaltet, ist das für ihn keine Kante. Dasselbe gilt
   für Verweise, die nur im Javadoc stehen.

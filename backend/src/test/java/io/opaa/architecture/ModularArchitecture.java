@@ -29,13 +29,17 @@ import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.dependencies.SliceAssignment;
 import com.tngtech.archunit.library.dependencies.SliceIdentifier;
+import java.lang.reflect.Member;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Controller;
 
 /**
@@ -361,7 +365,7 @@ public final class ModularArchitecture {
           Set.of("indexing.document.DocumentIngestService"),
           "knowledge.LibraryStorageQuotaService#personalQuotaExceededMessage",
           Set.of("indexing.document.DocumentIngestOutcomes"),
-          "indexing.document.QuotaMessages#of",
+          "indexing.document.DocumentIngestOutcomes$QuotaMessages#of",
           Set.of("indexing.source.IndexingRun", "indexing.document.AttachmentIndexer"));
 
   /**
@@ -1368,7 +1372,7 @@ public final class ModularArchitecture {
                 access -> {
                   Set<String> readers =
                       PERSONAL_USAGE_READERS.get(
-                          relativeName(access.getTargetOwner()) + "#" + access.getName());
+                          nestedName(access.getTargetOwner()) + "#" + access.getName());
                   return readers != null
                       && !readers.contains(relativeName(topLevel(access.getOriginOwner())));
                 }))
@@ -1688,6 +1692,39 @@ public final class ModularArchitecture {
   private String relativeName(JavaClass javaClass) {
     String relative = relative(javaClass.getPackageName());
     return relative == null ? null : relative + "." + javaClass.getSimpleName();
+  }
+
+  /**
+   * The entries of {@code names} that resolve to nothing below the root: a class as {@code
+   * package.Class} or {@code package.Outer$Inner}, a method or field as {@code
+   * package.Class#member} declared or inherited. A rule over such a name checks nothing, so the
+   * lists above must hold only names that resolve.
+   */
+  List<String> unresolved(Collection<String> names) {
+    List<String> dead = new ArrayList<>();
+    for (String name : names) {
+      int hash = name.indexOf('#');
+      String type = hash < 0 ? name : name.substring(0, hash);
+      try {
+        Class<?> loaded = Class.forName(root + "." + type, false, getClass().getClassLoader());
+        if (hash >= 0 && !hasMember(loaded, name.substring(hash + 1))) {
+          dead.add(name);
+        }
+      } catch (ClassNotFoundException e) {
+        dead.add(name);
+      }
+    }
+    return dead;
+  }
+
+  private static boolean hasMember(Class<?> type, String member) {
+    return Stream.<Member[]>of(
+            type.getMethods(),
+            type.getDeclaredMethods(),
+            type.getFields(),
+            type.getDeclaredFields())
+        .flatMap(Arrays::stream)
+        .anyMatch(candidate -> candidate.getName().equals(member));
   }
 
   List<ArchRule> all() {
