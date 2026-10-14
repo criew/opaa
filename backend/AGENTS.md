@@ -38,13 +38,13 @@ Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definition
 | format | format |
 | identity | audit, branding, mail, auth, account, notification |
 | rights | permission, asset, group, directory, succession |
-| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren) |
+| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren), health |
 | connectors | jedes direkte Unterpaket von `indexing.source` |
 | connections | connection |
 | workspace | space, revision, diagnosticaccess |
 | library | library |
 | retrieval | retrieval |
-| assistant | prompt, chat, query, search, searchadmin, health |
+| assistant | prompt, chat, query, search, searchadmin |
 | external | externalaccess, mcp |
 | app | api, config, `OpaaApplication` |
 
@@ -78,7 +78,7 @@ Der Test prüft außerdem:
   selbst und Pakete davor. Ausgenommen ist die Web-Schicht (siehe „Web-Schicht je Modul“).
 - **Zyklen:** keine zwischen Top-Level-Paketen; ein `web`-Paket zählt dabei für sich. Zwischen
   Unterpaketen sind die heutigen Zyklen als Paketkanten in `KNOWN_SUBPACKAGE_CYCLE_EDGES`
-  eingefroren, nur noch in `externalaccess` und `query`.
+  eingefroren, nur noch in `externalaccess`.
   Jede weitere Kante auf einem Zyklus lässt den Test fehlschlagen, also jeder neue Zyklus.
 - **Kern von `indexing`:** `INDEXING_CORE` ordnet dessen Unterpakete, unten zuerst; ein Paket nutzt
   nur sich und die davor, nie das Wurzelpaket, `indexing.web` oder einen Konnektor. Jedes weitere
@@ -91,6 +91,10 @@ Der Test prüft außerdem:
   kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
 - Die Pakete des Gradle-Moduls `opaa-api` (`io.opaa.api.dto`, `io.opaa.api.types`) liegen
   außerhalb der Schichtung.
+- **Namen in den Listen:** `everyNamedCodeUnitExists` löst jeden Eintrag der Form `paket.Klasse`,
+  `paket.Äußere$Innere` oder `paket.Klasse#methode` aus allen Konstanten von `ModularArchitecture`
+  auf; ein Eintrag, der nach einer Umbenennung ins Leere zeigt, lässt den Test fehlschlagen, statt
+  dass seine Regel still nichts mehr prüft.
 - **Blinder Fleck:** Der Test sieht nur den Bytecode. Liest ein Paket von einem anderen nur eine
   `static final`-Konstante, die der Compiler einfaltet, ist das für ihn keine Kante. Dasselbe gilt
   für Verweise, die nur im Javadoc stehen.
@@ -204,6 +208,14 @@ hier nicht: Es trüge auch über Instanzen.
 | Wartungsläufe ohne Sperre | `MetadataBackfillService`, `ContextPrefixRerunService`, `PipelineReindexService`, `LibraryMetadataSchemaChangeService` (`lastSkippedByLibrary`) | Zwei gleichzeitige Läufe kosten doppelte Modellaufrufe; Werte je Prozess |
 | Schätzwerte und Metriken | `EmbeddingRateEstimator`, Micrometer-Zähler und -Gauges | Je Prozess; eine Oberfläche zeigt einen Teilwert |
 | Knotenlokale Dateiablage | `FilesystemUploadedOriginalStore` (`opaa.upload.storage-path`), `FilesystemPathAllowlist` (Betreiber-Mount) | Upload auf A ist auf B nicht lesbar; der S3-Adapter (ADR-0030) wäre geteilt |
+
+## Scheduler
+
+Der Default-`TaskScheduler` hinter `@EnableScheduling` hat einen Thread für alle `@Scheduled`-Methoden.
+Eine `@Scheduled`-Methode entscheidet deshalb nur und reicht Arbeit, die an Netz, Objektspeicher,
+Dateisystem oder LLM hängt, an einen eigenen Executor (`DirectorySyncScheduler` → `directorySyncExecutor`)
+oder per `scheduler = "…"` an einen eigenen Scheduler weiter (`PrivateLibraryDeletionSchedule`, Probes
+der Modellrollen). Kurze DB-Läufe (einzelne `DELETE`s, Partition-Drops, Batches) bleiben auf dem Tick.
 
 ## Spring-Testkontexte
 

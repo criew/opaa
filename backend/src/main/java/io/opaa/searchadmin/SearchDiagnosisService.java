@@ -4,6 +4,8 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
+import io.opaa.api.types.CandidateOutcome;
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
@@ -29,7 +31,6 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.permission.GroupSizeProperties;
-import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
@@ -472,7 +473,7 @@ public class SearchDiagnosisService {
 
     Set<String> retrievedChunkIds = new HashSet<>();
     CandidateVerdict lastDrop = null;
-    io.opaa.retrieval.RetrievalStageName lastDropStage = null;
+    RetrievalStageName lastDropStage = null;
     for (StageExplanation stage : result.explanation().stages()) {
       for (CandidateVerdict verdict : stage.verdicts()) {
         if (!keys.contains(verdict.documentKey())) {

@@ -17,7 +17,7 @@ import MetaBadge from '@/shared/ui/MetaBadge'
 import AssetHeadlineEditor, { type AssetHeadlineEditorProps } from './AssetHeadlineEditor'
 import { FavoriteToggle, PublicMark, ResponsibleLine, TypeBadge } from './assetMarks'
 import { spreadLabel } from './assetTileData'
-import { assetTypeDefinition } from './assetTypeRegistry'
+import { assetTypeDefinition } from '../../shared/assetTypes'
 import { UseInSpaceDialog } from './UseInSpaceButton'
 
 export interface AssetDetailHeaderProps {

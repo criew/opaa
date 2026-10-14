@@ -3,7 +3,7 @@ import type {
   SuccessionEntryResponse,
   SuccessionKind,
 } from '@/shared/api/types'
-import { assetTypeLabel } from '../assets/assetTypeRegistry'
+import { assetTypeLabel } from '../../shared/assetTypes'
 import { ageSinceLabel } from '../groups/groupOriginLabels'
 
 export type SuccessionTab = 'open' | 'grants' | 'groups'

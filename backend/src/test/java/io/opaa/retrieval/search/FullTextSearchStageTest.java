@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.VerdictReason;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.CandidateVerdict;
@@ -20,7 +21,6 @@ import io.opaa.retrieval.RetrievalNote;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageOutcome;
 import io.opaa.retrieval.StageStatus;
-import io.opaa.retrieval.VerdictReason;
 import io.opaa.retrieval.scope.SearchScopeStage;
 import java.util.List;
 import java.util.Map;

@@ -13,8 +13,13 @@ import { useConfirmStore } from '@/shared/stores/confirmStore'
 import { useNotificationStore } from '@/shared/stores/notificationStore'
 import type { FeatureFlags, LocalAccountsConfig, SessionKind } from '@/shared/session/types'
 import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
+import { SpaceListContext, type SpaceListLoader } from '../components/assets/spaceListContext'
+import { getSpaces } from '../services/spaceApi'
 
 const theme = createAppTheme('dark')
+
+/** Resolved on call, so a test mocking the space API without getSpaces still renders. */
+const loadSpaces: SpaceListLoader = () => getSpaces()
 
 interface AppRenderOptions extends RenderOptions {
   initialRoute?: string
@@ -26,6 +31,8 @@ interface AppRenderOptions extends RenderOptions {
    * product actually mounts, rather than the one this helper adds.
    */
   withNotificationHost?: boolean
+  /** The space list asset components read; provided by the application frame in the product. */
+  spaceList?: SpaceListLoader
 }
 
 export function renderWithProviders(
@@ -34,6 +41,7 @@ export function renderWithProviders(
     initialRoute = '/',
     withRouter = false,
     withNotificationHost = true,
+    spaceList = loadSpaces,
     ...renderOptions
   }: AppRenderOptions = {},
 ) {
@@ -48,7 +56,7 @@ export function renderWithProviders(
     const content = (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        {children}
+        <SpaceListContext value={spaceList}>{children}</SpaceListContext>
         {/* Mounted app-wide by AppShell; mirrored here so component tests observe the popup
             notifications their interactions raise (guidelines 5.9). */}
         {withNotificationHost && <NotificationHost />}

@@ -18,15 +18,6 @@ vi.mock('../../services/assetApi', async () => {
   }
 })
 
-vi.mock('../../services/spaceApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../services/spaceApi')>('../../services/spaceApi')
-  return {
-    ...actual,
-    getSpaceAccessDerivation: mockGetSpaceAccessDerivation,
-  }
-})
-
 const meldewesen = {
   id: 'group-meldewesen',
   name: 'Meldewesen',
@@ -83,6 +74,7 @@ function renderSpace(subjectName: string | null = 'Thomas Klein') {
   return renderWithProviders(
     <AccessDerivation
       target={{ kind: 'space', spaceId: 'space-1', userId: 'user-2' }}
+      load={mockGetSpaceAccessDerivation}
       subjectName={subjectName}
     />,
   )
@@ -123,6 +115,18 @@ describe('AccessDerivation (#1822, ADR-0036 Entscheidung 9)', () => {
       expect(screen.queryByText('Es gilt die höhere Rolle.')).not.toBeInTheDocument()
       expectNoDroppedDetails()
       expect(mockGetSpaceAccessDerivation).toHaveBeenCalledWith('space-1', 'user-2')
+    })
+
+    it('loads a space derivation only through the given load function', async () => {
+      answerSpace('MEMBER', [spacePath('DIRECT_MEMBERSHIP', 'MEMBER')])
+      renderSpace()
+
+      expect(
+        await screen.findByText(/Thomas Klein ist Mitglied in diesem Space/),
+      ).toBeInTheDocument()
+      expect(mockGetSpaceAccessDerivation).toHaveBeenCalledTimes(1)
+      expect(mockGetSpaceAccessDerivation).toHaveBeenCalledWith('space-1', 'user-2')
+      expect(mockGetAssetAccessDerivation).not.toHaveBeenCalled()
     })
 
     it('names a group as the only way without its origin or a date', async () => {

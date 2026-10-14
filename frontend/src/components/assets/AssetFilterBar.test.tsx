@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../test/test-utils'
-import { ASSET_TYPES } from './assetTypeRegistry'
+import { ASSET_TYPES } from '../../shared/assetTypes'
 import AssetFilterBar from './AssetFilterBar'
 
 function follows(first: Element, second: Element): boolean {

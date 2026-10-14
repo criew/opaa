@@ -41,9 +41,10 @@ const {
   mockSearchSelectableGroups: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('../services/groupApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/groupApi')>('../services/groupApi')
+vi.mock('@/features/principal/api/groupLookupApi', async () => {
+  const actual = await vi.importActual<typeof import('@/features/principal/api/groupLookupApi')>(
+    '@/features/principal/api/groupLookupApi',
+  )
   return {
     ...actual,
     getMyGroups: mockGetMyGroups,

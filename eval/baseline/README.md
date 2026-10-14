@@ -29,7 +29,7 @@ dieser Domäne liefern damit ein Urteil (`checkCityLandmarksRetrievalBaseline` p
 `backend/build.gradle.kts` zeigt jetzt auf `CityLandmarksPipelineBaselineRegressionTest` statt auf
 `null`.
 
-**Die beiden Pfade sind nicht ineinander umrechenbar** (ADR-0012, Nachtrag „Pipeline-Messpfad",
+**Die beiden Pfade sind nicht ineinander umrechenbar** (ADR-0012,
 Entscheidung 12): Der Pipeline-Pfad wendet die Produktionsschwelle tatsächlich an und misst an einem
 Fenster aus Chunk-Plätzen (`top-k`, seit #2373 20), nicht aus Dokumenten. Eine Zahl aus einer
 `pipeline-*.json` neben einer aus der gleichnamigen Rohvektor-Datei zu stellen, ohne das Fenster zu
@@ -82,8 +82,8 @@ direkt und kennt den Volltextpfad nicht.
 
 **Neu gezogen mit Issue #1070 (Teil 2)** (Kernfeld-Filter im Benchmark): Beide Baselines dieser
 Domäne stammen aus einem CPU-Testcontainer-Lauf vom 2026-09-05 und tragen den neuen Fixpunkt
-`metadataFilterEnabled` (Rohvektor-Messvertrag 5 → 6, Pipeline 7 → 8; ADR-0012, Nachtrag
-„Metadatenfilter im Messvertrag"). Der Harness reicht seither den `filter` jedes Golden-Falls in
+`metadataFilterEnabled` (Rohvektor-Messvertrag 5 → 6, Pipeline 7 → 8; ADR-0012,
+Entscheidung 32). Der Harness reicht seither den `filter` jedes Golden-Falls in
 beide Messpfade durch; die Klasse `metadata_filter` wuchs dabei von 9 auf 12 Fälle (drei davon für
 die Leerwert-Regel) und der Korpus von 70 auf 72 Dokumente. Auf dem Pipeline-Pfad sind die vier
 übrigen Fallklassen **exakt** unverändert; auf dem schwellenlosen Rohvektor-Pfad verschieben die
@@ -125,7 +125,7 @@ committete Baseline bestätigen (`verwaltung`: CI-Lauf 34840623079 und der lokal
 `checkVerwaltungRetrievalBaseline` dieses Umbaus; `comic-characters`/`city-landmarks`: die grünen
 Jobs beider Domänen im nächtlichen Lauf 34819759178, der wegen `verwaltung` insgesamt rot war). `query`, erwartete Dokumente und alle Filterfelder sind unberührt; die
 Mehrrunden-Baseline ist nicht betroffen, weil ihr Datensatz unverändert blieb. Keine
-Messvertragsversion steigt (ADR-0012, Nachtrag „Erwarteter Zustand je Messpfad").
+Messvertragsversion steigt (ADR-0012, Entscheidung 52).
 
 ## Domäne `city-landmarks` (Issue #234)
 
@@ -168,7 +168,7 @@ fehlenden Baustein nennen. Ursache und Beleg stehen je Datei in `notes`.
   `productionSimilarityThreshold`, `pgvectorIndexType`, Korpus- und Golden-Dataset-Hash,
   Messvertrag-Version (ADR-0013, Entscheidung 5 — die letzten drei kamen im Review zu PR #301
   hinzu, weil sie ebenfalls Teil des Messvertrags nach ADR-0012 sind, nicht nur Metadaten). Seit
-  Issue #721 (Messvertrag-Version 2, ADR-0012 Nachtrag) zusätzlich `chunkOverlap` (vorher nur
+  Issue #721 (Messvertrag-Version 2, ADR-0012, Entscheidung 8) zusätzlich `chunkOverlap` (vorher nur
   Report-Metadatum — für eine einchunkige Domäne folgenlos, für eine mehrchunkige aber
   messgrundlagenbestimmend) sowie `documentTopK`/`chunkTopK` (das jetzt ausdrücklich
   dokumentbezogene k-Fenster, siehe `io.opaa.eval.DocumentRanking`). Seit Issue #1522 zusätzlich
@@ -349,7 +349,7 @@ Toleranz bleiben (`max(toleranceFor(...), 1/n)`, nie enger als bisher). Eine rei
 Mittelwert-Prüfung — die erste, im Review zu PR #694 korrigierte Fassung dieses Fixes — hätte für
 diese sechs Paare jeden Schutz gegen eine schwere Rang- oder Teiltreffer-Verschlechterung ohne
 verlorenen Treffer aufgegeben (Beispiel: `numeric_range`/`mrr` kann so um 75 % fallen); Details zur
-Korrektur: ADR-0013, Nachtrag zu Issue #306. `hitCountAt5`/`hitCountAt10` sind dafür neue, je Gruppe
+Korrektur: ADR-0013, Entscheidung 7. `hitCountAt5`/`hitCountAt10` sind dafür neue, je Gruppe
 geführte Felder der Baseline-Datei — siehe [Aufbau](#aufbau) oben und `BaselineComparator`s Javadoc
 für die Begründung, warum sie nicht aus den bereits committeten Mittelwerten zurückgerechnet werden
 können (das wäre für `hitRateAt5` exakt, für die drei stetigen Metriken aber nicht).
@@ -436,7 +436,7 @@ einziges Ja/Nein zusammengefasst:
    `corpusManifestSha256`, `goldenDatasetSha256`, `embeddingModelDigest`, `embeddingDimensions`,
    `chunkSize`, `chunkSizeMatchesApplicationDefault`, `searchTopK`, `productionSimilarityThreshold`,
    `pgvectorIndexType` und (seit Issue #1144) `ingestionPipelineFingerprint` — ein Sammelabdruck über
-   alle registrierten Ingestion-Pipelines, siehe ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt —
+   alle registrierten Ingestion-Pipelines, siehe ADR-0012, Entscheidung 28 —
    sowie (seit Issue #1650) `contextPrefixFingerprint` — der Abdruck der Kontextpräfix-Form, siehe
    [Kontextpräfix-Form](#kontextpräfix-form-issue-1650) — mit
    dem aktuellen Lauf überein? Wenn nicht, bricht der Job mit einer
@@ -482,7 +482,7 @@ Reports — steht dort `extern: …`, ist der Lauf zu wiederholen, nicht der Wer
 die committeten Dateien das tatsächlich gepinnte Image nennen, prüfen zwei Docker-freie Wächter in
 `PipelinePathIsolationTest`/`ConversationPathIsolationTest` gegen `EvalOllamaEndpoint.PINNED_IMAGE`;
 ein Image-Wechsel ohne Baseline-Nachzug fällt damit im `check` auf statt erst im nächtlichen Lauf.
-Begründung: ADR-0012, Nachtrag Ollama-Herkunft.
+Begründung: ADR-0012, Entscheidung 68.
 
 **`ollamaCpuBackend` (seit Issue #1652)** steht in allen drei Baseline-Typen direkt hinter
 `ollamaImage` und benennt die ggml-CPU-Variante, mit der der Container gerechnet hat (heute
@@ -497,7 +497,7 @@ die sieben committeten Werte gegen `EvalOllamaCpuBackend.PINNED`.
 Alle sieben Baselines sind aus lokalen CPU-Testcontainer-Läufen mit Pin neu gezogen, auf einem Host
 mit AVX-512. Jeder Einzelfragen-Lauf deckt sich in jeder Rangfolge mit den beiden CI-Läufen mit Pin
 (34946388134 und 34946416054, darunter Hosts mit und ohne AVX-512). Das Feld `notes` jeder Baseline
-nennt Lauf und Abweichung datiert; Herleitung in ADR-0012, Nachtrag CPU-Backend.
+nennt Lauf und Abweichung datiert; Herleitung in ADR-0012, Entscheidung 54.
 
 | Baseline | Zahlen | Grund |
 |---|---|---|
@@ -541,7 +541,7 @@ wie jeden Festpunkt aus dem `runConfiguration`-Block des Reports.
 12, Pipeline 15, Mehrrunden 4). Eingetragen ist `ff4022a9…`. Die Präfixform ist seit #1651
 (2026-09-14) unverändert, alle sieben Messläufe stammen vom 2026-09-15. Keine Zahl bewegt sich; der
 exakte Report-Vergleich der Läufe 34996240329 und 34991107251 belegt das Blatt für Blatt.
-Herleitung: ADR-0012, Nachtrag Kontextpräfix-Form.
+Herleitung: ADR-0012, Entscheidung 57.
 
 ## Besonderheiten der Pipeline-Baselines (Issue #1040)
 
@@ -566,7 +566,7 @@ Gleiche Gliederung wie oben, mit drei Unterschieden:
   unter Pipeline-Vertragsversion 1 (#1039) nur ausgewiesen; seit der ersten committeten Baseline
   werden sie geprüft, weil eine unbemerkte Änderung — etwa an `mmrLambda` — sonst still verändern
   würde, was die committeten Zahlen beschreiben. Genau das erhöht die Vertragsversion auf **2**
-  (ADR-0012, Nachtrag „Baselines des Pipeline-Pfads", Entscheidung 18). Die Rohvektor-Version bleibt
+  (ADR-0012, Entscheidung 13). Die Rohvektor-Version bleibt
   bei 2 und die bestehenden Rohvektor-Baselines damit gültig.
 - **Seit Issue #2386 zusätzlich die Blöcke `fusion` und `relevanceCutoff`** (`opaa.query.fusion.*`:
   `method`, `subQueryQuota`, `vectorWeight`, `guaranteedPerList`; `opaa.query.relevance-cutoff.*`:
@@ -609,7 +609,7 @@ CPU-Testcontainer-Läufen dieses Tages neu gezogen (Pipeline-Messvertrag 20, Meh
 Die Rohvektor-Baselines behalten ihre Zahlen; jede Rangfolge ihres Pfads war identisch zum Lauf
 davor. `verwaltung.json` und `comic-characters.json` tragen nur den neuen Golden-Hash, weil
 Pipeline-Zustände und -Gründe im selben Datensatz nachgezogen sind. Vorher/Nachher je Domäne und die
-Ursache jeder sinkenden Zahl stehen in ADR-0012, Nachtrag top-k 20, und in den `notes` der Dateien.
+Ursache jeder sinkenden Zahl stehen in den `notes` der Dateien und in Issue #2373 (Begründung: ADR-0012, Entscheidung 63).
 
 ### Neuziehung mit `max-chunks-per-document` 1 (2026-10-11, Issue #2502)
 
@@ -618,7 +618,7 @@ Pfads. Alle drei `pipeline-*.json` und `pipeline-verwaltung-conversations.json` 
 CPU-Testcontainer-Läufen dieses Tages neu gezogen; keine Vertragsversion steigt. Die Gruppenzahlen der
 drei Einzelfragen-Domänen sind unverändert, weil der Harness die Endauswahl auf Dokumentebene misst und
 ein Geschwister-Chunk dort kein weiteres Dokument ist. `verwaltung.json` trägt nur den neuen
-Golden-Hash. Vorher/Nachher und Begründung: ADR-0012, Nachtrag max-chunks-per-document 1.
+Golden-Hash. Begründung: ADR-0012, Entscheidung 66; Vorher/Nachher in den `notes` der Dateien und in Issue #2502.
 
 ### Neuziehung mit Ollama 0.40.3 (2026-10-13, Issue #2343)
 
@@ -630,7 +630,7 @@ CPU-Testcontainer-Lauf, die übrigen fünf aus dem label-ausgelösten CI-Lauf 38
 bewegt, hängt am Anteil der Chunks über der Grenze: `comic-characters` 0 % (keine Zahl bewegt sich),
 `verwaltung` 0,1 % (einzelne Werte steigen), `city-landmarks` 91,5 % (fast alle Werte steigen auf
 1,000, alle 108 Fälle gelöst). Der Mehrrunden-Pfad bewegt sich vor allem über die geänderte Zerlegung
-des Chat-Modells. Tabelle, Zustandspflege und Begründung: ADR-0012, Nachtrag Ollama-Fassung.
+des Chat-Modells. Begründung: ADR-0012, Entscheidung 68; Tabelle und Zustandspflege in den `notes` der Dateien und in Issue #2343.
 
 ### Neuziehung nach dem Retrieval-Umbau (2026-10-14, Issue #2386)
 
@@ -642,7 +642,7 @@ dem Pipeline-Pfad steigt `comic-characters` leicht, `city-landmarks` bleibt in j
 `verwaltung` sinkt leicht (overall MRR@20 0,833 → 0,828), weil seit #2628 die Listenränge 21 bis 25
 zur Fusion beitragen und einzelne Dokumente vor erwartete rücken. Einziger Zustandswechsel ist
 `comic-filter-161` (Pipeline-Pfad gelöst). Die Harnesse pinnen weiterhin `nomic-embed-text:v1.5`,
-nicht die Produktvorgabe `bge-m3`. Tabelle und Begründung: ADR-0012, Nachtrag Retrieval-Umbau.
+nicht die Produktvorgabe `bge-m3`. Begründung: ADR-0012, Entscheidung 71; Tabelle in den `notes` der Dateien und in Issue #2386.
 
 ### Fehlerkriterium: unverändert ADR-0013
 
@@ -686,13 +686,13 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
   Volltextindex der gemessenen Bibliothek auf der aktuellen Fassung stand; bis Issue #1429
   `fullTextIndexComplete`). Erst beide zusammen
   beantworten „hat der Volltextpfad in diesem Lauf beigetragen?" — ohne sie wäre ein
-  `vector-only`-Lauf von einem hybriden nicht zu unterscheiden (ADR-0012, Nachtrag Volltextpfad,
+  `vector-only`-Lauf von einem hybriden nicht zu unterscheiden (ADR-0012,
   Entscheidung 22).
 - Beide Pfade führen seit Issue #1144 zusätzlich `ingestionPipelineFingerprint` — ein sortierter
   Sammelabdruck `id:version` über alle von `DocumentFormatRegistry` gemeldeten Pipelines
   (`IngestionPipelineFingerprint`). Ein Diff dieses Felds zeigt, welche Pipeline sich zwischen zwei
   Baselines bewegt hat, statt einen Pipelinewechsel unentdeckt gegen die Retrieval-Metriken laufen zu
-  lassen (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt). Seit Issue #1650 steht dahinter
+  lassen (ADR-0012, Entscheidung 28). Seit Issue #1650 steht dahinter
   `contextPrefixFingerprint` (siehe [Kontextpräfix-Form](#kontextpräfix-form-issue-1650)).
 - `hitCountAt5`/`hitCountAt20` stehen nicht in der Textausgabe; sie werden aus `allQueryResults` des
   Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
@@ -733,13 +733,13 @@ maß einen anderen und lief rot, obwohl sich nichts geändert hatte. Die neuen Z
 Hit Rate@5 0,831, 5 von 27 Fällen gelöst) sind kein Rückschritt, sondern der Zustand, den jede
 Maschine mit Pin liefert. Belegt ist das durch einen Report, der in allen 83 Runden mit einem
 CI-Lauf auf einem Runner ohne AVX-512 übereinstimmt. Herleitung: `eval/corpus/verwaltung/MAINTENANCE.md`,
-„Neuziehung mit fester CPU-Variante"; ADR-0012, Nachtrag CPU-Backend.
+„Neuziehung mit fester CPU-Variante"; ADR-0012, Entscheidung 54.
 
 **Neu gezogen mit Issue #1684** aus einem CPU-Testcontainer-Lauf vom 2026-09-17 (Mehrrunden-Messvertrag
 5). Die Zerlegung erhält das Suchfenster seither als beschrifteten Textblock und kennt das Signalwort für
 Nachrichten ohne Suchbedarf; der Datensatz hat acht Fälle der Klasse `answer_continuation` (35 Fälle,
 115 Runden). Deren neun Runden ohne Suchbedarf gehen in keine Gruppe ein, `n` jeder Gruppe zählt nur
-Runden mit Suche (ADR-0012, Nachtrag Runden ohne Suchbedarf). Die Zahlen (overall nDCG@8 0,688, 10 von
+Runden mit Suche (ADR-0012, Entscheidung 61). Die Zahlen (overall nDCG@8 0,688, 10 von
 35 Fällen gelöst) sind der Zustand des gepinnten Modells unter der neuen Aufrufform, kein Vorher/Nachher
 der Produktqualität. Herleitung: `eval/corpus/verwaltung/MAINTENANCE.md`, „Neuziehung mit Textblock und
 `answer_continuation`".

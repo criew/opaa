@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -14,12 +14,12 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { useNavigate, useParams } from 'react-router'
 import { spaceSettingsRoute } from '@/shared/routes'
-import ChatList from '../components/chat/ChatList'
 import AccessDerivation from '../components/permissions/AccessDerivation'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
+import { getSpaceAccessDerivation } from '../services/spaceApi'
 import { spaceRoleLabel } from '@/shared/utils/labels'
-import { assetTypeTitle } from '../components/assets/assetTypeRegistry'
+import { assetTypeTitle } from '../shared/assetTypes'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
@@ -35,7 +35,12 @@ function canManage(role: string | undefined, isOwner: boolean): boolean {
   return role === 'ADMIN' || isOwner
 }
 
-export default function SpacePage() {
+interface SpacePageProps {
+  /** The chat list of the space; chat builds on space, so the application frame passes it in. */
+  renderChats: (spaceId: string) => ReactNode
+}
+
+export default function SpacePage({ renderChats }: SpacePageProps) {
   const { spaceId } = useParams()
   const navigate = useNavigate()
   const currentUserId = useAuthStore((s) => s.user?.id)
@@ -188,7 +193,7 @@ export default function SpacePage() {
           </AccordionSummary>
           <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
             <Divider sx={{ mb: 2 }} />
-            <ChatList spaceId={space.id} />
+            {renderChats(space.id)}
           </AccordionDetails>
         </Accordion>
 
@@ -261,7 +266,10 @@ export default function SpacePage() {
           <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
             <Divider sx={{ mb: 2 }} />
             {derivationExpanded && (
-              <AccessDerivation target={{ kind: 'space', spaceId: space.id }} />
+              <AccessDerivation
+                target={{ kind: 'space', spaceId: space.id }}
+                load={getSpaceAccessDerivation}
+              />
             )}
           </AccordionDetails>
         </Accordion>

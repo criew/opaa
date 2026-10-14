@@ -2,229 +2,113 @@
 
 ## Status
 
-Vorgeschlagen
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0033
 
 ## Kontext
 
-Issue #231 verlangt ein Grundgerüst für browserbasierte End-to-End-Tests, auf dem #232 und #233
-(Indizierung und Suche im Demo-Korpus) sowie spätere `test(e2e)`-Issues aufbauen. Das Repository
-hatte zuvor keinerlei E2E-Infrastruktur (`backend/src/test/.../integration/` enthält nur einen
-OpenAI-Integrationstest). Für das Grundgerüst waren vier zusammenhängende Entscheidungen nötig,
-die über die reine Werkzeugwahl hinausgehen und Folgeissues betreffen:
-
-1. Welches Test-Werkzeug?
-2. Wie wird der volle Stack (Postgres, Backend, Frontend) für einen Testlauf orchestriert?
-3. Welcher Auth-Modus wird für die Suite verwendet?
-4. Woher kommen die KI-Modelle (Chat/Embedding) während eines Testlaufs?
+Issue #231 verlangte ein Grundgerüst für browserbasierte End-to-End-Tests, auf dem Indizierung und
+Suche im Demo-Korpus (#232, #233) und spätere `test(e2e)`-Issues aufbauen. Das Repository hatte keine
+E2E-Infrastruktur. Zu entscheiden waren Werkzeug, Orchestrierung des vollen Stacks (Postgres,
+Backend, Frontend) je Lauf, Auth-Modus der Suite und Herkunft der KI-Modelle während eines Laufs.
+Mehrere Agent-Sessions arbeiten parallel auf derselben Maschine, ein Dev-Stack läuft also häufig
+daneben.
 
 ## Entscheidung
 
-### 1. Playwright, Chromium-only, eigenes Verzeichnis mit eigenem Lockfile
+### 1. Playwright, Chromium, eigenes Projekt mit eigenem Lockfile
 
-`e2e/` ist ein eigenständiges npm-Projekt (eigenes `package.json`/`package-lock.json`, nicht Teil
-von `frontend/`), TypeScript-first, mit [Playwright](https://playwright.dev/). Begründung und
-Alternativen in `e2e/README.md#werkzeugwahl`. Die Suite startet bewusst nur mit dem
-`chromium`-Projekt; weitere Browser-Engines lassen sich in `playwright.config.ts` bei Bedarf
-ergänzen, ohne die übrige Struktur zu ändern.
+`e2e/` ist ein eigenständiges Node-Projekt (eigene `package.json` und `pnpm-lock.yaml`, nicht Teil
+von `frontend/`), TypeScript-first, mit Playwright; Aufrufe über `pnpm install`, `pnpm test`,
+`pnpm exec playwright …`. Die Suite läuft nur mit dem Projekt `chromium`; weitere Engines lassen sich
+in `playwright.config.ts` ergänzen. Begründung und Alternativen: `e2e/README.md#werkzeugwahl`.
 
-### 2. Vollständiger Stack pro Lauf, in einem eigenen Compose-Projekt
+### 2. Vollständiger Stack je Lauf in einem eigenen Compose-Projekt
 
-`scripts/run-e2e.mjs` startet Postgres, Backend und Frontend über das bestehende
-`docker-compose.yml` (dieselben Dockerfiles wie für Produktions-Images), nicht über Testcontainers
-oder eine separate Compose-Datei. Das hält den Testkontext realitätsnah (echte Nginx-Reverse-Proxy-
-Konfiguration, echter Container-Build) und vermeidet eine zweite, potenziell abweichende
-Infrastrukturdefinition.
-
-Damit der Stack unabhängig von einem parallel laufenden Dev-Stack (`AGENTS.md` "Git Worktrees für
-parallele Sessions" beschreibt genau dieses Parallel-Szenario als Normalfall) betrieben werden
-kann, läuft er als **eigenes Compose-Projekt** (`COMPOSE_PROJECT_NAME=opaa-e2e`) mit **eigenen
-Host-Ports** und einem **eigenen Environment** (`e2e/e2e.env`, niemals `.env.docker`). Dafür wurde
-`docker-compose.yml` in drei Punkten angepasst: `env_file` sowie der Postgres-Port wurden
-parametrisierbar gemacht (`${OPAA_ENV_FILE:-.env.docker}`, `${OPAA_DB_PORT:-5432}`) — das ändert
-das Verhalten für bestehende `docker compose up`-Nutzung nicht (Standardwerte identisch zum
-vorherigen Verhalten; die `:-`-Form bleibt auch bei einer gesetzten, aber leeren Variable
-verhaltensneutral). Zusätzlich wurden die vier `container_name`-Festlegungen entfernt (Compose
-vergibt sonst projektpräfixierte Namen von selbst) — **das ändert das Verhalten für bestehende
-Nutzung einmalig**: Container heißen fortan `opaa-postgres-1`/`opaa-backend-1`/`opaa-frontend-1`
-statt `opaa-postgres`/`opaa-backend`/`opaa-frontend` (die damalige Verifizierungsübersicht
-`docs/MVP-VERIFICATION.md` wurde entsprechend aktualisiert; sie ist inzwischen abgelöst — wer selbst
-Skripte oder Aliase mit den alten Namen hat, muss sie anpassen).
-
-Jeder Lauf beginnt und endet mit `docker compose down -v` unter diesem Projektnamen — eine
-definierte, reproduzierbare Ausgangslage, ohne Container oder Volumes fremder Projekte anzufassen.
-`scripts/run-e2e.mjs` registriert `SIGINT`/`SIGTERM`-Handler, die denselben Teardown auslösen, damit
-ein abgebrochener Lauf (`Strg+C`, CI-Cancel) keinen laufenden Stack hinterlässt.
-
-Es gibt keine Secrets zu verwalten: Der Stack läuft im Auth-Modus `dev` (Punkt 3), der weder
-Anmeldedaten noch einen Signaturschlüssel kennt.
+`e2e/scripts/run-e2e.mjs` startet Postgres, Backend und Frontend aus `docker-compose.yml` mit
+denselben Dockerfiles wie die Release-Images (echter Nginx-Proxy, echter Container-Build), nicht über
+Testcontainers. `e2e/docker-compose.e2e.yml` ist ein Overlay, keine zweite Stack-Definition: Es
+ergänzt nur E2E-eigene Dienste (`ai-stub`, `rss-feed`, `nextcloud`, `dropbox-stub`) und einzelne
+Umgebungswerte. Der Stack läuft als eigenes Compose-Projekt (`opaa-e2e`) mit eigenen Host-Ports und
+eigener Umgebungsdatei (`e2e/e2e.env`, nie `.env.docker`); `docker-compose.yml` hält dafür
+`env_file` und Postgres-Port parametrisierbar (`${OPAA_ENV_FILE:-.env.docker}`,
+`${OPAA_DB_PORT:-5432}`) und vergibt keine festen `container_name`. Jeder Lauf beginnt und endet mit
+`docker compose down -v` unter diesem Projektnamen, auch bei `SIGINT`/`SIGTERM`. Es gibt keine
+Secrets: Der Stack läuft im Modus `dev`.
 
 ### 3. Auth-Modus `dev`
 
-Die Suite läuft mit `SPRING_PROFILES_ACTIVE=docker,dev`. Der `dev`-Modus ([ADR-0005](0005-authentication-strategy.md))
-authentifiziert jede Anfrage als einen der unter `opaa.auth.dev.users` konfigurierten Nutzer, ohne
-Anmeldevorgang und ohne Token; die Filterkette ist ansonsten identisch zur produktiven
-OIDC-Konfiguration. `e2e/fixtures/auth.ts` wählt den Nutzer über den Query-Parameter `?devUser=`.
+Die Suite läuft mit `SPRING_PROFILES_ACTIVE=docker,dev` (ADR-0005): jede Anfrage ist als einer der
+unter `opaa.auth.dev.users` konfigurierten Nutzer authentifiziert, die Filterkette ist sonst identisch
+zur produktiven. `e2e/fixtures/auth.ts` wählt den Nutzer über `?devUser=`; `dev-admin`
+(`SYSTEM_ADMIN`) und `dev-user` kommen aus dem Profil, zwei weitere Nutzer setzt das Overlay. Der
+Anmeldevorgang selbst ist nicht Teil dieser Suite; ihn prüfen die Ziele aus Entscheidung 6.
 
-Der Alternative `oidc` hätte einen weiteren Container, den Realm-Import und den Weiterleitungsablauf
-des Autorisierungscode-Flusses in den Prüfpfad gebracht — zusätzliche Fehlerquellen ohne Aussagewert
-für die Fachszenarien. Der Anmeldeablauf selbst ist bewusst nicht Teil der Suite — siehe
-[Nachtrag vom 12.09.2026](#12092026--drittes-ziel-ein-echter-anmeldevorgang-gegen-lokale-konten).
+### 4. Modelle: OpenAI-kompatibler Stub statt echtem Modell
 
-Standardmäßig stehen zwei Nutzer bereit: `dev-admin` (E-Mail `admin@opaa.local`, entspricht dem
-Standardwert von `opaa.auth.initial-admin-email` und wird damit als `SYSTEM_ADMIN` angelegt, nötig
-für Indexing- und Admin-Endpunkte) und `dev-user` als regulärer Nutzer für Berechtigungsszenarien.
+Kein Szenario hängt von einem externen oder lokal inferierenden Modell ab. `e2e/ai-stub/server.mjs`
+läuft als Dienst im Overlay; `e2e/e2e.env` zeigt mit `OPAA_OPENAI_BASE_URL=http://ai-stub:8089` darauf,
+der API-Key ist ein Platzhalter. Der Stub beantwortet `/v1/embeddings` für jede Eingabe mit demselben
+Vektor und `/v1/chat/completions` mit den Zitationsmarkierungen des Prompts, also bitgenau
+deterministisch und ohne Modellgewichte. Die ACL-Szenarien hängen dadurch allein am Rechtefilter
+(`io.opaa.retrieval.scope.SearchScopeStage`), nie an schwankender Relevanz. Antwortqualität prüft die
+Suite nicht; das ist Sache der Suchqualitäts-Evaluierung (ADR-0011).
 
-> **Historie:** Bis zur Überarbeitung von ADR-0005 lief die Suite auf dem inzwischen entfernten
-> Modus `basic`, weil der damalige Standardmodus `mock` gar keine funktionierende
-> Security-Filterkette mitbrachte. Dieser Produktmangel ist mit der Überarbeitung behoben.
+### 5. Kein PR-Gate: Lauf nach dem Merge
 
-### 4. Modelle lokal im Stack statt externer Anbieter
+Seit #1226 läuft `.github/workflows/e2e.yml` bei jedem Push auf `main`, nächtlich und per
+`workflow_dispatch`, nicht bei Pull Requests. Ein Fehlschlag auf `main` legt ein Alarm-Issue (Label
+`e2e`, Marker `<!-- e2e-alert -->`) an oder kommentiert das offene; ein grüner Lauf schließt es. Die
+Suite war nie Required Check, belegte aber je PR-Push 8 bis 12 Minuten Runner; das Netz nach dem Merge
+fängt dieselben Regressionen. Wer eine UI-Änderung vorab prüfen will, läuft die Suite lokal.
 
-Für das Grundgerüst (#231) genügt ein Platzhalter-API-Key (`OPAA_OPENAI_API_KEY=sk-e2e-placeholder`),
-da der einzige Testfall (Rauchtest) keinen KI-Aufruf auslöst. Sobald #232/#233 tatsächliche
-Chat-/Indizierungs-Läufe brauchen, darf kein Szenario von einem externen, kostenpflichtigen Dienst
-abhängen (Nichtdeterminismus, Kosten, Netzwerkabhängigkeit in CI). Die konkrete Umsetzung (lokaler
-Ollama-Service im Compose-Stack vs. OpenAI-kompatibler Stub) ist bewusst nicht Teil dieses ADRs,
-sondern eines eigenen, blockierenden Issues ("Lokale Modellbereitstellung für den E2E-Stack") —
-**entschieden, siehe [Nachtrag vom 21.08.2026](#21082026--lokale-modellbereitstellung-openai-kompatibler-stub-statt-ollama)**.
+### 6. Zwei weitere Ziele desselben Skripts: Demo-Rauchtest und lokale Anmeldung
+
+`run-e2e.mjs` kennt `--target demo` (`pnpm run test:demo-smoke`, #232) und `--target local-auth`
+(`pnpm run test:local-auth`, #1543), je mit eigenem Compose-Projekt, eigenem Overlay, eigener
+Umgebungsdatei und eigener Playwright-Konfiguration, damit sie nie in `pnpm test` mitlaufen. Der
+Demo-Rauchtest startet das Compose-Profil `demo` mit Keycloak und Rheinfurt-Korpus, sät über
+`demo/seed/seed.py --profile demo` und übt in `e2e/demo-smoke/tests/` die echte Keycloak-Anmeldung
+(Autorisierungscode-Fluss), zwei Anbieter ohne Vermischung (ADR-0025) und den Direktlink über die
+Anmeldung; der Frontend-Port ist durch den Realm-Export auf 3000 festgelegt. Das Ziel `local-auth`
+startet den Modus `oidc` ohne Keycloak mit dem Mail-Fänger und ohne Seed und prüft den Erststart
+mit dem gesäten Notanker-Konto und den lokalen Anmeldeweg (ADR-0033, `e2e/local-auth/tests/`). Beide
+Workflows (`demo-smoke.yml`, `local-auth-e2e.yml`) laufen nächtlich und per `workflow_dispatch`,
+`local-auth-e2e.yml` zusätzlich per Label `local-auth-suite`; keiner ist Required Check.
 
 ## Konsequenzen
 
-### Positiv
+Einfacher: Der E2E-Stack läuft beliebig oft neben einem Dev-Stack, ohne Container, Volumes oder Ports
+zu teilen; jeder Lauf startet und endet sauber; kein Secret in einer committeten Datei; echte Images
+und echter Proxy ohne zweite Infrastrukturdefinition.
 
-- Der E2E-Stack kann beliebig oft parallel zu einem Dev-Stack auf derselben Maschine laufen, ohne
-  Container, Volumes oder Ports zu teilen — verifiziert durch einen manuellen Test mit einem
-  simulierten, gleichnamigen Dev-Container.
-- Jeder Lauf startet und endet garantiert mit einem sauberen Compose-Projekt, auch bei Abbruch.
-- Kein Secret landet in einer committeten Datei.
-- Realitätsnahe Tests (echte Docker-Images, echter Nginx-Proxy), keine zweite
-  Infrastrukturdefinition zusätzlich zu `docker-compose.yml`.
+Schwieriger: Der Image-Build dominiert die CI-Zeit, nicht der Testlauf (eigenes Zeitbudget des Jobs,
+gha-Layer-Cache mildert, ersetzt aber keinen Cache über Runner-Neustarts hinweg); der Stub bildet kein
+Modellverhalten nach, Szenarien zu Antwortqualität brauchen einen anderen Weg; die Suite hängt an
+`docker-compose.yml`, Änderungen dort können sie unbemerkt brechen; Regressionen fallen erst nach dem
+Merge auf.
 
-### Negativ
+## Verworfene Alternativen
 
-- **Der Image-Build dominiert die CI-Zeit**, nicht der Testlauf selbst (der Rauchtest dauert
-  wenige Sekunden). Der CI-Job hat deshalb ein separates, großzügigeres Zeitbudget als die in #231
-  genannten 10 Minuten (die sich auf den Suite-Lauf beziehen); ein GitHub-Actions-Layer-Cache
-  mildert das, ersetzt aber keinen echten Cache über Runner-Neustarts hinweg.
-- **Der OIDC-Anmeldeablauf ist nicht abgedeckt.** Die Suite prüft die Anwendung hinter der
-  Authentifizierung, nicht den Anmeldevorgang selbst. Ein gezielter Test gegen das Compose-Profil
-  `oidc` mit Keycloak bleibt offen.
-- **Die E2E-Suite hängt jetzt an `docker-compose.yml`.** Jede künftige Änderung an den Service-
-  Definitionen dort (z. B. neue Pflicht-Umgebungsvariablen, geänderte Ports, neue Abhängigkeiten)
-  kann die Suite brechen, ohne dass das beim Ändern von `docker-compose.yml` offensichtlich ist.
+- Cypress oder Selenium — `e2e/README.md#werkzeugwahl`.
+- Testcontainers oder eine separate Compose-Datei für den Kernstack — zweite, abweichende
+  Infrastrukturdefinition.
+- Keycloak im Prüfpfad der regulären Suite — zweiter Container, Realm-Import und Weiterleitungen ohne
+  Aussagewert für Fachszenarien.
+- Ollama im E2E-Stack — Modell-Download, Laufzeit und CPU-Bedarf im Runner, dazu keine garantierte
+  Determinismus-Eigenschaft.
+- E2E als PR-Check — Runner-Zeit je Nachbesserungsrunde ohne Merge-Wirkung.
 
-### Neutral
+## Offen
 
-- Ports und Environment-Handling ändern sich für bestehende `docker compose up`-Nutzung nicht
-  (Standardwerte identisch); die Container-Namen ändern sich einmalig (siehe Punkt 2).
+Nichts.
 
-## Nachträge
+## Änderungsverlauf
 
-Punkt 4 hat die konkrete Umsetzung ausdrücklich einem eigenen, blockierenden Issue überlassen.
-Sobald ein solcher Punkt entschieden ist, kommt er hier als Nachtrag hinzu — der ADR-Wortlaut oben
-bleibt unverändert, damit erkennbar bleibt, was wann galt.
-
-### 21.08.2026 — Lokale Modellbereitstellung: OpenAI-kompatibler Stub statt Ollama
-
-- **Punkt:** Die in Punkt 4 offengelassene konkrete Umsetzung — lokaler Ollama-Service im
-  Compose-Stack vs. leichtgewichtiger OpenAI-kompatibler Stub.
-- **Entscheidung:** Ein eigener, minimaler OpenAI-kompatibler Stub-Server
-  (`e2e/ai-stub/server.mjs`) läuft als weiterer Dienst im E2E-Compose-Stack
-  (`e2e/docker-compose.e2e.yml`); `e2e/e2e.env` zeigt mit `OPAA_AI_CHAT_PROVIDER=openai` und
-  `OPAA_OPENAI_BASE_URL=http://ai-stub:8089` darauf. Ollama wird für den E2E-Stack nicht
-  eingesetzt.
-- **Begründung:** Der Stub beantwortet `POST /v1/embeddings` für jede Eingabe mit demselben festen
-  Vektor und `POST /v1/chat/completions`, indem er die im Prompt enthaltenen Zitationsmarkierungen
-  unverändert zurückgibt — beides ohne jede Modellinferenz, also bitgenau deterministisch über
-  jeden Lauf hinweg. Das ist mehr als ein Implementierungsdetail: Da die Rechteprüfung in der
-  Vektorsuche darüber entscheidet, welche Chunks überhaupt in eine Anfrage gelangen (siehe
-  `io.opaa.query.SearchScopeStage#libraryFilter`), hängt das Ergebnis der ACL-Szenarien in
-  `tests/knowledge-libraries.spec.ts` (#424) ausschließlich vom Rechtefilter ab, nie von einer
-  echten, potenziell schwankenden Relevanzbewertung eines Modells — genau das, was diese Szenarien
-  belegen sollen, nicht Antwortqualität (die ist Sache von Epic #224). Ein echtes Modell, auch
-  lokal über Ollama betrieben, hätte diese Eigenschaft nicht garantiert. Hinzu kommt der
-  Betriebsaufwand: Ollama bräuchte einen Modell-Download im Compose-Stack (Netzwerkabhängigkeit und
-  Laufzeit beim ersten Start bzw. in jedem CI-Lauf ohne persistenten Cache) und, für brauchbare
-  Antwortzeiten, GPU- oder zumindest nennenswerte CPU-Ressourcen auf dem CI-Runner — beides, was
-  der Stub, der ohne Modellgewichte auskommt und in Millisekunden antwortet, nicht braucht. Der
-  Stub kommt zudem ohne echten API-Key aus (`OPAA_OPENAI_API_KEY=sk-e2e-placeholder` wird nicht
-  geprüft), während ein reales `openai`-kompatibles Ziel eines voraussetzt. Der Preis der gewählten
-  Lösung: Der Stub bildet kein echtes Modellverhalten nach und eignet sich deshalb nicht für
-  Szenarien, die tatsächliche Antwortqualität oder Modell-Nichtdeterminismus prüfen wollen — dafür
-  bräuchte es weiterhin einen echten Anbieter oder ein lokal betriebenes Modell wie Ollama, außerhalb
-  des Umfangs dieser Suite.
-- **Verweis:** [#256](https://github.com/criew/opaa/issues/256) · `e2e/ai-stub/server.mjs` ·
-  `e2e/docker-compose.e2e.yml` · `e2e/e2e.env` ·
-  [e2e/README.md](../../e2e/README.md#ki-stub-statt-echtem-modell)
-
-### 21.08.2026 — Punkt 2: Overlay-Datei statt reiner `docker-compose.yml`
-
-- **Punkt:** Punkt 2 sagt, der Stack werde über das bestehende `docker-compose.yml` gestartet,
-  „nicht über Testcontainers oder eine separate Compose-Datei". Das stimmt seit Längerem nicht mehr
-  wörtlich: `e2e/scripts/run-e2e.mjs` startet mit `-f docker-compose.yml -f
-  e2e/docker-compose.e2e.yml`, also mit genau einer zusätzlichen Compose-Datei als Overlay. Nicht
-  durch diesen PR verursacht, aber durch den neuen Nachtrag oben — der `e2e/docker-compose.e2e.yml`
-  bereits als Faktum zitiert — im selben Dokument erstmals sichtbar widersprüchlich.
-- **Entscheidung:** `e2e/docker-compose.e2e.yml` ist ein Overlay, keine zweite, eigenständige
-  Stack-Definition. Es startet keinen eigenen Postgres/Backend/Frontend, sondern ergänzt nur
-  E2E-eigene Dienste (`ai-stub`, `rss-feed`) und punktuelle Umgebungswerte um die in Punkt 2
-  beschriebenen Kerndienste aus `docker-compose.yml`. Die tragende Aussage von Punkt 2 —
-  dieselben Dockerfiles/Images wie für Produktion, keine zweite Infrastrukturdefinition für
-  Postgres/Backend/Frontend — bleibt richtig; nur die Formulierung „nicht über … eine separate
-  Compose-Datei" war zu absolut.
-- **Begründung:** E2E-spezifische Dienste wie `ai-stub` und `rss-feed` gehören nicht in den Stack,
-  den ein Entwickler mit einem gewöhnlichen `docker compose up` hochzieht — laut Kommentar bei
-  `ai-stub` in `e2e/docker-compose.e2e.yml` bewusst nicht Teil von `docker-compose.yml`, damit kein
-  Nicht-E2E-Gebrauch des Stacks aus Versehen darauf zeigen kann. Eine Overlay-Datei trägt genau
-  diese Trennung, ohne Postgres/Backend/Frontend selbst zu duplizieren.
-- **Verweis:** `e2e/scripts/run-e2e.mjs` · `e2e/docker-compose.e2e.yml`
-
-### 22.08.2026 — Paketmanager der Suite ist pnpm
-
-- **Punkt:** Punkt 1 nennt `e2e/` ein eigenständiges npm-Projekt mit eigenem `package-lock.json`.
-- **Entscheidung:** Mit der Migration des Frontend-Builds auf pnpm (#653) wurde auch `e2e/`
-  umgestellt: Das Lockfile heißt jetzt `pnpm-lock.yaml`, Installation und Aufrufe laufen über
-  `pnpm install` / `pnpm test` / `pnpm exec playwright …`. Die tragende Aussage von Punkt 1 —
-  eigenständiges Node-Projekt mit eigenem Lockfile, nicht Teil von `frontend/` — bleibt unverändert.
-- **Verweis:** PR #752 · `e2e/README.md`
-
-### 08.09.2026 — Die Suite läuft nicht mehr bei Pull Requests
-
-- **Punkt:** Der ADR beschreibt die Suite implizit als Teil jeder PR-Prüfung (`e2e.yml` lief bei
-  jedem Pull Request, ohne Required Check zu sein).
-- **Entscheidung:** Mit #1226 entfällt der `pull_request`-Trigger. Die Suite läuft bei jedem Push auf
-  `main`, nächtlich und per `workflow_dispatch`. Ein Fehlschlag auf `main` legt ein Alarm-Issue
-  (Label `e2e`, Marker `<!-- e2e-alert -->`) mit den fehlgeschlagenen Szenarien an oder kommentiert
-  das offene; ein wieder grüner Lauf auf `main` schließt es. Fehlschläge werden also wie jeder andere
-  Bug über ein Issue repariert, nicht über einen roten PR-Check.
-- **Begründung:** Die Suite war nie Required Check und hielt keinen Merge auf, belegte aber bei jedem
-  PR-Push für 8–12 Minuten einen Runner und lief bei jeder Nachbesserungsrunde erneut. Das
-  Sicherheitsnetz nach dem Merge (Push auf `main` plus nächtlicher Lauf) fängt dieselben
-  Regressionen, nur später und ohne PR-Latenz. Wer eine UI-Änderung vor dem Merge gegen die Suite
-  prüfen will, führt sie lokal aus.
-- **Verweis:** #1226 · `.github/workflows/e2e.yml` · `e2e/README.md`, Abschnitt „CI"
-
-### 12.09.2026 — Drittes Ziel: ein echter Anmeldevorgang gegen lokale Konten
-
-- **Punkt:** Punkt 3 („Auth-Modus `dev`") stellt fest: „Der Anmeldeablauf selbst ist bewusst nicht
-  Teil der Suite." Das blieb richtig, solange OPAA keine eigene Anmeldung hatte — mit ADR-0033
-  (Epic #1529) ist das Backend selbst Token-Aussteller für lokale Konten, und damit wäre der einzige
-  Anmeldeweg einer Installation ohne Identitätsanbieter ungeprüft.
-- **Entscheidung:** `scripts/run-e2e.mjs` bekommt mit #1543 ein drittes Ziel `local-auth`
-  (`pnpm run test:local-auth`). Es startet den Betriebsmodus `oidc` **ohne** Keycloak — eine
-  Installation ohne jeden OIDC-Anbieter ist seit ADR-0033 Entscheidung 4 ein zulässiger Zustand —
-  dazu den Mail-Fänger des Compose-Profils `mail`, und führt **keinen** Seed-Lauf aus: Geprüft wird
-  der Erststart, dessen einziges Konto das vom Backend selbst gesäte Notanker-Konto ist. Die
-  Szenarien liegen unter `e2e/local-auth/tests/` mit eigener Playwright-Konfiguration, damit sie nie
-  in `pnpm test` mitlaufen. Punkt 3 gilt für das Ziel `e2e` unverändert weiter: Diese Suite übt
-  keinen Anmeldevorgang, und `e2e/fixtures/auth.ts` bleibt der Weg über `?devUser=`.
-- **Begründung:** Ein Anmeldeweg, den niemand durchläuft, ist der Teil einer Anwendung, bei dem ein
-  Fehler am teuersten ist — er sperrt aus. Der Aufwand, den Punkt 3 gegen `oidc` abgewogen hat
-  (zweiter Container, Realm-Import, Weiterleitungsablauf), entsteht hier nicht: Der lokale Aussteller
-  braucht keinen zweiten Container und keine Weiterleitung, nur ein Formular und einen Mail-Fänger.
-  Der erste Lauf hat zwei Fehler gefunden, die keine Unit- und keine Integrationsebene gezeigt hatte
-  (fehlender zugänglicher Name der Rollenauswahl, irreführender Grund beim Abschalten der
-  Verwaltung, #1595) — genau die Klasse von Befunden, für die es ein Browserziel gibt.
-- **Verweis:** #1543 (Epic #1529) · ADR-0033 · `e2e/local-auth/` · `e2e/local-auth.env` ·
-  `e2e/docker-compose.local-auth.yml` · `.github/workflows/local-auth-e2e.yml` · `e2e/README.md`,
-  Abschnitt „Lokale Anmeldung (#1543)"
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-08-02 | #231 | Erstfassung (Status Vorgeschlagen) | 1–4 |
+| 2026-08-21 | #256 | OpenAI-kompatibler Stub statt Ollama; Overlay-Datei als Faktum | 2, 4 |
+| 2026-08-22 | #653 | Paketmanager pnpm | 1 |
+| 2026-09-08 | #1226 | Suite nicht mehr bei Pull Requests | 5 |
+| 2026-09-12 | #1543 | Ziel `local-auth` für den echten Anmeldevorgang | 6 |
+| 2026-10-14 | #2697 | Neufassung; Status Akzeptiert; Demo-Rauchtest (#232) eingearbeitet | 6 |

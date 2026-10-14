@@ -12,6 +12,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -318,7 +319,7 @@ class AuditQueryServiceIntegrationTest {
                     base.plus(1, ChronoUnit.HOURS),
                     0,
                     50))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("USER_ACCOUNT");
   }
 
@@ -358,7 +359,7 @@ class AuditQueryServiceIntegrationTest {
                     base.plus(AuditQueryService.MAX_TIME_RANGE_DAYS + 1, ChronoUnit.DAYS),
                     0,
                     50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -397,7 +398,7 @@ class AuditQueryServiceIntegrationTest {
                     base.plus(1, ChronoUnit.HOURS),
                     AuditQueryService.MAX_PAGE_INDEX + 1,
                     50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -427,22 +428,22 @@ class AuditQueryServiceIntegrationTest {
                     base.plus(1, ChronoUnit.HOURS),
                     -1,
                     50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
   void aQueryWithoutAMandatoryTimeRangeIsRejected() {
     assertThatThrownBy(
             () -> queryService.byTimeRange(organizationId, auditorId, REASON, null, base, 0, 50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
     assertThatThrownBy(
             () -> queryService.byTimeRange(organizationId, auditorId, REASON, base, null, 0, 50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
     assertThatThrownBy(
             () ->
                 queryService.byTimeRange(
                     organizationId, auditorId, REASON, base.plus(1, ChronoUnit.DAYS), base, 0, 50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
@@ -632,7 +633,7 @@ class AuditQueryServiceIntegrationTest {
                     base.plus(1, ChronoUnit.HOURS),
                     0,
                     50))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Pflichtfeld");
 
     List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
@@ -648,7 +649,7 @@ class AuditQueryServiceIntegrationTest {
   void aRejectedTimeRangeIsAlsoLogged() {
     assertThatThrownBy(
             () -> queryService.byTimeRange(organizationId, auditorId, REASON, null, base, 0, 50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
 
     List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
     assertThat(selfLogEntries).hasSize(1);

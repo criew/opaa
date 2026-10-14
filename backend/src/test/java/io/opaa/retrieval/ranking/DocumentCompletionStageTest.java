@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.QueryProperties;
@@ -14,7 +15,6 @@ import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
 import io.opaa.retrieval.RetrievalPipelineTestSupport;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.search.FullTextChunkSearch;
 import io.opaa.retrieval.search.QueryDecompositionService;
 import io.opaa.retrieval.search.VectorChunkSearch;

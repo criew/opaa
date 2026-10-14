@@ -23,6 +23,7 @@ import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.ValidationException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -259,7 +260,7 @@ class AuditControllerTest {
   @Test
   void listByObjectWithoutReasonIsRejected() throws Exception {
     when(queryService.byObject(any(), any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
-        .thenThrow(new IllegalArgumentException("reason ist ein Pflichtfeld"));
+        .thenThrow(new ValidationException("reason ist ein Pflichtfeld"));
 
     mockMvc
         .perform(
