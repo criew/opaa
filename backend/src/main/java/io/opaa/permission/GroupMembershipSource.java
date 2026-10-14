@@ -25,8 +25,8 @@ public interface GroupMembershipSource {
    * The members of a group, scoped to the given organization - so a subject carrying the wrong
    * {@code organizationId} (whether by bug or by a crafted request) resolves to nobody instead of
    * leaking members across the organization boundary. There is no unscoped equivalent on purpose: a
-   * caller that skips the organization would reintroduce exactly the cross-tenant leak #199 closed.
-   * Empty for a group deactivated for the time being: its rights reach nobody.
+   * caller that skips the organization would leak members across tenants. Empty for a group
+   * deactivated for the time being: its rights reach nobody.
    */
   Set<UUID> findUserIdsByGroupIdAndOrganizationId(UUID groupId, UUID organizationId);
 

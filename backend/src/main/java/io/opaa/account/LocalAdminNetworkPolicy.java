@@ -11,9 +11,9 @@ import org.springframework.stereotype.Component;
  * networks (IPv4 and IPv6, ranges or single addresses); regular local accounts are never
  * restricted. Fails closed: while restricted, a missing or non-numeric client address is refused
  * <em>before</em> the matcher sees it - {@link IpAddressMatcher} would resolve a host name through
- * DNS, and once #1535 takes the address from {@code X-Forwarded-For} that name would be attacker
- * chosen. The list is validated when {@link LocalAuthProperties} binds, so a typo stops the start
- * instead of silently opening or closing the door.
+ * DNS, and an address taken from {@code X-Forwarded-For} would make that name attacker chosen. The
+ * list is validated when {@link LocalAuthProperties} binds, so a typo stops the start instead of
+ * silently opening or closing the door.
  */
 @Component
 public class LocalAdminNetworkPolicy {

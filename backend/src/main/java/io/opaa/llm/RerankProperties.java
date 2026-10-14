@@ -30,9 +30,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param apiKey optional bearer token. Write-only in every sense that matters: it is never logged
  *     and never part of {@link RerankRoleStatus}, not even truncated.
  * @param timeout per-request budget for one rerank call. Default {@value #DEFAULT_TIMEOUT_SECONDS}
- *     seconds: #1050 measured roughly three minutes per query for the default candidate window (50)
- *     on a 20-core CPU with {@code BAAI/bge-reranker-v2-m3} - the CPU case this project ships a
- *     rerank role for at all. A shorter default degrades every such query to {@link
+ *     seconds: a measured three minutes per query for the default candidate window (50) on a
+ *     20-core CPU with {@code BAAI/bge-reranker-v2-m3} - the CPU case this project ships a rerank
+ *     role for at all. A shorter default degrades every such query to {@link
  *     RerankRoleState#UNREACHABLE} on a schedule, not on a fault. An installation with a faster
  *     (typically GPU-backed) endpoint may lower {@code OPAA_RERANK_TIMEOUT}; this default trades a
  *     slower failure detection for not mistaking normal CPU latency for an outage.

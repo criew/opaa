@@ -28,11 +28,11 @@ import org.springframework.core.task.TaskRejectedException;
 
 /**
  * Orchestrates triggering an indexing run for a single knowledge library, reading its own stored
- * quellentyp and quellkonfiguration (ADR-0018). The trigger reduces to "index this library": there
- * is no longer a separate, caller-chosen target and no per-request configuration - a library
- * carries at most one quelle, so the run always writes into the library it reads its configuration
- * from. The endpoint only needs {@code EDITOR} on the library being indexed (see {@link
- * #requireEditableLibrary}), no additional {@code SYSTEM_ADMIN} requirement.
+ * quellentyp and quellkonfiguration (ADR-0018). The trigger is "index this library": no
+ * caller-chosen target and no per-request configuration - a library carries at most one quelle, so
+ * the run always writes into the library it reads its configuration from. The endpoint only needs
+ * {@code EDITOR} on the library being indexed (see {@link #requireEditableLibrary}), no additional
+ * {@code SYSTEM_ADMIN} requirement.
  *
  * <p>Concurrency is per library, not global: {@link IndexingJobService#isJobRunning(UUID, UUID)}
  * only ever asks about the one library this call targets, so runs of different libraries execute in

@@ -10,7 +10,7 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 
 /**
- * The effective view of one search request (#1720 seam, ADR-0035 Entscheidung 5).
+ * The effective view of one search request (ADR-0035 Entscheidung 5).
  *
  * <p><b>One bean for both callers, and the only {@link SearchScopeSource} there is</b>: a request
  * that arrived on an access token gets rights ∩ release ∩ token selection ∩ switch plus the token

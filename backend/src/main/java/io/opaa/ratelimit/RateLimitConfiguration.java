@@ -33,11 +33,7 @@ import tools.jackson.databind.json.JsonMapper;
 @EnableConfigurationProperties(RateLimitProperties.class)
 public class RateLimitConfiguration {
 
-  /**
-   * The endpoints of the local sign-in (ADR-0033, Entscheidung 9). {@code register}, {@code
-   * forgot-password} and {@code set-password} arrive with #1538 under exactly these paths; their
-   * rules stand ready here.
-   */
+  /** The endpoints of the local sign-in and self-service (ADR-0033, Entscheidung 9). */
   static final String LOCAL_LOGIN_PATTERN = "^/api/v1/auth/local/login$";
 
   static final String LOCAL_REFRESH_PATTERN = "^/api/v1/auth/local/refresh$";
@@ -47,10 +43,10 @@ public class RateLimitConfiguration {
   static final String LOCAL_VERIFY_EMAIL_PATTERN = "^/api/v1/auth/local/verify-email$";
 
   /**
-   * The two handover endpoints of #1563 share one budget, like the outbound probes above: a
-   * redemption is one preview plus one redeem by the same person, and an unauthenticated caller
-   * without a valid code gets nothing out of either. The group is non-capturing on purpose - a
-   * capturing one would give each path its own bucket and double the budget.
+   * The two handover endpoints share one budget, like the outbound probes above: a redemption is
+   * one preview plus one redeem by the same person, and an unauthenticated caller without a valid
+   * code gets nothing out of either. The group is non-capturing on purpose - a capturing one would
+   * give each path its own bucket and double the budget.
    */
   static final String LOCAL_HANDOVER_PATTERN = "^/api/v1/auth/local/handover/(?:preview|redeem)$";
 

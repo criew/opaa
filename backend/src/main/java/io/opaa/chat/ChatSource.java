@@ -14,9 +14,8 @@ import java.util.UUID;
  * them back unchanged for {@code GET /chats/{chatId}}.
  *
  * <p>Deliberately mirrors the generated DTO's bean shape (including the no-arg constructor and
- * every setter) rather than an immutable record: {@code chat_messages.sources} already holds JSON
- * written before this change under the DTO's {@code @JsonProperty} names, which match this class's
- * field names exactly, so existing persisted rows keep deserializing unchanged.
+ * every setter) rather than an immutable record: the JSON in {@code chat_messages.sources} uses the
+ * DTO's {@code @JsonProperty} names, which match this class's field names exactly.
  */
 public final class ChatSource {
 

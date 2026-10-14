@@ -21,10 +21,10 @@ public enum AssetGrantHistoryCause {
   REVOKED,
 
   /**
-   * The interval was written by the #238 backfill for a grant that already existed before this
-   * feature - not observed as a live change, reconstructed from {@code asset_grants.created_at}/
-   * {@code granted_by_user_id} so the negative question is answerable for the entire existing body
-   * of grants, not only ones created after that migration ran.
+   * The interval was written by the backfill for a grant that already existed before this feature -
+   * not observed as a live change, reconstructed from {@code asset_grants.created_at}/ {@code
+   * granted_by_user_id} so the negative question is answerable for the entire existing body of
+   * grants, not only ones created after that migration ran.
    */
   BACKFILL,
 

@@ -9,7 +9,7 @@ import java.util.Objects;
  * DirectoryClient#fetchSnapshot}. An unreachable directory does not produce a snapshot at all - see
  * {@link DirectoryUnavailableException} - and an empty {@link #groups()} list is a valid snapshot
  * that {@link DirectorySyncService} treats specially precisely because it is indistinguishable from
- * a misconfigured connection at this layer (see #237's acceptance criteria).
+ * a misconfigured connection at this layer.
  *
  * @param accounts every account of this provider's directory with its state, or {@code null} from a
  *     connector that does not report account status at all - then no account is ever locked or

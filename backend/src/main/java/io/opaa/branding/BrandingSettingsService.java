@@ -49,8 +49,8 @@ public class BrandingSettingsService {
   /**
    * Six-digit hex triplet with a leading '#'. Deliberately no three-digit short form and no named
    * colours: the frontend derives hover/press/focus states from this value by darkening it, and one
-   * canonical input form keeps that derivation - and the contrast check in #583 - from having to
-   * parse variants.
+   * canonical input form keeps that derivation - and the contrast check - from having to parse
+   * variants.
    */
   private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
@@ -300,8 +300,8 @@ public class BrandingSettingsService {
 
   /**
    * {@code logoContentType}, {@code loginLogoVersion}, ... - the camelCase form of the enum
-   * constant plus the aspect. The {@code LOGO} keys deliberately keep the exact names #582's audit
-   * entries already carry, so a query over the protocol spans both eras.
+   * constant plus the aspect. The {@code LOGO} keys keep the names older audit entries carry, so a
+   * query over the protocol finds them all.
    */
   private static String auditKey(BrandingImageKind kind, String aspect) {
     String[] parts = kind.name().toLowerCase(Locale.ROOT).split("_");

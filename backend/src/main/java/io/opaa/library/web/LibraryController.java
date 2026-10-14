@@ -476,12 +476,8 @@ public class LibraryController {
     return toIndexingStatusResponse(job, true);
   }
 
-  // A FAILED job's errorMessage is the raw exception message from the executor that ran it - a
-  // NoSuchFileException's absolute server path, a ConnectException's/ UnknownHostException's
-  // host:port - exactly the internal-infrastructure leak #507 already closes for the source
-  // configuration display. canSeeErrorDetail (MANAGER+, from DocumentIndexingService#getStatus)
-  // gates it the same way, without shortening it for RUNNING/ COMPLETED, which never carry that
-  // detail in the first place.
+  // A FAILED job's errorMessage is the raw exception message - an absolute server path, a
+  // host:port - so only canSeeErrorDetail (MANAGER+) sees it, like the source configuration.
   private IndexingStatusResponse toIndexingStatusResponse(
       IndexingJob job, boolean canSeeErrorDetail) {
     IndexingStatus status = mapIndexingStatus(job.getStatus());

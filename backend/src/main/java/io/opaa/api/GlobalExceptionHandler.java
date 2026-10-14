@@ -53,12 +53,9 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
- * <b>Declared without a selector on purpose.</b> Any selector - {@code basePackages = "io.opaa"}
- * included - makes Spring's {@code HandlerTypePredicate} reject the {@code null} handler type of
- * every exception raised before a handler method is resolved: the unmapped-path 404 and the 405
- * with its {@code Allow} header would leave this class for Spring Boot's own error page, dropping
- * the German envelope and six assertions that hold it. The Actuator mappings it therefore covers as
- * well need no narrowing: their error bodies are negotiated like any other ({@link
+ * <b>Declared without a selector on purpose:</b> any selector makes Spring skip exceptions raised
+ * before a handler is resolved, so the unmapped-path 404 and the 405 would lose the German
+ * envelope. The Actuator mappings it covers as well negotiate their bodies like any other ({@link
  * ErrorBodyNegotiator}).
  */
 @RestControllerAdvice
@@ -86,14 +83,10 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * The decision every one of this class's 31 branches routes through, the 406 included: the
-   * envelope is attached only when the caller's {@code Accept} lets it be written. Attaching an
-   * unwritable one makes {@code ExceptionHandlerExceptionResolver} log a stacktrace and discard
-   * this response, upon which the caller gets whatever renders the exception next: an exception
-   * Spring's own {@code DefaultHandlerExceptionResolver} renders keeps its status, every other
-   * branch arrives as the container's 500. A branch with a builder of its own ({@code Allow},
-   * {@code Retry-After}) hands it here instead of calling {@code builder.body(...)}; {@code
-   * GlobalExceptionHandlerBodyFunnelTest} holds that rule.
+   * Every branch, the 406 included, attaches the envelope only when the caller's {@code Accept}
+   * lets it be written; an unwritable one would be discarded with a stacktrace. A branch with its
+   * own builder ({@code Allow}, {@code Retry-After}) hands it here ({@code
+   * GlobalExceptionHandlerBodyFunnelTest}).
    */
   private ResponseEntity<ErrorResponse> respond(
       ResponseEntity.BodyBuilder builder, ErrorResponse body) {
@@ -156,27 +149,14 @@ public class GlobalExceptionHandler {
     return respond(HttpStatus.BAD_REQUEST, "Die Anfrage enthält ungültige Angaben");
   }
 
-  /**
-   * The four revision access paths declare their required query parameters (objectType/objectId,
-   * eventType, correlationRef, the mandatory from/to time range on every one of them) via plain
-   * {@code @RequestParam(required = true)} rather than a validated request DTO - the first callers
-   * in this codebase to rely on that for enforcement rather than a defaulted or optional parameter.
-   * Without this handler, a missing one fell through to {@link #handleGenericException}'s {@code
-   * 500} instead of the 400 "eine Abfrage ohne [Bezug] wird abgewiesen" acceptance criterion
-   * requires.
-   */
+  /** A missing required {@code @RequestParam} is the caller's error: 400 naming the parameter. */
   @ExceptionHandler(MissingServletRequestParameterException.class)
   public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
       MissingServletRequestParameterException ex) {
     return respond(HttpStatus.BAD_REQUEST, "Pflichtparameter fehlt: " + ex.getParameterName());
   }
 
-  /**
-   * The sibling of {@link #handleMissingServletRequestParameterException} - a *malformed* required
-   * parameter (e.g. {@code ?from=gestern} or {@code ?objectType=FOO} against the #393 revision
-   * access paths) is still a caller error, not a server error, and fell through to {@link
-   * #handleGenericException}'s {@code 500} without this handler.
-   */
+  /** A malformed parameter, e.g. {@code ?from=gestern}, is the caller's error: 400. */
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
       MethodArgumentTypeMismatchException ex) {
@@ -196,16 +176,9 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Under {@code OpenAiChatModel}'s OpenAI-Java-SDK-based implementation (Spring AI 2.0), a
-   * connection failure (host unreachable, DNS failure, timeout) does not throw {@link
-   * TransientAiException} - it throws {@link OpenAIIoException}, a plain {@code RuntimeException}
-   * neither {@link TransientAiException} nor {@link NonTransientAiException} extends (see {@code
-   * ActiveChatModelResolverIntegrationTest}). {@link OpenAIRetryableException} is the SDK's own
-   * explicit "this is safe to retry" signal (its Javadoc: thrown for an error the SDK's built-in
-   * retry already exhausted) - both are as transient as the connection-level failures {@link
-   * #handleTransientAiException} already covers, and get the exact same {@code 503} and message
-   * rather than a second, differently worded one for what is the same situation from a caller's
-   * point of view.
+   * The OpenAI SDK's connection failure ({@link OpenAIIoException}) and exhausted retry ({@link
+   * OpenAIRetryableException}) extend no Spring AI type; they get the same 503 as {@link
+   * #handleTransientAiException}.
    */
   @ExceptionHandler({OpenAIIoException.class, OpenAIRetryableException.class})
   public ResponseEntity<ErrorResponse> handleOpenAiTransientException(RuntimeException ex) {
@@ -214,19 +187,9 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * The SDK's own {@link OpenAIServiceException} hierarchy (thrown once the provider actually
-   * answered with a non-2xx status - {@code BadRequestException}, {@code UnauthorizedException},
-   * {@code NotFoundException}, {@code InternalServerException}, {@code RateLimitException}, etc.)
-   * carries {@link OpenAIServiceException#statusCode()}, which is what distinguishes a transient
-   * provider-side problem from a permanent one: {@code 429} (rate limited) and {@code 5xx} (the
-   * provider's own server error) are retryable in the same sense {@link
-   * #handleTransientAiException} already is, while every other status - most notably {@code
-   * 401}/{@code 403} (misconfigured credentials) and {@code 404} (unknown model identifier) -
-   * reflects a request that will keep failing the same way until an operator fixes the
-   * configuration, mapped like {@link #handleNonTransientAiException} already maps Spring AI's own
-   * {@link NonTransientAiException}. The distinct branches intentionally reuse those two handlers'
-   * exact status codes and messages rather than introducing new ones for what are, from a caller's
-   * perspective, the same two situations.
+   * The provider answered with an error status: {@code 429} and {@code 5xx} are transient (503, a
+   * provider's {@code Retry-After} passed through), every other status needs an operator (502),
+   * with the messages of the two Spring AI handlers above.
    */
   @ExceptionHandler(OpenAIServiceException.class)
   public ResponseEntity<ErrorResponse> handleOpenAiServiceException(OpenAIServiceException ex) {
@@ -238,9 +201,7 @@ public class GlobalExceptionHandler {
           errorSanitizer.sanitize(ex.getMessage()));
       ResponseEntity.BodyBuilder responseBuilder =
           ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE);
-      // RateLimitException (429) is the one OpenAIServiceException subtype whose headers()
-      // routinely carries a Retry-After the provider actually computed - worth passing through to
-      // the caller rather than leaving them to guess a backoff.
+      // A provider's Retry-After on a 429 is passed through to the caller.
       if (ex instanceof RateLimitException rateLimitException) {
         List<String> retryAfter = rateLimitException.headers().values(HttpHeaders.RETRY_AFTER);
         if (!retryAfter.isEmpty()) {
@@ -260,19 +221,9 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * The remaining direct {@link OpenAIException} subtypes - {@code OpenAIInvalidDataException}
-   * chief among them - are neither a connection-level failure ({@link
-   * #handleOpenAiTransientException}) nor a genuine HTTP error response from the provider ({@link
-   * #handleOpenAiServiceException}); the SDK throws this one when a response it received does not
-   * match the shape it expects, which is exactly what an only OpenAI-*compatible* server (Ollama,
-   * this project's own docker-compose default) can produce for a request its more limited
-   * implementation does not fully support. Without this handler, that fell through to {@link
-   * #handleGenericException}'s generic {@code 500}. Mapped to the same {@code 502} {@link
-   * #handleNonTransientAiException} and {@link #handleOpenAiServiceException}'s non-transient
-   * branch already use for "the provider answered, but not usefully" - Spring dispatches to the
-   * most specific matching {@code @ExceptionHandler} by exception-hierarchy distance regardless of
-   * declaration order, so {@link #handleOpenAiTransientException} and {@link
-   * #handleOpenAiServiceException} remain authoritative for their own, more specific types.
+   * Every other {@link OpenAIException}, chiefly an answer in an unexpected shape from an
+   * OpenAI-compatible server: the provider answered, but not usefully (502). The more specific
+   * handlers above win by hierarchy distance.
    */
   @ExceptionHandler(OpenAIException.class)
   public ResponseEntity<ErrorResponse> handleOpenAiException(OpenAIException ex) {
@@ -281,14 +232,8 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * A request to a path no controller serves reaches Spring's static resource handling as the last
-   * resort, which throws {@link NoResourceFoundException} (or, with a differently configured
-   * resource handler, {@link NoHandlerFoundException}) - a caller error, not a server error.
-   * Without this handler, it fell through to {@link #handleGenericException}'s {@code 500} and
-   * logged a full stacktrace on {@code ERROR}, which both hid the actual cause from API callers (an
-   * unmapped path looks identical to a real server error) and drowned the log in noise from
-   * scanners probing paths like {@code /wp-admin} or {@code /.env}. Logged at {@code DEBUG} without
-   * a stacktrace, since the request path itself is all there is to know.
+   * An unmapped path is the caller's error: 404, logged at {@code DEBUG} without a stacktrace, so
+   * scanners probing {@code /wp-admin} do not flood the log.
    */
   @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
   public ResponseEntity<ErrorResponse> handleNoResourceFoundException(Exception ex) {
@@ -297,17 +242,9 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Both exceptions arise before or instead of a controller method - the method mismatch in handler
-   * mapping, the media type while reading the body - and Spring's own {@code
-   * DefaultHandlerExceptionResolver} renders them as 405 and 415 on its own. It never sees them,
-   * because {@code ExceptionHandlerExceptionResolver} is consulted first and {@link
-   * #handleGenericException} claims every {@link Exception}, so both arrived as {@code 500} with an
-   * {@code ERROR} stacktrace. Logged at {@code DEBUG} without a stacktrace like {@link
-   * #handleNoResourceFoundException}: a caller without a session can raise either at will.
-   *
-   * <p>The {@code Allow} header is part of the contract, not a nicety - RFC 9110, section 15.5.6
-   * requires a 405 to name the methods the resource does support, and taking the response away from
-   * {@code DefaultHandlerExceptionResolver} means taking that header with it.
+   * 405 with the {@code Allow} header RFC 9110, section 15.5.6 requires, logged at {@code DEBUG}:
+   * any caller can raise it without a session. {@link #handleGenericException} would otherwise
+   * claim it before Spring's own resolver.
    */
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
   public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(
@@ -335,17 +272,9 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * The {@code Accept} sibling of the two above. Its status code is <em>not</em> what was wrong:
-   * what {@link #handleGenericException} added was a stacktrace per request, raisable without a
-   * session by anyone sending {@code Accept: application/xml}.
-   *
-   * <p>Routed through {@link #respond} like every other branch, which answers both positions of
-   * this exception by itself: raised while writing, the caller's {@code Accept} excludes the
-   * envelope too and the body is dropped as before; raised because a mapping's {@code produces=}
-   * could not meet that {@code Accept} - the Actuator's, this advice covering its mappings as well
-   * - the envelope is writable and is sent, exactly as the neighbouring branches answer the same
-   * caller. {@code GlobalExceptionHandlerNotAcceptableTest} taps the ROOT logger, not this class's,
-   * because the stacktrace in question came from a Spring logger.
+   * 406 without a stacktrace, which anyone could raise per request with {@code Accept:
+   * application/xml}. {@link #respond} drops the body when the envelope is not writable either and
+   * sends it when only a mapping's {@code produces=} did not match.
    */
   @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
   public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotAcceptableException(
@@ -465,24 +394,9 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * The container-level counterpart to {@code LibraryDocumentService}'s own {@code
-   * opaa.upload.max-file-size} check: {@code spring.servlet.multipart.max-file-size}/{@code
-   * max-request-size} are bound to the exact same configured value (application.yml), so this fires
-   * only for the same limit that check already enforces, or - because multipart request framing
-   * carries a little overhead beyond the raw file bytes - for a request just over {@code
-   * max-request-size} at a file size just under it. Without this handler, {@code
-   * ExceptionHandlerExceptionResolver} never reaches {@code DefaultHandlerExceptionResolver}'s own
-   * multipart handling (it runs first and {@code handleGenericException} below - the last-resort
-   * {@code Exception} handler - would otherwise catch this first), and the response was a bare
-   * {@code 500} instead of the required {@code 413} with a German message.
-   *
-   * <p>The reported limit comes from {@link UploadProperties} rather than {@code
-   * ex.getMaxUploadSize()}: {@code StandardServletMultipartResolver} only populates that field when
-   * the container's own error message happens to match its "size ... exceed" heuristic, and in
-   * practice usually reports {@code -1} instead - which would silently drop the figure from the
-   * message the acceptance criteria ask for. {@link UploadProperties} is the actual configured
-   * limit either way, since both this handler and the container's own check are bound to the same
-   * value.
+   * The container's multipart limit, bound to the same value as {@code opaa.upload.max-file-size}:
+   * 413 with a German message. The figure comes from {@link UploadProperties}, because {@code
+   * ex.getMaxUploadSize()} usually reports {@code -1}.
    */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceededException(
@@ -494,12 +408,7 @@ public class GlobalExceptionHandler {
     return respond(HttpStatus.PAYLOAD_TOO_LARGE, message);
   }
 
-  /**
-   * Thrown when a multipart request is missing the expected part (e.g. {@code file} on the upload
-   * endpoint) or names it under the wrong field - see {@link #handleMaxUploadSizeExceededException}
-   * for why this needs its own handler rather than falling through to {@code
-   * handleGenericException}'s {@code 500}.
-   */
+  /** A multipart request without the expected part, e.g. {@code file}: 400 naming the part. */
   @ExceptionHandler(MissingServletRequestPartException.class)
   public ResponseEntity<ErrorResponse> handleMissingServletRequestPartException(
       MissingServletRequestPartException ex) {
@@ -508,13 +417,8 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * The remaining multipart failures that are neither a size overrun nor a missing part - a
-   * malformed body, an aborted transfer. {@code StandardServletMultipartResolver} only throws the
-   * more specific {@link MaxUploadSizeExceededException} when the container's error message happens
-   * to match its own "size ... exceed" heuristic; anything else surfaces as a bare {@link
-   * MultipartException}, which - without this handler, declared after the two more specific ones
-   * above so Spring still prefers those - fell through to {@link #handleGenericException}'s {@code
-   * 500}.
+   * Every other multipart failure, e.g. a malformed body or an aborted transfer: 400. The two more
+   * specific handlers above win.
    */
   @ExceptionHandler(MultipartException.class)
   public ResponseEntity<ErrorResponse> handleMultipartException(MultipartException ex) {
@@ -524,14 +428,8 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * Raised by {@code CredentialsEncryptor} when {@code OPAA_CREDENTIALS_ENCRYPTION_KEY} is missing
-   * or invalid at the moment a library's {@code sourceCredentials} would actually be encrypted or
-   * decrypted. Mapped to a distinct {@code 503} - not the {@link #handleGenericException} {@code
-   * 500} fallback - so an operator sees "set the key" rather than an opaque server error. The
-   * exception can surface either directly from {@code KnowledgeLibraryService} (thrown while the
-   * JPA flush that runs the {@code SourceCredentialsConverter} is still on this request's call
-   * stack) or wrapped by JPA/Spring's exception translation, which is why {@link
-   * #handleGenericException} also unwraps for it via {@link #findCause}.
+   * {@code OPAA_CREDENTIALS_ENCRYPTION_KEY} is missing or invalid: 503, so an operator sees "set
+   * the key". A wrapped occurrence is unwrapped by {@link #handleGenericException}.
    */
   @ExceptionHandler(CredentialsEncryptionKeyMissingException.class)
   public ResponseEntity<ErrorResponse> handleCredentialsEncryptionKeyMissingException(

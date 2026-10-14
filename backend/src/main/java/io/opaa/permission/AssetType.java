@@ -8,8 +8,8 @@ import java.util.regex.Pattern;
  * asset_grants.asset_type} (ADR-0036, Entscheidung 12).
  *
  * <p><b>Deliberately not an enum.</b> This package must not know which asset types exist - that is
- * exactly the type independence #1726 builds on: the owning business package declares its own
- * constant ({@code KnowledgeLibrary#ASSET_TYPE}), and a new asset type needs no change here and no
+ * the type independence of this package: the owning business package declares its own constant
+ * ({@code KnowledgeLibrary#ASSET_TYPE}), and a new asset type needs no change here and no
  * migration. The value type exists nonetheless, so an asset type cannot be confused with any other
  * string in a signature.
  *

@@ -121,7 +121,7 @@ public class RerankClient {
    *
    * @param index position of the candidate in the request's {@code documents} list.
    * @param score the reranker's relevance score. Comparable only within one response - never with a
-   *     similarity or a fusion score (the confusion #912 was rooted in).
+   *     similarity or a fusion score.
    */
   public record ScoredCandidate(int index, double score) {}
 

@@ -12,12 +12,8 @@ import org.springframework.stereotype.Service;
  * DirectorySyncService}, which is itself not transactional and calls this only after {@link
  * DirectorySyncPlanExecutor#planAndApply}/{@code planOnly} has already returned successfully - so
  * there is never an ambient transaction to consider here, and a failed apply (its transaction
- * rolled back) never reaches this class at all. An earlier version of this class ran under {@code
- * REQUIRES_NEW} to escape the caller's transaction; that requirement disappeared along with the
- * caller ever having one - see {@link DirectorySyncPlanExecutor}'s class javadoc for the defect
- * that motivated moving the call here (a REQUIRES_NEW status write could commit before the
- * surrounding apply transaction later rolled back, durably recording {@code APPLIED} for a run that
- * never actually applied).
+ * rolled back) never reaches this class at all, so no {@code APPLIED} is recorded for a run that
+ * did not apply.
  */
 @Service
 public class DirectorySyncStatusRecorder {
@@ -38,11 +34,9 @@ public class DirectorySyncStatusRecorder {
    * status. The same reasoning as {@code UserService#findOrCreateUser}, which handles the identical
    * race on {@code uq_users_subject_issuer}.
    *
-   * <p>Note that the alternative of an inner {@code REQUIRES_NEW} transaction for the insert
-   * attempt is deliberately <em>not</em> used: that construction has caused a defect twice in this
-   * project already (#280's foreign-key violation against an uncommitted {@code users} row, #297's
-   * status write committing ahead of an apply that later rolled back), and it would additionally
-   * make each caller hold two connections at once - the pool-exhaustion mode.
+   * <p>An inner {@code REQUIRES_NEW} transaction for the insert attempt is deliberately
+   * <em>not</em> used: it cannot see an uncommitted {@code users} row, can commit a status ahead of
+   * an apply that later rolls back, and makes each caller hold two connections at once.
    *
    * <p>Two callers updating an <em>existing</em> row concurrently remain last-writer-wins. That is
    * the intended semantics of a table holding "the outcome of the most recent run" and is unchanged

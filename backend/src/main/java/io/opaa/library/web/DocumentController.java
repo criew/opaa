@@ -2,7 +2,6 @@ package io.opaa.library.web;
 
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.branding.web.BrandingController;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.library.LibraryDocumentService;
 import java.nio.charset.StandardCharsets;
@@ -22,12 +21,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Serves the original file behind an indexed document, so a search result or a library listing can
- * link straight to the source it was built from - the read counterpart to {@code
- * LibraryController}'s upload/delete document endpoints, split into its own controller because the
- * library owning the document is resolved from {@code Document.libraryId} rather than named in the
- * path (see {@link LibraryDocumentService#loadContent}'s Javadoc for the full access, sourceType
- * and traversal checks this delegates to).
+ * Serves the original file behind an indexed document. The library is resolved from the document,
+ * not named in the path; access checks are those of {@link LibraryDocumentService#loadContent}.
  */
 @RestController
 @RequestMapping("/api/v1/documents")
@@ -42,24 +37,9 @@ public class DocumentController {
   }
 
   /**
-   * {@code Content-Disposition: inline} with the document's own file name, carried both as a plain
-   * ASCII {@code filename} fallback and as an RFC 5987 {@code filename*} - the same reasoning
-   * {@link BrandingController#getBrandingLogo} documents for its own, fixed file name applies here
-   * to a caller-influenced one: an unescaped file name containing a quote or CR/LF could otherwise
-   * break out of the header value. Unlike the logo endpoint, the content type varies per document,
-   * so it is taken from {@link DocumentContent#contentType()} rather than fixed to image formats.
-   *
-   * <p>Three headers keep a stored, user-supplied file from becoming an execution vector when
-   * opened inline - mirrors {@link BrandingController#getBrandingLogo}'s own three, except this
-   * endpoint serves arbitrary indexed files rather than a format {@code BrandingImageValidator}
-   * already forces to a real image, so these headers are the only line of defense here, not a
-   * second one:
-   *
-   * <ul>
-   *   <li>{@code X-Content-Type-Options: nosniff}
-   *   <li>{@code Content-Disposition: inline} with the escaped, caller-influenced file name above
-   *   <li>{@code Content-Security-Policy: default-src 'none'; sandbox}
-   * </ul>
+   * Streams the original inline with its own content type. The escaped file name, {@code nosniff}
+   * and {@code Content-Security-Policy: default-src 'none'; sandbox} are the only defence against
+   * an arbitrary user-supplied file becoming an execution vector.
    */
   @GetMapping("/{documentId}/content")
   public ResponseEntity<Resource> getDocumentContent(
@@ -79,12 +59,7 @@ public class DocumentController {
   }
 
   /**
-   * {@link MediaType#parseMediaType} falls back to {@code application/octet-stream} instead of
-   * propagating {@link InvalidMediaTypeException} - that exception is an {@link
-   * IllegalArgumentException}, uncaught here would surface as a 500 for a stored or remote-declared
-   * {@code Content-Type} this class does not control the syntax of (a malformed value from a remote
-   * source proxied by {@link LibraryDocumentService#loadContent}), turning "source sent something
-   * odd" into an OPAA-side server error instead of a merely generic download.
+   * A malformed stored or remote content type becomes {@code application/octet-stream}, not 500.
    */
   private MediaType parseMediaTypeOrOctetStream(String contentType) {
     try {
@@ -96,12 +71,8 @@ public class DocumentController {
   }
 
   /**
-   * Builds an RFC 6266 {@code Content-Disposition} value carrying {@code fileName} twice: an ASCII
-   * {@code filename} a client without RFC 5987 support falls back to, and the exact, UTF-8 {@code
-   * filename*} every modern browser actually uses. {@link java.net.URLEncoder} is deliberately not
-   * used for the latter - it targets {@code application/x-www-form-urlencoded}, which leaves {@code
-   * *} unescaped even though RFC 8187's {@code attr-char} does not include it, and encodes a space
-   * as {@code +} rather than {@code %20}.
+   * An RFC 6266 {@code Content-Disposition} carrying {@code fileName} twice: as an ASCII {@code
+   * filename} fallback and exactly as UTF-8 {@code filename*}.
    */
   private String contentDisposition(String fileName) {
     return "inline; filename=\""
@@ -111,11 +82,8 @@ public class DocumentController {
   }
 
   /**
-   * A best-effort ASCII rendering of {@code fileName} for the plain {@code filename} fallback:
-   * anything outside the printable ASCII range, and the two characters ({@code "} and {@code \})
-   * that would otherwise break out of the quoted-string, become {@code _}. The exact name is only
-   * ever carried faithfully by {@code filename*} - this fallback merely has to be a harmless
-   * display name for a client that does not understand RFC 5987 at all.
+   * {@code fileName} for the plain {@code filename} fallback: non-printable ASCII, {@code "} and
+   * {@code \} become {@code _}, so the quoted string cannot be broken out of.
    */
   private String asciiFallback(String fileName) {
     StringBuilder result = new StringBuilder(fileName.length());
@@ -131,9 +99,8 @@ public class DocumentController {
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$&+-.^_`|~";
 
   /**
-   * Percent-encodes {@code fileName}'s UTF-8 bytes per RFC 8187's {@code attr-char} - notably
-   * including {@code *} and {@code '}, which {@link java.net.URLEncoder} would leave unescaped even
-   * though neither is a valid {@code attr-char}.
+   * Percent-encodes {@code fileName}'s UTF-8 bytes per RFC 8187's {@code attr-char}, including
+   * {@code *}, {@code '} and the space, which {@link java.net.URLEncoder} gets wrong.
    */
   private String rfc5987(String fileName) {
     StringBuilder result = new StringBuilder();

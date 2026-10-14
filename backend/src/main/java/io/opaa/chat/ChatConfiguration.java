@@ -35,9 +35,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * rejection an observable warning instead of {@link ThreadPoolExecutor.DiscardPolicy}'s silent
  * drop, and - for the condensation - a counted one; {@link ThreadPoolExecutor.CallerRunsPolicy} is
  * deliberately not used here even though it is the more common choice, because the caller is the
- * very request thread {@code @Async} exists to keep this LLM call off (#557's "kein zweiter
- * LLM-Roundtrip auf dem kritischen Pfad der Antwort") - running it there on rejection would defeat
- * that design goal exactly when the system is already under load.
+ * very request thread {@code @Async} exists to keep this LLM call off - running it there on
+ * rejection would add a second model round trip to the answer exactly when the system is under
+ * load.
  */
 @Configuration
 @EnableConfigurationProperties(ChatNoteProperties.class)
@@ -61,11 +61,11 @@ public class ChatConfiguration {
   }
 
   /**
-   * The pool of #1487's Gesprächsnotiz condensation ({@link
-   * ChatNoteExtractionService#condenseAsync}) - separate from the title pool above, not because the
-   * two jobs differ in shape but because they differ in frequency: the title runs once per chat,
-   * the condensation once per <em>turn</em>, so a busy conversation would otherwise crowd out the
-   * one-off job through the deliberately queue-free hand-off both use.
+   * The pool of the Gesprächsnotiz condensation ({@link ChatNoteExtractionService#condenseAsync}) -
+   * separate from the title pool above, not because the two jobs differ in shape but because they
+   * differ in frequency: the title runs once per chat, the condensation once per <em>turn</em>, so
+   * a busy conversation would otherwise crowd out the one-off job through the deliberately
+   * queue-free hand-off both use.
    *
    * <p>That same frequency makes a rejection here worth counting, not only logging: a burst of
    * concurrent turns is exactly when this pool overflows, and a rejected task never reaches {@link

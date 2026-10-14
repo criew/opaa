@@ -11,7 +11,7 @@ public enum GroupMechanism {
   /** The groups claim of this provider's tokens, re-read on every sign-in. */
   TOKEN,
 
-  /** A scheduled pull from this provider's directory, with the four safeguards of #1816. */
+  /** A scheduled pull from this provider's directory, with its plausibility safeguards. */
   DIRECTORY,
 
   /** Neither - this provider brings no groups. */

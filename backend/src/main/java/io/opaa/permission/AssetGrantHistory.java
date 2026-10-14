@@ -132,12 +132,11 @@ public class AssetGrantHistory {
    * A zero-length marker interval ({@code validFrom == validTo == at}) recording that {@code grant}
    * was revoked - {@link AssetGrantHistoryCause#REVOKED} never opens a lasting interval (a revoked
    * grant grants nothing from that instant on), but the revocation itself is still a permission
-   * change with a triggering actor that #238's acceptance criteria require to be recorded, distinct
-   * from the closing of the previous {@link AssetGrantHistoryCause#GRANTED}/ {@link
-   * AssetGrantHistoryCause#ROLE_CHANGED} interval (whose own cause must stay unchanged - it really
-   * was granted or role-changed at the time). Never selected by {@link
-   * PermissionHistoryService#readableAssetIdsAsOf}'s {@code validFrom <= asOf < validTo} check,
-   * since that is never true for a zero-length interval.
+   * change with a triggering actor that has to be recorded, distinct from the closing of the
+   * previous {@link AssetGrantHistoryCause#GRANTED}/ {@link AssetGrantHistoryCause#ROLE_CHANGED}
+   * interval (whose own cause must stay unchanged - it really was granted or role-changed at the
+   * time). Never selected by {@link PermissionHistoryService#readableAssetIdsAsOf}'s {@code
+   * validFrom <= asOf < validTo} check, since that is never true for a zero-length interval.
    */
   static AssetGrantHistory terminal(
       AssetGrant grant, AssetGrantHistoryCause cause, UUID actorUserId, Instant at) {

@@ -9,8 +9,8 @@ import org.springframework.stereotype.Component;
 /**
  * The network restriction of the whole external access channel (ADR-0035, Entscheidung 2;
  * docs/features/external-access.md, "Der Netzbereich gehört dem Kanal, nicht dem Token"). Fails
- * closed: an empty list, a missing address and anything DNS could resolve are refused. The
- * enforcement at {@code /mcp} is #1721; this component is the one place that decides it.
+ * closed: an empty list, a missing address and anything DNS could resolve are refused. This
+ * component is the one place that decides it, for {@code /mcp} as for every other path.
  *
  * <p>The address comes from {@link ClientIpResolver} and from nowhere else - that is why the
  * callable entry point takes the request, not a string. {@code HttpServletRequest#getRemoteAddr()}

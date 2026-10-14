@@ -158,8 +158,7 @@ public class Space {
 
   /**
    * Whether this is the space created automatically on the user's first login. Exactly one per user
-   * and not deletable; in every other respect an ordinary space. Replaces the former {@code
-   * SpaceKind.PERSONAL} - see #333 and
+   * and not deletable; in every other respect an ordinary space - see
    * docs/features/spaces-and-assets.md#es-gibt-nur-eine-art-von-space.
    */
   public boolean isDefault() {

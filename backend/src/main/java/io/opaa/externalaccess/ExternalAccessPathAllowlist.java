@@ -14,9 +14,9 @@ import org.springframework.stereotype.Component;
  * be silently incomplete the moment someone adds an endpoint and forgets it; a positive list is
  * silently too strict, which is a bug report, not a breach.
  *
- * <p>The three reading paths of #1720 and nothing else: searching, the text behind one hit, and the
- * list of libraries the token may search. Everything else - administration, indexing, upload,
- * rights, and the whole web interface - is refused with {@code 403}.
+ * <p>The three reading paths and nothing else: searching, the text behind one hit, and the list of
+ * libraries the token may search. Everything else - administration, indexing, upload, rights, and
+ * the whole web interface - is refused with {@code 403}.
  *
  * <p>Two endpoints are deliberately <b>not</b> on it. {@code GET /api/v1/libraries} answers with
  * everything the person may read rather than with the effective view of the token, so it would be

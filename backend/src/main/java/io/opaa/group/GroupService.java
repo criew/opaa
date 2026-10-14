@@ -63,9 +63,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * read-only through this service.
  *
  * <p>Deleting a group that owns an asset is blocked until ownership is transferred (see the feature
- * spec's "Eigentuemerschaft und Verwaisung" and issue #200's acceptance criteria). Which asset
- * types exist is not this class's business: every one of them contributes an {@link
- * AssetOwnershipDirectory}, and {@link #deleteGroup} asks all of them.
+ * spec's "Eigentuemerschaft und Verwaisung"). Which asset types exist is not this class's business:
+ * every one of them contributes an {@link AssetOwnershipDirectory}, and {@link #deleteGroup} asks
+ * all of them.
  *
  * <p>Deleting a group that merely <em>holds a grant</em> - not necessarily owns anything - is
  * blocked too, and independently of the ownership check above. {@code
@@ -766,7 +766,7 @@ public class GroupService {
     invalidateAfterCommit(() -> membershipResolver.invalidateUsers(affectedUserIds));
   }
 
-  /** How many spaces this group is a member of - the RESTRICT reference #1815 introduced. */
+  /** How many spaces this group is a member of, each a RESTRICT reference to the group. */
   private int spaceMemberships(UUID groupId) {
     return spaceMembershipDirectory.spaceMembershipsOf(List.of(groupId)).size();
   }
@@ -907,11 +907,10 @@ public class GroupService {
   /**
    * Defers a cache invalidation until the enclosing transaction has finished, instead of running it
    * immediately at the point of the call. Every {@code @Transactional} method here commits through
-   * the Spring proxy only after it returns, so invalidating inline (as an earlier version of this
-   * class did) can race a concurrent reader: it can observe the pre-image under {@code READ
-   * COMMITTED}, repopulate the cache with it, and then have this transaction commit - leaving a
-   * revoked membership readable from the cache for up to the cache's expiry (see {@link
-   * GroupMembershipResolver}).
+   * the Spring proxy only after it returns, so invalidating inline would race a concurrent reader:
+   * it can observe the pre-image under {@code READ COMMITTED}, repopulate the cache with it, and
+   * then have this transaction commit - leaving a revoked membership readable from the cache for up
+   * to the cache's expiry (see {@link GroupMembershipResolver}).
    *
    * <p>Registered as {@code afterCompletion} rather than {@code afterCommit} so a rollback also
    * evicts the entry the transaction may have touched - a stale hit is the wrong failure mode

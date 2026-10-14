@@ -228,8 +228,7 @@ public class QueryService {
                     libraryAccessService.readableLibraryIds(currentUserId, caller.organizationId());
 
                 // A persisted chat's own settings govern the scope entirely; a question without a
-                // chat of the caller has no space and searches nothing - the request-level
-                // useKnowledge/requestedLibraryIds no longer widen anything.
+                // chat of the caller has no space and searches nothing.
                 Set<UUID> searchScope =
                     searchScopeResolver.resolveSearchScope(chat, readableLibraryIds);
                 MetadataFilter metadataFilter =
