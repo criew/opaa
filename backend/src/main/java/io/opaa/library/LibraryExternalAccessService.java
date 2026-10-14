@@ -6,7 +6,6 @@ import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -167,10 +166,7 @@ public class LibraryExternalAccessService {
    */
   @Transactional(readOnly = true)
   public List<ExternalAccessLibrary> listReleasedLibraries(CurrentUser actor) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException(
-          "Nur die Systemverwaltung sieht die freigegebenen Bibliotheken");
-    }
+    actor.requireSystemAdmin("Nur die Systemverwaltung sieht die freigegebenen Bibliotheken");
     Instant now = clock.instant();
     return libraryRepository
         .findByOrganizationIdAndExternalAccessState(

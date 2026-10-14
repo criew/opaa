@@ -46,9 +46,16 @@ class DirectorySyncSchedulerIntegrationTest {
   @BeforeEach
   void setUp() {
     cleanUp();
+    // Runs on the calling thread: under test are the tick's rules, which run is started and
+    // which is not, so the assertions can follow the tick directly. The hand-off to the
+    // executor is DirectorySyncSchedulerTest's concern.
     scheduler =
         new DirectorySyncScheduler(
-            providerRepository, statusRepository, directorySyncService, Clock.systemUTC());
+            providerRepository,
+            statusRepository,
+            directorySyncService,
+            Runnable::run,
+            Clock.systemUTC());
     directoryClient.respondWith();
   }
 

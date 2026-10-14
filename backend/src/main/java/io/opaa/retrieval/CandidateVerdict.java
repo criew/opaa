@@ -1,5 +1,8 @@
 package io.opaa.retrieval;
 
+import io.opaa.api.types.CandidateOutcome;
+import io.opaa.api.types.RetrievalStageName;
+import io.opaa.api.types.VerdictReason;
 import java.util.List;
 import org.springframework.ai.document.Document;
 

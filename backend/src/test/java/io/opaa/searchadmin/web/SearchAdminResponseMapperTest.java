@@ -8,18 +8,18 @@ import io.opaa.api.dto.CoreMetadataFieldFillResponse;
 import io.opaa.api.dto.DocumentChunksResponse;
 import io.opaa.api.dto.LibraryIndexState;
 import io.opaa.api.dto.MetadataBackfillStatusResponse;
-import io.opaa.api.dto.RetrievalCandidateOutcome;
-import io.opaa.api.dto.RetrievalStage;
 import io.opaa.api.dto.RetrievalStageStatus;
-import io.opaa.api.dto.RetrievalVerdictReason;
-import io.opaa.api.dto.SearchDiagnosisContextType;
 import io.opaa.api.dto.SearchDiagnosisResponse;
-import io.opaa.api.dto.SearchModelRole;
-import io.opaa.api.dto.SearchModelRoleState;
 import io.opaa.api.dto.SearchPath;
 import io.opaa.api.dto.SearchPathState;
 import io.opaa.api.dto.SearchStatusResponse;
 import io.opaa.api.dto.TrackedDocumentOutcome;
+import io.opaa.api.types.CandidateOutcome;
+import io.opaa.api.types.DiagnosisContextType;
+import io.opaa.api.types.ModelRole;
+import io.opaa.api.types.ModelRoleCondition;
+import io.opaa.api.types.RetrievalStageName;
+import io.opaa.api.types.VerdictReason;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
@@ -29,20 +29,14 @@ import io.opaa.metadata.CoreMetadataField;
 import io.opaa.metadata.LibraryMetadataSchemaChangeProgress;
 import io.opaa.metadata.MetadataFieldFill;
 import io.opaa.metadata.ModelExtractionStats;
-import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.RetrievalExplanation;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageStatus;
-import io.opaa.retrieval.VerdictReason;
 import io.opaa.search.ChunkInspection;
 import io.opaa.search.DocumentChunks;
-import io.opaa.searchadmin.DiagnosisContextType;
 import io.opaa.searchadmin.DocumentDescriptor;
 import io.opaa.searchadmin.LibrarySearchStatus;
-import io.opaa.searchadmin.ModelRole;
-import io.opaa.searchadmin.ModelRoleCondition;
 import io.opaa.searchadmin.ModelRoleStatus;
 import io.opaa.searchadmin.SearchDiagnosis;
 import io.opaa.searchadmin.SearchDiagnosisService;
@@ -85,13 +79,13 @@ class SearchAdminResponseMapperTest {
     SearchStatusResponse response = SearchAdminResponseMapper.toStatusResponse(status);
 
     var chat = response.getModelRoles().get(0);
-    assertThat(chat.getRole()).isEqualTo(SearchModelRole.CHAT);
-    assertThat(chat.getState()).isEqualTo(SearchModelRoleState.ACTIVE);
+    assertThat(chat.getRole()).isEqualTo(ModelRole.CHAT);
+    assertThat(chat.getState()).isEqualTo(ModelRoleCondition.ACTIVE);
     assertThat(chat.getEndpoint()).isEqualTo("http://ollama:11434/v1");
     assertThat(chat.getModelIdentifier()).isEqualTo("qwen3:8b");
     assertThat(chat.getDetail()).isEqualTo("Verbindung erfolgreich.");
     assertThat(chat.getFaulted()).isFalse();
-    assertThat(response.getModelRoles().get(1).getState()).isEqualTo(SearchModelRoleState.DISABLED);
+    assertThat(response.getModelRoles().get(1).getState()).isEqualTo(ModelRoleCondition.DISABLED);
     assertThat(response.getModelRoles().get(1).getFaulted()).isFalse();
     // The DTO has no field an access key could travel in - asserted on the serialized shape so a
     // future schema change that adds one fails here rather than in production.
@@ -131,7 +125,7 @@ class SearchAdminResponseMapperTest {
                 new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)));
 
     assertThat(response.getModelRoles().get(0).getState())
-        .isEqualTo(SearchModelRoleState.UNCONFIGURED);
+        .isEqualTo(ModelRoleCondition.UNCONFIGURED);
     assertThat(response.getModelRoles().get(0).getFaulted()).isTrue();
   }
 
@@ -152,8 +146,8 @@ class SearchAdminResponseMapperTest {
                 new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)));
 
     var transcription = response.getModelRoles().get(0);
-    assertThat(transcription.getRole()).isEqualTo(SearchModelRole.TRANSCRIPTION);
-    assertThat(transcription.getState()).isEqualTo(SearchModelRoleState.UNREACHABLE);
+    assertThat(transcription.getRole()).isEqualTo(ModelRole.TRANSCRIPTION);
+    assertThat(transcription.getState()).isEqualTo(ModelRoleCondition.UNREACHABLE);
     assertThat(transcription.getEndpoint()).isEqualTo("https://stt.example/v1");
     assertThat(transcription.getModelIdentifier()).isEqualTo("whisper");
     assertThat(transcription.getFaulted()).isTrue();
@@ -404,7 +398,7 @@ class SearchAdminResponseMapperTest {
 
     SearchDiagnosisResponse response = SearchAdminResponseMapper.toDiagnosisResponse(personContext);
 
-    assertThat(response.getContextType()).isEqualTo(SearchDiagnosisContextType.USER);
+    assertThat(response.getContextType()).isEqualTo(DiagnosisContextType.USER);
     assertThat(response.getContextLabel()).isEqualTo("Rechtekontext einer Person");
     assertThat(response.getLockedLibraryCount()).isEqualTo(2);
   }
@@ -415,7 +409,7 @@ class SearchAdminResponseMapperTest {
         SearchAdminResponseMapper.toDiagnosisResponse(diagnosis(null));
 
     assertThat(response.getQuestion()).isEqualTo("Gebührenbefreiung?");
-    assertThat(response.getContextType()).isEqualTo(SearchDiagnosisContextType.PERMISSION_PROFILE);
+    assertThat(response.getContextType()).isEqualTo(DiagnosisContextType.PERMISSION_PROFILE);
     assertThat(response.getContextLabel()).isEqualTo("Rechteprofil „Bürgerbüro“");
     assertThat(response.getExecutedAt()).isEqualTo(Instant.parse("2026-09-01T10:00:00Z"));
     assertThat(response.getSearchScope())
@@ -429,7 +423,7 @@ class SearchAdminResponseMapperTest {
 
     assertThat(response.getStages()).hasSize(2);
     var vectorSearch = response.getStages().get(0);
-    assertThat(vectorSearch.getStage()).isEqualTo(RetrievalStage.VECTOR_SEARCH);
+    assertThat(vectorSearch.getStage()).isEqualTo(RetrievalStageName.VECTOR_SEARCH);
     assertThat(vectorSearch.getStatus()).isEqualTo(RetrievalStageStatus.EXECUTED);
     assertThat(vectorSearch.getIncomingCount()).isZero();
     assertThat(vectorSearch.getOutgoingCount()).isEqualTo(2);
@@ -439,8 +433,8 @@ class SearchAdminResponseMapperTest {
     assertThat(verdict.getDocumentKey()).isEqualTo(DOCUMENT_ID.toString());
     assertThat(verdict.getDocumentTitle()).isEqualTo("satzung.pdf");
     assertThat(verdict.getLibraryName()).isEqualTo("Satzungen");
-    assertThat(verdict.getOutcome()).isEqualTo(RetrievalCandidateOutcome.ADDED);
-    assertThat(verdict.getReason()).isEqualTo(RetrievalVerdictReason.RETRIEVED_BY_SEARCH);
+    assertThat(verdict.getOutcome()).isEqualTo(CandidateOutcome.ADDED);
+    assertThat(verdict.getReason()).isEqualTo(VerdictReason.RETRIEVED_BY_SEARCH);
     assertThat(verdict.getListLabel()).isEqualTo("vector#1");
     assertThat(verdict.getRank()).isEqualTo(1);
     assertThat(verdict.getValue()).isEqualTo(0.82);
@@ -527,9 +521,8 @@ class SearchAdminResponseMapperTest {
     assertThat(tracked.getLibraryId()).isEqualTo(LIBRARY_ID);
     assertThat(tracked.getLibraryName()).isEqualTo("Satzungen");
     assertThat(tracked.getOutcome()).isEqualTo(TrackedDocumentOutcome.DISPLACED);
-    assertThat(tracked.getDisplacedAtStage()).isEqualTo(RetrievalStage.RANK_FUSION);
-    assertThat(tracked.getDisplacedReason())
-        .isEqualTo(RetrievalVerdictReason.OUTSIDE_FUSION_BUDGET);
+    assertThat(tracked.getDisplacedAtStage()).isEqualTo(RetrievalStageName.RANK_FUSION);
+    assertThat(tracked.getDisplacedReason()).isEqualTo(VerdictReason.OUTSIDE_FUSION_BUDGET);
     assertThat(tracked.getRetrievedChunkCount()).isEqualTo(3);
     assertThat(tracked.getSelectedChunkCount()).isZero();
   }

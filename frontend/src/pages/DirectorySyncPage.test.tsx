@@ -4,7 +4,7 @@ import { HttpResponse, http } from 'msw'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../mocks/server'
 import { mockDirectorySyncStatus, mockPendingPlan } from '../mocks/groupAdminFixtures'
-import { mockOidcProviders } from '../mocks/identityProviderFixtures'
+import { mockOidcProviders } from '@/features/identity-provider/mocks/identityProviderFixtures'
 import {
   manyDirectoryProviders,
   manyDirectoryStatuses,
@@ -12,7 +12,7 @@ import {
 import { renderWithProviders } from '../test/test-utils'
 import DirectorySyncPage from './DirectorySyncPage'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useOidcProviderStore } from '../stores/oidcProviderStore'
+import { useOidcProviderStore } from '@/features/identity-provider'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   useAuthStore.setState({
