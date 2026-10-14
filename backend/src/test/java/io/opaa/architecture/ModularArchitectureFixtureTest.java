@@ -467,21 +467,31 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("DocumentRepository.purgeStale("));
   }
 
-  /** An administrative sweep removes through the cleanup service; the run frame may. */
+  /**
+   * An administrative sweep removes through the cleanup service and a connector through the port;
+   * the run frame may.
+   */
   @Test
   void aRemovalThroughTheCleanupServiceOutsideTheRunIsReported() {
     Scenario scenario = new Scenario("documentdelete");
 
     assertThat(scenario.violations(ModularArchitecture::onlyTheRunRemovesThroughTheCleanupService))
-        .hasSize(2)
-        .allSatisfy(violation -> assertThat(violation).contains("library.AdminSweep"))
-        .anySatisfy(
-            violation ->
-                assertThat(violation).contains("StaleDocumentCleanupService.cleanupVanished("))
+        .hasSize(3)
         .anySatisfy(
             violation ->
                 assertThat(violation)
-                    .contains("StaleDocumentCleanupService.removeWithAttachments"));
+                    .contains("library.AdminSweep")
+                    .contains("StaleDocumentCleanupService.cleanupVanished("))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("library.AdminSweep")
+                    .contains("StaleDocumentCleanupService.removeWithAttachments"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("indexing.source.acme.Sweep")
+                    .contains("VanishedDocumentReconciler.removeWithAttachments("));
   }
 
   /** connections reads the declared support beside the one place; library may. */
