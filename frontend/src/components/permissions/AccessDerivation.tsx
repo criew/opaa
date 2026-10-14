@@ -2,22 +2,59 @@ import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import type { AccessPathResponse, AssetRole, AssetType, SpaceRole } from '@/shared/api/types'
+import type {
+  AccessPathResponse,
+  AssetRole,
+  AssetType,
+  SpaceAccessDerivationResponse,
+  SpaceRole,
+} from '@/shared/api/types'
 import { getAssetAccessDerivation } from '../../services/assetApi'
-import { getSpaceAccessDerivation } from '../../services/spaceApi'
 import { accessBasisLabel } from '../assets/assetLabels'
 import { assetRoleLabel, spaceRoleLabel } from '@/shared/utils/labels'
 import { assetTypeLabel } from '../../shared/assetTypes'
 
-type DerivationTarget =
-  | { kind: 'asset'; assetType: AssetType; assetId: string }
-  | { kind: 'space'; spaceId: string; userId?: string }
+type AssetTarget = { kind: 'asset'; assetType: AssetType; assetId: string }
+type SpaceTarget = { kind: 'space'; spaceId: string; userId?: string }
+type DerivationTarget = AssetTarget | SpaceTarget
 
-interface AccessDerivationProps {
-  /** Welches Objekt die Frage betrifft. */
-  target: DerivationTarget
+/** Loads the derivation of a space; without a user it explains the reading person's own access. */
+export type SpaceDerivationLoader = (
+  spaceId: string,
+  userId?: string,
+) => Promise<SpaceAccessDerivationResponse>
+
+interface DerivationSubject {
   /** Wessen Zugriff erklärt wird; ohne Namen spricht die Herleitung die lesende Person an. */
   subjectName?: string | null
+}
+
+interface AssetDerivationProps extends DerivationSubject {
+  target: AssetTarget
+  load?: never
+}
+
+/** A space derivation is loaded by the caller: the asset theme cannot reach the space API. */
+interface SpaceDerivationProps extends DerivationSubject {
+  target: SpaceTarget
+  load: SpaceDerivationLoader
+}
+
+type AccessDerivationProps = AssetDerivationProps | SpaceDerivationProps
+
+function isSpaceDerivation(props: AccessDerivationProps): props is SpaceDerivationProps {
+  return props.target.kind === 'space'
+}
+
+function loadDerivation(props: AccessDerivationProps) {
+  const request = isSpaceDerivation(props)
+    ? props.load(props.target.spaceId, props.target.userId)
+    : getAssetAccessDerivation(props.target.assetType, props.target.assetId)
+  return request.then((response) => ({
+    paths: response.paths,
+    role: response.effectiveRole ?? null,
+    withheld: response.pathsWithheld,
+  }))
 }
 
 /** Woher ein Weg kommt, klein geschrieben für den Satzanschluss nach dem Gedankenstrich. */
@@ -109,7 +146,8 @@ function administrationSentence(
  * Weg und der Hinweis, dass die höhere Rolle gilt. Ein Weg über eine geschützte Gruppe, die eine
  * andere Person betrifft, bleibt ungenannt und zählt dennoch als Weg.
  */
-export default function AccessDerivation({ target, subjectName = null }: AccessDerivationProps) {
+export default function AccessDerivation(props: AccessDerivationProps) {
+  const { target, subjectName = null } = props
   const key =
     target.kind === 'asset'
       ? `asset:${target.assetType}:${target.assetId}`
@@ -126,19 +164,7 @@ export default function AccessDerivation({ target, subjectName = null }: AccessD
 
   useEffect(() => {
     let active = true
-    const request =
-      target.kind === 'asset'
-        ? getAssetAccessDerivation(target.assetType, target.assetId).then((response) => ({
-            paths: response.paths,
-            role: response.effectiveRole ?? null,
-            withheld: response.pathsWithheld,
-          }))
-        : getSpaceAccessDerivation(target.spaceId, target.userId).then((response) => ({
-            paths: response.paths,
-            role: response.effectiveRole ?? null,
-            withheld: response.pathsWithheld,
-          }))
-    void request
+    void loadDerivation(props)
       .then((response) => {
         if (active) setAnswer({ key, ...response, error: null })
       })

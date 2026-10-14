@@ -130,7 +130,7 @@ describe('SpacePage', () => {
     const renderChats = vi.fn((spaceId: string) => <p>Chats von {spaceId}</p>)
     renderWithProviders(<SpacePage renderChats={renderChats} />, { withRouter: true })
 
-    const heading = await screen.findByRole('heading', { name: 'Chats' })
+    const heading = await screen.findByRole('heading', { name: 'Chats', level: 2 })
     const section = heading.closest('.MuiAccordion-root') as HTMLElement
     expect(within(section).getByText('Chats von space-personal')).toBeInTheDocument()
     expect(renderChats).toHaveBeenCalledWith('space-personal')

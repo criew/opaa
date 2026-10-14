@@ -18,10 +18,10 @@ import type {
   AssetType,
 } from '@/shared/api/types'
 import { detachSpaceAsset, getAssetSpaceAssociations } from '../../services/assetApi'
-import { getSpaces } from '../../services/spaceApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetTypeLabel } from '../../shared/assetTypes'
+import { useSpaceListLoader } from './spaceListContext'
 
 interface AssetSpacesListProps {
   assetType: AssetType
@@ -103,6 +103,7 @@ export default function AssetSpacesList({
   const [links, setLinks] = useState<AssetSpaceAssociationListResponse | null>(null)
   const [curatedSpaceIds, setCuratedSpaceIds] = useState<ReadonlySet<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
+  const loadSpaces = useSpaceListLoader()
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const noun = assetTypeLabel(assetType)
 
@@ -122,7 +123,7 @@ export default function AssetSpacesList({
 
   useEffect(() => {
     let cancelled = false
-    getSpaces()
+    loadSpaces()
       .then((spaces) => {
         if (cancelled) return
         setCuratedSpaceIds(
@@ -138,7 +139,7 @@ export default function AssetSpacesList({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [loadSpaces])
 
   function mayDetach(spaceId: string): boolean {
     return canManage || isSystemAdmin || curatedSpaceIds.has(spaceId)
