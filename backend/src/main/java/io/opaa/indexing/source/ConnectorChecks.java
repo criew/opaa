@@ -137,6 +137,20 @@ public final class ConnectorChecks {
         .withConnectorSettings(read.apply(requested.connectorSettings()));
   }
 
+  /**
+   * A replaced connection as {@code validate} checks it: with the requested connector settings, or
+   * the {@code stored} ones when the request keeps them; the result carries settings only when
+   * {@code requested} does.
+   */
+  public static SourceSettings validateReplacement(
+      UnaryOperator<SourceSettings> validate, SourceSettings stored, SourceSettings requested) {
+    ConnectorData asked = requested.connectorSettings();
+    SourceSettings validated =
+        validate.apply(
+            requested.withConnectorSettings(asked != null ? asked : stored.connectorSettings()));
+    return asked == null ? validated.withConnectorSettings(null) : validated;
+  }
+
   /** {@code sourceCredentials} ({@code user:password}) for Basic Auth. */
   public static BasicCredentials basicCredentials(SourceSettings settings) {
     return BasicCredentials.parse(blankToNull(settings.sourceCredentials()));

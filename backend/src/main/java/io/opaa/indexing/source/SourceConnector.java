@@ -96,17 +96,12 @@ public interface SourceConnector {
    */
   default SourceSettings validateChange(
       SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
-    ConnectorData requestedSettings = requested.connectorSettings();
     if (replacesConnection) {
-      SourceSettings validated =
-          validate(
-              requested.withConnectorSettings(
-                  requestedSettings != null ? requestedSettings : stored.connectorSettings()));
-      return requestedSettings == null ? validated.withConnectorSettings(null) : validated;
+      return ConnectorChecks.validateReplacement(this::validate, stored, requested);
     }
-    return requestedSettings == null
+    return requested.connectorSettings() == null
         ? requested
-        : requested.withConnectorSettings(readSettings(requestedSettings));
+        : requested.withConnectorSettings(readSettings(requested.connectorSettings()));
   }
 
   /**
