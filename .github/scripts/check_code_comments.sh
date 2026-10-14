@@ -14,9 +14,9 @@
 # sources under frontend/src, of frontend/vite.config.ts and of the ESLint configuration
 # (frontend/eslint.config.*, frontend/eslint/), each from the comment start on.
 #
-# Only a line that starts with its comment mark is read: a comment behind code stays unchecked, as
-# telling it from a '#' or '//' inside a string or URL needs a parser per language. A '#!' line is
-# no comment. This script is exempt itself: its header lists the rejected forms as examples.
+# Apart from the frontend sources, only a line that starts with its comment mark is read: a comment
+# behind code stays unchecked, as telling it from a '#' or '//' inside a string or URL needs a
+# parser per language. A '#!' line is no comment. This script is exempt itself: its header lists the rejected forms as examples.
 #
 # Rejected:
 # - review protocol: "#393 code review, finding 1", "#N second review", "#N (review)",
