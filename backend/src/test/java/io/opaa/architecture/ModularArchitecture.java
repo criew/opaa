@@ -21,6 +21,7 @@ import static java.util.Map.entry;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.AccessTarget.CodeUnitAccessTarget;
 import com.tngtech.archunit.core.domain.Dependency;
+import com.tngtech.archunit.core.domain.JavaAccess;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.lang.ArchCondition;
@@ -277,13 +278,15 @@ public final class ModularArchitecture {
   static final Set<Module> SECRET_PORT_HOLDERS = EnumSet.of(KNOWLEDGE, LIBRARY, CONNECTIONS);
 
   /**
-   * The connector's change hooks, relative to the root: only {@link #CHANGE_GATE} calls them, so a
-   * change validates against and compares the effective configuration everywhere.
+   * The connector's change hooks, relative to the root, on the interface or an implementation: only
+   * {@link #CHANGE_GATE} calls them, so a change validates against and compares the effective
+   * configuration everywhere.
    */
-  static final String SOURCE_CONNECTOR = "indexing.source.SourceConnector";
-
   static final Set<String> CHANGE_HOOKS =
-      Set.of("validateChange", "applyChange", "onSourceChanged");
+      Set.of(
+          "indexing.source.SourceConnector#validateChange",
+          "indexing.source.SourceConnector#applyChange",
+          "indexing.source.SourceConnector#onSourceChanged");
 
   static final String CHANGE_GATE = "indexing.source.SourceChangeGate";
 
@@ -304,13 +307,11 @@ public final class ModularArchitecture {
   static final String CONNECTED_ACCOUNTS = "connection.account";
 
   /**
-   * The port of the exact counts of persons' connections, relative to the root, and its methods
-   * that answer them: only {@link #PERSON_NUMBERS} asks them, on the port or an implementation, and
-   * hands out masked numbers.
+   * The exact counts of persons' connections on their port, relative to the root: only {@link
+   * #PERSON_NUMBERS} asks them, on the port or an implementation, and hands out masked numbers.
    */
-  static final String RAW_PERSON_COUNTS_PORT = "connection.profile.PersonConnections";
-
-  static final Set<String> RAW_PERSON_COUNTS = Set.of("countsAmong");
+  static final Set<String> RAW_PERSON_COUNTS =
+      Set.of("connection.profile.PersonConnections#countsAmong");
 
   static final String PERSON_NUMBERS = "connection.profile.PersonNumbers";
 
@@ -431,7 +432,9 @@ public final class ModularArchitecture {
   static final String PROFILE_REPOSITORY = "connection.profile.ConnectionProfileRepository";
 
   static final Set<String> PROFILE_LISTS_OF_ANY_KIND =
-      Set.of("findAll", "findByKindOrderByNameAsc");
+      Set.of(
+          "connection.profile.ConnectionProfileRepository#findAll",
+          "connection.profile.ConnectionProfileRepository#findByKindOrderByNameAsc");
 
   static final String MCP_SERVER_ADMINISTRATION = "connection.profile.McpServerProfileService";
 
@@ -488,12 +491,16 @@ public final class ModularArchitecture {
   /** The cleanup service, relative to the root, whose public methods remove documents in a run. */
   static final String CLEANUP_SERVICE = "indexing.maintenance.StaleDocumentCleanupService";
 
-  /** The port the run frame reconciles through, relative to the root. */
-  static final String RECONCILER = "indexing.source.VanishedDocumentReconciler";
-
-  /** The methods of {@link #CLEANUP_SERVICE} and {@link #RECONCILER} that remove documents. */
+  /**
+   * The methods that remove documents, relative to the root: those of {@link #CLEANUP_SERVICE} and
+   * of the port the run frame reconciles through.
+   */
   static final Set<String> CLEANUP_METHODS =
-      Set.of("reconcile", "cleanupVanished", "removeWithAttachments");
+      Set.of(
+          "indexing.maintenance.StaleDocumentCleanupService#reconcile",
+          "indexing.maintenance.StaleDocumentCleanupService#cleanupVanished",
+          "indexing.maintenance.StaleDocumentCleanupService#removeWithAttachments",
+          "indexing.source.VanishedDocumentReconciler#reconcile");
 
   /** The run frame and the run bodies that remove through the cleanup service. */
   static final Set<String> RUN_REMOVERS =
@@ -1062,14 +1069,10 @@ public final class ModularArchitecture {
             DescribedPredicate.describe(
                 "read " + CONNECTOR_RELEASE + " or call a scoped method of " + CAPABILITY_SERVICE,
                 access -> {
-                  String owner =
-                      relative(access.getTargetOwner().getPackageName())
-                          + "."
-                          + access.getTargetOwner().getSimpleName();
-                  if ((owner + "#" + access.getName()).equals(CONNECTOR_RELEASE)) {
+                  if (CONNECTOR_RELEASE.equals(calledMember(access))) {
                     return true;
                   }
-                  if (!owner.equals(CAPABILITY_SERVICE)
+                  if (!CAPABILITY_SERVICE.equals(relativeName(access.getTargetOwner()))
                       || !(access.getTarget() instanceof CodeUnitAccessTarget target)) {
                     return false;
                   }
@@ -1145,10 +1148,7 @@ public final class ModularArchitecture {
                     continue;
                   }
                   codeUnit.getAccessesFromSelf().stream()
-                      .filter(
-                          access ->
-                              OWN_FORMULA.contains(
-                                  relativeName(access.getTargetOwner()) + "#" + access.getName()))
+                      .filter(access -> OWN_FORMULA.contains(calledMember(access)))
                       .forEach(
                           access ->
                               events.add(
@@ -1162,8 +1162,8 @@ public final class ModularArchitecture {
   }
 
   /**
-   * Calls of {@link #CHANGE_HOOKS} on {@link #SOURCE_CONNECTOR} or an implementation, outside
-   * {@link #CHANGE_GATE}.
+   * Calls of {@link #CHANGE_HOOKS}, on the interface or an implementation, outside {@link
+   * #CHANGE_GATE}.
    */
   ArchRule onlyTheChangeGateCallsTheConnectorChangeHooks() {
     return noClasses()
@@ -1174,12 +1174,8 @@ public final class ModularArchitecture {
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(
-                "call a change hook of " + SOURCE_CONNECTOR,
-                access ->
-                    CHANGE_HOOKS.contains(access.getName())
-                        && (SOURCE_CONNECTOR.equals(relativeName(access.getTargetOwner()))
-                            || access.getTargetOwner().getAllRawInterfaces().stream()
-                                .anyMatch(type -> SOURCE_CONNECTOR.equals(relativeName(type))))))
+                "call one of " + CHANGE_HOOKS,
+                access -> callsOnTypeOrImplementation(access, CHANGE_HOOKS)))
         .because(
             "a change reaches the connector only through the gate, which hands it the effective"
                 + " configuration before and after")
@@ -1201,10 +1197,7 @@ public final class ModularArchitecture {
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(
-                "read " + LIBRARY_SECRET,
-                access ->
-                    LIBRARY_SECRET.contains(
-                        relativeName(access.getTargetOwner()) + "#" + access.getName())))
+                "read " + LIBRARY_SECRET, access -> LIBRARY_SECRET.contains(calledMember(access))))
         .because(
             "the secret has one store; the library administration asks the port, connections the"
                 + " store")
@@ -1270,13 +1263,11 @@ public final class ModularArchitecture {
    * caller: an exact count passed through any other class could reach an answer unmasked.
    */
   ArchRule personNumbersLeaveOnlyMasked() {
-    String port = RAW_PERSON_COUNTS_PORT;
     return noClasses()
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(
                 "call "
-                    + port
                     + RAW_PERSON_COUNTS
                     + " outside "
                     + PERSON_NUMBERS
@@ -1285,14 +1276,8 @@ public final class ModularArchitecture {
                     + " outside its logging caller",
                 access -> {
                   String origin = relativeName(access.getOriginOwner().getBaseComponentType());
-                  boolean raw =
-                      RAW_PERSON_COUNTS.contains(access.getName())
-                          && (port.equals(relativeName(access.getTargetOwner()))
-                              || access.getTargetOwner().getAllRawInterfaces().stream()
-                                  .anyMatch(type -> port.equals(relativeName(type))));
-                  String logOnlyCaller =
-                      LOG_ONLY_PERSON_COUNTS.get(
-                          relativeName(access.getTargetOwner()) + "#" + access.getName());
+                  boolean raw = callsOnTypeOrImplementation(access, RAW_PERSON_COUNTS);
+                  String logOnlyCaller = LOG_ONLY_PERSON_COUNTS.get(calledMember(access));
                   return raw && !PERSON_NUMBERS.equals(origin)
                       || logOnlyCaller != null && !logOnlyCaller.equals(origin);
                 }))
@@ -1322,7 +1307,7 @@ public final class ModularArchitecture {
                   boolean writesPayload = false;
                   boolean namesNeutrally = false;
                   boolean neutralizesPayload = false;
-                  List<com.tngtech.archunit.core.domain.JavaAccess<?>> names = new ArrayList<>();
+                  List<JavaAccess<?>> names = new ArrayList<>();
                   for (var access : codeUnit.getAccessesFromSelf()) {
                     JavaClass owner = access.getTargetOwner();
                     String name = access.getName();
@@ -1370,9 +1355,7 @@ public final class ModularArchitecture {
             DescribedPredicate.describe(
                 "read a person's private storage use outside " + PERSONAL_USAGE_READERS,
                 access -> {
-                  Set<String> readers =
-                      PERSONAL_USAGE_READERS.get(
-                          nestedName(access.getTargetOwner()) + "#" + access.getName());
+                  Set<String> readers = PERSONAL_USAGE_READERS.get(calledMember(access));
                   return readers != null
                       && !readers.contains(relativeName(topLevel(access.getOriginOwner())));
                 }))
@@ -1398,9 +1381,7 @@ public final class ModularArchitecture {
         .accessTargetWhere(
             DescribedPredicate.describe(
                 "call one of " + UNFILTERED_LIBRARY_FINDERS,
-                access ->
-                    UNFILTERED_LIBRARY_FINDERS.contains(
-                        relativeName(access.getTargetOwner()) + "#" + access.getName())))
+                access -> UNFILTERED_LIBRARY_FINDERS.contains(calledMember(access))))
         .because(
             "the administration sees private libraries only summed up (ADR-0041, Entscheidung 6);"
                 + " its views take findSharedByOrganizationId")
@@ -1412,8 +1393,7 @@ public final class ModularArchitecture {
    * #SIGN_IN_PACKAGE}, other than by the two classes that build the value.
    */
   ArchRule theProfileRegistrationLeavesOnlyToTheSignIn() {
-    String owner = PROFILE_REGISTRATION.substring(0, PROFILE_REGISTRATION.indexOf('#'));
-    String method = PROFILE_REGISTRATION.substring(PROFILE_REGISTRATION.indexOf('#') + 1);
+    String owner = ownerOf(PROFILE_REGISTRATION);
     return noClasses()
         .that(
             DescribedPredicate.describe(
@@ -1431,9 +1411,7 @@ public final class ModularArchitecture {
         .accessTargetWhere(
             DescribedPredicate.describe(
                 "call " + PROFILE_REGISTRATION,
-                access ->
-                    access.getName().equals(method)
-                        && owner.equals(relativeName(access.getTargetOwner()))))
+                access -> PROFILE_REGISTRATION.equals(calledMember(access))))
         .orShould()
         .dependOnClassesThat(
             DescribedPredicate.describe(
@@ -1446,8 +1424,8 @@ public final class ModularArchitecture {
   }
 
   /**
-   * Calls of {@link #PROFILE_LISTS_OF_ANY_KIND} on {@link #PROFILE_REPOSITORY} outside the
-   * repository itself and {@link #MCP_SERVER_ADMINISTRATION}.
+   * Calls of {@link #PROFILE_LISTS_OF_ANY_KIND} outside {@link #PROFILE_REPOSITORY} itself and
+   * {@link #MCP_SERVER_ADMINISTRATION}.
    */
   ArchRule connectorPathsSeeOnlyConnectorProfiles() {
     return noClasses()
@@ -1463,10 +1441,8 @@ public final class ModularArchitecture {
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(
-                "list " + PROFILE_REPOSITORY + " across every kind",
-                access ->
-                    PROFILE_LISTS_OF_ANY_KIND.contains(access.getName())
-                        && PROFILE_REPOSITORY.equals(relativeName(access.getTargetOwner()))))
+                "call one of " + PROFILE_LISTS_OF_ANY_KIND,
+                access -> PROFILE_LISTS_OF_ANY_KIND.contains(calledMember(access))))
         .because(
             "an MCP server profile has no source type and no connector; a connector path that"
                 + " listed it would fail on it or show it while the kind stays hidden (ADR-0041,"
@@ -1546,29 +1522,15 @@ public final class ModularArchitecture {
                 "read the refresh token of " + REFRESH_TOKEN_CARRIERS,
                 access ->
                     access.getName().equals("refreshToken")
-                        && REFRESH_TOKEN_CARRIERS.contains(nestedName(access.getTargetOwner()))))
+                        && REFRESH_TOKEN_CARRIERS.contains(relativeName(access.getTargetOwner()))))
         .because(
             "a refresh token goes from the provider into the store and back, never to another"
                 + " class that could hand it out, log it or answer with it")
         .allowEmptyShould(true);
   }
 
-  /**
-   * {@code javaClass} relative to the root as {@code package.Outer$Inner}, {@code null} outside.
-   */
-  private String nestedName(JavaClass javaClass) {
-    String relative = relative(javaClass.getPackageName());
-    if (relative == null) {
-      return null;
-    }
-    String name = javaClass.getName();
-    return relative + "." + name.substring(name.lastIndexOf('.') + 1);
-  }
-
   /** Calls of {@link #ESTABLISHED} outside {@link #ESTABLISHING_PACKAGES}. */
   ArchRule aConnectionIsEstablishedOnlyAfterItsSignIn() {
-    String owner = ESTABLISHED.substring(0, ESTABLISHED.indexOf('#'));
-    String method = ESTABLISHED.substring(ESTABLISHED.indexOf('#') + 1);
     return noClasses()
         .that(
             DescribedPredicate.describe(
@@ -1580,10 +1542,7 @@ public final class ModularArchitecture {
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(
-                "call " + ESTABLISHED,
-                access ->
-                    access.getName().equals(method)
-                        && owner.equals(relativeName(access.getTargetOwner()))))
+                "call " + ESTABLISHED, access -> ESTABLISHED.equals(calledMember(access))))
         .because(
             "it stores a person's secret without signing in; every other path connects through the"
                 + " sign-in first")
@@ -1604,10 +1563,7 @@ public final class ModularArchitecture {
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(
-                "read " + PROFILE_SUPPORT,
-                access ->
-                    PROFILE_SUPPORT.equals(
-                        relativeName(access.getTargetOwner()) + "#" + access.getName())))
+                "read " + PROFILE_SUPPORT, access -> PROFILE_SUPPORT.equals(calledMember(access))))
         .because(
             "the declared support is made REQUIRED by the system administration's switch in one"
                 + " place; connections asks it for the effective support")
@@ -1652,8 +1608,8 @@ public final class ModularArchitecture {
   }
 
   /**
-   * Calls of a removing method of {@link #CLEANUP_SERVICE} or {@link #RECONCILER}, also by method
-   * reference, outside {@link #RUN_REMOVERS}, the classes nested in them and the service itself.
+   * Calls of {@link #CLEANUP_METHODS}, also by method reference, outside {@link #RUN_REMOVERS}, the
+   * classes nested in them and the service itself.
    */
   ArchRule onlyTheRunRemovesThroughTheCleanupService() {
     return noClasses()
@@ -1667,12 +1623,8 @@ public final class ModularArchitecture {
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(
-                "call a removing method of " + CLEANUP_SERVICE,
-                access -> {
-                  String owner = relativeName(access.getTargetOwner());
-                  return (CLEANUP_SERVICE.equals(owner) || RECONCILER.equals(owner))
-                      && CLEANUP_METHODS.contains(access.getName());
-                }))
+                "call one of " + CLEANUP_METHODS,
+                access -> CLEANUP_METHODS.contains(calledMember(access))))
         .because(
             "only a run carries the invariants of a removal - a complete listing for the"
                 + " reconciliation, a positive finding for a single document - and a deletion"
@@ -1688,17 +1640,52 @@ public final class ModularArchitecture {
     return top;
   }
 
-  /** {@code javaClass} relative to the root, {@code null} outside it. */
+  /**
+   * {@code javaClass} relative to the root as {@code package.Outer$Inner}, {@code null} outside it:
+   * the form the lists above name a class in.
+   */
   private String relativeName(JavaClass javaClass) {
     String relative = relative(javaClass.getPackageName());
-    return relative == null ? null : relative + "." + javaClass.getSimpleName();
+    if (relative == null) {
+      return null;
+    }
+    String name = javaClass.getName();
+    return relative + "." + name.substring(name.lastIndexOf('.') + 1);
+  }
+
+  /** The member {@code access} calls as {@code package.Class#member}, relative to the root. */
+  private String calledMember(JavaAccess<?> access) {
+    return relativeName(access.getTargetOwner()) + "#" + access.getName();
+  }
+
+  /**
+   * Whether {@code access} calls one of {@code members}, named {@code package.Class#member}, on the
+   * class itself or on a class implementing it.
+   */
+  private boolean callsOnTypeOrImplementation(JavaAccess<?> access, Set<String> members) {
+    JavaClass target = access.getTargetOwner();
+    return members.stream()
+        .anyMatch(
+            member ->
+                memberOf(member).equals(access.getName())
+                    && (ownerOf(member).equals(relativeName(target))
+                        || target.getAllRawInterfaces().stream()
+                            .anyMatch(type -> ownerOf(member).equals(relativeName(type)))));
+  }
+
+  private static String ownerOf(String member) {
+    return member.substring(0, member.indexOf('#'));
+  }
+
+  private static String memberOf(String member) {
+    return member.substring(member.indexOf('#') + 1);
   }
 
   /**
    * The entries of {@code names} that resolve to nothing below the root: a class as {@code
    * package.Class} or {@code package.Outer$Inner}, a method or field as {@code
-   * package.Class#member} declared or inherited. A rule over such a name checks nothing, so the
-   * lists above must hold only names that resolve.
+   * package.Class#member} declared, or inherited public. A rule over such a name checks nothing, so
+   * the lists above must hold only names that resolve.
    */
   List<String> unresolved(Collection<String> names) {
     List<String> dead = new ArrayList<>();

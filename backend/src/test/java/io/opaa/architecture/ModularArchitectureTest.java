@@ -328,7 +328,8 @@ class ModularArchitectureTest {
             ModularArchitecture.CLEANUP_SERVICE,
             ModularArchitecture.CONNECTOR_RELEASE,
             "connection.token.NewSecret$OAuthGrant",
-            "knowledge.KnowledgeLibraryRepository#findAll");
+            "knowledge.KnowledgeLibraryRepository#findAll",
+            "indexing.document.DocumentIngestOutcomes$QuotaMessages#of");
     assertThat(ARCHITECTURE.unresolved(names))
         .as("rename or remove the entry in ModularArchitecture")
         .isEmpty();
