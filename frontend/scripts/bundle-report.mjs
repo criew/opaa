@@ -2,7 +2,7 @@
 // imports (transitively) and, per route, the route's own chunk once the page is lazy-loaded.
 // Reads dist/.vite/manifest.json (build.manifest), so run `pnpm run build` first.
 // Usage: node scripts/bundle-report.mjs [outDir] - writes bundle-report.{md,json} into outDir.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync, brotliCompressSync } from 'node:zlib'
@@ -14,7 +14,7 @@ const outDir = process.argv[2] ?? fileURLToPath(new URL('../bundle-report', impo
 // costs the entry alone; once it is, the page chunk and its not yet loaded imports are added.
 const ROUTES = {
   '/login': 'src/pages/LoginPage.tsx',
-  '/chat': 'src/pages/ChatPage.tsx',
+  '/spaces/:spaceId/chats/:chatId': 'src/pages/ChatPage.tsx',
   '/catalog': 'src/pages/CatalogPage.tsx',
   '/admin/users': 'src/pages/UserManagementPage.tsx',
 }
@@ -56,6 +56,9 @@ const entryKeys = staticClosure(entryKey)
 const rows = [{ name: 'Einstieg', ...sizes(entryKeys) }]
 for (const [route, module] of Object.entries(ROUTES)) {
   const chunk = manifest[module]
+  if (!existsSync(fileURLToPath(new URL('../' + module, import.meta.url)))) {
+    throw new Error(`Route ${route}: ${module} does not exist`)
+  }
   const lazy = chunk?.isDynamicEntry ? staticClosure(module, entryKeys) : new Set()
   rows.push({ name: route, lazy: lazy.size > 0, ...sizes(new Set([...entryKeys, ...lazy])) })
 }

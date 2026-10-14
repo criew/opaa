@@ -424,6 +424,7 @@ jobs:
         with:
           name: frontend-bundle-report
           path: frontend/bundle-report/
+          retention-days: 14
 
   # Builds both images on an arm64 runner and starts them hardened against PostgreSQL with pgvector
   # (.github/scripts/image_smoke_test.sh), since publish-images.yml publishes arm64 without starting
