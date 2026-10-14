@@ -27,6 +27,11 @@ import org.junit.jupiter.api.Test;
 /**
  * Holds the main classes of the backend to the logical modules and the layering declared in {@link
  * ModularArchitecture}. Reads the compiled classes directly, without a Spring context.
+ *
+ * <p>Beside modules, edges, layers and cycles it holds the order inside {@code indexing} and {@code
+ * connection}, the isolation of the connectors, the place of the web layer and the release of
+ * connector libraries. Every list must match the code: an unassigned package fails naming both
+ * lists, and a listed package, an allowed edge or a named class that is gone fails as well.
  */
 class ModularArchitectureTest {
 

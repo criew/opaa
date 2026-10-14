@@ -19,7 +19,7 @@
  * <p><b>Every new changeset gets its own delta test here</b>, except purely additive DDL that
  * touches no existing row (new table, nullable column without default, non-unique index); that
  * relies on the layout, boundary and order tests, which run on an empty schema. The exact list is
- * in backend/AGENTS.md. A delta test's {@code baseFixtureChangelogs()} is {@link
+ * in backend/docs/liquibase.md. A delta test's {@code baseFixtureChangelogs()} is {@link
  * io.opaa.migration.MasterChangelog#filesExcept(String...)} of its file - the state of an existing
  * installation that receives it - then it seeds representative rows through JDBC, applies only the
  * new file and asserts on the resulting schema and data. {@link
