@@ -6,7 +6,7 @@
 # assert against a deterministic, offline stand-in instead, the same reasoning
 # e2e/docker-compose.e2e.yml already applies to the "e2e" target.
 
-# Same anchor pattern as e2e/docker-compose.e2e.yml, for the same reason (PR #453 review): one
+# Same anchor pattern as e2e/docker-compose.e2e.yml, for the same reason: one
 # place to change pgvector's column width and ai-stub's own default together.
 x-embedding-dimensions: &embedding-dimensions "1536"
 
@@ -19,7 +19,7 @@ services:
         # waiting for the stub's own /health first is what actually guarantees it can already
         # answer that call (see e2e/docker-compose.e2e.yml's identical comment).
         condition: service_healthy
-      # #1383/#1520: the seed triggers both S3 libraries' runs right after the backend is ready and
+      # The seed triggers both S3 libraries' runs right after the backend is ready and
       # uploads into the object store, so all three buckets must exist and the two source buckets
       # must be filled by then - the backend therefore only starts once the mirror step has
       # finished. Only here, not in docker-compose.yml: a depends_on on a profile-gated service

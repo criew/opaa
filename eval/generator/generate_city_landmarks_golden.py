@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Deterministic golden-dataset generator for the "city-landmarks" domain (issue #234, PR #730
-review). Parses the generated `eval/corpus/city-landmarks/*.md` documents directly (regular
+"""Deterministic golden-dataset generator for the "city-landmarks" domain. Parses the generated
+`eval/corpus/city-landmarks/*.md` documents directly (regular
 expressions against the generator's own, known sentence templates) and a Docker-free chunk map
 (`backend/build/eval-reports/chunk-map-city-landmarks-dryrun.json`, produced by
 `io.opaa.eval.CityLandmarksChunkSizeDryRunTest`) to curate `boundary_span` cases near real chunk
@@ -29,8 +29,8 @@ CORPUS_DIR = REPO_ROOT / "eval" / "corpus" / "city-landmarks"
 CHUNK_MAP = REPO_ROOT / "backend" / "build" / "eval-reports" / "chunk-map-city-landmarks-dryrun.json"
 OUT_PATH = REPO_ROOT / "eval" / "golden" / "city-landmarks.json"
 
-# Must match RANK_NEIGHBOR_RADIUS in generate_city_landmarks_corpus.py. PR #730 review
-# (verification round): a pure rank-distance assert (abs(rank_a - rank_b) > RANK_NEIGHBOR_RADIUS)
+# Must match RANK_NEIGHBOR_RADIUS in generate_city_landmarks_corpus.py. A pure rank-distance
+# assert (abs(rank_a - rank_b) > RANK_NEIGHBOR_RADIUS)
 # does not actually guarantee independence — the corpus generator's neighbor window is edge-aware
 # (a city near rank 1 or rank 200 extends its window further in the other direction to keep a
 # consistent neighbor count, see build_cities() there), so a fixed distance threshold can still
@@ -58,16 +58,16 @@ def frontmatter_field(text: str, key: str) -> str | None:
 
 def extract_landmark_headers(text: str) -> list[str]:
     """Landmark names in document order, read from '## ' section headers — never derived from
-    sentence text (PR #730 review, Wichtig 5: a regex split on '.' previously truncated names
-    containing abbreviations like 'St.', e.g. 'Kathedrale St. Josef' became 'Kathedrale St').
+    sentence text (a regex split on '.' would truncate names containing abbreviations like
+    'St.', e.g. 'Kathedrale St. Josef' would become 'Kathedrale St').
     """
     return re.findall(r"^## (.+)$", text, re.MULTILINE)
 
 
 def build_query_subject(landmark_name: str, city_name: str) -> str:
-    """PR #730 review, Wichtig 5: several Wikidata landmark labels already embed the city name
+    """Several Wikidata landmark labels already embed the city name
     (e.g. "Admiralität in Sankt Petersburg"), producing a duplicated "... in Sankt Petersburg in
-    Sankt Petersburg?" when the query template unconditionally appended it. Suppressed here."""
+    Sankt Petersburg?" if the query template appended it unconditionally. Suppressed here."""
     if city_name and city_name in landmark_name:
         return landmark_name
     return f"{landmark_name} in {city_name}" if city_name else landmark_name
@@ -110,7 +110,7 @@ def main() -> None:
     for filename, query in overview_targets:
         add_case(query, [filename], "city_overview")
 
-    # NIT 7 fix: sample every 20th document by position, but skip any filename already used above
+    # Sample every 20th document by position, but skip any filename already used above
     # so the same city never appears twice under city_overview.
     used_filenames = set(hardcoded_filenames)
     for path in md_files[::20]:
@@ -212,9 +212,9 @@ def main() -> None:
         if not match:
             continue
         sentence = match.group(1).strip()
-        # Wichtig 5: identify the two landmark names by matching against the known header list
+        # Identify the two landmark names by matching against the known header list
         # (exact strings), not by splitting the comparison sentence's own text on any delimiter —
-        # this is what previously truncated names containing "St." at the embedded period.
+        # that would truncate names containing "St." at the embedded period.
         comparison_text = match.group(2)
         matched_headers = [h for h in headers if h in comparison_text]
         if len(matched_headers) < 2:
@@ -235,7 +235,7 @@ def main() -> None:
     )
 
     def neighbor_names(filename: str) -> set[str]:
-        """PR #730 review (verification round, Wichtig 3 corrected): reads the document's own
+        """Reads the document's own
         rendered "... in der Nähe von A (Rang N, ...), B (Rang M, ...)." sentence instead of
         recomputing the generator's edge-aware window formula a second time — this is the actual
         ground truth a retrieval system would see, including the edge-extension near rank 1/200
@@ -296,11 +296,10 @@ def main() -> None:
     assert not missing, "unresolved answer_span(s) found — see above"
     assert not duplicates, "duplicate golden cases found — see above"
 
-    # PR #730 review (verification round): the corpus generator already pins newline="\n"
-    # (write_manifest()); this script didn't, so the working-tree copy of this file picked up
-    # platform line endings (CRLF on Windows) that diverged from the .gitattributes-declared,
-    # actually-committed LF blob content — the exact bug that invalidated the first baseline
-    # (goldenDatasetSha256 mismatch between a local Windows run and GitHub Actions).
+    # newline="\n" like the corpus generator (write_manifest()): without it the working-tree copy
+    # of this file picks up platform line endings (CRLF on Windows) that diverge from the
+    # .gitattributes-declared, committed LF blob content, and goldenDatasetSha256 no longer matches
+    # between a local Windows run and GitHub Actions.
     with open(OUT_PATH, "w", encoding="utf-8", newline="\n") as f:
         json.dump(cases, f, ensure_ascii=False, indent=2)
     print("written to", OUT_PATH)

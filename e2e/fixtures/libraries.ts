@@ -3,8 +3,7 @@ import { expect, test } from './auth'
 
 /**
  * Shared building blocks for scenarios that create throwaway knowledge libraries and clean them up
- * again over the API (#424, #471, #547, #1944). Kept here once instead of copied per spec file -
- * the same three helpers had grown a third copy before #1944's review caught it.
+ * again over the API. Kept here once instead of copied per spec file.
  */
 
 /**

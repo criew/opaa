@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * axe-core check shared by the accessibility scenarios (#586).
+ * axe-core check shared by the accessibility scenarios.
  *
  * Only "serious" and "critical" violations fail the suite - that is the threshold fixed in
  * docs/design/accessibility.md §3.1. "minor"/"moderate" findings are attached to the test as
@@ -42,7 +42,7 @@ function describeViolation(violation: Violation): string {
  * Settles the page before it is measured: waits until the running finite animations and
  * transitions have reached their end state. axe derives an element's effective colour from the
  * frame it sees, so a page still fading in yields interpolated colours that exist in no end state,
- * and `color-contrast` reports pairs the interface never shows (#1643). Skipped are animations
+ * and `color-contrast` reports pairs the interface never shows. Skipped are animations
  * that would never settle - endless repetition (loading indicators), unbounded duration, and
  * paused ones. Returns the number of animations still running when the wait gave up, so a caller
  * can surface that instead of silently measuring an unsettled page. Two frames pass first: a

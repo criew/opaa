@@ -8,8 +8,7 @@ computed by filtering the parsed frontmatter fields, never guessed by an LLM
 and never hand-typed against a document the author merely skimmed.
 
 Design goals (docs/features/search-quality-evaluation.md, "Golden Dataset";
-ADR-0011; issue #226 and its two review comments; issue #274, the follow-up
-review that corrected and hardened several of the below):
+ADR-0011):
 
 - Deterministic: candidates are built by iterating entities and fixed
   parameter lists in a stable order (corpus id order, then a fixed field/
@@ -21,12 +20,12 @@ review that corrected and hardened several of the below):
   window selection — never as a post-hoc filter on an already-fixed result
   set. See the comment block above `OVERALL_SCORE_BELOW_THRESHOLDS` for the
   full rule and this domain's sentinel table (`overall_score: null` and
-  `overall_score: "∞"`), and issue #226's second review comment for why the
+  `overall_score: "∞"`), and the comment on `Entity.is_rated` for why the
   `null` exclusion additionally, deliberately crosses into the five
   attribute-score fields (a distinct, cross-field rule, not the same thing).
 - `first_appearance` and `occupation` are excluded from `attribute_lookup`/
-  `entity_description` once they exceed a length threshold, per issue #226's
-  first review comment: a number of rows carry text bled over from another
+  `entity_description` once they exceed a length threshold: a number of rows
+  carry text bled over from another
   source column (e.g. `comic-0226_brainiac-5.md`'s `first_appearance` is a
   force-field description; `comic-0498_gambit.md`'s `occupation` is an
   address list).
@@ -37,13 +36,13 @@ review that corrected and hardened several of the below):
 - All free-text comparisons (`entity_description`'s uniqueness check,
   `multi_attribute_filter`'s alignment/creator/ability match) are
   case-insensitive (`_ci_eq`/`_ci_in`), because the corpus carries some
-  values in two casings for the same fact (issue #274: `eye_color` has both
+  values in two casings for the same fact (`eye_color` has both
   `"Brown"` and `"brown"`) and no embedding distinguishes the two.
 
 Output: this script writes the candidate pool and the curated selection —
-not a third "discarded" file (issue #274: an earlier version wrote one, but
-every entry carried the same constant, uninformative reason string, and the
-file was fully reconstructible as `candidates − curated` anyway; see
+not a third "discarded" file: every entry would carry the same constant,
+uninformative reason string, and the file is fully reconstructible as
+`candidates − curated` anyway; see
 eval/golden/README.md for how to reconstruct it on demand instead of paying
 its ~370 KB in every clone).
 
@@ -53,8 +52,8 @@ its ~370 KB in every clone).
   `CURATED_CASES` near the bottom of this file), by
   (`natural_key`, `query`, `expected_documents` fingerprint) triple rather
   than by sequential `id` — see the comment on `CURATED_CASES` for why
-  `id`-based selection (the original, issue #226 version of this list) was
-  unsafe, and why the fingerprint's third element was added afterwards.
+  `id`-based selection is unsafe, and what the fingerprint's third element
+  catches.
 
 Usage:
     python eval/generator/generate_golden_dataset.py
@@ -76,15 +75,15 @@ CORPUS_DIR = REPO_ROOT / "eval" / "corpus" / "comic-characters"
 GOLDEN_DIR = REPO_ROOT / "eval" / "golden"
 DOMAIN = "comic-characters"
 
-# --- Review-mandated thresholds (see module docstring) ----------------------
+# --- Length thresholds (see module docstring) -------------------------------
 
-# issue #226, first review comment: fields observed contaminated with
+# Fields observed contaminated with
 # free text from another source column above these lengths (15 documents
 # for first_appearance, 27 for occupation in the current corpus).
 FIRST_APPEARANCE_MAX_LEN = 100
 OCCUPATION_MAX_LEN = 120
 
-# issue #226, second review comment: the reliable "unrated character" test
+# The reliable "unrated character" test
 # is `overall_score is not null`, not a test on the five attribute scores
 # themselves (see the comment on `parse_score()` in generate_corpus.py and
 # `Entity.is_rated` / `ATTRIBUTE_LABELS` below, which enumerate the five
@@ -145,17 +144,15 @@ class Entity:
     @property
     def is_rated(self) -> bool:
         """`overall_score` is not `null` — `False` only for the 105
-        "unrated" characters. This is the gate for the *cross-field* rule
-        (issue #226's second review comment): those 105 documents contain
-        the literal sentence "scores 0 for intelligence, 0 for strength,
+        "unrated" characters. This is the gate for the *cross-field* rule:
+        those 105 documents contain the literal sentence "scores 0 for intelligence, 0 for strength,
         ..." in their prose, contaminating the five *attribute* scores, not
         `overall_score` itself. `overall_score: "∞"` entities are rated
         (`is_rated` is `True` for them) — their five attribute scores carry
         no such contamination, so the cross-field rule must not touch them
-        (issue #274, finding 1: an earlier version of this property
-        conflated this with `has_numeric_overall` below, and via
-        `scored_entities` incorrectly excluded the 18 "∞" entities from
-        every five-attribute-score query too, violating the sentinel rule's
+        (conflating this with `has_numeric_overall` below would, via
+        `scored_entities`, exclude the 18 "∞" entities from every
+        five-attribute-score query too, violating the sentinel rule's
         required field-scoping).
         """
         return self.fields.get("overall_score") is not None
@@ -213,7 +210,7 @@ class Candidate:
     # upstream (corpus edit, a stricter filter) makes some *other* candidate
     # newly appear or disappear and every candidate after it in `id`-space
     # renumbers. `CURATED_CASES` below selects by `natural_key`, not by `id`,
-    # for exactly that reason (see issue #274, finding 3).
+    # for exactly that reason.
     natural_key: str
     # Structured version of the same audit information, used by
     # `generate_crosslingual()` to build a German candidate from an already-
@@ -252,7 +249,7 @@ ATTRIBUTE_LOOKUP_FIELDS = [
     ("real_name", "What is {name}'s real name?"),
     ("place_of_birth", "Where was {name} born?"),
     ("occupation", "What is {name}'s occupation?"),
-    # Neutral on purpose (issue #274): `first_appearance` is not always a
+    # Neutral on purpose: `first_appearance` is not always a
     # comic issue — e.g. comic-0099_atom-cw.md's is "Arrow Season 3: Episode
     # 1", a TV episode. The ground truth (that one document) stays correct
     # either way, but "In which comic did ... first appear?" is a factually
@@ -280,7 +277,7 @@ MAX_CANDIDATES_PER_FIELD = 20
 # corpus instead of that narrow slice — but a *plain* stride starting at
 # index 0 for every field still lands on the same handful of entities for
 # most fields, because the first few entities at stride-distance apart tend
-# to have most fields populated (issue #274: 60 single-document cases
+# to have most fields populated (observed: 60 single-document cases
 # concentrated on only 29 entities, 43% of them on just 3 characters).
 # `_spread()` therefore also rotates its starting point per caller — see
 # `offset` below — so different fields/templates sample different regions
@@ -375,7 +372,7 @@ def _lowercase_first_word(text: str) -> str:
 
 def _ci_eq(a: object, b: object) -> bool:
     """Case- and whitespace-insensitive equality for the free-text source
-    columns. Issue #274: the corpus carries some columns (observed:
+    columns. The corpus carries some columns (observed:
     `eye_color`) in two casings for the same value — e.g. `eye_color` is
     `"Brown"` 271 times and `"brown"` 3 times. No embedding distinguishes
     "brown" from "Brown", so a case-sensitive uniqueness/filter check
@@ -412,7 +409,7 @@ MAX_CANDIDATES_PER_DESCRIPTION_TEMPLATE = 20
 
 def generate_entity_description(entities: list[Entity]) -> list[Candidate]:
     candidates: list[Candidate] = []
-    # Same rotation reasoning as generate_attribute_lookup() (issue #274):
+    # Same rotation reasoning as generate_attribute_lookup():
     # three templates all starting their spread at index 0 concentrated
     # heavily on the same few entities.
     template_offset_step = len(entities) // len(DESCRIPTION_TEMPLATES)
@@ -568,8 +565,8 @@ def generate_multi_attribute_filter(entities: list[Entity]) -> list[Candidate]:
 # --- Category 4: numeric_range ------------------------------------------------
 #
 # "Which characters have an {attribute} score {operator} {threshold}?" — all
-# matching documents (excluding `overall_score: null` entities, per the
-# issue's second review comment) are the ground truth, kept only if the
+# matching documents (excluding `overall_score: null` entities, see
+# `Entity.is_rated`) are the ground truth, kept only if the
 # result window is [2, 15].
 
 ATTRIBUTE_LABELS = {
@@ -597,7 +594,7 @@ BELOW_THRESHOLDS_BY_ATTRIBUTE = {
     "combat_score": [10, 15],
 }
 
-# --- The general sentinel rule (issue #274) ---------------------------------
+# --- The general sentinel rule ---------------------------------
 #
 # Every field used in a numeric_range candidate can carry a *sentinel* value
 # that is not a real measurement — a placeholder the source dataset uses for
@@ -635,7 +632,7 @@ BELOW_THRESHOLDS_BY_ATTRIBUTE = {
 # The five attribute scores have *no sentinel of their own* — but they are
 # still gated by `Entity.is_rated` here (`scored_entities` below), which is
 # a **separate, additional, cross-field rule**, not this sentinel rule: per
-# issue #226's second review comment, `overall_score: null` correlates with
+# `overall_score: null` correlates with
 # contaminated prose on the *five attribute fields* ("scores 0 for
 # intelligence, 0 for strength, ..." — the literal sentence embedded in the
 # corpus for exactly the 105 unrated entities). That contamination has
@@ -668,7 +665,7 @@ def generate_numeric_range(entities: list[Entity]) -> list[Candidate]:
     # `is_rated`, not `has_numeric_overall`: this must *not* additionally
     # exclude `overall_score: "∞"` entities — their five attribute scores
     # carry no contamination, so excluding them here would violate the
-    # sentinel rule's required field-scoping (issue #274, finding 1).
+    # sentinel rule's required field-scoping.
     scored_entities = [e for e in entities if e.is_rated]
 
     for score_field, thresholds in BELOW_THRESHOLDS_BY_ATTRIBUTE.items():
@@ -763,7 +760,7 @@ GERMAN_ATTRIBUTE_TEMPLATES = {
     "real_name": "Wie lautet der echte Name von {name}?",
     "place_of_birth": "Wo wurde {name} geboren?",
     "occupation": "Welchen Beruf übt {name} aus?",
-    # Neutral like the English template (issue #274) — `first_appearance`
+    # Neutral like the English template — `first_appearance`
     # is not always a comic issue (e.g. "Arrow Season 3: Episode 1").
     "first_appearance": "Wo trat {name} zuerst auf?",
     "alignment": "Ist {name} gut, böse oder neutral?",
@@ -777,15 +774,14 @@ def _sample_across_groups(items: list[Candidate], group_key, total: int) -> list
     the groups `group_key` partitions `items` into, instead of a single
     positional stride over the flat list.
 
-    Issue #274: `filter_candidates[::step][:12]` and
-    `range_candidates[::step][:12]` did not achieve the "evenly spread"
-    comment above them — with 16 range candidates, `step` rounded down to 1,
-    so the "sample" was just the first 12 items in iteration order, and
+    A positional stride like `filter_candidates[::step][:12]` does not
+    spread evenly — with 16 range candidates, `step` rounds down to 1,
+    so the "sample" is just the first 12 items in iteration order, and
     iteration order happens to put every "below" candidate before any
     "above" one (10 attribute-below-threshold candidates, then 2
-    overall_score-below, then 4 overall_score-above): all 12 selected were
-    "below". With 167 filter candidates, `step=13` never reaches the last
-    ~23 indices, so the alignment group iterated last (`Neutral`) is
+    overall_score-below, then 4 overall_score-above): all 12 selected would
+    be "below". With 167 filter candidates, `step=13` never reaches the last
+    ~23 indices, so the alignment group iterated last (`Neutral`) would be
     under-represented. Grouping first and sampling within each group avoids
     both failure modes and stays fully deterministic (fixed grouping order,
     fixed per-group stride)."""
@@ -843,13 +839,13 @@ def generate_crosslingual(
 
     # Translated multi_attribute_filter candidates: grouped by alignment so
     # all three alignments are represented, not just the first ones in
-    # iteration order (issue #274).
+    # iteration order.
     for source in _sample_across_groups(filter_candidates, lambda c: c.meta["alignment"], 12):
         alignment = source.meta["alignment"]
         creator = source.meta["creator"]
         ability = source.meta["ability"]
         # "verfügen über die Fähigkeit" instead of "beherrschen die
-        # Fähigkeit" (issue #274): several sampled abilities are passive
+        # Fähigkeit": several sampled abilities are passive
         # resistances or traits (e.g. "Mind Control Resistance",
         # "Self-Sustenance") that nobody "masters" ("beherrscht") — "have/
         # possess the ability" holds for both active powers and passive
@@ -873,7 +869,7 @@ def generate_crosslingual(
         )
 
     # Translated numeric_range candidates: grouped by comparison operator so
-    # both "below/unter" and "above/über" are represented (issue #274).
+    # both "below/unter" and "above/über" are represented.
     for source in _sample_across_groups(range_candidates, lambda c: c.meta["op"], 12):
         label = _german_attribute_label(source.meta["field"])
         op = source.meta["op"]
@@ -942,13 +938,13 @@ def _german_attribute_label(score_field: str) -> str:
 #
 # Selection is by (`natural_key`, `query`, `expected_documents_fingerprint`)
 # triple, not by the sequential `id` a candidate happens to get in a given
-# run (issue #274, finding 3): `id`s are assigned in generation order, so a
+# run: `id`s are assigned in generation order, so a
 # field that used to yield exactly `MAX_CANDIDATES_PER_FIELD` candidates but
 # yields one fewer after a corpus update silently renumbers every candidate
 # after it — `comic-attr-101` would keep existing, but now name a different
-# entity and possibly a different field, while `CURATED_CASE_IDS` (the old,
-# id-based version of this list) kept pointing at that position and picked
-# up the swap without any error. `natural_key` is derived purely from
+# entity and possibly a different field, while an id-based list would keep
+# pointing at that position and pick up the swap without any error.
+# `natural_key` is derived purely from
 # generating parameters (field, entity, threshold, ...), so it identifies
 # "the same" candidate regardless of how many other candidates exist around
 # it. The paired `query` string is a second, independent, human-readable
@@ -956,9 +952,8 @@ def _german_attribute_label(score_field: str) -> str:
 # that candidate's *query text* differs from what was curated, something
 # about the generating logic changed underneath this selection.
 #
-# Neither of those two catches a *third* drift mode (issue #274, follow-up
-# review, finding 2, reproduced by the reviewer against a live copy of this
-# script): `natural_key` and `query` can both stay identical while
+# Neither of those two catches a *third* drift mode: `natural_key` and
+# `query` can both stay identical while
 # `expected_documents` — the actual ground truth — silently changes, e.g. a
 # more robust `superpowers` parser than today's `.split(", ")` shifting which
 # entities match a given ability. The corpus itself is protected by
@@ -1090,7 +1085,7 @@ CURATED_CASES: list[tuple[str, str, str]] = (
     # is a distinct field, filter or range constraint translated to German,
     # not a near-duplicate of another crosslingual candidate. Both filter
     # alignments (Good/Bad/Neutral) and both range directions (below/above)
-    # are represented (issue #274).
+    # are represented.
     + [
         ("de::attr::eye_color::comic-0008_abin-sur.md", "Welche Augenfarbe hat Abin Sur?", "99b8a89a2a5a095d12ad48366cc2e19bf37b59985f0e189770ed4d2750490f24"),
         ("de::attr::hair_color::comic-0145_batwoman.md", "Welche Haarfarbe hat Batwoman?", "40d43271d7609c10babf7d2facf7a3e650112b2f7453a5bfe46cf72c3aedea89"),
@@ -1137,7 +1132,7 @@ def expected_documents_fingerprint(expected_documents: list[str]) -> str:
     """A fingerprint of a candidate's ground truth *set*, independent of
     ordering (`sorted(...)`). Part of the `CURATED_CASES` triple — see the
     comment block above that list for why `natural_key` and `query` alone
-    are not enough (issue #274, follow-up review, finding 2)."""
+    are not enough."""
     return hashlib.sha256("|".join(sorted(expected_documents)).encode("utf-8")).hexdigest()
 
 
@@ -1261,11 +1256,9 @@ def main() -> None:
         actual_fingerprint = expected_documents_fingerprint(candidate.expected_documents)
         if actual_fingerprint != expected_fingerprint:
             # natural_key and query text are both unchanged, but the ground
-            # truth itself now resolves to a different set of documents —
-            # issue #274, follow-up review finding 2 (reproduced live by
-            # adding "Reality Warping" to comic-0001_3-d-man.md and
-            # re-running: comic-filter-001 silently went from n=7 to n=8
-            # with exit code 0 before this check existed).
+            # truth itself now resolves to a different set of documents
+            # (e.g. adding "Reality Warping" to comic-0001_3-d-man.md moves
+            # comic-filter-001 from n=7 to n=8).
             ground_truth_changed.append((natural_key, [], candidate.expected_documents))
             continue
         curated.append(candidate)

@@ -48,9 +48,9 @@ async function openManagement(page: Page, libraryName: string): Promise<void> {
 }
 
 /**
- * Der Abschnitt „Berechtigungen" des Reiters — seit #1941 ein `section` mit `aria-labelledby` auf
+ * Der Abschnitt „Berechtigungen" des Reiters — ein `section` mit `aria-labelledby` auf
  * seine Überschrift (PageSection.tsx), also eine `region` mit Namen. Er grenzt die Zusicherungen
- * auf die Freigabeliste ein, wo früher der Dialog das tat. Eine erteilte Freigabe wird über den
+ * auf die Freigabeliste ein. Eine erteilte Freigabe wird über den
  * Entzugsknopf ihrer Zeile geprüft, nicht über ihren Namen: Der steht auch im Einleitungssatz des
  * Abschnitts und in der Empfängerauswahl des Formulars.
  */
@@ -137,8 +137,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     // Administering is not reading: without a grant the system administration does not list it.
     await expectNotInPromptList(admin, LIBRARY_NAME)
 
-    // Seit #1941 stehen die Berechtigungen als Abschnitt auf der Seite, nicht mehr hinter dem
-    // Knopf „Rechte verwalten" in einem Dialog.
+    // Die Berechtigungen stehen als Abschnitt auf der Seite, nicht hinter einem Dialog.
     await openManagement(owner, LIBRARY_NAME)
     await owner.getByRole('button', { name: 'Freigeben' }).click()
     const personInput = owner.getByRole('combobox', { name: 'Person oder Gruppe suchen' })

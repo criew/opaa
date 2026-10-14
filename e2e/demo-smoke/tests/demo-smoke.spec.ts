@@ -30,7 +30,7 @@ const DEMO_USERNAME = 'maria.weber'
 const DEMO_PASSWORD = 'RheinfurtDemo!2026'
 const DEMO_ADMIN_USERNAME = 'demo-admin'
 
-// The sixth demo library (#1383): fed from the demo stack's object store bucket over the S3
+// The sixth demo library: fed from the demo stack's object store bucket over the S3
 // connector (demo/seed/profiles.py, docker-compose.yml's "objectstore"/"objectstore-seed"). Its
 // documents are the council records under demo/corpus/ratsinformationen/<jahr>/<Gremium>/, named
 // <datum>-<gremium>-<art>-… (a Vorlage's PDF attachments carry the Vorlage's name as prefix).
@@ -78,7 +78,7 @@ async function signInAtKeycloak(
   { providerName, realm, username }: KeycloakLogin,
   landing: Parameters<Page['waitForURL']>[0],
 ): Promise<{ id: string; email: string | null; displayName: string | null }> {
-  // #1631: entering the sign-in page starts one automatic attempt with prompt=none, and the page
+  // Entering the sign-in page starts one automatic attempt with prompt=none, and the page
   // keeps its tiles disabled until that attempt has had its turn. In a fresh browser context
   // Keycloak has no session to hand over and answers login_required, which brings the page back
   // here - waiting for the tile keeps the click below off a page that is about to navigate away.
@@ -132,10 +132,10 @@ test.describe('Demo-Smoke (#232)', () => {
   }) => {
     await loginViaKeycloak(page, { providerName: 'Verzeichnisdienst', realm: 'opaa', username: DEMO_USERNAME })
 
-    // #230: the demo/source notice (frontend/src/app/shell/DemoNotice.tsx), shown only when the
+    // The demo/source notice (frontend/src/app/shell/DemoNotice.tsx), shown only when the
     // frontend container's OPAA_DEMO_MODE flag is on (e2e/demo-smoke.env) - a real demo deployment
     // always sets it, so this run's own stack must match that, not just the belegte-Antwort
-    // scenario below. Since #1921 it lives behind "Info zu OPAA" in the profile menu.
+    // scenario below. It lives behind "Info zu OPAA" in the profile menu.
     await page.getByRole('button', { name: 'Profil und Einstellungen' }).click()
     await page.getByRole('menuitem', { name: /^Info zu / }).click()
     await expect(
@@ -147,7 +147,7 @@ test.describe('Demo-Smoke (#232)', () => {
     await page.getByRole('button', { name: 'Schließen' }).click()
 
     await startFreshChat(page)
-    // "Gebührenfrage" from docs/market/demo-drehbuch.md, question 1 (#713) - guaranteed to have an
+    // "Gebührenfrage" from docs/market/demo-drehbuch.md, question 1 - guaranteed to have an
     // answer in the corpus (demo/generator, #711) and readable by every fach account, Maria included
     // (docs/features/demo-instance.md, "Nutzer, Spaces und Berechtigungen"). The concrete wording
     // is symbolic with ai-stub, though: every input gets the same embedding vector (see
@@ -162,7 +162,7 @@ test.describe('Demo-Smoke (#232)', () => {
   })
 
   /**
-   * #1631: the automatic sign-in, against a provider that really runs one. The scenario needs a
+   * The automatic sign-in, against a provider that really runs one. The scenario needs a
    * Keycloak session without an OPAA one, which is why it discards this tab's storage instead of
    * signing out - the RP-initiated logout (ADR-0025) would end the Keycloak session too, and there
    * would be nothing left to take up. What remains is exactly the state of a new tab of a browser
@@ -221,7 +221,7 @@ test.describe('Demo-Smoke (#232)', () => {
     await page.goto('/admin/identity-providers')
     await expect(page.getByRole('heading', { name: 'Identitätsanbieter' })).toBeVisible()
     // the seeded provider from e2e/demo-smoke.env's OPAA_OIDC_* bootstrap values (ADR-0025,
-    // Entscheidung 3) is listed as the default. Since #1625 the providers are table rows; a row's
+    // Entscheidung 3) is listed as the default. The providers are table rows; a row's
     // accessible name is the concatenation of its cells, hence the regular expression.
     const providerTable = page.getByRole('table', { name: 'Identitätsanbieter' })
     await expect(
@@ -288,11 +288,11 @@ test.describe('Demo-Smoke (#232)', () => {
   })
 
   /**
-   * #1685: a direct link survives the provider sign-in. The route ProtectedRoute denied travels in
+   * A direct link survives the provider sign-in. The route ProtectedRoute denied travels in
    * the sign-in state of the authorization-code flow, so after Keycloak the person stands in the
    * linked chat, not on the chat start page.
    *
-   * #1631: and it survives a refused automatic attempt on the way. Discarding this tab's storage
+   * And it survives a refused automatic attempt on the way. Discarding this tab's storage
    * after the sign-out arms that attempt again (the sign-out itself spends it) while Keycloak's
    * own session stays ended - so opening the link runs the full chain: attempt with the route,
    * `login_required`, back to the sign-in page, and only then the sign-in by hand. Without the
@@ -327,7 +327,7 @@ test.describe('Demo-Smoke (#232)', () => {
   /**
    * #1383 / ADR-0027: the S3 connector against the stack's own MinIO. The seed created the library
    * with the bucket scope and waited for its full run, so by now the council records are indexed.
-   * Scoping the question to that library with an @-reference (#560) makes the assertion
+   * Scoping the question to that library with an @-reference makes the assertion
    * deterministic regardless of corpus size: with ai-stub every readable chunk ties on relevance,
    * so only the scope decides which library the cited sources come from - and a cited source that
    * carries a council-record name can only have arrived through the S3 path.

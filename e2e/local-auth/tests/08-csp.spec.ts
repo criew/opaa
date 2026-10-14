@@ -11,7 +11,7 @@ import {
 /**
  * Scenario 8 of #1543: the local sign-in needs no new origin in the Content Security Policy.
  *
- * e2e/tests/csp.spec.ts proves this for the app shell of the regular stack (#707). What it cannot
+ * e2e/tests/csp.spec.ts proves this for the app shell of the regular stack. What it cannot
  * cover is the claim ADR-0033 makes for the local issuer: since the backend mints the tokens itself,
  * every call of the sign-in, the self-service and the administration goes to the SPA's own origin -
  * unlike the OIDC way, which needs OPAA_CSP_CONNECT_SRC_EXTRA for the provider (see

@@ -25,8 +25,8 @@ import type { Page, TestInfo } from '@playwright/test'
 // would let #424's own assertions stay green even if its own upload/share path were broken, a
 // same-named document from one of this file's libraries silently standing in for theirs. See
 // e2e/README.md's "Szenarien" section for the full reasoning.
-// Since #233, this suite's own frozen upload fixtures live under demo/seed/e2e-data/test-documents/
-// (see knowledge-libraries.spec.ts's TEST_DOCUMENT_PATH comment) - not under e2e/fixtures/ any more.
+// This suite's own frozen upload fixtures live under demo/seed/e2e-data/test-documents/
+// (see knowledge-libraries.spec.ts's TEST_DOCUMENT_PATH comment) - not under e2e/fixtures/.
 const DOCUMENT_A_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -67,7 +67,7 @@ function uniqueId(testInfo: TestInfo): string {
   return `${runId}-${testInfo.retry}`
 }
 
-// #557 review follow-up (PR #561): a chat's title in the sidebar is no longer its first question
+// A chat's title in the sidebar is not its first question
 // verbatim - io.opaa.chat.ChatService#deriveTitle still sets that as a synchronous fallback, but
 // io.opaa.chat.ChatTitleGenerationService then asynchronously replaces it with an LLM-generated
 // one. The deterministic KI stub this suite runs against (ai-stub/server.mjs) answers every
@@ -113,13 +113,13 @@ async function createSpace(page: Page, spaceName: string): Promise<string> {
 
 /**
  * Covers #529 (part of Epic #523): the persistent, space-owned chat and its `@`-reference / chip
- * bar search scope (#560), built on top of test(e2e) #424's upload/share/search chain and its
+ * bar search scope, built on top of test(e2e) #424's upload/share/search chain and its
  * helpers (see fixtures/chat.ts). Every scenario starts its own fresh chat (`startFreshChat`)
  * rather than relying on scenario order, for the same reason knowledge-libraries.spec.ts does
  * (see its module doc comment): chats are persisted per account, so a later scenario reusing the
  * same dev user would otherwise still see an earlier scenario's turn in the DOM. Scenarios also
- * each create their own library rather than sharing one across scenarios (review finding on PR
- * #554, nit 3): a scenario run in isolation (`--grep`) must not depend on module state a
+ * each create their own library rather than sharing one across scenarios: a scenario run in
+ * isolation (`--grep`) must not depend on module state a
  * different scenario would otherwise have set.
  */
 test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (#529)', () => {
@@ -144,7 +144,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // was searched" deterministically via an explicit @-reference, which replaces @Space-Wissen.
     await expectAnyCitedSource(page)
 
-    // sendMessage implicitly creates the chat and replaces the URL to point at it (#548) - once
+    // sendMessage implicitly creates the chat and replaces the URL to point at it - once
     // that has happened, the URL no longer ends in ".../chats/new".
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
     const chatUrl = page.url()
@@ -157,7 +157,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // title, never the message history).
     await expect(page.getByTestId('message-list').getByText(question)).toBeVisible()
     await expectAnyCitedSource(page)
-    // #749: the chat page must fill exactly the viewport - the message list scrolls internally,
+    // The chat page must fill exactly the viewport - the message list scrolls internally,
     // the page itself must not. A stray outer scrollbar (root cause was an absolutely positioned
     // live region without a positioning context, see MessageList.tsx) would make
     // document.documentElement taller than the viewport it actually renders in.
@@ -173,8 +173,8 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     })
     expect(hasOuterScrollbar).toBe(false)
     // The chat list (sidebar) reloads from the backend on a fresh page load - its entry is what
-    // proves the chat itself, not just this one still-open tab, was actually persisted. #557
-    // review follow-up: no longer asserted via the question text (see the module doc comment on
+    // proves the chat itself, not just this one still-open tab, was actually persisted. Not
+    // asserted via the question text (see the module doc comment on
     // uniqueId/title generation) - this chat is the one most recently interacted with, so it is
     // topmost in the sidebar (chatListStore's sortByLastUse); asserting that entry has a real,
     // non-placeholder title proves both that it is listed at all and that title generation
@@ -198,7 +198,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await assignLibraryToDefaultSpace('dev-admin', libraryBName)
 
     await startFreshChat(page)
-    // Referencing a library replaces the default @Space-Wissen chip outright (#560) - no separate
+    // Referencing a library replaces the default @Space-Wissen chip outright - no separate
     // step to leave the default scope first.
     await referenceLibrary(page, libraryAName)
     await expect(page.getByLabel(`Bibliotheksreferenz ${libraryAName} entfernen`)).toBeVisible()
@@ -264,7 +264,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await assignLibraryToDefaultSpace('dev-admin', privateLibraryName)
     await assignLibraryToDefaultSpace('dev-user', sharedLibraryName)
 
-    // Positive control (review finding on PR #554, nit 4): the private library's own creator can
+    // Positive control: the private library's own creator can
     // read it, so it must appear in *their* @-suggestions. Without this, "absent from dev-user's
     // suggestions" would be indistinguishable from "never suggested to anyone, e.g. because the
     // mention feature itself is broken" - only the contrast between adminPage and bPage below
@@ -291,11 +291,11 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     const libraryName = `E2E-Chat-Zweitchat-${id}`
     const questionChat1 = `Frage im ersten Chat (${id})`
     const questionChat2 = `Frage im zweiten Chat (${id})`
-    // The message history, not <main>: the chat header repeats the fallback title (#658).
+    // The message history, not <main>: the chat header repeats the fallback title.
     const main = page.getByTestId('message-list')
 
-    // #557 review follow-up: captured before either chat exists, so the count-based assertions
-    // below (chat titles are no longer a reliable per-chat anchor, see the module doc comment) can
+    // Captured before either chat exists, so the count-based assertions
+    // below (chat titles are no reliable per-chat anchor, see the module doc comment) can
     // check "exactly two more entries appeared" without needing an absolute baseline of zero.
     const chatCountBefore = await chatSidebarEntries(page).count()
 
@@ -310,7 +310,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     // "Neuer Chat" in the sidebar starts a second, independent chat in the same space rather than
     // reusing chat 1 - the in-app path, deliberately not another entry via `/chat`. Referencing a
-    // library replaces its default @Space-Wissen chip outright (#560).
+    // library replaces its default @Space-Wissen chip outright.
     await startAnotherChatViaSidebar(page)
     await referenceLibrary(page, libraryName)
     await askQuestion(page, questionChat2)
@@ -323,14 +323,14 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(main.getByText(questionChat2)).toBeVisible()
     await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toBeVisible()
 
-    // Both chats are listed in the sidebar as two distinct entries (#557 review follow-up: no
-    // longer asserted via their title text, which - unlike the question text above - can end up
+    // Both chats are listed in the sidebar as two distinct entries (not
+    // asserted via their title text, which - unlike the question text above - can end up
     // identical for both, see the module doc comment on uniqueId/title generation).
     await expect(chatSidebarEntries(page)).toHaveCount(chatCountBefore + 2)
 
-    // Back to chat 1 directly by URL (#557 review follow-up: a sidebar click keyed on chat 1's
-    // title text is no longer reliable, same reasoning as above), then a reload (review finding on
-    // PR #554, nit 5): the reload is what actually proves chat 1's own history and (lack of)
+    // Back to chat 1 directly by URL (a sidebar click keyed on chat 1's title text is not
+    // reliable, same reasoning as above), then a reload: the reload is what actually proves
+    // chat 1's own history and (lack of)
     // reference are persisted server-side, independent of chat 2's - not the navigation method.
     await page.goto(chat1Url)
     await expect(page).toHaveURL(chat1Url)
@@ -437,7 +437,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     // Every chat of this suite ends up with the KI stub's one fixed title (see the module doc
     // comment), so this chat gets a unique one first - renamed right in the header of the open
-    // chat (#1919). The newest chat is the top entry of "Zuletzt verwendet".
+    // chat. The newest chat is the top entry of "Zuletzt verwendet".
     const titleButton = page.getByRole('button', { name: /^Chat-Titel .* umbenennen$/ })
     await titleButton.click()
     const titleField = page.getByLabel('Chat-Titel')
