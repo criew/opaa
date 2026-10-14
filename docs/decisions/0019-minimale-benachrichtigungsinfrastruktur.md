@@ -7,8 +7,9 @@ Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt durch ADR-0033 (Entscheid
 ## Kontext
 
 Die Spezifikation verlangt, dass der Eigentümer eines Assets aktiv benachrichtigt wird, wenn es in
-einem Space bereitgestellt wird, dessen Mitglieder nicht alle Lesezugriff darauf haben
-(`docs/features/spaces-and-assets.md`). Dafür gab es keine Infrastruktur: kein Modell, keine Ablage,
+einem Space bereitgestellt wird, dessen Mitglieder nicht alle Lesezugriff darauf haben, ohne
+Zustimmungspflicht ([spaces-and-assets.md](../features/spaces-and-assets.md#assets-in-einen-space-assoziieren)).
+Dafür gab es keine Infrastruktur: kein Modell, keine Ablage,
 keine Anzeige. Weitere Zusagen derselben Art standen bereits in der Spezifikation (Erweiterung des
 Leserkreises, neue Version eines Originals, Prüfaufforderungen), was ein gemeinsames In-App-Postfach
 mit Todos nahelegte. Ein solches Postfach war aber nirgends spezifiziert. Die Frage war, wie schmal die
@@ -29,8 +30,10 @@ Ungelesen-Badge (`NotificationBell`), ohne Filter, Sortierung, Kategorien oder M
 `type` ist das Enum `NotificationType` (`io.opaa.api.types`), nach dem Muster von `AuditEventType`.
 Eine neue Benachrichtigungszusage ergänzt einen Wert, wenn sie umgesetzt wird, nicht vorab; seit #862
 gibt es keinen `CHECK` in der Datenbank, das Enum allein ist der Schreibschutz, eine Migration
-entfällt. Die Zuordnung zu einem gemischten Space ist typneutral `ASSET_ASSOCIATED_TO_MIXED_SPACE`
-und wird beim Anlegen eines Space mit vielen Zuordnungen je Eigentümer gebündelt (ADR-0039, #2097).
+entfällt; braucht eine Art weitere Spalten, kommen sie mit ihr. Die Zuordnung zu einem gemischten
+Space ist typneutral `ASSET_ASSOCIATED_TO_MIXED_SPACE` und wird beim Anlegen eines Space mit vielen
+Zuordnungen je Eigentümer gebündelt; die gebündelte Benachrichtigung bezieht sich auf den Space, die
+einzelne auf das Asset (ADR-0039, #2097).
 
 ### 3. Nicht gebaut
 
@@ -44,13 +47,14 @@ ein Todo-Feld kommt mit der Notwendigkeit.
 Mit ADR-0033 Entscheidung 10 gibt es das Subsystem `io.opaa.mail` (SMTP-Einstellungen in der
 Datenbank, `MailService` mit Versandergebnis statt Ausnahme, Vorlagen-Registry mit Überschreibung).
 Ob und für welche Typen zusätzlich eine Mail geht, entscheidet das Benachrichtigungs-Epic (#1297);
-ein solcher Kanal ergänzt Vorlagen und ruft `MailService`, ohne zweites Versandsubsystem. Der Versand
-ist synchron, ohne Outbox und ohne Wiederholung; ein Digest könnte eine Warteschlange davor setzen.
+ein solcher Kanal ergänzt Vorlagen und ruft `MailService`, ohne zweites Versandsubsystem und ohne
+den Vertrag von `MailService.send` zu ändern. Der Versand ist synchron, ohne Outbox und ohne
+Wiederholung; ein Digest könnte eine Warteschlange davor setzen, ohne diesen Vertrag zu ändern.
 
 ## Konsequenzen
 
-**Einfacher:** Jede weitere Benachrichtigungsart nutzt Tabelle und Endpunkte unverändert und ergänzt
-nur einen Enum-Wert.
+**Einfacher:** Jede weitere Benachrichtigungsart nutzt Tabelle und Endpunkte und ergänzt in der
+Regel nur einen Enum-Wert.
 
 **Schwieriger:** Ein echtes Postfach ist weiterhin zu spezifizieren. Ob ein einzelnes
 `objectType`/`objectId`-Paar für jede Art reicht, bleibt offen, bis eine Art mehrere Objektbezüge

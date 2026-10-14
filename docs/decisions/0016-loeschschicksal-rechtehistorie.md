@@ -23,7 +23,8 @@ Person entfernt, obwohl Prüfungen gerade sie betreffen. Eine Historie, die dies
 
 Die Spalten der Historientabellen, die auf das historisierte Objekt zeigen (`asset_id` in
 `asset_grant_history`, `asset_visibility_history` und `asset_ownership_history`, `group_id` in
-`group_membership_history`), sind reine UUID-Werte ohne Fremdschlüssel. Eine Asset- oder
+`group_membership_history`) und die Gruppen-Subjektspalten (`subject_group_id`, `owner_group_id`),
+sind reine UUID-Werte ohne Fremdschlüssel. Eine Asset- oder
 Gruppenlöschung wird weder blockiert noch räumt sie die Historie ab; nur der Rücksprung auf einen
 aktuellen Namen entfällt. Vor der Löschung schließt die Anwendung die offenen Intervalle des Objekts
 mit eigener Ursache (`ASSET_DELETED` über `AssetShellService#registerDeleted`, `GROUP_DELETED` in
@@ -43,9 +44,10 @@ selbst unangetastet lässt; eine Kaskade ist für diese Tabellen ausgeschlossen.
 
 ### 3. Akteur: `ON DELETE SET NULL`
 
-`actor_user_id` steht in jeder Historientabelle mit `ON DELETE SET NULL`. Die Ursache (`cause`, `NOT
-NULL`) bleibt, nur der handelnde Akteur entfällt; „jede Rechteänderung trägt ihren auslösenden
-Vorgang“ ist damit ohne Berührung der Subjektspalten erfüllt.
+Wo eine Historientabelle den handelnden Akteur führt (`actor_user_id`, alle außer
+`account_state_history`), steht die Spalte mit `ON DELETE SET NULL`. Die Ursache (`cause`, `NOT
+NULL`) bleibt, nur der Akteur entfällt; „jede Rechteänderung trägt ihren auslösenden Vorgang“ ist
+damit ohne Berührung der Subjektspalten erfüllt.
 
 ### 4. Bestandssätze aktiver Rechte kaskadieren
 
@@ -90,6 +92,8 @@ markierten `deleteBy…In`-Methoden der Historien-Repositories.
   lesbar bleibt.
 - Pseudonymisierung des Personenbezugs der Rechtehistorie, damit eine Kontolöschung ohne
   Historienverlust möglich wird.
+- Korrelation historisierter Verzeichnislauf-Änderungen mit dem konkreten Lauf; `directory_sync_status`
+  hält nur den jeweils letzten Lauf.
 
 ## Änderungsverlauf
 

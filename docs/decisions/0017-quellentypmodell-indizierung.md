@@ -39,8 +39,10 @@ Anhangsweg (ADR-0022), nicht nur „Liste von Datei-URLs“.
 Jeder Lauftyp implementiert `SourceIndexingExecutor`; `IndexingSourceExecutorRegistry` löst den
 Executor zum Typ der Bibliothek auf, gespeist aus den Spring-Beans der Konnektorpakete. Kern,
 Verwaltung und API erreichen einen Konnektor nur über `SourceConnectorRegistry` (ADR-0038); die
-Modulgrenze erzwingt `ModularArchitectureTest`. Ein neuer Typ bringt Konnektor, Executor und
-Beschreibung mit und ändert keinen Aufrufer.
+Modulgrenze erzwingt `ModularArchitectureTest`. Die Executor-Registry kennt genau die Konnektoren
+mit Lauf; `UPLOAD` hat keinen Executor, ein Anstoß dafür wird abgewiesen. Zählung und Meldung eines
+Laufs liegen einmal in `IndexingRun`, nicht je Executor. Ein neuer Typ bringt Konnektor, Executor
+und Beschreibung mit und ändert keinen Aufrufer.
 
 ### 4. Typspezifische Konfiguration im Anstoß-Request
 
@@ -54,7 +56,9 @@ auflistet (Dateisystem, Verzeichnisliste, Vollabgleiche), `KEEP_ON_ABSENCE` für
 einen Ausschnitt sieht (RSS-Feed, inkrementelle Abgleiche, Ereignisläufe). Fehlt ein zuvor indiziertes
 Dokument in einem vollständig auflistenden Lauf, wird es aus dem Index genommen; in einem ergänzenden
 Lauf ist Abwesenheit keine Aussage, Löschung braucht dort einen positiven Befund der Quelle, den der
-jeweilige Konnektor-ADR benennt (ADR-0023 Entscheidung 4, ADR-0027 Entscheidung 3). Hochgeladene
+jeweilige Konnektor-ADR benennt (ADR-0023 Entscheidung 4, ADR-0027 Entscheidung 3), oder einen
+ausdrücklichen Ausschluss durch eine Person
+([Lebenszyklus der Dokumente](../features/knowledge-sources.md#lebenszyklus-der-dokumente)). Hochgeladene
 Dokumente entstehen außerhalb jedes Laufs und werden nie durch Abwesenheit gelöscht. Der Vergleich
 läuft je Quelle, nie bibliotheksweit; da eine Bibliothek genau eine Quelle hat (ADR-0018), fällt
 beides zusammen. Die Zielsemantik steht in

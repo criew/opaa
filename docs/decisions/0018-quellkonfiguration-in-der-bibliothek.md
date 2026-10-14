@@ -26,7 +26,7 @@ steht als Spalte an `knowledge_libraries` (Adresse, Zugangsdaten, Zeitplan); was
 gehört, steht als JSON-Objekt in `source_settings`, das der Konnektor selbst validiert (ADR-0038
 Entscheidung 2). Proxy und TLS-Schalter je Bibliothek sind entfallen: Jede Verbindung nimmt den
 hausweiten Ausgangsproxy (ADR-0041, Nachtrag #2496), und das Zertifikat einer Quelle wird immer
-geprüft. Gemischt gespeiste Bibliotheken gibt es nicht; Mehrfachverwendung eines Bestands ist ein
+geprüft (ADR-0041, Nachtrag #2537). Gemischt gespeiste Bibliotheken gibt es nicht; Mehrfachverwendung eines Bestands ist ein
 Rechteproblem, gelöst über Freigabe derselben Bibliothek. Grund: Jede reale Quelle hätte genau eine
 Bibliothek, und ohne Mischung ist die Abwesenheitsprüfung je Bibliothek adressierbar.
 
@@ -43,7 +43,8 @@ Entscheidung 4 samt `url`-Fallback ab.
 Typauswahl als erster Schritt der Anlage (Kachelauswahl im generischen „Neu“ des Katalogs, ADR-0039),
 dann die typspezifischen Felder; die Detailansicht zeigt je Typ Uploadfeld und Dokumentverwaltung
 oder Konfiguration, Anstoß-Knopf und Stand des letzten Laufs. Eine eigene Bibliotheksliste gibt es
-nicht mehr, Bibliotheken erscheinen im Katalog neben den übrigen Asset-Typen.
+nicht mehr, Bibliotheken erscheinen als Kachel mit Umfang und Stand im Katalog neben den übrigen
+Asset-Typen.
 
 ### 4. Zugangsdaten sind Daten
 
@@ -57,12 +58,15 @@ verschlüsselt in `source_credentials` (`CredentialsEncryptor`, Schlüssel aus d
 Eine `UPLOAD`-Bibliothek lässt sich nicht löschen, solange sie Dokumente enthält; die Sperre schützt
 einen kuratierten Bestand. Eine lauf-basierte Bibliothek nimmt beim Löschen ihren Bestand mit
 (Dokumentzeilen, Chunks, Ordner), nach ausdrücklicher Bestätigung und mit Protokolleintrag, weil eine
-Einzellöschung dort wirkungslos wäre: Der nächste Lauf nähme das Dokument wieder auf.
+Einzellöschung dort wirkungslos ist, solange der Ausschluss-Mechanismus aus
+[knowledge-sources.md](../features/knowledge-sources.md#lebenszyklus-der-dokumente) nicht gebaut
+ist: Der nächste Lauf nähme das Dokument wieder auf.
 
 ### 6. Anlage für jeden Berechtigten
 
-Entfallen mit #1810, siehe ADR-0036 Entscheidung 5: Die Anlage ist eine vergebbare Fähigkeit
-(`CREATE_LIBRARY`, `CREATE_CONNECTOR_LIBRARY`), ausgeliefert an „Alle Konten“. Unabhängig davon
+Entfallen mit #1810, siehe ADR-0036 Entscheidung 5, umgesetzt in `CapabilityService`: Die Anlage ist
+eine vergebbare Fähigkeit (`CREATE_LIBRARY`, `CREATE_CONNECTOR_LIBRARY`), ausgeliefert an „Alle
+Konten“. Die Obergrenze der Freigabe konnektorgespeister Bibliotheken regelt ADR-0037. Unabhängig davon
 sichern die Pfad-Allowlist (`opaa.indexing.filesystem.allowlist`, ohne Eintrag ist der Typ
 Dateisystem abgeschaltet) und die Zieladressprüfung (`TargetAddressValidator`,
 `opaa.indexing.target-validation`, siehe
@@ -119,4 +123,5 @@ neu indiziert. Ein Lauf je Bibliothek statt global einer.
 | 2026-09-19 | #1810 | Anlage als Fähigkeit (ADR-0036 Entscheidung 5) | 6 |
 | 2026-09-26 | #1977 | Jeder Konnektor speichert in `source_settings`, offener Typschlüssel (ADR-0038) | 1 |
 | 2026-10-02 | ADR-0039 | Bibliotheksliste geht im Katalog auf | 3 |
-| 2026-10-12 | #2496 | `source_proxy` und `source_insecure_ssl` entfallen: hausweiter Proxy, Zertifikat immer geprüft | 1 |
+| 2026-10-11 | #2496 | `source_proxy` entfällt, hausweiter Ausgangsproxy | 1 |
+| 2026-10-12 | #2537 | `source_insecure_ssl` entfällt, Zertifikat immer geprüft | 1 |

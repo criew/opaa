@@ -15,7 +15,9 @@ Pipeline-Version erreichte Mail-Anhänge deshalb nicht. Mit Confluence stand ein
 bevor. Der Maintainer hat entschieden: Ein Anhang, an einer E-Mail wie an einer Confluence-Seite, ist
 eine eigene `Document`-Zeile, nie ein verschachtelter Chunk seines Elterndokuments. Dieser ADR denkt
 das zu Ende: Identität, Löschsemantik, Elternbeziehung, Sichtbarkeit, Quote, Änderungserkennung,
-Paketschnitt, Bestandsmigration.
+Paketschnitt, Bestandsmigration. Anschlusspunkt ist ADR-0017 Entscheidung 5: Weil RSS nie durch
+Abwesenheit löscht, hatte bis dahin kein Anhangsweg beantworten müssen, wie ein Anhang nicht als
+verschwunden gilt; ADR-0018 bleibt unberührt, ein Anhang liegt in der Bibliothek seines Elternteils.
 
 ## Entscheidung
 
@@ -28,9 +30,12 @@ Lebenszyklus, eigene `pipeline_id`/`pipeline_version` durch die für sein Format
 ### 2. Identität: der `file_path` schließt den Elternpfad ein
 
 `(library_id, file_path)` bleibt eindeutig. Bei RSS und Confluence ist der `file_path` die stabile
-Anhangs-URL oder -Kennung der Quelle. Ein Mail-Anhang hat keine URL; sein `file_path` ist der
-`file_path` seiner Mail plus Positionsindex (`AttachmentFilePath`), rekursiv für Mail in Mail. Daraus
-folgen Eindeutigkeit und Stabilität über Läufe, solange die Mail-Datei nicht verschoben wird.
+Anhangs-URL oder -Kennung der Quelle. Ein Mail-Anhang hat keine URL; sein `file_path` ist
+`<Elternpfad>/<Index>/<Name>` (`AttachmentFilePath`), rekursiv für Mail in Mail. Kein echter
+Dateipfad kann diese Form haben, weil der Elternpfad eine Datei benennt. Daraus folgen
+Eindeutigkeit und Stabilität über Läufe, solange die Mail-Datei nicht verschoben wird. Der Index ist
+die Position in der Liste, die der ungefilterte Lauf meldet; eine Anlage, die dieser Lauf nicht
+meldet, verbraucht keine Position.
 
 ### 3. Löschsemantik: Anhangspfade zählen zum Lauf
 
@@ -41,18 +46,18 @@ Eltern- und Anhangszeile gleich. Verschwindet das Elterndokument, fallen seine A
 Abgleich weg; verliert es einen Anhang, fällt nur dieser weg. Wird ein Elterndokument als unverändert
 übersprungen, werden seine Anhänge nicht neu entdeckt; ihre Pfade werden dann aus der Datenbank über
 die Elternbeziehung nachgetragen, sonst räumte der Abgleich sie fälschlich ab. Jeder andere Pfad, der
-ein Elterndokument entfernt oder unter seiner ID ersetzt (`PipelineReindexService`,
-Einzellöschung in `LibraryDocumentService`), behandelt die Anhangszeilen ausdrücklich mit; einen
+ein Elterndokument entfernt oder unter seiner ID ersetzt (heute `PipelineReindexService` und die
+Einzellöschung in `LibraryDocumentService`, künftig jeder weitere), entscheidet ausdrücklich, was
+mit den Anhangszeilen geschieht (mitlöschen, lassen, bei Ersetzung auf Fortbestand prüfen); einen
 Automatismus dafür gibt es nicht.
 
 ### 4. Elternbeziehung: `documents.parent_document_id`
 
 Ein Anhang jedes Quellentyps setzt `parent_document_id` (nullable, Fremdschlüssel auf `documents`
-mit `organization_id`, ohne `ON DELETE CASCADE`); `sourceEntryUrl` bleibt daneben als RSS-Feld. Ein
-Fremdschlüssel statt eines Pfad-Strings, weil „alle Anhänge von X“ abfragbar sein muss (Entscheidung
-3). Keine Kaskade, weil die Chunks im Vektorspeicher nur über Anwendungscode erreichbar sind. Die
-Beleg-Anzeige „Anhang: …“ wird über die Elternbeziehung am Anhangsdokument aufgelöst, nicht mehr als
-Textpräfix im Chunk.
+mit `organization_id`, ohne `ON DELETE CASCADE`) und daneben `sourceEntryUrl` auf den Elternpfad,
+das Feld, das die Beleg-Anzeige liest. Ein Fremdschlüssel, weil „alle Anhänge von X“ abfragbar sein
+muss (Entscheidung 3). Keine Kaskade, weil die Chunks im Vektorspeicher nur über Anwendungscode
+erreichbar sind. Der Elternbezug steht am Anhangsdokument, nicht mehr als Textpräfix im Chunk.
 
 ### 5. Sichtbarkeit: gruppiert unter dem Elterndokument
 
@@ -65,8 +70,9 @@ wirkte das als unerklärte Vervielfachung.
 
 Die parse-seitige Härtung (`max-message-bytes`, `max-attachment-bytes`,
 `max-attachments-per-message`) bleibt bei `MailProperties`. Was der Anhangsweg indiziert, begrenzen
-`AttachmentProperties` (Verschachtelungstiefe für alle Konnektoren, Vorgabe 5) und `AttachmentLimits`
-(Anzahl und Größe je Konnektor). Das `fileSize` eines Mail-Elterndokuments zählt nur Kopfdaten und
+`AttachmentProperties` (`opaa.indexing.attachments.*`: Verschachtelungstiefe für alle Konnektoren,
+Vorgabe 5, dazu Anzahl und Größe als geteilte Vorgabe) und `AttachmentLimits` (Anzahl und Größe,
+wo ein Konnektor eigene Werte hat). Das `fileSize` eines Mail-Elterndokuments zählt nur Kopfdaten und
 Nachrichtentext; der Anhang zählt seine eigenen Bytes gegen die Speicherquote, sonst zählte er doppelt.
 
 ### 7. Änderungserkennung
@@ -113,9 +119,11 @@ Content-Endpunkt extrahiert es beim Zugriff aus dem Elternoriginal nach, nur die
 **Schwieriger:** Ein Mail-Bestand zeigt nach dem Nachzug deutlich mehr Dokumentzeilen. `fileSize`
 einer Mail hat eine neue Bedeutung. Jeder Lesezugriff auf ein Anhangsoriginal parst das
 Elterndokument erneut und bei Konnektorbeständen ruft es das Original vollständig ab; die
-gleichzeitigen Nachextraktionen deckelt `AttachmentExtractionLimiter`
-(`opaa.documents.attachment-extraction.max-concurrent`, Vorgabe 4; wer nicht an die Reihe kommt,
-erhält 429), Abrufe desselben Elterndokuments laufen nacheinander.
+gleichzeitig laufenden Nachextraktionen deckelt `AttachmentExtractionLimiter`
+(`opaa.documents.attachment-extraction.max-concurrent`, Vorgabe 4; wer innerhalb von
+`acquire-timeout` nicht an die Reihe kommt, erhält 429), Abrufe desselben Elterndokuments laufen
+nacheinander. Der Deckel begrenzt nicht die Lebensdauer der geschriebenen Datei und nicht die Zahl
+offener Antworten; das tut das Rate-Limit des Endpunkts.
 
 ## Verworfene Alternativen
 
@@ -127,7 +135,7 @@ erhält 429), Abrufe desselben Elterndokuments laufen nacheinander.
 
 ## Offen
 
-Nichts.
+Nichts. Die Form der Mail-Kopfdaten als Struktur-Metadaten ist nicht Gegenstand dieses ADR.
 
 ## Änderungsverlauf
 

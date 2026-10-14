@@ -83,14 +83,17 @@ quelloffenes Vorhaben nicht einlöst. Siehe
 
 ### 8. Modellanbieter: lokal ist die Voreinstellung, ohne technische Sperre
 
-Lokal betriebene Modelle bleiben die Voreinstellung für Chat und Einbettung. Eine technische Sperre
-gegen Modellaufrufe außerhalb festgelegter Netzbereiche wird nicht gebaut; die Zusicherung „keine
-Daten an ein Modell außerhalb des Hauses“ ruht auf der Konfiguration, die nachgewiesen und deren
-Netzweg außerhalb von OPAA abgesichert wird. Die Basis-Adresse der openai-kompatiblen Schnittstelle
-hat keine Voreinstellung: Wer diesen Anbieter wählt, gibt sie an, sonst bricht der Start mit einer
-Meldung ab (`OpenAiBaseUrlGuard`). Grund: Eine Sperre ohne die zentralen Modellvorgaben, an die sie
-gehört, wäre eine zweite Wahrheit neben der Konfiguration; und ein im Haus betriebener
-„openai-kompatibler“ Server darf nicht stillschweigend ein Ziel außerhalb des Hauses erben. Siehe
+Lokal betriebene Modelle bleiben die Voreinstellung für Chat und Einbettung; der Standardfall
+startet ohne zusätzliche Konfiguration. Eine technische Sperre gegen Modellaufrufe außerhalb
+festgelegter Netzbereiche wird nicht gebaut; die Zusicherung „keine Daten an ein Modell außerhalb des
+Hauses“ ruht auf der Konfiguration, die nachgewiesen und deren Netzweg außerhalb von OPAA abgesichert
+wird. Eine spätere Durchsetzung hängt an den zentralen Modellvorgaben (Themenbereich E, Phase 1).
+Die Basis-Adresse der openai-kompatiblen Schnittstelle hat keine Voreinstellung, weder die
+gemeinsame noch die abgeleiteten für Chat und Einbettung: Wer diesen Anbieter wählt, gibt sie an,
+sonst bricht der Start mit einer Meldung ab, die die fehlende Variable benennt
+(`OpenAiBaseUrlGuard`). Grund: Eine Sperre ohne die Modellvorgaben, an die sie gehört, wäre eine
+zweite Wahrheit neben der Konfiguration; und ein im Haus betriebener „openai-kompatibler“ Server darf
+nicht stillschweigend ein Ziel außerhalb des Hauses erben. Siehe
 [llm-integration.md](../features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut).
 
 ### 9. Assistent für Bürgerinnen und Bürger bleibt Ausblick
@@ -106,8 +109,9 @@ dritte Fassung erzeugte Pflegeaufwand und Widerspruchsrisiko ohne Nutzen.
 Unzulässig bleibt die Nennung zur Positionierung: ein Name, der OPAA einordnet, eine Marktlage
 beschreibt oder einen Kaufgrund liefert. Zulässig ist die Nennung als nachprüfbarer Sachbeleg für
 eine technische Behauptung über ein fremdes System, die den eigenen Entwurf trägt, ebenso als
-Arbeitsanweisung an eine interne Rolle. Grund: Anonymisiert wäre ein Beleg nicht nachprüfbar, und ein
-entschiedener Punkt käme als neue Idee wieder. Siehe
+Arbeitsanweisung an eine interne Rolle; beide bestehenden Stellen tragen einen Hinweis auf diese
+Regel. Grund: Anonymisiert wäre ein Beleg nicht nachprüfbar, und ein entschiedener Punkt käme als
+neue Idee wieder. Siehe
 [MESSAGING.md](../market/MESSAGING.md#was-wir-nicht-sagen).
 
 ### 11. Speicher für Originaldokumente: das Dateisystem ist der Vertrag
@@ -115,7 +119,7 @@ entschiedener Punkt käme als neue Idee wieder. Siehe
 OPAA liest Quelldokumente gegen konfigurierte Verzeichnisse; ein Netzlaufwerk (SMB/NFS) hängt der
 Betrieb dort ein. Eine Abstraktion über mehrere Speicherarten gibt es für die dateibasierten Fälle
 nicht. Objektbasierter Speicher ist seit ADR-0030 für die Originalablage der Uploads gebaut
-(`opaa.upload.storage: s3`), als Weg für den mandantenfähigen Rechenzentrumsbetrieb; der
+(`opaa.upload.store: s3`), als Weg für den mandantenfähigen Rechenzentrumsbetrieb; der
 Objektspeicher-Dienst ist im Compose-Stapel über ein eigenes Profil zuschaltbar, nicht Teil des
 Einstiegs. Siehe
 [deployment-infrastructure.md](../features/deployment-infrastructure.md#speicher-backends).
@@ -137,11 +141,13 @@ Assets, Spaces, Bibliotheken und Gruppen samt Mitgliedschaften, Rollenänderunge
 den Verzeichnisabgleich je bewirkter Änderung, Systemeinstellungen und Systemrollen sowie jeden
 Zugriff auf die Protokolldaten selbst. Nicht protokolliert werden Abfragen, Antwortinhalte und
 Favoriten (ADR-0039 Entscheidung 7): Sie ergeben in der Menge ein Tätigkeits- oder Interessenprofil.
-Der Sicherheitsgrad ist einfaches Anfügen ohne Prüfsummenverkettung (Eigentümertrennung in ADR-0015).
-Der Eintrag trägt die handelnde Person, aber keine Oberfläche und keine Schnittstelle filtert,
-gruppiert oder sortiert nach Person; Abfragen beginnen an einem Objekt, einem Zeitraum oder einer
-Ereignisart. Aufbewahrung: Untergrenze ein Jahr, Voreinstellung drei, Obergrenze zehn Jahre, mit
-automatischer Löschung. Siehe
+Der Sicherheitsgrad ist einfaches Anfügen ohne Prüfsummenverkettung (Eigentümertrennung in ADR-0015);
+der Schutz stützt sich darauf, dass die Anwendung kein Änderungsrecht hat und der direkte
+Datenbankzugang betrieblich beschränkt und außerhalb von OPAA nachgewiesen wird. Der Eintrag trägt
+die handelnde Person, aber ein personenbezogener Auswertungspfad ist nicht gebaut, nicht nur
+abgeschaltet: Keine Oberfläche und keine Schnittstelle filtert, gruppiert oder sortiert nach Person;
+Abfragen beginnen an einem Objekt, einem Zeitraum oder einer Ereignisart. Aufbewahrung: Untergrenze
+ein Jahr, Voreinstellung drei, Obergrenze zehn Jahre, mit automatischer Löschung. Siehe
 [security-and-compliance.md](../features/security-and-compliance.md#revisionssicheres-protokoll).
 
 ### 14. Belegbarkeit heißt deterministische Belegvalidierung
@@ -159,9 +165,9 @@ ausgeschlossen. Siehe [data-indexing-rag.md](../features/data-indexing-rag.md#be
 Die Organisationsgrenze wird in drei Schichten gehalten: Anwendung, Datenbank und ein struktureller
 Prüflauf gegen das tatsächliche Schema, der verlangt, dass jede Tabelle mit Organisationszugehörigkeit
 ihre Verweise auf organisationsgebundene Objekte zusammengesetzt führt. Der Prüflauf schließt die
-Fehlerklasse statt des Einzelfalls. Die einseitige Absicherung auf Datenbankebene und die fehlende
-Durchsetzung im Verwaltungspfad sind Voraussetzung dafür, dass überhaupt eine zweite Organisation
-angelegt wird. Siehe [spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird).
+Fehlerklasse statt des Einzelfalls. Die einseitige Absicherung auf Datenbankebene (#289) und die
+fehlende Durchsetzung im Verwaltungspfad (#271) sind zu schließen, bevor überhaupt eine zweite
+Organisation angelegt wird. Siehe [spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird).
 
 ## Konsequenzen
 
@@ -189,6 +195,8 @@ nach außen (Entscheidung 8).
 ## Offen
 
 - Prüfsummenverkettung des Protokolls als nächste Stufe (Entscheidung 13).
+- Plugin-Architektur für Konnektoren im Verhältnis zu MCP; die Konnektoren sind seit ADR-0038 intern
+  steckbar, extern geladene bleiben eine Option ohne Entscheidung.
 
 ## Änderungsverlauf
 

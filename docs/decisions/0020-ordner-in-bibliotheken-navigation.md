@@ -57,8 +57,8 @@ die Person beim Navigieren gesehen hat.
 
 ### 6. Dedup bleibt bibliotheksweit für `UPLOAD`, pfadbasiert für Läufe
 
-`uk_documents_library_checksum` gilt partiell für `source_type = 'UPLOAD'` über die ganze Bibliothek:
-Zwei identische Dateien in verschiedenen Ordnern bleiben ein Duplikat. Lauf-basierte Typen
+`uk_documents_library_checksum` gilt partiell für `source_type = 'UPLOAD'` ohne Elterndokument über
+die ganze Bibliothek: Zwei identische Dateien in verschiedenen Ordnern bleiben ein Duplikat. Lauf-basierte Typen
 deduplizieren über `file_path`; dieselbe Datei in zwei Unterverzeichnissen ist dort zwei legitime
 Dokumente und wird von der Spiegelung nicht zurückgewiesen.
 
@@ -70,7 +70,8 @@ Dateisynchronisation `FileSync` der Cloud-Konnektoren), spiegelt ihn über `Sour
 gemeinsamem Lauf-Helfer statt je Konnektor einer Kopie. `SourceFolderPath` beurteilt die Segmente:
 Ein Segment, das leer, `.` oder `..` ist, einen Pfadtrenner oder ein NUL-Byte enthält oder länger als
 255 Zeichen ist, verwirft den ganzen Pfad; die Datei landet in der Wurzel mit Warnung im
-Anwendungsprotokoll, nie unter erfundenem Namen; eine zu tiefe Kette wird bei `MAX_DEPTH` gekappt.
+Anwendungsprotokoll, nie unter erfundenem Namen. Dateisystem und Verzeichnisliste spiegeln beliebig
+tief; die Cloud-Konnektoren kappen die Kette bei `MAX_DEPTH`.
 Für die Verzeichnisliste ist der Ordnerpfad der URL-Pfad relativ zur normalisierten Start-URL,
 segmentweise prozentdekodiert, ohne Query und Fragment. Leere Ordner werden nur nach einem
 vollständigen Lauf entfernt, nach der Bereinigung verschwundener Dokumente. Die Zuordnung geschieht

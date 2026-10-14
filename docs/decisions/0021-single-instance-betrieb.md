@@ -29,8 +29,8 @@ keine Entscheidung, Multi-Instanz-Betrieb zu bauen; die fällt eigenständig, so
 ### 2. Register in `backend/AGENTS.md`, Verweis in der Javadoc
 
 Jede Stelle, die diese Annahme trägt, steht im Register „Prozesslokaler Zustand“ in
-[backend/AGENTS.md](../../backend/AGENTS.md#prozesslokaler-zustand-adr-0021), und ihre Javadoc nennt
-„(ADR-0021)“. Wer eine neue einführt, trägt sie dort ein. Das ist keine Hürde für die Umsetzung:
+[backend/AGENTS.md](../../backend/AGENTS.md#prozesslokaler-zustand-adr-0021). Wer eine neue
+einführt, trägt sie dort ein und nennt „(ADR-0021)“ in der Javadoc. Das ist keine Hürde für die Umsetzung:
 Prozesslokal bleibt die richtige, einfachste Lösung; die Eintragung macht nur sichtbar, was ein
 späterer Umbau prüfen muss, statt dass die Liste erneut durch Code-Archäologie entsteht.
 
@@ -40,8 +40,11 @@ Wo zwei Läufe einander ausschließen müssen, liegt die Sperre in der Datenbank
 Advisory-Locks (`DirectorySyncRunLock`, `UserRepository#lockRoleChanges`), Unique-Constraints
 (`uk_indexing_jobs_library_running`, `uk_chat_messages_chat_sequence`), `SELECT … FOR UPDATE` in
 Aufbewahrungs- und Löschläufen, bedingte `UPDATE`s und Seed-Marker, die eine
-`DataIntegrityViolationException` als „eine andere Instanz war schneller“ behandeln. Diese Stellen
-tragen schon heute über Instanzen und sind das Vorbild für einen Umbau; Postgres reicht dafür.
+`DataIntegrityViolationException` als „eine andere Instanz war schneller“ behandeln. Zustand, der
+einen Neustart überleben muss, liegt ebenfalls in der Datenbank, etwa die Fehlversuch-Sperre der
+lokalen Anmeldung in `local_credentials`. Diese Stellen tragen schon heute über Instanzen und sind
+das Vorbild für einen Umbau; Postgres reicht dafür. Audit-Partitionen entstehen nicht zur Laufzeit,
+ein DDL-Rennen gibt es dort nicht.
 
 ### 4. Keine Sitzungsaffinität, kein Instanzabgleich
 
@@ -50,8 +53,11 @@ Cookie, es gibt keinen SSE-, Streaming- oder WebSocket-Endpunkt; Sticky Sessions
 Nicht gebaut sind eine Erkennung widersprüchlicher Konfiguration zwischen Instanzen (jeder Start-Guard
 prüft nur sich gegen Umgebung und Datenbank), ein Schutz gegen den gleichzeitigen Kaltstart zweier
 Prozesse (`initialize-schema` von pgvector setzt DDL ab, der Liquibase-Lock verschiebt nur die
-Zeitachse) und eine geteilte Upload-Ablage über das Dateisystem (der S3-Adapter nach ADR-0030 wäre
-geteilt). Sanftes Herunterfahren und eine Readiness ohne Modellabhängigkeit sind gebaut (#1710).
+Zeitachse; ein Multi-Instanz-Betrieb bräuchte einen gestaffelten Start oder einen eigenen
+Migrationsschritt) und eine geteilte Upload-Ablage über das Dateisystem (der S3-Adapter nach
+ADR-0030 wäre geteilt). Sanftes Herunterfahren und eine Readiness ohne Modellabhängigkeit sind
+gebaut (#1710): Laufende HTTP-Anfragen laufen aus, die Task-Executor stoppen sofort, ein
+Indexierungslauf verzögert den Stopp nicht und läuft beim nächsten Start wieder an.
 
 ## Konsequenzen
 
@@ -76,7 +82,8 @@ Uploads sind nur auf dem Knoten lesbar, der sie annahm.
 ## Offen
 
 - Umbaurichtung je Kategorie, als Einordnung, keine Planung: Instanzkennung an `RUNNING`-Zeilen und
-  heartbeat-basierte Recovery; Invalidierungssignal über Prozessgrenzen (naheliegend Postgres
+  heartbeat-basierte Recovery, die dann beide Seiten aus der Datenbankuhr liest, weil die Wanduhren
+  zweier Hosts driften; Invalidierungssignal über Prozessgrenzen (naheliegend Postgres
   `LISTEN`/`NOTIFY`) für ereignisgesteuerte Caches, die keinen TTL haben; gemeinsamer Zähler für
   Rate-Limits und Kontingente; Datenbankuhr für `PermissionHistoryClock` (ADR-0032, #1517); geteiltes
   Volume oder Objektspeicher für Uploads; Entprellung des Push-Pfads in der Datenbank.
