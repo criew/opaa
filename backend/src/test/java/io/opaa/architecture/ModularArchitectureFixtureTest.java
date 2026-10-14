@@ -719,6 +719,25 @@ class ModularArchitectureFixtureTest {
     assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer)).isEmpty();
   }
 
+  /** A class, a nested class and a member that are gone are reported; the live ones resolve. */
+  @Test
+  void aNameThatResolvesToNothingIsReported() {
+    Scenario scenario = new Scenario("valid");
+
+    assertThat(
+            scenario.architecture.unresolved(
+                List.of(
+                    "indexing.source.SourceConnector",
+                    "indexing.source.SourceConnector#base",
+                    "indexing.Gone",
+                    "indexing.source.SourceConnector$Gone",
+                    "indexing.source.SourceConnector#gone")))
+        .containsExactly(
+            "indexing.Gone",
+            "indexing.source.SourceConnector$Gone",
+            "indexing.source.SourceConnector#gone");
+  }
+
   /** One example tree and the rules rooted at it. */
   private static final class Scenario {
 
