@@ -305,8 +305,8 @@ class S3UploadedOriginalStoreTest {
     String key = own.locator().substring(("s3://" + BUCKET + "/").length());
     UploadedOriginalRef foreignLibrary =
         new UploadedOriginalRef(organizationId, UUID.randomUUID(), own.locator());
-    // The same library, the same key - only the organization segment differs, and that alone
-    // has to make it "not there" (ADR-0030, Nachtrag zu Entscheidung 4).
+    // The same library, the same key - only the organization segment differs, and that alone has to
+    // make it "not there" (ADR-0030, Entscheidung 4).
     UploadedOriginalRef foreignOrganization =
         new UploadedOriginalRef(UUID.randomUUID(), libraryId, own.locator());
     UploadedOriginalRef otherBucket =

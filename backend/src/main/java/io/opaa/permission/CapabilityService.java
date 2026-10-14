@@ -35,9 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
  * - nothing in this class widens what {@code LibraryAccessService#readableLibraryIds} returns, and
  * the role {@code AUDITOR} confers no capability of its own.
  *
- * <p>{@code CREATE_CONNECTOR_LIBRARY} is granted per scope (ADR-0036, Nachtrag of 03.10.2026):
- * every check of it names the scope, and a check without one is a programming error. Which scopes
- * exist and what they are called answers {@link CapabilityScopeCatalog}.
+ * <p>{@code CREATE_CONNECTOR_LIBRARY} is granted per scope (ADR-0036, Entscheidung 5): every check
+ * of it names the scope, and a check without one is a programming error. Which scopes exist and
+ * what they are called answers {@link CapabilityScopeCatalog}.
  *
  * <p><b>Deliberately uncached</b>, unlike {@link AssetAccessService#effectiveRole}: a withdrawal
  * has to take effect without a new sign-in, and a check runs once per creation attempt - a handful

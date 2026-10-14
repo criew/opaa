@@ -3,7 +3,7 @@ import type { LibraryResponse } from '@/shared/api/types'
 
 /**
  * The connector settings of an SMB library as the API carries them in `sourceSettings`
- * (ADR-0040, Nachtrag SMB): the folders of the share that are read, never how it signs in.
+ * (ADR-0046): the folders of the share that are read, never how it signs in.
  */
 export type SmbSettings = {
   folders?: string[] | null

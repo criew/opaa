@@ -235,8 +235,8 @@ public final class ModularArchitecture {
           "connection.oauth");
 
   /**
-   * The capability granted per connector type or profile, relative to the root (ADR-0036, Nachtrag
-   * of 03.10.2026): only rights, which stores the scope, and connections, which decides it, name
+   * The capability granted per connector type or profile, relative to the root (ADR-0036,
+   * Entscheidung 5): only rights, which stores the scope, and connections, which decides it, name
    * it.
    */
   static final String CONNECTOR_RELEASE = "api.types.Capability#CREATE_CONNECTOR_LIBRARY";
@@ -469,7 +469,7 @@ public final class ModularArchitecture {
    * The repository of the document rows, relative to the root. Only {@link #DOCUMENT_DELETERS} call
    * one of its {@code delete…} methods or a modifying query that deletes, so every deletion outside
    * a run passes the one place that notes the revisit for the folder memory of the file sync
-   * (ADR-0040).
+   * (ADR-0045, Entscheidung 5).
    */
   static final String DOCUMENT_REPOSITORY = "knowledge.DocumentRepository";
 
@@ -532,7 +532,7 @@ public final class ModularArchitecture {
           "indexing.source.ServiceAccountKey",
           "indexing.source.ServiceAccountTokens");
 
-  /** The shared file sync (ADR-0040, Entscheidung 1): connectors use it, it knows none of them. */
+  /** The shared file sync (ADR-0045, Entscheidung 1): connectors use it, it knows none of them. */
   static final String FILE_SYNC = "indexing.filesync";
 
   /** The only packages outside the root the file sync may use: the JDK and logging. */
@@ -1154,7 +1154,7 @@ public final class ModularArchitecture {
               }
             })
         .because(
-            "an owner-only library never enters a foreign rights context (ADR-0036, Nachtrag 4)")
+            "an owner-only library never enters a foreign rights context (ADR-0036, Entscheidung 5)")
         .allowEmptyShould(true);
   }
 
@@ -1250,7 +1250,7 @@ public final class ModularArchitecture {
                         relative(target.getBaseComponentType().getPackageName()))))
         .because(
             "the administration sees connected accounts only as masked numbers, never a person"
-                + " or an account (ADR-0041, Beschluss 8)")
+                + " or an account (ADR-0041, Entscheidung 8)")
         .allowEmptyShould(true);
   }
 

@@ -5,8 +5,8 @@ import java.util.List;
 
 /**
  * The chunk-count property a domain's corpus is expected to have after the real,
- * production-configured {@code TokenTextSplitter} runs (issue #721, ADR-0010 Nachtrag). Two shapes,
- * one mechanism: a domain declares what it expects, and a violation is always a hard abort, never a
+ * production-configured {@code TokenTextSplitter} runs (ADR-0010, Entscheidung 3). Two shapes, one
+ * mechanism: a domain declares what it expects, and a violation is always a hard abort, never a
  * tolerance case — only *what* counts as a violation differs.
  *
  * <ul>
@@ -84,7 +84,7 @@ public record ChunkCountExpectation(Kind kind, int minChunksPerDocument) {
                           d.chunkCount(),
                           "expected at least "
                               + minChunksPerDocument
-                              + " chunks (Mehr-Chunk-Invariante, ADR-0010 Nachtrag), got "
+                              + " chunks (Mehr-Chunk-Invariante, ADR-0010 Entscheidung 3), got "
                               + d.chunkCount()))
               .sorted(Comparator.comparing(Violation::fileName))
               .toList();

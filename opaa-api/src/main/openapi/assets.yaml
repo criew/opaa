@@ -50,7 +50,7 @@ paths:
         SUCCESSION_OPEN, whose message names who is responsible. Taking reach away stays possible -
         a downgrade, an earlier expiry and a revocation are never refused for it.
         .
-        An owner-only asset (a private library, ADR-0036 Nachtrag 3) carries no grant but its
+        An owner-only asset (a private library, ADR-0036 Entscheidung 5) carries no grant but its
         owner's own: every grant is refused with 403 and the code OWNER_ONLY_ASSET, for every
         recipient and every caller. The system administration has no administrative role on such
         an asset and gets the 404 of an unknown one.

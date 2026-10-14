@@ -237,7 +237,7 @@ public class IndexingConfiguration {
     return new StaleDocumentCleanupService(documentRepository, vectorChunkStore, assetRepository);
   }
 
-  /** What the file sync of every file connector keeps between its runs (ADR-0040). */
+  /** What the file sync of every file connector keeps between its runs (ADR-0045). */
   @Bean
   ScanJournal scanJournal(SourceSyncStateRepository sourceSyncStateRepository) {
     return new ScanJournal(sourceSyncStateRepository);

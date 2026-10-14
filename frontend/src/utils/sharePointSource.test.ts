@@ -11,7 +11,7 @@ import {
   validateSharePointValues,
 } from './sharePointSource'
 
-describe('sharePointSource (ADR-0040, Nachtrag „SharePoint“)', () => {
+describe('sharePointSource (ADR-0047)', () => {
   it('reads stored folders as plain ids and with their shown names', () => {
     const settings = sharePointSettingsFromLibrary({
       sourceType: 'SHAREPOINT',

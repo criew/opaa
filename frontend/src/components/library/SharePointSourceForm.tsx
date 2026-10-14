@@ -77,7 +77,7 @@ function failure(err: unknown, fallback: string): Message {
 }
 
 /**
- * The SharePoint form (ADR-0040, Nachtrag „SharePoint“): find a site by its address or - with
+ * The SharePoint form (ADR-0047): find a site by its address or - with
  * Sites.Read.All - by a search term, choose document libraries of it, optionally narrow each to
  * folders, and test every chosen library. The profile signs in; the form asks for no secret and
  * shows no address. Every listing goes through the same browse endpoint, one stage per request.

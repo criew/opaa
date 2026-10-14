@@ -29,7 +29,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Warns once of every end ahead (ADR-0041): the end a provider named for a person's OAuth consent
+ * Warns once of every end ahead (ADR-0048): the end a provider named for a person's OAuth consent
  * goes to that person, for a library's own consent to those responsible for it ({@link
  * SourceConsentService}), the expiry date of a profile's client secret to every system
  * administrator, {@value ConnectionProfileService#SECRET_EXPIRY_WARNING_DAYS} days before. The

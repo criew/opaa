@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: knowledge-2026-10-04-source-sync-revisits
       author: opaa
-      comment: "One row per document deleted by hand from a library with a sync state (ADR-0040): the folder memory hands over no marker above it until a full sync listed its folder. Goes with the state."
+      comment: "One row per document deleted by hand from a library with a sync state (ADR-0045, Entscheidung 5): the folder memory hands over no marker above it until a full sync listed its folder. Goes with the state."
       changes:
         - sql:
             sql: |

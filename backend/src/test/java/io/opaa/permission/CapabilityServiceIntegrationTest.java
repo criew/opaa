@@ -172,7 +172,7 @@ class CapabilityServiceIntegrationTest {
         .isFalse();
   }
 
-  /** ADR-0036, Nachtrag of 03.10.2026: a grant in one scope opens no other scope. */
+  /** ADR-0036, Entscheidung 5: a grant in one scope opens no other scope. */
   @Test
   void aScopedGrantOpensItsScopeOnly() {
     revokeFromAllAccounts(Capability.CREATE_CONNECTOR_LIBRARY, RSS);

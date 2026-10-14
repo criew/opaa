@@ -24,7 +24,7 @@ import java.util.function.Supplier;
  * MultiRunSummary}. Every other variant runs exactly once, as before this issue; a second run would
  * report the identical numbers, which is itself the tested invariant (see {@code
  * PipelineHarnessSupport}/{@code RetrievalEvaluationHarnessTest}'s bit-identical-run evidence,
- * ADR-0013 Nachtrag), not a reason to spend the wall-clock time confirming it again on every
+ * ADR-0013, Konsequenzen), not a reason to spend the wall-clock time confirming it again on every
  * variant comparison.
  */
 public final class VariantRunner {

@@ -459,7 +459,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
 
   /**
    * The interval a switch-on takes when the caller names none: the provider's current one if it has
-   * one, otherwise the shipped default of six hours (ADR-0036, "Zahlen, die dieser ADR setzt").
+   * one, otherwise the shipped default of six hours (ADR-0036, "Zahlen").
    */
   private int resolveInterval(OidcProvider provider, Integer requested) {
     if (requested != null) {

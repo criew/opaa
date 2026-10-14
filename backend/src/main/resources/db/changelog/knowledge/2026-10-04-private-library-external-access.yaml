@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: knowledge-2026-10-04-private-library-external-access
       author: opaa
-      comment: "A library whose asset shell is owner-only is never released for Fremdzugaenge (ADR-0036, Nachtrag 3): its external_access_state stays NEVER_SET, whatever path writes the row."
+      comment: "A library whose asset shell is owner-only is never released for Fremdzugaenge (ADR-0036, Entscheidung 5): its external_access_state stays NEVER_SET, whatever path writes the row."
       changes:
         - sql:
             splitStatements: false

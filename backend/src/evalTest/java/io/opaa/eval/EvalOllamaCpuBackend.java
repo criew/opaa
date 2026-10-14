@@ -12,12 +12,12 @@ import org.slf4j.Logger;
 import org.testcontainers.ollama.OllamaContainer;
 
 /**
- * Pins the ggml CPU kernel set the eval Ollama container computes with (ADR-0012, Nachtrag
- * CPU-Backend). The image ships one library per instruction-set level and loads the best one the
- * host supports, so the same model digest computes with other kernels on an AVX-512 host than on an
- * AVX2-only one. Every x86-64 host executes {@link #PINNED}; all other variants are removed before
- * the server starts, and {@link #requirePinnedBackendLoaded} proves from the container log that
- * every model runner started so far used it.
+ * Pins the ggml CPU kernel set the eval Ollama container computes with (ADR-0012, Entscheidung 54).
+ * The image ships one library per instruction-set level and loads the best one the host supports,
+ * so the same model digest computes with other kernels on an AVX-512 host than on an AVX2-only one.
+ * Every x86-64 host executes {@link #PINNED}; all other variants are removed before the server
+ * starts, and {@link #requirePinnedBackendLoaded} proves from the container log that every model
+ * runner started so far used it.
  */
 final class EvalOllamaCpuBackend {
 
@@ -96,7 +96,7 @@ final class EvalOllamaCpuBackend {
               + " instead of only the pinned '"
               + PINNED
               + "'. A different kernel set changes greedy generation and embedding vectors, so this"
-              + " run is not comparable to any committed baseline (ADR-0012, Nachtrag CPU-Backend).");
+              + " run is not comparable to any committed baseline (ADR-0012, Entscheidung 54).");
     }
     return PINNED;
   }

@@ -15,10 +15,10 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p><b>A separate type and a separate file per path and domain, never a shared one.</b> The two
  * paths measure at different windows (@10 without a similarity threshold vs. @20 with it applied),
- * are not interconvertible, and carry independently counted contract versions (ADR-0012, Nachtrag
- * Pipeline-Messpfad, decision 16). Sharing a schema would make it possible for a pipeline
- * re-measurement to be written over a raw-vector baseline — the one outcome {@code
- * docs/features/retrieval-benchmark.md} §1 rules out before any code is written.
+ * are not interconvertible, and carry independently counted contract versions (ADR-0012,
+ * Entscheidung 16). Sharing a schema would make it possible for a pipeline re-measurement to be
+ * written over a raw-vector baseline — the one outcome {@code docs/features/retrieval-benchmark.md}
+ * §1 rules out before any code is written.
  *
  * <p>See {@code eval/baseline/README.md} for the update procedure; the tolerance formula and the
  * error criterion are ADR-0013's, unchanged and literally shared with the raw-vector path (see
@@ -38,8 +38,8 @@ public record PipelineBaseline(
    * drift here means "this baseline no longer applies", not "retrieval got worse" — see {@link
    * PipelineBaselineComparator#compare}.
    *
-   * <p>Carries the full set of pipeline fixed points from ADR-0012, Nachtrag, decision 13: the
-   * query parameters {@code fetch-k}, {@code top-k}, {@code similarity-threshold}, {@code
+   * <p>Carries the full set of pipeline fixed points from ADR-0012, Entscheidung 13: the query
+   * parameters {@code fetch-k}, {@code top-k}, {@code similarity-threshold}, {@code
    * max-chunks-per-document}, {@code mmr-lambda}, the decomposition settings {@code
    * query-decomposition-enabled} and {@code max-sub-queries}, and the chat model used when
    * decomposition is active. Until the first pipeline baseline existed, those values were reported

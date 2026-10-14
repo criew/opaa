@@ -16,11 +16,11 @@ import java.util.function.Function;
  * adapter alone; a caller only ever holds an {@link UploadedOriginalRef}.
  *
  * <p><b>Resolving a locator means three things, and every read and delete below does all three</b>
- * (ADR-0030, Entscheidung 3 and its addendum to Entscheidung 4): the original belongs to the
- * organization <em>and</em> the library it is asked for, links are followed before that is decided,
- * and it actually exists. A locator that fails any of them is indistinguishable from one that fails
- * another - that is what lets {@code LibraryDocumentService#loadContent} answer the same 404 for a
- * foreign, a tampered and a vanished original.
+ * (ADR-0030, Entscheidungen 3 and 4): the original belongs to the organization <em>and</em> the
+ * library it is asked for, links are followed before that is decided, and it actually exists. A
+ * locator that fails any of them is indistinguishable from one that fails another - that is what
+ * lets {@code LibraryDocumentService#loadContent} answer the same 404 for a foreign, a tampered and
+ * a vanished original.
  *
  * <p><b>An attachment row's synthetic locator resolves to "not there", and that is not an
  * error.</b> Attachment bytes are never stored (ADR-0022): {@code <parent>/<index>/<name>} lies

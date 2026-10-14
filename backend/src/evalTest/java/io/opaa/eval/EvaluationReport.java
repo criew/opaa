@@ -13,10 +13,10 @@ public record EvaluationReport(
     Map<String, MetricsAggregate> byCategory,
     Map<String, MetricsAggregate> byDifficulty,
     Map<String, MetricsAggregate> byLanguage,
-    // Issue #721, ADR-0012 Nachtrag: the chunk-level answer-span metric family, overall only (not
-    // broken down by category/difficulty/language — the per-query detail in allQueryResults already
-    // lets a reader build any cross-tabulation needed). NOT_APPLICABLE (applicableCases=0) for a
-    // domain whose golden cases carry no answer_span, i.e. comic-characters today.
+    // ADR-0012, Entscheidung 9: the chunk-level answer-span metric family, overall only (not broken
+    // down by category/difficulty/language — the per-query detail in allQueryResults already lets a
+    // reader build any cross-tabulation needed). NOT_APPLICABLE (applicableCases=0) for a domain
+    // whose golden cases carry no answer_span, i.e. comic-characters today.
     ChunkAnswerSpanMetrics.Aggregate answerSpanOverall,
     // Issue #721 code review, Wichtig 1: ADR-0012 §8 and the issue's acceptance criteria both
     // promise an explicit report of whether the document-bound window was actually reached, not
@@ -47,16 +47,17 @@ public record EvaluationReport(
    * whenever a change to gain function, IDCG basis, k-windows, threshold handling or the
    * micro/macro averaging choice would make historical reports incomparable to new ones.
    *
-   * <p><b>Bumped to 2 by issue #721 (ADR-0012 Nachtrag):</b> the k-window is now explicitly
+   * <p><b>Bumped to 2 by issue #721 (ADR-0012, Entscheidung 8):</b> the k-window is now explicitly
    * document-bound rather than chunk-bound (see {@link DocumentRanking}), and a second metric
    * family (chunk-level answer-span) was added. For a one-chunk-per-document corpus the two windows
    * coincide (see {@code EvalDomainConfig#COMIC_CHARACTERS}), so this version bump changes report
    * *shape*, not comic-characters' measured *values* — see the PR description's before/after
    * comparison for the empirical confirmation.
    *
-   * <p><b>Bumped to 3 by issue #1144 (ADR-0012 Nachtrag):</b> {@code ingestionPipelineFingerprint}
-   * became a fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records
-   * and why {@code corpusManifestSha256} alone did not already cover it.
+   * <p><b>Bumped to 3 by issue #1144 (ADR-0012, Entscheidung 28):</b> {@code
+   * ingestionPipelineFingerprint} became a fixed point — see {@link IngestionPipelineFingerprint}'s
+   * Javadoc for what it records and why {@code corpusManifestSha256} alone did not already cover
+   * it.
    *
    * <p><b>Bumped to 4 by issue #1164 (PR #1201 review):</b> {@code MailDocumentFormat#version()}
    * moved 2 → 3 (mail_date truncated to whole seconds for lexicographic sortability), which shifted
@@ -71,11 +72,11 @@ public record EvaluationReport(
    * bump above, not a corpus routing change (no corpus in this repository routes a document through
    * {@code MailDocumentFormat}).
    *
-   * <p><b>Bumped to 6 by issue #1070 (Teil 2, ADR-0012 Nachtrag Metadatenfilter):</b> {@code
-   * metadataFilterEnabled} became a fixed point - the harness applies each golden case's {@code
-   * filter} inside {@code similaritySearch}, so a run with and one without the filter measure
-   * different things for the {@code metadata_filter} class. Unlike the two fingerprint bumps above
-   * this one moves measured values (the {@code verwaltung} baselines were re-drawn).
+   * <p><b>Bumped to 6 by issue #1070 (ADR-0012, Entscheidung 32):</b> {@code metadataFilterEnabled}
+   * became a fixed point - the harness applies each golden case's {@code filter} inside {@code
+   * similaritySearch}, so a run with and one without the filter measure different things for the
+   * {@code metadata_filter} class. Unlike the two fingerprint bumps above this one moves measured
+   * values (the {@code verwaltung} baselines were re-drawn).
    *
    * <p><b>Bumped to 9 by issue #1357:</b> {@code HtmlDocumentFormat#version()} moved 2 → 3 and
    * {@code ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child
@@ -85,15 +86,14 @@ public record EvaluationReport(
    * <p><b>Bumped to 10 by issue #1522:</b> {@code ollamaImage} became a checked fixed point, so a
    * committed baseline states which Ollama produced its vectors instead of leaving that to the
    * {@code notes}. No measured value moves - all six committed baselines record the pinned
-   * container they were already measured with (ADR-0012, Nachtrag Ollama-Herkunft).
+   * container they were already measured with (ADR-0012, Entscheidung 68).
    *
    * <p><b>Bumped to 11 by issue #1652:</b> {@code ollamaCpuBackend} became a checked fixed point -
-   * the ggml CPU kernel set inside that image moves embedding rankings (ADR-0012, Nachtrag
-   * CPU-Backend).
+   * the ggml CPU kernel set inside that image moves embedding rankings (ADR-0012, Entscheidung 54).
    *
    * <p><b>Bumped to 12 by issue #1650:</b> {@code contextPrefixFingerprint} became a checked fixed
    * point - the form of the Kontextpräfix moves every multi-chunk embedding without moving a
-   * pipeline version (ADR-0012, Nachtrag Kontextpräfix-Form).
+   * pipeline version (ADR-0012, Entscheidung 57).
    *
    * <p><b>Bumped to 13 by issue #2033:</b> {@code PdfDocumentFormat#version()} moved 1 → 2 (a table
    * enclosed by a complete ruled grid is written one line per row, cells joined by {@code " | "}),
@@ -133,8 +133,8 @@ public record EvaluationReport(
       // measured with. On a corpus where the Ein-Chunk-Invariante holds this value cannot change
       // anything — overlap only exists between chunks — which is itself worth having in writing.
       int chunkOverlap,
-      // Issue #721, ADR-0012 Nachtrag: the k-window is now explicitly document-bound. documentTopK
-      // is the number of distinct documents the ranking metrics are computed over (10, unchanged in
+      // ADR-0012, Entscheidung 8: the k-window is now explicitly document-bound. documentTopK is
+      // the number of distinct documents the ranking metrics are computed over (10, unchanged in
       // value from the pre-#721 chunk-bound topK); chunkTopK is the actual similaritySearch topK
       // used to reach that many distinct documents after deduplication (DocumentRanking). For
       // comic-characters chunkTopK == documentTopK == 10, because maxChunksPerDocument == 1.
@@ -180,9 +180,9 @@ public record EvaluationReport(
       boolean externalOllamaEndpoint) {}
 
   /**
-   * The chunk-count invariant check (ADR-0010, made a per-domain property by its #721 Nachtrag):
-   * every corpus document must satisfy the domain's declared {@link ChunkCountExpectation} after
-   * the real, production-configured {@code TokenTextSplitter} runs. This is the beweiskräftige
+   * The chunk-count invariant check (ADR-0010, Entscheidung 3: a per-domain property): every corpus
+   * document must satisfy the domain's declared {@link ChunkCountExpectation} after the real,
+   * production-configured {@code TokenTextSplitter} runs. This is the beweiskräftige
    * (proof-carrying) check ADR-0010 assigns to this harness — the generator's own byte-size guard
    * is only a cheap approximation.
    */

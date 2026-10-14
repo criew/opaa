@@ -7,8 +7,8 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Operational bounds of the SharePoint connector (ADR-0040, Nachtrag „SharePoint“). Every value
- * falls back to its default when absent or zero.
+ * Operational bounds of the SharePoint connector (ADR-0047). Every value falls back to its default
+ * when absent or zero.
  *
  * @param pageSize entries per {@code delta} and {@code children} page ({@code $top}), at most
  *     {@value #MAX_PAGE_SIZE}; default 200

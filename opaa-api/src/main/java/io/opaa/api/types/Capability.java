@@ -23,7 +23,7 @@ public enum Capability {
    * Creating a knowledge library fed by a connector. Its own capability because such a library
    * reaches server paths and stored credentials. The only capability with a scope - one connector
    * type ({@code TYPE:<key>}) or one connection profile ({@code PROFILE:<id>}) - so releasing one
-   * target never opens another (ADR-0036, Nachtrag of 03.10.2026).
+   * target never opens another (ADR-0036, Entscheidung 5).
    */
   CREATE_CONNECTOR_LIBRARY,
 

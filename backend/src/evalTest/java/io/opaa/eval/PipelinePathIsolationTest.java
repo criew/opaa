@@ -248,8 +248,8 @@ class PipelinePathIsolationTest {
                   .fixedPoints()
                   .ollamaImage())
           .as(
-              "%s: the harness pin moved without this baseline's ollamaImage (and, per ADR-0012 "
-                  + "Nachtrag Ollama-Herkunft, its measurementContractVersion) being updated to "
+              "%s: the harness pin moved without this baseline's ollamaImage (and, per ADR-0012, "
+                  + "Entscheidung 68, its measurementContractVersion) being updated to "
                   + "match - a baseline may only name the Ollama it was actually measured with",
               domain.baselineFileName())
           .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
@@ -308,7 +308,7 @@ class PipelinePathIsolationTest {
                   .contextPrefixFingerprint())
           .as(
               "%s: the Kontextpräfix form moved without this baseline being re-measured - see "
-                  + "ADR-0012, Nachtrag Kontextpräfix-Form",
+                  + "ADR-0012, Entscheidung 57",
               domain.baselineFileName())
           .isEqualTo(actual);
       assertThat(
@@ -320,7 +320,7 @@ class PipelinePathIsolationTest {
                   .contextPrefixFingerprint())
           .as(
               "%s: the Kontextpräfix form moved without this baseline being re-measured - see "
-                  + "ADR-0012, Nachtrag Kontextpräfix-Form",
+                  + "ADR-0012, Entscheidung 57",
               domain.pipelineBaselineFileName())
           .isEqualTo(actual);
     }
@@ -352,7 +352,7 @@ class PipelinePathIsolationTest {
               "%s: a registered pipeline's version moved without this baseline's "
                   + "ingestionPipelineFingerprint (and, per ADR-0012 decision 29, the "
                   + "measurementContractVersion) being updated to match - see ADR-0012, "
-                  + "Nachtrag Ingestion-Pipeline-Fixpunkt",
+                  + "Entscheidung 28",
               domain.baselineFileName())
           .isEqualTo(actual);
 
@@ -364,7 +364,7 @@ class PipelinePathIsolationTest {
               "%s: a registered pipeline's version moved without this baseline's "
                   + "ingestionPipelineFingerprint (and, per ADR-0012 decision 29, the "
                   + "pipelineMeasurementContractVersion) being updated to match - see "
-                  + "ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt",
+                  + "ADR-0012, Entscheidung 28",
               domain.pipelineBaselineFileName())
           .isEqualTo(actual);
     }

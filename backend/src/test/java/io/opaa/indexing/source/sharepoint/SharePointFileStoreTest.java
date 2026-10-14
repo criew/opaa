@@ -22,11 +22,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 /**
- * What the SharePoint store adds to the contracts (ADR-0040, Nachtrag „SharePoint“), run through
- * the file sync against the {@link FakeGraphServer}: only granted sites under {@code
- * Sites.Selected}, no OneDrive, the folder filter, renamed and moved files and folders, a chain
- * that no longer reaches the library, OneNote and malware, repeated delta entries, and durable
- * against passing download failures.
+ * What the SharePoint store adds to the contracts (ADR-0047), run through the file sync against the
+ * {@link FakeGraphServer}: only granted sites under {@code Sites.Selected}, no OneDrive, the folder
+ * filter, renamed and moved files and folders, a chain that no longer reaches the library, OneNote
+ * and malware, repeated delta entries, and durable against passing download failures.
  */
 class SharePointFileStoreTest {
 

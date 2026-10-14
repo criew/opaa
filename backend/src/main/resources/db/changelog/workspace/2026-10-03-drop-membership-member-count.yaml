@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: workspace-2026-10-03-drop-membership-member-count
       author: opaa
-      comment: "The growth signal of a group membership is gone (ADR-0036, Entscheidung 9, Nachtrag of 03.10.2026): space_memberships and its history lose the member count recorded at admission, the membership its check with it."
+      comment: "The growth signal of a group membership is gone (ADR-0036, Entscheidung 9): space_memberships and its history lose the member count recorded at admission, the membership its check with it."
       changes:
         - sql:
             sql: |

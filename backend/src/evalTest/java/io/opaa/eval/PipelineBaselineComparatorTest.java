@@ -745,7 +745,7 @@ class PipelineBaselineComparatorTest {
   }
 
   /**
-   * Pins this path's own absolute floors (ADR-0012, Nachtrag, decision 19; ADR-0013 header note) at
+   * Pins this path's own absolute floors (ADR-0012, Entscheidung 19; ADR-0013, Entscheidung 4) at
    * the point where they actually bind — a baseline low enough that the relative component (0.8 ·
    * baseline) falls below the anchor, which is the whole reason the anchor exists. Without this
    * test the two constants could be edited to any value while every other test stayed green, since

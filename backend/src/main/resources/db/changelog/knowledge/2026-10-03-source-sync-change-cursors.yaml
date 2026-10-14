@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: knowledge-2026-10-03-source-sync-change-cursors
       author: opaa
-      comment: "Change cursors per stream for a file connector with a change log (ADR-0040, Entscheidung 6): the valid ones and the start cursors a full sync in progress holds back. NULL for every other connector."
+      comment: "Change cursors per stream for a file connector with a change log (ADR-0045, Entscheidung 3): the valid ones and the start cursors a full sync in progress holds back. NULL for every other connector."
       changes:
         - sql:
             sql: |

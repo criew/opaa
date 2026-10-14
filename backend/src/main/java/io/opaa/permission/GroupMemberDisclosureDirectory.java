@@ -13,7 +13,7 @@ import java.util.UUID;
  * <p><b>This interface is the one place the disclosure rule is written down.</b> Three of the four
  * limits are properties of the group and decided by the implementation; the first belongs to the
  * caller and is enforced by each caller before it asks. The group's size limits nothing here
- * (ADR-0036, Entscheidung 9, Nachtrag of 03.10.2026):
+ * (ADR-0036, Entscheidung 9):
  *
  * <ul>
  *   <li><b>(a) the right held at the object</b> - <em>the caller's</em>: only while the group still

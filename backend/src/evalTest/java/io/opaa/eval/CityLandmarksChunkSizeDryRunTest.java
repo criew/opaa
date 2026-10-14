@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
  * city-landmarks} corpus through the real, production {@link MarkdownDocumentFormat} (same pipeline
  * {@code DocumentFormatRegistry} routes {@code .md} to since #1103) without needing Testcontainers,
  * Postgres or Ollama. Used during corpus generation to verify the "at least 3 chunks per document"
- * domain property (ADR-0010 Nachtrag) before paying for a full {@code evaluateRetrieval}
+ * domain property (ADR-0010, Entscheidung 3) before paying for a full {@code evaluateRetrieval}
  * Testcontainers run, and printed here (not asserted) so it can be re-run on demand while iterating
  * on the generator's prose.
  *

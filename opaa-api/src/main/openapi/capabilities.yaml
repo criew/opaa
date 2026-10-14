@@ -200,7 +200,7 @@ components:
           nullable: true
           maxLength: 200
           description: >
-            Where the capability applies (ADR-0036, Nachtrag of 03.10.2026). Required for
+            Where the capability applies (ADR-0036, Entscheidung 5). Required for
             CREATE_CONNECTOR_LIBRARY and rejected for every other capability: TYPE:<source type
             key> for libraries with their own address, PROFILE:<profile id> for libraries and
             connected accounts through a connection profile. Releasing one profile never opens

@@ -83,7 +83,7 @@ class PrivateLibraryErasureIntegrationTest {
           "databasechangelog");
 
   /**
-   * The text of the owner's chat answers stays with her chat (ADR-0041, Nachtrag #2165; open
+   * The text of the owner's chat answers stays with her chat (ADR-0049, Entscheidung 2; open
    * maintainer decision M1): an answer may quote the erased content, only its sources are redacted.
    */
   private static final String CHAT_ANSWER_TEXT = "chat_messages.content";

@@ -149,7 +149,7 @@ Neben den Rollen und den beiden Befugnissen steht eine dritte Art von Recht: die
 Oberfläche **Anlegerecht**) — das unbefristete Recht, etwas *anzulegen*. Sie wird an eine Person, eine
 Gruppe oder an **„Alle Konten"** vergeben, hat keinen Gegenstand und öffnet **nie** einen Inhalt.
 Festgelegt in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
-Entscheidung 5, die damit ADR-0018, Entscheidung 6 samt Nachtrag ablöst.
+Entscheidung 5, die damit ADR-0018, Entscheidung 6 ablöst.
 
 | Fähigkeit | Was sie öffnet | Ausgeliefert an |
 |---|---|---|

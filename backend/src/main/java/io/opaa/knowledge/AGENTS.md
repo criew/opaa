@@ -25,7 +25,7 @@ Vektorindex (`health`). knowledge hängt nur von foundation, format, identity un
   `VectorStoreWriter` in `embedding_next`; `EmbeddingReindexService` bettet neu ein und schaltet um.
 - **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf,
   Protokoll), `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen),
-  `source` (Vertrag, Laufrahmen, Auslöser), `maintenance`, `filesync` (Datei-Abgleich, ADR-0040,
+  `source` (Vertrag, Laufrahmen, Auslöser), `maintenance`, `filesync` (Datei-Abgleich, ADR-0045,
   kennt keinen Konnektor und keinen Anbieter); darüber Wurzel, `web` und Konnektoren. Rückwege
   sind Ports: `VanishedDocumentReconciler`, Properties als Schnittstellen (`EmbeddingBatching`).
 - **Formate** liegen im Modul format (`io.opaa.format`, siehe `format/AGENTS.md`).

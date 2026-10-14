@@ -38,21 +38,21 @@ public enum NotificationType {
   GROUP_MEMBER_REMOVED,
 
   /**
-   * The provider rejected the secret of the person's connected account (ADR-0041): their private
+   * The provider rejected the secret of the person's connected account (ADR-0048): their private
    * library is not updated until they connect the account anew. Sent to that person only.
    */
   CONNECTION_EXPIRED,
 
   /**
    * The system administration ended the person's connected account - a changed, shut down or
-   * deleted profile (ADR-0041). Sent to that person only; its object is the profile.
+   * deleted profile (ADR-0048). Sent to that person only; its object is the profile.
    */
   CONNECTION_ENDED,
 
   /**
-   * A change of its profile released the person's private library from it (ADR-0041): the library
-   * rests, keeps its content and runs again once she connects it through another profile. Sent to
-   * its owner only; its object is the library.
+   * A change of its profile released the person's private library from it (ADR-0049, Entscheidung
+   * 3): the library rests, keeps its content and runs again once she connects it through another
+   * profile. Sent to its owner only; its object is the library.
    */
   PRIVATE_LIBRARY_RELEASED,
 

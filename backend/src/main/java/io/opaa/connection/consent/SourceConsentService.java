@@ -58,11 +58,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * A library's own OAuth consent with a service account ("Quelle verbinden", ADR-0041): who may give
- * it, how it is stored - with the library as owner, so it outlasts the person who gave it - and the
- * one way it ends for every cause, each logged as the library's connection and told to those
- * responsible where the person managing it did not cause it. A grant given before its library
- * exists waits for that person as a pending consent.
+ * A library's own OAuth consent with a service account ("Quelle verbinden", ADR-0048, Entscheidung
+ * 6): who may give it, how it is stored - with the library as owner, so it outlasts the person who
+ * gave it - and the one way it ends for every cause, each logged as the library's connection and
+ * told to those responsible where the person managing it did not cause it. A grant given before its
+ * library exists waits for that person as a pending consent.
  */
 @Service
 public class SourceConsentService implements SourceConsentRejections, SourceConsentEnds {

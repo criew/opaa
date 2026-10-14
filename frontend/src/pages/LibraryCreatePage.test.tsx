@@ -1431,7 +1431,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 15000)
   })
 
-  describe('SharePoint (#2153, ADR-0040)', () => {
+  describe('SharePoint (ADR-0047)', () => {
     const sharePointProfile = {
       id: 'profile-sharepoint',
       name: 'SharePoint Rheinfurt',

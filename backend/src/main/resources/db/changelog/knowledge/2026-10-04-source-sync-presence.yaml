@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: knowledge-2026-10-04-source-sync-presence
       author: opaa
-      comment: "The documents a file sync round over several runs has seen at their place (ADR-0040), only for a store whose identity is the location. Goes with the document and with the state."
+      comment: "The documents a file sync round over several runs has seen at their place (ADR-0045, Entscheidung 6), only for a store whose identity is the location. Goes with the document and with the state."
       changes:
         - sql:
             sql: |

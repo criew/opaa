@@ -177,9 +177,9 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
   @Test
   void attachmentsOfAChecksumSkippedMailArePreservedRecursivelyFromTheDatabase()
       throws IOException {
-    // The Nachtragsfall of ADR-0022, Entscheidung 3: an unchanged (checksum-skipped) mail is
-    // never re-parsed, so it is reported present but not reprocessed - and the reconciliation
-    // preserves its attachment rows, including a grandchild of a nested mail, from the database.
+    // The backfill case of ADR-0022, Entscheidung 3: an unchanged (checksum-skipped) mail is never
+    // re-parsed, so it is reported present but not reprocessed - and the reconciliation preserves
+    // its attachment rows, including a grandchild of a nested mail, from the database.
     String innerMailPath = MAIL_URL + "/0/weitergeleitet.eml";
     String grandchildPath = innerMailPath + "/0/anlage.pdf";
     Document mailDoc = httpDocument("mail.eml", MAIL_URL, null);

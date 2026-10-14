@@ -7,9 +7,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The scope of {@code CREATE_CONNECTOR_LIBRARY} (#2161, ADR-0036, Nachtrag of 03.10.2026): applied
- * to an existing installation, every grant and interval of it becomes one per delivered connector
- * type, the uniqueness covers the scope, and a later organization is seeded per type.
+ * The scope of {@code CREATE_CONNECTOR_LIBRARY} (ADR-0036, Entscheidung 5): applied to an existing
+ * installation, every grant and interval of it becomes one per delivered connector type, the
+ * uniqueness covers the scope, and a later organization is seeded per type.
  */
 class CapabilityScopeMigrationTest extends AbstractBaselineTest {
 

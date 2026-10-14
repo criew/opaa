@@ -4,9 +4,9 @@ import io.opaa.knowledge.SourceType;
 import java.util.UUID;
 
 /**
- * The scopes of {@code CREATE_CONNECTOR_LIBRARY} (ADR-0036, Nachtrag of 03.10.2026): {@code
- * TYPE:<key>} for a library with its own address, {@code PROFILE:<id>} for one through a profile.
- * connections is the only place that builds them.
+ * The scopes of {@code CREATE_CONNECTOR_LIBRARY} (ADR-0036, Entscheidung 5): {@code TYPE:<key>} for
+ * a library with its own address, {@code PROFILE:<id>} for one through a profile. connections is
+ * the only place that builds them.
  */
 public final class ConnectorScope {
 

@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: rights-2026-10-04-asset-owner-only
       author: opaa
-      comment: "The asset shell gets the mark 'nur Besitzerin' (ADR-0036, Nachtrag 3; ADR-0041, Entscheidung 6): set at creation, only for a person owner, immutable afterwards together with the owner, and such an asset carries no grant but its owner's own."
+      comment: "The asset shell gets the mark 'nur Besitzerin' (ADR-0036, Entscheidung 5; ADR-0041, Entscheidung 6): set at creation, only for a person owner, immutable afterwards together with the owner, and such an asset carries no grant but its owner's own."
       changes:
         - sql:
             splitStatements: false

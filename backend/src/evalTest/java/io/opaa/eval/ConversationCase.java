@@ -89,7 +89,7 @@ public record ConversationCase(
    * consume. Deliberately an adaptation rather than a second metric implementation: a turn is a
    * question with expected documents, which is exactly what {@link GoldenCase} models, and reusing
    * it keeps this path's numbers computed by the very code that computes the single-question path's
-   * (ADR-0012, Nachtrag Mehrrunden-Messpfad).
+   * (ADR-0012, Entscheidung 38).
    *
    * <p>{@code difficulty} and {@code language} stay {@code null}: this path groups by case class
    * and by turn index only, so a value there would name a report group nothing reads.

@@ -958,7 +958,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /**
    * Notes the deleted document's folder for the next full sync of a library with a sync state, in
    * this transaction: otherwise the folder memory keeps the folder unlisted and the document never
-   * returns (ADR-0040). A document outside every container lies under no remembered folder.
+   * returns (ADR-0045, Entscheidung 5). A document outside every container lies under no remembered
+   * folder.
    */
   private void noteRevisit(Document document) {
     if (document.getSourceContainerKey() != null) {

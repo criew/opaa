@@ -209,7 +209,7 @@ public class StaleDocumentCleanupService implements VanishedDocumentReconciler {
 
   /**
    * Folds into {@code currentFilePaths} the {@code file_path} of every existing attachment whose
-   * parent is present this run but was not re-parsed - the Nachtragsfall of ADR-0022, Entscheidung
+   * parent is present this run but was not re-parsed - the backfill case of ADR-0022, Entscheidung
    * 3, applied breadth-first from the roots so a grandchild of an unchanged ancestor is preserved
    * regardless of row order. A child of a re-parsed parent survives only if that parent re-reported
    * it. The fold-in step of {@link #reconcile}.
