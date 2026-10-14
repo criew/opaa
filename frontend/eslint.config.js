@@ -6,6 +6,7 @@ import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier'
 import jsxA11yX from 'eslint-plugin-jsx-a11y-x'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import themeBoundaries from './eslint/boundaries.js'
 
 export default defineConfig([
   globalIgnores(['dist', 'public/mockServiceWorker.js']),
@@ -26,5 +27,7 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  // Theme boundaries; rules and transition list in frontend/AGENTS.md.
+  themeBoundaries,
   eslintConfigPrettier,
 ])
