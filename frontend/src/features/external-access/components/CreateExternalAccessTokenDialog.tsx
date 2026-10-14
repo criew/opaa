@@ -360,7 +360,7 @@ export default function CreateExternalAccessTokenDialog({
             </Typography>
           </Box>
 
-          <Alert severity="info">
+          <Alert severity="info" role="note">
             <Typography sx={{ fontSize: 13 }}>{DISCLOSURE_HINT}</Typography>
           </Alert>
         </Stack>
