@@ -10,6 +10,7 @@ import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -80,6 +81,7 @@ public class DirectorySyncService {
   private final DirectorySyncProperties properties;
   private final AuditEventRecorder auditEventRecorder;
   private final DirectorySyncRunLock runLock;
+  private final Clock clock;
 
   public DirectorySyncService(
       DirectoryClient directoryClient,
@@ -90,7 +92,8 @@ public class DirectorySyncService {
       OidcProviderRepository providerRepository,
       DirectorySyncProperties properties,
       AuditEventRecorder auditEventRecorder,
-      DirectorySyncRunLock runLock) {
+      DirectorySyncRunLock runLock,
+      Clock clock) {
     this.directoryClient = directoryClient;
     this.planExecutor = planExecutor;
     this.statusRecorder = statusRecorder;
@@ -100,6 +103,7 @@ public class DirectorySyncService {
     this.properties = properties;
     this.auditEventRecorder = auditEventRecorder;
     this.runLock = runLock;
+    this.clock = clock;
   }
 
   /**
@@ -282,7 +286,7 @@ public class DirectorySyncService {
    */
   private SyncReport execute(
       SyncTarget target, BiFunction<DirectorySnapshot, Instant, SyncReport> plan) {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     DirectorySnapshot snapshot;
     try {
       snapshot = directoryClient.fetchSnapshot(target.organizationId(), target.providerId());
