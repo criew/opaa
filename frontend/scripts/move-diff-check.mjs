@@ -218,10 +218,13 @@ export function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) 
     const kind = routesTheme ? 'a routes.ts' : 'an index.ts'
     const source = readNew(file)
     const statements = parseStatements(source)
+    // whatever is left after removing the statements and real comments is code
     const rest = source
       .replace(STATEMENT, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
       .split('\n')
-      .filter((line) => line.trim() && !/^\s*(\/\/|\/?\*)/.test(line))
+      .filter((line) => line.trim())
     if (rest.length > 0 || statements.some((s) => s.kind !== 'export' || !isLocal(s.spec))) {
       findings.push(`${file}: ${kind} holds re-exports of local modules only`)
       continue

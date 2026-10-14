@@ -183,6 +183,18 @@ describe('move-diff-check', () => {
     ])
   })
 
+  it.each([
+    '/* public api */ export const leaked = 1',
+    '/** public api */ export const leaked = 1',
+    '* export const leaked = 1',
+  ])('reports code behind comment markers in an index.ts: %s', (line) => {
+    expect(check({ [INDEX]: `// public api\n${NEW_TREE[INDEX]}${line}\n` })).toEqual([
+      `${INDEX}: an index.ts holds re-exports of local modules only`,
+      expect.stringContaining(RAIL),
+      `${INDEX}: added`,
+    ])
+  })
+
   it('reports other additions, deletions and changed transition-list counts', () => {
     const changes = [
       ...CHANGES,
@@ -257,7 +269,9 @@ describe('move-diff-check with a theme routes.ts', () => {
 
   it('reports a routes.ts that re-exports a page of another theme', () => {
     expect(
-      checkRoutes(routes(...PAGE_EXPORTS, "export { default as ChatPage } from '../../pages/ChatPage'")),
+      checkRoutes(
+        routes(...PAGE_EXPORTS, "export { default as ChatPage } from '../../pages/ChatPage'"),
+      ),
     ).toContain(`${ROUTES}: re-exports src/pages/ChatPage.tsx, no page of its theme`)
   })
 
@@ -277,11 +291,23 @@ describe('move-diff-check with a theme routes.ts', () => {
     ).toContain(`${ROUTES}: re-exports helper of ${PAGE_NEW}, not the page itself`)
   })
 
-  it('reports a routes.ts that holds more than re-exports', () => {
-    const findings = checkRoutes(routes(...PAGE_EXPORTS, 'export const leaked = 1'))
+  it.each([
+    ['plain code', 'export const leaked = 1'],
+    ['code after a block comment', '/* routes */ export const leaked = 1'],
+    ['code after a comment continuation', '* export const leaked = 1'],
+  ])('reports a routes.ts that holds %s next to the re-exports', (_, line) => {
+    const findings = checkRoutes(
+      routes('/**', ' * Pages of the theme.', ' */', ...PAGE_EXPORTS, line),
+    )
 
     expect(findings).toContain(`${ROUTES}: a routes.ts holds re-exports of local modules only`)
     expect(findings).toContain(`${ROUTES}: added`)
+  })
+
+  it('accepts comment-only lines in a routes.ts', () => {
+    expect(
+      checkRoutes(routes('/**', ' * Pages of the theme.', ' */', '// app only', ...PAGE_EXPORTS)),
+    ).toEqual([])
   })
 
   it('reports an App.tsx import through routes.ts that now names another page', () => {
