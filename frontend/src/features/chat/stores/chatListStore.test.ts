@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, beforeEach } from 'vitest'
-import { server } from '../../../mocks/server'
+import { server } from '@/test/server'
 // #575 review: this import's position relative to chatListStore below no longer matters - see the
 // matching comment in chatStore.test.ts for why.
 import { resetAllStores } from '@/shared/session/resettableStores'

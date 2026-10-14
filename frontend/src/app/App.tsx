@@ -2,16 +2,16 @@ import { useEffect, useMemo } from 'react'
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 // app
-import ErrorBoundary from './components/ErrorBoundary'
-import ProtectedRoute from './components/ProtectedRoute'
+import ErrorBoundary from './ErrorBoundary'
+import ProtectedRoute from './ProtectedRoute'
 import { createAppTheme } from '@/shared/theme/theme'
 import { resolveThemeMode } from '@/shared/theme/colorScheme'
-import GlobalAreaLayout from './layouts/GlobalAreaLayout'
-import AppShell from './layouts/AppShell'
+import GlobalAreaLayout from './shell/GlobalAreaLayout'
+import AppShell from './shell/AppShell'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useUiStore } from '@/shared/stores/uiStore'
-import SettingsPage from './app/areas/SettingsPage'
-import { renderSpaceChats } from './app/themeSeams'
+import SettingsPage from './areas/SettingsPage'
+import { renderSpaceChats } from './themeSeams'
 // shared
 import {
   CATALOG_ROUTE,
@@ -55,7 +55,7 @@ import { SpaceSettingsPage } from '@/features/space/routes'
 // asset
 import { CatalogPage } from '@/features/asset/routes'
 import { CatalogNewPage } from '@/features/asset/routes'
-import { catalogRoute } from './shared/assetTypes'
+import { catalogRoute } from '@/shared/assetTypes'
 // library
 import { LibraryCreatePage } from '@/features/library/routes'
 import { LibraryDetailPage } from '@/features/library/routes'
@@ -85,7 +85,7 @@ import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { BrandingSettingsPage } from '@/features/branding/routes'
 // connection
 import { ConnectionCallbackPage } from '@/features/library/routes'
-import ConnectionsAdminPage from './app/areas/ConnectionsAdminPage'
+import ConnectionsAdminPage from './areas/ConnectionsAdminPage'
 import { ConnectionLogPage, RightsHistoryPage } from '@/features/audit/routes'
 // search-admin
 import { SearchIndexingAdminPage } from '@/features/search-admin/routes'

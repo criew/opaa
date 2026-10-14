@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi, beforeEach } from 'vitest'
-import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
+import { answerConfirm, renderWithProviders } from '@/test/test-utils'
 import ChatsPage from './ChatsPage'
 import { useChatListStore } from '../stores/chatListStore'
 import { useSpaceStore } from '@/features/space'
@@ -12,8 +12,8 @@ import {
   mockChatDetails,
   mockSearchChats,
 } from '../mocks/chatFixtures'
-import { server } from '../../../mocks/server'
-import { mockSpaces } from '../../space/mocks/spaceFixtures'
+import { server } from '@/test/server'
+import { mockSpaces } from '@/features/space/mocks/spaceFixtures'
 import type { ChatSearchRequest, ChatSearchResponse, ChatSummary } from '@/shared/api/types'
 
 const mockNavigate = vi.fn()

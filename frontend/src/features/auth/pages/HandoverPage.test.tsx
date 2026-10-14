@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter, Route, Routes } from 'react-router'
-import { renderWithProviders } from '../../../test/test-utils'
-import { server } from '../../../mocks/server'
+import { renderWithProviders } from '@/test/test-utils'
+import { server } from '@/test/server'
 import { MOCK_HANDOVER_TOKEN, MOCK_RATE_LIMITED_TOKEN } from '../mocks/localAuthFixtures'
 import {
   clearHandoverInFlight,

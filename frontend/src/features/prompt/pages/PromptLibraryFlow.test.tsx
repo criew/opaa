@@ -3,14 +3,14 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes, useLocation } from 'react-router'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../../mocks/server'
-import { resetMockFavorites } from '../../asset/mocks/assetFixtures'
+import { server } from '@/test/server'
+import { resetMockFavorites } from '@/features/asset/mocks/assetFixtures'
 import {
   answerConfirm,
   renderWithProviders,
   setMockAuthState,
   waitForDialogClosed,
-} from '../../../test/test-utils'
+} from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import type { AssetGrantRequest, PromptLibraryRequest, PromptRequest } from '@/shared/api/types'

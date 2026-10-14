@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, onTestFinished } from 'vitest'
 import { delay, http, HttpResponse } from 'msw'
-import { server } from '../../../mocks/server'
+import { server } from '@/test/server'
 import { mockDocumentChunks } from '../mocks/searchAdminFixtures'
 import { BATCH_RUN_STALLED_MESSAGE, useSearchAdminStore } from './searchAdminStore'
 

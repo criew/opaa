@@ -17,7 +17,7 @@ Laufzeitabhängigkeit von fremder Infrastruktur.
 
 Schriften, Icons und statische Assets kommen als npm-Pakete und werden mit der Anwendung gebündelt.
 Zur Laufzeit wird kein externer Link geladen: Schriften über `@fontsource/*` (importiert in
-`frontend/src/main.tsx`), Icons über `@mui/icons-material`, keine `<link>`-Tags zu externen Diensten
+`frontend/src/app/main.tsx`), Icons über `@mui/icons-material`, keine `<link>`-Tags zu externen Diensten
 in `frontend/index.html`. Die Content-Security-Policy in `frontend/nginx.conf` setzt `font-src 'self'`
 und `default-src 'self'`, sodass ein versehentlicher Fremdlink im Browser scheitert statt still zu
 laden.

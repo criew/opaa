@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
-import { renderWithProviders } from '../../../test/test-utils'
+import { renderWithProviders } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
 import { FieldValidationError } from '@/shared/session/authApi'
 import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
-import { mockLocalAccount, mockLocalTokenResponse, mockUser } from '../../../mocks/authFixtures'
+import { mockLocalAccount, mockLocalTokenResponse, mockUser } from '@/shared/mocks/authFixtures'
 import ChangePasswordPage from './ChangePasswordPage'
 
 /**

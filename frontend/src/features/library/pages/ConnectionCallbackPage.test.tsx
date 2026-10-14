@@ -3,10 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { Route, Routes, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { server } from '../../../mocks/server'
+import { server } from '@/test/server'
 import { leaveFor } from '@/shared/api/leaveApp'
 import { useAuthStore } from '@/shared/session/authStore'
-import { answerConfirm, renderWithProviders, setMockAuthState } from '../../../test/test-utils'
+import { answerConfirm, renderWithProviders, setMockAuthState } from '@/test/test-utils'
 import type {
   ConnectionAuthorizationCompleteRequest,
   ConnectionAuthorizationStartRequest,

@@ -36,4 +36,4 @@ Der Product Manager legt fest, *was* eine Funktion leistet; der Developer baut s
 
 - Artefakte statt Dialog: Ihre Übergabe an den Developer ist das Konzeptdokument im Repo, per PR eingebracht (`docs`-Commit-Typ), nicht eine Chat-Nachricht.
 - Fragen an den Maintainer bündeln Sie und geben sie an den Orchestrator; bevorzugt zum Definitionszeitpunkt eines Features.
-- Vor jedem Konzept lesen Sie die zugehörige Feature-Spezifikation in `docs/features/` und die bestehenden Frontend-Muster in `frontend/src/pages/`.
+- Vor jedem Konzept lesen Sie die zugehörige Feature-Spezifikation in `docs/features/` und die bestehenden Frontend-Muster in den Seiten der Themen unter `frontend/src/features/<thema>/pages/` und den gemeinsamen Bausteinen unter `frontend/src/shared/ui/`.

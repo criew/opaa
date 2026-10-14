@@ -1,37 +1,42 @@
-import { describe, expect, it } from 'vitest'
-import { checkSuppressions, findBoundaryDisables, totalCount } from './check-theme-boundaries.mjs'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { ESLint } from 'eslint'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { themeBoundaries } from '../eslint/boundaries.js'
+import {
+  SAMPLE_FILES,
+  checkBoundaryRules,
+  checkNoSuppressions,
+  checkScripts,
+  findBoundaryDisables,
+} from './check-theme-boundaries.mjs'
 
-const entry = (count, rule = 'boundaries/dependencies') => ({ [rule]: { count } })
+const frontendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 describe('check-theme-boundaries', () => {
-  it('sums the counts of all entries', () => {
-    expect(totalCount({ 'src/a.ts': entry(2), 'src/b.ts': entry(3) })).toBe(5)
+  let root
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'check-theme-boundaries-'))
   })
 
-  it('accepts a list that shrank or kept its size, also with entries moved between files', () => {
-    const base = { 'src/a.ts': entry(2), 'src/b.ts': entry(3) }
-
-    expect(checkSuppressions({ 'src/a.ts': entry(2), 'src/b.ts': entry(2) }, base)).toEqual([])
-    expect(
-      checkSuppressions({ 'src/features/x/a.ts': entry(2), 'src/b.ts': entry(3) }, base),
-    ).toEqual([])
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true })
   })
 
-  it('rejects a list that grew', () => {
-    const errors = checkSuppressions(
-      { 'src/a.ts': entry(2), 'src/c.ts': entry(4) },
-      { 'src/a.ts': entry(5) },
-    )
+  it('accepts a frontend without a bulk suppressions file', () => {
+    expect(checkNoSuppressions(root)).toEqual([])
+  })
+
+  it('rejects a bulk suppressions file, even an empty one', () => {
+    fs.writeFileSync(path.join(root, 'eslint-suppressions.json'), '{}\n')
+
+    const errors = checkNoSuppressions(root)
 
     expect(errors).toHaveLength(1)
-    expect(errors[0]).toContain('grew from 5 to 6')
-  })
-
-  it('rejects any other rule, even without a base list', () => {
-    const errors = checkSuppressions({ 'src/a.ts': entry(1, 'no-console') }, null)
-
-    expect(errors).toHaveLength(1)
-    expect(errors[0]).toContain('no-console')
+    expect(errors[0]).toContain('eslint-suppressions.json must not exist')
   })
 
   it('finds comments that disable the boundary rule or every rule', () => {
@@ -52,6 +57,61 @@ describe('check-theme-boundaries', () => {
       '3: /* eslint-disable */',
       '4: // eslint-disable-next-line',
       '5: /* eslint boundaries/dependencies: off */',
+    ])
+  })
+
+  it.each([
+    ['--suppressions-location', 'eslint . --suppressions-location other.json'],
+    ['--suppress-all', 'eslint . --suppress-all'],
+    ['--suppress-rule', 'eslint . --suppress-rule boundaries/dependencies'],
+  ])('rejects a package.json script passing %s', (_, command) => {
+    const errors = checkScripts({ scripts: { lint: 'eslint .', 'lint:quiet': command } })
+
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toContain('"lint:quiet"')
+  })
+
+  it('accepts scripts without suppression options', () => {
+    expect(checkScripts({ scripts: { lint: 'eslint .', test: 'vitest run' } })).toEqual([])
+  })
+
+  it('accepts the effective config of this frontend', async () => {
+    expect(await checkBoundaryRules(new ESLint({ cwd: frontendRoot }), frontendRoot)).toEqual([])
+  })
+
+  it.each([
+    ['downgraded to warn', 'warn'],
+    ['switched off', 'off'],
+  ])('rejects the boundary rule %s', async (_, severity) => {
+    const eslint = new ESLint({
+      cwd: root,
+      overrideConfigFile: true,
+      overrideConfig: [
+        themeBoundaries(root),
+        { files: ['src/features/**'], rules: { 'boundaries/dependencies': severity } },
+      ],
+    })
+
+    const errors = await checkBoundaryRules(eslint, root)
+
+    const featureFiles = SAMPLE_FILES.filter((file) => file.startsWith('src/features/'))
+    expect(errors).toHaveLength(featureFiles.length)
+    expect(errors[0]).toContain('boundaries/dependencies')
+  })
+
+  it('rejects a config that does not cover a bucket at all', async () => {
+    const eslint = new ESLint({
+      cwd: root,
+      overrideConfigFile: true,
+      overrideConfig: [{ ...themeBoundaries(root), files: ['src/features/**/*.{ts,tsx}'] }],
+    })
+
+    const errors = await checkBoundaryRules(eslint, root)
+
+    expect(errors.map((error) => error.split(':')[0])).toEqual([
+      'src/shared/ui/Sample.tsx',
+      'src/app/Sample.tsx',
+      'src/test/sample.ts',
     ])
   })
 })

@@ -11,8 +11,8 @@ import {
   setMockExternalAccessSettings,
 } from '../mocks/externalAccessHandlers'
 import { resetMockExternalAccessTokens } from '../mocks/externalAccessTokenHandlers'
-import { server } from '../../../mocks/server'
-import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../../../test/test-utils'
+import { server } from '@/test/server'
+import { answerConfirm, renderWithProviders, waitForDialogClosed } from '@/test/test-utils'
 import ExternalToolsTab from './ExternalToolsTab'
 
 /** Der Zeitpunkt der Fixture in der Zeitzone des Laufs - sonst hinge der Test an einer Zone. */

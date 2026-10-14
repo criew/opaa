@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../../mocks/server'
+import { server } from '@/test/server'
 import { mockMailSettings, setMockMailSettings } from '../mocks/mailFixtures'
 import { MAIL_FAILING_HOST } from '../mocks/mailHandlers'
 import { useMailStore } from './mailStore'

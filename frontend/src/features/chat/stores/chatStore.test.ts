@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest'
-import { server } from '../../../mocks/server'
+import { server } from '@/test/server'
 // Import order does not matter: chatStore.ts and chatListStore.ts each register themselves for
 // the reset once created, however far their circular import has resolved.
 import { resetAllStores } from '@/shared/session/resettableStores'
