@@ -6,3 +6,4 @@ Suchverwaltung: Suchstatus je Bibliothek, Suchdiagnose mit Abrufprotokoll und de
 - **Spec-Tags:** `search-admin` (`opaa-api/src/main/openapi/search.yaml`), dazu die Aufrufe unter `/api/v1/admin/indexing/*` des Tags `indexing` (`indexing.yaml`).
 - **Backend-Modul:** assistant (Paket `io.opaa.searchadmin`), für `/admin/indexing/*` knowledge (Paket `io.opaa.indexing`).
 - **Erlaubte Abhängigkeiten:** `library`.
+- **Genutzt von:** `app`.
