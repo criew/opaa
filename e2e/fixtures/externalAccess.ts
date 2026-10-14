@@ -26,7 +26,7 @@ const FRONTEND_BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
  * Host-Port des Backends an, den scripts/run-e2e.mjs als E2E_BACKEND_BASE_URL durchreicht -
  * dieselbe Art Adresse wie E2E_AI_STUB_BASE_URL. Damit gehen beide Tokenwege über **eine** Adresse,
  * und ein Unterschied zwischen ihnen kann nie vom Weg dorthin kommen. Die nginx-Auslieferung des
- * Frontends reicht `/mcp` seit #1721 ebenfalls weiter; dass sie das tut, ist Gegenstand von
+ * Frontends reicht `/mcp` ebenfalls weiter; dass sie das tut, ist Gegenstand von
  * tests/mcp-endpoint-routing.spec.ts und nicht dieser Szenarien. Der Vorgabewert entspricht dem
  * Standard-Backend-Port dieses Ziels, damit `pnpm run test:playwright` gegen einen bereits
  * laufenden Stack ohne weitere Umgebung funktioniert.
@@ -235,7 +235,7 @@ export async function setLibraryReleaseViaApi(
 }
 
 /**
- * Öffnet den Reiter „Freigaben" einer Bibliothek, auf dem seit #1941 der Abschnitt „Externer
+ * Öffnet den Reiter „Freigaben" einer Bibliothek, auf dem der Abschnitt „Externer
  * Zugang" mit der Freigabe für Fremdzugänge steht - ohne Dialog davor.
  */
 export async function openLibraryAccessDialog(page: Page, libraryName: string): Promise<void> {
@@ -245,7 +245,7 @@ export async function openLibraryAccessDialog(page: Page, libraryName: string): 
   await expect(page.getByRole('heading', { name: 'Fremdzugänge' })).toBeVisible()
 }
 
-/** Seit #1941 steht der Abschnitt auf der Seite; zu schließen gibt es nichts mehr. */
+/** Der Abschnitt steht auf der Seite; zu schließen gibt es nichts. */
 export async function closeLibraryAccessDialog(_page: Page): Promise<void> {}
 
 /** Ein Datum im Format des Eingabefelds, so viele Tage in der Zukunft. */

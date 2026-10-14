@@ -5,8 +5,7 @@ spring-ai = "2.0.1"
 # Override of the tomcat.version property of the spring-boot-dependencies BOM (see the
 # dependencyManagement block in build.gradle.kts). Spring Boot 4.1.1 pins 11.0.24, which is
 # affected by CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525. Remove this entry, its
-# [libraries] entries and the override once a Spring Boot release ships tomcat.version >= 11.0.25
-# (#1431).
+# [libraries] entries and the override once a Spring Boot release ships tomcat.version >= 11.0.25.
 tomcat = "11.0.27"
 spotless = "8.10.4"
 caffeine = "3.3.1"
@@ -18,22 +17,21 @@ cyclonedx-bom = "3.5.1"
 # otherwise chunk size and chunk overlap would be counted in different tokenizations.
 jtokkit = "1.1.0"
 # HTML parser used directly by io.opaa.indexing.source.rss.RssFeedIndexingExecutor and io.opaa.indexing.attachment.AttachmentProfile to read
-# detail pages and their linked attachments (#467, #468). Previously reached the classpath only
-# transitively via spring-ai-tika-document-reader, so a Spring AI version bump could have silently
-# dropped it - now declared explicitly, version pinned to what that transitive dependency resolves
-# to today (`./gradlew dependencies`).
+# detail pages and their linked attachments. Declared explicitly rather than reached transitively
+# via spring-ai-tika-document-reader, so a Spring AI version bump cannot silently drop it; version
+# pinned to what that transitive dependency resolves to (`./gradlew dependencies`).
 jsoup = "1.23.2"
-# Magic-byte content detection for the upload endpoint (#435, io.opaa.library.LibraryDocumentService
+# Magic-byte content detection for the upload endpoint (io.opaa.library.LibraryDocumentService
 # / io.opaa.format.SupportedDocumentFormats#contentMatchesExtension). Already on the classpath
 # transitively via spring-ai-tika-document-reader; declared explicitly because io.opaa now calls
 # org.apache.tika.Tika directly rather than only through Spring AI's TikaDocumentReader.
 tika-core = "3.3.2"
-# Parses the OpenAPI spec directly in opaa-api's parity tests (issue #896) - no Spring
+# Parses the OpenAPI spec directly in opaa-api's parity tests - no Spring
 # dependency needed for that, so a lightweight YAML parser instead of pulling in a
 # spec-validation library.
 snakeyaml = "2.7"
 # JDBC binding for the pgvector column type (com.pgvector.PGvector), used directly by
-# io.opaa.retrieval.ranking.ChunkEmbeddingLookup to read a chunk's stored embedding back for MMR (#914).
+# io.opaa.retrieval.ranking.ChunkEmbeddingLookup to read a chunk's stored embedding back for MMR.
 # Already on the classpath transitively via spring-ai-pgvector-store; declared explicitly because
 # this module's own code now imports it directly rather than only through Spring AI's PgVectorStore.
 # Version pinned to what that transitive dependency resolves to today (`./gradlew dependencies`).
@@ -49,7 +47,7 @@ poi-ooxml = "5.5.1"
 # real exports use - not on the classpath transitively today, so this is a genuinely new
 # dependency rather than an explicit pin of an existing transitive one.
 commons-csv = "1.14.1"
-# .msg reader (MAPI/HSMF) for io.opaa.format.file.mail.MailDocumentFormat (#1060). Already on the
+# .msg reader (MAPI/HSMF) for io.opaa.format.file.mail.MailDocumentFormat. Already on the
 # classpath transitively via spring-ai-tika-document-reader's tika-parser-microsoft-module;
 # declared explicitly because this module now reads Outlook messages directly through
 # org.apache.poi.hsmf rather than only through Tika's own extraction. Version pinned to match
@@ -68,7 +66,7 @@ mime4j = "0.8.15"
 # through Tika's own extraction. Version pinned to what that transitive dependency resolves to today
 # (`./gradlew dependencies`).
 pdfbox = "3.0.8"
-# opaa-api's tests are deliberately Spring-free (issue #896) and use plain JUnit Jupiter/AssertJ
+# opaa-api's tests are deliberately Spring-free and use plain JUnit Jupiter/AssertJ
 # instead of the Spring Boot-managed test-deps bundle below - these two versions are therefore
 # pinned explicitly rather than inherited from the Spring Boot BOM. The module's main sourceSet is
 # not Spring-free, though: the generated io.opaa.api.dto classes (spring generator) import
@@ -84,17 +82,17 @@ junit-platform = "6.1.3"
 # clients (apache-client 4.x, netty-nio-client) are excluded in build.gradle.kts so exactly one is
 # on the classpath. Not managed by the Spring Boot BOM, hence pinned here.
 aws-sdk = "2.55.14"
-# SMB2/3 client (Apache License 2.0) for the SMB connector (io.opaa.indexing.source.smb, #2155):
+# SMB2/3 client (Apache License 2.0) for the SMB connector (io.opaa.indexing.source.smb):
 # 0.15.0 is the current release (08/2026) with SMB 3.1.1, signing and encryption; its runtime
 # dependencies are asn-one, mbassador and Bouncy Castle (aligned by the override below). Not
 # managed by the Spring Boot BOM.
 smbj = "0.15.0"
-# Logic-less Mustache renderer for the mail templates of io.opaa.mail (#1536, ADR-0033
+# Logic-less Mustache renderer for the mail templates of io.opaa.mail (ADR-0033
 # Entscheidung 10). Deliberately not a template engine with expressions: a mail body an
 # administrator edits in the browser must not be able to evaluate anything, and "strict mode plus a
 # declared placeholder set" is the whole safety argument. Not managed by the Spring Boot BOM.
 jmustache = "1.16"
-# In-JVM SMTP server for the mail integration tests (#1536). Started inside the test JVM rather
+# In-JVM SMTP server for the mail integration tests. Started inside the test JVM rather
 # than as a container, so a send is proved end to end - STARTTLS negotiation, AUTH, the MIME parts
 # - without Docker being required for that particular test. Not managed by the Spring Boot BOM.
 greenmail = "2.1.14"
@@ -130,7 +128,7 @@ spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-te
 # Spring AI (versions managed by Spring AI BOM)
 spring-ai-vector-store-advisor = { module = "org.springframework.ai:spring-ai-vector-store-advisor" }
 spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-starter-model-openai" }
-# #762: io.opaa.api.GlobalExceptionHandler catches org.springframework.ai.retry.{Transient,NonTransient}AiException
+# io.opaa.api.GlobalExceptionHandler catches org.springframework.ai.retry.{Transient,NonTransient}AiException
 # directly. spring-ai-starter-model-openai only pulls in spring-ai-autoconfigure-retry (the
 # autoconfiguration, not the exception classes themselves) - the now-removed
 # spring-ai-starter-model-ollama used to bring this module in transitively, so it must be declared
@@ -138,7 +136,7 @@ spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-st
 spring-ai-retry = { module = "org.springframework.ai:spring-ai-retry" }
 spring-ai-starter-vector-store-pgvector = { module = "org.springframework.ai:spring-ai-starter-vector-store-pgvector" }
 spring-ai-tika-document-reader = { module = "org.springframework.ai:spring-ai-tika-document-reader" }
-# The MCP server over Streamable HTTP (#1721, ADR-0035). Brings mcp-spring-webmvc and
+# The MCP server over Streamable HTTP (ADR-0035). Brings mcp-spring-webmvc and
 # io.modelcontextprotocol.sdk:mcp-core; the latter decides which MCP protocol revisions this
 # installation speaks, so a bump of it is a protocol change, not a dependency bump.
 spring-ai-starter-mcp-server-webmvc = { module = "org.springframework.ai:spring-ai-starter-mcp-server-webmvc" }

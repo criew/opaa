@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic generator for the "verwaltung" evaluation corpus (issue #1042).
+"""Deterministic generator for the "verwaltung" evaluation corpus.
 
 Emits a fully synthetic, German-language corpus of administrative documents (Satzungen,
 Gebührenordnungen, Dienstanweisungen, Formularhinweise, sowie zwei organisationsweite
@@ -82,8 +82,8 @@ class Amt:
     kennung_praefix: str
     # True for exactly one Amt (Kämmerei/KAE, see AEMTER below): only this Amt's documents carry
     # the literal "Gebührenbefreiung wegen Bedürftigkeit" passage (Abschnitt 5a der Spezifikation,
-    # the #938-class). Code-Review-Befund (PR #1074): mit dem Begriff in allen zehn Ämtern hatte
-    # jedes Dokument dieselbe IDF ≈ 0 und der Fall war nicht mehr konstruierbar — die Spezifikation
+    # the #938-class). Mit dem Begriff in allen zehn Ämtern hätte
+    # jedes Dokument dieselbe IDF ≈ 0 und der Fall wäre nicht konstruierbar — die Spezifikation
     # verlangt einen seltenen, wörtlich auffindbaren Begriff in einem Dokument, umgeben von
     # thematisch nahen, aber sachlich falschen Konkurrenzdokumenten ohne den Begriff.
     traegt_gebuehrenbefreiung: bool = False
@@ -177,7 +177,7 @@ AEMTER: list[Amt] = [
         "Verwaltungsgebührensatzung",
         "allgemeine Amtshandlungen der Stadtverwaltung",
         "allgemeine Amtshandlung",
-        # Matches wörtlich den in der Spezifikation zitierten belegten Produktionsfall (#938):
+        # Matches wörtlich den in der Spezifikation zitierten belegten Produktionsfall:
         # "§ 3 der Verwaltungsgebührensatzung enthält 'Befreiung' und 'Bedürftigkeit' im Klartext".
         "Muss ich das bezahlen, wenn ich Bürgergeld bekomme?",
         "KAE",
@@ -317,7 +317,7 @@ class GeneratedDocument:
     titel: str
     amt: Amt | None
     aktenzeichen: str
-    # None only on the two Leerwert documents (issue #1070, Teil 2): rendered as YAML `null`,
+    # None only on the two Leerwert documents: rendered as YAML `null`,
     # which the extractor reads as "no value" — the corpus then carries one document without a
     # Datum/Stand and one without a Dokumentart, exactly what the Leerwert-Regel cases need.
     fassung: int | None
@@ -354,7 +354,7 @@ class GeneratedDocument:
 
 
 class IdAllocator:
-    """Sequential, deterministic `verwaltung-NNNN` ids in generation order (issue #1042)."""
+    """Sequential, deterministic `verwaltung-NNNN` ids in generation order."""
 
     def __init__(self) -> None:
         self._next = 1
@@ -377,7 +377,7 @@ class IdAllocator:
 # — die übrigen neun Satzungen haben an derselben Stelle (§ 3) einen anderen, thematisch nahen,
 # aber für den Begriff sachlich falschen Regelungsgegenstand (`paragraph_auskunftsrecht`). Ohne
 # diese Seltenheit wäre der Begriff in jedem der 70 Dokumente auffindbar (IDF ≈ 0) und der Fall
-# nicht konstruierbar (Code-Review-Befund, PR #1074).
+# nicht konstruierbar.
 
 
 def paragraph_geltungsbereich(amt: Amt) -> str:
@@ -1106,7 +1106,7 @@ def build_formularhinweis_body(amt: Amt, nr: int, thema_titel: str, thema_beschr
 
 
 def build_vertretungsregelung_body() -> str:
-    # Code-Review-Befund (PR #1074): Diese beiden Organisationsdokumente dürfen ausschließlich
+    # Diese beiden Organisationsdokumente dürfen ausschließlich
     # die Vertretungs-/Zuständigkeitshälfte der multi_hop-Fallklasse (Abschnitt 5d der
     # Spezifikation) tragen — keine Aussage darüber, WORÜBER ein Amt in der Sache entscheidet
     # (das steht in der jeweiligen Satzung). Andernfalls wäre die dortige Beispielfrage ("Wer
@@ -1296,7 +1296,7 @@ def build_barrierefreiheit_body() -> str:
 def satzung_schlagworte(amt: Amt) -> list[str]:
     if amt.traegt_gebuehrenbefreiung:
         return [amt.name, "Satzung", "Gebühren", "Gebührenbefreiung", "Bedürftigkeit"]
-    # Code-Review-Befund (PR #1074): "Gebührenbefreiung"/"Bedürftigkeit" nur bei der Kämmerei —
+    # "Gebührenbefreiung"/"Bedürftigkeit" nur bei der Kämmerei —
     # sonst tragen alle zehn Satzungen dieselben Schlagworte und der #938-Fall (Abschnitt 5a)
     # verliert seine Seltenheit (IDF ≈ 0).
     return [amt.name, "Satzung", "Gebühren", "Auskunftsrecht"]
@@ -1324,9 +1324,8 @@ def build_documents() -> list[GeneratedDocument]:
                     aktenzeichen=f"{amt.kennung_praefix}-S-2023",
                     fassung=2023,
                     stand_datum="2023-01-01",
-                    # Code-Review-Befund (PR #1074): muss mit § 14 im Fließtext übereinstimmen
-                    # ("tritt am 1. Januar 2023 in Kraft", siehe paragraph_uebergang) — die
-                    # vorherige Fassung widersprach dem mit gueltig_ab=2020-01-01.
+                    # Muss mit § 14 im Fließtext übereinstimmen
+                    # ("tritt am 1. Januar 2023 in Kraft", siehe paragraph_uebergang).
                     gueltig_ab="2023-01-01",
                     gueltig_bis="2023-12-31",
                     ersetzt=None,
@@ -1440,9 +1439,7 @@ def build_documents() -> list[GeneratedDocument]:
                         gueltig_ab="2024-01-01",
                         gueltig_bis=None,
                         # ersetzt/ersetzt_durch referenzieren immer Dateinamen (wie bei der
-                        # Satzung), nicht das Aktenzeichen — Code-Review-Befund (PR #1074): die
-                        # frühere Fassung mischte hier alt_az (Aktenzeichen) mit alt_filename
-                        # (Dateiname) an anderer Stelle.
+                        # Satzung), nicht das Aktenzeichen.
                         ersetzt=alt_filename,
                         ersetzt_durch=None,
                         schlagworte=[amt.name, "Dienstanweisung", thema_titel],

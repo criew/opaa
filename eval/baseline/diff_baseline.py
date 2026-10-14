@@ -10,7 +10,7 @@ wird je Dateiname, und ein Dateiname gehört immer zu genau einem Pfad und einer
 Mehrrunden-Pfad führt dieselben Metrikfelder wie der Pipeline-Pfad und zusätzlich die Gruppen
 `turn:<n>`; Gruppenschlüssel werden ohnehin nicht aufgezählt, sondern aus beiden Dateien gelesen.
 
-Used by .github/workflows/baseline-diff.yml (issue #228, ADR-0013 decision 6): runs on every pull
+Used by .github/workflows/baseline-diff.yml (ADR-0013 decision 6): runs on every pull
 request touching `eval/baseline/**` and compares the PR branch's own committed baselines against the
 ones on `main`, so a PR that quietly lowers any domain's baseline (making its own regression job pass
 against an already-weakened target) is visible in the PR comment instead of hidden behind a green
@@ -51,7 +51,7 @@ METRICS = (
     "allExpectedDocumentsHitAt20",
 )
 
-# Issue #306: the two case counts BaselineComparator reads for the case-count check on
+# The two case counts BaselineComparator reads for the case-count check on
 # group/metric pairs whose mean tolerance is tighter than one case's worth of shift. They live in
 # the same "groups" object as METRICS above, so a PR that lowers one silently narrows a group's
 # protection the same way a lowered mean would — worth surfacing here for the same reason, even
@@ -71,9 +71,8 @@ def find_lowered(main_baseline, pr_baseline):
 
     Dropping a compared group entirely is itself a silent loss of coverage — a PR that removes a
     group loses every check that group used to run, without any single metric ever showing up as
-    "lower". The original version of this function only ever iterated `pr_groups`, so a removed
-    group was invisible to it (issue #304 review finding: PR #673 removed the `language:de` group
-    without the diff reporting anything, even though four checks disappeared)."""
+    "lower". Iterating only `pr_groups` would make a removed group invisible, so the groups of
+    main are walked as well."""
     lowered = []
     main_groups = main_baseline.get("groups", {})
     pr_groups = pr_baseline.get("groups", {})
@@ -115,7 +114,7 @@ def render_table(lowered, main_ref, pr_ref):
         "|---|---|---|---|---|",
     ]
     for group, metric, main_value, pr_value in lowered:
-        # Case counts (issue #306) are integers — render them without the fractional-metric
+        # Case counts are integers — render them without the fractional-metric
         # formatting so a genuine "3 -> 2" reads as a case count, not a fraction.
         fmt = "{}" if metric in CASE_COUNT_FIELDS else "{:.3f}"
         signed_fmt = "{:+d}" if metric in CASE_COUNT_FIELDS else "{:+.3f}"

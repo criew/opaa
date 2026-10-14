@@ -43,7 +43,7 @@ import {
  * - geht dagegen **am Frontend vorbei an den Host-Port des Backends** (`E2E_BACKEND_BASE_URL`,
  * siehe fixtures/externalAccess.ts), damit beide Tokenwege über dieselbe Adresse gehen und ein
  * Unterschied zwischen ihnen nie vom Weg dorthin kommt. Dass die nginx-Auslieferung `/mcp`
- * ebenfalls an das Backend weiterreicht (#1721), prüft mcp-endpoint-routing.spec.ts.
+ * ebenfalls an das Backend weiterreicht, prüft mcp-endpoint-routing.spec.ts.
  *
  * `test.describe.serial`, und zwar zwingend: Die Szenarien bauen eine Installation nacheinander
  * weiter (Kanal an, Bibliotheken, Freigaben, Tokens), und drei von ihnen sind irreversibel - eine
@@ -428,7 +428,7 @@ test.describe.serial('Fremdzugänge', () => {
     expect(await mcpLibraryNames(mcp)).toEqual([LIBRARY_B])
 
     // Die Befristung wird auf wenige Sekunden verkürzt - eine Verwaltungsaktion, die den Ablauf
-    // auslöst, statt auf Kalenderzeit zu warten (#1723, technischer Hinweis).
+    // auslöst, statt auf Kalenderzeit zu warten.
     await setLibraryReleaseViaApi(personApi, libraryBId, true, new Date(Date.now() + 2_000))
     await expect
       .poll(async () => (await mcpLibraryNames(mcp)).length, { timeout: 20_000 })
@@ -571,7 +571,7 @@ async function shareWithPerson(adminPage: Page, libraryName: string) {
 }
 
 /**
- * Das Aufräumen ist hier selbst Prüfgegenstand (#1723): Schalter, Freigaben und Tokens stehen
+ * Das Aufräumen ist hier selbst Prüfgegenstand: Schalter, Freigaben und Tokens stehen
  * danach im Ausgangszustand, und die angelegten Bibliotheken sind fort. Bliebe eine Freigabe oder
  * ein wirksames Token stehen, hinterließe dieser Lauf einer späteren Suite eine geöffnete Tür.
  */

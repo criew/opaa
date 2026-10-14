@@ -5,4 +5,5 @@ Bibliotheken: Anlegen mit Quelle und Zeitplan, Detailseite mit Dokumenten, Metad
 - **Grenze:** Seiten unter `pages/` erreicht nur `app` über `routes.ts`. `index.ts` gibt die Stores (`useLibraryStore`, `useDocumentStore`, `useIndexingStore`), die Dokumentvorschau (`useDocumentPreview`, `DocumentTextPreviewDialog`), `PrivateStorageSection` für die Einstellungen sowie die Bausteine frei, die Chat und Suchverwaltung brauchen.
 - **Spec-Tags:** `library` (`libraries.yaml`), `library-metadata`, `indexing`, `diagnostic-access` (je gleichnamige Datei unter `opaa-api/src/main/openapi/`).
 - **Backend-Module:** library (Paket `io.opaa.library`), knowledge (Pakete `io.opaa.indexing`, `io.opaa.metadata`), workspace (Paket `io.opaa.diagnosticaccess`).
-- **Erlaubte Abhängigkeiten:** `asset`, `principal`, `succession`, `connection`, `external-access`. Genutzt wird das Thema von `chat` und `search-admin`.
+- **Erlaubte Abhängigkeiten:** `asset`, `principal`, `succession`, `connection`, `external-access`.
+- **Genutzt von:** `chat`, `search-admin`, `app`.

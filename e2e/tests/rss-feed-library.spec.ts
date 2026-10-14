@@ -29,7 +29,7 @@ const LIBRARY_NAME_OK = `E2E RSS-Bibliothek ${runId}`
 const LIBRARY_NAME_ERROR = `E2E RSS-Bibliothek Fehlerfall ${runId}`
 
 // DEV_USER_HEADER (fixtures/libraries.ts) calls the library documents API directly as dev-admin,
-// bypassing the UI entirely (PR #510 review, finding 2): GET /api/v1/libraries/{id}/documents
+// bypassing the UI entirely: GET /api/v1/libraries/{id}/documents
 // still exists and still returns each document's fileName (LibraryController#listDocuments) even
 // though #481 removed the connector library's own document list from the UI - this is the one
 // place this suite can still assert on individual RSS/attachment documents by name, not just by
@@ -118,13 +118,13 @@ async function triggerIndexingAndWaitForCompletion(
 }
 
 /**
- * Reads a library's document filenames straight from the API (PR #510 review, finding 2) rather
+ * Reads a library's document filenames straight from the API rather
  * than the aggregate `documentCount` alone - a plain count stays green even if the attachment
  * never got indexed and some other entry happened to produce two documents instead. Sorted so the
  * caller can compare against an expected set without depending on server-side ordering.
  */
 async function fetchLibraryDocumentFileNames(page: Page, libraryId: string): Promise<string[]> {
-  // size=100 (#517): well above anything this suite's feeds produce, so every document lands on
+  // size=100: well above anything this suite's feeds produce, so every document lands on
   // the single page fetched here without this helper having to walk pages itself.
   const response = await page.request.get(
     `/api/v1/libraries/${libraryId}/documents?size=100`,
@@ -155,9 +155,9 @@ async function fetchLibraryDocumentFileNames(page: Page, libraryId: string): Pro
  * never returns chunk text - RssFeedIndexingExecutorTest already covers that at the backend
  * integration level.
  *
- * **Selector convention (PR #510 review, finding 4).** Per e2e/README.md's "Selektor-Konvention",
+ * **Selector convention.** Per e2e/README.md's "Selektor-Konvention",
  * `getByText` on human-authored copy is to be avoided where a role/label/testid alternative
- * exists - none of the three fits an indexing run's free-text status paragraph, and this PR
+ * exists - none of the three fits an indexing run's free-text status paragraph, and this suite
  * intentionally does not touch frontend/src to add a data-testid for it (out of scope for a test-
  * only PR). The one `getByText` below is kept deliberately minimal: it is not load-bearing (the
  * preceding `expect(status...)` assertions on the actual API response already prove the run's
@@ -185,9 +185,9 @@ test.describe.serial('RSS-Feed-Quelle: Positivpfad, unveränderter Feed (#471)',
     await expect(page.getByText('Letzter Lauf: Abgeschlossen')).toBeVisible()
 
     // The library's aggregate documentCount (2 entries + 1 attachment = 3) and, more importantly,
-    // which three documents those are - verified straight from the API, not the UI (PR #510
-    // review, finding 2): no reload/UI-refresh dance needed either, unlike the "N Dokumente"
-    // header text this replaces, which only updates on a fresh page load.
+    // which three documents those are - verified straight from the API, not the UI: no
+    // reload/UI-refresh dance needed either, unlike the "N Dokumente" header text, which only
+    // updates on a fresh page load.
     const fileNames = await fetchLibraryDocumentFileNames(page, libraryIdOk)
     expect(fileNames).toEqual(
       [ENTRY_TITLE_OEFFNUNGSZEITEN, ENTRY_TITLE_STATISTIK, ATTACHMENT_FILE_NAME].sort(),
@@ -223,11 +223,11 @@ test.describe.serial('RSS-Feed-Quelle: Positivpfad, unveränderter Feed (#471)',
   })
 })
 
-// PR #510 review, finding 3: kept out of the describe.serial group above on purpose. It shares no
-// state with scenarios 1/2 (its own library, its own feed), so serializing it with them only cost
-// independence: CI's retries: 1 (playwright.config.ts) re-runs a whole failed serial group from
-// its first test, which - combined with finding 1's rate-limit headroom - means a transient
-// failure in scenario 1 no longer drags this one's own retry budget down with it, and a failure
+// Kept out of the describe.serial group above on purpose. It shares no state with scenarios 1/2
+// (its own library, its own feed), so serializing it with them would only cost independence:
+// CI's retries: 1 (playwright.config.ts) re-runs a whole failed serial group from its first test,
+// which - combined with the rate-limit headroom in docker-compose.e2e.yml - means a transient
+// failure in scenario 1 does not drag this one's own retry budget down with it, and a failure
 // here does not block scenario 1/2's own result either.
 test.describe('RSS-Feed-Quelle: Negativpfad, ein fehlerhafter Eintrag (#471)', () => {
   test('3. Ein fehlerhafter Eintrag (404) bricht den Lauf nicht ab und wird ausgewiesen', async ({
