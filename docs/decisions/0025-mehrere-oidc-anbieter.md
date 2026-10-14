@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-09 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5), Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
 
 ## Kontext
 
@@ -92,12 +92,12 @@ gelöscht werden, solange ein anderer OIDC-Anbieter aktiviert ist, bevor dieser 
 gemacht wurde (`409`).
 
 Seit ADR-0033 ist der Erstadministrator das lokale Notanker-Konto; `InitialAdminPolicy` vergibt
-`SYSTEM_ADMIN` nur noch für den Dev-Issuer, ein Zustand ohne OIDC-Anbieter ist zulässig, und der
+`SYSTEM_ADMIN` allein für den Dev-Issuer, ein Zustand ohne OIDC-Anbieter ist zulässig, und der
 letzte aktivierte OIDC-Anbieter darf deaktiviert oder gelöscht werden, wenn
 `LocalAdminAvailabilityGuard` einen gesicherten lokalen Systemverwalter findet (sonst 409
 `LAST_LOGIN_CAPABLE_ADMIN`) und der Aufruf `acknowledgeLastProvider` trägt; die Zeile behält
-`is_default`. `is_default` steuert nur noch Anmeldevorschlag und Löschschutz, nicht mehr den
-Verzeichnisabgleich. `OPAA_OIDC_BOOTSTRAP=force` lässt den Seeder die Markierung einmalig
+`is_default`. `is_default` steuert Anmeldevorschlag und Löschschutz; der Verzeichnisabgleich
+hängt an der Anbieterzeile (ADR-0036). `OPAA_OIDC_BOOTSTRAP=force` lässt den Seeder die Markierung einmalig
 ignorieren (`OidcProviderSeeder#forceBootstrap`): Eine Zeile mit diesem Issuer wird aktiviert, mit
 den Umgebungswerten überschrieben und zum Standard gemacht, sonst neu angelegt — laut
 protokolliert, der Betrieb entfernt die Variable danach; mit unvollständiger Umgebung bleibt es
@@ -201,3 +201,4 @@ braucht einen Frontend-Neustart; eine Organisation; der `dev`-Modus bleibt unver
 | 2026-09-20 | #1816 | Verzeichnisabgleich je Anbieter, `TrustedProvider` entfällt (ADR-0036) | 4 |
 | 2026-10-03 | #2159 | Token für Quellen und verbundene Konten im Token-Speicher (ADR-0041) | 1 |
 | 2026-10-09 | #2396 | Startmeldung ohne Anbieter nur `ERROR`, wenn kein lokaler Systemverwalter | 3 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 1–5 |

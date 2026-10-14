@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-09-16
+Akzeptiert · zuletzt geändert 2026-10-14
 
 ## Kontext
 
@@ -63,14 +63,13 @@ Der Messpfad kennt Mehrrunden-Fälle (Klassen `anaphora_resolution`, `topic_swit
 `constraint_carryover`, seit #1684 `answer_continuation`) mit eigener Baseline; er läuft nächtlich
 in einem eigenen CI-Job (ADR-0012, Entscheidung 49) und misst ausschließlich zerlegend.
 Nachmessung (#1490) und Ablation (#1587): Das Suchfenster hebt `anaphora_resolution` und
-`topic_switch` (die nDCG-Kennzahl ist als Kriterium zurückgezogen, beurteilt wird über den Anteil
-gelöster Fälle); die Notiz erreichte unter dem gepinnten Eval-Modell `qwen2.5:1.5b-instruct` ihren
-Zweck nicht und schadete sogar. Beides ist ein **Modellbefund, kein Defekt** (#1586): Mit einem
-produktionsüblichen Chat-Modell tragen 9 von 9 `RAHMEN`-Punkten die Rahmenangabe und 5 von 9
-Zielrunden sie in ihrer Teilfrage (gegen 2 von 9 ohne Notiz). Der nächtliche Mehrrunden-Lauf misst
-damit eine Konfiguration, die niemand betreibt — als Regressionswächter richtig, als Aussage über
-die Produktqualität unbrauchbar; der Befundpfad gegen ein Produktionsmodell steht seit #1674
-(`eval/corpus/verwaltung/MAINTENANCE.md`).
+`topic_switch` (Kriterium ist der Anteil gelöster Fälle, nicht die nDCG-Kennzahl); die Notiz
+erreicht unter dem gepinnten Eval-Modell ihren Zweck nicht, mit einem produktionsüblichen
+Chat-Modell trägt sie die Rahmenangabe in die Zielrunden. Beides ist ein **Modellbefund, kein
+Defekt** (#1586). Der nächtliche Mehrrunden-Lauf misst damit eine Konfiguration, die niemand
+betreibt — als Regressionswächter richtig, als Aussage über die Produktqualität unbrauchbar; die
+Messwerte und der Befundpfad gegen ein Produktionsmodell (#1674) stehen in
+`eval/corpus/verwaltung/MAINTENANCE.md`.
 
 ## Konsequenzen
 
@@ -92,7 +91,7 @@ die Produktqualität unbrauchbar; der Befundpfad gegen ein Produktionsmodell ste
 
 - Größeres Gesprächsfenster — verstärkt Bleed und Zitatwiederholung, verschiebt das Vergessen nur.
 - Rolling Summary (unsichtbar, vom System geschrieben) — beeinflusst Antworten mit Text, den niemand sieht; Dienstvereinbarungsthema.
-- Themenwechsel-Erkennung mit Vorschlag „Neuen Chat beginnen?" — Fehlalarme bei Rückfragen mit neuem Vokabular; das Viertel-Kriterium der Erstfassung ist zurückgezogen, beurteilt wird über gelöste `topic_switch`-Fälle, in denen das Ziel auf Rang 1 bleibt.
+- Themenwechsel-Erkennung mit Vorschlag „Neuen Chat beginnen?" — Fehlalarme bei Rückfragen mit neuem Vokabular; Kriterium sind gelöste `topic_switch`-Fälle, in denen das Ziel auf Rang 1 bleibt.
 - Chatübergreifendes Nutzergedächtnis, Vektorindex über Gesprächsinhalte — Produkthaltung: personenbezogene Auswertung bzw. Speicher von Verhalten.
 - Notiz aus Antworten verdichten — unbelegte Aussagen im Systemprompt.
 - Notiz ungefiltert in den Zerlegungs-Prompt — Darstellungswünsche sind für die Suche Rauschen.
@@ -115,3 +114,4 @@ die Produktqualität unbrauchbar; der Befundpfad gegen ein Produktionsmodell ste
 | 2026-09-12 | #1490 | Nachmessung: Fenster trägt, Notiz unter dem Eval-Modell nicht | 5 |
 | 2026-09-12 | #1553 | Mehrrunden-Messung nächtlich als Regressionsschutz (ADR-0012, Entscheidung 49) | 5 |
 | 2026-09-16 | #1586, #1587, #1674 | Ablation und Befund gegen ein Produktionsmodell: Modellbefund, kein Defekt | 5 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 5 |

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-09-05 · ergänzt durch ADR-0026 (Kontextpräfix, modellgestützte Extraktion)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0026 (Kontextpräfix, modellgestützte Extraktion)
 
 ## Kontext
 
@@ -134,3 +134,4 @@ Darstellung zeigt; es gibt keine formatspezifischen Felder mehr am `SourceRefere
 | 2026-09-05 | #1071 | Bibliotheksfelder an derselben Werte-Tabelle | 8 |
 | 2026-09-05 | #1242 | Formatfelder (`fmt:`) lösen die Mail-Sonderfelder am Beleg ab | 7 |
 | 2026-09-17 | #1361, #1701 | Umschlüsselung und Feldlöschung zweiphasig und wiederaufnehmbar | 8 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 5, 6, 8 |

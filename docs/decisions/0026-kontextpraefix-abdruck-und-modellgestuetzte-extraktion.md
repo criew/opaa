@@ -86,7 +86,7 @@ Kontextpräfix und tragen keinen Chunk-Schlüssel.
 - **Schwieriger:** Jede Änderung an der Präfixbildung selbst ändert den Abdruck für den ganzen
   Bestand und beauftragt damit einen vollständigen Nachlauf, der auszuweisen ist.
 - **Restrisiko:** Die modellgestützte Extraktion ist gebaut, aber **nicht abgenommen**: Die
-  Handstichprobe vom 05.09.2026 wies 93,9 % falsche Werte oberhalb der Schwelle aus, weil das
+  Handstichprobe (#1359) wies überwiegend falsche Werte oberhalb der Schwelle aus, weil das
   ausgelieferte Vokabular für den häufigsten Verwaltungsbestand keinen passenden Wert hatte.
 
 ## Verworfene Alternativen
@@ -107,3 +107,4 @@ Kontextpräfix und tragen keinen Chunk-Schlüssel.
 |---|---|---|---|
 | 2026-09-05 | #1365 | Richtung der Schwellenregel nach der Handstichprobe umgekehrt | 5 |
 | 2026-09-17 | #1701 | Umschlüsselung einer Werteliste erfüllt die Nachlauf-Zusagen (#1361, ADR-0024, Entscheidung 8); offener Punkt entfällt | Offen |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | — |

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-09-18 · ergänzt ADR-0002 und ADR-0015
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0002 und ADR-0015
 
 ## Kontext
 
@@ -72,3 +72,4 @@ Vektortabelle auf ein anderes Schema zeigt; die Prüfung läuft vor Datenquelle 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
 | 2026-09-18 | #1366, #1730 | Erstfassung | 1–2 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 2 |

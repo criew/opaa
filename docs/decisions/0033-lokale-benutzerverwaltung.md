@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-11 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -379,10 +379,11 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
   im Regelbetrieb aus zu lassen. **Bestandsinstallationen haben nach dem Update einen Startabbruch,
   bis `OPAA_AUTH_JWT_SECRET` gesetzt ist**; hinter einem Proxy brauchen sie
   `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` (sonst teilen sich alle Clients einen Rate-Limit-Topf), dazu
-  `OPAA_PUBLIC_BASE_URL` und einen echten Wert für `OPAA_INITIAL_ADMIN_EMAIL`, dessen Bedeutung sich
-  ändert: vom Erstadministrator über OIDC zur Adresse des Notanker-Kontos.
+  `OPAA_PUBLIC_BASE_URL` und einen echten Wert für `OPAA_INITIAL_ADMIN_EMAIL`, die Adresse des
+  Notanker-Kontos.
 - **Restrisiken:** Das Einmalpasswort steht einmal im Log; Log-Weiterleitungen sehen es. Der letzte
-  OIDC-Anbieter kann deaktiviert werden — ein größerer Hebel als bisher, geprüft und bestätigt. Die
+  OIDC-Anbieter kann deaktiviert werden; ein Verwalter, der das bestätigt, sperrt alle Anbieterkonten
+  aus — geprüft und bestätigt. Die
   Vertrauensprüfung aus Entscheidung 9 deckt nur die Client-Adresse; ein `X-Forwarded-Proto`, das
   der äußere Proxy nicht überschreibt, kann die CORS-Prüfung täuschen — die Auflage an den Proxy
   steht im Handbuch, das Produkt erzwingt sie nicht.
@@ -427,3 +428,4 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
 | 2026-09-26 | #1640 | Kein Ablaufdatum am Notanker-Konto (409) | 3, 11 |
 | 2026-10-05 | #2260 | Inaktivitätssperre ist für den Konto-Lebenszyklus ein Ruhen (ADR-0041) | 9 |
 | 2026-10-11 | #1988 | Kein Rücksetzlink und kein erzeugtes Passwort für das Notanker-Konto | 3, 5 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3–5, 8, 9, 11–14 |

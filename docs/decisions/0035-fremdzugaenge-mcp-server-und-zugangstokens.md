@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt ADR-0005, ADR-0021, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039 · setzt den Maintainer-Beschluss „Fundament zuerst" (18.09.2026, Epic #1715, Issue #1716) nach fünf Stakeholder-Bewertungen um
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0005, ADR-0021, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
 
 ## Kontext
 
@@ -19,7 +19,8 @@ handelt die Fassung je Anfrage aus und kündigt den HTTP+SSE-Transport und die d
 Client-Registrierung ab; die eingesetzte Bibliothek (Spring AI, `mcp-core`) spricht nur die
 handshake-basierten Revisionen bis `2025-11-25`, beantwortet `tools/list` aus einer serverweiten
 Liste und legt einen **unauthentifizierten** Endpunkt an — der Prüfweg entsteht in unserer
-Filterkette.
+Filterkette. Das ADR setzt den Maintainer-Beschluss „Fundament zuerst" (18.09.2026, Epic #1715,
+Issue #1716) nach fünf Stakeholder-Bewertungen um.
 
 ## Entscheidung
 
@@ -85,8 +86,9 @@ Freigaberecht: Verwalter-Rolle der Bibliothek plus Systemverwaltung, keine Geneh
 Befristung, Historisierung und die angezeigte Anzahl der Tokens, die die Bibliothek enthalten
 (`tokenCount`), sind die Antwort auf das dahinterliegende Anliegen. Eine zurückgenommene oder
 erloschene Freigabe entzieht die Bibliothek allen Tokens sofort und lebt in bestehenden Tokens nicht
-wieder auf. Eine Bibliothek im Zustand „Nachfolge offen" ist von der Freigabe gesperrt
-(`LibraryExternalAccessService` prüft `requireAssetReachNotFrozen`, ADR-0036, Entscheidung 6).
+wieder auf. Eine Bibliothek im Zustand „Nachfolge offen" ist vom Weiten der Freigabe gesperrt
+(`LibraryExternalAccessService` prüft `requireAssetReachNotFrozen`, ADR-0036, Entscheidung 6);
+Zurücknehmen und Verkürzen bleiben möglich.
 Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken deckelt dieses Merkmal **nicht**
 (Maintainer-Festlegung in #797 vom 21.09.2026: sie gilt allein der Freigabe an „Alle Konten");
 der Schutz gegen „eingespeist, dann über den Fremdzugang breit erreichbar" liegt in Befristung und
@@ -174,3 +176,4 @@ Weil es einen Server gibt, fallen bei einem Bruch alle Fremdzugänge des Hauses 
 | 2026-09-18 | #1765, #1766 | Reverse-Proxy-Auflage; Auszüge und `fetch` per Dokumentkennung (`opaa.mcp.default-max-hits`, `excerpt-characters`) | 5 |
 | 2026-09-21 | #797 | Freigabe-Obergrenze deckelt die Fremdzugangsfreigabe nicht (Maintainer) | 4 |
 | 2026-10-02 | #2091 | `listed` entfällt (ADR-0039); Gleichheitszusage umformuliert, Fremdzugang ohne Space | 4, 5 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 4 |

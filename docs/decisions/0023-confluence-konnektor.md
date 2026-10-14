@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt ADR-0017 (Entscheidung 5) und ADR-0022 · Ablage der Einstellungen geändert durch ADR-0038
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5) und ADR-0022 · Ablage der Einstellungen geändert durch ADR-0038
 
 ## Kontext
 
@@ -33,8 +33,8 @@ Allowlist-Eintrag nennen.
 Eine Confluence-Bibliothek trägt mindestens einen und höchstens 500 Spaces
 (`ConfluenceSourceConnector.MAX_SPACES`), je Space Schlüssel und Anzeigename; eine Anlage ohne
 Auswahl wird abgelehnt. Seit #1977 liegt die Auswahl als Teil des Konnektor-Objekts
-`ConfluenceSourceSettings` in `knowledge_libraries.source_settings` (ADR-0038, Entscheidung 2),
-nicht mehr in einer Kindtabelle. Die Auswahl ist nach der Anlage als Ganzes ersetzbar; jede
+`ConfluenceSourceSettings` in `knowledge_libraries.source_settings` (ADR-0038, Entscheidung 2).
+Die Auswahl ist nach der Anlage als Ganzes ersetzbar; jede
 Änderung erzwingt als nächsten Lauf einen Vollabgleich (Entscheidung 4), weil nur er abgewählte
 Spaces aus dem Index nimmt; die Oberfläche sagt das an der Stelle, an der die Auswahl geändert
 wird. Der Bestand einer vollständig geleerten Auswahl verschwindet über das Löschen der
@@ -212,3 +212,4 @@ Zieladressprüfung ist eine Betriebseinstellung je Adresse, keine Eigenschaft de
 | 2026-10-04 | #2218 | Zugang darf die Edition vorgeben; Ursprungsbindung über `credentialBinding` (ADR-0038, Entscheidung 7) | 2, 3, 5 |
 | 2026-10-11 | #2273 | Geheimnis einer Bibliothek an einem Zugang liegt im Token-Speicher (ADR-0041) | 3, 5 |
 | 2026-10-12 | #2496 | Proxy je Bibliothek entfernt, hausweiter Ausgangsproxy (ADR-0041) | Kontext |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3, 5 |

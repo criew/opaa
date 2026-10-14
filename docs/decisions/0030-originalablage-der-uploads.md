@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-09-11
+Akzeptiert · zuletzt geändert 2026-10-14
 
 ## Kontext
 
@@ -48,7 +48,7 @@ Freigeben ein.
 
 Eine Auflösung je Adapter mit der strengeren Semantik: Zugehörigkeit zu Organisation und Bibliothek,
 Symlink-Auflösung (`toRealPath`), Existenz (S3: `HeadObject`). Ein Symlink im Upload-Verzeichnis, der
-nach draußen zeigt, wird nicht mehr ausgeliefert — eine gewollte Verschärfung. Die Existenz gehört
+nach draußen zeigt, wird abgewiesen. Die Existenz gehört
 zur Auflösung, weil die 404-Disziplin von `loadContent` darauf beruht: unbekanntes Dokument, fremde
 Organisation, fehlende Freigabe, Quellentyp ohne lokale Datei und verschwundene Datei antworten
 dasselbe `404`.
@@ -127,7 +127,8 @@ Empfehlung.
 
 Netzlaufwerk bleibt der dritte Weg ohne Code; Temp-Dateien der Konnektoren bleiben lokal; das
 Kontingent zählt `documents.file_size`; Entdoppelung bleibt `uk_documents_library_checksum`;
-`FILESYSTEM`-Bibliotheken bleiben, wie sie sind. Eine `UPLOAD`-Bibliothek lässt sich nur leer
+`FILESYSTEM`-Bibliotheken bleiben, wie sie sind — ein Objektspeicher-Weg für sie ist der
+S3-Konnektor (ADR-0027), eine Quelle ist keine Ablage. Eine `UPLOAD`-Bibliothek lässt sich nur leer
 löschen — das schließt Zeilen aus, nicht Objekte. Deshalb gibt es den **Aufräumlauf**
 (`OrphanedOriginalCleanupService`, `UploadStoreAdminController`, nur `SYSTEM_ADMIN`): zwei Aufrufe,
 nie einer — melden ändert nichts, löschen entfernt nur die übergebenen Locators mit einem
@@ -157,7 +158,6 @@ Kein Zeitplan, der von selbst löscht.
 
 - Vorsigniert ausgelieferte URLs — eine URL, die ohne Anmeldung funktioniert, ist eine andere Zugriffseigenschaft.
 - Mehrere Ablagen nebeneinander (je Organisation oder Bibliothek ein Bucket) — das Schlüsselschema verbaut es nicht.
-- Kein Objektspeicher-Weg für `FILESYSTEM`-Bibliotheken: Dafür gibt es den S3-Konnektor (ADR-0027); eine Quelle ist keine Ablage.
 
 ## Änderungsverlauf
 
@@ -166,3 +166,4 @@ Kein Zeitplan, der von selbst löscht.
 | 2026-09-11 | #1440 | Erstumsetzung (#1475, #1476, #1477) | 1–11 |
 | 2026-09-11 | #1478, #1518 | Aufräumlauf für verwaiste Originale, je Bibliothek und ohne Bibliotheksbezug | 1, 7, 11 |
 | 2026-09-11 | #1544 | Organisationssegment im Schlüssel beider Ablagen | 4 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 2, 5, 7 |

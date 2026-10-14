@@ -88,3 +88,4 @@ durch sie laufen.
 |---|---|---|---|
 | 2026-09-11 | #1517 | Datenbankseitige Absicherung verworfen (Maintainer); Wiedervorlage bei #1292 | Konsequenzen |
 | 2026-09-20 | #1811 | Paketschnitt: Sichtbarkeitshistorie in eigenem Dienst (heute `AssetVisibilityHistoryService`), dieselbe Uhr | 1 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | — |

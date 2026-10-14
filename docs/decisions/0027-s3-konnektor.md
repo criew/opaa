@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich seit #2149 über den gemeinsamen Datei-Abgleich (ADR-0040, Entscheidung 1; künftig ADR-0045)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich seit #2149 über den gemeinsamen Datei-Abgleich (ADR-0040, Entscheidung 1)
 
 ## Kontext
 
@@ -17,20 +17,6 @@ Umsetzung: Der Objektschlüssel ist in einer S3-Benachrichtigung URL-kodiert, in
 ein `HeadObject` auf einen fehlenden Schlüssel antwortet nur mit `s3:ListBucket` `404`, sonst `403`;
 `ListObjectsV2` zeigt in versionierten Buckets nur aktuelle Versionen; MinIO baut `Bearer` selbst.
 
-Rahmen des Maintainers (Epic #1291) und Stand:
-
-| Zusage | Stand | geändert mit |
-|---|---|---|
-| Ein Lauf ist immer ein Vollabgleich | gilt (Entscheidung 3) | — |
-| Push ist Beschleuniger, nicht Ersatz, und Teil des Epics | gilt (Entscheidung 6) | — |
-| Mehrere Bereiche je Bibliothek mit gemeinsamer Freigabe | gilt (Entscheidung 2) | — |
-| Typisierte Konfiguration in einem JSON-Feld statt Spalten | gilt, für jeden Konnektor | #1977 (ADR-0038) |
-| AWS SDK for Java v2 | gilt (Entscheidung 9) | — |
-| Nextcloud und ownCloud sind kein Ziel | gilt (Entscheidung 10); eigener Nextcloud-Konnektor | #2152 |
-| Dokumentpfad `s3://bucket/key`, Präfixe als Ordner, Ordnermarker und Archivklassen übersprungen, nur die aktuelle Version | gilt (Entscheidung 5) | — |
-| Änderungsmerkmal „ETag, Größe und `LastModified`" | abweichend: `LastModified` ist nicht Teil des Merkmals (Entscheidung 4) | #1378 |
-| Löschereignisse dürfen sofort löschen | gilt mit Nachprüfung: sofort im Ereignislauf, aber erst nach `HeadObject` mit `404` (Entscheidung 3) | #1381 |
-
 ## Entscheidung
 
 ### 1. Die Quellkonfiguration bekommt ein typisiertes JSON-Feld
@@ -38,7 +24,7 @@ Rahmen des Maintainers (Epic #1291) und Stand:
 `knowledge_libraries.source_settings` (jsonb) trägt je Quellentyp einen Record, validiert beim
 Lesen und Schreiben: `S3SourceSettings(region, pathStyle, scopes, includePatterns,
 excludePatterns)` mit `S3Scope(bucket, prefix)`. Seit ADR-0038 (#1977) gilt das für jeden
-Konnektor; die Datenbank prüft nur noch, dass `source_settings` ein JSON-Objekt ist, mindestens
+Konnektor; die Datenbank prüft, dass `source_settings` ein JSON-Objekt ist, mindestens
 einen Bereich sichert allein der Record. Was typübergreifend Regeln hat, bleibt Spalte: Endpoint in
 `source_url` (Zieladressprüfung, Ursprungsbindung), Zugangsdaten verschlüsselt in
 `source_credentials`, Zeitplan. **Geheimnisse stehen nie in `source_settings`** — die Spalte ist
@@ -64,7 +50,7 @@ vor der Eingabe. Bereiche sind änderbar; Entfernen wirkt mit dem nächsten Voll
 `defaultRunMode` ist konstant `FULL`. Es gibt keine inkrementelle Betriebsart: Die vollständige
 Auflistung kostet tausend Aufrufe je Million Objekte und ist damit die Regelbetriebsart. Seit #2149
 läuft der Vollabgleich über den gemeinsamen Datei-Abgleich `indexing.filesync` (ADR-0040,
-Entscheidung 1; künftig ADR-0045): `S3FileStore` ist der `FileStore` (ein Bereich ein Container, der Schlüssel die
+Entscheidung 1): `S3FileStore` ist der `FileStore` (ein Bereich ein Container, der Schlüssel die
 Kennung, `S3ChangeMarker` das Änderungsmerkmal), `S3FullSync` liefert Wortlaut und Grenzen aus
 `S3Properties`. Was dort für S3 gilt: Jeder gelistete Schlüssel ist vorhanden, auch ein
 übersprungener (Ordnermarker, Archivklasse, Format, Größe); ein Schlüssel außerhalb der Muster
@@ -215,6 +201,22 @@ Grenzwerte unter `opaa.indexing.s3.*` (`OPAA_INDEXING_S3_*`): `list-page-size` 1
 `max-deferrals` 120. Die Obergrenze von fünfzig Bereichen ist eine Konstante des Records, keine
 Property.
 
+## Stakeholder-Zusagen
+
+Rahmen des Maintainers (Epic #1291) und Stand:
+
+| Zusage | Stand | geändert mit |
+|---|---|---|
+| Ein Lauf ist immer ein Vollabgleich | gilt (Entscheidung 3) | — |
+| Push ist Beschleuniger, nicht Ersatz, und Teil des Epics | gilt (Entscheidung 6) | — |
+| Mehrere Bereiche je Bibliothek mit gemeinsamer Freigabe | gilt (Entscheidung 2) | — |
+| Typisierte Konfiguration in einem JSON-Feld statt Spalten | gilt, für jeden Konnektor | #1977 (ADR-0038) |
+| AWS SDK for Java v2 | gilt (Entscheidung 9) | — |
+| Nextcloud und ownCloud sind kein Ziel | gilt (Entscheidung 10); eigener Nextcloud-Konnektor | #2152 |
+| Dokumentpfad `s3://bucket/key`, Präfixe als Ordner, Ordnermarker und Archivklassen übersprungen, nur die aktuelle Version | gilt (Entscheidung 5) | — |
+| Änderungsmerkmal „ETag, Größe und `LastModified`" | abweichend: `LastModified` ist nicht Teil des Merkmals (Entscheidung 4) | #1378 |
+| Löschereignisse dürfen sofort löschen | gilt mit Nachprüfung: sofort im Ereignislauf, aber erst nach `HeadObject` mit `404` (Entscheidung 3) | #1381 |
+
 ## Konsequenzen
 
 - **Einfacher:** Ein neuer Konnektor braucht keine Spalten. Eine Betriebsart, eine Löschregel —
@@ -260,6 +262,7 @@ Property.
 | 2026-09-24 | #1949 | Testdoppel RustFS statt MinIO; Ereignisweg gegen simulierte Zustellung | 9 |
 | 2026-09-26 | #1977 | `source_settings` für jeden Konnektor, `CHECK`-Zweige entfallen (ADR-0038) | 1 |
 | 2026-09-27 | #1986 | Push-Eingang typneutral `/push`, `/push-secret` (ADR-0038) | 6 |
-| 2026-10-03 | #2149 | Vollabgleich über `indexing.filesync` (ADR-0045, Datei-Abgleich) | 3 |
+| 2026-10-03 | #2149 | Vollabgleich über `indexing.filesync` (ADR-0040, Entscheidung 1) | 3 |
 | 2026-10-11 | #2482 | Keine Längengrenze für den ETag im Änderungsmerkmal | 4 |
 | 2026-10-12 | #2496, #2537 | Kein Proxy je Bibliothek, Zertifikatsprüfung nicht aussetzbar (ADR-0041) | 1, 8 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3, 5, 6, 11 |

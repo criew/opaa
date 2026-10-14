@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-09-10
+Akzeptiert · zuletzt geändert 2026-10-14
 
 ## Kontext
 
@@ -38,8 +38,8 @@ glibc und sonst nichts; `-nossl`, weil die JVM ihre eigene TLS-Implementierung m
 `libssl` nie linkt. Zertifikate, Zeitzonen und Locale-Daten kommen aus der JDK-Laufzeit. Die glibc-Locale
 `C.utf8` wird aus `debian:13-slim` zurückkopiert und `LANG`/`LC_ALL` darauf gesetzt — ohne kompilierte
 Locale meldet glibc `ANSI_X3.4-1968`, das die JVM als `sun.jnu.encoding` übernimmt, und Dateinamen mit
-Umlauten wären unlesbar; `-Duser.language=en -Duser.country=US` im Entrypoint hält die
-Standard-`Locale` auf dem bisherigen Wert. Kein Paketmanager, kein `dist-upgrade`: Die Aktualität
+Umlauten wären unlesbar; `-Duser.language=en -Duser.country=US` im Entrypoint setzt die
+Standard-`Locale` auf `en_US`. Kein Paketmanager, kein `dist-upgrade`: Die Aktualität
 von glibc hängt daran, dass Buildx den `FROM`-Verweis bei jedem Lauf neu auflöst.
 
 ## Konsequenzen
@@ -72,3 +72,4 @@ von glibc hängt daran, dass Buildx den `FROM`-Verweis bei jedem Lauf neu auflö
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
 | 2026-09-10 | #1459, #1469 | Erstfassung | 1–2 |
+| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 2 |
