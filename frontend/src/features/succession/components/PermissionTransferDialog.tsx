@@ -19,10 +19,7 @@ import type {
   SelectableGroupResponse,
   UserSummary,
 } from '@/shared/api/types'
-import {
-  executePermissionTransfer,
-  previewPermissionTransfer,
-} from '../../services/permissionTransferApi'
+import { executePermissionTransfer, previewPermissionTransfer } from '../api/permissionTransferApi'
 import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
 import { UserPicker } from '@/features/principal'

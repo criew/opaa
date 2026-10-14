@@ -9,7 +9,7 @@ import {
 } from '@/shared/stores/notificationStore'
 import AssetTilePicker from '../assets/AssetTilePicker'
 import { assetPickKey, type AssetPick } from '../assets/assetPick'
-import { successionAwareMessage } from '../succession/successionConflict'
+import { successionAwareMessage } from '@/features/succession'
 
 /** The one disclosure about unreadable associations: no number, no name (ADR-0039). */
 export const NOT_ALL_READABLE = 'Nicht alle zugeordneten Inhalte sind für Sie lesbar.'

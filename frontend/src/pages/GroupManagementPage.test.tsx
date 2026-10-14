@@ -55,10 +55,10 @@ vi.mock('../services/groupAdminApi', async () => {
   }
 })
 
-vi.mock('../services/permissionTransferApi', async () => {
-  const actual = await vi.importActual<typeof import('../services/permissionTransferApi')>(
-    '../services/permissionTransferApi',
-  )
+vi.mock('../features/succession/api/permissionTransferApi', async () => {
+  const actual = await vi.importActual<
+    typeof import('../features/succession/api/permissionTransferApi')
+  >('../features/succession/api/permissionTransferApi')
   return { ...actual, getGroupEffects: vi.fn(async () => []) }
 })
 

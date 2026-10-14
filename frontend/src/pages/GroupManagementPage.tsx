@@ -14,7 +14,7 @@ import GroupEditDialog from '../components/admin/groups/GroupEditDialog'
 import GroupFilterBar from '../components/admin/groups/GroupFilterBar'
 import GroupList from '../components/admin/groups/GroupList'
 import GroupMembersDialog from '../components/admin/groups/GroupMembersDialog'
-import PermissionTransferDialog from '../components/permissions/PermissionTransferDialog'
+import { PermissionTransferDialog } from '@/features/succession'
 import { contentWidth } from '@/shared/theme/tokens'
 
 /**

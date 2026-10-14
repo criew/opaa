@@ -52,8 +52,8 @@ import LibraryMetadataFieldsSection from '../components/metadata/LibraryMetadata
 import MetadataExtractionSettingsSection from '../components/metadata/MetadataExtractionSettingsSection'
 import PageSection from '@/shared/ui/PageSection'
 import MetaBadge from '@/shared/ui/MetaBadge'
-import SuccessionStateNote from '../components/succession/SuccessionStateNote'
-import { successionAwareMessage } from '../components/succession/successionConflict'
+import { SuccessionStateNote } from '@/features/succession'
+import { successionAwareMessage } from '@/features/succession'
 import { CATALOG_ROUTE } from '@/shared/routes'
 
 function canEditLibrary(role: AssetRole | undefined): boolean {

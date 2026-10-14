@@ -5,7 +5,7 @@ import Pagination from '@mui/material/Pagination'
 import Typography from '@mui/material/Typography'
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined'
 import type { SuccessionListResponse } from '@/shared/api/types'
-import { getSuccessionEntries } from '../../services/successionApi'
+import { getSuccessionEntries } from '../api/successionApi'
 import SuccessionRow from './SuccessionRow'
 import type { SuccessionTabText } from './successionPresentation'
 

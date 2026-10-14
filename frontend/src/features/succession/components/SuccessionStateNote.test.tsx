@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { AxiosError } from 'axios'
-import { renderWithProviders } from '../../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import SuccessionStateNote from './SuccessionStateNote'
 import { successionAwareMessage } from './successionConflict'
 

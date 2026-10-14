@@ -22,7 +22,7 @@ import { spaceRoleLabel } from '@/shared/utils/labels'
 import { assetTypeTitle } from '../shared/assetTypes'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import SuccessionStateNote from '../components/succession/SuccessionStateNote'
+import { SuccessionStateNote } from '@/features/succession'
 import SpaceKnowledgeNotice from '../components/space/SpaceKnowledgeNotice'
 import { spaceKnowledgeGap } from '../components/space/spaceKnowledge'
 

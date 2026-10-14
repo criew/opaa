@@ -21,7 +21,7 @@ import { promptLibraryHandlers } from './promptLibraryHandlers'
 import { groupHandlers } from './groupHandlers'
 import { groupAdminHandlers } from './groupAdminHandlers'
 // succession
-import { successionHandlers } from './successionHandlers'
+import { successionHandlers } from '../features/succession/mocks/successionHandlers'
 // capability
 import { capabilityHandlers } from '../features/capability/mocks/capabilityHandlers'
 // user

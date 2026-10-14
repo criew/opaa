@@ -4,15 +4,12 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined'
 import { useAuthStore } from '@/shared/session/authStore'
-import { getSuccessionEntries } from '../services/successionApi'
+import { getSuccessionEntries } from '../api/successionApi'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
-import SuccessionList from '../components/succession/SuccessionList'
-import {
-  SUCCESSION_TABS,
-  type SuccessionTab,
-} from '../components/succession/successionPresentation'
+import SuccessionList from '../components/SuccessionList'
+import { SUCCESSION_TABS, type SuccessionTab } from '../components/successionPresentation'
 import { contentWidth } from '@/shared/theme/tokens'
 
 const TAB_ORDER: SuccessionTab[] = ['open', 'grants', 'groups']

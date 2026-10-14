@@ -3,7 +3,7 @@ import { useAuthStore } from '../shared/session/authStore'
 import type { CapabilityOverviewResponse, SuccessionEntryResponse } from '../shared/api/types'
 import { presentationOf } from '@/features/capability'
 import { objectPhrase } from '@/features/capability'
-import { problemOf } from '../components/succession/successionPresentation'
+import { problemOf } from '@/features/succession'
 import { assetGrantScopeHint, assetRoleDescription } from '@/components/assets/assetLabels'
 
 /**

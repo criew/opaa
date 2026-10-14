@@ -65,7 +65,7 @@ import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
 // group
 import GroupManagementPage from './pages/GroupManagementPage'
 // succession
-import SuccessionPage from './pages/SuccessionPage'
+import { SuccessionPage } from '@/features/succession/routes'
 import { HandoverPage } from '@/features/auth/routes'
 // capability
 import { CapabilityManagementPage } from '@/features/capability/routes'
