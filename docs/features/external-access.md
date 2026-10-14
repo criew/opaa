@@ -233,10 +233,8 @@ der Systemverwaltung.
 
 Das Merkmal ist fachlich dasselbe wie früher `visibility` und `listed` (entfallen mit ADR-0037 und
 [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)): eine Stufe der
-Reichweite, an der Bibliothek. Daraus folgen vier Festlegungen. Zwei davon brauchen keine neue Mechanik — die
-Intervall-Historisierung samt Schreibpfadschutz und das Ablaufereignis befristeter Grants existieren
-im Produkt bereits. Die anderen beiden hängen an Mechaniken, die heute **noch nicht gebaut** sind;
-sie sind deshalb als Bedingung formuliert und nicht als Abnahmekriterium dieser Stufe:
+Reichweite, an der Bibliothek. Daraus folgen vier Festlegungen; alle vier sind gebaut bzw.
+entschieden:
 
 1. **Historisiert, nicht nur protokolliert.** Das Merkmal wandert in dieselbe Intervall-Historisierung
    wie die übrigen Rechte (siehe
@@ -266,13 +264,12 @@ sie sind deshalb als Bedingung formuliert und nicht als Abnahmekriterium dieser 
    über denselben Mailweg wie die Tokenerinnerung. Das ist die einzige Maßnahme, die das
    Erfolgskriterium „der Anteil bleibt klein" durchsetzt, statt ihn zu erhoffen — und sie erzwingt
    einmal im Jahr das fachliche Gespräch, das den Kanal trägt.
-4. **Keine Freigabe ohne fachliche Zuständigkeit — als künftige Sperrbedingung.**
+4. **Keine Freigabe ohne fachliche Zuständigkeit.**
    [spaces-and-assets.md](./spaces-and-assets.md#eigentümerschaft-und-verwaisung) friert die
    Reichweite von Assets im Zustand **„Nachfolge offen"** ein — „keine neuen Grants, keine Erhöhung
-   der Freigabestufe" —, und dieses Merkmal ist eine Erhöhung der Reichweite. Sobald dieser Zustand
-   im Produkt existiert (heute ist er Konzept, kein Feld), gehört das Merkmal in dieselbe Sperre:
-   keine neue Freigabe, keine Erneuerung einer bestehenden. Wer den Zustand baut, findet diese
-   Bedingung hier; diese Stufe baut sie nicht vor.
+   der Freigabestufe" —, und dieses Merkmal ist eine Erhöhung der Reichweite. Es liegt deshalb in
+   derselben Sperre: keine neue Freigabe und keine Verlängerung einer bestehenden; Zurücknehmen und
+   Verkürzen bleiben möglich.
 
 Die Änderung des Merkmals ist eine **Zugriffsänderung** und wird protokolliert, in beide Richtungen,
 mit der handelnden Person, der betroffenen Bibliothek und dem Ablaufdatum der Freigabe.
