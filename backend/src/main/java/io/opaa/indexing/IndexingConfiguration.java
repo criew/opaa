@@ -42,6 +42,7 @@ import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalStore;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.metadata.ModelMetadataExtractor;
 import io.opaa.observability.IndexingMetrics;
@@ -52,7 +53,6 @@ import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -129,8 +129,7 @@ public class IndexingConfiguration {
       DocumentIngestService documentIngestService,
       VectorChunkStore vectorChunkStore,
       StoredDocumentSourceAccess storedDocumentSourceAccess,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+      VectorTable vectorTable) {
     return new PipelineReindexService(
         jdbcTemplate,
         documentPipelineRegistry,
@@ -139,8 +138,7 @@ public class IndexingConfiguration {
         documentIngestService,
         vectorChunkStore,
         storedDocumentSourceAccess,
-        schemaName,
-        tableName);
+        vectorTable);
   }
 
   /**

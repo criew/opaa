@@ -15,7 +15,7 @@ import {
   mockPendingPlan,
 } from './groupAdminFixtures'
 import { mockGroups } from './groupFixtures'
-import { mockOidcProviders } from './identityProviderFixtures'
+import { mockOidcProviders } from '@/features/identity-provider/mocks/identityProviderFixtures'
 import {
   isManyDirectoriesScenario,
   manyDirectoryPendingPlan,

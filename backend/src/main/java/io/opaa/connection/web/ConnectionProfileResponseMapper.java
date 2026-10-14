@@ -19,7 +19,6 @@ import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
 import io.opaa.connection.profile.ConnectionProfileValues;
 import io.opaa.connection.profile.ConnectorLockService.TypeState;
-import io.opaa.connection.profile.OwnAddressStock;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
 import io.opaa.connection.profile.ProfileEndpoints;
 import io.opaa.connection.profile.ProfileRequirementService.Overview;
@@ -142,10 +141,7 @@ public final class ConnectionProfileResponseMapper {
         .profileSupport(state.profileSupport())
         .profileRequired(state.profileRequired())
         .profileRequiredAt(state.profileRequiredAt())
-        .ownAddressStock(
-            state.ownAddressStock() == null
-                ? null
-                : io.opaa.api.dto.OwnAddressStock.valueOf(state.ownAddressStock().name()));
+        .ownAddressStock(state.ownAddressStock());
   }
 
   static ConnectionProfileImpactResponse toResponse(
@@ -202,10 +198,6 @@ public final class ConnectionProfileResponseMapper {
                             .ownerName(library.ownerName()))
                 .toList())
         .coverageNotice(overview.coverageGap());
-  }
-
-  static OwnAddressStock toStock(io.opaa.api.dto.OwnAddressStock stock) {
-    return stock == null ? null : OwnAddressStock.valueOf(stock.name());
   }
 
   private static LocalDate toDate(String value) {

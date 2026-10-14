@@ -61,4 +61,4 @@ Wenn für Backlog-Pflege statt eines neuen Features aufgerufen: vorhandene Issue
 
 - Issues, Spezifikationen und Produktdokumentation erstellen und bearbeiten. Niemals Anwendungscode schreiben.
 - Spezifikations- und Dokumentationsänderungen folgen dem Standard-Workflow: Feature-Branch (`feature/<issue-id>_<desc>`), Conventional Commit mit einem `Co-Authored-By`-Trailer und PR mit Template und KI-Offenlegung. Niemals auf `main` pushen und niemals mergen.
-- Wenn eine architektonische Implikation erkannt wird, diese für ein ADR markieren (`docs/decisions/`, Status `proposed`) — der Maintainer entscheidet.
+- Wenn eine architektonische Implikation erkannt wird, diese für ein ADR markieren (`docs/decisions/`, nach Vorlage und Regeln in `docs/decisions/README.md`, Status „Vorgeschlagen“ bis zum Merge) — der Maintainer entscheidet.

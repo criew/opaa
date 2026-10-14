@@ -1,6 +1,7 @@
 package io.opaa.indexing.chunk;
 
 import com.pgvector.PGvector;
+import io.opaa.knowledge.VectorTable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -13,7 +14,6 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.BatchingStrategy;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,22 +58,19 @@ public class VectorStoreWriter {
   private final FullTextChunkStore fullTextChunkStore;
   private final EmbeddingIndexState indexState;
   private final ObjectMapper objectMapper;
-  private final String schemaName;
-  private final String tableName;
+  private final String vectorStoreTable;
 
   public VectorStoreWriter(
       JdbcTemplate jdbcTemplate,
       FullTextChunkStore fullTextChunkStore,
       EmbeddingIndexState indexState,
       ObjectMapper objectMapper,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+      VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
     this.fullTextChunkStore = fullTextChunkStore;
     this.indexState = indexState;
     this.objectMapper = objectMapper;
-    this.schemaName = schemaName;
-    this.tableName = tableName;
+    this.vectorStoreTable = vectorTable.qualifiedName();
   }
 
   /**
@@ -165,9 +162,7 @@ public class VectorStoreWriter {
         new HashSet<>(
             jdbcTemplate.queryForList(
                 "SELECT id::text FROM "
-                    + schemaName
-                    + "."
-                    + tableName
+                    + vectorStoreTable
                     + " WHERE id = ANY (?::uuid[]) ORDER BY id FOR UPDATE NOWAIT",
                 String.class,
                 (Object) chunks.stream().map(Document::getId).toArray(String[]::new)));
@@ -182,13 +177,7 @@ public class VectorStoreWriter {
     }
     int[][] counts =
         jdbcTemplate.batchUpdate(
-            "UPDATE "
-                + schemaName
-                + "."
-                + tableName
-                + " SET "
-                + column
-                + " = ? WHERE id = ? AND content = ?",
+            "UPDATE " + vectorStoreTable + " SET " + column + " = ? WHERE id = ? AND content = ?",
             zipped,
             zipped.size(),
             (ps, entry) -> {
@@ -217,9 +206,7 @@ public class VectorStoreWriter {
   public void deleteChunksOfDocument(UUID documentId) {
     jdbcTemplate.update(
         "DELETE FROM "
-            + schemaName
-            + "."
-            + tableName
+            + vectorStoreTable
             + " WHERE metadata->>'"
             + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
             + "' = ? AND "
@@ -249,9 +236,7 @@ public class VectorStoreWriter {
                 + " END"
             : "";
     return "INSERT INTO "
-        + schemaName
-        + "."
-        + tableName
+        + vectorStoreTable
         + " AS existing (id, content, metadata, "
         + column
         + ") VALUES (?, ?, ?::jsonb, ?) ON CONFLICT (id) DO UPDATE SET content = ?,"
@@ -269,9 +254,7 @@ public class VectorStoreWriter {
     List<String> texts =
         jdbcTemplate.query(
             "SELECT content FROM "
-                + schemaName
-                + "."
-                + tableName
+                + vectorStoreTable
                 + " WHERE metadata->>'"
                 + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
                 + "' = ? ORDER BY (metadata->>'chunk_index')::int",
@@ -301,9 +284,7 @@ public class VectorStoreWriter {
       UUID documentId, Map<String, Object> values, Set<String> keysToClear) {
     String sql =
         "UPDATE "
-            + schemaName
-            + "."
-            + tableName
+            + vectorStoreTable
             // metadata is a json column (PgVectorStore's own DDL); the jsonb operators need the
             // cast, and the assignment cast back to json is implicit.
             + " SET metadata = (metadata::jsonb"
@@ -359,9 +340,7 @@ public class VectorStoreWriter {
     String[] documents = documentIds.stream().map(UUID::toString).toArray(String[]::new);
     int removed =
         jdbcTemplate.update(
-            "DELETE FROM " + schemaName + "." + tableName + chunksOf(),
-            libraryId.toString(),
-            documents);
+            "DELETE FROM " + vectorStoreTable + chunksOf(), libraryId.toString(), documents);
     jdbcTemplate.update(
         "DELETE FROM chunk_full_text WHERE library_id = ? OR document_id = ANY (?::uuid[])",
         libraryId,
@@ -374,7 +353,7 @@ public class VectorStoreWriter {
     String[] documents = documentIds.stream().map(UUID::toString).toArray(String[]::new);
     Long vectors =
         jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM " + schemaName + "." + tableName + chunksOf(),
+            "SELECT count(*) FROM " + vectorStoreTable + chunksOf(),
             Long.class,
             libraryId.toString(),
             documents);

@@ -6,7 +6,6 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
@@ -41,6 +40,10 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class PrivateStorageAdministration {
+
+  private static final String ADMIN_ONLY =
+      "Nur die Systemverwaltung darf das Speicherkontingent privater Bibliotheken einsehen"
+          + " und ändern";
 
   static final int RUN_WINDOW_DAYS = 30;
 
@@ -83,14 +86,14 @@ public class PrivateStorageAdministration {
 
   @Transactional(readOnly = true)
   public QuotaSetting read(CurrentUser actor) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     return current();
   }
 
   /** Sets the house-wide value; {@code null} returns to the default, {@code 0} is unlimited. */
   @Transactional
   public QuotaSetting change(CurrentUser actor, Long quotaBytes) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     if (quotaBytes != null && quotaBytes < 0) {
       throw new ValidationException("Das Speicherkontingent darf nicht negativ sein");
     }
@@ -113,7 +116,7 @@ public class PrivateStorageAdministration {
   /** The private libraries of the caller's organization in masked sums. */
   @Transactional(readOnly = true)
   public PrivateStorageSummary summary(CurrentUser actor) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     UUID organizationId = actor.organizationId();
     long owners = libraryRepository.countPrivateLibraryOwners(organizationId);
 
@@ -189,13 +192,5 @@ public class PrivateStorageAdministration {
 
   private static Map<String, Object> payload(QuotaSetting setting) {
     return Map.of("quotaBytes", setting.quotaBytes(), "overridden", setting.overridden());
-  }
-
-  private static void requireSystemAdmin(CurrentUser actor) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException(
-          "Nur die Systemverwaltung darf das Speicherkontingent privater Bibliotheken einsehen"
-              + " und ändern");
-    }
   }
 }

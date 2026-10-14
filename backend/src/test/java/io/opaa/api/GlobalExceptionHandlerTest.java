@@ -271,13 +271,14 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
-  void handleIllegalArgumentExceptionReturnsBadRequest() {
+  void handleIllegalArgumentExceptionAnswersGenericallyInGerman() {
     var response =
-        handler.handleIllegalArgumentException(new IllegalArgumentException("bad input"));
+        handler.handleIllegalArgumentException(
+            new IllegalArgumentException("Page index must not be less than zero"));
     assertEquals(400, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);
-    assertEquals("bad input", body.getError());
+    assertEquals("Die Anfrage enthält ungültige Angaben", body.getError());
   }
 
   /**

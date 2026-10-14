@@ -513,7 +513,7 @@ für Fließtext und Tabellenzellen. **Baseline unberührt**, Fingerprint `pdf:2`
 Baselines als reine Fixpunkt-Ergänzung nachgezogen (Rohvektor 13 → 14, Pipeline 16 → 17,
 Mehrrunden-Pfad 6 → 7).
 
-**`MarkdownDocumentFormat` (`id` `markdown`, Version 1, seit #2327 Version 2, seit #2331 Version 3) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackFormat` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012, Nachtrag „Strukturbewusstes Markdown-Chunking"](decisions/0012-messvertrag-retrieval-harness.md#nachtrag-strukturbewusstes-markdown-chunking-issue-1103) für die gemessene Verschiebung und die Baseline-Folgen. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentFormat` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
+**`MarkdownDocumentFormat` (`id` `markdown`, Version 1, seit #2327 Version 2, seit #2331 Version 3) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackFormat` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012, Änderungsverlauf zu #1103](../decisions/0012-messvertrag-retrieval-harness.md#änderungsverlauf); die gemessene Verschiebung steht in den `notes` der Baselines. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentFormat` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
 
 ### Chunk-Größen: gemessen, wo Messmaterial existiert — und sonst ehrlich gesetzt
 
@@ -608,7 +608,7 @@ Fehlerkriterium in [ADR-0013](../decisions/0013-fehlerkriterium-retrieval-regres
 Auch für die messbaren Typen gehört eine Einschränkung dazu, weil sie sonst überrascht: Der heutige
 Evaluierungskorpus taugt nur teilweise. Die Domäne `comic-characters` unterliegt der
 Ein-Chunk-Invariante aus ADR-0010 — wo jedes Dokument genau einen Chunk ergibt, kann eine Chunk-Größe
-nichts bewirken. Die mehrchunkige Domäne aus dem ADR-0010-Nachtrag ist der Anfang, ein Verwaltungskorpus
+nichts bewirken. Die mehrchunkige Domäne aus ADR-0010 Entscheidung 3 ist der Anfang, ein Verwaltungskorpus
 mit echter §-Gliederung, echten Tabellen und echten Folien die Voraussetzung. **Ohne diesen Korpus ist
 keine typspezifische Chunk-Größe messbar** — der Aufbau gehört deshalb vor die erste Messung, nicht nach
 sie.
@@ -720,7 +720,7 @@ bitgleiche Zahlen zur committeten Baseline. Bleibt sie grün, ist der Nachweis g
 fehl, war die Änderung entgegen der Annahme betroffen — und dann gilt der volle Dreischritt.
 
 **Seit Issue #1144 gilt eine zusätzliche, von "betroffen" unabhängige Auflage:**
-`ingestionPipelineFingerprint` (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt) ist ein
+`ingestionPipelineFingerprint` (ADR-0012, Entscheidung 28) ist ein
 Sammelabdruck über die Versionen aller registrierten Pipelines, nicht nur der vom Korpus
 genutzten. Ein Versions-Bump — auch an einer Pipeline, deren Format "Baseline unberührt" gilt
 — verschiebt diesen Abdruck und macht damit alle sechs committeten Baselines ungültig,

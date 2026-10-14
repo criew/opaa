@@ -11,6 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.knowledge.VectorTable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,8 +43,7 @@ class VectorStoreWriterTest {
           fullTextChunkStore,
           new EmbeddingIndexState(),
           JsonMapper.builder().build(),
-          "public",
-          "vector_store");
+          new VectorTable("public", "vector_store"));
 
   @Test
   @SuppressWarnings("unchecked")
@@ -136,8 +136,7 @@ class VectorStoreWriterTest {
             fullTextChunkStore,
             state,
             JsonMapper.builder().build(),
-            "public",
-            "vector_store");
+            new VectorTable("public", "vector_store"));
     Document chunk = chunk(UUID.randomUUID(), "noch da");
     when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), any(Object[].class)))
         .thenAnswer(

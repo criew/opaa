@@ -12,11 +12,15 @@ import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import io.opaa.architecture.ModularArchitecture.Module;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -29,6 +33,10 @@ class ModularArchitectureTest {
 
   private static final ModularArchitecture ARCHITECTURE =
       new ModularArchitecture("io.opaa", KNOWN_SUBPACKAGE_CYCLE_EDGES);
+
+  /** A class, a nested class or a member below the root, relative to it. */
+  private static final Pattern NAMED_CODE_UNIT =
+      Pattern.compile("([a-z][a-z0-9]*\\.)+[A-Z]\\w*(\\$\\w+)*(#\\w+)?");
 
   private static JavaClasses mainClasses;
 
@@ -304,6 +312,57 @@ class ModularArchitectureTest {
             .map(name -> name.substring("io.opaa.".length()))
             .collect(Collectors.toSet());
     assertThat(packages).containsAll(ModularArchitecture.INDEXING_CORE);
+  }
+
+  /**
+   * Guards the premise of every rule that names a class, a nested class, a method or a field: an
+   * entry that resolves to nothing, after a rename say, lets its rule check nothing. The names come
+   * from every {@code static final} constant of {@link ModularArchitecture}, so a new list needs no
+   * entry here.
+   */
+  @Test
+  void everyNamedCodeUnitExists() {
+    Set<String> names = namedCodeUnits();
+    assertThat(names)
+        .contains(
+            ModularArchitecture.CLEANUP_SERVICE,
+            ModularArchitecture.CONNECTOR_RELEASE,
+            "connection.token.NewSecret$OAuthGrant",
+            "knowledge.KnowledgeLibraryRepository#findAll",
+            "indexing.document.DocumentIngestOutcomes$QuotaMessages#of");
+    assertThat(ARCHITECTURE.unresolved(names))
+        .as("rename or remove the entry in ModularArchitecture")
+        .isEmpty();
+  }
+
+  private static Set<String> namedCodeUnits() {
+    Set<String> names = new TreeSet<>();
+    for (Field field : ModularArchitecture.class.getDeclaredFields()) {
+      if (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers())) {
+        try {
+          collectNames(field.get(null), names);
+        } catch (IllegalAccessException e) {
+          throw new IllegalStateException(field.getName(), e);
+        }
+      }
+    }
+    return names;
+  }
+
+  private static void collectNames(Object value, Set<String> names) {
+    if (value instanceof String name) {
+      if (NAMED_CODE_UNIT.matcher(name).matches()) {
+        names.add(name);
+      }
+    } else if (value instanceof Collection<?> values) {
+      values.forEach(element -> collectNames(element, names));
+    } else if (value instanceof Map<?, ?> map) {
+      map.forEach(
+          (key, element) -> {
+            collectNames(key, names);
+            collectNames(element, names);
+          });
+    }
   }
 
   @Test

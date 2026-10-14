@@ -38,6 +38,8 @@ ersetzt keines der beiden Dokumente:
   ([#1052](https://github.com/criew/opaa/issues/1052))
 
 Zurückgestellt ist allein das [Latenz-/Hardwareprofil](#arbeitspaket-latenz-hardwareprofil).
+Nach diesem Epic kam der [Relevanzschnitt](./retrieval-algorithm.md#5c-relevanzschnitt-2622)
+(`RELEVANCE_CUTOFF`, #2622) als weitere Stufe hinzu, per Voreinstellung aus.
 
 ---
 
@@ -265,12 +267,16 @@ Kandidaten sehen, als ihr übergeben wurden.
 | **Volltextsuche je Teilfrage** | `fetch-k` Kandidaten, identischer Rechtefilter | gebaut (#1048), in der Fusion seit #1049 |
 | Vielfaltsauswahl (MMR) je Teilfrage | Relevanz gegen Redundanz | gebaut, voreingestellt aus |
 | Fusion | RRF über alle Listen aller Teilfragen | gebaut, erweitert (#1049) |
-| **Reranking** | Cross-Encoder über die fusionierte Kandidatenmenge | **neu (AP 4)** |
+| **Reranking** | Cross-Encoder über die fusionierte Kandidatenmenge | gebaut, voreingestellt aus (#1050) |
+| Relevanzschnitt | Auswahl nach Wert kürzen, nie unter `min-chunks` | gebaut, voreingestellt aus (#2622) |
 | Dokument-Vervollständigung | vertretene Dokumente bis auf `max-chunks-per-document` Chunks auffüllen (keine Obergrenze) | gebaut (#932/#935) |
 
 Als Stufen registriert sind heute `SEARCH_SCOPE`, `METADATA_FILTER`, `SUB_QUERY_DECOMPOSITION`,
-`VECTOR_SEARCH`, `FULL_TEXT_SEARCH`, `MMR_SELECTION`, `RANK_FUSION`, `RERANK` und
-`DOCUMENT_COMPLETION`, in dieser Reihenfolge. `METADATA_FILTER` (#1070) trägt den Kernfeld-Filter aus
+`VECTOR_SEARCH`, `FULL_TEXT_SEARCH`, `MMR_SELECTION`, `RANK_FUSION`, `RERANK`, `RELEVANCE_CUTOFF` und
+`DOCUMENT_COMPLETION`, in dieser Reihenfolge. `RELEVANCE_CUTOFF` (#2622) kürzt die Auswahl nach
+Reranking und vor Dokument-Vervollständigung nach Wert und ist per Voreinstellung aus
+(`relevance-cutoff.mode: fixed`), siehe
+[Retrieval-Algorithmus, Schritt 5c](./retrieval-algorithm.md#5c-relevanzschnitt-2622). `METADATA_FILTER` (#1070) trägt den Kernfeld-Filter aus
 [Metadatenschema, Wirkstelle 1](./metadata-schema.md#umgesetzt-1070-teil-1) in den Lauf: Sie
 übersetzt ihn einmal in die Form des Vektorpfads (`Filter.Expression`) und reicht beide Formen im
 Zustand weiter; die zwei Suchstufen hängen ihn **innerhalb ihrer Abfrage** mit UND unter den
@@ -971,7 +977,8 @@ niemand kennt, ist keine Entscheidungsgrundlage.
 
 ### Zuschnitt im Ablauf
 
-Das Reranking läuft **nach der Fusion und vor der Dokument-Vervollständigung**. Die Reihenfolge ist
+Das Reranking läuft **nach der Fusion und vor der Dokument-Vervollständigung** (seit #2622 folgt
+dazwischen der Relevanzschnitt). Die Reihenfolge ist
 begründet: Die Dokument-Vervollständigung ergänzt gezielt Geschwister-Chunks bereits ausgewählter
 Dokumente (#932) — sie soll auf der final gerankten Auswahl arbeiten, nicht auf einer Vorstufe, die der
 Reranker gleich wieder umsortiert.

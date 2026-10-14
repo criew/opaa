@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.SystemRole;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ValidationException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -114,7 +115,7 @@ class AuditQueryServiceOutcomeTest {
     assertThatThrownBy(
             () ->
                 service.byTimeRange(ORGANIZATION_ID, callerId, "Beschwerde 4711", null, TO, 0, 50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
 
     verify(eventRecorder)
         .recordAuditLogAccess(

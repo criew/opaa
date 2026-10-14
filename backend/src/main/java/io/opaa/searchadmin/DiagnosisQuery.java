@@ -1,5 +1,6 @@
 package io.opaa.searchadmin;
 
+import io.opaa.api.types.DiagnosisContextType;
 import io.opaa.metadata.MetadataFilter;
 import java.util.UUID;
 

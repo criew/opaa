@@ -225,7 +225,7 @@ public class ConnectionProfileController {
             caller,
             ConnectionProfileResponseMapper.toSourceType(sourceType),
             request.getRequired(),
-            ConnectionProfileResponseMapper.toStock(request.getOwnAddressStock())));
+            request.getOwnAddressStock()));
   }
 
   /** Without a library; the variant for its managers lives with the library administration. */
