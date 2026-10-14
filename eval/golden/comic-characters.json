@@ -1824,9 +1824,9 @@
         "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 3 von 6 erwarteten Dokumenten im Fenster (10 Dokumente), Rang 1 belegt comic-0983_one-punch-man.md."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 5 von 6 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
+        "state": "solved",
+        "since": "2026-10-14",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden); seit die Fusion alle fetch-k Kandidaten jeder Suchliste sieht statt nur top-k (#2628), rückt comic-1161_shisui-uchiha.md auf Rang 9 und comic-0934_nagato-uzumaki.md von Rang 9 auf 5. Gemessen am 2026-10-14 im label-ausgelösten CI-Lauf 38527407802 zu PR #2636 (CPU/Testcontainer, ollama/ollama:0.40.3, haswell), Pipeline-Pfad: 6 von 6 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), erwartetes Dokument auf Rang 1."
       }
     }
   },
