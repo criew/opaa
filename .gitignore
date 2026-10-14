@@ -16,7 +16,6 @@ dist
 bundle-report
 dist-ssr
 *.local
-frontend/src/types/generated/
 frontend/src/shared/api/generated/
 
 # cdxgen output (docs/sbom.md) — generated, not committed

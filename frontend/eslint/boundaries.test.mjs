@@ -25,6 +25,8 @@ const FIXTURE = {
   'src/features/library/index.ts': "export { libraryStore } from './stores/libraryStore'\n",
   'src/features/library/stores/libraryStore.ts': 'export const libraryStore = 1\n',
   'src/features/model/mocks/modelFixtures.ts': 'export const mockModels = []\n',
+  'src/app/mocks/handlers.ts': 'export const handlers = []\n',
+  'src/app/mocks/browser.ts': 'export const worker = {}\n',
 }
 
 let root
@@ -205,5 +207,20 @@ describe('theme boundaries', () => {
         "import { mockModels } from '@/features/model/mocks/modelFixtures'",
       ),
     ).toEqual([])
+  })
+
+  it('lets only the entry point main.tsx of app load the MSW wiring', async () => {
+    expect(
+      await violations('src/app/main.tsx', "const { worker } = await import('./mocks/browser')"),
+    ).toEqual([])
+    expect(
+      await violations('src/app/App.tsx', "import { handlers } from './mocks/handlers'"),
+    ).toEqual(['boundaries/dependencies'])
+    expect(
+      await violations(
+        'src/app/shell/AppShell.tsx',
+        "import { mockAuth } from '@/shared/mocks/authFixtures'",
+      ),
+    ).toEqual(['boundaries/dependencies'])
   })
 })

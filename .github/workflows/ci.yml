@@ -437,8 +437,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run format:check
       - run: pnpm run lint
-      # Theme boundaries beyond eslint: no bulk suppressions file (frontend/eslint-suppressions.json),
-      # every file under src/ belongs to one theme, and no comment disables the boundary rule.
+      # Theme boundaries beyond eslint: the rule is active as error, no bulk suppressions (file or
+      # script option), every file under src/ belongs to one theme, and no comment disables the rule.
       - name: Themengrenzen prüfen
         run: node scripts/check-theme-boundaries.mjs
       - run: pnpm run test

@@ -1,9 +1,10 @@
 // ESLint configuration of the theme boundaries, generated from eslint/themes.js.
 //
 // Every file gets file categories (eslint-plugin-boundaries `boundaries/files`): its bucket kind
-// (`app`, `shared`, `feature`, `feature-mocks`, `test-infra`), for themes also `theme:<name>`, and
-// `test` for test files. The single rule `boundaries/dependencies` disallows every local
-// dependency that no policy allows; policies are evaluated last-match-wins.
+// (`app`, `shared`, `feature`, `feature-mocks`, `test-infra`), for themes also `theme:<name>`,
+// `test` for test files and `app-entry` for src/app/main.tsx. The single rule
+// `boundaries/dependencies` disallows every local dependency that no policy allows; policies are
+// evaluated last-match-wins.
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import boundaries from 'eslint-plugin-boundaries'
@@ -20,6 +21,7 @@ import {
 } from './themes.js'
 
 const TEST_GLOBS = ['src/**/*.test.{ts,tsx}']
+const APP_ENTRY = `${APP}/main.tsx`
 const theme = (name) => `theme:${name}`
 const themeNames = THEMES
 
@@ -35,6 +37,7 @@ const files = [
   { category: 'test', pattern: TEST_GLOBS },
   { category: 'entry', pattern: 'src/features/*/index.ts' },
   { category: 'routes', pattern: 'src/features/*/routes.ts' },
+  { category: 'app-entry', pattern: APP_ENTRY },
 ]
 
 const VITEST_MOCK = 'vitest-mock'
@@ -94,11 +97,15 @@ const policies = [
         dependency: { nodeKind: VITEST_MOCK },
       },
     })),
-  // Fixtures and handlers never reach production code; app keeps main.tsx -> mocks/browser.
+  // Fixtures and handlers never reach production code; only the entry point main.tsx loads
+  // mocks/browser (dynamically, behind VITE_ENABLE_MOCKS).
   {
-    from: { file: { categories: { noneOf: ['test', 'feature-mocks', 'test-infra', 'app'] } } },
+    from: {
+      file: { categories: { noneOf: ['test', 'feature-mocks', 'test-infra', 'app-entry'] } },
+    },
     disallow: toCategories(['feature-mocks']),
-    message: 'Mock handlers and fixtures are reachable from tests, mocks and app only.',
+    message:
+      'Mock handlers and fixtures are reachable from tests, mocks and src/app/main.tsx only.',
   },
 ]
 

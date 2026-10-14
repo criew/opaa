@@ -35,7 +35,7 @@ Der Name eines Themas ist der Tag seiner Operationen in der OpenAPI-Spezifikatio
 - Ein Thema hängt nur von sich selbst, von `shared` und von den Themen in `ALLOWED` ab. `shared` hängt von nichts ab. `app` und `src/test/` dürfen alles.
 - Ein Thema ist von außen nur über seine `index.ts` erreichbar, `app` zusätzlich über `routes.ts`. `index.ts` exportiert keine Seiten.
 - Imports über Themengrenzen schreiben den Alias `@/` (`import { SubjectPicker } from '@/features/principal'`), Imports innerhalb eines Themas sind relativ.
-- Tests und Mock-Handler dürfen die Fixtures und Handler aller Themen und von `shared` nutzen (`mocks/`), Produktivcode nie, auch nicht die des eigenen Themas; nur `app` bindet die MSW-Sammelstelle ein.
+- Tests und Mock-Handler dürfen die Fixtures und Handler aller Themen und von `shared` nutzen (`mocks/`), Produktivcode nie, auch nicht die des eigenen Themas; nur der Einstieg `src/app/main.tsx` lädt die MSW-Sammelstelle (`app/mocks/browser`).
 - Ein Test darf mit `vi.mock()` ein einzelnes Modul hinter der `index.ts` eines erlaubten Themas ersetzen; wer über die `index.ts` importiert, sieht den Mock ebenfalls.
 - `vi.mock()`, `vi.doMock()` und `vi.importActual()` zählen wie Imports.
 - Eine neue Datei entsteht im Ordner ihres Themas oder Bereichs. Eine Datei, die bei einer Entflechtung das Thema wechselt, zieht in den Ordner ihres neuen Themas. Liegt eine Datei außerhalb dieser Ordner, scheitern `eslint/themes.test.mjs` und der CI-Schritt „Themengrenzen prüfen“.
@@ -45,7 +45,9 @@ Der Name eines Themas ist der Tag seiner Operationen in der OpenAPI-Spezifikatio
 
 Für die Grenzregel gibt es keine Ausnahmen, weder als Liste noch per Kommentar. Der CI-Schritt „Themengrenzen prüfen“ im Job `frontend` (`node scripts/check-theme-boundaries.mjs`) scheitert,
 
-- wenn `eslint-suppressions.json` existiert: ESLint wendet [Bulk Suppressions](https://eslint.org/docs/latest/use/suppressions) aus dieser Datei stillschweigend an, deshalb nie `--suppress-rule` oder `--suppress-all` verwenden;
+- wenn `eslint-suppressions.json` existiert: ESLint wendet [Bulk Suppressions](https://eslint.org/docs/latest/use/suppressions) aus dieser Datei stillschweigend an;
+- wenn ein Skript in `package.json` `--suppress-all`, `--suppress-rule` oder `--suppressions-location` an ESLint übergibt;
+- wenn die wirksame ESLint-Konfiguration für eine Beispieldatei je Bereich (Thema samt Testdatei, `shared`, `app`, `src/test/`) `boundaries/dependencies` nicht auf `error` setzt;
 - an `eslint-disable`-Kommentaren, die `boundaries/…` nennen oder ohne Regelliste alles abschalten, und an Inline-Konfiguration für `boundaries/…`;
 - an einer Datei unter `src/`, die keinem oder mehreren Themen zugeordnet ist.
 
