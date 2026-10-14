@@ -4,19 +4,13 @@ import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InterruptedIOException;
-import java.net.ConnectException;
-import java.net.SocketTimeoutException;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.net.http.HttpClient;
-import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -25,7 +19,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import javax.net.ssl.SSLException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import tools.jackson.core.JacksonException;
@@ -248,57 +241,24 @@ public class TranscriptionClient {
     return text.asString().strip();
   }
 
+  /** The cause is not attached: it may quote the configured address. */
   private static URI endpointUri(String baseUrl, String path) {
-    URI uri;
-    try {
-      uri = ModelEndpointUri.append(baseUrl, path);
-    } catch (IllegalArgumentException e) {
-      throw new TranscriptionUnavailableException("base URL carries credentials", false);
-    } catch (URISyntaxException e) {
-      throw new TranscriptionUnavailableException("base URL is not a valid URI", false);
-    }
-    String scheme = uri.getScheme();
-    if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
-      throw new TranscriptionUnavailableException(
-          "base URL must start with http:// or https://", false);
-    }
-    return uri;
+    return ModelRoleHttp.endpointUri(
+        baseUrl, path, (message, cause) -> new TranscriptionUnavailableException(message, false));
   }
 
+  private static final Map<Integer, String> ROLE_STATUS_TEXTS =
+      Map.of(413, "HTTP 413: the endpoint refused the recording as too large");
+
   private static String describeStatus(int status) {
-    return switch (status) {
-      case 401 -> "HTTP 401: authentication failed, check the access key";
-      case 403 -> "HTTP 403: the endpoint refused access";
-      case 404 -> "HTTP 404: unknown path or model identifier";
-      case 413 -> "HTTP 413: the endpoint refused the recording as too large";
-      default -> "HTTP " + status + " from the transcription endpoint";
-    };
+    return ModelRoleHttp.describeStatus(status, "transcription", ROLE_STATUS_TEXTS);
   }
 
   private static String describeConnectionError(IOException e) {
-    if (e instanceof UnknownHostException) {
-      return "host not found (DNS resolution failed)";
-    }
-    if (e instanceof ConnectException) {
-      return "connection refused";
-    }
-    if (e instanceof HttpConnectTimeoutException) {
-      return "connection attempt timed out";
-    }
-    if (isTimeout(e)) {
-      return "request timed out";
-    }
-    if (e instanceof SSLException) {
-      return "TLS handshake failed";
-    }
-    if (e instanceof InterruptedIOException) {
-      return "request interrupted";
-    }
-    return "endpoint not reachable";
+    return ModelRoleHttp.describeConnectionError(e, "connection attempt timed out");
   }
 
   private static boolean isTimeout(IOException e) {
-    return (e instanceof HttpTimeoutException && !(e instanceof HttpConnectTimeoutException))
-        || e instanceof SocketTimeoutException;
+    return ModelRoleHttp.isRequestTimeout(e);
   }
 }
