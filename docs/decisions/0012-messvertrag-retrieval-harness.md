@@ -54,7 +54,11 @@ Rohvektor unverändert; vier Baselines neu gezogen) und den
 [Nachtrag zur Ollama-Fassung](#nachtrag-ollama-fassung-des-eval-containers-issue-2343)
 (Issue #2343: `ollama/ollama:0.40.3` statt 0.6.5, weil 0.6.5 Eingaben über 512 Token falsch
 einbettete; Stetigkeitsprüfung vor jeder Messung, keine Vertragsversion steigt, alle sieben
-Baselines neu gezogen).
+Baselines neu gezogen) und den
+[Nachtrag zur gemeinsamen Baseline nach dem Retrieval-Umbau](#nachtrag-gemeinsame-baseline-nach-dem-retrieval-umbau-issue-2386)
+(Issue #2386: `opaa.query.fusion.*` und `opaa.query.relevance-cutoff.*` als Festpunkte,
+Messvertrag-Versionen Pipeline 21, Mehrrunden 11, Rohvektor unverändert; alle sieben Baselines aus
+einem CI-Lauf neu gezogen).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -1871,3 +1875,125 @@ Vektoren oder die neue Zerlegung, kein Rückschritt eines Bausteins.
 und bleibt damit wahr. Nachgezogen sind nur die Gründe der Fälle, deren Zustand wechselt. Eine
 vollständige Neufassung aller 594 Gründe wäre mit dem Wechsel des Embedding-Modells in #2386
 ohnehin erneut fällig.
+
+
+## Nachtrag: Gemeinsame Baseline nach dem Retrieval-Umbau (Issue #2386)
+
+**Datum:** 2026-10-14 · **Betrifft:** Festpunktsatz und Vertragsversion des Pipeline- und des
+Mehrrunden-Pfads, alle sieben Baselines, einen Fallzustand im Golden Dataset `comic-characters`.
+
+Nach Entscheidung 70 sind auf Anweisung des Maintainers acht Retrieval-Änderungen ohne CI-Eval
+gemergt worden, damit sie in einem Schritt gemessen werden:
+
+- #2617: zu lange Chunks werden geteilt.
+- #2618: `bge-m3` ist Vorgabe des Produkts.
+- #2625: Budget der Nachbar-Chunks im Antwortkontext.
+- #2627: ein häufiges Großbuchstabenwort zählt im Volltextpfad nicht mehr als Kennung.
+- #2628: die MMR-Stufe kürzt nicht mehr, die Fusion sieht alle `fetch-k` Kandidaten jeder Liste.
+- #2630: Fusion mit Quote je Teilfrage, wahlweise Wertefusion (`opaa.query.fusion.*`).
+- #2631: Relevanzschnitt (`opaa.query.relevance-cutoff.*`), Vorgabe `fixed`.
+- #2635: die Spitzentreffer jeder Suchliste kommen fest in die Auswahl
+  (`opaa.query.fusion.guaranteed-per-list` 1).
+
+Die Harnesse pinnen weiterhin `nomic-embed-text:v1.5`. Der Wechsel der Harnesse auf `bge-m3` ist
+ausdrücklich nicht Teil dieses Nachtrags (Maintainer-Entscheidung); die Baselines beschreiben also
+nicht das Embedding-Modell, das das Produkt ab Werk nutzt.
+
+### 71. Fusion und Relevanzschnitt werden Festpunkte; Pipeline 20 → 21, Mehrrunden 10 → 11
+
+`PipelineBaseline.FixedPoints` und `PipelineRunConfiguration` führen hinter `mmrLambda` zwei Blöcke:
+
+- `fusion`: `method`, `subQueryQuota`, `vectorWeight` und `guaranteedPerList`.
+- `relevanceCutoff`: `mode`, `minChunks`, `relativeThreshold` und `kneeDrop`.
+
+Der Mehrrunden-Pfad erbt beide mit dem geteilten Pipeline-Block (Entscheidung 40).
+`PipelineBaselineComparator` vergleicht jedes Feld einzeln (`fusion.method`, `relevanceCutoff.mode`
+usw.).
+
+- **Auch wirkungslose Werte sind Festpunkte.** `vectorWeight` wirkt nur unter `SCORE`, die Schwellen
+  nur in ihrem Modus. Sie stehen trotzdem im Satz: Ein Wechsel des Modus macht sie wirksam, und die
+  Baseline beschreibt die ganze Konfiguration, nicht nur ihren aktiven Teil.
+- **Ein fehlender Block lädt als `null`** und erscheint als unvergleichbarer Festpunkt, wie
+  `metadataFilterEnabled` und `ollamaImage` (Entscheidung 45).
+- **Herkunft der Werte.** `fusion` liest der Harness aus den `QueryProperties` des Laufs; eine
+  Variante des Variantenvergleichs trägt ihre eigenen. `relevanceCutoff` gehört nicht zu
+  `QueryProperties`. Der Harness liest es aus dem Kontext (`RelevanceCutoffProperties`) und führt es
+  in `RunIdentity`. Jede Variante teilt diesen Wert, weil die Stufe die Bean der Produktion ist.
+- **Docker-freier Wächter.** `PipelinePathIsolationTest` und `ConversationPathIsolationTest` halten
+  die vier Pipeline-Baselines gegen `QueryProperties.Fusion.DEFAULT` und
+  `RelevanceCutoffProperties.DEFAULT`. Ein geänderter Vorgabewert ohne Neuziehung fällt damit im
+  `check` auf, nicht erst als „Baseline ungültig" im nächtlichen Lauf.
+
+Neue Festpunkte sind eine Vertragsänderung (Entscheidung 6). Wie in den Entscheidungen 46, 55 und
+58 steigen die Pfade, die sie messen: Pipeline 20 → 21, Mehrrunden 10 → 11. Der Rohvektor-Pfad
+fusioniert nicht und bleibt bei 16.
+
+Kein Festpunkt wird das Nachbar-Budget aus #2625. Der Harness misst die Endauswahl ohne
+Nachbar-Chunks (Entscheidung 67).
+
+### 72. Alle sieben Baselines aus dem CI-Lauf 38527407802
+
+Alle sieben Baselines stammen aus dem label-ausgelösten CI-Lauf 38527407802 zu PR #2636
+(CPU-Testcontainer, `ollama/ollama:0.40.3`, `haswell`). Übernommen wurden sie per Skript aus den
+Artefakten des Laufs: Gruppenwerte mit der `%.3f`-Rundung des Harness, Festpunkte aus
+`runConfiguration`, der Golden-Hash von der Datei auf dem Head. Vorher-Lauf ist der label-ausgelöste
+Lauf 38418739634 aus Entscheidung 70. Aus seinen Artefakten reproduziert dasselbe Skript jede bisher
+committete Zahl.
+
+| Baseline | Rangfolgen abweichend | Verschiebung | Zustände |
+|---|---|---|---|
+| `comic-characters.json` | 0 von 121 | keine | unverändert |
+| `city-landmarks.json` | 0 von 108 | keine | unverändert |
+| `verwaltung.json` | 0 von 49 | keine | unverändert |
+| `pipeline-comic-characters.json` | 46 von 121 | steigt: overall Hit Rate@5 0,736 → 0,744, MRR@20 0,634 → 0,637, nDCG@20 0,614 → 0,615; **sinkt:** `crosslingual` MRR@20 0,523 → 0,514, `entity_description` MRR@20 0,753 → 0,740, nDCG@20 0,814 → 0,803 | `comic-filter-161` gelöst |
+| `pipeline-city-landmarks.json` | 40 von 108 | keine; jedes erwartete Dokument behält seinen Rang | unverändert, alle 108 gelöst |
+| `pipeline-verwaltung.json` | 16 von 49 | **sinkt:** overall MRR@20 0,833 → 0,828, nDCG@20 0,807 → 0,801; `literal_term_weak_embedding` MRR@20 0,481 → 0,454 | unverändert |
+| `pipeline-verwaltung-conversations.json` | 46 von 127 Runden | **sinkt:** overall MRR@20 0,758 → 0,755, nDCG@20 0,777 → 0,774; `anaphora_resolution` MRR@20 0,719 → 0,704 | unverändert, 12 von 38 |
+
+**Rohvektor-Pfad.** Keine Rangfolge bewegt sich. Der Pfad kennt weder Fusion noch Volltextpfad, und
+die Teilung zu langer Chunks (#2617) trifft in den drei Korpora keinen Chunk: Die längste
+Einbettungseingabe hat 1 097 Token (Tabelle im Nachtrag Ollama-Fassung), geteilt wird erst ab der
+Eingabegrenze von 2 048.
+
+**Pipeline-Pfad.** Welcher Baustein eine einzelne Rangfolge bewegt, weist der Bericht nicht aus.
+Nach der Mechanik ist es vor allem #2628:
+
+- Der Einzelfragen-Pfad misst ohne Zerlegung, also mit genau einer Suchanfrage. Die Quote je
+  Teilfrage ist dort die Identität.
+- Ein garantierter Spitzentreffer behält seinen Rang in der Fusion und verdrängt höchstens den
+  letzten Platz der Auswahl. Ein Dokument, das weit vorn neu einrückt, erklärt er nicht.
+- Seit #2628 tragen die Listenränge 21 bis 25 zur RRF-Fusion bei. Ein Dokument, das in beiden Listen
+  steht, sammelt dadurch Punkte aus der zweiten Liste und rückt vor.
+
+Genau dieses Bild zeigen die sinkenden Fälle. In `verw-lit-001` steht
+`verwaltung-0057_abfallgebuehrensatzung.md` neu auf Rang 1. In `verw-comp-002`, `verw-hop-002` und
+`verw-lit-007` rückt je ein Dokument vor ein erwartetes, das einen oder zwei Ränge verliert. In
+`comic-characters` verlieren zwölf Fälle Ränge und zwölf gewinnen. In `comic-de-013` und
+`comic-filter-105` fällt dabei ein erwartetes Dokument von Rang 20 aus dem Fenster; beide sind
+`known_gap` und bleiben es. Dass `verwaltung` nur verliert, ist kein Befund gegen die Änderung: Die
+Domäne misst benannte Fehlerbilder in kleinen Klassen. Die Antwortmessung auf dem realen
+Verwaltungskorpus in #2386 (mit `bge-m3`) zeigt mit denselben Vorgaben (Variante K4) 90 statt 83 von
+132 Kernfakten im Kontext.
+
+**Mehrrunden-Pfad.** Alle 127 Teilfragen lauten wie im Vorher-Lauf. Die drei Messungen sind
+identisch, die Zerlegung des gepinnten Modells hat sich also nicht bewegt. Nur 8 Runden haben mehr
+als eine Teilfrage, 4 davon weichen in der Rangfolge ab; die Quote trägt damit wenig. Die vier
+Runden mit sinkendem Wert (`ana-004` Runde 3, `ana-007` und `ts-007` Runde 1, `ana-008` Runde 2)
+haben je eine Teilfrage. In ihnen rückt ein weiteres Dokument vor das erwartete, wie im
+Einzelfragen-Pfad.
+
+Die Toleranzen bleiben unverändert (ADR-0013). Keine Vertragsversion außer den beiden aus
+Entscheidung 71 steigt.
+
+### 73. Zustandspflege: ein Wechsel, die übrigen Gründe bleiben stehen
+
+Einziger Zustandswechsel auf allen sieben Pfaden ist `comic-filter-161`, Pipeline-Pfad,
+`known_gap` → `solved`. `comic-1161_shisui-uchiha.md` rückt auf Rang 9, damit stehen alle sechs
+erwarteten Figuren im Fenster. Der Grund trägt den Präfix `Ohne geprüften Mechanismus: `. Einen
+Attributfilter über Gesinnung, Schöpfer und Fähigkeit gibt es für diese Domäne nicht, der Fall ist
+durch die breitere Fusion gelöst, nicht durch den Mechanismus seiner Klasse.
+
+Wie in Entscheidung 70 sind die Gründe der Fälle ohne Wechsel nicht neu gefasst. Jeder nennt Datum
+und Lauf seiner Messung und bleibt damit wahr. Die dort für #2386 erwartete Neufassung aller Gründe
+entfällt, weil die Harnesse das Embedding-Modell nicht wechseln. `comic-characters.json` und
+`pipeline-comic-characters.json` tragen den neuen Golden-Hash.
