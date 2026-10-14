@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-11 · übernimmt Entscheidung 1 von [ADR-0040](0040-google-drive-konnektor.md)
+Akzeptiert · zuletzt geändert 2026-10-14 · übernimmt Entscheidung 1 von [ADR-0040](0040-google-drive-konnektor.md)
 · ergänzt [ADR-0027](0027-s3-konnektor.md) · ergänzt durch [ADR-0046](0046-smb-konnektor.md) und
 [ADR-0047](0047-sharepoint-konnektor.md)
 
@@ -24,10 +24,11 @@ Abgleich im Kern, der je Ablage nur noch einen schmalen Port verlangt und dessen
 Der Abgleich liegt in `io.opaa.indexing.filesync` (Modul knowledge), letzter Eintrag von
 `ModularArchitecture.INDEXING_CORE` hinter `indexing.maintenance`. Konnektoren hängen von ihm ab, es
 kennt keinen Konnektor und keinen Anbieter (`theFileSyncKnowsNoProvider`); eine neue Modulkante
-entsteht nicht. Nicht unter `indexing.source`, weil jedes direkte Unterpaket dort ein Konnektor ist
-(`connectorsDoNotKnowEachOther`), nicht im Vertragspaket selbst, weil der Abgleich über
-`StaleDocumentCleanupService` (`maintenance`) entfernt und `source` im Kern davor liegt. Spring kennt
-das Paket nicht; was Transaktionen braucht (`ScanJournal`), liegt in `indexing.source`.
+entsteht nicht. Nicht unter `indexing.source`, weil jedes direkte Unterpaket dort als Konnektor gilt
+(`connectorsDoNotKnowEachOther`). Entfernt wird nur über den Laufrahmen:
+`IndexingRun#removeWithAttachments` (Port `VanishedDocumentReconciler#removeWithAttachments`, seit
+#2740); `indexing.filesync` importiert `indexing.maintenance` nicht. Spring kennt das Paket nicht; was
+Transaktionen braucht (`ScanJournal`), liegt in `indexing.source`.
 
 `FileSync` besitzt Vorfilter nach Endung und Größe, Merkmalsvergleich, Download-Pool und
 Temp-Dateien, Aufnahme über `DocumentIngestService`, Ordnerspiegel (`SourceFolderMirror`) und
@@ -82,7 +83,9 @@ Containerwurzel). Ein Store, der Ordner meldet, nennt je Seite die Merkmale der 
 (`listedSubtrees`) und überspringt Ordner, deren Merkmal dem übergebenen gleicht
 (`unchangedSubtrees`); `FileSync` behält jedes gespeicherte Dokument darunter. Vertrag von
 `FileStore#recall`: Das Merkmal eines Ordners ändert sich bei jeder Änderung in oder unter ihm; ein
-umbenannter oder verschobener Ordner hat an seinem neuen Pfad keines und wird gelistet. Ein
+umbenannter oder verschobener Ordner hat an seinem neuen Pfad keines und wird gelistet. Ein Store,
+der Ordner meldet, setzt den Container-Schlüssel als Kontext jedes Eintrags, und kein Ordnername
+enthält den Trenner ` / ` (`SourceDocumentContext.HIERARCHY_SEPARATOR`). Ein
 vollständiger Vollabgleich speichert die Merkmale in `source_sync_state.subtree_markers`, der nächste
 Lauf übergibt sie vor der ersten Seite (`FolderMemory`). Regeln:
 
@@ -103,14 +106,16 @@ Lauf übergibt sie vor der ersten Seite (`FolderMemory`). Regeln:
 `source_sync_revisits` hängt am Abgleichszustand (`ON DELETE CASCADE`). `LibraryDocumentService
 #deleteDocument` schreibt in derselben Transaktion eine Zeile mit Container und Hierarchiepfad, wenn
 die Bibliothek einen Abgleichszustand hat und das Dokument einen Container trägt — der einzige
-Löschweg außerhalb eines Laufs, der eine Bibliothek mit Datei-Abgleich trifft. Ein Vollabgleich liest
+Löschweg außerhalb eines Laufs, der eine Bibliothek mit Datei-Abgleich trifft; die Löschstellen beim
+Ersatz einer fehlgeschlagenen Upload-Zeile schreiben bewusst keinen Vermerk. Ein Vollabgleich liest
 die Vermerke zu Beginn und beim Speichern des Gedächtnisses (`FolderRevisits`); verbraucht werden
 nach dem Speichern nur Vermerke vom Beginn der Auflistung eines bis zur letzten Seite gelisteten
 Containers. Änderungs- und Ereignislauf lassen sie stehen. `onlyTheKnownClassesDeleteDocuments` hält
 die Aufrufer von `DocumentRepository#delete…` fest (einschließlich `@Modifying`-Abfragen);
 `onlyTheRunRemovesThroughTheCleanupService` erlaubt die löschenden Methoden von
-`StaleDocumentCleanupService` und `VanishedDocumentReconciler#reconcile` nur dem Laufrahmen,
-`FileSync` und dem Confluence-Lauf.
+`StaleDocumentCleanupService` nur dem Laufrahmen (`ModularArchitecture.RUN_REMOVERS`:
+`IndexingRunTemplate`, `IndexingRun`); Konnektoren und `FileSync` löschen über
+`IndexingRun#removeWithAttachments` (seit #2740).
 
 ### 6. Eine Runde über mehrere Läufe
 
@@ -139,7 +144,9 @@ gelistet hat, gleicht ab.
 - **Unlistbarer Container:** Endet ein Lauf ohne Budget-Ende unvollständig, wird eine Runde mit Marken
   verworfen (ohne Abgleich, ohne Gedächtnis), damit ein dauerhaft unlistbarer Ordner nicht alle anderen
   einfriert.
-- **Gedächtnis in der Runde:** Das erste Merkmal, das eine Runde für einen Ordner sieht, gilt. Ein
+- **Gedächtnis in der Runde:** Das erste Merkmal, das eine Runde für einen Ordner sieht, gilt; ändert
+  sich die Grundlage mitten in der Runde, verwirft sie ihre Merkmale. Ob ein Store Ordner meldet,
+  entscheidet das Gedächtnis der Runde mit, nicht nur die Seiten des Laufs. Ein
   Ordner, den die Runde erst übernahm und später neu listete, wird nicht gemerkt; eine Zeile, die an
   einem anderen Ort angetroffen und dort nicht aufgenommen wurde, hält ihren alten Ordner aus dem
   Gedächtnis. `FileSyncRandomizedRoundTest` prüft die Invariante „kein Dokument entfernt, dessen Datei
@@ -174,7 +181,8 @@ Einstellungen und die Kontokennung der Verbindung (`SourceConnectionResolver#con
 Proxy und Geheimnis zählen nicht. Er steht in `source_sync_state.settings_basis`; ein Stand ohne
 Fingerabdruck gilt als abweichend, es gibt keinen Backfill. `IndexingRun#adopt` verwirft einen Stand
 mit anderem Fingerabdruck vollständig (Runde, fertige Bereiche, Cursor, Anker, Gedächtnis, letzter
-Vollabgleich) und vermerkt das im Protokoll; Löschvermerke bleiben. Vor jedem Entfernen durch
+Vollabgleich) und vermerkt das im Protokoll; Löschvermerke bleiben. `FileSync` übernimmt im
+Konstruktor (Vollabgleich, Änderungs- und Ereignislauf), Confluence beim Laden. Vor jedem Entfernen durch
 Abwesenheit liest der Rahmen die Einstellungen ohne Geheimnis neu
 (`IndexingRun#settingsUnchanged`, `SourceConnectionResolver#settingsOnly`); weicht der Fingerabdruck
 ab, gleicht der Lauf nicht ab — `FileSync` prüft dasselbe vor dem `CHANGE_FEED`-Abschluss und vor den
@@ -193,7 +201,10 @@ auf, nie den Abschluss einer Runde und nie die Entfernungen; am Ende einer `CHAN
 der Strom den Rundenbeginn-Cursor. Eine Ablehnung in der Auflistung eines Vollabgleichs setzt
 `SourceSyncState#holdFullSyncAtQuota` (`full_sync_quota_held`): `completeFullSync` lässt
 `fullSyncCompletedAt` leer, der nächste Lauf ist wieder ein Vollabgleich, solange die Bibliothek voll
-bleibt.
+bleibt. Ein Confluence-Vollabgleich setzt dieselbe Marke, sobald ein Lauf etwas ablehnt, und speichert
+sie sofort, weil die abgelehnte Seite älter ist als der Anker, mit dem er endet. Eine untertreibende
+Listengröße kostet den Download wie bisher, eine übertreibende hält die Datei zurück, bis Platz für die
+gelistete Größe frei ist.
 
 ### 10. Pfadlänge
 
@@ -274,4 +285,5 @@ bekommt Vermerke, die niemand verbraucht und die mit dem Zustand fallen.
 | 2026-10-10 | #2294 | Kontingentprüfung vor dem Download, Marken nur am Element | 9 |
 | 2026-10-10 | #2295 | `full_sync_quota_held`: Vollabgleich nach Ablehnung in der Auflistung | 9 |
 | 2026-10-11 | #2482 | Pfadgrenze zentral in der Aufnahme, `FilePathLimit` nach `io.opaa.knowledge` | 10 |
+| 2026-10-14 | #2740 | Entfernen nur über `IndexingRun#removeWithAttachments`, `filesync` ohne `maintenance`-Import | 1, 5 |
 | 2026-10-14 | #2702 | Aus ADR-0040 herausgelöst und auf den Endstand neu gefasst | alle |

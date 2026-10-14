@@ -96,10 +96,11 @@ oder gelöschten Anbieters werden deshalb abgelehnt; die Inaktivitätsschwelle g
 
 | Zustand (`AccountUsability.State`) | Anlass |
 |---|---|
-| `DEACTIVATED` | lokale Sperre durch die Verwaltung, befristetes Konto abgelaufen, Verzeichnissperre, Anbieter des Issuers gelöscht (außer Dev-Issuer) |
+| `DEACTIVATED` | lokale Sperre durch die Verwaltung (nicht `FAILED_LOGINS`, nicht `INACTIVITY`), befristetes Konto abgelaufen, Verzeichnissperre, Anbieter des Issuers gelöscht (außer Dev-Issuer) |
 | `DORMANT_PROVIDER_DISABLED` | Anbieter deaktiviert |
 | `DORMANT_LOCAL_ACCOUNTS_DISABLED` | reguläres lokales Konto bei abgeschalteter lokaler Kontenverwaltung |
 | `DORMANT_INACTIVE` | keine Anmeldung seit der Inaktivitätsschwelle; lokale Sperre wegen Inaktivität (`LockReason.INACTIVITY`, seit #2260) |
+| `LOCKED_OUT`, `INVITED` | vorübergehende Sperre nach Fehlversuchen, offene Einladung — weder nutzbar noch ruhend noch deaktiviert |
 | `USABLE` | sonst |
 
 - **Ruhen ist keine Deaktivierung:** Es stoppt Läufe und die Herausgabe von Geheimnissen, löscht
@@ -110,7 +111,9 @@ oder gelöschten Anbieters werden deshalb abgelehnt; die Inaktivitätsschwelle g
   `LocalAccountAccessEndedEvent` (ein Konto) und `OidcProvidersChangedEvent` (alle), je Person in
   eigener Transaktion (`REQUIRES_NEW`). Deaktiviert: Geheimnisse löschen, beim Anbieter widerrufen,
   Konten über denselben Endweg wie Trennen beenden (`ACCOUNT_DEACTIVATED`); ruhend: ruhen lassen;
-  nutzbar: aufheben. Festgehalten wird nur der Beginn (`connection_person_states`:
+  nutzbar: aufheben. Scheitert der Abgleich nach einem Commit, wird das nur als Zahl geloggt, die
+  Änderung bleibt erfolgreich, der Tageslauf holt nach. Sperrdialog und Ablaufdatum der
+  Benutzerverwaltung nennen die Folge neutral, ohne Zahl und ohne Aussage, ob ein Konto verbunden ist. Festgehalten wird nur der Beginn (`connection_person_states`:
   `deactivated_since`, `dormant_since`); der Zustand bleibt abgeleitet. library liest den Beginn über
   `ConnectionLifecycle` für den Löschlauf (ADR-0049, Entscheidung 2). Die Übergabe eines lokalen
   Kontos (ADR-0033, Entscheidung 12) ist keine Deaktivierung.
@@ -122,7 +125,8 @@ oder gelöschten Anbieters werden deshalb abgelehnt; die Inaktivitätsschwelle g
   eine Bestätigung nötig ist und was die Handlung bewirkt (`CONNECTIONS_REST`, `CONNECTIONS_END`),
   nie eine Zahl je Anbieter — Zahlen je Anbieter und je Zugang ließen sich gegeneinander verrechnen.
   Deaktivieren und Löschen verlangen `confirmConnections=true`, sobald irgendein Zugang Personen
-  zulässt (`409 PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED`); Port `auth.ProviderConnectionsImpact`.
+  zulässt (`409 PROVIDER_CONNECTIONS_CONFIRMATION_REQUIRED`), auch für den Schalter der Zeile `LOCAL`
+  über die Anbieter-API; Port `auth.ProviderConnectionsImpact`.
 - **Kontolöschung:** Ein Konto mit Verbindung wird nicht gelöscht (`connected_accounts.user_id`
   `RESTRICT`, `UserRepository#countDeletionBlockers`); Geheimnisse hängen mit `CASCADE` am Konto. Jede
   Beendigung durch die Verwaltung meldet der Person `CONNECTION_ENDED` (ADR-0019), eine
@@ -130,7 +134,8 @@ oder gelöschten Anbieters werden deshalb abgelehnt; die Inaktivitätsschwelle g
 
 **Restlücke:** Bei OIDC-Konten ohne Verzeichnis-Konnektor erfährt OPAA eine Deaktivierung beim
 Anbieter nicht; die Schwelle stoppt nach spätestens 90 Tagen nur die Nutzung, das Token bleibt bis
-zur Sperre in OPAA. Das schließt nur der Verzeichnis-Konnektor (ADR-0036, Entscheidung 3).
+zur Sperre in OPAA. Das schließt nur der Verzeichnis-Konnektor (ADR-0036, Entscheidung 3); das
+Handbuch empfiehlt ihn für Häuser mit verbundenen Konten.
 
 ### 5. MCP-Profil
 
@@ -141,7 +146,8 @@ Zugang. Konnektor-Pfade sehen keinen MCP-Server (`findConnectorsByName`, ArchUni
 `connectorPathsSeeOnlyConnectorProfiles`; Lookups nach ID weisen mit `400` bzw. `404` ab).
 Verwaltung nur über `/api/v1/admin/mcp-servers` (`SYSTEM_ADMIN`), ohne Oberfläche, solange es keinen
 MCP-Client gibt; Anmeldeart fest OAuth, Besitzart fest Person, Adresse der Streamable-HTTP-Endpunkt
-in kanonischer Form (`McpServerResource`, nur `https`). `McpServerDiscovery` erkennt beim Speichern,
+in kanonischer Form (`McpServerResource`, nur `https`; `http` nur auf Loopback, das die Zielprüfung in
+Produktion sperrt). Konten auf MCP-Servern erscheinen nicht auf der Kontoseite. `McpServerDiscovery` erkennt beim Speichern,
 nie zur Laufzeit: Protected Resource Metadata (RFC 9728), dann Autorisierungsserver-Metadaten
 (RFC 8414, sonst OpenID-Discovery); `resource` muss die Server-Adresse sein, `issuer` die Adresse der
 Metadaten, `S256` angeboten, alle Endpunkte `https`, jede Adresse durch `TargetAddressValidator`. Ein
@@ -185,7 +191,8 @@ im Revisionsprotokoll.
 Die Obergrenzen der Fristen sind weder per Konfiguration noch per SQL dehnbar. Begründung: Der
 Inhalt einer privaten Bibliothek liegt weiter beim Anbieter, eine kurze Frist kostet nur einen Lauf;
 90 Tage sind die Grenze, die Personalrat und Datenschutz verlangen. Das Protokoll belegt die Nutzung
-persönlicher Verbindungen, nicht Rechte; zwölf Monate decken einen Prüfzyklus.
+persönlicher Verbindungen, nicht Rechte; zwölf Monate decken einen Prüfzyklus. Personalrat und
+Datenschutz können die Vorgaben innerhalb der Grenzen ändern, ohne dass dieser ADR geändert wird.
 
 ### 8. Code-Struktur, Freigabe und Spezifikation
 
@@ -215,14 +222,17 @@ Anmeldung des Zugangs, keine Zeile), `SourceConsent` (OAuth-Zustimmung einer Bib
 dem Sperrgrund; „ruhend“ und „deaktiviert“ werden bei jeder Herausgabe aus `AccountUsability`
 abgeleitet. Ein Geheimnis geht nur an das Ziel, für das es ausgestellt ist: `issued_for` ist der
 undurchsichtige Wert aus `SecretTarget#key` (Ursprung plus `SourceConnector#credentialBinding`), der
-Speicher vergleicht ihn und zerlegt ihn nie. Die Kontoadresse (`account_label`) liegt verschlüsselt.
+Speicher vergleicht ihn und zerlegt ihn nie. Die Kontoadresse liegt im Token-Speicher verschlüsselt
+(`account_label_ciphertext`), im Verbindungsprotokoll im Klartext.
 **Zahlen über Personen nur maskiert:** Jede Zahl über verbundene Konten erreicht die Verwaltung über
 `connection.profile.PersonNumbers` (unter der Mindestgruppengröße N nur „weniger als N“, auch bei
 null; eine Teilzahl nur, wenn sie und ihr Rest je mindestens N sind, `PersonThreshold#disclosesPart`);
 die exakten Zahlen des Ports `PersonConnections` fragt keine andere Klasse ab
 (`personNumbersLeaveOnlyMasked`, `theAdministrationNeverSeesAConnectedPerson`). Die
 Schwellenwarnung abgelaufener Konten warnt nach der größten zulässigen Zahl, die die maskierte
-Antwort zulässt; ein Zugang nur für Bibliotheken warnt nie. Akzeptierte Restrisiken
+Antwort zulässt; ein Zugang nur für Bibliotheken warnt nie. Ein Schwellenwert unter N wird nicht
+abgewiesen, aber beim Start als Warnung geloggt: Dann warnt jeder Zugang für Personen schon bei
+„weniger als N“. Akzeptierte Restrisiken
 (Maintainer, 05.10.2026): Die Systemverwaltung kann mit selbst angelegten Konten die Schwelle
 überschreiten (Sybil; Anlegen und Verbinden stehen in den Protokollen), und wer maskierte Zahlen vor
 und nach einer eigenen Handlung vergleicht, kann auf eine Person schließen.
@@ -267,7 +277,8 @@ Endanlass; die Notabschaltung löscht auch Client-Secret bzw. Schlüssel. Jede s
 private Bibliothek hat kein Veto: Lehnt ihr Konnektor die Änderung ab oder lässt der Zugang danach
 keine Personen zu, wird sie gelöst, ruht mit `ACCESS_REMOVED` und ihre Besitzerin wird benachrichtigt
 (`PrivateLibraryRelease`, `PRIVATE_LIBRARY_RELEASED`); `fullSyncLibraries` und die laufende
-Indexierung zählen nur geteilte Bibliotheken (`ProfileFullSync`). Trennen, Notabschaltung und
+Indexierung zählen nur geteilte Bibliotheken (`ProfileFullSync`), der Abgleichstand privater wird
+ebenso verworfen und ihre Besitzerin benachrichtigt. Trennen, Notabschaltung und
 gelöschte Zugänge erreichen die Bibliothek ohne Ereignis: Der Port meldet beim nächsten Lauf.
 
 ## Konsequenzen
@@ -333,7 +344,7 @@ bis zum Abgleich hält die Herausgabesperre im Port.
 | 2026-10-10 | #2428 | Sperrreihenfolge Token vor Konto | 10 |
 | 2026-10-10 | #2268 | Fingerabdruck statt `RunStateResets` (ADR-0045, 8) | 10 |
 | 2026-10-10 | #2279 | Verbinden mit persönlichem Geheimnis hält die Profilzeile; Endpunkte nur `https://` (ADR-0048, 8) | 10 |
-| 2026-10-10 | #2294 | Kontingent vor dem Download (ADR-0045, 9; ADR-0049, 5) | — |
+| 2026-10-10 | #2294 | Kontingent vor dem Download (ADR-0045, 9; ADR-0049, 5); Frist des Originalabrufs (#2417) als Einstellung, heute nur im Handbuch `konfiguration.md` | — |
 | 2026-10-10 | #2295 | Kontingent je Bibliothek hält Marken am Element (ADR-0049, 5) | — |
 | 2026-10-11 | #2273 | Eigenes Geheimnis einer Bibliothek im Token-Speicher (`LibraryOnProfile`) | 9 |
 | 2026-10-11 | #2494 | Zugangswunsch entfernt, `connection.request` entfällt | 8, 11 |

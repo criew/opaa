@@ -125,8 +125,10 @@ Trennen (`DELETE /api/v1/libraries/{id}/source-connection`), Zuordnen zu einem a
 Löschen der Bibliothek, Adress- und Registrierungswechsel, Notabschaltung und Löschen des Zugangs
 verwerfen und widerrufen; Lösen auf eine eigene Adresse gibt es nicht. `LibraryResponse.sourceConnection`
 sehen nur `MANAGER`; ruhende Quellverbindungen nennt `GET /api/v1/admin/source-connections/dormant`.
-Kein mitgelieferter Konnektor deklariert OAuth mit Besitzart Bibliothek; belegt mit dem Testkonnektor
-`CONSENT_PROBE`.
+Dropbox ist der erste mitgelieferte Konnektor mit OAuth und Besitzart Bibliothek
+(`Revocation.BearerPost`); die Fälle belegt der Testkonnektor `CONSENT_PROBE`. `LIBRARY_NEW` prüft
+Freigabe und Sperren wie das Anlegen, `LIBRARY_RECONNECT` nur `MANAGER`, die Zugehörigkeit zum Zugang
+und die Sperre; das Rücksprungziel folgt aus dem Zweck.
 
 ### 7. MCP-Server: Bindung an die Ressource
 
@@ -161,7 +163,8 @@ geteilte Bibliothek mit `PERSONAL_SECRET` oder `NONE` (Zeile in `connection_toke
 gehört der Bibliothek, gebunden an `issued_for`, läuft nicht ab und wird nicht widerrufen. Anlegen
 und Ändern schreiben über `LibraryConnectionService#replaceOwnSecret`; Zuordnen verschiebt das
 Geheimnis in den Speicher (`EffectiveSourceSettings#adoptFrame`, `ConnectionSecrets#carryOver`),
-Lösen schreibt es zurück in die Spalte, ein nicht entschlüsselbarer Wert wandert als Geheimtext.
+ein Wechsel des Zugangs nimmt die Zeile mit, Lösen schreibt es zurück in die Spalte, ein nicht
+entschlüsselbarer Wert wandert als Geheimtext; `discardOwnSecret` trifft Spalte und Zeile.
 Die Spalte liest nur `ConnectionSecrets` (`theLibrarySecretIsReadInOnePlace`). Bestand wurde nicht
 umgezogen, weil es keine Bestandsinstallationen gab.
 
@@ -179,8 +182,8 @@ bleibt beim Anbieter gültig (Refresh-Tokens etwa von Dropbox laufen nicht ab) �
 ein neues Client-Secret beim Anbieter. Die Warteschlange ist eine für alle Zugänge: Ein toter
 Anbieter mit 1000 Grants hält einen Thread rund 1000 × 15 s; Trennen und Neuverbinden einer Person,
 bevor ihr alter Widerruf lief, kann bei Anbietern, deren Widerruf die ganze Autorisierung beendet,
-die neue Verbindung mitreißen. Mix-up bleibt bei `Endpoint.FromProfile` ohne Issuer möglich. Heute
-bietet kein Produktionskonnektor OAuth für Personen an, Dropbox ist der erste mit OAuth.
+die neue Verbindung mitreißen. Mix-up bleibt bei `Endpoint.FromProfile` ohne Issuer möglich. Kein
+mitgelieferter Konnektor bietet OAuth für Personen an; Dropbox bietet es nur für Bibliotheken.
 
 ## Verworfene Alternativen
 

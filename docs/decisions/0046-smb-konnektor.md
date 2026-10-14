@@ -70,8 +70,10 @@ werden gelesen. Jeder Pfad wird mit `FILE_OPEN_REPARSE_POINT` geöffnet; ist das
 Verknüpfung (`FSCTL_GET_REPARSE_POINT`), wird es abgewiesen, ein anderer Reparse-Punkt ohne die Option
 neu geöffnet. Ein Samba-Server löst Unix-Links selbst auf; ein Ordner, dessen Datei-ID die Runde
 schon betreten hat, gilt deshalb als Verknüpfung — das beendet Schleifen über Läufe hinweg. Der
-Abstieg endet nach `SmbFileStore.MAX_DEPTH` Ebenen. Eine Verknüpfung weiter vorn im Pfad löst smbj
-selbst auf (`SymlinkPathResolver`); eine Schleife endet so mit einem Befund. Ein Name mit `/`, `\`,
+Abstieg endet nach `SmbFileStore.MAX_DEPTH` Ebenen. Samba öffnet einen Unix-Link mit dieser Option gar
+nicht; ein gelisteter Eintrag, der sich so nicht öffnen lässt, gilt als Verknüpfung bzw. als
+verschwunden. Eine Verknüpfung weiter vorn im Pfad löst smbj selbst auf (smbj-interner
+`SymlinkPathResolver`); eine Schleife endet so mit einem Befund. Ein Name mit `/`, `\`,
 `:` oder Steuerzeichen zählt als „kein Dokument“. Teilen sich zwei Ordner eine Datei-ID (Samba mit
 mehreren Dateisystemen unter einer Freigabe), gilt der zweite als Verknüpfung und sein Bestand wird
 entfernt.
@@ -79,7 +81,8 @@ entfernt.
 ### 7. Unlesbare Unterordner, ausgelagerte Dateien, Budget
 
 Ein Ordner, den das Dienstkonto nicht öffnen darf, wird übersprungen und genannt; der Bereich gilt
-als unvollständig, nichts wird entfernt. Mit Access-Based Enumeration liefert der Server einen solchen
+als unvollständig, nichts wird entfernt; ist der konfigurierte Ordner selbst unlesbar, gilt das
+sofort. Mit Access-Based Enumeration liefert der Server einen solchen
 Ordner gar nicht: Für OPAA ist er verschwunden, seine Dokumente werden entfernt — Betreiber geben dem
 Dienstkonto deshalb Leserecht auf alles im Bereich (Handbuch). Ausgelagerte Dateien (Offline) werden
 nicht abgerufen und gelten als vorhanden. Jede SMB-Nachricht kostet eine Anfrage des Budgets; der

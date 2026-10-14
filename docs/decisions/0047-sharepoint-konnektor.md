@@ -24,7 +24,8 @@ Paket `indexing.source.sharepoint`, Typ `SHAREPOINT`; der Graph-Zugriff liegt to
 `io.opaa.msgraph` (foundation, `GraphClient`, Vorbild `io.opaa.s3`), damit Exchange (#2172) ihn
 mitnutzt. Nur App-only: `SignIn.clientCredentials` mit `Endpoint.WithTenant` auf
 `login.microsoftonline.com`, Scope `https://graph.microsoft.com/.default`, `CLIENT_SECRET_POST`.
-Profilangabe `REQUIRED`, Adresse fest `https://graph.microsoft.com`; keine Anforderungslücke am Typ,
+Profilangabe `REQUIRED`, Adresse fest `https://graph.microsoft.com`; am Zugang bleibt das Feld
+„Scopes“ leer, ein anderer Wert als `.default` scheitert bei Entra. Keine Anforderungslücke am Typ,
 weil die Registry sie nur für umschaltbare Profilpflicht zulässt. Empfohlen ist `Sites.Selected`
 (Anwendung, Rolle `read` je Site), Alternative `Sites.Read.All`; `Files.Read.All` nennt das Handbuch
 nicht, weil es OneDrives einschließt. OneDrive wird abgewiesen: Die Erreichbarkeitsprüfung liest
@@ -51,7 +52,9 @@ Merkmal `x:<quickXorHash>|<size>|<h(name, parentId)>`, ersatzweise `c:<cTag>|…
 eine umbenannte oder verschobene Datei einmal geholt wird; bei gleicher SHA-256 führt die Aufnahme
 Titel und Pfad nach. Die Ordnerkette baut der Store je Lauf aus den Ordner-Einträgen und holt
 fehlende Ordner einzeln; nur ein `404` auf einen Elternordner macht die Datei zu „außerhalb der
-Bibliothek“ (Auflistung: nicht geliefert, Strom: `Removed`). Als geliefert gilt ein Element erst mit
+Bibliothek“ (Auflistung: nicht geliefert, Strom: `Removed`). Ein `403` ist kein Abwesenheitsbefund,
+weil die Freigabe für die ganze Site gilt: in `head` `Unreadable`, im Strom `Transient` (der Strom
+bleibt stehen), in der Auflistung `ContainerUnlistable`. Als geliefert gilt ein Element erst mit
 der zuletzt aufgenommenen Meldung, weil Graph Elemente mehrfach liefert. Der Vollabgleich führt den
 gespiegelten Ordner eines umbenannten Ordners ohne Download nach (`placeSeen`).
 

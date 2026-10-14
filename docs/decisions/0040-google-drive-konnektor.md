@@ -37,7 +37,9 @@ Der Konnektor sieht den Schlüssel nie: `ServiceAccountTokens` (Kern) signiert, 
 `LibrarySourceConnectionResolver`, am Zugang über `ProfileSignIn` (ADR-0048, Entscheidung 1); der
 Konnektor bekommt über `SourceSettings` nur ein erneuerbares Geheimnis der Art Zugriffstoken, das er
 je Anfrage beim Port abfragt. Gelesen werden nur `client_email`, `private_key_id` und `private_key`
-(`ServiceAccountKey`); `token_uri` und die übrigen Felder bestimmen kein Ziel. Ohne Zugang liegt der
+(`ServiceAccountKey`); `token_uri` und die übrigen Felder bestimmen kein Ziel. Die Client-ID ist die
+`client_email` des Schlüssels und wird nicht abgefragt; ein Schlüssel eines anderen Kontos ist eine
+Änderung der Registrierung (ADR-0041, Entscheidung 12). Ohne Zugang liegt der
 Schlüssel in `source_credentials`, am Zugang in `client_secret_ciphertext`; beide Spalten sind `text`,
 die Spec-Grenzen `sourceCredentials` und `clientSecret` 4096, damit die Grenze typneutral gilt und
 RSA-4096-Schlüssel passen. Die Standard-Anmeldekette von Google wird nie benutzt (wie ADR-0027,
@@ -64,8 +66,9 @@ Delegation nennt die Einstellung `subject` das imitierte Konto; der Konnektor li
 ergänzt, gilt: **Er übernimmt sie nur, wenn Ursprung und `assertionSubject` gleich bleiben**, sonst
 sind die Zugangsdaten Pflicht — sonst lenkte jede Person mit Verwaltungsrecht einen vorhandenen
 Delegationsschlüssel auf ein beliebiges Konto um. Die Regel gilt für jede Anmeldeart mit Subjekt.
-Am Zugang setzt nur der Zugang `subject` (`DefaultKey#profileOnly`); ein Wert der Bibliothek ist
-`400`. Eine Änderung verwirft den Abgleichstand aller Bibliotheken auf dem Zugang (ihr nächster Lauf
+Das Konto steht sichtbar in den Bibliotheksdetails und im Audit; technisch prüfen, ob es ein
+Funktionskonto ist, kann OPAA nicht. Am Zugang setzt nur der Zugang `subject` (`DefaultKey#profileOnly`);
+ein Wert der Bibliothek ist `400`, fehlt er am Zugang, wird niemand imitiert. Eine Änderung verwirft den Abgleichstand aller Bibliotheken auf dem Zugang (ihr nächster Lauf
 ist ein Vollabgleich), nennt vorher die Zahl der Bibliotheken, benachrichtigt danach ihre Verwaltenden
 und wird abgelehnt, solange eine läuft; der Schlüssel bleibt am Zugang (seit #2220). Das Handbuch
 verlangt ein Funktionskonto und empfiehlt für Delegation einen Zugang. Die Prüfung einer Bibliothek
@@ -98,9 +101,10 @@ Vollabgleich gleicht nur ab, wenn er alles selbst gelistet hat.
 `file_path` = `https://drive.google.com/open?id=<fileId>`, zugleich Deep Link; Umbenennen und
 Verschieben behalten das Dokument. Merkmal: Binärdatei `m:<md5Checksum>|<size>` (ohne MD5
 `t:<modifiedTime>|<size>`), Google-Format `g:<modifiedTime in ms>|<Zielendung>`, sodass ein
-Wechsel des Zielformats einen neuen Export auslöst; `version` taugt nicht (Fehlalarme). Ordner:
-Elternkette bis zur Bereichswurzel über `SourceFolderMirror`, bei mehreren Bereichen der Name der
-Ablage bzw. des Ordners vorn.
+Wechsel des Zielformats einen neuen Export auslöst; `version` taugt nicht (Fehlalarme). Verbindlich
+bleibt die SHA-256 nach dem Laden. Ordner: Elternkette bis zur Bereichswurzel über
+`SourceFolderMirror`, bei mehreren Bereichen der Name der Ablage bzw. des Ordners vorn; Namen, die
+keine Ordnerzeile tragen kann, und zu tiefe Ketten folgen `SourceFolderPath`.
 
 ### 8. Google-Formate: Export in Office-Formate
 
@@ -127,7 +131,8 @@ Geltungsbereich still.
 
 Das Budget zählt Anfragen je Lauf (`RequestBudget`), keine Google-Einheiten. Drosselung ist `429`
 sowie `403` mit Grund `rateLimitExceeded` oder `userRateLimitExceeded`, mit exponentiellem Backoff
-über `RequestBudget#throttled`; `dailyLimitExceeded` beendet den Lauf. Grenzwerte in
+über `RequestBudget#throttled`; `dailyLimitExceeded` beendet den Lauf. Das Handbuch nennt die von
+Google angekündigte Abrechnung. Grenzwerte in
 `GoogleDriveProperties` (`opaa.indexing.google-drive.*`) nach dem Muster von ADR-0027, Entscheidung 11.
 
 ### 11. REST über `io.opaa.sourceaccess` statt Google-Client-Bibliothek
