@@ -150,7 +150,7 @@ public class KnowledgeLibraryService {
   private final VectorChunkStore vectorChunkStore;
   private final IndexingJobRepository indexingJobRepository;
   private final IndexingJobService indexingJobService;
-  private final Clock schedulingClock;
+  private final Clock clock;
   private final LibraryStorageQuotaService storageQuotaService;
   private final LibraryExternalAccessService externalAccessService;
   private final LibraryFolderRepository folderRepository;
@@ -178,7 +178,7 @@ public class KnowledgeLibraryService {
       VectorChunkStore vectorChunkStore,
       IndexingJobRepository indexingJobRepository,
       IndexingJobService indexingJobService,
-      Clock schedulingClock,
+      Clock clock,
       LibraryStorageQuotaService storageQuotaService,
       LibraryExternalAccessService externalAccessService,
       LibraryFolderRepository folderRepository,
@@ -208,7 +208,7 @@ public class KnowledgeLibraryService {
     this.vectorChunkStore = vectorChunkStore;
     this.indexingJobRepository = indexingJobRepository;
     this.indexingJobService = indexingJobService;
-    this.schedulingClock = schedulingClock;
+    this.clock = clock;
     this.storageQuotaService = storageQuotaService;
     this.externalAccessService = externalAccessService;
     this.folderRepository = folderRepository;
@@ -1547,7 +1547,7 @@ public class KnowledgeLibraryService {
       LibraryScheduleCodec.Schedule parsed = LibraryScheduleCodec.parse(library.getScheduleCron());
       Instant nextRunAt =
           LibraryScheduleCodec.nextRunAt(
-              library.getScheduleCron(), schedulingClock.instant(), schedulingClock.getZone());
+              library.getScheduleCron(), clock.instant(), clock.getZone());
       schedule =
           new LibraryScheduleDetail(
               parsed.frequency(), parsed.hour(), parsed.minute(), parsed.weekday(), nextRunAt);

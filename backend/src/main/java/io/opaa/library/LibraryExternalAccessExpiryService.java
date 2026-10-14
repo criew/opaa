@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,15 +52,7 @@ public class LibraryExternalAccessExpiryService {
   private final AuditEventRecorder auditEventRecorder;
   private final InstantSource clock;
 
-  @Autowired
   public LibraryExternalAccessExpiryService(
-      KnowledgeLibraryRepository libraryRepository,
-      AssetVisibilityHistoryService visibilityHistoryService,
-      AuditEventRecorder auditEventRecorder) {
-    this(libraryRepository, visibilityHistoryService, auditEventRecorder, InstantSource.system());
-  }
-
-  LibraryExternalAccessExpiryService(
       KnowledgeLibraryRepository libraryRepository,
       AssetVisibilityHistoryService visibilityHistoryService,
       AuditEventRecorder auditEventRecorder,

@@ -46,7 +46,8 @@ public class GoogleDriveConnectorConfiguration {
       StaleDocumentCleanupService staleDocumentCleanupService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new GoogleDriveIndexingExecutor(
         googleDriveApiFactory,
         documentIngestService,
@@ -54,7 +55,7 @@ public class GoogleDriveConnectorConfiguration {
         libraryFolderService,
         staleDocumentCleanupService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

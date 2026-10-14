@@ -12,6 +12,12 @@ Sicherheit) gelten unverändert weiter.
 - Versions-Kataloge (`libs.versions.*`, `libs.*`, `libs.bundles.*`) für die Referenzierung von Versionen, Bibliotheken und Bundles verwenden
 - Dies gilt für die Abschnitte `[versions]`, `[libraries]`, `[bundles]` und `[plugins]`
 
+## Zeit
+
+Services lesen die aktuelle Zeit über die `Clock`-Bean aus `io.opaa.common.ClockConfiguration`
+(`Instant.now(clock)`), damit Ablauf, Fälligkeit und Fristen mit fester Clock testbar sind; Entities
+setzen ihre Zeitstempel (`createdAt` u. ä.) selbst im Konstruktor oder in `@PrePersist`.
+
 ## API & DTO-Konvention (Fortsetzung)
 
 Die beiden Kernregeln — DTOs nie von Hand, Änderungen beginnen in der Spec — stehen in der Wurzel-`AGENTS.md`.

@@ -44,7 +44,8 @@ public class NextcloudConnectorConfiguration {
       StaleDocumentCleanupService staleDocumentCleanupService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new NextcloudIndexingExecutor(
         nextcloudProperties,
         targetAddressValidator,
@@ -54,7 +55,7 @@ public class NextcloudConnectorConfiguration {
         libraryFolderService,
         staleDocumentCleanupService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

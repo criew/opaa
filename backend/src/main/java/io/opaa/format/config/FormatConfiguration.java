@@ -133,14 +133,12 @@ public class FormatConfiguration {
   /**
    * EML/MSG pipeline (ingestion-pipelines.md, Teil 3, Punkt 5). It never recurses into a
    * sub-pipeline itself (ADR-0022, Entscheidung 10) and therefore needs no {@link
-   * DocumentFormatRegistry}. The {@code Clock} parameter resolves by type to this application's
-   * single {@code @Primary} {@link Clock}, not to {@code IndexingConfiguration#schedulingClock()}
-   * despite its name.
+   * DocumentFormatRegistry}.
    */
   @Bean
   MailDocumentFormat mailDocumentPipeline(
-      ChunkingService chunkingService, MailProperties mailProperties, Clock schedulingClock) {
-    return new MailDocumentFormat(chunkingService, mailProperties, schedulingClock);
+      ChunkingService chunkingService, MailProperties mailProperties, Clock clock) {
+    return new MailDocumentFormat(chunkingService, mailProperties, clock);
   }
 
   /**
