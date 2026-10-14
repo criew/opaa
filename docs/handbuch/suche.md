@@ -530,8 +530,18 @@ Vektor- noch Wortübereinstimmung erfassen. Er ist für die Fälle da, in denen 
 im Fenster liegt, aber nicht weit genug oben.
 
 Im Auslieferungsstand ist Reranking **aus** (`OPAA_RERANK_ENABLED=false`): Die Modellrolle ist
-gebaut, nicht aktiviert, weil sie Hardware braucht (auf einer CPU Minuten je Frage, auf einer GPU
-Sekunden). Die Rolle kennt drei Zustände, die das Protokoll und die
+gebaut, nicht aktiviert, weil sie einen eigenen Endpunkt braucht und auf einer CPU für den Dialog
+zu langsam ist.
+
+**Empfehlung:** Reranking einschalten, wo ein schneller Endpunkt zur Verfügung steht, also auf einer
+GPU im Haus oder bei einem gehosteten Rerank-Dienst. Die Stufe holt die richtige Fundstelle aus dem
+Fenster nach oben; der Aufruf kostet Zeit je Frage, und ein schneller Endpunkt hält sie klein.
+Ein Endpunkt auf einer CPU wird nicht empfohlen. Ein gehosteter Endpunkt erhält Frage und
+Chunk-Texte; bei Behördendaten kommt deshalb nur ein Endpunkt im eigenen Netz oder ein ausdrücklich
+zulässiger Dienst in Frage. Die Wahl des Endpunkts steht im Kapitel
+[Modelle](modelle.md#reranking-einschalten).
+
+Die Rolle kennt drei Zustände, die das Protokoll und die
 Administrationsseite unterscheiden:
 
 | Zustand | Bedeutung | Was die Suche tut |
@@ -1253,7 +1263,8 @@ entsprechen.
 - **BM25** im Volltextpfad. Ob der Wechsel nötig ist, wird gemessen; die Eintrittsbedingung steht
   im Kapitel [Deployment](datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
 - **Reranking und Vielfaltsauswahl als Default.** Beides ist gebaut und per Konfiguration
-  aktivierbar; der Auslieferungsstand entscheidet nach Messung, nicht nach Möglichkeit.
+  aktivierbar. Reranking ist ausgeliefert aus, weil es einen eigenen Endpunkt braucht, wird aber
+  empfohlen, sobald ein schneller verfügbar ist (Stufe 8).
 - **Ableitung eines Filters aus der Frage** („nur Vermerke aus 2024"). Filter setzt die Person.
 - **Eine modellgestützte Belegprüfung** (Stufe 2). Die Belegprüfung bleibt deterministisch.
 - **Eine Gewichtung zwischen den Suchpfaden.** Die Fusion behandelt beide gleich; das entspricht
