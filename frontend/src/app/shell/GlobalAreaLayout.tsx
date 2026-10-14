@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import GlobalBadge from '@/shared/ui/GlobalBadge'
 import { darkRoles, lightRoles } from '@/shared/theme/tokens'
+import PageLoading from './PageLoading'
 
 interface GlobalAreaSection {
   label: string
@@ -135,7 +137,9 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
           flexDirection: 'column',
         }}
       >
-        <Outlet />
+        <Suspense fallback={<PageLoading />}>
+          <Outlet />
+        </Suspense>
       </Box>
     </Box>
   )

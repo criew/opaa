@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { Suspense, useEffect, useMemo } from 'react'
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 // app
@@ -8,9 +8,9 @@ import { createAppTheme } from '@/shared/theme/theme'
 import { resolveThemeMode } from '@/shared/theme/colorScheme'
 import GlobalAreaLayout from './shell/GlobalAreaLayout'
 import AppShell from './shell/AppShell'
+import PageLoading from './shell/PageLoading'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useUiStore } from '@/shared/stores/uiStore'
-import SettingsPage from './areas/SettingsPage'
 import { renderSpaceChats } from './themeSeams'
 // shared
 import {
@@ -31,65 +31,50 @@ import {
   spaceSettingsRoute,
   VERIFY_EMAIL_ROUTE,
 } from '@/shared/routes'
-// auth
 import { useAuthStore } from '@/shared/session/authStore'
+import { catalogRoute } from '@/shared/assetTypes'
+import { useBrandingStore } from '@/shared/branding/brandingStore'
+// pages, loaded on demand
 import {
   AuthCallbackPage,
+  BrandingSettingsPage,
+  CapabilityManagementPage,
+  CatalogNewPage,
+  CatalogPage,
   ChangePasswordPage,
+  ChatPage,
+  ChatRedirect,
+  ChatsPage,
+  ConnectionCallbackPage,
+  ConnectionLogPage,
+  ConnectionsAdminPage,
+  DirectorySyncPage,
   ForgotPasswordPage,
+  GroupManagementPage,
+  HandoverPage,
+  LibraryCreatePage,
+  LibraryDetailPage,
+  LlmModelManagementPage,
   LoginPage,
+  MailSettingsPage,
+  OidcProviderManagementPage,
+  PromptLibraryCreatePage,
+  PromptLibraryDetailPage,
+  ProviderGroupWorklistPage,
   RegisterPage,
+  RightsHistoryPage,
+  SearchIndexingAdminPage,
   SetPasswordPage,
+  SettingsPage,
+  SpaceCreatePage,
+  SpacePage,
+  SpaceSettingsPage,
+  SpacesOverviewPage,
+  SuccessionPage,
   SystemLoginPage,
+  UserManagementPage,
   VerifyEmailPage,
-} from '@/features/auth/routes'
-// chat
-import { ChatPage } from '@/features/chat/routes'
-import { ChatsPage } from '@/features/chat/routes'
-import { ChatRedirect } from '@/features/chat/routes'
-// space
-import { SpacePage } from '@/features/space/routes'
-import { SpacesOverviewPage } from '@/features/space/routes'
-import { SpaceCreatePage } from '@/features/space/routes'
-import { SpaceSettingsPage } from '@/features/space/routes'
-// asset
-import { CatalogPage } from '@/features/asset/routes'
-import { CatalogNewPage } from '@/features/asset/routes'
-import { catalogRoute } from '@/shared/assetTypes'
-// library
-import { LibraryCreatePage } from '@/features/library/routes'
-import { LibraryDetailPage } from '@/features/library/routes'
-// prompt
-import { PromptLibraryCreatePage } from '@/features/prompt/routes'
-import { PromptLibraryDetailPage } from '@/features/prompt/routes'
-// group
-import { GroupManagementPage } from '@/features/group/routes'
-// succession
-import { SuccessionPage } from '@/features/succession/routes'
-import { HandoverPage } from '@/features/auth/routes'
-// capability
-import { CapabilityManagementPage } from '@/features/capability/routes'
-// user
-import { UserManagementPage } from '@/features/user/routes'
-// identity-provider
-import { OidcProviderManagementPage } from '@/features/identity-provider/routes'
-// directory-sync
-import { DirectorySyncPage } from '@/features/directory-sync/routes'
-import { ProviderGroupWorklistPage } from '@/features/group/routes'
-// model
-import { LlmModelManagementPage } from '@/features/model/routes'
-// mail
-import { MailSettingsPage } from '@/features/mail/routes'
-// branding
-import { useBrandingStore } from '@/shared/branding/brandingStore'
-import { BrandingSettingsPage } from '@/features/branding/routes'
-// connection
-import { ConnectionCallbackPage } from '@/features/library/routes'
-import ConnectionsAdminPage from './areas/ConnectionsAdminPage'
-import { ConnectionLogPage, RightsHistoryPage } from '@/features/audit/routes'
-// search-admin
-import { SearchIndexingAdminPage } from '@/features/search-admin/routes'
-// audit
+} from './lazyPages'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
@@ -176,171 +161,179 @@ export default function App() {
       <CssBaseline />
       <ErrorBoundary>
         <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            {/* ADR-0033, Entscheidung 4/5: reachable at all times - the way back into an
+          <Suspense fallback={<PageLoading />}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              {/* ADR-0033, Entscheidung 4/5: reachable at all times - the way back into an
                 installation whose last identity provider is misconfigured. */}
-            <Route path="/login/system" element={<SystemLoginPage />} />
-            {/* Outside the application shell on purpose: while a password change is owed, every
+              <Route path="/login/system" element={<SystemLoginPage />} />
+              {/* Outside the application shell on purpose: while a password change is owed, every
                 route but /api/v1/auth/local/* answers 403 (ADR-0033, Entscheidung 8). */}
-            <Route path="/account/password" element={<ChangePasswordPage />} />
-            {/* The self-service pages of local accounts (#1540), public like the sign-in page.
+              <Route path="/account/password" element={<ChangePasswordPage />} />
+              {/* The self-service pages of local accounts (#1540), public like the sign-in page.
                 ADR-0033, Entscheidung 11: the two link targets work whatever the switches say -
                 a link from an invitation or an administrative reset must never run into a
                 redirect - while /register and /forgot-password are pages only where the
                 installation offers the flow (the pages redirect to /login otherwise). */}
-            <Route path={SET_PASSWORD_ROUTE} element={<SetPasswordPage />} />
-            <Route path={VERIFY_EMAIL_ROUTE} element={<VerifyEmailPage />} />
-            <Route path={FORGOT_PASSWORD_ROUTE} element={<ForgotPasswordPage />} />
-            <Route path={REGISTER_ROUTE} element={<RegisterPage />} />
-            {/* ADR-0033, Entscheidung 12: the handover link and, after the provider redirect, the
+              <Route path={SET_PASSWORD_ROUTE} element={<SetPasswordPage />} />
+              <Route path={VERIFY_EMAIL_ROUTE} element={<VerifyEmailPage />} />
+              <Route path={FORGOT_PASSWORD_ROUTE} element={<ForgotPasswordPage />} />
+              <Route path={REGISTER_ROUTE} element={<RegisterPage />} />
+              {/* ADR-0033, Entscheidung 12: the handover link and, after the provider redirect, the
                 page that redeems it - public like the other link targets, because the person has
                 no OPAA session at that moment and must not get one before the redemption. */}
-            <Route path={HANDOVER_ROUTE} element={<HandoverPage />} />
-            <Route path="/auth/callback" element={<AuthCallbackPage />} />
-            {/* ADR-0025: the provider of an OAuth consent returns here. Outside the protected
+              <Route path={HANDOVER_ROUTE} element={<HandoverPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
+              {/* ADR-0025: the provider of an OAuth consent returns here. Outside the protected
                 routes, so code and state never ride along into a sign-in redirect. */}
-            <Route path={CONNECTION_CALLBACK_ROUTE} element={<ConnectionCallbackPage />} />
-            <Route
-              element={
-                <ProtectedRoute>
-                  <AppShell />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Navigate to="/chat" replace />} />
-              <Route path="chat" element={<ChatRedirect />} />
-
-              <Route path="spaces/:spaceId/chats" element={<ChatsPage />} />
-              <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
+              <Route path={CONNECTION_CALLBACK_ROUTE} element={<ConnectionCallbackPage />} />
               <Route
-                path="spaces/:spaceId"
-                element={<SpacePage renderChats={renderSpaceChats} />}
-              />
-              {/* Die frühere Verwaltungsseite: Lesezeichen auf /manage landen auf dem ersten
+                element={
+                  <ProtectedRoute>
+                    <AppShell />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="/chat" replace />} />
+                <Route path="chat" element={<ChatRedirect />} />
+
+                <Route path="spaces/:spaceId/chats" element={<ChatsPage />} />
+                <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
+                <Route
+                  path="spaces/:spaceId"
+                  element={<SpacePage renderChats={renderSpaceChats} />}
+                />
+                {/* Die frühere Verwaltungsseite: Lesezeichen auf /manage landen auf dem ersten
                   Reiter der Einstellungen (#1917). */}
-              <Route path="spaces/:spaceId/manage" element={<SpaceSettingsRedirect />} />
-              <Route path="spaces/:spaceId/settings" element={<SpaceSettingsRedirect />} />
-              <Route path="spaces/:spaceId/settings/:tab" element={<SpaceSettingsPage />} />
-              {/* No space selected yet (#809): overview and create wizard render in the
+                <Route path="spaces/:spaceId/manage" element={<SpaceSettingsRedirect />} />
+                <Route path="spaces/:spaceId/settings" element={<SpaceSettingsRedirect />} />
+                <Route path="spaces/:spaceId/settings/:tab" element={<SpaceSettingsPage />} />
+                {/* No space selected yet (#809): overview and create wizard render in the
                   bare global frame; the navy column appears only inside a chosen space. */}
-              <Route element={<GlobalAreaLayout />}>
-                <Route path="spaces" element={<SpacesOverviewPage />} />
-                <Route path="spaces/new" element={<SpaceCreatePage />} />
-              </Route>
-              {/* Every asset type's pages are a global area too (#789, Schlussnotiz von
+                <Route element={<GlobalAreaLayout />}>
+                  <Route path="spaces" element={<SpacesOverviewPage />} />
+                  <Route path="spaces/new" element={<SpaceCreatePage />} />
+                </Route>
+                {/* Every asset type's pages are a global area too (#789, Schlussnotiz von
                   Mockup-Abschnitt 2): bare global frame, no secondary column. The catalog is
                   their one overview (ADR-0039); the former type overviews lead into it. */}
-              <Route element={<GlobalAreaLayout />}>
-                <Route path="catalog" element={<CatalogPage />} />
-                <Route path="catalog/new" element={<CatalogNewPage />} />
-                <Route
-                  path="libraries"
-                  element={<Navigate to={catalogRoute('KNOWLEDGE_LIBRARY')} replace />}
-                />
-                <Route path="libraries/new" element={<LibraryCreatePage />} />
-                <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
-                {/* Switched off (ADR-0044), every former prompt address leads to the catalog. */}
-                {promptLibraries ? (
-                  <>
-                    <Route
-                      path="prompts"
-                      element={<Navigate to={catalogRoute('PROMPT_LIBRARY')} replace />}
-                    />
-                    <Route path="prompts/new" element={<PromptLibraryCreatePage />} />
-                    <Route path="prompts/:promptLibraryId" element={<PromptLibraryDetailPage />} />
-                    <Route
-                      path="prompts/:promptLibraryId/:tab"
-                      element={<PromptLibraryDetailPage />}
-                    />
-                  </>
-                ) : (
-                  <Route path="prompts/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
-                )}
-              </Route>
-              {/* Global areas render inside the frame from mockup 2b (#787): no space
+                <Route element={<GlobalAreaLayout />}>
+                  <Route path="catalog" element={<CatalogPage />} />
+                  <Route path="catalog/new" element={<CatalogNewPage />} />
+                  <Route
+                    path="libraries"
+                    element={<Navigate to={catalogRoute('KNOWLEDGE_LIBRARY')} replace />}
+                  />
+                  <Route path="libraries/new" element={<LibraryCreatePage />} />
+                  <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
+                  {/* Switched off (ADR-0044), every former prompt address leads to the catalog. */}
+                  {promptLibraries ? (
+                    <>
+                      <Route
+                        path="prompts"
+                        element={<Navigate to={catalogRoute('PROMPT_LIBRARY')} replace />}
+                      />
+                      <Route path="prompts/new" element={<PromptLibraryCreatePage />} />
+                      <Route
+                        path="prompts/:promptLibraryId"
+                        element={<PromptLibraryDetailPage />}
+                      />
+                      <Route
+                        path="prompts/:promptLibraryId/:tab"
+                        element={<PromptLibraryDetailPage />}
+                      />
+                    </>
+                  ) : (
+                    <Route path="prompts/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
+                  )}
+                </Route>
+                {/* Global areas render inside the frame from mockup 2b (#787): no space
                   column, a light secondary column with the area navigation instead. */}
-              <Route element={<AdminAreaLayout />}>
-                {/* Die beiden Bereiche der Benutzerseite sind Routen wie bei der E-Mail-Seite
+                <Route element={<AdminAreaLayout />}>
+                  {/* Die beiden Bereiche der Benutzerseite sind Routen wie bei der E-Mail-Seite
                     (#1601): der Sprung aus dem Auflagen-Hinweis landet in der Kontenliste, der aus
                     der Anmeldeseite in den Einstellungen, und ein Neuladen behält den Bereich. */}
-                <Route
-                  path="admin/users"
-                  element={<Navigate to="/admin/users/accounts" replace />}
-                />
-                <Route path="admin/users/:tab" element={<UserManagementPage />} />
-                <Route path="admin/groups" element={<GroupManagementPage />} />
-                <Route path="admin/branding" element={<BrandingSettingsPage />} />
-                <Route path="admin/models" element={<Navigate to="/admin/models/chat" replace />} />
-                <Route path="admin/models/:tab" element={<LlmModelManagementPage />} />
-                <Route path="admin/identity-providers" element={<OidcProviderManagementPage />} />
-                <Route
-                  path="admin/identity-providers/:providerId/groups"
-                  element={<ProviderGroupWorklistPage />}
-                />
-                <Route path="admin/directory-sync" element={<DirectorySyncPage />} />
-                <Route
-                  path="admin/connections"
-                  element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
-                />
-                <Route path="admin/connections/:tab" element={<ConnectionsAdminPage />} />
-                {/* Die früheren Seiten der Anbindungen: Lesezeichen und Verweise landen
+                  <Route
+                    path="admin/users"
+                    element={<Navigate to="/admin/users/accounts" replace />}
+                  />
+                  <Route path="admin/users/:tab" element={<UserManagementPage />} />
+                  <Route path="admin/groups" element={<GroupManagementPage />} />
+                  <Route path="admin/branding" element={<BrandingSettingsPage />} />
+                  <Route
+                    path="admin/models"
+                    element={<Navigate to="/admin/models/chat" replace />}
+                  />
+                  <Route path="admin/models/:tab" element={<LlmModelManagementPage />} />
+                  <Route path="admin/identity-providers" element={<OidcProviderManagementPage />} />
+                  <Route
+                    path="admin/identity-providers/:providerId/groups"
+                    element={<ProviderGroupWorklistPage />}
+                  />
+                  <Route path="admin/directory-sync" element={<DirectorySyncPage />} />
+                  <Route
+                    path="admin/connections"
+                    element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
+                  />
+                  <Route path="admin/connections/:tab" element={<ConnectionsAdminPage />} />
+                  {/* Die früheren Seiten der Anbindungen: Lesezeichen und Verweise landen
                     am selben Inhalt im neuen Bereich. */}
-                <Route
-                  path="admin/connection-profiles"
-                  element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
-                />
-                <Route
-                  path="admin/library-releases"
-                  element={<Navigate to={EXTERNAL_TOOLS_LIBRARIES_ROUTE} replace />}
-                />
-                <Route
-                  path="admin/external-access"
-                  element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
-                />
-                <Route
-                  path="admin/external-access/channel"
-                  element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
-                />
-                <Route
-                  path="admin/external-access/tokens"
-                  element={<Navigate to={EXTERNAL_TOOLS_TOKENS_ROUTE} replace />}
-                />
-                <Route
-                  path="admin/external-access/*"
-                  element={<Navigate to={EXTERNAL_TOOLS_ROUTE} replace />}
-                />
-                <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
-                <Route
-                  path="admin/succession"
-                  element={<Navigate to="/admin/succession/open" replace />}
-                />
-                <Route path="admin/succession/:tab" element={<SuccessionPage />} />
-                {/* Die beiden Bereiche der E-Mail-Seite sind Routen, damit ein Verweis auf die
+                  <Route
+                    path="admin/connection-profiles"
+                    element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
+                  />
+                  <Route
+                    path="admin/library-releases"
+                    element={<Navigate to={EXTERNAL_TOOLS_LIBRARIES_ROUTE} replace />}
+                  />
+                  <Route
+                    path="admin/external-access"
+                    element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
+                  />
+                  <Route
+                    path="admin/external-access/channel"
+                    element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
+                  />
+                  <Route
+                    path="admin/external-access/tokens"
+                    element={<Navigate to={EXTERNAL_TOOLS_TOKENS_ROUTE} replace />}
+                  />
+                  <Route
+                    path="admin/external-access/*"
+                    element={<Navigate to={EXTERNAL_TOOLS_ROUTE} replace />}
+                  />
+                  <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
+                  <Route
+                    path="admin/succession"
+                    element={<Navigate to="/admin/succession/open" replace />}
+                  />
+                  <Route path="admin/succession/:tab" element={<SuccessionPage />} />
+                  {/* Die beiden Bereiche der E-Mail-Seite sind Routen, damit ein Verweis auf die
                     Vorlagenverwaltung dort landet (#1542). */}
-                <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
-                <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
-                <Route
-                  path="admin/search"
-                  element={<Navigate to="/admin/search/overview" replace />}
-                />
-                <Route path="admin/search/:tab" element={<SearchIndexingAdminPage />} />
-              </Route>
-              {/* Mockup 2c (#788): the user settings render in the bare global frame -
+                  <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
+                  <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
+                  <Route
+                    path="admin/search"
+                    element={<Navigate to="/admin/search/overview" replace />}
+                  />
+                  <Route path="admin/search/:tab" element={<SearchIndexingAdminPage />} />
+                </Route>
+                {/* Mockup 2c (#788): the user settings render in the bare global frame -
                   no space column, no secondary column. */}
-              {/* Die Stichtagsauskunft der Revision (#1822): eigener Bereich, nicht unter
+                {/* Die Stichtagsauskunft der Revision (#1822): eigener Bereich, nicht unter
                   /admin - sie gehoert der AUDITOR-Rolle, nicht der Systemverwaltung. */}
-              <Route element={<RevisionAreaLayout />}>
-                <Route path="revision/rechtehistorie" element={<RightsHistoryPage />} />
-                <Route path="revision/verbindungsprotokoll" element={<ConnectionLogPage />} />
+                <Route element={<RevisionAreaLayout />}>
+                  <Route path="revision/rechtehistorie" element={<RightsHistoryPage />} />
+                  <Route path="revision/verbindungsprotokoll" element={<ConnectionLogPage />} />
+                </Route>
+                <Route element={<GlobalAreaLayout />}>
+                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="settings/:tab" element={<SettingsPage />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/chat" replace />} />
               </Route>
-              <Route element={<GlobalAreaLayout />}>
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="settings/:tab" element={<SettingsPage />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/chat" replace />} />
-            </Route>
-          </Routes>
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </ErrorBoundary>
     </ThemeProvider>

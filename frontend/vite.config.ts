@@ -4,7 +4,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolveOpaaVersion } from './opaaVersion.ts'
 
-// TODO: Add code-splitting (lazy-load MUI, pages) to reduce bundle size below 500 kB
+// TODO: Split MUI out of the entry chunk to bring it below 500 kB
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -26,6 +26,15 @@ export default defineConfig({
     // always emitted as files instead of loosening the CSP to `data:`; everything else
     // keeps the default limit.
     assetsInlineLimit: (filePath) => (/\.(woff2?|ttf|otf|eot)$/.test(filePath) ? false : undefined),
+    // A theme's index.ts only re-exports. Marked free of side effects, importing one name from it
+    // bundles that module alone, not every other module the barrel re-exports.
+    rolldownOptions: {
+      treeshake: {
+        moduleSideEffects: [
+          { test: /[\\/]src[\\/]features[\\/][^\\/]+[\\/]index\.ts$/, sideEffects: false },
+        ],
+      },
+    },
   },
   server: {
     proxy: {
