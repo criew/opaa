@@ -2,8 +2,8 @@ import type { SourceReference } from '@/shared/api/types'
 
 /**
  * The backend's citation marker (QueryService): `【source: <documentId>#<chunk> | <fileName>】`.
- * `SourceReference.documentId` (#739) is the join key between the answer text and the source list;
- * the file name is only a fallback for persisted legacy messages predating #739 (#590).
+ * `SourceReference.documentId` is the join key between the answer text and the source list;
+ * the file name is only a fallback for persisted legacy messages without a documentId.
  */
 export const CITATION_MARKER_RE = /【source:\s*([a-zA-Z0-9-]+#\d+)\s*\|\s*(.+?)\s*】/g
 
@@ -83,16 +83,16 @@ export interface CitationDoc {
   numbers: number[]
   /** The matching source metadata, when the backend listed one for this file name. */
   source: SourceReference | undefined
-  /** #739: the document id the backend's citation deep link opens - undefined for a synthetic
-   *  entry (#386) with no matching retrieved document, same as {@link SourceReference.documentId}
+  /** The document id the backend's citation deep link opens - undefined for a synthetic
+   *  entry with no matching retrieved document, same as {@link SourceReference.documentId}
    *  it is carried straight through from. */
   documentId: string | null | undefined
-  /** #1102: this row's position in the backend's `sources` array - the order the retrieval
+  /** This row's position in the backend's `sources` array - the order the retrieval
    *  pipeline settled on, which the Belegfenster sorts and numbers by. `Number.MAX_SAFE_INTEGER`
    *  when no
    *  source matched (a persisted legacy message whose snapshot lists none). */
   sourceIndex: number
-  /** #667: the distinct Fundorte of this row's footnotes, in footnote order - "S. 2–4",
+  /** The distinct Fundorte of this row's footnotes, in footnote order - "S. 2–4",
    *  "Abschn. 4.2 Fristsetzung" - resolved from the marker's chunk index via
    *  {@link SourceReference.chunkLocations}. Empty when the pipeline knew none. */
   locations: string[]
@@ -108,17 +108,17 @@ export interface CitationIndex {
   /** Checked but uncited sources - listed after the cited ones in the Belegfenster. A filter over
    *  `sources`, so this arrives in the backend's order. */
   uncited: SourceReference[]
-  /** #1102: position in the backend's `sources` array per source, for the rows that carry the
+  /** Position in the backend's `sources` array per source, for the rows that carry the
    *  {@link SourceReference} itself rather than a resolved {@link CitationDoc} - the Belegfenster
    *  labels every row with that position ("Rang n"). */
   sourceIndexByReference: Map<SourceReference, number>
   /** Distinct cited passages ("n Stellen"). */
   markerCount: number
-  /** #667: Fundort per footnote number, for the numbers the backend could locate. */
+  /** Fundort per footnote number, for the numbers the backend could locate. */
   locationByNumber: Map<number, string>
 }
 
-/** Resolves an answer's citation markers into footnote numbers and the Belegfenster rows (#590). */
+/** Resolves an answer's citation markers into footnote numbers and the Belegfenster rows. */
 export function buildCitationIndex(
   content: string,
   sources: SourceReference[] | undefined,
@@ -132,14 +132,14 @@ export function buildCitationIndex(
   // source already has a row.
   const docIndexByRowKey = new Map<string, number>()
   const citedSources = (sources ?? []).filter((s) => s.cited)
-  // The text is the truth (#592): a marker's file counts as cited even when the source list
+  // The text is the truth: a marker's file counts as cited even when the source list
   // still flags it uncited, so one document never shows up in both groups.
   //
-  // PR #745 review: two distinct documents can share a fileName (#739 stopped merging those on the
-  // backend), so a fileName-keyed map resolves "last wins" to the wrong SourceReference. The marker
-  // itself already carries the documentId (`CITATION_MARKER_RE` group 1, `<documentId>#<chunk>`), so
-  // resolve by documentId first and only fall back to fileName for persisted legacy messages
-  // (`chat_messages.sources` is a JSON snapshot and may predate #739, carrying no documentId at all).
+  // Two distinct documents can share a fileName (the backend keeps them apart), so a fileName-keyed
+  // map resolves "last wins" to the wrong SourceReference. The marker itself already carries the
+  // documentId (`CITATION_MARKER_RE` group 1, `<documentId>#<chunk>`), so resolve by documentId
+  // first and only fall back to fileName for persisted legacy messages (`chat_messages.sources` is
+  // a JSON snapshot; an old one carries no documentId at all).
   const sourceByDocumentId = new Map(
     (sources ?? []).filter((s) => s.documentId != null).map((s) => [s.documentId as string, s]),
   )
@@ -172,7 +172,7 @@ export function buildCitationIndex(
     return source?.documentId ?? fileName
   }
 
-  // #667: the marker's chunk index (`<documentId>#<chunk>`) picks the location the backend
+  // The marker's chunk index (`<documentId>#<chunk>`) picks the location the backend
   // stored for exactly that chunk - the only join there is between a footnote and a Fundort.
   function resolveLocation(source: SourceReference | undefined, key: string): string | undefined {
     const chunkIndex = Number(key.split('#')[1])
@@ -282,10 +282,10 @@ export function describeEvidenceSummary(citations: CitationIndex): string | unde
 }
 
 /**
- * #1066 (ADR-0024; Maintainer-Beschluss vom 04.09.2026 am Epic #1065): the Beleg's metadata line
+ * The Beleg's metadata line (ADR-0024)
  * ("Dienstanweisung IT-Nutzung · Dienstanweisung · 12.03.2026"), rendered from the generic
  * field-value list without any field knowledge - the backend supplies label, display text and
- * origin per entry, and a library's own fields (#1071) simply appear as further entries. An
+ * origin per entry, and a library's own fields simply appear as further entries. An
  * empty field is not in the list, so it never renders (metadata-schema.md, Wirkstelle 3); a value
  * a model derived is marked as such, so it never looks like a read one. `undefined` when the list
  * is absent or empty, so callers omit the line entirely. Rendered by {@code SourceEvidenceDrawer}.
@@ -299,7 +299,7 @@ export function formatMetadataLine(source: SourceReference | undefined): string 
 }
 
 /**
- * #1242: the entries the one-line Beleg deliberately leaves out - a mail's recipient list is
+ * The entries the one-line Beleg deliberately leaves out - a mail's recipient list is
  * unbounded and identifies no passage - as labelled "Label: Wert" pairs for the detail view.
  * `undefined` when the source carries none.
  */
@@ -310,7 +310,7 @@ export function formatMetadataDetails(source: SourceReference | undefined): stri
 }
 
 /**
- * #1070: the mark of a hit the Leerwert rule kept - "ohne Angabe" - for a source whose document
+ * The mark of a hit the Leerwert rule kept - "ohne Angabe" - for a source whose document
  * carried no value for a filtered field (metadata-schema.md, "Leerwerte schließen nicht aus").
  * Undefined without an active filter and for a source that matched on every filtered field, so
  * the mark only ever appears where it makes a statement.
@@ -320,7 +320,7 @@ export function metadataFilterMatchLabel(source: SourceReference | undefined): s
 }
 
 /**
- * #1066: the accessible name of the metadata line - every entry as "Label: Wert", so a screen
+ * The accessible name of the metadata line - every entry as "Label: Wert", so a screen
  * reader hears what a sighted reader infers from the value alone.
  */
 export function describeMetadata(source: SourceReference | undefined): string | undefined {

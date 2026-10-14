@@ -45,7 +45,7 @@ function answer(confirmed: boolean) {
 }
 
 /**
- * Bestätigung folgenreicher Handlungen (#1610), gerendert genau einmal durch
+ * Bestätigung folgenreicher Handlungen, gerendert genau einmal durch
  * {@link ../ui/feedback/ConfirmHost} in der AppShell - dasselbe Muster wie
  * {@link ./notificationStore}.
  *

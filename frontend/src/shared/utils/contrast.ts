@@ -1,10 +1,10 @@
 /**
- * WCAG 2.1 contrast arithmetic for the branding form (#583). An operator picking their house's
+ * WCAG 2.1 contrast arithmetic for the branding form. An operator picking their house's
  * accent colour has no way of knowing whether white button text stays legible on it, or whether a
  * focus ring is still visible against the dark scheme - this computes the answer and lets the form
  * say so.
  *
- * Deliberately a warning, never a block (#583: "blockiert aber nicht"): a Behörde's corporate
+ * Deliberately a warning, never a block ("blockiert aber nicht"): a Behörde's corporate
  * colour is not something this application gets to veto. What it can do is make the consequence
  * visible before the choice is saved.
  */
@@ -77,7 +77,7 @@ export function lightenHex(color: string, coefficient: number): string | null {
  * The colour a translucent layer actually produces over a ground - `alpha` of `overlay` composited
  * onto `background`, in hex, so the result feeds back into {@link contrastRatio}.
  *
- * Exists for the sign-in page's background image (#1910): text there sits on a scrim over an image
+ * Exists for the sign-in page's background image: text there sits on a scrim over an image
  * nobody can check in advance, so the only checkable statement is about the worst case - pure white
  * and pure black under that scrim. Null for anything unparseable.
  */
@@ -95,14 +95,14 @@ export function compositeOver(overlay: string, background: string, alpha: number
 const ACCENT_SURFACE_DARKEN_STEP = 0.08
 
 /**
- * Bounded on purpose (#634): a corporate colour is not this application's to repaint. Six steps
+ * Bounded on purpose: a corporate colour is not this application's to repaint. Six steps
  * rescue a moderately light accent; an extreme one (pale yellow) stays failing and triggers the
  * contrast warning instead of being darkened beyond recognition.
  */
 const ACCENT_SURFACE_MAX_STEPS = 6
 
 /**
- * The filled-action surface for a configured accent colour (#634): the colour itself when white
+ * The filled-action surface for a configured accent colour: the colour itself when white
  * text already reaches 4.5:1 on it, otherwise darkened in -8% steps until it does - at most
  * {@link ACCENT_SURFACE_MAX_STEPS} steps, after which the last attempt is returned even when it
  * still fails (see {@link checkAccentContrast}, which then warns). Unparseable input is returned
@@ -136,15 +136,14 @@ const ACCENT_TEXT_STEP = 0.08
 const ACCENT_TEXT_MAX_STEPS = 6
 
 /**
- * The accent colour **as text** for one scheme (#1600): the colour itself when it already reaches
+ * The accent colour **as text** for one scheme: the colour itself when it already reaches
  * 4.5:1 against every ground of that scheme, otherwise moved away from them in 8% steps until it
  * does — lightened on a dark ground, darkened on a light one.
  *
- * This is the counterpart to {@link deriveAccentSurface}, which solved the same problem for the
- * filled surface in #634. Without it a house colour that is legible in one scheme is not in the
- * other: the demo's `#1153EE` reaches 6,0:1 on white but only 3,3:1 on the dark ground, and every
- * link, „Passwort vergessen?" and active tab rendered in it fell below the threshold — in the
- * whole application, not just on the sign-in pages.
+ * This is the counterpart to {@link deriveAccentSurface}, which solves the same problem for the
+ * filled surface. Without it a house colour that is legible in one scheme is not in the other:
+ * the demo's `#1153EE` reaches 6,0:1 on white but only 3,3:1 on the dark ground, and every link,
+ * „Passwort vergessen?" and active tab rendered in it would fall below the threshold.
  *
  * The **surface** stays untouched: filled buttons keep carrying `accentSurface`, so the brand
  * remains itself wherever it appears as an area. Only where the colour has to be read as text does
@@ -189,12 +188,12 @@ export interface ContrastCheck {
  * The three checks that decide whether an accent colour is usable in this design system, both
  * schemes included (guidelines: "Beide Schemata sind gleichermaßen verbindlich"):
  *
- * 1. Button label on the accent surface - `accentFg` is white in both schemes. Since #634 the
+ * 1. Button label on the accent surface - `accentFg` is white in both schemes. The
  *    filled surface is {@link deriveAccentSurface}'s bounded darkening of the configured colour,
  *    so this check evaluates what will actually render; it only fails when even the darkened
  *    surface cannot carry white text. Text threshold.
  * 2. and 3. The accent **as text** in each scheme, against the least favourable surface of that
- *    scheme. Since #1600 the application moves the colour away from the ground until it reaches
+ *    scheme. The application moves the colour away from the ground until it reaches
  *    the threshold, so these two check what will actually render - they only fail when even the
  *    bounded derivation cannot get there, and then the operator is told rather than silently
  *    served unreadable links. Text threshold, which also covers the 3:1 a focus ring or a border

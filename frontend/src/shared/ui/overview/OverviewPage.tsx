@@ -30,7 +30,7 @@ export interface ControlledSearch {
 export interface OverviewPageProps<T> {
   /** Document title, and the heading unless `heading` names one. */
   title: string
-  /** Puts the figure into the heading itself, e.g. `(n) => '3 Spaces'` (#1914). */
+  /** Puts the figure into the heading itself, e.g. `(n) => '3 Spaces'`. */
   heading?: (count: number) => string
   /** The quiet figure beside a fixed heading; use instead of `heading`. */
   countLabel?: (count: number) => string
@@ -87,7 +87,7 @@ function matches(text: string, query: string): boolean {
 }
 
 /**
- * The shared frame of every overview (#1913): heading with count, "Neu" button, search and a grid
+ * The shared frame of every overview: heading with count, "Neu" button, search and a grid
  * of cards - only cards, there is no table view (ADR-0039, Entscheidung 1). What an item looks like
  * stays with the caller - `renderCard` fills the grid, and `searchText` decides what the search
  * sees.

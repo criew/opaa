@@ -20,7 +20,7 @@ interface UiState {
   sidebarWidth: number
   setSidebarWidth: (width: number) => void
   /**
-   * The user's own choice, or `null` while they have not made one (#583). The distinction is
+   * The user's own choice, or `null` while they have not made one. The distinction is
    * load-bearing: `null` is what lets the operator's configured default colour scheme apply, and
    * a plain `'system'` default here would have made "never decided" indistinguishable from
    * "deliberately picked system" - silently overriding every operator default with system.

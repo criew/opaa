@@ -12,12 +12,12 @@ interface BrandMarkProps {
   /** 'vertical' stacks logo, name and claim centered - the sign-in card's block (mockup 1f). */
   orientation?: 'horizontal' | 'vertical'
   /**
-   * Logo emblem alone, no product name - the 64px global rail (#786, mockup 2a) has no room
+   * Logo emblem alone, no product name - the 64px global rail (mockup 2a) has no room
    * for text, and its `nav` landmark already names the region for assistive tech.
    */
   logoOnly?: boolean
   /**
-   * Prefers the sign-in page's own logo where one is configured (#1910), falling back to the app
+   * Prefers the sign-in page's own logo where one is configured, falling back to the app
    * logo and then to the OPAA standard mark. Only the screens before a session set this.
    */
   preferLoginLogo?: boolean
@@ -25,7 +25,7 @@ interface BrandMarkProps {
 
 /**
  * The operator's mark: their logo where one is configured, their product name, and optionally their
- * claim (#583, guidelines 7 - "Name, Claim und Logo werden nie hart eingebettet"). One component
+ * claim (guidelines 7 - "Name, Claim und Logo werden nie hart eingebettet"). One component
  * rather than three copies, because the sidebar, the mobile header and the sign-in page all show
  * the same thing at different sizes, and three copies is how they would drift apart.
  *
@@ -68,14 +68,14 @@ export default function BrandMark({
               height: logoHeight,
               width: 'auto',
               // Breite folgt der Höhe statt einem festen Deckel: Ein breites Wortmarken-Logo auf
-              // der Anmeldeseite würde sonst auf Seitenleistenbreite beschnitten (#1910).
+              // der Anmeldeseite würde sonst auf Seitenleistenbreite beschnitten.
               maxWidth: logoOnly ? 40 : Math.max(160, logoHeight * 4),
               objectFit: 'contain',
             }}
           />
         ) : (
           // The OPAA standard mark from mockup 1a: accent-stroked squircle, document lines in
-          // the surrounding text color so it works on navy and on white alike (#658 Nachbesserung).
+          // the surrounding text color so it works on navy and on white alike.
           <Box
             component="svg"
             viewBox="0 0 24 24"

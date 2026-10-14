@@ -23,7 +23,7 @@ describe('MarkdownRenderer', () => {
     expect(heading).toHaveClass('MuiTypography-h5')
   })
 
-  // #1016: an answer may start at any Markdown level; per message the occurring levels are
+  // An answer may start at any Markdown level; per message the occurring levels are
   // rank-compressed onto h2, h3, ... so the page's h1 is never followed by a skipped level -
   // while the visual variant keeps following the original Markdown level.
   describe('heading normalisation per message (#1016)', () => {
