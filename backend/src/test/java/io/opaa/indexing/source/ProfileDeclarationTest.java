@@ -12,6 +12,7 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
+import io.opaa.sourceaccess.ServerAddressRule;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;

@@ -10,6 +10,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
+import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;

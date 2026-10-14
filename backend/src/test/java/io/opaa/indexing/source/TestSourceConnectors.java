@@ -23,6 +23,7 @@ import io.opaa.indexing.source.web.HttpDirectorySourceConnector;
 import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
 import java.util.List;

@@ -5,7 +5,6 @@ import static io.opaa.indexing.source.ConnectorChecks.unreachable;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.OriginalAccess;
 import io.opaa.indexing.source.SourceConnectionTestResult;
 import io.opaa.indexing.source.SourceConnector;
@@ -16,6 +15,7 @@ import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.SourceType;
+import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;

@@ -2,6 +2,7 @@ package io.opaa.indexing.source;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.sourceaccess.ServerAddressRule;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;

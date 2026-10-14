@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.sourceaccess;
 
 import java.util.LinkedHashSet;
 import java.util.List;

@@ -1,8 +1,8 @@
 package io.opaa.connection.profile;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ServerAddressRule;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.ServerAddressRule;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayDeque;

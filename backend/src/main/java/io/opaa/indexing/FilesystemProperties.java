@@ -1,7 +1,7 @@
 package io.opaa.indexing;
 
-import io.opaa.indexing.source.FilesystemAllowlistSettings;
-import io.opaa.indexing.source.FilesystemPathAllowlist;
+import io.opaa.sourceaccess.FilesystemAllowlistSettings;
+import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

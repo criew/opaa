@@ -22,7 +22,7 @@
  * io.opaa.indexing.source.SourceEventIntake}. {@link
  * io.opaa.indexing.source.StoredDocumentSourceAccess} re-reads a stored document from its source
  * for the passes over the stock in {@code maintenance}, within the {@link
- * io.opaa.indexing.source.FilesystemPathAllowlist}.
+ * io.opaa.sourceaccess.FilesystemPathAllowlist}.
  *
  * <p>Every executor runs its body inside {@link io.opaa.indexing.source.IndexingRunTemplate}: the
  * frame owns progress, protocol, result mapping, failure translation, reconciliation by absence and
