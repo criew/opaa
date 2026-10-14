@@ -54,9 +54,9 @@ class RerankRoleStartupCheck implements ApplicationListener<ApplicationReadyEven
               + "continues without reranking; the state stays readable via "
               + "RerankRoleStatusProvider#currentStatus.",
           status.state(),
-          // A timeout means the endpoint answered the connection but not within
-          // opaa.rerank.timeout - worth calling out separately, because it is a tuning question,
-          // not evidence the endpoint is down.
+          // A timeout means the endpoint answered the connection but not within opaa.rerank.timeout
+          // - worth calling out separately, because it is a tuning question, not evidence the
+          // endpoint is down.
           status.timedOut() ? ", timed out rather than unreachable" : "",
           status.diagnostic(),
           endpointForLog(status));

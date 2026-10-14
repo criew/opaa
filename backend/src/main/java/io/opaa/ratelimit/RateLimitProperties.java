@@ -157,9 +157,9 @@ public record RateLimitProperties(
       forgotPassword = forgotPassword != null ? forgotPassword : new LocalAuthLimit(5, 3600, 50, 3);
       setPassword = setPassword != null ? setPassword : new LocalAuthLimit(10, 900, null, null);
       verifyEmail = verifyEmail != null ? verifyEmail : new LocalAuthLimit(10, 900, null, null);
-      // The handover is the path of a whole migration - one address in front of a
-      // Behörde, two calls per person (preview and redemption). A budget of ten would let
-      // five people through a quarter of an hour.
+      // The handover is the path of a whole migration - one address in front of a Behörde, two
+      // calls per person (preview and redemption). A budget of ten would let five people through a
+      // quarter of an hour.
       handover = handover != null ? handover : new LocalAuthLimit(60, 900, null, null);
     }
   }

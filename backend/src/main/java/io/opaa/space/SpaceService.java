@@ -124,7 +124,7 @@ public class SpaceService {
 
   @Transactional
   public Space createSpace(SpaceCreation creation, CurrentUser caller) {
-    // #333 removed SpaceKind: a caller holding CREATE_SPACE may create any number of spaces,
+    // There is no space kind: a caller holding CREATE_SPACE may create any number of spaces,
     // including ones they work in alone. Only the default space is special: it is provisioned at
     // first sign-in and therefore independent of this capability - see ensureDefaultSpace.
     capabilityService.requireCapability(caller, Capability.CREATE_SPACE);
@@ -218,10 +218,10 @@ public class SpaceService {
             .filter(space -> space.getOrganizationId().equals(caller.organizationId()))
             .toList();
     List<UUID> spaceIds = memberSpaces.stream().map(Space::getId).toList();
-    // The overview card's figures ("n Quellen · n Chats · n Mitglieder") come from two
-    // grouped queries for the whole list, never one lookup per space. The chat figure counts the
-    // caller's own chats only - which is exactly the "has a chat of their own" question
-    // the #543 archived-space rule below asks, so it answers that too.
+    // The overview card's figures ("n Quellen · n Chats · n Mitglieder") come from two grouped
+    // queries for the whole list, never one lookup per space. The chat figure counts the caller's
+    // own chats only - which is exactly the "has a chat of their own" question the #543
+    // archived-space rule below asks, so it answers that too.
     Map<UUID, Long> chatCounts = ownChatCounts(spaceIds, caller.id());
     Map<UUID, Long> libraryCounts = associationService.countVisibleBySpace(memberSpaces, caller);
     Map<UUID, SuccessionFinding> succession = successionSource.findingsAmong(memberSpaces);
@@ -284,9 +284,9 @@ public class SpaceService {
 
   public List<SpaceMemberView> listMembers(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    // The member list names every member of the space - who else works in "Disziplinar-
-    // verfahren" or "Umstrukturierung Abteilung 3" is itself sensitive. Unlike getSpace, which only
-    // checks membership, this is restricted to ADMIN, the owner and system admins - see
+    // The member list names every member of the space - who else works in "Disziplinar- verfahren"
+    // or "Umstrukturierung Abteilung 3" is itself sensitive. Unlike getSpace, which only checks
+    // membership, this is restricted to ADMIN, the owner and system admins - see
     // SpaceAccessPolicy#requireMemberListViewer. A group row is therefore named only to those who
     // manage its membership here (ADR-0036, Entscheidung 9).
     if (!caller.isSystemAdmin()) {
@@ -630,9 +630,8 @@ public class SpaceService {
 
   /**
    * ADR-0036, Entscheidung 6, Schutzregel 1: a space never loses its last capable {@code ADMIN}
-   * member through a management action - removing, downgrading or leaving is refused with 409, not
-   * the 400 the pre-#1815 owner protection used. A group counts as {@code ADMIN} while it is
-   * capable of acting.
+   * member through a management action - removing, downgrading or leaving is refused with 409. A
+   * group counts as {@code ADMIN} while it is capable of acting.
    *
    * <p><b>It refuses the loss, not the state</b>: a space that already has no capable {@code ADMIN}
    * - its succession is open - loses none through this change, and refusing here would freeze even

@@ -157,8 +157,8 @@ public class PointInTimeAccessService {
   /**
    * The three ways of the readable-library formula, evaluated backwards: grants naming a person,
    * grants naming a group (resolved through the membership intervals of that same period), and
-   * grants to "Alle Konten". All three come from the same table since #1931 (ADR-0037), so both
-   * directions of the question read one source; the composition mirrors {@code
+   * grants to "Alle Konten". All three come from the same table (ADR-0037), so both directions of
+   * the question read one source; the composition mirrors {@code
    * PermissionHistoryService#readableAssetIdsAsOf}, and it is scoped to {@code organizationId} - a
    * foreign object answers like an unknown one.
    */
@@ -195,8 +195,8 @@ public class PointInTimeAccessService {
       if (!grantFrom.isBefore(grantTo)) {
         continue;
       }
-      // Reaches every account without naming one, which is why it stays one entry instead of a
-      // list of people - exactly as the organization-wide release did before #1931.
+      // Reaches every account without naming one, which is why it stays one entry instead of a list
+      // of people.
       if (grant.getSubjectType() == AssetGrantSubjectType.ALL_ACCOUNTS) {
         add(
             entries,

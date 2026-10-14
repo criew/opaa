@@ -94,9 +94,9 @@ class LlmModelSeeder {
   static final String OPENAI_API_KEY_PLACEHOLDER = "sk-placeholder";
 
   /**
-   * {@code application.yml}'s own default chat model since #762 - kept here too as the fallback for
-   * the legacy takeover path, so an existing installation that never overrode {@code
-   * OPAA_OLLAMA_CHAT_MODEL} still seeds the same value it always effectively ran with.
+   * {@code application.yml}'s own default chat model - kept here too as the fallback for the legacy
+   * takeover path, so an existing installation that never overrode {@code OPAA_OLLAMA_CHAT_MODEL}
+   * still seeds the same value it always effectively ran with.
    */
   static final String LEGACY_OLLAMA_CHAT_MODEL_DEFAULT = "phi3:mini";
 
@@ -184,10 +184,10 @@ class LlmModelSeeder {
       return;
     }
     if (seeded != null && ModelEndpointUri.containsCredentials(seeded.getBaseUrl())) {
-      // This class writes to the repository directly, so LlmModelService's own rejection
-      // does not cover it. Skipped without a marker, like the missing-encryption-key case above -
-      // a corrected environment variable is taken over on the next start. The address itself is
-      // not logged; naming it would put the credentials into the very log this rule protects.
+      // This class writes to the repository directly, so LlmModelService's own rejection does not
+      // cover it. Skipped without a marker, like the missing-encryption-key case above - a
+      // corrected environment variable is taken over on the next start. The address itself is not
+      // logged; naming it would put the credentials into the very log this rule protects.
       log.error(
           "Initiales Chat-Modell konnte nicht aus der Umgebungskonfiguration übernommen werden:"
               + " Die konfigurierte Basis-Adresse enthält Anmeldedaten (Form"

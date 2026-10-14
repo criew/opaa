@@ -290,8 +290,8 @@ public class PermissionTransferService {
                         new PermissionTransferObject(
                             transfer.getId(), parties.organizationId(), assetType, assetId))));
 
-    // The Übernahme is this operation - so it ends the succession record of every object it
-    // touched and names the person who did it, instead of leaving the run to close it anonymously.
+    // The Übernahme is this operation - so it ends the succession record of every object it touched
+    // and names the person who did it, instead of leaving the run to close it anonymously.
     touched.forEach(
         (assetType, assetIds) ->
             assetIds.forEach(

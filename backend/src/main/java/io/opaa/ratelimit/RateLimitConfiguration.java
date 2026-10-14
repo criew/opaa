@@ -78,11 +78,11 @@ public class RateLimitConfiguration {
       RateLimitMetrics metrics,
       JsonMapper jsonMapper,
       ObjectProvider<SelfServiceEndpointAvailability> selfServiceFlows) {
-    // The per-library indexing trigger (POST /api/v1/libraries/{libraryId}/indexing) carries
-    // a variable path segment, so its rule is a regex rather than a plain prefix - see
+    // The per-library indexing trigger (POST /api/v1/libraries/{libraryId}/indexing) carries a
+    // variable path segment, so its rule is a regex rather than a plain prefix - see
     // RateLimitFilter.Rule's Javadoc. The trailing $ deliberately excludes the sibling status
-    // endpoint (GET .../indexing/status), which - like the old GET /api/v1/indexing/status -
-    // was never rate-limited. The capture group around the library id lets RateLimitFilter key the
+    // endpoint (GET .../indexing/status), which - like the old GET /api/v1/indexing/status - was
+    // never rate-limited. The capture group around the library id lets RateLimitFilter key the
     // per-IP limiter by library, so triggering indexing for one library doesn't block a different
     // library from the same client.
     String indexingTriggerPattern = "^/api/v1/libraries/([^/]+)/indexing$";
@@ -112,9 +112,9 @@ public class RateLimitConfiguration {
     LocalAuthLimits localAuth = properties.localAuth();
     rules.add(rule("local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
     rules.add(rule("local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
-    // A switched-off flow is answered exactly like an unknown route, which has no budget -
-    // counting these two while they are off would answer 429 where the unknown route answers 401.
-    // Resolved per request, never at wiring time: the flows read their switches from the database.
+    // A switched-off flow is answered exactly like an unknown route, which has no budget - counting
+    // these two while they are off would answer 429 where the unknown route answers 401. Resolved
+    // per request, never at wiring time: the flows read their switches from the database.
     rules.add(
         rule(
             "local-auth-register",

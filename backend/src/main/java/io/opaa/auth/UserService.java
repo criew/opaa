@@ -31,8 +31,8 @@ public class UserService {
   private static final int SEARCH_RESULT_LIMIT = 20;
   private static final int SEARCH_MIN_QUERY_LENGTH = 2;
 
-  // Throttles lastLoginAt writes to at most once per user per interval - 5 minutes of
-  // staleness is an acceptable trade for dropping the per-request UPDATE.
+  // Throttles lastLoginAt writes to at most once per user per interval - 5 minutes of staleness is
+  // an acceptable trade for dropping the per-request UPDATE.
   private static final Duration LAST_LOGIN_UPDATE_THRESHOLD = Duration.ofMinutes(5);
 
   private static final String BOOTSTRAP_ROLE_MESSAGE =

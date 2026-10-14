@@ -85,8 +85,8 @@ public class AuthConfigController {
   private LocalAccountsConfig localAccounts(String mode) {
     // The mode is this endpoint's own condition - neither the registry nor the flows know that the
     // whole oidc chain is absent outside that profile. Everything else is read where the request
-    // paths read it, never recomputed from the rows: the switch from the registry the flows rest
-    // on themselves, so no field of this object can contradict another.
+    // paths read it, never recomputed from the rows: the switch from the registry the flows rest on
+    // themselves, so no field of this object can contradict another.
     boolean oidc = OIDC_MODE.equals(mode);
     LocalSelfServiceAvailability flows =
         selfServiceFlows.getIfAvailable(() -> LocalSelfServiceAvailability.NONE);

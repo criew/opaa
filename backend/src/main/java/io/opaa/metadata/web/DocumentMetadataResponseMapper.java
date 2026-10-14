@@ -49,7 +49,7 @@ final class DocumentMetadataResponseMapper {
         null);
   }
 
-  /** An absent state means "set a value" - the request body of every client before #1069. */
+  /** An absent state means "set a value", so a client that sends no state keeps working. */
   private static MetadataValueState toState(MetadataValueRequest.StateEnum state) {
     return state == MetadataValueRequest.StateEnum.NOT_DETERMINABLE
         ? MetadataValueState.NOT_DETERMINABLE

@@ -11,10 +11,8 @@ package io.opaa.api.types;
  *       references {@code groups.id}.
  * </ul>
  *
- * <p>A third kind, {@code SYSTEM}, existed from #201 (the migration target for documents that
- * carried no container at all before that issue) until #521, which deleted the single {@code
- * SYSTEM}-owned library and its content outright - see migration {@code
- * 031-delete-system-library.yaml}. Every library now has a real owner.
+ * <p>There is no third kind: every library has a real owner (migration {@code
+ * 031-delete-system-library.yaml} removed the last exception).
  */
 public enum AssetOwnerType {
   USER,

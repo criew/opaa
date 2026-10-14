@@ -513,8 +513,8 @@ public class SearchDiagnosisService {
   }
 
   /**
-   * The grouping keys a document's chunks can carry: its id for every chunk written since #739, and
-   * the file-name fallback for older ones.
+   * The grouping keys a document's chunks can carry: its id, and the file-name fallback for chunks
+   * written without one.
    */
   private static Set<String> documentKeysOf(Document document) {
     Set<String> keys = new HashSet<>();

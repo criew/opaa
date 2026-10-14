@@ -24,8 +24,7 @@ import org.hibernate.type.SqlTypes;
  * mapped field by field here, so this entity does not need a dependency on the generated API DTOs.
  * {@link ChatSource}'s own Javadoc documents the resulting wire-compatibility invariant: its field
  * names deliberately match the generated {@code SourceReference}'s {@code @JsonProperty} names, so
- * rows written before #860 Teil 4 (when {@code sources} was still serialized {@code
- * SourceReference} JSON) still deserialize unchanged.
+ * rows holding serialized {@code SourceReference} JSON deserialize unchanged.
  *
  * <p>{@link #sequence} is an application-assigned, per-chat ordinal, strictly monotonically
  * increasing - gaps are possible after a deletion, duplicates are not. {@code created_at} alone is

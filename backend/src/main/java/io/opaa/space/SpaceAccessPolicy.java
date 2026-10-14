@@ -24,9 +24,9 @@ import org.springframework.stereotype.Component;
  * memberships of the groups they belong to, and ownership. A right held through a group ends the
  * moment the membership does - the group resolution runs through {@link GroupMembershipResolver},
  * whose cache is invalidated after the writing transaction commits, so there is no rights cache
- * here that could outlive the withdrawal. This is also why the class is a bean rather than the
- * static utility it was before #1815: a caller that forgot to pass the group memberships in would
- * silently under-grant, and every call site would have had to remember.
+ * here that could outlive the withdrawal. This is also why the class is a bean rather than a static
+ * utility: a caller that forgot to pass the group memberships in would silently under-grant, and
+ * every call site would have to remember.
  *
  * <p><b>Owner ⇒ {@link SpaceRole#ADMIN}:</b> {@link #effectiveRole} always treats the space owner
  * as at least {@link SpaceRole#ADMIN}, regardless of their actual {@link SpaceMembership} role -
@@ -34,8 +34,8 @@ import org.springframework.stereotype.Component;
  * "owner with a MEMBER or CURATOR membership" a legal and persistent state.
  *
  * <p>System-admin bypass is deliberately <em>not</em> folded into {@link #effectiveRole}: it is an
- * organization-wide privilege, orthogonal to a space's own membership, and each guard below only
- * applies it where the pre-#888 call site already did - see each method's Javadoc.
+ * organization-wide privilege, orthogonal to a space's own membership, and each guard below states
+ * whether it applies it.
  */
 @Component
 public class SpaceAccessPolicy {
@@ -113,10 +113,7 @@ public class SpaceAccessPolicy {
         && membershipRepository.existsBySpaceIdAndGroupIdIn(spaceId, groupIds);
   }
 
-  /**
-   * Requires that the caller reaches {@code space}, bypassed for a system administrator - mirrors
-   * {@code SpaceService#getSpace}'s pre-#888 inline check.
-   */
+  /** Requires that the caller reaches {@code space}, bypassed for a system administrator. */
   public void requireMember(Space space, CurrentUser caller) {
     if (caller.isSystemAdmin()) {
       return;
@@ -128,14 +125,13 @@ public class SpaceAccessPolicy {
 
   /**
    * Requires ADMIN {@link #effectiveRole} - i.e. an ADMIN member, a member of an ADMIN group, or
-   * the owner. No system-admin bypass, bewusst wie vor #888: {@code SpaceService}'s pre-#888 {@code
-   * requireManager} had none either, and its callers ({@code addMember}, {@code updateMemberRole},
-   * {@code removeMember}) do not check {@code caller.isSystemAdmin()} themselves either. A
-   * pre-existing gap, not something #888 or #1815 introduces.
+   * the owner. No system-admin bypass, deliberately: its callers ({@code addMember}, {@code
+   * updateMemberRole}, {@code removeMember}) do not check {@code caller.isSystemAdmin()} themselves
+   * either.
    *
-   * <p>Before #1815 this additionally required an actual {@link SpaceMembership} row to exist, even
-   * for the owner. That requirement is gone, and had to go: a person who is ADMIN through a group
-   * has no row of their own, which is the entire point of a group membership.
+   * <p>No {@link SpaceMembership} row of the caller's own is required, not even for the owner: a
+   * person who is ADMIN through a group has no row of their own, which is the entire point of a
+   * group membership.
    */
   public void requireManager(Space space, CurrentUser caller) {
     requireAtLeast(space, caller, "Nur Administratoren können Mitglieder verwalten");
@@ -154,9 +150,8 @@ public class SpaceAccessPolicy {
   }
 
   /**
-   * Requires CURATOR {@link #effectiveRole} or above, bypassed for a system administrator - mirrors
-   * {@code SpaceAssetAssociationService}'s pre-#888 {@code requireCurator}, whose {@code
-   * hasCuratorRole} already treated the owner as a curator.
+   * Requires CURATOR {@link #effectiveRole} or above, bypassed for a system administrator; the
+   * owner counts as a curator.
    */
   public void requireCurator(Space space, CurrentUser caller) {
     if (caller.isSystemAdmin()) {
@@ -175,9 +170,8 @@ public class SpaceAccessPolicy {
    *
    * <p><b>Both halves count active accounts</b>: a person ranks as {@code ADMIN} only while their
    * account can actually be used - the same measure {@code AccountActivityService} applies to every
-   * other question of "who can act", and the same one the group half has applied since #1818. The
-   * asymmetry #1815 had to leave open (account state arrived with #1818) is closed here; with it
-   * "Nachfolge offen" becomes reachable for a space at all, which is what the lifecycle needs.
+   * other question of "who can act", and the same one the group half applies. With it "Nachfolge
+   * offen" becomes reachable for a space at all, which is what the lifecycle needs.
    */
   public boolean hasCapableAdmin(Space space) {
     return hasCapableAdminAfter(space, null, null);

@@ -55,7 +55,7 @@ public class TokenGroupSynchronizer {
 
   static final String IDENTITY_PROVIDER_ACTOR = "identity-provider";
 
-  /** The full width of {@code groups.external_id}, which since #1812 carries the bare name. */
+  /** The full width of {@code groups.external_id}, which carries the bare name. */
   static final int MAX_NAME_LENGTH = 255;
 
   /** One incident per provider and cause per window: a broken provider must not flood the log. */
@@ -160,8 +160,8 @@ public class TokenGroupSynchronizer {
   }
 
   /**
-   * @param externalIds the names of the token's claim this installation can hold - since #1812 the
-   *     external id is the bare name, the provider is carried by {@code groups.provider_id}
+   * @param externalIds the names of the token's claim this installation can hold - the external id
+   *     is the bare name, the provider is carried by {@code groups.provider_id}
    * @param tooLongNames how many of its names exceed {@link #MAX_NAME_LENGTH} and were dropped -
    *     counted rather than logged here, so that one call writes at most one log entry
    */

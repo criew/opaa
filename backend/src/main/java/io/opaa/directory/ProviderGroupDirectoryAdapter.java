@@ -36,10 +36,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <p>"Effect" is every reason a group must not silently disappear with its provider: a grant it
  * holds, an asset it owns, and a still-conferring diagnostic authorisation whose scope it is - that
  * last one because {@code fk_diagnostic_impersonation_grants_scope_organization} cascades, so the
- * row would go without the revocation event ADR-0016 requires - and, since #1815, a space
- * membership the group holds: {@code space_memberships.group_id} is {@code ON DELETE RESTRICT} as
- * well, so a group that is a space member would take {@link #deleteGroupsOfProvider} into a
- * foreign-key violation instead of into the 409.
+ * row would go without the revocation event ADR-0016 requires - and a space membership the group
+ * holds: {@code space_memberships.group_id} is {@code ON DELETE RESTRICT} as well, so a group that
+ * is a space member would take {@link #deleteGroupsOfProvider} into a foreign-key violation instead
+ * of into the 409.
  */
 @Component
 class ProviderGroupDirectoryAdapter implements ProviderGroupDirectory {

@@ -104,8 +104,8 @@ class OpaaMcpHandler implements McpStatelessServerHandler {
   public Mono<Void> handleNotification(
       McpTransportContext transportContext, McpSchema.JSONRPCNotification notification) {
     if (McpSchema.METHOD_NOTIFICATION_INITIALIZED.equals(notification.method())) {
-      // Every client sends it after the handshake, and a stateless server has nothing to do with
-      // it - but the library's default handler finds no handler and logs a WARN per connection.
+      // Every client sends it after the handshake, and a stateless server has nothing to do with it
+      // - but the library's default handler finds no handler and logs a WARN per connection.
       // Accepted here, silently, which is exactly what the protocol asks for.
       return Mono.empty();
     }

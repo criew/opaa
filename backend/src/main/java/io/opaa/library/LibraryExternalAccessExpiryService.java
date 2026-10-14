@@ -36,8 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
  * leaves a release in effect past its own end. What this run adds is the recorded fact.
  *
  * <p>Idempotent: a release already out of effect is not selected, so a second run in the same
- * minute writes nothing. The Anlass is the Fristablauf; "gesenkte Freigabe-Obergrenze" comes with
- * #797.
+ * minute writes nothing. The Anlass is the Fristablauf.
  */
 @Service
 public class LibraryExternalAccessExpiryService {

@@ -53,9 +53,9 @@ final class SpaceResponseMapper {
     // available via listMembers, restricted to ADMIN, owner and system admins.
     //
     // userRole is the caller's *effective* role (SpaceAccessPolicy#effectiveRole, owner ⇒ at least
-    // ADMIN, and since #1815 possibly held through a group) - not their raw SpaceMembership row.
-    // roleCounts and SpaceMemberResponse deliberately keep showing the *raw* role of every
-    // membership row, including this caller's own.
+    // ADMIN, and possibly held through a group) - not their raw SpaceMembership row. roleCounts and
+    // SpaceMemberResponse deliberately keep showing the *raw* role of every membership row,
+    // including this caller's own.
     return new SpaceResponse(
             space.getId(),
             space.getName(),

@@ -132,9 +132,8 @@ public class LibraryController {
   // 5). The path allowlist and the address validator stay independent of any permission, as before.
   // With libraryId set, SourceConnectionTestService instead enforces the MANAGER bar on that
   // library, passed the same systemAdmin flag updateLibrary below gets - a SYSTEM_ADMIN who can
-  // save
-  // the quellkonfiguration without a grant must not have "Verbindung testen" fail 404 right before
-  // it.
+  // save the quellkonfiguration without a grant must not have "Verbindung testen" fail 404 right
+  // before it.
   @PostMapping("/source-test")
   public SourceConnectionTestResponse testLibrarySource(
       @Valid @RequestBody SourceConnectionTestRequest request, @Caller CurrentUser caller) {
@@ -477,12 +476,12 @@ public class LibraryController {
     return toIndexingStatusResponse(job, true);
   }
 
-  // A FAILED job's errorMessage is the raw exception message from the executor that
-  // ran it - a NoSuchFileException's absolute server path, a ConnectException's/
-  // UnknownHostException's host:port - exactly the internal-infrastructure leak #507 already
-  // closes for the source configuration display. canSeeErrorDetail (MANAGER+, from
-  // DocumentIndexingService#getStatus) gates it the same way, without shortening it for RUNNING/
-  // COMPLETED, which never carry that detail in the first place.
+  // A FAILED job's errorMessage is the raw exception message from the executor that ran it - a
+  // NoSuchFileException's absolute server path, a ConnectException's/ UnknownHostException's
+  // host:port - exactly the internal-infrastructure leak #507 already closes for the source
+  // configuration display. canSeeErrorDetail (MANAGER+, from DocumentIndexingService#getStatus)
+  // gates it the same way, without shortening it for RUNNING/ COMPLETED, which never carry that
+  // detail in the first place.
   private IndexingStatusResponse toIndexingStatusResponse(
       IndexingJob job, boolean canSeeErrorDetail) {
     IndexingStatus status = mapIndexingStatus(job.getStatus());

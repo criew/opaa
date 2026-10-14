@@ -205,8 +205,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * The pre-#823 signature, kept for every caller that never needs a {@code folderPath} - delegates
-   * to the full overload below with {@code folderPath = null}.
+   * The signature for every caller that never needs a {@code folderPath} - delegates to the full
+   * overload below with {@code folderPath = null}.
    */
   public LibraryDocumentEntry uploadDocument(
       UUID libraryId, MultipartFile file, UUID folderId, CurrentUser caller) {
@@ -231,9 +231,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     requireEditable(library, currentUserId, caller.isSystemAdmin());
     requireUploadLibrary(library);
 
-    // Validated before any byte is written to disk, mirroring every other "reject this
-    // request outright" check below - a folderId that does not exist (or belongs to another
-    // library, treated identically per resolveFolder) must leave the bestand exactly as it was.
+    // Validated before any byte is written to disk, mirroring every other "reject this request
+    // outright" check below - a folderId that does not exist (or belongs to another library,
+    // treated identically per resolveFolder) must leave the bestand exactly as it was.
     if (folderId != null) {
       resolveFolder(libraryId, folderId);
     }
@@ -247,11 +247,11 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
               + (uploadProperties.maxFileSize() / (1024 * 1024))
               + " MB");
     }
-    // Checked before anything is written to disk, so a rejected upload leaves the bestand
-    // (and the file system) exactly as it was - the same "nothing persisted" guarantee the size
-    // check above already gives. Deliberately does not net out a same-checksum FAILED row this
-    // upload might be about to replace (see the dedup check further down) - a conservative, simple
-    // check rather than one that would have to duplicate that lookup this early.
+    // Checked before anything is written to disk, so a rejected upload leaves the bestand (and the
+    // file system) exactly as it was - the same "nothing persisted" guarantee the size check above
+    // already gives. Deliberately does not net out a same-checksum FAILED row this upload might be
+    // about to replace (see the dedup check further down) - a conservative, simple check rather
+    // than one that would have to duplicate that lookup this early.
     if (storageQuotaService.wouldExceedQuota(libraryId, file.getSize())) {
       throw new PayloadTooLargeException(storageQuotaService.quotaExceededMessage(libraryId));
     }
@@ -299,9 +299,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       requireContentMatchesExtension(storedFile, extension);
 
       String checksum = checksumService.computeSha256(storedFile);
-      // Dedup is scoped per library: the same file uploaded into two
-      // different libraries is two legitimate documents, only a second copy inside the *same*
-      // library is rejected.
+      // Dedup is scoped per library: the same file uploaded into two different libraries is two
+      // legitimate documents, only a second copy inside the *same* library is rejected.
       Optional<Document> existing =
           documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
               libraryId, checksum);
@@ -315,9 +314,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
         // check above (and uk_documents_library_checksum) can't otherwise tell "this content
         // already succeeded" from "this content failed once and the user is trying again", so it
         // replaces the old FAILED row instead of rejecting the new upload. A FAILED connector row
-        // can legitimately still have chunks since #1268 (a version whose parsing failed keeps the
-        // previous, working ones), so the delete below is what actually removes them here - not
-        // merely defence in depth.
+        // can legitimately still have chunks (a version whose parsing failed keeps the previous,
+        // working ones), so the delete below is what actually removes them here - not merely
+        // defence in depth.
         //
         // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a FAILED mail row can still have INDEXED
         // attachment children from before the failure (attachments are indexed while the parent is
@@ -362,8 +361,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       // still fail after the row exists, instead of relying on it being the last statement in the
       // method.
       try {
-        // Parsing/chunking/embedding run on uploadTaskExecutor from here - this method
-        // returns the PENDING row without waiting for that to finish.
+        // Parsing/chunking/embedding run on uploadTaskExecutor from here - this method returns the
+        // PENDING row without waiting for that to finish.
         documentIngestService.processUploadedFileAsync(
             DocumentIngest.builder(library)
                 .file(storedFile, fileSize)
@@ -880,8 +879,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     Optional<UploadedOriginalRef> ownOriginal = UploadedOriginalRef.of(document);
     UUID chunkFilterDocumentId = document.getId();
 
-    // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at
-    // it via parent_document_id cannot be deleted first without failing fk_documents_parent - this
+    // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at it
+    // via parent_document_id cannot be deleted first without failing fk_documents_parent - this
     // path takes its attachments with it, mirroring StaleDocumentCleanupService's own
     // deepest-nesting-first order (a Mail-in-Mail chain can nest an attachment inside an
     // attachment, not just one level). None of them are ever an UPLOAD-managed file of this
@@ -895,19 +894,19 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       documentRepository.delete(descendant);
     }
 
-    // The row is deleted first, the chunks only afterwards - deliberately the reverse of the order
-    // this method used before #614. A concurrent uploadTaskExecutor task finishing the very same
-    // document races this method: DocumentIngestService#processUploadedFileAsync re-reads the row,
-    // writes its chunks, and only then calls DocumentRepository#markIndexed, which affects a row
-    // only if it is still there. Deleting the chunks here *before* the row let that task's
-    // markIndexed still see (and update) the row while its own transaction was still in-flight,
-    // leaving its freshly-written chunks behind after this method's own vectorStore.delete had
-    // already run and would never run again - a document gone from the list but still returned by
-    // /api/v1/query. Deleting the row first closes that window: by the time this transaction
-    // commits, the row is unconditionally gone, so a racing markIndexed (which blocks on the same
-    // row until this commits) is guaranteed to affect zero rows and clean up its own chunks itself
-    // (see DocumentIngestService#processUploadedFileAsync). The vector store delete below then only
-    // has to handle the ordinary case: chunks a document already had before this call.
+    // The row is deleted first, the chunks only afterwards. A concurrent uploadTaskExecutor task
+    // finishing the very same document races this method:
+    // DocumentIngestService#processUploadedFileAsync re-reads the row, writes its chunks, and only
+    // then calls DocumentRepository#markIndexed, which affects a row only if it is still there.
+    // Deleting the chunks here *before* the row let that task's markIndexed still see (and update)
+    // the row while its own transaction was still in-flight, leaving its freshly-written chunks
+    // behind after this method's own vectorStore.delete had already run and would never run again -
+    // a document gone from the list but still returned by /api/v1/query. Deleting the row first
+    // closes that window: by the time this transaction commits, the row is unconditionally gone, so
+    // a racing markIndexed (which blocks on the same row until this commits) is guaranteed to
+    // affect zero rows and clean up its own chunks itself (see
+    // DocumentIngestService#processUploadedFileAsync). The vector store delete below then only has
+    // to handle the ordinary case: chunks a document already had before this call.
     documentRepository.delete(document);
     noteRevisit(document);
     assetRepository.markContentChanged(document.getLibraryId(), Instant.now());

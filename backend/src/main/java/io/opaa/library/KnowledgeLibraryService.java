@@ -103,20 +103,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * OWNER} grant. The accepted price is that the personal {@code OWNER} grant is lost when its holder
  * leaves - #240 (succession instead of blocking) is what regulates that case, not this class.
  *
- * <p>A third owner kind, {@code SYSTEM}, existed from #201 until #521: exactly one library per
- * organization, seeded {@code PRIVATE} with no grants and reachable only to a system administrator.
- * #521 deleted that library and its content outright (by a data migration) rather than keep
- * carrying the special case - see the issue and the deleted {@code LibraryOwnerType.SYSTEM} for the
- * history. Every library now has a real owner, and {@link #createLibrary}/{@link #deleteLibrary}
- * carry no owner-kind-specific exception.
- *
- * <p>An automatically provisioned personal library (the {@code personal} flag, {@code
- * ensurePersonalLibrary}) existed from #201 until #522: every user's first login used to create a
- * "Meine Dokumente" upload library alongside their personal space. #522 removed that automation
- * without a replacement - a user who wants a library now creates one themselves via {@link
- * #createLibrary}, exactly like any other library. Libraries the automation had already created
- * before #522 are unaffected: they keep their existing owner grant and simply become ordinary
- * user-owned libraries, indistinguishable from one a user created by hand.
+ * <p>Every library has a real owner, and {@link #createLibrary}/{@link #deleteLibrary} carry no
+ * owner-kind-specific exception. No library is provisioned automatically: a user who wants one
+ * creates it via {@link #createLibrary}, exactly like any other library.
  */
 @Service
 @Transactional(readOnly = true)
@@ -411,9 +400,9 @@ public class KnowledgeLibraryService {
     connectors
         .connector(sourceConfiguration.sourceType())
         .configureNew(library, sourceConfiguration.settings().withoutCredentials());
-    // The rhythm is set with the library, not in a second call right after it - same
-    // validation as on an update, so an UPLOAD library is refused here too instead of by the
-    // database's own chk_knowledge_libraries_schedule.
+    // The rhythm is set with the library, not in a second call right after it - same validation as
+    // on an update, so an UPLOAD library is refused here too instead of by the database's own
+    // chk_knowledge_libraries_schedule.
     if (request.schedule() != null) {
       LibraryFields.Schedule schedule =
           LibraryFields.schedule(
@@ -503,8 +492,8 @@ public class KnowledgeLibraryService {
             .toList();
     Map<UUID, AssetRole> roles =
         accessService.effectiveRolesForReadableLibraries(libraries, currentUserId);
-    // One grouped query for the whole page's document counts instead of countByLibraryId
-    // once per row - a library with no rows here simply has zero documents.
+    // One grouped query for the whole page's document counts instead of countByLibraryId once per
+    // row - a library with no rows here simply has zero documents.
     Map<UUID, Long> documentCounts =
         documentRepository
             .countTopLevelByLibraryIdIn(libraries.stream().map(KnowledgeLibrary::getId).toList())
@@ -514,8 +503,8 @@ public class KnowledgeLibraryService {
                     DocumentRepository.LibraryDocumentCount::getLibraryId,
                     DocumentRepository.LibraryDocumentCount::getDocumentCount));
     Map<UUID, String> ownerNames = assetOwnerNames.of(libraries);
-    // The "Stand" column's last successful run, one grouped query for the whole page
-    // (same shape as documentCounts above) - a library without any completed run stays null.
+    // The "Stand" column's last successful run, one grouped query for the whole page (same shape as
+    // documentCounts above) - a library without any completed run stays null.
     Map<UUID, Instant> lastIndexedAt =
         indexingJobRepository
             .findLastCompletedByLibraryIdIn(
@@ -632,9 +621,9 @@ public class KnowledgeLibraryService {
       // validated against the profile's frame: it must still stand when the change is written
       libraryConnections.holdProfileOf(library);
     }
-    // Schedule follows the same replace-as-a-whole rule as the source configuration above -
-    // only present when the caller actually intends to change it (LibraryUpdate.schedule), so a
-    // request that only renames the library leaves an already-configured schedule untouched.
+    // Schedule follows the same replace-as-a-whole rule as the source configuration above - only
+    // present when the caller actually intends to change it (LibraryUpdate.schedule), so a request
+    // that only renames the library leaves an already-configured schedule untouched.
     boolean replacesSchedule = request.schedule() != null;
     LibraryFields.Schedule validatedSchedule =
         replacesSchedule
@@ -668,12 +657,11 @@ public class KnowledgeLibraryService {
           validatedSettings.sourcePath(),
           validatedSettings.sourceUrl(),
           ownSecretInStore ? null : validatedSettings.sourceCredentials());
-      // The discard a host change performs (see requestedSettingsChange's Javadoc) is
-      // a security invariant and must not depend on the dirty check: with the key missing the
-      // attribute already reads null, so only an erasure on the column itself removes the
-      // ciphertext the returning key would otherwise send to the new host. A change that
-      // keeps the origin is deliberately not erased - there the same null means "unreadable, leave
-      // it alone".
+      // The discard a host change performs (see requestedSettingsChange's Javadoc) is a security
+      // invariant and must not depend on the dirty check: with the key missing the attribute
+      // already reads null, so only an erasure on the column itself removes the ciphertext the
+      // returning key would otherwise send to the new host. A change that keeps the origin is
+      // deliberately not erased - there the same null means "unreadable, leave it alone".
       if (!ownSecretInStore && validatedSettings.sourceCredentials() == null && !targetKept) {
         libraryRepository.eraseSourceCredentials(library.getId());
       }
@@ -716,10 +704,10 @@ public class KnowledgeLibraryService {
     // A pure source-configuration change (e.g. rotating sourceCredentials or moving a
     // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED crawl target) previously left no trace at all - neither
     // LIBRARY_CHANGED (name/description) fires for it, since the edit dialog resends
-    // name/description unchanged.
-    // Only the set of changed fields is recorded, never their values - sourceCredentials in
-    // particular must never appear in the log (ADR-0018, Entscheidung 4), so unlike
-    // LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted one.
+    // name/description unchanged. Only the set of changed fields is recorded, never their values -
+    // sourceCredentials in particular must never appear in the log (ADR-0018, Entscheidung 4), so
+    // unlike LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted
+    // one.
     if (replacesSourceConfiguration || replacesOwnSettings) {
       List<String> changedSourceFields = new ArrayList<>();
       if (!Objects.equals(previousSourcePath, updated.getSourcePath())) {
@@ -817,14 +805,11 @@ public class KnowledgeLibraryService {
     // Deleting a library while an indexing run for it is RUNNING would let the run's
     // documentRepository.save fail against fk_documents_library_organization (RESTRICT) once the
     // library is gone - previously surfacing per document as a failed
-    // DataIntegrityViolationException
-    // instead of a clean outcome. Rather than have the run cope with a vanished target mid-flight,
-    // the maintainer decided (issue comment, 2026-08-20) to prevent the situation at the root:
-    // block
-    // the delete outright while a run is RUNNING. #501 (stuck RUNNING jobs) is a related but
-    // separate
-    // concern - this guard becomes more useful once that is fixed, since a stuck RUNNING job could
-    // otherwise block deletion indefinitely.
+    // DataIntegrityViolationException instead of a clean outcome. Rather than have the run cope
+    // with a vanished target mid-flight, the maintainer decided (issue comment, 2026-08-20) to
+    // prevent the situation at the root: block the delete outright while a run is RUNNING. #501
+    // (stuck RUNNING jobs) is a related but separate concern - this guard becomes more useful once
+    // that is fixed, since a stuck RUNNING job could otherwise block deletion indefinitely.
     if (indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
         JobStatus.RUNNING, libraryId, library.getOrganizationId())) {
       throw new ConflictException(
@@ -897,11 +882,11 @@ public class KnowledgeLibraryService {
     // grant, reach and ownership intervals before the row is gone.
     shellService.registerDeleted(library, currentUserId);
 
-    // Recorded before the row is gone, same reasoning as the history calls above. For a
-    // connector library whose bestand was just taken with it (ADR-0018, Entscheidung 5), the
-    // removed document count rides along in this same entry rather than a separate event -
-    // AuditEventType has no dedicated "bestand removed" event, and this deletion is one atomic
-    // administrative action, not two.
+    // Recorded before the row is gone, same reasoning as the history calls above. For a connector
+    // library whose bestand was just taken with it (ADR-0018, Entscheidung 5), the removed document
+    // count rides along in this same entry rather than a separate event - AuditEventType has no
+    // dedicated "bestand removed" event, and this deletion is one atomic administrative action, not
+    // two.
     Map<String, Object> deletionPayload = libraryAuditPayload(library);
     if (documentsRemoved > 0) {
       deletionPayload.put("documentsRemoved", documentsRemoved);
@@ -945,19 +930,19 @@ public class KnowledgeLibraryService {
    * the file name - available for every {@code sourceType}, not just {@code UPLOAD}, so a connector
    * library's indexed bestand is visible the same way an upload library's is.
    *
-   * <p><b>Folder-aware since #821 (ADR-0020).</b> Without {@code q}, the response is scoped to
-   * exactly one folder level, chosen by {@code folderId} ({@code null} means the library's root,
-   * the same convention {@code documents.folder_id}/{@code library_folders.parent_folder_id}
-   * already use): {@link #foldersOf} lists that folder's direct subfolders, {@link #breadcrumbOf}
-   * its ancestor chain. With {@code q}, the search stays bibliotheksweit regardless of {@code
-   * folderId} - it is not used to filter or scope the search itself (ADR-0020, Entscheidung 4 - no
-   * folder-scoped retrieval yet) - {@code folders}/{@code breadcrumb} are both empty, and each
-   * hit's own {@code folderId}/{@code folderPath} ({@link #toLibraryDocumentEntry}) show where it
-   * lives instead. A given {@code folderId} is still validated even then: an unknown or foreign one
-   * answers 404 exactly as it would without {@code q}, so a caller cannot distinguish "this folder
-   * does not exist" from "it exists, but I only ever check it while browsing, not while searching"
-   * - it would otherwise be the one caller-supplied identifier on this endpoint that silently
-   * tolerates a value from another library.
+   * <p><b>Folder-aware (ADR-0020).</b> Without {@code q}, the response is scoped to exactly one
+   * folder level, chosen by {@code folderId} ({@code null} means the library's root, the same
+   * convention {@code documents.folder_id}/{@code library_folders.parent_folder_id} already use):
+   * {@link #foldersOf} lists that folder's direct subfolders, {@link #breadcrumbOf} its ancestor
+   * chain. With {@code q}, the search stays bibliotheksweit regardless of {@code folderId} - it is
+   * not used to filter or scope the search itself (ADR-0020, Entscheidung 4 - no folder-scoped
+   * retrieval yet) - {@code folders}/{@code breadcrumb} are both empty, and each hit's own {@code
+   * folderId}/{@code folderPath} ({@link #toLibraryDocumentEntry}) show where it lives instead. A
+   * given {@code folderId} is still validated even then: an unknown or foreign one answers 404
+   * exactly as it would without {@code q}, so a caller cannot distinguish "this folder does not
+   * exist" from "it exists, but I only ever check it while browsing, not while searching" - it
+   * would otherwise be the one caller-supplied identifier on this endpoint that silently tolerates
+   * a value from another library.
    *
    * <p><b>Backward compatibility.</b> A caller that omits {@code folderId} - every client before
    * this task - now lists the library's root rather than its whole bestand across every folder.
@@ -967,9 +952,9 @@ public class KnowledgeLibraryService {
    * and something is uploaded into it - seeing that content requires navigating into the folder,
    * which is exactly what {@code folderId} is for (frontend follows in #822).
    *
-   * <p><b>Pflege-Anker seit #1069.</b> {@code missingMetadataField} narrows the list to exactly the
-   * documents the Pflege-Anker counts for that core field - see {@link
-   * #listDocumentsWithoutMetadataValue}, which then owns the whole request.
+   * <p><b>Pflege-Anker.</b> {@code missingMetadataField} narrows the list to exactly the documents
+   * the Pflege-Anker counts for that core field - see {@link #listDocumentsWithoutMetadataValue},
+   * which then owns the whole request.
    */
   public LibraryDocumentPage listDocuments(
       UUID libraryId,
@@ -995,9 +980,9 @@ public class KnowledgeLibraryService {
           libraryId, searching ? q : null, missingMetadataField.strip(), pageable);
     }
     if (searching) {
-      // #1184 (ADR-0022, Entscheidung 5): a hit on an attachment's file name must surface its
-      // top-level parent - resolve every matching attachment row up its parentDocumentId chain
-      // first, then page over top-level documents matching by own name or by subtree.
+      // ADR-0022, Entscheidung 5: a hit on an attachment's file name must surface its top-level
+      // parent - resolve every matching attachment row up its parentDocumentId chain first, then
+      // page over top-level documents matching by own name or by subtree.
       Set<UUID> attachmentRootIds =
           topLevelRootsOf(
               documentRepository
@@ -1436,8 +1421,8 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary library = requireManagedLibraryWithPushIntake(libraryId, caller);
     // Whether there is a secret to revoke is decided by the stored ciphertext, not by the entity
     // attribute: with the key missing the attribute reads null for a secret that still
-    // authenticates once the key returns. The erasure carries the revocation; the entity
-    // assignment below only keeps the loaded instance consistent with it.
+    // authenticates once the key returns. The erasure carries the revocation; the entity assignment
+    // below only keeps the loaded instance consistent with it.
     if (libraryRepository.eraseWebhookSecret(libraryId) == 0) {
       return;
     }
@@ -1474,15 +1459,15 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryDetail toLibraryDetail(KnowledgeLibrary library, AssetRole myRole, UUID userId) {
-    // Top-level documents only, consistent with the document list's own parent-level
-    // totalElements - attachments are visible inside their parent's group, not in this count.
+    // Top-level documents only, consistent with the document list's own parent-level totalElements
+    // - attachments are visible inside their parent's group, not in this count.
     long documentCount =
         documentRepository.countByLibraryIdAndParentDocumentIdIsNull(library.getId());
-    // SourcePath/sourceUrl/schedule/storage quota are administration
-    // detail - internal server paths, crawl targets and bestand size - gated at MANAGER, not
-    // exposed to a mere VIEWER (or even EDITOR) of an organization-wide library.
-    // sourceCredentials is deliberately never read here - ADR-0018 makes it a write-only field
-    // that appears in no API response, not even for the library's own owner.
+    // SourcePath/sourceUrl/schedule/storage quota are administration detail - internal server
+    // paths, crawl targets and bestand size - gated at MANAGER, not exposed to a mere VIEWER (or
+    // even EDITOR) of an organization-wide library. sourceCredentials is deliberately never read
+    // here - ADR-0018 makes it a write-only field that appears in no API response, not even for the
+    // library's own owner.
     SourceConnector connector = connectors.connector(library.getSourceType());
     LibraryManagementDetail managementDetail =
         myRole.atLeast(AssetRole.MANAGER)
@@ -1499,8 +1484,8 @@ public class KnowledgeLibraryService {
         managementDetail,
         diagnosticsLockToggleable,
         accessService.reachOf(List.of(library)).get(library.getId()),
-        // Who is responsible for a library is not a secret from its readers - the same
-        // resolution the overview uses, and the same silence about a name it may not disclose.
+        // Who is responsible for a library is not a secret from its readers - the same resolution
+        // the overview uses, and the same silence about a name it may not disclose.
         assetOwnerNames.of(List.of(library)).get(library.getOwnerId()),
         connector.settingsView(library, connectionResolver.effectiveSettings(library), false),
         null,
@@ -1523,9 +1508,9 @@ public class KnowledgeLibraryService {
   private LibraryManagementDetail toManagementDetail(
       KnowledgeLibrary library, SourceConnector connector) {
     SourceConnectorDescriptor descriptor = connector.descriptor();
-    // Schedule/lastScheduledRunsFailed stay null for a library without a run, which cannot
-    // carry a schedule at all (chk_knowledge_libraries_schedule) - nextRunAt would otherwise leak
-    // the same "does an internal crawl target exist" detail #507 already gates.
+    // Schedule/lastScheduledRunsFailed stay null for a library without a run, which cannot carry a
+    // schedule at all (chk_knowledge_libraries_schedule) - nextRunAt would otherwise leak the same
+    // "does an internal crawl target exist" detail #507 already gates.
     LibraryScheduleDetail schedule = null;
     Boolean lastScheduledRunsFailed = null;
     if (descriptor.indexingRun()) {
@@ -1539,7 +1524,7 @@ public class KnowledgeLibraryService {
       lastScheduledRunsFailed =
           indexingJobService.lastScheduledRunsFailed(library.getId(), library.getOrganizationId());
     }
-    // #1140, ADR-0027 Entscheidung 6: whether the push secret is set - shown once, at generation.
+    // ADR-0027 Entscheidung 6: whether the push secret is set - shown once, at generation.
     Boolean pushSecretSet =
         descriptor.pushIntake() == null ? null : library.getWebhookSecret() != null;
     return new LibraryManagementDetail(
@@ -1551,8 +1536,8 @@ public class KnowledgeLibraryService {
         connectionResolver.holdsCredentials(library),
         pushSecretSet,
         connector.settingsView(library, connectionResolver.effectiveSettings(library), true),
-        // The instance-wide rhythm in whole days, so the schedule dialog can name the
-        // default instead of hard-coding it; a sub-day interval still reads as one day.
+        // The instance-wide rhythm in whole days, so the schedule dialog can name the default
+        // instead of hard-coding it; a sub-day interval still reads as one day.
         descriptor.fullSyncInterval() == null
             ? null
             : (int) Math.max(1, descriptor.fullSyncInterval().toDays()),

@@ -33,9 +33,7 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   /**
    * Whether any library is still owned by the given group - group ids are unique across the whole
    * system (not just within an organization), so no organization scoping is needed here. Used by
-   * {@code GroupService#deleteGroup} to reject deleting a group that still owns an asset (#200's
-   * acceptance criteria; see the class Javadoc there for why the check could not exist before #201
-   * introduced the first asset type).
+   * {@code GroupService#deleteGroup} to reject deleting a group that still owns an asset.
    */
   boolean existsByOwnerGroupId(UUID ownerGroupId);
 
@@ -71,9 +69,9 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
 
   /**
    * Used by tests to locate a user's own libraries directly - {@code
-   * KnowledgeLibraryService#listLibraries} itself no longer calls this since #418 (it now lists via
-   * {@link LibraryAccessService#readableLibraryIds}, which covers ownership through the {@code
-   * OWNER} grant every library creation grants).
+   * KnowledgeLibraryService#listLibraries} itself lists via {@link
+   * LibraryAccessService#readableLibraryIds}, which covers ownership through the {@code OWNER}
+   * grant every library creation grants).
    */
   List<KnowledgeLibrary> findByOrganizationIdAndOwnerUserId(UUID organizationId, UUID ownerUserId);
 

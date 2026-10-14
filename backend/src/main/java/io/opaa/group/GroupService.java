@@ -722,9 +722,9 @@ public class GroupService {
       throw new ConflictException(
           "Die Gruppe hat noch Anlegerechte und kann nicht gelöscht werden");
     }
-    // Same class of RESTRICT reference on the space axis since #1815
-    // (fk_space_memberships_group_organization) - without this the deletion would surface as an
-    // opaque 500 instead of naming the spaces that are in the way.
+    // Same class of RESTRICT reference on the space axis (fk_space_memberships_group_organization)
+    // - without this the deletion would surface as an opaque 500 instead of naming the spaces that
+    // are in the way.
     int spaceMemberships = spaceMemberships(groupId);
     if (spaceMemberships > 0) {
       throw new ConflictException(
@@ -750,9 +750,9 @@ public class GroupService {
           GroupMembershipHistoryCause.GROUP_DELETED,
           caller.id());
     }
-    // GROUP_DELETED also covers the group's dissolution ("Auflösung einer Gruppe") - one
-    // entry for the group itself, not one per member removed above (those are already covered by
-    // the group's own deletion, not a separate membership-removal action).
+    // GROUP_DELETED also covers the group's dissolution ("Auflösung einer Gruppe") - one entry for
+    // the group itself, not one per member removed above (those are already covered by the group's
+    // own deletion, not a separate membership-removal action).
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(group.getOrganizationId())

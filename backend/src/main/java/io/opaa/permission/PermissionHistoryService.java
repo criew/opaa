@@ -22,11 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
  * and its history row commit or roll back together, the same as any other write this class's
  * callers already make in the same transaction.
  *
- * <p><b>All three ways of the readable-asset formula are here</b> since #1931 (ADR-0037): the
- * organization-wide reach is a grant to {@code ALL_ACCOUNTS} and is historised in the same table as
- * the other two. {@code AssetVisibilityHistoryService} still records the release for Fremdzugaenge,
- * and shares the one {@link PermissionHistoryClock} with this class, so the interval contract below
- * holds across both tables.
+ * <p><b>All three ways of the readable-asset formula are here</b> (ADR-0037): the organization-wide
+ * reach is a grant to {@code ALL_ACCOUNTS} and is historised in the same table as the other two.
+ * {@code AssetVisibilityHistoryService} still records the release for Fremdzugaenge, and shares the
+ * one {@link PermissionHistoryClock} with this class, so the interval contract below holds across
+ * both tables.
  *
  * <p><b>Interval contract</b> (ADR-0032), holding for every row written from that change on - rows
  * written before it can still carry the empty intervals it prevents, and are not repaired:
@@ -93,9 +93,9 @@ public class PermissionHistoryService {
   /**
    * Closes the currently open interval for {@code grant} (which must already reflect the *new*
    * role/expiresAt - callers apply the change to the entity first) and opens a new one with those
-   * new values. If no open interval is found (a pre-#238 grant that predates this table), the
-   * closing step is a no-op and only the new interval is written - the history is deliberately
-   * incomplete for grants that existed before this feature, not broken by it.
+   * new values. If no open interval is found (a grant that predates this table), the closing step
+   * is a no-op and only the new interval is written - the history is deliberately incomplete for
+   * grants that existed before this feature, not broken by it.
    */
   public void recordGrantRoleChanged(AssetGrant grant, UUID actorUserId) {
     Instant now = clock.nextBoundary();

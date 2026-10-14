@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * A page of a library's documents, folder-aware since Epic #520 Phase 2 (ADR-0020) - the domain
- * counterpart of the generated {@code LibraryDocumentPageResponse}, returned by {@link
+ * A page of a library's documents, folder-aware (ADR-0020) - the domain counterpart of the
+ * generated {@code LibraryDocumentPageResponse}, returned by {@link
  * KnowledgeLibraryService#listDocuments}.
  *
  * @param folders the browsed folder's direct subfolders; empty while searching ({@code q} set).

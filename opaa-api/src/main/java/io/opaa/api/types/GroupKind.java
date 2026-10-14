@@ -11,7 +11,7 @@ package io.opaa.api.types;
  *       only kind directory synchronisation creates, renames or dissolves. Carries the parent unit
  *       the directory reports, never for inherited membership: a group holds exactly the members
  *       the directory places in it. Not editable in the group management, and admissible as the
- *       scope of a "Sicht als" befugnis - like every provider group since #1879.
+ *       scope of a "Sicht als" befugnis - like every provider group.
  *   <li>{@link #AD_HOC} - created in the group management (e.g. "Projektbeteiligte Phoenix"), the
  *       only kind editable there. Has no directory counterpart and therefore no {@code external_id}
  *       and no parent unit.

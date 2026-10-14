@@ -25,8 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The directory run's own operations, {@code SYSTEM_ADMIN} only. Everything but the overview hangs
- * under the provider it belongs to: since #1816 a run is bound to one identity provider (ADR-0036,
- * Entscheidung 2), so there is no organization-wide run to address any more.
+ * under the provider it belongs to: a run is bound to one identity provider (ADR-0036, Entscheidung
+ * 2), so there is no organization-wide run to address.
  *
  * <p>Every response carrying a report records its disclosure before it is returned ({@link
  * DirectorySyncReportDisclosure}): the report names the persons it adds, removes and locks.

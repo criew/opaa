@@ -124,8 +124,8 @@ public class OidcSecurityConfig {
                     // Every other health group needs a token: the endpoint computes its
                     // contributors before it decides what to show, so an anonymous call to
                     // embedding-model or vector-store would trigger a real embedding call and a
-                    // real similarity search - outside the rate limit, which only covers /api.
-                    // Two stars, not one: the health endpoint selector matches all remaining path
+                    // real similarity search - outside the rate limit, which only covers /api. Two
+                    // stars, not one: the health endpoint selector matches all remaining path
                     // segments, so a single star would leave /actuator/health/<group>/<component>
                     // on anyRequest().permitAll().
                     .requestMatchers("/actuator/health/**")
@@ -150,8 +150,8 @@ public class OidcSecurityConfig {
                         LOCAL_HANDOVER_PREVIEW,
                         LOCAL_HANDOVER_REDEEM)
                     .permitAll()
-                    // The two switchable flows are public only while they are switched on;
-                    // switched off they fall through to /api/** below - see servedFlow above.
+                    // The two switchable flows are public only while they are switched on; switched
+                    // off they fall through to /api/** below - see servedFlow above.
                     .requestMatchers(
                         servedFlow(
                             LOCAL_FORGOT_PASSWORD,
@@ -160,14 +160,14 @@ public class OidcSecurityConfig {
                             LOCAL_REGISTER,
                             LocalSelfServiceAvailability::isSelfRegistrationAvailable))
                     .permitAll()
-                    // Branding is readable without authentication. The sign-in
-                    // page is the first thing a user sees and has to carry the operator's own
-                    // product name, claim, logo and background - it renders before there is a
-                    // session, so an authenticated-only endpoint could not brand it at all. What
-                    // this exposes is deliberate and bounded: the name, claim, accent colour and
-                    // images of the deployment - that is, which Behörde runs it, which anyone
-                    // reaching its sign-in page in the first place can already tell. No user,
-                    // space, library or configuration data is reachable through these paths.
+                    // Branding is readable without authentication. The sign-in page is the first
+                    // thing a user sees and has to carry the operator's own product name, claim,
+                    // logo and background - it renders before there is a session, so an
+                    // authenticated-only endpoint could not brand it at all. What this exposes is
+                    // deliberate and bounded: the name, claim, accent colour and images of the
+                    // deployment - that is, which Behörde runs it, which anyone reaching its
+                    // sign-in page in the first place can already tell. No user, space, library or
+                    // configuration data is reachable through these paths.
                     .requestMatchers(
                         "/api/v1/branding",
                         "/api/v1/branding/logo",

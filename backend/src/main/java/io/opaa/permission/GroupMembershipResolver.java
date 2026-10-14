@@ -52,9 +52,9 @@ public class GroupMembershipResolver {
     this.changeListeners = changeListeners;
     // A stale entry only ever grants access a moment too long between a completed transaction's
     // invalidation and its next read, never too little - invalidateUser/invalidateUsers below,
-    // called post-commit, are the primary correctness mechanism. The time-based expiry is a
-    // safety net for eviction paths this class does not yet know about (e.g. a future bulk
-    // directory sync).
+    // called post-commit, are the primary correctness mechanism. The time-based expiry is a safety
+    // net for eviction paths this class does not yet know about (e.g. a future bulk directory
+    // sync).
     this.groupIdsByUser =
         Caffeine.newBuilder().maximumSize(50_000).expireAfterWrite(Duration.ofMinutes(10)).build();
   }

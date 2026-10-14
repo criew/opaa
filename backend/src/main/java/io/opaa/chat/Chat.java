@@ -142,9 +142,9 @@ public class Chat {
     this.authorId = authorId;
     this.organizationId = organizationId;
     this.title = title;
-    // A title supplied at creation - even an explicit blank string - is CUSTOM and must
-    // never be overwritten by the prefix fallback or LLM-derived title generation, see
-    // TitleSource's Javadoc.
+    // A title supplied at creation - even an explicit blank string - is CUSTOM and must never be
+    // overwritten by the prefix fallback or LLM-derived title generation, see TitleSource's
+    // Javadoc.
     this.titleSource = title != null ? TitleSource.CUSTOM : TitleSource.GENERATED;
     this.useKnowledge = useKnowledge;
     this.status = ChatStatus.PRIVATE;
@@ -212,8 +212,8 @@ public class Chat {
     }
     if (newTitle != null) {
       this.title = newTitle;
-      // A user-initiated rename is CUSTOM from here on - permanent, see TitleSource's
-      // Javadoc, regardless of whether this happens before or after the chat's first answer.
+      // A user-initiated rename is CUSTOM from here on - permanent, see TitleSource's Javadoc,
+      // regardless of whether this happens before or after the chat's first answer.
       this.titleSource = TitleSource.CUSTOM;
     }
     if (newUseKnowledge != null) {

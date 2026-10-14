@@ -16,8 +16,7 @@ import io.opaa.library.LibraryFolderChild;
 /**
  * Maps {@link Document}, {@link LibraryDocumentEntry} and {@link LibraryDocumentPage} onto their
  * generated response counterparts (ADR-0006: API DTOs are generated from the specification, never
- * hand-written). Formerly {@code io.opaa.library.LibraryDocumentResponses}, moved here as part of
- * #860 so a domain service never builds a generated response itself.
+ * hand-written), so a domain service never builds a generated response itself.
  */
 final class LibraryDocumentResponseMapper {
 

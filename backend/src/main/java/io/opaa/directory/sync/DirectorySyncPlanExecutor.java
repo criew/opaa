@@ -271,9 +271,9 @@ class DirectorySyncPlanExecutor {
       UUID actorUserId,
       String reason) {
     UUID organizationId = target.organizationId();
-    // One correlation id per run, shared by the header entry below and, if the run actually
-    // applies anything, by every DIRECTORY_SYNC_CHANGE_APPLIED entry applyPlan writes - "verbunden
-    // ueber correlation_ref" (docs/features/security-and-compliance.md).
+    // One correlation id per run, shared by the header entry below and, if the run actually applies
+    // anything, by every DIRECTORY_SYNC_CHANGE_APPLIED entry applyPlan writes - "verbunden ueber
+    // correlation_ref" (docs/features/security-and-compliance.md).
     UUID correlationRef = UUID.randomUUID();
     List<Group> existingOrgUnits =
         groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
@@ -284,9 +284,9 @@ class DirectorySyncPlanExecutor {
     List<DirectoryAccountState> providerAccounts =
         userRepository.findAccountStatesOf(organizationId, target.issuer());
 
-    // The account half of the empty-result protection. A directory that reports account
-    // status but not a single account is the same finding as an empty group list - it must never
-    // lock everybody, and it is a hard abort with no plan to confirm (ADR-0036, Entscheidung 3).
+    // The account half of the empty-result protection. A directory that reports account status but
+    // not a single account is the same finding as an empty group list - it must never lock
+    // everybody, and it is a hard abort with no plan to confirm (ADR-0036, Entscheidung 3).
     if (snapshot.reportsAccounts()
         && snapshot.accounts().isEmpty()
         && !providerAccounts.isEmpty()) {
@@ -851,8 +851,8 @@ class DirectorySyncPlanExecutor {
     UUID organizationId = target.organizationId();
     Set<UUID> affectedUserIds = new HashSet<>();
     List<Group> createdGroups = new ArrayList<>();
-    // The origin of a directory group is the provider the run is bound to (ADR-0036,
-    // Entscheidung 2). Never null: without a provider row there is no run at all.
+    // The origin of a directory group is the provider the run is bound to (ADR-0036, Entscheidung
+    // 2). Never null: without a provider row there is no run at all.
     UUID providerId = target.providerId();
 
     for (PlannedCreate create : plan.creates()) {
@@ -878,8 +878,8 @@ class DirectorySyncPlanExecutor {
       }
       groupRepository.save(group);
       createdGroups.add(group);
-      // Recorded after the save above, so the group row is already present for the history
-      // row's FK - all of a newly created group's memberships are new, so every one is recorded.
+      // Recorded after the save above, so the group row is already present for the history row's FK
+      // - all of a newly created group's memberships are new, so every one is recorded.
       for (GroupMembership membership : group.getMemberships()) {
         permissionHistoryService.recordMembershipAdded(
             group.getId(),
@@ -949,8 +949,8 @@ class DirectorySyncPlanExecutor {
         GroupMembership membership = new GroupMembership(member.id(), organizationId);
         change.group().addMembership(membership);
         affectedUserIds.add(member.id());
-        // Change.group() already exists in the database (unlike PlannedCreate's brand new
-        // group above), so its FK is satisfied immediately.
+        // Change.group() already exists in the database (unlike PlannedCreate's brand new group
+        // above), so its FK is satisfied immediately.
         permissionHistoryService.recordMembershipAdded(
             change.group().getId(),
             organizationId,
@@ -1327,10 +1327,10 @@ class DirectorySyncPlanExecutor {
   }
 
   /**
-   * Which users would gain or lose membership of which group - not just the aggregate counts.
-   * Review of PR #297: an admin deciding whether to let a run through needs to see who is affected,
-   * not only how many. Covers both newly created groups (all members are additions) and existing
-   * groups with an actual diff; a matched-but-unchanged group produces no entry.
+   * Which users would gain or lose membership of which group - not just the aggregate counts. An
+   * admin deciding whether to let a run through needs to see who is affected, not only how many.
+   * Covers both newly created groups (all members are additions) and existing groups with an actual
+   * diff; a matched-but-unchanged group produces no entry.
    */
   private List<MembershipChange> toMembershipChanges(SyncPlan plan) {
     List<MembershipChange> result = new ArrayList<>();

@@ -195,8 +195,8 @@ public class LibraryFolderService {
    * path component, reusing an existing folder at the same level instead of creating a duplicate.
    * The internal counterpart to {@link #createFolder} an indexing run uses to mirror its source
    * directory structure - see this class's own Javadoc for why it bypasses {@link
-   * #requireUploadLibrary}/{@link #requireEditable}. Since #1277 an {@code HTTP_DIRECTORY} run uses
-   * the same path, with the crawled URL path relative to the start URL as its segments.
+   * #requireUploadLibrary}/{@link #requireEditable}. An {@code HTTP_DIRECTORY} run uses the same
+   * path, with the crawled URL path relative to the start URL as its segments.
    *
    * <p><b>{@link #validateName}/{@link #MAX_DEPTH} are bypassed too, deliberately</b> - not just
    * the permission/upload-type checks named above. A mirrored directory name is whatever the

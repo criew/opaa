@@ -86,12 +86,12 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * The decision every one of this class's 31 branches routes through, the 406 included since
-   * #1786: the envelope is attached only when the caller's {@code Accept} lets it be written.
-   * Attaching an unwritable one makes {@code ExceptionHandlerExceptionResolver} log a stacktrace
-   * and discard this response, upon which the caller gets whatever renders the exception next: an
-   * exception Spring's own {@code DefaultHandlerExceptionResolver} renders keeps its status, every
-   * other branch arrives as the container's 500. A branch with a builder of its own ({@code Allow},
+   * The decision every one of this class's 31 branches routes through, the 406 included: the
+   * envelope is attached only when the caller's {@code Accept} lets it be written. Attaching an
+   * unwritable one makes {@code ExceptionHandlerExceptionResolver} log a stacktrace and discard
+   * this response, upon which the caller gets whatever renders the exception next: an exception
+   * Spring's own {@code DefaultHandlerExceptionResolver} renders keeps its status, every other
+   * branch arrives as the container's 500. A branch with a builder of its own ({@code Allow},
    * {@code Retry-After}) hands it here instead of calling {@code builder.body(...)}; {@code
    * GlobalExceptionHandlerBodyFunnelTest} holds that rule.
    */

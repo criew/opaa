@@ -25,8 +25,8 @@ import org.springframework.stereotype.Component;
  * an asset and the set of asset ids they may read at all - through a direct grant, a grant to one
  * of their groups, or a grant to "Alle Konten" (see
  * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten). All three read the same
- * table: organization-wide reach is a grant like any other since #1931 (ADR-0037), so no caller
- * hands in a reach it read off the asset shell.
+ * table: organization-wide reach is a grant like any other (ADR-0037), so no caller hands in a
+ * reach it read off the asset shell.
  *
  * <p>Two access paths, deliberately not unified:
  *

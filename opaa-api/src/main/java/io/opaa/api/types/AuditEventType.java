@@ -18,8 +18,8 @@ public enum AuditEventType {
   /** A time-limited grant expiring is itself an event, the moment it takes effect. */
   ASSET_GRANT_EXPIRED,
   /**
-   * Historical: the change of an asset's former catalogue findability. Never written since #2092;
-   * kept so the entries already in the append-only log stay readable until their retention ends.
+   * Historical: the change of an asset's former catalogue findability. No longer written; kept so
+   * the entries already in the append-only log stay readable until their retention ends.
    */
   ASSET_VISIBILITY_CHANGED,
   /**
@@ -446,8 +446,8 @@ public enum AuditEventType {
    */
   MAIL_TEST_SENT,
 
-  // Verwaltung lokaler Konten (ADR-0033 Entscheidungen 11 and 13). Subject is the account
-  // as a pseudonym; no event carries an address, a name or the value of the creation reason.
+  // Verwaltung lokaler Konten (ADR-0033 Entscheidungen 11 and 13). Subject is the account as a
+  // pseudonym; no event carries an address, a name or the value of the creation reason.
   /** A local account was created by an administrator; {@code after} names mode and expiry. */
   LOCAL_USER_CREATED,
   /**

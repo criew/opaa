@@ -40,9 +40,9 @@ public class UserProvisioningFilter extends OncePerRequestFilter {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
       User user = userService.provisionFromToken(jwt);
-      // A still valid token of a locked account reaches nothing. Checked here rather than
-      // at every endpoint, and on every request rather than once per session, so the lock takes
-      // effect with the next request instead of with the next sign-in.
+      // A still valid token of a locked account reaches nothing. Checked here rather than at every
+      // endpoint, and on every request rather than once per session, so the lock takes effect with
+      // the next request instead of with the next sign-in.
       if (user.isDirectoryLocked()) {
         refuse(response);
         return;

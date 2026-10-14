@@ -19,8 +19,8 @@ import org.springframework.stereotype.Component;
 /**
  * Everything that has to be true of an uploaded branding image before it is stored ("Validierung an
  * der Systemgrenze ... Logo-MIME-Typ und -Größe" and "das hochgeladene Logo darf kein Skript
- * ausführen können"). Since #1910 the same rules cover the sign-in page's own logo and its
- * background image; only the ceilings differ, and they come from {@link BrandingImageKind}.
+ * ausführen können"). The same rules cover the sign-in page's own logo and its background image;
+ * only the ceilings differ, and they come from {@link BrandingImageKind}.
  *
  * <p><b>SVG is rejected, not sanitised.</b> #582 allows either; rejecting is the choice that cannot
  * be wrong on a bad day. An SVG is a document, not an image file - it can carry {@code <script>},
