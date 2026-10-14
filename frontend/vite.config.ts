@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolveOpaaVersion } from './opaaVersion.ts'
@@ -7,6 +8,10 @@ import { resolveOpaaVersion } from './opaaVersion.ts'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // @/ points at src/, mirroring "paths" in tsconfig.app.json; Vitest inherits it.
+  resolve: {
+    alias: [{ find: /^@\//, replacement: fileURLToPath(new URL('./src/', import.meta.url)) }],
+  },
   // The version shown under "Info zu OPAA"; release builds pass their tag's version as OPAA_VERSION
   // (frontend/Dockerfile), every other build - tests included - is 0.0.0-dev.
   define: {

@@ -301,6 +301,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `docs/handbuch/` — Produkthandbuch des gebauten Ist-Stands (Kapitelbaum in `docs/handbuch/README.md`, Abschnitt „Aufbau des Handbuchs"; Konnektoren und Formate je mit Übersicht in `konnektoren/` und `formate/`); Regeln für Aufbau, Verweise und Stil in `docs/handbuch/AGENTS.md` — vor jeder Änderung am Handbuch lesen
 - `backend/AGENTS.md` — Backend-Konventionen (Abhängigkeitsverwaltung, API-/Mapper-Regeln, logische Module und Schichtung, Spring-Testkontexte, Liquibase); `backend/` ist zugleich Gradle-Root des Multi-Modul-Builds. Je logischem Modul ergänzt eine kurze `AGENTS.md` im Hauptpaket unter `backend/src/main/java/io/opaa/` die Regeln des Moduls (Übersicht in `backend/AGENTS.md`)
 - `opaa-api/` — Gradle-Modul mit OpenAPI-Spec, Generator-Konfiguration und geteilten Domain-Enums (`io.opaa.api.types`), siehe [ADR-0006](docs/decisions/0006-openapi-dto-generation.md) (#896)
+- `frontend/AGENTS.md` — Themen des Frontends, ihre per ESLint geprüften Grenzen, Übergangsliste und Ablauf eines Umzugs-PRs; **vor jeder Änderung unter `frontend/src/` lesen**
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
 - `deploy/helm/opaa/` — Helm-Chart für den Kubernetes-Betrieb (Single-Instance), siehe [ADR-0042](docs/decisions/0042-kubernetes-lieferung-mit-helm.md); eine betriebsrelevante Änderung zieht ihn im selben PR nach

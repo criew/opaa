@@ -1,0 +1,65 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import micromatch from 'micromatch'
+import { describe, expect, it } from 'vitest'
+import { ALLOWED, APP, SHARED, TEST_INFRA, THEMES, bucketGlobs, themeGlobs } from './themes.js'
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const GENERATED = 'src/types/generated/'
+
+function sourceFiles(dir = 'src') {
+  return fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((entry) => {
+    const file = `${dir}/${entry.name}`
+    return entry.isDirectory() ? sourceFiles(file) : [file]
+  })
+}
+
+const buckets = {
+  ...Object.fromEntries(Object.keys(THEMES).map((name) => [name, themeGlobs(name)])),
+  shared: bucketGlobs(SHARED),
+  app: bucketGlobs(APP),
+  'test-infra': bucketGlobs(TEST_INFRA),
+}
+
+describe('themes.js', () => {
+  it('assigns every file under src/ to exactly one theme or bucket', () => {
+    const misassigned = sourceFiles()
+      .filter((file) => !file.startsWith(GENERATED))
+      .map((file) => ({
+        file,
+        buckets: Object.keys(buckets).filter((name) => micromatch.isMatch(file, buckets[name])),
+      }))
+      .filter(({ buckets: matched }) => matched.length !== 1)
+
+    expect(misassigned).toEqual([])
+  })
+
+  it('lists the allowed dependencies of every theme and only known themes as targets', () => {
+    expect(Object.keys(ALLOWED).sort()).toEqual(Object.keys(THEMES).sort())
+    for (const [name, targets] of Object.entries(ALLOWED)) {
+      for (const target of targets) {
+        expect(THEMES, `${name} -> ${target}`).toHaveProperty([target])
+        expect(target).not.toBe(name)
+      }
+    }
+  })
+
+  it('keeps the dependency graph between themes free of cycles', () => {
+    const state = {}
+    const cycles = []
+    const visit = (name, trail) => {
+      if (state[name] === 'done') return
+      if (state[name] === 'active') {
+        cycles.push([...trail.slice(trail.indexOf(name)), name].join(' -> '))
+        return
+      }
+      state[name] = 'active'
+      for (const target of ALLOWED[name]) visit(target, [...trail, name])
+      state[name] = 'done'
+    }
+    for (const name of Object.keys(ALLOWED)) visit(name, [])
+
+    expect(cycles).toEqual([])
+  })
+})

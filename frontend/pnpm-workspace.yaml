@@ -8,6 +8,9 @@
 # happens, so after upgrading msw run: pnpm exec msw init public/ --save
 allowBuilds:
   msw: false
+  # unrs-resolver (via eslint-import-resolver-typescript) ships its native binding as an optional
+  # dependency per platform; its postinstall only verifies that binding.
+  unrs-resolver: false
 
 # openapi-typescript declares a typescript@^5 peer but works with the
 # project's typescript 6 (npm formerly enforced this via "overrides").
