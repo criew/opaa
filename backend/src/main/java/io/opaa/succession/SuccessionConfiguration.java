@@ -6,4 +6,4 @@ import org.springframework.context.annotation.Configuration;
 /** Registers the module's configuration properties. */
 @Configuration
 @EnableConfigurationProperties(SuccessionProperties.class)
-public class SuccessionConfiguration {}
+class SuccessionConfiguration {}

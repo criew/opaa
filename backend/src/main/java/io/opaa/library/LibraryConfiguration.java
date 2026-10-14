@@ -9,4 +9,4 @@ import org.springframework.context.annotation.Configuration;
   AttachmentExtractionProperties.class,
   ExternalAccessProperties.class
 })
-public class LibraryConfiguration {}
+class LibraryConfiguration {}

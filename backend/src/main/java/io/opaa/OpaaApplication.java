@@ -11,10 +11,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Every module registers its own {@code @ConfigurationProperties} classes in one of its
- * {@code @Configuration} classes. Registered here are only the foundation classes without such a
- * home and {@link UploadProperties}, which {@link io.opaa.api.GlobalExceptionHandler} consumes:
- * bound on the application class, it is present in every context that holds the advice, a web slice
- * included.
+ * {@code @Configuration} classes. Registered here are only the foundation classes, which no module
+ * configuration owns, and {@link UploadProperties}, which {@link
+ * io.opaa.api.GlobalExceptionHandler} consumes: bound on the application class, it is present in
+ * every context that holds the advice, a web slice included.
  */
 @SpringBootApplication
 @EnableConfigurationProperties({
@@ -23,7 +23,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   SettingsEncryptionProperties.class,
   UploadProperties.class
 })
-// Enables io.opaa.audit.AuditRetentionScheduler's @Scheduled monthly retention deletion (#395).
+// Enables io.opaa.audit.AuditRetentionScheduler's @Scheduled monthly retention deletion.
 @EnableScheduling
 public class OpaaApplication {
 

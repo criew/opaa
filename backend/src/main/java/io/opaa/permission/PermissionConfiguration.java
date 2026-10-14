@@ -6,4 +6,4 @@ import org.springframework.context.annotation.Configuration;
 /** Registers the module's configuration properties. */
 @Configuration
 @EnableConfigurationProperties(GroupSizeProperties.class)
-public class PermissionConfiguration {}
+class PermissionConfiguration {}
