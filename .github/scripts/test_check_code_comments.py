@@ -240,18 +240,18 @@ def test_allowed_frontend_comment_passes(repo: Path, text: str) -> None:
     assert result.returncode == 0, result.stdout
 
 
-@pytest.mark.parametrize(
-    "comment",
-    [
-        "Regression guard for #307: a stale report never hides the last one.",
-        "Regressionsschutz zu #1988: Das Notanker-Konto bietet keinen Rücksetz-Link.",
-    ],
-)
-def test_regression_guard_in_a_frontend_test_is_counted_apart(repo: Path, comment: str) -> None:
-    write(repo, TS_TEST, f"// {comment}\nexport const a = 1\n")
+def test_regression_guard_in_a_frontend_test_is_counted_apart(repo: Path) -> None:
+    write(repo, TS_TEST, "// Regression guard for #307: a stale report never hides the last one.\nexport const a = 1\n")
     result = run(repo)
     assert result.returncode == 0, result.stdout
     assert "frontend: 0 checked lines still name an issue, 1 more as a regression guard" in result.stdout
+
+
+def test_german_regression_guard_is_no_permitted_form(repo: Path) -> None:
+    write(repo, TS_TEST, "// Regressionsschutz zu #1988: Das Notanker-Konto bietet keinen Link.\nexport const a = 1\n")
+    result = run(repo)
+    assert result.returncode == 0, result.stdout
+    assert "frontend: 1 checked lines still name an issue, 0 more as a regression guard" in result.stdout
 
 
 def test_regression_guard_counts_only_in_a_frontend_test(repo: Path) -> None:
