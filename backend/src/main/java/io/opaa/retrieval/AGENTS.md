@@ -10,9 +10,7 @@ Von der Frage zu den ausgewählten Chunks: die Retrieval-Pipeline. Im Wurzelpake
 Die Stufen liegen in `scope` (Suchbereich, Metadatenfilter), `search` (Teilfragen-Zerlegung, Vektor-
 und Volltextsuche) und `ranking` (MMR, Fusion, Reranking, Relevanzschnitt, Dokumentergänzung), ihre
 Reihenfolge in `config`. `context` lädt nach der Pipeline die Nachbar-Chunks der Endauswahl für die
-Antwort; es ist keine Stufe und ändert weder Endauswahl noch Protokoll. retrieval hängt nur von
-foundation, format und knowledge ab. Antwort (`query`), Suche als Dienst (`search`) und Diagnose
-(`searchadmin`) im Modul assistant setzen darauf auf.
+Antwort; es ist keine Stufe und ändert weder Endauswahl noch Protokoll.
 
 ## Invarianten und Stolpersteine
 
@@ -21,31 +19,34 @@ foundation, format und knowledge ab. Antwort (`query`), Suche als Dienst (`searc
   aber wie alle über `RetrievalContextFactory`. Eine zweite Rangfolge daneben gibt es nicht.
 - **Rechte kommen von oben:** Der Suchbereich wird fertig aufgelöst übergeben; `SearchScopeStage`
   macht daraus den Bibliotheksfilter jeder Suchstufe und hält den Lauf bei leerem Bereich an.
-  retrieval kennt weder Rechte noch Räume noch Chats, `ALLOWED_MODULE_EDGES` hält das fest.
 - **Die Reihenfolge der Stufen steht nur in `config.RetrievalConfiguration#retrievalPipeline`.**
   Eine neue Stufe wird dort eingefügt und bekommt einen `RetrievalStageName`.
 - **Das Wurzelpaket nennt keine Stufe.** Stufen hängen vom Rahmen ab, nur `config` nennt alle.
   So bleibt retrieval ohne Zyklen zwischen seinen Unterpaketen.
 - **Vektorsuche nur über `VectorChunkSearch`:** iterativer HNSW-Scan mit transaktionslokalen
-  Einstellungen, sonst liefert ein gefilterter Scan still weniger als fetch-k (#2345). Solange der
+  Einstellungen, sonst liefert ein gefilterter Scan still weniger als fetch-k. Solange der
   Vektorindex von einem anderen Embedding-Modell stammt (`indexing.chunk.EmbeddingIndexState`),
   fragt `VectorSearchStage` nichts ab und meldet sich `UNAVAILABLE`.
 - **Jede Stufe schreibt ihr Protokoll** (`StageOutcome` gibt es nicht ohne `StageExplanation`). Eine
   abgeschaltete Stufe erscheint als `DISABLED`; die Diagnose liest das Protokoll, statt
   Entscheidungen nachzubauen.
-- **Konfiguration:** `opaa.query.*` (`QueryProperties`), `opaa.query.pipeline.*`,
-  `opaa.query.vector-index.*` (`VectorIndexScanProperties`), `opaa.query.relevance-cutoff.*`
-  (`RelevanceCutoffProperties`) und `opaa.query.neighbor-chunks.*` (`NeighborChunkProperties`).
-  `QueryProperties` trägt auch die Breite des Gesprächsfensters, die die Antwort liest: Die Suche
-  sieht nie mehr vom Gespräch als die Antwort.
+- **Konfiguration:** `opaa.query.*` (`QueryProperties`), `opaa.query.pipeline.*`, `opaa.query.vector-index.*`
+  (`VectorIndexScanProperties`), `opaa.query.relevance-cutoff.*` (`RelevanceCutoffProperties`) und
+  `opaa.query.neighbor-chunks.*` (`NeighborChunkProperties`). `QueryProperties` trägt auch die Breite des
+  Gesprächsfensters, die die Antwort liest: Die Suche sieht nie mehr vom Gespräch als die Antwort.
+
+## Maßgebliche ADRs
+
+- [ADR-0011](../../../../../../../docs/decisions/0011-search-quality-evaluation-harness.md) (Entscheidung 3): Java-nativer Retrieval-Harness
+- [ADR-0012](../../../../../../../docs/decisions/0012-messvertrag-retrieval-harness.md): Messvertrag des Harness
+- [ADR-0013](../../../../../../../docs/decisions/0013-fehlerkriterium-retrieval-regression.md): Fehlerkriterium der Regression
+- [ADR-0028](../../../../../../../docs/decisions/0028-tsv-version-uebergang.md): Volltextsuche ohne Versionsfilter
+- [ADR-0031](../../../../../../../docs/decisions/0031-gespraechsgedaechtnis.md) (Entscheidung 1): Breite des Gesprächsfensters
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0010, 0011, 0012, 0013, 0031
 - Handbuch: `docs/handbuch/suche.md`; Spezifikation: `docs/features/retrieval-algorithm.md`,
   `docs/features/hybrid-retrieval.md`; Evaluierung: `eval/README.md`
-- Strukturtests: `ModularArchitectureTest`, `SearchDependencyStructureTest`,
-  `SearchDiagnosisRerankParityTest`
 
 ## Tests bei Änderungen
 
@@ -54,7 +55,6 @@ foundation, format und knowledge ab. Antwort (`query`), Suche als Dienst (`searc
   --tests 'io.opaa.searchadmin.*' --tests 'io.opaa.architecture.*'
 ```
 
-retrieval besitzt keine Tabelle. Änderungen an Treffern oder Scores misst `./gradlew
-checkRetrievalBaseline` gegen die Baseline (braucht Docker, nicht Teil von `build`), in CI der
-Workflow „Retrieval-Regression" (Label `evaluation`). Einen verhaltensneutralen Umbau belegt der
-Protokoll-Dump (`-Dopaa.eval.explanationDumpDir`, `eval/README.md`).
+Änderungen an Treffern oder Scores misst `./gradlew checkRetrievalBaseline` gegen die Baseline (braucht Docker,
+nicht Teil von `build`), in CI der Workflow „Retrieval-Regression" (Label `evaluation`). Einen verhaltensneutralen
+Umbau belegt der Protokoll-Dump (`-Dopaa.eval.explanationDumpDir`, `eval/README.md`).
