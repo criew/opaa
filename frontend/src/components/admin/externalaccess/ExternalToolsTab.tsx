@@ -16,12 +16,12 @@ import {
   listAllExternalAccessTokens,
   updateExternalAccessSettings,
 } from '../../../services/externalAccessApi'
-import { confirmAction } from '../../../stores/confirmStore'
-import { notify } from '../../../stores/notificationStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
-import { fontFamily } from '../../../theme/tokens'
+import { fontFamily } from '@/shared/theme/tokens'
 import ExternalAccessSettingsPanel, {
   SAVED_MESSAGE,
   SWITCH_CONSEQUENCE,

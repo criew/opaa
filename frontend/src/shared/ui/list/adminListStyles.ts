@@ -1,4 +1,4 @@
-import { fontFamily } from '../../../theme/tokens'
+import { fontFamily } from '../../theme/tokens'
 
 /**
  * Fixed widths, because the content is not: addresses and names are arbitrarily long. With

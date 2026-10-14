@@ -5,7 +5,7 @@ import Toolbar from '@mui/material/Toolbar'
 import MenuIcon from '@mui/icons-material/Menu'
 import BrandMark from '@/shared/ui/BrandMark'
 import NotificationBell from '../components/notifications/NotificationBell'
-import { useUiStore } from '../stores/uiStore'
+import { useUiStore } from '@/shared/stores/uiStore'
 
 export default function MobileHeader() {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)

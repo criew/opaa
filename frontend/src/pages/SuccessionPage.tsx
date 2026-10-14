@@ -13,7 +13,7 @@ import {
   SUCCESSION_TABS,
   type SuccessionTab,
 } from '../components/succession/successionPresentation'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 const TAB_ORDER: SuccessionTab[] = ['open', 'grants', 'groups']
 

@@ -13,7 +13,7 @@ import AuthNotice from '../components/auth/AuthNotice'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import { useErrorFocus } from '../hooks/useErrorFocus'
+import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { FieldValidationError } from '@/shared/session/authApi'
 import { FlowUnavailableError, forgotPassword, RateLimitedError } from '../services/selfServiceApi'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -25,7 +25,7 @@ import {
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
 } from '@/shared/session/authMessages'
-import { radius } from '../theme/tokens'
+import { radius } from '@/shared/theme/tokens'
 
 const HEADING = 'Passwort vergessen'
 /** The one field this form can show an error at. */

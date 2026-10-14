@@ -8,7 +8,7 @@ import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import MailServerSection from '../components/admin/mail/MailServerSection'
 import MailTemplatesSection from '../components/admin/mail/MailTemplatesSection'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 export type MailSettingsTab = 'server' | 'templates'
 

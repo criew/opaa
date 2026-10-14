@@ -1,5 +1,5 @@
-import type { BrandingResponse, BrandingUpdateRequest } from '../shared/api/types'
-import { apiClient as client, normalizeError } from '../shared/api/api'
+import type { BrandingResponse, BrandingUpdateRequest } from '../api/types'
+import { apiClient as client, normalizeError } from '../api/api'
 
 // branding is readable by anyone, including the not-yet-signed-in visitor of the sign-in
 // page - the backend permits both read paths without authentication (see

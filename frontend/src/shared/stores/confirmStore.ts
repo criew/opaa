@@ -46,7 +46,7 @@ function answer(confirmed: boolean) {
 
 /**
  * Bestätigung folgenreicher Handlungen (#1610), gerendert genau einmal durch
- * {@link ../shared/ui/feedback/ConfirmHost} in der AppShell - dasselbe Muster wie
+ * {@link ../ui/feedback/ConfirmHost} in der AppShell - dasselbe Muster wie
  * {@link ./notificationStore}.
  *
  * Es gibt immer höchstens **eine** offene Anfrage. Kommt eine zweite, wird die erste mit `false`

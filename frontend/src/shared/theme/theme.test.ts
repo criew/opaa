@@ -15,7 +15,7 @@ import {
   white,
 } from './tokens'
 import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../utils/contrast'
-import { OPAA_BRANDING } from '../stores/brandingStore'
+import { OPAA_BRANDING } from '../branding/brandingStore'
 
 /** Composites a possibly translucent text colour over its opaque surface, as the browser does. */
 function flatten(text: string, surface: string): string {

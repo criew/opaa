@@ -12,7 +12,7 @@ import type {
   DocumentTypeVocabularyEntryResponse,
   MetadataValueRequest,
 } from '@/shared/api/types'
-import { datePrecisionLabel, datePrecisions } from '../../utils/labels'
+import { datePrecisionLabel, datePrecisions } from './metadataLabels'
 import { isNotDeterminable } from './metadataValues'
 
 interface MetadataValueFormProps {

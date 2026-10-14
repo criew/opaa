@@ -20,7 +20,7 @@ import type {
 import { detachSpaceAsset, getAssetSpaceAssociations } from '../../services/assetApi'
 import { getSpaces } from '../../services/spaceApi'
 import { useAuthStore } from '@/shared/session/authStore'
-import { confirmAction } from '../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetTypeLabel } from './assetTypeRegistry'
 
 interface AssetSpacesListProps {

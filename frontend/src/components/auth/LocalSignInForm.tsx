@@ -15,7 +15,7 @@ import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import SectionEyebrow from './SectionEyebrow'
 import { useAuthStore } from '@/shared/session/authStore'
 import { FORGOT_PASSWORD_ROUTE, REGISTER_ROUTE } from '@/shared/routes'
-import { radius } from '../../theme/tokens'
+import { radius } from '@/shared/theme/tokens'
 
 interface LocalSignInFormProps {
   /** Eyebrow of the section; also the accessible name of the form. */

@@ -13,11 +13,11 @@ import {
   applyPendingGrantsAfterCreation,
   type PendingGrant,
 } from '../components/assets/pendingGrants'
-import { confirmAction } from '../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '../hooks/useMyGroups'
-import { capabilityMissingMessage } from '../utils/labels'
+import { capabilityMissingMessage } from '@/shared/utils/labels'
 import { CATALOG_ROUTE, promptLibraryRoute } from '@/shared/routes'
 import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { LOGIN_BACKDROP_SCRIM_OPACITY, LOGIN_CLAIM_OPACITY } from './AuthLayout'
-import { TEXT_CONTRAST_MINIMUM, compositeOver, contrastRatio } from '../../utils/contrast'
-import { navyRoles } from '../../theme/tokens'
+import { TEXT_CONTRAST_MINIMUM, compositeOver, contrastRatio } from '@/shared/utils/contrast'
+import { navyRoles } from '@/shared/theme/tokens'
 
 /**
  * #1910: Über einem hinterlegten Hintergrundbild steht Text. Welches Bild eine Installation

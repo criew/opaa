@@ -3,7 +3,7 @@ import { alpha } from '@mui/material/styles'
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined'
-import { blue, radius } from '../../../theme/tokens'
+import { blue, radius } from '@/shared/theme/tokens'
 import type { AccessLevel } from './capabilityAccess'
 
 const ICONS = {

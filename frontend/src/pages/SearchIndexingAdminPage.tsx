@@ -61,7 +61,7 @@ import { translateListLabel, translateStageNote } from '../utils/retrievalProtoc
 import { getSearchChunk } from '../services/searchAdminApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 import { catalogRoute } from '../components/assets/assetTypeRegistry'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { visibleChunkMetadata } from '../utils/metadataChunkKeys'

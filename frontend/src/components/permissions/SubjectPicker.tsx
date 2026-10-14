@@ -11,7 +11,7 @@ import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined'
 import type { SelectableGroupResponse, UserSummary } from '@/shared/api/types'
 import { useGroupSearch } from '../../hooks/useGroupSearch'
 import { useUserSearch } from '../../hooks/useUserSearch'
-import { allAccountsLabel } from '../../utils/labels'
+import { allAccountsLabel } from '@/shared/utils/labels'
 import {
   PROTECTED_GROUP_SEARCH_HINT,
   emptySubjectSelection,

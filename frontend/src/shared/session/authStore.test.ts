@@ -12,7 +12,7 @@ import { useChatListStore } from '../../stores/chatListStore'
 import { useDocumentStore } from '../../stores/documentStore'
 import { useGrantStore } from '../../stores/grantStore'
 import { useIndexingStore } from '../../stores/indexingStore'
-import { useNotificationStore } from '../../stores/notificationStore'
+import { useNotificationStore } from '../stores/notificationStore'
 
 // expireSession() refreshes the sign-in configuration without awaiting it. A refresh still in
 // flight when a test ends would land in the next test and overwrite its providers and mode.

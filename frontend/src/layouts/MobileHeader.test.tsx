@@ -4,7 +4,7 @@ import { hexToRgb, ThemeProvider } from '@mui/material/styles'
 import type { PaletteMode } from '@mui/material'
 import { describe, expect, it } from 'vitest'
 import { MemoryRouter } from 'react-router'
-import { createAppTheme } from '../theme/theme'
+import { createAppTheme } from '@/shared/theme/theme'
 import MobileHeader from './MobileHeader'
 
 function renderInMode(mode: PaletteMode, ui: ReactElement) {

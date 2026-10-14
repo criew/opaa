@@ -30,7 +30,7 @@ import {
   ownerKindLabel,
   ownerLabel,
 } from '../components/audit/connectionLogLabels'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 const ALL = ''
 

@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { render } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
-import { createAppTheme } from '../theme/theme'
+import { createAppTheme } from '@/shared/theme/theme'
 import Sidebar from './Sidebar'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useChatStore } from '../stores/chatStore'
@@ -16,8 +16,8 @@ import {
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
   useUiStore,
-} from '../stores/uiStore'
-import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
+} from '@/shared/stores/uiStore'
+import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 
 const mockNavigate = vi.fn()
 

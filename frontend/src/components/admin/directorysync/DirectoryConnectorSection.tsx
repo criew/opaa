@@ -12,8 +12,8 @@ import {
   testDirectoryConnector,
 } from '../../../services/directorySyncApi'
 import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
-import { confirmAction } from '../../../stores/confirmStore'
-import { notify } from '../../../stores/notificationStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import KeyValueList from '@/shared/ui/KeyValueList'
 import { DIRECTORY_SYNC_CONFLICT_MESSAGES } from './directorySyncLabels'
 

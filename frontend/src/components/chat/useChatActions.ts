@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { notify } from '../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { chatActionTexts, matchChatActions } from './chatActions'
 import type {
   ChatActionFormHandlers,

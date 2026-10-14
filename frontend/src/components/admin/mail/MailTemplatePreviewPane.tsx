@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
 import type { MailTemplatePreviewResponse } from '@/shared/api/types'
-import { radius } from '../../../theme/tokens'
+import { radius } from '@/shared/theme/tokens'
 import SectionHead from '@/shared/ui/SectionHead'
 
 interface MailTemplatePreviewPaneProps {

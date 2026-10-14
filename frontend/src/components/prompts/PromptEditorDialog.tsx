@@ -22,7 +22,7 @@ import {
   validatePromptDraft,
   variablesForText,
 } from '../../utils/promptTemplate'
-import { fontFamily } from '../../theme/tokens'
+import { fontFamily } from '@/shared/theme/tokens'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import SectionHead from '@/shared/ui/SectionHead'
 import PromptTextHighlight from './PromptTextHighlight'

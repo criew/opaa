@@ -19,12 +19,12 @@ import AboutDialog from './AboutDialog'
 import BrandMark from '@/shared/ui/BrandMark'
 import NotificationBell from '../components/notifications/NotificationBell'
 import { useAuthStore } from '@/shared/session/authStore'
-import { userInitial } from '../utils/userInitial'
-import { useBrandingStore } from '../stores/brandingStore'
+import { userInitial } from '@/shared/utils/userInitial'
+import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { CATALOG_ROUTE } from '@/shared/routes'
 import { catalogScopePrefixes } from '../components/assets/assetTypeRegistry'
-import { createRailTheme } from '../theme/theme'
-import { darkRoles, railRoles, shadow } from '../theme/tokens'
+import { createRailTheme } from '@/shared/theme/theme'
+import { darkRoles, railRoles, shadow } from '@/shared/theme/tokens'
 
 const RAIL_WIDTH = 64
 

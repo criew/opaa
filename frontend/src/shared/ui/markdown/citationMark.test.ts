@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { createAppTheme } from '../../../theme/theme'
-import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../../../utils/contrast'
+import { createAppTheme } from '../../theme/theme'
+import { contrastRatio, TEXT_CONTRAST_MINIMUM } from '../../utils/contrast'
 import { citationMarkColors } from './citationMark'
 
 /**

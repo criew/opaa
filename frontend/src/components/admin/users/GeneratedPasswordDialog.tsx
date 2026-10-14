@@ -8,9 +8,9 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
-import { fontFamily, radius } from '../../../theme/tokens'
+import { fontFamily, radius } from '@/shared/theme/tokens'
 import { SHOWN_ONCE_HINT } from './localUserLabels'
-import { copyOnce } from '../../../utils/copyOnce'
+import { copyOnce } from '@/shared/utils/copyOnce'
 
 export interface GeneratedPassword {
   displayName: string

@@ -6,7 +6,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import { useAuthStore } from '@/shared/session/authStore'
 import { isHandoverInFlight } from '@/shared/session/handoverFlow'
-import { usePageTitle } from '../hooks/usePageTitle'
+import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { AFTER_SIGN_IN_ROUTE, HANDOVER_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 
 export default function AuthCallbackPage() {

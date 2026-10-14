@@ -7,7 +7,7 @@ import {
   confluenceIssue,
   type ConfluenceSourceValues,
 } from '../../../utils/confluenceSource'
-import { confluenceEditionLabel } from '../../../utils/labels'
+import { confluenceEditionLabel } from '../../../utils/confluenceSource'
 import ConfluenceSourceForm from '../ConfluenceSourceForm'
 import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
 import { connectionFields } from './sourceConnection'

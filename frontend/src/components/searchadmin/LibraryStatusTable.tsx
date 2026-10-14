@@ -10,7 +10,7 @@ import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 
 import type { LibraryIndexState, LibrarySearchStatusResponse } from '@/shared/api/types'
-import { formatShare } from '../../utils/labels'
+import { formatShare } from '@/shared/utils/labels'
 import type { LibraryBatchRun } from '../../stores/searchAdminStore'
 import { plural } from '@/shared/utils/format'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'

@@ -21,7 +21,7 @@ import type {
   AccessAsOfSource,
   AccessBasis,
 } from '@/shared/api/types'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 const BASIS_LABELS: Record<AccessBasis, string> = {
   DIRECT_GRANT: 'Direkte Freigabe',

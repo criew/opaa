@@ -1,4 +1,4 @@
-import type { GroupListResponse, GroupMechanism, GroupOrigin } from '@/shared/api/types'
+import type { GroupKind, GroupListResponse, GroupMechanism, GroupOrigin } from '@/shared/api/types'
 
 /** Die Herkunft als Wort — „intern" oder der Name des Anbieters (ADR-0036, Entscheidung 2). */
 export function groupOriginLabel(group: {
@@ -66,4 +66,15 @@ export function ageSinceLabel(iso: string, now: Date = new Date()): string {
 /** „1 Konto" / „3 Konten" and the like - a count with its noun in the right number. */
 export function countLabel(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`
+}
+
+const groupKindLabels: Record<GroupKind, string> = {
+  ORG_UNIT: 'Organisationseinheit',
+  AD_HOC: 'Ad-hoc-Gruppe',
+  IDENTITY_PROVIDER: 'Gruppe aus dem Identitätsanbieter',
+}
+
+export function groupKindLabel(kind: GroupKind | string | undefined): string {
+  if (!kind) return ''
+  return groupKindLabels[kind as GroupKind] ?? kind
 }

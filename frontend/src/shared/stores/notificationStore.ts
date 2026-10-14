@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { registerSessionStore } from '../shared/session/resettableStores'
+import { registerSessionStore } from '../session/resettableStores'
 
 export type NotificationSeverity = 'success' | 'info' | 'warning' | 'error'
 
@@ -30,7 +30,7 @@ let nextNotificationId = 1
 /**
  * Global popup notifications (guidelines 5.9): transient feedback on one-off actions - a failed
  * download, a started download, a finished background step - surfaces here and is rendered once
- * by {@link ../shared/ui/feedback/NotificationHost}, never as an inline alert pushed above unrelated
+ * by {@link ../ui/feedback/NotificationHost}, never as an inline alert pushed above unrelated
  * content.
  */
 export const useNotificationStore = create<NotificationState>((set) => ({

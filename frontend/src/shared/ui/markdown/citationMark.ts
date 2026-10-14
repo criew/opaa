@@ -1,7 +1,7 @@
 import type { Theme } from '@mui/material/styles'
 import { rgbToHex } from '@mui/material/styles'
-import { compositeOver, deriveAccentText } from '../../../utils/contrast'
-import { fontFamily, radius } from '../../../theme/tokens'
+import { compositeOver, deriveAccentText } from '../../utils/contrast'
+import { fontFamily, radius } from '../../theme/tokens'
 
 /** Accent share of a resting mark's tint - stronger in the dark scheme, where 10 % would vanish. */
 const TINT_ALPHA = { light: 0.1, dark: 0.22 } as const

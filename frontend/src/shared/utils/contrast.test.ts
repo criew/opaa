@@ -8,7 +8,7 @@ import {
   formatContrastRatio,
   parseHexColor,
 } from './contrast'
-import { OPAA_BRANDING } from '../stores/brandingStore'
+import { OPAA_BRANDING } from '../branding/brandingStore'
 import { darkRoles } from '../theme/tokens'
 
 describe('parseHexColor', () => {

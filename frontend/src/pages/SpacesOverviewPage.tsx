@@ -7,7 +7,8 @@ import MetaBadge from '@/shared/ui/MetaBadge'
 import OverviewPage, { OverviewCard } from '@/shared/ui/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { useSpaceStore } from '../stores/spaceStore'
-import { spaceMembershipLabel, spaceRoleLabel } from '../utils/labels'
+import { spaceMembershipLabel } from '@/components/assets/assetLabels'
+import { spaceRoleLabel } from '@/shared/utils/labels'
 import type { SpaceListResponse } from '@/shared/api/types'
 
 function plural(count: number, singular: string, pluralForm: string): string {

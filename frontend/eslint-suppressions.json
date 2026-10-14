@@ -119,7 +119,7 @@
       "count": 1
     }
   },
-  "src/layouts/globalArea.ts": {
+  "src/shared/layouts/globalArea.ts": {
     "boundaries/dependencies": {
       "count": 1
     }
@@ -167,21 +167,6 @@
   "src/shared/session/authStore.test.ts": {
     "boundaries/dependencies": {
       "count": 8
-    }
-  },
-  "src/utils/labels.feature.test.ts": {
-    "boundaries/dependencies": {
-      "count": 3
-    }
-  },
-  "src/utils/labels.test.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/utils/labels.ts": {
-    "boundaries/dependencies": {
-      "count": 2
     }
   }
 }

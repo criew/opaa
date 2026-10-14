@@ -24,7 +24,7 @@ import {
   previewPermissionTransfer,
 } from '../../services/permissionTransferApi'
 import { apiErrorCode } from '@/shared/api/apiErrorDetails'
-import { notify } from '../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import UserPicker from '../groups/UserPicker'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import GroupPicker from './GroupPicker'

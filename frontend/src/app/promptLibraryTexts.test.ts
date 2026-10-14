@@ -4,7 +4,7 @@ import type { CapabilityOverviewResponse, SuccessionEntryResponse } from '../sha
 import { presentationOf } from '../components/admin/capabilities/capabilityPresentation'
 import { objectPhrase } from '../components/admin/capabilities/capabilityAccess'
 import { problemOf } from '../components/succession/successionPresentation'
-import { assetGrantScopeHint, assetRoleDescription } from './labels'
+import { assetGrantScopeHint, assetRoleDescription } from '@/components/assets/assetLabels'
 
 /**
  * Texts naming prompt libraries only while the feature is on (#2588, ADR-0044). The backend leaves
