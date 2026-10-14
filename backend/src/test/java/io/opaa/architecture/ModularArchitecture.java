@@ -41,6 +41,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Stream;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Controller;
 
 /**
@@ -1096,6 +1098,36 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Entries of each {@code @ConfigurationProperties} class in
+   * {@code @EnableConfigurationProperties}. The backend binds them only there, without a scan or a
+   * stereotype, so each needs exactly one.
+   */
+  ArchRule everyConfigurationPropertiesClassIsRegisteredOnce() {
+    Map<String, Integer> bindings = new TreeMap<>();
+    return classes()
+        .should(
+            new ArchCondition<JavaClass>("bind each @ConfigurationProperties class exactly once") {
+              @Override
+              public void check(JavaClass javaClass, ConditionEvents events) {
+                if (javaClass.isAnnotatedWith(ConfigurationProperties.class)) {
+                  bindings.merge(javaClass.getName(), 0, Integer::sum);
+                }
+                javaClass.tryGetAnnotationOfType(EnableConfigurationProperties.class).stream()
+                    .flatMap(annotation -> Arrays.stream(annotation.value()))
+                    .forEach(type -> bindings.merge(type.getName(), 1, Integer::sum));
+              }
+
+              @Override
+              public void finish(ConditionEvents events) {
+                bindings.forEach(
+                    (type, n) ->
+                        events.add(
+                            new SimpleConditionEvent(type, n == 1, type + " bound " + n + "x")));
+              }
+            });
+  }
+
+  /**
    * Reaches of {@link #OWN_FORMULA} from a foreign context: any code unit of {@link
    * #FOREIGN_CONTEXT} or below it, and any code unit elsewhere that takes or reads a {@link
    * #FOREIGN_CONTEXT_TYPE}. ArchUnit counts a lambda's accesses to its enclosing method.
@@ -1705,6 +1737,7 @@ public final class ModularArchitecture {
         refreshTokensStayInTheTokenStore(),
         grantsAreRevokedOnlyAfterTheCommit(),
         theForeignContextNeverUsesTheOwnFormula(),
+        everyConfigurationPropertiesClassIsRegisteredOnce(),
         privateLibrariesAreNotEnumeratedOutsideListedClasses(),
         personalUsageIsReadOnlyByItsOwner(),
         privateAssetsAreAuditedNeutrally(),

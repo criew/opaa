@@ -116,6 +116,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void everyConfigurationPropertiesClassIsRegisteredOnce() {
+    ARCHITECTURE.everyConfigurationPropertiesClassIsRegisteredOnce().check(mainClasses);
+  }
+
+  @Test
   void theForeignContextNeverUsesTheOwnFormula() {
     ARCHITECTURE.theForeignContextNeverUsesTheOwnFormula().check(mainClasses);
   }

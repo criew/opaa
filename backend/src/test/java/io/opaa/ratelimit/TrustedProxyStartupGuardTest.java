@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 /**
@@ -21,7 +22,11 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 class TrustedProxyStartupGuardTest {
 
   private final ApplicationContextRunner contextRunner =
-      new ApplicationContextRunner().withUserConfiguration(TrustedProxyStartupGuard.class);
+      new ApplicationContextRunner()
+          .withUserConfiguration(PropertiesBinding.class, TrustedProxyStartupGuard.class);
+
+  @EnableConfigurationProperties(RateLimitProperties.class)
+  static class PropertiesBinding {}
 
   private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
   private Logger logger;
