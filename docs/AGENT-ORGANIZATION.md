@@ -141,6 +141,8 @@ Regeln für den Koordinator/Orchestrator, unabhängig von der Umgebung, in der e
 - **Modellwahl je Gewicht:** Entwickler-Agenten laufen auf Opus, wichtige oder komplexe Issues (Epic-Kernteile, Migrations-/Löschsemantik, verzahnte Verträge) wahlweise auf Fable, bei Störung eines Modells auf dem anderen, und Reviews immer auf einem der beiden.
 - **Bündelung:** Eng zusammenhängende Issues desselben Subsystems darf der Koordinator einem Agenten als einen Auftrag geben, ein PR mit mehreren `Closes`, die Issues bleiben einzeln angelegt.
 - **Review ab PR-Eröffnung:** Das Review startet, sobald ein PR eröffnet ist, nicht nach grüner CI; ein roter CI-Lauf und Review-Befunde gehen in dieselbe Nachbesserungsrunde.
+- **Security-Arbeit wird delegiert:** Security-Analysen, -Fixes und -Issues führt der Koordinator nicht selbst aus, sondern gibt sie an Agenten, dieselbe Rollentrennung wie zwischen Implementierung und Review.
+- **Handbuch nach Abhängigkeits-Updates:** Ändert ein gemergter Renovate-PR eine Version oder einen Default, den das Handbuch nennt (`betrieb.md`, `konfiguration.md`), zieht der Koordinator das Kapitel nach.
 - **Prozess- und Worktree-Hygiene:** Nie ein globales `gradlew --stop`, nur den eigenen Prozess beenden, und nach dem Merge zuerst Branch löschen und `git worktree prune`, ein gesperrtes Verzeichnis später entfernen.
 
 ### Autonomie und Eskalation
