@@ -129,7 +129,10 @@ class ConfluenceIndexingExecutorVisitPageTest {
             new IndexingRunProgress(indexingJobService, jobId),
             new IndexingRunEventRecorder(eventRepository, indexingJobService, jobId),
             new StaleDocumentCleanupService(
-                documentRepository, vectorChunkStore, mock(AssetRepository.class)),
+                documentRepository,
+                vectorChunkStore,
+                mock(AssetRepository.class),
+                Clock.systemUTC()),
             documentRepository,
             mock(LibraryStorageQuotaService.class),
             rejected -> Secret.personal(library.getSourceCredentials()),

@@ -59,6 +59,7 @@ import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -180,7 +181,8 @@ class DocumentIngestServiceTest {
         new AttachmentLimits(0, 0),
         TestDocumentMetadataServices.returningEmpty(),
         TestDocumentMetadataServices.notExtracting(),
-        io.opaa.common.TestFeatureFlags.allOn());
+        io.opaa.common.TestFeatureFlags.allOn(),
+        Clock.systemUTC());
   }
 
   /** A format declaring {@code passthroughKeys} as the chunk metadata it passes through. */
@@ -1474,7 +1476,8 @@ class DocumentIngestServiceTest {
               new AttachmentLimits(0, 0),
               metadataService,
               io.opaa.indexing.document.TestDocumentMetadataServices.notExtracting(),
-              io.opaa.common.TestFeatureFlags.allOn());
+              io.opaa.common.TestFeatureFlags.allOn(),
+              Clock.systemUTC());
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), ENTRY_URL))
           .thenReturn(Optional.empty());

@@ -186,7 +186,8 @@ public class IndexingConfiguration {
       AttachmentLimits mailAttachmentLimits,
       DocumentMetadataService documentMetadataService,
       ModelMetadataExtractor modelMetadataExtractor,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      Clock clock) {
     return new DocumentIngestService(
         documentPipelineRegistry,
         documentRepository,
@@ -200,7 +201,8 @@ public class IndexingConfiguration {
         mailAttachmentLimits,
         documentMetadataService,
         modelMetadataExtractor,
-        featureFlags);
+        featureFlags,
+        clock);
   }
 
   @Bean
@@ -233,8 +235,10 @@ public class IndexingConfiguration {
   StaleDocumentCleanupService staleDocumentCleanupService(
       DocumentRepository documentRepository,
       VectorChunkStore vectorChunkStore,
-      AssetRepository assetRepository) {
-    return new StaleDocumentCleanupService(documentRepository, vectorChunkStore, assetRepository);
+      AssetRepository assetRepository,
+      Clock clock) {
+    return new StaleDocumentCleanupService(
+        documentRepository, vectorChunkStore, assetRepository, clock);
   }
 
   /** What the file sync of every file connector keeps between its runs (ADR-0045). */

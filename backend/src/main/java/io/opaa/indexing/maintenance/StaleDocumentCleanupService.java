@@ -12,6 +12,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -48,14 +49,17 @@ public class StaleDocumentCleanupService implements VanishedDocumentReconciler {
   private final DocumentRepository documentRepository;
   private final VectorChunkStore vectorChunkStore;
   private final AssetRepository assetRepository;
+  private final Clock clock;
 
   public StaleDocumentCleanupService(
       DocumentRepository documentRepository,
       VectorChunkStore vectorChunkStore,
-      AssetRepository assetRepository) {
+      AssetRepository assetRepository,
+      Clock clock) {
     this.documentRepository = documentRepository;
     this.vectorChunkStore = vectorChunkStore;
     this.assetRepository = assetRepository;
+    this.clock = clock;
   }
 
   /**
@@ -203,7 +207,7 @@ public class StaleDocumentCleanupService implements VanishedDocumentReconciler {
   private void remove(Document document, IndexingRunEventRecorder events, String message) {
     vectorChunkStore.deleteByDocumentId(document.getId());
     documentRepository.delete(document);
-    assetRepository.markContentChanged(document.getLibraryId(), Instant.now());
+    assetRepository.markContentChanged(document.getLibraryId(), Instant.now(clock));
     events.record(IndexingEventCategory.REMOVED, message, document.getFilePath());
   }
 

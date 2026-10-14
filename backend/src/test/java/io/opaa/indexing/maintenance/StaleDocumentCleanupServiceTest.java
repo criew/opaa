@@ -25,6 +25,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,8 @@ class StaleDocumentCleanupServiceTest {
   private final VectorChunkStore vectorChunkStore = mock(VectorChunkStore.class);
   private final AssetRepository assetRepository = mock(AssetRepository.class);
   private final StaleDocumentCleanupService service =
-      new StaleDocumentCleanupService(documentRepository, vectorChunkStore, assetRepository);
+      new StaleDocumentCleanupService(
+          documentRepository, vectorChunkStore, assetRepository, Clock.systemUTC());
   private final IndexingRunEventRepository eventRepository = mock(IndexingRunEventRepository.class);
   private final IndexingRunEventRecorder events =
       new IndexingRunEventRecorder(eventRepository, null, null);

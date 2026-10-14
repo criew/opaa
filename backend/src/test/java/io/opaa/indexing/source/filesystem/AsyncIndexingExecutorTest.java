@@ -97,7 +97,10 @@ class AsyncIndexingExecutorTest {
     staleDocumentCleanupService =
         spy(
             new StaleDocumentCleanupService(
-                documentRepository, mock(VectorChunkStore.class), mock(AssetRepository.class)));
+                documentRepository,
+                mock(VectorChunkStore.class),
+                mock(AssetRepository.class),
+                Clock.systemUTC()));
     FilesystemPathAllowlist allowlist = mock(FilesystemPathAllowlist.class);
     when(allowlist.isAllowed(any())).thenReturn(true);
 
@@ -264,7 +267,8 @@ class AsyncIndexingExecutorTest {
             new io.opaa.indexing.attachment.AttachmentLimits(0, 0),
             io.opaa.indexing.document.TestDocumentMetadataServices.returningEmpty(),
             io.opaa.indexing.document.TestDocumentMetadataServices.notExtracting(),
-            io.opaa.common.TestFeatureFlags.allOn());
+            io.opaa.common.TestFeatureFlags.allOn(),
+            Clock.systemUTC());
 
     FilesystemPathAllowlist realFlowAllowlist = mock(FilesystemPathAllowlist.class);
     when(realFlowAllowlist.isAllowed(any())).thenReturn(true);

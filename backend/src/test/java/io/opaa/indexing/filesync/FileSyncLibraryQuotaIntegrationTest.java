@@ -168,7 +168,8 @@ class FileSyncLibraryQuotaIntegrationTest {
             mailAttachmentLimits,
             documentMetadataService,
             modelMetadataExtractor,
-            io.opaa.common.TestFeatureFlags.allOn());
+            io.opaa.common.TestFeatureFlags.allOn(),
+            Clock.systemUTC());
     attachmentIndexer[0] =
         new AttachmentIndexer(
             boundedDownloader,

@@ -29,6 +29,7 @@ import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -146,7 +147,8 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
         new io.opaa.indexing.attachment.AttachmentLimits(0, 0),
         TestDocumentMetadataServices.returningEmpty(),
         TestDocumentMetadataServices.notExtracting(),
-        io.opaa.common.TestFeatureFlags.allOn());
+        io.opaa.common.TestFeatureFlags.allOn(),
+        Clock.systemUTC());
   }
 
   private List<org.springframework.ai.document.Document> chunksOf(int count) {

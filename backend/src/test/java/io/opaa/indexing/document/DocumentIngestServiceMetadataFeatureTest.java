@@ -37,6 +37,7 @@ import io.opaa.metadata.ModelExtractionOutcome;
 import io.opaa.metadata.ModelMetadataExtractor;
 import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -187,7 +188,8 @@ class DocumentIngestServiceMetadataFeatureTest {
         new AttachmentLimits(0, 0),
         metadataService,
         modelExtractor,
-        flags);
+        flags,
+        Clock.systemUTC());
   }
 
   private List<org.springframework.ai.document.Document> storedChunks() {

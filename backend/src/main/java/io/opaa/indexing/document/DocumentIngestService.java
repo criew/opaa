@@ -38,6 +38,7 @@ import io.opaa.metadata.ModelMetadataExtractor;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -111,6 +112,8 @@ public class DocumentIngestService {
   /** Switched off, the ingest extracts the Kernfeld Titel alone and asks no model (ADR-0044). */
   private final FeatureFlags featureFlags;
 
+  private final Clock clock;
+
   public DocumentIngestService(
       DocumentFormatRegistry pipelineRegistry,
       DocumentRepository documentRepository,
@@ -124,7 +127,8 @@ public class DocumentIngestService {
       AttachmentLimits mailAttachmentLimits,
       DocumentMetadataService documentMetadataService,
       ModelMetadataExtractor modelMetadataExtractor,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      Clock clock) {
     requireNoSchemaPassthroughKeys(pipelineRegistry);
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
@@ -140,6 +144,7 @@ public class DocumentIngestService {
     this.documentMetadataService = documentMetadataService;
     this.modelMetadataExtractor = modelMetadataExtractor;
     this.featureFlags = featureFlags;
+    this.clock = clock;
   }
 
   /**
@@ -706,7 +711,7 @@ public class DocumentIngestService {
       UUID documentId, int chunkCount, String checksum, String lastModifiedRemote) {
     int updated =
         documentRepository.markIndexedFromSource(
-            documentId, chunkCount, Instant.now(), checksum, lastModifiedRemote);
+            documentId, chunkCount, Instant.now(clock), checksum, lastModifiedRemote);
     if (updated == 0) {
       log.warn(
           "Document {} was deleted while its chunks were being written; removing them again",

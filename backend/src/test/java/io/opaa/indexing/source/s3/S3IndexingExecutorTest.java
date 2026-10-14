@@ -126,7 +126,10 @@ class S3IndexingExecutorTest {
     cleanupService =
         spy(
             new StaleDocumentCleanupService(
-                documentRepository, vectorChunkStore, mock(AssetRepository.class)));
+                documentRepository,
+                vectorChunkStore,
+                mock(AssetRepository.class),
+                Clock.systemUTC()));
     folderService = mock(LibraryFolderService.class);
     syncStateRepository = mock(SourceSyncStateRepository.class);
     when(syncStateRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
