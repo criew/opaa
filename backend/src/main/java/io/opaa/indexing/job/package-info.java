@@ -8,6 +8,6 @@
  *
  * <p>The lowest package of the pipeline next to {@code chunk}: it knows nothing of attachments,
  * parsing, chunking, the chunk stores or connectors. The run's counts, its frame and its triggers
- * live in {@code source}, which uses this package, never the other way round.
+ * live in {@code spi} and {@code run}, which use this package, never the other way round.
  */
 package io.opaa.indexing.job;

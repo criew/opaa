@@ -1,12 +1,12 @@
 # Modul connectors
 
-Pakete (`io.opaa.indexing.source.*`): confluence, dropbox, filesystem, googledrive, nextcloud, rss,
-s3, sharepoint, smb, upload, web. Der Vertrag liegt in `indexing.source` (Modul knowledge).
+Pakete (`io.opaa.indexing.source.*`): confluence, dropbox, filesystem, googledrive, nextcloud, rss, s3, sharepoint, smb,
+upload, web. Aus `indexing` nutzt ein Konnektor nur `spi`, `run`, `job`, `attachment`, `document` und `filesync`.
 
 ## Zweck und Grenze
 
-Ein Konnektor holt die Elemente einer Quellart und übergibt sie dem Kern; Lauf, Protokoll und
-Aufnahme eines Dokuments gehören dem Kern (`indexing.job`, `indexing.document`). Handbuch:
+Ein Konnektor holt die Elemente einer Quellart und übergibt sie dem Kern; Lauf, Protokoll und Aufnahme eines Dokuments
+gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Vertrag liegt in `indexing.spi`. Handbuch:
 `docs/handbuch/konnektoren/README.md` und `docs/handbuch/konnektoren/*.md`.
 
 ## Invarianten und Stolpersteine

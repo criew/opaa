@@ -29,7 +29,8 @@ prüft nur die Form. Die Beschreibung nennt `indexingRun`, `remote`, `deepLink`,
 Konnektor Schlüssel, Anzeigename und diese Fähigkeiten. Das Enum `DocumentSourceType` und das engere Lauf-Enum aus
 ADR-0017 sind entfallen; der Kern kennt nur noch `UPLOAD` als Sonderfall.
 
-Konnektoren im Paket `io.opaa.indexing.source` (Handbuch: `docs/handbuch/konnektoren/`):
+Konnektoren je in einem Unterpaket von `io.opaa.indexing.source`, ihr Vertrag in `io.opaa.indexing.spi`
+(seit #2720; Handbuch: `docs/handbuch/konnektoren/`):
 
 | Schlüssel | Paket | seit |
 |---|---|---|
@@ -81,7 +82,8 @@ Feld in der Adressregel käme erst, wenn ein Konnektor einen zweiten Host aus de
 
 Der Konnektor bekommt Ziel, Geheimnis und Einstellungen nur vom Kern als aufgelöste `SourceSettings`,
 auch im Lauf und beim Originalabruf; Profil, Refresh-Token, Client-Secret, Dienstkonto-Schlüssel und
-OAuth-Ablauf sieht er nie (ADR-0041, Entscheidung 3a, ArchUnit-Regel in `ModularArchitectureTest`).
+OAuth-Ablauf sieht er nie (ADR-0041, Entscheidung 3a, ArchUnit-Regel in `ModularArchitectureTest`):
+Resolver und Dienstkonto-Schlüssel liegen in `io.opaa.indexing.credentials`, das kein Konnektor nutzt (seit #2720).
 
 ### 4. Abbildung in OpenAPI: freies Objekt, `sourceType` als Diskriminator daneben
 
@@ -186,3 +188,4 @@ es Bestandssysteme gibt.
 | 2026-10-12 | #2496, #2541 | `source_proxy` und `source_insecure_ssl` entfallen | 2 |
 | 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand | — |
 | 2026-10-14 | #2702 | Konnektortabelle verweist auf ADR-0045–0047 | — |
+| 2026-10-14 | #2720 | Vertrag in `indexing.spi`, Resolver und Dienstkonto-Schlüssel in `indexing.credentials` | 1, 3 |
