@@ -5,49 +5,48 @@ s3, sharepoint, smb, upload, web — jedes direkte Unterpaket ist ein Konnektor,
 
 ## Zweck und Grenze
 
-Ein Konnektor holt die Elemente einer Quellart und übergibt sie dem Kern. Lauf, Protokoll und
-Aufnahme eines Dokuments gehören dem Kern (`indexing.job`, `indexing.document`). connectors hängt nur
-von foundation, format und knowledge ab.
+Ein Konnektor holt die Elemente einer Quellart und übergibt sie dem Kern. Lauf, Protokoll und Aufnahme eines Dokuments
+gehören dem Kern (`indexing.job`, `indexing.document`). connectors hängt nur von foundation, format und knowledge ab.
 
 ## Invarianten und Stolpersteine
 
-- **Selbstregistrierung:** Jede Quellart ist eine `SourceConnector`-Bean im eigenen Unterpaket,
-  registriert durch dessen `@Configuration`, aufgelöst über `SourceConnectorRegistry`. Die
-  `SourceConnectorDescriptor` beantwortet, worauf die Verwaltung sonst verzweigen würde. Optionale
-  Fähigkeiten sind weitere Schnittstellen derselben Bean (`SourceBrowser`, `OriginalAccess`,
-  `PushIntakeHandler`); eine laufbasierte Art registriert zusätzlich einen `SourceIndexingExecutor`.
-- **Kein Konnektor kennt einen anderen, und nichts außerhalb kennt einen Konnektor.** Kern,
-  Verwaltung und API erreichen ihn nur über die Registry. Der Typ ist ein offener Schlüssel (`A-Z0-9_`, höchstens 20 Zeichen), nur die Registry kennt alle.
-- **Einstellungen:** Alles Konnektoreigene ist ein Record im Konnektorpaket und steht als ein
-  JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
+- **Selbstregistrierung:** Jede Quellart ist eine `SourceConnector`-Bean im eigenen Unterpaket, registriert durch dessen
+  `@Configuration`, aufgelöst über `SourceConnectorRegistry`. Die `SourceConnectorDescriptor` beantwortet, worauf die Verwaltung sonst verzweigen würde. Optionale
+  Fähigkeiten sind weitere Schnittstellen derselben Bean (`SourceBrowser`, `OriginalAccess`, `PushIntakeHandler`); eine laufbasierte Art registriert zusätzlich einen `SourceIndexingExecutor`.
+- **Kein Konnektor kennt einen anderen, und nichts außerhalb kennt einen Konnektor.** Kern, Verwaltung und API erreichen ihn nur über die Registry. Der Typ ist ein offener Schlüssel (`A-Z0-9_`, höchstens 20 Zeichen), nur die Registry kennt alle.
+- **Einstellungen:** Alles Konnektoreigene ist ein Record im Konnektorpaket und steht als ein JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
 - **Was ein neuer Konnektor überschreibt:** `descriptor`, `validate`, `testConnection`, mit Einstellungen `readSettings` und `settingsKeys`. `validateChange` prüft per Default über `validate`/`readSettings`; `configureNew`/`applyChange` speichern vorhandene Einstellungen; überschreiben nur bei eigener Regel (S3, Confluence). Feste API-Adresse: `ConnectorChecks.validateAtFixedAddress`, `requireFixedAddress`, `fixedSourceUrl`.
-- **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, 3a): im Lauf über
-  `IndexingRun#settings()` (ohne Geheimnis) und `#credentials()`, vor jeder Anfrage bzw. Anmeldung
+- **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, Entscheidung 3a): im Lauf über `IndexingRun#settings()` (ohne Geheimnis) und `#credentials()`, vor jeder Anfrage bzw. Anmeldung
   gefragt (`RunCredentials`; `FileSync` vor jedem Store-Zugriff; nach `401` einmal neu, `renewableAfterRejection`,
   sonst `SourceCredentialsRejectedException` - nur für das Geheimnis selbst, nie für `403` oder ein Einzelobjekt); sonst im Aufruf. Kein Konnektor hält oder erzeugt einen `SourceConnectionResolver` oder liest aus `KnowledgeLibrary` mehr als `getSourcePath`/`getWebhookSecret`.
-- **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040), auch den des Zugangs: Der Konnektor bekommt
-  nur das Token aus `ServiceAccountTokens` und meldet imitiertes Konto (`assertionSubject`).
-- **Geheimnisse stehen nie in `source_settings`** (unverschlüsselt, in Antworten), nur verschlüsselt
-  in `source_credentials`, `source_webhook_secret`, am Zugang, im Token-Speicher; Antworten Ja/Nein.
-- **Jedes Ziel von Zugangsdaten leitet sich aus `sourceUrl` ab**, bei einem Zugang aus dessen
-  Server-Adresse; was sie enger bindet (Freigabe, imitiertes Konto), meldet nur `credentialBinding`.
+- **Dienstkonto-Schlüssel signiert der Kern** (ADR-0040, Entscheidung 2), auch den des Zugangs: Der Konnektor bekommt nur das Token aus `ServiceAccountTokens` und meldet imitiertes Konto (`assertionSubject`).
+- **Geheimnisse stehen nie in `source_settings`** (unverschlüsselt, in Antworten), nur verschlüsselt in `source_credentials`, `source_webhook_secret`, am Zugang, im Token-Speicher; Antworten Ja/Nein.
+- **Jedes Ziel von Zugangsdaten leitet sich aus `sourceUrl` ab**, bei einem Zugang aus dessen Server-Adresse; was sie enger bindet (Freigabe, imitiertes Konto), meldet nur `credentialBinding`.
   Ändert sich Ursprung oder Bindung, verwirft der Kern sie. Profilangabe: `ProfileDeclaration`, „verboten“ genau ohne entferntes Ziel oder bei Uploads.
-- **Änderungen nur über `SourceChangeGate`**, auch Profiländerung, Zuordnen und Lösen; `stored` =
-  effektiv, `applyChange` = eigener Teil. `validateChange` hängt nur von seinen Argumenten ab; Ziel nicht erreichbar oder Anmeldung abgelehnt lehnt er mit `SourceTargetRefusedException` ab.
+- **Änderungen nur über `SourceChangeGate`**, auch Profiländerung, Zuordnen und Lösen; `stored` = effektiv, `applyChange` = eigener Teil. `validateChange` hängt nur von seinen Argumenten ab; Ziel nicht erreichbar oder Anmeldung abgelehnt lehnt er mit `SourceTargetRefusedException` ab.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet
   einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen. Ein Konnektor löscht nie direkt, nur über den Port (positive Feststellung: `IndexingRun#removeWithAttachments`). Einen `SourceSyncState` nur über `IndexingRun#adopt` übernehmen (Fingerabdruck `SyncStateBasis`).
-- **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus
-  `indexing.filesync`; Abgleich über Läufe besitzt `FileSync`. Tests: `FileStore(Resumption)Contract`.
+- **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus `indexing.filesync`; Abgleich über Läufe besitzt `FileSync`. Tests: `FileStore(Resumption)Contract`.
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, Graph über `io.opaa.msgraph`,
   SMB nur über `smb.SmbShareClient`. Testdoppel: `S3TestFixture`, `FakeNextcloudServer`, `FakeGraphServer`, `SambaFixture`, `FakeDropboxServer`.
 
+## Maßgebliche ADRs
+
+- [ADR-0017](../../../../../../../../docs/decisions/0017-quellentypmodell-indizierung.md) (Entscheidungen 2, 3, 5): Registrierung, Löschung je Betriebsart
+- [ADR-0023](../../../../../../../../docs/decisions/0023-confluence-konnektor.md): Confluence-Konnektor
+- [ADR-0027](../../../../../../../../docs/decisions/0027-s3-konnektor.md): S3-Konnektor
+- [ADR-0038](../../../../../../../../docs/decisions/0038-steckbare-konnektoren.md): steckbare Konnektoren, Einstellungen, Geheimnisse
+- [ADR-0040](../../../../../../../../docs/decisions/0040-google-drive-konnektor.md): Google-Drive-Konnektor
+- [ADR-0041](../../../../../../../../docs/decisions/0041-verbindungen-als-eigenes-modul.md) (Entscheidung 3a): Lauf-SPI ohne eigene Zugangsdaten
+- [ADR-0045](../../../../../../../../docs/decisions/0045-gemeinsamer-datei-abgleich.md): Datei-Abgleich und Nextcloud-Store
+- [ADR-0046](../../../../../../../../docs/decisions/0046-smb-konnektor.md): SMB-Konnektor
+- [ADR-0047](../../../../../../../../docs/decisions/0047-sharepoint-konnektor.md): SharePoint-Konnektor
+
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0017, 0018, 0023, 0027, 0038, 0040, 0041 (Entscheidung 3a: Lauf-SPI)
 - Handbuch: `docs/handbuch/konnektoren/README.md` und `docs/handbuch/konnektoren/*.md`
-- Strukturtests: `ModularArchitectureTest` (`connectorsDoNotKnowEachOther`,
-  `noOneOutsideAConnectorKnowsIt`, `connectorsTakeTheirSourceConfigurationFromTheCore`)
+- Strukturtests: `ModularArchitectureTest` (`connectorsDoNotKnowEachOther`, `noOneOutsideAConnectorKnowsIt`, `connectorsTakeTheirSourceConfigurationFromTheCore`)
 
 ## Tests bei Änderungen
 

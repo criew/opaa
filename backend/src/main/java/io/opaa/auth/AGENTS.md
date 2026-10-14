@@ -7,8 +7,7 @@ Pakete (`io.opaa.*`): auth, account, audit, branding, mail, notification. Ergän
 Wer jemand ist und was über ihn protokolliert wird. `auth` ist der Identitätskern: Kontoidentität,
 Bereitstellung aus dem Token, Registratur der Identitätsanbieter, Modus `dev`, Anmeldefähigkeit.
 `account` sind die lokalen Konten (Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung);
-die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Revisionsprotokoll, Branding, Mailversand und Benachrichtigungen. identity hängt nur
-von foundation ab.
+die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Revisionsprotokoll, Branding, Mailversand und Benachrichtigungen. identity hängt nur von foundation ab.
 
 ## Invarianten und Stolpersteine
 
@@ -21,30 +20,33 @@ von foundation ab.
   `LocalIssuer#URN`. Das Profil `oidc` startet nicht ohne starkes `OPAA_AUTH_JWT_SECRET`
   (`LocalAuthSecretGuard`).
 - **`auth` kennt `account` nicht, außer `auth.web`.** Im Kern liegen `LocalCredentials`, `LocalAccountAccess`,
-  `AccountUsability` (einzige Regel „Konto nutzbar“, ADR-0041) und `LocalAdminAvailabilityGuard`. Den Schalter der
-  lokalen Konten erreicht `account` nur über den Port `LocalAccountsSwitch`; die Verwaltung der
-  Anbieter liegt in `io.opaa.directory` (rights).
-- **Das Revisionsprotokoll ist nur anfügbar.** Geschrieben wird über `AuditLogService#record` (oder
-  `AuditEventRecorder`), gelesen nur über `AuditQueryService`. `AuditLogRepository` ist
-  package-private. Das Anwendungskonto hat auf `audit_log` nur `INSERT` und `SELECT`; entfernt wird
-  nur eine vollständig abgelaufene Monatspartition.
-- **Ein Sendeweg:** `MailService` ist der einzige Einstieg für alles, was Mail verschickt, und
-  meldet das Ergebnis, statt zu werfen. Neue Anlässe bringen Vorlagen und Variablen mit, keinen
-  zweiten Sendeweg.
+  `AccountUsability` (einzige Regel „Konto nutzbar“, ADR-0041, Entscheidung 4) und `LocalAdminAvailabilityGuard`. Den Schalter
+  der lokalen Konten erreicht `account` nur über den Port `LocalAccountsSwitch`; die Anbieterverwaltung liegt in `io.opaa.directory` (rights).
+- **Das Revisionsprotokoll ist nur anfügbar.** Geschrieben wird über `AuditLogService#record` (oder `AuditEventRecorder`),
+  gelesen nur über `AuditQueryService`. `AuditLogRepository` ist package-private. Das Anwendungskonto hat auf
+  `audit_log` nur `INSERT` und `SELECT`; entfernt wird nur eine vollständig abgelaufene Monatspartition.
+- **Ein Sendeweg:** `MailService` ist der einzige Einstieg für alles, was Mail verschickt, und meldet das Ergebnis,
+  statt zu werfen. Neue Anlässe bringen Vorlagen und Variablen mit, keinen zweiten Sendeweg.
 - **Branding** ändert nur `BrandingSettingsService`; SVG wird abgelehnt, nicht bereinigt
   (`BrandingImageValidator`).
-- **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`,
-  `notification.web`; `audit.web.AuditedAdminCall` protokolliert `IndexingAdminController` und
-  `UploadStoreAdminController`. Die Stichtagsauskunft `/api/v1/audit/access-as-of` liegt in
-  `revision.web` (workspace), `/api/v1/me` in `group.web`, die Anbieter in `directory.web` (rights).
+- **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`, `notification.web`;
+  `audit.web.AuditedAdminCall` protokolliert `IndexingAdminController` und `UploadStoreAdminController`. Die Stichtagsauskunft
+  `/api/v1/audit/access-as-of` liegt in `revision.web` (workspace), `/api/v1/me` in `group.web`, die Anbieter in `directory.web` (rights).
 - **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`); unter
   `local,dev` ist keine lokale Sitzung fahrbar.
 
+## Maßgebliche ADRs
+
+- [ADR-0005](../../../../../../../docs/decisions/0005-authentication-strategy.md): Auth-Modi, JWT, Bereitstellung
+- [ADR-0015](../../../../../../../docs/decisions/0015-eigentuemertrennung-protokollablage.md): Eigentümertrennung des Revisionsprotokolls
+- [ADR-0019](../../../../../../../docs/decisions/0019-minimale-benachrichtigungsinfrastruktur.md): minimale Benachrichtigungen
+- [ADR-0025](../../../../../../../docs/decisions/0025-mehrere-oidc-anbieter.md): mehrere OIDC-Anbieter, Identität
+- [ADR-0033](../../../../../../../docs/decisions/0033-lokale-benutzerverwaltung.md): lokale Konten, Token, Mail
+- [ADR-0041](../../../../../../../docs/decisions/0041-verbindungen-als-eigenes-modul.md) (Entscheidung 4): eine Regel „Konto nutzbar“
+
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0005, 0015, 0019, 0025, 0033
-- Handbuch: `docs/handbuch/benutzerverwaltung.md`; `docs/handbuch/authentifizierung.md`,
-  `docs/handbuch/branding.md`, `docs/handbuch/e-mail.md`
+- Handbuch: `docs/handbuch/benutzerverwaltung.md`; `authentifizierung.md`, `branding.md`, `e-mail.md` (alle unter `docs/handbuch/`)
 - Strukturtests: `AuditFunnelStructureTest`, `AuthProfileGuardTest`, `LocalAuthSecretGuardTest`
 
 ## Tests bei Änderungen
@@ -54,6 +56,4 @@ von foundation ab.
   --tests 'io.opaa.branding.*' --tests 'io.opaa.mail.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/identity/`. Regeln und
-Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
-für rein additive DDL entbehrlich.
+Schemaänderungen: neue Datei unter `db/changelog/identity/`, Regeln in `backend/AGENTS.md`, „Liquibase“.

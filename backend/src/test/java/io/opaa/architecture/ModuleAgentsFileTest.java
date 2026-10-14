@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
  * Every logical module carries a short {@code AGENTS.md} in its main package, next to a {@code
  * CLAUDE.md} that imports it; every further top-level package of the module has a {@code CLAUDE.md}
  * that imports the module's file, so the instructions load wherever a file of the module is read.
+ * Every ADR the file names, and every link it holds into {@code docs/decisions}, exists there.
  */
 class ModuleAgentsFileTest {
 
@@ -36,6 +37,15 @@ class ModuleAgentsFileTest {
   /** "Pakete (`io.opaa.*`): a, b." - group 1 the prefix below io.opaa, group 2 the list. */
   private static final Pattern PACKAGE_LINE =
       Pattern.compile("Pakete \\(`io\\.opaa\\.([a-z.]*)\\*`\\): ([a-z0-9, ]+)");
+
+  private static final Path DECISIONS = Path.of("../docs/decisions");
+
+  /** "ADR-0044" - group 1 the number, which a file name under docs/decisions starts with. */
+  private static final Pattern ADR_NUMBER = Pattern.compile("ADR-(\\d{4})");
+
+  /** "](../docs/decisions/0044-x.md)" - group 1 the link, relative to the linking file. */
+  private static final Pattern DECISION_LINK =
+      Pattern.compile("\\]\\(([^)\\s]*decisions/[^)\\s]*)\\)");
 
   /** The package, relative to {@code io.opaa}, whose directory holds the module's AGENTS.md. */
   private static final Map<Module, String> MAIN_PACKAGES =
@@ -128,6 +138,51 @@ class ModuleAgentsFileTest {
           .as("module %s keeps one AGENTS.md, in package %s", entry.getValue(), main)
           .doesNotExist();
     }
+  }
+
+  @Test
+  void everyAdrReferenceInAnAgentsFileNamesAnExistingDecision() throws IOException {
+    for (String main : MAIN_PACKAGES.values()) {
+      Path agents = directoryOf(main).resolve("AGENTS.md");
+      assertThat(deadAdrReferences(agents)).as("ADR references in %s", agents).isEmpty();
+    }
+  }
+
+  @Test
+  void aReferenceToAMissingDecisionIsReported() throws IOException {
+    Path fixture =
+        Path.of("src/test/java/io/opaa/architecture/fixture/adrreference/dead-adr-references.md");
+
+    assertThat(deadAdrReferences(fixture))
+        .containsExactly("ADR-0999", "../../../../../../../../../docs/decisions/0044-renamed.md");
+  }
+
+  /** Every ADR number in {@code file} without a decision, then every decision link to no file. */
+  private static List<String> deadAdrReferences(Path file) throws IOException {
+    Set<String> numbers;
+    try (Stream<Path> decisions = Files.list(DECISIONS)) {
+      numbers =
+          decisions
+              .map(decision -> decision.getFileName().toString())
+              .filter(name -> name.matches("\\d{4}-.*\\.md"))
+              .map(name -> name.substring(0, 4))
+              .collect(Collectors.toSet());
+    }
+    String text = Files.readString(file, StandardCharsets.UTF_8);
+    Stream<String> unknownNumbers =
+        ADR_NUMBER
+            .matcher(text)
+            .results()
+            .map(reference -> reference.group(1))
+            .filter(number -> !numbers.contains(number))
+            .map(number -> "ADR-" + number);
+    Stream<String> brokenLinks =
+        DECISION_LINK
+            .matcher(text)
+            .results()
+            .map(link -> link.group(1))
+            .filter(link -> !Files.isRegularFile(file.resolveSibling(link)));
+    return Stream.concat(unknownNumbers, brokenLinks).distinct().toList();
   }
 
   private static Set<String> packagesOf(Module module) {

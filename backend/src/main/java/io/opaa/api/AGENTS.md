@@ -39,13 +39,15 @@ Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je
 - **Reihenfolge für einen neuen Endpunkt:** OpenAPI-Fragment, generierte DTOs, Enum-Mappings,
   Frontend-Typen, API-Funktion, MSW-Handler (`agents/roles/developer.md`, „Repository-Praxis").
 
+## Maßgebliche ADRs
+
+- [ADR-0006](../../../../../../../docs/decisions/0006-openapi-dto-generation.md): OpenAPI-Spezifikation, generierte DTOs
+- [ADR-0034](../../../../../../../docs/decisions/0034-liquibase-changeset-stil-und-schema.md) (Entscheidung 2): konfigurierbares Zielschema
+
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0005, 0006
 - Handbuch: `docs/handbuch/konfiguration.md`, `docs/handbuch/datenbank.md`
-- Strukturtests: `TransportStatusCodeSpecificationTest`, `DatabaseSchemaGuardTest`,
-  `DatabasePrerequisitesTest`,
-  `OpenAiBaseUrlGuardTest`, `ModularArchitectureTest`
+- Strukturtests: `TransportStatusCodeSpecificationTest`, `DatabaseSchemaGuardTest`, `DatabasePrerequisitesTest`, `OpenAiBaseUrlGuardTest`, `ModularArchitectureTest`
 
 ## Tests bei Änderungen
 

@@ -36,9 +36,16 @@ foundation, identity, rights und knowledge ab.
   Anwendungskonto hat nur `INSERT` und `SELECT`, gelöscht wird nur per Partitions-Drop einer
   `SECURITY DEFINER`-Funktion nach 12 Monaten.
 
+## Maßgebliche ADRs
+
+- [ADR-0015](../../../../../../../docs/decisions/0015-eigentuemertrennung-protokollablage.md): Eigentümertrennung des Diagnoseprotokolls
+- [ADR-0016](../../../../../../../docs/decisions/0016-loeschschicksal-rechtehistorie.md) (Entscheidung 5): Space-Zuordnung ohne Historie
+- [ADR-0036](../../../../../../../docs/decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidungen 6, 8): Space-Lebenszyklus, Stichtagsauskunft
+- [ADR-0039](../../../../../../../docs/decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (Entscheidung 4): Space-Zuordnung als harte Grenze
+- [ADR-0043](../../../../../../../docs/decisions/0043-anweisung-je-space.md) (Entscheidungen 1–5): Anweisung je Space
+
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0015, 0036 (Entscheidung 6 und 8), 0043
 - Handbuch: `docs/handbuch/spaces.md`; `docs/handbuch/berechtigungen.md`, Abschnitte 12 und 14;
   `docs/handbuch/suche.md`, Abschnitt 8
 - Strukturtests: `PermissionPackageBoundaryTest`, `ModularArchitectureTest`
@@ -50,6 +57,4 @@ foundation, identity, rights und knowledge ab.
   --tests 'io.opaa.diagnosticaccess.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/workspace/`. Regeln und
-Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
-für rein additive DDL entbehrlich.
+Schemaänderungen: neue Datei unter `db/changelog/workspace/`, Regeln in `backend/AGENTS.md`, „Liquibase“.

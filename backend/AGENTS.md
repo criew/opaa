@@ -166,7 +166,8 @@ Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der
 ### Anweisungen je Modul
 
 Jedes Modul hat eine kurze `AGENTS.md` (höchstens 60 Zeilen) mit Zweck und Grenze, Invarianten und
-Stolpersteinen, Verweisen und den Tests, die bei Änderungen laufen sollten. Sie liegt im
+Stolpersteinen, den maßgeblichen ADRs (je Zeile ein Link und wenige Wörter, was er für das Modul
+festlegt), Verweisen und den Tests, die bei Änderungen laufen sollten. Sie liegt im
 Hauptpaket unter `backend/src/main/java/io/opaa/`:
 
 | Modul | Datei | Modul | Datei |
@@ -182,8 +183,8 @@ Hauptpaket unter `backend/src/main/java/io/opaa/`:
 Daneben liegt eine `CLAUDE.md` mit `@AGENTS.md`; jedes weitere Top-Level-Paket des Moduls hat eine
 `CLAUDE.md`, die die Datei des Moduls importiert (`@../common/AGENTS.md`). Claude Code lädt eine
 `CLAUDE.md` in einem Unterverzeichnis, sobald dort eine Datei gelesen wird. Andere Werkzeuge lesen
-die Datei des Moduls vor der Arbeit im Modul selbst. `ModuleAgentsFileTest` hält Ablage, Import und
-Länge fest; ein neues Top-Level-Paket bekommt eine solche `CLAUDE.md`. Modulspezifisches gehört in
+die Datei des Moduls vor der Arbeit im Modul selbst. `ModuleAgentsFileTest` hält Ablage, Import,
+Länge und ADR-Verweise fest (jede genannte Nummer und jeder Link hat eine Datei unter `docs/decisions/`); ein neues Top-Level-Paket bekommt eine solche `CLAUDE.md`. Modulspezifisches gehört in
 diese Dateien, hier bleibt nur, was modulübergreifend gilt.
 
 ## Prozesslokaler Zustand (ADR-0021)

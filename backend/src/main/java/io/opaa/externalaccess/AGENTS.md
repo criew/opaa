@@ -35,9 +35,13 @@ connectors und app ab.
   den sonst unauthentifiziert registrierten Endpunkt, `tools/list` wird je Anfrage gebaut, und eine
   unbekannte Protokollversion wird abgewiesen.
 
+## Maßgebliche ADRs
+
+- [ADR-0035](../../../../../../../docs/decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md): MCP-Server, Zugangstokens, Freigabe
+- [ADR-0039](../../../../../../../docs/decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (Entscheidung 5): Fremdzugang mit eigener Auswahl
+
 ## Verweise
 
-- ADR (`docs/decisions/`): 0035
 - Handbuch: `docs/handbuch/fremdzugaenge.md`
 - Strukturtests: `McpDependencyStructureTest`, `SearchDependencyStructureTest`
 
@@ -48,6 +52,4 @@ connectors und app ab.
   --tests 'io.opaa.search.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/external/`. Regeln und
-Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
-für rein additive DDL entbehrlich.
+Schemaänderungen: neue Datei unter `db/changelog/external/`, Regeln in `backend/AGENTS.md`, „Liquibase“.
