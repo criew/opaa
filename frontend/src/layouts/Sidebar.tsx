@@ -27,7 +27,7 @@ import { SIDEBAR_DEFAULT_WIDTH, useUiStore } from '@/shared/stores/uiStore'
 import SidebarResizeHandle from './SidebarResizeHandle'
 import { rememberSpaceUse, spacesByRecentUse, useRecentSpaceIds } from '../utils/recentSpaces'
 import { darkRoles, fontFamily, lightRoles, shadow } from '@/shared/theme/tokens'
-import { spaceMembershipLabel } from '@/components/assets/assetLabels'
+import { spaceMembershipLabel } from '@/features/asset'
 
 const SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH
 

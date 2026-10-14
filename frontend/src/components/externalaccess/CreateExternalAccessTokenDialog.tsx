@@ -21,11 +21,11 @@ import {
   listEligibleExternalAccessLibraries,
 } from '../../services/externalAccessApi'
 import { radius } from '@/shared/theme/tokens'
-import { markAssetFavorite, unmarkAssetFavorite } from '../../services/assetApi'
-import AssetTile from '../assets/AssetTile'
-import type { AssetTileData } from '../assets/assetTileData'
-import { type AssetFilterKey, type AssetFilters } from '../assets/AssetFilterChips'
-import AssetFilterBar from '../assets/AssetFilterBar'
+import { markAssetFavorite, unmarkAssetFavorite } from '@/features/asset'
+import { AssetTile } from '@/features/asset'
+import type { AssetTileData } from '@/features/asset'
+import { type AssetFilterKey, type AssetFilters } from '@/features/asset'
+import { AssetFilterBar } from '@/features/asset'
 import {
   DISCLOSURE_HINT,
   NO_LIBRARIES_HINT,

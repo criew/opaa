@@ -15,7 +15,7 @@ import IndexingSnackbar from '../components/admin/IndexingSnackbar'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useUiStore } from '@/shared/stores/uiStore'
-import { SpaceListContext } from '../components/assets/spaceListContext'
+import { SpaceListContext } from '@/features/asset'
 import { loadSpaceList } from '../app/themeSeams'
 
 export default function AppShell() {

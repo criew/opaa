@@ -99,7 +99,7 @@ vi.mock('../services/spaceApi', () => ({
   archiveSpace: (...args: [string]) => mockArchiveSpace(...args),
 }))
 
-vi.mock('../services/assetApi', () => ({
+vi.mock('../features/asset/api/assetApi', () => ({
   getSpaceAssetAssociations: (spaceId: string) => mockGetSpaceAssetAssociations(spaceId),
   associateSpaceAsset: (spaceId: string, assetType: string, assetId: string) =>
     mockAssociateSpaceAsset(spaceId, assetType, assetId),

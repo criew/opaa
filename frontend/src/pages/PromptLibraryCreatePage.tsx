@@ -6,13 +6,10 @@ import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
-import AssetNameFields from '../components/assets/AssetNameFields'
-import AssetOwnerFields from '../components/assets/AssetOwnerFields'
-import AssetRightsFields from '../components/assets/AssetRightsFields'
-import {
-  applyPendingGrantsAfterCreation,
-  type PendingGrant,
-} from '../components/assets/pendingGrants'
+import { AssetNameFields } from '@/features/asset'
+import { AssetOwnerFields } from '@/features/asset'
+import { AssetRightsFields } from '@/features/asset'
+import { applyPendingGrantsAfterCreation, type PendingGrant } from '@/features/asset'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'

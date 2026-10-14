@@ -232,9 +232,10 @@ vi.mock('@/features/principal/api/groupLookupApi', async () => {
   }
 })
 
-vi.mock('../services/assetApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/assetApi')>('../services/assetApi')
+vi.mock('../features/asset/api/assetApi', async () => {
+  const actual = await vi.importActual<typeof import('../features/asset/api/assetApi')>(
+    '../features/asset/api/assetApi',
+  )
   return {
     ...actual,
     getSpaceAssetAssociations: mockGetSpaceAssetAssociations,

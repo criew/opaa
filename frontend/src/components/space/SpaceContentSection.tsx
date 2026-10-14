@@ -7,8 +7,8 @@ import {
   useNotificationStore,
   type NotificationSeverity,
 } from '@/shared/stores/notificationStore'
-import AssetTilePicker from '../assets/AssetTilePicker'
-import { assetPickKey, type AssetPick } from '../assets/assetPick'
+import { AssetTilePicker } from '@/features/asset'
+import { assetPickKey, type AssetPick } from '@/features/asset'
 import { successionAwareMessage } from '@/features/succession'
 
 /** The one disclosure about unreadable associations: no number, no name (ADR-0039). */

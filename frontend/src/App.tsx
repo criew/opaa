@@ -53,8 +53,8 @@ import SpacesOverviewPage from './pages/SpacesOverviewPage'
 import SpaceCreatePage from './pages/SpaceCreatePage'
 import SpaceSettingsPage from './pages/SpaceSettingsPage'
 // asset
-import CatalogPage from './pages/CatalogPage'
-import CatalogNewPage from './pages/CatalogNewPage'
+import { CatalogPage } from '@/features/asset/routes'
+import { CatalogNewPage } from '@/features/asset/routes'
 import { catalogRoute } from './shared/assetTypes'
 // library
 import LibraryCreatePage from './pages/LibraryCreatePage'

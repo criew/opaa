@@ -6,7 +6,7 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { useDocumentStore } from '../stores/documentStore'
-import { useGrantStore } from '../stores/grantStore'
+import { useGrantStore } from '@/features/asset'
 import { useIndexingStore } from '../stores/indexingStore'
 
 /**

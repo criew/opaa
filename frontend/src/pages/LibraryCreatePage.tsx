@@ -66,13 +66,10 @@ import { useIndexingStore } from '../stores/indexingStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '@/features/principal'
 import { useSourceTypes } from '../components/admin/connections/useSourceTypes'
-import AssetNameFields from '../components/assets/AssetNameFields'
-import AssetOwnerFields from '../components/assets/AssetOwnerFields'
-import AssetRightsFields from '../components/assets/AssetRightsFields'
-import {
-  applyPendingGrantsAfterCreation,
-  type PendingGrant,
-} from '../components/assets/pendingGrants'
+import { AssetNameFields } from '@/features/asset'
+import { AssetOwnerFields } from '@/features/asset'
+import { AssetRightsFields } from '@/features/asset'
+import { applyPendingGrantsAfterCreation, type PendingGrant } from '@/features/asset'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
 import {
   documentSourceTypeLabel,

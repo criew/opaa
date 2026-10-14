@@ -23,11 +23,7 @@ import {
   updateSpaceDetails,
   updateSpaceMemberRole,
 } from '../services/spaceApi'
-import {
-  associateSpaceAsset,
-  detachSpaceAsset,
-  getSpaceAssetAssociations,
-} from '../services/assetApi'
+import { associateSpaceAsset, detachSpaceAsset, getSpaceAssetAssociations } from '@/features/asset'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 

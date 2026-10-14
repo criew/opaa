@@ -5,8 +5,8 @@ import { transcriptionHandlers } from './transcriptionHandlers'
 // space
 import { spaceHandlers } from './spaceHandlers'
 // asset
-import { assetHandlers } from './assetHandlers'
-import { catalogHandlers } from './catalogHandlers'
+import { assetHandlers } from '../features/asset/mocks/assetHandlers'
+import { catalogHandlers } from '../features/asset/mocks/catalogHandlers'
 // library
 import { libraryHandlers } from './libraryHandlers'
 import { libraryDocumentHandlers } from './libraryDocumentHandlers'

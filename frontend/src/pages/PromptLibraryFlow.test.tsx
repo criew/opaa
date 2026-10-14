@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { Route, Routes, useLocation } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
-import { resetMockFavorites } from '../mocks/assetFixtures'
+import { resetMockFavorites } from '../features/asset/mocks/assetFixtures'
 import {
   answerConfirm,
   renderWithProviders,

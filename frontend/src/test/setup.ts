@@ -14,8 +14,8 @@ import { server } from '../mocks/server'
 // chat
 import { resetChatMockState } from '../mocks/chatHandlers'
 // asset
-import { resetGrantMockState } from '../mocks/assetHandlers'
-import { resetMockSpaceAssetAssociations } from '../mocks/assetFixtures'
+import { resetGrantMockState } from '../features/asset/mocks/assetHandlers'
+import { resetMockSpaceAssetAssociations } from '../features/asset/mocks/assetFixtures'
 // library
 import { resetIndexingState } from '../mocks/indexingHandlers'
 import { resetDocumentMockState } from '../mocks/libraryDocumentHandlers'

@@ -9,7 +9,7 @@ import type {
 } from '@/shared/api/types'
 import { mockGroups, mockMyGroups } from '../features/group/mocks/groupFixtures'
 import { mockMyCapabilities } from '../features/capability/mocks/capabilityFixtures'
-import { mockSpaceAssetAssociations } from './assetFixtures'
+import { mockSpaceAssetAssociations } from '../features/asset/mocks/assetFixtures'
 import {
   mockPromptLibraries,
   mockPrompts,

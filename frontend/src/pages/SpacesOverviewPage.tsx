@@ -7,7 +7,7 @@ import MetaBadge from '@/shared/ui/MetaBadge'
 import OverviewPage, { OverviewCard } from '@/shared/ui/overview/OverviewPage'
 import { SuccessionStateNote } from '@/features/succession'
 import { useSpaceStore } from '../stores/spaceStore'
-import { spaceMembershipLabel } from '@/components/assets/assetLabels'
+import { spaceMembershipLabel } from '@/features/asset'
 import { spaceRoleLabel } from '@/shared/utils/labels'
 import type { SpaceListResponse } from '@/shared/api/types'
 
