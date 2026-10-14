@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt ADR-0005, ADR-0021, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
+Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt ADR-0005, ADR-0021, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039 · setzt den Maintainer-Beschluss „Fundament zuerst" (18.09.2026, Epic #1715, Issue #1716) nach fünf Stakeholder-Bewertungen um
 
 ## Kontext
 
@@ -49,7 +49,8 @@ nur der Suchwert HMAC-SHA256 unter einem HKDF-abgeleiteten Zweckschlüssel
 wie die Refresh- und Aktionstoken aus ADR-0033, Entscheidung 6; kein Passwort-KDF (läge auf dem
 heißen Pfad jedes Aufrufs und schützt gegen einen Angriff, den ein Zufallsmerkmal nicht hat), kein
 schlüsselloser SHA-256 (ein Bearer-Geheimnis gehört unter den Schlüssel). **Folge:** Eine Rotation
-von `OPAA_AUTH_JWT_SECRET` entwertet alle Zugangstokens auf einmal. Der Klartext ist genau einmal
+von `OPAA_AUTH_JWT_SECRET` entwertet alle Zugangstokens auf einmal; das gehört in die
+Betriebsdokumentation neben die übrigen Folgen der Rotation. Der Klartext ist genau einmal
 sichtbar; das Präfix dient der Wiedererkennung und für Geheimnis-Scanner und erscheint **nicht** in
 Anwendungs- oder Proxy-Logs (es ergäbe mit Zeitstempel und Netzadresse die Abfragehistorie, die das
 Nachweisprotokoll ausschließt). Ausstellung, Ablauf und Sofortwiderruf folgen derselben Prüfkette
@@ -80,12 +81,16 @@ aus dem Haus erreichbar?" auch nach der Löschfrist des Nachweisprotokolls beant
 ist pflichtbefristet auf höchstens `opaa.external-access.max-release-days` (365) mit
 Wiedervorlage per Mail (`reminder-lead-days` 14, Mailweg aus ADR-0033); eine unbefristete Freigabe
 wäre eine Ratsche. Seit ADR-0037 und ADR-0039 ist sie das einzige Reichweitenfeld neben den Grants.
-Freigaberecht: Verwalter-Rolle der Bibliothek plus Systemverwaltung, keine Genehmigungsstufe. Eine
-zurückgenommene oder erloschene Freigabe entzieht die Bibliothek allen Tokens sofort und lebt in
-bestehenden Tokens nicht wieder auf. Zwei künftige Sperrbedingungen sind festgehalten, nicht gebaut:
-die Freigabe-Obergrenze konnektor-gespeister Bibliotheken (#797) und die Sperre im Zustand
-„Nachfolge offen"; wer sie nachrüstet, setzt eine gesetzte Freigabe aus, statt sie still zu
-entziehen.
+Freigaberecht: Verwalter-Rolle der Bibliothek plus Systemverwaltung, keine Genehmigungsstufe —
+Befristung, Historisierung und die angezeigte Anzahl der Tokens, die die Bibliothek enthalten
+(`tokenCount`), sind die Antwort auf das dahinterliegende Anliegen. Eine zurückgenommene oder
+erloschene Freigabe entzieht die Bibliothek allen Tokens sofort und lebt in bestehenden Tokens nicht
+wieder auf. Eine Bibliothek im Zustand „Nachfolge offen" ist von der Freigabe gesperrt
+(`LibraryExternalAccessService` prüft `requireAssetReachNotFrozen`, ADR-0036, Entscheidung 6).
+Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken deckelt dieses Merkmal **nicht**
+(Maintainer-Festlegung in #797 vom 21.09.2026: sie gilt allein der Freigabe an „Alle Konten");
+der Schutz gegen „eingespeist, dann über den Fremdzugang breit erreichbar" liegt in Befristung und
+MANAGER-Schranke.
 
 ### 5. Genau ein Zugriffsweg auf die Daten — und die Prüfung geschieht je Werkzeugaufruf
 
@@ -155,12 +160,11 @@ Weil es einen Server gibt, fallen bei einem Bruch alle Fremdzugänge des Hauses 
 - Eigener, für Werkzeuge optimierter Lesepfad — zweite Qualitäts- und Rechtewahrheit.
 - OpenAI-kompatibler `/v1/chat/completions`, Werkzeug `ask` — reduziert Belege auf ein Textfeld bzw. hängt den Modellverbrauch an ein fremdes Werkzeug.
 - Nachweis der abgerufenen Fundstellen — ein Tätigkeitsprofil je Person; das fremde Werkzeug führt sein eigenes Protokoll.
-- Service-Accounts ohne Person, schreibende Fremdzugänge — Zielbild bzw. eigene Missbrauchsfläche.
+- Service-Accounts ohne Person, schreibende Fremdzugänge — Zielbild bzw. eigene Missbrauchsfläche; das Handbuch rät davon ab, ein Fachverfahren an ein persönliches Token zu hängen.
 
 ## Offen
 
 - OAuth 2.1 für fremd betriebene Dienste (Entscheidung 3), sobald die Erreichbarkeit entschieden ist.
-- Freigabe-Obergrenze (#797) und Sperre bei „Nachfolge offen" als Sperrbedingungen der Freigabe.
 
 ## Änderungsverlauf
 
@@ -168,4 +172,5 @@ Weil es einen Server gibt, fallen bei einem Bruch alle Fremdzugänge des Hauses 
 |---|---|---|---|
 | 2026-09-18 | #1715, #1721 | Umsetzung abgenommen; Werkzeugliste je Token und Fassungsablehnung gebaut | 1, 6 |
 | 2026-09-18 | #1765, #1766 | Reverse-Proxy-Auflage; Auszüge und `fetch` per Dokumentkennung (`opaa.mcp.default-max-hits`, `excerpt-characters`) | 5 |
+| 2026-09-21 | #797 | Freigabe-Obergrenze deckelt die Fremdzugangsfreigabe nicht (Maintainer) | 4 |
 | 2026-10-02 | #2091 | `listed` entfällt (ADR-0039); Gleichheitszusage umformuliert, Fremdzugang ohne Space | 4, 5 |
