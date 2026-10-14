@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -68,7 +67,6 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
   private final List<ExternalAccessRefusalStyle> refusalStyles;
   private final JsonMapper jsonMapper;
   private final Clock clock;
-  private final ZoneId zone;
 
   public ExternalAccessTokenAuthenticationFilter(
       ExternalAccessTokenAuthenticator authenticator,
@@ -83,7 +81,6 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
     this.refusalStyles = List.copyOf(refusalStyles);
     this.jsonMapper = jsonMapper;
     this.clock = clock;
-    this.zone = ZoneId.systemDefault();
   }
 
   /** Whether the request presents a bearer value shaped like an access token. */
@@ -143,7 +140,7 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
     if (response.getStatus() >= HttpStatus.BAD_REQUEST.value()) {
       return;
     }
-    LocalDate today = LocalDate.ofInstant(clock.instant(), zone);
+    LocalDate today = LocalDate.now(clock);
     if (today.equals(authenticated.lastUsedOn())) {
       return;
     }

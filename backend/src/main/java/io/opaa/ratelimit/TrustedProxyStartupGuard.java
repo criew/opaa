@@ -3,7 +3,6 @@ package io.opaa.ratelimit;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
@@ -16,7 +15,6 @@ import org.springframework.context.annotation.Profile;
  */
 @Configuration
 @Profile("oidc")
-@EnableConfigurationProperties(RateLimitProperties.class)
 public class TrustedProxyStartupGuard {
 
   private static final Logger log = LoggerFactory.getLogger(TrustedProxyStartupGuard.class);

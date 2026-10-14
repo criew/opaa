@@ -58,7 +58,7 @@ public class CredentialsEncryptor {
    * same read; writers are expected to fail hard.
    */
   public String decrypt(String stored) {
-    if (!StringUtils.hasText(stored) || !stored.startsWith(ENCRYPTED_MARKER)) {
+    if (!isEncrypted(stored)) {
       return stored;
     }
     if (!stored.startsWith(AesGcmCipher.PREFIX)) {
@@ -74,6 +74,11 @@ public class CredentialsEncryptor {
               + " Verschlüsselungsschlüssel oder beschädigter Wert",
           e);
     }
+  }
+
+  /** Whether {@code stored} carries the encryption marker, in any format version. */
+  public static boolean isEncrypted(String stored) {
+    return stored != null && stored.startsWith(ENCRYPTED_MARKER);
   }
 
   private AesGcmCipher requireCipher() {

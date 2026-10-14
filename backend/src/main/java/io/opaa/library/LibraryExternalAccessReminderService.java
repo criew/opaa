@@ -13,6 +13,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -22,6 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * The Wiedervorlage before a Freigabe für Fremdzugänge expires (ADR-0033's mail mechanics). The
@@ -36,7 +39,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Sends at most one mail per release: {@code external_access_reminder_sent_at} is written
  * whether the send succeeded or not, and it is cleared by every change of the release, so a renewed
  * release earns a fresh reminder. A failed send is not retried the next day - {@link MailService}
- * records the failure, and a Bestand mail retried daily for two weeks is noise, not resilience.
+ * records the failure, and a Bestand mail retried daily for two weeks is noise, not resilience. The
+ * mails leave after the markers have committed, so a slow mail server never holds the transaction
+ * open and a rolled-back run sends nothing.
  */
 @Service
 public class LibraryExternalAccessReminderService {
@@ -70,7 +75,7 @@ public class LibraryExternalAccessReminderService {
   }
 
   /**
-   * @return how many reminders this run sent out
+   * @return how many reminders this run hands to the mail service after its commit
    */
   @Transactional
   public int runOnce() {
@@ -83,7 +88,7 @@ public class LibraryExternalAccessReminderService {
         libraryRepository
             .findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtBetween(
                 ExternalAccessState.ACTIVE, now, until);
-    int sent = 0;
+    List<Runnable> sends = new ArrayList<>();
     for (KnowledgeLibrary library : due) {
       library.markExternalAccessReminderSent(now);
       libraryRepository.save(library);
@@ -96,22 +101,30 @@ public class LibraryExternalAccessReminderService {
         continue;
       }
       User user = recipient.get();
-      mail.send(
-          MailTemplateKey.EXTERNAL_ACCESS_RELEASE_EXPIRING,
-          Locale.GERMAN,
-          user.getEmail(),
-          Map.of(
-              "displayName",
-              user.getDisplayName() == null ? "" : user.getDisplayName(),
-              "libraryName",
-              library.getName(),
-              "expiresAtDate",
-              DATE.format(library.getExternalAccessExpiresAt().atZone(clock.getZone())),
-              "actionUrl",
-              publicBaseUrl.link("libraries/" + library.getId()).orElse("")));
-      sent++;
+      sends.add(
+          () ->
+              mail.send(
+                  MailTemplateKey.EXTERNAL_ACCESS_RELEASE_EXPIRING,
+                  Locale.GERMAN,
+                  user.getEmail(),
+                  Map.of(
+                      "displayName",
+                      user.getDisplayName() == null ? "" : user.getDisplayName(),
+                      "libraryName",
+                      library.getName(),
+                      "expiresAtDate",
+                      DATE.format(library.getExternalAccessExpiresAt().atZone(clock.getZone())),
+                      "actionUrl",
+                      publicBaseUrl.link("libraries/" + library.getId()).orElse(""))));
     }
-    return sent;
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            sends.forEach(Runnable::run);
+          }
+        });
+    return sends.size();
   }
 
   private Optional<User> resolveRecipient(KnowledgeLibrary library) {

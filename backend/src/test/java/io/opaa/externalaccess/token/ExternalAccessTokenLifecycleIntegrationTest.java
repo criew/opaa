@@ -299,7 +299,7 @@ class ExternalAccessTokenLifecycleIntegrationTest {
     private final List<String> reminded = new java.util.ArrayList<>();
 
     private RecordingMailer() {
-      super(null, ZoneId.systemDefault());
+      super(null, Clock.systemDefaultZone());
     }
 
     @Override

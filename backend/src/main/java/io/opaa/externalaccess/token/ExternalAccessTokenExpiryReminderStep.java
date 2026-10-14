@@ -4,6 +4,7 @@ import io.opaa.account.LocalAccountMaintenanceStep;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -55,8 +56,9 @@ public class ExternalAccessTokenExpiryReminderStep implements LocalAccountMainte
       ExternalAccessTokenRepository tokens,
       UserRepository users,
       ExternalAccessTokenMailer mailer,
-      ExternalAccessSettingsService settings) {
-    this(tokens, users, mailer, settings, ZoneId.systemDefault());
+      ExternalAccessSettingsService settings,
+      Clock clock) {
+    this(tokens, users, mailer, settings, clock.getZone());
   }
 
   ExternalAccessTokenExpiryReminderStep(

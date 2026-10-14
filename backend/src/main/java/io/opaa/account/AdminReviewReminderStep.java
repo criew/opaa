@@ -6,10 +6,10 @@ import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +18,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -45,28 +44,19 @@ public class AdminReviewReminderStep implements LocalAccountMaintenanceStep {
   private final LocalCredentialsRepository credentials;
   private final ExpiryReminderStep expiryReminder;
   private final LocalAccountMailer mailer;
-  private final ZoneId zone;
+  private final Clock clock;
 
-  @Autowired
   public AdminReviewReminderStep(
       UserRepository users,
       LocalCredentialsRepository credentials,
       ExpiryReminderStep expiryReminder,
-      LocalAccountMailer mailer) {
-    this(users, credentials, expiryReminder, mailer, ZoneId.systemDefault());
-  }
-
-  AdminReviewReminderStep(
-      UserRepository users,
-      LocalCredentialsRepository credentials,
-      ExpiryReminderStep expiryReminder,
       LocalAccountMailer mailer,
-      ZoneId zone) {
+      Clock clock) {
     this.users = users;
     this.credentials = credentials;
     this.expiryReminder = expiryReminder;
     this.mailer = mailer;
-    this.zone = zone;
+    this.clock = clock;
   }
 
   @Override
@@ -90,7 +80,7 @@ public class AdminReviewReminderStep implements LocalAccountMaintenanceStep {
         countPerOrganization.merge(user.getOrganizationId(), 1L, Long::sum);
       }
     }
-    if (isQuarterStart(LocalDate.ofInstant(now, zone))) {
+    if (isQuarterStart(LocalDate.ofInstant(now, clock.getZone()))) {
       for (LocalCredentials row : credentials.findAllById(byId.keySet())) {
         User user = byId.get(row.getUserId());
         if (user == null || !row.countsAsWithoutExpiry()) {
