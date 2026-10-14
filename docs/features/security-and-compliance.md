@@ -184,7 +184,7 @@ ersten Stufe nicht geschrieben.
   der Gruppe: sie entscheidet, wer die Gruppe überhaupt als Empfänger benennen kann
 - **Setzen und Lösen des Schutzkennzeichens einer Gruppe** (Personalvertretung,
   Schwerbehindertenvertretung, Gleichstellung, Personalvorgänge) — allein durch die
-  Systemverwaltung (ADR-0036, Entscheidung 9, Nachtrag vom 26.09.2026)
+  Systemverwaltung (ADR-0036, Entscheidung 9)
 - Bereitstellung einer Bibliothek in einem Space, dessen Mitglieder nicht sämtlich Lesezugriff haben
 - Eigentümerwechsel, Übernahme von Assets ohne Zuständigkeit und der Übergang in „Nachfolge offen"
 
@@ -643,7 +643,7 @@ für den Personen-Einstieg, Abrufprotokoll, Zeitfenster mit Seitenobergrenze und
 (siehe „Der Lesepfad" unten) —, und die Pseudonymisierung ist an den Personen-Einstieg und die
 Kontolöschung gekoppelt (#391/#395). Praktische Folge, die dieses Kapitel ausspricht: Solange die
 Pseudonymisierung fehlt, **hält eine Historienzeile die Löschung eines Kontos auf** (die
-Löschschuld, die ADR-0036 in Zahlen führt), und für ausgeschiedene Personen bleibt innerhalb der
+Löschschuld, die ADR-0036 unter „Konsequenzen“ benennt; Autorität ist `UserDeletionBlockerCoverageIntegrationTest`), und für ausgeschiedene Personen bleibt innerhalb der
 Höchstdauer alles belegbar — was Prüfungen gerade brauchen. Die Löschung des **Objekts**, auf das
 sich eine Zeile bezieht, lässt die Historie unverändert bestehen ([ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)).
 

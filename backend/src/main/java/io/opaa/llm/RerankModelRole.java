@@ -1,5 +1,8 @@
 package io.opaa.llm;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -29,19 +32,27 @@ import org.springframework.stereotype.Service;
  * <p><b>Neither {@link #currentStatus()} nor {@link #usable()} ever probes.</b> Both answer from
  * configuration and the last known endpoint state: the first is on the path of an administration
  * page load, the second on the path of every query, and neither may pay for a network round trip.
- * The state is kept current by {@link #refresh()} - once at startup, then on a fixed schedule - and
- * by every real {@link #rerank} call, which records what actually happened.
+ * The state is kept current by every real {@link #rerank} call, which records what actually
+ * happened, and by {@link #refresh()} - once at startup, then whenever the last result is older
+ * than {@link RerankProperties#probeInterval()} ({@link #probePeriodically()}).
  */
 @Service
 public class RerankModelRole implements RerankRoleStatusProvider {
 
   private static final Logger log = LoggerFactory.getLogger(RerankModelRole.class);
 
-  /** How often the endpoint is re-probed while nothing else exercises it. */
-  private static final long PROBE_INTERVAL_MILLIS = 60_000;
+  /** How often {@link #probePeriodically()} checks whether a probe is due; costs no request. */
+  private static final long TICK_MILLIS = 5_000;
+
+  /**
+   * How soon an {@link RerankRoleState#UNREACHABLE} role probes again, capped by the probe
+   * interval: queries skip the endpoint in that state, so only a probe can bring it back.
+   */
+  static final Duration RETRY_INTERVAL = Duration.ofSeconds(60);
 
   private final RerankProperties properties;
   private final RerankClient client;
+  private final Clock clock;
 
   /**
    * Whether {@code opaa.rerank.base-url} carries userinfo. Such an address leaves the role unusable
@@ -51,11 +62,11 @@ public class RerankModelRole implements RerankRoleStatusProvider {
   private final boolean baseUrlRejected;
 
   /**
-   * The last probe or call result for a switched-on, bound role; {@code null} until the first
-   * probe. The switched-off and unbound states are derived from configuration instead, so they can
-   * never go stale.
+   * The last probe or call result for a switched-on, bound role and when it was recorded; the
+   * status is {@code null} until the first probe. The switched-off and unbound states are derived
+   * from configuration instead, so they can never go stale.
    */
-  private final AtomicReference<RerankRoleStatus> lastKnown = new AtomicReference<>();
+  private final AtomicReference<Observation> lastKnown;
 
   /**
    * How many {@link #rerank} calls came back without a usable ranking since this process started -
@@ -65,10 +76,13 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    */
   private final AtomicLong degradedCalls = new AtomicLong();
 
-  public RerankModelRole(RerankProperties properties, RerankClient client) {
+  public RerankModelRole(RerankProperties properties, RerankClient client, Clock clock) {
     this.properties = properties;
     this.client = client;
+    this.clock = clock;
     this.baseUrlRejected = ModelEndpointUri.containsCredentials(properties.baseUrl());
+    // Counting from construction keeps the first scheduled probe one interval after startup.
+    this.lastKnown = new AtomicReference<>(new Observation(null, clock.instant()));
   }
 
   @Override
@@ -92,25 +106,35 @@ public class RerankModelRole implements RerankRoleStatusProvider {
           emptyToNull(properties.model()),
           "rerank role switched on, but opaa.rerank.base-url and/or opaa.rerank.model are unset");
     }
-    RerankRoleStatus known = lastKnown.get();
+    RerankRoleStatus known = lastKnown.get().status();
     return known != null ? known : status(RerankRoleState.UNREACHABLE, "endpoint not probed yet");
   }
 
   /**
-   * Keeps the state current while nothing else exercises the endpoint - so a role that dies in
-   * operation shows up as {@link RerankRoleState#UNREACHABLE} without waiting for the next query.
-   * "Shows up" is bounded by {@link RerankProperties#timeout()}, not by {@link
-   * #PROBE_INTERVAL_MILLIS}: a probe against a hanging endpoint can itself take up to that budget
-   * (240s by default, see #1154) before it counts as failed, so the honest bound on a dead
-   * endpoint's detection is one probe interval plus one timeout - and the first in-flight query
-   * pays up to one more timeout before it falls back, exactly as this probe does.
+   * Probes once the last result - probe or real call - is older than {@link
+   * RerankProperties#probeInterval()}, or older than {@link #RETRY_INTERVAL} while the role is not
+   * {@link RerankRoleState#READY}. Detecting a dead endpoint without traffic therefore takes up to
+   * one interval plus one {@link RerankProperties#timeout()}, the time a probe against a hanging
+   * endpoint needs to count as failed.
    */
   @Scheduled(
-      fixedDelay = PROBE_INTERVAL_MILLIS,
-      initialDelay = PROBE_INTERVAL_MILLIS,
+      fixedDelay = TICK_MILLIS,
+      initialDelay = TICK_MILLIS,
       scheduler = "rerankProbeScheduler")
   void probePeriodically() {
-    refresh();
+    if (!properties.enabled() || baseUrlRejected || !properties.bound()) {
+      return;
+    }
+    Observation last = lastKnown.get();
+    boolean ready = last.status() != null && last.status().state() == RerankRoleState.READY;
+    Duration interval = properties.probeInterval();
+    Duration due = ready || interval.compareTo(RETRY_INTERVAL) < 0 ? interval : RETRY_INTERVAL;
+    Instant now = clock.instant();
+    // A result stamped in the future means the wall clock stepped back; probing then keeps the
+    // recovery promise instead of waiting out the size of the step.
+    if (now.isBefore(last.at()) || !now.isBefore(last.at().plus(due))) {
+      refresh();
+    }
   }
 
   /**
@@ -119,7 +143,7 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    */
   public RerankRoleStatus refresh() {
     if (!properties.enabled() || baseUrlRejected || !properties.bound()) {
-      lastKnown.set(null);
+      record(null);
       return currentStatus();
     }
     RerankClient.ProbeFailure failure = client.probe(properties);
@@ -127,7 +151,7 @@ public class RerankModelRole implements RerankRoleStatusProvider {
         failure == null
             ? status(RerankRoleState.READY, null)
             : status(RerankRoleState.UNREACHABLE, failure.message(), failure.timedOut());
-    lastKnown.set(probed);
+    record(probed);
     return probed;
   }
 
@@ -154,12 +178,13 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    * afterwards.
    */
   public List<RerankClient.ScoredCandidate> rerank(String query, List<String> texts) {
-    if (!properties.enabled() || baseUrlRejected || !properties.bound()) {
+    if (!properties.enabled() || baseUrlRejected || !properties.bound() || texts.isEmpty()) {
+      // Nothing to score means no contact with the endpoint, and so no sign of life to record.
       return List.of();
     }
     try {
       List<RerankClient.ScoredCandidate> scored = client.rerank(properties, query, texts);
-      lastKnown.set(status(RerankRoleState.READY, null));
+      record(status(RerankRoleState.READY, null));
       if (scored.isEmpty() && !texts.isEmpty()) {
         // The endpoint answered, but with nothing the caller can order by - the caller falls back
         // to its incoming order just as it does after a failure, so it counts as one.
@@ -173,7 +198,7 @@ public class RerankModelRole implements RerankRoleStatusProvider {
       // (#1154): the endpoint answered the connection, it simply did not finish in time.
       degradedCalls.incrementAndGet();
       boolean timedOut = e instanceof RerankClient.RerankTimeoutException;
-      lastKnown.set(status(RerankRoleState.UNREACHABLE, e.getMessage(), timedOut));
+      record(status(RerankRoleState.UNREACHABLE, e.getMessage(), timedOut));
       // The exception object, not just its message: a programming error caught here (NPE from a
       // client bug, say) has a null message and would otherwise be indistinguishable from a dead
       // endpoint.
@@ -185,6 +210,13 @@ public class RerankModelRole implements RerankRoleStatusProvider {
       return List.of();
     }
   }
+
+  private void record(RerankRoleStatus status) {
+    lastKnown.set(new Observation(status, clock.instant()));
+  }
+
+  /** A recorded result and its time; {@code status} is {@code null} while nothing is known. */
+  private record Observation(RerankRoleStatus status, Instant at) {}
 
   private RerankRoleStatus status(RerankRoleState state, String diagnostic) {
     return status(state, diagnostic, false);

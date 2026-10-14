@@ -1,6 +1,10 @@
 # Konnektor-Freigabe, Verbindungsprofile und verbundene Konten
 
-> **Status: Entwurf.** Grundlage sind die Beschlüsse des Maintainers vom 03.10.2026 in Epic
+> **Status: umgesetzt, bis auf Postfächer, den MCP-Client und den Token-Austausch (offen).** Modul
+> `connection` mit Verbindungsprofilen, Freigabe und Sperre je Typ, Token-Speicher, OAuth, „Quelle
+> verbinden“ und verbundenen Konten ist gebaut; die Umsetzung je Schnitt beschreiben die Nachträge
+> in [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md).
+> Grundlage sind die Beschlüsse des Maintainers vom 03.10.2026 in Epic
 > [#2147](https://github.com/criew/opaa/issues/2147), einschließlich der Folgebeschlüsse nach der
 > Stakeholder-Runde. Die nötigen ADR-Nachträge sind am Ende benannt. Mit den Entscheidungen vom
 > 11.10.2026 entfallen der Vorfallszugriff (#2171) und die Rechtsklärung als Projektvoraussetzung
@@ -8,8 +12,8 @@
 
 ## Motivation
 
-Heute richtet eine einzelne Person eine Quelle vollständig ein: Adresse, Zugangsdaten und
-Einstellungen stehen in der Bibliothek. Das reicht für eine Dateiablage mit Dienstkonto, aber nicht
+Vor diesem Epic richtete eine einzelne Person eine Quelle vollständig ein: Adresse, Zugangsdaten und
+Einstellungen standen in der Bibliothek. Das reichte für eine Dateiablage mit Dienstkonto, aber nicht
 für drei Fälle:
 
 1. **Quellen, die nur OAuth kennen.** Dropbox gibt weder Dienstkonto noch statischen Schlüssel aus.
@@ -21,8 +25,9 @@ für drei Fälle:
    Server es in der Installation gibt und wer sie nutzt, statt dass jede Person eine beliebige
    Adresse einträgt.
 
-Heute gibt es dafür nichts: Eine Fähigkeit (`CREATE_CONNECTOR_LIBRARY`) deckt alle Konnektoren ab,
-jede Bibliothek trägt ihre Zieladresse frei, und OPAA speichert keine OAuth-Token.
+Vor diesem Epic gab es dafür nichts: Eine Fähigkeit (`CREATE_CONNECTOR_LIBRARY`) deckte alle
+Konnektoren ab, jede Bibliothek trug ihre Zieladresse frei, und OPAA speicherte keine OAuth-Token.
+Inzwischen ist das Modul `connection` gebaut (siehe Status).
 
 ---
 
@@ -676,11 +681,11 @@ Nutzungsfreigabe verbindet nur die Systemverwaltung. Einzelheiten stehen im Nach
 
 ## Reihenfolge
 
-1. **Freigabe und Profile:** Verbindungsprofile, Freigabe je Profil bzw. Typ, Sperre, Profilpflicht.
-2. **Verbundene Konten mit persönlichem Geheimnis** und private Bibliotheken mit Lebenszyklus; erster
+1. **Freigabe und Profile** (gebaut): Verbindungsprofile, Freigabe je Profil bzw. Typ, Sperre, Profilpflicht.
+2. **Verbundene Konten mit persönlichem Geheimnis** und private Bibliotheken mit Lebenszyklus (gebaut); erster
    Nutzer ist Nextcloud mit App-Passwort (lokal testbar, Dateiablage von openDesk).
-3. **OAuth-Baustein** mit Client-Credentials, „Quelle verbinden“ und der MCP-Grundlage.
-4. **Dropbox** (Quelle verbinden) und **Exchange** (verbundenes Konto, Funktionspostfächer); Exchange
+3. **OAuth-Baustein** mit Client-Credentials, „Quelle verbinden“ und der MCP-Grundlage (gebaut).
+4. **Dropbox** (Quelle verbinden, gebaut) und **Exchange** (verbundenes Konto, Funktionspostfächer, nicht gebaut); Exchange
    erst nach der erneuten Prüfung des Postfach-Konzepts (#2172), dem Kontingent, dem Pilot ohne
    Konnektor und mit den [Bedingungen für Postfächer](#bedingungen-für-den-ersten-postfach-konnektor).
    Die Rechtsfragen klärt der Betreiber vor der Freigabe anhand der Prüfliste im Handbuch

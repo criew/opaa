@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -33,14 +34,15 @@ class RerankRoleStartupCheckTest {
             "https://" + SECRET_IN_BASE_URL + "@reranker.example.internal/v1",
             "bge-reranker",
             "",
-            Duration.ofSeconds(5));
+            Duration.ofSeconds(5),
+            null);
     // Would the address ever reach the probe, the endpoint answers as unreachable - the branch
     // that writes the endpoint into the log line at ERROR level.
     when(client.probe(any()))
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     RerankRoleStartupCheck check =
         new RerankRoleStartupCheck(
-            new RerankModelRole(properties, client), mock(TaskScheduler.class));
+            new RerankModelRole(properties, client, Clock.systemUTC()), mock(TaskScheduler.class));
 
     List<ILoggingEvent> events = captureWhile(check::probeAndReport);
 

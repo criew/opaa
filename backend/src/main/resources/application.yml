@@ -316,6 +316,9 @@ opaa:
     # BAAI/bge-reranker-v2-m3) - a shorter default reports normal CPU latency as UNREACHABLE.
     # Installations with a faster (typically GPU-backed) endpoint may lower this.
     timeout: ${OPAA_RERANK_TIMEOUT:240s}
+    # Longest gap without a result from the endpoint before the role probes it; each probe is a
+    # real, billable rerank request, and every real call resets the gap. At least 10s.
+    probe-interval: ${OPAA_RERANK_PROBE_INTERVAL:60s}
   # The transcription model role (dictation in the chat input), built like the rerank role: an
   # explicit switch, an OpenAI-compatible endpoint ({base-url}/audio/transcriptions), never fatal.
   # Default off. The audio is passed through in memory and never stored or logged.

@@ -1,7 +1,13 @@
 # Feature-Titel
 
 > **Status: Früher Entwurf — wesentliche offene Fragen verbleiben.**
-<!-- Den Status-Blockquote beibehalten, solange die Spezifikation ein Entwurf ist; entfernen, sobald geklärt. -->
+<!--
+Jede Spezifikation trägt diesen Status-Blockquote dauerhaft. Gelebte Statuswerte: „Entwurf“,
+„Zielbild, in Teilen gebaut“, „umgesetzt“ (mit Ausnahmen) und „Ist-Stand“ (beschreibt nur Gebautes).
+Beschreibt eine Spec Zielbild und Gebautes gemischt, trägt jeder Abschnitt oder Satz die Marke
+**(gebaut, #Issue)** oder **(Zielbild)** — fett, in der Überschrift oder in der ersten Zeile darunter
+(bestehende Anker nicht ändern). Ohne Marke gilt, was der Statuskopf oder ein Lesehinweis festlegt.
+-->
 
 ## Motivation
 

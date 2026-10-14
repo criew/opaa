@@ -2,6 +2,7 @@ package io.opaa.retrieval.search;
 
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.FullTextIdentifiers;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.scope.MetadataFilterExpressions;
 import io.opaa.retrieval.scope.MetadataFilterStage;
@@ -17,7 +18,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.ai.document.Document;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.type.TypeReference;
@@ -64,18 +64,13 @@ public class FullTextChunkSearch {
 
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
-  private final String schemaName;
-  private final String tableName;
+  private final VectorTable vectorTable;
 
   FullTextChunkSearch(
-      JdbcTemplate jdbcTemplate,
-      ObjectMapper objectMapper,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+      JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
     this.objectMapper = objectMapper;
-    this.schemaName = schemaName;
-    this.tableName = tableName;
+    this.vectorTable = vectorTable;
   }
 
   /**
@@ -147,9 +142,7 @@ public class FullTextChunkSearch {
             + "       ts_rank(f.content_tsv, q.tsq) AS rank "
             + "FROM chunk_full_text f "
             + "JOIN "
-            + schemaName
-            + "."
-            + tableName
+            + vectorTable.qualifiedName()
             + " v ON v.id = f.chunk_id, q "
             + "WHERE f.library_id = ANY(?) "
             + "  AND f.content_tsv @@ q.tsq "
@@ -214,7 +207,7 @@ public class FullTextChunkSearch {
     String join =
         metadataPredicate.isEmpty()
             ? ""
-            : "JOIN " + schemaName + "." + tableName + " v ON v.id = f.chunk_id ";
+            : "JOIN " + vectorTable.qualifiedName() + " v ON v.id = f.chunk_id ";
     String sql =
         "SELECT l.lexeme FROM unnest(?::text[]) AS l(lexeme) "
             + "WHERE (SELECT count(*) FROM (SELECT 1 FROM chunk_full_text f "

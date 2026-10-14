@@ -165,12 +165,10 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
               + " Sperre aufhebt.",
           ConnectorLockService.CONNECTOR_LOCKED);
     }
-    if (!caller.isSystemAdmin()) {
-      throw new AccessDeniedException(
-          "Mit dem MCP-Server „"
-              + profile.getName()
-              + "“ verbindet bis zur Freigabe seiner Nutzung nur die Systemverwaltung.");
-    }
+    caller.requireSystemAdmin(
+        "Mit dem MCP-Server „"
+            + profile.getName()
+            + "“ verbindet bis zur Freigabe seiner Nutzung nur die Systemverwaltung.");
   }
 
   /**

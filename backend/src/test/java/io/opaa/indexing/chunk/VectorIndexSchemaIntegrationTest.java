@@ -3,6 +3,7 @@ package io.opaa.indexing.chunk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.knowledge.VectorTable;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.Collections;
 import java.util.List;
@@ -56,8 +57,7 @@ class VectorIndexSchemaIntegrationTest {
             transactionManager,
             PgIndexType.HNSW,
             PgDistanceType.COSINE_DISTANCE,
-            schemaName,
-            TABLE);
+            new VectorTable(schemaName, TABLE));
   }
 
   @AfterEach

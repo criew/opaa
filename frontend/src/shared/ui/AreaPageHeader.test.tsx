@@ -26,11 +26,18 @@ const BEREICHSSEITEN = [
  * Der Quelltext der Seiten, von Vite beim Bauen eingelesen (`?raw`) - kein Dateisystemzugriff,
  * damit der Test ohne Node-Typen auskommt und im selben jsdom läuft wie die übrigen.
  */
-const SEITENQUELLEN = import.meta.glob('../../pages/*.tsx', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-}) as Record<string, string>
+const SEITENQUELLEN = {
+  ...(import.meta.glob('../../pages/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
+  ...(import.meta.glob('../../features/*/pages/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
+}
 
 /**
  * Die sieben Seiten der Administration. „Ihre Einstellungen" fehlt bewusst: Sie trägt denselben
@@ -40,7 +47,7 @@ const SEITENQUELLEN = import.meta.glob('../../pages/*.tsx', {
 const ADMINISTRATIONSSEITEN = BEREICHSSEITEN.filter((datei) => datei !== 'SettingsPage.tsx')
 
 function quelltextVon(datei: string): string {
-  const quelltext = SEITENQUELLEN[`../../pages/${datei}`]
+  const quelltext = Object.entries(SEITENQUELLEN).find(([pfad]) => pfad.endsWith(`/${datei}`))?.[1]
   if (!quelltext) {
     throw new Error(`Seite nicht gefunden: ${datei} - in BEREICHSSEITEN umbenannt oder entfernt?`)
   }

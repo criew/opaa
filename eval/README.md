@@ -318,7 +318,7 @@ Baseline-Vergleich damit ab.
    die Planer-Statistik von `vector_store` (`ANALYZE`), damit der Plan der folgenden Suchen nicht
    davon abhängt, ob Autovacuum die Tabelle schon analysiert hat (siehe „Voraussetzungen für den
    Host-Pfad“ oben).
-3. Prüft die **Chunk-Zahl-Invariante** der jeweiligen Domäne (ADR-0010, Nachtrag Issue #721):
+3. Prüft die **Chunk-Zahl-Invariante** der jeweiligen Domäne (ADR-0010, Entscheidung 3):
    `comic-characters` verlangt weiterhin genau einen Chunk je Dokument (Ein-Chunk-Invariante,
    unverändert). Das ist die beweiskräftige Prüfung, die die Byte-Vorabprüfung im Generator
    (`MAX_DOCUMENT_BYTES`) nicht liefern kann — siehe ADR-0010.
@@ -668,7 +668,7 @@ auseinanderhalten, aber ein Vergleich beantwortet die Frage nicht. Eine belastba
 **Update (Issue #721): Der Harness selbst kann das inzwischen messen — dieser Korpus weiterhin
 nicht.** `RetrievalEvaluationHarnessTest` unterstützt seit #721 mehrchunkige Domänen: ein
 dokumentbezogenes k-Fenster (`io.opaa.eval.DocumentRanking`), eine je Domäne konfigurierbare
-Chunk-Zahl-Erwartung (`io.opaa.eval.ChunkCountExpectation`, ADR-0010 Nachtrag) und eine zweite
+Chunk-Zahl-Erwartung (`io.opaa.eval.ChunkCountExpectation`, ADR-0010 Entscheidung 3) und eine zweite
 Metrikfamilie auf Chunkebene über eingefrorene Antwort-Textausschnitte
 (`io.opaa.eval.ChunkAnswerSpanMetrics`, ADR-0012 Nachtrag). `comic-characters` bleibt bewusst
 einchunkig (`ChunkCountExpectation.exactlyOneChunk()`) — die oben beschriebene Lücke schließt erst die
