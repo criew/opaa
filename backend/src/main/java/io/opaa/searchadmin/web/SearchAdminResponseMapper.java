@@ -295,7 +295,7 @@ final class SearchAdminResponseMapper {
         .libraryId(verdict.libraryId())
         .libraryName(verdict.libraryName())
         .displacedAtStage(verdict.displacedAtStage())
-        .displacedReason(verdict.displacedReason() == null ? null : verdict.displacedReason());
+        .displacedReason(verdict.displacedReason());
   }
 
   private static SearchedLibrary toSearchedLibrary(SearchedLibraryRef ref) {
