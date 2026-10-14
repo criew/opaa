@@ -29,7 +29,7 @@ class SourceReferenceTest {
       Pattern.compile(
           "^import\\s+(?:static\\s+)?(io\\.opaa\\.[\\w.]+)"
               + "|\\{@(?:link|linkplain|value)[\\s*]+(io\\.opaa\\.[\\w.]+)"
-              + "|@see\\s+(io\\.opaa\\.[\\w.]+)",
+              + "|@(?:see|throws|exception)\\s+(io\\.opaa\\.[\\w.]+)",
           Pattern.MULTILINE);
 
   @Test
@@ -39,7 +39,7 @@ class SourceReferenceTest {
 
   /** The constant is inlined, so the compiled classes alone pass. */
   @Test
-  void aStaticImportAndAJavadocReferenceUpwardAreReported() throws IOException {
+  void aStaticImportAndJavadocReferencesUpwardAreReported() throws IOException {
     String root = "io.opaa.architecture.fixture.sourcereference";
     JavaClasses classes = new ClassFileImporter().importPackages(root);
 
@@ -48,7 +48,8 @@ class SourceReferenceTest {
     assertThat(violations(Path.of("src/test/java"), root, classes))
         .containsExactly(
             "common/Low.java:3: common -> observability points upward in ModularArchitecture.LAYERS",
-            "common/Low.java:5: common -> observability points upward in ModularArchitecture.LAYERS");
+            "common/Low.java:7: common -> observability points upward in ModularArchitecture.LAYERS",
+            "common/Low.java:9: common -> observability points upward in ModularArchitecture.LAYERS");
   }
 
   /** Every name below {@code root} in the sources of {@code root} that breaks a rule. */

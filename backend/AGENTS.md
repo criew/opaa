@@ -96,10 +96,11 @@ Der Test prüft außerdem:
   auf; ein Eintrag, der nach einer Umbenennung ins Leere zeigt, lässt den Test fehlschlagen, statt
   dass seine Regel still nichts mehr prüft.
 - **Blinder Fleck:** Der Test sieht nur den Bytecode. Was dort fehlt, prüft `SourceReferenceTest`
-  im Quelltext nach denselben Regeln: jeden Import, auch `import static`, und jedes
-  `{@link io.opaa.…}`, `{@linkplain …}`, `{@value …}` und `@see io.opaa.…`. Ein Javadoc-Verweis
-  nach oben steht deshalb als `{@code …}`. Ungeprüft bleibt eine einfaltbare Konstante, die der
-  Code vollqualifiziert ohne Import liest.
+  im Quelltext gegen `LAYERS` und `ALLOWED_MODULE_EDGES`: jeden Import, auch `import static`, und
+  jedes `{@link io.opaa.…}`, `{@linkplain …}`, `{@value …}`, `@see`, `@throws` und `@exception`
+  auf `io.opaa.…`. Ein Javadoc-Verweis nach oben steht deshalb als `{@code …}`. Ungeprüft bleiben
+  eine einfaltbare Konstante, die der Code vollqualifiziert ohne Import liest, und Parametertypen
+  in `{@link X#m(io.opaa.…)}`.
 
 **Neues Top-Level-Paket:** in `LAYERS` oberhalb aller Pakete eintragen, die es nutzt, und in
 `MODULES` einem Modul zuordnen. Fehlt der Eintrag, nennt der Test das Paket und beide Stellen.

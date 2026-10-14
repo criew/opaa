@@ -639,7 +639,9 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
-  /** Why the edge from {@code origin} to {@code target} leaves the allowed modules, or null. */
+  /**
+   * Why the edge from {@code origin} to {@code target} leaves the allowed modules, or {@code null}.
+   */
   String forbiddenModuleEdge(JavaClass origin, JavaClass target) {
     Module from = moduleOf(origin);
     Module to = moduleOf(target);
