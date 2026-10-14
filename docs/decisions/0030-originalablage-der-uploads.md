@@ -40,7 +40,9 @@ abgelehnter Doppel-Upload kostet sonst `PutObject` samt `DeleteObject`. Drei Aus
 (Verarbeitung durch, Original bleibt; Dateisystem No-op, S3 Temp-Datei löschen), **Verwerfen**
 (Upload gescheitert, beides weg), **Löschen** (abgelegtes Original entfernen). Die Freigabe gehört
 dem asynchronen Auftrag: `DocumentIngestService#processUploadedFileAsync` ruft sie in einem
-`finally` um seinen gesamten Rumpf, als `AutoCloseable` ohne Store-Wissen.
+`finally` um seinen gesamten Rumpf, als `AutoCloseable` ohne Store-Wissen; auf den Fehlerpfaden vor
+der Übergabe und in `failAlreadyPersistedUpload` verwirft der Aufrufer — Verwerfen schließt
+Freigeben ein.
 
 ### 3. Auflösen heißt Zugehörigkeit und Existenz
 
@@ -63,15 +65,16 @@ Organisation, ohne dass eine Datenbankzeile befragt werden muss; die Zugehörigk
 beide Segmente, ein unpassendes Organisationssegment löst auf „nicht vorhanden" auf. Anhangzeilen
 sind die Ausnahme: Ihr synthetischer `file_path` benennt kein Objekt; auf den Lesewegen leitet
 `isReExtractableAttachment` sie vor jedem Adapter um, auf dem Löschweg löst der Locator regulär auf
-„nicht vorhanden" auf und löscht nichts.
+„nicht vorhanden" auf und löscht nichts (ein `HeadObject` je Anhangslöschung).
 
 ### 5. Die Umstellung eines Bestands ist eine Präfixersetzung, und zwar ein Betriebsvorgang
 
 Bytes kopieren, dann in `documents.file_path` den Pfadpräfix ersetzen (`replace(file_path,
-'/app/uploads/', 's3://mein-bucket/') WHERE source_type = 'UPLOAD'`); Anhangzeilen wandern ohne
-Sonderfall mit, die Ersetzung ist injektiv. Kein Bestandsnachzug im Code, kein Parallel-Lesen beider
-Ablagen: Die Umstellung ist ein Wartungsfenster, dokumentiert im
-[Handbuch](../handbuch/originalablage.md) samt Rückweg.
+'<alter Präfix>', 's3://mein-bucket/') WHERE source_type = 'UPLOAD'`; der Präfix ist
+installationsabhängig, etwa `/app/uploads/` im Container); Anhangzeilen wandern ohne Sonderfall mit,
+die Ersetzung ist injektiv. Kein Bestandsnachzug im Code, kein Parallel-Lesen beider Ablagen: Die
+Umstellung ist ein Wartungsfenster, dokumentiert im [Handbuch](../handbuch/originalablage.md) mit
+Zählabfrage davor, Stichprobe danach und Rückweg.
 
 ### 6. Herunterladen streamt, ohne Zwischendatei — und verliert dabei Bereichsanfragen
 
@@ -82,7 +85,8 @@ Originale gibt es kein HTTP-`Range` und keine Wiederaufnahme, der Dateisystem-Ad
 ### 7. Wer eine lokale Datei braucht, bekommt eine Kopie mit Aufräumpflicht beim Port
 
 Reindex, Metadaten-Nachlauf und Rückextraktion bekommen eine lokale Kopie für die Dauer einer
-Aktion, die der Port danach löscht; Temp-Verzeichnis `opaa.upload.s3.temp-directory`. Der
+Aktion, die der Port danach löscht; Temp-Verzeichnis `opaa.upload.s3.temp-directory` (Standard das
+JVM-Temp-Verzeichnis). Der
 Platzbedarf unter S3 ist größer als eine Dateigröße je Upload (Multipart-Spool, Arbeitsdatei,
 Kopie); das Handbuch nennt die Rechnung. Ein getöteter Prozess hat kein `finally`:
 `UploadPendingRecoveryRunner` räumt beim Start `PENDING`-Zeilen und das Temp-Verzeichnis auf; das
@@ -107,7 +111,8 @@ Protokollzeile und keiner Meldung erscheinen.
 `opaa.upload.store=s3` ohne Bucket, Endpunkt oder Zugangsdaten beendet den Start mit einer Meldung,
 die den fehlenden Wert nennt (Haltung `AuthProfileGuard`). Ein nicht erreichbarer Speicher beendet
 den Start nicht: Chat, Suche und indizierte Inhalte funktionieren ohne ihn. Daraus folgt: Der
-Health-Beitrag (`UploadStoreHealthIndicator`) geht nicht in den Gesamtstatus — er nähme im
+Health-Beitrag (`UploadStoreHealthIndicator`) erscheint als eigener Eintrag mit eigener Gruppe und
+geht nicht in den Gesamtstatus — er nähme im
 Mehrinstanzbetrieb eine Instanz aus der Lastverteilung, die Chat und Suche weiter bedient. Der
 Abruf eines Originals unterscheidet „Objekt nicht vorhanden" (`404` ohne Unterscheidbarkeit) von
 „Speicher nicht erreichbar" (`503` mit deutscher Meldung).
@@ -115,7 +120,8 @@ Abruf eines Originals unterscheidet „Objekt nicht vorhanden" (`404` ohne Unter
 ### 10. Verschlüsselung ruhender Daten, Aufbewahrung und Replikation gehören dem Speicher
 
 OPAA setzt keine Verschlüsselungskopfzeilen und verwaltet keine Schlüssel; SSE, Versionierung,
-Lebenszyklusregeln und Replikation konfiguriert der Betrieb am Bucket.
+Lebenszyklusregeln und Replikation konfiguriert der Betrieb am Bucket; das Handbuch nennt sie als
+Empfehlung.
 
 ### 11. Unberührt, und der Aufräumlauf
 
@@ -151,10 +157,12 @@ Kein Zeitplan, der von selbst löscht.
 
 - Vorsigniert ausgelieferte URLs — eine URL, die ohne Anmeldung funktioniert, ist eine andere Zugriffseigenschaft.
 - Mehrere Ablagen nebeneinander (je Organisation oder Bibliothek ein Bucket) — das Schlüsselschema verbaut es nicht.
+- Kein Objektspeicher-Weg für `FILESYSTEM`-Bibliotheken: Dafür gibt es den S3-Konnektor (ADR-0027); eine Quelle ist keine Ablage.
 
 ## Änderungsverlauf
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-09-11 | #1440 | Erstumsetzung (#1475, #1476, #1477) | 1–11 |
 | 2026-09-11 | #1478, #1518 | Aufräumlauf für verwaiste Originale, je Bibliothek und ohne Bibliotheksbezug | 1, 7, 11 |
 | 2026-09-11 | #1544 | Organisationssegment im Schlüssel beider Ablagen | 4 |
