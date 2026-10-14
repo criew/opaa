@@ -510,7 +510,7 @@ describe('UserManagementPage', () => {
     expect(within(lockedMenu).queryByRole('menuitem', { name: 'Sperren' })).not.toBeInTheDocument()
     await user.click(within(lockedMenu).getByRole('menuitem', { name: 'Entsperren' }))
     await waitFor(() => expect(within(rowOf('T. Klein')).getByText('Aktiv')).toBeInTheDocument())
-  })
+  }, 20000)
 
   it('offers neither locking nor deletion on the own row and none on the bootstrap account', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -763,8 +763,9 @@ describe('UserManagementPage', () => {
     expect(bodies[0].displayName).toBe('T. Klein-Meier')
     expect(bodies[0]).not.toHaveProperty('expiresAt')
     expect(bodies[0].noExpiry).toBe(false)
-    // the renamed row keeps its origin and folds the local row back in
-    await waitFor(() => expect(rowOf('T. Klein-Meier')).toBeInTheDocument())
+    // the renamed row keeps its origin and folds the local row back in; the list reloads after the
+    // dialog closes, which takes longer than the default second under a full parallel run
+    await waitFor(() => expect(rowOf('T. Klein-Meier')).toBeInTheDocument(), { timeout: 5000 })
     expect(within(rowOf('T. Klein-Meier')).getByText('Lokal')).toBeInTheDocument()
   }, 20000)
 

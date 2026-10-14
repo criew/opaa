@@ -64,6 +64,7 @@ import {
 import { notify } from '../stores/notificationStore'
 import { featureEnabledIn, recordInstallationFeatures } from './installationFeatures'
 import { resetAllStores } from './resettableStores'
+import { readStorage, writeStorage } from '../utils/storage'
 
 /**
  * Sign-in with several identity providers (ADR-0025, Entscheidung 1 and 5): one UserManager per
@@ -256,23 +257,6 @@ let userManagers: Map<string, UserManager> = new Map()
 // When the access token of the local session stops being valid (epoch ms). Plumbing for logout,
 // which may only present a bearer the resource server still accepts; a UI never reads it.
 let localTokenExpiresAt: number | null = null
-
-function readStorage(storage: Storage, key: string): string | null {
-  try {
-    return storage.getItem(key)
-  } catch {
-    return null
-  }
-}
-
-function writeStorage(storage: Storage, key: string, value: string | null) {
-  try {
-    if (value === null) storage.removeItem(key)
-    else storage.setItem(key, value)
-  } catch {
-    // storage may be unavailable (private mode); the flow then simply starts at the default
-  }
-}
 
 export const useAuthStore = create<AuthState>((set, get) => {
   /** One manager per provider, its session events wired exactly once. */
