@@ -9,6 +9,7 @@ import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNoteProperties;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
 import java.io.IOException;
@@ -114,6 +115,7 @@ class StaleReportGuardTest {
         true,
         "markdown:3",
         "prefix",
-        "qwen2.5:1.5b-instruct");
+        "qwen2.5:1.5b-instruct",
+        RelevanceCutoffProperties.DEFAULT);
   }
 }

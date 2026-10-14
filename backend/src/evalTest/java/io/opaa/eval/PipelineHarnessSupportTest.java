@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
@@ -49,7 +50,8 @@ class PipelineHarnessSupportTest {
           true,
           "markdown:1",
           "prefix",
-          CHAT_MODEL);
+          CHAT_MODEL,
+          RelevanceCutoffProperties.DEFAULT);
 
   private static QueryProperties productionLikeProperties(
       int topK, boolean queryDecompositionEnabled) {
@@ -256,6 +258,7 @@ class PipelineHarnessSupportTest {
         true,
         "markdown:1",
         "prefix",
-        chatModel);
+        chatModel,
+        RelevanceCutoffProperties.DEFAULT);
   }
 }

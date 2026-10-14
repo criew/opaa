@@ -94,8 +94,11 @@ public record ConversationEvaluationReport(
    *
    * <p>Version 10 (issue #2373): the production top-k rose from 8 to 20, and with it the per-turn
    * ranking window shared with the pipeline path (MRR@20, nDCG@20, Recall@20). Re-measured.
+   *
+   * <p>Version 11 (issue #2386): the shared pipeline fixed points gained {@code fusion} and {@code
+   * relevanceCutoff}. Re-measured.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 10;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 11;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:

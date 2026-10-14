@@ -568,6 +568,13 @@ Gleiche Gliederung wie oben, mit drei Unterschieden:
   würde, was die committeten Zahlen beschreiben. Genau das erhöht die Vertragsversion auf **2**
   (ADR-0012, Nachtrag „Baselines des Pipeline-Pfads", Entscheidung 18). Die Rohvektor-Version bleibt
   bei 2 und die bestehenden Rohvektor-Baselines damit gültig.
+- **Seit Issue #2386 zusätzlich die Blöcke `fusion` und `relevanceCutoff`** (`opaa.query.fusion.*`:
+  `method`, `subQueryQuota`, `vectorWeight`, `guaranteedPerList`; `opaa.query.relevance-cutoff.*`:
+  `mode`, `minChunks`, `relativeThreshold`, `kneeDrop`). Jedes Feld ist ein eigener Festpunkt, auch
+  eines, das der gewählte Modus nicht nutzt. Ein fehlender Block lädt als `null` und macht die
+  Baseline unvergleichbar. `PipelinePathIsolationTest`/`ConversationPathIsolationTest` halten die
+  committeten Werte gegen die ausgelieferten Vorgaben (`QueryProperties.Fusion.DEFAULT`,
+  `RelevanceCutoffProperties.DEFAULT`). Pipeline-Messvertrag 21, Mehrrunden 11.
 - **`chatModel` ist heute `null`** und wird als solcher geprüft: Der Harness misst die Variante
   `decomposition-off`, weil sein Kontext kein Chat-Modell hat. Ein Modellname auf nur einer der
   beiden Seiten macht die Baseline ungültig, statt einen Lauf „mit Zerlegung" gegen einen ohne zu
@@ -624,6 +631,18 @@ bewegt, hängt am Anteil der Chunks über der Grenze: `comic-characters` 0 % (ke
 `verwaltung` 0,1 % (einzelne Werte steigen), `city-landmarks` 91,5 % (fast alle Werte steigen auf
 1,000, alle 108 Fälle gelöst). Der Mehrrunden-Pfad bewegt sich vor allem über die geänderte Zerlegung
 des Chat-Modells. Tabelle, Zustandspflege und Begründung: ADR-0012, Nachtrag Ollama-Fassung.
+
+### Neuziehung nach dem Retrieval-Umbau (2026-10-14, Issue #2386)
+
+Acht Retrieval-Änderungen (#2617, #2618, #2625, #2627, #2628, #2630, #2631, #2635) sind ohne CI-Eval
+gemergt und hier gemeinsam gemessen. Alle sieben Baselines stammen aus dem label-ausgelösten CI-Lauf
+38527407802, per Skript aus dessen Artefakten übernommen. Fusion und Relevanzschnitt sind neue
+Festpunkte (Pipeline-Messvertrag 21, Mehrrunden 11). Der Rohvektor-Pfad bewegt keine Rangfolge. Auf
+dem Pipeline-Pfad steigt `comic-characters` leicht, `city-landmarks` bleibt in jeder Zahl, und
+`verwaltung` sinkt leicht (overall MRR@20 0,833 → 0,828), weil seit #2628 die Listenränge 21 bis 25
+zur Fusion beitragen und einzelne Dokumente vor erwartete rücken. Einziger Zustandswechsel ist
+`comic-filter-161` (Pipeline-Pfad gelöst). Die Harnesse pinnen weiterhin `nomic-embed-text:v1.5`,
+nicht die Produktvorgabe `bge-m3`. Tabelle und Begründung: ADR-0012, Nachtrag Retrieval-Umbau.
 
 ### Fehlerkriterium: unverändert ADR-0013
 

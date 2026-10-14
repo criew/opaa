@@ -3,6 +3,8 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,7 +30,7 @@ class ConversationPathIsolationTest {
   @Test
   void theMultiTurnPathCountsItsOwnContractVersionSeparately() {
     assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION)
-        .isEqualTo(10);
+        .isEqualTo(11);
   }
 
   @Test
@@ -104,6 +106,12 @@ class ConversationPathIsolationTest {
     // Issue #1650: the prefix form this build embeds with.
     assertThat(baseline.fixedPoints().pipeline().contextPrefixFingerprint())
         .isEqualTo(ContextPrefixFingerprint.current());
+    // The shipped fusion and relevance cutoff.
+    assertThat(baseline.fixedPoints().pipeline().fusion())
+        .isEqualTo(PipelineEvaluationReport.FusionSettings.of(QueryProperties.Fusion.DEFAULT));
+    assertThat(baseline.fixedPoints().pipeline().relevanceCutoff())
+        .isEqualTo(
+            PipelineEvaluationReport.RelevanceCutoffSettings.of(RelevanceCutoffProperties.DEFAULT));
   }
 
   /**
@@ -283,6 +291,8 @@ class ConversationPathIsolationTest {
         0.3,
         3,
         0.7,
+        PipelineEvaluationReport.FusionSettings.of(QueryProperties.Fusion.DEFAULT),
+        PipelineEvaluationReport.RelevanceCutoffSettings.of(RelevanceCutoffProperties.DEFAULT),
         true,
         true,
         true,
@@ -325,6 +335,9 @@ class ConversationPathIsolationTest {
                 "note",
                 3,
                 0.7,
+                PipelineEvaluationReport.FusionSettings.of(QueryProperties.Fusion.DEFAULT),
+                PipelineEvaluationReport.RelevanceCutoffSettings.of(
+                    RelevanceCutoffProperties.DEFAULT),
                 true,
                 true,
                 true,

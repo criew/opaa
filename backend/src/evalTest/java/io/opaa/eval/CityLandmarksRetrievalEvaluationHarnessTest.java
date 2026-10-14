@@ -30,6 +30,7 @@ import io.opaa.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.organization.Organization;
 import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
@@ -367,6 +368,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   @Autowired private RetrievalPipeline retrievalPipeline;
   @Autowired private RetrievalContextFactory retrievalContextFactory;
   @Autowired private QueryProperties queryProperties;
+  // A fixed point of the pipeline path, read from the context like QueryProperties.
+  @Autowired private RelevanceCutoffProperties relevanceCutoffProperties;
   // #1049: the fill state of the measured library's full-text index, a fixed point of every
   // pipeline report since the lexical path feeds the fusion.
   @Autowired private FullTextIndexFillStateService fullTextIndexFillStateService;
@@ -899,7 +902,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
             ingestionPipelineFingerprint,
             contextPrefixFingerprint,
-            activeChatModel),
+            activeChatModel,
+            relevanceCutoffProperties),
         retrievalPipeline,
         retrievalContextFactory,
         pipelineProperties,
@@ -937,7 +941,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
               fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isUpToDate(),
               ingestionPipelineFingerprint,
               contextPrefixFingerprint,
-              activeChatModel),
+              activeChatModel,
+              relevanceCutoffProperties),
           queryProperties,
           indexingProperties,
           evalLibraryId,

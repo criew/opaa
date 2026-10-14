@@ -386,9 +386,10 @@ Weitere Festlegungen des Pipeline-Pfads:
   Punkte" 3).
 - **Alle übrigen Parameter kommen aus der Produktionskonfiguration** und werden zur Laufzeit
   gelesen: `fetch-k`, `top-k`, `similarity-threshold`, `max-chunks-per-document`, `mmr-lambda`,
-  `max-sub-queries`. Ein geändertes `top-k` lässt den Lauf mit einer benannten Fehlermeldung
-  abbrechen, weil die Metriknamen dieses Fenster wörtlich führen; alle übrigen sind seit Issue #1040
-  geprüfte Fixpunkte der Pipeline-Baseline — eine Änderung macht diese Baseline ausdrücklich
+  `max-sub-queries`, seit Issue #2386 auch `fusion.*` und `relevance-cutoff.*`. Ein geändertes
+  `top-k` lässt den Lauf mit einer benannten Fehlermeldung abbrechen, weil die Metriknamen dieses
+  Fenster wörtlich führen; alle übrigen sind geprüfte Fixpunkte der Pipeline-Baseline (seit Issue
+  #1040, Fusion und Relevanzschnitt seit #2386) — eine Änderung macht diese Baseline ausdrücklich
   ungültig, statt still in den Vergleich einzufließen.
 - **Der Rohvektor-Pfad ist unverändert.** Er läuft zuerst, schreibt seinen Report wie bisher und
   wird wie bisher gegen seine Baseline verglichen; der Pipeline-Pfad schreibt ausschließlich in

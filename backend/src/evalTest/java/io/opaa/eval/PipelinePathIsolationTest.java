@@ -19,6 +19,8 @@ import io.opaa.format.file.tabular.TabularDocumentFormat;
 import io.opaa.format.file.tabular.TabularProperties;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import java.time.Clock;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -78,12 +80,43 @@ class PipelinePathIsolationTest {
     // plus 1 from issue #2330 (PdfDocumentFormat#version() moved 2 -> 3, raised sentence numbers),
     // plus 1 from issues #2327/#2328 (nine format versions moved, oversized sections split),
     // plus 1 from issue #2331 (nine format versions moved, tiny sections combined), plus 1 from
-    // issue #2373 (production top-k 8 -> 20, ranking window @20; this path only)
+    // issue #2373 (production top-k 8 -> 20, ranking window @20; this path only), plus 1 from
+    // issue #2386 (fusion and relevance cutoff as fixed points; this path only)
     // — counted independently of the raw-vector path above, whose own count (2 plus the same
     // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650/#2033/#2330/#2327/#2331 bumps)
     // moves
     // for unrelated reasons at unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(20);
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(21);
+  }
+
+  /**
+   * The committed pipeline baselines describe the shipped fusion and relevance cutoff. A changed
+   * default without a re-measurement fails here instead of as "Baseline ungültig" in the nightly
+   * run.
+   */
+  @Test
+  void committedPipelineBaselinesDescribeTheShippedFusionAndRelevanceCutoff()
+      throws java.io.IOException {
+    for (EvalDomainConfig domain :
+        List.of(
+            EvalDomainConfig.COMIC_CHARACTERS,
+            EvalDomainConfig.CITY_LANDMARKS,
+            EvalDomainConfig.VERWALTUNG)) {
+      PipelineBaseline.FixedPoints fixedPoints =
+          PipelineBaseline.load(
+                  RepoPaths.evalDir()
+                      .resolve("baseline")
+                      .resolve(domain.pipelineBaselineFileName()))
+              .fixedPoints();
+      assertThat(fixedPoints.fusion())
+          .as("%s: fusion", domain.pipelineBaselineFileName())
+          .isEqualTo(PipelineEvaluationReport.FusionSettings.of(QueryProperties.Fusion.DEFAULT));
+      assertThat(fixedPoints.relevanceCutoff())
+          .as("%s: relevanceCutoff", domain.pipelineBaselineFileName())
+          .isEqualTo(
+              PipelineEvaluationReport.RelevanceCutoffSettings.of(
+                  RelevanceCutoffProperties.DEFAULT));
+    }
   }
 
   @Test
