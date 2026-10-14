@@ -22,6 +22,7 @@ import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceAssetAssociationRepository;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceRepository;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -137,6 +138,7 @@ class ChatServiceMetadataFeatureTest {
         mock(ChatPersonalMarkRepository.class),
         mock(ChatFullTextSearch.class),
         mock(ChatMetrics.class),
-        mock(ChatAutoCleanupProperties.class));
+        mock(ChatAutoCleanupProperties.class),
+        Clock.systemUTC());
   }
 }

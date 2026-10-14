@@ -15,6 +15,7 @@ import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceAssetAssociationRepository;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceRepository;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
@@ -82,6 +83,7 @@ public class ChatService {
   private final ChatFullTextSearch chatFullTextSearch;
   private final ChatMetrics chatMetrics;
   private final ChatAutoCleanupProperties chatAutoCleanup;
+  private final Clock clock;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -99,7 +101,8 @@ public class ChatService {
       ChatPersonalMarkRepository chatPersonalMarkRepository,
       ChatFullTextSearch chatFullTextSearch,
       ChatMetrics chatMetrics,
-      ChatAutoCleanupProperties chatAutoCleanup) {
+      ChatAutoCleanupProperties chatAutoCleanup,
+      Clock clock) {
     this.chatAutoCleanup = chatAutoCleanup;
     this.chatPersonalMarkRepository = chatPersonalMarkRepository;
     this.chatFullTextSearch = chatFullTextSearch;
@@ -116,6 +119,7 @@ public class ChatService {
     this.objectMapper = objectMapper;
     this.chatMessageWriter = chatMessageWriter;
     this.chatTitleGenerationService = chatTitleGenerationService;
+    this.clock = clock;
   }
 
   @Transactional
@@ -266,7 +270,7 @@ public class ChatService {
   @Transactional
   public ChatListEntry pinChat(UUID chatId, UUID userId) {
     Chat chat = getOwnedChat(chatId, userId);
-    chatPersonalMarkRepository.pin(chatId, userId, Instant.now());
+    chatPersonalMarkRepository.pin(chatId, userId, Instant.now(clock));
     return new ChatListEntry(
         chat, chatPersonalMarkRepository.findPinnedAt(chatId, userId).orElseThrow(), null);
   }
@@ -289,7 +293,7 @@ public class ChatService {
   @Transactional
   public ChatListEntry archiveChat(UUID chatId, UUID userId) {
     Chat chat = getOwnedChat(chatId, userId);
-    chatPersonalMarkRepository.archive(chatId, userId, Instant.now());
+    chatPersonalMarkRepository.archive(chatId, userId, Instant.now(clock));
     Instant archivedAt = chatPersonalMarkRepository.findArchivedAt(chatId, userId).orElseThrow();
     return new ChatListEntry(chat, null, archivedAt, deletionDueAt(chat, archivedAt));
   }
@@ -298,7 +302,7 @@ public class ChatService {
   @Transactional
   public ChatListEntry unarchiveChat(UUID chatId, UUID userId) {
     Chat chat = getOwnedChat(chatId, userId);
-    clearArchive(chat, userId, Instant.now());
+    clearArchive(chat, userId, Instant.now(clock));
     return new ChatListEntry(chat, null, null);
   }
 
@@ -311,7 +315,7 @@ public class ChatService {
   @Transactional
   public List<UUID> archiveChats(UUID spaceId, UUID userId, Collection<UUID> chatIds) {
     requireMembership(spaceId, userId);
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     List<Chat> chats = chatRepository.findByIdInAndSpaceIdAndAuthorId(chatIds, spaceId, userId);
     chats.forEach(chat -> chatPersonalMarkRepository.archive(chat.getId(), userId, now));
     return chats.stream().map(Chat::getId).toList();
@@ -322,7 +326,7 @@ public class ChatService {
   public List<UUID> unarchiveChats(UUID spaceId, UUID userId, Collection<UUID> chatIds) {
     requireMembership(spaceId, userId);
     List<Chat> chats = chatRepository.findByIdInAndSpaceIdAndAuthorId(chatIds, spaceId, userId);
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     chats.forEach(chat -> clearArchive(chat, userId, now));
     return chats.stream().map(Chat::getId).toList();
   }

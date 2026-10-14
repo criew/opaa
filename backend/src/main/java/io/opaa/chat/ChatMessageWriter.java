@@ -1,6 +1,7 @@
 package io.opaa.chat;
 
 import io.opaa.api.types.ChatRole;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -21,14 +22,17 @@ class ChatMessageWriter {
   private final ChatMessageRepository chatMessageRepository;
   private final ChatRepository chatRepository;
   private final ChatPersonalMarkRepository chatPersonalMarkRepository;
+  private final Clock clock;
 
   ChatMessageWriter(
       ChatMessageRepository chatMessageRepository,
       ChatRepository chatRepository,
-      ChatPersonalMarkRepository chatPersonalMarkRepository) {
+      ChatPersonalMarkRepository chatPersonalMarkRepository,
+      Clock clock) {
     this.chatMessageRepository = chatMessageRepository;
     this.chatRepository = chatRepository;
     this.chatPersonalMarkRepository = chatPersonalMarkRepository;
+    this.clock = clock;
   }
 
   /**
@@ -56,7 +60,7 @@ class ChatMessageWriter {
     chatMessageRepository.save(
         new ChatMessage(chatId, nextSequence + 1, ChatRole.ASSISTANT, answer, serializedSources));
     chatRepository.deriveTitleFromFirstQuestionIfAbsent(chatId, derivedTitle);
-    chatRepository.touch(chatId, Instant.now());
+    chatRepository.touch(chatId, Instant.now(clock));
     if (chatPersonalMarkRepository.clearArchive(chatId, senderId) > 0) {
       chatPersonalMarkRepository.deleteIfUnmarked(chatId, senderId);
     }
