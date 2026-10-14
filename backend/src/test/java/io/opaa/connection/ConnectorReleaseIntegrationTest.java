@@ -13,7 +13,7 @@ import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.chat.ChatSource;
 import io.opaa.indexing.job.IndexingJobRepository;
-import io.opaa.indexing.source.DocumentIndexingService;
+import io.opaa.indexing.run.DocumentIndexingService;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;

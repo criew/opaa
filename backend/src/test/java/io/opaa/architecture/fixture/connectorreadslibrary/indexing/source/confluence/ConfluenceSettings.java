@@ -1,6 +1,6 @@
 package io.opaa.architecture.fixture.connectorreadslibrary.indexing.source.confluence;
 
-import io.opaa.architecture.fixture.connectorreadslibrary.indexing.source.ConnectorData;
+import io.opaa.architecture.fixture.connectorreadslibrary.indexing.spi.ConnectorData;
 import io.opaa.architecture.fixture.connectorreadslibrary.knowledge.KnowledgeLibrary;
 
 public class ConfluenceSettings {

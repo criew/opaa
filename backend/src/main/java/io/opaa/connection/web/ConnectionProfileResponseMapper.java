@@ -22,7 +22,7 @@ import io.opaa.connection.profile.ConnectorLockService.TypeState;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
 import io.opaa.connection.profile.ProfileEndpoints;
 import io.opaa.connection.profile.ProfileRequirementService.Overview;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.knowledge.SourceType;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;

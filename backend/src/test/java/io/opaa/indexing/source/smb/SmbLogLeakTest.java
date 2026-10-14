@@ -11,9 +11,9 @@ import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.indexing.filesync.FileSyncHarness;
 import io.opaa.indexing.job.IndexingRunEvent;
-import io.opaa.indexing.source.SourceBrowser;
-import io.opaa.indexing.source.SourceSettings;
-import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.spi.SourceBrowser;
+import io.opaa.indexing.spi.SourceSettings;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
@@ -134,7 +134,7 @@ class SmbLogLeakTest {
         SmbTestStores.open(
             settings(samba.credentials()),
             2,
-            new io.opaa.indexing.source.RequestBudget(
+            new io.opaa.indexing.spi.RequestBudget(
                 new io.opaa.sourceaccess.SourceRequestMeter(), 40, null)));
 
     String checkpoint = harness.state().scanProgress().containers().get("/" + folder).checkpoint();

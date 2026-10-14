@@ -3,10 +3,10 @@ package io.opaa.indexing.source.filesystem;
 import io.opaa.format.DocumentService;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.source.FilesystemPathAllowlist;
-import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

@@ -10,7 +10,7 @@ import io.opaa.indexing.filesync.FileContainer;
 import io.opaa.indexing.filesync.FileEntry;
 import io.opaa.indexing.filesync.FilePage;
 import io.opaa.indexing.filesync.FileStore;
-import io.opaa.indexing.source.SourceFolderPath;
+import io.opaa.indexing.spi.SourceFolderPath;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.nio.file.Files;

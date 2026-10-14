@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ServerAddressRule;
+import io.opaa.sourceaccess.ServerAddressRule;
 import org.junit.jupiter.api.Test;
 
 class ServerAddressTest {

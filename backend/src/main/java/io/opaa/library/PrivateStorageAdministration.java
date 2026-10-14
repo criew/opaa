@@ -13,7 +13,7 @@ import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.LibraryConnectionRepository.PrivateStorageOnProfile;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobRepository.PrivateRunEnds;
-import io.opaa.indexing.source.RunFailureCategory;
+import io.opaa.indexing.spi.RunFailureCategory;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.PersonalStorageQuota;

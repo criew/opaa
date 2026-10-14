@@ -2,7 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.connection.profile.LibraryConnection.Responsible;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.knowledge.SourceType;
 import java.net.URI;
 import java.util.UUID;

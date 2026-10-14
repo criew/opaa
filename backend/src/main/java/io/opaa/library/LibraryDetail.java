@@ -2,8 +2,8 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.connection.consent.SourceConsentService.ConsentView;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceBlock;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.SuccessionFinding;

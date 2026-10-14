@@ -2,7 +2,7 @@ package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.api.types.OwnAddressStock;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.knowledge.SourceType;
 import java.util.Collection;
 import java.util.Set;

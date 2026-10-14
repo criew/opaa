@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
-import io.opaa.indexing.source.SourceBlock;
-import io.opaa.indexing.source.SourceConnectionBlockedException;
+import io.opaa.indexing.spi.SourceBlock;
+import io.opaa.indexing.spi.SourceConnectionBlockedException;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;

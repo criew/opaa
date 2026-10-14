@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;

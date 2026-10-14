@@ -2,8 +2,8 @@ package io.opaa.indexing.job;
 
 /**
  * What ends a run instead of counting as the failure of the item being processed. Connectors reach
- * {@link #rethrow} through {@code IndexingRun#rethrowRunEnding}, the core below {@code source}
- * ({@code AttachmentIndexer}) directly.
+ * {@link #rethrow} through {@code IndexingRun#rethrowRunEnding}, the core below {@code run} ({@code
+ * AttachmentIndexer}) directly.
  */
 public final class RunEndingFailures {
 

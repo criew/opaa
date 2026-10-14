@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.confluence;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.SourceTargetRefusedException;
+import io.opaa.indexing.spi.SourceTargetRefusedException;
 import java.net.URI;
 import java.util.List;
 import org.slf4j.Logger;

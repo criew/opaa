@@ -2,7 +2,7 @@ package io.opaa.indexing.source.sharepoint;
 
 import io.opaa.indexing.filesync.FileStore;
 import io.opaa.indexing.filesync.FileStoreChangeFeedContract;
-import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.msgraph.FakeGraphServer;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.nio.charset.StandardCharsets;

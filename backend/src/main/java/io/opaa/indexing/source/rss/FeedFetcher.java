@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.rss;
 
-import io.opaa.indexing.source.IndexingRunFailedException;
-import io.opaa.indexing.source.RenewableCredential;
-import io.opaa.indexing.source.SourceCredentialsRejectedException;
+import io.opaa.indexing.spi.IndexingRunFailedException;
+import io.opaa.indexing.spi.RenewableCredential;
+import io.opaa.indexing.spi.SourceCredentialsRejectedException;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;

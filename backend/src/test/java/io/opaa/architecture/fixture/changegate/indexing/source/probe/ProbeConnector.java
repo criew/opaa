@@ -1,6 +1,6 @@
 package io.opaa.architecture.fixture.changegate.indexing.source.probe;
 
-import io.opaa.architecture.fixture.changegate.indexing.source.SourceConnector;
+import io.opaa.architecture.fixture.changegate.indexing.spi.SourceConnector;
 
 public class ProbeConnector implements SourceConnector {
   @Override

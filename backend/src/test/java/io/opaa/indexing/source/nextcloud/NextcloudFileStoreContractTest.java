@@ -3,7 +3,7 @@ package io.opaa.indexing.source.nextcloud;
 import io.opaa.indexing.filesync.ExpiringCheckpoints;
 import io.opaa.indexing.filesync.FileStore;
 import io.opaa.indexing.filesync.FileStoreFolderContract;
-import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.HashMap;
 import java.util.List;

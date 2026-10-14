@@ -2,7 +2,7 @@ package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import java.time.LocalDate;
 
 /**

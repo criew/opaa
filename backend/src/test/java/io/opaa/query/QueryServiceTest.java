@@ -212,7 +212,7 @@ class QueryServiceTest {
             documentMetadataService,
             mock(CitationMetadataReader.class),
             knowledgeLibraryRepository,
-            io.opaa.indexing.source.SourceConnectorStubs.registry(),
+            io.opaa.indexing.spi.SourceConnectorStubs.registry(),
             libraries -> java.util.Map.of(),
             mock(io.opaa.indexing.job.IndexingJobRepository.class)),
         answerGenerationService,

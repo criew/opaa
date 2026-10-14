@@ -26,9 +26,8 @@ Der Abgleich liegt in `io.opaa.indexing.filesync` (Modul knowledge), letzter Ein
 kennt keinen Konnektor und keinen Anbieter (`theFileSyncKnowsNoProvider`); eine neue Modulkante
 entsteht nicht. Nicht unter `indexing.source`, weil jedes direkte Unterpaket dort als Konnektor gilt
 (`connectorsDoNotKnowEachOther`). Entfernt wird nur über den Laufrahmen:
-`IndexingRun#removeWithAttachments` (Port `VanishedDocumentReconciler#removeWithAttachments`, seit
-#2740); `indexing.filesync` importiert `indexing.maintenance` nicht. Spring kennt das Paket nicht; was
-Transaktionen braucht (`ScanJournal`), liegt in `indexing.source`.
+`IndexingRun#removeWithAttachments` (Port `VanishedDocumentReconciler#removeWithAttachments`); `indexing.filesync` importiert `indexing.maintenance` nicht. Spring kennt das Paket nicht; was
+Transaktionen braucht (`ScanJournal`), liegt im Konnektor-Vertrag `indexing.spi` (seit #2720).
 
 `FileSync` besitzt Vorfilter nach Endung und Größe, Merkmalsvergleich, Download-Pool und
 Temp-Dateien, Aufnahme über `DocumentIngestService`, Ordnerspiegel (`SourceFolderMirror`) und
@@ -292,3 +291,4 @@ bekommt Vermerke, die niemand verbraucht und die mit dem Zustand fallen.
 | 2026-10-11 | #2482 | Pfadgrenze zentral in der Aufnahme, `FilePathLimit` nach `io.opaa.knowledge` | 10 |
 | 2026-10-14 | #2740 | Entfernen nur über `IndexingRun#removeWithAttachments`, `filesync` ohne `maintenance`-Import | 1, 5 |
 | 2026-10-14 | #2702 | Aus ADR-0040 herausgelöst und auf den Endstand neu gefasst | alle |
+| 2026-10-14 | #2720 | `ScanJournal` liegt in `indexing.spi` | 1 |

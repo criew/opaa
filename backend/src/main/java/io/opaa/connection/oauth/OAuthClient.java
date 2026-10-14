@@ -2,12 +2,12 @@ package io.opaa.connection.oauth;
 
 import io.opaa.connection.profile.ClientRegistration;
 import io.opaa.connection.profile.ProfileEndpoints;
-import io.opaa.indexing.source.ClientAuthentication;
-import io.opaa.indexing.source.Endpoint;
-import io.opaa.indexing.source.OAuthAuth;
-import io.opaa.indexing.source.Revocation;
-import io.opaa.indexing.source.SignInRejectedException;
-import io.opaa.indexing.source.SourceCredentialsException;
+import io.opaa.indexing.credentials.SignInRejectedException;
+import io.opaa.indexing.spi.ClientAuthentication;
+import io.opaa.indexing.spi.Endpoint;
+import io.opaa.indexing.spi.OAuthAuth;
+import io.opaa.indexing.spi.Revocation;
+import io.opaa.indexing.spi.SourceCredentialsException;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;

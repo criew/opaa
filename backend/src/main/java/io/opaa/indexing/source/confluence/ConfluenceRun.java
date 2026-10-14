@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.confluence;
 
 import io.opaa.indexing.job.IndexingRunEventRecorder;
-import io.opaa.indexing.source.IndexingRun;
-import io.opaa.indexing.source.IndexingRunProgress;
+import io.opaa.indexing.run.IndexingRun;
+import io.opaa.indexing.spi.IndexingRunProgress;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.HashSet;
 import java.util.LinkedHashSet;

@@ -15,10 +15,10 @@ import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -54,7 +54,7 @@ class S3LibraryConfigurationIntegrationTest {
   private static final String ENDPOINT = "http://localhost:9000";
 
   @Autowired private KnowledgeLibraryService libraryService;
-  @Autowired private io.opaa.indexing.source.SourceSyncStateRepository syncStateRepository;
+  @Autowired private io.opaa.indexing.spi.SourceSyncStateRepository syncStateRepository;
   @Autowired private MockMvc mockMvc;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
@@ -333,8 +333,8 @@ class S3LibraryConfigurationIntegrationTest {
     CurrentUser caller = currentUser(owner);
     UUID libraryId =
         libraryService.createLibrary(s3("Protokolle", ENDPOINT).build(), caller).library().getId();
-    io.opaa.indexing.source.SourceSyncState resumption =
-        new io.opaa.indexing.source.SourceSyncState(libraryId);
+    io.opaa.indexing.spi.SourceSyncState resumption =
+        new io.opaa.indexing.spi.SourceSyncState(libraryId);
     resumption.beginFullSync(UUID.randomUUID());
     resumption.markScopeCompleted("protokolle/2025/");
     syncStateRepository.save(resumption);
@@ -371,7 +371,7 @@ class S3LibraryConfigurationIntegrationTest {
         .satisfies(payload -> assertThat(payload).contains("s3Settings"));
 
     // a rename alone leaves the settings - and the resumption state - untouched
-    syncStateRepository.save(new io.opaa.indexing.source.SourceSyncState(libraryId));
+    syncStateRepository.save(new io.opaa.indexing.spi.SourceSyncState(libraryId));
     LibraryDetail renamed =
         libraryService.updateLibrary(libraryId, libraryUpdate("Sitzungen").build(), caller);
     assertThat(S3SourceSettingsJson.of(ConnectorData.storedIn(renamed.library())))

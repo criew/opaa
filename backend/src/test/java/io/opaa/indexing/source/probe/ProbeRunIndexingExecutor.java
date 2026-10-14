@@ -1,10 +1,10 @@
 package io.opaa.indexing.source.probe;
 
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.ListingOutcome;
-import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.indexing.source.VanishedDocumentPolicy;
+import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.ListingOutcome;
+import io.opaa.indexing.spi.SourceIndexingExecutor;
+import io.opaa.indexing.spi.VanishedDocumentPolicy;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.Map;

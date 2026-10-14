@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.indexing.source.RunCredentials;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.RunCredentials;
+import io.opaa.indexing.spi.SourceSettings;
 import java.net.URI;
 
 /**

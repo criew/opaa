@@ -20,11 +20,11 @@ Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokum
   (parsen, schneiden, speichern, markieren). Die `Document`-Zeile gehört `knowledge`.
 - **Modellwechsel:** Passt der Vektorindex nicht zum Embedding-Modell (`EmbeddingIndexState`), schreibt
   `VectorStoreWriter` in `embedding_next`; `EmbeddingReindexService` bettet neu ein und schaltet um.
-- **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf,
-  Protokoll), `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen),
-  `source` (Vertrag, Laufrahmen, Auslöser), `maintenance`, `filesync` (Datei-Abgleich, kennt keinen
-  Konnektor und keinen Anbieter); darüber Wurzel, `web` und Konnektoren. Rückwege sind Ports:
-  `VanishedDocumentReconciler`, Properties als Schnittstellen (`EmbeddingBatching`).
+- **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf, Protokoll),
+  `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen), `spi` (Konnektor-Vertrag),
+  `credentials` (Ziel, Geheimnis, Dienstkonto), `registry` (Konnektor je Typ), `run` (Laufrahmen, Auslöser),
+  `maintenance`, `filesync` (Datei-Abgleich, kennt keinen Konnektor und keinen Anbieter); darüber Wurzel, `web` und
+  Konnektoren. Rückwege sind Ports: `VanishedDocumentReconciler`, Properties als Schnittstellen (`EmbeddingBatching`).
 - **`FormatConfiguration`** registriert die Dateiformate (Modul format) als Beans; `DocumentIngestService`
   lehnt ein Format ab, das einen Schemaschlüssel als Passthrough-Schlüssel deklariert.
 - **Chat-Modelle:** `LlmModelService` ist der einzige Einstieg; der optionale API-Schlüssel wird über

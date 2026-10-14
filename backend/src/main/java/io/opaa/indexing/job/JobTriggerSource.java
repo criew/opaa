@@ -4,7 +4,7 @@ package io.opaa.indexing.job;
  * Who started an {@link IndexingJob}: a person via "Jetzt indizieren" ({@code
  * DocumentIndexingService#triggerIndexing}), the library's own schedule ({@code
  * LibraryIndexingScheduler}), or an authenticated push notification drained by {@code
- * io.opaa.indexing.source.SourceEventIntake} (Confluence webhook, S3 event). Mirrors {@code
+ * io.opaa.indexing.run.SourceEventIntake} (Confluence webhook, S3 event). Mirrors {@code
  * io.opaa.api.dto.IndexingTriggerSource} in the OpenAPI spec - kept as a separate domain enum with
  * a different name rather than a typeMappings-generated one, so the two never collide on the same
  * simple name in a file that imports both.

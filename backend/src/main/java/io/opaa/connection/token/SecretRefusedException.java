@@ -1,6 +1,6 @@
 package io.opaa.connection.token;
 
-import io.opaa.indexing.source.SourceBlock.Reason;
+import io.opaa.indexing.spi.SourceBlock.Reason;
 import java.util.Objects;
 
 /**

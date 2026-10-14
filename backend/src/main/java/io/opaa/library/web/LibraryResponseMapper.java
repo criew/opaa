@@ -18,7 +18,7 @@ import io.opaa.connection.consent.SourceConsentService;
 import io.opaa.connection.profile.LibraryConnection.Responsible;
 import io.opaa.connection.profile.LibraryConnection.ResponsibleType;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import io.opaa.library.LibraryCreation;

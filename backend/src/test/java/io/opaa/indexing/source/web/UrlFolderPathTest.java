@@ -2,7 +2,7 @@ package io.opaa.indexing.source.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.source.SourceFolderPath;
+import io.opaa.indexing.spi.SourceFolderPath;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

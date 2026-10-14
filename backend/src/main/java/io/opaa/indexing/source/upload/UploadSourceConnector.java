@@ -1,12 +1,12 @@
 package io.opaa.indexing.source.upload;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.OriginalAccess;
-import io.opaa.indexing.source.SourceConnectionTestResult;
-import io.opaa.indexing.source.SourceConnector;
-import io.opaa.indexing.source.SourceConnectorDescriptor;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.OriginalAccess;
+import io.opaa.indexing.spi.SourceConnectionTestResult;
+import io.opaa.indexing.spi.SourceConnector;
+import io.opaa.indexing.spi.SourceConnectorDescriptor;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;

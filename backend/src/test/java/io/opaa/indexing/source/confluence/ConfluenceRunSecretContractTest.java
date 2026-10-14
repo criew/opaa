@@ -6,11 +6,11 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.indexing.attachment.AttachmentProperties;
 import io.opaa.indexing.document.AttachmentIndexer;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.RunSecretContract;
-import io.opaa.indexing.source.SourceSettings;
-import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.RunSecretContract;
+import io.opaa.indexing.spi.SourceSettings;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceType;

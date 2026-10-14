@@ -3,7 +3,7 @@ package io.opaa.library.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.SourceBlockReason;
-import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.spi.SourceBlock;
 import org.junit.jupiter.api.Test;
 
 /** Every reason of the core is a reason of the API, with who is in charge and the notice. */

@@ -2,7 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.spi.SourceBlock;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.SuccessionFinding;

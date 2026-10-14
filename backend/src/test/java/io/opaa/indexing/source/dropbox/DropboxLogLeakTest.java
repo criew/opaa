@@ -8,7 +8,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.indexing.filesync.FileSyncHarness;
 import io.opaa.indexing.job.IndexingRunEvent;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,10 +31,7 @@ class DropboxLogLeakTest {
 
   private static final List<String> WATCHED =
       List.of(
-          "io.opaa.indexing.source",
-          "io.opaa.indexing.filesync",
-          "io.opaa.sourceaccess",
-          "io.opaa.security.TargetAddressValidator");
+          "io.opaa.indexing", "io.opaa.sourceaccess", "io.opaa.security.TargetAddressValidator");
 
   private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
   private FakeDropboxServer server;

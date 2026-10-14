@@ -23,7 +23,7 @@ import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobTriggerSource;
-import io.opaa.indexing.source.IndexingRunProgress;
+import io.opaa.indexing.spi.IndexingRunProgress;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.DocumentRepository;

@@ -12,7 +12,7 @@ import io.opaa.connection.PrivateLibraryConnections;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.ErasedLibraryReferences;
 import io.opaa.knowledge.ErasedLibraryReferences.ErasedLibrary;

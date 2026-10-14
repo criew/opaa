@@ -1,0 +1,188 @@
+package io.opaa.indexing.spi;
+
+import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.attachment.AttachmentProgressSink;
+import io.opaa.indexing.document.DocumentIngestOutcomes;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.job.IndexingEventSink;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunCost;
+import java.util.UUID;
+
+/**
+ * Tracks the processed/failed/skipped counters of a single indexing run and reports them through
+ * {@link IndexingJobService} - the shared place for that bookkeeping, so every {@link
+ * io.opaa.indexing.spi.SourceIndexingExecutor} reuses it instead of repeating it independently.
+ */
+public final class IndexingRunProgress implements AttachmentProgressSink {
+
+  private final IndexingJobService indexingJobService;
+  private final UUID jobId;
+  private int processed;
+  private int failed;
+  private int skipped;
+
+  /**
+   * The true count of documents indexed so far - distinct from {@code processed}, which counts the
+   * run's own items (files, entries, pages): an item's own document and every attachment indexed
+   * for it each add to this count, while only the item itself adds to {@code processed}.
+   */
+  private int documentsIndexedTotal;
+
+  /** The attachment share of the counters above - see {@link #recordAttachment}. */
+  private int attachmentsProcessed;
+
+  private int attachmentsSkipped;
+  private int attachmentsFailed;
+  private int quotaRejections;
+
+  public IndexingRunProgress(IndexingJobService indexingJobService, UUID jobId) {
+    this.indexingJobService = indexingJobService;
+    this.jobId = jobId;
+  }
+
+  public void setTotal(int total) {
+    indexingJobService.setTotalDocuments(jobId, total);
+  }
+
+  /** Adds an already-known count of skipped documents (e.g. rejected formats) without reporting. */
+  public void addSkipped(int count) {
+    skipped += count;
+  }
+
+  public void recordProcessed() {
+    processed++;
+    documentsIndexedTotal++;
+  }
+
+  public void recordFailed() {
+    failed++;
+  }
+
+  public void recordSkipped() {
+    skipped++;
+  }
+
+  /**
+   * Maps one item's {@link DocumentIngestResult} onto the counters and the protocol: a rejection
+   * ({@code QUOTA_EXCEEDED}, {@code PERSONAL_QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT}, {@code
+   * FILE_PATH_TOO_LONG}) and {@code SKIPPED} count as skipped, {@code FAILED} as failed, {@code
+   * PROCESSED} as processed; a rejection at either quota also counts towards {@link
+   * #quotaRejections()}. The protocol entry, if any, is the one {@link
+   * DocumentIngestOutcomes#record} writes.
+   *
+   * @return whether the item was processed
+   */
+  public boolean recordOutcome(
+      DocumentIngestResult result,
+      String reference,
+      IndexingEventSink events,
+      DocumentIngestOutcomes.QuotaMessages quotaMessages) {
+    DocumentIngestOutcomes.record(
+        events, result, reference, quotaMessages, DocumentIngestOutcomes.FAILED_MESSAGE);
+    switch (result) {
+      case PROCESSED -> {
+        recordProcessed();
+        return true;
+      }
+      case FAILED -> recordFailed();
+      case QUOTA_EXCEEDED, PERSONAL_QUOTA_EXCEEDED -> {
+        recordQuotaReached();
+        recordSkipped();
+      }
+      case SKIPPED, NO_EXTRACTABLE_TEXT, FILE_PATH_TOO_LONG -> recordSkipped();
+    }
+    return false;
+  }
+
+  @Override
+  public void recordQuotaReached() {
+    quotaRejections++;
+  }
+
+  @Override
+  public int quotaRejections() {
+    return quotaRejections;
+  }
+
+  /**
+   * Whether an item or attachment of this run was rejected at a storage quota - its library's or,
+   * for a private library, its owner's.
+   */
+  public boolean quotaReached() {
+    return quotaRejections > 0;
+  }
+
+  /** Documents recorded as failed so far. */
+  public int failedCount() {
+    return failed;
+  }
+
+  /** Source items this run processed so far - the executor's "did this run make progress" check. */
+  public int processedCount() {
+    return processed;
+  }
+
+  public int skippedCount() {
+    return skipped;
+  }
+
+  /**
+   * Records an attachment's outcome for the run's metrics. Only {@code PROCESSED} also counts
+   * towards {@code documentsIndexedTotal} (the attachment became a document of its own); skipped
+   * and failed attachments leave the document counters alone.
+   */
+  @Override
+  public void recordAttachment(AttachmentOutcome outcome) {
+    switch (outcome) {
+      case PROCESSED -> {
+        attachmentsProcessed++;
+        documentsIndexedTotal++;
+      }
+      case SKIPPED -> attachmentsSkipped++;
+      case FAILED -> attachmentsFailed++;
+    }
+  }
+
+  /** The attachment counters, for the run's {@link IndexingRunCost}. */
+  public int attachmentsProcessed() {
+    return attachmentsProcessed;
+  }
+
+  public int attachmentsSkipped() {
+    return attachmentsSkipped;
+  }
+
+  public int attachmentsFailed() {
+    return attachmentsFailed;
+  }
+
+  /** Reports the current counters. Callers decide when a report is due. */
+  public void report() {
+    indexingJobService.updateProgress(jobId, processed, failed, skipped, documentsIndexedTotal);
+  }
+
+  /** Completes the run; one that indexed a document is a content change of its library. */
+  public void complete() {
+    boolean completed =
+        indexingJobService.completeJob(jobId, processed, failed, skipped, documentsIndexedTotal);
+    if (completed && documentsIndexedTotal > 0) {
+      indexingJobService.recordContentChange(jobId);
+    }
+  }
+
+  /** Completes the run as one that ended early for {@code category}, which the job keeps. */
+  public void complete(RunFailureCategory category) {
+    indexingJobService.recordEndCategory(jobId, category.name());
+    complete();
+  }
+
+  public void fail(String message) {
+    indexingJobService.failJob(jobId, message);
+  }
+
+  /** Fails the run with {@code message}, recording {@code category} as why. */
+  public void fail(String message, RunFailureCategory category) {
+    indexingJobService.failJob(jobId, message, category.name());
+  }
+}

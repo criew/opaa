@@ -10,9 +10,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.common.UnauthorizedException;
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
-import io.opaa.indexing.source.PushIntakeHandler;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
+import io.opaa.indexing.spi.PushIntakeHandler;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;

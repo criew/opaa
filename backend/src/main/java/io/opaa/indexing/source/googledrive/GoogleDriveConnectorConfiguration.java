@@ -2,9 +2,9 @@ package io.opaa.indexing.source.googledrive;
 
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.ScanJournal;
-import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.ScanJournal;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.security.TargetAddressValidator;

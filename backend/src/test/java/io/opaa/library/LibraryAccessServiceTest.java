@@ -16,7 +16,7 @@ import io.opaa.asset.AssetRepository;
 import io.opaa.asset.AssetTypes;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.source.SourceConnectorStubs;
+import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.permission.AssetAccessService;

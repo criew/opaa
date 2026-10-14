@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.smb;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceFolderPath;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceFolderPath;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

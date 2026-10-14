@@ -13,8 +13,8 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.UnauthorizedException;
-import io.opaa.indexing.source.SourceEventIntake;
-import io.opaa.indexing.source.SourceEventTarget;
+import io.opaa.indexing.run.SourceEventIntake;
+import io.opaa.indexing.run.SourceEventTarget;
 import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;

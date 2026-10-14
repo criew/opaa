@@ -5,12 +5,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.RunSecretContract;
-import io.opaa.indexing.source.ScanJournal;
-import io.opaa.indexing.source.SourceSettings;
-import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.RunSecretContract;
+import io.opaa.indexing.spi.ScanJournal;
+import io.opaa.indexing.spi.SourceSettings;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;

@@ -12,7 +12,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetShellService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.indexing.source.SourceConnectionResolver;
+import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.source.profileprobe.PersonProbeSourceConnector;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;

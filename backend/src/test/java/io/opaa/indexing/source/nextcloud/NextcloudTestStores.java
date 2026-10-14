@@ -1,9 +1,9 @@
 package io.opaa.indexing.source.nextcloud;
 
 import io.opaa.indexing.filesync.FileStore;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.RequestBudget;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.RequestBudget;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import java.time.Duration;

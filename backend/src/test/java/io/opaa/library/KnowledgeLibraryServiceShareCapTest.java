@@ -30,15 +30,14 @@ import io.opaa.connection.profile.OwnAddressDrafts;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
-import io.opaa.indexing.source.FilesystemPathAllowlist;
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
-import io.opaa.indexing.source.SourceConnectorStubs;
-import io.opaa.indexing.source.TestSourceConnectors;
+import io.opaa.indexing.registry.TestSourceConnectors;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
+import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -52,6 +51,7 @@ import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryService;
+import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import io.opaa.test.SourceTypes;
 import java.time.Clock;
 import java.util.List;
@@ -146,7 +146,7 @@ class KnowledgeLibraryServiceShareCapTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssFeedStateRepository(rssFeedStateRepository)
                 .sourceSyncStateRepository(
-                    mock(io.opaa.indexing.source.SourceSyncStateRepository.class))
+                    mock(io.opaa.indexing.spi.SourceSyncStateRepository.class))
                 .confluenceConnectionService(mock(ConfluenceConnectionService.class))
                 .confluenceProperties(confluenceProperties)
                 .registry(),

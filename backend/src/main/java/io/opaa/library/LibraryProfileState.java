@@ -2,7 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.connection.profile.ConnectionProfile;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import java.util.UUID;
 
 /**

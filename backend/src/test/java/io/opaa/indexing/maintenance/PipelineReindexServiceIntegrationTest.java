@@ -13,16 +13,16 @@ import io.opaa.format.file.markdown.MarkdownDocumentFormat;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.document.ChecksumService;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
-import io.opaa.indexing.source.IndexingRun;
-import io.opaa.indexing.source.IndexingRunProgress;
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
-import io.opaa.indexing.source.Secret;
-import io.opaa.indexing.source.StoredDocumentSourceAccess;
+import io.opaa.indexing.registry.StoredDocumentSourceAccess;
+import io.opaa.indexing.run.IndexingRun;
+import io.opaa.indexing.spi.IndexingRunProgress;
+import io.opaa.indexing.spi.Secret;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -1202,7 +1202,7 @@ class PipelineReindexServiceIntegrationTest {
         new IndexingRunProgress(jobService, jobId),
         new IndexingRunEventRecorder(
             org.mockito.Mockito.mock(IndexingRunEventRepository.class), jobService, jobId),
-        org.mockito.Mockito.mock(io.opaa.indexing.source.VanishedDocumentReconciler.class),
+        org.mockito.Mockito.mock(io.opaa.indexing.spi.VanishedDocumentReconciler.class),
         documentRepository,
         org.mockito.Mockito.mock(io.opaa.knowledge.LibraryStorageQuotaService.class),
         rejected -> Secret.personal(library.getSourceCredentials()),

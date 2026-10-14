@@ -9,8 +9,8 @@ import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.indexing.filesync.FileSyncHarness;
 import io.opaa.indexing.job.IndexingRunEvent;
-import io.opaa.indexing.source.SourceConnectionTestResult;
-import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.spi.SourceConnectionTestResult;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import java.nio.charset.StandardCharsets;
@@ -104,7 +104,7 @@ class NextcloudLogLeakTest {
     harness.fullSync(
         NextcloudTestStores.open(
             settings(),
-            new io.opaa.indexing.source.RequestBudget(
+            new io.opaa.indexing.spi.RequestBudget(
                 new io.opaa.sourceaccess.SourceRequestMeter(), 5, null)));
 
     String basic =
@@ -119,7 +119,7 @@ class NextcloudLogLeakTest {
         .doesNotContain("remote.php");
   }
 
-  private io.opaa.indexing.source.SourceSettings settings() {
+  private io.opaa.indexing.spi.SourceSettings settings() {
     return NextcloudTestStores.settings(server.baseUrl(), server.credentials(), List.of("/Akten"));
   }
 

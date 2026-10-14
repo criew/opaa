@@ -1,0 +1,228 @@
+package io.opaa.indexing.run;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
+import io.opaa.indexing.document.DocumentIngestOutcomes;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEventRecorder;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.spi.IndexingRunProgress;
+import io.opaa.indexing.spi.Secret;
+import io.opaa.indexing.spi.SourceBlock;
+import io.opaa.indexing.spi.SourceConnectionBlockedException;
+import io.opaa.indexing.spi.VanishedDocumentReconciler;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.knowledge.SourceDocumentContext;
+import io.opaa.test.SourceTypes;
+import java.time.Clock;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+
+/** What one {@link IndexingRun} offers a connector body, over mocked collaborators. */
+class IndexingRunTest {
+
+  private final IndexingJobService jobService = mock(IndexingJobService.class);
+  private final IndexingRunEventRepository eventRepository = mock(IndexingRunEventRepository.class);
+  private final DocumentRepository documentRepository = mock(DocumentRepository.class);
+  private final LibraryStorageQuotaService quotaService = mock(LibraryStorageQuotaService.class);
+  private final UUID jobId = UUID.randomUUID();
+  private final KnowledgeLibrary library =
+      KnowledgeLibrary.ownedByUser(
+          UUID.randomUUID(),
+          "Bibliothek",
+          null,
+          UUID.randomUUID(),
+          SourceTypes.HTTP_DIRECTORY,
+          null,
+          "https://host/",
+          null);
+  private final IndexingRun run =
+      new IndexingRun(
+          jobId,
+          library,
+          new LibrarySourceConnectionResolver().resolve(library),
+          () -> Secret.personal(library.getSourceCredentials()),
+          IndexingRunMode.FULL,
+          SourceTypes.HTTP_DIRECTORY,
+          new IndexingRunProgress(jobService, jobId),
+          new IndexingRunEventRecorder(eventRepository, jobService, jobId),
+          mock(VanishedDocumentReconciler.class),
+          documentRepository,
+          quotaService,
+          rejected -> Secret.personal(library.getSourceCredentials()),
+          Clock.systemUTC());
+
+  // --- the change check --------------------------------------------------------------------
+
+  @Test
+  void isUnchangedTreatsABlankOrMissingRemoteVersionAsUnknownAndAlwaysRefetches() {
+    // The <ul>-based autoindex layouts never report a lastModified at all - two blank strings
+    // comparing equal would mean such a source is fetched once and never again.
+    Document existing = indexedDocument("https://host/file.txt", "");
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), "https://host/file.txt"))
+        .thenReturn(Optional.of(existing));
+
+    assertThat(run.isUnchanged("https://host/file.txt", "")).isFalse();
+    assertThat(run.isUnchanged("https://host/file.txt", null)).isFalse();
+  }
+
+  @Test
+  void isUnchangedIsTrueForAMatchingRemoteVersionOfAnIndexedDocumentOnly() {
+    Document existing = indexedDocument("https://host/file.txt", "2025-06-14 09:00");
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), "https://host/file.txt"))
+        .thenReturn(Optional.of(existing));
+
+    assertThat(run.isUnchanged("https://host/file.txt", "2025-06-14 09:00")).isTrue();
+    assertThat(run.isUnchanged("https://host/file.txt", "2025-06-15 09:00")).isFalse();
+
+    existing.setStatus(DocumentStatus.FAILED);
+    assertThat(run.isUnchanged("https://host/file.txt", "2025-06-14 09:00"))
+        .as("a failed document is retried however unchanged its source says it is")
+        .isFalse();
+  }
+
+  @Test
+  void isUnchangedLooksUpTheDocumentInTheRunsOwnLibraryOnly() {
+    // The same source indexed into another library is that library's document - stubbed for a
+    // foreign library id so a lookup against the wrong library would match, loudly.
+    Document foreign = indexedDocument("https://host/file.txt", "2025-06-14 09:00");
+    when(documentRepository.findByLibraryIdAndFilePath(UUID.randomUUID(), "https://host/file.txt"))
+        .thenReturn(Optional.of(foreign));
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), "https://host/file.txt"))
+        .thenReturn(Optional.empty());
+
+    assertThat(run.isUnchanged("https://host/file.txt", "2025-06-14 09:00")).isFalse();
+  }
+
+  // --- result mapping and failures ---------------------------------------------------------
+
+  @Test
+  void recordOutcomeResolvesTheQuotaMessageForTheRunsLibrary() {
+    when(quotaService.quotaExceededMessage(library.getId()))
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft");
+
+    boolean processed = run.recordOutcome(DocumentIngestResult.QUOTA_EXCEEDED, "datei.txt");
+
+    assertThat(processed).isFalse();
+    verify(eventRepository)
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && "Speicherkontingent der Bibliothek erschöpft".equals(event.getMessage())
+                        && "datei.txt".equals(event.getReference())));
+    assertThat(run.progress().skippedCount()).isEqualTo(1);
+  }
+
+  @Test
+  void recordFailureCountsTheItemAsFailedAndRecordsTheSharedErrorMessage() {
+    run.recordFailure("datei.txt", new IllegalStateException("boom"));
+
+    assertThat(run.progress().failedCount()).isEqualTo(1);
+    verify(eventRepository)
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.ERROR
+                        && DocumentIngestOutcomes.FAILED_MESSAGE.equals(event.getMessage())
+                        && "datei.txt".equals(event.getReference())));
+  }
+
+  // --- the reconciliation set --------------------------------------------------------------
+
+  @Test
+  void theReconciliationSetTellsPresentFromReprocessedAndForgetsWhatTheSourceWithdrew() {
+    run.markPresent("a");
+    run.markReprocessed("b");
+    run.markPresent("c");
+    run.markAbsent("c");
+
+    assertThat(run.currentPaths()).containsExactlyInAnyOrder("a", "b");
+    assertThat(run.reprocessedPaths()).containsExactly("b");
+  }
+
+  @Test
+  void theAttachmentAccessFeedsTheReconciliationSetAndCarriesItsContext() {
+    SourceDocumentContext context = new SourceDocumentContext("ENG", "Handbuch");
+    ReconcilingAttachmentAccess access = run.attachmentAccess(context);
+
+    access.recordIndexedAttachment("https://host/anlage.pdf", true);
+    access.recordIndexedAttachment("https://host/unveraendert.pdf", false);
+    access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
+    access.markDeferred();
+
+    assertThat(access.targetLibrary()).isSameAs(library);
+    assertThat(access.sourceContext()).isEqualTo(context);
+    assertThat(run.attachmentAccess().sourceContext()).isEqualTo(SourceDocumentContext.NONE);
+    assertThat(run.currentPaths())
+        .containsExactlyInAnyOrder("https://host/anlage.pdf", "https://host/unveraendert.pdf");
+    assertThat(run.reprocessedPaths()).containsExactly("https://host/anlage.pdf");
+    assertThat(run.progress().attachmentsProcessed()).isEqualTo(1);
+  }
+
+  // --- what ends the run past an item catch ----------------------------------------------
+
+  @Test
+  void rethrowRunEndingLetsAnInterruptionPassWithTheFlagSetEvenAsACause() {
+    InterruptedException interrupted = new InterruptedException();
+    try {
+      assertThatThrownBy(
+              () ->
+                  IndexingRun.rethrowRunEnding(
+                      new IllegalStateException("wrapped", new java.io.IOException(interrupted))))
+          .isSameAs(interrupted);
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+    } finally {
+      Thread.interrupted();
+    }
+  }
+
+  @Test
+  void rethrowRunEndingLetsASpentBudgetPassAndKeepsEveryOtherFailureWithTheItem() {
+    RequestBudgetExhaustedException exhausted = RequestBudgetExhaustedException.requests(3);
+
+    assertThatThrownBy(() -> IndexingRun.rethrowRunEnding(new RuntimeException(exhausted)))
+        .isSameAs(exhausted);
+    assertThatCode(() -> IndexingRun.rethrowRunEnding(new java.io.IOException("Datei kaputt")))
+        .doesNotThrowAnyException();
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
+  }
+
+  /** A source refused mid-item - an attachment's download, say - ends the run, not the item. */
+  @Test
+  void rethrowRunEndingLetsARefusedSourcePassEvenAsACause() {
+    SourceConnectionBlockedException blocked =
+        new SourceConnectionBlockedException(
+            new SourceBlock(SourceBlock.Reason.NOT_CONNECTED, "Verwaltende", "getrennt"));
+
+    assertThatThrownBy(() -> IndexingRun.rethrowRunEnding(blocked)).isSameAs(blocked);
+    assertThatThrownBy(() -> IndexingRun.rethrowRunEnding(new IllegalStateException(blocked)))
+        .isSameAs(blocked);
+  }
+
+  private Document indexedDocument(String filePath, String lastModifiedRemote) {
+    Document document =
+        new Document("file.txt", filePath, "text/plain", 1L, SourceTypes.FILESYSTEM);
+    document.setLibraryId(library.getId());
+    document.setStatus(DocumentStatus.INDEXED);
+    document.setLastModifiedRemote(lastModifiedRemote);
+    return document;
+  }
+}

@@ -1,11 +1,11 @@
 package io.opaa.library;
 
-import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceSourceSettings;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
+import io.opaa.indexing.spi.ConnectorData;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

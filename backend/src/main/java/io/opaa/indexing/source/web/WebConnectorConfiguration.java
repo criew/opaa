@@ -2,9 +2,9 @@ package io.opaa.indexing.source.web;
 
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.RemoteOriginalAccess;
-import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.RemoteOriginalAccess;
+import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.security.TargetAddressValidator;

@@ -8,12 +8,12 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
-import io.opaa.indexing.source.IndexingRunTemplate;
-import io.opaa.indexing.source.LibrarySourceConnectionResolver;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;

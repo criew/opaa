@@ -1,6 +1,6 @@
 package io.opaa.architecture.fixture.profilesupport.library.web;
 
-import io.opaa.architecture.fixture.profilesupport.indexing.source.ProfileDeclaration;
+import io.opaa.architecture.fixture.profilesupport.indexing.spi.ProfileDeclaration;
 
 /** Outside connections the declaration is shown as it is. */
 public class DescriptorMapper {

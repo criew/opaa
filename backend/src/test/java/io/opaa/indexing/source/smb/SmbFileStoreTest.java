@@ -13,7 +13,7 @@ import io.opaa.indexing.filesync.FileSyncHarness;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
-import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

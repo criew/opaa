@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.List;
 

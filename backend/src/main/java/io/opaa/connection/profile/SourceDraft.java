@@ -1,7 +1,7 @@
 package io.opaa.connection.profile;
 
 import io.opaa.connection.token.SecretOwner.PendingConsent;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.knowledge.SourceType;
 import java.util.Objects;
 import java.util.UUID;

@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.s3;
 
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

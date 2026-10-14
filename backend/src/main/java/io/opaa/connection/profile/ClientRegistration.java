@@ -1,7 +1,7 @@
 package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
-import io.opaa.indexing.source.SignInDetails;
+import io.opaa.indexing.spi.SignInDetails;
 import java.util.UUID;
 
 /**

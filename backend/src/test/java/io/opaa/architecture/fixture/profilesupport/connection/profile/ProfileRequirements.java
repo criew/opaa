@@ -1,6 +1,6 @@
 package io.opaa.architecture.fixture.profilesupport.connection.profile;
 
-import io.opaa.architecture.fixture.profilesupport.indexing.source.ProfileDeclaration;
+import io.opaa.architecture.fixture.profilesupport.indexing.spi.ProfileDeclaration;
 
 /** The one place in connections that reads the declared support. */
 public class ProfileRequirements {

@@ -23,7 +23,7 @@ import io.opaa.connection.consent.SourceConsentService;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.ProfileRegistrations;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.organization.Organization;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.security.TargetAddressValidator;

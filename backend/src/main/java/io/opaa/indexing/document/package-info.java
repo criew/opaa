@@ -8,7 +8,7 @@
  * holdings in {@code io.opaa.knowledge}. Uses {@code format} for the format handling, {@code chunk}
  * for cutting and storing, {@code metadata} for the schema fields, {@code attachment} for what a
  * caller hands in, and of {@code job} only the protocol sink and what ends a run. The batching of
- * the embedding comes as {@link io.opaa.indexing.document.EmbeddingBatching}. {@code source} and
- * {@code maintenance} depend on this package, never the other way round.
+ * the embedding comes as {@link io.opaa.indexing.document.EmbeddingBatching}. {@code spi}, {@code
+ * run} and {@code maintenance} depend on this package, never the other way round.
  */
 package io.opaa.indexing.document;

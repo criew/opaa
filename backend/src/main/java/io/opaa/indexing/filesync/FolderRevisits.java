@@ -1,7 +1,7 @@
 package io.opaa.indexing.filesync;
 
-import io.opaa.indexing.source.ScanJournal;
-import io.opaa.indexing.source.SourceSyncStateRepository.Revisit;
+import io.opaa.indexing.spi.ScanJournal;
+import io.opaa.indexing.spi.SourceSyncStateRepository.Revisit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
