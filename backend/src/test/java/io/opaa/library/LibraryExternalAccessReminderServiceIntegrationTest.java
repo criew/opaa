@@ -45,6 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Die Wiedervorlage vor dem Ablauf einer Fremdzugangsfreigabe (#1731): dass sie zugestellt wird,
@@ -73,6 +74,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private PublicBaseUrl publicBaseUrl;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
   private UUID organizationId;
   private MailService mail;
@@ -128,7 +130,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
     externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, expiresAt);
 
-    int sent = reminderServiceAt(expiresAt.minus(10, ChronoUnit.DAYS), 14).runOnce();
+    int sent = remindAt(expiresAt.minus(10, ChronoUnit.DAYS), 14);
 
     assertThat(sent).isEqualTo(1);
     @SuppressWarnings("unchecked")
@@ -149,6 +151,28 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
         .isNotNull();
   }
 
+  /** Die Mail geht erst nach dem Commit; ein zurückgerollter Lauf verschickt nichts. */
+  @Test
+  void aRolledBackRunSendsNoMail() {
+    UUID owner = createUser("Erika Mustermann");
+    UUID libraryId = createLibrary(owner);
+    Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
+    externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, expiresAt);
+
+    transactionTemplate.executeWithoutResult(
+        status -> {
+          assertThat(reminderServiceAt(expiresAt.minus(10, ChronoUnit.DAYS), 14).runOnce())
+              .isEqualTo(1);
+          verify(mail, never()).send(any(), any(), anyString(), any());
+          status.setRollbackOnly();
+        });
+
+    verify(mail, never()).send(any(), any(), anyString(), any());
+    assertThat(
+            libraryRepository.findById(libraryId).orElseThrow().getExternalAccessReminderSentAt())
+        .isNull();
+  }
+
   /** Höchstens eine Mail je Freigabe - sonst erinnert der tägliche Lauf jeden Tag des Fensters. */
   @Test
   void aSecondRunInsideTheSameWindowSendsNothingMore() {
@@ -157,9 +181,9 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
     externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, expiresAt);
     Instant insideTheWindow = expiresAt.minus(10, ChronoUnit.DAYS);
-    reminderServiceAt(insideTheWindow, 14).runOnce();
+    remindAt(insideTheWindow, 14);
 
-    assertThat(reminderServiceAt(insideTheWindow.plus(1, ChronoUnit.DAYS), 14).runOnce()).isZero();
+    assertThat(remindAt(insideTheWindow.plus(1, ChronoUnit.DAYS), 14)).isZero();
     verify(mail, org.mockito.Mockito.times(1)).send(any(), any(), anyString(), any());
   }
 
@@ -170,7 +194,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     UUID libraryId = createLibrary(owner);
     externalAccessService.setExternalAccess(
         currentUserOf(owner), libraryId, true, Instant.now().plus(30, ChronoUnit.DAYS));
-    reminderServiceAt(Instant.now().plus(20, ChronoUnit.DAYS), 14).runOnce();
+    remindAt(Instant.now().plus(20, ChronoUnit.DAYS), 14);
 
     Instant renewedUntil = Instant.now().plus(90, ChronoUnit.DAYS);
     externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, renewedUntil);
@@ -178,8 +202,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     assertThat(
             libraryRepository.findById(libraryId).orElseThrow().getExternalAccessReminderSentAt())
         .isNull();
-    assertThat(reminderServiceAt(renewedUntil.minus(10, ChronoUnit.DAYS), 14).runOnce())
-        .isEqualTo(1);
+    assertThat(remindAt(renewedUntil.minus(10, ChronoUnit.DAYS), 14)).isEqualTo(1);
   }
 
   /**
@@ -193,7 +216,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
     externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, expiresAt);
 
-    assertThat(reminderServiceAt(expiresAt.plus(1, ChronoUnit.DAYS), 14).runOnce()).isZero();
+    assertThat(remindAt(expiresAt.plus(1, ChronoUnit.DAYS), 14)).isZero();
     verify(mail, never()).send(any(), any(), anyString(), any());
   }
 
@@ -205,7 +228,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     externalAccessService.setExternalAccess(
         currentUserOf(owner), libraryId, true, Instant.now().plus(30, ChronoUnit.DAYS));
 
-    assertThat(reminderServiceAt(Instant.now(), 14).runOnce()).isZero();
+    assertThat(remindAt(Instant.now(), 14)).isZero();
     verify(mail, never()).send(any(), any(), anyString(), any());
   }
 
@@ -219,7 +242,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
     externalAccessService.setExternalAccess(currentUserOf(owner), libraryId, true, expiresAt);
 
-    assertThat(reminderServiceAt(expiresAt.minus(1, ChronoUnit.DAYS), 0).runOnce()).isZero();
+    assertThat(remindAt(expiresAt.minus(1, ChronoUnit.DAYS), 0)).isZero();
     verify(mail, never()).send(any(), any(), anyString(), any());
     assertThat(
             libraryRepository.findById(libraryId).orElseThrow().getExternalAccessReminderSentAt())
@@ -243,7 +266,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
         "UPDATE knowledge_libraries SET external_access_set_by_user_id = NULL WHERE id = ?",
         libraryId);
 
-    assertThat(reminderServiceAt(expiresAt.minus(1, ChronoUnit.DAYS), 14).runOnce()).isZero();
+    assertThat(remindAt(expiresAt.minus(1, ChronoUnit.DAYS), 14)).isZero();
     verify(mail, never()).send(any(), any(), anyString(), any());
     assertThat(
             libraryRepository.findById(libraryId).orElseThrow().getExternalAccessReminderSentAt())
@@ -259,6 +282,11 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
    * Bean des Kontexts: die Produktionsbean liest die Wanduhr und die ausgelieferte Property, und
    * ein klassenlokaler Ersatz spaltete den Kontext.
    */
+  /** Ein Lauf in eigener Transaktion wie hinter dem Scheduler; die Mails gehen nach dem Commit. */
+  private int remindAt(Instant now, int leadDays) {
+    return transactionTemplate.execute(status -> reminderServiceAt(now, leadDays).runOnce());
+  }
+
   private LibraryExternalAccessReminderService reminderServiceAt(Instant now, int leadDays) {
     return new LibraryExternalAccessReminderService(
         libraryRepository,
