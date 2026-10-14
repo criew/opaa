@@ -958,8 +958,8 @@ class LocalUserAdminIntegrationTest {
     // revoked back then by the account itself - a second event would carry that old revocation's
     // timestamp and actor, because revoking is idempotent
     grant(holder.id(), unit, issuer.id(), now.minus(Duration.ofDays(5)), inAMonth, issuer.id());
-    // held by the account itself: its Gegenstand goes with the account (ADR-0016, Nachtrag), and a
-    // revocation event would name a pseudonym this transaction deletes
+    // held by the account itself: its Gegenstand goes with the account (ADR-0016, Entscheidung 4),
+    // and a revocation event would name a pseudonym this transaction deletes
     grant(issuer.id(), unit, issuer.id(), yesterday, inAMonth, null);
     // a third party's grant, untouched by this deletion in every way: neither revoked nor removed
     DiagnosticImpersonationGrant ofAThirdParty =

@@ -146,7 +146,7 @@ class WorkspaceBaselineTest extends AbstractBaselineTest {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Diagnostic impersonation grants (ADR-0016, Nachtrag)
+  // Diagnostic impersonation grants (ADR-0016, Entscheidung 4)
   // ---------------------------------------------------------------------------------------------
 
   @Test

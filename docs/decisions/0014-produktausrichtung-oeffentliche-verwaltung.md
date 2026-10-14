@@ -2,376 +2,216 @@
 
 ## Status
 
-Akzeptiert
+Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt durch ADR-0030 (zu Entscheidung 11) und ADR-0039 (zu Entscheidung 13)
 
 ## Kontext
 
-OPAA ist als generisches, selbst gehostetes Wissensmanagement für Organisationen begonnen worden. Die
-Dokumentation beschreibt entsprechend einen breiten Adressatenkreis: ein Konzern mit 5.000 Beschäftigten,
-ein SaaS-Unternehmen mit 50 Leuten, ein Support-Team, eine Gesundheitsorganisation. Das Produktversprechen
-war Austauschbarkeit — jede Komponente konfigurierbar, jede Datenbank ersetzbar, jeder Modellanbieter
-gleichwertig, Betrieb wahlweise im eigenen Haus oder in einer öffentlichen Cloud.
+OPAA begann als generisches, selbst gehostetes Wissensmanagement mit dem Versprechen der
+Austauschbarkeit: jede Komponente konfigurierbar, jeder Modellanbieter gleichwertig, Betrieb im Haus
+oder in einer öffentlichen Cloud. Aus der Arbeit an konkreten Anwendungsfällen ergab sich ein anderes
+Bild:
 
-Aus der Arbeit an konkreten Anwendungsfällen hat sich ein anderes Bild ergeben, und zwar in drei Punkten:
+- **Der Adressat ist enger und anspruchsvoller.** Die Anforderungen, die OPAA von einem Chat über
+  einer Vektorsuche unterscheiden, kommen aus der öffentlichen Verwaltung: Eine Auskunft muss belegbar
+  sein, Steuerdaten dürfen nach § 30 AO das Haus nicht verlassen, ein Rollout braucht eine
+  Dienstvereinbarung, ein Betreiber muss eine Prüfung nach BSI C5 bestehen. Diese Anforderungen
+  bestimmen die Architektur, von der Rechteprüfung zur Abfragezeit bis zu den zulässigen Auswertungen.
+- **Das Produkt ist mehr als Wissensmanagement.** Wiederkehrende Abläufe sollen von Agenten erledigt
+  werden, wissensgeerdet und abgestuft vom Lesen bis zu schreibenden Aktionen mit Freigabe.
+- **Der Engpass ist die Verteilung.** Ohne einen Weg, KI-Kompetenz von wenigen zu allen Beschäftigten
+  zu bringen, entsteht Schatten-KI mit Amtsdaten in Verbraucherwerkzeugen.
 
-**Der Adressat ist enger und anspruchsvoller.** Die Anforderungen, die OPAA von einem Chat-Frontend über
-einer Vektorsuche unterscheiden, kommen aus der öffentlichen Verwaltung: Eine Auskunft muss belegbar sein,
-weil jemand mit seinem Namen dafür geradesteht. Steuerdaten dürfen § 30 AO zufolge das Haus nicht in eine
-fremde Cloud verlassen. Ein Rollout beginnt nicht ohne Dienstvereinbarung, weil die Personalvertretung
-mitbestimmt. Ein Betreiber muss die Prüfung nach BSI C5 bestehen. Diese Anforderungen sind nicht
-zusätzliche Häkchen, sondern bestimmen die Architektur — von der Rechteprüfung zur Abfragezeit bis dahin,
-welche Auswertungen es überhaupt geben darf.
-
-**Das Produkt ist mehr als Wissensmanagement.** Fragen zu beantworten ist der Anfang, nicht das Ziel.
-Wiederkehrende Abläufe sollen von Agenten erledigt werden, wissensgeerdet und abgestuft von reinem Lesen
-bis zu schreibenden Aktionen mit Freigabe.
-
-**Der eigentliche Engpass ist die Verteilung.** Das reale Problem in einer Behörde ist heute nicht, ob es
-ein gutes Modell gibt, sondern wie KI-Kompetenz von wenigen Könnern zu allen Beschäftigten kommt. Ohne
-Antwort darauf entsteht Schatten-KI: Einzelne basteln private Prompts und kopieren Amtsdaten in
-Verbraucherwerkzeuge. Ein Produkt, das darauf keine Antwort hat, löst das kleinere Problem.
-
-Der bestehende Dokumentationsbestand bildet das nicht ab. Die jüngeren Dokumente — `spaces-and-assets.md`,
-`access-control.md`, `search-quality-evaluation.md` — sind bereits nach der neuen Ausrichtung geschrieben,
-die älteren nicht. Das Repository behauptet damit an verschiedenen Stellen Verschiedenes.
+Der Dokumentationsbestand behauptete an verschiedenen Stellen Verschiedenes; dieser ADR legt die
+Ausrichtung fest und führt die daraus folgenden Produktgrenzen als Register (Entscheidungen 6–15).
 
 ## Entscheidung
 
-OPAA wird als **souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung** geführt.
+### 1. Nordstern und Säulen
 
-**Drei Säulen** tragen das Produkt, ohne dass Daten das Haus verlassen:
+OPAA ist eine **souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung**. Drei Säulen
+tragen das Produkt, ohne dass Daten das Haus verlassen: **Wissen** (verstreutes Wissen wird befragbar
+und nachweisbar), **Agenten** (wiederkehrende Aufgaben werden automatisiert, immer wissensgeerdet) und
+**KI für Teams und Organisation** (geteilte Arbeitsräume, teilbare Agenten, Prompt-Bibliotheken,
+zentrale Modellvorgaben).
 
-1. **Wissen** — verstreutes Wissen wird befragbar und nachweisbar.
-2. **Agenten** — wiederkehrende Aufgaben werden automatisiert, immer wissensgeerdet.
-3. **KI für Teams und Organisation** — KI-Fähigkeit wird verteilbar: geteilte Arbeitsräume, teilbare
-   Agenten, Prompt-Bibliotheken und zentral gesetzte Modellvorgaben.
+### 2. Leitprinzipien
 
-**Zwei Leitprinzipien** entscheiden im Zweifel:
+Im Zweifel entscheiden zwei Prinzipien: **Belegbarkeit** (jede Aussage ist an ihre Quelle gebunden;
+die technische Ausformung ist Entscheidung 14) und **Verteilbarkeit** (KI-Können ist ein benanntes,
+teilbares, versionierbares Asset, das über Freigabestufen von der Person bis in die Organisation
+wandert). Die Leitfrage lautet nicht mehr „ist das konfigurierbar genug?“, sondern „hilft das der
+Belegbarkeit oder der Verteilbarkeit?“.
 
-- **Belegbarkeit** — jede Aussage ist an ihre Quelle gebunden und für haftungskritische Kontexte in den
-  Zitierzwang schaltbar: keine belegte Quelle, keine Antwort.
-- **Verteilbarkeit** — KI-Können wird zum benannten, teilbaren, versionierbaren Asset und wandert über
-  Freigabestufen von der einzelnen Person bis in die ganze Organisation.
+### 3. Nutzerkreis
 
-**Primärer Nutzerkreis ist die interne Verwaltung** — Sachbearbeitung, Fachreferate, IT. Ein Assistent für
-Bürgerinnen und Bürger bleibt ein späterer Ausblick und ist ausdrücklich nicht Teil des Fundaments.
+Primärer Nutzerkreis ist die interne Verwaltung: Sachbearbeitung, Fachreferate, IT. Ein Assistent für
+Bürgerinnen und Bürger ist Ausblick, nicht Fundament (Entscheidung 9).
 
-Der Produktumfang wird in **elf Themenbereichen** geführt und in **vier Phasen** ausgeliefert, von denen
-jede für sich nutzbar ist. Beides ist in [VISION.md](../VISION.md) beschrieben.
+### 4. Umfang
+
+Der Produktumfang wird in elf Themenbereichen geführt und in vier Phasen ausgeliefert, jede für sich
+nutzbar; beides steht in [VISION.md](../VISION.md). Der Abstand zwischen Anspruch und Stand wird im
+[Gesamtstand](../fortschritt/gesamtstand.md) offen geführt.
+
+### 5. Was in der Dokumentation nicht vorkommt
+
+In Dokumenten und Marketing-Texten keine Namen von Mitbewerbern zur Positionierung, keine Vergleiche
+mit benannten Produkten, keine beteiligten Personen oder Partnerunternehmen, keine Referenzkunden,
+keine Preise, keine Aufwands- oder Kostenschätzungen. Abgrenzungen werden mit dem Sachgrund begründet.
+Die Ausnahme für Sachbelege steht in Entscheidung 10.
+
+### 6. Vektorspeicher: PostgreSQL mit pgvector, und sonst keiner
+
+PostgreSQL mit pgvector ist der unterstützte Vektorspeicher und der einzige; weitere werden nicht
+zugesagt, nicht geprüft und nicht dokumentiert. Ein Wechsel bleibt über die portable Schnittstelle des
+Rahmenwerks technisch möglich, ist aber kein Angebot. Grund: Wer im Behördenrechenzentrum betreibt,
+wählt die Datenbank in der Regel nicht selbst; jede zugesagte Variante kostet dauerhaft
+Integrationstest, Betriebsleitfaden und Unterstützung. Grenzen von pgvector bei sehr großen Beständen
+sind ein bekannter Punkt (ADR-0002) und ergäben eine neue Entscheidung. Siehe
+[data-indexing-rag.md](../features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
+
+### 7. Kein Cloud-Betriebsmodell, kein betreuter Dienst
+
+Der Betrieb außerhalb des eigenen Hauses ist eine Möglichkeit, kein Angebot: OPAA läuft dort, wo eine
+Container-Umgebung und PostgreSQL mit pgvector stehen; wo das ist, entscheidet die verantwortliche
+Stelle. Anbieternamen und anbieterspezifische Anleitungen kommen nicht vor. Erprobung und Schulung
+außerhalb des Hauses bleiben ein benannter Fall ohne echte Daten. Ein vom Projektteam betreuter Dienst
+entfällt ersatzlos. Grund: Entscheidend ist der Verantwortliche der Verarbeitung, nicht der Ort; ein
+betreuter Dienst machte das Projekt zum Betreiber mit Verfügbarkeits- und Haftungserwartung, die ein
+quelloffenes Vorhaben nicht einlöst. Siehe
+[deployment-infrastructure.md](../features/deployment-infrastructure.md).
+
+### 8. Modellanbieter: lokal ist die Voreinstellung, ohne technische Sperre
+
+Lokal betriebene Modelle bleiben die Voreinstellung für Chat und Einbettung; der Standardfall
+startet ohne zusätzliche Konfiguration. Eine technische Sperre gegen Modellaufrufe außerhalb
+festgelegter Netzbereiche wird nicht gebaut; die Zusicherung „keine Daten an ein Modell außerhalb des
+Hauses“ ruht auf der Konfiguration, die nachgewiesen und deren Netzweg außerhalb von OPAA abgesichert
+wird. Eine spätere Durchsetzung hängt an den zentralen Modellvorgaben (Themenbereich E, Phase 1).
+Die Basis-Adresse der openai-kompatiblen Schnittstelle hat keine Voreinstellung, weder die
+gemeinsame noch die abgeleiteten für Chat und Einbettung: Wer diesen Anbieter wählt, gibt sie an,
+sonst bricht der Start mit einer Meldung ab, die die fehlende Variable benennt
+(`OpenAiBaseUrlGuard`). Grund: Eine Sperre ohne die Modellvorgaben, an die sie gehört, wäre eine
+zweite Wahrheit neben der Konfiguration; und ein im Haus betriebener „openai-kompatibler“ Server darf
+nicht stillschweigend ein Ziel außerhalb des Hauses erben. Siehe
+[llm-integration.md](../features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut).
+
+### 9. Assistent für Bürgerinnen und Bürger bleibt Ausblick
+
+Der Bürger-Scope (Assistent, öffentlich eingebettetes Widget) bleibt Ausblick der Phase 4. Es gibt
+dafür keine eigene Notiz, keine Anforderungsliste und nichts wird vorgezogen, auch nicht die
+Barrierefreiheit nach BITV (Phase 3). Grund: Der Ausblick steht in VISION.md und
+[public-sector.md](../features/public-sector.md#ausblick-assistent-für-bürgerinnen-und-bürger); eine
+dritte Fassung erzeugte Pflegeaufwand und Widerspruchsrisiko ohne Nutzen.
+
+### 10. Anbieternamen als Sachbeleg sind zulässig
+
+Unzulässig bleibt die Nennung zur Positionierung: ein Name, der OPAA einordnet, eine Marktlage
+beschreibt oder einen Kaufgrund liefert. Zulässig ist die Nennung als nachprüfbarer Sachbeleg für
+eine technische Behauptung über ein fremdes System, die den eigenen Entwurf trägt, ebenso als
+Arbeitsanweisung an eine interne Rolle; beide bestehenden Stellen tragen einen Hinweis auf diese
+Regel. Grund: Anonymisiert wäre ein Beleg nicht nachprüfbar, und ein entschiedener Punkt käme als
+neue Idee wieder. Siehe
+[MESSAGING.md](../market/MESSAGING.md#was-wir-nicht-sagen).
+
+### 11. Speicher für Originaldokumente: das Dateisystem ist der Vertrag
+
+OPAA liest Quelldokumente gegen konfigurierte Verzeichnisse; ein Netzlaufwerk (SMB/NFS) hängt der
+Betrieb dort ein. Eine Abstraktion über mehrere Speicherarten gibt es für die dateibasierten Fälle
+nicht. Objektbasierter Speicher ist seit ADR-0030 für die Originalablage der Uploads gebaut
+(`opaa.upload.store: s3`), als Weg für den mandantenfähigen Rechenzentrumsbetrieb; der
+Objektspeicher-Dienst ist im Compose-Stapel über ein eigenes Profil zuschaltbar, nicht Teil des
+Einstiegs. Siehe
+[deployment-infrastructure.md](../features/deployment-infrastructure.md#speicher-backends).
+
+### 12. Chat-Kanäle: nur selbst betriebene Team-Chats
+
+Im Zielbild bleiben ausschließlich selbst betriebene Team-Chats (Matrix-basierter Chat-Baustein,
+Mattermost, Rocket.Chat; Phase 3). Kanäle über fremd betriebene Verbraucherdienste entfallen
+ersatzlos; die REST-API bleibt der offene, aber nicht gepflegte Weg für jeden weiteren Kanal. Grund:
+Ein Chat-Kanal ist ein Zugang, der die fragende Person verlässlich auf ein OPAA-Konto abbilden muss,
+sonst umgeht er das Rechtemodell; bei einem Verbraucherdienst hängt die Identität an einer
+Telefonnummer, und jede Frage ist eine Übermittlung nach außen. Gebaut ist heute kein Chat-Kanal.
+Siehe [user-frontends.md](../features/user-frontends.md#anbindung-an-team-chats).
+
+### 13. Umfang des revisionssicheren Protokolls
+
+Die erste Stufe protokolliert alles, was Zugriff verändert oder Verwaltungshandeln ist: Rechte an
+Assets, Spaces, Bibliotheken und Gruppen samt Mitgliedschaften, Rollenänderungen, Eigentumsübergänge,
+den Verzeichnisabgleich je bewirkter Änderung, Systemeinstellungen und Systemrollen sowie jeden
+Zugriff auf die Protokolldaten selbst. Nicht protokolliert werden Abfragen, Antwortinhalte und
+Favoriten (ADR-0039 Entscheidung 7): Sie ergeben in der Menge ein Tätigkeits- oder Interessenprofil.
+Der Sicherheitsgrad ist einfaches Anfügen ohne Prüfsummenverkettung (Eigentümertrennung in ADR-0015);
+der Schutz stützt sich darauf, dass die Anwendung kein Änderungsrecht hat und der direkte
+Datenbankzugang betrieblich beschränkt und außerhalb von OPAA nachgewiesen wird. Der Eintrag trägt
+die handelnde Person, aber ein personenbezogener Auswertungspfad ist nicht gebaut, nicht nur
+abgeschaltet: Keine Oberfläche und keine Schnittstelle filtert, gruppiert oder sortiert nach Person;
+Abfragen beginnen an einem Objekt, einem Zeitraum oder einer Ereignisart. Aufbewahrung: Untergrenze
+ein Jahr, Voreinstellung drei, Obergrenze zehn Jahre, mit automatischer Löschung. Siehe
+[security-and-compliance.md](../features/security-and-compliance.md#revisionssicheres-protokoll).
+
+### 14. Belegbarkeit heißt deterministische Belegvalidierung
+
+Jeder Beleg einer Antwort wird gegen die für diese Antwort abgerufenen Fundstellen geprüft
+(Dokument-Kennung, Abschnittsnummer, Dokumentbezeichnung); ein ungültiger Beleg wird gekennzeichnet,
+nicht entfernt und nicht als gültig behandelt. Ein Zwangs- und Verweigerungsapparat darüber
+(Verweigerung bei fehlendem Beleg, Schalter am Space, inhaltliche Deckungsprüfung) ist entschieden
+nicht gebaut: Das Modell sagt selbst, wenn es nichts gefunden hat, fehlende Belege sind im
+Belegfenster sichtbar, und der eigentliche Schaden, ein erfundener Beleg, ist durch die Validierung
+ausgeschlossen. Siehe [data-indexing-rag.md](../features/data-indexing-rag.md#belegvalidierung).
+
+### 15. Nachweis der Organisationsgrenze
+
+Die Organisationsgrenze wird in drei Schichten gehalten: Anwendung, Datenbank und ein struktureller
+Prüflauf gegen das tatsächliche Schema, der verlangt, dass jede Tabelle mit Organisationszugehörigkeit
+ihre Verweise auf organisationsgebundene Objekte zusammengesetzt führt. Der Prüflauf schließt die
+Fehlerklasse statt des Einzelfalls. Die beidseitige Absicherung auf Datenbankebene (#289) und die
+Durchsetzung im Verwaltungspfad (#271) waren Voraussetzung für eine zweite Organisation und sind
+gebaut. Siehe [spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird).
 
 ## Konsequenzen
 
-### Was einfacher wird
+**Einfacher:** Entscheidungen haben einen Maßstab; Annahmen wie „die Rechteprüfung gehört in die
+Vektorsuche“ sind zulässig. Compliance-Anforderungen werden zu Produktmerkmalen (Protokoll,
+Nachweisbarkeit, Mitbestimmungsfähigkeit).
 
-Entscheidungen bekommen einen Maßstab. Bisher war „ist das konfigurierbar genug?" die Leitfrage; jetzt ist
-es „hilft das der Belegbarkeit oder der Verteilbarkeit?". Das schließt Optionen aus, und genau darin liegt
-der Gewinn: Ein Produkt für einen bekannten Adressaten kann Annahmen treffen, die ein generisches Produkt
-sich nicht leisten kann — etwa, dass die Rechteprüfung in die Vektorsuche gehört und nicht dahinter.
+**Schwieriger:** Ein Teil des früheren Versprechens trägt nicht mehr (Entscheidungen 6, 7, 12).
+Anforderungen wie zentrale Modellvorgaben, SCIM-Lebenszyklus, Leichte Sprache und BITV bleiben offen
+sichtbar.
 
-Die Anforderungen, die bisher als Compliance-Anhängsel erschienen, werden zu Produktmerkmalen mit eigenem
-Wert: revisionssicheres Protokoll, Nachweisbarkeit gegenüber Prüfern, Mitbestimmungsfähigkeit.
+**Restrisiken:** Ohne Prüfsummenverkettung fällt eine Manipulation durch direkten Datenbankzugang
+nicht auf (Entscheidung 13). Ohne technische Sperre schützt allein die Konfiguration vor Modellaufrufen
+nach außen (Entscheidung 8).
 
-### Was schwieriger wird
+## Verworfene Alternativen
 
-Ein Teil des bisherigen Versprechens trägt nicht mehr, und ein Teil davon ist gebaut oder eingeplant.
-Diese Punkte werden **nicht mit diesem ADR entschieden**. Sie werden benannt und einzeln geprüft, weil ihre
-stillschweigende Streichung eine Konsistenz vortäuschen würde, die im Code nicht existiert:
+- Generisches Produkt mit austauschbaren Komponenten — für einen Adressaten, der weder Datenbank noch
+  Cloud frei wählt, kostet die Wahlfreiheit nur Pflege.
+- Zitierzwang mit Verweigerung, Schalter am Space und inhaltlicher Deckungsprüfung — zweiter, selbst
+  fehlbarer Prüfweg ohne Nutzen über die deterministische Validierung hinaus.
+- Technische Sperre für Modellaufrufe nach außen — ohne die verwalteten Modellvorgaben eine zweite
+  Wahrheit neben der Konfiguration.
 
-| Punkt | Spannung zur neuen Ausrichtung |
-|---|---|
-| Austauschbare Vektorspeicher | ADR-0002 hat pgvector gewählt; wer im Behördenrechenzentrum betreibt, wählt die Datenbank in der Regel nicht selbst — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
-| Cloud-Deployment und Managed Service | steht gegen On-Premises als Standard und gegen air-gapped-Fähigkeit — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
-| Verbraucher-Chatkanäle | geringer Wert in der Verwaltung, offene Fragen zum Datenabfluss — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
-| Cloud-Modelle als Standardeinstellung | die neue Ausrichtung ist lokal-first mit Cloud nur bei ausdrücklicher Freigabe — **entschieden, siehe [Nachtrag vom 14.08.2026](#nachträge-entschiedene-punkte)** |
-| Plugin-Architektur für Konnektoren | Verhältnis zu MCP ist ungeklärt; bleibt vorerst als Option bestehen |
+## Offen
 
-Die Prüfung dieser Punkte läuft über ein eigenes Epic mit je einer Entscheidungsvorlage. Bis dahin bleibt
-alles bestehen.
+- Prüfsummenverkettung des Protokolls als nächste Stufe (Entscheidung 13).
+- Plugin-Architektur für Konnektoren im Verhältnis zu MCP; die Konnektoren sind seit ADR-0038 intern
+  steckbar, extern geladene bleiben eine Option ohne Entscheidung.
 
-Umgekehrt entstehen Anforderungen, für die es heute nichts gibt: Zitierzwang, hybride Suche mit Reranking,
-Agenten-Onboarding und -Prüfstand, zentrale Modellvorgaben, SCIM-Lebenszyklus, revisionssicheres
-Protokoll, Leichte Sprache, Barrierefreiheit nach BITV. Der Abstand zwischen Anspruch und Stand wird damit
-sichtbar größer — das ist beabsichtigt und wird im [Gesamtstand](../fortschritt/gesamtstand.md) offen geführt statt
-beschönigt.
+## Änderungsverlauf
 
-### Was in der Dokumentation nicht vorkommt
-
-Für alle Dokumente und Marketing-Assets gilt: keine Namen von Mitbewerbern, keine Vergleiche mit
-benannten Produkten, keine beteiligten Personen oder Partnerunternehmen, keine Referenzkunden, keine
-Preise, keine Aufwands- oder Kostenschätzungen. Abgrenzungen werden mit dem Sachgrund begründet.
-
-## Referenzen
-
-- [VISION.md](../VISION.md) — Nordstern, Themenbereiche, Phasen
-- [USE-CASES.md](../USE-CASES.md) — Anwendungsfälle im Verwaltungsalltag
-- [ADR-0002](0002-mvp-technology-stack.md) — Technologieentscheidungen des Fundaments
-- [features/spaces-and-assets.md](../features/spaces-and-assets.md) — das Verteilungsmodell
-
-## Nachträge: entschiedene Punkte
-
-Die Tabelle unter [Was schwieriger wird](#was-schwieriger-wird) benennt Punkte, die dieser ADR
-ausdrücklich **nicht** entscheidet. Sobald einer davon entschieden ist, kommt er hier als Nachtrag
-hinzu — der ADR selbst bleibt im Wortlaut unverändert, damit erkennbar bleibt, was wann galt. Jeder
-Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
-
-### 14.08.2026 — Austauschbare Vektorspeicher
-
-- **Punkt:** Austauschbare Vektorspeicher aus der Tabelle „Was schwieriger wird".
-- **Entscheidung:** PostgreSQL mit pgvector ist der unterstützte Vektorspeicher und der einzige. Weitere
-  Vektorspeicher werden nicht zugesagt. Der Zugriff läuft über die portable Schnittstelle des
-  eingesetzten Rahmenwerks; ein Wechsel ist technisch möglich, wird aber nicht unterstützt, nicht
-  geprüft und nicht dokumentiert. Der Code bleibt unverändert — geändert wird allein das Versprechen in
-  der Dokumentation.
-- **Begründung:** Eine Betreiberin in der öffentlichen Verwaltung wählt den Vektorspeicher in aller
-  Regel nicht selbst, sodass der zugesagten Wahlfreiheit kein Bedarf gegenübersteht, während jede
-  zusätzlich zugesagte Variante dauerhaft Integrationstest, Betriebsleitfaden und Unterstützung im
-  Fehlerfall kostet. Dass pgvector bei sehr großen Beständen an Grenzen stößt, benennt ADR-0002 selbst
-  und wird als bekannter Punkt geführt; tritt er ein, ist das eine neue Entscheidung mit eigenem ADR.
-- **Verweis:** [#348](https://github.com/criew/opaa/issues/348) ·
-  [features/data-indexing-rag.md](../features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner)
-
-### 14.08.2026 — Cloud-Betrieb und betreuter Dienst
-
-- **Punkt:** Der Betrieb in einer angemieteten Cloud-Umgebung als eigenes Betriebsmodell und ein vom
-  Projektteam betreuter Dienst.
-- **Entscheidung:** Beides entfällt als Betriebsmodell. Der Betrieb außerhalb des eigenen Hauses wird
-  als Möglichkeit beschrieben, nicht als Angebot: OPAA läuft dort, wo eine Container-Umgebung und
-  PostgreSQL mit pgvector stehen, und wo das ist, entscheidet die verantwortliche Stelle. Anbieternamen
-  und anbieterspezifische Anleitungen kommen nicht vor. Erprobung und Schulung außerhalb des eigenen
-  Hauses bleiben als benannter Fall bestehen, unter der Bedingung, dass dort keine echten Daten liegen.
-  Ein vom Projektteam betreuter Dienst wird ersatzlos gestrichen.
-- **Begründung:** Entscheidend ist nicht der Ort, sondern wer Verantwortlicher der Verarbeitung ist —
-  ein Rechenzentrum der Verwaltung ist ebenfalls nicht das eigene Haus und trotzdem unproblematisch,
-  während für einen erheblichen Teil der Verwaltungsdaten die Verarbeitung außerhalb der eigenen
-  Verantwortungssphäre rechtlich ausgeschlossen ist. Ein betreuter Dienst würde das Projekt selbst zum
-  Betreiber machen und eine Erwartung an Verfügbarkeit und Haftung erzeugen, die ein quelloffenes
-  Vorhaben nicht einlöst; der Bedarf ist über den mandantenfähigen Betrieb durch ein Rechenzentrum
-  bereits abgedeckt.
-- **Verweis:** [#350](https://github.com/criew/opaa/issues/350) ·
-  [features/deployment-infrastructure.md](../features/deployment-infrastructure.md)
-
-### 14.08.2026 — Standardposition der Modellanbieter
-
-- **Punkt:** Cloud-Modelle als Standardeinstellung aus der Tabelle „Was schwieriger wird".
-- **Entscheidung:** Lokal betriebene Modelle bleiben die Voreinstellung für Chat und Einbettung; daran
-  ändert sich nichts, und es ist keine Zwischenlösung. Zwei Festlegungen kommen hinzu. Erstens: Eine
-  **technische Sperre wird nicht gebaut** — es gibt keinen Mechanismus, der Modellaufrufe an Ziele
-  außerhalb festgelegter Netzbereiche verweigert. Die Zusicherung, dass keine Daten an ein Modell
-  außerhalb des Hauses gehen, ruht damit auf der Konfiguration und nicht auf einer Durchsetzung; wer
-  sie nachweisen muss, weist die Konfiguration nach und sichert den Netzweg außerhalb von OPAA ab. Das
-  gilt für den heutigen Stand und schließt eine spätere Durchsetzung nicht aus: Die zentralen
-  Modellvorgaben aus Themenbereich E, die als Obergrenze wirken, bleiben Teil von Phase 1 und sind der
-  Ort, an dem eine Durchsetzung einhängt. Zweitens: Die **Basis-Adresse der openai-kompatiblen
-  Schnittstelle verliert ihre Voreinstellung**, bei der gemeinsamen Adresse wie bei den davon
-  abgeleiteten Werten für Chat und Einbettung. Wer diesen Anbieter wählt, gibt die Adresse an; fehlt
-  sie, bricht der Start mit einer Meldung ab, die die fehlende Variable benennt. Der Standardfall —
-  lokal betriebene Modelle — startet unverändert ohne jede zusätzliche Konfiguration.
-- **Begründung:** Für die Sperre: Die Voreinstellung ist bereits lokal, und wer sie ändert, tut es
-  absichtlich; ein Durchsetzungsmechanismus ohne die verwalteten Modelle und Vorgaben, an die er
-  gehört, wäre eine zweite Wahrheit neben der Konfiguration und würde eine Sicherheit vortäuschen, die
-  er nicht trägt. Offen benannt zu werden ist mehr wert als eine halbe Sperre. Für die Adresse:
-  Anbietername und Zieladresse sind zwei verschiedene Dinge — `openai` bezeichnet das Protokoll, das
-  auch lokal betriebene Modellserver sprechen. Wer im Haus einen solchen Server als
-  „openai-kompatibel" einbindet und die Adresse nicht setzt, erbte mit einer Voreinstellung
-  stillschweigend ein Ziel außerhalb des Hauses, ohne dass es an einer Fehlermeldung auffiele. Genau
-  dieser Fall soll nicht mehr möglich sein.
-- **Verweis:** [#353](https://github.com/criew/opaa/issues/353) ·
-  [features/llm-integration.md](../features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut) ·
-  [modelle.md](../handbuch/modelle.md#llm-anbieter)
-
-### 14.08.2026 — Assistent für Bürgerinnen und Bürger und öffentliches Widget
-
-- **Punkt:** Ob der Bürger-Scope — ein Assistent für Bürgerinnen und Bürger und ein öffentlich in eine
-  Webseite eingebettetes Widget — eine eigene Führung im Dokumentenbestand erhält.
-- **Entscheidung:** Der Bürger-Scope bleibt Ausblick der Phase 4. Es wird dafür keine gesonderte Notiz
-  und kein eigener Abschnitt angelegt, keine Anforderungsliste geführt und nichts vorgezogen — auch die
-  Barrierefreiheit nach BITV nicht, die in Phase 3 verbleibt. Die Stellen, die den Bürger-Scope bisher
-  als offene Frage geführt haben, sind auf diesen entschiedenen Stand gebracht.
-- **Begründung:** Der Ausblick ist bereits in [VISION.md](../VISION.md) (Phase 4) und in
-  [features/public-sector.md](../features/public-sector.md) beschrieben; eine dritte Fassung desselben
-  Sachverhalts erzeugt Pflegeaufwand und Widerspruchsrisiko, ohne etwas hinzuzufügen. Eine zusätzliche
-  Anforderungsliste für einen Nutzerkreis, der nicht adressiert wird, bindet Aufmerksamkeit ohne
-  Nutzen. Was Entscheidungen der ersten Phase an dieser Stelle verbauen könnten, ist erhoben und am
-  Vorgang dokumentiert, damit es beim späteren Aufgreifen nicht neu erarbeitet werden muss.
-- **Verweis:** [#357](https://github.com/criew/opaa/issues/357) ·
-  [features/public-sector.md](../features/public-sector.md#ausblick-assistent-für-bürgerinnen-und-bürger)
-
-### 14.08.2026 — Anbieternamen im Bestand
-
-- **Punkt:** Ob die pauschale Fassung „keine Namen von Mitbewerbern" aus dem Abschnitt „Was in der
-  Dokumentation nicht vorkommt" auch die vorhandenen Nennungen in der Vorbild-Analyse der
-  Rechtemodelle und in der Recherche-Anweisung an die Product-Manager-Rolle erfasst.
-- **Entscheidung:** Nein. Unzulässig bleibt die Nennung zur Positionierung — ein Name, der OPAA
-  einordnet, eine Marktlage beschreibt oder einen Kaufgrund liefert. Zulässig ist die Nennung als
-  nachprüfbarer Sachbeleg für eine technische Behauptung über ein fremdes System, die den eigenen
-  Entwurf trägt, ebenso die Nennung als Arbeitsanweisung an eine interne Rolle. Beide bestehenden
-  Stellen bleiben unverändert und tragen je einen Hinweis auf die Regel. Der ADR-Wortlaut bleibt
-  unverändert; dieser Nachtrag präzisiert ihn.
-- **Begründung:** Die Vorbild-Analyse belegt, dass die gewählte Rechtekonstruktion in keinem der
-  untersuchten Systeme ein Vorbild hat. Anonymisiert wäre diese Aussage nicht mehr nachprüfbar und
-  damit wertlos — und ein bereits entschiedener Punkt käme in einem halben Jahr als neue Idee
-  wieder. Eine Anweisung an eine interne Rolle ist kein Text über OPAA und erreicht niemanden, der
-  sich ein Bild vom Produkt macht. Ohne diese geschriebene Grenze wird der scheinbare Widerspruch
-  bei jeder Durchsicht neu ausdiskutiert oder in gutem Glauben weggeräumt.
-- **Verweis:** [#367](https://github.com/criew/opaa/issues/367) ·
-  [market/MESSAGING.md](../market/MESSAGING.md#was-wir-nicht-sagen)
-
-### 14.08.2026 — Umfang der Speicher-Abstraktion für Dokumente
-
-- **Punkt:** Umfang der Abstraktion über Speicher-Backends für Originaldokumente.
-- **Entscheidung:** Das Dateisystem ist der Vertrag. OPAA schreibt und liest Quelldokumente gegen genau
-  ein konfiguriertes Verzeichnis; eine Abstraktion über mehrere Speicherarten gibt es nicht und ist für
-  die dateibasierten Fälle auch nicht vorgesehen. Ein Netzlaufwerk (SMB/NFS) wird vom Betrieb dorthin
-  eingehängt. Objektbasierter Speicher wird als eigener Weg geführt, aber ohne Termin; ein
-  Objektspeicher-Dienst gehört nicht in den mitgelieferten Compose-Stapel. Der Code bleibt unverändert —
-  geändert wird allein das Versprechen in der Dokumentation.
-- **Begründung:** Zwei der drei bisher zugesagten Backends sind mit dem heutigen Code bereits abgedeckt,
-  weil ein eingehängtes Netzlaufwerk für die Anwendung wie ein Verzeichnis aussieht, sodass der
-  zugesagten Abstraktion in diesen Fällen kein Bedarf gegenübersteht. Objektbasierter Speicher braucht
-  als einziger einen eigenen Pfad im Code und bleibt deshalb als Weg bestehen; der Grund dafür ist der
-  mandantenfähige Rechenzentrumsbetrieb, in dem ein geteiltes Netzlaufwerk bei Mandantentrennung,
-  Kontingenten und Sicherung der unangenehmere Weg ist.
-- **Verweis:** [#351](https://github.com/criew/opaa/issues/351) ·
-  [features/deployment-infrastructure.md](../features/deployment-infrastructure.md#speicher-backends)
-
-### 14.08.2026 — Verbraucher-Chatkanäle
-
-- **Punkt:** Verbraucher-Chatkanäle aus der Tabelle „Was schwieriger wird".
-- **Entscheidung:** Im Zielbild der Chat-Kanäle bleiben ausschließlich selbst betriebene Team-Chats:
-  der Chat-Baustein des souveränen Arbeitsplatzes auf Basis des Matrix-Protokolls sowie Mattermost und
-  Rocket.Chat, alle drei in Phase 3. Kanäle über fremd betriebene Verbraucherdienste entfallen
-  ersatzlos. Die REST-API bleibt der offene Weg für jeden weiteren Kanal: Wer einen braucht, baut ihn
-  dagegen — das ist ausdrücklich vorgesehen, aber weder zugesagt noch gepflegt. Gebaut ist heute kein
-  einziger Chat-Kanal; geändert wird allein das Versprechen in der Dokumentation.
-- **Begründung:** Tragend ist, dass ein Chat-Kanal kein Ausgabeweg ist, sondern ein Zugang — er muss
-  die Identität der fragenden Person verlässlich auf ein OPAA-Konto abbilden, sonst greift die
-  rechtebewusste Suche ins Leere und der Kanal wird zum Umgehungsweg um das gesamte Rechtemodell; bei
-  einem selbst betriebenen Team-Chat hängt diese Identität an derselben zentralen Anmeldung wie OPAA,
-  bei einem Verbraucherdienst dagegen an einer Telefonnummer oder einem privaten Konto, sodass die
-  Zuordnung eine Vertrauensannahme bleibt statt einer Prüfung. Hinzu kommt, dass jede Nachricht an
-  einen fremd betriebenen Dienst eine Übermittlung ist und bei einem Frage-Antwort-System nicht nur die
-  Antwort das Haus verlässt, sondern auch die Frage, die über einen Vorgang oft mehr verrät als die
-  Antwort.
-- **Verweis:** [#352](https://github.com/criew/opaa/issues/352) ·
-  [features/user-frontends.md](../features/user-frontends.md#anbindung-an-team-chats)
-
-### 14.08.2026 — Umfang des revisionssicheren Protokolls
-
-- **Punkt:** Das revisionssichere Protokoll aus dem Abschnitt [Was schwieriger
-  wird](#was-schwieriger-wird) — eine Anforderung, für die es heute nichts gibt und deren Schnitt der
-  ADR offengelassen hat.
-- **Entscheidung:** Die erste Stufe protokolliert **alles, was Zugriff verändert oder
-  Verwaltungshandeln ist**: Rechte an Assets, Spaces, Wissensbibliotheken und Gruppen samt ihren
-  Mitgliedschaften, Rollenänderungen und Eigentumsübergänge, den Verzeichnisabgleich mit je einem
-  Eintrag pro bewirkter Änderung, Systemeinstellungen und Systemrollen sowie **jeden Zugriff auf die
-  Protokolldaten selbst**. **Nicht** protokolliert werden Abfragen und Antwortinhalte; sie bleiben in
-  der ersten Stufe vollständig draußen. Der Sicherheitsgrad ist **einfaches Anfügen**: eine Ablage, in
-  die nur geschrieben wird, mit auf Datenbankebene entzogenen Änderungs- und Löschrechten für das
-  Anwendungskonto — **ohne Prüfsummenverkettung**. Der Eintrag trägt die handelnde Person, aber es gibt
-  **keine Oberfläche und keine Schnittstelle, die nach Person filtert, gruppiert oder sortiert**;
-  Abfragen beginnen an einem Objekt, einem Zeitraum oder einer Ereignisart. Aufbewahrung: Untergrenze
-  ein Jahr, Voreinstellung drei Jahre, Obergrenze zehn Jahre, mit automatischer Löschung.
-- **Begründung:** Zwei verbindliche Anforderungen stehen gegeneinander. Prüfbarkeit verlangt
-  Zurechenbarkeit — ein Protokoll ohne handelnde Person beantwortet keine Prüffrage. Mitbestimmung
-  verlangt, dass es keinen personenbezogenen Auswertungspfad gibt, und zwar als nicht gebaute statt als
-  abgeschaltete Funktion. Beides zugleich geht nur, wenn Speicherung und Auswertbarkeit getrennt
-  werden. Der Schnitt folgt derselben Logik: Rechteereignisse fallen selten an, betreffen Objekte und
-  beantworten die Prüferfrage; Abfrageereignisse fallen ständig an, betreffen Verhalten und ergeben in
-  der Menge genau das Tätigkeitsprofil, das die Mitbestimmung ausschließt. Was aus der Prüfbarkeit
-  dennoch gebraucht wird, liefert die Rechtehistorie aus dem Rechtestand statt aus einer Ereigniskette
-  je Abfrage. **Die Grenze des gewählten Sicherheitsgrads wird bewusst in Kauf genommen und gehört
-  benannt:** Eine Manipulation durch jemanden mit direktem Datenbankzugang fällt ohne Verkettung nicht
-  auf und ist mit OPAA auch nicht nachweisbar. Der Schutz stützt sich darauf, dass die Anwendung selbst
-  kein Änderungsrecht hat, und darauf, dass der direkte Datenbankzugang betrieblich beschränkt und
-  außerhalb von OPAA nachgewiesen wird. Die Verkettung ist als nächste Stufe unter „Offene Fragen"
-  geführt, nicht verworfen.
-- **Verweis:** [#355](https://github.com/criew/opaa/issues/355) ·
-  [features/security-and-compliance.md](../features/security-and-compliance.md#revisionssicheres-protokoll)
-- **Hinweis (02.10.2026, [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):**
-  **Favoriten** an Assets fallen unter dieselbe Logik wie Abfragen: Sie sind persönliche Ordnung, keine
-  Zugriffsänderung, ergeben in der Menge ein Interessenprofil und werden deshalb weder protokolliert
-  noch historisiert, gezählt oder für andere abrufbar gemacht.
-
-### 14.08.2026 — Zitierzwang: Schnitt der Belegprüfung und Ort des Schalters
-
-- **Punkt:** Die technische Ausformung des Leitprinzips Belegbarkeit — was der Zitierzwang prüft und auf
-  welcher Ebene er geschaltet wird.
-- **Entscheidung:** Die Belegprüfung wird in zwei Stufen geführt, von denen nur die erste jetzt gilt.
-  **Stufe 1** prüft deterministisch und ohne zusätzlichen Modellaufruf, dass jeder Beleg auf eine für
-  diese Antwort tatsächlich abgerufene Fundstelle zeigt, dass ohne abgerufene Fundstellen gar nicht erst
-  eine Antwort erzeugt wird und dass jede tragende Aussage einen gültigen Beleg führt. **Stufe 2**, die
-  inhaltliche Deckungsprüfung, ist ein eigener, noch nicht entschiedener Vorgang. Geschaltet wird der
-  Zitierzwang **am Space**; eine Systemvorgabe kann ihn hausweit erzwingen. Verschärfen kann jede Ebene,
-  abschalten keine.
-- **Begründung:** Stufe 1 kommt zuerst, weil sie die größte Lücke zum niedrigsten Preis schließt: Heute
-  wird nur das Vorkommen des Belegmusters geprüft, sodass ein Modell durch bloßes Nachahmen der Form
-  einen Beleg erzeugt, der auf nichts zeigt. Sie ist eine echte Zusicherung — gleiche Eingabe, gleiches
-  Urteil — während Stufe 2 einen zweiten Modelldurchlauf je Antwort braucht, selbst fehlbar ist und den
-  Zitierzwang damit von einer Zusicherung in eine Wahrscheinlichkeit verwandelt; ohne den Messaufbau der
-  Suchqualitäts-Evaluierung wäre ihre Güte zudem nicht bewertbar. Die Verankerung am Space ist
-  **ausdrücklich die schwächere von zwei Möglichkeiten**: Sie hängt den Zwang an den Raum statt an die
-  Daten und ist deshalb durch einen Raumwechsel umgehbar — dieselbe Wissensbibliothek in einem Space ohne
-  Zitierzwang liefert unbelegte Antworten. Gewählt wurde sie, weil der Space bereits Zweck, Suchbereich
-  und Zurechnung bestimmt und keine zusätzliche Verwaltungsebene entsteht; die Folge ist eine
-  organisatorische Pflicht des Betriebs, haftungskritische Bestände nicht in Spaces ohne Zitierzwang
-  bereitzustellen. Die Verankerung an der Wissensbibliothek bleibt als Alternative benannt.
-- **Verweis:** [#354](https://github.com/criew/opaa/issues/354) ·
-  [features/data-indexing-rag.md](../features/data-indexing-rag.md#belegvalidierung)
-
-### 14.08.2026 — Nachweis der Organisationsgrenze
-
-- **Punkt:** Der mandantenfähige Betrieb durch ein Rechenzentrum setzt voraus, dass die
-  Organisationsgrenze über die Anwendungsschicht hinaus abgesichert ist. Wie ihre Einhaltung dauerhaft
-  nachgewiesen wird, war offen.
-- **Entscheidung:** Die Grenze wird in drei Schichten gehalten — Anwendung, Datenbank und ein
-  struktureller Prüflauf gegen das Schema. Der Prüflauf prüft nicht Verhalten, sondern Aufbau: Jede
-  Tabelle mit Organisations-Zugehörigkeit muss ihre Verweise auf organisationsgebundene Objekte
-  zusammengesetzt führen, also die Organisation in der Beziehung mitführen. Er läuft gegen das
-  tatsächliche Schema einer echten Datenbank, nicht gegen die Migrationsdateien. Zusätzlich sind die
-  beiden offenen Befunde — die einseitige Absicherung auf Datenbankebene und die fehlende
-  Durchsetzung im Verwaltungspfad — als **Voraussetzung dafür markiert, dass überhaupt eine zweite
-  Organisation angelegt wird**.
-- **Begründung:** Ein Verhaltenstest belegt, dass ein bekannter Weg heute versperrt ist; er verhindert
-  nicht, dass die nächste Änderung am Datenmodell einen neuen Weg öffnet. Genau so ist die bestehende
-  Lücke entstanden. Der Prüflauf schließt deshalb die Klasse des Fehlers statt des Einzelfalls und
-  macht die Regel überprüfbar statt erinnerungspflichtig. Die Vorziehung der beiden Befunde folgt
-  daraus, dass beide Lücken bei genau einer Organisation nicht ausnutzbar sind und mit dem Anlegen der
-  zweiten gleichzeitig scharf werden — im Betrieb, nicht im Test. Das ist kein diffuses Risiko,
-  sondern ein Zeitpunkt, den jemand festlegt, und er lässt sich vorher absichern.
-- **Verweis:** [#356](https://github.com/criew/opaa/issues/356) ·
-  [#289](https://github.com/criew/opaa/issues/289) ·
-  [#271](https://github.com/criew/opaa/issues/271) ·
-  [features/spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird)
-
-### 21.08.2026 — Zitierzwang: Verweigerungsapparat verworfen
-
-- **Punkt:** Rücknahme des Nachtrags vom 14.08.2026 zum Zitierzwang (siehe
-  [Nachträge: entschiedene Punkte](#nachträge-entschiedene-punkte) oben, Eintrag „Zitierzwang: Schnitt
-  der Belegprüfung und Ort des Schalters"). Bei der Umsetzung von Stufe 1 (#386) stellte sich die Frage,
-  ob der dort beschlossene
-  Zwangs- und Verweigerungsapparat — Verweigerung mit Auskunft über den Suchvorgang (#387), Schalter am
-  Space mit erzwingender Systemvorgabe (#388), inhaltliche Deckungsprüfung als Stufe 2 (#389) — im
-  vollen Umfang gebaut werden soll.
-- **Entscheidung:** Nein. Gebaut wird ausschließlich der deterministische Kern: Jeder Beleg wird gegen
-  die für seine Antwort abgerufenen Fundstellen geprüft (Dokument-Kennung, Abschnittsnummer,
-  Dokumentbezeichnung); ein ungültiger Beleg wird gekennzeichnet, nicht stillschweigend entfernt und
-  nicht stillschweigend als gültig behandelt. Verweigerung bei fehlendem Beleg, die Abschnittszerlegung
-  mit Negativliste für „tragende Aussagen", die Formregel gegen Belegverdünnung, der Schalter am Space
-  und die inhaltliche Deckungsprüfung entfallen — nicht aufgeschoben, sondern entschieden nicht gebaut.
-  #387, #388 und #389 sind geschlossen. Der Wortlaut des Nachtrags vom 14.08.2026 bleibt unverändert
-  stehen, damit erkennbar bleibt, was zwischen dem 14. und dem 21.08.2026 galt; dieser Eintrag nimmt ihn
-  zurück, statt ihn zu überschreiben.
-- **Begründung:** Das Modell kommuniziert bereits selbst, wenn es nichts gefunden hat, und fehlende
-  Belege sind für Nutzende im Belegfenster unmittelbar sichtbar — die Validierung stellt sicher, dass
-  *vorhandene* Belege echt sind, mehr leistet sie nicht und mehr braucht sie auch nicht zu leisten. Ein
-  Zwangs- und Verweigerungsapparat darüber steht in keinem Verhältnis zum Nutzen: Er hätte einen zweiten,
-  komplexen Prüfweg (Abschnittszerlegung, Negativliste, Formregel) gebraucht, dessen Fehlerkosten
-  (unnötige Verweigerung einer ansonsten belegten Antwort) real und schwer messbar sind, während der
-  eigentliche Schaden — ein erfundener Beleg — bereits durch die deterministische Validierung
-  ausgeschlossen ist. Die Verankerung am Space war ohnehin schon als „ausdrücklich die schwächere von
-  zwei Möglichkeiten" geführt; mit dem Wegfall des Verweigerungsapparats entfällt der Grund, sie
-  überhaupt zu bauen. Die inhaltliche Deckungsprüfung (Stufe 2) verliert mit dem Verweigerungsapparat den
-  Apparat, den sie hätte absichern sollen, und damit ihre Grundlage.
-- **Verweis:** [#354](https://github.com/criew/opaa/issues/354) ·
-  [#386](https://github.com/criew/opaa/issues/386) ·
-  [features/data-indexing-rag.md](../features/data-indexing-rag.md#belegvalidierung)
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-08-14 | #348 | pgvector als einziger Vektorspeicher | 6 |
+| 2026-08-14 | #350 | Cloud-Betrieb als Möglichkeit, betreuter Dienst gestrichen | 7 |
+| 2026-08-14 | #353 | Lokale Modelle als Voreinstellung, keine Sperre, keine openai-Basis-Adresse | 8 |
+| 2026-08-14 | #357 | Bürgerassistent bleibt Ausblick der Phase 4 | 9 |
+| 2026-08-14 | #367 | Anbieternamen als Sachbeleg zulässig | 10 |
+| 2026-08-14 | #351 | Dateisystem als Vertrag der Dokumentablage | 11 |
+| 2026-08-14 | #352 | Nur selbst betriebene Team-Chats | 12 |
+| 2026-08-14 | #355 | Schnitt des revisionssicheren Protokolls | 13 |
+| 2026-08-14 | #354 | Zitierzwang in zwei Stufen, Schalter am Space | 14 |
+| 2026-08-14 | #356 | Nachweis der Organisationsgrenze | 15 |
+| 2026-08-21 | #386 | Verweigerungsapparat verworfen, nur deterministische Belegvalidierung | 14 |
+| 2026-09-04 | ADR-0030 | Objektspeicher für die Originalablage der Uploads, Compose-Profil | 11 |
+| 2026-10-02 | ADR-0039 | Favoriten werden nicht protokolliert | 13 |
