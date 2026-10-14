@@ -8,6 +8,7 @@ import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -38,12 +39,17 @@ class McpRefusalStyle implements ExternalAccessRefusalStyle {
   private final McpEndpoint endpoint;
   private final ExternalAccessSettingsService settings;
   private final JsonMapper jsonMapper;
+  private final Clock clock;
 
   McpRefusalStyle(
-      McpEndpoint endpoint, ExternalAccessSettingsService settings, JsonMapper jsonMapper) {
+      McpEndpoint endpoint,
+      ExternalAccessSettingsService settings,
+      JsonMapper jsonMapper,
+      Clock clock) {
     this.endpoint = endpoint;
     this.settings = settings;
     this.jsonMapper = jsonMapper;
+    this.clock = clock;
   }
 
   @Override
@@ -89,7 +95,7 @@ class McpRefusalStyle implements ExternalAccessRefusalStyle {
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("error", message);
     body.put("status", status.value());
-    body.put("timestamp", Instant.now().toString());
+    body.put("timestamp", Instant.now(clock).toString());
     if (rejection != null) {
       body.put("reason", rejection.marker());
     }

@@ -11,6 +11,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.common.NotFoundException;
 import io.opaa.knowledge.UploadProperties;
+import java.time.Clock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,7 +52,8 @@ class GlobalExceptionHandlerProducibleTypesTest {
   private final MockMvc mockMvc =
       MockMvcBuilders.standaloneSetup(new ProbeController())
           .setControllerAdvice(
-              new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0, 0)))
+              new GlobalExceptionHandler(
+                  new UploadProperties(null, null, 52_428_800L, null, 0, 0), Clock.systemUTC()))
           .build();
 
   private Logger rootLogger;

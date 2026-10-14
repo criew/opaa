@@ -14,6 +14,7 @@ import io.opaa.api.types.MailEncryption;
 import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import java.time.Clock;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -43,6 +45,7 @@ class MailServiceTest {
   @Mock private MailTemplateService templates;
   @Mock private MailSettingsService settingsService;
   @Mock private JavaMailSender sender;
+  @Spy private Clock clock = Clock.systemUTC();
 
   @InjectMocks private MailService mailService;
 

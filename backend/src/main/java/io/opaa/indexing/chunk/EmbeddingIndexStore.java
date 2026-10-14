@@ -5,6 +5,7 @@ import io.opaa.indexing.chunk.EmbeddingIndexRecord.RunStatus;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,9 +17,11 @@ import org.springframework.stereotype.Component;
 public class EmbeddingIndexStore {
 
   private final JdbcTemplate jdbcTemplate;
+  private final Clock clock;
 
-  public EmbeddingIndexStore(JdbcTemplate jdbcTemplate) {
+  public EmbeddingIndexStore(JdbcTemplate jdbcTemplate, Clock clock) {
     this.jdbcTemplate = jdbcTemplate;
+    this.clock = clock;
   }
 
   public Optional<EmbeddingIndexRecord> load() {
@@ -59,7 +62,7 @@ public class EmbeddingIndexStore {
         run.organizationId(),
         timestamp(run.finishedAt()),
         run.message(),
-        Timestamp.from(Instant.now()));
+        Timestamp.from(Instant.now(clock)));
   }
 
   private static EmbeddingIndexRecord map(ResultSet rs) throws SQLException {

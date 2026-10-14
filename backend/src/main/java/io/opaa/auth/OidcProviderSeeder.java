@@ -3,6 +3,7 @@ package io.opaa.auth;
 import io.opaa.api.types.ProviderType;
 import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -69,16 +70,19 @@ public class OidcProviderSeeder {
   private final OidcProviderSeedMarkerRepository markerRepository;
   private final AuthProperties authProperties;
   private final LocalAdminAvailabilityGuard adminAvailability;
+  private final Clock clock;
 
   OidcProviderSeeder(
       OidcProviderRepository repository,
       OidcProviderSeedMarkerRepository markerRepository,
       AuthProperties authProperties,
-      LocalAdminAvailabilityGuard adminAvailability) {
+      LocalAdminAvailabilityGuard adminAvailability,
+      Clock clock) {
     this.repository = repository;
     this.markerRepository = markerRepository;
     this.authProperties = authProperties;
     this.adminAvailability = adminAvailability;
+    this.clock = clock;
   }
 
   @Transactional
@@ -98,7 +102,7 @@ public class OidcProviderSeeder {
       log.info(
           "Übernahme der OPAA_OIDC_*-Konfiguration entfällt: Es sind bereits Identitätsanbieter"
               + " hinterlegt. Seed-Marker wird nachträglich gesetzt.");
-      markerRepository.save(new OidcProviderSeedMarker(Instant.now()));
+      markerRepository.save(new OidcProviderSeedMarker(Instant.now(clock)));
       return;
     }
     String problem = bootstrapProblem(oidc);
@@ -114,7 +118,7 @@ public class OidcProviderSeeder {
     // (ADR-0036, Entscheidung 2).
     provider.setExternal(false);
     repository.save(provider);
-    markerRepository.save(new OidcProviderSeedMarker(Instant.now()));
+    markerRepository.save(new OidcProviderSeedMarker(Instant.now(clock)));
     log.info(
         "Identitätsanbieter „{}“ ({}) aus der OPAA_OIDC_*-Konfiguration übernommen; ab jetzt führt"
             + " die Anbieterverwaltung, die Umgebungsvariablen werden nicht mehr ausgewertet.",
@@ -161,7 +165,7 @@ public class OidcProviderSeeder {
     provider.setExternal(false);
     repository.save(provider);
     if (!markerRepository.seedAlreadyAttempted()) {
-      markerRepository.save(new OidcProviderSeedMarker(Instant.now()));
+      markerRepository.save(new OidcProviderSeedMarker(Instant.now(clock)));
     }
     log.warn(
         "OPAA_OIDC_BOOTSTRAP=force: Identitätsanbieter „{}“ ({}) aus der Umgebung wiederhergestellt,"

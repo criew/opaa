@@ -315,7 +315,10 @@ public final class FileSyncHarness {
     cleanupService =
         spy(
             new StaleDocumentCleanupService(
-                documentRepository, mock(VectorChunkStore.class), mock(AssetRepository.class)));
+                documentRepository,
+                mock(VectorChunkStore.class),
+                mock(AssetRepository.class),
+                Clock.systemUTC()));
     template =
         new IndexingRunTemplate(
             jobService,

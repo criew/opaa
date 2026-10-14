@@ -12,6 +12,7 @@ import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSpaceMembershipDirectory;
 import io.opaa.permission.PermissionHistoryService;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -41,6 +42,7 @@ class GroupDeactivation {
   private final GroupMembershipResolver membershipResolver;
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
+  private final Clock clock;
 
   GroupDeactivation(
       GroupRepository groupRepository,
@@ -49,7 +51,8 @@ class GroupDeactivation {
       GroupSpaceMembershipDirectory spaceMembershipDirectory,
       GroupMembershipResolver membershipResolver,
       PermissionHistoryService permissionHistoryService,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      Clock clock) {
     this.groupRepository = groupRepository;
     this.effectsService = effectsService;
     this.ownershipDirectories = ownershipDirectories;
@@ -57,6 +60,7 @@ class GroupDeactivation {
     this.membershipResolver = membershipResolver;
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
+    this.clock = clock;
   }
 
   /** The counted consequences, and the reason a deactivation would be refused. */
@@ -86,7 +90,7 @@ class GroupDeactivation {
       throw new ConflictException(blocked);
     }
     GroupDeactivationPreview consequences = preview(group, caller);
-    group.deactivate(Instant.now());
+    group.deactivate(Instant.now(clock));
     groupRepository.save(group);
     for (GroupMembership membership : group.getMemberships()) {
       permissionHistoryService.recordMembershipRemoved(

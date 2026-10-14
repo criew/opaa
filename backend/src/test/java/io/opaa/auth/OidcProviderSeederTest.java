@@ -15,6 +15,7 @@ import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.ProviderType;
 import io.opaa.organization.Organization;
 import io.opaa.test.ProviderFixtures;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,8 @@ class OidcProviderSeederTest {
       mock(LocalAdminAvailabilityGuard.class);
 
   private OidcProviderSeeder seederFor(AuthProperties properties) {
-    return new OidcProviderSeeder(repository, markerRepository, properties, adminAvailability);
+    return new OidcProviderSeeder(
+        repository, markerRepository, properties, adminAvailability, Clock.systemUTC());
   }
 
   private static AuthProperties oidc(

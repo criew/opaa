@@ -14,9 +14,9 @@ import io.opaa.indexing.spi.SourceBlock.Reason;
 import io.opaa.indexing.spi.SourceConnectionBlockedException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -98,6 +98,7 @@ public class SourceBlocks {
   private final ObjectProvider<DeactivationStarts> deactivations;
 
   private final PrivateLibraryDeletionPeriod deletionPeriod;
+  private final Clock clock;
 
   /** Without the deletion date: a deactivated owner's block names no day. */
   public SourceBlocks(
@@ -107,12 +108,13 @@ public class SourceBlocks {
       ProfileRequirements requirements,
       ConnectionSecrets secrets,
       ObjectProvider<SourceConnectorRegistry> connectors) {
-    this(policies, connections, profiles, requirements, secrets, connectors, null, null);
+    this(policies, connections, profiles, requirements, secrets, connectors, null, null, null);
   }
 
   /**
-   * {@code deactivations} and {@code deletionPeriod} date the block of a deactivated owner: its
-   * content is erased from the recorded start of the deactivation plus the period.
+   * {@code deactivations}, {@code deletionPeriod} and the zone of {@code clock} date the block of a
+   * deactivated owner: its content is erased from the recorded start of the deactivation plus the
+   * period.
    */
   @Autowired
   public SourceBlocks(
@@ -123,9 +125,11 @@ public class SourceBlocks {
       ConnectionSecrets secrets,
       ObjectProvider<SourceConnectorRegistry> connectors,
       ObjectProvider<DeactivationStarts> deactivations,
-      PrivateLibraryDeletionPeriod deletionPeriod) {
+      PrivateLibraryDeletionPeriod deletionPeriod,
+      Clock clock) {
     this.deactivations = deactivations;
     this.deletionPeriod = deletionPeriod;
+    this.clock = clock;
     this.policies = policies;
     this.connections = connections;
     this.profiles = profiles;
@@ -359,7 +363,7 @@ public class SourceBlocks {
     }
     LocalDate deletedOn =
         LocalDate.ofInstant(
-            starts.get(person.userId()).plus(deletionPeriod.period()), ZoneId.systemDefault());
+            starts.get(person.userId()).plus(deletionPeriod.period()), clock.getZone());
     return secretBlock(block.reason(), facts.profile(), person, deletedOn);
   }
 

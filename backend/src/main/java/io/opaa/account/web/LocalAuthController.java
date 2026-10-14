@@ -29,6 +29,7 @@ import io.opaa.security.ClientIpResolver;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -72,6 +73,7 @@ public class LocalAuthController {
   private final LocalRefreshCookies cookies;
   private final ClientIpResolver clientIpResolver;
   private final LocalAuthRateLimiter rateLimiter;
+  private final Clock clock;
 
   public LocalAuthController(
       LocalLoginService loginService,
@@ -83,7 +85,8 @@ public class LocalAuthController {
       UserService userService,
       LocalRefreshCookies cookies,
       ClientIpResolver clientIpResolver,
-      LocalAuthRateLimiter rateLimiter) {
+      LocalAuthRateLimiter rateLimiter,
+      Clock clock) {
     this.loginService = loginService;
     this.accessTokens = accessTokens;
     this.refreshTokens = refreshTokens;
@@ -94,6 +97,7 @@ public class LocalAuthController {
     this.cookies = cookies;
     this.clientIpResolver = clientIpResolver;
     this.rateLimiter = rateLimiter;
+    this.clock = clock;
   }
 
   @PostMapping("/login")
@@ -203,7 +207,9 @@ public class LocalAuthController {
   private ResponseEntity<Object> sessionInvalid() {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
         .header(HttpHeaders.SET_COOKIE, cookies.clear().toString())
-        .body(new ErrorResponse(SESSION_INVALID, HttpStatus.UNAUTHORIZED.value(), Instant.now()));
+        .body(
+            new ErrorResponse(
+                SESSION_INVALID, HttpStatus.UNAUTHORIZED.value(), Instant.now(clock)));
   }
 
   private static String presentedRefreshToken(HttpServletRequest request) {

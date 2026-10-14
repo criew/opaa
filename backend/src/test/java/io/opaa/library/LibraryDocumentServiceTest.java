@@ -78,6 +78,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -299,7 +300,8 @@ class LibraryDocumentServiceTest {
         assetRepository,
         NO_OP_TRANSACTION_MANAGER,
         new LibrarySourceConnectionResolver(),
-        mock(SourceSyncStateRepository.class));
+        mock(SourceSyncStateRepository.class),
+        Clock.systemUTC());
   }
 
   @Test
@@ -1733,7 +1735,8 @@ class LibraryDocumentServiceTest {
             assetRepository,
             NO_OP_TRANSACTION_MANAGER,
             new LibrarySourceConnectionResolver(),
-            mock(SourceSyncStateRepository.class));
+            mock(SourceSyncStateRepository.class),
+            Clock.systemUTC());
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);
     when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))

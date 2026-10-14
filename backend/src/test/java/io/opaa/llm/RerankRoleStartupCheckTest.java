@@ -42,7 +42,9 @@ class RerankRoleStartupCheckTest {
         .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     RerankRoleStartupCheck check =
         new RerankRoleStartupCheck(
-            new RerankModelRole(properties, client, Clock.systemUTC()), mock(TaskScheduler.class));
+            new RerankModelRole(properties, client, Clock.systemUTC()),
+            mock(TaskScheduler.class),
+            Clock.systemUTC());
 
     List<ILoggingEvent> events = captureWhile(check::probeAndReport);
 

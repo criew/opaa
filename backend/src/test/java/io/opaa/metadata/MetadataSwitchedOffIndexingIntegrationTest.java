@@ -27,6 +27,7 @@ import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -202,7 +203,8 @@ class MetadataSwitchedOffIndexingIntegrationTest {
         mailAttachmentLimits,
         metadataService(flags),
         modelMetadataExtractor,
-        flags);
+        flags,
+        Clock.systemUTC());
   }
 
   private Document onlyOwnDocument() {

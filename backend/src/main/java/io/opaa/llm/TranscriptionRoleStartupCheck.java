@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import java.time.Clock;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,17 +21,20 @@ class TranscriptionRoleStartupCheck implements ApplicationListener<ApplicationRe
 
   private final TranscriptionModelRole role;
   private final TaskScheduler probeScheduler;
+  private final Clock clock;
 
   TranscriptionRoleStartupCheck(
       TranscriptionModelRole role,
-      @Qualifier("transcriptionProbeScheduler") TaskScheduler probeScheduler) {
+      @Qualifier("transcriptionProbeScheduler") TaskScheduler probeScheduler,
+      Clock clock) {
     this.role = role;
     this.probeScheduler = probeScheduler;
+    this.clock = clock;
   }
 
   @Override
   public void onApplicationEvent(ApplicationReadyEvent event) {
-    probeScheduler.schedule(this::probeAndReport, Instant.now());
+    probeScheduler.schedule(this::probeAndReport, Instant.now(clock));
   }
 
   void probeAndReport() {

@@ -18,6 +18,7 @@ import io.opaa.api.dto.ErrorResponse;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import java.sql.SQLException;
+import java.time.Clock;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
@@ -40,7 +41,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 class GlobalExceptionHandlerTest {
 
   private final GlobalExceptionHandler handler =
-      new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0, 0));
+      new GlobalExceptionHandler(
+          new UploadProperties(null, null, 52_428_800L, null, 0, 0), Clock.systemUTC());
 
   /** ADR-0033: a conflict may carry a stable code the client acts on; without one, none is sent. */
   @Test

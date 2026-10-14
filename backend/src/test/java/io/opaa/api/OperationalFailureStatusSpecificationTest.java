@@ -28,6 +28,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.Clock;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
@@ -152,7 +153,8 @@ class OperationalFailureStatusSpecificationTest {
   @Test
   void theTwoStatusesAreTheOnesTheProductionHandlersAnswer() {
     GlobalExceptionHandler handler =
-        new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0, 0));
+        new GlobalExceptionHandler(
+            new UploadProperties(null, null, 52_428_800L, null, 0, 0), Clock.systemUTC());
     Headers noHeaders = Headers.builder().build();
 
     assertThat(status(handler.handleTransientAiException(new TransientAiException("x"))))

@@ -155,7 +155,10 @@ class ConfluenceIndexingExecutorTest {
     cleanupService =
         spy(
             new StaleDocumentCleanupService(
-                documentRepository, vectorChunkStore, mock(AssetRepository.class)));
+                documentRepository,
+                vectorChunkStore,
+                mock(AssetRepository.class),
+                Clock.systemUTC()));
     syncStateRepository = mock(SourceSyncStateRepository.class);
     when(syncStateRepository.findByLibraryId(any())).thenReturn(Optional.empty());
     when(syncStateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

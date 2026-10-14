@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import java.time.Clock;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,16 +32,20 @@ class RerankRoleStartupCheck implements ApplicationListener<ApplicationReadyEven
 
   private final RerankModelRole role;
   private final TaskScheduler probeScheduler;
+  private final Clock clock;
 
   RerankRoleStartupCheck(
-      RerankModelRole role, @Qualifier("rerankProbeScheduler") TaskScheduler probeScheduler) {
+      RerankModelRole role,
+      @Qualifier("rerankProbeScheduler") TaskScheduler probeScheduler,
+      Clock clock) {
     this.role = role;
     this.probeScheduler = probeScheduler;
+    this.clock = clock;
   }
 
   @Override
   public void onApplicationEvent(ApplicationReadyEvent event) {
-    probeScheduler.schedule(this::probeAndReport, Instant.now());
+    probeScheduler.schedule(this::probeAndReport, Instant.now(clock));
   }
 
   void probeAndReport() {

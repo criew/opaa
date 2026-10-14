@@ -4,6 +4,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetType;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
@@ -24,22 +25,25 @@ public class AssetFavoriteService {
   private final AssetAccessService accessService;
   private final AssetTypes assetTypes;
   private final AssetFavoriteRepository favorites;
+  private final Clock clock;
 
   public AssetFavoriteService(
       AssetAuthorization authorization,
       AssetAccessService accessService,
       AssetTypes assetTypes,
-      AssetFavoriteRepository favorites) {
+      AssetFavoriteRepository favorites,
+      Clock clock) {
     this.authorization = authorization;
     this.accessService = accessService;
     this.assetTypes = assetTypes;
     this.favorites = favorites;
+    this.clock = clock;
   }
 
   @Transactional
   public void mark(AssetType assetType, UUID assetId, CurrentUser caller) {
     Asset asset = requireReadable(assetType, assetId, caller);
-    favorites.mark(asset.getId(), caller.id(), asset.getOrganizationId(), Instant.now());
+    favorites.mark(asset.getId(), caller.id(), asset.getOrganizationId(), Instant.now(clock));
   }
 
   @Transactional

@@ -25,6 +25,7 @@ import io.opaa.knowledge.VectorTable;
 import io.opaa.permission.PersonThreshold;
 import jakarta.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -97,6 +98,7 @@ public class EmbeddingReindexService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final PersonThreshold personThreshold;
   private final String vectorStoreTable;
+  private final Clock clock;
 
   private final ExecutorService executor =
       Executors.newSingleThreadExecutor(
@@ -122,7 +124,8 @@ public class EmbeddingReindexService {
       JdbcTemplate jdbcTemplate,
       KnowledgeLibraryRepository libraryRepository,
       PersonThreshold personThreshold,
-      VectorTable vectorTable) {
+      VectorTable vectorTable,
+      Clock clock) {
     this.state = state;
     this.store = store;
     this.schema = schema;
@@ -134,6 +137,7 @@ public class EmbeddingReindexService {
     this.libraryRepository = libraryRepository;
     this.personThreshold = personThreshold;
     this.vectorStoreTable = vectorTable.qualifiedName();
+    this.clock = clock;
   }
 
   /** Read while the columns cannot be switched, so the counts belong to the reported state. */
@@ -187,7 +191,7 @@ public class EmbeddingReindexService {
     EmbeddingIndexRecord record = requireRecord();
     store.save(
         record.withRun(
-            new Run(RunStatus.RUNNING, Instant.now(), userId, organizationId, null, null)));
+            new Run(RunStatus.RUNNING, Instant.now(clock), userId, organizationId, null, null)));
     submit();
     return progress();
   }
@@ -204,7 +208,8 @@ public class EmbeddingReindexService {
     }
     stopRequested = true;
     store.save(
-        record.withRun(record.run().ended(RunStatus.CANCELLED, Instant.now(), CANCELLED_MESSAGE)));
+        record.withRun(
+            record.run().ended(RunStatus.CANCELLED, Instant.now(clock), CANCELLED_MESSAGE)));
     return progress();
   }
 
@@ -392,7 +397,9 @@ public class EmbeddingReindexService {
         () ->
             store.save(
                 new EmbeddingIndexRecord(
-                    target, null, record.run().ended(RunStatus.COMPLETED, Instant.now(), null))));
+                    target,
+                    null,
+                    record.run().ended(RunStatus.COMPLETED, Instant.now(clock), null))));
     state.replace(new Snapshot(target, snapshot.configured(), null));
     log.info(
         "The vector index now holds vectors of embedding model {} ({} dimensions); the vector"
@@ -408,7 +415,7 @@ public class EmbeddingReindexService {
     if (!record.run().running()) {
       return;
     }
-    store.save(record.withRun(record.run().ended(status, Instant.now(), message)));
+    store.save(record.withRun(record.run().ended(status, Instant.now(clock), message)));
     recordCompletion(AuditOutcome.FAILURE, message);
   }
 

@@ -3,6 +3,7 @@ package io.opaa.connection.log;
 import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.api.types.ConnectionLogEventType;
 import io.opaa.audit.AuditActorPseudonymService;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -19,10 +20,13 @@ public class ConnectionLog {
 
   private final ConnectionLogRepository repository;
   private final AuditActorPseudonymService pseudonyms;
+  private final Clock clock;
 
-  ConnectionLog(ConnectionLogRepository repository, AuditActorPseudonymService pseudonyms) {
+  ConnectionLog(
+      ConnectionLogRepository repository, AuditActorPseudonymService pseudonyms, Clock clock) {
     this.repository = repository;
     this.pseudonyms = pseudonyms;
+    this.clock = clock;
   }
 
   /**
@@ -69,7 +73,7 @@ public class ConnectionLog {
     repository.save(
         new ConnectionLogEntry(
             organizationId,
-            Instant.now(),
+            Instant.now(clock),
             eventType,
             actorRef,
             owner.kind(),

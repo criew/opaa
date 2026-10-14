@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -79,16 +80,19 @@ class LlmModelSeeder {
   private final LlmModelSeedMarkerRepository markerRepository;
   private final SettingsEncryptor settingsEncryptor;
   private final Environment environment;
+  private final Clock clock;
 
   LlmModelSeeder(
       LlmModelRepository repository,
       LlmModelSeedMarkerRepository markerRepository,
       SettingsEncryptor settingsEncryptor,
-      Environment environment) {
+      Environment environment,
+      Clock clock) {
     this.repository = repository;
     this.markerRepository = markerRepository;
     this.settingsEncryptor = settingsEncryptor;
     this.environment = environment;
+    this.clock = clock;
   }
 
   @Transactional
@@ -105,7 +109,7 @@ class LlmModelSeeder {
               + " hinterlegt (vermutlich manuell angelegt, nachdem eine frühere Übernahme mangels"
               + " OPAA_SETTINGS_ENCRYPTION_KEY übersprungen wurde). Seed-Marker wird nachträglich"
               + " gesetzt.");
-      markerRepository.save(new LlmModelSeedMarker(Instant.now()));
+      markerRepository.save(new LlmModelSeedMarker(Instant.now(clock)));
       return;
     }
     LlmModel seeded;
@@ -140,7 +144,7 @@ class LlmModelSeeder {
           "Initiales Chat-Modell aus der Umgebungskonfiguration übernommen: {}",
           seeded.getDisplayName());
     }
-    markerRepository.save(new LlmModelSeedMarker(Instant.now()));
+    markerRepository.save(new LlmModelSeedMarker(Instant.now(clock)));
   }
 
   /**

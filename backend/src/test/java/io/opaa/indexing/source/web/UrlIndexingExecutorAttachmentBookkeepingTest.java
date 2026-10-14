@@ -77,7 +77,10 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     staleDocumentCleanupService =
         spy(
             new StaleDocumentCleanupService(
-                documentRepository, mock(VectorChunkStore.class), mock(AssetRepository.class)));
+                documentRepository,
+                mock(VectorChunkStore.class),
+                mock(AssetRepository.class),
+                Clock.systemUTC()));
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
         .thenReturn(Optional.empty());
 

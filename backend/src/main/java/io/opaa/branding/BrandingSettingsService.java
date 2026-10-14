@@ -8,6 +8,7 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -67,14 +68,17 @@ public class BrandingSettingsService {
   private final BrandingSettingsRepository repository;
   private final BrandingImageValidator imageValidator;
   private final AuditEventRecorder auditEventRecorder;
+  private final Clock clock;
 
   public BrandingSettingsService(
       BrandingSettingsRepository repository,
       BrandingImageValidator imageValidator,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      Clock clock) {
     this.repository = repository;
     this.imageValidator = imageValidator;
     this.auditEventRecorder = auditEventRecorder;
+    this.clock = clock;
   }
 
   /**
@@ -147,7 +151,7 @@ public class BrandingSettingsService {
         repository.findSingleton().orElseThrow(BrandingSettingsService::missingRow);
     Map<String, Object> before = auditState(resolve(settings));
     settings.replaceImage(
-        kind, image.content(), image.contentType(), image.version(), Instant.now());
+        kind, image.content(), image.contentType(), image.version(), Instant.now(clock));
     repository.save(settings);
 
     EffectiveBranding after = resolve(settings);
