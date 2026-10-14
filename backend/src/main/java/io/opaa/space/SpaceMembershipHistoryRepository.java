@@ -63,8 +63,8 @@ public interface SpaceMembershipHistoryRepository
 
   /**
    * Every <i>state</i> interval of one space overlapping {@code [from, to)} - the object entry of
-   * the Stichtagsauskunft about a space (#1822). Zero-length event markers are excluded by {@code
-   * validTo > validFrom}.
+   * the Stichtagsauskunft about a space. Zero-length event markers are excluded by {@code validTo >
+   * validFrom}.
    */
   @Query(
       "select h from SpaceMembershipHistory h where h.spaceId = :spaceId "

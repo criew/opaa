@@ -11,8 +11,8 @@ import org.springframework.http.MediaType;
 
 /**
  * Decides whether an {@link ErrorResponse} body may be attached, given the caller's {@code Accept}
- * header (#1780): the same compatibility test {@code AbstractMessageConverterMethodProcessor} runs,
- * against the types the Jackson converter writes for the envelope.
+ * header: the same compatibility test {@code AbstractMessageConverterMethodProcessor} runs, against
+ * the types the Jackson converter writes for the envelope.
  *
  * <p>Pre-check and writer agree while two conditions hold. No other registered converter writes
  * {@link ErrorResponse} ({@code Jaxb2RootElementHttpMessageConverter} is registered and declines

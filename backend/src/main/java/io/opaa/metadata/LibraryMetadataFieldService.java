@@ -274,11 +274,11 @@ public class LibraryMetadataFieldService {
 
   /**
    * Retires a field and starts emptying every document that carries a value of it; field, value
-   * list and stored values are gone once the last document was emptied (#1361). Not
-   * {@code @Transactional} for the same reason the value mapping is not: the retirement commits on
-   * its own and every document is emptied in its own transaction. While the field is retired it
-   * still exists, so its chunk keys remain part of what a rewrite owns and are stripped along the
-   * way; no value of it can be set any more.
+   * list and stored values are gone once the last document was emptied. Not {@code @Transactional}
+   * for the same reason the value mapping is not: the retirement commits on its own and every
+   * document is emptied in its own transaction. While the field is retired it still exists, so its
+   * chunk keys remain part of what a rewrite owns and are stripped along the way; no value of it
+   * can be set any more.
    *
    * <p>Every removed value is audited per document with its old value, all under one
    * correlationRef, exactly like the value mapping: a deletion is a loss of manual work, and only
@@ -320,9 +320,9 @@ public class LibraryMetadataFieldService {
   }
 
   /**
-   * One Charge of the library's pending schema changes (#1361) - the continuation of a mapping or
-   * deletion whose bestand did not fit into the confirming call. Same management right as the
-   * confirmation; pausing is not calling again.
+   * One Charge of the library's pending schema changes - the continuation of a mapping or deletion
+   * whose bestand did not fit into the confirming call. Same management right as the confirmation;
+   * pausing is not calling again.
    */
   public LibraryMetadataSchemaRunResult runSchemaChanges(
       UUID libraryId, Integer batchSize, CurrentUser caller) {
@@ -424,10 +424,10 @@ public class LibraryMetadataFieldService {
   /**
    * Retires {@code code} and starts mapping every document that carries it onto {@code targetCode}
    * or - when that is {@code null} - onto "leer"; the list entry is removed once the last document
-   * has left it (#1361). Deliberately <b>not</b> {@code @Transactional}: the retirement commits on
-   * its own and every document is rewritten in its own transaction, which is what makes the run
-   * resumable. A bestand that fits into the first Charge is finished when this returns - the small
-   * case behaves as it always did.
+   * has left it. Deliberately <b>not</b> {@code @Transactional}: the retirement commits on its own
+   * and every document is rewritten in its own transaction, which is what makes the run resumable.
+   * A bestand that fits into the first Charge is finished when this returns - the small case
+   * behaves as it always did.
    *
    * <p>Repeating the call while the same mapping runs resumes it; a different target is a conflict,
    * because the documents already rewritten cannot be taken back. Every document gets its own audit
@@ -454,9 +454,8 @@ public class LibraryMetadataFieldService {
         schemaChangeService.runBatch(library, change, batchSize, caller);
     schemaChanged(library);
     boolean toLeer = change.getTargetValueId() == null;
-    // Über die Änderung selbst, nicht über den Wertecode: Zwei Felder derselben Bibliothek dürfen
-    // denselben Code führen, und die Restmenge einer fremden Abbildung gehört nicht in diese
-    // Antwort.
+    // By the change itself, not by the value code: two fields of the same library may carry the
+    // same code, and the remainder of another field's remapping does not belong in this answer.
     long remaining =
         run.confirmedChange().map(LibraryMetadataSchemaChangeView::remainingDocuments).orElse(0L);
     return new LibraryFieldValueRemapResult(

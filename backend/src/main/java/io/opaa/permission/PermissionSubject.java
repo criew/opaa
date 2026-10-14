@@ -6,9 +6,9 @@ import java.util.UUID;
 
 /**
  * A permission entry references a user or a group, never both. This is the shared abstraction that
- * a future grant (asset permissions, #202) will point at; this issue introduces the abstraction and
- * its group-membership resolution ({@link GroupMembershipResolver}) ahead of the first grant,
- * because retrofitting a subject type later would touch every grant, query and cache.
+ * a future grant (asset permissions) will point at; this issue introduces the abstraction and its
+ * group-membership resolution ({@link GroupMembershipResolver}) ahead of the first grant, because
+ * retrofitting a subject type later would touch every grant, query and cache.
  *
  * <p>Carries {@code organizationId} so that {@link GroupMembershipResolver#resolveUserIds} can
  * enforce the organization boundary itself, at the one place every future caller goes through,

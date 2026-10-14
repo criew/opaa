@@ -34,11 +34,11 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
- * One real S3-compatible object store per JVM (ADR-0027, Entscheidung 9 und Nachtrag 09/2026):
- * started lazily on first use, shared by every test class that needs one, stopped by Ryuk/JVM exit
- * - small enough for the regular {@code test} task, unlike Confluence Data Center. Seeding goes
- * through the SDK with the root credentials; restricted users are created over the store's
- * MinIO-compatible admin API, which takes the same IAM policy documents.
+ * One real S3-compatible object store per JVM (ADR-0027, Entscheidung 9): started lazily on first
+ * use, shared by every test class that needs one, stopped by Ryuk/JVM exit - small enough for the
+ * regular {@code test} task, unlike Confluence Data Center. Seeding goes through the SDK with the
+ * root credentials; restricted users are created over the store's MinIO-compatible admin API, which
+ * takes the same IAM policy documents.
  */
 public final class S3TestFixture {
 

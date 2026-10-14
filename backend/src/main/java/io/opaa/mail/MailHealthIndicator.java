@@ -6,9 +6,9 @@ import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 /**
- * Whether mail is currently working (#1536, ADR-0033 Entscheidung 10): {@code DOWN} when the last
- * attempt failed, {@code UP} when the last one succeeded, {@code UNKNOWN} while SMTP is not
- * configured or nothing has been sent yet.
+ * Whether mail is currently working (ADR-0033 Entscheidung 10): {@code DOWN} when the last attempt
+ * failed, {@code UP} when the last one succeeded, {@code UNKNOWN} while SMTP is not configured or
+ * nothing has been sent yet.
  *
  * <p>State without details: a monitoring system needs to know that mail is failing, the cause
  * belongs on the settings page behind {@code SYSTEM_ADMIN}. Shown by the {@code mail} group only -

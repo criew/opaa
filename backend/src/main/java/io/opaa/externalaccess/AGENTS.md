@@ -6,8 +6,7 @@ Pakete (`io.opaa.*`): externalaccess, mcp. Ergänzt `backend/AGENTS.md`.
 
 Der Kanal für Fremdzugänge: Kanaleinstellungen mit dem Schalter der Installation (Vorgabe aus,
 zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Server mit den Werkzeugen
-`search`, `fetch` und `list_libraries` (`mcp`). external hängt von allen Modulen außer workspace,
-connectors und app ab.
+`search`, `fetch` und `list_libraries` (`mcp`).
 
 ## Invarianten und Stolpersteine
 
@@ -36,11 +35,14 @@ connectors und app ab.
   den sonst unauthentifiziert registrierten Endpunkt, `tools/list` wird je Anfrage gebaut, und eine
   unbekannte Protokollversion wird abgewiesen.
 
+## Maßgebliche ADRs
+
+- [ADR-0035](../../../../../../../docs/decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md): MCP-Server, Zugangstokens, Freigabe
+- [ADR-0039](../../../../../../../docs/decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) (Entscheidung 5): Fremdzugang mit eigener Auswahl
+
 ## Verweise
 
-- ADR (`docs/decisions/`): 0035
 - Handbuch: `docs/handbuch/fremdzugaenge.md`
-- Strukturtests: `McpDependencyStructureTest`, `SearchDependencyStructureTest`
 
 ## Tests bei Änderungen
 
@@ -48,7 +50,3 @@ connectors und app ab.
 ./gradlew test --tests 'io.opaa.externalaccess.*' --tests 'io.opaa.mcp.*' \
   --tests 'io.opaa.search.*' --tests 'io.opaa.architecture.*'
 ```
-
-Bei Schemaänderungen: neue Datei unter `db/changelog/external/`. Regeln und
-Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
-für rein additive DDL entbehrlich.

@@ -9,7 +9,7 @@ paths:
       operationId: listLowChunkDocuments
       tags: [indexing]
       summary: >
-        The one-time inventory check for scan-PDF fallout (system admin only, #1055/#1090,
+        The one-time inventory check for scan-PDF fallout (system admin only,
         ingestion-pipelines.md Teil 3 Punkt 1 "Scan-Erkennung und Bestandsprüfung")
       description: >
         Every INDEXED document of the caller's own organization whose chunkCount is at or below
@@ -18,8 +18,7 @@ paths:
         one-off cleanup that goes stale the moment the next such file is indexed. Scoped to the
         caller's own organization the same way every other admin listing in this API is - never a
         cross-organization view. The documents of private libraries are never listed: their file
-        names are their owner's alone. Consumed by the "Suche & Indexierung" administration page
-        (#1053).
+        names are their owner's alone. Consumed by the "Suche & Indexierung" administration page.
       parameters:
         - name: chunkCountThreshold
           in: query
@@ -67,8 +66,7 @@ paths:
       operationId: getPipelineVersionStatus
       tags: [indexing]
       summary: >
-        Which ingestion pipeline versions the chunk bestand was produced with (system admin only,
-        #1056, ingestion-pipelines.md Querschnittsregel (d))
+        Which ingestion pipeline versions the chunk bestand was produced with (system admin only, ingestion-pipelines.md Querschnittsregel (d))
       description: >
         The registered pipelines with their current versions, plus the fill state per library of the
         caller's own organization: how many chunks were produced by the current version of the
@@ -76,7 +74,7 @@ paths:
         re-index. Without this, a bestand containing chunks from two verfahren is not feststellbar at
         all - one cannot tell from a chunk which rules cut it. A chunk cut under another chunking
         configuration than its pipeline's current one (a changed
-        opaa.indexing.chunk-target-characters, #2612) counts as stale as well.
+        opaa.indexing.chunk-target-characters) counts as stale as well.
       responses:
         "200":
           description: Pipeline versions and per-library fill state
@@ -92,11 +90,11 @@ paths:
       operationId: reindexPipelineBatch
       tags: [indexing]
       summary: >
-        Re-index one batch of chunks below a given pipeline version (system admin only, #1056)
+        Re-index one batch of chunks below a given pipeline version (system admin only)
       description: >
         Processes at most batchSize documents of the caller's own organization that still hold
         chunks from pipelineId below belowVersion or cut under another chunking configuration than
-        pipelineId's current one (#2612), and reports what it did. Deliberately batched and
+        pipelineId's current one, and reports what it did. Deliberately batched and
         repeatable rather than one long-running request: the remaining work is re-derived from the
         chunk metadata on every call, so an interrupted run continues where it stood instead of
         starting over. Repeat until done is true. Whether and when a bestand is nachgezogen at all is
@@ -139,7 +137,7 @@ paths:
       tags: [indexing]
       summary: >
         Re-extract the core metadata fields of one batch of a library's Altbestand from the
-        original files (system admin only, #1067, metadata-schema.md "Deterministischer
+        original files (system admin only, metadata-schema.md "Deterministischer
         Bestandslauf")
       description: >
         Processes at most batchSize INDEXED documents of libraryId (which must belong to the
@@ -151,7 +149,7 @@ paths:
         never a mixture. Repeat until done is true; the remaining work is re-derived from the
         documents table on every call, so pausing is simply not calling again, and the next call
         resumes at the next unprocessed document. A manually set value is never overwritten. A
-        system process without a person's rights context (Epic #1065, Beschluss 1). Nothing
+        system process without a person's rights context (Beschluss 1). Nothing
         triggers this automatically.
       requestBody:
         required: true
@@ -179,7 +177,7 @@ paths:
       tags: [indexing]
       summary: >
         Re-embed one batch of a library's documents under the current Kontextpräfix (system admin
-        only, #1072, metadata-schema.md "Nachlauf im Betrieb")
+        only, metadata-schema.md "Nachlauf im Betrieb")
       description: >
         Processes at most batchSize INDEXED documents of libraryId (which must belong to the
         caller's own organization and be no private library, otherwise 404) whose context-prefix stamp was cleared - the
@@ -219,7 +217,7 @@ paths:
       tags: [indexing]
       summary: >
         The vector index against the configured embedding model, and its re-embedding (system admin
-        only, #2576)
+        only)
       description: >
         Installation-wide - the vector index is one for all organizations - and without any
         content: the model the index was built with, the configured model, whether the index is
@@ -239,7 +237,7 @@ paths:
     post:
       operationId: startEmbeddingReindex
       tags: [indexing]
-      summary: Start or resume the re-embedding of the stale vector index (system admin only, #2576)
+      summary: Start or resume the re-embedding of the stale vector index (system admin only)
       description: >
         Re-embeds every chunk under the configured embedding model in the background: chunks,
         their ids and their text stay, no source is read again, only the vectors are replaced.
@@ -261,7 +259,7 @@ paths:
     delete:
       operationId: cancelEmbeddingReindex
       tags: [indexing]
-      summary: Stop the running re-embedding (system admin only, #2576)
+      summary: Stop the running re-embedding (system admin only)
       description: >
         Stops the run after the document it is working on. What it has embedded is kept, and a
         later start continues from there; the vector search stays suspended until a run completes.
@@ -291,7 +289,7 @@ paths:
       tags: [indexing]
       summary: Generate or rotate the push secret of a library whose connector has a push intake
       description: >
-        #1140, ADR-0027 Entscheidung 6, ADR-0038: generates a fresh random secret, stores it
+        ADR-0027 Entscheidung 6, ADR-0038: generates a fresh random secret, stores it
         encrypted (like sourceCredentials) and returns it exactly once, together with the path
         the source has to notify. Calling again rotates: the previous secret stops authenticating
         immediately. MANAGER or above, the same threshold as every other change of the source
@@ -413,7 +411,7 @@ paths:
             (FILESYSTEM/HTTP_DIRECTORY: FULL, RSS_FEED: INCREMENTAL); for CONFLUENCE the mode
             its sync state calls for: FULL until a full run completed, after a change of the
             space selection and once the configured full-sync interval passed, INCREMENTAL in
-            between (#1139). A
+            between. A
             mode the source type does not support is rejected with 400, naming the supported ones.
           schema:
             $ref: "#/components/schemas/IndexingRunMode"
@@ -425,8 +423,8 @@ paths:
         above on the library is required (the former SYSTEM_ADMIN requirement is gone -
         ADR-0018, Entscheidung 2). A library whose sourceType is UPLOAD has no run at all
         and is rejected with 409, as is a second trigger while a run for this same library is
-        still in progress - concurrency is per library, not global (#478). A full
-        indexingTaskExecutor queue is rejected with 503 (#501) - the just-inserted job row is
+        still in progress - concurrency is per library, not global. A full
+        indexingTaskExecutor queue is rejected with 503 - the just-inserted job row is
         failed immediately rather than left RUNNING with nothing left to ever complete it.
       responses:
         "202":
@@ -487,9 +485,9 @@ paths:
       tags: [indexing]
       summary: >
         The last 10 indexing runs for a library, each with its own protocol of skipped/rejected
-        items and errors (#513).
+        items and errors.
       description: >
-        Requires MANAGER role or above on the library (PR #604 review, finding 1) - stricter than
+        Requires MANAGER role or above on the library - stricter than
         GET .../indexing/status's plain read grant, since an event's reference routinely carries
         the library's own sourcePath/sourceUrl, the same internal-path leak #507 exists to close
         for the source configuration display itself. Runs are ordered newest first; older runs
@@ -610,7 +608,7 @@ components:
           description: >
             The number of source items this run has processed. On an RSS_FEED run this counts feed
             entries, not indexed documents - an entry's detail page can carry additional attachment
-            documents (#468) that are not counted here. See documentsIndexedTotal for the true
+            documents that are not counted here. See documentsIndexedTotal for the true
             document count.
           example: 42
         totalDocuments:
@@ -622,15 +620,15 @@ components:
         documentsFailed:
           type: integer
           description: >
-            The number of source items this run failed to process (#518 review, finding 3) -
+            The number of source items this run failed to process -
             previously only visible inside the free-text message field, not as its own value the
             UI could name explicitly.
           example: 0
         documentsIndexedTotal:
           type: integer
           description: >
-            The true count of documents this run has indexed (#518) - includes every attachment
-            document indexed for an RSS_FEED entry (#468), including one backfilled for an
+            The true count of documents this run has indexed - includes every attachment
+            document indexed for an RSS_FEED entry, including one backfilled for an
             otherwise-unchanged entry. Equals documentCount for FILESYSTEM/HTTP_DIRECTORY runs,
             where one processed file is exactly one document.
           example: 42
@@ -639,7 +637,7 @@ components:
           nullable: true
           description: >
             For status FAILED, the detail is only included if the caller holds at least MANAGER
-            on the library (#507/#659) - the underlying exception message routinely repeats the
+            on the library - the underlying exception message routinely repeats the
             library's own sourcePath/sourceUrl (an absolute server path or a host:port), the same
             internal-infrastructure leak #507 already closes for the source configuration display
             itself. A caller below MANAGER gets a generic German message instead.
@@ -657,7 +655,7 @@ components:
           format: uuid
           nullable: true
           description: >
-            The knowledge library this run targets (#419). Null for a run started before
+            The knowledge library this run targets. Null for a run started before
             migration 019 added the column, or once the run's target library has since been
             deleted (indexing_jobs.library_id is ON DELETE SET NULL - a run's history is not the
             same thing as its right to still write there, see IndexingJob#getLibraryId's Javadoc).
@@ -665,7 +663,7 @@ components:
           type: boolean
           nullable: true
           description: >
-            #1141: true when the most recent run completed as incomplete (request budget spent,
+            True when the most recent run completed as incomplete (request budget spent,
             continued by the next run) - see IndexingRunResponse.incomplete.
         unlistedScopeKeys:
           type: array
@@ -692,7 +690,7 @@ components:
     IndexingTriggerSource:
       type: string
       description: >
-        Who started a run (#485): a person via "Jetzt indizieren", the library's own schedule, or
+        Who started a run: a person via "Jetzt indizieren", the library's own schedule, or
         an authenticated notification (#1140 Confluence webhook, #1381 S3 event) - a WEBHOOK run
         checks only the pages or objects the notification named and never removes anything the
         source does not itself confirm as gone.
@@ -710,7 +708,7 @@ components:
         removal by absence, only on the store's own 404 - and is started solely by the
         notification (triggeredBy WEBHOOK), never by "Jetzt indizieren" or the schedule.
         FILESYSTEM and HTTP_DIRECTORY only know FULL, RSS_FEED only INCREMENTAL; CONFLUENCE knows
-        FULL and INCREMENTAL (#1136, #1139), S3 knows FULL and EVENT (#1378, #1381).
+        FULL and INCREMENTAL, S3 knows FULL and EVENT.
       enum: [FULL, INCREMENTAL, EVENT]
       example: FULL
 
@@ -718,8 +716,7 @@ components:
       type: string
       description: >
         Why a single item was skipped/rejected or failed during a run, or - for FORMAT_MISMATCH,
-        SCHEDULE_SKIPPED and REMOVED - a note that is not about the item's own outcome at all
-        (#513, #404, #485, #886). Deliberately coarse (eight buckets, not one per exception type)
+        SCHEDULE_SKIPPED and REMOVED - a note that is not about the item's own outcome at all. Deliberately coarse (eight buckets, not one per exception type)
         so the category stays a stable, translatable label rather than growing a new value with
         every executor change:
           * REJECTED - the source itself declined to hand the item over (HTTP 403/429, a redirect
@@ -730,23 +727,23 @@ components:
           * UNSUPPORTED_FORMAT - the item's file format or content type is not one
             SupportedDocumentFormats indexes.
           * ALLOWLIST - the run's own source configuration (e.g. a FILESYSTEM library's
-            sourcePath) falls outside an operator-configured allowlist (#484).
+            sourcePath) falls outside an operator-configured allowlist.
           * ERROR - processing started but failed unexpectedly (parsing, chunking, embedding).
           * FORMAT_MISMATCH - the item's file extension did not match its detected content, but it
-            was indexed anyway (#404) - a note about an accepted item, not a reason it was not
+            was indexed anyway - a note about an accepted item, not a reason it was not
             counted among documentsSkipped/documentsFailed.
-          * SCHEDULE_SKIPPED - a scheduled run (#485) found the library still indexing from a
+          * SCHEDULE_SKIPPED - a scheduled run found the library still indexing from a
             previous run and did not start a second one; recorded against the still-running job's
             own protocol, not a new run of its own.
           * REMOVED - a previously indexed document no longer exists at its source and was deleted
-            at the end of a successful, complete run (#886, ADR-0017 Entscheidung 5) - like
+            at the end of a successful, complete run (ADR-0017 Entscheidung 5) - like
             FORMAT_MISMATCH/SCHEDULE_SKIPPED, this does not count among documentsSkipped/
             documentsFailed either.
           * RATE_LIMITED - the source throttled the run (HTTP 429, Retry-After) and the run slowed
-            down instead of failing (#1136); one summary note per run, not an item outcome.
-          * BUDGET_EXHAUSTED - the run spent its request budget (#1141) and ended in an orderly
+            down instead of failing; one summary note per run, not an item outcome.
+          * BUDGET_EXHAUSTED - the run spent its request budget and ended in an orderly
             way as incomplete; the next run continues where this one left off.
-          * SUMMARY - the run's own figures at its end (#1380: requests, bytes, listed/skipped/
+          * SUMMARY - the run's own figures at its end (requests, bytes, listed/skipped/
             processed objects, time per container) for a source that counts them; one note per
             run, never an item outcome.
       enum:
@@ -774,7 +771,7 @@ components:
         message:
           type: string
           description: >
-            A German, human-readable reason (#513) - never a raw challenge/redirect URL or
+            A German, human-readable reason - never a raw challenge/redirect URL or
             exception stack trace, only what an operator needs to understand why the item was
             skipped.
           example: "Vom Quellserver abgewiesen (Weiterleitung auf einen fremden Host)"
@@ -783,7 +780,7 @@ components:
           nullable: true
           description: >
             The affected document name, file path or source URL - never the raw challenge/
-            redirect target a bot-protection page issued (#513 acceptance criteria).
+            redirect target a bot-protection page issued.
           example: https://example.org/aktuelles/pressemitteilung-42
       example:
         category: REJECTED
@@ -845,8 +842,7 @@ components:
             CREDENTIALS_REJECTED when the source refused the secret. On a completed, incomplete
             run QUOTA_EXHAUSTED: the run skipped at least one document or attachment because a
             storage quota was reached - the library's own, or for a private library the one across
-            all private libraries of the owner - and went on to its end and its reconciliation
-            (#2166, #2276, #2295). Absent for any other end.
+            all private libraries of the owner - and went on to its end and its reconciliation. Absent for any other end.
           example: NOT_CONNECTED
         startedAt:
           type: string
@@ -858,7 +854,7 @@ components:
         events:
           type: array
           description: >
-            This run's protocol (#513), capped at 500 entries (IndexingRunEventRecorder) - see
+            This run's protocol, capped at 500 entries (IndexingRunEventRecorder) - see
             eventsTruncatedCount for how many further events beyond the cap this run recorded.
           items:
             $ref: "#/components/schemas/IndexingRunEvent"
@@ -866,14 +862,14 @@ components:
           type: integer
           description: >
             How many further events this run recorded beyond the 500-entry cap on the events
-            list above (#513) - 0 when every event fit. The UI renders this as "… und N weitere".
+            list above - 0 when every event fit. The UI renders this as "… und N weitere".
           example: 0
 
         incomplete:
           type: boolean
           nullable: true
           description: >
-            #1141: true for a COMPLETED run that stopped in an orderly way before covering
+            True for a COMPLETED run that stopped in an orderly way before covering
             everything - its request budget (opaa.indexing.confluence.request-budget-per-run) ran
             out - and is continued by the next run: a full sync resumes with the spaces it did not
             finish, an incremental run searches the same window again (its anchor did not move).
@@ -915,7 +911,7 @@ components:
           attachmentsFailed,
         ]
       description: >
-        #1141: what a run cost - recorded by executors that can measure it (Confluence); absent
+        What a run cost - recorded by executors that can measure it (Confluence); absent
         for other source types and for runs from before the figures were recorded. Together with
         startedAt/completedAt (the duration) and the document counters this is what an operator
         reads throughput and the request budget against.
@@ -949,7 +945,7 @@ components:
           type: integer
           format: int64
           description: >
-            The bytes the run downloaded from its source (#1380) - recorded by executors that
+            The bytes the run downloaded from its source - recorded by executors that
             count them (S3); absent or 0 for other source types.
           example: 734003200
     IndexingRunListResponse:
@@ -958,7 +954,7 @@ components:
       properties:
         runs:
           type: array
-          description: The last 10 runs for this library, newest first (#513).
+          description: The last 10 runs for this library, newest first.
           items:
             $ref: "#/components/schemas/IndexingRunResponse"
 
@@ -1071,8 +1067,7 @@ components:
         id:
           type: string
           description: >
-            The pipeline's stable identity, persisted on every chunk it produced (#1056,
-            ingestion-pipelines.md Querschnittsregel (d)) - the value to pass as
+            The pipeline's stable identity, persisted on every chunk it produced (ingestion-pipelines.md Querschnittsregel (d)) - the value to pass as
             PipelineReindexRequest.pipelineId.
           example: tika-fallback
         currentVersion:
@@ -1084,7 +1079,7 @@ components:
           type: array
           description: >
             The file formats this pipeline claims, decided from the detected content and not from
-            the file extension (#404). Empty for the fallback pipeline, which handles everything no
+            the file extension. Empty for the fallback pipeline, which handles everything no
             other pipeline claimed.
           items:
             type: string
@@ -1111,7 +1106,7 @@ components:
           format: int64
           description: >
             Chunks below the current version of the pipeline named on them or cut under another
-            chunking configuration than its current one (#2612), including the bestand written
+            chunking configuration than its current one, including the bestand written
             before the pipeline abstraction existed. Counted directly, not derived as
             totalChunks - currentVersionChunks: a chunk naming a pipeline this deployment no longer
             has is neither current nor re-indexable and inflates neither count.
@@ -1183,10 +1178,10 @@ components:
             400 above the pipeline's own currentVersion: a re-index cannot produce a version the
             pipeline does not have, so every rewritten chunk would still be below the bound and the
             same documents would be selected again on every following batch. A chunk still naming
-            the fallback pipeline whose format pipelineId now claims (#1105) is also always
+            the fallback pipeline whose format pipelineId now claims is also always
             included regardless of belowVersion - it is unreachable by any other call, not merely
             below a version bound. So is a chunk of pipelineId cut under another chunking
-            configuration than its current one, such as a changed target size (#2612): pass the
+            configuration than its current one, such as a changed target size: pass the
             pipeline's currentVersion to re-cut only those.
         batchSize:
           type: integer

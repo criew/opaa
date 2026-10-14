@@ -25,8 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ul>
  *   <li>a lock from the directory synchronisation takes the access away regardless of the issuer
- *       behind it ({@link User#isDirectoryLocked()}, #1818) - the same rule {@code
- *       UserProvisioningFilter} applies to every request;
+ *       behind it ({@link User#isDirectoryLocked()}) - the same rule {@code UserProvisioningFilter}
+ *       applies to every request;
  *   <li>for a local account the derived state of its credentials decides ({@link
  *       LocalCredentials#isLoginCapable}, ADR-0033 Entscheidung 3), so a locked, expired or still
  *       invited account counts as little as a locked one. A local account without a credentials row

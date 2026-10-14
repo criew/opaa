@@ -144,8 +144,8 @@ class S3UploadedOriginalStoreIntegrationTest {
 
   @Test
   void aKeyOfAnotherOrganizationIsNeitherReadNorDeletedUnderTheSameLibraryId() throws IOException {
-    // Everything but the organization segment matches: same library id, same object. Against a
-    // real store too, that segment alone has to answer "not there" (ADR-0030, Nachtrag zu 4).
+    // Everything but the organization segment matches: same library id, same object. Against a real
+    // store too, that segment alone has to answer "not there" (ADR-0030, Entscheidung 4).
     UploadedOriginalRef own = storedOriginal("Original der eigenen Organisation");
     UploadedOriginalRef foreign =
         new UploadedOriginalRef(UUID.randomUUID(), libraryId, own.locator());

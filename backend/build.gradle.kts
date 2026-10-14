@@ -29,11 +29,11 @@ repositories {
 }
 
 sourceSets {
-    // Retrieval-quality evaluation harness (issue #227). Deliberately its own source set, not
-    // part of `test`: it needs Docker (pgvector + Ollama Testcontainers), pulls a ~275 MB
-    // embedding model and indexes ~1.450 corpus documents, which would slow down every
-    // `./gradlew build` for something that only needs to run occasionally and by choice. See the
-    // `evaluateRetrieval` task below and docs/discussions/discussion-rag-evaluation.md.
+    // Retrieval-quality evaluation harness. Deliberately its own source set, not part of `test`: it
+    // needs Docker (pgvector + Ollama Testcontainers), pulls a ~275 MB embedding model and indexes
+    // ~1.450 corpus documents, which would slow down every `./gradlew build` for something that
+    // only needs to run occasionally and by choice. See the `evaluateRetrieval` task below and
+    // docs/discussions/discussion-rag-evaluation.md.
     create("evalTest") {
         java.srcDir("src/evalTest/java")
         resources.srcDir("src/evalTest/resources")
@@ -50,9 +50,9 @@ configurations.named("evalTestRuntimeOnly") {
 }
 
 dependencies {
-    // OpenAPI spec, generator config and shared domain enums (issue #896) - transitively brings
-    // the generated io.opaa.api.dto classes onto this module's compile classpath via
-    // opaa-api's own main sourceSet output, without recompiling them here.
+    // OpenAPI spec, generator config and shared domain enums - transitively brings the generated
+    // io.opaa.api.dto classes onto this module's compile classpath via opaa-api's own main
+    // sourceSet output, without recompiling them here.
     implementation(project(":opaa-api"))
     implementation(libs.bundles.spring.boot)
     implementation(libs.bundles.spring.ai)
@@ -95,9 +95,8 @@ tasks.cyclonedxBom {
     componentName.set("opaa-backend")
 }
 
-// Registers the evaluateXRetrieval/checkXRetrievalBaseline task pair for one eval domain (issue
-// #835 — this used to be ~130 hand-copied lines per domain; see git history for the original,
-// per-domain comments this collapses). Both tasks share identical Test wiring across domains;
+// Registers the evaluateXRetrieval/checkXRetrievalBaseline task pair for one eval domain. Both
+// tasks share identical Test wiring across domains;
 // only the task-name suffix, descriptions, and the domain's own harness/baseline test classes
 // vary between calls.
 //
@@ -106,18 +105,18 @@ tasks.cyclonedxBom {
 // downloads the `nomic-embed-text` model into the Ollama Testcontainer on first run.
 //
 // The evaluate task produces the report, and only the report: the baseline test is never part of
-// it, because that test consumes a report the evaluate task itself writes (issue #414) — included,
+// it, because that test consumes a report the evaluate task itself writes — included,
 // JUnit would run it alphabetically before the harness test, i.e. before the report file exists,
 // failing its "No report found" guard before the check task ever gets a turn.
 //
 // Filtering by the harness/baseline test's fully qualified class name (rather than a "*Suffix"
-// wildcard) sidesteps the wildcard trap that originally motivated this refactor (issue #234): a
+// wildcard) sidesteps the wildcard trap: a
 // wildcard like "*RetrievalEvaluationHarnessTest" also matches
 // "CityLandmarksRetrievalEvaluationHarnessTest" because it ends with that suffix, which would
 // silently double the runtime and couple both domains' runs together.
 //
-// The check task runs BOTH baseline tests of the domain (raw-vector and pipeline path, issue
-// #1040). JUnit runs both classes regardless of the other's outcome, so each path gets its own
+// The check task runs BOTH baseline tests of the domain (raw-vector and pipeline path).
+// JUnit runs both classes regardless of the other's outcome, so each path gets its own
 // verdict and its own delta table — a red pipeline path never suppresses the raw-vector judgment
 // and vice versa, which is the reason they are two test classes rather than one.
 //
@@ -125,7 +124,7 @@ tasks.cyclonedxBom {
 // wiring the test without a committed baseline would turn the nightly job red for a measurement
 // that was never taken. See the call sites for which domain that currently is and under which
 // issue it is being drawn. `conversationBaselineTestClass` works the same way for the multi-turn
-// path (issue #1553) — but its pair of tasks is a second, separate pair, never a third test class
+// path — but its pair of tasks is a second, separate pair, never a third test class
 // in the check task above: the multi-turn step needs the Teilfragen-Zerlegung switched on, and
 // both baselines the check task above judges were drawn with it off.
 //
@@ -225,11 +224,11 @@ fun registerEvalDomain(
         return
     }
 
-    // The multi-turn path's own pair (issue #1553). A second full harness run rather than a third
-    // test class on the pair above, because the multi-turn step only measures with the
-    // Teilfragen-Zerlegung active (ConversationRunPrerequisites) while both baselines the pair
-    // above judges were drawn with it off — one run cannot serve both, and a run that tried would
-    // report every domain baseline as incomparable.
+    // The multi-turn path's own pair. A second full harness run rather than a third test class on
+    // the pair above, because the multi-turn step only measures with the Teilfragen-Zerlegung
+    // active (ConversationRunPrerequisites) while both baselines the pair above judges were drawn
+    // with it off — one run cannot serve both, and a run that tried would report every domain
+    // baseline as incomparable.
     val conversationEvaluateTaskName = "evaluate${name}Conversations"
     registerEvalHarnessTask(
         conversationEvaluateTaskName,
@@ -264,7 +263,7 @@ fun registerEvalDomain(
     }
 }
 
-// comic-characters domain (issue #227/#228).
+// comic-characters domain.
 registerEvalDomain(
     name = "",
     evaluateDescription = "Runs the retrieval-quality evaluation harness (Hit Rate, MRR, nDCG, Recall) " +
@@ -277,11 +276,10 @@ registerEvalDomain(
     pipelineBaselineTestClass = "io.opaa.eval.PipelineBaselineRegressionTest",
 )
 
-// city-landmarks domain (issue #234): second domain, second test class pair — see
+// city-landmarks domain: second domain, second test class pair — see
 // CityLandmarksRetrievalEvaluationHarnessTest's Javadoc for why it is a near-duplicate rather than
 // a parameterization of RetrievalEvaluationHarnessTest. No shared report file, no shared baseline,
-// no shared group with the comic-characters domain (issue #234 acceptance criterion "keine
-// gemeinsame overall-Gruppe mit Comichelden").
+// no shared group with the comic-characters domain.
 registerEvalDomain(
     name = "CityLandmarks",
     evaluateDescription = "Runs the retrieval-quality evaluation harness for the city-landmarks domain " +
@@ -295,10 +293,10 @@ registerEvalDomain(
     pipelineBaselineTestClass = "io.opaa.eval.CityLandmarksPipelineBaselineRegressionTest",
 )
 
-// verwaltung domain (issues #1042/#1043): third domain, the one that carries the five named
-// Golden-Fall-Klassen of docs/features/retrieval-benchmark.md §5. Both paths are gated from the
-// start — this domain's raw-vector and pipeline baselines were drawn in the same run as part of
-// #1043, so neither path needs the ungated interim state city-landmarks is still in.
+// verwaltung domain: third domain, the one that carries the five named Golden-Fall-Klassen of
+// docs/features/retrieval-benchmark.md §5. Both paths are gated from the start — this domain's
+// raw-vector and pipeline baselines were drawn in the same run, so neither path needs the ungated
+// interim state city-landmarks is still in.
 registerEvalDomain(
     name = "Verwaltung",
     evaluateDescription = "Runs the retrieval-quality evaluation harness for the verwaltung domain " +
@@ -310,23 +308,22 @@ registerEvalDomain(
     harnessTestClass = "io.opaa.eval.VerwaltungRetrievalEvaluationHarnessTest",
     baselineTestClass = "io.opaa.eval.VerwaltungBaselineRegressionTest",
     pipelineBaselineTestClass = "io.opaa.eval.VerwaltungPipelineBaselineRegressionTest",
-    // The only domain with a curated multi-turn dataset and a committed multi-turn baseline
-    // (issues #1485/#1553); a second domain supplies its own test class here.
+    // The only domain with a curated multi-turn dataset and a committed multi-turn baseline; a
+    // second domain supplies its own test class here.
     conversationBaselineTestClass = "io.opaa.eval.VerwaltungConversationBaselineRegressionTest",
 )
 
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
 // CorpusManifest, BaselineComparator — see their Javadoc). Lives in the evalTest source set (not
-// `main`/`test`) so the classes under test never ship in the production jar, but still runs as
-// part of `check` so a Spring AI/Testcontainers upgrade that breaks compilation, or a metric-math
+// `main`/`test`) so the classes under test never ship in the production jar, but still runs as part
+// of `check` so a Spring AI/Testcontainers upgrade that breaks compilation, or a metric-math
 // regression, is caught without Docker. Explicitly excludes RetrievalEvaluationHarnessTest (needs
 // Testcontainers, stays exclusive to `evaluateRetrieval`) and BaselineRegressionTest (needs a
 // report file that only exists after a real `evaluateRetrieval` run, stays exclusive to
-// `checkRetrievalBaseline` below) — issue #227/#228's exclusion criterion is about those two
-// specific test classes, not about the evalTest source set as a whole. The `*BaselineRegressionTest`
-// pattern covers the pipeline path's baseline tests (issue #1040) and the multi-turn path's
-// (issue #1553) for the identical reason: they consume a report file no Docker-free build
-// produces.
+// `checkRetrievalBaseline` below) — the exclusion is about those two specific test classes, not
+// about the evalTest source set as a whole. The `*BaselineRegressionTest` pattern covers the
+// pipeline path's baseline tests and the multi-turn path's for the identical reason: they consume a
+// report file no Docker-free build produces.
 tasks.register<Test>("evalUnitTest") {
     description = "Docker-free unit tests for the eval metric math (RetrievalMetrics, " +
         "MetricsAggregate, CorpusManifest, BaselineComparator). Part of check; no Testcontainers, " +
@@ -345,15 +342,15 @@ tasks.named("check") {
     dependsOn("evalUnitTest")
 }
 
-// The OpenAI end-to-end tests (io.opaa.integration.*) need a real API key and a network
-// round-trip per run. Keeping them inside `test` meant every `./gradlew build` — locally with
+// The OpenAI end-to-end tests (io.opaa.integration.*) need a real API key and a network round-trip
+// per run. Keeping them inside `test` meant every `./gradlew build` — locally with
 // OPAA_OPENAI_API_KEY set, and in the CI `backend-integration` job — recompiled and re-ran the
-// whole suite around them (issue #644). They get their own task instead: `test` (and thus
-// `build`) never touches them, and CI's backend-integration job invokes only this task.
-// CI splits the suite into parallel jobs by package (`./gradlew test -PtestShard=<name>`, see
-// .github/workflows/ci.yml). The named shards list their packages explicitly; "core" is the
-// complement, so a test in a new package always lands in a shard instead of silently running
-// nowhere. Rebalance the lists when one job runs noticeably longer than the others.
+// whole suite around them. They get their own task instead: `test` (and thus `build`) never touches
+// them, and CI's backend-integration job invokes only this task. CI splits the suite into parallel
+// jobs by package (`./gradlew test -PtestShard=<name>`, see .github/workflows/ci.yml). The named
+// shards list their packages explicitly; "core" is the complement, so a test in a new package
+// always lands in a shard instead of silently running nowhere. Rebalance the lists when one job
+// runs noticeably longer than the others.
 val testShards = mapOf(
     "api" to listOf(
         "io.opaa.api.*", "io.opaa.library.*", "io.opaa.knowledge.*", "io.opaa.auth.*", "io.opaa.audit.*",
@@ -388,7 +385,7 @@ tasks.named<Test>("test") {
     }
     // Gradle does not forward -D command-line system properties into a forked Test JVM on its own
     // (see the eval task's identical comment above) — RetrievalNoteTemplateExport's regeneration
-    // path (#1207) needs this one explicitly.
+    // path needs this one explicitly.
     System.getProperty("opaa.retrievalNoteTemplates.regenerate")?.let {
         systemProperty("opaa.retrievalNoteTemplates.regenerate", it)
     }
@@ -397,10 +394,10 @@ tasks.named<Test>("test") {
         .forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
 }
 
-// ADR-0023/#1171: the Confluence Data Center container suite (io.opaa.integration.confluence.*)
-// starts a real Confluence in Docker, walks its setup wizard and needs a time-bomb licence from
-// the Atlassian developer site - minutes per run and an internet round-trip, so it is neither part
-// of build/check nor of openAiIntegrationTest. CI runs it nightly and on demand
+// ADR-0023: the Confluence Data Center container suite (io.opaa.integration.confluence.*) starts a
+// real Confluence in Docker, walks its setup wizard and needs a time-bomb licence from the
+// Atlassian developer site - minutes per run and an internet round-trip, so it is neither part of
+// build/check nor of openAiIntegrationTest. CI runs it nightly and on demand
 // (.github/workflows/confluence-integration.yml).
 tasks.register<Test>("confluenceIntegrationTest") {
     description = "Integration tests against a real Confluence Data Center in Docker " +
@@ -421,13 +418,13 @@ tasks.register<Test>("confluenceIntegrationTest") {
     outputs.cacheIf { false }
 }
 
-// #1817: the Keycloak container suite (io.opaa.integration.keycloak.*) starts a real Keycloak in
-// Docker. Measured on the reference machine: ~46 s to answer and ~880 MiB for the container alone,
-// plus Postgres and the test JVM - many times the S3 store fixture that does run inside `test`, and
-// paid by every `./gradlew build` and by each CI shard, so
-// it gets its own task. Unlike the Confluence suite it needs no licence and no internet, therefore
-// no environment-variable gate either: Docker is the only precondition. CI runs it nightly and on
-// demand (.github/workflows/keycloak-integration.yml).
+// The Keycloak container suite (io.opaa.integration.keycloak.*) starts a real Keycloak in Docker.
+// Measured on the reference machine: ~46 s to answer and ~880 MiB for the container alone, plus
+// Postgres and the test JVM - many times the S3 store fixture that does run inside `test`, and paid
+// by every `./gradlew build` and by each CI shard, so it gets its own task. Unlike the Confluence
+// suite it needs no licence and no internet, therefore no environment-variable gate either: Docker
+// is the only precondition. CI runs it nightly and on demand
+// (.github/workflows/keycloak-integration.yml).
 tasks.register<Test>("keycloakIntegrationTest") {
     description = "Integration tests against a real Keycloak in Docker " +
         "(io.opaa.integration.keycloak.*). Needs Docker; not part of build/check."
@@ -446,10 +443,10 @@ tasks.register<Test>("keycloakIntegrationTest") {
     outputs.cacheIf { false }
 }
 
-// #2152: the Nextcloud container suite (io.opaa.integration.nextcloud.*) runs the official image.
-// Measured on the reference machine: ~14 s to an installed instance and ~180 MiB for the container,
-// but a ~2.1 GB image every CI run pulls afresh, against ~1 s and ~400 MB for the S3 store fixture
-// inside `test`; its group-folder test also needs the app store. CI runs it nightly and on demand
+// The Nextcloud container suite (io.opaa.integration.nextcloud.*) runs the official image. Measured
+// on the reference machine: ~14 s to an installed instance and ~180 MiB for the container, but a
+// ~2.1 GB image every CI run pulls afresh, against ~1 s and ~400 MB for the S3 store fixture inside
+// `test`; its group-folder test also needs the app store. CI runs it nightly and on demand
 // (.github/workflows/nextcloud-integration.yml).
 tasks.register<Test>("nextcloudIntegrationTest") {
     description = "Integration tests against a real Nextcloud in Docker " +
@@ -515,9 +512,9 @@ dependencyManagement {
         mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
     }
     // Security overrides for artifacts nothing here declares directly: the embedded Tomcat pinned
-    // by spring-boot-dependencies (#1431) and the Bouncy Castle / junrar versions Tika's parser
-    // modules resolve (CVE-2026-8763, CVE-2026-13506, CVE-2026-86071). Each entry states its own
-    // removal condition in libs.versions.toml, which is also where the versions live.
+    // by spring-boot-dependencies and the Bouncy Castle / junrar versions Tika's parser modules
+    // resolve (CVE-2026-8763, CVE-2026-13506, CVE-2026-86071). Each entry states its own removal
+    // condition in libs.versions.toml, which is also where the versions live.
     dependencies {
         dependency(libs.tomcat.embed.core.get().toString())
         dependency(libs.tomcat.embed.el.get().toString())
@@ -557,7 +554,7 @@ spotless {
 // Deutsche Texte in Quellen und Ressourcen sind UTF-8. Ohne diese Einstellung
 // nutzt javac das Plattform-Encoding, was auf Windows Umlaute verfälscht.
 //
-// -parameters (#393 code review, nit 4): keeps real parameter names available via reflection
+// -parameters: keeps real parameter names available via reflection
 // (Parameter#getName()) instead of javac's default arg0/arg1/... - AuditQueryServiceIntegrationTest
 // and AuditControllerTest both reflect over parameter names to prove no access path accepts an
 // actor/person filter, and that proof is silently meaningless without this flag.
@@ -572,22 +569,21 @@ tasks.withType<Test> {
     systemProperty("file.encoding", "UTF-8")
 }
 
-// #514/PR #537 review (coordinator-reported CI failure): the "test" source set alone now holds
-// well over a dozen @SpringBootTest classes that each spin up their own Testcontainers Postgres
-// instance and ApplicationContext (io.opaa.library.web.LibraryControllerCredentialsIntegrationTest and
-// its siblings) - Spring's context cache cannot share these across classes once each declares its
-// own @DynamicPropertySource method (the cache key resolves the dynamic-property customizer per
-// declaring method, not per equivalent body), so several of these heavy contexts are alive at
-// once during a single-JVM test run. That, not a leak, is what pushed the CI runner's constrained
-// heap into OutOfMemoryError once this PR added one more such context - main itself ran (and
-// still runs) green with the pre-existing set. The structural fix for this specific PR was
-// removing the added context again (see LibraryControllerCredentialsIntegrationTest's Javadoc);
-// this explicit ceiling is additional headroom for the existing, already-tight baseline once
-// that's happened, rather than reversible by that fix alone - default JVM heap sizing on
-// constrained CI runners is well below what over a dozen concurrently-cached
-// EntityManagerFactory/HikariPool/VectorStore instances need. Backend-only: eval tasks stay on
-// the default (they run a different, much smaller source set and were never part of this
-// problem).
+// The "test" source set alone holds well over a dozen @SpringBootTest classes that each spin up
+// their own Testcontainers Postgres instance and ApplicationContext
+// (io.opaa.library.web.LibraryControllerCredentialsIntegrationTest and its siblings) - Spring's
+// context cache cannot share these across classes once each declares its own @DynamicPropertySource
+// method (the cache key resolves the dynamic-property customizer per declaring method, not per
+// equivalent body), so several of these heavy contexts are alive at once during a single-JVM test
+// run. That, not a leak, is what pushed the CI runner's constrained heap into OutOfMemoryError once
+// this PR added one more such context - main itself ran (and still runs) green with the
+// pre-existing set. The structural fix for this specific PR was removing the added context again
+// (see LibraryControllerCredentialsIntegrationTest's Javadoc); this explicit ceiling is additional
+// headroom for the existing, already-tight baseline once that's happened, rather than reversible by
+// that fix alone - default JVM heap sizing on constrained CI runners is well below what over a
+// dozen concurrently-cached EntityManagerFactory/HikariPool/VectorStore instances need.
+// Backend-only: eval tasks stay on the default (they run a different, much smaller source set and
+// were never part of this problem).
 tasks.named<Test>("test") {
     // maxHeapSize is a per-worker-process ceiling, not a suite-wide one: with maxParallelForks = 2
     // below (CI-only), two Gradle test-worker JVMs run concurrently, each capped at this size and
@@ -598,25 +594,24 @@ tasks.named<Test>("test") {
     // this value (e.g. to "1500m") over raising it, since raising it multiplies by the fork count.
     maxHeapSize = "2g"
 
-    // Issue #497, measure 4 (CI-only): forking two Gradle test-worker JVMs (each with its own
-    // Testcontainers container) was measured on a local Windows dev machine and rejected there -
-    // three runs swung between 4:30 and 6:42 min, worse than the 4:50 min single-fork baseline in
-    // two of three runs, because the second worker competes with the first for CPU/Docker
-    // resources already under pressure from everything else running on that machine (see PR #499).
-    // Dedicated CI runners do not share that contention the same way, so this stays opt-in via the
-    // `CI` environment variable GitHub Actions sets on every job - local `./gradlew test` runs
-    // single-forked exactly as before, and this is a one-line revert if CI turns out unstable too.
-    // Uses the environment-variable value provider (not System.getenv) so this stays
-    // configuration-cache-safe: Gradle can track it as a build input instead of silently missing
-    // that the task's behavior depends on it.
+    // CI-only: forking two Gradle test-worker JVMs (each with its own Testcontainers container) was
+    // measured on a local Windows dev machine and rejected there - three runs swung between 4:30
+    // and 6:42 min, worse than the 4:50 min single-fork baseline in two of three runs, because the
+    // second worker competes with the first for CPU/Docker resources already under pressure from
+    // everything else running on that machine. Dedicated CI runners do not share that contention
+    // the same way, so this stays opt-in via the `CI` environment variable GitHub Actions sets on
+    // every job - local `./gradlew test` runs single-forked exactly as before, and this is a
+    // one-line revert if CI turns out unstable too. Uses the environment-variable value provider
+    // (not System.getenv) so this stays configuration-cache-safe: Gradle can track it as a build
+    // input instead of silently missing that the task's behavior depends on it.
     if (providers.environmentVariable("CI").isPresent) {
         maxParallelForks = 2
     }
 }
 
 // The OpenAPI spec, the generator config (typeMappings/importMappings/doLast cleanup) and the
-// generated io.opaa.api.dto classes all live in :opaa-api now (issue #896) - this module only
-// consumes that project's main sourceSet output via `implementation(project(":opaa-api"))` above.
+// generated io.opaa.api.dto classes all live in :opaa-api now - this module only consumes that
+// project's main sourceSet output via `implementation(project(":opaa-api"))` above.
 
 // The default `javadoc` task only covers sourceSets.main; this covers `test` the same way, so an
 // unresolvable {@link}/@see in test Javadoc fails the build too.

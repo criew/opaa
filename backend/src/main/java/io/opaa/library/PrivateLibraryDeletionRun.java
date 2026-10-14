@@ -17,12 +17,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Erases private libraries without anyone acting (ADR-0041, Entscheidung 4; #2165): daily those of
- * persons whose deletion period ran out - counted from their current deactivation by an act that
- * ends the account ({@link ConnectionLifecycle#deletionPeriodStartedBefore}) - and every few
- * minutes the erasures a running run held up. A resting account, a local inactivity lock and a
- * person reactivated within the period keep their libraries. Each library is erased on its own; a
- * failure leaves its marker for the next run. The log names counts only. The ticks are {@link
+ * Erases private libraries without anyone acting (ADR-0041, Entscheidung 4): daily those of persons
+ * whose deletion period ran out - counted from their current deactivation by an act that ends the
+ * account ({@link ConnectionLifecycle#deletionPeriodStartedBefore}) - and every few minutes the
+ * erasures a running run held up. A resting account, a local inactivity lock and a person
+ * reactivated within the period keep their libraries. Each library is erased on its own; a failure
+ * leaves its marker for the next run. The log names counts only. The ticks are {@link
  * PrivateLibraryDeletionSchedule}'s.
  */
 @Service

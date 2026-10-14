@@ -4,7 +4,7 @@ package io.opaa.indexing.source;
  * The outcome of a {@link SourceConnector#testConnection} probe - the domain counterpart of the
  * generated {@code SourceConnectionTestResponse}.
  *
- * @param message German, user-facing text, never a raw exception message (#514).
+ * @param message German, user-facing text, never a raw exception message.
  * @param documentCount {@code null} when {@code reachable} is {@code false} - a failed probe never
  *     reports a count for the source it could not read.
  * @param credentialsVerified whether the probe got as far as checking the credentials, {@code null}

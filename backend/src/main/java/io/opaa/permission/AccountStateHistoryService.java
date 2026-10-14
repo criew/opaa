@@ -5,8 +5,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * Records the state of an account as half-open intervals (#1818, ADR-0036 Entscheidung 8): "was
- * this account able to exercise its rights on 3 March" stays answerable after the audit log's own
+ * Records the state of an account as half-open intervals (ADR-0036 Entscheidung 8): "was this
+ * account able to exercise its rights on 3 March" stays answerable after the audit log's own
  * retention period has taken the event away, and a lock from the directory synchronisation is
  * reversible without leaving a break in the chain.
  *

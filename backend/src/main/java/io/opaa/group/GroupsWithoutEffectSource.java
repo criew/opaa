@@ -9,9 +9,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The tab "Gruppen ohne Wirkung" (#1819, ADR-0036 Entscheidung 6): internal groups that hold
- * nothing and reach nobody. It makes Wildwuchs visible without preventing it - deleting stays a
- * decision, and this list is where somebody makes it.
+ * The tab "Gruppen ohne Wirkung" (ADR-0036 Entscheidung 6): internal groups that hold nothing and
+ * reach nobody. It makes Wildwuchs visible without preventing it - deleting stays a decision, and
+ * this list is where somebody makes it.
  */
 @Component
 class GroupsWithoutEffectSource implements SuccessionFindingSource {

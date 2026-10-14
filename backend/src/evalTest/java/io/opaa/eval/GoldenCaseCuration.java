@@ -98,8 +98,8 @@ public final class GoldenCaseCuration {
   /**
    * The decision on docs/features/retrieval-benchmark.md's open point 4 ("{@code answer_span} bei
    * Fallklassen mit mehreren Zieldokumenten je Dokument oder je Fall"), taken in issue #1043 and
-   * recorded in ADR-0012's Nachtrag: <b>per case, and only where the case has exactly one expected
-   * document.</b>
+   * recorded in ADR-0012, Entscheidung 21: <b>per case, and only where the case has exactly one
+   * expected document.</b>
    *
    * <p>A single span on a case whose answer is spread over two documents would measure one half of
    * that answer and report it as the case's chunk-level result — a case the document-level metrics
@@ -113,7 +113,7 @@ public final class GoldenCaseCuration {
    */
   public static final String SINGLE_DOCUMENT_ANSWER_SPAN_RULE =
       "answer_span is defined per case and only for cases with exactly one expected document "
-          + "(issue #1043, ADR-0012 Nachtrag zu offenem Punkt 4)";
+          + "(ADR-0012, Entscheidung 21)";
 
   /** The class whose cases measure the core-field filter (issue #1070). */
   public static final String METADATA_FILTER_CLASS = "metadata_filter";

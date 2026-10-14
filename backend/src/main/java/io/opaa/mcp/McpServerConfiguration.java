@@ -17,8 +17,8 @@ import org.springframework.context.annotation.Primary;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Wires the MCP server (#1721, ADR-0035). Two beans replace what the starter would have built,
- * because neither can be configured:
+ * Wires the MCP server (ADR-0035). Two beans replace what the starter would have built, because
+ * neither can be configured:
  *
  * <ul>
  *   <li>the WebMVC transport, so every request carries its authenticated caller into the tools

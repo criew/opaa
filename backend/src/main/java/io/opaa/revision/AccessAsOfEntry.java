@@ -7,8 +7,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One interval of the Stichtagsauskunft, already cut to the requested window (#1822): who reached
- * the object, on what basis, from when to when. {@code userId} is null for {@link
+ * One interval of the Stichtagsauskunft, already cut to the requested window: who reached the
+ * object, on what basis, from when to when. {@code userId} is null for {@link
  * AccessBasis#ORGANIZATION_WIDE}, which reaches every account without naming one; {@code groupName}
  * is null once the group is gone - the history keeps its id, not a name snapshot.
  *

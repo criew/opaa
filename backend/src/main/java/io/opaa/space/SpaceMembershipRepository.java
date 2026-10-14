@@ -22,10 +22,10 @@ public interface SpaceMembershipRepository extends JpaRepository<SpaceMembership
   /** Whether one of the person's groups holds a membership. Never called with an empty set. */
   boolean existsBySpaceIdAndGroupIdIn(UUID spaceId, Collection<UUID> groupIds);
 
-  /** How many spaces the account is a member of - part of what a handover moves (#1563). */
+  /** How many spaces the account is a member of - part of what a handover moves. */
   long countByUserId(UUID userId);
 
-  /** The group counterpart - the count behind a transfer's work limit (#1834). */
+  /** The group counterpart - the count behind a transfer's work limit. */
   long countByGroupId(UUID groupId);
 
   /**

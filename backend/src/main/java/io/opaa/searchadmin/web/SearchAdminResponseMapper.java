@@ -44,7 +44,7 @@ import java.util.Map;
 /**
  * Maps the {@code io.opaa.searchadmin} domain records onto the generated administration DTOs, and
  * is the one place the German wording of a search-path state and of a rights-context label is
- * decided (#860: no domain service knows a DTO type).
+ * decided (no domain service knows a DTO type).
  */
 final class SearchAdminResponseMapper {
 
@@ -90,7 +90,7 @@ final class SearchAdminResponseMapper {
   /**
    * Names which of the three states the caller is in and why, rather than only that a control is
    * disabled: the befugnis follows from no role, so "you are an administrator" is no answer - and
-   * "Sie halten keine" would be wrong for somebody who holds one whose scope shrank (#1879).
+   * "Sie halten keine" would be wrong for somebody who holds one whose scope shrank.
    */
   private static String personContextHint(ImpersonationAvailability availability) {
     return switch (availability) {

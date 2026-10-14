@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * The mass-retrieval alert of the external-access channel (#1720, docs/features/external-access.md,
+ * The mass-retrieval alert of the external-access channel (docs/features/external-access.md,
  * "Kontingente und der Abflussalarm"): counts the retrievals of the <b>whole channel</b> in a
  * sliding window and, when the threshold from the channel settings is exceeded, raises exactly one
  * message to the system administration plus one line in the technical application log.
@@ -28,8 +28,8 @@ import org.springframework.stereotype.Component;
  * instance): no table, no time series, no history, and it does not survive a restart. It writes
  * <b>no entry into the Nachweisprotokoll</b> - the alert is a security event and belongs into
  * security monitoring, the same shape a failed sign-in already has; what reaches the audit trail is
- * only the token suspension that may follow (#1718). It is <b>not per person</b>: the message names
- * the token id, without which the access could not be switched off at all, and nothing is ever
+ * only the token suspension that may follow. It is <b>not per person</b>: the message names the
+ * token id, without which the access could not be switched off at all, and nothing is ever
  * aggregated into a per-person evaluation.
  *
  * <p>A cooldown follows every alert. Without it a sustained event would decay into a series of

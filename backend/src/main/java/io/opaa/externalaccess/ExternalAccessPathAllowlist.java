@@ -25,11 +25,11 @@ import org.springframework.stereotype.Component;
  * passages, which is why a token call is never offered a download link in the first place ({@code
  * SearchHitAssembler}, {@code PassageFetchService}).
  *
- * <p>{@code /mcp} (#1721) is on the list twice over: authorised like the reading paths, and
- * <b>owned</b> by this channel - see {@link #ownedMatchers()}. Both entries are the <b>one</b>
- * matcher its {@link ExternalAccessOwnedPath} contributes, which the endpoint itself listens on: a
- * path interpreted twice could be authorised in one place and not in the other, and a method
- * restriction here would only duplicate the {@code 405} the transport already answers.
+ * <p>{@code /mcp} is on the list twice over: authorised like the reading paths, and <b>owned</b> by
+ * this channel - see {@link #ownedMatchers()}. Both entries are the <b>one</b> matcher its {@link
+ * ExternalAccessOwnedPath} contributes, which the endpoint itself listens on: a path interpreted
+ * twice could be authorised in one place and not in the other, and a method restriction here would
+ * only duplicate the {@code 405} the transport already answers.
  */
 @Component
 public class ExternalAccessPathAllowlist {

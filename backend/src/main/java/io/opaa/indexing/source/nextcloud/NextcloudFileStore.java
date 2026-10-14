@@ -30,8 +30,8 @@ import tools.jackson.databind.json.JsonMapper;
  * The files of a Nextcloud user as the {@link FileStore} of a full sync: a container is a
  * configured folder, a page one {@code PROPFIND} with depth 1 on one folder, walked depth first in
  * name order, and a folder whose ETag equals the recalled one is reported unchanged instead of
- * listed - its whole tree then costs no request (ADR-0040, Nachtrag). A page's checkpoint is the
- * path of its folder; resuming lists the folders on that path once more to find what follows. A
+ * listed - its whole tree then costs no request (ADR-0045, Entscheidung 11). A page's checkpoint is
+ * the path of its folder; resuming lists the folders on that path once more to find what follows. A
  * file's identity is its {@code oc:fileid} behind the address that opens it in the web interface,
  * so renaming and moving keep the document.
  */

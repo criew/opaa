@@ -577,7 +577,7 @@ public class LocalUserService {
   /**
    * Every open link of the account is closed - see the callers. The handover link belongs in here
    * for the same reason as the other two: after a changed address it was mailed to the old one, and
-   * after a lock or a generated password it would still carry a person past the act (#1563).
+   * after a lock or a generated password it would still carry a person past the act.
    */
   private void closeOpenLinks(UUID userId) {
     actionTokens.consumeOpen(userId, ActionTokenPurpose.SET_PASSWORD);

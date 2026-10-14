@@ -10,9 +10,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The connector settings of a SharePoint library in {@code source_settings} (ADR-0040, Nachtrag
- * „SharePoint“): one to fifty document {@code libraries} and the optional own full-sync rhythm
- * {@code fullSyncIntervalDays}. No secret.
+ * The connector settings of a SharePoint library in {@code source_settings} (ADR-0047): one to
+ * fifty document {@code libraries} and the optional own full-sync rhythm {@code
+ * fullSyncIntervalDays}. No secret.
  */
 record SharePointSettings(List<SharePointLibrary> libraries, Integer fullSyncIntervalDays) {
 

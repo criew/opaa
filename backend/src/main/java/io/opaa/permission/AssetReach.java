@@ -3,8 +3,8 @@ package io.opaa.permission;
 import io.opaa.api.types.AssetGrantSubjectType;
 
 /**
- * How far one asset reaches right now, derived from its unexpired grants rather than stored (#1931,
- * ADR-0037 Entscheidung 9) - the three figures an overview turns into a badge ("Alle", "3 Gruppen,
+ * How far one asset reaches right now, derived from its unexpired grants rather than stored
+ * (ADR-0037 Entscheidung 9) - the three figures an overview turns into a badge ("Alle", "3 Gruppen,
  * 2 Personen", "nur Sie"). {@link #allAccounts} outranks both counts in any wording.
  *
  * @param userCount includes the owner's own grant, which every asset carries.

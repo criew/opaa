@@ -1,5 +1,5 @@
 /**
- * The reading path without generation (#1720, ADR-0035, docs/features/external-access.md, "Was ein
+ * The reading path without generation (ADR-0035, docs/features/external-access.md, "Was ein
  * Fremdzugang erreicht"): {@link io.opaa.search.SearchService} answers a question with the
  * retrieved passages instead of an answer, {@link io.opaa.search.PassageFetchService} hands out the
  * text behind one of them - the passage with its neighbours by default, the whole document only on

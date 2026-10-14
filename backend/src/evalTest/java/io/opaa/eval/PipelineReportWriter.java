@@ -33,7 +33,7 @@ public final class PipelineReportWriter {
     sb.append(format("\n=== Pipeline-Messpfad: %s ===\n\n", cfg.domain()));
     sb.append(
         format(
-            "Pipeline-Messvertrag-Version: %d (siehe ADR-0012, Nachtrag Pipeline-Messpfad)\n",
+            "Pipeline-Messvertrag-Version: %d (siehe ADR-0012, Entscheidung 11)\n",
             report.pipelineMeasurementContractVersion()));
     sb.append(format("Fenster: %s\n\n", report.metricWindowNote()));
 

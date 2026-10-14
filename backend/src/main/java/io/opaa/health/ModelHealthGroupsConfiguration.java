@@ -9,8 +9,8 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Gives each of the indicators that depend on a model endpoint or the vector store a health group
- * of its own instead of a share of the overall status (#1710). Each is a separate group, not one
- * common one, because each probe costs a call to a different backend - {@code
+ * of its own instead of a share of the overall status. Each is a separate group, not one common
+ * one, because each probe costs a call to a different backend - {@code
  * /actuator/health/embedding-model} embeds, {@code /actuator/health/vector-store} searches - and an
  * operator has to be able to ask exactly one of them.
  *

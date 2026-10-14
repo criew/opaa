@@ -241,8 +241,8 @@ public class SearchDiagnosisService {
 
   /**
    * The Suchbereich of a profile run in a space, and the protection that makes it admissible at all
-   * (#1835, ADR-0036 Entscheidung 7): the intersection of the space's libraries with the ones the
-   * profile may read, but only once the group reaches the space with at least {@link
+   * (ADR-0036 Entscheidung 7): the intersection of the space's libraries with the ones the profile
+   * may read, but only once the group reaches the space with at least {@link
    * GroupSizeProperties#minimumGroupSize()} active accounts. The check runs <b>at the moment of the
    * run</b>, not at selection: a group that was big enough yesterday may be a single person today,
    * and a profile that names one person is a person context without its Vollmacht. Only a run that
@@ -513,8 +513,8 @@ public class SearchDiagnosisService {
   }
 
   /**
-   * The grouping keys a document's chunks can carry: its id for every chunk written since #739, and
-   * the file-name fallback for older ones.
+   * The grouping keys a document's chunks can carry: its id, and the file-name fallback for chunks
+   * written without one.
    */
   private static Set<String> documentKeysOf(Document document) {
     Set<String> keys = new HashSet<>();
@@ -566,8 +566,8 @@ public class SearchDiagnosisService {
   /**
    * What one caller may choose as a diagnosis context: the organization's profiles, and the state
    * of that caller's own "Sicht als" befugnis - which follows from no role. Holding one whose scope
-   * is currently too small is its own state (#1879): the interface has to say that rather than "Sie
-   * halten keine".
+   * is currently too small is its own state: the interface has to say that rather than "Sie halten
+   * keine".
    */
   public record DiagnosisContextOptions(
       List<PermissionProfile> profiles, ImpersonationAvailability personContext) {

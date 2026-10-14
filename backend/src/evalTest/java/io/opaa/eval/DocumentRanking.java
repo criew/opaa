@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Turns a chunk-ranked hit list into a document-ranked list (issue #721, ADR-0012 Nachtrag).
+ * Turns a chunk-ranked hit list into a document-ranked list (ADR-0012, Entscheidung 8).
  *
  * <p>The harness has always measured document-wise: a document's rank is the rank of its
  * best-placed chunk, deduplicated by {@code file_name}, first occurrence wins (this used to be the

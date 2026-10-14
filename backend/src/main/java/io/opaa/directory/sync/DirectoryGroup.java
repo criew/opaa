@@ -20,8 +20,8 @@ import java.util.Set;
  * @param sourcePath the path the directory reports for this group ("/Haus/Referat 50"), or {@code
  *     null} when it reports none. Recorded on {@code Group.sourcePath} as reported and used for
  *     display only - it tells the same-named subgroups of one directory apart, which neither the
- *     name nor the provider does (#1812). Never matched on: {@link #externalId} is what a rename or
- *     a move must not disturb.
+ *     name nor the provider does. Never matched on: {@link #externalId} is what a rename or a move
+ *     must not disturb.
  * @param memberSubjects the OIDC {@code subject} (not the directory's own member identifier) of
  *     every direct member, matched against {@code User.subject} scoped to the organization (see
  *     {@code UserRepository#findByOrganizationIdAndSubjectIn}). A subject with no matching user

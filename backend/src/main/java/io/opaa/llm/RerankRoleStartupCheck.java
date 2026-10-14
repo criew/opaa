@@ -54,9 +54,9 @@ class RerankRoleStartupCheck implements ApplicationListener<ApplicationReadyEven
               + "continues without reranking; the state stays readable via "
               + "RerankRoleStatusProvider#currentStatus.",
           status.state(),
-          // A timeout means the endpoint answered the connection but not within
-          // opaa.rerank.timeout - worth calling out separately, because it is a tuning question,
-          // not evidence the endpoint is down (#1154).
+          // A timeout means the endpoint answered the connection but not within opaa.rerank.timeout
+          // - worth calling out separately, because it is a tuning question, not evidence the
+          // endpoint is down.
           status.timedOut() ? ", timed out rather than unreachable" : "",
           status.diagnostic(),
           endpointForLog(status));
@@ -67,7 +67,7 @@ class RerankRoleStartupCheck implements ApplicationListener<ApplicationReadyEven
 
   /**
    * The address as far as it may be written to a log file: an address refused for carrying
-   * credentials is named as refused, never reproduced (#1147).
+   * credentials is named as refused, never reproduced.
    */
   private static String endpointForLog(RerankRoleStatus status) {
     if (status.baseUrlRejected()) {

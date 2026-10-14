@@ -14,7 +14,7 @@ import java.util.Locale;
  *
  * <p>Its own file and its own heading on purpose: the heading names the path and the window, so two
  * delta tables in the same job summary can never be read as one comparison across
- * non-interconvertible measurements (ADR-0012, Nachtrag, decision 12).
+ * non-interconvertible measurements (ADR-0012, Entscheidung 12).
  */
 public final class PipelineBaselineMarkdownWriter {
 

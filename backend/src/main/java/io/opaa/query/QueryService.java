@@ -210,9 +210,9 @@ public class QueryService {
                 String conversationKey = currentUserId + ":" + effectiveChatId;
                 seedConversationMemoryFromPersistedHistory(chat, conversationKey);
 
-                // The Gesprächsnotiz as it stands *before* this turn (#1487) - the state that
-                // goes into this answer and is returned with it. The condensation of this turn's
-                // own question runs after the answer, below.
+                // The Gesprächsnotiz as it stands *before* this turn - the state that goes into
+                // this answer and is returned with it. The condensation of this turn's own question
+                // runs after the answer, below.
                 List<ChatNotePoint> notePoints =
                     chat.map(c -> chatNoteService.points(c.getId())).orElse(null);
                 // The space's instruction to the model goes to the answer only, never to the
@@ -354,10 +354,10 @@ public class QueryService {
                 String chatTitle =
                     chat.map(c -> chatService.appendTurn(c, question, usedPrompt, answer, sources))
                         .orElse(null);
-                // #1487: the condensation of this turn's question, off the request thread and
-                // only once the turn is durably persisted - triggered here rather than inside
-                // appendTurn so the chat package's note services stay free of a dependency on
-                // ChatService, which needs the note itself for every chat it returns.
+                // The condensation of this turn's question, off the request thread and only once
+                // the turn is durably persisted - triggered here rather than inside appendTurn so
+                // the chat package's note services stay free of a dependency on ChatService, which
+                // needs the note itself for every chat it returns.
                 chat.ifPresent(
                     c ->
                         chatNoteExtractionService.condenseAsync(

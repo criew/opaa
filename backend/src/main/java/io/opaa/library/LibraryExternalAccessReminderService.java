@@ -24,8 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The Wiedervorlage before a Freigabe für Fremdzugänge expires (#1731, ADR-0033's mail mechanics).
- * The Befristung makes the renewal a deliberate act; this is what keeps it from being a surprise.
+ * The Wiedervorlage before a Freigabe für Fremdzugänge expires (ADR-0033's mail mechanics). The
+ * Befristung makes the renewal a deliberate act; this is what keeps it from being a surprise.
  *
  * <p>Goes to the person who last set the release - they made the decision and are the one who can
  * renew it - falling back to the library's owner where that account is gone and the library is

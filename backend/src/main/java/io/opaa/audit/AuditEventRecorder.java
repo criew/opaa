@@ -56,7 +56,7 @@ public class AuditEventRecorder {
    * sibling that carries one. {@code event} must have been built with {@link
    * AuditEvent.Builder#actor} and no {@link AuditEvent.Builder#subject}. An optional {@link
    * AuditEvent.Builder#correlationRef} links the per-document entries one person's bulk operation
-   * writes together (metadata Sammelzuweisung, #1068).
+   * writes together (metadata Sammelzuweisung).
    */
   public void recordUserAction(AuditEvent event) {
     UUID actorUserId = requireUserActor(event);
@@ -238,11 +238,11 @@ public class AuditEventRecorder {
   }
 
   /**
-   * The entry for one Stichtagsauskunft out of the Rechtehistorie (#1822), rejected attempts
-   * included - the counterpart of {@link #recordAuditLogAccess} for the second revision holding.
-   * Unlike that one, the object is the queried library or space, so the retrieval is found again
-   * through the object access path; {@code scope} carries the window and lands in {@code after}.
-   * Carries the same {@code Propagation.NOT_SUPPORTED} and for the same reason.
+   * The entry for one Stichtagsauskunft out of the Rechtehistorie, rejected attempts included - the
+   * counterpart of {@link #recordAuditLogAccess} for the second revision holding. Unlike that one,
+   * the object is the queried library or space, so the retrieval is found again through the object
+   * access path; {@code scope} carries the window and lands in {@code after}. Carries the same
+   * {@code Propagation.NOT_SUPPORTED} and for the same reason.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void recordPermissionHistoryAccess(

@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Tuning of the Keycloak directory connector (#1817). Deliberately holds no credentials: those live
+ * Tuning of the Keycloak directory connector. Deliberately holds no credentials: those live
  * encrypted in {@code directory_connectors}, one row per provider, and never in {@code
  * application.yml} (ADR-0036, Entscheidung 3).
  *
@@ -16,7 +16,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     exactly like a reorganisation that dissolved everything beyond it, and that must never be
  *     applied (#237's empty-result reasoning, one step further).
  * @param maxMembersPerGroup the same ceiling per group's member list, for the same reason.
- * @param maxAccounts the same ceiling for the realm's account list (#1818), for the same reason: a
+ * @param maxAccounts the same ceiling for the realm's account list, for the same reason: a
  *     truncated account list looks exactly like a mass departure, and the run would lock everyone
  *     beyond it.
  * @param connectTimeout how long a single connection attempt may take

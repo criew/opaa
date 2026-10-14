@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The Freigabe einer Bibliothek für Fremdzugänge (#1731) - setting it at the library, and the
+ * The Freigabe einer Bibliothek für Fremdzugänge - setting it at the library, and the
  * administration's Bestandsliste of the released ones. Separate from {@code LibraryController}
  * because the release is one decision with its own bar and its own audit trail, not one field among
  * the library's editable details.

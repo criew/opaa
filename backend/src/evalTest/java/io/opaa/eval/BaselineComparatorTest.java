@@ -746,12 +746,11 @@ class BaselineComparatorTest {
 
   @Test
   void hardFloorFallsBackToTheFixedAbsoluteValueOnceTheBaselineItselfHasEroded() {
-    // ADR-0013 Nachtrag (second PR #301 review round): a purely baseline-relative floor (0.8 *
-    // baselineValue) tracks a baseline down if the baseline itself erodes over successive PRs,
-    // instead of anchoring against that erosion. With an (artificially low, for this test)
-    // committed baseline of 0.30, 0.8 * 0.30 = 0.24 — but the fixed absolute floor (0.30) is
-    // higher and must win via max(...), otherwise the floor would have silently loosened together
-    // with the eroded baseline.
+    // ADR-0013, Entscheidung 4: a purely baseline-relative floor (0.8 * baselineValue) tracks a
+    // baseline down if the baseline itself erodes over successive PRs, instead of anchoring against
+    // that erosion. With an (artificially low, for this test) committed baseline of 0.30, 0.8 *
+    // 0.30 = 0.24 — but the fixed absolute floor (0.30) is higher and must win via max(...),
+    // otherwise the floor would have silently loosened together with the eroded baseline.
     Baseline erodedBaseline =
         new Baseline(
             1,

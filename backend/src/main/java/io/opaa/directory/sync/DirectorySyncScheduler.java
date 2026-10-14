@@ -17,8 +17,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Triggers a due provider's directory run (#1816). Without a schedule a revocation in the directory
- * only took effect the next time someone triggered a run by hand - the gap ADR-0036, Entscheidung 3
+ * Triggers a due provider's directory run. Without a schedule a revocation in the directory only
+ * took effect the next time someone triggered a run by hand - the gap ADR-0036, Entscheidung 3
  * closes with "Pull statt Push".
  *
  * <p>A periodic tick over the enabled providers, not a trigger registered per provider, so nothing

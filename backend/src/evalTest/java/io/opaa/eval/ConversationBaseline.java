@@ -14,8 +14,8 @@ import tools.jackson.databind.json.JsonMapper;
  * <p><b>Its own type and its own file, never the pipeline path's.</b> The multi-turn run measures
  * turns of a conversation under a conversation window that the single-question run does not have at
  * all; the two are not interconvertible, and sharing a file would make it possible for one
- * re-measurement to be written over the other's numbers - the outcome ADR-0012's Nachtrag zu den
- * Pipeline-Baselines rules out for exactly the same reason one baseline per path and domain exists.
+ * re-measurement to be written over the other's numbers - the outcome ADR-0012, Entscheidung 17
+ * rules out for exactly the same reason one baseline per path and domain exists.
  *
  * <p>The tolerance formula and the error criterion are ADR-0013's, unchanged and literally shared
  * (see {@link ConversationBaselineComparator}).

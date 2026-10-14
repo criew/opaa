@@ -24,11 +24,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * The process-local registry of enabled providers the multi-issuer resolver consults for every
- * bearer token (#1329, ADR-0025 Entscheidung 1): one {@link JwtDecoder} per enabled row, keyed by
- * the normalized issuer. An issuer no enabled provider owns resolves to a manager that refuses
- * every token with {@code error_description="unknown_issuer"} - the SPA tells that apart from an
- * expired token - so a provider disabled or deleted is refused from the first token after the
- * commit.
+ * bearer token (ADR-0025 Entscheidung 1): one {@link JwtDecoder} per enabled row, keyed by the
+ * normalized issuer. An issuer no enabled provider owns resolves to a manager that refuses every
+ * token with {@code error_description="unknown_issuer"} - the SPA tells that apart from an expired
+ * token - so a provider disabled or deleted is refused from the first token after the commit.
  *
  * <p>Refreshed from the enabled rows on every {@link OidcProvidersChangedEvent} <em>after</em> its
  * transaction committed (mirroring {@code ActiveChatModelResolver}), and lazily on first use. A
@@ -59,7 +58,7 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
 
   private record Failure(OidcProvider provider, String message, Instant lastAttempt) {}
 
-  /** Whether a provider's decoder is ready, or why not - for the admin UI (#1333). */
+  /** Whether a provider's decoder is ready, or why not - for the admin UI. */
   public record Health(boolean ready, String message) {}
 
   private final OidcProviderRepository repository;

@@ -53,16 +53,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The file sync of one library over one open {@link FileStore} (ADR-0040, Entscheidung 1): every
- * listed entry is present whatever its outcome, and the change feature decides before any download.
- * A full sync is a round that may span several runs ({@link ScanRound}); it is {@link
- * ListingOutcome.Complete} when this run listed every container whole or the round's {@link
- * AbsenceProof} covers the runs before. An unlistable container keeps its bestand; a {@link
- * FileAccessException.RunEnding} fails the run. Downloads run concurrently but are ingested in
- * listing order; {@link #close()} ends every download thread and deletes every temp file. Every
- * access to the store first asks the run's credentials, so a refused source ends the run there. A
- * state written under other settings is discarded first ({@link IndexingRun#adopt}), and a run
- * whose settings changed meanwhile removes nothing itself ({@link IndexingRun#settingsUnchanged}).
+ * The file sync of one library over one open {@link FileStore} (ADR-0045): every listed entry is
+ * present whatever its outcome, and the change feature decides before any download. A full sync is
+ * a round that may span several runs ({@link ScanRound}); it is {@link ListingOutcome.Complete}
+ * when this run listed every container whole or the round's {@link AbsenceProof} covers the runs
+ * before. An unlistable container keeps its bestand; a {@link FileAccessException.RunEnding} fails
+ * the run. Downloads run concurrently but are ingested in listing order; {@link #close()} ends
+ * every download thread and deletes every temp file. Every access to the store first asks the run's
+ * credentials, so a refused source ends the run there. A state written under other settings is
+ * discarded first ({@link IndexingRun#adopt}), and a run whose settings changed meanwhile removes
+ * nothing itself ({@link IndexingRun#settingsUnchanged}).
  */
 public final class FileSync implements AutoCloseable {
 
@@ -364,7 +364,7 @@ public final class FileSync implements AutoCloseable {
   }
 
   /**
-   * The change run (ADR-0040, Entscheidung 6): every stream is read from its stored cursor. A
+   * The change run (ADR-0045, Entscheidung 3): every stream is read from its stored cursor. A
    * reported file goes the full sync's way; a deselected one and a reported removal take the
    * document with its attachments - a removal only for a document of the stream's own containers,
    * and only while all of them are reachable. A stream's new cursor is kept unless a file failed

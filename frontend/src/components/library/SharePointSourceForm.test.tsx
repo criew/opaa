@@ -70,7 +70,7 @@ async function openSite(user: User, address: string) {
   await user.click(screen.getByRole('button', { name: 'Site öffnen' }))
 }
 
-describe('SharePointSourceForm (ADR-0040, Nachtrag „SharePoint“)', () => {
+describe('SharePointSourceForm (ADR-0047)', () => {
   beforeEach(() => {
     sent = []
     server.events.on('request:start', async ({ request }) => {

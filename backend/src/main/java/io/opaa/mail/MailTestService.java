@@ -17,10 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 /**
- * The administrative test send (#1536, ADR-0033 Entscheidung 10) - the one send OPAA makes that is
- * not triggered by a person's own action, so it is also the one that needs its own audit entry:
- * {@link AuditEventType#MAIL_TEST_SENT} answers "wer hat diese Installation Mail verschicken
- * lassen, und wann".
+ * The administrative test send (ADR-0033 Entscheidung 10) - the one send OPAA makes that is not
+ * triggered by a person's own action, so it is also the one that needs its own audit entry: {@link
+ * AuditEventType#MAIL_TEST_SENT} answers "wer hat diese Installation Mail verschicken lassen, und
+ * wann".
  *
  * <p><b>Always to the calling administrator's own address</b>, never to one supplied in the
  * request: a settings page that sends mail to an arbitrary address is an open relay with a login

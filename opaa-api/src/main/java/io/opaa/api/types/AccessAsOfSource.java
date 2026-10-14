@@ -11,12 +11,12 @@ public enum AccessAsOfSource {
   /** A system administrator reaches every library of their organization, unrecorded. */
   SYSTEM_ROLE,
 
-  /** Ownership of an asset or a space (#1819). */
+  /** Ownership of an asset or a space. */
   OWNERSHIP,
 
-  /** A capability (#1813) - it opens no content, but it is a source the ADR lists. */
+  /** A capability - it opens no content, but it is a source the ADR lists. */
   CAPABILITY,
 
-  /** Whether an account was active or blocked at the time (#1818). */
+  /** Whether an account was active or blocked at the time. */
   ACCOUNT_STATE
 }

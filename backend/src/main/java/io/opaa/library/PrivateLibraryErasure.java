@@ -42,9 +42,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The one erasure of a private library, for its owner's "Sofort löschen" and for the deletion run
- * (#2165). It first commits the marker, so no run starts and a running one ends at its next access
- * to the secret; while a run is still going it answers {@link Outcome#PENDING} and the next call
+ * The one erasure of a private library, for its owner's "Sofort löschen" and for the deletion run.
+ * It first commits the marker, so no run starts and a running one ends at its next access to the
+ * secret; while a run is still going it answers {@link Outcome#PENDING} and the next call
  * continues. Then, in one transaction, it deletes content, runs, references and the library, checks
  * that nothing of it is left and records the proof {@code PRIVATE_LIBRARY_ERASED} - or rolls back,
  * the marker staying for the next call. Repeatable: a library already gone is {@link

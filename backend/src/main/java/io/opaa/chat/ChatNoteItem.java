@@ -12,9 +12,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One persisted point of a {@link Chat}'s Gesprächsnotiz (#1487,
- * docs/features/conversation-memory.md, "Bauteil 2"): a single sentence condensed from a user
- * message of this chat, never from an answer.
+ * One persisted point of a {@link Chat}'s Gesprächsnotiz (docs/features/conversation-memory.md,
+ * "Bauteil 2"): a single sentence condensed from a user message of this chat, never from an answer.
  *
  * <p>{@link #position} is an application-assigned, per-chat ordinal, strictly increasing and never
  * reused - the same shape {@link ChatMessage#getSequence()} has and for the same reason: {@code
@@ -88,7 +87,7 @@ public class ChatNoteItem {
     return createdAt;
   }
 
-  /** The read view of this row - what leaves the chat package (#860 Teil 4). */
+  /** The read view of this row - what leaves the chat package. */
   public ChatNotePoint toPoint() {
     return new ChatNotePoint(id, text, kind, createdAt);
   }

@@ -30,7 +30,7 @@ paths:
         right is not representable, at the database level as well.
       description: >
         The scope is any group of an identity provider - ORG_UNIT or IDENTITY_PROVIDER (ADR-0036,
-        Entscheidung 3, #1879): a house that stays in token mode never gets an ORG_UNIT group, and
+        Entscheidung 3): a house that stays in token mode never gets an ORG_UNIT group, and
         the befugnis would be ungrantable there for good. Refused with 400 are an internal group of
         this house, a group that is no longer effective (dissolved, provider switched off, or a
         token group whose provider has since switched to the directory run - its membership is
@@ -357,7 +357,7 @@ components:
             The Organisationseinheit the befugnis applies to: any effective group of an identity
             provider (ORG_UNIT or IDENTITY_PROVIDER) above the Mindestgruppengröße. An internal
             group of this house is no scope, nor is a dissolved one, one of a switched-off provider
-            or a token group with a frozen membership (#1879).
+            or a token group with a frozen membership.
         validFrom:
           type: string
           format: date-time

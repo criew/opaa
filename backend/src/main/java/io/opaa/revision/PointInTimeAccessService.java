@@ -35,7 +35,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * The Stichtagsauskunft: who reached one named object inside one bounded window (#1822, ADR-0036
+ * The Stichtagsauskunft: who reached one named object inside one bounded window (ADR-0036
  * Entscheidung 8). Exactly one object per query and no person parameter - that, and not a
  * Vollmacht, is what bounds this path (Personalrat Z3); the person entry stays closed until
  * #391/#395. Every call passes {@link AuditAccessGate} and leaves a {@code
@@ -43,8 +43,8 @@ import org.springframework.stereotype.Service;
  *
  * <p>It reads the history, never today's rows: a group that has since been deleted still explains
  * an access, and a library deleted last week still gets an answer (ADR-0016). Two gaps are named in
- * the answer instead of being left to the reader - the retention cutoff (#1833) and the sources not
- * yet historised ({@link AccessAsOfResult#sourcesNotCovered()}).
+ * the answer instead of being left to the reader - the retention cutoff and the sources not yet
+ * historised ({@link AccessAsOfResult#sourcesNotCovered()}).
  *
  * <p><b>The bounds limit the work, not only the output</b> (see {@link #MAX_SOURCE_INTERVALS} and
  * {@link #MAX_COMPOSED_ENTRIES}): a page of 50 must not cost the composition of a whole
@@ -157,8 +157,8 @@ public class PointInTimeAccessService {
   /**
    * The three ways of the readable-library formula, evaluated backwards: grants naming a person,
    * grants naming a group (resolved through the membership intervals of that same period), and
-   * grants to "Alle Konten". All three come from the same table since #1931 (ADR-0037), so both
-   * directions of the question read one source; the composition mirrors {@code
+   * grants to "Alle Konten". All three come from the same table (ADR-0037), so both directions of
+   * the question read one source; the composition mirrors {@code
    * PermissionHistoryService#readableAssetIdsAsOf}, and it is scoped to {@code organizationId} - a
    * foreign object answers like an unknown one.
    */
@@ -195,8 +195,8 @@ public class PointInTimeAccessService {
       if (!grantFrom.isBefore(grantTo)) {
         continue;
       }
-      // Reaches every account without naming one, which is why it stays one entry instead of a
-      // list of people - exactly as the organization-wide release did before #1931.
+      // Reaches every account without naming one, which is why it stays one entry instead of a list
+      // of people.
       if (grant.getSubjectType() == AssetGrantSubjectType.ALL_ACCOUNTS) {
         add(
             entries,

@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: connections-2026-10-04-oauth-authorizations
       author: opaa
-      comment: "The OAuth core (#2168, ADR-0025 Nachtrag 03.10.2026): an authorization a person started keeps the hash of its state and its PKCE verifier, encrypted, bound to the person and to the profile as it stood, for one completion."
+      comment: "The OAuth core (ADR-0048, Entscheidung 2): an authorization a person started keeps the hash of its state and its PKCE verifier, encrypted, bound to the person and to the profile as it stood, for one completion."
       changes:
         - sql:
             sql: |

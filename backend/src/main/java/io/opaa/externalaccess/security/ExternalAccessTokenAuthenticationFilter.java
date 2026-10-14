@@ -41,7 +41,7 @@ import tools.jackson.databind.json.JsonMapper;
  * issuer does (ADR-0033, Entscheidung 8) - a tool that gets {@code channel_closed} waits, one that
  * gets {@code token_revoked} needs a new token, and neither has to guess. A path whose
  * specification demands another answer registers an {@link ExternalAccessRefusalStyle}; the MCP
- * endpoint is the one that does (#1721).
+ * endpoint is the one that does.
  *
  * <p><b>The caller a token call carries is never the person's full identity.</b> Neither the
  * authority ({@link #AUTHORITY}, never the system role) nor the {@link CurrentUser} of the request

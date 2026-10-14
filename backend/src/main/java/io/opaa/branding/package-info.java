@@ -1,7 +1,7 @@
 /**
- * Operator branding as configuration rather than code (#582, docs/design/guidelines.md#7): product
- * name, claim, images, accent colour and the deployment's default colour scheme, changeable through
- * the web interface and effective without a rebuild or a redeployment.
+ * Operator branding as configuration rather than code (docs/design/guidelines.md#7): product name,
+ * claim, images, accent colour and the deployment's default colour scheme, changeable through the
+ * web interface and effective without a rebuild or a redeployment.
  *
  * <p>{@link io.opaa.branding.BrandingSettingsService} is the single entry point - it resolves the
  * stored {@link io.opaa.branding.BrandingSettings} singleton row against the {@link

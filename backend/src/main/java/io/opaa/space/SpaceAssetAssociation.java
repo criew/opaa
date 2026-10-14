@@ -9,10 +9,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A pure-curation association between a {@link Space} and an asset of any type (#203/#686, #1900,
- * see docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). It names the asset by
- * its id on the asset shell ({@code fk_space_asset_associations_asset_organization}); the type is
- * the asset's own and stands in {@code assets} alone.
+ * A pure-curation association between a {@link Space} and an asset of any type (see
+ * docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). It names the asset by its
+ * id on the asset shell ({@code fk_space_asset_associations_asset_organization}); the type is the
+ * asset's own and stands in {@code assets} alone.
  *
  * <p><b>The association grants nothing.</b> It only records that an asset is curated into a space,
  * by whom and when - see {@code AssetAccessService#readableAssetIds}, which never consults this

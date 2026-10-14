@@ -237,7 +237,7 @@ public class IndexingConfiguration {
     return new StaleDocumentCleanupService(documentRepository, vectorChunkStore, assetRepository);
   }
 
-  /** What the file sync of every file connector keeps between its runs (ADR-0040). */
+  /** What the file sync of every file connector keeps between its runs (ADR-0045). */
   @Bean
   ScanJournal scanJournal(SourceSyncStateRepository sourceSyncStateRepository) {
     return new ScanJournal(sourceSyncStateRepository);
@@ -389,7 +389,7 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Backs the model step's one call per document (#1073) - deliberately not the common {@code
+   * Backs the model step's one call per document - deliberately not the common {@code
    * ForkJoinPool}: that pool is shared with everything else in the JVM, and a saturated one would
    * let the 30-second limit expire on a call that never started, counted as a model failure nobody
    * caused. Sized for every thread that can ingest at once (indexing plus upload pool), so a

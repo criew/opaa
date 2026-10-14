@@ -14,7 +14,7 @@ paths:
       tags: [query]
       summary: >
         Ask a question against indexed documents. If chatId resolves to an owned, persisted chat
-        whose space is archived (#543), the turn is rejected with 409 and not persisted - an
+        whose space is archived, the turn is rejected with 409 and not persisted - an
         archived space accepts no new turns in an existing chat either.
       description: >
         The turn calls the configured AI provider on the request thread - the embedding of the
@@ -41,7 +41,7 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           description: >
-            The author of the named chat is no longer a member of its space (#525): querying
+            The author of the named chat is no longer a member of its space: querying
             is chatting, so the turn is refused where merely reading the chat is not. Or
             usedPromptId names a prompt the caller may not use (anymore), with code
             PROMPT_NOT_USABLE: its library is not readable by the caller or not associated with
@@ -67,7 +67,7 @@ paths:
       tags: [search]
       summary: >
         The Füllstand and the offered values of the filterable core fields in the caller's search
-        scope (#1070), over exactly the libraries the next question would search. With chatId
+        scope, over exactly the libraries the next question would search. With chatId
         naming a chat the caller authored, that chat's own settings govern. Otherwise spaceId names
         the space of a chat not yet created: the scope is the knowledge libraries associated with
         it and readable by the caller, narrowed by useKnowledge/libraryIds like a chip bar. Without
@@ -119,7 +119,7 @@ paths:
       operationId: searchKnowledge
       tags: [search]
       summary: >
-        Hits without a generated answer (#1720, docs/features/external-access.md, "Was ein
+        Hits without a generated answer (docs/features/external-access.md, "Was ein
         Fremdzugang erreicht"). Runs the same retrieval the answer of POST /api/v1/query is built
         from - sub-questions, vector and full-text search, fusion, reranking and the permission
         filter inside the search itself - and returns its passages instead of an answer. No chat
@@ -160,7 +160,7 @@ paths:
       operationId: listSearchableLibraries
       tags: [search]
       summary: >
-        The libraries POST /api/v1/search may search for this caller (#1720) - identifier, name and
+        The libraries POST /api/v1/search may search for this caller - identifier, name and
         description, sorted by name. The answer to "worin kann ich hier suchen?", and the only place
         a foreign tool learns the extent of its access. For a signed-in person these are the
         libraries she may read; for an access token the intersection of rights, external-access
@@ -182,7 +182,7 @@ paths:
       operationId: fetchSearchHit
       tags: [search]
       summary: >
-        The text behind one hit of POST /api/v1/search (#1720). By default the hit's own passage
+        The text behind one hit of POST /api/v1/search. By default the hit's own passage
         with its adjoining passages and its heading path - not the whole document: an assistant
         works with a bounded context window, and whoever wants the holdings themselves has to ask
         for them explicitly. full=true returns the document's whole extracted text, capped at a
@@ -217,7 +217,7 @@ paths:
       operationId: getSearchAvailability
       tags: [search]
       summary: >
-        Which search paths currently answer (#2576) - for the hint in the chat that the search is
+        Which search paths currently answer - for the hint in the chat that the search is
         limited.
       description: >
         Installation-wide and without any content. The vector search is SUSPENDED while the vector
@@ -236,7 +236,7 @@ paths:
       operationId: getSearchStatus
       tags: [search-admin]
       summary: >
-        The active retrieval configuration as a read-only status display (system admin only, #1053,
+        The active retrieval configuration as a read-only status display (system admin only,
         hybrid-retrieval.md "Was die Seite anzeigt")
       description: >
         Model roles, search paths and per-library index state of the caller's own organization. A
@@ -257,12 +257,12 @@ paths:
     get:
       operationId: getSearchDiagnosisContext
       tags: [search-admin]
-      summary: The rights contexts the diagnosis can be run in (system admin only, #1053, #1150)
+      summary: The rights contexts the diagnosis can be run in (system admin only)
       description: >
         The permission profiles - a group together with the library set it may read, the default
         context of hybrid-retrieval.md's Berechtigungs-Leitplanken (d) - plus whether the calling
         administrator may choose the person context at all. The person context needs the separately
-        granted "Sicht als" befugnis (#1052); holding SYSTEM_ADMIN confers nothing here, so the
+        granted "Sicht als" befugnis; holding SYSTEM_ADMIN confers nothing here, so the
         answer is a property of the caller and not of their role. No person is listed: the target of
         a person context is named by id, never picked from a directory this page would have to
         expose.
@@ -282,10 +282,9 @@ paths:
       tags: [search-admin]
       summary: >
         Run a test question through the retrieval pipeline and return its explanation protocol
-        (system admin only, #1053, hybrid-retrieval.md "Das Diagnosewerkzeug")
+        (system admin only, hybrid-retrieval.md "Das Diagnosewerkzeug")
       description: >
-        Answers "why does this document not appear?" from the pipeline's own Erklärprotokoll
-        (#1046) - not from a reconstruction: every stage in the response is one the pipeline
+        Answers "why does this document not appear?" from the pipeline's own Erklärprotokoll - not from a reconstruction: every stage in the response is one the pipeline
         actually ran, in the order it ran them. Three invariants hold, all of them Baubedingung
         rather than Ausbaustufe (hybrid-retrieval.md, Berechtigungs-Leitplanken): the run never
         reads an existing chat, it answers the Jetzt-Zustand only and is no
@@ -294,15 +293,14 @@ paths:
         after retrieval.
 
 
-        The person context (contextType USER, #1150) runs through ForeignDiagnosticContextService
+        The person context (contextType USER) runs through ForeignDiagnosticContextService
         and through nothing else: befugnis, mandatory justification, subtraction of
         diagnosegesperrte libraries and the protocol entry happen in that one call. Without the
         befugnis the answer is 403, whatever the caller's role. The result of such a run is
         returned once and stored nowhere (Leitplanke (j)).
 
 
-        The scope of the befugnis is measured at the time of the use (ADR-0036, Entscheidung 3,
-        #1879): a group of seven active accounts at the time of granting can have one half a year
+        The scope of the befugnis is measured at the time of the use (ADR-0036, Entscheidung 3): a group of seven active accounts at the time of granting can have one half a year
         later. Below the Mindestgruppengröße the answer is 403 with the code
         IMPERSONATION_SCOPE_NOT_USABLE - deliberately without the figure, which the house withholds
         below that threshold anyway. A holder of several befugnisse is judged by the usable one; a
@@ -347,7 +345,7 @@ paths:
       tags: [search-admin]
       summary: >
         Text and metadata of one stored chunk, as the retrieval pipeline sees it (system admin
-        only, #1230, hybrid-retrieval.md "Das Diagnosewerkzeug")
+        only, hybrid-retrieval.md "Das Diagnosewerkzeug")
       description: >
         The content behind a chunkId of a diagnosis verdict or final-selection entry - the
         chunking boundaries, context prefix and pass-through metadata the indexing pipeline
@@ -357,7 +355,7 @@ paths:
         embedding is never part of this response. The role alone does not open the text: a chunk
         carries the document's own content, so the caller additionally has to be able to read the
         document's library - the same formula the search evaluates, with no system-administration
-        floor. Without it, 403 (#1828).
+        floor. Without it, 403.
       parameters:
         - name: chunkId
           in: path
@@ -381,7 +379,7 @@ paths:
       operationId: listDocumentChunks
       tags: [search-admin]
       summary: >
-        Every stored chunk of one document in chunk order (system admin only, #1230,
+        Every stored chunk of one document in chunk order (system admin only,
         hybrid-retrieval.md "Das Diagnosewerkzeug")
       description: >
         The document must exist and belong to the caller's own organization, otherwise 404. The
@@ -390,7 +388,7 @@ paths:
         finding. Embeddings are never part of this response. The role alone does not open the text:
         the chunks carry the document's own content, so the caller additionally has to be able to
         read its library - the same formula the search evaluates, with no system-administration
-        floor. Without it, 403 (#1828), decided before a single chunk is read.
+        floor. Without it, 403, decided before a single chunk is read.
       parameters:
         - name: documentId
           in: path
@@ -438,7 +436,7 @@ components:
           format: uuid
           nullable: true
           description: >
-            The persisted chat (#525) this question and its answer belong to - the question,
+            The persisted chat this question and its answer belong to - the question,
             answer and sources are appended to it as ChatMessages, and the search scope for this
             query is taken from the chat's useKnowledge/referencedLibraryIds settings rather than
             useKnowledge/libraryIds below - always within the knowledge libraries associated with
@@ -453,7 +451,7 @@ components:
           default: true
           description: >
             Ignored when chatId names a chat the caller authored - that chat's own useKnowledge
-            setting applies instead (#525). Without such a chat the query has no space and
+            setting applies instead. Without such a chat the query has no space and
             searches no knowledge at all, whatever useKnowledge and libraryIds say: every question
             in the web interface needs a space, see QueryMetadata.noSpaceContext. Only the
             external-access channel and POST /api/v1/search search without a space.
@@ -464,14 +462,14 @@ components:
             format: uuid
           description: >
             Ignored when chatId names a chat the caller authored - that chat's own sticky
-            @-references apply instead (#525). Without such a chat nothing is searched, see
+            @-references apply instead. Without such a chat nothing is searched, see
             useKnowledge.
         metadataFilter:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/MetadataFilter"
           description: >
-            The core-field filter for this query (#1070, docs/features/metadata-schema.md,
+            The core-field filter for this query (docs/features/metadata-schema.md,
             Wirkstelle 1), applied inside both search paths before ranking and always subordinate
             to the permission filter. Ignored when chatId names a chat the caller authored - that
             chat's own persisted metadataFilter applies instead, exactly like its search scope.
@@ -520,7 +518,7 @@ components:
           type: string
           nullable: true
           description: >
-            The persisted chat's current title immediately after this turn (#557), or null for an
+            The persisted chat's current title immediately after this turn, or null for an
             ephemeral query. On the very first turn this is still the mechanical prefix-of-the-
             question fallback, never the LLM-derived title: title generation runs asynchronously
             after the answer is returned, precisely so it can never delay this response - the
@@ -531,7 +529,7 @@ components:
           type: array
           nullable: true
           description: >
-            The Gesprächsnotiz state that went into *this* answer (#1487), oldest point first, or
+            The Gesprächsnotiz state that went into *this* answer, oldest point first, or
             null for an ephemeral query that has no persisted chat. Like chatTitle above, this is
             deliberately never the state of the condensation this turn triggers: that runs
             asynchronously after the answer is returned, so a point condensed from this turn's own
@@ -596,10 +594,10 @@ components:
           format: uuid
           nullable: true
           description: >
-            The document id chunks were retrieved from (#739) - lets a client open the original via
-            GET /api/v1/documents/{documentId}/content for every sourceType (#747: that endpoint now
+            The document id chunks were retrieved from - lets a client open the original via
+            GET /api/v1/documents/{documentId}/content for every sourceType (that endpoint now
             proxies HTTP_DIRECTORY/RSS_FEED server-side from sourceUrl below instead of answering
-            404). Null for a synthetic entry (#386) whose citation named a document id that matched
+            404). Null for a synthetic entry whose citation named a document id that matched
             no retrieved chunk at all - there is nothing real to link to.
           example: 3f9a6b2e-1c4d-4e8a-9f0b-2d6c8e1a5b7d
         sourceType:
@@ -607,8 +605,8 @@ components:
           allOf:
             - $ref: "#/components/schemas/SourceTypeKey"
           description: >
-            The retrieved document's own source type (#739). Every sourceType opens through GET
-            /api/v1/documents/{documentId}/content (#747); sourceUrl below is secondary information
+            The retrieved document's own source type. Every sourceType opens through GET
+            /api/v1/documents/{documentId}/content; sourceUrl below is secondary information
             for HTTP_DIRECTORY/RSS_FEED, not itself a deep link a client should navigate to directly
             (the source may only be reachable from OPAA's own network). Null exactly when documentId
             is null.
@@ -617,9 +615,9 @@ components:
           type: string
           nullable: true
           description: >
-            The document's own remote location for sourceType HTTP_DIRECTORY/RSS_FEED (#739),
+            The document's own remote location for sourceType HTTP_DIRECTORY/RSS_FEED,
             mirroring LibraryDocumentResponse.sourceUrl - shown as secondary information alongside
-            the documentId deep link (#747), e.g. as a tooltip, since the source itself may not be
+            the documentId deep link, e.g. as a tooltip, since the source itself may not be
             reachable from the caller's own network. Null for UPLOAD/FILESYSTEM (use documentId
             instead) and for a synthetic entry.
           example: https://example.gov/verzeichnis/dienstanweisung-2024.pdf
@@ -627,7 +625,7 @@ components:
           type: string
           nullable: true
           description: >
-            For a citation of an attachment discovered on an RSS entry's detail page (#468), the
+            For a citation of an attachment discovered on an RSS entry's detail page, the
             URL of the entry it was found on - lets the citation trace the attachment back to the
             feed entry it belongs to. Null for every other document, and for a citation merged from
             chunks whose underlying documents disagree on this value.
@@ -646,7 +644,7 @@ components:
           nullable: true
           default: true
           description: >
-            Deterministic citation validation (#386): whether the citation(s) pointing at this
+            Deterministic citation validation: whether the citation(s) pointing at this
             source actually match the chunks retrieved for this answer - document id, section
             (chunk index) and file name must all agree with the retrieved set. False means at
             least one citation naming this source was invalid: it named a document id not among
@@ -665,13 +663,13 @@ components:
           items:
             $ref: "#/components/schemas/ChunkLocation"
           description: >
-            Where each retrieved chunk of this document sits in the original (#667) - the Fundort
+            Where each retrieved chunk of this document sits in the original - the Fundort
             mockup 1a prints next to a footnote ("Abschn. 4.2 ‚Fristsetzung'", "S. 2–4"). One entry
             per retrieved chunk, keyed by the chunk index the citation marker carries
             (【source: <documentId>#<chunkIndex> | …】), so a client resolves footnote number → chunk
             index → location without a second request. The location itself is null where the
             indexing pipeline could not determine one (plain text without headings, a format without
-            page breaks). Absent for a synthetic entry (#386).
+            page breaks). Absent for a synthetic entry.
 
         metadata:
           type: array
@@ -679,18 +677,18 @@ components:
           items:
             $ref: "#/components/schemas/SourceMetadataEntry"
           description: >-
-            The cited document's schema metadata as a generic field-value list (#1066; Maintainer-
+            The cited document's schema metadata as a generic field-value list (Maintainer-
             Beschluss vom 04.09.2026 am Epic #1065): the core fields first (Titel, Dokumentart,
-            Datum/Stand), later a library's own fields appended (#1071). Read from the document
+            Datum/Stand), later a library's own fields appended. Read from the document
             itself - not from the chunk - so every chunk of a document reports the same values. A
             field without a value is simply absent, and a client renders the list without knowing
-            any field. Null for a synthetic entry (#386) and for a document without any value.
+            any field. Null for a synthetic entry and for a document without any value.
         metadataFilterMatch:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/MetadataFilterMatch"
           description: >-
-            Set only when a metadata filter was active for this answer (#1070): whether this
+            Set only when a metadata filter was active for this answer: whether this
             document matched on every filtered field or was kept as "ohne Angabe". Null without a
             filter and for a synthetic entry.
 
@@ -706,7 +704,7 @@ components:
           type: string
           nullable: true
           description: >
-            Human-readable location of the chunk in its document (#667), German, as the indexing
+            Human-readable location of the chunk in its document, German, as the indexing
             pipeline derived it from the document's own structure: the page range for formats with
             page breaks (PDF, Office documents), the heading path for Markdown-style headings, both
             when both are known. Null when nothing could be derived.
@@ -732,7 +730,7 @@ components:
           default: false
           description: >
             True when the chat's useKnowledge was false and its references resolved to no
-            associated, readable library, so no vector search ran and the answer was generated without any document context (#526). The
+            associated, readable library, so no vector search ran and the answer was generated without any document context. The
             frontend uses this to show the corresponding hint instead of inferring it from an empty
             sources list, which alone cannot distinguish "no knowledge searched" from "searched but
             found nothing".
@@ -792,7 +790,7 @@ components:
           items:
             $ref: "#/components/schemas/SearchedLibrary"
           description: >
-            The libraries the vector search actually ran against for this turn (#667) - the
+            The libraries the vector search actually ran against for this turn - the
             effective search scope after permissions and the chat's own settings were applied,
             sorted by name. Lets a client print mockup 1a's "Durchsucht wurden: …" line under an
             answer that could not be substantiated, naming exactly what was looked at. Empty when no
@@ -814,7 +812,7 @@ components:
       type: object
       required: [id, name]
       description: >-
-        One library of the caller's effective view (#1720). Deliberately three fields: a foreign
+        One library of the caller's effective view. Deliberately three fields: a foreign
         model needs name and description to decide whether a question belongs here, and nothing
         else.
       properties:
@@ -890,7 +888,7 @@ components:
       type: object
       required: [hitId, title, excerpt, relevanceScore]
       description: >-
-        One retrieved passage with its origin (#1720). Deliberately per passage, not per document:
+        One retrieved passage with its origin. Deliberately per passage, not per document:
         the hit is what a foreign tool quotes and what GET /api/v1/search/hits/{hitId} fetches.
       properties:
         hitId:
@@ -972,7 +970,7 @@ components:
       type: object
       required: [hitId, text, whole, truncated, characterLimit]
       description: >-
-        The text behind one hit (#1720): the passage with its neighbours by default, the whole
+        The text behind one hit: the passage with its neighbours by default, the whole
         extracted text of the document with full=true.
       properties:
         hitId:
@@ -1053,7 +1051,7 @@ components:
           type: string
           description: >-
             The stable field key - title, document_type or document_date for the core fields; a
-            library field's own key later (#1071).
+            library field's own key later.
           example: document_type
         label:
           type: string
@@ -1085,7 +1083,7 @@ components:
           default: false
           description: >-
             True for a value that belongs into the Beleg detail view but not into the one-line
-            Fundstellenzeile (#1242): a mail's recipient list is unbounded and names nobody useful
+            Fundstellenzeile: a mail's recipient list is unbounded and names nobody useful
             for identifying the passage, while the line has to stay readable in the flow of an
             answer. Absent/false for every other entry.
 
@@ -1093,7 +1091,7 @@ components:
       type: object
       additionalProperties: false
       description: >-
-        A filter on the filterable schema fields (#1070, docs/features/metadata-schema.md,
+        A filter on the filterable schema fields (docs/features/metadata-schema.md,
         Wirkstelle 1): the core fields Dokumentart and Datum/Stand, a library's own fields and the
         filterable format fields. The title is not filterable, a display field like a mail's Betreff
         is not, and free keywords never are; a request naming any other field is rejected with 400. Every condition is
@@ -1134,7 +1132,7 @@ components:
           type: array
           nullable: true
           description: >-
-            Conditions on library fields (#1071) - the third kind of condition a filter can carry.
+            Conditions on library fields - the third kind of condition a filter can carry.
             Absent or empty: no condition on any library field.
           items:
             $ref: "#/components/schemas/MetadataFilterLibraryFieldCondition"
@@ -1142,7 +1140,7 @@ components:
           type: array
           nullable: true
           description: >-
-            Conditions on the filterable format fields (#1242) - the fourth and last kind. A format
+            Conditions on the filterable format fields - the fourth and last kind. A format
             field is built in and only filled where the format declares it (a mail's Absender);
             naming a field that is not filterable - the Betreff is a display field - or a value the
             field's pattern does not accept is rejected with 400.
@@ -1152,7 +1150,7 @@ components:
     MetadataFilterMatch:
       type: string
       description: >-
-        How a retrieved document related to the active metadata filter (#1070): MATCHED - every
+        How a retrieved document related to the active metadata filter: MATCHED - every
         filtered field carried a matching value; NO_VALUE - at least one filtered field had no
         value on this document (empty or "kein Wert ermittelbar"), and the document was kept by the
         Leerwert rule. A client marks NO_VALUE hits as "ohne Angabe" in the result list.
@@ -1218,7 +1216,7 @@ components:
       type: object
       required: [totalDocuments, fields, documentTypes]
       description: >-
-        What the filter interface needs for one person and one search scope (#1070): the
+        What the filter interface needs for one person and one search scope: the
         Füllstand per field with the entry condition, the Dokumentart values occurring in that
         scope and the span of the Datum/Stand values. Built in the rights context of the caller
         over the libraries the next question would search; never a global aggregate
@@ -1250,14 +1248,14 @@ components:
         libraryFields:
           type: array
           description: >-
-            The filterable library fields of the scope (#1071), one entry per library and field,
+            The filterable library fields of the scope, one entry per library and field,
             each with its own Füllstand, entry condition and occurring values.
           items:
             $ref: "#/components/schemas/MetadataFilterLibraryFieldOption"
         formatFields:
           type: array
           description: >-
-            The filterable format fields with the values occurring in the scope (#1242).
+            The filterable format fields with the values occurring in the scope.
           items:
             $ref: "#/components/schemas/MetadataFilterFormatFieldOption"
 
@@ -1266,7 +1264,7 @@ components:
       required:
         [totalDocuments, currentDocuments, pendingDocuments, lastSkippedDocuments, complete]
       description: >
-        The Kontextpraefix state of one library (#1072, metadata-schema.md "Nachlauf im Betrieb"):
+        The Kontextpraefix state of one library (metadata-schema.md "Nachlauf im Betrieb"):
         the defined, permitted Mischzustand of a library whose prefix is being changed -
         verarbeitet, ausstehend, fehlgeschlagen. The search stays available over both halves.
       properties:
@@ -1300,7 +1298,7 @@ components:
       additionalProperties: false
       required: [libraryId, fieldKey]
       description: >-
-        One condition on a library field (#1071). The field identity is the pair (libraryId,
+        One condition on a library field. The field identity is the pair (libraryId,
         fieldKey), never the key alone: two libraries may each define "fassung" with their own
         value lists, and those are two fields. Exactly one shape is used, following the field's
         type - codes for SELECT, the window for DATE, value for PATTERN; naming a shape that does
@@ -1371,7 +1369,7 @@ components:
         ]
       description: >-
         The Füllstand of one filterable library field within the caller's search scope, and whether
-        the filter interface offers it (#1071). The base of fillShare is the field's own library,
+        the filter interface offers it. The base of fillShare is the field's own library,
         not the whole scope: the field exists only there, and measuring it against libraries that
         cannot carry it would keep a well-maintained field of a small library permanently below the
         threshold. The listed values are the ones documents in the caller's rights context actually
@@ -1420,7 +1418,7 @@ components:
       additionalProperties: false
       required: [fieldKey, values]
       description: >-
-        One condition on a built-in format field (#1242). The values are matched exactly - the
+        One condition on a built-in format field. The values are matched exactly - the
         field carries a checked identifier, and a partial match would turn it back into the text
         search the specification rules out. A document without a value for the field - every
         document that is not of this format - is not excluded ("Leerwerte schließen nicht aus").
@@ -1442,7 +1440,7 @@ components:
       type: object
       required: [fieldKey, label, filledDocuments, totalDocuments, values, offered]
       description: >-
-        The values of one filterable format field occurring in the caller's search scope (#1242),
+        The values of one filterable format field occurring in the caller's search scope,
         and whether the filter interface offers it. Unlike a core or library field, a format field
         is offered as soon as at least one document of the scope carries a value: it is filled
         deterministically for every document of its format and structurally absent for every other,
@@ -1489,7 +1487,7 @@ components:
     CoreMetadataFieldFillResponse:
       type: object
       description: >
-        The Füllgrad of one core field in one library (#1067): how many of the library's indexed
+        The Füllgrad of one core field in one library: how many of the library's indexed
         documents carry a value for it. Computed at query time in the administrative context - the
         organization is the rights context here - never precomputed.
       required:
@@ -1521,14 +1519,14 @@ components:
           type: integer
           format: int64
           description: >-
-            Documents a person marked as "kein Wert ermittelbar" for this field (#1069). Neither
+            Documents a person marked as "kein Wert ermittelbar" for this field. Neither
             filled nor open - the reason documentsWithoutValue below is not totalDocuments minus
             filledDocuments.
         documentsWithoutValue:
           type: integer
           format: int64
           description: >-
-            The Pflege-Anker of this library and field (#1069): documents with neither a value nor
+            The Pflege-Anker of this library and field: documents with neither a value nor
             a "kein Wert ermittelbar" mark. The same figure GET
             /api/v1/libraries/{libraryId}/metadata/maintenance shows in the library's own settings,
             counted here over the organization instead (the administrative exception of the
@@ -1542,7 +1540,7 @@ components:
     MetadataBackfillStatusResponse:
       type: object
       description: >
-        The core-metadata extraction state of one library (#1067, metadata-schema.md "Nachlauf im
+        The core-metadata extraction state of one library (metadata-schema.md "Nachlauf im
         Betrieb"): how much of its indexed bestand carries the current extraction version, how much
         is still pending, and the Füllgrad per core field. Pending documents are a defined,
         permitted operating state - the search keeps running over them with their old fields.
@@ -1661,7 +1659,7 @@ components:
         re-index has rewritten them (ADR-0028). Both states hybrid-retrieval.md demands be visible
         rather than only noticeable in bad answers. SUSPENDED - the vector path answers nothing
         because the vector index was built with another embedding model and waits for its
-        re-embedding (#2576).
+        re-embedding.
       enum: [ACTIVE, DISABLED, INCOMPLETE, OUTDATED, SUSPENDED]
       example: OUTDATED
 
@@ -1685,7 +1683,7 @@ components:
         index). OUTDATED - full-text rows of this library were written under an older
         content_tsv_version; they are still found, they only lack the lexemes the current version
         adds, until the pipeline re-index has rewritten them (ADR-0028). Nothing rewrites them in
-        the background (#1270).
+        the background.
       enum: [EMPTY, READY, INCOMPLETE, OUTDATED]
       example: OUTDATED
 
@@ -1735,7 +1733,7 @@ components:
           type: integer
           format: int64
           description: >
-            Documents geführt as INDEXED with null or auffällig wenige chunks (#1055/#1090) - a
+            Documents geführt as INDEXED with null or auffällig wenige chunks - a
             permanent operational metric, not a one-off cleanup number.
         chunkCount:
           type: integer
@@ -1785,7 +1783,7 @@ components:
       type: object
       required: [pendingChanges, pendingDocuments, lastSkippedDocuments]
       description: >
-        The running value mappings and field deletions of one library (#1361, metadata-schema.md
+        The running value mappings and field deletions of one library (metadata-schema.md
         "Nachlauf im Betrieb"). A library in this state carries a defined Mischzustand: every
         document keeps a value the schema still lists until its turn comes. The run is driven from
         the library's own settings by whoever holds the management right, not from this page.
@@ -1863,7 +1861,7 @@ components:
           nullable: true
           description: >
             How many of them are due to be erased - their owner's account is recorded as
-            deactivated, or their erasure is under way (#2165). A part of libraryCount, so masked
+            deactivated, or their erasure is under way. A part of libraryCount, so masked
             as a part: exact only where both its owners and the owners of every other private
             library reach the minimum group size; where its owners fall short, only
             scheduledErasureCountFewerThan; otherwise neither.
@@ -1891,7 +1889,7 @@ components:
       type: string
       description: >
         SELF runs in the calling administrator's own rights context; PERMISSION_PROFILE runs in a
-        group's; USER runs in one named person's (#1150). USER is the exception of
+        group's; USER runs in one named person's. USER is the exception of
         Berechtigungs-Leitplanke (d): it needs the "Sicht als" befugnis and a free-text
         justification, it is never the preselected context, and it runs only through
         ForeignDiagnosticContextService - the one path that also subtracts diagnosegesperrte
@@ -1915,7 +1913,7 @@ components:
           type: boolean
           description: >
             Whether the caller currently holds a valid, unrevoked and <b>usable</b> "Sicht als"
-            befugnis - usable meaning its scope is still above the Mindestgruppengröße (#1879).
+            befugnis - usable meaning its scope is still above the Mindestgruppengröße.
             False makes
             the person context unselectable in the user interface; the endpoint enforces the same
             rule again and answers 403 regardless of what a client sends.
@@ -1923,7 +1921,7 @@ components:
           type: string
           description: >
             The German explanation of that permission, shown next to the disabled choice. It tells
-            the three states apart (#1879): a usable befugnis, one whose scope is currently too
+            the three states apart: a usable befugnis, one whose scope is currently too
             small, and none at all - "Sie halten keine" would be wrong for the middle one.
 
     SearchDiagnosisRequest:
@@ -1952,7 +1950,7 @@ components:
           format: uuid
           nullable: true
           description: >
-            The space whose Suchbereich to run the profile in (#1835, ADR-0036 Entscheidung 7):
+            The space whose Suchbereich to run the profile in (ADR-0036 Entscheidung 7):
             the searched set is the intersection of the libraries associated with that space and
             the libraries the profile may read. Only for PERMISSION_PROFILE; rejected with 400 for
             SELF and USER, 404 for an unknown space.
@@ -1999,7 +1997,7 @@ components:
           allOf:
             - $ref: "#/components/schemas/MetadataFilter"
           description: >
-            The core-field filter to run the diagnosis with (#1070) - applied exactly as a chat
+            The core-field filter to run the diagnosis with - applied exactly as a chat
             query applies it, so "Sicht als" can check what a person's filtered question sees.
             Ignored entirely while the installation has switched metadata off (ADR-0044): no
             condition applies and an unknown code is no error then.

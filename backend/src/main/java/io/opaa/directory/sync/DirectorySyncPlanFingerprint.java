@@ -11,17 +11,17 @@ import java.util.Map;
 
 /**
  * The print of a synchronisation plan as it was shown - what "confirmed against a fresh snapshot"
- * compares (ADR-0036, Entscheidung 3, #1816).
+ * compares (ADR-0036, Entscheidung 3).
  *
  * <p>It covers exactly the changes a plan proposes, each in a canonical, order-independent form:
  * groups created, renamed, dissolved and reactivated, the parent unit and the path the directory
  * reports for each of them, per group which user is added or removed, and which account the run
- * would lock or unlock (#1818). Reactivation, hierarchy and path change no membership and are
- * therefore not in the report, but a run applies them - a print blind to them would let a
- * confirmation write something nobody was shown. It deliberately covers neither the moment the plan
- * was computed nor its message or outcome - two runs minutes apart that would do the identical
- * thing are the same plan, and re-presenting them for a differing timestamp would make confirmation
- * impossible in practice.
+ * would lock or unlock. Reactivation, hierarchy and path change no membership and are therefore not
+ * in the report, but a run applies them - a print blind to them would let a confirmation write
+ * something nobody was shown. It deliberately covers neither the moment the plan was computed nor
+ * its message or outcome - two runs minutes apart that would do the identical thing are the same
+ * plan, and re-presenting them for a differing timestamp would make confirmation impossible in
+ * practice.
  */
 final class DirectorySyncPlanFingerprint {
 

@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The persistent half of the Gesprächsnotiz (#1487): reading a chat's points, appending what a
- * condensation produced, removing one point.
+ * The persistent half of the Gesprächsnotiz: reading a chat's points, appending what a condensation
+ * produced, removing one point.
  *
  * <p><b>Carries no permission or archive guard of its own.</b> Those live in {@link ChatService},
  * which is the one place a chat's author and its space's state are checked, and which delegates

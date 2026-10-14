@@ -493,12 +493,13 @@ public class DocumentIngestService {
   }
 
   /**
-   * The advisory quota check before a download (ADR-0041): the rejection {@link #ingest} would
-   * return for a file of {@code listedSize} bytes at {@code filePath}, logged and counted the same,
-   * or empty to download it. Measured, like the intake, by the growth over what is stored of the
-   * file ({@link #storedFootprint}); without announced growth (unknown size, same or smaller) it
-   * admits. Only the check under {@link LibraryStorageQuotaService#holdIntake} binds, because a
-   * listed size may be wrong. A {@code filePath} beyond {@link FilePathLimit} is rejected first.
+   * The advisory quota check before a download (ADR-0049, Entscheidung 4): the rejection {@link
+   * #ingest} would return for a file of {@code listedSize} bytes at {@code filePath}, logged and
+   * counted the same, or empty to download it. Measured, like the intake, by the growth over what
+   * is stored of the file ({@link #storedFootprint}); without announced growth (unknown size, same
+   * or smaller) it admits. Only the check under {@link LibraryStorageQuotaService#holdIntake}
+   * binds, because a listed size may be wrong. A {@code filePath} beyond {@link FilePathLimit} is
+   * rejected first.
    */
   public Optional<DocumentIngestResult> rejectionBeforeDownload(
       KnowledgeLibrary library, String filePath, long listedSize) {

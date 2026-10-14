@@ -1,6 +1,6 @@
 package io.opaa.api.types;
 
-/** Names match {@link java.time.DayOfWeek} exactly (#485). */
+/** Names match {@link java.time.DayOfWeek} exactly. */
 public enum ScheduleWeekday {
   MONDAY,
   TUESDAY,

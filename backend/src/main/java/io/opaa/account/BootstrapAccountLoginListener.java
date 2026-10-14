@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  * bootstrap account - identified by {@code is_bootstrap}, never by its address - is {@code
  * LOCAL_BOOTSTRAP_ACCOUNT_LOGIN} under the {@code local-auth} system actor and is handed to the
  * {@link BootstrapLoginNotifier}. A personal account's sign-in is a person's and leaves no event; a
- * rejected password is a security event for the application log (#1535), not for the audit trail.
+ * rejected password is a security event for the application log, not for the audit trail.
  */
 @Component
 public class BootstrapAccountLoginListener implements LocalLoginAttemptListener {

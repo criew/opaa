@@ -70,8 +70,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Uploads documents into, and removes them from, a {@link KnowledgeLibrary} via the REST API (#420,
- * docs/features/knowledge-sources.md#upload) - the human counterpart to the connector/crawl
+ * Uploads documents into, and removes them from, a {@link KnowledgeLibrary} via the REST API
+ * (docs/features/knowledge-sources.md#upload) - the human counterpart to the connector/crawl
  * ingestion paths {@code DocumentIngestService} already serves. Both mutating methods here require
  * {@link AssetRole#EDITOR} on the target library (see {@link #requireEditable}), one level below
  * the {@code MANAGER} the library-configuration endpoints require - a person may add or remove
@@ -86,8 +86,8 @@ import org.springframework.web.multipart.MultipartFile;
  * same three steps every other ingestion path goes through, so a chat query finds an uploaded
  * document exactly the same way it finds a crawled one.
  *
- * <p><b>Processing is asynchronous (#434).</b> {@link #uploadDocument} returns as soon as the file
- * is stored and the row is persisted with status {@code PENDING} - it does not wait for {@link
+ * <p><b>Processing is asynchronous.</b> {@link #uploadDocument} returns as soon as the file is
+ * stored and the row is persisted with status {@code PENDING} - it does not wait for {@link
  * DocumentIngestService#processUploadedFileAsync} to finish parsing/embedding on {@code
  * uploadTaskExecutor}. A caller with only {@code EDITOR} could otherwise tie up a request thread
  * for the full duration of Tika parsing and embedding on every upload, with no rate limit covering
@@ -96,9 +96,9 @@ import org.springframework.web.multipart.MultipartFile;
  * /libraries/{libraryId}/documents}, the same way the frontend's {@code documentStore.ts} already
  * polls a directory/URL indexing run in progress.
  *
- * <p><b>{@link #deleteDocument} deletes the row before the chunks, not the chunks before the row
- * (#614).</b> Asynchronous processing (previous paragraph) means a document can still be mid-flight
- * on {@code uploadTaskExecutor} while a delete request for the same document arrives on another
+ * <p><b>{@link #deleteDocument} deletes the row before the chunks, not the chunks before the
+ * row.</b> Asynchronous processing (previous paragraph) means a document can still be mid-flight on
+ * {@code uploadTaskExecutor} while a delete request for the same document arrives on another
  * thread. Deleting the row first closes that race: {@link
  * io.opaa.knowledge.DocumentRepository#markIndexed}/{@code #markFailed} are conditional updates
  * that only ever affect a row that still exists, so once this method's transaction commits, a
@@ -107,24 +107,24 @@ import org.springframework.web.multipart.MultipartFile;
  * delete here only has to handle documents that already had chunks before this call, deferred to
  * after commit (next paragraph) alongside the file, for the same reason.
  *
- * <p><b>Path traversal (#420 acceptance criteria):</b> the caller-supplied original file name never
- * reaches the storage. {@link UploadedOriginalStore} is handed the organization and library id -
- * the latter from the {@code @PathVariable UUID}, which Spring rejects unless it parses as one, the
- * former off the loaded library row - and an extension out of {@link
- * SupportedDocumentFormats#extensions()}, not a suffix sliced out of the original name; it names
- * the stored original itself (ADR-0030). The original name is kept only as {@link
- * Document#getFileName()} display metadata, sanitized to its last path segment as a second,
- * defence-in-depth measure even though it is never interpreted as a path.
+ * <p><b>Path traversal:</b> the caller-supplied original file name never reaches the storage.
+ * {@link UploadedOriginalStore} is handed the organization and library id - the latter from the
+ * {@code @PathVariable UUID}, which Spring rejects unless it parses as one, the former off the
+ * loaded library row - and an extension out of {@link SupportedDocumentFormats#extensions()}, not a
+ * suffix sliced out of the original name; it names the stored original itself (ADR-0030). The
+ * original name is kept only as {@link Document#getFileName()} display metadata, sanitized to its
+ * last path segment as a second, defence-in-depth measure even though it is never interpreted as a
+ * path.
  *
- * <p><b>{@link #deleteDocument} only ever deletes an original this application itself stored (#420
- * code review, finding 1).</b> A document's {@code file_path} is not always a locator of the upload
- * storage: {@code FILESYSTEM}-sourced documents point at the operator-managed indexing directory,
- * and {@code HTTP_DIRECTORY} ones do not name a local file OPAA owns at all. Deleting on the
- * strength of that column alone - without checking {@link Document#getSourceType()} and letting
- * {@link UploadedOriginalStore} resolve it against this library's own storage area - would let
- * anyone with {@code EDITOR} on a library that also happens to hold crawled documents (every
- * library can, since #419 routes crawl runs into a caller-chosen library rather than a single
- * reserved one) delete a file outside OPAA's own data directory entirely, with no undo.
+ * <p><b>{@link #deleteDocument} only ever deletes an original this application itself stored.</b> A
+ * document's {@code file_path} is not always a locator of the upload storage: {@code
+ * FILESYSTEM}-sourced documents point at the operator-managed indexing directory, and {@code
+ * HTTP_DIRECTORY} ones do not name a local file OPAA owns at all. Deleting on the strength of that
+ * column alone - without checking {@link Document#getSourceType()} and letting {@link
+ * UploadedOriginalStore} resolve it against this library's own storage area - would let anyone with
+ * {@code EDITOR} on a library that also happens to hold crawled documents (every library can, since
+ * #419 routes crawl runs into a caller-chosen library rather than a single reserved one) delete a
+ * file outside OPAA's own data directory entirely, with no undo.
  */
 @Service
 public class LibraryDocumentService implements FolderDocumentDeleter {
@@ -205,8 +205,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * The pre-#823 signature, kept for every caller that never needs a {@code folderPath} - delegates
-   * to the full overload below with {@code folderPath = null}.
+   * The signature for every caller that never needs a {@code folderPath} - delegates to the full
+   * overload below with {@code folderPath = null}.
    */
   public LibraryDocumentEntry uploadDocument(
       UUID libraryId, MultipartFile file, UUID folderId, CurrentUser caller) {
@@ -214,14 +214,14 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * {@code folderPath} (#823, Epic #520 Phase 4): an optional path relative to {@code folderId}
-   * (itself optional, meaning the library's root) - e.g. {@code "Protokolle/2026"} - whose
-   * intermediate folders are created idempotently (existing ones of the same name reused, never
-   * duplicated) via {@link LibraryFolderService#resolveOrCreateFolderPath}, resolved right before
-   * the file is actually written to disk - after every cheap, certain-to-reject check (empty file,
-   * size, quota, format) has already passed, see the comment at that call site for why. Lets a
-   * whole dragged-and-dropped directory tree upload one file at a time while still ending up under
-   * a single, shared folder chain instead of a separate accidental duplicate per file.
+   * {@code folderPath}: an optional path relative to {@code folderId} (itself optional, meaning the
+   * library's root) - e.g. {@code "Protokolle/2026"} - whose intermediate folders are created
+   * idempotently (existing ones of the same name reused, never duplicated) via {@link
+   * LibraryFolderService#resolveOrCreateFolderPath}, resolved right before the file is actually
+   * written to disk - after every cheap, certain-to-reject check (empty file, size, quota, format)
+   * has already passed, see the comment at that call site for why. Lets a whole dragged-and-dropped
+   * directory tree upload one file at a time while still ending up under a single, shared folder
+   * chain instead of a separate accidental duplicate per file.
    */
   public LibraryDocumentEntry uploadDocument(
       UUID libraryId, MultipartFile file, UUID folderId, String folderPath, CurrentUser caller) {
@@ -231,9 +231,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     requireEditable(library, currentUserId, caller.isSystemAdmin());
     requireUploadLibrary(library);
 
-    // #821: validated before any byte is written to disk, mirroring every other "reject this
-    // request outright" check below - a folderId that does not exist (or belongs to another
-    // library, treated identically per resolveFolder) must leave the bestand exactly as it was.
+    // Validated before any byte is written to disk, mirroring every other "reject this request
+    // outright" check below - a folderId that does not exist (or belongs to another library,
+    // treated identically per resolveFolder) must leave the bestand exactly as it was.
     if (folderId != null) {
       resolveFolder(libraryId, folderId);
     }
@@ -247,11 +247,11 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
               + (uploadProperties.maxFileSize() / (1024 * 1024))
               + " MB");
     }
-    // #119: checked before anything is written to disk, so a rejected upload leaves the bestand
-    // (and the file system) exactly as it was - the same "nothing persisted" guarantee the size
-    // check above already gives. Deliberately does not net out a same-checksum FAILED row this
-    // upload might be about to replace (see the dedup check further down) - a conservative, simple
-    // check rather than one that would have to duplicate that lookup this early.
+    // Checked before anything is written to disk, so a rejected upload leaves the bestand (and the
+    // file system) exactly as it was - the same "nothing persisted" guarantee the size check above
+    // already gives. Deliberately does not net out a same-checksum FAILED row this upload might be
+    // about to replace (see the dedup check further down) - a conservative, simple check rather
+    // than one that would have to duplicate that lookup this early.
     if (storageQuotaService.wouldExceedQuota(libraryId, file.getSize())) {
       throw new PayloadTooLargeException(storageQuotaService.quotaExceededMessage(libraryId));
     }
@@ -264,19 +264,19 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     }
     String extension = matchedExtension(displayFileName);
 
-    // #823 review, Befund 1: resolved (and, where needed, created) only after every cheap,
-    // certain-to-reject check above (empty file, size, quota, format) has already passed - unlike
-    // those checks, resolveOrCreateFolderPath's own transaction cannot be rolled back afterwards:
+    // Resolved (and, where needed, created) only after every cheap, certain-to-reject check above
+    // (empty file, size, quota, format) has already passed - unlike those checks,
+    // resolveOrCreateFolderPath's own transaction cannot be rolled back afterwards:
     // resolveOrCreateFolderPath is its own separate @Transactional call (this method itself is not
-    // @Transactional), so it commits its folder chain the moment it
-    // returns, regardless of what this method does afterwards. Running it before those checks
-    // (the original #823 order) left a committed, empty folder skeleton behind for every rejected
-    // upload - three hundred oversized/wrong-format files dropped into a new "Protokolle/2026"
-    // path created that folder chain three hundred times over before ever failing. Moved to
-    // directly precede the actual disk write, the last point before which nothing about this
-    // upload is yet certain to fail; a failure past this point (a race on the folder chain itself
-    // aside, see resolveOrCreateFolderPath) is comparatively rare and already leaves worse traces
-    // (a written file, see the catch blocks below) that this method already has to clean up.
+    // @Transactional), so it commits its folder chain the moment it returns, regardless of what
+    // this method does afterwards. Running it before those checks (the original #823 order) left a
+    // committed, empty folder skeleton behind for every rejected upload - three hundred
+    // oversized/wrong-format files dropped into a new "Protokolle/2026" path created that folder
+    // chain three hundred times over before ever failing. Moved to directly precede the actual disk
+    // write, the last point before which nothing about this upload is yet certain to fail; a
+    // failure past this point (a race on the folder chain itself aside, see
+    // resolveOrCreateFolderPath) is comparatively rare and already leaves worse traces (a written
+    // file, see the catch blocks below) that this method already has to clean up.
     UUID effectiveFolderId = folderId;
     List<String> pathSegments = splitFolderPath(folderPath);
     if (!pathSegments.isEmpty()) {
@@ -299,9 +299,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       requireContentMatchesExtension(storedFile, extension);
 
       String checksum = checksumService.computeSha256(storedFile);
-      // Dedup is scoped per library (#420 acceptance criteria): the same file uploaded into two
-      // different libraries is two legitimate documents, only a second copy inside the *same*
-      // library is rejected.
+      // Dedup is scoped per library: the same file uploaded into two different libraries is two
+      // legitimate documents, only a second copy inside the *same* library is rejected.
       Optional<Document> existing =
           documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
               libraryId, checksum);
@@ -311,17 +310,17 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           accepted.discard();
           throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
         }
-        // #589 review, item 3: a FAILED row must not block a retry of the same file forever - the
-        // per-library dedup check above (and uk_documents_library_checksum) can't
-        // otherwise tell "this content already succeeded" from "this content failed once and the
-        // user is trying again", so it replaces the old FAILED row instead of rejecting the new
-        // upload. A FAILED connector row can legitimately still have chunks since #1268 (a version
-        // whose parsing failed keeps the previous, working ones), so the delete below is what
-        // actually removes them here - not merely defence in depth.
+        // A FAILED row must not block a retry of the same file forever - the per-library dedup
+        // check above (and uk_documents_library_checksum) can't otherwise tell "this content
+        // already succeeded" from "this content failed once and the user is trying again", so it
+        // replaces the old FAILED row instead of rejecting the new upload. A FAILED connector row
+        // can legitimately still have chunks (a version whose parsing failed keeps the previous,
+        // working ones), so the delete below is what actually removes them here - not merely
+        // defence in depth.
         //
-        // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage, #1218): a FAILED mail row can still have
-        // INDEXED attachment children from before the failure (attachments are indexed while the
-        // parent is being parsed, before its own chunks are written) - they must go with it, or
+        // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a FAILED mail row can still have INDEXED
+        // attachment children from before the failure (attachments are indexed while the parent is
+        // being parsed, before its own chunks are written) - they must go with it, or
         // documentRepository.delete below fails fk_documents_parent and the retry is blocked
         // forever. The retry's re-parse recreates them under the new row's own file_path.
         Optional<UploadedOriginalRef> oldFailedOriginal = UploadedOriginalRef.of(existingDoc);
@@ -350,21 +349,20 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       document.setOrganizationId(library.getOrganizationId());
       document.setUploadedByUserId(currentUserId);
       document.setFolderId(effectiveFolderId);
-      // Set on this first (and only synchronous) save: this is where a concurrent duplicate
-      // upload race against uk_documents_library_checksum is meant to be settled -
-      // before any embedding work starts, not after (#420 second code review round, finding 1,
-      // still true now that the embedding work itself has moved off this thread entirely).
+      // Set on this first (and only synchronous) save: this is where a concurrent duplicate upload
+      // race against uk_documents_library_checksum is meant to be settled - before any embedding
+      // work starts, not after, even though the embedding work itself runs off this thread.
       document.setChecksum(checksum);
       document = documentRepository.save(document);
 
-      // #589 review, item 4: from here on, the row is committed - a RuntimeException must never
-      // again just delete the file and rethrow (the outer catch below), or the row would survive
-      // pointing at a dead file_path forever. This inner try/catch keeps that guarantee local to
-      // the one call that can still fail after the row exists, instead of relying on it being the
-      // last statement in the method.
+      // From here on, the row is committed - a RuntimeException must never again just delete the
+      // file and rethrow (the outer catch below), or the row would survive pointing at a dead
+      // file_path forever. This inner try/catch keeps that guarantee local to the one call that can
+      // still fail after the row exists, instead of relying on it being the last statement in the
+      // method.
       try {
-        // Parsing/chunking/embedding run on uploadTaskExecutor from here (#434) - this method
-        // returns the PENDING row without waiting for that to finish.
+        // Parsing/chunking/embedding run on uploadTaskExecutor from here - this method returns the
+        // PENDING row without waiting for that to finish.
         documentIngestService.processUploadedFileAsync(
             DocumentIngest.builder(library)
                 .file(storedFile, fileSize)
@@ -376,11 +374,11 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
             new StandaloneAttachmentAccess(library, "Upload"),
             accepted::release);
       } catch (TaskRejectedException e) {
-        // #589 review, item 2: uploadTaskExecutor's queue is full - it never silently discards the
-        // task (see IndexingConfiguration#uploadTaskExecutor; #501 later gave indexingTaskExecutor
-        // the same AbortPolicy for the same reason), so this is the one place that ever has to
-        // react to it here. The row is already visible to the caller as PENDING; leaving it there
-        // would have it poll forever for a job nothing will ever run.
+        // uploadTaskExecutor's queue is full - it never silently discards the task (see
+        // IndexingConfiguration#uploadTaskExecutor; #501 later gave indexingTaskExecutor the same
+        // AbortPolicy for the same reason), so this is the one place that ever has to react to it
+        // here. The row is already visible to the caller as PENDING; leaving it there would have it
+        // poll forever for a job nothing will ever run.
         log.warn(
             "Upload processing queue is full; marking document {} as FAILED immediately",
             document.getId(),
@@ -400,24 +398,23 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
       storedRow = document;
     } catch (DataIntegrityViolationException e) {
-      // #821 review round 1, finding 5: the save() above can violate two different constraints,
-      // and they must not share one message. fk_documents_folder fires when
-      // folderId - already confirmed to exist by resolveFolder above - is deleted by a concurrent
-      // request in the narrow window between that check and this INSERT; without this
-      // distinction, that race surfaced as the same "Diese Datei ist bereits in dieser Bibliothek
-      // vorhanden" the checksum race below produces, actively misleading a caller whose file was
-      // never a duplicate at all.
+      // The save() above can violate two different constraints, and they must not share one
+      // message. fk_documents_folder fires when folderId - already confirmed to exist by
+      // resolveFolder above - is deleted by a concurrent request in the narrow window between that
+      // check and this INSERT; without this distinction, that race surfaced as the same "Diese
+      // Datei ist bereits in dieser Bibliothek vorhanden" the checksum race below produces,
+      // actively misleading a caller whose file was never a duplicate at all.
       accepted.discard();
       if (isFolderForeignKeyViolation(e)) {
         throw new NotFoundException("Der Ordner wurde inzwischen gelöscht");
       }
-      // Race-safety net for the findByLibraryIdAndChecksum check above (#420 code review, nit 5):
-      // that check and the eventual INSERT are two separate steps with no database guarantee
-      // between them, so two concurrent uploads of the same file into the same library could both
-      // pass it. uk_documents_library_checksum is the actual guarantee; this maps
-      // its violation - and any other DataIntegrityViolationException this INSERT could still
-      // raise - to the same 409 the sequential check already produces, kept as the neutral
-      // fallback rather than assuming every violation is the folder race handled above.
+      // Race-safety net for the findByLibraryIdAndChecksum check above: that check and the eventual
+      // INSERT are two separate steps with no database guarantee between them, so two concurrent
+      // uploads of the same file into the same library could both pass it.
+      // uk_documents_library_checksum is the actual guarantee; this maps its violation - and any
+      // other DataIntegrityViolationException this INSERT could still raise - to the same 409 the
+      // sequential check already produces, kept as the neutral fallback rather than assuming every
+      // violation is the folder race handled above.
       throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
     } catch (IOException e) {
       accepted.discard();
@@ -425,7 +422,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     } catch (RuntimeException e) {
       // Only reachable before the row is committed (validation, file I/O, the dedup check above) -
       // everything from documentRepository.save(document) onward has its own inner try/catch that
-      // never lets a RuntimeException escape to here (#589 review, item 4).
+      // never lets a RuntimeException escape to here.
       accepted.discard();
       throw e;
     }
@@ -467,18 +464,18 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
   /**
    * Marks an already-persisted upload row {@code FAILED} and cleans up its file, instead of leaving
-   * a {@code PENDING} row with a dead {@code file_path} behind (#589 review, item 4) - the
-   * counterpart, once the row exists, to the pre-commit paths above that simply delete the file and
-   * rethrow. Returns the response the caller hands back to the client, same as the success path.
+   * a {@code PENDING} row with a dead {@code file_path} behind - the counterpart, once the row
+   * exists, to the pre-commit paths above that simply delete the file and rethrow. Returns the
+   * response the caller hands back to the client, same as the success path.
    *
    * <p>Uses {@link DocumentRepository#markFailed} - a conditional {@code UPDATE} - rather than a
-   * plain {@code documentRepository.save} (#636 review, item 3): the row committed by {@link
-   * #uploadDocument} just above is visible to every other request from that moment on, so a
-   * concurrent {@link #deleteDocument} could remove it in the narrow window between that commit and
-   * this call (e.g. while {@link DocumentIngestService#processUploadedFileAsync} is being handed
-   * off and throws synchronously). A plain {@code save} on the caller's now-stale in-memory {@code
-   * document} would not notice and silently re-{@code INSERT} it as a zombie - the same failure
-   * mode {@link DocumentRepository#markIndexed}/{@code #markFailed}'s own Javadoc describes for the
+   * plain {@code documentRepository.save}: the row committed by {@link #uploadDocument} just above
+   * is visible to every other request from that moment on, so a concurrent {@link #deleteDocument}
+   * could remove it in the narrow window between that commit and this call (e.g. while {@link
+   * DocumentIngestService#processUploadedFileAsync} is being handed off and throws synchronously).
+   * A plain {@code save} on the caller's now-stale in-memory {@code document} would not notice and
+   * silently re-{@code INSERT} it as a zombie - the same failure mode {@link
+   * DocumentRepository#markIndexed}/{@code #markFailed}'s own Javadoc describes for the
    * asynchronous path. The response returned here still reflects the caller's own upload attempt
    * either way - {@code document} is only ever used to build it, never persisted directly again.
    */
@@ -499,20 +496,19 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * Resolves the on-disk original behind {@code documentId} for streaming (#736) - the read
-   * counterpart to {@link #uploadDocument}/{@link #deleteDocument}'s write-side file handling, and
-   * subject to the same "no existence leak" discipline {@link
-   * io.opaa.knowledge.LibraryAccessService#requireRole} already applies to every other
-   * library-scoped endpoint: an unknown document, one in another organization, one the caller has
-   * no grant on, one of a sourceType with no local file, and one whose file has since disappeared
-   * from disk all answer the same {@code 404}, in that order, so a caller can never distinguish
-   * "does not exist" from any of the others.
+   * Resolves the on-disk original behind {@code documentId} for streaming - the read counterpart to
+   * {@link #uploadDocument}/{@link #deleteDocument}'s write-side file handling, and subject to the
+   * same "no existence leak" discipline {@link io.opaa.knowledge.LibraryAccessService#requireRole}
+   * already applies to every other library-scoped endpoint: an unknown document, one in another
+   * organization, one the caller has no grant on, one of a sourceType with no local file, and one
+   * whose file has since disappeared from disk all answer the same {@code 404}, in that order, so a
+   * caller can never distinguish "does not exist" from any of the others.
    *
-   * <p>Requires only {@link AssetRole#VIEWER} (#736 acceptance criteria) - the same floor {@link
-   * LibraryAccessService#canRead} already uses for a library's configuration and document list;
-   * opening a document's own content is not more sensitive than seeing it listed - checked through
-   * {@link LibraryAccessService#requireContentRead}, which knows no administrative floor, so a
-   * system admin without a grant gets {@code 403} (#1828).
+   * <p>Requires only {@link AssetRole#VIEWER} - the same floor {@link LibraryAccessService#canRead}
+   * already uses for a library's configuration and document list; opening a document's own content
+   * is not more sensitive than seeing it listed - checked through {@link
+   * LibraryAccessService#requireContentRead}, which knows no administrative floor, so a system
+   * admin without a grant gets {@code 403}.
    *
    * <p>The original itself comes from the document's connector ({@link OriginalAccess}), which
    * never trusts the stored {@code file_path} on its own: an upload resolves only within this
@@ -520,9 +516,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    * sourcePath}, a URL-fetched original only from its stored address through the target validation,
    * an object only from the library's own store.
    *
-   * <p>An attachment document (ADR-0022, #1239) has no original of its own at all - neither on disk
-   * nor behind its synthetic {@code file_path} - and is served by {@link #loadAttachmentContent},
-   * which re-extracts it from its parent chain's own original.
+   * <p>An attachment document (ADR-0022) has no original of its own at all - neither on disk nor
+   * behind its synthetic {@code file_path} - and is served by {@link #loadAttachmentContent}, which
+   * re-extracts it from its parent chain's own original.
    */
   public DocumentContent loadContent(UUID documentId, CurrentUser caller) {
     Document document =
@@ -550,12 +546,12 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
   /**
    * Whether {@code document}'s bytes only exist inside its parent's original and must be
-   * re-extracted (ADR-0022, #1239) - recognized at its {@code file_path}, which then embeds the
-   * parent's own path plus an extraction index ({@code DocumentIngestService#attachmentFilePath},
-   * an {@code AttachmentSource.LocalFile} attachment: Mail). An attachment with a source identity
-   * of its own - an RSS/Confluence download URL ({@code AttachmentSource.Download}) - carries
-   * {@code parent_document_id} just the same but names a real, fetchable original, and is therefore
-   * served by {@link #loadOriginal} unchanged.
+   * re-extracted (ADR-0022) - recognized at its {@code file_path}, which then embeds the parent's
+   * own path plus an extraction index ({@code DocumentIngestService#attachmentFilePath}, an {@code
+   * AttachmentSource.LocalFile} attachment: Mail). An attachment with a source identity of its own
+   * - an RSS/Confluence download URL ({@code AttachmentSource.Download}) - carries {@code
+   * parent_document_id} just the same but names a real, fetchable original, and is therefore served
+   * by {@link #loadOriginal} unchanged.
    */
   private boolean isReExtractableAttachment(Document document) {
     if (document.getParentDocumentId() == null) {
@@ -617,10 +613,10 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * The original of an attachment document (ADR-0022, #1239). Attachment bytes are never stored:
-   * they are re-extracted on demand from the root ancestor's own original - loaded through the very
-   * path {@link #loadOriginal} uses for any other document, so every sourceType behaves the same -
-   * by re-running the parent chain's pipelines and following the 0-based extraction index each
+   * The original of an attachment document (ADR-0022). Attachment bytes are never stored: they are
+   * re-extracted on demand from the root ancestor's own original - loaded through the very path
+   * {@link #loadOriginal} uses for any other document, so every sourceType behaves the same - by
+   * re-running the parent chain's pipelines and following the 0-based extraction index each
    * synthetic {@code file_path} segment carries ({@code DocumentIngestService#attachmentFilePath}).
    * Mail-in-Mail is not a special case: each level of the chain is one more extraction step.
    *
@@ -641,9 +637,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    * <p>Every temp file this method creates is deleted when the returned stream is closed, or before
    * it throws.
    *
-   * <p>The extraction itself runs under {@link AttachmentExtractionLimiter} (#1243): serialized per
-   * parent document and capped instance-wide, with a 429 rather than an unbounded wait once the cap
-   * is reached.
+   * <p>The extraction itself runs under {@link AttachmentExtractionLimiter}: serialized per parent
+   * document and capped instance-wide, with a 429 rather than an unbounded wait once the cap is
+   * reached.
    */
   private DocumentContent loadAttachmentContent(Document document, KnowledgeLibrary library) {
     List<Document> chain = new ArrayList<>();
@@ -700,8 +696,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
   /**
    * The actual re-extraction of {@code document} out of {@code root}'s original, following {@code
-   * indices} down {@code chain}. Runs under {@link AttachmentExtractionLimiter} (#1243) - it is the
-   * part that parses (and, for a connector Bestand, downloads) the parent original and writes temp
+   * indices} down {@code chain}. Runs under {@link AttachmentExtractionLimiter} - it is the part
+   * that parses (and, for a connector Bestand, downloads) the parent original and writes temp
    * files, everything before it is repository lookups.
    */
   private DocumentContent extractFromRoot(
@@ -822,7 +818,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * Deletes each of {@code documentIds} on its own (#1943): one transaction per id through {@link
+   * Deletes each of {@code documentIds} on its own: one transaction per id through {@link
    * #transactionTemplate}, so an id that is no longer a document of this library costs only its own
    * entry in the answer while every other document is still gone - the whole call as one
    * transaction would roll the successful deletions back with it. Duplicates are deleted once and
@@ -883,10 +879,10 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     Optional<UploadedOriginalRef> ownOriginal = UploadedOriginalRef.of(document);
     UUID chunkFilterDocumentId = document.getId();
 
-    // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at
-    // it via parent_document_id cannot be deleted first without failing fk_documents_parent - this
+    // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at it
+    // via parent_document_id cannot be deleted first without failing fk_documents_parent - this
     // path takes its attachments with it, mirroring StaleDocumentCleanupService's own
-    // deepest-nesting-first order (#1183: a Mail-in-Mail chain can nest an attachment inside an
+    // deepest-nesting-first order (a Mail-in-Mail chain can nest an attachment inside an
     // attachment, not just one level). None of them are ever an UPLOAD-managed file of this
     // service's own (only the connector paths that create attachments set parentDocumentId), so
     // there is no extra file to clean up for a descendant the way there can be for the parent
@@ -898,42 +894,40 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       documentRepository.delete(descendant);
     }
 
-    // The row is deleted first, the chunks only afterwards - deliberately the reverse of the order
-    // this method used before #614. A concurrent uploadTaskExecutor task finishing the very same
-    // document races this method: DocumentIngestService#processUploadedFileAsync re-reads the row,
-    // writes its chunks, and only then calls DocumentRepository#markIndexed, which affects a row
-    // only if it is still there. Deleting the chunks here *before* the row let that task's
-    // markIndexed still see (and update) the row while its own transaction was still in-flight,
-    // leaving its freshly-written chunks behind after this method's own vectorStore.delete had
-    // already run and would never run again - a document gone from the list but still returned by
-    // /api/v1/query. Deleting the row first closes that window: by the time this transaction
-    // commits, the row is unconditionally gone, so a racing markIndexed (which blocks on the same
-    // row until this commits) is guaranteed to affect zero rows and clean up its own chunks itself
-    // (see DocumentIngestService#processUploadedFileAsync). The vector store delete below then only
-    // has to handle the ordinary case: chunks a document already had before this call.
+    // The row is deleted first, the chunks only afterwards. A concurrent uploadTaskExecutor task
+    // finishing the very same document races this method:
+    // DocumentIngestService#processUploadedFileAsync re-reads the row, writes its chunks, and only
+    // then calls DocumentRepository#markIndexed, which affects a row only if it is still there.
+    // Deleting the chunks here *before* the row let that task's markIndexed still see (and update)
+    // the row while its own transaction was still in-flight, leaving its freshly-written chunks
+    // behind after this method's own vectorStore.delete had already run and would never run again -
+    // a document gone from the list but still returned by /api/v1/query. Deleting the row first
+    // closes that window: by the time this transaction commits, the row is unconditionally gone, so
+    // a racing markIndexed (which blocks on the same row until this commits) is guaranteed to
+    // affect zero rows and clean up its own chunks itself (see
+    // DocumentIngestService#processUploadedFileAsync). The vector store delete below then only has
+    // to handle the ordinary case: chunks a document already had before this call.
     documentRepository.delete(document);
     noteRevisit(document);
     assetRepository.markContentChanged(document.getLibraryId(), Instant.now());
 
-    // Both deferred to after commit (#420 code review, nit 7, extended to the chunk deletion by
-    // #614): if the row deletion above rolls back for any reason, the file and its chunks must
-    // still be there afterwards - deleting either eagerly here would leave a document that is still
-    // listed and still searchable pointing at nothing, or a file/chunks gone despite the row
-    // surviving.
+    // Both deferred to after commit (extended to the chunk deletion by #614): if the row deletion
+    // above rolls back for any reason, the file and its chunks must still be there afterwards -
+    // deleting either eagerly here would leave a document that is still listed and still searchable
+    // pointing at nothing, or a file/chunks gone despite the row surviving.
     //
-    // Both steps below are individually guarded (PR #631 review, finding 1). By the time this
-    // callback runs, the row deletion has already committed - the caller's request has already
-    // succeeded from the database's point of view. Letting a vectorStore.delete failure propagate
-    // from here (afterCommit synchronizations run outside the original request's exception
-    // handling) would turn that success into a 500 the caller never asked for, and - since the
-    // callback would never reach the line below - skip the file deletion entirely for a reason that
-    // has nothing to do with the file. Each step is therefore its own try/catch: a pgvector outage
-    // during the chunk delete must not stop the file from being removed, and vice versa. Accepted
-    // residual risk: a chunk delete that fails this way leaves orphaned chunks in the vector store,
-    // still returned by /api/v1/query, with no automatic retry - the same already-accepted risk
-    // #614's own reasoning above describes for the concurrent-upload race, now also reachable via a
-    // genuine vectorStore failure. Recovering from that is out of scope here; see #614's follow-up
-    // discussion.
+    // Both steps below are individually guarded. By the time this callback runs, the row deletion
+    // has already committed - the caller's request has already succeeded from the database's point
+    // of view. Letting a vectorStore.delete failure propagate from here (afterCommit
+    // synchronizations run outside the original request's exception handling) would turn that
+    // success into a 500 the caller never asked for, and - since the callback would never reach the
+    // line below - skip the file deletion entirely for a reason that has nothing to do with the
+    // file. Each step is therefore its own try/catch: a pgvector outage during the chunk delete
+    // must not stop the file from being removed, and vice versa. Accepted residual risk: a chunk
+    // delete that fails this way leaves orphaned chunks in the vector store, still returned by
+    // /api/v1/query, with no automatic retry - the same already-accepted risk #614's own reasoning
+    // above describes for the concurrent-upload race, now also reachable via a genuine vectorStore
+    // failure. Recovering from that is out of scope here; see #614's follow-up discussion.
     deleteAfterCommit(
         () -> {
           for (UUID attachmentId : attachmentChunkFilterIds) {
@@ -964,7 +958,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /**
    * Notes the deleted document's folder for the next full sync of a library with a sync state, in
    * this transaction: otherwise the folder memory keeps the folder unlisted and the document never
-   * returns (ADR-0040). A document outside every container lies under no remembered folder.
+   * returns (ADR-0045, Entscheidung 5). A document outside every container lies under no remembered
+   * folder.
    */
   private void noteRevisit(Document document) {
     if (document.getSourceContainerKey() != null) {
@@ -979,9 +974,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
   /**
    * Every descendant of {@code rootId} (children, grandchildren, ...) via {@code
-   * parent_document_id}, ordered deepest-first (#1183): a breadth-first walk collects each level in
-   * turn, then the result is reversed so the deepest level - the one with no descendants of its own
-   * still pending deletion - is deleted first, mirroring {@code
+   * parent_document_id}, ordered deepest-first: a breadth-first walk collects each level in turn,
+   * then the result is reversed so the deepest level - the one with no descendants of its own still
+   * pending deletion - is deleted first, mirroring {@code
    * StaleDocumentCleanupService#sortedDeepestFirst}'s own reasoning for {@code
    * fk_documents_parent}. A Mail-in-Mail chain (an attachment that is itself a parent with its own
    * attachments) is the motivating case; a flat, one-level attachment set (RSS, Confluence) is just
@@ -1032,7 +1027,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    * upload into it would be indistinguishable from a crawled document the next run considers gone
    * (ADR-0017, Entscheidung 5's "je Quelle, niemals bibliotheksweit" absence check has no way to
    * tell the two apart). {@code 409} rather than {@code 400}: the request is well-formed, it simply
-   * conflicts with this library's fixed, immutable source type (#479).
+   * conflicts with this library's fixed, immutable source type.
    */
   private void requireUploadLibrary(KnowledgeLibrary library) {
     if (!connectors.descriptor(library.getSourceType()).uploads()) {
@@ -1042,9 +1037,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * Validates {@code folderId} references an existing folder in {@code libraryId} (#821) - mirrors
-   * {@code LibraryFolderService#resolveParent}'s identical cross-library treatment: a folder from
-   * another library answers the same 404 as one that does not exist at all.
+   * Validates {@code folderId} references an existing folder in {@code libraryId} - mirrors {@code
+   * LibraryFolderService#resolveParent}'s identical cross-library treatment: a folder from another
+   * library answers the same 404 as one that does not exist at all.
    */
   private void resolveFolder(UUID libraryId, UUID folderId) {
     LibraryFolder folder =
@@ -1084,9 +1079,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   }
 
   /**
-   * Splits a {@code folderPath} like {@code "Protokolle/2026"} into its individual segments (#823):
-   * empty segments - a leading/trailing/doubled {@code "/"} - are dropped rather than rejected, so
-   * a caller-built path does not have to be perfectly normalized first. {@link
+   * Splits a {@code folderPath} like {@code "Protokolle/2026"} into its individual segments: empty
+   * segments - a leading/trailing/doubled {@code "/"} - are dropped rather than rejected, so a
+   * caller-built path does not have to be perfectly normalized first. {@link
    * LibraryFolderService#resolveOrCreateFolderPath}'s own {@code validatePathSegment} is what
    * actually validates each surviving segment's shape (length, no further separators, no {@code
    * ".."}). {@code null}/blank yields an empty list, meaning "no path" - the same as omitting the
@@ -1107,15 +1102,15 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
   /**
    * Whether {@code e} was raised by {@code fk_documents_folder} specifically, not {@code
-   * uk_documents_library_checksum} or anything else {@code documentRepository.save} could violate
-   * (#821 review round 1, finding 5) - inspects the wrapped Hibernate {@link
-   * ConstraintViolationException}'s own {@code constraintName} (populated from the database
-   * driver's error detail, {@code PostgreSQLDialect}'s violated-constraint-name extractor for
-   * Postgres) rather than guessing from {@link DataIntegrityViolationException#getMessage()} alone,
-   * which does not reliably say which of several constraints on the same table actually fired.
-   * {@code false} - the safe, conservative default - whenever no {@link
-   * ConstraintViolationException} is found in the cause chain at all (e.g. a hand-built exception a
-   * test throws directly, mirroring how a real driver failure is always wrapped in practice).
+   * uk_documents_library_checksum} or anything else {@code documentRepository.save} could violate -
+   * inspects the wrapped Hibernate {@link ConstraintViolationException}'s own {@code
+   * constraintName} (populated from the database driver's error detail, {@code PostgreSQLDialect}'s
+   * violated-constraint-name extractor for Postgres) rather than guessing from {@link
+   * DataIntegrityViolationException#getMessage()} alone, which does not reliably say which of
+   * several constraints on the same table actually fired. {@code false} - the safe, conservative
+   * default - whenever no {@link ConstraintViolationException} is found in the cause chain at all
+   * (e.g. a hand-built exception a test throws directly, mirroring how a real driver failure is
+   * always wrapped in practice).
    */
   private boolean isFolderForeignKeyViolation(DataIntegrityViolationException e) {
     Throwable cause = e.getCause();
@@ -1143,9 +1138,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
   /**
    * Rejects the upload if Tika's magic-byte detection on the actually stored bytes contradicts
-   * {@code extension} (#435, Maintainer-Entscheidung 20.08.2026). Runs against the file already
-   * written to {@code storedFile} rather than the multipart stream directly, so the same bytes that
-   * end up parsed and indexed are the ones inspected here - and so a mismatch is caught before the
+   * {@code extension} (Maintainer-Entscheidung 20.08.2026). Runs against the file already written
+   * to {@code storedFile} rather than the multipart stream directly, so the same bytes that end up
+   * parsed and indexed are the ones inspected here - and so a mismatch is caught before the
    * checksum/dedup work below spends any effort on content that will be rejected anyway.
    *
    * <p>Deliberately scoped to this upload path alone, not {@link SupportedDocumentFormats#

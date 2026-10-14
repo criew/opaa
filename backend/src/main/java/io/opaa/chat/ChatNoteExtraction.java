@@ -7,9 +7,9 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
- * The prompt of the Gesprächsnotiz condensation and the defensive parsing of its answer (#1487,
- * docs/features/conversation-memory.md, "Bauteil 2") - free of Spring and of the model call, so the
- * rules below are testable without either.
+ * The prompt of the Gesprächsnotiz condensation and the defensive parsing of its answer
+ * (docs/features/conversation-memory.md, "Bauteil 2") - free of Spring and of the model call, so
+ * the rules below are testable without either.
  *
  * <p>Nothing here trusts the model's formatting: a leading bullet is stripped, a line whose kind
  * prefix is missing or unknown becomes {@link ChatNoteItemKind#ANTWORTFORM} (the kind that never

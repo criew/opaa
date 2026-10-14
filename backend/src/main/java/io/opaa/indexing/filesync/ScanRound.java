@@ -19,10 +19,10 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 /**
- * One full sync round as one run sees it (ADR-0040): which containers this run lists in which
- * order, where each resumes, and what is kept when. A checkpoint is kept only once every download
- * of the pages up to it is ingested or counted as failed, at a container's end or at the orderly
- * end of the budget; any other end keeps what was kept before.
+ * One full sync round as one run sees it (ADR-0045, Entscheidung 6): which containers this run
+ * lists in which order, where each resumes, and what is kept when. A checkpoint is kept only once
+ * every download of the pages up to it is ingested or counted as failed, at a container's end or at
+ * the orderly end of the budget; any other end keeps what was kept before.
  */
 final class ScanRound {
 

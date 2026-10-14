@@ -38,10 +38,10 @@ paths:
         subject: submitting again for the same subject replaces its role and expiry.
       description: >
         Subject ALL_ACCOUNTS reaches every account of the asset's organization and names no
-        subjectId (#1931, ADR-0037). Its role is capped at EDITOR: MANAGER and OWNER are
+        subjectId (ADR-0037). Its role is capped at EDITOR: MANAGER and OWNER are
         responsibilities - granting rights, ownership, succession - and are refused with 400 for
         this subject, because a responsibility is borne by a named person or group. It replaces the
-        former release level AssetVisibility, so a connector library's share cap (#797) is enforced
+        former release level AssetVisibility, so a connector library's share cap is enforced
         here: while the system administration forbids it, such a grant is refused with 409 - the
         caller's own role is not in question.
         .
@@ -50,7 +50,7 @@ paths:
         SUCCESSION_OPEN, whose message names who is responsible. Taking reach away stays possible -
         a downgrade, an earlier expiry and a revocation are never refused for it.
         .
-        An owner-only asset (a private library, ADR-0036 Nachtrag 3) carries no grant but its
+        An owner-only asset (a private library, ADR-0036 Entscheidung 5) carries no grant but its
         owner's own: every grant is refused with 403 and the code OWNER_ONLY_ASSET, for every
         recipient and every caller. The system administration has no administrative role on such
         an asset and gets the 404 of an unknown one.
@@ -119,7 +119,7 @@ paths:
       tags: [asset]
       summary: >
         The members of a group that holds a grant on this asset - "wer ein Recht gibt, sieht, an
-        wen" (#1880, ADR-0036 Entscheidung 9)
+        wen" (ADR-0036 Entscheidung 9)
       description: >
         Requires MANAGER or above on the asset, exactly like the grant list itself, and only while
         the group still holds an unexpired grant here. What the answer withholds and why is
@@ -149,7 +149,7 @@ paths:
       operationId: getAssetAccessDerivation
       tags: [asset]
       summary: >
-        Why the caller reaches this asset - the Herleitung of ADR-0036, Entscheidung 9 (#1822)
+        Why the caller reaches this asset - the Herleitung of ADR-0036, Entscheidung 9
       description: >
         Every own way to the effective role: a grant naming the caller, a grant naming one of their
         groups (with the group's name, origin, mechanism and the moment of the grant), the
@@ -219,7 +219,7 @@ paths:
       tags: [asset]
       summary: >
         The spaces this asset is associated with (VIEWER role or above on the asset required) -
-        the "Zuordnungen" view (#203, #1939). For a caller with at least MANAGER on the asset it is
+        the "Zuordnungen" view. For a caller with at least MANAGER on the asset it is
         never filtered: they see every association, regardless of whether they are a member of the
         space. Below MANAGER the entry is reduced to spaceId and spaceName, and an association in a
         PRIVATE space the caller does not belong to is not named at all - it only raises
@@ -228,7 +228,7 @@ paths:
         docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren: "Der Eigentümer des
         Assets sieht alle Assoziationen und kann jede davon jederzeit einseitig lösen."
         narrowerReaderCircle on each entry is the same "not every member can already read this"
-        signal that triggers the owner notification when the association was created (#203) -
+        signal that triggers the owner notification when the association was created -
         recomputed live here, not stored, since space membership and asset grants both change
         independently afterwards. It, the creator and the creation time are disclosed to a caller
         with at least MANAGER only; a plain reader learns which spaces the asset stands in, nothing
@@ -255,7 +255,7 @@ paths:
       operationId: transferAssetOwnership
       tags: [asset]
       summary: >
-        Hand this one asset to another owner - a person or a group (#1941)
+        Hand this one asset to another owner - a person or a group
       description: >
         The per-asset counterpart of POST /api/v1/permission-transfers, which moves everything a
         subject holds: here exactly one asset changes hands, and nothing else of the previous
@@ -330,7 +330,7 @@ paths:
         already-associated asset returns its existing association unchanged.
       description: >
         If the space has any member without read access to the asset, the asset's owner is
-        actively notified (#203, "Benachrichtigung statt Zustimmung") - no consent required, the
+        actively notified ("Benachrichtigung statt Zustimmung") - no consent required, the
         association takes effect immediately regardless.
         While the succession of either side is open (ADR-0036, Entscheidung 6) a new association
         is refused with 409 and the code SUCCESSION_OPEN; an association that already exists is
@@ -488,7 +488,7 @@ components:
     AssetType:
       type: string
       description: >
-        The type of an asset on the asset shell (#1899, docs/features/spaces-and-assets.md#assets).
+        The type of an asset on the asset shell (docs/features/spaces-and-assets.md#assets).
         Grants, the Herleitung and the space association name an asset by its type plus id; a type
         without a registered definition answers 404 like an unknown asset.
       enum: [KNOWLEDGE_LIBRARY, PROMPT_LIBRARY]
@@ -768,7 +768,7 @@ components:
       required: [items, hiddenCount]
       description: >
         The "Zuordnungen" of one asset: the associations the caller may be shown, and the number of
-        further ones they may not (#1939).
+        further ones they may not.
       properties:
         items:
           type: array
@@ -791,7 +791,7 @@ components:
         One asset's view of one space it is associated with - the "Zuordnungen" list
         (GET /v1/assets/{assetType}/{assetId}/spaces), never filtered by the caller's own space
         membership. Only spaceId and spaceName are sent to every reader; the remaining fields are
-        present exactly for a caller with at least MANAGER on the asset (#1939).
+        present exactly for a caller with at least MANAGER on the asset.
       properties:
         spaceId:
           type: string
@@ -827,8 +827,7 @@ components:
       type: object
       required: [allAccounts, groupCount, userCount]
       description: >
-        How far an asset reaches right now, derived from its grants rather than stored (#1931,
-        ADR-0037) - the figures an overview turns into a badge ("Alle", "3 Gruppen, 2 Personen",
+        How far an asset reaches right now, derived from its grants rather than stored (ADR-0037) - the figures an overview turns into a badge ("Alle", "3 Gruppen, 2 Personen",
         "nur Sie"). Counted are the unexpired grants; the owner's own grant is among userCount.
       properties:
         allAccounts:
@@ -854,7 +853,7 @@ components:
         source connection detail (LibraryResponse's sourcePath/sourceUrl/
         sourceCredentialsSet) is internal server infrastructure, not merely
         "configuration" - it stays hidden from a VIEWER and even an EDITOR, matching the MANAGER
-        bar PUT /api/v1/libraries/{libraryId} already enforces for changing it (#507).
+        bar PUT /api/v1/libraries/{libraryId} already enforces for changing it.
       enum: [VIEWER, EDITOR, MANAGER, OWNER]
       example: VIEWER
 
@@ -864,7 +863,7 @@ components:
         Who an asset grant targets - a single user, a group, or every account of the organization
         (ALL_ACCOUNTS, "Alle Konten"). ALL_ACCOUNTS replaces the former release level
         AssetVisibility.ORGANIZATION: organization-wide reach is a grant like any other, kept in
-        the same list and the same grant history (#1931, ADR-0037). It is deliberately no
+        the same list and the same grant history (ADR-0037). It is deliberately no
         synthetic group object - such an object would appear in every group picker and would have
         to be kept out of the directory sync, the stewardship and the transfer one by one. See
         docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten.

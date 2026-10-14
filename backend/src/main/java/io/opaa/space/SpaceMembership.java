@@ -17,9 +17,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One membership of a space, held by a person or by a group (#1815, ADR-0036 Entscheidung 6). The
- * two subject columns and the "exactly one of them" check are the same shape {@code AssetGrant}
- * uses, so both rights axes address a subject identically.
+ * One membership of a space, held by a person or by a group (ADR-0036 Entscheidung 6). The two
+ * subject columns and the "exactly one of them" check are the same shape {@code AssetGrant} uses,
+ * so both rights axes address a subject identically.
  *
  * <p>A group membership confers its role on every member of the group without a row of their own,
  * and the role ends the moment they leave the group - see {@link SpaceAccessPolicy#effectiveRole}.

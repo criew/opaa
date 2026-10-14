@@ -22,8 +22,8 @@ import software.amazon.awssdk.services.s3.S3Client;
  * never run; the endpoint and addressing style as configured; request and response checksums only
  * where the protocol requires them, because S3-compatible stores do not all understand the SDK's
  * newer checksums; the Apache 5 client with one timeout for connection, socket and attempt; a proxy
- * and relaxed TLS when asked; and an exponential, capped retry strategy without a circuit breaker.
- * Holds the HTTP connection pool and must be closed.
+ * when asked; the SDK's full certificate check; and an exponential, capped retry strategy without a
+ * circuit breaker. Holds the HTTP connection pool and must be closed.
  */
 public final class S3SdkClient implements AutoCloseable {
 

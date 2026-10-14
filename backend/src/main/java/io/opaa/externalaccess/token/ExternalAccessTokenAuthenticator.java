@@ -70,8 +70,8 @@ public class ExternalAccessTokenAuthenticator {
    *
    * <p>Exactly one path may ask this, and it pays for it: it becomes an oracle for which values
    * exist while the channel is closed. The MCP endpoint owes a closed channel two different answers
-   * - {@code 503} for a usable token, {@code 404} for anything else (#1721, ADR-0035) - and cannot
-   * tell them apart without checking the value first.
+   * - {@code 503} for a usable token, {@code 404} for anything else (ADR-0035) - and cannot tell
+   * them apart without checking the value first.
    */
   @Transactional(readOnly = true)
   public Result authenticateWithSwitchLast(String rawValue) {

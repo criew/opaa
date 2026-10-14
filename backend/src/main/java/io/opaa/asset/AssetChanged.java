@@ -4,8 +4,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Domain event for the shell's own double bookkeeping (#238/#892): creating an asset writes one
- * {@link AssetVisibilityHistoryService} interval and one audit entry, side by side - {@link
+ * Domain event for the shell's own double bookkeeping: creating an asset writes one {@link
+ * AssetVisibilityHistoryService} interval and one audit entry, side by side - {@link
  * AssetHistoryListener} and {@link AssetAuditListener} each write their half. Published only by
  * {@link AssetShellService}, synchronously and inside its transaction, so both writes roll back
  * with the operation - the same contract as {@link AssetGrantChanged}.

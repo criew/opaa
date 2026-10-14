@@ -11,7 +11,7 @@ import { RemoteConnectionLines } from './GenericSourceViews'
 import ScopeConsequence from './ScopeConsequence'
 import type { StoredLibrarySource } from './types'
 
-// ADR-0040, Nachtrag „SharePoint“: the document libraries of a SharePoint library, one chip each.
+// ADR-0047: the document libraries of a SharePoint library, one chip each.
 export function SharePointScopeView({ library }: { library: StoredLibrarySource }) {
   const libraries = sharePointLibrariesOf(sharePointSettingsFromLibrary(library))
   return (

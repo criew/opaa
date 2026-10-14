@@ -275,7 +275,7 @@ jobs:
       # Workflow.
       # Beide Delta-Tabellen, je Pfad eine, hintereinander — nie zu einer zusammengefasst: die
       # Zahlen der beiden Pfade sind an unterschiedlichen Fenstern und mit unterschiedlicher
-      # Schwellenbehandlung gemessen (ADR-0012, Nachtrag, Entscheidung 12). Jeder Pfad erscheint in
+      # Schwellenbehandlung gemessen (ADR-0012, Entscheidung 12). Jeder Pfad erscheint in
       # jedem Lauf mit einem benannten Zustand — beurteilt, nicht erreicht oder bewusst ungegated.
       # Ein stillschweigend fehlender Abschnitt wäre die eine Ausgabe, die ein unbeurteilter Pfad
       # nicht haben darf: Ein grüner Lauf sähe dann aus, als sei alles geprüft worden.
@@ -418,7 +418,7 @@ jobs:
                 'jeder gegen seine eigene Baseline. Fehlgeschlagen ist der Pfad, dessen Tabelle ' +
                 'unten eine Regression oder eine ungültige Baseline ausweist — der andere kann im ' +
                 'selben Lauf grün sein. Die Zahlen der beiden Pfade sind nicht miteinander ' +
-                'vergleichbar (ADR-0012, Nachtrag Pipeline-Messpfad).'
+                'vergleichbar (ADR-0012, Entscheidung 11).'
               : 'Dieser Lauf führt genau ein Urteil, das des Rohvektor-Pfads: Der Pipeline-Pfad ' +
                 'dieser Domäne wird bewusst nicht beurteilt (siehe den zweiten Abschnitt unten). ' +
                 'Der Fehlschlag betrifft daher den Rohvektor-Pfad.';
@@ -691,7 +691,7 @@ jobs:
             ].join('\n\n---\n\n');
             const pathNote = 'Dieser Lauf führt genau ein Urteil, das des Mehrrunden-Messpfads. ' +
               'Seine Zahlen sind mit denen des Rohvektor- und des Pipeline-Pfads nicht ' +
-              'vergleichbar (ADR-0012, Nachtrag Mehrrunden-Messpfad): Dort ist jede Zeile eine ' +
+              'vergleichbar (ADR-0012, Entscheidung 38): Dort ist jede Zeile eine ' +
               'Einzelfrage ohne Verlauf, hier eine Runde eines Gesprächs. Eine unvergleichbare ' +
               'Baseline lässt diesen Job fehlschlagen — die Messgrundlage hat sich bewegt, und ' +
               'ihre Festpunktabweichung steht in der Tabelle unten. Ein roter Lauf meint deshalb ' +

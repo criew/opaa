@@ -20,9 +20,9 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Reads stored chunks straight out of the pgvector table - text and metadata only, the embedding
- * column is never selected. Two callers: the administration page (#1230), which lists a whole
- * document at once, and the reading path {@link PassageFetchService} (#1720), which reads a bounded
- * window or one page at a time and never materializes a whole document.
+ * column is never selected. Two callers: the administration page, which lists a whole document at
+ * once, and the reading path {@link PassageFetchService}, which reads a bounded window or one page
+ * at a time and never materializes a whole document.
  *
  * <p>The organization boundary is checked against the {@code documents} table, never against the
  * chunk's own {@code organization_id} metadatum: older chunks may lack it, and a chunk whose
@@ -32,8 +32,8 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p>Organization membership is not a reading permission. The two administration entries ({@link
  * #inspectChunk}, {@link #inspectDocumentChunks}) therefore also require the caller to be able to
- * read the document's library, with no system-administration floor (#1828) - a chunk carries the
- * document's text. The reading path passes its own scope in and keeps deciding for itself.
+ * read the document's library, with no system-administration floor - a chunk carries the document's
+ * text. The reading path passes its own scope in and keeps deciding for itself.
  */
 @Service
 public class ChunkInspectionService {
@@ -65,9 +65,9 @@ public class ChunkInspectionService {
 
   /**
    * The chunk {@code chunkId} names, for the administration page - {@link #findChunk} plus the
-   * reading permission on its library (#1828). Empty for an id the organization boundary already
-   * hides; {@link io.opaa.common.AccessDeniedException} when the caller may administer that library
-   * but not read it.
+   * reading permission on its library. Empty for an id the organization boundary already hides;
+   * {@link io.opaa.common.AccessDeniedException} when the caller may administer that library but
+   * not read it.
    */
   public Optional<ChunkInspection> inspectChunk(CurrentUser caller, String chunkId) {
     Optional<ChunkInspection> chunk =
@@ -91,7 +91,7 @@ public class ChunkInspectionService {
 
   /**
    * Every stored chunk of the document, for the administration page - {@link #listDocumentChunks}
-   * plus the reading permission on its library (#1828), checked before a single chunk is read.
+   * plus the reading permission on its library, checked before a single chunk is read.
    */
   public DocumentChunks inspectDocumentChunks(CurrentUser caller, UUID documentId) {
     Document document = requireDocument(caller.organizationId(), documentId);
@@ -173,8 +173,8 @@ public class ChunkInspectionService {
   /**
    * The chunks of {@code documentId} whose {@code chunk_index} lies within {@code [fromIndex,
    * toIndex]}, in index order. Bounded at the source: the caller that only needs a passage and its
-   * neighbours must not pay for a document with tens of thousands of chunks (#1720). A chunk
-   * without a {@code chunk_index} is not in any window.
+   * neighbours must not pay for a document with tens of thousands of chunks. A chunk without a
+   * {@code chunk_index} is not in any window.
    */
   public List<ChunkInspection> listChunkWindow(
       UUID organizationId, UUID documentId, int fromIndex, int toIndex) {
@@ -202,8 +202,8 @@ public class ChunkInspectionService {
   /**
    * At most {@code limit} chunks of {@code documentId} with a {@code chunk_index} greater than
    * {@code afterIndex}, in index order - the page a caller reading a whole document walks with, so
-   * a character cap can stop the walk instead of trimming an already materialized text (#1720).
-   * {@code afterIndex} of {@code null} starts at the first chunk.
+   * a character cap can stop the walk instead of trimming an already materialized text. {@code
+   * afterIndex} of {@code null} starts at the first chunk.
    */
   public List<ChunkInspection> listChunkPage(
       UUID organizationId, UUID documentId, Integer afterIndex, int limit) {

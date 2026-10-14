@@ -13,9 +13,9 @@ import java.util.List;
  * never touched by a run: a change of mechanism revokes nothing silently.
  *
  * <p>{@code accountsLocked}/{@code accountsUnlocked} are the accounts whose access this run takes
- * away or gives back (#1818); {@code accountLocksWithheld} names the administrator a run did not
- * lock because no login-capable one would have remained (ADR-0036, Entscheidung 6) - withheld, and
- * said so, rather than silently left out.
+ * away or gives back; {@code accountLocksWithheld} names the administrator a run did not lock
+ * because no login-capable one would have remained (ADR-0036, Entscheidung 6) - withheld, and said
+ * so, rather than silently left out.
  */
 public record SyncReport(
     DirectorySyncOutcome outcome,

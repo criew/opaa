@@ -21,12 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Creates, renames and (recursively) deletes {@link LibraryFolder}s (#820, Epic #520 Phase 2,
- * ADR-0020) - the CRUD counterpart to {@code LibraryDocumentService}'s document upload/delete,
- * sharing its permission floor ({@link AssetRole#EDITOR}, see {@link #requireEditable}) and its
- * "only an UPLOAD library accepts this" restriction (see {@link #requireUploadLibrary}): the
- * folders of a FILESYSTEM (#824) or HTTP_DIRECTORY (#1277) library are read-only, derived from the
- * crawled directory structure itself, not editable through this service.
+ * Creates, renames and (recursively) deletes {@link LibraryFolder}s (ADR-0020) - the CRUD
+ * counterpart to {@code LibraryDocumentService}'s document upload/delete, sharing its permission
+ * floor ({@link AssetRole#EDITOR}, see {@link #requireEditable}) and its "only an UPLOAD library
+ * accepts this" restriction (see {@link #requireUploadLibrary}): the folders of a FILESYSTEM or
+ * HTTP_DIRECTORY library are read-only, derived from the crawled directory structure itself, not
+ * editable through this service.
  *
  * <p>{@link #materializeFolderPath} and {@link #pruneOrphanedFolders} are the internal counterparts
  * such an indexing run uses to mirror that structure - deliberately bypassing {@link
@@ -78,10 +78,10 @@ public class LibraryFolderService {
     this.accessService = accessService;
     this.documentRepository = documentRepository;
     this.documentService = documentService;
-    // #823 review (pre-existing #824 race, made user-reachable by #823's concurrent, request-
-    // driven callers): see materializeSingleFolder's own comment for why the insert attempt needs
-    // its own REQUIRES_NEW transaction rather than running inside the caller's ambient one -
-    // mirrors ChatService/SpaceService's identical constructor-built TransactionTemplate.
+    // Concurrent, request-driven callers race on the folder insert: see materializeSingleFolder's
+    // own comment for why the insert attempt needs its own REQUIRES_NEW transaction rather than
+    // running inside the caller's ambient one - mirrors ChatService/SpaceService's identical
+    // constructor-built TransactionTemplate.
     this.requiresNewTransactionTemplate = new TransactionTemplate(transactionManager);
     this.requiresNewTransactionTemplate.setPropagationBehavior(
         TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -108,16 +108,15 @@ public class LibraryFolderService {
     LibraryFolder folder =
         new LibraryFolder(libraryId, parentFolderId, name, library.getOrganizationId());
     try {
-      // saveAndFlush, not save (review finding #827): LibraryFolder assigns its own @Id in the
-      // constructor, so a plain save's INSERT does not have to happen before this method returns -
-      // Hibernate is free to defer it to the next flush, which could be well outside this try block
-      // (e.g. at transaction commit, or the next query). A deferred INSERT would let the unique
-      // index violation from a race ensureNameAvailable above missed surface as an unhandled
+      // saveAndFlush, not save: LibraryFolder assigns its own @Id in the constructor, so a plain
+      // save's INSERT does not have to happen before this method returns - Hibernate is free to
+      // defer it to the next flush, which could be well outside this try block (e.g. at transaction
+      // commit, or the next query). A deferred INSERT would let the unique index violation from a
+      // race ensureNameAvailable above missed surface as an unhandled
       // DataIntegrityViolationException/ConstraintViolationException far from here, turning into a
       // 500 instead of the 409 this catch is meant to produce - flushing here forces the INSERT
-      // (and
-      // therefore uk_library_folders_root_name/uk_library_folders_child_name) to run
-      // and either succeed or throw inside this try.
+      // (and therefore uk_library_folders_root_name/uk_library_folders_child_name) to run and
+      // either succeed or throw inside this try.
       folder = folderRepository.saveAndFlush(folder);
     } catch (DataIntegrityViolationException e) {
       // Race-safety net for ensureNameAvailable above (mirrors LibraryDocumentService#
@@ -193,16 +192,16 @@ public class LibraryFolderService {
 
   /**
    * Materializes (idempotently) the {@link LibraryFolder} chain for {@code segments} - one row per
-   * path component, reusing an existing folder at the same level instead of creating a duplicate
-   * (#824). The internal counterpart to {@link #createFolder} an indexing run uses to mirror its
-   * source directory structure - see this class's own Javadoc for why it bypasses {@link
-   * #requireUploadLibrary}/{@link #requireEditable}. Since #1277 an {@code HTTP_DIRECTORY} run uses
-   * the same path, with the crawled URL path relative to the start URL as its segments.
+   * path component, reusing an existing folder at the same level instead of creating a duplicate.
+   * The internal counterpart to {@link #createFolder} an indexing run uses to mirror its source
+   * directory structure - see this class's own Javadoc for why it bypasses {@link
+   * #requireUploadLibrary}/{@link #requireEditable}. An {@code HTTP_DIRECTORY} run uses the same
+   * path, with the crawled URL path relative to the start URL as its segments.
    *
-   * <p><b>{@link #validateName}/{@link #MAX_DEPTH} are bypassed too, deliberately</b> (#824 review,
-   * Befund 4b) - not just the permission/upload-type checks named above. A mirrored directory name
-   * is whatever the filesystem allows (which can differ from what {@link #validateName} accepts for
-   * a manually-typed {@code UPLOAD} folder name), and a real directory tree is free to nest deeper
+   * <p><b>{@link #validateName}/{@link #MAX_DEPTH} are bypassed too, deliberately</b> - not just
+   * the permission/upload-type checks named above. A mirrored directory name is whatever the
+   * filesystem allows (which can differ from what {@link #validateName} accepts for a
+   * manually-typed {@code UPLOAD} folder name), and a real directory tree is free to nest deeper
    * than {@link #MAX_DEPTH}; rejecting either would mean silently refusing to mirror part of the
    * source instead of representing it as-is. Every mirroring run judges its segments on its own
    * side through {@code SourceFolderPath} - a segment no folder row could carry leaves the item at
@@ -212,15 +211,14 @@ public class LibraryFolderService {
    * input.
    *
    * <p><b>A single {@code fk_documents_folder} violation can occur if two runs of the same library
-   * overlap</b> (#824 review, Befund 4b) - e.g. after {@code IndexingJobRecoveryScheduler} restarts
-   * a run whose previous attempt was merely stuck, not actually finished, past {@code
-   * staleJobTimeout}: if the stale run's own {@code LibraryDocumentService#deleteDocument}-driven
-   * document write races the fresh run's {@link #pruneOrphanedFolders} deleting the very folder
-   * that document is about to reference, the insert fails loudly (the constraint is {@code
-   * RESTRICT}, by design - see this class's own Javadoc). Not specifically guarded against here:
-   * the next run re-materializes the same folder from the still uncrawled directory and re-attempts
-   * the document, so the condition self-heals rather than leaving a permanently broken document
-   * behind.
+   * overlap</b> - e.g. after {@code IndexingJobRecoveryScheduler} restarts a run whose previous
+   * attempt was merely stuck, not actually finished, past {@code staleJobTimeout}: if the stale
+   * run's own {@code LibraryDocumentService#deleteDocument}-driven document write races the fresh
+   * run's {@link #pruneOrphanedFolders} deleting the very folder that document is about to
+   * reference, the insert fails loudly (the constraint is {@code RESTRICT}, by design - see this
+   * class's own Javadoc). Not specifically guarded against here: the next run re-materializes the
+   * same folder from the still uncrawled directory and re-attempts the document, so the condition
+   * self-heals rather than leaving a permanently broken document behind.
    *
    * @param segments the path components between the library's {@code sourcePath} and the file
    *     itself, outermost first; an empty list means the library's root
@@ -255,16 +253,16 @@ public class LibraryFolderService {
 
   /**
    * The insert attempt below runs in its own {@code REQUIRES_NEW} transaction ({@link
-   * #requiresNewTransactionTemplate}), not the caller's ambient one - a pre-existing #824 race
-   * (review, Befund 6) that #823 made user-reachable: on Postgres, a unique-constraint violation
-   * aborts the <em>whole</em> transaction it occurs in, not just the failing statement, so without
-   * this isolation, the retry lookup in the {@code catch} block below would itself fail against the
-   * same now-poisoned transaction/connection ("current transaction is aborted, commands ignored
-   * until end of transaction block") - turning a legitimate reuse into a loud 500 instead. Two
-   * concurrent uploads racing the same brand-new folder path (two browser tabs, or a whole
-   * dragged-and-dropped tree's parallel-enough requests) hit exactly this window. Isolating the
-   * insert into its own transaction means only that small transaction rolls back on a race; the
-   * retry lookup then runs against the resumed, still-healthy outer transaction instead.
+   * #requiresNewTransactionTemplate}), not the caller's ambient one - a pre-existing #824 race that
+   * #823 made user-reachable: on Postgres, a unique-constraint violation aborts the <em>whole</em>
+   * transaction it occurs in, not just the failing statement, so without this isolation, the retry
+   * lookup in the {@code catch} block below would itself fail against the same now-poisoned
+   * transaction/connection ("current transaction is aborted, commands ignored until end of
+   * transaction block") - turning a legitimate reuse into a loud 500 instead. Two concurrent
+   * uploads racing the same brand-new folder path (two browser tabs, or a whole dragged-and-dropped
+   * tree's parallel-enough requests) hit exactly this window. Isolating the insert into its own
+   * transaction means only that small transaction rolls back on a race; the retry lookup then runs
+   * against the resumed, still-healthy outer transaction instead.
    */
   private UUID materializeSingleFolder(KnowledgeLibrary library, UUID parentFolderId, String name) {
     Optional<LibraryFolder> existing = findByParentAndName(library.getId(), parentFolderId, name);
@@ -298,12 +296,12 @@ public class LibraryFolderService {
 
   /**
    * Resolves (idempotently creating as needed) the folder chain described by {@code pathSegments},
-   * relative to {@code baseFolderId} in an {@code UPLOAD} library (#823, Epic #520 Phase 4) - the
-   * upload-path counterpart to {@link #materializeFolderPath}'s connector-only mirroring. Unlike
-   * that method, this one enforces every check {@link #createFolder} itself enforces - permission,
-   * {@code UPLOAD}-only, name shape, depth - once for the whole chain, exactly as if each segment
-   * had been created one REST call at a time; an existing folder at any level is reused rather than
-   * duplicated, mirroring {@link #materializeSingleFolder}.
+   * relative to {@code baseFolderId} in an {@code UPLOAD} library - the upload-path counterpart to
+   * {@link #materializeFolderPath}'s connector-only mirroring. Unlike that method, this one
+   * enforces every check {@link #createFolder} itself enforces - permission, {@code UPLOAD}-only,
+   * name shape, depth - once for the whole chain, exactly as if each segment had been created one
+   * REST call at a time; an existing folder at any level is reused rather than duplicated,
+   * mirroring {@link #materializeSingleFolder}.
    *
    * @param baseFolderId the folder {@code pathSegments} is relative to; {@code null} means the
    *     library's root, mirroring {@link #createFolder}'s own {@code parentFolderId}
@@ -319,15 +317,13 @@ public class LibraryFolderService {
     requireUploadLibrary(library);
     resolveParent(libraryId, baseFolderId);
 
-    // #823 review, Befund 1 (follow-up to Befund 6): every segment is validated - and the
-    // resulting depth checked - in this own upfront pass, before materializeSingleFolder ever
-    // creates a single row. materializeSingleFolder's own insert now runs in its own REQUIRES_NEW
-    // transaction (see its Javadoc, Befund 6) and therefore commits independently the moment it
-    // succeeds; validating and materializing one segment at a time would let an earlier, valid
-    // segment's folder survive permanently even when a later segment's invalid name or a depth
-    // overrun aborts this call - exactly the partial folder skeleton this whole method exists to
-    // avoid, just one level further in than the original "resolved before any byte is written"
-    // ordering bug (LibraryDocumentService#uploadDocument's own Befund 1 fix).
+    // Every segment is validated - and the resulting depth checked - in this own upfront pass,
+    // before materializeSingleFolder ever creates a single row. materializeSingleFolder's own
+    // insert runs in its own REQUIRES_NEW transaction (see its Javadoc) and therefore commits
+    // independently the moment it succeeds; validating and materializing one segment at a time
+    // would let an earlier, valid segment's folder survive permanently even when a later segment's
+    // invalid name or a depth overrun aborts this call - exactly the partial folder skeleton this
+    // whole method exists to avoid.
     List<String> names = new ArrayList<>(pathSegments.size());
     int depth = baseFolderId == null ? 0 : depthOfParentChain(baseFolderId);
     for (String rawSegment : pathSegments) {
@@ -348,9 +344,9 @@ public class LibraryFolderService {
 
   /**
    * {@link #validateName} plus the extra checks a path segment needs beyond a single, manually
-   * typed folder name (#823): no {@code "\"} (a Windows-style separator {@code validateName}'s own
-   * {@code "/"} check does not catch) and no {@code ".."}/{@code "."} (a relative-path traversal
-   * segment that means something other than a literal folder name).
+   * typed folder name: no {@code "\"} (a Windows-style separator {@code validateName}'s own {@code
+   * "/"} check does not catch) and no {@code ".."}/{@code "."} (a relative-path traversal segment
+   * that means something other than a literal folder name).
    */
   private String validatePathSegment(String rawSegment) {
     String name = validateName(rawSegment);
@@ -373,11 +369,11 @@ public class LibraryFolderService {
   /**
    * Removes every {@link LibraryFolder} of {@code libraryId} that is both absent from {@code
    * currentFolderIds} (this indexing run's own directory walk never touched it - its source
-   * directory is gone) and empty, including transitively (#824, docs/features/knowledge-sources.md
+   * directory is gone) and empty, including transitively (docs/features/knowledge-sources.md
    * "Ordner in Konnektorbibliotheken"). Every calling executor calls {@code
-   * StaleDocumentCleanupService#cleanupVanished} before this method (#886): a document whose
-   * backing file disappeared is already gone by the time this runs, so a folder left holding only
-   * such a document is correctly treated as empty and pruned, not left standing.
+   * StaleDocumentCleanupService#cleanupVanished} before this method: a document whose backing file
+   * disappeared is already gone by the time this runs, so a folder left holding only such a
+   * document is correctly treated as empty and pruned, not left standing.
    *
    * <p>Walked leaf-first (post-order): a folder only qualifies once every one of its own subfolders
    * has already either survived (still referenced, or non-empty) or been removed - mirroring {@link
@@ -386,18 +382,17 @@ public class LibraryFolderService {
    *
    * @throws IllegalArgumentException if {@code library}'s source type does not mirror a directory
    *     structure - see {@link #materializeFolderPath}'s own Javadoc, which this method mirrors
-   *     (#824 review, Befund 4a/4b)
    */
   @Transactional
   public void pruneOrphanedFolders(KnowledgeLibrary library, Set<UUID> currentFolderIds) {
     requireMirroredSourceLibrary(library);
     UUID libraryId = library.getId();
     List<LibraryFolder> all = folderRepository.findByLibraryId(libraryId);
-    // Built by hand, not via Collectors.groupingBy (#824 review self-catch): groupingBy's
-    // classifier is required to return a non-null key, but LibraryFolder#getParentFolderId is
-    // null for exactly the root-level folders this method must also walk - java.util.HashMap
-    // itself has no such restriction, so a plain computeIfAbsent loop handles the null-parent
-    // (root) case the same way as every other parent id.
+    // Built by hand, not via Collectors.groupingBy: groupingBy's classifier is required to return a
+    // non-null key, but LibraryFolder#getParentFolderId is null for exactly the root-level folders
+    // this method must also walk - java.util.HashMap itself has no such restriction, so a plain
+    // computeIfAbsent loop handles the null-parent (root) case the same way as every other parent
+    // id.
     Map<UUID, List<LibraryFolder>> childrenByParent = new HashMap<>();
     for (LibraryFolder folder : all) {
       childrenByParent
@@ -540,11 +535,11 @@ public class LibraryFolderService {
 
   /**
    * ADR-0020: only an {@code UPLOAD} library accepts folder creation/rename/deletion through this
-   * service - a {@code FILESYSTEM} (#824) or {@code HTTP_DIRECTORY} (#1277) library's folders
-   * mirror its crawled directory structure automatically, and {@code RSS_FEED} has no directory
-   * concept at all. {@code 409} rather than {@code 400}, mirroring {@code LibraryDocumentService#
-   * requireUploadLibrary}: the request is well-formed, it simply conflicts with this library's
-   * fixed, immutable source type.
+   * service - a {@code FILESYSTEM} or {@code HTTP_DIRECTORY} library's folders mirror its crawled
+   * directory structure automatically, and {@code RSS_FEED} has no directory concept at all. {@code
+   * 409} rather than {@code 400}, mirroring {@code LibraryDocumentService# requireUploadLibrary}:
+   * the request is well-formed, it simply conflicts with this library's fixed, immutable source
+   * type.
    */
   private void requireUploadLibrary(KnowledgeLibrary library) {
     if (!SourceType.UPLOAD.equals(library.getSourceType())) {

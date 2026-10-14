@@ -46,9 +46,9 @@ public interface SpaceAssetAssociationRepository
   }
 
   /**
-   * Every association of the given spaces in one query - the overview card's "Quellen" figure
-   * (#682) is counted from this in memory, because a plain MEMBER's figure must only include the
-   * assets they may read, which no grouped SQL count can express without the caller's readable set.
+   * Every association of the given spaces in one query - the overview card's "Quellen" figure is
+   * counted from this in memory, because a plain MEMBER's figure must only include the assets they
+   * may read, which no grouped SQL count can express without the caller's readable set.
    */
   List<SpaceAssetAssociation> findBySpaceIdIn(Collection<UUID> spaceIds);
 }

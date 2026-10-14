@@ -75,9 +75,9 @@ public class QueryMetrics {
   }
 
   /**
-   * The model answered, but no sub-query related to the question (#1254) - it replaced the question
-   * instead of restating it. Separate from {@link #recordFailedDecomposition()} because a rising
-   * count here points at the prompt or the chat model, not at availability.
+   * The model answered, but no sub-query related to the question - it replaced the question instead
+   * of restating it. Separate from {@link #recordFailedDecomposition()} because a rising count here
+   * points at the prompt or the chat model, not at availability.
    */
   public void recordDegenerateDecomposition() {
     degenerateDecompositionCounter.increment();

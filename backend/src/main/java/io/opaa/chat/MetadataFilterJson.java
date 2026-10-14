@@ -56,7 +56,7 @@ final class MetadataFilterJson {
       formatFields.add(entry);
     }
     if (!formatFields.isEmpty()) {
-      // Omitted when empty, for the same reason libraryFields is: a row written before #1242
+      // Omitted when empty, for the same reason libraryFields is: a row written without the field
       // reads back identically.
       json.put("formatFields", formatFields);
     }

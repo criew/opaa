@@ -45,7 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A Nextcloud (ADR-0040, Nachtrag Nextcloud): {@code sourceUrl} is the instance address, stored
+ * A Nextcloud (ADR-0045, Entscheidung 11): {@code sourceUrl} is the instance address, stored
  * normalised; the credentials are an account's {@code Benutzername:App-Passwort} (Basic Auth) - a
  * technical user's for a library, a person's own for her private library - sent only to that
  * address; the folders are the connector settings. A changed address or changed folders discard the

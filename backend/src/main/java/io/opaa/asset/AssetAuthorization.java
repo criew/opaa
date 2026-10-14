@@ -59,8 +59,8 @@ public class AssetAuthorization {
 
   /**
    * Requires at least {@code required}, telling "no access at all" from "some access, but not
-   * enough" (#436): a person the asset does not reach gets the same {@code 404} as for an unknown
-   * asset, one who reaches it too weakly a {@code 403}.
+   * enough": a person the asset does not reach gets the same {@code 404} as for an unknown asset,
+   * one who reaches it too weakly a {@code 403}.
    *
    * @return the caller's resolved role, at least {@code required}.
    */
@@ -121,8 +121,8 @@ public class AssetAuthorization {
 
   /**
    * Why {@code userId} reaches the asset - the ways of the formula, then the system administration
-   * where it carries the role (#1822, ADR-0036 Entscheidung 9). A capability never appears: it
-   * opens an Anlegepfad, never a content.
+   * where it carries the role (ADR-0036 Entscheidung 9). A capability never appears: it opens an
+   * Anlegepfad, never a content.
    */
   public List<AccessPath> accessPaths(Asset asset, UUID userId, boolean systemAdmin) {
     List<AccessPath> paths =

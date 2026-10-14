@@ -173,10 +173,10 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   /**
-   * Hands the asset to {@code newOwner} as part of a transfer (#1834, ADR-0036 Entscheidung 10):
-   * the owner columns, the grant ownership goes with, the ownership interval and the audit entry. A
-   * role comes from grant rows alone, so without the grant half the successor would hold nothing
-   * and the previous owner everything.
+   * Hands the asset to {@code newOwner} as part of a transfer (ADR-0036 Entscheidung 10): the owner
+   * columns, the grant ownership goes with, the ownership interval and the audit entry. A role
+   * comes from grant rows alone, so without the grant half the successor would hold nothing and the
+   * previous owner everything.
    */
   private void transferOwnership(
       Asset asset, PermissionSubject newOwner, UUID actorUserId, UUID transferId, Instant at) {
@@ -205,11 +205,10 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   /**
-   * Hands one asset to {@code newOwner} outside a {@link io.opaa.permission.PermissionTransfer}
-   * (#1941): the same four moves as {@link #transferOwnership}, but without a transfer to belong to
-   * - the history intervals carry the ordinary causes of a grant given and revoked, so no interval
-   * points at a transfer row that does not exist. Handing the asset to its current owner is a
-   * no-op.
+   * Hands one asset to {@code newOwner} outside a {@link io.opaa.permission.PermissionTransfer}:
+   * the same four moves as {@link #transferOwnership}, but without a transfer to belong to - the
+   * history intervals carry the ordinary causes of a grant given and revoked, so no interval points
+   * at a transfer row that does not exist. Handing the asset to its current owner is a no-op.
    *
    * @return whether the owner actually changed.
    */

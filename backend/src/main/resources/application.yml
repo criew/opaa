@@ -1,9 +1,9 @@
 server:
   address: ${OPAA_SERVER_ADDRESS:localhost}
   # Honor X-Forwarded-* from the reverse proxy chain so that same-origin browser requests are
-  # recognized as such behind a TLS-terminating proxy (#553). The outer proxy MUST set
-  # X-Forwarded-Proto authoritatively (overwriting any client-supplied value) - see
-  # docs/handbuch/betrieb.md; a spoofed header would otherwise let a request bypass the CORS check.
+  # recognized as such behind a TLS-terminating proxy. The outer proxy MUST set X-Forwarded-Proto
+  # authoritatively (overwriting any client-supplied value) - see docs/handbuch/betrieb.md; a
+  # spoofed header would otherwise let a request bypass the CORS check.
   forward-headers-strategy: framework
   # A stop lets requests already being handled finish instead of cutting them off; new connections
   # are refused from the first moment of the shutdown. The window below bounds the wait.
@@ -32,7 +32,7 @@ spring:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
-      # #758: chat is now resolved at runtime from the active io.opaa.llm.LlmModel row via
+      # Chat is now resolved at runtime from the active io.opaa.llm.LlmModel row via
       # io.opaa.llm.ActiveChatModelResolver, built programmatically per request rather than once at
       # startup from this static autoconfiguration - so the ChatModel/ChatClient.Builder beans it
       # would otherwise register are unused dead weight. spring.ai.openai.chat.* below is untouched
@@ -46,16 +46,15 @@ spring:
     open-in-view: false
   servlet:
     multipart:
-      # Bound to the exact same value as opaa.upload.max-file-size below (#420 code review, finding
-      # 2), not a separately chosen, larger container-level cap: a gap between the two would leave
-      # every file above this limit and up to that gap answered by Spring's own untranslated 500 /
-      # multipart error page instead of GlobalExceptionHandler's German 413. Both this and
-      # opaa.upload.max-file-size read the same OPAA_UPLOAD_MAX_FILE_SIZE env var (bytes, "B" suffix
-      # for DataSize parsing here) so they can never drift apart. GlobalExceptionHandler still
-      # answers 413 for the (rare, container-level) MaxUploadSizeExceededException this produces -
-      # not because the size differs from opaa.upload.max-file-size's own check, but because
-      # multipart request framing overhead can push a request that size alone but under the limit
-      # over max-request-size first.
+      # Bound to the exact same value as opaa.upload.max-file-size below, not a separately chosen,
+      # larger container-level cap: a gap between the two would leave every file above this limit
+      # and up to that gap answered by Spring's own untranslated 500 / multipart error page instead
+      # of GlobalExceptionHandler's German 413. Both this and opaa.upload.max-file-size read the
+      # same OPAA_UPLOAD_MAX_FILE_SIZE env var (bytes, "B" suffix for DataSize parsing here) so they
+      # can never drift apart. GlobalExceptionHandler still answers 413 for the (rare,
+      # container-level) MaxUploadSizeExceededException this produces - not because the size differs
+      # from opaa.upload.max-file-size's own check, but because multipart request framing overhead
+      # can push a request that size alone but under the limit over max-request-size first.
       max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}B
       max-request-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}B
   datasource:
@@ -63,16 +62,15 @@ spring:
     username: ${OPAA_DB_USERNAME:opaa}
     password: ${OPAA_DB_PASSWORD:opaa}
     hikari:
-      # #307: written out explicitly as a deliberate value, not left as an implicit Spring Boot
-      # default that could silently drift on a future Boot upgrade. 10 is enough even for the
-      # highest-pressure case #307 measured - many different users' first logins arriving at once
-      # (e.g. a whole organization's staff onboarding in one morning) - because that path no longer
-      # spends more pooled connections than necessary: UserService.findOrCreateUser only ever holds
-      # one connection at a time (#293/#299), and SpaceService.ensureDefaultSpaceForNewUser skips
-      # the existence check that used to double a first login's round trips (see its Javadoc and
-      # UserServiceConcurrentDistinctUserLoginIntegrationTest, which exercises exactly this scenario
-      # at this pool size). Raising this number was considered and rejected as treating the symptom,
-      # not the cause - PR #305 already rejected it once for the same reason.
+      # Written out explicitly as a deliberate value, not left as an implicit Spring Boot default
+      # that could silently drift on a future Boot upgrade. 10 is enough even for the
+      # highest-pressure case - many different users' first logins arriving at once (e.g. a whole
+      # organization's staff onboarding in one morning) - because that path spends no more pooled
+      # connections than necessary: UserService.findOrCreateUser only ever holds one connection at a
+      # time, and SpaceService.ensureDefaultSpaceForNewUser skips a redundant existence check (see
+      # its Javadoc and UserServiceConcurrentDistinctUserLoginIntegrationTest, which exercises
+      # exactly this scenario at this pool size). Raising this number was considered and rejected as
+      # treating the symptom, not the cause.
       maximum-pool-size: 10
       # Every unqualified name - Liquibase DDL, JPA entities, native queries - resolves through this
       # search_path (ADR-0034). public stays behind the application schema only so an extension
@@ -84,23 +82,21 @@ spring:
     # fall through to public.
     default-schema: ${opaa.database.schema}
   ai:
-    # #762: a single connection path for both functions - the OpenAI-compatible protocol. Ollama
-    # speaks it too (under its own /v1 endpoint), which is why there is no separate "ollama"
-    # provider anymore - see docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei. The
-    # value is fixed, not driven by an environment variable: with the native Ollama starter gone,
-    # "openai" is the only autoconfiguration Spring AI can wire here.
+    # A single connection path for both functions - the OpenAI-compatible protocol. Ollama speaks it
+    # too (under its own /v1 endpoint), which is why there is no separate "ollama" provider anymore
+    # - see docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei. The value is fixed, not
+    # driven by an environment variable: with the native Ollama starter gone, "openai" is the only
+    # autoconfiguration Spring AI can wire here.
     model:
       chat: openai
       embedding: openai
-    # Unlike before #762, the base URL DOES have a default: locally operated models are the
-    # default (docs/features/llm-integration.md#eigene-modelle-zuerst), and that default is
-    # now expressed here directly rather than through a second, native configuration block. The
-    # profile-specific overrides below point at the same Ollama server the removed "ollama" blocks
-    # used to (docker: the "ollama" service name; local/default: localhost) - only the property
-    # holding the address changed, not the target. A real vendor's endpoint still has to be stated
-    # explicitly by overriding the variables below; nothing here silently reaches outside the
-    # organisation, because the default itself stays local. Ollama needs no access key at all, so
-    # the placeholder default below is never sent anywhere that checks it.
+    # The base URL has a default: locally operated models are the default
+    # (docs/features/llm-integration.md#eigene-modelle-zuerst). The profile-specific overrides below
+    # point at the local Ollama server (docker: the "ollama" service name; local/default:
+    # localhost). A real vendor's endpoint has to be stated explicitly by overriding the variables
+    # below; nothing here silently reaches outside the organisation, because the default itself
+    # stays local. Ollama needs no access key at all, so the placeholder default below is never sent
+    # anywhere that checks it.
     openai:
       api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
       base-url: ${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}
@@ -118,9 +114,9 @@ spring:
         timeout: ${OPAA_OPENAI_EMBEDDING_TIMEOUT:180s}
     mcp:
       server:
-        # The MCP server of the external-access channel (#1721, ADR-0035): stateless Streamable
-        # HTTP, synchronous because the tools call synchronous domain services. The path belongs to
-        # the streamable-http group even in the stateless mode - a key under "stateless." would be
+        # The MCP server of the external-access channel (ADR-0035): stateless Streamable HTTP,
+        # synchronous because the tools call synchronous domain services. The path belongs to the
+        # streamable-http group even in the stateless mode - a key under "stateless." would be
         # ignored without a word, and the filter chain rule would then guard another path than the
         # endpoint listens on (io.opaa.mcp.McpEndpoint derives both from this value).
         protocol: STATELESS
@@ -145,9 +141,9 @@ spring:
 
 opaa:
   permission:
-    # Mindestgruppengroesse eines Rechteprofil-Laufs mit Space-Kontext (ADR-0036, #1835). 5 ist
-    # zugleich Voreinstellung und erzwungene Untergrenze: GroupSizeProperties bricht den Start bei
-    # einem kleineren Wert ab.
+    # Mindestgruppengroesse eines Rechteprofil-Laufs mit Space-Kontext (ADR-0036). 5 ist zugleich
+    # Voreinstellung und erzwungene Untergrenze: GroupSizeProperties bricht den Start bei einem
+    # kleineren Wert ab.
     minimum-group-size: ${OPAA_MINIMUM_GROUP_SIZE:5}
   database:
     # PostgreSQL schema that holds every table of OPAA (ADR-0034). It must exist and belong to the
@@ -241,9 +237,9 @@ opaa:
     # completion off; the selection may still hold several chunks of a document.
     max-chunks-per-document: ${OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT:1}
     full-text-search-enabled: ${OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED:true}
-    # #1050: how many fused candidates the rerank stage scores, and the budget the fusion keeps
-    # for it while reranking runs. An Ebene-1 benchmark value (see QueryProperties); 0 switches the
-    # stage off through its own parameter, independently of the role switch below.
+    # How many fused candidates the rerank stage scores, and the budget the fusion keeps for it
+    # while reranking runs. An Ebene-1 benchmark value (see QueryProperties); 0 switches the stage
+    # off through its own parameter, independently of the role switch below.
     rerank-candidate-count: ${OPAA_QUERY_RERANK_CANDIDATE_COUNT:50}
     # Sizes the selection by score instead of always filling top-k (RelevanceCutoffProperties):
     # fixed | relative | knee. top-k stays the upper bound. Ebene-1 benchmark values.
@@ -276,9 +272,9 @@ opaa:
     neighbor-chunks:
       radius: ${OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS:1}
       max-added-characters: ${OPAA_QUERY_NEIGHBOR_CHUNKS_MAX_ADDED_CHARACTERS:40000}
-    # #1070: the entry condition of the core-field filter - the fill level a field must reach in
-    # the asking person's search scope before the filter interface offers it. Committed before the
-    # first measurement (ADR-0012); overridable for tests and deliberate experiments, not an
+    # The entry condition of the core-field filter - the fill level a field must reach in the asking
+    # person's search scope before the filter interface offers it. Committed before the first
+    # measurement (ADR-0012); overridable for tests and deliberate experiments, not an
     # administration setting. The cache TTL bounds staleness of the bestand only; a rights change
     # discards a person's cached options immediately.
     metadata-filter:
@@ -286,9 +282,9 @@ opaa:
       document-date-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_DOCUMENT_DATE_THRESHOLD:0.75}
       library-field-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_LIBRARY_FIELD_THRESHOLD:0.75}
       options-cache-ttl: ${OPAA_QUERY_METADATA_FILTER_OPTIONS_CACHE_TTL:5m}
-  # #1720: the reading path without generation. The hit count is cut out of the retrieval's own
-  # selection (opaa.query.top-k), it never searches further. The fetch cap is the one place a
-  # single call can return a whole document, and it is deliberately finite.
+  # The reading path without generation. The hit count is cut out of the retrieval's own selection
+  # (opaa.query.top-k), it never searches further. The fetch cap is the one place a single call can
+  # return a whole document, and it is deliberately finite.
   search:
     default-max-hits: ${OPAA_SEARCH_DEFAULT_MAX_HITS:10}
     max-hits: ${OPAA_SEARCH_MAX_HITS:50}
@@ -302,8 +298,8 @@ opaa:
     # 2048 holds for every Ollama model as pulled; only a model created with a larger num_batch, such
     # as bge-m3 from the Compose ollama-pull step, takes more and gets its value set explicitly.
     max-input-tokens: ${OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS:2048}
-  # #1050: the rerank model role - on the same level as the chat and embedding roles. The switch
-  # is deliberately separate from the endpoint fields: reranking being off must be an operator's
+  # The rerank model role - on the same level as the chat and embedding roles. The switch is
+  # deliberately separate from the endpoint fields: reranking being off must be an operator's
   # statement, not an indistinguishable consequence of a missing configuration line
   # (docs/features/hybrid-retrieval.md, Arbeitspaket 4). Default off - the role ships built, not
   # activated, until the benchmark shows a gain on the project's own corpora.
@@ -312,7 +308,7 @@ opaa:
     base-url: ${OPAA_RERANK_BASE_URL:}
     model: ${OPAA_RERANK_MODEL:}
     api-key: ${OPAA_RERANK_API_KEY:}
-    # #1154: 240s carries the CPU case #1050 measured (~3 min/query, 50 candidates, 20 CPU cores,
+    # 240s carries the CPU case #1050 measured (~3 min/query, 50 candidates, 20 CPU cores,
     # BAAI/bge-reranker-v2-m3) - a shorter default reports normal CPU latency as UNREACHABLE.
     # Installations with a faster (typically GPU-backed) endpoint may lower this.
     timeout: ${OPAA_RERANK_TIMEOUT:240s}
@@ -341,9 +337,9 @@ opaa:
     chunk-target-characters: ${OPAA_INDEXING_CHUNK_TARGET_CHARACTERS:4000}
     batch-size: ${OPAA_INDEXING_BATCH_SIZE:50}
     embedding-concurrency: ${OPAA_INDEXING_EMBEDDING_CONCURRENCY:3}
-    # #1072: fallback rate of the Folgekosten estimate, in chunks per second. Only used until
-    # EmbeddingRateEstimator has measured enough real embedding calls; the answer names which
-    # of the two it used.
+    # Fallback rate of the Folgekosten estimate, in chunks per second. Only used until
+    # EmbeddingRateEstimator has measured enough real embedding calls; the answer names which of the
+    # two it used.
     embedding-rate-estimate: ${OPAA_INDEXING_EMBEDDING_RATE_ESTIMATE:4.0}
     stale-job-timeout: ${OPAA_INDEXING_STALE_JOB_TIMEOUT:4h}
     thread-pool:
@@ -369,11 +365,11 @@ opaa:
       attachment-profile: ${OPAA_INDEXING_RSS_ATTACHMENT_PROFILE:GENERIC}
       max-attachments-per-entry: ${OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY:10}
       max-attachment-size-bytes: ${OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES:20971520}
-    # #836: bounds AutoindexCrawlerService's recursive HTTP_DIRECTORY crawl - see CrawlProperties.
-    # A separate opaa.indexing.crawl.* property block, not nested fields of IndexingProperties
-    # itself (own record, own binding prefix).
-    # #1236: max-file-size-bytes caps a single crawled entry's transfer while it streams to disk,
-    # so neither an oversized nor an afterwards-rejected entry can fill the temp partition.
+    # Bounds AutoindexCrawlerService's recursive HTTP_DIRECTORY crawl - see CrawlProperties. A
+    # separate opaa.indexing.crawl.* property block, not nested fields of IndexingProperties itself
+    # (own record, own binding prefix). max-file-size-bytes caps a single crawled entry's transfer
+    # while it streams to disk, so neither an oversized nor an afterwards-rejected entry can fill
+    # the temp partition.
     crawl:
       max-depth: ${OPAA_INDEXING_CRAWL_MAX_DEPTH:10}
       max-entries: ${OPAA_INDEXING_CRAWL_MAX_ENTRIES:50000}
@@ -391,8 +387,8 @@ opaa:
       max-listing-pages: ${OPAA_INDEXING_CONFLUENCE_MAX_LISTING_PAGES:500}
       full-sync-interval: ${OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL:7d}
       incremental-overlap: ${OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP:10m}
-      # #1141: requests one run may send before it ends as "unvollständig, wird fortgesetzt";
-      # 0 disables the budget. Default measured against a real Data Center (see
+      # Requests one run may send before it ends as "unvollständig, wird fortgesetzt"; 0 disables
+      # the budget. Default measured against a real Data Center (see
       # ConfluenceProperties.DEFAULT_REQUEST_BUDGET_PER_RUN and docs/handbuch/konfiguration.md).
       request-budget-per-run: ${OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN:50000}
     # ADR-0027: bounds of the S3 access layer (io.opaa.indexing.source.s3) - own property block
@@ -412,7 +408,7 @@ opaa:
       # object downloads one run keeps in flight while its listing goes on (a bound on the load
       # put on the store; 1 downloads serially, see S3Properties.DEFAULT_DOWNLOAD_CONCURRENCY).
       download-concurrency: ${OPAA_INDEXING_S3_DOWNLOAD_CONCURRENCY:2}
-    # #2152: bounds of the Nextcloud connector (io.opaa.indexing.source.nextcloud), see
+    # Bounds of the Nextcloud connector (io.opaa.indexing.source.nextcloud), see
     # NextcloudProperties; 0 falls back to the default.
     nextcloud:
       max-file-size-bytes: ${OPAA_INDEXING_NEXTCLOUD_MAX_FILE_SIZE_BYTES:52428800}
@@ -486,42 +482,42 @@ opaa:
       debounce: ${OPAA_INDEXING_EVENTS_DEBOUNCE:5s}
       max-pending-keys: ${OPAA_INDEXING_EVENTS_MAX_PENDING_KEYS:500}
       max-deferrals: ${OPAA_INDEXING_EVENTS_MAX_DEFERRALS:120}
-    # #1058: DoS-hardening limits for TabularDocumentFormat (XLSX/CSV/ODS) - own property block,
-    # own binding prefix, see TabularProperties's own Javadoc for why.
+    # DoS-hardening limits for TabularDocumentFormat (XLSX/CSV/ODS) - own property block, own
+    # binding prefix, see TabularProperties's own Javadoc for why.
     tabular:
       max-row-columns: ${OPAA_INDEXING_TABULAR_MAX_ROW_COLUMNS:200}
       max-ods-cell-repeat: ${OPAA_INDEXING_TABULAR_MAX_ODS_CELL_REPEAT:50}
       max-ods-content-xml-bytes: ${OPAA_INDEXING_TABULAR_MAX_ODS_CONTENT_XML_BYTES:10485760}
       max-ods-rows: ${OPAA_INDEXING_TABULAR_MAX_ODS_ROWS:100000}
-    # #1060: DoS-hardening limits for MailDocumentFormat (EML/MSG) - own property block, own
-    # binding prefix, see MailProperties's own Javadoc for why.
+    # DoS-hardening limits for MailDocumentFormat (EML/MSG) - own property block, own binding
+    # prefix, see MailProperties's own Javadoc for why.
     mail:
       max-attachments-per-message: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENTS_PER_MESSAGE:50}
       max-attachment-bytes: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENT_BYTES:52428800}
       max-message-bytes: ${OPAA_INDEXING_MAIL_MAX_MESSAGE_BYTES:104857600}
-    # #1110: DoS-hardening limits for OdtDocumentFormat/OdpDocumentFormat (ODT/ODP) - own
-    # property block, own binding prefix, see OdfProperties's own Javadoc for why.
+    # DoS-hardening limits for OdtDocumentFormat/OdpDocumentFormat (ODT/ODP) - own property block,
+    # own binding prefix, see OdfProperties's own Javadoc for why.
     odf:
       max-content-xml-bytes: ${OPAA_INDEXING_ODF_MAX_CONTENT_XML_BYTES:10485760}
       max-odt-paragraphs: ${OPAA_INDEXING_ODF_MAX_ODT_PARAGRAPHS:50000}
       max-odp-slides: ${OPAA_INDEXING_ODF_MAX_ODP_SLIDES:5000}
       max-space-repeat: ${OPAA_INDEXING_ODF_MAX_SPACE_REPEAT:1000}
       max-text-characters: ${OPAA_INDEXING_ODF_MAX_TEXT_CHARACTERS:10000000}
-    # #484/ADR-0018 Entscheidung 6, #1271: own opaa.indexing.filesystem.* property block, own
-    # binding prefix (FilesystemProperties), mirroring crawl/tabular/mail/odf above. allowlist:
-    # absolute base directories a FILESYSTEM library's sourcePath must resolve underneath. No
-    # default on purpose - an empty allowlist disables the FILESYSTEM quellentyp entirely, the
-    # safe default for a fresh installation.
+    # ADR-0018 Entscheidung 6: own opaa.indexing.filesystem.* property block, own binding prefix
+    # (FilesystemProperties), mirroring crawl/tabular/mail/odf above. allowlist: absolute base
+    # directories a FILESYSTEM library's sourcePath must resolve underneath. No default on purpose -
+    # an empty allowlist disables the FILESYSTEM quellentyp entirely, the safe default for a fresh
+    # installation.
     filesystem:
       allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:}
-    # #1269: the attachment-nesting depth (Mail-in-Mail, Feed-Anlage) is one general value, not a
+    # The attachment-nesting depth (Mail-in-Mail, Feed-Anlage) is one general value, not a
     # per-connector one - own opaa.indexing.attachments.* property block (AttachmentProperties),
     # applied by AttachmentIndexer regardless of which connector discovered the attachment.
     attachments:
       max-depth: ${OPAA_INDEXING_ATTACHMENTS_MAX_DEPTH:5}
       max-per-parent: ${OPAA_INDEXING_ATTACHMENTS_MAX_PER_PARENT:10}
       max-size-bytes: ${OPAA_INDEXING_ATTACHMENTS_MAX_SIZE_BYTES:20971520}
-    # #267: SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see
+    # SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see
     # io.opaa.security.TargetAddressValidator.
     target-validation:
       enabled: ${OPAA_INDEXING_TARGET_VALIDATION_ENABLED:true}
@@ -548,22 +544,21 @@ opaa:
         enabled: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ENABLED:true}
         allowlist: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST:}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
-    # #614: own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool.
+    # Own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool.
     thread-pool:
       core-size: ${OPAA_UPLOAD_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_UPLOAD_THREAD_POOL_MAX_SIZE:4}
       queue-capacity: ${OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY:20}
-    # #614: threshold, in minutes, after which a PENDING upload row is considered abandoned by a
-    # dead process and set to FAILED at the next application startup - see
-    # UploadPendingRecoveryRunner.
+    # Threshold, in minutes, after which a PENDING upload row is considered abandoned by a dead
+    # process and set to FAILED at the next application startup - see UploadPendingRecoveryRunner.
     pending-recovery-threshold-minutes: ${OPAA_UPLOAD_PENDING_RECOVERY_THRESHOLD_MINUTES:30}
-    # #1478: how old a stored original must be before the orphan cleanup may report or remove it -
-    # the window between writing the bytes and inserting the row, and the whole asynchronous
-    # processing of an upload, must lie inside it. A report may raise it per call, never lower it.
+    # How old a stored original must be before the orphan cleanup may report or remove it - the
+    # window between writing the bytes and inserting the row, and the whole asynchronous processing
+    # of an upload, must lie inside it. A report may raise it per call, never lower it.
     orphan-grace-minutes: ${OPAA_UPLOAD_ORPHAN_GRACE_MINUTES:60}
   library:
-    # #119/#1273: maximum total size (bytes), summed across every document a library holds, that
-    # library may occupy - enforced at every path that stores document content (upload, and the
+    # Maximum total size (bytes), summed across every document a library holds, that library may
+    # occupy - enforced at every path that stores document content (upload, and the
     # FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connectors), not only the upload endpoint. Default 10 GiB.
     # 0 or negative disables the quota entirely - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}
@@ -583,8 +578,8 @@ opaa:
       # at least 1, shown only where the masked numbers reach it - see PersonNumbers.
       warning-threshold: ${OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD:10}
   external-access:
-    # #1731: longest admissible Befristung of a library's release for Fremdzugaenge, and how many
-    # days before it ends the responsible person is reminded by mail. 0 reminder days switches the
+    # Longest admissible Befristung of a library's release for Fremdzugaenge, and how many days
+    # before it ends the responsible person is reminded by mail. 0 reminder days switches the
     # reminder off; the release still expires on its own.
     max-release-days: ${OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS:365}
     reminder-lead-days: ${OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS:14}
@@ -596,9 +591,9 @@ opaa:
       max-bytes: ${OPAA_DOCUMENTS_REMOTE_CONTENT_MAX_BYTES:20971520}
       timeout-seconds: ${OPAA_DOCUMENTS_REMOTE_CONTENT_TIMEOUT_SECONDS:20}
       transfer-timeout-seconds: ${OPAA_DOCUMENTS_REMOTE_CONTENT_TRANSFER_TIMEOUT_SECONDS:0}
-    # #1243: opening an attachment re-extracts its bytes from the parent original, which every
-    # VIEWER can trigger repeatedly and in parallel - see AttachmentExtractionLimiter. Bounds the
-    # extractions running at once, not the responses still streaming out (that is the rate limit).
+    # Opening an attachment re-extracts its bytes from the parent original, which every VIEWER can
+    # trigger repeatedly and in parallel - see AttachmentExtractionLimiter. Bounds the extractions
+    # running at once, not the responses still streaming out (that is the rate limit).
     attachment-extraction:
       max-concurrent: ${OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT:4}
       acquire-timeout: ${OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_ACQUIRE_TIMEOUT:10s}
@@ -620,19 +615,19 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS:1}
       window-seconds: ${OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS:5}
-    # #514/PR #537 review, finding 3: the source connection test is a synchronous probe with its
-    # own outbound connections - looser than the indexing trigger (a caller is expected to test
-    # a few configurations while filling out the create dialog) but still capped, so it cannot be
-    # used to tie up worker threads or as a fast internal port/host scanner.
+    # The source connection test is a synchronous probe with its own outbound connections - looser
+    # than the indexing trigger (a caller is expected to test a few configurations while filling out
+    # the create dialog) but still capped, so it cannot be used to tie up worker threads or as a
+    # fast internal port/host scanner.
     source-test:
       max-requests: ${OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_SOURCE_TEST_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_SOURCE_TEST_GLOBAL_MAX_REQUESTS:30}
-    # #748 review, finding 1: GET /api/v1/documents/{documentId}/content is, for a HTTP_DIRECTORY/
-    # RSS_FEED document, a synchronous proxy fetch with its own outbound connection (#747) - the
-    # same reason source-test above is limited, except this one is reachable by any VIEWER on
-    # routine "Im Dokument öffnen" clicks rather than gated behind library creation, so its limit is
-    # looser than source-test's but still capped.
+    # GET /api/v1/documents/{documentId}/content is, for a HTTP_DIRECTORY/ RSS_FEED document, a
+    # synchronous proxy fetch with its own outbound connection - the same reason source-test above
+    # is limited, except this one is reachable by any VIEWER on routine "Im Dokument öffnen" clicks
+    # rather than gated behind library creation, so its limit is looser than source-test's but still
+    # capped.
     document-content:
       max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS:20}
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS:60}
@@ -686,24 +681,24 @@ opaa:
       verify-email:
         max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_MAX_REQUESTS:10}
         window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_WINDOW_SECONDS:900}
-      # Preview and redemption of a handover code share one budget (#1563, ADR-0033
-      # Entscheidung 12): one redemption is one of each, by the same person. The budget is
-      # deliberately wider than the other link flows - a handover is what a whole migration runs
-      # through, and a Behörde sits behind one client address.
+      # Preview and redemption of a handover code share one budget (ADR-0033 Entscheidung 12): one
+      # redemption is one of each, by the same person. The budget is deliberately wider than the
+      # other link flows - a handover is what a whole migration runs through, and a Behörde sits
+      # behind one client address.
       handover:
         max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_MAX_REQUESTS:60}
         window-seconds: ${OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_WINDOW_SECONDS:900}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   # The address this installation is reachable under from outside, used for the links in mail
-  # (#1536, ADR-0033 Entscheidung 10). A deployment property like opaa.cors.allowed-origins, never
-  # a setting in the administration and never taken from the request's Host header. Without a value
+  # (ADR-0033 Entscheidung 10). A deployment property like opaa.cors.allowed-origins, never a
+  # setting in the administration and never taken from the request's Host header. Without a value
   # OPAA sends no mail that depends on a link.
   public-base-url: ${OPAA_PUBLIC_BASE_URL:}
   mail:
-    # Bounds for the synchronous SMTP send (#1536): the request thread of the person waiting for
-    # their invitation is the one that waits, so a stalled mail server must not hold it for longer
-    # than an operator chose.
+    # Bounds for the synchronous SMTP send: the request thread of the person waiting for their
+    # invitation is the one that waits, so a stalled mail server must not hold it for longer than an
+    # operator chose.
     connect-timeout: ${OPAA_MAIL_CONNECT_TIMEOUT:10s}
     read-timeout: ${OPAA_MAIL_READ_TIMEOUT:15s}
     write-timeout: ${OPAA_MAIL_WRITE_TIMEOUT:15s}
@@ -720,36 +715,38 @@ opaa:
     # provider row (ADR-0036, Entscheidung 2); this switch only decides whether the tick exists.
     schedule-enabled: ${OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED:true}
     keycloak:
-      # Tuning of the Keycloak connector (#1817). No credentials here on purpose: those live
-      # encrypted in directory_connectors, one row per provider.
+      # Tuning of the Keycloak connector. No credentials here on purpose: those live encrypted in
+      # directory_connectors, one row per provider.
       page-size: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_PAGE_SIZE:100}
       # A run that would exceed either ceiling fails as unreachable instead of applying a
       # truncated list, which is indistinguishable from a reorganisation that dissolved the rest.
       max-groups: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS:5000}
       max-members-per-group: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_MEMBERS_PER_GROUP:20000}
-      # The same ceiling for the realm's account list, which the run reads for the account status
-      # (#1818); a truncated one would look like a mass departure.
+      # The same ceiling for the realm's account list, which the run reads for the account status; a
+      # truncated one would look like a mass departure.
       max-accounts: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_ACCOUNTS:50000}
       connect-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_CONNECT_TIMEOUT:5s}
       request-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_REQUEST_TIMEOUT:30s}
   security:
     credentials:
       # AES-256 key (Base64, 32 raw bytes) for encrypting knowledge_libraries.source_credentials at
-      # rest (#483). No default here on purpose - a real deployment must set one before storing any
-      # library's credentials; see docs/handbuch/betrieb.md. The dev profile below (not local) sets an
-      # explicitly-marked non-production default so bootRun and tests work without operator setup.
+      # rest. No default here on purpose - a real deployment must set one before storing any
+      # library's credentials; see docs/handbuch/betrieb.md. The dev profile below (not local) sets
+      # an explicitly-marked non-production default so bootRun and tests work without operator
+      # setup.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
     settings:
       # AES-256 key (Base64, 32 raw bytes) for io.opaa.security.SettingsEncryptor - encrypts
-      # llm_models.api_key_ciphertext at rest (#756, docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
-      # A deliberately separate key from OPAA_CREDENTIALS_ENCRYPTION_KEY above: the two protect
+      # llm_models.api_key_ciphertext at rest
+      # (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung). A
+      # deliberately separate key from OPAA_CREDENTIALS_ENCRYPTION_KEY above: the two protect
       # different kinds of secret (a knowledge library's source credentials vs. a managed model's
       # API key) with no reason to share a key or its rotation schedule. Validated lazily, on first
-      # use, exactly like OPAA_CREDENTIALS_ENCRYPTION_KEY (PR #763 review) - not eagerly at startup:
-      # most deployments never store a model API key at all, and an unconditional startup check
-      # would refuse to start every one of them, including an existing installation upgrading in
-      # place. No default here on purpose; the dev profile below sets an explicitly-marked
-      # non-production default so bootRun and tests work without operator setup.
+      # use, exactly like OPAA_CREDENTIALS_ENCRYPTION_KEY - not eagerly at startup: most deployments
+      # never store a model API key at all, and an unconditional startup check would refuse to start
+      # every one of them, including an existing installation upgrading in place. No default here on
+      # purpose; the dev profile below sets an explicitly-marked non-production default so bootRun
+      # and tests work without operator setup.
       encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:}
 
 management:
@@ -878,8 +875,8 @@ opaa:
           email: dev-user@opaa.local
           display-name: Dev User
   indexing:
-    # #484: the dev profile (also active for the backend test suite, see AGENTS.md) opens /data and
-    # /tmp so existing FILESYSTEM fixtures (literal "/data/documents"/"/tmp/..." sourcePaths in
+    # The dev profile (also active for the backend test suite, see AGENTS.md) opens /data and /tmp
+    # so existing FILESYSTEM fixtures (literal "/data/documents"/"/tmp/..." sourcePaths in
     # KnowledgeLibraryServiceIntegrationTest et al.) keep working. The test suite widens this by its
     # own process-wide base directory in OpaaTestPathInitializer, never per class - a class-local
     # @DynamicPropertySource would split the Spring context (AGENTS.md, "Spring-Testkontexte").
@@ -888,14 +885,14 @@ opaa:
   security:
     credentials:
       # NICHT FUER DEN PRODUKTIVBETRIEB - a fixed, publicly-known 32-byte AES key so bootRun and
-      # every backend test (all activate "dev", see AGENTS.md) can create/rotate credentials
-      # without operator setup (#483). Any deployment that does not activate the "dev" profile
-      # falls back to the (empty) base value above and must set OPAA_CREDENTIALS_ENCRYPTION_KEY
-      # itself - see docs/handbuch/betrieb.md.
+      # every backend test (all activate "dev", see AGENTS.md) can create/rotate credentials without
+      # operator setup. Any deployment that does not activate the "dev" profile falls back to the
+      # (empty) base value above and must set OPAA_CREDENTIALS_ENCRYPTION_KEY itself - see
+      # docs/handbuch/betrieb.md.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
     settings:
       # NICHT FUER DEN PRODUKTIVBETRIEB - the same reasoning as opaa.security.credentials above, a
-      # distinct fixed key so bootRun and the backend test suite (#756) can encrypt a seeded or
+      # distinct fixed key so bootRun and the backend test suite can encrypt a seeded or
       # test-created model's API key without operator setup. Any deployment that does not activate
       # the "dev" profile falls back to the (empty) base value above and must set
       # OPAA_SETTINGS_ENCRYPTION_KEY itself before storing a model's API key - see

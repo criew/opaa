@@ -20,10 +20,10 @@ import java.util.UUID;
 public class Space {
 
   /**
-   * The value {@code asset_ownership_history.asset_type} carries for a space (#1815, ADR-0036
-   * Entscheidung 8). The constant lives here, with the asset, not in {@code io.opaa.permission}:
-   * the permission model never enumerates asset types. A space carries no {@code asset_grants} row
-   * - its rights axis is its membership - so this is deliberately not the same statement {@code
+   * The value {@code asset_ownership_history.asset_type} carries for a space (ADR-0036 Entscheidung
+   * 8). The constant lives here, with the asset, not in {@code io.opaa.permission}: the permission
+   * model never enumerates asset types. A space carries no {@code asset_grants} row - its rights
+   * axis is its membership - so this is deliberately not the same statement {@code
    * KnowledgeLibrary#ASSET_TYPE} makes about grants.
    */
   public static final AssetType ASSET_TYPE = AssetType.of("SPACE");
@@ -144,7 +144,7 @@ public class Space {
   }
 
   /**
-   * Marks the space archived (#543, docs/features/spaces-and-assets.md#einen-space-stilllegen-
+   * Marks the space archived (docs/features/spaces-and-assets.md#einen-space-stilllegen-
    * archivieren-statt-löschen) - idempotent, since re-archiving an already archived space is not an
    * error.
    */

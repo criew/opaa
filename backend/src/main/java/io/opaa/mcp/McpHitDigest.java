@@ -8,9 +8,9 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * The display layer of {@code search} over the hits of {@code io.opaa.search} (#1766): one entry
- * per document instead of one per passage, and an excerpt around the found place instead of the
- * whole passage.
+ * The display layer of {@code search} over the hits of {@code io.opaa.search}: one entry per
+ * document instead of one per passage, and an excerpt around the found place instead of the whole
+ * passage.
  *
  * <p>It is a <b>presentation</b>, not a second retrieval: the order, the selection and the ranking
  * are those of {@link io.opaa.search.SearchService}, and {@code POST /api/v1/search} keeps

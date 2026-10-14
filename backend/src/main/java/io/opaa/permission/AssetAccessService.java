@@ -25,8 +25,8 @@ import org.springframework.stereotype.Component;
  * an asset and the set of asset ids they may read at all - through a direct grant, a grant to one
  * of their groups, or a grant to "Alle Konten" (see
  * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten). All three read the same
- * table: organization-wide reach is a grant like any other since #1931 (ADR-0037), so no caller
- * hands in a reach it read off the asset shell.
+ * table: organization-wide reach is a grant like any other (ADR-0037), so no caller hands in a
+ * reach it read off the asset shell.
  *
  * <p>Two access paths, deliberately not unified:
  *
@@ -143,8 +143,8 @@ public class AssetAccessService {
    * Every asset id of {@code assetType} a <b>permission profile</b> may read: the group's own
    * non-expired grants plus every asset granted to "Alle Konten" - the group-shaped counterpart of
    * {@link #readableAssetIds}, deliberately without the direct user grants: a profile is a group,
-   * not a person (#1053, ADR-0036 Entscheidung 7). Uncached for the same reason. A deactivated
-   * group's own grants reach nobody (Entscheidung 14), so its profile reads "Alle Konten" alone.
+   * not a person (ADR-0036 Entscheidung 7). Uncached for the same reason. A deactivated group's own
+   * grants reach nobody (Entscheidung 14), so its profile reads "Alle Konten" alone.
    */
   public Set<UUID> readableAssetIdsForGroup(
       AssetType assetType, UUID groupId, UUID organizationId) {
@@ -161,8 +161,8 @@ public class AssetAccessService {
   /**
    * How many assets of {@code assetType} each of {@code groupIds} may read, by the formula of
    * {@link #readableAssetIdsForGroup} - in two queries for the whole set rather than two per group,
-   * which the administration's profile picker would otherwise pay per row (#1053). Every requested
-   * id gets an entry, including a group without any grant.
+   * which the administration's profile picker would otherwise pay per row. Every requested id gets
+   * an entry, including a group without any grant.
    */
   public Map<UUID, Integer> readableAssetCountsForGroups(
       AssetType assetType, Collection<UUID> groupIds, UUID organizationId) {
@@ -216,7 +216,7 @@ public class AssetAccessService {
 
   /**
    * Every way {@code userId} reaches the asset right now, as one {@link AccessPath} each - the
-   * Herleitung of this formula (#1822, ADR-0036 Entscheidung 9). A group grant carries the group's
+   * Herleitung of this formula (ADR-0036 Entscheidung 9). A group grant carries the group's
    * attribution - its name, origin and maintaining mechanism - but never a member; a grant to "Alle
    * Beschaeftigten" keeps the basis {@code ORGANIZATION_WIDE} the Herleitung has always used for
    * it.
@@ -265,8 +265,8 @@ public class AssetAccessService {
   }
 
   /**
-   * How far each of {@code assetIds} reaches right now (#1931) - the figures an overview turns into
-   * its reach badge. Every requested id gets an entry, including one no grant reaches.
+   * How far each of {@code assetIds} reaches right now - the figures an overview turns into its
+   * reach badge. Every requested id gets an entry, including one no grant reaches.
    */
   public Map<UUID, AssetReach> reachByAsset(AssetType assetType, Set<UUID> assetIds) {
     Map<UUID, AssetReach> reach = new HashMap<>();

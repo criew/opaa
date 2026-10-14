@@ -38,8 +38,8 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 
 /**
- * The {@link FileStore} and {@link ChangeFeed} of one SharePoint library for one run (ADR-0040,
- * Nachtrag „SharePoint“). Every document library is a container, listed and followed through {@code
+ * The {@link FileStore} and {@link ChangeFeed} of one SharePoint library for one run (ADR-0047).
+ * Every document library is a container, listed and followed through {@code
  * /drives/<id>/root/delta}; a page token is both the continuation within a run and the checkpoint
  * across runs, a delta token the stream's cursor. Delta entries carry no path: the folder chain
  * follows the parents by id, each unknown folder read once per run. A folder filter keeps only

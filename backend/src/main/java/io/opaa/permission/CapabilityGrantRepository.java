@@ -110,7 +110,7 @@ public interface CapabilityGrantRepository extends JpaRepository<CapabilityGrant
 
   /**
    * How many capabilities each of {@code groupIds} holds, in one grouped query - what the overview
-   * "wo wirkt diese Gruppe" (#1821) asks for every group at once. A group holding none is absent.
+   * "wo wirkt diese Gruppe" asks for every group at once. A group holding none is absent.
    */
   @Query(
       "select g.subjectGroupId as subjectGroupId, count(g) as capabilityCount from CapabilityGrant"
@@ -124,7 +124,7 @@ public interface CapabilityGrantRepository extends JpaRepository<CapabilityGrant
     long getCapabilityCount();
   }
 
-  /** Every capability one group holds - what a transfer moves to the target group (#1834). */
+  /** Every capability one group holds - what a transfer moves to the target group. */
   List<CapabilityGrant> findBySubjectGroupId(UUID subjectGroupId);
 
   /** The same figure without the rows, for a transfer's work limit. */

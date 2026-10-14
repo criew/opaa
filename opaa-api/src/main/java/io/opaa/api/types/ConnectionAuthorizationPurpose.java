@@ -1,8 +1,8 @@
 package io.opaa.api.types;
 
 /**
- * What an OAuth consent is started for (ADR-0025, Nachtrag 03.10.2026); the server derives where
- * the person returns to from it, never from a request.
+ * What an OAuth consent is started for (ADR-0048, Entscheidung 2); the server derives where the
+ * person returns to from it, never from a request.
  */
 public enum ConnectionAuthorizationPurpose {
   /** A source for a library that is still being created. */

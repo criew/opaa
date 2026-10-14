@@ -555,7 +555,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
                     : 1,
                 log);
 
-    // 3. Chunk-count invariant (ADR-0010, Nachtrag #721): the real, production-configured
+    // 3. Chunk-count invariant (ADR-0010, Entscheidung 3): the real, production-configured
     //    TokenTextSplitter just ran. Verify every document satisfies the domain's declared
     //    expectation — for verwaltung that is "at least 3 chunks per document".
     List<Document> documents = documentRepository.findAll();
@@ -606,7 +606,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
 
     // 4. Run every golden query directly against the vector store — retrieval only, no LLM. The
     //    chunk-search window is sized so deduplication (DocumentRanking) can reach documentTopK
-    //    distinct documents (ADR-0012 Nachtrag, issue #721) — for comic-characters chunkTopK ==
+    //    distinct documents (ADR-0012, Entscheidung 8) — for comic-characters chunkTopK ==
     //    documentTopK == 10 because maxChunksPerDocument == 1, so this is the same search as before
     //    #721 in every observable way.
     List<GoldenCase> goldenCases = GoldenDataset.load(goldenFile);

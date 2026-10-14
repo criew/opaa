@@ -10,8 +10,8 @@ import java.io.IOException;
  * ExternalAccessTokenAuthenticationFilter} - {@code 401} with the reason in {@code
  * WWW-Authenticate} - applies wherever no style claims the request.
  *
- * <p>Exists because the MCP endpoint owes two different answers a REST endpoint does not (#1721,
- * ADR-0035): a closed channel is {@code 404} without a usable token and {@code 503} with one, so
+ * <p>Exists because the MCP endpoint owes two different answers a REST endpoint does not
+ * (ADR-0035): a closed channel is {@code 404} without a usable token and {@code 503} with one, so
  * the person setting a client up can tell "Kanal zu" from "falscher Pfad". The seam keeps that
  * knowledge in the feature package instead of turning the filter into a path table.
  */

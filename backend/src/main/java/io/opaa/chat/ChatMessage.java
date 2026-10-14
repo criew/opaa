@@ -14,8 +14,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * One persisted question/answer turn of a {@link Chat} (#525). The source of truth for conversation
- * memory - see {@code QueryService} - replacing the purely in-memory, TTL-evicted {@code
+ * One persisted question/answer turn of a {@link Chat}. The source of truth for conversation memory
+ * - see {@code QueryService} - replacing the purely in-memory, TTL-evicted {@code
  * CaffeineChatMemoryRepository} for chats that have a persisted chat id; that cache may remain in
  * front of it as a pure read optimisation.
  *
@@ -24,14 +24,13 @@ import org.hibernate.type.SqlTypes;
  * mapped field by field here, so this entity does not need a dependency on the generated API DTOs.
  * {@link ChatSource}'s own Javadoc documents the resulting wire-compatibility invariant: its field
  * names deliberately match the generated {@code SourceReference}'s {@code @JsonProperty} names, so
- * rows written before #860 Teil 4 (when {@code sources} was still serialized {@code
- * SourceReference} JSON) still deserialize unchanged.
+ * rows holding serialized {@code SourceReference} JSON deserialize unchanged.
  *
  * <p>{@link #sequence} is an application-assigned, per-chat ordinal, strictly monotonically
  * increasing - gaps are possible after a deletion, duplicates are not. {@code created_at} alone is
- * not a reliable ordering for two messages of the same turn written moments apart (#525 review,
- * finding/nit c), so every read orders by {@code (chat_id, sequence)}, never by {@code created_at}
- * alone. {@code uk_chat_messages_chat_sequence} enforces uniqueness at the database level too.
+ * not a reliable ordering for two messages of the same turn written moments apart, so every read
+ * orders by {@code (chat_id, sequence)}, never by {@code created_at} alone. {@code
+ * uk_chat_messages_chat_sequence} enforces uniqueness at the database level too.
  */
 @Entity
 @Table(name = "chat_messages")

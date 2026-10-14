@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * What a token says about its bearer's system role - and whether it says anything at all (#1830). A
+ * What a token says about its bearer's system role - and whether it says anything at all. A
  * provider's roles claim is authoritative: the values it carries decide {@code SYSTEM_ADMIN},
  * {@code AUDITOR} or {@code USER}, and a claim that names none of the configured role values is
  * therefore a withdrawal. A token that carries no usable claim says nothing, and no role may be

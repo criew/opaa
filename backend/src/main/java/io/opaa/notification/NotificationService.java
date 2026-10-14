@@ -11,8 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Creates and serves minimal in-app notifications (#203) - see {@link Notification}'s Javadoc for
- * why this stays deliberately narrow.
+ * Creates and serves minimal in-app notifications - see {@link Notification}'s Javadoc for why this
+ * stays deliberately narrow.
  */
 @Service
 @Transactional(readOnly = true)
@@ -37,7 +37,7 @@ public class NotificationService {
         new Notification(organizationId, recipientUserId, type, objectType, objectId, title, body));
   }
 
-  /** The recipient's newest notifications, newest first, capped at {@code limit} (#706 review). */
+  /** The recipient's newest notifications, newest first, capped at {@code limit}. */
   public List<Notification> listForRecipient(UUID currentUserId, int limit) {
     return notificationRepository.findByRecipientUserIdOrderByCreatedAtDesc(
         currentUserId, PageRequest.of(0, limit));
@@ -46,7 +46,7 @@ public class NotificationService {
   /**
    * Deletes the notifications of {@code type} created before {@code cutoff} and returns how many -
    * for a type that carries its own retention period (today only the external-access mass-retrieval
-   * alert, #1720). Everything else in this table is kept until a postbox decides otherwise.
+   * alert). Everything else in this table is kept until a postbox decides otherwise.
    */
   @Transactional
   public int deleteOlderThan(NotificationType type, Instant cutoff) {

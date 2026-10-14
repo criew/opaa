@@ -149,8 +149,8 @@ public class IndexingAdminController {
               // would rewrite every chunk at the current version, find it still below the requested
               // bound, and select the same documents again on every following batch - an unbounded
               // loop of embedding calls, not a slow run. Note that a chunk selected via the routing
-              // gap (#1105, still naming the fallback pipeline for a format pipelineId now claims)
-              // is included regardless of this bound - see
+              // gap (still naming the fallback pipeline for a format pipelineId now claims) is
+              // included regardless of this bound - see
               // PipelineReindexService#selectStaleDocuments.
               if (belowVersion > pipeline.version()) {
                 throw new ValidationException(

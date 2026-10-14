@@ -15,10 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The read side of operator branding (#582) - open to every signed-in user, not just
- * administrators, because every rendered page needs it. The write side lives in {@link
- * SystemBrandingController} under {@code /api/v1/system}, restricted to {@code
- * SystemRole.SYSTEM_ADMIN}.
+ * The read side of operator branding - open to every signed-in user, not just administrators,
+ * because every rendered page needs it. The write side lives in {@link SystemBrandingController}
+ * under {@code /api/v1/system}, restricted to {@code SystemRole.SYSTEM_ADMIN}.
  *
  * <p><b>Reachable without authentication at all</b> - both security chains ({@code
  * DevSecurityConfig}/{@code OidcSecurityConfig}) list these paths among their {@code permitAll}
@@ -48,8 +47,8 @@ public class BrandingController {
 
   /**
    * Serves the configured logo's bytes under the content type the server itself detected at upload
-   * time (#582: "Content-Type beim Ausliefern erzwingen"). Three headers do the actual work of
-   * keeping a stored file from becoming an execution vector, and each is load-bearing:
+   * time ("Content-Type beim Ausliefern erzwingen"). Three headers do the actual work of keeping a
+   * stored file from becoming an execution vector, and each is load-bearing:
    *
    * <ul>
    *   <li>{@code X-Content-Type-Options: nosniff} - without it a browser may disregard the declared
@@ -70,13 +69,13 @@ public class BrandingController {
     return serve(BrandingImageKind.LOGO, "logo");
   }
 
-  /** The sign-in page's own logo (#1910), served exactly like {@link #getBrandingLogo}. */
+  /** The sign-in page's own logo, served exactly like {@link #getBrandingLogo}. */
   @GetMapping("/login-logo")
   public ResponseEntity<byte[]> getBrandingLoginLogo() {
     return serve(BrandingImageKind.LOGIN_LOGO, "login-logo");
   }
 
-  /** The sign-in page's background image (#1910), served exactly like {@link #getBrandingLogo}. */
+  /** The sign-in page's background image, served exactly like {@link #getBrandingLogo}. */
   @GetMapping("/login-background")
   public ResponseEntity<byte[]> getBrandingLoginBackground() {
     return serve(BrandingImageKind.LOGIN_BACKGROUND, "login-background");

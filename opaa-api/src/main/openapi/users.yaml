@@ -10,12 +10,12 @@ paths:
       tags: [user]
       summary: >
         List users in the caller's own organization for member/grant selection - deliberately not
-        admin-restricted, unlike GET /api/v1/admin/users (#777). The member/grant pickers
-        (UserPicker, SubjectPicker, SpaceCreatePage) need to search for a user to add, but GET /api/v1/admin/users requires SYSTEM_ADMIN (#199) - a
+        admin-restricted, unlike GET /api/v1/admin/users. The member/grant pickers
+        (UserPicker, SubjectPicker, SpaceCreatePage) need to search for a user to add, but GET /api/v1/admin/users requires SYSTEM_ADMIN - a
         403 that the frontend silently swallowed into an empty, dead-looking search field for
         every non-admin, making "Mitglied hinzufügen" unusable for anyone but a system admin.
         Same precedent as GET /api/v1/me/groups (any authenticated user needs their own group
-        memberships) and AssetGrantService#toResponses's server-side name resolution (#423): the
+        memberships) and AssetGrantService#toResponses's server-side name resolution: the
         threshold this endpoint needs is "authenticated member of the organization", not
         SYSTEM_ADMIN. Returns UserSummaryResponse (id/email/displayName only, no systemRole) -
         narrower than UserInfoResponse, matching KnowledgeLibraryService#resolveOwnerNames's
@@ -23,7 +23,7 @@ paths:
         admin list does.
 
         Requires `query` (min. 2 characters, matched case-insensitively against displayName and
-        email) and caps the result at 20 rows (#778 review) - the endpoint used to return every
+        email) and caps the result at 20 rows - the endpoint used to return every
         user of the organization unconditionally on each picker mount, unbounded by input or size,
         which is both a data-minimisation concern and unnecessary load on a large organization. A
         missing or too-short query returns an empty list rather than falling back to the old
@@ -113,7 +113,7 @@ paths:
       tags: [user]
       summary: List every account of the caller's organization - local and identity-provider accounts (system admin only)
       description: >
-        The account list of the administration (#1601): every account of the organization, local
+        The account list of the administration: every account of the organization, local
         ones with their state, expiry, reason and activity class (the same LocalUserResponse the
         local account management returns), accounts of an identity provider with the provider they
         belong to and whether that provider manages their role. The guardrails of ADR-0033,
@@ -241,7 +241,7 @@ components:
     AccountResponse:
       type: object
       description: >
-        One row of the account list of the administration (#1601): every account of the
+        One row of the account list of the administration: every account of the
         organization, whatever its origin. A local account carries its LocalUserResponse in
         "local"; an identity-provider account carries its provider in "provider" - absent when
         the provider row has been deleted since (the account remains, ADR-0025). Never an
@@ -276,7 +276,7 @@ components:
           type: boolean
           description: >
             True when the directory synchronisation locked this account because the directory
-            reports it as disabled or no longer reports it at all (#1818). The account keeps its
+            reports it as disabled or no longer reports it at all. The account keeps its
             memberships and its content; the lock is taken back by the next run once the
             directory reports the account as enabled again - never here, since OPAA never writes
             to the directory.
@@ -305,7 +305,7 @@ components:
     UserSummaryResponse:
       type: object
       description: >
-        Deliberately narrower than UserInfoResponse (no systemRole) - GET /v1/users (#777) reaches
+        Deliberately narrower than UserInfoResponse (no systemRole) - GET /v1/users reaches
         every authenticated user in the organization, not just SYSTEM_ADMIN, so it exposes only
         what a member/grant picker needs to let a caller find someone by name or email.
       required: [id, email, displayName]

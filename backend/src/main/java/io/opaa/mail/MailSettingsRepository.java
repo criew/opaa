@@ -4,7 +4,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-/** Persistence for the singleton {@link MailSettings} row (#1536). */
+/** Persistence for the singleton {@link MailSettings} row. */
 @Repository
 public interface MailSettingsRepository extends JpaRepository<MailSettings, Integer> {
 

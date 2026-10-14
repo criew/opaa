@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
- * The three tools, and the descriptions a foreign model decides by (#1721,
- * docs/features/external-access.md, "Die Beschreibungen entstehen je Anfrage neu").
+ * The three tools, and the descriptions a foreign model decides by
+ * (docs/features/external-access.md, "Die Beschreibungen entstehen je Anfrage neu").
  *
  * <p>The descriptions are built <b>per request</b> from the caller's effective view, never from the
  * installation's holdings: "Sucht in Wissensbibliotheken" does not answer the question the model
@@ -69,7 +69,7 @@ public class McpToolCatalog {
   /**
    * Without a {@code required} list: a caller names either the hit id or the document id, and the
    * handler says in German which of the two it missed. A schema that demanded {@code id} would
-   * refuse the choice a hit itself offers, before the handler ever saw the call (#1766).
+   * refuse the choice a hit itself offers, before the handler ever saw the call.
    */
   private static final Map<String, Object> FETCH_SCHEMA =
       Map.of(

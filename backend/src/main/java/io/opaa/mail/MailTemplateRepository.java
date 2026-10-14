@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-/** Persistence for the {@link MailTemplate} overrides (#1536). */
+/** Persistence for the {@link MailTemplate} overrides. */
 @Repository
 public interface MailTemplateRepository extends JpaRepository<MailTemplate, UUID> {
 

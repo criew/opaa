@@ -644,7 +644,7 @@ export interface MockSharePointSite {
 }
 
 /**
- * The mock tenant behind the SharePoint connector (ADR-0040, Nachtrag „SharePoint“): the app holds
+ * The mock tenant behind the SharePoint connector (ADR-0047): the app holds
  * Sites.Selected, so only released sites answer and the site search is refused. „Personalrat“ is
  * not released, „Archiv“ holds no document library, and the OneDrive site holds only an OneDrive.
  */

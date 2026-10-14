@@ -11,8 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 /**
- * Builds the links that go into mail (#1536, ADR-0033 Entscheidung 10) from {@code
- * OPAA_PUBLIC_BASE_URL}.
+ * Builds the links that go into mail (ADR-0033 Entscheidung 10) from {@code OPAA_PUBLIC_BASE_URL}.
  *
  * <p><b>The {@code Host} header of the request is never used as the base.</b> It is attacker-
  * controlled on any deployment whose reverse proxy passes it through, and a password-reset link

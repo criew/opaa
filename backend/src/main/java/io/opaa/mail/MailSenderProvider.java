@@ -10,7 +10,7 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.stereotype.Component;
 
 /**
- * Builds the {@link JavaMailSender} the current {@code mail_settings} describe (#1536, ADR-0033
+ * Builds the {@link JavaMailSender} the current {@code mail_settings} describe (ADR-0033
  * Entscheidung 10) and caches it <b>together with the snapshot it was built from</b>: a corrected
  * SMTP host takes effect on the next message, without a restart and without a second {@code
  * AFTER_COMMIT} listener whose order relative to the snapshot rebuild would be undefined.
@@ -48,7 +48,7 @@ public class MailSenderProvider {
   /**
    * A transport and the settings it was built from, handed out together: a caller that asked for
    * the two separately could compose an envelope from settings the transport was not built from, if
-   * a change committed between the two calls (#1559 review).
+   * a change committed between the two calls.
    */
   public record Transport(JavaMailSender sender, MailSettingsSnapshot settings) {}
 

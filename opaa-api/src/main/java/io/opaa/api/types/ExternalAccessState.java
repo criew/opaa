@@ -10,9 +10,9 @@ package io.opaa.api.types;
  *   <li>{@link #ACTIVE} - released until a mandatory expiry at most one year out.
  *   <li>{@link #WITHDRAWN} - a released library taken back by hand before its expiry.
  *   <li>{@link #EXPIRED} - the expiry passed and the scheduled run took the release out of effect.
- *   <li>{@link #SUSPENDED} - reserved for a subsequently lowered connector share ceiling (#797);
- *       nothing sets it yet, and it is deliberately distinct from {@link #WITHDRAWN} because it is
- *       not the owner's decision and is theirs to resolve.
+ *   <li>{@link #SUSPENDED} - reserved for a subsequently lowered connector share ceiling; nothing
+ *       sets it yet, and it is deliberately distinct from {@link #WITHDRAWN} because it is not the
+ *       owner's decision and is theirs to resolve.
  * </ul>
  */
 public enum ExternalAccessState {

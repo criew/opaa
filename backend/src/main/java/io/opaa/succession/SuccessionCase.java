@@ -14,7 +14,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The record behind one entry of the operational list (#1819, ADR-0036 Entscheidung 6) - <b>not the
+ * The record behind one entry of the operational list (ADR-0036 Entscheidung 6) - <b>not the
  * state</b>: it carries when the state was first seen and when it ended, and nothing else. The
  * state itself stays derived, so no path can forget to clear it.
  */

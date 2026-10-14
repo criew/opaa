@@ -18,9 +18,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * One carried-out transfer of rights from one subject to another (#1834, ADR-0036 Entscheidung 10)
- * - the "Vorgangskennung" every history row written by it carries and every object it touched
- * points at.
+ * One carried-out transfer of rights from one subject to another (ADR-0036 Entscheidung 10) - the
+ * "Vorgangskennung" every history row written by it carries and every object it touched points at.
  *
  * <p>The subject ids deliberately carry no foreign key: the point of the operation is that the
  * source holds nothing afterwards and can be deleted. {@link #sourceLabel} is the name snapshot

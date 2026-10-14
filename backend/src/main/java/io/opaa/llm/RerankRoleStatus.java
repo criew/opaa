@@ -1,8 +1,7 @@
 package io.opaa.llm;
 
 /**
- * The continuously queryable state of the rerank model role (#1050 acceptance criterion 3), as the
- * administration page reads it.
+ * The continuously queryable state of the rerank model role, as the administration page reads it.
  *
  * <p>{@code baseUrl} and {@code modelIdentifier} are {@code null} while the role is unbelegt. The
  * access key is not part of this type and never will be - a status display shows it neither in full
@@ -14,8 +13,8 @@ package io.opaa.llm;
  * @param timedOut whether the last known failure was the endpoint not answering within {@code
  *     opaa.rerank.timeout} - as opposed to the connection itself failing (refused, unknown host,
  *     TLS). A reachable-but-slow CPU reranker must read differently from a genuinely unreachable
- *     one on the state page (#1154), even though {@code state} is {@link
- *     RerankRoleState#UNREACHABLE} for both. Always {@code false} outside that state.
+ *     one on the state page, even though {@code state} is {@link RerankRoleState#UNREACHABLE} for
+ *     both. Always {@code false} outside that state.
  * @param baseUrlRejected whether the configured base address was refused for carrying credentials.
  *     {@code baseUrl} stays {@code null} either way, since a rejected address may not be shown.
  *     Only ever {@code true} for {@link RerankRoleState#UNCONFIGURED}.

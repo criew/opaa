@@ -9,8 +9,8 @@ import java.util.List;
 
 /**
  * The print of a transfer as it was previewed - what "confirmed against the state that was shown"
- * compares (#1834, ADR-0036 Entscheidung 10; the same idea {@code DirectorySyncPlanFingerprint}
- * serves for a synchronisation plan).
+ * compares (ADR-0036 Entscheidung 10; the same idea {@code DirectorySyncPlanFingerprint} serves for
+ * a synchronisation plan).
  *
  * <p>It covers exactly the rows the operation would move, each in a canonical, order-independent
  * form: every grant with the role and the expiry it carries, every space membership with its role,

@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Domain counterpart of the generated {@code SourceReference} (#860 Teil 4) - a single cited or
- * retrieved document behind a chat turn's answer. {@code ChatSourceAssembler} builds and merges
- * these while ranking search results ({@code ChatSourceAssembler#mergeSourceReferences} mutates a
- * "preferred" instance in place, hence the mutable setters below, not just the fluent ones); {@link
+ * Domain counterpart of the generated {@code SourceReference} - a single cited or retrieved
+ * document behind a chat turn's answer. {@code ChatSourceAssembler} builds and merges these while
+ * ranking search results ({@code ChatSourceAssembler#mergeSourceReferences} mutates a "preferred"
+ * instance in place, hence the mutable setters below, not just the fluent ones); {@link
  * ChatService} persists a turn's sources as JSON on {@link ChatMessage#getSources()} and parses
  * them back unchanged for {@code GET /chats/{chatId}}.
  *
@@ -92,8 +92,8 @@ public final class ChatSource {
   }
 
   /**
-   * #1070: how this document related to the active metadata filter - {@code NO_VALUE} marks a hit
-   * kept by the Leerwert rule ("ohne Angabe"); null without a filter or for a synthetic entry.
+   * How this document related to the active metadata filter - {@code NO_VALUE} marks a hit kept by
+   * the Leerwert rule ("ohne Angabe"); null without a filter or for a synthetic entry.
    */
   public ChatSource metadataFilterMatch(MetadataFilterMatch metadataFilterMatch) {
     this.metadataFilterMatch = metadataFilterMatch;

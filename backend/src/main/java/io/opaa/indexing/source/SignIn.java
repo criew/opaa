@@ -11,7 +11,7 @@ import java.util.Set;
  * One sign-in method a connector offers, with the owners ({@code LIBRARY}, {@code PERSON}) a
  * connection signing in this way may have. A personal secret names its form, OAuth its endpoints; a
  * service account key and client credentials carry their token endpoint and are owned by a library
- * only (ADR-0038, Nachtrag Verbindungsprofile).
+ * only (ADR-0038, Entscheidung 7).
  */
 public record SignIn(
     ConnectionAuthMethod method, Set<ConnectionOwnership> owners, SignInDetails details) {

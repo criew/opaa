@@ -21,13 +21,13 @@ import java.util.function.Function;
  * (the pipeline's @20 window with the similarity threshold applied) and <i>which fixed points make
  * a baseline valid</i>.
  *
- * <p><b>Own fixed points, including the five that were previously only reported.</b> ADR-0012's
- * Nachtrag zum Pipeline-Messpfad listed {@code fetch-k}, {@code similarity-threshold}, {@code
+ * <p><b>Own fixed points, including the five that were previously only reported.</b> ADR-0012,
+ * Entscheidung 13 listed {@code fetch-k}, {@code similarity-threshold}, {@code
  * max-chunks-per-document}, {@code mmr-lambda} and {@code max-sub-queries} as fixed points but left
  * them unchecked, explicitly because "es gibt nichts, wogegen verglichen würde" — that reason ends
- * with the first committed pipeline baseline, so they are validity fields here (ADR-0012, Nachtrag
- * Pipeline-Baselines, decision 18). An {@code mmr-lambda} change now invalidates the baseline
- * loudly instead of quietly changing what its numbers describe.
+ * with the first committed pipeline baseline, so they are validity fields here (ADR-0012,
+ * Entscheidung 18). An {@code mmr-lambda} change now invalidates the baseline loudly instead of
+ * quietly changing what its numbers describe.
  *
  * <p><b>No chunk-count invariant here.</b> The pipeline path measures the very index the raw-vector
  * path just measured, whose harness asserts that invariant before any report is written (ADR-0010);
@@ -50,11 +50,11 @@ public final class PipelineBaselineComparator {
    * were calibrated against @10 measurements taken without a similarity threshold. This path
    * applies the production threshold, so a document can leave the ranking entirely rather than fall
    * back, and its window counts chunks, not documents — its numbers lie systematically lower for
-   * reasons that have nothing to do with retrieval quality (ADR-0012, Nachtrag, decision 12).
-   * Carrying the raw path's numbers over would either fire on a healthy run or, if the pipeline
-   * scored higher than expected, anchor at an arbitrary point; the values below are anchored at
-   * half of ADR-0013's respective floors, which is far under any plausible healthy measurement of
-   * this path and still far above the "vector store returned nothing" case the floor exists for.
+   * reasons that have nothing to do with retrieval quality (ADR-0012, Entscheidung 12). Carrying
+   * the raw path's numbers over would either fire on a healthy run or, if the pipeline scored
+   * higher than expected, anchor at an arbitrary point; the values below are anchored at half of
+   * ADR-0013's respective floors, which is far under any plausible healthy measurement of this path
+   * and still far above the "vector store returned nothing" case the floor exists for.
    */
   static final double HARD_FLOOR_ABSOLUTE_HIT_RATE = 0.15;
 
@@ -211,8 +211,8 @@ public final class PipelineBaselineComparator {
         "chunkOverlap",
         String.valueOf(fp.chunkOverlap()),
         String.valueOf(cfg.chunkOverlap()));
-    // ADR-0012, Nachtrag, decisions 13 and 18: the production query parameters of this path. All
-    // five below were reported but unchecked until this baseline existed.
+    // ADR-0012, Entscheidungen 13 and 18: the production query parameters of this path. All five
+    // below were reported but unchecked until this baseline existed.
     addIfDiffers(mismatches, "fetchK", String.valueOf(fp.fetchK()), String.valueOf(cfg.fetchK()));
     addIfDiffers(mismatches, "topK", String.valueOf(fp.topK()), String.valueOf(cfg.topK()));
     addIfDiffers(
@@ -254,7 +254,7 @@ public final class PipelineBaselineComparator {
     // Null on both sides while the decomposition-off variant is measured; a model appearing on
     // either side alone means the two runs did not measure the same thing.
     addIfDiffers(mismatches, "chatModel", fp.chatModel(), cfg.chatModel());
-    // The two windows the metric names state literally (ADR-0012, Nachtrag, decision 12).
+    // The two windows the metric names state literally (ADR-0012, Entscheidung 12).
     addIfDiffers(
         mismatches, "hitRateK", String.valueOf(fp.hitRateK()), String.valueOf(cfg.hitRateK()));
     addIfDiffers(

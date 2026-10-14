@@ -43,31 +43,30 @@ public record PipelineEvaluationReport(
     Map<String, MarginAggregate> marginsByLanguage) {
 
   /**
-   * Version of the pipeline path's own measurement contract (ADR-0012, Nachtrag zum
-   * Pipeline-Messpfad). Counted independently of {@link
-   * EvaluationReport#CURRENT_MEASUREMENT_CONTRACT_VERSION}, which keeps describing the raw-vector
-   * path: that contract is unchanged by this addition, and raising its number would invalidate
-   * every committed raw-vector baseline (it is a {@code BaselineComparator} fixed point) for a
-   * measurement whose definitions and values did not move at all. Bump this constant whenever a
-   * pipeline-path fixed point, window or metric definition changes.
+   * Version of the pipeline path's own measurement contract (ADR-0012, Entscheidung 16). Counted
+   * independently of {@link EvaluationReport#CURRENT_MEASUREMENT_CONTRACT_VERSION}, which keeps
+   * describing the raw-vector path: that contract is unchanged by this addition, and raising its
+   * number would invalidate every committed raw-vector baseline (it is a {@code BaselineComparator}
+   * fixed point) for a measurement whose definitions and values did not move at all. Bump this
+   * constant whenever a pipeline-path fixed point, window or metric definition changes.
    *
-   * <p>Version 2 (issue #1040, ADR-0012 Nachtrag zu den Pipeline-Baselines): the five query
-   * parameters that version 1 reported but left unchecked — {@code fetch-k}, {@code
-   * similarity-threshold}, {@code max-chunks-per-document}, {@code mmr-lambda}, {@code
-   * max-sub-queries} — became enforced fixed points of the baseline validity check. That widens
-   * what "the same measurement" means, so it is a contract change by decision 6 of this ADR; it
-   * costs nothing here because no pipeline baseline existed under version 1.
+   * <p>Version 2 (ADR-0012, Entscheidung 13): the five query parameters that version 1 reported but
+   * left unchecked — {@code fetch-k}, {@code similarity-threshold}, {@code
+   * max-chunks-per-document}, {@code mmr-lambda}, {@code max-sub-queries} — became enforced fixed
+   * points of the baseline validity check. That widens what "the same measurement" means, so it is
+   * a contract change by decision 6 of this ADR; it costs nothing here because no pipeline baseline
+   * existed under version 1.
    *
-   * <p>Version 3 (issue #1049, ADR-0012 Nachtrag Volltextpfad): the lexical search path became an
-   * input of the fusion and therefore moves the selection. Two new fixed points record it — {@code
+   * <p>Version 3 (ADR-0012, Entscheidung 22): the lexical search path became an input of the fusion
+   * and therefore moves the selection. Two new fixed points record it — {@code
    * fullTextSearchEnabled} (the path's switch) and the measured library's full-text index state
    * (named {@code fullTextIndexUpToDate} since version 12). Without them a hybrid run and a
    * vector-only run would carry the identical {@code runConfiguration} fingerprint and the
    * difference between them would be booked against the committed baseline as a code change.
    *
-   * <p>Version 4 (issue #1144, ADR-0012 Nachtrag): {@code ingestionPipelineFingerprint} became a
-   * fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why
-   * {@code corpusManifestSha256} alone did not already cover it.
+   * <p>Version 4 (ADR-0012, Entscheidung 28): {@code ingestionPipelineFingerprint} became a fixed
+   * point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why {@code
+   * corpusManifestSha256} alone did not already cover it.
    *
    * <p>Version 5 (issue #1164, PR #1201 review): {@code MailDocumentFormat#version()} moved 2 → 3
    * (mail_date truncated to whole seconds for lexicographic sortability), which shifted every
@@ -84,12 +83,12 @@ public record PipelineEvaluationReport(
    * measured is unchanged - whether the measured library's full-text index was complete - so this
    * is a pure fixed-point rename, no re-measurement (see eval/baseline/README.md).
    *
-   * <p>Version 8 (issue #1070, Teil 2, ADR-0012 Nachtrag Metadatenfilter): {@code
-   * metadataFilterEnabled} became a fixed point - each golden case's {@code filter} is carried into
-   * the pipeline run as part of its {@code RetrievalContext}, where the {@code METADATA_FILTER}
-   * stage applies it in both search paths. Unlike versions 4 to 7 this is not a fingerprint-only
-   * bump: the filter moves the measured selection of the {@code metadata_filter} class, and the
-   * {@code verwaltung} baseline was re-drawn.
+   * <p>Version 8 (ADR-0012, Entscheidung 32): {@code metadataFilterEnabled} became a fixed point -
+   * each golden case's {@code filter} is carried into the pipeline run as part of its {@code
+   * RetrievalContext}, where the {@code METADATA_FILTER} stage applies it in both search paths.
+   * Unlike versions 4 to 7 this is not a fingerprint-only bump: the filter moves the measured
+   * selection of the {@code metadata_filter} class, and the {@code verwaltung} baseline was
+   * re-drawn.
    *
    * <p>Version 11 (issue #1357): {@code HtmlDocumentFormat#version()} moved 2 → 3 and {@code
    * ConfluenceStorageFormat#version()} 1 → 2 (a list item whose text sits in a block child keeps
@@ -108,13 +107,13 @@ public record PipelineEvaluationReport(
    * <p>Version 13 (issue #1522): {@code ollamaImage} became a checked fixed point on this path too,
    * so a committed baseline states which Ollama produced its vectors instead of leaving that to the
    * {@code notes}. No measured value moves - the committed baselines record the pinned container
-   * they were already measured with (ADR-0012, Nachtrag Ollama-Herkunft).
+   * they were already measured with (ADR-0012, Entscheidung 68).
    *
    * <p>Version 14 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point on this path
-   * too (ADR-0012, Nachtrag CPU-Backend).
+   * too (ADR-0012, Entscheidung 54).
    *
    * <p>Version 15 (issue #1650): {@code contextPrefixFingerprint} became a checked fixed point on
-   * this path too (ADR-0012, Nachtrag Kontextpräfix-Form).
+   * this path too (ADR-0012, Entscheidung 57).
    *
    * <p>Version 16 (issue #2033): {@code PdfDocumentFormat#version()} moved 1 → 2 (ruled tables
    * written one line per row) - fingerprint-only, same collective-fingerprint reasoning as versions

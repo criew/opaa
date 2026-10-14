@@ -70,7 +70,7 @@ final class LocalUserResponseMapper {
     return response;
   }
 
-  /** The handover link, carried exactly once and only when the mail did not go out (#1563). */
+  /** The handover link, carried exactly once and only when the mail did not go out. */
   static LocalUserHandoverResponse toHandover(LinkDelivery delivery) {
     LocalUserHandoverResponse response =
         new LocalUserHandoverResponse(delivery.emailSent(), delivery.path());

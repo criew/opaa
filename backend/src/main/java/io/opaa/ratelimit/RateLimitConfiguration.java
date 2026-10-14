@@ -78,11 +78,11 @@ public class RateLimitConfiguration {
       RateLimitMetrics metrics,
       JsonMapper jsonMapper,
       ObjectProvider<SelfServiceEndpointAvailability> selfServiceFlows) {
-    // #478: the per-library indexing trigger (POST /api/v1/libraries/{libraryId}/indexing) carries
-    // a variable path segment, so its rule is a regex rather than a plain prefix - see
+    // The per-library indexing trigger (POST /api/v1/libraries/{libraryId}/indexing) carries a
+    // variable path segment, so its rule is a regex rather than a plain prefix - see
     // RateLimitFilter.Rule's Javadoc. The trailing $ deliberately excludes the sibling status
-    // endpoint (GET .../indexing/status), which - like the old GET /api/v1/indexing/status -
-    // was never rate-limited. The capture group around the library id lets RateLimitFilter key the
+    // endpoint (GET .../indexing/status), which - like the old GET /api/v1/indexing/status - was
+    // never rate-limited. The capture group around the library id lets RateLimitFilter key the
     // per-IP limiter by library, so triggering indexing for one library doesn't block a different
     // library from the same client.
     String indexingTriggerPattern = "^/api/v1/libraries/([^/]+)/indexing$";
@@ -92,11 +92,10 @@ public class RateLimitConfiguration {
     // the outbound probe budget. The listing of a source before it is saved is the same kind of
     // synchronous outbound probe as the connection test and shares its limit.
     String sourceTestPattern = "^/api/v1/(?:libraries/source-test|source-types/[^/]+/browse)$";
-    // #748 review, finding 1: a flat pattern, mirroring source-test above rather than the
-    // per-library indexing trigger's capture group - unlike triggering an indexing run, "Im
-    // Dokument öffnen" is a routine per-document click any VIEWER can make on any document, so
-    // keying the limiter by document id would let the same caller bypass the limit simply by
-    // clicking a different document each time.
+    // A flat pattern, mirroring source-test above rather than the per-library indexing trigger's
+    // capture group - unlike triggering an indexing run, "Im Dokument öffnen" is a routine
+    // per-document click any VIEWER can make on any document, so keying the limiter by document id
+    // would let the same caller bypass the limit simply by clicking a different document each time.
     String documentContentPattern = "^/api/v1/documents/[^/]+/content$";
     // The push intake is the only POST under /api/v1 reachable without a session. The capture
     // group keys the per-IP limiter by library, like the indexing trigger: one source notifying
@@ -113,9 +112,9 @@ public class RateLimitConfiguration {
     LocalAuthLimits localAuth = properties.localAuth();
     rules.add(rule("local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
     rules.add(rule("local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
-    // #1592: a switched-off flow is answered exactly like an unknown route, which has no budget -
-    // counting these two while they are off would answer 429 where the unknown route answers 401.
-    // Resolved per request, never at wiring time: the flows read their switches from the database.
+    // A switched-off flow is answered exactly like an unknown route, which has no budget - counting
+    // these two while they are off would answer 429 where the unknown route answers 401. Resolved
+    // per request, never at wiring time: the flows read their switches from the database.
     rules.add(
         rule(
             "local-auth-register",

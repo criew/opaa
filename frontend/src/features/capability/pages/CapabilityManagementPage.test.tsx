@@ -137,7 +137,7 @@ describe('CapabilityManagementPage', () => {
     expect(calls).toEqual([])
   })
 
-  // ADR-0036, Nachtrag vom 03.10.2026: connector libraries are released per source and per access.
+  // ADR-0036, Entscheidung 5: connector libraries are released per source and per access.
   it('opens one access of the connector right to all accounts within its scope', async () => {
     const calls = recordCalls()
     renderWithProviders(<CapabilityManagementPage />, { withRouter: true })

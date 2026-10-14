@@ -7,9 +7,9 @@ import java.util.Map;
 /**
  * The list a token carries under a claim path, classified: either the values it named - an empty
  * list included, which is the provider saying "none" - or why it named nothing usable. {@link
- * TokenGroups} (#1807) and {@link TokenRoles} (#1830) read through this one classification, so "the
- * claim is empty" and "there is no usable claim" cannot drift apart between them; each wraps the
- * outcome in its own type, because only the caller knows what an empty claim means for it.
+ * TokenGroups} and {@link TokenRoles} read through this one classification, so "the claim is empty"
+ * and "there is no usable claim" cannot drift apart between them; each wraps the outcome in its own
+ * type, because only the caller knows what an empty claim means for it.
  */
 sealed interface ClaimList {
 

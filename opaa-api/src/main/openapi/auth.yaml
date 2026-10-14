@@ -214,7 +214,7 @@ paths:
         OPAA_PUBLIC_BASE_URL is configured (what GET /api/v1/auth/config reports as
         localAccounts.passwordResetEnabled); otherwise it answers with the standard 404 - the
         state is public through /auth/config anyway (an unknown route under /api answers 401
-        without a session, see #1592). Where it exists it always answers 204 after the same
+        without a session). Where it exists it always answers 204 after the same
         response-time class - the work runs off the request thread - whether
         or not a local account exists under the address: an ACTIVE account and an account in a
         failed-login lockout receive the mail PASSWORD_RESET with a RESET_PASSWORD link

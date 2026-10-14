@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * One page of the Stichtagsauskunft about one named object (#1822, ADR-0036 Entscheidung 8), with
- * the two gaps the reconstruction cannot close on its own stated rather than left to the reader:
- * before {@code retentionCutoff} the intervals are deleted, so an empty answer there is "no longer
- * on record" (#1833), and {@code sourcesNotCovered} names the rights sources that carry no history
- * yet - an empty answer is therefore never a proof that nobody had access.
+ * One page of the Stichtagsauskunft about one named object (ADR-0036 Entscheidung 8), with the two
+ * gaps the reconstruction cannot close on its own stated rather than left to the reader: before
+ * {@code retentionCutoff} the intervals are deleted, so an empty answer there is "no longer on
+ * record", and {@code sourcesNotCovered} names the rights sources that carry no history yet - an
+ * empty answer is therefore never a proof that nobody had access.
  */
 public record AccessAsOfResult(
     AccessAsOfObjectType objectType,

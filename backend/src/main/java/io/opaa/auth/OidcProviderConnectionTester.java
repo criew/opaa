@@ -3,15 +3,15 @@ package io.opaa.auth;
 import com.nimbusds.jose.jwk.JWKSet;
 
 /**
- * Probes a provider before it is saved (#1329, the "Verbindungstest" of the Anbieterverwaltung):
- * the discovery document must be reachable and name the same issuer (OIDC Discovery requires the
- * two to match byte for byte - the most common misconfiguration is a trailing path or a host the
- * instance does not consider itself), and the JWK set (the override, if given, else the discovered
- * one) must carry at least one key. With an override, an issuer the backend cannot <em>reach</em>
- * is no failure: that is the Compose split the override exists for (the browser reaches the
- * provider under the issuer, the backend under the override), and the registry never fetches the
- * issuer in that case either - the outcome then says which of the two was verified. An issuer that
- * was reached and rejected (mismatch, status, blocked address) stays a failure. German outcomes, no
+ * Probes a provider before it is saved (the "Verbindungstest" of the Anbieterverwaltung): the
+ * discovery document must be reachable and name the same issuer (OIDC Discovery requires the two to
+ * match byte for byte - the most common misconfiguration is a trailing path or a host the instance
+ * does not consider itself), and the JWK set (the override, if given, else the discovered one) must
+ * carry at least one key. With an override, an issuer the backend cannot <em>reach</em> is no
+ * failure: that is the Compose split the override exists for (the browser reaches the provider
+ * under the issuer, the backend under the override), and the registry never fetches the issuer in
+ * that case either - the outcome then says which of the two was verified. An issuer that was
+ * reached and rejected (mismatch, status, blocked address) stays a failure. German outcomes, no
  * stack traces - the same shape as {@code LlmModelConnectionTester}; the fetching itself, including
  * the address policy, is {@link OidcDiscoveryClient}'s, so the test probes exactly what the
  * registry will later read.

@@ -7,8 +7,8 @@ import io.opaa.common.ValidationException;
 import java.util.UUID;
 
 /**
- * Filter, sort and page of the account list of the administration (#1601). The bounds are those of
- * {@link LocalUserQuery}. {@code status}, {@code withoutExpiry} and {@code inactive} describe local
+ * Filter, sort and page of the account list of the administration. The bounds are those of {@link
+ * LocalUserQuery}. {@code status}, {@code withoutExpiry} and {@code inactive} describe local
  * accounts only and therefore narrow the list to them ({@link #localOnly()}); {@code withoutExpiry}
  * and {@code inactive} mean the same set here as on the local list, {@code withoutExpiry} also the
  * set behind the standing notice's count.
@@ -33,11 +33,10 @@ public record AccountQuery(
 
   /**
    * The sort fields of the account list. The four of {@link LocalUserQuery.Sort} plus the three
-   * columns the list gained with the provider accounts (#1601). The activity class is deliberately
-   * not among them and never will be (ADR-0033, Entscheidung 11): a list sortable by "last used" is
-   * the evaluation path that decision rules out. The three added ones carry no such risk - origin,
-   * role and state say where an account comes from and whether it can sign in, not when someone
-   * worked.
+   * columns the list gained with the provider accounts. The activity class is deliberately not
+   * among them and never will be (ADR-0033, Entscheidung 11): a list sortable by "last used" is the
+   * evaluation path that decision rules out. The three added ones carry no such risk - origin, role
+   * and state say where an account comes from and whether it can sign in, not when someone worked.
    */
   public enum Sort {
     DISPLAY_NAME,

@@ -5,9 +5,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * Records the ownership history of an asset as half-open intervals (#1815, ADR-0036 Entscheidung
- * 8): "who was responsible for this object on 3 March" stays answerable after the audit log's own
- * retention period has taken the event away.
+ * Records the ownership history of an asset as half-open intervals (ADR-0036 Entscheidung 8): "who
+ * was responsible for this object on 3 March" stays answerable after the audit log's own retention
+ * period has taken the event away.
  *
  * <p>Follows the interval contract of {@link PermissionHistoryService} and shares its {@link
  * PermissionHistoryClock}: successive intervals of the same asset have strictly increasing
@@ -70,11 +70,10 @@ public class AssetOwnershipHistoryService {
   }
 
   /**
-   * The transfer variant of {@link #recordTransferred} (#1834, ADR-0036 Entscheidung 10): the
-   * boundary is the one the whole transfer shares rather than a fresh one, and both the closed and
-   * the opened interval name the operation. An asset has one owner at a time, so unlike a grant
-   * there are no two sides here - one chain, one cause {@link
-   * AssetOwnershipHistoryCause#TRANSFERRED}.
+   * The transfer variant of {@link #recordTransferred} (ADR-0036 Entscheidung 10): the boundary is
+   * the one the whole transfer shares rather than a fresh one, and both the closed and the opened
+   * interval name the operation. An asset has one owner at a time, so unlike a grant there are no
+   * two sides here - one chain, one cause {@link AssetOwnershipHistoryCause#TRANSFERRED}.
    */
   public void recordTransferred(
       AssetType assetType,

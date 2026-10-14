@@ -37,8 +37,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The group API without {@code /admin} (#1814, ADR-0036 Entscheidung 4): who may act is decided per
- * group inside {@link GroupService}, not by a role at the door. There is therefore no
+ * The group API without {@code /admin} (ADR-0036 Entscheidung 4): who may act is decided per group
+ * inside {@link GroupService}, not by a role at the door. There is therefore no
  * {@code @PreAuthorize} here - a role annotation would answer {@code 403} where the service
  * deliberately answers {@code 404}, and would lock out the stewards this endpoint exists for. The
  * one group path left under {@code /admin} is the list of every group of the organization, in
@@ -82,7 +82,7 @@ public class GroupController {
 
   /**
    * The id path of the Subjekt-Auswahl: a group this caller may not name answers {@code 404}, never
-   * {@code 403} - the same answer the search gives by omitting it (#1820).
+   * {@code 403} - the same answer the search gives by omitting it.
    */
   @GetMapping("/selectable/{groupId}")
   public SelectableGroupResponse resolveSelectableGroup(

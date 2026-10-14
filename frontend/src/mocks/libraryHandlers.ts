@@ -351,7 +351,7 @@ export const libraryHandlers = [
       } satisfies SourceBrowseResponse)
     }
     if (sourceType === 'SMB') {
-      // the folders in the root of the mock share (ADR-0040, Nachtrag SMB)
+      // the folders in the root of the mock share (ADR-0046)
       if (!body.sourceCredentials && !body.libraryId) {
         return HttpResponse.json(
           { error: 'sourceCredentials sind für die Ordnerauswahl erforderlich' },

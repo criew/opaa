@@ -18,15 +18,15 @@ import java.util.UUID;
  * @param vectorChunkCount chunks actually present in the vector store. A gap to {@code chunkCount}
  *     means the two stores disagree, which is itself the finding.
  * @param lowChunkDocumentCount documents geführt as indexed with null or auffällig wenige chunks -
- *     a permanent operational metric, not a one-off cleanup number (#1055).
- * @param metadataBackfill the core-metadata extraction state and Füllgrad per field (#1067), read
- *     from the same selection the backfill itself drains.
- * @param modelExtraction the Zählwerk of the model-backed extraction (#1073) - without it the only
- *     feedback about the cost of that capability is the model provider's invoice.
- * @param metadataSchemaChanges the running value mappings and field deletions of the library
- *     (#1361) - the second defined Mischzustand, worked off from the library's own settings.
- * @param contextPrefixRerun the Kontextpräfix state (#1072) - the defined Mischzustand of a library
- *     whose prefix is being changed, read from the same selection its Nachlauf drains.
+ *     a permanent operational metric, not a one-off cleanup number.
+ * @param metadataBackfill the core-metadata extraction state and Füllgrad per field, read from the
+ *     same selection the backfill itself drains.
+ * @param modelExtraction the Zählwerk of the model-backed extraction - without it the only feedback
+ *     about the cost of that capability is the model provider's invoice.
+ * @param metadataSchemaChanges the running value mappings and field deletions of the library - the
+ *     second defined Mischzustand, worked off from the library's own settings.
+ * @param contextPrefixRerun the Kontextpräfix state - the defined Mischzustand of a library whose
+ *     prefix is being changed, read from the same selection its Nachlauf drains.
  */
 public record LibrarySearchStatus(
     UUID libraryId,

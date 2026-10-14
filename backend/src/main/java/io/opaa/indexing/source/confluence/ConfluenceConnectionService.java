@@ -9,11 +9,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * The administration-side face of the Confluence access layer (ADR-0023, #1134): detects the
- * edition of an address without credentials, verifies credentials and counts readable spaces for
- * the connection test, lists spaces for the selection, and re-checks the edition when a library is
- * created. Every outcome is a German, user-facing message without credentials; the access layer
- * guarantees that for its exceptions, this class only passes them on.
+ * The administration-side face of the Confluence access layer (ADR-0023): detects the edition of an
+ * address without credentials, verifies credentials and counts readable spaces for the connection
+ * test, lists spaces for the selection, and re-checks the edition when a library is created. Every
+ * outcome is a German, user-facing message without credentials; the access layer guarantees that
+ * for its exceptions, this class only passes them on.
  */
 @Service
 public class ConfluenceConnectionService {

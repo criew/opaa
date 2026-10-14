@@ -57,7 +57,7 @@ aus, scheitert schon die Anmeldung. Das ist dann „nicht prüfbar“ und kein B
 
 ## Was der Lauf zusätzlich belegen soll
 
-Die folgenden Befunde gehören danach als Nachtrag in ADR-0040:
+Die folgenden Befunde gehören danach in den Text von ADR-0040:
 
 - das Fehlerbild über der Exportgrenze (`403 exportSizeLimitExceeded`),
 - ob `alt=media` auf einen anderen Host weiterleitet,

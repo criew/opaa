@@ -37,14 +37,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * The event path end to end (ADR-0027, Entscheidung 6 und Nachtrag 09/2026; #1382, #1949): the
- * notification is delivered by the test itself - the documented S3 {@code Records} payload with
- * {@code Authorization: Bearer <token>}, keys URL-encoded the way MinIO and Ceph send them. The
- * store behind it is real: everything the run touches - the security chain of the intake, the token
- * check, the debounce, the EVENT run with its {@code HeadObject} against the store, the document
- * path, the removal on a confirmed 404 - runs against the shared {@link S3TestFixture}. What this
- * test does not cover is the delivery by the store itself; no S3 server we can pull publicly emits
- * bucket notifications (see the ADR addendum).
+ * The event path end to end (ADR-0027, Entscheidungen 6 and 9): the notification is delivered by
+ * the test itself - the documented S3 {@code Records} payload with {@code Authorization: Bearer
+ * <token>}, keys URL-encoded the way MinIO and Ceph send them. The store behind it is real:
+ * everything the run touches - the security chain of the intake, the token check, the debounce, the
+ * EVENT run with its {@code HeadObject} against the store, the document path, the removal on a
+ * confirmed 404 - runs against the shared {@link S3TestFixture}. What this test does not cover is
+ * the delivery by the store itself; no S3 server we can pull publicly emits bucket notifications
+ * (ADR-0027, Entscheidung 9).
  *
  * <p>The real executor bean reaches the container because the shared context's target-validation
  * allowlist names the Docker host address ({@code OpaaIndexingTargetAllowlistInitializer}); this

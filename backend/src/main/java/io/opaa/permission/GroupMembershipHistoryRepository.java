@@ -34,7 +34,7 @@ public interface GroupMembershipHistoryRepository
    * Test-only cleanup helper - see {@link
    * io.opaa.permission.AssetGrantHistoryRepository#deleteBySubjectUserIdIn} for the full reasoning
    * and for why {@code @Transactional} is required here; {@code user_id} here is the same {@code ON
-   * DELETE RESTRICT} pattern (#238).
+   * DELETE RESTRICT} pattern.
    */
   @Transactional
   void deleteByUserIdIn(Collection<UUID> userIds);
@@ -57,7 +57,7 @@ public interface GroupMembershipHistoryRepository
 
   /**
    * Every <i>state</i> interval of the given groups overlapping {@code [from, to)} - the group half
-   * of the Stichtagsauskunft (#1822). Zero-length event markers are excluded by {@code validTo >
+   * of the Stichtagsauskunft. Zero-length event markers are excluded by {@code validTo >
    * validFrom}; never called with an empty set.
    */
   @Query(

@@ -1,5 +1,5 @@
 /**
- * The lifecycle of ownership and responsibility (#1819, ADR-0036 Entscheidung 6): the derived state
+ * The lifecycle of ownership and responsibility (ADR-0036 Entscheidung 6): the derived state
  * "Nachfolge offen", the detection run that records when it began and ended, and the operational
  * list with its three tabs.
  *

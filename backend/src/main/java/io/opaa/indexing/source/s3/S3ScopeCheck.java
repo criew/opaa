@@ -4,10 +4,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * The connection test's finding for one scope of an S3 library (ADR-0027, #1376): how far the
- * three-step probe got - bucket reachable, listing allowed, reading allowed - and what the first
- * listing page counted. {@code message} carries the German diagnosis of the refused step, {@code
- * null} when every step passed.
+ * The connection test's finding for one scope of an S3 library (ADR-0027): how far the three-step
+ * probe got - bucket reachable, listing allowed, reading allowed - and what the first listing page
+ * counted. {@code message} carries the German diagnosis of the refused step, {@code null} when
+ * every step passed.
  *
  * @param readAllowed {@code null} when the scope holds no object to try reading
  * @param objectCountIsLowerBound {@code true} when the first page was not the last one

@@ -33,13 +33,11 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   /**
    * Whether any library is still owned by the given group - group ids are unique across the whole
    * system (not just within an organization), so no organization scoping is needed here. Used by
-   * {@code GroupService#deleteGroup} to reject deleting a group that still owns an asset (#200's
-   * acceptance criteria; see the class Javadoc there for why the check could not exist before #201
-   * introduced the first asset type).
+   * {@code GroupService#deleteGroup} to reject deleting a group that still owns an asset.
    */
   boolean existsByOwnerGroupId(UUID ownerGroupId);
 
-  /** The libraries one group owns - what a transfer of ownership moves (#1834). */
+  /** The libraries one group owns - what a transfer of ownership moves. */
   List<KnowledgeLibrary> findByOwnerGroupId(UUID ownerGroupId);
 
   /** The same figure without the rows, so a transfer can check its work limit before loading. */
@@ -47,7 +45,7 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
 
   /**
    * The same figure for a whole list of groups in one grouped query - the overview "wo wirkt diese
-   * Gruppe" (#1821) asks it for every group at once. A group owning no library is absent.
+   * Gruppe" asks it for every group at once. A group owning no library is absent.
    */
   @Query(
       "select l.ownerGroupId as ownerGroupId, count(l) as libraryCount from KnowledgeLibrary l"
@@ -71,9 +69,9 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
 
   /**
    * Used by tests to locate a user's own libraries directly - {@code
-   * KnowledgeLibraryService#listLibraries} itself no longer calls this since #418 (it now lists via
-   * {@link LibraryAccessService#readableLibraryIds}, which covers ownership through the {@code
-   * OWNER} grant every library creation grants).
+   * KnowledgeLibraryService#listLibraries} itself lists via {@link
+   * LibraryAccessService#readableLibraryIds}, which covers ownership through the {@code OWNER}
+   * grant every library creation grants).
    */
   List<KnowledgeLibrary> findByOrganizationIdAndOwnerUserId(UUID organizationId, UUID ownerUserId);
 
@@ -137,7 +135,7 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   List<UUID> findIdsByOrganizationId(@Param("organizationId") UUID organizationId);
 
   /**
-   * Every library with an active schedule (#485), across every organization - {@code
+   * Every library with an active schedule, across every organization - {@code
    * LibraryIndexingScheduler}'s own tick is the only caller; a schedule can only ever be enabled on
    * a connector library ({@code chk_knowledge_libraries_schedule} forbids it for {@code UPLOAD}),
    * so this needs no additional {@code sourceType} filter.
@@ -152,8 +150,8 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   long countByOrganizationIdAndDiagnosticsLockedTrueAndOwnerOnlyFalse(UUID organizationId);
 
   /**
-   * Every library of one organization in one release state (#1731) - the administration's
-   * Bestandsliste asks for {@code ACTIVE}.
+   * Every library of one organization in one release state - the administration's Bestandsliste
+   * asks for {@code ACTIVE}.
    */
   List<KnowledgeLibrary> findByOrganizationIdAndExternalAccessState(
       UUID organizationId, ExternalAccessState state);
@@ -178,10 +176,10 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
 
   /**
    * Erases the stored credential ciphertext, independent of what the entity attribute currently
-   * holds (#1806): while the encryption key is missing, {@code sourceCredentials} reads as {@code
-   * null} for a value that is very much there, so the dirty check of a {@code @DynamicUpdate}
-   * entity would find nothing to write and the discard would not happen. The condition is on the
-   * column itself and therefore unaffected by the converter.
+   * holds: while the encryption key is missing, {@code sourceCredentials} reads as {@code null} for
+   * a value that is very much there, so the dirty check of a {@code @DynamicUpdate} entity would
+   * find nothing to write and the discard would not happen. The condition is on the column itself
+   * and therefore unaffected by the converter.
    *
    * <p>Deliberately without {@code clearAutomatically}: the callers keep working with the same
    * managed entity afterwards, and detaching it here would drop their pending changes.
@@ -310,7 +308,7 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
     long getOwners();
   }
 
-  /** The push secret's counterpart of {@link #eraseSourceCredentials} - same reasoning (#1806). */
+  /** The push secret's counterpart of {@link #eraseSourceCredentials} - same reasoning. */
   @Modifying(flushAutomatically = true)
   @Query(
       "update KnowledgeLibrary l set l.webhookSecret = null"

@@ -32,11 +32,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Manual correction of a document's core metadata (#1068): read, set, delete and the
- * Sammelzuweisung, plus the Dokumentart vocabulary a client offers as choice list, and the
- * Pflege-Anker of a library (#1069). Rights, validation and audit live in {@link
- * DocumentMetadataCorrectionService} and {@link LibraryMetadataMaintenanceService}. Absent while
- * the metadata feature is off (ADR-0044).
+ * Manual correction of a document's core metadata: read, set, delete and the Sammelzuweisung, plus
+ * the Dokumentart vocabulary a client offers as choice list, and the Pflege-Anker of a library.
+ * Rights, validation and audit live in {@link DocumentMetadataCorrectionService} and {@link
+ * LibraryMetadataMaintenanceService}. Absent while the metadata feature is off (ADR-0044).
  */
 @RestController
 @ConditionalOnFeature(Feature.METADATA)

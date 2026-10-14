@@ -18,7 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * The change run of {@link FileSync} (ADR-0040, Entscheidung 6): reported files go the full sync's
+ * The change run of {@link FileSync} (ADR-0045, Entscheidung 3): reported files go the full sync's
  * way, reported removals count only while the stream's containers are reachable, a stream's new
  * cursor is kept only after a clean read, and a change of structure, an expired cursor or a missing
  * one make the next run a full sync.

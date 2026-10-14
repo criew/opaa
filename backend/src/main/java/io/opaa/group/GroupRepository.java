@@ -52,8 +52,8 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 
   /**
    * The {@link GroupKind#ORG_UNIT} groups of <b>one provider</b>, with their memberships eagerly
-   * fetched - what a synchronisation run of that provider diffs its snapshot against (#1816). A run
-   * never sees another provider's groups, so it can neither dissolve nor rename them.
+   * fetched - what a synchronisation run of that provider diffs its snapshot against. A run never
+   * sees another provider's groups, so it can neither dissolve nor rename them.
    */
   @Query(
       "select distinct g from Group g left join fetch g.memberships"
@@ -73,9 +73,9 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 
   /**
    * The groups of one organization whose name or source path contains {@code pattern}, matched
-   * case-insensitively - what the Subjekt-Auswahl searches in (#1820). Deliberately without the
-   * memberships fetch-join the list queries carry: the selection shows the number of active
-   * accounts, which is counted in the database and never derived from loaded rows.
+   * case-insensitively - what the Subjekt-Auswahl searches in. Deliberately without the memberships
+   * fetch-join the list queries carry: the selection shows the number of active accounts, which is
+   * counted in the database and never derived from loaded rows.
    *
    * <p><b>The database caps the rows</b>, not the caller: this endpoint is open to every
    * authenticated member of the organization, so it is never allowed to load the whole organization
@@ -97,7 +97,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
 
   /**
    * The protected groups of one organization carrying exactly this name, matched
-   * case-insensitively. Their own query on purpose (#1820): a protected group is not findable by a
+   * case-insensitively. Their own query on purpose: a protected group is not findable by a
    * substring (ADR-0036, Entscheidung 9), and asking for it separately keeps it out of the bounded
    * window the substring search reads - otherwise a house with many same-prefixed groups could push
    * the one exact hit out of the window, and the selection's answer would depend on how many other

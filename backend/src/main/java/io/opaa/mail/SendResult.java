@@ -1,10 +1,10 @@
 package io.opaa.mail;
 
 /**
- * The outcome of a send attempt (#1536, ADR-0033 Entscheidung 10). {@link MailService#send} returns
- * one of these and <b>never throws</b>: mail is best-effort, and a caller that has just created an
- * account must be able to tell the person "das Konto steht, die Einladung ging nicht raus" instead
- * of failing the whole operation.
+ * The outcome of a send attempt (ADR-0033 Entscheidung 10). {@link MailService#send} returns one of
+ * these and <b>never throws</b>: mail is best-effort, and a caller that has just created an account
+ * must be able to tell the person "das Konto steht, die Einladung ging nicht raus" instead of
+ * failing the whole operation.
  */
 public sealed interface SendResult {
 

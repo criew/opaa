@@ -188,6 +188,8 @@ In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z.
  */
 ```
 
+`.github/scripts/check_code_comments.sh` prüft in der CI die Kommentare unter `backend/src/main` und `opaa-api/src/main` (samt `application.yml` und den OpenAPI-Beschreibungen): Review-Protokoll („#393 code review, finding 1“, „nit 4“), an Issue-Nummern hängende Historie („since #1931“, „pre-#888“) und reine Herkunftsmarker („(#1073)“, „#1073:“) lassen den Lauf fehlschlagen; übrige Issue-Verweise zählt er nur, auch „until #N“ eines Workarounds und „after #N“ einer Deprecation. Ausgenommen sind das Spike-Paket `query/spike` und Zeilen mit „Spike #N“.
+
 ### GitHub-Actions-Workflows
 
 **Jeder Workflow bindet seine Actions über den vollen Commit-SHA ein**, mit exakter Version als Kommentar (`uses: docker/login-action@<40-stelliger SHA> # v4.6.0`), nie über einen Tag wie `@v7`. Wie man den SHA ermittelt und im Review prüft, steht in [docs/renovate.md](docs/renovate.md#actions-per-commit-sha); `.github/scripts/check_action_pins.sh` prüft jede Datei unter `.github/workflows/` in der CI, ein neuer Workflow ist ohne Liste erfasst. Release-Builds in `publish-images.yml` lesen und schreiben keinen gha-Cache; wer das ändert, liest vorher dort den Abschnitt „Sicherheitsmodell des gha-Caches“.

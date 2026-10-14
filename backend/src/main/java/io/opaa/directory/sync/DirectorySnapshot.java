@@ -11,11 +11,10 @@ import java.util.Objects;
  * that {@link DirectorySyncService} treats specially precisely because it is indistinguishable from
  * a misconfigured connection at this layer (see #237's acceptance criteria).
  *
- * @param accounts every account of this provider's directory with its state (#1818), or {@code
- *     null} from a connector that does not report account status at all - then no account is ever
- *     locked or unlocked by the run. An <em>empty</em> list is something else entirely: the
- *     connector reports account status and found none, which aborts the run the same way an empty
- *     group list does.
+ * @param accounts every account of this provider's directory with its state, or {@code null} from a
+ *     connector that does not report account status at all - then no account is ever locked or
+ *     unlocked by the run. An <em>empty</em> list is something else entirely: the connector reports
+ *     account status and found none, which aborts the run the same way an empty group list does.
  */
 public record DirectorySnapshot(
     Instant fetchedAt, List<DirectoryGroup> groups, List<DirectoryAccount> accounts) {

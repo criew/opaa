@@ -29,7 +29,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * How the given accounts are named to a human: the display name, the mail address where an
    * account carries none (a token without a name claim leaves it unset). An id with no account is
    * absent from the result rather than mapped to itself - the one encoding of this fallback, which
-   * four callers had each written out before (#1882 review).
+   * four callers had each written out before.
    */
   default Map<UUID, String> displayNamesById(Collection<UUID> userIds) {
     Map<UUID, String> byId = new HashMap<>();
@@ -60,9 +60,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   List<User> findByNormalizedIssuer(@Param("issuer") String normalizedIssuer);
 
   /**
-   * Used by {@code AuditIncidentScopeService#request} (#393 code review, finding 8) to reject an
-   * anlassbezogene Klärung named against a person outside the requester's own organization before a
-   * grant row - and later, at query time, a pseudonym - is ever created for them.
+   * Used by {@code AuditIncidentScopeService#request} to reject an anlassbezogene Klärung named
+   * against a person outside the requester's own organization before a grant row - and later, at
+   * query time, a pseudonym - is ever created for them.
    */
   Optional<User> findByIdAndOrganizationId(UUID id, UUID organizationId);
 
@@ -105,15 +105,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    */
   List<User> findByIssuerAndSystemRoleNot(String issuer, SystemRole systemRole);
 
-  /** The local accounts of one organization - what the local account list is built from (#1537). */
+  /** The local accounts of one organization - what the local account list is built from. */
   List<User> findByOrganizationIdAndIssuer(UUID organizationId, String issuer);
 
-  /** Every account of {@code issuer} - what the daily local-account run walks (#1537). */
+  /** Every account of {@code issuer} - what the daily local-account run walks. */
   List<User> findByIssuer(String issuer);
 
   /**
-   * The columns a directory run needs to decide an account's state (#1818) - a projection, not the
-   * entity: a realm may report tens of thousands of accounts (see {@code
+   * The columns a directory run needs to decide an account's state - a projection, not the entity:
+   * a realm may report tens of thousands of accounts (see {@code
    * OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_ACCOUNTS}), and loading every one of them as a managed entity
    * would keep them in the persistence context - and under dirty checking - for the whole of the
    * run's transaction. The few accounts a run actually locks or unlocks are loaded by id
@@ -148,10 +148,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   }
 
   /**
-   * Per-table counts of the rows that deleting a local account has to be clear of (#1537), in one
-   * statement so the refusal can name the reason in the log. <b>Every new {@code ON DELETE
-   * RESTRICT} reference to {@code users} needs a sub-query here</b>; one this list misses is caught
-   * only by the constraint itself, without its name in the log - {@code
+   * Per-table counts of the rows that deleting a local account has to be clear of, in one statement
+   * so the refusal can name the reason in the log. <b>Every new {@code ON DELETE RESTRICT}
+   * reference to {@code users} needs a sub-query here</b>; one this list misses is caught only by
+   * the constraint itself, without its name in the log - {@code
    * io.opaa.auth.UserDeletionBlockerCoverageIntegrationTest} compares the list against the schema's
    * delete rules, and every counted reference against the branch of {@code
    * LocalUserService#blockers} that names it.
@@ -227,22 +227,20 @@ public interface UserRepository extends JpaRepository<User, UUID> {
       @Param("id") UUID id, @Param("expected") SystemRole expected, @Param("role") SystemRole role);
 
   /**
-   * Used by {@code AdminController#listUsers} (#271) to scope the user list to the caller's own
-   * organization - {@code findAll()} used to return every organization's users, including to a
-   * SYSTEM_ADMIN, whose reach must stop at their own organization's boundary just like every other
-   * role (#199).
+   * Used by {@code AdminController#listUsers} to scope the user list to the caller's own
+   * organization: a SYSTEM_ADMIN's reach stops at their own organization's boundary just like every
+   * other role's.
    */
   List<User> findByOrganizationId(UUID organizationId);
 
   /**
-   * Used by {@code UserSearchController#listUsers} (#777, capped and query-gated after #778 review
-   * finding 4) - unlike {@link #findByOrganizationId(UUID)} above (still unbounded, but only ever
-   * reached by the {@code SYSTEM_ADMIN}-only admin list), this backs an endpoint every
-   * authenticated organization member can call, so it is deliberately never allowed to return the
-   * whole organization: {@code pageable} caps the row count and the caller (see {@link
-   * UserService#searchInOrganization}) never invokes this without a query that already passed the
-   * minimum-length check. Matches case-insensitively against both displayName and email so a caller
-   * can find someone by either.
+   * Used by {@code UserSearchController#listUsers} (capped and query-gated) - unlike {@link
+   * #findByOrganizationId(UUID)} above (still unbounded, but only ever reached by the {@code
+   * SYSTEM_ADMIN}-only admin list), this backs an endpoint every authenticated organization member
+   * can call, so it is deliberately never allowed to return the whole organization: {@code
+   * pageable} caps the row count and the caller (see {@link UserService#searchInOrganization})
+   * never invokes this without a query that already passed the minimum-length check. Matches
+   * case-insensitively against both displayName and email so a caller can find someone by either.
    */
   @Query(
       "SELECT u FROM User u WHERE u.organizationId = :organizationId AND "

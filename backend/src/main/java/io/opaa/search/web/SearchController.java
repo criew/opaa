@@ -22,8 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The reading path without generation (#1720): hits instead of an answer, and the text behind one
- * hit.
+ * The reading path without generation: hits instead of an answer, and the text behind one hit.
  *
  * <p>A regular endpoint of this API, open to every signed-in person with exactly the rights check
  * {@code POST /api/v1/query} applies. It deliberately does <b>not</b> hang on the external-access
@@ -70,7 +69,7 @@ public class SearchController {
 
   /**
    * The libraries this caller may search - the only place a foreign tool learns the extent of its
-   * access, and the basis of {@code list_libraries} of the MCP server (#1721).
+   * access, and the basis of {@code list_libraries} of the MCP server.
    */
   @GetMapping("/libraries")
   public List<SearchableLibrary> libraries(@Caller CurrentUser caller) {

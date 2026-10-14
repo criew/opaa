@@ -6,10 +6,10 @@ import io.opaa.auth.User;
 import java.util.Objects;
 
 /**
- * One account as the administration sees it (#1601): a local account with its {@link
- * LocalUserOverview} (state and activity class), or an identity-provider account with the provider
- * row it belongs to - {@code null} when that row has been deleted since, the account itself remains
- * (ADR-0025). Never both.
+ * One account as the administration sees it: a local account with its {@link LocalUserOverview}
+ * (state and activity class), or an identity-provider account with the provider row it belongs to -
+ * {@code null} when that row has been deleted since, the account itself remains (ADR-0025). Never
+ * both.
  *
  * @param roleManagedByProvider an enabled provider with a roles claim is authoritative for the
  *     account's role (ADR-0025, Entscheidung 4) - the condition under which {@code

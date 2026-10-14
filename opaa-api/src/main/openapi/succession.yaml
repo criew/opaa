@@ -9,7 +9,7 @@ paths:
       operationId: previewPermissionTransfer
       tags: [succession]
       summary: >
-        Show what transferring the rights of one subject to another would move (#1834, ADR-0036
+        Show what transferring the rights of one subject to another would move (ADR-0036
         Entscheidung 10).
       description: >
         The preview is mandatory before a transfer and is itself an audit event, also when the
@@ -67,7 +67,7 @@ paths:
     post:
       operationId: executePermissionTransfer
       tags: [succession]
-      summary: Transfer the rights of one subject to another (#1834, ADR-0036 Entscheidung 10)
+      summary: Transfer the rights of one subject to another (ADR-0036 Entscheidung 10)
       description: >
         Carries out what the preview showed. It runs only against a preview this caller was shown
         for exactly this source, target and scope, and only while that preview still describes the
@@ -133,7 +133,7 @@ paths:
       operationId: listSuccessionEntries
       tags: [succession]
       summary: >
-        The operational list of the lifecycle (#1819, ADR-0036 Entscheidung 6) - one of its three
+        The operational list of the lifecycle (ADR-0036 Entscheidung 6) - one of its three
         tabs, chosen by kind.
       description: >
         Complete from day one, whoever the addressee is: the staging is a statement of

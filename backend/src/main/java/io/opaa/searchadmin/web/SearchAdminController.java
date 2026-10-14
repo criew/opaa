@@ -28,21 +28,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The administration page "Suche &amp; Indexierung" (#1053), {@code SYSTEM_ADMIN} only - the same
- * access bar {@link LlmModelController} and {@link IndexingAdminController} establish, and scoped
- * to the caller's own organization, never to a request parameter.
+ * The administration page "Suche &amp; Indexierung", {@code SYSTEM_ADMIN} only - the same access
+ * bar {@link LlmModelController} and {@link IndexingAdminController} establish, and scoped to the
+ * caller's own organization, never to a request parameter.
  *
  * <p><b>Read-only by design, in both senses.</b> There is no endpoint here that changes a setting:
  * the page shows the active configuration, it is not a Reglerwand. And the diagnosis, though it is
  * a {@code POST}, writes nothing either - it is a {@code POST} because a test question does not
  * belong in a URL, not because it has an effect. The one write a person-context run does cause is
  * its protocol entry, which {@code ForeignDiagnosticContextService} owns and this controller cannot
- * skip: nothing here resolves a person's search scope on its own (#1150). The chunk endpoints
- * (#1230) show what the index actually stores - text and metadata, never the embedding - and answer
- * a foreign or unknown id with 404 rather than 403, so they never confirm an id outside the
- * caller's organization. The role is not a reading permission there either: a chunk carries the
- * document's text, so both chunk endpoints additionally require the reading permission on its
- * library and answer 403 without it (#1828).
+ * skip: nothing here resolves a person's search scope on its own. The chunk endpoints show what the
+ * index actually stores - text and metadata, never the embedding - and answer a foreign or unknown
+ * id with 404 rather than 403, so they never confirm an id outside the caller's organization. The
+ * role is not a reading permission there either: a chunk carries the document's text, so both chunk
+ * endpoints additionally require the reading permission on its library and answer 403 without it.
  */
 @RestController
 @RequestMapping("/api/v1/admin/search")

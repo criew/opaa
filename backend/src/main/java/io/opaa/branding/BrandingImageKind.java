@@ -1,10 +1,9 @@
 package io.opaa.branding;
 
 /**
- * The three images an operator may store in the branding settings (#582, #1910). One enum rather
- * than three parallel sets of methods: every one of them is validated, stored, served and audited
- * the same way, and three copies of that is exactly how one of them would end up with a weaker
- * rule.
+ * The three images an operator may store in the branding settings. One enum rather than three
+ * parallel sets of methods: every one of them is validated, stored, served and audited the same
+ * way, and three copies of that is exactly how one of them would end up with a weaker rule.
  *
  * <p>Only the ceilings differ, and only for the background: a logo is chrome a few hundred pixels
  * wide, while a background image covers half a screen and is usually a photograph.

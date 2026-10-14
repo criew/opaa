@@ -32,9 +32,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The Nachlauf of a retired list value and of a retired field (metadata-schema.md, "Nachlauf im
- * Betrieb", #1361). It runs on the same chargen loop as the Bestandslauf and the Kontextpräfix
- * rerun ({@link DocumentBatchLoop}); its selection is the {@link LibraryMetadataSchemaChange} row,
- * and its processing unit is one document in one transaction with its own audit event.
+ * Betrieb"). It runs on the same chargen loop as the Bestandslauf and the Kontextpräfix rerun
+ * ({@link DocumentBatchLoop}); its selection is the {@link LibraryMetadataSchemaChange} row, and
+ * its processing unit is one document in one transaction with its own audit event.
  *
  * <p><b>The invalid state stays unreachable the whole run.</b> A retired value remains listed and
  * filterable until the last document has left it, and it is what no new document may be given; the

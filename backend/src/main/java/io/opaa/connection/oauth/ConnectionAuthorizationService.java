@@ -50,13 +50,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The OAuth consent without a server session (ADR-0025, Nachtrag 03.10.2026): {@link #start} keeps
- * state and PKCE verifier, bound to the caller and the profile version, and returns the
- * authorization request; {@link #complete} takes what the provider sent back through the
- * application, uses the state up before it asks the provider, exchanges the code and stores the
- * grant. Where the caller returns to follows from the purpose alone. A consent for a library's
- * source is bound to the library or, for a new one, to a pending consent of the caller; whoever may
- * connect it is checked at the start and again at the completion.
+ * The OAuth consent without a server session (ADR-0048, Entscheidung 2): {@link #start} keeps state
+ * and PKCE verifier, bound to the caller and the profile version, and returns the authorization
+ * request; {@link #complete} takes what the provider sent back through the application, uses the
+ * state up before it asks the provider, exchanges the code and stores the grant. Where the caller
+ * returns to follows from the purpose alone. A consent for a library's source is bound to the
+ * library or, for a new one, to a pending consent of the caller; whoever may connect it is checked
+ * at the start and again at the completion.
  */
 @Service
 public class ConnectionAuthorizationService {

@@ -1,8 +1,8 @@
 package io.opaa.eval;
 
 /**
- * Per-domain configuration for the retrieval harness (issue #721, ADR-0011/ADR-0012 Nachtrag).
- * {@code RetrievalEvaluationHarnessTest} and {@code checkRetrievalBaseline} used to hardcode
+ * Per-domain configuration for the retrieval harness (ADR-0011; ADR-0012, Entscheidung 8). {@code
+ * RetrievalEvaluationHarnessTest} and {@code checkRetrievalBaseline} used to hardcode
  * `comic-characters` at four places (corpus directory, manifest, golden dataset, baseline file) —
  * this record is the single place those four names and the domain's chunk-count expectation live,
  * so a future domain (#234) supplies its own instance instead of a second hardcoded copy.
@@ -12,9 +12,9 @@ package io.opaa.eval;
  * @param goldenDatasetFileName file name under {@code eval/golden/}.
  * @param baselineFileName file name under {@code eval/baseline/}.
  * @param chunkCountExpectation what this domain's corpus is expected to look like after the real
- *     splitter runs (ADR-0010 Nachtrag) — {@code comic-characters} keeps the original, unchanged
- *     Ein-Chunk-Invariante.
- * @param documentTopK the document-bound search window (ADR-0012 Nachtrag) — the number of
+ *     splitter runs (ADR-0010, Entscheidung 3) — {@code comic-characters} keeps the original,
+ *     unchanged Ein-Chunk-Invariante.
+ * @param documentTopK the document-bound search window (ADR-0012, Entscheidung 8) — the number of
  *     *distinct documents* the ranking metrics are computed over, always 10 for both domains today
  *     (unchanged from the pre-#721 chunk-bound window, which is why it keeps the same name and
  *     value the class Javadoc of {@link RetrievalMetrics} already documented).

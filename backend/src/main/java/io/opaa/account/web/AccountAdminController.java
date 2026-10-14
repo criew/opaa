@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The account list of the administration (#1601): every account of the caller's organization, local
- * and identity-provider accounts alike, {@code SYSTEM_ADMIN} only. Read-only - the writes live in
+ * The account list of the administration: every account of the caller's organization, local and
+ * identity-provider accounts alike, {@code SYSTEM_ADMIN} only. Read-only - the writes live in
  * {@code LocalUserAdminController} (local accounts) and {@code AdminController} (roles).
  */
 @RestController

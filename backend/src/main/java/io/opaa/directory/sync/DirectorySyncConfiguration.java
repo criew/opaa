@@ -9,7 +9,7 @@ import org.springframework.core.task.TaskExecutor;
 /**
  * The synchronisation policy's own configuration. The productive {@link DirectoryClient} is wired
  * by {@code io.opaa.directory.sync.connector.DirectoryConnectorConfiguration}, one connector per
- * provider (#1817).
+ * provider.
  */
 @Configuration
 @EnableConfigurationProperties(DirectorySyncProperties.class)

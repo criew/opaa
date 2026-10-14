@@ -220,7 +220,7 @@ public class DiagnosticImpersonationGrantService {
   }
 
   /**
-   * The three states an interface has to tell apart (#1879): no befugnis at all, one whose scope is
+   * The three states an interface has to tell apart: no befugnis at all, one whose scope is
    * currently too small, or a usable one. Without the middle state the interface would say "Sie
    * halten keine" to somebody who holds one.
    */

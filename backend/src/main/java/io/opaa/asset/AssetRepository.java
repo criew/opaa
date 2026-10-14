@@ -51,7 +51,7 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
 
   /**
    * How many assets each of the groups owns, in one grouped query - the overview "wo wirkt diese
-   * Gruppe" (#1821) asks it for every group at once. A group owning nothing is absent.
+   * Gruppe" asks it for every group at once. A group owning nothing is absent.
    */
   @Query(
       "select a.ownerGroupId as ownerGroupId, count(a) as assetCount from Asset a"

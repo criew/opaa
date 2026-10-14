@@ -4,7 +4,7 @@ import io.opaa.auth.CurrentUser;
 
 /**
  * The effective view of one request - the libraries it may search and, where the request came in on
- * an access token, that token's id (#1720, ADR-0035).
+ * an access token, that token's id (ADR-0035).
  *
  * <p>Exactly one implementation exists, and deliberately so: {@code
  * ExternalAccessSearchScopeSource} in the external-access package answers for both callers. A

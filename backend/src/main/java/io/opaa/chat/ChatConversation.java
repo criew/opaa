@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Domain counterpart of the generated {@code ChatDetail} (#860 Teil 4) - a {@link Chat} together
- * with its full, chronologically ordered message history. {@link ChatService#createChat}, {@link
+ * Domain counterpart of the generated {@code ChatDetail} - a {@link Chat} together with its full,
+ * chronologically ordered message history. {@link ChatService#createChat}, {@link
  * ChatService#getChat} and {@link ChatService#updateChat} all return one of these; {@code
  * ChatController} maps it to the generated response via {@code ChatResponseMapper}.
  *
@@ -93,7 +93,7 @@ public final class ChatConversation {
     return useKnowledge;
   }
 
-  /** The chat's sticky core-field filter (#1070), {@link MetadataFilter#NONE} without one. */
+  /** The chat's sticky core-field filter, {@link MetadataFilter#NONE} without one. */
   public MetadataFilter getMetadataFilter() {
     return metadataFilter;
   }
@@ -110,7 +110,7 @@ public final class ChatConversation {
     return messages;
   }
 
-  /** The chat's Gesprächsnotiz (#1487), oldest point first; empty for a chat without one. */
+  /** The chat's Gesprächsnotiz, oldest point first; empty for a chat without one. */
   public List<ChatNotePoint> getNoteItems() {
     return noteItems;
   }

@@ -45,8 +45,8 @@ public class RetrievalContextFactory {
   }
 
   /**
-   * The same context with the {@code RAHMEN} points of the chat's Gesprächsnotiz (#1487). Only the
-   * chat query has them; the administration's diagnosis and the single-question evaluation path run
+   * The same context with the {@code RAHMEN} points of the chat's Gesprächsnotiz. Only the chat
+   * query has them; the administration's diagnosis and the single-question evaluation path run
    * outside a chat and use the overload above.
    */
   public RetrievalContext contextFor(

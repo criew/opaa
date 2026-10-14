@@ -5,17 +5,16 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Configuration for the synchronous remote-content proxy path (#747/#748 review, finding 1) -
- * {@code GET /api/v1/documents/{documentId}/content} for a {@code HTTP_DIRECTORY}/{@code RSS_FEED}
- * document, which streams the original from its stored source URL rather than the local disk every
- * other {@code sourceType} serves from.
+ * Configuration for the synchronous remote-content proxy path - {@code GET
+ * /api/v1/documents/{documentId}/content} for a {@code HTTP_DIRECTORY}/{@code RSS_FEED} document,
+ * which streams the original from its stored source URL rather than the local disk every other
+ * {@code sourceType} serves from.
  *
  * <p>Deliberately its own, smaller property block rather than reusing {@link
- * io.opaa.knowledge.UploadProperties#maxFileSize()}/its 120s indexing-run timeout (#748 review,
- * finding 1): this path is a synchronous, VIEWER-reachable, click-driven request against an
- * outbound connection this system does not control, not a background indexing run or a bounded
- * local-disk read - the same reasoning {@code ConnectorChecks#REQUEST_TIMEOUT} already applies to
- * its own synchronous probe.
+ * io.opaa.knowledge.UploadProperties#maxFileSize()}/its 120s indexing-run timeout: this path is a
+ * synchronous, VIEWER-reachable, click-driven request against an outbound connection this system
+ * does not control, not a background indexing run or a bounded local-disk read - the same reasoning
+ * {@code ConnectorChecks#REQUEST_TIMEOUT} already applies to its own synchronous probe.
  *
  * @param maxBytes maximum number of bytes streamed from the remote source per request, enforced
  *     while streaming (see {@code io.opaa.sourceaccess.BoundedDownloader#downloadStreaming}), not

@@ -17,9 +17,9 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 /**
- * The three per-request answers the library gives per server (#1721, ADR-0035, Umsetzungsrisiken 1
- * and 2), plus the one notification every client sends. Everything else - {@code tools/call},
- * {@code ping}, the remaining notifications - passes straight through.
+ * The three per-request answers the library gives per server (ADR-0035, Umsetzungsrisiken 1 and 2),
+ * plus the one notification every client sends. Everything else - {@code tools/call}, {@code ping},
+ * the remaining notifications - passes straight through.
  *
  * <ul>
  *   <li><b>{@code tools/list}</b> is answered here, because {@code McpStatelessAsyncServer} answers
@@ -104,9 +104,9 @@ class OpaaMcpHandler implements McpStatelessServerHandler {
   public Mono<Void> handleNotification(
       McpTransportContext transportContext, McpSchema.JSONRPCNotification notification) {
     if (McpSchema.METHOD_NOTIFICATION_INITIALIZED.equals(notification.method())) {
-      // Every client sends it after the handshake, and a stateless server has nothing to do with
-      // it - but the library's default handler finds no handler and logs a WARN per connection
-      // (#1766). Accepted here, silently, which is exactly what the protocol asks for.
+      // Every client sends it after the handshake, and a stateless server has nothing to do with it
+      // - but the library's default handler finds no handler and logs a WARN per connection.
+      // Accepted here, silently, which is exactly what the protocol asks for.
       return Mono.empty();
     }
     return delegate.handleNotification(transportContext, notification);

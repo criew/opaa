@@ -10,8 +10,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Decides what an administrator may put into a mail template (#1536, ADR-0033 Entscheidung 10):
- * plain variable tags from the key's declared set, comments, and nothing else.
+ * Decides what an administrator may put into a mail template (ADR-0033 Entscheidung 10): plain
+ * variable tags from the key's declared set, comments, and nothing else.
  *
  * <p>The check runs when the text is saved, not when it is sent, because the send that would fail
  * is somebody's invitation - discovered by the person waiting for it. {@link #requireSupportedTags}

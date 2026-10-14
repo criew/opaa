@@ -4,9 +4,9 @@ import io.opaa.api.types.SuccessionObjectType;
 import java.util.UUID;
 
 /**
- * The one rule an object without a capable responsible party imposes (#1819, ADR-0036 Entscheidung
- * 6): <b>its reach is frozen</b> - no new grant, no higher release level, no new provisioning, for
- * a space no new members. Everything else keeps working, and <b>nothing is deleted</b>.
+ * The one rule an object without a capable responsible party imposes (ADR-0036 Entscheidung 6):
+ * <b>its reach is frozen</b> - no new grant, no higher release level, no new provisioning, for a
+ * space no new members. Everything else keeps working, and <b>nothing is deleted</b>.
  *
  * <p>Declared here because every business package asks it and implemented by {@code
  * io.opaa.succession}, which composes the findings; the dependency stays {@code succession} &rarr;

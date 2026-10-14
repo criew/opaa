@@ -52,8 +52,8 @@ public class ExternalAccessTokenController {
 
   /**
    * Whether the channel is open and how long a token may live - and nothing else of the channel
-   * settings. Quota, networks, instructions text and the last change stay with the Systemverwaltung
-   * (#1719); a person managing their own tokens has no use for them.
+   * settings. Quota, networks, instructions text and the last change stay with the
+   * Systemverwaltung; a person managing their own tokens has no use for them.
    */
   @GetMapping("/settings")
   public ExternalAccessChannelInfoResponse getOwnExternalAccessChannelInfo() {

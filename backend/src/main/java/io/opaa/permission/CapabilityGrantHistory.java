@@ -14,8 +14,8 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one period in which a subject held a
- * {@link Capability} (#1813, ADR-0036 Entscheidung 8). {@code validTo == null} means the subject
- * holds it right now. Written and closed exclusively by {@link PermissionHistoryService}.
+ * {@link Capability} (ADR-0036 Entscheidung 8). {@code validTo == null} means the subject holds it
+ * right now. Written and closed exclusively by {@link PermissionHistoryService}.
  *
  * <p>Deliberately no {@code role} and no {@code expiresAt}: the state of a capability grant is its
  * existence, so an interval says everything there is to say about the period it covers.
@@ -59,9 +59,7 @@ public class CapabilityGrantHistory {
   @Column(name = "valid_to")
   private Instant validTo;
 
-  /**
-   * The transfer this interval belongs to (#1834) - see {@code AssetGrantHistory#getTransferId}.
-   */
+  /** The transfer this interval belongs to - see {@code AssetGrantHistory#getTransferId}. */
   @Column(name = "transfer_id")
   private UUID transferId;
 

@@ -29,10 +29,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * What every asset has, whatever its type (#1899, #1900): its grants, the Herleitung, its owner and
- * the caller's own favorite mark. An asset is named by type plus id; a malformed, unknown or
- * inactive type answers {@code 404} like an unknown asset. The spaces an asset is associated with
- * are served by {@code AssetSpaceController}.
+ * What every asset has, whatever its type: its grants, the Herleitung, its owner and the caller's
+ * own favorite mark. An asset is named by type plus id; a malformed, unknown or inactive type
+ * answers {@code 404} like an unknown asset. The spaces an asset is associated with are served by
+ * {@code AssetSpaceController}.
  */
 @RestController
 @RequestMapping("/api/v1/assets/{assetType}/{assetId}")
@@ -98,8 +98,8 @@ public class AssetController {
   }
 
   /**
-   * The Herleitung "warum sehe ich das" for the caller themselves (#1822, ADR-0036 Entscheidung 9)
-   * - no Vollmacht, no protocol entry, and no member of any group disclosed.
+   * The Herleitung "warum sehe ich das" for the caller themselves (ADR-0036 Entscheidung 9) - no
+   * Vollmacht, no protocol entry, and no member of any group disclosed.
    */
   @GetMapping("/access-derivation")
   public AssetAccessDerivationResponse getAssetAccessDerivation(

@@ -12,8 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The operational list of the lifecycle (#1819, ADR-0036 Entscheidung 6) - three tabs, one
- * mechanic.
+ * The operational list of the lifecycle (ADR-0036 Entscheidung 6) - three tabs, one mechanic.
  *
  * <p><b>There is deliberately no parameter by previous owner or by acting person</b> (Personalrat
  * E1, Z7), and no sort parameter at all: the order is fixed, oldest first, so no axis can appear by

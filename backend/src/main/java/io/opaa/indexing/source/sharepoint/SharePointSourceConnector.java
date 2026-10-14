@@ -54,12 +54,12 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 
 /**
- * SharePoint document libraries as the source of a library (ADR-0040, Nachtrag „SharePoint“). The
- * address is fixed ({@code apiBase}); only a profile signs in, with the client credentials of an
- * app registration in Entra, and the connector sees the access token alone. The libraries, their
- * optional folders and the full-sync rhythm are the connector settings ({@link
- * SharePointSettings}); a changed address or selection discards the run state. Documents carry no
- * deep link - the original comes through Graph.
+ * SharePoint document libraries as the source of a library (ADR-0047). The address is fixed ({@code
+ * apiBase}); only a profile signs in, with the client credentials of an app registration in Entra,
+ * and the connector sees the access token alone. The libraries, their optional folders and the
+ * full-sync rhythm are the connector settings ({@link SharePointSettings}); a changed address or
+ * selection discards the run state. Documents carry no deep link - the original comes through
+ * Graph.
  */
 public class SharePointSourceConnector implements SourceConnector, SourceBrowser, OriginalAccess {
 
