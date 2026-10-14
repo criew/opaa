@@ -32,10 +32,12 @@ export default defineConfig({
   // sie zu verstecken.
   retries: 1,
   workers: 1,
-  // The JSON report is what the CI alarm issue reads to list the failed scenarios by name.
+  // The JSON report is what the CI alarm issue reads to list the failed scenarios by name; the
+  // github reporter puts every failure, with the step it hung in, on the check run as an annotation.
   reporter: process.env.CI
     ? [
         ["list"],
+        ["github"],
         ["html", { open: "never" }],
         ["json", { outputFile: "test-results/results.json" }],
       ]

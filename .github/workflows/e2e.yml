@@ -241,7 +241,7 @@ jobs:
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: 'E2E-Suite auf main fehlgeschlagen (automatischer Lauf)',
+                title: 'ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)',
                 body: issueBody,
                 labels: ['e2e', 'bug'],
               });

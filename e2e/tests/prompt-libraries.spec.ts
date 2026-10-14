@@ -26,6 +26,7 @@ const GROUP_NAME = `E2E Prompt-Gruppe ${runId}`
 const CLOSED_LIBRARY_NAME = `E2E Geschlossene Prompts ${runId}`
 const CLOSED_DESCRIPTION = `Personalsachen Referat 12 ${runId}`
 const KNOWLEDGE_NAME = `E2E Wissen ${runId}`
+const OUTSIDER_OWN_NAME = `E2E Eigene Prompts Outsider ${runId}`
 
 /** The owner's own view of the library, found by name - the id the outsider must never reach. */
 async function promptLibraryId(name: string): Promise<string> {
@@ -179,6 +180,10 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     outsiderPage: outsider,
   }) => {
     const id = await promptLibraryId(LIBRARY_NAME)
+    // An empty catalog shows its empty state instead of the search field, and "no match" proves
+    // the exclusion only against something the outsider does find - so the outsider owns one
+    // library of its own, independent of what earlier specs left behind.
+    await createPromptLibraryViaApi('dev-outsider', { name: OUTSIDER_OWN_NAME })
 
     await expectNotInPromptList(outsider, LIBRARY_NAME)
 

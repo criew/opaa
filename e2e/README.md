@@ -610,7 +610,10 @@ lassen.
   über den vollen Stack: `dev-user` legt ohne Systemrolle eine Prompt-Bibliothek mit einem Prompt
   und einer Pflicht-Variable an und gibt sie an eine Person (`dev-admin`), an eine Gruppe (Mitglied
   `dev-format-pipelines`) und an „Alle Konten" frei. Vor der Freigabe an „Alle Konten" findet
-  `dev-outsider` sie weder in der Liste noch im Katalog noch unter ihrer Adresse (Negativfall).
+  `dev-outsider` sie weder in der Liste noch im Katalog noch unter ihrer Adresse (Negativfall);
+  dafür besitzt `dev-outsider` eine eigene Prompt-Bibliothek, denn ein leerer Katalog zeigt statt
+  des Suchfelds nur seinen Leerzustand, und „kein Treffer“ belegt den Ausschluss erst neben einem
+  Treffer, unabhängig davon, was frühere Specs hinterlassen haben.
   Eine zweite, geschlossene Prompt-Bibliothek findet `dev-outsider` im Katalog weder über den
   Namen noch über die Beschreibung, ihre Eigentümerin dagegen schon; der Typfilter trennt sie von
   einer Wissensbibliothek.
@@ -793,7 +796,10 @@ wenige Sekunden), nicht auf den Image-Build davor — der Job hat dafür ein eig
 `timeout-minutes`-Budget.
 
 Bei Fehlschlägen (inkl. Timeout/Cancel) werden Playwright-HTML-Report, Traces/Screenshots sowie die
-Container-Logs (`docker-compose.log`) als Workflow-Artefakte hochgeladen.
+Container-Logs (`docker-compose.log`) als Workflow-Artefakte hochgeladen. Jeder fehlgeschlagene
+Testfall steht zusätzlich als Annotation am Check-Lauf, mit Fehlermeldung und dem Schritt, in dem er
+hing; sie ist über die API lesbar (`gh api repos/{owner}/{repo}/check-runs/{job_id}/annotations`),
+ohne die Artefakte herunterzuladen.
 
 Die beiden anderen Ziele haben eigene Workflows mit demselben Aufbau:
 `.github/workflows/demo-smoke.yml` und `.github/workflows/local-auth-e2e.yml` — beide nächtlich,
