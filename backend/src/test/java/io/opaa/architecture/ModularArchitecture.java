@@ -732,7 +732,7 @@ public final class ModularArchitecture {
    * cycle, that is whose ends share a strongly connected component; each with one dependency as
    * evidence.
    */
-  Map<String, Dependency> subpackageCycleEdges(Iterable<JavaClass> classes) {
+  private Map<String, Dependency> subpackageCycleEdges(Iterable<JavaClass> classes) {
     Map<String, Map<String, Dependency>> graph = new TreeMap<>();
     for (JavaClass origin : classes) {
       String from = relative(origin.getPackageName());
