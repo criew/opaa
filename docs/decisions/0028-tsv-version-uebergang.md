@@ -53,11 +53,3 @@ benennt, ob die Änderung additiv ist. Der Code kann das nicht prüfen.
 ## Offen
 
 —
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-11 | #1493 | Zähler zählt nur noch den Fassungs-Rückstand (`fullTextOutdatedChunks`, `OUTDATED`) | 1 |
-| 2026-10-08 | #2337 | Fassung 6 (technische Feld- und Elementnamen), additiv | 2 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | — |

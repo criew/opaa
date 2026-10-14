@@ -97,12 +97,3 @@ Demo- oder Betriebsinstanz mit anderem Embedding- oder Chat-Modell erlebt, beleg
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-02 | — | Erstfassung | 1–6 |
-| 2026-08-02 | #247 | Tatsachenkorrektur zur Demo-Instanz; Entscheidungen unverändert | — |
-| 2026-09-04 | #1085 | Pinning-Regel gilt auch für das Chat-Modell des Pipeline-Pfads | 4 |
-| 2026-10-14 | #2697 | Neufassung; Nachtrag zur Demo-Instanz und nie umgesetzter OpenAI-Vergleichslauf entfallen, Pinning bleibt | 3, 4 |

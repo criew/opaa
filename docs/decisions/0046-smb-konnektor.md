@@ -109,14 +109,3 @@ betretenen Ordnern (ADR-0045, Offen).
 ## Offen
 
 - Kerberos-Anmeldung für Domänen ohne NTLM.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-04 | #2155 | Erstfassung als Nachtrag zu ADR-0040 | 1–7 |
-| 2026-10-04 | #2202 | Marke mit ID-Menge, `LOCATION_IDENTITY`, Ordner beim Betreten ganz lesen | 5, 6 |
-| 2026-10-04 | #2218 | Zugangsdaten an die Freigabe gebunden (`credentialBinding`) | 2 |
-| 2026-10-04 | #2241 | Pfadgrenze im Store | 4 |
-| 2026-10-11 | #2482 | Pfadgrenze zentral in der Aufnahme, eigene Prüfung entfällt | 4 |
-| 2026-10-14 | #2702 | Aus ADR-0040 herausgelöst und auf den Endstand neu gefasst | alle |

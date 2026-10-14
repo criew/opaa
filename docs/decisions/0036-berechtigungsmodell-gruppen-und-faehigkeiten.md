@@ -569,25 +569,3 @@ beseitigt sie nicht. Die Mindestgruppengröße in der Subjekt-Auswahl ist kein S
   „Nachfolge offen" (Antwort wäre ein materialisiertes Ergebnis des Feststellungslaufs, kein Flag).
 - Mehrfachzugehörigkeit zu Organisationseinheiten; ob Entra-P1/P2-Häuser die SCIM-Zurückstellung
   mittragen.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-19 | #1810 | Erstfassung; Auslieferungswerte gesetzt | 1–13 |
-| 2026-09-20 | #1816 | Abgleich je Anbieterzeile, `TrustedProvider` entfällt, kein Abgleich im `dev`-Modus | 2, 3, 11 |
-| 2026-09-21 | #1818 | Kontozustandshistorie beginnt mit der ersten Zustandsänderung | 8 |
-| 2026-09-21 | #1835 | Space-Kontext im Rechteprofil gebaut, fünf Schutzpunkte gelten | 7 |
-| 2026-09-22 | #1828 | Download durch die Systemverwaltung ohne Grant geschlossen | 1, 5 |
-| 2026-09-22 | #1815, #1820 | Zahl aktiver Mitglieder am wirksamen Recht statt in der Historie | 9 |
-| 2026-09-24 | #1899, #1900, #1901 | Asset-Schale `assets`; `CREATE_PROMPT_LIBRARY` | 5, 12 |
-| 2026-09-26 | #1978 | Schutzkennzeichen setzt die Systemverwaltung; Ansprechstellen entfallen | 4, 9 |
-| 2026-10-02 | #1991 | Abgleichsbericht mit Namen protokolliert (`DIRECTORY_SYNC_REPORT_READ`) | 9 |
-| 2026-10-02 | #2091 | `listed` entfällt (ADR-0039); Freigabe interner Gruppen begründet sich allein | 9 |
-| 2026-10-03 | #2134 | Zuwachssignal entfällt; Verwaltende sehen Namen auch kleiner Gruppen | 9 |
-| 2026-10-03 | #2159 | Geltungsbereich von `CREATE_CONNECTOR_LIBRARY`, Nur-Besitzerin-Regel, `AUDITOR` liest das Verbindungsprotokoll (ADR-0041) | 5 |
-| 2026-10-08 | #2336 | Sichtungsvermerk entfällt | 6, 8 |
-| 2026-10-11 | #2171 | Vollmacht „Vorfallszugriff" wird nicht gebaut | 5 |
-| 2026-10-11 | #2495 | Zugänge je Quellart nur noch nutzbare | 5 |
-| 2026-10-11 | #1987 | Deaktivieren interner Gruppen | 8, 14 |
-| 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand | — |

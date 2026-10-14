@@ -112,19 +112,3 @@ neu indiziert. Ein Lauf je Bibliothek statt global einer.
   Quelladresse statt je Bibliothek.
 - Duplikaterkennung über Bibliotheksgrenzen, wenn derselbe Bestand als Upload und als Konnektor
   existiert.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-18 | #487 | Erstfassung | 1–6 |
-| 2026-08-19 | #484 | Pfad-Allowlist statt Rollenkonstrukt, Anlage dauerhaft offen | 6 |
-| 2026-08-21 | #267 | Zieladressprüfung für URL-Quellen | 6 |
-| 2026-08-21 | #485 | Zeitplan je Bibliothek | 7 |
-| 2026-09-03 | #1131 | Erster Listenwert der Konfiguration (Confluence-Spaces, ADR-0023) | 1 |
-| 2026-09-06 | #1373 | Typisiertes JSON-Feld `source_settings` (ADR-0027) | 1 |
-| 2026-09-19 | #1810 | Anlage als Fähigkeit (ADR-0036 Entscheidung 5), Sicherungen bleiben | 6 |
-| 2026-09-26 | #1977 | Jeder Konnektor speichert in `source_settings`, offener Typschlüssel (ADR-0038) | 1 |
-| 2026-10-02 | ADR-0039 | Bibliotheksliste geht im Katalog auf | 3 |
-| 2026-10-11 | #2496 | `source_proxy` entfällt, hausweiter Ausgangsproxy | 1 |
-| 2026-10-12 | #2537 | `source_insecure_ssl` entfällt, Zertifikat immer geprüft | 1 |

@@ -107,12 +107,3 @@ Messwerte und der Befundpfad gegen ein Produktionsmodell (#1674) stehen in
 ## Offen
 
 —
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-12 | #1490 | Nachmessung: Fenster trägt, Notiz unter dem Eval-Modell nicht | 5 |
-| 2026-09-12 | #1553 | Mehrrunden-Messung nächtlich als Regressionsschutz (ADR-0012, Entscheidung 49) | 5 |
-| 2026-09-16 | #1586, #1587, #1674 | Ablation und Befund gegen ein Produktionsmodell: Modellbefund, kein Defekt | 5 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 5 |

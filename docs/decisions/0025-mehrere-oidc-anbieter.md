@@ -190,15 +190,3 @@ braucht einen Frontend-Neustart; eine Organisation; der `dev`-Modus bleibt unver
 ## Offen
 
 - Anbieter-zu-Organisation-Bindung für Mehrmandantenbetrieb.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-12 | #1529, #1534 | Erstadministrator ist das lokale Notanker-Konto; letzter OIDC-Anbieter mit Guard deaktivierbar (ADR-0033) | 3 |
-| 2026-09-13 | #1631 | Automatischer Versuch mit `prompt=none`; jede OAuth-Absage endet still | 5 |
-| 2026-09-13 | #1629, #1630 | „Mit anderem Konto anmelden" entfällt | 5 |
-| 2026-09-20 | #1816 | Verzeichnisabgleich je Anbieter, `TrustedProvider` entfällt (ADR-0036) | 4 |
-| 2026-10-03 | #2159 | Token für Quellen und verbundene Konten im Token-Speicher (ADR-0041) | 1 |
-| 2026-10-09 | #2396 | Startmeldung ohne Anbieter nur `ERROR`, wenn kein lokaler Systemverwalter | 3 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 1–5 |

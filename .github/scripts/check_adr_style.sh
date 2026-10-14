@@ -3,7 +3,7 @@
 # line under "## Status") starts with "Akzeptiert" or "Ersetzt durch" and names
 # "zuletzt geändert JJJJ-MM-TT"; no appended "Nachtrag"/"Nachträge"/"Überholt" blocks (headings or bold
 # lead-ins, also inside indented block quotes); no sub-issue cut
-# ("Zuschnitt der ... Sub-Issues"); a "## Änderungsverlauf" section exists.
+# ("Zuschnitt der ... Sub-Issues"); no "## Änderungsverlauf" section (git log is the history).
 # Any finding fails the run (exit 1).
 set -euo pipefail
 
@@ -45,7 +45,7 @@ for adr in ${ADRS[@]+"${ADRS[@]}"}; do
   # (b) appended blocks instead of an updated core text
   while IFS=: read -r line content; do
     [ -n "$line" ] || continue
-    report "$adr" "$line" "appended block \"${content:0:40}\": work the change into the decision text and add a row to \"## Änderungsverlauf\""
+    report "$adr" "$line" "appended block \"${content:0:40}\": work the change into the decision text"
   done < <(grep -nE '^[[:space:]]*(>[[:space:]]*)*(#+[[:space:]]+|\*\*)(Nachtr(ag|äge)|Überholt)' "$adr" || true)
 
   # (c) sub-issue cut
@@ -54,10 +54,11 @@ for adr in ${ADRS[@]+"${ADRS[@]}"}; do
     report "$adr" "$line" "sub-issue cut belongs into the epic, not into the ADR"
   done < <(grep -nE '^#+ .*Zuschnitt der' "$adr" || true)
 
-  # (d) change log section
-  if ! grep -Eq '^## Änderungsverlauf[[:space:]]*$' "$adr"; then
-    report "$adr" "" "section \"## Änderungsverlauf\" is missing"
-  fi
+  # (d) no change log section: git log is the history
+  while IFS=: read -r line content; do
+    [ -n "$line" ] || continue
+    report "$adr" "$line" "section \"## Änderungsverlauf\": the history is git log, drop the section"
+  done < <(grep -nE '^#+ +Änderungsverlauf' "$adr" || true)
 done
 
 if [ "$checked" -eq 0 ]; then

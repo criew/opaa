@@ -158,12 +158,3 @@ Kein Zeitplan, der von selbst löscht.
 
 - Vorsigniert ausgelieferte URLs — eine URL, die ohne Anmeldung funktioniert, ist eine andere Zugriffseigenschaft.
 - Mehrere Ablagen nebeneinander (je Organisation oder Bibliothek ein Bucket) — das Schlüsselschema verbaut es nicht.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-11 | #1440 | Erstumsetzung (#1475, #1476, #1477) | 1–11 |
-| 2026-09-11 | #1478, #1518 | Aufräumlauf für verwaiste Originale, je Bibliothek und ohne Bibliotheksbezug | 1, 7, 11 |
-| 2026-09-11 | #1544 | Organisationssegment im Schlüssel beider Ablagen | 4 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 2, 5, 7 |

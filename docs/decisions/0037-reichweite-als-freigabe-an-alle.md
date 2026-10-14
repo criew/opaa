@@ -141,13 +141,3 @@ Subjekt-Enums stehen nebeneinander, zwei mit demselben dritten Wert.
 
 - Bewertung durch die Personalvertretung: Eine Freigabe an „Alle" benennt weder Person noch Gruppe;
   vorzulegen sind Bestätigungsschritt und Widerrufbarkeit. Blockiert nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-24 | #1931 | Erstfassung, umgesetzt mit #1945 | 1–10 |
-| 2026-10-02 | #2091 | `listed`, `listed_cap` und der Katalog „lesbar ∪ gelistet" entfallen (ADR-0039) | 4, 5, 6, 7, 9 |
-| 2026-10-03 | #2134 | Zuwachssignal entfällt (ADR-0036, Entscheidung 9) | — |
-| 2026-10-03 | #2156 | `spaces.visibility` entfernt | 10 |
-| 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand | — |

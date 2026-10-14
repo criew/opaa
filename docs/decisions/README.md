@@ -2,16 +2,16 @@
 
 Ein ADR hält den **heute gültigen Endstand** einer Architekturentscheidung fest, nicht ihre
 Geschichte. Die Historie liefert `git log`; wer wissen will, was vorher galt, liest den Diff.
-Vorlage: [TEMPLATE.md](TEMPLATE.md). Statuszeile, Nachträge, Sub-Issue-Zuschnitte und der Abschnitt
-Änderungsverlauf werden in der CI geprüft (`.github/scripts/check_adr_style.sh`).
+Vorlage: [TEMPLATE.md](TEMPLATE.md). Statuszeile, Nachträge, Sub-Issue-Zuschnitte und Änderungsverläufe
+werden in der CI geprüft (`.github/scripts/check_adr_style.sh`).
 
 ## Fortschreiben statt anhängen
 
 - Eine Änderung an einer Entscheidung **ändert den Kerntext** der betroffenen Entscheidung. Es gibt
   keine Nachträge, keine „Überholt“-Kästen und keinen stehen bleibenden alten Wortlaut.
 - Eine geänderte Entscheidung trägt genau einen Halbsatz „seit #NNNN“, ohne Beschreibung des
-  früheren Zustands. Die Tabelle **Änderungsverlauf** bekommt eine Zeile: Datum, Issue/PR, eine
-  Zeile Inhalt, betroffene Entscheidungsnummern.
+  früheren Zustands. Einen Abschnitt „Änderungsverlauf“ gibt es nicht; wer die Historie braucht,
+  liest `git log` der Datei.
 - Bringt eine Fortschreibung **eigene Entscheidungen** mit oder würde sie **mehr als etwa 40 Zeilen**
   umfassen, wird sie ein neuer ADR; der bestehende verweist in der Statuszeile („ergänzt durch
   ADR-XXXX“) und in der betroffenen Entscheidung darauf.

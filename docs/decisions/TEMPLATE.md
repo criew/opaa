@@ -31,8 +31,3 @@ Einfacher / Schwieriger / Restrisiken — nur, was heute gilt.
 ## Offen
 
 Nur, was heute offen ist. Erledigtes wird gelöscht, nicht markiert.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
