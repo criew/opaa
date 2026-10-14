@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-09 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5), Entscheidung 4 ergänzt durch ADR-0036, Entscheidung 3 (Verzeichnisabgleich je Anbieter)
+Akzeptiert · zuletzt geändert 2026-10-09 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5), Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
 
 ## Kontext
 
@@ -33,10 +33,13 @@ Anbieter, dessen Decoder nicht gebaut werden kann (Discovery nicht erreichbar, A
 wird protokolliert übersprungen und nach einer Wartezeit erneut versucht (`RETRY_INTERVAL`).
 OPAA speichert für die **Anmeldung** keine Tokens und prägt keine; Quellverbindungen und
 verbundene Konten speichern Refresh-, Zugriffstoken und persönliche Geheimnisse verschlüsselt im
-Token-Speicher (ADR-0041), nie das Anmeldetoken eines OIDC-Anbieters. Der OAuth-Ablauf für
-Quellen meldet niemanden an OPAA an: `state` und PKCE-Verifier liegen kurzlebig in connections,
-der Rücksprung landet in der SPA, das Backend tauscht den Code als vertraulicher Client und
-bleibt zustandslos.
+Token-Speicher (ADR-0041), nie das Anmeldetoken eines OIDC-Anbieters; der Dienstkonto-Schlüssel
+(JWT-Assertion, ADR-0040) speichert kein Token, das Zugriffstoken lebt nur im Lauf. Der
+OAuth-Ablauf für Quellen meldet niemanden an OPAA an: `state` und PKCE-Verifier liegen kurzlebig in
+connections und sind an die angemeldete Person gebunden (`ConnectionAuthorization.user_id`; ein
+`state` einer anderen Person wird abgewiesen), der Rücksprung landet in der SPA, das Backend tauscht
+den Code als vertraulicher Client und bleibt zustandslos. Der lokale Issuer aus ADR-0033 ist ein
+weiterer Decoder neben der Registry (`LocalIssuerAuthenticationManagerResolver`).
 
 **`azp` wird geprüft, `aud` nicht** (`AuthorizedPartyValidator`): Trägt ein Token `azp`, muss es
 der `client_id` der Anbieterzeile entsprechen; fehlt der Claim, gilt keine Prüfung. Einzige
@@ -47,19 +50,24 @@ Preis: Jeder Anbieter braucht einen Public Client mit PKCE, Redirect-URI `<Origi
 Post-Logout-Redirect `<Origin>` und Web-Origin. „Ohne Neustart" gilt für das Backend, nicht für die
 CSP: `frontend/nginx.conf` führt Anbieter-Origins in `connect-src` über `OPAA_CSP_CONNECT_SRC_EXTRA`,
 ersetzt beim Containerstart; ein Anbieter auf neuem Origin ist erst nach Neustart des
-Frontend-Containers anmeldefähig.
+Frontend-Containers anmeldefähig; der Verbindungstest prüft den Anbieter aus Backend-Sicht, nicht
+aus Browser-Sicht, und das E2E-Szenario (zweiter Realm auf demselben Origin) deckt den
+Neustart-Fall nicht ab.
 
 ### 2. Identitätsmodell: `(issuer, subject)` bleibt der Schlüssel, der Anbieter ist über den Issuer eindeutig
 
 Keine eigene Identitätstabelle: OPAA bindet ausschließlich OIDC an, jedes Token trägt einen `iss`.
 `oidc_providers.issuer_uri` wird gespeichert, wie der Anbieter ihn prägt (Schrägstrich
 eingeschlossen), und ist über den normalisierten Wert (Ausdrucksindex `rtrim(issuer_uri, '/')`)
-eindeutig; die Bestandsübernahme braucht keine Migration an `users`. Das Ändern der `issuer_uri`
+eindeutig; ein Anbieter kann umbenannt, deaktiviert, gelöscht und unter demselben Issuer neu
+angelegt werden, ohne dass Konten ihre Identität verlieren, und die Bestandsübernahme braucht
+keine Migration an `users`. Das Ändern der `issuer_uri`
 eines Anbieters mit Konten wird mit `409` verweigert — die einzige Aktion mit irreversibler
 Datenwirkung. **Keine Zusammenführung über die E-Mail:** Ein unbekanntes `(issuer, subject)`
 provisioniert ein neues Konto, auch bei gleicher Adresse; die einzige Ausnahme ist die von der
 Person selbst eingelöste Übergabe eines lokalen Kontos (ADR-0033, Entscheidung 12). `email` und
-`display_name` werden bei jeder Anfrage aus den Claims aktualisiert. Die Zeile trägt
+`display_name` werden bei jeder Anfrage aus den Claims gelesen und nur bei Abweichung geschrieben.
+Die Zeile trägt
 `display_name`, `enabled`, `is_default`, `sort_order`, `issuer_uri`, `client_id`, optional
 `jwk_set_uri`, die Claim-Zuordnung (Entscheidung 4), `provider_type` (`OIDC | LOCAL`, ADR-0033) und
 die Verzeichnisabgleich-Einstellungen (ADR-0036); keine Secret-Spalte. `jwk_set_uri` ist ein
@@ -73,17 +81,27 @@ wirken ohne Neustart; Anlegen, Ändern, Aktivieren, Löschen sind Audit-Ereignis
 `OIDC_PROVIDER_*` mit `AuditObjectType.SYSTEM_SETTING`. `OidcProviderSeeder` übernimmt beim
 ersten Start im `oidc`-Profil `opaa.auth.oidc.{issuer-uri,client-id,jwk-set-uri}` (ohne
 Vorgabewerte) als erste aktivierte Standard-Anbieterzeile, gegen Wiederholung durch
-`OidcProviderSeedMarker` gesichert — nicht durch „ist die Tabelle leer?". Danach bestimmen die
+`OidcProviderSeedMarker` gesichert — nicht durch „ist die Tabelle leer?"; eine von der Issuer-URI
+abweichende `OPAA_OIDC_AUTHORITY` wird protokolliert und verworfen. Danach bestimmen die
 Variablen den Betrieb nicht mehr, bleiben aber gesetzt als implizit erlaubte Adressen der
-Adressprüfung. Der `dev`-Modus kennt keine Anbieterzeilen und schreibt keine Markierung.
+Adressprüfung. Ein Start ohne übernommenen Anbieter schreibt keine Markierung und holt die
+Übernahme beim nächsten Start nach. Der `dev`-Modus kennt keine Anbieterzeilen und schreibt keine
+Markierung. Solange OIDC-Anbieter existieren, ist genau einer Standard (`ux_oidc_providers_single_default`):
+Der erste angelegte wird es automatisch; der Standardanbieter kann weder deaktiviert noch
+gelöscht werden, solange ein anderer OIDC-Anbieter aktiviert ist, bevor dieser zum Standard
+gemacht wurde (`409`).
 
 Seit ADR-0033 ist der Erstadministrator das lokale Notanker-Konto; `InitialAdminPolicy` vergibt
 `SYSTEM_ADMIN` nur noch für den Dev-Issuer, ein Zustand ohne OIDC-Anbieter ist zulässig, und der
 letzte aktivierte OIDC-Anbieter darf deaktiviert oder gelöscht werden, wenn
 `LocalAdminAvailabilityGuard` einen gesicherten lokalen Systemverwalter findet (sonst 409
-`LAST_LOGIN_CAPABLE_ADMIN`) und der Aufruf `acknowledgeLastProvider` trägt. `is_default` steuert
-nur noch Anmeldevorschlag und Löschschutz; `OPAA_OIDC_BOOTSTRAP=force` (Wiederanlauf des
-Umgebungsanbieters) bleibt bis **31.03.2027** und ist durch `OPAA_LOCAL_ADMIN_RESET=force`
+`LAST_LOGIN_CAPABLE_ADMIN`) und der Aufruf `acknowledgeLastProvider` trägt; die Zeile behält
+`is_default`. `is_default` steuert nur noch Anmeldevorschlag und Löschschutz, nicht mehr den
+Verzeichnisabgleich. `OPAA_OIDC_BOOTSTRAP=force` lässt den Seeder die Markierung einmalig
+ignorieren (`OidcProviderSeeder#forceBootstrap`): Eine Zeile mit diesem Issuer wird aktiviert, mit
+den Umgebungswerten überschrieben und zum Standard gemacht, sonst neu angelegt — laut
+protokolliert, der Betrieb entfernt die Variable danach; mit unvollständiger Umgebung bleibt es
+`ERROR`. Die Variable bleibt bis **31.03.2027** und ist durch `OPAA_LOCAL_ADMIN_RESET=force`
 abgelöst. Ein Start ohne übernommenen Anbieter meldet „keine Anmeldung möglich" (`ERROR`) nur,
 wenn kein anmeldefähiger lokaler Systemverwalter existiert; mit einem solchen Konto ist eine
 fehlende Issuer-URI `INFO`, eine unvollständige Angabe bleibt `ERROR` (#2396).
@@ -103,17 +121,21 @@ Decoder trägt einen Issuer-Validator (`NimbusOidcJwtDecoderFactory`).
 Rückfall `preferred_username`, nie das Subject), `roles_claim`, `system_admin_role`,
 `auditor_role`, `groups_claim` (alle leer = aus). Mit `roles_claim` ist der Anbieter für
 `SYSTEM_ADMIN` und `AUDITOR` führend: `TokenRoleSynchronizer` leitet die Systemrolle bei jeder
-Anfrage ab und schreibt nur bei Abweichung, als Rollenereignis unter einem Systemprozess-Akteur.
+Anfrage ab (`SYSTEM_ADMIN` vor `AUDITOR`, wenn ein Token beide trägt) und schreibt nur bei
+Abweichung, als Rollenereignis unter einem Systemprozess-Akteur.
 Drei Sicherungen: Der letzte anmeldefähige `SYSTEM_ADMIN` wird nie per Token entzogen — ein
 bedingter `UPDATE` unter dem Advisory-Lock der Organisation
 (`LocalAdminAvailabilityGuard#withdrawSystemAdminIfAnotherRemains`, ADR-0033, Entscheidung 4),
 kein „lesen, dann schreiben"; die manuelle Rollenvergabe ist für Konten eines Anbieters mit
 `roles_claim` gesperrt (`409`); das Setzen von `roles_claim` verlangt in der Oberfläche eine
-Bestätigung. `AUDITOR` ist nicht geschützt. Gruppen aus dem Token (`groups_claim`) werden zu
-Mitgliedschaften in Gruppen mit `GroupKind.IDENTITY_PROVIDER` und `external_id` im Namensraum
-`oidc:<anbieter-id>:<gruppenname>` (`TokenGroupSynchronizer`) — hebt die Festlegung von ADR-0005
-auf, dass Gruppen nur über `DirectoryClient` kommen. Der Verzeichnisabgleich hängt seit #1816 an
-der Anbieterzeile (`directory_sync_enabled`, ADR-0036, Entscheidung 3), löst Mitglieder issuergebunden auf
+Bestätigung. `AUDITOR` ist nicht geschützt. Der Weg aus einer falschen Rollenzuordnung ist das
+Leeren von `roles_claim` — eine Anbieteränderung, keine Rollenvergabe. Gruppen aus dem Token
+(`groups_claim`) werden zu Mitgliedschaften in Gruppen mit `GroupKind.IDENTITY_PROVIDER`
+(`TokenGroupSynchronizer`), getrennt je Anbieter über `groups.provider_id` (ADR-0036,
+Entscheidung 2; `external_id` trägt den Gruppennamen, ein Name über 255 Zeichen wird übersprungen
+und protokolliert) — hebt die Festlegung von ADR-0005 auf, dass Gruppen nur über `DirectoryClient`
+kommen. Der Verzeichnisabgleich hängt seit #1816 an der Anbieterzeile (`directory_sync_enabled`,
+ADR-0036, Entscheidungen 2 und 3), löst Mitglieder issuergebunden auf
 (`UserRepository#findByOrganizationIdAndIssuerAndSubjectIn`) und verwaltet nur `ORG_UNIT`-Gruppen.
 Alle Anbieter provisionieren in `Organization.DEFAULT_ID`.
 
@@ -122,12 +144,17 @@ Alle Anbieter provisionieren in `Organization.DEFAULT_ID`.
 Alle Anbieter teilen die Redirect-URI `<Origin>/auth/callback`; die SPA legt den Anbieter des
 laufenden Flusses vor `signinRedirect()` im `sessionStorage` ab (je Tab) und den zuletzt benutzten
 nur als Vorschlag im `localStorage` (`authStore.ts`). Beim Betreten der Anmeldeseite startet die SPA
-einmal je Tab einen Versuch mit `prompt=none` beim vorgeschlagenen Anbieter (#1631); jede Antwort
-mit OAuth-Fehlercode gilt als Absage und endet ohne Fehlermeldung auf der Anmeldeseite, der Code
-steht nur in der Browser-Konsole. Eine geklickte Anmeldung sendet keinen `prompt`-Wert; „Mit anderem
+einmal je Tab einen Versuch mit `prompt=none` beim vorgeschlagenen Anbieter (#1631); für diesen
+automatischen Versuch gilt jede Antwort mit OAuth-Fehlercode als Absage und endet ohne
+Fehlermeldung auf der Anmeldeseite (der Code steht nur in der Browser-Konsole, nie das
+Fehlerobjekt, dessen `form` die Token-Anfrage trägt; die Rücksprungadresse wird auch aus der Absage
+zurückgelesen), ein Fehler eines geklickten Flusses behält seine Meldung. Eine geklickte Anmeldung
+sendet keinen `prompt`-Wert; „Mit anderem
 Konto anmelden" entfällt (#1629, #1630), den Kontowechsel übernimmt der Anbieter nach dem
 RP-initiierten Logout (`signoutRedirect()` mit `end_session_endpoint` des Anbieters der aktiven
-Sitzung, `post_logout_redirect_uri = <Origin>`; ohne Endpunkt lokale Abmeldung mit Hinweis). Der
+Sitzung, `post_logout_redirect_uri = <Origin>`; ohne Endpunkt lokale Abmeldung mit Hinweis).
+Access-Token- und SSO-Lebensdauern sind Sache des Anbieters; stille Erneuerung und 401-Behandlung
+aus ADR-0005 arbeiten auf dem `UserManager` der aktiven Sitzung, ergänzt um `unknown_issuer`. Der
 öffentliche `GET /api/v1/auth/config` nennt je aktiviertem Anbieter nur Anzeigename, Issuer-URI,
 Client-ID, Vorauswahl und Reihenfolge — keine Claim-Zuordnung, nichts über Konten.
 
@@ -141,7 +168,8 @@ braucht einen Frontend-Neustart; eine Organisation; der `dev`-Modus bleibt unver
 
 - **Einfacher:** ADR-0005 bleibt in seinen Grundsätzen; Bestandsinstallationen migrieren ohne
   Datenänderung an `users`; ein deaktivierter Anbieter ist sofort unwirksam; die Identitätsregel
-  ist am Schema durchgesetzt.
+  ist am Schema durchgesetzt. `spring.security.oauth2.resourceserver.jwt.*` gibt es im
+  `oidc`-Profil nicht mehr, der Seeder liest allein `opaa.auth.oidc.*`.
 - **Schwieriger:** Jeder Anbieter braucht Betriebsschritte außerhalb von OPAA (Client, CSP,
   Allowlist). Dieselbe Person mit zwei Anbietern lebt in zwei Konten. Ein Fehler in der
   Rollenzuordnung eines führenden Anbieters wirkt bei der nächsten Anfrage; der geschützte letzte
