@@ -11,15 +11,15 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * Measures one {@link PipelineVariant} against the golden dataset (issue #1041,
- * docs/features/retrieval-benchmark.md §2). Reuses the production pipeline path exactly as the
- * single-configuration measurement (#1039, {@link PipelineHarnessSupport}) does — a variant is a
- * different {@link QueryProperties}, wrapped in its own {@link RetrievalContextFactory} and handed
- * into the same {@link RetrievalPipeline}, never a reimplementation of retrieval steps 2 to 6.
+ * Measures one {@link PipelineVariant} against the golden dataset
+ * (docs/features/retrieval-benchmark.md §2). Reuses the production pipeline path exactly as the
+ * single-configuration measurement ({@link PipelineHarnessSupport}) does — a variant is a different
+ * {@link QueryProperties}, wrapped in its own {@link RetrievalContextFactory} and handed into the
+ * same {@link RetrievalPipeline}, never a reimplementation of retrieval steps 2 to 6.
  *
- * <p><b>Mehrfachlauf-Regel</b> (issue #1044, docs/features/retrieval-benchmark.md §3, "Was
- * stattdessen gilt", 2.–3.): a variant whose effective {@code queryDecompositionEnabled} is {@code
- * true} has an LLM component and is therefore not deterministic — it runs {@link
+ * <p><b>Mehrfachlauf-Regel</b> (docs/features/retrieval-benchmark.md §3, "Was stattdessen gilt",
+ * 2.–3.): a variant whose effective {@code queryDecompositionEnabled} is {@code true} has an LLM
+ * component and is therefore not deterministic — it runs {@link
  * MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times and its outcome carries a {@link
  * MultiRunSummary}. Every other variant runs exactly once, as before this issue; a second run would
  * report the identical numbers, which is itself the tested invariant (see {@code
@@ -74,8 +74,8 @@ public final class VariantRunner {
   }
 
   /**
-   * The Mehrfachlauf-Regel's decision logic itself, split out from the public overload above (issue
-   * #1044 review, Befund 1) so it is Docker-free testable: {@code measure} stands in for one {@link
+   * The Mehrfachlauf-Regel's decision logic itself, split out from the public overload above so it
+   * is Docker-free testable: {@code measure} stands in for one {@link
    * PipelineHarnessSupport#measure} call, letting {@code VariantRunnerTest} exercise the run count
    * (one vs. {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT}), the median-run selection and the
    * resulting {@link VariantOutcome} without a real pipeline or corpus. The public overload's

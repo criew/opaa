@@ -27,11 +27,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * #768: end-to-end reproduction, same building block as {@code
- * ActiveChatModelResolverIntegrationTest} (a local {@link HttpServer} standing in for the managed
- * chat model, started and then immediately stopped so its port refuses the connection the SDK
- * actually attempts) - but driven through the real HTTP entry point ({@code POST /api/v1/query})
- * rather than calling {@code ActiveChatModelResolver} directly. {@code
+ * End-to-end reproduction, same building block as {@code ActiveChatModelResolverIntegrationTest} (a
+ * local {@link HttpServer} standing in for the managed chat model, started and then immediately
+ * stopped so its port refuses the connection the SDK actually attempts) - but driven through the
+ * real HTTP entry point ({@code POST /api/v1/query}) rather than calling {@code
+ * ActiveChatModelResolver} directly. {@code
  * ActiveChatModelResolverIntegrationTest#anUnreachableActiveModelFailsWithoutFallingBackToAnotherModel}
  * already proved the SDK throws {@code com.openai.errors.OpenAIIoException} for this and documented
  * the rest - that it fell through to {@code GlobalExceptionHandler}'s generic {@code 500} - as an
@@ -114,11 +114,11 @@ class QueryControllerLlmErrorMappingIntegrationTest {
   }
 
   /**
-   * #768 review, should-finding 3: the acceptance criterion "beide Fälle im HttpServer-Muster"
-   * requires the other branch of the mapping, too - not just the connection-level {@code
-   * OpenAIIoException} above. A real HTTP 401 response proves {@code OpenAiChatModel} actually
-   * surfaces it as {@code com.openai.errors.UnauthorizedException} at {@link
-   * GlobalExceptionHandler} rather than the SDK wrapping or swallowing it somewhere on the way.
+   * The acceptance criterion "beide Fälle im HttpServer-Muster" requires the other branch of the
+   * mapping, too - not just the connection-level {@code OpenAIIoException} above. A real HTTP 401
+   * response proves {@code OpenAiChatModel} actually surfaces it as {@code
+   * com.openai.errors.UnauthorizedException} at {@link GlobalExceptionHandler} rather than the SDK
+   * wrapping or swallowing it somewhere on the way.
    */
   @Test
   void providerUnauthorizedResponseReturnsBadGatewayWithGermanMessage() throws Exception {

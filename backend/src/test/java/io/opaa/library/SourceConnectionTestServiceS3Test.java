@@ -44,9 +44,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /**
- * The S3 branch of {@link SourceConnectionTestService} (#1376): the effective request handed to
- * {@link S3ConnectionService}, the stored fallback for credentials <em>and</em> the scopes on the
- * same origin, and the permission bar and type check of the bucket listing.
+ * The S3 branch of {@link SourceConnectionTestService}: the effective request handed to {@link
+ * S3ConnectionService}, the stored fallback for credentials <em>and</em> the scopes on the same
+ * origin, and the permission bar and type check of the bucket listing.
  */
 class SourceConnectionTestServiceS3Test {
 
@@ -166,7 +166,7 @@ class SourceConnectionTestServiceS3Test {
             .build(),
         caller);
 
-    // #617: the stored credential is replayed on the same origin; the stored scopes stand in
+    // The stored credential is replayed on the same origin; the stored scopes stand in
     // because the request named none
     verify(s3ConnectionService)
         .probe("https://s3.example.org/", "AKIASTORED:stored-secret", STORED_SETTINGS);

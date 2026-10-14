@@ -29,10 +29,10 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
 
 /**
- * {@link NimbusOidcJwtDecoderFactory} against a local double (#1329, ADR-0025 Entscheidung 1 and
- * 3): the decoder built from a discovery document validates a token signed with the discovered key,
- * refuses a token whose {@code azp} names another client, passes one without {@code azp}, and a
- * discovery document whose {@code jwks_uri} points outside the allowlist yields no decoder at all.
+ * {@link NimbusOidcJwtDecoderFactory} against a local double (ADR-0025 Entscheidung 1 and 3): the
+ * decoder built from a discovery document validates a token signed with the discovered key, refuses
+ * a token whose {@code azp} names another client, passes one without {@code azp}, and a discovery
+ * document whose {@code jwks_uri} points outside the allowlist yields no decoder at all.
  */
 class NimbusOidcJwtDecoderFactoryTest {
 

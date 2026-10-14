@@ -51,7 +51,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * What a bearer access token reaches and what it is refused with (#1718, ADR-0035).
+ * What a bearer access token reaches and what it is refused with (ADR-0035).
  *
  * <p>Runs under the canonical signature although it drives a bearer token: the channel's filter
  * chain matches on the <em>value</em>, not on a path or a profile, and is therefore ordered ahead
@@ -126,8 +126,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
                     owner.getId(), owner.getOrganizationId(), owner.getSystemRole(), "x"))
             .library()
             .getId();
-    // #1931: Die Bibliothek muss jedem Konto der Organisation zugaenglich sein, damit die Tokens
-    // der hier angelegten lokalen Konten sie ueberhaupt benennen duerfen - frueher die Stufe
+    // Die Bibliothek muss jedem Konto der Organisation zugaenglich sein, damit die Tokens der
+    // hier angelegten lokalen Konten sie ueberhaupt benennen duerfen - frueher die Stufe
     // ORGANIZATION, jetzt eine Freigabe an "Alle Konten".
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type, role)"

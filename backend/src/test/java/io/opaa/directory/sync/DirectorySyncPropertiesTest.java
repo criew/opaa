@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * A safeguard against mass rights revocation must not silently become more lenient on invalid
- * configuration. Review of PR #297 flagged that {@code changeThresholdFraction <= 0} used to fall
- * back to the 0.3 default instead of rejecting the value - an operator who deliberately sets 0
- * ("abort on any revocation at all") silently got 30% instead.
+ * configuration: {@code changeThresholdFraction <= 0} is rejected, not replaced by the 0.3 default
+ * - an operator who deliberately sets 0 ("abort on any revocation at all") must not silently get
+ * 30%.
  */
 class DirectorySyncPropertiesTest {
 

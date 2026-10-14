@@ -178,7 +178,7 @@ class SpaceRepositoryTest {
 
   @Test
   void insertDefaultSpaceIfAbsentWithANonExistentOwnerFailsInsteadOfSilentlyPersisting() {
-    // #201/#305 code review: ON CONFLICT ... DO NOTHING (see insertDefaultSpaceIfAbsent's
+    // ON CONFLICT ... DO NOTHING (see insertDefaultSpaceIfAbsent's
     // Javadoc) only ever suppresses the one named partial unique index - a genuinely dangling
     // owner must still violate fk_spaces_owner exactly as the entity-based save above does, not be
     // silently swallowed as if it were a race loss.

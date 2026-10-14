@@ -18,10 +18,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Runs against a real Postgres database with the real, versioned Liquibase schema applied (#288).
- * Proves the two #391 acceptance criteria that concern the pseudonym mapping: it is stable per user
- * (not re-minted per event), and deleting it - which happens automatically when the account itself
- * is deleted, via {@code fk_audit_actor_pseudonyms_user}'s {@code ON DELETE CASCADE} - leaves an
+ * Runs against a real Postgres database with the real, versioned Liquibase schema applied. Proves
+ * the two #391 acceptance criteria that concern the pseudonym mapping: it is stable per user (not
+ * re-minted per event), and deleting it - which happens automatically when the account itself is
+ * deleted, via {@code fk_audit_actor_pseudonyms_user}'s {@code ON DELETE CASCADE} - leaves an
  * already-written {@link AuditLogEntry} unchanged
  * (docs/features/security-and-compliance.md#unveränderlichkeit-und-löschrecht).
  */

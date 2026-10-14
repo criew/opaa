@@ -30,8 +30,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The stored directory access of a provider (#1817): what a write does to the database, what a read
- * gives back, and what {@link ProviderDirectoryClient} makes of it.
+ * The stored directory access of a provider: what a write does to the database, what a read gives
+ * back, and what {@link ProviderDirectoryClient} makes of it.
  *
  * <p>{@code FakeDirectoryClient} is the {@code @Primary} {@link DirectoryClient} of this context,
  * so the productive one is injected by its concrete type - the one place in the suite where the

@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: knowledge-2026-10-05-private-storage-quota
       author: opaa
-      comment: "The house-wide storage quota across all private libraries of a person, as the system administration set it (#2166). No row means the configured default applies; 0 means unlimited."
+      comment: "The house-wide storage quota across all private libraries of a person, as the system administration set it. No row means the configured default applies; 0 means unlimited."
       changes:
         - sql:
             sql: |

@@ -30,7 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The operator's side of the model-backed extraction (#1073): both switches start off and only a
+ * The operator's side of the model-backed extraction: both switches start off and only a
  * Verwaltungsberechtigter moves them, the Extraktionsgüte separates deterministic from derived and
  * manual values, and the Stichprobe is deterministic and holds no Schlagwort.
  */

@@ -46,9 +46,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * A library on a profile that holds a service account key (#2220), through the API and a real run:
- * the run signs with the profile's key and the connector sees the token alone; key and token appear
- * in no answer, log line or audit entry; a rejected key blocks every library of the profile without
+ * A library on a profile that holds a service account key, through the API and a real run: the run
+ * signs with the profile's key and the connector sees the token alone; key and token appear in no
+ * answer, log line or audit entry; a rejected key blocks every library of the profile without
  * asking the provider again until a sign-in test lifts it; a changed imitated account needs a
  * confirmation naming the libraries, discards their run state and tells their managers.
  */

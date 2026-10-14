@@ -6,8 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Removes a measurement path's report files before that path measures (#1671), so a run that ends
- * without writing one leaves none behind.
+ * Removes a measurement path's report files before that path measures, so a run that ends without
+ * writing one leaves none behind.
  *
  * <p>Both guarded paths swallow their own failures on purpose, and both report themselves as not
  * executed when a precondition fails - in either case they write nothing. Without this, the report

@@ -110,13 +110,13 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Unit tests for {@link LibraryDocumentService} (#420, #434): the format/size/dedup validation, the
- * path traversal guarantee, the EDITOR permission gate (and the 404-vs-403 distinction it draws
- * between no access at all and insufficient access) on both {@link
- * LibraryDocumentService#uploadDocument} and {@link LibraryDocumentService#deleteDocument}, and
- * that {@link LibraryDocumentService#deleteDocument} only ever deletes a file this service itself
- * wrote. {@link LibraryDocumentService#uploadDocument} itself now creates and saves the {@code
- * PENDING} row and only <em>triggers</em> the asynchronous indexing pipeline ({@code
+ * Unit tests for {@link LibraryDocumentService}: the format/size/dedup validation, the path
+ * traversal guarantee, the EDITOR permission gate (and the 404-vs-403 distinction it draws between
+ * no access at all and insufficient access) on both {@link LibraryDocumentService#uploadDocument}
+ * and {@link LibraryDocumentService#deleteDocument}, and that {@link
+ * LibraryDocumentService#deleteDocument} only ever deletes a file this service itself wrote. {@link
+ * LibraryDocumentService#uploadDocument} itself now creates and saves the {@code PENDING} row and
+ * only <em>triggers</em> the asynchronous indexing pipeline ({@code
  * DocumentIngestService#processUploadedFileAsync}, mocked here as a no-op void call) - covered by
  * its own tests in {@code DocumentIngestServiceTest} - this class is about what happens before and
  * around that call.
@@ -134,8 +134,8 @@ class LibraryDocumentServiceTest {
   private VectorChunkStore vectorChunkStore;
   private LibraryStorageQuotaService storageQuotaService;
   private FilesystemPathAllowlist filesystemAllowlist;
-  // Target validation disabled here (#747): every server this class's remote-content tests talk to
-  // is deliberately loopback, and TargetAddressValidator's own SSRF logic is already covered by its
+  // Target validation disabled here: every server this class's remote-content tests talk to is
+  // deliberately loopback, and TargetAddressValidator's own SSRF logic is already covered by its
   // dedicated TargetAddressValidatorTest/BoundedDownloaderTest - mirrors those suites' identical
   // choice for the same reason. loadContentAnswers404WhenTheAllowlistRejectsTheStoredSourceUrl
   // below builds its own, deliberately enabled validator instead.
@@ -143,15 +143,15 @@ class LibraryDocumentServiceTest {
   private TargetAddressValidator disabledTargetAddressValidator;
   private RemoteContentProperties remoteContentProperties;
   private LibraryFolderRepository folderRepository;
-  // #823: mocked no-op here - folderPath resolution is covered by its own tests further down and
-  // by LibraryFolderServiceTest/LibraryFolderServiceIntegrationTest, not by every pre-existing test
-  // in this class that never passes a folderPath at all.
+  // Mocked no-op here - folderPath resolution is covered by its own tests further down and by
+  // LibraryFolderServiceTest/LibraryFolderServiceIntegrationTest, not by every pre-existing test in
+  // this class that never passes a folderPath at all.
   private LibraryFolderService folderService;
   private AttachmentExtractor attachmentExtractor;
   private UploadProperties uploadProperties;
   private UploadedOriginalStore uploadedOriginalStore;
-  // #1524: mocked here - what this class asserts is the branching, the failure pictures and the
-  // temp-file contract around it; the access layer itself is covered against a real object store by
+  // Mocked here - what this class asserts is the branching, the failure pictures and the temp-file
+  // contract around it; the access layer itself is covered against a real object store by
   // io.opaa.indexing.source.s3.S3OriginalAccessIntegrationTest.
   private S3OriginalAccess s3OriginalAccess;
   private LibraryDocumentService service;
@@ -236,7 +236,7 @@ class LibraryDocumentServiceTest {
     when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
         .thenReturn(Optional.of(library));
 
-    // #434: uploadDocument now saves the PENDING row itself (previously done inside the now-async
+    // uploadDocument now saves the PENDING row itself (previously done inside the now-async
     // DocumentIngestService#processUploadedFileAsync) - every test exercises that save unless it
     // overrides this default to simulate the concurrent-duplicate race.
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -257,7 +257,7 @@ class LibraryDocumentServiceTest {
         .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
   }
 
-  // Real PDF magic bytes (#435): since uploadDocument now runs Tika content detection against the
+  // Real PDF magic bytes: since uploadDocument now runs Tika content detection against the
   // actually stored bytes, a MockMultipartFile whose body is plain text would be rejected as a
   // content/extension mismatch even when it is only meant to stand in for "some PDF". Every test
   // that needs a file Tika detects as application/pdf goes through this helper.
@@ -334,7 +334,7 @@ class LibraryDocumentServiceTest {
     LibraryDocumentEntry response =
         service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
 
-    // #434: the response reflects the PENDING row created synchronously - not a result from
+    // The response reflects the PENDING row created synchronously - not a result from
     // DocumentIngestService, which now only runs asynchronously and returns nothing.
     assertThat(response.document().getFileName()).isEqualTo("report.pdf");
     assertThat(response.document().getSourceType()).isEqualTo(SourceType.UPLOAD);
@@ -372,9 +372,9 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aUserWithNoAccessAtAllGets404NotForbidden() throws IOException {
-    // #420 code review, nit 9: "no access at all" must look like the library does not exist, not
-    // like a library that exists but refuses this caller - the same distinction 404-vs-403 already
-    // draws across the organization boundary.
+    // "no access at all" must look like the library does not exist, not like a library that exists
+    // but refuses this caller - the same distinction 404-vs-403 already draws across the
+    // organization boundary.
     grantNoAccess();
 
     assertThatThrownBy(
@@ -439,8 +439,8 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aRealPdfUploadedAsPdfIsAccepted() throws IOException {
-    // #435: content detection is a positive check too, not only a rejection path - genuine PDF
-    // bytes with a .pdf extension must not be caught by the new guard.
+    // Content detection is a positive check too, not only a rejection path - genuine PDF bytes
+    // with a .pdf extension must not be caught by the new guard.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-real-pdf");
     when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
@@ -460,9 +460,8 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aRealDocxUploadedAsDocxIsAccepted() throws IOException {
-    // #435 code review, finding 1: the riskiest strictly detected declarations
-    // (FormatAdmission#detectedAs) are the Office formats, because their correct detection depends
-    // on transitive Tika parser modules
+    // The riskiest strictly detected declarations (FormatAdmission#detectedAs) are the Office
+    // formats, because their correct detection depends on transitive Tika parser modules
     // (tika-parsers-standard, POI) actually being on the classpath - a plain byte literal like
     // pdfFile's "%PDF-1.4\n" cannot stand in for them the way it can for PDF. Building a genuine
     // .docx with POI (already on the test classpath via spring-ai-tika-document-reader) exercises
@@ -549,8 +548,8 @@ class LibraryDocumentServiceTest {
 
   @Test
   void pdfContentUploadedAsTxtIsRejectedAsBinaryContentClaimingToBeText() throws IOException {
-    // #435: the text-tolerant check for .txt/.md still rejects genuinely binary content - it only
-    // waives the requirement for one *specific* text media type, not the text-vs-binary distinction
+    // The text-tolerant check for .txt/.md still rejects genuinely binary content - it only waives
+    // the requirement for one *specific* text media type, not the text-vs-binary distinction
     // itself.
     grantEditor();
 
@@ -580,8 +579,8 @@ class LibraryDocumentServiceTest {
 
   @Test
   void anUploadThatWouldExceedTheLibraryQuotaIsRejectedWithoutBeingStored() throws IOException {
-    // #119: the library's storage quota is checked before anything is written to disk, exactly
-    // like the per-file size limit above - a rejected upload must leave the bestand unchanged.
+    // The library's storage quota is checked before anything is written to disk, exactly like
+    // the per-file size limit above - a rejected upload must leave the bestand unchanged.
     grantEditor();
     when(storageQuotaService.wouldExceedQuota(eq(libraryId), anyLong())).thenReturn(true);
     when(storageQuotaService.quotaExceededMessage(libraryId))
@@ -621,9 +620,9 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aFailedRowWithTheSameChecksumIsReplacedInsteadOfBlockingARetry() throws IOException {
-    // PR #589 review, item 3: a FAILED row (e.g. from a transient embedding failure) must not
-    // block the same file being uploaded again forever - the dedup check now only rejects a
-    // still-live (PENDING/INDEXED) match, and replaces a FAILED one.
+    // A FAILED row (e.g. from a transient embedding failure) must not block the same file
+    // being uploaded again forever - the dedup check now only rejects a still-live
+    // (PENDING/INDEXED) match, and replaces a FAILED one.
     grantEditor();
     Path libraryDir =
         Files.createDirectories(
@@ -662,8 +661,8 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aRaceThatSlipsPastTheChecksumCheckIsStillCaughtByTheUniqueIndex() throws IOException {
-    // #420 code review, nit 5: the sequential findByLibraryIdAndChecksum check cannot close a
-    // race between two concurrent uploads; uk_documents_library_checksum does, and
+    // The sequential findByLibraryIdAndChecksum check cannot close a race between two concurrent
+    // uploads; uk_documents_library_checksum does, and
     // this is the resulting DataIntegrityViolationException translated into the same 409. #434: the
     // save that can now raise it is the PENDING row's own save, done inside this service - not a
     // call into DocumentIngestService any more.
@@ -688,11 +687,10 @@ class LibraryDocumentServiceTest {
   @Test
   void aFolderDeletedBetweenValidationAndInsertAnswers404NotTheChecksumMessage()
       throws IOException {
-    // #821 review round 1, finding 5: fk_documents_folder can fire on the very
-    // same save() the checksum race above tests, if folderId - already confirmed to exist by
-    // resolveFolder - is deleted by a concurrent request in the narrow window before this INSERT.
-    // That must not surface as "Diese Datei ist bereits in dieser Bibliothek vorhanden" - the file
-    // was never a duplicate at all.
+    // fk_documents_folder can fire on the very same save() the checksum race above tests, if
+    // folderId - already confirmed to exist by resolveFolder - is deleted by a concurrent request
+    // in the narrow window before this INSERT. That must not surface as "Diese Datei ist bereits
+    // in dieser Bibliothek vorhanden" - the file was never a duplicate at all.
     grantEditor();
     UUID folderId = UUID.randomUUID();
     LibraryFolder folder = new LibraryFolder(libraryId, null, "Wird-Geloescht", organizationId);
@@ -757,10 +755,10 @@ class LibraryDocumentServiceTest {
   @Test
   void aFullProcessingQueueMarksTheDocumentFailedInsteadOfLeavingItPendingForever()
       throws IOException {
-    // PR #589 review, item 2: uploadTaskExecutor rejects (AbortPolicy) rather than silently
-    // discarding a task when its queue is full - this is where LibraryDocumentService catches
-    // that rejection and turns it into an immediate, explained FAILED row instead of a PENDING
-    // one nothing will ever pick up.
+    // uploadTaskExecutor rejects (AbortPolicy) rather than silently discarding a task when its
+    // queue is full - this is where LibraryDocumentService catches that rejection and turns it
+    // into an immediate, explained FAILED row instead of a PENDING one nothing will ever pick
+    // up.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-queue-full");
     when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
@@ -781,10 +779,10 @@ class LibraryDocumentServiceTest {
 
   @Test
   void anUnexpectedFailureStartingProcessingMarksTheAlreadyPersistedRowFailed() throws IOException {
-    // PR #589 review, item 4: once the PENDING row is committed, a RuntimeException must never
-    // again just delete the file and rethrow, leaving the row behind pointing at a dead
-    // file_path - it is marked FAILED instead, the same way the more specific
-    // TaskRejectedException case above already is.
+    // Once the PENDING row is committed, a RuntimeException must never again just delete the
+    // file and rethrow, leaving the row behind pointing at a dead file_path - it is marked
+    // FAILED instead, the same way the more specific TaskRejectedException case above already
+    // is.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-unexpected");
     when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
@@ -805,11 +803,11 @@ class LibraryDocumentServiceTest {
 
   @Test
   void failingAnAlreadyPersistedUploadUsesAConditionalUpdateNotASecondSave() throws IOException {
-    // #636 review, item 3: failAlreadyPersistedUpload used to call documentRepository.save on the
-    // row it had just committed a moment earlier - the same zombie-row failure mode #632 fixed for
-    // the connector paths, just narrower here (the window between that commit and this call, e.g.
-    // while handing off to processUploadedFileAsync). It must go through the same conditional
-    // markFailed(id, errorMessage) UPDATE the asynchronous path already uses, not a second save.
+    // failAlreadyPersistedUpload used to call documentRepository.save on the row it had just
+    // committed a moment earlier - the same zombie-row failure mode #632 fixed for the connector
+    // paths, just narrower here (the window between that commit and this call, e.g. while handing
+    // off to processUploadedFileAsync). It must go through the same conditional markFailed(id,
+    // errorMessage) UPDATE the asynchronous path already uses, not a second save.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-conditional-update");
     when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
@@ -927,8 +925,8 @@ class LibraryDocumentServiceTest {
 
   @Test
   void bulkDeleteRemovesEveryValidIdAndNamesTheOnesItCouldNot() throws IOException {
-    // #1943: a stale id in the selection (deleted meanwhile, or from another library) must cost
-    // only its own line - the documents around it are still gone when the call returns.
+    // A stale id in the selection (deleted meanwhile, or from another library) must cost only
+    // its own line - the documents around it are still gone when the call returns.
     grantEditor();
     Path libraryDir =
         Files.createDirectories(
@@ -995,7 +993,7 @@ class LibraryDocumentServiceTest {
 
   @Test
   void deletingAnUploadedDocumentDeletesTheRowBeforeTheVectorStoreChunks() throws IOException {
-    // #614, PR #589 second review round, finding 2: a concurrent uploadTaskExecutor task finishing
+    // A concurrent uploadTaskExecutor task finishing
     // the very same document races this method. DocumentRepository#markIndexed/#markFailed are
     // conditional UPDATEs that only ever affect a row that still exists - so the row must already
     // be gone (or at least already deleted within this transaction) by the time the vector store
@@ -1070,8 +1068,8 @@ class LibraryDocumentServiceTest {
   @Test
   void deletingADocumentWithAGrandchildAttachmentDeletesTheWholeChainDeepestFirst()
       throws IOException {
-    // #1183: a Mail-in-Mail chain nests an attachment inside an attachment (a forwarded .eml with
-    // its own attachment) - descendantsDeepestFirst must walk both levels, not only the direct
+    // A Mail-in-Mail chain nests an attachment inside an attachment (a forwarded .eml with its
+    // own attachment) - descendantsDeepestFirst must walk both levels, not only the direct
     // children deletingADocumentWithAttachmentsDeletesTheAttachmentRowsFirst covers.
     grantEditor();
     UUID documentId = UUID.randomUUID();
@@ -1131,10 +1129,10 @@ class LibraryDocumentServiceTest {
   @Test
   void aFailingVectorStoreDeleteDuringCleanupStillLetsTheFileBeDeletedAndDoesNotPropagate()
       throws IOException {
-    // PR #631 review, finding 1: by the time this afterCommit callback runs, the row deletion has
-    // already committed - the caller's request has already succeeded. A vectorStore.delete failure
-    // here must neither turn that success into a 500 the caller never asked for, nor skip the file
-    // deletion for a reason that has nothing to do with the file.
+    // By the time this afterCommit callback runs, the row deletion has already committed - the
+    // caller's request has already succeeded. A vectorStore.delete failure here must neither turn
+    // that success into a 500 the caller never asked for, nor skip the file deletion for a reason
+    // that has nothing to do with the file.
     grantEditor();
     UUID documentId = UUID.randomUUID();
     Path libraryDir =
@@ -1164,10 +1162,9 @@ class LibraryDocumentServiceTest {
 
   @Test
   void loadContentRefusesAFilesystemDocumentWhenTheAllowlistNoLongerAllowsItsSourcePath() {
-    // #742 review, finding 2: FilesystemPathAllowlist can be narrowed - or emptied entirely, which
-    // disables the FILESYSTEM sourceType altogether - after a library was created. A read against a
-    // sourcePath that has since fallen outside it must not silently keep succeeding just because
-    // the
+    // FilesystemPathAllowlist can be narrowed - or emptied entirely, which disables the FILESYSTEM
+    // sourceType altogether - after a library was created. A read against a sourcePath that has
+    // since fallen outside it must not silently keep succeeding just because the
     // library once passed validation at creation time; both cases boil down to the same
     // isAllowed(sourcePath) == false the FILESYSTEM branch of loadContent must re-check every time.
     // Exercised as a unit test (mocked FilesystemPathAllowlist) rather than in
@@ -1205,7 +1202,7 @@ class LibraryDocumentServiceTest {
 
   @Test
   void deletingAFilesystemSourcedDocumentNeverTouchesItsFile() throws IOException {
-    // #420 code review, finding 1 (blocking): a FILESYSTEM document's file_path points at the
+    // A FILESYSTEM document's file_path points at the
     // operator-managed indexing directory, not at anything this service is allowed to remove -
     // even if that path happens to live outside the upload storage tree, and even though the row
     // and its chunks are still removed like any other document.
@@ -1266,8 +1263,8 @@ class LibraryDocumentServiceTest {
     }
   }
 
-  // #747: loadContent for HTTP_DIRECTORY/RSS_FEED documents proxies the original from the stored
-  // source URL instead of answering 404 outright (#736's original behaviour, now local-file-only).
+  // loadContent for HTTP_DIRECTORY/RSS_FEED documents proxies the original from the stored source
+  // URL instead of answering 404 outright (#736's original behaviour, now local-file-only).
 
   private HttpServer remoteServer;
   private String remoteBaseUrl;
@@ -1567,8 +1564,8 @@ class LibraryDocumentServiceTest {
   }
 
   /**
-   * The content-read check every {@code loadContent} test below has to clear (#1828) - a permissive
-   * stub rather than the mock's own default, so a test that relies on it says so.
+   * The content-read check every {@code loadContent} test below has to clear - a permissive stub
+   * rather than the mock's own default, so a test that relies on it says so.
    */
   private void grantViewerOnUploadLibrary() {
     doNothing().when(accessService).requireContentRead(any(), eq(currentUserId), eq(false));
@@ -1654,10 +1651,10 @@ class LibraryDocumentServiceTest {
               + java.util.Base64.getEncoder()
                   .encodeToString("libuser:libpass".getBytes(StandardCharsets.UTF_8));
       assertThat(receivedAuthorization.get()).isEqualTo(expected);
-      // #748 review, nit 1: the previous assertion here (content.toString() lacking "libpass")
-      // could never fail - DocumentContent never had a credentials field to begin with. This reads
-      // the actual bytes the caller would receive and checks the credentials never leaked into
-      // them, the thing this test is meant to guard against.
+      // The previous assertion here (content.toString() lacking "libpass") could never fail -
+      // DocumentContent never had a credentials field to begin with. This reads the actual bytes
+      // the caller would receive and checks the credentials never leaked into them, the thing this
+      // test is meant to guard against.
       assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
           .isEqualTo("content")
           .doesNotContain("libpass");
@@ -1686,8 +1683,8 @@ class LibraryDocumentServiceTest {
 
   @Test
   void loadContentAnswers404WhenTheAllowlistRejectsTheStoredSourceUrl() throws IOException {
-    // #748 review, finding 4: the previous version of this test pointed at
-    // "http://127.0.0.1:1/original.pdf" - the exact same unreachable address
+    // The previous version of this test pointed at "http://127.0.0.1:1/original.pdf" - the exact
+    // same unreachable address
     // loadContentAnswers404WithAGermanMessageWhenTheRemoteSourceIsUnreachable above uses to stand
     // in for "the source is offline". Both produced the identical generic 404, so this test stayed
     // green even with the allowlist re-check removed entirely - "blocked" and "unreachable" were
@@ -1754,11 +1751,11 @@ class LibraryDocumentServiceTest {
   // --- #1243: the re-extraction path is serialized per parent and globally capped -------------
 
   /**
-   * #1243: re-extracting an attachment parses the whole parent original, so two clicks on two
-   * attachments of the same mail must not parse it twice at the same time. The first extraction
-   * blocks until the second request has provably had its chance to start (its thread is inside
-   * {@code loadContent} and waiting), so a green run cannot mean "the second thread was simply
-   * slower" - it means it was actually held back.
+   * Re-extracting an attachment parses the whole parent original, so two clicks on two attachments
+   * of the same mail must not parse it twice at the same time. The first extraction blocks until
+   * the second request has provably had its chance to start (its thread is inside {@code
+   * loadContent} and waiting), so a green run cannot mean "the second thread was simply slower" -
+   * it means it was actually held back.
    */
   @Test
   void loadContentSerializesConcurrentReExtractionsOfTheSameParent() throws Exception {
@@ -1839,9 +1836,9 @@ class LibraryDocumentServiceTest {
   }
 
   /**
-   * #1243: once the instance-wide ceiling is reached, a further re-extraction is refused with the
-   * same German 429 this endpoint's rate limit already uses, instead of waiting without limit or
-   * piling further parses onto the instance.
+   * Once the instance-wide ceiling is reached, a further re-extraction is refused with the same
+   * German 429 this endpoint's rate limit already uses, instead of waiting without limit or piling
+   * further parses onto the instance.
    */
   @Test
   void loadContentAnswers429WhenTheConcurrentExtractionCeilingIsReached() throws Exception {
@@ -2001,8 +1998,8 @@ class LibraryDocumentServiceTest {
 
   @Test
   void anUnreachableUploadStoreIs503OnTheWritePathJustAsOnTheReadPath() throws IOException {
-    // #1805: the same outage of the same upload storage (ADR-0030, Entscheidung 9) must answer
-    // alike in both directions - a 500 on the write path would tell the caller the application
+    // The same outage of the same upload storage (ADR-0030, Entscheidung 9) must answer alike
+    // in both directions - a 500 on the write path would tell the caller the application
     // itself is broken and not to retry, while the read path tells it to come back later.
     grantEditor();
     grantViewerOnUploadLibrary();
@@ -2134,7 +2131,7 @@ class LibraryDocumentServiceTest {
     assertThatThrownBy(() -> service.loadContent(document.getId(), caller))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Bibliothek nicht gefunden");
-    // #1524: the S3 branch adds no permission logic of its own - the one check in loadContent is
+    // The S3 branch adds no permission logic of its own - the one check in loadContent is
     // reached before any branching, so a caller without VIEWER never costs a single S3 request.
     verifyNoInteractions(s3OriginalAccess);
   }

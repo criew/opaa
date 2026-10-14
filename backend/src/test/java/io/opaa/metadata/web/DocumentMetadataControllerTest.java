@@ -61,7 +61,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * Controller wiring for the metadata correction endpoints (#1068): request bodies reach {@link
+ * Controller wiring for the metadata correction endpoints: request bodies reach {@link
  * DocumentMetadataCorrectionService} as domain input, its outcomes and exceptions become the
  * documented status codes (VIEWER 403, no access/foreign organization 404, invalid value 400).
  */

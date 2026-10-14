@@ -44,7 +44,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * response-time class never tells an unknown address from a wrong password; only an {@code ACTIVE}
  * account signs in, and with the management switched off only a local {@code SYSTEM_ADMIN}. Every
  * refusal is the same empty result. The failed-login counter is incremented and reset here; the
- * lockout after five attempts (#1535) hangs on {@link LocalLoginAttemptListener}.
+ * lockout after five attempts hangs on {@link LocalLoginAttemptListener}.
  */
 class LocalLoginServiceTest {
 
@@ -167,7 +167,7 @@ class LocalLoginServiceTest {
 
   @Test
   void aWrongPasswordDuringALockoutIsNeitherCountedNorReported() {
-    // #1535: attempts during the lockout neither extend it nor spend the budget after it
+    // Attempts during the lockout neither extend it nor spend the budget after it
     row.recordLockoutUntil(NOW.plus(Duration.ofMinutes(10)), NOW.minusSeconds(60));
 
     assertThat(service.authenticate(EMAIL, "falsch", CLIENT)).isEmpty();

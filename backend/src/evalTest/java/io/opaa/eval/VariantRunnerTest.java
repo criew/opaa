@@ -12,12 +12,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free unit tests for {@link VariantRunner}'s Mehrfachlauf-Regel decision (issue #1044
- * review, Befund 1): until a chat model is wired into the harness (issue #1085), {@code
- * VariantPrerequisites} skips every decomposition-enabled variant before it ever reaches this
- * logic, so it would otherwise go completely untested. These tests exercise the package-private
- * {@link VariantRunner#run(PipelineVariant, QueryProperties, java.util.function.Supplier)} overload
- * directly, standing in for the real pipeline/corpus with a counting supplier.
+ * Docker-free unit tests for {@link VariantRunner}'s Mehrfachlauf-Regel decision: until a chat
+ * model is wired into the harness, {@code VariantPrerequisites} skips every decomposition-enabled
+ * variant before it ever reaches this logic, so it would otherwise go completely untested. These
+ * tests exercise the package-private {@link VariantRunner#run(PipelineVariant, QueryProperties,
+ * java.util.function.Supplier)} overload directly, standing in for the real pipeline/corpus with a
+ * counting supplier.
  */
 class VariantRunnerTest {
 
@@ -159,8 +159,8 @@ class VariantRunnerTest {
   }
 
   /**
-   * Issue #1044 review, Befund 1: a fixture where only the third run's decomposition differs for
-   * one case — the deviation count and id list must reflect exactly that, not "any pair differs".
+   * A fixture where only the third run's decomposition differs for one case — the deviation count
+   * and id list must reflect exactly that, not "any pair differs".
    */
   @Test
   void decompositionDeviatingOnlyInTheThirdRunIsCountedOnce() {

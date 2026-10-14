@@ -51,7 +51,7 @@ class UserProvisionedEventIntegrationTest {
     jdbcTemplate.update("DELETE FROM oidc_providers WHERE issuer_uri = ?", ISSUER);
     jdbcTemplate.update(
         "DELETE FROM spaces WHERE owner_id IN (SELECT id FROM users WHERE subject = ?)", subject);
-    // #1815: the two rights-history tables carry no foreign key to their space (ADR-0016), so the
+    // The two rights-history tables carry no foreign key to their space (ADR-0016), so the
     // deletion above leaves their intervals behind - and their person columns are RESTRICT.
     jdbcTemplate.update(
         "DELETE FROM space_membership_history WHERE subject_user_id IN"
@@ -96,7 +96,7 @@ class UserProvisionedEventIntegrationTest {
    * The listener order is a contract, not a preference: the personal space must already be in place
    * when a rights-affecting listener of the same event fails. The failure is provoked with a
    * provider row that does not exist, so the synchronizer's insert hits {@code fk_groups_provider}
-   * - the key that carries "no group without its provider" since #1812.
+   * - the key that carries "no group without its provider".
    */
   @Test
   void aFailingGroupSynchronizationStillLeavesThePersonalSpaceBehind() {

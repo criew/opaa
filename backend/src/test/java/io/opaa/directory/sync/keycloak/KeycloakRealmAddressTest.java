@@ -7,9 +7,9 @@ import io.opaa.common.ValidationException;
 import org.junit.jupiter.api.Test;
 
 /**
- * Deriving realm and admin API base from the provider's issuer (#1817). The realm is never
- * configurable: that is what makes it impossible to read a different realm than the one this
- * provider's accounts come from (ADR-0025).
+ * Deriving realm and admin API base from the provider's issuer. The realm is never configurable:
+ * that is what makes it impossible to read a different realm than the one this provider's accounts
+ * come from (ADR-0025).
  */
 class KeycloakRealmAddressTest {
 

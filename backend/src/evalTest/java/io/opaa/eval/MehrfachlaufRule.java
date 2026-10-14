@@ -6,17 +6,17 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * The Mehrfachlauf-Regel itself (issue #1044, docs/features/retrieval-benchmark.md §3, "Was
- * stattdessen gilt", 2.–3.), in one place for every caller that measures the pipeline: a
- * configuration with active Teilfragen-Zerlegung has an LLM component and is therefore not
- * deterministic — it is measured {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times and
- * represented by its median run. Every other configuration is measured exactly once.
+ * The Mehrfachlauf-Regel itself (docs/features/retrieval-benchmark.md §3, "Was stattdessen gilt",
+ * 2.–3.), in one place for every caller that measures the pipeline: a configuration with active
+ * Teilfragen-Zerlegung has an LLM component and is therefore not deterministic — it is measured
+ * {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times and represented by its median run. Every
+ * other configuration is measured exactly once.
  *
  * <p>Shared by {@link VariantRunner}, the single-configuration pipeline path ({@link
  * PipelineHarnessSupport#runAndWriteGuarded}) and the Referenzvarianten-Selbstprüfung ({@link
- * ReferenceVariantSelfCheck}) since issue #1085: the self-check compares two independent
- * measurements of the same configuration, and a median of three runs on one side against a single
- * run on the other could not be bit-identical for structural reasons alone.
+ * ReferenceVariantSelfCheck}): the self-check compares two independent measurements of the same
+ * configuration, and a median of three runs on one side against a single run on the other could not
+ * be bit-identical for structural reasons alone.
  */
 final class MehrfachlaufRule {
 
@@ -41,10 +41,10 @@ final class MehrfachlaufRule {
   }
 
   /**
-   * The same rule for a measurement that is not a {@link PipelineEvaluationReport} (issue #1484):
-   * {@code view} is the only thing the aggregation needs of a run, so a further measurement path
-   * reuses the rule instead of reimplementing "three runs, median, spread" - and reports the same
-   * spread and the same decomposition-deviation count.
+   * The same rule for a measurement that is not a {@link PipelineEvaluationReport}: {@code view} is
+   * the only thing the aggregation needs of a run, so a further measurement path reuses the rule
+   * instead of reimplementing "three runs, median, spread" - and reports the same spread and the
+   * same decomposition-deviation count.
    */
   static <T> Measurement<T> measure(
       boolean decompositionEnabled,

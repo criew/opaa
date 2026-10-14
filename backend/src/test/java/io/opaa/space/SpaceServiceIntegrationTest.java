@@ -80,7 +80,7 @@ class SpaceServiceIntegrationTest {
     return PermissionSubject.user(userId, organizationA);
   }
 
-  /** A membership is addressed by its own id since #1815 - never by the subject's. */
+  /** A membership is addressed by its own id - never by the subject's. */
   private UUID membershipIdOf(UUID spaceId, UUID userId) {
     return membershipRepository.findBySpaceId(spaceId).stream()
         .filter(membership -> userId.equals(membership.getUserId()))
@@ -175,7 +175,7 @@ class SpaceServiceIntegrationTest {
 
   @Test
   void anyUserCanCreateSeveralSpacesTheyWorkInAlone() {
-    // #333: SpaceKind is gone, so there is no TEAM kind reserved for system admins and no
+    // SpaceKind is gone, so there is no TEAM kind reserved for system admins and no
     // one-personal-space-per-user rule. Five small initiatives may have five rooms.
     UUID userId = createUser(organizationA);
 
@@ -238,7 +238,7 @@ class SpaceServiceIntegrationTest {
 
   @Test
   void listCountsAssignedLibrariesAndOnlyTheCallersOwnChats() {
-    // #682: the overview card's figures line. Chats count only the caller's own (#525: chats are
+    // The overview card's figures line. Chats count only the caller's own (#525: chats are
     // private to their author, so another member's chats must neither show up in the figure nor
     // leak through it). Libraries follow listForSpace's rule: every role, the ADMIN included,
     // counts only the libraries it may read - the figure must not give away how many are withheld
@@ -322,9 +322,9 @@ class SpaceServiceIntegrationTest {
 
   @Test
   void spaceWithAChatCannotBeDeleted() {
-    // #525 review, finding 5: docs/features/spaces-and-assets.md#chats-sind-vor-fremder-
-    // löschung-geschützt - a chat must survive its space being deleted, so the space itself must
-    // not be deletable while it still contains one.
+    // docs/features/spaces-and-assets.md#chats-sind-vor-fremder- löschung-geschützt - a chat
+    // must survive its space being deleted, so the space itself must not be deletable while it
+    // still contains one.
     UUID owner = createUser(organizationA);
     Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
@@ -376,7 +376,7 @@ class SpaceServiceIntegrationTest {
         .containsExactly(SpaceRole.CURATOR);
   }
 
-  /** The default space is private: nobody but its owner becomes a member (#2585). */
+  /** The default space is private: nobody but its owner becomes a member. */
   @Test
   void nobodyCanBeAddedToTheDefaultSpaceNotEvenByASystemAdmin() {
     UUID owner = createUser(organizationA);
@@ -405,7 +405,7 @@ class SpaceServiceIntegrationTest {
         .containsExactly(owner);
   }
 
-  /** No role in the default space is changed - there is nobody but the owner to change (#2585). */
+  /** No role in the default space is changed - there is nobody but the owner to change. */
   @Test
   void rolesInTheDefaultSpaceCannotBeChanged() {
     UUID owner = createUser(organizationA);
@@ -550,7 +550,7 @@ class SpaceServiceIntegrationTest {
    * SpaceAssetAssociationService.hasCuratorRole}, which already treated the owner as a curator
    * regardless of their own membership role. {@code transferOwnership} never raises the new owner's
    * own membership role (see that method's Javadoc), so "owner with a MEMBER membership" is a
-   * legal, persistent state - and on the pre-#888 code, such an owner got a 403 from {@code
+   * legal, persistent state - and with the old code, such an owner got a 403 from {@code
    * addMember}/{@code updateMemberRole}/{@code removeMember} despite being the space's owner.
    * {@link SpaceAccessPolicy#effectiveRole} now unifies this: the owner is always at least ADMIN,
    * so manager actions succeed here where they previously threw {@link AccessDeniedException}.
@@ -668,8 +668,8 @@ class SpaceServiceIntegrationTest {
 
   @Test
   void addMemberRejectsAddingToAnArchivedSpace() {
-    // #613 review, finding 2: an archived space accepts no new content, and a new member counts
-    // as new content in the specification's sense.
+    // An archived space accepts no new content, and a new member counts as new content in the
+    // specification's sense.
     UUID owner = createUser(organizationA);
     UUID newMember = createUser(organizationA);
     Space space = new Space("Team", "Team docs", false, owner, organizationA);
@@ -761,8 +761,8 @@ class SpaceServiceIntegrationTest {
         .isInstanceOf(AccessDeniedException.class);
   }
 
-  // #144: the full member list (identities and display names) is restricted to ADMIN, the owner
-  // and system admins - a MEMBER or CURATOR must not be able to enumerate their fellow members via
+  // The full member list (identities and display names) is restricted to ADMIN, the owner and
+  // system admins - a MEMBER or CURATOR must not be able to enumerate their fellow members via
   // either getSpace or listMembers, even though they already know they themselves are a member of
   // this space.
 
@@ -809,10 +809,10 @@ class SpaceServiceIntegrationTest {
 
   @Test
   void newOwnerCanListMembersEvenWithoutAnAdminMembership() {
-    // #674 review, blocker 2: transferOwnership only reassigns Space.ownerId - it never touches
-    // the new owner's own SpaceMembership role. A space can therefore genuinely have an owner
-    // whose own membership is MEMBER, and requireMemberListViewer must check the owner explicitly
-    // rather than assume "owner implies ADMIN".
+    // transferOwnership only reassigns Space.ownerId - it never touches the new owner's own
+    // SpaceMembership role. A space can therefore genuinely have an owner whose own membership is
+    // MEMBER, and requireMemberListViewer must check the owner explicitly rather than assume
+    // "owner implies ADMIN".
     UUID owner = createUser(organizationA);
     UUID newOwner = createUser(organizationA);
     Space space = new Space("Team", "Team docs", false, owner, organizationA);
@@ -827,9 +827,9 @@ class SpaceServiceIntegrationTest {
 
   @Test
   void getSpaceReportsAccurateRoleCountsRegardlessOfCallersRole() {
-    // #144: the aggregated roleCounts derived from the returned Space are correct for every
-    // caller - identities and display names are only reachable via listMembers, restricted to
-    // ADMIN, owner and system admins.
+    // The aggregated roleCounts derived from the returned Space are correct for every caller
+    // - identities and display names are only reachable via listMembers, restricted to ADMIN,
+    // owner and system admins.
     UUID owner = createUser(organizationA);
     UUID member = createUser(organizationA);
     Space space = new Space("Team", "Team docs", false, owner, organizationA);
@@ -855,7 +855,7 @@ class SpaceServiceIntegrationTest {
         .isInstanceOf(ValidationException.class);
   }
 
-  // #543: archiving a space with a foreign chat - a Space mit fremden privaten Chats ist dauerhaft
+  // Archiving a space with a foreign chat - a Space mit fremden privaten Chats ist dauerhaft
   // unlöschbar.
 
   @Test
@@ -951,8 +951,8 @@ class SpaceServiceIntegrationTest {
 
   @Test
   void listSpacesKeepsAnArchivedSpaceVisibleForAMemberWithAChatOfTheirOwnInIt() {
-    // The whole point of archiving (#543): the space stays reachable for the author of a chat
-    // nobody else - not even the owner - can see or remove.
+    // The whole point of archiving: the space stays reachable for the author of a chat nobody
+    // else - not even the owner - can see or remove.
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
     Space space = new Space("Company", "Company docs", false, owner, organizationA);
@@ -971,10 +971,10 @@ class SpaceServiceIntegrationTest {
 
   @Test
   void listSpacesKeepsAnArchivedSpaceVisibleForItsOwnerEvenWithoutAChatOfTheirOwnInIt() {
-    // #613 review, finding 3: the typical #543 case is exactly this - the owner archives a space
-    // because of a foreign chat they cannot see, and has no chat of their own in it either. There
-    // is no unarchive endpoint, so if the space vanished from the owner's own list here, it would
-    // become unreachable except by guessing its URL.
+    // The typical #543 case is exactly this - the owner archives a space because of a foreign
+    // chat they cannot see, and has no chat of their own in it either. There is no unarchive
+    // endpoint, so if the space vanished from the owner's own list here, it would become
+    // unreachable except by guessing its URL.
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
     Space space = new Space("Company", "Company docs", false, owner, organizationA);
@@ -1008,9 +1008,9 @@ class SpaceServiceIntegrationTest {
     assertThat(visibleToSystemAdmin.getFirst().space().isArchived()).isTrue();
   }
 
-  // #706 review, finding 4: the creation's assets are associated in the same transaction as the
-  // space itself - a library the creator cannot associate (here: does not exist) must roll the
-  // whole creation back, not leave a half-created space with only some of the associations.
+  // The creation's assets are associated in the same transaction as the space itself - a
+  // library the creator cannot associate (here: does not exist) must roll the whole creation
+  // back, not leave a half-created space with only some of the associations.
   @Test
   void createSpaceRollsBackEntirelyWhenOneOfTheRequestedLibraryIdsCannotBeAssociated() {
     UUID creator = createUser(organizationA);

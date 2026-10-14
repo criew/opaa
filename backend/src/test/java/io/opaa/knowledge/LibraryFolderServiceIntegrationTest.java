@@ -130,8 +130,8 @@ class LibraryFolderServiceIntegrationTest {
     ownLibraryFixtures.removeLibraries(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId(), viewer.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId(), viewer.getId()));
-    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
-    // they have to go before the accounts that hold them.
+    // A library carries ownership intervals; their owner column is RESTRICT, so they have
+    // to go before the accounts that hold them.
     jdbcTemplate.update(
         "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     userRepository.deleteById(editor.getId());
@@ -189,7 +189,7 @@ class LibraryFolderServiceIntegrationTest {
 
   @Test
   void concurrentCreatesOfTheSameFolderNameProduceExactlyOneFolder() throws Exception {
-    // Review finding on PR #827: the sequential ensureNameAvailable pre-check alone cannot close
+    // The sequential ensureNameAvailable pre-check alone cannot close
     // this race - only uk_library_folders_root_name can, and only a genuine
     // concurrent attempt (real threads, real Postgres) exercises it rather than the sequential
     // fast-path check the mocked LibraryFolderServiceTest is limited to. Also proves
@@ -414,13 +414,12 @@ class LibraryFolderServiceIntegrationTest {
   @Test
   void concurrentResolveOrCreateFolderPathCallsForTheSameNewPathProduceExactlyOneFolderTree()
       throws Exception {
-    // #823 review, Befund 6: a pre-existing #824 race (materializeSingleFolder's unique-constraint
-    // catch retrying its lookup against the same, now-aborted Postgres transaction) made
-    // user-reachable by #823 - two concurrent uploads (e.g. two browser tabs) racing to
-    // materialize the same brand-new folder path must both succeed and land on the very same
-    // folder, never a 500 from the losing side. Only a genuine concurrent attempt (real threads,
-    // real Postgres) exercises the unique-index violation this guards against - a sequential call
-    // would never hit it.
+    // A pre-existing #824 race (materializeSingleFolder's unique-constraint catch retrying its
+    // lookup against the same, now-aborted Postgres transaction) made user-reachable by #823 - two
+    // concurrent uploads (e.g. two browser tabs) racing to materialize the same brand-new folder
+    // path must both succeed and land on the very same folder, never a 500 from the losing side.
+    // Only a genuine concurrent attempt (real threads, real Postgres) exercises the unique-index
+    // violation this guards against - a sequential call would never hit it.
     CyclicBarrier barrier = new CyclicBarrier(2);
     ExecutorService executor = Executors.newFixedThreadPool(2);
     try {

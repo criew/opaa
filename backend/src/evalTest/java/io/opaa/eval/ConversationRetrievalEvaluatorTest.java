@@ -21,9 +21,9 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 
 /**
- * Docker-free proof of the two properties the multi-turn path is built on (issue #1484): a turn is
- * run against the window the preceding turns produced, and a case counts as solved only when every
- * one of its turns is.
+ * Docker-free proof of the two properties the multi-turn path is built on: a turn is run against
+ * the window the preceding turns produced, and a case counts as solved only when every one of its
+ * turns is.
  *
  * <p>The conversation memory here is the production {@link MessageWindowChatMemory} over the
  * production {@link CaffeineChatMemoryRepository} - the same pair the application wires - with a
@@ -318,7 +318,7 @@ class ConversationRetrievalEvaluatorTest {
   }
 
   // ---------------------------------------------------------------------------------------
-  // Gesprächsnotiz (#1487)
+  // Gesprächsnotiz
   // ---------------------------------------------------------------------------------------
 
   /**
@@ -342,8 +342,8 @@ class ConversationRetrievalEvaluatorTest {
   }
 
   /**
-   * The report carries what each turn actually received (#1490). Without it a run cannot tell "the
-   * note never carried the Angabe" from "the decomposition ignored it" - the two explanations of a
+   * The report carries what each turn actually received. Without it a run cannot tell "the note
+   * never carried the Angabe" from "the decomposition ignored it" - the two explanations of a
    * fallen constraint_carryover that call for opposite follow-up work.
    */
   @Test

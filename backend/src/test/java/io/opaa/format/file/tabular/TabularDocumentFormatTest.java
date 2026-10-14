@@ -543,8 +543,8 @@ class TabularDocumentFormatTest {
   @Test
   void everyChunkOfATableWhoseHeaderNearlyFillsTheHardLimitStillOpensWithContextAndHeader()
       throws IOException {
-    // review finding on #2331: with context and header line beyond 6,000 characters, a row group
-    // ran past the hard limit and its second part lost both lines.
+    // With context and header line beyond 6,000 characters, a row group must stay within the hard
+    // limit and its second part keep both lines.
     StringBuilder csv = new StringBuilder();
     for (int c = 1; c <= 155; c++) {
       csv.append(c == 1 ? "" : ",")

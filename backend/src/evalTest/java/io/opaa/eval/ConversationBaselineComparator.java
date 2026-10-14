@@ -9,9 +9,9 @@ import java.util.TreeSet;
 
 /**
  * Compares a freshly produced {@link ConversationEvaluationReport} against the committed {@link
- * ConversationBaseline} (issue #1484) - the multi-turn path's counterpart of {@link
- * PipelineBaselineComparator}, answering the same two deliberately separate questions ("is the
- * baseline still valid?" and only then "did retrieval regress?").
+ * ConversationBaseline} - the multi-turn path's counterpart of {@link PipelineBaselineComparator},
+ * answering the same two deliberately separate questions ("is the baseline still valid?" and only
+ * then "did retrieval regress?").
  *
  * <p><b>Nothing about the error criterion is redefined here.</b> Every metric check is produced by
  * {@link BaselineComparator#metricCheck} and every pipeline fixed point by {@link

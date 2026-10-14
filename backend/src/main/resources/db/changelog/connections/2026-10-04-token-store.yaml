@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: connections-2026-10-04-token-store
       author: opaa
-      comment: "Connected accounts and the token store (#2163, ADR-0041): a person's connection to a profile, and the encrypted secrets of persons and libraries, each row bound to its profile and to the target it was issued for. A private library goes only onto a profile for persons on which its owner has a connected account."
+      comment: "Connected accounts and the token store (ADR-0041): a person's connection to a profile, and the encrypted secrets of persons and libraries, each row bound to its profile and to the target it was issued for. A private library goes only onto a profile for persons on which its owner has a connected account."
       changes:
         - sql:
             splitStatements: false

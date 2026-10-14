@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Pure JUnit tests (no Spring context) against directly constructed entities/records - the mapper
- * counterpart of {@code SpaceResponseMapperTest} (#860): pins {@link AssetGrantResponseMapper}'s
+ * counterpart of {@code SpaceResponseMapperTest}: pins {@link AssetGrantResponseMapper}'s
  * field-by-field behaviour, including {@code null}-vs-absent display names.
  */
 class AssetGrantResponseMapperTest {

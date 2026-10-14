@@ -24,8 +24,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * HTTP-layer coverage of the prompt library (#1901): the routes the specification promises, the
- * statuses the services decide, and rights given through the shell's generic routes under {@code
+ * HTTP-layer coverage of the prompt library: the routes the specification promises, the statuses
+ * the services decide, and rights given through the shell's generic routes under {@code
  * /api/v1/assets/PROMPT_LIBRARY/...} - there is no prompt-library route of its own for them.
  */
 @OpaaIntegrationTest
@@ -135,7 +135,7 @@ class PromptLibraryControllerIntegrationTest {
                 .content("{\"name\":\"Vorlagen\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.name").value("Vorlagen"))
-        // #1931: the reach follows the grants - the second one above widened it to two people.
+        // The reach follows the grants - the second one above widened it to two people.
         .andExpect(jsonPath("$.reach.allAccounts").value(false))
         .andExpect(jsonPath("$.reach.userCount").value(2))
         .andExpect(jsonPath("$.promptCount").value(1));

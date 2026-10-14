@@ -8,11 +8,11 @@ import java.util.List;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Writes the {@link ChunkMap.DocumentChunkMap} list a run produces as a JSON artifact (issue #721),
- * next to {@code retrieval-metrics.json} — not committed, rewritten on every {@code
- * evaluateRetrieval} run. Grounds for a future golden-case curator to pick {@code answer_span}
- * cases deliberately close to a chunk boundary (#234), and itself a measurement result, not a
- * generator assumption (ADR-0010: the corpus generator deliberately does not count tokens).
+ * Writes the {@link ChunkMap.DocumentChunkMap} list a run produces as a JSON artifact, next to
+ * {@code retrieval-metrics.json} — not committed, rewritten on every {@code evaluateRetrieval} run.
+ * Grounds for a future golden-case curator to pick {@code answer_span} cases deliberately close to
+ * a chunk boundary, and itself a measurement result, not a generator assumption (ADR-0010: the
+ * corpus generator deliberately does not count tokens).
  */
 public final class ChunkMapWriter {
 

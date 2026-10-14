@@ -53,10 +53,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * Step 2 of the extraction order end to end (#1073): the switches decide whether a model is called
- * at all, the threshold and the vocabulary decide what is stored, a failure never blocks the
- * ingest, and a freies Schlagwort reaches the full-text index without ever becoming filterable or
- * appearing in a Beleg.
+ * Step 2 of the extraction order end to end: the switches decide whether a model is called at all,
+ * the threshold and the vocabulary decide what is stored, a failure never blocks the ingest, and a
+ * freies Schlagwort reaches the full-text index without ever becoming filterable or appearing in a
+ * Beleg.
  */
 @OpaaMockedChatModelIntegrationTest
 class ModelMetadataExtractionIntegrationTest {
@@ -360,9 +360,9 @@ class ModelMetadataExtractionIntegrationTest {
 
   @Test
   void aSwitchTurnedOnLaterStillReachesTheAltbestandOfTheOtherOne() throws IOException {
-    // Regression guard for #1073 review, finding 2: one drain marker for both capabilities would
-    // let the keyword runs stamp every document, and the Dokumentart of this Altbestand could then
-    // never be filled.
+    // Regression guard for #1073: one drain marker for both capabilities would let the keyword
+    // runs stamp every document, and the Dokumentart of this Altbestand could then never be
+    // filled.
     switchOn(false, true);
     answerWith(
         """
@@ -397,8 +397,8 @@ class ModelMetadataExtractionIntegrationTest {
 
   @Test
   void theZustandsuebersichtCountsExactlyWhatABestandslaufCallWouldSelect() throws IOException {
-    // Regression guard for #1073 review, finding 3: the only start button of the page hangs on this
-    // count, so a library whose Altbestand is model-pending must not read as "0 ausstehend".
+    // Regression guard for #1073: the only start button of the page hangs on this count, so a
+    // library whose Altbestand is model-pending must not read as "0 ausstehend".
     ingest(file("unterlage-zaehlung.txt"));
     assertThat(pendingDocumentsOfLibrary()).isZero();
 
@@ -411,8 +411,8 @@ class ModelMetadataExtractionIntegrationTest {
 
   @Test
   void aCallOverItsTimeLimitLeavesTheFieldEmptyAndIndexesTheDocumentAnyway() throws IOException {
-    // Regression guard for #1073 review, finding 4: the timeout bounds the ingest's waiting time.
-    // Ingested with both switches off, so the field is still empty when the model is asked.
+    // Regression guard for #1073: the timeout bounds the ingest's waiting time. Ingested with
+    // both switches off, so the field is still empty when the model is asked.
     ingest(file("unterlage-langsam.txt"));
     Document document = onlyDocument();
     switchOn(true, false);
@@ -447,9 +447,9 @@ class ModelMetadataExtractionIntegrationTest {
 
   @Test
   void aFullPoolSkipsTheCallInsteadOfRunningItInline() throws Exception {
-    // Regression guard for the re-review of #1073: with a caller-runs policy the call ran on the
-    // ingest thread, where supplyAsync returns only after the model answered - the limit did not
-    // apply at all. A full pool therefore skips the call, counts it and moves on.
+    // Regression guard for #1073: with a caller-runs policy the call ran on the ingest thread,
+    // where supplyAsync returns only after the model answered - the limit did not apply at all. A
+    // full pool therefore skips the call, counts it and moves on.
     // Ingested with both switches off, so the field is still empty when the model would be asked.
     ingest(file("unterlage-ausgelastet.txt"));
     Document document = onlyDocument();

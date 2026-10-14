@@ -21,10 +21,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 /**
- * {@link TokenRoleSynchronizer} (#1331, ADR-0025 Entscheidung 4): the provider is authoritative for
- * {@code SYSTEM_ADMIN} and {@code AUDITOR} once it has a roles claim - written only on deviation,
- * audited under the identity-provider actor, {@code SYSTEM_ADMIN} before {@code AUDITOR}, and the
- * last login-capable administrator is never withdrawn by a token - the count is the {@link
+ * {@link TokenRoleSynchronizer} (ADR-0025 Entscheidung 4): the provider is authoritative for {@code
+ * SYSTEM_ADMIN} and {@code AUDITOR} once it has a roles claim - written only on deviation, audited
+ * under the identity-provider actor, {@code SYSTEM_ADMIN} before {@code AUDITOR}, and the last
+ * login-capable administrator is never withdrawn by a token - the count is the {@link
  * LocalAdminAvailabilityGuard}'s (ADR-0033, Entscheidung 4).
  */
 class TokenRoleSynchronizerTest {

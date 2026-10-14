@@ -8,7 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * "Quelle verbinden" (#2169) applied to an existing installation: existing secrets, connections and
+ * "Quelle verbinden" applied to an existing installation: existing secrets, connections and
  * consents stay as they are, a secret still has exactly one owner - now also a person's pending
  * consent, only for a while -, and a library's connection names its responsible and why it ended
  * only in the forms the code writes; the consenting person may leave.

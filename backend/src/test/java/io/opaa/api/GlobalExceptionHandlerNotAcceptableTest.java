@@ -22,7 +22,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * #1707: an {@code Accept} header this API cannot write raises {@code
+ * An {@code Accept} header this API cannot write raises {@code
  * HttpMediaTypeNotAcceptableException}, which fell through to {@code handleGenericException}.
  *
  * <p><b>The status code is deliberately not what this asserts on.</b> A caller who accepts nothing

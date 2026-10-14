@@ -3,11 +3,11 @@ package io.opaa.eval;
 import java.util.regex.Pattern;
 
 /**
- * Shared, mild text normalization for locating an {@code answer_span} inside a chunk (issue #721
- * code review, Wichtig 3). Used identically by {@link ChunkAnswerSpanMetrics} (does a returned
- * chunk contain the span?) and {@link ChunkMap} (which chunk of the source document contains the
- * span?) — both must agree on what "contains" means, or a case could resolve for one purpose and
- * not the other without any code change actually being responsible.
+ * Shared, mild text normalization for locating an {@code answer_span} inside a chunk. Used
+ * identically by {@link ChunkAnswerSpanMetrics} (does a returned chunk contain the span?) and
+ * {@link ChunkMap} (which chunk of the source document contains the span?) — both must agree on
+ * what "contains" means, or a case could resolve for one purpose and not the other without any code
+ * change actually being responsible.
  *
  * <p>Collapses runs of whitespace (including newlines) to a single space and trims both strings
  * before comparing. This absorbs the most common, meaningless mismatch — a span copied from

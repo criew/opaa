@@ -13,10 +13,10 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * The one outcome of the Gesprächsnotiz condensation that never reaches {@link
- * ChatNoteExtractionService} at all (#1487): a task the pool refuses because it is exhausted. It
- * has to be counted, not only logged - the condensation runs once per <em>turn</em>, so a burst of
- * concurrent turns is exactly when the pool overflows, and an uncounted rejection would leave
- * {@code opaa.chat.note.extraction} cleanest precisely under load.
+ * ChatNoteExtractionService} at all: a task the pool refuses because it is exhausted. It has to be
+ * counted, not only logged - the condensation runs once per <em>turn</em>, so a burst of concurrent
+ * turns is exactly when the pool overflows, and an uncounted rejection would leave {@code
+ * opaa.chat.note.extraction} cleanest precisely under load.
  *
  * <p>Deliberately Spring-free: the executor bean is built directly, so no context of the suite is
  * touched and the pool can be driven into saturation deterministically.

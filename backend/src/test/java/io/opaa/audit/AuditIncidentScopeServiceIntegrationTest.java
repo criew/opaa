@@ -31,8 +31,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * #393: the one personenbezogene exception - anlassbezogene Klärung, Vier-Augen-Prinzip - against a
- * real Postgres database with the real, versioned Liquibase schema applied, mirroring {@code
+ * The one personenbezogene exception - anlassbezogene Klärung, Vier-Augen-Prinzip - against a real
+ * Postgres database with the real, versioned Liquibase schema applied, mirroring {@code
  * AuditLogServiceIntegrationTest}.
  */
 @OpaaIntegrationTest
@@ -238,9 +238,9 @@ class AuditIncidentScopeServiceIntegrationTest {
   }
 
   /**
-   * #393 code review, finding 7: an approved grant must not remain usable indefinitely - once
-   * {@code usable_until} has passed, {@code findApproved} must reject the lookup even though the
-   * grant's own status column still says {@code APPROVED}.
+   * An approved grant must not remain usable indefinitely - once {@code usable_until} has passed,
+   * {@code findApproved} must reject the lookup even though the grant's own status column still
+   * says {@code APPROVED}.
    */
   @Test
   void anApprovedGrantPastItsUsableUntilIsRejected() {
@@ -270,9 +270,9 @@ class AuditIncidentScopeServiceIntegrationTest {
   }
 
   /**
-   * #393 code review, finding 8: a grant must never be created against a person outside the
-   * requester's own organization - not even PENDING, since a pseudonym for that person would
-   * otherwise be minted the first time anyone ever queries the (never-approvable) grant.
+   * A grant must never be created against a person outside the requester's own organization - not
+   * even PENDING, since a pseudonym for that person would otherwise be minted the first time anyone
+   * ever queries the (never-approvable) grant.
    */
   @Test
   void requestingAScopeAgainstAPersonFromAnotherOrganizationIsRejected() {
@@ -302,10 +302,10 @@ class AuditIncidentScopeServiceIntegrationTest {
   }
 
   /**
-   * #393 code review, finding 8: a read must never have the side effect of minting a pseudonym - a
-   * person who has never triggered an audit event of their own has no pseudonym yet, and this GET
-   * must not be what gives them one. An empty page (not an error) is the correct answer: the person
-   * genuinely has no entries in the log.
+   * A read must never have the side effect of minting a pseudonym - a person who has never
+   * triggered an audit event of their own has no pseudonym yet, and this GET must not be what gives
+   * them one. An empty page (not an error) is the correct answer: the person genuinely has no
+   * entries in the log.
    */
   @Test
   void byIncidentScopeNeverMintsAPseudonymForAPersonWhoNeverTriggeredAnEvent() {

@@ -24,8 +24,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * {@link LlmModelService} against a real Postgres with the real, versioned Liquibase schema applied
- * (#756). Covers what a test against a mocked repository could not: that the API key really is
+ * {@link LlmModelService} against a real Postgres with the real, versioned Liquibase schema
+ * applied. Covers what a test against a mocked repository could not: that the API key really is
  * encrypted before it reaches the database, that two saves of the same key produce different
  * ciphertexts, that at most one model is ever active, and that every change writes exactly one
  * audit event of the right, distinct type.
@@ -273,7 +273,7 @@ class LlmModelServiceIntegrationTest {
 
   @Test
   void activatingASecondModelRecordsALlmModelDeactivatedEventForTheFirst() {
-    // #757 review of #763: the model that stops being active must be traceable on its own, not
+    // The model that stops being active must be traceable on its own, not
     // only indirectly via whichever model replaced it.
     LlmModel first =
         llmModelService.createModel(
@@ -364,7 +364,7 @@ class LlmModelServiceIntegrationTest {
 
   @Test
   void deletingTheActiveModelIsRejectedWithConflict() {
-    // #757 review: the check and the delete are one service call/one transaction now, not a
+    // The check and the delete are one service call/one transaction now, not a
     // getModel/deleteModel pair the controller composes itself.
     LlmModel model =
         llmModelService.createModel(
@@ -386,9 +386,9 @@ class LlmModelServiceIntegrationTest {
   }
 
   /**
-   * #1147: a base address carrying userinfo would otherwise be stored verbatim and end up in the
-   * audit log, in every API response and thus on the administration page. The rejection happens
-   * before the row is written, so neither the model nor an audit event exists afterwards.
+   * A base address carrying userinfo would otherwise be stored verbatim and end up in the audit
+   * log, in every API response and thus on the administration page. The rejection happens before
+   * the row is written, so neither the model nor an audit event exists afterwards.
    */
   @Test
   void aBaseUrlWithCredentialsIsRejectedAndLeavesNeitherRowNorAuditEvent() {

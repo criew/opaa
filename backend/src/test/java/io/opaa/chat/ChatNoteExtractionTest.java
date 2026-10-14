@@ -7,8 +7,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * The defensive parsing of the Gesprächsnotiz condensation (#1487): what the note keeps of an
- * answer that follows the prompt's format - and of one that does not.
+ * The defensive parsing of the Gesprächsnotiz condensation: what the note keeps of an answer that
+ * follows the prompt's format - and of one that does not.
  */
 class ChatNoteExtractionTest {
 

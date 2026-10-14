@@ -35,9 +35,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * The run is bound to one identity provider row (#1816, ADR-0036 Entscheidung 2): only that
- * provider's groups change, only its accounts are resolved, a disabled provider does not run, and
- * the two group mechanisms of one provider can never be on at once.
+ * The run is bound to one identity provider row (ADR-0036 Entscheidung 2): only that provider's
+ * groups change, only its accounts are resolved, a disabled provider does not run, and the two
+ * group mechanisms of one provider can never be on at once.
  *
  * <p>Also holds the {@code dev}-mode decision of #1816 (ADR-0036, Entscheidung 11): there is no
  * synthetic provider row, so an installation without one - the {@code dev} mode, which this context
@@ -274,9 +274,9 @@ class DirectorySyncProviderBindingIntegrationTest {
   }
 
   /**
-   * The other half of "nothing is revoked silently" (#1816, ADR-0036 Entscheidung 3): a frozen
-   * token group keeps what it holds, but a group nobody can ever join or leave again must not
-   * become a new grant target.
+   * The other half of "nothing is revoked silently" (ADR-0036 Entscheidung 3): a frozen token group
+   * keeps what it holds, but a group nobody can ever join or leave again must not become a new
+   * grant target.
    */
   @Test
   void aTokenGroupOfAProviderWithTheRunIsMarkedAsNoLongerMaintained() {

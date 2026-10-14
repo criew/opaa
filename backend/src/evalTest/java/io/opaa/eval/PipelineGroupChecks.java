@@ -6,9 +6,9 @@ import java.util.function.ToIntFunction;
 
 /**
  * The five metric checks a committed baseline of a {@link PipelineMetricsAggregate}-shaped group is
- * judged by, in one place for every path that measures at this window (issue #1484): which metric
- * carries which hit count, which one gets the hard floor, and that {@code n_eff} comes from the
- * baseline's {@code distinctExpectedDocumentSets} rather than from the case count.
+ * judged by, in one place for every path that measures at this window: which metric carries which
+ * hit count, which one gets the hard floor, and that {@code n_eff} comes from the baseline's {@code
+ * distinctExpectedDocumentSets} rather than from the case count.
  *
  * <p>The error criterion itself is ADR-0013's and lives in {@link BaselineComparator#metricCheck} -
  * this class only decides which checks a group produces, which is precisely the part two

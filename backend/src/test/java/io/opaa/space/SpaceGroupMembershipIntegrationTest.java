@@ -34,7 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * A group as a space member (#1815, ADR-0036 Entscheidungen 6, 8 und 9) against the real, versioned
+ * A group as a space member (ADR-0036 Entscheidungen 6, 8 und 9) against the real, versioned
  * Liquibase schema: the subject columns of {@code space_memberships}, the effective role, the
  * protection of the last capable ADMIN, the growth signal and the rights history all carry real
  * foreign keys that only the changelog creates.
@@ -114,7 +114,7 @@ class SpaceGroupMembershipIntegrationTest {
     assertThat(accessPolicy.isMember(space.getId(), person)).isTrue();
   }
 
-  /** The default space is private: a group is refused like a person (#2585). */
+  /** The default space is private: a group is refused like a person. */
   @Test
   void aGroupCannotBecomeAMemberOfTheDefaultSpace() {
     UUID owner = createUser(organizationA);
@@ -365,8 +365,8 @@ class SpaceGroupMembershipIntegrationTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 7, Schutzpunkt 3 (#1818): counted are active accounts, not membership
-   * rows. Six members with two of them locked by the directory synchronisation are a group of four.
+   * ADR-0036, Entscheidung 7, Schutzpunkt 3: counted are active accounts, not membership rows. Six
+   * members with two of them locked by the directory synchronisation are a group of four.
    */
   @Test
   void accountsLockedByTheDirectorySynchronisationDoNotCount() {
@@ -666,9 +666,9 @@ class SpaceGroupMembershipIntegrationTest {
   }
 
   /**
-   * Released for use on purpose (#1814, ADR-0036 Entscheidung 9): every test here admits the group
-   * to a space through a third party, and an unreleased internal group answers such a caller like
-   * one that does not exist.
+   * Released for use on purpose (ADR-0036 Entscheidung 9): every test here admits the group to a
+   * space through a third party, and an unreleased internal group answers such a caller like one
+   * that does not exist.
    */
   private UUID createGroup(UUID organizationId, String name, UUID... memberIds) {
     Group group = Group.internal(organizationId, name, null, null);
@@ -693,15 +693,15 @@ class SpaceGroupMembershipIntegrationTest {
   }
 
   /**
-   * Makes the caller a steward of the group: since #1814 only a steward or a system administrator
-   * maintains an internal group's membership, and these tests change it through the service.
+   * Makes the caller a steward of the group: only a steward or a system administrator maintains an
+   * internal group's membership, and these tests change it through the service.
    */
   private void makeSteward(UUID groupId, UUID userId) {
     UUID organizationId = groupRepository.findById(groupId).orElseThrow().getOrganizationId();
     stewardRepository.save(new GroupSteward(groupId, userId, organizationId, userId));
   }
 
-  /** Takes the access away the way the directory run does (#1818). */
+  /** Takes the access away the way the directory run does. */
   private void lockFromDirectory(UUID userId) {
     User user = userRepository.findById(userId).orElseThrow();
     user.lockFromDirectory(java.time.Instant.now());

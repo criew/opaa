@@ -30,7 +30,7 @@ class GroupCapabilityServiceTest {
 
   /**
    * (dissolved, provider disabled, unmaintained, active accounts, can act) - the three reasons a
-   * group is not effective (the third added by #1816) plus the account requirement.
+   * group is not effective plus the account requirement.
    */
   private static Stream<Arguments> capability() {
     return Stream.of(

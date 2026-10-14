@@ -27,9 +27,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Regression guard for #1711, keyed on the provider since #1816: two synchronisation runs of the
- * same identity provider must not overlap, while two runs of different providers must still proceed
- * side by side.
+ * Regression guard for #1711, keyed on the provider: two synchronisation runs of the same identity
+ * provider must not overlap, while two runs of different providers must still proceed side by side.
  *
  * <p>Needs the real database - the serialisation is a Postgres advisory lock, and a mocked
  * transaction manager or an in-process lock would prove nothing about it. {@link

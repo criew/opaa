@@ -34,10 +34,10 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * {@code PUT/DELETE /api/v1/assets/{assetType}/{assetId}/favorite} (#2095, ADR-0039 Entscheidung
- * 7): a favorite is the caller's own mark on an asset they read by the rights formula - idempotent,
- * never audited, and gone with the asset. Removing one's own mark is always possible and always
- * answers 204.
+ * {@code PUT/DELETE /api/v1/assets/{assetType}/{assetId}/favorite} (ADR-0039 Entscheidung 7): a
+ * favorite is the caller's own mark on an asset they read by the rights formula - idempotent, never
+ * audited, and gone with the asset. Removing one's own mark is always possible and always answers
+ * 204.
  */
 @OpaaIntegrationTest
 class AssetFavoriteControllerIntegrationTest {

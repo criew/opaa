@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 /**
  * The mapper carries every field of the schema onto the response and every field of the request
  * into the domain input - the guarantee AGENTS.md demands wherever assertions moved off the
- * response and onto the entity (#1071).
+ * response and onto the entity.
  */
 class LibraryMetadataFieldResponseMapperTest {
 

@@ -53,9 +53,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The MCP server over real HTTP (#1721, ADR-0035): the handshake, the tool catalogue built per
- * token, a call of each of the three tools, the two answers a closed channel owes, and the refusal
- * of a protocol revision this installation does not serve.
+ * The MCP server over real HTTP (ADR-0035): the handshake, the tool catalogue built per token, a
+ * call of each of the three tools, the two answers a closed channel owes, and the refusal of a
+ * protocol revision this installation does not serve.
  *
  * <p>Real HTTP rather than MockMvc, because the endpoint is a {@code RouterFunction} of the Spring
  * AI transport with its own header contract ({@code Accept} must name both media types) - a test
@@ -287,8 +287,8 @@ class McpServerIntegrationTest {
   }
 
   /**
-   * A hit names {@code id} and {@code documentId}; reaching for either must work (#1766). The
-   * document path without {@code whole} enters the document at its first passage.
+   * A hit names {@code id} and {@code documentId}; reaching for either must work. The document path
+   * without {@code whole} enters the document at its first passage.
    */
   @Test
   void fetchAcceptsTheDocumentIdOfAHitJustAsWellAsItsHitId() {
@@ -334,9 +334,9 @@ class McpServerIntegrationTest {
   }
 
   /**
-   * What a foreign model pays for out of its context window (#1766): one entry per document, each
-   * with a bounded excerpt instead of the whole passage, and the further passages of that document
-   * only as fetchable ids.
+   * What a foreign model pays for out of its context window: one entry per document, each with a
+   * bounded excerpt instead of the whole passage, and the further passages of that document only as
+   * fetchable ids.
    */
   @Test
   void searchSummarisesPerDocumentAndAnswersWithBoundedExcerpts() {
@@ -392,7 +392,7 @@ class McpServerIntegrationTest {
 
   /**
    * Every client sends it right after the handshake. It is accepted, and it produces no WARN - a
-   * line per connecting client would be noise in the log of the installation (#1766).
+   * line per connecting client would be noise in the log of the installation.
    */
   @Test
   void theInitializedNotificationIsAcceptedWithoutAWarning() {

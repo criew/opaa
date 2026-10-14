@@ -20,9 +20,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * #395: {@link AuditRetentionSettingsService} against a real Postgres database with the real,
- * versioned Liquibase schema applied. Proves the acceptance criteria a plain unit test against a
- * mocked repository could not: the database's own {@code chk_audit_retention_settings_months} bound
+ * {@link AuditRetentionSettingsService} against a real Postgres database with the real, versioned
+ * Liquibase schema applied. Proves the acceptance criteria a plain unit test against a mocked
+ * repository could not: the database's own {@code chk_audit_retention_settings_months} bound
  * actually rejects a write outside 1-10 years (not just this service's own pre-check), a retention
  * change writes exactly one {@code AUDIT_LOG_CONFIGURATION_CHANGED} audit entry (never fails
  * silently, never writes more than one).
@@ -95,7 +95,7 @@ class AuditRetentionSettingsServiceIntegrationTest {
    *
    * <p>No endpoint reaches {@code updateRetention} today - this test is its only caller. It holds
    * the Bauform rather than an endpoint, so that a future controller for the protocol period does
-   * not inherit the defect the diagnostic context protocol's identical path shipped with (#1850).
+   * not inherit the defect the diagnostic context protocol's identical path shipped with.
    */
   @Test
   void aReadAfterTheChangeInTheSameTransactionSeesTheNewValueWhenAnEndpointArrives() {

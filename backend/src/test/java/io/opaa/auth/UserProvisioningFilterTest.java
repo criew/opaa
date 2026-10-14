@@ -68,9 +68,9 @@ class UserProvisioningFilterTest {
   }
 
   /**
-   * #1818: an account the directory synchronisation locked reaches nothing, however valid its token
-   * still is - the refusal carries the marker the SPA turns into reason and contact instead of a
-   * silent redirect, and the chain is not continued.
+   * An account the directory synchronisation locked reaches nothing, however valid its token still
+   * is - the refusal carries the marker the SPA turns into reason and contact instead of a silent
+   * redirect, and the chain is not continued.
    */
   @Test
   void aDirectoryLockedAccountIsRefusedWithItsMarkerAndReachesNoHandler() throws Exception {

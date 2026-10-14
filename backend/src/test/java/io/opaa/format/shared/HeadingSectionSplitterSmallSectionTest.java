@@ -194,8 +194,8 @@ class HeadingSectionSplitterSmallSectionTest {
 
   @Test
   void anIntroductionUnderAusgabenDoesNotPullSeveralTitelgruppenIntoOneChunk() {
-    // review finding on #2331: a short intro one level up lifted the group's common heading to
-    // "Ausgaben", and the Titel of all Titelgruppen were combined.
+    // A short intro one level up must not lift the group's common heading to "Ausgaben" and
+    // combine the Titel of all Titelgruppen.
     List<Event> events = new ArrayList<>();
     events.add(new Heading(1, KAPITEL));
     events.add(new Heading(2, AUSGABEN));

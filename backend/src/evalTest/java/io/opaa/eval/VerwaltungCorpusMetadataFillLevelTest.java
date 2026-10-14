@@ -17,12 +17,12 @@ import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 /**
- * The extraction fill level of the {@code verwaltung} corpus (issue #1070, metadata-schema.md
- * "Messung und Abnahme", point 3), Docker-free: every corpus document's properties are read by the
- * production {@link MarkdownDocumentFormat} and handed to the production {@link
- * CoreMetadataExtractor} with the delivered vocabulary - the same two steps the indexing run
- * performs, minus the database. The numbers are pinned so a generator or extractor change that
- * moves them is a deliberate decision, recorded in {@code eval/corpus/verwaltung/MAINTENANCE.md}.
+ * The extraction fill level of the {@code verwaltung} corpus (metadata-schema.md "Messung und
+ * Abnahme"), Docker-free: every corpus document's properties are read by the production {@link
+ * MarkdownDocumentFormat} and handed to the production {@link CoreMetadataExtractor} with the
+ * delivered vocabulary - the same two steps the indexing run performs, minus the database. The
+ * numbers are pinned so a generator or extractor change that moves them is a deliberate decision,
+ * recorded in {@code eval/corpus/verwaltung/MAINTENANCE.md}.
  *
  * <p>The corpus carries exactly one document without a Datum/Stand and exactly one without a
  * Dokumentart by construction (the two Leerwert documents); the other Dokumentart gaps are the

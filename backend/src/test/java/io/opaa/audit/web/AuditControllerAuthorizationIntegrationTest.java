@@ -19,16 +19,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * PR #450 review, finding 6: {@code AuditControllerTest} (the {@code @WebMvcTest} slice) mocks
- * {@code AuditQueryService} entirely, so its 403 test stubs {@code AccessDeniedException} rather
- * than proving the real authorization decision - correct for that slice's purpose (see its own
- * Javadoc), but it means no test exercises the real {@code AuditQueryService#requireAuditor} check
- * through the actual HTTP endpoint. This class closes that gap the same way {@link
+ * {@code AuditControllerTest} (the {@code @WebMvcTest} slice) mocks {@code AuditQueryService}
+ * entirely, so its 403 test stubs {@code AccessDeniedException} rather than proving the real
+ * authorization decision - correct for that slice's purpose (see its own Javadoc), but it means no
+ * test exercises the real {@code AuditQueryService#requireAuditor} check through the actual HTTP
+ * endpoint. This class closes that gap the same way {@link
  * LibraryIndexingAuthorizationIntegrationTest} already does for {@code POST
  * /api/v1/libraries/{libraryId}/indexing}: full Spring context, the real {@code dev} security chain
- * ({@link DevAuthFilter}, {@code UserProvisioningFilter}, and - since #394 - the real role check
- * inside {@code AuditQueryService} itself rather than {@code @PreAuthorize}) against a real
- * Postgres, so both the 403 for a plain USER and the 200 for an AUDITOR come from production code.
+ * ({@link DevAuthFilter}, {@code UserProvisioningFilter}, and the real role check inside {@code
+ * AuditQueryService} itself rather than {@code @PreAuthorize}) against a real Postgres, so both the
+ * 403 for a plain USER and the 200 for an AUDITOR come from production code.
  *
  * <p>Carries the canonical {@link io.opaa.test.OpaaIntegrationTest} signature (AGENTS.md, "Spring-
  * Testkontexte"), so it shares one cached context and one container with every other class on that

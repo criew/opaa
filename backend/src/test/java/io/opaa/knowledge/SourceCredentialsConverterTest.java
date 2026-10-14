@@ -16,10 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
 /**
- * Unit tests for {@link SourceCredentialsConverter} (PR #504 review, finding 1) - no Spring
- * context, so these exercise the converter's own read/write failure handling directly rather than
- * through a full JPA round trip ({@code UrlIndexingExecutorCredentialsTest}, {@code
- * KnowledgeLibraryServiceIntegrationTest} cover that).
+ * Unit tests for {@link SourceCredentialsConverter} - no Spring context, so these exercise the
+ * converter's own read/write failure handling directly rather than through a full JPA round trip
+ * ({@code UrlIndexingExecutorCredentialsTest}, {@code KnowledgeLibraryServiceIntegrationTest} cover
+ * that).
  */
 class SourceCredentialsConverterTest {
 
@@ -62,9 +62,9 @@ class SourceCredentialsConverterTest {
 
   @Test
   void readingAValueThatCannotBeDecryptedWithTheCurrentKeyReturnsNullInsteadOfThrowing() {
-    // PR #504 review, finding 1: convertToEntityAttribute runs on every hydration of a
-    // KnowledgeLibrary row - one row with an undecryptable value (key lost/rotated) must not fail
-    // the whole read (e.g. GET /api/v1/libraries for every library sharing that key).
+    // convertToEntityAttribute runs on every hydration of a KnowledgeLibrary row - one row with
+    // an undecryptable value (key lost/rotated) must not fail the whole read (e.g. GET
+    // /api/v1/libraries for every library sharing that key).
     SourceCredentialsConverter writer = converterWithKey(validBase64Key());
     String encryptedWithOldKey = writer.convertToDatabaseColumn("admin:super-secret-password");
 
@@ -78,7 +78,7 @@ class SourceCredentialsConverterTest {
 
   @Test
   void readingAValueWithAnUnknownVersionPrefixReturnsNullInsteadOfThrowing() {
-    // PR #504 review, finding 5: never returned as cleartext, but reading still fails soft.
+    // Never returned as cleartext, but reading still fails soft.
     SourceCredentialsConverter converter = converterWithKey(validBase64Key());
 
     assertThat(converter.convertToEntityAttribute("enc:v2:whatever-a-future-format-looks-like"))
@@ -87,8 +87,8 @@ class SourceCredentialsConverterTest {
 
   @Test
   void readingAMalformedStoredValueReturnsNullInsteadOfThrowing() {
-    // PR #504 review, finding 2: the Base64 decode failure inside CredentialsEncryptor.decrypt
-    // must also be caught here, not just genuine key mismatches.
+    // The Base64 decode failure inside CredentialsEncryptor.decrypt must also be caught here,
+    // not just genuine key mismatches.
     SourceCredentialsConverter converter = converterWithKey(validBase64Key());
 
     assertThat(converter.convertToEntityAttribute("enc:v1:not-valid-base64!!!")).isNull();
@@ -104,8 +104,8 @@ class SourceCredentialsConverterTest {
 
   @Test
   void readingWithoutAConfiguredKeyIsNotSilentAndTheWarningCarriesNoSecret() {
-    // #1806: the soft read failure is the one moment an operator can notice that a key is missing -
-    // it warns, and the warning never carries the stored or decrypted value.
+    // The soft read failure is the one moment an operator can notice that a key is missing - it
+    // warns, and the warning never carries the stored or decrypted value.
     SourceCredentialsConverter writer = converterWithKey(validBase64Key());
     String encrypted = writer.convertToDatabaseColumn("admin:super-secret-password");
     logs.list.clear();
@@ -126,7 +126,7 @@ class SourceCredentialsConverterTest {
 
   @Test
   void writingWithoutAConfiguredKeyStillFailsHardRatherThanSilentlyDroppingCredentials() {
-    // PR #504 review, finding 1: reads fail soft, writes must keep failing hard.
+    // Reads fail soft, writes must keep failing hard.
     SourceCredentialsConverter converter = converterWithKey(null);
 
     assertThatThrownBy(() -> converter.convertToDatabaseColumn("admin:secret"))

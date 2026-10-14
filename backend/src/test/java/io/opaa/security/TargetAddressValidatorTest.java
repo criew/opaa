@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test;
 /**
  * Unit coverage of {@link TargetAddressValidator}: the scheme check, every blocked address range
  * (IPv4 and IPv6, including the IPv4-mapped/-compatible, unique-local and NAT64 IPv6 cases, plus
- * the CGNAT/reserved/benchmarking/protocol-assignments IPv4 ranges, nit 1 - none of which the plain
- * {@link InetAddress} predicates alone cover), the allowlist bypass, {@link
+ * the CGNAT/reserved/benchmarking/protocol-assignments IPv4 ranges - none of which the plain {@link
+ * InetAddress} predicates alone cover), the allowlist bypass, {@link
  * TargetAddressValidator#validateHost} for a bare (schemeless) proxy host, and the disabled/enabled
  * switch. Reproduces the two acceptance-criteria scenarios directly: a loopback/private target is
  * rejected while enabled, and disabling the check turns the identical target into a no-op.
@@ -160,7 +160,7 @@ class TargetAddressValidatorTest {
     assertBlocked("64:ff9b::192.0.2.1");
   }
 
-  // --- nit 1: IPv4 ranges no InetAddress predicate recognizes -----------------------------
+  // --- IPv4 ranges no InetAddress predicate recognizes ------------------------------------
 
   @Test
   void rejectsCarrierGradeNat() throws Exception {

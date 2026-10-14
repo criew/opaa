@@ -58,7 +58,7 @@ final class ConfluenceAdminApi {
     return ConfluenceHttpSession.json(page).path("id").asString();
   }
 
-  /** A new version of the page's body - the change an incremental run has to pick up (#1139). */
+  /** A new version of the page's body - the change an incremental run has to pick up. */
   void updatePage(String pageId, String title, int nextVersion, String storageBody)
       throws IOException, InterruptedException {
     ConfluenceHttpSession.Page page =

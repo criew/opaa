@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-/** Unit test for the {@code opaa.eval.ollamaBaseUrl} system property resolution (issue #1076). */
+/** Unit test for the {@code opaa.eval.ollamaBaseUrl} system property resolution. */
 class EvalOllamaEndpointTest {
 
   @AfterEach
@@ -38,9 +38,9 @@ class EvalOllamaEndpointTest {
   }
 
   /**
-   * Issue #1522: the marker a run writes into {@code ollamaImage} and the marker a baseline is
-   * refused for are the same string — a baseline guard that reads a different prefix would stop
-   * firing without any test noticing.
+   * The marker a run writes into {@code ollamaImage} and the marker a baseline is refused for are
+   * the same string — a baseline guard that reads a different prefix would stop firing without any
+   * test noticing.
    */
   @Test
   void theExternalMarkerWrittenByARunIsTheOneTheBaselineGuardRecognizes() {

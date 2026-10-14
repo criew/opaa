@@ -13,8 +13,8 @@ import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.UserMessage;
 
 /**
- * The anchor-space invariant of {@link DecompositionContext} (#1486, #1487,
- * docs/features/conversation-memory.md): a context building block reaches the model and the anchor
+ * The anchor-space invariant of {@link DecompositionContext}
+ * (docs/features/conversation-memory.md): a context building block reaches the model and the anchor
  * space in one step, and the anchor space holds the block's material without its own boilerplate.
  */
 class DecompositionContextTest {

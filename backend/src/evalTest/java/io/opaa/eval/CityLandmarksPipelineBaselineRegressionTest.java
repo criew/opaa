@@ -6,11 +6,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@code city-landmarks} counterpart of {@link PipelineBaselineRegressionTest} (issue #1040):
- * own report file, own pipeline baseline file, own verdict — no shared group and no shared baseline
- * with any other domain or with either domain's raw-vector path.
+ * The {@code city-landmarks} counterpart of {@link PipelineBaselineRegressionTest}: own report
+ * file, own pipeline baseline file, own verdict — no shared group and no shared baseline with any
+ * other domain or with either domain's raw-vector path.
  *
- * <p>Wired into {@code checkCityLandmarksRetrievalBaseline} since issue #1081, which drew {@code
+ * <p>Wired into {@code checkCityLandmarksRetrievalBaseline}, which drew {@code
  * eval/baseline/pipeline-city-landmarks.json} (see that file's {@code provenance}/{@code notes} for
  * the source run).
  */

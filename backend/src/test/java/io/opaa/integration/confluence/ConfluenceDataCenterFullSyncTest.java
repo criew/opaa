@@ -50,10 +50,10 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.ArgumentCaptor;
 
 /**
- * The full sync (#1136) against the real Data Center: the executor with the real access layer,
- * everything behind it mocked - the vector pipeline is covered by the regular tests and needs an
- * embedding model this suite does not have. Two scenarios the epic names: a full run with a trashed
- * page and a restricted page, and two libraries against the same instance with different tokens and
+ * The full sync against the real Data Center: the executor with the real access layer, everything
+ * behind it mocked - the vector pipeline is covered by the regular tests and needs an embedding
+ * model this suite does not have. Two scenarios the epic names: a full run with a trashed page and
+ * a restricted page, and two libraries against the same instance with different tokens and
  * selections that must not influence each other (ADR-0023, Entscheidung 5).
  */
 @EnabledIfEnvironmentVariable(named = "OPAA_CONFLUENCE_IT", matches = "true")

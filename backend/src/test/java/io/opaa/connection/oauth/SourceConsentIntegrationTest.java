@@ -76,13 +76,12 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * "Quelle verbinden" (#2169) against the shared fake authorization server, through the API: a
- * library's own OAuth consent with a service account - confirmed before any redirect, given in the
- * wizard before the library exists and taken over by it, handed to the run through the core, bound
- * to the library and its managers, outlasting the person who gave it, and ended on every way - a
- * refusal of the provider, a disconnection, the library's deletion and a changed registration -
- * revoked and told to those responsible. No token, code or state appears in an answer, a log line
- * or a protocol.
+ * "Quelle verbinden" against the shared fake authorization server, through the API: a library's own
+ * OAuth consent with a service account - confirmed before any redirect, given in the wizard before
+ * the library exists and taken over by it, handed to the run through the core, bound to the library
+ * and its managers, outlasting the person who gave it, and ended on every way - a refusal of the
+ * provider, a disconnection, the library's deletion and a changed registration - revoked and told
+ * to those responsible. No token, code or state appears in an answer, a log line or a protocol.
  */
 @OpaaIntegrationTest
 class SourceConsentIntegrationTest {

@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Docker-free unit tests for the two filter error directions (issue #1070, Teil 2). */
+/** Docker-free unit tests for the two filter error directions (Teil 2). */
 class MetadataFilterAuditTest {
 
   private static MetadataFilterAudit.CaseInput filtered(

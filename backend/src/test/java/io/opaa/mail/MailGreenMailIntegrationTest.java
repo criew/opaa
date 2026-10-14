@@ -166,8 +166,8 @@ class MailGreenMailIntegrationTest {
   }
 
   /**
-   * #1559 review, LOW 4: the settings test tries out the mail server, so it is an act on the
-   * settings; the template test tries out a wording, so it is an act on that template.
+   * The settings test tries out the mail server, so it is an act on the settings; the template test
+   * tries out a wording, so it is an act on that template.
    */
   @Test
   void auditsTheSettingsTestAgainstTheSettingsAndTheTemplateTestAgainstTheTemplate() {

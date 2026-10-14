@@ -91,7 +91,7 @@ public final class FakeKeycloakServer implements AutoCloseable {
     return this;
   }
 
-  /** One account of the realm with its {@code enabled} flag (#1818). */
+  /** One account of the realm with its {@code enabled} flag. */
   public FakeKeycloakServer withAccount(String id, boolean enabled) {
     accounts.put(id, enabled);
     return this;

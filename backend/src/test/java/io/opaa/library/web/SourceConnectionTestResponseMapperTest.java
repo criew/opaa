@@ -44,10 +44,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pure JUnit tests (no Spring context) - the mapper counterpart of {@code SpaceResponseMapperTest}
- * (#860): pins {@link SourceConnectionTestResponseMapper}'s field-by-field behaviour, including
- * that a failed probe carries no {@code documentCount} and that connector settings and findings
- * travel as opaque objects (ADR-0038).
+ * Pure JUnit tests (no Spring context) - the mapper counterpart of {@code SpaceResponseMapperTest}:
+ * pins {@link SourceConnectionTestResponseMapper}'s field-by-field behaviour, including that a
+ * failed probe carries no {@code documentCount} and that connector settings and findings travel as
+ * opaque objects (ADR-0038).
  */
 class SourceConnectionTestResponseMapperTest {
 

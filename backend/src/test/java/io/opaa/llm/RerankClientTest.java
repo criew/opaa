@@ -342,12 +342,11 @@ class RerankClientTest {
   }
 
   /**
-   * The finding from the #1204 review: {@link HttpConnectTimeoutException} is a JDK subclass of
-   * {@link HttpTimeoutException}, so a naive {@code instanceof HttpTimeoutException} check would
-   * misclassify "nothing ever accepted the TCP connection" (a genuinely unreachable endpoint,
-   * bounded by the client's fixed connect timeout) as a slow-but-reachable one bounded by {@code
-   * opaa.rerank.timeout}. An administrator told to raise the request timeout for a dead host would
-   * never find the actual cause.
+   * {@link HttpConnectTimeoutException} is a JDK subclass of {@link HttpTimeoutException}, so a
+   * naive {@code instanceof HttpTimeoutException} check would misclassify "nothing ever accepted
+   * the TCP connection" (a genuinely unreachable endpoint, bounded by the client's fixed connect
+   * timeout) as a slow-but-reachable one bounded by {@code opaa.rerank.timeout}. An administrator
+   * told to raise the request timeout for a dead host would never find the actual cause.
    */
   @Test
   void aConnectTimeoutIsNotClassifiedAsARequestTimeout() {

@@ -33,13 +33,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * {@code GET /api/v1/auth/config} (#1332, ADR-0025 Entscheidung 5; #1533, ADR-0033 Entscheidung 4):
- * the mode, in the {@code oidc} mode every enabled provider in sign-in page order - whether or not
- * the backend's decoder for it is ready yet - with exactly the fields the sign-in page shows, and
- * the local account management as {@code localAccounts}: the LOCAL row is never listed among the
- * providers, and both the switch and the two flows come from where the request paths read them -
- * {@link OidcProviderRegistry} and {@link LocalSelfServiceAvailability} - rather than from a second
- * computation over the rows (#1592; the conjunction itself is {@code LocalSelfServiceServiceTest}'s
+ * {@code GET /api/v1/auth/config} (ADR-0025 Entscheidung 5, ADR-0033 Entscheidung 4): the mode, in
+ * the {@code oidc} mode every enabled provider in sign-in page order - whether or not the backend's
+ * decoder for it is ready yet - with exactly the fields the sign-in page shows, and the local
+ * account management as {@code localAccounts}: the LOCAL row is never listed among the providers,
+ * and both the switch and the two flows come from where the request paths read them - {@link
+ * OidcProviderRegistry} and {@link LocalSelfServiceAvailability} - rather than from a second
+ * computation over the rows (the conjunction itself is {@code LocalSelfServiceServiceTest}'s
  * subject). The mode stays this endpoint's own condition.
  */
 @WebMvcTest(AuthConfigController.class)

@@ -12,12 +12,12 @@ import java.util.function.Supplier;
  * harness run. It is the check that catches the whole class of errors in which a benchmark run
  * measures differently than the regression run.
  *
- * <p><b>Both sides follow the Mehrfachlauf-Regel (issue #1085).</b> As soon as the production
- * configuration itself decomposes, {@link VariantRunner} represents the reference variant by the
- * median of {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT} runs; comparing that against a
- * single direct run could not be bit-identical for structural reasons, regardless of how stable the
- * chat model is. The direct measurement therefore goes through {@link MehrfachlaufRule} as well, so
- * both sides are the same kind of quantity.
+ * <p><b>Both sides follow the Mehrfachlauf-Regel.</b> As soon as the production configuration
+ * itself decomposes, {@link VariantRunner} represents the reference variant by the median of {@link
+ * MultiRunAggregator#DECOMPOSITION_RUN_COUNT} runs; comparing that against a single direct run
+ * could not be bit-identical for structural reasons, regardless of how stable the chat model is.
+ * The direct measurement therefore goes through {@link MehrfachlaufRule} as well, so both sides are
+ * the same kind of quantity.
  *
  * <p>Assertions stay hard on purpose: {@code AssertionError} is not a {@code RuntimeException} and
  * is therefore not swallowed by {@link VariantComparisonStep}'s guard — a failure here signals a

@@ -14,15 +14,15 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free dry run (issue #1042; routing updated for #1103): chunks the generated {@code
- * verwaltung} corpus through the real, production {@link MarkdownDocumentFormat} (same pipeline
- * {@code DocumentFormatRegistry} routes {@code .md} to since #1103) without needing Testcontainers,
- * Postgres or Ollama — mirrors {@link CityLandmarksChunkSizeDryRunTest} for the third eval domain.
- * Used during corpus generation to verify the domain's "at least 3 chunks per document" property
- * (ADR-0010, Entscheidung 3, docs/features/retrieval-benchmark.md Abschnitt 4 "Anforderungen an den
- * Korpus") before a golden dataset and a full {@code EvalDomainConfig} registration exist for this
- * domain (issue #1042 is corpus-only; golden dataset and baseline are a separate, later issue per
- * the Umsetzungsschnitt in retrieval-benchmark.md).
+ * Docker-free dry run: chunks the generated {@code verwaltung} corpus through the real, production
+ * {@link MarkdownDocumentFormat} (same pipeline {@code DocumentFormatRegistry} routes {@code .md}
+ * to) without needing Testcontainers, Postgres or Ollama — mirrors {@link
+ * CityLandmarksChunkSizeDryRunTest} for the third eval domain. Used during corpus generation to
+ * verify the domain's "at least 3 chunks per document" property (ADR-0010, Entscheidung 3,
+ * docs/features/retrieval-benchmark.md Abschnitt 4 "Anforderungen an den Korpus") before a golden
+ * dataset and a full {@code EvalDomainConfig} registration exist for this domain (issue #1042 is
+ * corpus-only; golden dataset and baseline are a separate, later issue per the Umsetzungsschnitt in
+ * retrieval-benchmark.md).
  */
 class VerwaltungChunkSizeDryRunTest {
 

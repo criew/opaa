@@ -56,16 +56,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The endpoints of the personal access tokens (#1718, ADR-0035 Entscheidung 2): issuance with the
- * value shown exactly once, the two lists and their deliberate asymmetry, revocation, the blocking
- * levers - and the rules that are the point of the feature rather than mere validation (mandatory
- * expiry under a ceiling, mandatory name and selection, no path that edits a selection, a library
- * that is not readable or not released is not selectable, a release that comes back does not revive
- * an extinguished entry).
+ * The endpoints of the personal access tokens (ADR-0035 Entscheidung 2): issuance with the value
+ * shown exactly once, the two lists and their deliberate asymmetry, revocation, the blocking levers
+ * - and the rules that are the point of the feature rather than mere validation (mandatory expiry
+ * under a ceiling, mandatory name and selection, no path that edits a selection, a library that is
+ * not readable or not released is not selectable, a release that comes back does not revive an
+ * extinguished entry).
  *
- * <p>The two seams into the neighbouring issues - the installation switch (#1717) and the library
- * release (#1731) - are exercised by constructing the services with a closed gate respectively a
- * refusing release, which is exactly how the real implementations will plug in.
+ * <p>The two seams into the neighbouring issues - the installation switch and the library release -
+ * are exercised by constructing the services with a closed gate respectively a refusing release,
+ * which is exactly how the real implementations will plug in.
  */
 @OpaaIntegrationTest
 class ExternalAccessTokenIntegrationTest {
@@ -634,8 +634,8 @@ class ExternalAccessTokenIntegrationTest {
     assertThat(tokens.findById(tokenId).orElseThrow().getSelectedLibraryIds())
         .containsExactly(libraryId);
 
-    // The self view shows the entry as suspended rather than dropping it (#1719): the person is
-    // meant to see what a new token would have to contain again.
+    // The self view shows the entry as suspended rather than dropping it: the person is meant
+    // to see what a new token would have to contain again.
     mockMvc
         .perform(get("/api/v1/external-access/tokens").with(devUser("dev-user")))
         .andExpect(status().isOk())

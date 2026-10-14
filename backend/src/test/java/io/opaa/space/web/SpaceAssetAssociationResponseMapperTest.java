@@ -18,10 +18,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pure JUnit tests (no Spring context) against directly constructed entities - #869 review: the
- * service tests recompute response-shaped values from the entity themselves, so they exercise that
- * recomputation, not {@link SpaceAssetAssociationResponseMapper}. These tests are what actually pin
- * the mapper's field-by-field behaviour.
+ * Pure JUnit tests (no Spring context) against directly constructed entities: the service tests
+ * recompute response-shaped values from the entity themselves, so they exercise that recomputation,
+ * not {@link SpaceAssetAssociationResponseMapper}. These tests are what actually pin the mapper's
+ * field-by-field behaviour.
  */
 class SpaceAssetAssociationResponseMapperTest {
 
@@ -104,8 +104,8 @@ class SpaceAssetAssociationResponseMapperTest {
     assertThat(response.getNarrowerReaderCircle()).isTrue();
   }
 
-  // #1939: the reduced entry a reader below MANAGER gets - space and name, nothing else. Asserted
-  // field by field, because every omitted field is a deliberate non-disclosure.
+  // The reduced entry a reader below MANAGER gets - space and name, nothing else. Asserted field
+  // by field, because every omitted field is a deliberate non-disclosure.
   @Test
   void toAssetSpaceResponseOmitsEveryManagementFieldWithoutManagementDetail() {
     SpaceAssetAssociation association = association();
@@ -133,8 +133,8 @@ class SpaceAssetAssociationResponseMapperTest {
     assertThat(response.getHiddenCount()).isZero();
   }
 
-  // #1939: hiddenCount zählt die Spaces, die dieser Aufrufer nicht erfahren darf - er steht neben
-  // den Einträgen, nicht in ihnen.
+  // hiddenCount zählt die Spaces, die dieser Aufrufer nicht erfahren darf - er steht neben den
+  // Einträgen, nicht in ihnen.
   @Test
   void toAssetSpaceListResponseCarriesTheHiddenCountAlongsideTheItems() {
     AssetSpaceAssociationListResponse response =

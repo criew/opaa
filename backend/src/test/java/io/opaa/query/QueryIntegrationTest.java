@@ -35,9 +35,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Exercises the permission-aware vector search (#202) end to end against a real Postgres schema:
- * the test user must actually hold an {@code AssetGrant} on the library a chunk's {@code
- * library_id} metadata points at, or {@link QueryService#query} never even calls {@link
+ * Exercises the permission-aware vector search end to end against a real Postgres schema: the test
+ * user must actually hold an {@code AssetGrant} on the library a chunk's {@code library_id}
+ * metadata points at, or {@link QueryService#query} never even calls {@link
  * VectorStore#similaritySearch} for it - see {@link #userWithoutAnyGrantSeesNothing}.
  */
 @OpaaMockedChatModelIntegrationTest
@@ -48,7 +48,7 @@ class QueryIntegrationTest {
 
   @Autowired private ChatModel chatModel;
 
-  // #758: AnswerGenerationService/ChatTitleGenerationService now resolve their ChatClient via
+  // AnswerGenerationService/ChatTitleGenerationService now resolve their ChatClient via
   // ActiveChatModelResolver on every call instead of holding one built once at startup - stubbed
   // once in setUp() below to always hand back a ChatClient wrapping the class-wide chatModel mock
   // above, so every existing when(chatModel...) stub in this class keeps working unchanged.
@@ -111,7 +111,7 @@ class QueryIntegrationTest {
     vectorChunkStore.deleteByLibraryId(libraryId);
     jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", libraryId);
     jdbcTemplate.update("DELETE FROM assets WHERE id = ?", libraryId);
-    // #525: chats/spaces the persisted-chat tests below create for userId - fk_chats_author and
+    // chats/spaces the persisted-chat tests below create for userId - fk_chats_author and
     // fk_spaces_owner are ON DELETE RESTRICT, so these must go before the user itself.
     jdbcTemplate.update("DELETE FROM chats WHERE author_id = ?", userId);
     jdbcTemplate.update("DELETE FROM space_memberships WHERE user_id = ?", userId);
@@ -431,11 +431,10 @@ class QueryIntegrationTest {
 
   @Test
   void indexedContentBecomesReachableOnceItsLibraryIsGrantedToAllAccounts() {
-    // #406: widening a library's reach must actually widen the search, not just the library
-    // API - the case that made a fully indexed corpus useless on the test instance before #406,
-    // then demonstrated on the well-known system library that existed until #521 (see that issue).
-    // This test walks the whole query chain for an ordinary library the querying user has no grant
-    // on - closed first, then opened - because neither half alone would have caught the original
+    // Widening a library's reach must actually widen the search, not just the library API - the
+    // case that made a fully indexed corpus useless on the test instance. This
+    // test walks the whole query chain for an ordinary library the querying user has no grant on -
+    // closed first, then opened - because neither half alone would have caught the original
     // defect: the closed state was correct and stayed correct, and no test ever asked what happens
     // after.
     UUID otherOwnerId = UUID.randomUUID();
@@ -485,8 +484,8 @@ class QueryIntegrationTest {
               "Wie gross ist Batman?", chatId, asCaller(userId), true, java.util.List.of());
       assertThat(closed.sources()).isEmpty();
 
-      // #1931: Die Reichweite ist eine Freigabe - geoeffnet wird sie, indem die Bibliothek an
-      // alle Konten freigegeben wird.
+      // Die Reichweite ist eine Freigabe - geoeffnet wird sie, indem die Bibliothek an alle
+      // Konten freigegeben wird.
       jdbcTemplate.update(
           "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
               + " role) VALUES (gen_random_uuid(), 'KNOWLEDGE_LIBRARY', ?, ?, 'ALL_ACCOUNTS',"
@@ -515,11 +514,11 @@ class QueryIntegrationTest {
 
   @Test
   void queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem() {
-    // #202 code review (blocker 1): userWithoutAnyGrantSeesNothing alone does not prove the filter
-    // is part of the vector search rather than a post-filter, because an empty readable set short
-    // -circuits before the vector store is ever called (see QueryService#query). This test instead
-    // gives the user a real, non-empty readable set with a second, ungranted library present in
-    // the same store, and asserts on the *count* of results, not just their content.
+    // userWithoutAnyGrantSeesNothing alone does not prove the filter is part of the vector search
+    // rather than a post-filter, because an empty readable set short -circuits before the vector
+    // store is ever called (see QueryService#query). This test instead gives the user a real,
+    // non-empty readable set with a second, ungranted library present in the same store, and
+    // asserts on the *count* of results, not just their content.
     //
     // The granted library A (23 chunks in 21 documents) and ungranted library B (250 chunks) are
     // deliberately lopsided, and every B chunk is strictly closer to the question than every A
@@ -532,11 +531,11 @@ class QueryIntegrationTest {
     // filterExpression(...) call turns this test red while every other test in this class,
     // QueryControllerTest and io.opaa.library.* stay green.
     //
-    // #932 review: the granted set below includes one multi-chunk document (see
+    // The granted set below includes one multi-chunk document (see
     // #grantedChunksWithOneMultiChunkDocument's Javadoc for the exact shape, placement, and why
     // its assertions tolerate DocumentCompletion's tier 1 and tier 2 alike), so DocumentCompletion
     // actually runs on this permission-filtered candidate pool rather than every granted document
-    // holding exactly one chunk (the pre-#932 shape, which DocumentCompletion is a no-op for).
+    // holding exactly one chunk (the shape DocumentCompletion is a no-op for).
     UUID ungrantedLibraryId = UUID.randomUUID();
     jdbcTemplate.update(
         "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
@@ -611,7 +610,7 @@ class QueryIntegrationTest {
    * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share:
    * twenty single-chunk documents ({@code doc-a-0}..{@code doc-a-19}) plus {@code doc-a-multi}'s
    * three chunks - 23 granted chunks over 21 distinct documents - so {@code DocumentCompletion}
-   * (#932) actually runs its tier-1 eviction (a document already holding two chunks) against this
+   * actually runs its tier-1 eviction (a document already holding two chunks) against this
    * permission-filtered pool, not just single-chunk documents that only tier 2 can touch.
    *
    * <p>All 23 tie under {@code FakeEmbeddingModel} (see the first caller's comment), so a plain
@@ -733,7 +732,7 @@ class QueryIntegrationTest {
               java.util.List.of());
 
       // Exactly topK (20) retrieved chunks: each sub-query is independently MMR-narrowed to the
-      // full topK before fusion (#923 review) - with both sub-queries returning the identical,
+      // full topK before fusion - with both sub-queries returning the identical,
       // fully-overlapping authorized candidate set (FakeEmbeddingModel ties every embedding), the
       // fused result is exactly that same set of 20, not fewer. Summed matchCount, not
       // response.sources().size() - see #grantedChunksWithOneMultiChunkDocument's Javadoc for
@@ -777,14 +776,14 @@ class QueryIntegrationTest {
   }
 
   /**
-   * #525 review, finding 1 (critical) and finding 2: {@code QueryService#query} runs inside a
-   * class-level {@code @Transactional(readOnly = true)} transaction; {@code ChatService#appendTurn}
-   * must open its own writable transaction ({@code REQUIRES_NEW}) or Hibernate silently drops the
-   * persisted turn - a chat-mocking unit test can never catch this, only a real transaction against
-   * a real database can. Reproduction (fix temporarily reverted to plain {@code @Transactional}):
-   * this test failed with {@code expected: 2 but was: 0} - zero rows in {@code chat_messages} after
-   * a successful {@code queryService.query(...)} call, exactly the silent data loss the finding
-   * describes. With the {@code REQUIRES_NEW} fix in place, it passes.
+   * {@code QueryService#query} runs inside a class-level {@code @Transactional(readOnly = true)}
+   * transaction; {@code ChatService#appendTurn} must open its own writable transaction ({@code
+   * REQUIRES_NEW}) or Hibernate silently drops the persisted turn - a chat-mocking unit test can
+   * never catch this, only a real transaction against a real database can. Reproduction (fix
+   * temporarily reverted to plain {@code @Transactional}): this test failed with {@code expected: 2
+   * but was: 0} - zero rows in {@code chat_messages} after a successful {@code
+   * queryService.query(...)} call, exactly the silent data loss the finding describes. With the
+   * {@code REQUIRES_NEW} fix in place, it passes.
    */
   @Test
   void queryPersistsTheTurnForARealChat() {
@@ -803,10 +802,10 @@ class QueryIntegrationTest {
   }
 
   /**
-   * #525 review, finding 2 (rehydration): with the in-memory conversation cache cold - simulating a
-   * restart or eviction - a follow-up question in the same persisted chat must still be enriched
-   * from the first turn, because {@code QueryService} reloads it from {@code chat_messages}, not
-   * from the (now empty) cache.
+   * Rehydration: with the in-memory conversation cache cold - simulating a restart or eviction - a
+   * follow-up question in the same persisted chat must still be enriched from the first turn,
+   * because {@code QueryService} reloads it from {@code chat_messages}, not from the (now empty)
+   * cache.
    */
   @Test
   void queryRehydratesConversationHistoryFromPersistedMessagesOnAColdCache() {
@@ -830,7 +829,7 @@ class QueryIntegrationTest {
 
     queryService.query("Mach daraus eine Tabelle", chatId, asCaller(userId), true, List.of());
 
-    // The *answer* prompt, not simply the last captured one: since #1487 the last call of a turn
+    // The *answer* prompt, not simply the last captured one: the last call of a turn
     // is the Gesprächsnotiz condensation, which deliberately carries only the current question.
     boolean firstQuestionInPrompt =
         promptCaptor.getAllValues().stream()
@@ -843,10 +842,9 @@ class QueryIntegrationTest {
   }
 
   /**
-   * #525 review, finding 3 (critical - conversation-history leak) and finding 4 (membership): a
-   * chatId belonging to another user must neither read that user's history nor write anything into
-   * their chat - it is treated as an ephemeral, unpersisted conversation instead (see
-   * QueryService#query's Javadoc).
+   * Conversation-history leak and membership: a chatId belonging to another user must neither read
+   * that user's history nor write anything into their chat - it is treated as an ephemeral,
+   * unpersisted conversation instead (see QueryService#query's Javadoc).
    */
   @Test
   void queryWithAForeignChatIdWritesNothingAndReadsNothing() {
@@ -886,12 +884,12 @@ class QueryIntegrationTest {
   }
 
   /**
-   * #525 review round 2, finding B: the previous version of this test (see git history) never
-   * actually proved the cache-key qualification, because it never populated the owner's cache entry
-   * and never inspected what a stranger's prompt actually contained - it would have stayed green
-   * even with the bug the userId-qualified cache key (see {@code QueryService#query}'s Javadoc)
-   * fixes. This version forces the owner's history into the in-memory cache first, then proves the
-   * stranger's prompt does not contain it.
+   * The previous version of this test (see git history) never actually proved the cache-key
+   * qualification, because it never populated the owner's cache entry and never inspected what a
+   * stranger's prompt actually contained - it would have stayed green even with the bug the
+   * userId-qualified cache key (see {@code QueryService#query}'s Javadoc) fixes. This version
+   * forces the owner's history into the in-memory cache first, then proves the stranger's prompt
+   * does not contain it.
    *
    * <p>Reproduction (fix temporarily reverted to a bare, unqualified {@code chatId.toString()}
    * cache key): {@code ownerQuestionLeakedIntoStrangersPrompt} was {@code true} - the owner's
@@ -965,9 +963,9 @@ class QueryIntegrationTest {
   }
 
   /**
-   * #525 review, finding 4: an author removed from the chat's space must not be able to keep
-   * querying through it, even though the chat itself (and its history) remains theirs to read via
-   * GET /api/v1/chats/{chatId} - see ChatService#requireStillSpaceMember's Javadoc.
+   * An author removed from the chat's space must not be able to keep querying through it, even
+   * though the chat itself (and its history) remains theirs to read via GET /api/v1/chats/{chatId}
+   * - see ChatService#requireStillSpaceMember's Javadoc.
    */
   @Test
   void queryRejectsAnAuthorNoLongerAMemberOfTheChatsSpace() {
@@ -988,10 +986,10 @@ class QueryIntegrationTest {
    * (title generation) after the answer is already built - mocked here to fail, proving the answer
    * {@code query()} returns is entirely unaffected and the chat keeps its synchronous
    * prefix-derived fallback title rather than surfacing the failure. In production this second call
-   * genuinely runs off the request thread (#557); under this class's signature it runs inline
-   * instead ({@code SynchronousChatTitleExecutorConfiguration}, #616), so no {@code await()} is
-   * needed below - by the time {@code queryService.query(...)} returns, the failing title
-   * generation call has already happened.
+   * genuinely runs off the request thread; under this class's signature it runs inline instead
+   * ({@code SynchronousChatTitleExecutorConfiguration}), so no {@code await()} is needed below - by
+   * the time {@code queryService.query(...)} returns, the failing title generation call has already
+   * happened.
    */
   @Test
   void queryAnswerSucceedsEvenWhenTitleGenerationFailsAfterwards() {
@@ -1001,7 +999,7 @@ class QueryIntegrationTest {
     var answerResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort trotz Fehler"))));
     // First call is #923's query-decomposition step (its single-line response content is
-    // irrelevant here - it parses to one sub-query, taking the pre-#923 single-search path); second
+    // irrelevant here - it parses to one sub-query, taking the single-search path); second
     // call answers the question; every call after that (title generation) fails.
     when(chatModel.call(any(Prompt.class)))
         .thenReturn(answerResponse)

@@ -9,7 +9,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 
-/** Unit tests for {@link DocumentCompletion#complete}'s post-fusion document completion (#932). */
+/** Unit tests for {@link DocumentCompletion#complete}'s post-fusion document completion. */
 class DocumentCompletionTest {
 
   private static Document chunk(String id, String documentId, double score) {
@@ -152,12 +152,12 @@ class DocumentCompletionTest {
   }
 
   /**
-   * Code review of #932's original PR: with two completable documents, an earlier completion must
-   * never be undone by a later one within the same call - the earlier completion's document is
-   * excluded as an eviction source once it has received a chunk, even though it now holds two
-   * chunks itself. Without that exclusion, doc-b's completion below would evict doc-a's just-added
-   * "a-1" right back out, leaving doc-a exactly where it started while doc-x permanently lost a
-   * chunk for no net gain - strictly worse than doing nothing.
+   * With two completable documents, an earlier completion must never be undone by a later one
+   * within the same call - the earlier completion's document is excluded as an eviction source once
+   * it has received a chunk, even though it now holds two chunks itself. Without that exclusion,
+   * doc-b's completion below would evict doc-a's just-added "a-1" right back out, leaving doc-a
+   * exactly where it started while doc-x permanently lost a chunk for no net gain - strictly worse
+   * than doing nothing.
    */
   @Test
   void aCompletionNeverEvictsAChunkAnEarlierCompletionInTheSameCallJustAdded() {
@@ -181,12 +181,11 @@ class DocumentCompletionTest {
   }
 
   /**
-   * Code review of #932's original PR: eviction must pick the weakest chunk by its position in the
-   * original, already-authoritative {@code selection} order - never by raw {@code
-   * Document#getScore()}, which is only comparable within a single search vector (a cross-sub-query
-   * score comparison is exactly the #912 failure mode). Here the later-ranked chunk of the
-   * over-represented document deliberately carries the higher raw score, so a score-based eviction
-   * would pick the wrong one.
+   * Eviction must pick the weakest chunk by its position in the original, already-authoritative
+   * {@code selection} order - never by raw {@code Document#getScore()}, which is only comparable
+   * within a single search vector (a cross-sub-query score comparison is exactly the #912 failure
+   * mode). Here the later-ranked chunk of the over-represented document deliberately carries the
+   * higher raw score, so a score-based eviction would pick the wrong one.
    */
   @Test
   void evictsByOriginalSelectionRankNotByRawScore() {
@@ -206,11 +205,11 @@ class DocumentCompletionTest {
   }
 
   /**
-   * Code review of #932's original PR: which unused sibling candidate is tried first must follow
-   * its position in {@code candidatePool} (the search's own rank), not raw {@code
-   * Document#getScore()} - the same cross-sub-query comparability concern as {@link
-   * #evictsByOriginalSelectionRankNotByRawScore}. The pool lists the low-scoring candidate before
-   * the high-scoring one; a score-based sort would try the high-scoring one first instead.
+   * Which unused sibling candidate is tried first must follow its position in {@code candidatePool}
+   * (the search's own rank), not raw {@code Document#getScore()} - the same cross-sub-query
+   * comparability concern as {@link #evictsByOriginalSelectionRankNotByRawScore}. The pool lists
+   * the low-scoring candidate before the high-scoring one; a score-based sort would try the
+   * high-scoring one first instead.
    */
   @Test
   void prefersSiblingCandidateByPoolPositionNotByRawScore() {
@@ -228,11 +227,11 @@ class DocumentCompletionTest {
 
   /**
    * The same chunk id can appear once per sub-query and once per search path in a pooled candidate
-   * list (#923, #1049), each instance carrying its own search's raw score - deduped to the
-   * first-occurring instance before it is offered as a completion candidate, mirroring {@code
-   * CandidateFusion}'s own duplicate-instance handling for the identical case. First rather than
-   * highest: since the lexical path feeds the pool, two instances can carry a cosine similarity and
-   * a {@code ts_rank}, and the larger of those two numbers means nothing.
+   * list, each instance carrying its own search's raw score - deduped to the first-occurring
+   * instance before it is offered as a completion candidate, mirroring {@code CandidateFusion}'s
+   * own duplicate-instance handling for the identical case. First rather than highest: since the
+   * lexical path feeds the pool, two instances can carry a cosine similarity and a {@code ts_rank},
+   * and the larger of those two numbers means nothing.
    */
   @Test
   void dedupesAPoolCandidateAppearingInMoreThanOneListKeepingTheFirstOccurringInstance() {
@@ -387,12 +386,12 @@ class DocumentCompletionTest {
   }
 
   /**
-   * Cap (Maintainer decision, #935 review): tier 2 may evict at most {@code max(1, overallBudget /
-   * 4)} times per call - at {@code overallBudget=8} (the default {@code topK}), exactly 2. Three
-   * documents here are each individually eligible for tier 2 (their own best rank strictly beats
-   * the current selection-last chunk) - only the first two, processed in selection order, succeed;
-   * the third's completion attempt is rejected once the cap is exhausted, even though its own
-   * strict-rank condition would otherwise pass.
+   * Cap (Maintainer decision): tier 2 may evict at most {@code max(1, overallBudget / 4)} times per
+   * call - at {@code overallBudget=8} (the default {@code topK}), exactly 2. Three documents here
+   * are each individually eligible for tier 2 (their own best rank strictly beats the current
+   * selection-last chunk) - only the first two, processed in selection order, succeed; the third's
+   * completion attempt is rejected once the cap is exhausted, even though its own strict-rank
+   * condition would otherwise pass.
    */
   @Test
   void capsTier2EvictionsAtMaxOfOneOrOneQuarterOfTheOverallBudget() {

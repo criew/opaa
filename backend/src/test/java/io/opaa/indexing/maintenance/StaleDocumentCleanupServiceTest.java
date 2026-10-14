@@ -103,7 +103,7 @@ class StaleDocumentCleanupServiceTest {
     order.verify(documentRepository).delete(parent);
   }
 
-  /** A removal is a content change of the library - the catalog's "last change" (#2093). */
+  /** A removal is a content change of the library - the catalog's "last change". */
   @Test
   void aRemovalMarksTheLibrarysContentAsChanged() {
     Document vanished = document("Eintrag", "https://feed.example/entry", null);

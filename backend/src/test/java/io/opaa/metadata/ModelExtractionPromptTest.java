@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** The prompt of the model step (#1073): closed value list, no invention, capped document text. */
+/** The prompt of the model step: closed value list, no invention, capped document text. */
 class ModelExtractionPromptTest {
 
   private static final ModelExtractionField DOCUMENT_TYPE =

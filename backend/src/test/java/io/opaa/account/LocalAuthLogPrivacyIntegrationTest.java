@@ -42,8 +42,8 @@ import org.springframework.test.web.servlet.MvcResult;
  * address into a line of OPAA's own loggers at any level nor into any line at the production level
  * INFO and above (Spring MVC's own DEBUG/TRACE request dump echoes the request body as a whole and
  * is a framework diagnostic no deployment runs), and no {@code LOCAL_*} audit event carries the
- * address or the display name in any of its text columns. The seed's one-time password (#1534) is
- * the one deliberate exception and stays inside its marked block. The administration paths of #1537
+ * address or the display name in any of its text columns. The seed's one-time password is the one
+ * deliberate exception and stays inside its marked block. The administration paths of #1537
  * (invitation, lock, reset, generated password) are covered below.
  */
 @OpaaLocalAuthMockMvcTest
@@ -120,7 +120,7 @@ class LocalAuthLogPrivacyIntegrationTest {
                 .cookie(third)
                 .header(HttpHeaders.AUTHORIZATION, bearer(changed)))
         .andExpect(status().isNoContent());
-    // the lockout path (#1535): five wrong passwords lock a second account
+    // the lockout path: five wrong passwords lock a second account
     LocalAccount victim = fixtures.activeUser("opfer-" + UUID.randomUUID() + "@stadt.example");
     for (int i = 0; i < 6; i++) {
       login(victim.email(), "geratenes-passwort", 401);
@@ -269,10 +269,10 @@ class LocalAuthLogPrivacyIntegrationTest {
   }
 
   /**
-   * The administration paths (#1537): an invitation, an administrative lock with a free-text reason
-   * and a password-reset link leave neither the raw link token nor the reason text nor the address
-   * in any log line, and the {@code LOCAL_USER_*} events carry the delivery path but no address, no
-   * name, no reason and no account id. Without a public base URL every link is handed to the
+   * The administration paths: an invitation, an administrative lock with a free-text reason and a
+   * password-reset link leave neither the raw link token nor the reason text nor the address in any
+   * log line, and the {@code LOCAL_USER_*} events carry the delivery path but no address, no name,
+   * no reason and no account id. Without a public base URL every link is handed to the
    * administrator (LINK_DISPLAYED) - the path on which the token stands in a response body.
    */
   @Test
@@ -396,8 +396,8 @@ class LocalAuthLogPrivacyIntegrationTest {
   }
 
   /**
-   * Starting a handover (#1563, ADR-0033 Entscheidung 12): neither the raw handover code nor the
-   * reason the administration gave nor an address reaches a log line, and {@code
+   * Starting a handover (ADR-0033 Entscheidung 12): neither the raw handover code nor the reason
+   * the administration gave nor an address reaches a log line, and {@code
    * LOCAL_USER_HANDOVER_REQUESTED} carries the provider id and the delivery path and nothing else.
    * The redemption itself needs a verifiable provider token and is covered in {@code
    * LocalHandoverIntegrationTest}, whose context has one.
@@ -471,8 +471,8 @@ class LocalAuthLogPrivacyIntegrationTest {
   }
 
   /**
-   * The self-service link endpoints (#1538): redeeming an invitation link and an administrative
-   * reset link leaves neither the raw token nor the new password in any log line, and {@code
+   * The self-service link endpoints: redeeming an invitation link and an administrative reset link
+   * leaves neither the raw token nor the new password in any log line, and {@code
    * LOCAL_PASSWORD_SET} carries the token's purpose but no address, no name and no account id.
    * Registration and "forgot password" need a public base URL and are covered in {@code
    * LocalSelfServiceIntegrationTest}.

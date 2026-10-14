@@ -124,7 +124,7 @@ class MailDocumentFormatTest {
     assertThat(properties.title()).isEqualTo("Anfrage Bauantrag");
     assertThat(properties.documentDate()).isEqualTo(java.time.LocalDate.of(2024, 1, 4));
     assertThat(properties.firstHeading()).isNull();
-    // #1242: the Kopfdaten as format field values - the Absender reduced to its bare address.
+    // The Kopfdaten as format field values - the Absender reduced to its bare address.
     assertThat(properties.formatFields())
         .containsEntry(FormatMetadataField.MAIL_SENDER.key(), "max@example.org")
         .containsEntry(
@@ -198,7 +198,7 @@ class MailDocumentFormatTest {
         .containsEntry(FormatMetadataField.MAIL_SENDER.key(), "max@example.org")
         .containsEntry(
             FormatMetadataField.MAIL_RECIPIENTS.key(), "Erika Musterfrau <erika@example.org>");
-    // #1242: no mail-specific chunk key survives - the Kopfdaten hang on the document now.
+    // No mail-specific chunk key survives - the Kopfdaten hang on the document now.
     assertThat(chunk.getMetadata().keySet()).doesNotContain("mail_from", "mail_subject");
     // Single message, no thread split: no "Nachricht n von N" location needed.
     assertThat(chunk.getMetadata()).doesNotContainKey(ChunkMetadataKeys.LOCATION_METADATA_KEY);
@@ -687,7 +687,7 @@ class MailDocumentFormatTest {
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSizeGreaterThan(1);
     // Every further-split piece carries a disambiguating "Teil j von M" Fundort; the Kopfdaten
-    // hang on the document and reach every chunk from there (#1242).
+    // hang on the document and reach every chunk from there.
     assertThat(result.properties().formatFields())
         .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "Langer Rundbrief");
     assertThat(result.chunks())
@@ -785,7 +785,7 @@ class MailDocumentFormatTest {
         .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "test message")
         .containsEntry(FormatMetadataField.MAIL_RECIPIENTS.key(), "travis@overwrittenstack.com")
         // A display name without an address is no Absender: the field carries a checkable
-        // identifier or nothing (#1242).
+        // identifier or nothing.
         .doesNotContainKey(FormatMetadataField.MAIL_SENDER.key());
   }
 

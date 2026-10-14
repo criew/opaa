@@ -39,21 +39,21 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * #393: the four revision access paths against a real Postgres database with the real, versioned
+ * The four revision access paths against a real Postgres database with the real, versioned
  * Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}),
  * mirroring {@code AuditLogServiceIntegrationTest}.
  *
  * <p>{@link #noAccessPathAcceptsOrSortsByActor()} is the acceptance criterion's dedicated,
  * cross-cutting test: it exercises every public method {@link AuditQueryService} declares (not a
- * hardcoded name list - #393 code review, nit 4: a hardcoded list would silently stop covering a
- * newly added method) and proves none of them exposes an actor/person entry point, either by
- * parameter type ({@code Sort}/{@code Pageable}) or by parameter name (real names, not {@code
- * arg0}/{@code arg1} - see the {@code -parameters} compiler flag {@code build.gradle.kts} now sets
- * for exactly this). Matches {@code io.opaa.audit.web.AuditControllerTest}'s {@code
+ * hardcoded name list: a hardcoded list would silently stop covering a newly added method) and
+ * proves none of them exposes an actor/person entry point, either by parameter type ({@code
+ * Sort}/{@code Pageable}) or by parameter name (real names, not {@code arg0}/{@code arg1} - see the
+ * {@code -parameters} compiler flag {@code build.gradle.kts} now sets for exactly this). Matches
+ * {@code io.opaa.audit.web.AuditControllerTest}'s {@code
  * noEndpointAcceptsAnActorOrSortRequestParameter}/{@code
  * noParameterIsUnannotatedOrClientControlledSort} for the same claim at the HTTP layer.
  *
- * <p>#394: {@link #everySuccessfulAccessWritesItsOwnSelfLogEntry()} through {@link
+ * <p>{@link #everySuccessfulAccessWritesItsOwnSelfLogEntry()} through {@link
  * #queryingTheSelfLogEntriesThemselvesCreatesAnotherOne()} prove the self-logging funnel this class
  * now wraps every access in - a successful query, a denied one (wrong role, missing reason,
  * business-rule rejection), that the denied entry survives the very exception that triggered it
@@ -187,8 +187,8 @@ class AuditQueryServiceIntegrationTest {
   }
 
   /**
-   * Space payloads no longer carry a visibility (#2156); entries written before keep it and are
-   * returned verbatim.
+   * Space payloads no longer carry a visibility; entries written before keep it and are returned
+   * verbatim.
    */
   @Test
   void aSpaceEntryWithTheFormerVisibilityInItsPayloadStaysReadable() {
@@ -298,12 +298,11 @@ class AuditQueryServiceIntegrationTest {
   }
 
   /**
-   * #393 code review, finding 2: {@code by-object} must reject {@code objectType=USER_ACCOUNT}
-   * outright - a {@code USER_ACCOUNT} object's {@code object_id} is the same pseudonym {@code
-   * actorRef} carries on that same person's own actions, so accepting it here would reconstruct
-   * exactly the excluded "alle Ereignisse, bei denen Person X betroffen war" view via {@code
-   * by-time-range} (read a pseudonym off {@code actorRef}) followed by this path (feed it back in
-   * as {@code objectId}).
+   * {@code by-object} must reject {@code objectType=USER_ACCOUNT} outright - a {@code USER_ACCOUNT}
+   * object's {@code object_id} is the same pseudonym {@code actorRef} carries on that same person's
+   * own actions, so accepting it here would reconstruct exactly the excluded "alle Ereignisse, bei
+   * denen Person X betroffen war" view via {@code by-time-range} (read a pseudonym off {@code
+   * actorRef}) followed by this path (feed it back in as {@code objectId}).
    */
   @Test
   void byObjectRejectsUserAccountObjectType() {
@@ -343,9 +342,8 @@ class AuditQueryServiceIntegrationTest {
   }
 
   /**
-   * #393 code review, finding 3: a time range wider than {@link
-   * AuditQueryService#MAX_TIME_RANGE_DAYS} is a disguised full extract, not a bounded revision
-   * query, and must be rejected rather than silently served.
+   * A time range wider than {@link AuditQueryService#MAX_TIME_RANGE_DAYS} is a disguised full
+   * extract, not a bounded revision query, and must be rejected rather than silently served.
    */
   @Test
   void aTimeRangeWiderThanTheMaximumIsRejected() {
@@ -378,13 +376,12 @@ class AuditQueryServiceIntegrationTest {
   }
 
   /**
-   * #393 code review, finding 3, second half: {@link AuditQueryService#MAX_PAGE_SIZE} alone only
-   * bounds a single page - without a bound on how many pages a query can page through, {@code
-   * page=0..n} against a wide time range turns "bounded per page" back into an effectively
-   * unbounded full extract in slices. #393 re-review, nit 3: rejected with 400, not silently
-   * clamped to the last usable page - the same "abgewiesen, nicht gekappt" principle {@link
-   * AuditQueryService#byIncidentScope} already applies to a time range reaching outside its grant,
-   * applied here to page depth too.
+   * {@link AuditQueryService#MAX_PAGE_SIZE} alone only bounds a single page - without a bound on
+   * how many pages a query can page through, {@code page=0..n} against a wide time range turns
+   * "bounded per page" back into an effectively unbounded full extract in slices. Rejected with
+   * 400, not silently clamped to the last usable page - the same "abgewiesen, nicht gekappt"
+   * principle {@link AuditQueryService#byIncidentScope} already applies to a time range reaching
+   * outside its grant, applied here to page depth too.
    */
   @Test
   void aPageIndexBeyondTheMaximumIsRejectedNotClamped() {
@@ -494,7 +491,7 @@ class AuditQueryServiceIntegrationTest {
    * structurally (the method signatures below simply do not accept such a parameter) rather than by
    * trying every possible malicious input, which a closed API surface makes unnecessary.
    *
-   * <p>#394: {@code callerId} is deliberately excluded from the forbidden list - see {@link
+   * <p>{@code callerId} is deliberately excluded from the forbidden list - see {@link
    * AuditQueryService}'s own Javadoc for why identifying who is asking (for self-logging) is not
    * the same thing as accepting a person filter.
    */
@@ -538,7 +535,7 @@ class AuditQueryServiceIntegrationTest {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // #394: the access on audit_log itself creates its own entry, including for a denied attempt.
+  // The access on audit_log itself creates its own entry, including for a denied attempt.
   // ---------------------------------------------------------------------------------------------
 
   @Test
@@ -587,12 +584,12 @@ class AuditQueryServiceIntegrationTest {
   }
 
   /**
-   * Regression guard for the #1275 review: {@code requireReason}'s length check runs only after
-   * {@code requireAuditor} has already passed, so a non-AUDITOR caller with an over-length reason
-   * used to reach {@code loggedAccess}'s {@code catch} with the raw, uncapped reason still to
-   * record - failing the {@code audit_log.reason varchar(1000)} write itself and leaving the denied
-   * attempt unrecorded. {@code capReason} bounds what actually gets written, independent of which
-   * check rejected the call.
+   * Regression guard for #1275: {@code requireReason}'s length check runs only after {@code
+   * requireAuditor} has already passed, so a non-AUDITOR caller with an over-length reason used to
+   * reach {@code loggedAccess}'s {@code catch} with the raw, uncapped reason still to record -
+   * failing the {@code audit_log.reason varchar(1000)} write itself and leaving the denied attempt
+   * unrecorded. {@code capReason} bounds what actually gets written, independent of which check
+   * rejected the call.
    */
   @Test
   void aNonAuditorCallerWithAnOverlongReasonIsDeniedAndTheDenialIsStillLogged() {
@@ -686,13 +683,13 @@ class AuditQueryServiceIntegrationTest {
   }
 
   /**
-   * PR #450 review, finding 5: {@link #theDeniedEntrySurvivesTheRejectionThatTriggeredIt} only
-   * proves survival when there is no ambient transaction at all - the case that holds today simply
-   * because nothing wraps {@link AuditQueryService} in one. This test deliberately embeds the same
-   * denied call in a real, rolled-back {@link TransactionTemplate} - the scenario a future
-   * {@code @Transactional} caller would create - and proves the {@code DENIED} entry still
-   * survives, thanks to {@code Propagation.NOT_SUPPORTED} on {@link
-   * AuditEventRecorder#recordAuditLogAccess} (see that method's Javadoc).
+   * {@link #theDeniedEntrySurvivesTheRejectionThatTriggeredIt} only proves survival when there is
+   * no ambient transaction at all - the case that holds today simply because nothing wraps {@link
+   * AuditQueryService} in one. This test deliberately embeds the same denied call in a real,
+   * rolled-back {@link TransactionTemplate} - the scenario a future {@code @Transactional} caller
+   * would create - and proves the {@code DENIED} entry still survives, thanks to {@code
+   * Propagation.NOT_SUPPORTED} on {@link AuditEventRecorder#recordAuditLogAccess} (see that
+   * method's Javadoc).
    */
   @Test
   void theDeniedEntrySurvivesEvenWhenEmbeddedInARollingTransaction() {

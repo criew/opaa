@@ -38,8 +38,8 @@ final class LeftoverRowGuard extends AbstractTestExecutionListener {
           "assets",
           "documents",
           "vector_store",
-          // #1816: a provider row left behind is not inert - it decides whether the next class's
-          // first provider becomes the default one, and fk_groups_provider holds its groups.
+          // A provider row left behind is not inert - it decides whether the next class's first
+          // provider becomes the default one, and fk_groups_provider holds its groups.
           "oidc_providers",
           // a deletion time left behind starts the deletion period of the next class's accounts
           // of that issuer at it

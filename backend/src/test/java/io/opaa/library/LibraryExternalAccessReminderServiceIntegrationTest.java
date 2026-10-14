@@ -48,9 +48,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Die Wiedervorlage vor dem Ablauf einer Fremdzugangsfreigabe (#1731): dass sie zugestellt wird,
- * dass sie je Freigabe genau einmal geht, dass eine erneuerte Freigabe wieder eine verdient, und
- * dass sie eine bereits abgelaufene Freigabe nicht mehr ankündigt.
+ * Die Wiedervorlage vor dem Ablauf einer Fremdzugangsfreigabe: dass sie zugestellt wird, dass sie
+ * je Freigabe genau einmal geht, dass eine erneuerte Freigabe wieder eine verdient, und dass sie
+ * eine bereits abgelaufene Freigabe nicht mehr ankündigt.
  *
  * <p>{@link MailService} ist hier ein Mock, der einer lokal gebauten zweiten Instanz des Dienstes
  * mitgegeben wird - zusammen mit einer gestellten Uhr, wie es der Ablauflauf in {@link
@@ -107,8 +107,8 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
     for (UUID groupId : createdGroupIds) {
       groupRepository.deleteById(groupId);
     }
-    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
-    // they have to go before the accounts that hold them.
+    // A library carries ownership intervals; their owner column is RESTRICT, so they have
+    // to go before the accounts that hold them.
     jdbcTemplate.update(
         "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     for (UUID userId : createdUserIds) {

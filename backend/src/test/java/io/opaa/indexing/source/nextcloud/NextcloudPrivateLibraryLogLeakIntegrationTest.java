@@ -39,9 +39,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
- * The operational logs name no folder, file, attachment or title of a private library (#2167): its
- * runs - new files, a parse failure, an empty file, a mail with an attachment, unchanged files, a
- * removed file - and its erasure log identifiers only. Every application logger is read at DEBUG.
+ * The operational logs name no folder, file, attachment or title of a private library: its runs -
+ * new files, a parse failure, an empty file, a mail with an attachment, unchanged files, a removed
+ * file - and its erasure log identifiers only. Every application logger is read at DEBUG.
  */
 @OpaaIntegrationTest
 class NextcloudPrivateLibraryLogLeakIntegrationTest {

@@ -127,8 +127,8 @@ class SearchStatusIntegrationTest {
     assertThat(status.lowChunkDocumentCount()).isEqualTo(1);
     assertThat(status.chunkCount()).isEqualTo(7);
     assertThat(status.lastIndexedAt()).isNotNull();
-    // Rows inserted without an extraction version are the Altbestand the backfill (#1067) selects:
-    // only the INDEXED ones count, and both are pending.
+    // Rows inserted without an extraction version are the Altbestand the backfill selects: only
+    // the INDEXED ones count, and both are pending.
     assertThat(status.metadataBackfill().totalDocuments()).isEqualTo(2);
     assertThat(status.metadataBackfill().pendingDocuments()).isEqualTo(2);
     assertThat(status.metadataBackfill().currentDocuments()).isZero();

@@ -28,10 +28,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The account status a run takes over from the directory (#1818, ADR-0036 Entscheidungen 3, 6 and
- * 8): an account the directory reports as disabled - or stops reporting at all - loses its access
- * at the next run, an empty account list locks nobody, an implausibly large one waits for a
- * confirmation, and the last login-capable system administrator is never locked.
+ * The account status a run takes over from the directory (ADR-0036 Entscheidungen 3, 6 and 8): an
+ * account the directory reports as disabled - or stops reporting at all - loses its access at the
+ * next run, an empty account list locks nobody, an implausibly large one waits for a confirmation,
+ * and the last login-capable system administrator is never locked.
  *
  * <p>Runs against the real, versioned Liquibase schema for the reason {@link
  * DirectorySyncServiceIntegrationTest} states: {@code account_state_history} carries a {@code

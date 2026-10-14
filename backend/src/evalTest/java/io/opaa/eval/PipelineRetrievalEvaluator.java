@@ -11,7 +11,7 @@ import java.util.function.Function;
 
 /**
  * Runs a golden dataset through the pipeline measurement path and assembles a {@link
- * PipelineEvaluationReport} (issue #1039, docs/features/retrieval-benchmark.md §1).
+ * PipelineEvaluationReport} (docs/features/retrieval-benchmark.md §1).
  *
  * <p>Takes the pipeline itself as a function from a case to a {@link PipelineInvocationResult} (the
  * selected chunks' file names in selection order, plus the search queries decomposition produced),

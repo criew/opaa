@@ -15,10 +15,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The HTTP surface of the chat role's base address rule (#1147): a base URL carrying userinfo is
- * rejected with 400, and neither the error body nor any later listing reproduces the credentials.
- * Asserted against the raw response body, because that is what an HTTP client, a proxy and every
- * log capturing it actually see - the same reasoning {@link
+ * The HTTP surface of the chat role's base address rule: a base URL carrying userinfo is rejected
+ * with 400, and neither the error body nor any later listing reproduces the credentials. Asserted
+ * against the raw response body, because that is what an HTTP client, a proxy and every log
+ * capturing it actually see - the same reasoning {@link
  * io.opaa.library.web.LibraryControllerCredentialsIntegrationTest} documents for library source
  * credentials.
  */

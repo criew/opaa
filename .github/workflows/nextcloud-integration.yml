@@ -1,9 +1,9 @@
 name: Nextcloud-Integration
 
-# Bewusst NICHT bei jedem Pull Request (#2152): der Lauf startet das offizielle Nextcloud-Image in
-# Docker. Gemessen auf der Referenzmaschine: rund 14 Sekunden bis zur Installation mit SQLite und
-# rund 180 MiB für den Container, aber ein Image von rund 2,1 GB, das jeder CI-Lauf neu lädt -
-# gegenüber rund 1 Sekunde und 400 MB beim S3-Speicher-Fixture, das innerhalb von `test` läuft. Der
+# Bewusst NICHT bei jedem Pull Request: der Lauf startet das offizielle Nextcloud-Image in Docker.
+# Gemessen auf der Referenzmaschine: rund 14 Sekunden bis zur Installation mit SQLite und rund 180
+# MiB für den Container, aber ein Image von rund 2,1 GB, das jeder CI-Lauf neu lädt - gegenüber
+# rund 1 Sekunde und 400 MB beim S3-Speicher-Fixture, das innerhalb von `test` läuft. Der
 # Group-Folders-Test braucht außerdem den App-Store. Das Testdoppel des Konnektors
 # (io.opaa.indexing.source.nextcloud.FakeNextcloudServer) läuft mit jedem PR im regulären
 # Backend-Job; diese Suite ist die zusätzliche Abnahme gegen eine echte Nextcloud.

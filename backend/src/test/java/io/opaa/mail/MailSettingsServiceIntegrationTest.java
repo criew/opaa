@@ -281,7 +281,7 @@ class MailSettingsServiceIntegrationTest {
     assertThat(mailSettingsService.currentSettings().getLastFailureReason()).hasSize(500);
   }
 
-  /** #1559 review, LOW 3: a PUT that changes nothing writes no audit entry - like {@code reset}. */
+  /** A PUT that changes nothing writes no audit entry - like {@code reset}. */
   @Test
   void writesNoAuditEntryForAPutThatChangesNothing() {
     mailSettingsService.updateSettings(organizationId, userId, configured("geheimesKennwort"));

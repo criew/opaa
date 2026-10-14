@@ -131,7 +131,7 @@ class DocumentMetadataResponseMapperTest {
     assertThat(DocumentMetadataResponseMapper.toInput(request))
         .isEqualTo(MetadataValueInput.notDeterminable());
 
-    // A request without a state is the pre-#1069 body and still means "set this value".
+    // A request without a state is the older body and still means "set this value".
     MetadataValueRequest withoutState = new MetadataValueRequest();
     withoutState.setTextValue("Titel");
     assertThat(DocumentMetadataResponseMapper.toInput(withoutState))

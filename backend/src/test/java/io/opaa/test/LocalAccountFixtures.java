@@ -111,11 +111,11 @@ public final class LocalAccountFixtures {
 
   /**
    * An enabled OIDC provider row, committed with the change event the registry listens for - the
-   * counterpart of {@link #localProvider} for the handover tests (#1563). Written straight through
-   * the repository on purpose: {@code OidcProviderService} would probe the issuer, and a test
-   * issuer resolves nowhere. The JWK set address is set for the same reason - without it the
-   * registry runs discovery against that address the moment it builds the decoder; with it, the
-   * decoder is built without a single outbound call.
+   * counterpart of {@link #localProvider} for the handover tests. Written straight through the
+   * repository on purpose: {@code OidcProviderService} would probe the issuer, and a test issuer
+   * resolves nowhere. The JWK set address is set for the same reason - without it the registry runs
+   * discovery against that address the moment it builds the decoder; with it, the decoder is built
+   * without a single outbound call.
    */
   public OidcProvider oidcProvider(String displayName, String issuerUri, String clientId) {
     return transactions.execute(
@@ -146,7 +146,7 @@ public final class LocalAccountFixtures {
           jdbc.update("DELETE FROM local_refresh_tokens WHERE user_id = ?", userId);
           jdbc.update("DELETE FROM local_revoked_tokens WHERE user_id = ?", userId);
           jdbc.update("DELETE FROM spaces WHERE owner_id = ?", userId);
-          // #1815: see cleanUp() - the rights history of the space survives the space itself.
+          // See cleanUp() - the rights history of the space survives the space itself.
           jdbc.update("DELETE FROM space_membership_history WHERE subject_user_id = ?", userId);
           jdbc.update("DELETE FROM asset_ownership_history WHERE owner_user_id = ?", userId);
           credentials.deleteById(userId);
@@ -261,7 +261,7 @@ public final class LocalAccountFixtures {
               .forEach(
                   u -> {
                     jdbc.update("DELETE FROM spaces WHERE owner_id = ?", u.getId());
-                    // #1815: the two rights-history tables carry no foreign key to their space
+                    // The two rights-history tables carry no foreign key to their space
                     // (ADR-0016), so deleting the spaces above leaves their intervals behind -
                     // and their person columns are ON DELETE RESTRICT.
                     jdbc.update(

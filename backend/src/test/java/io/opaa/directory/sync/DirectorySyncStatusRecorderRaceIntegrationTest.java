@@ -23,15 +23,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * Exercises the race described in #300: two or more concurrent <em>first</em> synchronisation runs
  * of the same provider reaching {@link DirectorySyncStatusRecorder#record} together, before either
- * has committed that provider's single {@code directory_sync_status} row (per provider since
- * #1816). The run lock serialises the runs themselves, but the recorder is called outside it and
- * has to stand on its own.
+ * has committed that provider's single {@code directory_sync_status} row (per provider). The run
+ * lock serialises the runs themselves, but the recorder is called outside it and has to stand on
+ * its own.
  *
  * <p>Runs against a real Postgres instance with the real, versioned Liquibase schema ({@code
  * spring.liquibase.enabled=true}, {@code ddl-auto=none}) and real threads, following {@code
  * UserServiceCreationRaceIntegrationTest}'s pattern - a mocked transaction manager would only
  * exercise the catch block and not the propagation and visibility semantics the fix depends on,
- * which is precisely where the two previous attempts at this class of fix went wrong (#280, #297).
+ * which is precisely where the two previous attempts at this class of fix went wrong.
  *
  * <p>Before the fix, {@link #concurrentFirstRunsOfTheSameProviderRecordExactlyOneStatusRow()}
  * fails: the losers of the race throw {@link
@@ -53,8 +53,8 @@ class DirectorySyncStatusRecorderRaceIntegrationTest {
    * system happens to schedule two threads adversarially, and below Hikari's default {@code
    * maximum-pool-size} of 10 is not required: {@code record} is deliberately not
    * {@code @Transactional} (see its javadoc), so no caller ever holds more than one connection at a
-   * time and the threads cannot deadlock the pool the way #299's review found for the {@code
-   * REQUIRES_NEW} construction.
+   * time and the threads cannot deadlock the pool the way the {@code REQUIRES_NEW} construction
+   * would.
    */
   private static final int CONCURRENT_RUNS = 8;
 

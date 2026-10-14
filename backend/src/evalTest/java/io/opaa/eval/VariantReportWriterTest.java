@@ -55,10 +55,10 @@ class VariantReportWriterTest {
   }
 
   /**
-   * Issue #1041 review (second round): the effectively-changed-parameters line must actually name
-   * the override on a changed variant and say so explicitly on an unchanged one — otherwise a
-   * variant that changed nothing and a variant whose override happened to have no measurable effect
-   * are indistinguishable in the summary (the whole point of {@code describeOverrides}).
+   * The effectively-changed-parameters line must actually name the override on a changed variant
+   * and say so explicitly on an unchanged one — otherwise a variant that changed nothing and a
+   * variant whose override happened to have no measurable effect are indistinguishable in the
+   * summary (the whole point of {@code describeOverrides}).
    */
   @Test
   void rendersTheEffectivelyChangedParametersPerVariant() {
@@ -83,9 +83,9 @@ class VariantReportWriterTest {
   }
 
   /**
-   * Issue #1049: the same requirement for the lexical path's switch. Without it a {@code
-   * vector-only} variant would be rendered as "keine Änderung" next to the hybrid reference —
-   * exactly the indistinguishability the test above exists to prevent.
+   * The same requirement for the lexical path's switch. Without it a {@code vector-only} variant
+   * would be rendered as "keine Änderung" next to the hybrid reference — exactly the
+   * indistinguishability the test above exists to prevent.
    */
   @Test
   void rendersTheLexicalPathOverride() {
@@ -107,7 +107,7 @@ class VariantReportWriterTest {
   }
 
   /**
-   * Issue #1222: a variant whose sole override is the rerank window (e.g.
+   * A variant whose sole override is the rerank window (e.g.
    * eval/variants/verwaltung-reranking.json) must not render as "keine Änderung" — the same
    * indistinguishability the two tests above already guard for the other override fields.
    */
@@ -129,9 +129,9 @@ class VariantReportWriterTest {
   }
 
   /**
-   * Issue #1044 review, Befund 1(c): a multi-run variant's summary must show the min/median/max
-   * lines and the deviation line, and the deviation count must reflect a fixture where only the
-   * third of three runs actually differs — not "any pair differs" or an off-by-one over the runs.
+   * A multi-run variant's summary must show the min/median/max lines and the deviation line, and
+   * the deviation count must reflect a fixture where only the third of three runs actually differs
+   * — not "any pair differs" or an off-by-one over the runs.
    */
   @Test
   void rendersMultiRunMinMedianMaxAndTheDeviationLine() {

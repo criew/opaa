@@ -17,8 +17,8 @@ import org.junit.jupiter.api.Test;
 /**
  * {@link LocalAuthRateLimiter} (ADR-0033, Entscheidung 9): the limits that need more than the
  * request path - the password change per authenticated subject, registration and password reset per
- * address (#1538). A refusal is a {@link TooManyRequestsException} with the seconds to wait;
- * addresses are keyed case-insensitively and never stored as text.
+ * address. A refusal is a {@link TooManyRequestsException} with the seconds to wait; addresses are
+ * keyed case-insensitively and never stored as text.
  */
 class LocalAuthRateLimiterTest {
 

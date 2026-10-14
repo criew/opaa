@@ -50,10 +50,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Unit-level coverage of {@link SourceConnectionTestService} for all three testable quellentypen
- * (#514) - real building blocks throughout ({@link AutoindexCrawlerService}, {@link
- * RssFeedParser}), only {@link FilesystemPathAllowlist} is mocked so the FILESYSTEM branch can be
- * exercised without depending on operator configuration.
+ * Unit-level coverage of {@link SourceConnectionTestService} for all three testable quellentypen -
+ * real building blocks throughout ({@link AutoindexCrawlerService}, {@link RssFeedParser}), only
+ * {@link FilesystemPathAllowlist} is mocked so the FILESYSTEM branch can be exercised without
+ * depending on operator configuration.
  */
 class SourceConnectionTestServiceTest {
 
@@ -65,8 +65,8 @@ class SourceConnectionTestServiceTest {
 
   /**
    * A full mock, deliberately not stubbed here: every method (including {@code requireCreatable})
-   * is a void no-op by default, so the object-less call sites below run exactly as before #1856 -
-   * the tests of the release bar stub a refusal.
+   * is a void no-op by default, so the object-less call sites below pass - the tests of the release
+   * bar stub a refusal.
    */
   private ConnectorReleaseService connectorRelease;
 
@@ -224,9 +224,9 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void filesystemRejectsAnAccompanyingSourceUrlWith400() {
-    // PR #537 review, nit 7: mirrors FilesystemSourceConnector#validate, the
-    // check behind createLibrary - without this, a client could see a green test for a combination
-    // createLibrary itself rejects with 400 right afterwards.
+    // Mirrors FilesystemSourceConnector#validate, the check behind createLibrary - without this, a
+    // client could see a green test for a combination createLibrary itself rejects with 400 right
+    // afterwards.
     assertThatThrownBy(
             () ->
                 service.test(
@@ -271,7 +271,7 @@ class SourceConnectionTestServiceTest {
     assertThat(response.reachable()).isTrue();
     // 2 linked documents - the subdir entry is a directory, not a linked document.
     assertThat(response.documentCount()).isEqualTo(2L);
-    // #551: exact wording, incl. plural adjective agreement ("unterstützte Dokumente").
+    // Exact wording, incl. plural adjective agreement ("unterstützte Dokumente").
     assertThat(response.message())
         .isEqualTo(
             "Webverzeichnis erreichbar, 2 unterstützte Dokumente auf oberster Ebene gefunden.");
@@ -279,7 +279,7 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void httpDirectoryReportsLinkedDocumentCountForApachePreLayout() throws IOException {
-    // #550: Apache mod_autoindex without "IndexOptions HTMLTable" - a <pre> listing, not a table.
+    // Apache mod_autoindex without "IndexOptions HTMLTable" - a <pre> listing, not a table.
     String html =
         """
         <html><head><title>Index of /dir/</title></head><body>
@@ -311,7 +311,7 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void httpDirectoryReportsLinkedDocumentCountForUlLayout() throws IOException {
-    // #550: Python http.server / Apache "-FancyIndexing" - a plain <ul>, no HTMLTable at all.
+    // Python http.server / Apache "-FancyIndexing" - a plain <ul>, no HTMLTable at all.
     String html =
         """
         <html><head><title>Directory listing for /dir/</title></head><body>
@@ -343,9 +343,9 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void httpDirectoryReportsAnExplanatoryHintForAnUnrecognizedPage() throws IOException {
-    // #550: a page that is reachable but isn't a directory listing this class recognizes at all
-    // (e.g. a login page) must not be reported as "0 unterstuetzte Dokumente gefunden" - that
-    // reads like a successful, merely-empty directory instead of a configuration problem.
+    // A page that is reachable but isn't a directory listing this class recognizes at all (e.g.
+    // a login page) must not be reported as "0 unterstuetzte Dokumente gefunden" - that reads
+    // like a successful, merely-empty directory instead of a configuration problem.
     String html =
         """
         <html><head><title>Welcome</title></head>
@@ -445,8 +445,7 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void httpDirectoryFollowsASameOriginRedirect() throws IOException {
-    // #538 follow-up review, finding 4: SourceConnectionTestService had no redirect test at all -
-    // buildHttpClient no longer auto-follows at the JDK level (Redirect.NEVER), so a legitimate
+    // buildHttpClient does not auto-follow at the JDK level (Redirect.NEVER), so a legitimate
     // same-origin redirect (e.g. a trailing slash added by the server itself) must still be chased
     // by RedirectFollowingFetcher.sendFollowingRedirects.
     String html =
@@ -488,9 +487,9 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void httpDirectoryCountsOnlySupportedFormats() throws IOException {
-    // PR #537 review, nit 4: a .zip is a linked entry the crawler sees, but not a document the
-    // real UrlIndexingExecutor run would ever index - the count here must agree with the run's
-    // own SupportedDocumentFormats filter, not with "every non-directory entry".
+    // A .zip is a linked entry the crawler sees, but not a document the real
+    // UrlIndexingExecutor run would ever index - the count here must agree with the run's own
+    // SupportedDocumentFormats filter, not with "every non-directory entry".
     String html =
         """
         <table>
@@ -517,7 +516,7 @@ class SourceConnectionTestServiceTest {
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(1L);
-    // #551: the singular defect the issue is named after - "unterstütztes Dokument", not
+    // The singular defect the issue is named after - "unterstütztes Dokument", not
     // "unterstuetzte Dokument".
     assertThat(response.message())
         .isEqualTo(
@@ -526,10 +525,9 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void httpDirectoryDoesNotAppendATrailingSlashForAFileLikeUrl() throws IOException {
-    // PR #537 review, nit 5: mirrors UrlIndexingExecutor#execute's own normalisation
-    // (hasFileExtension) - without it, "/dir/index.html" would be requested as
-    // "/dir/index.html/" and 404, a false negative for a URL the later real run fetches
-    // unchanged and successfully.
+    // Mirrors UrlIndexingExecutor#execute's own normalisation (hasFileExtension) -
+    // without it, "/dir/index.html" would be requested as "/dir/index.html/" and 404, a
+    // false negative for a URL the later real run fetches unchanged and successfully.
     String html =
         """
         <table>
@@ -559,8 +557,8 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void httpDirectoryRejectsAnOversizedResponseWithAGermanMessage() throws IOException {
-    // PR #537 review, finding 2: an unbounded read would let a single request against an
-    // endless/huge response crash the whole backend - bounded exactly like
+    // An unbounded read would let a single request against an endless/huge response
+    // crash the whole backend - bounded exactly like
     // RssFeedIndexingExecutor#readBounded/BoundedDownloader#readBounded.
     SourceConnectionTestService tightService =
         SourceConnectionTestServices.over(
@@ -695,7 +693,7 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void rssFeedCapsTheReportedCountAtMaxEntries() throws IOException {
-    // PR #537 review ("zwei weitere Kleinigkeiten"): mirrors
+    // Mirrors
     // RssFeedIndexingExecutor#execute's own truncation - a feed carrying more entries than a
     // run ever processes must not be reported with a count the run itself never reaches.
     SourceConnectionTestService cappedService =
@@ -736,7 +734,7 @@ class SourceConnectionTestServiceTest {
 
     assertThat(response.reachable()).isTrue();
     assertThat(response.documentCount()).isEqualTo(1L);
-    // #551: exact wording, incl. correct umlauts ("enthält", "Einträge", "höchstens").
+    // Exact wording, incl. correct umlauts ("enthält", "Einträge", "höchstens").
     assertThat(response.message())
         .isEqualTo(
             "RSS-Feed erreichbar, 1 Eintrag gefunden. Der Feed enthält insgesamt 2 Einträge; ein"
@@ -838,7 +836,7 @@ class SourceConnectionTestServiceTest {
     assertThat(response.message()).contains("404");
   }
 
-  // --- libraryId (#544) ---------------------------------------------------
+  // --- libraryId ---------------------------------------------------
 
   @Test
   void libraryIdFallsBackToStoredCredentialsWhenRequestOmitsThem() throws IOException {
@@ -866,8 +864,8 @@ class SourceConnectionTestServiceTest {
           if (!expectedAuth.equals(actualAuth)) {
             exchange.sendResponseHeaders(401, -1);
           } else {
-            // #550: an empty <table> alone no longer counts as a recognized listing (needed so
-            // the connection test can tell a genuinely empty directory apart from a page that
+            // An empty <table> alone no longer counts as a recognized listing (needed so the
+            // connection test can tell a genuinely empty directory apart from a page that
             // isn't a listing at all) - the title marks this fixture as one without adding any
             // linked entries, which is all this test cares about (the Authorization header).
             byte[] body =
@@ -895,11 +893,11 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void libraryIdDoesNotFallBackToStoredCredentialsForADifferentOrigin() throws IOException {
-    // #615 review, finding 2: the central security promise - a request whose sourceUrl no longer
-    // names the library's stored origin must never see the stored credentials, even with
-    // libraryId set - was previously untested. A second HttpServer instance stands in for a
-    // foreign host; only the port differs from baseUrl, which SourceOriginMatcher's port
-    // normalization must still catch (#542 review finding 1's same-origin rule, delegated to
+    // The central security promise - a request whose sourceUrl no longer names the library's
+    // stored origin must never see the stored credentials, even with libraryId set - was
+    // previously untested. A second HttpServer instance stands in for a foreign host; only the
+    // port differs from baseUrl, which SourceOriginMatcher's port normalization must still catch
+    // (the same-origin rule, delegated to
     // RedirectFollowingFetcher#sameOrigin).
     UUID libraryId = UUID.randomUUID();
     HttpServer otherServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -948,8 +946,8 @@ class SourceConnectionTestServiceTest {
 
   @Test
   void libraryIdWithSystemAdminReachesTheSameRequireRoleCallAsAnOrdinaryManager() {
-    // #615 review, finding 3: LibraryController passes the same systemAdmin flag to this test as
-    // to KnowledgeLibraryService#updateLibrary for the save it precedes - hard-coding false here
+    // LibraryController passes the same systemAdmin flag to this test as to
+    // KnowledgeLibraryService#updateLibrary for the save it precedes - hard-coding false here
     // would let a SYSTEM_ADMIN save a quellkonfiguration without a grant but see 404 from
     // "Verbindung testen" right before it.
     UUID libraryId = UUID.randomUUID();
@@ -1017,11 +1015,11 @@ class SourceConnectionTestServiceTest {
   }
 
   /**
-   * PR #1868 review, finding 1: with {@code libraryId} set, the {@link AssetRole#MANAGER} bar fully
-   * replaces the capability check - a MANAGER granted on the library (not derived from having
-   * created it) succeeds with their own credentials even while {@code connectorRelease} would
-   * refuse the release. The edit dialog's "Verbindung testen" must not fail 403 right before a save
-   * that {@code updateLibrary} would have allowed.
+   * With {@code libraryId} set, the {@link AssetRole#MANAGER} bar fully replaces the capability
+   * check - a MANAGER granted on the library (not derived from having created it) succeeds with
+   * their own credentials even while {@code connectorRelease} would refuse the release. The edit
+   * dialog's "Verbindung testen" must not fail 403 right before a save that {@code updateLibrary}
+   * would have allowed.
    */
   @Test
   void libraryIdWithManagerGrantSucceedsWithoutTheConnectorCapability() throws IOException {
@@ -1133,7 +1131,7 @@ class SourceConnectionTestServiceTest {
         .isInstanceOf(ValidationException.class);
   }
 
-  // --- Capability bar without libraryId (#1856) ---------------------------
+  // --- Capability bar without libraryId ---------------------------
 
   /**
    * A probe without {@code libraryId} needs the same connector capability {@code createLibrary}
