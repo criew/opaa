@@ -17,8 +17,8 @@ import type { OidcProviderResponse } from '@/shared/api/types'
 import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import { useOidcProviderStore } from '../../../stores/oidcProviderStore'
-import { PROVIDER_CONFLICT_MESSAGES } from '../oidcProviderConflicts'
+import { useOidcProviderStore } from '../stores/oidcProviderStore'
+import { PROVIDER_CONFLICT_MESSAGES } from './oidcProviderConflicts'
 import ProviderShutdownDialog, { type ProviderShutdownAction } from './ProviderShutdownDialog'
 
 export const DEFAULT_CONSEQUENCE =

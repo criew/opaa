@@ -29,7 +29,7 @@ import { userHandlers } from './userHandlers'
 import { localUserHandlers } from './localUserHandlers'
 import { accountHandlers } from './accountHandlers'
 // identity-provider
-import { identityProviderHandlers } from './identityProviderHandlers'
+import { identityProviderHandlers } from '@/features/identity-provider/mocks/identityProviderHandlers'
 // model
 import { modelHandlers } from '@/features/model/mocks/modelHandlers'
 // mail

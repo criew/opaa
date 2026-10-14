@@ -12,7 +12,7 @@ import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import { copyToClipboard } from '@/shared/utils/clipboard'
 import { fontFamily, radius } from '@/shared/theme/tokens'
 import SectionHead from '@/shared/ui/SectionHead'
-import ProviderStateDot from './providers/ProviderStateDot'
+import ProviderStateDot from './ProviderStateDot'
 import { PROVIDER_STATE_LABEL, type ProviderState } from './oidcProviderState'
 
 const eyebrowSx = {

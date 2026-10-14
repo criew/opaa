@@ -11,8 +11,8 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import NetworkCheckOutlinedIcon from '@mui/icons-material/NetworkCheckOutlined'
 import type { OidcProviderRequest, OidcProviderResponse } from '@/shared/api/types'
-import { testOidcProvider } from '../../services/identityProviderApi'
-import { useOidcProviderStore } from '../../stores/oidcProviderStore'
+import { testOidcProvider } from '../api/identityProviderApi'
+import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import SectionHead from '@/shared/ui/SectionHead'
 
 export const ISSUER_HELP_TEXT =

@@ -19,11 +19,14 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('../../features/{audit,mail,model,branding}/components/**/*.tsx', {
-    query: '?raw',
-    import: 'default',
-    eager: true,
-  }) as Record<string, string>),
+  ...(import.meta.glob(
+    '../../features/{audit,mail,model,branding,identity-provider}/components/**/*.tsx',
+    {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    },
+  ) as Record<string, string>),
   ...(import.meta.glob('../../components/admin/**/*.tsx', {
     query: '?raw',
     import: 'default',

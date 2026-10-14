@@ -1,6 +1,9 @@
 import { http, HttpResponse } from 'msw'
 import { mockOidcProviderImpacts, mockOidcProviders } from './identityProviderFixtures'
-import { isManyDirectoriesScenario, manyDirectoryProviders } from './directorySyncScenarioFixtures'
+import {
+  isManyDirectoriesScenario,
+  manyDirectoryProviders,
+} from '@/mocks/directorySyncScenarioFixtures'
 import type {
   OidcProviderOrderRequest,
   OidcProviderRequest,

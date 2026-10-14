@@ -24,7 +24,7 @@ import { resetMockPromptLibraries } from '../mocks/promptLibraryFixtures'
 // user
 import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'
 // identity-provider
-import { resetMockOidcProviders } from '../mocks/identityProviderFixtures'
+import { resetMockOidcProviders } from '@/features/identity-provider/mocks/identityProviderFixtures'
 // model
 import { resetLlmModelMockState } from '@/features/model/mocks/modelHandlers'
 // mail

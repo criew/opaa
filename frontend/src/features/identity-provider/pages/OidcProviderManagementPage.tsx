@@ -16,9 +16,9 @@ import { contentWidth, radius } from '@/shared/theme/tokens'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import SectionHead from '@/shared/ui/SectionHead'
-import ProviderList from '../components/admin/providers/ProviderList'
-import OidcProviderFormDialog from '../components/admin/OidcProviderFormDialog'
-import OidcProviderSetupInstructions from '../components/admin/OidcProviderSetupInstructions'
+import ProviderList from '../components/ProviderList'
+import OidcProviderFormDialog from '../components/OidcProviderFormDialog'
+import OidcProviderSetupInstructions from '../components/OidcProviderSetupInstructions'
 
 export default function OidcProviderManagementPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')

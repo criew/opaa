@@ -9,7 +9,7 @@ import {
   setOidcProviderEnabled,
   updateOidcProvider,
   type ProviderShutdownConfirmations,
-} from '../services/identityProviderApi'
+} from '../api/identityProviderApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 

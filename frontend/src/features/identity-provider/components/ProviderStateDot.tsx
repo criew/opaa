@@ -1,5 +1,5 @@
 import Box from '@mui/material/Box'
-import type { ProviderState } from '../oidcProviderState'
+import type { ProviderState } from './oidcProviderState'
 
 /**
  * Der Zustandspunkt eines Anbieters — dekorativ. Die Farbe trägt nie allein: Das Wort steht

@@ -69,7 +69,7 @@ import CapabilityManagementPage from './pages/CapabilityManagementPage'
 // user
 import UserManagementPage from './pages/UserManagementPage'
 // identity-provider
-import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
+import { OidcProviderManagementPage } from '@/features/identity-provider/routes'
 // directory-sync
 import DirectorySyncPage from './pages/DirectorySyncPage'
 import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
