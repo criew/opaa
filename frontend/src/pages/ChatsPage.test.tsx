@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi, beforeEach } 
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import ChatsPage from './ChatsPage'
 import { useChatListStore } from '../stores/chatListStore'
-import { useSpaceStore } from '../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 import {
   mockArchivedChatsForSpace,
   mockChatArchive,
@@ -13,7 +13,7 @@ import {
   mockSearchChats,
 } from '../mocks/chatFixtures'
 import { server } from '../mocks/server'
-import { mockSpaces } from '../mocks/spaceFixtures'
+import { mockSpaces } from '../features/space/mocks/spaceFixtures'
 import type { ChatSearchRequest, ChatSearchResponse, ChatSummary } from '@/shared/api/types'
 
 const mockNavigate = vi.fn()

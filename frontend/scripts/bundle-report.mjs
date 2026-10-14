@@ -15,7 +15,7 @@ const outDir = process.argv[2] ?? fileURLToPath(new URL('../bundle-report', impo
 const ROUTES = {
   '/login': 'src/features/auth/pages/LoginPage.tsx',
   '/spaces/:spaceId/chats/:chatId': 'src/pages/ChatPage.tsx',
-  '/catalog': 'src/pages/CatalogPage.tsx',
+  '/catalog': 'src/features/asset/pages/CatalogPage.tsx',
   '/admin/users': 'src/features/user/pages/UserManagementPage.tsx',
 }
 

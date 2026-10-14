@@ -13,8 +13,8 @@ import { useConfirmStore } from '@/shared/stores/confirmStore'
 import { useNotificationStore } from '@/shared/stores/notificationStore'
 import type { FeatureFlags, LocalAccountsConfig, SessionKind } from '@/shared/session/types'
 import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
-import { SpaceListContext, type SpaceListLoader } from '../components/assets/spaceListContext'
-import { getSpaces } from '../services/spaceApi'
+import { SpaceListContext, type SpaceListLoader } from '@/features/asset'
+import { getSpaces } from '@/features/space'
 
 const theme = createAppTheme('dark')
 

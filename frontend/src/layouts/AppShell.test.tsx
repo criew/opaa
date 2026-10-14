@@ -9,7 +9,7 @@ import { useUiStore } from '@/shared/stores/uiStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import GlobalAreaLayout from './GlobalAreaLayout'
-import { useSpaceListLoader } from '../components/assets/spaceListContext'
+import { useSpaceListLoader } from '@/features/asset'
 import { loadSpaceList } from '../app/themeSeams'
 
 const ADMIN_SECTIONS = [{ label: 'Benutzer & Gruppen', to: '/admin/groups' }]

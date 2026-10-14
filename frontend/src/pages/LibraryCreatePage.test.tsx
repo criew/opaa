@@ -72,19 +72,20 @@ vi.mock('@/features/principal/api/userApi', async () => {
   }
 })
 
-vi.mock('../services/assetApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/assetApi')>('../services/assetApi')
+vi.mock('../features/asset/api/assetApi', async () => {
+  const actual = await vi.importActual<typeof import('../features/asset/api/assetApi')>(
+    '../features/asset/api/assetApi',
+  )
   return {
     ...actual,
     upsertAssetGrant: mockUpsertAssetGrant,
   }
 })
 
-vi.mock('../services/connectionProfileApi', async () => {
-  const actual = await vi.importActual<typeof import('../services/connectionProfileApi')>(
-    '../services/connectionProfileApi',
-  )
+vi.mock('../features/connection/api/connectionProfileApi', async () => {
+  const actual = await vi.importActual<
+    typeof import('../features/connection/api/connectionProfileApi')
+  >('../features/connection/api/connectionProfileApi')
   return { ...actual, listConnectionProfileOptions: mockListConnectionProfileOptions }
 })
 
@@ -98,7 +99,7 @@ vi.mock('../services/libraryApi', async () => {
   }
 })
 
-vi.mock('../components/admin/connections/sourceTypeApi', () => ({
+vi.mock('../features/connection/components/sourceTypeApi', () => ({
   listSourceTypes: mockListSourceTypes,
 }))
 

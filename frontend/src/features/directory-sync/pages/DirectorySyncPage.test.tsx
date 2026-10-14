@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../../mocks/server'
-import { mockDirectorySyncStatus, mockPendingPlan } from '../../../mocks/groupAdminFixtures'
+import { mockDirectorySyncStatus, mockPendingPlan } from '../../group/mocks/groupAdminFixtures'
 import { mockOidcProviders } from '@/features/identity-provider/mocks/identityProviderFixtures'
 import {
   manyDirectoryProviders,

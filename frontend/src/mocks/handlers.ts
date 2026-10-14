@@ -3,10 +3,10 @@ import { chatHandlers } from './chatHandlers'
 import { queryHandlers } from './queryHandlers'
 import { transcriptionHandlers } from './transcriptionHandlers'
 // space
-import { spaceHandlers } from './spaceHandlers'
+import { spaceHandlers } from '../features/space/mocks/spaceHandlers'
 // asset
-import { assetHandlers } from './assetHandlers'
-import { catalogHandlers } from './catalogHandlers'
+import { assetHandlers } from '../features/asset/mocks/assetHandlers'
+import { catalogHandlers } from '../features/asset/mocks/catalogHandlers'
 // library
 import { libraryHandlers } from './libraryHandlers'
 import { libraryDocumentHandlers } from './libraryDocumentHandlers'
@@ -16,10 +16,10 @@ import { libraryFolderHandlers } from './libraryFolderHandlers'
 import { indexingHandlers } from './indexingHandlers'
 import { privateStorageHandlers } from './privateStorageHandlers'
 // prompt
-import { promptLibraryHandlers } from './promptLibraryHandlers'
+import { promptLibraryHandlers } from '../features/prompt/mocks/promptLibraryHandlers'
 // group
-import { groupHandlers } from './groupHandlers'
-import { groupAdminHandlers } from './groupAdminHandlers'
+import { groupHandlers } from '../features/group/mocks/groupHandlers'
+import { groupAdminHandlers } from '../features/group/mocks/groupAdminHandlers'
 // succession
 import { successionHandlers } from '../features/succession/mocks/successionHandlers'
 // capability
@@ -37,14 +37,14 @@ import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 // branding
 import { brandingHandlers } from '@/features/branding/mocks/brandingHandlers'
 // connection
-import { connectionProfileHandlers } from './connectionProfileHandlers'
-import { connectedAccountHandlers } from './connectedAccountHandlers'
+import { connectionProfileHandlers } from '../features/connection/mocks/connectionProfileHandlers'
+import { connectedAccountHandlers } from '../features/connection/mocks/connectedAccountHandlers'
 import { connectionLogHandlers } from '@/features/audit/mocks/connectionLogHandlers'
-import { outboundProxyHandlers } from './outboundProxyHandlers'
+import { outboundProxyHandlers } from '../features/connection/mocks/outboundProxyHandlers'
 // external-access
-import { externalAccessHandlers } from './externalAccessHandlers'
-import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
-import { externalAccessLibraryHandlers } from './externalAccessLibraryHandlers'
+import { externalAccessHandlers } from '../features/external-access/mocks/externalAccessHandlers'
+import { externalAccessTokenHandlers } from '../features/external-access/mocks/externalAccessTokenHandlers'
+import { externalAccessLibraryHandlers } from '../features/external-access/mocks/externalAccessLibraryHandlers'
 // search-admin
 import { searchHandlers } from './searchHandlers'
 import { searchAdminHandlers } from './searchAdminHandlers'

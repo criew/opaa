@@ -15,9 +15,9 @@ import type {
 import {
   PROFILES_FORBIDDEN_NOTICE,
   type ConnectionProfileOptionsState,
-} from '../../hooks/useConnectionProfileOptions'
+} from '@/features/connection'
 import ChoiceTileGroup, { type ChoiceTile } from '@/shared/ui/choice/ChoiceTileGroup'
-import { AUTH_METHOD_LABELS } from '../admin/connections/connectionProfileLabels'
+import { AUTH_METHOD_LABELS } from '@/features/connection'
 import {
   OWN_ADDRESS,
   admitsLibraries,

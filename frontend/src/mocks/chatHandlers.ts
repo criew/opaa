@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { mockUser } from './authFixtures'
-import { mockSpaceDetails } from './spaceFixtures'
+import { mockSpaceDetails } from '../features/space/mocks/spaceFixtures'
 import {
   mockChatDetails,
   mockChatPins,

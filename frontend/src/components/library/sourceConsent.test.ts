@@ -2,10 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { ConnectionProfileOption } from '@/shared/api/types'
 import { scheduleValuesFrom } from '../../utils/librarySchedule'
 import { registeredSourceTypes, sourceRegistration } from './sources/registry'
-import {
-  CONSENT_INTENT_STORAGE_KEY,
-  forgetConsentIntent,
-} from '../admin/connections/consentIntentStorage'
+import { CONSENT_INTENT_STORAGE_KEY, forgetConsentIntent } from '@/features/connection'
 import {
   attachPendingConnection,
   connectsSource,

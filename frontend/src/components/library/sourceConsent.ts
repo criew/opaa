@@ -6,8 +6,8 @@ import type {
   SourceTypeKey,
 } from '@/shared/api/types'
 import type { LibraryScheduleValues } from '../../utils/librarySchedule'
-import type { PendingGrant } from '../assets/pendingGrants'
-import { CONSENT_INTENT_STORAGE_KEY } from '../admin/connections/consentIntentStorage'
+import type { PendingGrant } from '@/features/asset'
+import { CONSENT_INTENT_STORAGE_KEY } from '@/features/connection'
 
 /** The confirmation every consent for a library's source requires before it starts. */
 export const SERVICE_ACCOUNT_CONFIRMATION = 'Ich verbinde ein Dienstkonto, kein persönliches Konto'

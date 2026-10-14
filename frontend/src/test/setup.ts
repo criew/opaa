@@ -14,13 +14,13 @@ import { server } from '../mocks/server'
 // chat
 import { resetChatMockState } from '../mocks/chatHandlers'
 // asset
-import { resetGrantMockState } from '../mocks/assetHandlers'
-import { resetMockSpaceAssetAssociations } from '../mocks/assetFixtures'
+import { resetGrantMockState } from '../features/asset/mocks/assetHandlers'
+import { resetMockSpaceAssetAssociations } from '../features/asset/mocks/assetFixtures'
 // library
 import { resetIndexingState } from '../mocks/indexingHandlers'
 import { resetDocumentMockState } from '../mocks/libraryDocumentHandlers'
 // prompt
-import { resetMockPromptLibraries } from '../mocks/promptLibraryFixtures'
+import { resetMockPromptLibraries } from '../features/prompt/mocks/promptLibraryFixtures'
 // user
 import {
   resetMockLocalAuthSettings,
@@ -35,12 +35,12 @@ import { resetMockMailSettings, resetMockMailTemplates } from '@/features/mail/m
 // branding
 import { resetMockBranding } from '@/features/branding/mocks/brandingFixtures'
 // connection
-import { resetConnectionProfileMockState } from '../mocks/connectionProfileHandlers'
-import { resetConnectedAccountMockState } from '../mocks/connectedAccountHandlers'
+import { resetConnectionProfileMockState } from '../features/connection/mocks/connectionProfileHandlers'
+import { resetConnectedAccountMockState } from '../features/connection/mocks/connectedAccountHandlers'
 import { resetConnectionLogMockState } from '@/features/audit/mocks/connectionLogHandlers'
 // external-access
-import { resetMockExternalAccessSettings } from '../mocks/externalAccessHandlers'
-import { resetMockExternalAccessTokens } from '../mocks/externalAccessTokenHandlers'
+import { resetMockExternalAccessSettings } from '../features/external-access/mocks/externalAccessHandlers'
+import { resetMockExternalAccessTokens } from '../features/external-access/mocks/externalAccessTokenHandlers'
 // auth
 import { resetMockAuthConfig } from '../mocks/authFixtures'
 import { resetMockSelfServiceTokens } from '@/features/auth/mocks/localAuthFixtures'

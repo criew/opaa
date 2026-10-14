@@ -48,22 +48,22 @@ import ChatPage from './pages/ChatPage'
 import ChatsPage from './pages/ChatsPage'
 import ChatRedirect from './pages/ChatRedirect'
 // space
-import SpacePage from './pages/SpacePage'
-import SpacesOverviewPage from './pages/SpacesOverviewPage'
-import SpaceCreatePage from './pages/SpaceCreatePage'
-import SpaceSettingsPage from './pages/SpaceSettingsPage'
+import { SpacePage } from '@/features/space/routes'
+import { SpacesOverviewPage } from '@/features/space/routes'
+import { SpaceCreatePage } from '@/features/space/routes'
+import { SpaceSettingsPage } from '@/features/space/routes'
 // asset
-import CatalogPage from './pages/CatalogPage'
-import CatalogNewPage from './pages/CatalogNewPage'
+import { CatalogPage } from '@/features/asset/routes'
+import { CatalogNewPage } from '@/features/asset/routes'
 import { catalogRoute } from './shared/assetTypes'
 // library
 import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
 // prompt
-import PromptLibraryCreatePage from './pages/PromptLibraryCreatePage'
-import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
+import { PromptLibraryCreatePage } from '@/features/prompt/routes'
+import { PromptLibraryDetailPage } from '@/features/prompt/routes'
 // group
-import GroupManagementPage from './pages/GroupManagementPage'
+import { GroupManagementPage } from '@/features/group/routes'
 // succession
 import { SuccessionPage } from '@/features/succession/routes'
 import { HandoverPage } from '@/features/auth/routes'
@@ -75,7 +75,7 @@ import { UserManagementPage } from '@/features/user/routes'
 import { OidcProviderManagementPage } from '@/features/identity-provider/routes'
 // directory-sync
 import { DirectorySyncPage } from '@/features/directory-sync/routes'
-import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
+import { ProviderGroupWorklistPage } from '@/features/group/routes'
 // model
 import { LlmModelManagementPage } from '@/features/model/routes'
 // mail

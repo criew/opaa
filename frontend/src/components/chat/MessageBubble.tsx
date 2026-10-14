@@ -15,7 +15,7 @@ import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
 import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
-import { NO_KNOWLEDGE_ASSIGNED, NO_KNOWLEDGE_READABLE } from '../space/spaceKnowledge'
+import { NO_KNOWLEDGE_ASSIGNED, NO_KNOWLEDGE_READABLE } from '@/features/space'
 import { useDocumentPreview } from '../../hooks/useDocumentPreview'
 
 const ANSWER_TRUNCATED =

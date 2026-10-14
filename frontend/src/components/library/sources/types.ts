@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import type { LibrarySchedule, SourceTypeKey } from '@/shared/api/types'
-import type { SourceTypeEntry } from '../../admin/connections/sourceTypeDirectory'
+import type { SourceTypeEntry } from '@/features/connection'
 import type { LibrarySourceConfigPayload } from '../../../utils/librarySourceConfig'
 import type { SourceIssue } from '../../../utils/sourceIssue'
 import type { SourceConnection } from './sourceConnection'

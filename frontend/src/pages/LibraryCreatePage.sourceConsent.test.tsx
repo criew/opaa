@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { Route, Routes, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../mocks/server'
-import { mockMyGroups } from '../mocks/groupFixtures'
+import { mockMyGroups } from '../features/group/mocks/groupFixtures'
 import { leaveFor } from '@/shared/api/leaveApp'
 import { renderWithProviders, setMockAuthState } from '../test/test-utils'
 import type {

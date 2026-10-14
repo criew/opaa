@@ -4,7 +4,7 @@ import type {
   DirectorySyncStatusResponse,
   OidcProviderResponse,
 } from '@/shared/api/types'
-import { mockPendingPlan } from '../../../mocks/groupAdminFixtures'
+import { mockPendingPlan } from '../../group/mocks/groupAdminFixtures'
 
 /**
  * The directory sync with many providers in every state the overview distinguishes - pending

@@ -13,7 +13,7 @@ import {
   type FilesystemSourceValues,
 } from '../../../utils/filesystemSource'
 import { PathForm, StoredConnection, UrlForm } from './GenericSourceViews'
-import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
+import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceConfiguration, SourceRegistration } from './types'
 
 const FIRST_RUN_HINT =

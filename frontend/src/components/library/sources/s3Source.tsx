@@ -11,7 +11,7 @@ import {
 import S3SourceForm from '../S3SourceForm'
 import { S3Scope, S3StoredView } from './S3SourceViews'
 import { connectionFields } from './sourceConnection'
-import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
+import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
 export const s3Source: SourceRegistration = {

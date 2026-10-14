@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useSpaceStore } from '../stores/spaceStore'
-import { useGroupStore } from '../stores/groupStore'
+import { useSpaceStore } from '@/features/space'
+import { useGroupStore } from '@/features/group'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
 import { useDocumentStore } from '../stores/documentStore'
-import { useGrantStore } from '../stores/grantStore'
+import { useGrantStore } from '@/features/asset'
 import { useIndexingStore } from '../stores/indexingStore'
 
 /**

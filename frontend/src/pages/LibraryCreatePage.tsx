@@ -15,7 +15,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import ChoiceTileGroup from '@/shared/ui/choice/ChoiceTileGroup'
 import { CATALOG_ROUTE } from '@/shared/routes'
 import LibraryScheduleForm from '../components/library/LibraryScheduleForm'
-import SourceTypeIcon from '../components/admin/connections/sourceTypeIcon'
+import { sourceTypeIcon as SourceTypeIcon } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from '../components/library/sources/registry'
 import type { SourceFormContext } from '../components/library/sources/types'
 import { reportSourceIssue } from '../components/library/sources/reportSourceIssue'
@@ -38,8 +38,8 @@ import {
   draftValues,
   type SourceConsentIntent,
 } from '../components/library/sourceConsent'
-import { forgetConsentIntent } from '../components/admin/connections/consentIntentStorage'
-import { startSourceAuthorization } from '../services/connectedAccountApi'
+import { forgetConsentIntent } from '@/features/connection'
+import { startSourceAuthorization } from '@/features/connection'
 import { leaveFor } from '@/shared/api/leaveApp'
 import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 import {
@@ -51,7 +51,7 @@ import {
   withConnection,
   withoutFixed,
 } from '../components/library/sources/sourceConnection'
-import { useConnectionProfileOptions } from '../hooks/useConnectionProfileOptions'
+import { useConnectionProfileOptions } from '@/features/connection'
 import {
   scheduleUpdateFrom,
   scheduleValuesFrom,
@@ -65,14 +65,11 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '@/features/principal'
-import { useSourceTypes } from '../components/admin/connections/useSourceTypes'
-import AssetNameFields from '../components/assets/AssetNameFields'
-import AssetOwnerFields from '../components/assets/AssetOwnerFields'
-import AssetRightsFields from '../components/assets/AssetRightsFields'
-import {
-  applyPendingGrantsAfterCreation,
-  type PendingGrant,
-} from '../components/assets/pendingGrants'
+import { useSourceTypes } from '@/features/connection'
+import { AssetNameFields } from '@/features/asset'
+import { AssetOwnerFields } from '@/features/asset'
+import { AssetRightsFields } from '@/features/asset'
+import { applyPendingGrantsAfterCreation, type PendingGrant } from '@/features/asset'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
 import {
   documentSourceTypeLabel,

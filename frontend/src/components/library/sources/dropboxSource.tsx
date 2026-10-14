@@ -9,7 +9,7 @@ import {
 import DropboxSourceForm from '../DropboxSourceForm'
 import { DropboxScope, DropboxStoredView } from './DropboxSourceViews'
 import { connectionFields } from './sourceConnection'
-import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
+import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
 export const dropboxSource: SourceRegistration = {

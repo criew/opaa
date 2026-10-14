@@ -32,7 +32,7 @@ import type { ChatSearchHandover } from '../../hooks/useChatSearch'
 import { useChatListStore } from '../../stores/chatListStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import { useSpaceStore } from '../../stores/spaceStore'
+import { useSpaceStore } from '@/features/space'
 import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
