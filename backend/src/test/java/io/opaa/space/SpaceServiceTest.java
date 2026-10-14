@@ -22,6 +22,7 @@ import io.opaa.permission.CapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionReachGuard;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,7 +83,8 @@ class SpaceServiceTest {
             successionGuard,
             mock(SpaceSuccessionSource.class),
             new ChatAutoCleanupProperties(90, 365),
-            transactionManager);
+            transactionManager,
+            Clock.systemUTC());
   }
 
   /**

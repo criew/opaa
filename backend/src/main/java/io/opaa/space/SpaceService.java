@@ -33,6 +33,7 @@ import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionSubject;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.permission.SuccessionReachGuard;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -82,6 +83,8 @@ public class SpaceService {
    */
   private final Cache<UUID, Boolean> personalSpaceProvisioned;
 
+  private final Clock clock;
+
   public SpaceService(
       SpaceRepository spaceRepository,
       UserRepository userRepository,
@@ -98,7 +101,8 @@ public class SpaceService {
       SuccessionReachGuard successionGuard,
       SpaceSuccessionSource successionSource,
       ChatAutoCleanupProperties chatAutoCleanup,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      Clock clock) {
     this.spaceRepository = spaceRepository;
     this.chatAutoCleanup = chatAutoCleanup;
     this.successionGuard = successionGuard;
@@ -120,6 +124,7 @@ public class SpaceService {
     // Same bound as GroupMembershipResolver's per-user cache; unlike that one this needs no
     // expireAfterWrite, see the field Javadoc above.
     this.personalSpaceProvisioned = Caffeine.newBuilder().maximumSize(50_000).build();
+    this.clock = clock;
   }
 
   @Transactional
@@ -144,7 +149,7 @@ public class SpaceService {
             creation.name(), creation.description(), false, ownerId, caller.organizationId());
     appendInitialMemberships(space, ownerId, creation.initialMembers(), caller);
     if (Boolean.TRUE.equals(creation.chatAutoCleanup())) {
-      space.switchChatAutoCleanup(true, Instant.now());
+      space.switchChatAutoCleanup(true, Instant.now(clock));
     }
 
     Space saved = spaceRepository.save(space);
@@ -728,7 +733,7 @@ public class SpaceService {
           "Im persönlichen Space legt nur die Person selbst die Chat-Bereinigung fest");
     }
     if (update.chatAutoCleanup() != null) {
-      space.switchChatAutoCleanup(update.chatAutoCleanup(), Instant.now());
+      space.switchChatAutoCleanup(update.chatAutoCleanup(), Instant.now(clock));
     }
     String previousModelInstruction = space.getModelInstruction();
     if (update.modelInstruction() != null) {
