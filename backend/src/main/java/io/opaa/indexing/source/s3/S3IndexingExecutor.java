@@ -4,7 +4,6 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
@@ -47,7 +46,6 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
   private final LibraryFolderService folderService;
-  private final StaleDocumentCleanupService cleanupService;
   private final ScanJournal journal;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
@@ -59,7 +57,6 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
       DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
-      StaleDocumentCleanupService cleanupService,
       ScanJournal journal,
       Clock clock,
       IndexingRunTemplate runTemplate,
@@ -69,7 +66,6 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
     this.folderService = folderService;
-    this.cleanupService = cleanupService;
     this.journal = journal;
     this.clock = clock;
     this.runTemplate = runTemplate;
@@ -185,7 +181,6 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
                 documentIngestService,
                 documentRepository,
                 folderService,
-                cleanupService,
                 state,
                 journal,
                 clock,

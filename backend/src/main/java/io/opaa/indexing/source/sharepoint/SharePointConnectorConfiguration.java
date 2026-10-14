@@ -2,7 +2,6 @@ package io.opaa.indexing.source.sharepoint;
 
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSyncStateRepository;
@@ -44,7 +43,6 @@ public class SharePointConnectorConfiguration {
       DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       LibraryFolderService libraryFolderService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
       SupportedDocumentFormats supportedDocumentFormats) {
@@ -53,7 +51,6 @@ public class SharePointConnectorConfiguration {
         documentIngestService,
         documentRepository,
         libraryFolderService,
-        staleDocumentCleanupService,
         scanJournal,
         Clock.systemUTC(),
         indexingRunTemplate,

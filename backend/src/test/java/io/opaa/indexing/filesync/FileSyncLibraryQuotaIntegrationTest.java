@@ -401,7 +401,6 @@ class FileSyncLibraryQuotaIntegrationTest {
                   documentIngestService,
                   documentRepository,
                   folderService,
-                  cleanupService,
                   state,
                   scanJournal,
                   Clock.systemUTC(),

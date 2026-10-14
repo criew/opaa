@@ -500,14 +500,12 @@ public final class ModularArchitecture {
           "indexing.maintenance.StaleDocumentCleanupService#reconcile",
           "indexing.maintenance.StaleDocumentCleanupService#cleanupVanished",
           "indexing.maintenance.StaleDocumentCleanupService#removeWithAttachments",
-          "indexing.source.VanishedDocumentReconciler#reconcile");
+          "indexing.source.VanishedDocumentReconciler#reconcile",
+          "indexing.source.VanishedDocumentReconciler#removeWithAttachments");
 
-  /** The run frame and the file sync, the only ones that remove through the cleanup service. */
+  /** The run frame, the only one that removes through the cleanup service or its port. */
   static final Set<String> RUN_REMOVERS =
-      Set.of(
-          "indexing.source.IndexingRunTemplate",
-          "indexing.source.IndexingRun",
-          "indexing.filesync.FileSync");
+      Set.of("indexing.source.IndexingRunTemplate", "indexing.source.IndexingRun");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";

@@ -467,7 +467,7 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("DocumentRepository.purgeStale("));
   }
 
-  /** An administrative sweep removes through the cleanup service; the file sync may. */
+  /** An administrative sweep removes through the cleanup service; the run frame may. */
   @Test
   void aRemovalThroughTheCleanupServiceOutsideTheRunIsReported() {
     Scenario scenario = new Scenario("documentdelete");

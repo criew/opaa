@@ -108,7 +108,6 @@ class GoogleDriveServiceAccountRejectionTest {
             ingestService,
             documentRepository,
             mock(LibraryFolderService.class),
-            mock(StaleDocumentCleanupService.class),
             new ScanJournal(syncState),
             Clock.systemUTC(),
             template,
