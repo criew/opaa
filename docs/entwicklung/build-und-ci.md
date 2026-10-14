@@ -1,0 +1,122 @@
+# Build und CI
+
+Nachschlagewerk zu Befehlen außerhalb des täglichen Builds. Die Grundbefehle (Build, Test, Formatierung,
+Start von Backend und Frontend) und die Pre-Push-Checkliste stehen in [AGENTS.md](../../AGENTS.md#build--test).
+
+## Frontend lokal
+
+```bash
+# aus frontend/
+VITE_ENABLE_MOCKS=true pnpm run dev     # Dev-Server mit MSW-Mocks
+# Im dev-Auth-Modus laufen Anfragen als "dev-admin"; auf einen regulären Nutzer
+# wechseln mit http://localhost:5173/?devUser=dev-user
+```
+
+## Integrationstest-Suiten
+
+Nicht Teil von `./gradlew build` und `./gradlew test`.
+
+```bash
+# aus backend/
+./gradlew openAiIntegrationTest   # OpenAI-E2E-Tests (io.opaa.integration.*); braucht
+                                  # OPAA_OPENAI_API_KEY und Docker, nicht Teil von build/test
+OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
+                                  # Zugriffsschicht gegen ein echtes Confluence Data
+                                  # Center im Container (io.opaa.integration.confluence.*);
+                                  # braucht Docker, ~4 GB RAM und Internet für die 3-Stunden-
+                                  # Testlizenz; nicht Teil von build/test, in CI nightly und per
+                                  # Label "confluence-suite" (ADR-0023, #1171)
+./gradlew keycloakIntegrationTest # Verzeichnis-Konnektor gegen ein echtes Keycloak im
+                                  # Container (io.opaa.integration.keycloak.*); braucht nur Docker,
+                                  # keine Lizenz und kein Internet, deshalb auch keine
+                                  # Umgebungsvariable. Nicht Teil von build/test: gemessen ~46 s
+                                  # Startzeit und ~880 MiB allein für den Container (dazu Postgres
+                                  # und die Test-JVM). In CI nightly und per Label
+                                  # "keycloak-suite" (#1817, ADR-0036 Entscheidung 3)
+./gradlew nextcloudIntegrationTest
+                                  # Nextcloud-Konnektor und FileStoreFolderContract gegen das
+                                  # offizielle Nextcloud-Image (io.opaa.integration.nextcloud.*);
+                                  # braucht Docker, Group Folders zusätzlich den App-Store. Nicht
+                                  # Teil von build/test: Image rund 2,1 GB. In CI nightly und per
+                                  # Label "nextcloud-suite" (#2152)
+OPAA_GDRIVE_IT_KEY_FILE=… OPAA_GDRIVE_IT_FOLDER_ID=… ./gradlew googleDriveIntegrationTest
+                                  # Google-Drive-Konnektor gegen ein echtes Workspace, nur
+                                  # lesend; läuft nur lokal beim Maintainer, Schlüsseldatei
+                                  # außerhalb des Repos, kein CI-Job und kein Secret. Einrichtung:
+                                  # README.md im Testpaket indexing.source.googledrive (ADR-0040)
+```
+
+## Helm-Chart
+
+Der Chart liegt unter `deploy/helm/opaa/` ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md)).
+
+```bash
+# Helm-Chart (aus deploy/helm/opaa/, ADR-0042) — die Vorgabewerte allein sind bewusst
+# unvollständig, geprüft wird mit den Wertedateien unter ci/
+helm template opaa . -f ci/minimal-values.yaml   # bricht bei Abbruchregeln ab; helm lint meldet
+                                                # sie nur als INFO und endet mit Exit 0
+helm template opaa . -f ci/full-values.yaml
+
+# Chart-CI (aus dem Repository-Wurzelverzeichnis; Workflow .github/workflows/helm-chart.yml)
+deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesatz unter
+                                        # deploy/helm/opaa/ci/*-values.yaml, kubeconform gegen die
+                                        # drei unterstützten Kubernetes-Versionen, Prüfung der
+                                        # Abbruchregeln und Trockenlauf der Release-Skripte;
+                                        # braucht helm, kubeconform, curl und jq. Neue Wertesätze dort
+                                        # ablegen, sie werden automatisch geprüft
+deploy/helm/ci/package-chart.sh v1.2.3 <ziel>
+                                        # Chart packen wie der Release-Lauf (publish-images.yml):
+                                        # Version und appVersion aus dem Tag, prüft die Image-Tags
+                                        # der Vorgabewerte; veröffentlicht nichts. Das Tag-Format
+                                        # steht allein in release-version.sh, die Existenzprüfung
+                                        # von Images und Chart in GHCR in oci-published.sh (nur
+                                        # HTTP 404 gilt als frei), der Inhaltsvergleich des Charts
+                                        # vor der Attestierung in chart-matches.sh
+deploy/helm/ci/install-test.sh          # Installationstest: ct install mit der Erprobungsdatenbank
+                                        # des Charts und eingeschalteten NetworkPolicies in einen
+                                        # Namespace mit Pod Security Standard restricted; wartet auf
+                                        # Datenbank, Backend und Frontend und führt helm test aus,
+                                        # ohne LLM. Braucht kubectl, helm, ct und
+                                        # einen kind-Cluster mit den Images aus dem Commit:
+                                        #   kind create cluster
+                                        #   docker build -f backend/Dockerfile -t opaa-ci/backend:ci .
+                                        #   docker build -f frontend/Dockerfile -t opaa-ci/frontend:ci .
+                                        #   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci
+                                        # In CI bei Änderungen am Chart und an den Image-Dateien,
+                                        # nightly und per Label "helm-suite"
+deploy/helm/ci/rule-test.sh             # Unit-Tests der Alarmregeln: rendert die PrometheusRule
+                                        # und führt deploy/helm/opaa/ci/prometheusrule-test.yaml
+                                        # mit promtool aus; braucht helm, yq und promtool. In CI
+                                        # Teil der statischen Prüfung
+```
+
+## Kubernetes-Erprobungsaufbau
+
+```bash
+# Kubernetes-Erprobungsaufbau (aus dem Wurzelverzeichnis, siehe examples/kubernetes-trial/README.md):
+# OPAA-Chart mit Keycloak, Ollama, RustFS, Mailpit und Erprobungsdatenbank im aktuellen
+# kubectl-Kontext; nicht für den Betrieb, nicht Teil der CI
+k3d cluster create opaa-trial -p "127.0.0.1:8088:80@loadbalancer"
+examples/kubernetes-trial/trial.sh up   # installieren oder aktualisieren, danach http://opaa.localhost:8088
+examples/kubernetes-trial/trial.sh down # beide Namespaces samt Daten entfernen
+```
+
+## E2E-Suite
+
+```bash
+# E2E-Suite (aus e2e/, siehe e2e/README.md)
+pnpm install                            # Abhängigkeiten installieren
+pnpm exec playwright install --with-deps chromium   # Browser installieren (einmalig)
+pnpm test                               # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
+```
+
+## Image-Rauchtest
+
+```bash
+# Image-Rauchtest (aus dem Repo-Wurzelverzeichnis): beide Images für die Architektur des
+# Docker-Hosts bauen und gehärtet starten, Backend gegen pgvector bis Readiness UP, Frontend davor
+# bis /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
+docker build -t opaa-smoke/backend -f backend/Dockerfile .
+docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
+.github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend
+```
