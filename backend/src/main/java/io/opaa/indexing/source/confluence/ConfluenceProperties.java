@@ -37,8 +37,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     (ADR-0023, Entscheidung 4): only the full run reaches deletions Confluence never reports, so
  *     the interval is lengthened, never switched off; weekly by default
  * @param incrementalOverlap how far before the last anchor an incremental run searches, absorbing
- *     clock skew between OPAA and the instance and CQL's minute granularity; a re-found unchanged
- *     page costs a listing entry, no body fetch; ten minutes by default (zero falls back to it)
+ *     clock skew between OPAA and the instance, CQL's minute granularity and edits made during the
+ *     previous run; a re-found unchanged page costs a listing entry, no body fetch; ten minutes by
+ *     default (zero falls back to it)
  * @param requestBudgetPerRun how many requests one run may send to its instance before it ends in
  *     an orderly way as "incomplete, continued by the next run" - the bound that makes a run
  *     against a very large instance plannable, for Cloud (a points budget answered with 429) and

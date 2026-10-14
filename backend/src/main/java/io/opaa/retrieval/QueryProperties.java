@@ -89,10 +89,7 @@ public record QueryProperties(
     if (topK > 100) {
       throw new IllegalArgumentException("topK must be at most 100, got " + topK);
     }
-    if (fetchK <= 0) {
-      // max(25, topK), not a flat 25 - see #fetchK's Javadoc.
-      fetchK = Math.max(25, topK);
-    }
+    fetchK = positiveOr(fetchK, Math.max(25, topK)); // max(25, topK), see #fetchK's Javadoc
     if (fetchK > 200) {
       throw new IllegalArgumentException("fetchK must be at most 200, got " + fetchK);
     }

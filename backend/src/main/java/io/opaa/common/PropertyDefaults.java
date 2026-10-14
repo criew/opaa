@@ -4,9 +4,11 @@ import java.time.Duration;
 
 /**
  * Normalization of configuration bounds in the compact constructors of {@code *Properties} records.
- * An absent value binds as {@code null} or {@code 0}, so {@code 0} means "the default" rather than
- * "none" - which {@code @DefaultValue} cannot express, since it only applies to an absent key.
- * {@code positiveOr} also replaces a negative value; {@code notNegativeOr} refuses it.
+ * An absent value binds as {@code null} or {@code 0}, so for {@code positiveOr} and {@code
+ * notNegativeOr} {@code 0} means "the default" rather than "none" - which {@code @DefaultValue}
+ * cannot express, since it only applies to an absent key. {@code positiveOr} also replaces a
+ * negative value, {@code notNegativeOr} refuses it. {@code requireNotNegative} leaves zero to the
+ * caller, where it typically means "unbounded".
  */
 public final class PropertyDefaults {
 

@@ -1,6 +1,7 @@
 package io.opaa.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
@@ -28,6 +29,8 @@ class PropertyDefaultsTest {
     assertThat(PropertyDefaults.positiveOr(Duration.ofSeconds(-1), fallback)).isEqualTo(fallback);
     assertThat(PropertyDefaults.positiveOr(Duration.ofSeconds(5), fallback))
         .isEqualTo(Duration.ofSeconds(5));
+    assertThat(PropertyDefaults.positiveOr(Duration.ofNanos(1), fallback))
+        .isEqualTo(Duration.ofNanos(1));
   }
 
   @Test
@@ -38,7 +41,12 @@ class PropertyDefaultsTest {
     assertThatThrownBy(() -> PropertyDefaults.notNegativeOr("pageSize", -1, 100))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("pageSize must not be negative, got -1");
+    assertThatThrownBy(() -> PropertyDefaults.notNegativeOr("maxBytes", -1L, 100L))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("maxBytes must not be negative, got -1");
     assertThatThrownBy(() -> PropertyDefaults.requireNotNegative("budget", -2))
         .hasMessage("budget must not be negative, got -2");
+    assertThatCode(() -> PropertyDefaults.requireNotNegative("budget", 0))
+        .doesNotThrowAnyException();
   }
 }
