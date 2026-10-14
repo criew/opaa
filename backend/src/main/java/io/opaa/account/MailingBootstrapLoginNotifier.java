@@ -6,8 +6,8 @@ import io.opaa.auth.UserRepository;
 import io.opaa.mail.MailDispatchExecutor;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
+import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -36,17 +36,20 @@ public class MailingBootstrapLoginNotifier implements BootstrapLoginNotifier {
   private final UserRepository users;
   private final MailService mail;
   private final Executor executor;
+  private final Clock clock;
 
   @Autowired
   public MailingBootstrapLoginNotifier(
-      UserRepository users, MailService mail, MailDispatchExecutor dispatch) {
-    this(users, mail, (Executor) dispatch);
+      UserRepository users, MailService mail, MailDispatchExecutor dispatch, Clock clock) {
+    this(users, mail, (Executor) dispatch, clock);
   }
 
-  MailingBootstrapLoginNotifier(UserRepository users, MailService mail, Executor executor) {
+  MailingBootstrapLoginNotifier(
+      UserRepository users, MailService mail, Executor executor, Clock clock) {
     this.users = users;
     this.mail = mail;
     this.executor = executor;
+    this.clock = clock;
   }
 
   @Override
@@ -65,7 +68,7 @@ public class MailingBootstrapLoginNotifier implements BootstrapLoginNotifier {
             .filter(admin -> !admin.getId().equals(bootstrapAccount.getId()))
             .filter(admin -> admin.getEmail() != null && !admin.getEmail().isBlank())
             .toList();
-    String occurredAt = OCCURRED_AT.format(at.atZone(ZoneId.systemDefault()));
+    String occurredAt = OCCURRED_AT.format(at.atZone(clock.getZone()));
     executor.execute(
         () -> {
           for (User admin : recipients) {

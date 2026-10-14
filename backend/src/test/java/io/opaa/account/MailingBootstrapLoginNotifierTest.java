@@ -15,7 +15,9 @@ import io.opaa.auth.UserRepository;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import io.opaa.mail.SendResult;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -34,7 +36,8 @@ class MailingBootstrapLoginNotifierTest {
   private final UserRepository users = mock(UserRepository.class);
   private final MailService mail = mock(MailService.class);
   private final MailingBootstrapLoginNotifier notifier =
-      new MailingBootstrapLoginNotifier(users, mail, Runnable::run);
+      new MailingBootstrapLoginNotifier(
+          users, mail, Runnable::run, Clock.system(ZoneId.of("Europe/Berlin")));
 
   @Test
   void mailsEveryOtherSystemAdministratorWithAnAddress() {
@@ -58,8 +61,7 @@ class MailingBootstrapLoginNotifierTest {
             variables.capture());
     assertThat(variables.getValue())
         .containsEntry("displayName", other.getDisplayName())
-        .containsKey("occurredAtHuman");
-    assertThat(String.valueOf(variables.getValue().get("occurredAtHuman"))).contains("2026");
+        .containsEntry("occurredAtHuman", "am 11.09.2026 um 10:14 Uhr");
     verify(mail, never()).send(any(), any(), eq("notanker@stadt.example"), anyMap());
   }
 
