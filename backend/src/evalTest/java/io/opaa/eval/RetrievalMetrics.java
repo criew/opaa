@@ -29,8 +29,8 @@ public final class RetrievalMetrics {
 
   /**
    * Per-query result: the four ranking metrics plus a fifth, binary field ({@code
-   * allExpectedDocumentsHitAt10}, issue #913), two margin fields (issue #1151, see {@link
-   * #marginAtK}), and the ranked list that produced them (for reporting).
+   * allExpectedDocumentsHitAt10}), two margin fields (see {@link #marginAtK}), and the ranked list
+   * that produced them (for reporting).
    *
    * @param hitRateMarginAt5 how many ranks of slack the first relevant hit had left within the Hit
    *     Rate@5 window ({@code 5 - rank}); negative once the hit falls outside that window but is
@@ -69,19 +69,19 @@ public final class RetrievalMetrics {
   }
 
   /**
-   * Per-query result whose k-window is carried as data rather than baked into field names (issue
-   * #1039) — the shape the pipeline measurement path needs, which measures at the production {@code
-   * top-k}, not at the raw-vector path's {@code documentTopK=10}. Deliberately a second record next
-   * to {@link QueryResult} instead of a generalization of it: {@link QueryResult}'s {@code
-   * ndcgAt10}/{@code recallAt10} component names are part of the raw-vector path's report and
-   * baseline schema, and renaming them would invalidate every committed baseline for a measurement
-   * whose values did not change at all.
+   * Per-query result whose k-window is carried as data rather than baked into field names — the
+   * shape the pipeline measurement path needs, which measures at the production {@code top-k}, not
+   * at the raw-vector path's {@code documentTopK=10}. Deliberately a second record next to {@link
+   * QueryResult} instead of a generalization of it: {@link QueryResult}'s {@code ndcgAt10}/{@code
+   * recallAt10} component names are part of the raw-vector path's report and baseline schema, and
+   * renaming them would invalidate every committed baseline for a measurement whose values did not
+   * change at all.
    *
    * @param hitRateK the window Hit Rate was computed at.
    * @param rankingK the window MRR, nDCG, Recall and {@code allExpectedDocumentsHit} were computed
    *     at.
-   * @param hitRateMargin the margin (issue #1151, see {@link #marginAtK}) against {@code hitRateK};
-   *     {@code null} when no expected document was found at all.
+   * @param hitRateMargin the margin (see {@link #marginAtK}) against {@code hitRateK}; {@code null}
+   *     when no expected document was found at all.
    * @param rankingMargin the margin against {@code rankingK}; {@code null} under the same condition
    *     as {@code hitRateMargin}.
    */
@@ -218,11 +218,11 @@ public final class RetrievalMetrics {
   }
 
   /**
-   * "Recall pro Teilthema" (issue #913): 1.0 only if <b>every</b> expected document is in the
-   * top-{@code k} ranked list, 0.0 otherwise — unlike {@link #recallAtK}, which gives partial
-   * credit for a multi-document case (e.g. 0.5 for one of two expected documents), the wrong shape
-   * for detecting a dominant topic crowding another out of the top-K (issue #912). Empty expected
-   * set scores 0.0, matching {@link #recallAtK}'s convention.
+   * "Recall pro Teilthema": 1.0 only if <b>every</b> expected document is in the top-{@code k}
+   * ranked list, 0.0 otherwise — unlike {@link #recallAtK}, which gives partial credit for a
+   * multi-document case (e.g. 0.5 for one of two expected documents), the wrong shape for detecting
+   * a dominant topic crowding another out of the top-K. Empty expected set scores 0.0, matching
+   * {@link #recallAtK}'s convention.
    */
   static double allExpectedDocumentsHitAtK(List<String> ranked, Set<String> expected, int k) {
     if (expected.isEmpty()) {

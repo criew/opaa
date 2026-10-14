@@ -22,28 +22,28 @@ import java.util.function.Function;
  * English one), so {@code n} alone overstates how many independent data points back a group's
  * average — see the report-level {@code datasetNotes} this mirrors at group granularity.
  *
- * <p><b>{@code hitCountAt5} / {@code hitCountAt10} (issue #306).</b> Counts of cases in this group
- * that scored above zero at the two ranking depths this harness measures — {@code hitCountAt5} is
- * the number of cases with {@code hitRateAt5 > 0} (a relevant document somewhere in the top 5);
- * {@code hitCountAt10} is the number of cases with a relevant document anywhere in the (at most
- * {@code searchTopK=10}-long) ranked list, which is exactly the same per-case event for {@code mrr
- * > 0}, {@code ndcgAt10 > 0} and {@code recallAt10 > 0} — the ranked list this harness scores never
- * has more than 10 entries (ADR-0012, {@code searchTopK}), so "a hit exists in the full ranked
- * list" (what makes {@code mrr} positive) and "a hit exists in the top 10" (what makes {@code
+ * <p><b>{@code hitCountAt5} / {@code hitCountAt10}.</b> Counts of cases in this group that scored
+ * above zero at the two ranking depths this harness measures — {@code hitCountAt5} is the number of
+ * cases with {@code hitRateAt5 > 0} (a relevant document somewhere in the top 5); {@code
+ * hitCountAt10} is the number of cases with a relevant document anywhere in the (at most {@code
+ * searchTopK=10}-long) ranked list, which is exactly the same per-case event for {@code mrr > 0},
+ * {@code ndcgAt10 > 0} and {@code recallAt10 > 0} — the ranked list this harness scores never has
+ * more than 10 entries (ADR-0012, {@code searchTopK}), so "a hit exists in the full ranked list"
+ * (what makes {@code mrr} positive) and "a hit exists in the top 10" (what makes {@code
  * ndcgAt10}/{@code recallAt10} positive) are the identical event, not merely correlated. {@code
  * BaselineComparator} uses these two counts, not the four continuous means, for the group/metric
  * pairs where the mean tolerance is tighter than one case's worth of shift — see its class Javadoc.
  *
- * <p><b>{@code allExpectedDocumentsHitAt10} (issue #913).</b> Mean of {@link
+ * <p><b>{@code allExpectedDocumentsHitAt10}.</b> Mean of {@link
  * RetrievalMetrics#allExpectedDocumentsHitAtK} — "Recall pro Teilthema" — the fraction of cases
  * where <b>every</b> expected document was retrieved, as opposed to {@code recallAt10}'s average
  * fraction of expected documents retrieved. The two coincide for single-document cases and diverge
- * for multi-document ones (e.g. {@code multi_topic}), which is the point (issue #912).
+ * for multi-document ones (e.g. {@code multi_topic}), which is the point.
  *
- * <p>Typed {@link Double}, unlike every other field here: a baseline written before issue #913
- * (e.g. {@code comic-characters.json}) has no such property, and Jackson's record deserialization
- * treats a missing *primitive* field as a hard error but a missing *reference-type* field as {@code
- * null} — the compact constructor below normalizes that to {@code 0.0}.
+ * <p>Typed {@link Double}, unlike every other field here: an older baseline (e.g. {@code
+ * comic-characters.json}) has no such property, and Jackson's record deserialization treats a
+ * missing *primitive* field as a hard error but a missing *reference-type* field as {@code null} —
+ * the compact constructor below normalizes that to {@code 0.0}.
  */
 public record MetricsAggregate(
     int n,

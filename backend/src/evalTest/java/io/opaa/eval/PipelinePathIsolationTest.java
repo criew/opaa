@@ -26,9 +26,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Guards the promise that adding the pipeline measurement path (issue #1039) left the raw-vector
- * path measuring exactly what it measured before: same windows, same metric definitions, same
- * measurement-contract version, same report file.
+ * Guards the promise that adding the pipeline measurement path left the raw-vector path measuring
+ * exactly what it measured before: same windows, same metric definitions, same measurement-contract
+ * version, same report file.
  *
  * <p>Docker-free by construction, and therefore the cheap half of the proof — the expensive half is
  * a real {@code evaluateRetrieval}/{@code checkRetrievalBaseline} run, whose committed baselines
@@ -253,7 +253,7 @@ class PipelinePathIsolationTest {
                   + "match - a baseline may only name the Ollama it was actually measured with",
               domain.baselineFileName())
           .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
-      // Issue #1652: the same watchdog for the CPU backend the harness pins inside that image.
+      // The same watchdog for the CPU backend the harness pins inside that image.
       assertThat(
               Baseline.load(
                       RepoPaths.evalDir().resolve("baseline").resolve(domain.baselineFileName()))

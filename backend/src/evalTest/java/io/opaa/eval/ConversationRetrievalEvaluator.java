@@ -28,7 +28,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 
 /**
  * Runs a multi-turn dataset turn by turn and assembles a {@link ConversationEvaluationReport}
- * (issue #1484, docs/features/conversation-memory.md, "Messung").
+ * (docs/features/conversation-memory.md, "Messung").
  *
  * <p><b>The conversation window is built by the production memory, not by this class.</b> Every
  * turn is appended to the {@link ChatMemory} bean a chat request uses - the question as a {@code
@@ -37,13 +37,13 @@ import org.springframework.ai.chat.messages.UserMessage;
  * that memory returns. Window width, eviction order and citation-marker normalization are therefore
  * production behaviour by construction, not because a curated dataset happens to avoid them.
  *
- * <p><b>The Gespraechsnotiz is built by the production condensation, not scripted</b> (#1487):
- * after every turn, {@link NoteExtraction} condenses that turn's <em>question</em> - the harness
- * supplies {@code ChatNoteExtractionService#condense} - and {@link ChatNoteList} decides which
- * candidates enter and how many oldest points fall out, the same algebra the persisted note uses.
- * The next turn receives the {@code RAHMEN} points, which is all the sub-question decomposition
- * ever sees. The note is therefore a non-deterministic part of this path, like the decomposition
- * itself, and falls under the Mehrfachlauf-Regel.
+ * <p><b>The Gespraechsnotiz is built by the production condensation, not scripted</b>: after every
+ * turn, {@link NoteExtraction} condenses that turn's <em>question</em> - the harness supplies
+ * {@code ChatNoteExtractionService#condense} - and {@link ChatNoteList} decides which candidates
+ * enter and how many oldest points fall out, the same algebra the persisted note uses. The next
+ * turn receives the {@code RAHMEN} points, which is all the sub-question decomposition ever sees.
+ * The note is therefore a non-deterministic part of this path, like the decomposition itself, and
+ * falls under the Mehrfachlauf-Regel.
  *
  * <p>Takes the retrieval itself as a {@link TurnInvocation} rather than depending on {@code
  * RetrievalPipeline}, for the same reason {@link PipelineRetrievalEvaluator} does: the harness

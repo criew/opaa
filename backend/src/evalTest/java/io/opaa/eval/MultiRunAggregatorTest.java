@@ -43,9 +43,9 @@ class MultiRunAggregatorTest {
    * A run where "frage a" hits at a chosen rank ({@code 1}, {@code 3}, or a miss) while "frage b"
    * always hits at rank 1. Unlike {@link #identicalRun}, this varies MRR@20 and nDCG@20
    * independently of Hit Rate@5/Recall@20 (both stay 1.0 for a rank-1 and a rank-3 hit — the
-   * expected document is still within the top-5/top-8 window either way) — issue #1044 review,
-   * Befund 3: a metric swapped for another in the aggregation loop below would otherwise go
-   * unnoticed as long as it swapped two metrics that happened to carry the same value.
+   * expected document is still within the top-5/top-8 window either way): a metric swapped for
+   * another in the aggregation loop below would otherwise go unnoticed as long as it swapped two
+   * metrics that happened to carry the same value.
    */
   private static PipelineEvaluationReport runWithCaseAHitAtRank(String rank) {
     List<String> rankedForA =

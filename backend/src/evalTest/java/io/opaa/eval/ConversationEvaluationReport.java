@@ -60,42 +60,41 @@ public record ConversationEvaluationReport(
    * committed baseline of that path, and this path's arrival changes nothing about what the other
    * two measure.
    *
-   * <p>Version 2 (issue #1522): {@code ollamaImage} became a checked fixed point of the shared
-   * pipeline block, so a committed baseline of this path states which Ollama produced its vectors
-   * (ADR-0012, Entscheidung 68). No measured value moves.
+   * <p>Version 2: {@code ollamaImage} became a checked fixed point of the shared pipeline block, so
+   * a committed baseline of this path states which Ollama produced its vectors (ADR-0012,
+   * Entscheidung 68). No measured value moves.
    *
-   * <p>Version 3 (issue #1652): {@code ollamaCpuBackend} became a checked fixed point of the shared
-   * pipeline block - the ggml CPU kernel set inside that image, which decides the greedy
-   * decomposition of every turn (ADR-0012, Entscheidung 54).
+   * <p>Version 3: {@code ollamaCpuBackend} became a checked fixed point of the shared pipeline
+   * block - the ggml CPU kernel set inside that image, which decides the greedy decomposition of
+   * every turn (ADR-0012, Entscheidung 54).
    *
-   * <p>Version 4 (issue #1650): {@code contextPrefixFingerprint} became a checked fixed point of
-   * the shared pipeline block (ADR-0012, Entscheidung 57).
+   * <p>Version 4: {@code contextPrefixFingerprint} became a checked fixed point of the shared
+   * pipeline block (ADR-0012, Entscheidung 57).
    *
-   * <p>Version 5 (issue #1684): a turn can expect no search. Such a turn enters no metric aggregate
-   * - {@code overall}, {@code byCategory} and {@code byTurn} count turns with search only - and is
-   * judged in {@code noSearch}; its {@link TurnResult} carries no metric values.
+   * <p>Version 5: a turn can expect no search. Such a turn enters no metric aggregate - {@code
+   * overall}, {@code byCategory} and {@code byTurn} count turns with search only - and is judged in
+   * {@code noSearch}; its {@link TurnResult} carries no metric values.
    *
-   * <p>Version 6 (issue #2033): {@code PdfDocumentFormat#version()} moved 1 → 2, shifting the
-   * shared pipeline block's {@code ingestionPipelineFingerprint} - fingerprint-only, no corpus in
-   * this repository routes a document through that pipeline.
+   * <p>Version 6: {@code PdfDocumentFormat#version()} moved 1 → 2, shifting the shared pipeline
+   * block's {@code ingestionPipelineFingerprint} - fingerprint-only, no corpus in this repository
+   * routes a document through that pipeline.
    *
-   * <p>Version 7 (issue #2330): {@code PdfDocumentFormat#version()} moved 2 → 3 (raised sentence
-   * numbers separated from the following text) - fingerprint-only, as version 6.
+   * <p>Version 7: {@code PdfDocumentFormat#version()} moved 2 → 3 (raised sentence numbers
+   * separated from the following text) - fingerprint-only, as version 6.
    *
-   * <p>Version 8 (issues #2327/#2328): the chunking of oversized sections (split instead of
-   * truncated at 20,000 characters, pages, slides and row groups cut to the 4,000-character target)
-   * moved pdf 3 -> 4, docx, pptx, odt, odp, tabular, markdown, html and confluence -
-   * fingerprint-only, no block of any corpus document reaches 4,000 characters, so no measured
-   * chunk changes.
+   * <p>Version 8: the chunking of oversized sections (split instead of truncated at 20,000
+   * characters, pages, slides and row groups cut to the 4,000-character target) moved pdf 3 -> 4,
+   * docx, pptx, odt, odp, tabular, markdown, html and confluence - fingerprint-only, no block of
+   * any corpus document reaches 4,000 characters, so no measured chunk changes.
    *
-   * <p>Version 9 (issue #2331): runs of sections below 200 characters are combined under their
-   * common heading, row groups of very wide tables keep half the target size - nine format versions
-   * moved; fingerprint-only, every corpus chunk stays byte-identical.
+   * <p>Version 9: runs of sections below 200 characters are combined under their common heading,
+   * row groups of very wide tables keep half the target size - nine format versions moved;
+   * fingerprint-only, every corpus chunk stays byte-identical.
    *
-   * <p>Version 10 (issue #2373): the production top-k rose from 8 to 20, and with it the per-turn
-   * ranking window shared with the pipeline path (MRR@20, nDCG@20, Recall@20). Re-measured.
+   * <p>Version 10: the production top-k rose from 8 to 20, and with it the per-turn ranking window
+   * shared with the pipeline path (MRR@20, nDCG@20, Recall@20). Re-measured.
    *
-   * <p>Version 11 (issue #2386): the shared pipeline fixed points gained {@code fusion} and {@code
+   * <p>Version 11: the shared pipeline fixed points gained {@code fusion} and {@code
    * relevanceCutoff}. Re-measured.
    */
   public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 11;
@@ -141,9 +140,9 @@ public record ConversationEvaluationReport(
       BigDecimal chatTemperature) {}
 
   /**
-   * How the Gesprächsnotiz of this run actually came about (#1487): one condensation call per turn,
-   * and how many of them failed. A failed call costs its turn the points and never the run - which
-   * is exactly why the count has to be reported: a run in which <em>every</em> call failed measures
+   * How the Gesprächsnotiz of this run actually came about: one condensation call per turn, and how
+   * many of them failed. A failed call costs its turn the points and never the run - which is
+   * exactly why the count has to be reported: a run in which <em>every</em> call failed measures
    * standalone turns while still declaring {@code conversationNoteCap} as a checked fixed point,
    * and would otherwise read like a run that proved the note ineffective.
    *
@@ -194,11 +193,11 @@ public record ConversationEvaluationReport(
    *
    * @param conversationWindowMessages how many messages this turn's conversation window actually
    *     held - 0 for the first turn of a case, and capped by the production window width.
-   * @param conversationNote the {@code RAHMEN} points this turn received (#1490), empty for the
-   *     first turn of a case and for a run measured without a note. Recorded for the same reason
-   *     {@code subQueries} is: once the search window is narrower than the case, the note is the
-   *     only way an early Rahmenangabe can reach the search at all, so a report without it cannot
-   *     tell "the note never carried the Angabe" from "the decomposition ignored it".
+   * @param conversationNote the {@code RAHMEN} points this turn received, empty for the first turn
+   *     of a case and for a run measured without a note. Recorded for the same reason {@code
+   *     subQueries} is: once the search window is narrower than the case, the note is the only way
+   *     an early Rahmenangabe can reach the search at all, so a report without it cannot tell "the
+   *     note never carried the Angabe" from "the decomposition ignored it".
    * @param subQueries the search queries decomposition produced for this turn: the observation the
    *     whole path exists for, since a follow-up question that was not resolved shows up here
    *     before it shows up in the metrics.

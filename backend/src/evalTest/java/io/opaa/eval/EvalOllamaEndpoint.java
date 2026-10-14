@@ -3,8 +3,8 @@ package io.opaa.eval;
 /**
  * Resolves whether a retrieval evaluation harness should talk to a Testcontainers-managed Ollama
  * (the default, unchanged behavior) or to an external, already-running Ollama instance selected via
- * the {@value #BASE_URL_PROPERTY} system property (issue #1076) — e.g. a native host Ollama using a
- * GPU Testcontainers itself cannot pass through (AMD GPUs under Docker/WSL2).
+ * the {@value #BASE_URL_PROPERTY} system property — e.g. a native host Ollama using a GPU
+ * Testcontainers itself cannot pass through (AMD GPUs under Docker/WSL2).
  *
  * <p>A run against an external endpoint is deliberately not comparable to the pinned CI/baseline
  * numbers, analogous to the {@code -Dopaa.eval.allowGpu} opt-out — see eval/README.md, "Externer
@@ -54,7 +54,7 @@ final class EvalOllamaEndpoint {
   /**
    * The value a report's "ollamaImage" field should carry: {@link #PINNED_IMAGE} when not external,
    * or a marker naming the external endpoint otherwise — a report must never claim the pinned image
-   * ran when no container was ever started (issue #1076 review).
+   * ran when no container was ever started.
    */
   static String describeImageOrEndpoint() {
     return isExternal() ? EXTERNAL_MARKER_PREFIX + externalBaseUrl() : PINNED_IMAGE;

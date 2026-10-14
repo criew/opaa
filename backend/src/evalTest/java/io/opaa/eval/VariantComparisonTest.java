@@ -65,9 +65,9 @@ class VariantComparisonTest {
   }
 
   /**
-   * Issue #1041 review, Befund 3/9: {@link VariantComparison#requireExecutableReference} is the
-   * fail-fast check that lets the harness reject a broken comparison before indexing rather than
-   * after — see {@code RetrievalEvaluationHarnessTest#loadAndValidateVariantComparison}.
+   * {@link VariantComparison#requireExecutableReference} is the fail-fast check that lets the
+   * harness reject a broken comparison before indexing rather than after — see {@code
+   * RetrievalEvaluationHarnessTest#loadAndValidateVariantComparison}.
    */
   @Test
   void requireExecutableReferenceAcceptsAnExecutableReferenceVariant() {
@@ -112,10 +112,9 @@ class VariantComparisonTest {
   }
 
   /**
-   * Issue #1041 review (second round): a broken override must fail fast for <b>every</b> variant,
-   * not only the reference — otherwise a non-reference variant's mistake would only surface once
-   * {@link VariantRunner} reaches it mid-run, well after the corpus indexing this check exists to
-   * happen before.
+   * A broken override must fail fast for <b>every</b> variant, not only the reference — otherwise a
+   * non-reference variant's mistake would only surface once {@link VariantRunner} reaches it
+   * mid-run, well after the corpus indexing this check exists to happen before.
    */
   @Test
   void requireExecutableReferenceRejectsAnInvalidOverrideOnAnyVariantNotOnlyTheReference() {

@@ -40,9 +40,9 @@ import org.springframework.ai.chat.model.Generation;
 
 /**
  * Binds the fixed points of the multi-turn measurement path to the production behaviour they claim
- * to describe (issue #1484) - the window width is already bound by being measured off the
- * production {@code ChatMemory} ({@link ConversationMemoryProfile#measuredFrom}), and these close
- * the same gap for the other two assumptions.
+ * to describe - the window width is already bound by being measured off the production {@code
+ * ChatMemory} ({@link ConversationMemoryProfile#measuredFrom}), and these close the same gap for
+ * the other two assumptions.
  *
  * <p>All three are <b>guards, not specifications</b>: production is free to change any of them, but
  * not silently. When the search window stops being cut where it is cut today, or an entrance into

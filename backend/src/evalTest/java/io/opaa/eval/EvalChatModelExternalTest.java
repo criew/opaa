@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Docker-free guard for the opt-in that measures the multi-turn path against a production-grade
- * chat model (#1674). The failure this prevents is silent: a half-configured run that measures the
- * pinned model while its operator believes otherwise.
+ * chat model. The failure this prevents is silent: a half-configured run that measures the pinned
+ * model while its operator believes otherwise.
  */
 class EvalChatModelExternalTest {
 

@@ -38,7 +38,7 @@ final class EvalChatModel {
   static final String EXPECTED_DIGEST =
       "65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b";
 
-  /** Temperatur 0: the least nondeterministic setting this endpoint offers (issue #1085). */
+  /** Temperatur 0: the least nondeterministic setting this endpoint offers. */
   private static final BigDecimal TEMPERATURE = new BigDecimal("0.00");
 
   /**
@@ -50,15 +50,15 @@ final class EvalChatModel {
 
   /**
    * Base URL and model identifier of an <b>external</b> chat model this run measures with instead
-   * of {@link #MODEL} (#1674) - the OpenAI-compatible endpoint of a production-grade provider, e.g.
-   * {@code https://api.anthropic.com/v1} and {@code claude-haiku-4-5}. Both must be set together.
+   * of {@link #MODEL} - the OpenAI-compatible endpoint of a production-grade provider, e.g. {@code
+   * https://api.anthropic.com/v1} and {@code claude-haiku-4-5}. Both must be set together.
    *
    * <p>Such a run answers a question the pinned model cannot: the Gesprächsnotiz and the
    * Teilfragen-Zerlegung are <em>model output</em>, not retrieval parameters, so a 1.5B stand-in
-   * does not measure them on anyone's behalf (#1586, PR #1672). It is a Befundlauf, never a
-   * baseline - the {@code chatModel} fixed point carries the external identifier, which makes every
-   * committed baseline incomparable to it by construction, and the nightly job keeps the pinned
-   * model precisely because regression detection needs the determinism it provides.
+   * does not measure them on anyone's behalf. It is a Befundlauf, never a baseline - the {@code
+   * chatModel} fixed point carries the external identifier, which makes every committed baseline
+   * incomparable to it by construction, and the nightly job keeps the pinned model precisely
+   * because regression detection needs the determinism it provides.
    */
   private static final String BASE_URL_PROPERTY = "opaa.eval.chatBaseUrl";
 
@@ -66,8 +66,8 @@ final class EvalChatModel {
 
   /**
    * The sampling temperature of an external chat model, for a Befundlauf that has to reproduce the
-   * options of an installation (#1684). Refused without {@link #BASE_URL_PROPERTY}: the pinned
-   * model stays at {@link #TEMPERATURE}, which is what its baseline's determinism rests on.
+   * options of an installation. Refused without {@link #BASE_URL_PROPERTY}: the pinned model stays
+   * at {@link #TEMPERATURE}, which is what its baseline's determinism rests on.
    */
   private static final String TEMPERATURE_PROPERTY = "opaa.eval.chatTemperature";
 
@@ -221,7 +221,7 @@ final class EvalChatModel {
 
   /**
    * The same, for the harness that carries the multi-turn path: installs the external chat model
-   * when one was requested (#1674), the pinned one otherwise. The key is encrypted with the running
+   * when one was requested, the pinned one otherwise. The key is encrypted with the running
    * application's own {@link SettingsEncryptor}, so the row is exactly what an operator-configured
    * model looks like and {@code ActiveChatModelResolver} needs no special case.
    */
