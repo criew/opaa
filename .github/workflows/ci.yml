@@ -140,7 +140,10 @@ jobs:
             # Step-level filter of the comment rule guard below, not a job output.
             comments:
               - 'backend/src/main/**'
+              - 'backend/src/test/**'
+              - 'backend/src/evalTest/**'
               - 'opaa-api/src/main/**'
+              - '.github/workflows/**'
               - '.github/scripts/check_code_comments.sh'
             # keycloak/** belongs to the seed filter because demo/seed/test_seed.py
             # asserts the realm export keeps the audience mapper the seed's token
@@ -179,9 +182,10 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
         run: .github/scripts/check_adr_style.sh
 
-      # Comments under backend/src/main and opaa-api/src/main carry no review protocol, no history
-      # anchored at an issue and no bare origin marker (AGENTS.md, "Code-Kommentare").
-      - name: Kommentarregel in backend/src/main und opaa-api/src/main prüfen
+      # Comments in backend, opaa-api, the workflows and the Liquibase changelogs carry no review
+      # protocol, no history anchored at an issue and no bare origin marker (AGENTS.md,
+      # "Code-Kommentare").
+      - name: Kommentarregel in Backend, opaa-api und Workflows prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.comments == 'true'
         run: .github/scripts/check_code_comments.sh
 

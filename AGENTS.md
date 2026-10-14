@@ -188,7 +188,7 @@ In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z.
  */
 ```
 
-`.github/scripts/check_code_comments.sh` prüft in der CI die Kommentare unter `backend/src/main` und `opaa-api/src/main` (samt `application.yml` und den OpenAPI-Beschreibungen): Review-Protokoll („#393 code review, finding 1“, „nit 4“), an Issue-Nummern hängende Historie („since #1931“, „pre-#888“) und reine Herkunftsmarker („(#1073)“, „#1073:“) lassen den Lauf fehlschlagen; übrige Issue-Verweise zählt er nur, auch „until #N“ eines Workarounds und „after #N“ einer Deprecation. Ausgenommen sind das Spike-Paket `query/spike` und Zeilen mit „Spike #N“.
+`.github/scripts/check_code_comments.sh` prüft in der CI die Kommentare unter `backend/src/main`, `backend/src/test`, `backend/src/evalTest` und `opaa-api/src/main` (samt `application.yml` und den OpenAPI-Beschreibungen), die `#`- und `//`-Kommentarzeilen der Workflows unter `.github/workflows/` und die `comment:`-Werte und `#`-Zeilen der Liquibase-Changelogs: Review-Protokoll („#393 code review, finding 1“, „nit 4“, „review finding“), an Issue-Nummern hängende Historie („since #1931“, „pre-#888“) und reine Herkunftsmarker („(#1073)“, „(#2163, ADR-0041)“, „#1073:“) lassen den Lauf fehlschlagen; übrige Issue-Verweise zählt er je Baum nur, auch „until #N“ eines Workarounds und „after #N“ einer Deprecation. In Tests zählt er „regression guard for #N: <Invariante>“ gesondert als zulässige Form. Ausgenommen sind das Spike-Paket `query/spike` und Zeilen mit „Spike #N“.
 
 ### GitHub-Actions-Workflows
 
