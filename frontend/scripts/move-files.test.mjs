@@ -30,6 +30,8 @@ const FILES = {
     "const pages = import.meta.glob('../components/library/*.tsx')",
     '',
   ].join('\n'),
+  'vite.config.ts': "export default { test: { setupFiles: './src/stores/libraryStore.ts' } }\n",
+  'scripts/report.mjs': "const ROUTES = ['src/components/library/LibraryList']\n",
   'eslint-suppressions.json': JSON.stringify(
     { 'src/stores/libraryStore.ts': { 'boundaries/dependencies': { count: 1 } } },
     null,
@@ -126,10 +128,14 @@ describe('move-files', () => {
     })
   })
 
-  it('changes nothing on a dry run', () => {
-    const { rewrites } = moveFiles(root, MOVES, { dryRun: true, log: () => {} })
+  it('changes nothing on a dry run and reports references outside src/', () => {
+    const { rewrites, outsideReferences } = moveFiles(root, MOVES, { dryRun: true, log: () => {} })
 
     expect(rewrites.size).toBe(5)
+    expect(outsideReferences).toEqual([
+      'scripts/report.mjs: src/components/library/LibraryList.tsx',
+      'vite.config.ts: src/stores/libraryStore.ts',
+    ])
     for (const [file, content] of Object.entries(FILES)) expect(read(file)).toBe(content)
   })
 

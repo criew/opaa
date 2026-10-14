@@ -18,6 +18,8 @@ const FIXTURE = {
   'src/features/space/index.ts': "export { SpaceTile } from './components/SpaceTile'\n",
   'src/features/space/components/SpaceTile.ts': 'export const SpaceTile = 1\n',
   'src/features/space/mocks/spaceFixtures.ts': 'export const mockSpaces = []\n',
+  'src/mocks/modelFixtures.ts': 'export const mockModels = []\n',
+  'src/mocks/authFixtures.ts': 'export const mockAuth = {}\n',
 }
 
 let root
@@ -140,5 +142,39 @@ describe('theme boundaries', () => {
         "import { mockSpaces } from '@/features/space/mocks/spaceFixtures'",
       ),
     ).toEqual(['boundaries/dependencies'])
+  })
+
+  it('keeps mocks out of production code, even those of the own or an allowed theme', async () => {
+    // own theme, legacy layout
+    expect(
+      await violations(
+        'src/components/admin/models/ModelList.tsx',
+        "import { mockModels } from '../../../mocks/modelFixtures'",
+      ),
+    ).toEqual(['boundaries/dependencies'])
+    // allowed theme at its target location (chat -> space)
+    expect(
+      await violations(
+        'src/pages/ChatPage.tsx',
+        "import { mockSpaces } from '@/features/space/mocks/spaceFixtures'",
+      ),
+    ).toEqual(['boundaries/dependencies'])
+    // shared
+    expect(
+      await violations('src/theme/theme.ts', "import { mockAuth } from '../mocks/authFixtures'"),
+    ).toEqual(['boundaries/dependencies'])
+    // tests and mocks keep their access
+    expect(
+      await violations(
+        'src/components/admin/models/ModelList.test.tsx',
+        "import { mockModels } from '../../../mocks/modelFixtures'",
+      ),
+    ).toEqual([])
+    expect(
+      await violations(
+        'src/mocks/modelHandlers.ts',
+        "import { mockModels } from './modelFixtures'",
+      ),
+    ).toEqual([])
   })
 })

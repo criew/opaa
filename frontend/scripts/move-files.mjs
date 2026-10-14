@@ -3,7 +3,8 @@
 // Moves files or folders (paths relative to frontend/) with `git mv` and rewrites every module
 // path under src/ that points at them - moved files included - plus the keys of
 // eslint-suppressions.json. A path keeps its form (relative, @/, omitted extension or index).
-// import.meta.glob() patterns are only reported. Workflow: frontend/AGENTS.md.
+// import.meta.glob() patterns and references outside src/ (index.html, vite.config.ts, scripts)
+// are only reported. Workflow: frontend/AGENTS.md.
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -19,7 +20,7 @@ const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
 // vi.mock('…'), vi.doMock('…') and vi.importActual<…>('…'). Group 1 is everything up to the
 // quote, group 3 the path. Two patterns, because the second consumes the type argument that the
 // first one rewrites.
-const SPECIFIER_PATTERNS = [
+export const SPECIFIER_PATTERNS = [
   /(\bfrom\s*|\bimport\s*|\bimport\s*\(\s*)(['"])((?:\.{1,2}\/|@\/)[^'"]*)\2/g,
   /(\bvi\.(?:mock|doMock|importActual)\s*(?:<[^>()]*(?:\([^)]*\)[^>()]*)*>)?\s*\(\s*)(['"])((?:\.{1,2}\/|@\/)[^'"]*)\2/g,
 ]
@@ -148,6 +149,44 @@ export function renameSuppressions(suppressions, plan) {
   )
 }
 
+const OUTSIDE_SKIP = new Set([
+  SOURCE_DIR,
+  'node_modules',
+  'dist',
+  'build',
+  'public',
+  'bundle-report',
+])
+const OUTSIDE_EXTENSIONS = ['.ts', '.js', '.mjs', '.cjs', '.html', '.json', '.yaml', '.yml', '.sh']
+const OUTSIDE_IGNORED = new Set([SUPPRESSIONS_FILE, 'package.json', 'pnpm-lock.yaml'])
+
+/**
+ * Files outside src/ (configs, scripts, index.html) that name a moved path, with or without its
+ * extension; they are reported, not rewritten.
+ */
+export function findOutsideReferences(root, plan, dir = '.') {
+  const hits = []
+  for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+    const file = path.posix.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      if (!OUTSIDE_SKIP.has(file) && !entry.name.startsWith('.')) {
+        hits.push(...findOutsideReferences(root, plan, file))
+      }
+      continue
+    }
+    if (!OUTSIDE_EXTENSIONS.includes(path.posix.extname(file)) || OUTSIDE_IGNORED.has(file))
+      continue
+    const content = fs.readFileSync(path.join(root, file), 'utf8')
+    for (const moved of plan.keys()) {
+      const stem = moved.replace(/\.[^./]+$/, '')
+      const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const pattern = new RegExp(`${escaped}(?![\\w/-])`)
+      if (pattern.test(content)) hits.push(`${file}: ${moved}`)
+    }
+  }
+  return hits
+}
+
 /** Runs all moves below root; returns a report of the changed files. */
 export function moveFiles(root, moves, { dryRun = false, log = console.log } = {}) {
   const plan = planMoves(root, moves)
@@ -170,8 +209,10 @@ export function moveFiles(root, moves, { dryRun = false, log = console.log } = {
 
   for (const [from, to] of plan) log(`${dryRun ? 'would move' : 'move'} ${from} -> ${to}`)
   for (const file of rewrites.keys()) log(`${dryRun ? 'would rewrite' : 'rewrite'} ${file}`)
+  const outsideReferences = findOutsideReferences(root, plan)
   for (const warning of globWarnings) log(`check glob ${warning}`)
-  if (dryRun) return { plan, rewrites, globWarnings }
+  for (const reference of outsideReferences) log(`check reference ${reference}`)
+  if (dryRun) return { plan, rewrites, globWarnings, outsideReferences }
 
   for (const [from, to] of plan) {
     fs.mkdirSync(path.dirname(path.join(root, to)), { recursive: true })
@@ -188,7 +229,7 @@ export function moveFiles(root, moves, { dryRun = false, log = console.log } = {
       log(`rewrite ${SUPPRESSIONS_FILE}`)
     }
   }
-  return { plan, rewrites, globWarnings }
+  return { plan, rewrites, globWarnings, outsideReferences }
 }
 
 function main(argv) {

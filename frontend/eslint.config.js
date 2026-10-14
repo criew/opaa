@@ -27,7 +27,7 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
-  // Theme boundaries (Epic #2057); rules and transition list in frontend/AGENTS.md.
+  // Theme boundaries; rules and transition list in frontend/AGENTS.md.
   themeBoundaries,
   eslintConfigPrettier,
 ])

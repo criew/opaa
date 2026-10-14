@@ -94,6 +94,12 @@ const policies = [
         dependency: { nodeKind: VITEST_MOCK },
       },
     })),
+  // Fixtures and handlers never reach production code; app keeps main.tsx -> mocks/browser.
+  {
+    from: { file: { categories: { noneOf: ['test', 'feature-mocks', 'test-infra', 'app'] } } },
+    disallow: toCategories(['feature-mocks']),
+    message: 'Mock handlers and fixtures are reachable from tests, mocks and app only.',
+  },
 ]
 
 /**

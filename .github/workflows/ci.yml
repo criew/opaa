@@ -416,12 +416,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run format:check
       - run: pnpm run lint
-      # The transition list of the theme boundaries (frontend/eslint-suppressions.json) may only
-      # shrink: compared with main, also on pushes to main, where both sides are the same.
-      - name: Übergangsliste der Themengrenzen prüfen
+      # Theme boundaries beyond eslint: the transition list (frontend/eslint-suppressions.json) may
+      # only shrink compared with main, every file under src/ belongs to one theme, and no comment
+      # disables the boundary rule.
+      - name: Themengrenzen prüfen
         run: |
           git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
-          node scripts/check-boundary-suppressions.mjs origin/main
+          node scripts/check-theme-boundaries.mjs origin/main
       - run: pnpm run test
       - run: pnpm run build
       - run: node scripts/bundle-report.mjs

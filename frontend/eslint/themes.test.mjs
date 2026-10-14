@@ -1,36 +1,14 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import micromatch from 'micromatch'
 import { describe, expect, it } from 'vitest'
-import { ALLOWED, APP, SHARED, TEST_INFRA, THEMES, bucketGlobs, themeGlobs } from './themes.js'
+import { findMisassigned } from './assignment.js'
+import { ALLOWED, THEMES } from './themes.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const GENERATED = 'src/types/generated/'
-
-function sourceFiles(dir = 'src') {
-  return fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((entry) => {
-    const file = `${dir}/${entry.name}`
-    return entry.isDirectory() ? sourceFiles(file) : [file]
-  })
-}
-
-const buckets = {
-  ...Object.fromEntries(Object.keys(THEMES).map((name) => [name, themeGlobs(name)])),
-  shared: bucketGlobs(SHARED),
-  app: bucketGlobs(APP),
-  'test-infra': bucketGlobs(TEST_INFRA),
-}
 
 describe('themes.js', () => {
   it('assigns every file under src/ to exactly one theme or bucket', () => {
-    const misassigned = sourceFiles()
-      .filter((file) => !file.startsWith(GENERATED))
-      .map((file) => ({
-        file,
-        buckets: Object.keys(buckets).filter((name) => micromatch.isMatch(file, buckets[name])),
-      }))
-      .filter(({ buckets: matched }) => matched.length !== 1)
+    const misassigned = findMisassigned(root)
 
     expect(misassigned).toEqual([])
   })
