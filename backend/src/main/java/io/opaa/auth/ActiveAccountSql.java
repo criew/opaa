@@ -1,7 +1,7 @@
 package io.opaa.auth;
 
 /**
- * The SQL sibling of {@link io.opaa.account.AccountActivityService#activeAmong}: the same
+ * The SQL sibling of {@code io.opaa.account.AccountActivityService#activeAmong}: the same
  * definition of an active account, for a caller that only wants the <b>number</b> and must not load
  * the accounts to get it (#1820). Both encodings are held together by a parity test, so a change to
  * one without the other fails the build.

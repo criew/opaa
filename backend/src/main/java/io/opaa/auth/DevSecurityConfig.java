@@ -18,7 +18,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
  * Security configuration for local development and automated tests. Deliberately performs no
  * credential check at all — see {@link DevAuthFilter}.
  *
- * <p>Apart from how the principal is obtained, this chain is identical to {@link
+ * <p>Apart from how the principal is obtained, this chain is identical to {@code
  * io.opaa.account.OidcSecurityConfig}, which is the point: development and production exercise the
  * same authorization rules, the same user provisioning and the same method security.
  */
