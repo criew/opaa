@@ -4,13 +4,14 @@
 // content) and compares both after resolving relative and @/ module paths to the module they name,
 // mapped back through the renames; a theme index.ts that re-exports a module counts as that
 // module, as does a routes.ts re-exporting default exports of the theme's own pages. An existing
-// index.ts or routes.ts may only gain re-exports. Line breaks count only where they may end a
-// statement, and the transition list may shrink. Bindings and package paths compare literally.
+// index.ts or routes.ts may only gain re-exports. Both sides are laid out by Prettier before the
+// line comparison, and the transition list may shrink. Bindings and package paths compare literally.
 // Any other change - outside frontend/src/, a new file, an index.ts exporting a page, a routes.ts
 // exporting anything else - is a finding. No output means only files moved.
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import * as prettier from 'prettier'
 
 const SOURCE = /\.(ts|tsx|js|jsx|mjs)$/
 const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
@@ -91,70 +92,64 @@ function makeNormalizer({ files, toBase, entries = new Map() }) {
     const target = resolve(spec, from)
     return target.file ? `mod:${toBase(target.file)}` : `path:${toBase(target.unresolved)}`
   }
+  // one statement per binding, written back as valid source so that Prettier can lay it out
+  const declaration = (statement, binding, token) => {
+    const head = `${statement.kind}${statement.typeOnly ? ' type' : ''}`
+    const clause = binding.startsWith('*') ? binding : `{ ${binding} }`
+    return `${head} ${clause} from '${token}'`
+  }
   return (source, file) => {
     let text = source.replace(STATEMENT, (match) => {
       const [statement] = parseStatements(match)
       if (!statement) return match
-      if (statement.sideEffect) return `import <${moduleToken(statement.spec, file)}>`
+      if (statement.sideEffect) return `import '${moduleToken(statement.spec, file)}'`
       const target = isLocal(statement.spec) ? resolve(statement.spec, file) : {}
       const entry = target.file && entries.get(target.file)
       if (entry) {
         // through a theme's index.ts: each binding names the module and export behind it
+        const stars = [...entry].filter(([key]) => key.startsWith('*:')).map(([, o]) => o.module)
         const parts = statement.bindings.map((binding) => {
           const [imported, local] = binding.replace(/^type /, '').split(' as ')
-          const origin = entry.get(imported) ?? entry.get('*')
           const typePrefix = binding.startsWith('type ') ? 'type ' : ''
-          const name = origin && origin.imported !== '*' ? origin.imported : imported
-          return origin
-            ? `${statement.kind}${statement.typeOnly ? ' type' : ''} [${typePrefix}${name} as ${local}] from <mod:${origin.module}>`
-            : `${statement.kind} [${binding}] from <unknown export of ${target.file}>`
+          const origin = entry.get(imported)
+          if (origin) {
+            const name = `${typePrefix}${origin.imported} as ${local}`
+            return declaration(statement, name, `mod:${origin.module}`)
+          }
+          if (stars.length > 0 && !binding.startsWith('*')) {
+            return declaration(statement, binding, `mod:${stars.sort().join('|')}`)
+          }
+          return declaration(statement, binding, `unknown export of ${target.file}`)
         })
         return parts.join('\n')
       }
-      return statement.bindings
-        .map(
-          (binding) =>
-            `${statement.kind}${statement.typeOnly ? ' type' : ''} [${binding}] from <${moduleToken(statement.spec, file)}>`,
-        )
-        .join('\n')
+      const token = moduleToken(statement.spec, file)
+      return statement.bindings.map((binding) => declaration(statement, binding, token)).join('\n')
     })
     for (const pattern of CALL_PATTERNS) {
       text = text.replace(pattern, (match, lead, quote, spec) =>
-        isLocal(spec) ? `${lead}<${moduleToken(spec, file)}>` : match,
+        isLocal(spec) ? `${lead}'${moduleToken(spec, file)}'` : match,
       )
     }
     return text
   }
 }
 
-// Comments, string and template literals, module tokens of the normalizer, words, single marks.
-const TOKEN =
-  /\/\/[^\n]*|\/\*[\s\S]*?\*\/|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\[\s\S]|[^`\\])*`|<(?:mod|path|pkg):[^>\n]*>|=>|[\w$]+|\n|\S/g
-// A line break after or before these marks never ends a statement.
-const CONTINUES_AFTER = new Set(['(', '[', '{', ',', '=', '=>', '<', ':', '?', '.', '|', '&'])
-const CONTINUES_BEFORE = new Set([')', ']', '}', ',', '.', '>', '?', ':', '=', '|', '&'])
-const CLOSERS = new Set([')', ']', '}', '>'])
+const FRONTEND = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+let prettierConfig
 
 /**
- * Tokens of a normalized source, independent of the layout Prettier chooses: whitespace only
- * separates tokens, a line break counts only where it may end a statement, and a trailing comma
- * before a closing bracket is dropped.
+ * Lays out a normalized source with Prettier and the project configuration, so that both sides
+ * of a pair break their lines the same way once their module paths are equal. Null when Prettier
+ * cannot parse it; the caller then compares the unformatted text.
  */
-export function codeTokens(text) {
-  const out = []
-  for (const token of text.match(TOKEN) ?? []) {
-    if (token === '\n') {
-      if (out.length > 0 && out.at(-1) !== '\n') out.push(token)
-      continue
-    }
-    if (out.at(-1) === '\n' && (CONTINUES_BEFORE.has(token) || CONTINUES_AFTER.has(out.at(-2)))) {
-      out.pop()
-    }
-    if (CLOSERS.has(token) && out.at(-1) === ',') out.pop()
-    out.push(token)
+async function layout(text, file) {
+  prettierConfig ??= prettier.resolveConfig(path.join(FRONTEND, 'package.json'))
+  try {
+    return await prettier.format(text, { ...(await prettierConfig), filepath: file })
+  } catch {
+    return null
   }
-  if (out.at(-1) === '\n') out.pop()
-  return out
 }
 
 /** Minimal line diff (LCS); returns '-'/'+' lines, empty when equal. */
@@ -224,11 +219,15 @@ function readEntries(file, source, resolve, toBase) {
         findings.push(`${file}: re-exports ${imported} of ${target.file}, not the page itself`)
         continue
       }
-      names.set(exported, { module: toBase(target.file), imported })
+      // `export *` has no name of its own; each one is keyed by its module
+      const key = exported === '*' ? `*:${toBase(target.file)}` : exported
+      names.set(key, { module: toBase(target.file), imported })
     }
   }
   return { names, findings }
 }
+
+const describeEntry = (key) => (key.startsWith('*:') ? `* from ${key.slice(2)}` : key)
 
 /** Entries of the transition list that grow against `before` (keys already renamed). */
 function growingSuppressions(file, before, after) {
@@ -249,7 +248,7 @@ function growingSuppressions(file, before, after) {
  * relative to frontend/ (`../` for files outside), `oldFiles`/`newFiles` the file lists at base and
  * HEAD, `readOld`/`readNew` the contents. Returns the findings, empty when the PR only moved files.
  */
-export function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) {
+export async function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) {
   const findings = []
   const inScope = (file) => file.startsWith('src/') || file === SUPPRESSIONS_FILE
   for (const change of changes) {
@@ -320,9 +319,18 @@ export function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) 
     for (const [name, origin] of before.names) {
       const current = now.names.get(name)
       if (!current) {
-        findings.push(`${file}: removes the re-export ${name}`)
+        findings.push(`${file}: removes the re-export ${describeEntry(name)}`)
       } else if (current.module !== origin.module || current.imported !== origin.imported) {
-        findings.push(`${file}: changes the re-export ${name}`)
+        findings.push(`${file}: changes the re-export ${describeEntry(name)}`)
+      }
+    }
+    // a new name may hide an export of an existing `export *`, a new star may make names ambiguous
+    if ([...before.names.keys()].some((key) => key.startsWith('*:'))) {
+      for (const name of now.names.keys()) {
+        if (before.names.has(name)) continue
+        findings.push(
+          `${file}: ${describeEntry(name)} may change what an existing export * provides`,
+        )
       }
     }
     entries.set(file, now.names)
@@ -353,8 +361,11 @@ export function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) 
     if (SOURCE.test(to)) {
       const before = normalizeOldEntries(readOld(from), from)
       const after = normalizeNew(readNew(to), to)
-      const same = codeTokens(before).join('\0') === codeTokens(after).join('\0')
-      diff = same ? [] : lineDiff(before, after)
+      const [laidBefore, laidAfter] = await Promise.all([layout(before, from), layout(after, to)])
+      diff =
+        laidBefore !== null && laidAfter !== null
+          ? lineDiff(laidBefore, laidAfter)
+          : lineDiff(before, after)
     } else {
       diff = lineDiff(readOld(from), readNew(to))
     }
@@ -370,10 +381,9 @@ export function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) 
   return findings
 }
 
-function main() {
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+async function main() {
   const git = (...args) =>
-    execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 1 << 28 })
+    execFileSync('git', args, { cwd: FRONTEND, encoding: 'utf8', maxBuffer: 1 << 28 })
   const prefix = git('rev-parse', '--show-prefix').trim()
   const local = (file) => (file.startsWith(prefix) ? file.slice(prefix.length) : `../${file}`)
   const full = (file) => (file.startsWith('../') ? file.slice(3) : prefix + file)
@@ -390,7 +400,7 @@ function main() {
       .split('\n')
       .filter((file) => file.startsWith(prefix))
       .map(local)
-  const findings = checkChanges({
+  const findings = await checkChanges({
     changes,
     oldFiles: list(base),
     newFiles: list('HEAD'),
@@ -402,5 +412,5 @@ function main() {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main()
+  await main()
 }
