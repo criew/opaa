@@ -20,39 +20,24 @@ Abmeldung und Rollen je Anbieter.
 
 ### 1. Anmeldefluss: die SPA bleibt der OIDC-Client, das Backend zustandsloser Resource-Server
 
-Die SPA führt den Autorisierungscode-Fluss mit PKCE gegen den gewählten Anbieter — ein
-`UserManager` (`oidc-client-ts`) je Anbieter aus `issuerUri` und `clientId`; alle Anbieter sind
-Public Clients ohne Client-Secret. Das Backend prüft jedes Bearer-Token über einen dynamischen
-Multi-Issuer-Resolver (`OidcSecurityConfig`, `authenticationManagerResolver`): ein `JwtDecoder` je
-aktiviertem Anbieter in der prozesslokalen `OidcProviderRegistry`, die nach jedem Commit einer
-Anbieteränderung neu aufgebaut wird (ADR-0021). Ein Token mit unbekanntem `iss` wird mit `401` und
-`WWW-Authenticate: … error_description="unknown_issuer"` abgewiesen (`SecurityCorsConfig` gibt den
-Header frei); die SPA startet dann keine stille Erneuerung, sondern meldet lokal ab mit der
-Meldung, dass der Anbieter nicht mehr verfügbar ist — sonst liefe sie in eine Schleife. Ein
-Anbieter, dessen Decoder nicht gebaut werden kann (Discovery nicht erreichbar, Adressprüfung),
-wird protokolliert übersprungen und nach einer Wartezeit erneut versucht (`RETRY_INTERVAL`).
-OPAA speichert für die **Anmeldung** keine Tokens und prägt keine; Quellverbindungen und
-verbundene Konten speichern Refresh-, Zugriffstoken und persönliche Geheimnisse verschlüsselt im
-Token-Speicher (ADR-0041), nie das Anmeldetoken eines OIDC-Anbieters; der Dienstkonto-Schlüssel
-(JWT-Assertion, ADR-0040) speichert kein Token, das Zugriffstoken lebt nur im Lauf. Der
-OAuth-Ablauf für Quellen meldet niemanden an OPAA an: `state` und PKCE-Verifier liegen kurzlebig in
-connections und sind an die angemeldete Person gebunden (`ConnectionAuthorization.user_id`; ein
-`state` einer anderen Person wird abgewiesen), der Rücksprung landet in der SPA, das Backend tauscht
-den Code als vertraulicher Client und bleibt zustandslos. Der lokale Issuer aus ADR-0033 ist ein
-weiterer Decoder neben der Registry (`LocalIssuerAuthenticationManagerResolver`).
+Die SPA führt den Autorisierungscode-Fluss mit PKCE gegen den gewählten Anbieter (`oidc-client-ts`,
+ein `UserManager` je Anbieter, nur Public Clients ohne Secret). Das Backend prüft jedes Bearer-Token
+über `OidcSecurityConfig` (`authenticationManagerResolver`): ein `JwtDecoder` je aktiviertem Anbieter
+in der prozesslokalen `OidcProviderRegistry`, nach jedem Commit einer Anbieteränderung neu aufgebaut
+(ADR-0021); der lokale Issuer aus ADR-0033 ist ein weiterer Decoder daneben
+(`LocalIssuerAuthenticationManagerResolver`). Ein unbekannter `iss` ergibt `401` mit
+`error_description="unknown_issuer"`, worauf die SPA lokal abmeldet statt zu erneuern; ein nicht
+baubarer Decoder wird übersprungen und nach `RETRY_INTERVAL` erneut versucht. `AuthorizedPartyValidator`:
+Ein vorhandenes `azp` muss der `client_id` entsprechen, oder `aud` nennt sie; `aud` allein bleibt
+ungeprüft, weil Keycloak es nicht auf den anfragenden Client setzt.
 
-**`azp` wird geprüft, `aud` nicht** (`AuthorizedPartyValidator`): Trägt ein Token `azp`, muss es
-der `client_id` der Anbieterzeile entsprechen; fehlt der Claim, gilt keine Prüfung. Einzige
-Ausnahme: Nennt `aud` die `client_id`, passiert das Token. `aud` bleibt ungeprüft, weil Keycloak
-es nicht auf den anfragenden Client setzt.
-
-Preis: Jeder Anbieter braucht einen Public Client mit PKCE, Redirect-URI `<Origin>/auth/callback`,
-Post-Logout-Redirect `<Origin>` und Web-Origin. „Ohne Neustart" gilt für das Backend, nicht für die
-CSP: `frontend/nginx.conf` führt Anbieter-Origins in `connect-src` über `OPAA_CSP_CONNECT_SRC_EXTRA`,
-ersetzt beim Containerstart; ein Anbieter auf neuem Origin ist erst nach Neustart des
-Frontend-Containers anmeldefähig; der Verbindungstest prüft den Anbieter aus Backend-Sicht, nicht
-aus Browser-Sicht, und das E2E-Szenario (zweiter Realm auf demselben Origin) deckt den
-Neustart-Fall nicht ab.
+Für die Anmeldung speichert und prägt OPAA keine Tokens; Quellverbindungen speichern ihre Tokens
+verschlüsselt im Token-Speicher (ADR-0041), der Dienstkonto-Schlüssel (ADR-0040) keines. Im
+OAuth-Ablauf für Quellen sind `state` und PKCE-Verifier an die angemeldete Person gebunden
+(`ConnectionAuthorization.user_id`; ein fremder `state` wird abgewiesen). Preis: Ein neuer
+Anbieter-Origin wirkt in der CSP (`OPAA_CSP_CONNECT_SRC_EXTRA`) erst nach Frontend-Neustart, den
+weder der Verbindungstest (Backend-Sicht) noch das E2E-Szenario prüft; Client-Einrichtung:
+[Handbuch](../handbuch/authentifizierung.md#oidc-keycloak).
 
 ### 2. Identitätsmodell: `(issuer, subject)` bleibt der Schlüssel, der Anbieter ist über den Issuer eindeutig
 
@@ -76,44 +61,27 @@ Vertrauensanker (es bestimmt, welche Schlüssel Token beglaubigen): nur für `SY
 
 ### 3. Konfiguration in der Datenbank, Bootstrap aus der Umgebung, Adressprüfung mit eigener Allowlist
 
-Anbieter werden über die Admin-API (`identity-providers.yaml`, nur `SYSTEM_ADMIN`) gepflegt und
-wirken ohne Neustart; Anlegen, Ändern, Aktivieren, Löschen sind Audit-Ereignisse
-`OIDC_PROVIDER_*` mit `AuditObjectType.SYSTEM_SETTING`. `OidcProviderSeeder` übernimmt beim
-ersten Start im `oidc`-Profil `opaa.auth.oidc.{issuer-uri,client-id,jwk-set-uri}` (ohne
-Vorgabewerte) als erste aktivierte Standard-Anbieterzeile, gegen Wiederholung durch
-`OidcProviderSeedMarker` gesichert — nicht durch „ist die Tabelle leer?"; eine von der Issuer-URI
-abweichende `OPAA_OIDC_AUTHORITY` wird protokolliert und verworfen. Danach bestimmen die
-Variablen den Betrieb nicht mehr, bleiben aber gesetzt als implizit erlaubte Adressen der
-Adressprüfung. Ein Start ohne übernommenen Anbieter schreibt keine Markierung und holt die
-Übernahme beim nächsten Start nach. Der `dev`-Modus kennt keine Anbieterzeilen und schreibt keine
-Markierung. Solange OIDC-Anbieter existieren, ist genau einer Standard (`ux_oidc_providers_single_default`):
-Der erste angelegte wird es automatisch; der Standardanbieter kann weder deaktiviert noch
-gelöscht werden, solange ein anderer OIDC-Anbieter aktiviert ist, bevor dieser zum Standard
-gemacht wurde (`409`).
+Anbieter werden über die Admin-API (`identity-providers.yaml`, nur `SYSTEM_ADMIN`) gepflegt, wirken
+ohne Neustart und sind Audit-Ereignisse `OIDC_PROVIDER_*` (`AuditObjectType.SYSTEM_SETTING`).
+`OidcProviderSeeder` übernimmt beim ersten Start im `oidc`-Profil
+`opaa.auth.oidc.{issuer-uri,client-id,jwk-set-uri}` als aktivierte Standardzeile, gesichert durch
+`OidcProviderSeedMarker` statt „Tabelle leer?“; ein Start ohne Übernahme schreibt keine Markierung,
+eine abweichende `OPAA_OIDC_AUTHORITY` wird protokolliert verworfen, die Variablen bleiben erlaubte
+Adressen der Adressprüfung. `OPAA_OIDC_BOOTSTRAP=force` (bis 31.03.2027, abgelöst durch
+`OPAA_LOCAL_ADMIN_RESET=force`) überschreibt oder legt die Zeile einmalig an, aktiviert sie und macht
+sie zum Standard (`OidcProviderSeeder#forceBootstrap`; unvollständige Umgebung: `ERROR`). Genau ein OIDC-Anbieter ist Standard
+(`ux_oidc_providers_single_default`), der erste automatisch; `is_default` steuert Anmeldevorschlag
+und Löschschutz: Der Standard ist nicht deaktivier- oder löschbar, solange ein anderer aktivierter
+Anbieter an seine Stelle treten kann (`409`). Der letzte aktivierte OIDC-Anbieter darf gehen, wenn
+`LocalAdminAvailabilityGuard` einen lokalen Systemverwalter findet (sonst `409
+LAST_LOGIN_CAPABLE_ADMIN`) und `acknowledgeLastProvider` gesetzt ist (ADR-0033); `InitialAdminPolicy`
+vergibt `SYSTEM_ADMIN` nur dem Dev-Issuer.
 
-Seit ADR-0033 ist der Erstadministrator das lokale Notanker-Konto; `InitialAdminPolicy` vergibt
-`SYSTEM_ADMIN` allein für den Dev-Issuer, ein Zustand ohne OIDC-Anbieter ist zulässig, und der
-letzte aktivierte OIDC-Anbieter darf deaktiviert oder gelöscht werden, wenn
-`LocalAdminAvailabilityGuard` einen gesicherten lokalen Systemverwalter findet (sonst 409
-`LAST_LOGIN_CAPABLE_ADMIN`) und der Aufruf `acknowledgeLastProvider` trägt; die Zeile behält
-`is_default`. `is_default` steuert Anmeldevorschlag und Löschschutz; der Verzeichnisabgleich
-hängt an der Anbieterzeile (ADR-0036). `OPAA_OIDC_BOOTSTRAP=force` lässt den Seeder die Markierung einmalig
-ignorieren (`OidcProviderSeeder#forceBootstrap`): Eine Zeile mit diesem Issuer wird aktiviert, mit
-den Umgebungswerten überschrieben und zum Standard gemacht, sonst neu angelegt — laut
-protokolliert, der Betrieb entfernt die Variable danach; mit unvollständiger Umgebung bleibt es
-`ERROR`. Die Variable bleibt bis **31.03.2027** und ist durch `OPAA_LOCAL_ADMIN_RESET=force`
-abgelöst. Ein Start ohne übernommenen Anbieter meldet „keine Anmeldung möglich" (`ERROR`) nur,
-wenn kein anmeldefähiger lokaler Systemverwalter existiert; mit einem solchen Konto ist eine
-fehlende Issuer-URI `INFO`, eine unvollständige Angabe bleibt `ERROR` (#2396).
-
-**Adressprüfung (SSRF)** über `OidcAddressPolicy` mit eigenem Block
-`opaa.auth.oidc.target-validation.{enabled,allowlist}` (`OPAA_OIDC_TARGET_VALIDATION_*`), nicht
-über die Indexing-Konfiguration — wer die Konnektorprüfung abschaltet, schaltet die Anmeldung nicht
-mit. Die beiden Adressen aus `OPAA_OIDC_ISSUER_URI` und `OPAA_OIDC_JWK_SET_URI` sind nach Schema,
-Host **und** Port immer erlaubt. Geprüft wird beim Speichern, beim Aufbau der Registry, vor jedem
-Abruf des Verbindungstests und für die aus der Discovery gelesene `jwks_uri`; Weiterleitungen
-werden nicht gefolgt, das Discovery-Dokument muss die konfigurierte `issuer_uri` nennen, und jeder
-Decoder trägt einen Issuer-Validator (`NimbusOidcJwtDecoderFactory`).
+Die Adressprüfung (`OidcAddressPolicy`) hat einen eigenen Block `opaa.auth.oidc.target-validation.*`,
+damit das Abschalten der Konnektorprüfung die Anmeldung nicht mitnimmt; sie gilt beim Speichern, beim
+Registry-Aufbau, im Verbindungstest und für die `jwks_uri` der Discovery, ohne Weiterleitungen, und
+jeder Decoder trägt einen Issuer-Validator. Startmeldungen (#2396) und Betrieb:
+[Handbuch](../handbuch/authentifizierung.md#bestandsübernahme-aus-opaa_oidc_).
 
 ### 4. Claim-Zuordnung, Rollen, Gruppen und Organisation je Anbieter
 
@@ -196,9 +164,10 @@ braucht einen Frontend-Neustart; eine Organisation; der `dev`-Modus bleibt unver
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
 | 2026-09-12 | #1529, #1534 | Erstadministrator ist das lokale Notanker-Konto; letzter OIDC-Anbieter mit Guard deaktivierbar (ADR-0033) | 3 |
-| 2026-09-13 | #1631 | Automatischer Versuch mit `prompt=none`; jede OAuth-Absage endet still | 5 |
+| 2026-09-13 | #1631 | Automatischer Versuch mit `prompt=none`; seine OAuth-Absage endet still | 5 |
 | 2026-09-13 | #1629, #1630 | „Mit anderem Konto anmelden" entfällt | 5 |
 | 2026-09-20 | #1816 | Verzeichnisabgleich je Anbieter, `TrustedProvider` entfällt (ADR-0036) | 4 |
 | 2026-10-03 | #2159 | Token für Quellen und verbundene Konten im Token-Speicher (ADR-0041) | 1 |
 | 2026-10-09 | #2396 | Startmeldung ohne Anbieter nur `ERROR`, wenn kein lokaler Systemverwalter | 3 |
 | 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 1–5 |
+| 2026-10-14 | #2762 | Zweitprüfung: Entscheidungen 1 und 3 ohne inhaltliche Änderung gestrafft, Betrieb im Handbuch | 1, 3 |
