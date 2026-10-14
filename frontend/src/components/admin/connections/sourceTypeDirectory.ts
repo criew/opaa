@@ -11,7 +11,10 @@ import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type { ComponentType } from 'react'
 import type { SourceTypeKey } from '@/shared/api/types'
 
-/** How every area names and marks one source type: the library wizard as the connections area. */
+/**
+ * Name, description and symbol of one source type, the same in the library wizard and in the
+ * connections area.
+ */
 export interface SourceTypeEntry {
   label: string
   shortLabel: string

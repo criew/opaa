@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mockSourceTypes } from '../../../mocks/libraryFixtures'
 import { EMPTY_CONFLUENCE_VALUES } from '../../../utils/confluenceSource'
 import { EMPTY_S3_VALUES } from '../../../utils/s3Source'
-import { sourceTypeEntry } from '../../admin/connections/sourceTypeDirectory'
+import { SOURCE_TYPE_DIRECTORY, sourceTypeEntry } from '../../admin/connections/sourceTypeDirectory'
 import { registeredSourceTypes, sourceRegistration } from './registry'
 import type { SourceConfiguration, SourceFormContext } from './types'
 
@@ -39,6 +39,10 @@ describe('the source registry (ADR-0038)', () => {
     ])
     expect(sourceRegistration('UPLOAD')?.configuration).toBeNull()
     expect(sourceRegistration('PROBE')).toBeUndefined()
+  })
+
+  it('knows exactly the source types of the connection directory', () => {
+    expect(Object.keys(SOURCE_TYPE_DIRECTORY).sort()).toEqual([...registeredSourceTypes].sort())
   })
 
   it.each(registeredSourceTypes)(

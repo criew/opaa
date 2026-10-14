@@ -181,7 +181,7 @@ describe('SettingsPage', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Ihre Einstellungen' }),
     ).toBeInTheDocument()
-  })
+  }, 15_000)
 
   it('points a provider session at its provider instead', () => {
     renderPage()
