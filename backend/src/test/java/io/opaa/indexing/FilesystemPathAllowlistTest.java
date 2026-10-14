@@ -1,8 +1,8 @@
-package io.opaa.sourceaccess;
+package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.FilesystemProperties;
+import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
