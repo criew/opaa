@@ -1,9 +1,9 @@
 import { http, HttpResponse } from 'msw'
 import { assetRoleLabel } from '@/shared/utils/labels'
-import { mockPromptLibraries } from '../../prompt/mocks/promptLibraryFixtures'
-import { mockUser } from '../../../mocks/authFixtures'
-import { mockSpaceDetails } from '../../space/mocks/spaceFixtures'
-import { mockLibraryDetails } from '../../library/mocks/libraryFixtures'
+import { mockPromptLibraries } from '@/features/prompt/mocks/promptLibraryFixtures'
+import { mockUser } from '@/shared/mocks/authFixtures'
+import { mockSpaceDetails } from '@/features/space/mocks/spaceFixtures'
+import { mockLibraryDetails } from '@/features/library/mocks/libraryFixtures'
 import {
   associationListOf,
   mockSpaceAssetAssociations,

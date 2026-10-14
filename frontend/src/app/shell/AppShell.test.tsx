@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
-import { renderWithProviders } from '../test/test-utils'
+import { renderWithProviders } from '@/test/test-utils'
 import AppShell from './AppShell'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useUiStore } from '@/shared/stores/uiStore'
@@ -10,7 +10,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import GlobalAreaLayout from './GlobalAreaLayout'
 import { useSpaceListLoader } from '@/features/asset'
-import { loadSpaceList } from '../app/themeSeams'
+import { loadSpaceList } from '../themeSeams'
 
 const ADMIN_SECTIONS = [{ label: 'Benutzer & Gruppen', to: '/admin/groups' }]
 

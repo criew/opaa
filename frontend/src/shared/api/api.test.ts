@@ -1,7 +1,7 @@
 import { AxiosError } from 'axios'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { server } from '../../mocks/server'
+import { server } from '@/test/server'
 import { getHealth, normalizeError } from './api'
 
 /** Minimal stand-in for the parts of AxiosResponse that normalizeError reads. */

@@ -2,8 +2,8 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
-import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
-import { server } from '../../../mocks/server'
+import { answerConfirm, renderWithProviders } from '@/test/test-utils'
+import { server } from '@/test/server'
 import PermissionTransferDialog from './PermissionTransferDialog'
 
 function renderDialog() {

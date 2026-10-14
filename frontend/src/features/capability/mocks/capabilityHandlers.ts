@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { mockAuthConfig } from '../../../mocks/authFixtures'
+import { mockAuthConfig } from '@/shared/mocks/authFixtures'
 import { mockMyCapabilities } from './capabilityFixtures'
 
 export const capabilityHandlers = [

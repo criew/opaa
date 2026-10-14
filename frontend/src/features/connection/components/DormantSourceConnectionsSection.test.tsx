@@ -1,8 +1,8 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { server } from '../../../mocks/server'
-import { renderWithProviders } from '../../../test/test-utils'
+import { server } from '@/test/server'
+import { renderWithProviders } from '@/test/test-utils'
 import type { DormantSourceConnection } from '@/shared/api/types'
 import DormantSourceConnectionsSection from './DormantSourceConnectionsSection'
 

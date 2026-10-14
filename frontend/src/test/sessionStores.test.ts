@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import type { StoreApi } from 'zustand'
-import { server } from '../mocks/server'
+import { server } from './server'
 import { useAuthStore } from '@/shared/session/authStore'
 import { registeredSessionStores } from '@/shared/session/resettableStores'
 

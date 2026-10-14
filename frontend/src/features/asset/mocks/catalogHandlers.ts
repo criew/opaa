@@ -7,12 +7,12 @@ import type {
   LibraryListResponse,
 } from '@/shared/api/types'
 import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
-import { mockAuthConfig } from '../../../mocks/authFixtures'
-import { mockLibraries, mockLibraryDetails } from '../../library/mocks/libraryFixtures'
+import { mockAuthConfig } from '@/shared/mocks/authFixtures'
+import { mockLibraries, mockLibraryDetails } from '@/features/library/mocks/libraryFixtures'
 import {
   mockPromptLibraries,
   mockUnreadablePromptLibraryIds,
-} from '../../prompt/mocks/promptLibraryFixtures'
+} from '@/features/prompt/mocks/promptLibraryFixtures'
 
 /**
  * A knowledge library's own state, see CatalogEntryStatus. Upload libraries are approximated by

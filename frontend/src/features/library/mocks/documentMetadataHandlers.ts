@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { mockUser } from '../../../mocks/authFixtures'
+import { mockUser } from '@/shared/mocks/authFixtures'
 import { mockLibraryDetails, mockLibraryDocuments } from './libraryFixtures'
 import { mockDocumentMetadata, mockDocumentTypeVocabulary } from './libraryMetadataFixtures'
 import type {

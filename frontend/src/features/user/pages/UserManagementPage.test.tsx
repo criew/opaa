@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { Navigate, Route, Routes } from 'react-router'
-import { server } from '../../../mocks/server'
+import { server } from '@/test/server'
 import {
   LAST_ADMIN_USER_ID,
   MAIL_FAILING_ADDRESS_SUFFIX,
@@ -14,7 +14,7 @@ import {
 } from '../mocks/localUserFixtures'
 import { resetMockProviderAccounts } from '../mocks/accountFixtures'
 import type { LocalAuthSettingsUpdateRequest, LocalUserUpdateRequest } from '@/shared/api/types'
-import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../../../test/test-utils'
+import { answerConfirm, renderWithProviders, waitForDialogClosed } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useMailStore } from '@/features/mail'
 import { useUserAdminStore } from '../stores/userAdminStore'

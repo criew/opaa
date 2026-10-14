@@ -5,7 +5,7 @@ import { Link, MemoryRouter, Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { createAppTheme } from '@/shared/theme/theme'
-import { server } from '../../../mocks/server'
+import { server } from '@/test/server'
 import ChatPage from './ChatPage'
 import { useChatStore } from '../stores/chatStore'
 
