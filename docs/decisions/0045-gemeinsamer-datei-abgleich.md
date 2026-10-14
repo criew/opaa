@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · übernimmt Entscheidung 1 von [ADR-0040](0040-google-drive-konnektor.md)
+Akzeptiert · zuletzt geändert 2026-10-14 · ersetzt Entscheidung 1 von [ADR-0040](0040-google-drive-konnektor.md)
 · ergänzt [ADR-0027](0027-s3-konnektor.md) · ergänzt durch [ADR-0046](0046-smb-konnektor.md) und
 [ADR-0047](0047-sharepoint-konnektor.md)
 
@@ -203,7 +203,7 @@ der Strom den Rundenbeginn-Cursor. Eine Ablehnung in der Auflistung eines Vollab
 `fullSyncCompletedAt` leer, der nächste Lauf ist wieder ein Vollabgleich, solange die Bibliothek voll
 bleibt. Ein Confluence-Vollabgleich setzt dieselbe Marke, sobald ein Lauf etwas ablehnt, und speichert
 sie sofort, weil die abgelehnte Seite älter ist als der Anker, mit dem er endet. Eine untertreibende
-Listengröße kostet den Download wie bisher, eine übertreibende hält die Datei zurück, bis Platz für die
+Listengröße kostet den Download, eine übertreibende hält die Datei zurück, bis Platz für die
 gelistete Größe frei ist.
 
 ### 10. Pfadlänge
@@ -252,14 +252,19 @@ bekommt Vermerke, die niemand verbraucht und die mit dem Zustand fallen.
 
 - `indexing.source.filesync` oder Abgleich im Vertragspaket — Strukturtests rot (Entscheidung 1).
 - Basisklasse im S3-Paket — Konnektoren kennen einander nicht.
-- Eigenes Modul zwischen knowledge und connectors — neue Modulkante für ein Paket, das im Kern denselben Platz hat.
-- Identität aus dem Ordnerpfad, Umbenennung als Löschen und Neuanlegen — jede Ordnerumbenennung verarbeitete alles darunter neu.
+- Eigenes Modul zwischen knowledge und connectors — neue Modulkante für ein Paket, das im Kern
+  denselben Platz hat.
+- Identität aus dem Ordnerpfad, Umbenennung als Löschen und Neuanlegen — jede Ordnerumbenennung
+  verarbeitete alles darunter neu.
 - Kette aus Ordner-IDs als `file_path` — jede Verschiebung erzeugte ein neues Dokument.
-- Ordnermerkmale im Konnektor speichern — ein Konnektor hat keinen Zustand, nur `FileSync` kennt ungeklärte Einträge.
+- Ordnermerkmale im Konnektor speichern — ein Konnektor hat keinen Zustand, nur `FileSync` kennt
+  ungeklärte Einträge.
 - Zeilenzähler statt Löschvermerk — übersah Löschungen, die ein Ereignislauf ausglich.
 - `SINGLE_RUN` auch für SMB — große Freigaben entfernten nie etwas.
-- Eindeutiger Index über einen Hash von `file_path` — Migration und geänderte Suche für Pfade, die kaum vorkommen.
-- Pfadgrenze im Store (`Exclusion.Unavailable`) — hielt den Ordner im Gedächtnis offen; zentral in der Aufnahme gilt sie für jede Quelle.
+- Eindeutiger Index über einen Hash von `file_path` — Migration und geänderte Suche für Pfade, die
+  kaum vorkommen.
+- Pfadgrenze im Store (`Exclusion.Unavailable`) — hielt den Ordner im Gedächtnis offen; zentral in
+  der Aufnahme gilt sie für jede Quelle.
 
 ## Offen
 

@@ -80,7 +80,7 @@ Confluence-Zugangsdaten gehören der Bibliothek und liegen ruhend verschlüsselt
 `OPAA_CREDENTIALS_ENCRYPTION_KEY`): bei eigener Adresse in `knowledge_libraries.source_credentials`
 (`SourceCredentialsConverter`/`CredentialsEncryptor`, `SecretOwner.LibraryOwned`), an einem Zugang
 seit #2273 als Zeile der Bibliothek im Token-Speicher `connection_tokens`
-(`SecretOwner.LibraryOnProfile`, `kind = 'PERSONAL_SECRET'`; ADR-0041). Angenommen werden sie
+(`SecretOwner.LibraryOnProfile`, `kind = 'PERSONAL_SECRET'`; ADR-0048, Entscheidung 9). Angenommen werden sie
 über das nur-schreibende Feld `sourceCredentials`.
 Das Format hängt von der Edition ab (`ConfluenceCredentials#parse`): Cloud `<E-Mail>:<API-Token>`
 (HTTP Basic, zerlegt am ersten Doppelpunkt; die Oberfläche erfasst zwei Felder), Data Center das
@@ -213,3 +213,4 @@ Zieladressprüfung ist eine Betriebseinstellung je Adresse, keine Eigenschaft de
 | 2026-10-11 | #2273 | Geheimnis einer Bibliothek an einem Zugang liegt im Token-Speicher (ADR-0041) | 3, 5 |
 | 2026-10-12 | #2496 | Proxy je Bibliothek entfernt, hausweiter Ausgangsproxy (ADR-0041) | Kontext |
 | 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3, 5 |
+| 2026-10-14 | #2702 | Verweise auf ADR-0045/0048/0050 | — |

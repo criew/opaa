@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · ersetzt die Proxy- und TLS-Felder aus
+Akzeptiert · zuletzt geändert 2026-10-14 · ersetzt die Proxy- und TLS-Felder aus
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) (Entscheidung 3a), [ADR-0023](0023-confluence-konnektor.md)
 und [ADR-0027](0027-s3-konnektor.md)
 
@@ -63,9 +63,8 @@ Namen wählt, sieht OPAA nicht.
 (`DropSourceProxyMigrationTest`; der Constraint `chk_knowledge_libraries_upload_without_source` ist
 ohne die Spalte neu angelegt). `sourceProxy` entfällt in allen Schemas von Bibliothek,
 Verbindungstest, Auflistung und Zugang; `SourceSettings`, `ClientRegistration`,
-`ConnectionProfileValues` und die Verbindungs-Records der Konnektoren tragen keinen Proxy mehr,
-`ProxyAndCredentials` ist zu `BasicCredentials` geworden, `SourceHttpClientFactory` baut jeden
-Client ohne eigenen Proxy. Ein geänderter Ausgangsproxy verlangt kein neues Client-Secret, weil die
+`ConnectionProfileValues` und die Verbindungs-Records der Konnektoren tragen keinen Proxy
+(`BasicCredentials`), `SourceHttpClientFactory` baut jeden Client ohne eigenen Proxy. Ein geänderter Ausgangsproxy verlangt kein neues Client-Secret, weil die
 Endpunkte eines Zugangs `https://` sind (ADR-0048, Entscheidung 8). Fingerabdruck des
 Abgleichstands (ADR-0045, Entscheidung 8) und Bindung der Geheimnisse nennen den Proxy nicht.
 
@@ -73,10 +72,10 @@ Abgleichstands (ADR-0045, Entscheidung 8) und Bindung der Geheimnisse nennen den
 
 `knowledge_libraries.source_insecure_ssl` und `connection_profiles.source_insecure_ssl` sind
 entfernt (`DropSourceInsecureSslMigrationTest`); `sourceInsecureSsl` entfällt in allen Schemas und
-Formularen. `SourceHttpClientFactory.buildHttpClient()` baut jeden Client mit dem Truststore der JVM,
-der vertrauende Trust-Manager ist entfernt, `S3SdkClient` setzt `TRUST_ALL_CERTIFICATES` nicht
-mehr; `SourceSettings`, `S3ClientSettings`, `UrlIndexingRequest`, `RssFeedRunContext` und die
-Verbindungs-Records tragen keinen Schalter. Der Rahmen eines Zugangs besteht nur noch aus
+Formularen. `SourceHttpClientFactory.buildHttpClient()` baut jeden Client mit dem Truststore der JVM
+ohne eigenen Trust-Manager, `S3SdkClient` ohne `TRUST_ALL_CERTIFICATES`; `SourceSettings`,
+`S3ClientSettings`, `UrlIndexingRequest`, `RssFeedRunContext` und die Verbindungs-Records tragen
+keinen Schalter. Der Rahmen eines Zugangs besteht nur noch aus
 Server-Adresse, Anmeldung und Vorgaben. Ein Betrieb mit eigener Zertifizierungsstelle ergänzt sie im
 Truststore der JVM (Handbuch `betrieb.md`).
 
@@ -110,7 +109,8 @@ abgelehnter Tunnel bei S3 erscheint als Antwort des Objektspeichers.
 - Proxy je Client konfigurieren — jeder Client bräuchte eigenen Code, Spring AI baut OkHttp mit `proxy(null)`.
 - Proxy-Authentifizierung — der JDK sperrt Basic für `CONNECT`, je Client-Familie ein Authenticator.
 - Proxy-Host prüfen — geprüft wird das Ziel; der Proxy ist Infrastruktur des Hauses.
-- Eigener TLS-Kontext je Client — nur mit einer Naht im Produktionscode, `SourceHttpClientFactory` baut ihn selbst.
+- Eigener TLS-Kontext je Client — nur mit einer Naht im Produktionscode, `SourceHttpClientFactory`
+  baut ihn selbst.
 
 ## Offen
 

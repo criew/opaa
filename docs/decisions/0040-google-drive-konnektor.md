@@ -2,10 +2,10 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt [ADR-0027](0027-s3-konnektor.md),
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0027](0027-s3-konnektor.md),
 [ADR-0038](0038-steckbare-konnektoren.md) (Entscheidung 7, Anmeldeart Dienstkonto-Schlüssel) und
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) · ergänzt durch
-[ADR-0045](0045-gemeinsamer-datei-abgleich.md), das Entscheidung 1 übernimmt
+[ADR-0045](0045-gemeinsamer-datei-abgleich.md), das Entscheidung 1 ersetzt
 
 ## Kontext
 
@@ -23,8 +23,7 @@ jede Datei hat genau einen Elternordner.
 
 ### 1. Gemeinsamer Datei-Abgleich
 
-Übernommen von [ADR-0045](0045-gemeinsamer-datei-abgleich.md) (Entscheidungen 1 bis 3): Paket
-`indexing.filesync`, Port `FileStore` mit `ChangeFeed`; Drive implementiert ihn in `DriveFileStore`.
+Entfallen mit #2702, siehe [ADR-0045](0045-gemeinsamer-datei-abgleich.md) Entscheidung 1.
 
 ### 2. Anmeldung: Dienstkonto-Schlüssel, signiert im Kern
 
@@ -68,12 +67,14 @@ sind die Zugangsdaten Pflicht — sonst lenkte jede Person mit Verwaltungsrecht 
 Delegationsschlüssel auf ein beliebiges Konto um. Die Regel gilt für jede Anmeldeart mit Subjekt.
 Das Konto steht sichtbar in den Bibliotheksdetails und im Audit; technisch prüfen, ob es ein
 Funktionskonto ist, kann OPAA nicht. Am Zugang setzt nur der Zugang `subject` (`DefaultKey#profileOnly`);
-ein Wert der Bibliothek ist `400`, fehlt er am Zugang, wird niemand imitiert. Eine Änderung verwirft den Abgleichstand aller Bibliotheken auf dem Zugang (ihr nächster Lauf
-ist ein Vollabgleich), nennt vorher die Zahl der Bibliotheken, benachrichtigt danach ihre Verwaltenden
-und wird abgelehnt, solange eine läuft; der Schlüssel bleibt am Zugang (seit #2220). Das Handbuch
-verlangt ein Funktionskonto und empfiehlt für Delegation einen Zugang. Die Prüfung einer Bibliothek
-vor dem Speichern meldet sich nicht bei Google an (`EffectiveSourceSettings#ofDraftToValidate`),
-Verbindungstest und Auflistung tun es. Persönliche Ablagen echter Personen sind nicht Teil dieses ADR.
+ein Wert der Bibliothek ist `400`, fehlt er am Zugang, wird niemand imitiert. Eine Änderung verwirft
+den Abgleichstand aller Bibliotheken auf dem Zugang (ihr nächster Lauf ist ein Vollabgleich), nennt
+vorher die Zahl der Bibliotheken, benachrichtigt danach ihre Verwaltenden und wird abgelehnt,
+solange eine läuft; der Schlüssel bleibt am Zugang (seit #2220). Das Handbuch verlangt ein
+Funktionskonto und empfiehlt für Delegation einen Zugang. Die Prüfung einer Bibliothek vor dem
+Speichern meldet sich nicht bei Google an (`EffectiveSourceSettings#ofDraftToValidate`),
+Verbindungstest und Auflistung tun es. Persönliche Ablagen echter Personen sind nicht Teil dieses
+ADR.
 
 ### 5. Geltungsbereiche
 
@@ -162,9 +163,11 @@ Entscheidung 8) ihn verwirft.
 
 ## Verworfene Alternativen
 
-- Zentrale OPAA-OAuth-App — Verifizierung, jährliche Sicherheitsprüfung, ein Geheimnis für alle Installationen.
+- Zentrale OPAA-OAuth-App — Verifizierung, jährliche Sicherheitsprüfung, ein Geheimnis für alle
+  Installationen.
 - `google-api-services-drive` mit `google-auth-library` — zweiter HTTP-Stack, Schutzmechanismen doppelt, `token_uri` aus der Schlüsseldatei.
-- Schlüssel verdichtet speichern, Spalte unverändert — die Spec-Grenze 4096 sagte Werte zu, die die Spalte nicht trägt.
+- Schlüssel verdichtet speichern, Spalte unverändert — die Spec-Grenze 4096 sagte Werte zu, die die
+  Spalte nicht trägt.
 - Spec-Grenze nur im Drive-Konnektor prüfen — jeder andere Konnektor bekäme ein `409` statt `400`.
 - `version` als Merkmal — zu viele Fehlalarme.
 - PDF als einheitliches Zielformat — verliert Überschriften, Tabellen und Blätter.
@@ -174,7 +177,8 @@ Entscheidung 8) ihn verwirft.
 - Profilpflicht nur mit Delegation — die Profilangabe gilt einmal je Typ.
 - Dienstkonto-Schlüssel als Client-Credentials — anderer Ablauf, Profilpflicht.
 - Signieren im Konnektor — der Konnektor sähe den Schlüssel (ADR-0041, Entscheidung 3).
-- Bibliotheken nach `subject`-Wechsel ruhen lassen, bis neu verbunden — der Schlüssel liegt am Zugang und wird nicht je Bibliothek bestätigt.
+- Bibliotheken nach `subject`-Wechsel ruhen lassen, bis neu verbunden — der Schlüssel liegt am
+  Zugang und wird nicht je Bibliothek bestätigt.
 
 ## Offen
 

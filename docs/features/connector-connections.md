@@ -674,8 +674,9 @@ Werkzeugaufrufe, Freigabe schreibender Aufrufe und Ausgangstor gehören zu #1747
 
 Stand der Umsetzung ([#2173](https://github.com/criew/opaa/issues/2173)): Profilart, Erkennung
 und Token-Bindung sind gebaut und nur über die Verwaltungs-API erreichbar. Bis zur
-Nutzungsfreigabe verbindet nur die Systemverwaltung. Einzelheiten stehen im Nachtrag zu
-[ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) vom 05.10.2026.
+Nutzungsfreigabe verbindet nur die Systemverwaltung. Einzelheiten stehen in
+[ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md), Entscheidung 5, und
+[ADR-0048](../decisions/0048-oauth-kern-und-zugangs-geheimnisse.md), Entscheidung 7.
 
 ---
 
@@ -704,7 +705,7 @@ Der Spike zum Token-Austausch gegen openDesk ist abgeschlossen
 | [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage (Neuverbinden ist keine), Sperre auf Läufe; **Nur-Besitzerin-Regel** für private Bibliotheken als eigene Sperre am Grant- und Fremdzugangspfad, von der Systemverwaltung nicht lockerbar; „Sicht als“ für private Bibliotheken ausgeschlossen; ~~**Vorfallszugriff auf Inhalte** als neue Befugnis neben den Rollen~~ (mit dem Nachtrag vom 11.10.2026 entfallen, #2171: kein Vorfallszugriff, Untersuchung in der Originalquelle); Leserolle des Verbindungsprotokolls |
 | [ADR-0038](../decisions/0038-steckbare-konnektoren.md) | Profilangabe (verboten, optional, Pflicht) und Anmeldearten gehören in die Konnektor-Beschreibung; das Ziel der Zugangsdaten leitet sich bei Profilen aus der Server-Adresse des Profils ab; Entscheidung 3 („genau zwei Plätze für Geheimnisse“) wird um das Client-Secret am Profil und den Token-Speicher erweitert, beide auf demselben Verschlüsselungsweg |
 
-Bedingt, nur falls der Token-Austausch zur fünften Anmeldeart wird: je ein Nachtrag zu
+Bedingt, nur falls der Token-Austausch zur fünften Anmeldeart wird: je eine Fortschreibung von
 [ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md) und
 [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md), siehe
 [Token-Austausch](#token-austausch-ergebnis-des-spikes-entscheidung-offen).
@@ -738,7 +739,7 @@ legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
 - **Live-Abfrage** verbundener Konten im Chat ohne Indexierung: mit #1747.
 - **Token-Austausch** als fünfte Anmeldeart, nur für den Live-Zugriff: Der Spike
   ([#2174](https://github.com/criew/opaa/issues/2174)) belegt die Machbarkeit. Die Entscheidung
-  fällt mit der Live-Abfrage (#1747) und braucht Nachträge zu ADR-0025 und ADR-0041. Offen sind
+  fällt mit der Live-Abfrage (#1747) und braucht eine Fortschreibung von ADR-0025 und ADR-0041. Offen sind
   außerdem die Einstellungen einer echten openDesk-Installation und Open-Xchange (siehe
   [Anmeldearten](#anmeldearten)).
 - **Weitere Kanäle** für Ablaufwarnungen und Abbrüche (E-Mail, Zusammenfassung): Heute gibt es die

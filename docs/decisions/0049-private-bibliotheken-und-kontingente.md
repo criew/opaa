@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-10 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
 (Entscheidungen 4, 6 und 9), [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0045](0045-gemeinsamer-datei-abgleich.md) (Entscheidung 9)
 
@@ -139,9 +139,11 @@ mit `QUOTA_EXHAUSTED`.
 
 ## Verworfene Alternativen
 
-- Lauf am erschöpften Personenkontingent beenden (`PersonalQuotaExhaustedException`) — kein Abgleich, keine Erholung; Element überspringen wie beim Bibliothekskontingent (Maintainer, #2276).
+- Lauf am erschöpften Personenkontingent beenden (`PersonalQuotaExhaustedException`) — kein
+  Abgleich, keine Erholung; Element überspringen wie beim Bibliothekskontingent (Maintainer, #2276).
 - Exakte Zähler im Löschnachweis — ließen auf Umfang der Nutzung schließen (Maintainer, #2270).
-- Veto der privaten Bibliothek gegen eine Zugangsänderung — eine Person blockierte die Verwaltung; stattdessen Lösen mit Benachrichtigung.
+- Veto der privaten Bibliothek gegen eine Zugangsänderung — eine Person blockierte die Verwaltung;
+  stattdessen Lösen mit Benachrichtigung.
 - Fester Faktor für die Transferkodierung — zählte bei 7bit und quoted-printable zu wenig.
 - Eigene Laufkategorie je Kontingent — eine genügt, das Element im Protokoll nennt das Kontingent.
 

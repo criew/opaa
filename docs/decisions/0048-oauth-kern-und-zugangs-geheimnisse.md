@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
 (Entscheidungen 3, 5, 9 und 12) und [ADR-0025](0025-mehrere-oidc-anbieter.md)
 
 ## Kontext
@@ -159,7 +159,7 @@ Zugang mit eigenem Endpunkt laufen über TLS (`FakeAuthorizationServer.overTls()
 
 Jedes Geheimnis an einem Zugang hat genau einen Ort: `SecretOwner.LibraryOnProfile` für eine
 geteilte Bibliothek mit `PERSONAL_SECRET` oder `NONE` (Zeile in `connection_tokens`, `kind =
-'PERSONAL_SECRET'`), `LibraryOwned` nur noch für die eigene Adresse (`source_credentials`). Die Zeile
+'PERSONAL_SECRET'`), `LibraryOwned` für die eigene Adresse (`source_credentials`). Die Zeile
 gehört der Bibliothek, gebunden an `issued_for`, läuft nicht ab und wird nicht widerrufen. Anlegen
 und Ändern schreiben über `LibraryConnectionService#replaceOwnSecret`; Zuordnen verschiebt das
 Geheimnis in den Speicher (`EffectiveSourceSettings#adoptFrame`, `ConnectionSecrets#carryOver`),
@@ -187,8 +187,10 @@ mitgelieferter Konnektor bietet OAuth für Personen an; Dropbox bietet es nur f�
 
 ## Verworfene Alternativen
 
-- Widerruf im Request-Thread — eine Notabschaltung mit 100 Konten bei totem Anbieter dauerte 25 Minuten und hielt die Datenbankverbindung.
-- Widerruf per Refresh-Token bei `BearerPost` — der Endpunkt nimmt nur das Zugriffstoken; ein Refresh-Token ginge nur über RFC 7009.
+- Widerruf im Request-Thread — eine Notabschaltung mit 100 Konten bei totem Anbieter dauerte 25
+  Minuten und hielt die Datenbankverbindung.
+- Widerruf per Refresh-Token bei `BearerPost` — der Endpunkt nimmt nur das Zugriffstoken; ein
+  Refresh-Token ginge nur über RFC 7009.
 - Verteilung der Warteschlange je Zugang — nicht gebaut, Head-of-Line-Blocking akzeptiert.
 - Proxy-Regel für `http://`-Endpunkte (#2297) — seit der `https://`-Pflicht erreicht keine Änderung den Zweig.
 - Dynamische Client-Registrierung für MCP-Server — Entscheidung 7 des Phase-3-Plans.

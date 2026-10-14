@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0038](0038-steckbare-konnektoren.md) · ergänzt durch
 [ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md) (OAuth-Kern und Geheimnisse des Zugangs),
@@ -76,7 +76,7 @@ laufen im Speicher (ADR-0048, Entscheidung 4). Verbindungstest und Auflistung vo
 über library, das connections direkt fragt; der Konnektor bekommt das Geheimnis auch dort nur über
 `SourceSettings`.
 
-### 3a. Umbau der Lauf-SPI: Konnektoren lesen nichts mehr selbst aus der Bibliothek
+### 3a. Lauf-SPI: Konnektoren lesen keine Zugangsdaten selbst aus der Bibliothek
 
 Lauf, Originalabruf und die Verwaltungsmethoden von `SourceConnector` bekommen `SourceSettings`
 vom Kern: Ziel, Geheimnis mit Art (persönliches Geheimnis oder Zugriffstoken) und
@@ -86,7 +86,7 @@ Konnektor-Einstellungen, am Zugang mit dessen Vorgaben zusammengeführt (`Effect
 `KnowledgeLibrary#getSourceCredentials`, `#getSourceUrl`, `#getSourceSettings` oder
 `ConnectorData#storedIn`; Ausnahmen sind `#getSourcePath` (Dateisystem verbietet Zugänge, kein
 Geheimnis) und `#getWebhookSecret` (Push-Geheimnis bleibt an der Bibliothek). Proxy und TLS-Schalter
-sind seit #2496 und #2537 keine Felder mehr (ADR-0050).
+sind keine Felder der Bibliothek oder des Zugangs (ADR-0050).
 
 ### 4. Lebenszyklus: eine zentrale Abfrage, Ereignisse beschleunigen nur
 
@@ -113,8 +113,9 @@ oder gelöschten Anbieters werden deshalb abgelehnt; die Inaktivitätsschwelle g
   Konten über denselben Endweg wie Trennen beenden (`ACCOUNT_DEACTIVATED`); ruhend: ruhen lassen;
   nutzbar: aufheben. Scheitert der Abgleich nach einem Commit, wird das nur als Zahl geloggt, die
   Änderung bleibt erfolgreich, der Tageslauf holt nach. Sperrdialog und Ablaufdatum der
-  Benutzerverwaltung nennen die Folge neutral, ohne Zahl und ohne Aussage, ob ein Konto verbunden ist. Festgehalten wird nur der Beginn (`connection_person_states`:
-  `deactivated_since`, `dormant_since`); der Zustand bleibt abgeleitet. library liest den Beginn über
+  Benutzerverwaltung nennen die Folge neutral, ohne Zahl und ohne Aussage, ob ein Konto verbunden
+  ist. Festgehalten wird nur der Beginn (`connection_person_states`: `deactivated_since`,
+  `dormant_since`); der Zustand bleibt abgeleitet. library liest den Beginn über
   `ConnectionLifecycle` für den Löschlauf (ADR-0049, Entscheidung 2). Die Übergabe eines lokalen
   Kontos (ADR-0033, Entscheidung 12) ist keine Deaktivierung.
 - **Inaktivitätsschwelle:** `opaa.connection.inactivity-threshold-days` (Vorgabe 90, Grenzen 30–365
@@ -147,15 +148,16 @@ Zugang. Konnektor-Pfade sehen keinen MCP-Server (`findConnectorsByName`, ArchUni
 Verwaltung nur über `/api/v1/admin/mcp-servers` (`SYSTEM_ADMIN`), ohne Oberfläche, solange es keinen
 MCP-Client gibt; Anmeldeart fest OAuth, Besitzart fest Person, Adresse der Streamable-HTTP-Endpunkt
 in kanonischer Form (`McpServerResource`, nur `https`; `http` nur auf Loopback, das die Zielprüfung in
-Produktion sperrt). Konten auf MCP-Servern erscheinen nicht auf der Kontoseite. `McpServerDiscovery` erkennt beim Speichern,
-nie zur Laufzeit: Protected Resource Metadata (RFC 9728), dann Autorisierungsserver-Metadaten
-(RFC 8414, sonst OpenID-Discovery); `resource` muss die Server-Adresse sein, `issuer` die Adresse der
-Metadaten, `S256` angeboten, alle Endpunkte `https`, jede Adresse durch `TargetAddressValidator`. Ein
-abweichender Wert ist ein Adress- bzw. Registrierungswechsel (Entscheidung 12); ein gespeichertes
-Secret folgt keinem neuen Server (`400 MCP_SERVER_CLIENT_SECRET_REQUIRED`). Das Token ist an den
-Ressourcen-Indikator gebunden und wird nur mit Ziel herausgegeben (`McpServerTokens#accessFor`;
-ADR-0048, Entscheidung 7). Keine dynamische Client-Registrierung. Bis das Folge-Epic zu #1747 die
-Nutzungsfreigabe festlegt, verbindet nur `SYSTEM_ADMIN` (`requireConnectable`).
+Produktion sperrt). Konten auf MCP-Servern erscheinen nicht auf der Kontoseite. `McpServerDiscovery`
+erkennt beim Speichern, nie zur Laufzeit: Protected Resource Metadata (RFC 9728), dann
+Autorisierungsserver-Metadaten (RFC 8414, sonst OpenID-Discovery); `resource` muss die
+Server-Adresse sein, `issuer` die Adresse der Metadaten, `S256` angeboten, Endpunkte `https` (`http`
+nur auf Loopback), jede Adresse durch `TargetAddressValidator`. Ein abweichender Wert ist ein
+Adress- bzw. Registrierungswechsel (Entscheidung 12); ein gespeichertes Secret folgt keinem neuen
+Server (`400 MCP_SERVER_CLIENT_SECRET_REQUIRED`). Das Token ist an den Ressourcen-Indikator gebunden
+und wird nur mit Ziel herausgegeben (`McpServerTokens#accessFor`; ADR-0048, Entscheidung 7). Keine
+dynamische Client-Registrierung. Bis das Folge-Epic zu #1747 die Nutzungsfreigabe festlegt,
+verbindet nur `SYSTEM_ADMIN` (`requireConnectable`).
 
 ### 6. Private Bibliothek und Nur-Besitzerin-Regel
 
@@ -196,20 +198,20 @@ Datenschutz können die Vorgaben innerhalb der Grenzen ändern, ohne dass dieser
 
 ### 8. Code-Struktur, Freigabe und Spezifikation
 
-`Module.CONNECTIONS` steht in `ModularArchitecture` direkt nach `CONNECTORS`, `"connection"` in
-`LAYERS` zwischen `"indexing"` und `"library"`; Modulkanten erst, wenn der Code sie nutzt
+`Module.CONNECTIONS` steht in `ModularArchitecture` direkt nach `CONNECTORS`; Schichtung und
+Paketreihenfolge stehen in `backend/AGENTS.md`. Modulkanten erst, wenn der Code sie nutzt
 (`everyAllowedModuleEdgeIsInUse`). Unterpakete, unten zuerst: `log`, `token`, `profile`, `consent`,
 `account`, `oauth`; das Wurzelpaket verdrahtet die Ports, `web` liegt darüber, nach oben nur über
 Ports (`LibrariesOnProfile`, `PersonAccounts`, `SecretIssuer`, `SourceConsentRejections`,
 `PersonConnections`, `SourceConsentEnds`). Die Regeln je Paket stehen in
-`backend/src/main/java/io/opaa/connection/AGENTS.md` (`ModuleAgentsFileTest`); das Unterpaket
-`request` ist mit #2494 entfallen (Entscheidung 11). Liquibase: `db/changelog/connections/`,
-Tabellen in `ChangelogModuleBoundaryTest`. **Freigabe nur in connections:** `ConnectorReleaseService`
-(Bibliothek) und `requireConnectable` (neues Konto) entscheiden aus `CREATE_CONNECTOR_LIBRARY` mit
-Geltungsbereich und den Sperren; jedes andere Modul fragt sie (ArchUnit
-`theConnectorReleaseIsDecidedInConnections`). Spezifikation zuerst (ADR-0006): `GET /api/v1/me`
-führt `CREATE_CONNECTOR_LIBRARY` als Zeichenkette, sobald die Person sie in einem Geltungsbereich hat;
-`GET /api/v1/source-types` bleibt vollständig, die Zugänge liefert nur Entscheidung 11.
+`backend/src/main/java/io/opaa/connection/AGENTS.md` (`ModuleAgentsFileTest`). Liquibase:
+`db/changelog/connections/`, Tabellen in `ChangelogModuleBoundaryTest`. **Freigabe nur in
+connections:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues Konto)
+entscheiden aus `CREATE_CONNECTOR_LIBRARY` mit Geltungsbereich und den Sperren; jedes andere Modul
+fragt sie (ArchUnit `theConnectorReleaseIsDecidedInConnections`). Spezifikation zuerst (ADR-0006):
+`GET /api/v1/me` führt `CREATE_CONNECTOR_LIBRARY` als Zeichenkette, sobald die Person sie in einem
+Geltungsbereich hat; `GET /api/v1/source-types` bleibt vollständig, die Zugänge liefert nur
+Entscheidung 11.
 
 ### 9. Token-Speicher und verbundene Konten
 
@@ -249,7 +251,7 @@ Netzzugriff unter der Sperre läuft. Dasselbe gilt für den Abschluss einer Zust
 (ADR-0048, Entscheidung 3) und seit #2279 für das Verbinden mit persönlichem Geheimnis
 (`lockedVersion`, `409 CONNECTED_ACCOUNT_PROFILE_CHANGED`). Sperrreihenfolge überall: Profilzeile,
 dann Token-Zeile, dann Kontozeile; wer das Konto zuerst schreibt (`established`, `expire`), ruft
-vorher `ConnectionSecrets#lockHeld` (seit #2428, zuvor Deadlock mit dem Beenden desselben Kontos).
+vorher `ConnectionSecrets#lockHeld` (seit #2428).
 Übergänge (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move` durch
 `SourceChangeGate`. `CONNECTION_PROFILE_RUN_IN_PROGRESS` lehnt eine Änderung ab, solange eine
 geteilte Bibliothek des Zugangs läuft; private halten sie nicht auf. Den Abgleichstand nach einer
@@ -257,10 +259,9 @@ geteilte Bibliothek des Zugangs läuft; private halten sie nicht auf. Den Abglei
 
 ### 11. Der Assistent zeigt nur Nutzbares, kein Zugangswunsch
 
-Die Systemverwaltung legt fest, was genutzt werden kann (Maintainer, 11.10.2026). Der Zugangswunsch
-ist ohne Ersatz entfallen (Paket `connection.request`, Tabelle, Benachrichtigungen; der Ereignistyp
-`CONNECTION_PROFILE_REQUEST_RESOLVED` bleibt stillgelegt im Enum, damit alte Einträge lesbar
-bleiben). `GET /api/v1/connection-profiles` liefert nur Zugänge, die der Person freigegeben und
+Die Systemverwaltung legt fest, was genutzt werden kann (Maintainer, 11.10.2026). Es gibt keinen
+Zugangswunsch; `CONNECTION_PROFILE_REQUEST_RESOLVED` bleibt im Enum, damit alte Einträge lesbar
+bleiben. `GET /api/v1/connection-profiles` liefert nur Zugänge, die der Person freigegeben und
 weder selbst noch über ihre Quellart gesperrt sind (`ConnectorReleaseService#profileOptions`); der
 Assistent blendet Quellarten ohne nutzbaren Weg aus und zeigt sonst einen Leerzustand mit Hinweis auf
 die Systemverwaltung. Der Zustand einer bestehenden Bibliothek bleibt mit Grund und Aktion sichtbar;
@@ -298,17 +299,20 @@ bis zum Abgleich hält die Herausgabesperre im Port.
 
 - connections unter knowledge — mehr Rückwege (Konnektor-Beschreibung, Vorgaben, Zählen) als ein Port im Kern.
 - connections über library — library bräuchte Ports für Freigabe, Sperre und Profilpflicht.
-- Freigabe als eigene Tabelle am Profil — doppelte Subjekte, Auswertung, Historie und `/me`; stattdessen Geltungsbereich der Fähigkeit.
+- Freigabe als eigene Tabelle am Profil — doppelte Subjekte, Auswertung, Historie und `/me`;
+  stattdessen Geltungsbereich der Fähigkeit.
 - Verbindung als Spalte in `knowledge_libraries` — Fremdschlüssel von knowledge nach oben.
 - Lebenszyklus über ein Ereignis von connections an library — Kante in Gegenrichtung.
-- Lebenszyklus nur über Ereignisse — für befristete Konten, deaktivierte und verzeichnislose Anbieter gibt es keine.
+- Lebenszyklus nur über Ereignisse — für befristete Konten, deaktivierte und verzeichnislose
+  Anbieter gibt es keine.
 - `AccountState` (rights) als Quelle für „gesperrt“ — dort schreibt nur der Verzeichnisabgleich.
 - Verbundene Konten nur für Konten mit bekanntem Zustand — schließt jedes Haus mit reinem OIDC aus.
 - Deaktivierter Anbieter als Deaktivierung seiner Konten — ein vorübergehendes Abschalten löschte massenhaft.
 - Zahlen je Anbieter, auch „mindestens N“ — hebt die Maskierung je Zugang auf.
 - Inaktivitätssperre lokaler Konten als Deaktivierung — eine Abwesenheit, kein Entzug (Maintainer, #2260).
 - Zweite Tabelle für MCP-Server — dieselben Konten, Token und Protokolle.
-- Beginn der Frist bei jedem Abgleich verwerfen, der den Issuer wieder zuordnet — genau dieser Abgleich bleibt im Fehlerfall aus.
+- Beginn der Frist bei jedem Abgleich verwerfen, der den Issuer wieder zuordnet — genau dieser
+  Abgleich bleibt im Fehlerfall aus.
 
 ## Offen
 

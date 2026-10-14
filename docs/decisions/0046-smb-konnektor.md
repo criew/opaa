@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-11 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md)
 und [ADR-0038](0038-steckbare-konnektoren.md)
 
 ## Kontext

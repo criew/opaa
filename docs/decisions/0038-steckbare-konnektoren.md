@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt [ADR-0006](0006-openapi-dto-generation.md) · ergänzt
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0006](0006-openapi-dto-generation.md) · ergänzt
 durch [ADR-0040](0040-google-drive-konnektor.md), [ADR-0041](0041-verbindungen-als-eigenes-modul.md) und [ADR-0045](0045-gemeinsamer-datei-abgleich.md) bis [ADR-0047](0047-sharepoint-konnektor.md)
 · ersetzt Entscheidung 1 von [ADR-0017](0017-quellentypmodell-indizierung.md), den Nachtrag #1131 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md), die Entscheidungen 1, 2 und 4 von
@@ -185,3 +185,4 @@ es Bestandssysteme gibt.
 | 2026-10-11 | #2154 | Dropbox; zweiter fester Host ohne eigenes Feld | 1, 3 |
 | 2026-10-12 | #2496, #2541 | `source_proxy` und `source_insecure_ssl` entfallen | 2 |
 | 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand | — |
+| 2026-10-14 | #2702 | Konnektortabelle verweist auf ADR-0045–0047 | — |

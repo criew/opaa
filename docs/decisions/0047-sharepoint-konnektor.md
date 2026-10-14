@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-10 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md),
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md),
 [ADR-0038](0038-steckbare-konnektoren.md) und [ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md)
 
 ## Kontext
@@ -107,7 +107,8 @@ Haltbarkeit der Token, Delta-Semantik bei Ordnern, `quickXorHash` für alle Date
 - Ordner als Container — vervielfachte Aufzählungen und Ströme je Laufwerk.
 - `fullSyncNeeded` bei Ordner-Einträgen — fast jeder Änderungslauf würde Vollabgleich; eine dauerhafte Ordnertabelle wäre ein Kern-Umbau.
 - `Files.Read.All` als Empfehlung — schließt OneDrives ein.
-- Ordnernamen beim Öffnen des Formulars nachschlagen — eine Anfrage je Ordner, scheitert gerade bei entzogener Freigabe.
+- Ordnernamen beim Öffnen des Formulars nachschlagen — eine Anfrage je Ordner, scheitert gerade bei
+  entzogener Freigabe.
 
 ## Offen
 
