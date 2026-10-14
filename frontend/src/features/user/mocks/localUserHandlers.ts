@@ -116,7 +116,7 @@ function expiryFrom(request: {
 /**
  * Die fünf Zahlengrenzen aus ADR-0033 in der Reihenfolge, in der das Backend sie prüft. `NaN` aus
  * einem leeren Eingabefeld fällt durch jeden Vergleich und ist damit ebenfalls ein 400 - genau das
- * Verhalten, das ein Schalterklick nicht auslösen darf (Review-Runde 1, HIGH 1).
+ * Verhalten, das ein Schalterklick nicht auslösen darf.
  */
 function firstOutOfRange(
   body: LocalAuthSettingsUpdateRequest,
@@ -483,8 +483,7 @@ export const localUserHandlers = [
 
     const switchedOff = previous.enabled && !body.enabled
     // `revokedSessions` gehört nur in die Antwort des abschaltenden PUT, nicht dauerhaft in die
-    // Einstellungen: ein GET danach würde sonst eine Zahl führen, die das Backend nie liefert
-    // (Review-Runde 1, LOW 11).
+    // Einstellungen: ein GET danach würde sonst eine Zahl führen, die das Backend nie liefert.
     setMockLocalAuthSettings({ ...body, publicBaseUrlConfigured: previous.publicBaseUrlConfigured })
     return HttpResponse.json(
       switchedOff

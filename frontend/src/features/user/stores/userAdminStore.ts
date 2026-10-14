@@ -237,8 +237,8 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
   },
 
   /*
-   * Auch die Mutationen prüfen die Sitzungs-Epoche, bevor sie zurückschreiben (Review-Runde 1,
-   * LOW 9): Eine Anfrage, die erst nach einer Abmeldung antwortet, würde sonst Daten des
+   * Auch die Mutationen prüfen die Sitzungs-Epoche, bevor sie zurückschreiben: Eine
+   * Anfrage, die erst nach einer Abmeldung antwortet, würde sonst Daten des
    * vorherigen Kontos in einen gerade geleerten Store schreiben. Die Epoche wird dazu **vor** dem
    * `await` gefasst - nach dem Request gefasst wäre sie immer die neue und der Vergleich
    * wirkungslos (Nachprüfung N2). Der Fehler wird weiter geworfen, damit der Aufrufer seine

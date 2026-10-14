@@ -177,8 +177,8 @@ export default function UserFormDialog({
     try {
       if (isEdit) {
         /*
-         * Das Ablaufdatum reist nur mit, wenn der **Tag** sich geändert hat (Review-Runde 1,
-         * HIGH 2): Ein unverändertes Feld würde sonst auf 23:59:59 Ortszeit zurückgerechnet und
+         * Das Ablaufdatum reist nur mit, wenn der **Tag** sich geändert hat: Ein
+         * unverändertes Feld würde sonst auf 23:59:59 Ortszeit zurückgerechnet und
          * damit das gespeicherte Datum verschieben - und weil `LOCAL_USER_CHANGED` Vorher/Nachher
          * ausschließlich für `expires_at` führt, stünde eine reine Namensänderung als
          * Fristverschiebung im Protokoll.

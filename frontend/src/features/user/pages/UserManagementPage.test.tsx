@@ -731,10 +731,10 @@ describe('UserManagementPage', () => {
   }, 20000)
 
   /**
-   * Regressionsschutz zu Review-Runde 1 (HIGH 2): Der PATCH sendete `expiresAt` immer mit —
-   * auf 23:59:59 Ortszeit zurückgerechnet. Eine reine Namensänderung verschob damit das
-   * Ablaufdatum und stand als Fristverschiebung im `LOCAL_USER_CHANGED`-Ereignis, das
-   * Vorher/Nachher ausschließlich für `expires_at` führt.
+   * Der PATCH sendet `expiresAt` nur bei geändertem Tag — sonst, auf 23:59:59 Ortszeit
+   * zurückgerechnet, verschöbe eine reine Namensänderung das Ablaufdatum und stünde als
+   * Fristverschiebung im `LOCAL_USER_CHANGED`-Ereignis, das Vorher/Nachher ausschließlich für
+   * `expires_at` führt.
    */
   it('leaves the expiry date out of a PATCH that only renames an account', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -861,9 +861,9 @@ describe('UserManagementPage', () => {
   })
 
   /**
-   * Regressionsschutz zu Review-Runde 1 (HIGH 1): Der Schalter speicherte den halb getippten
-   * Regel-Entwurf mit — gemessen wurde eine Ablauf-Vorbelegung, die von 365 auf 3 sprang, und ein
-   * leeres Zahlenfeld ließ das Umschalten als `NaN` still scheitern.
+   * Der Schalter speichert den halb getippten Regel-Entwurf nicht mit — sonst spränge eine
+   * Ablauf-Vorbelegung etwa von 365 auf 3, und ein leeres Zahlenfeld ließe das Umschalten als
+   * `NaN` still scheitern.
    */
   it('saves a switch from the server state, not from the half-typed rules draft', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -985,7 +985,7 @@ describe('UserManagementPage', () => {
     expect(screen.getByText(/OPAA_PUBLIC_BASE_URL nicht gesetzt/)).toBeInTheDocument()
   })
 
-  /** Review-Runde 1, MEDIUM 6: Ein Schalter auf „ein" darf nicht behaupten, der Fluss wirke. */
+  /** Ein Schalter auf „ein" darf nicht behaupten, der Fluss wirke. */
   it('says why a switched-on link flow is currently unreachable', async () => {
     setMockLocalAuthSettings({ ...mockLocalAuthSettings, enabled: false })
     signInAs('SYSTEM_ADMIN')

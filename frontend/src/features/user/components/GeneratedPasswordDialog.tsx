@@ -39,7 +39,7 @@ export default function GeneratedPasswordDialog({
       maxWidth="sm"
       aria-labelledby="generated-password-title"
       // Siehe SetupLinkDialog: Das Passwort existiert genau einmal, also schließt weder Escape
-      // noch ein Klick daneben – allein die Schaltfläche (Review-Runde 1, LOW 7).
+      // noch ein Klick daneben – allein die Schaltfläche.
     >
       <DialogTitle id="generated-password-title">
         Neues Passwort für „{generated.displayName}“

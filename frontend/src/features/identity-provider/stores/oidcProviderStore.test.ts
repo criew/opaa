@@ -53,9 +53,9 @@ describe('oidcProviderStore', () => {
   })
 
   /**
-   * Regressionsschutz zu Review-Runde 1 (MEDIUM 5): Lag die LOCAL-Zeile zwischen zwei Anbietern,
-   * tauschte „nach unten" mit ihr — die sichtbare Reihenfolge blieb gleich, der Klick war
-   * verschluckt und das Reihenfolge-Ereignis wirkungslos.
+   * Liegt die LOCAL-Zeile zwischen zwei Anbietern, tauscht „nach unten" nicht mit ihr — sonst
+   * bliebe die sichtbare Reihenfolge gleich, der Klick verschluckt und das Reihenfolge-Ereignis
+   * wirkungslos.
    */
   it('skips the local row when it lies between two providers', async () => {
     const order: Record<string, number> = {

@@ -53,8 +53,8 @@ function isMockGrantActiveOwner(grant: { role: AssetRole; expiresAt?: string | n
 
 /**
  * Mirrors AssetGrantRepository#countOtherActiveOwnerGrants - how many *other* active OWNER grants
- * a library has besides the one being changed or removed, used by both the  code review's
- * nit-4 guards below (409 "last active OWNER" on downgrade and on revoke).
+ * a library has besides the one being changed or removed, used by both
+ * last-owner guards below (409 "last active OWNER" on downgrade and on revoke).
  */
 function countOtherActiveMockOwnerGrants(libraryId: string, excludingGrantId: string): number {
   return (mockLibraryGrants[libraryId] ?? []).filter(

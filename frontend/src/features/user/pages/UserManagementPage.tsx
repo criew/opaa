@@ -99,7 +99,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
         <Box sx={{ minWidth: 0 }}>
           <LocalUserReviewHint
             summary={summary}
-            // Der Sprung setzt jeden anderen Filter zurück (Review-Runde 1, LOW 10): Der Hinweis
+            // Der Sprung setzt jeden anderen Filter zurück: Der Hinweis
             // nennt eine Zahl über alle lokalen Konten, und eine stehende Herkunfts-, Rollen- oder
             // Zustandsauswahl zeigte danach weniger Zeilen, als die Zahl verspricht.
             onShowWithoutExpiry={() =>

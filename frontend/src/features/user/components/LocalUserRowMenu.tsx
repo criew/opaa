@@ -253,7 +253,7 @@ export default function LocalUserRowMenu({
             onClick={() => void lock()}
             disabled={lockDisabled}
             // Kein <span> um den Eintrag: Ein Zwischenelement im `menu` verletzt
-            // `aria-required-children` (Review-Runde 1). Die Begründung hängt deshalb als
+            // `aria-required-children`. Die Begründung hängt deshalb als
             // `title` am Eintrag selbst und steht zusätzlich als Text darunter.
             title={lockDisabled ? disabledReason : undefined}
             aria-describedby={lockDisabled ? reasonId : undefined}

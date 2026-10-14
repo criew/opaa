@@ -225,7 +225,7 @@ describe('userAdminStore', () => {
   })
 
   /**
-   * Das Testdoppel prüft **alle fünf** Zahlengrenzen aus ADR-0033 (Review-Runde 1, HIGH 1) — sonst
+   * Das Testdoppel prüft **alle fünf** Zahlengrenzen aus ADR-0033 — sonst
    * hätte ein Feld, dessen Grenze nur das Backend kennt, in den Tests nie eine Ablehnung erzeugt.
    */
   it.each([
@@ -285,8 +285,7 @@ describe('userAdminStore', () => {
     expect(saved.revokedSessions).toBeGreaterThan(0)
     expect(state().settings?.enabled).toBe(false)
 
-    // Die Zahl gehört nur in die Antwort des abschaltenden PUT: Ein GET danach darf sie nicht
-    // führen (Review-Runde 1, LOW 11).
+    // Die Zahl gehört nur in die Antwort des abschaltenden PUT: Ein GET danach darf sie nicht führen.
     await state().loadSettings()
     expect(state().settings?.revokedSessions ?? null).toBeNull()
   })
