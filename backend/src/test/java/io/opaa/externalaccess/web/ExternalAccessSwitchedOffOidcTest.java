@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import io.opaa.externalaccess.token.ExternalAccessTokenValues;
 import io.opaa.test.OpaaLocalAuthSeedTest;
 import java.util.List;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -17,54 +18,67 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 /**
  * The external-access feature switched off (ADR-0044) under the production authentication mode
- * {@code oidc}: with the channel's own filter chain gone, a request presenting an access-token
- * value - or none - is handled exactly like the same request to an address that does not exist. No
- * chain serves {@code /mcp} or a reading path to it; the value meets the bearer check of the {@code
- * oidc} chain, which refuses it like any other value it cannot read.
+ * {@code oidc}, with the channel's own filter chain gone. {@code /mcp} and the routes of the
+ * channel answer an access-token value - or none - exactly like an address that does not exist. The
+ * reading paths stay for signed-in persons; there an access-token value meets the bearer check of
+ * the {@code oidc} chain and is refused like any other value it cannot read.
  */
 @OpaaLocalAuthSeedTest
 class ExternalAccessSwitchedOffOidcTest {
 
   private static final String SHAPED_VALUE =
       ExternalAccessTokenValues.VALUE_PREFIX + "QmVhcmVyLUFic2NoYWx0dW5nLVRlc3Q";
+  private static final String UNREADABLE_VALUE = "kein-zugangsmerkmal";
 
   @Autowired private MockMvc mockMvc;
 
   @Test
   void theMcpEndpointAnswersLikeAnUnknownAddress() throws Exception {
     for (String bearer : new String[] {SHAPED_VALUE, null}) {
-      assertSameAnswer(post("/mcp"), post("/mcp-gibt-es-nicht"), bearer);
-      assertSameAnswer(get("/mcp"), get("/mcp-gibt-es-nicht"), bearer);
+      assertSameAnswer(() -> post("/mcp"), bearer, () -> post("/mcp-gibt-es-nicht"), bearer);
+      assertSameAnswer(() -> get("/mcp"), bearer, () -> get("/mcp-gibt-es-nicht"), bearer);
     }
   }
 
   @Test
-  void theReadingPathsAndTheRoutesOfTheChannelAnswerLikeAnUnknownAddress() throws Exception {
-    List<MockHttpServletRequestBuilder> paths =
+  void theRoutesOfTheChannelAnswerLikeAnUnknownAddress() throws Exception {
+    List<Supplier<MockHttpServletRequestBuilder>> routes =
         List.of(
-            post("/api/v1/search"),
-            get("/api/v1/search/libraries"),
-            get("/api/v1/external-access/tokens"),
-            get("/api/v1/system/external-access"),
-            get("/api/v1/admin/external-access/tokens"));
+            () -> get("/api/v1/external-access/tokens"),
+            () -> get("/api/v1/system/external-access"),
+            () -> get("/api/v1/admin/external-access/tokens"));
     for (String bearer : new String[] {SHAPED_VALUE, null}) {
-      for (MockHttpServletRequestBuilder path : paths) {
-        assertSameAnswer(path, get("/api/v1/gibt-es-nicht"), bearer);
+      for (Supplier<MockHttpServletRequestBuilder> route : routes) {
+        assertSameAnswer(route, bearer, () -> get("/api/v1/gibt-es-nicht"), bearer);
       }
     }
   }
 
+  @Test
+  void anAccessTokenValueAuthenticatesNoReadingPath() throws Exception {
+    List<Supplier<MockHttpServletRequestBuilder>> readingPaths =
+        List.of(() -> post("/api/v1/search"), () -> get("/api/v1/search/libraries"));
+    for (Supplier<MockHttpServletRequestBuilder> path : readingPaths) {
+      assertSameAnswer(path, SHAPED_VALUE, path, UNREADABLE_VALUE);
+      assertSameAnswer(path, null, () -> get("/api/v1/gibt-es-nicht"), null);
+    }
+  }
+
   private void assertSameAnswer(
-      MockHttpServletRequestBuilder claimed, MockHttpServletRequestBuilder unknown, String bearer)
+      Supplier<MockHttpServletRequestBuilder> claimed,
+      String claimedBearer,
+      Supplier<MockHttpServletRequestBuilder> reference,
+      String referenceBearer)
       throws Exception {
-    MockHttpServletResponse claimedResponse = perform(claimed, bearer);
-    MockHttpServletResponse unknownResponse = perform(unknown, bearer);
+    MockHttpServletResponse claimedResponse = perform(claimed.get(), claimedBearer);
+    MockHttpServletResponse referenceResponse = perform(reference.get(), referenceBearer);
     assertThat(claimedResponse.getStatus())
-        .as("status with bearer %s", bearer != null)
-        .isEqualTo(unknownResponse.getStatus());
+        .as("status with bearer %s", claimedBearer != null)
+        .isEqualTo(referenceResponse.getStatus());
     assertThat(claimedResponse.getHeader(HttpHeaders.WWW_AUTHENTICATE))
-        .isEqualTo(unknownResponse.getHeader(HttpHeaders.WWW_AUTHENTICATE));
-    if (bearer != null) {
+        .as("WWW-Authenticate with bearer %s", claimedBearer != null)
+        .isEqualTo(referenceResponse.getHeader(HttpHeaders.WWW_AUTHENTICATE));
+    if (claimedBearer != null) {
       assertThat(claimedResponse.getStatus()).isEqualTo(401);
     }
   }
