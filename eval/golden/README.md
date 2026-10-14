@@ -726,7 +726,7 @@ Ein Fall kann dafür ein zusätzliches, **optionales** Feld führen:
 ```
 
 Bewusst ein eingefrorener, wörtlicher Textausschnitt, kein Chunk-Index — ein Chunk-Index wird bei
-jeder Änderung von `chunk-size`/`chunk-overlap` lautlos falsch (siehe ADR-0012 Nachtrag). `comic-characters.json`
+jeder Änderung von `chunk-size`/`chunk-overlap` lautlos falsch (ADR-0012, Entscheidung 9). `comic-characters.json`
 führt dieses Feld **nicht**: Die Ein-Chunk-Invariante (ADR-0010) macht eine Chunk-Ebene für diese
 Domäne bedeutungslos — jedes Dokument ist bereits genau ein Chunk. Das Fehlen des Felds lädt
 unverändert (`GoldenCase#answerSpan()` ist dann `null`, `io.opaa.eval.ChunkAnswerSpanMetrics` behandelt

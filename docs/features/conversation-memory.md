@@ -552,7 +552,7 @@ Wert, den der Harness nicht sehen kann. Wiederaufnahme, sobald es einen Generati
 - **Sicherheit und Mitbestimmung** ([security-and-compliance.md](./security-and-compliance.md)):
   Notiz ist Chatinhalt, kein Protokoll, keine Auswertung, kein Profil.
 - **Evaluierung** ([retrieval-benchmark.md](./retrieval-benchmark.md)): Mehrrunden-Fälle, eigene
-  Baseline, Messvertrag-Fortschreibung (ADR-0012-Nachtrag: Fixpunkte Fensterbreite, Suchfenster,
+  Baseline, Messvertrag-Fortschreibung (ADR-0012, Entscheidung 40: Fixpunkte Fensterbreite, Suchfenster,
   Notizdeckel, Chat-Modell).
 - **Handbuch** (`docs/handbuch/suche.md`, Nachzug in den Umsetzungs-Issues): Abschnitt 2 (Verlauf und
   Notiz), Abschnitt 3 (Modellaufruf-Tabelle: „Gesprächsnotiz verdichten — einmal je Runde eines

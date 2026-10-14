@@ -46,7 +46,7 @@ Kein Baselinewert darf um mehr als 25 % relativ fallen, unabhängig von der fall
 (`RELATIVE_CAP_FRACTION`). Damit bleiben die schwächsten Gruppen — der eigentliche Gegenstand
 künftiger Retrieval-Arbeit — messbar geschützt, statt im Toleranzband zu verschwinden.
 
-### Konjunktionsregel für zu enge Paare (#306)
+### 7. Konjunktionsregel für zu enge Paare
 
 Wo die Mittelwert-Toleranz enger ist als die Verschiebung eines einzelnen kippenden Falls —
 `toleranceFor(baselineValue, n_eff) < 1/n`, mit `n` der rohen Fallzahl der Baseline, dynamisch je
@@ -144,6 +144,7 @@ Nichts.
 | 2026-08-03 | #228, PR #301 | Erste Fassung aus dem Review: fallbasierte Toleranz, relative Deckelung, Festpunkte, Baseline-Diff | 1–6 |
 | 2026-08-03 | PR #301 | `n_eff` je Gruppe im Report; harte Untergrenze als `max(relativ, absolut)`; Baseline-Diff für jeden Baseline-PR statt nur beim Label | 4, 6 |
 | 2026-08-20 | #304 | `language:de` aus der Baseline entfernt, im Vergleich übersprungen | 2 |
-| 2026-08-21 | #306, PR #694 | Konjunktion aus Fallzahl- und geweiteter Mittelwertprüfung für zu enge Paare; `hitCountAt5`/`hitCountAt10`; Ladeinvarianten | 2, 3, 5 |
+| 2026-08-21 | #306, PR #694 | Konjunktion aus Fallzahl- und geweiteter Mittelwertprüfung für zu enge Paare; `hitCountAt5`/`hitCountAt10`; Ladeinvarianten | 7, 5 |
+| 2026-10-14 | #2698 | Konjunktionsregel als Entscheidung 7 nummeriert | 7 |
 | 2026-08-31 | #1040 | Geltung für den Pipeline-Pfad mit eigenen Ankern (ADR-0012, Entscheidung 19) | 1, 4 |
-| 2026-10-14 | #2698 | Neufassung als Endstand ohne Nachträge | alle |
+| 2026-10-14 | #2698 | Neufassung als Endstand ohne Nachträge | 1–7 |

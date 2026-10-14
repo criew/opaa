@@ -23,6 +23,9 @@ die Fallklassen und Zustandsfelder der Datensätze in `docs/features/retrieval-b
 
 ## Entscheidung
 
+Gegliedert nach Messpfad; die `####`-Überschriften tragen die stabilen Entscheidungsnummern, die
+deshalb nicht aufsteigend laufen. Das Nummernverzeichnis am Ende löst jede Nummer 1–73 auf.
+
 ### Regeln für alle Messpfade
 
 #### 6. Jede Vertragsänderung erhöht die Versionsnummer ihres Pfads
@@ -109,16 +112,14 @@ kein Toleranzfall.
 #### 9. Zweite Metrikfamilie: Chunkebene über `answer_span` (mit 21)
 
 Neben der für Baseline und CI maßgeblichen Dokumentebene misst `ChunkAnswerSpanMetrics`
-`answerSpanHitRate@5` und den Rang des ersten Chunks, der den eingefrorenen wörtlichen Ausschnitt
-`answer_span` eines Falls enthält — ein Textausschnitt statt eines Chunk-Index, weil er unter
-geänderten Chunking-Parametern stabil bleibt. Ein Fall trägt höchstens einen `answer_span`, und nur
-bei genau einem erwarteten Dokument (Entscheidung 21, geprüft von `GoldenCaseCuration`). Jeder
-anwendbare Span muss in mindestens einem Chunk eines seiner erwarteten Dokumente auflösbar sein
-(`answerSpanResolution`), sonst bricht der Lauf ab: Eine Chunk-Grenze, die einen Span zerschneidet,
-ist numerisch nicht von einem Retrieval-Fehlschlag unterscheidbar; `SpanMatcher` kollabiert nur
-Whitespace und löst das Grenzproblem bewusst nicht — für `boundary_span`-Fälle ist die Grenze der
-Messgegenstand, kein Messfehler. Eine Domäne ohne Spans liefert
-`NOT_APPLICABLE` (`comic-characters`).
+`answerSpanHitRate@5` und den Rang des ersten Chunks, der den wörtlichen Ausschnitt `answer_span`
+eines Falls enthält — ein Textausschnitt statt eines Chunk-Index, weil er unter geänderten
+Chunking-Parametern stabil bleibt. Höchstens ein `answer_span` je Fall, nur bei genau einem
+erwarteten Dokument (Entscheidung 21, `GoldenCaseCuration`). Jeder Span muss in einem Chunk eines
+erwarteten Dokuments auflösbar sein (`answerSpanResolution`), sonst bricht der Lauf ab: Eine
+zerschneidende Chunk-Grenze ist von einem Retrieval-Fehlschlag numerisch nicht unterscheidbar;
+`SpanMatcher` kollabiert nur Whitespace, für `boundary_span`-Fälle ist die Grenze Messgegenstand.
+Eine Domäne ohne Spans liefert `NOT_APPLICABLE` (`comic-characters`).
 
 #### Festpunkte des Rohvektor-Pfads (Entscheidungen 3, 10, 28, 32, 45, 55, 57)
 
@@ -226,14 +227,12 @@ Harness misst die Endauswahl ohne Nachbar-Chunks (Entscheidung 67).
 Der Einzelfragen-Pipeline-Pfad misst die Variante `decomposition-off`
 (`query-decomposition-enabled = false`, `chatModel = null`).
 `PipelineHarnessSupport#requireMeasurableConfiguration` bricht ab, wenn ein Lauf etwas anderes
-misst, als seine Feldnamen behaupten: Zerlegung ohne Chat-Modell (sie fiele je Anfrage still auf
-Einzelanfragen zurück), `top-k` ungleich `RANKING_K`, abgeschaltete Pipeline-Stufen (kein
-Report-Feld hält fest, welche liefen), lexikalischer Pfad aus (die Baseline beschreibt die
-ausgelieferte hybride Konfiguration; vector-only ist ein benannter Variantenvergleich unter
-`eval/variants/`, und ein Variantenbericht ist keine Baseline), aktives Reranking (nutzbare
-Rerank-Rolle mit `rerank-candidate-count > 0`; die Baseline beschreibt die Auslieferung ohne
-Reranking, Reranking ist der Variantenvergleich `eval/variants/verwaltung-reranking.json`). Welches Chat-Modell der
-Pipeline-Pfad mit aktiver Zerlegung messen soll, ist offen (siehe „Offen“).
+misst, als seine Feldnamen behaupten: Zerlegung ohne Chat-Modell (stiller Rückfall auf
+Einzelanfragen), `top-k` ungleich `RANKING_K`, abgeschaltete Pipeline-Stufen (kein Report-Feld hält
+fest, welche liefen), lexikalischer Pfad aus, aktives Reranking (nutzbare Rerank-Rolle mit
+`rerank-candidate-count > 0`). Die Baseline beschreibt die ausgelieferte Konfiguration: hybrid, ohne
+Reranking; vector-only und Reranking sind benannte Variantenvergleiche (`eval/variants/*-lexical-path.json`,
+`verwaltung-reranking.json`), und ein Variantenbericht ist keine Baseline.
 
 #### 17. Eine Baseline-Datei je Pfad und Domäne
 
@@ -246,25 +245,20 @@ gegen `main` (ADR-0013, Entscheidung 6) alle Dateien ohne Fallunterscheidung erf
 
 #### 19. Getrenntes Urteil je Pfad, eigene Anker der harten Untergrenze
 
-Der nächtliche Job prüft jeden Pfad gegen seine eigene Baseline mit dem **unveränderten**
-Fehlerkriterium aus ADR-0013: Beide Vergleicher erzeugen ihre Prüfungen über dieselbe Methode
-`BaselineComparator.metricCheck`, die Gruppenprüfungen des Pipeline-Fensters über
-`PipelineGroupChecks` (fünf Prüfungen je Gruppe: die vier Metriken und
-`allExpectedDocumentsHitAt20`, mit `hitCountAt5` bzw. `hitCountAt20` als Fallzähler). Rohvektor-
-und Pipeline-Vergleich sind zwei Testklassen im selben Gradle-Task und liefern je ein eigenes Urteil
-und eine eigene Delta-Tabelle; ein Fehler des Pipeline-Messlaufs lässt den Messlauf grün
-(`PipelineHarnessSupport.runAndWriteGuarded`) und den Pipeline-Baseline-Test rot — genau einmal rot,
-unter dem Urteil des Pipeline-Pfads. Das Alarm-Issue trägt beide Delta-Tabellen getrennt. Eine Domäne ohne gezogene Pipeline-Baseline
-wird nicht gegated, sondern sichtbar ausgelassen (`pipelineBaselineTestClass = null` in
-`backend/build.gradle.kts`), nie über einen stillen Sonderfall „keine Baseline → bestanden“.
+Jeder Pfad wird gegen seine eigene Baseline mit dem **unveränderten** Fehlerkriterium aus ADR-0013
+geprüft: alle Vergleicher über `BaselineComparator.metricCheck`, am Pipeline-Fenster über
+`PipelineGroupChecks` (vier Metriken und `allExpectedDocumentsHitAt20`, Fallzähler `hitCountAt5`
+bzw. `hitCountAt20`). Je Pfad ein eigenes Urteil mit eigener Delta-Tabelle (zwei Testklassen im
+selben Gradle-Task, beide im Alarm-Issue); ein Fehler des Pipeline-Messlaufs lässt den Messlauf grün
+(`PipelineHarnessSupport.runAndWriteGuarded`) und nur den Pipeline-Baseline-Test rot. Eine Domäne
+ohne Pipeline-Baseline wird sichtbar ausgelassen (`pipelineBaselineTestClass = null` in
+`backend/build.gradle.kts`), nie still als bestanden gewertet.
 
-Die festen Anker der harten Untergrenze sind pfadspezifisch, die Formel nicht
-(`max(0,8 · Baselinewert, Anker)`, nur auf `overall`): Pipeline- und Mehrrunden-Pfad Hit Rate@5 ≥
-0,15 und MRR@20/nDCG@20/Recall@20 ≥ 0,125 (`PipelineBaselineComparator`), die Hälfte der
-Rohvektor-Anker aus ADR-0013, weil die Schwelle hier greift und Dokumente ganz aus der Liste
-entfernen kann. Vor der ersten Messung festgelegt (Entscheidung 36); ein Netz gegen einen leeren
-oder falsch konfigurierten Vektor-Store, kein Qualitätsziel, und deshalb mit dem breiteren Fenster
-@20 unverändert.
+Die Anker der harten Untergrenze sind pfadspezifisch, die Formel `max(0,8 · Baselinewert, Anker)`
+nur auf `overall` nicht: Pipeline- und Mehrrunden-Pfad Hit Rate@5 ≥ 0,15, MRR@20/nDCG@20/Recall@20 ≥
+0,125 (`PipelineBaselineComparator`) — die Hälfte der Rohvektor-Anker, weil die Schwelle hier greift
+und Dokumente ganz aus der Liste entfernen kann; vor der ersten Messung festgelegt (Entscheidung 36),
+ein Netz gegen einen leeren Vektor-Store, kein Qualitätsziel, mit dem Fenster @20 unverändert.
 
 #### 22. Der lexikalische Pfad ist Teil der Pipeline-Messung (mit 23)
 
@@ -344,18 +338,15 @@ Schema, über `PipelineBaselineComparator.addPipelineFixedPointMismatches` vergl
 
 #### 42. Ausführung: nur zerlegend, dreimal, Median (mit 48, 49, 51, 60)
 
-Der Pfad läuft am Ende desselben Harness-Laufs auf dem bereits indizierten Korpus, als eigenes
-Task-Paar `evaluate<Domäne>Conversations`/`check<Domäne>ConversationBaseline` (Entscheidung 48):
-Die Task setzt Zerlegung und `opaa.eval.runConversations` selbst, weil die Rohvektor- und
-Pipeline-Baselines derselben Domäne ohne Zerlegung gezogen sind und ein gemeinsamer Lauf sie
-unvergleichbar machte. In diesem Lauf wird der Einzelfragen-Pipeline-Pfad nicht gemessen
-(Entscheidung 60), die Rohvektor-Messung bleibt. Er gehorcht der Mehrfachlauf-Regel
+Eigenes Task-Paar `evaluate<Domäne>Conversations`/`check<Domäne>ConversationBaseline` am Ende
+desselben Harness-Laufs (Entscheidung 48): Die Task setzt Zerlegung und `opaa.eval.runConversations`
+selbst, weil die Einzelfragen-Baselines derselben Domäne ohne Zerlegung gezogen sind; der
+Einzelfragen-Pipeline-Pfad wird in diesem Lauf nicht gemessen (Entscheidung 60). Mehrfachlauf-Regel
 (`MehrfachlaufRule`, `docs/features/retrieval-benchmark.md` §3): drei Läufe, der Median nach nDCG@20
-vertritt die Messung, der Bericht führt Streubereich und die Zahl der Runden mit abweichender
-Zerlegung (Entscheidung 51) sowie je Runde die erhaltenen Notizpunkte und Teilfragen. Fehlt
-Zerlegung, Chat-Modell oder Datensatz, meldet sich der Lauf als „nicht ausgeführt“. Er läuft im
-eigenen CI-Job `conversations` (`.github/workflows/retrieval-regression.yml`, Zeitbudget 300
-Minuten; wer es verengt, zieht vorher zwei bis drei weitere nächtliche Läufe heran) nächtlich, per
+vertritt die Messung; der Bericht führt Streubereich, Runden mit abweichender Zerlegung und je Runde
+Notizpunkte und Teilfragen (Entscheidung 51). Fehlt Zerlegung, Chat-Modell oder Datensatz: „nicht
+ausgeführt“. Eigener CI-Job `conversations` (`.github/workflows/retrieval-regression.yml`, Budget
+300 Minuten; wer es verengt, zieht vorher weitere nächtliche Läufe heran) nächtlich, per
 `workflow_dispatch` und beim Label `evaluation` (Entscheidung 49).
 
 #### 43. Die Einpfadigkeit steht am Datensatz, nicht am Fall (Einpfad-Regel)
@@ -375,10 +366,9 @@ Bleed.
 #### 50. Drei Ausgänge je Pfad
 
 `ConversationBaselineVerdict` kennt wie der Pipeline-Pfad keine Regression, Regression und
-unvergleichbare Baseline; die beiden letzten lassen den Job fehlschlagen. Der frühere vierte Ausgang
-„nicht beurteilt“ für die Vor-#1486/#1487-Werte von `searchWindowTurns`/`conversationNoteCap` ist mit
-der Neuziehung in #1490 entfallen; `ConversationPathIsolationTest` sperrt eine Baseline mit diesen
-Werten.
+unvergleichbare Baseline; die beiden letzten lassen den Job fehlschlagen, es gibt keinen Ausgang
+„nicht beurteilt“. `ConversationPathIsolationTest` sperrt `searchWindowTurns`/`conversationNoteCap`
+der committeten Baseline auf die Produktionswerte.
 
 #### 61. Eine Runde ohne Suchbedarf steht außerhalb jedes Aggregats
 
@@ -414,17 +404,15 @@ unvergleichbar; sie steht als Beobachtungsfeld im Bericht.
 
 #### 52. Der erwartete Zustand wird je Messpfad geführt, das Audit prüft je Pfad (mit 53)
 
-`expected_state` eines Einzelfragen-Falls ist ein Objekt mit `raw_vector` und `pipeline`, je mit
-`state` (`solved`/`known_gap`), `since` und `reason`; beide Pflicht (`GoldenCaseCuration`). Der
-gemessene Ist-Zustand ist der festgeschriebene Stand, wie eine Baseline je Pfad; `ExpectedStateAudit`
-meldet nur Abweichungen, getrennt je Pfad, in beiden Richtungen. „Gelöst“ ist für alle Pfade dieselbe
-Definition: alle erwarteten Dokumente im Fenster **und** ein erwartetes auf Rang 1, am Fenster des
-jeweiligen Pfads. Ein Fall, den ein Pfad ohne den Mechanismus seiner Klasse löst, ist dort `solved`
-mit dem Präfix `Ohne geprüften Mechanismus: ` im Grund (nur auf `solved`, nur als exakter Anfang;
-Zuordnung in `docs/features/retrieval-benchmark.md` §5). Der Mehrrunden-Datensatz bleibt flach
-(Entscheidung 43). Das Audit berechnet keine Metrik und lässt keinen Lauf fehlschlagen; eine
-Zustandspflege bewegt deshalb keine Vertragsversion, nur `goldenDatasetSha256` der betroffenen
-Baselines wird nachgezogen (Entscheidung 53).
+`expected_state` eines Einzelfragen-Falls hat die Pflichteinträge `raw_vector` und `pipeline`, je
+mit `state` (`solved`/`known_gap`), `since`, `reason` (`GoldenCaseCuration`). Der gemessene
+Ist-Zustand ist der festgeschriebene Stand; `ExpectedStateAudit` meldet nur Abweichungen, je Pfad,
+in beiden Richtungen. „Gelöst“: alle erwarteten Dokumente im Fenster **und** ein erwartetes auf
+Rang 1, am Fenster des Pfads. Ein ohne den Mechanismus seiner Klasse gelöster Fall ist `solved` mit
+dem Präfix `Ohne geprüften Mechanismus: ` (nur auf `solved`, nur als exakter Anfang; Zuordnung in
+`docs/features/retrieval-benchmark.md` §5). Der Mehrrunden-Datensatz bleibt flach (Entscheidung 43).
+Das Audit berechnet keine Metrik und lässt keinen Lauf fehlschlagen; Zustandspflege bewegt keine
+Vertragsversion, nur `goldenDatasetSha256` der betroffenen Baselines (Entscheidung 53).
 
 ### Berichtsgrößen ohne Vertragscharakter (Rangreserve, Audits)
 
@@ -502,8 +490,7 @@ benennt, welche Pipeline sich bewegt hat. Alle registrierten, nicht nur die vom 
 damit ein Routing-Fehler sichtbar wird. Kein Harness-Guard: Der Wert wird aus der verdrahteten
 Registry gelesen und ist für jeden Lauf korrekt. Die drei Korpora sind Markdown und laufen seit
 #1103 über `MarkdownDocumentFormat` (Schnitt an Überschriften, Frontmatter am Dateianfang
-verworfen; Entscheidungen 24, 25, Regeln in `docs/features/ingestion-pipelines.md`); diese
-Umstellung war eine Neumessung aller Baselines ohne Versionsschritt.
+verworfen; Entscheidungen 24, 25, Regeln in `docs/features/ingestion-pipelines.md`).
 
 #### 57. `contextPrefixFingerprint`
 
@@ -606,8 +593,7 @@ bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `Co
 - Welches Chat-Modell der Einzelfragen-Pipeline-Pfad mit aktiver Zerlegung messen soll; die
   Entscheidung erhöht die Pipeline-Version und zieht die Pipeline-Baselines neu
   (`docs/features/retrieval-benchmark.md`, „Offene Punkte“).
-- Wechsel der Harnesse auf `bge-m3`, das Vorgabemodell des Produkts seit #2618; ausdrücklich nicht
-  Teil von #2386.
+- Wechsel der Harnesse auf `bge-m3`, das Vorgabemodell des Produkts seit #2618.
 - Wiederaufnahme der Rangreserve als Kriterium nur unter der in „Berichtsgrößen ohne
   Vertragscharakter“ genannten Bedingung.
 

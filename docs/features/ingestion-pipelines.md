@@ -720,7 +720,7 @@ bitgleiche Zahlen zur committeten Baseline. Bleibt sie grün, ist der Nachweis g
 fehl, war die Änderung entgegen der Annahme betroffen — und dann gilt der volle Dreischritt.
 
 **Seit Issue #1144 gilt eine zusätzliche, von "betroffen" unabhängige Auflage:**
-`ingestionPipelineFingerprint` (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt) ist ein
+`ingestionPipelineFingerprint` (ADR-0012, Entscheidung 28) ist ein
 Sammelabdruck über die Versionen aller registrierten Pipelines, nicht nur der vom Korpus
 genutzten. Ein Versions-Bump — auch an einer Pipeline, deren Format "Baseline unberührt" gilt
 — verschiebt diesen Abdruck und macht damit alle sechs committeten Baselines ungültig,
