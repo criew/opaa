@@ -1,5 +1,6 @@
 package io.opaa.retrieval;
 
+import io.opaa.api.types.RetrievalStageName;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 

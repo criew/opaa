@@ -40,7 +40,7 @@ import { resetMockExternalAccessSettings } from '../mocks/externalAccessHandlers
 import { resetMockExternalAccessTokens } from '../mocks/externalAccessTokenHandlers'
 // auth
 import { resetMockAuthConfig } from '../mocks/authFixtures'
-import { resetMockSelfServiceTokens } from '../mocks/localAuthFixtures'
+import { resetMockSelfServiceTokens } from '@/features/auth/mocks/localAuthFixtures'
 
 /**
  * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.

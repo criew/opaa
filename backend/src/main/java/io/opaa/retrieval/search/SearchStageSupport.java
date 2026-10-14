@@ -1,10 +1,10 @@
 package io.opaa.retrieval.search;
 
-import io.opaa.retrieval.CandidateOutcome;
+import io.opaa.api.types.CandidateOutcome;
+import io.opaa.api.types.VerdictReason;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalState;
-import io.opaa.retrieval.VerdictReason;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.ai.document.Document;

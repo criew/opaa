@@ -14,7 +14,6 @@ import io.opaa.indexing.web.IndexingAdminController;
 import io.opaa.llm.web.LlmModelController;
 import io.opaa.metadata.web.MetadataFilterMapper;
 import io.opaa.search.ChunkInspectionService;
-import io.opaa.searchadmin.DiagnosisContextType;
 import io.opaa.searchadmin.DiagnosisQuery;
 import io.opaa.searchadmin.SearchDiagnosisService;
 import io.opaa.searchadmin.SearchStatusService;
@@ -88,7 +87,7 @@ public class SearchAdminController {
             caller,
             new DiagnosisQuery(
                 request.getQuestion().trim(),
-                toContextType(request.getContextType()),
+                request.getContextType(),
                 request.getPermissionProfileId(),
                 request.getSpaceId(),
                 request.getTargetUserId(),
@@ -113,14 +112,5 @@ public class SearchAdminController {
       @PathVariable UUID documentId, @Caller CurrentUser caller) {
     return SearchAdminResponseMapper.toDocumentChunksResponse(
         chunkInspectionService.inspectDocumentChunks(caller, documentId));
-  }
-
-  private static DiagnosisContextType toContextType(
-      io.opaa.api.dto.SearchDiagnosisContextType contextType) {
-    return switch (contextType) {
-      case SELF -> DiagnosisContextType.SELF;
-      case PERMISSION_PROFILE -> DiagnosisContextType.PERMISSION_PROFILE;
-      case USER -> DiagnosisContextType.USER;
-    };
   }
 }
