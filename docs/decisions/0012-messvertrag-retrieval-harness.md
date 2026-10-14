@@ -1966,8 +1966,8 @@ Nach der Mechanik ist es vor allem #2628:
   steht, sammelt dadurch Punkte aus der zweiten Liste und rückt vor.
 
 Genau dieses Bild zeigen die sinkenden Fälle. In `verw-lit-001` steht
-`verwaltung-0057_abfallgebuehrensatzung.md` neu auf Rang 1. In `verw-comp-002`, `verw-hop-002` und
-`verw-lit-007` rückt je ein Dokument vor ein erwartetes, das einen oder zwei Ränge verliert. In
+`verwaltung-0057_abfallgebuehrensatzung.md` neu auf Rang 1. In `verw-comp-002` (4 → 5) und
+`verw-lit-007` (3 → 4) rückt je ein Dokument vor ein erwartetes, in `verw-hop-002` (3 → 5) zwei. In
 `comic-characters` verlieren zwölf Fälle Ränge und zwölf gewinnen. In `comic-de-013` und
 `comic-filter-105` fällt dabei ein erwartetes Dokument von Rang 20 aus dem Fenster; beide sind
 `known_gap` und bleiben es. Dass `verwaltung` nur verliert, ist kein Befund gegen die Änderung: Die
@@ -1979,8 +1979,9 @@ Verwaltungskorpus in #2386 (mit `bge-m3`) zeigt mit denselben Vorgaben (Variante
 identisch, die Zerlegung des gepinnten Modells hat sich also nicht bewegt. Nur 8 Runden haben mehr
 als eine Teilfrage, 4 davon weichen in der Rangfolge ab; die Quote trägt damit wenig. Die vier
 Runden mit sinkendem Wert (`ana-004` Runde 3, `ana-007` und `ts-007` Runde 1, `ana-008` Runde 2)
-haben je eine Teilfrage. In ihnen rückt ein weiteres Dokument vor das erwartete, wie im
-Einzelfragen-Pfad.
+haben je eine Teilfrage. In ihnen rücken ein oder mehrere Dokumente vor das erwartete, wie im
+Einzelfragen-Pfad: in `ana-004` Runde 3 drei (Rang 2 → 5), in `ana-007` und `ts-007` Runde 1 je
+eines (2 → 3), in `ana-008` Runde 2 eines (18 → 19).
 
 Die Toleranzen bleiben unverändert (ADR-0013). Keine Vertragsversion außer den beiden aus
 Entscheidung 71 steigt.

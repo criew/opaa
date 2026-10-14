@@ -97,7 +97,7 @@ public final class PipelineHarnessSupport {
       // decomposes — see buildRunConfiguration — but carried here for every run, because the
       // prerequisite checks need to know whether decomposition could work at all.
       String chatModel,
-      // Issue #2386: the context's opaa.query.relevance-cutoff.*. Not part of QueryProperties;
+      // The context's opaa.query.relevance-cutoff.*. Not part of QueryProperties;
       // every variant shares it, because the stage bean is the production one.
       RelevanceCutoffProperties relevanceCutoff) {}
 

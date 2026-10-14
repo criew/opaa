@@ -90,9 +90,9 @@ class PipelinePathIsolationTest {
   }
 
   /**
-   * Issue #2386: the committed pipeline baselines describe the shipped fusion and relevance cutoff.
-   * A changed default without a re-measurement fails here instead of as "Baseline ungültig" in the
-   * nightly run.
+   * The committed pipeline baselines describe the shipped fusion and relevance cutoff. A changed
+   * default without a re-measurement fails here instead of as "Baseline ungültig" in the nightly
+   * run.
    */
   @Test
   void committedPipelineBaselinesDescribeTheShippedFusionAndRelevanceCutoff()

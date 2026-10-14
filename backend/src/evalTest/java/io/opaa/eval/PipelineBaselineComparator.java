@@ -227,7 +227,7 @@ public final class PipelineBaselineComparator {
         String.valueOf(cfg.maxChunksPerDocument()));
     addIfDiffers(
         mismatches, "mmrLambda", String.valueOf(fp.mmrLambda()), String.valueOf(cfg.mmrLambda()));
-    // Issue #2386: how the lists become the selection. A missing block compares as "null".
+    // How the lists become the selection. A missing block compares as "null".
     addFusionMismatches(mismatches, fp.fusion(), cfg.fusion());
     addRelevanceCutoffMismatches(mismatches, fp.relevanceCutoff(), cfg.relevanceCutoff());
     // Issue #1049: the lexical path feeds the fusion, so both of these change what is measured.

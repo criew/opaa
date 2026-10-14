@@ -255,8 +255,8 @@ class PipelineBaselineComparatorTest {
   }
 
   /**
-   * Issue #2386: fusion and relevance cutoff decide how the candidate lists become the selection;
-   * each field is its own fixed point, including the ones the selected mode ignores.
+   * Fusion and relevance cutoff decide how the candidate lists become the selection; each field is
+   * its own fixed point, including the ones the selected mode ignores.
    */
   @Test
   void aChangedFusionOrRelevanceCutoffInvalidatesTheBaseline() {

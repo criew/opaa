@@ -84,7 +84,7 @@ public record PipelineBaseline(
       double similarityThreshold,
       int maxChunksPerDocument,
       double mmrLambda,
-      // Issue #2386: opaa.query.fusion.* and opaa.query.relevance-cutoff.*; null in a file
+      // opaa.query.fusion.* and opaa.query.relevance-cutoff.*; null in a file
       // predating them, which the comparator reports as incomparable.
       PipelineEvaluationReport.FusionSettings fusion,
       PipelineEvaluationReport.RelevanceCutoffSettings relevanceCutoff,

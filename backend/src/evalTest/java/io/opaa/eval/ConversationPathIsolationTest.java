@@ -106,7 +106,7 @@ class ConversationPathIsolationTest {
     // Issue #1650: the prefix form this build embeds with.
     assertThat(baseline.fixedPoints().pipeline().contextPrefixFingerprint())
         .isEqualTo(ContextPrefixFingerprint.current());
-    // Issue #2386: the shipped fusion and relevance cutoff.
+    // The shipped fusion and relevance cutoff.
     assertThat(baseline.fixedPoints().pipeline().fusion())
         .isEqualTo(PipelineEvaluationReport.FusionSettings.of(QueryProperties.Fusion.DEFAULT));
     assertThat(baseline.fixedPoints().pipeline().relevanceCutoff())
