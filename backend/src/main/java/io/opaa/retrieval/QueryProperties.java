@@ -1,5 +1,7 @@
 package io.opaa.retrieval;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
@@ -80,9 +82,7 @@ public record QueryProperties(
 
   @ConstructorBinding
   public QueryProperties {
-    if (topK <= 0) {
-      topK = 20;
-    }
+    topK = positiveOr(topK, 20);
     if (fusion == null) {
       fusion = Fusion.DEFAULT;
     }

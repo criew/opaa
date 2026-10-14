@@ -1,5 +1,7 @@
 package io.opaa.llm;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -61,9 +63,7 @@ public record RerankProperties(
     baseUrl = baseUrl == null ? "" : baseUrl.strip();
     model = model == null ? "" : model.strip();
     apiKey = apiKey == null ? "" : apiKey.strip();
-    if (timeout == null || timeout.isZero() || timeout.isNegative()) {
-      timeout = Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS);
-    }
+    timeout = positiveOr(timeout, Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS));
     if (probeInterval == null) {
       probeInterval = Duration.ofSeconds(DEFAULT_PROBE_INTERVAL_SECONDS);
     }

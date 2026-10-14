@@ -1,5 +1,7 @@
 package io.opaa.format.config;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import io.opaa.format.shared.HeadingSectionSplitter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -19,9 +21,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record ChunkTargetProperties(int chunkTargetCharacters) {
 
   public ChunkTargetProperties {
-    if (chunkTargetCharacters <= 0) {
-      chunkTargetCharacters = HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT;
-    }
+    chunkTargetCharacters =
+        positiveOr(chunkTargetCharacters, HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT);
     if (chunkTargetCharacters < HeadingSectionSplitter.MIN_SOFT_CHUNK_CHAR_LIMIT
         || chunkTargetCharacters > HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT) {
       throw new IllegalArgumentException(

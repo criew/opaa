@@ -1,5 +1,7 @@
 package io.opaa.llm;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -40,15 +42,9 @@ public record TranscriptionProperties(
     model = model == null ? "" : model.strip();
     apiKey = apiKey == null ? "" : apiKey.strip();
     language = language == null ? "" : language.strip();
-    if (maxAudioBytes <= 0) {
-      maxAudioBytes = DEFAULT_MAX_AUDIO_BYTES;
-    }
-    if (timeout == null || timeout.isZero() || timeout.isNegative()) {
-      timeout = Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS);
-    }
-    if (maxConcurrent <= 0) {
-      maxConcurrent = DEFAULT_MAX_CONCURRENT;
-    }
+    maxAudioBytes = positiveOr(maxAudioBytes, DEFAULT_MAX_AUDIO_BYTES);
+    timeout = positiveOr(timeout, Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS));
+    maxConcurrent = positiveOr(maxConcurrent, DEFAULT_MAX_CONCURRENT);
   }
 
   /** Whether both endpoint fields are present. */

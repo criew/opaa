@@ -1,5 +1,8 @@
 package io.opaa.indexing.source.sharepoint;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+import static java.util.Objects.requireNonNullElse;
+
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -41,41 +44,17 @@ public record SharePointProperties(
   public static final int MAX_PAGE_SIZE = 1000;
 
   public SharePointProperties {
-    if (pageSize <= 0 || pageSize > MAX_PAGE_SIZE) {
-      pageSize = pageSize > MAX_PAGE_SIZE ? MAX_PAGE_SIZE : 200;
-    }
-    if (maxFileSizeBytes <= 0) {
-      maxFileSizeBytes = 50L * 1024 * 1024;
-    }
-    if (requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative()) {
-      requestTimeout = Duration.ofSeconds(30);
-    }
-    if (downloadTimeout == null || downloadTimeout.isZero() || downloadTimeout.isNegative()) {
-      downloadTimeout = Duration.ofMinutes(10);
-    }
-    if (maxRetries == null) {
-      maxRetries = 5;
-    }
-    if (maxRetryWait == null || maxRetryWait.isZero() || maxRetryWait.isNegative()) {
-      maxRetryWait = Duration.ofSeconds(60);
-    }
-    if (maxThrottleWaitPerRun == null
-        || maxThrottleWaitPerRun.isZero()
-        || maxThrottleWaitPerRun.isNegative()) {
-      maxThrottleWaitPerRun = Duration.ofMinutes(30);
-    }
-    if (requestBudgetPerRun <= 0) {
-      requestBudgetPerRun = 20_000;
-    }
-    if (maxFilesPerRun <= 0) {
-      maxFilesPerRun = 1_000_000;
-    }
-    if (downloadConcurrency <= 0) {
-      downloadConcurrency = 2;
-    }
-    if (fullSyncInterval == null || fullSyncInterval.isZero() || fullSyncInterval.isNegative()) {
-      fullSyncInterval = Duration.ofDays(1);
-    }
+    pageSize = Math.min(positiveOr(pageSize, 200), MAX_PAGE_SIZE);
+    maxFileSizeBytes = positiveOr(maxFileSizeBytes, 50L * 1024 * 1024);
+    requestTimeout = positiveOr(requestTimeout, Duration.ofSeconds(30));
+    downloadTimeout = positiveOr(downloadTimeout, Duration.ofMinutes(10));
+    maxRetries = requireNonNullElse(maxRetries, 5);
+    maxRetryWait = positiveOr(maxRetryWait, Duration.ofSeconds(60));
+    maxThrottleWaitPerRun = positiveOr(maxThrottleWaitPerRun, Duration.ofMinutes(30));
+    requestBudgetPerRun = positiveOr(requestBudgetPerRun, 20_000);
+    maxFilesPerRun = positiveOr(maxFilesPerRun, 1_000_000);
+    downloadConcurrency = positiveOr(downloadConcurrency, 2);
+    fullSyncInterval = positiveOr(fullSyncInterval, Duration.ofDays(1));
   }
 
   public static SharePointProperties defaults() {

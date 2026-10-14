@@ -1,5 +1,9 @@
 package io.opaa.indexing;
 
+import static io.opaa.common.PropertyDefaults.notNegativeOr;
+import static io.opaa.common.PropertyDefaults.positiveOr;
+import static io.opaa.common.PropertyDefaults.requireNotNegative;
+
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.Sleeper;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -41,25 +45,15 @@ public record SourceHttpProperties(
     if (userAgent == null || userAgent.isBlank()) {
       userAgent = SourceRequestPolicy.DEFAULT_USER_AGENT;
     }
-    if (maxRateLimitRetries < 0) {
-      throw new IllegalArgumentException(
-          "maxRateLimitRetries must not be negative, got " + maxRateLimitRetries);
-    }
-    if (maxRateLimitRetries == 0) {
-      maxRateLimitRetries = SourceRequestPolicy.DEFAULT_MAX_RATE_LIMIT_RETRIES;
-    }
-    if (maxRetryAfter == null || maxRetryAfter.isZero() || maxRetryAfter.isNegative()) {
-      maxRetryAfter = SourceRequestPolicy.DEFAULT_MAX_RETRY_AFTER;
-    }
-    if (requestBudgetPerRun < 0) {
-      throw new IllegalArgumentException(
-          "requestBudgetPerRun must not be negative, got " + requestBudgetPerRun);
-    }
-    if (maxRateLimitWaitPerRun == null
-        || maxRateLimitWaitPerRun.isZero()
-        || maxRateLimitWaitPerRun.isNegative()) {
-      maxRateLimitWaitPerRun = SourceRequestPolicy.DEFAULT_MAX_RATE_LIMIT_WAIT_PER_RUN;
-    }
+    maxRateLimitRetries =
+        notNegativeOr(
+            "maxRateLimitRetries",
+            maxRateLimitRetries,
+            SourceRequestPolicy.DEFAULT_MAX_RATE_LIMIT_RETRIES);
+    maxRetryAfter = positiveOr(maxRetryAfter, SourceRequestPolicy.DEFAULT_MAX_RETRY_AFTER);
+    requireNotNegative("requestBudgetPerRun", requestBudgetPerRun);
+    maxRateLimitWaitPerRun =
+        positiveOr(maxRateLimitWaitPerRun, SourceRequestPolicy.DEFAULT_MAX_RATE_LIMIT_WAIT_PER_RUN);
   }
 
   /**

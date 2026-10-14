@@ -1,5 +1,9 @@
 package io.opaa.indexing.source.confluence;
 
+import static io.opaa.common.PropertyDefaults.notNegativeOr;
+import static io.opaa.common.PropertyDefaults.positiveOr;
+import static io.opaa.common.PropertyDefaults.requireNotNegative;
+
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -69,59 +73,17 @@ public record ConfluenceProperties(
   public static final int DEFAULT_REQUEST_BUDGET_PER_RUN = 50_000;
 
   public ConfluenceProperties {
-    if (pageSize < 0) {
-      throw new IllegalArgumentException("pageSize must not be negative, got " + pageSize);
-    }
-    if (pageSize == 0) {
-      pageSize = 100;
-    }
-    if (requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative()) {
-      requestTimeout = Duration.ofSeconds(30);
-    }
-    if (detectionTimeout == null || detectionTimeout.isZero() || detectionTimeout.isNegative()) {
-      detectionTimeout = Duration.ofSeconds(10);
-    }
-    if (maxRateLimitRetries < 0) {
-      throw new IllegalArgumentException(
-          "maxRateLimitRetries must not be negative, got " + maxRateLimitRetries);
-    }
-    if (maxRateLimitRetries == 0) {
-      maxRateLimitRetries = 6;
-    }
-    if (maxRetryAfter == null || maxRetryAfter.isZero() || maxRetryAfter.isNegative()) {
-      maxRetryAfter = Duration.ofMinutes(2);
-    }
-    if (maxResponseBytes <= 0) {
-      maxResponseBytes = 10_485_760L;
-    }
-    if (maxAttachmentSizeBytes <= 0) {
-      maxAttachmentSizeBytes = 20_971_520L;
-    }
-    if (maxListingPages < 0) {
-      throw new IllegalArgumentException(
-          "maxListingPages must not be negative, got " + maxListingPages);
-    }
-    if (maxListingPages == 0) {
-      maxListingPages = 500;
-    }
-    // ADR-0023, Entscheidung 4 ("Betriebsarten im Zeitplan"): a full reconciliation stays
-    // necessary - it is the only way deletions Confluence never reports reach the index - so the
-    // interval can be lengthened, never switched off; weekly is the documented default.
-    if (fullSyncInterval == null || fullSyncInterval.isZero() || fullSyncInterval.isNegative()) {
-      fullSyncInterval = Duration.ofDays(7);
-    }
-    // The incremental run searches from the last anchor minus this overlap: clock skew between
-    // OPAA and the instance, CQL's minute granularity and edits during the previous run are
-    // absorbed by re-reading a little; an unchanged page costs one listing entry, no body fetch.
-    if (incrementalOverlap == null
-        || incrementalOverlap.isZero()
-        || incrementalOverlap.isNegative()) {
-      incrementalOverlap = Duration.ofMinutes(10);
-    }
-    if (requestBudgetPerRun < 0) {
-      throw new IllegalArgumentException(
-          "requestBudgetPerRun must not be negative, got " + requestBudgetPerRun);
-    }
+    pageSize = notNegativeOr("pageSize", pageSize, 100);
+    requestTimeout = positiveOr(requestTimeout, Duration.ofSeconds(30));
+    detectionTimeout = positiveOr(detectionTimeout, Duration.ofSeconds(10));
+    maxRateLimitRetries = notNegativeOr("maxRateLimitRetries", maxRateLimitRetries, 6);
+    maxRetryAfter = positiveOr(maxRetryAfter, Duration.ofMinutes(2));
+    maxResponseBytes = positiveOr(maxResponseBytes, 10_485_760L);
+    maxAttachmentSizeBytes = positiveOr(maxAttachmentSizeBytes, 20_971_520L);
+    maxListingPages = notNegativeOr("maxListingPages", maxListingPages, 500);
+    fullSyncInterval = positiveOr(fullSyncInterval, Duration.ofDays(7));
+    incrementalOverlap = positiveOr(incrementalOverlap, Duration.ofMinutes(10));
+    requireNotNegative("requestBudgetPerRun", requestBudgetPerRun);
   }
 
   /** {@code true} when a run is bounded by {@link #requestBudgetPerRun}; zero means unbounded. */
