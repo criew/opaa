@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich seit #2149 über ADR-0045 (Datei-Abgleich)
+Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich seit #2149 über den gemeinsamen Datei-Abgleich (ADR-0040, Entscheidung 1; künftig ADR-0045)
 
 ## Kontext
 
@@ -17,10 +17,19 @@ Umsetzung: Der Objektschlüssel ist in einer S3-Benachrichtigung URL-kodiert, in
 ein `HeadObject` auf einen fehlenden Schlüssel antwortet nur mit `s3:ListBucket` `404`, sonst `403`;
 `ListObjectsV2` zeigt in versionierten Buckets nur aktuelle Versionen; MinIO baut `Bearer` selbst.
 
-Rahmen des Maintainers: ein Lauf ist immer ein Vollabgleich; Push ist Beschleuniger, nicht Ersatz;
-mehrere Bereiche je Bibliothek mit gemeinsamer Freigabe; typisierte Konfiguration in einem
-JSON-Feld; AWS SDK for Java v2; Nextcloud und ownCloud sind kein Ziel; Dokumentpfad
-`s3://bucket/key`, Präfixe als Ordner, nur die aktuelle Version.
+Rahmen des Maintainers (Epic #1291) und Stand:
+
+| Zusage | Stand | geändert mit |
+|---|---|---|
+| Ein Lauf ist immer ein Vollabgleich | gilt (Entscheidung 3) | — |
+| Push ist Beschleuniger, nicht Ersatz, und Teil des Epics | gilt (Entscheidung 6) | — |
+| Mehrere Bereiche je Bibliothek mit gemeinsamer Freigabe | gilt (Entscheidung 2) | — |
+| Typisierte Konfiguration in einem JSON-Feld statt Spalten | gilt, für jeden Konnektor | #1977 (ADR-0038) |
+| AWS SDK for Java v2 | gilt (Entscheidung 9) | — |
+| Nextcloud und ownCloud sind kein Ziel | gilt (Entscheidung 10); eigener Nextcloud-Konnektor | #2152 |
+| Dokumentpfad `s3://bucket/key`, Präfixe als Ordner, Ordnermarker und Archivklassen übersprungen, nur die aktuelle Version | gilt (Entscheidung 5) | — |
+| Änderungsmerkmal „ETag, Größe und `LastModified`" | abweichend: `LastModified` ist nicht Teil des Merkmals (Entscheidung 4) | #1378 |
+| Löschereignisse dürfen sofort löschen | gilt mit Nachprüfung: sofort im Ereignislauf, aber erst nach `HeadObject` mit `404` (Entscheidung 3) | #1381 |
 
 ## Entscheidung
 
@@ -54,8 +63,8 @@ vor der Eingabe. Bereiche sind änderbar; Entfernen wirkt mit dem nächsten Voll
 `S3IndexingExecutor` deklariert `FULL → REMOVE_ON_ABSENCE` und `EVENT → KEEP_ON_ABSENCE`;
 `defaultRunMode` ist konstant `FULL`. Es gibt keine inkrementelle Betriebsart: Die vollständige
 Auflistung kostet tausend Aufrufe je Million Objekte und ist damit die Regelbetriebsart. Seit #2149
-läuft der Vollabgleich über den gemeinsamen Datei-Abgleich `indexing.filesync` (ADR-0045,
-Datei-Abgleich): `S3FileStore` ist der `FileStore` (ein Bereich ein Container, der Schlüssel die
+läuft der Vollabgleich über den gemeinsamen Datei-Abgleich `indexing.filesync` (ADR-0040,
+Entscheidung 1; künftig ADR-0045): `S3FileStore` ist der `FileStore` (ein Bereich ein Container, der Schlüssel die
 Kennung, `S3ChangeMarker` das Änderungsmerkmal), `S3FullSync` liefert Wortlaut und Grenzen aus
 `S3Properties`. Was dort für S3 gilt: Jeder gelistete Schlüssel ist vorhanden, auch ein
 übersprungener (Ordnermarker, Archivklasse, Format, Größe); ein Schlüssel außerhalb der Muster
@@ -64,8 +73,11 @@ gelistet wurde; ein nicht listbarer Bereich (`404 NoSuchBucket`, `403 AccessDeni
 Auflistung unvollständig, die übrigen werden verarbeitet, bereinigt wird nichts — Rechteentzug ist
 kein Löschbefund. Ein erschöpftes Anfragebudget beendet den Lauf als „unvollständig, wird
 fortgesetzt"; der nächste Lauf listet alle Bereiche erneut (unvollendete zuerst) und spart nur die
-Downloads; der `ContinuationToken` wird nie gespeichert. Mehr als `max-objects-per-run` Objekte
-sind ein sichtbarer Fehler („Bereiche enger fassen"), kein stiller Schnitt.
+Downloads; der `ContinuationToken` wird nie gespeichert. Ein Lauf, der trotz erschöpftem Budget
+kein Objekt neu aufgenommen hat, meldet das als Fehler („reicht für diese Bibliothek nicht aus").
+Mehr als `max-objects-per-run` Objekte sind ein sichtbarer Fehler („Bereiche enger fassen"), kein
+stiller Schnitt. Ein Lauf, der null Objekte sieht, löscht nichts (Failsafe in
+`StaleDocumentCleanupService`).
 
 Der **Ereignislauf** (`IndexingRunMode.EVENT`) ist ein eigener Wert, nicht ein weiterer
 `INCREMENTAL`: Er listet nichts, prüft gemeldete Schlüssel einzeln (`S3FullSync#refresh`), läuft nur
@@ -84,7 +96,8 @@ ETag-Länge (seit #2482, Spalte `text`); nur ein Speicher ohne ETag bekommt die 
 `t:<LastModified als Epochenmillisekunden>|<Größe>`. `LastModified` ist nie Teil des Merkmals:
 Kopie, Metadatenänderung und Replikation setzen den Zeitstempel neu, ohne dass sich etwas ändert,
 und es gibt keinen Fall, in dem sich der Inhalt ändert und ETag und Größe gleich bleiben. Stimmt das
-Merkmal, wird nicht heruntergeladen. Verbindlich bleibt die SHA-256 nach dem Download
+Merkmal, wird nicht heruntergeladen; `LastModified` erscheint nur im Laufprotokoll und in der
+Dokumentanzeige. Verbindlich bleibt die SHA-256 nach dem Download
 (`ChecksumService`): ein neuer ETag bei gleicher Prüfsumme führt zu `refreshProvenance`, Dokument
 und Zerlegung bleiben. `LastModified` wird nicht als Kernfeld „Datum/Stand" gesetzt (ADR-0024).
 
@@ -103,7 +116,9 @@ und Zerlegung bleiben. `LastModified` wird nicht als Kernfeld „Datum/Stand" ge
   der konfigurierten Bereiche — nicht der Muster. Zwei Fehlerbilder wie bei der Originalablage
   (ADR-0030, Entscheidung 9): Objekt weg, archiviert, zu groß oder `403` → dasselbe `404` wie jeder
   „gibt es nicht"-Fall; Speicher nicht erreichbar → `503` ohne Einzelheit der Quellkonfiguration.
-  Ein Leserecht auf die Bibliothek genügt damit, jedes Objekt wiederholt zu laden.
+  `getDocumentContent` deklariert die `503` in der Spezifikation und sagt, für welche Quellentypen
+  „jede Störung ist dasselbe `404`" noch gilt. Ein Leserecht auf die Bibliothek genügt damit,
+  jedes Objekt wiederholt zu laden.
 - **Ordner:** Präfixsegmente relativ zum Bereichspräfix als schreibgeschützte Ordner
   (`SourceFolderMirror`); bei einem Bereich ist sein Präfix die Wurzel, bei mehreren beginnt jede
   Kette mit Bucket und Präfixsegmenten (`S3FolderPath`), nie ein Einzelname `bucket/prefix`. Ein
@@ -117,23 +132,32 @@ und Zerlegung bleiben. `LastModified` wird nicht als Kernfeld „Datum/Stand" ge
   Schlüssel kostet einen `HeadObject` für den `Content-Type`. Verbindlich bleibt die
   Formaterkennung aus dem Inhalt.
 - **Anhänge** von Mail-Objekten laufen über `AttachmentIndexer` mit `AttachmentSource.LocalFile`
-  und hängen per `parent_document_id` an ihrem Objekt (ADR-0022).
+  und hängen per `parent_document_id` an ihrem Objekt (ADR-0022, Entscheidung 3). Ein Objekt, dessen
+  Bytes geladen und dessen Anhangsmenge neu aufgezählt wurden, gilt als neu verarbeitet, jedes andere
+  gesehene nur als vorhanden — nur so bleiben die Anhänge eines nicht neu verarbeiteten Elternobjekts
+  stehen und fallen die eines neu verarbeiteten weg, die es nicht mehr gibt.
 
 ### 6. Der Push-Weg: ein Endpunkt je Bibliothek, drei Absicherungsformen, jedes Ereignis ein Hinweis
 
 `POST /api/v1/libraries/{libraryId}/push` (seit ADR-0038 typneutral; das Geheimnis über
-`/push-secret`, einmal angezeigt, verschlüsselt in `source_webhook_secret`) antwortet `202`, jede
-nicht authentifizierte Anfrage gleichförmig `401`. Drei Formen (`S3EventAuthentication`,
-zeitkonstant): `Authorization: Bearer <Token>` (MinIO), `Authorization: Basic` mit dem Token als
-Passwort (Ceph) und `X-OPAA-Webhook-Secret` (EventBridge API-Destination). Die Bearer-Form braucht
-eine eigene, früher geordnete `SecurityFilterChain` (`PushIntakeSecurityConfig`), weil der
-Resource-Server-Filter des `oidc`-Profils jeden fremden Bearer sonst vorher mit `401` abwiese.
+`/push-secret`: MANAGER+, einmal angezeigt, verschlüsselt in `source_webhook_secret` wie
+Zugangsdaten, im Audit als `LIBRARY_SOURCE_UPDATED` mit Feldnamen) antwortet `202`, jede nicht
+authentifizierte Anfrage gleichförmig `401`; der Eingang liegt im Rate-Limit-Topf `webhook`
+(`RateLimitConfiguration`). Drei Formen (`S3EventAuthentication`, zeitkonstant):
+`Authorization: Bearer <Token>` (MinIO), `Authorization: Basic` mit dem Token als Passwort (Ceph,
+dort `https` Pflicht) und `X-OPAA-Webhook-Secret` (EventBridge API-Destination). Die Bearer-Form
+braucht eine eigene, früher geordnete `SecurityFilterChain` (`PushIntakeSecurityConfig`) ohne
+Resource-Server, Sitzung und CSRF, in beiden Profilen, weil der Resource-Server-Filter des
+`oidc`-Profils jeden fremden Bearer sonst vorher mit `401` abwiese; ein Test belegt das gegen die
+echte `oidc`-Kette. Rückfall für einen Betreiber, der die Kette nicht ändern kann: der zweiteilige
+`auth_token` (`Basic <Base64>`) im Handbuch.
 Nutzlast: S3-`Records` (Schlüssel URL-dekodiert), EventBridge-Umschlag (Schlüssel roh),
 `s3:TestEvent` (`202`, keine Wirkung); Körper bis 256 KiB. Ereignisse außerhalb der Bereiche oder
 Muster werden verworfen und gezählt. Gemeldete Schlüssel werden je Bibliothek gesammelt
 (`opaa.indexing.events.*`, geteilt mit dem Confluence-Webhook) und in einem `EVENT`-Lauf
 abgearbeitet; ein zu großer Stapel läuft als Vollabgleich, ein Stapel gegen einen laufenden Lauf
-wartet begrenzt und wird dann verworfen. Kein Replay-Schutz, keine Auswertung des `sequencer`.
+wartet begrenzt und wird dann verworfen. Kein Replay-Schutz, keine Auswertung des `sequencer`: Eine
+wiedereingespielte Nachricht kostet einen `HeadObject` innerhalb der Ratenbegrenzung.
 SNS-Handshake und -Signaturprüfung (Abruf einer URL auf Zuruf des Absenders, SSRF-Fläche) und die
 SQS-Abfrage sind nicht gebaut; für AWS ist EventBridge der Weg.
 
@@ -185,9 +209,11 @@ sind kein Ziel (opake `urn:oid`-Objekte ohne Endung); für Nextcloud gibt es den
 
 Grenzwerte unter `opaa.indexing.s3.*` (`OPAA_INDEXING_S3_*`): `list-page-size` 1000,
 `max-objects-per-run` 1 000 000, `max-object-size-bytes` 50 MiB, `request-budget-per-run` 20 000,
-`request-timeout` 30 s, `download-concurrency` 2, `max-retries` 5, `retry-backoff` 500 ms. Die
-Ereignissammlung liegt seit 07.09.2026 unter `opaa.indexing.events.*` (geteilt mit Confluence). Die
-Obergrenze von fünfzig Bereichen ist eine Konstante des Records, keine Property.
+`request-timeout` 30 s, `download-concurrency` 2, `max-retries` 5, `retry-backoff` 500 ms;
+`request-budget-per-run` 0 heißt unbegrenzt. Die Ereignissammlung liegt seit 07.09.2026 unter
+`opaa.indexing.events.*` (geteilt mit Confluence): `debounce` 5 s, `max-pending-keys` 500,
+`max-deferrals` 120. Die Obergrenze von fünfzig Bereichen ist eine Konstante des Records, keine
+Property.
 
 ## Konsequenzen
 
@@ -198,6 +224,9 @@ Obergrenze von fünfzig Bereichen ist eine Konstante des Records, keine Property
   fallen `LIST`-Anfragen ins Entgelt. Der Adapter trägt die Schutzmechanismen zweimal (zentral in
   `sourceaccess`, nachgebildet in `io.opaa.s3`). Der Beleg-Abruf kostet je Klick einen `GetObject`.
   Die Anlage ist netzabhängig. Umbenennen und Verschieben bauen Dokumente neu.
+- **Restrisiko:** `source_settings` wird von der Datenbank nur als JSON-Objekt geprüft; die
+  Validierung liegt im Record, und ein Record, der einen Fall vergisst, wird von keiner Constraint
+  gefangen.
 
 ## Verworfene Alternativen
 
@@ -219,11 +248,13 @@ Obergrenze von fünfzig Bereichen ist eine Konstante des Records, keine Property
 - Objektmetadaten (`x-amz-meta-*`) und Tags als Metadatenquelle (ADR-0024).
 - SNS-Handshake und -Signaturprüfung, SQS-Abfrage; Instanzrolle als Zugangsdaten-Art.
 - Rechteübernahme aus Bucket-Policies oder IAM; schreibender Zugriff; vorsignierte Beleg-Links.
+- Schonzeitraum je Bibliothek (quellentypübergreifend); ein Vertragstest für Konnektoren (Epic #1293).
 
 ## Änderungsverlauf
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-09-07 | #1291 | Erstumsetzung (#1374–#1383) | 1–11 |
 | 2026-09-07 | #1381 | Ereignissammlung unter `opaa.indexing.events.*`, geteilt mit Confluence | 6, 11 |
 | 2026-09-11 | #1524 | Beleg-Abruf durch OPAA (`S3OriginalAccess`) statt nur Pfad als Text | 5 |
 | 2026-09-24 | #1949 | Testdoppel RustFS statt MinIO; Ereignisweg gegen simulierte Zustellung | 9 |
