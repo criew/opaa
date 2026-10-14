@@ -19,9 +19,9 @@ import org.springframework.stereotype.Service;
  * transfer closes one interval and opens the next, and the actor of the change is recorded on the
  * interval that opens. Only a deletion leaves a closed interval without a successor.
  *
- * <p><b>Writers.</b> {@code SpaceService} for {@code SPACE}, {@code AssetShellService} for the
- * asset types behind the shell. Every method runs in the caller's own transaction, so the ownership
- * change and its interval commit or roll back together.
+ * <p><b>Writers.</b> The space and asset-shell modules, for creation and transfer alike. Every
+ * method runs in the caller's own transaction, so the ownership change and its interval commit or
+ * roll back together.
  */
 @Service
 public class AssetOwnershipHistoryService {

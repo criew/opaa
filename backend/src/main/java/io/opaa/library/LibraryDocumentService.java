@@ -240,9 +240,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           accepted.discard();
           throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
         }
-        // A retry replaces a FAILED row together with its chunks, its attachment children
-        // (ADR-0022,
-        // Entscheidung 3) and its original; the children go first because of fk_documents_parent.
+        // A retry replaces a FAILED row together with its chunks, its original and its attachment
+        // children (ADR-0022, Entscheidung 3); the children go first (fk_documents_parent).
         Optional<UploadedOriginalRef> oldFailedOriginal = UploadedOriginalRef.of(existingDoc);
         for (Document descendant : descendantsDeepestFirst(existingDoc.getId())) {
           vectorChunkStore.deleteByDocumentId(descendant.getId());

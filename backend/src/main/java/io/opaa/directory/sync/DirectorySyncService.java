@@ -59,7 +59,7 @@ public class DirectorySyncService {
 
   private static final Logger log = LoggerFactory.getLogger(DirectorySyncService.class);
 
-  /** Mirrors {@link DirectorySyncPlanExecutor}'s identical constant - see its Javadoc. */
+  /** Actor label of the run's audit entries, the same as {@link DirectorySyncPlanExecutor}'s. */
   private static final String DIRECTORY_SYNC_ACTOR = "directory-sync";
 
   /** The 409 code when the provider's directory run is switched off. */
@@ -292,8 +292,7 @@ public class DirectorySyncService {
 
     // If the executor's transaction fails to commit (e.g. a directory-supplied value that violates
     // a column constraint), the exception propagates from here and nothing below runs - so a failed
-    // apply can never be recorded as APPLIED. See DirectorySyncPlanExecutor's class javadoc for the
-    // defect this replaced.
+    // apply can never be recorded as APPLIED.
     SyncReport report = plan.apply(snapshot, now);
     recordStatusSafely(target, now, report.outcome(), report.message(), report.changedFraction());
     return report;

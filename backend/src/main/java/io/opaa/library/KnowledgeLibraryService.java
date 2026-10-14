@@ -1170,8 +1170,9 @@ public class KnowledgeLibraryService {
    * The change {@code request} asks for, as its connector validates it: the connection fields when
    * {@code replacesConnection}, every connector-owned field as sent, always the library's own
    * {@code sourceType}. An omitted {@code sourceCredentials} keeps the stored, write-only value
-   * only while {@code sourceUrl} keeps its origin (scheme, host, port); a new origin drops it, so a
-   * stored credential can never be redirected to another host. Blank means "unchanged".
+   * only while the connector's {@link SecretTarget} still admits the new target (same origin and
+   * binding); a changed binding on the same origin is refused, a new origin drops it. Blank means
+   * "unchanged".
    */
   private SourceSettings requestedSettingsChange(
       KnowledgeLibrary library, LibraryUpdate request, boolean replacesConnection) {

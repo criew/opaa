@@ -18,7 +18,7 @@ import java.util.UUID;
  * A grant of an {@link AssetRole} on one asset to a {@link PermissionSubject} - the actual
  * mechanism behind "readable assets" (see
  * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten). Every grant carries an
- * optional {@code expiresAt}, the basis of recertification.
+ * optional {@code expiresAt}; an expired grant grants nothing.
  *
  * <p><b>The asset is named by {@link AssetType} plus id, not by a column of one asset table</b>
  * (ADR-0036, Entscheidung 12): a second asset type needs no second rights logic. One composite

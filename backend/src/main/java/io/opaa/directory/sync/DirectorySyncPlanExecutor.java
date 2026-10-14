@@ -72,7 +72,10 @@ class DirectorySyncPlanExecutor {
    */
   private static final int MIN_LOCKS_FOR_ACCOUNT_MEASURE = 2;
 
-  /** Fixed actor label of the audit entries of an unconfirmed run, which has no acting person. */
+  /**
+   * Actor label of every per-change entry and of an unconfirmed run's header entry; a sync run has
+   * no acting person.
+   */
   private static final String DIRECTORY_SYNC_ACTOR = "directory-sync";
 
   private final GroupRepository groupRepository;
@@ -559,7 +562,7 @@ class DirectorySyncPlanExecutor {
     }
 
     // Denominator: every group "in play" this run - active groups, plus a dissolved group only
-    // in the run that reactivates it (see the class javadoc). Numerator: removals from matched
+    // in the run that reactivates it. Numerator: removals from matched
     // groups, plus the entire pre-run membership of a group about to be dissolved - its reach is
     // capped the same way a revoked grant would be, even though no membership row is deleted.
     int existingMembershipCount = 0;
@@ -1100,7 +1103,7 @@ class DirectorySyncPlanExecutor {
 
   // ---------------------------------------------------------------------------------------
   // Report assembly - status is recorded by DirectorySyncService, once this class's own
-  // transaction has committed successfully. See the class javadoc.
+  // transaction has committed successfully.
   // ---------------------------------------------------------------------------------------
 
   private SyncReport buildReport(
