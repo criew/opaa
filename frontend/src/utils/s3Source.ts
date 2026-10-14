@@ -1,4 +1,4 @@
-import type { LibraryResponse } from '../types/api'
+import type { LibraryResponse } from '@/shared/api/types'
 import { formIssue, issueAt, messageOf, type SourceIssue } from './sourceIssue'
 
 /** One scope of an S3 library (ADR-0027): a bucket and an optional key prefix. */

@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import axios from 'axios'
 import { http, HttpResponse } from 'msw'
-import { server } from '../mocks/server'
-import { setupAuthInterceptors } from '../services/apiInterceptors'
-import { LAST_SESSION_KIND_STORAGE_KEY } from '../services/authApi'
+import { server } from '../../mocks/server'
+import { setupAuthInterceptors } from '../api/apiInterceptors'
+import { LAST_SESSION_KIND_STORAGE_KEY } from './authApi'
 import { useAuthStore } from './authStore'
 import { clearHandoverInFlight, markHandoverInFlight } from './handoverFlow'
-import { useSpaceStore } from './spaceStore'
-import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
+import { useSpaceStore } from '../../stores/spaceStore'
+import { LOCAL_ACCOUNTS_DISABLED } from './types'
 
 const LOCAL_CONFIG = {
   mode: 'oidc',

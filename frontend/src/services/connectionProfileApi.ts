@@ -10,9 +10,9 @@ import type {
   ConnectorProfileRequirementResponse,
   ConnectorTypeStateResponse,
   DormantSourceConnection,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
-import { apiErrorCode } from './apiErrorDetails'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
+import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 
 const ADMIN = '/v1/admin/connection-profiles'
 

@@ -14,7 +14,7 @@ import type {
   LibraryDocumentResponse,
   LibraryFolderBreadcrumbItem,
   LibraryFolderListItem,
-} from '../types/api'
+} from '@/shared/api/types'
 import { countMockFolderDocuments } from './libraryFolderHandlers'
 import { canManageMockLibrary } from './libraryHandlers'
 

@@ -1,4 +1,4 @@
-import type { LocalAuthSettingsResponse, LocalUserResponse } from '../types/api'
+import type { LocalAuthSettingsResponse, LocalUserResponse } from '@/shared/api/types'
 
 /**
  * Fixtures der Benutzerverwaltung (#1541, ADR-0033 Entscheidungen 4 und 11) – in einem eigenen

@@ -5,11 +5,11 @@ import type {
   GroupListResponse,
   GroupOrigin,
   GroupState,
-} from '../types/api'
+} from '@/shared/api/types'
 import { GROUP_PAGE_SIZE, listGroupPage, type GroupSortField } from '../services/groupAdminApi'
 import { getGroupEffects } from '../services/permissionTransferApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 /** The filters of the group list; `providerId` implies origin PROVIDER. */
 export interface GroupFilters {

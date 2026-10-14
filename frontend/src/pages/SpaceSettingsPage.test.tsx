@@ -4,11 +4,11 @@ import { useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import SpaceSettingsPage from './SpaceSettingsPage'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { getSpace } from '../services/spaceApi'
-import type { SpaceAssetAssociationListResponse, SpaceResponse } from '../types/api'
+import type { SpaceAssetAssociationListResponse, SpaceResponse } from '@/shared/api/types'
 
 // Der sichtbare Reiter ist eine Route (#1917); der Test setzt ihn wie die Adresszeile.
 const { routeParams, mockNavigate } = vi.hoisted(() => ({

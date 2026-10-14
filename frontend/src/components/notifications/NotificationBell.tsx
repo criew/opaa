@@ -8,10 +8,10 @@ import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import NotificationsIcon from '@mui/icons-material/Notifications'
 import { useNavigate } from 'react-router'
-import type { NotificationResponse } from '../../types/api'
+import type { NotificationResponse } from '@/shared/api/types'
 import { notificationTarget } from './notificationTarget'
 import { getNotifications, markNotificationRead } from '../../services/notificationApi'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 
 function formatCreatedAt(value: string): string {
   return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })

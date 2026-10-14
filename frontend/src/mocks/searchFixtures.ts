@@ -1,4 +1,4 @@
-import type { MetadataFilterOptionsResponse } from '../types/api'
+import type { MetadataFilterOptionsResponse } from '@/shared/api/types'
 
 // #1068: the Dokumentart vocabulary (ADR-0024, Entscheidung 3) as the backend seeds it.
 // #1070: the filter options of the mock bestand - Dokumentart above its threshold and therefore

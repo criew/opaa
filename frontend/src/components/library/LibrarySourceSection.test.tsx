@@ -6,7 +6,7 @@ import { server } from '../../mocks/server'
 import { mockSourceTypes } from '../../mocks/libraryFixtures'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
-import type { ConnectionProfileOption, SourceConnectionTestRequest } from '../../types/api'
+import type { ConnectionProfileOption, SourceConnectionTestRequest } from '@/shared/api/types'
 import LibrarySourceSection from './LibrarySourceSection'
 
 const library = {

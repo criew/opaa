@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import {
   activeAssetTypes,
   assetTypeDefinition,

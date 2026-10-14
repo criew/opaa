@@ -13,8 +13,8 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import { Link as RouterLink } from 'react-router'
 import FieldLabel from '../wizard/FieldLabel'
 import SectionEyebrow from './SectionEyebrow'
-import { useAuthStore } from '../../stores/authStore'
-import { FORGOT_PASSWORD_ROUTE, REGISTER_ROUTE } from '../../routes'
+import { useAuthStore } from '@/shared/session/authStore'
+import { FORGOT_PASSWORD_ROUTE, REGISTER_ROUTE } from '@/shared/routes'
 import { radius } from '../../theme/tokens'
 
 interface LocalSignInFormProps {

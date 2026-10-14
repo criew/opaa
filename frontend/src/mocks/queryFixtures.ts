@@ -1,4 +1,4 @@
-import type { QueryResponse } from '../types/api'
+import type { QueryResponse } from '@/shared/api/types'
 
 export const mockQueryResponses: QueryResponse[] = [
   {

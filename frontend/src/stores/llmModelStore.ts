@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { EmbeddingInfoResponse, LlmModelRequest, LlmModelResponse } from '../types/api'
+import type { EmbeddingInfoResponse, LlmModelRequest, LlmModelResponse } from '@/shared/api/types'
 import {
   activateLlmModel,
   createLlmModel,
@@ -8,8 +8,8 @@ import {
   getLlmModels,
   updateLlmModel,
 } from '../services/modelApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 interface LlmModelState {
   models: LlmModelResponse[]

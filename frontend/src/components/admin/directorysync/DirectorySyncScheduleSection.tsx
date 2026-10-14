@@ -7,7 +7,7 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { DirectorySyncStatusResponse, OidcProviderResponse } from '../../../types/api'
+import type { DirectorySyncStatusResponse, OidcProviderResponse } from '@/shared/api/types'
 import { clockLabel, intervalLabel, nextRunOf, switchOnBlocker } from './directorySyncState'
 
 /** The bounds the backend enforces (OidcProviderService), and its default of six hours. */

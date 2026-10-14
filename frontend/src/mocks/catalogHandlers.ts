@@ -5,7 +5,7 @@ import type {
   CatalogEntryStatus,
   CatalogVisibility,
   LibraryListResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
 import { mockAuthConfig } from './authFixtures'
 import { mockLibraries, mockLibraryDetails } from './libraryFixtures'

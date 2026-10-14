@@ -8,8 +8,8 @@ import type {
   AssetType,
   SpaceAssetAssociationListResponse,
   SpaceAssetAssociationResponse,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 // the space's own view of its associated assets, of every type. For a plain MEMBER, filtered
 // server-side to what they may themselves read - two members of the same space can see different

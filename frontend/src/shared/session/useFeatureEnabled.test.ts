@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useFeatureEnabled } from './useFeatureEnabled'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from './authStore'
 
 describe('useFeatureEnabled', () => {
   beforeEach(() => {

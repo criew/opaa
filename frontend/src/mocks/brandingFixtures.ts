@@ -1,4 +1,4 @@
-import type { BrandingResponse } from '../types/api'
+import type { BrandingResponse } from '@/shared/api/types'
 
 /**
  * Mutable so the handlers can reflect a PUT back on the next GET - the branding form's whole point

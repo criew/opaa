@@ -5,8 +5,8 @@ import type {
   GroupResponse,
   GroupStewardResponse,
   SelectableGroupResponse,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 export async function getMyGroups(): Promise<GroupListResponse[]> {
   try {

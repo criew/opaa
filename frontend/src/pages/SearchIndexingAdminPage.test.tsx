@@ -5,7 +5,7 @@ import { delay, http, HttpResponse } from 'msw'
 import { Navigate, Route, Routes } from 'react-router'
 import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 import {
   mockChunkInspections,

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../../mocks/server'
 import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
-import { useAuthStore } from '../../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import ConnectorTypesTab from './ConnectorTypesTab'
 import { useDesktopViewport } from './connectionTestUtils'
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { MailSettingsResponse } from '../../../types/api'
+import type { MailSettingsResponse } from '@/shared/api/types'
 import { mailStatusOf } from './mailStatus'
 
 function settings(patch: Partial<MailSettingsResponse> = {}): MailSettingsResponse {

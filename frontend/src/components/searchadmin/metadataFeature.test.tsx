@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/test-utils'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { mockSearchStatus } from '../../mocks/searchAdminFixtures'
 import DiagnosisForm from './DiagnosisForm'
 import LibraryStatusTable from './LibraryStatusTable'

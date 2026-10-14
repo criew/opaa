@@ -1,10 +1,10 @@
 import { create } from 'zustand'
-import type { AssetType, CatalogEntryResponse, CatalogPageResponse } from '../types/api'
+import type { AssetType, CatalogEntryResponse, CatalogPageResponse } from '@/shared/api/types'
 import { getCatalog } from '../services/catalogApi'
 import { appendNewEntries, pagesForMore } from '../services/catalogPaging'
 import { markAssetFavorite, unmarkAssetFavorite } from '../services/assetApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 export const CATALOG_PAGE_SIZE = 50
 /** The bound the server sets on the search text. */

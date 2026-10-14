@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { getRandomMockResponse, mockErrorResponse } from './queryFixtures'
 import { mockChatDetails, mockChatArchive } from './chatFixtures'
 import { mockSpaceAssetAssociations } from './assetFixtures'
-import type { QueryRequest } from '../types/api'
+import type { QueryRequest } from '@/shared/api/types'
 
 /**
  * Mirrors ChatRepository#deriveTitleFromFirstQuestionIfAbsent/#applyGeneratedTitleIfGenerated

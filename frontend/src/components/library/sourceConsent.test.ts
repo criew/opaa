@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import type { ConnectionProfileOption } from '../../types/api'
+import type { ConnectionProfileOption } from '@/shared/api/types'
 import { scheduleValuesFrom } from '../../utils/librarySchedule'
 import { registeredSourceTypes, sourceRegistration } from './sources/registry'
 import {

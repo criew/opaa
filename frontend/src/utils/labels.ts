@@ -22,10 +22,10 @@ import type {
   SpaceRole,
   IndexingRunMode,
   IndexingTriggerSource,
-} from '../types/api'
+} from '../shared/api/types'
 import type { ConfluenceEdition } from './confluenceSource'
 import type { AccessLevel } from '../types/chat'
-import { isAssetTypeOffered } from './installationFeatures'
+import { isAssetTypeOffered } from '../shared/session/installationFeatures'
 
 const spaceRoleLabels: Record<SpaceRole, string> = {
   MEMBER: 'Mitglied',

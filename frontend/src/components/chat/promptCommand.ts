@@ -1,4 +1,4 @@
-import type { AvailablePrompt } from '../../types/api'
+import type { AvailablePrompt } from '@/shared/api/types'
 
 export interface ActiveSlashCommand {
   /** Index of the '/' that opened the command - always the start of a line. */

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
 import DocumentMetadataPanel from './DocumentMetadataPanel'
-import type { DocumentMetadataFieldResponse, DocumentMetadataResponse } from '../../types/api'
+import type { DocumentMetadataFieldResponse, DocumentMetadataResponse } from '@/shared/api/types'
 
 const {
   mockGetDocumentMetadata,

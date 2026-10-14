@@ -6,7 +6,7 @@ import type {
   CapabilityOverviewResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import { getCapabilityOverview } from '../../../services/capabilityAdminApi'
 import {
   listConnectionProfiles,

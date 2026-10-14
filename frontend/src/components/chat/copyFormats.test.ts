@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { buildCitationIndex } from './citations'
 import { answerAsMarkdown, answerAsPlainText, answerWithSources } from './copyFormats'
-import type { SourceReference } from '../../types/api'
+import type { SourceReference } from '@/shared/api/types'
 
 const ANSWER =
   '## Gebühren\n\nEin Personalausweis kostet **42,60 Euro** 【source: doc-a#0 | 001_personalausweis.md】.\n' +

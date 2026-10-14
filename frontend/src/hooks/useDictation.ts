@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AxiosError } from 'axios'
 import { transcribeRecording } from '../services/transcriptionApi'
-import { isErrorResponse } from '../types/api'
+import { isErrorResponse } from '@/shared/api/types'
 import { startRecording as startMicrophoneRecording } from '../utils/audioRecording'
 import type { Recording, RecordingOptions } from '../utils/audioRecording'
 

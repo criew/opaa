@@ -1,10 +1,10 @@
-import type { NotificationResponse } from '../../types/api'
+import type { NotificationResponse } from '@/shared/api/types'
 import {
   CONNECTED_ACCOUNTS_ROUTE,
   CONNECTION_PROFILES_ROUTE,
   EXTERNAL_TOOLS_TOKENS_ROUTE,
   connectionProfileRoute,
-} from '../../routes'
+} from '@/shared/routes'
 
 /** Where a notification leads when clicked; `null` keeps it a plain entry. */
 export function notificationTarget({

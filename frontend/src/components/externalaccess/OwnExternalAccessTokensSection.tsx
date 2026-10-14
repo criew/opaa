@@ -16,7 +16,7 @@ import type {
   CreatedExternalAccessTokenResponse,
   ExternalAccessTokenLibraryResponse,
   OwnExternalAccessTokenResponse,
-} from '../../types/api'
+} from '@/shared/api/types'
 import {
   getExternalAccessChannelInfo,
   listOwnExternalAccessTokens,

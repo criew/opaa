@@ -3,8 +3,8 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../test/test-utils'
 import MessageBubble from './MessageBubble'
-import { useAuthStore } from '../../stores/authStore'
-import type { SourceReference } from '../../types/api'
+import { useAuthStore } from '@/shared/session/authStore'
+import type { SourceReference } from '@/shared/api/types'
 
 /** A Beleg as a chat stored it while metadata was on: title, Dokumentart, a mail detail, a mark. */
 const storedSource: SourceReference = {

@@ -5,7 +5,7 @@ import { HttpResponse, http } from 'msw'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import CapabilityManagementPage from './CapabilityManagementPage'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   useAuthStore.setState({

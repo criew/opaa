@@ -7,7 +7,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import type { PromptResponse } from '../../types/api'
+import type { PromptResponse } from '@/shared/api/types'
 import { initialValues, isComplete, resolvePromptText } from '../../utils/promptTemplate'
 import PromptVariableInput from '../prompts/PromptVariableInput'
 

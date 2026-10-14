@@ -13,9 +13,9 @@ import {
   setMockLocalUsers,
 } from '../mocks/localUserFixtures'
 import { resetMockProviderAccounts } from '../mocks/accountFixtures'
-import type { LocalAuthSettingsUpdateRequest, LocalUserUpdateRequest } from '../types/api'
+import type { LocalAuthSettingsUpdateRequest, LocalUserUpdateRequest } from '@/shared/api/types'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../test/test-utils'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useMailStore } from '../stores/mailStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import UserManagementPage from './UserManagementPage'

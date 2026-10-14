@@ -21,7 +21,7 @@ import type {
   ProfileDefaultKind,
   SourceTypeDescriptor,
   SourceTypeSignIn,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import BusyButton from '../../a11y/BusyButton'
 import {
   changeRejected,

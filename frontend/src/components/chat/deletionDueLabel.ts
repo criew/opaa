@@ -1,4 +1,4 @@
-import type { ChatAutoCleanupResponse } from '../../types/api'
+import type { ChatAutoCleanupResponse } from '@/shared/api/types'
 
 const dateFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' })
 

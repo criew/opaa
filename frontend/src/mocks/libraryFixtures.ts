@@ -5,7 +5,7 @@ import type {
   PersonalSecretForm,
   SourceTypeDescriptor,
   SourceTypeSignIn,
-} from '../types/api'
+} from '@/shared/api/types'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 
 // #822: a plain mock shape rather than LibraryFolderResponse itself - documentCount there is

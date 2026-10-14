@@ -5,7 +5,7 @@ import type {
   LibraryDocumentResponse,
   LibraryFolderBreadcrumbItem,
   LibraryFolderListItem,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   bulkDeleteLibraryDocuments,
   createLibraryFolder,
@@ -15,8 +15,8 @@ import {
   renameLibraryFolder,
   uploadDocument as uploadDocumentRequest,
 } from '../services/libraryApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 // #822 review, finding 2: normalizeError (services/api.ts) attaches the original AxiosError as
 // `cause` - this reaches into that to tell a real 404 (unknown/foreign folderId, ADR-0020) apart

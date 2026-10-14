@@ -9,7 +9,7 @@ import type {
   SpaceMemberResponse,
   SpaceRole,
   SpaceResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   addSpaceMember,
   archiveSpace,
@@ -28,8 +28,8 @@ import {
   detachSpaceAsset,
   getSpaceAssetAssociations,
 } from '../services/assetApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 // #783 review: module-level, mirroring chatStore's chatLoadSequence - guards loadAssetAssociations
 // against a *newer* call for a different space, not just against a session reset. Without it, a

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { GroupListResponse } from '../../types/api'
+import type { GroupListResponse } from '@/shared/api/types'
 import { ageLabel, groupIneffectiveReason, groupOriginLabel } from './groupOriginLabels'
 
 const providerGroup: GroupListResponse = {

@@ -4,7 +4,7 @@ import type {
   LocalUserCreateRequest,
   LocalUserResponse,
   LocalUserUpdateRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   countsAsInactive,
   countsAsWithoutExpiry,

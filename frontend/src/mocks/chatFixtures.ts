@@ -5,7 +5,7 @@ import type {
   ChatSearchHit,
   ChatSearchRequest,
   ChatSearchResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import { mockQueryResponses } from './queryFixtures'
 
 const INITIAL_CHAT_DETAILS: Record<string, ChatDetail> = {

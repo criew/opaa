@@ -3,7 +3,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined'
 import GroupWorkOutlinedIcon from '@mui/icons-material/GroupWorkOutlined'
-import type { GroupListResponse } from '../../../types/api'
+import type { GroupListResponse } from '@/shared/api/types'
 import { InfoHint } from '../list/AdminList'
 import { groupOriginExplanation } from './groupListLabels'
 

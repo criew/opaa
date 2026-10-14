@@ -33,7 +33,7 @@ Diese Stack-spezifischen Fallen nur prüfen, wenn sie semantische Auswirkungen h
 ## Was nicht gemeldet wird
 
 - Alles, was CI oder Linter bereits durchsetzen: Formatierung (Spotless oder Prettier), Import-Reihenfolge, ESLint-Regeln, Typfehler, Namenskonventionen
-- Generierte Dateien (`build/generated/`, `frontend/src/types/generated/`) und Lockfiles
+- Generierte Dateien (`build/generated/`, `frontend/src/shared/api/generated/`) und Lockfiles
 - Stilpräferenzen, spekulative Alternativen oder Refactoring-Ideen ohne Defekt
 - Doppelte Erwähnungen derselben Grundursache — deduplizieren und einmal melden
 - Bei Re-Review: nur ob vorherige Befunde behoben wurden und ob der Fix neue wichtige Probleme eingeführt hat. Keine neuen Nits hinzufügen.

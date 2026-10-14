@@ -15,14 +15,14 @@ import type {
   CapabilityOverviewResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import {
   lockConnectorType,
   setConnectorProfileRequirement,
 } from '../../../services/connectionProfileApi'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
-import { connectionProfileRoute } from '../../../routes'
+import { connectionProfileRoute } from '@/shared/routes'
 import SectionHead from '../../SectionHead'
 import StatusLine from '../../StatusLine'
 import AccessBadge from '../capabilities/AccessBadge'

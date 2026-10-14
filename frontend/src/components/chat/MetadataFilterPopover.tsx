@@ -17,7 +17,7 @@ import type {
   MetadataFilterLibraryFieldCondition,
   MetadataFilterLibraryFieldOption,
   MetadataFilterOptionsResponse,
-} from '../../types/api'
+} from '@/shared/api/types'
 import {
   metadataFilterScopeKey,
   useMetadataFilterOptionsStore,

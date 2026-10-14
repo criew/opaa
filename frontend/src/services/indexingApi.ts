@@ -8,8 +8,8 @@ import type {
   IndexingStatusResponse,
   IndexingRunMode,
   PushSecretResponse,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 // the trigger reduces to "index this library" - sourceType and every typed configuration
 // field (url/credentials) now live on the library itself (ADR-0018) and are no

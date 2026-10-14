@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getMyCapabilities } from '../services/capabilityApi'
-import type { Capability } from '../types/api'
+import { getMyCapabilities } from './capabilityApi'
+import type { Capability } from '../api/types'
 
 interface UseMyCapabilitiesResult {
   /** `null` until the answer is in - neither "held" nor "missing" is known before that. */

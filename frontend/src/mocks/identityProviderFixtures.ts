@@ -1,4 +1,4 @@
-import type { OidcProviderImpactResponse, OidcProviderResponse } from '../types/api'
+import type { OidcProviderImpactResponse, OidcProviderResponse } from '@/shared/api/types'
 
 export let mockOidcProviders: OidcProviderResponse[] = []
 

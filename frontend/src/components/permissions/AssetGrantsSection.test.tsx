@@ -3,14 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
 import AssetGrantsSection from './AssetGrantsSection'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { assetKey, useGrantStore } from '../../stores/grantStore'
 import type {
   AssetGrantRequest,
   AssetGrantResponse,
   SelectableGroupResponse,
   UserSummary,
-} from '../../types/api'
+} from '@/shared/api/types'
 
 const {
   mockGetAssetGrants,

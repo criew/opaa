@@ -4,10 +4,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import GroupManagementPage from './GroupManagementPage'
 import { useGroupStore } from '../stores/groupStore'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupAdminListStore } from '../stores/groupAdminListStore'
 import { useNotificationStore } from '../stores/notificationStore'
-import type { GroupListResponse, GroupResponse } from '../types/api'
+import type { GroupListResponse, GroupResponse } from '@/shared/api/types'
 import type { GroupListQuery } from '../services/groupAdminApi'
 
 const {

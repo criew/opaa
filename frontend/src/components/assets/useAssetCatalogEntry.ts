@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AssetType, CatalogEntryResponse } from '../../types/api'
+import type { AssetType, CatalogEntryResponse } from '@/shared/api/types'
 import { getCatalog } from '../../services/catalogApi'
 import { markAssetFavorite, unmarkAssetFavorite } from '../../services/assetApi'
 import { notify } from '../../stores/notificationStore'

@@ -6,9 +6,9 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import SectionHead from '../SectionHead'
 import UserPicker from './UserPicker'
-import type { GroupStewardResponse, UserSummary } from '../../types/api'
+import type { GroupStewardResponse, UserSummary } from '@/shared/api/types'
 import { confirmAction } from '../../stores/confirmStore'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../../stores/groupStore'
 
 interface GroupStewardsSectionProps {

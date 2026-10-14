@@ -4,7 +4,7 @@ import type {
   GroupListResponse,
   PendingSourceConnection,
   SourceTypeKey,
-} from '../../types/api'
+} from '@/shared/api/types'
 import type { LibraryScheduleValues } from '../../utils/librarySchedule'
 import type { PendingGrant } from '../assets/pendingGrants'
 

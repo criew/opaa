@@ -6,8 +6,8 @@ import type {
   LlmModelResponse,
   LlmModelTestRequest,
   LlmModelTestResponse,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 // managed chat models ('s admin API) - SYSTEM_ADMIN only, same as the group/branding
 // admin endpoints. The API key is write-only: LlmModelResponse never carries it, only

@@ -3,9 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import RightsHistoryPage from './RightsHistoryPage'
-import { useAuthStore } from '../stores/authStore'
-import type { AccessAsOfPage } from '../types/api'
-import type { SystemRole } from '../types/auth'
+import { useAuthStore } from '@/shared/session/authStore'
+import type { AccessAsOfPage } from '@/shared/api/types'
+import type { SystemRole } from '@/shared/session/types'
 
 const { mockGetAccessAsOf } = vi.hoisted(() => ({ mockGetAccessAsOf: vi.fn() }))
 

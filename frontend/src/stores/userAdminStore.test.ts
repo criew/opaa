@@ -14,8 +14,8 @@ import {
   mockProviderAccounts,
   resetMockProviderAccounts,
 } from '../mocks/accountFixtures'
-import { apiErrorCode, apiFieldErrors } from '../services/apiErrorDetails'
-import { resetAllStores } from './resettableStores'
+import { apiErrorCode, apiFieldErrors } from '@/shared/api/apiErrorDetails'
+import { resetAllStores } from '@/shared/session/resettableStores'
 import { INITIAL_ACCOUNT_FILTERS, useUserAdminStore } from './userAdminStore'
 
 function state() {

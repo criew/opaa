@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AvailablePrompt } from '../../types/api'
+import type { AvailablePrompt } from '@/shared/api/types'
 import { findActiveSlashCommand, matchPrompts } from './promptCommand'
 
 function available(name: string, title: string, description?: string): AvailablePrompt {

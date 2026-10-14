@@ -11,11 +11,11 @@ import { Navigate, Link as RouterLink, useLocation } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import AuthLayout from '../components/auth/AuthLayout'
 import LocalSignInForm from '../components/auth/LocalSignInForm'
-import { useAuthStore } from '../stores/authStore'
-import { spendSilentSignIn } from '../stores/silentSignIn'
+import { useAuthStore } from '@/shared/session/authStore'
+import { spendSilentSignIn } from '@/shared/session/silentSignIn'
 import { usePageTitle } from '../hooks/usePageTitle'
-import { LOGIN_ROUTE } from '../routes'
-import { redirectTargetOf } from '../utils/safeRedirectPath'
+import { LOGIN_ROUTE } from '@/shared/routes'
+import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
 
 /**
  * The sign-in of the local system administrators (#1368, ADR-0033, Entscheidung 4 and 5). It is

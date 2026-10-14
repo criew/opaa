@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import type { OutboundProxyRequest, OutboundProxyResponse } from '../types/api'
+import type { OutboundProxyRequest, OutboundProxyResponse } from '@/shared/api/types'
 
 /** What the mock stores; no proxy until one is set. */
 let stored: OutboundProxyResponse = { proxyUrl: null, noProxy: [], updatedAt: null }

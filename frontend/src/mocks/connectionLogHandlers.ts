@@ -3,7 +3,7 @@ import type {
   ConnectionLogEntryResponse,
   ConnectionLogRetentionRequest,
   ConnectionLogRetentionResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 const ORGANIZATION = '00000000-0000-4000-8000-000000000001'
 

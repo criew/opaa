@@ -5,7 +5,7 @@ import type {
   SearchDiagnosisResponse,
   SearchPermissionProfileResponse,
   SearchStatusResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   getDocumentChunks,
   getSearchDiagnosisContext,
@@ -13,8 +13,8 @@ import {
   runSearchDiagnosis,
 } from '../services/searchAdminApi'
 import { runContextPrefixRerunBatch, runMetadataBackfillBatch } from '../services/indexingApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 /**
  * Sequence of the latest loadDocumentChunks call: an answer to an earlier call is dropped, so two

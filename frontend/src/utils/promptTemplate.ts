@@ -1,4 +1,4 @@
-import type { PromptVariable, PromptVariableType } from '../types/api'
+import type { PromptVariable, PromptVariableType } from '@/shared/api/types'
 
 /**
  * The variable syntax of a prompt text, mirroring the backend's `PromptTemplate`

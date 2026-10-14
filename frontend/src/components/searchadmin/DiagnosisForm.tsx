@@ -12,8 +12,8 @@ import type {
   SearchDiagnosisContextType,
   SearchDiagnosisRequest,
   SearchPermissionProfileResponse,
-} from '../../types/api'
-import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
+} from '@/shared/api/types'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { getDocumentTypeVocabulary } from '../../services/libraryMetadataApi'
 import { plural, UUID_PATTERN } from './format'
 

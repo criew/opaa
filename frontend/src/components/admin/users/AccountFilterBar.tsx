@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import type { LocalAccountState, SystemRole } from '../../../types/api'
+import type { LocalAccountState, SystemRole } from '@/shared/api/types'
 import { useOidcProviderStore } from '../../../stores/oidcProviderStore'
 import {
   useUserAdminStore,

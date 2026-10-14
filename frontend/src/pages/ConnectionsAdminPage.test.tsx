@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import ConnectionsAdminPage from './ConnectionsAdminPage'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {

@@ -6,7 +6,7 @@ import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import type { ChatNoteItem } from '../../types/api'
+import type { ChatNoteItem } from '@/shared/api/types'
 import { isConversationNoteVisible } from './conversationNoteVisibility'
 
 interface ConversationNoteProps {

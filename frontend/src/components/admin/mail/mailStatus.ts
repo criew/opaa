@@ -1,4 +1,4 @@
-import type { MailSendResultResponse, MailSettingsResponse } from '../../../types/api'
+import type { MailSendResultResponse, MailSettingsResponse } from '@/shared/api/types'
 
 export type MailStatusKind = 'UNCONFIGURED' | 'DISABLED' | 'UNTESTED' | 'SUCCESS' | 'FAILURE'
 

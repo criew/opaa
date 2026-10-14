@@ -5,9 +5,9 @@ import { http, HttpResponse } from 'msw'
 import { Route, Routes } from 'react-router'
 import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
-import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
+import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
 import SystemLoginPage from './SystemLoginPage'
 
 /**

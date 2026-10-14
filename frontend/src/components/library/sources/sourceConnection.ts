@@ -3,7 +3,7 @@ import type {
   ConnectionProfileOption,
   ConnectionProfileRef,
   SourceTypeDescriptor,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import type { SourceFormContext } from './types'
 
 /** The connection profile ("Zugang") a source form works under. */

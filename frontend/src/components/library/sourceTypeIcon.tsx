@@ -1,6 +1,6 @@
 import ExtensionIcon from '@mui/icons-material/Extension'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
-import type { SourceTypeKey } from '../../types/api'
+import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from './sources/registry'
 
 /**

@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography'
 import type {
   LibraryMetadataExtractionSettingsResponse,
   LibraryMetadataQualityResponse,
-} from '../../types/api'
+} from '@/shared/api/types'
 import {
   getLibraryMetadataExtractionSettings,
   getLibraryMetadataQuality,

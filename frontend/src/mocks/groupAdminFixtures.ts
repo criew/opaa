@@ -4,7 +4,7 @@ import type {
   DirectorySyncReportResponse,
   DirectorySyncStatusResponse,
   GroupEffectsResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 /**
  * Die Mocks der Verwaltung von Gruppen, Anlegerechten und Verzeichnisabgleich (#1821) — eigene

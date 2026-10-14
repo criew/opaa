@@ -1,4 +1,4 @@
-import type { ChatNoteItem } from '../../types/api'
+import type { ChatNoteItem } from '@/shared/api/types'
 
 /**
  * Completed rounds a chat needs before its Gesprächsnotiz gets a surface (ADR-0031). A fixed

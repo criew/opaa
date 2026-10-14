@@ -11,7 +11,7 @@ import {
   toChatSummary,
   resetMockChats,
 } from './chatFixtures'
-import type { ChatCreateRequest, ChatSearchRequest, ChatUpdateRequest } from '../types/api'
+import type { ChatCreateRequest, ChatSearchRequest, ChatUpdateRequest } from '@/shared/api/types'
 
 export function resetChatMockState() {
   resetMockChats()

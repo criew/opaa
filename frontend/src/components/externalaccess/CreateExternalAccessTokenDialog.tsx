@@ -15,7 +15,7 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import type {
   CreatedExternalAccessTokenResponse,
   EligibleExternalAccessLibraryResponse,
-} from '../../types/api'
+} from '@/shared/api/types'
 import {
   createExternalAccessToken,
   listEligibleExternalAccessLibraries,

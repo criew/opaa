@@ -2,7 +2,7 @@ import { Navigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import AreaTabs from '../components/AreaTabs'
@@ -10,7 +10,11 @@ import ConnectionProfilesTab from '../components/admin/connections/ConnectionPro
 import ConnectorTypesTab from '../components/admin/connections/ConnectorTypesTab'
 import ConnectionSettingsTab from '../components/admin/connections/ConnectionSettingsTab'
 import ExternalToolsTab from '../components/admin/externalaccess/ExternalToolsTab'
-import { CONNECTIONS_ADMIN_TABS, connectionsAdminRoute, type ConnectionsAdminTab } from '../routes'
+import {
+  CONNECTIONS_ADMIN_TABS,
+  connectionsAdminRoute,
+  type ConnectionsAdminTab,
+} from '@/shared/routes'
 import { contentWidth } from '../theme/tokens'
 
 const TAB_LABELS: Record<ConnectionsAdminTab, string> = {

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import GroupMembersDisclosure from './GroupMembersDisclosure'
-import type { GroupMemberDisclosureResponse } from '../../types/api'
+import type { GroupMemberDisclosureResponse } from '@/shared/api/types'
 
 const twoOfThree: GroupMemberDisclosureResponse = {
   groupId: 'group-referat-50',

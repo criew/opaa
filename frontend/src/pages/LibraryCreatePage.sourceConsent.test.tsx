@@ -5,14 +5,14 @@ import { Route, Routes, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../mocks/server'
 import { mockMyGroups } from '../mocks/groupFixtures'
-import { leaveFor } from '../services/leaveApp'
+import { leaveFor } from '@/shared/api/leaveApp'
 import { renderWithProviders, setMockAuthState } from '../test/test-utils'
 import type {
   ConnectionAuthorizationStartRequest,
   ConnectionProfileOption,
   LibraryRequest,
   SourceBrowseRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 import { scheduleValuesFrom } from '../utils/librarySchedule'
 import {
   SERVICE_ACCOUNT_CONFIRMATION,
@@ -22,7 +22,7 @@ import {
 } from '../components/library/sourceConsent'
 import LibraryCreatePage from './LibraryCreatePage'
 
-vi.mock('../services/leaveApp', () => ({ leaveFor: vi.fn() }))
+vi.mock('@/shared/api/leaveApp', () => ({ leaveFor: vi.fn() }))
 
 type User = ReturnType<typeof userEvent.setup>
 

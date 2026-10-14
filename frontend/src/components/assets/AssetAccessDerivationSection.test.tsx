@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import AssetAccessDerivationSection from './AssetAccessDerivationSection'
 
 const { mockGetAssetAccessDerivation } = vi.hoisted(() => ({

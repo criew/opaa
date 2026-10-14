@@ -1,7 +1,7 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { PendingSourceConnection } from '../../types/api'
+import type { PendingSourceConnection } from '@/shared/api/types'
 import BusyButton from '../a11y/BusyButton'
 import ServiceAccountConfirmation from './ServiceAccountConfirmation'
 

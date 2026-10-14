@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
-import type { SpaceMemberResponse } from '../../types/api'
+import type { SpaceMemberResponse } from '@/shared/api/types'
 import SpaceMemberList from './SpaceMemberList'
 
 const { mockGetSpaceAccessDerivation, mockGetSpaceGroupMembers } = vi.hoisted(() => ({

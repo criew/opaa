@@ -1,5 +1,5 @@
 import Typography from '@mui/material/Typography'
-import type { PrivateLibrarySearchSummaryResponse } from '../../types/api'
+import type { PrivateLibrarySearchSummaryResponse } from '@/shared/api/types'
 import { plural } from './format'
 
 /**

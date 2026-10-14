@@ -4,9 +4,9 @@ import type {
   LocalUserResponse,
   MailDeliveryPath,
   SystemRole,
-} from '../../../types/api'
-import type { PasswordChangeReason } from '../../../types/auth'
-import { apiErrorMessage } from '../../../services/apiErrorDetails'
+} from '@/shared/api/types'
+import type { PasswordChangeReason } from '@/shared/session/types'
+import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
 
 /**
  * The German words of the local account management (ADR-0033, Entscheidung 11) - the same four

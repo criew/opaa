@@ -164,17 +164,17 @@
       "count": 4
     }
   },
-  "src/services/api.test.ts": {
+  "src/shared/api/api.test.ts": {
     "boundaries/dependencies": {
       "count": 3
     }
   },
-  "src/stores/authStore.local.test.ts": {
+  "src/shared/session/authStore.local.test.ts": {
     "boundaries/dependencies": {
       "count": 1
     }
   },
-  "src/stores/authStore.test.ts": {
+  "src/shared/session/authStore.test.ts": {
     "boundaries/dependencies": {
       "count": 8
     }

@@ -15,13 +15,13 @@ import Typography from '@mui/material/Typography'
 import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import AreaPageHeader from '../components/AreaPageHeader'
 import BusyButton from '../components/a11y/BusyButton'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { listConnectionLog, listConnectionLogProfiles } from '../services/connectionLogApi'
 import type {
   ConnectionLogEventType,
   ConnectionLogPage as LogPage,
   ConnectionLogProfile,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   CONNECTION_LOG_EVENT_TYPES,
   actorLabel,

@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../../../mocks/server'
 import { renderWithProviders } from '../../../test/test-utils'
-import type { DormantSourceConnection } from '../../../types/api'
+import type { DormantSourceConnection } from '@/shared/api/types'
 import DormantSourceConnectionsSection from './DormantSourceConnectionsSection'
 
 const DORMANT = '/api/v1/admin/source-connections/dormant'

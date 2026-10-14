@@ -6,7 +6,7 @@ import type {
   OidcProviderRequest,
   OidcProviderResponse,
   OidcProviderTestRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 
 const disabledRegistryStates = new Map<string, OidcProviderResponse['registryState']>()
 

@@ -15,15 +15,15 @@ import SectionEyebrow from '../components/auth/SectionEyebrow'
 import PageHeading from '../components/a11y/PageHeading'
 import { useErrorFocus } from '../hooks/useErrorFocus'
 import { useLinkToken } from '../hooks/useLinkToken'
-import { FieldValidationError } from '../services/authApi'
+import { FieldValidationError } from '@/shared/session/authApi'
 import {
   FlowUnavailableError,
   LinkInvalidError,
   RateLimitedError,
   setPassword,
 } from '../services/selfServiceApi'
-import { useAuthStore } from '../stores/authStore'
-import { FORGOT_PASSWORD_ROUTE, LOGIN_ROUTE } from '../routes'
+import { useAuthStore } from '@/shared/session/authStore'
+import { FORGOT_PASSWORD_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 import {
   fieldErrorMessages,
   LINK_INVALID_MESSAGE,
@@ -32,7 +32,7 @@ import {
   SELF_SERVICE_DISABLED_MESSAGE,
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
-} from '../utils/authMessages'
+} from '@/shared/session/authMessages'
 import { radius } from '../theme/tokens'
 
 const HEADING = 'Passwort festlegen'

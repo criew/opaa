@@ -1,4 +1,4 @@
-import type { ConnectionProfileRef, ConnectionProfileResponse } from '../types/api'
+import type { ConnectionProfileRef, ConnectionProfileResponse } from '@/shared/api/types'
 
 function initialProfiles(): ConnectionProfileResponse[] {
   return [

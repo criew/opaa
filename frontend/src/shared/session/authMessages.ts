@@ -1,5 +1,5 @@
-import type { SessionExpiredReason } from '../services/apiInterceptors'
-import type { FieldError, PasswordChangeReason } from '../types/auth'
+import type { SessionExpiredReason } from '../api/apiInterceptors'
+import type { FieldError, PasswordChangeReason } from './types'
 import { PASSWORD_MAX_BYTES, PASSWORD_MAX_LENGTH } from './passwordStrength'
 
 export const CONFIG_UNAVAILABLE_MESSAGE =

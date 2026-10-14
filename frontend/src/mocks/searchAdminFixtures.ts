@@ -5,7 +5,7 @@ import type {
   SearchDiagnosisResponse,
   ChunkInspectionResponse,
   DocumentChunksResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 /**
  * Deliberately not an all-green picture: the rerank role is off, the full-text path is still

@@ -4,7 +4,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import ListSubheader from '@mui/material/ListSubheader'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { DiscoveredLlmModel } from '../../../types/api'
+import type { DiscoveredLlmModel } from '@/shared/api/types'
 import { fontFamily } from '../../../theme/tokens'
 import { describeModel } from './modelDiscovery'
 

@@ -4,7 +4,7 @@ import { vi, describe, expect, it } from 'vitest'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
 import { useNotificationStore } from '../../stores/notificationStore'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useCopyAnnouncement } from './copyAnnouncer'
 
 const citedSource = {

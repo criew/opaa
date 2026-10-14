@@ -1,4 +1,4 @@
-import type { CapabilityOverviewResponse } from '../../../types/api'
+import type { CapabilityOverviewResponse } from '@/shared/api/types'
 import { grantCapability, revokeCapability } from '../../../services/capabilityAdminApi'
 import { confirmAction } from '../../../stores/confirmStore'
 import { confirmGroupSubject } from '../../permissions/subjectSelection'

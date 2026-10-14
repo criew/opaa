@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IDLE_RUN_STATE, UPLOAD_LIBRARY_INDEXING_ERROR, useIndexingStore } from './indexingStore'
-import { resetAllStores } from './resettableStores'
-import type { IndexingStatusResponse } from '../types/api'
+import { resetAllStores } from '@/shared/session/resettableStores'
+import type { IndexingStatusResponse } from '@/shared/api/types'
 
 const { mockTriggerIndexing, mockGetIndexingStatus, mockGetIndexingRuns } = vi.hoisted(() => ({
   mockTriggerIndexing: vi.fn(),

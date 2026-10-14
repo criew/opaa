@@ -11,8 +11,8 @@ import {
   isHandoverInFlight,
   markHandoverInFlight,
   setPendingHandover,
-} from '../stores/handoverFlow'
-import { useAuthStore } from '../stores/authStore'
+} from '@/shared/session/handoverFlow'
+import { useAuthStore } from '@/shared/session/authStore'
 import HandoverPage from './HandoverPage'
 
 /**

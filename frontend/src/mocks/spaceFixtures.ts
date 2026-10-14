@@ -3,7 +3,7 @@ import type {
   SpaceListResponse,
   SpaceMemberResponse,
   SpaceResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 /** Die Vorgabe der Betreiber-Konfiguration: Schalter aus, 90 Tage bis zum Archiv, 365 bis zur Löschung. */
 export const defaultChatAutoCleanup: ChatAutoCleanupResponse = {

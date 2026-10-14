@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
 import AssetSpacesList from './AssetSpacesList'
-import type { AssetSpaceAssociationListResponse, SpaceListResponse } from '../../types/api'
+import type { AssetSpaceAssociationListResponse, SpaceListResponse } from '@/shared/api/types'
 
 const { mockGetAssetSpaceAssociations, mockDetachSpaceAsset, mockGetSpaces } = vi.hoisted(() => ({
   mockGetAssetSpaceAssociations: vi.fn<() => Promise<AssetSpaceAssociationListResponse>>(),

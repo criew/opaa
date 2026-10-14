@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { ChatSearchRateLimitedError, searchSpaceChats } from '../services/chatApi'
-import type { ChatSearchHit } from '../types/api'
+import type { ChatSearchHit } from '@/shared/api/types'
 
 /** The backend's bounds for a term, counted in characters (code points) after trimming. */
 export const CHAT_SEARCH_MIN_LENGTH = 3

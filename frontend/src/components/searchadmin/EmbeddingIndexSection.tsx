@@ -17,7 +17,7 @@ import type {
   EmbeddingIndexIdentity,
   EmbeddingReindexRunStatus,
   EmbeddingReindexStatusResponse,
-} from '../../types/api'
+} from '@/shared/api/types'
 
 /** How often the section asks for the progress while a run is working. */
 export const POLL_INTERVAL_MS = 5000

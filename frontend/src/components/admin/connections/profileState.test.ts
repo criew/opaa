@@ -3,7 +3,7 @@ import {
   mockConnectionProfiles,
   resetMockConnectionProfiles,
 } from '../../../mocks/connectionProfileFixtures'
-import type { ConnectionProfileResponse } from '../../../types/api'
+import type { ConnectionProfileResponse } from '@/shared/api/types'
 import type { Access } from '../capabilities/capabilityAccess'
 import { attentionOf, hostOf, profileAccessEntry, summaryOf } from './profileState'
 

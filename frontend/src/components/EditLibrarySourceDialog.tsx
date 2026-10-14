@@ -7,7 +7,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import type { ConnectionProfileRef, SourceTypeKey } from '../types/api'
+import type { ConnectionProfileRef, SourceTypeKey } from '@/shared/api/types'
 import { useLibraryStore } from '../stores/libraryStore'
 import { sourceRegistration } from './library/sources/registry'
 import {

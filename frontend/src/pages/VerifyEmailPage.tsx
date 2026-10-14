@@ -9,12 +9,12 @@ import AuthNotice from '../components/auth/AuthNotice'
 import PageHeading from '../components/a11y/PageHeading'
 import { useLinkToken } from '../hooks/useLinkToken'
 import { RateLimitedError, verifyEmail } from '../services/selfServiceApi'
-import { LOGIN_ROUTE } from '../routes'
+import { LOGIN_ROUTE } from '@/shared/routes'
 import {
   EMAIL_VERIFIED_MESSAGE,
   LINK_INVALID_MESSAGE,
   tooManyRequestsMessage,
-} from '../utils/authMessages'
+} from '@/shared/session/authMessages'
 
 const HEADING = 'E-Mail-Adresse bestätigen'
 

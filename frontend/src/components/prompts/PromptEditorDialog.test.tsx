@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../../mocks/server'
 import { renderWithProviders, setMockAuthState } from '../../test/test-utils'
 import { usePromptLibraryStore } from '../../stores/promptLibraryStore'
-import type { PromptRequest, PromptResponse } from '../../types/api'
+import type { PromptRequest, PromptResponse } from '@/shared/api/types'
 import PromptEditorDialog from './PromptEditorDialog'
 
 const LIBRARY_ID = 'prompt-library-referat-50'

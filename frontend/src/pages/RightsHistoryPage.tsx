@@ -13,14 +13,14 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import AreaPageHeader from '../components/AreaPageHeader'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { getAccessAsOf } from '../services/rightsHistoryApi'
 import type {
   AccessAsOfObjectType,
   AccessAsOfPage,
   AccessAsOfSource,
   AccessBasis,
-} from '../types/api'
+} from '@/shared/api/types'
 import { contentWidth } from '../theme/tokens'
 
 const BASIS_LABELS: Record<AccessBasis, string> = {

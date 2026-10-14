@@ -3,8 +3,8 @@ import type {
   CapabilityGrantRequest,
   CapabilityGrantResponse,
   CapabilityOverviewResponse,
-} from '../types/api'
-import { apiClient, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
  * Die Anlegerechte der Installation (ADR-0036, Entscheidung 5). Die Übersicht liefert je Recht

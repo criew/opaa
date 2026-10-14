@@ -27,8 +27,8 @@ import type {
   SourceFreeze,
   SourceReference,
   SourceTypeKey,
-} from '../../types/api'
-import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
+} from '@/shared/api/types'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
 

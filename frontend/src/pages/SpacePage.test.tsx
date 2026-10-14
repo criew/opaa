@@ -2,10 +2,10 @@ import { screen, within } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import SpacePage from './SpacePage'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useChatListStore } from '../stores/chatListStore'
-import type { SpaceAssetAssociationListResponse, SpaceMemberResponse } from '../types/api'
+import type { SpaceAssetAssociationListResponse, SpaceMemberResponse } from '@/shared/api/types'
 
 const currentSpaceId = 'space-personal'
 const mockNavigate = vi.fn()

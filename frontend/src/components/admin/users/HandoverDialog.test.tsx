@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../test/test-utils'
-import { useAuthStore } from '../../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
-import type { LocalUserResponse } from '../../../types/api'
-import type { SignInProvider } from '../../../types/auth'
+import type { LocalUserResponse } from '@/shared/api/types'
+import type { SignInProvider } from '@/shared/session/types'
 import HandoverDialog from './HandoverDialog'
 
 const PROVIDER: SignInProvider = {

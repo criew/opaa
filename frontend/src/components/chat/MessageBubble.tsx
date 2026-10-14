@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'

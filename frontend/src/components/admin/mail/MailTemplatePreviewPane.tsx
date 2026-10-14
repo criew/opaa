@@ -2,7 +2,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
-import type { MailTemplatePreviewResponse } from '../../../types/api'
+import type { MailTemplatePreviewResponse } from '@/shared/api/types'
 import { radius } from '../../../theme/tokens'
 import SectionHead from '../../SectionHead'
 

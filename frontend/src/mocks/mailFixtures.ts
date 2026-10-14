@@ -2,7 +2,7 @@ import type {
   MailSettingsResponse,
   MailTemplateResponse,
   MailTemplateSummaryResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 /**
  * Fixtures of the mail administration (#1542, ADR-0033 Entscheidung 10) - in their own module

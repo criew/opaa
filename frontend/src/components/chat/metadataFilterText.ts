@@ -3,7 +3,7 @@ import type {
   MetadataFilterFormatFieldCondition,
   MetadataFilterLibraryFieldCondition,
   MetadataFilterOptionsResponse,
-} from '../../types/api'
+} from '@/shared/api/types'
 import { formatShare } from '../../utils/labels'
 
 /** "Datum/Stand bei 92 % der Dokumente vorhanden" - the Füllstand line under each field. */

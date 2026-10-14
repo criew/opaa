@@ -1,4 +1,4 @@
-import type { ExternalAccessTokenStatus } from '../../types/api'
+import type { ExternalAccessTokenStatus } from '@/shared/api/types'
 
 /** Der Zustand eines Tokens in Worten - dieselben vier wie im Backend (ADR-0035). */
 export const TOKEN_STATUS_LABEL: Record<ExternalAccessTokenStatus, string> = {

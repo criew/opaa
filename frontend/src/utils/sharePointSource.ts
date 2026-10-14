@@ -1,4 +1,4 @@
-import type { LibraryResponse } from '../types/api'
+import type { LibraryResponse } from '@/shared/api/types'
 import type { LibrarySourceConfigPayload } from './librarySourceConfig'
 
 /** The fixed address of a SharePoint library, Microsoft Graph (ADR-0040); the form never shows it. */

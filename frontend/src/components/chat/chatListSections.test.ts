@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { chatTitle, splitChats } from './chatListSections'
-import type { ChatSummary } from '../../types/api'
+import type { ChatSummary } from '@/shared/api/types'
 
 function chat(id: string, updatedAt: string, pinnedAt?: string): ChatSummary {
   return {

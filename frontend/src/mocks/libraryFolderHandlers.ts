@@ -6,7 +6,7 @@ import {
   mockLibraryFolders,
 } from './libraryFixtures'
 import type { MockLibraryFolder } from './libraryFixtures'
-import type { LibraryFolderRenameRequest, LibraryFolderRequest } from '../types/api'
+import type { LibraryFolderRenameRequest, LibraryFolderRequest } from '@/shared/api/types'
 import { canManageMockLibrary } from './libraryHandlers'
 
 // every descendant folder id of `folderId` (inclusive) - a folder's own documentCount

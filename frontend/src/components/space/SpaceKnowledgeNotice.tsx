@@ -1,8 +1,8 @@
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import { Link as RouterLink } from 'react-router'
-import { spaceSettingsRoute } from '../../routes'
-import type { SpaceRole } from '../../types/api'
+import { spaceSettingsRoute } from '@/shared/routes'
+import type { SpaceRole } from '@/shared/api/types'
 import {
   NO_KNOWLEDGE_ASSIGNED,
   NO_KNOWLEDGE_READABLE,

@@ -6,7 +6,7 @@ import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { SourceBrowseEntry } from '../../types/api'
+import type { SourceBrowseEntry } from '@/shared/api/types'
 import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import {

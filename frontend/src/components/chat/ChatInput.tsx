@@ -17,7 +17,7 @@ import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../../stores/chatStore'
 import {
   metadataFilterScopeKey,
@@ -26,7 +26,7 @@ import {
 import { useSpaceStore } from '../../stores/spaceStore'
 import SpaceKnowledgeNotice from '../space/SpaceKnowledgeNotice'
 import { spaceKnowledgeGap } from '../space/spaceKnowledge'
-import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import MetadataFilterPopover from './MetadataFilterPopover'
 import ChatActionMenu from './ChatActionMenu'
 import DictationControl from './DictationControl'

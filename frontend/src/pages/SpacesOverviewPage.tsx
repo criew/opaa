@@ -8,7 +8,7 @@ import OverviewPage, { OverviewCard } from '../components/overview/OverviewPage'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { useSpaceStore } from '../stores/spaceStore'
 import { spaceMembershipLabel, spaceRoleLabel } from '../utils/labels'
-import type { SpaceListResponse } from '../types/api'
+import type { SpaceListResponse } from '@/shared/api/types'
 
 function plural(count: number, singular: string, pluralForm: string): string {
   return `${count} ${count === 1 ? singular : pluralForm}`

@@ -3,8 +3,8 @@ import { Navigate, useLocation } from 'react-router'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
-import { useAuthStore } from '../stores/authStore'
-import { LOGIN_ROUTE, PASSWORD_ROUTE } from '../routes'
+import { useAuthStore } from '@/shared/session/authStore'
+import { LOGIN_ROUTE, PASSWORD_ROUTE } from '@/shared/routes'
 
 /**
  * What stands between the start of an OIDC sign-out and the browser leaving for the provider -

@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import type { CapabilityOverviewResponse } from '../../../types/api'
+import type { CapabilityOverviewResponse } from '@/shared/api/types'
 import { radius } from '../../../theme/tokens'
 import AccessBadge from './AccessBadge'
 import {

@@ -9,9 +9,9 @@ import type {
   ChatSearchRequest,
   ChatSearchResponse,
   ChatUpdateRequest,
-} from '../types/api'
-import { isErrorResponse } from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { isErrorResponse } from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 export async function listSpaceChats(spaceId: string): Promise<ChatSummary[]> {
   try {

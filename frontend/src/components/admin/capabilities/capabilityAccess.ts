@@ -1,6 +1,6 @@
-import type { CapabilityOverviewResponse, SelectableGroupResponse } from '../../../types/api'
+import type { CapabilityOverviewResponse, SelectableGroupResponse } from '@/shared/api/types'
 import { allAccountsLabel } from '../../../utils/labels'
-import { isCapabilityOffered } from '../../../utils/installationFeatures'
+import { isCapabilityOffered } from '@/shared/session/installationFeatures'
 
 /** Who may use an Anlegerecht, in the three answers the page offers. */
 export type AccessLevel = 'ALL' | 'SELECTED' | 'ADMIN_ONLY'

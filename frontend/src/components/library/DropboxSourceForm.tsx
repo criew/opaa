@@ -7,7 +7,7 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { SourceBrowseEntry } from '../../types/api'
+import type { SourceBrowseEntry } from '@/shared/api/types'
 import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import {
   DROPBOX_API,

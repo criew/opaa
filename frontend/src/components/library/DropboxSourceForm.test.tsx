@@ -9,7 +9,7 @@ import type {
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
   SourceTypeKey,
-} from '../../types/api'
+} from '@/shared/api/types'
 import { EMPTY_DROPBOX_VALUES, type DropboxSourceValues } from '../../utils/dropboxSource'
 import DropboxSourceForm from './DropboxSourceForm'
 import { connectionFields } from './sources/sourceConnection'

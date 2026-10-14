@@ -20,7 +20,7 @@ Konkret:
 
 1. **Die OpenAPI-Spezifikation ist die einzige Quelle der Wahrheit** für alle Request-/Response-Schemas. Änderungen am API-Vertrag beginnen mit einer Spec-Änderung.
 2. **Backend-DTOs werden generiert** durch das OpenAPI-Generator-Gradle-Plugin (`spring`-Generator) in `build/generated/openapi/`. Generierter Code wird nicht in die Versionskontrolle eingecheckt.
-3. **Frontend-Typen werden generiert** durch `openapi-typescript` in `frontend/src/types/generated/`. Generierter Code wird nicht in die Versionskontrolle eingecheckt.
+3. **Frontend-Typen werden generiert** durch `openapi-typescript` in `frontend/src/shared/api/generated/`. Generierter Code wird nicht in die Versionskontrolle eingecheckt.
 4. **Domain-Enums, die von DTOs referenziert werden** (z. B. `WorkspaceRole`, `WorkspaceType`), werden über `typeMappings`/`importMappings` in `build.gradle.kts` gemappt, sodass generierte DTOs die vorhandenen Domain-Typen direkt verwenden — keine Konvertierungsschicht benötigt.
 5. **Neue API-Endpunkte** müssen zunächst ihre Schemas in der OpenAPI-Spezifikation definieren, dann die generierten DTOs in Controllern und Services verwenden.
 

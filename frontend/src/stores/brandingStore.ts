@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { BrandingResponse, BrandingUpdateRequest } from '../types/api'
+import type { BrandingResponse, BrandingUpdateRequest } from '../shared/api/types'
 import type { BrandingImageSlot } from '../services/brandingApi'
 import {
   deleteBrandingImage,

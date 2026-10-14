@@ -8,7 +8,7 @@ import {
   groupMemberCountLabel,
 } from './labels'
 import { documentSourceTypeShortLabel } from '../components/library/sources/sourceLabels'
-import type { Capability } from '../types/api'
+import type { Capability } from '../shared/api/types'
 
 /**
  * The refusal the creation dialogs show before the attempt has to read word for word like the one

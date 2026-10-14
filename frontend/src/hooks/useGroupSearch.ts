@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { searchSelectableGroups } from '../services/groupApi'
-import type { SelectableGroupResponse } from '../types/api'
+import type { SelectableGroupResponse } from '@/shared/api/types'
 
 const SEARCH_DEBOUNCE_MS = 300
 // Spiegelt die Untergrenze von GroupService#searchSelectableGroups: eine kürzere Eingabe verlässt

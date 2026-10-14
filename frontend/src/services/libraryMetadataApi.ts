@@ -22,8 +22,8 @@ import type {
   LibraryMetadataQualityResponse,
   LibraryMetadataSampleResponse,
   MetadataValueRequest,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 // manual metadata correction - every core field of a document with its provenance.
 export async function getDocumentMetadata(

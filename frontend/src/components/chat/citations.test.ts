@@ -7,7 +7,7 @@ import {
   formatMetadataLine,
   metadataFilterMatchLabel,
 } from './citations'
-import type { SourceReference } from '../../types/api'
+import type { SourceReference } from '@/shared/api/types'
 
 // #1066 (metadata-schema.md, Wirkstelle 3): the generic metadata line shared by the Fundstellen
 // block and the Belegfenster - rendered from the backend's list without field knowledge.

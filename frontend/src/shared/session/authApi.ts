@@ -5,10 +5,10 @@ import type {
   FieldError,
   LocalTokenResponse,
   ResolvedAuthConfig,
-} from '../types/auth'
-import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
+} from './types'
+import { LOCAL_ACCOUNTS_DISABLED } from './types'
 import { DEV_USER_HEADER, getDevUser } from './devAuth'
-import { CSRF_TOKEN_MISSING, sessionEndingReason, UNKNOWN_ISSUER } from './apiInterceptors'
+import { CSRF_TOKEN_MISSING, sessionEndingReason, UNKNOWN_ISSUER } from '../api/apiInterceptors'
 
 /**
  * Thrown by {@link getMe} when the backend refuses the token with {@code unknown_issuer}

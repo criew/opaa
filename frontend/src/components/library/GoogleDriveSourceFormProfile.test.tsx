@@ -9,7 +9,7 @@ import {
   EMPTY_GOOGLE_DRIVE_VALUES,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
-import type { SourceConnectionTestRequest, SourceConnectionTestResponse } from '../../types/api'
+import type { SourceConnectionTestRequest, SourceConnectionTestResponse } from '@/shared/api/types'
 
 const { mockTestLibrarySource } = vi.hoisted(() => ({
   mockTestLibrarySource:

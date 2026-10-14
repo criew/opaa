@@ -14,7 +14,7 @@ import {
 } from '../mocks/chatFixtures'
 import { server } from '../mocks/server'
 import { mockSpaces } from '../mocks/spaceFixtures'
-import type { ChatSearchRequest, ChatSearchResponse, ChatSummary } from '../types/api'
+import type { ChatSearchRequest, ChatSearchResponse, ChatSummary } from '@/shared/api/types'
 
 const mockNavigate = vi.fn()
 let currentLocation: { pathname: string; state: unknown; key: string } = {

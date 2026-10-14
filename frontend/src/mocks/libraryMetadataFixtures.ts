@@ -1,7 +1,7 @@
 import type {
   DocumentMetadataFieldResponse,
   DocumentTypeVocabularyEntryResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 export const mockDocumentTypeVocabulary: DocumentTypeVocabularyEntryResponse[] = [
   { code: 'SATZUNG_ORDNUNG', label: 'Satzung/Ordnung' },

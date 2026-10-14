@@ -12,7 +12,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
 import BusyButton from '../a11y/BusyButton'
-import type { SourceBrowseResponse } from '../../types/api'
+import type { SourceBrowseResponse } from '@/shared/api/types'
 import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import {
   MAX_SHAREPOINT_FOLDERS,

@@ -1,5 +1,5 @@
-import type { TranscriptionAvailabilityResponse, TranscriptionResponse } from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+import type { TranscriptionAvailabilityResponse, TranscriptionResponse } from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 /** Whether dictation works right now; answered from the role's last known state. */
 export async function getTranscriptionAvailability(): Promise<TranscriptionAvailabilityResponse> {

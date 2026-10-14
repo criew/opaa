@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import type { StoreApi } from 'zustand'
 import { server } from '../mocks/server'
-import { useAuthStore } from '../stores/authStore'
-import { registeredSessionStores } from '../stores/resettableStores'
+import { useAuthStore } from '@/shared/session/authStore'
+import { registeredSessionStores } from '@/shared/session/resettableStores'
 
 /**
  * Every zustand store that holds data of the signed-in user's session, by export name. A sign-out,
@@ -40,7 +40,7 @@ const NOT_SESSION_STORES = [
 ]
 
 const SOURCES = import.meta.glob(
-  ['../**/*.{ts,tsx}', '!../**/*.test.{ts,tsx}', '!../**/*.d.ts', '!../types/generated/**'],
+  ['../**/*.{ts,tsx}', '!../**/*.test.{ts,tsx}', '!../**/*.d.ts', '!../shared/api/generated/**'],
   { query: '?raw', import: 'default', eager: true },
 ) as Record<string, string>
 
@@ -48,7 +48,7 @@ const MODULES = import.meta.glob([
   '../**/*.{ts,tsx}',
   '!../**/*.test.{ts,tsx}',
   '!../**/*.d.ts',
-  '!../types/generated/**',
+  '!../shared/api/generated/**',
 ])
 
 type AnyStore = StoreApi<unknown>

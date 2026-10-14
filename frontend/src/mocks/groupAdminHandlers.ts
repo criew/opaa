@@ -6,7 +6,7 @@ import type {
   DirectorySyncPlanDecisionRequest,
   PermissionTransferPreviewRequest,
   PermissionTransferRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   mockCapabilityOverview,
   mockDirectorySyncReport,

@@ -7,7 +7,7 @@ import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import PasswordField from './PasswordField'
 import PasswordStrengthMeter from './PasswordStrengthMeter'
 import { copyToClipboard } from '../../utils/clipboard'
-import { generateStrongPassword } from '../../utils/passwordStrength'
+import { generateStrongPassword } from '@/shared/session/passwordStrength'
 
 interface NewPasswordFieldProps {
   id: string

@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
-import type { MailTemplatePreviewResponse } from '../types/api'
+import type { MailTemplatePreviewResponse } from '@/shared/api/types'
 import { MAIL_PREVIEW_DEBOUNCE_MS, useMailTemplatePreview } from './useMailTemplatePreview'
 
 function previewOf(subject: string): MailTemplatePreviewResponse {

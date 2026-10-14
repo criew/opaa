@@ -4,8 +4,8 @@ import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
-import type { Capability } from '../../../types/api'
-import { isCapabilityOffered } from '../../../utils/installationFeatures'
+import type { Capability } from '@/shared/api/types'
+import { isCapabilityOffered } from '@/shared/session/installationFeatures'
 
 export interface CapabilityPresentation {
   /** The short name in the overview, without the verb: the page heading already asks it. */

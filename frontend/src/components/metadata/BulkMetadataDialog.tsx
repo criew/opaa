@@ -15,7 +15,7 @@ import type {
   BulkMetadataValueResponse,
   DocumentTypeVocabularyEntryResponse,
   MetadataValueRequest,
-} from '../../types/api'
+} from '@/shared/api/types'
 import {
   bulkSetDocumentMetadata,
   getDocumentTypeVocabulary,

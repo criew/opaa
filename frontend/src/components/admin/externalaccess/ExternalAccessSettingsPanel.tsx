@@ -13,9 +13,9 @@ import CloseIcon from '@mui/icons-material/Close'
 import type {
   ExternalAccessSettingsResponse,
   ExternalAccessSettingsUpdateRequest,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import { updateExternalAccessSettings } from '../../../services/externalAccessApi'
-import { apiFieldErrors } from '../../../services/apiErrorDetails'
+import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '../../../stores/confirmStore'
 import BusyButton from '../../a11y/BusyButton'
 import SectionHead from '../../SectionHead'

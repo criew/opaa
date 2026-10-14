@@ -7,9 +7,9 @@ import Typography from '@mui/material/Typography'
 import PageHeading from '../components/a11y/PageHeading'
 import ChoiceTileGroup from '../components/choice/ChoiceTileGroup'
 import { creatableAssetTypes } from '../components/assets/assetTypeRegistry'
-import { useMyCapabilities } from '../hooks/useMyCapabilities'
-import { CATALOG_ROUTE } from '../routes'
-import type { AssetType } from '../types/api'
+import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
+import { CATALOG_ROUTE } from '@/shared/routes'
+import type { AssetType } from '@/shared/api/types'
 
 const QUESTION = 'Was möchten Sie anlegen?'
 

@@ -1,6 +1,6 @@
 import axios from 'axios'
-import type { FieldError } from '../types/auth'
-import { authClient, FieldValidationError, retryAfterSecondsOf } from './authApi'
+import type { FieldError } from '@/shared/session/types'
+import { authClient, FieldValidationError, retryAfterSecondsOf } from '@/shared/session/authApi'
 
 /**
  * The four public self-service endpoints of local accounts (ADR-0033, Entscheidung 11). None of

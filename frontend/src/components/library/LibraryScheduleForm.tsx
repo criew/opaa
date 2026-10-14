@@ -4,7 +4,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
-import type { ScheduleFrequency, ScheduleWeekday } from '../../types/api'
+import type { ScheduleFrequency, ScheduleWeekday } from '@/shared/api/types'
 import {
   scheduleFrequencies,
   scheduleFrequencyLabel,

@@ -1,5 +1,5 @@
-import type { QueryRequest, QueryResponse, MetadataFilter } from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+import type { QueryRequest, QueryResponse, MetadataFilter } from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 export async function sendQuery(
   question: string,

@@ -1,4 +1,4 @@
-import type { GroupDeactivationPreviewResponse } from '../../types/api'
+import type { GroupDeactivationPreviewResponse } from '@/shared/api/types'
 import { getGroupDeactivationPreview } from '../../services/groupApi'
 import { confirmAction } from '../../stores/confirmStore'
 import { notify } from '../../stores/notificationStore'

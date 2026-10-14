@@ -23,7 +23,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert'
 import type {
   AdminExternalAccessTokenResponse,
   ExternalAccessTokenStatus,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import {
   blockExternalAccessToken,
   blockExternalAccessTokensOfOwner,

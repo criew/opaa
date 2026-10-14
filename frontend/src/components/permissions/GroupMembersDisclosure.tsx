@@ -3,7 +3,7 @@ import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import type { GroupMemberDisclosureResponse } from '../../types/api'
+import type { GroupMemberDisclosureResponse } from '@/shared/api/types'
 
 /** Wie viele Namen eine Seite bringt — dieselbe Vorgabe wie im Dienst. */
 const PAGE_SIZE = 50

@@ -4,10 +4,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
-import { useAuthStore } from '../stores/authStore'
-import { isHandoverInFlight } from '../stores/handoverFlow'
+import { useAuthStore } from '@/shared/session/authStore'
+import { isHandoverInFlight } from '@/shared/session/handoverFlow'
 import { usePageTitle } from '../hooks/usePageTitle'
-import { AFTER_SIGN_IN_ROUTE, HANDOVER_ROUTE, LOGIN_ROUTE } from '../routes'
+import { AFTER_SIGN_IN_ROUTE, HANDOVER_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 
 export default function AuthCallbackPage() {
   usePageTitle('Anmeldung')

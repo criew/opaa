@@ -9,7 +9,7 @@ import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { visuallyHidden } from '@mui/utils'
-import type { GroupMemberResponse } from '../../../types/api'
+import type { GroupMemberResponse } from '@/shared/api/types'
 import { adminTableSx } from '../list/adminListStyles'
 
 /** Fixed row geometry, so the frame height follows from the member count alone. */

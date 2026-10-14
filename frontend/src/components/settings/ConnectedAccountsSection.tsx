@@ -12,14 +12,14 @@ import type {
   ConnectableProfile,
   ConnectedAccount,
   ConnectedAccountsOverview,
-} from '../../types/api'
+} from '@/shared/api/types'
 import {
   disconnectMyAccount,
   listMyConnectedAccounts,
   startAccountAuthorization,
 } from '../../services/connectedAccountApi'
-import { apiErrorStatus } from '../../services/apiErrorDetails'
-import { leaveFor } from '../../services/leaveApp'
+import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
+import { leaveFor } from '@/shared/api/leaveApp'
 import { forgetConsentIntent } from '../library/sourceConsent'
 import { useSourceTypes } from '../../hooks/useSourceTypes'
 import BusyButton from '../a11y/BusyButton'

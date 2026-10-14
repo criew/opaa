@@ -3,7 +3,7 @@ import { describe, expect, it, beforeEach } from 'vitest'
 import { server } from '../mocks/server'
 // #575 review: this import's position relative to chatListStore below no longer matters - see the
 // matching comment in chatStore.test.ts for why.
-import { resetAllStores } from './resettableStores'
+import { resetAllStores } from '@/shared/session/resettableStores'
 import { useChatListStore } from './chatListStore'
 
 const SPACE_ID = 'space-personal'

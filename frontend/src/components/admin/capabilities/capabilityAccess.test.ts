@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import type { CapabilityGrantResponse, CapabilityOverviewResponse } from '../../../types/api'
+import type { CapabilityGrantResponse, CapabilityOverviewResponse } from '@/shared/api/types'
 import {
   accessBadgeLabel,
   bucketByAccess,

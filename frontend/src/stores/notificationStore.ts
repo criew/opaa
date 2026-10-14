@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { registerSessionStore } from './resettableStores'
+import { registerSessionStore } from '../shared/session/resettableStores'
 
 export type NotificationSeverity = 'success' | 'info' | 'warning' | 'error'
 

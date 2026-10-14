@@ -1,11 +1,11 @@
 import { AxiosError } from 'axios'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { server } from '../mocks/server'
-import { createSpace, updateSpaceDetails } from './spaceApi'
+import { server } from '../../mocks/server'
+import { createSpace, updateSpaceDetails } from '../../services/spaceApi'
 import { getHealth, normalizeError } from './api'
-import { mapDocumentContentError, parseContentDispositionFileName } from './libraryApi'
-import { sendQuery } from './queryApi'
+import { mapDocumentContentError, parseContentDispositionFileName } from '../../services/libraryApi'
+import { sendQuery } from '../../services/queryApi'
 
 /** Minimal stand-in for the parts of AxiosResponse that normalizeError reads. */
 function axiosErrorWithResponse(status: number, data: unknown): AxiosError {

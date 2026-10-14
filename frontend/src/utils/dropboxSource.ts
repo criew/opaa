@@ -1,5 +1,5 @@
 import { issueAt, messageOf, type SourceIssue } from './sourceIssue'
-import type { LibraryResponse } from '../types/api'
+import type { LibraryResponse } from '@/shared/api/types'
 
 /**
  * The connector settings of a DROPBOX library as the API carries them in `sourceSettings`: the

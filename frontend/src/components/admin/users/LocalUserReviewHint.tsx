@@ -2,7 +2,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import type { LocalUserSummaryResponse } from '../../../types/api'
+import type { LocalUserSummaryResponse } from '@/shared/api/types'
 import HintLink from '../list/HintLink'
 
 export const REVIEW_OBLIGATION_TEXT =

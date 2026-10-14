@@ -8,7 +8,7 @@ import type {
   ConnectionProfileImpactResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import { useSourceTypes } from '../../../hooks/useSourceTypes'

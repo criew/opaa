@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography'
 import type {
   ExternalAccessLibraryResponse,
   ExternalAccessSettingsResponse,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import {
   getExternalAccessLibraries,
   getExternalAccessSettings,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DirectorySyncStatusResponse, OidcProviderResponse } from '../../../types/api'
+import type { DirectorySyncStatusResponse, OidcProviderResponse } from '@/shared/api/types'
 import {
   agoLabel,
   attentionOf,

@@ -1,4 +1,4 @@
-import type { MailSettingsResponse } from '../../../types/api'
+import type { MailSettingsResponse } from '@/shared/api/types'
 import KeyValueList from '../../KeyValueList'
 import StatusLine, { type StatusTone } from '../../StatusLine'
 import { formatMailTimestamp, mailStatusOf } from './mailStatus'

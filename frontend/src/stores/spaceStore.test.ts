@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { ASSOCIATIONS_NOT_REFRESHED, MEMBERS_NOT_REFRESHED, useSpaceStore } from './spaceStore'
-import { resetAllStores } from './resettableStores'
+import { resetAllStores } from '@/shared/session/resettableStores'
 import { getSpace, getSpaces, listSpaceMembers } from '../services/spaceApi'
-import type { SpaceMemberResponse } from '../types/api'
+import type { SpaceMemberResponse } from '@/shared/api/types'
 
 const mockCreateSpace = vi.fn()
 

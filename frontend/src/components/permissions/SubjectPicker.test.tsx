@@ -9,7 +9,7 @@ import {
   emptySubjectSelection,
   type SubjectSelection,
 } from './subjectSelection'
-import type { SelectableGroupResponse, UserSummary } from '../../types/api'
+import type { SelectableGroupResponse, UserSummary } from '@/shared/api/types'
 
 const { mockSearchSelectableGroups, mockGetUserSummaries } = vi.hoisted(() => ({
   mockSearchSelectableGroups: vi.fn(async () => [] as SelectableGroupResponse[]),

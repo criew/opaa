@@ -1,5 +1,5 @@
-import type { SuccessionKind, SuccessionListResponse } from '../types/api'
-import { apiClient, normalizeError } from './api'
+import type { SuccessionKind, SuccessionListResponse } from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
  * Die Betriebsliste des Lebenszyklus (#1819, ADR-0036 Entscheidung 6). Die Reihenfolge ist fest

@@ -1,4 +1,4 @@
-import type { ConnectorTypeStateResponse, OwnAddressStock } from '../../../types/api'
+import type { ConnectorTypeStateResponse, OwnAddressStock } from '@/shared/api/types'
 
 /** How a source type relates to profiles, in the words of the overview. */
 export function profileRuleLabel(state: ConnectorTypeStateResponse): string {

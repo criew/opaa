@@ -1,4 +1,4 @@
-import type { SuccessionEntryResponse, SuccessionKind } from '../types/api'
+import type { SuccessionEntryResponse, SuccessionKind } from '@/shared/api/types'
 
 /**
  * Die Betriebsliste des Lebenszyklus (#1821 gegen #1819) — eigene Datei, damit `fixtures.ts` nicht

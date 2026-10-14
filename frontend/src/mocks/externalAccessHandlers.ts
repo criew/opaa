@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import type {
   ExternalAccessSettingsResponse,
   ExternalAccessSettingsUpdateRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 
 /**
  * Die Kanaleinstellungen der Fremdzugänge (#1717) als MSW-Handler - mit den Invarianten, auf die

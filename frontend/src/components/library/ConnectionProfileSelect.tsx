@@ -1,7 +1,7 @@
 import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
 import { Link as RouterLink } from 'react-router'
-import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
+import { CONNECTED_ACCOUNTS_ROUTE } from '@/shared/routes'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import EditLocationAltOutlinedIcon from '@mui/icons-material/EditLocationAltOutlined'
@@ -11,7 +11,7 @@ import type {
   ConnectionProfileOption,
   ProfileDefaultKey,
   SourceTypeDescriptor,
-} from '../../types/api'
+} from '@/shared/api/types'
 import {
   PROFILES_FORBIDDEN_NOTICE,
   type ConnectionProfileOptionsState,

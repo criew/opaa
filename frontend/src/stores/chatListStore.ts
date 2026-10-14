@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatBulkAction, ChatSummary } from '../types/api'
+import type { ChatBulkAction, ChatSummary } from '@/shared/api/types'
 import {
   applyChatBulkAction,
   archiveChat,
@@ -13,9 +13,9 @@ import {
   updateChat,
 } from '../services/chatApi'
 import { dropChatSettingsCache, markChatManuallyRenamed, useChatStore } from './chatStore'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { RECENT_PAGE_SIZE } from '../components/chat/chatListSections'
-import { registerSessionStore } from './resettableStores'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 /** Page size of the chat archive and of the active table on the "Chats" page - the same 25 rows
  *  per page as the administration lists. */

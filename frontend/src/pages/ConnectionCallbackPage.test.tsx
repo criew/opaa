@@ -4,13 +4,13 @@ import { http, HttpResponse } from 'msw'
 import { Route, Routes, useLocation } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../mocks/server'
-import { leaveFor } from '../services/leaveApp'
-import { useAuthStore } from '../stores/authStore'
+import { leaveFor } from '@/shared/api/leaveApp'
+import { useAuthStore } from '@/shared/session/authStore'
 import { answerConfirm, renderWithProviders, setMockAuthState } from '../test/test-utils'
 import type {
   ConnectionAuthorizationCompleteRequest,
   ConnectionAuthorizationStartRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 import { scheduleValuesFrom } from '../utils/librarySchedule'
 import {
   CONSENT_INTENT_STORAGE_KEY,
@@ -21,7 +21,7 @@ import {
 } from '../components/library/sourceConsent'
 import ConnectionCallbackPage from './ConnectionCallbackPage'
 
-vi.mock('../services/leaveApp', () => ({ leaveFor: vi.fn() }))
+vi.mock('@/shared/api/leaveApp', () => ({ leaveFor: vi.fn() }))
 
 const COMPLETE = '/api/v1/connections/authorizations/complete'
 

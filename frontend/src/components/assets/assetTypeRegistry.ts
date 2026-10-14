@@ -2,11 +2,11 @@ import type { SvgIconComponent } from '@mui/icons-material'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { useMemo } from 'react'
-import { CATALOG_ROUTE, promptLibraryRoute } from '../../routes'
-import { useAuthStore } from '../../stores/authStore'
-import type { AssetType, Capability } from '../../types/api'
-import type { FeatureFlags } from '../../types/auth'
-import { isAssetTypeOffered } from '../../utils/installationFeatures'
+import { CATALOG_ROUTE, promptLibraryRoute } from '@/shared/routes'
+import { useAuthStore } from '@/shared/session/authStore'
+import type { AssetType, Capability } from '@/shared/api/types'
+import type { FeatureFlags } from '@/shared/session/types'
+import { isAssetTypeOffered } from '@/shared/session/installationFeatures'
 
 /** Everything the interface needs to know about one asset type. */
 export interface AssetTypeDefinition {

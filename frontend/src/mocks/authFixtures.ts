@@ -4,7 +4,7 @@ import type {
   FeaturesConfig,
   LocalAccountsConfig,
   LocalTokenResponse,
-} from '../types/auth'
+} from '../shared/session/types'
 
 /**
  * The local account management as the mocks present it by default: switched off, like a fresh

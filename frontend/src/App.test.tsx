@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
-import { useAuthStore } from './stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { setMockFeatures } from './mocks/authFixtures'
 
 describe('App', () => {

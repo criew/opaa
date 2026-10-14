@@ -2,7 +2,7 @@ import type {
   AssetGrantResponse,
   SpaceAssetAssociationListResponse,
   SpaceAssetAssociationResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 /** The list response for the given items, with the count-free flags the server derives from them. */
 export function associationListOf(

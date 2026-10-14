@@ -1,5 +1,5 @@
-import type { MyCapabilitiesResponse, Capability } from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+import type { MyCapabilitiesResponse, Capability } from '../api/types'
+import { apiClient as client, normalizeError } from '../api/api'
 
 /**
  * The caller's own Anlegerechte. Read per page load rather than from the session: the backend

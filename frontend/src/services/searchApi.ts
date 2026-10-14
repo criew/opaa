@@ -1,5 +1,5 @@
-import type { MetadataFilterOptionsResponse, SearchAvailabilityResponse } from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+import type { MetadataFilterOptionsResponse, SearchAvailabilityResponse } from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 /**
  * the Füllstand and the offered values of the filterable core fields in the caller's

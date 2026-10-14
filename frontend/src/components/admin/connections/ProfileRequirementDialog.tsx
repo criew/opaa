@@ -17,7 +17,7 @@ import type {
   ConnectorTypeStateResponse,
   OwnAddressLibrary,
   OwnAddressStock,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import {
   getConnectorProfileRequirement,
   setConnectorProfileRequirement,
