@@ -2,7 +2,7 @@
 
 ## Status
 
-Vorgeschlagen · zuletzt geändert JJJJ-MM-TT
+Akzeptiert · zuletzt geändert JJJJ-MM-TT
 
 ## Kontext
 

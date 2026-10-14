@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Every ADR under docs/decisions/ follows docs/decisions/README.md: the status line (first non-empty
-# line under "## Status") starts with "Akzeptiert", "Vorgeschlagen" or "Ersetzt durch" and names
+# line under "## Status") starts with "Akzeptiert" or "Ersetzt durch" and names
 # "zuletzt geändert JJJJ-MM-TT"; no appended "Nachtrag"/"Nachträge"/"Überholt" blocks (headings or bold
 # lead-ins, also inside indented block quotes); no sub-issue cut
 # ("Zuschnitt der ... Sub-Issues"); a "## Änderungsverlauf" section exists.
@@ -34,8 +34,8 @@ for adr in ${ADRS[@]+"${ADRS[@]}"}; do
     report "$adr" "" "no status line under \"## Status\""
   else
     status="$(sed -n "${status_line_no}p" "$adr")"
-    if ! printf '%s' "$status" | grep -Eq '^(Akzeptiert|Vorgeschlagen|Ersetzt durch)'; then
-      report "$adr" "$status_line_no" "status line must start with \"Akzeptiert\", \"Vorgeschlagen\" or \"Ersetzt durch ADR-NNNN\""
+    if ! printf '%s' "$status" | grep -Eq '^(Akzeptiert|Ersetzt durch)'; then
+      report "$adr" "$status_line_no" "status line must start with \"Akzeptiert\" or \"Ersetzt durch ADR-NNNN\""
     fi
     if ! printf '%s' "$status" | grep -Eq 'zuletzt geändert [0-9]{4}-[0-9]{2}-[0-9]{2}'; then
       report "$adr" "$status_line_no" "status line must contain \"zuletzt geändert JJJJ-MM-TT\""

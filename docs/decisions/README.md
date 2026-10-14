@@ -43,15 +43,16 @@ git grep -n "ADR-00NN"
 
 ## Status
 
-- **Vorgeschlagen** gilt nur, bis der PR gemergt ist, der den ADR einführt. Der Autor setzt den
-  Status im letzten Commit vor dem Merge auf „Akzeptiert · zuletzt geändert JJJJ-MM-TT“, sobald der
-  Maintainer zustimmt; das Datum ist das der letzten inhaltlichen Änderung und wird mit jeder
-  Fortschreibung nachgezogen. Eine spätere Umsetzung ändert den Status nicht mehr.
+- Ein ADR steht von der ersten Fassung an auf „Akzeptiert · zuletzt geändert JJJJ-MM-TT“. Der
+  Merge des einführenden PRs ist die Zustimmung des Maintainers; ein abgelehnter ADR wird nicht
+  gemergt, und einen Zwischenstatus gibt es nicht. Das Datum ist das der letzten inhaltlichen
+  Änderung und wird mit jeder Fortschreibung nachgezogen. Eine spätere Umsetzung ändert den Status
+  nicht mehr.
 - Sind **alle Entscheidungen** eines ADR abgelöst, wird er ein Stub von höchstens 20 Zeilen mit
   dem Status „Ersetzt durch ADR-XXXX · zuletzt geändert JJJJ-MM-TT“. Die Datei bleibt, damit
   Verweise weiter auflösen.
-- Die Statuszeile ist die erste Zeile unter `## Status`, beginnt mit „Akzeptiert“, „Vorgeschlagen“
-  oder „Ersetzt durch“ und enthält „zuletzt geändert JJJJ-MM-TT“; weitere Angaben folgen mit „·“
+- Die Statuszeile ist die erste Zeile unter `## Status`, beginnt mit „Akzeptiert“ oder „Ersetzt
+  durch“ und enthält „zuletzt geändert JJJJ-MM-TT“; weitere Angaben folgen mit „·“
   (etwa „ergänzt durch ADR-XXXX“, „ersetzt Entscheidung N von ADR-YYYY“).
 
 ## Form

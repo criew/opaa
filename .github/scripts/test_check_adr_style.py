@@ -38,3 +38,12 @@ def test_rejects_plural_heading_and_indented_quote(repo: Path, block: str) -> No
     result = run_check(repo)
     assert result.returncode == 1
     assert "appended block" in result.stdout
+
+
+def test_rejects_proposed_status(repo: Path) -> None:
+    (repo / "docs/decisions/0999-probe.md").write_text(
+        CLEAN.replace("Akzeptiert ·", "Vorgeschlagen ·"), encoding="utf-8"
+    )
+    result = run_check(repo)
+    assert result.returncode == 1
+    assert "Akzeptiert" in result.stdout
