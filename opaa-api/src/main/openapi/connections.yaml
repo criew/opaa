@@ -1,4 +1,4 @@
-# Topic "connections": connection profiles ("Zugänge", #2160, ADR-0041) and their selection.
+# Topic "connections": connection profiles ("Zugänge", ADR-0041) and their selection.
 # Merged with all other fragments at build time, see root.yaml.
 tags:
   - name: connection-profile

@@ -72,7 +72,7 @@ paths:
         same bar that decides who may hand out read access, plus SYSTEM_ADMIN). A release is
         mandatorily time-limited to at most one year; it stops taking effect on its own, and the
         renewal is a deliberate act. Whether the channel itself is open is a separate, installation-
-        wide decision (#1717) this endpoint neither reads nor needs.
+        wide decision this endpoint neither reads nor needs.
         See docs/features/external-access.md#die-freigabe-der-bibliothek.
         While the library's succession is open (ADR-0036, Entscheidung 6) a new release and an
         extended one are refused with 409 and the code SUCCESSION_OPEN; taking a release back and
@@ -374,7 +374,7 @@ components:
         NEVER_SET is the shipped default. ACTIVE means released until expiresAt. WITHDRAWN means
         taken back by hand, EXPIRED means the Befristung ran out and the scheduled run took the
         release out of effect. SUSPENDED is reserved for a subsequently lowered connector share
-        ceiling (#797) and is set by nothing today. See
+        ceiling and is set by nothing today. See
         docs/features/external-access.md#die-freigabe-der-bibliothek.
       enum: [NEVER_SET, ACTIVE, WITHDRAWN, EXPIRED, SUSPENDED]
 
@@ -433,7 +433,7 @@ components:
           format: int64
           description: >
             How many Zugangstokens currently contain this library - a number, never names,
-            persons or usage. Always 0 until the tokens themselves exist (#1718); the field is
+            persons or usage. Always 0 until the tokens themselves exist; the field is
             here from the start so the release view does not change shape when they arrive.
         maxReleaseDays:
           type: integer

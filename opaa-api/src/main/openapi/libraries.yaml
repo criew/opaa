@@ -73,10 +73,10 @@ paths:
       tags: [library]
       summary: >
         Test a quellkonfiguration before a library is created, or an existing library's
-        quellkonfiguration while editing it (#514, #544). Without libraryId, there is no library
+        quellkonfiguration while editing it. Without libraryId, there is no library
         yet to hold a role on, so the caller instead needs the capability
         CREATE_CONNECTOR_LIBRARY (ADR-0036, Entscheidung 5) in the scope creating that connector
-        library needs - of connectionProfileId when set, of sourceType otherwise (#1856) - and
+        library needs - of connectionProfileId when set, of sourceType otherwise - and
         neither may be locked. The operator-configured path allowlist and the address
         validator remain independent of any permission, as before. With libraryId, the caller
         additionally needs AssetRole.MANAGER on that library (see
@@ -99,7 +99,7 @@ paths:
         replacement for #267's still-outstanding target validation (blocking internal/private
         address ranges) for HTTP_DIRECTORY/RSS_FEED, which this endpoint makes cheaper to
         reach than the indexing run it mirrors (see docs/features/knowledge-sources.md). With
-        libraryId set (#544), sourceType must match that library's own sourceType (otherwise
+        libraryId set, sourceType must match that library's own sourceType (otherwise
         400) and a missing sourceCredentials falls back to the library's stored one, but only
         if sourceUrl still names the same origin as the library's stored sourceUrl - the same
         rule KnowledgeLibraryService already applies when saving.
@@ -172,7 +172,7 @@ paths:
         Answered by the connector of sourceType; a type without a listing is a 400. A POST
         because the credentials travel in the body and no library needs to exist yet. Permission
         bar like the connection test: the capability CREATE_CONNECTOR_LIBRARY without libraryId,
-        AssetRole.MANAGER on that library with it (#1856); with libraryId, omitted credentials
+        AssetRole.MANAGER on that library with it; with libraryId, omitted credentials
         fall back to the stored ones when sourceUrl names the same origin. Rate-limited like the
         connection test (opaa.rate-limit.source-test) and subject to the same outbound target
         validation. Credentials appear in no response and no error message. Without libraryId,
@@ -282,7 +282,7 @@ paths:
         undone by the next indexing run (ADR-0018, Entscheidung 5). The delete is also rejected
         with 409 while an indexing run for the library is RUNNING.
       description: >
-        A private library (privateLibrary) is erased instead ("Sofort löschen", #2165): only by
+        A private library (privateLibrary) is erased instead ("Sofort löschen"): only by
         its owner - for everyone else, the system administration included, it answers 404 as for
         a library that does not exist. The erasure removes its documents, chunks, full-text
         entries, originals, folders, metadata values, runs with their protocol, sync state and
@@ -321,7 +321,7 @@ paths:
     put:
       operationId: updateLibraryShareCap
       tags: [library]
-      summary: Set a connector library's share cap - whether it may be granted to ALL_ACCOUNTS (#797)
+      summary: Set a connector library's share cap - whether it may be granted to ALL_ACCOUNTS
       description: >
         SYSTEM_ADMIN only (403 otherwise). Rejected with 400 for an UPLOAD library, which is never
         capped - the same person who uploads already curates every document individually, so there
@@ -393,7 +393,7 @@ paths:
     put:
       operationId: connectLibraryProfile
       tags: [library]
-      summary: Connect a library through a connection profile of its source type (#2160)
+      summary: Connect a library through a connection profile of its source type
       description: >
         Needs AssetRole.MANAGER on the library. The profile must belong to the library's source
         type and admit libraries as owners. sourceUrl, when given, is the new address; without
@@ -433,7 +433,7 @@ paths:
     delete:
       operationId: disconnectLibraryProfile
       tags: [library]
-      summary: Release a library from its connection profile (#2160)
+      summary: Release a library from its connection profile
       description: >
         Needs AssetRole.MANAGER on the library. The library keeps its address and secret and
         runs with them as its own; what the profile set for it - its defaults and TLS
@@ -471,14 +471,14 @@ paths:
       tags: [library]
       summary: >
         List documents contained in a library, paged and optionally filtered by a case-insensitive
-        substring of the file name (#517). Available for every sourceType, not just UPLOAD - a
+        substring of the file name. Available for every sourceType, not just UPLOAD - a
         connector library's indexed bestand is just as visible here. Ordered by fileName ascending,
         id ascending as a tiebreaker - a deterministic total order, not just "ascending fileName":
         without it, LIMIT/OFFSET across two separate requests (e.g. two pages fetched moments
         apart, or the same page re-polled while indexing concurrently updates a row) has no
         guaranteed stable result in PostgreSQL and could return a document twice or skip it.
 
-        **Folder-aware since #821 (Epic #520 Phase 2, ADR-0020).** Without q, the response is
+        **Folder-aware (ADR-0020).** Without q, the response is
         scoped to exactly one folder level: folderId (or its absence, meaning the library's root)
         selects which documents items contains, plus that folder's direct subfolders (folders) and
         its breadcrumb chain (breadcrumb, empty at the root). With q, the search is deliberately
@@ -488,16 +488,12 @@ paths:
         folderId is nevertheless always validated when given, with or without q - see that
         parameter's own description.
 
-        **Backward compatibility:** a caller that omits folderId - every client before #821 - lists
-        the library's root (documents with no folder plus the library's root-level subfolders), not
-        the library's full bestand across all folders the way this endpoint used to behave before
-        folders existed at all. This is a deliberate, accepted behaviour change: folders can only
-        exist through the CRUD API #820 added, so no pre-#821 library has any folder yet, and this
-        endpoint's root-only response is therefore identical to its pre-#821 one until someone
-        creates a folder and uploads into it - at which point browsing into that folder is exactly
-        what folderId is for (frontend navigation follows in #822).
+        A caller that omits folderId lists the library's root (documents with no folder plus the
+        library's root-level subfolders), not the library's full bestand across all folders; a
+        library without folders therefore lists everything, and browsing into a folder is exactly
+        what folderId is for.
 
-        **Attachment-aware since #1184 (ADR-0022, Entscheidung 5).** Documents carrying a
+        **Attachment-aware (ADR-0022, Entscheidung 5).** Documents carrying a
         parentDocumentId (attachments of a mail, an RSS entry, ...) are never paged, sorted or
         counted independently: page/size/totalElements and the fileName order all operate on
         top-level documents only, and each returned top-level document brings its complete
@@ -527,16 +523,16 @@ paths:
           required: false
           description: >
             Case-insensitive substring match against the document's file name, searched across the
-            whole library regardless of folderId (#821). Also matches attachment file names: a hit
+            whole library regardless of folderId. Also matches attachment file names: a hit
             on an attachment surfaces its top-level parent document together with all of that
-            parent's attachments (#1184).
+            parent's attachments.
           schema:
             type: string
         - name: folderId
           in: query
           required: false
           description: >
-            The folder to list (#821). Omitted or null means the library's root. When q is also
+            The folder to list. Omitted or null means the library's root. When q is also
             set, folderId is ignored for scoping/filtering - search is always bibliotheksweit - but
             is still validated: it must reference an existing folder in this library whether or not
             q is set, or the request is rejected with 404 - the same "unknown vs. foreign folder"
@@ -548,7 +544,7 @@ paths:
           in: query
           required: false
           description: >
-            The Pflege-Anker's list (#1069): a core field key (title, document_type, document_date)
+            The Pflege-Anker's list: a core field key (title, document_type, document_date)
             narrowing the response to exactly the indexed documents that have no value for it - the
             documents GET /api/v1/libraries/{libraryId}/metadata/maintenance counts. A field marked
             "kein Wert ermittelbar" is not listed, which is what lets the list be emptied. Like q,
@@ -581,19 +577,19 @@ paths:
       summary: >
         Upload a document into a library (EDITOR role or above required). Only accepted for
         libraries with sourceType UPLOAD - a connector library (FILESYSTEM/HTTP_DIRECTORY/
-        RSS_FEED) rejects the upload with 409 (ADR-0018, #479). The file is validated, stored and
-        the document row created with status PENDING before this call returns (#434) - parsing
+        RSS_FEED) rejects the upload with 409 (ADR-0018). The file is validated, stored and
+        the document row created with status PENDING before this call returns - parsing
         (Tika) and embedding run afterwards, asynchronously, through the same executor
         infrastructure the directory/URL indexing paths use. Poll GET on this library's document
         list to observe the transition to INDEXED or FAILED (errorMessage set on failure).
         Malware scanning is explicitly out of scope - see #420.
 
-        **folderId (#821, Epic #520 Phase 2, ADR-0020):** optional; omitted or null uploads into
+        **folderId (ADR-0020):** optional; omitted or null uploads into
         the library's root, mirroring GET on this same path. When set, it must reference an
         existing folder in this library, or the request is rejected with 404 - the same
         unknown/foreign-folder treatment the folder CRUD endpoints already apply.
 
-        **folderPath (#823, Epic #520 Phase 4):** optional, relative to folderId (e.g.
+        **folderPath:** optional, relative to folderId (e.g.
         "Protokolle/2026"). Intermediate folders are created idempotently - an existing folder of
         the same name at the same level is reused, never duplicated - letting a whole
         drag-and-dropped or webkitdirectory-selected folder tree be uploaded one file at a time
@@ -602,7 +598,7 @@ paths:
         depth overrun is rejected with 400 before any byte of this file is stored. Only accepted
         for UPLOAD libraries, like folderId itself.
 
-        **503 (ADR-0030, Entscheidung 9, #1805):** an upload storage that runs on an object store
+        **503 (ADR-0030, Entscheidung 9):** an upload storage that runs on an object store
         may be unreachable or refuse the application, and taking the original into it is this
         operation's own dependency. It is then answered with 503 and a German message naming no
         detail of the stored configuration - the same temporary condition, and the same answer,
@@ -626,13 +622,12 @@ paths:
                   format: uuid
                   nullable: true
                   description: >
-                    The folder to upload into (#821). Omitted or null means the library's root.
+                    The folder to upload into. Omitted or null means the library's root.
                 folderPath:
                   type: string
                   nullable: true
                   description: >
-                    A path relative to folderId whose intermediate folders are created idempotently
-                    (#823). Omitted or blank means no additional path - upload directly into
+                    A path relative to folderId whose intermediate folders are created idempotently. Omitted or blank means no additional path - upload directly into
                     folderId (or the library's root).
       responses:
         "201":
@@ -698,7 +693,7 @@ paths:
       operationId: bulkDeleteLibraryDocuments
       tags: [library]
       summary: >
-        Remove a chosen set of an upload library's documents in one call (#1943) - the counterpart
+        Remove a chosen set of an upload library's documents in one call - the counterpart
         of POST .../documents/metadata/bulk for the delete action the list offers per row.
       description: >
         Same right as the single delete (EDITOR or above) and the same per-document effect: the
@@ -745,11 +740,10 @@ paths:
       tags: [library]
       summary: >
         Create a folder in a library (EDITOR role or above required), optionally nested under an
-        existing folder (#820, ADR-0020: library_folders is a real entity so an empty folder can
+        existing folder (ADR-0020: library_folders is a real entity so an empty folder can
         exist before any document is uploaded into it). Only accepted for libraries with sourceType
         UPLOAD - a connector library (FILESYSTEM/HTTP_DIRECTORY/RSS_FEED) rejects folder creation
-        with 409, mirroring the same restriction POST .../documents already applies (ADR-0018,
-        #479); FILESYSTEM's own read-only folder mapping is a later, separate task (#824). A name
+        with 409, mirroring the same restriction POST .../documents already applies (ADR-0018); FILESYSTEM's own read-only folder mapping is a later, separate task. A name
         that already exists on the same level (same parentFolderId, including two root-level
         folders) is rejected with 409.
       requestBody:
@@ -794,7 +788,7 @@ paths:
       tags: [library]
       summary: >
         Fetch a single folder (VIEWER role or above required), including the total number of
-        documents it and its subfolders contain (#820) - the count a confirmation dialog shows
+        documents it and its subfolders contain - the count a confirmation dialog shows
         before a recursive delete (ADR-0020, Entscheidung 5).
       responses:
         "200":
@@ -812,7 +806,7 @@ paths:
       operationId: renameLibraryFolder
       tags: [library]
       summary: >
-        Rename a folder (EDITOR role or above required, #820). Only the name changes; documents in
+        Rename a folder (EDITOR role or above required). Only the name changes; documents in
         the folder and its subfolders are unaffected, their display path is derived from the
         current folder chain. A name that already exists on the same level is rejected with 409.
       requestBody:
@@ -841,7 +835,7 @@ paths:
       operationId: deleteLibraryFolder
       tags: [library]
       summary: >
-        Delete a folder (EDITOR role or above required, #820), recursively removing its subfolders
+        Delete a folder (EDITOR role or above required), recursively removing its subfolders
         and every document they contain. Document cleanup (chunks, stored file) runs through the
         same application service DELETE /api/v1/libraries/{libraryId}/documents/{documentId}
         already uses, never a database cascade (ADR-0020, Entscheidung 5) - the frontend shows the
@@ -870,7 +864,7 @@ paths:
       operationId: getDocumentContent
       tags: [library]
       summary: >
-        Stream the original file behind an indexed document (#736), so a search result or library
+        Stream the original file behind an indexed document, so a search result or library
         listing can link straight to the source it was built from. Called as an authenticated API
         request (Bearer token, like every other endpoint here per ADR-0005) rather than a direct
         browser navigation - a plain <a href> deep link has no way to attach that token, so a caller
@@ -879,15 +873,15 @@ paths:
         resolved from Document.libraryId; VIEWER role or above on that library is required, the same
         floor GET /api/v1/libraries/{libraryId} itself uses. sourceType UPLOAD/FILESYSTEM stream a
         local file directly; HTTP_DIRECTORY/RSS_FEED are proxied server-side from the document's own
-        stored source URL instead (#747) - this closes the gap where that source is only reachable
+        stored source URL instead - this closes the gap where that source is only reachable
         from OPAA's own network (an internal fileserver/intranet site, the common case in a Behörde),
         never from the caller's browser. The proxy re-validates the target address against the same
-        allowlist (#267) applied at indexing time, follows a redirect only within the same origin,
+        allowlist applied at indexing time, follows a redirect only within the same origin,
         goes through the outbound proxy like every other outbound request, applies the library's
         own stored credentials to the outbound request without ever exposing them in the response, and
         streams the response directly to the caller (no temp file) bounded by its own, smaller size
         limit and request timeout than a background indexing run uses. S3 documents are fetched
-        from the library's own object store on demand (#1524) - an s3://bucket/key identity opens
+        from the library's own object store on demand - an s3://bucket/key identity opens
         nowhere in a browser and, unlike a Confluence page, has no deep link to fall back on, so
         this endpoint is the only way to such an original. The fetch uses the connector's own
         access layer: the library's stored source configuration, the same target-address
@@ -909,7 +903,7 @@ paths:
         object (ADR-0027) answer 503 when the store cannot be reached or refuses the application -
         a temporary condition a caller must not read as "this original does not exist". Its message
         names no detail of the stored configuration. 403 means the library is reachable for the
-        caller but not readable (#1828): this endpoint checks the same formula the search does,
+        caller but not readable: this endpoint checks the same formula the search does,
         which knows no system-administration floor, so a SYSTEM_ADMIN without a grant is refused
         here while still administering the library - a grant on it is the way in, not the role. For
         an ordinary caller VIEWER is the lowest AssetRole, so any grant already satisfies the
@@ -917,7 +911,7 @@ paths:
         the role cache the first check reads. Without any access at all it stays the 404 above.
         429 is answered when this endpoint is under
         load: either by its own rate limit, or - for an attachment document, whose bytes are
-        re-extracted from its parent original on every read (ADR-0022, #1243) - when too many such
+        re-extracted from its parent original on every read (ADR-0022) - when too many such
         re-extractions are already running. Both carry a German message and may be retried.
       responses:
         "200":
@@ -958,7 +952,7 @@ paths:
       tags: [library]
       summary: >
         The caller's own storage use across all her private libraries and the house-wide limit
-        it is held against (#2166). Only the person herself reads her use; no other operation
+        it is held against. Only the person herself reads her use; no other operation
         answers it for a person.
       responses:
         "200":
@@ -974,7 +968,7 @@ paths:
       tags: [library]
       summary: >
         Reads the house-wide storage quota across all private libraries of a person (system
-        admin only, #2166): the value in force, the configured default and whether the
+        admin only): the value in force, the configured default and whether the
         administration set its own.
       responses:
         "200":
@@ -990,7 +984,7 @@ paths:
       tags: [library]
       summary: >
         Sets the house-wide storage quota across all private libraries of a person (system admin
-        only, #2166); quotaBytes null returns to the configured default, 0 means unlimited. Takes
+        only); quotaBytes null returns to the configured default, 0 means unlimited. Takes
         effect with the next document a run takes in; nothing already stored is removed.
       requestBody:
         required: true
@@ -1015,8 +1009,7 @@ paths:
       operationId: getPrivateStorageSummary
       tags: [library]
       summary: >
-        The private libraries of the caller's organization in sums only (system admin only,
-        #2166): the storage they occupy in total and per connection profile admitting persons,
+        The private libraries of the caller's organization in sums only (system admin only): the storage they occupy in total and per connection profile admitting persons,
         and how many of their runs ended in each run category within the last runWindowDays days.
         Every number rests on persons and is masked by the minimum group size (MaskedNumber); no
         answer names a person, a library or the use of one person.
@@ -1193,7 +1186,7 @@ components:
           format: uuid
           nullable: true
           description: >
-            Creates the library connected through this connection profile (#2160) - one of
+            Creates the library connected through this connection profile - one of
             listConnectionProfileOptions for sourceType. sourceUrl may then be omitted (the
             profile's server address) and must otherwise lie under it. The connector validates
             the settings with the profile's defaults and TLS switch, so none of them needs
@@ -1282,7 +1275,7 @@ components:
         schedule:
           description: >
             The indexing rhythm, set together with the library rather than in a second call right
-            after it (#1942) - the assistant asks for it in the same step as the connection.
+            after it - the assistant asks for it in the same step as the connection.
             Absent leaves the library without a schedule, exactly as before. Validated like
             LibraryUpdateRequest.schedule, including the refusal of anything but DISABLED on an
             UPLOAD library (400).
@@ -1294,7 +1287,7 @@ components:
       type: object
       required: [sourceType]
       description: >
-        Carries the same typed configuration fields as LibraryRequest (#514) - deliberately a
+        Carries the same typed configuration fields as LibraryRequest - deliberately a
         separate schema rather than reusing LibraryRequest itself, since name/ownerType/
         description have no meaning before a library exists and would only invite a client
         to pass a half-filled LibraryRequest by mistake. Which fields are accepted depends on
@@ -1364,15 +1357,15 @@ components:
           format: uuid
           nullable: true
           description: >
-            Optional (#544). Identifies the library whose already-stored source credentials this
+            Optional. Identifies the library whose already-stored source credentials this
             test may fall back to when sourceCredentials is omitted here - the same
             same-origin-only fallback KnowledgeLibraryService already applies when saving an edited quellkonfiguration, so a caller pointed at a
             different host cannot silently reuse a credential it never entered. Requires at least
             AssetRole.MANAGER on that library (404 if it does not exist or belongs to another
             organization, 403 if it exists but the caller's role is below MANAGER - the same
             not-found/forbidden split every other library endpoint uses). The library's own
-            sourceType must match this request's sourceType, otherwise 400. Absent, this behaves
-            exactly like before #544 - a standalone test with no stored library to fall back to.
+            sourceType must match this request's sourceType, otherwise 400. Absent, this is a standalone
+            test with no stored library to fall back to.
         sourceSettings:
           description: >
             The connector settings the probe uses (ADR-0038), shaped like
@@ -1385,7 +1378,7 @@ components:
       type: object
       required: [reachable, message]
       description: >
-        Structured result of a source connection test (#514). message is always German and
+        Structured result of a source connection test. message is always German and
         always safe to show to the caller verbatim - both on success ("RSS-Feed erreichbar,
         12 Einträge gefunden.") and on failure ("Der RSS-Feed konnte nicht gelesen werden: kein
         gültiges XML."); no exception text or stack trace ever reaches it.
@@ -1616,7 +1609,7 @@ components:
     ScheduleFrequency:
       type: string
       description: >
-        The four fixed intervalstufen a library's indexing schedule may take (#485, Zuschnitt
+        The four fixed intervalstufen a library's indexing schedule may take (Zuschnitt
         21.08.2026) - deliberately not free-form cron: HOURLY runs on the hour, DAILY and WEEKLY
         take an explicit hour/minute (WEEKLY additionally a weekday), DISABLED carries no time at
         all. Stored internally as a cron expression (LibraryScheduleCodec) so a future expert
@@ -1627,7 +1620,7 @@ components:
 
     ScheduleWeekday:
       type: string
-      description: Names match java.time.DayOfWeek exactly (#485).
+      description: Names match java.time.DayOfWeek exactly.
       enum:
         [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
       example: MONDAY
@@ -1636,7 +1629,7 @@ components:
       type: object
       required: [frequency]
       description: >
-        Sets or clears a connector library's indexing schedule (#485). Which of hour/minute/
+        Sets or clears a connector library's indexing schedule. Which of hour/minute/
         weekday are required depends on frequency: DISABLED and HOURLY accept none of them
         (HOURLY always runs at minute 0 of every hour), DAILY requires hour and minute, WEEKLY
         additionally requires weekday. A combination that contradicts frequency is rejected with
@@ -1666,7 +1659,7 @@ components:
       type: object
       required: [frequency]
       description: >
-        A library's current indexing schedule (#485), returned by LibraryResponse. Same shape as
+        A library's current indexing schedule, returned by LibraryResponse. Same shape as
         LibraryScheduleRequest plus nextRunAt, the one field only the server can compute -
         deliberately a flat schema rather than composing over LibraryScheduleRequest via allOf, so
         the generated Java model stays a single plain class.
@@ -1713,7 +1706,7 @@ components:
         against the library's existing (unchangeable) sourceType exactly like LibraryRequest. The
         configuration is only replaced (as a whole) when the request carries at least one of
         these fields; a request that omits all of them (e.g. renaming the library) leaves the
-        stored configuration untouched rather than clearing it. schedule (#485) follows the same
+        stored configuration untouched rather than clearing it. schedule follows the same
         replace-as-a-whole rule: only present when the caller intends to change it, otherwise the
         stored schedule stays untouched. Changing it requires the same AssetRole.MANAGER this
         whole endpoint already enforces - there is no separate schedule endpoint.
@@ -1781,13 +1774,13 @@ components:
     LibraryShareCapRequest:
       type: object
       required: [allAccountsGrantAllowed]
-      description: Body for PUT /api/v1/libraries/{libraryId}/share-cap (#797).
+      description: Body for PUT /api/v1/libraries/{libraryId}/share-cap.
       properties:
         allAccountsGrantAllowed:
           type: boolean
           description: >
             Whether this library may be granted to ALL_ACCOUNTS ("Alle Konten"). Lowering
-            it to false revokes an existing such grant in the same transaction (#1931, ADR-0037
+            it to false revokes an existing such grant in the same transaction (ADR-0037
             Entscheidung 5) - there is no state "over the ceiling but tolerated".
 
     LibraryListResponse:
@@ -1854,7 +1847,7 @@ components:
         sourceType:
           description: >
             The library's quellentyp (ADR-0018), added here so the overview and the library
-            detail page (#481) can both show the type without a per-library detail round trip -
+            detail page can both show the type without a per-library detail round trip -
             previously only the single-library response (LibraryResponse) carried this field.
           allOf:
             - $ref: "#/components/schemas/SourceTypeKey"
@@ -1865,7 +1858,7 @@ components:
           type: string
           format: date-time
           description: >
-            #684: completion time of the library's most recent successful indexing run
+            Completion time of the library's most recent successful indexing run
             (JobStatus COMPLETED) - the "Stand" column of the overview table. Absent when the
             library has never completed a run; failed or still-running runs never move it. The
             wording base ("indiziert" vs. "abgerufen") follows the library's sourceType already
@@ -1873,7 +1866,7 @@ components:
             clients keep working.
         lastRunStatus:
           description: >
-            #1940: the status of this library's most recent indexing run, whatever its outcome -
+            The status of this library's most recent indexing run, whatever its outcome -
             what lastIndexedAt above cannot express, since only a COMPLETED run ever moves it and
             a failed last run is therefore invisible in the overview without this field. Absent
             when the library has never been indexed at all (an UPLOAD library always). IDLE is
@@ -1882,7 +1875,7 @@ components:
             - $ref: "#/components/schemas/IndexingStatus"
         succession:
           description: >
-            Set while this library has no capable owner (#1819, ADR-0036 Entscheidung 6) - the
+            Set while this library has no capable owner (ADR-0036 Entscheidung 6) - the
             same marking the detail view carries, so the overview shows it without opening the
             library. State and addressee only, deliberately without date, previous owner or
             reason; search hits never carry it.
@@ -1943,7 +1936,7 @@ components:
         connectionProfile:
           nullable: true
           description: >
-            The connection profile ("Zugang") the library is connected through (#2160); absent for
+            The connection profile ("Zugang") the library is connected through; absent for
             a library with its own address and after its profile was deleted.
           allOf:
             - $ref: "#/components/schemas/ConnectionProfileRef"
@@ -2006,7 +1999,7 @@ components:
           nullable: true
           description: >
             Display name of the owning group or person, so the detail view can name the
-            responsible body instead of a bare id (#1941) - the same field the overview already
+            responsible body instead of a bare id - the same field the overview already
             carries (LibraryListResponse.ownerName). Readable by everyone who may read the
             library: who is responsible for a library is not a secret from its readers. Null
             where the owner cannot be named - a deleted subject, a person without a display name
@@ -2031,7 +2024,7 @@ components:
           type: string
           nullable: true
           description: >
-            Set only for sourceType FILESYSTEM, and only if myRole is at least MANAGER (#507) -
+            Set only for sourceType FILESYSTEM, and only if myRole is at least MANAGER -
             an internal server path is configuration detail for whoever may change it, not for a
             mere VIEWER of an organization-wide library. Absent (not merely null) for a lower
             role, mirroring the MANAGER bar PUT /api/v1/libraries/{libraryId} already enforces
@@ -2042,7 +2035,7 @@ components:
           nullable: true
           description: >
             Set only for sourceType HTTP_DIRECTORY or RSS_FEED, and only if myRole is at least
-            MANAGER (#507) - see sourcePath above for why. sourceCredentials is deliberately
+            MANAGER - see sourcePath above for why. sourceCredentials is deliberately
             absent from this response regardless of role (ADR-0018) - it is a write-only field of
             LibraryRequest and appears in no API response.
         sourceCredentialsSet:
@@ -2054,7 +2047,7 @@ components:
             false otherwise. Lets a client (e.g. the source configuration edit dialog) phrase an
             accurate "leave blank to keep the current credential" hint only when one actually
             exists, instead of implying one is configured when none is. Set only if myRole is at
-            least MANAGER (#507) - see sourcePath above for why.
+            least MANAGER - see sourcePath above for why.
         sourceSettings:
           description: >
             The connector's settings as the caller may see them (ADR-0038): every reader what the
@@ -2081,7 +2074,7 @@ components:
             myRole is at least MANAGER.
         schedule:
           description: >
-            The library's indexing schedule (#485) - present only for a connector library
+            The library's indexing schedule - present only for a connector library
             (sourceType other than UPLOAD) and only if myRole is at least MANAGER, the same
             threshold sourcePath/sourceUrl above already use, since nextRunAt/frequency are
             configuration detail exactly like the rest of the source setup.
@@ -2101,10 +2094,10 @@ components:
           format: int64
           nullable: true
           description: >
-            The configured per-library storage quota in bytes (#119, Standardkontingent je
+            The configured per-library storage quota in bytes (Standardkontingent je
             Bibliothek) - the same value for every library today, since the quota is currently an
             operator-wide setting rather than one configurable per library. Set only if myRole is
-            at least MANAGER (#507) - see sourcePath above for why: usage/quota is administration
+            at least MANAGER - see sourcePath above for why: usage/quota is administration
             detail, not something a mere VIEWER needs to manage the bestand.
         storageUsedBytes:
           type: integer
@@ -2112,9 +2105,7 @@ components:
           nullable: true
           description: >
             The total bytes this library's documents currently occupy, summed across every
-            document regardless of who uploaded or indexed it - never broken down per user (#216,
-            "kein personenbezogener Auswertungspfad"). Set only if myRole is at least MANAGER
-            (#507) - see sourcePath above for why.
+            document regardless of who uploaded or indexed it - never broken down per user ("kein personenbezogener Auswertungspfad"). Set only if myRole is at least MANAGER - see sourcePath above for why.
         diagnosticsLocked:
           type: boolean
           description: >
@@ -2133,7 +2124,7 @@ components:
             the caller, not merely "myRole is OWNER". The two diverge for a system admin: myRole
             bypasses to OWNER unconditionally (see myRole above), but holdsIndependentOwnerRole never
             does, so an admin without a self-issued or independently-held OWNER grant sees false
-            here even though myRole reads OWNER (#1278 review). A client uses this, not myRole, to
+            here even though myRole reads OWNER. A client uses this, not myRole, to
             decide whether to offer the toggle at all.
         externalAccess:
           description: >
@@ -2149,21 +2140,21 @@ components:
           type: boolean
           nullable: true
           description: >
-            Whether this library may be granted to ALL_ACCOUNTS (#797, #1931), set by the system
+            Whether this library may be granted to ALL_ACCOUNTS, set by the system
             administration per connector library - null for UPLOAD (which is never capped) and,
             like sourcePath above, absent (not merely null) below MANAGER. POST
             /api/v1/assets/{assetType}/{assetId}/grants answers 409 for such a grant while it is
             false.
         lastTransfer:
           description: >
-            The transfer that last touched this library (#1834, ADR-0036 Entscheidung 10), or
+            The transfer that last touched this library (ADR-0036 Entscheidung 10), or
             absent if none ever did.
           nullable: true
           allOf:
             - $ref: "#/components/schemas/PermissionTransferMarkResponse"
         succession:
           description: >
-            Set while this object has no capable responsible party (#1819, ADR-0036 Entscheidung
+            Set while this object has no capable responsible party (ADR-0036 Entscheidung
             6) - state and addressee, deliberately without date, previous owner or reason. The
             object stays usable and keeps every right it has; only its reach is frozen.
           nullable: true
@@ -2227,7 +2218,7 @@ components:
           type: string
           nullable: true
           description: >
-            For an attachment discovered on an RSS entry's detail page (#468), the URL of the entry
+            For an attachment discovered on an RSS entry's detail page, the URL of the entry
             it was found on - lets a citation trace an attachment back to the feed entry it belongs
             to. Null for every other document.
           example: https://example.gov/aktuelles/dienstanweisung-2024
@@ -2235,9 +2226,9 @@ components:
           type: string
           nullable: true
           description: >
-            The document's own remote location for HTTP_DIRECTORY and RSS_FEED (#738). GET
+            The document's own remote location for HTTP_DIRECTORY and RSS_FEED. GET
             /api/v1/documents/{documentId}/content is the actual deep link for every sourceType,
-            including these two (#747: that endpoint now proxies the original server-side from this
+            including these two (that endpoint now proxies the original server-side from this
             same URL instead of answering 404) - this field is shown as secondary information
             alongside that link (e.g. a tooltip), since the source itself may only be reachable from
             OPAA's own network, not the caller's browser. Null for UPLOAD/FILESYSTEM, whose local
@@ -2246,17 +2237,17 @@ components:
             the entry page it was found on).
 
             Deliberately visible to every VIEWER, unlike LibraryResponse's own sourceUrl (masked
-            below MANAGER, #507): this field names one document's remote origin, the document deep
+            below MANAGER): this field names one document's remote origin, the document deep
             link that is the entire point of #738/#740, not the library's crawl configuration (host,
-            credentials) that #507 protects. Maintainer decision on PR #743 (Epic #740).
+            credentials) that #507 protects. Maintainer decision on PR #743.
           example: https://example.gov/verzeichnis/dienstanweisung-2024.pdf
         sourceContainerKey:
           type: string
           nullable: true
           description: >
             The container within the source system the document came from - a Confluence space key
-            (ADR-0023, #1136). Visible to every VIEWER, like the library's selected spaces
-            themselves (#1138): the key names one document's origin, not the library's crawl
+            (ADR-0023). Visible to every VIEWER, like the library's selected spaces
+            themselves: the key names one document's origin, not the library's crawl
             configuration. Null for every other source type.
           example: IT
         sourceHierarchyPath:
@@ -2271,19 +2262,19 @@ components:
           type: string
           nullable: true
           description: >
-            A German, user-facing reason set only while status is FAILED (#434) - why parsing or
+            A German, user-facing reason set only while status is FAILED - why parsing or
             embedding could not complete. Always null for PENDING and INDEXED.
         folderId:
           type: string
           format: uuid
           nullable: true
           description: >
-            The folder this document sits in (#821, ADR-0020). Null means the library's root.
+            The folder this document sits in (ADR-0020). Null means the library's root.
         folderPath:
           type: string
           nullable: true
           description: >
-            The document's folder chain as a display path, e.g. "Protokolle/2026" (#821) - derived
+            The document's folder chain as a display path, e.g. "Protokolle/2026" - derived
             from library_folders, never stored. Null for a root-level document (folderId null).
         parentDocumentId:
           type: string
@@ -2295,13 +2286,13 @@ components:
             from an RSS entry's detail page. Null for every top-level document. In GET
             .../documents responses an attachment row always follows its (transitive) top-level
             parent within the same page, so a client can group attachments under their parent
-            without a second request (#1184).
+            without a second request.
 
     LibraryFolderListItem:
       type: object
       required: [id, name, documentCount]
       description: >
-        A direct subfolder shown alongside a folder-scoped GET .../documents response (#821) - a
+        A direct subfolder shown alongside a folder-scoped GET .../documents response - a
         lighter projection than LibraryFolderResponse, without parentFolderId/createdAt, which that
         listing has no use for.
       properties:
@@ -2342,7 +2333,7 @@ components:
           description: >
             Top-level documents in the requested order, each immediately followed by its attachment
             rows - every (transitive) attachment of a top-level document, in file_path order, each
-            carrying parentDocumentId (#1184, ADR-0022 Entscheidung 5). Paging, sorting and
+            carrying parentDocumentId (ADR-0022 Entscheidung 5). Paging, sorting and
             totalElements operate on the top-level documents only; attachments always appear on
             their parent's page.
           items:
@@ -2357,20 +2348,19 @@ components:
           type: integer
           format: int64
           description: >
-            Total number of top-level documents matching the (optional) q filter, across all pages
-            (#1184): attachments never count towards totalElements or the page size - they ride
+            Total number of top-level documents matching the (optional) q filter, across all pages: attachments never count towards totalElements or the page size - they ride
             along with their parent (see items), so a page may contain more than size rows.
         folderId:
           type: string
           format: uuid
           nullable: true
           description: >
-            The requested folderId, echoed back (#821). Null both for the library's root and for a
+            The requested folderId, echoed back. Null both for the library's root and for a
             q search (search is always bibliotheksweit, regardless of folderId).
         folders:
           type: array
           description: >
-            The requested folder's direct subfolders (#821). Always empty when q is set - search
+            The requested folder's direct subfolders. Always empty when q is set - search
             results are a flat, bibliotheksweit list, not folder-scoped.
           items:
             $ref: "#/components/schemas/LibraryFolderListItem"
@@ -2378,7 +2368,7 @@ components:
           type: array
           description: >
             The requested folder's ancestor chain, root-first, ending with the requested folder
-            itself (#821). Empty at the library's root and always empty when q is set.
+            itself. Empty at the library's root and always empty when q is set.
           items:
             $ref: "#/components/schemas/LibraryFolderBreadcrumbItem"
 
@@ -2439,7 +2429,7 @@ components:
           minLength: 1
           maxLength: 255
           description: >
-            Trimmed before validation; must not be empty and must not contain "/" (#820) - a
+            Trimmed before validation; must not be empty and must not contain "/" - a
             display path is derived from the folder chain, not stored as a string, so a slash in a
             single folder's own name would be indistinguishable from a path separator.
           example: Protokolle
@@ -2486,7 +2476,7 @@ components:
           format: int64
           description: >
             Total number of top-level documents directly in this folder and every one of its
-            subfolders, recursively (#820) - the count a confirmation dialog shows before DELETE
+            subfolders, recursively - the count a confirmation dialog shows before DELETE
             removes them all (ADR-0020, Entscheidung 5). Attachments never count; they belong to
             their parent document, like totalElements of LibraryDocumentPageResponse.
         createdAt:

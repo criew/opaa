@@ -4,7 +4,7 @@ tags:
   - name: audit
     description: Audit trail, point-in-time access and incident scopes.
 paths:
-  # #393: exactly four revision access paths, each with a mandatory time range and a bounded
+  # Exactly four revision access paths, each with a mandatory time range and a bounded
   # result set - see docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
   # There is deliberately no `actor`/`actorRef` query parameter on any of them and no `sort`
   # parameter at all: actorRef is output-only, never an entry point (AUDITOR role only).
@@ -14,15 +14,14 @@ paths:
       tags: [audit]
       summary: >
         Revision access path "nach Objekt" (AUDITOR role required): every event recorded against
-        one object, within a mandatory time range. objectType=USER_ACCOUNT is rejected with 400
-        (#393 code review, finding 2): a USER_ACCOUNT object's object_id is that person's
+        one object, within a mandatory time range. objectType=USER_ACCOUNT is rejected with 400: a USER_ACCOUNT object's object_id is that person's
         pseudonym - the same pseudonym actorRef carries on that same person's own actions
         elsewhere in the log - so accepting it here would reconstruct exactly the excluded view
         "alle Ereignisse, bei denen Person X betroffen war" (read a pseudonym off actorRef via
         by-time-range, then feed it back in as objectId). The legitimate need behind a
         USER_ACCOUNT-scoped question is served by by-time-range/by-event-type (no person focus)
         or, for a genuinely person-scoped question, by the freigegebene anlassbezogene Klärung
-        or the Rechtehistorie (#238) - never by this path.
+        or the Rechtehistorie - never by this path.
       parameters:
         - name: objectType
           in: query
@@ -141,7 +140,7 @@ paths:
       operationId: listAccessAsOf
       tags: [audit]
       summary: >
-        Stichtagsauskunft "wer durfte dieses Objekt lesen" (AUDITOR role required, #1822,
+        Stichtagsauskunft "wer durfte dieses Objekt lesen" (AUDITOR role required,
         ADR-0036 Entscheidung 8)
       description: >
         The reading path of the Rechtehistorie, and the counterpart of the Suchdiagnose: the
@@ -438,7 +437,7 @@ paths:
 
 components:
   schemas:
-    # #393 - audit revision access path. See
+    # Audit revision access path. See
     # docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
     AuditActorKind:
       type: string
@@ -781,7 +780,7 @@ components:
           format: date-time
           nullable: true
           description: >
-            Closed intervals that ended before this instant are deleted (#1833). Everything the
+            Closed intervals that ended before this instant are deleted. Everything the
             answer says about a time before it is therefore incomplete by construction. Null until
             the first deletion pass has run at all, which is why beyondRetention and not this field
             carries the statement.

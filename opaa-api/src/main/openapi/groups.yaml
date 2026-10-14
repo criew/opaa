@@ -357,7 +357,7 @@ paths:
       tags: [group]
       summary: >
         Search the groups the caller may name as a grant subject or a space member - the
-        Subjekt-Auswahl of ADR-0036, Entscheidung 9 (#1820)
+        Subjekt-Auswahl of ADR-0036, Entscheidung 9
       description: >
         Answers the "Rechtevergebende in der Subjekt-Auswahl" row of ADR-0036, Entscheidung 9:
         every provider group of the caller's organization, and an internal group only once its
@@ -409,7 +409,7 @@ paths:
       operationId: resolveSelectableGroup
       tags: [group]
       summary: >
-        One group by its id, under the same rule the Subjekt-Auswahl applies (#1820)
+        One group by its id, under the same rule the Subjekt-Auswahl applies
       description: >
         The way in for a caller who knows the designation of a group but not its name - typing the
         id by hand. It resolves the group before anything is granted, so origin and provider reach
@@ -602,7 +602,7 @@ paths:
       tags: [group]
       summary: List every group in the caller's organization (system admin only)
       description: >
-        The one group path left under /admin (#1814, ADR-0036 Entscheidung 4): reading every
+        The one group path left under /admin (ADR-0036 Entscheidung 4): reading every
         group of the organization regardless of who maintains it is an administrative act. Every
         operation on a single group moved to /api/v1/groups, where the right is decided per group
         rather than by role.
@@ -758,7 +758,7 @@ components:
     GroupKind:
       type: string
       description: >
-        ORG_UNIT groups are synchronised from the directory (see #237), carry a parent unit and
+        ORG_UNIT groups are synchronised from the directory, carry a parent unit and
         can have curators. AD_HOC groups are created in the system, have no curator and no
         distribution level of their own. IDENTITY_PROVIDER groups mirror the groups claim of an
         identity provider's tokens (ADR-0025): refreshed on every sign-in, read-only here.
@@ -912,15 +912,14 @@ components:
     GroupMemberDisclosureResponse:
       type: object
       description: >
-        The members of a group as the person who granted it a right on an object sees them (#1880,
-        ADR-0036 Entscheidung 9) - only active accounts, capped and paged, with the cap as the
+        The members of a group as the person who granted it a right on an object sees them (ADR-0036 Entscheidung 9) - only active accounts, capped and paged, with the cap as the
         query's own LIMIT. The four limits of the rule, enforced in the service and nowhere else:
 
         (a) only while the group holds a right at the object named in the path - an expired grant
         and an ended space membership hold nothing; (b) only for a group released for use, which a
         provider group always is; (c) the delivered default is "not released"; (d) never for a
         protected group - no name, no count, no members, and responsible instead, whom to ask.
-        The size of the group limits nothing here (#2134): a small group is listed like any other.
+        The size of the group limits nothing here: a small group is listed like any other.
 
         A retrieval carried by the system role is an audit event (GROUP_MEMBERS_READ) on both
         paths, because a system administrator passes the threshold of every library and every
@@ -970,7 +969,7 @@ components:
       type: object
       description: >
         One member of a group, as much as the person granting the group a right needs to know:
-        who. No account state, no addresses, no membership dates (#1880).
+        who. No account state, no addresses, no membership dates.
       required: [userId]
       properties:
         userId:
@@ -1162,7 +1161,7 @@ components:
           type: array
           description: >
             The people responsible for this group - empty for a provider group, and empty for an
-            internal group whose succession is open (#1819).
+            internal group whose succession is open.
           items:
             $ref: "#/components/schemas/GroupStewardResponse"
         createdAt:
@@ -1177,7 +1176,7 @@ components:
       required:
         [id, origin, protectedGroup, selectable, dissolved, providerDisabled, unmaintained, deactivated, smallGroup, emptyGroup]
       description: >
-        One group as the Subjekt-Auswahl shows it (#1820, ADR-0036 Entscheidung 9): name, origin
+        One group as the Subjekt-Auswahl shows it (ADR-0036 Entscheidung 9): name, origin
         and the number of active accounts - never the members themselves. Everything a selection
         decides on is a field of its own, so the interface names the reason instead of guessing
         it from a missing row.
@@ -1344,7 +1343,7 @@ components:
           type: array
           description: >
             The people responsible for this group - empty for a provider group, and empty for an
-            internal group whose succession is open (#1819).
+            internal group whose succession is open.
           items:
             $ref: "#/components/schemas/GroupStewardResponse"
         createdAt:

@@ -9,9 +9,9 @@ paths:
       operationId: getBranding
       tags: [branding]
       summary: >
-        The branding configuration in effect (#582): product name, claim, accent colour, default
+        The branding configuration in effect: product name, claim, accent colour, default
         colour scheme and - if one is configured - the path the logo is served from. Readable
-        without authentication (#583): the sign-in page renders before there is a session and still
+        without authentication: the sign-in page renders before there is a session and still
         has to carry the operator's own name and logo. What that exposes is bounded to exactly
         these fields - which Behörde runs the deployment, which anyone reaching its sign-in page
         can already tell. Never fails for want of configuration - a deployment that has never configured anything gets the OPAA
@@ -31,7 +31,7 @@ paths:
       tags: [branding]
       summary: >
         The configured logo's bytes, served with the content type the server itself detected at
-        upload time - never one the uploader declared (#582: "Content-Type beim Ausliefern
+        upload time - never one the uploader declared ("Content-Type beim Ausliefern
         erzwingen"). Readable without authentication, for the same reason and with the same bounds
         as GET /api/v1/branding above. Answered with 404 while no logo is configured; clients read
         BrandingResponse.logoUrl rather than calling this unconditionally. The response carries
@@ -57,7 +57,7 @@ paths:
       operationId: getBrandingLoginLogo
       tags: [branding]
       summary: >
-        The sign-in page's own logo (#1910), served under exactly the same rules as GET
+        The sign-in page's own logo, served under exactly the same rules as GET
         /api/v1/branding/logo - detected content type, nosniff, restrictive Content-Security-Policy,
         readable without authentication. A separate image rather than a size variant of the app
         logo: the sign-in page renders it several times larger than the sidebar chrome does, and an
@@ -83,7 +83,7 @@ paths:
       operationId: getBrandingLoginBackground
       tags: [branding]
       summary: >
-        The sign-in page's optional background image (#1910), served under the same rules as the
+        The sign-in page's optional background image, served under the same rules as the
         two logos above and readable without authentication for the same reason. Answered with 404
         while none is configured; without one the sign-in page keeps its plain navy panel.
       responses:
@@ -106,7 +106,7 @@ paths:
       operationId: updateBranding
       tags: [branding]
       summary: >
-        Replace the branding configuration (SYSTEM_ADMIN only, #582). A full replacement, as PUT
+        Replace the branding configuration (SYSTEM_ADMIN only). A full replacement, as PUT
         implies: an omitted or null field is not "leave as is" but "back to the OPAA default", so
         an operator can undo a customisation without a dedicated reset endpoint. The logo is not
         part of this request - it has its own endpoints below, because a binary upload and a JSON
@@ -134,7 +134,7 @@ paths:
       operationId: updateBrandingLogo
       tags: [branding]
       summary: >
-        Upload the operator's logo (SYSTEM_ADMIN only, #582). Accepts PNG and JPEG only -
+        Upload the operator's logo (SYSTEM_ADMIN only). Accepts PNG and JPEG only -
         SVG is rejected outright rather than sanitised, because an SVG is a document that can
         carry script and a sanitiser that is wrong once is worse than a format restriction that
         is inconvenient always (#582 explicitly allows either). The declared content type is not
@@ -167,7 +167,7 @@ paths:
       operationId: deleteBrandingLogo
       tags: [branding]
       summary: >
-        Remove the configured logo (SYSTEM_ADMIN only, #582) - the app falls back to the OPAA
+        Remove the configured logo (SYSTEM_ADMIN only) - the app falls back to the OPAA
         standard logo. Idempotent: removing a logo that is not there succeeds.
       responses:
         "200":
@@ -184,7 +184,7 @@ paths:
       operationId: updateBrandingLoginLogo
       tags: [branding]
       summary: >
-        Upload the sign-in page's own logo (SYSTEM_ADMIN only, #1910). Same rules as the app logo -
+        Upload the sign-in page's own logo (SYSTEM_ADMIN only). Same rules as the app logo -
         PNG and JPEG only, SVG rejected rather than sanitised, declared content type not trusted,
         at most 512 KiB and 2000 px per edge.
       requestBody:
@@ -215,7 +215,7 @@ paths:
       operationId: deleteBrandingLoginLogo
       tags: [branding]
       summary: >
-        Remove the sign-in page's own logo (SYSTEM_ADMIN only, #1910) - the page falls back to the
+        Remove the sign-in page's own logo (SYSTEM_ADMIN only) - the page falls back to the
         app logo, and to the OPAA standard mark where none is configured either. Idempotent.
       responses:
         "200":
@@ -232,7 +232,7 @@ paths:
       operationId: updateBrandingLoginBackground
       tags: [branding]
       summary: >
-        Upload the sign-in page's background image (SYSTEM_ADMIN only, #1910). PNG and JPEG only,
+        Upload the sign-in page's background image (SYSTEM_ADMIN only). PNG and JPEG only,
         for the same reasons as the logos, but with its own ceilings: at most 2 MiB and 4000 px per
         edge, because this one is a photograph covering half a screen rather than a piece of chrome.
         The page lays a fixed scrim over whatever is uploaded, so the text on it keeps its contrast
@@ -265,7 +265,7 @@ paths:
       operationId: deleteBrandingLoginBackground
       tags: [branding]
       summary: >
-        Remove the sign-in page's background image (SYSTEM_ADMIN only, #1910) - the page returns to
+        Remove the sign-in page's background image (SYSTEM_ADMIN only) - the page returns to
         its plain navy panel. Idempotent.
       responses:
         "200":
@@ -282,7 +282,7 @@ components:
     ColorScheme:
       type: string
       description: >
-        The colour scheme a deployment starts users off in (#582). SYSTEM follows the operating
+        The colour scheme a deployment starts users off in. SYSTEM follows the operating
         system's own preference and is the OPAA default; LIGHT and DARK are an operator's
         deliberate override. Not a per-user setting - this is the deployment's starting point,
         which a user's own choice may still override in the browser.
@@ -333,7 +333,7 @@ components:
           type: string
           description: >
             Path the sign-in page's own logo is served from, with the same content-derived version
-            parameter logoUrl carries (#1910). Absent while none is configured, and the sign-in
+            parameter logoUrl carries. Absent while none is configured, and the sign-in
             page then falls back to logoUrl.
           example: /api/v1/branding/login-logo?v=3f8a1c2d
         loginLogoContentType:
@@ -347,8 +347,7 @@ components:
         loginBackgroundUrl:
           type: string
           description: >
-            Path the sign-in page's background image is served from, versioned like the logos
-            (#1910). Absent while none is configured; the page then keeps its plain panel.
+            Path the sign-in page's background image is served from, versioned like the logos. Absent while none is configured; the page then keeps its plain panel.
           example: /api/v1/branding/login-background?v=9b2e7c10
         loginBackgroundContentType:
           type: string

@@ -17,7 +17,7 @@ paths:
       operationId: getLibraryMetadataMaintenance
       tags: [library-metadata]
       summary: >
-        The Pflege-Anker of a library (#1069, metadata-schema.md "Der Pflege-Anker"): per core
+        The Pflege-Anker of a library (metadata-schema.md "Der Pflege-Anker"): per core
         field, how many of the library's indexed documents have no value - absolute and as a share
         of the bestand. Only the empty state counts; a field marked "kein Wert ermittelbar" is
         done, which is what lets the number reach zero. The figures are counted on every request in
@@ -59,7 +59,7 @@ paths:
       tags: [library-metadata]
       summary: >
         The core metadata fields of one document with the provenance of every value
-        (docs/features/metadata-schema.md, "Jeder Wert trägt seine Herkunft"; #1068). Every core
+        (docs/features/metadata-schema.md, "Jeder Wert trägt seine Herkunft"). Every core
         field is listed, an empty one with value null. Readable by everyone who may see the
         library's document list (VIEWER or above); a document of another library or a library of
         another organization is absent (404).
@@ -99,7 +99,7 @@ paths:
       operationId: setDocumentMetadataValue
       tags: [library-metadata]
       summary: >
-        Set or change one core field of a document by hand (#1068, metadata-schema.md "Manuelle
+        Set or change one core field of a document by hand (metadata-schema.md "Manuelle
         Korrektur ist Teil des ersten Schnitts"). The stored value carries origin MANUAL, the
         calling person as actor and the time of the call; no automatic extraction ever overwrites
         it afterwards. The filterable keys on the document's chunks are rewritten in the same
@@ -109,7 +109,7 @@ paths:
         identical manual value already in place changes nothing and writes no event. Validation:
         a Dokumentart outside the vocabulary, a title that is blank, a date without precision or a
         value of the wrong kind for the field are rejected with 400. The third state "kein Wert
-        ermittelbar" (#1069) is set through this same operation, with state NOT_DETERMINABLE and no
+        ermittelbar" is set through this same operation, with state NOT_DETERMINABLE and no
         value.
       requestBody:
         required: true
@@ -135,7 +135,7 @@ paths:
       operationId: deleteDocumentMetadataValue
       tags: [library-metadata]
       summary: >
-        Remove the stored value of one core field (#1068). Removes the row whatever its origin, so
+        Remove the stored value of one core field. Removes the row whatever its origin, so
         the field is empty again and the next automatic extraction may fill it: the document's
         extraction version is cleared in the same transaction, which hands it back to the
         Bestandslauf (POST /api/v1/admin/indexing/metadata-backfill) - a lasting "there is no
@@ -164,8 +164,7 @@ paths:
       operationId: bulkSetDocumentMetadata
       tags: [library-metadata]
       summary: >
-        Set one field to one value on a chosen set of this library's documents (#1068,
-        metadata-schema.md "Sammelzuweisung auf einer Auswahl"). Same right and same validation as
+        Set one field to one value on a chosen set of this library's documents (metadata-schema.md "Sammelzuweisung auf einer Auswahl"). Same right and same validation as
         the single-document PUT; every document gets its own MANUAL value, its own chunk rewrite
         and its own audit event with old and new value - the events of one call share a
         correlationRef, returned in the response. An id that is not a document of this library
@@ -223,7 +222,7 @@ paths:
       operationId: getLibraryMetadataExtractionSettings
       tags: [library-metadata]
       summary: >
-        The two model-backed extraction switches of a library (#1073, metadata-schema.md "Die
+        The two model-backed extraction switches of a library (metadata-schema.md "Die
         modellgestützte Extraktion im Betrieb"), both off by default, together with the chat role
         the extraction would use - Basis-Adresse and Modell-Kennung, never an access key. The
         endpoint the Datenschutzhinweis at the switch is built from: with an externally operated
@@ -245,8 +244,7 @@ paths:
       operationId: updateLibraryMetadataExtractionSettings
       tags: [library-metadata]
       summary: >
-        Switches the model-backed extraction and the freie Schlagworte of this library on or off
-        (#1073). Takes effect on the next ingest and on the next Bestandslauf call; already stored
+        Switches the model-backed extraction and the freie Schlagworte of this library on or off. Takes effect on the next ingest and on the next Bestandslauf call; already stored
         values are not touched by switching either flag off. Requires the management right at the
         library.
       requestBody:
@@ -280,7 +278,7 @@ paths:
       operationId: getLibraryMetadataQuality
       tags: [library-metadata]
       summary: >
-        The Extraktionsgüte of a library (#1073, metadata-schema.md "Messung und Abnahme", Punkt
+        The Extraktionsgüte of a library (metadata-schema.md "Messung und Abnahme", Punkt
         3): per field the share of deterministically filled, model-filled, manually set, empty and
         "kein Wert ermittelbar" documents, plus the Zählwerk of the model-backed extraction. Without
         it, a weak filter result cannot be told apart from a weak extraction. Counted on every
@@ -320,7 +318,7 @@ paths:
       operationId: getLibraryMetadataSample
       tags: [library-metadata]
       summary: >
-        A sample of documents with every stored metadata value and its provenance (#1073) - the
+        A sample of documents with every stored metadata value and its provenance - the
         basis of the handausgewertete Stichprobe of 100 documents the QA role runs before the
         model-backed extraction is accepted. Deterministically ordered by document id, so a repeat
         run examines the same documents. Requires the management right at the library.
@@ -349,8 +347,7 @@ paths:
       operationId: listLibraryMetadataFields
       tags: [library-metadata]
       summary: >
-        The library's own metadata fields with their configured value lists (#1071,
-        metadata-schema.md Teil II (b)). Schema, not an aggregate over documents: the list exists
+        The library's own metadata fields with their configured value lists (metadata-schema.md Teil II (b)). Schema, not an aggregate over documents: the list exists
         whether or not a document carries a value and is readable by everyone who may use the
         library (VIEWER or above) - which is exactly why a value list must not carry
         schutzbedürftige Bezeichnungen. A library with no own fields is the normal case and
@@ -371,14 +368,14 @@ paths:
       operationId: createLibraryMetadataField
       tags: [library-metadata]
       summary: >
-        Defines a new library field (#1071). Requires the management right at the library (MANAGER
+        Defines a new library field. Requires the management right at the library (MANAGER
         or above) - the same bar as changing the library's other settings, and deliberately higher
-        than the EDITOR right that sets a value on a document (#1068). Two rules are enforced here:
+        than the EDITOR right that sets a value on a document. Two rules are enforced here:
         a field must serve the filter or the Kontextpräfix ("nur Beleg-Anzeige" is rejected with
         400), and a library carries at most five own fields (a sixth is 409). A duplicate field key
         and an already taken citationPosition are 409 as well; at most two fields of a library
         carry a citation position, which is what keeps the Belegzeile readable. The Kontextpräfix
-        flag is stored here and becomes effective with the following work package (#1072).
+        flag is stored here and becomes effective with the following work package.
       requestBody:
         required: true
         content:
@@ -422,7 +419,7 @@ paths:
       operationId: updateLibraryMetadataField
       tags: [library-metadata]
       summary: >
-        Changes label, Wirkstellen and citation position of a field (#1071). Type, key and value
+        Changes label, Wirkstellen and citation position of a field. Type, key and value
         list stay: the type is what every stored value was checked against, and the value list has
         its own operations with the confirmed mapping. Same rules and same right as creating a
         field. Switching the filter Wirkstelle on or off rewrites the field's chunk keys on the
@@ -453,7 +450,7 @@ paths:
       operationId: deleteLibraryMetadataField
       tags: [library-metadata]
       summary: >
-        Removes a field with everything that hangs on it (#1071, #1361): every stored document
+        Removes a field with everything that hangs on it: every stored document
         value, the field's chunk keys and its value list. Two phases: the call retires the field -
         no value of it can be set any more, while every value already stored stays valid and
         filterable - and then empties documents in Chargen, each in its own transaction with its
@@ -504,7 +501,7 @@ paths:
       tags: [library-metadata]
       summary: >
         How many documents carry a value for this field - the Folgekosten shown before a deletion
-        is confirmed (#1071). Requires the management right, like the deletion it precedes.
+        is confirmed. Requires the management right, like the deletion it precedes.
       responses:
         "200":
           description: The number of affected documents
@@ -535,7 +532,7 @@ paths:
       operationId: addLibraryMetadataFieldValue
       tags: [library-metadata]
       summary: >
-        Adds one entry to a SELECT field's value list (#1071, metadata-schema.md "Kontrolliertes
+        Adds one entry to a SELECT field's value list (metadata-schema.md "Kontrolliertes
         Vokabular statt Freitext"). Extending a list is always possible, has no Rückwirkung on any
         stored value and needs no Nachlauf - unlike removing an entry. Requires the management
         right; a field that is not a SELECT field and a code already in the list are rejected.
@@ -584,7 +581,7 @@ paths:
       operationId: relabelLibraryMetadataFieldValue
       tags: [library-metadata]
       summary: >
-        Corrects the German label of one list entry (#1071). The code stays - it is what documents
+        Corrects the German label of one list entry. The code stays - it is what documents
         carry, so a relabeling has no Rückwirkung and needs no mapping. Replacing a code is a
         removal with a confirmed mapping (POST .../values/{code}/remap), never an edit here.
       requestBody:
@@ -669,7 +666,7 @@ paths:
       tags: [library-metadata]
       summary: >
         Removes a value from the list together with the confirmed mapping of every document that
-        carries it (#1071, #1361, metadata-schema.md "Kontrolliertes Vokabular statt Freitext"):
+        carries it (metadata-schema.md "Kontrolliertes Vokabular statt Freitext"):
         onto another value of the same list, or - with targetCode null - onto "leer". There is no
         way to remove a value without a mapping, which is what makes the state "Dokument trägt
         einen Wert, den es im Schema nicht mehr gibt" unreachable; the database enforces the same
@@ -720,7 +717,7 @@ paths:
       operationId: runLibraryMetadataSchemaChanges
       tags: [library-metadata]
       summary: >
-        One Charge of the library's pending schema changes (#1361, metadata-schema.md "Nachlauf im
+        One Charge of the library's pending schema changes (metadata-schema.md "Nachlauf im
         Betrieb"): the documents that still carry a retired list value or a value of a retired
         field are rewritten, each in its own transaction with its own audit event, and a change
         whose last document is done removes its list entry or its field. Resumable and idempotent
@@ -783,8 +780,7 @@ paths:
       operationId: getMetadataChangeImpact
       tags: [library-metadata]
       summary: >
-        The Folgekosten of a planned schema change before it is saved (#1072,
-        metadata-schema.md "Der Reindex-Preis, ehrlich ausgewiesen"): affected documents and
+        The Folgekosten of a planned schema change before it is saved (metadata-schema.md "Der Reindex-Preis, ehrlich ausgewiesen"): affected documents and
         chunks, the resulting number of embedding calls and the expected runtime. Concrete
         numbers, not a general warning. Requires the management right at the library.
       responses:
@@ -815,7 +811,7 @@ paths:
       tags: [library-metadata]
       summary: >
         Switches the Kontextpräfix-Wirkstelle of the two switchable core fields Dokumentart and
-        Datum/Stand for this library (#1072). Deliberately no installation-wide default: the
+        Datum/Stand for this library. Deliberately no installation-wide default: the
         Wirkstelle "Kontextpräfix" is a deliberate decision per field. The Kernfeld Titel is always
         prefix-effective and therefore not switchable. Saving hands exactly the documents carrying a
         value for a switched field to the Nachlauf; it moves no bestand - the run is started
@@ -862,10 +858,10 @@ components:
     MetadataValueRequest:
       type: object
       description: >-
-        The value a person sets for one core field (#1068): exactly one of textValue (title),
+        The value a person sets for one core field: exactly one of textValue (title),
         vocabularyCode (document_type) or dateValue plus datePrecision (document_date), matching the
         field addressed - or, with state NOT_DETERMINABLE and no value at all, the third state
-        "kein Wert ermittelbar" (#1069).
+        "kein Wert ermittelbar".
       properties:
         state:
           type: string
@@ -904,7 +900,7 @@ components:
     MetadataFieldState:
       type: string
       description: >-
-        The three states a core field of a document can be in (#1069, metadata-schema.md "Kein Wert
+        The three states a core field of a document can be in (metadata-schema.md "Kein Wert
         ermittelbar ist ein dritter Zustand"): EMPTY (not yet established - the open rest the
         Pflege-Anker counts), SET (a value is present) and NOT_DETERMINABLE (a person established
         there is none). NOT_DETERMINABLE behaves like EMPTY for filters and the Beleg-Anzeige, but
@@ -978,7 +974,7 @@ components:
         libraryFieldType:
           nullable: true
           description: >-
-            Set exactly for a library field (#1071) and tells a client which editor to offer; null
+            Set exactly for a library field and tells a client which editor to offer; null
             for a core field.
           allOf:
             - $ref: "#/components/schemas/LibraryMetadataFieldType"
@@ -1044,7 +1040,7 @@ components:
     MetadataFieldMaintenanceResponse:
       type: object
       description: >-
-        The Pflege-Anker of one core field in one library (#1069, metadata-schema.md "Der
+        The Pflege-Anker of one core field in one library (metadata-schema.md "Der
         Pflege-Anker"): how many of the library's indexed documents still have no value for it -
         absolute and as a share, both side by side, because "120 ohne Wert" means something
         different at 130 than at 12.000 documents. documentsWithoutValue counts only the empty
@@ -1091,7 +1087,7 @@ components:
     LibraryMetadataMaintenanceResponse:
       type: object
       description: >-
-        The Pflege-Anker of one library (#1069), one entry per core field in schema order. Built at
+        The Pflege-Anker of one library, one entry per core field in schema order. Built at
         query time in the rights context of the asking person and never precomputed or cached
         (metadata-schema.md, Rechte-Invariante).
       required: [libraryId, totalDocuments, fields]
@@ -1110,7 +1106,7 @@ components:
     LibraryMetadataExtractionSettingsRequest:
       type: object
       description: >-
-        The two switches of the model-backed extraction (#1073). Both are off by default; switching
+        The two switches of the model-backed extraction. Both are off by default; switching
         one off leaves already stored values untouched.
       required: [modelExtractionEnabled, keywordsEnabled]
       properties:
@@ -1128,7 +1124,7 @@ components:
     LibraryMetadataExtractionSettingsResponse:
       type: object
       description: >-
-        The stored switches plus the chat role the extraction uses (#1073) - the facts a client
+        The stored switches plus the chat role the extraction uses - the facts a client
         needs for the Datenschutzhinweis at the switch.
       required: [libraryId, modelExtractionEnabled, keywordsEnabled, confidenceThreshold]
       properties:
@@ -1152,8 +1148,7 @@ components:
     ActiveChatModelSummaryResponse:
       type: object
       description: >-
-        Basis-Adresse and Modell-Kennung of the systemwide active chat role, never an access key
-        (#1073). Absent when no chat model is active at all.
+        Basis-Adresse and Modell-Kennung of the systemwide active chat role, never an access key. Absent when no chat model is active at all.
       required: [baseUrl, modelIdentifier, local]
       properties:
         baseUrl:
@@ -1172,7 +1167,7 @@ components:
     MetadataModelExtractionStatsResponse:
       type: object
       description: >-
-        The Zählwerk of the model-backed extraction of one library (#1073, metadata-schema.md "Die
+        The Zählwerk of the model-backed extraction of one library (metadata-schema.md "Die
         Zahl der Extraktionsaufrufe wird je Bibliothek geführt"). Without it, the only feedback about
         the cost of this capability is the model provider's invoice.
       required:
@@ -1224,7 +1219,7 @@ components:
     MetadataFieldQualityResponse:
       type: object
       description: >-
-        The Extraktionsgüte of one field over one library (#1073): where the values of this field
+        The Extraktionsgüte of one field over one library: where the values of this field
         came from, and how much of the bestand carries none.
       required:
         [
@@ -1277,7 +1272,7 @@ components:
       type: object
       description: >-
         The extraction quality of one library, one entry per field in schema order, plus the
-        Zählwerk of the model-backed extraction (#1073). Built at query time in the rights context
+        Zählwerk of the model-backed extraction. Built at query time in the rights context
         of the asking person and never cached (metadata-schema.md, Rechte-Invariante).
       required:
         [
@@ -1312,7 +1307,7 @@ components:
 
     MetadataSampleValueResponse:
       type: object
-      description: One stored value of a sampled document, with its provenance (#1073).
+      description: One stored value of a sampled document, with its provenance.
       required: [fieldKey, label, origin]
       properties:
         fieldKey:
@@ -1336,7 +1331,7 @@ components:
 
     MetadataSampleDocumentResponse:
       type: object
-      description: One sampled document with every stored value (#1073).
+      description: One sampled document with every stored value.
       required: [documentId, fileName, values]
       properties:
         documentId:
@@ -1356,7 +1351,7 @@ components:
     LibraryMetadataSampleResponse:
       type: object
       description: >-
-        The Stichproben-Export for the handausgewertete Auswertung of the QA role (#1073), ordered
+        The Stichproben-Export for the handausgewertete Auswertung of the QA role, ordered
         by document id so a repeat run examines the same documents. Freie Schlagworte are not part
         of it - they carry no claim the product stands behind.
       required: [libraryId, size, documents]
@@ -1412,7 +1407,7 @@ components:
         retiring:
           type: boolean
           description: >-
-            Whether a confirmed mapping is running for this entry (#1361). A retiring value can no
+            Whether a confirmed mapping is running for this entry. A retiring value can no
             longer be set on a document, while every document that already carries it keeps a value
             the schema still lists and every filter still finds - which is what keeps "Dokument
             trägt einen Wert, den es im Schema nicht mehr gibt" unreachable during the run. The
@@ -1438,7 +1433,7 @@ components:
           deletionPending,
         ]
       description: >-
-        One library metadata field with its Wirkstellen and its configured value list (#1071).
+        One library metadata field with its Wirkstellen and its configured value list.
       properties:
         fieldKey:
           type: string
@@ -1473,7 +1468,7 @@ components:
           type: boolean
           description: >-
             Whether the field's value belongs into the Kontextpräfix of every chunk, which goes
-            into embedding and full-text index alike (#1072). Switching it hands exactly the
+            into embedding and full-text index alike. Switching it hands exactly the
             documents that carry a value to the Nachlauf - see GET
             /api/v1/libraries/{libraryId}/metadata-fields/change-impact.
         citationPosition:
@@ -1494,7 +1489,7 @@ components:
         deletionPending:
           type: boolean
           description: >-
-            Whether this field is being deleted (#1361): no value of it can be set any more, every
+            Whether this field is being deleted: no value of it can be set any more, every
             stored value stays valid and filterable until the run empties its document, and the
             field disappears with its last one.
 
@@ -1503,7 +1498,7 @@ components:
       required:
         [kind, fieldKey, processedDocuments, remainingDocuments, correlationRef]
       description: >-
-        One running schema change of a library (#1361) - a retired list value being mapped, or a
+        One running schema change of a library - a retired list value being mapped, or a
         retired field being emptied.
       properties:
         kind:
@@ -1538,7 +1533,7 @@ components:
 
     LibraryMetadataSchemaRunRequest:
       type: object
-      description: One Charge of the pending schema changes of a library (#1361).
+      description: One Charge of the pending schema changes of a library.
       properties:
         batchSize:
           type: integer
@@ -1551,7 +1546,7 @@ components:
       required:
         [processedDocuments, skippedDocuments, remainingDocuments, complete, pendingChanges]
       description: >-
-        What one Charge did and what is left (#1361) - verarbeitet, ausstehend, fehlgeschlagen, per
+        What one Charge did and what is left - verarbeitet, ausstehend, fehlgeschlagen, per
         library.
       properties:
         processedDocuments:
@@ -1614,13 +1609,13 @@ components:
           format: int64
           description: >-
             Indexed documents of this library whose chunks were embedded under an older
-            context-prefix configuration (#1072) - the "N Dokumente warten auf Neu-Einbetten" hint
+            context-prefix configuration - the "N Dokumente warten auf Neu-Einbetten" hint
             in the library settings. Saving a schema change never starts the Nachlauf; it runs from
             the administration page "Suche & Indexierung", started by a system administrator.
         pendingSchemaChanges:
           type: array
           description: >-
-            The library's running value mappings and field deletions (#1361), empty in the normal
+            The library's running value mappings and field deletions, empty in the normal
             case. Continued with POST
             /api/v1/libraries/{libraryId}/metadata-fields/schema-changes/run.
           items:
@@ -1641,7 +1636,7 @@ components:
     CoreContextPrefixResponse:
       type: object
       required: [title, documentType, documentDate]
-      description: The Kontextpraefix-Wirkstelle of the three core fields (#1072).
+      description: The Kontextpraefix-Wirkstelle of the three core fields.
       properties:
         title:
           type: boolean
@@ -1656,8 +1651,7 @@ components:
     MetadataChangeKind:
       type: string
       description: >-
-        The planned schema change whose Folgekosten are being asked for (#1072,
-        metadata-schema.md, Kostentabelle): FIELD_ADDED - a new field is defined, which no document
+        The planned schema change whose Folgekosten are being asked for (metadata-schema.md, Kostentabelle): FIELD_ADDED - a new field is defined, which no document
         carries a value for yet; CONTEXT_PREFIX_ENABLED / CONTEXT_PREFIX_DISABLED - the
         Kontextpraefix-Wirkstelle of the field is switched on or off; FIELD_REMOVED - the field is
         deleted with everything hanging on it; VALUE_REMOVED - a value of the list is removed with
@@ -1694,7 +1688,7 @@ components:
           rateSource,
         ]
       description: >-
-        The Folgekosten of one planned schema change (#1072). Concrete numbers a decision can be
+        The Folgekosten of one planned schema change. Concrete numbers a decision can be
         made on ("4.812 Chunks neu einzubetten, rund 40 Minuten"), never a general warning.
       properties:
         affectedDocuments:
@@ -1819,7 +1813,7 @@ components:
       required: [documentCount]
       description: >-
         How many documents an about-to-be-confirmed change affects - the Folgekosten a dialog shows
-        before the confirmation (#1071).
+        before the confirmation.
       properties:
         documentCount:
           type: integer

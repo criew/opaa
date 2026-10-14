@@ -8,7 +8,7 @@ paths:
     get:
       operationId: listNotifications
       tags: [notification]
-      summary: The calling user's own notifications (#203), newest first, capped at limit.
+      summary: The calling user's own notifications, newest first, capped at limit.
       parameters:
         - name: limit
           in: query
@@ -55,7 +55,7 @@ components:
       description: >
         The closed vocabulary of a notification's type - see io.opaa.api.types.NotificationType,
         which is the sole write guard since the database check constraint that used to enforce the
-        same set was dropped (#862).
+        same set was dropped.
       enum:
         [
           ASSET_ASSOCIATED_TO_MIXED_SPACE,

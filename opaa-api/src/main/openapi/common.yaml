@@ -5,7 +5,7 @@ components:
     SystemRole:
       type: string
       description: >
-        AUDITOR (#393) grants read access to the revision access paths in io.opaa.audit and
+        AUDITOR grants read access to the revision access paths in io.opaa.audit and
         nothing else - it carries none of SYSTEM_ADMIN's administrative privileges.
       enum: [USER, SYSTEM_ADMIN, AUDITOR]
       example: USER
@@ -175,7 +175,7 @@ components:
       required: true
       description: >
         Start of the mandatory, bounded time range (inclusive). The range (to - from) must not
-        exceed 92 days (#393 code review, finding 3) - wide enough for the specification's own
+        exceed 92 days - wide enough for the specification's own
         "alle Rechteänderungen zwischen dem 1. und dem 31. März"-style queries, not wide enough to
         serve as a disguised full-history extract. A wider request is rejected with 400, not
         clamped; a multi-year review chains several bounded calls, each auditable on its own.
@@ -195,9 +195,7 @@ components:
       in: query
       required: false
       description: >
-        A value beyond page index 49 (50 pages total) is rejected with 400, not clamped (#393
-        code review, finding 3; #393 re-review, nit 3) - AuditSize alone only bounds a single
-        page; without this, paging through page=0..n against a wide time range would turn
+        A value beyond page index 49 (50 pages total) is rejected with 400, not clamped - AuditSize alone only bounds a single page; without this, paging through page=0..n against a wide time range would turn
         "bounded per page" back into an effectively unbounded full extract in slices.
       schema:
         type: integer
@@ -217,8 +215,7 @@ components:
       in: query
       required: true
       description: >
-        The mandatory Anlass for this access to audit_log itself (#394,
-        docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt):
+        The mandatory Anlass for this access to audit_log itself (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt):
         "der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird
         abgewiesen". A missing or blank reason is rejected with 400 - and, per the same
         specification, the rejected attempt itself is recorded with its own audit_log entry, not
@@ -253,7 +250,7 @@ components:
       name: offset
       in: query
       required: false
-      description: How many members to skip - the paging of a long list (#1880).
+      description: How many members to skip - the paging of a long list.
       schema:
         type: integer
         minimum: 0
@@ -265,7 +262,7 @@ components:
       description: >
         How many members one page carries. Capped server-side at 200 regardless of the requested
         value, and the cap is the LIMIT of the query itself: a group of 5000 never becomes 5000
-        rows in memory (#1880).
+        rows in memory.
       schema:
         type: integer
         minimum: 1
