@@ -338,6 +338,11 @@
           "type": "string",
           "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
           "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+        },
+        "probeInterval": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 10m or 24h (at least 10s); empty keeps the application default"
         }
       }
     },

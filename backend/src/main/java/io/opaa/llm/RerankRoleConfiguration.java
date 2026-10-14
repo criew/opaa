@@ -38,10 +38,10 @@ public class RerankRoleConfiguration {
    * The rerank role's own probe thread. The application's default {@link TaskScheduler} has a
    * single thread shared by the indexing schedulers, and a rerank endpoint that accepts a
    * connection but never answers would block it for connect timeout plus {@code
-   * OPAA_RERANK_TIMEOUT} once a minute - stalling indexing over an optional retrieval component.
+   * OPAA_RERANK_TIMEOUT} on every probe - stalling indexing over an optional retrieval component.
    *
-   * <p>One thread is enough: the probe is the only task on it and runs with {@code fixedDelay}, so
-   * a hanging probe delays the next probe and nothing else.
+   * <p>One thread is enough: the probe schedule is the only recurring task on it and runs with
+   * {@code fixedDelay}, so a hanging probe delays the next probe and nothing else.
    */
   @Bean(destroyMethod = "shutdown")
   TaskScheduler rerankProbeScheduler() {
