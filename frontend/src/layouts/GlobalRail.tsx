@@ -22,7 +22,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { userInitial } from '@/shared/utils/userInitial'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { CATALOG_ROUTE } from '@/shared/routes'
-import { catalogScopePrefixes } from '../components/assets/assetTypeRegistry'
+import { catalogScopePrefixes } from '../shared/assetTypes'
 import { createRailTheme } from '@/shared/theme/theme'
 import { darkRoles, railRoles, shadow } from '@/shared/theme/tokens'
 

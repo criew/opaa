@@ -4,10 +4,10 @@ import { renderWithProviders } from '../test/test-utils'
 import SpacePage from './SpacePage'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { useChatListStore } from '../stores/chatListStore'
 import type { SpaceAssetAssociationListResponse, SpaceMemberResponse } from '@/shared/api/types'
 
 const currentSpaceId = 'space-personal'
+const noChats = () => null
 const mockNavigate = vi.fn()
 
 vi.mock('react-router', async () => {
@@ -69,7 +69,6 @@ describe('SpacePage', () => {
       hasReadableKnowledge: false,
       items: [],
     })
-    useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
     useAuthStore.setState({
       mode: 'dev',
       isAuthenticated: true,
@@ -127,11 +126,14 @@ describe('SpacePage', () => {
     })
   })
 
-  it('lists the space chats in the Chats section', async () => {
-    renderWithProviders(<SpacePage />, { withRouter: true })
+  it('shows the chats the application frame renders for this space in the Chats section', async () => {
+    const renderChats = vi.fn((spaceId: string) => <p>Chats von {spaceId}</p>)
+    renderWithProviders(<SpacePage renderChats={renderChats} />, { withRouter: true })
 
-    expect(await screen.findByText('Architektur des Projekts')).toBeInTheDocument()
-    expect(await screen.findByText('Deployment-Fragen')).toBeInTheDocument()
+    const heading = await screen.findByRole('heading', { name: 'Chats', level: 2 })
+    const section = heading.closest('.MuiAccordion-root') as HTMLElement
+    expect(within(section).getByText('Chats von space-personal')).toBeInTheDocument()
+    expect(renderChats).toHaveBeenCalledWith('space-personal')
   })
 
   // #203 acceptance criteria: the associated-libraries list and its once-shown explanation for why
@@ -154,7 +156,7 @@ describe('SpacePage', () => {
       ],
     })
 
-    renderWithProviders(<SpacePage />, { withRouter: true })
+    renderWithProviders(<SpacePage renderChats={noChats} />, { withRouter: true })
 
     expect(await screen.findByText('Rechtsquellen Soziales')).toBeInTheDocument()
     expect(screen.getByText(/andere Mitglieder können deshalb/)).toBeInTheDocument()
@@ -177,7 +179,7 @@ describe('SpacePage', () => {
       ],
     })
 
-    renderWithProviders(<SpacePage />, { withRouter: true })
+    renderWithProviders(<SpacePage renderChats={noChats} />, { withRouter: true })
 
     const entry = (await screen.findByText('Formulierungshilfen')).parentElement as HTMLElement
     expect(within(entry).getByText('Prompts')).toBeInTheDocument()
@@ -196,7 +198,7 @@ describe('SpacePage', () => {
       items: [],
     })
 
-    renderWithProviders(<SpacePage />, { withRouter: true })
+    renderWithProviders(<SpacePage renderChats={noChats} />, { withRouter: true })
 
     expect(await screen.findByText(/Diesem Space ist kein Wissen zugeordnet\./)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Wissen zuordnen' })).toHaveAttribute(
@@ -218,7 +220,7 @@ describe('SpacePage', () => {
       items: [],
     })
 
-    renderWithProviders(<SpacePage />, { withRouter: true })
+    renderWithProviders(<SpacePage renderChats={noChats} />, { withRouter: true })
 
     expect(
       await screen.findByText('In diesem Space ist für Sie derzeit kein Wissen verfügbar.'),
@@ -249,7 +251,7 @@ describe('SpacePage', () => {
       members: [],
     })
 
-    renderWithProviders(<SpacePage />, { withRouter: true })
+    renderWithProviders(<SpacePage renderChats={noChats} />, { withRouter: true })
 
     expect(screen.getByText('Mitglied: 1')).toBeInTheDocument()
     expect(screen.getByText('Administrator: 1')).toBeInTheDocument()
@@ -324,7 +326,7 @@ describe('SpacePage', () => {
       ],
     })
 
-    renderWithProviders(<SpacePage />, { withRouter: true })
+    renderWithProviders(<SpacePage renderChats={noChats} />, { withRouter: true })
 
     // findByText (rather than getByText) lets the effect-triggered loadMembers() call settle
     // before asserting, avoiding an act() warning from its state update landing after the test

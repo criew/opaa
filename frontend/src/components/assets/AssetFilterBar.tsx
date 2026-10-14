@@ -9,7 +9,7 @@ import type { Theme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 import type { AssetType } from '@/shared/api/types'
-import type { AssetTypeDefinition } from './assetTypeRegistry'
+import type { AssetTypeDefinition } from '../../shared/assetTypes'
 import AssetFilterChips, { type AssetFilterKey, type AssetFilters } from './AssetFilterChips'
 
 const ALL_TYPES = 'all'

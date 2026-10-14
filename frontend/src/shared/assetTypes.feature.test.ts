@@ -7,7 +7,7 @@ import {
   catalogRoute,
   catalogScopePrefixes,
   creatableAssetTypes,
-} from './assetTypeRegistry'
+} from './assetTypes'
 
 /** Prompt libraries behind their installation-wide feature flag (ADR-0044, #2588). */
 describe('assetTypeRegistry with prompt libraries switched off', () => {
