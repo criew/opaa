@@ -345,7 +345,7 @@ Variantenvergleich formulieren lässt. Genau das ist der Zweck des Aufbaus.
 > (`PipelineQueryResult#subQueries`).
 >
 > **Scharf geschaltet mit Issue #1085.** Der Harness hat seither ein gepinntes, lokales
-> Chat-Modell (`io.opaa.eval.EvalChatModel`, ADR-0011-Nachtrag), und `VariantPrerequisites`
+> Chat-Modell (`io.opaa.eval.EvalChatModel`, ADR-0011 Entscheidung 4), und `VariantPrerequisites`
 > überspringt eine zerlegende Variante nur noch, wenn der Lauf gar kein aktives Chat-Modell hat. Die
 > Regel selbst — Ausführungszahl, Aggregation, Median-Auswahl, Abweichungszählung — bleibt
 > zusätzlich über `MultiRunAggregatorTest`/`VariantRunnerTest` mit synthetischen Reports und einem
@@ -1211,7 +1211,7 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    bereitgestelltes Instruct-Modell: `qwen2.5:1.5b-instruct`, per Tag **und** Content-Digest
    gepinnt, Temperatur 0, über den produktiven Anbindungsweg verdrahtet (aktive Zeile in
    `llm_models`, aufgelöst von `ActiveChatModelResolver`) — kein Secret, kein zweiter Codepfad
-   (`io.opaa.eval.EvalChatModel`, ADR-0011-Nachtrag vom 04.09.2026). Damit ist
+   (`io.opaa.eval.EvalChatModel`, ADR-0011 Entscheidung 4). Damit ist
    `queryDecompositionEnabled=true` messbar, und die Mehrfachlauf-Regel aus Abschnitt 3 ist real
    scharf geschaltet statt nur synthetisch geprüft.
 

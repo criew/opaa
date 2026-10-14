@@ -2,56 +2,60 @@
 
 ## Status
 
-Akzeptiert
+Akzeptiert · zuletzt geändert 2026-08-22
 
 ## Kontext
 
-Das Projekt benötigt einen konsistenten Code-Formatierungsstandard. Ohne automatisierte Durchsetzung schleichen sich Formatierungsinkonsistenzen (Tabs vs. Leerzeichen, Import-Reihenfolge, Zeilenlänge) in Beiträgen sowohl von menschlichen Entwicklern als auch von KI-Agenten ein.
-
-Wesentliche Überlegungen:
-
-- Das Projekt verwendet Java (Backend) und wird später TypeScript (Frontend) hinzufügen
-- Sowohl menschliche als auch KI-Beitragende arbeiten an der Codebasis
-- Formatierung sollte automatisch durchgesetzt werden, nicht durch manuelles Review
+Ohne automatisierte Durchsetzung schleichen sich Formatierungsinkonsistenzen (Tabs, Import-Reihenfolge,
+Zeilenlänge) in Beiträge von Menschen und KI-Agenten ein. Formatierung soll das Werkzeug entscheiden,
+nicht das Review.
 
 ## Entscheidung
 
-### Standard: Google Java Format über Spotless
+### 1. Java: Google Java Format über Spotless
 
-- **Spotless** (Gradle-Plugin) setzt Formatierung als Teil des Builds durch.
-- **Google Java Format** ist der Formatierer für Java-Quelldateien. Er verwendet 2-Leerzeichen-Einrückung, was der Google-Java-Style-Standard ist.
-- **Gradle-Kotlin-DSL**-Dateien (`.gradle.kts`) verwenden 4-Leerzeichen-Einrückung, durchgesetzt durch Spotless.
-- **Leerzeichen statt Tabs** — alle Quelldateien verwenden Leerzeichen für Einrückung, niemals Tabs.
+Spotless (Gradle-Plugin, `backend/build.gradle.kts` und `opaa-api/build.gradle.kts`) formatiert alle
+Java-Quellen mit Google Java Format: 2 Leerzeichen, sortierte Imports, keine ungenutzten Imports, kein
+Trailing Whitespace, Zeilenumbruch am Dateiende. Ein strenger, nicht konfigurierbarer Formatierer
+beendet jede Stildebatte.
 
-### Durchsetzung
+### 2. Gradle-Kotlin-DSL: 4 Leerzeichen
 
-- `./gradlew spotlessCheck` verifiziert Formatierung (kann in CI verwendet werden).
-- `./gradlew spotlessApply` formatiert alle Dateien automatisch.
-- Spotless läuft als Teil des Standard-Gradle-Build-Lebenszyklus.
+`*.gradle.kts` nutzt 4 Leerzeichen, getrimmt, mit Zeilenumbruch am Ende; ebenfalls über Spotless.
+Leerzeichen statt Tabs gelten für alle Quelldateien (`.editorconfig`).
 
-### Umfang
+### 3. Durchsetzung im Build
 
-- Java: Google Java Format (2 Leerzeichen, sortierte Imports, keine ungenutzten Imports)
-- Kotlin DSL: 4 Leerzeichen, getrimmt, kein Trailing Whitespace
-- Frontend (TypeScript/TSX): Prettier (keine Semikolons, einfache Anführungszeichen, Trailing Commas, 100-Zeichen-Zeilenbreite). Durchgesetzt über `npm run format:check` / `npm run format`.
+`./gradlew spotlessCheck` prüft, `./gradlew spotlessApply` formatiert. `spotlessCheck` ist Teil des
+Standard-Builds und läuft in der CI.
+
+### 4. Frontend: Prettier
+
+TypeScript/TSX wird mit Prettier formatiert (`frontend/.prettierrc`: keine Semikolons, einfache
+Anführungszeichen, Trailing Commas, 100 Zeichen Zeilenbreite). Durchgesetzt über
+`pnpm run format:check` in der CI, formatiert mit `pnpm run format`.
 
 ## Konsequenzen
 
-### Was einfacher wird
+Einfacher: konsistenter Stil ohne Review-Aufwand; Agenten liefern formatierten Code, indem sie
+`spotlessApply` beziehungsweise `pnpm run format` nach Änderungen ausführen.
 
-- **Konsistenter Code-Stil** über alle Beiträge ohne manuellen Review-Aufwand.
-- **Keine Formatierungsdebatten** — das Tool entscheidet, Beitragende befolgen es.
-- **KI-Agenten** produzieren konsistent formatierten Code durch Ausführen von `spotlessApply` nach Änderungen.
+Schwieriger: Google Java Format ist meinungsstark; wer 4-Leerzeichen-Java gewohnt ist, muss sich
+umstellen.
 
-### Was schwieriger wird
+## Verworfene Alternativen
 
-- **Google Java Format ist meinungsstark** — seine 2-Leerzeichen-Einrückung und Zeilenumbruch-Stil kann Entwicklern ungewohnt erscheinen, die an 4-Leerzeichen-Java-Konventionen gewöhnt sind. Dies ist beabsichtigt: ein strenger, nicht konfigurierbarer Formatierer eliminiert Bikeshedding.
-- **Initiale Reibung** — bestehender Code muss bei der Einführung neu formatiert werden (einmalige Kosten, bereits erledigt).
+- Checkstyle oder Konfiguration des Formatierers — jede Einstellung ist eine neue Debatte.
 
-## Nachträge
+## Offen
 
-### 22.08.2026 — Frontend-Aufrufe laufen über pnpm
+Nichts.
 
-Mit der Migration des Frontend-Builds von npm auf pnpm (#653, PR #752) lauten die im Abschnitt
-„Umfang" genannten Befehle jetzt `pnpm run format:check` / `pnpm run format`. An der Entscheidung
-selbst (Prettier mit den genannten Einstellungen) ändert das nichts.
+## Änderungsverlauf
+
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-02-18 | — | Erstfassung | 1–3 |
+| 2026-02-20 | — | Prettier für das Frontend | 4 |
+| 2026-08-22 | #653 | Frontend-Aufrufe über pnpm statt npm | 4 |
+| 2026-10-14 | #2697 | Neufassung nach ADR-Vorlage | — |

@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import io.opaa.api.types.SystemRole;
+import io.opaa.common.AccessDeniedException;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -81,6 +82,16 @@ public final class CurrentUser {
 
   public boolean isSystemAdmin() {
     return systemRole == SystemRole.SYSTEM_ADMIN;
+  }
+
+  /**
+   * Refuses every caller but the system administration with {@code message} as the user-facing text
+   * of the 403.
+   */
+  public void requireSystemAdmin(String message) {
+    if (!isSystemAdmin()) {
+      throw new AccessDeniedException(message);
+    }
   }
 
   /**

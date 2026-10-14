@@ -55,6 +55,9 @@ data:
   {{- with .Values.rerank.timeout }}
   OPAA_RERANK_TIMEOUT: {{ . | quote }}
   {{- end }}
+  {{- with .Values.rerank.probeInterval }}
+  OPAA_RERANK_PROBE_INTERVAL: {{ . | quote }}
+  {{- end }}
   OPAA_TRANSCRIPTION_ENABLED: {{ .Values.transcription.enabled | quote }}
   {{- with .Values.transcription.baseUrl }}
   OPAA_TRANSCRIPTION_BASE_URL: {{ . | quote }}

@@ -296,7 +296,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 ## Wichtige Pfade
 
 - `docs/AGENT-ORGANIZATION.md` — Agenten-Rollen, Idee-bis-Merge-Workflow und Kollaborationsregeln
-- `docs/decisions/` — Architecture Decision Records (ADRs), u. a. [ADR-0021](docs/decisions/0021-single-instance-betrieb.md) zur Single-Instance-Annahme des Backends
+- `docs/decisions/` — Architecture Decision Records (ADRs), u. a. [ADR-0021](docs/decisions/0021-single-instance-betrieb.md) zur Single-Instance-Annahme des Backends. Regeln und Vorlage in [docs/decisions/README.md](docs/decisions/README.md): ein ADR hält den gültigen Endstand fest und wird bei Änderungen im Kerntext fortgeschrieben, keine Nachträge; Status „Vorgeschlagen“ nur bis zum Merge des einführenden PRs — der Autor setzt ihn im letzten Commit vor dem Merge auf „Akzeptiert · zuletzt geändert <Datum>“, sobald der Maintainer zustimmt — **vor jeder Änderung an einem ADR lesen**
 - `docs/features/` — Feature-Spezifikationen
 - `docs/handbuch/` — Produkthandbuch des gebauten Ist-Stands (Kapitelbaum in `docs/handbuch/README.md`, Abschnitt „Aufbau des Handbuchs"; Konnektoren und Formate je mit Übersicht in `konnektoren/` und `formate/`); Regeln für Aufbau, Verweise und Stil in `docs/handbuch/AGENTS.md` — vor jeder Änderung am Handbuch lesen
 - `backend/AGENTS.md` — Backend-Konventionen (Abhängigkeitsverwaltung, API-/Mapper-Regeln, logische Module und Schichtung, Spring-Testkontexte, Liquibase); `backend/` ist zugleich Gradle-Root des Multi-Modul-Builds. Je logischem Modul ergänzt eine kurze `AGENTS.md` im Hauptpaket unter `backend/src/main/java/io/opaa/` die Regeln des Moduls (Übersicht in `backend/AGENTS.md`)
