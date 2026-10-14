@@ -32,6 +32,7 @@ import {
   LOCAL_USER_PAGE_SIZE,
 } from '../services/localUserApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 /** The one review filter of ADR-0033 that is not a state: „ohne Ablaufdatum" / „inaktiv". */
 export type LocalUserReviewFilter = 'ALL' | 'WITHOUT_EXPIRY' | 'INACTIVE'
@@ -336,3 +337,5 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
     await get().loadSummary()
   },
 }))
+
+registerSessionStore(useUserAdminStore)

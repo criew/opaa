@@ -18,6 +18,7 @@ import {
   updateMailTemplate,
 } from '../services/mailApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 /**
  * Monotone counter over `openTemplate` calls: clicking through the list faster than the answers
@@ -225,6 +226,8 @@ export const useMailStore = create<MailState>((set, get) => ({
     return result
   },
 }))
+
+registerSessionStore(useMailStore)
 
 function patchSummary(
   templates: MailTemplateSummaryResponse[],

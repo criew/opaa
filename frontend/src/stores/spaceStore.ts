@@ -29,6 +29,7 @@ import {
   getSpaceAssetAssociations,
 } from '../services/assetApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 // #783 review: module-level, mirroring chatStore's chatLoadSequence - guards loadAssetAssociations
 // against a *newer* call for a different space, not just against a session reset. Without it, a
@@ -421,3 +422,5 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }
   },
 }))
+
+registerSessionStore(useSpaceStore)

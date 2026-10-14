@@ -3,6 +3,7 @@ import type { MetadataFilterOptionsResponse } from '../types/api'
 import { getMetadataFilterOptions } from '../services/searchApi'
 import { isFeatureEnabled } from './authStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 export interface MetadataFilterScope {
   chatId: string | null
@@ -70,3 +71,5 @@ export const useMetadataFilterOptionsStore = create<MetadataFilterOptionsState>(
     set({ options: null, optionsScopeKey: null, isLoading: false, error: null })
   },
 }))
+
+registerSessionStore(useMetadataFilterOptionsStore)

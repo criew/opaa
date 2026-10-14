@@ -4,6 +4,7 @@ import { getCatalog } from '../services/catalogApi'
 import { appendNewEntries, pagesForMore } from '../services/catalogPaging'
 import { markAssetFavorite, unmarkAssetFavorite } from '../services/assetApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 export const CATALOG_PAGE_SIZE = 50
 /** The bound the server sets on the search text. */
@@ -147,3 +148,5 @@ export const useCatalogStore = create<CatalogState>((set, get) => {
     },
   }
 })
+
+registerSessionStore(useCatalogStore)

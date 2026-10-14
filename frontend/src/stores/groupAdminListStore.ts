@@ -9,6 +9,7 @@ import type {
 import { GROUP_PAGE_SIZE, listGroupPage, type GroupSortField } from '../services/groupAdminApi'
 import { getGroupEffects } from '../services/permissionTransferApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 /** The filters of the group list; `providerId` implies origin PROVIDER. */
 export interface GroupFilters {
@@ -120,3 +121,5 @@ export const useGroupAdminListStore = create<GroupAdminListState>((set, get) => 
     await get().loadGroups()
   },
 }))
+
+registerSessionStore(useGroupAdminListStore)

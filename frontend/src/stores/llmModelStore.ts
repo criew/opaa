@@ -9,6 +9,7 @@ import {
   updateLlmModel,
 } from '../services/modelApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 interface LlmModelState {
   models: LlmModelResponse[]
@@ -105,3 +106,5 @@ export const useLlmModelStore = create<LlmModelState>((set, get) => ({
     })
   },
 }))
+
+registerSessionStore(useLlmModelStore)

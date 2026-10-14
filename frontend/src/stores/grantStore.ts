@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { AssetGrantRequest, AssetGrantResponse, AssetType } from '../types/api'
 import { getAssetGrants, revokeAssetGrant, upsertAssetGrant } from '../services/assetApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 /** The key of one asset's grant list: an asset id alone is not unique across asset types. */
 export function assetKey(assetType: AssetType, assetId: string): string {
@@ -93,3 +94,5 @@ export const useGrantStore = create<GrantState>((set, get) => ({
     })
   },
 }))
+
+registerSessionStore(useGrantStore)

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { registerSessionStore } from './resettableStores'
 
 export type NotificationSeverity = 'success' | 'info' | 'warning' | 'error'
 
@@ -42,6 +43,8 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   dismiss: (id) => set((state) => ({ queue: state.queue.filter((n) => n.id !== id) })),
   reset: () => set({ queue: [] }),
 }))
+
+registerSessionStore(useNotificationStore)
 
 /** Imperative entry point for hooks and stores outside the component tree. */
 export function notify(

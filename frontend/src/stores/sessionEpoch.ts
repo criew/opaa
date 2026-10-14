@@ -9,9 +9,8 @@
  * pattern chatStore's pre-existing chatLoadSequence already used for a narrower purpose (guarding
  * loadChat against a *newer* loadChat/startNewChat call, not against a full session reset).
  *
- * Lives in its own module, not in resettableStores.ts itself, to avoid a circular import: every
- * store that reads this counter would otherwise have to import from resettableStores.ts, which in
- * turn imports every one of those stores to build its registry.
+ * Lives in its own module so that code outside the registered stores can read it without pulling
+ * in the reset registry.
  */
 let sessionEpoch = 0
 

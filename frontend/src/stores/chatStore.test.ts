@@ -1,11 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest'
 import { server } from '../mocks/server'
-// #575 review: this import's position relative to chatStore/chatListStore below no longer
-// matters - resettableStores.ts builds its store list inside resetAllStores() itself now, not in
-// a top-level array literal, so it no longer depends on how far chatStore.ts/chatListStore.ts's
-// own circular import (chatStore needs useChatListStore, chatListStore needs
-// dropChatSettingsCache) has resolved by the time this file's imports run.
+// Import order does not matter: chatStore.ts and chatListStore.ts each register themselves for
+// the reset once created, however far their circular import has resolved.
 import { resetAllStores } from './resettableStores'
 import {
   clearManualRenameMarks,

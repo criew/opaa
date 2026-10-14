@@ -18,6 +18,7 @@ import {
   updatePromptLibrary,
 } from '../services/promptLibraryApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 interface PromptLibraryState {
   libraries: PromptLibraryResponse[]
@@ -171,3 +172,5 @@ export const usePromptLibraryStore = create<PromptLibraryState>((set, get) => ({
     await Promise.all([get().loadPrompts(promptLibraryId), get().loadLibrary(promptLibraryId)])
   },
 }))
+
+registerSessionStore(usePromptLibraryStore)
