@@ -5,4 +5,5 @@ Nachfolge für Berechtigungen: Liste offener Nachfolgefälle in der Verwaltung, 
 - **Grenze:** Seiten unter `pages/` erreicht nur `app` über `routes.ts`. `index.ts` gibt `PermissionTransferDialog`, `SuccessionStateNote`, `successionAwareMessage` (Fehlertext bei offener Nachfolge), `problemOf` und `getGroupEffects` frei.
 - **Spec-Tag:** `succession` (`opaa-api/src/main/openapi/succession.yaml`); dazu liest `getGroupEffects` `GET /api/v1/admin/groups/effects` aus `group`.
 - **Backend-Modul:** rights (Paket `io.opaa.succession`).
-- **Erlaubte Abhängigkeiten:** `principal`. Genutzt wird das Thema von `asset`, `space`, `prompt`, `library` und `group`.
+- **Erlaubte Abhängigkeiten:** `principal`.
+- **Genutzt von:** `asset`, `space`, `prompt`, `library`, `group`.

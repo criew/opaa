@@ -21,6 +21,27 @@ src/
 
 Der Name eines Themas ist der Tag seiner Operationen in der OpenAPI-Spezifikation (kebab-case), zusammengehörige Tags bilden ein Thema. Verwaltungsthemen liegen flach unter `features/`. Andere Ordner gibt es unter `src/` nicht.
 
+## Vorlage für die `AGENTS.md` eines Themas
+
+Knapp wie die Modul-`AGENTS.md` im Backend (`backend/src/main/java/io/opaa/*/AGENTS.md`). Jedes Thema hat `AGENTS.md` und `CLAUDE.md` mit genau `@AGENTS.md`; Aufbau:
+
+```
+# Thema <name>
+
+<Zweck in 1–2 Sätzen.> Regeln für alle Themen: [frontend/AGENTS.md](../../../AGENTS.md).
+
+- **Grenze:** Seiten unter `pages/` erreicht nur `app` über `routes.ts` (ohne Seiten: „keine eigenen Seiten“,
+  kein `routes.ts`). Was `index.ts` freigibt und wofür, oder „gibt nichts frei“; was bewusst nicht zum Thema gehört.
+- **Spec-Tag(s):** Tag und Datei unter `opaa-api/src/main/openapi/`.
+- **Backend-Modul:** Modul und Paket laut [backend/AGENTS.md](../backend/AGENTS.md#logische-module-und-schichtung).
+- **Erlaubte Abhängigkeiten:** genau die Einträge des Themas in `ALLOWED` (`eslint/themes.js`), „keine“ bei einer
+  leeren Liste; `shared` und das Thema selbst sind immer erlaubt.
+- **Genutzt von:** die Themen, die das Thema tatsächlich importieren, und `app`, wenn es dessen `index.ts` (nicht nur
+  `routes.ts`) nutzt; sonst „kein anderes Thema“.
+```
+
+Die Angaben folgen dem Code, nicht der Erinnerung: Beim Ändern von `ALLOWED`, `index.ts` oder der Spec die `AGENTS.md` im selben PR nachziehen.
+
 ## Wo die Grenzen stehen
 
 [`eslint/themes.js`](eslint/themes.js) ist die einzige Quelle:

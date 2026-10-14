@@ -4,5 +4,6 @@ Personen- und Gruppenauswahl: Auswahlfelder für Konten, Gruppen und „Alle Kon
 
 - **Grenze:** keine Seiten, kein `routes.ts`. `index.ts` gibt die Auswahlbausteine, die Auswahl-Helfer (`subjectSelection`), `useMyGroups`, `getUsers`, die Gruppen-Nachschlagefunktionen und die Herkunftsbeschriftungen frei. Gruppen anlegen und verwalten gehört zu `group`, Kontenverwaltung zu `user`.
 - **Spec-Tags:** lesende Operationen aus `user` (`GET /api/v1/users`, `GET /api/v1/admin/users`) und `group` (`GET /api/v1/groups/selectable`, `GET /api/v1/me/groups`); eigene Spec-Datei gibt es nicht.
-- **Backend-Modul:** identity, rights.
-- **Erlaubte Abhängigkeiten:** nur `shared`. Genutzt wird das Thema von `space`, `asset`, `library`, `prompt`, `group`, `succession`, `capability` und `directory-sync`.
+- **Backend-Modul:** identity (Paket `io.opaa.auth`), rights (Paket `io.opaa.group`).
+- **Erlaubte Abhängigkeiten:** keine.
+- **Genutzt von:** `space`, `asset`, `library`, `prompt`, `group`, `succession`, `capability`, `directory-sync`.
