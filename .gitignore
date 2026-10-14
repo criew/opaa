@@ -13,6 +13,7 @@ HELP.md
 # Node / Frontend
 node_modules
 dist
+bundle-report
 dist-ssr
 *.local
 frontend/src/types/generated/

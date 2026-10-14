@@ -418,6 +418,12 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run test
       - run: pnpm run build
+      - run: node scripts/bundle-report.mjs
+      - name: Bundle-Report ablegen
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-bundle-report
+          path: frontend/bundle-report/
 
   # Builds both images on an arm64 runner and starts them hardened against PostgreSQL with pgvector
   # (.github/scripts/image_smoke_test.sh), since publish-images.yml publishes arm64 without starting
