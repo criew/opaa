@@ -15,13 +15,12 @@ dropped entirely rather than rewritten — they carry no service-description
 content and rewriting them plausibly would need real Rheinfurt geodata this
 project does not have.
 
-Decision on real federal authorities: named
-mentions of real Bundesbehörden (Kraftfahrt-Bundesamt, Bundesdruckerei,
-Bundesamt für Justiz, Bundeszentralamt für Steuern, ...) are kept — a
-fictional municipality realistically still deals with real federal
-authorities for federally regulated matters. Only their URLs, postal
-addresses and bank/account data are stripped, never their names. Documented
-in demo/corpus/SOURCE.md.
+Decision on real federal authorities: named mentions of real Bundesbehörden
+(Kraftfahrt-Bundesamt, Bundesdruckerei, Bundesamt für Justiz,
+Bundeszentralamt für Steuern, ...) are kept — a fictional municipality
+realistically still deals with real federal authorities for federally
+regulated matters. Only their URLs, postal addresses and bank/account data
+are stripped, never their names. Documented in demo/corpus/SOURCE.md.
 """
 
 from __future__ import annotations
@@ -160,11 +159,11 @@ _CORONA_RE = re.compile(r"[^.\n]*\b(?:Corona-Pandemie|Coronavirus|Covid-19)\b[^.
 
 # --- Dangling references into the dropped "Links & Downloads" section ------
 #
-# Matches short, self-contained sentences that end
-# in a bare "hier" (optionally followed by up to three more words) right
-# before the full stop — the pattern every actually-dangling reference in the
-# source ("Diese finden Sie hier.", "... bekommen Sie hier alle
-# Informationen.", "Das Formular können Sie hier herunterladen.") shares.
+# Matches short, self-contained sentences that end in a bare "hier"
+# (optionally followed by up to three more words) right before the full stop
+# — the pattern every actually-dangling reference in the source ("Diese
+# finden Sie hier.", "... bekommen Sie hier alle Informationen.", "Das
+# Formular können Sie hier herunterladen.") shares.
 # Ordinary uses of "hier" as a locative adverb are *not* followed directly by
 # a sentence end within three words (e.g. "... die hier wohnende Person ..."
 # continues well past the three-word lookahead), so they are left alone.
@@ -237,7 +236,6 @@ _BIC_RE = re.compile(r"BIC:\s*[A-Z0-9]{8,11}")
 _VERWENDUNGSZWECK_RE = re.compile(r"Verwendungszweck:\s*\d+")
 
 # --- Postal codes -----------------------------------------------------------
-
 #
 # Every real address in the selected source files follows the pattern
 # "<PLZ> Rheinfurt" once München has already been rewritten to Rheinfurt

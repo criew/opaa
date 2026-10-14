@@ -846,7 +846,6 @@ def wait_for_uploads_indexed(
     admin_client: Client, library_id: str, name: str, timeout_seconds: int
 ) -> None:
     """Upload returns 201 while the document row is still PENDING (ADR-0018) - Tika parsing
-
     and embedding run afterwards, asynchronously, through the same executor infrastructure the
     connector indexing paths use. Without waiting here, the seed would report success before a
     single upload document is actually searchable, and a FAILED one would go unnoticed."""

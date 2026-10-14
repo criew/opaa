@@ -12,9 +12,8 @@ obtained.
 - "e2e": the minimal, frozen profile for the E2E docker-compose stack (e2e/docker-compose.e2e.yml).
   Authenticates via the dev-auth header against the "dev-admin"/"dev-user"/"dev-outsider"/
   "dev-format-pipelines" accounts that stack already provisions (see docker-compose.e2e.yml's
-  OPAA_AUTH_DEV_USERS_* block). Its data
-  (this file plus e2e-data/) is the E2E suite's only source of pre-existing content, next to the
-  profile that governs it. The library below uploads a single dedicated file
+  OPAA_AUTH_DEV_USERS_* block). Its data (this file plus e2e-data/) is the E2E suite's only
+  source of pre-existing content. The library below uploads a single dedicated file
   (e2e-data/test-documents/seed/e2e-basisdokument.txt), not the files individual Playwright specs
   upload themselves through the UI (e2e-data/test-documents/*.txt) - those remain each spec's own
   upload input, and granting dev-user a *pre-existing* library containing e.g. wissensdokument.txt
@@ -760,10 +759,10 @@ DEMO_PROFILE = Profile(
         ),
     ),
     groups=(
-        # The internal-group scenario of ADR-0036, Entscheidung 4/9: Maria is the named
-        # steward (not the admin account, see GroupDef's own
-        # docstring), Thomas is the only member, and both his library read and his space role in
-        # "Meldewesen & Ausweise" flow *exclusively* through this group - he is not also a member
+        # The internal-group scenario of ADR-0036, Entscheidung 4/9: Maria is the named steward
+        # (not the admin account, see GroupDef's own docstring), Thomas is the only member, and
+        # both his library read and his space role in "Meldewesen & Ausweise" flow *exclusively*
+        # through this group - he is not also a member
         # of the space and not also on "Interne Dienstanweisungen Meldewesen"'s own viewer_keys.
         GroupDef(
             name="Vertretung Meldewesen",
@@ -918,7 +917,6 @@ E2E_PROFILE = Profile(
     # dev-outsider is provisioned (so listUsers/other assertions can rely on it existing) but is
     # deliberately given no space membership and no library grant - the negative case a permission
     # test needs, mirroring e2e's own existing "outsider" concept.
-
     users=(_E2E_USER, _E2E_OUTSIDER),
     spaces=(
         SpaceDef(

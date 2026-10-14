@@ -17,7 +17,6 @@ class ApiError(RuntimeError):
     """Carries the WWW-Authenticate challenge when the server sent one: a rejected token is
     answered with an empty body, so the challenge is the only description of the cause."""
 
-
     def __init__(self, response: requests.Response) -> None:
         challenge = response.headers.get("WWW-Authenticate")
         detail = " ".join(

@@ -255,7 +255,6 @@ def build_intern() -> list[tuple[str, str, bytes]]:
 # the source-string level, before rendering.
 
 
-
 def build_rat() -> list[tuple[str, str, bytes]]:
     """Key prefixes <jahr>/<Gremium>/, as the demo's object store bucket is seeded with them (both
     levels become folders of the S3 library). A Vorlage with Anlagen is one .eml object that

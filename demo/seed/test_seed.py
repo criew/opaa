@@ -671,8 +671,8 @@ def test_provider_groups_are_exactly_the_realm_groups_with_their_members() -> No
 
 
 def test_a_provider_group_carries_a_read_right_exclusively() -> None:
-    """At least one Keycloak group holds a right that reaches an account only
-    through that group - here the Kfz-Zulassung's own service descriptions for Thomas."""
+    """At least one Keycloak group holds a right that reaches an account only through that group
+    - here the Kfz-Zulassung's own service descriptions for Thomas."""
     kfz = next(g for g in DEMO.provider_groups if g.name == "Kfz-Zulassung")
     assert "Leistungen Kfz-Zulassung" in kfz.library_grants
     assert "thomas" not in library("Leistungen Kfz-Zulassung").viewer_keys
@@ -1620,10 +1620,8 @@ def test_a_personally_owned_library_names_no_owner_group() -> None:
 
 
 def test_a_same_named_library_the_owner_does_not_own_stops_the_seed() -> None:
-    """An instance seeded with an older profile holds the library under the admin account; the
-    new owner reads it but does not own it. No second library of the same name may appear beside
-    it."""
-
+    """An older seed holds the library under the admin account; the new owner reads it but does
+    not own it. No second library of the same name may appear beside it."""
     api = FakeLibraryApi(
         [{"id": "alt", "name": "Interne Dienstanweisungen Meldewesen", "myRole": "VIEWER"}]
     )
@@ -1652,7 +1650,6 @@ def test_a_public_library_is_granted_to_all_accounts_and_a_closed_one_to_its_vie
 
 
 # --- Space creation: members in the subject form of SpaceAddMemberRequest ----------------------
-
 
 
 class FakeSpaceApi:
