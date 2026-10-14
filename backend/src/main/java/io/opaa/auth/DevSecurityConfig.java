@@ -3,7 +3,6 @@ package io.opaa.auth;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -25,7 +24,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
  */
 @Configuration
 @Profile("dev")
-@EnableConfigurationProperties(AuthProperties.class)
 @EnableMethodSecurity
 public class DevSecurityConfig {
 

@@ -1,5 +1,6 @@
 package io.opaa.indexing.source;
 
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
@@ -7,6 +8,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /** The one-thread timer behind the event intake's debounce. */
 @Configuration
+@EnableConfigurationProperties(SourceEventProperties.class)
 public class SourceEventConfiguration {
 
   /**

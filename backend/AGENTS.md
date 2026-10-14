@@ -61,7 +61,7 @@ Erlaubte Kanten zwischen Modulen (`ALLOWED_MODULE_EDGES`), alle nach unten:
 - retrieval → foundation, format, knowledge
 - assistant → foundation, format, identity, rights, knowledge, workspace, library, retrieval
 - external → foundation, identity, rights, knowledge, library, assistant
-- app → foundation, identity, rights, knowledge, library
+- app → foundation, knowledge
 
 format liegt direkt über foundation und kennt nur `sourceaccess`: Die Dokumentparser und ihre
 Bibliotheken bleiben so ohne Wissen über Indexierung, Bestand und Rechte. Wer darüber Formate
