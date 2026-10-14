@@ -14,6 +14,9 @@ zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Serv
   validiert, protokolliert jede Änderung außer dem Anleitungstext und beantwortet die Abfragen je
   Aufruf. Ob eine Clientadresse zum Kanal gehört, entscheidet allein
   `ExternalAccessNetworkPolicy`.
+- **Über dem Schalter steht das Feature-Flag `EXTERNAL_ACCESS`** (ADR-0044). Aus, gibt es
+  Filterkette, Routen, MCP-Server (`McpServerSwitch` hält den Starter heraus) und Wartungsläufe
+  nicht; `isEnabled()` und der Token-Authenticator sagen immer nein. Schalter und Daten bleiben.
 - **Ein Zugangstoken ist ein opaker Zufallswert mit festem Präfix**, gespeichert nur als
   HMAC-Suchhash (eigener Zweck in `LocalAuthKeyService`). Es ist an eine Person, eine
   unveränderliche Auswahl von Bibliotheken und ein Pflicht-Ablaufdatum gebunden.

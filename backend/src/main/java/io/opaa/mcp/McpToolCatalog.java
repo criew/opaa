@@ -1,6 +1,8 @@
 package io.opaa.mcp;
 
 import io.modelcontextprotocol.spec.McpSchema.Tool;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.search.SearchableLibrary;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Component;
  * are named before the rest becomes a count. Free text that could restructure the tool description
  * is the one thing this generation must not allow.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 public class McpToolCatalog {
 

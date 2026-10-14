@@ -158,6 +158,11 @@ features:
   # Dictation in the chat; the microphone appears only while transcription is configured too.
   speechInput:
     enabled: true
+  # External access (access tokens, library releases, MCP server on /mcp); false removes the
+  # channel entirely. Switched on, the channel still opens only through its switch in the
+  # administration, which is off by default.
+  externalAccess:
+    enabled: true
 
 # Host names exempted from the address check (SSRF protection), which refuses private and
 # cluster-internal addresses by default.

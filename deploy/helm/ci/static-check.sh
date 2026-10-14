@@ -44,7 +44,8 @@ for values in "${value_sets[@]}"; do
 done
 
 # The feature flags reach the backend ConfigMap: on by default, off in the features-off value set.
-for flag in OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED OPAA_FEATURES_METADATA_ENABLED; do
+for flag in OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED OPAA_FEATURES_METADATA_ENABLED \
+  OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED; do
   for expectation in "minimal:true" "features-off:false"; do
     set_name="${expectation%%:*}"
     expected="${flag}: \"${expectation#*:}\""

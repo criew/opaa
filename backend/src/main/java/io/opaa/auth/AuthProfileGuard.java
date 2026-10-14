@@ -9,11 +9,11 @@ import org.springframework.context.annotation.Profile;
  *
  * <p>Every authentication mode contributes its own {@code SecurityFilterChain} ({@code
  * io.opaa.account.OidcSecurityConfig}, {@link DevSecurityConfig}). Without one of them no chain
- * guards {@code /api/**} at all: the unconditional chains of the push intake ({@link
- * PushIntakeSecurityConfig}) and of the external-access channel ({@code
- * ExternalAccessSecurityConfig}) already back Spring Boot's generic security auto-configuration
- * off, so the application would start open instead of behind a generated password. Failing loudly
- * at startup beats either.
+ * guards {@code /api/**} at all: the unconditional chain of the push intake ({@link
+ * PushIntakeSecurityConfig}) - and that of the external-access channel ({@code
+ * ExternalAccessSecurityConfig}) while the feature is on - already backs Spring Boot's generic
+ * security auto-configuration off, so the application would start open instead of behind a
+ * generated password. Failing loudly at startup beats either.
  */
 @Configuration
 @Profile("!oidc & !dev")

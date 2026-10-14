@@ -48,5 +48,8 @@ class FeaturesSpecificationTest {
   void theJsonNameIsTheCamelCaseOfThePropertyKey() {
     assertThat(Feature.PROMPT_LIBRARIES.jsonName()).isEqualTo("promptLibraries");
     assertThat(Feature.METADATA.jsonName()).isEqualTo("metadata");
+    assertThat(Feature.EXTERNAL_ACCESS.jsonName()).isEqualTo("externalAccess");
+    assertThat(Feature.EXTERNAL_ACCESS.enabledProperty())
+        .isEqualTo("opaa.features.external-access.enabled");
   }
 }

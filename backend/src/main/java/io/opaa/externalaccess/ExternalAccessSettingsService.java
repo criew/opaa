@@ -8,6 +8,8 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.externalaccess.ExternalAccessSettings.Values;
@@ -75,25 +77,32 @@ public class ExternalAccessSettingsService {
   private final UserRepository users;
   private final AuditEventRecorder audit;
   private final Clock clock;
+  private final FeatureFlags featureFlags;
 
   public ExternalAccessSettingsService(
       ExternalAccessSettingsRepository settings,
       UserRepository users,
       AuditEventRecorder audit,
-      Clock clock) {
+      Clock clock,
+      FeatureFlags featureFlags) {
     this.settings = settings;
     this.users = users;
     this.audit = audit;
     this.clock = clock;
+    this.featureFlags = featureFlags;
   }
 
   /**
    * Whether the channel is open right now. The later access paths ask this per call, not per
    * session: an emergency stop that an open session outlives would make "Kanal ist zu" a lie.
+   *
+   * <p>Always {@code false} while the installation has switched the feature off (ADR-0044); the
+   * stored switch stays as it is and decides again once the feature is back on.
    */
   @Transactional(readOnly = true)
   public boolean isEnabled() {
-    return settings.findSingleton().map(ExternalAccessSettings::isEnabled).orElse(false);
+    return featureFlags.isEnabled(Feature.EXTERNAL_ACCESS)
+        && settings.findSingleton().map(ExternalAccessSettings::isEnabled).orElse(false);
   }
 
   /** The networks the whole channel may be reached from; an empty list allows nobody. */

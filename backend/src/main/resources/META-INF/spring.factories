@@ -2,3 +2,5 @@ org.springframework.boot.diagnostics.FailureAnalyzer=\
 io.opaa.config.DatabasePrerequisiteFailureAnalyzer
 org.springframework.context.ApplicationContextInitializer=\
 io.opaa.outbound.OutboundProxyInstaller
+org.springframework.boot.EnvironmentPostProcessor=\
+io.opaa.mcp.McpServerSwitch

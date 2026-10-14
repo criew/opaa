@@ -17,6 +17,11 @@ import org.springframework.test.context.TestPropertySource;
  * meets after an update. An address that works and an address that is refused cannot be the same
  * property value. {@code opaa.auth.local.admin-allowed-cidrs} rides along: it is only meaningful
  * for the class that drives the seeded administrator's sign-in, and its own context already exists.
+ *
+ * <p>The external-access feature rides along switched off for the same reason (ADR-0044): what an
+ * access-token value meets under {@code oidc} without the channel's filter chain can only be seen
+ * in a context started without it, and the seeding never touches the channel ({@code
+ * ExternalAccessSwitchedOffOidcTest}).
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -25,7 +30,8 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(
     properties = {
       "opaa.auth.initial-admin-email=" + OpaaLocalAuthSeedTest.INITIAL_ADMIN_EMAIL,
-      "opaa.auth.local.admin-allowed-cidrs=127.0.0.1/32,10.0.0.0/8"
+      "opaa.auth.local.admin-allowed-cidrs=127.0.0.1/32,10.0.0.0/8",
+      "opaa.features.external-access.enabled=false"
     })
 public @interface OpaaLocalAuthSeedTest {
 

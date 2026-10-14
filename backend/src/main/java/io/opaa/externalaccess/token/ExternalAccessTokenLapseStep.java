@@ -1,6 +1,8 @@
 package io.opaa.externalaccess.token;
 
 import io.opaa.account.LocalAccountMaintenanceStep;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Component;
  * <p>Each token is handled in its own transaction, so a failing one leaves its row without the
  * marker and is picked up again by the next run instead of losing its entry for good.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 @Order(40)
 public class ExternalAccessTokenLapseStep implements LocalAccountMaintenanceStep {

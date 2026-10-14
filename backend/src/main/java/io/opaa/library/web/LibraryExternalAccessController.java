@@ -5,6 +5,8 @@ import io.opaa.api.dto.LibraryExternalAccessRequest;
 import io.opaa.api.dto.LibraryExternalAccessResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.library.LibraryExternalAccessService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  * because the release is one decision with its own bar and its own audit trail, not one field among
  * the library's editable details.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @RestController
 class LibraryExternalAccessController {
 

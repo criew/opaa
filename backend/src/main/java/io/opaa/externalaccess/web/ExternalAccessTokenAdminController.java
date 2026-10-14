@@ -6,6 +6,8 @@ import io.opaa.api.dto.BlockedExternalAccessTokensResponse;
 import io.opaa.api.types.ExternalAccessTokenStatus;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.common.ValidationException;
 import io.opaa.externalaccess.token.ExternalAccessTokenAdminService;
 import jakarta.validation.Valid;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  * parameter at all. There is no filter by person and no field carrying a usage date; see {@link
  * ExternalAccessTokenAdminService} for why that is a promise of the product rather than a gap.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @RestController
 @RequestMapping("/api/v1/admin/external-access/tokens")
 public class ExternalAccessTokenAdminController {

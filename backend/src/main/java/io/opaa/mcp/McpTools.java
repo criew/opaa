@@ -8,6 +8,8 @@ import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatSourceMetadataEntry;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.search.FetchedPassage;
@@ -41,6 +43,7 @@ import tools.jackson.databind.json.JsonMapper;
  * <em>result</em>, not a transport error: a tool result is what the calling model can act on, and a
  * foreign hit answers exactly like an unknown one, so nothing confirms that it exists.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 class McpTools {
 

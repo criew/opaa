@@ -1,5 +1,7 @@
 package io.opaa.mcp;
 
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessOwnedPath;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerStreamableHttpProperties;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Component;
  * refusal style - derives it from this bean, so a changed path cannot leave the endpoint
  * unprotected behind a rule pointing elsewhere.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 public class McpEndpoint implements ExternalAccessOwnedPath {
 

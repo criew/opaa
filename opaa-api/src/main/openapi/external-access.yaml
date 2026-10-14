@@ -2,7 +2,10 @@
 # Merged with all other fragments at build time, see root.yaml.
 tags:
   - name: external-access
-    description: External access tokens and the external access settings.
+    description: >
+      External access tokens and the external access settings. None of these operations exists
+      while the installation has switched the feature off (opaa.features.external-access.enabled,
+      FeaturesConfig.externalAccess): every path of this tag then answers like an unknown address.
 paths:
   /api/v1/system/external-access:
     get:

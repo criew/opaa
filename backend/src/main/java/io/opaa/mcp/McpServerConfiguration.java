@@ -3,6 +3,8 @@ package io.opaa.mcp;
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.search.SearchService;
 import java.util.List;
@@ -31,6 +33,7 @@ import tools.jackson.databind.json.JsonMapper;
  * Tools are the only capability offered - resources, prompts and completions are separate exposure
  * surfaces with their own permission question, and registering one is the decision to expose it.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Configuration
 @EnableConfigurationProperties(McpProperties.class)
 public class McpServerConfiguration {

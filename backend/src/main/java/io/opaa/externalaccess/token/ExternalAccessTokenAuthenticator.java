@@ -3,6 +3,8 @@ package io.opaa.externalaccess.token;
 import io.opaa.auth.AccountUsability;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
@@ -36,6 +38,7 @@ public class ExternalAccessTokenAuthenticator {
   private final LocalAuthKeyService keys;
   private final ExternalAccessSettingsService settings;
   private final Clock clock;
+  private final FeatureFlags featureFlags;
 
   public ExternalAccessTokenAuthenticator(
       ExternalAccessTokenRepository tokens,
@@ -43,18 +46,23 @@ public class ExternalAccessTokenAuthenticator {
       AccountUsability usability,
       LocalAuthKeyService keys,
       ExternalAccessSettingsService settings,
-      Clock clock) {
+      Clock clock,
+      FeatureFlags featureFlags) {
     this.tokens = tokens;
     this.users = users;
     this.usability = usability;
     this.keys = keys;
     this.settings = settings;
     this.clock = clock;
+    this.featureFlags = featureFlags;
   }
 
   /** The per-call check; see the class Javadoc for its order and its cost. */
   @Transactional(readOnly = true)
   public Result authenticate(String rawValue) {
+    if (switchedOff()) {
+      return new Result.Refused(ExternalAccessTokenRejection.CHANNEL_CLOSED);
+    }
     if (!settings.isEnabled()) {
       // Checked before the lookup: a closed channel answers the same way for every value, so a
       // Notaus does not turn into an oracle for which values exist.
@@ -75,6 +83,9 @@ public class ExternalAccessTokenAuthenticator {
    */
   @Transactional(readOnly = true)
   public Result authenticateWithSwitchLast(String rawValue) {
+    if (switchedOff()) {
+      return new Result.Refused(ExternalAccessTokenRejection.CHANNEL_CLOSED);
+    }
     Result result = check(rawValue);
     if (!settings.isEnabled()) {
       return result instanceof Result.Authenticated
@@ -82,6 +93,15 @@ public class ExternalAccessTokenAuthenticator {
           : result;
     }
     return result;
+  }
+
+  /**
+   * The feature switched off for the installation (ADR-0044): nothing authenticates and no value is
+   * looked up, on either path - the oracle {@link #authenticateWithSwitchLast} pays for would serve
+   * a channel that does not exist.
+   */
+  private boolean switchedOff() {
+    return !featureFlags.isEnabled(Feature.EXTERNAL_ACCESS);
   }
 
   private Result check(String rawValue) {

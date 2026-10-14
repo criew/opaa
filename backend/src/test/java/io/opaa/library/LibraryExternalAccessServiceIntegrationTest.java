@@ -69,6 +69,7 @@ class LibraryExternalAccessServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private io.opaa.common.FeatureFlags featureFlags;
 
   private UUID organizationId;
   private final List<UUID> createdUserIds = new ArrayList<>();
@@ -354,7 +355,8 @@ class LibraryExternalAccessServiceIntegrationTest {
         tokenCounter,
         successionGuard,
         ownerOnlyRule,
-        () -> now);
+        () -> now,
+        featureFlags);
   }
 
   private List<String> auditEventTypes(UUID libraryId) {

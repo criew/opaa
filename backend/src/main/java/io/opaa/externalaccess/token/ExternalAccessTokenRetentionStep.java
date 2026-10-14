@@ -2,6 +2,8 @@ package io.opaa.externalaccess.token;
 
 import io.opaa.account.LocalAccountMaintenanceStep;
 import io.opaa.audit.AuditRetentionSettingsService;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.slf4j.Logger;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Measured from {@code lapseRecordedAt}, the moment the token stopped working and its last entry
  * was written - the same start the audit entry's own retention counts from.
  */
+@ConditionalOnFeature(Feature.EXTERNAL_ACCESS)
 @Component
 @Order(42)
 public class ExternalAccessTokenRetentionStep implements LocalAccountMaintenanceStep {

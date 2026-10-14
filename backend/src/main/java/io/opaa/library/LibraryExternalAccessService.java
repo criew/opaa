@@ -6,6 +6,8 @@ import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -51,6 +53,7 @@ public class LibraryExternalAccessService {
   private final InstantSource clock;
   private final SuccessionReachGuard successionGuard;
   private final OwnerOnlyRule ownerOnlyRule;
+  private final FeatureFlags featureFlags;
 
   public LibraryExternalAccessService(
       KnowledgeLibraryRepository libraryRepository,
@@ -61,7 +64,9 @@ public class LibraryExternalAccessService {
       LibraryExternalAccessTokenCounter tokenCounter,
       SuccessionReachGuard successionGuard,
       OwnerOnlyRule ownerOnlyRule,
-      InstantSource clock) {
+      InstantSource clock,
+      FeatureFlags featureFlags) {
+    this.featureFlags = featureFlags;
     this.ownerOnlyRule = ownerOnlyRule;
     this.successionGuard = successionGuard;
     this.libraryRepository = libraryRepository;
@@ -140,9 +145,15 @@ public class LibraryExternalAccessService {
    * The release of one library, for the library detail response - carrying the state as it takes
    * effect now ({@link KnowledgeLibrary#effectiveExternalAccessState}), not the state the row
    * happens to still hold until the nightly run catches up.
+   *
+   * @return {@code null} while the installation has switched the external access off (ADR-0044):
+   *     the release stays stored, the library detail just does not name it.
    */
   @Transactional(readOnly = true)
   public LibraryExternalAccess describe(KnowledgeLibrary library) {
+    if (!featureFlags.isEnabled(Feature.EXTERNAL_ACCESS)) {
+      return null;
+    }
     return new LibraryExternalAccess(
         library.getId(),
         library.effectiveExternalAccessState(clock.instant()),
