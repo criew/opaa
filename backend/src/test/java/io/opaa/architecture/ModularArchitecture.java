@@ -211,7 +211,8 @@ public final class ModularArchitecture {
           "indexing.registry",
           "indexing.run",
           "indexing.maintenance",
-          "indexing.filesync");
+          "indexing.filesync",
+          "indexing.trigger");
 
   /** The root package of the module connections: it wires and implements the core's port. */
   static final String CONNECTION = "connection";
@@ -335,7 +336,7 @@ public final class ModularArchitecture {
   static final Set<String> LIBRARY_ENUMERATORS =
       Set.of(
           "indexing.maintenance.PipelineReindexService",
-          "indexing.run.LibraryIndexingScheduler",
+          "indexing.trigger.LibraryIndexingScheduler",
           "library.OrphanedOriginalCleanupService",
           "library.LibraryExternalAccessService",
           "library.LibraryExternalAccessExpiryService",

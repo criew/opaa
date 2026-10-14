@@ -1,4 +1,4 @@
-package io.opaa.indexing.run;
+package io.opaa.indexing.trigger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,6 +28,8 @@ import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.indexing.registry.IndexingSourceExecutorRegistry;
+import io.opaa.indexing.run.DefaultRunModes;
+import io.opaa.indexing.run.SyncStateBasis;
 import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.indexing.spi.SourceSyncStateRepository;

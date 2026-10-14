@@ -1,4 +1,4 @@
-package io.opaa.architecture.fixture.privateenumeration.indexing.run;
+package io.opaa.architecture.fixture.privateenumeration.indexing.trigger;
 
 import io.opaa.architecture.fixture.privateenumeration.knowledge.KnowledgeLibraryRepository;
 import java.util.List;
