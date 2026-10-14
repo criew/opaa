@@ -24,7 +24,7 @@ import SectionHead from '@/shared/ui/SectionHead'
 import { contentWidth } from '@/shared/theme/tokens'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import OwnExternalAccessTokensSection from '../../components/externalaccess/OwnExternalAccessTokensSection'
-import MyGroupsSection from '../../components/groups/MyGroupsSection'
+import { MyGroupsSection } from '@/features/group'
 import ConnectedAccountsSection from '../../components/settings/ConnectedAccountsSection'
 
 export type SettingsTab = 'general' | 'groups' | 'tokens' | 'accounts'

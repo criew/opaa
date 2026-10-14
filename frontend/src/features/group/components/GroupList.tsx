@@ -11,8 +11,8 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { GroupEffectsResponse, GroupListResponse } from '@/shared/api/types'
-import type { GroupSortField } from '../../../services/groupAdminApi'
-import { useGroupAdminListStore } from '../../../stores/groupAdminListStore'
+import type { GroupSortField } from '../api/groupAdminApi'
+import { useGroupAdminListStore } from '../stores/groupAdminListStore'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import {
   ListEmptyState,

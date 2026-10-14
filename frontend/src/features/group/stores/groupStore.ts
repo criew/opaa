@@ -15,8 +15,8 @@ import {
   setGroupProtection,
   setGroupRelease,
   updateGroup,
-} from '../services/groupApi'
-import type { GroupCreationOptions } from '../services/groupApi'
+} from '../api/groupApi'
+import type { GroupCreationOptions } from '../api/groupApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 

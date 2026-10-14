@@ -9,10 +9,10 @@ import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import type { GroupListResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useGroupStore } from '../../../stores/groupStore'
+import { useGroupStore } from '../stores/groupStore'
 import { notify } from '@/shared/stores/notificationStore'
-import GroupStewardsSection from '../../groups/GroupStewardsSection'
-import GroupFormFields, { type GroupFormValues } from '../../groups/GroupFormFields'
+import GroupStewardsSection from './GroupStewardsSection'
+import GroupFormFields, { type GroupFormValues } from './GroupFormFields'
 import { groupStateReason } from './groupListLabels'
 
 const SOURCE_NOTICE: Record<string, string> = {

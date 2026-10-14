@@ -9,7 +9,7 @@ import { UserPicker } from '@/features/principal'
 import type { GroupStewardResponse, UserSummary } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useGroupStore } from '../../stores/groupStore'
+import { useGroupStore } from '../stores/groupStore'
 
 interface GroupStewardsSectionProps {
   groupId: string

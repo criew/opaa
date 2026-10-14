@@ -13,7 +13,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { GroupListResponse, UserInfo } from '@/shared/api/types'
 import { getUsers } from '@/features/principal'
-import { selectGroupMembers, useGroupStore } from '../../../stores/groupStore'
+import { selectGroupMembers, useGroupStore } from '../stores/groupStore'
 import GroupMembersTable from './GroupMembersTable'
 
 const AUDIT_NOTICE =

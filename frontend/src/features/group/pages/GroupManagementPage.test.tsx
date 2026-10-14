@@ -1,14 +1,14 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { answerConfirm, renderWithProviders } from '../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
 import GroupManagementPage from './GroupManagementPage'
 import { useGroupStore } from '../stores/groupStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupAdminListStore } from '../stores/groupAdminListStore'
 import { useNotificationStore } from '@/shared/stores/notificationStore'
 import type { GroupListResponse, GroupResponse } from '@/shared/api/types'
-import type { GroupListQuery } from '../services/groupAdminApi'
+import type { GroupListQuery } from '../api/groupAdminApi'
 
 const {
   mockListGroupPage,
@@ -41,10 +41,9 @@ const {
   deactivationPreview: { blockedReason: null as string | null },
 }))
 
-vi.mock('../services/groupAdminApi', async () => {
-  const actual = await vi.importActual<typeof import('../services/groupAdminApi')>(
-    '../services/groupAdminApi',
-  )
+vi.mock('../api/groupAdminApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../api/groupAdminApi')>('../api/groupAdminApi')
   return {
     ...actual,
     listGroupPage: vi.fn(async (query: GroupListQuery) => {
@@ -55,10 +54,10 @@ vi.mock('../services/groupAdminApi', async () => {
   }
 })
 
-vi.mock('../features/succession/api/permissionTransferApi', async () => {
-  const actual = await vi.importActual<
-    typeof import('../features/succession/api/permissionTransferApi')
-  >('../features/succession/api/permissionTransferApi')
+vi.mock('../../succession/api/permissionTransferApi', async () => {
+  const actual = await vi.importActual<typeof import('../../succession/api/permissionTransferApi')>(
+    '../../succession/api/permissionTransferApi',
+  )
   return { ...actual, getGroupEffects: vi.fn(async () => []) }
 })
 
@@ -72,9 +71,8 @@ vi.mock('@/features/principal/api/userApi', async () => {
   }
 })
 
-vi.mock('../services/groupApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/groupApi')>('../services/groupApi')
+vi.mock('../api/groupApi', async () => {
+  const actual = await vi.importActual<typeof import('../api/groupApi')>('../api/groupApi')
   return {
     ...actual,
     getGroups: vi.fn(async () => listed.groups),

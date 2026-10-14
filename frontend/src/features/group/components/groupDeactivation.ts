@@ -1,5 +1,5 @@
 import type { GroupDeactivationPreviewResponse } from '@/shared/api/types'
-import { getGroupDeactivationPreview } from '../../services/groupApi'
+import { getGroupDeactivationPreview } from '../api/groupApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { countLabel } from '@/features/principal'

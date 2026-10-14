@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithProviders } from '../../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import InitialStewardsSection from './InitialStewardsSection'
 
 vi.mock('@/features/principal/hooks/useUserSearch', () => ({

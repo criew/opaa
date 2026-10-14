@@ -18,8 +18,8 @@ import { privateStorageHandlers } from './privateStorageHandlers'
 // prompt
 import { promptLibraryHandlers } from './promptLibraryHandlers'
 // group
-import { groupHandlers } from './groupHandlers'
-import { groupAdminHandlers } from './groupAdminHandlers'
+import { groupHandlers } from '../features/group/mocks/groupHandlers'
+import { groupAdminHandlers } from '../features/group/mocks/groupAdminHandlers'
 // succession
 import { successionHandlers } from '../features/succession/mocks/successionHandlers'
 // capability

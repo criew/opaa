@@ -6,7 +6,7 @@ import type {
   GroupOrigin,
   GroupState,
 } from '@/shared/api/types'
-import { GROUP_PAGE_SIZE, listGroupPage, type GroupSortField } from '../services/groupAdminApi'
+import { GROUP_PAGE_SIZE, listGroupPage, type GroupSortField } from '../api/groupAdminApi'
 import { getGroupEffects } from '@/features/succession'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'

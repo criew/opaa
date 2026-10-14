@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { answerConfirm, renderWithProviders } from '../../test/test-utils'
+import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
 import MyGroupsSection from './MyGroupsSection'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useGroupStore } from '../../stores/groupStore'
+import { useGroupStore } from '../stores/groupStore'
 import type { Capability, GroupListResponse, GroupResponse } from '@/shared/api/types'
 
 const {
@@ -29,9 +29,8 @@ const {
   mockGetGroupDeactivationPreview: vi.fn(),
 }))
 
-vi.mock('../../services/groupApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../services/groupApi')>('../../services/groupApi')
+vi.mock('../api/groupApi', async () => {
+  const actual = await vi.importActual<typeof import('../api/groupApi')>('../api/groupApi')
   return {
     ...actual,
     getMyStewardedGroups: mockGetMyStewardedGroups,

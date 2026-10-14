@@ -63,7 +63,7 @@ import LibraryDetailPage from './pages/LibraryDetailPage'
 import PromptLibraryCreatePage from './pages/PromptLibraryCreatePage'
 import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
 // group
-import GroupManagementPage from './pages/GroupManagementPage'
+import { GroupManagementPage } from '@/features/group/routes'
 // succession
 import { SuccessionPage } from '@/features/succession/routes'
 import { HandoverPage } from '@/features/auth/routes'
@@ -75,7 +75,7 @@ import { UserManagementPage } from '@/features/user/routes'
 import { OidcProviderManagementPage } from '@/features/identity-provider/routes'
 // directory-sync
 import { DirectorySyncPage } from '@/features/directory-sync/routes'
-import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
+import { ProviderGroupWorklistPage } from '@/features/group/routes'
 // model
 import { LlmModelManagementPage } from '@/features/model/routes'
 // mail

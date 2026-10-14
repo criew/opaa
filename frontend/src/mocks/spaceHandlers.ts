@@ -6,7 +6,7 @@ import {
   mockSpaceDetails,
   mockSpaceMembers,
 } from './spaceFixtures'
-import { mockGroups } from './groupFixtures'
+import { mockGroups } from '../features/group/mocks/groupFixtures'
 
 function recalculateRoleCounts(spaceId: string) {
   const space = mockSpaceDetails[spaceId]

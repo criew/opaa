@@ -9,8 +9,8 @@ import Divider from '@mui/material/Divider'
 import type { UserSummary } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../stores/groupStore'
-import GroupFormFields, { type GroupFormValues } from './groups/GroupFormFields'
-import InitialStewardsSection from './groups/InitialStewardsSection'
+import GroupFormFields, { type GroupFormValues } from './GroupFormFields'
+import InitialStewardsSection from './InitialStewardsSection'
 
 interface CreateGroupDialogProps {
   open: boolean

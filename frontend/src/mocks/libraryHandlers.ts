@@ -5,7 +5,7 @@ import {
   mockConfluenceSpaces,
   mockSourceTypes,
 } from './libraryFixtures'
-import { mockMyGroups } from './groupFixtures'
+import { mockMyGroups } from '../features/group/mocks/groupFixtures'
 import { isMockIndexingActive } from './indexingHandlers'
 import { mockConnectionProfiles, mockProfileRef } from './connectionProfileFixtures'
 import { browseSharePoint, testSharePoint } from './sharePointSourceMock'

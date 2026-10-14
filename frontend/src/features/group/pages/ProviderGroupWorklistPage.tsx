@@ -15,7 +15,7 @@ import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { PermissionTransferDialog } from '@/features/succession'
-import { groupUsageDetails } from '../components/admin/groups/groupUsageLabels'
+import { groupUsageDetails } from '../components/groupUsageLabels'
 import { contentWidth } from '@/shared/theme/tokens'
 
 /**
