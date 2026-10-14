@@ -101,7 +101,7 @@ Eine Ratsche (engl. ratchet) ist eine CI-Prüfung, die einen Zählwert kennt und
 lässt: Der Wert darf nicht steigen; die Obergrenze steht im Skript und wird nur per PR gesenkt. So
 muss ein Bestand nicht sofort abgebaut werden, aber er wächst garantiert nicht. Skripte liegen unter
 `.github/scripts` (Muster `check_action_pins.sh`, `check_code_comments.sh`). Ratschen:
-`Instant.now()` in `@Service`/`@Component` (`check_instant_now.sh`), `@Value` außerhalb von
+`Instant.now()` ohne `Clock` in Spring-Beans (`check_instant_now.sh`), `@Value` außerhalb von
 `*Properties` (`check_value_annotations.sh`). Keine Ratsche für das, was ArchUnit hart prüft.
 
 ### 7. Prüfroutine
@@ -142,5 +142,4 @@ Entscheidung, die Prüfung kann sie nur melden.
 
 ## Offen
 
-- Ratschen aus Entscheidung 6 anlegen.
-- Prüfroutine aus Entscheidung 7 einrichten; Label `architecture` anlegen.
+- Prüfroutine aus Entscheidung 7 einrichten.
