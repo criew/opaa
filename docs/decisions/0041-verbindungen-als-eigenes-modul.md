@@ -100,14 +100,14 @@ Inaktivitätsschwelle gilt dort nicht).
 | `DEACTIVATED` | lokale Sperre durch die Verwaltung (nicht `FAILED_LOGINS`, nicht `INACTIVITY`), befristetes Konto abgelaufen, Verzeichnissperre, Anbieter des Issuers gelöscht (außer Dev-Issuer) |
 | `DORMANT_PROVIDER_DISABLED` | Anbieter deaktiviert |
 | `DORMANT_LOCAL_ACCOUNTS_DISABLED` | reguläres lokales Konto bei abgeschalteter lokaler Kontenverwaltung |
-| `DORMANT_INACTIVE` | keine Anmeldung seit der Inaktivitätsschwelle; lokale Sperre wegen Inaktivität (`LockReason.INACTIVITY`, seit #2260) |
+| `DORMANT_INACTIVE` | keine Anmeldung seit der Inaktivitätsschwelle; lokale Sperre wegen Inaktivität (`LockReason.INACTIVITY`) |
 | `LOCKED_OUT`, `INVITED` | vorübergehende Sperre nach Fehlversuchen, offene Einladung — weder nutzbar noch ruhend noch deaktiviert |
 | `USABLE` | sonst |
 
 - **Ruhen ist keine Deaktivierung:** Es stoppt Läufe und die Herausgabe von Geheimnissen, löscht
   nichts und startet keine Frist; mit „nutzbar“ geht es ohne Neuverbinden weiter. Ein deaktivierter
   Anbieter zählt als Ruhen, erst sein Löschen deaktiviert; der Löschzeitpunkt je Issuer steht in
-  `oidc_provider_removals` (identity, seit #2289) und beginnt die Frist beim letzten Löschen.
+  `oidc_provider_removals` (identity) und beginnt die Frist beim letzten Löschen.
 - **Abgleich** `ConnectionLifecycleReconciler`: täglich, beim Start und nach dem Commit von
   `LocalAccountAccessEndedEvent` (ein Konto) und `OidcProvidersChangedEvent` (alle), je Person in
   eigener Transaktion (`REQUIRES_NEW`). Deaktiviert: Geheimnisse löschen, beim Anbieter widerrufen,
@@ -123,7 +123,7 @@ Inaktivitätsschwelle gilt dort nicht).
   als Konstanten in `ConnectionLifecycleProperties`, ein Wert außerhalb bricht den Start ab).
   `connected_accounts.last_used_at` hält die Herausgabe höchstens einmal je Tag fest, in eigener
   Transaktion mit `SKIP LOCKED`.
-- **Anbieterverwaltung** (seit #2251): `GET /api/v1/admin/oidc-providers/{id}/impact` nennt nur, ob
+- **Anbieterverwaltung**: `GET /api/v1/admin/oidc-providers/{id}/impact` nennt nur, ob
   eine Bestätigung nötig ist und was die Handlung bewirkt (`CONNECTIONS_REST`, `CONNECTIONS_END`),
   nie eine Zahl je Anbieter — Zahlen je Anbieter und je Zugang ließen sich gegeneinander verrechnen.
   Deaktivieren und Löschen verlangen `confirmConnections=true`, sobald irgendein Zugang Personen
@@ -219,7 +219,7 @@ Entscheidung 11.
 Geheimnisse liest, speichert und verwirft nur `connection.token.ConnectionSecrets` über
 `SecretOwner.of`, das die Besitzart aus Anmeldeart und Bibliothek wählt: `LibraryOwned` (eigene
 Adresse, `source_credentials`), `LibraryOnProfile` (persönliches Geheimnis einer Bibliothek am
-Zugang, seit #2273 im Speicher), `PersonOwned` (verbundenes Konto), `ProfileOwned` (eigene
+Zugang im Speicher), `PersonOwned` (verbundenes Konto), `ProfileOwned` (eigene
 Anmeldung des Zugangs, keine Zeile), `SourceConsent` (OAuth-Zustimmung einer Bibliothek),
 `PendingConsent` (vor der Anlage). `ConnectionSecrets#current` wirft `SecretRefusedException` mit
 dem Sperrgrund; „ruhend“ und „deaktiviert“ werden bei jeder Herausgabe aus `AccountUsability`
@@ -249,10 +249,10 @@ und die Änderung der Quelleinstellungen einer Bibliothek am Zugang halten die P
 (`LibraryConnectionService#holdUnchanged`; abweichend `409 LIBRARY_CONNECTION_PROFILE_CHANGED`) —
 optimistisch, nach der Prüfung durch den Konnektor und vor dem ersten Schreiben, damit kein
 Netzzugriff unter der Sperre läuft. Dasselbe gilt für den Abschluss einer Zustimmung
-(ADR-0048, Entscheidung 3) und seit #2279 für das Verbinden mit persönlichem Geheimnis
+(ADR-0048, Entscheidung 3) und für das Verbinden mit persönlichem Geheimnis
 (`lockedVersion`, `409 CONNECTED_ACCOUNT_PROFILE_CHANGED`). Sperrreihenfolge überall: Profilzeile,
 dann Token-Zeile, dann Kontozeile; wer das Konto zuerst schreibt (`established`, `expire`), ruft
-vorher `ConnectionSecrets#lockHeld` (seit #2428).
+vorher `ConnectionSecrets#lockHeld`.
 Übergänge (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move` durch
 `SourceChangeGate`. `CONNECTION_PROFILE_RUN_IN_PROGRESS` lehnt eine Änderung ab, solange eine
 geteilte Bibliothek des Zugangs läuft; private halten sie nicht auf. Den Abgleichstand nach einer

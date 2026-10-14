@@ -75,15 +75,15 @@ geduldet" gibt es nicht.
 ### 6. Nachfolge-Sperre: eine Formel
 
 Eine Freigabe an „Alle" ist eine neue Freigabe wie jede andere und wird von
-`AssetGrantService#requireReachNotFrozenIfWidening` gesperrt; die Reichweitensperre liegt seit #2091
+`AssetGrantService#requireReachNotFrozenIfWidening` gesperrt; die Reichweitensperre liegt
 allein am Freigabe-Pfad.
 
 ### 7. Historisierung und Audit
 
-`asset_visibility_history` bleibt bestehen und trägt seit #2091 nur noch die Fremdzugangsfreigabe
+`asset_visibility_history` bleibt bestehen und trägt nur noch die Fremdzugangsfreigabe
 (`external_access_state`, `external_access_expires_at`); Tabellen- und Klassennamen wurden bewusst nicht
 umbenannt. Die Freigabe an „Alle" wird über `ASSET_GRANT_GRANTED`/`_CHANGED`/`_REVOKED` protokolliert
-mit `"subjectType": "ALL_ACCOUNTS"` im Nutzinhalt (`ASSET_VISIBILITY_CHANGED` hat seit #2091 keinen
+mit `"subjectType": "ALL_ACCOUNTS"` im Nutzinhalt (`ASSET_VISIBILITY_CHANGED` hat keinen
 Schreiber mehr; der Enum-Wert bleibt, damit alte Protokollzeilen lesbar bleiben) und **ohne Subjekt im
 Audit-Eintrag**
 (`audit_log.subject_kind` kennt `USER` und `GROUP`): Eine Freigabe an alle ist nicht personenbezogen und

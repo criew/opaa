@@ -26,7 +26,7 @@ versionsunabhängig.
 `FullTextChunkSearch` liest `chunk_full_text` ohne Bedingung an `content_tsv_version`.
 `CURRENT_TSV_VERSION` steuert ausschließlich Füllstand und Reindex-Auswahl. Eine Zeile alter Fassung
 bleibt lexikalisch findbar; ihr fehlen nur die Lexeme der neueren Fassung, bis der Nachzug sie neu
-schreibt. Der Zähler `fullTextOutdatedChunks` der Zustandsübersicht (seit #1493, Zustand `OUTDATED`
+schreibt. Der Zähler `fullTextOutdatedChunks` der Zustandsübersicht (Zustand `OUTDATED`
 „Nachzug ausstehend") bedeutet: Abschnitte mit einer Zeile alter Fassung — findbar, nicht
 unsichtbar. Keine Migration, kein Backfill.
 

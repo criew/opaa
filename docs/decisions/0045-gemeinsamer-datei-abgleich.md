@@ -27,7 +27,7 @@ kennt keinen Konnektor und keinen Anbieter (`theFileSyncKnowsNoProvider`); eine 
 entsteht nicht. Nicht unter `indexing.source`, weil jedes direkte Unterpaket dort als Konnektor gilt
 (`connectorsDoNotKnowEachOther`). Entfernt wird nur über den Laufrahmen:
 `IndexingRun#removeWithAttachments` (Port `VanishedDocumentReconciler#removeWithAttachments`); `indexing.filesync` importiert `indexing.maintenance` nicht. Spring kennt das Paket nicht; was
-Transaktionen braucht (`ScanJournal`), liegt im Konnektor-Vertrag `indexing.spi` (seit #2720).
+Transaktionen braucht (`ScanJournal`), liegt im Konnektor-Vertrag `indexing.spi`.
 
 `FileSync` besitzt Vorfilter nach Endung und Größe, Merkmalsvergleich, Download-Pool und
 Temp-Dateien, Aufnahme über `DocumentIngestService`, Ordnerspiegel (`SourceFolderMirror`) und
@@ -70,7 +70,7 @@ Container, der beim Start nicht erreichbar ist, bekommt den Platzhalter
 (`FileSync#runChanges`, `ChangeStreams`) liest jeden Strom ab seinem Cursor und übernimmt den neuen nur,
 wenn kein Element vorübergehend scheiterte. Ein Löschbefund gilt nur für Bereiche, die in diesem
 Lauf erreichbar sind, wird erst angewendet, wenn alle Ströme gelesen sind, und verfällt, wenn ein
-Strom die Datei danach wieder als vorhanden meldet (seit #2430); die Löschbefunde eines Stroms, der
+Strom die Datei danach wieder als vorhanden meldet; die Löschbefunde eines Stroms, der
 nicht bis zur letzten Seite gelesen wurde, werden verworfen. Abgewählte Dateien warten wie
 Löschbefunde auf `applyRemovals`. `fullSyncNeeded` (Strukturänderung) merkt vor, dass der nächste
 Lauf ein Vollabgleich ist.
@@ -98,7 +98,7 @@ Lauf übergibt sie vor der ersten Seite (`FolderMemory`). Regeln:
 - Ein Ordner über einem Dokument, das vorgemerkt (ADR-0018) oder nicht indexiert ist, oder über
   einem Löschvermerk (Entscheidung 5) bekommt kein Merkmal übergeben. Meldet ein Store einen Ordner
   als unverändert, dessen Merkmal ihm nicht übergeben wurde, gilt der Container als unvollständig.
-- Grundlage `v2` seit #2201: Ein unter `v1` gemerktes Gedächtnis gilt nicht.
+- Grundlage `v2`: Ein unter `v1` gemerktes Gedächtnis gilt nicht.
 
 ### 5. Löschvermerk statt Zeilenzähler
 
@@ -114,7 +114,7 @@ die Aufrufer von `DocumentRepository#delete…` fest (einschließlich `@Modifyin
 `onlyTheRunRemovesThroughTheCleanupService` erlaubt die löschenden Methoden von
 `StaleDocumentCleanupService` nur dem Laufrahmen (`ModularArchitecture.RUN_REMOVERS`:
 `IndexingRunTemplate`, `IndexingRun`); Konnektoren und `FileSync` löschen über
-`IndexingRun#removeWithAttachments` (seit #2740).
+`IndexingRun#removeWithAttachments`.
 
 ### 6. Eine Runde über mehrere Läufe
 
@@ -163,7 +163,7 @@ Sonst entscheidet `FileStore#absenceProof` (`AbsenceProof`):
 - `LOCATION_IDENTITY` (SMB, Dropbox): Abgleich gegen die Präsenz der Runde; ein Ort, an dem in
   keinem Lauf eine Datei war, ist unter diesem Pfad weg. Präsenz schreibt jeder bestätigende Weg,
   auch Ereignis- und Änderungslauf.
-- `CHANGE_FEED` (SharePoint, seit #2408): Am Rundenende liest `FileSync` jeden Strom ab den zu
+- `CHANGE_FEED` (SharePoint): Am Rundenende liest `FileSync` jeden Strom ab den zu
   Rundenbeginn gehaltenen Cursorn bis zur letzten Seite; `Updated` geht durch die Aufnahme, Lösch- und
   Abwahlbefunde warten bis alle Ströme gelesen sind; erst nach fehlerfreiem Lesen folgt der Abgleich,
   dann werden die neuen Startcursor ausstehend. Die Runde schreibt ihre Präsenz bei jedem Speichern

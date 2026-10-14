@@ -38,7 +38,7 @@ absolute Obergrenze. Geprüft wird je Gruppe (`overall`, `category:*`, `difficul
 `delta ≥ −toleranz − ε` mit `ε = 1e-9`. `language:de` wird übersprungen, solange die Baseline die Gruppe nicht führt
 (`REDUNDANT_LANGUAGE_GROUP`): In `comic-characters` ist sie dieselbe Fallmenge wie
 `category:crosslingual` (deutsche Fragen gegen den englischen Korpus) und lieferte denselben Wert
-doppelt, seit #304 führt diese Baseline die Gruppe nicht mehr; `city-landmarks` führt und vergleicht sie.
+doppelt; diese Baseline führt die Gruppe nicht mehr, `city-landmarks` führt und vergleicht sie.
 
 ### 3. Relative Deckelung bei niedrigem Baselinewert
 

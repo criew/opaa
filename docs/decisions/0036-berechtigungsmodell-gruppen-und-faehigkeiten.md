@@ -53,7 +53,7 @@ Verzeichnisgruppen neben internen Gruppen, Gruppenpflege je Gruppe (Nextcloud) u
 Verantwortliche kann sich nicht entfernen" (GitLab). OPAA schreibt nie ins Verzeichnis. **Keine
 Super-Gruppe mit Inhaltszugriff:** `AssetAccessService#readableAssetIds` kennt keinen
 Systemverwalter-Bypass, und keine Fähigkeit aus Entscheidung 5 darf ihn einführen. Die Zusage gilt für
-Suche und Download gleichermaßen (seit #1828: `LibraryDocumentService#loadContent` prüft dieselbe
+Suche und Download gleichermaßen (`LibraryDocumentService#loadContent` prüft dieselbe
 Formel, die Systemverwaltung erhält ohne Grant `403`; Übernahme nur über die protokollierte
 Eigentumsübertragung). In der Verwaltung führt `effectiveRole` den Systemverwalter als `OWNER` —
 Verwalten ist nicht Lesen. Eine Störung wird über die Suchdiagnose mit Rechteprofil nachgestellt.
@@ -146,7 +146,7 @@ gilt eine Verzeichnisänderung erst ab der nächsten Anmeldung).
 | `CREATE_SPACE` | „Alle Konten"; der Standard-Space entsteht bei der ersten Anmeldung unabhängig davon |
 | `CREATE_LIBRARY` (Upload) | „Alle Konten" |
 | `CREATE_CONNECTOR_LIBRARY` | „Alle Konten", je Geltungsbereich (unten) |
-| `CREATE_PROMPT_LIBRARY` (seit #1901) | „Alle Konten": ein Prompt bindet kein Wissen und erreicht keine Quelle |
+| `CREATE_PROMPT_LIBRARY` | „Alle Konten": ein Prompt bindet kein Wissen und erreicht keine Quelle |
 | `CREATE_INTERNAL_GROUP` | niemand |
 
 Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsweit freigeben",
@@ -156,7 +156,7 @@ Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsw
   (`CapabilitySubjectType`), Eindeutigkeit je (Organisation, Fähigkeit, Subjekt, Geltungsbereich),
   Historie `capability_grant_history`. Auswertung `CapabilityService#hasCapability` =
   `SYSTEM_ADMIN ∨ ALL_ACCOUNTS ∨ Nutzer ∨ eine seiner Gruppen`, über `GroupMembershipResolver`.
-- **Geltungsbereich** (seit #2159, ADR-0041): `CREATE_CONNECTOR_LIBRARY` trägt `scope` =
+- **Geltungsbereich** (ADR-0041): `CREATE_CONNECTOR_LIBRARY` trägt `scope` =
   `TYPE:<Schlüssel>` oder `PROFILE:<Kennung>`, Pflicht für diese Fähigkeit, leer für alle anderen; rights
   deutet den Wert nicht, connections prüft ihn und löscht die Grants eines gelöschten Profils. Der
   Geltungsbereich wählt einen Anlegepfad, ist kein Gegenstand im Sinn einer Befugnis und bleibt an Gruppen
@@ -164,7 +164,7 @@ Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsw
   aus; der Seed vergibt die fünf ursprünglichen Typen (`FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED`,
   `CONFLUENCE`, `S3`). `GET /api/v1/me/capabilities` führt die Fähigkeit als Zeichenkette, sobald sie in
   einem Geltungsbereich gilt; welcher Weg nutzbar ist, liefern `GET /api/v1/source-types` und die Zugänge
-  je Eintrag (seit #2495 nur noch nutzbare). Entzug wirkt nur auf die Neuanlage — das Anlegen einer
+  je Eintrag (nur noch nutzbare). Entzug wirkt nur auf die Neuanlage — das Anlegen einer
   Bibliothek und das erstmalige Verbinden eines Kontos auf einem Profil; neu verbinden, trennen und
   löschen zählen nicht dazu. Läufe stoppt allein die Sperre von Typ oder Profil in connections.
 - **Verhältnis:** `SYSTEM_ADMIN` besitzt jede Fähigkeit implizit; Fähigkeiten sind nie Leserechte;
@@ -178,14 +178,14 @@ Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsw
   Verwaltungsübersicht zeigt je Fähigkeit
   den Stand als Klartextzeile. Vergabe und Entzug sind Governance-Ereignisse
   (`CAPABILITY_GRANTED`/`_REVOKED`).
-- **Nur-Besitzerin-Regel** (seit #2159): `assets.owner_only`, beim Anlegen gesetzt, unveränderlich,
+- **Nur-Besitzerin-Regel**: `assets.owner_only`, beim Anlegen gesetzt, unveränderlich,
   verlangt `owner_type = USER`; rights erzwingt sie an jedem Grant, an der Freigabestufe, bei der
   Eigentumsübertragung und in der Nachfolge (eine private Bibliothek wird nie „Nachfolge offen", sie
   folgt ADR-0041). Keine Stufe der Freigabe-Obergrenze, auch die Systemverwaltung kann sie nicht lockern;
   Space-Zuordnungen privater Bibliotheken sieht nur die Besitzerin. „Sicht als" liefert eine private
   Bibliothek nie. Einen Vorfallszugriff auf private Bibliotheken gibt es nicht (#2171): OPAA hält nur eine
   Kopie, ein Vorfall wird in der Originalquelle untersucht.
-- **Das Verbindungsprotokoll liest `AUDITOR`** (seit #2159) über `AuditAccessGate` (Anlass, begrenzter
+- **Das Verbindungsprotokoll liest `AUDITOR`** über `AuditAccessGate` (Anlass, begrenzter
   Zeitraum, eigener Zugriffseintrag); `SYSTEM_ADMIN` liest es nicht. Keine Fähigkeit (nie ein Leserecht),
   keine neue Systemrolle (`SystemRole` ist einwertig). In Kauf genommen: `AUDITOR` kann aus dem
   Rollen-Claim stammen (ADR-0025, Entscheidung 4).
@@ -320,7 +320,7 @@ setzt eine bewusste Handlung der Verantwortlichen voraus. Drei Festlegungen:
 | --- | --- | --- | --- |
 | Verantwortliche einer internen Gruppe | ja | voll | ja |
 | `SYSTEM_ADMIN` | ja | voll | ja — der Abruf ist das Audit-Ereignis `GROUP_MEMBERS_READ` |
-| Wer der Gruppe an einem Objekt ein Recht einräumt oder verwaltet, solange die Gruppe dort ein Recht hält | ja | heutige Zahl aktiver Konten, ohne Mindestgruppengröße | ja, auch bei kleinen Gruppen (seit #2134); **außer bei geschützten Gruppen** |
+| Wer der Gruppe an einem Objekt ein Recht einräumt oder verwaltet, solange die Gruppe dort ein Recht hält | ja | heutige Zahl aktiver Konten, ohne Mindestgruppengröße | ja, auch bei kleinen Gruppen; **außer bei geschützten Gruppen** |
 | Rechtevergebende in der Subjekt-Auswahl | Anbietergruppen: ja; interne nur, wenn freigegeben | Zahl aktiver Konten; unterhalb der Mindestgruppengröße „kleine Gruppe" | nein |
 | Mitglied | seine eigenen Gruppen mit Verantwortlichen | Größe | nein |
 | Sonstige | nichts | — | — |
@@ -344,7 +344,7 @@ niemanden (`GroupMemberDisclosure`); die Herleitung zeigt Dritten bei ihr nur di
 Gruppenableitung.
 
 **Der Bericht des Verzeichnisabgleichs ist ein zweiter Weg zu den Namen und wird protokolliert, nicht
-maskiert** (seit #1991, `DirectorySyncReportDisclosure`): Jede Antwort an die Systemverwaltung, die
+maskiert** (`DirectorySyncReportDisclosure`): Jede Antwort an die Systemverwaltung, die
 Namen ausliefert (ausstehender Plan, Probelauf, Lauf von Hand, Bestätigung), schreibt vor der Antwort
 `DIRECTORY_SYNC_REPORT_READ` mit Weg, Anbieter, Zahl der Gruppen und Personen — nie den Namen;
 scheitert der Eintrag, scheitert die Antwort. Ein Bericht ohne Namen schreibt nichts, der
@@ -399,13 +399,13 @@ liegen im Paket `io.opaa.permission`; `library`, `group` und `space` hängen nur
 Pakets, `ModularArchitectureTest` hält die Richtung (Modulregeln: `backend/AGENTS.md`,
 `backend/src/main/java/io/opaa/permission/AGENTS.md`).
 
-**Asset-Schale** (seit #1899/#1900): Die Typunabhängigkeit der Grants wird über die gemeinsame Tabelle
+**Asset-Schale:** Die Typunabhängigkeit der Grants wird über die gemeinsame Tabelle
 `assets` gehalten (Kennung, Typ, Organisation, Name, Eigentümer, Herkunft), auf die jede Typtabelle
 zeigt (`KnowledgeLibrary extends Asset`, Paket `io.opaa.asset`); `asset_grants` und
 `space_asset_associations` verweisen mit Fremdschlüssel auf `assets`. Katalog, Nachfolge
 (`succession_cases.asset_type`) und Reichweitensperre sind eine Abfrage über die Schale. Ein neuer Typ ist
 eine Tabelle, eine Entität, eine `AssetTypeDefinition` und ein Wert in `AssetType` sowie in
-`chk_audit_log_object_type` (seit #1901 die Prompt-Bibliothek). Das Inhaltsrecht
+`chk_audit_log_object_type` (auch die Prompt-Bibliothek). Das Inhaltsrecht
 (`AssetAuthorization#requireContentRole`), die Eigentümergruppe beim Anlegen
 (`AssetGrantService#requireOwnableGroup`) und die Eigentümernamen (`AssetOwnerNames`) leben in der Schale.
 `io.opaa.asset` hängt von `io.opaa.permission` ab, nicht umgekehrt, und kennt weder `library` noch

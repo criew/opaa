@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich seit #2149 über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
 
 ## Kontext
 
@@ -29,7 +29,7 @@ einen Bereich sichert allein der Record. Was typübergreifend Regeln hat, bleibt
 `source_url` (Zieladressprüfung, Ursprungsbindung), Zugangsdaten verschlüsselt in
 `source_credentials`, Zeitplan. **Geheimnisse stehen nie in `source_settings`** — die Spalte ist
 unverschlüsselt und erscheint in `LibraryResponse`. Seit #2496 gibt es keinen Proxy je Bibliothek
-(hausweiter Ausgangsproxy, ADR-0050), seit #2537 keinen Schalter zum Aussetzen der
+(hausweiter Ausgangsproxy, ADR-0050) keinen Schalter zum Aussetzen der
 Zertifikatsprüfung; `S3SdkClient` setzt `TRUST_ALL_CERTIFICATES` nicht.
 
 ### 2. Geltungsbereiche: eine Liste von (Bucket, Präfix), mindestens einer, ohne Überlappung
@@ -78,7 +78,7 @@ leeren.
 ### 4. Änderungserkennung: der ETag ist das Änderungsmerkmal, die SHA-256 die Prüfsumme
 
 `documents.last_modified_remote` trägt `e:<ETag>|<Größe>` (`S3ChangeMarker`), unabhängig von der
-ETag-Länge (seit #2482, Spalte `text`); nur ein Speicher ohne ETag bekommt die Rückfallform
+ETag-Länge (Spalte `text`); nur ein Speicher ohne ETag bekommt die Rückfallform
 `t:<LastModified als Epochenmillisekunden>|<Größe>`. `LastModified` ist nie Teil des Merkmals:
 Kopie, Metadatenänderung und Replikation setzen den Zeitstempel neu, ohne dass sich etwas ändert,
 und es gibt keinen Fall, in dem sich der Inhalt ändert und ETag und Größe gleich bleiben. Stimmt das

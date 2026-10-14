@@ -134,7 +134,7 @@ Leeren von `roles_claim` — eine Anbieteränderung, keine Rollenvergabe. Gruppe
 (`TokenGroupSynchronizer`), getrennt je Anbieter über `groups.provider_id` (ADR-0036,
 Entscheidung 2; `external_id` trägt den Gruppennamen, ein Name über 255 Zeichen wird übersprungen
 und protokolliert) — hebt die Festlegung von ADR-0005 auf, dass Gruppen nur über `DirectoryClient`
-kommen. Der Verzeichnisabgleich hängt seit #1816 an der Anbieterzeile (`directory_sync_enabled`,
+kommen. Der Verzeichnisabgleich hängt an der Anbieterzeile (`directory_sync_enabled`,
 ADR-0036, Entscheidungen 2 und 3), löst Mitglieder issuergebunden auf
 (`UserRepository#findByOrganizationIdAndIssuerAndSubjectIn`) und verwaltet nur `ORG_UNIT`-Gruppen.
 Alle Anbieter provisionieren in `Organization.DEFAULT_ID`.

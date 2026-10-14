@@ -9,9 +9,8 @@ werden in der CI geprüft (`.github/scripts/check_adr_style.sh`).
 
 - Eine Änderung an einer Entscheidung **ändert den Kerntext** der betroffenen Entscheidung. Es gibt
   keine Nachträge, keine „Überholt“-Kästen und keinen stehen bleibenden alten Wortlaut.
-- Eine geänderte Entscheidung trägt genau einen Halbsatz „seit #NNNN“, ohne Beschreibung des
-  früheren Zustands. Einen Abschnitt „Änderungsverlauf“ gibt es nicht; wer die Historie braucht,
-  liest `git log` der Datei.
+- Eine geänderte Entscheidung beschreibt nur den neuen Zustand: kein „seit #NNNN“, kein
+  „vorher“, kein Abschnitt „Änderungsverlauf“. Wer die Historie braucht, liest `git log` der Datei.
 - Bringt eine Fortschreibung **eigene Entscheidungen** mit oder würde sie **mehr als etwa 40 Zeilen**
   umfassen, wird sie ein neuer ADR; der bestehende verweist in der Statuszeile („ergänzt durch
   ADR-XXXX“) und in der betroffenen Entscheidung darauf.

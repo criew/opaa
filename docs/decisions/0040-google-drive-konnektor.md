@@ -53,7 +53,7 @@ Zeitlimit, Größengrenze, keine Weiterleitung), das Zugriffstoken an `API_BASE`
 der Schlüsseldatei, aus `source_settings` oder einer Antwort; `exportLinks`, `webContentLink` und die
 Download-URI von `files.download` werden nie mit Token abgerufen. API-Aufrufe und Downloads nutzen
 `REJECT_OFF_ORIGIN`. Gespeicherte Zugangsdaten übernimmt der Kern nur bei gleichem, gegen die
-normalisierte Adresse verglichenem Ursprung (`KnowledgeLibraryService`), seit #2496 geprüft an einer
+normalisierte Adresse verglichenem Ursprung (`KnowledgeLibraryService`) geprüft an einer
 Änderung ohne Verbindungsfeld.
 
 ### 4. Profilangabe und domänenweite Delegation
@@ -70,7 +70,7 @@ Funktionskonto ist, kann OPAA nicht. Am Zugang setzt nur der Zugang `subject` (`
 ein Wert der Bibliothek ist `400`, fehlt er am Zugang, wird niemand imitiert. Eine Änderung verwirft
 den Abgleichstand aller Bibliotheken auf dem Zugang (ihr nächster Lauf ist ein Vollabgleich), nennt
 vorher die Zahl der Bibliotheken, benachrichtigt danach ihre Verwaltenden und wird abgelehnt,
-solange eine läuft; der Schlüssel bleibt am Zugang (seit #2220). Das Handbuch verlangt ein
+solange eine läuft; der Schlüssel bleibt am Zugang. Das Handbuch verlangt ein
 Funktionskonto und empfiehlt für Delegation einen Zugang. Die Prüfung einer Bibliothek vor dem
 Speichern meldet sich nicht bei Google an (`EffectiveSourceSettings#ofDraftToValidate`),
 Verbindungstest und Auflistung tun es. Persönliche Ablagen echter Personen sind nicht Teil dieses

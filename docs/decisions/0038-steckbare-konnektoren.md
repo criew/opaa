@@ -30,7 +30,7 @@ Konnektor Schlüssel, Anzeigename und diese Fähigkeiten. Das Enum `DocumentSour
 ADR-0017 sind entfallen; der Kern kennt nur noch `UPLOAD` als Sonderfall.
 
 Konnektoren je in einem Unterpaket von `io.opaa.indexing.source`, ihr Vertrag in `io.opaa.indexing.spi`
-(seit #2720; Handbuch: `docs/handbuch/konnektoren/`):
+(Handbuch: `docs/handbuch/konnektoren/`):
 
 | Schlüssel | Paket | seit |
 |---|---|---|
@@ -83,7 +83,7 @@ Feld in der Adressregel käme erst, wenn ein Konnektor einen zweiten Host aus de
 Der Konnektor bekommt Ziel, Geheimnis und Einstellungen nur vom Kern als aufgelöste `SourceSettings`,
 auch im Lauf und beim Originalabruf; Profil, Refresh-Token, Client-Secret, Dienstkonto-Schlüssel und
 OAuth-Ablauf sieht er nie (ADR-0041, Entscheidung 3a, ArchUnit-Regel in `ModularArchitectureTest`):
-Resolver und Dienstkonto-Schlüssel liegen in `io.opaa.indexing.credentials`, das kein Konnektor nutzt (seit #2720).
+Resolver und Dienstkonto-Schlüssel liegen in `io.opaa.indexing.credentials`, das kein Konnektor nutzt.
 
 ### 4. Abbildung in OpenAPI: freies Objekt, `sourceType` als Diskriminator daneben
 

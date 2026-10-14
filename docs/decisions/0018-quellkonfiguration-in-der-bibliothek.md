@@ -64,7 +64,7 @@ ist: Der nächste Lauf nähme das Dokument wieder auf.
 
 ### 6. Anlage über Fähigkeiten; Allowlist und Zieladressprüfung sichern unabhängig davon
 
-Wer eine Bibliothek anlegen darf, bestimmt seit #1810 eine vergebbare Fähigkeit (`CREATE_LIBRARY`,
+Wer eine Bibliothek anlegen darf, bestimmt eine vergebbare Fähigkeit (`CREATE_LIBRARY`,
 `CREATE_CONNECTOR_LIBRARY`; ADR-0036 Entscheidung 5, umgesetzt in `CapabilityService`), ausgeliefert
 an „Alle Konten“, sodass sich für Bestandsinstallationen nichts ändert. Die Obergrenze der Freigabe
 konnektorgespeister Bibliotheken regelt ADR-0037. Unabhängig davon, wer anlegt, sichern zwei

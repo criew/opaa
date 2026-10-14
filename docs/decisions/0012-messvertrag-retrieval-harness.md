@@ -86,7 +86,7 @@ Chunking-Varianten (Entscheidung 11). Report `retrieval-metrics[-<domäne>].json
 | MRR | Kehrwert des Rangs des ersten relevanten Treffers im Fenster, sonst 0 (faktisch MRR@10) |
 | Recall@k | `Treffer in top-k / |erwartete Dokumente|`, nicht auf `min(k, |erwartet|)` normiert; die erreichbare Obergrenze steht je Gruppe als `recallAt10Ceiling` im Report |
 | Fenster | Hit Rate@5 (was ein Nutzer bei kleinem `top-k` sieht), MRR@10, nDCG@10, Recall@10 (`RetrievalMetrics.HIT_RATE_K`, `NDCG_K`, `RECALL_K`); bewusst ungleich, eine Tabelle mit vier Spalten suggeriert sonst Vergleichbarkeit |
-| Mittelung | Mikro-Mittel über Anfragen, je Gruppe `overall`, `category:*`, `difficulty:*`, `language:*` (`MetricsAggregate`); `language:de` wird übersprungen, solange die Baseline die Gruppe nicht führt (`comic-characters` seit #304 nicht mehr, weil sie dort dieselbe Fallmenge wie `category:crosslingual` ist, ADR-0013); `city-landmarks` führt und vergleicht sie |
+| Mittelung | Mikro-Mittel über Anfragen, je Gruppe `overall`, `category:*`, `difficulty:*`, `language:*` (`MetricsAggregate`); `language:de` wird übersprungen, solange die Baseline die Gruppe nicht führt (`comic-characters` nicht mehr, weil sie dort dieselbe Fallmenge wie `category:crosslingual` ist, ADR-0013); `city-landmarks` führt und vergleicht sie |
 | Fallzähler | `hitCountAt5`, `hitCountAt10`, `distinctExpectedDocumentSets` (= `n_eff` von ADR-0013), `allExpectedDocumentsHitAt10` je Gruppe |
 | Einzelfälle | `allQueryResults` führt jede Anfrage mit ihren Metriken, damit Kreuzauswertungen ohne neuen Lauf möglich sind |
 
@@ -172,7 +172,7 @@ ungültig und keine Metrik wird verglichen.
 
 Der Pipeline-Pfad misst auf demselben einmal indizierten Korpus die Endauswahl der produktiven
 Pipeline über denselben Einstieg wie eine Chat-Anfrage: `RetrievalContextFactory#contextFor` und
-`RetrievalPipeline#run` (Entscheidung 37, seit #1455). Der Suchbereich wird übergeben, nicht
+`RetrievalPipeline#run` (Entscheidung 37). Der Suchbereich wird übergeben, nicht
 aufgelöst (Entscheidung 14): genau die Eval-Bibliothek mit dem ganzen Korpus; Rechtedurchsetzung
 ist nicht Messgegenstand. Die Ähnlichkeitsschwelle ist **angewandt**, das Fenster ist das
 produktive `top-k`. Der Pipeline-Pfad ersetzt den Rohvektor-Pfad nicht; er ist der einzige, der
@@ -213,12 +213,12 @@ Harness misst die Endauswahl ohne Nachbar-Chunks (Entscheidung 67).
 | `fetchK` | 25 | 2 (ausgewiesen seit 1) | Kandidatenzahl je Suchliste |
 | `topK` | 20 | 1 | das Fenster; der Harness verweigert einen Lauf, dessen `top-k` von `RANKING_K` abweicht |
 | `similarityThreshold` | 0,3 | 2 | hier angewandt, entfernt Dokumente aus der Liste |
-| `maxChunksPerDocument` | 1 | 2 | Dokument-Vervollständigung (Wert seit #2502) |
+| `maxChunksPerDocument` | 1 | 2 | Dokument-Vervollständigung |
 | `mmrLambda` | 1,0 | 2 | Diversifizierung |
 | `fusion.method`, `.subQueryQuota`, `.vectorWeight`, `.guaranteedPerList` | `RRF`, `true`, 0,7, 1 | 21 | wie die Listen zur Auswahl werden; auch wirkungslose Werte (`vectorWeight` nur unter `SCORE`) gehören dazu, weil ein Moduswechsel sie wirksam macht |
 | `relevanceCutoff.mode`, `.minChunks`, `.relativeThreshold`, `.kneeDrop` | `FIXED`, 10, 0,6, 0,25 | 21 | der Relevanzschnitt der Auswahl |
 | `fullTextSearchEnabled` | `true` | 3 | ob der lexikalische Pfad in die Fusion einging (Entscheidung 22) |
-| `fullTextIndexUpToDate` | `true` | 3 (umbenannt 7 und 12) | ob jede Zeile des Volltextindex der Bibliothek auf der aktuellen `content_tsv_version` stand; seit 12 nur noch der Fassungs-Rückstand, weil die Zeile selbst seit #1047 in derselben Transaktion wie der Vektor entsteht |
+| `fullTextIndexUpToDate` | `true` | 3 (umbenannt 7 und 12) | ob jede Zeile des Volltextindex der Bibliothek auf der aktuellen `content_tsv_version` stand; seit 12 nur noch der Fassungs-Rückstand, weil die Zeile selbst in derselben Transaktion wie der Vektor entsteht |
 | `queryDecompositionEnabled`, `maxSubQueries`, `chatModel` | `false`, 3, `null` | 1 (`maxSubQueries` 2) | Entscheidung 15: ohne Zerlegung gemessen; ein Modellname auf einer Seite allein macht die Baseline ungültig (Entscheidung 20) |
 | `hitRateK`, `rankingK` | 5, 20 | 2 | die Fenster, die die Feldnamen wörtlich führen |
 
@@ -562,7 +562,7 @@ bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `Co
 
 - `contextPrefixFingerprint` deckt nicht jede Stelle ab, die die Einbettungseingabe bewegt
   (Entscheidung 57); die Stetigkeitsprüfung prüft ein Modell an einem Text (Entscheidung 69).
-- Die Harnesse pinnen `nomic-embed-text:v1.5`, während das Produkt seit #2618 `bge-m3` ab Werk
+- Die Harnesse pinnen `nomic-embed-text:v1.5`, während das Produkt `bge-m3` ab Werk
   nutzt; die Baselines beschreiben nicht das ausgelieferte Embedding-Modell.
 - Die Anker der harten Untergrenze des Pipeline-Pfads sind vor der ersten Messung gesetzt und seither
   nicht neu bewertet.
@@ -593,6 +593,6 @@ bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `Co
 - Welches Chat-Modell der Einzelfragen-Pipeline-Pfad mit aktiver Zerlegung messen soll; die
   Entscheidung erhöht die Pipeline-Version und zieht die Pipeline-Baselines neu
   (`docs/features/retrieval-benchmark.md`, „Offene Punkte“).
-- Wechsel der Harnesse auf `bge-m3`, das Vorgabemodell des Produkts seit #2618.
+- Wechsel der Harnesse auf `bge-m3`, das Vorgabemodell des Produkts.
 - Wiederaufnahme der Rangreserve als Kriterium nur unter der in „Berichtsgrößen ohne
   Vertragscharakter“ genannten Bedingung.

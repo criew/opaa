@@ -3,7 +3,8 @@
 # line under "## Status") starts with "Akzeptiert" or "Ersetzt durch" and names
 # "zuletzt geändert JJJJ-MM-TT"; no appended "Nachtrag"/"Nachträge"/"Überholt" blocks (headings or bold
 # lead-ins, also inside indented block quotes); no sub-issue cut
-# ("Zuschnitt der ... Sub-Issues"); no "## Änderungsverlauf" section (git log is the history).
+# ("Zuschnitt der ... Sub-Issues"); no "seit #NNNN" markers and no "## Änderungsverlauf" section
+# (git log is the history).
 # Any finding fails the run (exit 1).
 set -euo pipefail
 
@@ -54,7 +55,13 @@ for adr in ${ADRS[@]+"${ADRS[@]}"}; do
     report "$adr" "$line" "sub-issue cut belongs into the epic, not into the ADR"
   done < <(grep -nE '^#+ .*Zuschnitt der' "$adr" || true)
 
-  # (d) no change log section: git log is the history
+  # (d) no "seit #NNNN" markers: git log is the history
+  while IFS=: read -r line content; do
+    [ -n "$line" ] || continue
+    report "$adr" "$line" "\"seit #NNNN\": describe the current state only, the history is git log"
+  done < <(grep -nE 'seit #[0-9]+' "$adr" || true)
+
+  # (e) no change log section: git log is the history
   while IFS=: read -r line content; do
     [ -n "$line" ] || continue
     report "$adr" "$line" "section \"## Änderungsverlauf\": the history is git log, drop the section"

@@ -72,7 +72,7 @@ Vorher/Nachher der geänderten Schlüssel.
 Schalter der lokalen Verwaltung (Standard `false`, Audit `LOCAL_ACCOUNTS_ENABLED/_DISABLED`);
 `GET /api/v1/auth/config` führt sie als `localAccounts { enabled, selfRegistrationEnabled,
 passwordResetEnabled, passwordMinLength }`. Gegenüber ADR-0025, Entscheidung 3: `is_default` steuert
-nur noch Anmeldevorschlag und Löschschutz (der Verzeichnisabgleich hängt seit #1816 an der
+nur noch Anmeldevorschlag und Löschschutz (der Verzeichnisabgleich hängt an der
 Anbieterzeile, ADR-0036); ein Zustand ohne OIDC-Anbieter ist zulässig; der letzte aktivierte
 OIDC-Anbieter darf deaktiviert oder gelöscht werden, wenn ein gesicherter lokaler Systemverwalter
 existiert (409 `LAST_LOGIN_CAPABLE_ADMIN` sonst) und der Aufruf `acknowledgeLastProvider` trägt;
@@ -92,7 +92,7 @@ Anbieter- und Rollenänderung für 15 Minuten blockieren.
 Der lokale Decoder (Entscheidung 8) ist unabhängig von `enabled` registriert; bei `enabled = false`
 werden Login und Token regulärer lokaler Konten abgewiesen, lokale `SYSTEM_ADMIN`-Konten passieren.
 Der Marker `local_accounts_disabled` steht nur auf dem Token-Pfad und wird im Validator **vor** den
-Widerrufsprüfungen gelesen (seit #1595, sonst wäre er für ein bestehendes Token unerreichbar); davor
+Widerrufsprüfungen gelesen (sonst wäre er für ein bestehendes Token unerreichbar); davor
 steht nur `malformed_token`, denn ohne `sub` ist nicht feststellbar, ob ein `SYSTEM_ADMIN`-Konto
 passieren darf. Der Login antwortet mit derselben Einheitsantwort wie bei falschem Passwort. Das Abschalten widerruft
 die Sitzungen regulärer Konten zusätzlich eifrig (`ADMIN`, je Konto ein Audit-Ereignis).
@@ -165,7 +165,7 @@ keine `client_id`. Abgewiesene Tokens tragen in `WWW-Authenticate` den Grund (`L
 `malformed_token`, `unknown_account`, `local_accounts_disabled`, `account_not_active`, `account_locked` (`admin | failed_logins | inactivity`),
 `account_expired`, `session_revoked` (`admin_lock | password_changed | admin_reset | admin_action |
 reuse_detected | handed_over`); die SPA startet keine Erneuerung und zeigt den Grund.
-`admin_reset` bezeichnet seit #1595 nur ein tatsächlich zurückgesetztes Passwort, `admin_action` den
+`admin_reset` bezeichnet nur ein tatsächlich zurückgesetztes Passwort, `admin_action` den
 Verwaltungsakt ohne Passwort (Abschalten). `UserService#provisionFromToken` behandelt den lokalen
 Issuer als Finder, nie als Anleger: Ein Token mit unbekanntem `sub` führt zu 401, nicht zu einem
 neuen Konto; `email` und `display_name` werden nicht aus dem Token zurückgeschrieben;
@@ -352,7 +352,7 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
 | Letzter OIDC-Anbieter nur mit geprüfter Vorbedingung deaktivierbar | gilt | #1534 |
 | Fehlversuche nicht im Nachweisprotokoll, nur die Sperre | gilt | — |
 | Kein Personenbezug im Klartext im Protokoll; Vorher/Nachher nur für `expires_at` | gilt | — |
-| Kontenliste: Aktivität nur als Klasse, keine Sortierung danach, kein Export, kein Massenabruf | gilt; Liste führt seit #1601 alle Konten, Aktivitätsklasse nur an lokalen Zeilen | #1601 |
+| Kontenliste: Aktivität nur als Klasse, keine Sortierung danach, kein Export, kein Massenabruf | gilt; Liste führt alle Konten, Aktivitätsklasse nur an lokalen Zeilen | #1601 |
 | `LOCAL_SESSION_REVOKED` nur fremdveranlasst; Zähler nie ausgegeben | gilt | — |
 | Offener Rücksetzweg bei Fehlversuch-Sperre; Anlass bei erzwungenem Wechsel und im Sitzungsmarker | gilt | #1595 (`admin_action`) |
 | Anlagegrund zweckgebunden und für die Person sichtbar | gilt | — |
