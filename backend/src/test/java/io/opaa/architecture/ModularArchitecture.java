@@ -506,13 +506,14 @@ public final class ModularArchitecture {
   static final String CONNECTOR_PARENT = "indexing.source";
 
   /**
-   * The reads of a library's source configuration, relative to the root, that a connector leaves to
-   * the core: it takes target, secret and settings as {@code SourceSettings} or {@code
-   * ConnectorData} (ADR-0041, Entscheidung 3a). {@code getSourcePath} and {@code getWebhookSecret}
-   * stay readable.
+   * The members, relative to the root, that a connector leaves to the core: the reads of a
+   * library's source configuration - it takes target, secret and settings as {@code SourceSettings}
+   * or {@code ConnectorData} (ADR-0041, Entscheidung 3a); {@code getSourcePath} and {@code
+   * getWebhookSecret} stay readable - and the start of a job, which binds a run to its library.
    */
-  static final Set<String> CORE_ONLY_SOURCE_READS =
+  static final Set<String> CORE_ONLY_MEMBERS =
       Set.of(
+          "indexing.job.IndexingJobService#startJob",
           "knowledge.KnowledgeLibrary#getSourceCredentials",
           "knowledge.KnowledgeLibrary#getSourceUrl",
           "knowledge.KnowledgeLibrary#getSourceSettings",
@@ -522,9 +523,9 @@ public final class ModularArchitecture {
    * The packages of indexing a connector and the file sync may use, relative to the root: neither
    * sees the resolvers, the service account key, the registry or the triggers (ADR-0040,
    * Entscheidung 2). Not checked here but at run time: the frame in {@code indexing.run} resolves a
-   * library's source only for a body defined by the executor class registered for its source type,
-   * so a connector's body never sees the secret of a library of another type; one of its own type
-   * stays reachable until #2772.
+   * library's source only for a body defined by the executor class registered for its source type
+   * and a running job the core started for that library, so a connector's body sees the secret of
+   * no library the core did not hand it.
    */
   static final Set<String> CONNECTOR_IMPORTS =
       Set.of(
@@ -1010,9 +1011,9 @@ public final class ModularArchitecture {
         .should()
         .accessTargetWhere(
             DescribedPredicate.describe(
-                "read a source configuration listed in ModularArchitecture.CORE_ONLY_SOURCE_READS",
+                "access a member listed in ModularArchitecture.CORE_ONLY_MEMBERS",
                 access ->
-                    CORE_ONLY_SOURCE_READS.contains(
+                    CORE_ONLY_MEMBERS.contains(
                         relative(access.getTargetOwner().getPackageName())
                             + "."
                             + access.getTargetOwner().getSimpleName()
@@ -1030,8 +1031,8 @@ public final class ModularArchitecture {
                       && !CONNECTOR_IMPORTS.contains(relative);
                 }))
         .because(
-            "a connector takes target, secret and settings from the core, which resolves them"
-                + " (ADR-0041, Entscheidung 3a)")
+            "a connector takes target, secret, settings and its jobs from the core, which resolves"
+                + " them (ADR-0041, Entscheidung 3a)")
         .allowEmptyShould(true);
   }
 

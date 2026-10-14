@@ -41,12 +41,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * The frame every connector run shares: it refuses a body not defined by the executor class
- * registered for the library's source type, starts the job's progress and protocol, rejects a run
- * mode the executor does not declare, resolves the library's source through the {@link
- * SourceConnectionResolver}, runs the connector's body, reconciles by absence when the body listed
- * the source completely and the mode allows it, notes throttling and a spent budget from the run's
- * request meter, persists the listing assessment and the run's cost, and ends the job exactly once
- * - completed, or failed with a German message.
+ * registered for the library's source type or a job not started for the library, starts the job's
+ * progress and protocol, rejects a run mode the executor does not declare, resolves the library's
+ * source through the {@link SourceConnectionResolver}, runs the connector's body, reconciles by
+ * absence when the body listed the source completely and the mode allows it, notes throttling and a
+ * spent budget from the run's request meter, persists the listing assessment and the run's cost,
+ * and ends the job exactly once - completed, or failed with a German message.
  *
  * <p>A body ends its run early by throwing {@link IndexingRunFailedException} with the message the
  * job should carry. A {@link RequestBudgetExhaustedException} ends the run as truncated - noted
@@ -166,8 +166,8 @@ public class IndexingRunTemplate {
    * another fingerprint is not continued, and a run whose settings change meanwhile removes nothing
    * for being absent. {@code executors}, when given, admits only a body whose nest host is the
    * executor class registered for the library's source type - a lambda or method reference belongs
-   * to the class that defines it. Anything else fails the job before the library's source is
-   * resolved; a library of the connector's own type stays reachable to it.
+   * to the class that defines it - and only for a running job the core started for that library.
+   * Anything else fails the job before the library's source is resolved.
    */
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -388,9 +388,10 @@ public class IndexingRunTemplate {
   }
 
   /**
-   * The body must come from the class the core hands a library of this source type to; a proxy of
-   * the registered executor counts as the class it wraps. A refused job is failed at once, so it
-   * does not hold the library until the recovery.
+   * The body must come from the class the core hands a library of this source type to - a proxy of
+   * the registered executor counts as the class it wraps - and {@code jobId} must be a running job
+   * the core started for this library. A refused job is failed at once, so it does not hold the
+   * library until the recovery.
    */
   private void requireRegistered(UUID jobId, KnowledgeLibrary library, RunBody body) {
     if (executors == null) {
@@ -398,12 +399,13 @@ public class IndexingRunTemplate {
     }
     Class<?> host = body.getClass().getNestHost();
     if (executors
-        .get()
-        .find(library.getSourceType())
-        .filter(registered -> AopUtils.getTargetClass(registered).getNestHost() == host)
-        .isEmpty()) {
+            .get()
+            .find(library.getSourceType())
+            .filter(registered -> AopUtils.getTargetClass(registered).getNestHost() == host)
+            .isEmpty()
+        || !indexingJobService.isRunningFor(jobId, library.getId())) {
       indexingJobService.failJob(
-          jobId, "Lauf abgelehnt: Er stammt nicht vom Konnektor dieses Quellentyps");
+          jobId, "Lauf abgelehnt: Der Kern hat ihn diesem Konnektor nicht übergeben");
       throw new IllegalArgumentException(
           host.getName()
               + " may not run library "
