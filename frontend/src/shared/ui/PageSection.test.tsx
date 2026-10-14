@@ -19,14 +19,11 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob(
-    '../../features/{audit,mail,model,branding,identity-provider}/components/**/*.tsx',
-    {
-      query: '?raw',
-      import: 'default',
-      eager: true,
-    },
-  ) as Record<string, string>),
+  ...(import.meta.glob('../../features/*/components/**/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
   ...(import.meta.glob('../../components/admin/**/*.tsx', {
     query: '?raw',
     import: 'default',
@@ -80,13 +77,20 @@ const QUELLEN = {
 }
 
 /**
+ * Themen, deren Komponenten nicht unter die Regel fallen, weil sie keinen ruhenden Seiteninhalt
+ * tragen. Die Komponenten aller übrigen Themen gelten ohne Eintrag.
+ */
+const THEMEN_OHNE_REGEL = ['notification']
+
+/**
  * Die Dateien, für die die Regel gilt: der Verwaltungsbereich (#1608) und seit #1609 auch Chat,
  * Katalog und die Space-Ansichten. Nicht in der Liste steht, was gar keinen ruhenden Inhalt trägt
  * (Dialoge als eigene Dateien, Formularseiten ohne Blöcke).
  */
 const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
   if (pfad.startsWith('../../components/admin/') || pfad.includes('/searchadmin/')) return true
-  if (pfad.startsWith('../../features/') && pfad.includes('/components/')) return true
+  if (pfad.startsWith('../../features/') && pfad.includes('/components/'))
+    return !THEMEN_OHNE_REGEL.some((thema) => pfad.startsWith(`../../features/${thema}/`))
   if (pfad.startsWith('./list/') || pfad.startsWith('./markdown/')) return true
   if (pfad.startsWith('../../components/chat/') || pfad.startsWith('../../components/metadata/'))
     return true

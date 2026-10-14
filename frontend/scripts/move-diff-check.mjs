@@ -3,8 +3,10 @@
 // Pairs every changed file under frontend/src/ with its counterpart (rename, or same normalized
 // content) and compares both after resolving relative and @/ module paths to the module they name,
 // mapped back through the renames; a new theme index.ts that re-exports a module counts as that
-// module. Bindings and package paths compare literally. Any other change - outside frontend/src/,
-// a new file, an index.ts exporting a page - is a finding. No output means only files moved.
+// module, as does a new routes.ts re-exporting default exports of the theme's own pages.
+// Bindings and package paths compare literally. Any other change - outside frontend/src/, a new
+// file, an index.ts exporting a page, a routes.ts exporting anything else - is a finding.
+// No output means only files moved.
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,6 +16,7 @@ const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
 const SUFFIXES = ['', '.ts', '.tsx', '.d.ts', '.js', '.jsx', '.mjs', '.json']
 const INDEX_SUFFIXES = ['/index.ts', '/index.tsx', '/index.js']
 const THEME_INDEX = /^src\/features\/[^/]+\/index\.ts$/
+const THEME_ROUTES = /^src\/features\/([^/]+)\/routes\.ts$/
 
 // import/export … from '…' (clause may span lines) and side-effect imports, at line start.
 const CLAUSE = String.raw`\s*(?:\{[^}]*\}|\*(?:\s+as\s+[\w$]+)?|[\w$]+(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+[\w$]+))?)\s*`
@@ -207,10 +210,12 @@ export function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) 
     }
   }
 
-  // new theme index files: which module and export stands behind each exported name
+  // new theme index and routes files: which module and export stands behind each exported name
   const entries = new Map()
   const resolveNew = makeResolver(newSet)
-  for (const file of added.filter((f) => THEME_INDEX.test(f))) {
+  for (const file of added.filter((f) => THEME_INDEX.test(f) || THEME_ROUTES.test(f))) {
+    const routesTheme = file.match(THEME_ROUTES)?.[1]
+    const kind = routesTheme ? 'a routes.ts' : 'an index.ts'
     const source = readNew(file)
     const statements = parseStatements(source)
     const rest = source
@@ -218,7 +223,7 @@ export function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) 
       .split('\n')
       .filter((line) => line.trim() && !/^\s*(\/\/|\/?\*)/.test(line))
     if (rest.length > 0 || statements.some((s) => s.kind !== 'export' || !isLocal(s.spec))) {
-      findings.push(`${file}: an index.ts holds re-exports of local modules only`)
+      findings.push(`${file}: ${kind} holds re-exports of local modules only`)
       continue
     }
     const names = new Map()
@@ -228,11 +233,20 @@ export function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) 
         findings.push(`${file}: re-exports unresolvable ${statement.spec}`)
         continue
       }
-      if (/(^|\/)pages\//.test(target.file)) {
+      const isPage = /(^|\/)pages\//.test(target.file)
+      if (!routesTheme && isPage) {
         findings.push(`${file}: exports the page ${target.file}`)
+      }
+      if (routesTheme && !target.file.startsWith(`src/features/${routesTheme}/pages/`)) {
+        findings.push(`${file}: re-exports ${target.file}, no page of its theme`)
+        continue
       }
       for (const binding of statement.bindings) {
         const [imported, exported = imported] = binding.replace(/^type /, '').split(' as ')
+        if (routesTheme && imported !== 'default') {
+          findings.push(`${file}: re-exports ${imported} of ${target.file}, not the page itself`)
+          continue
+        }
         names.set(exported, { module: toBase(target.file), imported })
       }
     }
