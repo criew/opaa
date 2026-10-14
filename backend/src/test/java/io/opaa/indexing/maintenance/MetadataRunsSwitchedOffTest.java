@@ -12,6 +12,7 @@ import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.StoredDocumentSourceAccess;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.metadata.MetadataFillCounter;
 import io.opaa.metadata.ModelMetadataExtractor;
@@ -67,8 +68,7 @@ class MetadataRunsSwitchedOffTest {
             metadataService,
             vectorChunkStore,
             mock(ObjectMapper.class),
-            "public",
-            "vector_store",
+            new VectorTable("public", "vector_store"),
             TestFeatureFlags.without(Feature.METADATA),
             mock(PlatformTransactionManager.class),
             new io.opaa.observability.IndexingMetrics(

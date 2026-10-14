@@ -15,6 +15,7 @@ import io.opaa.indexing.maintenance.EmbeddingReindexService.Step;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.permission.PersonThreshold;
 import java.util.HashSet;
 import java.util.Optional;
@@ -45,8 +46,7 @@ class EmbeddingReindexServiceTest {
           mock(JdbcTemplate.class),
           mock(KnowledgeLibraryRepository.class),
           mock(PersonThreshold.class),
-          "public",
-          "vector_store");
+          new VectorTable("public", "vector_store"));
 
   @Test
   void documentsWhoseRowsAnotherWriterHoldsAreSkippedWithoutStoppingTheRun() {

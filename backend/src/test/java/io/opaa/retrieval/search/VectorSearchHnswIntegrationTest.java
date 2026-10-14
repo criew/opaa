@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.pgvector.PGvector;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.QueryProperties;
@@ -87,8 +88,7 @@ class VectorSearchHnswIntegrationTest {
                 objectMapper,
                 new VectorIndexScanProperties(20000),
                 PgDistanceType.COSINE_DISTANCE,
-                schemaName,
-                "vector_store"),
+                new VectorTable(schemaName, "vector_store")),
             new EmbeddingIndexState());
     for (int i = 0; i < LIBRARIES; i++) {
       UUID library = UUID.randomUUID();

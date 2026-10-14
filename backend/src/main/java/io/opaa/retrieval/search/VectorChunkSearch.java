@@ -1,6 +1,7 @@
 package io.opaa.retrieval.search;
 
 import com.pgvector.PGvector;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.retrieval.VectorIndexScanProperties;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,7 +49,7 @@ public class VectorChunkSearch {
   private final ObjectMapper objectMapper;
   private final VectorIndexScanProperties scanProperties;
   private final PgDistanceType distanceType;
-  private final String qualifiedTableName;
+  private final VectorTable vectorTable;
   private final PgVectorFilterExpressionConverter filterConverter =
       new PgVectorFilterExpressionConverter();
 
@@ -60,8 +61,7 @@ public class VectorChunkSearch {
       VectorIndexScanProperties scanProperties,
       @Value("${spring.ai.vectorstore.pgvector.distance-type:cosine_distance}")
           PgDistanceType distanceType,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+      VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.transactionTemplate.setReadOnly(true);
@@ -69,7 +69,7 @@ public class VectorChunkSearch {
     this.objectMapper = objectMapper;
     this.scanProperties = scanProperties;
     this.distanceType = distanceType;
-    this.qualifiedTableName = schemaName + "." + tableName;
+    this.vectorTable = vectorTable;
   }
 
   /**
@@ -133,7 +133,7 @@ public class VectorChunkSearch {
         + "SELECT id, content, metadata, embedding "
         + distanceType.operator
         + " ? AS raw_distance FROM "
-        + qualifiedTableName
+        + vectorTable.qualifiedName()
         + filter
         + " ORDER BY raw_distance LIMIT ?) "
         + "SELECT id, content, metadata, "

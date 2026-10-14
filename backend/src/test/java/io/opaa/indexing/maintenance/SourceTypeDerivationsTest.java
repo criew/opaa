@@ -7,6 +7,7 @@ import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.indexing.source.StoredDocumentSourceAccess;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.SourceType;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.test.SourceTypes;
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +58,8 @@ class SourceTypeDerivationsTest {
   @Test
   void theStaleSelectionNamesEveryLocalTypeAsASqlLiteralList() {
     PipelineReindexService service =
-        new PipelineReindexService(null, null, null, null, null, null, sourceAccess, "public", "v");
+        new PipelineReindexService(
+            null, null, null, null, null, null, sourceAccess, new VectorTable("public", "v"));
 
     assertThat(service.localSourceTypeSqlList()).isEqualTo("'FILESYSTEM', 'UPLOAD'");
   }
