@@ -8,9 +8,9 @@ import java.util.function.Supplier;
 /**
  * Loads an organization-scoped entity and treats one that belongs to a different organization as
  * not found rather than forbidden - the organization boundary is never revealed, not even to a
- * system administrator. Centralizes the {@code loadSpace}/{@code loadGroup}/{@code
- * requireUserInOrganization} pattern previously copied with identical shape across {@code
- * SpaceService}, {@code SpaceAssetAssociationService} and {@code GroupService}.
+ * system administrator. The one {@code loadSpace}/{@code loadGroup}/{@code
+ * requireUserInOrganization} pattern of {@code SpaceService}, {@code SpaceAssetAssociationService}
+ * and {@code GroupService}.
  */
 public final class OrganizationScopedLoader {
 

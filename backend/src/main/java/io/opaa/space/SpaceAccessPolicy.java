@@ -16,8 +16,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * Centralizes the space-membership authorization decisions previously re-implemented, with subtly
- * different owner semantics, in {@code SpaceService} and {@code SpaceAssetAssociationService}.
+ * The one place of the space-membership authorization decisions of {@code SpaceService} and {@code
+ * SpaceAssetAssociationService}, with one owner semantics.
  *
  * <p><b>A membership names a subject, not a person</b> (ADR-0036 Entscheidung 6). {@link
  * #effectiveRole} is therefore the best of three sources: the caller's own membership row, the

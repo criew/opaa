@@ -10,13 +10,12 @@ import org.springframework.stereotype.Component;
 /**
  * Reports the systemwide active chat model
  * (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), not the static
- * Spring AI OpenAI autoconfiguration this indicator used to introspect - a health check that names
- * a different model than the one actually answering would be worse than none at all (see the
- * issue's own motivation). {@link ActiveChatModelResolver#resolveDescription()} reads {@code
- * llm_models} directly rather than building a full {@code ChatClient}, so this check stays cheap
- * and never requires the settings encryption key to be configured just to report a base URL and a
- * model identifier - it never contacts the model itself, exactly as the previous implementation
- * never did.
+ * Spring AI OpenAI autoconfiguration - a health check that names a different model than the one
+ * actually answering would be worse than none at all. {@link
+ * ActiveChatModelResolver#resolveDescription()} reads {@code llm_models} directly rather than
+ * building a full {@code ChatClient}, so this check stays cheap and never requires the settings
+ * encryption key to be configured just to report a base URL and a model identifier - it never
+ * contacts the model itself, exactly as the previous implementation never did.
  */
 @Component
 @ConditionalOnProperty(name = "management.health.chat.enabled", matchIfMissing = true)

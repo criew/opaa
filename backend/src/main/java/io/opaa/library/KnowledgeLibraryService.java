@@ -702,12 +702,11 @@ public class KnowledgeLibraryService {
               .build());
     }
     // A pure source-configuration change (e.g. rotating sourceCredentials or moving a
-    // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED crawl target) previously left no trace at all - neither
-    // LIBRARY_CHANGED (name/description) fires for it, since the edit dialog resends
-    // name/description unchanged. Only the set of changed fields is recorded, never their values -
-    // sourceCredentials in particular must never appear in the log (ADR-0018, Entscheidung 4), so
-    // unlike LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted
-    // one.
+    // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED crawl target) gets its own event - LIBRARY_CHANGED
+    // (name/description) does not fire for it, since the edit dialog resends name/description
+    // unchanged. Only the set of changed fields is recorded, never their values - sourceCredentials
+    // in particular must never appear in the log (ADR-0018, Entscheidung 4), so unlike
+    // LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted one.
     if (replacesSourceConfiguration || replacesOwnSettings) {
       List<String> changedSourceFields = new ArrayList<>();
       if (!Objects.equals(previousSourcePath, updated.getSourcePath())) {
@@ -804,12 +803,12 @@ public class KnowledgeLibraryService {
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.OWNER);
     // Deleting a library while an indexing run for it is RUNNING would let the run's
     // documentRepository.save fail against fk_documents_library_organization (RESTRICT) once the
-    // library is gone - previously surfacing per document as a failed
-    // DataIntegrityViolationException instead of a clean outcome. Rather than have the run cope
-    // with a vanished target mid-flight, the maintainer decided (issue comment, 2026-08-20) to
-    // prevent the situation at the root: block the delete outright while a run is RUNNING. #501
-    // (stuck RUNNING jobs) is a related but separate concern - this guard becomes more useful once
-    // that is fixed, since a stuck RUNNING job could otherwise block deletion indefinitely.
+    // library is gone, surfacing per document as a failed DataIntegrityViolationException instead
+    // of a clean outcome. Rather than have the run cope with a vanished target mid-flight, the
+    // maintainer decided (issue comment, 2026-08-20) to prevent the situation at the root: block
+    // the delete outright while a run is RUNNING. #501 (stuck RUNNING jobs) is a related but
+    // separate concern - this guard becomes more useful once that is fixed, since a stuck RUNNING
+    // job could otherwise block deletion indefinitely.
     if (indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
         JobStatus.RUNNING, libraryId, library.getOrganizationId())) {
       throw new ConflictException(

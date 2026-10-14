@@ -28,8 +28,7 @@ public class AdminController {
     this.userService = userService;
   }
 
-  // Scoped to the acting SYSTEM_ADMIN's own organization - listing every organization's users used
-  // to be reachable here, the one place the organization boundary had not been applied yet.
+  // Scoped to the acting SYSTEM_ADMIN's own organization: the organization boundary holds here too.
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/users")
   public List<UserInfoResponse> listUsers(@Caller CurrentUser caller) {

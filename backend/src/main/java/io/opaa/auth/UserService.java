@@ -247,9 +247,8 @@ public class UserService {
   }
 
   /**
-   * Scopes the admin user list to the caller's own organization - {@code findAll()} used to return
-   * every organization's users, including to a SYSTEM_ADMIN, whose reach the organization boundary
-   * must stop at just as it does everywhere else, and whose acting person is resolved by {@code
+   * Scopes the admin user list to the caller's own organization: the organization boundary stops a
+   * SYSTEM_ADMIN's reach just as it does everywhere else. The acting person is resolved by {@code
    * AdminController#listUsers}.
    */
   public List<User> findAllInOrganization(UUID organizationId) {

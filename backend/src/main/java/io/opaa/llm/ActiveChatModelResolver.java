@@ -21,12 +21,11 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Resolves the {@link ChatClient} for the systemwide active {@link LlmModel} at runtime
- * (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), replacing what
- * used to be a {@code ChatClient.Builder} built once at startup from the static Spring AI OpenAI
- * autoconfiguration. {@code AnswerGenerationService} and {@code ChatTitleGenerationService} both
- * call {@link #resolveChatClient()} on every request instead of holding a {@code ChatClient} field
- * built in their constructor - the only way an activation via the admin API can take effect without
- * a restart.
+ * (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), not once at
+ * startup from the static Spring AI OpenAI autoconfiguration. {@code AnswerGenerationService} and
+ * {@code ChatTitleGenerationService} both call {@link #resolveChatClient()} on every request
+ * instead of holding a {@code ChatClient} field built in their constructor - the only way an
+ * activation via the admin API can take effect without a restart.
  *
  * <p>Every client built here wraps the model in {@link ReasoningTextStrippingChatModel}: no caller
  * reads reasoning text a server put in front of the answer.

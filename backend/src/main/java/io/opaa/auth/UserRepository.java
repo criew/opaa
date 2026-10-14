@@ -228,9 +228,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   /**
    * Used by {@code AdminController#listUsers} to scope the user list to the caller's own
-   * organization - {@code findAll()} used to return every organization's users, including to a
-   * SYSTEM_ADMIN, whose reach must stop at their own organization's boundary just like every other
-   * role.
+   * organization: a SYSTEM_ADMIN's reach stops at their own organization's boundary just like every
+   * other role's.
    */
   List<User> findByOrganizationId(UUID organizationId);
 

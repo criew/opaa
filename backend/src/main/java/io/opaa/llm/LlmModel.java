@@ -11,8 +11,7 @@ import java.util.UUID;
 /**
  * A managed chat model (Stufe 1,
  * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung): a row in {@code
- * llm_models} replacing what used to be environment variables only ({@code spring.ai.model.chat}
- * plus the {@code ollama}/{@code openai} blocks in {@code application.yml}).
+ * llm_models}, not environment variables.
  *
  * <p><b>Exactly one row may be {@link #active} at a time</b>, enforced by the partial unique index
  * {@code ux_llm_models_single_active} - the database backstop for {@link
