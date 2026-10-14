@@ -4,30 +4,36 @@ Pakete (`io.opaa.*`): permission, asset, group, directory, succession. Ergänzt 
 
 ## Zweck und Grenze
 
-Das Berechtigungsmodell: Rechtesubjekt, Grant einer Rolle auf ein Asset, Rechteformel und Herleitung, Rechtehistorie (`permission`);
-die Asset-Schale, die jeder Asset-Typ teilt (`asset`); Gruppen (`group`); die Verwaltung der Identitätsanbieter, die Verzeichnis-Synchronisation und die
-Verzeichnis-Konnektoren (`directory`); der Lebenszyklus „Nachfolge offen" (`succession`). rights hängt nur von foundation und identity ab.
+Das Berechtigungsmodell: Rechtesubjekt, Grant einer Rolle auf ein Asset, Rechteformel, Herleitung, Rechtehistorie
+(`permission`); die Asset-Schale, die jeder Asset-Typ teilt (`asset`); Gruppen (`group`); Verwaltung der
+Identitätsanbieter, Verzeichnis-Synchronisation und -Konnektoren (`directory`); „Nachfolge offen" (`succession`).
 
 ## Invarianten und Stolpersteine
 
-- **`permission` kennt kein Fachpaket und nicht die Asset-Schale.** Was es von oben braucht, deklariert es als Port, den das obere
-  Paket implementiert (`GroupMembershipSource`, `GroupSubjectDirectory`, `AssetOwnershipDirectory`, `SuccessionFindingSource`,
-  `GroupSpaceMembershipDirectory`, `SpaceAssetDirectory`, `CapabilityScopeCatalog`).
-- **Geltungsbereich einer Fähigkeit** hat nur `CREATE_CONNECTOR_LIBRARY` (`CapabilityService#isScoped`): rights speichert `scope` und deutet ihn nie;
-  jede Prüfung dieser Fähigkeit nennt ihn. Entschieden wird die Freigabe in connections (`ConnectorReleaseService`, ADR-0041, Entscheidung 8).
-- **Grants sind typunabhängig:** Asset über `AssetType` plus ID, Typen nie aufgezählt; `asset_grants` verweist mit der Organisation im Schlüssel per `ON DELETE CASCADE` auf `assets`.
-- **Die Formel ist hier vollständig:** direkter Grant, Gruppengrant und Grant an „Alle Konten“. Einziger Boden außerhalb: In der
-  Asset-Verwaltung zählt die Systemverwaltung als Eigentümer — nie für die Suche und nie bei einem Nur-Besitzerin-Asset.
-- **Nur-Besitzerin-Merkmal** (`assets.owner_only`): beim Anlegen gesetzt, samt Eigentümer unveränderlich, nur der Grant der Besitzerin (Trigger);
-  Regeln in `asset.OwnerOnlyRule`, ins Protokoll nur über `Asset#auditName`/`auditPayload`, Zahlen nach Personen über `PersonThreshold`.
-- **Jede Mechanik der Asset-Schale gibt es genau einmal.** Ein neuer Typ bringt Tabelle, Entity (erweitert `Asset`) und `AssetTypeDefinition` mit, keine eigene Grant-Logik, Historie, Fundquelle.
-- **Inaktiver Typ** (Flag aus, ADR-0044): Lesewege fragen `AssetTypes#active`/`isActive`/`requireActive`; Eigentum, Historie, Protokoll und Nachfolgewächter bleiben bei `registered`/`require`.
-- **Historientabellen tragen keinen Fremdschlüssel auf das Asset:** Die Historie überlebt es. Die Schale schließt offene Intervalle vor dem Löschen (`AssetShellService#registerDeleted`).
+- **`permission` kennt kein Fachpaket und nicht die Asset-Schale.** Was es von oben braucht, deklariert es als
+  Port, den das obere Paket implementiert (`GroupMembershipSource`, `GroupSubjectDirectory`, `AssetOwnershipDirectory`,
+  `SuccessionFindingSource`, `GroupSpaceMembershipDirectory`, `SpaceAssetDirectory`, `CapabilityScopeCatalog`).
+- **Geltungsbereich einer Fähigkeit** hat nur `CREATE_CONNECTOR_LIBRARY` (`CapabilityService#isScoped`): rights
+  speichert `scope` und deutet ihn nie; jede Prüfung nennt ihn, entschieden wird in `ConnectorReleaseService`.
+- **Grants sind typunabhängig:** Asset über `AssetType` plus ID, Typen nie aufgezählt; `asset_grants`
+  verweist mit der Organisation im Schlüssel per `ON DELETE CASCADE` auf `assets`.
+- **Die Formel ist hier vollständig:** direkter Grant, Gruppengrant und Grant an „Alle Konten“. Einziger Boden
+  außerhalb: In der Asset-Verwaltung gilt die Systemverwaltung als Eigentümer, nie für Suche und Nur-Besitzerin-Assets.
+- **Nur-Besitzerin-Merkmal** (`assets.owner_only`): beim Anlegen gesetzt, samt Eigentümer
+  unveränderlich, nur der Grant der Besitzerin (Trigger); Regeln in `asset.OwnerOnlyRule`, ins
+  Protokoll nur über `Asset#auditName`/`auditPayload`, Zahlen nach Personen über `PersonThreshold`.
+- **Jede Mechanik der Asset-Schale gibt es genau einmal.** Ein neuer Typ bringt Tabelle, Entity
+  (erweitert `Asset`) und `AssetTypeDefinition` mit, keine eigene Grant-Logik, Historie, Fundquelle.
+- **Inaktiver Typ** (Flag aus): Lesewege fragen `AssetTypes#active`/`isActive`/`requireActive`;
+  Eigentum, Historie, Protokoll und Nachfolgewächter bleiben bei `registered`/`require`.
+- **Historientabellen tragen keinen Fremdschlüssel auf das Asset:** Die Historie überlebt es. Die
+  Schale schließt offene Intervalle vor dem Löschen (`AssetShellService#registerDeleted`).
 - **Der Nachfolgezustand wird nie gespeichert,** nur Beginn und Ende (`succession_cases`).
 - **Rohes SQL gegen die Grant-Tabellen** nennt das Objekt über `asset_type` und `asset_id`.
-- **`directory` liegt über `group`,** denn die Synchronisation schreibt Gruppen; `group` fragt das Verzeichnis über den Port `DirectorySyncRuns`. Die Anbieter-Registratur liegt in `io.opaa.auth`.
-- **Web-Schicht:** `permission.web`, `asset.web` (Katalog, Grants, Herleitung, Eigentum), `group.web` (auch `/api/v1/me`), `directory.web` (Anbieter,
-  Verzeichnis-Konnektor, Synchronisation), `succession.web`. Die Raumzuordnungen eines Assets bedient `space.web` (workspace).
+- **`directory` liegt über `group`,** denn die Synchronisation schreibt Gruppen; `group` fragt das Verzeichnis
+  über den Port `DirectorySyncRuns`. Die Anbieter-Registratur liegt in `io.opaa.auth`.
+- **Web-Schicht:** `asset.web` (Katalog, Grants, Herleitung, Eigentum), `group.web` (auch `/api/v1/me`),
+  `directory.web` (Anbieter, Verzeichnis-Konnektor, Synchronisation); Raumzuordnungen eines Assets in `space.web`.
 - **Gruppenrechte enden mit Mitgliedschaft oder Deaktivierung** (`GroupMembershipResolver`, Cache nach Commit).
 
 ## Maßgebliche ADRs
@@ -43,7 +49,6 @@ Verzeichnis-Konnektoren (`directory`); der Lebenszyklus „Nachfolge offen" (`su
 ## Verweise
 
 - Handbuch: `docs/handbuch/berechtigungen.md`, Abschnitte 3–13
-- Strukturtests: `PermissionPackageBoundaryTest` (Kanten zwischen Fachpaketen, die die Schichtung zuließe), `AssetTypeFormatParityTest`, `GrantTableRawSqlGuardTest`
 
 ## Tests bei Änderungen
 
@@ -53,4 +58,3 @@ Verzeichnis-Konnektoren (`directory`); der Lebenszyklus „Nachfolge offen" (`su
 ```
 
 Bei Änderungen an `directory.sync` zusätzlich `./gradlew keycloakIntegrationTest` (braucht Docker).
-Schemaänderungen: neue Datei unter `db/changelog/rights/`; Regeln in `backend/AGENTS.md`, „Liquibase“.

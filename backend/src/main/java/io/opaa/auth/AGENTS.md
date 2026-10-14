@@ -7,7 +7,8 @@ Pakete (`io.opaa.*`): auth, account, audit, branding, mail, notification. Ergän
 Wer jemand ist und was über ihn protokolliert wird. `auth` ist der Identitätskern: Kontoidentität,
 Bereitstellung aus dem Token, Registratur der Identitätsanbieter, Modus `dev`, Anmeldefähigkeit.
 `account` sind die lokalen Konten (Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung);
-die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Revisionsprotokoll, Branding, Mailversand und Benachrichtigungen. identity hängt nur von foundation ab.
+die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Revisionsprotokoll,
+Branding, Mailversand und Benachrichtigungen.
 
 ## Invarianten und Stolpersteine
 
@@ -19,19 +20,22 @@ die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Re
 - **Die Kontoidentität ist `users(subject, issuer)` in `io.opaa.auth`**, lokale Konten tragen
   `LocalIssuer#URN`. Das Profil `oidc` startet nicht ohne starkes `OPAA_AUTH_JWT_SECRET`
   (`LocalAuthSecretGuard`).
-- **`auth` kennt `account` nicht, außer `auth.web`.** Im Kern liegen `LocalCredentials`, `LocalAccountAccess`,
-  `AccountUsability` (einzige Regel „Konto nutzbar“, ADR-0041, Entscheidung 4) und `LocalAdminAvailabilityGuard`. Den Schalter
-  der lokalen Konten erreicht `account` nur über den Port `LocalAccountsSwitch`; die Anbieterverwaltung liegt in `io.opaa.directory` (rights).
-- **Das Revisionsprotokoll ist nur anfügbar.** Geschrieben wird über `AuditLogService#record` (oder `AuditEventRecorder`),
-  gelesen nur über `AuditQueryService`. `AuditLogRepository` ist package-private. Das Anwendungskonto hat auf
-  `audit_log` nur `INSERT` und `SELECT`; entfernt wird nur eine vollständig abgelaufene Monatspartition.
-- **Ein Sendeweg:** `MailService` ist der einzige Einstieg für alles, was Mail verschickt, und meldet das Ergebnis,
-  statt zu werfen. Neue Anlässe bringen Vorlagen und Variablen mit, keinen zweiten Sendeweg.
+- **`auth` kennt `account` nicht, außer `auth.web`.** Im Kern liegen `LocalCredentials`,
+  `LocalAccountAccess`, `AccountUsability` (einzige Regel „Konto nutzbar“) und
+  `LocalAdminAvailabilityGuard`. Den Schalter der lokalen Konten erreicht `account` nur über den
+  Port `LocalAccountsSwitch`; die Verwaltung der Anbieter liegt in `io.opaa.directory` (rights).
+- **Das Revisionsprotokoll ist nur anfügbar.** Geschrieben wird über `AuditLogService#record` (oder
+  `AuditEventRecorder`), gelesen nur über `AuditQueryService`. `AuditLogRepository` ist
+  package-private. Das Anwendungskonto hat auf `audit_log` nur `INSERT` und `SELECT`; entfernt wird
+  nur eine vollständig abgelaufene Monatspartition.
+- **Ein Sendeweg:** `MailService` ist der einzige Einstieg für alles, was Mail verschickt, und
+  meldet das Ergebnis, statt zu werfen. Neue Anlässe bringen Vorlagen und Variablen mit, keinen zweiten Weg.
 - **Branding** ändert nur `BrandingSettingsService`; SVG wird abgelehnt, nicht bereinigt
   (`BrandingImageValidator`).
-- **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`, `notification.web`;
-  `audit.web.AuditedAdminCall` protokolliert `IndexingAdminController` und `UploadStoreAdminController`. Die Stichtagsauskunft
-  `/api/v1/audit/access-as-of` liegt in `revision.web` (workspace), `/api/v1/me` in `group.web`, die Anbieter in `directory.web` (rights).
+- **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`,
+  `notification.web`; `audit.web.AuditedAdminCall` protokolliert `IndexingAdminController` und
+  `UploadStoreAdminController`. Die Stichtagsauskunft `/api/v1/audit/access-as-of` liegt in
+  `revision.web` (workspace), `/api/v1/me` in `group.web`, die Anbieter in `directory.web` (rights).
 - **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`); unter
   `local,dev` ist keine lokale Sitzung fahrbar.
 
@@ -46,8 +50,7 @@ die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Re
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/benutzerverwaltung.md`; `authentifizierung.md`, `branding.md`, `e-mail.md` (alle unter `docs/handbuch/`)
-- Strukturtests: `AuditFunnelStructureTest`, `AuthProfileGuardTest`, `LocalAuthSecretGuardTest`
+- Handbuch (`docs/handbuch/`): `benutzerverwaltung.md`; `authentifizierung.md`, `branding.md`, `e-mail.md`
 
 ## Tests bei Änderungen
 
@@ -55,5 +58,3 @@ die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Re
 ./gradlew test --tests 'io.opaa.auth.*' --tests 'io.opaa.account.*' --tests 'io.opaa.audit.*' \
   --tests 'io.opaa.branding.*' --tests 'io.opaa.mail.*' --tests 'io.opaa.architecture.*'
 ```
-
-Schemaänderungen: neue Datei unter `db/changelog/identity/`, Regeln in `backend/AGENTS.md`, „Liquibase“.

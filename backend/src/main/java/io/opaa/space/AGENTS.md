@@ -6,8 +6,7 @@ Pakete (`io.opaa.*`): space, revision, diagnosticaccess. Ergänzt `backend/AGENT
 
 Räume mit ihren Mitgliedschaften und Asset-Zuordnungen (`space`), die eigenen Lesewege der Revision
 in die Rechtehistorie, heute die Stichtagsauskunft (`revision`), und das Befugnis- und
-Protokollmodell für „Sicht als" in der Suchdiagnose (`diagnosticaccess`). workspace hängt nur von
-foundation, identity, rights und knowledge ab.
+Protokollmodell für „Sicht als" in der Suchdiagnose (`diagnosticaccess`).
 
 ## Invarianten und Stolpersteine
 
@@ -48,7 +47,7 @@ foundation, identity, rights und knowledge ab.
 
 - Handbuch: `docs/handbuch/spaces.md`; `docs/handbuch/berechtigungen.md`, Abschnitte 12 und 14;
   `docs/handbuch/suche.md`, Abschnitt 8
-- Strukturtests: `PermissionPackageBoundaryTest`, `ModularArchitectureTest`
+- Strukturtests: `PermissionPackageBoundaryTest` (in `io.opaa.permission`)
 
 ## Tests bei Änderungen
 
@@ -56,5 +55,3 @@ foundation, identity, rights und knowledge ab.
 ./gradlew test --tests 'io.opaa.space.*' --tests 'io.opaa.revision.*' \
   --tests 'io.opaa.diagnosticaccess.*' --tests 'io.opaa.architecture.*'
 ```
-
-Schemaänderungen: neue Datei unter `db/changelog/workspace/`, Regeln in `backend/AGENTS.md`, „Liquibase“.

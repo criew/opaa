@@ -19,6 +19,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +34,12 @@ class ModuleAgentsFileTest {
   private static final Path SOURCES = Path.of("src/main/java/io/opaa");
 
   private static final int MAX_LINES = 60;
+
+  /** Lines holding a Markdown link and table rows are exempt; a link cannot be wrapped. */
+  private static final int MAX_LINE_LENGTH = 120;
+
+  private static final Path FIXTURE =
+      Path.of("src/test/java/io/opaa/architecture/fixture/adrreference/dead-adr-references.md");
 
   /** "Pakete (`io.opaa.*`): a, b." - group 1 the prefix below io.opaa, group 2 the list. */
   private static final Pattern PACKAGE_LINE =
@@ -88,6 +95,7 @@ class ModuleAgentsFileTest {
           .as("%s has at most %d lines - move detail into ADRs or the Handbuch", agents, MAX_LINES)
           .hasSizeLessThanOrEqualTo(MAX_LINES)
           .anyMatch(line -> !line.isBlank());
+      assertThat(overlongLines(agents)).as("lines over %d characters", MAX_LINE_LENGTH).isEmpty();
       Path claude = directory.resolve("CLAUDE.md");
       assertThat(claude)
           .as("%s is missing; create it with the single line @AGENTS.md", claude)
@@ -150,11 +158,28 @@ class ModuleAgentsFileTest {
 
   @Test
   void aReferenceToAMissingDecisionIsReported() throws IOException {
-    Path fixture =
-        Path.of("src/test/java/io/opaa/architecture/fixture/adrreference/dead-adr-references.md");
-
-    assertThat(deadAdrReferences(fixture))
+    assertThat(deadAdrReferences(FIXTURE))
         .containsExactly("ADR-0999", "../../../../../../../../../docs/decisions/0044-renamed.md");
+  }
+
+  @Test
+  void anOverlongProseLineIsReported() throws IOException {
+    assertThat(overlongLines(FIXTURE))
+        .singleElement()
+        .asString()
+        .startsWith(FIXTURE + ":10: ")
+        .endsWith("characters");
+  }
+
+  /** "file:line: n characters" for every line over the limit outside links and tables. */
+  private static List<String> overlongLines(Path file) throws IOException {
+    List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+    return IntStream.range(0, lines.size())
+        .filter(index -> lines.get(index).length() > MAX_LINE_LENGTH)
+        .filter(index -> !lines.get(index).contains("](") && !lines.get(index).startsWith("|"))
+        .mapToObj(
+            index -> file + ":" + (index + 1) + ": " + lines.get(index).length() + " characters")
+        .toList();
   }
 
   /** Every ADR number in {@code file} without a decision, then every decision link to no file. */
@@ -180,7 +205,7 @@ class ModuleAgentsFileTest {
         DECISION_LINK
             .matcher(text)
             .results()
-            .map(link -> link.group(1))
+            .map(link -> link.group(1).split("#", 2)[0])
             .filter(link -> !Files.isRegularFile(file.resolveSibling(link)));
     return Stream.concat(unknownNumbers, brokenLinks).distinct().toList();
   }

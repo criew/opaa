@@ -165,10 +165,10 @@ Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der
 
 ### Anweisungen je Modul
 
-Jedes Modul hat eine kurze `AGENTS.md` (höchstens 60 Zeilen) mit Zweck und Grenze, Invarianten und
-Stolpersteinen, den maßgeblichen ADRs (je Zeile ein Link und wenige Wörter, was er für das Modul
-festlegt), Verweisen und den Tests, die bei Änderungen laufen sollten. Sie liegt im
-Hauptpaket unter `backend/src/main/java/io/opaa/`:
+Jedes Modul hat eine kurze `AGENTS.md` (höchstens 60 Zeilen à 120 Zeichen; Zeilen mit Markdown-Link
+und Tabellenzeilen ausgenommen) mit Zweck und Grenze, Invarianten und Stolpersteinen, den
+maßgeblichen ADRs (je Zeile ein Link und wenige Wörter, was er für das Modul festlegt), Verweisen
+und den Tests, die bei Änderungen laufen sollten. Sie liegt im Hauptpaket unter `backend/src/main/java/io/opaa/`:
 
 | Modul | Datei | Modul | Datei |
 |---|---|---|---|
@@ -184,8 +184,12 @@ Daneben liegt eine `CLAUDE.md` mit `@AGENTS.md`; jedes weitere Top-Level-Paket d
 `CLAUDE.md`, die die Datei des Moduls importiert (`@../common/AGENTS.md`). Claude Code lädt eine
 `CLAUDE.md` in einem Unterverzeichnis, sobald dort eine Datei gelesen wird. Andere Werkzeuge lesen
 die Datei des Moduls vor der Arbeit im Modul selbst. `ModuleAgentsFileTest` hält Ablage, Import,
-Länge und ADR-Verweise fest (jede genannte Nummer und jeder Link hat eine Datei unter `docs/decisions/`); ein neues Top-Level-Paket bekommt eine solche `CLAUDE.md`. Modulspezifisches gehört in
-diese Dateien, hier bleibt nur, was modulübergreifend gilt.
+Länge und ADR-Verweise fest (jede genannte Nummer und jeder Link hat eine Datei unter
+`docs/decisions/`); ein neues Top-Level-Paket bekommt eine solche `CLAUDE.md`. Modulspezifisches
+gehört in diese Dateien, hier bleibt nur, was modulübergreifend gilt. Für jedes Modul gilt außerdem:
+Eine Schemaänderung ist eine neue Datei im Verzeichnis des Moduls unter `db/changelog/` (siehe
+„Liquibase: Changelog je Modul“), und was die Module trennt, steht oben in „Logische Module und
+Schichtung“, nicht noch einmal in der Datei des Moduls.
 
 ## Prozesslokaler Zustand (ADR-0021)
 

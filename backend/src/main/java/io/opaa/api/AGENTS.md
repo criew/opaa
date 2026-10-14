@@ -1,14 +1,14 @@
 # Modul app
 
 Pakete (`io.opaa.*`): api, config. Dazu `OpaaApplication` im Wurzelpaket. Ergänzt
-`backend/AGENTS.md`; die Regeln zu Spezifikation, DTOs und Statuscodes stehen dort und in der Wurzel-`AGENTS.md`.
+`backend/AGENTS.md`; die Regeln zu Spezifikation, DTOs und Statuscodes stehen dort und in der
+Wurzel-`AGENTS.md`.
 
 ## Zweck und Grenze
 
 Die oberste Schicht: die Endpunkte und Web-Hilfen, die jedes Modul teilt (Fehlerbehandlung,
-Request-Logging, HTTP-Client, `HealthController`), und die Startwächter der Konfiguration. app nutzt
-foundation und knowledge, nie connectors. Die Controller und Mapper der
-Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je Modul“).
+Request-Logging, HTTP-Client, `HealthController`), und die Startwächter der Konfiguration. Die
+Controller und Mapper der Fachmodule liegen in deren `web`-Paketen („Web-Schicht je Modul“).
 
 ## Invarianten und Stolpersteine
 
@@ -25,14 +25,14 @@ Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je
 - **Startwächter in `config`:** `DatabaseSchemaGuard` verlangt für `opaa.database.schema` einen
   schlichten Bezeichner in Kleinbuchstaben und prüft vor Datenquelle und Liquibase.
   `PgVectorVersionGuard` verweigert den Start bei pgvector älter als 0.8.0. Ein Wechsel des
-  Embedding-Modells verhindert den Start nicht; das erkennt `indexing.chunk.EmbeddingIndexReconciler`. `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit
-  Zugangsdaten. `DatabasePrerequisiteCheck` läuft vor jeder `SpringLiquibase`-Bean und bricht ab,
-  wenn pgvector auf dem Server nicht installiert ist; den Bericht schreibt
-  `DatabasePrerequisiteFailureAnalyzer` (registriert in `META-INF/spring.factories`). Eine
-  Fehlerkette auszuwerten genügt dafür nicht: SQLState 0A000 lässt den Pool die Verbindung
-  schließen, und Liquibase meldet danach nur „Connection is closed". Fehlende Rechte (42501) kommen
-  dagegen lesbar an und bleiben der Migration überlassen, sonst würden verwaltete Dienste mit eigener
-  Verwaltungsrolle abgewiesen.
+  Embedding-Modells verhindert den Start nicht; das erkennt `indexing.chunk.EmbeddingIndexReconciler`.
+  `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit Zugangsdaten.
+  `DatabasePrerequisiteCheck` läuft vor jeder `SpringLiquibase`-Bean und bricht ab, wenn pgvector auf
+  dem Server nicht installiert ist; den Bericht schreibt `DatabasePrerequisiteFailureAnalyzer`
+  (registriert in `META-INF/spring.factories`). Eine Fehlerkette auszuwerten genügt dafür nicht:
+  SQLState 0A000 lässt den Pool die Verbindung schließen, und Liquibase meldet danach nur „Connection
+  is closed". Fehlende Rechte (42501) kommen dagegen lesbar an und bleiben der Migration überlassen,
+  sonst würden verwaltete Dienste mit eigener Verwaltungsrolle abgewiesen.
 - **`TrustStoreBuilder`** ist ein Hauptprogramm ohne Spring, das der Init-Container des Helm-Charts
   über `PropertiesLauncher` startet (`extraCACertificates`): Laufzeit-CAs plus alle PEM-Zertifikate
   in einen frischen Truststore.
@@ -41,13 +41,13 @@ Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je
 
 ## Maßgebliche ADRs
 
+- [ADR-0002](../../../../../../../docs/decisions/0002-mvp-technology-stack.md) (Entscheidungen 3, 5): pgvector-Mindestversion, OpenAI-kompatible Basis-URL
 - [ADR-0006](../../../../../../../docs/decisions/0006-openapi-dto-generation.md): OpenAPI-Spezifikation, generierte DTOs
 - [ADR-0034](../../../../../../../docs/decisions/0034-liquibase-changeset-stil-und-schema.md) (Entscheidung 2): konfigurierbares Zielschema
 
 ## Verweise
 
 - Handbuch: `docs/handbuch/konfiguration.md`, `docs/handbuch/datenbank.md`
-- Strukturtests: `TransportStatusCodeSpecificationTest`, `DatabaseSchemaGuardTest`, `DatabasePrerequisitesTest`, `OpenAiBaseUrlGuardTest`, `ModularArchitectureTest`
 
 ## Tests bei Änderungen
 

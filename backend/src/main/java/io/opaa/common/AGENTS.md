@@ -7,27 +7,30 @@ sourceaccess, s3, msgraph. Ergänzt `backend/AGENTS.md`.
 
 Die unterste Schicht: gemeinsame Ausnahmen und Hilfen, die Organisation als Mandantengrenze,
 Verschlüsselung und Schlüsselableitung, Ratenbegrenzung, Metriken, der Zugriff auf konfigurierte
-Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-Client. foundation hängt von keinem anderen Modul ab.
+Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-Client.
 
 ## Invarianten und Stolpersteine
 
-- **Die Organisation ist die harte Mandantengrenze.** Ein Objekt einer fremden Organisation gilt als „nicht gefunden", nie als „verboten", auch für die Systemverwaltung (`OrganizationScopedLoader`).
-- **Jeder Abruf einer quellkonfigurierten URL geht über `io.opaa.sourceaccess`:** Zieladressprüfung vor der ersten
-  Anfrage und bei jedem Redirect, Byte-Deckel, Höflichkeitspause, `SourceRequestPolicy`. Das Paket kennt weder `library` noch `api`.
-- **`io.opaa.s3` umgeht `sourceaccess`**, weil das SDK einen eigenen HTTP-Client mitbringt. Zieladressprüfung,
-  Timeouts, Proxy und Wiederholungen sind dort bewusst nachgebaut, mit einem Test je Stück. Fehler werden zu deutschen
-  `S3AccessException`s ohne Zugangsdaten. Seine Nutzer (S3-Konnektor, Originalablage) kennt das Paket nicht.
-- **`io.opaa.msgraph` folgt keiner Adresse von Graph:** Folgeseiten nur als Token von Graphs eigenem Ursprung, die
-  Adresse baut der Client selbst; Downloads auf den vorab signierten Host nur über https und ohne `Authorization`.
-  Diese Adresse trägt ein Kurzzeit-Token und erscheint in keinem Log und keiner Meldung.
-- **Zwei getrennte Schlüssel für Geheimnisse:** `CredentialsEncryptor` für Quell-Zugangsdaten (`OPAA_CREDENTIALS_ENCRYPTION_KEY`),
-  `SettingsEncryptor` für Geheimnisse verwalteter Einstellungen (`OPAA_SETTINGS_ENCRYPTION_KEY`); Prüfung erst beim ersten Gebrauch.
-- **`LocalAuthKeyService` leitet alle Schlüssel des lokalen Ausstellers per HKDF aus `OPAA_AUTH_JWT_SECRET` ab**, je
-  Zweck ein eigenes Label. Eine Rotation beendet alle lokalen Sitzungen, offenen Links und Zugangstokens zugleich.
-- **Ratenbegrenzung:** `RateLimitService` ist ein Gleitfenster je Geltungsbereich mit gedeckeltem Schlüsselraum; jenseits
-  des Deckels öffnet er. Ein Wildcard-Bereich in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` wird in jedem Profil abgewiesen.
+- **Die Organisation ist die harte Mandantengrenze.** Ein Objekt einer fremden Organisation gilt als
+  „nicht gefunden", nie als „verboten", auch für die Systemverwaltung (`OrganizationScopedLoader`).
+- **Jeder Abruf einer quellkonfigurierten URL geht über `io.opaa.sourceaccess`:** Zieladressprüfung
+  vor der ersten Anfrage und bei jedem Redirect, Byte-Deckel, Höflichkeitspause,
+  `SourceRequestPolicy`. Das Paket kennt weder `library` noch `api`.
+- **`io.opaa.s3` umgeht `sourceaccess`**, weil das SDK einen eigenen HTTP-Client mitbringt.
+  Zieladressprüfung, Timeouts, Proxy und Wiederholungen sind dort bewusst nachgebaut, je mit Test;
+  Fehler: deutsche `S3AccessException`s ohne Zugangsdaten. Seine Nutzer (S3-Konnektor, Originalablage) kennt es nicht.
+- **`io.opaa.msgraph` folgt keiner Adresse von Graph:** Folgeseiten nur als Token von Graphs eigenem
+  Ursprung, die Adresse baut der Client selbst; Downloads auf den vorab signierten Host nur über https
+  ohne `Authorization`. Diese Adresse trägt ein Kurzzeit-Token und erscheint in keinem Log, keiner Meldung.
+- **Zwei Schlüssel für Geheimnisse:** `CredentialsEncryptor` (Quell-Zugangsdaten, `OPAA_CREDENTIALS_ENCRYPTION_KEY`),
+  `SettingsEncryptor` (verwaltete Einstellungen, `OPAA_SETTINGS_ENCRYPTION_KEY`); geprüft erst beim ersten Gebrauch.
+- **`LocalAuthKeyService` leitet alle Schlüssel des lokalen Ausstellers per HKDF aus
+  `OPAA_AUTH_JWT_SECRET` ab**, je Zweck ein eigenes Label. Eine Rotation beendet alle lokalen
+  Sitzungen, offenen Links und Zugangstokens zugleich.
+- **Ratenbegrenzung:** `RateLimitService`: Gleitfenster je Geltungsbereich, gedeckelter Schlüsselraum, jenseits
+  des Deckels offen. Ein Wildcard-Bereich in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` wird in jedem Profil abgewiesen.
 - **`TargetAddressValidator` kann DNS-Rebinding nicht ausschließen** — eine akzeptierte Grenze.
-- **Feature-Flags (ADR-0044) sind ohne Angabe an;** `@ConditionalOnFeature` nur an Blatt-Beans.
+- **Feature-Flags sind ohne Angabe an;** `@ConditionalOnFeature` nur an Blatt-Beans.
 - **`OutboundProxySelector` ist der Proxy-Standard der JVM:** nur `http`/`https` über den Proxy,
   `socket://` (SMB, SMTP, JDBC) und Loopback nie; das AWS SDK bekommt ihn über `proxyFor`.
 
@@ -45,7 +48,6 @@ Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-
 ## Verweise
 
 - Handbuch: `docs/handbuch/betrieb.md`, „Härtung für erreichbare Deployments"; `docs/handbuch/konfiguration.md`
-- Strukturtests: `SourceAccessDependencyStructureTest`, `TrustedProxyStartupGuardTest`, `S3RequestGuardTest`
 
 ## Tests bei Änderungen
 
@@ -55,5 +57,4 @@ Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-
   --tests 'io.opaa.msgraph.*' --tests 'io.opaa.observability.*' --tests 'io.opaa.architecture.*'
 ```
 
-Die S3-Tests brauchen Docker und werden ohne Docker übersprungen. Schemaänderungen: neue Datei unter
-`db/changelog/foundation/`, Regeln in `backend/AGENTS.md`, „Liquibase“.
+Die S3-Tests brauchen Docker und werden ohne Docker übersprungen.

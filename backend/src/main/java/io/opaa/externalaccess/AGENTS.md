@@ -6,8 +6,7 @@ Pakete (`io.opaa.*`): externalaccess, mcp. Ergänzt `backend/AGENTS.md`.
 
 Der Kanal für Fremdzugänge: Kanaleinstellungen mit dem Schalter der Installation (Vorgabe aus,
 zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Server mit den Werkzeugen
-`search`, `fetch` und `list_libraries` (`mcp`). external hängt von allen Modulen außer workspace,
-connectors und app ab.
+`search`, `fetch` und `list_libraries` (`mcp`).
 
 ## Invarianten und Stolpersteine
 
@@ -43,7 +42,6 @@ connectors und app ab.
 ## Verweise
 
 - Handbuch: `docs/handbuch/fremdzugaenge.md`
-- Strukturtests: `McpDependencyStructureTest`, `SearchDependencyStructureTest`
 
 ## Tests bei Änderungen
 
@@ -51,5 +49,3 @@ connectors und app ab.
 ./gradlew test --tests 'io.opaa.externalaccess.*' --tests 'io.opaa.mcp.*' \
   --tests 'io.opaa.search.*' --tests 'io.opaa.architecture.*'
 ```
-
-Schemaänderungen: neue Datei unter `db/changelog/external/`, Regeln in `backend/AGENTS.md`, „Liquibase“.
