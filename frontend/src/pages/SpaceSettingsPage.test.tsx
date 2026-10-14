@@ -48,7 +48,6 @@ const {
   mockArchiveSpace,
   mockListSpaceMembers,
   mockGetSpaceAssetAssociations,
-  mockGetLibraries,
   mockSearchSelectableGroups,
   mockGetSpaceAccessDerivation,
   mockGetSpaceGroupMembers,
@@ -126,7 +125,6 @@ const {
     mockDeleteSpace: vi.fn(async () => undefined),
     mockArchiveSpace: vi.fn(async () => ({}) as SpaceResponse),
     mockListSpaceMembers: vi.fn(async (spaceId: string) => membersBySpaceId[spaceId] ?? []),
-    mockGetLibraries: vi.fn(async () => [] as unknown[]),
     mockGetSpaceAssetAssociations: vi.fn(
       async (spaceId: string): Promise<SpaceAssetAssociationListResponse> => {
         void spaceId
@@ -218,15 +216,6 @@ vi.mock('../services/spaceApi', async () => {
     addSpaceMember: mockAddSpaceMember,
     deleteSpace: mockDeleteSpace,
     archiveSpace: mockArchiveSpace,
-  }
-})
-
-vi.mock('../services/libraryApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/libraryApi')>('../services/libraryApi')
-  return {
-    ...actual,
-    getLibraries: mockGetLibraries,
   }
 })
 
