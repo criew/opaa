@@ -131,7 +131,9 @@ class ConfluenceIndexingExecutorVisitPageTest {
             new StaleDocumentCleanupService(
                 documentRepository, vectorChunkStore, mock(AssetRepository.class)),
             documentRepository,
-            mock(LibraryStorageQuotaService.class));
+            mock(LibraryStorageQuotaService.class),
+            rejected -> Secret.personal(library.getSourceCredentials()),
+            Clock.systemUTC());
     run = new ConfluenceRun(frame, client);
     ConfluenceProperties properties =
         new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, null, null, 0);

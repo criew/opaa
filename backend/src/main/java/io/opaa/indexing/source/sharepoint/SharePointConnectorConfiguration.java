@@ -45,14 +45,15 @@ public class SharePointConnectorConfiguration {
       LibraryFolderService libraryFolderService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new SharePointIndexingExecutor(
         sharePointGraphConnections,
         documentIngestService,
         documentRepository,
         libraryFolderService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

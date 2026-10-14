@@ -11,7 +11,7 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
 import PublicIcon from '@mui/icons-material/Public'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
-import type { AssetTypeDefinition } from './assetTypeRegistry'
+import type { AssetTypeDefinition } from '../../shared/assetTypes'
 
 /** The responsible party behind a person or group symbol. */
 export function ResponsibleLine({

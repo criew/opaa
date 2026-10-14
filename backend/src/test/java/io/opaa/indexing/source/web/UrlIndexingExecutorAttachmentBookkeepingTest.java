@@ -39,6 +39,7 @@ import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -122,7 +123,8 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
                 staleDocumentCleanupService,
                 documentRepository,
                 mock(LibraryStorageQuotaService.class),
-                new LibrarySourceConnectionResolver()),
+                new LibrarySourceConnectionResolver(),
+                Clock.systemUTC()),
             ProductionDocumentFormats.supportedFormats());
   }
 

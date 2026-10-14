@@ -11,6 +11,7 @@ import AppShell from './layouts/AppShell'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useUiStore } from '@/shared/stores/uiStore'
 import SettingsPage from './pages/SettingsPage'
+import { renderSpaceChats } from './app/themeSeams'
 // shared
 import {
   CATALOG_ROUTE,
@@ -54,7 +55,7 @@ import SpaceSettingsPage from './pages/SpaceSettingsPage'
 // asset
 import CatalogPage from './pages/CatalogPage'
 import CatalogNewPage from './pages/CatalogNewPage'
-import { catalogRoute } from './components/assets/assetTypeRegistry'
+import { catalogRoute } from './shared/assetTypes'
 // library
 import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
@@ -212,7 +213,10 @@ export default function App() {
 
               <Route path="spaces/:spaceId/chats" element={<ChatsPage />} />
               <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
-              <Route path="spaces/:spaceId" element={<SpacePage />} />
+              <Route
+                path="spaces/:spaceId"
+                element={<SpacePage renderChats={renderSpaceChats} />}
+              />
               {/* Die frühere Verwaltungsseite: Lesezeichen auf /manage landen auf dem ersten
                   Reiter der Einstellungen (#1917). */}
               <Route path="spaces/:spaceId/manage" element={<SpaceSettingsRedirect />} />

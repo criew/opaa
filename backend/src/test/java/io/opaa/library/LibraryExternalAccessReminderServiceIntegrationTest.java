@@ -30,6 +30,7 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -265,8 +266,7 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
         mail,
         publicBaseUrl,
         new ExternalAccessProperties(365, leadDays),
-        () -> now,
-        ZoneId.of("Europe/Berlin"));
+        Clock.fixed(now, ZoneId.of("Europe/Berlin")));
   }
 
   private UUID createUser(String displayName) {

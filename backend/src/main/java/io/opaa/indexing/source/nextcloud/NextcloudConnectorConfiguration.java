@@ -42,7 +42,8 @@ public class NextcloudConnectorConfiguration {
       LibraryFolderService libraryFolderService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new NextcloudIndexingExecutor(
         nextcloudProperties,
         targetAddressValidator,
@@ -51,7 +52,7 @@ public class NextcloudConnectorConfiguration {
         documentRepository,
         libraryFolderService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

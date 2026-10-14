@@ -39,14 +39,15 @@ public class DropboxConnectorConfiguration {
       LibraryFolderService libraryFolderService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new DropboxIndexingExecutor(
         dropboxApiFactory,
         documentIngestService,
         documentRepository,
         libraryFolderService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

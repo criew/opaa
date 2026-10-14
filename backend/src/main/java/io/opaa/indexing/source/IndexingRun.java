@@ -104,34 +104,6 @@ public final class IndexingRun {
       IndexingRunEventRecorder events,
       VanishedDocumentReconciler reconciler,
       DocumentRepository documentRepository,
-      LibraryStorageQuotaService storageQuotaService) {
-    this(
-        jobId,
-        library,
-        settings,
-        credentials,
-        runMode,
-        sourceType,
-        progress,
-        events,
-        reconciler,
-        documentRepository,
-        storageQuotaService,
-        rejected -> credentials.get(),
-        Clock.systemUTC());
-  }
-
-  IndexingRun(
-      UUID jobId,
-      KnowledgeLibrary library,
-      SourceSettings settings,
-      Supplier<Secret> credentials,
-      IndexingRunMode runMode,
-      SourceType sourceType,
-      IndexingRunProgress progress,
-      IndexingRunEventRecorder events,
-      VanishedDocumentReconciler reconciler,
-      DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService,
       UnaryOperator<Secret> afterRejection,
       Clock clock) {

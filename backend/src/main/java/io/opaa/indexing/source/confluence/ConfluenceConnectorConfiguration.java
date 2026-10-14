@@ -73,7 +73,8 @@ public class ConfluenceConnectorConfiguration {
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
       SourceSyncStateRepository sourceSyncStateRepository,
-      IndexingRunTemplate indexingRunTemplate) {
+      IndexingRunTemplate indexingRunTemplate,
+      Clock clock) {
     return new ConfluenceIndexingExecutor(
         confluenceClientFactory,
         confluenceProperties,
@@ -81,7 +82,7 @@ public class ConfluenceConnectorConfiguration {
         attachmentIndexer,
         documentRepository,
         sourceSyncStateRepository,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate);
   }
 }

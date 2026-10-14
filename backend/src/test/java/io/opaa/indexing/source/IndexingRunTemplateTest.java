@@ -32,6 +32,7 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.test.MutableClock;
 import io.opaa.test.SourceTypes;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -65,7 +66,8 @@ class IndexingRunTemplateTest {
           cleanupService,
           documentRepository,
           quotaService,
-          new LibrarySourceConnectionResolver());
+          new LibrarySourceConnectionResolver(),
+          Clock.systemUTC());
   private final SourceIndexingExecutor fullListingExecutor =
       executor(
           SourceTypes.FILESYSTEM,
@@ -181,7 +183,13 @@ class IndexingRunTemplateTest {
 
   private IndexingRunTemplate templateWith(SourceConnectionResolver resolver) {
     return new IndexingRunTemplate(
-        jobService, eventRepository, cleanupService, documentRepository, quotaService, resolver);
+        jobService,
+        eventRepository,
+        cleanupService,
+        documentRepository,
+        quotaService,
+        resolver,
+        Clock.systemUTC());
   }
 
   @Test
@@ -584,7 +592,13 @@ class IndexingRunTemplateTest {
   private void runCompleteListingWith(
       SourceConnectionResolver resolver, AtomicReference<Boolean> hook) {
     new IndexingRunTemplate(
-            jobService, eventRepository, cleanupService, documentRepository, quotaService, resolver)
+            jobService,
+            eventRepository,
+            cleanupService,
+            documentRepository,
+            quotaService,
+            resolver,
+            Clock.systemUTC())
         .run(
             jobId,
             library,

@@ -15,6 +15,7 @@ import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.PermissionHistoryService;
 import io.opaa.permission.PermissionSubject;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -42,6 +43,7 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
   private final AssetOwnershipHistoryService ownershipHistory;
   private final PermissionHistoryService permissionHistory;
   private final AuditEventRecorder auditEventRecorder;
+  private final Clock clock;
 
   AssetShellOwnershipDirectory(
       AssetRepository assetRepository,
@@ -49,13 +51,15 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
       AssetGrantRepository grantRepository,
       AssetOwnershipHistoryService ownershipHistory,
       PermissionHistoryService permissionHistory,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      Clock clock) {
     this.assetRepository = assetRepository;
     this.assetTypes = assetTypes;
     this.grantRepository = grantRepository;
     this.ownershipHistory = ownershipHistory;
     this.permissionHistory = permissionHistory;
     this.auditEventRecorder = auditEventRecorder;
+    this.clock = clock;
   }
 
   @Override
@@ -272,7 +276,7 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
       permissionHistory.recordGrantCreated(granted, actorUserId);
       return;
     }
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     if (existing.getRole().ordinal() < ownerRole.ordinal() || existing.isExpired(now)) {
       existing.updateRole(ownerRole, null, actorUserId, now);
       grantRepository.save(existing);

@@ -3,6 +3,7 @@ package io.opaa.audit;
 import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -19,11 +20,13 @@ public class AuditIncidentScopeService {
 
   private final AuditIncidentScopeGrantRepository repository;
   private final AuditPersonDirectory people;
+  private final Clock clock;
 
   public AuditIncidentScopeService(
-      AuditIncidentScopeGrantRepository repository, AuditPersonDirectory people) {
+      AuditIncidentScopeGrantRepository repository, AuditPersonDirectory people, Clock clock) {
     this.repository = repository;
     this.people = people;
+    this.clock = clock;
   }
 
   /**
@@ -56,11 +59,10 @@ public class AuditIncidentScopeService {
   }
 
   /**
-   * Approves a pending grant. Throws {@link IllegalArgumentException} (mapped to a 400 by {@code
-   * GlobalExceptionHandler}) on Selbstfreigabe or a grant that is not pending - both are caller
-   * error, not "not found". {@code @Transactional} so two concurrent approval attempts against the
-   * same grant serialise on this row instead of both succeeding with an arbitrary "last write wins"
-   * {@code approved_by_user_id}.
+   * Approves a pending grant. Throws {@link ValidationException} on Selbstfreigabe or a grant that
+   * is not pending - caller error, not "not found". {@code @Transactional} so two concurrent
+   * approval attempts against the same grant serialise on this row instead of both succeeding with
+   * an arbitrary "last write wins" {@code approved_by_user_id}.
    */
   @Transactional
   public AuditIncidentScopeGrant approve(UUID organizationId, UUID scopeId, UUID approvedByUserId) {
@@ -75,7 +77,7 @@ public class AuditIncidentScopeService {
    */
   public AuditIncidentScopeGrant findApproved(UUID organizationId, UUID scopeId) {
     AuditIncidentScopeGrant grant = findOrThrow(organizationId, scopeId);
-    if (!grant.isUsable(Instant.now())) {
+    if (!grant.isUsable(Instant.now(clock))) {
       String message =
           grant.isApproved()
               ? "Die Freigabe ist abgelaufen"

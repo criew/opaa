@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.document.AttachmentFilePath;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilesystemUploadedOriginalStore;
@@ -155,7 +156,7 @@ class OrphanedOriginalCleanupServiceTest {
     assertThat(raised.minimumAgeMinutes()).isEqualTo(24 * 60);
 
     assertThatThrownBy(() -> service.report(organizationId, libraryId, GRACE_MINUTES - 1))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Schonfrist")
         .hasMessageContaining(String.valueOf(GRACE_MINUTES));
     assertThat(Path.of(twoHoursOld)).exists();
@@ -212,17 +213,17 @@ class OrphanedOriginalCleanupServiceTest {
   @Test
   void deletingRejectsAnEmptyListAndOneBeyondTheCap() {
     assertThatThrownBy(() -> service.delete(organizationId, libraryId, List.of()))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("leer");
     assertThatThrownBy(() -> service.delete(organizationId, libraryId, List.of(" ", "")))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("leer");
     List<String> tooMany = new ArrayList<>();
     for (int i = 0; i <= OrphanedOriginalCleanupService.MAX_LISTED; i++) {
       tooMany.add("locator-" + i);
     }
     assertThatThrownBy(() -> service.delete(organizationId, libraryId, tooMany))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining(String.valueOf(OrphanedOriginalCleanupService.MAX_LISTED));
   }
 

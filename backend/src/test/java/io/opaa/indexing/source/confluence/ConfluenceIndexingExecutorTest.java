@@ -321,7 +321,8 @@ class ConfluenceIndexingExecutorTest {
         cleanupService,
         documentRepository,
         storageQuotaService,
-        resolver);
+        resolver,
+        Clock.systemUTC());
   }
 
   /** The real generalized attachment path over the mocked processing. */

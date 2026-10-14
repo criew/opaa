@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalStore;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import org.slf4j.Logger;
@@ -41,14 +42,17 @@ public class UploadPendingRecoveryRunner implements ApplicationRunner {
   private final DocumentRepository documentRepository;
   private final UploadProperties uploadProperties;
   private final UploadedOriginalStore uploadedOriginalStore;
+  private final Clock clock;
 
   public UploadPendingRecoveryRunner(
       DocumentRepository documentRepository,
       UploadProperties uploadProperties,
-      UploadedOriginalStore uploadedOriginalStore) {
+      UploadedOriginalStore uploadedOriginalStore,
+      Clock clock) {
     this.documentRepository = documentRepository;
     this.uploadProperties = uploadProperties;
     this.uploadedOriginalStore = uploadedOriginalStore;
+    this.clock = clock;
   }
 
   /**
@@ -59,7 +63,8 @@ public class UploadPendingRecoveryRunner implements ApplicationRunner {
   @Override
   public void run(ApplicationArguments args) {
     Instant threshold =
-        Instant.now().minus(Duration.ofMinutes(uploadProperties.pendingRecoveryThresholdMinutes()));
+        Instant.now(clock)
+            .minus(Duration.ofMinutes(uploadProperties.pendingRecoveryThresholdMinutes()));
     int recovered = documentRepository.failStalePending(FAILURE_REASON, threshold);
     if (recovered > 0) {
       log.warn(

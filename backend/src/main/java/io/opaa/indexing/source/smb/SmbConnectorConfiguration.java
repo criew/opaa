@@ -37,7 +37,8 @@ public class SmbConnectorConfiguration {
       LibraryFolderService libraryFolderService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new SmbIndexingExecutor(
         smbProperties,
         targetAddressValidator,
@@ -46,7 +47,7 @@ public class SmbConnectorConfiguration {
         documentRepository,
         libraryFolderService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

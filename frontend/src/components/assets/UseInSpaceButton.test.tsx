@@ -125,4 +125,28 @@ describe('UseInSpaceButton', () => {
     // A list holds list items only (axe "list"): every entry is an <li> around its button.
     expect(Array.from(list.children).map((child) => child.tagName)).toEqual(['LI', 'LI', 'LI'])
   })
+
+  it('offers the spaces of the space list the application frame provides', async () => {
+    const loadSpaces = vi.fn(async (): Promise<SpaceListResponse[]> => [
+      { ...mockSpaces[0], id: 'space-provided', name: 'Bereitgestellt', userRole: 'CURATOR' },
+    ])
+    const user = userEvent.setup()
+    renderWithProviders(
+      <UseInSpaceButton
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId="library-dienstanweisungen"
+        name="Dienstanweisungen"
+      />,
+      { withRouter: true, spaceList: loadSpaces },
+    )
+
+    await user.click(screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }))
+    const list = await within(await screen.findByRole('dialog')).findByRole('list', {
+      name: 'Spaces, die Sie kuratieren',
+    })
+
+    expect(await within(list).findByRole('button', { name: 'Bereitgestellt' })).toBeInTheDocument()
+    expect(within(list).queryByRole('button', { name: /^Phoenix/ })).not.toBeInTheDocument()
+    expect(loadSpaces).toHaveBeenCalledTimes(1)
+  })
 })

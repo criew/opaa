@@ -19,14 +19,11 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob(
-    '../../features/{audit,mail,model,branding,identity-provider}/components/**/*.tsx',
-    {
-      query: '?raw',
-      import: 'default',
-      eager: true,
-    },
-  ) as Record<string, string>),
+  ...(import.meta.glob('../../features/*/components/**/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
   ...(import.meta.glob('../../components/admin/**/*.tsx', {
     query: '?raw',
     import: 'default',
@@ -158,6 +155,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   Raster (Leitlinien 5.4), kein Inhaltsblock einer Seite; der umrandete Typ ist ein Etikett (5.5).
  * - `assetMarks`: das Typ-Etikett, das Kachel und Kopf der Detailseite teilen (#2208) — ein
  *   Etikett wie ein Chip (5.5), kein Block.
+ * - `HandoverScopeSummary`: die vier Kennzahl-Kacheln der Kontoübergabe (ADR-0033) — Karten im
+ *   Raster wie `AssetTile`, auf einer Anmeldeseite außerhalb der Verwaltung, kein Inhaltsblock.
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -177,6 +176,7 @@ const AUSNAHMEN = [
   'PromptPreview.tsx',
   'AssetTile.tsx',
   'assetMarks.tsx',
+  'HandoverScopeSummary.tsx',
 ]
 
 /**

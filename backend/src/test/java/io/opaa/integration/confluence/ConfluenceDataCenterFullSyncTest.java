@@ -113,7 +113,8 @@ class ConfluenceDataCenterFullSyncTest {
                 cleanupService,
                 documentRepository,
                 mock(LibraryStorageQuotaService.class),
-                new LibrarySourceConnectionResolver()));
+                new LibrarySourceConnectionResolver(),
+                Clock.systemUTC()));
   }
 
   private KnowledgeLibrary library(String token, String... spaceKeys) {

@@ -12,6 +12,12 @@ Sicherheit) gelten unverändert weiter.
 - Versions-Kataloge (`libs.versions.*`, `libs.*`, `libs.bundles.*`) für die Referenzierung von Versionen, Bibliotheken und Bundles verwenden
 - Dies gilt für die Abschnitte `[versions]`, `[libraries]`, `[bundles]` und `[plugins]`
 
+## Zeit
+
+Services lesen die aktuelle Zeit über die `Clock`-Bean aus `io.opaa.common.ClockConfiguration`
+(`Instant.now(clock)`), damit Ablauf, Fälligkeit und Fristen mit fester Clock testbar sind; Entities
+setzen ihre Zeitstempel (`createdAt` u. ä.) selbst im Konstruktor oder in `@PrePersist`.
+
 ## API & DTO-Konvention (Fortsetzung)
 
 Die beiden Kernregeln — DTOs nie von Hand, Änderungen beginnen in der Spec — stehen in der Wurzel-`AGENTS.md`.
@@ -38,13 +44,13 @@ Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definition
 | format | format |
 | identity | audit, branding, mail, auth, account, notification |
 | rights | permission, asset, group, directory, succession |
-| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren) |
+| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren), health |
 | connectors | jedes direkte Unterpaket von `indexing.source` |
 | connections | connection |
 | workspace | space, revision, diagnosticaccess |
 | library | library |
 | retrieval | retrieval |
-| assistant | prompt, chat, query, search, searchadmin, health |
+| assistant | prompt, chat, query, search, searchadmin |
 | external | externalaccess, mcp |
 | app | api, config, `OpaaApplication` |
 
@@ -78,7 +84,7 @@ Der Test prüft außerdem:
   selbst und Pakete davor. Ausgenommen ist die Web-Schicht (siehe „Web-Schicht je Modul“).
 - **Zyklen:** keine zwischen Top-Level-Paketen; ein `web`-Paket zählt dabei für sich. Zwischen
   Unterpaketen sind die heutigen Zyklen als Paketkanten in `KNOWN_SUBPACKAGE_CYCLE_EDGES`
-  eingefroren, nur noch in `externalaccess` und `query`.
+  eingefroren, nur noch in `externalaccess`.
   Jede weitere Kante auf einem Zyklus lässt den Test fehlschlagen, also jeder neue Zyklus.
 - **Kern von `indexing`:** `INDEXING_CORE` ordnet dessen Unterpakete, unten zuerst; ein Paket nutzt
   nur sich und die davor, nie das Wurzelpaket, `indexing.web` oder einen Konnektor. Jedes weitere

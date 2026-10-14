@@ -89,10 +89,10 @@ public final class ModularArchitecture {
           "llm",
           "metadata",
           "indexing",
+          "health",
           "connection",
           "library",
           "retrieval",
-          "health",
           "prompt",
           "chat",
           "query",
@@ -149,6 +149,7 @@ public final class ModularArchitecture {
           entry("llm", KNOWLEDGE),
           entry("metadata", KNOWLEDGE),
           entry("indexing", KNOWLEDGE),
+          entry("health", KNOWLEDGE),
           entry("connection", CONNECTIONS),
           entry("space", WORKSPACE),
           entry("revision", WORKSPACE),
@@ -160,7 +161,6 @@ public final class ModularArchitecture {
           entry("query", ASSISTANT),
           entry("search", ASSISTANT),
           entry("searchadmin", ASSISTANT),
-          entry("health", ASSISTANT),
           entry("externalaccess", EXTERNAL),
           entry("mcp", EXTERNAL),
           entry("api", APP),
@@ -200,11 +200,7 @@ public final class ModularArchitecture {
    * test; an edge that no longer lies on a cycle is removed from this list.
    */
   static final Set<String> KNOWN_SUBPACKAGE_CYCLE_EDGES =
-      Set.of(
-          "externalaccess -> externalaccess.token",
-          "externalaccess.token -> externalaccess",
-          "query -> query.spike",
-          "query.spike -> query");
+      Set.of("externalaccess -> externalaccess.token", "externalaccess.token -> externalaccess");
 
   /**
    * The core subpackages of {@code indexing}, lowest first. A core package depends only on itself

@@ -12,6 +12,7 @@ import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +51,11 @@ class DirectorySyncSchedulerIntegrationTest {
     // executor is DirectorySyncSchedulerTest's concern.
     scheduler =
         new DirectorySyncScheduler(
-            providerRepository, statusRepository, directorySyncService, Runnable::run);
+            providerRepository,
+            statusRepository,
+            directorySyncService,
+            Runnable::run,
+            Clock.systemUTC());
     directoryClient.respondWith();
   }
 
