@@ -1,6 +1,6 @@
 import type { DirectorySyncStatusResponse, OidcProviderResponse } from '@/shared/api/types'
 import type { StatusTone } from '@/shared/ui/StatusLine'
-import { ageSinceLabel, countLabel } from '../../groups/groupOriginLabels'
+import { ageSinceLabel, countLabel } from '@/features/principal'
 
 /** How the sync of one provider stands, read from the provider row and its status line. */
 export type SyncStateKind = 'ON' | 'PAUSED' | 'TOKEN' | 'OFF'

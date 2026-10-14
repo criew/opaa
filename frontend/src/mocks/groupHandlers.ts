@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { mockUsers } from './userFixtures'
+import { mockUsers } from '@/features/principal/mocks/userFixtures'
 import {
   mockDeactivationPreview,
   mockGroups,

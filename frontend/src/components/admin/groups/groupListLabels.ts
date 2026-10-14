@@ -1,5 +1,5 @@
 import type { GroupListResponse, GroupState } from '@/shared/api/types'
-import { groupIneffectiveReason } from '../../groups/groupOriginLabels'
+import { groupIneffectiveReason } from '@/features/principal'
 
 /** The states in the order the filter offers them - what needs a decision after „Aktiv". */
 export const GROUP_STATES: GroupState[] = [

@@ -7,7 +7,7 @@ import RadioGroup from '@mui/material/RadioGroup'
 import TextField from '@mui/material/TextField'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { AssetOwnerType, AssetType, GroupListResponse } from '@/shared/api/types'
-import type { MyGroupsState } from '../../hooks/useMyGroups'
+import type { MyGroupsState } from '@/features/principal'
 import { assetTypeLabel } from '../../shared/assetTypes'
 
 interface AssetOwnerFieldsProps {

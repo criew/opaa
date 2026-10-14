@@ -15,15 +15,15 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AssetTilePicker from '../components/assets/AssetTilePicker'
 import type { AssetPick, SpaceCreateLocationState } from '../components/assets/assetPick'
 import { assetTypeDefinition } from '../shared/assetTypes'
-import SubjectFormRow from '../components/permissions/SubjectFormRow'
-import SubjectPicker from '../components/permissions/SubjectPicker'
+import { SubjectFormRow } from '@/features/principal'
+import { SubjectPicker } from '@/features/principal'
 import {
   confirmExternalSubject,
   emptySubjectSelection,
   groupLabel,
   selectedSubjectId,
   type SubjectSelection,
-} from '../components/permissions/subjectSelection'
+} from '@/features/principal'
 import ChatAutoCleanupField from '../components/space/ChatAutoCleanupField'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
