@@ -63,10 +63,7 @@ public class LibraryDiagnosticsLockService {
   @Transactional
   public KnowledgeLibrary setLocked(CurrentUser actor, UUID libraryId, boolean locked) {
     KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(candidate -> actor.organizationId().equals(candidate.getOrganizationId()))
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+        libraryRepository.requireInOrganization(libraryId, actor.organizationId());
     if (library.isOwnerOnly()) {
       if (!actor.id().equals(library.getOwnerUserId())) {
         throw new NotFoundException("Bibliothek nicht gefunden");

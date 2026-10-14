@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -79,7 +80,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
 
   @BeforeEach
   void setUp() {
-    libraryRepository = mock(KnowledgeLibraryRepository.class);
+    libraryRepository = mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
     UserRepository userRepository = mock(UserRepository.class);
     GroupSubjectDirectory groupDirectory = mock(GroupSubjectDirectory.class);
     GroupMembershipResolver membershipResolver = mock(GroupMembershipResolver.class);
@@ -175,7 +176,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
             null,
             null,
             null);
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(accessService.requireRole(library, ownerId, false, AssetRole.OWNER))
         .thenReturn(AssetRole.OWNER);
     when(documentRepository.countByLibraryId(library.getId())).thenReturn(0L);

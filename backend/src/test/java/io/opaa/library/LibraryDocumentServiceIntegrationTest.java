@@ -1104,12 +1104,10 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void loadContentTreatsADocumentInAnotherOrganizationsLibraryAsNotFound() {
-    // #742 review, finding 3: the organization boundary at LibraryDocumentService#loadContent's
-    // library lookup (mirrors KnowledgeLibraryService#loadLibrary) - unlike
+    // The organization boundary at LibraryDocumentService#loadContent's library lookup - unlike
     // loadContentRefusesAUserWithNoGrantAtAllWith404NotForbidden's stranger, who is a user *within*
     // the same organization, this one belongs to a wholly different organization and must never
-    // even
-    // reach the grant check.
+    // even reach the grant check.
     LibraryDocumentEntry uploaded =
         documentService.uploadDocument(
             libraryId, textFile("nur-fuer-uns.txt", "content"), null, currentUserOf(editor, false));

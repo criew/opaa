@@ -90,7 +90,8 @@ public class LibraryFolderService {
   @Transactional
   public LibraryFolderDetail createFolder(
       UUID libraryId, String requestedName, UUID parentFolderId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     requireEditable(library, caller.id(), caller.isSystemAdmin());
     requireUploadLibrary(library);
 
@@ -134,7 +135,8 @@ public class LibraryFolderService {
   @Transactional
   public LibraryFolderDetail renameFolder(
       UUID libraryId, UUID folderId, String requestedName, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     requireEditable(library, caller.id(), caller.isSystemAdmin());
     requireUploadLibrary(library);
 
@@ -153,7 +155,8 @@ public class LibraryFolderService {
   }
 
   public LibraryFolderDetail getFolder(UUID libraryId, UUID folderId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
     LibraryFolder folder = loadFolder(libraryId, folderId);
     return toDetail(folder);
@@ -161,7 +164,8 @@ public class LibraryFolderService {
 
   @Transactional
   public void deleteFolder(UUID libraryId, UUID folderId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     requireEditable(library, caller.id(), caller.isSystemAdmin());
     requireUploadLibrary(library);
 
@@ -309,7 +313,8 @@ public class LibraryFolderService {
   @Transactional
   public UUID resolveOrCreateFolderPath(
       UUID libraryId, UUID baseFolderId, List<String> pathSegments, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     requireEditable(library, caller.id(), caller.isSystemAdmin());
     requireUploadLibrary(library);
     resolveParent(libraryId, baseFolderId);
@@ -463,7 +468,7 @@ public class LibraryFolderService {
   /**
    * Validates {@code parentFolderId} references an existing folder in the same library - treats a
    * parent from another library the same as one that does not exist, mirroring {@link
-   * #loadLibrary}'s cross-organization treatment.
+   * KnowledgeLibraryRepository#requireInOrganization}'s cross-organization treatment.
    */
   private void resolveParent(UUID libraryId, UUID parentFolderId) {
     if (parentFolderId == null) {
@@ -552,21 +557,5 @@ public class LibraryFolderService {
   /** Requires {@link AssetRole#EDITOR}, the same floor upload/delete of a document already uses. */
   private void requireEditable(KnowledgeLibrary library, UUID currentUserId, boolean systemAdmin) {
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.EDITOR);
-  }
-
-  /**
-   * Loads a library and enforces the organization boundary, treating a library from another
-   * organization as not found - mirrors {@code KnowledgeLibraryService#loadLibrary}/{@code
-   * LibraryDocumentService#loadLibrary}.
-   */
-  private KnowledgeLibrary loadLibrary(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
-    if (!library.getOrganizationId().equals(caller.organizationId())) {
-      throw new NotFoundException("Bibliothek nicht gefunden");
-    }
-    return library;
   }
 }

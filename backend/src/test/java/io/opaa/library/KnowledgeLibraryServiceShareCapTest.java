@@ -3,6 +3,7 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -81,7 +82,7 @@ class KnowledgeLibraryServiceShareCapTest {
 
   @BeforeEach
   void setUp() {
-    libraryRepository = mock(KnowledgeLibraryRepository.class);
+    libraryRepository = mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
     when(libraryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     UserRepository userRepository = mock(UserRepository.class);
     GroupSubjectDirectory groupDirectory = mock(GroupSubjectDirectory.class);
@@ -183,14 +184,16 @@ class KnowledgeLibraryServiceShareCapTest {
             "/data/dokumente",
             null,
             null);
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     return library;
   }
 
   private KnowledgeLibrary uploadLibrary() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(organizationId, "Uploads", null, ownerId);
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     return library;
   }
 

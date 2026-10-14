@@ -419,8 +419,7 @@ public class PointInTimeAccessService {
   private String objectName(UUID organizationId, AccessAsOfObjectType objectType, UUID objectId) {
     return objectType == AccessAsOfObjectType.KNOWLEDGE_LIBRARY
         ? libraryRepository
-            .findById(objectId)
-            .filter(library -> organizationId.equals(library.getOrganizationId()))
+            .findByIdAndOrganizationId(objectId, organizationId)
             .map(KnowledgeLibrary::auditName)
             .orElse(null)
         : spaceRepository

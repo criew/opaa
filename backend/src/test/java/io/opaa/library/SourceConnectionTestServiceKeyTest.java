@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -53,7 +54,7 @@ class SourceConnectionTestServiceKeyTest {
   void setUp() {
     endpoint = new FakeTokenEndpoint();
     connector = new ProbeKeySourceConnector(endpoint.uri());
-    libraryRepository = mock(KnowledgeLibraryRepository.class);
+    libraryRepository = mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
     caller = CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.USER, "Caller");
     tokens = new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC());
     registry =
@@ -151,6 +152,8 @@ class SourceConnectionTestServiceKeyTest {
     UUID id = UUID.randomUUID();
     ReflectionTestUtils.setField(library, "id", id);
     when(libraryRepository.findById(any())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(any(), any()))
+        .thenReturn(Optional.of(library));
     return id;
   }
 }

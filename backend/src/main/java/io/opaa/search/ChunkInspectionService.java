@@ -108,8 +108,7 @@ public class ChunkInspectionService {
     KnowledgeLibrary library =
         (libraryId == null
                 ? Optional.<KnowledgeLibrary>empty()
-                : libraryRepository.findById(libraryId))
-            .filter(candidate -> caller.organizationId().equals(candidate.getOrganizationId()))
+                : libraryRepository.findByIdAndOrganizationId(libraryId, caller.organizationId()))
             .filter(candidate -> !hiddenPrivateLibrary(caller, candidate.getId()))
             .orElseThrow(() -> new NotFoundException("Das Dokument wurde nicht gefunden."));
     libraryAccessService.requireContentRead(library, caller.id(), caller.isSystemAdmin());

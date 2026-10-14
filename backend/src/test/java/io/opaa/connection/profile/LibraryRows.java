@@ -1,6 +1,7 @@
 package io.opaa.connection.profile;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -20,9 +21,15 @@ public final class LibraryRows {
   private LibraryRows() {}
 
   public static KnowledgeLibraryRepository over(Map<UUID, KnowledgeLibrary> rows) {
-    KnowledgeLibraryRepository repository = mock(KnowledgeLibraryRepository.class);
+    KnowledgeLibraryRepository repository =
+        mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
     when(repository.findById(any()))
         .thenAnswer(call -> Optional.ofNullable(rows.get(call.<UUID>getArgument(0))));
+    when(repository.findByIdAndOrganizationId(any(), any()))
+        .thenAnswer(
+            call ->
+                Optional.ofNullable(rows.get(call.<UUID>getArgument(0)))
+                    .filter(found -> found.getOrganizationId().equals(call.getArgument(1))));
     when(repository.findAllById(any()))
         .thenAnswer(
             call -> {

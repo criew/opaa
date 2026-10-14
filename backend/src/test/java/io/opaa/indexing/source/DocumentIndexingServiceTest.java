@@ -37,6 +37,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.task.TaskRejectedException;
@@ -57,7 +58,10 @@ class DocumentIndexingServiceTest {
   @Mock private SourceIndexingExecutor rssFeedIndexingExecutor;
   @Mock private SourceIndexingExecutor confluenceIndexingExecutor;
   @Mock private SourceIndexingExecutor s3IndexingExecutor;
-  @Mock private KnowledgeLibraryRepository libraryRepository;
+
+  @Mock(answer = Answers.CALLS_REAL_METHODS)
+  private KnowledgeLibraryRepository libraryRepository;
+
   @Mock private LibraryAccessService libraryAccessService;
   @Mock private IndexingRunEventRepository indexingRunEventRepository;
 
@@ -133,7 +137,8 @@ class DocumentIndexingServiceTest {
   }
 
   private void stubEditableLibrary() {
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
   }
@@ -142,7 +147,8 @@ class DocumentIndexingServiceTest {
   void triggerIndexingWithAViewerOnlyGrantFailsWithForbiddenAndDoesNotStartAJob() {
     // Some access (a real VIEWER grant), just not enough - this stays at 403, distinct from
     // "no access at all" (see aSystemAdminWithoutAGrantOnAnOrdinaryLibraryIsStillRejected below).
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.EDITOR))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
@@ -159,8 +165,8 @@ class DocumentIndexingServiceTest {
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID());
-    when(libraryRepository.findById(foreignLibrary.getId()))
-        .thenReturn(Optional.of(foreignLibrary));
+    when(libraryRepository.findByIdAndOrganizationId(foreignLibrary.getId(), organizationId))
+        .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.triggerIndexing(foreignLibrary.getId(), caller))
         .isInstanceOf(NotFoundException.class)
@@ -171,7 +177,8 @@ class DocumentIndexingServiceTest {
   @Test
   void triggerIndexingWithAnUnknownLibraryFailsWithNotFound() {
     UUID unknownLibraryId = UUID.randomUUID();
-    when(libraryRepository.findById(unknownLibraryId)).thenReturn(Optional.empty());
+    when(libraryRepository.findByIdAndOrganizationId(unknownLibraryId, organizationId))
+        .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.triggerIndexing(unknownLibraryId, caller))
         .isInstanceOf(NotFoundException.class);
@@ -202,7 +209,8 @@ class DocumentIndexingServiceTest {
     // also pins that requireRole is now consulted unconditionally, the same as for any other
     // A library with no grant at all answers 404, not 403 - a system admin's own missing grant
     // must not be distinguishable from the library not existing.
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, systemAdminCaller.id(), false, AssetRole.EDITOR))
         .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
@@ -267,7 +275,8 @@ class DocumentIndexingServiceTest {
   void anUploadLibraryIsRejectedWithConflictAndNoJobStarts() {
     KnowledgeLibrary uploadLibrary =
         KnowledgeLibrary.ownedByUser(organizationId, "Upload-Bibliothek", null, UUID.randomUUID());
-    when(libraryRepository.findById(uploadLibrary.getId())).thenReturn(Optional.of(uploadLibrary));
+    when(libraryRepository.findByIdAndOrganizationId(uploadLibrary.getId(), organizationId))
+        .thenReturn(Optional.of(uploadLibrary));
     when(libraryAccessService.requireRole(uploadLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
 
@@ -289,7 +298,8 @@ class DocumentIndexingServiceTest {
             null,
             "https://example.com/files/",
             null);
-    when(libraryRepository.findById(httpLibrary.getId())).thenReturn(Optional.of(httpLibrary));
+    when(libraryRepository.findByIdAndOrganizationId(httpLibrary.getId(), organizationId))
+        .thenReturn(Optional.of(httpLibrary));
     when(libraryAccessService.requireRole(httpLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
     var job = new IndexingJob(JobStatus.RUNNING);
@@ -318,7 +328,8 @@ class DocumentIndexingServiceTest {
             null,
             "https://example.com/feed.xml",
             null);
-    when(libraryRepository.findById(rssLibrary.getId())).thenReturn(Optional.of(rssLibrary));
+    when(libraryRepository.findByIdAndOrganizationId(rssLibrary.getId(), organizationId))
+        .thenReturn(Optional.of(rssLibrary));
     when(libraryAccessService.requireRole(rssLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
     var job = new IndexingJob(JobStatus.RUNNING);
@@ -405,7 +416,8 @@ class DocumentIndexingServiceTest {
 
   @Test
   void getStatusReturnsEmptyForALibraryThatNeverRan() {
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
     when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(false);
@@ -417,7 +429,8 @@ class DocumentIndexingServiceTest {
 
   @Test
   void getStatusReturnsTheLibrarysLatestJob() {
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
     when(libraryAccessService.canManage(library, caller.id(), false)).thenReturn(false);
@@ -433,7 +446,8 @@ class DocumentIndexingServiceTest {
     // getStatus's caller (LibraryController) decides whether to shorten a FAILED job's
     // raw error message based on this flag - pinned here independently of that shortening so a
     // regression in either place fails the layer it actually belongs to.
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.VIEWER))
         .thenReturn(AssetRole.VIEWER);
     when(indexingJobService.getLatestJob(library.getId(), organizationId))
@@ -450,7 +464,8 @@ class DocumentIndexingServiceTest {
   void getStatusWithoutAnyGrantFailsWithNotFound() {
     // no grant at all answers 404, not 403 - the same "does not exist" GET
     // /libraries/{id} already answers for the same caller and library.
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.VIEWER))
         .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
@@ -463,8 +478,8 @@ class DocumentIndexingServiceTest {
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID());
-    when(libraryRepository.findById(foreignLibrary.getId()))
-        .thenReturn(Optional.of(foreignLibrary));
+    when(libraryRepository.findByIdAndOrganizationId(foreignLibrary.getId(), organizationId))
+        .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.getStatus(foreignLibrary.getId(), caller))
         .isInstanceOf(NotFoundException.class);
@@ -474,7 +489,8 @@ class DocumentIndexingServiceTest {
 
   @Test
   void getRecentRunsWithManageAccessReturnsTheLibrarysRuns() {
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.MANAGER))
         .thenReturn(AssetRole.MANAGER);
     var job = new IndexingJob(JobStatus.COMPLETED);
@@ -500,7 +516,8 @@ class DocumentIndexingServiceTest {
    */
   @Test
   void getRecentRunsWithOnlyReadAccessFailsWithForbidden() {
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.MANAGER))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
@@ -513,8 +530,8 @@ class DocumentIndexingServiceTest {
     KnowledgeLibrary foreignLibrary =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(), "Fremde Bibliothek", null, UUID.randomUUID());
-    when(libraryRepository.findById(foreignLibrary.getId()))
-        .thenReturn(Optional.of(foreignLibrary));
+    when(libraryRepository.findByIdAndOrganizationId(foreignLibrary.getId(), organizationId))
+        .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.getRecentRuns(foreignLibrary.getId(), caller))
         .isInstanceOf(NotFoundException.class);
