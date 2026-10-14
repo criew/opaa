@@ -268,7 +268,6 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             syncStateRepository,
-            cleanupService,
             testClock(),
             runTemplate());
   }
@@ -1009,7 +1008,6 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             syncStateRepository,
-            cleanupService,
             Clock.fixed(NOW, ZoneOffset.UTC),
             runTemplate());
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
@@ -1191,7 +1189,6 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             syncStateRepository,
-            cleanupService,
             testClock(),
             runTemplate());
     UUID second = UUID.randomUUID();
@@ -1450,7 +1447,6 @@ class ConfluenceIndexingExecutorTest {
             attachmentIndexer(),
             documentRepository,
             syncStateRepository,
-            cleanupService,
             Clock.fixed(NOW, ZoneOffset.UTC),
             runTemplate());
     UUID second = UUID.randomUUID();

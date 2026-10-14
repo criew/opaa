@@ -15,7 +15,6 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.JobTriggerSource;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ScanJournal;
 import io.opaa.knowledge.Document;
@@ -73,7 +72,6 @@ class S3FullSyncIntegrationTest {
   @Autowired private LibraryFolderRepository folderRepository;
   @Autowired private LibraryFolderService folderService;
   @Autowired private VectorChunkStore vectorChunkStore;
-  @Autowired private StaleDocumentCleanupService cleanupService;
   @Autowired private ScanJournal scanJournal;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -189,7 +187,6 @@ class S3FullSyncIntegrationTest {
         documentIngestService,
         documentRepository,
         folderService,
-        cleanupService,
         scanJournal,
         Clock.systemUTC(),
         indexingRunTemplate,

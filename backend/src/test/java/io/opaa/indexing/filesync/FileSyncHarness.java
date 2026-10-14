@@ -582,7 +582,6 @@ public final class FileSyncHarness {
                       ingestService,
                       documentRepository,
                       folderService,
-                      cleanupService,
                       state,
                       new ScanJournal(syncStateRepository),
                       Clock.fixed(now, ZoneOffset.UTC),

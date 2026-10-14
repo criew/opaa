@@ -57,6 +57,7 @@ class IndexingRunTest {
           SourceTypes.HTTP_DIRECTORY,
           new IndexingRunProgress(jobService, jobId),
           new IndexingRunEventRecorder(eventRepository, jobService, jobId),
+          mock(VanishedDocumentReconciler.class),
           documentRepository,
           quotaService,
           rejected -> Secret.personal(library.getSourceCredentials()),

@@ -7,7 +7,6 @@ import io.opaa.indexing.filesync.FileReference;
 import io.opaa.indexing.filesync.FileSync;
 import io.opaa.indexing.filesync.FileSyncSettings;
 import io.opaa.indexing.filesync.FileSyncWording;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ScanJournal;
@@ -53,7 +52,6 @@ final class S3FullSync implements AutoCloseable, FileSyncWording {
       DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
-      StaleDocumentCleanupService cleanupService,
       SourceSyncState state,
       ScanJournal journal,
       Clock clock,
@@ -72,7 +70,6 @@ final class S3FullSync implements AutoCloseable, FileSyncWording {
             documentIngestService,
             documentRepository,
             folderService,
-            cleanupService,
             state,
             journal,
             clock,

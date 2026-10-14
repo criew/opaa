@@ -175,7 +175,6 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
                 ProductionDocumentFormats.supportedFormats()),
             documentRepository,
             syncState,
-            cleanupService,
             Clock.fixed(NOW, java.time.ZoneOffset.UTC),
             template)
         .execute(jobId, library, runMode());
