@@ -19,7 +19,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -57,7 +56,6 @@ public class ExternalAccessTokenService {
   private final LocalAuthKeyService keys;
   private final AuditEventRecorder audit;
   private final Clock clock;
-  private final ZoneId zone;
 
   public ExternalAccessTokenService(
       ExternalAccessTokenRepository tokens,
@@ -78,7 +76,6 @@ public class ExternalAccessTokenService {
     this.keys = keys;
     this.audit = audit;
     this.clock = clock;
-    this.zone = ZoneId.systemDefault();
   }
 
   /**
@@ -232,7 +229,7 @@ public class ExternalAccessTokenService {
    */
   @Transactional
   public void recordUse(UUID tokenId) {
-    LocalDate today = LocalDate.ofInstant(clock.instant(), zone);
+    LocalDate today = LocalDate.now(clock);
     tokens
         .findById(tokenId)
         .filter(token -> token.getRevokedAt() == null)

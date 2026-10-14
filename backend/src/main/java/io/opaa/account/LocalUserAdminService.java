@@ -8,7 +8,6 @@ import io.opaa.api.types.LocalAccountState;
 import io.opaa.auth.CurrentUser;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -72,7 +71,7 @@ public class LocalUserAdminService {
         all.stream().filter(o -> o.credentials().countsAsWithoutExpiry()).count(),
         all.stream().filter(o -> o.state() == LocalAccountState.LOCKED).count(),
         all.stream().filter(o -> o.state() == LocalAccountState.INVITED).count(),
-        nextReviewOn(LocalDate.ofInstant(clock.instant(), ZoneId.systemDefault())));
+        nextReviewOn(LocalDate.now(clock)));
   }
 
   public LocalUserOverview get(UUID organizationId, UUID userId) {

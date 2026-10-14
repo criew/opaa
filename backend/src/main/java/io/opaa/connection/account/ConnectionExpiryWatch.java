@@ -16,7 +16,6 @@ import io.opaa.notification.NotificationService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -51,7 +50,6 @@ public class ConnectionExpiryWatch {
   private final NotificationService notifications;
   private final TransactionTemplate transactions;
   private final Clock clock;
-  private final ZoneId zone = ZoneId.systemDefault();
 
   ConnectionExpiryWatch(
       ConnectionSecrets secrets,
@@ -97,7 +95,9 @@ public class ConnectionExpiryWatch {
     int warned = 0;
     for (EndingConsent consent : secrets.claimEndingConsents()) {
       consents.warnOfEnd(
-          consent.libraryId(), consent.profileId(), DATE.format(consent.endsAt().atZone(zone)));
+          consent.libraryId(),
+          consent.profileId(),
+          DATE.format(consent.endsAt().atZone(clock.getZone())));
       warned++;
     }
     return warned;
@@ -119,7 +119,7 @@ public class ConnectionExpiryWatch {
           profile.getId(),
           "Verbindung läuft ab: Zugang „" + profile.getName() + "“",
           "Der Anbieter beendet die Zustimmung Ihres verbundenen Kontos am "
-              + DATE.format(grant.endsAt().atZone(zone))
+              + DATE.format(grant.endsAt().atZone(clock.getZone()))
               + (profile.isMcpServer()
                   // MCP connections are not shown on the accounts page yet
                   ? ". Danach muss die Verbindung zum MCP-Server neu hergestellt werden."
@@ -132,7 +132,7 @@ public class ConnectionExpiryWatch {
 
   private int warnOfSecrets() {
     Instant now = clock.instant();
-    LocalDate today = LocalDate.ofInstant(now, zone);
+    LocalDate today = LocalDate.ofInstant(now, clock.getZone());
     List<UUID> due =
         profiles.lockSecretsExpiringUnwarned(
             today.plusDays(ConnectionProfileService.SECRET_EXPIRY_WARNING_DAYS));

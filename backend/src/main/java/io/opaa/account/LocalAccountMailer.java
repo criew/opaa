@@ -7,12 +7,11 @@ import io.opaa.common.PublicBaseUrl;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import io.opaa.mail.SendResult;
+import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -35,17 +34,12 @@ public class LocalAccountMailer {
 
   private final MailService mail;
   private final PublicBaseUrl publicBaseUrl;
-  private final ZoneId zone;
+  private final Clock clock;
 
-  @Autowired
-  public LocalAccountMailer(MailService mail, PublicBaseUrl publicBaseUrl) {
-    this(mail, publicBaseUrl, ZoneId.systemDefault());
-  }
-
-  LocalAccountMailer(MailService mail, PublicBaseUrl publicBaseUrl, ZoneId zone) {
+  public LocalAccountMailer(MailService mail, PublicBaseUrl publicBaseUrl, Clock clock) {
     this.mail = mail;
     this.publicBaseUrl = publicBaseUrl;
-    this.zone = zone;
+    this.clock = clock;
   }
 
   public LinkDelivery sendInvitation(User user, IssuedActionToken token) {
@@ -177,11 +171,11 @@ public class LocalAccountMailer {
 
   /** "bis 12.09.2026, 14:00 Uhr" - fills "Der Link ist {{expiresAtHuman}} gültig". */
   String until(Instant instant) {
-    return "bis " + DATE_TIME.format(instant.atZone(zone));
+    return "bis " + DATE_TIME.format(instant.atZone(clock.getZone()));
   }
 
   /** "am 25.09.2026" - fills "läuft {{expiresAtHuman}} ab". */
   String on(Instant instant) {
-    return "am " + DATE.format(instant.atZone(zone));
+    return "am " + DATE.format(instant.atZone(clock.getZone()));
   }
 }

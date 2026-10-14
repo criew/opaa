@@ -4,12 +4,11 @@ import io.opaa.auth.User;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import io.opaa.mail.SendResult;
+import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -28,16 +27,11 @@ public class ExternalAccessTokenMailer {
       DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.GERMANY);
 
   private final MailService mail;
-  private final ZoneId zone;
+  private final Clock clock;
 
-  @Autowired
-  public ExternalAccessTokenMailer(MailService mail) {
-    this(mail, ZoneId.systemDefault());
-  }
-
-  ExternalAccessTokenMailer(MailService mail, ZoneId zone) {
+  public ExternalAccessTokenMailer(MailService mail, Clock clock) {
     this.mail = mail;
-    this.zone = zone;
+    this.clock = clock;
   }
 
   public SendResult sendExpiring(User owner, String tokenName, Instant expiresAt) {
@@ -51,6 +45,6 @@ public class ExternalAccessTokenMailer {
             "tokenName",
             tokenName,
             "expiresAtHuman",
-            "am " + DATE.format(expiresAt.atZone(zone))));
+            "am " + DATE.format(expiresAt.atZone(clock.getZone()))));
   }
 }
