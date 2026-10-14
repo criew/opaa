@@ -133,6 +133,10 @@ jobs:
             workflows:
               - '.github/workflows/**'
               - '.github/scripts/check_action_pins.sh'
+            # Step-level filter of the ADR style guard below, not a job output.
+            adrs:
+              - 'docs/decisions/**'
+              - '.github/scripts/check_adr_style.sh'
             # keycloak/** belongs to the seed filter because demo/seed/test_seed.py
             # asserts the realm export keeps the audience mapper the seed's token
             # path depends on (#1515) - otherwise only the nightly demo smoke run
@@ -163,6 +167,12 @@ jobs:
       - name: SHA-Pins der Actions in allen Workflows prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.workflows == 'true'
         run: .github/scripts/check_action_pins.sh
+
+      # Every ADR follows docs/decisions/README.md (current state instead of appended notes, status line
+      # with date). Warning-only until the rewrites #2697-#2702 are merged; then add --strict.
+      - name: ADR-Stil in docs/decisions prüfen
+        if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
+        run: .github/scripts/check_adr_style.sh
 
   # The backend suite runs as three parallel package shards (see `testShards` in
   # backend/build.gradle.kts) plus one build job for everything `build` does besides the root
