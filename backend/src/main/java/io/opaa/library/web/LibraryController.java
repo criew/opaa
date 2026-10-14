@@ -48,6 +48,7 @@ import io.opaa.library.PrivateLibraryErasure;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.permission.PermissionTransferService;
 import jakarta.validation.Valid;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -88,6 +89,8 @@ public class LibraryController {
   /** Without the metadata feature (ADR-0044) the document list has no Pflege-Anker filter. */
   private final FeatureFlags featureFlags;
 
+  private final Clock clock;
+
   public LibraryController(
       KnowledgeLibraryService libraryService,
       PrivateLibraryCreation privateCreation,
@@ -98,7 +101,8 @@ public class LibraryController {
       SourceConnectionTestService sourceConnectionTestService,
       PermissionTransferService transferService,
       SourceConnectorRegistry connectors,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      Clock clock) {
     this.featureFlags = featureFlags;
     this.libraryService = libraryService;
     this.privateCreation = privateCreation;
@@ -109,6 +113,7 @@ public class LibraryController {
     this.sourceConnectionTestService = sourceConnectionTestService;
     this.transferService = transferService;
     this.connectors = connectors;
+    this.clock = clock;
   }
 
   @PostMapping
@@ -362,7 +367,7 @@ public class LibraryController {
                 toIndexingStatusResponse(job, view.canSeeErrorDetail())
                     .unlistedScopeKeys(unlistedScopeKeys))
         .orElse(
-            new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, 0, 0, Instant.now())
+            new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, 0, 0, Instant.now(clock))
                 .message("Kein Indizierungslauf gefunden")
                 .libraryId(libraryId));
   }

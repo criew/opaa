@@ -49,6 +49,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -111,6 +112,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /** One transaction per document for {@link #deleteDocuments} - see its contract. */
   private final TransactionTemplate transactionTemplate;
 
+  private final Clock clock;
+
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService accessService,
@@ -131,7 +134,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       AssetRepository assetRepository,
       PlatformTransactionManager transactionManager,
       SourceConnectionResolver connectionResolver,
-      SourceSyncStateRepository syncStateRepository) {
+      SourceSyncStateRepository syncStateRepository,
+      Clock clock) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -152,6 +156,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.connectionResolver = connectionResolver;
     this.syncStateRepository = syncStateRepository;
+    this.clock = clock;
   }
 
   /**
@@ -340,7 +345,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    */
   private void markUploadAsContentChange(UUID libraryId) {
     try {
-      assetRepository.markContentChanged(libraryId, Instant.now());
+      assetRepository.markContentChanged(libraryId, Instant.now(clock));
     } catch (RuntimeException e) {
       log.warn("Could not mark library {} as changed after an upload", libraryId, e);
     }
@@ -724,7 +729,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     // zero rows and removes the chunks it just wrote itself.
     documentRepository.delete(document);
     noteRevisit(document);
-    assetRepository.markContentChanged(document.getLibraryId(), Instant.now());
+    assetRepository.markContentChanged(document.getLibraryId(), Instant.now(clock));
 
     // Chunks and file go only after commit, so a rollback keeps them. Each step is guarded on its
     // own: a failed chunk delete neither fails the committed request nor skips the file, and leaves
@@ -769,7 +774,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
           document.getLibraryId(),
           document.getSourceContainerKey(),
           document.getSourceHierarchyPath(),
-          Instant.now());
+          Instant.now(clock));
     }
   }
 
