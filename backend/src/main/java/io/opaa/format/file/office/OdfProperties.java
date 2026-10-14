@@ -1,5 +1,7 @@
 package io.opaa.format.file.office;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -48,20 +50,10 @@ public record OdfProperties(
     long maxTextCharacters) {
 
   public OdfProperties {
-    if (maxContentXmlBytes <= 0) {
-      maxContentXmlBytes = 10_485_760L; // 10 MiB
-    }
-    if (maxOdtParagraphs <= 0) {
-      maxOdtParagraphs = 50_000;
-    }
-    if (maxOdpSlides <= 0) {
-      maxOdpSlides = 5_000;
-    }
-    if (maxSpaceRepeat <= 0) {
-      maxSpaceRepeat = 1_000;
-    }
-    if (maxTextCharacters <= 0) {
-      maxTextCharacters = 10_000_000L;
-    }
+    maxContentXmlBytes = positiveOr(maxContentXmlBytes, 10_485_760L); // 10 MiB
+    maxOdtParagraphs = positiveOr(maxOdtParagraphs, 50_000);
+    maxOdpSlides = positiveOr(maxOdpSlides, 5_000);
+    maxSpaceRepeat = positiveOr(maxSpaceRepeat, 1_000);
+    maxTextCharacters = positiveOr(maxTextCharacters, 10_000_000L);
   }
 }

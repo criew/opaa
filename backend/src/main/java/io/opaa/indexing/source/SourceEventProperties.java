@@ -1,5 +1,7 @@
 package io.opaa.indexing.source;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -23,14 +25,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record SourceEventProperties(Duration debounce, int maxPendingKeys, int maxDeferrals) {
 
   public SourceEventProperties {
-    if (debounce == null || debounce.isZero() || debounce.isNegative()) {
-      debounce = Duration.ofSeconds(5);
-    }
-    if (maxPendingKeys <= 0) {
-      maxPendingKeys = 500;
-    }
-    if (maxDeferrals <= 0) {
-      maxDeferrals = 120;
-    }
+    debounce = positiveOr(debounce, Duration.ofSeconds(5));
+    maxPendingKeys = positiveOr(maxPendingKeys, 500);
+    maxDeferrals = positiveOr(maxDeferrals, 120);
   }
 }

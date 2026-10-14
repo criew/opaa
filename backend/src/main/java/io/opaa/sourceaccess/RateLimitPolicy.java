@@ -1,5 +1,7 @@
 package io.opaa.sourceaccess;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
@@ -46,9 +48,7 @@ public record RateLimitPolicy(int maxRetries, Duration defaultWait, Duration max
             .firstValue("Retry-After")
             .map(RateLimitPolicy::parseRetryAfter)
             .orElse(null);
-    if (wait == null || wait.isNegative() || wait.isZero()) {
-      wait = defaultWait;
-    }
+    wait = positiveOr(wait, defaultWait);
     if (wait.compareTo(maxWait) > 0) {
       wait = maxWait;
     }

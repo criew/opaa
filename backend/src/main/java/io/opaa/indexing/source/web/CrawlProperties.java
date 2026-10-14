@@ -1,5 +1,7 @@
 package io.opaa.indexing.source.web;
 
+import static io.opaa.common.PropertyDefaults.notNegativeOr;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -34,24 +36,9 @@ public record CrawlProperties(int maxDepth, int maxEntries, long maxFileSizeByte
   public static final long DEFAULT_MAX_FILE_SIZE_BYTES = 104_857_600L;
 
   public CrawlProperties {
-    if (maxDepth < 0) {
-      throw new IllegalArgumentException("maxDepth must not be negative, got " + maxDepth);
-    }
-    if (maxDepth == 0) {
-      maxDepth = 10;
-    }
-    if (maxEntries < 0) {
-      throw new IllegalArgumentException("maxEntries must not be negative, got " + maxEntries);
-    }
-    if (maxEntries == 0) {
-      maxEntries = 50_000;
-    }
-    if (maxFileSizeBytes < 0) {
-      throw new IllegalArgumentException(
-          "maxFileSizeBytes must not be negative, got " + maxFileSizeBytes);
-    }
-    if (maxFileSizeBytes == 0) {
-      maxFileSizeBytes = DEFAULT_MAX_FILE_SIZE_BYTES;
-    }
+    maxDepth = notNegativeOr("maxDepth", maxDepth, 10);
+    maxEntries = notNegativeOr("maxEntries", maxEntries, 50_000);
+    maxFileSizeBytes =
+        notNegativeOr("maxFileSizeBytes", maxFileSizeBytes, DEFAULT_MAX_FILE_SIZE_BYTES);
   }
 }

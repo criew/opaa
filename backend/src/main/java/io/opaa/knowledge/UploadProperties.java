@@ -1,5 +1,7 @@
 package io.opaa.knowledge;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -55,30 +57,20 @@ public record UploadProperties(
     if (store == null || store.isBlank()) {
       store = FilesystemUploadedOriginalStore.STORE_NAME;
     }
-    if (maxFileSize <= 0) {
-      maxFileSize = 50L * 1024 * 1024;
-    }
+    maxFileSize = positiveOr(maxFileSize, 50L * 1024 * 1024);
     if (threadPool == null) {
       threadPool = new ThreadPool(2, 4, 20);
     }
-    if (pendingRecoveryThresholdMinutes <= 0) {
-      pendingRecoveryThresholdMinutes = 30;
-    }
-    if (orphanGraceMinutes <= 0) {
-      orphanGraceMinutes = 60;
-    }
+    pendingRecoveryThresholdMinutes = positiveOr(pendingRecoveryThresholdMinutes, 30);
+    orphanGraceMinutes = positiveOr(orphanGraceMinutes, 60);
   }
 
   /** Mirrors {@code IndexingProperties.ThreadPool}'s own validation - see its Javadoc. */
   public record ThreadPool(int coreSize, int maxSize, int queueCapacity) {
 
     public ThreadPool {
-      if (coreSize <= 0) {
-        coreSize = 2;
-      }
-      if (maxSize <= 0) {
-        maxSize = 4;
-      }
+      coreSize = positiveOr(coreSize, 2);
+      maxSize = positiveOr(maxSize, 4);
       if (queueCapacity < 0) {
         queueCapacity = 20;
       }

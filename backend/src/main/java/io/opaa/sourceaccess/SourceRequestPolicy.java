@@ -1,5 +1,7 @@
 package io.opaa.sourceaccess;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -36,11 +38,8 @@ public record SourceRequestPolicy(
     Objects.requireNonNull(rateLimit, "rateLimit");
     Objects.requireNonNull(sleeper, "sleeper");
     requestBudgetPerRun = Math.max(0, requestBudgetPerRun);
-    if (maxRateLimitWaitPerRun == null
-        || maxRateLimitWaitPerRun.isZero()
-        || maxRateLimitWaitPerRun.isNegative()) {
-      maxRateLimitWaitPerRun = DEFAULT_MAX_RATE_LIMIT_WAIT_PER_RUN;
-    }
+    maxRateLimitWaitPerRun =
+        positiveOr(maxRateLimitWaitPerRun, DEFAULT_MAX_RATE_LIMIT_WAIT_PER_RUN);
   }
 
   /** Without a request budget and with the default wait cap per run. */

@@ -1,5 +1,10 @@
 package io.opaa.indexing.source.s3;
 
+import static io.opaa.common.PropertyDefaults.notNegativeOr;
+import static io.opaa.common.PropertyDefaults.positiveOr;
+import static io.opaa.common.PropertyDefaults.requireNotNegative;
+import static java.util.Objects.requireNonNullElse;
+
 import java.nio.file.Path;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -67,45 +72,20 @@ public record S3Properties(
       throw new IllegalArgumentException(
           "listPageSize must lie between 1 and " + MAX_LIST_PAGE_SIZE + ", got " + listPageSize);
     }
-    if (listPageSize == 0) {
-      listPageSize = MAX_LIST_PAGE_SIZE;
-    }
-    if (maxObjectSizeBytes <= 0) {
-      maxObjectSizeBytes = 50L * 1024 * 1024;
-    }
-    if (requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative()) {
-      requestTimeout = Duration.ofSeconds(30);
-    }
-    if (maxRetries == null) {
-      maxRetries = 5;
-    }
-    if (maxRetries < 0) {
-      throw new IllegalArgumentException("maxRetries must not be negative, got " + maxRetries);
-    }
-    if (retryBackoff == null || retryBackoff.isZero() || retryBackoff.isNegative()) {
-      retryBackoff = Duration.ofMillis(500);
-    }
-    if (requestBudgetPerRun < 0) {
-      throw new IllegalArgumentException(
-          "requestBudgetPerRun must not be negative, got " + requestBudgetPerRun);
-    }
+    listPageSize = listPageSize == 0 ? MAX_LIST_PAGE_SIZE : listPageSize;
+    maxObjectSizeBytes = positiveOr(maxObjectSizeBytes, 50L * 1024 * 1024);
+    requestTimeout = positiveOr(requestTimeout, Duration.ofSeconds(30));
+    maxRetries = requireNonNullElse(maxRetries, 5);
+    requireNotNegative("maxRetries", maxRetries);
+    retryBackoff = positiveOr(retryBackoff, Duration.ofMillis(500));
+    requireNotNegative("requestBudgetPerRun", requestBudgetPerRun);
     if (tempDirectory == null) {
       tempDirectory = Path.of(System.getProperty("java.io.tmpdir"));
     }
-    if (maxObjectsPerRun < 0) {
-      throw new IllegalArgumentException(
-          "maxObjectsPerRun must not be negative, got " + maxObjectsPerRun);
-    }
-    if (maxObjectsPerRun == 0) {
-      maxObjectsPerRun = DEFAULT_MAX_OBJECTS_PER_RUN;
-    }
-    if (downloadConcurrency < 0) {
-      throw new IllegalArgumentException(
-          "downloadConcurrency must not be negative, got " + downloadConcurrency);
-    }
-    if (downloadConcurrency == 0) {
-      downloadConcurrency = DEFAULT_DOWNLOAD_CONCURRENCY;
-    }
+    maxObjectsPerRun =
+        notNegativeOr("maxObjectsPerRun", maxObjectsPerRun, DEFAULT_MAX_OBJECTS_PER_RUN);
+    downloadConcurrency =
+        notNegativeOr("downloadConcurrency", downloadConcurrency, DEFAULT_DOWNLOAD_CONCURRENCY);
   }
 
   /**

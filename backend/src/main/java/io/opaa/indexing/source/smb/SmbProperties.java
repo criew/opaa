@@ -1,5 +1,8 @@
 package io.opaa.indexing.source.smb;
 
+import static io.opaa.common.PropertyDefaults.notNegativeOr;
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -33,32 +36,20 @@ public record SmbProperties(
   public static final int DEFAULT_LIST_PAGE_SIZE = 1_000;
 
   public SmbProperties {
-    requireNotNegative("maxFileSizeBytes", maxFileSizeBytes);
-    requireNotNegative("requestBudgetPerRun", requestBudgetPerRun);
-    requireNotNegative("maxEntriesPerRun", maxEntriesPerRun);
-    requireNotNegative("downloadConcurrency", downloadConcurrency);
-    requireNotNegative("listPageSize", listPageSize);
-    maxFileSizeBytes = maxFileSizeBytes == 0 ? DEFAULT_MAX_FILE_SIZE_BYTES : maxFileSizeBytes;
-    requestTimeout =
-        requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative()
-            ? DEFAULT_REQUEST_TIMEOUT
-            : requestTimeout;
+    maxFileSizeBytes =
+        notNegativeOr("maxFileSizeBytes", maxFileSizeBytes, DEFAULT_MAX_FILE_SIZE_BYTES);
+    requestTimeout = positiveOr(requestTimeout, DEFAULT_REQUEST_TIMEOUT);
     requestBudgetPerRun =
-        requestBudgetPerRun == 0 ? DEFAULT_REQUEST_BUDGET_PER_RUN : requestBudgetPerRun;
-    maxEntriesPerRun = maxEntriesPerRun == 0 ? DEFAULT_MAX_ENTRIES_PER_RUN : maxEntriesPerRun;
+        notNegativeOr("requestBudgetPerRun", requestBudgetPerRun, DEFAULT_REQUEST_BUDGET_PER_RUN);
+    maxEntriesPerRun =
+        notNegativeOr("maxEntriesPerRun", maxEntriesPerRun, DEFAULT_MAX_ENTRIES_PER_RUN);
     downloadConcurrency =
-        downloadConcurrency == 0 ? DEFAULT_DOWNLOAD_CONCURRENCY : downloadConcurrency;
-    listPageSize = listPageSize == 0 ? DEFAULT_LIST_PAGE_SIZE : listPageSize;
+        notNegativeOr("downloadConcurrency", downloadConcurrency, DEFAULT_DOWNLOAD_CONCURRENCY);
+    listPageSize = notNegativeOr("listPageSize", listPageSize, DEFAULT_LIST_PAGE_SIZE);
   }
 
   /** All defaults. */
   public static SmbProperties defaults() {
     return new SmbProperties(0, null, 0, 0, 0, 0);
-  }
-
-  private static void requireNotNegative(String name, long value) {
-    if (value < 0) {
-      throw new IllegalArgumentException(name + " must not be negative, got " + value);
-    }
   }
 }
