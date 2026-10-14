@@ -79,9 +79,9 @@ public final class OwnUserFixtures {
             .flatMap(id -> spaces.findDistinctByMembershipsUserId(id).stream())
             .distinct()
             .toList());
-    // The rights-history tables reference users with RESTRICT: they go before the users. The two
-    // added with #1815 carry no foreign key to their space, so deleting the spaces above left
-    // their intervals behind (ADR-0016).
+    // The rights-history tables reference users with RESTRICT: they go before the users. Two of
+    // them carry no foreign key to their space, so deleting the spaces above leaves their
+    // intervals behind (ADR-0016).
     grantHistory.deleteBySubjectUserIdIn(own);
     membershipHistory.deleteByUserIdIn(own);
     spaceMembershipHistory.deleteBySubjectUserIdIn(own);

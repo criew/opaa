@@ -78,10 +78,8 @@ class DocumentWindowRegressionProofTest {
   @Test
   void oldChunkBoundTopKStarvesTheRankedListToThreeDistinctDocuments() {
     // "Old" semantics (chunk-bound window): similaritySearch(topK=documentTopK) with no widening
-    // for
-    // deduplication — chunkTopK == documentTopK == 10, exactly what RetrievalEvaluationHarnessTest
-    // did before this PR. Deduplicating the first 10 raw chunk hits (doc-big x8 + doc-2 + doc-3)
-    // yields only 3 distinct documents.
+    // for deduplication — chunkTopK == documentTopK == 10. Deduplicating the first 10 raw chunk
+    // hits (doc-big x8 + doc-2 + doc-3) yields only 3 distinct documents.
     List<String> topTenRawChunks = rankedChunkFileNames().subList(0, DOCUMENT_TOP_K);
 
     var oldWindow = DocumentRanking.applyDocumentWindow(topTenRawChunks, DOCUMENT_TOP_K);

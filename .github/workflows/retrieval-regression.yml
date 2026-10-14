@@ -55,7 +55,7 @@ jobs:
             timeout_minutes: 70
             exec_step_name: 'Retrieval-Regression ausführen'
             report_file: baseline-comparison.md
-            # Der Pipeline-Messpfad hat seit #1040 eine eigene Baseline und damit ein eigenes
+            # Der Pipeline-Messpfad hat eine eigene Baseline und damit ein eigenes
             # Urteil: eigene Delta-Tabelle, eigener Testfall, kein gemeinsames Ja/Nein mit dem
             # Rohvektor-Pfad (die beiden Pfade sind nicht ineinander umrechenbar).
             pipeline_report_file: pipeline-baseline-comparison-comic-characters.md
@@ -90,8 +90,8 @@ jobs:
             exec_step_name: 'Retrieval-Regression (city-landmarks) ausführen'
             report_file: baseline-comparison-city-landmarks.md
             pipeline_report_file: pipeline-baseline-comparison-city-landmarks.md
-            # Pipeline-Baseline seit Issue #1081 gezogen — beide Pfade dieser Domäne liefern
-            # seither ein Urteil (Quelle und Herleitung der Baseline: siehe deren eigene
+            # Pipeline-Baseline gezogen — beide Pfade dieser Domäne liefern ein Urteil
+            # (Quelle und Herleitung der Baseline: siehe deren eigene
             # provenance/notes in eval/baseline/pipeline-city-landmarks.json).
             pipeline_gated: true
             pipeline_state_note: ''
@@ -181,9 +181,9 @@ jobs:
       # actions/cache/save, not the combined actions/cache action: actions/cache's own save step only
       # runs as a *post*-job step, and GitHub Actions skips post-job steps entirely when the job's
       # own status is 'cancelled' — which is exactly what timeout-minutes produces. On a cold cache
-      # the very first scheduled run always times
-      # out (indexing ~1.5k documents through the real Ollama container is itself the majority of
-      # the runtime, see the timeout_minutes comment in the matrix above), so the combined action's
+      # the very first scheduled run always times out (indexing ~1.5k documents through the real
+      # Ollama container is itself the majority of the runtime, see the timeout_minutes comment in
+      # the matrix above), so the combined action's
       # cache-key never got written, next night started cold again, timed out again, forever — a
       # self-perpetuating failure with no way out except manual intervention. Splitting restore and
       # save lets the explicit save step below run as a normal, non-post job step with its own
@@ -217,15 +217,14 @@ jobs:
       # Die Größenprüfung allein reicht nicht: ein Pull, der z. B. bei ~60% abbricht, kann die
       # 150-MB-Schwelle bereits überschreiten und würde trotzdem dauerhaft unter dem
       # unveränderlichen Cache-Schlüssel landen; Ollama hinterlässt dabei unvollständige Blobs statt
-      # eines fertigen Manifests. actions/cache-Schlüssel sind unveränderlich — ein unvollständig gespeicherter Export bliebe
-      # sonst für immer als vermeintlicher Treffer bestehen, ohne dass es auffällt. Die Prüfung
-      # unten kombiniert deshalb zwei Signale: Größe (>1 GB, fängt den leeren, sehr kleinen und den
-      # nur teilweise befüllten Fall — beide Modelle zusammen belegen rund 1,26 GB) UND
-      # Vollständigkeit (kein '*partial*'-Blob, beide Modell-Manifeste liegen unter den für
-      # 'nomic-embed-text:v1.5' und 'qwen2.5:1.5b-instruct' erwarteten Pfaden). Nur wenn beides
-      # zutrifft, wird exportiert; sonst
-      # bleibt der Cache-Pfad leer und der nächste Lauf zieht das Modell einfach erneut aus dem
-      # Netz — kein dauerhafter Schaden, nur ein Retry.
+      # eines fertigen Manifests. actions/cache-Schlüssel sind unveränderlich — ein unvollständig
+      # gespeicherter Export bliebe sonst für immer als vermeintlicher Treffer bestehen, ohne dass
+      # es auffällt. Die Prüfung unten kombiniert deshalb zwei Signale: Größe (>1 GB, fängt den
+      # leeren, sehr kleinen und den nur teilweise befüllten Fall — beide Modelle zusammen belegen
+      # rund 1,26 GB) UND Vollständigkeit (kein '*partial*'-Blob, beide Modell-Manifeste liegen
+      # unter den für 'nomic-embed-text:v1.5' und 'qwen2.5:1.5b-instruct' erwarteten Pfaden). Nur
+      # wenn beides zutrifft, wird exportiert; sonst bleibt der Cache-Pfad leer und der nächste Lauf
+      # zieht das Modell einfach erneut aus dem Netz — kein dauerhafter Schaden, nur ein Retry.
       - name: Docker-Volume für den Cache exportieren
         if: always()
         run: |
@@ -379,7 +378,7 @@ jobs:
       # Timeout-Fehlschlag lautlos durchrutschen lassen, ohne Alarm-Issue und ohne
       # Artefakt-Hinweis.
       #
-      # Seit #1040 führt der Lauf zwei Urteile (Rohvektor- und Pipeline-Messpfad, je eigene
+      # Der Lauf führt zwei Urteile (Rohvektor- und Pipeline-Messpfad, je eigene
       # Baseline). Das Alarm-Issue trägt deshalb beide Delta-Tabellen mit ihren eigenen
       # Überschriften und behauptet nicht mehr pauschal eine Regression: Welcher Pfad rot ist,
       # steht in seiner Tabelle; der jeweils andere kann im selben Lauf grün sein.

@@ -1068,10 +1068,7 @@ class AssetGrantServiceTest {
     assertThat(view.subjectDisplayName()).isEqualTo("Alle Konten");
   }
 
-  /**
-   * #797 after #1931: the share cap is asked here, not where a release level used to be set - the
-   * grant path is the only one that reaches everybody now.
-   */
+  /** The share cap is asked on the grant path: it is the only one that reaches everybody. */
   @Test
   void upsertGrantAsksTheTypesCeilingBeforeGrantingToAllAccounts() {
     asManagerOfTheLibrary();

@@ -141,6 +141,13 @@ def test_review_protocol_fails_in_every_tree(repo: Path, path: str, text: str) -
     assert path in result.stdout
 
 
+def test_german_history_fails_in_a_workflow(repo: Path) -> None:
+    write(repo, WORKFLOW, workflow("Seit #1040 führt der Lauf zwei Urteile."))
+    result = run(repo)
+    assert result.returncode == 1
+    assert "History" in result.stdout
+
+
 @pytest.mark.parametrize(
     "path, text",
     [

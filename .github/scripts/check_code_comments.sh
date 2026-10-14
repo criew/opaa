@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
-# Comments state the contract, not how it came about (AGENTS.md, "Code-Kommentare"). Rejected:
-# review protocol ("#393 code review, finding 1", "nit 4", "Befund 6"), history anchored at an
-# issue ("since #1931", "pre-#888", "formerly") and origin markers ("(#1073)", "(PR #537)",
-# "(#2163, ADR-0041)", a leading "#1073:"). Any other issue reference is only counted: a permitted one (workaround until an
-# upstream fix, deprecation, spike, a test's "regression guard for #N: <invariant>") and one still
-# woven into a sentence look alike to a pattern; "until #N"/"after #N" stay allowed for a workaround
-# or a deprecation. The spike package and a line naming "Spike #N" are exempt.
-# Checked, per tree in TREES: Java comment lines of the main, test and evalTest sources, '#' comment
-# lines of application*.yml, '#' and '//' (inline script) comment lines of the workflows, every line
-# of the OpenAPI fragments, whose summaries and descriptions are the API documentation, and the
-# comments of the Liquibase changelogs.
+# Comments state the contract, not how it came about (AGENTS.md, "Code-Kommentare").
+#
+# Checked trees (TREES): Java comment lines under backend/src/main, opaa-api/src/main,
+# backend/src/test and backend/src/evalTest; '#' comment lines of application*.yml; '#' lines and
+# '//' lines of inline scripts in .github/workflows/*.yml; every line of the OpenAPI fragments,
+# whose summaries and descriptions are the API documentation; the changeSet comment: values (folded
+# ones with their continuation lines) and '#' lines of the Liquibase changelogs.
+#
+# Rejected:
+# - review protocol: "#393 code review, finding 1", "#N second review", "#N (review)",
+#   "review of PR #N", "re-review", "review round", "review finding", "finding 2", "nit 4",
+#   "Befund 6", "Wichtig 3"
+# - history anchored at an issue: "since #1931", "seit #1040", "before #N", "pre-#888",
+#   "formerly"
+# - origin markers: "(#1073)", "(PR #537)", "(#2163, ADR-0041)", a leading "#1073:",
+#   "Issue #1070:" or "#583/#1910:"
+#
+# Any other issue reference is only counted, per tree: a permitted one (workaround until an upstream
+# fix, deprecation, spike) and one still woven into a sentence look alike to a pattern;
+# "until #N"/"after #N" stay allowed. A test's "regression guard for #N: <invariant>" is counted
+# apart as the permitted form. The spike package and a line naming "Spike #N" are exempt.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -28,7 +38,7 @@ REF='(?<![\w.&#/-])#[0-9]{2,4}\b'
 # file:line: in front of every checked line
 AT='^[^:]+:[0-9]+:'
 REVIEW="(?i)${REF}\S*\s+((second|third|follow-up)\s+)?(code\s+|re-)?review\b|${REF}\s*\(review\)|\breview\s+of\s+(PR\s+)?#[0-9]|\bre-review\b|\breview\s+(round|findings?)\b|\b(should-|optional\s+)?finding\s+[0-9]|\bnit\s+[0-9]|\b(Befund|Wichtig)\s+([0-9]|\")"
-HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|before)\s+(epic\s+|PR\s+|issue\s+)?#[0-9]"
+HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|seit|before)\s+(epic\s+|PR\s+|issue\s+)?#[0-9]"
 MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\s*([);]|,\s*\S)|${AT}\s*(//|/?\*|#|comment:\s*\"?)\s*(<p>|<b>)?\s*(([Ii]ssues?|PR)\s+)?${REF}(\s*[,/]\s*#[0-9]{2,4})*\s*:"
 EXEMPT="^backend/src/main/java/io/opaa/query/spike/|(?i)\bspike\s+\(?#[0-9]"
 # The form a test may keep: it names the regression and, after the colon, the invariant it guards.
