@@ -396,7 +396,7 @@ Stichproben aus einer größeren Grundgesamtheit. Der Retrieval-Harness von OPAA
   Befehlssatzstufen rechnen nicht bitgleich, und bei Temperatur 0 kippt das die Zerlegung
   (`eval/README.md`, „Feste CPU-Variante").
 - Die Belege liegen vor: vier Läufe auf drei Maschinen, alle bit-identisch, Delta ±0,000 über alle
-  vierzig Metrik/Gruppen-Zeilen (ADR-0013, Änderungsverlauf zu PR #301), bestätigt auf
+  vierzig Metrik/Gruppen-Zeilen (ADR-0013), bestätigt auf
   GitHub-Actions-Hardware.
 
 Ein Konfidenzintervall über eine deterministische Größe ist keine Vorsicht, sondern ein Kategorienfehler:
