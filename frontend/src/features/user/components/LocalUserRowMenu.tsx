@@ -18,7 +18,7 @@ import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import type { LocalUserResponse } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import { useUserAdminStore } from '../../../stores/userAdminStore'
+import { useUserAdminStore } from '../stores/userAdminStore'
 import type { SetupLinkHandover } from './SetupLinkDialog'
 import { localUserErrorMessage } from './localUserLabels'
 

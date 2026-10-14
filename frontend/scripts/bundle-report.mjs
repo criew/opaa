@@ -16,7 +16,7 @@ const ROUTES = {
   '/login': 'src/features/auth/pages/LoginPage.tsx',
   '/spaces/:spaceId/chats/:chatId': 'src/pages/ChatPage.tsx',
   '/catalog': 'src/pages/CatalogPage.tsx',
-  '/admin/users': 'src/pages/UserManagementPage.tsx',
+  '/admin/users': 'src/features/user/pages/UserManagementPage.tsx',
 }
 
 const manifest = JSON.parse(readFileSync(join(distDir, '.vite', 'manifest.json'), 'utf8'))

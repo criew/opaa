@@ -26,8 +26,8 @@ import { successionHandlers } from '../features/succession/mocks/successionHandl
 import { capabilityHandlers } from '../features/capability/mocks/capabilityHandlers'
 // user
 import { userHandlers } from '@/features/principal/mocks/userHandlers'
-import { localUserHandlers } from './localUserHandlers'
-import { accountHandlers } from './accountHandlers'
+import { localUserHandlers } from '../features/user/mocks/localUserHandlers'
+import { accountHandlers } from '../features/user/mocks/accountHandlers'
 // identity-provider
 import { identityProviderHandlers } from '@/features/identity-provider/mocks/identityProviderHandlers'
 // model

@@ -25,7 +25,7 @@ import type {
   SystemRole,
 } from '@/shared/api/types'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
-import { useUserAdminStore } from '../../../stores/userAdminStore'
+import { useUserAdminStore } from '../stores/userAdminStore'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import {
   SYSTEM_ROLES,

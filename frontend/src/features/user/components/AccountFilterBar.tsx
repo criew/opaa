@@ -9,7 +9,7 @@ import {
   useUserAdminStore,
   type AccountFilters,
   type LocalUserReviewFilter,
-} from '../../../stores/userAdminStore'
+} from '../stores/userAdminStore'
 import {
   LOCAL_ACCOUNT_STATE_LABEL,
   LOCAL_ACCOUNT_STATES,

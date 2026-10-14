@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { server } from '../mocks/server'
+import { server } from '../../../mocks/server'
 import {
   LAST_ADMIN_USER_ID,
   MAIL_FAILING_ADDRESS_SUFFIX,

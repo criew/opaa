@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography'
 import type { LocalUserResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
-import { useUserAdminStore } from '../../../stores/userAdminStore'
+import { useUserAdminStore } from '../stores/userAdminStore'
 import { localUserErrorMessage } from './localUserLabels'
 
 /** The same limit the creation reason has - and the same purpose binding (ADR-0033, E. 11). */

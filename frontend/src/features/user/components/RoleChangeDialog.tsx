@@ -11,7 +11,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { AccountResponse, SystemRole } from '@/shared/api/types'
 import { notify } from '@/shared/stores/notificationStore'
-import { useUserAdminStore } from '../../../stores/userAdminStore'
+import { useUserAdminStore } from '../stores/userAdminStore'
 import { accountOriginLabel } from './accountLabels'
 import { SYSTEM_ROLES, SYSTEM_ROLE_LABEL, localUserErrorMessage } from './localUserLabels'
 

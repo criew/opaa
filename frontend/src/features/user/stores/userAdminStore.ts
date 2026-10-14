@@ -16,7 +16,7 @@ import type {
   SystemRole,
   UserInfo,
 } from '@/shared/api/types'
-import { changeUserRole, listAccounts, type AccountSortField } from '../services/accountApi'
+import { changeUserRole, listAccounts, type AccountSortField } from '../api/accountApi'
 import {
   createLocalUser,
   deleteLocalUser,
@@ -30,7 +30,7 @@ import {
   updateLocalAuthSettings,
   updateLocalUser,
   LOCAL_USER_PAGE_SIZE,
-} from '../services/localUserApi'
+} from '../api/localUserApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 

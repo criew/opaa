@@ -12,8 +12,8 @@ import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type { AccountResponse, LocalAccountState, LocalUserResponse } from '@/shared/api/types'
-import { useUserAdminStore } from '../../../stores/userAdminStore'
-import type { AccountSortField } from '../../../services/accountApi'
+import { useUserAdminStore } from '../stores/userAdminStore'
+import type { AccountSortField } from '../api/accountApi'
 import {
   ListEmptyState,
   ListLoading,

@@ -70,7 +70,7 @@ import { HandoverPage } from '@/features/auth/routes'
 // capability
 import { CapabilityManagementPage } from '@/features/capability/routes'
 // user
-import UserManagementPage from './pages/UserManagementPage'
+import { UserManagementPage } from '@/features/user/routes'
 // identity-provider
 import { OidcProviderManagementPage } from '@/features/identity-provider/routes'
 // directory-sync
