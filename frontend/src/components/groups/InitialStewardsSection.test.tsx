@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../test/test-utils'
 import InitialStewardsSection from './InitialStewardsSection'
 
-vi.mock('../../hooks/useUserSearch', () => ({
+vi.mock('@/features/principal/hooks/useUserSearch', () => ({
   useUserSearch: () => ({
     query: 'bo',
     setQuery: vi.fn(),

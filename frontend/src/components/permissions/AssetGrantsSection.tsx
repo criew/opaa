@@ -30,8 +30,8 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { successionAwareMessage } from '../succession/successionConflict'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetKey, useGrantStore } from '../../stores/grantStore'
-import GroupMembersDisclosure from './GroupMembersDisclosure'
-import SubjectPicker from './SubjectPicker'
+import { GroupMembersDisclosure } from '@/features/principal'
+import { SubjectPicker } from '@/features/principal'
 import {
   confirmAllAccountsSubject,
   confirmExternalSubject,
@@ -39,9 +39,9 @@ import {
   emptySubjectSelection,
   selectedSubjectId,
   type SubjectSelection,
-} from './subjectSelection'
+} from '@/features/principal'
 import { getGrantedGroupMembers } from '../../services/assetApi'
-import { resolveSelectableGroup } from '../../services/groupApi'
+import { resolveSelectableGroup } from '@/features/principal'
 import { allAccountsLabel, assetRoleLabel } from '@/shared/utils/labels'
 import {
   assetGrantScopeHint,
@@ -49,7 +49,7 @@ import {
   groupMemberCountLabel,
   permissionSubjectTypeLabel,
 } from '../assets/assetLabels'
-import { assetTypeLabel } from '../assets/assetTypeRegistry'
+import { assetTypeLabel } from '../../shared/assetTypes'
 
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 

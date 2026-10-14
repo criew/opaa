@@ -25,6 +25,7 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionReachGuard;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -102,6 +103,7 @@ public class AssetGrantService {
   private final ApplicationEventPublisher eventPublisher;
   private final SuccessionReachGuard successionGuard;
   private final OwnerOnlyRule ownerOnlyRule;
+  private final Clock clock;
 
   AssetGrantService(
       AssetGrantRepository grantRepository,
@@ -115,8 +117,10 @@ public class AssetGrantService {
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       SuccessionReachGuard successionGuard,
-      OwnerOnlyRule ownerOnlyRule) {
+      OwnerOnlyRule ownerOnlyRule,
+      Clock clock) {
     this.ownerOnlyRule = ownerOnlyRule;
+    this.clock = clock;
     this.grantRepository = grantRepository;
     this.userRepository = userRepository;
     this.groupDirectory = groupDirectory;
@@ -150,7 +154,7 @@ public class AssetGrantService {
         grantRepository
             .findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
                 assetType, asset.getId(), AssetGrantSubjectType.GROUP, groupId)
-            .filter(found -> !found.isExpired(Instant.now()))
+            .filter(found -> !found.isExpired(Instant.now(clock)))
             .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
     return disclosureDirectory
         .disclose(grant.getSubjectId(), asset.getOrganizationId(), caller, offset, limit)
@@ -240,7 +244,7 @@ public class AssetGrantService {
 
     // One reference instant for the whole upsert, so the revival check in AssetGrant#updateRole and
     // any expiry comparison below judge the same moment.
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     Optional<AssetGrant> existing =
         switch (request.subjectType()) {
           case USER ->
@@ -405,7 +409,7 @@ public class AssetGrantService {
     requireCallerCanTouchExistingGrant(callerRole, grant, "entfernen");
 
     if (grant.getRole() == AssetRole.OWNER
-        && !grant.isExpired(Instant.now())
+        && !grant.isExpired(Instant.now(clock))
         && isLastActiveOwnerGrant(assetType, asset.getId(), grant.getId())) {
       throw new ConflictException(
           "Die letzte "
@@ -500,7 +504,7 @@ public class AssetGrantService {
   private boolean isLastActiveOwnerGrant(AssetType assetType, UUID assetId, UUID excludingGrantId) {
     grantRepository.lockAssetGrantsForMutation(assetType.value(), assetId);
     return grantRepository.countOtherActiveOwnerGrants(
-            assetType.value(), assetId, excludingGrantId, Instant.now())
+            assetType.value(), assetId, excludingGrantId, Instant.now(clock))
         == 0;
   }
 
@@ -515,7 +519,7 @@ public class AssetGrantService {
       AssetGrant existingGrant,
       AssetRole newRole,
       Instant newExpiresAt) {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     if (existingGrant.getRole() != AssetRole.OWNER || existingGrant.isExpired(now)) {
       return;
     }

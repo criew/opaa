@@ -6,7 +6,7 @@ import { setupAuthInterceptors } from '../api/apiInterceptors'
 import { LAST_SESSION_KIND_STORAGE_KEY } from './authApi'
 import { useAuthStore } from './authStore'
 import { clearHandoverInFlight, markHandoverInFlight } from './handoverFlow'
-import { useSpaceStore } from '../../stores/spaceStore'
+import { registerSessionStore } from './resettableStores'
 import { LOCAL_ACCOUNTS_DISABLED } from './types'
 
 const LOCAL_CONFIG = {
@@ -485,7 +485,8 @@ describe('authStore - local session', () => {
       http.post('/api/v1/auth/local/login', () => HttpResponse.json(TOKEN)),
     )
     await useAuthStore.getState().loginLocal('erika.muster@stadt.example', 'geheim')
-    useSpaceStore.setState({ spaces: [{ id: 's-1' } as never] })
+    const reset = vi.fn()
+    registerSessionStore({ getState: () => ({ reset }) })
 
     await useAuthStore.getState().logout()
 
@@ -495,7 +496,7 @@ describe('authStore - local session', () => {
     expect(state.sessionKind).toBeNull()
     expect(state.token).toBeNull()
     expect(localStorage.getItem(LAST_SESSION_KIND_STORAGE_KEY)).toBeNull()
-    expect(useSpaceStore.getState().spaces).toEqual([])
+    expect(reset).toHaveBeenCalledTimes(1)
   })
 
   it('never presents an expired bearer on logout', async () => {

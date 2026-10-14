@@ -25,7 +25,7 @@ import { successionHandlers } from './successionHandlers'
 // capability
 import { capabilityHandlers } from './capabilityHandlers'
 // user
-import { userHandlers } from './userHandlers'
+import { userHandlers } from '@/features/principal/mocks/userHandlers'
 import { localUserHandlers } from './localUserHandlers'
 import { accountHandlers } from './accountHandlers'
 // identity-provider
@@ -51,7 +51,7 @@ import { searchAdminHandlers } from './searchAdminHandlers'
 import { diagnosticAccessHandlers } from './diagnosticAccessHandlers'
 // auth
 import { authHandlers } from './authHandlers'
-import { localAuthHandlers } from './localAuthHandlers'
+import { localAuthHandlers } from '@/features/auth/mocks/localAuthHandlers'
 // app
 import { healthHandlers } from './healthHandlers'
 

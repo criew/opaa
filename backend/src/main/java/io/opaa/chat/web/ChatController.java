@@ -15,6 +15,7 @@ import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatCreation;
 import io.opaa.chat.ChatPatch;
 import io.opaa.chat.ChatService;
+import io.opaa.common.ValidationException;
 import io.opaa.metadata.web.MetadataFilterMapper;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -67,10 +68,10 @@ public class ChatController {
       @Caller CurrentUser caller) {
     // Checked here so the 400 carries a German message rather than PageRequest's own.
     if (page < 0) {
-      throw new IllegalArgumentException("page darf nicht negativ sein, war " + page);
+      throw new ValidationException("page darf nicht negativ sein, war " + page);
     }
     if (size < 1 || size > 100) {
-      throw new IllegalArgumentException("size muss zwischen 1 und 100 liegen, war " + size);
+      throw new ValidationException("size muss zwischen 1 und 100 liegen, war " + size);
     }
     return ChatResponseMapper.toSummaryPage(
         chatService.listArchivedChats(spaceId, caller.id(), PageRequest.of(page, size)));

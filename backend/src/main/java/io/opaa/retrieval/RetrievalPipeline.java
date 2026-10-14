@@ -1,5 +1,6 @@
 package io.opaa.retrieval;
 
+import io.opaa.api.types.RetrievalStageName;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;

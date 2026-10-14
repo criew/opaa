@@ -136,4 +136,14 @@ class CredentialsEncryptorTest {
     assertThatThrownBy(() -> reader.decrypt(encrypted))
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
   }
+
+  @Test
+  void decryptsAValueStoredInTheEstablishedFormat() {
+    // ciphertext written with validBase64Key(); guards against format drift for persisted values
+    String stored =
+        "enc:v1:CSE4oxTU2M7odI8RjDLuJXUFWYknwhG1pm0mbh9+hjJYXQCXMNKOGotCjMLFtWlXk4RheHYNVQ==";
+
+    assertThat(encryptorWithKey(validBase64Key()).decrypt(stored))
+        .isEqualTo("admin:super-secret-password");
+  }
 }

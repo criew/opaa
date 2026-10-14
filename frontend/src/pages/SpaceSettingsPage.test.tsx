@@ -48,7 +48,6 @@ const {
   mockArchiveSpace,
   mockListSpaceMembers,
   mockGetSpaceAssetAssociations,
-  mockGetLibraries,
   mockSearchSelectableGroups,
   mockGetSpaceAccessDerivation,
   mockGetSpaceGroupMembers,
@@ -126,7 +125,6 @@ const {
     mockDeleteSpace: vi.fn(async () => undefined),
     mockArchiveSpace: vi.fn(async () => ({}) as SpaceResponse),
     mockListSpaceMembers: vi.fn(async (spaceId: string) => membersBySpaceId[spaceId] ?? []),
-    mockGetLibraries: vi.fn(async () => [] as unknown[]),
     mockGetSpaceAssetAssociations: vi.fn(
       async (spaceId: string): Promise<SpaceAssetAssociationListResponse> => {
         void spaceId
@@ -190,8 +188,10 @@ const {
   }
 })
 
-vi.mock('../services/userApi', async () => {
-  const actual = await vi.importActual<typeof import('../services/userApi')>('../services/userApi')
+vi.mock('@/features/principal/api/userApi', async () => {
+  const actual = await vi.importActual<typeof import('@/features/principal/api/userApi')>(
+    '@/features/principal/api/userApi',
+  )
   return {
     ...actual,
     getUsers: vi.fn(async () => []),
@@ -221,18 +221,10 @@ vi.mock('../services/spaceApi', async () => {
   }
 })
 
-vi.mock('../services/libraryApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/libraryApi')>('../services/libraryApi')
-  return {
-    ...actual,
-    getLibraries: mockGetLibraries,
-  }
-})
-
-vi.mock('../services/groupApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/groupApi')>('../services/groupApi')
+vi.mock('@/features/principal/api/groupLookupApi', async () => {
+  const actual = await vi.importActual<typeof import('@/features/principal/api/groupLookupApi')>(
+    '@/features/principal/api/groupLookupApi',
+  )
   return {
     ...actual,
     // #1820: the subject picker searches groups server-side.

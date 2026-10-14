@@ -319,10 +319,9 @@ class QueryControllerTest {
 
   @Test
   void queryWithoutAuthenticationReturns401() throws Exception {
-    // #884: CurrentUserArgumentResolver throws ResponseStatusException(UNAUTHORIZED) when
-    // UserProvisioningFilter never ran (no Jwt principal, as here without asTestUser()) and so
-    // never populated the request attribute it reads; GlobalExceptionHandler's
-    // @ExceptionHandler(ResponseStatusException.class) maps that to the matching status/body.
+    // CurrentUserArgumentResolver throws UnauthorizedException when UserProvisioningFilter never
+    // ran (no Jwt principal, as here without asTestUser()) and so never populated the request
+    // attribute it reads; GlobalExceptionHandler#handleUnauthorizedException answers 401.
     mockMvc
         .perform(
             post("/api/v1/query")

@@ -25,10 +25,10 @@ import {
 } from '../../services/permissionTransferApi'
 import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
-import UserPicker from '../groups/UserPicker'
+import { UserPicker } from '@/features/principal'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import GroupPicker from './GroupPicker'
-import { confirmGroupSubject, PROTECTED_GROUP_SEARCH_HINT } from './subjectSelection'
+import { GroupPicker } from '@/features/principal'
+import { confirmGroupSubject, PROTECTED_GROUP_SEARCH_HINT } from '@/features/principal'
 
 const scopeLabels: Record<PermissionTransferScope, string> = {
   ASSET_GRANTS: 'Berechtigungen an Objekten',

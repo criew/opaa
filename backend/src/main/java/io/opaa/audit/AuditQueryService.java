@@ -2,6 +2,7 @@ package io.opaa.audit;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
+import io.opaa.common.ValidationException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -116,7 +117,7 @@ public class AuditQueryService {
         () -> {
           validateTimeRange(from, to);
           if (objectType == AuditObjectType.USER_ACCOUNT) {
-            throw new IllegalArgumentException(
+            throw new ValidationException(
                 "objectType USER_ACCOUNT ist über diesen Weg nicht abfragbar - object_id wäre"
                     + " hier dieselbe Pseudonymkennung, die anderswo actor_ref ist; die"
                     + " anlassbezogene Klärung oder die Rechtehistorie sind der zulässige Weg für"
@@ -242,7 +243,7 @@ public class AuditQueryService {
           AuditIncidentScopeGrant grant =
               incidentScopeService.findApproved(organizationId, scopeId);
           if (!grant.covers(from, to)) {
-            throw new IllegalArgumentException(
+            throw new ValidationException(
                 "Der angefragte Zeitraum liegt außerhalb der freigegebenen Klärung");
           }
           Pageable pageable = pageable(page, size);

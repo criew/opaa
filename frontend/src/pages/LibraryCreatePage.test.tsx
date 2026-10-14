@@ -41,9 +41,10 @@ const {
   mockSearchSelectableGroups: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('../services/groupApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/groupApi')>('../services/groupApi')
+vi.mock('@/features/principal/api/groupLookupApi', async () => {
+  const actual = await vi.importActual<typeof import('@/features/principal/api/groupLookupApi')>(
+    '@/features/principal/api/groupLookupApi',
+  )
   return {
     ...actual,
     getMyGroups: mockGetMyGroups,
@@ -61,8 +62,10 @@ vi.mock('@/shared/session/capabilityApi', async () => {
   }
 })
 
-vi.mock('../services/userApi', async () => {
-  const actual = await vi.importActual<typeof import('../services/userApi')>('../services/userApi')
+vi.mock('@/features/principal/api/userApi', async () => {
+  const actual = await vi.importActual<typeof import('@/features/principal/api/userApi')>(
+    '@/features/principal/api/userApi',
+  )
   return {
     ...actual,
     getUserSummaries: mockGetUserSummaries,

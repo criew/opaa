@@ -2,7 +2,7 @@ import type { GroupDeactivationPreviewResponse } from '@/shared/api/types'
 import { getGroupDeactivationPreview } from '../../services/groupApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import { countLabel } from './groupOriginLabels'
+import { countLabel } from '@/features/principal'
 
 /** Was an der Gruppe hängt, als Aufzählung — leer, wenn sie nichts trägt. */
 function effectParts(preview: GroupDeactivationPreviewResponse): string[] {

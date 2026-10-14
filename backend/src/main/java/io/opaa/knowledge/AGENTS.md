@@ -1,14 +1,14 @@
 # Modul knowledge
 
-Pakete (`io.opaa.*`): knowledge, llm, metadata, indexing. Die Konnektoren darunter bilden das Modul
-connectors. Ergänzt `backend/AGENTS.md`; für den Konnektorvertrag in `indexing.source` gilt zusätzlich `indexing/source/AGENTS.md`.
+Pakete (`io.opaa.*`): knowledge, llm, metadata, indexing, health. Die Konnektoren unter `indexing`
+bilden das Modul connectors. Ergänzt `backend/AGENTS.md`; für den Konnektorvertrag in `indexing.source` gilt zusätzlich `indexing/source/AGENTS.md`.
 
 ## Zweck und Grenze
 
 Der Bestand einer Wissensbibliothek — Bibliothek, Ordner, Dokumente, Zugriffsprüfung, Ablage der
 Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokument in den Index
-(`indexing`) und die verwalteten Chat-Modelle (`llm`). knowledge hängt nur von foundation, format,
-identity und rights ab.
+(`indexing`), die verwalteten Chat-Modelle (`llm`) und die Health-Indikatoren für Modelle und
+Vektorindex (`health`). knowledge hängt nur von foundation, format, identity und rights ab.
 
 ## Invarianten und Stolpersteine
 
@@ -51,7 +51,7 @@ identity und rights ab.
 
 ```bash
 ./gradlew test -PtestShard=indexing      # indexing, format, metadata, llm
-./gradlew test --tests 'io.opaa.knowledge.*' --tests 'io.opaa.architecture.*'
+./gradlew test --tests 'io.opaa.knowledge.*' --tests 'io.opaa.health.*' --tests 'io.opaa.architecture.*'
 ```
 
 Bei Schemaänderungen: neue Datei unter `db/changelog/knowledge/`. Regeln und Tests in

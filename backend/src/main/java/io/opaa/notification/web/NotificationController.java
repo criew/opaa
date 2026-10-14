@@ -3,11 +3,11 @@ package io.opaa.notification.web;
 import io.opaa.api.dto.NotificationResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ValidationException;
 import io.opaa.notification.Notification;
 import io.opaa.notification.NotificationService;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -35,8 +34,7 @@ public class NotificationController {
       @RequestParam(required = false) Integer limit, @Caller CurrentUser caller) {
     int resolvedLimit = limit == null ? DEFAULT_LIMIT : limit;
     if (resolvedLimit < 1 || resolvedLimit > MAX_LIMIT) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "limit muss zwischen 1 und " + MAX_LIMIT + " liegen");
+      throw new ValidationException("limit muss zwischen 1 und " + MAX_LIMIT + " liegen");
     }
     return notificationService.listForRecipient(caller.id(), resolvedLimit).stream()
         .map(this::toResponse)

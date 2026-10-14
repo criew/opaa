@@ -718,7 +718,7 @@ zusammenführt, kann Treffer über `domain` + `expected_documents` eindeutig zuo
 
 Seit Issue #721 unterstützt der Harness eine zweite, chunkbezogene Metrikfamilie
 (`answerSpanHitRate@5`, Rang des ersten Treffer-Chunks — siehe
-[ADR-0012, Nachtrag](../../docs/decisions/0012-messvertrag-retrieval-harness.md#nachtrag-dokumentbezogenes-k-fenster-und-chunkebene-issue-721)).
+[ADR-0012, Entscheidung 9](../../docs/decisions/0012-messvertrag-retrieval-harness.md#9-zweite-metrikfamilie-chunkebene-über-answer_span-mit-21)).
 Ein Fall kann dafür ein zusätzliches, **optionales** Feld führen:
 
 ```json
@@ -726,7 +726,7 @@ Ein Fall kann dafür ein zusätzliches, **optionales** Feld führen:
 ```
 
 Bewusst ein eingefrorener, wörtlicher Textausschnitt, kein Chunk-Index — ein Chunk-Index wird bei
-jeder Änderung von `chunk-size`/`chunk-overlap` lautlos falsch (siehe ADR-0012 Nachtrag). `comic-characters.json`
+jeder Änderung von `chunk-size`/`chunk-overlap` lautlos falsch (ADR-0012, Entscheidung 9). `comic-characters.json`
 führt dieses Feld **nicht**: Die Ein-Chunk-Invariante (ADR-0010) macht eine Chunk-Ebene für diese
 Domäne bedeutungslos — jedes Dokument ist bereits genau ein Chunk. Das Fehlen des Felds lädt
 unverändert (`GoldenCase#answerSpan()` ist dann `null`, `io.opaa.eval.ChunkAnswerSpanMetrics` behandelt

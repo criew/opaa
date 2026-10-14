@@ -10,6 +10,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.document.AttachmentFilePath;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -194,7 +195,7 @@ class OrphanedOriginalCleanupIntegrationTest {
 
     assertThatThrownBy(
             () -> service.deleteInOrphanedLibrary(organizationId, libraryId, List.of(owned)))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("bibliotheksbezogene Aufräumlauf");
 
     OrphanedOriginalDeletion deletion =

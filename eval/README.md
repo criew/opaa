@@ -189,7 +189,7 @@ So lässt sich an zwei Läufen ablesen, dass verschiedene Runner mit denselben K
 Auf einem ARM-Host fehlt die Bibliothek, und der Container startet mit benannter Meldung nicht.
 
 Alle drei Messpfade führen die Variante als geprüften Festpunkt `ollamaCpuBackend` (ADR-0012,
-Nachtrag CPU-Backend). Zwei Fälle bleiben außerhalb des Pins, und beide sind nie baseline-tauglich:
+Entscheidung 54). Zwei Fälle bleiben außerhalb des Pins, und beide sind nie baseline-tauglich:
 
 - Gegen einen externen Endpunkt (unten) startet kein Container; der Report trägt
   `ollamaCpuBackend: null`.
@@ -210,7 +210,7 @@ wachsende Präfixe eines festen Korpustexts ein, die über 512 Token reichen, un
 zwei benachbarte Präfixe unter Kosinus 0,98 fallen. Die Zeile `Embedding continuity across 512
 tokens: lowest neighbour cosine …` im Lauf-Log nennt den gemessenen Wert. Die Prüfung läuft auch
 gegen einen externen Endpunkt (unten), denn ein Host-Ollama mit demselben Fehler misst ebenso falsch.
-Herleitung und Anteil der betroffenen Chunks je Korpus: ADR-0012, Nachtrag Ollama-Fassung.
+Herleitung: ADR-0012, Entscheidung 68; Anteil der betroffenen Chunks je Korpus: Issue #2343.
 
 ### Kontextpräfix-Form als Festpunkt (Issue #1650)
 
@@ -231,7 +231,7 @@ steht in ADR-0012, Entscheidung 57. Der
 Wert muss nicht von Hand angehoben werden, er folgt dem Code. Weichen die committeten Baselines vom
 aktuellen Abdruck ab, schlägt schon `evalUnitTest` fehl (`PipelinePathIsolationTest`,
 `ConversationPathIsolationTest`): Wer die Präfixform ändert, vermisst die Baselines im selben PR neu.
-Begründung: ADR-0012, Nachtrag Kontextpräfix-Form.
+Begründung: ADR-0012, Entscheidung 57.
 
 ### Externer Ollama-Endpunkt (Issue #1076)
 
@@ -325,7 +325,7 @@ Baseline-Vergleich damit ab.
 4. Führt jeden Fall aus `eval/golden/comic-characters.json` direkt gegen `VectorStore.similaritySearch`
    aus — kein LLM, keine `QueryService`-Anbindung (das ist der **Rohvektor-Pfad**; der seit #1039
    zusätzlich laufende Pipeline-Pfad steht weiter unten). Das Suchfenster ist ausdrücklich
-   **dokumentbezogen** (ADR-0012 Nachtrag, Issue #721): `io.opaa.eval.DocumentRanking` dedupliziert
+   **dokumentbezogen** (ADR-0012, Entscheidung 8, Issue #721): `io.opaa.eval.DocumentRanking` dedupliziert
    die Chunk-Treffer zu Dokumenten (Rang eines Dokuments = Rang seines bestplatzierten Chunks —
    vormals die private `dedupeByFileName`, jetzt explizit gemacht) und stellt sicher, dass
    `documentTopK=10` unterschiedliche Dokumente im Fenster stehen, nicht nur zehn Chunks. Für
@@ -670,10 +670,10 @@ nicht.** `RetrievalEvaluationHarnessTest` unterstützt seit #721 mehrchunkige Do
 dokumentbezogenes k-Fenster (`io.opaa.eval.DocumentRanking`), eine je Domäne konfigurierbare
 Chunk-Zahl-Erwartung (`io.opaa.eval.ChunkCountExpectation`, ADR-0010 Entscheidung 3) und eine zweite
 Metrikfamilie auf Chunkebene über eingefrorene Antwort-Textausschnitte
-(`io.opaa.eval.ChunkAnswerSpanMetrics`, ADR-0012 Nachtrag). `comic-characters` bleibt bewusst
+(`io.opaa.eval.ChunkAnswerSpanMetrics`, ADR-0012, Entscheidung 9). `comic-characters` bleibt bewusst
 einchunkig (`ChunkCountExpectation.exactlyOneChunk()`) — die oben beschriebene Lücke schließt erst die
 mehrchunkige Domäne aus #234, sobald deren Korpus und Golden Dataset vorliegen. Details zum
-Messvertrag: [ADR-0012, Nachtrag](../docs/decisions/0012-messvertrag-retrieval-harness.md#nachtrag-dokumentbezogenes-k-fenster-und-chunkebene-issue-721).
+Messvertrag: [ADR-0012, Entscheidungen 8 und 9](../docs/decisions/0012-messvertrag-retrieval-harness.md#8-das-k-fenster-ist-dokumentbezogen).
 
 ### Kalibrierungshinweis
 
@@ -728,12 +728,12 @@ künftige Änderung an einer dieser Festlegungen muss die Version erhöhen, dami
 nicht stillschweigend unvergleichbar werden.
 
 Der Pipeline-Pfad (#1039) hat seinen **eigenen**, getrennt gezählten Messvertrag
-(`pipelineMeasurementContractVersion`, ADR-0012 Nachtrag „Pipeline-Messpfad", Entscheidungen
+(`pipelineMeasurementContractVersion`, ADR-0012, Entscheidungen
 11–16). Getrennt gezählt, weil der Rohvektor-Vertrag sich durch die Erweiterung an keiner Stelle
 ändert und eine Erhöhung seiner Nummer jede committete Rohvektor-Baseline ungültig machen würde —
 für eine Messung, deren Zahlen sich nicht bewegt haben.
 
-Mit Issue #1040 steht dieser Pipeline-Vertrag bei Version 2 (ADR-0012 Nachtrag „Baselines des
-Pipeline-Pfads", Entscheidungen 17–20): Die fünf zuvor nur ausgewiesenen Query-Parameter
+Mit Issue #1040 steht dieser Pipeline-Vertrag bei Version 2 (ADR-0012,
+Entscheidungen 17–20): Die fünf zuvor nur ausgewiesenen Query-Parameter
 (`fetch-k`, `similarity-threshold`, `max-chunks-per-document`, `mmr-lambda`, `max-sub-queries`) sind
 jetzt geprüfte Fixpunkte der Pipeline-Baseline. Die Rohvektor-Version bleibt davon unberührt bei 2.

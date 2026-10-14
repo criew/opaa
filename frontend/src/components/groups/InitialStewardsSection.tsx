@@ -4,7 +4,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import SectionHead from '@/shared/ui/SectionHead'
-import UserPicker from './UserPicker'
+import { UserPicker } from '@/features/principal'
 import type { UserSummary } from '@/shared/api/types'
 
 interface InitialStewardsSectionProps {

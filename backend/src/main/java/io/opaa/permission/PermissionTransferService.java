@@ -20,6 +20,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -91,7 +92,8 @@ public class PermissionTransferService {
   private final GroupStewardshipDirectory stewardshipDirectory;
   private final List<AssetOwnershipDirectory> assetOwnershipDirectories;
   private final PermissionHistoryService permissionHistoryService;
-  private final PermissionHistoryClock clock;
+  private final PermissionHistoryClock historyClock;
+  private final Clock clock;
   private final AssetAccessService assetAccessService;
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
@@ -115,7 +117,8 @@ public class PermissionTransferService {
       GroupStewardshipDirectory stewardshipDirectory,
       List<AssetOwnershipDirectory> assetOwnershipDirectories,
       PermissionHistoryService permissionHistoryService,
-      PermissionHistoryClock clock,
+      PermissionHistoryClock historyClock,
+      Clock clock,
       AssetAccessService assetAccessService,
       UserRepository userRepository,
       AuditEventRecorder auditEventRecorder,
@@ -129,6 +132,7 @@ public class PermissionTransferService {
     this.stewardshipDirectory = stewardshipDirectory;
     this.assetOwnershipDirectories = assetOwnershipDirectories;
     this.permissionHistoryService = permissionHistoryService;
+    this.historyClock = historyClock;
     this.clock = clock;
     this.assetAccessService = assetAccessService;
     this.userRepository = userRepository;
@@ -206,7 +210,7 @@ public class PermissionTransferService {
    */
   private PermissionTransferPreview describe(
       Parties parties, PermissionTransferSnapshot snapshot, UUID previewId) {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     List<AssetGrant> effective =
         snapshot.grants().stream().filter(grant -> !grant.isExpired(now)).toList();
     Set<UUID> grantedAssets = new HashSet<>();
@@ -254,7 +258,7 @@ public class PermissionTransferService {
     PermissionTransferSnapshot snapshot = snapshot(parties);
     requireUnchangedPreview(previewId, parties, snapshot, caller);
 
-    Instant at = clock.nextBoundary();
+    Instant at = historyClock.nextBoundary();
     PermissionTransfer transfer =
         transferRepository.saveAndFlush(
             new PermissionTransfer(

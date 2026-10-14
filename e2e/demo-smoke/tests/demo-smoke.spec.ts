@@ -49,7 +49,7 @@ const PARTNER_CLIENT_ID = 'opaa-partner'
 const PARTNER_JWK_SET_URI = 'http://keycloak:8180/realms/partner/protocol/openid-connect/certs'
 
 interface KeycloakLogin {
-  /** The sign-in page's button, "Anmelden bei <Anzeigename>" (frontend/src/pages/LoginPage.tsx). */
+  /** The sign-in page's button, "Anmelden bei <Anzeigename>" (frontend/src/features/auth/pages/LoginPage.tsx). */
   providerName: string
   realm: string
   username: string

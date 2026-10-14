@@ -12,8 +12,8 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import type { CapabilityOverviewResponse } from '@/shared/api/types'
 import { radius } from '@/shared/theme/tokens'
-import SubjectPicker from '../../permissions/SubjectPicker'
-import { emptySubjectSelection, groupLabel } from '../../permissions/subjectSelection'
+import { SubjectPicker } from '@/features/principal'
+import { emptySubjectSelection, groupLabel } from '@/features/principal'
 import {
   currentAccess,
   planAccessChange,

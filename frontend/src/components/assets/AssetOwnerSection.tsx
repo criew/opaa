@@ -6,19 +6,19 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import PageSection from '@/shared/ui/PageSection'
 import SectionHead from '@/shared/ui/SectionHead'
-import SubjectPicker from '../permissions/SubjectPicker'
+import { SubjectPicker } from '@/features/principal'
 import {
   confirmExternalSubject,
   emptySubjectSelection,
   groupLabel,
   selectedSubjectId,
   type SubjectSelection,
-} from '../permissions/subjectSelection'
+} from '@/features/principal'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { successionAwareMessage } from '../succession/successionConflict'
 import { transferAssetOwnership } from '../../services/assetApi'
 import type { AssetOwnerType, AssetType } from '@/shared/api/types'
-import { assetTypeLabel } from './assetTypeRegistry'
+import { assetTypeLabel } from '../../shared/assetTypes'
 
 export interface AssetOwnerSectionProps {
   assetType: AssetType

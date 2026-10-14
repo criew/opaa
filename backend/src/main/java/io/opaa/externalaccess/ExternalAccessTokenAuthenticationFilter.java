@@ -184,7 +184,7 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
             "status",
             HttpStatus.UNAUTHORIZED.value(),
             "timestamp",
-            Instant.now().toString()));
+            Instant.now(clock).toString()));
   }
 
   /** The authentication an access-token call carries: the person, the token, one authority. */

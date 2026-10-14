@@ -17,6 +17,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,7 +41,7 @@ class IndexingJobServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new IndexingJobService(indexingJobRepository, assetRepository);
+    service = new IndexingJobService(indexingJobRepository, assetRepository, Clock.systemUTC());
   }
 
   @Test

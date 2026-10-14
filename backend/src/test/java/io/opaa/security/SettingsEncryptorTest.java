@@ -129,4 +129,12 @@ class SettingsEncryptorTest {
 
     assertThatThrownBy(() -> reader.decrypt(encrypted)).isInstanceOf(IllegalStateException.class);
   }
+
+  @Test
+  void decryptsAValueStoredInTheEstablishedFormat() {
+    // ciphertext written with validBase64Key(); guards against format drift for persisted values
+    String stored = "enc:v1:E6yfbKrCoHYne+1ZL6yQTVi1ySRE/xIhDJD7CJCKEcHldHEI9BCmykJ7jQ==";
+
+    assertThat(encryptorWithKey(validBase64Key()).decrypt(stored)).isEqualTo("sk-test-api-key");
+  }
 }

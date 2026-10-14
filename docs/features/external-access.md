@@ -225,9 +225,9 @@ der Systemverwaltung.
 > Wiedervorlage per Mail, die beiden Protokollereignisse, der Schalter im Zugriffsbereich der
 > Bibliothek und die Liste der Systemverwaltung stehen. #797 hat entschieden, dass die
 > Freigabe-Obergrenze konnektor-gespeister Bibliotheken dieses Merkmal **nicht** deckelt (Punkt 2
-> unten) — hier bleibt also nichts offen nachzuziehen. Nicht gebaut und hier ausdrücklich nicht
-> vorweggenommen: die Sperre bei „Nachfolge offen" (Punkt 4 unten) und die Tokenzählung, die bis zu
-> den Zugangstokens (#1718) als `0` ausgewiesen wird.
+> unten) — hier bleibt also nichts offen nachzuziehen. Die Sperre bei „Nachfolge offen" (Punkt 4
+> unten) ist gebaut: Das Weiten der Freigabe prüft `requireAssetReachNotFrozen` (ADR-0036,
+> Entscheidung 6), Zurücknehmen und Verkürzen bleiben möglich.
 
 ### Die Freigabe ist ein Reichweitenfeld und wird wie eines behandelt
 

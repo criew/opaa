@@ -375,7 +375,7 @@ offene Frage oben). Die Klassenwerte der Baseline bewegen sich unabhängig davon
 **Nachtrag Ollama 0.40.3 (2026-10-13, Issue #2343).** Der einzige Chunk dieses Korpus über 512
 Token ist § 3 „Gebührenbefreiung wegen Bedürftigkeit" in
 `verwaltung-0038_verwaltungsgebuehrensatzung.md`, das Zieldokument dieser Klasse. Unter
-`ollama/ollama:0.6.5` bekam er einen falschen Vektor (ADR-0012, Nachtrag Ollama-Fassung). Mit 0.40.3
+`ollama/ollama:0.6.5` bekam er einen falschen Vektor (ADR-0012, Entscheidung 68). Mit 0.40.3
 steigen die Klassenwerte auf beiden Pfaden: `verw-lit-001` erreicht auf dem Rohvektor-Pfad das Fenster
 (Rang 10, der Zustand bleibt `known_gap`), `verw-lit-008` ist auf dem Pipeline-Pfad gelöst. Ein Teil
 der bisher gemessenen Embedding-Schwäche dieser Klasse war also ein Fehler der alten Ollama-Fassung,
@@ -386,7 +386,7 @@ jeder Suchliste sieht statt nur `top-k` (#2628), rückt in `verw-lit-001` und `v
 weiteres Dokument vor die Verwaltungsgebührensatzung (Rang 2 → 3 bzw. 3 → 4). Kein Zustand wechselt, auf keinem Pfad; der Rohvektor-Pfad ist unverändert. Die
 Klassenwerte des Pipeline-Pfads sinken (MRR@20 0,481 → 0,454, nDCG@20 0,568 → 0,545). Ebenso rücken in
 `verw-comp-002` ein Dokument (Rang 4 → 5) und in `verw-hop-002` zwei Dokumente (Rang 3 → 5) vor ein
-erwartetes (ADR-0012, Nachtrag Retrieval-Umbau).
+erwartetes (ADR-0012, Entscheidung 71).
 
 ### exact_identifier (2 Fälle)
 

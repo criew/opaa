@@ -25,8 +25,8 @@ import org.yaml.snakeyaml.Yaml;
  * schema silently changes (e.g. a future generator version starts emitting a model file again, per
  * the {@code openApiGenerate} task's own {@code doLast} comment).
  *
- * <p>Only "AuditActorKind" (the OpenAPI schema name) vs. {@link ActorKind} (the Java class name)
- * differ in name - every other mapping shares its name between spec schema and Java enum.
+ * <p>The OpenAPI schema name may differ from the Java class name ("AuditActorKind" for {@link
+ * ActorKind}, "RetrievalStage" for {@link RetrievalStageName}); the values must not.
  *
  * <p>{@link #mappedEnums()} is a hand-maintained list of schema names and would silently miss a
  * future {@code typeMappings} entry added without a matching parity case here. {@link
@@ -83,6 +83,13 @@ class SpecEnumParityTest {
         Arguments.of("MetadataOrigin", MetadataOrigin.values()),
         Arguments.of("DatePrecision", DatePrecision.values()),
         Arguments.of("MetadataFilterMatch", MetadataFilterMatch.values()),
+        Arguments.of("RetrievalStage", RetrievalStageName.values()),
+        Arguments.of("SearchModelRole", ModelRole.values()),
+        Arguments.of("SearchModelRoleState", ModelRoleCondition.values()),
+        Arguments.of("SearchDiagnosisContextType", DiagnosisContextType.values()),
+        Arguments.of("RetrievalCandidateOutcome", CandidateOutcome.values()),
+        Arguments.of("RetrievalVerdictReason", VerdictReason.values()),
+        Arguments.of("OwnAddressStock", OwnAddressStock.values()),
         Arguments.of("AuditActorKind", ActorKind.values()),
         Arguments.of("AuditSubjectKind", AuditSubjectKind.values()),
         Arguments.of("AuditOutcome", AuditOutcome.values()),

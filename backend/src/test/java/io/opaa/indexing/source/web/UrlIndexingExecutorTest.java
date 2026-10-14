@@ -22,6 +22,7 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
 import io.opaa.test.SourceTypes;
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -87,7 +88,8 @@ class UrlIndexingExecutorTest {
                 mock(StaleDocumentCleanupService.class),
                 documentRepository,
                 mock(LibraryStorageQuotaService.class),
-                new LibrarySourceConnectionResolver()),
+                new LibrarySourceConnectionResolver(),
+                Clock.systemUTC()),
             ProductionDocumentFormats.supportedFormats());
     UUID jobId = UUID.randomUUID();
     KnowledgeLibrary library =
