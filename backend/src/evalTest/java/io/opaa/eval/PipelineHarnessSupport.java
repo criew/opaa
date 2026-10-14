@@ -3,6 +3,7 @@ package io.opaa.eval;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
@@ -95,7 +96,10 @@ public final class PipelineHarnessSupport {
       // if there is none. Reported as a fixed point only for a configuration that actually
       // decomposes — see buildRunConfiguration — but carried here for every run, because the
       // prerequisite checks need to know whether decomposition could work at all.
-      String chatModel) {}
+      String chatModel,
+      // Issue #2386: the context's opaa.query.relevance-cutoff.*. Not part of QueryProperties;
+      // every variant shares it, because the stage bean is the production one.
+      RelevanceCutoffProperties relevanceCutoff) {}
 
   /**
    * Runs the pipeline measurement path and writes its report — <b>without ever failing the harness
@@ -405,6 +409,8 @@ public final class PipelineHarnessSupport {
         SIMILARITY_THRESHOLD_NOTE,
         queryProperties.maxChunksPerDocument(),
         queryProperties.mmrLambda(),
+        PipelineEvaluationReport.FusionSettings.of(queryProperties.fusion()),
+        PipelineEvaluationReport.RelevanceCutoffSettings.of(identity.relevanceCutoff()),
         queryProperties.fullTextSearchEnabled(),
         identity.fullTextIndexUpToDate(),
         queryProperties.queryDecompositionEnabled(),

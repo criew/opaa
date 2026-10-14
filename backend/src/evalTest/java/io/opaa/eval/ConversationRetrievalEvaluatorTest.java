@@ -8,6 +8,8 @@ import io.opaa.chat.ChatNoteCandidate;
 import io.opaa.chat.ChatNoteList;
 import io.opaa.eval.ConversationEvaluationReport.ConversationRunConfiguration;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -742,6 +744,8 @@ class ConversationRetrievalEvaluatorTest {
             "note",
             3,
             0.7,
+            PipelineEvaluationReport.FusionSettings.of(QueryProperties.Fusion.DEFAULT),
+            PipelineEvaluationReport.RelevanceCutoffSettings.of(RelevanceCutoffProperties.DEFAULT),
             true,
             true,
             true,

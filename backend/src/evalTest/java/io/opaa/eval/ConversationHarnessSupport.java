@@ -326,7 +326,8 @@ public final class ConversationHarnessSupport {
             identity.fullTextIndexUpToDate(),
             identity.ingestionPipelineFingerprint(),
             identity.contextPrefixFingerprint(),
-            identity.chatModel());
+            identity.chatModel(),
+            identity.relevanceCutoff());
     return new ConversationRunConfiguration(
         PipelineHarnessSupport.buildRunConfiguration(
             domain,

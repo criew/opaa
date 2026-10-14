@@ -56,6 +56,9 @@ public record PipelineBaseline(
    * IngestionPipelineFingerprint}'s Javadoc for what it records and why {@code
    * corpusManifestSha256} alone does not already cover it.
    *
+   * <p>Since issue #2386 it also includes {@code fusion} and {@code relevanceCutoff}, the two
+   * parameter blocks that decide how the candidate lists become the selection.
+   *
    * @param ollamaImage the pinned Ollama container image the vectors were produced with (issue
    *     #1522). A checked fixed point; a value naming an external endpoint is refused at load time
    *     — see {@link BaselineOllamaOrigin}.
@@ -81,6 +84,10 @@ public record PipelineBaseline(
       double similarityThreshold,
       int maxChunksPerDocument,
       double mmrLambda,
+      // Issue #2386: opaa.query.fusion.* and opaa.query.relevance-cutoff.*; null in a file
+      // predating them, which the comparator reports as incomparable.
+      PipelineEvaluationReport.FusionSettings fusion,
+      PipelineEvaluationReport.RelevanceCutoffSettings relevanceCutoff,
       boolean fullTextSearchEnabled,
       boolean fullTextIndexUpToDate,
       boolean queryDecompositionEnabled,

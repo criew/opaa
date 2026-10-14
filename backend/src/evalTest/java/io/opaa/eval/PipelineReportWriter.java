@@ -47,6 +47,7 @@ public final class PipelineReportWriter {
             cfg.similarityThreshold(),
             cfg.maxChunksPerDocument(),
             cfg.mmrLambda()));
+    sb.append(format("  fusion=%s, relevance-cutoff=%s\n", cfg.fusion(), cfg.relevanceCutoff()));
     sb.append(
         format(
             "  full-text-search-enabled=%s (Volltextindex der gemessenen Bibliothek" + " %s)\n",
