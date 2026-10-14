@@ -31,13 +31,9 @@ public class PermissionHistoryClock {
   private final InstantSource wallClock;
   private final AtomicReference<Instant> lastBoundary = new AtomicReference<>(Instant.EPOCH);
 
-  public PermissionHistoryClock() {
-    this(InstantSource.system());
-  }
-
   /**
-   * Spring instantiates the no-arg constructor; this one takes a standing or stepping wall clock,
-   * the only way to exercise "two changes within one clock tick" without a wait or a retry loop.
+   * A standing or stepping wall clock is the only way to exercise "two changes within one clock
+   * tick" without a wait or a retry loop.
    */
   public PermissionHistoryClock(InstantSource wallClock) {
     this.wallClock = wallClock;

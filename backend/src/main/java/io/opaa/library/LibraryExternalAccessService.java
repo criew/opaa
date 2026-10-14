@@ -20,7 +20,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,29 +54,7 @@ public class LibraryExternalAccessService {
   private final SuccessionReachGuard successionGuard;
   private final OwnerOnlyRule ownerOnlyRule;
 
-  @Autowired
   public LibraryExternalAccessService(
-      KnowledgeLibraryRepository libraryRepository,
-      LibraryAccessService accessService,
-      UserRepository userRepository,
-      ApplicationEventPublisher eventPublisher,
-      ExternalAccessProperties properties,
-      LibraryExternalAccessTokenCounter tokenCounter,
-      SuccessionReachGuard successionGuard,
-      OwnerOnlyRule ownerOnlyRule) {
-    this(
-        libraryRepository,
-        accessService,
-        userRepository,
-        eventPublisher,
-        properties,
-        tokenCounter,
-        successionGuard,
-        ownerOnlyRule,
-        InstantSource.system());
-  }
-
-  LibraryExternalAccessService(
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService accessService,
       UserRepository userRepository,
