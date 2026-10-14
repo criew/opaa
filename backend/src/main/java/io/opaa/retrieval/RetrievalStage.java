@@ -1,5 +1,7 @@
 package io.opaa.retrieval;
 
+import io.opaa.api.types.RetrievalStageName;
+
 /**
  * One named step of the retrieval pipeline (docs/handbuch/suche.md Abschnitt 4): candidate lists
  * in, candidate lists out, plus an explanation of what happened to them.

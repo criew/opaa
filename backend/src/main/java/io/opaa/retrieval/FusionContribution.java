@@ -1,5 +1,7 @@
 package io.opaa.retrieval;
 
+import io.opaa.api.types.RetrievalStageName;
+
 /**
  * What one candidate list contributed to a candidate's fused score - the part of a {@link
  * RetrievalStageName#RANK_FUSION} verdict that says which sub-query and which search path a

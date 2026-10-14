@@ -1,5 +1,8 @@
 package io.opaa.searchadmin;
 
+import io.opaa.api.types.ModelRole;
+import io.opaa.api.types.ModelRoleCondition;
+
 /**
  * One model role's operational state.
  *

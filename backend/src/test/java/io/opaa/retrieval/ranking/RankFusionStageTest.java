@@ -5,15 +5,15 @@ import static io.opaa.retrieval.RetrievalPipelineTestSupport.context;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
+import io.opaa.api.types.CandidateOutcome;
+import io.opaa.api.types.VerdictReason;
 import io.opaa.retrieval.CandidateList;
-import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.SearchPath;
 import io.opaa.retrieval.StageOutcome;
-import io.opaa.retrieval.VerdictReason;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

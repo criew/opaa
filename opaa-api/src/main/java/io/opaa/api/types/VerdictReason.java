@@ -1,7 +1,7 @@
-package io.opaa.retrieval;
+package io.opaa.api.types;
 
 /**
- * The fixed vocabulary of reasons a stage attaches to a {@link CandidateVerdict}. A closed set
+ * The fixed vocabulary of reasons a stage attaches to a {@code CandidateVerdict}. A closed set
  * rather than free text so a consumer - the admin diagnosis above all - can group and translate
  * them instead of parsing sentences.
  */

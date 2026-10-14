@@ -1,5 +1,6 @@
 package io.opaa.retrieval;
 
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.metadata.MetadataFilter;
 import java.util.List;
 import java.util.Set;

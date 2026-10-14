@@ -2,6 +2,8 @@ package io.opaa.searchadmin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.ModelRole;
+import io.opaa.api.types.ModelRoleCondition;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.maintenance.FullTextIndexFillState;

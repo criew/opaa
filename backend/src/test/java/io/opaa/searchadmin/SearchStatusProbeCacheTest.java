@@ -11,6 +11,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.ModelRole;
+import io.opaa.api.types.ModelRoleCondition;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
 import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
 import io.opaa.indexing.maintenance.MetadataBackfillService;
