@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { mockLibraryFolders } from './libraryFixtures'
-import { mockQueryResponses } from './queryFixtures'
-import { buildMockFolderPath, resolveOrCreateMockFolderPath } from './libraryDocumentHandlers'
+import { mockLibraryFolders } from '../features/library/mocks/libraryFixtures'
+import { mockQueryResponses } from '../features/chat/mocks/queryFixtures'
+import {
+  buildMockFolderPath,
+  resolveOrCreateMockFolderPath,
+} from '../features/library/mocks/libraryDocumentHandlers'
 
 describe('MSW Handlers', () => {
   describe('GET /api/health', () => {

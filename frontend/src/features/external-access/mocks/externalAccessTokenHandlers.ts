@@ -6,7 +6,7 @@ import type {
   CreatedExternalAccessTokenResponse,
   OwnExternalAccessTokenResponse,
 } from '@/shared/api/types'
-import { mockLibraries } from '../../../mocks/libraryFixtures'
+import { mockLibraries } from '../../library/mocks/libraryFixtures'
 import { favoriteKey, mockFavoriteAssets } from '../../asset/mocks/assetFixtures'
 import { mockExternalAccessSettings } from './externalAccessHandlers'
 

@@ -14,17 +14,18 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  * Pins the exact set of note and list-label templates the retrieval stages can produce - the closed
  * ones in {@link RetrievalNote} and {@link RetrievalListLabel}, and the three generic ones in
  * {@link StageStatus} that a not-run stage falls back to. A new or changed constant in any of the
- * three makes this test fail until {@code frontend/src/utils/retrieval-note-templates.json} is
- * regenerated (see {@link #regenerateCommittedFrontendExport}) - the same JSON {@code
- * retrievalProtocolText.test.ts} reads to check its translation inventory for coverage (#1207),
- * replacing what used to be three hand-maintained copies of this set (#1160).
+ * three makes this test fail until {@code
+ * frontend/src/features/search-admin/utils/retrieval-note-templates.json} is regenerated (see
+ * {@link #regenerateCommittedFrontendExport}) - the same JSON {@code retrievalProtocolText.test.ts}
+ * reads to check its translation inventory for coverage (#1207), replacing what used to be three
+ * hand-maintained copies of this set (#1160).
  */
 class RetrievalNoteTest {
 
   private static final String TRANSLATION_REMINDER =
       "A retrieval note/list-label template changed. Update the German translation in "
-          + "frontend/src/utils/retrievalProtocolText.ts, then regenerate "
-          + "frontend/src/utils/retrieval-note-templates.json by running `./gradlew test --tests "
+          + "frontend/src/features/search-admin/utils/retrievalProtocolText.ts, then regenerate "
+          + "frontend/src/features/search-admin/utils/retrieval-note-templates.json by running `./gradlew test --tests "
           + "io.opaa.retrieval.RetrievalNoteTest -Dopaa.retrievalNoteTemplates.regenerate=true` from "
           + "backend/, run `pnpm run format` in frontend/ on the regenerated file (Jackson's "
           + "pretty-printer and Prettier disagree on JSON layout), and review the diff.";

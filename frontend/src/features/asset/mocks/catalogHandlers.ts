@@ -8,7 +8,7 @@ import type {
 } from '@/shared/api/types'
 import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
 import { mockAuthConfig } from '../../../mocks/authFixtures'
-import { mockLibraries, mockLibraryDetails } from '../../../mocks/libraryFixtures'
+import { mockLibraries, mockLibraryDetails } from '../../library/mocks/libraryFixtures'
 import {
   mockPromptLibraries,
   mockUnreadablePromptLibraryIds,

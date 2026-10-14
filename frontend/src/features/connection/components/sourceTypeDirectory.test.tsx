@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { SourceTypeKey } from '@/shared/api/types'
-import { mockSourceTypes } from '../../../mocks/libraryFixtures'
+import { mockSourceTypes } from '../../library/mocks/libraryFixtures'
 import { sourceTypeEntry } from './sourceTypeDirectory'
 import SourceTypeIcon from './sourceTypeIcon'
 

@@ -1,0 +1,712 @@
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { renderWithProviders } from '../../../test/test-utils'
+import ChatPage from './ChatPage'
+import { ANSWER_ARRIVED_ANNOUNCEMENT } from '../components/MessageList'
+import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
+import { clearRemovedNoteItemCache, useChatStore } from '../stores/chatStore'
+import { useSpaceStore } from '@/features/space'
+import { useChatListStore } from '../stores/chatListStore'
+import { mockChatArchive } from '../mocks/chatFixtures'
+import { server } from '../../../mocks/server'
+
+let currentSpaceId: string | undefined = 'space-personal'
+let currentChatId: string | undefined = 'new'
+const mockNavigate = vi.fn()
+
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual<typeof import('react-router')>('react-router')
+  return {
+    ...actual,
+    useParams: () => ({ spaceId: currentSpaceId, chatId: currentChatId }),
+    useNavigate: () => mockNavigate,
+  }
+})
+
+function resetChatStore() {
+  // Module state, not store state (#1488): a removal a test left unconfirmed would otherwise keep
+  // filtering that point out of the next test's freshly reset fixture chat.
+  clearRemovedNoteItemCache()
+  useChatStore.setState({
+    spaceId: null,
+    chatId: null,
+    title: null,
+    messages: [],
+    isLoading: false,
+    isLoadingChat: false,
+    error: null,
+    returnedQuestion: null,
+    scope: 'all',
+    referencedLibraryIds: [],
+    noteItems: [],
+    archivedAt: null,
+    pendingSettingsUpdate: null,
+  })
+}
+
+/** The space the Gesprächsnotiz fixture chat lives in (#1488) - `archived` decides whether the
+ * panel offers remove buttons. */
+function setEngineeringSpace(archived: boolean) {
+  useSpaceStore.setState({
+    spaces: [
+      {
+        id: 'space-engineering',
+        name: 'Engineering',
+        description: null,
+        isDefault: false,
+        archived,
+        memberCount: 1,
+        memberships: { groupCount: 0, userCount: 1 },
+        userRole: 'ADMIN',
+        createdAt: '2026-03-01T10:00:00Z',
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ],
+    isLoadingList: false,
+  })
+}
+
+describe('ChatPage', () => {
+  beforeEach(() => {
+    currentSpaceId = 'space-personal'
+    currentChatId = 'new'
+    mockNavigate.mockReset()
+    resetChatStore()
+  })
+
+  it('renders empty state for a not-yet-created chat', async () => {
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => {
+      expect(screen.getByText('Womit kann ich Ihnen heute helfen?')).toBeInTheDocument()
+    })
+  })
+
+  it('sends a message, implicitly creating the chat, and displays the response with sources', async () => {
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    fireEvent.change(input, { target: { value: 'What is the architecture?' } })
+    fireEvent.click(screen.getByLabelText('Senden'))
+
+    expect(screen.getByText('What is the architecture?')).toBeInTheDocument()
+
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Denkt nach …')).not.toBeInTheDocument()
+      },
+      { timeout: 10000 },
+    )
+
+    expect(
+      screen.getAllByRole('button', { name: 'Belege anzeigen' }).length,
+    ).toBeGreaterThanOrEqual(1)
+    expect(useChatStore.getState().chatId).toBeTruthy()
+    // The URL is replaced to point at the now-persisted chat, so a reload restores it.
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/spaces\/space-personal\/chats\/.+$/),
+      { replace: true, state: KEEP_FOCUS_STATE },
+    )
+  }, 15000)
+
+  it('loads an existing chat by id from the route', async () => {
+    currentChatId = 'chat-personal-1'
+    renderWithProviders(<ChatPage />, { withRouter: true })
+
+    await waitFor(() => {
+      expect(screen.getByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+    })
+    expect(useChatStore.getState().chatId).toBe('chat-personal-1')
+  })
+
+  // The loading state belongs to the chat waiting for an answer (#1574): leaving it for another
+  // chat ends the loading state of the view, which is no arriving answer to announce.
+  it('does not announce an arrived answer when leaving a chat that is still waiting for one', async () => {
+    currentChatId = 'chat-personal-1'
+    useChatStore.setState({
+      spaceId: 'space-personal',
+      chatId: 'chat-personal-1',
+      messages: [{ id: 'q', role: 'user', content: 'Offene Frage', timestamp: new Date() }],
+      isLoading: true,
+    })
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    expect(screen.getByText('Denkt nach …')).toBeInTheDocument()
+
+    act(() => {
+      useChatStore.getState().startNewChat('space-personal')
+    })
+
+    expect(screen.getByText('Womit kann ich Ihnen heute helfen?')).toBeInTheDocument()
+    expect(screen.queryByText(ANSWER_ARRIVED_ANNOUNCEMENT)).not.toBeInTheDocument()
+  })
+
+  // regression guard for #2135: while an answer is generated the next question can be prepared.
+  it('keeps the input editable and focused while an answer is pending, sending only afterwards', async () => {
+    currentChatId = 'chat-personal-1'
+    const questions: string[] = []
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.post('/api/v1/query', async ({ request }) => {
+        const body = (await request.json()) as { question: string; chatId: string }
+        questions.push(body.question)
+        if (questions.length === 1) await gate
+        return HttpResponse.json({
+          answer: `Antwort auf ${body.question}`,
+          sources: [],
+          metadata: { model: 'gpt-4o', tokenCount: 1, durationMs: 1 },
+          chatId: body.chatId,
+        })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
+    await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    await user.click(input)
+    await user.keyboard('Erste Frage{Enter}')
+    await waitFor(() => expect(useChatStore.getState().isLoading).toBe(true))
+
+    await user.keyboard('Zweite Frage{Enter}')
+    expect(input).toHaveValue('Zweite Frage')
+    expect(input).toHaveFocus()
+    expect(screen.getByLabelText('Senden')).toBeDisabled()
+    expect(questions).toEqual(['Erste Frage'])
+
+    release()
+    expect(await screen.findByText('Antwort auf Erste Frage')).toBeInTheDocument()
+    expect(input).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByText('Antwort auf Zweite Frage')).toBeInTheDocument()
+    expect(questions).toEqual(['Erste Frage', 'Zweite Frage'])
+  })
+
+  it('puts a question refused while the next one was prepared before that draft', async () => {
+    currentChatId = 'chat-personal-1'
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.post('/api/v1/query', async () => {
+        await gate
+        return HttpResponse.json(
+          { error: 'Zu viele Anfragen.', status: 429, timestamp: new Date().toISOString() },
+          { status: 429 },
+        )
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
+    await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    await user.click(input)
+    await user.keyboard('Erste Frage{Enter}')
+    await waitFor(() => expect(useChatStore.getState().isLoading).toBe(true))
+    await user.keyboard('Zweite Frage')
+    release()
+
+    await waitFor(() => expect(input).toHaveValue('Erste Frage\n\nZweite Frage'))
+    expect(
+      await screen.findByText('Zu viele Anfragen. Die Frage steht wieder im Eingabefeld.'),
+    ).toBeInTheDocument()
+  })
+
+  it('puts a question the server rejects with 400 back into the input and explains why', async () => {
+    server.use(
+      http.post('/api/v1/query', () =>
+        HttpResponse.json(
+          { error: 'question: ungültig', status: 400, timestamp: new Date().toISOString() },
+          { status: 400 },
+        ),
+      ),
+    )
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    fireEvent.change(input, { target: { value: 'Erste Zeile\nzweite Zeile' } })
+    fireEvent.click(screen.getByLabelText('Senden'))
+
+    await waitFor(() => expect(input).toHaveValue('Erste Zeile\nzweite Zeile'))
+    expect(
+      await screen.findByText(
+        'Die Frage konnte nicht gesendet werden. Bitte prüfen Sie die Eingabe (höchstens 2000 Zeichen). Die Frage steht wieder im Eingabefeld.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('question: ungültig')).not.toBeInTheDocument()
+  })
+
+  it('puts a question refused while another chat was shown back into the input on return', async () => {
+    currentChatId = 'chat-personal-1'
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.post('/api/v1/query', async () => {
+        await gate
+        return HttpResponse.json(
+          { error: 'Zu viele Anfragen.', status: 429, timestamp: new Date().toISOString() },
+          { status: 429 },
+        )
+      }),
+    )
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
+    await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
+
+    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    fireEvent.change(input, { target: { value: 'Frage im alten Chat' } })
+    fireEvent.click(screen.getByLabelText('Senden'))
+    await act(async () => {
+      await useChatStore.getState().loadChat('chat-personal-2')
+    })
+    release()
+    await waitFor(() => expect(useChatStore.getState().isLoading).toBe(false))
+    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue('')
+
+    await act(async () => {
+      await useChatStore.getState().loadChat('chat-personal-1')
+    })
+
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue(
+        'Frage im alten Chat',
+      ),
+    )
+    expect(
+      await screen.findByText('Zu viele Anfragen. Die Frage steht wieder im Eingabefeld.'),
+    ).toBeInTheDocument()
+  })
+
+  it('does not hand a returned question to the new-chat view while the store still shows its chat', async () => {
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+
+    act(() => {
+      useChatStore.setState({
+        chatId: 'chat-personal-1',
+        returnedQuestion: { restoreDraft: 'Frage aus Chat A', onRestored: vi.fn() },
+      })
+    })
+
+    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue('')
+  })
+
+  it('shows error alert when present', async () => {
+    renderWithProviders(<ChatPage />, { withRouter: true })
+    await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+
+    act(() => {
+      useChatStore.setState({ error: 'Etwas ist schiefgelaufen' })
+    })
+
+    expect(screen.getByText('Etwas ist schiefgelaufen')).toBeInTheDocument()
+  })
+
+  describe('Anweisung des Space', () => {
+    const instruction = 'Nenne bei Fristen immer die Rechtsgrundlage.'
+
+    function setSpaceWithInstruction(modelInstruction: string | null) {
+      useSpaceStore.setState({
+        spaces: [
+          {
+            id: 'space-personal',
+            name: 'Privater Bereich',
+            description: null,
+            isDefault: true,
+            archived: false,
+            memberCount: 1,
+            memberships: { groupCount: 0, userCount: 1 },
+            userRole: 'MEMBER',
+            modelInstruction,
+            createdAt: '2026-03-01T10:00:00Z',
+            updatedAt: '2026-03-01T10:00:00Z',
+          },
+        ],
+        isLoadingList: false,
+      })
+    }
+
+    it('shows a member before the first question that an instruction of the space takes part, and lets them read it', async () => {
+      setSpaceWithInstruction(instruction)
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toggle = await screen.findByRole('button', { name: 'Anweisung des Space' })
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await user.click(toggle)
+
+      const panel = screen.getByRole('region', { name: 'Anweisung des Space' })
+      expect(panel).toHaveTextContent(instruction)
+      expect(panel).toHaveTextContent(/bei jeder Antwort in diesem Space/)
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('keeps the instruction button at the right end of the header while a new chat has no title yet', async () => {
+      setSpaceWithInstruction(instruction)
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      const toggle = await screen.findByRole('button', { name: 'Anweisung des Space' })
+      expect(screen.queryByRole('button', { name: /umbenennen/ })).not.toBeInTheDocument()
+      expect(getComputedStyle(toggle).marginLeft).toBe('auto')
+    })
+
+    it('shows nothing of the kind in a space without an instruction', async () => {
+      setSpaceWithInstruction(null)
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+      expect(screen.queryByRole('button', { name: 'Anweisung des Space' })).not.toBeInTheDocument()
+    })
+  })
+
+  // #1488: the Gesprächsnotiz sits in the chat's header. chat-engineering-2 (fixtures) is the one
+  // chat with both prerequisites - two points and three completed rounds.
+  describe('Gesprächsnotiz (#1488)', () => {
+    beforeEach(() => {
+      currentSpaceId = 'space-engineering'
+      currentChatId = 'chat-engineering-2'
+      setEngineeringSpace(false)
+    })
+
+    it('offers the note in the header of a reloaded chat, collapsed, and removes a point', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      const toggle = await screen.findByRole('button', { name: 'Gesprächsnotiz · 2' })
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+      await user.click(toggle)
+      expect(screen.getByRole('region', { name: 'Gesprächsnotiz' })).toBeInTheDocument()
+      expect(screen.getByText('Bezugsjahr 2024')).toBeVisible()
+
+      await user.click(
+        screen.getByRole('button', { name: 'Notizpunkt entfernen: Bezugsjahr 2024' }),
+      )
+
+      await waitFor(() => expect(useChatStore.getState().noteItems).toHaveLength(1))
+      expect(screen.queryByText('Bezugsjahr 2024')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Gesprächsnotiz · 1' })).toBeInTheDocument()
+    })
+
+    // Nails down "completed round" = round with an answer. The fixture chat alone cannot: with
+    // three questions and three answers, every conceivable rule is above the threshold. Here the
+    // third answer is still coming in - counting messages or questions would show the button now.
+    it('keeps the button away while the third answer is still coming in', async () => {
+      const now = new Date()
+      useChatStore.setState({
+        spaceId: 'space-engineering',
+        chatId: 'chat-engineering-2',
+        title: 'Anwohnerparkausweis Nebenstelle 3',
+        noteItems: [
+          {
+            id: 'note-1',
+            text: 'Arbeitet im Bürgerbüro Nebenstelle 3',
+            kind: 'RAHMEN',
+            createdAt: '2026-03-08T09:00:10Z',
+          },
+          {
+            id: 'note-2',
+            text: 'Bezugsjahr 2024',
+            kind: 'RAHMEN',
+            createdAt: '2026-03-08T09:01:10Z',
+          },
+        ],
+        messages: [
+          { id: 'm1', role: 'user', content: 'Erste Frage', timestamp: now },
+          { id: 'm2', role: 'assistant', content: 'Erste Antwort', timestamp: now },
+          { id: 'm3', role: 'user', content: 'Zweite Frage', timestamp: now },
+          { id: 'm4', role: 'assistant', content: 'Zweite Antwort', timestamp: now },
+          { id: 'm5', role: 'user', content: 'Dritte Frage', timestamp: now },
+        ],
+        isLoading: true,
+      })
+
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      expect(screen.queryByRole('button', { name: /Gesprächsnotiz/ })).not.toBeInTheDocument()
+
+      act(() => {
+        useChatStore.setState((state) => ({
+          messages: [
+            ...state.messages,
+            { id: 'm6', role: 'assistant', content: 'Dritte Antwort', timestamp: now },
+          ],
+          isLoading: false,
+        }))
+      })
+
+      expect(screen.getByRole('button', { name: 'Gesprächsnotiz · 2' })).toBeInTheDocument()
+    })
+
+    it('shows the note without remove buttons while the space is archived', async () => {
+      setEngineeringSpace(true)
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      await user.click(await screen.findByRole('button', { name: 'Gesprächsnotiz · 2' }))
+
+      expect(screen.getByText('Arbeitet im Bürgerbüro Nebenstelle 3')).toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: /^Notizpunkt entfernen/ }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Chat-Archiv', () => {
+    beforeEach(() => {
+      currentSpaceId = 'space-personal'
+      currentChatId = 'chat-personal-1'
+      mockChatArchive['chat-personal-1'] = '2026-09-18T09:00:00Z'
+      useChatListStore.setState({
+        chatsBySpaceId: {},
+        archiveBySpaceId: {},
+        isLoading: false,
+        isLoadingArchive: false,
+        error: null,
+      })
+    })
+
+    it('marks a chat opened by link as archived and brings it back on request', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      expect(await screen.findByText('Archiviert')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Chat aus dem Archiv zurückholen' }))
+
+      expect(await screen.findByText('Chat aus dem Archiv zurückgeholt')).toBeInTheDocument()
+      expect(screen.queryByText('Archiviert')).not.toBeInTheDocument()
+      expect(mockChatArchive['chat-personal-1']).toBeUndefined()
+    })
+
+    it('brings the chat back with a notice when the person writes in it', async () => {
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      expect(await screen.findByText('Archiviert')).toBeInTheDocument()
+
+      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      fireEvent.change(input, { target: { value: 'Und wie geht es weiter?' } })
+      fireEvent.click(screen.getByLabelText('Senden'))
+
+      expect(
+        await screen.findByText('Chat aus dem Archiv zurückgeholt', {}, { timeout: 10000 }),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('Archiviert')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(
+          useChatListStore
+            .getState()
+            .chatsBySpaceId['space-personal']?.some((chat) => chat.id === 'chat-personal-1'),
+        ).toBe(true),
+      )
+    }, 15000)
+
+    // The server brings the chat back with the turn it writes after the answer - an archive placed
+    // while that answer was still being generated does not survive it.
+    it('brings back a chat archived while its answer was still coming in', async () => {
+      delete mockChatArchive['chat-personal-1']
+      let releaseAnswer = () => {}
+      const answerGate = new Promise<void>((resolve) => {
+        releaseAnswer = resolve
+      })
+      server.use(
+        http.post('/api/v1/query', async () => {
+          await answerGate
+          delete mockChatArchive['chat-personal-1']
+          return HttpResponse.json({
+            answer: 'Es geht so weiter.',
+            sources: [],
+            metadata: { model: 'gpt-4o', tokenCount: 1, durationMs: 1 },
+            chatId: 'chat-personal-1',
+            chatTitle: null,
+            noteItems: [],
+          })
+        }),
+      )
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+      await act(() => useChatListStore.getState().loadChats('space-personal'))
+
+      fireEvent.change(screen.getByPlaceholderText('Nachricht eingeben …'), {
+        target: { value: 'Und wie geht es weiter?' },
+      })
+      fireEvent.click(screen.getByLabelText('Senden'))
+      await act(() =>
+        useChatListStore.getState().setChatArchived('space-personal', 'chat-personal-1', true),
+      )
+      expect(screen.getByText('Archiviert')).toBeInTheDocument()
+
+      releaseAnswer()
+
+      expect(await screen.findByText('Chat aus dem Archiv zurückgeholt')).toBeInTheDocument()
+      expect(screen.queryByText('Archiviert')).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(
+          useChatListStore
+            .getState()
+            .chatsBySpaceId['space-personal']?.some((chat) => chat.id === 'chat-personal-1'),
+        ).toBe(true),
+      )
+    })
+
+    it('shows no archive hint for an active chat', async () => {
+      delete mockChatArchive['chat-personal-1']
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+      expect(screen.queryByText('Archiviert')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /zurückholen/ })).not.toBeInTheDocument()
+    })
+  })
+  // #1919: Umbenennen ging bisher nur über das Kontextmenü der Chatliste.
+  describe('Titel in der Kopfzeile umbenennen (#1919)', () => {
+    beforeEach(() => {
+      currentSpaceId = 'space-personal'
+      currentChatId = 'chat-personal-1'
+      delete mockChatArchive['chat-personal-1']
+      useChatListStore.setState({
+        chatsBySpaceId: {},
+        archiveBySpaceId: {},
+        isLoading: false,
+        isLoadingArchive: false,
+        error: null,
+      })
+    })
+
+    async function openTitleField(user: ReturnType<typeof userEvent.setup>) {
+      const title = await screen.findByRole('button', {
+        name: 'Chat-Titel „Architektur des Projekts“ umbenennen',
+      })
+      await user.click(title)
+      return screen.getByLabelText('Chat-Titel')
+    }
+
+    it('saves on Enter, updates the chat list and returns focus to the title', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      await act(() => useChatListStore.getState().loadChats('space-personal'))
+
+      const field = await openTitleField(user)
+      await user.clear(field)
+      await user.type(field, 'Bauantrag Nordstadt{Enter}')
+
+      const renamed = await screen.findByRole('button', {
+        name: 'Chat-Titel „Bauantrag Nordstadt“ umbenennen',
+      })
+      await waitFor(() => expect(renamed).toHaveFocus())
+      await waitFor(() =>
+        expect(
+          useChatListStore
+            .getState()
+            .chatsBySpaceId['space-personal']?.find((chat) => chat.id === 'chat-personal-1')?.title,
+        ).toBe('Bauantrag Nordstadt'),
+      )
+    })
+
+    it('discards the edit on Escape', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      const field = await openTitleField(user)
+      await user.clear(field)
+      await user.type(field, 'Verworfen{Escape}')
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Chat-Titel „Architektur des Projekts“ umbenennen',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('takes the title back and says so when the server refuses the rename', async () => {
+      server.use(
+        http.patch('/api/v1/chats/:chatId', () =>
+          HttpResponse.json({ error: 'Umbenennen fehlgeschlagen' }, { status: 500 }),
+        ),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      const field = await openTitleField(user)
+      await user.clear(field)
+      await user.type(field, 'Neuer Titel{Enter}')
+
+      expect(await screen.findByText('Umbenennen fehlgeschlagen')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('button', {
+          name: 'Chat-Titel „Architektur des Projekts“ umbenennen',
+        }),
+      ).toBeInTheDocument()
+    })
+  })
+
+  describe('jump to a search hit', () => {
+    const hitLink = '/spaces/space-personal/chats/chat-personal-1?message=message-personal-1-2'
+
+    beforeEach(() => {
+      currentSpaceId = 'space-personal'
+      currentChatId = 'chat-personal-1'
+    })
+
+    it('opens the chat at the message named in the link and focuses it', async () => {
+      renderWithProviders(<ChatPage />, { withRouter: true, initialRoute: hitLink })
+
+      const target = await screen.findByRole('article', { name: 'Gefundene Nachricht: Antwort' })
+      await waitFor(() => expect(target).toHaveFocus())
+      expect(screen.getByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+    })
+
+    it('opens an archived chat at the hit message as well', async () => {
+      mockChatArchive['chat-personal-1'] = '2026-09-18T09:00:00Z'
+      renderWithProviders(<ChatPage />, { withRouter: true, initialRoute: hitLink })
+
+      const target = await screen.findByRole('article', { name: 'Gefundene Nachricht: Antwort' })
+      await waitFor(() => expect(target).toHaveFocus())
+      expect(screen.getByText('Archiviert')).toBeInTheDocument()
+    })
+
+    // regression guard: a chat still held by the store carries client-side ids for the questions
+    // of this session, so the hit's server id is only found in a freshly loaded history.
+    it('reloads the chat still open in this session to find the hit message', async () => {
+      useChatStore.setState({
+        spaceId: 'space-personal',
+        chatId: 'chat-personal-1',
+        messages: [
+          {
+            id: 'client-side-id',
+            role: 'user',
+            content: 'Wie ist das Projekt aufgebaut?',
+            timestamp: new Date(),
+          },
+        ],
+      })
+      renderWithProviders(<ChatPage />, {
+        withRouter: true,
+        initialRoute: '/spaces/space-personal/chats/chat-personal-1?message=message-personal-1-1',
+      })
+
+      const target = await screen.findByRole('article', { name: 'Gefundene Nachricht: Frage' })
+      await waitFor(() => expect(target).toHaveFocus())
+    })
+
+    it('opens the chat normally when the message is unknown', async () => {
+      renderWithProviders(<ChatPage />, {
+        withRouter: true,
+        initialRoute: '/spaces/space-personal/chats/chat-personal-1?message=gone',
+      })
+
+      expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
+      expect(screen.queryByRole('article')).not.toBeInTheDocument()
+    })
+  })
+})

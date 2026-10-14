@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import ChatList from '../components/chat/ChatList'
+import { ChatList } from '@/features/chat'
 import type { SpaceListLoader } from '@/features/asset'
 import { getSpaces } from '@/features/space'
 

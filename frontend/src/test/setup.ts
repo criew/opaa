@@ -12,13 +12,13 @@ import { server } from '../mocks/server'
 // belongs in that test file's own beforeEach.
 
 // chat
-import { resetChatMockState } from '../mocks/chatHandlers'
+import { resetChatMockState } from '../features/chat/mocks/chatHandlers'
 // asset
 import { resetGrantMockState } from '../features/asset/mocks/assetHandlers'
 import { resetMockSpaceAssetAssociations } from '../features/asset/mocks/assetFixtures'
 // library
-import { resetIndexingState } from '../mocks/indexingHandlers'
-import { resetDocumentMockState } from '../mocks/libraryDocumentHandlers'
+import { resetIndexingState } from '../features/library/mocks/indexingHandlers'
+import { resetDocumentMockState } from '../features/library/mocks/libraryDocumentHandlers'
 // prompt
 import { resetMockPromptLibraries } from '../features/prompt/mocks/promptLibraryFixtures'
 // user

@@ -79,8 +79,8 @@ MiB fällt zurück auf den Download, mit demselben sichtbaren Hinweis wie unten 
 andere Format (insbesondere DOCX — eine serverseitige Konvertierung ist bewusst außerhalb dieses
 Zuschnitts) bleibt beim Download unter dem ursprünglichen Dateinamen, jetzt aber mit einer sichtbaren
 Snackbar „‹Dateiname› wird heruntergeladen" statt eines Klicks ohne erkennbare Wirkung. Die gemeinsame
-Logik dafür liegt in `frontend/src/utils/documentContent.ts` (Entscheidung Vorschau/Download/
-Text-Vorschau) und `frontend/src/hooks/useDocumentPreview.ts` (Dialog-/Snackbar-/Fehlerzustand); sie
+Logik dafür liegt in `frontend/src/features/library/utils/documentContent.ts` (Entscheidung Vorschau/Download/
+Text-Vorschau) und `frontend/src/features/library/hooks/useDocumentPreview.ts` (Dialog-/Snackbar-/Fehlerzustand); sie
 wird vom Zitat-Deeplink (#739) und den Fundstellen unter einer Chat-Antwort mitverwendet. Seit #747
 gilt das für **jeden** Quellentyp: der Endpunkt streamt für HTTP_DIRECTORY/RSS_FEED das Original
 serverseitig von der beim Indizieren gespeicherten Quell-URL durch, statt den Client dorthin

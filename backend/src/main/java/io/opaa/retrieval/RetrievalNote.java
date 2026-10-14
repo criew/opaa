@@ -8,7 +8,8 @@ import java.util.Locale;
  * by contract (docs/features/retrieval-algorithm.md) - this enum does not turn them into an API
  * vocabulary, it only makes the set of sentences the backend can produce enumerable, so {@code
  * RetrievalNoteTest} can hold it against the German translation inventory in {@code
- * frontend/src/utils/retrievalProtocolText.test.ts} and fail loudly when the two drift apart.
+ * frontend/src/features/search-admin/utils/retrievalProtocolText.test.ts} and fail loudly when the
+ * two drift apart.
  */
 public enum RetrievalNote {
   SEARCH_SCOPE_EMPTY("empty search scope: nothing readable in scope, retrieval halted"),

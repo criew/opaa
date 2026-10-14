@@ -112,7 +112,7 @@ function uint32BE(value: number): Buffer {
  * the issue itself suggests for reaching a second page of results without paying for dozens of UI
  * uploads. Mirrors rss-feed-library.spec.ts's fetchLibraryDocumentFileNames in using
  * page.request directly with the dev-admin header, and LibraryDocumentService#uploadDocument's
- * "file" multipart field name (frontend/src/services/libraryApi.ts's uploadDocument).
+ * "file" multipart field name (frontend/src/features/library/api/libraryApi.ts's uploadDocument).
  */
 async function uploadFillerDocuments(page: Page, libraryId: string, count: number) {
   for (let i = 1; i <= count; i++) {
@@ -256,7 +256,7 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
 test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
   const createdLibraryIds = cleanupLibraries()
 
-  // DEFAULT_PAGE_SIZE in frontend/src/stores/documentStore.ts - not imported from there (e2e/ is
+  // DEFAULT_PAGE_SIZE in frontend/src/features/library/stores/documentStore.ts - not imported from there (e2e/ is
   // its own npm package with no dependency on frontend/src, see fixtures/libraries.ts for the same
   // reasoning about DEV_USER_HEADER), duplicated as a plain constant instead.
   const PAGE_SIZE = 20

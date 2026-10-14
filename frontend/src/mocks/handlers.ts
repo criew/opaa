@@ -1,20 +1,20 @@
 // chat
-import { chatHandlers } from './chatHandlers'
-import { queryHandlers } from './queryHandlers'
-import { transcriptionHandlers } from './transcriptionHandlers'
+import { chatHandlers } from '../features/chat/mocks/chatHandlers'
+import { queryHandlers } from '../features/chat/mocks/queryHandlers'
+import { transcriptionHandlers } from '../features/chat/mocks/transcriptionHandlers'
 // space
 import { spaceHandlers } from '../features/space/mocks/spaceHandlers'
 // asset
 import { assetHandlers } from '../features/asset/mocks/assetHandlers'
 import { catalogHandlers } from '../features/asset/mocks/catalogHandlers'
 // library
-import { libraryHandlers } from './libraryHandlers'
-import { libraryDocumentHandlers } from './libraryDocumentHandlers'
-import { libraryMetadataHandlers } from './libraryMetadataHandlers'
-import { documentMetadataHandlers } from './documentMetadataHandlers'
-import { libraryFolderHandlers } from './libraryFolderHandlers'
-import { indexingHandlers } from './indexingHandlers'
-import { privateStorageHandlers } from './privateStorageHandlers'
+import { libraryHandlers } from '../features/library/mocks/libraryHandlers'
+import { libraryDocumentHandlers } from '../features/library/mocks/libraryDocumentHandlers'
+import { libraryMetadataHandlers } from '../features/library/mocks/libraryMetadataHandlers'
+import { documentMetadataHandlers } from '../features/library/mocks/documentMetadataHandlers'
+import { libraryFolderHandlers } from '../features/library/mocks/libraryFolderHandlers'
+import { indexingHandlers } from '../features/library/mocks/indexingHandlers'
+import { privateStorageHandlers } from '../features/library/mocks/privateStorageHandlers'
 // prompt
 import { promptLibraryHandlers } from '../features/prompt/mocks/promptLibraryHandlers'
 // group
@@ -46,9 +46,9 @@ import { externalAccessHandlers } from '../features/external-access/mocks/extern
 import { externalAccessTokenHandlers } from '../features/external-access/mocks/externalAccessTokenHandlers'
 import { externalAccessLibraryHandlers } from '../features/external-access/mocks/externalAccessLibraryHandlers'
 // search-admin
-import { searchHandlers } from './searchHandlers'
-import { searchAdminHandlers } from './searchAdminHandlers'
-import { diagnosticAccessHandlers } from './diagnosticAccessHandlers'
+import { searchHandlers } from '../features/chat/mocks/searchHandlers'
+import { searchAdminHandlers } from '../features/search-admin/mocks/searchAdminHandlers'
+import { diagnosticAccessHandlers } from '../features/library/mocks/diagnosticAccessHandlers'
 // auth
 import { authHandlers } from './authHandlers'
 import { localAuthHandlers } from '@/features/auth/mocks/localAuthHandlers'

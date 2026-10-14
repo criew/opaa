@@ -12,11 +12,12 @@ import java.util.List;
 /**
  * The retrieval stages' German-translation surface - {@link RetrievalNote}, {@link
  * RetrievalListLabel}, and {@link StageStatus}'s not-run notes - exported as a stable, sorted
- * structure and committed as JSON at {@code frontend/src/utils/retrieval-note-templates.json}.
- * {@code RetrievalNoteTest} compares {@link #current()} against {@link #committed()} on every
- * backend run; {@code retrievalProtocolText.test.ts} reads the same file to check its own
- * translation inventory for coverage - the mechanically shared source of truth #1207 introduces in
- * place of three hand-maintained copies of the same set.
+ * structure and committed as JSON at {@code
+ * frontend/src/features/search-admin/utils/retrieval-note-templates.json}. {@code
+ * RetrievalNoteTest} compares {@link #current()} against {@link #committed()} on every backend run;
+ * {@code retrievalProtocolText.test.ts} reads the same file to check its own translation inventory
+ * for coverage - the mechanically shared source of truth #1207 introduces in place of three
+ * hand-maintained copies of the same set.
  */
 final class RetrievalNoteTemplateExport {
 
@@ -70,14 +71,19 @@ final class RetrievalNoteTemplateExport {
   private static Path frontendTemplatesFile() {
     Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
     for (int i = 0; i < 5 && dir != null; i++, dir = dir.getParent()) {
-      Path candidate = dir.resolve("frontend").resolve("src").resolve("utils");
+      Path candidate =
+          dir.resolve("frontend")
+              .resolve("src")
+              .resolve("features")
+              .resolve("search-admin")
+              .resolve("utils");
       if (Files.isDirectory(candidate)) {
         return candidate.resolve("retrieval-note-templates.json");
       }
     }
     throw new UncheckedIOException(
         new IOException(
-            "Could not locate frontend/src/utils by walking up from "
+            "Could not locate frontend/src/features/search-admin/utils by walking up from "
                 + System.getProperty("user.dir")
                 + ". Run this test from within the repository."));
   }

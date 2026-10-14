@@ -44,9 +44,9 @@ import {
   VerifyEmailPage,
 } from '@/features/auth/routes'
 // chat
-import ChatPage from './pages/ChatPage'
-import ChatsPage from './pages/ChatsPage'
-import ChatRedirect from './pages/ChatRedirect'
+import { ChatPage } from '@/features/chat/routes'
+import { ChatsPage } from '@/features/chat/routes'
+import { ChatRedirect } from '@/features/chat/routes'
 // space
 import { SpacePage } from '@/features/space/routes'
 import { SpacesOverviewPage } from '@/features/space/routes'
@@ -57,8 +57,8 @@ import { CatalogPage } from '@/features/asset/routes'
 import { CatalogNewPage } from '@/features/asset/routes'
 import { catalogRoute } from './shared/assetTypes'
 // library
-import LibraryCreatePage from './pages/LibraryCreatePage'
-import LibraryDetailPage from './pages/LibraryDetailPage'
+import { LibraryCreatePage } from '@/features/library/routes'
+import { LibraryDetailPage } from '@/features/library/routes'
 // prompt
 import { PromptLibraryCreatePage } from '@/features/prompt/routes'
 import { PromptLibraryDetailPage } from '@/features/prompt/routes'
@@ -84,11 +84,11 @@ import { MailSettingsPage } from '@/features/mail/routes'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { BrandingSettingsPage } from '@/features/branding/routes'
 // connection
-import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
+import { ConnectionCallbackPage } from '@/features/library/routes'
 import ConnectionsAdminPage from './app/areas/ConnectionsAdminPage'
 import { ConnectionLogPage, RightsHistoryPage } from '@/features/audit/routes'
 // search-admin
-import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
+import { SearchIndexingAdminPage } from '@/features/search-admin/routes'
 // audit
 
 const ADMIN_SECTIONS = [

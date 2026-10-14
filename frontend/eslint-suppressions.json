@@ -1,7 +1,2 @@
 {
-  "src/pages/SearchIndexingAdminPage.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  }
 }

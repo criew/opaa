@@ -1,0 +1,169 @@
+import { create } from 'zustand'
+import type {
+  LibraryListResponse,
+  LibraryRequest,
+  LibraryResponse,
+  LibraryShareCapRequest,
+  LibraryUpdateRequest,
+} from '@/shared/api/types'
+import {
+  connectLibraryProfile,
+  createLibrary,
+  deleteLibrary,
+  disconnectLibraryProfile,
+  getLibrary,
+  getLibraries,
+  updateLibrary,
+  updateLibraryShareCap,
+} from '../api/libraryApi'
+import type { LibraryDeletionOutcome } from '../api/libraryApi'
+import { updateLibraryDiagnosticsLock } from '../api/diagnosticAccessApi'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
+
+interface LibraryState {
+  libraries: LibraryListResponse[]
+  libraryDetails: Record<string, LibraryResponse>
+  isLoading: boolean
+  error: string | null
+  reset: () => void
+  loadLibraries: () => Promise<void>
+  loadLibraryDetails: (libraryId: string) => Promise<void>
+  createNewLibrary: (request: LibraryRequest) => Promise<string>
+  updateExistingLibrary: (libraryId: string, request: LibraryUpdateRequest) => Promise<void>
+  deleteExistingLibrary: (libraryId: string) => Promise<LibraryDeletionOutcome>
+  setLibraryDiagnosticsLock: (libraryId: string, locked: boolean) => Promise<void>
+  setLibraryShareCap: (libraryId: string, request: LibraryShareCapRequest) => Promise<void>
+  /** Answers the connected library, `null` after a logout in between. */
+  connectLibraryToProfile: (
+    libraryId: string,
+    profileId: string,
+    sourceUrl?: string,
+  ) => Promise<LibraryResponse | null>
+  releaseLibraryFromProfile: (libraryId: string) => Promise<void>
+}
+
+function sortLibraries(list: LibraryListResponse[]): LibraryListResponse[] {
+  return [...list].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export const useLibraryStore = create<LibraryState>((set, get) => ({
+  libraries: [],
+  libraryDetails: {},
+  isLoading: false,
+  error: null,
+
+  reset: () => set({ libraries: [], libraryDetails: {}, isLoading: false, error: null }),
+
+  loadLibraries: async () => {
+    // #575: captured before the await below - checked again once it resolves, so a response
+    // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
+    // previous user's libraries into the now-emptied store.
+    const sessionEpoch = currentSessionEpoch()
+    set({ isLoading: true, error: null })
+    try {
+      const libraries = sortLibraries(await getLibraries())
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      set({ libraries, isLoading: false })
+    } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      const message =
+        err instanceof Error ? err.message : 'Bibliotheken konnten nicht geladen werden'
+      set({ error: message, isLoading: false })
+    }
+  },
+
+  loadLibraryDetails: async (libraryId: string) => {
+    const sessionEpoch = currentSessionEpoch()
+    try {
+      const library = await getLibrary(libraryId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
+    } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      const message =
+        err instanceof Error ? err.message : 'Bibliotheksdetails konnten nicht geladen werden'
+      set({ error: message })
+    }
+  },
+
+  createNewLibrary: async (request) => {
+    const sessionEpoch = currentSessionEpoch()
+    const library = await createLibrary(request)
+    // #575: same reasoning as loadLibraries/loadLibraryDetails above - a logout in between must
+    // not let the newly created library resurrect into the now-emptied store.
+    if (isStaleSessionEpoch(sessionEpoch)) return library.id
+    // Caches the full LibraryResponse right away, so the overview can show the newly created
+    // library without an extra round trip.
+    set({ libraryDetails: { ...get().libraryDetails, [library.id]: library } })
+    await get().loadLibraries()
+    return library.id
+  },
+
+  updateExistingLibrary: async (libraryId, request) => {
+    await updateLibrary(libraryId, request)
+    await Promise.all([get().loadLibraries(), get().loadLibraryDetails(libraryId)])
+  },
+
+  deleteExistingLibrary: async (libraryId) => {
+    const sessionEpoch = currentSessionEpoch()
+    const outcome = await deleteLibrary(libraryId)
+    // #575: loadLibraries() below already guards its own write-back - this direct set() needs the
+    // same guard, otherwise a logout in between still resurrects a (stale) libraryDetails map into
+    // the store reset() just cleared.
+    if (isStaleSessionEpoch(sessionEpoch)) return outcome
+    if (outcome === 'ERASURE_PENDING') {
+      // the library stays until its erasure completes; its detail now carries erasureRequestedAt
+      await get().loadLibraryDetails(libraryId)
+      return outcome
+    }
+    const rest = { ...get().libraryDetails }
+    delete rest[libraryId]
+    set({ libraryDetails: rest })
+    await get().loadLibraries()
+    return outcome
+  },
+
+  // #1257: the endpoint's response only carries {libraryId, locked} (LibraryDiagnosticsLockResponse),
+  // not the full library - merged into the cached detail rather than re-fetching it, mirroring how
+  // createNewLibrary already caches its own full response without a round trip.
+  setLibraryDiagnosticsLock: async (libraryId, locked) => {
+    const response = await updateLibraryDiagnosticsLock(libraryId, locked)
+    const current = get().libraryDetails[libraryId]
+    if (!current) return
+    set({
+      libraryDetails: {
+        ...get().libraryDetails,
+        [libraryId]: { ...current, diagnosticsLocked: response.locked },
+      },
+    })
+  },
+
+  // #797: unlike setLibraryDiagnosticsLock's small response, PUT .../share-cap answers the full
+  // library (the grant to "Alle Konten" revoked already, if the new cap narrowed) - cached wholesale, no
+  // extra round trip, mirroring createNewLibrary's own full-response caching above.
+  setLibraryShareCap: async (libraryId, request) => {
+    const library = await updateLibraryShareCap(libraryId, request)
+    set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
+  },
+
+  // Both answer the whole library; the list is reloaded because a lock it shows may have ended.
+  connectLibraryToProfile: async (libraryId, profileId, sourceUrl) => {
+    const sessionEpoch = currentSessionEpoch()
+    const library = await connectLibraryProfile(libraryId, profileId, sourceUrl)
+    if (isStaleSessionEpoch(sessionEpoch)) return null
+    set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
+    await get().loadLibraries()
+    return library
+  },
+
+  releaseLibraryFromProfile: async (libraryId) => {
+    const sessionEpoch = currentSessionEpoch()
+    const library = await disconnectLibraryProfile(libraryId)
+    if (isStaleSessionEpoch(sessionEpoch)) return
+    set({ libraryDetails: { ...get().libraryDetails, [libraryId]: library } })
+    await get().loadLibraries()
+  },
+}))
+
+registerSessionStore(useLibraryStore)

@@ -3,7 +3,7 @@ import { assetRoleLabel } from '@/shared/utils/labels'
 import { mockPromptLibraries } from '../../prompt/mocks/promptLibraryFixtures'
 import { mockUser } from '../../../mocks/authFixtures'
 import { mockSpaceDetails } from '../../space/mocks/spaceFixtures'
-import { mockLibraryDetails } from '../../../mocks/libraryFixtures'
+import { mockLibraryDetails } from '../../library/mocks/libraryFixtures'
 import {
   associationListOf,
   mockSpaceAssetAssociations,

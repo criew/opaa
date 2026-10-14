@@ -1,7 +1,7 @@
 import Typography from '@mui/material/Typography'
 import { ConnectionLogRetentionSection } from '@/features/audit'
 import { OutboundProxySection } from '@/features/connection'
-import PrivateStorageSection from '../../components/library/PrivateStorageSection'
+import { PrivateStorageSection } from '@/features/library'
 
 /**
  * Der Reiter „Einstellungen“ der Anbindungen: hausweite Werte, die keinem einzelnen Zugang gehören -

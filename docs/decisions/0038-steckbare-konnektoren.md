@@ -105,7 +105,7 @@ Abgeschlossen: zuerst die interne Umstellung bei unveränderter API (#1986), dan
 ### 6. Frontend-Registrierung und Fähigkeiten
 
 - Jede Quellart registriert sich an genau einer Stelle
-  (`frontend/src/components/library/sources/registry.ts`): Name, Symbol, Formular mit Startwerten,
+  (`frontend/src/features/library/components/sources/registry.ts`): Name, Symbol, Formular mit Startwerten,
   Validierung, Anfragefeldern und Leseansichten, dazu typabhängige Beschriftungen und Wege. Die Kacheln
   des Assistenten kommen aus `GET /source-types`; ein dem Frontend unbekannter Typ erscheint unter seinem
   Anzeigenamen, nicht wählbar. Nach dem Typ verzweigt das Frontend sonst nur auf `UPLOAD`.
