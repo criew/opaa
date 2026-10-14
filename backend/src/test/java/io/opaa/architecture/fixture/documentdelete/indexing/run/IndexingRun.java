@@ -1,4 +1,4 @@
-package io.opaa.architecture.fixture.documentdelete.indexing.source;
+package io.opaa.architecture.fixture.documentdelete.indexing.run;
 
 import io.opaa.architecture.fixture.documentdelete.indexing.maintenance.StaleDocumentCleanupService;
 

@@ -91,7 +91,7 @@ class ModularArchitectureFixtureTest {
     assertThat(scenario.violations(ModularArchitecture::topLevelPackagesAreFreeOfCycles)).isEmpty();
   }
 
-  /** {@code document -> source} points upward in the core, {@code job -> indexing} leaves it. */
+  /** {@code document -> run} points upward in the core, {@code job -> indexing} leaves it. */
   @Test
   void anEdgeAgainstTheIndexingCoreOrderIsReported() {
     Scenario scenario = new Scenario("indexingcore");
@@ -102,7 +102,7 @@ class ModularArchitectureFixtureTest {
             violation ->
                 assertThat(violation)
                     .contains(
-                        "indexing.document -> indexing.source points upward",
+                        "indexing.document -> indexing.run points upward",
                         "document.DocumentIngest"))
         .anySatisfy(
             violation ->
@@ -112,14 +112,14 @@ class ModularArchitectureFixtureTest {
     assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer)).isEmpty();
   }
 
-  /** {@code indexing.run} is neither core, root, web package nor connector. */
+  /** {@code indexing.sweep} is neither core, root, web package nor connector. */
   @Test
   void anIndexingPackageOutsideTheCoreIsReported() {
     Scenario scenario = new Scenario("indexingunlisted");
 
     assertThat(scenario.violations(ModularArchitecture::everyIndexingPackageIsInTheCore))
         .singleElement(STRING)
-        .contains("indexingunlisted.indexing.run is not ordered", "INDEXING_CORE");
+        .contains("indexingunlisted.indexing.sweep is not ordered", "INDEXING_CORE");
     assertThat(scenario.violations(ModularArchitecture::theIndexingCoreDependsOnlyDownward))
         .isEmpty();
   }
@@ -734,15 +734,15 @@ class ModularArchitectureFixtureTest {
     assertThat(
             scenario.architecture.unresolved(
                 List.of(
-                    "indexing.source.SourceConnector",
-                    "indexing.source.SourceConnector#base",
+                    "indexing.spi.SourceConnector",
+                    "indexing.spi.SourceConnector#base",
                     "indexing.Gone",
-                    "indexing.source.SourceConnector$Gone",
-                    "indexing.source.SourceConnector#gone")))
+                    "indexing.spi.SourceConnector$Gone",
+                    "indexing.spi.SourceConnector#gone")))
         .containsExactly(
             "indexing.Gone",
-            "indexing.source.SourceConnector$Gone",
-            "indexing.source.SourceConnector#gone");
+            "indexing.spi.SourceConnector$Gone",
+            "indexing.spi.SourceConnector#gone");
   }
 
   /** One example tree and the rules rooted at it. */

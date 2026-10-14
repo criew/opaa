@@ -1,4 +1,6 @@
-package io.opaa.architecture.fixture.changegate.indexing.source;
+package io.opaa.architecture.fixture.changegate.indexing.registry;
+
+import io.opaa.architecture.fixture.changegate.indexing.spi.SourceConnector;
 
 /** The gate may call every hook. */
 public class SourceChangeGate {

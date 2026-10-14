@@ -1,4 +1,4 @@
-package io.opaa.architecture.fixture.profilesupport.indexing.source;
+package io.opaa.architecture.fixture.profilesupport.indexing.spi;
 
 public class ProfileDeclaration {
   public String support() {

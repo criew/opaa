@@ -1,6 +1,6 @@
 package io.opaa.architecture.fixture.profilesupport.connection;
 
-import io.opaa.architecture.fixture.profilesupport.indexing.source.ProfileDeclaration;
+import io.opaa.architecture.fixture.profilesupport.indexing.spi.ProfileDeclaration;
 
 /** Reads the declared support itself; asking whether profiles are admitted is fine. */
 public class ConnectorRelease {

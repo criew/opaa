@@ -206,7 +206,10 @@ public final class ModularArchitecture {
           "indexing.job",
           "indexing.attachment",
           "indexing.document",
-          "indexing.source",
+          "indexing.spi",
+          "indexing.credentials",
+          "indexing.registry",
+          "indexing.run",
           "indexing.maintenance",
           "indexing.filesync");
 
@@ -244,7 +247,7 @@ public final class ModularArchitecture {
    * run, manage or answer a source hold it; everything else asks the read-only {@code
    * SourceStateLookup}.
    */
-  static final String SECRET_PORT = "indexing.source.SourceConnectionResolver";
+  static final String SECRET_PORT = "indexing.credentials.SourceConnectionResolver";
 
   /** Where "Sicht als" runs, relative to the root: the one foreign rights context. */
   static final String FOREIGN_CONTEXT = "diagnosticaccess";
@@ -273,11 +276,11 @@ public final class ModularArchitecture {
    */
   static final Set<String> CHANGE_HOOKS =
       Set.of(
-          "indexing.source.SourceConnector#validateChange",
-          "indexing.source.SourceConnector#applyChange",
-          "indexing.source.SourceConnector#onSourceChanged");
+          "indexing.spi.SourceConnector#validateChange",
+          "indexing.spi.SourceConnector#applyChange",
+          "indexing.spi.SourceConnector#onSourceChanged");
 
-  static final String CHANGE_GATE = "indexing.source.SourceChangeGate";
+  static final String CHANGE_GATE = "indexing.registry.SourceChangeGate";
 
   /**
    * The ways to the library's own secret in its column, relative to the root: the entity and the
@@ -332,7 +335,7 @@ public final class ModularArchitecture {
   static final Set<String> LIBRARY_ENUMERATORS =
       Set.of(
           "indexing.maintenance.PipelineReindexService",
-          "indexing.source.LibraryIndexingScheduler",
+          "indexing.run.LibraryIndexingScheduler",
           "library.OrphanedOriginalCleanupService",
           "library.LibraryExternalAccessService",
           "library.LibraryExternalAccessExpiryService",
@@ -356,7 +359,7 @@ public final class ModularArchitecture {
           "knowledge.LibraryStorageQuotaService#personalQuotaExceededMessage",
           Set.of("indexing.document.DocumentIngestOutcomes"),
           "indexing.document.DocumentIngestOutcomes$QuotaMessages#of",
-          Set.of("indexing.source.IndexingRun", "indexing.document.AttachmentIndexer"));
+          Set.of("indexing.run.IndexingRun", "indexing.document.AttachmentIndexer"));
 
   /**
    * Exact counts about persons that only go to the log, relative to the root, each with the one
@@ -453,7 +456,7 @@ public final class ModularArchitecture {
    * {@link #PROFILE_REQUIREMENTS} reads it, so the switch of the system administration applies
    * everywhere.
    */
-  static final String PROFILE_SUPPORT = "indexing.source.ProfileDeclaration#support";
+  static final String PROFILE_SUPPORT = "indexing.spi.ProfileDeclaration#support";
 
   static final String PROFILE_REQUIREMENTS = "connection.profile.ProfileRequirements";
 
@@ -489,12 +492,12 @@ public final class ModularArchitecture {
           "indexing.maintenance.StaleDocumentCleanupService#reconcile",
           "indexing.maintenance.StaleDocumentCleanupService#cleanupVanished",
           "indexing.maintenance.StaleDocumentCleanupService#removeWithAttachments",
-          "indexing.source.VanishedDocumentReconciler#reconcile",
-          "indexing.source.VanishedDocumentReconciler#removeWithAttachments");
+          "indexing.spi.VanishedDocumentReconciler#reconcile",
+          "indexing.spi.VanishedDocumentReconciler#removeWithAttachments");
 
   /** The run frame, the only one that removes through the cleanup service or its port. */
   static final Set<String> RUN_REMOVERS =
-      Set.of("indexing.source.IndexingRunTemplate", "indexing.source.IndexingRun");
+      Set.of("indexing.run.IndexingRunTemplate", "indexing.run.IndexingRun");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";
@@ -510,19 +513,21 @@ public final class ModularArchitecture {
           "knowledge.KnowledgeLibrary#getSourceCredentials",
           "knowledge.KnowledgeLibrary#getSourceUrl",
           "knowledge.KnowledgeLibrary#getSourceSettings",
-          "indexing.source.ConnectorData#storedIn");
+          "indexing.spi.ConnectorData#storedIn");
 
   /**
-   * The core's resolvers and its service account sign-in, relative to the root. A connector that
-   * held one could resolve the secret of any library or read a service account key (ADR-0040,
-   * Entscheidung 2), so it never depends on them.
+   * The packages of indexing a connector and the file sync may use, relative to the root; not
+   * {@code indexing.credentials}, so none resolves a secret or reads a key (ADR-0040, Entscheidung
+   * 2).
    */
-  static final Set<String> CORE_ONLY_RESOLVERS =
-      Set.of(
-          "indexing.source.SourceConnectionResolver",
-          "indexing.source.LibrarySourceConnectionResolver",
-          "indexing.source.ServiceAccountKey",
-          "indexing.source.ServiceAccountTokens");
+  static final List<String> CONNECTOR_IMPORTS =
+      List.of(
+          "indexing.job",
+          "indexing.attachment",
+          "indexing.document",
+          "indexing.spi",
+          "indexing.run",
+          "indexing.filesync");
 
   /** The shared file sync (ADR-0045, Entscheidung 1): connectors use it, it knows none of them. */
   static final String FILE_SYNC = "indexing.filesync";
@@ -988,8 +993,7 @@ public final class ModularArchitecture {
 
   /**
    * Calls and method references alike; the push secret and the filesystem path are exempt. A
-   * connector - and the file sync it hands its store to - neither holds nor creates a resolver of
-   * the core.
+   * connector - and the file sync it hands its store to - uses only {@link #CONNECTOR_IMPORTS}.
    */
   ArchRule connectorsTakeTheirSourceConfigurationFromTheCore() {
     return noClasses()
@@ -1011,11 +1015,13 @@ public final class ModularArchitecture {
         .orShould()
         .dependOnClassesThat(
             DescribedPredicate.describe(
-                "are listed in ModularArchitecture.CORE_ONLY_RESOLVERS",
+                "are in indexing outside ModularArchitecture.CONNECTOR_IMPORTS",
                 target -> {
                   String relative = relative(target.getBaseComponentType().getPackageName());
-                  return CORE_ONLY_RESOLVERS.contains(
-                      relative + "." + target.getBaseComponentType().getSimpleName());
+                  return relative != null
+                      && (relative.equals("indexing") || relative.startsWith("indexing."))
+                      && !relative.startsWith(CONNECTOR_PARENT + ".")
+                      && !CONNECTOR_IMPORTS.contains(relative);
                 }))
         .because(
             "a connector takes target, secret and settings from the core, which resolves them"

@@ -1,4 +1,4 @@
-package io.opaa.architecture.fixture.valid.indexing.source;
+package io.opaa.architecture.fixture.valid.indexing.spi;
 
 public class SourceConnector {
   io.opaa.architecture.fixture.valid.common.Base base;

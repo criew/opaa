@@ -1,4 +1,4 @@
-package io.opaa.architecture.fixture.changegate.indexing.source;
+package io.opaa.architecture.fixture.changegate.indexing.spi;
 
 public interface SourceConnector {
   Object validateChange(Object before, Object requested);

@@ -1,4 +1,4 @@
-package io.opaa.architecture.fixture.connectorreadslibrary.indexing.source;
+package io.opaa.architecture.fixture.connectorreadslibrary.indexing.spi;
 
 import io.opaa.architecture.fixture.connectorreadslibrary.knowledge.KnowledgeLibrary;
 
