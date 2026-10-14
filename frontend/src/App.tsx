@@ -79,7 +79,7 @@ import { LlmModelManagementPage } from '@/features/model/routes'
 import { MailSettingsPage } from '@/features/mail/routes'
 // branding
 import { useBrandingStore } from '@/shared/branding/brandingStore'
-import BrandingSettingsPage from './pages/BrandingSettingsPage'
+import { BrandingSettingsPage } from '@/features/branding/routes'
 // connection
 import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
 import ConnectionsAdminPage from './pages/ConnectionsAdminPage'

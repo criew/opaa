@@ -30,7 +30,7 @@ import { resetLlmModelMockState } from '@/features/model/mocks/modelHandlers'
 // mail
 import { resetMockMailSettings, resetMockMailTemplates } from '@/features/mail/mocks/mailFixtures'
 // branding
-import { resetMockBranding } from '../mocks/brandingFixtures'
+import { resetMockBranding } from '@/features/branding/mocks/brandingFixtures'
 // connection
 import { resetConnectionProfileMockState } from '../mocks/connectionProfileHandlers'
 import { resetConnectedAccountMockState } from '../mocks/connectedAccountHandlers'

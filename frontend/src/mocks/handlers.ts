@@ -35,7 +35,7 @@ import { modelHandlers } from '@/features/model/mocks/modelHandlers'
 // mail
 import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 // branding
-import { brandingHandlers } from './brandingHandlers'
+import { brandingHandlers } from '@/features/branding/mocks/brandingHandlers'
 // connection
 import { connectionProfileHandlers } from './connectionProfileHandlers'
 import { connectedAccountHandlers } from './connectedAccountHandlers'

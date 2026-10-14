@@ -19,7 +19,7 @@ import type { BrandingImageKind } from '@/shared/branding/brandingStore'
 import { BRANDING_IMAGES, useBrandingStore, OPAA_BRANDING } from '@/shared/branding/brandingStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
-import BrandingPreview from '../components/admin/BrandingPreview'
+import BrandingPreview from '../components/BrandingPreview'
 import { checkAccentContrast, formatContrastRatio, parseHexColor } from '@/shared/utils/contrast'
 import { contentWidth } from '@/shared/theme/tokens'
 
