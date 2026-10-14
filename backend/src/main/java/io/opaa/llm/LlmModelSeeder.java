@@ -14,61 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 /**
- * Performs the one-time takeover of the existing environment configuration into {@code llm_models}
- * as the initial active model
- * (docs/features/llm-integration.md#übergang-aus-der-heutigen-konfiguration): "Beim ersten Start
- * nach der Umstellung wird die vorhandene Konfiguration als initiales, aktives Modell übernommen,
- * sofern noch kein Modell hinterlegt ist."
- *
- * <p><b>Guarded by {@link LlmModelSeedMarker}, not by "is {@code llm_models} empty?"</b>: the
- * takeover must happen at most once, ever - not once per empty table. Inferring it from emptiness
- * would re-seed a stale environment configuration the moment a Systemverwaltung deletes every
- * managed model, which contradicts the same section's "Danach ist die Datenbank für das Chat-Modell
- * führend. Die Umgebungsvariablen werden nicht mehr ausgewertet." The marker is written in the same
- * transaction as the seeded model (or alone, if there was nothing to seed), so "attempted" and
- * "succeeded in creating a model" are recorded atomically together.
- *
- * <p><b>Two takeover paths, not one</b> - {@code spring.ai.model.chat} alone no longer decides
- * which, because #762 removed the native Ollama starter and fixed that property to {@code openai}
- * unconditionally. Instead:
- *
- * <ul>
- *   <li><b>Legacy {@code OPAA_AI_CHAT_PROVIDER=ollama}, together with at least one of {@code
- *       OPAA_OLLAMA_BASE_URL}/{@code OPAA_OLLAMA_CHAT_MODEL}</b> (all read directly as raw
- *       environment variables, not through any {@code application.yml} property - the {@code
- *       ollama} blocks that variable used to select are gone): the takeover of an existing
- *       installation upgrading past #762 in one step, before the operator has removed the
- *       now-obsolete variables. The second condition matters: {@code OPAA_AI_CHAT_PROVIDER=ollama}
- *       left over on its own, with neither Ollama variable still set, must not divert a genuinely
- *       fresh/openai-configured installation onto this path and seed it with the wrong
- *       (Ollama-shaped) defaults - see {@link #seedIfNeeded()}. Reads {@code
- *       OPAA_OLLAMA_BASE_URL}/{@code OPAA_OLLAMA_CHAT_MODEL} the same way it always has, with a
- *       {@code /v1} suffix appended to the base URL (unless already present) and no access key -
- *       Ollama's own OpenAI-compatible endpoint requires none. Falls back to the same
- *       profile-dependent default address the removed {@code ollama} configuration block used to
- *       carry (docker: the {@code ollama} service name; otherwise: {@code localhost}) if the base
- *       URL variable itself was never set - see {@link #legacyOllamaBaseUrlDefault()}.
- *   <li><b>Everything else</b> (including a fresh installation that never knew {@code
- *       OPAA_AI_CHAT_PROVIDER} at all): takes over {@code spring.ai.openai.chat.*} unchanged - base
- *       URL, model and access key - except the bundled {@code sk-placeholder} default (no real key
- *       configured at all), which is treated as no key rather than encrypted and stored as if it
- *       were a real secret. This path's own defaults point at a locally operated Ollama server, so
- *       a fresh installation seeds the same values the legacy path above would have produced for an
- *       equivalent existing installation.
- * </ul>
- *
- * <p><b>This class only ever seeds the chat model.</b> There is no analogous takeover for the
- * embedding configuration - embedding models are not managed objects yet (unlike the chat model
- * since Stufe 1 of the model management), so an existing installation upgrading past #762 with a
- * non-default embedding address (e.g. {@code OPAA_OLLAMA_BASE_URL} pointing at a host-run Ollama
- * server rather than the new default's {@code ollama} Compose service name) must translate that
- * value into {@code OPAA_OPENAI_EMBEDDING_BASE_URL} itself, in the environment, before the update -
- * see docs/handbuch/konfiguration.md, "Entfallene und veraltete Variablen".
- *
- * <p>{@link #seedIfNeeded()} is called from {@link LlmModelSeedRunner}, a separate bean, rather
- * than being an {@code ApplicationRunner} itself: {@code @Transactional} only takes effect on a
- * call that goes through this bean's Spring proxy, which requires the call to come from another
- * bean rather than from a method on {@code this}.
+ * Takes over the environment configuration once as the initial active chat model, guarded by {@link
+ * LlmModelSeedMarker} (same transaction), not by an empty {@code llm_models}: deleting every model
+ * never re-seeds. Source is the legacy Ollama variables (see {@link
+ * #legacyOllamaTakeoverApplies()}), otherwise {@code spring.ai.openai.chat.*}.
  *
  * <p><b>Ablaufdatum:</b> einmalige Übernahme für Bestandsinstallationen, Kandidat zur Entfernung ab
  * v1.0.
@@ -101,10 +50,8 @@ class LlmModelSeeder {
   static final String LEGACY_OLLAMA_CHAT_MODEL_DEFAULT = "phi3:mini";
 
   /**
-   * Raw environment variable name (not a {@code spring.ai.*} property - #762 removed the {@code
-   * application.yml} blocks that used to expose it as one) that selected the now-removed native
-   * Ollama takeover path. Read directly via {@link Environment#getProperty(String)}, which resolves
-   * both real OS environment variables and {@code -D} system properties by their exact name.
+   * Raw environment variable name, no {@code spring.ai.*} property; {@link
+   * Environment#getProperty(String)} resolves OS variables and {@code -D} properties by exact name.
    */
   private static final String LEGACY_CHAT_PROVIDER_ENV = "OPAA_AI_CHAT_PROVIDER";
 
@@ -117,12 +64,8 @@ class LlmModelSeeder {
   private static final String DOCKER_PROFILE = "docker";
 
   /**
-   * Every environment variable #762 removed from {@code application.yml}. Not all of them still
-   * have a meaning to this class (only {@link #LEGACY_CHAT_PROVIDER_ENV}/{@link
-   * #LEGACY_OLLAMA_BASE_URL_ENV}/{@link #LEGACY_OLLAMA_CHAT_MODEL_ENV} do, for the chat takeover
-   * path), but a value left over in any of them is equally silent otherwise - {@link
-   * #warnAboutLeftoverLegacyVariables()} surfaces all five so an operator notices before assuming
-   * they still do something.
+   * Every environment variable that no longer configures anything; {@link
+   * #warnAboutLeftoverLegacyVariables()} reports each one still set.
    */
   private static final List<String> LEGACY_ENVIRONMENT_VARIABLES =
       List.of(
@@ -155,14 +98,8 @@ class LlmModelSeeder {
       return;
     }
     if (repository.count() > 0) {
-      // A marker-less skip (below, on a missing/invalid encryption key) is retried on every
-      // subsequent start until it either succeeds or the operator adds a model by hand in the
-      // meantime - the very fallback this class's own ERROR log recommends. Without this check,
-      // that hand-added model would collide with the retried takeover the next time it runs:
-      // ux_llm_models_single_active if the seeded model were activated too, or a silent second row
-      // - either way, a taken-over environment configuration the operator never asked for once the
-      // key finally is set. The marker still is the primary guard for the ordinary case; this is
-      // only reached when it was never written in the first place.
+      // Reached only after a marker-less skip (missing encryption key): a model added by hand in
+      // the meantime ends the takeover instead of colliding with a retried one.
       log.info(
           "Übernahme aus der Umgebungskonfiguration entfällt: Es sind bereits Chat-Modelle"
               + " hinterlegt (vermutlich manuell angelegt, nachdem eine frühere Übernahme mangels"
@@ -207,12 +144,9 @@ class LlmModelSeeder {
   }
 
   /**
-   * {@code OPAA_AI_CHAT_PROVIDER=ollama} alone is not enough: left over on its own - both {@code
-   * OPAA_OLLAMA_*} variables already removed - it must not divert a takeover that should read
-   * {@code spring.ai.openai.chat.*} instead onto the Ollama-shaped defaults of {@link
-   * #seedFromLegacyOllamaEnv()}. At least one of the two Ollama variables still being set is what
-   * actually distinguishes "this is an existing installation upgrading past #762 in one step" from
-   * "this leftover variable has no bearing on the current configuration anymore".
+   * True for {@code OPAA_AI_CHAT_PROVIDER=ollama} together with at least one {@code OPAA_OLLAMA_*}
+   * variable; the provider variable left over alone does not divert the takeover onto the Ollama
+   * defaults.
    */
   private boolean legacyOllamaTakeoverApplies() {
     String legacyChatProvider = environment.getProperty(LEGACY_CHAT_PROVIDER_ENV, "");
@@ -223,12 +157,7 @@ class LlmModelSeeder {
         || StringUtils.hasText(environment.getProperty(LEGACY_OLLAMA_CHAT_MODEL_ENV));
   }
 
-  /**
-   * Surfaces every environment variable #762 removed, so an operator who left one set (harmlessly
-   * ignored otherwise, see this class's own Javadoc) notices instead of assuming it still has an
-   * effect. Runs on every start, independent of {@link LlmModelSeedMarker} - the leftover variable
-   * itself does not stop existing once the one-time takeover has happened.
-   */
+  /** Warns on every start, independent of {@link LlmModelSeedMarker}, about leftover variables. */
   private void warnAboutLeftoverLegacyVariables() {
     List<String> stillSet =
         LEGACY_ENVIRONMENT_VARIABLES.stream()
@@ -243,11 +172,8 @@ class LlmModelSeeder {
   }
 
   /**
-   * Legacy takeover path for an existing installation still carrying {@code
-   * OPAA_AI_CHAT_PROVIDER=ollama} (#762 removed the {@code application.yml} blocks that variable
-   * used to select, but not the variable's meaning for a deployment upgrading straight past it).
-   * Reads the same two raw environment variables the removed {@code ollama} configuration block
-   * used to expose as {@code spring.ai.ollama.*} properties.
+   * Reads {@code OPAA_OLLAMA_BASE_URL} and {@code OPAA_OLLAMA_CHAT_MODEL} raw, appends {@code /v1}
+   * and stores no access key: Ollama's OpenAI-compatible endpoint requires none.
    */
   private LlmModel seedFromLegacyOllamaEnv() {
     String baseUrl = environment.getProperty(LEGACY_OLLAMA_BASE_URL_ENV);
@@ -265,12 +191,7 @@ class LlmModelSeeder {
         null);
   }
 
-  /**
-   * The profile-dependent default the removed {@code ollama.base-url} configuration block used to
-   * carry, reproduced here for the legacy takeover path so an existing installation that never
-   * overrode {@code OPAA_OLLAMA_BASE_URL} still seeds the same address it always effectively ran
-   * with.
-   */
+  /** Profile-dependent Ollama address for an unset {@code OPAA_OLLAMA_BASE_URL}. */
   private String legacyOllamaBaseUrlDefault() {
     return environment.acceptsProfiles(Profiles.of(DOCKER_PROFILE))
         ? "http://ollama:11434"
@@ -295,10 +216,8 @@ class LlmModelSeeder {
       try {
         apiKeyCiphertext = settingsEncryptor.encrypt(apiKey);
       } catch (IllegalStateException e) {
-        // Not just a missing key (SettingsEncryptor#requireKey() throws the same
-        // IllegalStateException for a set-but-malformed one - wrong Base64, wrong length) - both
-        // are the same "Übernahme scheitert kontrolliert" category the deployment docs promise, not
-        // a reason to abort startup.
+        // A missing and a malformed key both throw IllegalStateException; either skips the
+        // takeover instead of aborting startup.
         throw new MissingEncryptionKeyException(e);
       }
     }
@@ -350,15 +269,9 @@ class LlmModelSeeder {
   }
 
   /**
-   * Thrown by {@link #seedFromOpenAi()} when a configured API key would need to be encrypted but
-   * {@code OPAA_SETTINGS_ENCRYPTION_KEY} is missing, invalid Base64 or the wrong length (every case
-   * {@link io.opaa.security.SettingsEncryptor#encrypt} itself reports as an {@link
-   * IllegalStateException}). A configuration problem, not a fatal one: caught within {@link
-   * #seedIfNeeded()} itself, before it ever reaches {@link LlmModelSeedRunner}, so this one-time
-   * takeover is simply skipped for this start - no {@link LlmModelSeedMarker} is written, so it is
-   * retried automatically on every subsequent start until the operator fixes the key (or the model
-   * is added by hand through the Verwaltungsoberfläche in the meantime, at which point {@link
-   * #seedIfNeeded()}'s own {@code repository.count() > 0} check takes over instead).
+   * A configured API key cannot be encrypted because {@code OPAA_SETTINGS_ENCRYPTION_KEY} is
+   * missing or malformed. Caught in {@link #seedIfNeeded()}: no marker is written, so the takeover
+   * is retried on every start until the key is fixed or a model is added by hand.
    */
   private static final class MissingEncryptionKeyException extends RuntimeException {
     MissingEncryptionKeyException(IllegalStateException cause) {

@@ -20,73 +20,15 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Resolves the {@link ChatClient} for the systemwide active {@link LlmModel} at runtime
- * (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung), not once at
- * startup from the static Spring AI OpenAI autoconfiguration. {@code AnswerGenerationService} and
- * {@code ChatTitleGenerationService} both call {@link #resolveChatClient()} on every request
- * instead of holding a {@code ChatClient} field built in their constructor - the only way an
- * activation via the admin API can take effect without a restart.
+ * Resolves the {@link ChatClient} of the systemwide active {@link LlmModel} per call, so an
+ * activation takes effect without a restart. Clients are built programmatically over the one
+ * OpenAI-compatible path, wrapped in {@link ReasoningTextStrippingChatModel} and handed the
+ * application's {@link ObservationRegistry} and {@link MeterRegistry}, so chat metrics stay
+ * visible.
  *
- * <p>Every client built here wraps the model in {@link ReasoningTextStrippingChatModel}: no caller
- * reads reasoning text a server put in front of the answer.
- *
- * <p><b>Built programmatically, not through Spring Boot's OpenAI autoconfiguration</b> - {@link
- * OpenAiChatModel#builder()} with an {@link OpenAiChatOptions} carrying the active model's own
- * {@code baseUrl}/{@code apiKey}/{@code model}/{@code temperature}/{@code maxTokens}. There is
- * exactly one connection path (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei): no
- * provider switch, since every managed model - including Ollama's own {@code /v1} endpoint - speaks
- * the same OpenAI-compatible protocol. The application's own {@link ObservationRegistry}/{@link
- * MeterRegistry} beans (if any) are passed to both {@link OpenAiChatModel#builder()} and {@link
- * ChatClient#builder(org.springframework.ai.chat.model.ChatModel, ObservationRegistry,
- * org.springframework.ai.chat.client.observation.ChatClientObservationConvention,
- * org.springframework.ai.chat.client.observation.AdvisorObservationConvention)} - a client built
- * with the two-argument {@code ChatClient.builder(chatModel)} overload would silently use {@link
- * ObservationRegistry#NOOP} instead, and every chat span/metric this application otherwise exposes
- * on {@code /actuator/prometheus} would vanish without any error.
- *
- * <p><b>Cached per active model, invalidated on change.</b> Building a {@link ChatClient} means
- * constructing a real HTTP client (no network call happens until the first request, see {@code
- * org.springframework.ai.openai.setup.OpenAiSetup}), so repeated requests reuse the same instance
- * rather than paying that cost per call - {@link #resolveChatClient()} only rebuilds when {@link
- * #cache} is empty. {@link LlmModelService} publishes {@link ActiveChatModelChangedEvent} after
- * every commit that activates a different model or changes the currently active one; {@link
- * #onActiveModelChanged} - a {@link TransactionalEventListener} bound to {@link
- * TransactionPhase#AFTER_COMMIT} - clears the cache in reaction, never before the change is
- * actually durable: a rolled-back activation must not have invalidated a still-correct cache.
- *
- * <p><b>Race between an in-flight build and a concurrent invalidation.</b> {@link #buildAndCache}
- * is the only writer of {@link #cache} with a genuine value (the listener only ever clears it), but
- * it is not the only thing that can run concurrently with it: {@link #onActiveModelChanged} fires
- * on whatever thread commits the triggering change, fully independently of any thread mid-build.
- * Without a safeguard, this sequence is possible - Thread A reads the (still) active model X inside
- * {@link #buildAndCache}; a second model is activated and committed, whose listener callback clears
- * the cache; Thread A then finishes building its (already outdated) client for X and overwrites the
- * just-cleared cache with it - leaving a permanently stale client behind that nothing but the
- * *next* change would evict, silently and without any error. {@link #generation} closes this
- * window: {@link #buildAndCache} records the generation before it starts reading {@code llm_models}
- * and only commits its result to {@link #cache} if the generation is still the same afterwards;
- * {@link #onActiveModelChanged} increments it in the same atomic step as clearing the cache. A
- * build whose generation changed underneath it is discarded (but still returned to its own caller -
- * a single request served by a to-be-superseded client is harmless; the next {@link
- * #resolveChatClient()} call rebuilds against the now-current active model) rather than cached, so
- * no completed build can ever undo a concurrent invalidation, regardless of the order the two
- * threads happen to run in.
- *
- * <p><b>The decrypted access key never outlives {@link #buildAndCache}.</b> It is a local variable
- * used only to construct the {@link OpenAiChatOptions} handed to {@link OpenAiChatModel#builder()};
- * the built {@link ChatClient} kept in {@link #cache} carries it only inside the OpenAI Java SDK
- * client it wraps, exactly as any other in-memory HTTP client necessarily must - this class itself
- * never stores or logs the plaintext value.
- *
- * <p><b>A discarded {@link ChatClient} (superseded build above, or an edit/activation that replaces
- * a still-cached one) is never explicitly closed.</b> The OpenAI Java SDK client it wraps holds an
- * OkHttp {@code ConnectionPool}, which times out and reclaims idle connections on its own (OkHttp's
- * default keep-alive is five minutes); building a client that is never actually used for a request
- * never opens a connection to begin with. Closing it explicitly would need this class to build the
- * underlying {@code OpenAIClient} itself (see {@code
- * org.springframework.ai.openai.setup.OpenAiSetup}) instead of delegating to {@link
- * OpenAiChatModel.Builder}, purely to hold a reference capable of closing it - a structural change
- * not justified by a resource that already bounds itself.
+ * <p>The client is cached until {@link ActiveChatModelChangedEvent} arrives after commit. {@link
+ * #generation} guarantees that a build running across an invalidation is returned but never cached.
+ * The decrypted access key lives only inside the built client.
  */
 @Component
 public class ActiveChatModelResolver {
@@ -110,10 +52,8 @@ public class ActiveChatModelResolver {
   private final AtomicInteger buildCount = new AtomicInteger();
 
   /**
-   * Whether the "no active model" condition was already logged at ERROR since it last cleared -
-   * {@link #activeModel()} is on the hot path of every chat request and of every health check poll,
-   * so without this an installation with no active model would produce one ERROR log line per
-   * second rather than one per actual state change.
+   * Whether the "no active model" condition was already logged since it last cleared: one ERROR per
+   * state change, not per request on this hot path.
    */
   private final AtomicBoolean noActiveModelLogged = new AtomicBoolean(false);
 
@@ -145,10 +85,8 @@ public class ActiveChatModelResolver {
   }
 
   /**
-   * Basis-Adresse and Modell-Kennung of the systemwide active model, for {@code
-   * ChatHealthIndicator} - reads {@code llm_models} directly rather than through {@link #cache}, so
-   * a health check never triggers building a full {@link ChatClient} (and never needs {@link
-   * SettingsEncryptor} to be configured) just to report these two values.
+   * Base address and model identifier of the active model, read from {@code llm_models} without
+   * building a client or decrypting the key.
    *
    * @throws NoActiveChatModelException when {@code llm_models} has no active row
    */
@@ -198,8 +136,7 @@ public class ActiveChatModelResolver {
                 new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
             .build();
     Resolved resolved = new Resolved(chatClient);
-    // See this class's own Javadoc ("Race between an in-flight build and a concurrent
-    // invalidation"): only commit if nothing invalidated the cache while this build was running.
+    // Only cache the result if nothing invalidated the cache while this build was running.
     if (generation.get() == generationAtStart) {
       cache.set(resolved);
       buildCount.incrementAndGet();
@@ -291,13 +228,8 @@ public class ActiveChatModelResolver {
   }
 
   /**
-   * Drops the cached client so the next {@link #resolveChatClient()}/{@link #resolveDescription()}
-   * call re-reads {@code llm_models} - fired only after the triggering change actually committed
-   * (see this class's own Javadoc). Also advances {@link #generation}, the safeguard against a
-   * build already in flight overwriting this invalidation with a stale result (see this class's own
-   * Javadoc), and resets {@link #noActiveModelLogged}: whatever just changed may have resolved a
-   * previous "no active model" condition, so that state deserves a fresh ERROR the next time it
-   * actually recurs.
+   * Drops both cached clients after the change committed, advances {@link #generation} so a build
+   * in flight is not cached, and re-arms the "no active model" ERROR.
    */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   void onActiveModelChanged(ActiveChatModelChangedEvent event) {
@@ -307,24 +239,15 @@ public class ActiveChatModelResolver {
     noActiveModelLogged.set(false);
   }
 
-  /**
-   * How many times a {@link ChatClient} was actually (re)built - test-observable proof that
-   * repeated calls without an intervening change reuse the cache rather than rebuilding per call,
-   * which a time-based assertion could not distinguish from "rebuilt, but fast".
-   */
+  /** How many times a {@link ChatClient} was actually built and cached; observable by tests. */
   int builtClientCount() {
     return buildCount.get();
   }
 
   /**
-   * Test-only: forces the next {@link #resolveChatClient()}/{@link #resolveDescription()} call to
-   * rebuild, resets {@link #builtClientCount()} to zero and clears the "no active model" logging
-   * state - a test that manipulates {@code llm_models} directly (e.g. via JDBC, to reset fixtures
-   * between test methods sharing one Spring context) bypasses {@link LlmModelService} entirely, so
-   * no {@link ActiveChatModelChangedEvent} fires - without this, the cache would keep serving
-   * whatever client an earlier test built, exactly the staleness this class exists to prevent for a
-   * genuine activation. Also restores {@link #testRaceWindowHook} to a no-op, so a race-window test
-   * cannot leak its hook into an unrelated later test sharing this class's Spring context.
+   * Test-only: clears both caches, the build count, the logging state and the race-window hook, for
+   * tests that change {@code llm_models} directly and so publish no {@link
+   * ActiveChatModelChangedEvent}.
    */
   void resetForTest() {
     cache.set(null);

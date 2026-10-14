@@ -43,93 +43,21 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 /**
  * Computes and, when requested and plausible, applies the diff between the database and an
- * already-fetched {@link DirectorySnapshot}. Split out from {@link DirectorySyncService} so the
- * directory fetch itself - the one call that can be slow or fail on a real deployment - never runs
- * inside a database transaction: {@link DirectorySyncService} is not transactional at all and
- * fetches the snapshot before ever calling in here, and a call from one Spring bean to another goes
- * through the real proxy, so {@code @Transactional} below is honoured regardless of what the caller
- * was doing - unlike a self-invoked private method on the same instance would be.
+ * already-fetched {@link DirectorySnapshot}, so the slow directory fetch never runs inside a
+ * transaction. A run sees only its provider's accounts and {@code ORG_UNIT} groups (ADR-0036,
+ * Entscheidung 2) and matches groups by {@link Group#getExternalId()} only, so a rename is free of
+ * side effects. Membership is flat; parent links are resolved in a second pass.
  *
- * <p><b>Bound to one identity provider</b> (ADR-0036, Entscheidung 2). The {@link SyncTarget} names
- * the provider whose directory was read: members are resolved among the accounts of that provider's
- * issuer only, the diff is computed against that provider's {@code ORG_UNIT} groups alone, and a
- * group this run creates carries the provider as its origin. Another provider's groups are
- * invisible to this run - neither dissolved nor renamed by it.
- *
- * <p><b>Plan, then act.</b> {@link #buildPlan} computes the entire diff without mutating anything.
- * {@link #planOnly} and the threshold path inside {@link #handle} both stop there and only turn the
- * plan into a report. Only {@link #planAndApply} past the threshold, and {@link #confirmPlan}, call
- * {@link #applyPlan}.
- *
- * <p><b>Above the threshold a run leaves a plan behind</b> instead of aborting (ADR-0036,
- * Entscheidung 3): {@link #planAndApply} stores it, replacing whatever this provider had pending,
- * and reports {@code PENDING_CONFIRMATION}. {@link #confirmPlan} recomputes the diff against a
- * fresh snapshot and applies it only while its fingerprint still matches the plan that was shown;
- * otherwise it replaces the plan and reports {@code PENDING_CONFIRMATION} again, which the service
- * turns into the caller's 409. A dry run never stores a plan, and an empty group list stays a hard
- * abort with no plan at all.
- *
- * <p><b>Status is recorded by the caller, not here.</b> An earlier version of this class recorded
- * the outcome itself, in a {@code REQUIRES_NEW} transaction that committed before this class's own
- * transaction did - so a run that failed to apply (e.g. a directory-supplied name too long for
- * {@code groups.name}, causing the surrounding transaction to roll back at commit) could still end
- * up with a durably recorded {@code APPLIED} status, exactly the "a change was made" claim {@link
- * DirectorySyncStatus#getLastAppliedAt()} exists to be trustworthy about. {@link
- * DirectorySyncService} - itself not transactional - calls {@link DirectorySyncStatusRecorder} only
- * after {@link #planAndApply} has returned successfully, so a roll back here never reaches the
- * status table at all.
- *
- * <p><b>Matching:</b> exclusively by {@link Group#getExternalId()} - the directory's stable
- * identifier, never by name (see #237's acceptance criteria; a rename must be free of side
- * effects).
- *
- * <p><b>Membership resolution:</b> flat only. A group's membership is exactly what the directory
- * reports as its direct members; a member of a child organizational unit is never treated as an
- * implicit member of the parent. Nested-group membership inheritance is called out as an open point
- * in the feature spec and is deliberately left unresolved by this service - {@code parentGroupId}
- * is recorded as reported, resolved in a second pass in {@link #applyPlan} so it works regardless
- * of the order the directory reports groups in and applies to existing groups too, not only newly
- * created ones.
- *
- * <p><b>Plausibility threshold ({@link #buildPlan}):</b> {@code changedFraction} is the worse of
- * two independent measures, each checked against the same configured threshold.
- *
- * <p>The first, membership-based measure has a denominator and numerator that both range over
- * exactly the same population of groups - every group this run actually touches
- * (matched-and-unchanged, renamed, membership-changed, reactivated, or about to be dissolved) - and
- * nothing else. A group that was already dissolved before this run and stays unreported keeps its
- * frozen membership out of both sides. Two cases a name-only computation would miss are folded in
- * explicitly: a group being dissolved this run contributes its entire pre-run membership to the
- * numerator (its reach is capped the same way a revoked grant would be, even though no individual
- * {@code group_memberships} row is deleted), and a group being reactivated this run contributes its
- * frozen pre-run membership to the denominator (it re-enters "in play" in the very run that can
- * remove from it).
- *
- * <p>The second, group-count-based measure exists because the first is blind to a mass dissolution
- * of groups that have no members at all - routine during an introduction phase, before curators and
- * memberships are populated. It is the fraction of groups active before this run that this run
- * would dissolve, independent of how many members any of them have - but only once the population
- * is large enough ({@link #MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE}) or the dissolution count alarming
- * enough on its own ({@link #MIN_DISSOLUTIONS_FOR_GROUP_MEASURE}) for a fraction to mean anything;
- * below that floor a single legitimate dissolution in a small organisation - the normal case for a
- * pilot, not the mass-outage case this measure targets - would otherwise abort every run
- * indefinitely, with no per-run override available.
- *
- * <p>A third measure covers the account locks: the fraction of this provider's active accounts the
- * run would lock, against the same threshold but with a lower count floor ({@link
- * #MIN_LOCKS_FOR_ACCOUNT_MEASURE}). A lock takes a person's access away, so it belongs under the
- * same confirmation path as a membership withdrawal (ADR-0036, Entscheidung 3) - and an empty
- * account list aborts the run outright, the way an empty group list does.
+ * <p>{@link #buildPlan} mutates nothing. Above the threshold, measured on memberships, dissolved
+ * groups and locked accounts, a run stores a plan that {@link #confirmPlan} applies only while its
+ * fingerprint matches (ADR-0036, Entscheidung 3). The caller records the status afterwards.
  */
 @Service
 class DirectorySyncPlanExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(DirectorySyncPlanExecutor.class);
 
-  /**
-   * Floor for the group-count plausibility measure - see where it is used in {@link #buildPlan} for
-   * the reasoning.
-   */
+  /** Population floor of the group-count measure, see {@link #buildPlan}. */
   private static final int MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE = 10;
 
   private static final int MIN_DISSOLUTIONS_FOR_GROUP_MEASURE = 5;
@@ -138,20 +66,13 @@ class DirectorySyncPlanExecutor {
   private static final int MIN_ACTIVE_ACCOUNTS_FOR_ACCOUNT_MEASURE = 10;
 
   /**
-   * The count floor of the account measure, deliberately <b>lower</b> than {@link
-   * #MIN_DISSOLUTIONS_FOR_GROUP_MEASURE}: at five, a small authority whose four accounts all stop
-   * being reported would lock all four without a confirmation - four people before a locked access,
-   * which is exactly the case Personalrat C1 asks to slow down (ADR-0036, Entscheidung 3). At two,
-   * a single departure stays a routine, directly applied change in every house size, while two or
-   * more locks in one run are always measured against the threshold.
+   * Count floor of the account measure, lower than the group one: a single departure stays routine,
+   * two or more locks in one run are always measured against the threshold (ADR-0036, Entscheidung
+   * 3).
    */
   private static final int MIN_LOCKS_FOR_ACCOUNT_MEASURE = 2;
 
-  /**
-   * The fixed, non-pseudonymised actor label #392's audit entries for this class use - "a sync run
-   * has no acting user" (see {@link PermissionHistoryService}'s class Javadoc), so there is no
-   * person's identity to protect behind a pseudonym here.
-   */
+  /** Fixed actor label of the audit entries of an unconfirmed run, which has no acting person. */
   private static final String DIRECTORY_SYNC_ACTOR = "directory-sync";
 
   private final GroupRepository groupRepository;
@@ -477,12 +398,9 @@ class DirectorySyncPlanExecutor {
   }
 
   /**
-   * Builds the report the same way {@link #buildReport} always did, and additionally writes #392's
-   * header entry ({@link AuditEventType#DIRECTORY_SYNC_RUN_COMPLETED}) for this run - regardless of
-   * outcome, including an aborted or dry run, since "Ergebnis" in the specification's sense is the
-   * outcome of the run itself, not only a successful application. Per-change entries (written
-   * inside {@link #applyPlan}, only reachable on the {@code APPLIED} path) share the same {@code
-   * correlationRef}.
+   * Builds the report and writes the run's header audit entry ({@link
+   * AuditEventType#DIRECTORY_SYNC_RUN_COMPLETED}) for every outcome, aborted and dry runs included;
+   * the per-change entries share its {@code correlationRef}.
    */
   private SyncReport finish(
       SyncTarget target,
@@ -523,17 +441,9 @@ class DirectorySyncPlanExecutor {
   }
 
   /**
-   * The header entry's own {@code outcome} column now reflects whether the run actually did what it
-   * set out to do, not always {@code SUCCESS} - a filter on {@code outcome != SUCCESS} would
-   * otherwise never surface an aborted run, even though the human-readable result was always
-   * available in {@code after.outcome}/{@code reason}. {@code APPLIED} and {@code DRY_RUN} both did
-   * exactly what they were asked (write the diff, or only compute it); {@code ABORTED_THRESHOLD},
-   * {@code ABORTED_EMPTY_RESULT} and {@code PENDING_CONFIRMATION} are the plausibility guard
-   * refusing to write anything it judged unsafe without a decision - a failure to complete, not a
-   * permission decision, hence {@code FAILURE} rather than {@code DENIED}; a filter on {@code
-   * outcome != SUCCESS} therefore surfaces a run still waiting for one. {@code UNREACHABLE} is
-   * handled by {@link DirectorySyncService} itself, which never reaches this class - see its own
-   * header entry.
+   * {@code SUCCESS} when the run did what it was asked ({@code APPLIED}, {@code DRY_RUN}); {@code
+   * FAILURE}, not {@code DENIED}, when the plausibility guard held it back, so a filter on {@code
+   * outcome != SUCCESS} surfaces aborted and waiting runs.
    */
   private AuditOutcome toAuditOutcome(DirectorySyncOutcome outcome) {
     return switch (outcome) {
@@ -671,22 +581,9 @@ class DirectorySyncPlanExecutor {
             ? (membershipsAtRisk > 0 ? 1.0 : 0.0)
             : (double) membershipsAtRisk / existingMembershipCount;
 
-    // A second, independent measure on the number of groups rather than their membership: an
-    // introduction-phase directory routinely has ORG_UNIT groups with zero members (curators and
-    // memberships are populated gradually), so a mass dissolution of empty groups is invisible to
-    // membershipChangedFraction - its numerator and denominator are both driven by memberships,
-    // which such a run never touches. changedFraction is the worse of the two so a run this
-    // implausible in either dimension is caught, not only one measured in memberships.
-    //
-    // Only takes effect once the population is large enough to make a *fraction* meaningful
-    // (MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE) or the absolute count is already alarming on its own
-    // (MIN_DISSOLUTIONS_FOR_GROUP_MEASURE) - without this floor, a small, entirely legitimate
-    // organisation (3 active units, one empty placeholder correctly disappearing, zero memberships
-    // at risk) getting permanently stuck at ABORTED_THRESHOLD: 1 of 3 groups is 33%, above the
-    // default 30% threshold, with no per-run override available and no way for the fraction to ever
-    // improve on a later run of the same organisation. A single dissolved unit in a small authority
-    // - the common case for a pilot, not the exception - must stay a routine, applicable change;
-    // this measure exists for the *mass* case the numbers below are calibrated to.
+    // The group-count measure catches a mass dissolution of empty groups, which the membership
+    // measure cannot see. Below its floors a single dissolution in a small organisation stays
+    // routine instead of aborting every run.
     boolean groupMeasureApplies =
         activeGroupCount >= MIN_ACTIVE_GROUPS_FOR_GROUP_MEASURE
             || dissolutions.size() >= MIN_DISSOLUTIONS_FOR_GROUP_MEASURE;
@@ -739,11 +636,9 @@ class DirectorySyncPlanExecutor {
    * organization looks exactly like the latter from here - and active otherwise. A directory that
    * reports no account status at all changes nothing.
    *
-   * <p>The last login-capable system administrator is never locked by a run (ADR-0036, Entscheidung
-   * 6). That is decided here, over the whole planned set at once and through the one guard of
-   * ADR-0033 - asking once per account would let two departing administrators each count the other
-   * as remaining. The guard's advisory lock is taken inside this method's caller transaction and
-   * held until it commits, so the count cannot go stale between plan and apply.
+   * <p>The last login-capable system administrator is never locked (ADR-0036, Entscheidung 6),
+   * decided over the whole planned set through the guard of ADR-0033, whose advisory lock holds
+   * until the caller's transaction commits.
    */
   private AccountPlan planAccounts(
       UUID organizationId,
@@ -1033,14 +928,9 @@ class DirectorySyncPlanExecutor {
    * Applies the account half of the plan: the lock takes the access away, the unlock gives it back,
    * each with its interval in the account-state history and its own audit entry.
    *
-   * <p>A lock is never refused for open ownership or responsibility questions (ADR-0036,
-   * Entscheidung 6) - it is the one act that may leave "Nachfolge offen" behind. What it does end
-   * is every other Merkmal of the account: {@code LocalAccountAccessEndedEvent} is what lapses the
-   * person's access tokens (ADR-0035), inside this transaction, so the lock and the end of the
-   * tokens commit together.
-   *
-   * <p>Only the accounts a run actually changes are loaded as entities - the plan itself is built
-   * from a projection (see {@code UserRepository#findAccountStatesOf}).
+   * <p>A lock is never refused for open succession (ADR-0036, Entscheidung 6); its {@code
+   * LocalAccountAccessEndedEvent} lapses the access tokens in the same transaction (ADR-0035). Only
+   * the changed accounts are loaded as entities.
    */
   private void applyAccountStates(
       SyncTarget target, Instant now, SyncPlan plan, UUID correlationRef) {
@@ -1156,15 +1046,9 @@ class DirectorySyncPlanExecutor {
   }
 
   /**
-   * Resolves every group's parent link - and its reported path - in a second pass, after every
-   * group touched this run, new or existing, has a persisted id. It does not depend on the order
-   * the directory reported groups in (a child reported before its parent still gets its parent),
-   * and it applies to existing groups too, not only newly created ones (a reorganisation that
-   * reassigns an existing unit under a different parent takes effect).
-   *
-   * <p>The path is refreshed here rather than reported as a change of its own: it is display-only
-   * and changes without the group itself changing - renaming a parent moves every descendant's
-   * path.
+   * Resolves every group's parent link and display path once every touched group has an id,
+   * independent of the reported order and for existing groups too. A path change is not reported as
+   * a change of its own: renaming a parent moves every descendant's path.
    */
   private void resolveAndApplyParentLinks(SyncPlan plan, List<Group> createdGroups) {
     Map<String, UUID> groupIdByExternalId = new HashMap<>();

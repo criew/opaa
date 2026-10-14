@@ -87,25 +87,10 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Manages knowledge libraries - the first asset type (see
- * docs/features/spaces-and-assets.md#assets). Read/write access checks are delegated to {@link
- * LibraryAccessService}, which replaced this class's former coarse {@code canRead}/{@code
- * canManage} - see that class's Javadoc for the full reasoning, in particular why group ownership
- * alone no longer implies management rights.
- *
- * <p>{@link #createLibrary} always grants the creator {@link AssetRole#OWNER} explicitly via an
- * {@link io.opaa.permission.AssetGrant} - the right to delete the library and transfer ownership
- * always sits on a named person, never on group membership alone. For a {@link
- * AssetOwnerType#GROUP} library the owning group additionally gets {@link AssetRole#MANAGER}
- * (sharing and granting roles to others), <em>not</em> {@code OWNER}: every member automatically
- * holding {@code OWNER} would grow without a human decision point as a directory-synchronised
- * group's membership grows and could never be downgraded once it became the library's only {@code
- * OWNER} grant. The accepted price is that the personal {@code OWNER} grant is lost when its holder
- * leaves - #240 (succession instead of blocking) is what regulates that case, not this class.
- *
- * <p>Every library has a real owner, and {@link #createLibrary}/{@link #deleteLibrary} carry no
- * owner-kind-specific exception. No library is provisioned automatically: a user who wants one
- * creates it via {@link #createLibrary}, exactly like any other library.
+ * Manages knowledge libraries, the first asset type; access checks go through {@link
+ * LibraryAccessService}. {@link #createLibrary} always grants the creator {@link AssetRole#OWNER},
+ * so deleting and transferring sits on a named person; an owning group only gets {@link
+ * AssetRole#MANAGER}. No library is provisioned automatically.
  */
 @Service
 @Transactional(readOnly = true)
@@ -455,30 +440,10 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Lists every library {@code currentUserId} holds a right on, per {@link
-   * LibraryAccessService#readableLibraryIds} - direct grant, grant to one of the caller's groups,
-   * or a grant to "Alle Konten". Ownership is included because {@link #createLibrary} always grants
-   * the creator {@link AssetRole#OWNER} explicitly (see that method), not because ownership is a
-   * fourth access path of its own - deliberately the same formula {@link
-   * LibraryAccessService#readableLibraryIds} uses for the permission-aware vector search filter, so
-   * the two paths can never disagree on which libraries a user may see (closing the divergence #406
-   * already closed for {@code effectiveRole} vs. {@code readableLibraryIds}).
-   *
-   * <p>{@code myRole} on each entry comes from {@link
-   * LibraryAccessService#effectiveRolesForReadableLibraries}, not {@link
-   * LibraryAccessService#effectiveRole} - see that method's Javadoc for why: combining this
-   * method's uncached membership with that one's cached, per-library role could leave a listed
-   * library with an unresolvable ({@code null}) role against a required response field, and calling
-   * it once per library would cost one extra query per library on a cold cache.
-   *
-   * <p><b>{@code systemAdmin} is accepted for signature parity with the sibling endpoints ({@link
-   * #getLibrary}, {@link #updateLibrary}, {@link #deleteLibrary}) but not used here</b>: unlike
-   * those methods, this one never grants or denies access, and - per an explicit decision on #418's
-   * scope sentence about "die so erreichten Bibliotheken als solche aus[weisen]" - {@code myRole}
-   * deliberately never bypasses to {@link AssetRole#OWNER} for a system admin, even for a library
-   * they see only by virtue of administering everything. Sorted by name, then id, for a
-   * reproducible order across calls - {@link LibraryAccessService#readableLibraryIds} returns a
-   * {@code HashSet}, whose iteration order is not guaranteed to be stable.
+   * Every library the caller holds a right on, by the same {@link
+   * LibraryAccessService#readableLibraryIds} the search filter uses, sorted by name, then id.
+   * {@code myRole} comes from {@link LibraryAccessService#effectiveRolesForReadableLibraries} in
+   * one query and is never raised to {@code OWNER} for a system admin.
    */
   public List<LibrarySummary> listLibraries(CurrentUser caller) {
     UUID currentUserId = caller.id();
@@ -572,13 +537,8 @@ public class KnowledgeLibraryService {
       throw new ValidationException(
           "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
     }
-    // The typed configuration - unlike sourceType itself - can be updated (credential rotation,
-    // moving a crawl target) without deleting and recreating the library. Only actually replaced
-    // when the request carries at least one configuration field (hasSourceConfigurationFields) - a
-    // request that only renames the library (every existing caller, e.g. LibraryManagementPage)
-    // must leave a FILESYSTEM/HTTP_DIRECTORY/RSS_FEED library's configuration untouched rather than
-    // nulling it out because the fields were simply absent from that unrelated request.
-    // Connector-owned fields are replaced when present and left alone when absent.
+    // The connection is replaced only when the request carries a configuration field, so a pure
+    // rename leaves it untouched; connector-owned fields are replaced when present.
     boolean replacesSourceConfiguration = hasSourceConfigurationFields(request);
     if (library.isOwnerOnly()
         && request.sourceCredentials() != null
@@ -701,12 +661,8 @@ public class KnowledgeLibraryService {
               .outcome(AuditOutcome.SUCCESS)
               .build());
     }
-    // A pure source-configuration change (e.g. rotating sourceCredentials or moving a
-    // FILESYSTEM/HTTP_DIRECTORY/RSS_FEED crawl target) gets its own event - LIBRARY_CHANGED
-    // (name/description) does not fire for it, since the edit dialog resends name/description
-    // unchanged. Only the set of changed fields is recorded, never their values - sourceCredentials
-    // in particular must never appear in the log (ADR-0018, Entscheidung 4), so unlike
-    // LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted one.
+    // A source-configuration change has its own event naming only the changed fields, never a
+    // value (ADR-0018, Entscheidung 4).
     if (replacesSourceConfiguration || replacesOwnSettings) {
       List<String> changedSourceFields = new ArrayList<>();
       if (!Objects.equals(previousSourcePath, updated.getSourcePath())) {
@@ -794,36 +750,18 @@ public class KnowledgeLibraryService {
     boolean systemAdmin = caller.isSystemAdmin();
     KnowledgeLibrary library =
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());
-    // Deleting requires OWNER, not MANAGER - AssetRole's Javadoc reserves "delete the asset and
-    // transfer ownership" for OWNER alone, and canManage (MANAGER) was the wrong gate here: a
-    // group's MANAGER grant could otherwise delete the whole library, taking every grant on it -
-    // including the creator's OWNER grant - down with it via ON DELETE CASCADE, sidestepping the
-    // escalation guards. See the requireRole call below.
+    // Deleting requires OWNER: a MANAGER would take every grant down with the library via ON DELETE
+    // CASCADE, the creator's OWNER grant included.
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.OWNER);
-    // Deleting a library while an indexing run for it is RUNNING would let the run's
-    // documentRepository.save fail against fk_documents_library_organization (RESTRICT) once the
-    // library is gone, surfacing per document as a failed DataIntegrityViolationException instead
-    // of a clean outcome. Rather than have the run cope with a vanished target mid-flight, the
-    // maintainer decided (issue comment, 2026-08-20) to prevent the situation at the root: block
-    // the delete outright while a run is RUNNING. #501 (stuck RUNNING jobs) is a related but
-    // separate concern - this guard becomes more useful once that is fixed, since a stuck RUNNING
-    // job could otherwise block deletion indefinitely.
+    // Refused while a run is RUNNING: the run would otherwise write into a vanished library.
     if (indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
         JobStatus.RUNNING, libraryId, library.getOrganizationId())) {
       throw new ConflictException(
           "Die Bibliothek wird gerade indiziert und kann erst nach Abschluss des Laufs gelöscht"
               + " werden");
     }
-    // fk_documents_library_organization is RESTRICT: deleting a library that
-    // still contains documents would otherwise surface as an unhandled
-    // DataIntegrityViolationException -> HTTP 500 with no indication of the actual cause.
-    // ADR-0018, Entscheidung 5: the "blocked while non-empty" guard stays in force only for
-    // UPLOAD, where documents are individually curated and a single deletion is meaningful. For a
-    // lauf-basierte (connector) library, that same single deletion is *wirkungslos* - the next run
-    // just re-adds the document, since the exclusion mechanism knowledge-sources.md describes does
-    // not exist yet - so blocking the library delete on non-empty would make connector libraries
-    // practically undeletable instead. Their deletion takes the whole bestand with it (documents
-    // and vector store chunks) rather than being blocked.
+    // ADR-0018, Entscheidung 5: a non-empty upload library is refused (409); a connector library
+    // takes its whole bestand with it, since its documents cannot be deleted one by one.
     long documentCount = documentRepository.countByLibraryId(libraryId);
     long documentsRemoved = 0;
     if (acceptsUploads(library)) {
@@ -832,35 +770,9 @@ public class KnowledgeLibraryService {
             "Die Bibliothek enthält noch Dokumente und kann nicht gelöscht werden");
       }
     } else if (documentCount > 0) {
-      // Bulk deletion via the library_id filter, not per document: a connector library can
-      // hold many documents, and this is the same axis the permission-aware vector search already
-      // filters on (see KnowledgeLibraryService's own class Javadoc and QueryService).
-      //
-      // Rows deleted first, chunks second - deferred to after commit (the deleteLibrary
-      // counterpart to #631's deleteDocument fix). The reverse order (chunks deleted eagerly,
-      // before the row) left a window: the bulk vectorStore.delete only removes chunks that already
-      // exist when it runs. If a concurrently RUNNING indexing job for this same library writes new
-      // chunks (DocumentIngestService#storeChunks) and its conditional status-transition UPDATE
-      // (DocumentRepository#markIndexedFromSource) still finds the row - because this method
-      // had not deleted it yet - after this deletion finally removes the row, those freshly-written
-      // chunks are never caught by the already-run bulk chunk delete and survive as orphans, still
-      // returned by /api/v1/query. Deleting the rows first closes that window: the same document
-      // row is now either already gone (the conditional UPDATE sees zero rows and self-cleans its
-      // own chunks, exactly the case #632 added) or still locked by this still-open transaction
-      // (the UPDATE blocks until this transaction commits, then re-evaluates against the
-      // now-deleted
-      // row and sees zero rows too) - either way, no UPDATE can succeed against a row this method
-      // is
-      // in the middle of removing.
-      //
-      // The chunk delete itself is deferred to after commit, not run eagerly here (mirroring
-      // LibraryDocumentService#deleteDocument's own after-commit chunk
-      // delete): if the transaction rolled back after an eager vectorStore.delete but before commit
-      // - a later step in this method throwing, for instance - the document rows would still be
-      // here (rolled back too), but their chunks would already be gone for good, leaving INDEXED
-      // rows with no chunks that the next indexing run's checksum-based dedup would then skip as
-      // unchanged, permanently unfindable. Running only after a successful commit guarantees the
-      // rows are actually gone by the time their chunks are removed too.
+      // Rows in bulk first, chunks by library_id after commit: a racing run's conditional
+      // markIndexedFromSource then affects zero rows and cleans up itself, and a rollback keeps
+      // the chunks of the rows it restores.
       documentsRemoved = documentRepository.deleteByLibraryId(libraryId);
       deleteAfterCommit(
           () -> {
@@ -924,35 +836,11 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Lists a library's documents, paged and optionally filtered by a case-insensitive substring of
-   * the file name - available for every {@code sourceType}, not just {@code UPLOAD}, so a connector
-   * library's indexed bestand is visible the same way an upload library's is.
-   *
-   * <p><b>Folder-aware (ADR-0020).</b> Without {@code q}, the response is scoped to exactly one
-   * folder level, chosen by {@code folderId} ({@code null} means the library's root, the same
-   * convention {@code documents.folder_id}/{@code library_folders.parent_folder_id} already use):
-   * {@link #foldersOf} lists that folder's direct subfolders, {@link #breadcrumbOf} its ancestor
-   * chain. With {@code q}, the search stays bibliotheksweit regardless of {@code folderId} - it is
-   * not used to filter or scope the search itself (ADR-0020, Entscheidung 4 - no folder-scoped
-   * retrieval yet) - {@code folders}/{@code breadcrumb} are both empty, and each hit's own {@code
-   * folderId}/{@code folderPath} ({@link #toLibraryDocumentEntry}) show where it lives instead. A
-   * given {@code folderId} is still validated even then: an unknown or foreign one answers 404
-   * exactly as it would without {@code q}, so a caller cannot distinguish "this folder does not
-   * exist" from "it exists, but I only ever check it while browsing, not while searching" - it
-   * would otherwise be the one caller-supplied identifier on this endpoint that silently tolerates
-   * a value from another library.
-   *
-   * <p><b>Backward compatibility.</b> A caller that omits {@code folderId} - every client before
-   * this task - now lists the library's root rather than its whole bestand across every folder.
-   * This is accepted, not a regression to guard against: folders can only exist through the CRUD
-   * API #820 added, so no library had any folder before this task shipped, and the root-only
-   * response is therefore identical to the old whole-library one until a folder is actually created
-   * and something is uploaded into it - seeing that content requires navigating into the folder,
-   * which is exactly what {@code folderId} is for (frontend follows in #822).
-   *
-   * <p><b>Pflege-Anker.</b> {@code missingMetadataField} narrows the list to exactly the documents
-   * the Pflege-Anker counts for that core field - see {@link #listDocumentsWithoutMetadataValue},
-   * which then owns the whole request.
+   * A library's documents, paged, for every source type. Without {@code q} one folder level ({@code
+   * null} = root) with its subfolders and breadcrumb (ADR-0020); with {@code q} a library-wide file
+   * name search with empty folders and breadcrumb. An unknown or foreign {@code folderId} is a 404
+   * either way. {@code missingMetadataField} hands the request to {@link
+   * #listDocumentsWithoutMetadataValue}.
    */
   public LibraryDocumentPage listDocuments(
       UUID libraryId,
@@ -1092,12 +980,8 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Walks each attachment in {@code attachments} up its {@code parentDocumentId} chain to the
-   * top-level document ({@code parentDocumentId == null}) it transitively belongs to - one {@code
-   * findAllById} per nesting level. A parent that no longer resolves (deleted concurrently) simply
-   * drops out rather than failing the search. {@code visited} guards against a cyclic {@code
-   * parent_document_id} chain (nothing in the schema forbids one) hanging the request thread - a
-   * cycle simply never reaches a root and contributes nothing.
+   * The top-level documents the attachments belong to, one {@code findAllById} per nesting level. A
+   * vanished parent drops out; {@code visited} stops a cyclic chain.
    */
   private Set<UUID> topLevelRootsOf(List<DocumentRepository.AttachmentParentRef> attachments) {
     Set<UUID> roots = new HashSet<>();
@@ -1132,12 +1016,9 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * The direct subfolders of {@code folderId} ({@code null} meaning the library's root), each with
-   * its own <em>recursive</em> top-level document count - its own documents plus every document in
-   * its descendant folders, attachments excluded, matching {@code
-   * LibraryFolderResponse.documentCount}'s semantics. One recursive-CTE query for every subfolder's
-   * count ({@link DocumentRepository#countRecursiveByFolderIdIn}), not one subtree walk per
-   * subfolder.
+   * The direct subfolders of {@code folderId} ({@code null} = root), each with its recursive
+   * top-level document count from one query ({@link
+   * DocumentRepository#countRecursiveByFolderIdIn}).
    */
   private List<LibraryFolderChild> foldersOf(UUID libraryId, UUID folderId) {
     List<LibraryFolder> subfolders =
@@ -1287,25 +1168,10 @@ public class KnowledgeLibraryService {
 
   /**
    * The change {@code request} asks for, as its connector validates it: the connection fields when
-   * {@code replacesConnection} (password rotation or moving a crawl target must not force
-   * recreating the library), and every connector-owned field as sent. {@code sourceType} is always
-   * the library's own, never taken from the request.
-   *
-   * <p>{@code sourceCredentials} falls back to the library's currently stored value when the
-   * request omits it <em>and</em> the new {@code sourceUrl} still names the same origin (scheme,
-   * host and port) as the currently stored one: credentials are write-only (never returned by any
-   * API response, ADR-0018), so a client editing e.g. only the path portion of {@code sourceUrl}
-   * has no value it could resend even if it wanted to, and without this fallback that edit alone
-   * would silently wipe an unrelated, previously configured credential. The fallback is
-   * deliberately restricted to the same origin: {@code AutoindexCrawlerService} sends the stored
-   * {@code Authorization} header preemptively on the very first request (RFC 7617 does not require
-   * a 401 challenge first), so a caller who does not know a configured credential could otherwise
-   * redirect it to a host they control simply by changing {@code sourceUrl} and leaving the
-   * credentials field blank - turning "must know the credential" into "can exfiltrate the
-   * credential". A host change intentionally drops the stored credential instead (matching the
-   * pre-fallback behaviour of #476), forcing the caller to re-enter it for the new host. There is
-   * deliberately no way to explicitly clear a stored credential while keeping the same origin -
-   * blank input is indistinguishable from "leave unchanged" by design.
+   * {@code replacesConnection}, every connector-owned field as sent, always the library's own
+   * {@code sourceType}. An omitted {@code sourceCredentials} keeps the stored, write-only value
+   * only while {@code sourceUrl} keeps its origin (scheme, host, port); a new origin drops it, so a
+   * stored credential can never be redirected to another host. Blank means "unchanged".
    */
   private SourceSettings requestedSettingsChange(
       KnowledgeLibrary library, LibraryUpdate request, boolean replacesConnection) {
@@ -1394,12 +1260,9 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * Generates a fresh push secret (ADR-0027 Entscheidung 6) for the push intake of the library's
-   * connector - MANAGER or above, like every other change of the source configuration - stores it
-   * encrypted and returns the plaintext exactly once. A second call rotates: the previous secret
-   * stops authenticating with the commit. The audit entry names the connector's field for the
-   * secret, never the value (ADR-0018, Entscheidung 4). A library whose connector has no push
-   * intake is refused with a German 400.
+   * Generates a fresh push secret (ADR-0027 Entscheidung 6), needs MANAGER, stores it encrypted and
+   * returns the plaintext once; a second call rotates. The audit names the field, never the value.
+   * A connector without push intake is refused with a German 400.
    */
   @Transactional
   public String generatePushSecret(UUID libraryId, CurrentUser caller) {
@@ -1507,8 +1370,7 @@ public class KnowledgeLibraryService {
       KnowledgeLibrary library, SourceConnector connector) {
     SourceConnectorDescriptor descriptor = connector.descriptor();
     // Schedule/lastScheduledRunsFailed stay null for a library without a run, which cannot carry a
-    // schedule at all (chk_knowledge_libraries_schedule) - nextRunAt would otherwise leak the same
-    // "does an internal crawl target exist" detail #507 already gates.
+    // schedule at all (chk_knowledge_libraries_schedule).
     LibraryScheduleDetail schedule = null;
     Boolean lastScheduledRunsFailed = null;
     if (descriptor.indexingRun()) {

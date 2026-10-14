@@ -6,32 +6,11 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.stereotype.Service;
 
 /**
- * Enforces the per-library storage quota (Maintainer-Entscheidung: Standardkontingent je
- * Bibliothek, {@link LibraryProperties#quotaBytes}). Shared by every ingestion path that stores
- * document content - the upload endpoint ({@code LibraryDocumentService}) and the
- * FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths ({@code DocumentIngestService}) - so a library
- * cannot grow past its quota through either route.
- *
- * <p><b>Datenschutz ("kein personenbezogener Auswertungspfad"):</b> every method here is scoped to
- * a library, never to an individual user - {@link DocumentRepository#sumFileSizeByLibraryId} sums
- * every document in the library regardless of who uploaded it. There is deliberately no per-user
- * usage query anywhere in this class.
- *
- * <p>The quota check compares the library's usage <em>at the moment of the call</em> against {@link
- * #quotaBytes()} plus the additional bytes a caller is about to add - it is not transactionally
- * reserved. Two concurrent uploads into the same library, both just under the remaining headroom,
- * could in principle both pass this check and jointly overshoot the quota; unlike a same-checksum
- * race (where {@code uk_documents_library_checksum} actually catches and rejects the losing
- * request), nothing here catches this one - the overshoot simply stays. The resulting bound is
- * bounded, not caught: at most (number of genuinely concurrent uploads into the same library) x
- * (the 50 MiB single-file limit {@link UploadProperties#maxFileSize}) of permanent overshoot -
- * narrow enough in practice that serializing every write behind a lock for it was not judged
- * worthwhile.
- *
- * <p>A private library is held to the {@link PersonalStorageQuota} of its owner as well ({@link
- * #verdictFor}). That check runs under {@link #holdIntake}, which serializes the intake of one
- * owner's private libraries inside this single instance (ADR-0021): what is admitted is stored
- * before the next check, so concurrent runs of several libraries of one person never overshoot it.
+ * Enforces the per-library storage quota ({@link LibraryProperties#quotaBytes}) for uploads and
+ * connector runs alike, scoped to a library, never to a person who uploaded. The library check is
+ * not reserved: concurrent uploads may overshoot by at most one file each (accepted). A private
+ * library also counts against its owner's {@link PersonalStorageQuota}, checked under {@link
+ * #holdIntake}, which serializes one owner's intake in this single instance (ADR-0021).
  */
 @Service
 public class LibraryStorageQuotaService {
@@ -55,39 +34,22 @@ public class LibraryStorageQuotaService {
     }
   }
 
-  /**
-   * The configured per-library quota in bytes ({@code application.yml}'s own default resolves to 10
-   * GiB when unset), or {@code <= 0} if the operator has configured {@link
-   * LibraryProperties#quotaBytes} to mean <em>unbegrenzt</em> - see that property's own Javadoc for
-   * why {@code 0}/negative is a real configuration here rather than being normalized away.
-   */
+  /** The configured per-library quota in bytes; {@code <= 0} means unlimited. */
   public long quotaBytes() {
     return libraryProperties.quotaBytes();
   }
 
   /**
-   * The bytes {@code libraryId}'s documents currently occupy, summed across all of them.
-   *
-   * <p><b>A pre-existing row with no recorded {@code file_size} (nullable) counts as {@code 0}, not
-   * as unknown.</b> Every ingestion path this class enforces a quota on writes a size
-   * unconditionally (upload: {@code Files.size(storedFile)}; FILESYSTEM: {@code Files.size(file)};
-   * HTTP_DIRECTORY/RSS attachments: {@code Files.size(tempFile)}; an RSS entry's own text: {@code
-   * contentBytes.length}) - a {@code NULL} row can therefore only be a document that predates this
-   * column ever being populated, not one this service itself created. Such a row understates a
-   * library's true usage by exactly its own size; there is no way to recover that lost figure
-   * retroactively, so this is an accepted, documented gap rather than a hidden one.
+   * The bytes {@code libraryId}'s documents occupy; a row without {@code file_size} counts as 0.
+   * Every ingestion path records the size.
    */
   public long usedBytes(UUID libraryId) {
     return documentRepository.sumFileSizeByLibraryId(libraryId);
   }
 
   /**
-   * Whether adding {@code additionalBytes} to {@code libraryId}'s current usage would exceed the
-   * configured quota - always {@code false} when {@link #quotaBytes()} is {@code <= 0}
-   * (unbegrenzt). Callers that replace an existing document (a same-checksum retry, a connector
-   * re-index) should call this <em>after</em> removing the row/chunks being replaced, so {@link
-   * #usedBytes} already reflects the deletion and the check measures the true delta rather than
-   * double-counting the content being superseded.
+   * Whether {@code additionalBytes} more would exceed the quota; never for an unlimited one. A
+   * caller replacing a document calls this after removing the old row, so it is not counted twice.
    */
   public boolean wouldExceedQuota(UUID libraryId, long additionalBytes) {
     long quota = quotaBytes();
@@ -98,12 +60,9 @@ public class LibraryStorageQuotaService {
   }
 
   /**
-   * Whether {@code library} may take in {@code additionalBytes} more: {@link
-   * QuotaVerdict#LIBRARY_EXHAUSTED} as {@link #wouldExceedQuota(UUID, long)} says, else for a
-   * private library {@link QuotaVerdict#PERSON_EXHAUSTED} when the use of all private libraries of
-   * its owner would pass the {@link PersonalStorageQuota}. Call it under {@link #holdIntake} and
-   * store what it admits before letting go; only an advisory check that stores nothing may call it
-   * without the hold.
+   * Whether {@code library} may take in {@code additionalBytes} more, against its own quota and,
+   * for a private library, its owner's. Call it under {@link #holdIntake} and store what it admits
+   * before letting go; only an advisory check that stores nothing may skip the hold.
    */
   public QuotaVerdict verdictFor(KnowledgeLibrary library, long additionalBytes) {
     if (wouldExceedQuota(library.getId(), additionalBytes)) {
@@ -153,13 +112,8 @@ public class LibraryStorageQuotaService {
   }
 
   /**
-   * A German, user-facing explanation of why {@code libraryId} rejected an addition - the exact
-   * wording #119's acceptance criteria specify ("Speicherkontingent der Bibliothek erschöpft (X von
-   * Y belegt)"), reused verbatim by both the upload endpoint's 413 response ({@code
-   * LibraryDocumentService}) and the connector run protocol event ({@code
-   * IndexingEventCategory#REJECTED}). Only ever called once {@link #wouldExceedQuota} has already
-   * returned {@code true} for the same library, so {@link #quotaBytes()} is guaranteed positive
-   * here - a caller never sees "0 von 0 GB".
+   * The German rejection for the upload's 413 and the run protocol alike, "Speicherkontingent der
+   * Bibliothek erschöpft (X von Y belegt)"; called only after {@link #wouldExceedQuota} said so.
    */
   public String quotaExceededMessage(UUID libraryId) {
     return quotaExceededMessage(libraryId, usedBytes(libraryId));
