@@ -23,6 +23,7 @@ export const mockFeaturesConfig: FeaturesConfig = {
   promptLibraries: true,
   metadata: true,
   speechInput: true,
+  externalAccess: true,
 }
 
 export let mockAuthConfig: AuthConfig = {

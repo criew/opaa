@@ -309,6 +309,7 @@ export default function LibraryDetailPage() {
   // library genuinely has no source area.
   const showSourceTab = connectorSourceType != null
   const showMetadataTab = useFeatureEnabled('metadata')
+  const externalAccessEnabled = useFeatureEnabled('externalAccess')
 
   // #797: only the system administration sets the ceiling - the owner only ever sees its
   // consequence, the locked switch and the 409 when a grant would exceed it. An UPLOAD library
@@ -947,8 +948,9 @@ export default function LibraryDetailPage() {
           {privateLibrary && (
             <Alert severity="info" sx={{ mb: 4 }} data-testid="library-private-note">
               {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto und lässt sich weder
-              freigeben noch übertragen oder über einen Fremdzugang erreichen — auch nicht durch die
-              Systemverwaltung.
+              freigeben noch übertragen
+              {externalAccessEnabled ? ' oder über einen Fremdzugang erreichen' : ''} — auch nicht
+              durch die Systemverwaltung.
             </Alert>
           )}
 
@@ -969,12 +971,14 @@ export default function LibraryDetailPage() {
                 }
               />
 
-              <PageSection
-                title="Externer Zugang"
-                description="Ob diese Bibliothek über einen Fremdzugang außerhalb der Anmeldung erreichbar ist."
-              >
-                <LibraryExternalAccessSection libraryId={libraryId} />
-              </PageSection>
+              {externalAccessEnabled && (
+                <PageSection
+                  title="Externer Zugang"
+                  description="Ob diese Bibliothek über einen Fremdzugang außerhalb der Anmeldung erreichbar ist."
+                >
+                  <LibraryExternalAccessSection libraryId={libraryId} />
+                </PageSection>
+              )}
             </>
           )}
 

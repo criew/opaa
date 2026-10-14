@@ -4017,4 +4017,51 @@ describe('LibraryDetailPage', () => {
       )
     })
   })
+
+  describe('ohne Fremdzugänge (Feature-Flag aus)', () => {
+    afterEach(() => {
+      useAuthStore.setState({ features: {} })
+    })
+
+    it('shows the external access among the shares while the feature is on', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      const user = userEvent.setup()
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+
+      expect(await screen.findByRole('heading', { name: 'Externer Zugang' })).toBeInTheDocument()
+    })
+
+    it('names no external access in the shares, nor for a private library', async () => {
+      useAuthStore.setState({ features: { externalAccess: false } })
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      const user = userEvent.setup()
+      const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+
+      expect(await screen.findByRole('heading', { name: 'Diagnosesperre' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Externer Zugang' })).not.toBeInTheDocument()
+      expect(screen.queryByText(/Fremdzugang/)).not.toBeInTheDocument()
+      unmount()
+
+      const privateLibrary: LibraryListResponse = {
+        ...managerLibrary,
+        id: 'library-private-off',
+        myRole: 'OWNER',
+        sourceType: 'NEXTCLOUD',
+        privateLibrary: true,
+      }
+      setLibraryState(
+        privateLibrary,
+        detailsOf(privateLibrary, { sourceUrl: 'https://cloud.intern.example' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
+
+      expect(await screen.findByText(/Nur Sie sehen diese Bibliothek/)).toBeVisible()
+      expect(screen.queryByText(/Fremdzugang/)).not.toBeInTheDocument()
+    })
+  })
 })

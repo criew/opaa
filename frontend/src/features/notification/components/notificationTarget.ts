@@ -1,4 +1,5 @@
 import type { NotificationResponse } from '@/shared/api/types'
+import { isFeatureEnabled } from '@/shared/session/authStore'
 import {
   CONNECTED_ACCOUNTS_ROUTE,
   CONNECTION_PROFILES_ROUTE,
@@ -20,9 +21,9 @@ export function notificationTarget({
     case 'CONNECTION_PROFILE_SECRET_EXPIRING':
       return objectId ? connectionProfileRoute(objectId) : CONNECTION_PROFILES_ROUTE
     // the list only, never narrowed to the token's person: the alert serves an incident, not a
-    // look at one employee
+    // look at one employee; switched off (ADR-0044), there is no list to lead to
     case 'EXTERNAL_ACCESS_MASS_RETRIEVAL':
-      return EXTERNAL_TOOLS_TOKENS_ROUTE
+      return isFeatureEnabled('externalAccess') ? EXTERNAL_TOOLS_TOKENS_ROUTE : null
     // the object is the library whose own source connection is meant
     case 'SOURCE_CONNECTION_EXPIRING':
     case 'SOURCE_CONNECTION_EXPIRED':

@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '@/test/test-utils'
 import { ChangePasswordPage } from '@/features/auth/routes'
@@ -209,5 +209,29 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('tab', { name: 'Verbundene Konten', selected: true })).toBeVisible()
     expect(await screen.findByRole('heading', { name: 'Verbundene Konten' })).toBeInTheDocument()
     expect(await screen.findByText('Zugang Nextcloud intern')).toBeInTheDocument()
+  })
+
+  describe('ohne Fremdzugänge (Feature-Flag aus)', () => {
+    afterEach(() => {
+      useAuthStore.setState({ features: {} })
+    })
+
+    it('offers no access token area, also not through the address', async () => {
+      useAuthStore.setState({ features: { externalAccess: false } })
+      renderWithProviders(
+        <Routes>
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/:tab" element={<SettingsPage />} />
+        </Routes>,
+        { withRouter: true, initialRoute: '/settings/tokens' },
+      )
+
+      const tabs = await screen.findAllByRole('tab')
+      expect(tabs.map((tab) => tab.textContent)).not.toContain('Zugangstokens')
+      expect(screen.getByRole('tab', { name: 'Allgemein' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+    })
   })
 })

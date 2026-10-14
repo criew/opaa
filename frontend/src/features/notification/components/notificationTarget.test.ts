@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { useAuthStore } from '@/shared/session/authStore'
 import { notificationTarget } from './notificationTarget'
 
 describe('notificationTarget', () => {
@@ -34,5 +35,19 @@ describe('notificationTarget', () => {
     expect(
       notificationTarget({ type: 'EXTERNAL_ACCESS_MASS_RETRIEVAL', objectId: 'token-1' }),
     ).toBe('/admin/connections/external-tools#tokens')
+  })
+
+  describe('with the external access switched off', () => {
+    afterEach(() => {
+      useAuthStore.setState({ features: {} })
+    })
+
+    it('keeps an earlier mass retrieval alert a plain entry', () => {
+      useAuthStore.setState({ features: { externalAccess: false } })
+
+      expect(
+        notificationTarget({ type: 'EXTERNAL_ACCESS_MASS_RETRIEVAL', objectId: 'token-1' }),
+      ).toBeNull()
+    })
   })
 })

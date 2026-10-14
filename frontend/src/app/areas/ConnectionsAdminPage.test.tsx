@@ -14,6 +14,7 @@ function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
     token: null,
     error: null,
     userManager: null,
+    features: {},
   })
 }
 
@@ -76,5 +77,20 @@ describe('ConnectionsAdminPage', () => {
 
     expect(await screen.findByRole('button', { name: 'Neuer Zugang' })).toBeVisible()
     expect(screen.getByRole('tab', { name: 'Zugänge' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  // ADR-0044: switched off, the external tools are named nowhere, also not for the administration.
+  it('führt ohne Fremdzugänge keinen Reiter der externen KI-Werkzeuge', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ features: { externalAccess: false } })
+    render('/admin/connections/external-tools')
+
+    expect(await screen.findByRole('button', { name: 'Neuer Zugang' })).toBeVisible()
+    const tabs = within(
+      screen.getByRole('tablist', { name: 'Bereiche der Anbindungen' }),
+    ).getAllByRole('tab')
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['Zugänge', 'Quellarten', 'Einstellungen'])
+    expect(screen.getByRole('tab', { name: 'Zugänge' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByText(/KI-Werkzeug/)).not.toBeInTheDocument()
   })
 })

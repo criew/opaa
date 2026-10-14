@@ -11,6 +11,7 @@ import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
 import { Link as RouterLink, Navigate, useParams } from 'react-router'
 import { useAuthStore } from '@/shared/session/authStore'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import type { AuthMode } from '@/shared/session/types'
 import { PASSWORD_ROUTE, SETTINGS_ROUTE } from '@/shared/routes'
 import { useUiStore } from '@/shared/stores/uiStore'
@@ -36,8 +37,16 @@ const tabs: Array<{ value: SettingsTab; label: string }> = [
   { value: 'accounts', label: 'Verbundene Konten' },
 ]
 
-function isSettingsTab(value: string | undefined): value is SettingsTab {
-  return value === 'general' || value === 'groups' || value === 'tokens' || value === 'accounts'
+/** The tabs the installation offers: switched off (ADR-0044), the access tokens have none. */
+function offeredTabs(externalAccess: boolean): Array<{ value: SettingsTab; label: string }> {
+  return externalAccess ? tabs : tabs.filter((entry) => entry.value !== 'tokens')
+}
+
+function isSettingsTab(
+  value: string | undefined,
+  offered: Array<{ value: SettingsTab; label: string }>,
+): value is SettingsTab {
+  return offered.some((entry) => entry.value === value)
 }
 
 /** Mockup 2c: how the account signed in, next to the address - never a technical mode name. */
@@ -53,7 +62,8 @@ function signInMethodLabel(mode: AuthMode | null): string | null {
  *
  * Die Bereiche sind Routen, damit ein Verweis auf die Tokenverwaltung dort landet und ein
  * Neuladen ihn behält. `/settings` ohne Bereich bleibt der Einstieg und zeigt „Allgemein“; ein
- * Tippfehler im Pfad wird dagegen nicht stillschweigend so gelesen.
+ * Tippfehler im Pfad wird dagegen nicht stillschweigend so gelesen. Hat die Installation die
+ * Fremdzugänge abgeschaltet, gibt es den Bereich der Zugangstokens nicht.
  */
 export default function SettingsPage() {
   const { tab } = useParams()
@@ -65,6 +75,7 @@ export default function SettingsPage() {
   const authMode = useAuthStore((s) => s.mode)
   const sessionKind = useAuthStore((s) => s.sessionKind)
   const isSystemAdmin = user?.systemRole === 'SYSTEM_ADMIN'
+  const offered = offeredTabs(useFeatureEnabled('externalAccess'))
   // ADR-0033, Entscheidung 11: the creation reason belongs to the person's own self-disclosure -
   // an account of an identity provider has none, and the block then stays away entirely.
   const createdReason = user?.createdReason?.trim() || null
@@ -81,10 +92,10 @@ export default function SettingsPage() {
   const accountName = displayName ?? user?.email ?? 'Benutzer'
   const accountMeta = [displayName ? user?.email : null, signInMethod].filter(Boolean).join(' · ')
 
-  if (tab !== undefined && !isSettingsTab(tab)) {
+  if (tab !== undefined && !isSettingsTab(tab, offered)) {
     return <Navigate to={SETTINGS_ROUTE} replace />
   }
-  const activeTab: SettingsTab = isSettingsTab(tab) ? tab : 'general'
+  const activeTab: SettingsTab = isSettingsTab(tab, offered) ? tab : 'general'
 
   return (
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
@@ -97,7 +108,7 @@ export default function SettingsPage() {
         />
 
         <AreaTabs
-          tabs={tabs}
+          tabs={offered}
           value={activeTab}
           href={(value) => `/settings/${value}`}
           label="Bereiche Ihrer Einstellungen"

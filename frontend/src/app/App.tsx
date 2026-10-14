@@ -147,6 +147,7 @@ function SpaceSettingsRedirect() {
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
   const promptLibraries = useFeatureEnabled('promptLibraries')
+  const externalAccess = useFeatureEnabled('externalAccess')
   const themeMode = useUiStore((s) => s.themeMode)
   const branding = useBrandingStore((s) => s.branding)
   const loadBranding = useBrandingStore((s) => s.loadBranding)
@@ -290,26 +291,43 @@ export default function App() {
                   path="admin/connection-profiles"
                   element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
                 />
-                <Route
-                  path="admin/library-releases"
-                  element={<Navigate to={EXTERNAL_TOOLS_LIBRARIES_ROUTE} replace />}
-                />
-                <Route
-                  path="admin/external-access"
-                  element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
-                />
-                <Route
-                  path="admin/external-access/channel"
-                  element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
-                />
-                <Route
-                  path="admin/external-access/tokens"
-                  element={<Navigate to={EXTERNAL_TOOLS_TOKENS_ROUTE} replace />}
-                />
-                <Route
-                  path="admin/external-access/*"
-                  element={<Navigate to={EXTERNAL_TOOLS_ROUTE} replace />}
-                />
+                {/* Switched off (ADR-0044), the former addresses of the external tools lead to
+                    the first tab of the area. */}
+                {externalAccess ? (
+                  <>
+                    <Route
+                      path="admin/library-releases"
+                      element={<Navigate to={EXTERNAL_TOOLS_LIBRARIES_ROUTE} replace />}
+                    />
+                    <Route
+                      path="admin/external-access"
+                      element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
+                    />
+                    <Route
+                      path="admin/external-access/channel"
+                      element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
+                    />
+                    <Route
+                      path="admin/external-access/tokens"
+                      element={<Navigate to={EXTERNAL_TOOLS_TOKENS_ROUTE} replace />}
+                    />
+                    <Route
+                      path="admin/external-access/*"
+                      element={<Navigate to={EXTERNAL_TOOLS_ROUTE} replace />}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Route
+                      path="admin/library-releases"
+                      element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
+                    />
+                    <Route
+                      path="admin/external-access/*"
+                      element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
+                    />
+                  </>
+                )}
                 <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
                 <Route
                   path="admin/succession"
