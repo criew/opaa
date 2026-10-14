@@ -4,7 +4,7 @@ import type {
   CatalogEntryStatus,
   SourceBlock,
 } from '@/shared/api/types'
-import { assetTypeDefinition } from './assetTypeRegistry'
+import { assetTypeDefinition } from '../../shared/assetTypes'
 import { formatCalendarDay } from '@/shared/utils/labels'
 
 /** A state that needs attention; READY carries none. */

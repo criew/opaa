@@ -51,7 +51,7 @@ import { searchAdminHandlers } from './searchAdminHandlers'
 import { diagnosticAccessHandlers } from './diagnosticAccessHandlers'
 // auth
 import { authHandlers } from './authHandlers'
-import { localAuthHandlers } from './localAuthHandlers'
+import { localAuthHandlers } from '@/features/auth/mocks/localAuthHandlers'
 // app
 import { healthHandlers } from './healthHandlers'
 

@@ -148,7 +148,7 @@ public class KeycloakDirectoryConnector {
 
   private KeycloakAdminApi api(KeycloakRealmAddress address, String clientId, String clientSecret) {
     return new KeycloakAdminApi(
-        httpClient, address, clientId, clientSecret, properties.requestTimeout());
+        httpClient, address, clientId, clientSecret, properties.requestTimeout(), clock);
   }
 
   private void collect(

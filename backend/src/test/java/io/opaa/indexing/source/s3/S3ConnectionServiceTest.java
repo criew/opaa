@@ -35,7 +35,7 @@ class S3ConnectionServiceTest {
   @BeforeEach
   void setUp() {
     factory = mock(S3ClientFactory.class);
-    service = new S3ConnectionService(factory);
+    service = new S3ConnectionService(factory, java.time.Clock.systemUTC());
   }
 
   @Test

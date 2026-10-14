@@ -7,6 +7,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.s3.S3Credentials;
 import io.opaa.s3.S3TestFixture;
 import io.opaa.security.TargetAddressValidator;
+import java.time.Clock;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,8 @@ class S3ConnectionServiceIntegrationTest {
     store.putMany(bucket, "viele/", 1100, null);
     service =
         new S3ConnectionService(
-            new S3ClientFactory(S3Properties.defaults(), TargetAddressValidator.disabled()));
+            new S3ClientFactory(S3Properties.defaults(), TargetAddressValidator.disabled()),
+            Clock.systemUTC());
   }
 
   private static S3SourceSettings settings(S3Scope... scopes) {

@@ -68,7 +68,8 @@ public class S3ConnectorConfiguration {
       StaleDocumentCleanupService staleDocumentCleanupService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new S3IndexingExecutor(
         s3ClientFactory,
         s3Properties,
@@ -77,7 +78,7 @@ public class S3ConnectorConfiguration {
         libraryFolderService,
         staleDocumentCleanupService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

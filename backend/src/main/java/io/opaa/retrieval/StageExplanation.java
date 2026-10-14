@@ -1,5 +1,6 @@
 package io.opaa.retrieval;
 
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.retrieval.ranking.RerankStage;
 import java.util.List;
 

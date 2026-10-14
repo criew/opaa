@@ -1,11 +1,11 @@
 package io.opaa.retrieval.search;
 
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.retrieval.ConversationNoteBlock;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalNote;
 import io.opaa.retrieval.RetrievalStage;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageOutcome;

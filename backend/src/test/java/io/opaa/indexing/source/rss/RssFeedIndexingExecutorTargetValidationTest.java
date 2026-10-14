@@ -26,6 +26,7 @@ import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -116,7 +117,8 @@ class RssFeedIndexingExecutorTargetValidationTest {
                 mock(io.opaa.indexing.maintenance.StaleDocumentCleanupService.class),
                 documentRepository,
                 mock(LibraryStorageQuotaService.class),
-                new LibrarySourceConnectionResolver()));
+                new LibrarySourceConnectionResolver(),
+                Clock.systemUTC()));
   }
 
   @AfterEach

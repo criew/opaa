@@ -1,5 +1,6 @@
 package io.opaa.connection.profile;
 
+import io.opaa.api.types.OwnAddressStock;
 import io.opaa.knowledge.SourceType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

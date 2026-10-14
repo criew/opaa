@@ -1,5 +1,8 @@
 package io.opaa.searchadmin;
 
+import io.opaa.api.types.ModelRole;
+import io.opaa.api.types.ModelRoleCondition;
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
@@ -27,7 +30,6 @@ import io.opaa.metadata.ModelExtractionStats;
 import io.opaa.permission.PersonThreshold;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalPipelineProperties;
-import io.opaa.retrieval.RetrievalStageName;
 import jakarta.annotation.PreDestroy;
 import java.time.Clock;
 import java.time.Duration;

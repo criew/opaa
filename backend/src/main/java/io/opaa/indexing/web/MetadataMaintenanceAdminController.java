@@ -12,6 +12,7 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConditionalOnFeature;
 import io.opaa.common.Feature;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.maintenance.ContextPrefixRerunResult;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
 import io.opaa.indexing.maintenance.MetadataBackfillResult;
@@ -123,7 +124,7 @@ public class MetadataMaintenanceAdminController {
    */
   private static UUID requireLibraryId(UUID libraryId) {
     if (libraryId == null) {
-      throw new IllegalArgumentException("libraryId ist erforderlich");
+      throw new ValidationException("libraryId ist erforderlich");
     }
     return libraryId;
   }

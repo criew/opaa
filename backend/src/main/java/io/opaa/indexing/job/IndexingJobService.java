@@ -3,6 +3,7 @@ package io.opaa.indexing.job;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -40,11 +41,13 @@ public class IndexingJobService {
 
   private final IndexingJobRepository indexingJobRepository;
   private final AssetRepository assetRepository;
+  private final Clock clock;
 
   public IndexingJobService(
-      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository) {
+      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository, Clock clock) {
     this.indexingJobRepository = indexingJobRepository;
     this.assetRepository = assetRepository;
+    this.clock = clock;
   }
 
   /**
@@ -134,7 +137,7 @@ public class IndexingJobService {
             documentsFailed,
             documentsSkipped,
             documentsIndexedTotal,
-            Instant.now());
+            Instant.now(clock));
     requireJobExistedIfNoRowsUpdated(jobId, updated);
     return updated > 0;
   }
@@ -150,7 +153,8 @@ public class IndexingJobService {
       indexingJobRepository
           .findById(jobId)
           .map(IndexingJob::getLibraryId)
-          .ifPresent(libraryId -> assetRepository.markContentChanged(libraryId, Instant.now()));
+          .ifPresent(
+              libraryId -> assetRepository.markContentChanged(libraryId, Instant.now(clock)));
     } catch (RuntimeException e) {
       log.warn("Could not mark the library of run {} as changed", jobId, e);
     }
@@ -175,7 +179,8 @@ public class IndexingJobService {
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void failJob(UUID jobId, String errorMessage, String failureCategory) {
     int updated =
-        indexingJobRepository.failIfRunning(jobId, errorMessage, failureCategory, Instant.now());
+        indexingJobRepository.failIfRunning(
+            jobId, errorMessage, failureCategory, Instant.now(clock));
     requireJobExistedIfNoRowsUpdated(jobId, updated);
   }
 
@@ -226,7 +231,7 @@ public class IndexingJobService {
     job.setDocumentsFailed(documentsFailed);
     job.setDocumentsSkipped(documentsSkipped);
     job.setDocumentsIndexedTotal(documentsIndexedTotal);
-    job.setLastProgressAt(Instant.now());
+    job.setLastProgressAt(Instant.now(clock));
     indexingJobRepository.save(job);
   }
 
@@ -376,7 +381,7 @@ public class IndexingJobService {
    */
   @Transactional
   public int recoverJobsOrphanedByRestart() {
-    return indexingJobRepository.failAllRunningJobs(RESTART_ABORTED_MESSAGE, Instant.now());
+    return indexingJobRepository.failAllRunningJobs(RESTART_ABORTED_MESSAGE, Instant.now(clock));
   }
 
   /**
@@ -389,7 +394,8 @@ public class IndexingJobService {
    */
   @Transactional
   public int recoverStaleJobs(Duration staleAfter) {
-    Instant cutoff = Instant.now().minus(staleAfter);
-    return indexingJobRepository.failStaleRunningJobs(STALE_RUN_MESSAGE, cutoff, Instant.now());
+    Instant cutoff = Instant.now(clock).minus(staleAfter);
+    return indexingJobRepository.failStaleRunningJobs(
+        STALE_RUN_MESSAGE, cutoff, Instant.now(clock));
   }
 }

@@ -11,11 +11,7 @@ import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { CatalogEntryResponse } from '@/shared/api/types'
 import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
-import {
-  assetTypeDefinition,
-  creatableAssetTypes,
-  useActiveAssetTypes,
-} from '../components/assets/assetTypeRegistry'
+import { assetTypeDefinition, creatableAssetTypes, useActiveAssetTypes } from '../shared/assetTypes'
 import OverviewPage from '@/shared/ui/overview/OverviewPage'
 import AssetTile from '../components/assets/AssetTile'
 import { tileFromCatalogEntry } from '../components/assets/assetTileData'

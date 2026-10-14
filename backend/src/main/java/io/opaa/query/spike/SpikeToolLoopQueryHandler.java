@@ -13,6 +13,7 @@ import io.opaa.metadata.MetadataFilter;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
+import io.opaa.query.ToolLoopQueryHandler;
 import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationMarkerRepair;
@@ -60,7 +61,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @ConditionalOnProperty(name = "opaa.spike.tool-loop.enabled", havingValue = "true")
-public class SpikeToolLoopQueryHandler {
+public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
 
   private static final Logger log = LoggerFactory.getLogger(SpikeToolLoopQueryHandler.class);
 
@@ -129,21 +130,16 @@ public class SpikeToolLoopQueryHandler {
   }
 
   /**
-   * Empty for any question without the {@code "@test "} prefix (case-insensitive) - the caller then
-   * runs its own, unmodified path. Otherwise runs the tool-calling loop against the question with
-   * the prefix stripped, validates the resulting citations exactly as the ordinary path does,
-   * persists the turn via {@code chatService.appendTurn} and returns the finished {@link
-   * QueryResult}.
+   * Empty for any question without the {@code "@test "} prefix (case-insensitive). Otherwise runs
+   * the tool-calling loop against the question with the prefix stripped, validates the resulting
+   * citations exactly as the ordinary path does and persists the turn via {@code
+   * chatService.appendTurn}.
    *
    * <p>The prefix and the "Suchschritte" line never reach {@code appendTurn}/{@code chatMemory} -
    * only the returned {@link QueryResult#answer()} carries the line, display-only for this one
    * response.
-   *
-   * @param startTime {@code System.currentTimeMillis()} at the start of the caller's turn, for
-   *     {@link QueryOutcome#durationMs()} - the same reference point the ordinary path uses.
-   * @param usedPrompt the checked prompt the question was built from, or {@code null}; persisted
-   *     with the question like on the ordinary path.
    */
+  @Override
   public Optional<QueryResult> handle(
       String rawQuestion,
       Optional<Chat> chat,

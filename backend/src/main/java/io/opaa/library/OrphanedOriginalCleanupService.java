@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -83,7 +84,7 @@ public class OrphanedOriginalCleanupService {
    * configured grace period, never lower it; {@code null} applies the configured one. At most
    * {@link #MAX_LISTED} orphans are listed, all are counted.
    *
-   * @throws IllegalArgumentException when {@code minimumAgeMinutes} undercuts the grace period
+   * @throws ValidationException when {@code minimumAgeMinutes} undercuts the grace period
    * @throws UploadStoreUnavailableException when the store cannot be listed right now
    */
   public OrphanedOriginalReport report(
@@ -125,7 +126,7 @@ public class OrphanedOriginalCleanupService {
    * library's row is gone, so deleting a library opens no window in which its originals could still
    * be recovered.
    *
-   * @throws IllegalArgumentException when {@code minimumAgeMinutes} undercuts the grace period
+   * @throws ValidationException when {@code minimumAgeMinutes} undercuts the grace period
    * @throws UploadStoreUnavailableException when the store cannot be listed right now
    */
   public OrphanedLibraryReport reportOrphanedLibraries(
@@ -202,7 +203,7 @@ public class OrphanedOriginalCleanupService {
    * result still names every original that actually went - the bytes are gone for good, so the one
    * record of which ones must survive the failure that happened next.
    *
-   * @throws IllegalArgumentException when no or more than {@link #MAX_LISTED} locators are given
+   * @throws ValidationException when no or more than {@link #MAX_LISTED} locators are given
    * @throws UploadStoreUnavailableException when the store cannot be read at all, before anything
    *     has been removed
    */
@@ -221,7 +222,7 @@ public class OrphanedOriginalCleanupService {
    * rejection reads the same whether that library is the caller's own or another organization's, so
    * it tells nobody about a library they cannot see otherwise.
    *
-   * @throws IllegalArgumentException when the library still exists, or when no or more than {@link
+   * @throws ValidationException when the library still exists, or when no or more than {@link
    *     #MAX_LISTED} locators are given
    * @throws UploadStoreUnavailableException when the store cannot be read at all, before anything
    *     has been removed
@@ -237,7 +238,7 @@ public class OrphanedOriginalCleanupService {
                 .map(locator -> skip(locator, OrphanedOriginalSkipReason.NOT_IN_STORE))
                 .toList());
       }
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "Diese Bibliothek lässt sich über diesen Weg nicht aufräumen - für eine vorhandene"
               + " Bibliothek ist der bibliotheksbezogene Aufräumlauf zuständig");
     }
@@ -249,7 +250,7 @@ public class OrphanedOriginalCleanupService {
   /**
    * The locators to work on, blanks and duplicates removed.
    *
-   * @throws IllegalArgumentException when none or more than {@link #MAX_LISTED} remain
+   * @throws ValidationException when none or more than {@link #MAX_LISTED} remain
    */
   private static Set<String> requested(List<String> locators) {
     Set<String> requested = new LinkedHashSet<>();
@@ -259,10 +260,10 @@ public class OrphanedOriginalCleanupService {
       }
     }
     if (requested.isEmpty()) {
-      throw new IllegalArgumentException("locators darf nicht leer sein");
+      throw new ValidationException("locators darf nicht leer sein");
     }
     if (requested.size() > MAX_LISTED) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "locators darf höchstens " + MAX_LISTED + " Einträge enthalten, war " + requested.size());
     }
     return requested;
@@ -358,12 +359,12 @@ public class OrphanedOriginalCleanupService {
    * The age threshold a report applies: the configured grace period, raised by {@code
    * minimumAgeMinutes} if it names a larger one.
    *
-   * @throws IllegalArgumentException when it names a smaller one
+   * @throws ValidationException when it names a smaller one
    */
   private int applicableMinutes(Integer minimumAgeMinutes) {
     int graceMinutes = uploadProperties.orphanGraceMinutes();
     if (minimumAgeMinutes != null && minimumAgeMinutes < graceMinutes) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "minimumAgeMinutes darf die konfigurierte Schonfrist von "
               + graceMinutes
               + " Minuten nicht unterschreiten, war "

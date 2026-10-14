@@ -6,18 +6,12 @@ import io.opaa.api.dto.DocumentChunksResponse;
 import io.opaa.api.dto.LibraryIndexState;
 import io.opaa.api.dto.LibrarySearchStatusResponse;
 import io.opaa.api.dto.PrivateLibrarySearchSummaryResponse;
-import io.opaa.api.dto.RetrievalCandidateOutcome;
 import io.opaa.api.dto.RetrievalFusionContributionResponse;
-import io.opaa.api.dto.RetrievalStage;
 import io.opaa.api.dto.RetrievalStageResponse;
 import io.opaa.api.dto.RetrievalStageStatus;
-import io.opaa.api.dto.RetrievalVerdictReason;
 import io.opaa.api.dto.RetrievalVerdictResponse;
 import io.opaa.api.dto.SearchDiagnosisContextResponse;
-import io.opaa.api.dto.SearchDiagnosisContextType;
 import io.opaa.api.dto.SearchDiagnosisResponse;
-import io.opaa.api.dto.SearchModelRole;
-import io.opaa.api.dto.SearchModelRoleState;
 import io.opaa.api.dto.SearchModelRoleStatusResponse;
 import io.opaa.api.dto.SearchPath;
 import io.opaa.api.dto.SearchPathState;
@@ -31,19 +25,13 @@ import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
 import io.opaa.indexing.web.MetadataBackfillResponseMapper;
 import io.opaa.metadata.web.MetadataExtractionResponseMapper;
-import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageStatus;
-import io.opaa.retrieval.VerdictReason;
 import io.opaa.search.ChunkInspection;
 import io.opaa.search.DocumentChunks;
-import io.opaa.searchadmin.DiagnosisContextType;
 import io.opaa.searchadmin.DocumentDescriptor;
 import io.opaa.searchadmin.LibrarySearchStatus;
-import io.opaa.searchadmin.ModelRole;
-import io.opaa.searchadmin.ModelRoleCondition;
 import io.opaa.searchadmin.ModelRoleStatus;
 import io.opaa.searchadmin.PrivateLibrarySummary;
 import io.opaa.searchadmin.SearchDiagnosis;
@@ -125,7 +113,7 @@ final class SearchAdminResponseMapper {
     SearchDiagnosisResponse response =
         new SearchDiagnosisResponse(
             diagnosis.question(),
-            toContextType(diagnosis.contextType()),
+            diagnosis.contextType(),
             contextLabel(diagnosis),
             diagnosis.executedAt(),
             diagnosis.searchScope().stream()
@@ -182,10 +170,7 @@ final class SearchAdminResponseMapper {
 
   private static SearchModelRoleStatusResponse toModelRoleResponse(ModelRoleStatus status) {
     return new SearchModelRoleStatusResponse(
-            toModelRole(status.role()),
-            toModelRoleState(status.condition()),
-            status.condition().isFault(),
-            status.detail())
+            status.role(), status.condition(), status.condition().isFault(), status.detail())
         .endpoint(status.endpoint())
         .modelIdentifier(status.modelIdentifier());
   }
@@ -265,7 +250,7 @@ final class SearchAdminResponseMapper {
   private static RetrievalStageResponse toStageResponse(
       StageExplanation stage, Map<String, DocumentDescriptor> documents) {
     return new RetrievalStageResponse(
-        toStage(stage.stage()),
+        stage.stage(),
         toStageStatus(stage.status()),
         stage.incomingCount(),
         stage.outgoingCount(),
@@ -277,10 +262,7 @@ final class SearchAdminResponseMapper {
       CandidateVerdict verdict, Map<String, DocumentDescriptor> documents) {
     DocumentDescriptor descriptor = documents.get(verdict.documentKey());
     return new RetrievalVerdictResponse(
-            verdict.chunkId(),
-            verdict.documentKey(),
-            toOutcome(verdict.outcome()),
-            toReason(verdict.reason()))
+            verdict.chunkId(), verdict.documentKey(), verdict.outcome(), verdict.reason())
         .documentTitle(descriptor == null ? null : descriptor.fileName())
         .libraryName(descriptor == null ? null : descriptor.libraryName())
         .listLabel(verdict.listLabel())
@@ -312,32 +294,12 @@ final class SearchAdminResponseMapper {
         .fileName(verdict.fileName())
         .libraryId(verdict.libraryId())
         .libraryName(verdict.libraryName())
-        .displacedAtStage(
-            verdict.displacedAtStage() == null ? null : toStage(verdict.displacedAtStage()))
-        .displacedReason(
-            verdict.displacedReason() == null ? null : toReason(verdict.displacedReason()));
+        .displacedAtStage(verdict.displacedAtStage())
+        .displacedReason(verdict.displacedReason());
   }
 
   private static SearchedLibrary toSearchedLibrary(SearchedLibraryRef ref) {
     return new SearchedLibrary(ref.id(), ref.name());
-  }
-
-  private static SearchModelRole toModelRole(ModelRole role) {
-    return switch (role) {
-      case CHAT -> SearchModelRole.CHAT;
-      case EMBEDDING -> SearchModelRole.EMBEDDING;
-      case RERANK -> SearchModelRole.RERANK;
-      case TRANSCRIPTION -> SearchModelRole.TRANSCRIPTION;
-    };
-  }
-
-  private static SearchModelRoleState toModelRoleState(ModelRoleCondition condition) {
-    return switch (condition) {
-      case ACTIVE -> SearchModelRoleState.ACTIVE;
-      case DISABLED -> SearchModelRoleState.DISABLED;
-      case UNCONFIGURED -> SearchModelRoleState.UNCONFIGURED;
-      case UNREACHABLE -> SearchModelRoleState.UNREACHABLE;
-    };
   }
 
   private static SearchPath toSearchPath(SearchPathStatus.SearchPathName path) {
@@ -366,61 +328,12 @@ final class SearchAdminResponseMapper {
     };
   }
 
-  private static SearchDiagnosisContextType toContextType(DiagnosisContextType type) {
-    return switch (type) {
-      case SELF -> SearchDiagnosisContextType.SELF;
-      case PERMISSION_PROFILE -> SearchDiagnosisContextType.PERMISSION_PROFILE;
-      case USER -> SearchDiagnosisContextType.USER;
-    };
-  }
-
-  private static RetrievalStage toStage(RetrievalStageName stage) {
-    return switch (stage) {
-      case SEARCH_SCOPE -> RetrievalStage.SEARCH_SCOPE;
-      case METADATA_FILTER -> RetrievalStage.METADATA_FILTER;
-      case SUB_QUERY_DECOMPOSITION -> RetrievalStage.SUB_QUERY_DECOMPOSITION;
-      case VECTOR_SEARCH -> RetrievalStage.VECTOR_SEARCH;
-      case FULL_TEXT_SEARCH -> RetrievalStage.FULL_TEXT_SEARCH;
-      case MMR_SELECTION -> RetrievalStage.MMR_SELECTION;
-      case RANK_FUSION -> RetrievalStage.RANK_FUSION;
-      case RERANK -> RetrievalStage.RERANK;
-      case RELEVANCE_CUTOFF -> RetrievalStage.RELEVANCE_CUTOFF;
-      case DOCUMENT_COMPLETION -> RetrievalStage.DOCUMENT_COMPLETION;
-    };
-  }
-
   private static RetrievalStageStatus toStageStatus(StageStatus status) {
     return switch (status) {
       case EXECUTED -> RetrievalStageStatus.EXECUTED;
       case DISABLED -> RetrievalStageStatus.DISABLED;
       case NOT_REACHED -> RetrievalStageStatus.NOT_REACHED;
       case UNAVAILABLE -> RetrievalStageStatus.UNAVAILABLE;
-    };
-  }
-
-  private static RetrievalCandidateOutcome toOutcome(CandidateOutcome outcome) {
-    return switch (outcome) {
-      case ADDED -> RetrievalCandidateOutcome.ADDED;
-      case KEPT -> RetrievalCandidateOutcome.KEPT;
-      case DROPPED -> RetrievalCandidateOutcome.DROPPED;
-    };
-  }
-
-  private static RetrievalVerdictReason toReason(VerdictReason reason) {
-    return switch (reason) {
-      case RETRIEVED_BY_SEARCH -> RetrievalVerdictReason.RETRIEVED_BY_SEARCH;
-      case WITHIN_BUDGET -> RetrievalVerdictReason.WITHIN_BUDGET;
-      case GUARANTEED_LIST_TOP -> RetrievalVerdictReason.GUARANTEED_LIST_TOP;
-      case DISPLACED_BY_GUARANTEED_LIST_TOP ->
-          RetrievalVerdictReason.DISPLACED_BY_GUARANTEED_LIST_TOP;
-      case OUTSIDE_FUSION_BUDGET -> RetrievalVerdictReason.OUTSIDE_FUSION_BUDGET;
-      case OUTSIDE_RERANK_BUDGET -> RetrievalVerdictReason.OUTSIDE_RERANK_BUDGET;
-      case BELOW_RELEVANCE_CUTOFF -> RetrievalVerdictReason.BELOW_RELEVANCE_CUTOFF;
-      case COMPLETED_AS_SIBLING -> RetrievalVerdictReason.COMPLETED_AS_SIBLING;
-      case EVICTED_BY_DOCUMENT_COMPLETION_TIER_1 ->
-          RetrievalVerdictReason.EVICTED_BY_DOCUMENT_COMPLETION_TIER_1;
-      case EVICTED_BY_DOCUMENT_COMPLETION_TIER_2 ->
-          RetrievalVerdictReason.EVICTED_BY_DOCUMENT_COMPLETION_TIER_2;
     };
   }
 
