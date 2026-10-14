@@ -22,7 +22,7 @@ interface LibraryScheduleFormProps {
 }
 
 /**
- * The one Zeitplan-Formular of a connector library (#485/#1940) - fixed interval steps, stored by
+ * The one Zeitplan-Formular of a connector library - fixed interval steps, stored by
  * the backend as a cron expression (LibraryScheduleCodec); free cron entry is deliberately not part
  * of this surface. Shared by the Bearbeiten-Weg of the Reiter „Quelle" and the Anlage-Assistent.
  */

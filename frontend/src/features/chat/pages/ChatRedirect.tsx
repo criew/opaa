@@ -16,7 +16,7 @@ import { lastUsedSpace } from '@/features/space'
  * chat list. Instead of a never-resolving spinner, a failing or empty space list yields a German
  * message with a retry action.
  *
- * Since #1911 the chat opens in the space last used rather than always in the personal one. The
+ * The chat opens in the space last used rather than always in the personal one. The
  * remembered space is only ever taken from the list the service delivered for this session, so one
  * that was archived, one whose membership was withdrawn and one belonging to a different account
  * on the same browser all fall back to the personal space without a request of their own.

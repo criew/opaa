@@ -8,7 +8,7 @@ import { RemoteConnectionLines } from './GenericSourceViews'
 import ScopeConsequence from './ScopeConsequence'
 import type { StoredLibrarySource } from './types'
 
-// #1138 (ADR-0023): the selected spaces are the scope every reader of the library sees.
+// ADR-0023: the selected spaces are the scope every reader of the library sees.
 export function ConfluenceScope({ library }: { library: StoredLibrarySource }) {
   const settings = confluenceSettingsOf(library)
   return (

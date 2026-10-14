@@ -42,7 +42,7 @@ function StateCell({ active }: { active: boolean }) {
 }
 
 /**
- * Die Chat-Modelle als Tabelle (#1621) — eine Zeile je Modell, die Handlungen im Zeilenmenü.
+ * Die Chat-Modelle als Tabelle — eine Zeile je Modell, die Handlungen im Zeilenmenü.
  *
  * Temperatur und maximale Antwortlänge haben bewusst keine Spalte: Sie sind Feineinstellung, nach
  * der niemand eine Liste überfliegt, und stehen im Dialog. Eine Übersicht, die alles zeigt, zeigt

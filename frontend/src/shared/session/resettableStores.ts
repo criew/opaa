@@ -9,7 +9,7 @@ const sessionStores = new Set<SessionStore>()
 
 /**
  * Registers a store that caches data of the signed-in user's session; every sign-out, expired
- * session and account handover then resets it (#440). Called once by the store's own module right
+ * session and account handover then resets it. Called once by the store's own module right
  * after `create()`, so a store is registered as soon as it holds any state. Device settings such as
  * `useUiStore` stay unregistered and survive a sign-out.
  */

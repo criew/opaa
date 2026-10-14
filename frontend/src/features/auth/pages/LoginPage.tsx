@@ -51,9 +51,9 @@ interface ProviderChoiceProps {
 }
 
 /**
- * One sign-in tile, one line high (#1910): monogram, the provider's name, its host as the line a
- * person recognises it by. Five of them stand under each other without scrolling, which is what
- * #1910 asks for instead of a dropdown. The action stays in the accessible name, not in the
+ * One sign-in tile, one line high: monogram, the provider's name, its host as the line a
+ * person recognises it by. Five of them stand under each other without scrolling, instead of a
+ * dropdown. The action stays in the accessible name, not in the
  * visible label - the section above already says that this is how one signs in here.
  */
 function ProviderChoice({
@@ -164,10 +164,10 @@ export default function LoginPage() {
   // The provider sign-in leaves this page, so the route travels with the flow itself.
   const returnTo = redirectTargetOf(location.state, location.search)
 
-  // #1631: entering this page is where the automatic sign-in of a running provider session starts.
+  // Entering this page is where the automatic sign-in of a running provider session starts.
   // Only once the configuration is loaded - before that the store knows neither the providers nor
   // whether a session was restored, and the attempt would judge on an empty state. The route the
-  // sign-in was started for travels with it just as it does with a clicked one (#1685). The action
+  // sign-in was started for travels with it just as it does with a clicked one. The action
   // itself decides whether this is a moment for it at all; see attemptSilentSignIn.
   useEffect(() => {
     if (isLoading) return
@@ -182,7 +182,7 @@ export default function LoginPage() {
   // ADR-0033, Entscheidung 4: the mask appears only while the management is switched on. Local
   // system administrators keep their own page, which is reachable at all times.
   const hasLocalForm = mode === 'oidc' && localAccounts.enabled
-  // #1631: a tile the automatic redirect is about to take away is not one to click - the choice
+  // A tile the automatic redirect is about to take away is not one to click - the choice
   // becomes real once that attempt has had its turn.
   const isBusy = isLoading || isSigningIn || isSilentSignInPending()
 
@@ -190,12 +190,12 @@ export default function LoginPage() {
     <AuthLayout>
       {/*
         The sign-in page is the one screen that renders before there is a session, which is why
-        #582's read endpoint is reachable without authentication (#583) - otherwise the first
+        the branding read endpoint is reachable without authentication - otherwise the first
         thing a user sees would be the only thing that could not carry their house's mark.
       */}
-      {/* Die Überschrift benennt die Seite, nicht das Produkt: Ein Screenreader sagte hier vorher
-          nur den Markennamen, obwohl die Marke daneben ohnehin steht. #1910: „Anmelden" steht nur
-          noch hier - die Abschnitte darunter benennen ihren Weg, nicht noch einmal die Handlung. */}
+      {/* Die Überschrift benennt die Seite, nicht das Produkt - die Marke steht ohnehin daneben.
+          „Anmelden" steht nur hier; die Abschnitte darunter benennen ihren Weg, nicht noch einmal
+          die Handlung. */}
       <PageHeading title="Anmelden" variant="h5" sx={{ mb: 3 }} />
 
       {error && (
@@ -205,7 +205,7 @@ export default function LoginPage() {
         </Alert>
       )}
 
-      {/* #1910: Ist die Maske eingeschaltet, steht sie oben - sie ist der Weg, den diese
+      {/* Ist die Maske eingeschaltet, steht sie oben - sie ist der Weg, den diese
           Installation für ihre eigenen Konten eingerichtet hat; die Verzeichnisdienste folgen. */}
       {hasLocalForm && (
         <LocalSignInForm
@@ -267,7 +267,7 @@ export default function LoginPage() {
   )
 }
 
-/** The trust note, worded for what this installation actually offers (#1368). */
+/** The trust note, worded for what this installation actually offers. */
 function trustNote(hasChoice: boolean, hasLocalForm: boolean): string {
   if (hasChoice && hasLocalForm) {
     return 'Bei Anmeldung über einen Identitätsanbieter erhält OPAA kein Kennwort. Das Passwort eines Kontos dieser Installation speichert OPAA nur als nicht umkehrbaren Prüfwert.'

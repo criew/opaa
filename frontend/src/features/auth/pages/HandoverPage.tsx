@@ -46,7 +46,7 @@ type Status =
   | 'failed'
 
 /**
- * The page behind the handover link (#1563, ADR-0033 Entscheidung 12). It runs in two visits of the
+ * The page behind the handover link (ADR-0033 Entscheidung 12). It runs in two visits of the
  * same route: first with the code in the URL, where it shows what would move and starts the
  * provider sign-in; then after the provider redirect, where the callback hands it the provider
  * token and it redeems - one call, and only that one, because the account under that identity must
@@ -59,7 +59,7 @@ type Status =
 export default function HandoverPage() {
   usePageTitle('Übergabe')
   // Reads the code and takes it out of the address bar before the first request leaves, so no
-  // referrer carries it into an access log (#1540, ADR-0033 Entscheidung 9).
+  // referrer carries it into an access log (ADR-0033 Entscheidung 9).
   const token = useLinkToken()
   const navigate = useNavigate()
   const startHandoverSignIn = useAuthStore((s) => s.startHandoverSignIn)

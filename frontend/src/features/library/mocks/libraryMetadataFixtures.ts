@@ -15,7 +15,7 @@ export const mockDocumentTypeVocabulary: DocumentTypeVocabularyEntryResponse[] =
   { code: 'SONSTIGES', label: 'Sonstiges' },
 ]
 
-// #1068: core metadata per document with its provenance - one deterministic, one derived and
+// Core metadata per document with its provenance - one deterministic, one derived and
 // one manual value on the first fixture document, so every origin marking is exercised in
 // mock/dev mode; documents without an entry read as three empty fields.
 const INITIAL_DOCUMENT_METADATA: Record<string, DocumentMetadataFieldResponse[]> = {

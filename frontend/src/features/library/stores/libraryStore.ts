@@ -56,7 +56,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   reset: () => set({ libraries: [], libraryDetails: {}, isLoading: false, error: null }),
 
   loadLibraries: async () => {
-    // #575: captured before the await below - checked again once it resolves, so a response
+    // Captured before the await below - checked again once it resolves, so a response
     // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
     // previous user's libraries into the now-emptied store.
     const sessionEpoch = currentSessionEpoch()
@@ -90,7 +90,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   createNewLibrary: async (request) => {
     const sessionEpoch = currentSessionEpoch()
     const library = await createLibrary(request)
-    // #575: same reasoning as loadLibraries/loadLibraryDetails above - a logout in between must
+    // Same reasoning as loadLibraries/loadLibraryDetails above - a logout in between must
     // not let the newly created library resurrect into the now-emptied store.
     if (isStaleSessionEpoch(sessionEpoch)) return library.id
     // Caches the full LibraryResponse right away, so the overview can show the newly created
@@ -108,7 +108,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   deleteExistingLibrary: async (libraryId) => {
     const sessionEpoch = currentSessionEpoch()
     const outcome = await deleteLibrary(libraryId)
-    // #575: loadLibraries() below already guards its own write-back - this direct set() needs the
+    // loadLibraries() below already guards its own write-back - this direct set() needs the
     // same guard, otherwise a logout in between still resurrects a (stale) libraryDetails map into
     // the store reset() just cleared.
     if (isStaleSessionEpoch(sessionEpoch)) return outcome
@@ -124,7 +124,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     return outcome
   },
 
-  // #1257: the endpoint's response only carries {libraryId, locked} (LibraryDiagnosticsLockResponse),
+  // The endpoint's response only carries {libraryId, locked} (LibraryDiagnosticsLockResponse),
   // not the full library - merged into the cached detail rather than re-fetching it, mirroring how
   // createNewLibrary already caches its own full response without a round trip.
   setLibraryDiagnosticsLock: async (libraryId, locked) => {
@@ -139,7 +139,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     })
   },
 
-  // #797: unlike setLibraryDiagnosticsLock's small response, PUT .../share-cap answers the full
+  // Unlike setLibraryDiagnosticsLock's small response, PUT .../share-cap answers the full
   // library (the grant to "Alle Konten" revoked already, if the new cap narrowed) - cached wholesale, no
   // extra round trip, mirroring createNewLibrary's own full-response caching above.
   setLibraryShareCap: async (libraryId, request) => {

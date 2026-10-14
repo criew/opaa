@@ -99,7 +99,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     ).toBeInTheDocument()
   })
 
-  // Lösen darf, wer den Space kuratiert - auch ohne die Bibliothek zu verwalten (#2208).
+  // Lösen darf, wer den Space kuratiert - auch ohne die Bibliothek zu verwalten.
   it('lets a curator of the space detach it through the row menu, and only that row', async () => {
     mockGetSpaces.mockResolvedValue([
       spaceWithRole('space-curated', 'CURATOR'),

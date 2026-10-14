@@ -5,7 +5,7 @@ import type {
 } from '@/shared/api/types'
 
 /**
- * Fixtures of the mail administration (#1542, ADR-0033 Entscheidung 10) - in their own module
+ * Fixtures of the mail administration (ADR-0033 Entscheidung 10) - in their own module
  * rather than in the already oversized `fixtures.ts`, and mutable for the same reason
  * `mockBranding` is: a PUT has to be visible on the next GET, because the whole point of the
  * settings form and the template editor is that a change is immediately in effect.

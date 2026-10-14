@@ -28,7 +28,7 @@ describe('DocumentTextPreviewDialog', () => {
     )
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('001_personalausweis.md')).toBeInTheDocument()
-    // #1016: heading elements are normalised per rendered content (rank compression from h2);
+    // Heading elements are normalised per rendered content (rank compression from h2);
     // the h5 LOOK of "#" survives as the Typography variant.
     const heading1016 = screen.getByText('Titel').closest('h2')
     expect(heading1016).toBeInTheDocument()
@@ -36,7 +36,7 @@ describe('DocumentTextPreviewDialog', () => {
     expect(screen.getByText('Ein Absatz.')).toBeInTheDocument()
   })
 
-  // #781 review, Nit 4: MUI does not wire aria-labelledby to DialogTitle automatically.
+  // MUI does not wire aria-labelledby to DialogTitle automatically.
   it('labels the dialog with the file name via aria-labelledby', () => {
     renderWithProviders(
       <DocumentTextPreviewDialog previewDocument={markdownDoc('Inhalt')} onClose={vi.fn()} />,
@@ -69,7 +69,7 @@ describe('DocumentTextPreviewDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  // #781 review, Nit 6: a document preview's content is not a chat answer - MarkdownRenderer's
+  // A document preview's content is not a chat answer - MarkdownRenderer's
   // default citation-marker stripping must not silently mutate a coincidental 【…】 run that is
   // part of the original text.
   it('shows a raw 【source: …】-shaped run in the original instead of silently stripping it', () => {
@@ -84,10 +84,10 @@ describe('DocumentTextPreviewDialog', () => {
     ).toBeInTheDocument()
   })
 
-  // #780 acceptance criteria: no gerendertes Markdown may execute script in the app's origin - a
+  // No gerendertes Markdown may execute script in the app's origin - a
   // literal <script>/onerror-carrying <img> is inert text (react-markdown never enables rehype-raw,
   // so raw HTML is parsed as text, not markup), and a javascript: link/image URL is stripped by
-  // react-markdown's default urlTransform (mirrors the #743 SVG Sperre for a different surface).
+  // react-markdown's default urlTransform (mirrors the SVG Sperre for a different surface).
   describe('security: no script execution from rendered Markdown (#780)', () => {
     it('renders a literal <script> tag as inert text, not a script element', () => {
       renderWithProviders(

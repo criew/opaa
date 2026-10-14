@@ -18,7 +18,7 @@ import { PermissionTransferDialog } from '@/features/succession'
 import { contentWidth } from '@/shared/theme/tokens'
 
 /**
- * Die Gruppenverwaltung (#1821), gebaut wie die Kontenliste: Kopf, primäre Handlung,
+ * Die Gruppenverwaltung, gebaut wie die Kontenliste: Kopf, primäre Handlung,
  * Filterleiste, Tabelle mit Zeilenmenü und die Dialoge der Handlungen. Die Herkunft steht an
  * jeder Zeile, die Wirkung als Zusammenfassung; die Mitgliederliste lädt erst im Dialog
  * „Mitglieder" - ihr Abruf durch die Systemverwaltung ist ein Audit-Ereignis (ADR-0036,

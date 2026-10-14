@@ -39,7 +39,7 @@ function captureRequirementPuts(): Array<Record<string, unknown>> {
 }
 
 /**
- * Der Reiter „Quellarten“: Übersicht je Quellart, Sperre und „Nur über Zugänge“ (#2161, #2162) im
+ * Der Reiter „Quellarten“: Übersicht je Quellart, Sperre und „Nur über Zugänge“ im
  * Seitenpanel.
  */
 describe('ConnectorTypesTab', () => {

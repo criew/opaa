@@ -7,7 +7,7 @@ import { problemOf } from '@/features/succession'
 import { assetGrantScopeHint, assetRoleDescription } from '@/features/asset'
 
 /**
- * Texts naming prompt libraries only while the feature is on (#2588, ADR-0044). The backend leaves
+ * Texts naming prompt libraries only while the feature is on (ADR-0044). The backend leaves
  * the switched-off data out already; these texts must not name it should a stale entry slip in.
  */
 describe('texts naming prompt libraries', () => {

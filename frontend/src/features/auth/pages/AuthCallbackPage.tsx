@@ -24,7 +24,7 @@ export default function AuthCallbackPage() {
 
   // initialize() already activated the manager of the provider this tab started the flow at
   // (ADR-0025); handleOidcCallback reports it when that provider is gone in the meantime. A
-  // callback that carries a handover (#1563) goes back to the page that started it, which holds
+  // callback that carries a handover goes back to the page that started it, which holds
   // the provider token for the one redemption call - there is no session yet, on purpose. A new
   // session goes to the route the sign-in was started for, already checked to stay on this origin.
   useEffect(() => {
@@ -35,10 +35,10 @@ export default function AuthCallbackPage() {
         } else if (outcome.kind === 'session') {
           navigate(outcome.returnTo, { replace: true })
         } else if (outcome.kind === 'silent-refused') {
-          // #1631: the provider turned the automatic attempt down - what follows is the sign-in
+          // The provider turned the automatic attempt down - what follows is the sign-in
           // page as it would have stood without it. `replace` drops this callback from the
           // history, so "back" cannot run into the redirect a second time. The route the person
-          // was after rides back with it (#1685): it travelled in the sign-in state of the
+          // was after rides back with it: it travelled in the sign-in state of the
           // attempt, and would otherwise be lost to the one attempt that could not help them.
           navigate(LOGIN_ROUTE, { replace: true, state: { from: outcome.returnTo } })
         } else {
@@ -50,7 +50,7 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     // A session this tab already holds - a local one restored at start-up, an OIDC one from
-    // before - waits for the callback: a handover owns it until its page has run (#1563), and a
+    // before - waits for the callback: a handover owns it until its page has run, and a
     // successful callback decides the route itself. Only a failed one falls back to the chat page.
     const callbackSettled = mode !== 'oidc' || callbackFailed
     if (isAuthenticated && callbackSettled && !handoverCallback && !isHandoverInFlight()) {

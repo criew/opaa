@@ -23,7 +23,7 @@ interface GroupPickerProps {
 }
 
 /**
- * Die Gruppensuche der Subjekt-Auswahl (#1820, ADR-0036 Entscheidung 9). Jede Zeile trägt die
+ * Die Gruppensuche der Subjekt-Auswahl (ADR-0036 Entscheidung 9). Jede Zeile trägt die
  * Herkunft, damit zwei gleichnamige Gruppen unterscheidbar sind; eine Gruppe eines externen
  * Anbieters ist mit einem eigenen Symbol abgehoben, nicht nur mit Text. Eine nicht wirksame Gruppe
  * bleibt sichtbar, aber nicht wählbar — mit dem Grund.
@@ -57,7 +57,7 @@ export default function GroupPicker({
       onChange={(_event, next) => onChange(next)}
       inputValue={inputText}
       onInputChange={(_event, next, reason) => {
-        // Only typed text is a new request (#778): 'selectOption' and 'reset' set the text to the
+        // Only typed text is a new request: 'selectOption' and 'reset' set the text to the
         // chosen label, 'clear' empties both.
         setInputText(next)
         if (reason === 'input') setQuery(next)

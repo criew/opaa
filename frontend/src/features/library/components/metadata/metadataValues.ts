@@ -13,7 +13,7 @@ export function coreMetadataFieldLabel(fieldKey: string): string {
   return CORE_METADATA_FIELDS.find((field) => field.key === fieldKey)?.label ?? fieldKey
 }
 
-/** #1069: the third state carries no value and is valid for every core field. */
+/** The third state carries no value and is valid for every core field. */
 export function isNotDeterminable(value: MetadataValueRequest): boolean {
   return value.state === 'NOT_DETERMINABLE'
 }

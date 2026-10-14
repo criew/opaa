@@ -34,7 +34,7 @@ interface MailTemplateEditorProps {
 }
 
 /**
- * Der Editor einer Vorlage (#1542): Betreff und Textfassung mit Platzhalter-Chips, entprellte
+ * Der Editor einer Vorlage: Betreff und Textfassung mit Platzhalter-Chips, entprellte
  * Vorschau, Gegenüberstellung mit dem Standard, Zurücksetzen und Testversand.
  *
  * Die HTML-Fassung wird in Phase 1 nicht bearbeitet — sie entsteht aus dem Text im gebrandeten

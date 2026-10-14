@@ -12,7 +12,7 @@ import {
 import { useAuthStore } from './authStore'
 
 /**
- * The two notes of the automatic sign-in (#1631) and how they behave when the storage that holds
+ * The two notes of the automatic sign-in and how they behave when the storage that holds
  * them does not play along.
  *
  * The order of the last block matters: a write that does not stick sets a note in module scope

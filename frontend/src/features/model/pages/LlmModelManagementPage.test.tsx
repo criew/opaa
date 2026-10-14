@@ -124,9 +124,9 @@ describe('LlmModelManagementPage', () => {
     })
   })
 
-  /** #759 acceptance criterion: no route/entry for anyone but SYSTEM_ADMIN. */
+  /** No route/entry for anyone but SYSTEM_ADMIN. */
   /**
-   * Die Bereiche sind Routen, keine Zustände (#1619): Ein Verweis soll im richtigen Bereich
+   * Die Bereiche sind Routen, keine Zustände: Ein Verweis soll im richtigen Bereich
    * landen, und ein Neuladen ihn behalten. Der bloße Pfad landet auf den Chat-Modellen, und ein
    * Tippfehler wird nicht stillschweigend umgedeutet.
    */
@@ -206,14 +206,13 @@ describe('LlmModelManagementPage', () => {
   })
 
   /**
-   * Die Tabelle ist die Übersicht (#1621): Jede Spalte ist benannt, und jede Zeile führt ihr
+   * Die Tabelle ist die Übersicht: Jede Spalte ist benannt, und jede Zeile führt ihr
    * Modell mit Kennung, Endpunkt und Zugang, ohne dass etwas aufgeklappt werden muss.
    */
   /**
-   * Regressionsschutz zu #958 in neuer Form: Die Seite hatte je Modell eine Überschrift, und MUI
-   * setzte dort standardmäßig ein `h3` — eine übersprungene Stufe unter dem `h1` der Seite. Die
-   * Überschriften sind mit der Tabelle entfallen; damit die Stufenfolge nicht später wieder
-   * bricht, hält dieser Test fest, dass der Bereich außer dem Seitentitel keine trägt.
+   * Regressionsschutz zu #958: Der Bereich trägt außer dem Seitentitel keine Überschrift. Eine
+   * Überschrift je Modell wäre bei MUI standardmäßig ein `h3` — eine übersprungene Stufe unter
+   * dem `h1` der Seite.
    */
   it('keeps the heading structure flat below the page title', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -306,7 +305,7 @@ describe('LlmModelManagementPage', () => {
     )
   })
 
-  // #2486: manche Modelle lehnen jede Temperatur ab - „keine Angabe“ ist die Voreinstellung.
+  // Manche Modelle lehnen jede Temperatur ab - „keine Angabe“ ist die Voreinstellung.
   it('creates a model without a temperature by default', async () => {
     signInAs('SYSTEM_ADMIN')
     const aufrufe = recordModelRequests()
@@ -379,7 +378,7 @@ describe('LlmModelManagementPage', () => {
   })
 
   /**
-   * #759 review: editing must not touch the stored API key at all when the field is left alone,
+   * Editing must not touch the stored API key at all when the field is left alone,
    * and the field must never show a value - not even after the round trip through save/reload.
    */
   it('changes the display name and saves without touching the stored API key', async () => {
@@ -419,7 +418,7 @@ describe('LlmModelManagementPage', () => {
   })
 
   /**
-   * #759 review: Ein Speichern bestätigt sich sichtbar, und die Liste führt danach den neuen Wert.
+   * Ein Speichern bestätigt sich sichtbar, und die Liste führt danach den neuen Wert.
    * Eine Bestätigung, die niemand zu sehen bekommt, und eine Liste, die noch den alten Namen
    * zeigt, sind genau das, was hier ausgeschlossen wird.
    */
@@ -441,7 +440,7 @@ describe('LlmModelManagementPage', () => {
   })
 
   /**
-   * #759 review: removing a stored key must be reachable through an explicit action, not by
+   * Removing a stored key must be reachable through an explicit action, not by
    * inferring "remove" from an untouched empty field (which is indistinguishable from "leave
    * unchanged", since the field never shows the current value either way).
    */

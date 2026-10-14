@@ -101,7 +101,7 @@ describe('authStore - local session', () => {
   })
 
   /**
-   * #1563, ADR-0033 Entscheidung 12: between the provider callback and the redemption the SPA makes
+   * ADR-0033 Entscheidung 12: between the provider callback and the redemption the SPA makes
    * **no** authenticated call - and the local refresh plus the identity call of the start-up
    * restore are exactly such calls, with the token of the session the handover is about to revoke.
    * The note lives only for the trip to the provider; anything but the callback route clears it, so
@@ -535,7 +535,7 @@ describe('authStore - local session', () => {
   })
 
   /**
-   * Die öffentliche Anmeldekonfiguration ist nach jedem Sitzungsende veraltet (#1612): Wer die
+   * Die öffentliche Anmeldekonfiguration ist nach jedem Sitzungsende veraltet: Wer die
    * lokale Anmeldung umschaltet und sich dann abmeldet, bekam die Anmeldeseite im Stand vom
    * Anwendungsstart zu sehen - ein Formular, das es nicht mehr gibt, oder keines, obwohl es
    * wieder eines gibt. Erst ein echtes Neuladen der Seite zeigte den wahren Stand.
@@ -633,7 +633,7 @@ describe('authStore - local session', () => {
     expect(state.isAuthenticated).toBe(false)
     expect(state.sessionKind).toBeNull()
     expect(state.error).toMatch(expected)
-    // expireSession lädt die Anmeldekonfiguration bewusst ohne Abwarten nach (#1612). Ohne dieses
+    // expireSession lädt die Anmeldekonfiguration bewusst ohne Abwarten nach. Ohne dieses
     // Abwarten läuft die Anfrage in den nächsten Test hinein: Die Handler sind dort schon
     // zurückgesetzt, und die späte Antwort überschreibt den Stand, den er selbst gesetzt hat.
     await vi.waitFor(() => expect(useAuthStore.getState().localAccounts.enabled).toBe(true))

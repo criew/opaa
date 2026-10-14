@@ -54,7 +54,7 @@ import { assetTypeLabel } from '../../../shared/assetTypes'
 const grantableRoles: AssetRole[] = ['VIEWER', 'EDITOR', 'MANAGER', 'OWNER']
 
 /**
- * Was „Alle Konten" höchstens halten darf (#1931, ADR-0037 Entscheidung 1): Verwaltung und
+ * Was „Alle Konten" höchstens halten darf (ADR-0037 Entscheidung 1): Verwaltung und
  * Eigentum sind Zuständigkeiten und bleiben an eine benannte Person oder Gruppe gebunden. Das
  * Backend weist mehr mit 400 ab; hier steht es gar nicht erst zur Wahl.
  */
@@ -62,7 +62,7 @@ const allAccountsRoles: AssetRole[] = ['VIEWER', 'EDITOR']
 
 // RFC 4122-shaped, version-agnostic - loose enough for any UUID the backend hands out (v4 grant
 // subjects, v7-or-whatever future ids) while still catching the typo/paste-error case the client
-// can check without a round trip (#423 code review, nit 2).
+// can check without a round trip.
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function rolesFor(subjectType: AssetGrantSubjectType): AssetRole[] {
@@ -104,7 +104,7 @@ function isDateInThePast(dateInput: string): boolean {
 // subjectDisplayName/grantedByDisplayName come resolved from the backend (AssetGrantService), which
 // is what a MANAGER without the admin user list can see; the raw id is the fallback for a subject
 // the backend itself could no longer resolve. A protected group stays nameless (ADR-0036,
-// Entscheidung 9), and "Alle Konten" names no row at all (#1931).
+// Entscheidung 9), and "Alle Konten" names no row at all.
 function subjectDisplayName(grant: AssetGrantResponse): string {
   if (grant.protectedGroup) return 'Geschützte Gruppe'
   return grant.subjectDisplayName ?? grant.subjectId ?? allAccountsLabel
@@ -116,7 +116,7 @@ function grantedByDisplayName(grant: AssetGrantResponse): string {
 }
 
 /**
- * Die Berechtigungen eines Assets als Abschnitt der Seite (#1941) — Liste, Rollenwechsel, Entzug
+ * Die Berechtigungen eines Assets als Abschnitt der Seite — Liste, Rollenwechsel, Entzug
  * und das Formular zum Freigeben, ohne Dialog davor. Der Abschnitt kennt vom Typ nur sein Wort;
  * was ein Typ darüber hinaus hat, kommt als Schacht herein.
  */
@@ -135,7 +135,7 @@ export default function AssetGrantsSection({
 
   const [showForm, setShowForm] = useState(false)
   const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
-  // #1820: Die Eingabe per Kennung bleibt der Rückfall, wenn die Suche nichts hergibt - für eine
+  // Die Eingabe per Kennung bleibt der Rückfall, wenn die Suche nichts hergibt - für eine
   // Gruppe unterliegt sie derselben Durchsetzung wie die Suche: eine nicht freigegebene Gruppe
   // antwortet auch hier mit „nicht gefunden" (ADR-0036, Entscheidung 9).
   const [manualIdEntry, setManualIdEntry] = useState(false)
@@ -162,7 +162,7 @@ export default function AssetGrantsSection({
 
   async function handleRoleChange(grant: AssetGrantResponse, newRole: AssetRole) {
     setRowError(null)
-    // #1931, ADR-0037 Entscheidung 9: Die Rückfrage hängt an der Reichweite, nicht am Formular.
+    // ADR-0037 Entscheidung 9: Die Rückfrage hängt an der Reichweite, nicht am Formular.
     // Wer die bestehende Zeile „Alle Konten" von „Lesen" auf „Bearbeiten" zieht, vergrößert sie
     // genauso wie beim Erteilen - und wird genauso gefragt.
     if (
@@ -209,7 +209,7 @@ export default function AssetGrantsSection({
 
   async function handleSubmit() {
     setFormError(null)
-    // #1931: "Alle Konten" names no row - it is the one recipient that carries no id, and
+    // "Alle Konten" names no row - it is the one recipient that carries no id, and
     // the only one that asks back before it is granted.
     if (subject.type === 'ALL_ACCOUNTS') {
       if (expiryInput && isDateInThePast(expiryInput)) {
@@ -251,7 +251,7 @@ export default function AssetGrantsSection({
       setFormError('Das Ablaufdatum darf nicht in der Vergangenheit liegen')
       return
     }
-    // #1820: Der Kennungsweg loest die Gruppe auf, bevor irgendetwas erteilt wird - sonst fehlte
+    // Der Kennungsweg loest die Gruppe auf, bevor irgendetwas erteilt wird - sonst fehlte
     // genau dort die Zwischenfrage fuer eine Gruppe eines externen Anbieters, wo Herkunft und
     // Symbol ohnehin nicht zu sehen sind (ADR-0036, Entscheidung 2). Was sich fuer diesen
     // Aufrufer nicht aufloesen laesst, wird nicht erteilt.
@@ -340,7 +340,7 @@ export default function AssetGrantsSection({
                     {new Date(grant.updatedAt).toLocaleDateString('de-DE')}
                     {sizeHint ? ` · ${sizeHint}` : ''}
                   </Typography>
-                  {/* #1880, ADR-0036 Entscheidung 9: Wer einer Gruppe hier ein Recht eingeräumt
+                  {/* ADR-0036 Entscheidung 9: Wer einer Gruppe hier ein Recht eingeräumt
                       hat, sieht, an wen — erst auf ausdrücklichen Wunsch, nie als Beiwerk dieser
                       Liste. Eine abgelaufene Freigabe hält nichts mehr; der Dienst antwortet
                       dann wie auf eine unbekannte Gruppe. */}

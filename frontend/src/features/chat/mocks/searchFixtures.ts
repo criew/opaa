@@ -1,7 +1,7 @@
 import type { MetadataFilterOptionsResponse } from '@/shared/api/types'
 
-// #1068: the Dokumentart vocabulary (ADR-0024, Entscheidung 3) as the backend seeds it.
-// #1070: the filter options of the mock bestand - Dokumentart above its threshold and therefore
+// The Dokumentart vocabulary (ADR-0024, Entscheidung 3) as the backend seeds it.
+// The filter options of the mock bestand - Dokumentart above its threshold and therefore
 // offered, Datum/Stand below its threshold and therefore not.
 export const mockMetadataFilterOptions: MetadataFilterOptionsResponse = {
   totalDocuments: 40,

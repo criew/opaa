@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { userInitial } from './userInitial'
 
-// #800 (review #795, finding 5): `?? `-chains let a blank displayName through, and
+// `?? `-chains let a blank displayName through, and
 // `''[0].toUpperCase()` throws - the helper trims before indexing.
 describe('userInitial', () => {
   it('prefers the display name and upper-cases it', () => {

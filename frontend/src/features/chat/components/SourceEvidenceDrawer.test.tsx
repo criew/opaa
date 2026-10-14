@@ -7,9 +7,8 @@ import type { ChatMessage } from '../types/chat'
 import type { SourceReference } from '@/shared/api/types'
 import type { OpenDocumentContentResult } from '@/features/library'
 
-// #739/#780: the "Im Dokument öffnen" action delegates to this shared module (see its own tests for
-// the Blob-fetch/preview-vs-download behaviour, and LibraryDetailPage.test.tsx for #738's original
-// wiring of this mock pattern).
+// The "Im Dokument öffnen" action delegates to this shared module (see its own tests for the
+// Blob-fetch/preview-vs-download behaviour; LibraryDetailPage.test.tsx uses the same mock pattern).
 const { mockOpenDocumentContent } = vi.hoisted(() => ({
   mockOpenDocumentContent: vi.fn<() => Promise<OpenDocumentContentResult>>(async () => ({
     kind: 'blob-preview',
@@ -39,7 +38,7 @@ function source(
 }
 
 /**
- * An answer citing three documents, plus one checked-but-uncited source. #1102: `sources` arrives
+ * An answer citing three documents, plus one checked-but-uncited source. `sources` arrives
  * in the order the retrieval pipeline settled on, each `relevanceScore` the reciprocal of that
  * position - deliberately a different order than the citation markers in the text.
  */
@@ -84,7 +83,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(drawer).getByText(/Stand der Antwort: 20\.08\.2026, 14:12/)).toBeInTheDocument()
   })
 
-  // #1238: `message()` deliberately cites in a different order than the pipeline's `sources`
+  // `message()` deliberately cites in a different order than the pipeline's `sources`
   // array (zweiter.md is footnote 1 despite sitting second in `sources`) - the cited group must
   // follow the footnote numbers, not the pipeline order, with the uncited source trailing by rank.
   it('lists cited documents by citation number, uncited ones after them by rank', async () => {
@@ -96,7 +95,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(names).toEqual(['zweiter.md', 'erster.md', 'dritter.md', 'ungenutzt.md'])
   })
 
-  // #1238: regression guard for the reported demo behaviour - footnote 2 points at the lowest-rank
+  // Regression guard for the reported demo behaviour - footnote 2 points at the lowest-rank
   // source and footnote 3 at a higher-ranked one, so citation-number order and rank order disagree
   // on which of the two comes first.
   it('keeps citation-number order even when a later footnote outranks an earlier one', async () => {
@@ -135,8 +134,8 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(rows[2]).getByText(/Rang 2$/)).toBeInTheDocument()
   })
 
-  // #1102: relevanceScore is the reciprocal of the fused rank, so it is only ever a label - a
-  // persisted message from before #1102 still carries the old path-dependent raw score, and the
+  // relevanceScore is the reciprocal of the fused rank, so it is only ever a label - a
+  // legacy persisted message still carries a path-dependent raw score, and the
   // drawer must not reorder by it. A lexical-only source (tiny ts_rank) that the pipeline put
   // first therefore stays first.
   it('never reorders by relevanceScore, even when the values contradict the backend order', async () => {
@@ -222,7 +221,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
   it('labels a source with its rank in the answer, not a percentage weight (#1102)', async () => {
     const { drawer } = await openDrawer()
 
-    // #1238: the rows themselves are in citation-number order (zweiter.md, erster.md, dritter.md)
+    // The rows themselves are in citation-number order (zweiter.md, erster.md, dritter.md)
     // - their ranks stay tied to pipeline position (`sources` index 1, 0, 2), not to row position.
     const rows = within(drawer).getAllByTestId('evidence-doc')
     expect(within(rows[0]).getByText(/Rang 2/)).toBeInTheDocument()
@@ -231,9 +230,9 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(drawer).queryByText(/Gewicht/)).not.toBeInTheDocument()
   })
 
-  // #1102: the rank is the row's position in the drawer's own, unfiltered list - a message
-  // persisted before #1102 carries raw path-dependent scores in its snapshot, and labelling from
-  // 1 / relevanceScore would call the pipeline's first source "Rang 11".
+  // The rank is the row's position in the drawer's own, unfiltered list - a message
+  // persisted with legacy scores carries raw path-dependent ones in its snapshot, and labelling
+  // from 1 / relevanceScore would call the pipeline's first source "Rang 11".
   it('labels a legacy message by row position, not by 1 / relevanceScore', async () => {
     const user = userEvent.setup()
     renderWithProviders(
@@ -255,7 +254,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(rows[1]).getByText(/Rang 2/)).toBeInTheDocument()
   })
 
-  // #1102: "Rang n" is the source's position in the backend's `sources` array - the same position
+  // "Rang n" is the source's position in the backend's `sources` array - the same position
   // `relevanceScore` is the reciprocal of - not the row's position in this list. The list groups
   // the cited rows before the uncited ones, so a row position would renumber as soon as an uncited
   // source sits between two cited ones (the normal case: the model does not cite every hit).
@@ -296,7 +295,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(rows[0]).getByText(/Rang 3/)).toBeInTheDocument()
   })
 
-  // #386: a synthetic entry backs no retrieved passage (relevanceScore 0), so it holds no rank -
+  // A synthetic entry backs no retrieved passage (relevanceScore 0), so it holds no rank -
   // and consumes none either, leaving the numbering of the real rows gap-free.
   it('gives a synthetic entry no rank and lets it consume none', async () => {
     const user = userEvent.setup()
@@ -407,7 +406,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(drawer).queryByText('Beleg nicht bestätigt')).not.toBeInTheDocument()
   })
 
-  // #1066: the Belegfenster row carries the document's generic metadata line.
+  // The Belegfenster row carries the document's generic metadata line.
   it('shows the metadata line of a source, rendered from the generic list', async () => {
     const user = userEvent.setup()
     renderWithProviders(
@@ -551,7 +550,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       ).toBeInTheDocument()
     })
 
-    // #780: Markdown/plain text render in a client-side dialog instead of a silent download.
+    // Markdown/plain text render in a client-side dialog instead of a silent download.
     it('opens a Markdown text preview dialog instead of a silent download (#780)', async () => {
       mockOpenDocumentContent.mockResolvedValueOnce({
         kind: 'text-preview',
@@ -571,7 +570,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       // The preview dialog portals to document.body, outside the Belegfenster drawer, so it is
       // queried at the document level rather than scoped to `drawer`.
       expect(await screen.findByText('Personalausweis')).toBeInTheDocument()
-      // #1016: heading elements are normalised per rendered content (rank compression from h2);
+      // Heading elements are normalised per rendered content (rank compression from h2);
       // the h5 LOOK of "#" survives as the Typography variant.
       const previewHeading = screen.getByText('Personalausweis').closest('h2')
       expect(previewHeading).toBeInTheDocument()
@@ -579,7 +578,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       expect(screen.getByText(/Ausgestellt am 1\. März\./)).toBeInTheDocument()
     })
 
-    // #780 acceptance criteria: every format without a preview (DOCX among them) must give visible
+    // Every format without a preview (DOCX among them) must give visible
     // download feedback so the click never appears to do nothing.
     it('shows a snackbar with the file name when a DOCX download starts (#780)', async () => {
       mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })

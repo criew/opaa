@@ -23,21 +23,21 @@ setupAuthInterceptors(
   (reason) => useAuthStore.getState().requirePasswordChange(reason),
 )
 
-//  (review): a bare 413 alone doesn't tell us the oversized body was a file - normalizeError is
+// A bare 413 alone doesn't tell us the oversized body was a file - normalizeError is
 // shared by every endpoint module, most of which only ever send small JSON payloads. Scoping
 // the translated message to callers that actually upload a file (currently just uploadDocument)
 // keeps it honest instead of guessing "Datei" for a hypothetical 413 on, say, updateSpaceDetails.
 //
 // Exported (only) so api.test.ts can exercise the context-scoping directly with a constructed
 // AxiosError: a real multipart POST with a File/Blob body hangs indefinitely against msw/node in
-// this project's jsdom test environment (reproduced independently of this change - plain JSON and
-// urlencoded FormData bodies work fine, only a binary Blob/File part inside FormData hangs), so the
+// this project's jsdom test environment (plain JSON and urlencoded FormData bodies work fine, only
+// a binary Blob/File part inside FormData hangs), so the
 // upload-specific branch below cannot be exercised end-to-end through uploadDocument() in tests.
 export function normalizeError(err: unknown, context?: 'upload'): never {
   if (err instanceof AxiosError) {
     const data = err.response?.data
 
-    //  review: `cause` keeps the original AxiosError (and thus its response.status) reachable
+    // `cause` keeps the original AxiosError (and thus its response.status) reachable
     // for a caller that needs to distinguish e.g. 404 from any other failure - documentStore's
     // folder-not-found fallback is the first to rely on this; every other caller keeps using the
     // plain German message and can ignore cause entirely.

@@ -1,6 +1,6 @@
 import { issueAt, messageOf, type SourceIssue } from './sourceIssue'
 
-/** The generic connection fields - what the Pfad- und URL-Formulare edit (#1940). */
+/** The generic connection fields - what the Pfad- und URL-Formulare edit. */
 export interface GenericSourceValues {
   sourcePath: string
   sourceUrl: string

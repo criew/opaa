@@ -5,7 +5,7 @@ import type {
 } from '@/shared/api/types'
 
 /**
- * Die Kanaleinstellungen der Fremdzugänge (#1717) als MSW-Handler - mit den Invarianten, auf die
+ * Die Kanaleinstellungen der Fremdzugänge als MSW-Handler - mit den Invarianten, auf die
  * sich die Seite verlässt und die `ExternalAccessSettingsService` ebenso durchsetzt: die
  * Voreinstellung ist „aus“ mit dem Hausnetz, ein PUT ersetzt alle Werte und ist beim nächsten GET
  * sichtbar, und eine ungültige Netzangabe oder eine Ablauf-Obergrenze außerhalb 1-365 ist ein 400

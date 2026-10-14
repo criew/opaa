@@ -146,7 +146,7 @@ export async function blockExternalAccessTokensOfOwner(ownerUserId: string): Pro
 }
 
 /**
- * Setzt oder nimmt die Freigabe der Bibliothek für Fremdzugänge zurück (#1731). `expiresAt` ist
+ * Setzt oder nimmt die Freigabe der Bibliothek für Fremdzugänge zurück. `expiresAt` ist
  * beim Setzen Pflicht und darf beim Zurücknehmen nicht mitgegeben werden - das Backend weist beides
  * ab, statt es stillschweigend zu ergänzen.
  */

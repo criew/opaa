@@ -7,7 +7,7 @@ import {
 } from './directoryEntries'
 import { ACCEPTED_FILE_EXTENSIONS } from '../components/LibraryDocumentsSection'
 
-// #823: fake DataTransferItem/FileSystemEntry stand-ins - jsdom does not implement
+// Fake DataTransferItem/FileSystemEntry stand-ins - jsdom does not implement
 // webkitGetAsEntry()/FileSystemDirectoryEntry at all, so these tests build the minimal shape
 // resolveDroppedItems actually consumes (kind/webkitGetAsEntry/getAsFile, isFile/isDirectory/
 // name/file()/createReader()). resolveDroppedItems's own item type is intentionally internal (not
@@ -24,7 +24,7 @@ function fakeFileEntry(name: string, content = 'content'): unknown {
   }
 }
 
-// #823 review, Befund 3: a file entry whose file() callback always errors - stands in for a
+// A file entry whose file() callback always errors - stands in for a
 // permission error or a file removed/moved between the drop and this read.
 function fakeUnreadableFileEntry(name: string): unknown {
   return {
@@ -36,7 +36,7 @@ function fakeUnreadableFileEntry(name: string): unknown {
   }
 }
 
-// #823: exercises readAllEntries' repeated-readEntries loop explicitly - readEntries only ever
+// Exercises readAllEntries' repeated-readEntries loop explicitly - readEntries only ever
 // returns one batch at a time in a real browser, and a directory handled by only calling it once
 // would silently lose every entry past the first batch.
 function fakeDirectoryEntry(name: string, entryBatches: unknown[][]): unknown {
@@ -57,7 +57,7 @@ function fakeDirectoryEntry(name: string, entryBatches: unknown[][]): unknown {
   }
 }
 
-// #823 review, Befund 3: a directory whose createReader/readEntries always errors - stands in for
+// A directory whose createReader/readEntries always errors - stands in for
 // a directory that cannot be listed at all (e.g. a permission error on the directory itself).
 function fakeUnreadableDirectoryEntry(name: string): unknown {
   return {
@@ -107,7 +107,7 @@ describe('resolveDroppedItems', () => {
   })
 
   it('calls readEntries repeatedly until it returns an empty batch', async () => {
-    // #823: a directory whose entries arrive in two batches - the real regression this guards
+    // A directory whose entries arrive in two batches - the real regression this guards
     // against is a caller that only calls readEntries once and silently drops the second batch.
     const folder = fakeDirectoryEntry('Grossbestand', [
       [fakeFileEntry('a.pdf'), fakeFileEntry('b.pdf')],
@@ -153,7 +153,7 @@ describe('resolveDroppedItems', () => {
     expect(files).toEqual([])
   })
 
-  // #823 review, Befund 3: an unreadable file/directory must not abort the whole drop.
+  // An unreadable file/directory must not abort the whole drop.
   it('counts an unreadable file instead of aborting the rest of the drop', async () => {
     const items = [
       fakeItem(fakeUnreadableFileEntry('kaputt.pdf')),
@@ -208,10 +208,10 @@ describe('directoryPathFromWebkitRelativePath', () => {
   })
 })
 
-// #823 review, Befund 2: format filtering for the folder upload path - a real OS folder routinely
+// Format filtering for the folder upload path - a real OS folder routinely
 // carries files nobody dragged there on purpose.
 describe('filterAcceptedFiles', () => {
-  // #1057 review: reuses the actual client-side list (LibraryDetailPage#ACCEPTED_FILE_EXTENSIONS)
+  // Reuses the actual client-side list (LibraryDetailPage#ACCEPTED_FILE_EXTENSIONS)
   // instead of a locally duplicated copy, so an extension added there is covered here too rather
   // than silently drifting out of sync.
   const acceptedExtensions = ACCEPTED_FILE_EXTENSIONS

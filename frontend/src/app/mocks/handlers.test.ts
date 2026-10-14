@@ -32,7 +32,7 @@ describe('MSW Handlers', () => {
     })
 
     it('returns 404 for an unknown library', async () => {
-      // #478: the trigger reduces to "index this library" - libraryId is a path variable, so a
+      // The trigger reduces to "index this library" - libraryId is a path variable, so a
       // library that does not exist in the mock fixtures mirrors the backend's 404.
       const response = await fetch('/api/v1/libraries/unknown-library/indexing', {
         method: 'POST',
@@ -44,7 +44,7 @@ describe('MSW Handlers', () => {
     })
 
     it('returns 409 for an UPLOAD library', async () => {
-      // #500 review, finding 5: mirrors DocumentIndexingService#executorFor - UPLOAD has
+      // Mirrors DocumentIndexingService#executorFor - UPLOAD has
       // no run type, the library is a valid target, it simply has nothing to run.
       const response = await fetch('/api/v1/libraries/library-mine/indexing', {
         method: 'POST',
@@ -122,7 +122,7 @@ describe('MSW Handlers', () => {
       expect(data.status).toBe(400)
     })
 
-    // #528 review, finding 6: without this branch, mock/dev mode could never show the "answered
+    // Without this branch, mock/dev mode could never show the "answered
     // without knowledge" hint the chat UI added for useKnowledge=false with no references.
     it('answers without knowledge when useKnowledge is false and no libraryIds are given', async () => {
       const response = await fetch('/api/v1/query', {
@@ -226,7 +226,7 @@ describe('MSW Handlers', () => {
       expect(data.error).toMatch(/kein zugriff/i)
     })
 
-    // Mirrors LibraryDocumentService#requireUploadLibrary (#479): editableLibraryId's fixture is a
+    // Mirrors LibraryDocumentService#requireUploadLibrary: editableLibraryId's fixture is a
     // FILESYSTEM (connector) library, so even a MANAGER upload is rejected - the check runs before
     // request.formData(), so it hits the handler directly like the VIEWER 403 test above.
     it('returns 409 when uploading into a connector library', async () => {
@@ -243,7 +243,7 @@ describe('MSW Handlers', () => {
     })
   })
 
-  // #822 review, finding 6b: PATCH/DELETE on a connector library's folders must reject with the
+  // PATCH/DELETE on a connector library's folders must reject with the
   // same 409 POST already does, mirroring LibraryFolderService#requireUploadLibrary - and an
   // uploaded document's folderPath is the full folder chain, not just the immediate folder's own
   // name.
@@ -294,7 +294,7 @@ describe('MSW Handlers', () => {
       expect(buildMockFolderPath(uploadLibraryId, subfolderId)).toBe('Protokolle/2026')
     })
 
-    // #823: resolveOrCreateMockFolderPath - the mock counterpart to LibraryFolderService#
+    // resolveOrCreateMockFolderPath - the mock counterpart to LibraryFolderService#
     // resolveOrCreateFolderPath - exercised directly for the same reason buildMockFolderPath is
     // above (a real multipart upload request hangs in this project's jsdom test environment).
     describe('resolveOrCreateMockFolderPath (#823)', () => {
@@ -351,8 +351,8 @@ describe('MSW Handlers', () => {
         expect(result).toEqual({ folderId: 'folder-protokolle' })
       })
 
-      // #823 review, Befund 5d: mirrors LibraryFolderService's MAX_DEPTH (10, root counts as
-      // depth 1) - the mock previously had no depth limit for folderPath materialization at all.
+      // Mirrors LibraryFolderService's MAX_DEPTH (10, root counts as depth 1) for folderPath
+      // materialization.
       it('rejects a path that would nest beyond the depth limit with 400', () => {
         const tooDeep = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'].join('/')
 
@@ -364,7 +364,7 @@ describe('MSW Handlers', () => {
         })
       })
 
-      // #823 review, Befund 1 (mock counterpart): every segment is validated before any folder is
+      // Every segment is validated before any folder is
       // materialized - an earlier, valid segment must not survive when a later one is rejected.
       it('creates no folders at all when a later segment is invalid', () => {
         const before = (mockLibraryFolders[uploadLibraryId] ?? []).length
@@ -486,8 +486,8 @@ describe('MSW Handlers', () => {
       expect(response.status).toBe(404)
     })
 
-    // #423 code review, nit 4: MSW previously only mirrored the *requested*-role cap above, not
-    // the escalation guard's other half - the caller may also never touch a grant that already
+    // MSW mirrors the escalation guard's other half too, not only the *requested*-role cap above -
+    // the caller may also never touch a grant that already
     // carries a role higher than their own, independent of whether they could have granted it.
     it('rejects changing the role of an existing grant that already carries a role higher than the caller holds', async () => {
       const listResponse = await fetch(

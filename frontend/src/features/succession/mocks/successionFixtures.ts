@@ -1,7 +1,7 @@
 import type { SuccessionEntryResponse, SuccessionKind } from '@/shared/api/types'
 
 /**
- * Die Betriebsliste des Lebenszyklus (#1821 gegen #1819) — eigene Datei, damit `fixtures.ts` nicht
+ * Die Betriebsliste des Lebenszyklus — eigene Datei, damit `fixtures.ts` nicht
  * weiter wächst. Die Zeilen sind absichtlich ohne Auswertungsachse Person: Der frühere Eigentümer
  * steht als Text in der Zeile und nirgends als Schlüssel.
  */

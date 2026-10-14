@@ -112,7 +112,7 @@ async function openEditDialog(user: UserEvent, name: string) {
 }
 
 /**
- * The provider management (#1333, ADR-0025, table with row menu since #1625): the list with state,
+ * The provider management (ADR-0025, table with row menu): the list with state,
  * order and default, the form dialog without any secret field, the roles-claim confirmation, the
  * connection test, the consequence hints, and the setup instructions composed from this app's own
  * origin.
@@ -279,8 +279,8 @@ describe('OidcProviderManagementPage', () => {
   }, 20000)
 
   /**
-   * Die Verhaltensänderung von #1625: Am Standardanbieter **fehlen** „Deaktivieren“ und „Löschen“
-   * nicht mehr, sie sind gesperrt und nennen ihren Grund. Eine fehlende Handlung wirft die Frage
+   * Am Standardanbieter **fehlen** „Deaktivieren“ und „Löschen“ nicht, sie sind gesperrt und
+   * nennen ihren Grund. Eine fehlende Handlung wirft die Frage
    * auf, ob sie je da war; eine gesperrte beantwortet sie.
    */
   it('locks disabling and deleting on the default provider and names the reason', async () => {
@@ -318,7 +318,7 @@ describe('OidcProviderManagementPage', () => {
     await user.click(within(standardfrage).getByRole('button', { name: 'Zum Standard machen' }))
 
     // the mock mirrors OidcProviderService#makeDefault: an unreachable provider is refused. Die
-    // Ablehnung kommt als Benachrichtigung, nicht mehr als Meldung in der Zeile - und nennt den
+    // Ablehnung kommt als Benachrichtigung, nicht als Meldung in der Zeile - und nennt den
     // Grund, den das Backend gemeldet hat.
     const abweisung = await screen.findByRole('alert')
     expect(abweisung).toHaveTextContent(/nicht abrufbar/)
@@ -356,8 +356,8 @@ describe('OidcProviderManagementPage', () => {
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
     const hinweis = await screen.findByText(/Kein Anbieter ist Standardanbieter/)
     expect(hinweis).toBeInTheDocument()
-    // Der Verzeichnisabgleich haengt seit #1816 an der Anbieterzeile selbst; der Hinweis darf ihn
-    // nicht mehr als Folge eines fehlenden Standardanbieters nennen.
+    // Der Verzeichnisabgleich haengt an der Anbieterzeile selbst; der Hinweis darf ihn nicht als
+    // Folge eines fehlenden Standardanbieters nennen.
     expect(hinweis).toHaveTextContent(/Der Verzeichnisabgleich h.ngt nicht daran/)
     expect(hinweis).not.toHaveTextContent(/Verzeichnisabgleich greifen nicht/)
   })
@@ -421,7 +421,7 @@ describe('OidcProviderManagementPage', () => {
       expect(providerRows().indexOf(rowOf('Partnerportal'))).toBe(0)
     })
     // Die gesendete Reihenfolge enthält alle Zeilen der Tabelle; Position 0 hält die LOCAL-Zeile,
-    // der erste Anbieter liegt damit auf 1 (#1541).
+    // der erste Anbieter liegt damit auf 1.
     expect(mockOidcProviders.find((p) => p.displayName === 'Partnerportal')?.sortOrder).toBe(1)
   })
 
@@ -452,7 +452,7 @@ describe('OidcProviderManagementPage', () => {
     expect(screen.getByText(/OPAA_CSP_CONNECT_SRC_EXTRA/)).toBeInTheDocument()
   })
 
-  /** #1369: the two values an operator carries over to the provider are copied with one click. */
+  /** The two values an operator carries over to the provider are copied with one click. */
   it('offers copy buttons for the redirect URI and the origin, and a legend of the states', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
@@ -471,7 +471,7 @@ describe('OidcProviderManagementPage', () => {
     ).toBeInTheDocument()
 
     // Die Zeile nennt nur das Zustandswort; was es bedeutet, steht hier - deshalb muss die Legende
-    // die drei Zustände samt Erläuterung führen (#1625).
+    // die drei Zustände samt Erläuterung führen.
     const legend = screen.getByRole('region', { name: 'Status verstehen' })
     expect(within(legend).getByText('Erreichbar')).toBeInTheDocument()
     expect(within(legend).getByText('Nicht erreichbar')).toBeInTheDocument()
@@ -481,7 +481,7 @@ describe('OidcProviderManagementPage', () => {
     expect(within(legend).getByText(/Konten bleiben erhalten/)).toBeInTheDocument()
   })
 
-  /** #1369, #1625: die Liste nennt, was der Anbieter aus dem Token holt, statt es im Dialog zu
+  /** Die Liste nennt, was der Anbieter aus dem Token holt, statt es im Dialog zu
    * verstecken - vor allem, wer über ihn Systemverwalter wird. */
   it('summarises in the list what each provider takes from the token', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -517,7 +517,7 @@ describe('OidcProviderManagementPage', () => {
   })
 
   /**
-   * ADR-0033, Entscheidung 4 (#1541): Die `LOCAL`-Zeile steht in derselben Tabelle, ist aber kein
+   * ADR-0033, Entscheidung 4: Die `LOCAL`-Zeile steht in derselben Tabelle, ist aber kein
    * Anbieter dieser Seite - ihr Schalter ist der Schalter der Benutzerverwaltung.
    */
   it('does not list the local account management among the providers', async () => {
@@ -585,7 +585,7 @@ describe('OidcProviderManagementPage', () => {
     await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
     await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
 
-    // Die Erklärung erscheint als Benachrichtigung, nicht mehr als Meldung im Anbietereintrag.
+    // Die Erklärung erscheint als Benachrichtigung, nicht als Meldung im Anbietereintrag.
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /lokales Systemverwalterkonto mit Passwort/,
     )

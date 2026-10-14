@@ -26,7 +26,7 @@ function render(route: string) {
   )
 }
 
-/** Die Anbindungen (#2504): Rollenschranke, Reiter als Routen und der Inhalt je Reiter. */
+/** Die Anbindungen: Rollenschranke, Reiter als Routen und der Inhalt je Reiter. */
 describe('ConnectionsAdminPage', () => {
   it('zeigt einem Konto ohne Systemverwaltung nur den Hinweis', () => {
     signInAs('USER')

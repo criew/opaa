@@ -101,7 +101,7 @@ describe('ProtectedRoute', () => {
     )
   }
 
-  // #1685: the page a denied route was on becomes the return target of the next sign-in ...
+  // The page a denied route was on becomes the return target of the next sign-in ...
   it('hands the denied route on as the return target when the session is simply missing', () => {
     useAuthStore.setState({ mode: 'oidc', isAuthenticated: false, isLoading: false })
     renderDenied('/libraries?tab=2')

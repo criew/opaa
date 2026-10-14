@@ -23,8 +23,8 @@ const INDEX_STATE_LABELS: Record<LibraryIndexState, string> = {
 }
 
 /**
- * The core-metadata extraction state of one library and the control that drives its backfill
- * (#1067). Start, Weiter and Anhalten are one button: the run is a loop of batch calls this page
+ * The core-metadata extraction state of one library and the control that drives its backfill.
+ * Start, Weiter and Anhalten are one button: the run is a loop of batch calls this page
  * repeats, so pausing is simply not calling again and resuming is calling again - the server
  * re-derives the remaining work on every call.
  */
@@ -82,7 +82,7 @@ function MetadataBackfillCell({
           )
           .join(' · ')}
       </Typography>
-      {/* #1069: the Pflege-Anker in the operational view - the same definition the library's own
+      {/* The Pflege-Anker in the operational view - the same definition the library's own
           settings show, counted over the organization here. */}
       <Typography
         variant="caption"
@@ -99,7 +99,7 @@ function MetadataBackfillCell({
           )
           .join(' · ')}
       </Typography>
-      {/* #1073: the Zählwerk of the model-backed extraction - without it the only feedback about
+      {/* The Zählwerk of the model-backed extraction - without it the only feedback about
           what this capability costs is the model provider's invoice. */}
       {library.modelExtraction.calls > 0 && (
         <Typography
@@ -136,7 +136,7 @@ function MetadataBackfillCell({
 }
 
 /**
- * The Kontextpräfix state of one library and the control that drives its Nachlauf (#1072). Start,
+ * The Kontextpräfix state of one library and the control that drives its Nachlauf. Start,
  * Weiter and Anhalten are one button for the same reason the backfill's are: the run is a loop of
  * batch calls this page repeats, and the server re-derives the remaining work on every call.
  */
@@ -199,7 +199,7 @@ function ContextPrefixCell({
 }
 
 /**
- * Die laufenden Umschluesselungen und Feldloeschungen einer Bibliothek (#1361). Nur Anzeige: den
+ * Die laufenden Umschluesselungen und Feldloeschungen einer Bibliothek. Nur Anzeige: den
  * Lauf treibt, wer das Verwaltungsrecht an der Bibliothek hat, aus deren Einstellungen - diese
  * Seite macht den Mischzustand sichtbar, in dem eine Bibliothek gerade steht.
  */

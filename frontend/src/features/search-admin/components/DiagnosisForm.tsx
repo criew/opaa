@@ -23,7 +23,7 @@ const PERSON_CONTEXT_VALUE = 'USER'
 /**
  * Why an installation without groups sees no profiles. A permission profile is a group with the
  * libraries it may read; none is derived from grant patterns, so the list stays empty until groups
- * exist (#1150).
+ * exist.
  */
 const NO_PROFILES_EXPLANATION =
   'Es gibt keine Rechteprofile, weil keine Gruppen angelegt sind: Ein Rechteprofil ist eine Gruppe zusammen mit den Bibliotheken, die sie lesen darf. Wo Lesbarkeit nur über einzelne Berechtigungen vergeben wird, entsteht keines. Bis dahin bleiben der eigene Rechtekontext und - mit Befugnis - der Rechtekontext einer Person.'
@@ -50,7 +50,7 @@ export default function DiagnosisForm({
   const [targetUserId, setTargetUserId] = useState('')
   const [justification, setJustification] = useState('')
   const [trackedDocumentId, setTrackedDocumentId] = useState('')
-  // #1070: the core-field filter the diagnosis runs with - applied exactly as a chat query applies
+  // The core-field filter the diagnosis runs with - applied exactly as a chat query applies
   // it, so "Sicht als" can check what a person's filtered question sees. The Dokumentart choices
   // come from the vocabulary (schema, not an aggregate), since the diagnosis may run in a foreign
   // rights context whose occurring values this page must not aggregate.

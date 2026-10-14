@@ -95,9 +95,9 @@ function initialOidcProviders(): OidcProviderResponse[] {
     },
     // Die eine LOCAL-Zeile (ADR-0033, Entscheidung 4): sie steht in derselben Tabelle und kommt
     // über dieselbe API, ist aber kein Anbieter der Anbieterseite - ihr `enabled` ist der
-    // Schalter der lokalen Benutzerverwaltung (#1541). `sortOrder: 0`, weil der Seed sie vor
+    // Schalter der lokalen Benutzerverwaltung. `sortOrder: 0`, weil der Seed sie vor
     // jedem Anbieter anlegt: damit liegt sie in der Sortierung **vor** den Anbietern und das
-    // Verschieben muss sie überspringen (Review-Runde 1, MEDIUM 5).
+    // Verschieben muss sie überspringen.
     {
       id: 'oidc-provider-local',
       displayName: 'Lokale Konten',

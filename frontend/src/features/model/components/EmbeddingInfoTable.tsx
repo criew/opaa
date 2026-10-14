@@ -13,7 +13,7 @@ interface EmbeddingInfoTableProps {
 }
 
 /**
- * Das Einbettungsmodell in derselben Tabellenform wie die Chat-Modelle (#1623) — **ohne jede
+ * Das Einbettungsmodell in derselben Tabellenform wie die Chat-Modelle — **ohne jede
  * Handlung**: keine Aktionsspalte, kein Zeilenmenü, kein Bedienelement.
  *
  * Eine Tabelle für eine einzige Zeile ist typografisch die schwächere Wahl; hier wiegt die

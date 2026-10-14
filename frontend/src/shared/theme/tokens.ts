@@ -3,7 +3,7 @@
  * spacing, radius, shadow and motion value. Values mirror docs/design/guidelines.md, which in
  * turn is derived from the target-state mockups (docs/design/OPAA Mockups.html). Components
  * never reference scale values (blue, navy, gray) directly - they go through the semantic
- * roles below, so a branding override (#582/#583) can replace the accent without touching
+ * roles below, so a branding override can replace the accent without touching
  * component code.
  */
 
@@ -43,7 +43,7 @@ export const gray = {
 } as const
 
 /**
- * Neutral dark scale of the dark scheme (#654) - aligned with the dark scheme of the Claude
+ * Neutral dark scale of the dark scheme - aligned with the dark scheme of the Claude
  * docs site (code.claude.com, sampled 2026-08-20): a near-black, neutral gray with clear
  * surface steps instead of navy-on-navy. Navy remains the sidebar's block in the light scheme.
  */
@@ -109,14 +109,14 @@ export interface SchemeRoles {
   fg3: string
   /**
    * Action, reference, active state - as text and indicator colour. Replaceable via branding.
-   * Proven >= 4.5:1 against bg-1..3 of its own scheme (#634): blue-700 in the light scheme,
+   * Proven >= 4.5:1 against bg-1..3 of its own scheme: blue-700 in the light scheme,
    * blue-500 in the dark ones.
    */
   accent: string
   /** Text on accent surfaces. */
   accentFg: string
   /**
-   * Filled action surfaces (contained buttons, filled primary chips), #634: blue-700 in every
+   * Filled action surfaces (contained buttons, filled primary chips): blue-700 in every
    * scheme, so accentFg (white) reaches >= 4.5:1 on it - blue-500 only managed 3.3:1.
    */
   accentSurface: string
@@ -152,12 +152,12 @@ export const lightRoles: SchemeRoles = {
   bg3: smoke,
   fg1: navy[800],
   fg2: gray[600],
-  // gray[500], not gray[400] (#725): gray[400] only reaches 3.68:1 against white, below the
+  // gray[500], not gray[400]: gray[400] only reaches 3.68:1 against white, below the
   // 4.5:1 WCAG AA floor for the fg-3 role (tertiary text, table heads, metadata - see
   // frontend/src/shared/theme/theme.test.ts). gray[500] reaches 6.08:1 and keeps the gray scale
   // itself at its original, ordered values.
   fg3: gray[500],
-  // blue[700], not blue[500] (#634): accent is also a text colour (links, footnote digits,
+  // blue[700], not blue[500]: accent is also a text colour (links, footnote digits,
   // ghost buttons) and blue[500] reaches only 3.3:1 on white - blue[700] reaches 5.2:1.
   accent: blue[700],
   accentFg: white,
@@ -197,7 +197,7 @@ export const darkRoles: SchemeRoles = {
 /**
  * The navy block the sidebar keeps in the light scheme (mockup 1a) - the former dark-scheme
  * values, now scoped to that one surface. In the dark scheme the sidebar follows
- * {@link darkRoles} instead (#654).
+ * {@link darkRoles} instead.
  */
 export const navyRoles: SchemeRoles = {
   bg1: navy[800],
@@ -221,11 +221,11 @@ export const navyRoles: SchemeRoles = {
 }
 
 /**
- * The global rail left of the space column (#786, mockup 2a): one shade darker than the navy
+ * The global rail left of the space column (mockup 2a): one shade darker than the navy
  * block so the two navigation levels read apart at a glance. bg2 is the hover fill, bg3 the
  * active tile (mockup: navy-800 hover, navy-700 active with a navy-600 border). In the dark
  * scheme the rail follows {@link darkRoles} like the sidebar - carbon has no darker step, so
- * the separation comes from the border instead (#654's flattening applies here too).
+ * the separation comes from the border instead.
  */
 export const railRoles: SchemeRoles = {
   bg1: navy[900],
@@ -233,7 +233,7 @@ export const railRoles: SchemeRoles = {
   bg3: navy[700],
   fg1: white,
   // Mockup 2a paints the muted labels as 60% white; roles are opaque values, so this is that
-  // tone composited over bg1 (review #791, finding 8).
+  // tone composited over bg1.
   fg2: '#99A1AB',
   fg3: '#7A8BA0',
   accent: blue[500],
@@ -252,7 +252,7 @@ export const railRoles: SchemeRoles = {
 
 /**
  * Font stacks (guidelines 3.1). Quicksand is the free relative of the Sklow brand face the
- * mockups use (round-geometric, single-story g, SIL OFL, #658); Inter stays in the stack as
+ * mockups use (round-geometric, single-story g, SIL OFL); Inter stays in the stack as
  * fallback. Both and JetBrains Mono ship with the repo (SIL OFL); the
  * stacks deliberately end in system fonts so an operator-provided brand font can be loaded
  * in front of them later via the branding configuration.
@@ -308,7 +308,7 @@ export const letterSpacing = {
 export const spacingGridPx = 4
 
 /**
- * Breiten der Bereichsseiten (#1607). Die Seiten hinter einer Bereichsnavigation bilden einen
+ * Breiten der Bereichsseiten. Die Seiten hinter einer Bereichsnavigation bilden einen
  * Satz: Läuft der Inhalt der einen bis zum Fensterrand und der anderen nur bis 960 px, springt die
  * rechte Kante beim Wechsel zwischen zwei Menüpunkten. Deshalb steht die Breite hier und nicht in
  * jeder Seite.
@@ -360,8 +360,8 @@ export const motion = {
 } as const
 
 /**
- * Operator branding hooks (guidelines 7). The backend settings arrive with #582/#583; the
- * theme already accepts them so no component ever hardwires the accent.
+ * Operator branding hooks (guidelines 7): the theme takes the backend's branding settings, so no
+ * component ever hardwires the accent.
  */
 export interface BrandingOverrides {
   /** Replaces the accent role; hover/press/focus states are derived from it. */

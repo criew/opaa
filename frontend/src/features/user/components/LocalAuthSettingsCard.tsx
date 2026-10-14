@@ -183,7 +183,7 @@ function LinkFlowSwitch({
 }
 
 /**
- * Warum ein eingeschalteter Fluss gerade trotzdem nicht erreichbar ist (Review-Runde 1, MEDIUM 6).
+ * Warum ein eingeschalteter Fluss gerade trotzdem nicht erreichbar ist.
  * Ein Schalter, der „ein" zeigt, obwohl das Backend den Fluss als abgeschaltet meldet, wäre eine
  * falsche Auskunft; den gespeicherten Wert ändert der Satz nicht.
  */
@@ -201,7 +201,7 @@ function ineffectiveReason(settings: LocalAuthSettingsResponse, domains?: string
 }
 
 /**
- * Die Kopfkarte der Benutzerverwaltung (#1541, ADR-0033 Entscheidungen 4 und 10): die drei
+ * Die Kopfkarte der Benutzerverwaltung (ADR-0033 Entscheidungen 4 und 10): die drei
  * Schalter der lokalen Anmeldung mit ihren Konsequenzen und Vorbedingungen, die Regeln und
  * Fristen, und der Zustand des Mailversands – weil Einladung und Rücksetzung ohne ihn nur als
  * Link-Übergabe funktionieren.
@@ -264,7 +264,7 @@ export default function LocalAuthSettingsCard() {
 
   /**
    * Ein Schalterklick speichert den **Serverstand** plus seine eigene Änderung – nie den Entwurf
-   * der Regeln darunter (Review-Runde 1, HIGH 1): Ein halb getippter Zahlenwert würde sonst
+   * der Regeln darunter: Ein halb getippter Zahlenwert würde sonst
    * mitgespeichert, und ein leeres Feld ließe den Schalter als `NaN` still an der Validierung
    * scheitern. `overrides` darf die Domänenliste mitführen – sie ist die Vorbedingung des
    * Selbstregistrierungs-Schalters und gehört damit zu genau dieser Handlung.

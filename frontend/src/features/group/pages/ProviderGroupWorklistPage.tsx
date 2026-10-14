@@ -19,7 +19,7 @@ import { groupUsageDetails } from '../components/groupUsageLabels'
 import { contentWidth } from '@/shared/theme/tokens'
 
 /**
- * Die Arbeitsliste je Anbieter (#1821, ADR-0036 Entscheidung 2): Der `409` beim Löschen eines
+ * Die Arbeitsliste je Anbieter (ADR-0036 Entscheidung 2): Der `409` beim Löschen eines
  * Anbieters verweist hierher. Je Gruppe steht, wofür sie verwendet wird, und der Ausgang — ihre
  * Rechte übertragen oder dort entfernen, wo sie vergeben sind. Nicht verwendete Gruppen gehen mit
  * dem Anbieter.

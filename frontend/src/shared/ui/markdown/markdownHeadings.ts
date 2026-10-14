@@ -36,10 +36,10 @@ function walk(node: Root | Element, visitor: (heading: Element) => void): void {
 }
 
 /**
- * Normalises the heading levels of one rendered message (#1016): an assistant answer may start at
+ * Normalises the heading levels of one rendered message: an assistant answer may start at
  * any Markdown level (### as the first heading is common), but the chat page already carries the
- * h1 - unchanged levels would land as h5/h6 right after it (axe heading-order, the same class
- * #958/#1015 fixed for static headings).
+ * h1 - unchanged levels would land as h5/h6 right after it (axe heading-order, the same rule
+ * static headings follow).
  *
  * Rank compression, not a fixed offset: the distinct levels that actually occur are mapped, in
  * order, onto h2, h3, ... - so "#" followed by "###" becomes h2/h3 rather than h2/h4, which would

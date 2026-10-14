@@ -62,13 +62,12 @@ describe('MessageList', () => {
     expect(screen.queryByText(ANSWER_ARRIVED_ANNOUNCEMENT)).not.toBeInTheDocument()
   })
 
-  // #749: the live region (visuallyHidden -> position: absolute) sits at the end of the message
+  // The live region (visuallyHidden -> position: absolute) sits at the end of the message
   // list. Without a positioned ancestor, its containing block is the initial containing block
   // (the viewport) rather than the scroll container, so its "static position" - which grows with
   // the message count - escapes the scroll container's clip and inflates
-  // document.documentElement.scrollHeight, producing the outer page scrollbar described in #749
-  // (verified in a real browser; jsdom has no layout engine, so this asserts the CSS containment
-  // fix itself rather than the resulting page height).
+  // document.documentElement.scrollHeight, producing an outer page scrollbar (jsdom has no layout
+  // engine, so this asserts the CSS containment itself rather than the resulting page height).
   it('establishes a positioning context so the live region cannot escape the scroll container', () => {
     const messages: ChatMessage[] = [
       { id: '1', role: 'user', content: 'Hello', timestamp: new Date() },

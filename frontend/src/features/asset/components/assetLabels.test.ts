@@ -24,7 +24,7 @@ describe('assetRoleDescription', () => {
   })
 })
 
-/** #2134: die heutige Größe einer Gruppe an Freigabe und Mitgliedschaft, ohne Mindestgröße. */
+/** Die heutige Größe einer Gruppe an Freigabe und Mitgliedschaft, ohne Mindestgröße. */
 describe('groupMemberCountLabel', () => {
   it('nennt jede Zahl, auch unterhalb der Mindestgruppengröße', () => {
     expect(groupMemberCountLabel({ activeMemberCount: 41 })).toBe('41 Mitglieder')

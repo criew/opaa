@@ -10,7 +10,7 @@ import type {
 } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
 
-// mail (ADR-0033, Entscheidung 10; #1536 API) - SYSTEM_ADMIN only. The SMTP password never
+// mail (ADR-0033, Entscheidung 10) - SYSTEM_ADMIN only. The SMTP password never
 // travels back: a response carries the mask "***", and sending that mask again means
 // "unverändert". Both test endpoints answer 200 with the outcome in the body, never an error.
 export async function getMailSettings(): Promise<MailSettingsResponse> {

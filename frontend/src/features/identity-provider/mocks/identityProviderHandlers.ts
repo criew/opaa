@@ -37,7 +37,7 @@ function unconfirmedConnections(providerId: string, request: Request) {
 }
 
 export const identityProviderHandlers = [
-  // identity providers (ADR-0025, #1329 admin API) - public clients, no secret in any payload;
+  // identity providers (ADR-0025, admin API) - public clients, no secret in any payload;
   // (disabledRegistryStates remembers a disabled provider's decoder state until it is re-enabled)
   // the same invariants as OidcProviderService: the default is neither disable- nor deletable
   // while another provider is there, the last enabled one only with acknowledgeLastProvider

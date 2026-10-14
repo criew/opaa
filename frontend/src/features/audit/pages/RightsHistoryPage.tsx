@@ -50,7 +50,7 @@ function toInstant(localValue: string): string {
 }
 
 /**
- * Die Stichtagsauskunft aus der Rechtehistorie (#1822): wer durfte genau dieses Objekt in genau
+ * Die Stichtagsauskunft aus der Rechtehistorie: wer durfte genau dieses Objekt in genau
  * diesem Zeitraum lesen. Es gibt hier bewusst keine Suche über mehrere Objekte und keinen Einstieg
  * über eine Person — beides setzte ohne Vollmacht ein Rechteprofil zusammen. Das Zeitfenster ist
  * Pflicht, der Anlass ebenfalls, und jeder Abruf steht anschließend im Protokoll.

@@ -7,7 +7,7 @@ import type { FieldError } from '../session/types'
  *
  * `normalizeError` keeps the original `AxiosError` in the thrown error's `cause`, so both stay
  * reachable behind the German message every caller already shows - the same route
- * `documentStore` uses to tell a real 404 apart (#1541).
+ * `documentStore` uses to tell a real 404 apart.
  */
 function responseData(err: unknown): Record<string, unknown> | null {
   const axiosError =

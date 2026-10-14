@@ -72,7 +72,7 @@ describe('RegisterPage', () => {
     expect(screen.queryByText(/Ablauf/)).not.toBeInTheDocument()
   })
 
-  // A second registration of an address that is still unconfirmed sends the link again (#1538), so
+  // A second registration of an address that is still unconfirmed sends the link again, so
   // "no mail arrived" needs no administrator.
   it('offers to send the registration again', async () => {
     renderPage()

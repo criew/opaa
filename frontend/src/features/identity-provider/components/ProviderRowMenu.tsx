@@ -40,7 +40,7 @@ interface ProviderRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü eines Identitätsanbieters (#1625).
+ * Das Zeilenmenü eines Identitätsanbieters.
  *
  * Zwei Regeln des Bereichs stecken hier drin. Erstens: Der Standardanbieter lässt sich weder
  * deaktivieren noch löschen, solange ein anderer existiert — die Einträge sind dann **gesperrt und

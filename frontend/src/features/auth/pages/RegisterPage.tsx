@@ -118,7 +118,7 @@ export default function RegisterPage() {
               Zur Anmeldung
             </Link>
             {/* A second registration of an address that is still unconfirmed sends the
-                verification link again and keeps the stored hash and name (#1538) - so "no mail
+                verification link again and keeps the stored hash and name - so "no mail
                 arrived" has a way out that needs no administrator. The entry stays what it was;
                 the sentence says so, because the form behind this still shows a password field
                 whose content is no longer what decides. */}
@@ -212,7 +212,7 @@ export default function RegisterPage() {
           </Button>
         </Stack>
       </Box>
-      {/* The installation's own privacy notice is not a page of this product yet (#143) - naming
+      {/* The installation's own privacy notice is not a page of this product yet - naming
           where it is would be a promise the application cannot keep. */}
       <Typography sx={{ mt: 3, fontSize: 12, color: 'text.secondary' }}>
         Mit der Registrierung werden Ihr Name und Ihre E-Mail-Adresse in dieser Installation

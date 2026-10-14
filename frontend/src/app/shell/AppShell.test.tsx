@@ -20,8 +20,8 @@ function renderShell(initialRoute = '/chat') {
       <Route element={<AppShell />}>
         <Route path="/chat" element={<div>Chat-Inhalt</div>} />
         <Route element={<GlobalAreaLayout />}>
-          {/* #805: mirrors App.tsx - /settings renders inside the sectionless global frame,
-              the harness had drifted from the route table (#788). */}
+          {/* Mirrors App.tsx - /settings renders inside the sectionless global frame,
+              the harness had drifted from the route table. */}
           <Route path="/settings" element={<PageHeading title="Einstellungen" />} />
           <Route path="/catalog" element={<div>Ohne Überschrift</div>} />
           <Route path="/spaces" element={<div>Spaces-Karten</div>} />
@@ -89,8 +89,8 @@ describe('AppShell', () => {
     expect(screen.getAllByText('OPAA').length).toBeGreaterThan(0)
   })
 
-  // #1921: Die Fußzeile ist weg - Produktname und Version stehen im Profilmenü unter
-  // „Info zu …". Ein contentinfo-Landmark gibt es deshalb nicht mehr.
+  // Keine Fußzeile - Produktname und Version stehen im Profilmenü unter „Info zu …". Ein
+  // contentinfo-Landmark gibt es deshalb nicht.
   it('exposes the landmarks: global rail, chats navigation, main - and no footer', () => {
     renderShell()
     expect(screen.getByRole('navigation', { name: 'Globale Navigation' })).toBeInTheDocument()
@@ -116,7 +116,7 @@ describe('AppShell', () => {
     renderShell()
     expect(document.body).toHaveFocus()
 
-    // Einstellungen lives behind the rail's avatar since #786 (previously the user badge, #587).
+    // Einstellungen lives behind the rail's avatar.
     useAuthStore.setState({
       user: { id: 'u1', email: 'a@b.example', displayName: 'A. Tester', systemRole: 'USER' },
     })
@@ -188,8 +188,8 @@ describe('AppShell', () => {
   })
 
   it('shows rail and space column in the mobile drawer and closes it after navigating', async () => {
-    // The drawer must carry both navigation levels (#786) and dismiss itself once a link
-    // inside it navigates - it used to stay on top of the new page (review #791, finding 9).
+    // The drawer must carry both navigation levels and dismiss itself once a link
+    // inside it navigates instead of staying on top of the new page.
     window.matchMedia = mobileMatchMedia
     try {
       const user = userEvent.setup()

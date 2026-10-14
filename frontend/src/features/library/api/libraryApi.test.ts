@@ -15,7 +15,7 @@ function axiosErrorWithResponse(status: number, data: unknown): AxiosError {
 }
 
 describe('libraryApi', () => {
-  // #738/#743: getDocumentContent() itself cannot be exercised end-to-end here - a Blob response
+  // getDocumentContent() itself cannot be exercised end-to-end here - a Blob response
   // body (success or error) hangs against msw/node in this project's jsdom test environment (see
   // the comment on mapDocumentContentError in api.ts). Both pieces getDocumentContent is built from
   // are pure/independent of any HTTP call, though, and are tested directly instead: the
@@ -51,7 +51,7 @@ describe('libraryApi', () => {
       ).toBe('anlage.pdf')
     })
 
-    // #743 (review): a plain regex without the negative lookahead would match the filename*
+    // A plain regex without the negative lookahead would match the filename*
     // parameter's own "filename" prefix here, returning "*=UTF-8''Anlage%20%C3%9C.pdf" as the file
     // name instead of falling back to null.
     it('does not match the filename* parameter as a plain filename', () => {
@@ -105,10 +105,10 @@ describe('libraryApi', () => {
       )
     })
 
-    // #743 (review, nit 1): a non-404 failure arrives with responseType 'blob' applied to its body
-    // too, so the ErrorResponse JSON must be read out of the Blob rather than off err.response.data
-    // directly - the previous behaviour fell through to normalizeError's generic English
-    // "HTTP <status>: ..." fallback here instead of the backend's German message.
+    // A non-404 failure arrives with responseType 'blob' applied to its body too, so the
+    // ErrorResponse JSON must be read out of the Blob rather than off err.response.data directly -
+    // otherwise normalizeError's generic English "HTTP <status>: ..." fallback would replace the
+    // backend's German message.
     it('reads a German ErrorResponse out of a non-404 Blob error body', async () => {
       const err = axiosErrorWithResponse(
         403,

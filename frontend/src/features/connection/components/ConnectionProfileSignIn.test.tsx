@@ -36,7 +36,7 @@ const KEY_FILE = JSON.stringify({
   private_key: '-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n',
 })
 
-/** A profile's own sign-in in the administration (#2220): key upload, rejection and its test. */
+/** A profile's own sign-in in the administration: key upload, rejection and its test. */
 /** Chooses the source type of a new profile in the select of the dialog. */
 async function chooseSourceType(
   user: ReturnType<typeof userEvent.setup>,

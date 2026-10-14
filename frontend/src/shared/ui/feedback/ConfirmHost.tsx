@@ -24,7 +24,7 @@ const TONE_ICON: Record<ConfirmTone, typeof ErrorOutlineOutlinedIcon | null> = {
 }
 
 /**
- * Das Bestätigungs-Overlay der Anwendung (#1610) — gerendert genau einmal, gespeist aus
+ * Das Bestätigungs-Overlay der Anwendung — gerendert genau einmal, gespeist aus
  * {@link ../../stores/confirmStore}. Es ersetzt `window.confirm`, das seine Frage in Systemschrift
  * stellte, die Folge im selben Textklumpen versteckte und mit „OK" bestätigen ließ.
  *

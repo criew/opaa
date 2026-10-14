@@ -4,7 +4,7 @@ import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceTypeEntry } from './sourceTypeDirectory'
 
 /**
- * Das eine Bildzeichen je Quellentyp (#1942): Kopf der Detailseite und Kachel des Assistenten
+ * Das eine Bildzeichen je Quellentyp: Kopf der Detailseite und Kachel des Assistenten
  * zeigen dasselbe Symbol, damit die Wahl im Assistenten und die angelegte Bibliothek sichtbar
  * dieselbe Sache sind. Immer schmückend — der Typ steht daneben als Text. Ein Typ ohne eigene
  * Registrierung trägt ein neutrales Zeichen.

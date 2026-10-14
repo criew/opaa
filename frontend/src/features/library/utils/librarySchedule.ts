@@ -2,7 +2,7 @@ import type { LibrarySchedule, ScheduleFrequency, ScheduleWeekday } from '@/shar
 
 const DEFAULT_TIME = '03:00'
 
-/** The library's own full-sync rhythm (#1200) - present only for a connector that has one. */
+/** The library's own full-sync rhythm - present only for a connector that has one. */
 export interface ConfluenceFullSyncRhythm {
   /** `null` means "follows the instance-wide default". */
   intervalDays: number | null
@@ -72,7 +72,7 @@ export function validateScheduleValues(
  * first - this does not itself reject anything.
  *
  * <p>The full-sync rhythm is a Confluence setting and travels in `sourceSettings` (ADR-0038).
- * #1200: an empty full-sync field means "instance-wide default", and the two request kinds spell
+ * An empty full-sync field means "instance-wide default", and the two request kinds spell
  * that differently. `LibraryUpdateRequest` needs the explicit 0, because an absent field there
  * means "leave the stored value alone". `LibraryRequest` accepts only 1 to 365 and rejects 0 with
  * 400 - a library being created has no stored value to return to, so the field simply stays away.

@@ -189,7 +189,7 @@ function discardsOf(profile: ConnectionProfileResponse, body: ConnectionProfileU
   }
 }
 
-// Connection profiles (#2160). Like the backend, an answer never carries the client secret, and a
+// Connection profiles. Like the backend, an answer never carries the client secret, and a
 // change that discards anything needs confirmDiscard.
 export const connectionProfileHandlers = [
   http.get(ADMIN, () => HttpResponse.json(mockConnectionProfiles)),

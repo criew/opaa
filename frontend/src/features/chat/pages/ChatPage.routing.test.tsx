@@ -9,8 +9,8 @@ import { server } from '@/test/server'
 import ChatPage from './ChatPage'
 import { useChatStore } from '../stores/chatStore'
 
-// Deliberately does NOT mock react-router (unlike ChatPage.test.tsx): reproducing #548 review
-// finding 1 requires an actual route match, so that navigate(..., { replace: true }) genuinely
+// Deliberately does NOT mock react-router (unlike ChatPage.test.tsx): these cases need an actual
+// route match, so that navigate(..., { replace: true }) genuinely
 // changes what useParams().chatId returns and re-triggers ChatPage's effect - a mocked useParams
 // would never observe that change and could hide the bug.
 function renderChatPageAt(initialRoute: string) {
@@ -77,11 +77,11 @@ describe('ChatPage routing (real router)', () => {
     resetChatStore()
   })
 
-  // #548 review, finding 1: sendMessage sets chatId as soon as the implicit chat is created (well
+  // sendMessage sets chatId as soon as the implicit chat is created (well
   // before the query resolves), which replaces the URL from ".../chats/new" to the real chat id.
-  // That real route change used to re-trigger ChatPage's loadChat effect, which fetched the still
-  // empty persisted history (the backend only persists the turn once the LLM has answered) and
-  // wiped the just-sent user message back out of the UI.
+  // That real route change must not re-trigger ChatPage's loadChat effect: it would fetch the
+  // still empty persisted history (the backend only persists the turn once the LLM has answered)
+  // and wipe the just-sent user message back out of the UI.
   it('keeps the just-sent user message visible while the implicit chat creation and query are in flight', async () => {
     server.use(
       http.post('/api/v1/query', async ({ request }) => {
@@ -122,14 +122,12 @@ describe('ChatPage routing (real router)', () => {
     expect(screen.getByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
   })
 
-  // CI follow-up to #548: navigating from an existing, already-loaded chat to ".../chats/new" left
-  // the previous chat's messages (and any Belege in them) on screen. The URL-replace effect
-  // watches storeChatId to redirect out of "new" once sendMessage has implicitly created a chat -
-  // but on the very render where the route just became "new", storeChatId still held the *old*
-  // chat's id (the routing effect's startNewChat() call only clears it on a later render). That
-  // stale-but-truthy id made the effect immediately navigate right back to the old chat's URL,
-  // defeating "start a new chat" entirely - the old history, including its cited source, was still
-  // exactly what a subsequent question got appended to and rendered alongside.
+  // Regression guard for #548: navigating from an already-loaded chat to ".../chats/new" clears
+  // the previous chat's messages and Belege. The URL-replace effect watches storeChatId to
+  // redirect out of "new" once sendMessage has implicitly created a chat - but on the render where
+  // the route just became "new", storeChatId still holds the *old* chat's id (startNewChat() only
+  // clears it on a later render). Acting on that stale id would navigate straight back to the old
+  // chat's URL.
   it('clears a loaded chat with a cited source when navigating to a new chat', async () => {
     renderChatPageWithNavLinks('/spaces/space-personal/chats/chat-personal-1')
 
@@ -202,7 +200,7 @@ describe('ChatPage routing (real router)', () => {
     expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
   })
 
-  // Since #1647 picking a space leads to that space's ".../chats/new" - so one draft can follow
+  // Picking a space leads to that space's ".../chats/new" - so one draft can follow
   // another with only the :spaceId changing. The draft must then belong to the space just picked
   // and start over: a sticky knowledge scope of the previous draft would otherwise silently carry
   // into a space it does not belong to.

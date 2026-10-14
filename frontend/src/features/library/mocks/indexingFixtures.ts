@@ -29,7 +29,7 @@ export const mockIndexingCompleted: IndexingStatusResponse = {
 /** @deprecated Use mockIndexingCompleted instead */
 export const mockIndexingStatus = mockIndexingCompleted
 
-// #513: fixture for GET /api/v1/libraries/{libraryId}/indexing/runs - one run with a protocol
+// Fixture for GET /api/v1/libraries/{libraryId}/indexing/runs - one run with a protocol
 // entry, mirroring the issue's own motivating BMF case (a rejected RSS entry).
 export const mockIndexingRuns: IndexingRunListResponse = {
   runs: [

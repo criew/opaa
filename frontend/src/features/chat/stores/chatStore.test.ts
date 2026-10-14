@@ -18,7 +18,7 @@ import { useChatListStore } from './chatListStore'
 
 /** Resolves once resolve() is called - lets a test hold an MSW handler open until it explicitly
  * wants the response to arrive, so it can trigger resetAllStores() while the request is still in
- * flight (#575). */
+ * flight. */
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((r) => {
@@ -30,7 +30,7 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 const SPACE_ID = 'space-personal'
 const EXISTING_CHAT_ID = 'chat-personal-1'
 const EMPTY_CHAT_ID = 'chat-engineering-1'
-// The one fixture chat with a Gesprächsnotiz (#1488) - two points, three completed rounds.
+// The one fixture chat with a Gesprächsnotiz - two points, three completed rounds.
 const NOTE_CHAT_ID = 'chat-engineering-2'
 const NOTE_ITEM_ID = '3f1b6d64-4a3c-4f2e-9b1a-0c9d8e7f6a51'
 const OTHER_NOTE_ITEM_ID = '5c2e8a17-9d44-4f81-b3c7-2a6f4e0d1b93'
@@ -66,11 +66,11 @@ async function releaseWhenHeld(getRelease: () => (() => void) | undefined): Prom
 describe('chatStore', () => {
   beforeEach(() => {
     resetChatStore()
-    // settingsUpdateChains/confirmedSettingsByChatId are module state, not store state (#573) -
+    // settingsUpdateChains/confirmedSettingsByChatId are module state, not store state -
     // they survive resetChatStore() above and would otherwise leak between test cases.
     clearSettingsPersistenceCache()
-    // Same reasoning for the not-yet-confirmed note removals (#1488) and the manual-rename
-    // marks that keep the delayed title reload off a renamed chat (#1919) - module state too.
+    // Same reasoning for the not-yet-confirmed note removals and the manual-rename
+    // marks that keep the delayed title reload off a renamed chat - module state too.
     clearRemovedNoteItemCache()
     clearManualRenameMarks()
     useChatListStore.setState({ chatsBySpaceId: {}, isLoading: false, error: null })
@@ -127,7 +127,7 @@ describe('chatStore', () => {
       expect(state.referencedLibraryIds).toEqual(['library-referat-50'])
     })
 
-    // #564 review: the "empty bar" persisted state (useKnowledge=false, no referencedLibraryIds)
+    // The "empty bar" persisted state (useKnowledge=false, no referencedLibraryIds)
     // must restore as scope "none", not silently fall back to "all" or "libraries".
     it('restores the chat-level scope as "none" for useKnowledge=false with no referencedLibraryIds', async () => {
       server.use(
@@ -154,10 +154,10 @@ describe('chatStore', () => {
       expect(state.referencedLibraryIds).toEqual([])
     })
 
-    // #564 review: a chat persisted with useKnowledge=true still carrying leftover
+    // A chat persisted with useKnowledge=true still carrying leftover
     // referencedLibraryIds (a legacy/inconsistent record) must show @Space-Wissen, not a mix of
     // both - the bar has to mirror exactly one state, and the ids are meaningless while
-    // useKnowledge is true (#560).
+    // useKnowledge is true.
     it('discards referencedLibraryIds locally when useKnowledge=true carries a non-empty list', async () => {
       server.use(
         http.get('/api/v1/chats/:chatId', ({ params }) =>
@@ -191,9 +191,9 @@ describe('chatStore', () => {
       expect(state.isLoadingChat).toBe(false)
     })
 
-    // #548 review, finding 2: a failed load used to leave the previously active chat (id, space,
-    // history) in place, so the next message would silently go to a chat the user is no longer
-    // looking at, even though the error alert is shown.
+    // A failed load must not leave the previously active chat (id, space, history) in place -
+    // the next message would silently go to a chat the user is no longer looking at, even though
+    // the error alert is shown.
     it('clears the previously active chat when loading a different chat fails', async () => {
       await useChatStore.getState().loadChat(EXISTING_CHAT_ID)
       expect(useChatStore.getState().chatId).toBe(EXISTING_CHAT_ID)
@@ -208,7 +208,7 @@ describe('chatStore', () => {
       expect(state.title).toBeNull()
     })
 
-    // #548 review, finding d: a slower-arriving response for an earlier loadChat call must not
+    // A slower-arriving response for an earlier loadChat call must not
     // overwrite a faster, later one - only the most recently requested chat may end up active.
     it('ignores a stale loadChat response that arrives after a newer one resolved', async () => {
       server.use(
@@ -239,7 +239,7 @@ describe('chatStore', () => {
       expect(useChatStore.getState().chatId).toBe(EMPTY_CHAT_ID)
     })
 
-    // #548 review, finding d: a synchronous startNewChat while a loadChat is still in flight must
+    // A synchronous startNewChat while a loadChat is still in flight must
     // not be clobbered once that stale response eventually arrives.
     it('does not let a stale loadChat response overwrite a subsequent startNewChat', async () => {
       server.use(
@@ -269,7 +269,7 @@ describe('chatStore', () => {
       expect(state.messages).toEqual([])
     })
 
-    // #559: startNewChat invalidates an in-flight loadChat via chatLoadSequence, but the
+    // startNewChat invalidates an in-flight loadChat via chatLoadSequence, but the
     // superseded loadChat handler returns before its own set() call - nobody else resets
     // isLoadingChat back to false, so ChatPage's spinner branch (`if (isLoadingChat) ...`) never
     // clears and the chat input never reappears.
@@ -341,7 +341,7 @@ describe('chatStore', () => {
       expect(state.chatId).toBeNull()
     })
 
-    // #2486: the completeness flags of the answer reach the message the bubble renders its hint from.
+    // The completeness flags of the answer reach the message the bubble renders its hint from.
     it.each([
       ['answerTruncated', { answerTruncated: true, answerEmpty: false }],
       ['answerEmpty', { answerTruncated: false, answerEmpty: true }],
@@ -492,7 +492,7 @@ describe('chatStore', () => {
       expect(state.messages).toHaveLength(1)
     })
 
-    // #575, #618 review: sendMessage has two write-back paths after an await - the implicit chat
+    // sendMessage has two write-back paths after an await - the implicit chat
     // creation (chatId) and the final answer (messages/chatId) - both must skip their set() call
     // once a logout (resetAllStores) ran while the request was still in flight, instead of
     // resurrecting the previous user's chat into the store logout just emptied.
@@ -580,7 +580,7 @@ describe('chatStore', () => {
         expect(state.isLoading).toBe(false)
       })
 
-      // #575 review: a third write-back path, missed by the first pass - applyScopeChange's own
+      // A third write-back path, missed by the first pass - applyScopeChange's own
       // PATCH success handler wrote to the module-level confirmedSettingsByChatId map before any
       // guard ran, so a logout in between did not stop it from repopulating a map reset() had just
       // cleared via clearSettingsPersistenceCache().
@@ -1255,7 +1255,7 @@ describe('chatStore', () => {
       })
     })
 
-    // Payload mapping for all three chip-bar states (#560): @Space-Wissen -> useKnowledge=true (no
+    // Payload mapping for all three chip-bar states: @Space-Wissen -> useKnowledge=true (no
     // libraryIds), concrete chips -> useKnowledge=false + libraryIds, empty bar -> useKnowledge=
     // false with an empty libraryIds array, mirroring exactly what the bar shows.
     describe('maps scope to the query payload', () => {
@@ -1321,7 +1321,7 @@ describe('chatStore', () => {
       })
     })
 
-    // #548 review, finding 4: an implicitly created chat must show up in its space's chat list
+    // An implicitly created chat must show up in its space's chat list
     // right away, not only after a manual reload of the list.
     it('adds the implicitly created chat to chatListStore', async () => {
       useChatStore.getState().startNewChat(SPACE_ID)
@@ -1333,7 +1333,7 @@ describe('chatStore', () => {
       expect(chats?.some((chat) => chat.id === chatId)).toBe(true)
     })
 
-    // #548 review, finding 4: every turn should bump the chat to the top of its space's list, the
+    // Every turn should bump the chat to the top of its space's list, the
     // same way the backend's own updatedAt bump would once the list is reloaded.
     it('touches the chat in chatListStore after every turn', async () => {
       useChatListStore.setState({
@@ -1373,7 +1373,7 @@ describe('chatStore', () => {
     })
   })
 
-  // #557: the chat's title after an answer arrives - the immediate fallback QueryResponse#chatTitle
+  // The chat's title after an answer arrives - the immediate fallback QueryResponse#chatTitle
   // carries, and the delayed reload that picks up the LLM-derived title generated asynchronously
   // on the backend after a chat's very first turn.
   describe('chat title (#557)', () => {
@@ -1440,7 +1440,7 @@ describe('chatStore', () => {
       expect(useChatStore.getState().title).toBe('LLM-generierter Titel')
     })
 
-    // #1919: renaming inside the 2.5-second window must not be undone on screen. The server never
+    // Renaming inside the 2.5-second window must not be undone on screen. The server never
     // overwrites a manual title (ChatTitleGenerationService writes only while titleSource is
     // GENERATED); the delayed reload would still display the generated one, because it may read
     // the chat while the rename's own PATCH is still on the wire.
@@ -1548,7 +1548,7 @@ describe('chatStore', () => {
       expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-a'])
     })
 
-    // The Ersetzungslogik at the core of #560: the first concrete chip replaces @Space-Wissen, and
+    // The Ersetzungslogik of the chip bar: the first concrete chip replaces @Space-Wissen, and
     // re-adding @Space-Wissen replaces the concrete chips in turn.
     it('replaces @Space-Wissen with the first concrete chip', () => {
       useChatStore.getState().startNewChat(SPACE_ID)
@@ -1635,7 +1635,7 @@ describe('chatStore', () => {
       expect(patchedBody?.referencedLibraryIds).toEqual([])
     })
 
-    // #1070: the chat's sticky core-field filter persists like the scope - through its own PATCH
+    // The chat's sticky core-field filter persists like the scope - through its own PATCH
     // that leaves the scope fields untouched, an object without any condition clearing it - and is
     // restored from the chat on load.
     it('persists the metadata filter via PATCH and clears it with an empty object', async () => {
@@ -1759,10 +1759,9 @@ describe('chatStore', () => {
       expect(patchedBody?.referencedLibraryIds).toEqual([])
     })
 
-    // #548 review, finding 3: a failed PATCH used to leave the UI showing a setting the server
-    // never applied (chat settings take precedence server-side) - it must roll back and surface
-    // the error instead. Carried over to the chip-only model: rolling back both fields together
-    // keeps the bar an exact mirror of the persisted chat settings.
+    // A failed PATCH must not leave the UI showing a setting the server never applied (chat
+    // settings take precedence server-side) - it rolls back and surfaces the error. Rolling back
+    // both fields together keeps the bar an exact mirror of the persisted chat settings.
     it('rolls back the scope and shows an error when the PATCH fails', async () => {
       server.use(
         http.patch('/api/v1/chats/:chatId', () => {
@@ -1802,10 +1801,10 @@ describe('chatStore', () => {
       expect(state.error).toBeTruthy()
     })
 
-    // #548 review, finding 3: sendMessage must await a still-in-flight settings PATCH before
+    // sendMessage must await a still-in-flight settings PATCH before
     // querying, or the query could reach the server (and be answered using the chat's persisted
     // settings) before the PATCH that was meant to change them.
-    // #565: a settings PATCH for the chat that was active when the change was made must not roll
+    // A settings PATCH for the chat that was active when the change was made must not roll
     // back a *different* chat's state once the user has since navigated away and its slow,
     // failing response finally arrives.
     it('does not roll back a different chat once a stale settings PATCH from a previous chat fails', async () => {
@@ -1856,7 +1855,7 @@ describe('chatStore', () => {
       expect(state.referencedLibraryIds).toEqual(['library-new-chat'])
     })
 
-    // #565 review: isolates the chatId guard from the sequence guard above - no further settings
+    // Isolates the chatId guard from the sequence guard above - no further settings
     // change happens on the newly active chat, so settingsUpdateSequence still points at the
     // stale request and cannot itself block the rollback. Only the chatId comparison can. Removing
     // just that guard (keeping the sequence guard) turns this test red.
@@ -1879,7 +1878,7 @@ describe('chatStore', () => {
       // User simply navigates away - to a chat with a different scope of its own - without any
       // further settings change. Using a chat whose scope differs from EXISTING_CHAT_ID's own
       // pre-change value ('all') makes the scope assertion below actually exercise the guard too,
-      // not just the error assertion (#570 review, third round).
+      // not just the error assertion.
       await useChatStore.getState().loadChat('chat-personal-2')
       expect(useChatStore.getState().scope).toBe('libraries') // chat-personal-2's own, unrelated scope
       expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
@@ -1894,7 +1893,7 @@ describe('chatStore', () => {
       expect(state.error).toBeNull()
     })
 
-    // #573: a settings PATCH that finally succeeds after the user navigated away and back to the
+    // A settings PATCH that finally succeeds after the user navigated away and back to the
     // *same* chat must not leave the chip bar showing the stale server value a concurrent loadChat
     // read while the PATCH was still in flight - the late success is, at the moment it lands, the
     // more authoritative source and must win. The chatId guard alone cannot catch this case (unlike
@@ -1977,12 +1976,11 @@ describe('chatStore', () => {
       expect(state.referencedLibraryIds).toEqual([])
     })
 
-    // #619: the other half of the race #618 only closed for the reverse arrival order - here the
-    // GET is sent *before* the PATCH commits, but the PATCH's response arrives *before* the GET's
-    // own response. Without a guard, loadChat's success handler applies its now-stale snapshot
-    // (read before the PATCH committed) on top of the settings the PATCH just confirmed, silently
-    // diverging the chip bar from the server again.
-    // #619 review: the GET's stale referencedLibraryIds and the PATCH's confirmed
+    // The other arrival order of the GET/PATCH race - here the GET is sent *before* the PATCH
+    // commits, but the PATCH's response arrives *before* the GET's own response. Without a guard,
+    // loadChat's success handler applies its now-stale snapshot (read before the PATCH committed)
+    // on top of the settings the PATCH just confirmed, silently diverging the chip bar from the
+    // server again. The GET's stale referencedLibraryIds and the PATCH's confirmed
     // referencedLibraryIds are deliberately different non-empty arrays here (not both `[]`, as a
     // first version of this test had them) - otherwise a broken guard that let the GET response
     // through would coincidentally still assert green, since both values happen to be equal.
@@ -2051,7 +2049,7 @@ describe('chatStore', () => {
       expect(state.referencedLibraryIds).toEqual(['library-old', 'library-new'])
     })
 
-    // #619 review: isolates the guard's scope from a full early return - a fix that skipped the
+    // Isolates the guard's scope from a full early return - a fix that skipped the
     // set() call entirely once a settings change raced the GET (instead of narrowing which fields
     // that set() call applies) would also make the assertion above pass, but would then also leave
     // the racing GET response's *other* fields - like title here - stuck on their pre-load value.
@@ -2121,7 +2119,7 @@ describe('chatStore', () => {
       expect(state.title).toBe('Titel aus der GET-Antwort')
     })
 
-    // #618 review: mirrors "does not inherit an error or rolled-back state..." above, but for the
+    // Mirrors "does not inherit an error or rolled-back state..." above, but for the
     // success handler's chatId guard - a settings PATCH for chat A that only ends up succeeding
     // after the user has since navigated to chat B (with no further settings change of their own)
     // must not overwrite B's own settings with A's. No further settings change happens on B, so
@@ -2175,7 +2173,7 @@ describe('chatStore', () => {
       expect(state.referencedLibraryIds).toEqual(['library-referat-50'])
     })
 
-    // #618 review: mirrors "lets the last requested settings change win over an earlier,
+    // Mirrors "lets the last requested settings change win over an earlier,
     // slower-failing PATCH on the same chat" below, but for the success handler's sequence guard -
     // here the *earlier* action's PATCH also succeeds, just later than the newer action's own
     // optimistic update. The chatId never changes in this test, so removing just the sequence guard
@@ -2227,11 +2225,10 @@ describe('chatStore', () => {
       expect(state.error).toBeNull()
     })
 
-    // #565 review, finding 1: two rapid scope changes on the same chat used to fire two PATCHes in
-    // parallel - the network, not the order the user clicked in, decided which request the server
-    // saw last. This test catches the *overlap* itself (not just its eventual symptom): the second
-    // request's handler must never start executing while the first one for the same chat is still
-    // in flight.
+    // Two parallel PATCHes for rapid scope changes on the same chat would let the network, not the
+    // order the user clicked in, decide which request the server sees last. This test catches the
+    // *overlap* itself (not just its eventual symptom): the second request's handler must never
+    // start executing while the first one for the same chat is still in flight.
     it('sends settings PATCHes for the same chat one at a time, never overlapping', async () => {
       let inFlight = 0
       const overlapDetected: boolean[] = []
@@ -2265,7 +2262,7 @@ describe('chatStore', () => {
       expect(overlapDetected).toEqual([false, false])
     })
 
-    // #565: two rapid scope changes on the *same* chat - the last requested action must win, not
+    // Two rapid scope changes on the *same* chat - the last requested action must win, not
     // whichever PATCH response happens to arrive last over the network. Here the first (older)
     // action's PATCH is slower and fails; the second (newer, and successful) action must not be
     // undone by that stale failure once it finally arrives.
@@ -2304,7 +2301,7 @@ describe('chatStore', () => {
 
       // Action 2's chain entry is, by construction, chained behind action 1 (see
       // settingsUpdateChains) - awaiting it already means action 1 has fully settled too, so no
-      // extra sleep is needed here (#570 review, third round).
+      // extra sleep is needed here.
       await useChatStore.getState().pendingSettingsUpdate
 
       const state = useChatStore.getState()
@@ -2362,7 +2359,7 @@ describe('chatStore', () => {
       expect(events).toEqual(['patch-start', 'patch-end', 'query-start'])
     })
 
-    // #570 review, second round: sendMessage must await the *active chat's own* settings chain,
+    // sendMessage must await the *active chat's own* settings chain,
     // not the global pendingSettingsUpdate slot - a fast settings change on a different chat can
     // already have cleared that slot back to null while the active chat's own PATCH is still in
     // flight (scenario: slow change on chat A, switch to chat B, fast change on B, switch back to
@@ -2442,7 +2439,7 @@ describe('chatStore', () => {
       )
     })
 
-    // #440 review, point 3: settingsUpdateChains and confirmedSettingsByChatId are module-level
+    // settingsUpdateChains and confirmedSettingsByChatId are module-level
     // maps keyed by chatId, not scoped to any particular user - a stale entry left over from the
     // previous user's session would otherwise survive a logout and leak into whichever session
     // reuses the same chat id next (e.g. a deep link into a chat the new user also happens to be
@@ -2552,8 +2549,8 @@ describe('chatStore', () => {
       expect(useChatStore.getState().referencedLibraryIds).toEqual([])
     })
 
-    // #618 review (nit 3): dropChatSettingsCache is what chatListStore.deleteChatFromList calls
-    // once a chat is actually deleted server-side (#573) - it must drop that chat's
+    // dropChatSettingsCache is what chatListStore.deleteChatFromList calls
+    // once a chat is actually deleted server-side - it must drop that chat's
     // settingsUpdateChains entry immediately, so a later sendMessage for the same (now-deleted)
     // chat id never queues/awaits behind a chain that can no longer matter.
     it('dropChatSettingsCache clears the per-chat settings PATCH queue so a later sendMessage does not await it', async () => {
@@ -2610,7 +2607,7 @@ describe('chatStore', () => {
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
-    // #618 review (nit 2): confirmedSettingsByChatId must not be dropped out from under a still
+    // confirmedSettingsByChatId must not be dropped out from under a still
     // in-flight PATCH's own failure handler just because the chat was deleted in the meantime - the
     // deferred cleanup in dropChatSettingsCache must still apply it once that PATCH itself settles.
     it('dropChatSettingsCache defers the confirmedSettingsByChatId cleanup until the in-flight PATCH for the deleted chat settles', async () => {
@@ -2673,7 +2670,7 @@ describe('chatStore', () => {
     })
   })
 
-  // #1488: the note state the store keeps for the active chat - where it comes from (GET chat,
+  // The note state the store keeps for the active chat - where it comes from (GET chat,
   // every answer), and what removing a point does.
   describe('Gesprächsnotiz (#1488)', () => {
     const FRAME_POINT = {

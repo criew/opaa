@@ -9,7 +9,7 @@ import {
 } from './citations'
 import type { SourceReference } from '@/shared/api/types'
 
-// #1066 (metadata-schema.md, Wirkstelle 3): the generic metadata line shared by the Fundstellen
+// metadata-schema.md, Wirkstelle 3: the generic metadata line shared by the Fundstellen
 // block and the Belegfenster - rendered from the backend's list without field knowledge.
 describe('formatMetadataLine', () => {
   const base: SourceReference = {
@@ -147,7 +147,7 @@ describe('buildCitationIndex', () => {
         fileName: 'verwaist.md',
         numbers: [1],
         source: undefined,
-        // #1102: no source, hence no position in the pipeline's selection - such a row sorts last
+        // No source, hence no position in the pipeline's selection - such a row sorts last
         // in the Belegfenster instead of silently taking the top spot.
         sourceIndex: Number.MAX_SAFE_INTEGER,
         locations: [],
@@ -184,7 +184,7 @@ describe('buildCitationIndex', () => {
   test('resolves markers by documentId, not last-wins by file name, for two same-named documents (PR #745 review)', () => {
     // Document A (higher relevance, cited) and document B (lower relevance, uncited) share a file
     // name but have distinct document ids - the backend now keeps both as separate SourceReference
-    // rows (#739) instead of merging them into one.
+    // rows instead of merging them into one.
     const docA = source('anlage.pdf', true, 'doc-a', 0.9)
     const docB = source('anlage.pdf', false, 'doc-b', 0.5)
     const content = 'Beleg【source: doc-a#0 | anlage.pdf】.'
@@ -202,8 +202,8 @@ describe('buildCitationIndex', () => {
   })
 
   test('falls back to file name when a persisted legacy message carries no documentId', () => {
-    // chat_messages.sources is a JSON snapshot (#590) - an older, persisted message may predate
-    // #739 and carry no documentId at all. The file-name join must still work for those.
+    // chat_messages.sources is a JSON snapshot - an older, persisted message may carry no
+    // documentId at all. The file-name join must still work for those.
     const index = buildCitationIndex('Beleg【source: aa#0 | legacy.pdf】', [
       source('legacy.pdf', true, undefined),
     ])
@@ -249,7 +249,7 @@ describe('buildCitationIndex', () => {
   })
 })
 
-// #1242: a value that belongs into the Beleg detail view, not into the one-line Fundstellenzeile.
+// A value that belongs into the Beleg detail view, not into the one-line Fundstellenzeile.
 describe('metadata detail entries', () => {
   const source = {
     fileName: 'anfrage.eml',

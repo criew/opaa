@@ -60,7 +60,7 @@ describe('recentSpaces', () => {
       expect(lastUsedSpace([space('a'), space('b')])).toEqual(space('b'))
     })
 
-    /** #1911: Der gemerkte Space ist nicht mehr zugänglich — der Aufrufer fällt zurück. */
+    /** Der gemerkte Space ist nicht mehr zugänglich — der Aufrufer fällt zurück. */
     it('überspringt gemerkte Spaces, die der Dienst nicht mehr ausliefert', () => {
       rememberSpaceUse('persoenlich')
       rememberSpaceUse('entzogen')
