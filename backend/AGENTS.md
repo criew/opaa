@@ -134,8 +134,9 @@ Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der
 - **Admin-only-Endpunkte:** Die Prüfung auf Systemverwaltung steht entweder als
   `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` am Controller oder, wenn der Service auch von anderen
   Aufrufern erreichbar ist, im Service per `CurrentUser#requireSystemAdmin(String)` — dann ohne
-  `@PreAuthorize`, damit eine Stelle für jeden Aufrufer entscheidet (`PermissionHistoryRetentionController`).
-  Keine private Kopie der Prüfung im Service.
+  `@PreAuthorize`, damit eine Stelle für jeden Aufrufer entscheidet (`PermissionHistoryRetentionController`);
+  steht kein Service dahinter, ruft der Controller die Methode selbst (`ClientAddressDiagnosticsController`).
+  Keine private Kopie der Prüfung.
 - **Mapper:** Die Abbildung Entity → Response lebt in einer package-private, handgeschriebenen
   Mapper-Klasse im Paket des Controllers (Vorbild `BrandingResponseMapper`, `SpaceResponseMapper`).
   Braucht ein anderes `web`-Paket sie, wird sie `public`, und nur mit den Methoden, die es aufruft

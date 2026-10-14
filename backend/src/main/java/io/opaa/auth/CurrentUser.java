@@ -86,8 +86,7 @@ public final class CurrentUser {
 
   /**
    * Refuses every caller but the system administration with {@code message} as the user-facing text
-   * of the 403. A service that administrator-only endpoints reach without their own
-   * {@code @PreAuthorize} calls this, so one place decides it for every caller of the service.
+   * of the 403.
    */
   public void requireSystemAdmin(String message) {
     if (!isSystemAdmin()) {
