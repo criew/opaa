@@ -4,7 +4,7 @@ import type {
   ConnectionProfileUpdateRequest,
   PersonCount,
   SourceChangeRejectionCategory,
-} from '../../../types/api'
+} from '@/shared/api/types'
 
 function blank(value: string | null | undefined): string {
   return value ?? ''

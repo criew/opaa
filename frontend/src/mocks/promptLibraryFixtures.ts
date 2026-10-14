@@ -1,4 +1,4 @@
-import type { PromptLibraryResponse, PromptResponse } from '../types/api'
+import type { PromptLibraryResponse, PromptResponse } from '@/shared/api/types'
 
 const INITIAL_PROMPT_LIBRARIES: Record<string, PromptLibraryResponse> = {
   'prompt-library-referat-50': {

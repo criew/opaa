@@ -6,12 +6,12 @@ import type {
   ChatNoteItem,
   MetadataFilter,
   SourceReference,
-} from '../types/api'
+} from '@/shared/api/types'
 import { createChat, deleteChatNoteItem, getChat } from '../services/chatApi'
 import { sendQuery } from '../services/queryApi'
 import { useChatListStore } from './chatListStore'
 import { notify } from './notificationStore'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import {
   settingsUpdateChains,
   settingsChangeSequenceByChatId,
@@ -23,7 +23,7 @@ import {
   clearSettingsPersistenceCache,
 } from './chatSettingsPersistence'
 import type { SearchScope } from './chatSettingsPersistence'
-import { registerSessionStore } from './resettableStores'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 function generateId(): string {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
@@ -34,7 +34,7 @@ function toChatMessage(message: ChatMessageResponse): ChatMessage {
     id: message.id,
     role: message.role === 'USER' ? 'user' : 'assistant',
     content: message.content,
-    // Mirrors the QueryResponse#sources normalization in types/api.ts: the generated schema
+    // Mirrors the QueryResponse#sources normalization in shared/api/types.ts: the generated schema
     // leaves indexedAt optional, the frontend's own SourceReference always carries it (null when
     // unknown) - persisted messages go through the same shape as a fresh query response.
     sources: message.sources?.map((source): SourceReference => ({

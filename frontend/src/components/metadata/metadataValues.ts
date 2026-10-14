@@ -1,4 +1,4 @@
-import type { DocumentTypeVocabularyEntryResponse, MetadataValueRequest } from '../../types/api'
+import type { DocumentTypeVocabularyEntryResponse, MetadataValueRequest } from '@/shared/api/types'
 import { datePrecisionLabel } from '../../utils/labels'
 
 // The three core fields a person may set by hand (metadata-schema.md, Teil II (a)); the keys

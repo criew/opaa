@@ -1,7 +1,7 @@
-import type { ChatUpdateRequest, MetadataFilter } from '../types/api'
+import type { ChatUpdateRequest, MetadataFilter } from '@/shared/api/types'
 import { updateChat } from '../services/chatApi'
 import { isEmptyMetadataFilter } from '../services/queryApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import type { ChatState } from './chatStore'
 
 // Monotonically increasing token guarding applyScopeChange's PATCH failure handler (#565): a

@@ -25,8 +25,8 @@ import type {
   AssetGrantSubjectType,
   AssetRole,
   AssetType,
-} from '../../types/api'
-import { useAuthStore } from '../../stores/authStore'
+} from '@/shared/api/types'
+import { useAuthStore } from '@/shared/session/authStore'
 import { successionAwareMessage } from '../succession/successionConflict'
 import { confirmAction } from '../../stores/confirmStore'
 import { assetKey, useGrantStore } from '../../stores/grantStore'

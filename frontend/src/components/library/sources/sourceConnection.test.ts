@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ConnectionAuthMethod } from '../../../types/api'
+import type { ConnectionAuthMethod } from '@/shared/api/types'
 import { registeredSourceTypes, sourceRegistration } from './registry'
 import {
   addressAfterSwitch,

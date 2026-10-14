@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { mockBranding, setMockBranding } from './brandingFixtures'
-import type { BrandingUpdateRequest } from '../types/api'
+import type { BrandingUpdateRequest } from '@/shared/api/types'
 
 export const brandingHandlers = [
   // readable without authentication, like the real endpoint - the sign-in page renders

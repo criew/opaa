@@ -1,5 +1,5 @@
-import type { AssetType, CatalogPageResponse } from '../types/api'
-import { apiClient, normalizeError } from './api'
+import type { AssetType, CatalogPageResponse } from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 
 export interface CatalogQuery {
   /** Only this asset type; every type when absent. */

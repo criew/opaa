@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
-import type { ConnectionProfileImpactResponse } from '../../../types/api'
+import type { ConnectionProfileImpactResponse } from '@/shared/api/types'
 import ProfileChangePreview from './ProfileChangePreview'
 
 const impact: ConnectionProfileImpactResponse = {

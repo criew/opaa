@@ -1,6 +1,6 @@
 import axios from 'axios'
-import type { LocalHandoverPreviewResponse } from '../types/api'
-import { authClient, retryAfterSecondsOf } from './authApi'
+import type { LocalHandoverPreviewResponse } from '@/shared/api/types'
+import { authClient, retryAfterSecondsOf } from '@/shared/session/authApi'
 import { LinkInvalidError, RateLimitedError } from './selfServiceApi'
 
 /**

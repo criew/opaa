@@ -3,9 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
 import MyGroupsSection from './MyGroupsSection'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../../stores/groupStore'
-import type { Capability, GroupListResponse, GroupResponse } from '../../types/api'
+import type { Capability, GroupListResponse, GroupResponse } from '@/shared/api/types'
 
 const {
   mockGetMyStewardedGroups,
@@ -45,9 +45,9 @@ vi.mock('../../services/groupApi', async () => {
   }
 })
 
-vi.mock('../../services/capabilityApi', async () => {
-  const actual = await vi.importActual<typeof import('../../services/capabilityApi')>(
-    '../../services/capabilityApi',
+vi.mock('@/shared/session/capabilityApi', async () => {
+  const actual = await vi.importActual<typeof import('@/shared/session/capabilityApi')>(
+    '@/shared/session/capabilityApi',
   )
   return {
     ...actual,

@@ -1,4 +1,4 @@
-import type { GroupEffectsResponse } from '../../../types/api'
+import type { GroupEffectsResponse } from '@/shared/api/types'
 
 /** Singular or plural with the count in front: „1 Space“, „3 Spaces“. */
 function counted(count: number, one: string, many: string): string {

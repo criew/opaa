@@ -11,7 +11,7 @@ import type {
   DocumentMetadataFieldResponse,
   DocumentTypeVocabularyEntryResponse,
   MetadataValueRequest,
-} from '../../types/api'
+} from '@/shared/api/types'
 import {
   getDocumentTypeVocabulary,
   setDocumentMetadataValue,

@@ -5,7 +5,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import type { EmbeddingInfoResponse } from '../../../types/api'
+import type { EmbeddingInfoResponse } from '@/shared/api/types'
 import { MACHINE_VALUE_SX, MODEL_TABLE_SX } from './modelTableStyles'
 
 interface EmbeddingInfoTableProps {

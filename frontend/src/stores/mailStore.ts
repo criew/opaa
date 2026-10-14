@@ -6,7 +6,7 @@ import type {
   MailTemplateResponse,
   MailTemplateSummaryResponse,
   MailTemplateUpdateRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   getMailSettings,
   getMailTemplate,
@@ -17,8 +17,8 @@ import {
   updateMailSettings,
   updateMailTemplate,
 } from '../services/mailApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 /**
  * Monotone counter over `openTemplate` calls: clicking through the list faster than the answers

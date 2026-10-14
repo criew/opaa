@@ -5,8 +5,8 @@ import { http, HttpResponse } from 'msw'
 import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
-import { useAuthStore } from '../stores/authStore'
-import type { Capability } from '../types/api'
+import { useAuthStore } from '@/shared/session/authStore'
+import type { Capability } from '@/shared/api/types'
 import CatalogNewPage from './CatalogNewPage'
 
 function withCapabilities(capabilities: Capability[]) {

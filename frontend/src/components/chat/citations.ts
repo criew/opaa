@@ -1,4 +1,4 @@
-import type { SourceReference } from '../../types/api'
+import type { SourceReference } from '@/shared/api/types'
 
 /**
  * The backend's citation marker (QueryService): `【source: <documentId>#<chunk> | <fileName>】`.

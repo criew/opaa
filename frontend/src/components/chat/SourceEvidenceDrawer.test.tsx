@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { renderWithProviders, waitForDialogClosed } from '../../test/test-utils'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
-import type { SourceReference } from '../../types/api'
+import type { SourceReference } from '@/shared/api/types'
 import type { OpenDocumentContentResult } from '../../utils/documentContent'
 
 // #739/#780: the "Im Dokument öffnen" action delegates to this shared module (see its own tests for

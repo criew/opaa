@@ -1,4 +1,4 @@
-import type { SearchedLibrary, SourceReference } from './api'
+import type { SearchedLibrary, SourceReference } from '@/shared/api/types'
 
 export type MessageRole = 'user' | 'assistant'
 

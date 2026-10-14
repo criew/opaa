@@ -12,7 +12,7 @@ import type {
   LlmModelDiscoveryResponse,
   LlmModelRequest,
   LlmModelTestRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 
 export function resetLlmModelMockState() {
   resetMockLlmModels()

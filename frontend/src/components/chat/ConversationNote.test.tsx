@@ -3,7 +3,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
-import type { ChatNoteItem } from '../../types/api'
+import type { ChatNoteItem } from '@/shared/api/types'
 import ConversationNote, { REMOVAL_ANNOUNCEMENT_DELAY_MS } from './ConversationNote'
 import { NOTE_MIN_COMPLETED_ROUNDS } from './conversationNoteVisibility'
 

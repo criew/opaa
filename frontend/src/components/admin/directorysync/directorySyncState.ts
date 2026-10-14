@@ -1,4 +1,4 @@
-import type { DirectorySyncStatusResponse, OidcProviderResponse } from '../../../types/api'
+import type { DirectorySyncStatusResponse, OidcProviderResponse } from '@/shared/api/types'
 import type { StatusTone } from '../../StatusLine'
 import { ageSinceLabel, countLabel } from '../../groups/groupOriginLabels'
 

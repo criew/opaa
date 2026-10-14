@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CatalogEntryResponse, CatalogPageResponse } from '../../types/api'
+import type { CatalogEntryResponse, CatalogPageResponse } from '@/shared/api/types'
 import { useAssetCatalogEntry } from './useAssetCatalogEntry'
 
 const { mockGetCatalog } = vi.hoisted(() => ({

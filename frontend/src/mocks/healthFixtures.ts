@@ -1,4 +1,4 @@
-import type { HealthResponse } from '../types/api'
+import type { HealthResponse } from '../shared/api/types'
 
 export const mockHealthResponse: HealthResponse = {
   status: 'UP',

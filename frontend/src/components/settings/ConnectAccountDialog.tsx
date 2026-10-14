@@ -8,7 +8,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { ConnectedAccount, PersonalSecretForm } from '../../types/api'
+import type { ConnectedAccount, PersonalSecretForm } from '@/shared/api/types'
 import { ConnectAccountError, connectMyAccount } from '../../services/connectedAccountApi'
 import BusyButton from '../a11y/BusyButton'
 import {

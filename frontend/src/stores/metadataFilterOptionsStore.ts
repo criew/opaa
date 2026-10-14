@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import type { MetadataFilterOptionsResponse } from '../types/api'
+import type { MetadataFilterOptionsResponse } from '@/shared/api/types'
 import { getMetadataFilterOptions } from '../services/searchApi'
-import { isFeatureEnabled } from './authStore'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { isFeatureEnabled } from '@/shared/session/authStore'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 export interface MetadataFilterScope {
   chatId: string | null

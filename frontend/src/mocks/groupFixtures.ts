@@ -3,7 +3,7 @@ import type {
   GroupListResponse,
   GroupResponse,
   SelectableGroupResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 export const mockGroups: GroupListResponse[] = [
   {

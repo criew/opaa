@@ -1,5 +1,5 @@
 import { formIssue, issueAt, messageOf, type SourceIssue } from './sourceIssue'
-import type { LibraryResponse } from '../types/api'
+import type { LibraryResponse } from '@/shared/api/types'
 import type { LibrarySourceConfigPayload } from './librarySourceConfig'
 
 /** The fixed address of a Google Drive library (ADR-0040); the form never shows it. */

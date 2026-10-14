@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getUserSummaries } from '../services/userApi'
-import type { UserSummary } from '../types/api'
+import type { UserSummary } from '@/shared/api/types'
 
 const SEARCH_DEBOUNCE_MS = 300
 // Mirrors UserService#searchInOrganization's own minimum (backend/src/main/java/io/opaa/auth/

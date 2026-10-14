@@ -1,5 +1,5 @@
 import Typography from '@mui/material/Typography'
-import type { SuccessionStateResponse } from '../../types/api'
+import type { SuccessionStateResponse } from '@/shared/api/types'
 
 /**
  * Die Kennzeichnung am Objekt (ADR-0036, Entscheidung 6; Personalrat Z5): **Zustand und Adressat,

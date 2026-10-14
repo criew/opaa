@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
-import type { SourceTypeDescriptor } from '../../../types/api'
+import type { SourceTypeDescriptor } from '@/shared/api/types'
 import SourceTypeSelect from './SourceTypeSelect'
 
 function descriptor(

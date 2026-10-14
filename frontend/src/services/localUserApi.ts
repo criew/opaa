@@ -9,8 +9,8 @@ import type {
   LocalUserResponse,
   LocalUserSummaryResponse,
   LocalUserUpdateRequest,
-} from '../types/api'
-import { apiClient, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 
 /** Rows per page; the backend refuses more than 50 (ADR-0033, Entscheidung 11). */
 export const LOCAL_USER_PAGE_SIZE = 25

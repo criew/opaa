@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import LibraryExternalAccessSection from './LibraryExternalAccessSection'
-import type { LibraryExternalAccessResponse, LibraryResponse } from '../../types/api'
+import type { LibraryExternalAccessResponse, LibraryResponse } from '@/shared/api/types'
 
 const { mockGetLibrary, mockUpdateLibraryExternalAccess } = vi.hoisted(() => ({
   mockGetLibrary: vi.fn(),

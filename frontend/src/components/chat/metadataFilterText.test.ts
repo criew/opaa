@@ -5,7 +5,7 @@ import {
   withoutDocumentTypes,
   withoutLibraryField,
 } from './metadataFilterText'
-import type { MetadataFilter, MetadataFilterOptionsResponse } from '../../types/api'
+import type { MetadataFilter, MetadataFilterOptionsResponse } from '@/shared/api/types'
 
 const LIBRARY_A = '11111111-1111-1111-1111-111111111111'
 const LIBRARY_B = '22222222-2222-2222-2222-222222222222'

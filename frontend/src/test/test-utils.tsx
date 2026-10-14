@@ -8,11 +8,11 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { createAppTheme } from '../theme/theme'
 import ConfirmHost from '../components/ConfirmHost'
 import NotificationHost from '../components/NotificationHost'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useConfirmStore } from '../stores/confirmStore'
 import { useNotificationStore } from '../stores/notificationStore'
-import type { FeatureFlags, LocalAccountsConfig, SessionKind } from '../types/auth'
-import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
+import type { FeatureFlags, LocalAccountsConfig, SessionKind } from '@/shared/session/types'
+import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
 
 const theme = createAppTheme('dark')
 

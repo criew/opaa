@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { assetKey, useGrantStore } from './grantStore'
-import { resetAllStores } from './resettableStores'
+import { resetAllStores } from '@/shared/session/resettableStores'
 import { getAssetGrants } from '../services/assetApi'
-import type { AssetGrantResponse } from '../types/api'
+import type { AssetGrantResponse } from '@/shared/api/types'
 
 const mockUpsertAssetGrant = vi.fn()
 const mockRevokeAssetGrant = vi.fn()

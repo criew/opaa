@@ -16,10 +16,10 @@ import type {
   AssetSpaceAssociationListResponse,
   AssetSpaceAssociationResponse,
   AssetType,
-} from '../../types/api'
+} from '@/shared/api/types'
 import { detachSpaceAsset, getAssetSpaceAssociations } from '../../services/assetApi'
 import { getSpaces } from '../../services/spaceApi'
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { confirmAction } from '../../stores/confirmStore'
 import { assetTypeLabel } from './assetTypeRegistry'
 

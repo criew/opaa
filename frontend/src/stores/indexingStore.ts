@@ -4,11 +4,11 @@ import type {
   IndexingRunMode,
   IndexingRunResponse,
   IndexingStatus,
-} from '../types/api'
+} from '@/shared/api/types'
 import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../services/indexingApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { sourceRegistration } from '../components/library/sources/registry'
-import { registerSessionStore } from './resettableStores'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 const POLL_INTERVAL_MS = 2000
 

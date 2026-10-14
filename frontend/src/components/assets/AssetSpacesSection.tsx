@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import AssetSpacesList from './AssetSpacesList'
 import UseInSpaceButton from './UseInSpaceButton'
-import type { AssetType } from '../../types/api'
+import type { AssetType } from '@/shared/api/types'
 
 /**
  * The content of the tab „Zuordnungen": „In Space verwenden" above the spaces the asset

@@ -7,8 +7,8 @@ import type {
   ConnectionAuthorizationCompleteResponse,
   ConnectionAuthorizationStartRequest,
   ConnectionAuthorizationStartResponse,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 const ME = '/v1/me/connected-accounts'
 const AUTHORIZATIONS = '/v1/connections/authorizations'

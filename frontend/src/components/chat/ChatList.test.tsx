@@ -5,7 +5,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
 import { server } from '../../mocks/server'
 import ChatList from './ChatList'
-import type { ChatSummary } from '../../types/api'
+import type { ChatSummary } from '@/shared/api/types'
 import { useChatListStore } from '../../stores/chatListStore'
 
 const mockNavigate = vi.fn()

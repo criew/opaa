@@ -3,7 +3,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined'
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined'
-import type { AccountResponse } from '../../../types/api'
+import type { AccountResponse } from '@/shared/api/types'
 import { accountOriginLabel, isLocalAccount } from './accountLabels'
 
 /**

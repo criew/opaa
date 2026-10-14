@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import type { AccountResponse, SystemRole } from '../types/api'
+import type { AccountResponse, SystemRole } from '@/shared/api/types'
 import { mockProviderAccounts, setMockProviderAccounts, toLocalAccount } from './accountFixtures'
 import {
   countsAsInactive,

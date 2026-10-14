@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '../../test/test-utils'
 import { server } from '../../mocks/server'
 import { mockSpaces } from '../../mocks/spaceFixtures'
-import type { SpaceListResponse } from '../../types/api'
+import type { SpaceListResponse } from '@/shared/api/types'
 import UseInSpaceButton from './UseInSpaceButton'
 
 const mockNavigate = vi.fn()

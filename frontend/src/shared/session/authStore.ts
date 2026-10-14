@@ -11,8 +11,8 @@ import type {
   PasswordChangeReason,
   SessionKind,
   SignInProvider,
-} from '../types/auth'
-import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
+} from './types'
+import { LOCAL_ACCOUNTS_DISABLED } from './types'
 import {
   changePassword as changePasswordRequest,
   describeLocalSignInFailure,
@@ -25,11 +25,11 @@ import {
   performLocalRefresh,
   rememberLocalSession,
   UnknownIssuerError,
-} from '../services/authApi'
-import { clearDevUser, resolveDevUser } from '../services/devAuth'
-import type { SessionExpiredReason } from '../services/apiInterceptors'
+} from './authApi'
+import { clearDevUser, resolveDevUser } from './devAuth'
+import type { SessionExpiredReason } from '../api/apiInterceptors'
 import { AUTH_CALLBACK_ROUTE } from '../routes'
-import { sessionEndingReason } from '../services/apiInterceptors'
+import { sessionEndingReason } from '../api/apiInterceptors'
 import {
   CONFIG_UNAVAILABLE_MESSAGE,
   LOCAL_LOGOUT_MESSAGE,
@@ -44,14 +44,14 @@ import {
   sessionEndMessage,
   signInFailedMessage,
   tooManyAttemptsMessage,
-} from '../utils/authMessages'
+} from './authMessages'
 import {
   clearHandoverInFlight,
   isHandoverInFlight,
   markHandoverInFlight,
   setPendingHandover,
 } from './handoverFlow'
-import { safeRedirectPath } from '../utils/safeRedirectPath'
+import { safeRedirectPath } from './safeRedirectPath'
 import {
   authorizationErrorCode,
   clearSilentSignInFlow,
@@ -61,8 +61,8 @@ import {
   markSilentSignInFlow,
   spendSilentSignIn,
 } from './silentSignIn'
-import { notify } from './notificationStore'
-import { featureEnabledIn, recordInstallationFeatures } from '../utils/installationFeatures'
+import { notify } from '../../stores/notificationStore'
+import { featureEnabledIn, recordInstallationFeatures } from './installationFeatures'
 import { resetAllStores } from './resettableStores'
 
 /**

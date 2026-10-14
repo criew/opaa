@@ -1,4 +1,4 @@
-import type { LibrarySchedule, ScheduleFrequency, ScheduleWeekday } from '../types/api'
+import type { LibrarySchedule, ScheduleFrequency, ScheduleWeekday } from '@/shared/api/types'
 
 const DEFAULT_TIME = '03:00'
 

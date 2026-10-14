@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
-import type { ExternalAccessLibraryResponse } from '../../../types/api'
+import type { ExternalAccessLibraryResponse } from '@/shared/api/types'
 import ReleasedLibrariesSection from './ReleasedLibrariesSection'
 import { releaseEndingLabel } from './externalToolsState'
 

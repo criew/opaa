@@ -23,8 +23,8 @@ import type {
   LocalUserResponse,
   LocalUserUpdateRequest,
   SystemRole,
-} from '../../../types/api'
-import { apiFieldErrors } from '../../../services/apiErrorDetails'
+} from '@/shared/api/types'
+import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
 import FieldLabel from '../../wizard/FieldLabel'
 import {

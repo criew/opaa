@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import ProviderGroupWorklistPage from './ProviderGroupWorklistPage'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 
 function signInAsAdmin() {

@@ -5,7 +5,7 @@ import type {
   ConnectedAccountsOverview,
   ConnectionAuthorizationCompleteRequest,
   ConnectionAuthorizationStartRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 
 const ME = '/api/v1/me/connected-accounts'
 const AUTHORIZATIONS = '/api/v1/connections/authorizations'

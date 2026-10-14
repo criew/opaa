@@ -1,4 +1,8 @@
-import type { DiscoveredLlmModel, EmbeddingInfoResponse, LlmModelResponse } from '../types/api'
+import type {
+  DiscoveredLlmModel,
+  EmbeddingInfoResponse,
+  LlmModelResponse,
+} from '@/shared/api/types'
 
 /**
  * Mutable so create/update/delete/activate handlers can reflect their effect on the next list GET

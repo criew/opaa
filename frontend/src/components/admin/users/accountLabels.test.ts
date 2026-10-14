@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { AccountResponse } from '../../../types/api'
+import type { AccountResponse } from '@/shared/api/types'
 import { providerStateHint, providerStateText } from './accountLabels'
 
 function providerAccount(overrides: Partial<AccountResponse> = {}): AccountResponse {

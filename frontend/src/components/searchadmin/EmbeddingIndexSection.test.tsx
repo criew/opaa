@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { server } from '../../mocks/server'
 import { mockEmbeddingIndexStale } from '../../mocks/indexingFixtures'
 import { renderWithProviders } from '../../test/test-utils'
-import type { EmbeddingReindexStatusResponse } from '../../types/api'
+import type { EmbeddingReindexStatusResponse } from '@/shared/api/types'
 import EmbeddingIndexSection from './EmbeddingIndexSection'
 
 const ENDPOINT = '/api/v1/admin/indexing/embedding-reindex'

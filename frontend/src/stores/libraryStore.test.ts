@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { useLibraryStore } from './libraryStore'
-import { resetAllStores } from './resettableStores'
+import { resetAllStores } from '@/shared/session/resettableStores'
 import { getLibraries } from '../services/libraryApi'
-import type { LibraryListResponse } from '../types/api'
+import type { LibraryListResponse } from '@/shared/api/types'
 
 /** Resolves once resolve() is called - lets a test hold loadLibraries()'s request open until it
  * explicitly wants the response to arrive, so it can trigger resetAllStores() while the request

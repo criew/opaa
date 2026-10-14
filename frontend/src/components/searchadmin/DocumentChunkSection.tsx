@@ -10,7 +10,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
-import type { DocumentChunksResponse } from '../../types/api'
+import type { DocumentChunksResponse } from '@/shared/api/types'
 import SectionHead from '../SectionHead'
 import ChunkContent from './ChunkContent'
 import { plural } from './format'

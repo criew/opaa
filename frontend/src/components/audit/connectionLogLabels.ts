@@ -3,7 +3,7 @@ import type {
   ConnectionLogEntryResponse,
   ConnectionLogEventType,
   ConnectionLogOwnerKind,
-} from '../../types/api'
+} from '@/shared/api/types'
 
 /** Every event type in the order the filter offers them. */
 export const CONNECTION_LOG_EVENT_TYPES: readonly ConnectionLogEventType[] = [

@@ -1,4 +1,4 @@
-import type { SpaceMemberResponse } from '../../types/api'
+import type { SpaceMemberResponse } from '@/shared/api/types'
 
 /**
  * Wie eine Mitgliedschaft in Liste und Rückmeldung heißt. Eine geschützte Gruppe erscheint in

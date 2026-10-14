@@ -6,7 +6,7 @@ import type {
   PromptLibraryUpdateRequest,
   PromptRequest,
   PromptResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import { mockGroups, mockMyGroups } from './groupFixtures'
 import { mockMyCapabilities } from './capabilityFixtures'
 import { mockSpaceAssetAssociations } from './assetFixtures'

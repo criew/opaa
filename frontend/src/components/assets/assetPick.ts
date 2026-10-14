@@ -1,4 +1,4 @@
-import type { AssetType } from '../../types/api'
+import type { AssetType } from '@/shared/api/types'
 
 /** One chosen asset - enough to submit it and to name it in a summary or on a tile. */
 export interface AssetPick {

@@ -8,7 +8,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import type { Theme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
-import type { AssetType } from '../../types/api'
+import type { AssetType } from '@/shared/api/types'
 import type { AssetTypeDefinition } from './assetTypeRegistry'
 import AssetFilterChips, { type AssetFilterKey, type AssetFilters } from './AssetFilterChips'
 

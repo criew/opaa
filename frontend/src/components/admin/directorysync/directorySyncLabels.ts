@@ -1,4 +1,4 @@
-import type { DirectorySyncOutcome } from '../../../types/api'
+import type { DirectorySyncOutcome } from '@/shared/api/types'
 import type { StatusTone } from '../../StatusLine'
 
 const outcomeLabels: Record<DirectorySyncOutcome, string> = {

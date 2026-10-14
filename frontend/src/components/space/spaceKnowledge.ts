@@ -1,4 +1,4 @@
-import type { SpaceRole } from '../../types/api'
+import type { SpaceRole } from '@/shared/api/types'
 
 /** Why a space's chat searches nothing: nothing associated, or nothing of it readable. */
 export type SpaceKnowledgeGap = 'none-assigned' | 'none-readable'

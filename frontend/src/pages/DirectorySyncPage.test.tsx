@@ -11,7 +11,7 @@ import {
 } from '../mocks/directorySyncScenarioFixtures'
 import { renderWithProviders } from '../test/test-utils'
 import DirectorySyncPage from './DirectorySyncPage'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {

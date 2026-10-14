@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../../../mocks/server'
 import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
-import type { OutboundProxyRequest, OutboundProxyResponse } from '../../../types/api'
+import type { OutboundProxyRequest, OutboundProxyResponse } from '@/shared/api/types'
 import OutboundProxySection from './OutboundProxySection'
 
 const PATH = '/api/v1/admin/outbound-proxy'

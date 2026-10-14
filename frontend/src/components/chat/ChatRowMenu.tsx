@@ -11,7 +11,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import UnarchiveOutlinedIcon from '@mui/icons-material/UnarchiveOutlined'
-import type { ChatBulkAction, ChatSummary } from '../../types/api'
+import type { ChatBulkAction, ChatSummary } from '@/shared/api/types'
 import { chatTitle } from './chatListSections'
 
 export interface ChatRowActions {

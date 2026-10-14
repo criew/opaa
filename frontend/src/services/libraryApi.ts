@@ -18,9 +18,9 @@ import type {
   SourceTypeDescriptor,
   SourceTypeKey,
   BulkDocumentDeleteResponse,
-} from '../types/api'
-import { isErrorResponse, type ErrorResponse } from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { isErrorResponse, type ErrorResponse } from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 export async function getLibraries(): Promise<LibraryListResponse[]> {
   try {

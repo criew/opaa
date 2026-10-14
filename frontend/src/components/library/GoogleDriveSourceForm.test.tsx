@@ -13,7 +13,7 @@ import type {
   SourceBrowseResponse,
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
-} from '../../types/api'
+} from '@/shared/api/types'
 
 const { mockTestLibrarySource, mockBrowseSource } = vi.hoisted(() => ({
   mockTestLibrarySource:

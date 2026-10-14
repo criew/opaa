@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GroupListResponse, GroupMemberResponse, GroupResponse } from '../types/api'
+import type { GroupListResponse, GroupMemberResponse, GroupResponse } from '@/shared/api/types'
 import {
   addGroupMember,
   appointGroupSteward,
@@ -17,8 +17,8 @@ import {
   updateGroup,
 } from '../services/groupApi'
 import type { GroupCreationOptions } from '../services/groupApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 /**
  * Woher die Liste kommt: alle Gruppen der Organisation, die eigenen Verantwortlichkeiten (#1814)

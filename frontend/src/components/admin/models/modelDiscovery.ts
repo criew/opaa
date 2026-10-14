@@ -1,4 +1,4 @@
-import type { DiscoveredLlmModel } from '../../../types/api'
+import type { DiscoveredLlmModel } from '@/shared/api/types'
 
 export type EndpointPresetKey = 'ollama' | 'openai' | 'anthropic'
 

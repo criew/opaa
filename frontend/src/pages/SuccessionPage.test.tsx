@@ -7,7 +7,7 @@ import { renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import { mockSuccessionEntries } from '../mocks/successionFixtures'
 import SuccessionPage from './SuccessionPage'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   useAuthStore.setState({

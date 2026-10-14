@@ -11,7 +11,7 @@ import type {
   DatePrecision,
   DocumentTypeVocabularyEntryResponse,
   MetadataValueRequest,
-} from '../../types/api'
+} from '@/shared/api/types'
 import { datePrecisionLabel, datePrecisions } from '../../utils/labels'
 import { isNotDeterminable } from './metadataValues'
 

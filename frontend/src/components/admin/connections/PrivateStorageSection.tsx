@@ -16,7 +16,7 @@ import type {
   MaskedNumber,
   PrivateStorageQuotaResponse,
   PrivateStorageSummaryResponse,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import {
   getPrivateStorageQuota,
   getPrivateStorageSummary,

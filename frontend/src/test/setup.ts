@@ -4,10 +4,10 @@ import '@testing-library/jest-dom/vitest'
 import './jsdom-blob-stream'
 import { beforeAll, afterEach, afterAll } from 'vitest'
 import { server } from '../mocks/server'
-// Deliberately only the fixture module, never a store or `src/services/api` (#583): importing
+// Deliberately only the fixture module, never a store or `src/shared/api/api` (#583): importing
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
 // fail - their requests stop being intercepted, so every "expected onCreated to be called" assertion
-// times out. Verified by adding a bare `import '../services/api'` here and watching
+// times out. Verified by adding a bare `import '@/shared/api/api'` here and watching
 // SpaceCreatePage.test.tsx go red on its own. Store state that has to be reset between tests
 // belongs in that test file's own beforeEach.
 

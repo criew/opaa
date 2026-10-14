@@ -12,7 +12,7 @@ import type {
   ConnectionProfileRef,
   SourceConnectionTestResponse,
   SourceTypeDescriptor,
-} from '../../types/api'
+} from '@/shared/api/types'
 import { useConnectionProfileOptions } from '../../hooks/useConnectionProfileOptions'
 import { testLibrarySource } from '../../services/libraryApi'
 import { useLibraryStore } from '../../stores/libraryStore'

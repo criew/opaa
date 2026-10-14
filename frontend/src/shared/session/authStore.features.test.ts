@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { server } from '../mocks/server'
-import { mockAuthConfig, setMockFeatures } from '../mocks/authFixtures'
+import { server } from '../../mocks/server'
+import { mockAuthConfig, setMockFeatures } from '../../mocks/authFixtures'
 import { isFeatureEnabled, useAuthStore } from './authStore'
 
 /**

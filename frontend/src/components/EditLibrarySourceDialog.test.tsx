@@ -11,7 +11,7 @@ import type {
   LibraryUpdateRequest,
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 const { mockUpdateLibrary, mockTestLibrarySource } = vi.hoisted(() => ({
   mockUpdateLibrary: vi.fn(async (_id: string, request: LibraryUpdateRequest) => {

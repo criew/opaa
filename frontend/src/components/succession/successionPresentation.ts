@@ -1,4 +1,8 @@
-import type { SuccessionAddressee, SuccessionEntryResponse, SuccessionKind } from '../../types/api'
+import type {
+  SuccessionAddressee,
+  SuccessionEntryResponse,
+  SuccessionKind,
+} from '@/shared/api/types'
 import { assetTypeLabel } from '../assets/assetTypeRegistry'
 import { ageSinceLabel } from '../groups/groupOriginLabels'
 

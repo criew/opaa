@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { ChatSearch } from '../../hooks/useChatSearch'
-import type { ChatSearchHit } from '../../types/api'
+import type { ChatSearchHit } from '@/shared/api/types'
 import { chatTitle } from './chatListSections'
 import HighlightedExcerpt from './HighlightedExcerpt'
 

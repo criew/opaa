@@ -1,4 +1,4 @@
-import type { ConnectedAccountState, PersonalSecretForm } from '../../types/api'
+import type { ConnectedAccountState, PersonalSecretForm } from '@/shared/api/types'
 
 /** The German label of a connection state and the chip colour that goes with it. */
 export function accountStateLabel(state: ConnectedAccountState): {

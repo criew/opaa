@@ -5,8 +5,8 @@ import type {
   OidcProviderResponse,
   OidcProviderTestRequest,
   OidcProviderTestResponse,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 // identity providers (ADR-0025, #1329 admin API) - SYSTEM_ADMIN only. Public clients: there is
 // no secret anywhere in these payloads.

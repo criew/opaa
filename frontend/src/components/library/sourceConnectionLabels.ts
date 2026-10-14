@@ -2,7 +2,7 @@ import type {
   ConnectionEndCause,
   SourceBlockReason,
   SourceConnectionResponsible,
-} from '../../types/api'
+} from '@/shared/api/types'
 import { endCauseLabel } from '../audit/connectionLogLabels'
 
 /** Who answers for a library's source connection; a name the server withholds stays unnamed. */

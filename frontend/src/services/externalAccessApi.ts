@@ -10,8 +10,8 @@ import type {
   ExternalAccessTokenStatus,
   LibraryExternalAccessResponse,
   OwnExternalAccessTokenResponse,
-} from '../types/api'
-import { apiClient, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 
 const PATH = '/v1/system/external-access'
 const TOKENS_PATH = '/v1/external-access/tokens'

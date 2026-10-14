@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AxiosError } from 'axios'
-import type { LocalUserResponse } from '../../../types/api'
+import type { LocalUserResponse } from '@/shared/api/types'
 import {
   defaultExpiryInputValue,
   formatExpiry,

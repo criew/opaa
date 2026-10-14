@@ -8,7 +8,7 @@ import { createAppTheme } from './theme/theme'
 import { resolveThemeMode } from './theme/colorScheme'
 import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
-import { useFeatureEnabled } from './hooks/useFeatureEnabled'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useUiStore } from './stores/uiStore'
 import SettingsPage from './pages/SettingsPage'
 // shared
@@ -29,9 +29,9 @@ import {
   SET_PASSWORD_ROUTE,
   spaceSettingsRoute,
   VERIFY_EMAIL_ROUTE,
-} from './routes'
+} from '@/shared/routes'
 // auth
-import { useAuthStore } from './stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import LoginPage from './pages/LoginPage'
 import SystemLoginPage from './pages/SystemLoginPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'

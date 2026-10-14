@@ -14,17 +14,17 @@ import SectionEyebrow from '../components/auth/SectionEyebrow'
 import FieldLabel from '../components/wizard/FieldLabel'
 import PageHeading from '../components/a11y/PageHeading'
 import { useErrorFocus } from '../hooks/useErrorFocus'
-import { FieldValidationError } from '../services/authApi'
+import { FieldValidationError } from '@/shared/session/authApi'
 import { FlowUnavailableError, forgotPassword, RateLimitedError } from '../services/selfServiceApi'
-import { useAuthStore } from '../stores/authStore'
-import { LOGIN_ROUTE } from '../routes'
+import { useAuthStore } from '@/shared/session/authStore'
+import { LOGIN_ROUTE } from '@/shared/routes'
 import {
   fieldErrorMessages,
   MAIL_SENT_MESSAGE,
   SELF_SERVICE_DISABLED_MESSAGE,
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
-} from '../utils/authMessages'
+} from '@/shared/session/authMessages'
 import { radius } from '../theme/tokens'
 
 const HEADING = 'Passwort vergessen'

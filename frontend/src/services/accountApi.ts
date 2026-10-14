@@ -4,8 +4,8 @@ import type {
   ProviderType,
   SystemRole,
   UserInfo,
-} from '../types/api'
-import { apiClient, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 import { LOCAL_USER_PAGE_SIZE } from './localUserApi'
 
 /**

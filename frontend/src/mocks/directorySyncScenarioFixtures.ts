@@ -3,7 +3,7 @@ import type {
   DirectorySyncPendingPlanResponse,
   DirectorySyncStatusResponse,
   OidcProviderResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import { mockPendingPlan } from './groupAdminFixtures'
 
 /**

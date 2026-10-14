@@ -3,8 +3,8 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { Navigate, useParams } from 'react-router'
-import type { SpaceRole } from '../types/api'
-import { useAuthStore } from '../stores/authStore'
+import type { SpaceRole } from '@/shared/api/types'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaTabs from '../components/AreaTabs'
@@ -17,7 +17,7 @@ import {
   SPACE_SETTINGS_TABS,
   spaceSettingsRoute,
   type SpaceSettingsTab,
-} from '../routes'
+} from '@/shared/routes'
 
 /** Die Reiter in der Reihenfolge der Leiste; jeder Wert in {@link SPACE_SETTINGS_TABS} hat einen. */
 const tabs: Array<{ value: SpaceSettingsTab; label: string }> = [

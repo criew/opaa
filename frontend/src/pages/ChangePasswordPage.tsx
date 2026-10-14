@@ -13,16 +13,16 @@ import PasswordField from '../components/auth/PasswordField'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import PageHeading from '../components/a11y/PageHeading'
 import { useErrorFocus } from '../hooks/useErrorFocus'
-import { FieldValidationError } from '../services/authApi'
-import { useAuthStore } from '../stores/authStore'
+import { FieldValidationError } from '@/shared/session/authApi'
+import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '../stores/notificationStore'
-import { AFTER_SIGN_IN_ROUTE, LOGIN_ROUTE } from '../routes'
+import { AFTER_SIGN_IN_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 import {
   fieldErrorMessages,
   passwordChangeReasonMessage,
   passwordPolicyText,
-} from '../utils/authMessages'
-import { redirectTargetOf } from '../utils/safeRedirectPath'
+} from '@/shared/session/authMessages'
+import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
 import { radius } from '../theme/tokens'
 
 const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'

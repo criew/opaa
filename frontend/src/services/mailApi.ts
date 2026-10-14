@@ -7,8 +7,8 @@ import type {
   MailTemplateResponse,
   MailTemplateSummaryResponse,
   MailTemplateUpdateRequest,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 // mail (ADR-0033, Entscheidung 10; #1536 API) - SYSTEM_ADMIN only. The SMTP password never
 // travels back: a response carries the mask "***", and sending that mask again means

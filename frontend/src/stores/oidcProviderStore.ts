@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { OidcProviderRequest, OidcProviderResponse } from '../types/api'
+import type { OidcProviderRequest, OidcProviderResponse } from '@/shared/api/types'
 import {
   createOidcProvider,
   deleteOidcProvider,
@@ -10,8 +10,8 @@ import {
   updateOidcProvider,
   type ProviderShutdownConfirmations,
 } from '../services/identityProviderApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 interface OidcProviderState {
   providers: OidcProviderResponse[]

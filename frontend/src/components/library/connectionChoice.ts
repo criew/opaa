@@ -1,4 +1,4 @@
-import type { ConnectionProfileOption, SourceTypeDescriptor } from '../../types/api'
+import type { ConnectionProfileOption, SourceTypeDescriptor } from '@/shared/api/types'
 import { ownAddressAllowed } from './sources/sourceConnection'
 
 /** The choice of a library with its own address instead of a profile. */

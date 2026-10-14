@@ -1,4 +1,4 @@
-import type { components } from './generated/api'
+import type { components } from '../api/generated/api'
 
 export type AuthMode = 'oidc' | 'dev'
 

@@ -1,4 +1,4 @@
-import type { CatalogEntryResponse } from '../types/api'
+import type { CatalogEntryResponse } from '@/shared/api/types'
 
 function entryKey(entry: CatalogEntryResponse): string {
   return `${entry.assetType}:${entry.assetId}`

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { GroupDeactivationPreviewResponse } from '../../types/api'
+import type { GroupDeactivationPreviewResponse } from '@/shared/api/types'
 import { groupNotSelectableReason } from '../../utils/labels'
 import { deactivationConsequence } from './groupDeactivation'
 

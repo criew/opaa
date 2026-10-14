@@ -28,7 +28,7 @@ import type {
   SourceTypeKey,
   LibraryDocumentResponse,
   LibraryFolderListItem,
-} from '../../types/api'
+} from '@/shared/api/types'
 import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
 import { getLibraryFolder } from '../../services/libraryApi'
 import { confirmAction } from '../../stores/confirmStore'
@@ -40,7 +40,7 @@ import {
   resolveDroppedItems,
 } from '../../utils/directoryEntries'
 import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
-import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import BulkMetadataDialog from '../metadata/BulkMetadataDialog'
 import DocumentMetadataPanel from '../metadata/DocumentMetadataPanel'
 import MetadataMaintenanceAnchor from '../metadata/MetadataMaintenanceAnchor'

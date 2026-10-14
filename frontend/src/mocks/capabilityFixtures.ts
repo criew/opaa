@@ -1,4 +1,4 @@
-import type { MyCapabilitiesResponse } from '../types/api'
+import type { MyCapabilitiesResponse } from '@/shared/api/types'
 
 /**
  * The capabilities of the mock account: every one, as for a system administrator - the four

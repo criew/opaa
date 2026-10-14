@@ -7,7 +7,7 @@ import {
 } from './indexingFixtures'
 import { mockSearchStatus } from './searchAdminFixtures'
 import { mockLibraryDetails, mockSourceTypes } from './libraryFixtures'
-import type { IndexingStatusResponse, PushSecretResponse } from '../types/api'
+import type { IndexingStatusResponse, PushSecretResponse } from '@/shared/api/types'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()

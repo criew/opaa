@@ -4,7 +4,7 @@ import path from 'node:path'
 import micromatch from 'micromatch'
 import { APP, SHARED, TEST_INFRA, THEMES, bucketGlobs, themeGlobs } from './themes.js'
 
-const GENERATED = 'src/types/generated/'
+const GENERATED = 'src/shared/api/generated/'
 
 export const BUCKETS = {
   ...Object.fromEntries(Object.keys(THEMES).map((name) => [name, themeGlobs(name)])),

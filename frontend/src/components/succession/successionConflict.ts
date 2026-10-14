@@ -1,4 +1,4 @@
-import { apiErrorCode } from '../../services/apiErrorDetails'
+import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 
 /** Der Fehlercode, mit dem das Backend die eingefrorene Reichweite abweist (ADR-0036/6). */
 export const SUCCESSION_OPEN = 'SUCCESSION_OPEN'

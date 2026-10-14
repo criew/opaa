@@ -4,8 +4,8 @@ import type {
   PermissionTransferPreviewResponse,
   PermissionTransferRequest,
   PermissionTransferResponse,
-} from '../types/api'
-import { apiClient, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
  * Die Übertragung von Wirkungen (#1834, ADR-0036 Entscheidung 10). Die Vorschau ist Pflicht: Die

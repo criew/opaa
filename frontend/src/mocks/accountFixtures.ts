@@ -1,4 +1,8 @@
-import type { AccountProviderResponse, AccountResponse, LocalUserResponse } from '../types/api'
+import type {
+  AccountProviderResponse,
+  AccountResponse,
+  LocalUserResponse,
+} from '@/shared/api/types'
 
 /**
  * Fixtures der Kontenliste (#1601): die Anbieterkonten, die neben den lokalen Konten aus

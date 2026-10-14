@@ -5,8 +5,8 @@ import type {
   PromptLibraryUpdateRequest,
   PromptRequest,
   PromptResponse,
-} from '../types/api'
-import { apiClient, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
  * The prompt library endpoints (docs/features/spaces-and-assets.md#prompt-bibliothek). Rights,

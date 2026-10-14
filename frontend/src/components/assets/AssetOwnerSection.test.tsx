@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
 import AssetOwnerSection from './AssetOwnerSection'
-import type { SelectableGroupResponse, UserSummary } from '../../types/api'
+import type { SelectableGroupResponse, UserSummary } from '@/shared/api/types'
 
 const { mockTransferAssetOwnership, mockGetUserSummaries, mockSearchSelectableGroups } = vi.hoisted(
   () => ({

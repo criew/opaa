@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DiscoveredLlmModel } from '../../../types/api'
+import type { DiscoveredLlmModel } from '@/shared/api/types'
 import {
   describeModel,
   displayNameFor,

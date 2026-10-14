@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getTranscriptionAvailability } from '../services/transcriptionApi'
 import { isRecordingSupported } from '../utils/audioRecording'
-import { useFeatureEnabled } from './useFeatureEnabled'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 
 /**
  * Whether the microphone is offered: the feature speech-input is on, the installation's

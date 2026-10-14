@@ -56,14 +56,14 @@ import type {
   SearchModelRoleStatusResponse,
   SearchPathStatusResponse,
   TrackedDocumentResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
 import { getSearchChunk } from '../services/searchAdminApi'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 import { contentWidth } from '../theme/tokens'
 import { catalogRoute } from '../components/assets/assetTypeRegistry'
-import { useFeatureEnabled } from '../hooks/useFeatureEnabled'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { visibleChunkMetadata } from '../utils/metadataChunkKeys'
 
 function formatMetadataValue(value: unknown): string {

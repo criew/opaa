@@ -42,7 +42,7 @@ import type {
   LibraryMetadataFieldType,
   MetadataChangeImpactResponse,
   MetadataChangeKind,
-} from '../../types/api'
+} from '@/shared/api/types'
 
 const TYPE_LABELS: Record<LibraryMetadataFieldType, string> = {
   SELECT: 'Auswahl aus einer Werteliste',

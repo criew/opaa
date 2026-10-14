@@ -17,7 +17,7 @@ import type {
   LibrarySchedule,
   LibrarySourceConnection,
   SourceBlock,
-} from '../../types/api'
+} from '@/shared/api/types'
 import { useIndexingStore } from '../../stores/indexingStore'
 import {
   formatCalendarDay,
@@ -34,7 +34,7 @@ import LibraryConnectionPanel from './LibraryConnectionPanel'
 import LibrarySourceConsent from './LibrarySourceConsent'
 import ReconnectSourceDialog from './ReconnectSourceDialog'
 import { Link as RouterLink } from 'react-router'
-import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
+import { CONNECTED_ACCOUNTS_ROUTE } from '@/shared/routes'
 import { sourceRegistration } from './sources/registry'
 import {
   LIBRARY_QUOTA_EXHAUSTED_REMEDY,

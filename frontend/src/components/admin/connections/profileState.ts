@@ -1,4 +1,4 @@
-import type { CapabilityOverviewResponse, ConnectionProfileResponse } from '../../../types/api'
+import type { CapabilityOverviewResponse, ConnectionProfileResponse } from '@/shared/api/types'
 import { currentAccess, type Access } from '../capabilities/capabilityAccess'
 
 export const PROFILE_SCOPE_PREFIX = 'PROFILE:'

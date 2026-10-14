@@ -1,8 +1,11 @@
 import { http, HttpResponse } from 'msw'
-import type { LibraryMetadataSchemaChangeResponse } from '../types/api'
+import type { LibraryMetadataSchemaChangeResponse } from '@/shared/api/types'
 import { mockLibraryDetails, mockLibraryDocuments } from './libraryFixtures'
 import { mockDocumentMetadata, mockDocumentTypeVocabulary } from './libraryMetadataFixtures'
-import type { CreateLibraryMetadataFieldRequest, LibraryMetadataFieldResponse } from '../types/api'
+import type {
+  CreateLibraryMetadataFieldRequest,
+  LibraryMetadataFieldResponse,
+} from '@/shared/api/types'
 import { canManageMockLibrary } from './libraryHandlers'
 
 /**

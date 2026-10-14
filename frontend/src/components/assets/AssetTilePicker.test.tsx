@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { useState } from 'react'
 import { renderWithProviders } from '../../test/test-utils'
 import { server } from '../../mocks/server'
-import type { CatalogEntryResponse } from '../../types/api'
+import type { CatalogEntryResponse } from '@/shared/api/types'
 import AssetTilePicker from './AssetTilePicker'
 import type { AssetPick } from './assetPick'
 

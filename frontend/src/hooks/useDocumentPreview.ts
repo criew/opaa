@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { openDocumentContent } from '../utils/documentContent'
 import type { TextPreviewResult } from '../utils/documentContent'
 import { notify } from '../stores/notificationStore'
-import type { SourceTypeKey } from '../types/api'
+import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/library/sources/registry'
 
 /**

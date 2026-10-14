@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import SectionHead from '../SectionHead'
 import UserPicker from './UserPicker'
-import type { UserSummary } from '../../types/api'
+import type { UserSummary } from '@/shared/api/types'
 
 interface InitialStewardsSectionProps {
   stewards: UserSummary[]

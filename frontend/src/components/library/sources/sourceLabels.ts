@@ -1,4 +1,4 @@
-import type { SourceTypeKey } from '../../../types/api'
+import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from './registry'
 
 /** The names a source type is shown under - its registration's, else the key itself. */

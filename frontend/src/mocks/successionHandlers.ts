@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import type { SuccessionKind } from '../types/api'
+import type { SuccessionKind } from '@/shared/api/types'
 import { mockSuccessionEntries } from './successionFixtures'
 
 /** Die Endpunkte der Betriebsliste (#1819) für die Oberfläche aus #1821. */

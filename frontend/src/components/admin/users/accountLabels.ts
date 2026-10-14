@@ -1,4 +1,4 @@
-import type { AccountResponse } from '../../../types/api'
+import type { AccountResponse } from '@/shared/api/types'
 
 /** The origin column's word for a local account. */
 export const LOCAL_ORIGIN_LABEL = 'Lokal'

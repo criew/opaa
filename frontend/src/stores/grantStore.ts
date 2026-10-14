@@ -1,8 +1,8 @@
 import { create } from 'zustand'
-import type { AssetGrantRequest, AssetGrantResponse, AssetType } from '../types/api'
+import type { AssetGrantRequest, AssetGrantResponse, AssetType } from '@/shared/api/types'
 import { getAssetGrants, revokeAssetGrant, upsertAssetGrant } from '../services/assetApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 /** The key of one asset's grant list: an asset id alone is not unique across asset types. */
 export function assetKey(assetType: AssetType, assetId: string): string {

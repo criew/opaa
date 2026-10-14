@@ -5,12 +5,12 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { ConnectionLogRetentionResponse } from '../../../types/api'
+import type { ConnectionLogRetentionResponse } from '@/shared/api/types'
 import {
   getConnectionLogRetention,
   updateConnectionLogRetention,
 } from '../../../services/connectionLogApi'
-import { apiErrorStatus } from '../../../services/apiErrorDetails'
+import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import BusyButton from '../../a11y/BusyButton'

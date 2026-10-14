@@ -1,5 +1,5 @@
-import type { AssetType, Capability } from '../types/api'
-import type { FeatureFlags, FeatureName } from '../types/auth'
+import type { AssetType, Capability } from '../api/types'
+import type { FeatureFlags, FeatureName } from './types'
 
 /**
  * The installation-wide feature flags (ADR-0044) for modules that must not import a store - the

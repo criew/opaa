@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { GroupEffectsResponse } from '../../../types/api'
+import type { GroupEffectsResponse } from '@/shared/api/types'
 import { GROUP_UNUSED, groupUsageDetails, groupUsageShort } from './groupUsageLabels'
 
 function effects(overrides: Partial<GroupEffectsResponse>): GroupEffectsResponse {

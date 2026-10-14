@@ -3,7 +3,7 @@ import type {
   CatalogEntryResponse,
   CatalogEntryStatus,
   SourceBlock,
-} from '../../types/api'
+} from '@/shared/api/types'
 import { assetTypeDefinition } from './assetTypeRegistry'
 import { formatCalendarDay } from '../../utils/labels'
 

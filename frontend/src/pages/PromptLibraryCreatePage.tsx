@@ -15,11 +15,11 @@ import {
 } from '../components/assets/pendingGrants'
 import { confirmAction } from '../stores/confirmStore'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
-import { useMyCapabilities } from '../hooks/useMyCapabilities'
+import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '../hooks/useMyGroups'
 import { capabilityMissingMessage } from '../utils/labels'
-import { CATALOG_ROUTE, promptLibraryRoute } from '../routes'
-import type { AssetOwnerType, GroupListResponse } from '../types/api'
+import { CATALOG_ROUTE, promptLibraryRoute } from '@/shared/routes'
+import type { AssetOwnerType, GroupListResponse } from '@/shared/api/types'
 
 const STEPS = ['Stammdaten', 'Eigentümer', 'Rechte'] as const
 const STEP_TITLES = ['Stammdaten', 'Wem gehört die Prompt-Bibliothek?', 'Rechte'] as const

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CatalogEntryResponse, SourceBlock } from '../../types/api'
+import type { CatalogEntryResponse, SourceBlock } from '@/shared/api/types'
 import { tileFromCatalogEntry } from './assetTileData'
 
 function libraryEntry(sourceBlock: SourceBlock | null): CatalogEntryResponse {

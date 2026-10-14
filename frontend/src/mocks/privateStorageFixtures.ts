@@ -1,4 +1,4 @@
-import type { PrivateStorageSummaryResponse, PrivateStorageUsageResponse } from '../types/api'
+import type { PrivateStorageSummaryResponse, PrivateStorageUsageResponse } from '@/shared/api/types'
 
 const GIB = 1024 * 1024 * 1024
 

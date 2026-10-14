@@ -1,5 +1,5 @@
-import type { LibraryDiagnosticsLockResponse } from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+import type { LibraryDiagnosticsLockResponse } from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 export async function updateLibraryDiagnosticsLock(
   libraryId: string,

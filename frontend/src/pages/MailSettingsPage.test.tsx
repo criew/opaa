@@ -7,9 +7,9 @@ import { server } from '../mocks/server'
 import { mockMailSettings, mockMailTemplates, setMockMailSettings } from '../mocks/mailFixtures'
 import { MAIL_FAILING_HOST } from '../mocks/mailHandlers'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useMailStore } from '../stores/mailStore'
-import type { MailSettingsUpdateRequest, MailTemplateUpdateRequest } from '../types/api'
+import type { MailSettingsUpdateRequest, MailTemplateUpdateRequest } from '@/shared/api/types'
 import MailSettingsPage from './MailSettingsPage'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {

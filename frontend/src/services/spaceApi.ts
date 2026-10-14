@@ -12,9 +12,9 @@ import type {
   SpaceRole,
   SpaceResponse,
   SpaceUpdateRequest,
-} from '../types/api'
-import { useAuthStore } from '../stores/authStore'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { useAuthStore } from '@/shared/session/authStore'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 export async function getSpaces(): Promise<SpaceListResponse[]> {
   try {

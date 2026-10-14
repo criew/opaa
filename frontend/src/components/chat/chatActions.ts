@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { SvgIconComponent } from '@mui/icons-material'
-import type { FeatureName, FeatureFlags } from '../../types/auth'
-import { featureEnabledIn } from '../../stores/authStore'
+import type { FeatureName, FeatureFlags } from '@/shared/session/types'
+import { featureEnabledIn } from '@/shared/session/authStore'
 
 /** One entry of the '/' menu. */
 export interface ChatActionOption {

@@ -1,5 +1,5 @@
-import type { GroupKind, GroupOrigin, GroupPageResponse, GroupState } from '../types/api'
-import { apiClient, normalizeError } from './api'
+import type { GroupKind, GroupOrigin, GroupPageResponse, GroupState } from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 
 /** The sort fields of the group list, as the server allow-lists them. */
 export type GroupSortField = 'name' | 'kind' | 'origin' | 'memberCount' | 'state' | 'createdAt'

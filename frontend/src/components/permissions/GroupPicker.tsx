@@ -6,7 +6,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import PublicIcon from '@mui/icons-material/Public'
 import GroupsIcon from '@mui/icons-material/Groups'
-import type { SelectableGroupResponse } from '../../types/api'
+import type { SelectableGroupResponse } from '@/shared/api/types'
 import { useGroupSearch } from '../../hooks/useGroupSearch'
 import { groupDetailLine, groupLabel } from './subjectSelection'
 

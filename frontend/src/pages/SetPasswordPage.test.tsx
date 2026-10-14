@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
-import { useAuthStore } from '../stores/authStore'
-import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
+import { useAuthStore } from '@/shared/session/authStore'
+import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
 import { MOCK_RATE_LIMITED_TOKEN, MOCK_SET_PASSWORD_TOKEN } from '../mocks/localAuthFixtures'
-import { PASSWORD_MAX_LENGTH } from '../utils/passwordStrength'
+import { PASSWORD_MAX_LENGTH } from '@/shared/session/passwordStrength'
 import SetPasswordPage from './SetPasswordPage'
 
 /**

@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import ChoiceTileGroup from '../components/choice/ChoiceTileGroup'
-import { CATALOG_ROUTE } from '../routes'
+import { CATALOG_ROUTE } from '@/shared/routes'
 import LibraryScheduleForm from '../components/library/LibraryScheduleForm'
 import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import { registeredSourceTypes, sourceRegistration } from '../components/library/sources/registry'
@@ -40,8 +40,8 @@ import {
   type SourceConsentIntent,
 } from '../components/library/sourceConsent'
 import { startSourceAuthorization } from '../services/connectedAccountApi'
-import { leaveFor } from '../services/leaveApp'
-import { apiErrorCode } from '../services/apiErrorDetails'
+import { leaveFor } from '@/shared/api/leaveApp'
+import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 import {
   connectionFields,
   ownAddressAllowed,
@@ -63,7 +63,7 @@ import WizardStepBar from '../components/wizard/WizardStepBar'
 import { confirmAction } from '../stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
-import { useMyCapabilities } from '../hooks/useMyCapabilities'
+import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '../hooks/useMyGroups'
 import { useSourceTypes } from '../hooks/useSourceTypes'
 import AssetNameFields from '../components/assets/AssetNameFields'
@@ -84,7 +84,7 @@ import type {
   GroupListResponse,
   AssetOwnerType,
   PendingSourceConnection,
-} from '../types/api'
+} from '@/shared/api/types'
 
 /**
  * The wizard's steps: the first two are named after what one does in them, „Name & Beschreibung“

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { selectGroupMembers, useGroupStore } from './groupStore'
-import { resetAllStores } from './resettableStores'
-import type { GroupResponse } from '../types/api'
+import { resetAllStores } from '@/shared/session/resettableStores'
+import type { GroupResponse } from '@/shared/api/types'
 import { getGroup, getGroups } from '../services/groupApi'
 
 const mockCreateGroup = vi.fn()

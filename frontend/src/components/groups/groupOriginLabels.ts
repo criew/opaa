@@ -1,4 +1,4 @@
-import type { GroupListResponse, GroupMechanism, GroupOrigin } from '../../types/api'
+import type { GroupListResponse, GroupMechanism, GroupOrigin } from '@/shared/api/types'
 
 /** Die Herkunft als Wort — „intern" oder der Name des Anbieters (ADR-0036, Entscheidung 2). */
 export function groupOriginLabel(group: {

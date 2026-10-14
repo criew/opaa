@@ -13,7 +13,7 @@ import {
   mockFavoriteAssets,
   resetMockFavorites,
 } from './assetFixtures'
-import type { AssetGrantRequest, AssetRole, AssetType } from '../types/api'
+import type { AssetGrantRequest, AssetRole, AssetType } from '@/shared/api/types'
 
 export function resetGrantMockState() {
   resetMockLibraryGrants()

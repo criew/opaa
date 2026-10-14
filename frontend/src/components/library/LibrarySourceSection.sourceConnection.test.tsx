@@ -3,13 +3,16 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../../mocks/server'
-import { leaveFor } from '../../services/leaveApp'
+import { leaveFor } from '@/shared/api/leaveApp'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
-import type { ConnectionAuthorizationStartRequest, LibrarySourceConnection } from '../../types/api'
+import type {
+  ConnectionAuthorizationStartRequest,
+  LibrarySourceConnection,
+} from '@/shared/api/types'
 import LibrarySourceSection from './LibrarySourceSection'
 import { SERVICE_ACCOUNT_CONFIRMATION, readConsentIntent } from './sourceConsent'
 
-vi.mock('../../services/leaveApp', () => ({ leaveFor: vi.fn() }))
+vi.mock('@/shared/api/leaveApp', () => ({ leaveFor: vi.fn() }))
 
 const consent: LibrarySourceConnection = {
   accountLabel: 'svc@bauamt.example',

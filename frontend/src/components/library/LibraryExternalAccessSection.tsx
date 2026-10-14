@@ -9,7 +9,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { successionAwareMessage } from '../succession/successionConflict'
 import SectionHead from '../SectionHead'
-import type { LibraryExternalAccessResponse } from '../../types/api'
+import type { LibraryExternalAccessResponse } from '@/shared/api/types'
 import { getLibrary } from '../../services/libraryApi'
 import { updateLibraryExternalAccess } from '../../services/externalAccessApi'
 

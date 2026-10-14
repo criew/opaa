@@ -18,12 +18,12 @@ import type {
   PermissionTransferScope,
   SelectableGroupResponse,
   UserSummary,
-} from '../../types/api'
+} from '@/shared/api/types'
 import {
   executePermissionTransfer,
   previewPermissionTransfer,
 } from '../../services/permissionTransferApi'
-import { apiErrorCode } from '../../services/apiErrorDetails'
+import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 import { notify } from '../../stores/notificationStore'
 import UserPicker from '../groups/UserPicker'
 import FieldLabel from '../wizard/FieldLabel'

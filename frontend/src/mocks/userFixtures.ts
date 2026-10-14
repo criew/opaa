@@ -1,4 +1,4 @@
-import type { UserInfo } from '../types/api'
+import type { UserInfo } from '@/shared/api/types'
 
 export const mockUsers: UserInfo[] = [
   {

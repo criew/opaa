@@ -2,7 +2,7 @@ import type {
   EmbeddingReindexStatusResponse,
   IndexingRunListResponse,
   IndexingStatusResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 
 export const mockIndexingIdle: IndexingStatusResponse = {
   status: 'IDLE',

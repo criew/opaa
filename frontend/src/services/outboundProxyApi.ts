@@ -1,5 +1,5 @@
-import type { OutboundProxyRequest, OutboundProxyResponse } from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+import type { OutboundProxyRequest, OutboundProxyResponse } from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 const OUTBOUND_PROXY = '/v1/admin/outbound-proxy'
 

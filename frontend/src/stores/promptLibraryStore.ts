@@ -5,7 +5,7 @@ import type {
   PromptLibraryUpdateRequest,
   PromptRequest,
   PromptResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   createPrompt,
   createPromptLibrary,
@@ -17,8 +17,8 @@ import {
   updatePrompt,
   updatePromptLibrary,
 } from '../services/promptLibraryApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 interface PromptLibraryState {
   libraries: PromptLibraryResponse[]

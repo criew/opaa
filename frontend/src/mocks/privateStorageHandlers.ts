@@ -4,7 +4,7 @@ import type {
   PrivateStorageQuotaResponse,
   PrivateStorageSummaryResponse,
   PrivateStorageUsageResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   MOCK_DEFAULT_PRIVATE_QUOTA_BYTES,
   mockMyPrivateStorage,

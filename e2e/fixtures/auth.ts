@@ -49,7 +49,7 @@ const DEV_USER_DISPLAY_NAMES: Record<string, string> = {
  * `outsiderPage` was observed to end up authenticated as "Dev Admin" instead of "Dev Outsider" -
  * `io.opaa.auth.DevAuthFilter` falls back to the configured *default* dev user whenever the
  * `X-OPAA-Dev-User` header is absent, so a request that goes out before the frontend's dev-auth
- * bootstrap (authStore#initialize -> devAuth#resolveDevUser, see frontend/src/services/devAuth.ts)
+ * bootstrap (authStore#initialize -> devAuth#resolveDevUser, see frontend/src/shared/session/devAuth.ts)
  * has captured `?devUser=` from the URL and written it to sessionStorage silently authenticates as
  * that default instead of failing loudly. A static read of the current frontend code did not turn
  * up a concrete path for that (ProtectedRoute keeps the app shell - and with it the index route's

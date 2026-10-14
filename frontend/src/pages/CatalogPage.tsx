@@ -8,9 +8,9 @@ import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
-import type { CatalogEntryResponse } from '../types/api'
+import type { CatalogEntryResponse } from '@/shared/api/types'
 import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
-import { useMyCapabilities } from '../hooks/useMyCapabilities'
+import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import {
   assetTypeDefinition,
   creatableAssetTypes,
@@ -21,7 +21,7 @@ import AssetTile from '../components/assets/AssetTile'
 import { tileFromCatalogEntry } from '../components/assets/assetTileData'
 import { UseInSpaceDialog } from '../components/assets/UseInSpaceButton'
 import AssetFilterBar from '../components/assets/AssetFilterBar'
-import { CATALOG_NEW_ROUTE } from '../routes'
+import { CATALOG_NEW_ROUTE } from '@/shared/routes'
 
 /** Long enough to let a word be typed out before the server is asked. */
 const SEARCH_DELAY_MS = 300

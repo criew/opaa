@@ -1,5 +1,5 @@
 import { formIssue, issueAt, messageOf, type SourceIssue } from './sourceIssue'
-import type { LibraryResponse } from '../types/api'
+import type { LibraryResponse } from '@/shared/api/types'
 
 /** The Confluence edition (ADR-0023): detected by the connection test, fixed after creation. */
 export type ConfluenceEdition = 'CLOUD' | 'DATA_CENTER'

@@ -2,8 +2,8 @@ import type {
   PrivateStorageQuotaResponse,
   PrivateStorageSummaryResponse,
   PrivateStorageUsageResponse,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 /** The caller's own use across all her private libraries and the limit in force (0 = unlimited). */
 export async function getMyPrivateStorage(): Promise<PrivateStorageUsageResponse> {

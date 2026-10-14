@@ -5,7 +5,7 @@ import ListItem from '@mui/material/ListItem'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
-import type { ConnectionOwnership, ConnectionProfileImpactResponse } from '../../../types/api'
+import type { ConnectionOwnership, ConnectionProfileImpactResponse } from '@/shared/api/types'
 import { admitsPersons, personCountLabel, rejectionCategoryLabel } from './profileChange'
 
 function count(n: number, one: string, many: string) {

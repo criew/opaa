@@ -1,4 +1,8 @@
-import type { AssetGrantSubjectType, SelectableGroupResponse, UserSummary } from '../../types/api'
+import type {
+  AssetGrantSubjectType,
+  SelectableGroupResponse,
+  UserSummary,
+} from '@/shared/api/types'
 import { confirmAction } from '../../stores/confirmStore'
 import { groupNotSelectableReason, groupOriginLabel, groupSizeLabel } from '../../utils/labels'
 

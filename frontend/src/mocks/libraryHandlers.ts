@@ -15,7 +15,7 @@ import type {
   LibraryConnectionProfileRequest,
   LibraryScheduleRequest,
   SourceBrowseResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import type { ConfluenceEdition, ConfluenceSettings } from '../utils/confluenceSource'
 import type { S3Settings } from '../utils/s3Source'
 

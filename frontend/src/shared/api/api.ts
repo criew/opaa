@@ -1,8 +1,8 @@
 import axios, { AxiosError } from 'axios'
-import type { HealthResponse } from '../types/api'
-import { isErrorResponse } from '../types/api'
+import type { HealthResponse } from './types'
+import { isErrorResponse } from './types'
 import { setupAuthInterceptors } from './apiInterceptors'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '../session/authStore'
 
 const client = axios.create({
   baseURL: '/api',

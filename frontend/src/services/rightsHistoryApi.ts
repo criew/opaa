@@ -1,5 +1,5 @@
-import type { AccessAsOfObjectType, AccessAsOfPage } from '../types/api'
-import { apiClient, normalizeError } from './api'
+import type { AccessAsOfObjectType, AccessAsOfPage } from '@/shared/api/types'
+import { apiClient, normalizeError } from '@/shared/api/api'
 
 /** Die Parameter der Stichtagsauskunft (#1822) — genau ein benanntes Objekt je Abfrage. */
 export interface AccessAsOfQuery {

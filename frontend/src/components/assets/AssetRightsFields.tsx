@@ -15,7 +15,7 @@ import {
   selectedSubjectId,
   type SubjectSelection,
 } from '../permissions/subjectSelection'
-import type { AssetRole } from '../../types/api'
+import type { AssetRole } from '@/shared/api/types'
 import { assetRoleLabel, permissionSubjectTypeLabel } from '../../utils/labels'
 import type { PendingGrant } from './pendingGrants'
 

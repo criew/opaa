@@ -1,4 +1,4 @@
-import type { GroupListResponse, GroupState } from '../../../types/api'
+import type { GroupListResponse, GroupState } from '@/shared/api/types'
 import { groupIneffectiveReason } from '../../groups/groupOriginLabels'
 
 /** The states in the order the filter offers them - what needs a decision after „Aktiv". */

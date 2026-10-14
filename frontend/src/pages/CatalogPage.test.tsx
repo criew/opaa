@@ -6,7 +6,7 @@ import { Route, Routes, useLocation } from 'react-router'
 import { renderWithProviders, setMockAuthState } from '../test/test-utils'
 import { server } from '../mocks/server'
 import { setMockFeatures } from '../mocks/authFixtures'
-import type { CatalogEntryResponse } from '../types/api'
+import type { CatalogEntryResponse } from '@/shared/api/types'
 import { useCatalogStore } from '../stores/catalogStore'
 import CatalogPage from './CatalogPage'
 

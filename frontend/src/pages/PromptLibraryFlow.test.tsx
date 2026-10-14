@@ -11,9 +11,9 @@ import {
   setMockAuthState,
   waitForDialogClosed,
 } from '../test/test-utils'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
-import type { AssetGrantRequest, PromptLibraryRequest, PromptRequest } from '../types/api'
+import type { AssetGrantRequest, PromptLibraryRequest, PromptRequest } from '@/shared/api/types'
 import PromptLibraryCreatePage from './PromptLibraryCreatePage'
 import PromptLibraryDetailPage from './PromptLibraryDetailPage'
 

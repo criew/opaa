@@ -3,8 +3,8 @@ import type {
   ConnectionLogPage,
   ConnectionLogProfile,
   ConnectionLogRetentionResponse,
-} from '../types/api'
-import { apiClient as client, normalizeError } from './api'
+} from '@/shared/api/types'
+import { apiClient as client, normalizeError } from '@/shared/api/api'
 
 /** The parameters of one bounded read of the connection log; reason and window are mandatory. */
 export interface ConnectionLogQuery {

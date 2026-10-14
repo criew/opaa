@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import LibraryDetailPage from './LibraryDetailPage'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useDocumentStore } from '../stores/documentStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
@@ -18,7 +18,7 @@ import type {
   LibraryListResponse,
   LibraryResponse,
   LibraryUpdateRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 import type { OpenDocumentContentResult } from '../utils/documentContent'
 
 function pageOf(
@@ -37,7 +37,7 @@ function pageOf(
 }
 
 // #822 review, finding 2: mirrors documentStore.test.ts's own notFoundError - normalizeError
-// (services/api.ts) attaches the original AxiosError as `cause`, and only an actual 404 status may
+// (shared/api/api.ts) attaches the original AxiosError as `cause`, and only an actual 404 status may
 // trigger the "unknown folder" root fallback, not merely an Error whose message happens to read
 // "nicht gefunden".
 function notFoundError(message = 'Ordner nicht gefunden'): Error {

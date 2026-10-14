@@ -10,7 +10,7 @@ import type {
   ConnectorProfileRequirementResponse,
   ConnectorTypeStateResponse,
   OwnAddressStock,
-} from '../types/api'
+} from '@/shared/api/types'
 import { mockConnectionProfiles, resetMockConnectionProfiles } from './connectionProfileFixtures'
 import { mockOwnAccountProfileIds } from './connectedAccountHandlers'
 

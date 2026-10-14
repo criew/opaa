@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { server } from '../../../mocks/server'
 import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
-import type { PrivateStorageQuotaResponse, PrivateStorageSummaryResponse } from '../../../types/api'
+import type { PrivateStorageQuotaResponse, PrivateStorageSummaryResponse } from '@/shared/api/types'
 import PrivateStorageSection from './PrivateStorageSection'
 
 const QUOTA = '/api/v1/admin/private-libraries/quota'

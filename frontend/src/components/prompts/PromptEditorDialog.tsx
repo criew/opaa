@@ -9,9 +9,9 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { PromptResponse, PromptVariable } from '../../types/api'
+import type { PromptResponse, PromptVariable } from '@/shared/api/types'
 import { usePromptLibraryStore } from '../../stores/promptLibraryStore'
-import { apiFieldErrors } from '../../services/apiErrorDetails'
+import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import {
   PROMPT_DESCRIPTION_MAX_LENGTH,
   PROMPT_NAME_MAX_LENGTH,

@@ -1,6 +1,6 @@
 import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
-import type { PasswordChangeReason } from '../types/auth'
-import { DEV_USER_HEADER, getDevUser } from './devAuth'
+import type { PasswordChangeReason } from '../session/types'
+import { DEV_USER_HEADER, getDevUser } from '../session/devAuth'
 
 type TokenGetter = () => string | null | Promise<string | null>
 // #737: a single silent-renew attempt (refresh-token based, see authStore's UserManager

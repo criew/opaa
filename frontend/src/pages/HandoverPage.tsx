@@ -27,11 +27,11 @@ import {
   clearPendingHandover,
   peekPendingHandover,
   type PendingHandover,
-} from '../stores/handoverFlow'
-import { useAuthStore } from '../stores/authStore'
-import { AFTER_SIGN_IN_ROUTE, LOGIN_ROUTE } from '../routes'
-import type { LocalHandoverPreviewResponse } from '../types/api'
-import { LINK_INVALID_MESSAGE, tooManyRequestsMessage } from '../utils/authMessages'
+} from '@/shared/session/handoverFlow'
+import { useAuthStore } from '@/shared/session/authStore'
+import { AFTER_SIGN_IN_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
+import type { LocalHandoverPreviewResponse } from '@/shared/api/types'
+import { LINK_INVALID_MESSAGE, tooManyRequestsMessage } from '@/shared/session/authMessages'
 
 const HEADING = 'Zugang an Ihre Anbieteridentität übergeben'
 

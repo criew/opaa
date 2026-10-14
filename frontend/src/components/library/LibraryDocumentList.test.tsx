@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import Breadcrumbs from '@mui/material/Breadcrumbs'
 import Typography from '@mui/material/Typography'
 import { renderWithProviders } from '../../test/test-utils'
-import type { LibraryDocumentResponse, LibraryFolderListItem } from '../../types/api'
+import type { LibraryDocumentResponse, LibraryFolderListItem } from '@/shared/api/types'
 import LibraryDocumentList from './LibraryDocumentList'
 import type { LibraryDocumentListProps } from './LibraryDocumentList'
 

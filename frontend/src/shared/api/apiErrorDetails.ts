@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios'
-import type { FieldError } from '../types/auth'
+import type { FieldError } from '../session/types'
 
 /**
  * The machine-readable halves of an `ErrorResponse` that `normalizeError` cannot carry in the

@@ -1,5 +1,5 @@
 import UploadFileIcon from '@mui/icons-material/UploadFile'
-import type { SourceTypeKey } from '../../../types/api'
+import type { SourceTypeKey } from '@/shared/api/types'
 import { confluenceSource } from './confluenceSource'
 import { dropboxSource } from './dropboxSource'
 import { filesystemSource, httpDirectorySource, rssFeedSource } from './genericSources'

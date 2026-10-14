@@ -6,7 +6,7 @@ import type {
   BulkMetadataValueRequest,
   DocumentMetadataFieldResponse,
   MetadataValueRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 import { CORE_METADATA_LABELS } from './libraryMetadataHandlers'
 import { canManageMockLibrary } from './libraryHandlers'
 

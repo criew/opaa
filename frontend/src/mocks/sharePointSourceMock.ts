@@ -1,5 +1,5 @@
 import { HttpResponse } from 'msw'
-import type { SourceBrowseResponse } from '../types/api'
+import type { SourceBrowseResponse } from '@/shared/api/types'
 import {
   mockSharePointSites,
   type MockSharePointDrive,

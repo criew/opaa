@@ -9,12 +9,12 @@ import Typography from '@mui/material/Typography'
 import type {
   ConnectionAuthorizationCompleteRequest,
   ConnectionAuthorizationCompleteResponse,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   completeConnectionAuthorization,
   ConnectAccountError,
 } from '../services/connectedAccountApi'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '../stores/notificationStore'
 import PageHeading from '../components/a11y/PageHeading'
 import ReconnectSourceDialog from '../components/library/ReconnectSourceDialog'
@@ -24,8 +24,8 @@ import {
   readConsentIntent,
   type SourceConsentIntent,
 } from '../components/library/sourceConsent'
-import { safeRedirectPath } from '../utils/safeRedirectPath'
-import { CONNECTED_ACCOUNTS_ROUTE, CONNECTION_CALLBACK_ROUTE, LOGIN_ROUTE } from '../routes'
+import { safeRedirectPath } from '@/shared/session/safeRedirectPath'
+import { CONNECTED_ACCOUNTS_ROUTE, CONNECTION_CALLBACK_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 
 const NEW_LIBRARY_ROUTE = '/libraries/new'
 const ACCOUNT_CHANGED = 'ACCOUNT_CHANGED'

@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import { markHighlight } from '../../theme/tokens'
-import type { ChatSearchHighlight } from '../../types/api'
+import type { ChatSearchHighlight } from '@/shared/api/types'
 
 interface HighlightedExcerptProps {
   text: string

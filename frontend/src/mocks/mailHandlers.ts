@@ -5,7 +5,7 @@ import type {
   MailTemplatePreviewRequest,
   MailTemplateResponse,
   MailTemplateUpdateRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   MAIL_PASSWORD_MASK,
   mockMailSampleValues,

@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography'
 import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined'
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
-import type { AccountResponse } from '../../../types/api'
+import type { AccountResponse } from '@/shared/api/types'
 import { providerLifecycleHint, roleManagedByProviderText } from './accountLabels'
 
 interface ProviderAccountRowMenuProps {

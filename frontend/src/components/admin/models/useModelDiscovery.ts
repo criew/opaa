@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { LlmModelDiscoveryRequest, LlmModelDiscoveryResponse } from '../../../types/api'
+import type { LlmModelDiscoveryRequest, LlmModelDiscoveryResponse } from '@/shared/api/types'
 import { discoverLlmModels } from '../../../services/modelApi'
 
 export type DiscoveryState =

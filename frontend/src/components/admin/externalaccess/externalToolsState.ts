@@ -1,4 +1,4 @@
-import type { ExternalAccessSettingsResponse } from '../../../types/api'
+import type { ExternalAccessSettingsResponse } from '@/shared/api/types'
 import type { StatusTone } from '../../StatusLine'
 import { formatDate } from '../../externalaccess/tokenLabels'
 

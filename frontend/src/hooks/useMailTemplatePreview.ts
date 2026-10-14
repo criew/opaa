@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { MailTemplatePreviewResponse } from '../types/api'
+import type { MailTemplatePreviewResponse } from '@/shared/api/types'
 import { previewMailTemplate } from '../services/mailApi'
 
 /** Long enough that typing a sentence is one request, short enough to feel live. */

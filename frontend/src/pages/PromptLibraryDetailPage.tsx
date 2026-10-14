@@ -9,7 +9,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import type { AssetRole, PromptLibraryResponse, PromptResponse } from '../types/api'
+import type { AssetRole, PromptLibraryResponse, PromptResponse } from '@/shared/api/types'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
 import { confirmAction } from '../stores/confirmStore'
 import { assetRoleLabel, promptVariableTypeLabel } from '../utils/labels'
@@ -20,9 +20,9 @@ import {
   PROMPT_LIBRARY_TABS,
   promptLibraryRoute,
   type PromptLibraryTab,
-} from '../routes'
+} from '@/shared/routes'
 import AreaTabs from '../components/AreaTabs'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '@/shared/session/authStore'
 import MetaBadge from '../components/MetaBadge'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { successionAwareMessage } from '../components/succession/successionConflict'

@@ -5,13 +5,13 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { OidcProviderResponse } from '../../../types/api'
+import type { OidcProviderResponse } from '@/shared/api/types'
 import {
   deleteDirectoryConnector,
   saveDirectoryConnector,
   testDirectoryConnector,
 } from '../../../services/directorySyncApi'
-import { apiErrorMessage } from '../../../services/apiErrorDetails'
+import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import KeyValueList from '../../KeyValueList'

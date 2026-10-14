@@ -10,7 +10,7 @@ import { useSpaceStore } from '../../stores/spaceStore'
 import { server } from '../../mocks/server'
 import { MemoryRouter } from 'react-router'
 import type { ReactElement } from 'react'
-import type { LibraryListResponse, SpaceAssetAssociationResponse } from '../../types/api'
+import type { LibraryListResponse, SpaceAssetAssociationResponse } from '@/shared/api/types'
 
 /**
  * #783 review: the earlier version of these tests spied on useSpaceStore.getState() and swapped in

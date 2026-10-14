@@ -14,7 +14,7 @@ import type {
   DirectorySyncReportResponse,
   DirectorySyncStatusResponse,
   OidcProviderResponse,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import {
   confirmPendingPlan,
   discardPendingPlan,
@@ -23,7 +23,7 @@ import {
   runDirectorySyncDryRun,
   setDirectorySync,
 } from '../../../services/directorySyncApi'
-import { apiErrorCode, apiErrorMessage } from '../../../services/apiErrorDetails'
+import { apiErrorCode, apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { notify } from '../../../stores/notificationStore'
 import MetaBadge from '../../MetaBadge'
 import SectionHead from '../../SectionHead'

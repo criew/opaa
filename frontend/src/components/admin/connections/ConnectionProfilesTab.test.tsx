@@ -6,8 +6,8 @@ import { server } from '../../../mocks/server'
 
 import { mockConnectionProfiles } from '../../../mocks/connectionProfileFixtures'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../../../test/test-utils'
-import { useAuthStore } from '../../../stores/authStore'
-import type { ConnectionProfileUpdateRequest, SourceTypeDescriptor } from '../../../types/api'
+import { useAuthStore } from '@/shared/session/authStore'
+import type { ConnectionProfileUpdateRequest, SourceTypeDescriptor } from '@/shared/api/types'
 import ConnectionProfilesTab from './ConnectionProfilesTab'
 import { openProfile, useDesktopViewport } from './connectionTestUtils'
 

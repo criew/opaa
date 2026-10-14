@@ -9,7 +9,7 @@ import type {
   SourceConnectionTestRequest,
   SourceConnectionTestResponse,
   SourceTypeKey,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import { sourceRegistration } from './registry'
 import { withConnection, withoutFixed, type SourceConnection } from './sourceConnection'
 import type { SourceFormContext } from './types'

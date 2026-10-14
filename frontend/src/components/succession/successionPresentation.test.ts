@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import type { SuccessionEntryResponse } from '../../types/api'
+import type { SuccessionEntryResponse } from '@/shared/api/types'
 import { addresseeOf, nextStepOf, problemOf, sinceLabel } from './successionPresentation'
 
 function entry(overrides: Partial<SuccessionEntryResponse>): SuccessionEntryResponse {

@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import type { SpaceRequest, SpaceUpdateRequest } from '../types/api'
+import type { SpaceRequest, SpaceUpdateRequest } from '@/shared/api/types'
 import {
   defaultChatAutoCleanup,
   mockSpaces,

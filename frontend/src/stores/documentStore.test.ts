@@ -1,10 +1,10 @@
 import { AxiosError } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentStore } from './documentStore'
-import { resetAllStores } from './resettableStores'
-import type { LibraryDocumentPageResponse, LibraryDocumentResponse } from '../types/api'
+import { resetAllStores } from '@/shared/session/resettableStores'
+import type { LibraryDocumentPageResponse, LibraryDocumentResponse } from '@/shared/api/types'
 
-// #822 review, finding 2: normalizeError (services/api.ts) attaches the original AxiosError as
+// #822 review, finding 2: normalizeError (shared/api/api.ts) attaches the original AxiosError as
 // `cause` - mirrors that shape here so isNotFoundError (documentStore.ts) has something real to
 // distinguish a 404 from any other failure, the same way api.test.ts's axiosErrorWithResponse
 // stands in for a real AxiosError elsewhere in this codebase.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { PrivateStorageUsageResponse } from '../../types/api'
+import type { PrivateStorageUsageResponse } from '@/shared/api/types'
 import { getMyPrivateStorage } from '../../services/privateStorageApi'
 
 /**

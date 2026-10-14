@@ -2,7 +2,7 @@ import type {
   ConnectionAuthMethod,
   ConnectionOwnership,
   SourceTypeDescriptor,
-} from '../../../types/api'
+} from '@/shared/api/types'
 
 export const AUTH_METHOD_LABELS: Record<ConnectionAuthMethod, string> = {
   NONE: 'Ohne Anmeldung',

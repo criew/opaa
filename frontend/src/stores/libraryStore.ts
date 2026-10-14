@@ -5,7 +5,7 @@ import type {
   LibraryResponse,
   LibraryShareCapRequest,
   LibraryUpdateRequest,
-} from '../types/api'
+} from '@/shared/api/types'
 import {
   connectLibraryProfile,
   createLibrary,
@@ -18,8 +18,8 @@ import {
 } from '../services/libraryApi'
 import type { LibraryDeletionOutcome } from '../services/libraryApi'
 import { updateLibraryDiagnosticsLock } from '../services/diagnosticAccessApi'
-import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
-import { registerSessionStore } from './resettableStores'
+import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { registerSessionStore } from '@/shared/session/resettableStores'
 
 interface LibraryState {
   libraries: LibraryListResponse[]

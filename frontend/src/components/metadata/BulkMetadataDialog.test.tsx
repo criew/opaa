@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import BulkMetadataDialog from './BulkMetadataDialog'
-import type { BulkMetadataValueResponse } from '../../types/api'
+import type { BulkMetadataValueResponse } from '@/shared/api/types'
 
 const { mockBulkSetDocumentMetadata, mockGetDocumentTypeVocabulary } = vi.hoisted(() => ({
   mockBulkSetDocumentMetadata: vi.fn(),

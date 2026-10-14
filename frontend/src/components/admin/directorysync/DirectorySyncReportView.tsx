@@ -5,7 +5,7 @@ import type {
   DirectorySyncGroupChange,
   DirectorySyncReportResponse,
   DirectorySyncUserRef,
-} from '../../../types/api'
+} from '@/shared/api/types'
 import StatusLine from '../../StatusLine'
 import { formatFraction, outcomeLabel, outcomeTone } from './directorySyncLabels'
 

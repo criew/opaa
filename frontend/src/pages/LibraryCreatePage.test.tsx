@@ -51,9 +51,9 @@ vi.mock('../services/groupApi', async () => {
   }
 })
 
-vi.mock('../services/capabilityApi', async () => {
-  const actual = await vi.importActual<typeof import('../services/capabilityApi')>(
-    '../services/capabilityApi',
+vi.mock('@/shared/session/capabilityApi', async () => {
+  const actual = await vi.importActual<typeof import('@/shared/session/capabilityApi')>(
+    '@/shared/session/capabilityApi',
   )
   return {
     ...actual,

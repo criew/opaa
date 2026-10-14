@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { passwordStrength } from '../../utils/passwordStrength'
+import { passwordStrength } from '@/shared/session/passwordStrength'
 
 // Four steps, the rating's own colour. "schwach" is the one that may use the danger role: it says
 // the entry is below the rule shown above it, which the backend will refuse.
