@@ -13,6 +13,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.DiagnosisContextType;
+import io.opaa.api.types.ModelRole;
+import io.opaa.api.types.ModelRoleCondition;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -30,11 +33,8 @@ import io.opaa.retrieval.RetrievalExplanation;
 import io.opaa.search.ChunkInspection;
 import io.opaa.search.ChunkInspectionService;
 import io.opaa.search.DocumentChunks;
-import io.opaa.searchadmin.DiagnosisContextType;
 import io.opaa.searchadmin.DiagnosisQuery;
 import io.opaa.searchadmin.LibrarySearchStatus;
-import io.opaa.searchadmin.ModelRole;
-import io.opaa.searchadmin.ModelRoleCondition;
 import io.opaa.searchadmin.ModelRoleStatus;
 import io.opaa.searchadmin.SearchDiagnosis;
 import io.opaa.searchadmin.SearchDiagnosisService;

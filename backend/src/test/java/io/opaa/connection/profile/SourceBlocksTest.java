@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.OwnAddressStock;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.TestSecrets;

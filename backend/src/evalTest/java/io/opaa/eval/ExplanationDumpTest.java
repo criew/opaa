@@ -3,13 +3,13 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-import io.opaa.retrieval.CandidateOutcome;
+import io.opaa.api.types.CandidateOutcome;
+import io.opaa.api.types.RetrievalStageName;
+import io.opaa.api.types.VerdictReason;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.RetrievalExplanation;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageStatus;
-import io.opaa.retrieval.VerdictReason;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
