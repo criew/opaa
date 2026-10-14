@@ -16,9 +16,10 @@ const { mockSearchSelectableGroups, mockGetUserSummaries } = vi.hoisted(() => ({
   mockGetUserSummaries: vi.fn(async () => [] as UserSummary[]),
 }))
 
-vi.mock('../../services/groupApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../services/groupApi')>('../../services/groupApi')
+vi.mock('../../features/principal/api/groupLookupApi', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../features/principal/api/groupLookupApi')
+  >('../../features/principal/api/groupLookupApi')
   return {
     ...actual,
     searchSelectableGroups: mockSearchSelectableGroups,
@@ -457,7 +458,7 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
 describe('confirmExternalSubject', () => {
   it('asks back before a right is granted to a group of an external provider', async () => {
     const confirmSpy = vi.fn()
-    vi.spyOn(await import('../../stores/confirmStore'), 'confirmAction').mockImplementation(
+    vi.spyOn(await import('@/shared/stores/confirmStore'), 'confirmAction').mockImplementation(
       async (request) => {
         confirmSpy(request)
         return false
@@ -480,7 +481,7 @@ describe('confirmExternalSubject', () => {
   })
 
   it('does not ask back for an internal group or a person', async () => {
-    const confirmAction = vi.spyOn(await import('../../stores/confirmStore'), 'confirmAction')
+    const confirmAction = vi.spyOn(await import('@/shared/stores/confirmStore'), 'confirmAction')
 
     await expect(
       confirmExternalSubject({ type: 'GROUP', user: null, group: smallInternal }),

@@ -22,9 +22,9 @@ import {
   listOwnExternalAccessTokens,
   revokeOwnExternalAccessToken,
 } from '../../services/externalAccessApi'
-import { confirmAction } from '../../stores/confirmStore'
-import { notify } from '../../stores/notificationStore'
-import { fontFamily } from '../../theme/tokens'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
+import { fontFamily } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
 import CreateExternalAccessTokenDialog from './CreateExternalAccessTokenDialog'

@@ -27,7 +27,7 @@ import {
 } from '../hooks/useChatSearch'
 import type { ChatSearchHandover } from '../hooks/useChatSearch'
 import { CHAT_PAGE_SIZE, useChatListStore } from '../stores/chatListStore'
-import { confirmAction } from '../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import type { ChatBulkAction, ChatSummary } from '@/shared/api/types'
 

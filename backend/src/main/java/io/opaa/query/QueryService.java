@@ -24,7 +24,6 @@ import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationMarkerRepair;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
-import io.opaa.query.spike.SpikeToolLoopQueryHandler;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
@@ -41,7 +40,6 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 /**
@@ -82,7 +80,7 @@ public class QueryService {
   private final QueryMetrics metrics;
   private final MetadataFilterValidator metadataFilterValidator;
   private final PromptService promptService;
-  private final ObjectProvider<SpikeToolLoopQueryHandler> spikeToolLoopQueryHandler;
+  private final Optional<ToolLoopQueryHandler> toolLoopQueryHandler;
   private final NeighborChunkExpansion neighborChunkExpansion;
 
   public QueryService(
@@ -101,7 +99,7 @@ public class QueryService {
       QueryMetrics metrics,
       MetadataFilterValidator metadataFilterValidator,
       PromptService promptService,
-      ObjectProvider<SpikeToolLoopQueryHandler> spikeToolLoopQueryHandler,
+      Optional<ToolLoopQueryHandler> toolLoopQueryHandler,
       NeighborChunkExpansion neighborChunkExpansion) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.retrievalContextFactory = retrievalContextFactory;
@@ -118,7 +116,7 @@ public class QueryService {
     this.metrics = metrics;
     this.metadataFilterValidator = metadataFilterValidator;
     this.promptService = promptService;
-    this.spikeToolLoopQueryHandler = spikeToolLoopQueryHandler;
+    this.toolLoopQueryHandler = toolLoopQueryHandler;
     this.neighborChunkExpansion = neighborChunkExpansion;
   }
 
@@ -243,27 +241,24 @@ public class QueryService {
                                     ? MetadataFilter.NONE
                                     : requestedMetadataFilter));
 
-                // SPIKE (#1789), behind opaa.spike.tool-loop.enabled: a "@test " question runs a
-                // model-driven tool-calling loop instead of everything below, with exactly the
-                // rights and scope just resolved above. The bean only exists while the switch is
-                // set, and it hands back an empty Optional for any other question - both are why
-                // this is the only place #1789 touches this method.
-                SpikeToolLoopQueryHandler spikeHandler = spikeToolLoopQueryHandler.getIfAvailable();
-                if (spikeHandler != null) {
-                  Optional<QueryResult> spikeResult =
-                      spikeHandler.handle(
-                          question,
-                          chat,
-                          effectiveChatId,
-                          conversationKey,
-                          notePoints,
-                          searchScope,
-                          metadataFilter,
-                          startTime,
-                          usedPrompt);
-                  if (spikeResult.isPresent()) {
-                    return spikeResult.get();
-                  }
+                // A present tool-loop handler may take over the whole turn, with exactly the
+                // rights and scope just resolved above; an empty result leaves everything below
+                // unchanged.
+                Optional<QueryResult> toolLoopResult =
+                    toolLoopQueryHandler.flatMap(
+                        handler ->
+                            handler.handle(
+                                question,
+                                chat,
+                                effectiveChatId,
+                                conversationKey,
+                                notePoints,
+                                searchScope,
+                                metadataFilter,
+                                startTime,
+                                usedPrompt));
+                if (toolLoopResult.isPresent()) {
+                  return toolLoopResult.get();
                 }
 
                 // Why an empty scope is empty - at most one of the four: no space at all, nothing

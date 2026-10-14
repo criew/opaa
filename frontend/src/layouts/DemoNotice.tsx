@@ -8,7 +8,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
-import { isDemoModeEnabled } from '../utils/runtimeConfig'
+import { isDemoModeEnabled } from '@/shared/utils/runtimeConfig'
 
 const LHM_CORPUS_URL = 'https://huggingface.co/datasets/it-at-m/LHM-Dienstleistungen-Corpus'
 const LHM_CORPUS_LICENSE_URL =

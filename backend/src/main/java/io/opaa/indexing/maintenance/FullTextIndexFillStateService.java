@@ -1,6 +1,7 @@
 package io.opaa.indexing.maintenance;
 
 import io.opaa.indexing.chunk.FullTextChunkStore;
+import io.opaa.knowledge.VectorTable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -8,7 +9,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -21,23 +21,17 @@ import org.springframework.stereotype.Component;
  * outdated at any other version: it lacks the lexemes the current version adds, so counting it as
  * indexed would report a library whose re-index is still outstanding as up to date. The lexical
  * search path itself does not apply this filter (ADR-0028) - the fill state reports what still
- * needs the re-index, not what is unsearchable. Schema and table name come from the same {@code
- * spring.ai.vectorstore.pgvector.*} properties {@code PgVectorStore} binds.
+ * needs the re-index, not what is unsearchable.
  */
 @Component
 public class FullTextIndexFillStateService {
 
   private final JdbcTemplate jdbcTemplate;
-  private final String schemaName;
-  private final String tableName;
+  private final String vectorStoreTable;
 
-  public FullTextIndexFillStateService(
-      JdbcTemplate jdbcTemplate,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+  public FullTextIndexFillStateService(JdbcTemplate jdbcTemplate, VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
-    this.schemaName = schemaName;
-    this.tableName = tableName;
+    this.vectorStoreTable = vectorTable.qualifiedName();
   }
 
   /**
@@ -47,7 +41,6 @@ public class FullTextIndexFillStateService {
    * is filtered by {@code metadata->>'library_id'}, backed by its own expression index.
    */
   public FullTextIndexFillState fillStateForLibrary(UUID libraryId) {
-    String vectorStoreTable = schemaName + "." + tableName;
     String chunkStillPresent = chunkStillPresent(vectorStoreTable);
     String sql =
         "SELECT "
@@ -86,7 +79,6 @@ public class FullTextIndexFillStateService {
     if (distinct.isEmpty()) {
       return List.of();
     }
-    String vectorStoreTable = schemaName + "." + tableName;
     String chunkStillPresent = chunkStillPresent(vectorStoreTable);
     String idPlaceholders = placeholders(distinct.size());
     String sql =

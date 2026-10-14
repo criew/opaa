@@ -5,9 +5,9 @@ import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
-import { blue } from '../../theme/tokens'
-import { catalogStatusLabel } from '../../utils/labels'
-import { assetTypeDefinition } from './assetTypeRegistry'
+import { blue } from '@/shared/theme/tokens'
+import { catalogStatusLabel } from './assetLabels'
+import { assetTypeDefinition } from '../../shared/assetTypes'
 import type { AssetTileData, AssetTileStatus } from './assetTileData'
 import {
   ErasingMark,

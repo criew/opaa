@@ -38,13 +38,13 @@ Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definition
 | format | format |
 | identity | audit, branding, mail, auth, account, notification |
 | rights | permission, asset, group, directory, succession |
-| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren) |
+| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren), health |
 | connectors | jedes direkte Unterpaket von `indexing.source` |
 | connections | connection |
 | workspace | space, revision, diagnosticaccess |
 | library | library |
 | retrieval | retrieval |
-| assistant | prompt, chat, query, search, searchadmin, health |
+| assistant | prompt, chat, query, search, searchadmin |
 | external | externalaccess, mcp |
 | app | api, config, `OpaaApplication` |
 
@@ -78,7 +78,7 @@ Der Test prüft außerdem:
   selbst und Pakete davor. Ausgenommen ist die Web-Schicht (siehe „Web-Schicht je Modul“).
 - **Zyklen:** keine zwischen Top-Level-Paketen; ein `web`-Paket zählt dabei für sich. Zwischen
   Unterpaketen sind die heutigen Zyklen als Paketkanten in `KNOWN_SUBPACKAGE_CYCLE_EDGES`
-  eingefroren, nur noch in `externalaccess` und `query`.
+  eingefroren, nur noch in `externalaccess`.
   Jede weitere Kante auf einem Zyklus lässt den Test fehlschlagen, also jeder neue Zyklus.
 - **Kern von `indexing`:** `INDEXING_CORE` ordnet dessen Unterpakete, unten zuerst; ein Paket nutzt
   nur sich und die davor, nie das Wurzelpaket, `indexing.web` oder einen Konnektor. Jedes weitere
@@ -91,6 +91,10 @@ Der Test prüft außerdem:
   kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
 - Die Pakete des Gradle-Moduls `opaa-api` (`io.opaa.api.dto`, `io.opaa.api.types`) liegen
   außerhalb der Schichtung.
+- **Namen in den Listen:** `everyNamedCodeUnitExists` löst jeden Eintrag der Form `paket.Klasse`,
+  `paket.Äußere$Innere` oder `paket.Klasse#methode` aus allen Konstanten von `ModularArchitecture`
+  auf; ein Eintrag, der nach einer Umbenennung ins Leere zeigt, lässt den Test fehlschlagen, statt
+  dass seine Regel still nichts mehr prüft.
 - **Blinder Fleck:** Der Test sieht nur den Bytecode. Liest ein Paket von einem anderen nur eine
   `static final`-Konstante, die der Compiler einfaltet, ist das für ihn keine Kante. Dasselbe gilt
   für Verweise, die nur im Javadoc stehen.
@@ -131,6 +135,12 @@ Top-Level-Paket hat höchstens eines; ein tieferes Paket dieses Namens, etwa der
   ein `web`-Paket, und zwischen `web`-Paketen gibt es keinen Zyklus. `PermissionPackageBoundaryTest`
   gilt für ein `web`-Paket wie für sein Fachpaket: Was die Web-Schicht eines Fachpakets zeigt, holt
   die Domäne über die Ports von `io.opaa.permission` in ihren Domain-Record.
+- **Admin-only-Endpunkte:** Die Prüfung auf Systemverwaltung steht entweder als
+  `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` am Controller oder, wenn der Service auch von anderen
+  Aufrufern erreichbar ist, im Service per `CurrentUser#requireSystemAdmin(String)` — dann ohne
+  `@PreAuthorize`, damit eine Stelle für jeden Aufrufer entscheidet (`PermissionHistoryRetentionController`);
+  steht kein Service dahinter, ruft der Controller die Methode selbst (`ClientAddressDiagnosticsController`).
+  Keine private Kopie der Prüfung.
 - **Mapper:** Die Abbildung Entity → Response lebt in einer package-private, handgeschriebenen
   Mapper-Klasse im Paket des Controllers (Vorbild `BrandingResponseMapper`, `SpaceResponseMapper`).
   Braucht ein anderes `web`-Paket sie, wird sie `public`, und nur mit den Methoden, die es aufruft
@@ -166,6 +176,14 @@ Daneben liegt eine `CLAUDE.md` mit `@AGENTS.md`; jedes weitere Top-Level-Paket d
 die Datei des Moduls vor der Arbeit im Modul selbst. `ModuleAgentsFileTest` hält Ablage, Import und
 Länge fest; ein neues Top-Level-Paket bekommt eine solche `CLAUDE.md`. Modulspezifisches gehört in
 diese Dateien, hier bleibt nur, was modulübergreifend gilt.
+
+## Scheduler
+
+Der Default-`TaskScheduler` hinter `@EnableScheduling` hat einen Thread für alle `@Scheduled`-Methoden.
+Eine `@Scheduled`-Methode entscheidet deshalb nur und reicht Arbeit, die an Netz, Objektspeicher,
+Dateisystem oder LLM hängt, an einen eigenen Executor (`DirectorySyncScheduler` → `directorySyncExecutor`)
+oder per `scheduler = "…"` an einen eigenen Scheduler weiter (`PrivateLibraryDeletionSchedule`, Probes
+der Modellrollen). Kurze DB-Läufe (einzelne `DELETE`s, Partition-Drops, Batches) bleiben auf dem Tick.
 
 ## Spring-Testkontexte
 

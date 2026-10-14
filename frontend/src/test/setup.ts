@@ -24,23 +24,23 @@ import { resetMockPromptLibraries } from '../mocks/promptLibraryFixtures'
 // user
 import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'
 // identity-provider
-import { resetMockOidcProviders } from '../mocks/identityProviderFixtures'
+import { resetMockOidcProviders } from '@/features/identity-provider/mocks/identityProviderFixtures'
 // model
-import { resetLlmModelMockState } from '../mocks/modelHandlers'
+import { resetLlmModelMockState } from '@/features/model/mocks/modelHandlers'
 // mail
-import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
+import { resetMockMailSettings, resetMockMailTemplates } from '@/features/mail/mocks/mailFixtures'
 // branding
-import { resetMockBranding } from '../mocks/brandingFixtures'
+import { resetMockBranding } from '@/features/branding/mocks/brandingFixtures'
 // connection
 import { resetConnectionProfileMockState } from '../mocks/connectionProfileHandlers'
 import { resetConnectedAccountMockState } from '../mocks/connectedAccountHandlers'
-import { resetConnectionLogMockState } from '../mocks/connectionLogHandlers'
+import { resetConnectionLogMockState } from '@/features/audit/mocks/connectionLogHandlers'
 // external-access
 import { resetMockExternalAccessSettings } from '../mocks/externalAccessHandlers'
 import { resetMockExternalAccessTokens } from '../mocks/externalAccessTokenHandlers'
 // auth
 import { resetMockAuthConfig } from '../mocks/authFixtures'
-import { resetMockSelfServiceTokens } from '../mocks/localAuthFixtures'
+import { resetMockSelfServiceTokens } from '@/features/auth/mocks/localAuthFixtures'
 
 /**
  * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.

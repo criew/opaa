@@ -16,6 +16,7 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.metadata.DocumentChunkMetadata;
 import io.opaa.metadata.DocumentMetadataService;
 import java.sql.ResultSet;
@@ -47,8 +48,7 @@ class ContextPrefixRerunServiceTest {
           metadataService,
           vectorChunkStore,
           JsonMapper.builder().build(),
-          "public",
-          "vector_store",
+          new VectorTable("public", "vector_store"),
           TestFeatureFlags.allOn(),
           mock(PlatformTransactionManager.class),
           new io.opaa.observability.IndexingMetrics(

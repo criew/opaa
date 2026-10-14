@@ -1,5 +1,5 @@
 import Typography from '@mui/material/Typography'
-import ConnectionLogRetentionSection from './ConnectionLogRetentionSection'
+import { ConnectionLogRetentionSection } from '@/features/audit'
 import OutboundProxySection from './OutboundProxySection'
 import PrivateStorageSection from './PrivateStorageSection'
 

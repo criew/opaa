@@ -1,5 +1,6 @@
 package io.opaa.searchadmin;
 
+import io.opaa.api.types.DiagnosisContextType;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.retrieval.RetrievalExplanation;
 import java.time.Instant;

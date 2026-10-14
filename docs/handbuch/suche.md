@@ -550,6 +550,12 @@ Administrationsseite unterscheiden:
 | eingeschaltet, nicht nutzbar | Endpunkt oder Modell nicht konfiguriert, oder Endpunkt antwortet nicht | wie abgeschaltet, aber als Störung protokolliert („nicht verfügbar") und beim Start als Fehler im Log |
 | eingeschaltet, nutzbar | Endpunkt hat zuletzt geantwortet | Fusion behält das Reranking-Fenster, der Reranker wählt `top-k` |
 
+Den Zustand hält jede Rerank-Anfrage einer Frage aktuell. Kommt keine, prüft die Rolle den Endpunkt
+mit einer eigenen Anfrage, sobald die letzte Antwort länger als `OPAA_RERANK_PROBE_INTERVAL` zurückliegt.
+Antwortet der Endpunkt nicht, prüft sie ihn etwa eine Minute nach dem letzten Fehlschlag erneut,
+bis er wieder antwortet; eine hängende Prüfung braucht dabei selbst bis zu `OPAA_RERANK_TIMEOUT`.
+Eine Rolle ohne Endpunkt oder Modell wird nie geprüft.
+
 Fällt der Endpunkt **während** einer Frage aus oder überschreitet er das Zeitbudget, behält die
 Suche die fusionierte Reihenfolge und kürzt selbst auf `top-k`, mit den fest übernommenen
 Spitzentreffern wie die Fusion. Ein Ausfall kostet die Sortierung, nie die

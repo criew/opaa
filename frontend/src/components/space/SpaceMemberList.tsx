@@ -18,9 +18,10 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import type { SpaceMemberResponse, SpaceRole } from '@/shared/api/types'
-import { getSpaceGroupMembers } from '../../services/spaceApi'
-import { confirmAction } from '../../stores/confirmStore'
-import { groupMemberCountLabel, spaceRoleLabel } from '../../utils/labels'
+import { getSpaceAccessDerivation, getSpaceGroupMembers } from '../../services/spaceApi'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { groupMemberCountLabel } from '@/components/assets/assetLabels'
+import { spaceRoleLabel } from '@/shared/utils/labels'
 import AccessDerivation from '../permissions/AccessDerivation'
 import GroupMembersDisclosure from '../permissions/GroupMembersDisclosure'
 import MetaBadge from '@/shared/ui/MetaBadge'
@@ -267,6 +268,7 @@ export default function SpaceMemberList({
                 <Stack spacing={0.5} sx={{ pl: 4.5, pt: 0.5 }}>
                   <AccessDerivation
                     target={{ kind: 'space', spaceId, userId: member.subjectId }}
+                    load={getSpaceAccessDerivation}
                     subjectName={label}
                   />
                   <Link

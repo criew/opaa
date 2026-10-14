@@ -13,6 +13,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.web.AuditedAdminCall;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.web.IndexingAdminController;
 import io.opaa.library.OrphanedOriginalCleanupService;
 import io.opaa.library.OrphanedOriginalDeletion;
@@ -136,7 +137,7 @@ public class UploadStoreAdminController {
    */
   private static UUID requireLibraryId(UUID libraryId) {
     if (libraryId == null) {
-      throw new IllegalArgumentException("libraryId ist erforderlich");
+      throw new ValidationException("libraryId ist erforderlich");
     }
     return libraryId;
   }

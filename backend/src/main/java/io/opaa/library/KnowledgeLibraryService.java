@@ -15,7 +15,6 @@ import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -773,10 +772,8 @@ public class KnowledgeLibraryService {
   @Transactional
   public LibraryDetail updateShareCap(
       UUID libraryId, boolean allAccountsGrantAllowed, CurrentUser caller) {
-    if (!caller.isSystemAdmin()) {
-      throw new AccessDeniedException(
-          "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
-    }
+    caller.requireSystemAdmin(
+        "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
     KnowledgeLibrary library =
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     // An owner-only library has no administrative floor: unknown to the administration (404),

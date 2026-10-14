@@ -17,6 +17,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.UploadStoreUnavailableException;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.permission.PersonThreshold;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -32,7 +33,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -69,8 +69,7 @@ public class PipelineReindexService {
       DocumentIngestService documentIngestService,
       VectorChunkStore vectorChunkStore,
       StoredDocumentSourceAccess sourceAccess,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+      VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
@@ -78,7 +77,7 @@ public class PipelineReindexService {
     this.documentIngestService = documentIngestService;
     this.vectorChunkStore = vectorChunkStore;
     this.sourceAccess = sourceAccess;
-    this.vectorStoreTable = schemaName + "." + tableName;
+    this.vectorStoreTable = vectorTable.qualifiedName();
   }
 
   /**

@@ -60,7 +60,6 @@ import io.opaa.query.answer.ConversationMemoryConfiguration;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
-import io.opaa.query.spike.SpikeToolLoopQueryHandler;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RelevanceCutoffProperties;
@@ -117,7 +116,6 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
 
 @ExtendWith(MockitoExtension.class)
@@ -173,18 +171,18 @@ class QueryServiceTest {
    * tests can never run a different stage order than the application does.
    */
   private QueryService newQueryService(QueryProperties queryProperties, ChatMemory memory) {
-    return newQueryService(queryProperties, memory, spikeProvider(null));
+    return newQueryService(queryProperties, memory, Optional.empty());
   }
 
   /**
-   * #1789: {@code spikeHandler} stands in for the {@code opaa.spike.tool-loop.enabled}-gated bean -
-   * {@code null} is the switched-off state every other test in this class runs under, matching
-   * production without the property set.
+   * {@code toolLoopHandler} stands in for the {@code opaa.spike.tool-loop.enabled}-gated bean -
+   * empty is the switched-off state every other test in this class runs under, matching production
+   * without the property set.
    */
   private QueryService newQueryService(
       QueryProperties queryProperties,
       ChatMemory memory,
-      ObjectProvider<SpikeToolLoopQueryHandler> spikeHandlerProvider) {
+      Optional<ToolLoopQueryHandler> toolLoopHandler) {
     RetrievalPipeline pipeline =
         new RetrievalConfiguration()
             .retrievalPipeline(
@@ -228,27 +226,8 @@ class QueryServiceTest {
         new QueryMetrics(new SimpleMeterRegistry()),
         mock(MetadataFilterValidator.class),
         promptService,
-        spikeHandlerProvider,
+        toolLoopHandler,
         neighborChunkExpansion);
-  }
-
-  /**
-   * A bare {@link ObjectProvider} stand-in, since Mockito cannot mock the interface's own generic
-   * default methods reliably across the {@code T} type parameter here.
-   */
-  private static ObjectProvider<SpikeToolLoopQueryHandler> spikeProvider(
-      SpikeToolLoopQueryHandler handler) {
-    return new ObjectProvider<>() {
-      @Override
-      public SpikeToolLoopQueryHandler getObject() {
-        return handler;
-      }
-
-      @Override
-      public SpikeToolLoopQueryHandler getIfAvailable() {
-        return handler;
-      }
-    };
   }
 
   /**
@@ -321,14 +300,14 @@ class QueryServiceTest {
    */
   @Test
   void queryFallsThroughToTheOrdinaryPathWhenTheSpikeHandlerDeclines() {
-    SpikeToolLoopQueryHandler spikeHandler = mock(SpikeToolLoopQueryHandler.class);
+    ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
     when(spikeHandler.handle(any(), any(), any(), any(), any(), any(), any(), anyLong(), any()))
         .thenReturn(Optional.empty());
     QueryService serviceWithSpikeEnabled =
         newQueryService(
             new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
             chatMemory,
-            spikeProvider(spikeHandler));
+            Optional.of(spikeHandler));
     when(chatMemory.get(any())).thenReturn(List.of());
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -350,7 +329,7 @@ class QueryServiceTest {
    */
   @Test
   void queryReturnsTheSpikeHandlersResultUnmodifiedWhenItAccepts() {
-    SpikeToolLoopQueryHandler spikeHandler = mock(SpikeToolLoopQueryHandler.class);
+    ToolLoopQueryHandler spikeHandler = mock(ToolLoopQueryHandler.class);
     QueryResult spikeResult =
         new QueryResult(
             "Spike-Antwort",
@@ -375,7 +354,7 @@ class QueryServiceTest {
         newQueryService(
             new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2),
             chatMemory,
-            spikeProvider(spikeHandler));
+            Optional.of(spikeHandler));
 
     QueryResult response =
         serviceWithSpikeEnabled.query("@test Frage", null, caller, true, List.of());

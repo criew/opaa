@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.OrphanedOriginalSkipReason;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilesystemUploadedOriginalStore;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -146,11 +147,11 @@ class OrphanedLibraryCleanupServiceTest {
     assertThatThrownBy(
             () ->
                 service.deleteInOrphanedLibrary(organizationId, foreignLibrary, List.of(misfiled)))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessage(rejection);
     assertThatThrownBy(
             () -> service.deleteInOrphanedLibrary(organizationId, ownLibrary, List.of(owned)))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessage(rejection);
     assertThat(Path.of(misfiled)).exists();
     assertThat(Path.of(owned)).exists();
@@ -272,7 +273,7 @@ class OrphanedLibraryCleanupServiceTest {
     assertThat(raised.minimumAgeMinutes()).isEqualTo(24 * 60);
 
     assertThatThrownBy(() -> service.reportOrphanedLibraries(organizationId, GRACE_MINUTES - 1))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Schonfrist");
   }
 
@@ -320,7 +321,7 @@ class OrphanedLibraryCleanupServiceTest {
 
     assertThatThrownBy(
             () -> service.deleteInOrphanedLibrary(organizationId, deletedLibrary, List.of()))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("leer");
     List<String> tooMany =
         java.util.stream.IntStream.rangeClosed(0, OrphanedOriginalCleanupService.MAX_LISTED)
@@ -328,7 +329,7 @@ class OrphanedLibraryCleanupServiceTest {
             .toList();
     assertThatThrownBy(
             () -> service.deleteInOrphanedLibrary(organizationId, deletedLibrary, tooMany))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining(String.valueOf(OrphanedOriginalCleanupService.MAX_LISTED));
   }
 

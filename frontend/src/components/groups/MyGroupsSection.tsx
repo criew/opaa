@@ -21,11 +21,11 @@ import PermissionTransferDialog from '../permissions/PermissionTransferDialog'
 import UserPicker from './UserPicker'
 import { confirmGroupDeactivation } from './groupDeactivation'
 import type { GroupListResponse, UserSummary } from '@/shared/api/types'
-import { confirmAction } from '../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useGroupStore } from '../../stores/groupStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
-import { capabilityMissingMessage } from '../../utils/labels'
+import { capabilityMissingMessage } from '@/shared/utils/labels'
 
 function StewardedGroupCard({ group }: { group: GroupListResponse }) {
   const currentUserId = useAuthStore((s) => s.user?.id)

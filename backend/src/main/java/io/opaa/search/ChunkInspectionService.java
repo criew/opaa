@@ -8,11 +8,11 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.VectorTable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.type.TypeReference;
@@ -54,14 +54,13 @@ public class ChunkInspectionService {
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+      VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
     this.objectMapper = objectMapper;
-    this.selectSql = "SELECT id, content, metadata FROM " + schemaName + "." + tableName;
+    this.selectSql = "SELECT id, content, metadata FROM " + vectorTable.qualifiedName();
   }
 
   /**

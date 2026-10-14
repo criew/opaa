@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.metadata.MetadataFilter;
@@ -11,7 +12,6 @@ import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RerankAvailability;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalNote;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageOutcome;
 import java.time.LocalDate;

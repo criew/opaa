@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { AssetType, CatalogEntryResponse } from '@/shared/api/types'
 import { getCatalog } from '../../services/catalogApi'
 import { markAssetFavorite, unmarkAssetFavorite } from '../../services/assetApi'
-import { notify } from '../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 
 export interface AssetCatalogEntry {
   /** `undefined` while loading, `null` when the catalog does not hold the asset for the caller. */

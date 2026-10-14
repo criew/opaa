@@ -11,9 +11,10 @@ import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { AssetRole, PromptLibraryResponse, PromptResponse } from '@/shared/api/types'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
-import { confirmAction } from '../stores/confirmStore'
-import { assetRoleLabel, promptVariableTypeLabel } from '../utils/labels'
-import { fontFamily } from '../theme/tokens'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { assetRoleLabel } from '@/shared/utils/labels'
+import { promptVariableTypeLabel } from '../components/prompts/promptLabels'
+import { fontFamily } from '@/shared/theme/tokens'
 import {
   CATALOG_ROUTE,
   FORMER_PROMPT_LIBRARY_TABS,

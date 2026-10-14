@@ -3,7 +3,7 @@ import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import GlobalBadge from '@/shared/ui/GlobalBadge'
-import { darkRoles, lightRoles } from '../theme/tokens'
+import { darkRoles, lightRoles } from '@/shared/theme/tokens'
 
 interface GlobalAreaSection {
   label: string

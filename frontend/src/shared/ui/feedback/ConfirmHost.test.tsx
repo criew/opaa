@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
 import ConfirmHost from './ConfirmHost'
-import { confirmAction, useConfirmStore } from '../../../stores/confirmStore'
+import { confirmAction, useConfirmStore } from '../../stores/confirmStore'
 
 /**
  * Der Quelltext des Frontends, von Vite eingelesen (`?raw`) - kein Dateisystemzugriff, damit der

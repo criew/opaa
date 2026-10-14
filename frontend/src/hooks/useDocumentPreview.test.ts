@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentPreview } from './useDocumentPreview'
 import { openDocumentContent } from '../utils/documentContent'
-import { useNotificationStore } from '../stores/notificationStore'
+import { useNotificationStore } from '@/shared/stores/notificationStore'
 
 vi.mock('../utils/documentContent', () => ({
   openDocumentContent: vi.fn(),

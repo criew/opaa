@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -120,7 +121,7 @@ class AuditRetentionSettingsServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> retentionSettingsService.updateRetention(organizationId, userId, 11, null))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
 
     assertThat(retentionSettingsService.currentRetentionMonths()).isEqualTo(before);
   }
@@ -131,7 +132,7 @@ class AuditRetentionSettingsServiceIntegrationTest {
 
     assertThatThrownBy(
             () -> retentionSettingsService.updateRetention(organizationId, userId, 121, null))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
 
     assertThat(retentionSettingsService.currentRetentionMonths()).isEqualTo(before);
   }

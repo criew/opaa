@@ -4,13 +4,14 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 // app
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
-import { createAppTheme } from './theme/theme'
-import { resolveThemeMode } from './theme/colorScheme'
+import { createAppTheme } from '@/shared/theme/theme'
+import { resolveThemeMode } from '@/shared/theme/colorScheme'
 import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
-import { useUiStore } from './stores/uiStore'
+import { useUiStore } from '@/shared/stores/uiStore'
 import SettingsPage from './pages/SettingsPage'
+import { renderSpaceChats } from './app/themeSeams'
 // shared
 import {
   CATALOG_ROUTE,
@@ -32,14 +33,16 @@ import {
 } from '@/shared/routes'
 // auth
 import { useAuthStore } from '@/shared/session/authStore'
-import LoginPage from './pages/LoginPage'
-import SystemLoginPage from './pages/SystemLoginPage'
-import ChangePasswordPage from './pages/ChangePasswordPage'
-import SetPasswordPage from './pages/SetPasswordPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import RegisterPage from './pages/RegisterPage'
-import VerifyEmailPage from './pages/VerifyEmailPage'
-import AuthCallbackPage from './pages/AuthCallbackPage'
+import {
+  AuthCallbackPage,
+  ChangePasswordPage,
+  ForgotPasswordPage,
+  LoginPage,
+  RegisterPage,
+  SetPasswordPage,
+  SystemLoginPage,
+  VerifyEmailPage,
+} from '@/features/auth/routes'
 // chat
 import ChatPage from './pages/ChatPage'
 import ChatsPage from './pages/ChatsPage'
@@ -52,7 +55,7 @@ import SpaceSettingsPage from './pages/SpaceSettingsPage'
 // asset
 import CatalogPage from './pages/CatalogPage'
 import CatalogNewPage from './pages/CatalogNewPage'
-import { catalogRoute } from './components/assets/assetTypeRegistry'
+import { catalogRoute } from './shared/assetTypes'
 // library
 import LibraryCreatePage from './pages/LibraryCreatePage'
 import LibraryDetailPage from './pages/LibraryDetailPage'
@@ -63,31 +66,30 @@ import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
 import GroupManagementPage from './pages/GroupManagementPage'
 // succession
 import SuccessionPage from './pages/SuccessionPage'
-import HandoverPage from './pages/HandoverPage'
+import { HandoverPage } from '@/features/auth/routes'
 // capability
 import CapabilityManagementPage from './pages/CapabilityManagementPage'
 // user
 import UserManagementPage from './pages/UserManagementPage'
 // identity-provider
-import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
+import { OidcProviderManagementPage } from '@/features/identity-provider/routes'
 // directory-sync
 import DirectorySyncPage from './pages/DirectorySyncPage'
 import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
 // model
-import LlmModelManagementPage from './pages/LlmModelManagementPage'
+import { LlmModelManagementPage } from '@/features/model/routes'
 // mail
-import MailSettingsPage from './pages/MailSettingsPage'
+import { MailSettingsPage } from '@/features/mail/routes'
 // branding
-import { useBrandingStore } from './stores/brandingStore'
-import BrandingSettingsPage from './pages/BrandingSettingsPage'
+import { useBrandingStore } from '@/shared/branding/brandingStore'
+import { BrandingSettingsPage } from '@/features/branding/routes'
 // connection
 import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
 import ConnectionsAdminPage from './pages/ConnectionsAdminPage'
-import ConnectionLogPage from './pages/ConnectionLogPage'
+import { ConnectionLogPage, RightsHistoryPage } from '@/features/audit/routes'
 // search-admin
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 // audit
-import RightsHistoryPage from './pages/RightsHistoryPage'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
@@ -211,7 +213,10 @@ export default function App() {
 
               <Route path="spaces/:spaceId/chats" element={<ChatsPage />} />
               <Route path="spaces/:spaceId/chats/:chatId" element={<ChatPage />} />
-              <Route path="spaces/:spaceId" element={<SpacePage />} />
+              <Route
+                path="spaces/:spaceId"
+                element={<SpacePage renderChats={renderSpaceChats} />}
+              />
               {/* Die frühere Verwaltungsseite: Lesezeichen auf /manage landen auf dem ersten
                   Reiter der Einstellungen (#1917). */}
               <Route path="spaces/:spaceId/manage" element={<SpaceSettingsRedirect />} />

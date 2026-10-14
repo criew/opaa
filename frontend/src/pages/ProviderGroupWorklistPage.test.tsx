@@ -5,7 +5,7 @@ import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import ProviderGroupWorklistPage from './ProviderGroupWorklistPage'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useOidcProviderStore } from '../stores/oidcProviderStore'
+import { useOidcProviderStore } from '@/features/identity-provider'
 
 function signInAsAdmin() {
   useAuthStore.setState({

@@ -5,7 +5,7 @@ import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import LibraryCreatePage from './LibraryCreatePage'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
-import { capabilityMissingMessage } from '../utils/labels'
+import { capabilityMissingMessage } from '@/shared/utils/labels'
 import { mockSourceTypes } from '../mocks/libraryFixtures'
 
 const mockNavigate = vi.fn()
@@ -41,9 +41,10 @@ const {
   mockSearchSelectableGroups: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('../services/groupApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../services/groupApi')>('../services/groupApi')
+vi.mock('@/features/principal/api/groupLookupApi', async () => {
+  const actual = await vi.importActual<typeof import('@/features/principal/api/groupLookupApi')>(
+    '@/features/principal/api/groupLookupApi',
+  )
   return {
     ...actual,
     getMyGroups: mockGetMyGroups,

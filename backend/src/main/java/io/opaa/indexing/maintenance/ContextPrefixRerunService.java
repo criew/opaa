@@ -11,6 +11,7 @@ import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.metadata.ChunkContextPrefix;
 import io.opaa.metadata.ContextPrefixBacklog;
 import io.opaa.metadata.DocumentChunkMetadata;
@@ -27,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -74,8 +74,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
       DocumentMetadataService documentMetadataService,
       VectorChunkStore vectorChunkStore,
       ObjectMapper objectMapper,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName,
+      VectorTable vectorTable,
       FeatureFlags featureFlags,
       PlatformTransactionManager transactionManager,
       IndexingMetrics metrics) {
@@ -88,7 +87,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
     this.documentMetadataService = documentMetadataService;
     this.vectorChunkStore = vectorChunkStore;
     this.objectMapper = objectMapper;
-    this.vectorStoreTable = schemaName + "." + tableName;
+    this.vectorStoreTable = vectorTable.qualifiedName();
   }
 
   /**

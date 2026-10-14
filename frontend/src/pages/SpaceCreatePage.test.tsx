@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
 import { favoriteKey, mockFavoriteAssets } from '../mocks/assetFixtures'
-import { capabilityMissingMessage } from '../utils/labels'
+import { capabilityMissingMessage } from '@/shared/utils/labels'
 import SpaceCreatePage, { NO_KNOWLEDGE_SUMMARY } from './SpaceCreatePage'
 import { useSpaceStore } from '../stores/spaceStore'
 

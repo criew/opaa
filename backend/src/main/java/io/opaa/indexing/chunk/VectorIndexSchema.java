@@ -1,5 +1,6 @@
 package io.opaa.indexing.chunk;
 
+import io.opaa.knowledge.VectorTable;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgIndexType;
@@ -27,9 +28,7 @@ public class VectorIndexSchema {
   private final TransactionTemplate transactionTemplate;
   private final PgIndexType indexType;
   private final PgDistanceType distanceType;
-  private final String tableName;
-  private final String qualifiedTableName;
-  private final String schemaName;
+  private final VectorTable table;
 
   public VectorIndexSchema(
       JdbcTemplate jdbcTemplate,
@@ -37,15 +36,12 @@ public class VectorIndexSchema {
       @Value("${spring.ai.vectorstore.pgvector.index-type:hnsw}") PgIndexType indexType,
       @Value("${spring.ai.vectorstore.pgvector.distance-type:cosine_distance}")
           PgDistanceType distanceType,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+      VectorTable table) {
     this.jdbcTemplate = jdbcTemplate;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.indexType = indexType;
     this.distanceType = distanceType;
-    this.schemaName = schemaName;
-    this.tableName = tableName;
-    this.qualifiedTableName = schemaName + "." + tableName;
+    this.table = table;
   }
 
   /**
@@ -57,14 +53,14 @@ public class VectorIndexSchema {
         "SELECT atttypmod FROM pg_attribute WHERE attrelid = to_regclass(?) AND attname = ?"
             + " AND NOT attisdropped",
         rs -> rs.next() ? rs.getInt(1) : null,
-        qualifiedTableName,
+        table.qualifiedName(),
         column);
   }
 
   public boolean hasChunks() {
     return Boolean.TRUE.equals(
         jdbcTemplate.queryForObject(
-            "SELECT EXISTS (SELECT 1 FROM " + qualifiedTableName + ")", Boolean.class));
+            "SELECT EXISTS (SELECT 1 FROM " + table.qualifiedName() + ")", Boolean.class));
   }
 
   /** Chunks of shared and of private libraries, each in total and without a vector in a column. */
@@ -79,7 +75,7 @@ public class VectorIndexSchema {
             + " count(*) FILTER (WHERE v."
             + column
             + " IS NULL) AS without_vector FROM "
-            + qualifiedTableName
+            + table.qualifiedName()
             + " v LEFT JOIN assets a ON a.id::text = v.metadata->>'"
             + VectorChunkStore.LIBRARY_ID_METADATA_KEY
             + "' GROUP BY 1",
@@ -95,7 +91,7 @@ public class VectorIndexSchema {
   public long chunksWithout(String column) {
     Long count =
         jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM " + qualifiedTableName + " WHERE " + column + " IS NULL",
+            "SELECT count(*) FROM " + table.qualifiedName() + " WHERE " + column + " IS NULL",
             Long.class);
     return count == null ? 0 : count;
   }
@@ -104,7 +100,7 @@ public class VectorIndexSchema {
   public void resizeEmptyEmbeddingColumn(int dimensions) {
     jdbcTemplate.execute(
         "ALTER TABLE "
-            + qualifiedTableName
+            + table.qualifiedName()
             + " ALTER COLUMN "
             + EmbeddingIndexState.EMBEDDING_COLUMN
             + " TYPE vector("
@@ -117,7 +113,7 @@ public class VectorIndexSchema {
     dropTargetColumn();
     jdbcTemplate.execute(
         "ALTER TABLE "
-            + qualifiedTableName
+            + table.qualifiedName()
             + " ADD COLUMN "
             + EmbeddingIndexState.TARGET_COLUMN
             + " vector("
@@ -128,7 +124,7 @@ public class VectorIndexSchema {
   public void dropTargetColumn() {
     jdbcTemplate.execute(
         "ALTER TABLE "
-            + qualifiedTableName
+            + table.qualifiedName()
             + " DROP COLUMN IF EXISTS "
             + EmbeddingIndexState.TARGET_COLUMN);
   }
@@ -147,7 +143,7 @@ public class VectorIndexSchema {
         "CREATE INDEX CONCURRENTLY "
             + TARGET_INDEX_NAME
             + " ON "
-            + qualifiedTableName
+            + table.qualifiedName()
             + " USING "
             + indexType.name().toLowerCase(java.util.Locale.ROOT)
             + " ("
@@ -170,12 +166,12 @@ public class VectorIndexSchema {
           jdbcTemplate.execute("SET LOCAL lock_timeout = '" + SWITCH_LOCK_TIMEOUT + "'");
           jdbcTemplate.execute(
               "ALTER TABLE "
-                  + qualifiedTableName
+                  + table.qualifiedName()
                   + " DROP COLUMN "
                   + EmbeddingIndexState.EMBEDDING_COLUMN);
           jdbcTemplate.execute(
               "ALTER TABLE "
-                  + qualifiedTableName
+                  + table.qualifiedName()
                   + " RENAME COLUMN "
                   + EmbeddingIndexState.TARGET_COLUMN
                   + " TO "
@@ -202,12 +198,12 @@ public class VectorIndexSchema {
 
   /** The name {@code PgVectorStore} gives the vector index of the table. */
   private String vectorIndexName() {
-    return PgVectorStore.DEFAULT_TABLE_NAME.equals(tableName)
+    return PgVectorStore.DEFAULT_TABLE_NAME.equals(table.tableName())
         ? PgVectorStore.DEFAULT_VECTOR_INDEX_NAME
-        : tableName + "_index";
+        : table.tableName() + "_index";
   }
 
   private String qualified(String name) {
-    return schemaName + "." + name;
+    return table.schema() + "." + name;
   }
 }

@@ -10,7 +10,7 @@ import SyncOutlinedIcon from '@mui/icons-material/SyncOutlined'
 import type { DirectorySyncStatusResponse } from '@/shared/api/types'
 import { getDirectorySyncStatus } from '../services/directorySyncApi'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useOidcProviderStore } from '../stores/oidcProviderStore'
+import { useOidcProviderStore } from '@/features/identity-provider'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import SectionHead from '@/shared/ui/SectionHead'
@@ -25,7 +25,7 @@ import {
   type OverviewEntry,
   type OverviewFilter,
 } from '../components/admin/directorysync/directorySyncState'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 /** From this many providers on, the overview offers a filter and a search. */
 const FILTER_FROM = 6

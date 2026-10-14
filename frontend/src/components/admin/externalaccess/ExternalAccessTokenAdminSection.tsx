@@ -29,8 +29,8 @@ import {
   blockExternalAccessTokensOfOwner,
   listAllExternalAccessTokens,
 } from '../../../services/externalAccessApi'
-import { confirmAction } from '../../../stores/confirmStore'
-import { notify } from '../../../stores/notificationStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import PageSection from '@/shared/ui/PageSection'
 import OwnTokensLink from './OwnTokensLink'
 import StateDot from '@/shared/ui/StateDot'

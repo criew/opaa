@@ -20,6 +20,7 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.knowledge.UploadStoreUnavailableException;
 import io.opaa.library.OrphanedLibrary;
 import io.opaa.library.OrphanedLibraryReport;
@@ -346,8 +347,7 @@ class UploadStoreAdminControllerTest {
   void aStillExistingLibraryIsRejectedAndTheRejectionIsRecorded() throws Exception {
     when(cleanupService.deleteInOrphanedLibrary(any(), any(), any()))
         .thenThrow(
-            new IllegalArgumentException(
-                "Diese Bibliothek lässt sich über diesen Weg nicht aufräumen"));
+            new ValidationException("Diese Bibliothek lässt sich über diesen Weg nicht aufräumen"));
 
     mockMvc
         .perform(
@@ -370,7 +370,7 @@ class UploadStoreAdminControllerTest {
     // The cap and the emptiness rule live in the service, so the rejected call is an
     // administrative decision that leaves its own FAILURE event - not a malformed request.
     when(cleanupService.delete(any(), any(), any()))
-        .thenThrow(new IllegalArgumentException("locators darf nicht leer sein"));
+        .thenThrow(new ValidationException("locators darf nicht leer sein"));
 
     mockMvc
         .perform(

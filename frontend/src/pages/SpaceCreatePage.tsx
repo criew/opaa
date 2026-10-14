@@ -14,7 +14,7 @@ import { useLocation, useNavigate } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AssetTilePicker from '../components/assets/AssetTilePicker'
 import type { AssetPick, SpaceCreateLocationState } from '../components/assets/assetPick'
-import { assetTypeDefinition } from '../components/assets/assetTypeRegistry'
+import { assetTypeDefinition } from '../shared/assetTypes'
 import SubjectFormRow from '../components/permissions/SubjectFormRow'
 import SubjectPicker from '../components/permissions/SubjectPicker'
 import {
@@ -27,12 +27,12 @@ import {
 import ChatAutoCleanupField from '../components/space/ChatAutoCleanupField'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import WizardStepBar from '@/shared/ui/wizard/WizardStepBar'
-import { confirmAction } from '../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { getChatAutoCleanupPeriods } from '../services/spaceApi'
-import { capabilityMissingMessage, spaceRoleLabel } from '../utils/labels'
+import { capabilityMissingMessage, spaceRoleLabel } from '@/shared/utils/labels'
 import type { ChatAutoCleanupPeriods, PermissionSubjectType, SpaceRole } from '@/shared/api/types'
 
 const STEPS = ['Grunddaten', 'Mitglieder', 'Inhalte', 'Zusammenfassung'] as const

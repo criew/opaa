@@ -89,9 +89,7 @@ public class DiagnosticImpersonationGrantService {
   @Transactional
   public DiagnosticImpersonationGrant grant(
       CurrentUser actor, DiagnosticImpersonationGrantCreation creation) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException("Nur die Administration darf die Befugnis vergeben");
-    }
+    actor.requireSystemAdmin("Nur die Administration darf die Befugnis vergeben");
     Instant now = clock.instant();
     validateWindow(creation, now);
 
@@ -122,9 +120,7 @@ public class DiagnosticImpersonationGrantService {
   /** Revokes an existing grant early. Same restriction as {@link #grant}. */
   @Transactional
   public DiagnosticImpersonationGrant revoke(CurrentUser actor, UUID grantId) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException("Nur die Administration darf die Befugnis entziehen");
-    }
+    actor.requireSystemAdmin("Nur die Administration darf die Befugnis entziehen");
     DiagnosticImpersonationGrant grant =
         grantRepository
             .findByIdAndOrganizationId(grantId, actor.organizationId())
@@ -148,9 +144,7 @@ public class DiagnosticImpersonationGrantService {
   @Transactional(propagation = Propagation.MANDATORY)
   public List<DiagnosticImpersonationGrant> revokeGrantsIssuedBy(
       CurrentUser actor, UUID issuerUserId) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException("Nur die Administration darf die Befugnis entziehen");
-    }
+    actor.requireSystemAdmin("Nur die Administration darf die Befugnis entziehen");
     Instant now = clock.instant();
     List<DiagnosticImpersonationGrant> affected =
         grantRepository.findUnspentIssuedBy(actor.organizationId(), issuerUserId, now);
@@ -165,9 +159,7 @@ public class DiagnosticImpersonationGrantService {
   /** All grants of the organization, newest first - the administration's own overview. */
   @Transactional(readOnly = true)
   public List<DiagnosticImpersonationGrant> list(CurrentUser actor) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException("Nur die Administration darf die Befugnisse einsehen");
-    }
+    actor.requireSystemAdmin("Nur die Administration darf die Befugnisse einsehen");
     return grantRepository.findByOrganizationIdOrderByGrantedAtDesc(actor.organizationId());
   }
 

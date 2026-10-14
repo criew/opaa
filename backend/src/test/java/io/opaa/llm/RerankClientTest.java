@@ -52,7 +52,7 @@ class RerankClientTest {
   }
 
   private RerankProperties properties(String apiKey) {
-    return new RerankProperties(true, baseUrl, "bge-reranker", apiKey, Duration.ofSeconds(5));
+    return new RerankProperties(true, baseUrl, "bge-reranker", apiKey, Duration.ofSeconds(5), null);
   }
 
   private void respond(String body, AtomicReference<String> capturedBody) {
@@ -160,7 +160,7 @@ class RerankClientTest {
   void aRefusedConnectionIsReportedAsUnavailableButNotAsATimeout() {
     // Port 1 on loopback: nothing listens there, and no DNS lookup is involved.
     RerankProperties unreachable =
-        new RerankProperties(true, "http://127.0.0.1:1/v1", "m", "", Duration.ofSeconds(2));
+        new RerankProperties(true, "http://127.0.0.1:1/v1", "m", "", Duration.ofSeconds(2), null);
 
     RerankClient.ProbeFailure failure = client.probe(unreachable);
 
@@ -198,7 +198,7 @@ class RerankClientTest {
           }
         });
     RerankProperties slow =
-        new RerankProperties(true, baseUrl, "bge-reranker", "", Duration.ofMillis(50));
+        new RerankProperties(true, baseUrl, "bge-reranker", "", Duration.ofMillis(50), null);
 
     assertThatThrownBy(() -> client.rerank(slow, "Frage", List.of("a")))
         .isInstanceOf(RerankClient.RerankTimeoutException.class);
@@ -235,7 +235,7 @@ class RerankClientTest {
           }
         });
     RerankProperties stallingBody =
-        new RerankProperties(true, baseUrl, "bge-reranker", "", Duration.ofMillis(300));
+        new RerankProperties(true, baseUrl, "bge-reranker", "", Duration.ofMillis(300), null);
 
     assertTimeoutPreemptively(
         Duration.ofSeconds(3),
@@ -371,7 +371,7 @@ class RerankClientTest {
   @Test
   void aBaseUrlWithoutASchemeIsRejected() {
     RerankProperties noScheme =
-        new RerankProperties(true, "localhost:8080", "m", "", Duration.ofSeconds(2));
+        new RerankProperties(true, "localhost:8080", "m", "", Duration.ofSeconds(2), null);
 
     assertThatThrownBy(() -> client.rerank(noScheme, "Frage", List.of("a")))
         .isInstanceOf(RerankUnavailableException.class)

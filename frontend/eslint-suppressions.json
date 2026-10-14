@@ -44,54 +44,9 @@
       "count": 1
     }
   },
-  "src/components/assets/AssetOwnerSection.test.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
-  "src/components/assets/AssetSpacesList.test.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
-  "src/components/assets/AssetSpacesList.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/assets/UseInSpaceButton.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
   "src/components/library/sourceConnectionLabels.ts": {
     "boundaries/dependencies": {
       "count": 1
-    }
-  },
-  "src/components/permissions/AccessDerivation.test.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
-  "src/components/permissions/AccessDerivation.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/permissions/AssetGrantsSection.test.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
-  "src/components/permissions/AssetGrantsSection.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/permissions/SubjectPicker.test.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
     }
   },
   "src/components/settings/ConnectedAccountsSection.tsx": {
@@ -99,89 +54,14 @@
       "count": 2
     }
   },
-  "src/components/succession/SuccessionRow.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
   "src/components/succession/successionPresentation.ts": {
     "boundaries/dependencies": {
-      "count": 2
-    }
-  },
-  "src/hooks/useGroupSearch.ts": {
-    "boundaries/dependencies": {
       "count": 1
-    }
-  },
-  "src/hooks/useMyGroups.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/layouts/globalArea.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/pages/CatalogAssetTypeRegistry.test.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/pages/LibraryCreatePage.test.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
     }
   },
   "src/pages/SearchIndexingAdminPage.tsx": {
     "boundaries/dependencies": {
-      "count": 2
-    }
-  },
-  "src/pages/SpacePage.test.tsx": {
-    "boundaries/dependencies": {
       "count": 1
-    }
-  },
-  "src/pages/SpacePage.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/pages/SpaceSettingsPage.test.tsx": {
-    "boundaries/dependencies": {
-      "count": 4
-    }
-  },
-  "src/shared/api/api.test.ts": {
-    "boundaries/dependencies": {
-      "count": 3
-    }
-  },
-  "src/shared/session/authStore.local.test.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/shared/session/authStore.test.ts": {
-    "boundaries/dependencies": {
-      "count": 8
-    }
-  },
-  "src/utils/labels.feature.test.ts": {
-    "boundaries/dependencies": {
-      "count": 3
-    }
-  },
-  "src/utils/labels.test.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/utils/labels.ts": {
-    "boundaries/dependencies": {
-      "count": 2
     }
   }
 }

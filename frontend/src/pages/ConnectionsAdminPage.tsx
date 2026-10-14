@@ -15,7 +15,7 @@ import {
   connectionsAdminRoute,
   type ConnectionsAdminTab,
 } from '@/shared/routes'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 const TAB_LABELS: Record<ConnectionsAdminTab, string> = {
   access: 'Zugänge',

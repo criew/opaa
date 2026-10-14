@@ -1,7 +1,7 @@
 import type { AssetRole, AssetType, PermissionSubjectType } from '@/shared/api/types'
 import { upsertAssetGrant } from '../../services/assetApi'
-import { notify } from '../../stores/notificationStore'
-import { assetTypeLabel } from './assetTypeRegistry'
+import { notify } from '@/shared/stores/notificationStore'
+import { assetTypeLabel } from '../../shared/assetTypes'
 
 /** A grant noted in a creation wizard, applied once the asset exists. */
 export interface PendingGrant {
