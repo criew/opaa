@@ -16,8 +16,8 @@ CLEAN = (
 )
 
 
-def run_strict(repo: Path) -> subprocess.CompletedProcess:
-    return subprocess.run([BASH, SCRIPT.as_posix(), "--strict"], cwd=repo, capture_output=True, text=True)
+def run_check(repo: Path) -> subprocess.CompletedProcess:
+    return subprocess.run([BASH, SCRIPT.as_posix()], cwd=repo, capture_output=True, text=True)
 
 
 @pytest.fixture
@@ -29,12 +29,12 @@ def repo(tmp_path: Path) -> Path:
 
 def test_clean_adr_passes(repo: Path) -> None:
     (repo / "docs/decisions/0999-probe.md").write_text(CLEAN, encoding="utf-8")
-    assert run_strict(repo).returncode == 0
+    assert run_check(repo).returncode == 0
 
 
 @pytest.mark.parametrize("block", ["## Nachträge\n\nx\n", "- Punkt\n  > **Nachtrag (#1):** x\n"])
 def test_rejects_plural_heading_and_indented_quote(repo: Path, block: str) -> None:
     (repo / "docs/decisions/0999-probe.md").write_text(CLEAN + "\n" + block, encoding="utf-8")
-    result = run_strict(repo)
+    result = run_check(repo)
     assert result.returncode == 1
     assert "appended block" in result.stdout

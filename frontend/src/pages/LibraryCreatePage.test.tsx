@@ -95,9 +95,12 @@ vi.mock('../services/libraryApi', async () => {
     ...actual,
     testLibrarySource: mockTestLibrarySource,
     browseSource: mockBrowseSource,
-    listSourceTypes: mockListSourceTypes,
   }
 })
+
+vi.mock('../components/admin/connections/sourceTypeApi', () => ({
+  listSourceTypes: mockListSourceTypes,
+}))
 
 const mockCreateNewLibrary = vi.fn().mockResolvedValue('lib-neu')
 const mockTriggerIndexing = vi.fn().mockResolvedValue(undefined)

@@ -1,4 +1,3 @@
-import StorageIcon from '@mui/icons-material/Storage'
 import { sameLibrarySourceOrigin } from '../../../utils/librarySourceConfig'
 import {
   EMPTY_S3_VALUES,
@@ -12,13 +11,11 @@ import {
 import S3SourceForm from '../S3SourceForm'
 import { S3Scope, S3StoredView } from './S3SourceViews'
 import { connectionFields } from './sourceConnection'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import type { SourceRegistration } from './types'
 
 export const s3Source: SourceRegistration = {
-  label: 'S3-Objektspeicher',
-  shortLabel: 'S3',
-  description: 'Buckets und Präfixe eines S3-kompatiblen Objektspeichers werden eingelesen.',
-  Icon: StorageIcon,
+  ...SOURCE_TYPE_DIRECTORY.S3,
   containerLabel: 'Bucket',
   configuration: {
     empty: EMPTY_S3_VALUES,

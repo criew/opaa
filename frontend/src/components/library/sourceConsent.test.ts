@@ -4,9 +4,11 @@ import { scheduleValuesFrom } from '../../utils/librarySchedule'
 import { registeredSourceTypes, sourceRegistration } from './sources/registry'
 import {
   CONSENT_INTENT_STORAGE_KEY,
+  forgetConsentIntent,
+} from '../admin/connections/consentIntentStorage'
+import {
   attachPendingConnection,
   connectsSource,
-  forgetConsentIntent,
   readConsentIntent,
   rememberConsentIntent,
   draftValues,

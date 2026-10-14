@@ -25,13 +25,13 @@ import { notify } from '@/shared/stores/notificationStore'
 import { connectionProfileRoute } from '@/shared/routes'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
-import AccessBadge from '../capabilities/AccessBadge'
+import { AccessBadge } from '@/features/capability'
 import {
   accessBadgeLabel,
   currentAccess,
   objectPhrase,
   resultSentence,
-} from '../capabilities/capabilityAccess'
+} from '@/features/capability'
 import ProfileRequirementDialog from './ProfileRequirementDialog'
 import { confirmLock } from './connectorLock'
 import { stockLabel } from './connectorTypeState'

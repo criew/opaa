@@ -20,10 +20,10 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import ReconnectSourceDialog from '../components/library/ReconnectSourceDialog'
 import {
   attachPendingConnection,
-  forgetConsentIntent,
   readConsentIntent,
   type SourceConsentIntent,
 } from '../components/library/sourceConsent'
+import { forgetConsentIntent } from '../components/admin/connections/consentIntentStorage'
 import { safeRedirectPath } from '@/shared/session/safeRedirectPath'
 import { CONNECTED_ACCOUNTS_ROUTE, CONNECTION_CALLBACK_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 

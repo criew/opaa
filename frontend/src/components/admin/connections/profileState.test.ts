@@ -4,7 +4,7 @@ import {
   resetMockConnectionProfiles,
 } from '../../../mocks/connectionProfileFixtures'
 import type { ConnectionProfileResponse } from '@/shared/api/types'
-import type { Access } from '../capabilities/capabilityAccess'
+import type { Access } from '@/features/capability'
 import { attentionOf, hostOf, profileAccessEntry, summaryOf } from './profileState'
 
 function profile(change: Partial<ConnectionProfileResponse> = {}): ConnectionProfileResponse {

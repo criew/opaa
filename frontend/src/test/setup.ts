@@ -22,7 +22,10 @@ import { resetDocumentMockState } from '../mocks/libraryDocumentHandlers'
 // prompt
 import { resetMockPromptLibraries } from '../mocks/promptLibraryFixtures'
 // user
-import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'
+import {
+  resetMockLocalAuthSettings,
+  resetMockLocalUsers,
+} from '../features/user/mocks/localUserFixtures'
 // identity-provider
 import { resetMockOidcProviders } from '@/features/identity-provider/mocks/identityProviderFixtures'
 // model

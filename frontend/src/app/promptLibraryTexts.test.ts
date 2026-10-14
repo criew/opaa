@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { useAuthStore } from '../shared/session/authStore'
 import type { CapabilityOverviewResponse, SuccessionEntryResponse } from '../shared/api/types'
-import { presentationOf } from '../components/admin/capabilities/capabilityPresentation'
-import { objectPhrase } from '../components/admin/capabilities/capabilityAccess'
-import { problemOf } from '../components/succession/successionPresentation'
+import { presentationOf } from '@/features/capability'
+import { objectPhrase } from '@/features/capability'
+import { problemOf } from '@/features/succession'
 import { assetGrantScopeHint, assetRoleDescription } from '@/components/assets/assetLabels'
 
 /**

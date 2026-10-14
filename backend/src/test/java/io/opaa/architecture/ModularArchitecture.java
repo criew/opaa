@@ -196,14 +196,6 @@ public final class ModularArchitecture {
           entry(APP, EnumSet.of(FOUNDATION, KNOWLEDGE)));
 
   /**
-   * The package edges, relative to the root, that lie on a cycle between the subpackages of one
-   * top-level package today. Any other edge on such a cycle - and so every new cycle - fails the
-   * test; an edge that no longer lies on a cycle is removed from this list.
-   */
-  static final Set<String> KNOWN_SUBPACKAGE_CYCLE_EDGES =
-      Set.of("externalaccess -> externalaccess.token", "externalaccess.token -> externalaccess");
-
-  /**
    * The core subpackages of {@code indexing}, lowest first. A core package depends only on itself
    * and on core packages before it; {@code indexing} itself (the wiring), its web package and the
    * connectors sit above the whole core.
@@ -569,27 +561,18 @@ public final class ModularArchitecture {
           "RequestLoggingFilter");
 
   private final String root;
-  private final Set<String> knownCycleEdges;
   private final Set<String> apiClasses;
 
   public ModularArchitecture(String root) {
-    this(root, Set.of());
+    this(root, SHARED_API_CLASSES);
   }
 
   /**
-   * Rules over {@code root} that let the subpackage cycle edges in {@code knownCycleEdges} pass.
+   * Rules over {@code root} that allow exactly the classes named in {@code apiClasses} in {@link
+   * #API}.
    */
-  ModularArchitecture(String root, Set<String> knownCycleEdges) {
-    this(root, knownCycleEdges, SHARED_API_CLASSES);
-  }
-
-  /**
-   * Rules over {@code root} that let the subpackage cycle edges in {@code knownCycleEdges} pass and
-   * allow exactly the classes named in {@code apiClasses} in {@link #API}.
-   */
-  ModularArchitecture(String root, Set<String> knownCycleEdges, Set<String> apiClasses) {
+  ModularArchitecture(String root, Set<String> apiClasses) {
     this.root = root;
-    this.knownCycleEdges = knownCycleEdges;
     this.apiClasses = apiClasses;
   }
 
@@ -741,10 +724,7 @@ public final class ModularArchitecture {
   }
 
   ArchRule subpackagesAreFreeOfCycles() {
-    return classes()
-        .that(areInTheRoot())
-        .should(formNoSubpackageCycleBeyondTheKnownEdges())
-        .allowEmptyShould(true);
+    return classes().that(areInTheRoot()).should(formNoSubpackageCycle()).allowEmptyShould(true);
   }
 
   /**
@@ -752,7 +732,7 @@ public final class ModularArchitecture {
    * cycle, that is whose ends share a strongly connected component; each with one dependency as
    * evidence.
    */
-  Map<String, Dependency> subpackageCycleEdges(Iterable<JavaClass> classes) {
+  private Map<String, Dependency> subpackageCycleEdges(Iterable<JavaClass> classes) {
     Map<String, Map<String, Dependency>> graph = new TreeMap<>();
     for (JavaClass origin : classes) {
       String from = relative(origin.getPackageName());
@@ -783,8 +763,8 @@ public final class ModularArchitecture {
     return cyclic;
   }
 
-  private ArchCondition<JavaClass> formNoSubpackageCycleBeyondTheKnownEdges() {
-    return new ArchCondition<>("form no subpackage cycle beyond the known edges") {
+  private ArchCondition<JavaClass> formNoSubpackageCycle() {
+    return new ArchCondition<>("form no cycle between subpackages") {
       private final List<JavaClass> seen = new ArrayList<>();
 
       @Override
@@ -796,17 +776,13 @@ public final class ModularArchitecture {
       public void finish(ConditionEvents events) {
         subpackageCycleEdges(seen)
             .forEach(
-                (edge, dependency) -> {
-                  if (!knownCycleEdges.contains(edge)) {
+                (edge, dependency) ->
                     events.add(
                         SimpleConditionEvent.violated(
                             dependency,
                             edge
-                                + " lies on a cycle between subpackages and is no known edge in"
-                                + " ModularArchitecture.KNOWN_SUBPACKAGE_CYCLE_EDGES: "
-                                + dependency.getDescription()));
-                  }
-                });
+                                + " lies on a cycle between subpackages: "
+                                + dependency.getDescription())));
       }
     };
   }

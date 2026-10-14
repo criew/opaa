@@ -4,28 +4,13 @@
 # "zuletzt geändert JJJJ-MM-TT"; no appended "Nachtrag"/"Nachträge"/"Überholt" blocks (headings or bold
 # lead-ins, also inside indented block quotes); no sub-issue cut
 # ("Zuschnitt der ... Sub-Issues"); a "## Änderungsverlauf" section exists.
-#
-# Until the rewrites of the existing ADRs are merged (#2697-#2702), findings are reported as
-# warnings and the script exits 0. "--strict" or ADR_STYLE_STRICT=1 turns them into errors (exit 1).
+# Any finding fails the run (exit 1).
 set -euo pipefail
-
-strict="${ADR_STYLE_STRICT:-0}"
-for arg in "$@"; do
-  case "$arg" in
-  --strict) strict=1 ;;
-  *)
-    echo "usage: $0 [--strict]" >&2
-    exit 2
-    ;;
-  esac
-done
 
 cd "$(git rev-parse --show-toplevel)"
 
 shopt -s nullglob
 ADRS=(docs/decisions/0*.md)
-
-if [ "$strict" = 1 ]; then level=error; else level=warning; fi
 
 checked=0
 rejected=0
@@ -34,9 +19,9 @@ report() {
   # $1 file, $2 line (may be empty), $3 message
   rejected=$((rejected + 1))
   if [ -n "$2" ]; then
-    echo "::$level file=$1,line=$2::$3"
+    echo "::error file=$1,line=$2::$3"
   else
-    echo "::$level file=$1::$3"
+    echo "::error file=$1::$3"
   fi
 }
 
@@ -81,12 +66,8 @@ if [ "$checked" -eq 0 ]; then
 fi
 
 if [ "$rejected" -gt 0 ]; then
-  if [ "$strict" = 1 ]; then
-    echo "::error::$rejected style finding(s) in $checked ADRs (docs/decisions/README.md)."
-    exit 1
-  fi
-  echo "::warning::$rejected style finding(s) in $checked ADRs (docs/decisions/README.md); not enforced until the ADR rewrites (#2697-#2702) are merged."
-  exit 0
+  echo "::error::$rejected style finding(s) in $checked ADRs (docs/decisions/README.md)."
+  exit 1
 fi
 
 echo "All $checked ADRs follow docs/decisions/README.md."

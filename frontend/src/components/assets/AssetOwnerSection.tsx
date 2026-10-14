@@ -15,7 +15,7 @@ import {
   type SubjectSelection,
 } from '@/features/principal'
 import { confirmAction } from '@/shared/stores/confirmStore'
-import { successionAwareMessage } from '../succession/successionConflict'
+import { successionAwareMessage } from '@/features/succession'
 import { transferAssetOwnership } from '../../services/assetApi'
 import type { AssetOwnerType, AssetType } from '@/shared/api/types'
 import { assetTypeLabel } from '../../shared/assetTypes'

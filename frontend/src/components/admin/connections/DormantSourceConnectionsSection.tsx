@@ -15,7 +15,7 @@ import {
   responsibleLabel,
   sourceBlockReasonLabel,
   sourceConnectionEndLabel,
-} from '../../library/sourceConnectionLabels'
+} from './sourceConnectionLabels'
 
 /**
  * The shared libraries whose own source connection ("Quelle verbinden") rests - expired,

@@ -3,7 +3,7 @@ import { mockOidcProviderImpacts, mockOidcProviders } from './identityProviderFi
 import {
   isManyDirectoriesScenario,
   manyDirectoryProviders,
-} from '@/mocks/directorySyncScenarioFixtures'
+} from '@/features/directory-sync/mocks/directorySyncScenarioFixtures'
 import type {
   OidcProviderOrderRequest,
   OidcProviderRequest,

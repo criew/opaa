@@ -1,4 +1,3 @@
-import FolderSharedIcon from '@mui/icons-material/FolderShared'
 import {
   EMPTY_SMB_VALUES,
   sameSmbShare,
@@ -11,13 +10,11 @@ import {
 import SmbSourceForm from '../SmbSourceForm'
 import { SmbScope, SmbStoredView } from './SmbSourceViews'
 import { connectionFields } from './sourceConnection'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import type { SourceRegistration } from './types'
 
 export const smbSource: SourceRegistration = {
-  label: 'Windows-Dateifreigabe (SMB)',
-  shortLabel: 'Dateifreigabe',
-  description: 'Ordner einer Windows-Dateifreigabe werden über ein Dienstkonto eingelesen.',
-  Icon: FolderSharedIcon,
+  ...SOURCE_TYPE_DIRECTORY.SMB,
   containerLabel: 'Ordner',
   configuration: {
     empty: EMPTY_SMB_VALUES,

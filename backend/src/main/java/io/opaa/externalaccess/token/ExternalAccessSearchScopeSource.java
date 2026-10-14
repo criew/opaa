@@ -1,7 +1,6 @@
 package io.opaa.externalaccess.token;
 
 import io.opaa.auth.CurrentUser;
-import io.opaa.externalaccess.ExternalAccessTokenAuthenticationFilter;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.search.SearchRequestScope;
 import io.opaa.search.SearchScopeSource;
@@ -21,15 +20,19 @@ import org.springframework.web.context.request.RequestContextHolder;
  * depends on bean-registration order, and the quiet outcome of the wrong one winning is a token
  * call served with the person's full readable set.
  *
- * <p>Which of the two it is comes from the request attribute {@link
- * ExternalAccessTokenAuthenticationFilter#TOKEN_ID_ATTRIBUTE}, set by that filter and by nothing
- * else, and it is read per call. Outside a request (a scheduled run, a test calling the service
- * directly) there is no attribute and therefore no token - the person's view applies, which is the
- * safe direction: a missing attribute can only ever fail to narrow for a caller that has no token
- * anyway, never widen one that has.
+ * <p>Which of the two it is comes from the request attribute {@link #TOKEN_ID_ATTRIBUTE}, set by
+ * {@code ExternalAccessTokenAuthenticationFilter} and by nothing else, and it is read per call.
+ * Outside a request (a scheduled run, a test calling the service directly) there is no attribute
+ * and therefore no token - the person's view applies, which is the safe direction: a missing
+ * attribute can only ever fail to narrow for a caller that has no token anyway, never widen one
+ * that has.
  */
 @Component
 public class ExternalAccessSearchScopeSource implements SearchScopeSource {
+
+  /** Request attribute holding the id of the access token a call arrived on. */
+  public static final String TOKEN_ID_ATTRIBUTE =
+      ExternalAccessSearchScopeSource.class.getName() + ".tokenId";
 
   private final LibraryAccessService libraryAccess;
   private final ExternalAccessTokenScopeService tokenScope;
@@ -55,10 +58,7 @@ public class ExternalAccessSearchScopeSource implements SearchScopeSource {
     if (attributes == null) {
       return null;
     }
-    Object tokenId =
-        attributes.getAttribute(
-            ExternalAccessTokenAuthenticationFilter.TOKEN_ID_ATTRIBUTE,
-            RequestAttributes.SCOPE_REQUEST);
+    Object tokenId = attributes.getAttribute(TOKEN_ID_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
     return tokenId instanceof UUID id ? id : null;
   }
 }

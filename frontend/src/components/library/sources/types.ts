@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import type { LibrarySchedule, SourceTypeKey } from '@/shared/api/types'
+import type { SourceTypeEntry } from '../../admin/connections/sourceTypeDirectory'
 import type { LibrarySourceConfigPayload } from '../../../utils/librarySourceConfig'
 import type { SourceIssue } from '../../../utils/sourceIssue'
 import type { SourceConnection } from './sourceConnection'
@@ -109,11 +110,7 @@ export interface SourceConfiguration<V> {
 }
 
 /** One source type as the frontend presents it. */
-export interface SourceRegistration {
-  label: string
-  shortLabel: string
-  description: string
-  Icon: ComponentType<{ sx?: object }>
+export interface SourceRegistration extends SourceTypeEntry {
   /** What a document row calls its container key (a Confluence space, an S3 bucket). */
   containerLabel?: string
   /** Whether a document's original is the page at the source, opened there rather than served. */

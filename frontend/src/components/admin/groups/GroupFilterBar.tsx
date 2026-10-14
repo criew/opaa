@@ -6,7 +6,7 @@ import TextField from '@mui/material/TextField'
 import type { GroupState } from '@/shared/api/types'
 import { useOidcProviderStore } from '@/features/identity-provider'
 import { useGroupAdminListStore, type GroupFilters } from '../../../stores/groupAdminListStore'
-import { SEARCH_DEBOUNCE_MS } from '../users/AccountFilterBar'
+import { SEARCH_DEBOUNCE_MS } from '@/features/user'
 import { GROUP_STATES, GROUP_STATE_LABEL } from './groupListLabels'
 
 const PROVIDER_OPTION_PREFIX = 'provider:'

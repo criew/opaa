@@ -1,4 +1,3 @@
-import InboxIcon from '@mui/icons-material/Inbox'
 import {
   EMPTY_DROPBOX_VALUES,
   dropboxFoldersOf,
@@ -10,14 +9,11 @@ import {
 import DropboxSourceForm from '../DropboxSourceForm'
 import { DropboxScope, DropboxStoredView } from './DropboxSourceViews'
 import { connectionFields } from './sourceConnection'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import type { SourceRegistration } from './types'
 
 export const dropboxSource: SourceRegistration = {
-  label: 'Dropbox',
-  shortLabel: 'Dropbox',
-  description:
-    'Ordner einer Dropbox (auch eines Teams) werden über eine eigene Zustimmung der Bibliothek eingelesen.',
-  Icon: InboxIcon,
+  ...SOURCE_TYPE_DIRECTORY.DROPBOX,
   containerLabel: 'Ordner',
   configuration: {
     empty: EMPTY_DROPBOX_VALUES,

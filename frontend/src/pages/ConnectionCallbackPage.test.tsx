@@ -12,8 +12,8 @@ import type {
   ConnectionAuthorizationStartRequest,
 } from '@/shared/api/types'
 import { scheduleValuesFrom } from '../utils/librarySchedule'
+import { CONSENT_INTENT_STORAGE_KEY } from '../components/admin/connections/consentIntentStorage'
 import {
-  CONSENT_INTENT_STORAGE_KEY,
   SERVICE_ACCOUNT_CONFIRMATION,
   readConsentIntent,
   rememberConsentIntent,
