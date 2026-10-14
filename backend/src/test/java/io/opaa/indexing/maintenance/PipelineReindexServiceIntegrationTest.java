@@ -30,6 +30,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadStoreUnavailableException;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
@@ -62,7 +63,6 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -95,11 +95,7 @@ class PipelineReindexServiceIntegrationTest {
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private StoredDocumentSourceAccess sourceAccess;
 
-  @Value("${opaa.database.schema}")
-  private String schemaName;
-
-  @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}")
-  private String vectorStoreTableName;
+  @Autowired private VectorTable vectorTable;
 
   private UUID userId;
   private KnowledgeLibrary library;
@@ -906,8 +902,7 @@ class PipelineReindexServiceIntegrationTest {
         documentIngestService,
         vectorChunkStore,
         sourceAccess,
-        schemaName,
-        vectorStoreTableName);
+        vectorTable);
   }
 
   @Test
@@ -1003,8 +998,7 @@ class PipelineReindexServiceIntegrationTest {
         documentIngestService,
         vectorChunkStore,
         access,
-        schemaName,
-        vectorStoreTableName);
+        vectorTable);
   }
 
   @Test
