@@ -111,7 +111,7 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
 
 /**
  * Die internen Gruppen, für die das eigene Konto verantwortlich ist (#1814) - die Grundlage von
- * „Meine Gruppen". Bewusst getrennt von {@link getMyGroups}: verantwortlich zu sein heißt nicht,
+ * „Meine Gruppen". Bewusst getrennt von `getMyGroups` (`@/features/principal`): verantwortlich zu sein heißt nicht,
  * Mitglied zu sein.
  */
 export async function getMyStewardedGroups(): Promise<GroupListResponse[]> {
