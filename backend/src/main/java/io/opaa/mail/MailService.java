@@ -5,6 +5,7 @@ import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 import java.io.UnsupportedEncodingException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -43,14 +44,17 @@ public class MailService {
   private final MailSenderProvider senderProvider;
   private final MailTemplateService templates;
   private final MailSettingsService settingsService;
+  private final Clock clock;
 
   public MailService(
       MailSenderProvider senderProvider,
       MailTemplateService templates,
-      MailSettingsService settingsService) {
+      MailSettingsService settingsService,
+      Clock clock) {
     this.senderProvider = senderProvider;
     this.templates = templates;
     this.settingsService = settingsService;
+    this.clock = clock;
   }
 
   /**
@@ -174,7 +178,7 @@ public class MailService {
   /** A status write must never turn into the failure of the send it is describing. */
   private void recordOutcome(String failureReason) {
     try {
-      settingsService.recordSendOutcome(Instant.now(), failureReason);
+      settingsService.recordSendOutcome(Instant.now(clock), failureReason);
     } catch (RuntimeException e) {
       log.warn("Versandstatus konnte nicht fortgeschrieben werden: {}", e.getMessage());
     }
