@@ -82,7 +82,15 @@ def test_count_below_limit_asks_to_lower_it(repo: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "annotation", ["@Component", "@Configuration", "@RestController", "@Controller"]
+    "annotation",
+    [
+        "@Component",
+        "@Configuration",
+        "@RestController",
+        "@Controller",
+        "@RestControllerAdvice",
+        "@ControllerAdvice",
+    ],
 )
 def test_every_bean_annotation_counts(repo: Path, annotation: str) -> None:
     write(

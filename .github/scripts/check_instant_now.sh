@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Ratchet: Spring beans take the time from the injected Clock (common.ClockConfiguration), so tests
 # can fix it. Counts Instant.now() without argument in code lines of backend/src/main/java files
-# annotated @Service, @Component, @Configuration, @RestController or @Controller; entities
-# (@Entity) and records stamp themselves and are not counted (ADR-0051, Entscheidung 2 und 6).
+# annotated @Service, @Component, @Configuration, @(Rest)Controller or @(Rest)ControllerAdvice;
+# entities (@Entity) and records stamp themselves and are not counted (ADR-0051, Entscheidung 2
+# und 6).
 # The count must not exceed LIMIT; once it is lower, LIMIT is lowered to it.
 set -euo pipefail
 
@@ -11,7 +12,7 @@ limit="${OPAA_RATCHET_LIMIT:-$LIMIT}"
 
 cd "$(git rev-parse --show-toplevel)"
 
-BEAN='^\s*@(Service|Component|Configuration|RestController|Controller)\b'
+BEAN='^\s*@(Service|Component|Configuration|(Rest)?Controller(Advice)?)\b'
 EXEMPT='^\s*@Entity\b|^(public\s+)?(final\s+)?record\s'
 # A code line calling Instant.now() without argument; comment lines do not count.
 CALL='^(?!\s*(//|/?\*)).*Instant\.now\(\)'
