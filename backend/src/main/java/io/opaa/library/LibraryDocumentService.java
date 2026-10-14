@@ -226,7 +226,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   public LibraryDocumentEntry uploadDocument(
       UUID libraryId, MultipartFile file, UUID folderId, String folderPath, CurrentUser caller) {
     UUID currentUserId = caller.id();
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     requireEditable(library, currentUserId, caller.isSystemAdmin());
     requireUploadLibrary(library);
 
@@ -531,8 +532,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
     KnowledgeLibrary library =
         libraryRepository
-            .findById(document.getLibraryId())
-            .filter(lib -> lib.getOrganizationId().equals(caller.organizationId()))
+            .findByIdAndOrganizationId(document.getLibraryId(), caller.organizationId())
             // another person's private library does not exist for the caller, nor its documents
             .filter(lib -> !lib.isOwnerOnly() || caller.id().equals(lib.getOwnerUserId()))
             .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
@@ -834,7 +834,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    */
   public BulkDocumentDeletion deleteDocuments(
       UUID libraryId, List<UUID> documentIds, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     requireEditable(library, caller.id(), caller.isSystemAdmin());
     requireUploadLibrary(library);
 
@@ -862,7 +863,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   @Override
   @Transactional
   public void deleteDocument(UUID libraryId, UUID documentId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     requireEditable(library, caller.id(), caller.isSystemAdmin());
 
     Document document =
@@ -870,7 +872,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
             .findById(documentId)
             .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
     // Treats a document from another library the same as one that does not exist at all - the same
-    // reasoning KnowledgeLibraryService#loadLibrary applies across organizations.
+    // reasoning KnowledgeLibraryRepository#requireInOrganization applies across organizations.
     if (!document.getLibraryId().equals(libraryId)) {
       throw new NotFoundException("Dokument nicht gefunden");
     }
@@ -1064,21 +1066,6 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    */
   private void requireEditable(KnowledgeLibrary library, UUID currentUserId, boolean systemAdmin) {
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.EDITOR);
-  }
-
-  /**
-   * Loads a library and enforces the organization boundary, treating a library from another
-   * organization as not found - mirrors {@code KnowledgeLibraryService#loadLibrary}.
-   */
-  private KnowledgeLibrary loadLibrary(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
-    if (!library.getOrganizationId().equals(caller.organizationId())) {
-      throw new NotFoundException("Bibliothek nicht gefunden");
-    }
-    return library;
   }
 
   /**

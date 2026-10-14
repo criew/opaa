@@ -2,6 +2,7 @@ package io.opaa.library;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -99,7 +100,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
 
   @BeforeEach
   void setUp() {
-    KnowledgeLibraryRepository libraryRepository = mock(KnowledgeLibraryRepository.class);
+    KnowledgeLibraryRepository libraryRepository =
+        mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
     UserRepository userRepository = mock(UserRepository.class);
     GroupSubjectDirectory groupDirectory = mock(GroupSubjectDirectory.class);
     GroupMembershipResolver membershipResolver = mock(GroupMembershipResolver.class);
@@ -199,7 +201,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             "/tmp/does-not-matter",
             null,
             null);
-    when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(library.getId(), organizationId))
+        .thenReturn(Optional.of(library));
     when(accessService.requireRole(library, ownerId, false, AssetRole.OWNER))
         .thenReturn(AssetRole.OWNER);
     // A non-empty connector library - the branch deleteLibrary reorders (#636).

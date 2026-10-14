@@ -240,7 +240,8 @@ public class KnowledgeLibraryService {
    */
   public List<ConnectorReleaseService.ProfileOption> profileOptions(
       UUID libraryId, SourceType sourceType, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     if (!library.getSourceType().equals(sourceType)) {
       throw new ValidationException(
@@ -256,7 +257,8 @@ public class KnowledgeLibraryService {
   @Transactional
   public LibraryDetail connectProfile(
       UUID libraryId, UUID profileId, String sourceUrl, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     // A new profile is a new target: its release counts, not the one the library was created under.
     boolean sameProfile =
@@ -302,7 +304,8 @@ public class KnowledgeLibraryService {
   /** Releases the library from its profile - {@code MANAGER} on the library. */
   @Transactional
   public LibraryDetail disconnectProfile(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     LibraryConnectionService.requireReleasable(library);
     Optional<LibraryConnectionService.LibraryConnectionView> connection =
@@ -559,7 +562,8 @@ public class KnowledgeLibraryService {
   }
 
   public LibraryDetail getLibrary(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     AssetRole role =
         accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
     return toLibraryDetail(library, role, caller.id())
@@ -570,7 +574,8 @@ public class KnowledgeLibraryService {
   public LibraryDetail updateLibrary(UUID libraryId, LibraryUpdate request, CurrentUser caller) {
     UUID currentUserId = caller.id();
     boolean systemAdmin = caller.isSystemAdmin();
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.MANAGER);
     // ADR-0018: sourceType is chosen once, at creation, and is permanent - a library that started
     // as a directory crawl cannot become an upload container (or vice versa) without mixing
@@ -772,7 +777,8 @@ public class KnowledgeLibraryService {
       throw new AccessDeniedException(
           "Nur die Systemverwaltung darf die Freigabe-Obergrenze einer Bibliothek setzen");
     }
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     // An owner-only library has no administrative floor: unknown to the administration (404),
     // refused by the rule for its owner.
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
@@ -805,7 +811,8 @@ public class KnowledgeLibraryService {
   public void deleteLibrary(UUID libraryId, CurrentUser caller) {
     UUID currentUserId = caller.id();
     boolean systemAdmin = caller.isSystemAdmin();
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     // #202 code review round 3 (Blocker 1): deleting requires OWNER, not MANAGER - AssetRole's
     // Javadoc reserves "delete the asset and transfer ownership" for OWNER alone, and canManage
     // (MANAGER) was the wrong gate here: a group's MANAGER grant (round 2's fix for group-owned
@@ -980,7 +987,8 @@ public class KnowledgeLibraryService {
       UUID folderId,
       String missingMetadataField,
       Pageable pageable) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
     // #821 review round 1, finding 3: validated unconditionally, before either branch below - a
@@ -1448,7 +1456,8 @@ public class KnowledgeLibraryService {
   }
 
   private KnowledgeLibrary requireManagedLibraryWithPushIntake(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     if (connectors.descriptor(library.getSourceType()).pushIntake() == null) {
       throw new ValidationException(
@@ -1471,24 +1480,6 @@ public class KnowledgeLibraryService {
             .after(library.auditPayload(Map.of("changedFields", changedFields)))
             .outcome(AuditOutcome.SUCCESS)
             .build());
-  }
-
-  /**
-   * Loads a library and enforces the organization boundary, treating a library from another
-   * organization as not found - mirrors {@code SpaceService#loadSpace}. Applies to system admins as
-   * well; the boundary is not overstepped even to reveal existence.
-   */
-  /** The library's owner as the permission model names a subject - person or group. */
-  private KnowledgeLibrary loadLibrary(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
-
-    if (!library.getOrganizationId().equals(caller.organizationId())) {
-      throw new NotFoundException("Bibliothek nicht gefunden");
-    }
-    return library;
   }
 
   private LibraryDetail toLibraryDetail(KnowledgeLibrary library, AssetRole myRole, UUID userId) {

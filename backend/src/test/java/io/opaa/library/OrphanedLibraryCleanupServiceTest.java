@@ -3,6 +3,7 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -47,7 +48,7 @@ class OrphanedLibraryCleanupServiceTest {
   private final UUID organizationId = UUID.randomUUID();
   private final Instant now = Instant.parse("2026-09-11T12:00:00Z");
   private final KnowledgeLibraryRepository libraryRepository =
-      mock(KnowledgeLibraryRepository.class);
+      mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
 
   /** Every library row that exists, and the organization it belongs to. */

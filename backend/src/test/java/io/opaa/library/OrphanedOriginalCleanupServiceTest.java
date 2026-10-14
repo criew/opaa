@@ -3,6 +3,7 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -54,7 +55,7 @@ class OrphanedOriginalCleanupServiceTest {
   private final UUID libraryId = UUID.randomUUID();
   private final Instant now = Instant.parse("2026-09-11T12:00:00Z");
   private final KnowledgeLibraryRepository libraryRepository =
-      mock(KnowledgeLibraryRepository.class);
+      mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
   private final List<String> rows = new ArrayList<>();
   private FilesystemUploadedOriginalStore store;
@@ -64,7 +65,8 @@ class OrphanedOriginalCleanupServiceTest {
   void setUp() {
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getOrganizationId()).thenReturn(organizationId);
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(library));
     when(documentRepository.findFilePathsByLibraryId(libraryId)).thenReturn(rows);
     store =
         spy(
