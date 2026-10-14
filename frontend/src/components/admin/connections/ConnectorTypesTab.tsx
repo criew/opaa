@@ -7,7 +7,7 @@ import type {
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
 } from '@/shared/api/types'
-import { getCapabilityOverview } from '../../../services/capabilityAdminApi'
+import { getCapabilityOverview } from '@/features/capability'
 import {
   listConnectionProfiles,
   listConnectorTypeStates,

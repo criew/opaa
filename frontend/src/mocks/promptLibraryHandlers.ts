@@ -8,7 +8,7 @@ import type {
   PromptResponse,
 } from '@/shared/api/types'
 import { mockGroups, mockMyGroups } from './groupFixtures'
-import { mockMyCapabilities } from './capabilityFixtures'
+import { mockMyCapabilities } from '../features/capability/mocks/capabilityFixtures'
 import { mockSpaceAssetAssociations } from './assetFixtures'
 import {
   mockPromptLibraries,

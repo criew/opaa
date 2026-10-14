@@ -13,16 +13,16 @@ import KeyValueList from '@/shared/ui/KeyValueList'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
-import AccessBadge from '../capabilities/AccessBadge'
-import AccessEditor from '../capabilities/AccessEditor'
+import { AccessBadge } from '@/features/capability'
+import { AccessEditor } from '@/features/capability'
 import {
   accessBadgeLabel,
   currentAccess,
   objectPhrase,
   resultSentence,
   type Access,
-} from '../capabilities/capabilityAccess'
-import { applyAccess, confirmAccess } from '../capabilities/capabilityAccessChange'
+} from '@/features/capability'
+import { applyAccess, confirmAccess } from '@/features/capability'
 import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
 import { admitsPersons, personCountLabel } from './profileChange'
 import { formatDay, signsInItself, type ProfileAttention } from './profileState'

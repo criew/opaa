@@ -23,7 +23,7 @@ import { groupAdminHandlers } from './groupAdminHandlers'
 // succession
 import { successionHandlers } from './successionHandlers'
 // capability
-import { capabilityHandlers } from './capabilityHandlers'
+import { capabilityHandlers } from '../features/capability/mocks/capabilityHandlers'
 // user
 import { userHandlers } from '@/features/principal/mocks/userHandlers'
 import { localUserHandlers } from './localUserHandlers'

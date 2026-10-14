@@ -1,5 +1,5 @@
 import type { CapabilityOverviewResponse } from '@/shared/api/types'
-import { grantCapability, revokeCapability } from '../../../services/capabilityAdminApi'
+import { grantCapability, revokeCapability } from '../api/capabilityAdminApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { confirmGroupSubject } from '@/features/principal'
 import { planAccessChange, resultSentence, type Access } from './capabilityAccess'

@@ -68,7 +68,7 @@ import GroupManagementPage from './pages/GroupManagementPage'
 import SuccessionPage from './pages/SuccessionPage'
 import { HandoverPage } from '@/features/auth/routes'
 // capability
-import CapabilityManagementPage from './pages/CapabilityManagementPage'
+import { CapabilityManagementPage } from '@/features/capability/routes'
 // user
 import UserManagementPage from './pages/UserManagementPage'
 // identity-provider
