@@ -6,7 +6,7 @@ import type { PromptVariable } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { resolvePromptText } from '../../utils/promptTemplate'
 import PromptVariableInput from './PromptVariableInput'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 
 /**
  * The prompt as someone inserting it would get it: example values for the variables, the system

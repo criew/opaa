@@ -30,7 +30,7 @@ let nextNotificationId = 1
 /**
  * Global popup notifications (guidelines 5.9): transient feedback on one-off actions - a failed
  * download, a started download, a finished background step - surfaces here and is rendered once
- * by {@link ../components/NotificationHost}, never as an inline alert pushed above unrelated
+ * by {@link ../shared/ui/feedback/NotificationHost}, never as an inline alert pushed above unrelated
  * content.
  */
 export const useNotificationStore = create<NotificationState>((set) => ({

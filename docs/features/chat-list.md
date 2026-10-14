@@ -151,7 +151,7 @@ Chats eines Space, keine zweite Chatoberfläche: Ein Klick auf einen Eintrag öf
 ```
 
 - **Tabelle wie in der Administration** („Benutzer", „Gruppen"): dieselben Bausteine
-  (`components/admin/list/`) für Tabellenstil, Seitenumschalter, Lade- und Leerzustand. Unterhalb der
+  (`shared/ui/list/`) für Tabellenstil, Seitenumschalter, Lade- und Leerzustand. Unterhalb der
   Tablet-Breite wird die Tabelle zur Liste (Leitfaden 5.3).
 - **Reiter „Aktiv"** zeigt dieselben Chats wie die Seitenleiste, in derselben Ordnung (angeheftet, dann
   nach letzter Aktivität), mit Titel, Anheftung als zweiter Zeile und letzter Aktivität.

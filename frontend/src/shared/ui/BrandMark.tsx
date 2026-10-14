@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { useBrandingStore } from '../stores/brandingStore'
+import { useBrandingStore } from '../../stores/brandingStore'
 
 interface BrandMarkProps {
   /** Rendered height of the logo in pixels; the width follows the image's own aspect ratio. */

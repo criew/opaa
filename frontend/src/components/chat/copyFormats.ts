@@ -1,5 +1,9 @@
-import type { CitationIndex } from './citations'
-import { CLAIMED_MARKER_RE, readMarker, unwrapBracketedMarkers } from './citations'
+import type { CitationIndex } from '@/shared/ui/markdown/citations'
+import {
+  CLAIMED_MARKER_RE,
+  readMarker,
+  unwrapBracketedMarkers,
+} from '@/shared/ui/markdown/citations'
 
 /**
  * The formats a chat answer is copied in. The stored answer carries the backend's citation markers

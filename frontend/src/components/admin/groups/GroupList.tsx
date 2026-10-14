@@ -13,7 +13,7 @@ import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { GroupEffectsResponse, GroupListResponse } from '@/shared/api/types'
 import type { GroupSortField } from '../../../services/groupAdminApi'
 import { useGroupAdminListStore } from '../../../stores/groupAdminListStore'
-import MetaBadge from '../../MetaBadge'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import {
   ListEmptyState,
   ListLoading,
@@ -21,8 +21,8 @@ import {
   SortableHeadCell,
   StateLabel,
   type SortBinding,
-} from '../list/AdminList'
-import { adminTableSx, listCardSx } from '../list/adminListStyles'
+} from '@/shared/ui/list/AdminList'
+import { adminTableSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import GroupOriginTag from './GroupOriginTag'
 import GroupRowMenu from './GroupRowMenu'
 import { GROUP_STATE_COLOR, GROUP_STATE_LABEL, groupStateReason } from './groupListLabels'

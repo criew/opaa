@@ -13,7 +13,7 @@ import NetworkCheckOutlinedIcon from '@mui/icons-material/NetworkCheckOutlined'
 import type { OidcProviderRequest, OidcProviderResponse } from '@/shared/api/types'
 import { testOidcProvider } from '../../services/identityProviderApi'
 import { useOidcProviderStore } from '../../stores/oidcProviderStore'
-import SectionHead from '../SectionHead'
+import SectionHead from '@/shared/ui/SectionHead'
 
 export const ISSUER_HELP_TEXT =
   'Die Issuer-URI, wie der Anbieter sie in seinen Tokens prägt (bei Keycloak die Realm-Adresse). ' +

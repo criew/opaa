@@ -2,7 +2,7 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NotificationHost from './NotificationHost'
-import { notify, useNotificationStore } from '../stores/notificationStore'
+import { notify, useNotificationStore } from '../../../stores/notificationStore'
 
 describe('NotificationHost', () => {
   beforeEach(() => {

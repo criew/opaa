@@ -6,9 +6,9 @@ import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import DoneAllIcon from '@mui/icons-material/DoneAll'
-import type { CitationIndex } from './citations'
-import { describeEvidenceSummary } from './citations'
-import { citationMarkSx } from './citationMark'
+import type { CitationIndex } from '@/shared/ui/markdown/citations'
+import { describeEvidenceSummary } from '@/shared/ui/markdown/citations'
+import { citationMarkSx } from '@/shared/ui/markdown/citationMark'
 import { focusRingAlpha, motion, radius } from '../../theme/tokens'
 
 /** Footnote marks shown in the button before the rest folds into "+n". */

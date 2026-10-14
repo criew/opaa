@@ -26,7 +26,7 @@ import {
 import { apiErrorCode } from '@/shared/api/apiErrorDetails'
 import { notify } from '../../stores/notificationStore'
 import UserPicker from '../groups/UserPicker'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import GroupPicker from './GroupPicker'
 import { confirmGroupSubject, PROTECTED_GROUP_SEARCH_HINT } from './subjectSelection'
 

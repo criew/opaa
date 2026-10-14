@@ -18,9 +18,9 @@ import {
 } from '../../../services/externalAccessApi'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
-import BusyButton from '../../a11y/BusyButton'
-import SectionHead from '../../SectionHead'
-import StatusLine from '../../StatusLine'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SectionHead from '@/shared/ui/SectionHead'
+import StatusLine from '@/shared/ui/StatusLine'
 import { fontFamily } from '../../../theme/tokens'
 import ExternalAccessSettingsPanel, {
   SAVED_MESSAGE,

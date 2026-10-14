@@ -10,7 +10,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useMailStore } from '../../../stores/mailStore'
-import SectionHead from '../../SectionHead'
+import SectionHead from '@/shared/ui/SectionHead'
 import { radius } from '../../../theme/tokens'
 import MailTemplateEditor from './MailTemplateEditor'
 

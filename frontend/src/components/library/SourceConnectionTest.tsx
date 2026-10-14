@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import BusyButton from '../a11y/BusyButton'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 import type { SourceTypeKey, SourceConnectionTestResponse } from '@/shared/api/types'
 import { testLibrarySource } from '../../services/libraryApi'
 import type { ConnectionFields } from './sources/sourceConnection'

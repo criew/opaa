@@ -14,8 +14,8 @@ import {
   dropboxSettingsFrom,
   type DropboxSourceValues,
 } from '../../utils/dropboxSource'
-import BusyButton from '../a11y/BusyButton'
-import FieldLabel from '../wizard/FieldLabel'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 

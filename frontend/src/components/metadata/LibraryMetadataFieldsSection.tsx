@@ -19,7 +19,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Switch from '@mui/material/Switch'
 import { Link as RouterLink } from 'react-router'
-import { plural } from '../searchadmin/format'
+import { plural } from '@/shared/utils/format'
 import Link from '@mui/material/Link'
 import {
   addLibraryMetadataFieldValue,

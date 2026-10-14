@@ -4,7 +4,7 @@ import Skeleton from '@mui/material/Skeleton'
 import Typography from '@mui/material/Typography'
 import type { MailTemplatePreviewResponse } from '@/shared/api/types'
 import { radius } from '../../../theme/tokens'
-import SectionHead from '../../SectionHead'
+import SectionHead from '@/shared/ui/SectionHead'
 
 interface MailTemplatePreviewPaneProps {
   preview: MailTemplatePreviewResponse | null

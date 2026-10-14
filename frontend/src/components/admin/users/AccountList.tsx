@@ -21,9 +21,9 @@ import {
   SortableHeadCell,
   StateLabel,
   type SortBinding,
-} from '../list/AdminList'
-import { adminTableSx, listCardSx } from '../list/adminListStyles'
-import MetaBadge from '../../MetaBadge'
+} from '@/shared/ui/list/AdminList'
+import { adminTableSx, listCardSx } from '@/shared/ui/list/adminListStyles'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import AccountOriginTag from './AccountOriginTag'
 import LocalUserRowMenu from './LocalUserRowMenu'
 import ProviderAccountRowMenu from './ProviderAccountRowMenu'

@@ -12,7 +12,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
-import type { CitationIndex } from './citations'
+import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import {
   citationRowId,
   describeCitedPassages,
@@ -21,7 +21,7 @@ import {
   formatMetadataLine,
   metadataFilterMatchLabel,
   withTitleMetadataOnly,
-} from './citations'
+} from '@/shared/ui/markdown/citations'
 import type {
   SourceBlockReason,
   SourceFreeze,

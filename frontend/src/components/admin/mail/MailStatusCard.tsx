@@ -1,6 +1,6 @@
 import type { MailSettingsResponse } from '@/shared/api/types'
-import KeyValueList from '../../KeyValueList'
-import StatusLine, { type StatusTone } from '../../StatusLine'
+import KeyValueList from '@/shared/ui/KeyValueList'
+import StatusLine, { type StatusTone } from '@/shared/ui/StatusLine'
 import { formatMailTimestamp, mailStatusOf } from './mailStatus'
 
 const TONE: Record<string, StatusTone> = {

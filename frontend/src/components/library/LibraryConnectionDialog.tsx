@@ -17,7 +17,7 @@ import { useConnectionProfileOptions } from '../../hooks/useConnectionProfileOpt
 import { testLibrarySource } from '../../services/libraryApi'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { notify } from '../../stores/notificationStore'
-import BusyButton from '../a11y/BusyButton'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 import ConnectionProfileSelect from './ConnectionProfileSelect'
 import {
   admitsLibraries,

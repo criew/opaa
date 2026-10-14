@@ -15,8 +15,8 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import PageHeading from '../a11y/PageHeading'
-import FieldLabel from '../wizard/FieldLabel'
+import PageHeading from '@/shared/ui/a11y/PageHeading'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 
 export interface AssetHeadlineEditorProps {
   /** The saved name; the editor keeps its own draft until „Speichern". */

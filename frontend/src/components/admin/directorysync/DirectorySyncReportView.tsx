@@ -6,7 +6,7 @@ import type {
   DirectorySyncReportResponse,
   DirectorySyncUserRef,
 } from '@/shared/api/types'
-import StatusLine from '../../StatusLine'
+import StatusLine from '@/shared/ui/StatusLine'
 import { formatFraction, outcomeLabel, outcomeTone } from './directorySyncLabels'
 
 function groupLine(change: DirectorySyncGroupChange): string {

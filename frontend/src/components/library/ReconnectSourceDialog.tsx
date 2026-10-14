@@ -8,7 +8,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Typography from '@mui/material/Typography'
 import { startSourceAuthorization } from '../../services/connectedAccountApi'
 import { leaveFor } from '@/shared/api/leaveApp'
-import BusyButton from '../a11y/BusyButton'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 import ServiceAccountConfirmation from './ServiceAccountConfirmation'
 import { forgetConsentIntent, rememberConsentIntent } from './sourceConsent'
 

@@ -4,8 +4,8 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import PageSection from '../PageSection'
-import SectionHead from '../SectionHead'
+import PageSection from '@/shared/ui/PageSection'
+import SectionHead from '@/shared/ui/SectionHead'
 import SubjectPicker from '../permissions/SubjectPicker'
 import {
   confirmExternalSubject,

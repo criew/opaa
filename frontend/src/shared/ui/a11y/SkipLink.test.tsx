@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
-import { renderWithProviders } from '../../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import SkipLink from './SkipLink'
 import { MAIN_CONTENT_ID } from './PageHeading'
 

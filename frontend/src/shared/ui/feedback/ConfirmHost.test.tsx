@@ -1,21 +1,21 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { renderWithProviders } from '../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import ConfirmHost from './ConfirmHost'
-import { confirmAction, useConfirmStore } from '../stores/confirmStore'
+import { confirmAction, useConfirmStore } from '../../../stores/confirmStore'
 
 /**
  * Der Quelltext des Frontends, von Vite eingelesen (`?raw`) - kein Dateisystemzugriff, damit der
  * Wächter unten ohne Node-Typen auskommt.
  */
 const QUELLEN = {
-  ...(import.meta.glob('../**/*.tsx', {
+  ...(import.meta.glob('../../../**/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('../**/*.ts', {
+  ...(import.meta.glob('../../../**/*.ts', {
     query: '?raw',
     import: 'default',
     eager: true,

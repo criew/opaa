@@ -18,8 +18,8 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
-import PageSection from '../PageSection'
-import SectionHead from '../SectionHead'
+import PageSection from '@/shared/ui/PageSection'
+import SectionHead from '@/shared/ui/SectionHead'
 import type {
   AssetGrantResponse,
   AssetGrantSubjectType,

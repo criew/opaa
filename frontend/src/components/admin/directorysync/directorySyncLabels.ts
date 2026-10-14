@@ -1,5 +1,5 @@
 import type { DirectorySyncOutcome } from '@/shared/api/types'
-import type { StatusTone } from '../../StatusLine'
+import type { StatusTone } from '@/shared/ui/StatusLine'
 
 const outcomeLabels: Record<DirectorySyncOutcome, string> = {
   APPLIED: 'Angewendet',

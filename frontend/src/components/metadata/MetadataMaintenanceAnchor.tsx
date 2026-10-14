@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography'
 import type { LibraryMetadataMaintenanceResponse } from '@/shared/api/types'
 import { getLibraryMetadataMaintenance } from '../../services/libraryMetadataApi'
 import { formatShare } from '../../utils/labels'
-import PageSection from '../PageSection'
+import PageSection from '@/shared/ui/PageSection'
 
 interface MetadataMaintenanceAnchorProps {
   libraryId: string

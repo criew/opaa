@@ -19,7 +19,7 @@ import type {
 } from '@/shared/api/types'
 import { useMailStore } from '../../../stores/mailStore'
 import { notify } from '../../../stores/notificationStore'
-import PageSection from '../../PageSection'
+import PageSection from '@/shared/ui/PageSection'
 import MailStatusCard from './MailStatusCard'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 

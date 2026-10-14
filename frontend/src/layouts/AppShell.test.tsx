@@ -6,8 +6,8 @@ import { renderWithProviders } from '../test/test-utils'
 import AppShell from './AppShell'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useUiStore } from '../stores/uiStore'
-import PageHeading from '../components/a11y/PageHeading'
-import { KEEP_FOCUS_STATE } from '../components/a11y/routeFocus'
+import PageHeading from '@/shared/ui/a11y/PageHeading'
+import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import GlobalAreaLayout from './GlobalAreaLayout'
 
 const ADMIN_SECTIONS = [{ label: 'Benutzer & Gruppen', to: '/admin/groups' }]

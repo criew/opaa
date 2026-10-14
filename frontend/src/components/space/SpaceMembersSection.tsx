@@ -20,7 +20,7 @@ import {
   type SubjectSelection,
 } from '../permissions/subjectSelection'
 import { successionAwareMessage } from '../succession/successionConflict'
-import SectionHead from '../SectionHead'
+import SectionHead from '@/shared/ui/SectionHead'
 import SpaceMemberList from './SpaceMemberList'
 import { memberLabelOf, memberNoticeLabelOf } from './memberLabel'
 

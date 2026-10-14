@@ -10,8 +10,8 @@ import { getOutboundProxy, updateOutboundProxy } from '../../../services/outboun
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
-import BusyButton from '../../a11y/BusyButton'
-import PageSection from '../../PageSection'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
+import PageSection from '@/shared/ui/PageSection'
 
 /** One entry per line; blank lines drop out. */
 function entriesOf(text: string): string[] {

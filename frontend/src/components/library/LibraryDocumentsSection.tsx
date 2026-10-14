@@ -45,7 +45,7 @@ import BulkMetadataDialog from '../metadata/BulkMetadataDialog'
 import DocumentMetadataPanel from '../metadata/DocumentMetadataPanel'
 import MetadataMaintenanceAnchor from '../metadata/MetadataMaintenanceAnchor'
 import { coreMetadataFieldLabel } from '../metadata/metadataValues'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import LibraryDocumentList from './LibraryDocumentList'
 
 // Mirrors what the registered DocumentFormats admit (DocumentFormat#admittedFormats,

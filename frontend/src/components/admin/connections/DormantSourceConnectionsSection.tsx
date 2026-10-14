@@ -9,7 +9,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import type { DormantSourceConnection } from '@/shared/api/types'
 import { listDormantSourceConnections } from '../../../services/connectionProfileApi'
-import PageSection from '../../PageSection'
+import PageSection from '@/shared/ui/PageSection'
 import {
   formatConsentTime,
   responsibleLabel,

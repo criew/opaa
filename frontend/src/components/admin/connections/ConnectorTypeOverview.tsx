@@ -11,9 +11,9 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { ConnectorTypeStateResponse, SourceTypeKey } from '@/shared/api/types'
-import StateDot from '../../StateDot'
+import StateDot from '@/shared/ui/StateDot'
 import SourceTypeIcon from '../../library/sourceTypeIcon'
-import { adminTableSx, definitionListSx, listCardSx } from '../list/adminListStyles'
+import { adminTableSx, definitionListSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import { profileRuleLabel } from './connectorTypeState'
 
 export interface ConnectorTypeEntry {

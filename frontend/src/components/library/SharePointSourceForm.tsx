@@ -11,7 +11,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
-import BusyButton from '../a11y/BusyButton'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 import type { SourceBrowseResponse } from '@/shared/api/types'
 import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import {
@@ -31,7 +31,7 @@ import {
   type SharePointLibraryChoice,
   type SharePointSourceValues,
 } from '../../utils/sharePointSource'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import ScopeConsequence from './sources/ScopeConsequence'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 

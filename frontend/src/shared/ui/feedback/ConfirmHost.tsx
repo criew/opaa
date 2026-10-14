@@ -8,8 +8,8 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined'
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined'
-import type { ConfirmTone } from '../stores/confirmStore'
-import { useConfirmStore } from '../stores/confirmStore'
+import type { ConfirmTone } from '../../../stores/confirmStore'
+import { useConfirmStore } from '../../../stores/confirmStore'
 
 const TONE_COLOR: Record<ConfirmTone, string> = {
   danger: 'error.main',

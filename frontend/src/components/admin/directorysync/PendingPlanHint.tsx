@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 import type { DirectorySyncStatusResponse } from '@/shared/api/types'
 import { getDirectorySyncStatus } from '../../../services/directorySyncApi'
 import { ageSinceLabel, countLabel } from '../../groups/groupOriginLabels'
-import HintLink from '../list/HintLink'
+import HintLink from '@/shared/ui/list/HintLink'
 
 /**
  * Ein ausstehender Verzeichnisplan ist ein lauter Zustand (ADR-0036, Entscheidung 3): Sein Alter

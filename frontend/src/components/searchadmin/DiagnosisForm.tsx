@@ -15,7 +15,7 @@ import type {
 } from '@/shared/api/types'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { getDocumentTypeVocabulary } from '../../services/libraryMetadataApi'
-import { plural, UUID_PATTERN } from './format'
+import { plural, UUID_PATTERN } from '@/shared/utils/format'
 
 const OWN_CONTEXT_VALUE = 'SELF'
 const PERSON_CONTEXT_VALUE = 'USER'
