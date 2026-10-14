@@ -17,11 +17,11 @@ import { test as base, expect, type Page } from '@playwright/test'
  * relationship whatsoever to a piece of test data (the negative case in test(e2e) #424: a share
  * must not leak to someone it was never extended to) - used instead of `dev-user`, so that
  * account's own grants (or lack of them) from other scenarios never accidentally decide the
- * outcome. `dev-format-pipelines` (#1109) is for scenarios that upload documents without asking
+ * outcome. `dev-format-pipelines` is for scenarios that upload documents without asking
  * any chat question at all: with the AI stub's deterministic embedding (every chunk equally
  * "similar" regardless of content, see e2e/ai-stub/server.mjs) and e2e.env's own
  * OPAA_QUERY_TOP_K/OPAA_QUERY_FETCH_K sized to hold every account's whole, never-cleaned-up
- * corpus with headroom (#1152), an upload into any of the other three accounts no longer crowds a
+ * corpus with headroom, an upload into any of the other three accounts no longer crowds a
  * *different*, citation-checking scenario's expected source out of the retrieved window - this
  * account stays a second, retrieval-window-independent line of defense that keeps a pure-upload
  * scenario's documents out of a citation-checking scenario's readable corpus entirely.
@@ -45,8 +45,7 @@ const DEV_USER_DISPLAY_NAMES: Record<string, string> = {
  * Opens the app as the given dev user and returns once the app shell has rendered - and, unlike a
  * plain navigation, only once GET /api/v1/auth/me has actually confirmed the expected identity.
  *
- * This exists because of a CI finding (PR #554 follow-up, reported against an unrelated PR's run):
- * `outsiderPage` was observed to end up authenticated as "Dev Admin" instead of "Dev Outsider" -
+ * Without it, `outsiderPage` can end up authenticated as "Dev Admin" instead of "Dev Outsider" -
  * `io.opaa.auth.DevAuthFilter` falls back to the configured *default* dev user whenever the
  * `X-OPAA-Dev-User` header is absent, so a request that goes out before the frontend's dev-auth
  * bootstrap (authStore#initialize -> devAuth#resolveDevUser, see frontend/src/shared/session/devAuth.ts)
@@ -123,7 +122,7 @@ export const test = base.extend<{
   /**
    * The app as a fourth, isolated account for scenarios that upload documents but never ask a
    * chat question - see the module doc comment above for why even `outsiderPage` is not safe for
-   * that (#1109).
+   * that.
    */
   formatPipelinesPage: async ({ browser }, use) => {
     const context = await browser.newContext()

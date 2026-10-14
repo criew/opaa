@@ -3,24 +3,24 @@ import { openNewLibraryWizard } from '../fixtures/chat'
 import { cleanupLibraries, libraryIdFromCurrentUrl } from '../fixtures/libraries'
 import type { Page } from '@playwright/test'
 
-// The end-to-end path of Epic #1927 (#1944): creation wizard -> detail page -> tab "Freigaben",
+// The end-to-end path of Epic #1927: creation wizard -> detail page -> tab "Freigaben",
 // once for an UPLOAD and once for a connector library (HTTP_DIRECTORY against this suite's own
 // "rss-feed" service, the same fixture #514/#547 use). What it pins down is the structure
 // #1939/#1940/#1941/#1942 built: every wizard step carries the name of the tab it becomes, and the
 // three sharing paths of that tab (person, "Alle Konten", catalog) actually reach the library.
 //
-// The other knowledge-library scenarios (#424, #547) cover upload, search and source
+// The other knowledge-library scenarios cover upload, search and source
 // configuration; this file covers only the way through wizard and tabs.
 const runId = Date.now()
 
 const UPLOAD_LIBRARY = `E2E Assistent Upload ${runId}`
 const CONNECTOR_LIBRARY = `E2E Assistent Webverzeichnis ${runId}`
 
-/** The static web-directory fixture served inside this suite's stack (#514, #547). */
+/** The static web-directory fixture served inside this suite's stack. */
 const DIRECTORY_URL = 'http://rss-feed/webverzeichnis/'
 
 /**
- * One section of a tab: since #1608 PageSection renders a `section` with `aria-labelledby` on its
+ * One section of a tab: PageSection renders a `section` with `aria-labelledby` on its
  * heading, i.e. a named `region`. Scopes every assertion to the section it is about - "Dev User"
  * also appears in the access derivation further down the same tab.
  */
@@ -28,7 +28,7 @@ function section(page: Page, title: string) {
   return page.getByRole('region', { name: title })
 }
 
-/** The step the wizard currently stands on - its heading is the focus target (#1942). */
+/** The step the wizard currently stands on - its heading is the focus target. */
 async function expectWizardStep(page: Page, heading: string): Promise<void> {
   await expect(page.getByRole('heading', { level: 2, name: heading })).toBeVisible()
 }
@@ -37,7 +37,7 @@ async function nextStep(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
 }
 
-/** The tabs of the detail page; an UPLOAD library has no tab "Quelle" (#1939, #2208). */
+/** The tabs of the detail page; an UPLOAD library has no tab "Quelle". */
 async function expectTabs(page: Page, withSource: boolean): Promise<void> {
   await expect(page.getByRole('tab', { name: 'Dokumente' })).toBeVisible()
   await expect(page.getByRole('tab', { name: 'Quelle' })).toHaveCount(withSource ? 1 : 0)
@@ -48,7 +48,7 @@ async function expectTabs(page: Page, withSource: boolean): Promise<void> {
 
 /**
  * The three sharing paths of the tab on one library: a person, "Alle Konten" with its
- * confirmation, and the catalog switch. The owner section sits above them (#1941).
+ * confirmation, and the catalog switch. The owner section sits above them.
  */
 async function walkThroughSharingTab(page: Page): Promise<void> {
   await page.getByRole('tab', { name: 'Freigaben' }).click()
@@ -71,7 +71,7 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   // rejects outright instead of waiting it out.
   await expect(grants.getByRole('button', { name: 'Freigabe für Dev User entziehen' })).toBeVisible()
 
-  // 3. "Alle Konten" is a recipient like any other (#1931) - with a confirmation in front of it
+  // 3. "Alle Konten" is a recipient like any other - with a confirmation in front of it
   //    that spells out the reach (ADR-0037).
   await grants.getByRole('button', { name: 'Freigeben' }).click()
   await grants.getByRole('combobox', { name: 'Person oder Gruppe suchen' }).click()
@@ -113,7 +113,7 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     ])
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
-    // The header: name, description, and the source type exactly once, as a badge (#1939).
+    // The header: name, description, and the source type exactly once, as a badge.
     await expect(page.getByRole('heading', { level: 1, name: UPLOAD_LIBRARY })).toBeVisible()
     await expect(page.getByText('Handakte des Assistenten-Durchlaufs')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Weitere Aktionen' })).toBeVisible()
@@ -132,7 +132,7 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await nextStep(page)
 
     // Step 2: source setup - connection, connection test, schedule and the immediate first run, which
-    // since #1942 exists for every connector type. It stays off here: this is about the path, not
+    // exists for every connector type. It stays off here: this is about the path, not
     // about a run.
     await expectWizardStep(page, 'Quelle einrichten')
     await page.getByLabel('Adresse (URL)').fill(DIRECTORY_URL)
@@ -160,7 +160,7 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     await expect(page.getByRole('heading', { level: 1, name: CONNECTOR_LIBRARY })).toBeVisible()
     await expectTabs(page, true)
 
-    // The tab "Quelle" carries the four sections of the target design (#1940); "Umfang" is absent
+    // The tab "Quelle" carries the four sections of the target design; "Umfang" is absent
     // for this source type, and "Anbindung" shows the stored address.
     await page.getByRole('tab', { name: 'Quelle' }).click()
     await expect(section(page, 'Anbindung')).toContainText(DIRECTORY_URL)

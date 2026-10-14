@@ -2,13 +2,13 @@ import { expect, test } from '../fixtures/auth'
 import type { Page } from '@playwright/test'
 
 /**
- * Reflow of the wizard step bar (#2540, WCAG 1.4.10): at a 320 px viewport no assistant that
+ * Reflow of the wizard step bar (WCAG 1.4.10): at a 320 px viewport no assistant that
  * uses it scrolls sideways, every step stays inside the viewport, and assistive technology still
  * hears every step as "n · name" exactly once. jsdom computes no layout, hence a browser test.
  */
 const VIEWPORT_WIDTH = 320
 
-/** The static web-directory fixture served inside this suite's stack (#514, #547). */
+/** The static web-directory fixture served inside this suite's stack. */
 const DIRECTORY_URL = 'http://rss-feed/webverzeichnis/'
 
 async function nextStep(page: Page): Promise<void> {

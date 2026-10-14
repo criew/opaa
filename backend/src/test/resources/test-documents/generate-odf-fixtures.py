@@ -1,5 +1,5 @@
 """Generates the minimal, valid ODT/ODS/ODP fixtures under
-backend/src/test/resources/test-documents/ (#1057).
+backend/src/test/resources/test-documents/.
 
 An ODF file is a ZIP container whose first entry must be an uncompressed "mimetype" file - that is
 what Tika's OpenDocument detector keys on, so a hand-built file needs the same structure a real

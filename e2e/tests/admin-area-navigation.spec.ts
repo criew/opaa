@@ -2,15 +2,15 @@ import { expect, test } from '../fixtures/auth'
 
 /**
  * Navigation durch den Verwaltungsbereich (#787/#800) - hierher aus accessibility.spec.ts
- * verschoben (#805): die Szenarien führen keine axe-Analyse aus, sie sichern Erreichbarkeit
+ * verschoben: die Szenarien führen keine axe-Analyse aus, sie sichern Erreichbarkeit
  * und Geometrie der Admin-Sekundärspalte.
  */
 test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)', () => {
-  // #800 (Review zu #794): kein Spec klickte durch die Admin-Sekundärspalte. Der Durchklick
+  // Der Durchklick durch die Admin-Sekundärspalte
   // sichert das Abnahmekriterium "Wechsel zwischen den Admin-Seiten über die Sekundärspalte"
-  // (#787) - aber nur am Desktop-Viewport: die mobile Erreichbarkeit sichert er ausdrücklich
+  // - aber nur am Desktop-Viewport: die mobile Erreichbarkeit sichert er ausdrücklich
   // NICHT (Playwright scrollt vor jedem Klick per scrollIntoViewIfNeeded, der Klick gelänge
-  // auch auf einem überlaufenden Layout - nachgemessen im Review zu #803). Dafür steht der
+  // auch auf einem überlaufenden Layout). Dafür steht der
   // Geometrie-Test darunter.
   test('Wechsel über die Sekundärspalte', async ({ authenticatedPage: page }) => {
     await page.goto('/admin/users')
@@ -22,7 +22,7 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
     await page.waitForURL('**/admin/models/chat')
     await expect(page.getByRole('heading', { level: 1, name: 'Modelle' })).toBeVisible()
 
-    // #1542: der Eintrag „E-Mail" landet auf dem Server-Tab, der selbst eine Route ist.
+    // Der Eintrag „E-Mail" landet auf dem Server-Tab, der selbst eine Route ist.
     await column.getByRole('link', { name: 'E-Mail' }).click()
     await page.waitForURL('**/admin/mail/server')
     await expect(page.getByRole('heading', { level: 1, name: 'E-Mail' })).toBeVisible()
@@ -30,10 +30,10 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
       page.getByRole('tab', { name: 'SMTP-Zugang' }).and(page.locator('[aria-selected="true"]')),
     ).toBeVisible()
 
-    // #1541: „Benutzer & Gruppen" sind zwei Einträge; „Benutzer" ist zugleich das Ziel des
+    // „Benutzer & Gruppen" sind zwei Einträge; „Benutzer" ist zugleich das Ziel des
     // Admin-Einstiegs in der globalen Leiste.
     await column.getByRole('link', { name: 'Benutzer', exact: true }).click()
-    // #1601: „Benutzer" hat zwei Bereiche als eigene Routen; der nackte Pfad leitet auf die Konten.
+    // „Benutzer" hat zwei Bereiche als eigene Routen; der nackte Pfad leitet auf die Konten.
     await page.waitForURL('**/admin/users/accounts')
     await expect(page.getByRole('heading', { level: 1, name: 'Benutzer' })).toBeVisible()
     await expect(page.getByRole('searchbox', { name: 'Konten suchen' })).toBeVisible()
@@ -50,7 +50,7 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
     await expect(page.getByRole('heading', { level: 1, name: 'Branding' })).toBeVisible()
   })
 
-  // #805: die 320-px-Zusage aus #800 ("ein 320px-Viewport zeigt jedes Ziel") als Geometrie-
+  // Die 320-px-Zusage aus #800 ("ein 320px-Viewport zeigt jedes Ziel") als Geometrie-
   // Zusicherung statt als Durchklick - Klicks beweisen hier nichts, weil Playwright vor jedem
   // Klick scrollt. Rot, sobald der Mobil-Umbruch der Sekundärspalte zurückgebaut wird.
   test('320 px: kein horizontaler Überlauf, jedes Ziel im Viewport', async ({
@@ -69,7 +69,7 @@ test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)',
     )
 
     // "Suche & Indexierung" is the longest of the four labels and therefore the one that
-    // decides whether the column still fits into 320 px (#1053).
+    // decides whether the column still fits into 320 px.
     for (const label of [
       'Allgemein & Branding',
       'Benutzer',

@@ -8,7 +8,7 @@ import {
 import type { Locator, Page } from '@playwright/test'
 
 /**
- * Filterzeile und Kachel des Katalogs (#2180): Suche, Typgruppe und Favoriten stehen auf breiten
+ * Filterzeile und Kachel des Katalogs: Suche, Typgruppe und Favoriten stehen auf breiten
  * Bildschirmen in einer Zeile und brechen auf schmalen als Einheit um; Stern und „⋯“ heben nur
  * sich selbst hervor, nie die Kachel. Beides hängt an echtem Layout und echten CSS-Zuständen
  * (`:hover`, `:focus`, `:has()`), die jsdom nicht berechnet.
@@ -47,7 +47,7 @@ test.describe('Katalog: Filterzeile und Kachel (#2180)', () => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto('/catalog')
     await expect(favorites).toBeVisible()
-    // #2207: the type group carries its name "Typ" without a visible title, at every width.
+    // The type group carries its name "Typ" without a visible title, at every width.
     await expect(page.getByText('Typ', { exact: true })).toHaveCount(0)
     const row = await centreY(search)
     expect(Math.abs((await centreY(types)) - row)).toBeLessThan(4)

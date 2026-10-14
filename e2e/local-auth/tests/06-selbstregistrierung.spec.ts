@@ -138,7 +138,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     await expect(user.getByText("Selbstregistrierung")).toBeVisible();
 
     // Das selbstregistrierte Konto steht im Bereich „Konten", der Schalter im Bereich
-    // „Einstellungen" (#1601) - zwei Routen, also zwei Aufrufe.
+    // „Einstellungen" - zwei Routen, also zwei Aufrufe.
     await openAccountList(admin);
     const row = admin.getByRole("table", { name: "Konten" });
     await expect(row).toContainText("Neue Kollegin");

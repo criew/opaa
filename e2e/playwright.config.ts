@@ -23,7 +23,7 @@ export default defineConfig({
   },
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  // Ein Retry auch lokal, nicht nur in der CI (#815): Auf einem ausgelasteten Entwickler-Host
+  // Ein Retry auch lokal, nicht nur in der CI: Auf einem ausgelasteten Entwickler-Host
   // (parallele Agent-Sessions, knapper Speicher neben Docker-Stack und Chromium) reißen einzelne,
   // sonst sekundenschnelle Schritte die 10-s/30-s-Budgets - über drei volle Läufe wanderte der
   // Timeout durch drei verschiedene Szenarien, während dasselbe Szenario isoliert und in der CI
