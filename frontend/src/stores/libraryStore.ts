@@ -19,6 +19,7 @@ import {
 import type { LibraryDeletionOutcome } from '../services/libraryApi'
 import { updateLibraryDiagnosticsLock } from '../services/diagnosticAccessApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 interface LibraryState {
   libraries: LibraryListResponse[]
@@ -164,3 +165,5 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     await get().loadLibraries()
   },
 }))
+
+registerSessionStore(useLibraryStore)

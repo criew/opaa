@@ -179,11 +179,6 @@
       "count": 8
     }
   },
-  "src/stores/resettableStores.ts": {
-    "boundaries/dependencies": {
-      "count": 17
-    }
-  },
   "src/utils/labels.feature.test.ts": {
     "boundaries/dependencies": {
       "count": 3

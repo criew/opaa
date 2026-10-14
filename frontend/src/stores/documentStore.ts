@@ -16,6 +16,7 @@ import {
   uploadDocument as uploadDocumentRequest,
 } from '../services/libraryApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 // #822 review, finding 2: normalizeError (services/api.ts) attaches the original AxiosError as
 // `cause` - this reaches into that to tell a real 404 (unknown/foreign folderId, ADR-0020) apart
@@ -311,6 +312,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }
   },
 }))
+
+registerSessionStore(useDocumentStore)
 
 // The actual implementation behind the public loadDocuments action - pulled out to a module-level
 // function (mirroring reloadCurrentPage/startPolling below) so the folder-not-found fallback can

@@ -8,6 +8,7 @@ import type {
 import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../services/indexingApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 import { sourceRegistration } from '../components/library/sources/registry'
+import { registerSessionStore } from './resettableStores'
 
 const POLL_INTERVAL_MS = 2000
 
@@ -273,6 +274,8 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     })
   },
 }))
+
+registerSessionStore(useIndexingStore)
 
 function startPolling(
   libraryId: string,

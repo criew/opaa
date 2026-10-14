@@ -23,6 +23,7 @@ import {
   clearSettingsPersistenceCache,
 } from './chatSettingsPersistence'
 import type { SearchScope } from './chatSettingsPersistence'
+import { registerSessionStore } from './resettableStores'
 
 function generateId(): string {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
@@ -997,3 +998,5 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (get().chatId === chatId) set({ title })
   },
 }))
+
+registerSessionStore(useChatStore)

@@ -11,6 +11,7 @@ import {
   type ProviderShutdownConfirmations,
 } from '../services/identityProviderApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 interface OidcProviderState {
   providers: OidcProviderResponse[]
@@ -133,3 +134,5 @@ export const useOidcProviderStore = create<OidcProviderState>((set, get) => ({
     set({ providers: sortProviders(providers) })
   },
 }))
+
+registerSessionStore(useOidcProviderStore)

@@ -14,6 +14,7 @@ import {
 } from '../services/searchAdminApi'
 import { runContextPrefixRerunBatch, runMetadataBackfillBatch } from '../services/indexingApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 /**
  * Sequence of the latest loadDocumentChunks call: an answer to an earlier call is dropped, so two
@@ -307,3 +308,5 @@ export const useSearchAdminStore = create<SearchAdminState>((set, get) => {
     },
   }
 })
+
+registerSessionStore(useSearchAdminStore)

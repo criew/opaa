@@ -18,6 +18,7 @@ import {
 } from '../services/groupApi'
 import type { GroupCreationOptions } from '../services/groupApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+import { registerSessionStore } from './resettableStores'
 
 /**
  * Woher die Liste kommt: alle Gruppen der Organisation, die eigenen Verantwortlichkeiten (#1814)
@@ -218,6 +219,8 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
   },
 }))
+
+registerSessionStore(useGroupStore)
 
 /**
  * Die bekannten Mitglieder einer Gruppe: aus den Details, wo sie der Aufrufende ohne Weiteres sieht,
