@@ -243,6 +243,71 @@ describe('ConnectionProfilesTab', () => {
     expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
   })
 
+  it('calls the state incomplete, not good, while the locks of the source types failed', async () => {
+    server.use(
+      http.get('/api/v1/admin/capabilities', () => HttpResponse.json(RELEASED_OVERVIEW)),
+      http.get('/api/v1/admin/connector-types', failing),
+    )
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    const summary = await screen.findByRole('region', { name: 'Handlungsbedarf der Zugänge' })
+    expect(
+      await within(summary).findByRole('heading', { name: /Stand unvollständig/ }),
+    ).toBeVisible()
+    expect(summary).toHaveTextContent('Nicht geladen: Sperren der Quellarten.')
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+  })
+
+  // regression guard for #2518: a part still loading is not a good state either
+  it('calls nothing good while the releases are still loading', async () => {
+    server.use(http.get('/api/v1/admin/capabilities', () => new Promise<never>(() => {})))
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    await screen.findByRole('row', { name: new RegExp(PROFILE) })
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+  })
+
+  it('calls nothing good while the resting sources are still loading', async () => {
+    server.use(
+      http.get('/api/v1/admin/capabilities', () => HttpResponse.json(RELEASED_OVERVIEW)),
+      http.get('/api/v1/admin/source-connections/dormant', () => new Promise<never>(() => {})),
+    )
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    await screen.findByRole('row', { name: new RegExp(PROFILE) })
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+  })
+
+  it('calls nothing good while the locks of the source types are still loading', async () => {
+    server.use(
+      http.get('/api/v1/admin/capabilities', () => HttpResponse.json(RELEASED_OVERVIEW)),
+      http.get('/api/v1/admin/connector-types', () => new Promise<never>(() => {})),
+    )
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    await screen.findByRole('row', { name: new RegExp(PROFILE) })
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+  })
+
+  it('loads the list of profiles again after it failed', async () => {
+    let calls = 0
+    server.use(
+      http.get('/api/v1/admin/connection-profiles', () => {
+        calls += 1
+        return calls === 1 ? failing() : HttpResponse.json(mockConnectionProfiles)
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(await screen.findByText('Interner Fehler')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
+
+    expect(await screen.findByRole('row', { name: new RegExp(PROFILE) })).toBeVisible()
+    expect(screen.queryByText('Interner Fehler')).not.toBeInTheDocument()
+    expect(calls).toBe(2)
+  })
+
   it('says there is nothing to do once every part is known and nothing is open', async () => {
     server.use(http.get('/api/v1/admin/capabilities', () => HttpResponse.json(RELEASED_OVERVIEW)))
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
