@@ -1,4 +1,4 @@
-"""Authentication providers for the seed script (Issue #712).
+"""Authentication providers for the seed script.
 
 Both data profiles ("demo" and "e2e") share the same seed mechanism - only how a session for a
 given user is obtained differs, exactly the split docs/features/demo-instance.md draws under
@@ -30,7 +30,7 @@ class AuthError(RuntimeError):
 class LocalPasswordAuth:
     """Auth provider for a local OPAA account (ADR-0033): POST /api/v1/auth/local/login with
     e-mail and password, the access token as bearer. Used by the demo profile for the bootstrap
-    system administrator the backend seeds on its first start (#1534) - the one account that can
+    system administrator the backend seeds on its first start - the one account that can
     grant SYSTEM_ADMIN to the Keycloak "demo-admin", which no longer gets the role by itself.
     Tokens are short-lived (15 minutes) and refreshed by signing in again; the refresh cookie is
     deliberately not used."""

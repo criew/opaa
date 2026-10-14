@@ -1,4 +1,4 @@
-"""Data and rendering for the "Formattest auf S3" library (#1519, #1520).
+"""Data and rendering for the "Formattest auf S3" library.
 
 One document per file extension OPAA admits (docs/handbuch/formate/README.md, "Zugelassene
 Formate"), so the demo can show that every supported format really is read rather than
