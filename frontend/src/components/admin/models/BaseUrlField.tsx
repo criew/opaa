@@ -5,7 +5,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
 import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
-import { fontFamily } from '../../../theme/tokens'
+import { fontFamily } from '@/shared/theme/tokens'
 import {
   ENDPOINT_PRESETS,
   presetOf,

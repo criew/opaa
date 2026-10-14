@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import { blue } from '../../../theme/tokens'
+import { blue } from '../../theme/tokens'
 
 export interface ChoiceTile<K extends string> {
   value: K

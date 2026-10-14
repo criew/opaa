@@ -6,7 +6,7 @@ import type { AccessPathResponse, AssetRole, AssetType, SpaceRole } from '@/shar
 import { getAssetAccessDerivation } from '../../services/assetApi'
 import { getSpaceAccessDerivation } from '../../services/spaceApi'
 import { accessBasisLabel } from '../assets/assetLabels'
-import { assetRoleLabel, spaceRoleLabel } from '../../utils/labels'
+import { assetRoleLabel, spaceRoleLabel } from '@/shared/utils/labels'
 import { assetTypeLabel } from '../assets/assetTypeRegistry'
 
 type DerivationTarget =

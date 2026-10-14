@@ -61,7 +61,7 @@ import {
   markSilentSignInFlow,
   spendSilentSignIn,
 } from './silentSignIn'
-import { notify } from '../../stores/notificationStore'
+import { notify } from '../stores/notificationStore'
 import { featureEnabledIn, recordInstallationFeatures } from './installationFeatures'
 import { resetAllStores } from './resettableStores'
 

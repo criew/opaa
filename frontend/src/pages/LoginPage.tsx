@@ -17,10 +17,10 @@ import AuthLayout from '../components/auth/AuthLayout'
 import LocalSignInForm from '../components/auth/LocalSignInForm'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import { LAST_PROVIDER_STORAGE_KEY, useAuthStore } from '@/shared/session/authStore'
-import { usePageTitle } from '../hooks/usePageTitle'
+import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { SYSTEM_LOGIN_ROUTE } from '@/shared/routes'
 import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
-import { fontFamily, radius } from '../theme/tokens'
+import { fontFamily, radius } from '@/shared/theme/tokens'
 
 function lastUsedProviderId(): string | null {
   try {

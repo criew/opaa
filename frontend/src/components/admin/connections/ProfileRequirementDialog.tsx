@@ -22,7 +22,7 @@ import {
   getConnectorProfileRequirement,
   setConnectorProfileRequirement,
 } from '../../../services/connectionProfileApi'
-import { notify } from '../../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 
 interface Loaded {
   requirement: ConnectorProfileRequirementResponse | null

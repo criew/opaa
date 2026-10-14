@@ -8,7 +8,7 @@ import { createAppTheme } from './theme'
  * Der Quelltext der Anwendung, von Vite eingelesen (`?raw`) — kein Dateisystemzugriff, damit der
  * Test ohne Node-Typen auskommt.
  */
-const QUELLEN = import.meta.glob('../**/*.tsx', {
+const QUELLEN = import.meta.glob('../../**/*.tsx', {
   query: '?raw',
   import: 'default',
   eager: true,

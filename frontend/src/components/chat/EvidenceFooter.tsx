@@ -9,7 +9,7 @@ import DoneAllIcon from '@mui/icons-material/DoneAll'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import { describeEvidenceSummary } from '@/shared/ui/markdown/citations'
 import { citationMarkSx } from '@/shared/ui/markdown/citationMark'
-import { focusRingAlpha, motion, radius } from '../../theme/tokens'
+import { focusRingAlpha, motion, radius } from '@/shared/theme/tokens'
 
 /** Footnote marks shown in the button before the rest folds into "+n". */
 const VISIBLE_MARKS = 3

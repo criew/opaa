@@ -6,7 +6,7 @@ import {
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
   useUiStore,
-} from '../stores/uiStore'
+} from '@/shared/stores/uiStore'
 
 const KEYBOARD_STEP = 16
 

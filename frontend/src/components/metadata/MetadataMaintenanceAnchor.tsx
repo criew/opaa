@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { LibraryMetadataMaintenanceResponse } from '@/shared/api/types'
 import { getLibraryMetadataMaintenance } from '../../services/libraryMetadataApi'
-import { formatShare } from '../../utils/labels'
+import { formatShare } from '@/shared/utils/labels'
 import PageSection from '@/shared/ui/PageSection'
 
 interface MetadataMaintenanceAnchorProps {

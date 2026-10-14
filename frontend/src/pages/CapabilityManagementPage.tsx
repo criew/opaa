@@ -10,7 +10,7 @@ import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import CapabilityRow from '../components/admin/capabilities/CapabilityRow'
 import CapabilityAccessPanel from '../components/admin/capabilities/CapabilityAccessPanel'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 /** The entries of one right side by side, in the order of the overview. */
 function groupByCapability(overviews: CapabilityOverviewResponse[]) {

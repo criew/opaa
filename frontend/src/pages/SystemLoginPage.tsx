@@ -13,7 +13,7 @@ import AuthLayout from '../components/auth/AuthLayout'
 import LocalSignInForm from '../components/auth/LocalSignInForm'
 import { useAuthStore } from '@/shared/session/authStore'
 import { spendSilentSignIn } from '@/shared/session/silentSignIn'
-import { usePageTitle } from '../hooks/usePageTitle'
+import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { LOGIN_ROUTE } from '@/shared/routes'
 import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
 

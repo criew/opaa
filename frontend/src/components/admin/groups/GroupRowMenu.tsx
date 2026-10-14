@@ -17,9 +17,9 @@ import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import type { GroupListResponse } from '@/shared/api/types'
 import { setGroupDeactivation } from '../../../services/groupApi'
 import { confirmGroupDeactivation } from '../../groups/groupDeactivation'
-import { confirmAction } from '../../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { useGroupStore } from '../../../stores/groupStore'
-import { notify } from '../../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { GROUP_DELETE_CONSEQUENCE, PROVIDER_GROUP_DELETE_REASON } from './groupListLabels'
 
 interface GroupRowMenuProps {

@@ -5,7 +5,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import { NavigationType, Outlet, useLocation, useNavigationType } from 'react-router'
 import GlobalRail, { RAIL_WIDTH } from './GlobalRail'
-import { isGlobalAreaPath } from './globalArea'
+import { isGlobalAreaPath } from '@/shared/layouts/globalArea'
 import Sidebar, { SIDEBAR_WIDTH } from './Sidebar'
 import MobileHeader from './MobileHeader'
 import SkipLink from '@/shared/ui/a11y/SkipLink'
@@ -14,7 +14,7 @@ import { keepsFocus } from '@/shared/ui/a11y/routeFocus'
 import IndexingSnackbar from '../components/admin/IndexingSnackbar'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
-import { useUiStore } from '../stores/uiStore'
+import { useUiStore } from '@/shared/stores/uiStore'
 
 export default function AppShell() {
   const theme = useTheme()

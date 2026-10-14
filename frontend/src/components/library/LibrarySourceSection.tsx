@@ -19,7 +19,7 @@ import type {
   SourceBlock,
 } from '@/shared/api/types'
 import { useIndexingStore } from '../../stores/indexingStore'
-import { formatCalendarDay, formatFileSize } from '../../utils/labels'
+import { formatCalendarDay, formatFileSize } from '@/shared/utils/labels'
 import {
   indexingRunEventCategoryLabel,
   indexingRunModeLabel,

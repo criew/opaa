@@ -119,7 +119,7 @@
       "count": 1
     }
   },
-  "src/layouts/globalArea.ts": {
+  "src/shared/layouts/globalArea.ts": {
     "boundaries/dependencies": {
       "count": 1
     }

@@ -25,7 +25,7 @@ interface UiState {
    * a plain `'system'` default here would have made "never decided" indistinguishable from
    * "deliberately picked system" - silently overriding every operator default with system.
    *
-   * Read through `resolveThemeMode` (src/theme/colorScheme.ts) rather than directly, so the
+   * Read through `resolveThemeMode` (src/shared/theme/colorScheme.ts) rather than directly, so the
    * precedence between user choice and operator default lives in exactly one place.
    */
   themeMode: ThemeMode | null

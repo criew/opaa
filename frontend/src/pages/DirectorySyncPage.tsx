@@ -25,7 +25,7 @@ import {
   type OverviewEntry,
   type OverviewFilter,
 } from '../components/admin/directorysync/directorySyncState'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 /** From this many providers on, the overview offers a filter and a search. */
 const FILTER_FROM = 6

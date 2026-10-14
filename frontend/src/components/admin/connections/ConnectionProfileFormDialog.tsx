@@ -31,7 +31,7 @@ import {
   previewConnectionProfileChange,
   updateConnectionProfile,
 } from '../../../services/connectionProfileApi'
-import { confirmAction } from '../../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS, admitsProfiles } from './connectionProfileLabels'
 import ProfileChangePreview from './ProfileChangePreview'
 import ServiceAccountKeyField from './ServiceAccountKeyField'

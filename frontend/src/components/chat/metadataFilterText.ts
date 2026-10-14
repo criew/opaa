@@ -4,7 +4,7 @@ import type {
   MetadataFilterLibraryFieldCondition,
   MetadataFilterOptionsResponse,
 } from '@/shared/api/types'
-import { formatShare } from '../../utils/labels'
+import { formatShare } from '@/shared/utils/labels'
 
 /** "Datum/Stand bei 92 % der Dokumente vorhanden" - the Füllstand line under each field. */
 export function fillLevelText(field: {

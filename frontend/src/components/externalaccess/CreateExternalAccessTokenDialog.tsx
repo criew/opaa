@@ -20,7 +20,7 @@ import {
   createExternalAccessToken,
   listEligibleExternalAccessLibraries,
 } from '../../services/externalAccessApi'
-import { radius } from '../../theme/tokens'
+import { radius } from '@/shared/theme/tokens'
 import { markAssetFavorite, unmarkAssetFavorite } from '../../services/assetApi'
 import AssetTile from '../assets/AssetTile'
 import type { AssetTileData } from '../assets/assetTileData'

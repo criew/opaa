@@ -1,4 +1,4 @@
-import type { ColorScheme } from '../shared/api/types'
+import type { ColorScheme } from '../api/types'
 import type { ThemeMode } from '../stores/uiStore'
 
 /**

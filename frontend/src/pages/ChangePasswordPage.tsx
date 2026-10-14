@@ -12,10 +12,10 @@ import NewPasswordField from '../components/auth/NewPasswordField'
 import PasswordField from '../components/auth/PasswordField'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import { useErrorFocus } from '../hooks/useErrorFocus'
+import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { FieldValidationError } from '@/shared/session/authApi'
 import { useAuthStore } from '@/shared/session/authStore'
-import { notify } from '../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { AFTER_SIGN_IN_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 import {
   fieldErrorMessages,
@@ -23,7 +23,7 @@ import {
   passwordPolicyText,
 } from '@/shared/session/authMessages'
 import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
-import { radius } from '../theme/tokens'
+import { radius } from '@/shared/theme/tokens'
 
 const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'
 /** The fields this form can show an error at, in the order the focus walks them. */

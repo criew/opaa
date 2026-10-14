@@ -13,7 +13,7 @@ import NewPasswordField from '../components/auth/NewPasswordField'
 import PasswordField from '../components/auth/PasswordField'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import { useErrorFocus } from '../hooks/useErrorFocus'
+import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { useLinkToken } from '../hooks/useLinkToken'
 import { FieldValidationError } from '@/shared/session/authApi'
 import {
@@ -33,7 +33,7 @@ import {
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
 } from '@/shared/session/authMessages'
-import { radius } from '../theme/tokens'
+import { radius } from '@/shared/theme/tokens'
 
 const HEADING = 'Passwort festlegen'
 const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'

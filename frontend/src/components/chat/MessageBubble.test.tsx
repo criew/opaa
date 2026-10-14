@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { vi, describe, expect, it } from 'vitest'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
-import { useNotificationStore } from '../../stores/notificationStore'
+import { useNotificationStore } from '@/shared/stores/notificationStore'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useCopyAnnouncement } from './copyAnnouncer'
 

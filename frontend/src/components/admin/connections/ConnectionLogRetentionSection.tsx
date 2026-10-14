@@ -11,8 +11,8 @@ import {
   updateConnectionLogRetention,
 } from '../../../services/connectionLogApi'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
-import { confirmAction } from '../../../stores/confirmStore'
-import { notify } from '../../../stores/notificationStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 

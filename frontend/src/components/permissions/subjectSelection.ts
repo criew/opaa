@@ -5,7 +5,7 @@ import type {
   SelectableGroupResponse,
   UserSummary,
 } from '@/shared/api/types'
-import { confirmAction } from '../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 
 /**
  * Warum die Suche nach einer geschützten Gruppe wie ein leeres Ergebnis aussieht (ADR-0036,

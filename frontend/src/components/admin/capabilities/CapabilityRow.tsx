@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { CapabilityOverviewResponse } from '@/shared/api/types'
-import { radius } from '../../../theme/tokens'
+import { radius } from '@/shared/theme/tokens'
 import AccessBadge from './AccessBadge'
 import {
   accessBadgeLabel,

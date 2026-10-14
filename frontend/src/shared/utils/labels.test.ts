@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { capabilityMissingMessage, documentCountLabel } from './labels'
-import type { Capability } from '../shared/api/types'
+import type { Capability } from '../api/types'
 
 /**
  * The refusal the creation dialogs show before the attempt has to read word for word like the one

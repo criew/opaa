@@ -10,7 +10,7 @@ import type {
   SpaceMembershipCounts,
 } from '@/shared/api/types'
 import { isAssetTypeOffered } from '@/shared/session/installationFeatures'
-import { allAccountsLabel } from '@/utils/labels'
+import { allAccountsLabel } from '@/shared/utils/labels'
 
 /**
  * Groups and persons as one short phrase ("2 Gruppen, 1 Person"); a group counts once, whatever

@@ -1,4 +1,4 @@
-import type { AssetRole, Capability, SpaceRole } from '../shared/api/types'
+import type { AssetRole, Capability, SpaceRole } from '../api/types'
 
 const spaceRoleLabels: Record<SpaceRole, string> = {
   MEMBER: 'Mitglied',
