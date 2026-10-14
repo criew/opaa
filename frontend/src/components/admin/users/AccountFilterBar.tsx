@@ -4,7 +4,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import type { LocalAccountState, SystemRole } from '@/shared/api/types'
-import { useOidcProviderStore } from '../../../stores/oidcProviderStore'
+import { useOidcProviderStore } from '@/features/identity-provider'
 import {
   useUserAdminStore,
   type AccountFilters,

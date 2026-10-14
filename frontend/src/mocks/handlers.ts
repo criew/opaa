@@ -29,17 +29,17 @@ import { userHandlers } from './userHandlers'
 import { localUserHandlers } from './localUserHandlers'
 import { accountHandlers } from './accountHandlers'
 // identity-provider
-import { identityProviderHandlers } from './identityProviderHandlers'
+import { identityProviderHandlers } from '@/features/identity-provider/mocks/identityProviderHandlers'
 // model
-import { modelHandlers } from './modelHandlers'
+import { modelHandlers } from '@/features/model/mocks/modelHandlers'
 // mail
-import { mailHandlers } from './mailHandlers'
+import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 // branding
-import { brandingHandlers } from './brandingHandlers'
+import { brandingHandlers } from '@/features/branding/mocks/brandingHandlers'
 // connection
 import { connectionProfileHandlers } from './connectionProfileHandlers'
 import { connectedAccountHandlers } from './connectedAccountHandlers'
-import { connectionLogHandlers } from './connectionLogHandlers'
+import { connectionLogHandlers } from '@/features/audit/mocks/connectionLogHandlers'
 import { outboundProxyHandlers } from './outboundProxyHandlers'
 // external-access
 import { externalAccessHandlers } from './externalAccessHandlers'
