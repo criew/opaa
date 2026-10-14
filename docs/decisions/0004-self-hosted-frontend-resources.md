@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-02-19
+Akzeptiert · zuletzt geändert 2026-10-14
 
 ## Kontext
 
@@ -42,4 +42,5 @@ Nichts.
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-02-19 | — | Erstfassung | 1 |
 | 2026-10-14 | #2697 | Neufassung nach ADR-Vorlage | — |

@@ -41,14 +41,14 @@ jedem Chunk ab dem zweiten die letzten `chunk-overlap` Tokens seines Vorgängers
 
 ### 3. Die Invariante ist eine Domänen-Eigenschaft
 
-Seit #721 (in Code und Docs als „ADR-0010 Nachtrag“ zitiert) deklariert jede Domäne in
-`EvalDomainConfig` eine `ChunkCountExpectation`: `ONE_CHUNK`
+Seit #721 deklariert jede Domäne in `EvalDomainConfig` eine `ChunkCountExpectation`: `ONE_CHUNK`
 (`exactlyOneChunk()`, `comic-characters`) oder `MIN_CHUNKS_PER_DOCUMENT` (`atLeast(n)`, mehrchunkige
 Domänen wie `city-landmarks` und `verwaltung` mit mindestens 3). Beide Formen sind derselbe
 Mechanismus mit umgekehrter Richtung der Grenze; `ChunkCountExpectation.violations` ist eine reine
-Funktion (`ChunkCountExpectationTest`, `evalUnitTest`). Eine mehrchunkige Domäne bekommt ihre eigene
-Vorabprüfung im Generator (`CityLandmarksChunkSizeDryRunTest`, `VerwaltungChunkSizeDryRunTest` als
-Docker-freie Trockenläufe) und dieselbe beweiskräftige Harness-Prüfung.
+Funktion (`ChunkCountExpectationTest`, `evalUnitTest`). Für mehrchunkige Domänen gibt es keine
+Vorabprüfung im Generator; die Docker-freien Trockenläufe `CityLandmarksChunkSizeDryRunTest` und
+`VerwaltungChunkSizeDryRunTest` zählen die Chunks über `MarkdownDocumentFormat` und geben sie aus,
+ohne zu assertieren. Beweiskräftig ist auch dort nur die Harness-Prüfung.
 
 ### 4. Kopplung an die Chunkgröße
 
@@ -68,8 +68,8 @@ Schwieriger: Zwei Prüfstellen je Domäne; die Byte-Grenze veraltet lautlos, wen
 Restrisiken: Ein grüner Generator-Lauf beweist die Invariante nicht, erst ein grüner Harness-Lauf.
 Die Dokumentation beider Werkzeuge muss das sichtbar halten. Der Harness assertiert nur `chunk-size`;
 `chunk-target-characters`, der tatsächliche Schnitt der Markdown-Korpora, ist weder assertiert noch
-im Chunking-Fingerprint von `MarkdownDocumentFormat` erfasst. Eine Änderung fällt erst über die
-Chunk-Zahl-Prüfung oder die Baseline auf.
+in den Festpunkten der Baseline erfasst (`IngestionPipelineFingerprint` führt nur `id:version`, nicht
+`chunkingFingerprint()`). Eine Änderung fällt erst über die Chunk-Zahl-Prüfung oder die Baseline auf.
 
 ## Verworfene Alternativen
 
@@ -88,5 +88,6 @@ Nichts.
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-08-02 | #249 | Erstfassung | 1, 2, 4 |
 | 2026-08-21 | #721 | Invariante wird Domänen-Eigenschaft (`ChunkCountExpectation`) | 3 |
 | 2026-10-14 | #2697 | Neufassung; Overlap und zeichenbasierter Markdown-Schnitt eingearbeitet | 2, 4 |

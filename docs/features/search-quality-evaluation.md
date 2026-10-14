@@ -467,7 +467,7 @@ Korpus auf eine laufende Instanz auszurollen. Das verkleinert Phase 2 erheblich.
 > **Das Chat-Modell stammt von Anthropic, die Einbettung läuft lokal über Ollama.** Alle Punkte hat
 > der Maintainer klargestellt.
 > Für [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md) ändert das nichts: Der
-> Harness misst nur das Retrieval und teilt mit der Instanz weder Modell noch Betrieb.
+> Harness misst nur das Retrieval; das Chat-Modell der Instanz kommt in ihm nicht vor.
 
 Drei Folgerungen:
 

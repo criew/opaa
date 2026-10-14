@@ -19,8 +19,9 @@ Baseline abhängt.
 ### 1. Korpus als reguläre Dateien im Repository
 
 Der generierte Korpus liegt unter `eval/corpus/<domäne>/` mit einer `MANIFEST.sha256` über alle
-Dateien; kein Git LFS. Die Rohquelle wird in `SOURCE.md` mit URL, Abrufdatum und SHA-256 dokumentiert,
-nicht committet. Wächst der Gesamtkorpus über rund 25 MB, wechselt die betroffene Domäne auf ein
+Dateien; kein Git LFS. Die Rohquelle wird in `SOURCE.md` mit URL, Abrufdatum und SHA-256 dokumentiert;
+eingefrorene Rohdaten liegen nur dort, wo der Generator sie braucht, unter `eval/generator/frozen/`.
+Wächst der Gesamtkorpus unter `eval/corpus/` (ohne Rohdaten) über rund 25 MB, wechselt die betroffene Domäne auf ein
 GitHub-Release-Artefakt, das Manifest bleibt im Repository; die Grenze wird mit jeder neuen Domäne
 neu bewertet.
 
@@ -73,7 +74,7 @@ Einfacher: Der Regressionstest läuft ohne Netzzugriff auf Fremdquellen und ohne
 Forks; Korpus-Änderungen sind im Diff sichtbar, unbeabsichtigtes Wandern fällt über das Manifest auf;
 der Harness braucht kein laufendes System und keine Demo-Instanz.
 
-Schwieriger: Das Repository wächst um den Korpus (heute rund 12 MB); Python als zweite Sprache im
+Schwieriger: Das Repository wächst um den Korpus; Python als zweite Sprache im
 Werkzeugkasten; ein Ollama-Container kostet Laufzeit, Regressionen fallen bis zu einem Tag verzögert
 auf; die Baseline ist an Modellversion und Korpus gebunden, jede Änderung an einem von beiden
 erfordert einen neuen Baseline-Lauf.
@@ -101,6 +102,7 @@ Nichts.
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-08-02 | — | Erstfassung | 1–6 |
 | 2026-08-02 | #247 | Tatsachenkorrektur zur Demo-Instanz; Entscheidungen unverändert | — |
 | 2026-09-04 | #1085 | Pinning-Regel gilt auch für das Chat-Modell des Pipeline-Pfads | 4 |
 | 2026-10-14 | #2697 | Neufassung; Nachtrag zur Demo-Instanz und nie umgesetzter OpenAI-Vergleichslauf entfallen, Pinning bleibt | 3, 4 |

@@ -106,6 +106,7 @@ Nichts.
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-08-02 | #231 | Erstfassung (Status Vorgeschlagen) | 1–4 |
 | 2026-08-21 | #256 | OpenAI-kompatibler Stub statt Ollama; Overlay-Datei als Faktum | 2, 4 |
 | 2026-08-22 | #653 | Paketmanager pnpm | 1 |
 | 2026-09-08 | #1226 | Suite nicht mehr bei Pull Requests | 5 |

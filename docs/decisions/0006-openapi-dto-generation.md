@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-09-27
+Akzeptiert · zuletzt geändert 2026-10-14
 
 ## Kontext
 
@@ -53,19 +53,15 @@ Spec-Änderung invalidiert nur dieses Modul; das Backend konsumiert die DTOs üb
 
 Seit #2002 liegt die Spezifikation als Fragmente unter `opaa-api/src/main/openapi/` (ein Thema je
 Datei, `root.yaml` für `openapi` und `info`, `common.yaml` für Bausteine ohne fachlichen Besitzer).
-Die Themen folgen den logischen Modulen aus `backend/AGENTS.md`, wo nötig feiner (`libraries.yaml`,
-`library-metadata.yaml`); ein Tag je Thema, deklariert in der Datei des Themas, keine Sammel-Tags
-und keine Doppelformen.
-Ein Fragment enthält nur `tags`, `paths` und `components`; alle `$ref` zeigen in das Bündel
-(`#/components/...`), es gibt keine Indexdatei. `:opaa-api:bundleOpenApi`
-(`io.opaa.api.bundler.OpenApiBundler`, SnakeYAML auf dem Knotenbaum) erzeugt
-`build/openapi-bundle/openapi/opaa-api.yaml`, Eingabe des Generators und im Klassenpfad als
-`/openapi/opaa-api.yaml`. Der Bundler bricht ab bei doppelten Schlüsseln, nicht lokalen oder nicht
-auflösbaren `$ref`, YAML-Ankern und -Aliasen und Operationen ohne genau ein Tag der eigenen Datei. Das
-Frontend bündelt dieselben Fragmente mit `frontend/scripts/bundle-openapi.mjs` nach denselben Regeln
-(auch dort keine Anker und Aliase), weil Frontend-CI und -Image keine JVM haben; der CI-Job
-`openapi-bundle-parity` erzeugt bei jeder Änderung an Fragmenten oder Bundlern beide Bündel,
-vergleicht sie nach YAML 1.1 als Wertebäume und fließt in den Pflicht-Check `backend` ein.
+Die Themen folgen den logischen Modulen aus `backend/AGENTS.md`, wo nötig feiner; ein Tag je Thema,
+deklariert in seiner Datei. Ein Fragment enthält nur `tags`, `paths` und `components`; alle `$ref`
+zeigen in das Bündel (`#/components/...`), es gibt keine Indexdatei. `:opaa-api:bundleOpenApi`
+(`io.opaa.api.bundler.OpenApiBundler`) erzeugt `build/openapi-bundle/openapi/opaa-api.yaml`,
+Eingabe des Generators und im Klassenpfad `/openapi/opaa-api.yaml`; es bricht ab bei doppelten
+Schlüsseln, nicht lokalen oder nicht auflösbaren `$ref`, YAML-Ankern und Operationen ohne genau ein
+Tag der eigenen Datei. Das Frontend bündelt dieselben Fragmente mit
+`frontend/scripts/bundle-openapi.mjs` nach denselben Regeln, weil Frontend-CI und -Image keine JVM
+haben.
 
 ## Konsequenzen
 
@@ -74,7 +70,9 @@ und Frontend; eine Spec-Änderung berührt in der Regel nur die Datei ihres Them
 
 Schwieriger: generierte DTOs sind veränderliche POJOs (`getName()` statt `name()`); der Build braucht
 eine gültige Spezifikation; neue Domain-Enums müssen in `typeMappings`/`importMappings` eingetragen
-werden; zwei Bundler mit denselben Regeln, die inhaltlichen Prüfungen laufen nur im Java-Bundler.
+werden; zwei Bundler mit denselben Regeln, die inhaltlichen Prüfungen laufen nur im Java-Bundler,
+der CI-Job `openapi-bundle-parity` vergleicht beide Bündel bei jeder Änderung an Fragmenten oder
+Bundlern als Wertebäume (YAML 1.1) und fließt in den Pflicht-Check `backend` ein.
 
 Restrisiken: Innerhalb eines Fragments zeigt ein Editor Verweise auf Schemas anderer Dateien als
 nicht auflösbar an; maßgeblich ist das Bündel.
@@ -95,6 +93,7 @@ Nichts.
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-03-08 | — | Erstfassung | 1–5 |
 | 2026-08-24 | #857 | Löschliste des `doLast`-Blocks aus `typeMappings` abgeleitet | 4 |
 | 2026-08-25 | #896 | Gradle-Modul `opaa-api` | 6 |
 | 2026-09-27 | #2002 | Spezifikation in Dateien je Thema, zur Build-Zeit gebündelt | 7 |

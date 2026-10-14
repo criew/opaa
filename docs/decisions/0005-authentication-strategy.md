@@ -51,24 +51,23 @@ Ebenso an `oidc` gebunden sind die Startwächter dieses Modus (`LocalAuthSecretG
 Das Backend erstellt keine HTTP-Sessions. Im `oidc`-Modus trägt jede Anfrage `Authorization:
 Bearer <jwt>`; ein Multi-Issuer-Resolver prüft gegen das JWK-Set des jeweiligen Anbieters oder gegen
 den Schlüssel des lokalen Ausstellers `urn:opaa:local`, dessen Refresh-Token als HttpOnly-Cookie
-reist (ADR-0033). Die OIDC-Anbieter liegen in der Datenbank, die Umgebung sät nur den ersten einmalig; die SPA ist
-Public Client ohne Secret. Für OIDC-Anbieter gibt es kein Passwortformular und kein Signaturgeheimnis
+reist (ADR-0033); ausgenommen ist der Fremdzugang mit persönlichen Zugangstokens (`opaa_pat_`) in
+eigener Filterkette (`ExternalAccessSecurityConfig`, ADR-0035). Die OIDC-Anbieter liegen in der
+Datenbank, die Umgebung sät nur den ersten einmalig; die SPA ist Public Client ohne Secret. Für OIDC-Anbieter gibt es kein Passwortformular und kein Signaturgeheimnis
 in der Betriebskonfiguration. Der Erstadministrator ist immer ein lokales Konto (ADR-0033).
 
 ### 5. Frontend-OIDC-Fluss
 
 Das Frontend führt den Autorisierungscode-Fluss mit `oidc-client-ts` (`authStore.ts`): Modus über
-`GET /api/v1/auth/config` erkennen, bei `oidc` zum gewählten Anbieter weiterleiten, Token im
-Speicher halten (`WebStorageStateStore` auf `sessionStorage`), jede API-Anfrage über einen
-Axios-Interceptor mit Bearer-Token versehen. Das Access-Token wird still über das Refresh-Token
-erneuert (`automaticSilentRenew`, 60 s vor Ablauf, kein Iframe, weil `frame-ancestors 'none'` in
-`frontend/nginx.conf`); `authStore` hält das Token über `UserLoaded`/`UserUnloaded`/`SilentRenewError` aktuell. Ein `401`
-löst in `apiInterceptors.ts` genau einen `signinSilent()`-Versuch mit Wiederholung der Anfrage aus
-(`_retry`-Guard); erst wenn das scheitert, setzt `expireSession` den lokalen Zustand zurück, ohne
-`signoutRedirect()` und damit ohne die Sitzung beim Anbieter zu beenden. Ein bewusstes „Abmelden“
-bleibt der volle `signoutRedirect()`. `keycloak/realm-export.json` setzt die Token-Lebensdauern
-ausdrücklich. Scheitert `GET /api/v1/auth/config`, bleibt das Frontend unauthentifiziert und zeigt
-einen Fehler.
+`GET /api/v1/auth/config` erkennen, zum gewählten Anbieter weiterleiten, Token im Speicher halten
+(`WebStorageStateStore` auf `sessionStorage`), jede API-Anfrage per Axios-Interceptor mit
+Bearer-Token versehen. Das Access-Token wird still über das Refresh-Token erneuert
+(`automaticSilentRenew`, ohne Iframe wegen `frame-ancestors 'none'`); `authStore` folgt
+`UserLoaded`/`UserUnloaded`/`SilentRenewError`. Ein `401` löst in `apiInterceptors.ts` genau einen
+`signinSilent()`-Versuch mit Wiederholung aus (`_retry`-Guard); erst dann setzt `expireSession` den
+lokalen Zustand zurück, ohne `signoutRedirect()` und damit ohne die Anbieter-Sitzung zu beenden. Nur
+„Abmelden“ ruft `signoutRedirect()`. Scheitert `GET /api/v1/auth/config`, bleibt das Frontend
+unauthentifiziert und zeigt einen Fehler.
 
 ### 6. Automatische Benutzerbereitstellung
 
@@ -91,7 +90,7 @@ daraus den Anmeldeweg ab.
 Einfacher: kein Session-Store; jeder OIDC-konforme Anbieter und jeder Client, der JWTs sendet,
 funktioniert; ohne Auth-Profil startet die Anwendung nicht; Entwicklung und Betrieb üben dieselbe
 Filterkette; Interessenten ohne eigenen Identity-Provider betreiben OPAA mit lokalen Konten
-(ADR-0033; die frühere negative Konsequenz Nr. 1 dieses ADRs ist damit entfallen).
+(ADR-0033).
 
 Schwieriger: Der OIDC-Anmeldeablauf gegen einen Anbieter ist nur im Demo-Rauchtest abgedeckt, die
 reguläre E2E-Suite läuft auf `dev` (ADR-0009). Ein Browser-Neustart verliert die OIDC-Sitzung, weil
@@ -110,8 +109,7 @@ Standardanbieters (ADR-0025).
 
 - Modus `mock` — war kein Modus, sondern eine Konfigurationslücke: ohne `oidc`/`basic` griff Springs
   generische Security mit Zufallspasswort, die Anwendung war unbenutzbar (#255, #323).
-- Modus `basic` (ein HMAC-signierter Nutzer; die „Historie `basic`“, an der ADR-0033 sich misst) —
-  `subject = username` erzeugte beim Umstieg auf OIDC
+- Modus `basic` (ein HMAC-signierter Nutzer) — `subject = username` erzeugte beim Umstieg auf OIDC
   neue Identitäten, dazu unvalidiertes Secret, Klartextvergleich, kein Rate-Limiting, kein Refresh,
   nur ein Nutzer (#138, #260). ADR-0033 löst jede dieser Lehren an benannter Stelle ein.
 - `@Profile` an Fach-Controllern — der Auth-Modus entschied mit, welche Fachfunktionen existieren.
@@ -127,6 +125,7 @@ Nichts.
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
+| 2026-03-07 | — | Erstfassung mit drei Modi | 1–7 |
 | 2026-08-14 | #323 | Drei Modi (`mock`, `basic`, `oidc`) auf `oidc` und `dev` reduziert | 1, 2, 3 |
 | 2026-08-22 | #737 | Stille Token-Erneuerung und 401-Wiederholung statt Sofort-Logout | 5 |
 | 2026-08-25 | #884 | `CurrentUser` als Request-Attribut, `@Caller`-Resolver | 6 |

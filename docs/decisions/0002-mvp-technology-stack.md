@@ -26,7 +26,7 @@ Backend läuft bis auf Weiteres als genau eine Instanz (ADR-0021).
 
 React Router 8 (`react-router`), Zustand, Axios; Tests mit Vitest 5 und React Testing Library,
 Mocks mit MSW 3; Paketmanager pnpm (Version im `packageManager`-Feld der `frontend/package.json`),
-Node 22 oder neuer (`engines`). Das Frontend spricht ausschließlich die REST-API und ist damit einer
+Node-Version nach `engines` der `frontend/package.json`. Das Frontend spricht ausschließlich die REST-API und ist damit einer
 von mehreren möglichen Clients. Material UI ab v9 kennt keine System-Props auf `Typography`/`Stack`;
 Layoutwerte gehören in `sx`.
 
@@ -38,8 +38,7 @@ nach ADR-0034; die Tabelle `vector_store` legt Spring AI über `initialize-schem
 (HNSW-Index, Vorgabe Cosinus-Distanz). Schreibzugriff läuft über Spring AIs `PgVectorStore`
 (`indexing.chunk.VectorChunkStore`), die Suche über eigenes SQL mit `JdbcTemplate`
 (`retrieval.search.VectorChunkSearch`, iterativer HNSW-Scan innerhalb des Rechtefilters). pgvector
-ist der einzige unterstützte Vektorspeicher (ADR-0014); die dort genannte „portable Schnittstelle des
-Rahmenwerks“ gilt seit dem Suchumbau nur noch für das Schreiben.
+ist der einzige unterstützte Vektorspeicher (ADR-0014).
 
 ### 4. Dokumentformate: eigenes Modul `io.opaa.format`
 
