@@ -205,3 +205,95 @@ describe('move-diff-check', () => {
     ])
   })
 })
+
+describe('move-diff-check with a theme routes.ts', () => {
+  const PAGE_OLD = 'src/pages/NotificationsPage.tsx'
+  const PAGE_NEW = 'src/features/notification/pages/NotificationsPage.tsx'
+  const ARCHIVE_OLD = 'src/pages/NotificationArchivePage.tsx'
+  const ARCHIVE_NEW = 'src/features/notification/pages/NotificationArchivePage.tsx'
+  const ROUTES = 'src/features/notification/routes.ts'
+  const APP = 'src/App.tsx'
+  const PAGE = 'export default function NotificationsPage() {}\nexport const helper = 1\n'
+  const ARCHIVE = 'export default function NotificationArchivePage() {}\n'
+  const PAGE_EXPORTS = [
+    "export { default as NotificationsPage } from './pages/NotificationsPage'",
+    "export { default as NotificationArchivePage } from './pages/NotificationArchivePage'",
+  ]
+
+  const oldTree = {
+    ...OLD_TREE,
+    [PAGE_OLD]: PAGE,
+    [ARCHIVE_OLD]: ARCHIVE,
+    [APP]: [
+      "import ChatPage from './pages/ChatPage'",
+      "import NotificationsPage from './pages/NotificationsPage'",
+      "import NotificationArchivePage from './pages/NotificationArchivePage'",
+      '',
+    ].join('\n'),
+  }
+  const routes = (...lines) => ({ [ROUTES]: [...lines, ''].join('\n') })
+  const newTree = {
+    [PAGE_NEW]: PAGE,
+    [ARCHIVE_NEW]: ARCHIVE,
+    ...routes(...PAGE_EXPORTS),
+    [APP]: [
+      "import ChatPage from './pages/ChatPage'",
+      "import { NotificationsPage, NotificationArchivePage } from '@/features/notification/routes'",
+      '',
+    ].join('\n'),
+  }
+  const changes = [
+    ...CHANGES,
+    { status: 'R', from: PAGE_OLD, to: PAGE_NEW },
+    { status: 'R', from: ARCHIVE_OLD, to: ARCHIVE_NEW },
+    { status: 'A', from: ROUTES, to: ROUTES },
+    { status: 'M', from: APP, to: APP },
+  ]
+  const checkRoutes = (overrides = {}) => check({ ...newTree, ...overrides }, changes, oldTree)
+
+  it('accepts a routes.ts re-exporting pages of its theme and App.tsx importing them there', () => {
+    expect(checkRoutes()).toEqual([])
+  })
+
+  it('reports a routes.ts that re-exports a page of another theme', () => {
+    expect(
+      checkRoutes(routes(...PAGE_EXPORTS, "export { default as ChatPage } from '../../pages/ChatPage'")),
+    ).toContain(`${ROUTES}: re-exports src/pages/ChatPage.tsx, no page of its theme`)
+  })
+
+  it('reports a routes.ts that re-exports something other than a page', () => {
+    expect(
+      checkRoutes(
+        routes(
+          ...PAGE_EXPORTS,
+          "export { default as NotificationBell } from './components/NotificationBell'",
+        ),
+      ),
+    ).toContain(
+      `${ROUTES}: re-exports src/features/notification/components/NotificationBell.tsx, no page of its theme`,
+    )
+    expect(
+      checkRoutes(routes(...PAGE_EXPORTS, "export { helper } from './pages/NotificationsPage'")),
+    ).toContain(`${ROUTES}: re-exports helper of ${PAGE_NEW}, not the page itself`)
+  })
+
+  it('reports a routes.ts that holds more than re-exports', () => {
+    const findings = checkRoutes(routes(...PAGE_EXPORTS, 'export const leaked = 1'))
+
+    expect(findings).toContain(`${ROUTES}: a routes.ts holds re-exports of local modules only`)
+    expect(findings).toContain(`${ROUTES}: added`)
+  })
+
+  it('reports an App.tsx import through routes.ts that now names another page', () => {
+    const findings = checkRoutes({
+      [APP]: [
+        "import ChatPage from './pages/ChatPage'",
+        "import { NotificationArchivePage as NotificationsPage, NotificationArchivePage } from '@/features/notification/routes'",
+        '',
+      ].join('\n'),
+    })
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toContain(APP)
+  })
+})
