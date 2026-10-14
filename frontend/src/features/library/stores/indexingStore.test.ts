@@ -79,7 +79,7 @@ describe('indexingStore', () => {
   })
 
   it('shows a specific message and leaves status untouched when the target is an UPLOAD library', async () => {
-    // #500 review, finding 5: an UPLOAD library has no run type at all (backend 409) - no run was
+    // An UPLOAD library has no run type at all (backend 409) - no run was
     // ever started, so overwriting status to FAILED would misleadingly suggest one broke.
     mockTriggerIndexing.mockRejectedValueOnce(new Error(UPLOAD_LIBRARY_INDEXING_ERROR))
 
@@ -120,7 +120,7 @@ describe('indexingStore', () => {
   })
 
   it('resets to IDLE before reloading and does not leak another library run state on failure', async () => {
-    // #506 review, finding 1: a failed status fetch for library B after switching away from a
+    // A failed status fetch for library B after switching away from a
     // RUNNING library A must not leave A's state visible for B, and must not silently reuse A's
     // stale data for B either.
     mockGetIndexingStatus.mockResolvedValueOnce(runningStatus())
@@ -138,8 +138,8 @@ describe('indexingStore', () => {
   })
 
   it('does not stop library A polling when loading the status of a different library B', async () => {
-    // #506 review, finding 1: startPolling used to short-circuit whenever any interval already
-    // existed, orphaning A's interval after a quick switch instead of scoping per library.
+    // startPolling scopes per library - short-circuiting whenever any interval already exists
+    // would orphan A's interval after a quick switch.
     vi.useFakeTimers()
     mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
     await useIndexingStore.getState().triggerIndexing('library-a', 'FILESYSTEM')
@@ -158,10 +158,10 @@ describe('indexingStore', () => {
   })
 
   it('shows the extended RSS message with entries and document total for an RSS_FEED library', async () => {
-    // #518: documentsIndexedTotal (39) exceeds documentCount (13) once RSS attachments are counted
+    // documentsIndexedTotal (39) exceeds documentCount (13) once RSS attachments are counted
     // - the completion snackbar must name both, not just the one FILESYSTEM/HTTP_DIRECTORY has
-    // always shown. Which wording is used is decided by the library's own sourceType (#518 review,
-    // finding 1), passed in at triggerIndexing/loadStatus - not derived from the counts.
+    // always shown. Which wording is used is decided by the library's own sourceType, passed in at
+    // triggerIndexing/loadStatus - not derived from the counts.
     vi.useFakeTimers()
     mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
     await useIndexingStore.getState().triggerIndexing('library-a', 'RSS_FEED')
@@ -183,7 +183,7 @@ describe('indexingStore', () => {
   })
 
   it('uses the RSS wording even when documentsIndexedTotal equals documentCount', async () => {
-    // #518 review, finding 1: an RSS_FEED run whose entries carried no attachments at all has
+    // An RSS_FEED run whose entries carried no attachments at all has
     // documentsIndexedTotal === documentCount - the wording must still be the RSS one, since it is
     // decided by sourceType, not by comparing the two counts (which would wrongly fall back to the
     // FILESYSTEM/HTTP_DIRECTORY wording here).
@@ -209,7 +209,7 @@ describe('indexingStore', () => {
 
   it('keeps the original short message for a FILESYSTEM/HTTP_DIRECTORY library', async () => {
     // FILESYSTEM/HTTP_DIRECTORY runs: one processed file is exactly one document, so the display
-    // must stay unchanged (#518 acceptance criteria).
+    // stays the short one.
     vi.useFakeTimers()
     mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
     await useIndexingStore.getState().triggerIndexing('library-a', 'FILESYSTEM')
@@ -230,11 +230,10 @@ describe('indexingStore', () => {
     )
   })
 
-  // #575: the poll callback is the indexing store's explicitly named unguarded write path (Issue
-  // #575) - clearInterval (via reset()'s stopPolling loop) only stops *future* ticks, so a tick
-  // already awaiting getIndexingStatus when reset() runs must still recognize the reset once its
-  // own await resolves, instead of writing a run status back into runsByLibrary right after
-  // reset() emptied it.
+  // The poll callback is a write path after an await - clearInterval (via reset()'s stopPolling
+  // loop) only stops *future* ticks, so a tick already awaiting getIndexingStatus when reset() runs
+  // must still recognize the reset once its own await resolves, instead of writing a run status
+  // back into runsByLibrary right after reset() emptied it.
   it('a poll tick response arriving after a session reset does not resurrect run status', async () => {
     vi.useFakeTimers()
     mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
@@ -265,9 +264,8 @@ describe('indexingStore', () => {
     expect(useIndexingStore.getState().runsByLibrary['library-a']?.isPolling).toBe(true)
     expect(useIndexingStore.getState().runsByLibrary['library-b']?.isPolling).toBe(true)
 
-    // #575 review: reset() used to leave runHistoryByLibrary untouched (pre-existing gap from
-    // #513) - the previous user's last-10-runs protocol for a library stayed visible to whichever
-    // user signs in next in the same tab until loadRunHistory happened to overwrite it.
+    // reset() also clears runHistoryByLibrary - otherwise the previous user's last-10-runs protocol
+    // for a library stays visible to whichever user signs in next in the same tab.
     mockGetIndexingRuns.mockResolvedValueOnce({ runs: [{ id: 'run-1' }] })
     await useIndexingStore.getState().loadRunHistory('library-a')
     expect(useIndexingStore.getState().runHistoryByLibrary['library-a']).toHaveLength(1)
@@ -285,9 +283,8 @@ describe('indexingStore', () => {
   })
 
   it('names the failed count in the completion message only when it occurred', async () => {
-    // #518 review, finding 3: documentsFailed used to be invisible in the client-built completion
-    // message even though the backend already tracked it - named explicitly here, but only when
-    // it is greater than zero, so a clean run's message stays as short as before.
+    // documentsFailed is named in the client-built completion message, but only when it is
+    // greater than zero, so a clean run's message stays short.
     vi.useFakeTimers()
     mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
     await useIndexingStore.getState().triggerIndexing('library-a', 'FILESYSTEM')

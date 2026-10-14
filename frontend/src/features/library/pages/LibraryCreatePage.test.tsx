@@ -462,7 +462,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           }),
         ),
       )
-      // Sofortstart gilt seit #1942 für jeden Konnektortyp, nicht mehr nur Confluence und S3.
+      // Sofortstart gilt für jeden Konnektortyp, nicht nur Confluence und S3.
       expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'FILESYSTEM')
     }, 25000)
 
@@ -523,7 +523,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.click(screen.getByRole('button', { name: 'Bereich' }))
       await user.type(screen.getByLabelText('Bucket 2'), 'satzungen')
       await next(user)
-      // #1942: Der Name ist aus der Quelle vorbelegt - hier der erste Bucket.
+      // Der Name ist aus der Quelle vorbelegt - hier der erste Bucket.
       expect(screen.getByLabelText(/^Name/)).toHaveValue('protokolle')
       await nameItAndContinue(user, 'Protokolle')
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
@@ -727,7 +727,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.type(picker, 'Bau')
       await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
       await next(user)
-      // #1942: Ein einzelner Space belegt den Namen vor.
+      // Ein einzelner Space belegt den Namen vor.
       expect(screen.getByLabelText(/^Name/)).toHaveValue('Bauamt')
       await nameItAndContinue(user, 'Wiki Bauamt')
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
@@ -755,7 +755,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
     }, 25000)
 
-    // #1942: Ein eingetragener Rhythmus geht mit; nur das leere Feld bedeutet beim Anlegen
+    // Ein eingetragener Rhythmus geht mit; nur das leere Feld bedeutet beim Anlegen
     // „kein eigener Rhythmus" und darf das Feld nicht als 0 senden.
     it('sends an entered full-sync rhythm as the number, not as the update path’s zero', async () => {
       mockTestLibrarySource
@@ -1086,7 +1086,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 20000)
   })
 
-  // #514: ein Ergebnis gehört zu der Probe, mit der es gemessen wurde - auch zu ihrem Quellentyp.
+  // Ein Ergebnis gehört zu der Probe, mit der es gemessen wurde - auch zu ihrem Quellentyp.
   it('drops a connection test result when the source type changes (#514)', async () => {
     const user = userEvent.setup()
     mockTestLibrarySource.mockResolvedValueOnce({
@@ -1127,8 +1127,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.getByLabelText(/^Name/)).toHaveValue('intranet.behoerde.example Merkblätter')
   }, 20000)
 
-  // #1931: a library is created with no reach of its own - the wizard no longer picks a release
-  // level, because there is none to pick.
+  // A library is created with no reach of its own - the wizard picks no release level, because
+  // there is none to pick.
   it('creates the library and navigates to its detail page', async () => {
     const user = userEvent.setup()
     await renderPage()

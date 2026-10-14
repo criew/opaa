@@ -16,7 +16,7 @@ export function documentStatusLabel(status: DocumentStatus | string | undefined)
   return documentStatusLabels[status as DocumentStatus] ?? status
 }
 
-// #513: German, understandable categories for a skipped/rejected item or error in a run's
+// German, understandable categories for a skipped/rejected item or error in a run's
 // protocol - matches io.opaa.indexing.job.IndexingEventCategory's own Javadoc one-to-one.
 const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> = {
   REJECTED: 'Abgewiesen',
@@ -24,26 +24,26 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   UNSUPPORTED_FORMAT: 'Format nicht unterstützt',
   ALLOWLIST: 'Allowlist',
   ERROR: 'Fehler',
-  // #404: indexed anyway, only the deviation between the file's own extension and its detected
+  // Indexed anyway, only the deviation between the file's own extension and its detected
   // content is reported here.
   FORMAT_MISMATCH: 'Endung weicht vom Inhalt ab',
   SCHEDULE_SKIPPED: 'Geplanter Lauf übersprungen',
-  // #886: the document no longer exists at its source and was removed at the end of a
+  // The document no longer exists at its source and was removed at the end of a
   // successful, complete run - a note about the removal, not a skip/reject/error of this run.
   REMOVED: 'In der Quelle entfernt',
-  // #1136: the source throttled the run and it slowed down instead of failing - one summary note.
+  // The source throttled the run and it slowed down instead of failing - one summary note.
   RATE_LIMITED: 'Ratenbegrenzung',
   BUDGET_EXHAUSTED: 'Anfragebudget erschöpft',
-  // #1380: the run's own figures, one note per run for a source that counts them.
+  // The run's own figures, one note per run for a source that counts them.
   SUMMARY: 'Kennzahlen',
 }
 
-// ADR-0023, Entscheidung 4 (#1136): the Betriebsart of a run - whether its listing was complete
+// ADR-0023, Entscheidung 4: the Betriebsart of a run - whether its listing was complete
 // (and could remove what it did not meet again) or only picked up changes.
 const indexingRunModeLabels: Record<IndexingRunMode, string> = {
   FULL: 'Vollabgleich',
   INCREMENTAL: 'Inkrementell',
-  // ADR-0027, Entscheidung 3 (#1381): the run an S3 event notification starts - reported keys
+  // ADR-0027, Entscheidung 3: the run an S3 event notification starts - reported keys
   // checked one by one, never a listing.
   EVENT: 'Ereignislauf',
 }
@@ -59,7 +59,7 @@ const indexingTriggerSourceLabels: Record<IndexingTriggerSource, string> = {
   WEBHOOK: 'per Webhook',
 }
 
-/** Who started a run (#485, #1140) - shown in the run history beside the run mode. */
+/** Who started a run - shown in the run history beside the run mode. */
 export function indexingTriggerSourceLabel(
   source: IndexingTriggerSource | string | undefined,
 ): string {

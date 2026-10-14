@@ -46,7 +46,7 @@ function sortProviders(list: OidcProviderResponse[]): OidcProviderResponse[] {
 }
 
 /**
- * Identity providers (ADR-0025, admin API from #1329) - list, create, edit, enable/disable,
+ * Identity providers (ADR-0025, admin API) - list, create, edit, enable/disable,
  * default, order, delete. Like {@link useLlmModelStore}, every mutation patches `providers`
  * from the server's own response instead of reloading, so an open card survives its own action.
  */

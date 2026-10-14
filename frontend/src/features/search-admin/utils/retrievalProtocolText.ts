@@ -13,7 +13,7 @@
  * A note the backend can produce, and the German sentence that carries the same statement. `name`
  * is the backend's enum constant (`io.opaa.retrieval.RetrievalNote`/`RetrievalListLabel`/`StageStatus`)
  * this rule translates - the join key `retrievalProtocolText.test.ts` uses against
- * `retrieval-note-templates.json` to check coverage in both directions (#1207).
+ * `retrieval-note-templates.json` to check coverage in both directions.
  */
 type NoteRule = {
   name: string
@@ -380,7 +380,7 @@ const LIST_LABEL_RULES: NoteRule[] = [
  * Both rule inventories, name and pattern only (never the German wording) - what
  * `retrievalProtocolText.test.ts` reads to check `retrieval-note-templates.json` coverage: every
  * backend template's name has a same-named rule here, and that rule's pattern actually matches an
- * instantiation of the backend's own raw template (#1207 review: a name-only comparison would miss
+ * instantiation of the backend's own raw template (a name-only comparison would miss
  * a reworded template or two rules swapped between names).
  */
 export function noteRules(): readonly Pick<NoteRule, 'name' | 'pattern'>[] {

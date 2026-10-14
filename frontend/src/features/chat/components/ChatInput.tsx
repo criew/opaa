@@ -89,7 +89,7 @@ interface ActiveMention {
 
 /**
  * The chip bar's special entry: every knowledge library associated with the chat's space that the
- * person may read - never more (#560), always offered first.
+ * person may read - never more, always offered first.
  */
 const SPACE_KNOWLEDGE_LABEL = 'Space-Wissen'
 
@@ -102,7 +102,7 @@ interface SpaceLibrary {
 type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: SpaceLibrary }
 
 /**
- * The neutral hint under the input (#1920): the input triggers more than a question - prompts,
+ * The neutral hint under the input: the input triggers more than a question - prompts,
  * later agents and skills - so the line names the prefixes instead of counting libraries. '/' is
  * named only while some action source is active. What the next question searches is stated by
  * the chip bar above it.
@@ -196,7 +196,7 @@ export default function ChatInput({
   // The running answer keeps the scope it was asked with.
   const scopeLocked = sendLocked
 
-  // The chip bar is the only search-scope control (#560): "Durchsucht wird, was in der Leiste
+  // The chip bar is the only search-scope control: "Durchsucht wird, was in der Leiste
   // steht." scope 'all' -> the special @Space-Wissen chip, 'libraries' -> concrete chips,
   // 'none' -> an emptied bar with a hint and a one-click way back to @Space-Wissen. Every chip
   // stays within the space's associated knowledge - the server enforces the same boundary.
@@ -206,7 +206,7 @@ export default function ChatInput({
   const addReferencedLibrary = useChatStore((s) => s.addReferencedLibrary)
   const removeReferencedLibrary = useChatStore((s) => s.removeReferencedLibrary)
   const clearScope = useChatStore((s) => s.clearScope)
-  // #1070: the chat's sticky core-field filter, shown as removable chips next to the scope chips
+  // The chat's sticky core-field filter, shown as removable chips next to the scope chips
   // and set through the popover - never derived from the question.
   const chatId = useChatStore((s) => s.chatId)
   const metadataFilter = useChatStore((s) => s.metadataFilter)
@@ -255,12 +255,12 @@ export default function ChatInput({
   // What the chip bar offers mirrors ChatService#effectiveLibraryScope: the space's associated
   // knowledge libraries the person may read, nothing else. Loaded per current chat's space via the
   // same spaceStore SpaceSettingsPage/SpacePage use (their routes never render at the same time as
-  // this one) - but #783 review finding 1: that store write-back is asynchronous and per-space, so
+  // this one) - but that store write-back is asynchronous and per-space, so
   // this component must not simply trust whatever is currently in assetAssociations.
   // assetAssociationsSpaceId names which space that data actually describes;
   // isAssetAssociationsCurrent below is false while it does not match chatSpaceId - covering the
   // load still being in flight, a load that failed (spaceStore leaves it null rather than
-  // defaulting to "no associations", #783 review nit 1), and the moment right after switching to a
+  // defaulting to "no associations"), and the moment right after switching to a
   // chat in a different space, before its own load has even started.
   const chatSpaceId = useChatStore((s) => s.spaceId)
   const hasKnowledge = useSpaceStore((s) => s.hasKnowledge)
@@ -302,7 +302,7 @@ export default function ChatInput({
   // One entry per referenced id, in the order the ids were added - not per matched library, so a
   // reference that is (still, or no longer) missing from the space's libraries keeps its own chip
   // instead of silently disappearing. An empty-looking bar for scope 'libraries' would otherwise
-  // be indistinguishable from a deliberately emptied one (#564 review).
+  // be indistinguishable from a deliberately emptied one.
   const libraryChips = useMemo(() => {
     if (scope !== 'libraries') return []
     return referencedLibraryIds.map((libraryId) => {
@@ -370,7 +370,7 @@ export default function ChatInput({
     if (mention === null) return []
     const query = mention.query.toLowerCase()
     const suggestions: MentionSuggestion[] = []
-    // @Space-Wissen is always offered first (#560), regardless of the current scope - re-selecting
+    // @Space-Wissen is always offered first, regardless of the current scope - re-selecting
     // it while already active is a harmless no-op, and it is the only way back once removed.
     if (SPACE_KNOWLEDGE_LABEL.toLowerCase().includes(query)) {
       suggestions.push({ kind: 'all' })
@@ -537,7 +537,7 @@ export default function ChatInput({
   const mentionOpen = mention !== null
   // aria-expanded/aria-controls must only claim an open *listbox* while that listbox is actually
   // rendered - suggestions.length === 0 renders a plain "no match" message instead, with no
-  // element carrying mentionListboxId (review finding #539).
+  // element carrying mentionListboxId.
   const mentionListOpen = mentionOpen && suggestions.length > 0
   const highlightedOptionId =
     highlightedIndex >= 0 ? `${mentionListboxId}-option-${highlightedIndex}` : undefined
@@ -593,7 +593,7 @@ export default function ChatInput({
             color="primary"
             onDelete={scopeLocked ? undefined : clearScope}
             // The default delete icon carries aria-hidden from MUI, so the accessible name has to
-            // sit on the chip itself rather than on that icon (review finding #539).
+            // sit on the chip itself rather than on that icon.
             aria-label="Referenz Space-Wissen entfernen"
           />
         )}
@@ -737,7 +737,7 @@ export default function ChatInput({
           bgcolor: 'background.paper',
           border: 1,
           // Mockup 1a draws the input row with the crisper gray-300 line and a hairline
-          // shadow (#658).
+          // shadow.
           borderColor: (theme) =>
             theme.palette.mode === 'dark' ? darkRoles.borderStrong : gray[300],
           borderRadius: '10px',
@@ -789,7 +789,7 @@ export default function ChatInput({
           onError={setDictationError}
           disabled={disabled}
         />
-        {/* #1920: a send symbol, not "Fragen" - the input triggers more than questions. */}
+        {/* A send symbol, not "Fragen" - the input triggers more than questions. */}
         <IconButton
           color="primary"
           onClick={handleSend}
@@ -818,7 +818,7 @@ export default function ChatInput({
       >
         <ClickAwayListener onClickAway={closeMention}>
           <Paper elevation={4} sx={{ maxHeight: 280, overflowY: 'auto' }}>
-            {/* Mockup 1h (#591): mono eyebrow head, book icon, typed prefix in bold, and a
+            {/* Mockup 1h: mono eyebrow head, book icon, typed prefix in bold, and a
                 type badge on the right - built to take agents as a second kind later. */}
             <Typography
               component="div"
@@ -932,7 +932,7 @@ export default function ChatInput({
       />
       {actions.pendingForm?.({ onInsert: actions.completeForm, onCancel: actions.cancelForm })}
 
-      {/* Mockup 1a (#591): the quiet line under the input, neutral since #1920. */}
+      {/* Mockup 1a: the quiet, neutral line under the input. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
           {scopeNotice ?? inputHint(answerPending, actions.enabled)}

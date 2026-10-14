@@ -83,7 +83,7 @@ async function openRowMenu(
 }
 
 /**
- * Die Benutzerverwaltung (#1541, #1601, ADR-0033 Entscheidungen 4 und 11): zwei Bereiche, die
+ * Die Benutzerverwaltung (ADR-0033 Entscheidungen 4 und 11): zwei Bereiche, die
  * Liste aller Konten mit Herkunft und typabhängigen Handlungen, der stehende Hinweis zur Auflage,
  * die beiden einmaligen Anzeigen und die Schalter mit Konsequenz-Dialog.
  */
@@ -137,9 +137,9 @@ describe('UserManagementPage', () => {
     renderAccounts()
 
     const table = await screen.findByRole('table', { name: 'Konten' })
-    // local rows: state and marker; neither activity class nor creation reason (#1978)
+    // local rows: state and marker; neither activity class nor creation reason
     expect(within(table).getByText('Eingeladen')).toBeInTheDocument()
-    // Nur „Gesperrt“ in der Zelle, der Grund hinter dem Info-Symbol (#1978)
+    // Nur „Gesperrt“ in der Zelle, der Grund hinter dem Info-Symbol
     expect(within(table).getAllByText('Gesperrt').length).toBeGreaterThan(0)
     expect(within(table).queryByText(/Gesperrt (von|nach|wegen)|\(Verwalter\)/)).toBeNull()
     expect(
@@ -261,9 +261,9 @@ describe('UserManagementPage', () => {
   })
 
   /**
-   * Regressionsschutz zum Review von #1601: Der Rollendialog überlebte das Schließen (MUI unmountet
-   * nur die Kinder), trug die zuletzt gewählte Rolle in das nächste geöffnete Konto und hatte dort
-   * sofort ein aktives „Speichern" — ein Klick hätte SYSTEM_ADMIN an das falsche Konto vergeben.
+   * Der Rollendialog beginnt für jedes Konto neu: MUI unmountet beim Schließen nur die Kinder, die
+   * zuletzt gewählte Rolle darf nicht in das nächste geöffnete Konto wandern — ein sofort aktives
+   * „Speichern" vergäbe dort mit einem Klick SYSTEM_ADMIN an das falsche Konto.
    */
   it('starts the role dialog fresh for the next account after an abandoned change', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -335,7 +335,7 @@ describe('UserManagementPage', () => {
     const user = userEvent.setup()
     renderAccounts()
 
-    // Kein Hinweiskasten mehr über der Liste (#1978), sondern ein Link in der Kopfzeile.
+    // Kein Hinweiskasten mehr über der Liste, sondern ein Link in der Kopfzeile.
     const hint = await screen.findByRole('button', {
       name: '2 lokale Konten ohne Ablaufdatum · 1 offene Einladung',
     })
@@ -359,7 +359,7 @@ describe('UserManagementPage', () => {
         screen.queryByRole('dialog', { name: 'Hinweise zur Kontenprüfung' }),
       ).not.toBeInTheDocument(),
     )
-    // Die Zahl im Hinweis und die Zeilen hinter dem Sprung sind dieselbe Menge (#1603): Das
+    // Die Zahl im Hinweis und die Zeilen hinter dem Sprung sind dieselbe Menge: Das
     // Notanker-Konto bleibt unbefristet und steht in keiner von beiden.
     await waitFor(() => {
       const accounts = useUserAdminStore.getState().accounts
@@ -489,7 +489,7 @@ describe('UserManagementPage', () => {
     // Die Folge steht im Overlay, bevor gesperrt wird - sie ist die Entscheidungsgrundlage.
     const sperrfrage = await screen.findByRole('dialog', { name: /„T\. Klein“ sperren\?/ })
     expect(sperrfrage).toHaveTextContent('Sitzungen enden sofort')
-    // neutral: no number, no hint whether this person connected anything (#2260)
+    // neutral: no number, no hint whether this person connected anything
     expect(sperrfrage).toHaveTextContent(/etwaige verbundene Konten enden/i)
     expect(sperrfrage).toHaveTextContent(/Löschfrist/)
     await user.click(within(sperrfrage).getByRole('button', { name: 'Sperren' }))
@@ -527,7 +527,7 @@ describe('UserManagementPage', () => {
       'aria-disabled',
       'true',
     )
-    // #1563: Die Übergabe ist an diesem Konto gar nicht erst anwählbar, und der Eintrag sagt warum
+    // Die Übergabe ist an diesem Konto gar nicht erst anwählbar, und der Eintrag sagt warum
     // - das Notanker-Konto muss ein lokales Konto bleiben.
     const uebergabe = within(menu).getByRole('menuitem', {
       name: 'An Identitätsanbieter übergeben',
@@ -596,7 +596,7 @@ describe('UserManagementPage', () => {
   }, 20000)
 
   /**
-   * Ein Notanker-Konto aus der Zeit vor #1640 kann ein Ablaufdatum und eine andere Rolle tragen. Der
+   * Ein älteres Notanker-Konto kann ein Ablaufdatum und eine andere Rolle tragen. Der
    * Dialog lässt genau die Rückkehr in den zugesagten Zustand zu: Datum entfernen, zurück zur
    * Systemverwaltung – und nichts, was das Backend ablehnen würde.
    */
@@ -697,7 +697,7 @@ describe('UserManagementPage', () => {
   })
 
   /**
-   * Das Notanker-Konto steht nicht im Hinweis zur Auflage (#1603) – der Hilfetext unter „Kein
+   * Das Notanker-Konto steht nicht im Hinweis zur Auflage – der Hilfetext unter „Kein
    * Ablaufdatum" darf ihm deshalb keinen versprechen, einem regulären Konto dagegen schon. Beide
    * Richtungen stehen hier, damit eine vertauschte Unterscheidung auffällt.
    */
@@ -1028,7 +1028,7 @@ describe('UserManagementPage', () => {
     await waitFor(() =>
       expect(useUserAdminStore.getState().accounts.map((a) => a.displayName)).toEqual(['A. Vogt']),
     )
-    // Four keystrokes, one request: the field is debounced (#1541).
+    // Four keystrokes, one request: the field is debounced.
     expect(requested.filter((query) => query !== '')).toEqual(['vogt'])
   })
 

@@ -222,7 +222,7 @@ export default function PermissionTransferDialog({
           {targetType === 'GROUP' ? (
             <Box>
               <FieldLabel htmlFor="transfer-target-group">{targetGroupLabel}</FieldLabel>
-              {/* Die gemeinsame Gruppensuche (#1820): serverseitige Auswahl mit Herkunft,
+              {/* Die gemeinsame Gruppensuche: serverseitige Auswahl mit Herkunft,
                   Kennzeichen „extern" und den Wählbarkeitsregeln - statt der vollen
                   Verwaltungsliste in einem Auswahlfeld. */}
               <GroupPicker

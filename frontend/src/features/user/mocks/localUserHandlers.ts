@@ -19,7 +19,7 @@ import {
 } from './localUserFixtures'
 
 /**
- * Die Admin-API der lokalen Konten (#1537) als MSW-Handler – mit genau den Invarianten, auf die
+ * Die Admin-API der lokalen Konten als MSW-Handler – mit genau den Invarianten, auf die
  * sich die Oberfläche verlässt:
  *
  * - die Liste führt nur lokale Konten, hat keine Sortierung nach Aktivität und lehnt eine
@@ -392,7 +392,7 @@ export const localUserHandlers = [
     })
   }),
 
-  // #1563: der Anstoß nennt Anbieter und Anlass und nie eine Identität; das Notanker-Konto ist
+  // Der Anstoß nennt Anbieter und Anlass und nie eine Identität; das Notanker-Konto ist
   // ausgeschlossen, und der Link erscheint - wie bei der Einladung - nur, wenn keine Mail ging.
   http.post('/api/v1/admin/local-users/:id/handover', async ({ params, request }) => {
     const user = find(String(params.id))

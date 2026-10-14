@@ -27,11 +27,11 @@ import { associateSpaceAsset, detachSpaceAsset, getSpaceAssetAssociations } from
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 
-// #783 review: module-level, mirroring chatStore's chatLoadSequence - guards loadAssetAssociations
+// module-level, mirroring chatStore's chatLoadSequence - guards loadAssetAssociations
 // against a *newer* call for a different space, not just against a session reset. Without it, a
 // quick space switch (e.g. ChatInput reacting to the chat's spaceId) could let an in-flight
 // response for the space just left overwrite state a later call already started clearing, so the
-// wrong space's association count would render (#783 review finding 1).
+// wrong space's association count would render.
 let assetAssociationsRequestSeq = 0
 // The space whose associations were asked for last; a change elsewhere does not refresh them.
 let assetAssociationsRequestedSpaceId: string | null = null
@@ -47,7 +47,7 @@ interface SpaceState {
   isLoadingList: boolean
   isLoadingDetails: boolean
   error: string | null
-  // #144: SpaceResponse no longer carries the full member list - it is loaded separately, and only
+  // SpaceResponse does not carry the full member list - it is loaded separately, and only
   // reachable for ADMIN, owner and system admins (a 403 for anyone else leaves members empty).
   members: SpaceMemberResponse[]
   isLoadingMembers: boolean
@@ -64,7 +64,7 @@ interface SpaceState {
   // Count-free: some association is left out of assetAssociations because the caller cannot read it.
   hasUnreadableAssociations: boolean
   isLoadingAssetAssociations: boolean
-  // #783 review: the space id that assetAssociations/hasAssetAssociations actually describe -
+  // The space id that assetAssociations/hasAssetAssociations actually describe -
   // null while nothing has successfully loaded yet, or after a failed load. A caller reading
   // assetAssociations/hasAssetAssociations must compare this against the space it cares about
   // before trusting the count for anything - otherwise a stale value from a previously loaded
@@ -74,7 +74,7 @@ interface SpaceState {
   loadSpaces: () => Promise<void>
   selectSpace: (spaceId: string) => Promise<void>
   loadMembers: (spaceId: string) => Promise<void>
-  // #1815: a member is a person or a group; every membership is addressed by its own id.
+  // A member is a person or a group; every membership is addressed by its own id.
   addMember: (
     spaceId: string,
     subjectType: PermissionSubjectType,
@@ -205,7 +205,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }),
 
   loadSpaces: async () => {
-    // #575: captured before the await below - checked again once it resolves, so a response
+    // Captured before the await below - checked again once it resolves, so a response
     // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
     // previous user's spaces into the now-emptied store.
     const sessionEpoch = currentSessionEpoch()
@@ -232,7 +232,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
 
   selectSpace: async (spaceId: string) => {
     const sessionEpoch = currentSessionEpoch()
-    // #144/#203: members and assetAssociations belong to whichever space was selected before -
+    // Members and assetAssociations belong to whichever space was selected before -
     // clearing them here prevents either from briefly appearing to belong to the newly selected
     // space while the new lists (or a 403 for a non-admin) are still in flight.
     set({
@@ -266,10 +266,10 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     }
   },
 
-  // #144: only ADMIN, the owner and system admins may call this - listSpaceMembers already turns
+  // Only ADMIN, the owner and system admins may call this - listSpaceMembers already turns
   // a 403 for anyone else into a silent empty list (the caller already knows they lack the role),
   // so any error still reaching this catch is a real failure (network, 404, 500, ...) and gets the
-  // same error-state treatment as every other loader here (#674 review, nit a: it must not be
+  // same error-state treatment as every other loader here (it must not be
   // folded into "no members to show" alongside the expected 403 case).
   loadMembers: async (spaceId: string) => {
     const sessionEpoch = currentSessionEpoch()
@@ -321,7 +321,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     if (fallbackSpaceId) {
       await get().selectSpace(fallbackSpaceId)
     } else {
-      // #575: loadSpaces()/selectSpace() above already guard their own write-backs - this direct
+      // loadSpaces()/selectSpace() above already guard their own write-backs - this direct
       // set() needs the same guard, otherwise a logout in between still resurrects an (empty but
       // non-null) selection state into the store reset() just cleared.
       if (isStaleSessionEpoch(sessionEpoch)) return
@@ -332,7 +332,7 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
   archiveSelectedSpace: async (spaceId) => {
     await archiveSpace(spaceId)
     // The space itself stays selectable - archiving stops new content, it does not remove the
-    // space or navigate away from it (#543).
+    // space or navigate away from it.
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 
@@ -343,12 +343,12 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     return space.id
   },
 
-  // #783 review finding 1: clears the previous space's data at the start (not just on success), and
+  // Clears the previous space's data at the start (not just on success), and
   // only writes a response back if this is still the most recently requested call - otherwise a
   // quick space switch (e.g. ChatInput reacting to the chat's spaceId) could let an in-flight
   // response for the space just left land after a later call already started for the next space,
   // making the wrong space's association count render. On failure, assetAssociationsSpaceId stays
-  // null rather than becoming "this space has no associations" - #783 review nit 1: an unresolved
+  // null rather than becoming "this space has no associations" - an unresolved
   // load must render as unknown, not silently as a claim about what the space searches.
   loadAssetAssociations: async (spaceId, options) => {
     const sessionEpoch = currentSessionEpoch()

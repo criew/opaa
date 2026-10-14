@@ -42,7 +42,7 @@ const tabs: Array<{ value: UserManagementTab; label: string }> = [
 const FALLBACK_EXPIRY_DAYS = 365
 
 /**
- * Der Bereich „Konten" (#1601): der Hinweis zur Auflage, Suche und Filter, die Liste
+ * Der Bereich „Konten": der Hinweis zur Auflage, Suche und Filter, die Liste
  * aller Konten - lokale wie die der Identitätsanbieter, mit ihrer Herkunft an jeder Zeile - und
  * die Dialoge der Handlungen. Kein Auswertungspfad: keine Aktivität in der Liste, kein Export,
  * Seitengröße höchstens 50.
@@ -202,7 +202,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
 }
 
 /**
- * Die Benutzerverwaltung der Systemverwaltung (#1541, #1601, ADR-0033 Entscheidungen 4 und 11)
+ * Die Benutzerverwaltung der Systemverwaltung (ADR-0033 Entscheidungen 4 und 11)
  * in zwei Bereichen: „Konten" führt alle Konten der Installation, lokale wie die der
  * Identitätsanbieter, mit ihrer Herkunft und den je Typ möglichen Handlungen; „Einstellungen"
  * die Schalter und Regeln der lokalen Anmeldung.

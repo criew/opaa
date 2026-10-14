@@ -5,8 +5,8 @@ import type {
 } from '@/shared/api/types'
 
 /**
- * Mutable so create/update/delete/activate handlers can reflect their effect on the next list GET
- * (#759), same reasoning as mockBranding.
+ * Mutable so create/update/delete/activate handlers can reflect their effect on the next list GET,
+ * same reasoning as mockBranding.
  */
 export let mockLlmModels: LlmModelResponse[] = [
   {
@@ -49,7 +49,7 @@ export const mockEmbeddingInfo: EmbeddingInfoResponse = {
   dimensions: 1536,
 }
 
-/** What a local Ollama with three chat models and one embedding model reports (#2488). */
+/** What a local Ollama with three chat models and one embedding model reports. */
 export const mockOllamaDiscoveredModels: DiscoveredLlmModel[] = [
   {
     identifier: 'llama3.2:3b',

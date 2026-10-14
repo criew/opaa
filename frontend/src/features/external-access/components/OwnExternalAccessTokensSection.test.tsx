@@ -27,7 +27,7 @@ async function openCreateDialog(user: UserEvent) {
 }
 
 /**
- * Die eigenen Zugangstokens (#1719): die Liste samt „zuletzt benutzt" und ausgesetzter Auswahl,
+ * Die eigenen Zugangstokens: die Liste samt „zuletzt benutzt" und ausgesetzter Auswahl,
  * der Anlegedialog mit Aufklärung und Pflichtfeldern, die einmalige Anzeige des Werts und der
  * Widerruf. Geprüft wird über die Schnittstelle, die auch das Backend anbietet (MSW).
  */
@@ -69,7 +69,7 @@ describe('OwnExternalAccessTokensSection', () => {
       await screen.findByText(/Fremdzugänge sind für diese Installation abgeschaltet/),
     ).toBeInTheDocument()
     expect(screen.getAllByText('wirkt derzeit nicht').length).toBeGreaterThan(0)
-    // Die Ausstellung weist bei geschlossenem Kanal jede Anfrage ab (#1744) - die Schaltfläche
+    // Die Ausstellung weist bei geschlossenem Kanal jede Anfrage ab - die Schaltfläche
     // führte also in eine Absage. Widerrufen bleibt möglich.
     expect(screen.getByRole('button', { name: 'Token erzeugen' })).toBeDisabled()
     expect(
@@ -223,7 +223,7 @@ describe('OwnExternalAccessTokensSection', () => {
       expect(tileNames(dialog)).toEqual(['Rechtsquellen Soziales', 'Vergaberecht'])
     })
 
-    /** Review #2145: clearing a star under „Favoriten" keeps the tile and the focus in place. */
+    /** Clearing a star under „Favoriten" keeps the tile and the focus in place. */
     it('lässt eine Kachel unter „Favoriten“ stehen, wenn ihr Stern entfernt wird', async () => {
       const user = userEvent.setup()
       render()

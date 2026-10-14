@@ -20,7 +20,7 @@ interface ProviderAccountRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü eines Anbieterkontos (#1601). Es bietet genau das, was OPAA an einem solchen
+ * Das Zeilenmenü eines Anbieterkontos. Es bietet genau das, was OPAA an einem solchen
  * Konto tut - die Rolle (ADR-0033, Entscheidung 11: ein Rollenendpunkt für beide Kontotypen) -
  * und sagt, was beim Anbieter geschieht: Sperren, Befristen und Löschen kennt das Backend für
  * Anbieterkonten nicht, und ein Menü darf keine Handlung vortäuschen, die es nicht gibt.

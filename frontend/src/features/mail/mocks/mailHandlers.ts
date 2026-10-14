@@ -16,7 +16,7 @@ import {
 } from './mailFixtures'
 
 /**
- * The mail administration API (#1542) as MSW handlers - the invariants the page depends on, the
+ * The mail administration API as MSW handlers - the invariants the page depends on, the
  * same ones `MailSettingsService` and `MailTemplateService` enforce:
  *
  * - the stored password never leaves the mock; a response carries the mask, and the mask sent

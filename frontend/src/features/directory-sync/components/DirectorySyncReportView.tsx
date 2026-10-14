@@ -51,7 +51,7 @@ function UserList({ title, users }: { title: string; users: DirectorySyncUserRef
 }
 
 /**
- * Der Differenzbericht eines Laufs (#237, #1816): was entstünde, was wegfiele, wer den Zugang
+ * Der Differenzbericht eines Laufs: was entstünde, was wegfiele, wer den Zugang
  * verlöre — mit der Mitgliederzahl je Gruppe, damit der Betrieb sie vor dem Anwenden sieht.
  */
 export default function DirectorySyncReportView({

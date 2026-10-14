@@ -201,7 +201,7 @@ function ineffectiveReason(settings: LocalAuthSettingsResponse, domains?: string
 }
 
 /**
- * Die Kopfkarte der Benutzerverwaltung (#1541, ADR-0033 Entscheidungen 4 und 10): die drei
+ * Die Kopfkarte der Benutzerverwaltung (ADR-0033 Entscheidungen 4 und 10): die drei
  * Schalter der lokalen Anmeldung mit ihren Konsequenzen und Vorbedingungen, die Regeln und
  * Fristen, und der Zustand des Mailversands – weil Einladung und Rücksetzung ohne ihn nur als
  * Link-Übergabe funktionieren.

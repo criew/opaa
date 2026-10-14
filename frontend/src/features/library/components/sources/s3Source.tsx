@@ -38,7 +38,7 @@ export const s3Source: SourceRegistration = {
       values.secretKey !== '' ||
       values.sessionToken !== '' ||
       values.scopes.some((scope) => scope.bucket !== '' || scope.prefix !== ''),
-    // the stored key survives only on the same origin (#516/#542); a sign-in without a key of
+    // the stored key survives only on the same origin; a sign-in without a key of
     // the library's own needs none
     validate: (values: S3SourceValues, context) =>
       s3ValuesIssue(

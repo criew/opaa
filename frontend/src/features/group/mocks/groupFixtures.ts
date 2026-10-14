@@ -134,7 +134,7 @@ export const mockGroups: GroupListResponse[] = [
     createdAt: '2026-09-01T10:00:00Z',
     updatedAt: '2026-09-01T10:00:00Z',
   },
-  // #1823: a group of an external provider (ADR-0036, Entscheidung 2) - below the search
+  // A group of an external provider (ADR-0036, Entscheidung 2) - below the search
   // diagnosis's Mindestgruppengroesse (5), so it also stands in for "kleine Gruppe".
   {
     id: 'group-partnerbehoerde',
@@ -165,7 +165,7 @@ export const mockGroups: GroupListResponse[] = [
 ]
 
 /**
- * Was die Subjekt-Auswahl anbietet (#1820, ADR-0036 Entscheidung 9). Bewusst breiter als
+ * Was die Subjekt-Auswahl anbietet (ADR-0036 Entscheidung 9). Bewusst breiter als
  * mockGroups: zwei gleichnamige Gruppen aus zwei Anbietern, eine davon extern, dazu eine kleine
  * interne Gruppe, eine nicht mehr wirksame und die geschützte — die nur auf ihre vollständige
  * Bezeichnung antwortet (siehe den Handler).
@@ -448,7 +448,7 @@ export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
 )
 
 /**
- * Groups the mock user is responsible for - what GET /api/v1/me/stewarded-groups returns (#1814).
+ * Groups the mock user is responsible for - what GET /api/v1/me/stewarded-groups returns.
  * Deliberately a different set than mockMyGroups: being responsible for a group is not being a
  * member of it, and the protected group below has the mock user as its steward without a single
  * member.

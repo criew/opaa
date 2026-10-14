@@ -19,7 +19,7 @@ export interface GeneratedPassword {
 }
 
 /**
- * Die einmalige Anzeige eines erzeugten Anfangs- oder Ersatzpassworts (#1541, ADR-0033
+ * Die einmalige Anzeige eines erzeugten Anfangs- oder Ersatzpassworts (ADR-0033
  * Entscheidung 11). Das Passwort steht im Klartext, weil es genau hier übergeben wird und nirgends
  * sonst existiert; bei der nächsten Anmeldung muss es gewechselt werden.
  */

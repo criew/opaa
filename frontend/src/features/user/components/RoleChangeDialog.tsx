@@ -22,7 +22,7 @@ interface RoleChangeDialogProps {
 }
 
 /**
- * Die Rolle eines Kontos ändern (#1601) - für Anbieterkonten der eine Weg, für lokale steht sie
+ * Die Rolle eines Kontos ändern - für Anbieterkonten der eine Weg, für lokale steht sie
  * auch im Bearbeiten-Dialog. Der Rollenendpunkt ist für beide derselbe (ADR-0033, Entscheidung
  * 11); seine beiden Ablehnungen - anbietergeführte Rolle, letzter anmeldefähiger Systemverwalter -
  * erscheinen hier als Satz mit dem nächsten Schritt statt als Statuscode.

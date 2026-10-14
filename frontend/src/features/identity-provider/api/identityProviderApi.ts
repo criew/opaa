@@ -8,7 +8,7 @@ import type {
 } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
 
-// identity providers (ADR-0025, #1329 admin API) - SYSTEM_ADMIN only. Public clients: there is
+// identity providers (ADR-0025, admin API) - SYSTEM_ADMIN only. Public clients: there is
 // no secret anywhere in these payloads.
 export async function getOidcProviders(): Promise<OidcProviderResponse[]> {
   try {

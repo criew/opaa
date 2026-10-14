@@ -44,7 +44,7 @@ describe('userAdminStore', () => {
 
     await state().setFilters({ review: 'WITHOUT_EXPIRY' })
     expect(state().filters.page).toBe(0)
-    // das Notanker-Konto ist unbefristet gedacht und deshalb kein Treffer des Filters (#1603)
+    // das Notanker-Konto ist unbefristet gedacht und deshalb kein Treffer des Filters
     expect(
       state().accounts.every(
         (account) => account.local && !account.local.expiresAt && !account.local.bootstrap,
@@ -56,7 +56,7 @@ describe('userAdminStore', () => {
   })
 
   /**
-   * Das Notanker-Konto ist kein Handlungskandidat (#1641) – der Filter „länger nicht genutzt" zeigt
+   * Das Notanker-Konto ist kein Handlungskandidat – der Filter „länger nicht genutzt" zeigt
    * es auch dann nicht, wenn es lange ruht; jedes reguläre Konto im selben Zustand dagegen schon.
    */
   it('leaves the bootstrap account out of the inactive filter and keeps every regular one', async () => {

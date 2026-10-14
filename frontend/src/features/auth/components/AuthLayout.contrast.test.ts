@@ -4,7 +4,7 @@ import { TEXT_CONTRAST_MINIMUM, compositeOver, contrastRatio } from '@/shared/ut
 import { navyRoles } from '@/shared/theme/tokens'
 
 /**
- * #1910: Über einem hinterlegten Hintergrundbild steht Text. Welches Bild eine Installation
+ * Über einem hinterlegten Hintergrundbild steht Text. Welches Bild eine Installation
  * hochlädt, weiß diese Anwendung nicht — prüfbar ist deshalb nur der schlechteste Fall: ein rein
  * weißes und ein rein schwarzes Bild unter dem festen Schleier. Erreicht die Schrift dort die
  * 4,5:1 aus docs/design/accessibility.md, erreicht sie sie über jedem Bild.

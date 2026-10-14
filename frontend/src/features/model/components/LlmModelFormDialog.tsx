@@ -65,7 +65,7 @@ function draftFrom(model: LlmModelResponse | null) {
 }
 
 /**
- * Das Formular eines Chat-Modells (#759, #1621) — dasselbe für Anlegen und Bearbeiten, wie
+ * Das Formular eines Chat-Modells — dasselbe für Anlegen und Bearbeiten, wie
  * `UserFormDialog` unter „Benutzer".
  *
  * Geführt in drei Abschnitten: Endpunkt (Vorlage oder eigene Adresse, Schlüssel,
@@ -91,7 +91,7 @@ export default function LlmModelFormDialog({
   const [draft, setDraft] = useState(() => draftFrom(model))
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [apiKeyTouched, setApiKeyTouched] = useState(false)
-  // #759 review: eine ausdrückliche Anforderung statt „leeres Feld heißt löschen" - das Feld
+  // Eine ausdrückliche Anforderung statt „leeres Feld heißt löschen" - das Feld
   // startet bei jedem Modell leer, weil der Schlüssel nie zurückgelesen wird; unberührt-leer und
   // „bitte entfernen" wären sonst nicht zu unterscheiden.
   const [apiKeyClearRequested, setApiKeyClearRequested] = useState(false)

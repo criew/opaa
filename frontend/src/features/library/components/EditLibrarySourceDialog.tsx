@@ -35,7 +35,7 @@ export interface EditableLibrarySource {
   sourceType: SourceTypeKey
   sourcePath?: string | null
   sourceUrl?: string | null
-  // Optional/nullable to tolerate a LibraryResponse fixture that predates #542 finding 3 -
+  // Optional/nullable to tolerate a LibraryResponse fixture without the field -
   // treated as "nothing stored" (false) rather than crashing or silently claiming otherwise.
   sourceCredentialsSet?: boolean | null
   sourceSettings?: Record<string, unknown> | null
@@ -116,7 +116,7 @@ export default function EditLibrarySourceDialog({
         name: library.name,
         description: library.description ?? undefined,
         // Blank credentials stay undefined: the backend keeps the stored ones, but only while the
-        // address still names the same origin (#516/#542).
+        // address still names the same origin.
         ...payloadUnder(configuration.toPayload(values), connectionFields(context)),
       })
       onClose()

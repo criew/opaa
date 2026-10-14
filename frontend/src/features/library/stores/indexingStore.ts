@@ -12,7 +12,7 @@ import { registerSessionStore } from '@/shared/session/resettableStores'
 
 const POLL_INTERVAL_MS = 2000
 
-// #500 review, finding 5: the exact German text DocumentIndexingService#executorFor
+// The exact German text DocumentIndexingService#executorFor
 // sends for an UPLOAD library (no run type at all, 409) - matched here so triggerIndexing can show
 // this specific message instead of the generic failure one, and leave status untouched rather than
 // FAILED, since no run was ever started.
@@ -27,27 +27,26 @@ interface Snackbar {
   severity: SnackbarSeverity
 }
 
-// #506 review, finding 1: a single global run status used to be shared across every library, so a
-// stale response for library A could overwrite the state currently shown for library B after a
-// quick switch, and an already-running interval for A silently kept polling while B never updated.
-// Keyed state (the same runsByLibrary pattern as documentStore.documentsByLibrary) makes every
-// response, and every poll interval, inherently scoped to the library it belongs to - a library
-// that never successfully loaded a status simply falls back to the IDLE default below rather than
-// showing another library's leftover state.
+// A single global run status shared across every library would let a stale response for library
+// A overwrite the state shown for library B after a quick switch, while A's interval silently kept
+// polling and B never updated. Keyed state (the same runsByLibrary pattern as
+// documentStore.documentsByLibrary) makes every response, and every poll interval, inherently
+// scoped to the library it belongs to - a library that never successfully loaded a status simply
+// falls back to the IDLE default below rather than showing another library's leftover state.
 interface IndexingRunState {
   status: IndexingStatus
   documentCount: number
   totalDocuments: number
   documentsSkipped: number
   documentsFailed: number
-  // #518: the true count of indexed documents, including RSS attachments - equals documentCount
+  // The true count of indexed documents, including RSS attachments - equals documentCount
   // for FILESYSTEM/HTTP_DIRECTORY runs (one processed file is exactly one document), but can
   // exceed it for an RSS_FEED run whose entries carry attachments.
   documentsIndexedTotal: number
   message: string | null
   timestamp: string | null
   isPolling: boolean
-  // #518 review, finding 1: which wording a run uses (feed entries vs. plain document count) must
+  // Which wording a run uses (feed entries vs. plain document count) must
   // be decided by the library's own, unchanging sourceType - never by comparing documentCount and
   // documentsIndexedTotal, which happens to coincide for an RSS_FEED run whose entries carried no
   // attachments at all and would otherwise make the same library's label flicker from run to run.
@@ -77,7 +76,7 @@ export const IDLE_RUN_STATE: IndexingRunState = {
 
 interface IndexingState {
   runsByLibrary: Record<string, IndexingRunState>
-  // #513: the last 10 runs for a library, each with its own protocol - distinct from
+  // The last 10 runs for a library, each with its own protocol - distinct from
   // runsByLibrary above, which only ever tracks the single current/most recent run for the
   // polling-driven "Quellkonfiguration" section.
   runHistoryByLibrary: Record<string, IndexingRunResponse[]>
@@ -98,8 +97,8 @@ interface IndexingState {
 const pollIntervalIds: Record<string, ReturnType<typeof setInterval>> = {}
 
 /**
- * Formats a completed run's counts for the completion snackbar (#518). Which wording is used is
- * decided by isRssFeed (the library's own sourceType, #518 review finding 1) rather than by
+ * Formats a completed run's counts for the completion snackbar. Which wording is used is
+ * decided by isRssFeed (the library's own sourceType) rather than by
  * comparing documentsIndexedTotal to documentCount - an RSS_FEED run whose entries carried no
  * attachments would otherwise wrongly fall back to the FILESYSTEM/HTTP_DIRECTORY wording.
  */
@@ -113,9 +112,8 @@ function formatCompletionMessage(
   },
   isRssFeed: boolean,
 ): string {
-  // #518 review, finding 3: documentsFailed used to be visible only inside the backend's own
-  // free-text message, never in the client-built one - named explicitly here, but only when it
-  // actually occurred, so a clean run's message stays as short as before.
+  // documentsFailed is named explicitly, but only when it actually occurred, so a clean run's
+  // message stays short.
   const failedSuffix =
     response.documentsFailed > 0 ? `, davon ${response.documentsFailed} fehlgeschlagen` : ''
   if (isRssFeed) {
@@ -149,7 +147,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     const sessionEpoch = currentSessionEpoch()
     try {
       const response = await getIndexingRuns(libraryId)
-      // #575: a response arriving after a logout must not write into the now-emptied store.
+      // A response arriving after a logout must not write into the now-emptied store.
       if (isStaleSessionEpoch(sessionEpoch)) return
       set({
         runHistoryByLibrary: { ...get().runHistoryByLibrary, [libraryId]: response.runs },
@@ -167,13 +165,13 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   ) => {
     const sessionEpoch = currentSessionEpoch()
     try {
-      // #478: sourceType and every typed configuration field come from the library itself
+      // sourceType and every typed configuration field come from the library itself
       // (ADR-0018) - the trigger only ever names the library. sourceType is passed in purely for
-      // this store's own wording decisions (#518 review, finding 1), not sent to the backend.
+      // this store's own wording decisions, not sent to the backend.
       const response = runMode
         ? await triggerIndexing(libraryId, runMode)
         : await triggerIndexing(libraryId)
-      // #575: a response arriving after a logout must not write into the now-emptied store, nor
+      // A response arriving after a logout must not write into the now-emptied store, nor
       // start a poll interval whose ticks would keep writing into it afterwards.
       if (isStaleSessionEpoch(sessionEpoch)) return
       setRun(
@@ -196,7 +194,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       get().stopPolling(libraryId)
       startPolling(libraryId, set, get)
     } catch (err) {
-      // #575: a failure arriving after a logout must not write into the now-emptied store either.
+      // A failure arriving after a logout must not write into the now-emptied store either.
       if (isStaleSessionEpoch(sessionEpoch)) return
       const message =
         err instanceof Error ? err.message : 'Indizierung konnte nicht gestartet werden'
@@ -218,7 +216,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     setRun(libraryId, { ...IDLE_RUN_STATE, sourceType }, set, get)
     try {
       const response = await getIndexingStatus(libraryId)
-      // #575: a response arriving after a logout must not write into the now-emptied store, nor
+      // A response arriving after a logout must not write into the now-emptied store, nor
       // start a poll interval whose ticks would keep writing into it afterwards.
       if (isStaleSessionEpoch(sessionEpoch)) return
       setRun(
@@ -246,9 +244,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
       // Leaves the page on its IDLE default for this library rather than surfacing an error for a
       // status check the caller did not explicitly request.
     }
-    // #604 review, nit (c): LibraryIndexingHistorySection's own mount effect already loads the
-    // run history - a second call here duplicated that request on every mount without ever
-    // being the one either component actually depended on.
+    // No run-history load here: LibraryIndexingHistorySection's own mount effect loads it.
   },
 
   stopPolling: (libraryId: string) => {
@@ -266,9 +262,8 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     Object.keys(pollIntervalIds).forEach((libraryId) => get().stopPolling(libraryId))
     set({
       runsByLibrary: {},
-      // #575 review: pre-existing gap from #513 - runHistoryByLibrary caches the previous user's
-      // last 10 runs per library and was never cleared here, leaving it visible to whichever user
-      // signs in next in the same tab until loadRunHistory happens to overwrite it.
+      // runHistoryByLibrary caches the previous user's last 10 runs per library; left in place it
+      // would stay visible to whichever user signs in next in the same tab.
       runHistoryByLibrary: {},
       snackbar: { open: false, message: '', severity: 'success' },
     })
@@ -286,7 +281,7 @@ function startPolling(
   setRun(libraryId, { isPolling: true }, set, get)
 
   pollIntervalIds[libraryId] = setInterval(async () => {
-    // #575: this tick's token in the session epoch, captured before the await below. clearInterval
+    // This tick's token in the session epoch, captured before the await below. clearInterval
     // (see stopPolling, called by reset()) only stops *future* ticks - a tick already in flight
     // when reset() runs would otherwise still call setRun() once its own await resolves, writing a
     // run status back into runsByLibrary right after reset() just emptied it.
@@ -295,7 +290,7 @@ function startPolling(
       const response = await getIndexingStatus(libraryId)
       if (isStaleSessionEpoch(sessionEpoch)) return
       // The run entry already carries sourceType, set by triggerIndexing/loadStatus before
-      // polling ever starts (#518 review, finding 1) - polling itself never learns it anew.
+      // polling ever starts - polling itself never learns it anew.
       const isRssFeed = Boolean(
         sourceRegistration(get().runsByLibrary[libraryId]?.sourceType)?.runCountsEntries,
       )

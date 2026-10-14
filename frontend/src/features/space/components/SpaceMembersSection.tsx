@@ -68,7 +68,7 @@ interface SpaceMembersSectionProps {
   isOwner: boolean
 }
 
-/** Der Reiter „Mitglieder" der Space-Einstellungen (#1917): Liste, Rollen und Aufnahme. */
+/** Der Reiter „Mitglieder" der Space-Einstellungen: Liste, Rollen und Aufnahme. */
 export default function SpaceMembersSection({
   spaceId,
   space,
@@ -94,7 +94,7 @@ export default function SpaceMembersSection({
     useSpaceStore.setState({ error: null })
   }
 
-  // #144: the service answers the list only for ADMIN, the owner and the system administration;
+  // The service answers the list only for ADMIN, the owner and the system administration;
   // for everybody else it stays empty and the tab shows the counts instead.
   useEffect(() => {
     if (!space.isDefault) void loadMembers(spaceId)

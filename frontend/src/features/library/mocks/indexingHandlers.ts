@@ -66,7 +66,7 @@ export const indexingHandlers = [
         { status: 404 },
       )
     }
-    // Mirrors DocumentIndexingService#executorFor ( review, finding 5): UPLOAD has no
+    // Mirrors DocumentIndexingService#executorFor: UPLOAD has no
     // run type at all - the library is a valid indexing target, it simply has nothing to run.
     if (library.sourceType === 'UPLOAD') {
       return HttpResponse.json(

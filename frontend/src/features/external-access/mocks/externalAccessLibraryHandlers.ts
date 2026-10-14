@@ -3,7 +3,7 @@ import { mockLibraryDetails } from '../../library/mocks/libraryFixtures'
 
 export const externalAccessLibraryHandlers = [
   // spiegelt LibraryExternalAccessService#setExternalAccess: Setzen verlangt ein Ablaufdatum
-  // innerhalb eines Jahres, Zurücknehmen darf keines mitbringen (#1731).
+  // innerhalb eines Jahres, Zurücknehmen darf keines mitbringen.
   http.put('/api/v1/libraries/:libraryId/external-access', async ({ params, request }) => {
     const libraryId = String(params.libraryId)
     const library = mockLibraryDetails[libraryId]

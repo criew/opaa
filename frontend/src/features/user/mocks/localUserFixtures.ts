@@ -1,8 +1,8 @@
 import type { LocalAuthSettingsResponse, LocalUserResponse } from '@/shared/api/types'
 
 /**
- * Fixtures der Benutzerverwaltung (#1541, ADR-0033 Entscheidungen 4 und 11) – in einem eigenen
- * Modul wie die Mail-Fixtures (#1542), weil `fixtures.ts` längst über der 800-Zeilen-Marke liegt,
+ * Fixtures der Benutzerverwaltung (ADR-0033 Entscheidungen 4 und 11) – in einem eigenen
+ * Modul wie die Mail-Fixtures, weil `fixtures.ts` längst über der 800-Zeilen-Marke liegt,
  * und veränderlich, weil die Seite nur etwas wert ist, wenn eine Handlung auf dem nächsten GET
  * sichtbar ist.
  */

@@ -67,7 +67,7 @@ function formOf(settings: MailSettingsResponse): FormState {
 }
 
 /**
- * Das SMTP-Formular der Installation (#1542, ADR-0033 Entscheidung 10).
+ * Das SMTP-Formular der Installation (ADR-0033 Entscheidung 10).
  *
  * Das Passwort ist in beide Richtungen schreibgeschützt: Die Antwort trägt nur die Maske, das
  * Feld startet leer, und wer nichts eingibt, schickt die Maske zurück — das Geheimnis läuft nie

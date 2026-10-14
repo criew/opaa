@@ -44,7 +44,7 @@ export interface HandoverTarget {
 }
 
 /**
- * Der Anstoß einer Übergabe (#1563, ADR-0033 Entscheidung 12). Die Systemverwaltung wählt hier den
+ * Der Anstoß einer Übergabe (ADR-0033 Entscheidung 12). Die Systemverwaltung wählt hier den
  * Anbieter und nennt den Anlass — mehr nicht: Das Subject kommt aus dem Token der Person, nie aus
  * einer Eingabe, und deshalb gibt es hier kein Feld dafür.
  *

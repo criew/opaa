@@ -35,8 +35,8 @@ export async function getSpace(spaceId: string): Promise<SpaceResponse> {
 }
 
 // the full member list (identities and display names) is only reachable here - SpaceResponse
-// no longer carries it, and the backend restricts this endpoint to ADMIN, owner and system admins.
-//  review, nit a: a 403 here is an expected, silent "not allowed to see this" for a caller
+// does not carry it, and the backend restricts this endpoint to ADMIN, owner and system admins.
+// A 403 here is an expected, silent "not allowed to see this" for a caller
 // without the role - it resolves to an empty list rather than an error, but every other failure
 // (network error, 404, 500, ...) still throws through normalizeError so the store can tell the two
 // apart instead of treating every failure alike.
@@ -52,7 +52,7 @@ export async function listSpaceMembers(spaceId: string): Promise<SpaceMemberResp
   }
 }
 
-// #1815: a space member is a person or a group, and every membership is addressed by its own id -
+// A space member is a person or a group, and every membership is addressed by its own id -
 // so a person and a group carrying the same id can never be confused on the remove/role paths.
 export async function addSpaceMember(
   spaceId: string,
@@ -180,7 +180,7 @@ export async function archiveSpace(spaceId: string): Promise<SpaceResponse> {
 }
 
 /**
- * Dasselbe für eine Gruppe, die Mitglied dieses Raums ist (#1880) — hinter derselben Schwelle wie
+ * Dasselbe für eine Gruppe, die Mitglied dieses Raums ist — hinter derselben Schwelle wie
  * die Mitgliederliste selbst.
  */
 export async function getSpaceGroupMembers(
@@ -201,7 +201,7 @@ export async function getSpaceGroupMembers(
 }
 
 /**
- * Die Herleitung an einem Space (#1822). Ohne `userId` geht es um die eigene Person; mit `userId`
+ * Die Herleitung an einem Space. Ohne `userId` geht es um die eigene Person; mit `userId`
  * um ein Mitglied, und das ist denen vorbehalten, die die Mitgliedschaft hier verwalten.
  */
 export async function getSpaceAccessDerivation(

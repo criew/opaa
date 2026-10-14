@@ -20,7 +20,7 @@ interface GroupStewardsSectionProps {
 }
 
 /**
- * Die verantwortlichen Personen einer internen Gruppe (#1814, ADR-0036 Entscheidung 4): benennen,
+ * Die verantwortlichen Personen einer internen Gruppe (ADR-0036 Entscheidung 4): benennen,
  * entlassen und die Verantwortung abgeben. Die Abgabe ist bewusst zweischrittig — erst die
  * Nachfolge benennen, dann selbst zurücktreten; die letzte verantwortliche Person kann sich nicht
  * selbst entfernen, und der Dienst weist genau das ab. Die Systemverwaltung darf die letzte

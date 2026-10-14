@@ -10,7 +10,7 @@ export const diagnosticAccessHandlers = [
     if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    //  review: mirrors diagnosticsLockToggleable, not myRole - myRole alone would let a
+    // Mirrors diagnosticsLockToggleable, not myRole - myRole alone would let a
     // mocked system-admin bypass (myRole 'OWNER' without an independent grant) through.
     if (!library.diagnosticsLockToggleable) {
       return HttpResponse.json(

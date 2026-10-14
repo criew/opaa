@@ -1,6 +1,6 @@
 import type { OidcProviderResponse } from '@/shared/api/types'
 
-/** The three states the provider list and its legend speak of (ADR-0025, #1333). */
+/** The three states the provider list and its legend speak of (ADR-0025). */
 export type ProviderState = 'reachable' | 'unreachable' | 'disabled'
 
 export function providerState(provider: OidcProviderResponse): ProviderState {

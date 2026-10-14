@@ -23,7 +23,7 @@ function settings(patch: Partial<MailSettingsResponse> = {}): MailSettingsRespon
 }
 
 /**
- * Die fünf Lesarten der Statuskachel (#1542). „Nicht konfiguriert" und „Versand ausgeschaltet"
+ * Die fünf Lesarten der Statuskachel. „Nicht konfiguriert" und „Versand ausgeschaltet"
  * sind getrennt: Ein vollständig hinterlegter, bloß abgeschalteter Zugang schickt sonst jemanden
  * auf die Suche nach Einstellungen, die längst da sind.
  */

@@ -72,7 +72,7 @@ describe('RightsHistoryPage', () => {
     expect(screen.getByText('noch wirksam')).toBeInTheDocument()
   })
 
-  /** #1833: eine Luecke vor der Aufbewahrungsgrenze ist kein Freispruch, und die Seite sagt das. */
+  /** Eine Luecke vor der Aufbewahrungsgrenze ist kein Freispruch, und die Seite sagt das. */
   it('weist darauf hin, wenn der Zeitraum vor der Aufbewahrungsgrenze beginnt', async () => {
     signInAs('AUDITOR')
     mockGetAccessAsOf.mockResolvedValue({ ...answer, beyondRetention: true, entries: [] })

@@ -61,7 +61,7 @@ export default function ChatPage() {
   // The title button is unmounted while the field is open, so focus can only return to it on the
   // render that brings it back. A commit via blur leaves focus where the user put it.
   const refocusTitleRef = useRef(false)
-  // #543: an archived space accepts no change to an existing chat - the points stay visible, the
+  // An archived space accepts no change to an existing chat - the points stay visible, the
   // remove buttons do not. Same lookup as ChatList's "Neuer Chat" guard.
   const isArchivedSpace = useSpaceStore(
     (s) => s.spaces.find((space) => space.id === spaceId)?.archived ?? false,
@@ -82,8 +82,8 @@ export default function ChatPage() {
   // Read via a ref, not a reactive dependency: sendMessage sets the store's chatId as soon as it
   // implicitly creates a chat, well before the query itself resolves. If that update re-ran this
   // effect while the route still said "new", the isNewChat branch below would call startNewChat
-  // again and wipe the just-sent, still in-flight user message right back out (#548 review,
-  // finding 1) - the effect must only react to the route changing, and read the store's current
+  // again and wipe the just-sent, still in-flight user message right back out - the effect must
+  // only react to the route changing, and read the store's current
   // chatId (via the ref) purely to decide whether a refetch is necessary once it does. Synced in
   // its own effect (not during render) so it is up to date by the time the route actually changes,
   // without itself being a dependency that re-triggers the routing effect below.
@@ -103,7 +103,7 @@ export default function ChatPage() {
     if (!isNewChat && routeChatId) {
       // Already the active chat (e.g. just implicitly created by sendMessage, which replaces the
       // URL to point at it) - refetching here would load the not-yet-persisted history and
-      // overwrite the message just shown (#548 review, finding 1).
+      // overwrite the message just shown.
       // A search hit names a server message id; questions of this session still carry client ids,
       // so a chat already open is reloaded when the hit is not among its messages.
       const targetMissing =
@@ -120,7 +120,7 @@ export default function ChatPage() {
   // The first message on a not-yet-persisted chat creates it implicitly (chatStore#sendMessage) -
   // once that happened, the URL is replaced to point at the real chat id so a reload restores it.
   //
-  // previousStoreChatIdRef guards against a real bug found via CI (#548 follow-up): on the very
+  // previousStoreChatIdRef guards against a real bug found via CI: on the very
   // render where routeChatId just changed to "new", this effect's dependencies (isNewChat) changed
   // too, so it runs in the *same* effect flush as the routing effect above - but storeChatId here
   // still holds whatever chat was active *before* this navigation (the routing effect's
@@ -179,7 +179,7 @@ export default function ChatPage() {
   }
 
   const isArchivedChat = !isNewChat && archivedAt !== null
-  // #1919: renaming from the header writes through the same endpoint as the list's context menu,
+  // Renaming from the header writes through the same endpoint as the list's context menu,
   // so both surfaces and the list itself stay in step. An archived space accepts no change to a
   // chat, so there the title stays read-only.
   const canRename = Boolean(storeChatId) && !isArchivedSpace
@@ -229,12 +229,12 @@ export default function ChatPage() {
         visuallyHidden
       />
       {(chatTitle || noteVisible || isArchivedChat || spaceInstruction) && (
-        // Mockup 1a's header bar (#658), and the Gesprächsnotiz's place (#1488). Wrapping flex
+        // Mockup 1a's header bar, and the Gesprächsnotiz's place. Wrapping flex
         // row: title and button share the first line, the note panel takes the next one.
         <Box
           ref={headerRef}
-          // Focus target of the note when its last point - and with it its button - is removed
-          // (#1488). Named, because focus must never land on an element without name and role.
+          // Focus target of the note when its last point - and with it its button - is removed.
+          // Named, because focus must never land on an element without name and role.
           tabIndex={-1}
           role="group"
           aria-label="Chat-Kopfzeile"

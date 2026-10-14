@@ -134,7 +134,7 @@ function restoredSourceValues(intent: DraftIntent | null): Record<SourceTypeKey,
 }
 
 /**
- * Der Anlage-Assistent für Wissensbibliotheken (#1942, Zielentwurf aus #1927). Jeder Schritt
+ * Der Anlage-Assistent für Wissensbibliotheken. Jeder Schritt
  * entspricht einem Reiter der Detailseite und verwendet dessen Formulare - Quellformulare,
  * Verbindungstest, Zeitplan und die Freigabebausteine sind gemeinsame Komponenten, keine eigenen
  * Felder dieser Seite.
@@ -181,8 +181,7 @@ export default function LibraryCreatePage() {
     () => draft?.schedule ?? scheduleValuesFrom(null),
   )
   // Opt-out, not opt-in: whoever just configured a source expects content - the first run starts
-  // right after creation unless switched off. Since #1942 for every connector type, not only
-  // Confluence and S3.
+  // right after creation unless switched off, for every connector type.
   const [startFirstRun, setStartFirstRun] = useState(draft?.startFirstRun ?? true)
   const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>(draft?.pendingGrants ?? [])
   // The consent given at the provider, by the profile it was given on; it waits for the creation.
@@ -533,7 +532,7 @@ export default function LibraryCreatePage() {
       const source = configuration
         ? payloadUnder(configuration.toPayload(values), connectionFields(formContext))
         : {}
-      // #1942: Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
+      // Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
       // keinen (das Backend wiese alles außer DISABLED mit 400 ab).
       const scheduled = !uploadLibrary
         ? scheduleUpdateFrom(schedule, confluenceRhythm, 'create')
@@ -703,8 +702,7 @@ export default function LibraryCreatePage() {
               </Box>
             )}
 
-            {/* Zeitplan und Sofortstart gelten seit #1942 für jeden Konnektortyp, nicht mehr nur
-                für Confluence und S3. */}
+            {/* Zeitplan und Sofortstart gelten für jeden Konnektortyp. */}
             <Box>
               <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
                 Zeitplan

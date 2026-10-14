@@ -270,7 +270,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
 }
 
 /**
- * „Meine Gruppen" (#1814, ADR-0036 Entscheidung 4): die internen Gruppen, für die das eigene Konto
+ * „Meine Gruppen" (ADR-0036 Entscheidung 4): die internen Gruppen, für die das eigene Konto
  * verantwortlich ist — mit dem sichtbaren Ausgang „Verantwortung abgeben". Anlegen setzt das
  * Anlegerecht „Interne Gruppen anlegen" voraus; fehlt es, erklärt die Seite das, statt die
  * Schaltfläche zu verstecken.

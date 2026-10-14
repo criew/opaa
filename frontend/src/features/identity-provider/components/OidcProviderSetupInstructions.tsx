@@ -84,7 +84,7 @@ function Step({ number, icon, title, children }: StepProps) {
   return (
     <Box
       component="li"
-      // Ein Schritt einer Anleitung ist ein Listeneintrag, kein Kasten (#1608): Die Trennlinie
+      // Ein Schritt einer Anleitung ist ein Listeneintrag, kein Kasten: Die Trennlinie
       // unten scheidet ihn vom nächsten, das Symbol links führt das Auge.
       sx={{
         listStyle: 'none',
@@ -146,7 +146,7 @@ const STATE_EXPLANATION: Record<ProviderState, string> = {
 
 /**
  * What to set up at the provider and in the deployment before a provider works (ADR-0025,
- * Entscheidung 3 and 5; #1333): the shared redirect URI and origin, the CSP step with its frontend
+ * Entscheidung 3 and 5): the shared redirect URI and origin, the CSP step with its frontend
  * restart, and the address allowlist - composed from this app's own origin, so the operator copies
  * exactly what this installation needs. Followed by the legend of the states the list above shows.
  */

@@ -22,7 +22,7 @@ export interface SetupLinkHandover {
 }
 
 /**
- * Die einmalige Anzeige eines Einladungs- oder Rücksetzlinks (#1541, ADR-0033 Entscheidung 11).
+ * Die einmalige Anzeige eines Einladungs- oder Rücksetzlinks (ADR-0033 Entscheidung 11).
  * Sie erscheint nur, wenn die Mail nicht hinausgegangen ist; der Zustellweg steht als Satz dabei,
  * damit eine Übergabe außerhalb des Systems von einer Zustellung unterscheidbar bleibt.
  */

@@ -109,7 +109,7 @@ interface OidcProviderFormDialogProps {
 }
 
 /**
- * Creation and editing of an identity provider (ADR-0025, #1333) in two sections: the
+ * Creation and editing of an identity provider (ADR-0025) in two sections: the
  * connection (what the provider is) and the claim mapping (what OPAA reads from its tokens). No
  * secret field on purpose - the SPA is a public client with PKCE. Setting a roles claim needs an
  * explicit confirmation, because it hands the system roles to the provider (ADR-0025,

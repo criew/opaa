@@ -88,7 +88,7 @@ function renderAsset(subjectName: string | null = 'Maria Weber') {
   )
 }
 
-/** What was dropped from the derivation (#2205) - none of it may come back. */
+/** What was dropped from the derivation - none of it may come back. */
 function expectNoDroppedDetails() {
   const text = document.body.textContent ?? ''
   expect(text).not.toMatch(/Verzeichnis|gepflegt über|seit \d/)

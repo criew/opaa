@@ -2,7 +2,7 @@ import type { SxProps, Theme } from '@mui/material/styles'
 import { fontFamily } from '@/shared/theme/tokens'
 
 /**
- * Die Tabellensprache des Modellbereichs (#1623): Spaltenköpfe als gesperrte Versalien in der
+ * Die Tabellensprache des Modellbereichs: Spaltenköpfe als gesperrte Versalien in der
  * Maschinenschrift, Zellen oben ausgerichtet und beschnitten statt umbrechend.
  *
  * An einer Stelle, damit die beiden Tabellen des Bereichs nicht auseinanderlaufen — wer eine

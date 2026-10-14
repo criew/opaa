@@ -25,7 +25,7 @@ describe('AssetFilterBar (guidelines 5.11)', () => {
     const search = screen.getByRole('searchbox', { name: 'Suchen' })
     const type = screen.getByRole('group', { name: 'Typ' })
     const favorites = screen.getByRole('button', { name: 'Favoriten' })
-    // #2207: the group is named "Typ" without a visible title.
+    // The group is named "Typ" without a visible title.
     expect(screen.queryByText('Typ')).not.toBeInTheDocument()
     expect(type).toHaveAttribute('aria-label', 'Typ')
     expect(follows(search, type)).toBe(true)

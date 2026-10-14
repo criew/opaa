@@ -66,12 +66,12 @@ interface LocalUserRowMenuProps {
   onEdit: (user: LocalUserResponse) => void
   onSetupLink: (handover: SetupLinkHandover) => void
   onGeneratedPassword: (user: LocalUserResponse, password: string) => void
-  /** Opens the handover dialog (#1563); the act itself is the person's, not the menu's. */
+  /** Opens the handover dialog; the act itself is the person's, not the menu's. */
   onHandover: (user: LocalUserResponse) => void
 }
 
 /**
- * Das Zeilenmenü eines lokalen Kontos (#1541). Jede Handlung außer „Entsperren" legt ihre
+ * Das Zeilenmenü eines lokalen Kontos. Jede Handlung außer „Entsperren" legt ihre
  * Konsequenz vorher im Bestätigungs-Overlay vor (Richtlinie 5.10); die einmaligen Anzeigen –
  * Link und erzeugtes Passwort – laufen über ihren eigenen Dialog.
  *

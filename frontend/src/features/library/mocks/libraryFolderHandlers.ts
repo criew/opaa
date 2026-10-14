@@ -57,7 +57,7 @@ export const libraryFolderHandlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
-    //  review, finding 6b: matches LibraryFolderService#requireUploadLibrary's own message and
+    // Matches LibraryFolderService#requireUploadLibrary's own message and
     // status (409, not 400 - a well-formed request that simply conflicts with the library's fixed
     // source type), applied to create/rename/delete alike (ADR-0020: folders exist only for UPLOAD
     // libraries).
@@ -123,7 +123,7 @@ export const libraryFolderHandlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
-    //  review, finding 6b: mirrors the same check on POST .../folders above - rename is
+    // Mirrors the same check on POST .../folders above - rename is
     // rejected for a connector library too, not just creation.
     if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
       return HttpResponse.json(
@@ -170,7 +170,7 @@ export const libraryFolderHandlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
-    //  review, finding 6b: mirrors the same check on POST/PATCH .../folders above - deletion is
+    // Mirrors the same check on POST/PATCH .../folders above - deletion is
     // rejected for a connector library too.
     if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
       return HttpResponse.json(

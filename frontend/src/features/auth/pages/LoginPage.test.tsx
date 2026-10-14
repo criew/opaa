@@ -15,7 +15,7 @@ describe('LoginPage', () => {
   const { attemptSilentSignIn, loginLocal, loginOidc } = useAuthStore.getState()
 
   beforeEach(() => {
-    // #1631: the page every test below describes is the one whose automatic sign-in attempt has
+    // The page every test below describes is the one whose automatic sign-in attempt has
     // had its turn - until then it shows itself as busy and its tiles are not there to click. The
     // block on the attempt itself starts before that point and clears the note again.
     sessionStorage.clear()
@@ -75,7 +75,7 @@ describe('LoginPage', () => {
   })
 
   /**
-   * #583's reason for opening the read endpoint to unauthenticated callers (#582): the sign-in
+   * Why the branding read endpoint is open to unauthenticated callers: the sign-in
    * page renders before there is a session and is the first thing anyone sees, so it has to carry
    * the operator's own mark rather than the OPAA standard.
    */
@@ -122,7 +122,7 @@ describe('LoginPage', () => {
       screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
     ).toBeInTheDocument()
     expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
-    // the choice is one named group; the trust line explains where the password goes (#1369)
+    // the choice is one named group; the trust line explains where the password goes
     expect(screen.getByRole('group', { name: 'Identitätsanbieter' })).toBeInTheDocument()
     expect(screen.getByText(/OPAA erhält kein Kennwort/)).toBeInTheDocument()
   })
@@ -157,7 +157,7 @@ describe('LoginPage', () => {
   })
 
   /**
-   * #1631: entering this page is what starts the automatic sign-in of a running provider session.
+   * Entering this page is what starts the automatic sign-in of a running provider session.
    * The store decides whether the moment is right (see authStore.test.ts); what this page owes is
    * to ask exactly once, and not before it knows what the installation offers.
    */
@@ -178,7 +178,7 @@ describe('LoginPage', () => {
       )
     })
 
-    // #1685: the route ProtectedRoute denied travels with the automatic sign-in just as it does
+    // The route ProtectedRoute denied travels with the automatic sign-in just as it does
     // with a clicked one - otherwise the deep link would survive every sign-in but this one.
     it('carries the denied route through the automatic attempt', async () => {
       const loginOidc = vi.fn().mockResolvedValue(undefined)
@@ -263,7 +263,7 @@ describe('LoginPage', () => {
     })
   })
 
-  // ADR-0025, Entscheidung 5 / #1332: one button per enabled provider in the configured order;
+  // ADR-0025, Entscheidung 5: one button per enabled provider in the configured order;
   // the proposed one (last used, else the default) is the single primary action of the page.
   describe('several providers (#1332)', () => {
     it('with exactly one provider the page behaves as before', () => {
@@ -279,9 +279,9 @@ describe('LoginPage', () => {
     /**
      * Regression guard: „Mit anderem Konto anmelden" sent `prompt=login`, and Keycloak answers that
      * with the running account's name fixed and a password field - a re-authentication, not a
-     * switch. Since the automatic sign-in (#1631) the page is gone whenever a provider session runs,
+     * switch. Since the automatic sign-in the page is gone whenever a provider session runs,
      * so the link was reachable only through `/login/system`, and there it said something it did
-     * not do (#1629, #1630). Changing accounts is the provider's business: signing out ends its
+     * not do. Changing accounts is the provider's business: signing out ends its
      * session.
      */
     it.each([
@@ -330,7 +330,7 @@ describe('LoginPage', () => {
       ).toMatch(/MuiButton-outlined/)
     })
 
-    // #1685: the provider sign-in leaves the page, so the route to come back to has to be handed
+    // The provider sign-in leaves the page, so the route to come back to has to be handed
     // to the flow itself - the router state the local sign-in reads is gone by the callback
     it('hands the denied route to the provider sign-in', async () => {
       const loginOidc = vi.fn().mockResolvedValue(undefined)
@@ -384,7 +384,7 @@ describe('LoginPage', () => {
       expect(screen.getByText(/kein Identitätsanbieter/)).toBeInTheDocument()
     })
   })
-  // ADR-0033, Entscheidung 4 / #1368: the mask appears only while the local account management is
+  // ADR-0033, Entscheidung 4: the mask appears only while the local account management is
   // switched on; the identity providers keep their place above it.
   describe('accounts of this installation (#1539)', () => {
     const localEnabled = {
@@ -403,7 +403,7 @@ describe('LoginPage', () => {
       ).toHaveAttribute('href', '/login/system')
     })
 
-    // #1910: Ist die Maske eingeschaltet, steht sie oben - sie ist der Weg, den die
+    // Ist die Maske eingeschaltet, steht sie oben - sie ist der Weg, den die
     // Installation für ihre eigenen Konten eingerichtet hat.
     it('shows both sections, the local mask first, when both ways exist', () => {
       useAuthStore.setState({
@@ -430,7 +430,7 @@ describe('LoginPage', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [], localAccounts: localEnabled })
       renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
-      // #1910: „Anmelden" steht genau einmal, als Seitenüberschrift - der Abschnitt darunter
+      // „Anmelden" steht genau einmal, als Seitenüberschrift - der Abschnitt darunter
       // benennt den Weg.
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Anmelden')
       expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(

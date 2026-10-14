@@ -67,13 +67,13 @@ interface ChatListState {
   chatReturnedFromArchive: (spaceId: string) => Promise<void>
   /** Inserts a chat into its space's list (or replaces an existing entry with the same id) and
    * re-sorts by last use - used by chatStore to make an implicitly created chat show up in the
-   * list without a full reload (#548 review, finding 4). */
+   * list without a full reload. */
   upsertChat: (spaceId: string, chat: ChatSummary) => void
   /** Bumps an existing entry's updatedAt and re-sorts, so a chat moves to the top of its list
    * after every turn - a no-op if the chat isn't in the (possibly not yet loaded) list. */
   touchChat: (spaceId: string, chatId: string, updatedAt: string) => void
   /** Applies a title change - either the immediate fallback QueryResponse#chatTitle carries, or
-   * the LLM-derived title chatStore's delayed reload picks up (#557) - to a chat already in the
+   * the LLM-derived title chatStore's delayed reload picks up - to a chat already in the
    * list. A no-op if the chat isn't in the (possibly not yet loaded) list. */
   updateChatTitle: (spaceId: string, chatId: string, title: string | null) => void
   /** How many "Zuletzt verwendet" rows the sidebar reveals, and for which space. Kept here rather
@@ -155,7 +155,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
     }),
 
   loadChats: async (spaceId: string) => {
-    // #575: captured before the await below - checked again once it resolves, so a response
+    // Captured before the await below - checked again once it resolves, so a response
     // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
     // previous user's chat list into the now-emptied store.
     const sessionEpoch = currentSessionEpoch()
@@ -197,9 +197,9 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
 
   renameChat: async (spaceId: string, chatId: string, title: string) => {
     const sessionEpoch = currentSessionEpoch()
-    // Marked before the request, not after it: the delayed title reload (#557) must already skip
+    // Marked before the request, not after it: the delayed title reload must already skip
     // this chat while the PATCH is still on the wire, otherwise it reads the server's still
-    // generated title and puts it back on screen (#1919).
+    // generated title and puts it back on screen.
     markChatManuallyRenamed(chatId)
     try {
       await updateChat(chatId, { title })
@@ -227,7 +227,7 @@ export const useChatListStore = create<ChatListState>((set, get) => ({
     const sessionEpoch = currentSessionEpoch()
     try {
       await deleteChat(chatId)
-      // #573: a deleted chat can never again be the target of a queued settings PATCH or a
+      // A deleted chat can never again be the target of a queued settings PATCH or a
       // rollback base - dropping its entries from chatStore's module-level maps here keeps them
       // from growing unbounded for the rest of the session. Done regardless of the session epoch
       // below: the chat really was deleted server-side, so its cache entries must go either way.

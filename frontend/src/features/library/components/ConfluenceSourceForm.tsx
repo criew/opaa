@@ -91,7 +91,7 @@ export default function ConfluenceSourceForm({
 
   const editionFromProfile = connection.isFixed('edition')
   const editionFixed = (mode === 'edit' && values.edition !== null) || editionFromProfile
-  // #542 review finding 1, mirrored for Confluence: the backend carries the stored token forward
+  // The backend carries the stored token forward
   // only while the address still names the same origin; a host change drops it.
   const originChanged =
     mode === 'edit' &&
