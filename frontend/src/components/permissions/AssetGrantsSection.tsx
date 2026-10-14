@@ -27,7 +27,7 @@ import type {
   AssetType,
 } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
-import { successionAwareMessage } from '../succession/successionConflict'
+import { successionAwareMessage } from '@/features/succession'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { assetKey, useGrantStore } from '../../stores/grantStore'
 import { GroupMembersDisclosure } from '@/features/principal'

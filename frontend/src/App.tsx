@@ -65,16 +65,16 @@ import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
 // group
 import GroupManagementPage from './pages/GroupManagementPage'
 // succession
-import SuccessionPage from './pages/SuccessionPage'
+import { SuccessionPage } from '@/features/succession/routes'
 import { HandoverPage } from '@/features/auth/routes'
 // capability
-import CapabilityManagementPage from './pages/CapabilityManagementPage'
+import { CapabilityManagementPage } from '@/features/capability/routes'
 // user
-import UserManagementPage from './pages/UserManagementPage'
+import { UserManagementPage } from '@/features/user/routes'
 // identity-provider
 import { OidcProviderManagementPage } from '@/features/identity-provider/routes'
 // directory-sync
-import DirectorySyncPage from './pages/DirectorySyncPage'
+import { DirectorySyncPage } from '@/features/directory-sync/routes'
 import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
 // model
 import { LlmModelManagementPage } from '@/features/model/routes'

@@ -21,13 +21,13 @@ import { promptLibraryHandlers } from './promptLibraryHandlers'
 import { groupHandlers } from './groupHandlers'
 import { groupAdminHandlers } from './groupAdminHandlers'
 // succession
-import { successionHandlers } from './successionHandlers'
+import { successionHandlers } from '../features/succession/mocks/successionHandlers'
 // capability
-import { capabilityHandlers } from './capabilityHandlers'
+import { capabilityHandlers } from '../features/capability/mocks/capabilityHandlers'
 // user
 import { userHandlers } from '@/features/principal/mocks/userHandlers'
-import { localUserHandlers } from './localUserHandlers'
-import { accountHandlers } from './accountHandlers'
+import { localUserHandlers } from '../features/user/mocks/localUserHandlers'
+import { accountHandlers } from '../features/user/mocks/accountHandlers'
 // identity-provider
 import { identityProviderHandlers } from '@/features/identity-provider/mocks/identityProviderHandlers'
 // model

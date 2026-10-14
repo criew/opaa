@@ -19,7 +19,7 @@ import {
   selectedSubjectId,
   type SubjectSelection,
 } from '@/features/principal'
-import { successionAwareMessage } from '../succession/successionConflict'
+import { successionAwareMessage } from '@/features/succession'
 import SectionHead from '@/shared/ui/SectionHead'
 import SpaceMemberList from './SpaceMemberList'
 import { memberLabelOf, memberNoticeLabelOf } from './memberLabel'

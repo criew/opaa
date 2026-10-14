@@ -6,7 +6,7 @@ import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined'
 import type { LocalHandoverScope } from '@/shared/api/types'
-import { SYSTEM_ROLE_LABEL } from '../../../components/admin/users/localUserLabels'
+import { SYSTEM_ROLE_LABEL } from '@/features/user'
 import { radius } from '@/shared/theme/tokens'
 
 interface TileProps {

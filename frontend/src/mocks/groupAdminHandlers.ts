@@ -22,7 +22,7 @@ import {
   manyDirectoryProviders,
   manyDirectoryStatuses,
   switchScenarioSync,
-} from './directorySyncScenarioFixtures'
+} from '../features/directory-sync/mocks/directorySyncScenarioFixtures'
 
 const KIND_ORDER = ['AD_HOC', 'IDENTITY_PROVIDER', 'ORG_UNIT']
 const STATE_ORDER: GroupState[] = [

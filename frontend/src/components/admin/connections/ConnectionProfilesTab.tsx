@@ -12,7 +12,7 @@ import type {
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useSourceTypes } from './useSourceTypes'
-import { getCapabilityOverview } from '../../../services/capabilityAdminApi'
+import { getCapabilityOverview } from '@/features/capability'
 import {
   deleteConnectionProfile,
   disconnectAllConnections,
