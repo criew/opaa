@@ -32,7 +32,9 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The library asset type spans its holdings in {@code io.opaa.knowledge} and its administration
  * in {@code io.opaa.library}; a rule naming the library names both, except that a space may reach
- * the holdings.
+ * the holdings. Every rule covers a package with its subpackages, its web package included: what
+ * the web layer of a business package shows, its domain fetches through the permission model's
+ * ports.
  */
 class PermissionPackageBoundaryTest {
 
