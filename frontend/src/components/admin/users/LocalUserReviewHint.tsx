@@ -3,7 +3,7 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { LocalUserSummaryResponse } from '@/shared/api/types'
-import HintLink from '../list/HintLink'
+import HintLink from '@/shared/ui/list/HintLink'
 
 export const REVIEW_OBLIGATION_TEXT =
   'Lokale Konten sind begründet und befristet zu führen und regelmäßig zu überprüfen; ' +

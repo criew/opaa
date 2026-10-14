@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import { alpha } from '@mui/material/styles'
-import { fontFamily } from '../theme/tokens'
+import { fontFamily } from '../../theme/tokens'
 
 /**
  * Marks a surface as application-wide (#787, mockups 2b/2c): a quiet mono chip reading

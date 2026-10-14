@@ -16,7 +16,7 @@ import {
   creatableAssetTypes,
   useActiveAssetTypes,
 } from '../components/assets/assetTypeRegistry'
-import OverviewPage from '../components/overview/OverviewPage'
+import OverviewPage from '@/shared/ui/overview/OverviewPage'
 import AssetTile from '../components/assets/AssetTile'
 import { tileFromCatalogEntry } from '../components/assets/assetTileData'
 import { UseInSpaceDialog } from '../components/assets/UseInSpaceButton'

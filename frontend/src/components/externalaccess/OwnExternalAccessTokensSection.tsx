@@ -25,8 +25,8 @@ import {
 import { confirmAction } from '../../stores/confirmStore'
 import { notify } from '../../stores/notificationStore'
 import { fontFamily } from '../../theme/tokens'
-import MetaBadge from '../MetaBadge'
-import PageSection from '../PageSection'
+import MetaBadge from '@/shared/ui/MetaBadge'
+import PageSection from '@/shared/ui/PageSection'
 import CreateExternalAccessTokenDialog from './CreateExternalAccessTokenDialog'
 import ExternalAccessTokenValueDialog from './ExternalAccessTokenValueDialog'
 import {

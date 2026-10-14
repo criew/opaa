@@ -17,8 +17,8 @@ import type {
 import { updateExternalAccessSettings } from '../../../services/externalAccessApi'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '../../../stores/confirmStore'
-import BusyButton from '../../a11y/BusyButton'
-import SectionHead from '../../SectionHead'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
+import SectionHead from '@/shared/ui/SectionHead'
 import { formatDate } from '../../externalaccess/tokenLabels'
 
 export const SWITCH_CONSEQUENCE =

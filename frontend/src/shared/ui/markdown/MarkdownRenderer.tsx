@@ -24,7 +24,7 @@ import {
   unwrapBracketedMarkers,
 } from './citations'
 import { citationMarkColors, citationMarkSx } from './citationMark'
-import { focusRingAlpha, fontFamily, motion } from '../../theme/tokens'
+import { focusRingAlpha, fontFamily, motion } from '../../../theme/tokens'
 import 'highlight.js/styles/github-dark.css'
 
 interface MarkdownRendererProps {

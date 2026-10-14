@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import BusyButton from '../a11y/BusyButton'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
@@ -29,7 +29,7 @@ import {
   type GoogleDriveScopeCheck,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import ScopeConsequence from './sources/ScopeConsequence'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'

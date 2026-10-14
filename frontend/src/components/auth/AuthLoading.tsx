@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
-import PageHeading from '../a11y/PageHeading'
+import PageHeading from '@/shared/ui/a11y/PageHeading'
 
 /**
  * What a self-service page shows while the installation's configuration is still on its way

@@ -31,11 +31,11 @@ import {
 } from '../../../services/externalAccessApi'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
-import PageSection from '../../PageSection'
+import PageSection from '@/shared/ui/PageSection'
 import OwnTokensLink from './OwnTokensLink'
-import StateDot from '../../StateDot'
-import type { StatusTone } from '../../StatusLine'
-import { adminTableSx, definitionListSx, listCardSx } from '../list/adminListStyles'
+import StateDot from '@/shared/ui/StateDot'
+import type { StatusTone } from '@/shared/ui/StatusLine'
+import { adminTableSx, definitionListSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import {
   ADMIN_PURPOSE_HINT,
   BLOCK_ALL_CONSEQUENCE,

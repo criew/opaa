@@ -23,7 +23,7 @@ import { confirmAction } from '../../stores/confirmStore'
 import { groupMemberCountLabel, spaceRoleLabel } from '../../utils/labels'
 import AccessDerivation from '../permissions/AccessDerivation'
 import GroupMembersDisclosure from '../permissions/GroupMembersDisclosure'
-import MetaBadge from '../MetaBadge'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import { memberLabelOf } from './memberLabel'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']

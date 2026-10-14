@@ -5,9 +5,9 @@ import Button from '@mui/material/Button'
 import LinearProgress from '@mui/material/LinearProgress'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import PageSection from '../PageSection'
-import KeyValueList from '../KeyValueList'
-import StatusLine from '../StatusLine'
+import PageSection from '@/shared/ui/PageSection'
+import KeyValueList from '@/shared/ui/KeyValueList'
+import StatusLine from '@/shared/ui/StatusLine'
 import {
   cancelEmbeddingReindex,
   getEmbeddingReindexStatus,

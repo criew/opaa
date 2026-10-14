@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import Button from '@mui/material/Button'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
-import { renderWithProviders } from '../test/test-utils'
+import { renderWithProviders } from '../../test/test-utils'
 import AreaPageHeader from './AreaPageHeader'
 
 /**
@@ -26,7 +26,7 @@ const BEREICHSSEITEN = [
  * Der Quelltext der Seiten, von Vite beim Bauen eingelesen (`?raw`) - kein Dateisystemzugriff,
  * damit der Test ohne Node-Typen auskommt und im selben jsdom läuft wie die übrigen.
  */
-const SEITENQUELLEN = import.meta.glob('../pages/*.tsx', {
+const SEITENQUELLEN = import.meta.glob('../../pages/*.tsx', {
   query: '?raw',
   import: 'default',
   eager: true,
@@ -40,7 +40,7 @@ const SEITENQUELLEN = import.meta.glob('../pages/*.tsx', {
 const ADMINISTRATIONSSEITEN = BEREICHSSEITEN.filter((datei) => datei !== 'SettingsPage.tsx')
 
 function quelltextVon(datei: string): string {
-  const quelltext = SEITENQUELLEN[`../pages/${datei}`]
+  const quelltext = SEITENQUELLEN[`../../pages/${datei}`]
   if (!quelltext) {
     throw new Error(`Seite nicht gefunden: ${datei} - in BEREICHSSEITEN umbenannt oder entfernt?`)
   }

@@ -4,7 +4,7 @@ import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import type { AssetType } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
-import PageSection from '../PageSection'
+import PageSection from '@/shared/ui/PageSection'
 import AccessDerivation from '../permissions/AccessDerivation'
 import { assetTypeLabel } from './assetTypeRegistry'
 

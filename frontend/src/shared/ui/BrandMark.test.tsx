@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ThemeProvider } from '@mui/material/styles'
-import { createAppTheme } from '../theme/theme'
+import { createAppTheme } from '../../theme/theme'
 import BrandMark from './BrandMark'
-import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
+import { OPAA_BRANDING, useBrandingStore } from '../../stores/brandingStore'
 
 const theme = createAppTheme('light')
 

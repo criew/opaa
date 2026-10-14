@@ -22,7 +22,7 @@ import type {
   SourceTypeDescriptor,
   SourceTypeSignIn,
 } from '@/shared/api/types'
-import BusyButton from '../../a11y/BusyButton'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 import {
   changeRejected,
   createConnectionProfile,

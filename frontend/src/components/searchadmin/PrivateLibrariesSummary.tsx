@@ -1,6 +1,6 @@
 import Typography from '@mui/material/Typography'
 import type { PrivateLibrarySearchSummaryResponse } from '@/shared/api/types'
-import { plural } from './format'
+import { plural } from '@/shared/utils/format'
 
 /**
  * The private libraries of the organization as one line, without names. Below the minimum group

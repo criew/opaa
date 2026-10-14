@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { documentSourceTypeLabel } from './sources/sourceLabels'
 import { sameLibrarySourceOrigin, type GenericSourceValues } from '../../utils/librarySourceConfig'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 

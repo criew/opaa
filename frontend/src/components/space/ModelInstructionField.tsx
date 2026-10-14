@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 
 /** Same limit as the specification and the database. */
 export const MODEL_INSTRUCTION_MAX_LENGTH = 1000

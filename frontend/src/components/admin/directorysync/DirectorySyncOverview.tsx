@@ -10,10 +10,10 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import MetaBadge from '../../MetaBadge'
-import ProviderMonogram from '../../ProviderMonogram'
-import type { StatusTone } from '../../StatusLine'
-import { adminTableSx } from '../list/adminListStyles'
+import MetaBadge from '@/shared/ui/MetaBadge'
+import ProviderMonogram from '@/shared/ui/ProviderMonogram'
+import type { StatusTone } from '@/shared/ui/StatusLine'
+import { adminTableSx } from '@/shared/ui/list/adminListStyles'
 import {
   agoLabel,
   clockLabel,

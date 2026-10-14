@@ -3,7 +3,7 @@ import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
-import { radius } from '../theme/tokens'
+import { radius } from '../../theme/tokens'
 
 export interface AreaTab<T extends string> {
   value: T

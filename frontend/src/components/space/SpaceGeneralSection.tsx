@@ -9,10 +9,10 @@ import { useNavigate } from 'react-router'
 import type { SpaceResponse } from '@/shared/api/types'
 import { confirmAction } from '../../stores/confirmStore'
 import { useSpaceStore } from '../../stores/spaceStore'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import ChatAutoCleanupField from './ChatAutoCleanupField'
 import ModelInstructionField from './ModelInstructionField'
-import SectionHead from '../SectionHead'
+import SectionHead from '@/shared/ui/SectionHead'
 
 interface SpaceGeneralSectionProps {
   spaceId: string

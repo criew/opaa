@@ -10,7 +10,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { ConnectedAccount, PersonalSecretForm } from '@/shared/api/types'
 import { ConnectAccountError, connectMyAccount } from '../../services/connectedAccountApi'
-import BusyButton from '../a11y/BusyButton'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
 import {
   connectErrorMessage,
   needsUsername,

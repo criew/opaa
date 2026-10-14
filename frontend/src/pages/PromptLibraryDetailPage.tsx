@@ -21,9 +21,9 @@ import {
   promptLibraryRoute,
   type PromptLibraryTab,
 } from '@/shared/routes'
-import AreaTabs from '../components/AreaTabs'
+import AreaTabs from '@/shared/ui/AreaTabs'
 import { useAuthStore } from '@/shared/session/authStore'
-import MetaBadge from '../components/MetaBadge'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import SuccessionStateNote from '../components/succession/SuccessionStateNote'
 import { successionAwareMessage } from '../components/succession/successionConflict'
 import AssetAccessDerivationSection from '../components/assets/AssetAccessDerivationSection'

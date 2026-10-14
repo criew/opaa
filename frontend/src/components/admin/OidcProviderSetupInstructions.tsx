@@ -11,7 +11,7 @@ import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import { copyToClipboard } from '../../utils/clipboard'
 import { fontFamily, radius } from '../../theme/tokens'
-import SectionHead from '../SectionHead'
+import SectionHead from '@/shared/ui/SectionHead'
 import ProviderStateDot from './providers/ProviderStateDot'
 import { PROVIDER_STATE_LABEL, type ProviderState } from './oidcProviderState'
 

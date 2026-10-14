@@ -2,7 +2,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import { NavLink, Outlet, useLocation } from 'react-router'
-import GlobalBadge from '../components/GlobalBadge'
+import GlobalBadge from '@/shared/ui/GlobalBadge'
 import { darkRoles, lightRoles } from '../theme/tokens'
 
 interface GlobalAreaSection {

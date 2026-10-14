@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import { alpha } from '@mui/material/styles'
-import { fontFamily, radius } from '../theme/tokens'
+import { fontFamily, radius } from '../../theme/tokens'
 
 /** The one or two letters a provider is recognised by: "Verzeichnisdienst" → V, "Landes Portal" → LP. */
 function providerInitials(name: string): string {

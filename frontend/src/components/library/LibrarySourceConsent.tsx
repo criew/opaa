@@ -8,7 +8,7 @@ import { disconnectLibrarySource } from '../../services/libraryApi'
 import { confirmAction } from '../../stores/confirmStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 import { notify } from '../../stores/notificationStore'
-import KeyValueList from '../KeyValueList'
+import KeyValueList from '@/shared/ui/KeyValueList'
 import {
   formatConsentTime,
   responsibleLabel,

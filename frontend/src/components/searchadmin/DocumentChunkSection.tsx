@@ -11,9 +11,9 @@ import Typography from '@mui/material/Typography'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
 import type { DocumentChunksResponse } from '@/shared/api/types'
-import SectionHead from '../SectionHead'
+import SectionHead from '@/shared/ui/SectionHead'
 import ChunkContent from './ChunkContent'
-import { plural } from './format'
+import { plural } from '@/shared/utils/format'
 
 /** Lets the diagnosis result open a document here, the one navigation that reaches into this section. */
 export interface DocumentChunkSectionHandle {

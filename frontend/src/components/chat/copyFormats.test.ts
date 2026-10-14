@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { buildCitationIndex } from './citations'
+import { buildCitationIndex } from '@/shared/ui/markdown/citations'
 import { answerAsMarkdown, answerAsPlainText, answerWithSources } from './copyFormats'
 import type { SourceReference } from '@/shared/api/types'
 

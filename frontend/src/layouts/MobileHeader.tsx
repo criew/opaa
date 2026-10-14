@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
 import MenuIcon from '@mui/icons-material/Menu'
-import BrandMark from '../components/BrandMark'
+import BrandMark from '@/shared/ui/BrandMark'
 import NotificationBell from '../components/notifications/NotificationBell'
 import { useUiStore } from '../stores/uiStore'
 

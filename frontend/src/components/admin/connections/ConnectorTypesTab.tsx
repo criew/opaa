@@ -12,8 +12,8 @@ import {
   listConnectionProfiles,
   listConnectorTypeStates,
 } from '../../../services/connectionProfileApi'
-import StatusLine from '../../StatusLine'
-import { ListLoading } from '../list/AdminList'
+import StatusLine from '@/shared/ui/StatusLine'
+import { ListLoading } from '@/shared/ui/list/AdminList'
 import ConnectorTypeOverview from './ConnectorTypeOverview'
 import ConnectorTypePanel from './ConnectorTypePanel'
 

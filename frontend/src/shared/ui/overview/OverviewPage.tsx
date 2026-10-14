@@ -14,7 +14,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 import PageHeading from '../a11y/PageHeading'
 import type { Theme } from '@mui/material/styles'
-import { blue } from '../../theme/tokens'
+import { blue } from '../../../theme/tokens'
 
 export interface ControlledSearch {
   value: string

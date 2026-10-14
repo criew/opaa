@@ -23,8 +23,8 @@ import {
   variablesForText,
 } from '../../utils/promptTemplate'
 import { fontFamily } from '../../theme/tokens'
-import FieldLabel from '../wizard/FieldLabel'
-import SectionHead from '../SectionHead'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
+import SectionHead from '@/shared/ui/SectionHead'
 import PromptTextHighlight from './PromptTextHighlight'
 import PromptVariablesTable from './PromptVariablesTable'
 import PromptPreview from './PromptPreview'

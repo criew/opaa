@@ -25,8 +25,8 @@ import {
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import { formatFileSize } from '../../../utils/labels'
-import BusyButton from '../../a11y/BusyButton'
-import PageSection from '../../PageSection'
+import BusyButton from '@/shared/ui/a11y/BusyButton'
+import PageSection from '@/shared/ui/PageSection'
 
 const BYTES_PER_GB = 1024 * 1024 * 1024
 

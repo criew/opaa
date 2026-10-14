@@ -1,5 +1,5 @@
 import type { ExternalAccessSettingsResponse } from '@/shared/api/types'
-import type { StatusTone } from '../../StatusLine'
+import type { StatusTone } from '@/shared/ui/StatusLine'
 import { formatDate } from '../../externalaccess/tokenLabels'
 
 /** From how many days before its end a release is marked as running out. */

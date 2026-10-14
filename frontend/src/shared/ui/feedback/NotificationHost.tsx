@@ -3,7 +3,7 @@ import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Snackbar from '@mui/material/Snackbar'
 import CloseIcon from '@mui/icons-material/Close'
-import { useNotificationStore } from '../stores/notificationStore'
+import { useNotificationStore } from '../../../stores/notificationStore'
 
 /**
  * The single render site of the global notification queue (guidelines 5.9): one popup at a time,

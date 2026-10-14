@@ -16,7 +16,7 @@ import {
 } from '../services/connectedAccountApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '../stores/notificationStore'
-import PageHeading from '../components/a11y/PageHeading'
+import PageHeading from '@/shared/ui/a11y/PageHeading'
 import ReconnectSourceDialog from '../components/library/ReconnectSourceDialog'
 import {
   attachPendingConnection,

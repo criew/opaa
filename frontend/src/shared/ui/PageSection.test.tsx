@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import Button from '@mui/material/Button'
-import { renderWithProviders } from '../test/test-utils'
+import { renderWithProviders } from '../../test/test-utils'
 import PageSection from './PageSection'
 
 /**
@@ -9,47 +9,57 @@ import PageSection from './PageSection'
  * damit der Test ohne Node-Typen auskommt.
  */
 const QUELLEN = {
-  ...(import.meta.glob('../pages/*.tsx', {
+  ...(import.meta.glob('../../pages/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('./admin/**/*.tsx', {
+  ...(import.meta.glob('../../components/admin/**/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('../components/searchadmin/*.tsx', {
+  ...(import.meta.glob('../../components/searchadmin/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('./chat/*.tsx', {
+  ...(import.meta.glob('../../components/chat/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('./metadata/*.tsx', {
+  ...(import.meta.glob('../../components/metadata/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('./space/*.tsx', {
+  ...(import.meta.glob('../../components/space/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('./succession/*.tsx', {
+  ...(import.meta.glob('../../components/succession/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('./assets/*.tsx', {
+  ...(import.meta.glob('../../components/assets/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('./prompts/*.tsx', {
+  ...(import.meta.glob('../../components/prompts/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
+  ...(import.meta.glob('./list/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
+  ...(import.meta.glob('./markdown/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,
@@ -62,14 +72,17 @@ const QUELLEN = {
  * (Dialoge als eigene Dateien, Formularseiten ohne Blöcke).
  */
 const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
-  if (pfad.startsWith('./admin/') || pfad.includes('/searchadmin/')) return true
-  if (pfad.startsWith('./chat/') || pfad.startsWith('./metadata/')) return true
+  if (pfad.startsWith('../../components/admin/') || pfad.includes('/searchadmin/')) return true
+  if (pfad.startsWith('./list/') || pfad.startsWith('./markdown/')) return true
+  if (pfad.startsWith('../../components/chat/') || pfad.startsWith('../../components/metadata/'))
+    return true
   // #1917: die Abschnitte der Space-Einstellungen sind eigene Komponenten.
-  if (pfad.startsWith('./space/')) return true
+  if (pfad.startsWith('../../components/space/')) return true
   // #1821: die Betriebsliste entsteht in einer eigenen Komponente, nicht auf der Seite.
-  if (pfad.startsWith('./succession/')) return true
+  if (pfad.startsWith('../../components/succession/')) return true
   // Freigabeabschnitt, Assistentenschritte und Prompt-Pflege, die jeder Asset-Typ teilt.
-  if (pfad.startsWith('./assets/') || pfad.startsWith('./prompts/')) return true
+  if (pfad.startsWith('../../components/assets/') || pfad.startsWith('../../components/prompts/'))
+    return true
   return [
     'BrandingSettingsPage',
     'UserManagementPage',

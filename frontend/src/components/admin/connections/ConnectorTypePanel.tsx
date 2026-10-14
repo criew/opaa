@@ -23,8 +23,8 @@ import {
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import { connectionProfileRoute } from '@/shared/routes'
-import SectionHead from '../../SectionHead'
-import StatusLine from '../../StatusLine'
+import SectionHead from '@/shared/ui/SectionHead'
+import StatusLine from '@/shared/ui/StatusLine'
 import AccessBadge from '../capabilities/AccessBadge'
 import {
   accessBadgeLabel,

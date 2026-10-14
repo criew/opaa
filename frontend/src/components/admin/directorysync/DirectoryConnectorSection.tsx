@@ -14,7 +14,7 @@ import {
 import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
-import KeyValueList from '../../KeyValueList'
+import KeyValueList from '@/shared/ui/KeyValueList'
 import { DIRECTORY_SYNC_CONFLICT_MESSAGES } from './directorySyncLabels'
 
 /**

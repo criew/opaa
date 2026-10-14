@@ -29,7 +29,7 @@ import {
 } from '../../utils/labels'
 import EditLibrarySourceDialog from '../EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../EditLibraryScheduleDialog'
-import PageSection from '../PageSection'
+import PageSection from '@/shared/ui/PageSection'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
 import LibrarySourceConsent from './LibrarySourceConsent'
 import ReconnectSourceDialog from './ReconnectSourceDialog'

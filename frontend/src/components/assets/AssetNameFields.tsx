@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 
 interface AssetNameFieldsProps {
   /** Prefix of the field ids; unique per page. */

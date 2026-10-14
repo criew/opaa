@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import PageHeading from '../a11y/PageHeading'
+import PageHeading from '@/shared/ui/a11y/PageHeading'
 
 interface AuthNoticeProps {
   /** The page's one h1 - it stays the same whether the outcome was success or failure. */

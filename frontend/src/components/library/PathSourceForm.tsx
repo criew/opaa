@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import FieldLabel from '../wizard/FieldLabel'
+import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { FilesystemSourceValues } from '../../utils/filesystemSource'
 import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
