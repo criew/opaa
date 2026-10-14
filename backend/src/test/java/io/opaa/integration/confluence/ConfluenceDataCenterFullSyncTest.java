@@ -106,7 +106,6 @@ class ConfluenceDataCenterFullSyncTest {
                 ProductionDocumentFormats.supportedFormats()),
             documentRepository,
             syncStateRepository,
-            cleanupService,
             Clock.systemUTC(),
             new IndexingRunTemplate(
                 indexingJobService,

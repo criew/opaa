@@ -8,7 +8,6 @@ import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
@@ -83,7 +82,6 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
   private final SourceSyncStateRepository syncStateRepository;
-  private final StaleDocumentCleanupService cleanupService;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
   private final ConfluenceAttachmentIndexing attachments;
@@ -95,7 +93,6 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
       SourceSyncStateRepository syncStateRepository,
-      StaleDocumentCleanupService cleanupService,
       Clock clock,
       IndexingRunTemplate runTemplate) {
     this.clientFactory = clientFactory;
@@ -103,7 +100,6 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
     this.syncStateRepository = syncStateRepository;
-    this.cleanupService = cleanupService;
     this.clock = clock;
     this.runTemplate = runTemplate;
     this.attachments = new ConfluenceAttachmentIndexing(attachmentIndexer, documentRepository);
@@ -512,8 +508,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    * the page trashed, so its document and attachments go and the reconciliation no longer sees it.
    */
   private void discardTrashed(ConfluenceRun run, Optional<Document> existing, String pagePath) {
-    existing.ifPresent(
-        document -> cleanupService.removeWithAttachments(document, run.events, TRASHED_MESSAGE));
+    existing.ifPresent(document -> run.frame.removeWithAttachments(document, TRASHED_MESSAGE));
     run.frame.markAbsent(pagePath);
     run.progress.recordSkipped();
   }
@@ -534,7 +529,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       }
       documentRepository
           .findByLibraryIdAndFilePath(run.library.getId(), oldPath)
-          .ifPresent(old -> cleanupService.removeWithAttachments(old, run.events, MOVED_MESSAGE));
+          .ifPresent(old -> run.frame.removeWithAttachments(old, MOVED_MESSAGE));
     }
   }
 

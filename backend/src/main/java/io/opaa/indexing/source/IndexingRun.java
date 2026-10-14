@@ -8,6 +8,7 @@ import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.job.RunEndingFailures;
+import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
@@ -79,6 +80,7 @@ public final class IndexingRun {
   private final SourceType sourceType;
   private final IndexingRunProgress progress;
   private final IndexingRunEventRecorder events;
+  private final VanishedDocumentReconciler reconciler;
   private final DocumentRepository documentRepository;
   private final LibraryStorageQuotaService storageQuotaService;
   private final Set<String> currentPaths = new HashSet<>();
@@ -100,6 +102,7 @@ public final class IndexingRun {
       SourceType sourceType,
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
+      VanishedDocumentReconciler reconciler,
       DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService) {
     this(
@@ -111,6 +114,7 @@ public final class IndexingRun {
         sourceType,
         progress,
         events,
+        reconciler,
         documentRepository,
         storageQuotaService,
         rejected -> credentials.get(),
@@ -126,6 +130,7 @@ public final class IndexingRun {
       SourceType sourceType,
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
+      VanishedDocumentReconciler reconciler,
       DocumentRepository documentRepository,
       LibraryStorageQuotaService storageQuotaService,
       UnaryOperator<Secret> afterRejection,
@@ -139,6 +144,7 @@ public final class IndexingRun {
     this.sourceType = sourceType;
     this.progress = progress;
     this.events = events;
+    this.reconciler = reconciler;
     this.documentRepository = documentRepository;
     this.storageQuotaService = storageQuotaService;
   }
@@ -297,6 +303,14 @@ public final class IndexingRun {
   public void markReprocessed(String path) {
     currentPaths.add(path);
     reprocessedPaths.add(path);
+  }
+
+  /**
+   * Removes {@code document} and its attachments on the source's own positive finding that it is
+   * gone, in any run mode; each removal is a {@code REMOVED} event with {@code message}.
+   */
+  public void removeWithAttachments(Document document, String message) {
+    reconciler.removeWithAttachments(document, events, message);
   }
 
   /** Withdraws a path from the reconciliation set - the source itself reported it gone. */

@@ -491,12 +491,12 @@ public final class ModularArchitecture {
   static final Set<String> CLEANUP_METHODS =
       Set.of("reconcile", "cleanupVanished", "removeWithAttachments");
 
-  /** The run frame and the run bodies that remove through the cleanup service. */
+  /** The run frame and the file sync, the only ones that remove through the cleanup service. */
   static final Set<String> RUN_REMOVERS =
       Set.of(
           "indexing.source.IndexingRunTemplate",
-          "indexing.filesync.FileSync",
-          "indexing.source.confluence.ConfluenceIndexingExecutor");
+          "indexing.source.IndexingRun",
+          "indexing.filesync.FileSync");
 
   /** Every direct subpackage of this one, relative to the root, is a connector. */
   static final String CONNECTOR_PARENT = "indexing.source";

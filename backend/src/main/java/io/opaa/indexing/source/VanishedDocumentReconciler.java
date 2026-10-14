@@ -2,15 +2,17 @@ package io.opaa.indexing.source;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
+import io.opaa.knowledge.Document;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.Set;
 
 /**
- * The reconciliation by absence {@link IndexingRunTemplate} runs after a complete listing in a
- * {@link VanishedDocumentPolicy#REMOVE_ON_ABSENCE} mode: removes every document of the source the
- * run did not meet, keeping the attachments of a parent that was not re-processed. Implemented by
- * {@code io.opaa.indexing.maintenance.StaleDocumentCleanupService}.
+ * The removals of a run: the reconciliation by absence {@link IndexingRunTemplate} runs after a
+ * complete listing in a {@link VanishedDocumentPolicy#REMOVE_ON_ABSENCE} mode, keeping the
+ * attachments of a parent that was not re-processed, and the removal of one document on the
+ * source's own positive finding, in any run mode ({@link IndexingRun#removeWithAttachments}).
+ * Implemented by {@code io.opaa.indexing.maintenance.StaleDocumentCleanupService}.
  */
 public interface VanishedDocumentReconciler {
 
@@ -28,4 +30,7 @@ public interface VanishedDocumentReconciler {
       IndexingRunEventRecorder events,
       SourceIndexingExecutor executor,
       IndexingRunMode runMode);
+
+  /** Removes {@code document} and every attachment below it, see {@link IndexingRun}. */
+  void removeWithAttachments(Document document, IndexingRunEventRecorder events, String message);
 }
