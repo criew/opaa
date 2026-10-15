@@ -46,6 +46,12 @@ für die Reihenfolge und keine Umlaute. Ein Verzeichnis entsteht mit seiner erst
 Jedes Dokument in diesem Ordner außer dieser README ist redaktionell. Generierte Faktenblätter tragen
 ihren Stand (Version, Commit, Erzeugungsdatum, `erzeugung: generiert`) im eigenen Kopf.
 
+Das Fakten-Manifest selbst liegt als Quelltext im Backend unter
+[`backend/src/main/resources/compliance/manifest/`](../../backend/src/main/resources/compliance/manifest/),
+eine YAML-Datei je Bereich; Schema und Regeln stehen in
+[ADR-0052](../decisions/0052-compliance-manifest.md). Es wird wie Code geändert und geprüft, nicht in
+diesem Ordner.
+
 ## Kopfvermerk
 
 Jedes redaktionelle Dokument beginnt mit einem YAML-Front-Matter-Block mit genau diesen Feldern:
