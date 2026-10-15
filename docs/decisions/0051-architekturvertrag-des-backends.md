@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14
+Akzeptiert · zuletzt geändert 2026-10-15
 
 ## Kontext
 
@@ -45,7 +45,7 @@ funktioniert.
 | Rate-Limit | `RateLimitConfiguration`, endpunktweise | `TransportStatusCodeSpecificationTest` (429) |
 | Feature-Flags | `FeatureFlags` (ADR-0044) | Konvention |
 | Geheimnisse | `CredentialsEncryptor`/`SettingsEncryptor` auf einem AES-GCM-Kern; Quellgeheimnisse nur über `SourceConnectionResolver` im Kern | `ModularArchitectureTest` (Konnektor-Paketregel, `LIBRARY_SECRET`, `SECRET_PORT`), `RunSecretContractCoverageTest` |
-| Ausgehende Verbindungen | `sourceaccess`; S3 über `io.opaa.s3`, Microsoft Graph über `io.opaa.msgraph` | `SourceAccessDependencyStructureTest`, `ModularArchitectureTest` |
+| Ausgehende Verbindungen | `sourceaccess`; S3 über `io.opaa.s3`, Microsoft Graph über `io.opaa.msgraph`; jeder ausgehende Client ist über `@DataFlow` angemeldet, Hüllklassen ohne eigenes Ziel tragen `@DataFlowCarrier` (ADR-0052) | `SourceAccessDependencyStructureTest`, `ModularArchitectureTest` (`OUTBOUND_CLIENTS`, `OUTBOUND_BEANS`) |
 | Datenbankschema | Liquibase je Modul, SQL ohne Schemaqualifizierung (ADR-0034) | `ChangelogLayoutTest`, `ChangelogModuleBoundaryTest`, `ChangelogOrderTest` |
 | Spring-Testkontexte | die Signaturen in `io.opaa.test` | `SpringContextSignatureTest` |
 
