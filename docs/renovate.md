@@ -50,7 +50,8 @@ siehe `e2e/docker-compose.e2e.yml`; einzige Ausnahme ist das Renovate-Image selb
 Über `dependencies` führen die Release-Notizen Renovate-Updates unter der eigenen Rubrik
 „Abhängigkeiten“ statt unter „Neue Funktionen“ (#2458). Die Rubrik steht in `.github/release.yml`
 hinter „Sicherheit“; trägt ein Update-PR zusätzlich `security`, erscheint er weiter dort, weil
-die erste passende Rubrik gewinnt. Renovate vergibt `security` nicht selbst, das Label setzt
+die erste passende Rubrik gewinnt. Davor steht nur noch „Datenrelevante Änderungen“ (Label
+`data-impact`, [releases.md](releases.md#datenwirkung-kennzeichnen)). Renovate vergibt `security` nicht selbst, das Label setzt
 bei Bedarf ein Mensch. Bereichs-Labels ergänzen die `packageRules` per `addLabels`; eine Regel
 mit `labels` würde `dependencies` ersetzen. Die Abhängigkeits-Übersicht trägt `ci`.
 
