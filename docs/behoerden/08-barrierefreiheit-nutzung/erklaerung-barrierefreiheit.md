@@ -93,7 +93,8 @@ Der letzte vollständige Prüfdurchgang ist das
 Release. Seither hat sich die Oberfläche in Bereichen geändert, die das Audit geprüft hat, unter anderem
 Katalog, Space-Anlage, Benutzerverwaltung, Chat-Archiv und Zugänge. Für diese Teile belegt seit dem Audit
 nur noch die laufende axe-Suite den Stand, nicht eine Prüfung von Hand. Ein Audit gegen eine
-veröffentlichte Version ist als Folgeaufgabe vorgesehen. Bis dahin nennt die Erklärung das Audit mit
+veröffentlichte Version ist als Folgeaufgabe erfasst
+([#2828](https://github.com/criew/opaa/issues/2828)). Bis dahin nennt die Erklärung das Audit mit
 Datum und Commit und die axe-Suite als laufenden Nachweis.
 
 ## Bekannte Einschränkungen
@@ -119,8 +120,8 @@ Vor der Abgabe der Erklärung ist diese Liste gegen den Stand der eingesetzten V
 Für den Abschnitt zur Prüfmethode im Muster, sinngemäß:
 
 - Grundlage der Aussagen ist eine Prüfung des Herstellers bzw. Projekts nach BITV 2.0 / WCAG 2.1 AA
-  vom **[Datum des Audits]** an **[Version oder Commit]**, ergänzt um automatisierte Prüfungen in jedem
-  Entwicklungsschritt.
+  vom **[Datum des Audits]** an **[Version oder Commit]**, ergänzt um automatisierte Prüfungen an jedem
+  Pull Request (Lint) und nach jeder Änderung am Hauptstand (axe-core).
 - Nicht barrierefrei bzw. nicht geprüft sind: **[Liste aus „Bekannte Einschränkungen“, ergänzt um eigene
   Inhalte und Branding der Behörde]**.
 - Eine eigene Prüfung der Behörde für ihre Installation: **[ja, Datum / nein]**.
