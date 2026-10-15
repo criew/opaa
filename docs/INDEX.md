@@ -174,6 +174,13 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 - **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts,
   Trivy-Image-Scan und die Triage von Image-Alerts
 
+### Unterlagen für Behörden
+
+- **[`behoerden/README.md`](./behoerden/README.md)** — Vorlagen und Erläuterungen entlang der
+  Behördenreise (Entscheidung, Markterkundung, Vergabe, Datenschutz, Mitbestimmung,
+  Informationssicherheit, Betrieb); Aufbau, Kopfvermerk, Haftungshinweis und Verweise auf die
+  generierten Faktenblätter
+
 ### Architekturentscheidungen
 
 - **[`decisions/`](./decisions/)** — alle ADRs. Einstiege:
