@@ -24,6 +24,7 @@ Zutreffendes ankreuzen. Ist mindestens ein Punkt außer „Keine Wirkung“ ange
 - [ ] Geänderte Aufbewahrungs- oder Löschfrist
 - [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)
 - [ ] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt
+- [ ] Geänderte KI-Einstufung (Zweck oder Einsatzbereich im Sinne der KI-Verordnung)
 - [ ] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen
 
 **Satz für die Release-Notizen** (Alltagssprache, bei „Keine Wirkung“ entfällt er):

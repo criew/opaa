@@ -78,8 +78,9 @@ standardmäßig ausgeschaltet; sie werden sichtbar gemacht.
 
 - **Im PR:** Der Abschnitt „Wirkung auf Daten und Behördenunterlagen“ des PR-Templates fragt ab,
   ob personenbezogene Daten oder Protokollereignisse, Sichtbarkeit, Auswertungen oder Exporte,
-  Fristen, externe Datenflüsse, Voreinstellungen, das Standardmodell oder System-Prompts neu sind
-  oder sich ändern. Trifft etwas zu, beschreibt ein Satz in Alltagssprache die Wirkung, und der PR
+  Fristen, externe Datenflüsse, Voreinstellungen, das Standardmodell, System-Prompts oder die
+  KI-Einstufung (Zustimmungsklasse Z6 in
+  [behoerdenunterlagen.md](features/behoerdenunterlagen.md)) neu sind oder sich ändern. Trifft etwas zu, beschreibt ein Satz in Alltagssprache die Wirkung, und der PR
   bekommt das Label `data-impact`. Wer den PR anlegt, setzt es.
 - **In der CI:** Der Workflow `.github/workflows/data-impact.yml` läuft bei jedem PR und erneut,
   wenn sich Labels oder Beschreibung ändern. Er schlägt fehl, wenn die Beschreibung eine Wirkung

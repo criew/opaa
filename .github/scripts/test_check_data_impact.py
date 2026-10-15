@@ -2,7 +2,8 @@
 fails, the label or a ticked "Keine Wirkung" passes, a ticked impact without label fails, unmatched
 paths pass. For the real path list: every pattern matches a tracked file, every backend file with an
 outgoing client, a model call, a system prompt or a retention period matches a pattern, and the
-Renovate exception of data-impact.yml names the account of gitAuthor in renovate.json5."""
+Renovate exception of data-impact.yml names the account of gitAuthor in renovate.json5. For the real
+PR template: every impact box, the AI classification included, needs the label."""
 
 import json
 import os
@@ -243,3 +244,43 @@ def test_renovate_exception_names_the_renovate_account() -> None:
     )
     assert accounts, "data-impact.yml no longer checks the Renovate author"
     assert author.group(1) in json.loads(accounts.group(1))
+
+
+TEMPLATE = REPO_ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md"
+
+
+def template_boxes() -> list[str]:
+    section = (
+        TEMPLATE.read_text(encoding="utf-8")
+        .split("## Wirkung auf Daten")[1]
+        .split("\n## ")[0]
+    )
+    return [line for line in section.splitlines() if line.startswith("- [ ] ")]
+
+
+def test_template_lists_ai_classification_box() -> None:
+    assert any("KI-Einstufung" in box for box in template_boxes())
+
+
+def test_every_ticked_template_impact_box_needs_the_label(repo: Path) -> None:
+    change(repo, "frontend/src/features/x.tsx")
+    body = TEMPLATE.read_text(encoding="utf-8")
+    impact_boxes = [box for box in template_boxes() if "Keine Wirkung" not in box]
+    assert len(impact_boxes) >= 7
+    for box in impact_boxes:
+        ticked = body.replace(box, box.replace("[ ]", "[x]", 1))
+        assert run(repo, body=ticked).returncode == 1, box
+        assert run(repo, body=ticked, label=True).returncode == 0, box
+
+
+def test_ticked_template_no_impact_box_passes(repo: Path) -> None:
+    change(repo, "backend/src/main/resources/db/changelog/x/new.yaml")
+    body = TEMPLATE.read_text(encoding="utf-8")
+    (no_impact,) = [box for box in template_boxes() if "Keine Wirkung" in box]
+    assert run(repo, body=body).returncode == 1
+    assert (
+        run(
+            repo, body=body.replace(no_impact, no_impact.replace("[ ]", "[x]", 1))
+        ).returncode
+        == 0
+    )
