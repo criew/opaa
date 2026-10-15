@@ -184,15 +184,74 @@ class FactSheetRendererTest {
   }
 
   @Test
-  void theDataFlowsAreCapturedAndTheDefaultModelsMarkedAsNotYet() {
+  void theDataFlowsAndTheDefaultsAreCapturedWithoutANotYetCapturedSection() {
     Map<FactSheet, String> sheets = FactSheetRenderer.render(SHIPPED, PROVENANCE);
 
     assertThat(sheets.get(FactSheet.DATENFLUESSE))
         .doesNotContain("Noch nicht erfasst")
         .contains("<a id=\"chat-model\"></a>", "<a id=\"mail\"></a>");
+    // regression guard for #2854: settings and default models are in the manifest since #2548
     assertThat(sheets.get(FactSheet.VOREINSTELLUNGEN))
-        .contains("## Noch nicht erfasst")
-        .contains("Standardmodelle");
+        .doesNotContain("Noch nicht erfasst")
+        .doesNotContain("issues/2548")
+        .contains("<a id=\"bereich-configuration\"></a>");
+  }
+
+  @Test
+  void noHeadingRepeatsInTheDefaultsSheet() {
+    for (ComplianceManifest manifest : List.of(SHIPPED, FIXTURE)) {
+      assertThat(
+              headings(
+                  FactSheetRenderer.render(manifest, PROVENANCE).get(FactSheet.VOREINSTELLUNGEN)))
+          .doesNotHaveDuplicates();
+    }
+  }
+
+  @Test
+  void promptsAndAiFunctionsAreGroupedByAreaOnlyWhenThereAreSeveral() {
+    ComplianceManifest twoAreas =
+        new ComplianceManifest(
+            Map.of("first", "Erster Bereich", "second", "Zweiter Bereich"),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(prompt("first", "one"), prompt("second", "two")),
+            List.of(),
+            List.of());
+    ComplianceManifest oneArea =
+        new ComplianceManifest(
+            Map.of("first", "Erster Bereich"),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(prompt("first", "one"), prompt("first", "two")),
+            List.of(),
+            List.of());
+
+    assertThat(FactSheetRenderer.render(twoAreas, PROVENANCE).get(FactSheet.VOREINSTELLUNGEN))
+        .contains("### Erster Bereich", "### Zweiter Bereich");
+    assertThat(FactSheetRenderer.render(oneArea, PROVENANCE).get(FactSheet.VOREINSTELLUNGEN))
+        .doesNotContain("### Erster Bereich")
+        .contains("<a id=\"prompt-one\"></a>", "<a id=\"prompt-two\"></a>");
+  }
+
+  private static ComplianceManifest.PromptEntry prompt(String area, String id) {
+    return new ComplianceManifest.PromptEntry(
+        area, id, "Zweck", List.of("io.opaa.Example"), null, "0".repeat(64), null);
+  }
+
+  private static List<String> headings(String sheet) {
+    return sheet
+        .lines()
+        .filter(line -> line.startsWith("#"))
+        .map(line -> ANCHOR.matcher(line.replaceFirst("^#+ ", "")).replaceAll(""))
+        .toList();
   }
 
   @Test
@@ -287,7 +346,7 @@ class FactSheetRendererTest {
             "voreinstellungen",
             "fristen");
     assertThat(json.get("notYetCaptured").has("datenfluesse")).isFalse();
-    assertThat(json.get("notYetCaptured").has("voreinstellungen")).isTrue();
+    assertThat(json.get("notYetCaptured").has("voreinstellungen")).isFalse();
     JsonNode manifest = json.get("manifest");
     assertThat(manifest.get("data").size()).isEqualTo(SHIPPED.data().size());
     assertThat(manifest.get("auditEvents").size()).isEqualTo(SHIPPED.auditEvents().size());
@@ -301,7 +360,13 @@ class FactSheetRendererTest {
     Map<FactSheet, String> sheets = FactSheetRenderer.render(manifest, PROVENANCE);
     String all = String.join("\n", sheets.values());
 
-    manifest.areas().values().forEach(title -> assertThat(all).contains(title));
+    // prompts and AI functions name their area only where a section spans several
+    Set<String> grouped = new HashSet<>();
+    manifest.data().forEach(entry -> grouped.add(entry.area()));
+    manifest.auditEvents().forEach(entry -> grouped.add(entry.area()));
+    manifest.settings().forEach(entry -> grouped.add(entry.area()));
+    manifest.dataFlows().forEach(entry -> grouped.add(entry.area()));
+    grouped.forEach(area -> assertThat(all).contains(manifest.areas().get(area)));
     manifest
         .data()
         .forEach(entry -> assertListed(sheets, FactSheet.DATENKATALOG, entry.id(), entry.id()));
