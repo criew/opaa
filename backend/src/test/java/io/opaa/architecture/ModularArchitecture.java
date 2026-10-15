@@ -1747,10 +1747,10 @@ public final class ModularArchitecture {
               }
             })
         .because(
-            "every way out of the installation is registered (ADR-0052). Annotate the class with"
+            "every way out of the installation is registered (ADR-0052, Entscheidung 8). Annotate the class with"
                 + " @io.opaa.compliance.DataFlow(\"<id>\") - an existing id when it serves a"
-                + " registered flow - and describe a new id as a dataFlows entry of the compliance"
-                + " manifest under compliance/manifest/:\n"
+                + " registered flow - and describe a new id in the dataFlows of"
+                + " compliance/manifest/outbound.yaml:\n"
                 + "  - id: <id>\n"
                 + "    target: <who receives the data>\n"
                 + "    data: <what is sent>\n"
@@ -1791,7 +1791,7 @@ public final class ModularArchitecture {
             + what
             + " - add @DataFlow(\"<id>\") to "
             + top.getSimpleName()
-            + " and a dataFlows entry for <id> to the compliance manifest");
+            + " and a dataFlows entry for <id> to compliance/manifest/outbound.yaml");
   }
 
   /**
