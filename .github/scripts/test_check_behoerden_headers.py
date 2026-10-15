@@ -279,3 +279,23 @@ def test_rejects_readme_example_with_unknown_anchor(repo: Path) -> None:
     readme = repo / "docs" / "behoerden" / "README.md"
     readme.write_text(README + "{{faktenblatt:rollensicht#gibt-es-nicht}}\n", encoding="utf-8")
     assert_rejected(repo, "names no target")
+
+
+# Regression guard: under pipefail, a reader that stops early (grep -q, awk exit) must not read
+# from a pipe, or the writer's SIGPIPE fails the check for a valid document at random.
+def test_valid_anchor_among_many_targets_passes_every_run(repo: Path) -> None:
+    many = "".join(f"fristen#frist-{i:05d}\n" for i in range(20000))
+    (repo / ".github" / "fact-sheet-anchors.txt").write_text(
+        ANCHORS + many, encoding="utf-8"
+    )
+    write(repo, document(body=BODY + "\nSiehe {{faktenblatt:fristen#frist-00001}}.\n"))
+    for _ in range(5):
+        result = run_check(repo)
+        assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_long_document_passes_every_run(repo: Path) -> None:
+    write(repo, document(body=BODY + "\nText ohne Fakten.\n" * 20000))
+    for _ in range(5):
+        result = run_check(repo)
+        assert result.returncode == 0, result.stdout + result.stderr
