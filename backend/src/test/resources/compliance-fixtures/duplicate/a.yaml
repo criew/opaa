@@ -2,4 +2,5 @@ title: Bereich A
 roles:
   - id: USER
     seesAboutOthers: nichts
-nonPersonalTables: [organizations]
+nonPersonalTables:
+  organizations: [id, name]
