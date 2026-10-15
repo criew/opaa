@@ -1,0 +1,16 @@
+title: Ausgehende Datenflüsse
+dataFlows:
+  - id: without-group
+    viaOutboundProxy: true
+    target: Ziel
+    data: Daten
+    trigger: Anlass
+    switchOff: Aus
+    settings: []
+  - id: without-proxy-route
+    group: MODEL
+    target: Ziel
+    data: Daten
+    trigger: Anlass
+    switchOff: Aus
+    settings: []

@@ -52,8 +52,8 @@ public final class FactSheetRenderer {
   private static final String NOT_NAMED = "nicht genannt";
   private static final String ISSUES = "https://github.com/criew/opaa/issues/";
   private static final String VIA_PROXY =
-      "über den Ausgangsproxy, sofern einer eingetragen ist und das Ziel nicht auf seiner"
-          + " Ausnahmeliste steht (Handbuch Betrieb, Abschnitt „Ausgangsproxy“)";
+      "über den Ausgangsproxy, sofern einer eingetragen ist und das Ziel weder lokal ist noch"
+          + " auf seiner Ausnahmeliste steht (Handbuch Betrieb, Abschnitt „Ausgangsproxy“)";
 
   /**
    * Facts the manifest has no entries for yet, although the sheet promises them; an item is removed

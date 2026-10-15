@@ -90,9 +90,9 @@ Jede Klasse, die Daten aus der Installation sendet, trägt `@DataFlow` mit den K
 Datenflüsse; eine Hüllklasse, die einen Client nur für ihre Aufrufer baut oder kapselt, trägt
 `@DataFlowCarrier` (beide in `io.opaa.compliance`). Ziel, Daten, Anlass, Abschaltbarkeit,
 Einstellungen, Gruppe und Weg über den Ausgangsproxy stehen nur im Manifest unter `dataFlows` in
-`outbound.yaml`, die Annotation trägt nur die Kennung. `ComplianceManifestTest` gleicht Kennungen und Einträge in beiden Richtungen ab;
-`ModularArchitectureTest` lässt keinen Client aus `OUTBOUND_CLIENTS` und keine Abhängigkeit von
-`OUTBOUND_BEANS` ohne Annotation zu. Ein neuer Client kostet eine Annotationszeile und einen
+`outbound.yaml`, die Annotation trägt nur die Kennung. `ComplianceManifestTest` gleicht Kennungen
+und Einträge in beiden Richtungen ab; `ModularArchitectureTest` lässt keinen Client aus
+`OUTBOUND_CLIENTS` und keine Abhängigkeit von `OUTBOUND_BEANS` ohne Annotation zu. Ein neuer Client kostet eine Annotationszeile und einen
 YAML-Eintrag; eine neue Kennung ist ein neuer externer Datenfluss. Die Registry beschreibt und sperrt
 nichts: Weg und Zielprüfung bleiben beim Ausgangsproxy (ADR-0050) und bei `TargetAddressValidator`.
 

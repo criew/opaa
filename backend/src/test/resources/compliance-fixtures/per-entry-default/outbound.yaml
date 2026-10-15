@@ -1,0 +1,12 @@
+title: Ausgehende Datenflüsse
+defaults:
+  dataFlows:
+    group: CONNECTOR
+    viaOutboundProxy: true
+dataFlows:
+  - id: source-web
+    target: Ziel
+    data: Daten
+    trigger: Anlass
+    switchOff: Aus
+    settings: []

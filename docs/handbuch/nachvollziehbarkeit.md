@@ -10,8 +10,9 @@ automatisch geprüft wird, damit sie stimmen. Es gehört zum Teil Betrieb des
 [Handbuchs](README.md).
 
 > **Beispiel.** Die Datenschutzbeauftragte eines Landratsamts will vor dem Pilotbetrieb wissen,
-> wohin eine Chatfrage geht und wie lange das Revisionsprotokoll aufbewahrt wird. Der Betrieb lädt
-> die Faktenblätter zum eingesetzten Stand herunter und gibt ihr `datenfluesse` und `fristen`. Sie
+> wohin eine Chatfrage geht und wie lange das Revisionsprotokoll aufbewahrt wird. Der Betrieb
+> erzeugt die Faktenblätter zum eingesetzten Stand (siehe [Ein Faktenblatt selbst
+> erzeugen](#ein-faktenblatt-selbst-erzeugen)) und gibt ihr `datenfluesse` und `fristen`. Sie
 > sieht darin jedes Ziel mit den übermittelten Daten und jede Frist mit ihrem
 > Konfigurationsschlüssel, ohne den Code lesen zu müssen. Ein späteres Update, das daran etwas
 > ändert, steht in den Release-Notizen unter „Datenrelevante Änderungen“.
@@ -40,15 +41,16 @@ unter „Noch nicht erfasst“, statt zu fehlen.
 
 ```mermaid
 flowchart LR
-    C[Code] --> W{Wächter<br/>im Build}
-    MF[Fakten-<br/>Manifest] --> W
-    W --> FB[Faktenblätter]
+    C[Code] --- W{Wächter<br/>im Build}
+    W --- MF[Fakten-<br/>Manifest]
+    MF --> FB[Faktenblätter]
     FB --> BU[Unterlagen<br/>der Behörde]
     PR[Kennzeichnung<br/>am PR] --> RN[Release-<br/>Notizen]
 ```
 
-Die Wächter halten Code und Manifest gleich; die Faktenblätter entstehen erst danach, die
-Unterlagen der Behörde verweisen auf sie. Die Kennzeichnung am Pull Request führt jede
+Die Wächter halten Code und Manifest gleich; ein Pull Request mit roten Wächtern wird nicht
+gemergt. Aus dem Manifest entstehen die Faktenblätter, die Unterlagen der Behörde verweisen auf
+sie. Die Kennzeichnung am Pull Request führt jede
 datenrelevante Änderung in die Release-Notizen.
 
 ## Wo die Faktenblätter liegen
@@ -58,8 +60,9 @@ Sie liegen als Artefakt `compliance-faktenblaetter` am letzten Lauf des Workflow
 auf GitHub im Reiter „Actions“ den Lauf öffnen, Abschnitt „Artifacts“. Das Artefakt enthält die
 Blätter als Markdown und `faktenblaetter.json` mit allen Inhalten für Werkzeuge.
 
-Jedes Blatt nennt in seinem Kopf, wofür es gilt: die OPAA-Version (außerhalb eines Release
-`0.0.0-dev`), den Commit, das Erzeugungsdatum und `erzeugung: generiert`. Unter dem Titel steht
+Jedes Blatt nennt in seinem Kopf, wofür es gilt: die OPAA-Version, den Commit, das
+Erzeugungsdatum und `erzeugung: generiert`. Die Blätter aus der CI tragen immer die Version
+`0.0.0-dev`; welchen Stand sie beschreiben, bestimmt der Commit. Unter dem Titel steht
 „Fakten aus dem Code; rechtliche Bewertung bleibt bei der Behörde.“ Jeder Eintrag hat einen festen
 Anker aus seiner Kennung, sodass eine Unterlage auf genau eine Zeile verweisen kann.
 
@@ -70,11 +73,12 @@ wird nur das Java-Werkzeug des Backends, keine Datenbank:
 
 ```bash
 # aus backend/
-./gradlew complianceDocs
+./gradlew complianceDocs -PopaaVersion=<X.Y.Z>
 ```
 
-Die Blätter liegen danach unter `backend/build/compliance/faktenblaetter/`. Version und Commit im
-Kopf stammen aus dem ausgecheckten Stand.
+Die Blätter liegen danach unter `backend/build/compliance/faktenblaetter/`. Der Commit im Kopf
+stammt aus dem ausgecheckten Stand, die Version aus der Angabe `-PopaaVersion`; ohne sie steht dort
+`0.0.0-dev`.
 
 ## Was bei jeder Änderung geprüft wird
 
@@ -83,7 +87,7 @@ Code und Beschreibung auseinanderlaufen.
 
 | Prüfung | Wann | Was sie erzwingt |
 |---|---|---|
-| **Wächter im Backend-Build** | bei jedem Build und in der CI jedes Pull Requests | Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jeder Verbindung nach außen und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten |
+| **Wächter im Backend-Build** | bei jedem Build, in der CI jedes Pull Requests, der Backend-Code berührt, und auf `main` | Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jeder Verbindung nach außen und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten |
 | **Kennzeichnung `data-impact`** | an jedem Pull Request (Prüfung „Datenwirkung“) | Die Beschreibung jedes Pull Requests fragt ab, ob er personenbezogene Daten, Sichtbarkeit, Auswertungen, Fristen, Datenflüsse, Voreinstellungen, Standardmodelle, System-Prompts oder die KI-Einstufung ändert. Trifft etwas zu, trägt er das Label `data-impact` und einen Satz in Alltagssprache. Ändert er Dateien, in denen Datenwirkung typischerweise entsteht, ohne Label und ohne die Angabe „Keine Wirkung“, schlägt die Prüfung fehl. Solche Änderungen erscheinen in den Release-Notizen als erste Rubrik „Datenrelevante Änderungen“ |
 | **Verweise der Behördenunterlagen** | bei jeder Änderung an den Unterlagen und am Manifest | Jeder Verweis einer Vorlage auf ein Faktenblatt trifft ein vorhandenes Blatt und einen vorhandenen Eintrag darin |
 | **Lizenzprüfung** | an Pull Requests, die Abhängigkeiten berühren, und bei jedem Stand auf `main` | Jede ausgelieferte Abhängigkeit steht unter einer freigegebenen Lizenz oder auf einer begründeten Ausnahmeliste. Die Lizenzübersicht liegt als Artefakt `license-report-backend` bzw. `license-report-frontend` am CI-Lauf |
@@ -108,9 +112,5 @@ Form der Verweise. Wie Entwickler das Manifest nachpflegen, steht in
 - Ein Update-Paket am GitHub-Release jeder Version mit ihren Faktenblättern, dem Delta zum
   vorigen Release und der Lizenzübersicht, attestiert wie die Images
   ([#2556](https://github.com/criew/opaa/issues/2556)). Bis dahin erzeugt der Betrieb die Blätter
-  einer Version selbst aus deren Quellcode.
+  einer Version selbst aus deren Quellcode und gibt die Version mit `-PopaaVersion` an.
 
-## Weiterführende Kapitel
-
-- [Betriebsübersicht](betrieb.md) — Bausteine, Ausgangsproxy
-- [Konfiguration](konfiguration.md) — die Einstellungen der eigenen Installation

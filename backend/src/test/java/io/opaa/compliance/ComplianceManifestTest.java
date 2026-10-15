@@ -124,7 +124,7 @@ class ComplianceManifestTest {
                     + "  - id: "
                     + id
                     + "\n    group: <MODEL | CONNECTOR | MAIL | IDENTITY | STORAGE>"
-                    + "\n    viaOutboundProxy: <false if it never takes the proxy, else omit>"
+                    + "\n    viaOutboundProxy: <true if it takes the outbound proxy (OutboundProxySelector)>"
                     + "\n    target: <who receives the data, in German>"
                     + "\n    data: <what is sent>\n    trigger: <when it is sent>"
                     + "\n    switchOff: <whether and how it can be switched off>"
