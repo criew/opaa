@@ -13,7 +13,8 @@
 > am PR ([Schicht 2](#schicht-2-kennzeichnung-datenrelevanter-änderungen-am-pr), #2553), das
 > [Manifest](#das-manifest) mit Schema, Lader und Erstbefüllung (ohne Konfigurationsschlüssel und
 > Datenflüsse) und der Abschnitt „Wirkung auf Behördenunterlagen“ in Spezifikationsvorlage und
-> Produktmanager-Rolle (#2571). Alles Übrige ist Zielbild.
+> Produktmanager-Rolle (#2571) sowie die Rolle „Behördenkontakt“
+> ([Rollenvertrag](../../agents/roles/behoerdenkontakt.md), #2573). Alles Übrige ist Zielbild.
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die

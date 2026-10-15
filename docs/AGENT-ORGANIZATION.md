@@ -16,7 +16,7 @@ Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselb
 | **Marketing** | Positionierung zuerst: schärft Pitch und Mission, pflegt die Messaging-Quelle der Wahrheit (`docs/market/MESSAGING.md`), leitet stakeholder-spezifische Assets davon ab — Landing Page (`page/`), Pitch-Decks, One-Pager, README-Messaging, Website-i18n. Positionierungsentscheidungen verbleiben beim Maintainer. | Subagent `marketing` |
 | **UX-Designer** | Gestaltet die Bedienung vor der Implementierung: Interaktionskonzepte in `docs/design/` für Issues mit nennenswerter UI-Fläche, Begriffs- und Textkonventionen (`docs/design/GLOSSAR.md`), UX-Review nach dem Merge. Kein Produktivcode, keine Funktionsdefinition. | Subagent `ux-designer` |
 
-Neben diesen Liefer-Rollen gibt es **Stakeholder-Rollen**, die nichts herstellen, sondern bewerten — siehe [Stakeholder-Review](#stakeholder-review).
+Neben diesen Liefer-Rollen gibt es **Stakeholder-Rollen**, die nichts herstellen, sondern bewerten — siehe [Stakeholder-Review](#stakeholder-review) —, und die Prüfrolle **Behördenkontakt** (Subagent `behoerdenkontakt`): Sie liest vor jedem Release und gelegentlich Fakten-Manifest, Faktenblätter, Update-Paket und die Vorlagen unter `docs/behoerden/` aus Sicht einer Behörde, legt Befunde als Issues an und leistet **keine verbindliche Rechtsbeobachtung und keine Rechtsberatung** — siehe [Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release).
 
 Designprinzip: Ein Agent hat eine Spur, Arbeit wird über Artefakte (Spezifikationen, Issues, PRs) statt Dialog übergeben, Schreibvorgänge sind single-threaded (Parallelität nur über *verschiedene* Issues), und der Reviewer ist immer vom Implementierer getrennt.
 
@@ -38,6 +38,8 @@ Die Liefer-Rollen bewerten Konzepte aus der Perspektive derer, die sie entwerfen
 Nach einer Konzept- oder Spezifikationsänderung von struktureller Tragweite und **bevor** der zugehörige Implementierungs-Backlog freigegeben wird. Ein Review nach der Implementierung erzeugt Nacharbeit statt Erkenntnis.
 
 Pflichtanlass ist eine Spezifikation, deren Abschnitt „Wirkung auf Behördenunterlagen“ die Stufe **Zustimmung** vorschlägt: Der Product Manager fordert das Review an, Personalrat und Betriebsverantwortlicher laufen mindestens, und die Issues werden erst danach geschnitten ([Stufenregeln](features/behoerdenunterlagen.md#die-stufenregeln)).
+
+Zweiter Pflichtanlass ist eine Änderung der Stufe **Zustimmung**, die der Behördenkontakt vor einem Release meldet ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)): Geprüft werden das Update-Paket bzw., solange es keines gibt, der Manifest-Diff seit dem letzten Tag und die Faktenblätter, mindestens durch Personalrat und Betriebsverantwortlichen.
 
 Der Orchestrator startet die Rollen parallel gegen dieselbe Dokumentenmenge und legt dem Maintainer die Bewertungen gebündelt vor. Nicht jede Änderung braucht alle sechs — die Auswahl richtet sich danach, wessen Wirklichkeit betroffen ist.
 
@@ -64,7 +66,7 @@ Jeder unterstützte Client hat einen dünnen projektlokalen Adapter, der auf den
 | Codex | `.codex/agents/` | TOML-Dateien definieren Codex Custom Agents. Der Reviewer verwendet eine schreibgeschützte Sandbox. |
 | OpenCode | `.opencode/agents/` | Markdown-Frontmatter definiert OpenCode-Subagenten und ihre Berechtigungen. Der Reviewer verweigert Bearbeitungen. |
 
-Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die sechs Liefer-Rollen sind Product Manager, Developer, Code Reviewer, QA Engineer, Marketing und UX-Designer (Letzterer noch ohne Provider-Adapter); hinzu kommen die sechs Stakeholder-Rollen `stakeholder-sachbearbeiter`, `stakeholder-referatsleitung`, `stakeholder-ki-champion`, `stakeholder-betrieb`, `stakeholder-skeptiker` und `stakeholder-personalrat`.
+Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die sechs Liefer-Rollen sind Product Manager, Developer, Code Reviewer, QA Engineer, Marketing und UX-Designer (Letzterer noch ohne Provider-Adapter); hinzu kommen die Prüfrolle `behoerdenkontakt` und die sechs Stakeholder-Rollen `stakeholder-sachbearbeiter`, `stakeholder-referatsleitung`, `stakeholder-ki-champion`, `stakeholder-betrieb`, `stakeholder-skeptiker` und `stakeholder-personalrat`.
 
 ## Workflow: von der Idee bis zum Merge
 
@@ -101,6 +103,10 @@ Der QA Engineer ist bewusst **nicht** Teil des PR-Gates — das ist die Aufgabe 
 - **Zum Definitionszeitpunkt** leitet der Product Manager E2E-relevante Szenarien aus den Abnahmekriterien ab und erstellt dedizierte `test(e2e)`-Issues; der QA Engineer implementiert sie in der Suite, sobald das Feature gelandet ist.
 
 Es gibt also zwei Schleifen: die schnelle **PR-Schleife** (Code Reviewer + CI, vor dem Merge) und die langsame **Produkt-Schleife** (QA Engineer, nach dem Merge, produziert neue Issues).
+
+### Behördenkontakt vor dem Release
+
+Der Koordinator startet die Rolle `behoerdenkontakt` **vor jedem Release**, bevor der Maintainer das Tag setzt, und **gelegentlich** darüber hinaus, etwa nach einer Reihe von Merges mit Label `data-impact` oder wenn eine Vorlage unter `docs/behoerden/` ihre `naechste-durchsicht` erreicht. Die Rolle liest das Update-Paket des Release, solange es keines gibt den Manifest-Diff seit dem letzten Tag und die Faktenblätter, legt ihre Befunde als Issues an und liefert einen Bericht. Meldet sie eine Änderung der Stufe Zustimmung, startet der Koordinator ein [Stakeholder-Review](#stakeholder-review) mit mindestens Personalrat und Betriebsverantwortlichem. Der Maintainer klärt die Befunde vor dem Tag oder nimmt sie als bekannt in die Release-Notizen auf. Die wöchentliche Drift-Routine ([Behördenunterlagen, Schicht 3](features/behoerdenunterlagen.md#schicht-3-wöchentliche-drift-routine)) ersetzt den Lauf nicht: Sie prüft die Änderungen einer Woche, die Rolle den Stand eines Release.
 
 ## Regeln
 
@@ -145,6 +151,7 @@ Regeln für den Koordinator/Orchestrator, unabhängig von der Umgebung, in der e
 - **Review ab PR-Eröffnung:** Das Review startet, sobald ein PR eröffnet ist, nicht nach grüner CI; ein roter CI-Lauf und Review-Befunde gehen in dieselbe Nachbesserungsrunde.
 - **Security-Arbeit wird delegiert:** Security-Analysen, -Fixes und -Issues führt der Koordinator nicht selbst aus, sondern gibt sie an Agenten, dieselbe Rollentrennung wie zwischen Implementierung und Review.
 - **Handbuch nach Abhängigkeits-Updates:** Ändert ein gemergter Renovate-PR eine Version oder einen Default, den das Handbuch nennt (`betrieb.md`, `konfiguration.md`), zieht der Koordinator das Kapitel nach.
+- **Behördenkontakt vor jedem Release:** Der Koordinator startet die Rolle `behoerdenkontakt` vor jedem Release und gelegentlich darüber hinaus ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)).
 - **Prozess- und Worktree-Hygiene:** Nie ein globales `gradlew --stop`, nur den eigenen Prozess beenden, und nach dem Merge zuerst Branch löschen und `git worktree prune`, ein gesperrtes Verzeichnis später entfernen.
 
 ### Autonomie und Eskalation
