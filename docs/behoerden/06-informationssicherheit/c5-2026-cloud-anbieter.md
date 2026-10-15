@@ -29,13 +29,16 @@ bestehen kann.
 ## Quellen und Prüfstand
 
 Grundlage ist die Rechtsrecherche vom 13.10.2026 (erster Kommentar in Epic
-[#2542](https://github.com/criew/opaa/issues/2542)):
+[#2542](https://github.com/criew/opaa/issues/2542)); die letzte Zeile stammt nicht aus dieser
+Recherche:
 
 | Aussage | Fundstelle | Art |
 |---|---|---|
 | C5:2026 ist seit April 2026 final und für Prüfzeiträume ab 1.6.2027 verbindlich | [heise](https://heise.de/-11247658), [KPMG](https://kpmg.com/de/de/themen/digital-transformation/cloud-computing/mindestanforderungen-fuer-die-sicherheit-von-cloud-diensten.html) | Fachbeitrag |
 | C5 testiert Cloud-Anbieter, nicht Software | [heise](https://heise.de/-11247658) | Fachbeitrag |
-| AIC4 besteht weiter, ergänzt durch den BSI-Prüfkatalog A5 | [BSI, AIC4](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Kuenstliche-Intelligenz/AIC4/aic4.html) | amtliche Seite |
+| AIC4 besteht weiter | [BSI, AIC4](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Kuenstliche-Intelligenz/AIC4/aic4.html) | amtliche Seite |
+| Neu hinzu kommt der BSI-Prüfkatalog A5; sein Stand ist vor der Übernahme beim BSI zu prüfen | [comquent](https://comquent.de/ressourcen/blog/bsi-a5-pruefkatalog-ki) | Fachbeitrag |
+| Der Mindeststandard zur Nutzung externer Cloud-Dienste verlangt vom Anbieter Nachweise, darunter ein C5-Testat | [BSI, Mindeststandards](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html) | amtliche Seite; nicht Teil der Recherche, vor Übernahme am Text des Mindeststandards zu prüfen |
 
 Den Katalog selbst veröffentlicht das BSI auf seiner
 [Seite zum Kriterienkatalog C5](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Empfehlungen-nach-Angriffszielen/Cloud-Computing/Kriterienkatalog-C5/kriterienkatalog-c5_node.html).

@@ -30,7 +30,7 @@ sind darin umgesetzt.
 
 | Feld | Eintrag |
 |---|---|
-| Stand im Projekt | **Noch nicht durchgeführt.** Eine automatisierte Probe im Installationstest des Helm-Charts ist als Folge von [#2567](https://github.com/criew/opaa/issues/2567) vorgeschlagen; bis dahin ist das Verfahren unten nicht durch einen Lauf belegt |
+| Stand im Projekt | **Noch nicht durchgeführt.** Die automatisierte Probe im Installationstest des Helm-Charts entsteht in [#2840](https://github.com/criew/opaa/issues/2840); bis dahin ist das Verfahren unten nicht durch einen Lauf belegt |
 | Datum der Probe | [JJJJ-MM-TT] |
 | OPAA-Version (Release-Tag, Image-Digests) | [X.Y.Z, sha256:…] |
 | Helm-Chart-Version bzw. Compose-Stand | [X.Y.Z] |
@@ -38,7 +38,7 @@ sind darin umgesetzt.
 | Größe des Bestands | [Datenbank in MB, Originale in MB, Zahl der Dokumente] |
 | RTO-Ist (Beginn der Wiederherstellung bis arbeitsfähig) | [hh:mm] |
 | RPO-Ist (Sicherungszeitpunkt bis simulierter Ausfall) | [hh:mm] |
-| Prüfkriterien P1 bis P11 | [alle erfüllt / Abweichungen siehe unten] |
+| Prüfkriterien P1 bis P12 | [alle erfüllt / Abweichungen siehe unten] |
 | Abweichungen und Folgemaßnahmen | [Beschreibung, Ticket oder Änderung am Notfallkonzept] |
 | Durchgeführt von, abgenommen von | [Namen, Stellen] |
 
@@ -88,7 +88,8 @@ Vor der Sicherung legt die Systemverwaltung in der Quelle an:
 | T3 | Einen Space mit zwei Mitgliedern, T1 zugeordnet | Rechte und Mitgliedschaften |
 | T4 | Eine Testperson ohne Zugriff auf T1 (lokales Konto oder Konto beim Identitätsanbieter) | Rechteprobe |
 | T5 | Einen Chat mit einer Frage nach M1 | Chats |
-| T6 | Einen zweiten, nicht aktiven Chat-Modell-Eintrag mit einem beliebigen Zugangsschlüssel | gespeicherte Geheimnisse lesbar, also Verschlüsselungsschlüssel richtig |
+| T6 | Einen zweiten, nicht aktiven Chat-Modell-Eintrag auf denselben Modell-Endpunkt, mit einem beliebigen Zugangsschlüssel; „Verbindung testen“ gelingt | Schlüssel für die Einstellungen richtig zurückgespielt (P11) |
+| T7 | Eine Bibliothek mit Webquelle und hinterlegten Zugangsdaten für die Basic-Anmeldung (`benutzer:passwort`), am besten gegen eine Quelle, die die Anmeldung verlangt | Schlüssel für die Zugangsdaten richtig zurückgespielt (P12) |
 
 Wo die Installation weitere Bausteine nutzt, kommen sie dazu, etwa eine Bibliothek mit einer
 angebundenen Quelle oder Fremdzugänge.
@@ -151,7 +152,9 @@ Das Backend wird angehalten, damit Datenbank und Originale genau zusammenpassen
    ```
 
 5. Prüfsummen der beiden Sicherungsdateien festhalten: `sha256sum opaa-db.dump opaa-uploads.tar`.
-6. Backend der Quelle wieder starten.
+6. Kopier-Pod löschen (`kubectl -n "$QUELLE" delete pod opaa-uploads-kopie`), wie im Handbuch: Ein
+   `ReadWriteOnce`-Volume hält er sonst fest, und das Backend startet nicht.
+7. Backend der Quelle wieder starten.
 
 ### 3. Datenverlust erzeugen (Zeitpunkt tA)
 
@@ -176,7 +179,9 @@ Die Reihenfolge folgt [Wiederherstellung auf einem neuen Cluster](../../handbuch
    ```
 
 4. **Originale zurückspielen** in das noch leere Volume, mit dem Kopier-Pod im Namespace des Ziels.
-   Danach dieselbe Prüfsummenliste im Ziel erzeugen (`originale-ziel.txt`). `t1` notieren.
+   Danach dieselbe Prüfsummenliste im Ziel erzeugen (`originale-ziel.txt`) und den Kopier-Pod
+   löschen (`kubectl -n "$ZIEL" delete pod opaa-uploads-kopie`), bevor das Backend startet. `t1`
+   notieren.
 5. **Datenbank zurückspielen** in die leere Erprobungsdatenbank: zuerst die Rolle
    `opaa_audit_owner` anlegen, die nicht im Dump steht
    ([Erprobungsdatenbank sichern](../../handbuch/kubernetes.md#erprobungsdatenbank-sichern)), dann
@@ -203,7 +208,16 @@ Die Reihenfolge folgt [Wiederherstellung auf einem neuen Cluster](../../handbuch
    ```
 8. Die Portweiterleitung von der Quelle auf das Ziel umstellen, unter derselben Adresse wie
    `publicBaseUrl` (`kubectl -n "$ZIEL" port-forward svc/opaa-frontend 8080:80`). Dann die
-   Prüfungen P4 bis P11 durchführen. Sind sie bestanden, `t4` notieren.
+   Prüfungen P4 bis P12 durchführen. Sind sie bestanden, `t4` notieren. Die Gesundheitsgruppen für
+   P5 antworten nur auf dem Management-Port des Backends, den das Frontend nicht weiterreicht
+   ([Management-Port](../../handbuch/kubernetes.md#management-port)); sie verlangen ein gültiges
+   Zugangstoken ([Bereitschaft und Lebendigkeit](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit)):
+
+   ```bash
+   kubectl -n "$ZIEL" port-forward deploy/opaa-backend 8081:8081
+   curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/health/embedding-model
+   curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/health/vector-store
+   ```
 
 ## Prüfkriterien
 
@@ -219,10 +233,12 @@ Die Reihenfolge folgt [Wiederherstellung auf einem neuen Cluster](../../handbuch
 | P8 | Rechteprobe: Testperson T4 fragt nach M1 | T1 ist für sie nicht sichtbar, die Antwort nennt keine Fundstelle aus T1 |
 | P9 | Wiederherstellungspunkt: Frage nach M2, Chatliste | M2 ist nicht auffindbar, der Chat aus Schritt 3 fehlt |
 | P10 | Sitzung aus Schritt 1 im selben Browser gegen das Ziel | Die alte Sitzung gilt nicht, eine neue Anmeldung ist nötig |
-| P11 | Chat-Modell-Eintrag T6 | Der Zugangsschlüssel gilt als hinterlegt, nicht als „nicht gesetzt“ |
+| P11 | Chat-Modell T6: „Verbindung testen“ im Menü des Modells, ohne neuen Schlüssel; der Test entschlüsselt dabei den gespeicherten Schlüssel | Der Test gelingt wie in der Quelle, ohne Meldung, der Schlüssel könne nicht entschlüsselt werden. Dass der Schlüssel als hinterlegt angezeigt wird, genügt nicht: Die Anzeige prüft nur, ob ein Geheimtext gespeichert ist |
+| P12 | Bibliothek T7: Quelle bearbeiten; bei einer Quelle mit Anmeldung „Verbindung testen“ ohne neue Zugangsdaten | Die Zugangsdaten gelten als hinterlegt. Diese Anzeige entschlüsselt: Ein unlesbarer Wert erscheint als „nicht gesetzt“, und das Protokoll trägt eine Warnung ([Zugangsdaten-Verschlüsselung](../../handbuch/betrieb.md#zugangsdaten-verschlüsselung)). Der Verbindungstest gelingt wie in der Quelle |
 
 P2 und P3 zeigen, dass die Sicherung vollständig zurückkam; P5 und P6 zeigen, dass Index, Datenbank
-und Originalablage zueinander passen; P7 und P8 zeigen, dass Inhalte und Rechte stimmen.
+und Originalablage zueinander passen; P7 und P8 zeigen, dass Inhalte und Rechte stimmen; P11 und P12
+zeigen, dass beide Verschlüsselungsschlüssel zur Datenbank passen.
 
 ## Messung
 
