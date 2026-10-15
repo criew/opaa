@@ -1,0 +1,46 @@
+title: Chats und Prompts
+data:
+  - id: chats
+    title: Chats und Nachrichten
+    purpose: Gesprächsverlauf der Person mit dem Assistenten, mit Fundstellen
+    personalReference: EMPLOYEE
+    tables:
+      - name: chats
+        personalColumns: [author_id, title, metadata_filter, created_at, updated_at]
+      - name: chat_messages
+        personalColumns: [content, sources, used_prompt_title, created_at]
+      - name: chat_note_items
+        personalColumns: [text]
+      - name: chat_personal_marks
+        personalColumns: [user_id, pinned_at, archived_at, unarchived_at]
+    storage: Anwendungsdatenbank; Inhalte gehen an das Sprachmodell (Datenfluss)
+    retention:
+      rule: >-
+        Unbegrenzt bis zur Löschung durch die Person; in Spaces mit eingeschalteter Bereinigung
+        Archiv nach 90 Tagen ohne Aktivität und Löschung 365 Tage nach der Archivierung,
+        angeheftete Chats ausgenommen
+      settings:
+        - opaa.chat.auto-cleanup.archive-after-days
+        - opaa.chat.auto-cleanup.delete-after-days
+    visibility: [nur die Autorin oder der Autor]
+    accessPaths: [UI, API, EXPORT, DATABASE]
+    deletion: Durch die Person, automatische Bereinigung je Space, mit dem Konto
+    evaluations: >-
+      Chatsuche der Person über eigene Chats; keine Auswertung durch andere, Fragen werden nicht
+      protokolliert
+    notes:
+      - Fragen und Antworten können Inhalte aus Fachverfahren und Personendaten Dritter enthalten
+nonPersonalTables: [chat_library_references, prompt_libraries, prompts]
+settings:
+  - key: opaa.chat.auto-cleanup.archive-after-days
+    source: PROPERTY
+    defaultValue: "90"
+    range: mindestens 90 Tage
+    effect: Archivierung inaktiver Chats in Spaces mit eingeschalteter Bereinigung
+    bearings: [DATA]
+  - key: opaa.chat.auto-cleanup.delete-after-days
+    source: PROPERTY
+    defaultValue: "365"
+    range: mindestens 30 Tage
+    effect: Löschung von Chats in Spaces mit eingeschalteter Bereinigung
+    bearings: [DATA]

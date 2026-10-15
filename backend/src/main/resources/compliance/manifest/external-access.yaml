@@ -1,0 +1,41 @@
+title: Fremdzugänge
+data:
+  - id: external-access-tokens
+    title: Persönliche Zugangstokens für fremde Werkzeuge
+    purpose: Zugriff fremder KI-Werkzeuge auf freigegebene Bibliotheken im Namen einer Person
+    personalReference: EMPLOYEE
+    tables:
+      - name: external_access_tokens
+        personalColumns: [user_id, name, created_at, expires_at, last_used_on, revoked_at]
+    storage: Anwendungsdatenbank; Token nur als Hash
+    retention:
+      rule: >-
+        Gültig höchstens 90 Tage (Voreinstellung); die Zeile wird nach Ablauf der Protokollfrist
+        über dem Erlöschen gelöscht
+      settings:
+        - external_access_settings.token_max_lifetime_days
+        - audit_retention_settings.retention_months
+    visibility: [die Person selbst, SYSTEM_ADMIN (Kennung, Ablauf, Zustand)]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Retention-Schritt gekoppelt an die Protokollfrist
+    evaluations: >-
+      Letzter Nutzungstag je Token; die Nutzung selbst wird nicht protokolliert, der Zähler des
+      Abflussalarms lebt nur im Arbeitsspeicher
+nonPersonalTables: [external_access_token_libraries]
+settings:
+  - key: external_access_settings.token_max_lifetime_days
+    source: DATABASE
+    defaultValue: "90"
+    range: 1 bis 365 Tage
+    effect: Höchstlaufzeit eines Zugangstokens
+    bearings: [DATA, DATA_FLOW]
+  - key: opaa.external-access.max-release-days
+    source: PROPERTY
+    defaultValue: "365"
+    effect: Längste Befristung der Fremdzugangsfreigabe einer Bibliothek
+    bearings: [VISIBILITY, DATA_FLOW]
+  - key: io.opaa.externalaccess.ExternalAccessAlertRetention#RETENTION
+    source: CONSTANT
+    defaultValue: P14D
+    effect: Wie lange eine Meldung des Abflussalarms erhalten bleibt
+    bearings: [DATA]

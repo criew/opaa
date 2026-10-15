@@ -1,0 +1,141 @@
+title: Rechte, Gruppen und Verzeichnisabgleich
+data:
+  - id: rights
+    title: Geltende Rechte und Eigentümerschaft
+    purpose: Wer welches Asset lesen, bearbeiten oder verwalten darf, und wer es verantwortet
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: assets
+        personalColumns: [owner_user_id, created_by_user_id]
+      - name: asset_grants
+        personalColumns: [subject_user_id, granted_by_user_id]
+      - name: capability_grants
+        personalColumns: [subject_user_id, granted_by_user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Solange das Recht besteht; danach nur in der Rechtehistorie
+      settings: []
+    visibility:
+      - Verwaltende des Assets (Freigabeliste)
+      - SYSTEM_ADMIN (Rechteübersicht, Anlegerechte)
+    accessPaths: [UI, API, DATABASE]
+    deletion: Entzug des Rechts, Löschen des Assets oder des Kontos
+    evaluations: Wer hat welches Recht an einem Asset; Rechteübersicht je Subjekt für die Verwaltung
+  - id: permission-history
+    title: Rechtehistorie
+    purpose: Stichtagsauskunft „wer konnte am Tag X was lesen“ für Prüfungen
+    personalReference: EMPLOYEE
+    tables:
+      - name: asset_grant_history
+        personalColumns: [subject_user_id, actor_user_id, valid_from, valid_to]
+      - name: asset_ownership_history
+        personalColumns: [owner_user_id, actor_user_id, valid_from, valid_to]
+      - name: asset_visibility_history
+        personalColumns: [actor_user_id]
+      - name: capability_grant_history
+        personalColumns: [subject_user_id, actor_user_id, valid_from, valid_to]
+      - name: group_membership_history
+        personalColumns: [user_id, actor_user_id, valid_from, valid_to]
+    storage: Anwendungsdatenbank, nur anfügend
+    retention:
+      rule: Voreinstellung 36 Monate nach Ende eines Intervalls, einstellbar 12 bis 120 Monate
+      settings: [permission_history_retention_settings.retention_months]
+    visibility: [AUDITOR über die Stichtagsauskunft je Objekt]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Retention-Lauf der Rechtehistorie
+    evaluations: Stichtagsauskunft je Bibliothek oder Space; jeder Abruf wird protokolliert
+  - id: groups
+    title: Gruppenmitgliedschaften und Verantwortliche
+    purpose: Rechtevergabe an Gruppen, Verantwortung für interne Gruppen
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: group_memberships
+        personalColumns: [user_id]
+      - name: group_stewards
+        personalColumns: [user_id, appointed_by_user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Solange die Mitgliedschaft besteht
+      settings: []
+    visibility:
+      - Verantwortliche der Gruppe
+      - SYSTEM_ADMIN (Abruf der Mitgliederliste wird protokolliert)
+    accessPaths: [UI, API, DATABASE]
+    deletion: Austritt, Auflösung der Gruppe, Verzeichnisabgleich oder Löschen des Kontos
+    evaluations: Mitgliederliste je Gruppe
+  - id: directory-sync
+    title: Abgleichspläne des Verzeichnisabgleichs
+    purpose: Bestätigung großer Änderungen aus dem Verzeichnis vor ihrer Anwendung
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: directory_sync_pending_plans
+        personalColumns: [report, accounts_locked]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Bis zur Bestätigung, zum Verwerfen oder zum nächsten Plan
+      settings: []
+    visibility: [SYSTEM_ADMIN (Auslieferung mit Namen wird protokolliert)]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Mit Anwendung oder Verwerfen des Plans
+    evaluations: keine
+  - id: permission-transfers
+    title: Rechteübertragungen
+    purpose: Nachweis, welche Rechte von einem Subjekt auf ein anderes übertragen wurden
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: permission_transfers
+        personalColumns:
+          [source_user_id, source_label, target_user_id, target_label, actor_user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Wie die Rechtehistorie, an deren Intervallen die Übertragung hängt
+      settings: [permission_history_retention_settings.retention_months]
+    visibility: [SYSTEM_ADMIN, AUDITOR]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Retention-Lauf der Rechtehistorie
+    evaluations: keine
+  - id: succession
+    title: Nachfolgefälle
+    purpose: Assets, deren verantwortliche Person ausgeschieden ist
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: succession_cases
+        personalColumns: [object_id, closed_by_user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Geschlossene Fälle nach der Protokollfrist
+      settings: [audit_retention_settings.retention_months]
+    visibility: [SYSTEM_ADMIN]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Retention-Lauf nach der Protokollfrist, nur geschlossene Fälle
+    evaluations: Liste offener Nachfolgefälle
+  - id: favorites
+    title: Favoriten an Assets
+    purpose: Persönliche Ordnung der eigenen Ansicht
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: asset_favorites
+        personalColumns: [user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Bis die Person sie entfernt oder Konto oder Asset gelöscht wird
+      settings: []
+    visibility: [nur die Person selbst]
+    accessPaths: [UI, API, EXPORT, DATABASE]
+    deletion: Durch die Person, mit Konto oder Asset
+    evaluations: Keine; weder protokolliert noch gezählt
+    notes:
+      - In der Menge ein Interessenprofil; nur in der Selbstauskunft exportiert
+nonPersonalTables:
+  - groups
+  - directory_sync_status
+  - directory_connectors
+  - permission_history_retention_settings
+  - permission_transfer_objects
+settings:
+  - key: permission_history_retention_settings.retention_months
+    source: DATABASE
+    defaultValue: "36"
+    range: 12 bis 120 Monate
+    effect: Aufbewahrungshöchstdauer der Rechtehistorie
+    bearings: [DATA, EVALUATION]

@@ -190,6 +190,8 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
     [0013](./decisions/0013-fehlerkriterium-retrieval-regression.md) — Evaluierung der Suchqualität
   - [0051](./decisions/0051-architekturvertrag-des-backends.md) — Architekturvertrag des Backends:
     Regeln, Prüfinstanzen und akzeptierte Abweichungen
+  - [0052](./decisions/0052-compliance-manifest.md) — Compliance-Manifest: Ablage, Schema,
+    Fristen und Prüfsummen der System-Prompts
 
 ### Demo und Vorführung
 

@@ -1,0 +1,434 @@
+title: Protokoll
+defaults:
+  auditEvents:
+    purpose: >-
+      Nachweis von Rechteänderungen, Verwaltungshandeln und Zugriffen auf Protokolldaten
+      (revisionssicheres Protokoll); kein Nachweis von Nutzungsverhalten
+    personalReference: EMPLOYEE
+    storage: Tabelle audit_log der Anwendungsdatenbank, nach Monaten partitioniert, nur anfügend
+    retention:
+      rule: >-
+        Einheitliche Frist für alle Ereignisse, Voreinstellung 36 Monate; gelöscht werden ganze
+        abgelaufene Monatspartitionen im monatlichen Lauf
+      settings: [audit_retention_settings.retention_months]
+    visibility:
+      - AUDITOR über die vier begrenzten Abfragewege (nach Objekt, Zeitraum, Ereignisart, Vorgang)
+      - AUDITOR im Vier-Augen-Verfahren der anlassbezogenen Klärung (Personenfilter, befristet)
+    accessPaths: [UI, API, EXPORT, DATABASE]
+    deletion: >-
+      Automatisch über die Datenbankfunktion opaa_audit_delete_expired_partitions (ganze
+      Monatspartitionen); einzelne Einträge sind nicht löschbar. Mit dem Konto entfällt die
+      Pseudonymzuordnung, der Eintrag bleibt ohne Personenbezug
+    evaluations: >-
+      Abfragen nach Objekt, Zeitraum, Ereignisart oder Vorgang mit Zeitraum bis 92 Tage und
+      höchstens 50 Seiten; kein Filter, keine Zählung und keine Zeitreihe je Person, keine
+      Freitextsuche. Personenfilter nur in der freigegebenen anlassbezogenen Klärung
+    recordFields:
+      - event_id
+      - recorded_at
+      - organization_id
+      - actor_kind
+      - actor_ref (Pseudonym)
+      - event_type
+      - object_type
+      - object_id
+      - object_label
+      - subject_kind
+      - subject_ref (Pseudonym bei Personen)
+      - before
+      - after
+      - outcome
+      - reason
+      - correlation_ref
+    readers:
+      - AUDITOR (Revision) zur Prüfung von Rechte- und Verwaltungshandeln
+      - Personalvertretung über den Auszug (Beschreibung des Protokolls, keine Einträge)
+    notes:
+      - >-
+        Das Protokoll enthält Handlungen von Beschäftigten (Pseudonym); Hinweis: Mitbestimmung bei
+        technischen Einrichtungen zur Verhaltens- und Leistungskontrolle prüfen (§ 80 Abs. 1
+        Nr. 21 BPersVG bzw. Landesrecht)
+data:
+  - id: audit-log
+    title: Revisionssicheres Protokoll
+    purpose: >-
+      Nachweis von Rechteänderungen, Verwaltungshandeln und Zugriffen auf Protokolldaten
+    personalReference: EMPLOYEE
+    tables:
+      - name: audit_log
+        personalColumns: [actor_ref, subject_ref, object_id, object_label, before, after, reason]
+    storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
+    retention:
+      rule: Voreinstellung 36 Monate, einstellbar 12 bis 120 Monate
+      settings: [audit_retention_settings.retention_months]
+    visibility: [AUDITOR]
+    accessPaths: [UI, API, EXPORT, DATABASE]
+    deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
+    evaluations: >-
+      Nur nach Objekt, Zeitraum, Ereignisart oder Vorgang; keine Auswertung je Person außer in
+      der anlassbezogenen Klärung im Vier-Augen-Prinzip
+    notes:
+      - Beschäftigtendaten; Mitbestimmung bei Verhaltens- und Leistungskontrolle prüfen
+  - id: audit-pseudonyms
+    title: Pseudonymzuordnung des Protokolls
+    purpose: Trennt die Person vom Protokolleintrag; nur über sie ist ein Eintrag zuordenbar
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: audit_actor_pseudonyms
+        personalColumns: [user_id, pseudonym_id]
+    storage: Anwendungsdatenbank, eigene Tabelle getrennt vom Protokoll
+    retention:
+      rule: Bis zur Löschung des Kontos
+      settings: []
+    visibility: [AUDITOR nur innerhalb der anlassbezogenen Klärung]
+    accessPaths: [DATABASE]
+    deletion: Fällt mit der Löschung des Kontos weg (Fremdschlüssel mit ON DELETE CASCADE)
+    evaluations: keine eigene Auswertung
+  - id: audit-incident-scopes
+    title: Freigaben der anlassbezogenen Klärung
+    purpose: >-
+      Vier-Augen-Freigabe eines personenbezogenen Protokollzugriffs mit festgelegter Person,
+      Zeitraum und Zweck
+    personalReference: EMPLOYEE
+    tables:
+      - name: audit_incident_scope_grants
+        personalColumns:
+          [subject_user_id, requested_by_user_id, approved_by_user_id, purpose, reason]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: >-
+        Ohne eigene Löschfrist; die Freigabe ist 30 Tage ab Freigabe nutzbar, danach nur noch
+        Nachweis
+      settings: [io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW]
+    visibility: [AUDITOR]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Keine automatische Löschung; mit dem Konto der betroffenen Person
+    evaluations: Zahl der Fälle für den Jahresbericht an die Personalvertretung (organisatorisch)
+    notes:
+      - Die Zahl der Klärungen gehört nach der Spezifikation in den Jahresbericht
+nonPersonalTables: [audit_retention_settings]
+settings:
+  - key: audit_retention_settings.retention_months
+    source: DATABASE
+    defaultValue: "36"
+    range: 12 bis 120 Monate
+    effect: Aufbewahrungsfrist des Protokolls; Verkürzung wirkt mit dem nächsten Monatslauf
+    bearings: [DATA, EVALUATION]
+  - key: io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW
+    source: CONSTANT
+    defaultValue: P30D
+    effect: Wie lange eine freigegebene anlassbezogene Klärung genutzt werden kann
+    bearings: [VISIBILITY, EVALUATION]
+auditEvents:
+  - id: ASSET_GRANT_GRANTED
+    trigger: Ein Recht an einem Asset wird vergeben, auch als Mitfreigabe aus der Freigabekette
+    details: Subjekt ist die berechtigte Person oder Gruppe; after trägt Rolle und Befristung
+  - id: ASSET_GRANT_CHANGED
+    trigger: Rolle oder Befristung eines Rechts an einem Asset wird geändert
+    details: before und after tragen Rolle und Befristung
+  - id: ASSET_GRANT_REVOKED
+    trigger: Ein Recht an einem Asset wird entzogen, auch durch eine gesenkte Freigabe-Obergrenze
+    details: before trägt Rolle und Befristung
+  - id: ASSET_GRANT_EXPIRED
+    trigger: Eine Befristung eines Rechts wird wirksam (noch nicht verdrahtet)
+  - id: ASSET_VISIBILITY_CHANGED
+    trigger: >-
+      Nicht mehr geschrieben; frühere Änderung der Katalog-Auffindbarkeit, lesbar bis zum
+      Fristablauf
+  - id: ASSET_EXTERNAL_ACCESS_CHANGED
+    trigger: Die Freigabe einer Bibliothek für Fremdzugänge wird gesetzt oder zurückgenommen
+    details: Richtung und Ablaufdatum, nie ein Name von Token-Inhabern
+  - id: ASSET_EXTERNAL_ACCESS_EXPIRED
+    trigger: Die Fremdzugangsfreigabe einer Bibliothek erlischt durch Fristablauf (Systemvorgang)
+  - id: SPACE_CREATED
+    trigger: Ein Space wird angelegt
+  - id: SPACE_CHANGED
+    trigger: >-
+      Name, Beschreibung, Anweisung oder der Schalter der automatischen Chat-Bereinigung eines
+      Space ändert sich
+    details: before und after der geänderten Felder
+  - id: SPACE_DELETED
+    trigger: Ein Space wird gelöscht
+  - id: SPACE_ARCHIVED
+    trigger: Ein Space wird stillgelegt statt gelöscht, weil er Chats anderer Personen enthält
+  - id: LIBRARY_CREATED
+    trigger: Eine Wissensbibliothek wird angelegt
+  - id: LIBRARY_CHANGED
+    trigger: Name oder Beschreibung einer Wissensbibliothek ändert sich
+  - id: LIBRARY_DELETED
+    trigger: Eine Wissensbibliothek wird gelöscht
+  - id: PRIVATE_LIBRARY_ERASED
+    trigger: Eine private Bibliothek wird mit ihrem Inhalt gelöscht
+    details: Zeitpunkt des Antrags, Anlass und Zahlen des Entfernten, nie Name, Pfad oder Inhalt
+  - id: PROMPT_LIBRARY_CREATED
+    trigger: Eine Prompt-Bibliothek wird angelegt
+  - id: PROMPT_LIBRARY_CHANGED
+    trigger: Name oder Beschreibung einer Prompt-Bibliothek ändert sich
+  - id: PROMPT_LIBRARY_DELETED
+    trigger: Eine Prompt-Bibliothek wird mit ihren Prompts gelöscht
+  - id: PROMPT_CREATED
+    trigger: Ein Prompt wird einer Bibliothek hinzugefügt
+    details: Nur die Bibliothek, nie Titel oder Text
+  - id: PROMPT_CHANGED
+    trigger: Ein Prompt wird geändert
+    details: Nur die Namen der geänderten Felder
+  - id: PROMPT_DELETED
+    trigger: Ein Prompt wird entfernt
+  - id: LIBRARY_SOURCE_UPDATED
+    trigger: Die Quellkonfiguration einer Bibliothek ändert sich
+    details: Nur welche Felder sich änderten, nie Werte oder Zugangsdaten
+  - id: GROUP_CREATED
+    trigger: Eine Gruppe wird angelegt
+  - id: GROUP_CHANGED
+    trigger: Name oder Beschreibung einer Gruppe ändert sich
+  - id: GROUP_DELETED
+    trigger: Eine Gruppe wird gelöscht oder aufgelöst
+  - id: SPACE_MEMBER_ADDED
+    trigger: Eine Person oder Gruppe wird in einen Space aufgenommen
+    details: Bei externen Personen zusätzlich die ausdrückliche Bestätigung
+  - id: SPACE_MEMBER_ROLE_CHANGED
+    trigger: Die Rolle eines Space-Mitglieds ändert sich
+  - id: SPACE_MEMBER_REMOVED
+    trigger: Ein Mitglied wird aus einem Space entfernt
+  - id: GROUP_MEMBER_ADDED
+    trigger: Eine Person wird in eine Gruppe aufgenommen
+  - id: GROUP_MEMBER_REMOVED
+    trigger: Eine Person wird aus einer Gruppe entfernt
+  - id: GROUP_STEWARD_APPOINTED
+    trigger: Eine Person wird für eine interne Gruppe verantwortlich benannt
+  - id: GROUP_STEWARD_DISMISSED
+    trigger: Eine verantwortliche Person wird entlassen oder gibt die Verantwortung ab
+  - id: GROUP_RELEASE_CHANGED
+    trigger: Eine interne Gruppe wird zur Verwendung freigegeben oder die Freigabe zurückgenommen
+  - id: GROUP_PROTECTION_CHANGED
+    trigger: Das Schutzkennzeichen einer Gruppe wird gesetzt oder gelöst
+  - id: GROUP_DEACTIVATED
+    trigger: Eine interne Gruppe wird vorübergehend deaktiviert
+    details: Gezählte Folgen, nie Namen von Mitgliedern
+  - id: GROUP_REACTIVATED
+    trigger: Eine deaktivierte Gruppe wird wieder aktiviert
+  - id: GROUP_MEMBERS_READ
+    trigger: Die Systemverwaltung ruft die Mitgliederliste einer Gruppe ab, die sie nicht verantwortet
+    details: Zahl der Mitglieder
+  - id: ASSET_SHARED_TO_SPACE
+    trigger: Ein Asset wird in einem Space bereitgestellt
+  - id: ASSET_DETACHED_FROM_SPACE
+    trigger: Ein Asset wird aus einem Space gelöst
+  - id: LIBRARY_SHARED_TO_SPACE
+    trigger: Nicht mehr geschrieben; frühere Fassung von ASSET_SHARED_TO_SPACE
+  - id: LIBRARY_DETACHED_FROM_SPACE
+    trigger: Nicht mehr geschrieben; frühere Fassung von ASSET_DETACHED_FROM_SPACE
+  - id: ASSET_OWNER_CHANGED
+    trigger: Die Eigentümerschaft eines Assets geht über
+  - id: ASSET_OWNERSHIP_CLAIMED
+    trigger: Ein Asset ohne Zuständigkeit wird übernommen (noch nicht verdrahtet)
+  - id: ASSET_SUCCESSION_OPENED
+    trigger: Ein Asset geht in „Nachfolge offen“ über (noch nicht verdrahtet)
+  - id: SYSTEM_ADMIN_ROLE_GRANTED
+    trigger: Die Rolle SYSTEM_ADMIN wird erteilt
+  - id: SYSTEM_ADMIN_ROLE_REVOKED
+    trigger: Die Rolle SYSTEM_ADMIN wird entzogen
+  - id: AUDITOR_ROLE_GRANTED
+    trigger: Die Rolle AUDITOR wird erteilt
+  - id: AUDITOR_ROLE_REVOKED
+    trigger: Die Rolle AUDITOR wird entzogen
+  - id: SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED
+    trigger: >-
+      Der Entzug von SYSTEM_ADMIN für die letzte Systemverwaltung durch den Identitätsanbieter wird
+      abgewiesen
+  - id: ACCOUNT_DEACTIVATED
+    trigger: Ein Konto wird deaktiviert (noch nicht verdrahtet)
+  - id: ACCOUNT_REAUTHENTICATION_FORCED
+    trigger: Eine erneute Anmeldung wird erzwungen (noch nicht verdrahtet)
+  - id: API_TOKEN_ISSUED
+    trigger: Ein persönliches Zugangstoken für Fremdzugänge wird ausgestellt
+    details: Bibliotheksauswahl und Ablauf; Token-Kennung statt Tokenname
+  - id: API_TOKEN_REVOKED
+    trigger: Ein Zugangstoken wird von der Person oder der Systemverwaltung widerrufen
+    details: Anlass und wer widerrufen hat
+  - id: API_TOKEN_EXPIRED
+    trigger: Ein Zugangstoken erlischt durch Ablauf oder Kontenlebenszyklus
+    details: after.reason nennt EXPIRED oder ACCOUNT_LIFECYCLE
+  - id: DIRECTORY_SYNC_CHANGE_APPLIED
+    trigger: Ein Verzeichnisabgleich bewirkt eine einzelne Rechteänderung
+    details: Je Änderung ein Eintrag, verbunden über correlation_ref
+  - id: DIRECTORY_SYNC_RUN_COMPLETED
+    trigger: Ein Verzeichnislauf endet (Kopfeintrag mit Ergebnis)
+    details: Oberhalb der Schwelle mit bestätigender Person und Anlass in reason
+  - id: DIRECTORY_SYNC_PLAN_DISCARDED
+    trigger: Ein vorgelegter Abgleichsplan oberhalb der Schwelle wird verworfen
+  - id: DIRECTORY_SYNC_REPORT_READ
+    trigger: Die Systemverwaltung erhält einen Abgleichsbericht mit Namen
+    details: Anbieter, Weg und Zahl der genannten Gruppen und Personen, nie Namen
+  - id: DIRECTORY_ACCOUNT_LOCKED
+    trigger: Ein Konto verliert den Zugang, weil das Verzeichnis es deaktiviert oder nicht mehr führt
+  - id: DIRECTORY_ACCOUNT_UNLOCKED
+    trigger: Das Verzeichnis meldet ein gesperrtes Konto wieder als aktiv
+  - id: GOVERNANCE_SETTINGS_CHANGED
+    trigger: Governance-Einstellungen ändern sich (noch nicht verdrahtet)
+  - id: AUDIT_LOG_CONFIGURATION_CHANGED
+    trigger: Die Protokollkonfiguration ändert sich, einschließlich der Aufbewahrungsfrist
+    details: before und after der Frist
+  - id: PERMISSION_HISTORY_RETENTION_CHANGED
+    trigger: Die Aufbewahrungshöchstdauer der Rechtehistorie ändert sich
+    details: before und after der Monatszahl
+  - id: MODEL_POLICY_CHANGED
+    trigger: Modellvorgaben oder die Freigabe externer Modelle ändern sich (noch nicht verdrahtet)
+  - id: CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED
+    trigger: Die Freigabe-Obergrenze einer konnektor-gespeisten Bibliothek wird gesetzt oder geändert
+  - id: PRIVATE_STORAGE_QUOTA_CHANGED
+    trigger: Das hausweite Speicherkontingent privater Bibliotheken ändert sich
+  - id: CAPABILITY_GRANTED
+    trigger: Ein Anlegerecht wird einem Konto, einer Gruppe oder allen Konten erteilt
+  - id: CAPABILITY_REVOKED
+    trigger: Ein Anlegerecht wird entzogen
+  - id: PERMISSION_TRANSFER_PREVIEWED
+    trigger: Die Vorschau einer Rechteübertragung wird abgerufen, auch ohne Ausführung
+  - id: PERMISSION_TRANSFER_EXECUTED
+    trigger: Die Rechte eines Subjekts werden auf ein anderes übertragen
+    details: Quelle, Ziel, Umfang und Zahl der Zeilen
+  - id: INDEXING_PIPELINE_REINDEX_TRIGGERED
+    trigger: Eine Neuindexierung nach Pipeline-Version wird ausgelöst
+  - id: INDEXING_METADATA_BACKFILL_TRIGGERED
+    trigger: Ein Metadaten-Bestandslauf über eine Bibliothek wird ausgelöst
+  - id: INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED
+    trigger: Ein Nachlauf mit neuem Kontextpräfix wird ausgelöst
+  - id: EMBEDDING_REINDEX_STARTED
+    trigger: Eine Neueinbettung des Vektorindex wird gestartet
+  - id: EMBEDDING_REINDEX_CANCELLED
+    trigger: Eine laufende Neueinbettung wird abgebrochen
+  - id: EMBEDDING_REINDEX_COMPLETED
+    trigger: Eine Neueinbettung endet mit Umschaltung oder Fehler (Systemvorgang)
+  - id: UPLOAD_ORPHAN_ORIGINALS_DELETED
+    trigger: Verwaiste Originale werden aus der Originalablage entfernt
+    details: Die entfernten Ablageorte
+  - id: DOCUMENT_METADATA_CHANGED
+    trigger: Eine Person setzt, ändert oder entfernt einen Kernmetadatenwert von Hand
+    details: Dokument, Feld, alter und neuer Wert; Sammelzuweisungen über correlation_ref
+  - id: BRANDING_SETTINGS_CHANGED
+    trigger: Das Erscheinungsbild (Name, Claim, Logo, Farben) ändert sich
+  - id: OIDC_PROVIDER_CREATED
+    trigger: Ein Identitätsanbieter wird angelegt
+  - id: OIDC_PROVIDER_CHANGED
+    trigger: Ein Identitätsanbieter wird geändert
+  - id: OIDC_PROVIDER_DELETED
+    trigger: Ein Identitätsanbieter wird gelöscht
+  - id: OIDC_PROVIDER_ENABLED
+    trigger: Ein Identitätsanbieter wird eingeschaltet
+  - id: OIDC_PROVIDER_DISABLED
+    trigger: Ein Identitätsanbieter wird ausgeschaltet
+  - id: LLM_MODEL_CREATED
+    trigger: Ein Chatmodell wird in der Modellverwaltung angelegt
+  - id: LLM_MODEL_CHANGED
+    trigger: Ein Chatmodell wird geändert
+    details: Der Zugangsschlüssel nur als „gesetzt ja/nein“
+  - id: LLM_MODEL_DELETED
+    trigger: Ein Chatmodell wird gelöscht
+  - id: LLM_MODEL_ACTIVATED
+    trigger: Ein Chatmodell wird zum systemweit aktiven Modell
+  - id: LLM_MODEL_DEACTIVATED
+    trigger: Ein Chatmodell ist nicht mehr aktiv, weil ein anderes aktiviert wurde
+  - id: DIAGNOSTIC_IMPERSONATION_GRANTED
+    trigger: Die Befugnis „Sicht als“ wird einer Person erteilt
+  - id: DIAGNOSTIC_IMPERSONATION_REVOKED
+    trigger: Die Befugnis „Sicht als“ wird vor Ablauf widerrufen
+  - id: DIAGNOSTIC_CONTEXT_RETENTION_CHANGED
+    trigger: Die Aufbewahrungsfrist des Diagnoseprotokolls ändert sich
+  - id: LIBRARY_DIAGNOSTICS_LOCK_CHANGED
+    trigger: Die Diagnosesperre einer Bibliothek wird gesetzt oder aufgehoben
+  - id: SEARCH_DIAGNOSIS_PROFILE_RUN
+    trigger: Eine Suchdiagnose läuft im Rechtekontext einer Gruppe und eines Space
+  - id: AUDIT_LOG_ACCESSED
+    trigger: Protokolldaten werden gelesen, ausgewertet oder exportiert, auch abgewiesen
+    details: Abfrageweg, Zeitraum, Anlass und Umfang
+  - id: PERMISSION_HISTORY_ACCESSED
+    trigger: Eine Stichtagsauskunft aus der Rechtehistorie wird abgerufen, auch abgewiesen
+  - id: CONNECTION_LOG_ACCESSED
+    trigger: Das Verbindungsprotokoll wird gelesen, auch abgewiesen
+    details: Zeitraum und Filter
+  - id: CONNECTION_LOG_RETENTION_CHANGED
+    trigger: Die Aufbewahrungsfrist des Verbindungsprotokolls ändert sich
+  - id: OUTBOUND_PROXY_CHANGED
+    trigger: Der hausweite Ausgangsproxy oder seine Ausnahmeliste ändert sich
+  - id: LOCAL_SESSION_REVOKED
+    trigger: Sitzungen eines lokalen Kontos werden fremdveranlasst beendet
+    details: Grund in after; die eigene Abmeldung erzeugt keinen Eintrag
+  - id: LOCAL_PASSWORD_CHANGED
+    trigger: Eine Person ändert ihr Passwort
+  - id: LOCAL_ADMIN_SEEDED
+    trigger: Das Notanker-Konto der Systemverwaltung wird beim ersten Start angelegt
+  - id: LOCAL_ADMIN_RESET
+    trigger: Das Notanker-Konto wird per Startschalter wiederhergestellt
+  - id: LOCAL_BOOTSTRAP_ACCOUNT_LOGIN
+    trigger: Erfolgreiche Anmeldung mit dem Notanker-Konto
+  - id: LOCAL_ACCOUNTS_ENABLED
+    trigger: Die lokale Kontenverwaltung wird eingeschaltet
+  - id: LOCAL_ACCOUNTS_DISABLED
+    trigger: Die lokale Kontenverwaltung wird ausgeschaltet
+  - id: LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS
+    trigger: Ein lokales Konto wird nach zu vielen Fehlversuchen gesperrt
+    details: Kein Zähler, kein einzelner Fehlversuch
+  - id: MAIL_SETTINGS_CHANGED
+    trigger: Die SMTP-Einstellungen ändern sich
+    details: Das Passwort nur als „gesetzt ja/nein“
+  - id: MAIL_TEMPLATE_CHANGED
+    trigger: Eine Mail-Vorlage wird überschrieben
+  - id: MAIL_TEMPLATE_RESET
+    trigger: Eine überschriebene Mail-Vorlage wird zurückgesetzt
+  - id: MAIL_TEST_SENT
+    trigger: Die Systemverwaltung löst einen Testversand aus
+  - id: LOCAL_USER_CREATED
+    trigger: Die Systemverwaltung legt ein lokales Konto an
+    details: Modus und Ablauf; nie Adresse, Name oder Anlagegrund
+  - id: LOCAL_USER_INVITED
+    trigger: Ein Einladungslink wird ausgestellt
+    details: Zustellweg (MAIL_SENT, MAIL_FAILED, LINK_DISPLAYED)
+  - id: LOCAL_USER_CHANGED
+    trigger: Die Systemverwaltung ändert ein lokales Konto
+    details: Vorher/Nachher nur für das Ablaufdatum, sonst nur Feldnamen
+  - id: LOCAL_USER_LOCKED
+    trigger: Ein lokales Konto wird durch die Verwaltung oder wegen Inaktivität gesperrt
+    details: after.reason ADMIN oder INACTIVITY
+  - id: LOCAL_USER_UNLOCKED
+    trigger: Ein lokales Konto wird entsperrt
+  - id: LOCAL_USER_PASSWORD_RESET_REQUESTED
+    trigger: Die Systemverwaltung stellt einen Rücksetzlink aus
+  - id: LOCAL_USER_PASSWORD_GENERATED
+    trigger: Die Systemverwaltung setzt ein erzeugtes Passwort
+  - id: LOCAL_USER_DELETED
+    trigger: Ein lokales Konto ohne Besitz wird gelöscht
+  - id: LOCAL_ACCOUNTS_SETTINGS_CHANGED
+    trigger: Die Einstellungen der lokalen Kontenverwaltung ändern sich
+  - id: LOCAL_PASSWORD_SET
+    trigger: Eine Person setzt ihr Passwort über einen Einladungs- oder Rücksetzlink
+  - id: LOCAL_USER_REGISTERED
+    trigger: Ein lokales Konto entsteht durch Selbstregistrierung
+  - id: LOCAL_USER_HANDOVER_REQUESTED
+    trigger: Die Übergabe eines lokalen Kontos an eine Anbieteridentität wird angestoßen
+    details: Anbieter-Kennung und Zustellweg, nie das Subject
+  - id: LOCAL_USER_HANDED_OVER
+    trigger: Die Person schließt die Übergabe an die Anbieteridentität ab
+  - id: EXTERNAL_ACCESS_SETTINGS_CHANGED
+    trigger: Die Kanaleinstellungen der Fremdzugänge ändern sich
+    details: Vorher/Nachher der geänderten Schlüssel; der Einleitungstext erzeugt keinen Eintrag
+  - id: CONNECTION_PROFILE_CREATED
+    trigger: Ein Verbindungsprofil wird angelegt
+  - id: CONNECTION_PROFILE_CHANGED
+    trigger: Ein Verbindungsprofil wird geändert
+    details: Zahl der Verbindungen, die ihr Geheimnis verloren
+  - id: CONNECTION_PROFILE_DELETED
+    trigger: Ein Verbindungsprofil wird gelöscht
+  - id: CONNECTION_PROFILE_DISCONNECTED
+    trigger: Die Notabschaltung „Alle Verbindungen trennen“ verwirft alle Geheimnisse eines Profils
+  - id: CONNECTOR_LOCKED
+    trigger: Ein Konnektortyp oder Verbindungsprofil wird gesperrt
+  - id: CONNECTOR_UNLOCKED
+    trigger: Eine Konnektorsperre wird aufgehoben
+  - id: CONNECTOR_PROFILE_REQUIRED
+    trigger: Ein Konnektortyp ist nur noch über Zugänge nutzbar
+  - id: CONNECTOR_PROFILE_OPTIONAL
+    trigger: Ein Konnektortyp ist wieder mit eigener Adresse nutzbar
+  - id: CONNECTION_PROFILE_REQUEST_RESOLVED
+    trigger: Nicht mehr geschrieben; frühere Erledigung einer Profilanfrage
+  - id: CONNECTION_PROFILE_SIGN_IN_TESTED
+    trigger: Die Systemverwaltung testet die Anmeldung eines Profils

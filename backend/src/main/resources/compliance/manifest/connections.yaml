@@ -1,0 +1,80 @@
+title: Verbindungen
+data:
+  - id: connected-accounts
+    title: Verbundene Konten und ihre Geheimnisse
+    purpose: Zugriff auf Quellen im Namen einer Person oder eines Dienstkontos
+    personalReference: EMPLOYEE
+    tables:
+      - name: connected_accounts
+        personalColumns:
+          [user_id, account_label_ciphertext, connected_at, reconnected_at, expired_at, last_used_at]
+      - name: connection_tokens
+        personalColumns: [pending_user_id, pending_account_label, issued_for]
+      - name: connection_authorizations
+        personalColumns: [user_id, responsible_id]
+      - name: library_connections
+        personalColumns: [account_label, connected_by, responsible_id]
+    storage: Anwendungsdatenbank; Geheimnisse verschlüsselt
+    retention:
+      rule: >-
+        Bis zur Trennung; nach 90 Tagen ohne Anmeldung ruhen die Verbindungen einer Person
+      settings: [opaa.connection.inactivity-threshold-days]
+    visibility: [die Person selbst, SYSTEM_ADMIN (maskierte Zahlen je Profil)]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Trennung durch die Person, Profil- oder Kontolöschung, Notabschaltung
+    evaluations: Gezählte, maskierte Übersicht abgelaufener Verbindungen je Profil
+  - id: connection-person-states
+    title: Ruhezustand der Verbindungen einer Person
+    purpose: Verbindungen inaktiver oder deaktivierter Personen ruhen lassen und später löschen
+    personalReference: EMPLOYEE
+    tables:
+      - name: connection_person_states
+        personalColumns: [user_id, deactivated_since, dormant_since, checked_at]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Bis die Person wieder aktiv ist oder gelöscht wird
+      settings:
+        - opaa.connection.inactivity-threshold-days
+        - opaa.connection.private-library-deletion-days
+    visibility: [niemand über die Oberfläche]
+    accessPaths: [DATABASE]
+    deletion: Mit dem Konto
+    evaluations: keine
+  - id: connection-log
+    title: Verbindungsprotokoll
+    purpose: Nachweis, wann Verbindungen entstanden, genutzt, getrennt oder gelöscht wurden
+    personalReference: EMPLOYEE
+    tables:
+      - name: connection_log
+        personalColumns: [actor_ref, person_ref, account_label]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Voreinstellung 12 Monate, einstellbar 6 bis 24 Monate
+      settings: [connection_log_retention_settings.retention_months]
+    visibility: [AUDITOR]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Monatlicher Retention-Lauf
+    evaluations: Abfrage nach Zeitraum und Filtern; jeder Abruf wird protokolliert
+nonPersonalTables:
+  - connection_profiles
+  - connector_type_policies
+  - connection_log_retention_settings
+settings:
+  - key: connection_log_retention_settings.retention_months
+    source: DATABASE
+    defaultValue: "12"
+    range: 6 bis 24 Monate
+    effect: Aufbewahrungsfrist des Verbindungsprotokolls
+    bearings: [DATA]
+  - key: opaa.connection.inactivity-threshold-days
+    source: PROPERTY
+    defaultValue: "90"
+    range: 30 bis 365 Tage
+    effect: Tage ohne Anmeldung, nach denen die Verbindungen einer Person ruhen
+    bearings: [DATA, DATA_FLOW]
+  - key: opaa.connection.private-library-deletion-days
+    source: PROPERTY
+    defaultValue: "30"
+    range: 1 bis 90 Tage
+    effect: Tage, nach denen private Bibliotheken einer deaktivierten Person gelöscht werden
+    bearings: [DATA]
