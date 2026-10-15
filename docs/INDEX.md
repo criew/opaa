@@ -179,6 +179,13 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 - **[`SECURITY.md`](../SECURITY.md)** — Sicherheitsrichtlinie: vertraulicher Meldeweg für
   Sicherheitslücken, unterstützte Versionen und Ablauf bis zum Security Advisory
 
+### Unterlagen für Behörden
+
+- **[`behoerden/README.md`](./behoerden/README.md)** — Vorlagen und Erläuterungen entlang der
+  Behördenreise (Entscheidung, Markterkundung, Vergabe, Datenschutz, Mitbestimmung,
+  Informationssicherheit, Betrieb); Aufbau, Kopfvermerk, Haftungshinweis und Verweise auf die
+  generierten Faktenblätter
+
 ### Architekturentscheidungen
 
 - **[`decisions/`](./decisions/)** — alle ADRs. Einstiege:
