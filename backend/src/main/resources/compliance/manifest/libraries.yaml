@@ -6,12 +6,12 @@ data:
     personalReference: IDENTIFIABLE
     tables:
       - name: knowledge_libraries
-        personalColumns: [external_access_set_by_user_id, source_credentials, source_url]
+        personalColumns:
+          [external_access_set_by_user_id, source_credentials, source_url, source_path]
         nonPersonalColumns:
           - id
           - organization_id
           - source_type
-          - source_path
           - schedule_enabled
           - schedule_cron
           - diagnostics_locked
@@ -42,7 +42,14 @@ data:
     personalReference: IDENTIFIABLE
     tables:
       - name: documents
-        personalColumns: [file_name, file_path, uploaded_by_user_id, source_entry_url]
+        personalColumns:
+          - file_name
+          - file_path
+          - source_hierarchy_path
+          - source_container_key
+          - context_prefix_title
+          - uploaded_by_user_id
+          - source_entry_url
         nonPersonalColumns:
           - id
           - content_type
@@ -59,12 +66,9 @@ data:
           - created_at
           - folder_id
           - parent_document_id
-          - source_container_key
-          - source_hierarchy_path
           - metadata_extraction_version
           - context_prefix_stamp
           - context_prefix_eligible
-          - context_prefix_title
           - model_extraction_version
           - keyword_extraction_version
       - name: chunk_full_text
@@ -95,8 +99,8 @@ data:
         personalColumns: [message, reference]
         nonPersonalColumns: [id, job_id, category, created_at]
       - name: source_sync_revisits
-        personalColumns: [hierarchy_path]
-        nonPersonalColumns: [id, sync_state_id, container_key, created_at]
+        personalColumns: [hierarchy_path, container_key]
+        nonPersonalColumns: [id, sync_state_id, created_at]
     storage: >-
       Anwendungsdatenbank (Textabschnitte, Volltext- und Vektorindex); Originale in der
       Originalablage

@@ -42,7 +42,6 @@ defaults:
       - correlation_ref
     readers:
       - AUDITOR (Revision) zur Prüfung von Rechte- und Verwaltungshandeln
-      - Personalvertretung über den Auszug (Beschreibung des Protokolls, keine Einträge)
     notes:
       - >-
         Das Protokoll enthält Handlungen von Beschäftigten (Pseudonym); Hinweis: Mitbestimmung bei
@@ -89,7 +88,7 @@ data:
         nonPersonalColumns: [organization_id, created_at]
     storage: Anwendungsdatenbank, eigene Tabelle getrennt vom Protokoll
     retention:
-      rule: Bis zur Löschung des Kontos
+      rule: Bis zur Löschung des Kontos, bei gesperrten Konten damit faktisch unbefristet
       settings: []
     visibility: [AUDITOR nur innerhalb der anlassbezogenen Klärung]
     accessPaths: [DATABASE]
@@ -117,12 +116,15 @@ data:
     storage: Anwendungsdatenbank
     retention:
       rule: >-
-        Ohne eigene Löschfrist; die Freigabe ist 30 Tage ab Freigabe nutzbar, danach nur noch
-        Nachweis
+        Anträge und Freigaben unbegrenzt, ohne Löschfrist und ohne Löschweg, samt Zweck und
+        Begründung, auch nie freigegebene Anträge; eine Freigabe ist 30 Tage ab Freigabe nutzbar,
+        danach nur noch Nachweis
       settings: [io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW]
     visibility: [AUDITOR]
     accessPaths: [UI, API, DATABASE]
-    deletion: Keine automatische Löschung; mit dem Konto der betroffenen Person
+    deletion: >-
+      Kein Löschweg, weder automatisch noch von Hand; ein Antrag oder eine Freigabe verhindert die
+      Löschung der Konten der betroffenen, der beantragenden und der freigebenden Person
     evaluations: Zahl der Fälle für den Jahresbericht an die Personalvertretung (organisatorisch)
     notes:
       - Die Zahl der Klärungen gehört nach der Spezifikation in den Jahresbericht
@@ -417,7 +419,7 @@ auditEvents:
   - id: LOCAL_USER_PASSWORD_GENERATED
     trigger: Die Systemverwaltung setzt ein erzeugtes Passwort
   - id: LOCAL_USER_DELETED
-    trigger: Ein lokales Konto ohne Besitz wird gelöscht
+    trigger: Ein lokales Konto, auf das nichts verweist, wird gelöscht
   - id: LOCAL_ACCOUNTS_SETTINGS_CHANGED
     trigger: Die Einstellungen der lokalen Kontenverwaltung ändern sich
   - id: LOCAL_PASSWORD_SET

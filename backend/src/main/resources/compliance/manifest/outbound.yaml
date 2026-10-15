@@ -13,8 +13,9 @@ dataFlows:
       Jede Chat-Anfrage, Zerlegung einer Suchanfrage, Chattitel und -notiz, Metadatenextraktion beim
       Indizieren, Statusprüfung des Modells
     switchOff: >-
-      Nicht abschaltbar, der Chat braucht ein Modell; das Ziel bestimmt die Systemverwaltung, die
-      Voreinstellung ist ein lokaler Modellserver
+      Nicht abschaltbar, der Chat braucht ein Modell; das Ziel bestimmt die Systemverwaltung.
+      Voreinstellung der Anwendung ist ein lokaler Modellserver; das Helm-Chart hat keine
+      Voreinstellung und verlangt die Adresse
     settings: [llm_models.base_url, llm_models.model_identifier, opaa.query.query-decomposition-enabled]
   - id: embedding-model
     group: MODEL
@@ -23,8 +24,8 @@ dataFlows:
     data: Textabschnitte der indizierten Dokumente, Suchanfragen, Prüftexte der Statusanzeige
     trigger: Indizierung und Neueinbettung, jede Suche und jede Chat-Anfrage, Statusprüfung
     switchOff: >-
-      Nicht abschaltbar, die Suche braucht Einbettungen; Voreinstellung ist ein lokaler
-      Modellserver
+      Nicht abschaltbar, die Suche braucht Einbettungen. Voreinstellung der Anwendung ist ein
+      lokaler Modellserver; das Helm-Chart hat keine Voreinstellung und verlangt die Adresse
     settings: [spring.ai.openai.embedding.base-url, spring.ai.openai.embedding.model]
   - id: rerank-model
     group: MODEL
@@ -210,5 +211,7 @@ dataFlows:
     target: Der S3-kompatible Objektspeicher der Originalablage
     data: Die hochgeladenen Originaldateien
     trigger: Upload, Öffnen und Löschen eines Originals
-    switchOff: Nur bei Ablage in S3; Voreinstellung ist das Dateisystem
+    switchOff: >-
+      Nur bei Ablage in S3; Voreinstellung der Anwendung ist das Dateisystem, das Helm-Chart setzt
+      S3 voreingestellt
     settings: [opaa.upload.store, opaa.upload.s3.endpoint]
