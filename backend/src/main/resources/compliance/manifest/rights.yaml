@@ -44,7 +44,9 @@ data:
       - Verwaltende des Assets (Freigabeliste)
       - SYSTEM_ADMIN (Rechteübersicht, Anlegerechte)
     accessPaths: [UI, API, DATABASE]
-    deletion: Entzug des Rechts, Löschen des Assets oder des Kontos
+    deletion: >-
+      Entzug des Rechts oder Löschen des Assets; nicht mit dem Konto, ein Recht verhindert die
+      Löschung des Kontos
     evaluations: Wer hat welches Recht an einem Asset; Rechteübersicht je Subjekt für die Verwaltung
   - id: permission-history
     title: Rechtehistorie
@@ -132,7 +134,9 @@ data:
       - Verantwortliche der Gruppe
       - SYSTEM_ADMIN (Abruf der Mitgliederliste wird protokolliert)
     accessPaths: [UI, API, DATABASE]
-    deletion: Austritt, Auflösung der Gruppe, Verzeichnisabgleich oder Löschen des Kontos
+    deletion: >-
+      Austritt, Auflösung der Gruppe oder Verzeichnisabgleich; nicht mit dem Konto, Verantwortung
+      und Eintrag der Mitgliedschaftshistorie verhindern die Löschung des Kontos
     evaluations: Mitgliederliste je Gruppe
   - id: directory-sync
     title: Abgleichspläne des Verzeichnisabgleichs

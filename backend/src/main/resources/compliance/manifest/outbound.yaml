@@ -210,5 +210,7 @@ dataFlows:
     target: Der S3-kompatible Objektspeicher der Originalablage
     data: Die hochgeladenen Originaldateien
     trigger: Upload, Öffnen und Löschen eines Originals
-    switchOff: Nur bei Ablage in S3; Voreinstellung ist das Dateisystem
+    switchOff: >-
+      Nur bei Ablage in S3; Voreinstellung der Anwendung ist das Dateisystem, das Helm-Chart setzt
+      S3 voreingestellt
     settings: [opaa.upload.store, opaa.upload.s3.endpoint]

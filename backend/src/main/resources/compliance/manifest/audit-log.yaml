@@ -42,7 +42,6 @@ defaults:
       - correlation_ref
     readers:
       - AUDITOR (Revision) zur Prüfung von Rechte- und Verwaltungshandeln
-      - Personalvertretung über den Auszug (Beschreibung des Protokolls, keine Einträge)
     notes:
       - >-
         Das Protokoll enthält Handlungen von Beschäftigten (Pseudonym); Hinweis: Mitbestimmung bei
@@ -117,12 +116,14 @@ data:
     storage: Anwendungsdatenbank
     retention:
       rule: >-
-        Ohne eigene Löschfrist; die Freigabe ist 30 Tage ab Freigabe nutzbar, danach nur noch
-        Nachweis
+        Unbegrenzt, ohne Löschfrist und ohne Löschweg, samt Zweck und Begründung; die Freigabe ist
+        30 Tage ab Freigabe nutzbar, danach nur noch Nachweis
       settings: [io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW]
     visibility: [AUDITOR]
     accessPaths: [UI, API, DATABASE]
-    deletion: Keine automatische Löschung; mit dem Konto der betroffenen Person
+    deletion: >-
+      Kein Löschweg, weder automatisch noch von Hand; eine Freigabe verhindert die Löschung der
+      Konten der betroffenen, der beantragenden und der freigebenden Person
     evaluations: Zahl der Fälle für den Jahresbericht an die Personalvertretung (organisatorisch)
     notes:
       - Die Zahl der Klärungen gehört nach der Spezifikation in den Jahresbericht

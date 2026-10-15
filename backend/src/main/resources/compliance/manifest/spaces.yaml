@@ -30,7 +30,9 @@ data:
       settings: []
     visibility: [Mitglieder des Space, SYSTEM_ADMIN]
     accessPaths: [UI, API, DATABASE]
-    deletion: Entfernen des Mitglieds, Löschen des Space oder des Kontos
+    deletion: >-
+      Entfernen des Mitglieds oder Löschen des Space; mit dem Konto nur der persönliche Space, jede
+      weitere Mitgliedschaft verhindert über ihre Historie die Löschung des Kontos
     evaluations: Mitgliederliste je Space
   - id: space-membership-history
     title: Historie der Space-Mitgliedschaften

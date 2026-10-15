@@ -64,7 +64,9 @@ data:
       settings: [opaa.connection.inactivity-threshold-days]
     visibility: [die Person selbst, SYSTEM_ADMIN (maskierte Zahlen je Profil)]
     accessPaths: [UI, API, DATABASE]
-    deletion: Trennung durch die Person, Profil- oder Kontolöschung, Notabschaltung
+    deletion: >-
+      Trennung durch die Person, Profillöschung, Notabschaltung; nicht mit dem Konto, eine
+      Verbindung verhindert die Löschung des Kontos
     evaluations: Gezählte, maskierte Übersicht abgelaufener Verbindungen je Profil
   - id: connection-person-states
     title: Ruhezustand der Verbindungen einer Person

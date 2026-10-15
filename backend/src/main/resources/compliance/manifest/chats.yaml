@@ -10,8 +10,8 @@ data:
         nonPersonalColumns:
           [id, space_id, organization_id, use_knowledge, status, title_source, import_key]
       - name: chat_messages
-        personalColumns: [content, sources, used_prompt_title, created_at]
-        nonPersonalColumns: [id, chat_id, sequence, role, content_tsv, used_prompt_id]
+        personalColumns: [content, content_tsv, sources, used_prompt_title, created_at]
+        nonPersonalColumns: [id, chat_id, sequence, role, used_prompt_id]
       - name: chat_note_items
         personalColumns: [text]
         nonPersonalColumns: [id, chat_id, organization_id, position, kind, created_at]
@@ -29,7 +29,9 @@ data:
         - opaa.chat.auto-cleanup.delete-after-days
     visibility: [nur die Autorin oder der Autor]
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Durch die Person, automatische Bereinigung je Space, mit dem Konto
+    deletion: >-
+      Durch die Person oder die automatische Bereinigung je Space; nicht mit dem Konto, ein
+      vorhandener Chat verhindert die Löschung des Kontos
     evaluations: >-
       Chatsuche der Person über eigene Chats; keine Auswertung durch andere, Fragen werden nicht
       protokolliert
