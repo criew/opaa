@@ -198,7 +198,9 @@ final class ManifestCompleteness {
             + added
             + ".\n  In "
             + place.where()
-            + ", ";
+            + ", table '"
+            + table.name()
+            + "', ";
     if (place.dataId() == null) {
       return head
           + "if no new column points at a person, set:\n"
@@ -216,7 +218,7 @@ final class ManifestCompleteness {
           + flow(place.nonPersonal());
     }
     return head
-        + "add each column to the list that fits it - personalColumns if it identifies a person or"
+        + "replace the list that fits each column - personalColumns if it identifies a person or"
         + " records what a person did or when (id, name, address, free text, time of an action),"
         + " nonPersonalColumns otherwise:\n"
         + "        personalColumns: "

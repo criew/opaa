@@ -45,7 +45,8 @@ class ManifestCompletenessTest {
                 + FILE
                 + ").\n"
                 + "  In backend/src/main/resources/compliance/manifest/protocol.yaml, data entry"
-                + " 'audit-log', add each column to the list that fits it - personalColumns if it"
+                + " 'audit-log', table 'audit_log', replace the list that fits each column -"
+                + " personalColumns if it"
                 + " identifies a person or records what a person did or when (id, name, address,"
                 + " free text, time of an action), nonPersonalColumns otherwise:\n"
                 + "        personalColumns: [actor_ref, subject_ref, phone]\n"
@@ -63,7 +64,8 @@ class ManifestCompletenessTest {
         .singleElement()
         .asString()
         .contains(
-            "nonPersonalTables, if no new column points at a person, set:\n"
+            "nonPersonalTables, table 'audit_retention_settings', if no new column points at a"
+                + " person, set:\n"
                 + "    audit_retention_settings: [id, retention_months, updated_by]")
         .contains("personalColumns: [updated_by]");
   }
