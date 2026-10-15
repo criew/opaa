@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.Capability;
 import io.opaa.api.types.SystemRole;
 import io.opaa.architecture.MainClasses;
+import io.opaa.compliance.ComplianceManifest.AccessPath;
 import io.opaa.compliance.ComplianceManifest.AuditEventEntry;
 import io.opaa.compliance.ComplianceManifest.DataFlowEntry;
 import io.opaa.compliance.ComplianceManifest.RoleEntry;
@@ -91,6 +92,32 @@ class ComplianceManifestTest {
   @Test
   void describesTheAiFunctions() {
     assertThat(MANIFEST.aiFunctions()).isNotEmpty();
+  }
+
+  /**
+   * A datum without a table lies outside the database (log, file system, object storage), so it
+   * cannot be read through the database; its direct access path is {@code STORAGE}.
+   */
+  @Test
+  void noDatumOutsideTheDatabaseIsReadThroughTheDatabase() {
+    List<String> gaps =
+        MANIFEST.data().stream()
+            .filter(entry -> entry.tables().isEmpty())
+            .filter(entry -> entry.accessPaths().contains(AccessPath.DATABASE))
+            .map(
+                entry ->
+                    "data '"
+                        + entry.id()
+                        + "' in compliance/manifest/"
+                        + entry.area()
+                        + ".yaml has no table but accessPaths "
+                        + entry.accessPaths()
+                        + " - replace DATABASE with STORAGE")
+            .toList();
+
+    assertThat(gaps)
+        .withFailMessage(() -> ManifestCompleteness.report("access paths", gaps))
+        .isEmpty();
   }
 
   /**
