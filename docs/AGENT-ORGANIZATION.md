@@ -15,6 +15,7 @@ Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselb
 | **QA Engineer** | Produktqualität über das jeweilige PR-Review hinaus: alleiniger Eigentümer der E2E-Suite (implementiert die dedizierten `test(e2e)`-Issues, die zum Spezifikationszeitpunkt erstellt wurden), RAG-Antwortqualitäts-Evaluierung (Golden Dataset + Evaluatoren), Coverage-/Flakiness-Trends, Release-Bewertung. | Subagent `qa-engineer` |
 | **Marketing** | Positionierung zuerst: schärft Pitch und Mission, pflegt die Messaging-Quelle der Wahrheit (`docs/market/MESSAGING.md`), leitet stakeholder-spezifische Assets davon ab — Landing Page (`page/`), Pitch-Decks, One-Pager, README-Messaging, Website-i18n. Positionierungsentscheidungen verbleiben beim Maintainer. | Subagent `marketing` |
 | **UX-Designer** | Gestaltet die Bedienung vor der Implementierung: Interaktionskonzepte in `docs/design/` für Issues mit nennenswerter UI-Fläche, Begriffs- und Textkonventionen (`docs/design/GLOSSAR.md`), UX-Review nach dem Merge. Kein Produktivcode, keine Funktionsdefinition. | Subagent `ux-designer` |
+| **Behördenkontakt** | Liest vor jedem Release und gelegentlich Fakten-Manifest, Faktenblätter, Update-Paket und die Vorlagen unter `docs/behoerden/` aus Sicht einer Behörde: prüft Manifest-Einträge gegen den Code, entwirft erläuternde Hinweise, stößt bei Stufe Zustimmung ein Stakeholder-Review an und meldet überschrittene Durchsichten. Befunde werden Issues. Kein Code, keine Vorlagenänderung ohne PR, **keine verbindliche Rechtsbeobachtung und keine Rechtsberatung**. | Subagent `behoerdenkontakt` |
 
 Neben diesen Liefer-Rollen gibt es **Stakeholder-Rollen**, die nichts herstellen, sondern bewerten — siehe [Stakeholder-Review](#stakeholder-review).
 
@@ -64,7 +65,7 @@ Jeder unterstützte Client hat einen dünnen projektlokalen Adapter, der auf den
 | Codex | `.codex/agents/` | TOML-Dateien definieren Codex Custom Agents. Der Reviewer verwendet eine schreibgeschützte Sandbox. |
 | OpenCode | `.opencode/agents/` | Markdown-Frontmatter definiert OpenCode-Subagenten und ihre Berechtigungen. Der Reviewer verweigert Bearbeitungen. |
 
-Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die sechs Liefer-Rollen sind Product Manager, Developer, Code Reviewer, QA Engineer, Marketing und UX-Designer (Letzterer noch ohne Provider-Adapter); hinzu kommen die sechs Stakeholder-Rollen `stakeholder-sachbearbeiter`, `stakeholder-referatsleitung`, `stakeholder-ki-champion`, `stakeholder-betrieb`, `stakeholder-skeptiker` und `stakeholder-personalrat`.
+Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die sechs Liefer-Rollen sind Product Manager, Developer, Code Reviewer, QA Engineer, Marketing und UX-Designer (Letzterer noch ohne Provider-Adapter); hinzu kommen die Rolle `behoerdenkontakt` und die sechs Stakeholder-Rollen `stakeholder-sachbearbeiter`, `stakeholder-referatsleitung`, `stakeholder-ki-champion`, `stakeholder-betrieb`, `stakeholder-skeptiker` und `stakeholder-personalrat`.
 
 ## Workflow: von der Idee bis zum Merge
 
@@ -101,6 +102,10 @@ Der QA Engineer ist bewusst **nicht** Teil des PR-Gates — das ist die Aufgabe 
 - **Zum Definitionszeitpunkt** leitet der Product Manager E2E-relevante Szenarien aus den Abnahmekriterien ab und erstellt dedizierte `test(e2e)`-Issues; der QA Engineer implementiert sie in der Suite, sobald das Feature gelandet ist.
 
 Es gibt also zwei Schleifen: die schnelle **PR-Schleife** (Code Reviewer + CI, vor dem Merge) und die langsame **Produkt-Schleife** (QA Engineer, nach dem Merge, produziert neue Issues).
+
+### Behördenkontakt vor dem Release
+
+Der Koordinator startet die Rolle `behoerdenkontakt` **vor jedem Release**, bevor der Maintainer das Tag setzt, und **gelegentlich** darüber hinaus, etwa nach einer Reihe von Merges mit Label `data-impact` oder wenn eine Vorlage unter `docs/behoerden/` ihre `naechste-durchsicht` erreicht. Die Rolle liest das Update-Paket des Release, solange es keines gibt den Manifest-Diff seit dem letzten Tag und die Faktenblätter, legt ihre Befunde als Issues an und liefert einen Bericht. Meldet sie eine Änderung der Stufe Zustimmung, startet der Koordinator ein [Stakeholder-Review](#stakeholder-review) mit mindestens Personalrat und Betriebsverantwortlichem. Der Maintainer klärt die Befunde vor dem Tag oder nimmt sie als bekannt in die Release-Notizen auf. Die wöchentliche Drift-Routine ([Behördenunterlagen, Schicht 3](features/behoerdenunterlagen.md#schicht-3-wöchentliche-drift-routine)) ersetzt den Lauf nicht: Sie prüft die Änderungen einer Woche, die Rolle den Stand eines Release.
 
 ## Regeln
 
@@ -145,6 +150,7 @@ Regeln für den Koordinator/Orchestrator, unabhängig von der Umgebung, in der e
 - **Review ab PR-Eröffnung:** Das Review startet, sobald ein PR eröffnet ist, nicht nach grüner CI; ein roter CI-Lauf und Review-Befunde gehen in dieselbe Nachbesserungsrunde.
 - **Security-Arbeit wird delegiert:** Security-Analysen, -Fixes und -Issues führt der Koordinator nicht selbst aus, sondern gibt sie an Agenten, dieselbe Rollentrennung wie zwischen Implementierung und Review.
 - **Handbuch nach Abhängigkeits-Updates:** Ändert ein gemergter Renovate-PR eine Version oder einen Default, den das Handbuch nennt (`betrieb.md`, `konfiguration.md`), zieht der Koordinator das Kapitel nach.
+- **Behördenkontakt vor jedem Release:** Der Koordinator startet die Rolle `behoerdenkontakt` vor jedem Release und gelegentlich darüber hinaus ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)).
 - **Prozess- und Worktree-Hygiene:** Nie ein globales `gradlew --stop`, nur den eigenen Prozess beenden, und nach dem Merge zuerst Branch löschen und `git worktree prune`, ein gesperrtes Verzeichnis später entfernen.
 
 ### Autonomie und Eskalation

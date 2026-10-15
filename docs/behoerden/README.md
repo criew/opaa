@@ -109,7 +109,7 @@ Jedes redaktionelle Dokument beginnt mit einem YAML-Front-Matter-Block mit genau
 | `naechste-durchsicht` | Datum der nächsten geplanten Durchsicht (`JJJJ-MM-TT`) |
 
 Ein überschrittenes `naechste-durchsicht` ist kein Fehler; die Rolle „Behördenkontakt“ meldet es
-([#2573](https://github.com/criew/opaa/issues/2573)).
+([Rollenvertrag](../../agents/roles/behoerdenkontakt.md)).
 
 ## Haftungshinweis
 
