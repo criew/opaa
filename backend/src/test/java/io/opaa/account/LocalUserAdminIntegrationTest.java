@@ -12,11 +12,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditIncidentScopeGrant;
+import io.opaa.audit.AuditIncidentScopeGrantRepository;
+import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalAdminAvailabilityGuard;
 import io.opaa.auth.LocalCredentials;
@@ -116,6 +120,8 @@ class LocalUserAdminIntegrationTest {
   @Autowired private OrganizationRepository organizations;
   @Autowired private MailSettingsService mailSettings;
   @Autowired private AuditEventRecorder audit;
+  @Autowired private AuditIncidentScopeService incidentScopes;
+  @Autowired private AuditIncidentScopeGrantRepository incidentScopeGrants;
   @Autowired private JdbcTemplate jdbc;
 
   private LocalAccountFixtures fixtures;
@@ -756,6 +762,51 @@ class LocalUserAdminIntegrationTest {
     asAdmin(get(LOCAL_USERS + "/" + bootstrap.id()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.bootstrap").value(true));
+  }
+
+  /**
+   * A grant of the anlassbezogene Klärung does not hold the accounts it names: the person named in
+   * it and the person who requested it are both deleted, and the grant stays with each of them as
+   * the protocol's pseudonym until its own deletion period ends.
+   */
+  @Test
+  void anAccountNamedInAnIncidentScopeGrantIsDeletedAndKeptInTheGrantAsAPseudonym()
+      throws Exception {
+    LocalAccount named = fixtures.activeUser("betroffen-" + UUID.randomUUID() + "@stadt.example");
+    LocalAccount requester =
+        fixtures.activeUser("revision-" + UUID.randomUUID() + "@stadt.example");
+    UUID namedPseudonym = audit.pseudonymFor(named.id(), Organization.DEFAULT_ID);
+    Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+    AuditIncidentScopeGrant grant =
+        incidentScopes.request(
+            Organization.DEFAULT_ID,
+            requester.id(),
+            named.id(),
+            now.minus(Duration.ofDays(7)),
+            now,
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            "Verdacht auf unbefugten Zugriff");
+    UUID requesterPseudonym = null;
+    try {
+      asAdmin(delete(LOCAL_USERS + "/" + named.id())).andExpect(status().isNoContent());
+      asAdmin(delete(LOCAL_USERS + "/" + requester.id())).andExpect(status().isNoContent());
+
+      assertThat(users.findById(named.id())).isEmpty();
+      assertThat(users.findById(requester.id())).isEmpty();
+      AuditIncidentScopeGrant kept = incidentScopeGrants.findById(grant.getId()).orElseThrow();
+      requesterPseudonym = kept.getRequestedByPseudonymId();
+      assertThat(kept.getSubjectUserId()).isNull();
+      assertThat(kept.getRequestedByUserId()).isNull();
+      assertThat(kept.getSubjectPseudonymId()).isEqualTo(namedPseudonym);
+      assertThat(requesterPseudonym).isNotNull().isNotEqualTo(namedPseudonym);
+      assertThat(kept.getReason()).isEqualTo("Verdacht auf unbefugten Zugriff");
+    } finally {
+      incidentScopeGrants.deleteById(grant.getId());
+      fixtures.deleteAuditRowsNaming(namedPseudonym);
+      if (requesterPseudonym != null) {
+        fixtures.deleteAuditRowsNaming(requesterPseudonym);
+      }
+    }
   }
 
   /**

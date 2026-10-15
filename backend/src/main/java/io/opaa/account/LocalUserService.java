@@ -480,8 +480,9 @@ public class LocalUserService {
    * not deleted. What the account holds elsewhere - the diagnostic impersonation grants it issued,
    * its personal space - is ended by the listeners of {@link LocalAccountDeletionEvent} inside this
    * transaction; credentials, tokens, memberships and the pseudonym mapping follow by the schema's
-   * cascades. The refusal names the blocking tables in the log only - the response says
-   * "referenced", nothing more.
+   * cascades, and a grant of the anlassbezogene Klärung keeps the person as a pseudonym. The
+   * refusal names the blocking tables in the log only - the response says "referenced", nothing
+   * more.
    */
   @Transactional
   public void delete(CurrentUser actor, UUID userId) {
@@ -539,9 +540,6 @@ public class LocalUserService {
     }
     if (counts.getAssociations() > 0) {
       blockers.add("space_asset_associations");
-    }
-    if (counts.getIncidentScopes() > 0) {
-      blockers.add("audit_incident_scope_grants");
     }
     if (counts.getCapabilities() > 0) {
       blockers.add("capability_grants");

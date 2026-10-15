@@ -18,10 +18,13 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +49,7 @@ class AuditIncidentScopeServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private Clock clock;
 
   private static final String REASON = "Verdacht auf unbefugten Zugriff auf Personalvorgaenge";
 
@@ -89,6 +93,8 @@ class AuditIncidentScopeServiceIntegrationTest {
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
         "DELETE FROM audit_incident_scope_grants WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM audit_incident_scope_case_counts WHERE organization_id = ?", organizationId);
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }
@@ -329,6 +335,104 @@ class AuditIncidentScopeServiceIntegrationTest {
   }
 
   @Test
+  void everyApprovalIsCountedAsACaseOfItsYearAndPurpose() {
+    int year = Instant.now(clock).atZone(clock.getZone()).getYear();
+    for (AuditIncidentScopePurpose purpose :
+        List.of(
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            AuditIncidentScopePurpose.DATA_BREACH_INVESTIGATION)) {
+      AuditIncidentScopeGrant grant =
+          incidentScopeService.request(
+              organizationId, requester, subject, scopeStart, scopeEnd, purpose, REASON);
+      incidentScopeService.approve(organizationId, grant.getId(), approver);
+    }
+    // a request never approved is no case
+    incidentScopeService.request(
+        organizationId,
+        requester,
+        subject,
+        scopeStart,
+        scopeEnd,
+        AuditIncidentScopePurpose.EXTERNAL_AUDIT_OR_INSPECTION,
+        REASON);
+
+    assertThat(caseCounts(year))
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of("SECURITY_INCIDENT", 2, "DATA_BREACH_INVESTIGATION", 1));
+  }
+
+  /**
+   * A grant does not hold the accounts it names: each of them can be deleted, and the grant keeps
+   * the person as the pseudonym the protocol carries for them - one never seen in the protocol gets
+   * a fresh one - so the Nachweis stays readable until the grant's own deletion period ends.
+   */
+  @Test
+  void deletingTheAccountsAGrantNamesKeepsThemInItAsPseudonyms() {
+    writeAuditEntryForActor(subject, scopeStart.plus(1, ChronoUnit.DAYS));
+    UUID subjectPseudonym = pseudonymService.findExistingPseudonym(subject).orElseThrow();
+    AuditIncidentScopeGrant grant =
+        incidentScopeService.request(
+            organizationId,
+            requester,
+            subject,
+            scopeStart,
+            scopeEnd,
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            REASON);
+    incidentScopeService.approve(organizationId, grant.getId(), approver);
+
+    userRepository.deleteById(subject);
+    userRepository.deleteById(requester);
+    userRepository.deleteById(approver);
+
+    AuditIncidentScopeGrant kept = grantRepository.findById(grant.getId()).orElseThrow();
+    assertThat(kept.getSubjectUserId()).isNull();
+    assertThat(kept.getRequestedByUserId()).isNull();
+    assertThat(kept.getApprovedByUserId()).isNull();
+    assertThat(kept.getSubjectPseudonymId()).isEqualTo(subjectPseudonym);
+    assertThat(kept.getRequestedByPseudonymId())
+        .isNotNull()
+        .isNotEqualTo(subjectPseudonym)
+        .isNotEqualTo(kept.getApprovedByPseudonymId());
+    assertThat(kept.getApprovedByPseudonymId()).isNotNull();
+    assertThat(kept.getPurpose()).isEqualTo(AuditIncidentScopePurpose.SECURITY_INCIDENT);
+    assertThat(kept.getReason()).isEqualTo(REASON);
+    assertThat(kept.getApprovedAt()).isNotNull();
+    // the mapping went with the account, and the grant's pseudonym is no way back into the log
+    assertThat(pseudonymService.findExistingPseudonym(subject)).isEmpty();
+    assertThat(
+            queryService
+                .byIncidentScope(
+                    organizationId, auditor, REASON, grant.getId(), scopeStart, scopeEnd, 0, 50)
+                .getContent())
+        .isEmpty();
+  }
+
+  @Test
+  void aRequestWhoseNamedPersonIsDeletedIsKeptButCannotBeApproved() {
+    AuditIncidentScopeGrant grant =
+        incidentScopeService.request(
+            organizationId,
+            requester,
+            subject,
+            scopeStart,
+            scopeEnd,
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            REASON);
+
+    userRepository.deleteById(subject);
+
+    assertThat(grantRepository.findById(grant.getId()).orElseThrow().getSubjectPseudonymId())
+        .isNotNull();
+    assertThatThrownBy(() -> incidentScopeService.approve(organizationId, grant.getId(), approver))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("gelöscht");
+    assertThat(grantRepository.findById(grant.getId()).orElseThrow().getStatus())
+        .isEqualTo(AuditIncidentScopeStatus.PENDING);
+  }
+
+  @Test
   void requestingScopeStartAfterScopeEndIsRejected() {
     assertThatThrownBy(
             () ->
@@ -341,6 +445,15 @@ class AuditIncidentScopeServiceIntegrationTest {
                     AuditIncidentScopePurpose.SECURITY_INCIDENT,
                     "ungueltiger Zeitraum"))
         .isInstanceOf(ValidationException.class);
+  }
+
+  private Map<String, Integer> caseCounts(int year) {
+    Map<String, Integer> counts = new LinkedHashMap<>();
+    for (AuditIncidentScopeGrantRepository.CaseCount row :
+        grantRepository.findCaseCounts(organizationId, year)) {
+      counts.put(row.getPurpose(), row.getCaseCount());
+    }
+    return counts;
   }
 
   private AuditLogEntry writeAuditEntryForActor(UUID actorUserId, Instant recordedAt) {

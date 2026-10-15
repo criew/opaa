@@ -276,7 +276,7 @@ Sie entzieht den Zugang sofort und lässt nachvollziehbar, dass es dieses Konto 
 
 Gelöscht werden kann ein lokales Konto nur, wenn **nichts mehr darauf verweist**. Das ist mehr als
 Besitz: Neben einer eigenen Bibliothek, einem Space außer dem persönlichen und einem Chat sperren
-auch Rechtevergaben, Space-Zuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, die
+auch Rechtevergaben, Space-Zuordnungen, die
 **Verantwortung für eine interne Gruppe** sowie **Nachweiseinträge** über Gruppenmitgliedschaften und
 Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre. Der persönliche
 Space wird mit dem Konto gelöscht; bei einer Sperre bleibt er bestehen, ohne Nachfolge. Eine noch getragene
@@ -290,6 +290,13 @@ Hand; die Personen, die sie hielten, verlieren sie damit. Alle übrigen Befugnis
 Konto beteiligt war — die abgelaufenen und die bereits entzogenen, die es erteilt oder entzogen hat,
 und die es selbst hielt —, enden mit ihm, aber **ohne eigenen Eintrag**. Unberührt bleibt, woran das
 Konto nicht beteiligt war.
+
+Auch eine **anlassbezogene Klärung** hält keine Löschung auf, gleich ob das Konto darin als
+betroffene, beantragende oder freigebende Person steht und ob die Klärung freigegeben ist. Die
+Klärung bleibt als Nachweis bestehen; statt des Kontos nennt sie die Person danach nur noch unter
+dem Pseudonym, das auch das Nachweisprotokoll für sie führt. Einen Personenfilter führt sie nicht
+mehr aus, und ein noch offener Antrag lässt sich nicht mehr freigeben. Wie lange Klärungen liegen,
+steht im Kapitel [Berechtigungen](berechtigungen.md), Abschnitt „Systemrollen und Vollmachten".
 
 Praktisch heißt das: Löschen ist der Weg für ein Konto, das nie benutzt wurde — eine falsch getippte
 Adresse, eine Einladung an die falsche Person, ein Testkonto. Wer dagegen je Mitglied einer Gruppe

@@ -704,6 +704,10 @@ opaa:
     connect-timeout: ${OPAA_MAIL_CONNECT_TIMEOUT:10s}
     read-timeout: ${OPAA_MAIL_READ_TIMEOUT:15s}
     write-timeout: ${OPAA_MAIL_WRITE_TIMEOUT:15s}
+  audit:
+    # Grants of the anlassbezogene Klaerung are deleted at the end of the calendar year that lies
+    # this many years after the end of their usability (1 to 10).
+    incident-scope-retention-years: ${OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS:1}
   succession:
     # Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird (ADR-0036, Entscheidung 6).
     # Hebt hervor, loest nie etwas aus.

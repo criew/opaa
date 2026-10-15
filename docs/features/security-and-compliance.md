@@ -443,6 +443,27 @@ selbst ist ein organisatorischer Prozessschritt, kein technisches Gate), die **U
 betroffenen Person** nach Abschluss und die Aufnahme in den Jahresbericht. Diese drei bleiben
 Dienstvereinbarung/Prozess, bis ein eigenes Ticket sie technisch abbildet.
 
+**Aufbewahrung der Freigaben (#2859).** Antrag und Freigabe sind nach dem Ende der Nutzbarkeit nur
+noch Nachweis und haben eine Löschfrist: Gelöscht wird am Ende des Kalenderjahres, das auf das Ende
+der Nutzbarkeit folgt (Vorbild § 76 Abs. 4 BDSG), freigegebene und nie freigegebene gleich; für einen
+nie freigegebenen Antrag gilt als Ende der Nutzbarkeit der Antragszeitpunkt plus die 30 Tage. Die
+Frist ist einstellbar (`opaa.audit.incident-scope-retention-years`, 1 bis 10 Jahre), damit eine
+Dienstvereinbarung sie verlängern kann; gelöscht wird in einem täglichen Lauf ohne eigenen
+Protokolleintrag, wie bei den übrigen Löschläufen. **Die Zahl der Fälle für den Jahresbericht bleibt
+erhalten:** Jede Freigabe wird bei ihrer Erteilung je Kalenderjahr und Zweck gezählt, in einer
+Zähltabelle ohne Person und ohne Verweis auf die Freigabe; nie freigegebene Anträge zählen nicht.
+Den Bericht selbst erstellt OPAA nicht.
+
+**Eine Freigabe hält kein Konto.** Wird das Konto der betroffenen, der beantragenden oder der
+freigebenden Person gelöscht, bleibt die Freigabe bestehen und nennt die Person danach unter ihrem
+Pseudonym aus dem Protokoll — hatte die Person keine Protokolleinträge, unter einem eigenen. Damit
+bleibt der Nachweis bis zum Fristende lesbar und zum Protokoll stimmig, ohne Klarnamen über die
+Löschung hinaus zu halten. Das Pseudonym ist kein Filter: Nach der Löschung liefert die Klärung zur
+betroffenen Person keine Einträge mehr, so wie das Protokoll nach der
+[Löschung](#unveränderlichkeit-und-löschrecht) generell nicht mehr auf die Person zurückführbar
+ist; ein offener Antrag, dessen betroffene oder beantragende Person gelöscht ist, kann nicht mehr
+freigegeben werden.
+
 Wer Protokolldaten liest, exportiert oder auswertet, erzeugt damit einen eigenen Protokolleintrag — mit
 Person, Zeitpunkt, Anlass und Umfang der Abfrage. Der Eintrag ist für die auswertende Stelle nicht
 unterdrückbar. **Auch der abgewiesene Versuch** erzeugt einen Eintrag; ein Zugriffsversuch, der nur bei

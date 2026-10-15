@@ -112,7 +112,7 @@ sind eigene Tabellenzeilen, keine Rolleneigenschaft:
 | Befugnis | Ablage | Wer vergibt | Technische Grenze |
 |---|---|---|---|
 | **„Sicht als"** — eine Suchdiagnose im Rechtekontext einer anderen Person ausführen | `diagnostic_impersonation_grants` | die Systemverwaltung | Geltungsbereich ist genau eine **Anbietergruppe** (`ORG_UNIT` oder `IDENTITY_PROVIDER`) oberhalb der Mindestgruppengröße, geprüft bei Erteilung **und** bei jeder Nutzung (#1879); Laufzeit höchstens zwölf Monate je Vergabe, als `CHECK` in der Datenbank |
-| **Vorfallsbereich** — die anlassbezogene Klärung mit Personenfilter | `audit_incident_scope_grants` | zwei verschiedene `AUDITOR`-Konten, eines beantragt, ein anderes gibt frei | Vier-Augen-Prinzip als `CHECK` in der Datenbank; Person, Zeitraum und Zweck vorab festgelegt; die Freigabe ist 30 Tage nutzbar |
+| **Vorfallsbereich** — die anlassbezogene Klärung mit Personenfilter | `audit_incident_scope_grants` | zwei verschiedene `AUDITOR`-Konten, eines beantragt, ein anderes gibt frei | Vier-Augen-Prinzip als `CHECK` in der Datenbank; Person, Zeitraum und Zweck vorab festgelegt; die Freigabe ist 30 Tage nutzbar und wird am Ende des darauf folgenden Kalenderjahres gelöscht (einstellbar); sie hält die Löschung der genannten Konten nicht auf |
 
 > **`SYSTEM_ADMIN` schließt keine von beiden ein**, und die beiden schließen einander nicht ein.
 

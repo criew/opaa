@@ -162,8 +162,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + "   OR granted_by_user_id = :id) AS grants,"
               + " (SELECT count(*) FROM space_asset_associations WHERE created_by_user_id = :id)"
               + "   AS associations,"
-              + " (SELECT count(*) FROM audit_incident_scope_grants WHERE requested_by_user_id = :id"
-              + "   OR approved_by_user_id = :id OR subject_user_id = :id) AS incident_scopes,"
               + " (SELECT count(*) FROM capability_grants WHERE subject_user_id = :id"
               + "   OR granted_by_user_id = :id) AS capabilities,"
               + " (SELECT count(*) FROM capability_grant_history WHERE subject_user_id = :id)"
@@ -196,8 +194,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getGrants();
 
     long getAssociations();
-
-    long getIncidentScopes();
 
     long getCapabilities();
 

@@ -59,16 +59,22 @@ public class AuditIncidentScopeService {
   }
 
   /**
-   * Approves a pending grant. Throws {@link ValidationException} on Selbstfreigabe or a grant that
-   * is not pending - caller error, not "not found". {@code @Transactional} so two concurrent
-   * approval attempts against the same grant serialise on this row instead of both succeeding with
-   * an arbitrary "last write wins" {@code approved_by_user_id}.
+   * Approves a pending grant and counts it as a case of its purpose in the current year, so the
+   * annual report still has the number once the grant itself is deleted. Throws {@link
+   * ValidationException} on Selbstfreigabe or a grant that is not pending - caller error, not "not
+   * found". {@code @Transactional} so two concurrent approval attempts against the same grant
+   * serialise on this row instead of both succeeding with an arbitrary "last write wins" {@code
+   * approved_by_user_id}.
    */
   @Transactional
   public AuditIncidentScopeGrant approve(UUID organizationId, UUID scopeId, UUID approvedByUserId) {
     AuditIncidentScopeGrant grant = findOrThrow(organizationId, scopeId);
-    grant.approve(approvedByUserId);
-    return repository.save(grant);
+    Instant now = Instant.now(clock);
+    grant.approve(approvedByUserId, now);
+    AuditIncidentScopeGrant approved = repository.save(grant);
+    repository.countCase(
+        organizationId, now.atZone(clock.getZone()).getYear(), grant.getPurpose().name());
+    return approved;
   }
 
   /**
