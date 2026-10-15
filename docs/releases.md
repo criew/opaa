@@ -14,7 +14,7 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 | `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand für `linux/amd64` und `linux/arm64` (ein Manifest-Index je Image), **nie überschrieben** |
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
-| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), dazu die Image-Namen, die Installationsbefehle und die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) |
+| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle und die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) |
 
 Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
 ([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
@@ -68,6 +68,42 @@ Der Workflow bricht ab, wenn aus dem Git-Tag nicht genau dieses Image-Tag bzw. d
 Chart-Version entsteht. Ein abgeschnittener Suffix würde also nie veröffentlicht. Eine
 Vorab-Version des Charts installiert Helm nur, wenn `--version` sie ausdrücklich nennt oder
 `--devel` gesetzt ist.
+
+### Datenwirkung kennzeichnen
+
+Jede Änderung mit Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen
+soll in den Release-Notizen auffallen, damit eine Behörde ein Update gegenüber Datenschutz,
+Personalrat und Informationssicherheit verantworten kann. Neue Funktionen bleiben dafür nicht
+standardmäßig ausgeschaltet; sie werden sichtbar gemacht.
+
+- **Im PR:** Der Abschnitt „Wirkung auf Daten und Behördenunterlagen“ des PR-Templates fragt ab,
+  ob personenbezogene Daten oder Protokollereignisse, Sichtbarkeit, Auswertungen oder Exporte,
+  Fristen, externe Datenflüsse, Voreinstellungen, das Standardmodell oder System-Prompts neu sind
+  oder sich ändern. Trifft etwas zu, beschreibt ein Satz in Alltagssprache die Wirkung, und der PR
+  bekommt das Label `data-impact`. Wer den PR anlegt, setzt es.
+- **In der CI:** Der Workflow `.github/workflows/data-impact.yml` läuft bei jedem PR und erneut,
+  wenn sich Labels oder Beschreibung ändern. Er schlägt fehl, wenn die Beschreibung eine Wirkung
+  ankreuzt, das Label aber fehlt, oder wenn der PR eine Datei aus
+  `.github/data-impact-paths.txt` ändert (Liquibase-Changelogs, Protokollereignisse und Rollen,
+  OpenAPI-Spezifikation, Konfigurationsklassen und Vorgabewerte, Konnektoren und Modellanbieter,
+  Prompts) und weder das Label trägt noch „Keine Wirkung“ ankreuzt. Bei angekreuztem „Keine
+  Wirkung“ listet er die Dateien als Warnung für das Review. Neue Pfade kommen in diese eine
+  Datei; jedes Muster muss eine vorhandene Datei treffen, das prüft
+  `.github/scripts/test_check_data_impact.py`. Renovate-Branches prüft der Workflow nicht.
+- **In den Release-Notizen:** `.github/release.yml` führt PRs mit `data-impact` in der Rubrik
+  „Datenrelevante Änderungen“, und zwar als erste Rubrik. Weil die erste passende Rubrik gewinnt
+  und ein PR nur einmal erscheint, steht ein PR mit `data-impact` dort, auch wenn er zusätzlich
+  `enhancement`, `bug`, `dependencies` oder `security` trägt. Die Datenwirkung geht vor, weil sie
+  bei der Behörde eigene Schritte auslöst (Beteiligung der Personalvertretung, Verzeichnis der
+  Verarbeitungstätigkeiten, Folgenabschätzung) und nicht unter einer anderen Rubrik verschwinden
+  darf. Ist ein solcher PR zugleich ein Sicherheitsfix, sagt das sein Satz zur Datenwirkung.
+- **Der Satz aus dem PR** steht in der PR-Beschreibung, die Notizen verlinken jeden PR. Wer ihn
+  zusätzlich im Release zeigen will, ergänzt ihn nach dem Lauf mit `gh release edit`.
+
+Die Pfadliste fängt nur, was an bekannten Stellen geschieht; eine neue Auswertung im Frontend etwa
+trifft sie nicht. Dafür bleibt das Ankreuzen im PR maßgeblich. Die Kennzeichnung bleibt auch
+bestehen, wenn das Update-Paket das Delta aus dem Manifest erzeugt (#2554), weil nicht jede Wirkung
+im Manifest steht, etwa eine neue Auswertung bestehender Daten in der Oberfläche.
 
 ## Schutzregeln im Workflow
 
@@ -229,7 +265,9 @@ Grenze und braucht dafür Admin-Rechte. Ablauf:
    gesamte Historie.
 
 Von Hand nachbearbeiten muss man die Notizen nicht: Was ein Release von Bestandsinstallationen
-verlangt, kommt über Schritt 3 aus dem Repository.
+verlangt, kommt über Schritt 3 aus dem Repository, datenrelevante Änderungen ordnet das Label
+`data-impact` ein. Die Sätze zur Datenwirkung aus den PRs lassen sich auf Wunsch ergänzen
+([Datenwirkung kennzeichnen](#datenwirkung-kennzeichnen)).
 
 Die erste Version ist `v0.1.0`. Auch sie ist ein finales `X.Y.0` und braucht deshalb
 `docs/upgrade-notes/0.1.0.md`, bevor das Tag gesetzt wird.

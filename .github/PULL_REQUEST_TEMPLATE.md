@@ -14,6 +14,22 @@ Closes #
 - [ ] Refactoring
 - [ ] CI/Build
 
+## Wirkung auf Daten und Behördenunterlagen
+
+Zutreffendes ankreuzen. Ist mindestens ein Punkt außer „Keine Wirkung“ angekreuzt, bekommt der PR das Label `data-impact` und erscheint in den Release-Notizen unter „Datenrelevante Änderungen“. Der Check „Datenwirkung“ schlägt fehl, wenn das Label dann fehlt oder wenn der PR Dateien aus `.github/data-impact-paths.txt` ändert, ohne Label und ohne angekreuztes „Keine Wirkung“ (`docs/releases.md`, Abschnitt „Datenwirkung kennzeichnen“).
+
+- [ ] Neue oder geänderte personenbezogene Daten oder Protokollereignisse
+- [ ] Neue Sichtbarkeit: Daten werden für weitere Rollen oder Personen sichtbar
+- [ ] Neue Auswertung oder neuer Export, auch von bereits gespeicherten Daten
+- [ ] Geänderte Aufbewahrungs- oder Löschfrist
+- [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)
+- [ ] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt
+- [ ] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen
+
+**Satz für die Release-Notizen** (Alltagssprache, bei „Keine Wirkung“ entfällt er):
+
+> Beispiel: Administratoren sehen im Protokoll jetzt auch, wer eine Bibliothek gelöscht hat.
+
 ## Checkliste
 
 - [ ] Tests bestehen lokal

@@ -6,10 +6,15 @@ changelog:
       - invalid
       - wontfix
   categories:
+    # The first matching category wins and a PR appears only once. Data impact comes first so that a
+    # PR with "enhancement", "bug" or "security" besides "data-impact" still shows up here.
+    - title: Datenrelevante Änderungen
+      labels:
+        - data-impact
     - title: Sicherheit
       labels:
         - security
-    # After "Sicherheit": the first matching category wins, so a Renovate PR with "security" stays there.
+    # After "Sicherheit": a Renovate PR with "security" stays there.
     - title: Abhängigkeiten
       labels:
         - dependencies
