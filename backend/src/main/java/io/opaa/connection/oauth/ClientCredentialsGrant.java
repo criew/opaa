@@ -83,7 +83,7 @@ final class ClientCredentialsGrant {
           registration.profileId(),
           response.statusCode(),
           refusal.logDetail());
-      String hint = refusal.hint(scope);
+      String hint = refusal.hint(scope, true);
       if ("invalid_client".equals(error) || error.isEmpty() && response.statusCode() == 401) {
         throw new SignInRejectedException(
             "Der Token-Endpunkt "

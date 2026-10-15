@@ -244,7 +244,7 @@ public final class OAuthClient {
           registration.profileId(),
           response.statusCode(),
           refusal.logDetail());
-      String hint = refusal.hint(scopeOf(registration, auth));
+      String hint = refusal.hint(scopeOf(registration, auth), false);
       if (renewal && "invalid_grant".equals(error)) {
         throw new SignInRejectedException(
             "Der Anbieter nimmt die Zustimmung nicht mehr an; das Konto muss neu verbunden"

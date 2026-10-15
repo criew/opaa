@@ -7,9 +7,10 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * The error answer of a token endpoint (RFC 6749, 5.2), read for a German hint the administration
- * can act on: a Microsoft Entra code ({@code error_codes[0]}, else the {@code AADSTS<n>} prefix of
- * {@code error_description}) wins over the OAuth {@code error}. The description itself never
- * reaches a message; which exception follows stays the caller's decision by {@link #error()}.
+ * can act on: a Microsoft Entra code ({@code error_codes[0]} as an integer, else the {@code
+ * AADSTS<n>} prefix of {@code error_description}) wins over the OAuth {@code error}. The
+ * description itself never reaches a message; which exception follows stays the caller's decision
+ * by {@link #error()}.
  */
 final class TokenEndpointRefusal {
 
@@ -17,6 +18,7 @@ final class TokenEndpointRefusal {
       "Client-ID oder Client-Secret werden nicht angenommen. Häufige Ursachen: Tippfehler,"
           + " abgelaufenes Client-Secret, Secret-ID statt Secret-Wert, falscher Mandant.";
 
+  private static final long ENTRA_SCOPE_REFUSED = 70011L;
   private static final Pattern AADSTS_PREFIX = Pattern.compile("\\AAADSTS(\\d{1,9})\\b");
   private static final Pattern PRINTABLE = Pattern.compile("[\\x21-\\x7E]{1,100}");
 
@@ -54,10 +56,6 @@ final class TokenEndpointRefusal {
               "Die App-Registrierung ist im Mandanten deaktiviert. Sie muss in Microsoft Entra"
                   + " wieder aktiviert werden."),
           Map.entry(
-              70011L,
-              "Der Scope wird nicht angenommen. Für die Anmeldung als Anwendung gegen Microsoft"
-                  + " Graph lautet er https://graph.microsoft.com/.default."),
-          Map.entry(
               500011L,
               "Die Ressource des Scopes ist im Mandanten nicht bekannt. Server-Adresse und Scope"
                   + " des Zugangs prüfen."));
@@ -90,9 +88,17 @@ final class TokenEndpointRefusal {
 
   /**
    * The German hint for this refusal, {@code null} where neither a known Entra code nor the error
-   * tells more; {@code scope}, where known, is named for {@code invalid_scope}.
+   * tells more; {@code scope}, where known, is named for a refused scope. Only an {@code appOnly}
+   * sign-in (client credentials) is pointed to the {@code .default} scope of Microsoft Graph.
    */
-  String hint(String scope) {
+  String hint(String scope, boolean appOnly) {
+    if (entraCode != null && entraCode == ENTRA_SCOPE_REFUSED) {
+      return scopeRefused(scope)
+          + (appOnly
+              ? " Für die Anmeldung als Anwendung gegen Microsoft Graph lautet er"
+                  + " https://graph.microsoft.com/.default."
+              : "");
+    }
     String entra = entraCode == null ? null : ENTRA_HINTS.get(entraCode);
     if (entra != null) {
       return entra;
@@ -101,12 +107,15 @@ final class TokenEndpointRefusal {
       case "invalid_client" -> INVALID_CLIENT;
       case "unauthorized_client" ->
           "Die App-Registrierung darf diesen Anmeldeweg (Grant-Typ) nicht nutzen.";
-      case "invalid_scope" ->
-          scope == null
-              ? "Der Scope des Zugangs wird nicht angenommen."
-              : "Der Scope „" + scope + "“ des Zugangs wird nicht angenommen.";
+      case "invalid_scope" -> scopeRefused(scope);
       default -> null;
     };
+  }
+
+  private static String scopeRefused(String scope) {
+    return scope == null
+        ? "Der Scope des Zugangs wird nicht angenommen."
+        : "Der Scope „" + scope + "“ des Zugangs wird nicht angenommen.";
   }
 
   /** What the log line names: error, Entra code and Entra's trace and correlation id. */
@@ -127,8 +136,9 @@ final class TokenEndpointRefusal {
 
   private static Long entraCodeOf(JsonNode body) {
     JsonNode codes = body == null ? null : body.get("error_codes");
-    if (codes != null && codes.isArray() && !codes.isEmpty() && codes.get(0).canConvertToLong()) {
-      return codes.get(0).asLong();
+    JsonNode first = codes != null && codes.isArray() && !codes.isEmpty() ? codes.get(0) : null;
+    if (first != null && first.isIntegralNumber() && first.canConvertToLong()) {
+      return first.asLong();
     }
     Matcher prefix = AADSTS_PREFIX.matcher(text(body, "error_description"));
     return prefix.find() ? Long.valueOf(prefix.group(1)) : null;

@@ -167,10 +167,9 @@ Correlation-ID für eine Anfrage beim Microsoft-Support.
 | „Das Client-Secret ist abgelaufen …" | Ablaufdatum überschritten | neues Secret eintragen, „Ablaufdatum des Secrets" nachziehen |
 | „Der Anfrage fehlt das Client-Secret …" / „Der Anfrage fehlt ein Pflichtparameter …" | Secret oder Angabe am Zugang leer | Client-ID, Client-Secret und „Scopes" prüfen |
 | „Die Client-ID ist im Mandanten nicht bekannt …" | Objekt-ID statt Anwendungs-ID oder falscher Mandant | Anwendungs-ID (Client-ID) und Mandant prüfen |
-| „Der Mandant existiert nicht …" / „Die Angabe des Mandanten ist ungültig …" | Mandant vertippt oder in falscher Form | Verzeichnis-ID oder Domäne wie `contoso.onmicrosoft.com` eintragen |
+| „Der Mandant existiert nicht …" / „Die Angabe des Mandanten ist ungültig …" | Mandant vertippt oder in falscher Form | Verzeichnis-ID oder Domain wie `contoso.onmicrosoft.com` eintragen |
 | „Die App-Registrierung ist im Mandanten deaktiviert …" | Anwendung in Entra abgeschaltet | in Entra wieder aktivieren |
-| „Der Scope wird nicht angenommen …" / „Die Ressource des Scopes ist im Mandanten nicht bekannt …" | „Scopes" am Zugang falsch gefüllt | „Scopes" leer lassen |
-| „Die App-Registrierung darf diesen Anmeldeweg (Grant-Typ) nicht nutzen." | Anwendung für die Anmeldung als Anwendung nicht zugelassen | App-Registrierung prüfen |
+| „Der Scope … des Zugangs wird nicht angenommen …" / „Die Ressource des Scopes ist im Mandanten nicht bekannt …" | „Scopes" am Zugang falsch gefüllt | „Scopes" leer lassen |
 | „Client-ID oder Client-Secret werden nicht angenommen. Häufige Ursachen: …" | Entra nannte keinen bekannten Fehlercode | die genannten Ursachen prüfen, Entra-Code im Log nachschlagen |
 | „Microsoft Graph hat das Zugriffstoken abgewiesen" | Secret, Mandant oder Zustimmung stimmen nicht | Zugang prüfen |
 | „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein." / „… Dokumentbibliothek ist für die Anwendung nicht sichtbar …" | Site nicht freigegeben oder Kennung falsch; der Bestand bleibt | Site freigeben (Abschnitt 2) |
