@@ -66,7 +66,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   private final Set<String> liveRefreshTokens = ConcurrentHashMap.newKeySet();
   private final Map<String, String> accountOfToken = new ConcurrentHashMap<>();
   private volatile String account = DEFAULT_ACCOUNT;
-  private volatile String error;
+  private volatile String rejection;
   private volatile int errorStatus;
   private volatile boolean rotateRefreshTokens = true;
   private volatile long accessLifetimeSeconds = 3600;
@@ -150,8 +150,13 @@ public final class FakeAuthorizationServer implements AutoCloseable {
 
   /** From now on every token request is refused with the OAuth {@code error} and {@code status}. */
   public void rejectWith(int status, String error) {
+    rejectWithBody(status, "{\"error\": \"" + error + "\"}");
+  }
+
+  /** From now on every token request is refused with {@code status} and the JSON {@code body}. */
+  public void rejectWithBody(int status, String body) {
     this.errorStatus = status;
-    this.error = error;
+    this.rejection = body;
   }
 
   /** From now on every consent and renewal is given as the account {@code name}. */
@@ -166,7 +171,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
 
   /** From now on every request gets a token again. */
   public void accept() {
-    this.error = null;
+    this.rejection = null;
   }
 
   /** Whether a refresh hands out a new refresh token and invalidates the used one (default). */
@@ -285,7 +290,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   public void reset() {
     releaseRevocations();
     requests.clear();
-    error = null;
+    rejection = null;
     rotateRefreshTokens = true;
     accessLifetimeSeconds = 3600;
     refreshLifetimeSeconds = null;
@@ -308,9 +313,9 @@ public final class FakeAuthorizationServer implements AutoCloseable {
       return;
     }
     pause();
-    String rejection = error;
-    if (rejection != null) {
-      answer(exchange, errorStatus, "{\"error\": \"" + rejection + "\"}");
+    String refused = rejection;
+    if (refused != null) {
+      answer(exchange, errorStatus, refused);
       return;
     }
     String grantType = form.get("grant_type");
