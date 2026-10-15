@@ -58,21 +58,24 @@ configurations.named("evalTestRuntimeOnly") {
     extendsFrom(configurations["testRuntimeOnly"])
 }
 
+// Tika's standard parser package brings libraries for formats OPAA never admits (RAR, MATLAB,
+// TIFF/JPEG 2000 images, RSS/Atom feeds) under licenses outside .github/licenses/allowed.txt.
+// Excluded from every configuration, so no other path to Tika can bring them back;
+// TikaWithoutExcludedLibrariesTest proves every admitted format still detects and extracts.
+configurations.configureEach {
+    exclude(group = "com.github.junrar", module = "junrar")
+    exclude(group = "org.tallison", module = "jmatio")
+    exclude(group = "com.github.jai-imageio", module = "jai-imageio-core")
+    exclude(group = "com.rometools", module = "rome")
+}
+
 dependencies {
     // OpenAPI spec, generator config and shared domain enums - transitively brings the generated
     // io.opaa.api.dto classes onto this module's compile classpath via opaa-api's own main
     // sourceSet output, without recompiling them here.
     implementation(project(":opaa-api"))
     implementation(libs.bundles.spring.boot)
-    // Tika's standard parser package brings libraries for formats OPAA never admits (RAR, MATLAB,
-    // TIFF/JPEG 2000 images, RSS/Atom feeds) under licenses outside .github/licenses/allowed.txt.
-    // TikaWithoutExcludedLibrariesTest proves every admitted format still detects and extracts.
-    implementation(libs.bundles.spring.ai) {
-        exclude(group = "com.github.junrar", module = "junrar")
-        exclude(group = "org.tallison", module = "jmatio")
-        exclude(group = "com.github.jai-imageio", module = "jai-imageio-core")
-        exclude(group = "com.rometools", module = "rome")
-    }
+    implementation(libs.bundles.spring.ai)
     implementation(libs.spring.boot.starter.liquibase)
     implementation(libs.caffeine)
     implementation(libs.jtokkit)

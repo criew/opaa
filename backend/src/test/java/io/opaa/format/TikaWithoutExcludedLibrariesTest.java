@@ -4,14 +4,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.test.ProductionDocumentFormats;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.metadata.TikaCoreProperties;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.parser.EmptyParser;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.xml.DcXMLParser;
+import org.apache.tika.sax.BodyContentHandler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -41,6 +51,63 @@ class TikaWithoutExcludedLibrariesTest {
   void excludedLibraryIsNotOnTheClasspath(String className) {
     assertThatThrownBy(() -> Class.forName(className, false, getClass().getClassLoader()))
         .isInstanceOf(ClassNotFoundException.class);
+  }
+
+  /**
+   * A parser whose library is missing must be dropped by Tika's service loading, not fail at parse
+   * time: a {@link LinkageError} would pass the {@code RuntimeException} mapping of {@link
+   * DocumentFormatRunner}. The bytes of each excluded format therefore reach no parser of it.
+   */
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("excludedFormatSamples")
+  void contentOfAnExcludedFormatReachesNoParserOfIt(String name, byte[] content, String expected)
+      throws Exception {
+    Metadata metadata = new Metadata();
+
+    new AutoDetectParser()
+        .parse(
+            new ByteArrayInputStream(content),
+            new BodyContentHandler(-1),
+            metadata,
+            new ParseContext());
+
+    assertThat(metadata.getValues(TikaCoreProperties.TIKA_PARSED_BY))
+        .as("parsers that saw the %s sample", name)
+        .contains(expected)
+        .noneMatch(parser -> EXCLUDED_PARSERS.stream().anyMatch(parser::endsWith));
+  }
+
+  private static final List<String> EXCLUDED_PARSERS =
+      List.of("RarParser", "MatParser", "FeedParser");
+
+  static Stream<Arguments> excludedFormatSamples() {
+    byte[] rar = {'R', 'a', 'r', '!', 0x1a, 0x07, 0x01, 0x00, 0, 0, 0, 0};
+    byte[] mat =
+        String.format("%-116s", "MATLAB 5.0 MAT-file, Platform: GLNXA64")
+            .concat("\0\0\0\0\0\0\0\0\u0000\u0001IM")
+            .getBytes(StandardCharsets.ISO_8859_1);
+    byte[] rss =
+        """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0"><channel><title>Meldungen</title>
+        <item><title>Eintrag</title><link>https://example.org/1</link></item>
+        </channel></rss>
+        """
+            .getBytes(StandardCharsets.UTF_8);
+    byte[] atom =
+        """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom"><title>Meldungen</title>
+        <entry><title>Eintrag</title><id>urn:x:1</id></entry></feed>
+        """
+            .getBytes(StandardCharsets.UTF_8);
+    String empty = EmptyParser.class.getName();
+    String xml = DcXMLParser.class.getName();
+    return Stream.of(
+        Arguments.of("RAR", rar, empty),
+        Arguments.of("MAT", mat, empty),
+        Arguments.of("RSS", rss, xml),
+        Arguments.of("Atom", atom, xml));
   }
 
   @Test
