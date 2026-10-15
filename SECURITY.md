@@ -4,7 +4,8 @@
 > requests or discussions. Report them privately via GitHub's
 > [Private Vulnerability Reporting](https://github.com/criew/opaa/security/advisories/new)
 > (*Security → Report a vulnerability*). This is the only reporting channel; there is no e-mail
-> address. We handle reports on a best-effort basis and do not commit to fixed response times.
+> address. We handle reported vulnerabilities on a best-effort basis and do not commit to fixed response
+> times for them.
 > Only the latest release and `main` receive security fixes. Fixed vulnerabilities are published as
 > GitHub Security Advisories, with a CVE where applicable. Reports may be written in English or
 > German.
@@ -43,14 +44,17 @@ erscheinen, steht in [docs/releases.md](docs/releases.md#sicherheitsupdates-für
 
 | Version | Sicherheitskorrekturen |
 |---|---|
-| jüngstes Release `X.Y.Z` | ja |
+| jüngstes Release (ohne Vorab-Releases) | ja |
 | `main` | ja |
 | ältere Releases | nein |
 
 ## Ablauf
 
-Das Projekt bearbeitet Meldungen **nach bestem Bemühen** (best effort). Feste Antwort- oder
-Behebungsfristen werden nicht zugesagt.
+Extern gemeldete Sicherheitslücken bearbeitet das Projekt **nach bestem Bemühen** (best effort);
+für sie werden keine festen Antwort- oder Behebungsfristen zugesagt. Für Befunde des eigenen
+CVE-Scans gelten dagegen die Reaktionszeiten nach Schwere aus
+[docs/cve-scanning.md](docs/cve-scanning.md#triage-von-image-alerts) und
+[docs/releases.md](docs/releases.md#sicherheitsupdates-für-releases).
 
 1. **Eingangsbestätigung** — Ein Maintainer bestätigt den Eingang im Advisory-Entwurf.
 2. **Bewertung** — Die Maintainer prüfen, ob die Lücke nachvollziehbar ist, welche Versionen sie
@@ -70,7 +74,7 @@ folgen der Triage in [docs/cve-scanning.md](docs/cve-scanning.md#triage-von-imag
 ## Meldepflichten nach dem Cyber Resilience Act
 
 Welche Pflichten aus Art. 14 CRA (Meldung aktiv ausgenutzter Schwachstellen und schwerwiegender
-Sicherheitsvorfälle) das Projekt in seiner Rolle als Open-Source-Steward treffen, hält [#2568](https://github.com/criew/opaa/issues/2568) fest.
+Sicherheitsvorfälle) das Projekt in seiner Rolle als Open-Source-Steward treffen, klärt [#2568](https://github.com/criew/opaa/issues/2568).
 Soweit eine Meldung danach geboten ist, gibt der Maintainer sie ab; eine Meldung über den Meldeweg
 oben löst diese Prüfung aus. Das Projekt arbeitet mit den Marktüberwachungsbehörden zusammen, wenn
 diese es anfragen.
