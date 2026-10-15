@@ -8,13 +8,31 @@
 > #2575 (Release-Zyklus). Vorhanden sind die Bausteine, auf die es aufsetzt: Protokoll-Enums,
 > Liquibase-Changelogs, SBOM und Attestierung ([sbom.md](../sbom.md)), CVE-Prozess
 > ([cve-scanning.md](../cve-scanning.md)) und die Upgrade-Hinweise je Release
-> ([releases.md](../releases.md#vorbereitung-für-bestandsinstallationen)). **Gebaut** sind die
-> wöchentliche Drift-Routine ([Schicht 3](#schicht-3-wöchentliche-drift-routine)), die Kennzeichnung
-> am PR ([Schicht 2](#schicht-2-kennzeichnung-datenrelevanter-änderungen-am-pr), #2553), das
-> [Manifest](#das-manifest) mit Schema, Lader und Erstbefüllung (ohne Konfigurationsschlüssel und
-> Datenflüsse) und der Abschnitt „Wirkung auf Behördenunterlagen“ in Spezifikationsvorlage und
-> Produktmanager-Rolle (#2571) sowie die Rolle „Behördenkontakt“
-> ([Rollenvertrag](../../agents/roles/behoerdenkontakt.md), #2573). Alles Übrige ist Zielbild.
+> ([releases.md](../releases.md#vorbereitung-für-bestandsinstallationen)).
+>
+> **Gebaut** sind:
+>
+> - das [Faktenmodell](#das-faktenmodell): das [Manifest](#das-manifest) mit Schema, Lader und
+>   Erstbefüllung (#2546), den Konfigurationsschlüsseln und Standardmodellen in `configuration.yaml`
+>   (#2548, PR #2842) und den ausgehenden Datenflüssen in `outbound.yaml` (#2549, PR #2837), der
+>   [Wächter](#der-wächter-und-seine-grenze) (#2547, #2548, #2549), die
+>   [Faktenblätter](#faktenblätter) (#2550) mit dem Übersichtsbild der Datenflüsse (PR #2846) und die
+>   Lizenzprüfung mit Lizenzübersicht (#2551)
+> - alle drei Schichten der [Drift-Erkennung](#automatisierung-und-drift-erkennung): Wächter,
+>   Kennzeichnung am PR (#2553) und wöchentliche Drift-Routine (#2819)
+> - der Ordner `docs/behoerden/` mit Kopfvermerk und Haftungshinweis (#2545) und den Vorlagen für
+>   Datenschutz (#2565), Informationssicherheit und Notfall (#2567), KI-Verordnung und Cyber
+>   Resilience Act (#2568) sowie Barrierefreiheit und Nutzung (#2569); die Sicherheitsrichtlinie mit
+>   Meldeweg steht in [SECURITY.md](../../SECURITY.md) (#2561)
+> - die [Pflichten der Rollen](#verankerung-in-der-agentenorganisation) für Spezifikation (#2571),
+>   Umsetzung und Review (#2572) und die Rolle „Behördenkontakt“
+>   ([Rollenvertrag](../../agents/roles/behoerdenkontakt.md), #2573)
+> - das Handbuchkapitel [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md)
+>
+> **Zielbild** sind das [Update-Paket](#das-update-paket) (#2552 mit #2554–#2559) einschließlich
+> Konfigurationsexport der Instanz (#2558), der Release-Schritt des Maintainers (#2574), die
+> Vorlagen der Phasen 0 bis 4 und der Mitbestimmung (#2562, #2563, #2564, #2566) und die
+> Supportlinien (#2575). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -33,10 +51,10 @@ Update**. In jedem Schritt fragt eine andere Stelle — Hausleitung, Vergabestel
 Personalrat, Informationssicherheitsbeauftragte (ISB) — nach denselben Fakten: welche Daten anfallen,
 wo sie liegen, wie lange, wer sie sieht, was das System verlässt und was voreingestellt ist.
 
-Heute stehen diese Fakten verstreut in Spezifikationen, Enums, Liquibase-Changelogs und rund 50
-Konfigurationsklassen. Eine Behörde müsste sie selbst zusammensuchen, und niemand bemerkt, wenn sie
-veralten. Besonders schwer wiegt das bei Updates: Weil neue Funktionen nicht ausgeschaltet ankommen
-(Beschluss 1), muss jede Behörde bei jedem Update beurteilen, ob sich an Daten, Sichtbarkeit oder
+Ohne gemeinsame Quelle stehen diese Fakten verstreut in Spezifikationen, Enums, Liquibase-Changelogs
+und rund 50 Konfigurationsklassen. Eine Behörde müsste sie selbst zusammensuchen, und niemand bemerkt,
+wenn sie veralten. Besonders schwer wiegt das bei Updates: Weil neue Funktionen nicht ausgeschaltet
+ankommen (Beschluss 1), muss jede Behörde bei jedem Update beurteilen, ob sich an Daten, Sichtbarkeit oder
 Auswertung etwas geändert hat — ohne selbst Diffs lesen zu können.
 
 Vergleichbare Projekte pflegen ihre Unterlagen von Hand mit Standdatum (EVB-IT-Vertrag, AVV, TOM,
@@ -112,6 +130,12 @@ mitbestimmungspflichtig sein kann.
 | 5 | Barrierefreiheit, Nutzung | Erklärung zur Barrierefreiheit, Muster-Nutzungsrichtlinie | vorhandene Prüfbelege | #2569 |
 | 7 | Update | Update-Paket mit Vorlage Update-Vermerk | Delta zwischen zwei Versionen | #2552 |
 
+**(gebaut, #2565, #2567, #2568, #2569)** Vorlagen liegen für Datenschutz, Informationssicherheit
+und Notfall, KI-Verordnung und Cyber Resilience Act sowie Barrierefreiheit und Nutzung in
+`docs/behoerden/`; die Meldestelle für Sicherheitslücken aus Phase 1 ist
+[SECURITY.md](../../SECURITY.md) (#2561). **(Zielbild)** Die übrigen Vorlagen der Phasen 0 bis 4, die Mitbestimmung und das
+Update-Paket.
+
 **Markterkundung und Codeentstehung (Beschluss 4):** Die Markterkundungsunterlagen enthalten keine
 Aussage dazu, wie der Code entstanden ist. Fragt eine Behörde ausdrücklich danach, lautet die Antwort:
 hauptsächlich KI-generiert und menschlich kuratiert. Diese Antwort steht in keiner Vorlage als eigene
@@ -132,7 +156,7 @@ darum herum.
 
 | Erzeugungsart | Was | Wo | Eingecheckt |
 |---|---|---|---|
-| **generiert** | Faktenblätter, JSON-Fassung, Update-Delta, Lizenzübersicht | CI-Artefakt jedes `main`-Laufs, Anhang am GitHub-Release | nein — vermeidet Konflikte zwischen parallelen PRs |
+| **generiert** | Faktenblätter, JSON-Fassung, Update-Delta, Lizenzübersicht | CI-Artefakt jedes `main`-Laufs (Faktenblätter und Lizenzübersicht, gebaut); Anhang am GitHub-Release und Update-Delta (Zielbild, #2554, #2556) | nein — vermeidet Konflikte zwischen parallelen PRs |
 | **redaktionell** | Vorlagen entlang der Behördenreise | `docs/behoerden/` | ja |
 
 Das Manifest selbst ist Quelltext, keine Dokumentation: Es liegt im Klassenpfad des Backends
@@ -181,37 +205,42 @@ Kopfvermerk hält das Datum dieser Prüfung als `rechtsstand` fest.
 
 | Baustein | Quelle | Stand heute |
 |---|---|---|
-| Protokollereignisse, Rollen, Fähigkeiten | Enums der geteilten API-Typen (`AuditEventType` mit rund 130 Werten, `SystemRole`) | maschinenlesbar |
-| Tabellen und Spalten | Liquibase-Changelogs | maschinenlesbar |
-| Fristen | Aufbewahrungs-Konfiguration, Teile in der Datenbank | Datenbankteil nur über den Instanzexport |
-| Konfiguration und Voreinstellungen | rund 50 Konfigurationsklassen, Helm-Schema | **Lücke:** keine Konfigurationsmetadaten |
-| System-Prompts, Standardmodelle | Quellcode der Antwort- und Suchstrecke, Anwendungskonfiguration | nicht erfasst |
-| Ausgehende Datenflüsse | `@DataFlow` an den sendenden Klassen, Fachtext im Manifest (`outbound.yaml`, ADR-0052, Entscheidung 8) | maschinenlesbar; per Strukturtest vollständig für die Typen in `OUTBOUND_CLIENTS`/`OUTBOUND_BEANS` |
-| Lizenzen | implizit im CycloneDX-SBOM | **Lücke:** keine Lizenzprüfung |
+| Protokollereignisse, Rollen, Fähigkeiten | Enums der geteilten API-Typen (`AuditEventType` mit rund 130 Werten, `SystemRole`, `Capability`) | im Manifest, vom Wächter in beiden Richtungen geprüft (#2547) |
+| Tabellen und Spalten | Liquibase-Changelogs | im Manifest, vom Wächter ohne Datenbank in beiden Richtungen geprüft (#2547) |
+| Fristen | Einstellungen aus Anwendungskonfiguration, Datenbankspalte oder Konstante ([ADR-0052, Entscheidung 5](../decisions/0052-compliance-manifest.md#5-fristen-sind-einstellungen)) | im Manifest mit Standardwert; den wirksamen Wert einer Instanz, auch den in der Datenbank, liefert erst der Konfigurationsexport (Zielbild, #2558) |
+| Konfiguration und Voreinstellungen | rund 50 Konfigurationsklassen, vom Build erzeugte Konfigurationsmetadaten, Voreinstellungen des Helm-Charts | maschinenlesbar (#2548): jeder `opaa.*`-Schlüssel ist im Code als datenwirksam oder ohne Datenwirkung eingeordnet; die datenwirksamen stehen mit Standardwert und Helm-Voreinstellung im Manifest (`configuration.yaml` und Datei ihres Bereichs) |
+| System-Prompts, Standardmodelle | Quellcode der Antwort- und Suchstrecke, Anwendungskonfiguration | im Manifest: Prompts mit Prüfsumme und KI-Funktionen in `prompts.yaml` (#2547), Modell und Adresse jeder Modellrolle in `configuration.yaml` (#2548) |
+| Ausgehende Datenflüsse | `@DataFlow` an den sendenden Klassen, Fachtext im Manifest (`outbound.yaml`, ADR-0052, Entscheidung 8) | maschinenlesbar (#2549); per Strukturtest vollständig für die Typen in `OUTBOUND_CLIENTS`/`OUTBOUND_BEANS` |
+| Lizenzen | CycloneDX-SBOM des Backends, Produktionsabhängigkeiten des Frontends, Freigabe- und Ausnahmeliste unter `.github/licenses/` | in der CI geprüft, Lizenzübersicht als Artefakt (#2551, [sbom.md](../sbom.md#lizenzprüfung)); offen ist die Lizenz von Liquibase 5, bis zur Klärung als begründete Ausnahme geführt (#2825) |
 
 ### Das Manifest
 
-Das Fakten-Manifest beschreibt in einer Datei je Bereich (Protokoll, Konten und Rollen, Chats,
-Bibliotheken und Indexierung, Verbindungen, Konfiguration, Prompts, Datenflüsse), welche Daten OPAA
-erhebt und verarbeitet. Jeder Eintrag hat feste Pflichtfelder (#2546):
+**(gebaut, #2546, #2548, #2549)** Das Fakten-Manifest beschreibt in einer Datei je Bereich
+(Protokoll; Konten, Anmeldung und Rollen; Rechte und Gruppen; Spaces; Chats; Bibliotheken und
+Indexierung; Verbindungen; Fremdzugänge; Konfiguration und Standardmodelle; System-Prompts und
+KI-Funktionen; ausgehende Datenflüsse), welche Daten OPAA erhebt und verarbeitet. Jeder Eintrag hat
+feste Pflichtfelder:
 
 | Eintragsart | Pflichtfelder |
 |---|---|
 | Datum (Tabelle, Spalte oder Datenkategorie) | Zweck, Personenbezug (nein / personenbeziehbar / Beschäftigtendaten), Speicherort, Frist mit Konfigurationsschlüssel, Sichtbarkeit (Rollen), Zugriffsweg (Oberfläche / API / Export / Datenbank), Löschmechanismus, mögliche Auswertungen |
 | Protokollereignis | wie Datum, zusätzlich Auslöser, Felder des Protokollsatzes und wer zu welchem Zweck liest |
 | Rolle / Fähigkeit | was die Rolle über andere Personen sieht („was sieht wer über mich“) |
-| Voreinstellung | Schlüssel, Standardwert, Wirkung, Bezug zu Daten, Sichtbarkeit, Auswertung oder Datenfluss |
-| System-Prompt / Standardmodell | Fundstelle, Zweck, Prüfsumme des Inhalts |
-| Ausgehender Datenfluss | Ziel, übermittelte Daten, Anlass, Abschaltbarkeit, zuständiger Konfigurationsschlüssel |
+| Voreinstellung, auch Frist und Standardmodell | Schlüssel, Quelle (Anwendungskonfiguration, Datenbankspalte oder Konstante), Standardwert, Wirkung, Bezug zu Daten, Sichtbarkeit, Auswertung oder Datenfluss; Voreinstellung im Helm-Chart, sofern es den Schlüssel setzt |
+| System-Prompt | Fundstelle, Zweck, Prüfsumme des Inhalts |
+| Ausgehender Datenfluss | Ziel, übermittelte Daten, Anlass, Abschaltbarkeit, zuständige Konfigurationsschlüssel, Gruppe im Übersichtsbild, Weg über den Ausgangsproxy |
 | KI-Funktion | Zweck, Art der Ausgabe (Text / Audio / Bild), direkte Interaktion mit Personen, Bewertung oder Profiling von Personen, vorhandene Kennzeichnung nach Art. 50 KI-VO, gesendete System-Prompts; die Einstufung selbst ist Wertung der Behörde und steht nicht im Manifest |
 
 Optional trägt ein Eintrag **Hinweise** auf mögliche rechtliche Relevanz, etwa „Beschäftigtendaten,
 § 80 Abs. 1 Nr. 21 BPersVG prüfen“ — ausdrücklich als Hinweis, nicht als Einstufung. Die Pflichtfelder
 je Protokollereignis werden mit dem Ereignisvertrag aus dem Audit-Trail-Review (#1296) abgeglichen.
 
-Konfigurationsschlüssel ohne Bezug zu Daten, Sichtbarkeit, Auswertung oder Datenfluss dürfen pauschal
-als „ohne Datenwirkung“ markiert werden. Spalten ohne Personenbezug tragen keine eigenen Angaben: Sie
-stehen nur mit Namen in `nonPersonalColumns` ihrer Tabelle oder, bei einer Tabelle ganz ohne
+Konfigurationsschlüssel ohne Bezug zu Daten, Sichtbarkeit, Auswertung oder Datenfluss stehen nicht im
+Manifest: Sie tragen im Code die Markierung „ohne Datenwirkung“ mit Begründung, einzeln oder pauschal
+für ihre Konfigurationsklasse; Schalter, Modelle, Adressen, Fristen und Zeitspannen werden immer
+einzeln eingeordnet
+([ADR-0052, Entscheidung 9](../decisions/0052-compliance-manifest.md#9-konfigurationsschlüssel-und-voreinstellungen)).
+Spalten ohne Personenbezug tragen keine eigenen Angaben: Sie stehen nur mit Namen in `nonPersonalColumns` ihrer Tabelle oder, bei einer Tabelle ganz ohne
 Personenbezug, in deren Spaltenliste unter `nonPersonalTables`. Das hält das Manifest klein und lässt
 trotzdem jede neue Spalte auffallen.
 
@@ -222,16 +251,20 @@ Ein Vollständigkeitswächter lässt den Build scheitern, wenn eine Seite ohne G
 - ein Wert von `AuditEventType`, `SystemRole` oder den Fähigkeiten ohne Manifest-Eintrag (#2547)
 - eine Tabelle oder Spalte des Liquibase-Stands ohne Eintrag (#2547)
 - ein System-Prompt, dessen Prüfsumme nicht zum Manifest passt (#2547)
-- ein Konfigurationsschlüssel ohne Eintrag oder Pauschalmarkierung, oder ein geänderter Standardwert
-  eines datenwirksamen Schlüssels ohne angepassten Eintrag (#2548)
-- ein ausgehender Client ohne Registry-Zuordnung, ein Registry-Eintrag ohne Manifest-Eintrag (#2549)
+- ein Konfigurationsschlüssel ohne Beschreibung oder Einordnung, ein datenwirksamer Schlüssel ohne
+  Eintrag, oder ein geänderter Standardwert oder eine geänderte Helm-Voreinstellung eines
+  datenwirksamen Schlüssels ohne angepassten Eintrag (#2548)
+- ein ausgehender Client ohne Datenfluss-Kennung im Code, eine Kennung ohne Manifest-Eintrag (#2549)
 - umgekehrt ein Manifest-Eintrag ohne Gegenstück im Code (verwaister Eintrag)
 
-**(gebaut für #2547)** `ComplianceManifestTest` prüft Enums, Tabellen, Spalten und Prompt-Prüfsummen in
-beiden Richtungen. Er liest den Liquibase-Stand ohne Datenbank aus den Changelogs und läuft deshalb in
-jedem Testlauf, auch lokal ohne Docker; DDL, die er nicht sicher lesen kann, lässt ihn scheitern statt
-sie zu überspringen. Seine Meldung nennt Datei und einzufügendes YAML; die Konvention steht in
-`backend/docs/compliance-manifest.md`.
+**(gebaut, #2547, #2548, #2549)** `ComplianceManifestTest` prüft Enums, Tabellen, Spalten,
+Prompt-Prüfsummen und die Kennungen von `@DataFlow` in beiden Richtungen; `ModularArchitectureTest`
+lässt keinen ausgehenden Client ohne `@DataFlow` zu; `ConfigurationSettingsTest` prüft Beschreibung
+und Einordnung jedes `opaa.*`-Schlüssels, Standardwert und Helm-Voreinstellung jedes datenwirksamen
+Eintrags und die Standardmodelle. `ComplianceManifestTest` liest den Liquibase-Stand ohne Datenbank aus
+den Changelogs; alle drei laufen deshalb in jedem Testlauf, auch lokal ohne Docker. DDL, die der Leser
+nicht sicher lesen kann, lässt ihn scheitern statt sie zu überspringen. Die Meldungen nennen Datei und
+einzufügendes YAML; die Konvention steht in `backend/docs/compliance-manifest.md`.
 
 **Die Grenze:** Der Wächter prüft, **dass** ein Eintrag existiert, nicht, **ob er stimmt**. Ein
 Platzhalter wie „Zweck: siehe Code“ macht den Build grün. Ob Zweck, mögliche Auswertungen, Sichtbarkeit
@@ -242,12 +275,13 @@ Richtigkeit durch Prüfung.
 
 ### Faktenblätter
 
-Aus dem Manifest entstehen bei jedem Lauf auf `main` (#2550):
+**(gebaut, #2550)** Aus dem Manifest entstehen bei jedem Lauf auf `main`:
 
 - **Datenkatalog** — alle Daten mit Personenbezug und ihren Pflichtfeldern
 - **Protokollereignisse** — je Ereignis Frist, Speicherort, Zugriffsweg, Löschmechanismus, Leser und Zweck
 - **Rollensicht** — Matrix Rolle × Datenkategorie, „was sieht wer über mich“
-- **Datenflüsse** nach außen
+- **Datenflüsse** nach außen, mit einem daraus erzeugten Übersichtsbild aller Verbindungen nach
+  Gruppen (PR #2846)
 - **Voreinstellungen** mit Standardwert und Wirkung, einschließlich Standardmodelle und Prompt-Prüfsummen
 - **Fristen** mit Konfigurationsschlüssel
 - eine **JSON-Fassung** aller Inhalte für Werkzeuge und für das Delta
@@ -255,7 +289,10 @@ Aus dem Manifest entstehen bei jedem Lauf auf `main` (#2550):
 Die KI-Funktionen stehen mit den System-Prompts im Blatt Voreinstellungen. Erzeugt werden die Blätter
 mit `./gradlew complianceDocs`; der Job `backend-build` der CI legt sie als Artefakt
 `compliance-faktenblaetter` ab. Namen, Kopf und Anker beschreibt
-[`docs/behoerden/README.md`](../behoerden/README.md#faktenblätter).
+[`docs/behoerden/README.md`](../behoerden/README.md#faktenblätter), die Sicht des Betriebs das
+Handbuchkapitel [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md). Die Lizenzübersicht
+entsteht getrennt davon in der Lizenzprüfung (#2551) als Artefakte `license-report-backend` und
+`license-report-frontend`.
 
 Die Faktenblätter beschreiben die Voreinstellung einer Version. Was eine konkrete Instanz tatsächlich
 tut, beschreibt erst der [Instanzbezug](#instanzbezug).
@@ -273,16 +310,18 @@ kommt aber erst nach dem Merge. Drei Schichten ergänzen sich deshalb:
 
 | Schicht | Zeitpunkt | Art | Erzwingt | Liefert |
 |---|---|---|---|---|
-| 1 · CI-Wächter | jeder Build | deterministisch, blockierend | Existenz eines Manifest-Eintrags | #2547 (gebaut), #2548, #2549 (Zielbild) |
-| 2 · Kennzeichnung am PR | jeder PR | deterministisch, blockierend | Label `data-impact` oder Angabe „Keine Wirkung“ | #2553 (PR #2820) |
-| 3 · Drift-Routine | wöchentlich | Agent, nur lesend | inhaltliche Richtigkeit, Verhaltensänderungen ohne Schemaänderung, Lücken der Pfadliste | eingerichtete Claude-Routine (gebaut) |
+| 1 · CI-Wächter | jeder Build | deterministisch, blockierend | Existenz eines Manifest-Eintrags | #2547, #2548, #2549 (gebaut) |
+| 2 · Kennzeichnung am PR | jeder PR | deterministisch, blockierend | Label `data-impact` oder Angabe „Keine Wirkung“ | #2553 (gebaut, PR #2820) |
+| 3 · Drift-Routine | wöchentlich | Agent, nur lesend | inhaltliche Richtigkeit, Verhaltensänderungen ohne Schemaänderung, Lücken der Pfadliste | eingerichtete Claude-Routine (gebaut, #2819) |
 
-Der Release-Lauf führt Schicht 1 zusätzlich vor jeder Veröffentlichung aus und bricht bei einem
-unvollständigen Manifest ab, **bevor** Images erscheinen (#2556).
+**(Zielbild, #2556)** Der Release-Lauf führt Schicht 1 zusätzlich vor jeder Veröffentlichung aus und
+bricht bei einem unvollständigen Manifest ab, **bevor** Images erscheinen. Heute läuft Schicht 1 in
+der CI jedes PRs mit Backend-Änderung und jedes Stands auf `main`, nicht im Release-Workflow selbst.
 
 ### Schicht 1: deterministische CI-Wächter
 
-Der [Wächter](#der-wächter-und-seine-grenze) läuft im regulären Testlauf eines CI-Shards. Er ist auf
+**(gebaut, #2547, #2548, #2549)** Der [Wächter](#der-wächter-und-seine-grenze) läuft im regulären
+Testlauf eines CI-Shards. Er ist auf
 das beschränkt, was sich ohne Wertung entscheiden lässt: Gibt es zu jedem Gegenstand im Code einen
 Eintrag und umgekehrt? Seine Fehlermeldung nennt den fehlenden Eintrag, die Datei des Bereichs und die
 Konvention, damit die Nachpflege ohne Suchen gelingt.
@@ -292,14 +331,19 @@ Wächter verlangt den Manifest-Eintrag, die Pfadliste (`db/changelog/**`, `compl
 Entscheidung über das Label. Ob der Eintrag stimmt, etwa eine Spalte zu Recht ohne Personenbezug steht,
 bleibt Schicht 3.
 
-Für Prompts und Standardmodelle ist die Prüfsumme der Hebel: Eine Änderung am Prompt-Text scheitert,
-bis die Prüfsumme bewusst nachgezogen ist, und taucht damit im Delta als Verhaltensänderung auf — auch
-ohne Schemaänderung.
+Für Prompts ist die Prüfsumme der Hebel, für Standardmodelle und andere datenwirksame Voreinstellungen
+der Standardwert im Eintrag: Eine Änderung am Prompt-Text oder am Standardwert scheitert, bis der
+Eintrag bewusst nachgezogen ist, und taucht damit im Delta als Verhaltensänderung auf — auch ohne
+Schemaänderung.
+
+Daneben prüft die CI die Vorlagen in `docs/behoerden/`: Kopfvermerk, Haftungshinweis und jeden
+Verweis auf ein Faktenblatt gegen die aus dem Manifest erzeugte Liste gültiger Ziele
+(`.github/fact-sheet-anchors.txt`, [Regeln](../behoerden/README.md#automatische-prüfung)).
 
 ### Schicht 2: Kennzeichnung datenrelevanter Änderungen am PR
 
-Jeder PR mit Datenwirkung trägt das Label `data-impact` und einen Satz in Alltagssprache für die
-Release-Notizen; die Release-Notizen führen solche PRs unter „Datenrelevante Änderungen“. Ein eigener
+**(gebaut, #2553)** Jeder PR mit Datenwirkung trägt das Label `data-impact` und einen Satz in
+Alltagssprache für die Release-Notizen; die Release-Notizen führen solche PRs unter „Datenrelevante Änderungen“. Ein eigener
 Workflow (`.github/workflows/data-impact.yml`, #2553) prüft das an jedem PR. Er läuft auch bei
 `labeled`, `unlabeled` und `edited`, sodass ein nachträglich gesetztes Label oder eine nachgetragene
 Angabe sofort wirkt.
@@ -313,7 +357,9 @@ Entscheidung, ob eine Wirkung vorliegt, bleibt beim Autor und im Review; die Pr�
 sie getroffen wird.
 
 **Pflege der Liste:** Ein Selbsttest prüft die Liste gegen veraltete Muster, die auf keine Datei mehr
-passen. Lücken — datenrelevanter Code außerhalb der Liste — findet die Drift-Routine (Prüffrage d) und
+passen, und verlangt ein Muster für jede Backend-Datei mit ausgehendem Datenfluss (`@DataFlow`,
+`@DataFlowCarrier`), System-Prompt oder Aufbewahrungsfrist. Übrige Lücken — datenrelevanter Code
+außerhalb der Liste, den diese Merkmale nicht erkennen — findet die Drift-Routine (Prüffrage d) und
 schlägt eine neue Zeile vor. So bleibt die Liste klein und von Hand lesbar, ohne still zu veralten.
 
 ### Schicht 3: wöchentliche Drift-Routine
@@ -351,6 +397,9 @@ Rolle „Behördenkontakt“ läuft anlassbezogen vor jedem Release und nutzt di
 ---
 
 ## Das Update-Paket
+
+**(Zielbild, #2552)** Gebaut sind davon nur Bausteine: die Faktenblätter und die Lizenzübersicht
+(Teil 9) und die Kennzeichnung `data-impact` mit der Rubrik in den Release-Notizen (Teil 6, #2553).
 
 Zu jedem Release entsteht ein Update-Paket, mit dem eine Behörde ein Update gegenüber Hausleitung,
 Datenschutzbeauftragten, Personalrat und ISB verantworten kann, ohne Diffs zu lesen. Es ist an Tag
@@ -445,8 +494,8 @@ beteiligungsrelevant wie eine Produktänderung. Deshalb:
 
 ## Das Modell der Dienstvereinbarung
 
-Die Muster-Dienstvereinbarung (#2566) soll nicht bei jedem Release neu verhandelt werden müssen und
-den Überwachungsumfang trotzdem nicht unbemerkt wachsen lassen. Sie hat drei Teile.
+**(Zielbild, #2566)** Die Muster-Dienstvereinbarung soll nicht bei jedem Release neu verhandelt
+werden müssen und den Überwachungsumfang trotzdem nicht unbemerkt wachsen lassen. Sie hat drei Teile.
 
 **Haupttext.** Zweck; Verbot der Leistungs- und Verhaltenskontrolle mit Verwertungsverbot;
 Auswertungsverbot einschließlich Datenbank- und Protokollzugriff, mit benannten Rollen und
@@ -487,6 +536,13 @@ an jedem Schritt des Workflows aus [AGENT-ORGANIZATION.md](../AGENT-ORGANIZATION
 | Review | Code Reviewer | Manifest gegen den Code halten, mögliche Auswertungen vollständig, Stufenvorschlag plausibel; fehlender oder falscher Eintrag und fehlendes Label bei Datenwirkung sind wichtige Befunde | #2572 |
 | Release | Behördenkontakt | vor jedem Release Manifest und Update-Paket aus Behördensicht lesen, Hinweise entwerfen, bei Stufe Zustimmung ein Stakeholder-Review anstoßen, überschrittene `naechste-durchsicht` melden; **keine** verbindliche Rechtsbeobachtung, keine Rechtsberatung | #2573 |
 | Release | Maintainer | Delta zum vorigen Release vor dem Tag erzeugen, Befunde des Behördenkontakts klären oder als bekannt in die Release-Notizen aufnehmen | #2574 |
+
+**(gebaut, #2571, #2572, #2573)** Die Pflichten von Product Manager, Developer, Code Reviewer und
+Behördenkontakt stehen in deren Rollenverträgen unter `agents/roles/`, den Lauf des Behördenkontakts
+vor jedem Release beschreibt [AGENT-ORGANIZATION.md](../AGENT-ORGANIZATION.md). Solange es kein
+Update-Paket gibt, liest der Behördenkontakt den Manifest-Diff seit dem letzten Tag und die
+Faktenblätter. **(Zielbild, #2574)** Der Schritt des Maintainers im Release-Ablauf von
+[releases.md](../releases.md).
 
 ---
 
