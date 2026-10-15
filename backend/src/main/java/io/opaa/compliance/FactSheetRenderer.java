@@ -51,6 +51,9 @@ public final class FactSheetRenderer {
   private static final String NONE = "—";
   private static final String NOT_NAMED = "nicht genannt";
   private static final String ISSUES = "https://github.com/criew/opaa/issues/";
+  private static final String VIA_PROXY =
+      "über den Ausgangsproxy, sofern einer eingetragen ist und das Ziel nicht auf seiner"
+          + " Ausnahmeliste steht (Handbuch Betrieb, Abschnitt „Ausgangsproxy“)";
 
   /**
    * Facts the manifest has no entries for yet, although the sheet promises them; an item is removed
@@ -343,6 +346,15 @@ public final class FactSheetRenderer {
                 + " und die zuständige Konfiguration.");
     Map<String, SettingEntry> settingKeys = settingsByKey(manifest);
 
+    if (!manifest.dataFlows().isEmpty()) {
+      sheet.heading(2, "uebersicht", "Übersicht");
+      sheet.paragraph("```mermaid\n" + DataFlowDiagram.render(manifest.dataFlows()) + "```");
+      sheet.paragraph(
+          "Jeder Kasten ist ein Datenfluss mit seiner Kennung, jede Linie eine Verbindung, die"
+              + " OPAA aufbaut. Gestrichelt: "
+              + VIA_PROXY
+              + ". Durchgezogen: nie über den Ausgangsproxy.");
+    }
     sheet.heading(2, "datenfluesse", "Ausgehende Datenflüsse");
     if (manifest.dataFlows().isEmpty()) {
       sheet.paragraph(EMPTY_SECTION);
@@ -356,6 +368,12 @@ public final class FactSheetRenderer {
                 sheet.table(
                     List.of("Angabe", "Inhalt"),
                     List.of(
+                        List.of("Gruppe", DataFlowDiagram.title(entry.group())),
+                        List.of(
+                            "Ausgangsproxy",
+                            Boolean.TRUE.equals(entry.viaOutboundProxy())
+                                ? "ja, " + VIA_PROXY
+                                : "nein, nie"),
                         List.of("Ziel", text(entry.target())),
                         List.of("Übermittelte Daten", text(entry.data())),
                         List.of("Anlass", text(entry.trigger())),

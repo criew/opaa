@@ -80,6 +80,20 @@ public record ComplianceManifest(
     IMAGE
   }
 
+  /** The kind of counterpart a {@link DataFlowEntry} reaches, one group per kind. */
+  public enum DataFlowGroup {
+    /** A model role or a model endpoint the administration checks. */
+    MODEL,
+    /** A source of a library, the authorization or token server of a connection, an MCP server. */
+    CONNECTOR,
+    /** The mail server. */
+    MAIL,
+    /** An identity provider or the directory behind it. */
+    IDENTITY,
+    /** A store holding data of the installation itself. */
+    STORAGE
+  }
+
   /** Where the value of a setting is held. */
   public enum SettingSource {
     /** A Spring property, key as in {@code application.yml}. */
@@ -263,10 +277,15 @@ public record ComplianceManifest(
    * @param trigger the occasion of the transmission
    * @param switchOff whether and how the flow can be switched off
    * @param settings keys of the settings that control it; empty when none does
+   * @param group the kind of counterpart, which groups the flow in the overview diagram
+   * @param viaOutboundProxy whether the connection takes the outbound proxy when one is configured
+   *     and the target is not excluded from it
    */
   public record DataFlowEntry(
       @NotBlank String area,
       @NotBlank String id,
+      @NotNull DataFlowGroup group,
+      @NotNull Boolean viaOutboundProxy,
       @NotBlank String target,
       @NotBlank String data,
       @NotBlank String trigger,

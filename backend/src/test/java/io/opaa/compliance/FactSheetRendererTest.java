@@ -196,6 +196,21 @@ class FactSheetRendererTest {
   }
 
   @Test
+  void theDataFlowSheetOpensWithTheGeneratedDiagram() {
+    String sheet = FactSheetRenderer.render(SHIPPED, PROVENANCE).get(FactSheet.DATENFLUESSE);
+
+    assertThat(sheet)
+        .contains(
+            "## <a id=\"uebersicht\"></a>Übersicht\n\n```mermaid\n"
+                + DataFlowDiagram.render(SHIPPED.dataFlows())
+                + "```\n");
+    assertThat(sheet.indexOf("```mermaid"))
+        .isLessThan(sheet.indexOf("<a id=\"datenfluesse\"></a>"));
+    assertThat(FactSheetRenderer.render(EMPTY, PROVENANCE).get(FactSheet.DATENFLUESSE))
+        .doesNotContain("```mermaid");
+  }
+
+  @Test
   void theJsonFormHoldsProvenanceAndTheWholeManifest() {
     JsonNode json =
         JsonMapper.builder().build().readTree(FactSheetRenderer.renderJson(SHIPPED, PROVENANCE));

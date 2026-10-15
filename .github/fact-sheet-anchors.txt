@@ -217,6 +217,7 @@ datenfluesse#source-sharepoint
 datenfluesse#source-smb
 datenfluesse#source-web
 datenfluesse#transcription-model
+datenfluesse#uebersicht
 voreinstellungen
 voreinstellungen#audit-retention-settings-retention-months
 voreinstellungen#bereich-accounts
