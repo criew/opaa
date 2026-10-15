@@ -5,8 +5,34 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-14T05:10:57Z</updated>
+  <updated>2026-10-15T04:59:36Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 14. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-14.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-14.html</id>
+    <updated>2026-10-15T04:59:36Z</updated>
+    <summary type="text">feat: Architektur-Review Backend 10/2026 — Befunde umsetzen, Kommentare bereinigen, ADRs neu fassen:
+— indexing.source in vier Kernpakete zerlegt
+— Modulkanten und Zyklen im Indexing aufgelöst
+— Code-Kommentare auf Vertrag statt Entstehung umgestellt
+— ADR-0040 und ADR-0041 aufgeteilt und neu gefasst
+feat: Frontend nach Fachthemen gliedern – Feature-Ordner, Import-Grenzen per ESLint, Nachladen je Thema:
+— Frontend-Gliederung abgeschlossen, Altbestand entfernt
+— Seiten je Thema bei Bedarf nachgeladen
+— Frontend-Kommentare auf Vertrag umgestellt
+— Dokumentation je Thema vereinheitlicht
+feat: Nutzerwünsche Prozesse &amp; Kommunikation aus Feedbackrunde (zur Bewertung):
+— Kurznachrichten zwischen Nutzern zur Bewertung
+— Außenfrontend nach OZG-Art zur Bewertung
+— Elektronische Signatur für Dokumente zur Bewertung
+— Verwaltungsprozesse automatisieren zur Bewertung
+Sonstiges:
+— Jackson-Sicherheitsupdates auf 3.1.7 und 2.21.7
+— E2E-Tests unabhängig von Vorgänger-Specs
+— Alle Beans lesen Zeit über Clock-Bean
+— ADR-0051: Architekturvertrag des Backends</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 13. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-13.html"/>
@@ -828,24 +854,5 @@ Sonstiges:
 — Ist-Stand-Spezifikation des Retrieval-Algorithmus dokumentiert
 — DocumentCompletion um Stufe-2-Verdrängung nachgeschärft
 — Chunk-Auswahl nach Fusion um Dokument-Vervollständigung ergänzt</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Dienstag, 25. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-25.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-25.html</id>
-    <updated>2026-08-26T02:08:36Z</updated>
-    <summary type="text">refactor: Backend-Architekturreview 2026-08 — Befunde und Behebungsphasen:
-— Gradle-Modul opaa-api mit OpenAPI-Spec und Generator erstellt
-— AuditEvent-Builder statt Positionsparameter implementiert
-— Chat-Pfad als Pipeline umgestaltet, Transaktions-Kartenhaus aufgelöst
-— Request-scoped CurrentUser für zentrale Aufrufer-Identität eingeführt
-feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem:
-— Akzent-Kontrast behoben, accent-surface-Rolle eingeführt
-— Nachweis-Lücken zu 320-px-Geometrie und Rollenbindung geschlossen
-Sonstiges:
-— 20 Mehrthemen-Golden-Fälle für Retrieval-Eval hinzugefügt
-— Renovate für selbst betriebene Abhängigkeits-Updates konfiguriert
-— Liquibase-Historie zu logisch gruppierter Baseline zusammengefasst
-— Spring-Testkontexte konsolidiert, Mock-Konfigurationen geteilt</summary>
   </entry>
 </feed>
