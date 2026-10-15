@@ -56,7 +56,7 @@ data:
       settings:
         - local_auth_settings.default_expiry_days
         - local_auth_settings.inactive_days
-    visibility: [SYSTEM_ADMIN (Zustand, nie Passwort oder Zähler), die Person selbst]
+    visibility: ["SYSTEM_ADMIN (Zustand, nie Passwort oder Zähler)", die Person selbst]
     accessPaths: [UI, API, DATABASE]
     deletion: Mit dem Konto
     evaluations: >-

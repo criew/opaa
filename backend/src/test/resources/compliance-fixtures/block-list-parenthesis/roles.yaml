@@ -1,0 +1,7 @@
+title: Konten und Rollen
+roles:
+  - id: USER
+    seesAboutOthers: nichts
+    notes:
+      - a) Zustand, nie Passwort
+      - b) die Person selbst
