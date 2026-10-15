@@ -1,5 +1,6 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.compliance.DataFlowCarrier;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -10,6 +11,7 @@ import java.util.Base64;
  * caller (crawling, downloads, RSS fetches, the source connection test) - one place for the client
  * configuration instead of a copy per caller.
  */
+@DataFlowCarrier
 public final class SourceHttpClientFactory {
 
   private SourceHttpClientFactory() {}

@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ModelDiscovery.Failure;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.SettingsEncryptor;
@@ -52,6 +53,7 @@ import tools.jackson.databind.ObjectMapper;
  * Every body is read with a byte ceiling and a deadline, and the detail calls share one overall
  * budget, so a slow or hostile endpoint cannot hold the admin request for long.
  */
+@DataFlow("model-endpoint")
 @Service
 public class LlmModelDiscoverer {
 

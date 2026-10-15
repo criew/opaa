@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import io.opaa.compliance.DataFlow;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.InputStream;
@@ -60,6 +61,7 @@ import tools.jackson.databind.ObjectMapper;
  * cannot be replayed to an address this class never validated. Every failure message is technical
  * English: it travels into {@link RerankRoleStatus#diagnostic()}, not onto a screen.
  */
+@DataFlow("rerank-model")
 @Component
 public class RerankClient {
 

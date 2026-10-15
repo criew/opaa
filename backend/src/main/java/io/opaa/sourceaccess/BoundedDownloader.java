@@ -1,5 +1,6 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory;
  * #downloadStreaming} never does. Every transfer is capped while it streams ({@link
  * BoundedStreams}), so no caller ever holds a whole body in memory or past its limit on disk.
  */
+@DataFlowCarrier
 public class BoundedDownloader {
 
   private static final Logger log = LoggerFactory.getLogger(BoundedDownloader.class);

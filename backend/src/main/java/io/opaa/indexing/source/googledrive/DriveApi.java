@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.googledrive;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
@@ -38,6 +39,7 @@ import tools.jackson.databind.json.JsonMapper;
  * backoff and retried (Entscheidung 10). A rejected token ({@code 401}) is retried once when the
  * run's credentials hold a renewed one; every other failure becomes a {@link DriveApiException}.
  */
+@DataFlow("source-google-drive")
 final class DriveApi {
 
   private static final Logger log = LoggerFactory.getLogger(DriveApi.class);

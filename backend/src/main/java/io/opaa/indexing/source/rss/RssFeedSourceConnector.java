@@ -11,6 +11,7 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.api.types.PersonalSecretForm;
+import io.opaa.compliance.DataFlow;
 import io.opaa.format.DocumentProperties;
 import io.opaa.indexing.spi.ConnectorChecks;
 import io.opaa.indexing.spi.ConnectorData;
@@ -53,6 +54,7 @@ import org.slf4j.LoggerFactory;
  * so the next run fetches the feed in full. The original of an indexed entry is streamed from its
  * stored URL ({@link RemoteOriginalAccess}).
  */
+@DataFlow("source-rss")
 public class RssFeedSourceConnector
     implements SourceConnector, OriginalAccess, RowDeclaredProperties {
 

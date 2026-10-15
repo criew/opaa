@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.outbound.ProxyRefusal;
@@ -36,6 +37,7 @@ import tools.jackson.databind.json.JsonMapper;
  * value or a raw upstream body. A spent budget leaves as {@link RequestBudgetExhaustedException},
  * untouched by the failure mapping.
  */
+@DataFlow("source-confluence")
 final class ConfluenceHttp {
 
   /**

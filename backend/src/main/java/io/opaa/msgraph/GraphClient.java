@@ -1,5 +1,6 @@
 package io.opaa.msgraph;
 
+import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -47,6 +48,7 @@ import tools.jackson.databind.json.JsonMapper;
  * is told of every attempt and every wait. A page link is honoured only as a token on Graph's own
  * origin - the address is always built here.
  */
+@DataFlowCarrier
 public final class GraphClient {
 
   /** Default bound of one JSON answer. */

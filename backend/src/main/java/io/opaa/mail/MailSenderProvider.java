@@ -1,5 +1,6 @@
 package io.opaa.mail;
 
+import io.opaa.compliance.DataFlow;
 import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Component;
  * <p>Every connection is bounded by the {@link SmtpProperties} timeouts; the send path is
  * synchronous, so the thread a stalled peer would hold is the caller's.
  */
+@DataFlow("mail")
 @Component
 public class MailSenderProvider {
 

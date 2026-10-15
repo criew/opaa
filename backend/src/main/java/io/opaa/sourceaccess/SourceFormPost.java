@@ -1,5 +1,6 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
  * timeout} bounds the whole exchange, the reading of the body included. Form and headers carry
  * secrets and are never logged.
  */
+@DataFlowCarrier
 public final class SourceFormPost {
 
   private SourceFormPost() {}

@@ -3,6 +3,7 @@ package io.opaa.searchadmin;
 import io.opaa.api.types.ModelRole;
 import io.opaa.api.types.ModelRoleCondition;
 import io.opaa.api.types.RetrievalStageName;
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
@@ -76,6 +77,7 @@ import org.springframework.stereotype.Service;
  * #PROBE_CACHE_TTL}, and the embedding probe is bounded by {@link #EMBEDDING_PROBE_TIMEOUT} so both
  * roles report an unresponsive endpoint the same way.
  */
+@DataFlow("embedding-model")
 @Service
 public class SearchStatusService {
 

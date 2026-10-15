@@ -5,6 +5,7 @@ import io.opaa.api.types.ExternalAccessState;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.PublicBaseUrl;
+import io.opaa.compliance.DataFlow;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.mail.MailService;
@@ -43,6 +44,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * mails leave after the markers have committed, so a slow mail server never holds the transaction
  * open and a rolled-back run sends nothing.
  */
+@DataFlow("mail")
 @Service
 public class LibraryExternalAccessReminderService {
 

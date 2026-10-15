@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.web;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.spi.RenewableCredential;
 import io.opaa.indexing.spi.SourceCredentialsRejectedException;
@@ -43,6 +44,7 @@ import org.slf4j.LoggerFactory;
  * listing without icons) and the plain {@code <ul>} layout used by both {@code IndexOptions
  * -FancyIndexing} and Python's {@code http.server}.
  */
+@DataFlow("source-web")
 public class AutoindexCrawlerService {
 
   private static final Logger log = LoggerFactory.getLogger(AutoindexCrawlerService.class);

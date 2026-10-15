@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.rss;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.compliance.DataFlow;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.file.html.HtmlDocumentFormat;
 import io.opaa.indexing.attachment.AttachmentCandidate;
@@ -61,6 +62,7 @@ import org.springframework.scheduling.annotation.Async;
  * ends the run through the frame as truncated, with the feed state unsaved so no entry is hidden
  * behind a later {@code 304}.
  */
+@DataFlow("source-rss")
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(RssFeedIndexingExecutor.class);

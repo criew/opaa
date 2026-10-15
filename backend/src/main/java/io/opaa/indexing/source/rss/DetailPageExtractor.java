@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.rss;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.format.file.html.HtmlContentRoots;
 import io.opaa.format.shared.Whitespace;
 import io.opaa.indexing.attachment.AttachmentCandidate;
@@ -32,6 +33,7 @@ import org.jsoup.nodes.Element;
  * to a file, here with the configured {@link RssFeedProperties#mainContentSelector()} - so
  * boilerplate never survives into the index and is never considered for attachments.
  */
+@DataFlow("source-rss")
 public class DetailPageExtractor {
 
   private final TargetAddressValidator targetAddressValidator;

@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestMeter;
@@ -21,6 +22,7 @@ import tools.jackson.databind.json.JsonMapper;
  * at the connection level counts as "signature not met" and is named in the final message, except a
  * target-validation rejection, which surfaces as the configuration problem it is.
  */
+@DataFlow("source-confluence")
 public final class ConfluenceEditionDetector {
 
   private static final JsonMapper JSON = JsonMapper.builder().build();

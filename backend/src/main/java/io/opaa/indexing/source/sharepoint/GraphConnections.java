@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.sharepoint;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.indexing.spi.RunCredentials;
 import io.opaa.indexing.spi.SourceSettings;
@@ -19,6 +20,7 @@ import java.util.function.Supplier;
  * target of the token, certificate validation always on, every attempt and every throttle wait
  * charged to the {@link RequestBudget}.
  */
+@DataFlow("source-sharepoint")
 final class GraphConnections {
 
   /** Builds the HTTP client of one connection. */

@@ -4,6 +4,7 @@ import io.opaa.account.LocalActionTokenService.IssuedActionToken;
 import io.opaa.api.types.MailDeliveryPath;
 import io.opaa.auth.User;
 import io.opaa.common.PublicBaseUrl;
+import io.opaa.compliance.DataFlow;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import io.opaa.mail.SendResult;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Component;
  * act it announces. A link mail answers with its {@link LinkDelivery}: sent, failed with the link
  * for hand-over, or - SMTP off or no public base URL - the link displayed without an attempt.
  */
+@DataFlow("mail")
 @Component
 public class LocalAccountMailer {
 

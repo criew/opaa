@@ -30,6 +30,7 @@ import com.hierynomus.smbj.share.File;
 import com.hierynomus.smbj.share.Share;
 import com.hierynomus.smbj.transport.TransportLayerFactory;
 import com.hierynomus.smbj.transport.tcp.direct.DirectTcpTransportFactory;
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.spi.ConnectorChecks;
 import io.opaa.indexing.spi.RenewableCredential;
@@ -68,6 +69,7 @@ import org.slf4j.LoggerFactory;
  * encryption is used where the server offers it, and DFS referrals are not followed - credentials
  * never leave that host. A guest or anonymous session is refused.
  */
+@DataFlow("source-smb")
 final class SmbShareClient implements AutoCloseable {
 
   private static final Logger log = LoggerFactory.getLogger(SmbShareClient.class);

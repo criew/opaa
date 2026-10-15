@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.rss;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.RenewableCredential;
 import io.opaa.indexing.spi.SourceCredentialsRejectedException;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
  * once a run has accounted for every entry it saw. Package-private - an implementation detail of
  * the executor, not a new public API.
  */
+@DataFlow("source-rss")
 class FeedFetcher {
 
   private static final Logger log = LoggerFactory.getLogger(FeedFetcher.class);

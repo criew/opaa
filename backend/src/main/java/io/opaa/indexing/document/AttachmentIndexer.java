@@ -1,5 +1,6 @@
 package io.opaa.indexing.document;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentLimits;
@@ -46,6 +47,7 @@ import org.slf4j.LoggerFactory;
  * (unchanged, unsupported, rejected by a limit or policy), {@code FAILED} when an attempt did not
  * succeed (download, read or processing error, quota).
  */
+@DataFlow("source-attachment")
 public class AttachmentIndexer {
 
   private static final Logger log = LoggerFactory.getLogger(AttachmentIndexer.class);

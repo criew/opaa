@@ -1,5 +1,6 @@
 package io.opaa.directory.sync.keycloak;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.directory.sync.DirectoryUnavailableException;
 import io.opaa.outbound.ProxyRefusal;
 import java.io.IOException;
@@ -38,6 +39,7 @@ import tools.jackson.databind.json.JsonMapper;
  * re-fetched once whenever the current one is within {@link #TOKEN_REFRESH_MARGIN} of expiry, so a
  * long traversal does not fail halfway through.
  */
+@DataFlow("directory-sync")
 class KeycloakAdminApi {
 
   private static final Logger log = LoggerFactory.getLogger(KeycloakAdminApi.class);

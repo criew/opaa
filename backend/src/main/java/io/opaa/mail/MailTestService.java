@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.ValidationException;
+import io.opaa.compliance.DataFlow;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.format.DateTimeFormatter;
@@ -29,6 +30,7 @@ import org.springframework.util.StringUtils;
  * <p>The entry is written for every outcome, with {@code FAILURE} and the cause for a send that did
  * not work - a test that failed is the more interesting record of the two.
  */
+@DataFlow("mail")
 @Service
 public class MailTestService {
 

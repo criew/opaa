@@ -1,5 +1,6 @@
 package io.opaa.health;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
  * store reported up with the vector search {@code SUSPENDED}: a query vector of the new model does
  * not fit the old column, and a planned re-embedding is no outage.
  */
+@DataFlow("embedding-model")
 @Component
 @ConditionalOnProperty(name = "management.health.vectorstore.enabled", matchIfMissing = true)
 public class VectorStoreHealthIndicator implements HealthIndicator {

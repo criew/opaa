@@ -1,5 +1,6 @@
 package io.opaa.knowledge;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3ClientSettings;
 import io.opaa.s3.S3FailureTranslator;
@@ -61,6 +62,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * UploadStoreUnavailableException}, a deletion logs and leaves the object for the orphan cleanup
  * (Entscheidung 9).
  */
+@DataFlow("original-store")
 public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoCloseable {
 
   /** The {@code opaa.upload.store} value this adapter is selected by. */
