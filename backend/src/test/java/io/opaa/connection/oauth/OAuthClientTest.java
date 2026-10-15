@@ -287,6 +287,27 @@ class OAuthClientTest {
         .hasMessageNotContaining(SECRET);
   }
 
+  /** A delegated sign-in is never pointed to the app-only {@code .default} scope of Graph. */
+  @Test
+  void aRefusedScopeOfADelegatedSignInNamesTheScopeWithoutTheAppOnlyAdvice() {
+    OAuthClient.Grant grant = consent();
+    server.rejectWithBody(
+        400, ClientCredentialsGrantTest.entraBody("invalid_scope", "[70011]", 70011));
+
+    assertThatThrownBy(
+            () ->
+                client.refresh(
+                    registration(ProfileEndpoints.NONE),
+                    fixed(new Revocation.None()),
+                    grant.refreshToken(),
+                    NOW))
+        .isInstanceOf(SourceCredentialsException.class)
+        .isNotInstanceOf(SignInRejectedException.class)
+        .hasMessageContaining("Der Scope „files.read offline_access“ des Zugangs")
+        .hasMessageNotContaining("graph.microsoft.com")
+        .hasMessageNotContaining("provider prose");
+  }
+
   @Test
   void a407IsTheOutboundProxysRefusalNotTheProviders() {
     OAuthClient.Grant grant = consent();
