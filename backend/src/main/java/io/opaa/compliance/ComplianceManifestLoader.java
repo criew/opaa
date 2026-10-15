@@ -36,7 +36,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Reads the {@link ComplianceManifest} from the classpath and rejects it as a whole, with every
  * violation named, when an entry misses a mandatory field, carries an unknown key, repeats an id of
- * its kind or names a retention setting no {@code settings} entry describes.
+ * its kind, names a retention setting no {@code settings} entry describes or holds a list value
+ * with unbalanced parentheses.
  *
  * <p>An entry is the {@code defaults} of its section in the same file, overridden key by key by the
  * entry itself; the mandatory check runs on that result.
@@ -134,6 +135,7 @@ public final class ComplianceManifestLoader {
       options.setAllowDuplicateKeys(false);
       Object root = new Yaml(new SafeConstructor(options)).load(in);
       if (root instanceof Map<?, ?> map) {
+        checkSplitListValues(map, area, violations);
         return stringKeys(map);
       }
       violations.add(area + ": the file must hold a mapping");
@@ -141,6 +143,31 @@ public final class ComplianceManifestLoader {
       violations.add(area + ": unreadable YAML (" + e.getMessage() + ")");
     }
     return null;
+  }
+
+  /**
+   * A list value with unbalanced parentheses: in a flow list {@code [a (b, c), d]} the comma inside
+   * the parentheses splits one value into two, silently.
+   */
+  private static void checkSplitListValues(Object node, String area, List<String> violations) {
+    if (node instanceof Map<?, ?> map) {
+      map.values().forEach(value -> checkSplitListValues(value, area, violations));
+    } else if (node instanceof List<?> list) {
+      for (Object value : list) {
+        if (value instanceof String text
+            && text.chars().filter(c -> c == '(').count()
+                != text.chars().filter(c -> c == ')').count()) {
+          violations.add(
+              area
+                  + ": list value '"
+                  + text
+                  + "' has unbalanced parentheses; a comma in a [flow, list] splits the value,"
+                  + " quote it");
+        } else {
+          checkSplitListValues(value, area, violations);
+        }
+      }
+    }
   }
 
   private static void readArea(

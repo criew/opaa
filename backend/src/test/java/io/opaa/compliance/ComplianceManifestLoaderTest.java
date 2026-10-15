@@ -115,6 +115,20 @@ class ComplianceManifestLoaderTest {
   }
 
   @Test
+  void aListValueSplitAtACommaInsideParenthesesIsRejected() {
+    assertThatThrownBy(() -> ComplianceManifestLoader.load(FIXTURES + "split-value/*.yaml"))
+        .isInstanceOfSatisfying(
+            ComplianceManifestException.class,
+            e ->
+                assertThat(e.violations())
+                    .containsExactly(
+                        "roles: list value 'Konto (Zustand' has unbalanced parentheses; a comma"
+                            + " in a [flow, list] splits the value, quote it",
+                        "roles: list value 'nie Passwort)' has unbalanced parentheses; a comma"
+                            + " in a [flow, list] splits the value, quote it"));
+  }
+
+  @Test
   void anIdUsedTwiceAcrossAreasIsRejected() {
     assertThatThrownBy(() -> ComplianceManifestLoader.load(FIXTURES + "duplicate/*.yaml"))
         .isInstanceOfSatisfying(
