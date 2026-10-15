@@ -109,6 +109,9 @@ verwenden denselben Workflow: dieselben Issues, dieselbe Branch-Benennung, dasse
 
 Ohne unterzeichnete [Contributor License Agreement](CLA.md) kann kein Pull Request zusammengeführt werden.
 
+**Sicherheitslücken** bitte nicht als öffentliches Issue melden, sondern vertraulich nach
+[SECURITY.md](SECURITY.md).
+
 ## Lizenz
 
 [GNU Affero General Public License v3.0](LICENSE). Der Funktionsumfang ist vollständig quelloffen.
