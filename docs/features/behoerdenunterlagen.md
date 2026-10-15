@@ -209,8 +209,10 @@ Optional trägt ein Eintrag **Hinweise** auf mögliche rechtliche Relevanz, etwa
 je Protokollereignis werden mit dem Ereignisvertrag aus dem Audit-Trail-Review (#1296) abgeglichen.
 
 Konfigurationsschlüssel ohne Bezug zu Daten, Sichtbarkeit, Auswertung oder Datenfluss dürfen pauschal
-als „ohne Datenwirkung“ markiert werden, ebenso Spalten ohne Personenbezug auf Tabellenebene. Das hält
-das Manifest klein, ohne eine Lücke zu lassen.
+als „ohne Datenwirkung“ markiert werden. Spalten ohne Personenbezug tragen keine eigenen Angaben: Sie
+stehen nur mit Namen in `nonPersonalColumns` ihrer Tabelle oder, bei einer Tabelle ganz ohne
+Personenbezug, in deren Spaltenliste unter `nonPersonalTables`. Das hält das Manifest klein und lässt
+trotzdem jede neue Spalte auffallen.
 
 ### Der Wächter und seine Grenze
 
@@ -223,6 +225,12 @@ Ein Vollständigkeitswächter lässt den Build scheitern, wenn eine Seite ohne G
   eines datenwirksamen Schlüssels ohne angepassten Eintrag (#2548)
 - ein ausgehender Client ohne Registry-Zuordnung, ein Registry-Eintrag ohne Manifest-Eintrag (#2549)
 - umgekehrt ein Manifest-Eintrag ohne Gegenstück im Code (verwaister Eintrag)
+
+**(gebaut für #2547)** `ComplianceManifestTest` prüft Enums, Tabellen, Spalten und Prompt-Prüfsummen in
+beiden Richtungen. Er liest den Liquibase-Stand ohne Datenbank aus den Changelogs und läuft deshalb in
+jedem Testlauf, auch lokal ohne Docker; DDL, die er nicht sicher lesen kann, lässt ihn scheitern statt
+sie zu überspringen. Seine Meldung nennt Datei und einzufügendes YAML; die Konvention steht in
+`backend/docs/compliance-manifest.md`.
 
 **Die Grenze:** Der Wächter prüft, **dass** ein Eintrag existiert, nicht, **ob er stimmt**. Ein
 Platzhalter wie „Zweck: siehe Code“ macht den Build grün. Ob Zweck, mögliche Auswertungen, Sichtbarkeit
@@ -259,7 +267,7 @@ kommt aber erst nach dem Merge. Drei Schichten ergänzen sich deshalb:
 
 | Schicht | Zeitpunkt | Art | Erzwingt | Liefert |
 |---|---|---|---|---|
-| 1 · CI-Wächter | jeder Build | deterministisch, blockierend | Existenz eines Manifest-Eintrags | #2547, #2548, #2549 (Zielbild) |
+| 1 · CI-Wächter | jeder Build | deterministisch, blockierend | Existenz eines Manifest-Eintrags | #2547 (gebaut), #2548, #2549 (Zielbild) |
 | 2 · Kennzeichnung am PR | jeder PR | deterministisch, blockierend | Label `data-impact` oder Angabe „Keine Wirkung“ | #2553 (PR #2820) |
 | 3 · Drift-Routine | wöchentlich | Agent, nur lesend | inhaltliche Richtigkeit, Verhaltensänderungen ohne Schemaänderung, Lücken der Pfadliste | eingerichtete Claude-Routine (gebaut) |
 
@@ -272,6 +280,11 @@ Der [Wächter](#der-wächter-und-seine-grenze) läuft im regulären Testlauf ein
 das beschränkt, was sich ohne Wertung entscheiden lässt: Gibt es zu jedem Gegenstand im Code einen
 Eintrag und umgekehrt? Seine Fehlermeldung nennt den fehlenden Eintrag, die Datei des Bereichs und die
 Konvention, damit die Nachpflege ohne Suchen gelingt.
+
+Eine neue Tabelle oder Spalte trifft Schicht 1 und 2 zugleich, ohne dass sie dasselbe prüfen: Der
+Wächter verlangt den Manifest-Eintrag, die Pfadliste (`db/changelog/**`, `compliance/manifest/**`) die
+Entscheidung über das Label. Ob der Eintrag stimmt, etwa eine Spalte zu Recht ohne Personenbezug steht,
+bleibt Schicht 3.
 
 Für Prompts und Standardmodelle ist die Prüfsumme der Hebel: Eine Änderung am Prompt-Text scheitert,
 bis die Prüfsumme bewusst nachgezogen ist, und taucht damit im Delta als Verhaltensänderung auf — auch

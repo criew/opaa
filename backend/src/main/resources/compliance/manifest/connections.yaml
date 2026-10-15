@@ -8,12 +8,55 @@ data:
       - name: connected_accounts
         personalColumns:
           [user_id, account_label_ciphertext, connected_at, reconnected_at, expired_at, last_used_at]
+        nonPersonalColumns: [id, organization_id, profile_id, state, ended_cause, version]
       - name: connection_tokens
         personalColumns: [pending_user_id, pending_account_label, issued_for]
+        nonPersonalColumns:
+          - id
+          - profile_id
+          - connected_account_id
+          - library_id
+          - kind
+          - secret_ciphertext
+          - access_token_ciphertext
+          - access_token_expires_at
+          - expires_at
+          - created_at
+          - updated_at
+          - version
+          - expiry_warned_at
+          - pending_expires_at
       - name: connection_authorizations
         personalColumns: [user_id, responsible_id]
+        nonPersonalColumns:
+          - id
+          - state_hash
+          - profile_id
+          - profile_version
+          - purpose
+          - library_id
+          - code_verifier_ciphertext
+          - redirect_uri
+          - created_at
+          - expires_at
+          - consumed_at
+          - service_account_confirmed_at
+          - responsible_type
+          - account_change_confirmed_at
+          - expected_issuer
+          - issuer_required
       - name: library_connections
         personalColumns: [account_label, connected_by, responsible_id]
+        nonPersonalColumns:
+          - library_id
+          - profile_id
+          - created_at
+          - updated_at
+          - version
+          - connected_at
+          - responsible_type
+          - ended_cause
+          - ended_at
     storage: Anwendungsdatenbank; Geheimnisse verschlüsselt
     retention:
       rule: >-
@@ -47,6 +90,16 @@ data:
     tables:
       - name: connection_log
         personalColumns: [actor_ref, person_ref, account_label]
+        nonPersonalColumns:
+          - event_id
+          - organization_id
+          - recorded_at
+          - event_type
+          - profile_id
+          - profile_name
+          - cause
+          - owner_kind
+          - library_id
     storage: Anwendungsdatenbank
     retention:
       rule: Voreinstellung 12 Monate, einstellbar 6 bis 24 Monate
@@ -56,9 +109,35 @@ data:
     deletion: Monatlicher Retention-Lauf
     evaluations: Abfrage nach Zeitraum und Filtern; jeder Abruf wird protokolliert
 nonPersonalTables:
-  - connection_profiles
-  - connector_type_policies
-  - connection_log_retention_settings
+  connection_profiles:
+    - id
+    - name
+    - source_type
+    - server_url
+    - auth_method
+    - ownership
+    - client_id
+    - client_secret_ciphertext
+    - client_secret_expires_on
+    - tenant
+    - scopes
+    - connector_settings
+    - created_at
+    - updated_at
+    - version
+    - locked_at
+    - authorization_endpoint
+    - token_endpoint
+    - revocation_endpoint
+    - sign_in_rejected_at
+    - client_secret_expiry_warned_at
+    - kind
+    - responsible_group_id
+    - issuer
+    - issuer_parameter_supported
+  connector_type_policies:
+    [source_type, locked_at, updated_at, profile_required_at, own_address_stock]
+  connection_log_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
 settings:
   - key: connection_log_retention_settings.retention_months
     source: DATABASE
