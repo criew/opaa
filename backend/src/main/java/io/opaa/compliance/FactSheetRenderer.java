@@ -806,13 +806,6 @@ public final class FactSheetRenderer {
   private static Map<FactSheet, List<Pending>> notYetCaptured() {
     Map<FactSheet, List<Pending>> pending = new EnumMap<>(FactSheet.class);
     pending.put(
-        FactSheet.DATENFLUESSE,
-        List.of(
-            new Pending(
-                "Ausgehende Datenflüsse (Modellanbieter, Konnektor-Quellen, E-Mail, Verzeichnisse,"
-                    + " Fremdzugänge) aus der zentralen Registry der ausgehenden Clients",
-                2549)));
-    pending.put(
         FactSheet.VOREINSTELLUNGEN,
         List.of(
             new Pending(
