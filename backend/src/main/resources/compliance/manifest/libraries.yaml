@@ -1,0 +1,99 @@
+title: Bibliotheken und Indexierung
+data:
+  - id: library-settings
+    title: Bibliotheksverwaltung
+    purpose: Quellkonfiguration, Fremdzugangsfreigabe und Löschantrag einer Bibliothek
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: knowledge_libraries
+        personalColumns: [external_access_set_by_user_id, source_credentials, source_url]
+    storage: Anwendungsdatenbank; Zugangsdaten verschlüsselt
+    retention:
+      rule: Solange die Bibliothek besteht
+      settings: []
+    visibility: [Verwaltende der Bibliothek, SYSTEM_ADMIN]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Mit der Bibliothek
+    evaluations: keine
+  - id: documents
+    title: Dokumentbestand
+    purpose: Durchsuchbarer Wissensbestand; Antworten werden auf ihn gestützt
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: documents
+        personalColumns: [file_name, file_path, uploaded_by_user_id, source_entry_url]
+      - name: chunk_full_text
+        personalColumns: [content_tsv]
+      - name: vector_store
+        personalColumns: [content, metadata]
+      - name: document_metadata_values
+        personalColumns: [text_value, actor_user_id]
+      - name: indexing_run_events
+        personalColumns: [message, reference]
+      - name: source_sync_revisits
+        personalColumns: [hierarchy_path]
+    storage: >-
+      Anwendungsdatenbank (Textabschnitte, Volltext- und Vektorindex); Originale in der
+      Originalablage
+    retention:
+      rule: >-
+        Solange das Dokument in der Bibliothek oder der Quelle besteht; private Bibliotheken
+        deaktivierter Personen nach 30 Tagen
+      settings: [opaa.connection.private-library-deletion-days]
+    visibility: [Personen mit Leserecht an der Bibliothek]
+    accessPaths: [UI, API, DATABASE]
+    deletion: >-
+      Löschen des Dokuments oder der Bibliothek, Abgleich mit der Quelle, Löschung privater
+      Bibliotheken
+    evaluations: Suche und Antwortgenerierung im Rahmen der Leserechte
+    notes:
+      - Inhalte stammen aus Fachverfahren und können Personendaten Dritter enthalten
+  - id: original-storage
+    title: Originalablage hochgeladener Dateien
+    purpose: Aufbewahrung des Originals für Anzeige und erneute Verarbeitung
+    personalReference: IDENTIFIABLE
+    tables: []
+    storage: Dateisystem oder S3-kompatibler Objektspeicher des Betriebs
+    retention:
+      rule: Solange das Dokument besteht; verwaiste Originale entfernt die Verwaltung
+      settings: []
+    visibility: [Personen mit Leserecht an der Bibliothek]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Mit dem Dokument; verwaiste Originale auf Anstoß der Systemverwaltung
+    evaluations: keine
+  - id: indexing-runs
+    title: Indexierungsläufe
+    purpose: Fortschritt und Fehler von Indexierungs- und Einbettungsläufen
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: indexing_jobs
+        personalColumns: [triggered_by]
+      - name: embedding_index
+        personalColumns: [run_started_by]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Ohne eigene Löschfrist; mit der Bibliothek
+      settings: []
+    visibility: [Verwaltende der Bibliothek, SYSTEM_ADMIN]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Mit der Bibliothek
+    evaluations: keine
+nonPersonalTables:
+  - library_folders
+  - source_sync_state
+  - source_sync_presence
+  - document_keywords
+  - document_type_vocabulary
+  - document_type_synonyms
+  - document_type_suffixes
+  - document_type_suffix_exclusions
+  - library_metadata_fields
+  - library_metadata_field_values
+  - library_metadata_schema_changes
+  - metadata_model_extraction_stats
+  - metadata_model_rejections
+  - llm_models
+  - llm_model_seed_marker
+  - private_storage_quota_settings
+  - rss_feed_state
+  - outbound_proxy_settings

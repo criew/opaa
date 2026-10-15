@@ -1,0 +1,74 @@
+title: Spaces und Suchdiagnose
+data:
+  - id: spaces
+    title: Spaces und Mitgliedschaften
+    purpose: Arbeitsräume, ihre Mitglieder und die darin bereitgestellten Inhalte
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: spaces
+        personalColumns: [owner_id, model_instruction]
+      - name: space_memberships
+        personalColumns: [user_id]
+      - name: space_asset_associations
+        personalColumns: [created_by_user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Solange Space oder Mitgliedschaft besteht
+      settings: []
+    visibility: [Mitglieder des Space, SYSTEM_ADMIN]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Entfernen des Mitglieds, Löschen des Space oder des Kontos
+    evaluations: Mitgliederliste je Space
+  - id: space-membership-history
+    title: Historie der Space-Mitgliedschaften
+    purpose: Teil der Rechtehistorie für die Stichtagsauskunft
+    personalReference: EMPLOYEE
+    tables:
+      - name: space_membership_history
+        personalColumns: [subject_user_id, actor_user_id, valid_from, valid_to]
+    storage: Anwendungsdatenbank, nur anfügend
+    retention:
+      rule: Höchstdauer der Rechtehistorie
+      settings: [permission_history_retention_settings.retention_months]
+    visibility: [AUDITOR über die Stichtagsauskunft]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Retention-Lauf der Rechtehistorie
+    evaluations: Stichtagsauskunft je Space
+  - id: diagnostic-impersonation
+    title: Befugnisse „Sicht als“
+    purpose: Gesondert erteilte, befristete Befugnis zur Suchdiagnose im fremden Rechtekontext
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: diagnostic_impersonation_grants
+        personalColumns: [holder_user_id, granted_by_user_id, revoked_by_user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Ohne eigene Löschfrist
+      settings: []
+    visibility: [SYSTEM_ADMIN]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Mit dem Konto
+    evaluations: keine
+  - id: diagnostic-context-log
+    title: Diagnoseprotokoll
+    purpose: Nachweis jeder Suchdiagnose im fremden Rechtekontext mit Begründung
+    personalReference: EMPLOYEE
+    tables:
+      - name: diagnostic_context_log
+        personalColumns: [actor_ref, test_question, permission_snapshot, justification]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Voreinstellung 12 Monate, einstellbar 1 bis 24 Monate
+      settings: [diagnostic_context_retention_settings.retention_months]
+    visibility: [AUDITOR]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Monatlicher Retention-Lauf
+    evaluations: keine Auswertung je Person
+nonPersonalTables: [diagnostic_context_retention_settings]
+settings:
+  - key: diagnostic_context_retention_settings.retention_months
+    source: DATABASE
+    defaultValue: "12"
+    range: 1 bis 24 Monate
+    effect: Aufbewahrungsfrist des Diagnoseprotokolls
+    bearings: [DATA]

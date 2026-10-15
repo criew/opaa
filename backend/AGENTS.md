@@ -35,7 +35,7 @@ Das Backend ist ein Gradle-Modul, gegliedert in logische Module. Die Definitione
 
 | Modul | Pakete (`io.opaa.*`) | darf nutzen (`ALLOWED_MODULE_EDGES`, alle nach unten) |
 |---|---|---|
-| foundation | common, observability, organization, outbound, security, ratelimit, sourceaccess, s3, msgraph | — |
+| foundation | common, compliance, observability, organization, outbound, security, ratelimit, sourceaccess, s3, msgraph | — |
 | format | format | foundation |
 | identity | audit, branding, mail, auth, account, notification | foundation |
 | rights | permission, asset, group, directory, succession | foundation, identity |

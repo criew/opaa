@@ -9,6 +9,9 @@
 # Database schema: new or changed stored data
 backend/src/main/resources/db/changelog/**
 
+# Compliance fact manifest: every described datum, event, default, prompt and AI function
+backend/src/main/resources/compliance/manifest/**
+
 # Audit and connection log events, roles, capabilities, visibility
 opaa-api/src/main/java/io/opaa/api/types/AuditEventType.java
 opaa-api/src/main/java/io/opaa/api/types/ConnectionLogEventType.java

@@ -1,0 +1,6 @@
+title: Konten und Rollen
+roles:
+  - id: USER
+    seesAboutOthers: nichts
+    seesAboutOther: Tippfehler im Schlüssel
+glossary: []

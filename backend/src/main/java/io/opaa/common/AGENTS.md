@@ -1,13 +1,12 @@
 # Modul foundation
 
-Pakete (`io.opaa.*`): common, observability, organization, outbound, security, ratelimit,
+Pakete (`io.opaa.*`): common, compliance, observability, organization, outbound, security, ratelimit,
 sourceaccess, s3, msgraph. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
-Die unterste Schicht: gemeinsame Ausnahmen und Hilfen, die Organisation als Mandantengrenze,
-Verschlüsselung und Schlüsselableitung, Ratenbegrenzung, Metriken, der Zugriff auf konfigurierte
-Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-Client.
+Die unterste Schicht: gemeinsame Ausnahmen und Hilfen, die Organisation als Mandantengrenze, Verschlüsselung,
+Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client und das Compliance-Manifest.
 
 ## Invarianten und Stolpersteine
 
@@ -44,6 +43,7 @@ Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-
 - [ADR-0044](../../../../../../../docs/decisions/0044-installationsweite-feature-flags.md): installationsweite Feature-Flags
 - [ADR-0047](../../../../../../../docs/decisions/0047-sharepoint-konnektor.md) (Entscheidung 1): Graph-Client in `io.opaa.msgraph`
 - [ADR-0050](../../../../../../../docs/decisions/0050-ausgangsproxy-und-zertifikatspruefung.md): Ausgangsproxy, Zertifikatsprüfung
+- [ADR-0052](../../../../../../../docs/decisions/0052-compliance-manifest.md): Compliance-Manifest; Fundstellen nur als Namen, kein Import nach oben
 
 ## Verweise
 
@@ -53,7 +53,7 @@ Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-
 
 ```bash
 ./gradlew test --tests 'io.opaa.common.*' --tests 'io.opaa.security.*' --tests 'io.opaa.outbound.*' \
-  --tests 'io.opaa.sourceaccess.*' --tests 'io.opaa.ratelimit.*' --tests 'io.opaa.s3.*' \
+  --tests 'io.opaa.sourceaccess.*' --tests 'io.opaa.ratelimit.*' --tests 'io.opaa.s3.*' --tests 'io.opaa.compliance.*' \
   --tests 'io.opaa.msgraph.*' --tests 'io.opaa.observability.*' --tests 'io.opaa.architecture.*'
 ```
 

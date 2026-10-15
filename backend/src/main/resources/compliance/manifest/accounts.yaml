@@ -1,0 +1,245 @@
+title: Konten, Anmeldung und Rollen
+data:
+  - id: accounts
+    title: Benutzerkonten
+    purpose: Anmeldung, Zuordnung von Rechten und Anzeige der Person in geteilten Inhalten
+    personalReference: EMPLOYEE
+    tables:
+      - name: users
+        personalColumns:
+          [subject, issuer, email, display_name, last_login_at, system_role, directory_locked_at]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Bis zur Löschung des Kontos
+      settings: []
+    visibility:
+      - die Person selbst
+      - Mitglieder geteilter Spaces und Gruppen (Anzeigename)
+      - SYSTEM_ADMIN in der Kontenverwaltung
+    accessPaths: [UI, API, DATABASE]
+    deletion: Löschung des Kontos durch die Systemverwaltung; lokale Konten nur ohne Besitz
+    evaluations: >-
+      Letzte Anmeldung ist ein Anwesenheitsmerkmal; die Kontenübersicht zeigt Inaktivitätsklassen
+      lokaler Konten (90-Tage-Fenster), keine Zeitreihe
+    notes:
+      - last_login_at ist ein Anwesenheitsmerkmal; Verhaltenskontrolle prüfen
+  - id: local-credentials
+    title: Anmeldedaten lokaler Konten
+    purpose: Anmeldung ohne externen Identitätsanbieter, Sperre nach Fehlversuchen, Kontoablauf
+    personalReference: EMPLOYEE
+    tables:
+      - name: local_credentials
+        personalColumns:
+          - user_id
+          - password_hash
+          - locked_at
+          - locked_reason
+          - failed_login_attempts
+          - lockout_until
+          - expires_at
+          - email_verified_at
+          - created_reason
+    storage: Anwendungsdatenbank; Passwort nur als Hash
+    retention:
+      rule: >-
+        Bis zur Löschung des Kontos; Ablauf nach Voreinstellung 90 Tagen, Sperre nach 90 Tagen
+        Inaktivität
+      settings:
+        - local_auth_settings.default_expiry_days
+        - local_auth_settings.inactive_days
+    visibility: [SYSTEM_ADMIN (Zustand, nie Passwort oder Zähler), die Person selbst]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Mit dem Konto
+    evaluations: >-
+      Keine; der Fehlversuchszähler wird weder ausgegeben noch historisiert und geht bei Erfolg auf
+      null
+  - id: local-sessions-and-links
+    title: Sitzungen, Einladungs- und Rücksetzlinks lokaler Konten
+    purpose: Sitzungsverlängerung, Widerruf, Einladung, Passwortrücksetzung, Kontoübergabe
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: local_refresh_tokens
+        personalColumns: [user_id, issued_at, revoked_at, revocation_reason]
+      - name: local_revoked_tokens
+        personalColumns: [user_id]
+      - name: local_action_tokens
+        personalColumns: [user_id, reason, provider_id]
+    storage: Anwendungsdatenbank; Token nur als Hash
+    retention:
+      rule: >-
+        Höchstens 7 Tage nach Ablauf, Familienende, Widerruf oder Einlösung; Gültigkeit nach den
+        Sitzungs- und Linkfristen
+      settings:
+        - io.opaa.account.LocalTokenCleanupService#RETENTION
+        - opaa.auth.local.access-token-ttl
+        - opaa.auth.local.refresh-token-ttl
+        - opaa.auth.local.session-max-lifetime
+        - opaa.auth.local.admin-refresh-token-ttl
+        - opaa.auth.local.admin-session-max-lifetime
+        - local_auth_settings.invitation_token_ttl_hours
+        - local_auth_settings.reset_token_ttl_minutes
+    visibility: [niemand über die Oberfläche]
+    accessPaths: [DATABASE]
+    deletion: Täglicher Bereinigungslauf
+    evaluations: keine
+  - id: account-state-history
+    title: Kontozustandshistorie
+    purpose: Nachweis, wann ein Konto gesperrt oder aktiv war (Rechtehistorie)
+    personalReference: EMPLOYEE
+    tables:
+      - name: account_state_history
+        personalColumns: [user_id, state, cause, valid_from, valid_to]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Höchstdauer der Rechtehistorie, Voreinstellung 36 Monate nach Ende des Intervalls
+      settings: [permission_history_retention_settings.retention_months]
+    visibility: [AUDITOR über die Stichtagsauskunft]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Retention-Lauf der Rechtehistorie
+    evaluations: Stichtagsauskunft je Objekt, keine Zeitreihe je Person
+  - id: settings-editors
+    title: Bearbeitungsvermerke verwalteter Einstellungen
+    purpose: Wer eine verwaltete Einstellung zuletzt geändert hat
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: local_auth_settings
+        personalColumns: [updated_by]
+      - name: mail_settings
+        personalColumns: [updated_by, username, from_address, from_name]
+      - name: mail_templates
+        personalColumns: [updated_by]
+      - name: external_access_settings
+        personalColumns: [updated_by]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Bis zur nächsten Änderung der Einstellung
+      settings: []
+    visibility: [SYSTEM_ADMIN]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Überschrieben bei der nächsten Änderung
+    evaluations: keine
+  - id: notifications
+    title: Benachrichtigungen
+    purpose: Hinweise an eine Person über Ereignisse an ihren Objekten
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: notifications
+        personalColumns: [recipient_user_id, title, body, read_at]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: >-
+        Bis zur Löschung des Kontos oder des betroffenen Objekts; Abflussalarme der Fremdzugänge
+        14 Tage
+      settings: [io.opaa.externalaccess.ExternalAccessAlertRetention#RETENTION]
+    visibility: [die empfangende Person]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Mit dem Konto (ON DELETE CASCADE), mit dem Objekt, Alarme täglich nach Frist
+    evaluations: keine
+  - id: application-log
+    title: Technisches Anwendungslog
+    purpose: Betrieb und Fehlersuche; enthält u. a. einzelne fehlgeschlagene Anmeldungen
+    personalReference: IDENTIFIABLE
+    tables: []
+    storage: Standardausgabe des Prozesses, abgelegt durch den Betrieb (Container-Log)
+    retention:
+      rule: Legt der Betrieb fest; OPAA speichert das Log nicht selbst
+      settings: []
+    visibility: [Betrieb der Installation]
+    accessPaths: [DATABASE]
+    deletion: Durch den Betrieb
+    evaluations: Keine Auswertungsoberfläche in OPAA
+    notes:
+      - Kurze Frist im Betrieb festlegen; Konto-Kennung statt Adresse
+nonPersonalTables:
+  - organizations
+  - oidc_providers
+  - oidc_provider_seed_marker
+  - oidc_provider_removals
+  - local_admin_seed_marker
+  - branding_settings
+settings:
+  - key: opaa.auth.local.access-token-ttl
+    source: PROPERTY
+    defaultValue: 15m
+    effect: Gültigkeit eines Zugriffstokens lokaler Konten
+    bearings: [DATA]
+  - key: opaa.auth.local.refresh-token-ttl
+    source: PROPERTY
+    defaultValue: 7d
+    range: höchstens 30 Tage
+    effect: Leerlaufgrenze einer Sitzung lokaler Konten
+    bearings: [DATA]
+  - key: opaa.auth.local.session-max-lifetime
+    source: PROPERTY
+    defaultValue: 30d
+    range: höchstens 90 Tage
+    effect: Absolutes Ende einer Sitzung lokaler Konten
+    bearings: [DATA]
+  - key: opaa.auth.local.admin-refresh-token-ttl
+    source: PROPERTY
+    defaultValue: 4h
+    effect: Leerlaufgrenze der Sitzung lokaler Systemverwaltungskonten
+    bearings: [DATA]
+  - key: opaa.auth.local.admin-session-max-lifetime
+    source: PROPERTY
+    defaultValue: 12h
+    effect: Absolutes Ende der Sitzung lokaler Systemverwaltungskonten
+    bearings: [DATA]
+  - key: io.opaa.account.LocalTokenCleanupService#RETENTION
+    source: CONSTANT
+    defaultValue: P7D
+    effect: Wie lange abgelaufene oder widerrufene Token-Zeilen erkennbar bleiben
+    bearings: [DATA]
+  - key: local_auth_settings.invitation_token_ttl_hours
+    source: DATABASE
+    defaultValue: "72"
+    range: 1 bis 720 Stunden
+    effect: Gültigkeit eines Einladungslinks
+    bearings: [DATA]
+  - key: local_auth_settings.reset_token_ttl_minutes
+    source: DATABASE
+    defaultValue: "30"
+    range: 1 bis 1440 Minuten
+    effect: Gültigkeit eines Rücksetzlinks
+    bearings: [DATA]
+  - key: local_auth_settings.default_expiry_days
+    source: DATABASE
+    defaultValue: "90"
+    range: mindestens 1 Tag
+    effect: Voreingestellter Ablauf eines neuen lokalen Kontos
+    bearings: [DATA, VISIBILITY]
+  - key: local_auth_settings.inactive_days
+    source: DATABASE
+    defaultValue: "90"
+    range: mindestens 30 Tage
+    effect: Sperre eines lokalen Kontos nach so vielen Tagen ohne Anmeldung
+    bearings: [DATA, EVALUATION]
+roles:
+  - id: USER
+    seesAboutOthers: >-
+      Anzeigenamen der Mitglieder geteilter Spaces und Gruppen sowie von Eigentümern und Autoren
+      geteilter Inhalte; keine Protokolle, keine Nutzungsdaten anderer
+  - id: SYSTEM_ADMIN
+    seesAboutOthers: >-
+      Konten mit Adresse, Anzeigename, Rolle, Kontozustand und Inaktivitätsklasse; Mitgliederlisten
+      von Gruppen (der Abruf wird protokolliert); Abgleichsberichte mit Namen (protokolliert);
+      Zugangstokens nach Kennung und Ablauf. Keine Protokolleinträge und ohne Recht keine Inhalte
+      von Dokumenten oder Chats
+  - id: AUDITOR
+    seesAboutOthers: >-
+      Protokolleinträge mit Pseudonymen über die vier begrenzten Abfragewege, die Rechtehistorie
+      als Stichtagsauskunft und das Verbindungsprotokoll; Klarnamen nur in einer freigegebenen
+      anlassbezogenen Klärung im Vier-Augen-Prinzip. Keine Verwaltungsrechte
+capabilities:
+  - id: CREATE_SPACE
+    seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen eines Space
+  - id: CREATE_LIBRARY
+    seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen einer Upload-Bibliothek
+  - id: CREATE_CONNECTOR_LIBRARY
+    seesAboutOthers: >-
+      Nichts über andere Personen; die angelegte Bibliothek kann Inhalte einer Quelle mit den dort
+      enthaltenen Personendaten aufnehmen
+  - id: CREATE_INTERNAL_GROUP
+    seesAboutOthers: Anzeigenamen der Personen, die in die eigene Gruppe aufgenommen werden
+  - id: CREATE_PROMPT_LIBRARY
+    seesAboutOthers: Nichts über andere Personen

@@ -1,0 +1,95 @@
+title: System-Prompts und KI-Funktionen
+prompts:
+  - id: answer-generation
+    purpose: >-
+      Regeln für die Antwort auf eine Frage: Belegpflicht, Zitierformat, Antwortsprache, Anweisung
+      des Space und Gesprächsnotiz
+    classes:
+      - io.opaa.query.answer.AnswerGenerationService
+      - io.opaa.query.answer.SpaceInstructionBlock
+      - io.opaa.retrieval.ConversationNoteBlock
+    sha256: "b445cdec9b0c0fff79417f75cb8197b7e40818178c307249acb4d3e25732f94d"
+  - id: query-decomposition
+    purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
+    classes:
+      - io.opaa.retrieval.search.QueryDecompositionService
+      - io.opaa.retrieval.search.DecompositionContext
+      - io.opaa.retrieval.ConversationNoteBlock
+    sha256: "e5e526573fc576ea5cb868958ab4bb098d42abbf47782ef1cfd5c4612097ae06"
+  - id: chat-title
+    purpose: Erzeugt aus erster Frage und Antwort einen Titel für den Chat
+    classes: [io.opaa.chat.ChatTitleGenerationService]
+    sha256: "39bca6465915479339ef99bbcfbdf68996bd206a7232af564ba559c6f1bd61db"
+  - id: chat-note-extraction
+    purpose: Verdichtet eine Nachricht zu Punkten der Gesprächsnotiz
+    classes: [io.opaa.chat.ChatNoteExtraction]
+    sha256: "b642eb44720453f950ce49d422dc2356c30d8df21460e7f00f4b5c8b3c930abb"
+  - id: metadata-extraction
+    purpose: Ordnet einem Dokument Metadatencodes und freie Schlagworte zu
+    classes: [io.opaa.metadata.ModelExtractionPrompt]
+    sha256: "e2b44a307f70ff0f67b0b695b594001c648e95d91858f23e073a2005e86699df"
+  - id: tool-loop-spike
+    purpose: Erprobung einer modellgesteuerten Suche mit Werkzeugaufrufen, standardmäßig aus
+    classes:
+      - io.opaa.query.spike.SpikeToolLoopQueryHandler
+      - io.opaa.query.spike.SearchKnowledgeTool
+    sha256: "dffb4c868f75c62b485fb33ebe3a97213c6f33680c0ea54839a48d29a2ed145d"
+  - id: mcp-tool-descriptions
+    purpose: Beschreibungen der Werkzeuge, nach denen ein fremdes Modell über Fremdzugänge entscheidet
+    classes: [io.opaa.mcp.McpToolCatalog]
+    sha256: "23fb0175fe80bc2cb8803dd90e2b7f5b30de4c40aea9a4c7fce3a1adf81a3fff"
+  - id: mcp-server-instructions
+    purpose: >-
+      Voreingestellter Einleitungstext an fremde Werkzeuge der Fremdzugänge; die Systemverwaltung
+      kann ihn ändern, die Änderung erzeugt keinen Protokolleintrag
+    databaseDefault: external_access_settings.server_instructions
+    sha256: "03e9f6a06f99e00871a97cb9ad39a7907d712a64bb955d03f86814560b07e7da"
+aiFunctions:
+  - id: chat-answer
+    purpose: Beantwortet Fragen einer Person im Chat auf Grundlage der lesbaren Bibliotheken
+    outputKind: TEXT
+    interactsWithPersons: true
+    assessesPersons: false
+    labelling: >-
+      Keine ausdrückliche Kennzeichnung als KI-erzeugt; die Antwort erscheint im Chat als Antwort
+      des Assistenten mit Fundstellen
+    prompts: [answer-generation, query-decomposition]
+  - id: chat-title
+    purpose: Schlägt den Titel eines Chats vor
+    outputKind: TEXT
+    interactsWithPersons: false
+    assessesPersons: false
+    labelling: Keine Kennzeichnung; die Person kann den Titel ändern
+    prompts: [chat-title]
+  - id: chat-note-extraction
+    purpose: Hält Rahmenangaben und Wünsche der Person als Gesprächsnotiz fest
+    outputKind: TEXT
+    interactsWithPersons: false
+    assessesPersons: false
+    labelling: Die Notiz ist im Chat sichtbar und bearbeitbar; keine Kennzeichnung als KI-erzeugt
+    prompts: [chat-note-extraction]
+  - id: metadata-extraction
+    purpose: Erschließt Metadaten und Schlagworte von Dokumenten bei der Indexierung
+    outputKind: TEXT
+    interactsWithPersons: false
+    assessesPersons: false
+    labelling: >-
+      Modellgesetzte Werte sind mit ihrer Herkunft (origin) und einer Konfidenz gespeichert;
+      eine Kennzeichnung als KI-erzeugt in der Oberfläche ist nicht erhoben
+    prompts: [metadata-extraction]
+    notes:
+      - Der Prompt verbietet Personennamen als Schlagworte
+  - id: tool-loop-spike
+    purpose: Erprobung, nur mit Präfix „@test “ und eingeschaltetem Schalter
+    outputKind: TEXT
+    interactsWithPersons: true
+    assessesPersons: false
+    labelling: Wie die Chat-Antwort
+    prompts: [tool-loop-spike]
+  - id: speech-transcription
+    purpose: Wandelt eine Sprachaufnahme der Person in Text für die Eingabe um (Diktat)
+    outputKind: TEXT
+    interactsWithPersons: true
+    assessesPersons: false
+    labelling: Der Text erscheint im Eingabefeld und wird von der Person selbst abgeschickt
+    prompts: []

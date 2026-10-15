@@ -1,0 +1,5 @@
+title: Bereich B
+roles:
+  - id: USER
+    seesAboutOthers: etwas anderes
+nonPersonalTables: [organizations]

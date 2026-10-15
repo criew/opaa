@@ -1,0 +1,33 @@
+title: Protokoll
+defaults:
+  auditEvents:
+    purpose: Nachweis
+    personalReference: EMPLOYEE
+    storage: Tabelle audit_log
+    retention:
+      rule: 36 Monate
+      settings: []
+    visibility: [AUDITOR]
+    accessPaths: [UI]
+    deletion: Partitionen
+    evaluations: nach Objekt
+    recordFields: [event_id]
+    readers: [AUDITOR]
+auditEvents:
+  - id: WITHOUT_TRIGGER
+  - id: BLANK_STORAGE
+    trigger: Etwas geschieht
+    storage: "  "
+data:
+  - id: no-retention-rule
+    title: Daten
+    purpose: Zweck
+    personalReference: IDENTIFIABLE
+    tables: []
+    storage: Datenbank
+    retention:
+      settings: []
+    visibility: [USER]
+    accessPaths: []
+    deletion: Löschung
+    evaluations: keine

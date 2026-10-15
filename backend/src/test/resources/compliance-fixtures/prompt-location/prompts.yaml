@@ -1,0 +1,14 @@
+title: System-Prompts
+prompts:
+  - id: both
+    purpose: Fundstelle doppelt
+    classes: [io.opaa.compliance.PromptChecksum]
+    databaseDefault: external_access_settings.server_instructions
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+  - id: neither
+    purpose: Fundstelle fehlt
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+  - id: database
+    purpose: Fundstelle in der Datenbank
+    databaseDefault: external_access_settings.server_instructions
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"

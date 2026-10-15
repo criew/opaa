@@ -8,10 +8,11 @@
 > #2575 (Release-Zyklus). Vorhanden sind die Bausteine, auf die es aufsetzt: Protokoll-Enums,
 > Liquibase-Changelogs, SBOM und Attestierung ([sbom.md](../sbom.md)), CVE-Prozess
 > ([cve-scanning.md](../cve-scanning.md)) und die Upgrade-Hinweise je Release
-> ([releases.md](../releases.md#vorbereitung-für-bestandsinstallationen)). **Gebaut** ist die
-> wöchentliche Drift-Routine ([Schicht 3](#schicht-3-wöchentliche-drift-routine)); die Kennzeichnung
-> am PR ([Schicht 2](#schicht-2-kennzeichnung-datenrelevanter-änderungen-am-pr)) liefert #2553. Gebaut ist
-> außerdem der Abschnitt „Wirkung auf Behördenunterlagen“ in Spezifikationsvorlage und
+> ([releases.md](../releases.md#vorbereitung-für-bestandsinstallationen)). **Gebaut** sind die
+> wöchentliche Drift-Routine ([Schicht 3](#schicht-3-wöchentliche-drift-routine)), die Kennzeichnung
+> am PR ([Schicht 2](#schicht-2-kennzeichnung-datenrelevanter-änderungen-am-pr), #2553), das
+> [Manifest](#das-manifest) mit Schema, Lader und Erstbefüllung (ohne Konfigurationsschlüssel und
+> Datenflüsse) und der Abschnitt „Wirkung auf Behördenunterlagen“ in Spezifikationsvorlage und
 > Produktmanager-Rolle (#2571). Alles Übrige ist Zielbild.
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
@@ -133,8 +134,10 @@ darum herum.
 | **generiert** | Faktenblätter, JSON-Fassung, Update-Delta, Lizenzübersicht | CI-Artefakt jedes `main`-Laufs, Anhang am GitHub-Release | nein — vermeidet Konflikte zwischen parallelen PRs |
 | **redaktionell** | Vorlagen entlang der Behördenreise | `docs/behoerden/` | ja |
 
-Das Manifest selbst ist Quelltext, keine Dokumentation: Es liegt im Klassenpfad des Backends, weil der
-Instanzexport es zur Laufzeit liest, und läuft durch dasselbe Review wie Code (#2546).
+Das Manifest selbst ist Quelltext, keine Dokumentation: Es liegt im Klassenpfad des Backends
+(`backend/src/main/resources/compliance/manifest/`), weil der Instanzexport es zur Laufzeit liest, und
+läuft durch dasselbe Review wie Code. Ablage, Schema und Prüfsummen regelt
+[ADR-0052](../decisions/0052-compliance-manifest.md).
 
 ### Kopfvermerk und Haftungshinweis
 
@@ -199,6 +202,7 @@ erhebt und verarbeitet. Jeder Eintrag hat feste Pflichtfelder (#2546):
 | Voreinstellung | Schlüssel, Standardwert, Wirkung, Bezug zu Daten, Sichtbarkeit, Auswertung oder Datenfluss |
 | System-Prompt / Standardmodell | Fundstelle, Zweck, Prüfsumme des Inhalts |
 | Ausgehender Datenfluss | Ziel, übermittelte Daten, Anlass, Abschaltbarkeit, zuständiger Konfigurationsschlüssel |
+| KI-Funktion | Zweck, Art der Ausgabe (Text / Audio / Bild), direkte Interaktion mit Personen, Bewertung oder Profiling von Personen, vorhandene Kennzeichnung nach Art. 50 KI-VO, gesendete System-Prompts; die Einstufung selbst ist Wertung der Behörde und steht nicht im Manifest |
 
 Optional trägt ein Eintrag **Hinweise** auf mögliche rechtliche Relevanz, etwa „Beschäftigtendaten,
 § 80 Abs. 1 Nr. 21 BPersVG prüfen“ — ausdrücklich als Hinweis, nicht als Einstufung. Die Pflichtfelder

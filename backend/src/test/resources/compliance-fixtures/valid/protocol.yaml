@@ -1,0 +1,46 @@
+title: Protokoll
+defaults:
+  auditEvents:
+    purpose: Nachweis von Rechteänderungen
+    personalReference: EMPLOYEE
+    storage: Tabelle audit_log
+    retention:
+      rule: 36 Monate
+      settings: [db:audit_retention_settings.retention_months]
+    visibility: [AUDITOR]
+    accessPaths: [UI, API]
+    deletion: Monatsweise ganze Partitionen
+    evaluations: nach Objekt, Zeitraum, Ereignisart
+    recordFields: [event_id, recorded_at, actor_ref]
+    readers: [AUDITOR zur Revision]
+data:
+  - id: audit-log
+    title: Protokoll
+    purpose: Nachweis
+    personalReference: EMPLOYEE
+    tables:
+      - name: audit_log
+        personalColumns: [actor_ref, subject_ref]
+    storage: Datenbank
+    retention:
+      rule: 36 Monate
+      settings: [db:audit_retention_settings.retention_months]
+    visibility: [AUDITOR]
+    accessPaths: [UI]
+    deletion: Partitionen
+    evaluations: keine personenbezogenen
+nonPersonalTables: [audit_retention_settings]
+auditEvents:
+  - id: FIRST_EVENT
+    trigger: Etwas geschieht
+  - id: SECOND_EVENT
+    trigger: Etwas anderes geschieht
+    details: before und after tragen die Rolle
+    readers: [Personalvertretung über den Auszug]
+settings:
+  - key: db:audit_retention_settings.retention_months
+    source: DATABASE
+    defaultValue: "36"
+    range: 12–120
+    effect: Aufbewahrung des Protokolls
+    bearings: [DATA]
