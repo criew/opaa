@@ -37,6 +37,8 @@ Die Liefer-Rollen bewerten Konzepte aus der Perspektive derer, die sie entwerfen
 
 Nach einer Konzept- oder Spezifikationsänderung von struktureller Tragweite und **bevor** der zugehörige Implementierungs-Backlog freigegeben wird. Ein Review nach der Implementierung erzeugt Nacharbeit statt Erkenntnis.
 
+Pflichtanlass ist eine Spezifikation, deren Abschnitt „Wirkung auf Behördenunterlagen“ die Stufe **Zustimmung** vorschlägt: Der Product Manager fordert das Review an, Personalrat und Betriebsverantwortlicher laufen mindestens, und die Issues werden erst danach geschnitten ([Stufenregeln](features/behoerdenunterlagen.md#die-stufenregeln)).
+
 Der Orchestrator startet die Rollen parallel gegen dieselbe Dokumentenmenge und legt dem Maintainer die Bewertungen gebündelt vor. Nicht jede Änderung braucht alle sechs — die Auswahl richtet sich danach, wessen Wirklichkeit betroffen ist.
 
 ### Was ein Stakeholder-Review liefert
@@ -81,7 +83,7 @@ flowchart TD
 ```
 
 1. **Ziel** — Der Maintainer gibt dem Orchestrator ein Ziel ("einen Confluence-Connector hinzufügen").
-2. **Definition** — Der Product Manager recherchiert Repository-Kontext, stellt seine Klärungsfragen **einmal, gebündelt, im Voraus** (durch den Orchestrator weitergeleitet), schreibt dann die Feature-Spezifikation in `docs/features/` und erstellt beschriftete GitHub-Issues.
+2. **Definition** — Der Product Manager recherchiert Repository-Kontext, stellt seine Klärungsfragen **einmal, gebündelt, im Voraus** (durch den Orchestrator weitergeleitet), schreibt dann die Feature-Spezifikation in `docs/features/` und erstellt beschriftete GitHub-Issues, bei Stufe Zustimmung erst nach dem [Stakeholder-Review](#wann-ein-stakeholder-review-läuft).
 3. **Genehmigung** — Der Maintainer prüft die Issues, bevor die Implementierung beginnt.
 4. **Implementierung** — Für jedes genehmigte Issue arbeitet ein Entwickler-Agent in einem isolierten Worktree auf einem `feature/<issue-id>_<desc>`-Branch und öffnet einen PR unter Verwendung des PR-Templates (einschließlich KI-Agenten-Offenlegung).
 5. **Review** — Der Code Reviewer und CI agieren als Schranken. Befunde gehen zurück zum Entwickler; der PR ist nur bereit, wenn beide bestehen. Ein formales Approval in GitHub ist nicht erforderlich — die Schranke ist der Reviewer selbst, nicht der Klick darauf.

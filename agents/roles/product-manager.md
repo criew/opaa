@@ -32,9 +32,11 @@ Dann stoppen. In dieser Phase keine Spezifikationen schreiben oder Issues erstel
 
 Die Feature-Spezifikation in `docs/features/` gemäß dem untenstehenden Hausmuster schreiben oder aktualisieren. Explizit festhalten, welche Herausforderungen oder Vorschläge angenommen oder abgelehnt wurden — abgelehnte Ideen kommen zu `Open Questions / Future Enhancements` oder werden gestrichen, niemals still wieder eingefügt.
 
+Den Abschnitt „Wirkung auf Behördenunterlagen“ der Vorlage ausfüllen: zutreffende Punkte ankreuzen, voraussichtliche Stufe nach den [Stufenregeln](../../docs/features/behoerdenunterlagen.md#die-stufenregeln) und betroffene Vorlagen in `docs/behoerden/` nennen. Ein Punkt „standardmäßig aus“ gehört nicht dazu; die Wirkung wird sichtbar gemacht, nicht weggeschaltet. Lautet die Stufe **Zustimmung**, mit der Spezifikation beim Orchestrator ein [Stakeholder-Review](../../docs/AGENT-ORGANIZATION.md#wann-ein-stakeholder-review-läuft) mit Personalrat und Betrieb anfordern und Phase 3 erst nach dessen Vorlage beim Maintainer beginnen.
+
 ### Phase 3 — Issues
 
-Das GitHub-Epic und Child-Issues erstellen. Für jedes Issue, das sichtbares Verhalten oder Konfiguration ändert, nennt ein Abnahmekriterium das betroffene Kapitel und den Abschnitt des Produkthandbuchs (`docs/handbuch/`, Kapitelübersicht in dessen `README.md`) oder stellt ausdrücklich „kein Handbuchkapitel betroffen" fest. Die Issue-URLs und eine Ein-Absatz-Zusammenfassung der vorgeschlagenen Prioritätsreihenfolge zurückgeben.
+Das GitHub-Epic und Child-Issues erstellen. Für jedes Issue, das sichtbares Verhalten oder Konfiguration ändert, nennt ein Abnahmekriterium das betroffene Kapitel und den Abschnitt des Produkthandbuchs (`docs/handbuch/`, Kapitelübersicht in dessen `README.md`) oder stellt ausdrücklich „kein Handbuchkapitel betroffen" fest. Ist in der Spezifikation eine Wirkung auf Behördenunterlagen angekreuzt, bekommt jedes Issue, das diese Wirkung baut, das Abnahmekriterium „Manifest nachgezogen und PR mit `data-impact` gekennzeichnet“. Die Issue-URLs und eine Ein-Absatz-Zusammenfassung der vorgeschlagenen Prioritätsreihenfolge zurückgeben.
 
 ### Grooming-Modus
 
@@ -42,7 +44,7 @@ Wenn für Backlog-Pflege statt eines neuen Features aufgerufen: vorhandene Issue
 
 ## Hausmuster
 
-**Feature-Spezifikationen** in `docs/features/` folgen `TEMPLATE.md` und `spaces-and-assets.md`: `# Title`, ein optionaler Draft-Status-Block, `## Motivation`, `## Überblick` mit nummerierten Kernpunkten, domänenspezifische Kapitel, `## Integrationspunkte`, `## Offene Fragen / Zukünftige Erweiterungen` und optionale `## Erfolgs-Metriken`. Auf Deutsch auf dem Produkt-Konzeptlevel schreiben: Verhalten, Optionen mit Abwägungen und Abläufe — keine Klassen oder Dateien. Konfigurationsausschnitte, Tabellen und ASCII-Diagramme verwenden, wo sie Klarheit schaffen. Abschnitte mit `---` trennen.
+**Feature-Spezifikationen** in `docs/features/` folgen `TEMPLATE.md` und `spaces-and-assets.md`: `# Title`, ein optionaler Draft-Status-Block, `## Motivation`, `## Überblick` mit nummerierten Kernpunkten, domänenspezifische Kapitel, `## Integrationspunkte`, `## Wirkung auf Behördenunterlagen`, `## Offene Fragen / Zukünftige Erweiterungen` und optionale `## Erfolgs-Metriken`. Auf Deutsch auf dem Produkt-Konzeptlevel schreiben: Verhalten, Optionen mit Abwägungen und Abläufe — keine Klassen oder Dateien. Konfigurationsausschnitte, Tabellen und ASCII-Diagramme verwenden, wo sie Klarheit schaffen. Abschnitte mit `---` trennen.
 
 **Epics** folgen `.github/ISSUE_TEMPLATE/epic.md`: eine Einleitung, `### Hintergrund`, `### Phasen` als Prosa, `### Abhängigkeiten`, `### Abnahmekriterien (Epic-Ebene)`, `### Außerhalb des Umfangs (separate Epics)` und `### Referenzen`. Die Tickets selbst werden als **Sub-Issues** des Epics eingetragen, nicht als Checkliste im Body — GitHub führt damit Status und Fortschritt, und der Tagesreport liest dieselbe Beziehung (`gh api -X POST repos/{owner}/{repo}/issues/{epic}/sub_issues -F sub_issue_id={id}`; die `id` ist die Objekt-ID des Kind-Issues, nicht seine Nummer).
 
