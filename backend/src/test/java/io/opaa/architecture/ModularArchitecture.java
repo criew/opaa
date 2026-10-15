@@ -20,12 +20,16 @@ import static java.util.Map.entry;
 
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.AccessTarget.CodeUnitAccessTarget;
+import com.tngtech.archunit.core.domain.AccessTarget.ConstructorCallTarget;
 import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaAccess;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
+import com.tngtech.archunit.core.domain.JavaFieldAccess;
+import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvent;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.dependencies.SliceAssignment;
@@ -575,6 +579,52 @@ public final class ModularArchitecture {
           "HealthController",
           "HttpClientConfig",
           "RequestLoggingFilter");
+
+  /**
+   * The clients that open a connection out of the installation, the one list of them. A class
+   * creates one by calling its constructor, a static method of the type or a method of a nested
+   * builder that returns it; a non-empty {@code creators} narrows that to the named methods.
+   */
+  static final List<OutboundClient> OUTBOUND_CLIENTS =
+      List.of(
+          new OutboundClient(java.net.http.HttpClient.class),
+          new OutboundClient(org.springframework.web.client.RestTemplate.class),
+          new OutboundClient(org.springframework.web.client.RestClient.class),
+          new OutboundClient(org.springframework.web.reactive.function.client.WebClient.class),
+          new OutboundClient(java.net.URL.class, "openConnection", "openStream"),
+          new OutboundClient(java.net.Socket.class),
+          new OutboundClient(software.amazon.awssdk.services.s3.S3Client.class),
+          new OutboundClient(org.springframework.mail.javamail.JavaMailSenderImpl.class),
+          new OutboundClient(org.springframework.ai.openai.OpenAiChatModel.class),
+          new OutboundClient(org.springframework.ai.chat.client.ChatClient.class),
+          new OutboundClient(com.hierynomus.smbj.SMBClient.class),
+          new OutboundClient(
+              org.springframework.security.oauth2.jwt.NimbusJwtDecoder.class, "withJwkSetUri"));
+
+  /**
+   * Beans Spring builds as outbound clients: a class that depends on one sends data through it as
+   * if it had built it.
+   */
+  static final List<Class<?>> OUTBOUND_BEANS =
+      List.of(
+          org.springframework.ai.embedding.EmbeddingModel.class,
+          org.springframework.ai.vectorstore.VectorStore.class,
+          org.springframework.mail.javamail.JavaMailSender.class,
+          org.springframework.boot.restclient.RestClientCustomizer.class);
+
+  /** The registry annotations, relative to the root. */
+  static final String DATA_FLOW = "compliance.DataFlow";
+
+  static final String DATA_FLOW_CARRIER = "compliance.DataFlowCarrier";
+
+  /**
+   * Members of carriers, relative to the root, that compare or format addresses without opening a
+   * connection: calling them needs no {@link #DATA_FLOW}.
+   */
+  static final Set<String> CARRIER_HELPERS =
+      Set.of(
+          "sourceaccess.RedirectFollowingFetcher#sameOrigin",
+          "sourceaccess.SourceHttpClientFactory#buildAuthHeader");
 
   private final String root;
   private final Set<String> apiClasses;
@@ -1653,6 +1703,127 @@ public final class ModularArchitecture {
         .allowEmptyShould(true);
   }
 
+  /**
+   * Classes that create one of {@link #OUTBOUND_CLIENTS}, depend on one of {@link #OUTBOUND_BEANS}
+   * or call a class marked {@link #DATA_FLOW_CARRIER}, unless their top-level class is marked
+   * {@link #DATA_FLOW} or {@link #DATA_FLOW_CARRIER}: no data leaves the installation past the
+   * registry (ADR-0051, Entscheidung 2).
+   */
+  ArchRule everyOutboundClientIsRegistered() {
+    String dataFlow = root + "." + DATA_FLOW;
+    String carrier = root + "." + DATA_FLOW_CARRIER;
+    return classes()
+        .that(areInTheRoot())
+        .should(
+            new ArchCondition<>("open outbound connections only where @DataFlow registers them") {
+              @Override
+              public void check(JavaClass javaClass, ConditionEvents events) {
+                JavaClass top = topLevel(javaClass);
+                if (top.isAnnotatedWith(dataFlow) || top.isAnnotatedWith(carrier)) {
+                  return;
+                }
+                for (JavaAccess<?> access : javaClass.getAccessesFromSelf()) {
+                  String opens = opensOutbound(access, carrier);
+                  if (opens != null) {
+                    events.add(unregistered(top, access, opens + " " + access.getDescription()));
+                  }
+                }
+                Set<String> beans = new TreeSet<>();
+                for (Dependency dependency : javaClass.getDirectDependenciesFromSelf()) {
+                  OUTBOUND_BEANS.stream()
+                      .filter(bean -> dependency.getTargetClass().isAssignableTo(bean))
+                      .filter(bean -> beans.add(bean.getName()))
+                      .forEach(
+                          bean ->
+                              events.add(
+                                  unregistered(
+                                      top,
+                                      dependency,
+                                      "depends on the outbound bean "
+                                          + bean.getName()
+                                          + ": "
+                                          + dependency.getDescription())));
+                }
+              }
+            })
+        .because(
+            "every way out of the installation is registered (ADR-0052). Annotate the class with"
+                + " @io.opaa.compliance.DataFlow(\"<id>\") - an existing id when it serves a"
+                + " registered flow - and describe a new id as a dataFlows entry of the compliance"
+                + " manifest under compliance/manifest/:\n"
+                + "  - id: <id>\n"
+                + "    target: <who receives the data>\n"
+                + "    data: <what is sent>\n"
+                + "    trigger: <when it is sent>\n"
+                + "    switchOff: <whether and how it can be switched off>\n"
+                + "    settings: [<configuration keys that control it>]\n"
+                + "A class that only builds or wraps a client for its callers is"
+                + " @io.opaa.compliance.DataFlowCarrier instead; its callers carry @DataFlow")
+        .allowEmptyShould(true);
+  }
+
+  /**
+   * What {@code access} opens: a client it creates, a carrier it calls, or {@code null}. Building a
+   * carrier, reading its constants and calling one of {@link #CARRIER_HELPERS} open nothing.
+   */
+  private String opensOutbound(JavaAccess<?> access, String carrier) {
+    JavaClass owner = access.getTargetOwner();
+    if (owner.isAnnotatedWith(carrier)) {
+      boolean opensNothing =
+          access instanceof JavaFieldAccess
+              || access.getTarget() instanceof ConstructorCallTarget
+              || CARRIER_HELPERS.contains(calledMember(access));
+      return opensNothing ? null : "calls the carrier " + owner.getName() + ":";
+    }
+    for (OutboundClient client : OUTBOUND_CLIENTS) {
+      if (client.isCreatedBy(access)) {
+        return "creates " + client.type().getName() + ":";
+      }
+    }
+    return null;
+  }
+
+  private static ConditionEvent unregistered(JavaClass top, Object where, String what) {
+    return SimpleConditionEvent.violated(
+        where,
+        top.getName()
+            + " "
+            + what
+            + " - add @DataFlow(\"<id>\") to "
+            + top.getSimpleName()
+            + " and a dataFlows entry for <id> to the compliance manifest");
+  }
+
+  /**
+   * A client type of {@link #OUTBOUND_CLIENTS}; {@code creators} names the only methods that create
+   * one, empty for every constructor, static method and builder method returning it.
+   */
+  record OutboundClient(Class<?> type, Set<String> creators) {
+
+    OutboundClient(Class<?> type, String... creators) {
+      this(type, Set.of(creators));
+    }
+
+    boolean isCreatedBy(JavaAccess<?> access) {
+      JavaClass owner = access.getTargetOwner();
+      if (!creators.isEmpty()) {
+        return owner.isEquivalentTo(type) && creators.contains(access.getName());
+      }
+      if (!(access.getTarget() instanceof CodeUnitAccessTarget target)) {
+        return false;
+      }
+      if (owner.isEquivalentTo(type)) {
+        return target instanceof ConstructorCallTarget
+            || target
+                .resolveMember()
+                .map(member -> member.getModifiers().contains(JavaModifier.STATIC))
+                .orElse(false);
+      }
+      return owner.getEnclosingClass().map(outer -> outer.isEquivalentTo(type)).orElse(false)
+          && target.getRawReturnType().isEquivalentTo(type);
+    }
+  }
+
   private static JavaClass topLevel(JavaClass javaClass) {
     JavaClass top = javaClass;
     while (top.getEnclosingClass().isPresent()) {
@@ -1771,7 +1942,8 @@ public final class ModularArchitecture {
         webClassesResideInAWebPackage(),
         apiHoldsOnlyItsListedClasses(),
         onlyTheWebLayerAndAppDependOnAWebPackage(),
-        connectorsTakeTheirSourceConfigurationFromTheCore());
+        connectorsTakeTheirSourceConfigurationFromTheCore(),
+        everyOutboundClientIsRegistered());
   }
 
   /** Whether {@code javaClass} lies in the web package of a top-level package. */

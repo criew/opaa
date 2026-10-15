@@ -744,6 +744,36 @@ class ModularArchitectureFixtureTest {
     assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer)).isEmpty();
   }
 
+  /**
+   * Creating a client, calling a carrier and holding an outbound bean without {@code @DataFlow} are
+   * reported, each naming the fix; the registered class with its nested class and lambda, the
+   * carrier itself, and building it, reading its constant or calling a listed helper are not.
+   */
+  @Test
+  void anOutboundClientOutsideTheRegistryIsReported() {
+    Scenario scenario = new Scenario("unregisteredclient");
+    String root = FIXTURES + ".unregisteredclient.";
+
+    assertThat(scenario.violations(ModularArchitecture::everyOutboundClientIsRegistered))
+        .hasSize(3)
+        .allSatisfy(violation -> assertThat(violation).contains("add @DataFlow(\"<id>\") to"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith(root + "llm.UnregisteredClient creates")
+                    .contains("org.springframework.web.client.RestClient", "RestClient.create"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith(root + "indexing.source.web.PageFetcher calls the carrier")
+                    .contains("RedirectFollowingFetcher.client()"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith(root + "search.EmbeddingProbe depends on the outbound bean")
+                    .contains("org.springframework.ai.embedding.EmbeddingModel"));
+  }
+
   /** A class, a nested class and a member that are gone are reported; the live ones resolve. */
   @Test
   void aNameThatResolvesToNothingIsReported() {
