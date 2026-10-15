@@ -65,8 +65,9 @@ data:
     visibility: [die Person selbst, SYSTEM_ADMIN (maskierte Zahlen je Profil)]
     accessPaths: [UI, API, DATABASE]
     deletion: >-
-      Trennung durch die Person, Profillöschung, Notabschaltung; nicht mit dem Konto, eine
-      Verbindung verhindert die Löschung des Kontos
+      Trennung durch die Person, Profillöschung, Notabschaltung. Eine eigene Verbindung verhindert
+      die Löschung des Kontos; offene Freigaben und Autorisierungen enden mit dem Konto, an
+      Bibliotheksverbindungen wird die zustimmende Person geleert
     evaluations: Gezählte, maskierte Übersicht abgelaufener Verbindungen je Profil
   - id: connection-person-states
     title: Ruhezustand der Verbindungen einer Person

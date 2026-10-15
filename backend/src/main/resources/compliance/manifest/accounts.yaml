@@ -12,8 +12,8 @@ data:
     storage: Anwendungsdatenbank
     retention:
       rule: >-
-        Unbegrenzt; ein Konto bleibt bestehen, solange es nicht gelöscht wird, und löschbar sind nur
-        unbenutzte lokale Konten
+        Unbegrenzt; ein Konto bleibt bestehen, solange es nicht gelöscht wird, und löschbar sind in
+        der Praxis nur nie benutzte lokale Konten
       settings: []
     visibility:
       - die Person selbst
@@ -21,9 +21,10 @@ data:
       - SYSTEM_ADMIN in der Kontenverwaltung
     accessPaths: [UI, API, DATABASE]
     deletion: >-
-      Durch die Systemverwaltung nur bei lokalen Konten, auf die nichts verweist (kein Chat, kein
-      Besitz, keine Rechtevergabe, keine Freigabe einer anlassbezogenen Klärung, keine Verbindung,
-      kein Eintrag der Rechtehistorie), praktisch also bei nie benutzten Konten. Konten eines
+      Durch die Systemverwaltung nur bei lokalen Konten, auf die nichts verweist (u. a. kein Chat,
+      kein Besitz, keine Rechtevergabe, kein Antrag und keine Freigabe einer anlassbezogenen
+      Klärung, keine Verbindung, kein Eintrag der Rechtehistorie), praktisch also bei nie benutzten
+      Konten. Konten eines
       Identitätsanbieters haben keinen Löschweg; benutzte Konten werden gesperrt, nicht gelöscht
     evaluations: >-
       Letzte Anmeldung ist ein Anwesenheitsmerkmal; die Kontenübersicht zeigt Inaktivitätsklassen
@@ -57,8 +58,8 @@ data:
     storage: Anwendungsdatenbank; Passwort nur als Hash
     retention:
       rule: >-
-        Bis zur Löschung des Kontos; Ablauf nach Voreinstellung 90 Tagen, Sperre nach 90 Tagen
-        Inaktivität
+        Bis zur Löschung des Kontos, bei gesperrten Konten damit faktisch unbefristet; Ablauf nach
+        Voreinstellung 90 Tagen, Sperre nach 90 Tagen Inaktivität
       settings:
         - local_auth_settings.default_expiry_days
         - local_auth_settings.inactive_days

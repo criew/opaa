@@ -135,8 +135,9 @@ data:
       - SYSTEM_ADMIN (Abruf der Mitgliederliste wird protokolliert)
     accessPaths: [UI, API, DATABASE]
     deletion: >-
-      Austritt, Auflösung der Gruppe oder Verzeichnisabgleich; nicht mit dem Konto, Verantwortung
-      und Eintrag der Mitgliedschaftshistorie verhindern die Löschung des Kontos
+      Austritt, Auflösung der Gruppe oder Verzeichnisabgleich; mit dem Konto nur, wenn es löschbar
+      ist. Verantwortung und Mitgliedschaftshistorie verhindern das in der Regel; eine
+      Mitgliedschaft in einer deaktivierten Gruppe hat keine Historie und endet mit dem Konto
     evaluations: Mitgliederliste je Gruppe
   - id: directory-sync
     title: Abgleichspläne des Verzeichnisabgleichs
