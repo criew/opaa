@@ -1,14 +1,17 @@
 # Behördenunterlagen und Update-Paket
 
-> **Status: Entwurf — Zielbild, noch nichts davon gebaut.** Übernommen aus dem Konzept
+> **Status: Entwurf — Zielbild, in Teilen gebaut.** Übernommen aus dem Konzept
 > „Beschaffungs- und Einführungsunterstützung für Behörden“ v2 (13.10.2026) mit den Beschlüssen des
 > Maintainers vom selben Tag. Umgesetzt wird es im übergeordneten Epic
 > [#2542](https://github.com/criew/opaa/issues/2542) mit den Epics #2543 (Fakten aus dem Code),
 > #2552 (Update-Paket), #2560 (Behördenunterlagen), #2570 (Agentenorganisation) und dem Einzel-Issue
-> #2575 (Release-Zyklus). Vorhanden sind nur die Bausteine, auf die es aufsetzt: Protokoll-Enums,
+> #2575 (Release-Zyklus). Vorhanden sind die Bausteine, auf die es aufsetzt: Protokoll-Enums,
 > Liquibase-Changelogs, SBOM und Attestierung ([sbom.md](../sbom.md)), CVE-Prozess
 > ([cve-scanning.md](../cve-scanning.md)) und die Upgrade-Hinweise je Release
-> ([releases.md](../releases.md#vorbereitung-für-bestandsinstallationen)).
+> ([releases.md](../releases.md#vorbereitung-für-bestandsinstallationen)). **Gebaut** ist die
+> wöchentliche Drift-Routine ([Schicht 3](#schicht-3-wöchentliche-drift-routine)); die Kennzeichnung
+> am PR ([Schicht 2](#schicht-2-kennzeichnung-datenrelevanter-änderungen-am-pr)) liefert #2553. Alles
+> Übrige ist Zielbild.
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -68,7 +71,7 @@ Releases und öffentliche Unterlagen zu Mitbestimmung und KI-Verordnung bietet n
 ## Beschlüsse des Maintainers (13.10.2026)
 
 Die Beschlüsse binden diese Spezifikation. Die Nummern 1–7 entsprechen den Verweisen in den Issues
-der Epics; Beschluss 8 steht im Body von #2542 als zweiter Punkt mit der Nummer 5 und wird hier am
+der Epics; Beschluss 8 steht im Body von #2542 als erster von zwei Punkten mit der Nummer 5 und wird hier am
 Ende angefügt, damit die bestehenden Verweise gültig bleiben.
 
 | # | Beschluss | Wirkung in dieser Spezifikation |
@@ -245,80 +248,81 @@ tut, beschreibt erst der [Instanzbezug](#instanzbezug).
 Ziel ist, dass eine relevante Änderung — vor allem an Datenflüssen, Protokollereignissen, Fristen,
 Voreinstellungen, System-Prompts und Standardmodellen — **garantiert an mindestens einer Stelle
 auftaucht**, und dass der Folgeaufwand je Änderung klein bleibt. Keine einzelne Schicht leistet beides:
-Ein Wächter erzwingt Existenz, aber nicht Richtigkeit; ein Label erfasst auch Wirkungen außerhalb des
-Manifests, hängt aber an Menschen; eine Prüfroutine liest den Inhalt, kommt aber erst nach dem Merge.
-Drei Schichten ergänzen sich deshalb:
+Ein Wächter erzwingt Existenz, aber nicht Richtigkeit; eine Pfadliste erzwingt eine Entscheidung über
+die Kennzeichnung, kennt aber nur die Pfade, die auf ihr stehen; eine Prüfroutine liest den Inhalt,
+kommt aber erst nach dem Merge. Drei Schichten ergänzen sich deshalb:
 
 | Schicht | Zeitpunkt | Art | Erzwingt | Liefert |
 |---|---|---|---|---|
-| 1 · CI-Wächter | jeder Build | deterministisch, blockierend | Existenz eines Manifest-Eintrags | #2547, #2548, #2549 |
-| 2 · Erkennung am PR | jeder PR | deterministisch, warnend | Kennzeichnung oder Begründung | Kennzeichnung #2553; pfadbasierte Erkennung: Folge-Issue |
-| 3 · Drift-Routine | wöchentlich | Agent, nur lesend | inhaltliche Richtigkeit, Verhaltensänderungen ohne Schemaänderung | Folge-Issue |
+| 1 · CI-Wächter | jeder Build | deterministisch, blockierend | Existenz eines Manifest-Eintrags | #2547, #2548, #2549 (Zielbild) |
+| 2 · Kennzeichnung am PR | jeder PR | deterministisch, blockierend | Label `data-impact` oder Angabe „Keine Wirkung“ | #2553 (PR #2820) |
+| 3 · Drift-Routine | wöchentlich | Agent, nur lesend | inhaltliche Richtigkeit, Verhaltensänderungen ohne Schemaänderung, Lücken der Pfadliste | eingerichtete Claude-Routine (gebaut) |
 
 Der Release-Lauf führt Schicht 1 zusätzlich vor jeder Veröffentlichung aus und bricht bei einem
 unvollständigen Manifest ab, **bevor** Images erscheinen (#2556).
 
 ### Schicht 1: deterministische CI-Wächter
 
-Der [Wächter](#der-wächter-und-seine-grenze) läuft im regulären Testlauf eines CI-Shards. Er ist die
-einzige Schicht, die einen Merge verhindert, und deshalb auf das beschränkt, was sich ohne Wertung
-entscheiden lässt: Gibt es zu jedem Gegenstand im Code einen Eintrag und umgekehrt? Seine Fehlermeldung
-nennt den fehlenden Eintrag, die Datei des Bereichs und die Konvention, damit die Nachpflege ohne
-Suchen gelingt.
+Der [Wächter](#der-wächter-und-seine-grenze) läuft im regulären Testlauf eines CI-Shards. Er ist auf
+das beschränkt, was sich ohne Wertung entscheiden lässt: Gibt es zu jedem Gegenstand im Code einen
+Eintrag und umgekehrt? Seine Fehlermeldung nennt den fehlenden Eintrag, die Datei des Bereichs und die
+Konvention, damit die Nachpflege ohne Suchen gelingt.
 
 Für Prompts und Standardmodelle ist die Prüfsumme der Hebel: Eine Änderung am Prompt-Text scheitert,
 bis die Prüfsumme bewusst nachgezogen ist, und taucht damit im Delta als Verhaltensänderung auf — auch
 ohne Schemaänderung.
 
-### Schicht 2: Erkennung datenrelevanter Änderungen am PR
+### Schicht 2: Kennzeichnung datenrelevanter Änderungen am PR
 
 Jeder PR mit Datenwirkung trägt das Label `data-impact` und einen Satz in Alltagssprache für die
-Release-Notizen; die Release-Notizen führen solche PRs unter „Datenrelevante Änderungen“ (#2553).
-Damit das nicht vergessen wird, prüft ein CI-Schritt die geänderten Pfade eines PRs:
+Release-Notizen; die Release-Notizen führen solche PRs unter „Datenrelevante Änderungen“. Ein eigener
+Workflow (`.github/workflows/data-impact.yml`, #2553) prüft das an jedem PR. Er läuft auch bei
+`labeled`, `unlabeled` und `edited`, sodass ein nachträglich gesetztes Label oder eine nachgetragene
+Angabe sofort wirkt.
 
-- Liquibase-Changelogs
-- die Enums der Protokollereignisse, Rollen und Fähigkeiten
-- Konfigurationsklassen und die Anwendungskonfiguration, darunter die Standardmodelle
-- Klassen mit ausgehenden Clients (aus der Registry, #2549)
-- die Fundstellen der System-Prompts (aus dem Manifest)
-- das Manifest selbst
+Grundlage ist eine **statische Pfadliste** (`.github/data-impact-paths.txt`) mit den Stellen, an denen
+Datenwirkung typischerweise entsteht: Liquibase-Changelogs, die Enums der Protokollereignisse, Rollen
+und Fähigkeiten, Konfigurationsklassen und Anwendungskonfiguration einschließlich der Standardmodelle,
+ausgehende Clients, die Fundstellen der System-Prompts. Ändert ein PR eine gelistete Datei und trägt
+weder das Label `data-impact` noch die Angabe „Keine Wirkung“, **schlägt die Prüfung fehl**. Die
+Entscheidung, ob eine Wirkung vorliegt, bleibt beim Autor und im Review; die Prüfung erzwingt nur, dass
+sie getroffen wird.
 
-Berührt ein PR einen dieser Pfade, **schlägt** der Schritt das Label vor (Kommentar oder
-Job-Zusammenfassung). Fehlen Label und eine Begründung im Abschnitt „Wirkung auf Daten und
-Behördenunterlagen“ des PR-Templates (etwa „keine Wirkung: nur Umbenennung“), markiert er den PR
-**warnend**, ohne ihn zu blockieren. Die Entscheidung, ob eine Wirkung vorliegt, bleibt beim Autor und
-im Review; die Pfadprüfung kennt nur Verdachtsfälle.
-
-**Folgeaufwand klein halten:** Die Pfadliste wird nicht von Hand gepflegt, wo sie sich ableiten lässt.
-Fundstellen der Prompts und Zuordnungen der Datenfluss-Clients kommen aus Manifest und Registry; fest
-eingetragen bleiben nur die wenigen Verzeichnisse (Changelogs, Enums, Konfiguration). Die Erkennung
-nutzt den Pfadfilter, den die CI bereits für ihre Job-Auswahl verwendet, statt eines zweiten
-Mechanismus.
+**Pflege der Liste:** Ein Selbsttest prüft die Liste gegen veraltete Muster, die auf keine Datei mehr
+passen. Lücken — datenrelevanter Code außerhalb der Liste — findet die Drift-Routine (Prüffrage d) und
+schlägt eine neue Zeile vor. So bleibt die Liste klein und von Hand lesbar, ohne still zu veralten.
 
 ### Schicht 3: wöchentliche Drift-Routine
 
-Eine wöchentliche Prüfroutine nach dem Vorbild der Architektur-Prüfroutine aus
-[ADR-0051, Entscheidung 7](../decisions/0051-architekturvertrag-des-backends.md#7-prüfroutine) liest
-die Änderungen auf `main` seit ihrem letzten Lauf und hält sie gegen das Manifest:
+**(gebaut)** Die geplante Claude-Routine „Compliance-Drift-Prüfroutine (Behördenunterlagen)“ läuft
+sonntags um 08:37 Uhr (Europe/Berlin), nach der Architektur-Prüfroutine aus
+[ADR-0051, Entscheidung 7](../decisions/0051-architekturvertrag-des-backends.md#7-prüfroutine), deren
+Muster sie folgt. Sie liest die Änderungen auf `main` der letzten sieben Tage und hält sie gegen
+Manifest, Pfadliste und Vorlagen:
 
-1. **Eingabe:** diese Spezifikation, das Manifest, der letzte Bericht, der Diff von `origin/main` seit
-   dem letzten Lauf, die seitdem gemergten PRs mit ihren Labels.
-2. **Tief gelesen** werden nur die geänderten Stellen, die einen Manifest-Bereich berühren.
-3. **Fragen je Änderung:** Stimmt der Manifest-Eintrag inhaltlich (Zweck, mögliche Auswertungen,
-   Sichtbarkeit, Frist) — nicht nur, ob er existiert? Gibt es eine Verhaltensänderung ohne
-   Schemaänderung (neue Auswertung bestehender Daten in der Oberfläche, geänderte Sortierung oder
-   Filterung mit Personenbezug, geänderter Standardwert, der über eine Umgebungsvariable statt einer
-   Konfigurationsklasse gesetzt wird)? Fehlt einem PR mit Datenwirkung das Label `data-impact`? Passt
-   der voraussichtliche Stufenvorschlag zu den [Stufenregeln](#die-stufenregeln)?
-4. **Ausgabe:** ein Bericht an den Maintainer mit drei Listen (neu, behoben seit dem letzten Lauf,
-   unverändert offen), je Befund mit Beleg; bei „nichts Neues“ eine Zeile.
-5. **Grenzen:** Die Routine ist nur lesend. Sie ändert keinen Code, kein Manifest und keine Vorlage,
-   legt selbst keine Issues an und setzt keine Labels. Was daraus folgt, entscheidet der Maintainer.
+- **(a)** Ein PR mit Datenwirkung trägt das Label `data-impact` nicht.
+- **(b)** Ein Manifest-Eintrag ist sachlich falsch (Zweck, mögliche Auswertungen, Sichtbarkeit, Frist)
+  — nicht nur, ob er existiert.
+- **(c)** Eine Verhaltensänderung ohne Schemaänderung: neue Auswertung bestehender Daten in der
+  Oberfläche, geänderte Sortierung oder Filterung mit Personenbezug, geänderter Standardwert, Prompt
+  oder Standardmodell.
+- **(d)** Datenrelevanter Code liegt außerhalb der Pfadliste aus Schicht 2; die Routine schlägt die
+  neue Zeile vor.
+- **(e)** Eine redaktionelle Vorlage schreibt einen Faktenwert ab, der sich geändert hat.
 
-Anders als die Architektur-Prüfroutine legt sie bewusst keine Issues an: Ihre Befunde betreffen oft die
-Bewertung einer Datenwirkung, und die soll ein Mensch treffen, bevor sie als Arbeitsauftrag erscheint.
-Die Rolle „Behördenkontakt“ (#2573) läuft daneben anlassbezogen vor jedem Release; die Routine füllt
-die Zeit dazwischen.
+Jeder Kandidat wird von einem zweiten Prüfer nachgestellt, bevor er gemeldet wird. Die **Ausgabe** ist
+ein Bericht mit zwei Listen: „Neu“ (abgeglichen mit den offenen Issues, damit nichts Bekanntes erneut
+erscheint) und „Unverändert offen“ (offene Issues mit Label `data-impact` bzw. aus Epic #2542). Eine
+Liste „Behoben seit letztem Lauf“ gibt es nicht, weil die Routine keinen Bericht speichert. Der Bericht
+geht dem Maintainer als Push-Benachrichtigung zu.
+
+**Grenzen:** Die Routine ist nur lesend. Sie ändert keinen Code, kein Manifest und keine Vorlage, legt
+keine Issues an und setzt keine Labels. Anders als die Architektur-Prüfroutine verzichtet sie bewusst
+auf eigene Issues: Ihre Befunde betreffen oft die Bewertung einer Datenwirkung, und die soll ein Mensch
+treffen, bevor sie als Arbeitsauftrag erscheint.
+
+Den in #2573 als „Außerhalb des Umfangs“ genannten zeitgesteuerten Lauf deckt diese Routine ab; die
+Rolle „Behördenkontakt“ läuft anlassbezogen vor jedem Release und nutzt die Berichte der Routine mit.
 
 ---
 
@@ -391,10 +395,11 @@ System-Prompt oder geändertes Standardmodell ohne Klasse Z1–Z7.
 den Vorschlag „Zustimmung“ mit dem Vermerk, warum die Zuordnung offen ist.
 
 Je Änderung nennt das Delta zusätzlich, ob das VVT anzupassen (Änderung an Zweck, Datenkategorie,
-Empfänger oder Frist), die DSFA nach Art. 35 Abs. 11 DSGVO zu überprüfen (jede Änderung der Stufe
-Zustimmung) und das Sicherheitskonzept fortzuschreiben ist (neue Datenflüsse, Ports, Egress-Ziele,
-Rollen oder Protokollereignisse). Der Kopf des Deltas sagt: Stufen und Bezüge sind Vorschläge, die
-Bewertung trifft die Behörde.
+Empfänger oder Frist), die DSFA zu überprüfen und das Sicherheitskonzept fortzuschreiben ist (neue
+Datenflüsse, Ports, Egress-Ziele, Rollen oder Protokollereignisse). Rechtsgrundlage der
+DSFA-Überprüfung ist Art. 35 Abs. 11 DSGVO, der an eine Änderung des Risikos anknüpft; dass das Delta
+sie bei jeder Änderung der Stufe Zustimmung vorschlägt, ist eine **Heuristik**, keine Ableitung aus der
+Norm. Der Kopf des Deltas sagt: Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.
 
 ### Instanzbezug
 
@@ -435,9 +440,9 @@ Vereinbarung holen.
 wie in den [Stufenregeln](#die-stufenregeln); das Update-Paket liefert damit zu jedem Update den
 passenden Vorschlag, und die neue Fassung der Anlagen ersetzt die alte erst nach Abschluss der Stufe.
 
-**Sicherheitsupdates (Beschluss 2).** Kritische Sicherheitsupdates werden sofort eingespielt und
-nachträglich angezeigt. Das trägt nur, wenn sie keine neuen Funktionen enthalten — deshalb verweist die
-Vereinbarung auf die Supportlinien mit festem Zeitraum aus #2575. Heute entsteht ein Patch-Release mit
+**Sicherheitsupdates (Beschluss 2).** Kritische Sicherheitsupdates werden sofort eingespielt, mit
+nachträglicher Unterrichtung des Personalrats. Das trägt nur, wenn sie keine neuen Funktionen
+enthalten — deshalb verweist die Vereinbarung auf die Supportlinien mit festem Zeitraum aus #2575. Heute entsteht ein Patch-Release mit
 Codeänderung nur, solange `main` keine neue Funktion trägt ([releases.md](../releases.md#versionsnummern)).
 
 **Informationsmappe für den Personalrat.** Rollensicht, Beispiele möglicher und ausgeschlossener
@@ -530,11 +535,8 @@ Normtext geprüft. Die vollständige Tabelle mit Quellen steht im ersten Komment
 - Gehört ein geänderter System-Prompt grundsätzlich in die Stufe Anzeige, oder kann er eine neue
   Auswertung bewirken (etwa ein Prompt, der Personen zusammenfasst) und damit Z3 erfüllen? Die
   Zuordnung je Prompt trifft das Manifest; die Regel braucht Erfahrung aus den ersten Deltas.
-- Welche Verzeichnisse genau beobachtet die Erkennung am PR (Schicht 2), und wie hoch ist ihre
-  Fehlalarmquote? Ein Wert über einer Handvoll Warnungen je Woche ohne echte Wirkung spricht für eine
-  engere Liste.
-- Läuft die Drift-Routine als eigene Routine oder als Teil der Rolle „Behördenkontakt“ mit
-  wöchentlichem Takt?
+- Wie oft muss ein PR an der Pfadliste aus Schicht 2 „Keine Wirkung“ angeben, obwohl er nichts
+  Datenrelevantes ändert? Häufen sich solche Fälle, ist die Liste enger zu fassen.
 - Wie werden landesrechtliche Unterschiede (Personalvertretung, Barrierefreiheit, Archivrecht)
   dargestellt — als Übersicht je Land mit Verweis, nicht als Volltexte?
 
