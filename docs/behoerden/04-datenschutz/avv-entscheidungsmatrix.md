@@ -41,7 +41,7 @@ nicht; die Behörde verwendet ihr Muster oder die Standardvertragsklauseln der K
 | | Bedeutung | Hinweis |
 |---|---|---|
 | **B1 selbst** | Die Behörde betreibt OPAA auf eigener Infrastruktur mit eigenem Personal. | Aus dem Betrieb selbst entsteht keine Auftragsverarbeitung. |
-| **B2 Dienstleister** | Ein IT-Dienstleister betreibt OPAA für die Behörde, etwa ein Rechenzentrum oder ein kommunaler IT-Dienstleister. | AVV mit dem Dienstleister; er erfasst Datenbank, Originalablage, Sicherungen und Logs. Bei öffentlichen Dienstleistern kann ein anderes Rechtsinstrument an die Stelle des Vertrags treten (Art. 28 Abs. 3 DSGVO). Unterauftragsverarbeiter des Dienstleisters offenlegen lassen. |
+| **B2 Dienstleister** | Ein IT-Dienstleister betreibt OPAA für die Behörde, etwa ein Rechenzentrum oder ein kommunaler IT-Dienstleister. | AVV mit dem Dienstleister; er erfasst Datenbank, Originalablage, Sicherungen und Logs. Grundlage ist ein Vertrag oder ein anderes Rechtsinstrument (Art. 28 Abs. 3 DSGVO). Unterauftragsverarbeiter des Dienstleisters offenlegen lassen. |
 | **B3 Wartung mit Fernzugriff** | Die Behörde betreibt selbst; ein Dritter wartet OPAA oder die Plattform und kann dabei auf Systeme mit personenbezogenen Daten zugreifen. | Ob das Auftragsverarbeitung ist, prüft die Behörde nach dem DSK-Kurzpapier Nr. 13. Zugriff nur nach Freigabe, protokolliert, auf den Wartungszweck begrenzt. |
 
 **Sprachmodell**

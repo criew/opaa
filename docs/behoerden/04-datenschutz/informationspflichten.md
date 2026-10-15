@@ -25,7 +25,7 @@ bei. Ändert ein Update die Faktenblätter, prüft sie den Text erneut.
 
 | Fundstelle | Inhalt | Herkunft |
 |---|---|---|
-| Art. 13 Abs. 1 und 2 [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) | Pflichtangaben bei Erhebung bei der betroffenen Person | Normtext |
+| Art. 13 Abs. 1 und 2 [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) | Pflichtangaben bei Erhebung bei der betroffenen Person, einschließlich der Rechte nach Art. 15 bis 21 (Abs. 2 lit. b) und automatisierter Entscheidungen nach Art. 22 (Abs. 2 lit. f) | Normtext |
 | Art. 14 DSGVO | Informationspflicht, wenn Daten nicht bei der Person erhoben werden, etwa Personendaten in Dokumenten | Normtext |
 | § 26 [BDSG](https://www.gesetze-im-internet.de/bdsg_2018/__26.html) bzw. Landesrecht | Beschäftigtendaten | Recherche vom 13.10.2026 |
 | DSK, [Kurzpapiere](https://www.datenschutzkonferenz-online.de/kurzpapiere.html), Nr. 10 „Informationspflichten bei Dritt- und Direkterhebung“ | Hinweise zu Inhalt und Form | Muster |
@@ -100,13 +100,18 @@ Antworten werden nicht für Entscheidungen über Personen verwendet.]
 
 ### 8. Ihre Rechte
 
-Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und
-Widerspruch nach den Art. 15 bis 21 DSGVO sowie das Recht auf Beschwerde bei der Aufsichtsbehörde
-[zuständige Aufsichtsbehörde, Kontakt] (Art. 77 DSGVO). Wenden Sie sich dazu an [Stelle]. Wie wir
-Anfragen bearbeiten, steht im [Ablauf für Betroffenenrechte](./betroffenenrechte.md) [Fundstelle im
-Intranet].
+Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
+Datenübertragbarkeit und Widerspruch nach den Art. 15 bis 21 DSGVO sowie das Recht auf Beschwerde bei
+der Aufsichtsbehörde [zuständige Aufsichtsbehörde, Kontakt] (Art. 77 DSGVO). Ob das Recht auf
+Datenübertragbarkeit (Art. 20 DSGVO) für diese Verarbeitung greift, hängt von der Rechtsgrundlage ab
+[Angabe der Behörde]. Wenden Sie sich dazu an [Stelle]. Wie wir Anfragen bearbeiten, steht im
+[Ablauf für Betroffenenrechte](./betroffenenrechte.md) [Fundstelle im Intranet].
 
-### 9. Pflicht zur Bereitstellung
+### 9. Automatisierte Entscheidungen
+
+[Automatisierte Entscheidung (Art. 22): keine / Angaben] (Art. 13 Abs. 2 lit. f DSGVO, Normtext)
+
+### 10. Pflicht zur Bereitstellung
 
 [Ob die Nutzung freiwillig ist oder dienstlich vorgegeben, und was gilt, wenn die Daten nicht
 bereitgestellt werden.]

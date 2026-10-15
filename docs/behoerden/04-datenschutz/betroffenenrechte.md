@@ -12,7 +12,7 @@ naechste-durchsicht: 2027-04-15
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
 Dieser Baustein beschreibt, wie eine Behörde Anfragen zu Betroffenenrechten bearbeitet, die OPAA
-betreffen: Auskunft, Berichtigung, Löschung, Einschränkung und Widerspruch. Er knüpft an die
+betreffen: Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch. Er knüpft an die
 Funktionen an, die das Produkt dafür hat, und sagt, wo die Behörde selbst handeln muss. Den Ablauf,
 den die Behörde für alle Verfahren hat, ersetzt er nicht; er ergänzt ihn um das, was für OPAA gilt.
 Angaben in eckigen Klammern **[…]** ergänzt die Behörde.
@@ -48,8 +48,9 @@ dem BDSG oder dem Landesrecht, prüft die Behörde im Einzelfall.
 |---|---|---|
 | **Auskunft** (Art. 15) | eigene Angaben in den Einstellungen ([Handbuch, Benutzerverwaltung: Was Nutzende selbst können](../../handbuch/benutzerverwaltung.md#11-was-nutzende-selbst-können)); eigene Chats ([Handbuch, Suche in eigenen Chats](../../handbuch/suche.md#72-suche-in-eigenen-chats)); eigene Zugangstokens ([Handbuch, Fremdzugänge](../../handbuch/fremdzugaenge.md#5-zugangstokens-aus-sicht-der-person)) | übrige Daten nach dem Datenkatalog zusammenstellen, Zugriffsweg je Datum in der Zeile „Zugriffsweg“; Protokolleinträge siehe unten |
 | **Berichtigung** (Art. 16) | — | Name und Adresse eines lokalen Kontos ändert die Systemverwaltung ([Handbuch, Benutzerverwaltung](../../handbuch/benutzerverwaltung.md)); bei Konten eines Identitätsanbieters ändert die Behörde die Angaben dort |
-| **Löschung** (Art. 17) | eigene Chats löschen | Konto sperren oder löschen ([Handbuch, Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren)); Dokumente in der Bibliothek oder ihrer Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
+| **Löschung** (Art. 17) | eigene Chats löschen | Konto sperren oder löschen: Ein benutztes Konto ist in der Regel nicht löschbar, weil Nachweiseinträge darauf verweisen; dann bleibt nur die Sperre, und die Pseudonymzuordnung des Protokolls bleibt bestehen ([Handbuch, Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren); Frist: {{faktenblatt:datenkatalog#audit-pseudonyms}}); Dokumente in der Bibliothek oder ihrer Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
 | **Einschränkung** (Art. 18) | — | Konto sperren; [Regel der Behörde für Dokumente, etwa aus der Bibliothek nehmen und gesondert aufbewahren] |
+| **Datenübertragbarkeit** (Art. 20) | — | [Prüfung durch die Behörde, ob das Recht bei der Rechtsgrundlage greift; Bereitstellung aus den Wegen der Auskunft] |
 | **Widerspruch** (Art. 21) | — | [Prüfung durch die Behörde] |
 
 Ein gebündelter Export aller Daten einer Person (Selbstauskunft) ist im Produkt nicht gebaut; das
@@ -67,6 +68,8 @@ und, wo eine Dienstvereinbarung den Zugriff auf das Protokoll regelt, nach deren
 ([#2566](https://github.com/criew/opaa/issues/2566)). Eine Löschung des Kontos lässt das Protokoll
 unverändert und hebt nur den Personenbezug auf
 ([Unveränderlichkeit und Löschrecht](../../features/security-and-compliance.md#unveränderlichkeit-und-löschrecht)).
+Ist das Konto nur gesperrt, weil es nicht gelöscht werden kann, bleibt der Personenbezug bestehen;
+die Behörde berücksichtigt das bei der Antwort auf ein Löschbegehren.
 
 ### Daten in Dokumenten
 

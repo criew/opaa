@@ -34,12 +34,14 @@ Die Recherche vom 13.10.2026 steht im ersten Kommentar von Epic
 
 Diese Vorlage enthält **keine eigene Schwellwertanalyse**. Maßgeblich sind:
 
-1. **Die Muss-Liste der zuständigen Aufsichtsbehörde** nach Art. 35 Abs. 4 DSGVO: für Bundesbehörden
-   die oder der Bundesbeauftragte für den Datenschutz und die Informationsfreiheit, für Landes- und
-   Kommunalbehörden die Landesbeauftragte oder der Landesbeauftragte. Die Listen stehen auf deren
-   Seiten; die Datenschutzkonferenz führt eine
-   [Liste für den nicht-öffentlichen Bereich](https://www.datenschutzkonferenz-online.de/media/ah/20181017_ah_DSK_DSFA_Muss-Liste_Version_1.1_Deutsch.pdf),
-   an der sich viele Landeslisten orientieren.
+1. **Die Muss-Liste der zuständigen Aufsichtsbehörde** nach Art. 35 Abs. 4 DSGVO:
+   - **Bundesbehörden:** die Liste der oder des Bundesbeauftragten für den Datenschutz und die
+     Informationsfreiheit ([BfDI](https://www.bfdi.bund.de/)).
+   - **Landes- und Kommunalbehörden:** die Liste der oder des Landesbeauftragten für den Datenschutz
+     des jeweiligen Landes, auf deren Seiten.
+   - Die [Liste der Datenschutzkonferenz](https://www.datenschutzkonferenz-online.de/media/ah/20181017_ah_DSK_DSFA_Muss-Liste_Version_1.1_Deutsch.pdf)
+     gilt nur für den **nicht-öffentlichen Bereich**. Für Behörden ist sie höchstens eine
+     Orientierung, nicht die maßgebliche Liste.
 2. **Die DSK-Orientierungshilfe „KI und Datenschutz“** als Prüfraster für den KI-Anteil.
 
 Nach der Recherche erfassen die Muss-Listen Beschäftigtenüberwachung und KI-Verfahren regelmäßig. Wie
