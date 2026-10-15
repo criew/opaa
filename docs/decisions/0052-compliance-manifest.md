@@ -99,6 +99,23 @@ nichts: Weg und Zielprüfung bleiben beim Ausgangsproxy (ADR-0050) und bei `Targ
 Eine Liste allein veraltet unbemerkt, ein Anker am Code fällt beim Bauen auf. Der Fachtext bleibt im
 Manifest, damit Faktenblätter ihn lesen, ohne den Code zu kennen.
 
+### 9. Konfigurationsschlüssel und Voreinstellungen
+
+Der Build liefert `META-INF/spring-configuration-metadata.json`: `spring-boot-configuration-processor`
+in einem eigenen Lauf über alle Quellen, ergänzt um `additional-spring-configuration-metadata.json`
+für Schlüssel ohne `@ConfigurationProperties`-Typ und um den Standardwert aus dem Basisdokument von
+`application.yml`. Jeder `opaa.*`-Schlüssel trägt `@DataImpact` oder `@NoDataImpact(Grund)` an seiner
+Komponente oder pauschal an seinem Typ; Schalter, Modelle, Adressen, Fristen, Abstände und jede
+Zeitspanne (`Duration`, `Period`) entscheidet die Komponente selbst. Datenwirksam ist ein
+Standardwert, der bestimmt, was über Personen anfällt, wie lange es bleibt, wer es sieht, was sich auswerten lässt oder wohin Daten gehen; Schutzgrenzen,
+Zeitlimits, Suchgüte und Geheimnisse sind es nicht. Ein datenwirksamer Schlüssel steht mit seinem
+Standardwert unter `settings`, ebenso Modell und Adresse jeder Modellrolle (Standardmodelle). Setzt
+das Helm-Chart den Schlüssel, nennt der Eintrag Wert und Voreinstellung aus `values.yaml` (`helm`).
+
+`ConfigurationSettingsTest` prüft alles davon. Die Markierung steht dort, wo ein neuer Schlüssel
+entsteht, damit sie niemand in einer zweiten Liste nachtragen muss. Der Prozessor läuft getrennt,
+weil Gradle beim inkrementellen Übersetzen unveränderte Typen ohne Javadoc nachverarbeitet.
+
 ## Konsequenzen
 
 Einfacher: Ein Bereich wächst ohne Konflikt in seiner eigenen Datei. Faktenblätter, Delta und
@@ -107,6 +124,8 @@ zu verschwinden.
 
 Schwieriger: Eine Prompt-Klasse mit vielen Meldungen erzeugt Fehlalarme; die Nachpflege ist eine
 neue Prüfsumme. Jede neue Spalte braucht eine Zeile im Manifest, auch ohne Personenbezug.
+Jede neue Konfigurationsklasse braucht eine Markierung, jeder geänderte Standardwert eines
+datenwirksamen Schlüssels einen nachgezogenen Eintrag.
 
 Restrisiken: Das Manifest belegt Vollständigkeit, nicht Richtigkeit; die sichern Review und
 Drift-Routine.
@@ -124,8 +143,8 @@ schickt; das fangen die Kennzeichnung der Datenwirkung am PR und die Drift-Routi
 - Prüfsumme über den gerenderten Prompt — braucht je Prompt eigene Eingaben und Aufrufcode.
 - Personenbezogene Spalten allein nennen — eine neue Spalte bliebe unbemerkt.
 - Schema aus der Testcontainers-Datenbank — ohne Docker übersprungen, nicht in jedem Testlauf.
+- Liste der datenwirksamen Schlüssel im Test — ein neuer Schlüssel fiele dort nicht auf.
+- Jeder Schlüssel ohne Datenwirkung einzeln markiert — rund 300 Markierungen ohne Erkenntnis.
+- Eigene Eintragsart für Standardmodelle — Modell und Adresse sind gewöhnliche Voreinstellungen.
+- Prozessor im regulären `compileJava` — verliert beim inkrementellen Übersetzen die Beschreibungen.
 - Datenflüsse als Java-Enum mit allen Angaben — Fachtext im Code, zweite Quelle neben dem Manifest.
-
-## Offen
-
-- Standardmodelle als Voreinstellungen (Eintragsart oder `settings`) — mit den Konfigurationsmetadaten.

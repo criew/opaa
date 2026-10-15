@@ -3,6 +3,7 @@ package io.opaa.retrieval;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.api.types.RetrievalStageName;
+import io.opaa.compliance.NoDataImpact;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
@@ -66,16 +67,19 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param fusion how {@link RetrievalStageName#RANK_FUSION} fuses the candidate lists, see {@link
  *     Fusion}.
  */
+@NoDataImpact("search quality; the answer uses only what the person may read")
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(
     int topK,
     int fetchK,
     @DefaultValue("1.0") double mmrLambda,
     double similarityThreshold,
-    @DefaultValue("true") boolean queryDecompositionEnabled,
+    @DefaultValue("true") @NoDataImpact("one more call to the same chat model")
+        boolean queryDecompositionEnabled,
     @DefaultValue("3") int maxSubQueries,
     @DefaultValue("1") int maxChunksPerDocument,
-    @DefaultValue("true") boolean fullTextSearchEnabled,
+    @DefaultValue("true") @NoDataImpact("a search path over the same index")
+        boolean fullTextSearchEnabled,
     @DefaultValue("50") int rerankCandidateCount,
     @DefaultValue("20") int conversationWindowMessages,
     @DefaultValue("2") int searchWindowTurns,

@@ -11,6 +11,7 @@ import io.opaa.chat.ChatImport;
 import io.opaa.chat.ChatImportService;
 import io.opaa.chat.ChatListEntry;
 import io.opaa.chat.ChatService;
+import io.opaa.compliance.DataImpact;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
  * opaa.demo.chat-import.enabled} is {@code true}; a regular installation answers the path like any
  * unknown route.
  */
+@DataImpact
 @RestController
 @RequestMapping("/api/v1")
 @ConditionalOnProperty(name = "opaa.demo.chat-import.enabled", havingValue = "true")

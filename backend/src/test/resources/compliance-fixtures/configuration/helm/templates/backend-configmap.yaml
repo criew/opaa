@@ -1,0 +1,9 @@
+data:
+  {{- with .Values.retention.keepDays }}
+  OPAA_FIXTURE_KEEP_DAYS: {{ . | quote }}
+  {{- end }}
+  OPAA_NOT_READ: "x"
+  {{- range $name, $flag := .Values.flags }}
+  OPAA_FLAG_{{ $name | snakecase | upper }}_ENABLED: {{ $flag.enabled | quote }}
+  {{- end }}
+  OPAA_{{ .Values.dynamic }}: "y"

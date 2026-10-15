@@ -1,5 +1,6 @@
 package io.opaa.mail;
 
+import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -17,6 +18,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param readTimeout how long the server may take to answer a command
  * @param writeTimeout how long writing the message body may take
  */
+@NoDataImpact("timeouts")
 @ConfigurationProperties(prefix = "opaa.mail")
 public record SmtpProperties(
-    Duration connectTimeout, Duration readTimeout, Duration writeTimeout) {}
+    @NoDataImpact("a timeout of one request") Duration connectTimeout,
+    @NoDataImpact("a timeout of one request") Duration readTimeout,
+    @NoDataImpact("a timeout of one request") Duration writeTimeout) {}

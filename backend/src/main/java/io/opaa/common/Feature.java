@@ -1,5 +1,6 @@
 package io.opaa.common;
 
+import io.opaa.compliance.DataImpact;
 import java.util.Locale;
 
 /**
@@ -10,6 +11,7 @@ import java.util.Locale;
  * one property in the {@code FeaturesConfig} schema; {@code FeaturesSpecificationTest} holds the
  * spec in step with this enum.
  */
+@DataImpact
 public enum Feature {
   PROMPT_LIBRARIES,
   METADATA,

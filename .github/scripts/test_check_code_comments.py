@@ -273,6 +273,7 @@ def docstring(comment: str) -> str:
 
 # (label, path, render): one entry per file type of every tree added beside the Java sources.
 FILES = [
+    ("main", "backend/src/configMetadata/java/io/opaa/configmetadata/Probe.java", slash),
     ("e2e", "e2e/tests/probe.spec.ts", slash),
     ("e2e", "e2e/scripts/probe.mjs", lambda c: f"// {c}\nexport {{}}\n"),
     ("e2e", "e2e/probe.env", hash_line),

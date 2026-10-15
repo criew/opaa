@@ -1,0 +1,7 @@
+retention:
+  keepDays: 30
+  unused: 30
+sources: []
+flags:
+  fooBar:
+    enabled: true

@@ -58,6 +58,59 @@ configurations.named("evalTestRuntimeOnly") {
     extendsFrom(configurations["testRuntimeOnly"])
 }
 
+// Configuration metadata (ADR-0052, Entscheidung 9): the configuration processor's keys, plus
+// additional-spring-configuration-metadata.json and the defaults of application.yml, ship as
+// META-INF/spring-configuration-metadata.json. The processor runs in a pass of its own, because an
+// incremental compileJava hands it unchanged types as class files without Javadoc.
+val configMetadata = sourceSets.create("configMetadata")
+val configurationProcessor = configurations.create("configurationProcessor")
+val processorOutputDir = layout.buildDirectory.dir("configuration-metadata")
+val configurationMetadataDir = layout.buildDirectory.dir("generated/configuration-metadata")
+
+val processConfigurationMetadata = tasks.register<JavaCompile>("processConfigurationMetadata") {
+    description = "Runs the configuration processor over every main source, without compiling."
+    group = "build"
+    source = sourceSets.main.get().java
+    classpath = sourceSets.main.get().compileClasspath
+    options.annotationProcessorPath = configurationProcessor
+    options.compilerArgs.add("-proc:only")
+    options.isIncremental = false
+    destinationDirectory.set(processorOutputDir)
+}
+
+val writeConfigurationMetadata = tasks.register<JavaExec>("writeConfigurationMetadata") {
+    description = "Completes the configuration processor's metadata with further keys and defaults."
+    group = "build"
+    classpath = configMetadata.runtimeClasspath
+    mainClass.set("io.opaa.configmetadata.ConfigurationMetadataWriter")
+    val additional = layout.projectDirectory.file(
+        "src/main/resources/META-INF/additional-spring-configuration-metadata.json"
+    )
+    val applicationYml = layout.projectDirectory.file("src/main/resources/application.yml")
+    val processor = processConfigurationMetadata.flatMap {
+        it.destinationDirectory.file("META-INF/spring-configuration-metadata.json")
+    }
+    val output = configurationMetadataDir.map { it.file("META-INF/spring-configuration-metadata.json") }
+    inputs.file(processor).withPathSensitivity(PathSensitivity.NONE)
+    inputs.file(additional).withPathSensitivity(PathSensitivity.NONE)
+    inputs.file(applicationYml).withPathSensitivity(PathSensitivity.NONE)
+    outputs.dir(configurationMetadataDir)
+    argumentProviders.add(
+        CommandLineArgumentProvider {
+            listOf(processor.get(), additional, applicationYml, output.get())
+                .map { it.asFile.absolutePath }
+        }
+    )
+}
+
+sourceSets.main {
+    resources.srcDir(configurationMetadataDir)
+}
+
+tasks.processResources {
+    dependsOn(writeConfigurationMetadata)
+}
+
 // Tika's standard parser package brings libraries for formats OPAA never admits (RAR, MATLAB,
 // TIFF/JPEG 2000 images, RSS/Atom feeds) under licenses outside .github/licenses/allowed.txt.
 // Excluded from every configuration, so no other path to Tika can bring them back;
@@ -97,6 +150,8 @@ dependencies {
     }
     implementation(libs.smbj)
     runtimeOnly(libs.bundles.runtime)
+    "configurationProcessor"(libs.spring.boot.configuration.processor)
+    "configMetadataImplementation"(libs.bundles.spring.boot)
     testImplementation(libs.bundles.test.deps)
     testRuntimeOnly(libs.bundles.test.runtime.deps)
 }

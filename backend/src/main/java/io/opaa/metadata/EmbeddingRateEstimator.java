@@ -1,5 +1,6 @@
 package io.opaa.metadata;
 
+import io.opaa.compliance.NoDataImpact;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
  * them exist, the configured {@code opaa.indexing.embedding-rate-estimate} before that - a fresh
  * installation must still be able to name a number. Process-lifetime state (ADR-0021).
  */
+@NoDataImpact("a cost estimate")
 @Component
 public class EmbeddingRateEstimator {
 

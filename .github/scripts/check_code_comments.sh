@@ -2,8 +2,9 @@
 # Comments state the contract, not how it came about (AGENTS.md, "Code-Kommentare").
 #
 # Checked trees (TREES): '//' and '/* */' comment lines of the Java sources under backend/src/main,
-# opaa-api/src/main, backend/src/test and backend/src/evalTest, of the e2e/ scripts (*.ts, *.mjs,
-# *.js), of the Gradle build scripts (*.gradle.kts in backend/ and opaa-api/) and of
+# opaa-api/src/main, backend/src/configMetadata, backend/src/test and backend/src/evalTest, of the
+# e2e/ scripts (*.ts, *.mjs, *.js), of the Gradle build scripts (*.gradle.kts in backend/ and
+# opaa-api/) and of
 # renovate.json5; '#' lines of application*.yml, of e2e/*.yml|yaml|env, every shell script (*.sh),
 # docker-compose*.yml, .env*.example, the Dockerfiles, backend/gradle/*.toml, frontend/nginx.conf
 # and demo/*.conf; '#' lines and docstrings of the Python scripts under eval/, demo/ and
@@ -41,6 +42,7 @@ TREES=(
   changelog=backend/src/main/resources/db/changelog/
   main=backend/src/main/
   main=opaa-api/src/main/
+  main=backend/src/configMetadata/
   test=backend/src/test/
   evalTest=backend/src/evalTest/
   workflows=.github/workflows/
@@ -141,7 +143,8 @@ ts_comments() {
 }
 
 lines() {
-  slash_comments 'backend/src/main/*.java' 'opaa-api/src/main/*.java' 'backend/src/test/*.java' \
+  slash_comments 'backend/src/main/*.java' 'opaa-api/src/main/*.java' 'backend/src/configMetadata/*.java' \
+    'backend/src/test/*.java' \
     'backend/src/evalTest/*.java' 'e2e/*.ts' 'e2e/*.mjs' 'e2e/*.js' 'backend/*.gradle.kts' \
     'opaa-api/*.gradle.kts' 'renovate.json5'
   hash_comments 'backend/src/main/resources/application*.yml' 'e2e/*.yml' 'e2e/*.yaml' 'e2e/*.env' \

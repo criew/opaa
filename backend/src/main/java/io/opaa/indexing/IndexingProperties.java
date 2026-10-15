@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.NoDataImpact;
 import io.opaa.format.chunk.ChunkSizing;
 import io.opaa.indexing.document.EmbeddingBatching;
 import io.opaa.indexing.job.JobStatus;
@@ -55,13 +56,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     io.opaa.indexing.document.DocumentIngestService#storeChunks} takes an entirely different code
  *     path in that case, not merely a pool of size one. Valid range: 1–32.
  */
+@NoDataImpact("chunking, batching, pools and timeouts of indexing")
 @ConfigurationProperties(prefix = "opaa.indexing")
 public record IndexingProperties(
     int chunkSize,
     int chunkOverlap,
     int batchSize,
     ThreadPool threadPool,
-    Duration staleJobTimeout,
+    @NoDataImpact("marks a stuck run failed; it deletes nothing") Duration staleJobTimeout,
     TargetValidation targetValidation,
     int embeddingConcurrency)
     implements ChunkSizing, EmbeddingBatching, RunRecoverySettings {
@@ -108,6 +110,13 @@ public record IndexingProperties(
     }
   }
 
+  /**
+   * The executor of indexing runs.
+   *
+   * @param coreSize threads kept alive
+   * @param maxSize threads at most
+   * @param queueCapacity runs waiting for a thread before a new one is refused
+   */
   public record ThreadPool(int coreSize, int maxSize, int queueCapacity) {
 
     public ThreadPool {
@@ -133,7 +142,8 @@ public record IndexingProperties(
    *     true} - lets an operator name specific internal sources without disabling the check for
    *     every other target. Empty by default.
    */
-  public record TargetValidation(boolean enabled, List<String> allowlist) {
+  public record TargetValidation(
+      @NoDataImpact("SSRF hardening of source addresses") boolean enabled, List<String> allowlist) {
 
     public TargetValidation {
       if (allowlist == null) {

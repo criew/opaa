@@ -21,6 +21,11 @@ Schnipsel lässt sich übernehmen, nur Platzhalter in `<…>` sind auszufüllen.
 | neue Spalte | in `personalColumns` oder `nonPersonalColumns` ihrer Tabelle bzw. in die Spaltenliste unter `nonPersonalTables` |
 | neuer ausgehender Client (`ModularArchitectureTest` verlangt `@DataFlow("<kennung>")` an der Klasse) | `dataFlows` in `outbound.yaml`: `id`, `target`, `data`, `trigger`, `switchOff`, `settings`; eine bestehende Kennung braucht keinen neuen Eintrag |
 | entfernte oder umbenannte Tabelle, Spalte, Konstante | Eintrag entfernen oder umbenennen |
+| neuer `opaa.*`-Schlüssel | Beschreibung und Markierung im Code, bei Datenwirkung ein Eintrag unter `settings` (siehe unten) |
+| geänderter Standardwert eines datenwirksamen Schlüssels in `application.yml` | neuer `defaultValue` seines Eintrags |
+| geänderte Voreinstellung in `deploy/helm/opaa/values.yaml` für einen solchen Schlüssel | neuer `helm.defaultValue` |
+
+Die Prüfung der Konfiguration führt `ConfigurationSettingsTest`, ebenfalls ohne Docker im Shard `core`.
 
 ## Tabellen und Spalten
 
@@ -51,6 +56,55 @@ nonPersonalTables:
 Bekommt eine solche Tabelle eine Spalte mit Personenbezug, wandert sie unter die `tables` eines Datums. Eine Tabelle,
 die nicht zu einem bestehenden Datum passt, bekommt ein neues Datum mit allen Pflichtfeldern des Records `DataEntry`.
 
+## Konfigurationsschlüssel
+
+Jeder `opaa.*`-Schlüssel steht mit Beschreibung in den Konfigurationsmetadaten, die der Build erzeugt
+(`META-INF/spring-configuration-metadata.json`): aus dem `@param` der Record-Komponente, für Schlüssel ohne
+`@ConfigurationProperties`-Typ aus `src/main/resources/META-INF/additional-spring-configuration-metadata.json` mit
+der lesenden Klasse als `sourceType`. Der Standardwert ist der aus dem Basisdokument von `application.yml`.
+
+Jeder Schlüssel ist eingeordnet, an der Komponente oder pauschal am Typ:
+
+```java
+@NoDataImpact("credentials, timeouts and probing of the rerank role")
+@ConfigurationProperties(prefix = "opaa.rerank")
+public record RerankProperties(@DataImpact boolean enabled, @DataImpact String baseUrl, ...)
+```
+
+**`@DataImpact`**, wenn der Standardwert bestimmt, was über Personen anfällt, wie lange es bleibt, wer es sieht, was
+sich über Personen auswerten lässt oder wohin Daten gehen (Fristen, Löschung, Sichtbarkeit, Schwellen,
+Modellrollen, Adressen, Schalter von Funktionen mit Daten). **`@NoDataImpact("Grund")`** für Schutzgrenzen,
+Zeitlimits, Budgets, Ratenlimits, Suchgüte und Geheimnisse ohne Standardwert. Im Zweifel `@DataImpact`. Die
+Pauschalmarkierung am `@ConfigurationProperties`-Typ deckt keine Schalter, Modelle, Adressen, Fristen und Abstände
+(letztes Segment `enabled`, `model`, `…url`, `…uri`, `…endpoint`, `…-days`, `…-months`, `…-hours`, `…-minutes`,
+`…ttl`, `…lifetime…`, `…retention…`, `…interval…`) und keine Komponente vom Typ `Duration` oder `Period`; sie werden
+an der Komponente entschieden. Ein Vollabgleich-Rhythmus ist datenwirksam: Erst der Vollabgleich entfernt, was in
+der Quelle gelöscht wurde. Eine Begründung an einer Prompt-Klasse ändert deren Prüfsumme; dort die
+Markierung an eine andere lesende Klasse legen.
+
+Ein datenwirksamer Schlüssel steht unter `settings`, in der Datei des Bereichs, auf den er wirkt, sonst in
+`configuration.yaml`. Dort stehen auch die Standardmodelle: Modell und Adresse jeder Modellrolle
+(`spring.ai.openai.*.model`, `*.base-url`, `opaa.rerank.*`, `opaa.transcription.*`).
+
+```yaml
+settings:
+  - key: opaa.rerank.enabled
+    source: PROPERTY
+    defaultValue: "false"
+    effect: Ob die Rerank-Rolle Suchtreffer samt Frage an ein Rerank-Modell sendet
+    bearings: [DATA_FLOW]
+    helm:
+      values: rerank.enabled
+      defaultValue: "false"
+```
+
+`helm` ist Pflicht, sobald `deploy/helm/opaa/templates/backend-configmap.yaml` die Umgebungsvariable des Schlüssels
+setzt, und verboten, sobald nicht mehr. `helm.values` muss die Variable speisen: `.Values.<pfad>` steht in ihrer
+Zeile, in einem umschließenden `if`/`with`/`range` oder in einem eingebundenen Helfer aus `_helpers.tpl`. Per
+`range $name, $wert := .Values.<map>` erzeugte Variablen (`OPAA_X_{{ $name | snakecase | upper }}_Y`) liest der
+Test je Schlüssel der Map; jede andere zusammengesetzte Variable lässt ihn scheitern. Überschreibt ein Produktivprofil von `application.yml` (alle außer `dev`)
+den Standardwert, nennt der Eintrag den Wert in `notes` als `"Profil <name>: <wert>"`.
+
 ## Grenzen
 
 - Der Wächter prüft, **dass** ein Eintrag existiert, nicht, ob er stimmt. Ob Personenbezug, Zweck und Sichtbarkeit
@@ -65,4 +119,6 @@ die nicht zu einem bestehenden Datum passt, bekommt ein neues Datum mit allen Pf
 - `vector_store` legt Spring AI an, nicht Liquibase; seine Spalten stehen fest in
   `ChangelogSchema.TABLES_OUTSIDE_THE_CHANGELOG`. `ChangelogSchemaParityTest` lässt Spring AI die Tabelle anlegen und
   vergleicht die Spalten; ändert ein Spring-AI-Update sie, scheitert er dort.
-- Konfigurationsschlüssel (#2548) prüft der Wächter noch nicht.
+- Ob ein Schlüssel richtig eingeordnet ist, prüft der Wächter nicht. Ein Schlüssel, den nur eine Bedingung wie
+  `@ConditionalOnProperty` liest und der in `application.yml` fehlt, erscheint nicht in den Metadaten. Die Belegung
+  aus `.env.docker.example` (Compose) prüft er nicht; sie fällt unter die Kennzeichnung am PR.

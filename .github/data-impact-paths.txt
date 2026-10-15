@@ -29,6 +29,7 @@ opaa-api/src/main/openapi/**
 # Configuration keys and defaults
 backend/src/main/resources/application*.yml
 backend/src/main/java/**/*Properties.java
+backend/src/main/resources/META-INF/additional-spring-configuration-metadata.json
 deploy/helm/opaa/values.yaml
 deploy/helm/opaa/values.schema.json
 docker-compose.yml

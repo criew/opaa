@@ -2,6 +2,7 @@ package io.opaa.format.file.tabular;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -33,6 +34,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     #maxOdsContentXmlBytes}: a small, deeply repetitive {@code content.xml} could stay under the
  *     byte limit while still describing an unreasonable number of rows. Default 100 000.
  */
+@NoDataImpact("parser bounds")
 @ConfigurationProperties(prefix = "opaa.indexing.tabular")
 public record TabularProperties(
     int maxRowColumns, int maxOdsCellRepeat, long maxOdsContentXmlBytes, int maxOdsRows) {

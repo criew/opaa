@@ -2,6 +2,8 @@ package io.opaa.knowledge;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -40,14 +42,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     #pendingRecoveryThresholdMinutes}, so an upload still legitimately in flight is never
  *     mistaken for an orphan. A report may raise it per call, never lower it.
  */
+@NoDataImpact("sizes, pools and recovery of uploads")
 @ConfigurationProperties(prefix = "opaa.upload")
 public record UploadProperties(
     String storagePath,
-    String store,
+    @DataImpact String store,
     long maxFileSize,
     ThreadPool threadPool,
-    int pendingRecoveryThresholdMinutes,
-    int orphanGraceMinutes) {
+    @NoDataImpact("marks an abandoned upload failed; it deletes nothing")
+        int pendingRecoveryThresholdMinutes,
+    @DataImpact int orphanGraceMinutes) {
 
   public UploadProperties {
     if (storagePath == null || storagePath.isBlank()) {
@@ -64,7 +68,13 @@ public record UploadProperties(
     orphanGraceMinutes = positiveOr(orphanGraceMinutes, 60);
   }
 
-  /** Mirrors {@code IndexingProperties.ThreadPool}'s own validation - see its Javadoc. */
+  /**
+   * The executor of uploads; mirrors {@code IndexingProperties.ThreadPool}'s own validation.
+   *
+   * @param coreSize threads kept alive
+   * @param maxSize threads at most
+   * @param queueCapacity uploads waiting for a thread before a new one is refused
+   */
   public record ThreadPool(int coreSize, int maxSize, int queueCapacity) {
 
     public ThreadPool {

@@ -2,6 +2,7 @@ package io.opaa.indexing.source.rss;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.NoDataImpact;
 import io.opaa.format.file.html.HtmlContentRoots;
 import io.opaa.indexing.attachment.AttachmentProfile;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -40,6 +41,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     while streaming the response, not after it has already been fully downloaded (mirrors {@link
  *     #maxPageSizeBytes}).
  */
+@NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.rss")
 public record RssFeedProperties(
     int maxEntries,

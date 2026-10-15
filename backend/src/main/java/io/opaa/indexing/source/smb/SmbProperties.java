@@ -3,6 +3,7 @@ package io.opaa.indexing.source.smb;
 import static io.opaa.common.PropertyDefaults.notNegativeOr;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -19,10 +20,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param downloadConcurrency downloads one run keeps in flight; {@code 1} is serial
  * @param listPageSize entries per listing page, so a large folder is processed while it is read
  */
+@NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.smb")
 public record SmbProperties(
     long maxFileSizeBytes,
-    Duration requestTimeout,
+    @NoDataImpact("a timeout of one request") Duration requestTimeout,
     int requestBudgetPerRun,
     int maxEntriesPerRun,
     int downloadConcurrency,

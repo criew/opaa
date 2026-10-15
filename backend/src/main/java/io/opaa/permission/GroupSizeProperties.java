@@ -1,5 +1,6 @@
 package io.opaa.permission;
 
+import io.opaa.compliance.DataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -8,9 +9,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Schutzmechanik of the person context. The delivered value equals the enforced lower bound, so it
  * is <b>only raisable</b>: a house with small units raises it, nobody lowers it. A start with a
  * smaller value fails here rather than silently disabling the protection.
+ *
+ * @param minimumGroupSize the smallest group a rights profile run with space context may show
  */
 @ConfigurationProperties(prefix = "opaa.permission")
-public record GroupSizeProperties(Integer minimumGroupSize) {
+public record GroupSizeProperties(@DataImpact Integer minimumGroupSize) {
 
   /** The value no configuration may go below, and at the same time the delivered default. */
   public static final int ENFORCED_MINIMUM = 5;

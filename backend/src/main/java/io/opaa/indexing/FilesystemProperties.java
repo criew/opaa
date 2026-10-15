@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.compliance.DataImpact;
 import io.opaa.sourceaccess.FilesystemAllowlistSettings;
 import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import java.util.List;
@@ -20,7 +21,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     AsyncIndexingExecutor}), because the allowlist can be narrowed after a library was created.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.filesystem")
-public record FilesystemProperties(List<String> allowlist) implements FilesystemAllowlistSettings {
+public record FilesystemProperties(@DataImpact List<String> allowlist)
+    implements FilesystemAllowlistSettings {
 
   public FilesystemProperties {
     if (allowlist == null) {

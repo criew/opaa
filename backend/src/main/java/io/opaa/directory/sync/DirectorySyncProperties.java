@@ -1,5 +1,7 @@
 package io.opaa.directory.sync;
 
+import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -18,8 +20,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     production; the backend test suite switches it off so a run never starts behind a test's
  *     back, and exercises the tick by calling it.
  */
+@NoDataImpact("a plausibility brake of the directory sync")
 @ConfigurationProperties(prefix = "opaa.directory-sync")
-public record DirectorySyncProperties(double changeThresholdFraction, boolean scheduleEnabled) {
+public record DirectorySyncProperties(
+    double changeThresholdFraction, @DataImpact boolean scheduleEnabled) {
 
   public DirectorySyncProperties {
     if (changeThresholdFraction <= 0 || changeThresholdFraction > 1) {

@@ -202,20 +202,33 @@ public record ComplianceManifest(
 
   /**
    * A default with effect on data, visibility, evaluation or data flows ("Voreinstellung"); a
-   * retention period is one, referenced from {@link Retention#settings()}.
+   * retention period is one, referenced from {@link Retention#settings()}. A standard model is one
+   * too, with the model and the address of its role as keys.
    *
-   * @param defaultValue the delivered value, as written in the code or changeset
+   * @param defaultValue the delivered value, as written in the code or changeset; for a {@code
+   *     PROPERTY} the base document of {@code application.yml} resolved without any environment,
+   *     {@code ""} when it is empty
    * @param range the admissible values, where the code bounds them
+   * @param helm where the Helm chart sets the key, when it does
    */
   public record SettingEntry(
       @NotBlank String area,
       @NotBlank String key,
       @NotNull SettingSource source,
-      @NotBlank String defaultValue,
+      @NotNull String defaultValue,
       String range,
       @NotBlank String effect,
       @NotEmpty List<@NotNull Bearing> bearings,
+      @Valid HelmValue helm,
       List<@NotBlank String> notes) {}
+
+  /**
+   * The value of the Helm chart's {@code values.yaml} that sets a key of a {@link SettingEntry}.
+   *
+   * @param values the dotted path in {@code values.yaml}
+   * @param defaultValue its default there, a list joined by commas and {@code ""} for an empty one
+   */
+  public record HelmValue(@NotBlank String values, @NotNull String defaultValue) {}
 
   /**
    * A system prompt sent to a model, held either in code or as a database default ("Fundstelle":

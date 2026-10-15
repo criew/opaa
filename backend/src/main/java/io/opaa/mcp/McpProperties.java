@@ -1,5 +1,6 @@
 package io.opaa.mcp;
 
+import io.opaa.compliance.NoDataImpact;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -28,6 +29,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     {@code fetch}, not the answer.
  * @param excerptCharacters the length of the excerpt around the found place, per hit.
  */
+@NoDataImpact("result sizes and protocol versions of the MCP server")
 @ConfigurationProperties(prefix = "opaa.mcp")
 public record McpProperties(
     @DefaultValue({"2025-03-26", "2025-06-18", "2025-11-25"}) List<String> protocolVersions,

@@ -1,0 +1,70 @@
+{
+  "properties": [
+    {
+      "name": "opaa.cors.allowed-origins",
+      "type": "java.lang.String",
+      "description": "Comma-separated origins allowed to call /api/** from a browser on another origin.",
+      "sourceType": "io.opaa.auth.SecurityCorsConfig"
+    },
+    {
+      "name": "opaa.database.schema",
+      "type": "java.lang.String",
+      "description": "PostgreSQL schema holding every table of OPAA (ADR-0034); it must exist and belong to the database account before the first start.",
+      "sourceType": "io.opaa.config.DatabaseSchemaGuard"
+    },
+    {
+      "name": "opaa.demo.chat-import.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Whether the demo seed may write prepared chat transcripts over POST /api/v1/spaces/{spaceId}/chat-imports; the route exists only while this is true.",
+      "sourceType": "io.opaa.chat.web.ChatImportController"
+    },
+    {
+      "name": "opaa.embedding.max-input-tokens",
+      "type": "java.lang.Integer",
+      "description": "Input limit of the embedding endpoint in tokens, as it is served; an input that could reach it is embedded alone.",
+      "sourceType": "io.opaa.indexing.chunk.VectorChunkStore"
+    },
+    {
+      "name": "opaa.features.external-access.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Feature flag of external access: access tokens, library releases and the MCP server (ADR-0044).",
+      "sourceType": "io.opaa.common.Feature"
+    },
+    {
+      "name": "opaa.features.metadata.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Feature flag of document and library metadata (ADR-0044); off keeps only a document's title.",
+      "sourceType": "io.opaa.common.Feature"
+    },
+    {
+      "name": "opaa.features.prompt-libraries.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Feature flag of prompt libraries (ADR-0044); off hides them, their data stays.",
+      "sourceType": "io.opaa.common.Feature"
+    },
+    {
+      "name": "opaa.features.speech-input.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Feature flag of dictation in the chat input (ADR-0044); it also needs the transcription model role.",
+      "sourceType": "io.opaa.common.Feature"
+    },
+    {
+      "name": "opaa.http.force-http1",
+      "type": "java.lang.Boolean",
+      "description": "Forces HTTP/1.1 for every RestClient connection, for OpenAI-compatible servers without HTTP/2.",
+      "sourceType": "io.opaa.api.HttpClientConfig"
+    },
+    {
+      "name": "opaa.indexing.embedding-rate-estimate",
+      "type": "java.lang.Double",
+      "description": "Fallback rate of the follow-up cost estimate in chunks per second, until enough embedding calls have been measured.",
+      "sourceType": "io.opaa.metadata.EmbeddingRateEstimator"
+    },
+    {
+      "name": "opaa.spike.tool-loop.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Throwaway spike, never for production: a question starting with \"@test \" runs a model-driven tool-calling loop.",
+      "sourceType": "io.opaa.query.ToolLoopQueryHandler"
+    }
+  ]
+}

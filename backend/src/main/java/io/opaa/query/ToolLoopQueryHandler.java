@@ -3,6 +3,7 @@ package io.opaa.query;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.UsedPrompt;
+import io.opaa.compliance.NoDataImpact;
 import io.opaa.metadata.MetadataFilter;
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,7 @@ import java.util.UUID;
  * with the chat, space guards, readable libraries and search scope the caller has already resolved.
  * Optional: without a bean, {@link QueryService} always runs its ordinary path.
  */
+@NoDataImpact("throwaway spike on the same model, rights and scope as an ordinary turn")
 public interface ToolLoopQueryHandler {
 
   /**

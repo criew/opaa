@@ -67,8 +67,8 @@ public final class ModularArchitecture {
    */
   static final List<String> LAYERS =
       List.of(
-          "common",
           "compliance",
+          "common",
           "observability",
           "organization",
           "notification",

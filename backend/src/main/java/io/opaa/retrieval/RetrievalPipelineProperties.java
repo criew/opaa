@@ -1,6 +1,7 @@
 package io.opaa.retrieval;
 
 import io.opaa.api.types.RetrievalStageName;
+import io.opaa.compliance.NoDataImpact;
 import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -18,6 +19,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     every registered stage. {@link RetrievalStageName#SEARCH_SCOPE} is rejected here - see {@link
  *     RetrievalStage#switchable()}.
  */
+@NoDataImpact("search quality")
 @ConfigurationProperties(prefix = "opaa.query.pipeline")
 public record RetrievalPipelineProperties(
     @DefaultValue({}) Set<RetrievalStageName> disabledStages) {

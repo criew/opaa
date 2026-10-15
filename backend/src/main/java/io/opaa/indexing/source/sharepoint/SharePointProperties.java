@@ -3,6 +3,8 @@ package io.opaa.indexing.source.sharepoint;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 import static java.util.Objects.requireNonNullElse;
 
+import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -27,19 +29,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param downloadConcurrency downloads in flight per run; default 2
  * @param fullSyncInterval the instance-wide rhythm of the full sync; default 1 day
  */
+@NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.sharepoint")
 public record SharePointProperties(
     int pageSize,
     long maxFileSizeBytes,
-    Duration requestTimeout,
-    Duration downloadTimeout,
+    @NoDataImpact("a timeout of one request") Duration requestTimeout,
+    @NoDataImpact("a timeout of one request") Duration downloadTimeout,
     Integer maxRetries,
-    Duration maxRetryWait,
-    Duration maxThrottleWaitPerRun,
+    @NoDataImpact("pacing of retries") Duration maxRetryWait,
+    @NoDataImpact("pacing of retries") Duration maxThrottleWaitPerRun,
     int requestBudgetPerRun,
     int maxFilesPerRun,
     int downloadConcurrency,
-    Duration fullSyncInterval) {
+    @DataImpact Duration fullSyncInterval) {
 
   public static final int MAX_PAGE_SIZE = 1000;
 

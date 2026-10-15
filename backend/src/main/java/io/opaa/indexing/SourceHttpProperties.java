@@ -4,6 +4,7 @@ import static io.opaa.common.PropertyDefaults.notNegativeOr;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 import static io.opaa.common.PropertyDefaults.requireNotNegative;
 
+import io.opaa.compliance.NoDataImpact;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.Sleeper;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -33,13 +34,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     answers in total before it ends in an orderly way as incomplete. Default 15 minutes; zero
  *     falls back to the default.
  */
+@NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.http")
 public record SourceHttpProperties(
     String userAgent,
     int maxRateLimitRetries,
-    Duration maxRetryAfter,
+    @NoDataImpact("pacing of retries") Duration maxRetryAfter,
     int requestBudgetPerRun,
-    Duration maxRateLimitWaitPerRun) {
+    @NoDataImpact("pacing of retries") Duration maxRateLimitWaitPerRun) {
 
   public SourceHttpProperties {
     if (userAgent == null || userAgent.isBlank()) {

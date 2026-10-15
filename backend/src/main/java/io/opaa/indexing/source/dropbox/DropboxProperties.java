@@ -3,6 +3,8 @@ package io.opaa.indexing.source.dropbox;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 import static java.util.Objects.requireNonNullElse;
 
+import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.NoDataImpact;
 import java.net.URI;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -35,23 +37,24 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param downloadConcurrency downloads in flight per run; default 2
  * @param fullSyncInterval the instance-wide rhythm of the full sync; default 7 days
  */
+@NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.dropbox")
 public record DropboxProperties(
-    URI apiBase,
-    URI contentBase,
-    URI authorizationEndpoint,
-    URI tokenEndpoint,
-    URI revocationEndpoint,
+    @DataImpact URI apiBase,
+    @DataImpact URI contentBase,
+    @DataImpact URI authorizationEndpoint,
+    @DataImpact URI tokenEndpoint,
+    @DataImpact URI revocationEndpoint,
     int pageSize,
     long maxFileSizeBytes,
-    Duration requestTimeout,
-    Duration downloadTimeout,
+    @NoDataImpact("a timeout of one request") Duration requestTimeout,
+    @NoDataImpact("a timeout of one request") Duration downloadTimeout,
     Integer maxRetries,
-    Duration maxRetryWait,
+    @NoDataImpact("pacing of retries") Duration maxRetryWait,
     int requestBudgetPerRun,
     int maxFilesPerRun,
     int downloadConcurrency,
-    Duration fullSyncInterval) {
+    @DataImpact Duration fullSyncInterval) {
 
   public static final String API_BASE = "https://api.dropboxapi.com";
   public static final String CONTENT_BASE = "https://content.dropboxapi.com";
