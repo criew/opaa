@@ -746,6 +746,7 @@ public final class FactSheetRenderer {
                   case API -> "API";
                   case EXPORT -> "Export";
                   case DATABASE -> "Datenbank";
+                  case STORAGE -> "Ablage des Betriebs (Dateisystem, Objektspeicher, Log)";
                 })
         .collect(Collectors.joining(", "));
   }

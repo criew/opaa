@@ -154,6 +154,21 @@ class FactSheetRendererTest {
             "| `external_access_token_libraries` | `token_id`, `library_id`, `extinguished_at` |");
   }
 
+  /** Data held in the operator's log or file store name that store, not the database. */
+  @Test
+  void theDataCatalogueNamesTheOperatorsStoreForDataOutsideTheDatabase() {
+    String catalogue = FactSheetRenderer.render(SHIPPED, PROVENANCE).get(FactSheet.DATENKATALOG);
+
+    assertThat(section(catalogue, "application-log"))
+        .contains("| Zugriffsweg | Ablage des Betriebs (Dateisystem, Objektspeicher, Log) |")
+        .doesNotContain("Datenbank |");
+    assertThat(section(catalogue, "original-storage"))
+        .contains(
+            "| Zugriffsweg | Oberfläche, API, Ablage des Betriebs (Dateisystem, Objektspeicher,"
+                + " Log) |")
+        .doesNotContain("Datenbank |");
+  }
+
   @Test
   void theMatrixHasNoColumnForARoleNoVisibilityNames() {
     String roles = FactSheetRenderer.render(SHIPPED, PROVENANCE).get(FactSheet.ROLLENSICHT);
@@ -320,10 +335,11 @@ class FactSheetRendererTest {
         .contains("| Ausgangsproxy | nein, nie |");
   }
 
+  /** The part of a sheet from the heading anchored at {@code anchor} up to the next heading. */
   private static String section(String sheet, String anchor) {
     int start = sheet.indexOf("<a id=\"" + anchor + "\"></a>");
     assertThat(start).as("anchor %s", anchor).isNotNegative();
-    int end = sheet.indexOf("\n#### ", start);
+    int end = sheet.indexOf("\n#", start);
     return end < 0 ? sheet.substring(start) : sheet.substring(start, end);
   }
 

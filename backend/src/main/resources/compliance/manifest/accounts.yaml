@@ -202,7 +202,7 @@ data:
       rule: Legt der Betrieb fest; OPAA speichert das Log nicht selbst
       settings: []
     visibility: [Betrieb der Installation]
-    accessPaths: [DATABASE]
+    accessPaths: [STORAGE]
     deletion: Durch den Betrieb
     evaluations: Keine Auswertungsoberfläche in OPAA
     notes:

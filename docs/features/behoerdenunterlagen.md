@@ -223,7 +223,7 @@ feste Pflichtfelder:
 
 | Eintragsart | Pflichtfelder |
 |---|---|
-| Datum (Tabelle, Spalte oder Datenkategorie) | Zweck, Personenbezug (nein / personenbeziehbar / Beschäftigtendaten), Speicherort, Frist mit Konfigurationsschlüssel, Sichtbarkeit (Rollen), Zugriffsweg (Oberfläche / API / Export / Datenbank), Löschmechanismus, mögliche Auswertungen |
+| Datum (Tabelle, Spalte oder Datenkategorie) | Zweck, Personenbezug (nein / personenbeziehbar / Beschäftigtendaten), Speicherort, Frist mit Konfigurationsschlüssel, Sichtbarkeit (Rollen), Zugriffsweg (Oberfläche / API / Export / Datenbank / Ablage des Betriebs), Löschmechanismus, mögliche Auswertungen |
 | Protokollereignis | wie Datum, zusätzlich Auslöser, Felder des Protokollsatzes und wer zu welchem Zweck liest |
 | Rolle / Fähigkeit | was die Rolle über andere Personen sieht („was sieht wer über mich“) |
 | Voreinstellung, auch Frist und Standardmodell | Schlüssel, Quelle (Anwendungskonfiguration, Datenbankspalte oder Konstante), Standardwert, Wirkung, Bezug zu Daten, Sichtbarkeit, Auswertung oder Datenfluss; Voreinstellung im Helm-Chart, sofern es den Schlüssel setzt |
