@@ -7,12 +7,17 @@ data:
     tables:
       - name: chats
         personalColumns: [author_id, title, metadata_filter, created_at, updated_at]
+        nonPersonalColumns:
+          [id, space_id, organization_id, use_knowledge, status, title_source, import_key]
       - name: chat_messages
         personalColumns: [content, sources, used_prompt_title, created_at]
+        nonPersonalColumns: [id, chat_id, sequence, role, content_tsv, used_prompt_id]
       - name: chat_note_items
         personalColumns: [text]
+        nonPersonalColumns: [id, chat_id, organization_id, position, kind, created_at]
       - name: chat_personal_marks
         personalColumns: [user_id, pinned_at, archived_at, unarchived_at]
+        nonPersonalColumns: [chat_id, organization_id]
     storage: Anwendungsdatenbank; Inhalte gehen an das Sprachmodell (Datenfluss)
     retention:
       rule: >-
@@ -30,7 +35,21 @@ data:
       protokolliert
     notes:
       - Fragen und Antworten können Inhalte aus Fachverfahren und Personendaten Dritter enthalten
-nonPersonalTables: [chat_library_references, prompt_libraries, prompts]
+nonPersonalTables:
+  chat_library_references: [chat_id, library_id, organization_id]
+  prompt_libraries: [id, asset_type, organization_id]
+  prompts:
+    - id
+    - library_id
+    - organization_id
+    - name
+    - title
+    - description
+    - text
+    - variables
+    - sort_order
+    - created_at
+    - updated_at
 settings:
   - key: opaa.chat.auto-cleanup.archive-after-days
     source: PROPERTY

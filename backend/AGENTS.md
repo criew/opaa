@@ -137,3 +137,11 @@ Herleitung und Prüfungen: [docs/liquibase.md](docs/liquibase.md).
 - Rein additive DDL (neue Tabelle, nullable Spalte ohne Default und `GENERATED`, nicht eindeutiger Index, Constraint
   auf neuer Tabelle) kommt ohne eigenen Test aus; alles andere braucht einen Delta-Test unter `io.opaa.migration`
   (`AbstractMigrationTest`). Im Zweifel ist es nicht additiv.
+- Jede neue Tabelle und Spalte braucht einen Eintrag im Fakten-Manifest, siehe nächster Abschnitt.
+
+## Fakten-Manifest
+
+`ComplianceManifestTest` hält das Manifest unter `src/main/resources/compliance/manifest/` gegen Liquibase-Tabellen
+und -Spalten, `AuditEventType`, `SystemRole`, `Capability` und die Prüfsummen der System-Prompts
+([ADR-0052](../docs/decisions/0052-compliance-manifest.md)). Scheitert er, nennt er Datei und einzufügendes YAML;
+Einordnung der Spalten und Beispiele: [docs/compliance-manifest.md](docs/compliance-manifest.md).

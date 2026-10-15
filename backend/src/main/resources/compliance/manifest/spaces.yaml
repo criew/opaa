@@ -7,10 +7,23 @@ data:
     tables:
       - name: spaces
         personalColumns: [owner_id, model_instruction]
+        nonPersonalColumns:
+          - id
+          - name
+          - description
+          - created_at
+          - updated_at
+          - organization_id
+          - is_default
+          - archived
+          - chat_auto_cleanup_enabled_at
       - name: space_memberships
         personalColumns: [user_id]
+        nonPersonalColumns:
+          [id, space_id, role, created_at, organization_id, subject_type, group_id]
       - name: space_asset_associations
         personalColumns: [created_by_user_id]
+        nonPersonalColumns: [id, space_id, asset_id, organization_id, created_at]
     storage: Anwendungsdatenbank
     retention:
       rule: Solange Space oder Mitgliedschaft besteht
@@ -26,6 +39,16 @@ data:
     tables:
       - name: space_membership_history
         personalColumns: [subject_user_id, actor_user_id, valid_from, valid_to]
+        nonPersonalColumns:
+          - id
+          - space_id
+          - organization_id
+          - subject_type
+          - subject_group_id
+          - role
+          - cause
+          - created_at
+          - transfer_id
     storage: Anwendungsdatenbank, nur anfügend
     retention:
       rule: Höchstdauer der Rechtehistorie
@@ -41,6 +64,8 @@ data:
     tables:
       - name: diagnostic_impersonation_grants
         personalColumns: [holder_user_id, granted_by_user_id, revoked_by_user_id]
+        nonPersonalColumns:
+          [id, organization_id, scope_group_id, valid_from, valid_until, granted_at, revoked_at]
     storage: Anwendungsdatenbank
     retention:
       rule: Ohne eigene Löschfrist
@@ -56,6 +81,8 @@ data:
     tables:
       - name: diagnostic_context_log
         personalColumns: [actor_ref, test_question, permission_snapshot, justification]
+        nonPersonalColumns:
+          [event_id, recorded_at, organization_id, target_kind, target_ref, hit_count, hit_refs]
     storage: Anwendungsdatenbank
     retention:
       rule: Voreinstellung 12 Monate, einstellbar 1 bis 24 Monate
@@ -64,7 +91,9 @@ data:
     accessPaths: [UI, API, DATABASE]
     deletion: Monatlicher Retention-Lauf
     evaluations: keine Auswertung je Person
-nonPersonalTables: [diagnostic_context_retention_settings]
+nonPersonalTables:
+  diagnostic_context_retention_settings:
+    [id, retention_months, last_cutoff, last_run_month, updated_at]
 settings:
   - key: diagnostic_context_retention_settings.retention_months
     source: DATABASE

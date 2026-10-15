@@ -7,10 +7,35 @@ data:
     tables:
       - name: assets
         personalColumns: [owner_user_id, created_by_user_id]
+        nonPersonalColumns:
+          - id
+          - asset_type
+          - organization_id
+          - name
+          - description
+          - owner_type
+          - owner_group_id
+          - origin
+          - created_at
+          - updated_at
+          - owner_only
       - name: asset_grants
         personalColumns: [subject_user_id, granted_by_user_id]
+        nonPersonalColumns:
+          - id
+          - asset_id
+          - organization_id
+          - subject_type
+          - subject_group_id
+          - role
+          - expires_at
+          - created_at
+          - updated_at
+          - asset_type
       - name: capability_grants
         personalColumns: [subject_user_id, granted_by_user_id]
+        nonPersonalColumns:
+          [id, organization_id, capability, subject_type, subject_group_id, created_at, scope]
     storage: Anwendungsdatenbank
     retention:
       rule: Solange das Recht besteht; danach nur in der Rechtehistorie
@@ -28,14 +53,58 @@ data:
     tables:
       - name: asset_grant_history
         personalColumns: [subject_user_id, actor_user_id, valid_from, valid_to]
+        nonPersonalColumns:
+          - id
+          - asset_id
+          - organization_id
+          - subject_type
+          - subject_group_id
+          - role
+          - expires_at
+          - cause
+          - created_at
+          - asset_type
+          - transfer_id
       - name: asset_ownership_history
         personalColumns: [owner_user_id, actor_user_id, valid_from, valid_to]
+        nonPersonalColumns:
+          - id
+          - asset_type
+          - asset_id
+          - organization_id
+          - owner_type
+          - owner_group_id
+          - cause
+          - created_at
+          - transfer_id
       - name: asset_visibility_history
         personalColumns: [actor_user_id]
+        nonPersonalColumns:
+          - id
+          - asset_id
+          - organization_id
+          - cause
+          - valid_from
+          - valid_to
+          - created_at
+          - external_access_state
+          - external_access_expires_at
+          - asset_type
       - name: capability_grant_history
         personalColumns: [subject_user_id, actor_user_id, valid_from, valid_to]
+        nonPersonalColumns:
+          - id
+          - organization_id
+          - capability
+          - subject_type
+          - subject_group_id
+          - cause
+          - created_at
+          - transfer_id
+          - scope
       - name: group_membership_history
         personalColumns: [user_id, actor_user_id, valid_from, valid_to]
+        nonPersonalColumns: [id, group_id, organization_id, cause, created_at]
     storage: Anwendungsdatenbank, nur anfügend
     retention:
       rule: Voreinstellung 36 Monate nach Ende eines Intervalls, einstellbar 12 bis 120 Monate
@@ -51,8 +120,10 @@ data:
     tables:
       - name: group_memberships
         personalColumns: [user_id]
+        nonPersonalColumns: [id, group_id, organization_id, created_at]
       - name: group_stewards
         personalColumns: [user_id, appointed_by_user_id]
+        nonPersonalColumns: [id, group_id, organization_id, created_at]
     storage: Anwendungsdatenbank
     retention:
       rule: Solange die Mitgliedschaft besteht
@@ -70,6 +141,14 @@ data:
     tables:
       - name: directory_sync_pending_plans
         personalColumns: [report, accounts_locked]
+        nonPersonalColumns:
+          - id
+          - organization_id
+          - provider_id
+          - created_at
+          - fingerprint
+          - changed_fraction
+          - memberships_removed
     storage: Anwendungsdatenbank
     retention:
       rule: Bis zur Bestätigung, zum Verwerfen oder zum nächsten Plan
@@ -86,6 +165,21 @@ data:
       - name: permission_transfers
         personalColumns:
           [source_user_id, source_label, target_user_id, target_label, actor_user_id]
+        nonPersonalColumns:
+          - id
+          - organization_id
+          - source_type
+          - source_group_id
+          - target_type
+          - target_group_id
+          - scope
+          - grant_count
+          - space_membership_count
+          - capability_count
+          - ownership_count
+          - stewardship_count
+          - performed_at
+          - created_at
     storage: Anwendungsdatenbank
     retention:
       rule: Wie die Rechtehistorie, an deren Intervallen die Übertragung hängt
@@ -101,6 +195,16 @@ data:
     tables:
       - name: succession_cases
         personalColumns: [object_id, closed_by_user_id]
+        nonPersonalColumns:
+          - id
+          - organization_id
+          - kind
+          - object_type
+          - first_seen_at
+          - last_seen_at
+          - closed_at
+          - created_at
+          - asset_type
     storage: Anwendungsdatenbank
     retention:
       rule: Geschlossene Fälle nach der Protokollfrist
@@ -116,6 +220,7 @@ data:
     tables:
       - name: asset_favorites
         personalColumns: [user_id]
+        nonPersonalColumns: [asset_id, organization_id, created_at]
     storage: Anwendungsdatenbank
     retention:
       rule: Bis die Person sie entfernt oder Konto oder Asset gelöscht wird
@@ -127,11 +232,45 @@ data:
     notes:
       - In der Menge ein Interessenprofil; nur in der Selbstauskunft exportiert
 nonPersonalTables:
-  - groups
-  - directory_sync_status
-  - directory_connectors
-  - permission_history_retention_settings
-  - permission_transfer_objects
+  groups:
+    - id
+    - organization_id
+    - kind
+    - name
+    - description
+    - external_id
+    - parent_group_id
+    - created_at
+    - updated_at
+    - dissolved
+    - dissolved_at
+    - provider_id
+    - source_path
+    - released_for_use
+    - protected
+    - deactivated
+    - deactivated_at
+  directory_sync_status:
+    - id
+    - organization_id
+    - last_run_at
+    - last_outcome
+    - last_message
+    - last_changed_fraction
+    - last_applied_at
+    - provider_id
+  directory_connectors:
+    - id
+    - organization_id
+    - provider_id
+    - connector_type
+    - base_url
+    - client_id
+    - client_secret
+    - created_at
+    - updated_at
+  permission_history_retention_settings: [id, retention_months, last_cutoff, updated_at]
+  permission_transfer_objects: [id, transfer_id, organization_id, asset_type, asset_id, created_at]
 settings:
   - key: permission_history_retention_settings.retention_months
     source: DATABASE
