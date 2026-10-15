@@ -65,6 +65,7 @@ public final class ModularArchitecture {
   static final List<String> LAYERS =
       List.of(
           "common",
+          "compliance",
           "observability",
           "organization",
           "notification",
@@ -128,6 +129,7 @@ public final class ModularArchitecture {
   static final Map<String, Module> MODULES =
       Map.ofEntries(
           entry("common", FOUNDATION),
+          entry("compliance", FOUNDATION),
           entry("observability", FOUNDATION),
           entry("organization", FOUNDATION),
           entry("outbound", FOUNDATION),

@@ -1,13 +1,14 @@
 # Modul foundation
 
-Pakete (`io.opaa.*`): common, observability, organization, outbound, security, ratelimit,
+Pakete (`io.opaa.*`): common, compliance, observability, organization, outbound, security, ratelimit,
 sourceaccess, s3, msgraph. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
 Die unterste Schicht: gemeinsame Ausnahmen und Hilfen, die Organisation als Mandantengrenze,
 Verschlüsselung und Schlüsselableitung, Ratenbegrenzung, Metriken, der Zugriff auf konfigurierte
-Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-Client.
+Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht, der Microsoft-Graph-Client und der Lader
+des Compliance-Manifests (`io.opaa.compliance`).
 
 ## Invarianten und Stolpersteine
 
@@ -33,6 +34,8 @@ Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-
 - **Feature-Flags sind ohne Angabe an;** `@ConditionalOnFeature` an Blatt-Beans und rein bedingten Teilgraphen.
 - **`OutboundProxySelector` ist der Proxy-Standard der JVM:** nur `http`/`https` über den Proxy,
   `socket://` (SMB, SMTP, JDBC) und Loopback nie; das AWS SDK bekommt ihn über `proxyFor`.
+- **Das Compliance-Manifest kennt Fundstellen nur als Namen** (`resources/compliance/manifest/`,
+  Klassen als Zeichenkette): `io.opaa.compliance` importiert kein höheres Paket.
 
 ## Maßgebliche ADRs
 
@@ -44,6 +47,7 @@ Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-
 - [ADR-0044](../../../../../../../docs/decisions/0044-installationsweite-feature-flags.md): installationsweite Feature-Flags
 - [ADR-0047](../../../../../../../docs/decisions/0047-sharepoint-konnektor.md) (Entscheidung 1): Graph-Client in `io.opaa.msgraph`
 - [ADR-0050](../../../../../../../docs/decisions/0050-ausgangsproxy-und-zertifikatspruefung.md): Ausgangsproxy, Zertifikatsprüfung
+- [ADR-0052](../../../../../../../docs/decisions/0052-compliance-manifest.md): Compliance-Manifest, Schema, Prüfsummen
 
 ## Verweise
 
@@ -54,7 +58,8 @@ Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-
 ```bash
 ./gradlew test --tests 'io.opaa.common.*' --tests 'io.opaa.security.*' --tests 'io.opaa.outbound.*' \
   --tests 'io.opaa.sourceaccess.*' --tests 'io.opaa.ratelimit.*' --tests 'io.opaa.s3.*' \
-  --tests 'io.opaa.msgraph.*' --tests 'io.opaa.observability.*' --tests 'io.opaa.architecture.*'
+  --tests 'io.opaa.msgraph.*' --tests 'io.opaa.observability.*' --tests 'io.opaa.compliance.*' \
+  --tests 'io.opaa.architecture.*'
 ```
 
 Die S3-Tests brauchen Docker und werden ohne Docker übersprungen.

@@ -1,0 +1,28 @@
+title: Konten und Rollen
+roles:
+  - id: USER
+    seesAboutOthers: Namen der Mitglieder geteilter Spaces
+capabilities:
+  - id: CREATE_SPACE
+    seesAboutOthers: nichts
+    notes: [Hinweis, keine Einstufung]
+prompts:
+  - id: answer
+    purpose: Antwort erzeugen
+    classes: [io.opaa.compliance.PromptChecksum]
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+dataFlows:
+  - id: chat-model
+    target: Sprachmodell
+    data: Frage und Passagen
+    trigger: jede Frage
+    switchOff: Modell abschalten
+    settings: []
+aiFunctions:
+  - id: chat-answer
+    purpose: Antwort auf eine Frage
+    outputKind: TEXT
+    interactsWithPersons: true
+    assessesPersons: false
+    labelling: Hinweis in der Oberfläche
+    prompts: [answer]

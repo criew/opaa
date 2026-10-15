@@ -1,0 +1,9 @@
+title: Assistent
+aiFunctions:
+  - id: chat-title
+    purpose: Titel eines Chats
+    outputKind: TEXT
+    interactsWithPersons: false
+    assessesPersons: false
+    labelling: keine eigene
+    prompts: [title]

@@ -1,0 +1,17 @@
+title: Chats
+data:
+  - id: chats
+    title: Chats
+    purpose: Gesprächsverlauf
+    personalReference: EMPLOYEE
+    tables:
+      - name: chats
+        personalColumns: [author_id]
+    storage: Datenbank
+    retention:
+      rule: unbegrenzt, bis Space-Schalter
+      settings: [opaa.chat.auto-cleanup.delete-after-days]
+    visibility: [Autorin oder Autor]
+    accessPaths: [UI]
+    deletion: Löschen durch die Person
+    evaluations: keine
