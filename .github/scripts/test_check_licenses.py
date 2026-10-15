@@ -132,6 +132,25 @@ def test_rejects_license_that_is_not_allowed(work: Path, licenses: tuple[str, ..
     assert "nicht freigegeben" in report(work)
 
 
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "Apache-2.0 WITH AdditionRef-No-Commercial-Use",
+        "MIT WITH Commons-Clause",
+        "GPL-2.0-only WITH Made-Up-exception",
+    ],
+    ids=["addition-ref", "not-an-spdx-exception", "unknown-on-literal-base"],
+)
+def test_rejects_with_clause_outside_the_spdx_exception_list(work: Path, expression: str) -> None:
+    # A WITH addition only counts as a mere grant of permissions if SPDX lists it as an exception.
+    sbom = cyclonedx(component("pkg:maven/org.example/added@1.0?type=jar", f"expr:{expression}"))
+
+    result = run_check(work, sbom=sbom)
+
+    assert result.returncode == 1
+    assert "org.example:added 1.0" in result.stdout
+
+
 def test_missing_license_is_reported_as_noassertion(work: Path) -> None:
     result = run_check(work, sbom=cyclonedx(component("pkg:maven/org.example/bare@1.0?type=jar")))
 

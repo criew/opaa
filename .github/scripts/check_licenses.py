@@ -28,6 +28,32 @@ STATUS_ALLOWED = "freigegeben"
 STATUS_EXCEPTION = "Ausnahme"
 STATUS_REJECTED = "nicht freigegeben"
 
+# License exception ids of the SPDX exception list (https://spdx.org/licenses/exceptions-index.html).
+# Only these are accepted after WITH; an id missing here fails the check, which errs on the safe side.
+SPDX_EXCEPTIONS = frozenset(
+    """
+    389-exception Asterisk-exception Asterisk-linking-protocols-exception Autoconf-exception-2.0
+    Autoconf-exception-3.0 Autoconf-exception-generic Autoconf-exception-generic-3.0
+    Autoconf-exception-macro Bison-exception-1.24 Bison-exception-2.2 Bootloader-exception
+    CGAL-linking-exception Classpath-exception-2.0 CLISP-exception-2.0 cryptsetup-OpenSSL-exception
+    DigiRule-FOSS-exception eCos-exception-2.0 erlang-otp-linking-exception Fawkes-Runtime-exception
+    FLTK-exception fmt-exception Font-exception-2.0 freertos-exception-2.0 GCC-exception-2.0
+    GCC-exception-2.0-note GCC-exception-3.1 Gmsh-exception GNAT-exception GNOME-examples-exception
+    GNU-compiler-exception gnu-javamail-exception GPL-3.0-389-ds-base-exception
+    GPL-3.0-interface-exception GPL-3.0-linking-exception GPL-3.0-linking-source-exception GPL-CC-1.0
+    GStreamer-exception-2005 GStreamer-exception-2008 harbour-exception i2p-gpl-java-exception
+    Independent-modules-exception KiCad-libraries-exception LGPL-3.0-linking-exception
+    libpri-OpenH323-exception Libtool-exception Linux-syscall-note LLGPL LLVM-exception
+    LZMA-exception mif-exception mxml-exception OCaml-LGPL-linking-exception OCCT-exception-1.0
+    OpenJDK-assembly-exception-1.0 openvpn-openssl-exception PCRE2-exception polyparse-exception
+    PS-or-PDF-font-exception-20170817 QPL-1.0-INRIA-2004-exception Qt-GPL-exception-1.0
+    Qt-LGPL-exception-1.1 Qwt-exception-1.0 romic-exception RRDtool-FLOSS-exception-2.0
+    SANE-exception SHL-2.0 SHL-2.1 stunnel-exception SWI-exception Swift-exception
+    Texinfo-exception u-boot-exception-2.0 UBDL-exception Universal-FOSS-exception-1.0
+    vsftpd-openssl-exception WxWindows-exception-3.1 x11vnc-openssl-exception
+    """.split()
+)
+
 
 class PolicyError(Exception):
     pass
@@ -69,7 +95,10 @@ def load_allowed(path: Path) -> set[str]:
             continue
         if parse_expression(line) is None:
             raise PolicyError(f"{path}:{number}: not a valid SPDX expression: {line}")
-        allowed.add(normalize_with(line))
+        line = normalize_with(line)
+        if " WITH " in line and line.partition(" WITH ")[2] not in SPDX_EXCEPTIONS:
+            raise PolicyError(f"{path}:{number}: addition is not on the SPDX exception list: {line}")
+        allowed.add(line)
     return allowed
 
 
@@ -172,8 +201,12 @@ def satisfied(tree, allowed: set[str]) -> bool:
     if kind == "and":
         return satisfied(tree[1], allowed) and satisfied(tree[2], allowed)
     license_ = tree[1]
-    # An exception (WITH) only adds permissions, so an allowed base license suffices.
-    return license_ in allowed or license_.split(" WITH ", 1)[0] in allowed
+    base, _, addition = license_.partition(" WITH ")
+    # A listed SPDX exception only adds permissions, so an allowed base license suffices; any
+    # other addition (AdditionRef-*, Commons-Clause) may restrict and is never allowed.
+    if addition and addition not in SPDX_EXCEPTIONS:
+        return False
+    return license_ in allowed or base in allowed
 
 
 def alternative_allowed(alternative: str, allowed: set[str]) -> bool:

@@ -76,7 +76,12 @@ Geprüft wird derselbe Umfang wie in den SBOMs, nur Laufzeit-Abhängigkeiten:
   (`backend/build/reports/cyclonedx/application.cdx.json`); die eigenen Module `io.opaa` sind
   ausgenommen.
 - **Frontend:** `pnpm licenses list --prod --json`. Die cdxgen-SBOM taugt dafür nicht, weil sie
-  für einen Teil der Pakete keine Lizenz enthält.
+  für einen Teil der Pakete keine Lizenz enthält. `--prod` erfasst nur, was als `dependencies`
+  deklariert ist. Vite kopiert aber auch `public/` unverändert in den Build, darunter
+  `public/mockServiceWorker.js` aus `msw` (devDependency, MIT). Der Worker dient nur
+  Entwicklungsläufen mit `VITE_ENABLE_MOCKS`, deshalb löscht `frontend/Dockerfile` ihn nach dem
+  Build, und das Image enthält ihn nicht. Wer eine Datei aus einem devDependency-Paket nach
+  `public/` legt und ausliefert, muss deren Lizenz selbst prüfen.
 - **e2e/** wird nicht ausgeliefert und nicht geprüft.
 
 Eine Abhängigkeit besteht, wenn ihr Lizenzausdruck mit der Freigabeliste erfüllt ist (`A OR B`:
