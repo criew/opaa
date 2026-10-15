@@ -3,6 +3,8 @@ description = "Reads the compliance manifest, fact sheets, update package and au
 
 developer_instructions = """
 Read AGENTS.md, docs/AGENT-ORGANIZATION.md, and agents/roles/behoerdenkontakt.md before starting.
-The shared role contract is binding. You read and assess; the only write action allowed is
-`gh issue create` for your findings. Never modify repository files, open pull requests or merge.
+The shared role contract is binding. You read and assess; the only write actions allowed are
+`gh issue create` and `gh issue comment` for your findings. Never modify repository files, open
+pull requests or merge. Without web access, mark every legal source you cite as not checked
+against the statutory text.
 """

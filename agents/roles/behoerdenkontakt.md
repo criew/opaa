@@ -21,7 +21,7 @@ Die wöchentliche Drift-Routine ([Schicht 3](../../docs/features/behoerdenunterl
 2. **Solange es kein Update-Paket gibt**, ersetzen Sie das Delta selbst:
    - letztes finales Tag ermitteln (`git tag --list 'v*' --sort=-v:refname`, Vorab-Tags wie `-rc.N` überspringen; gibt es noch keines, das jüngste Tag) und den Manifest-Diff seit dort lesen: `git diff <tag>..HEAD -- backend/src/main/resources/compliance/manifest/`
    - die Faktenblätter des aktuellen Stands erzeugen: aus `backend/` `./gradlew complianceDocs`, Ausgabe unter `backend/build/compliance/faktenblaetter/`
-   - die PRs mit Label `data-impact` seit dem Tag: `gh pr list --state merged --label data-impact --limit 100`
+   - die PRs mit Label `data-impact` seit dem Tag: `gh pr list --state merged --label data-impact --limit 100 --search "merged:>=$(git log -1 --format=%cs <tag>)"`
 3. **Die Vorlagen** unter `docs/behoerden/` mit ihrem Kopfvermerk ([Regeln](../../docs/behoerden/README.md#kopfvermerk)); `.github/scripts/check_behoerden_headers.sh` prüft die Form, nicht den Inhalt.
 4. **Den Code**, gegen den Sie einen Manifest-Eintrag halten: Liquibase-Changelogs (Fremdschlüssel, `ON DELETE`), Dienste, Konstanten, `application.yml`, `deploy/helm/opaa/values.yaml`.
 
@@ -41,7 +41,7 @@ Die wöchentliche Drift-Routine ([Schicht 3](../../docs/features/behoerdenunterl
 
 ## Issues anlegen
 
-Je Befund ein Issue nach den Regeln aus `AGENTS.md` und [AGENT-ORGANIZATION.md](../../docs/AGENT-ORGANIZATION.md#issues): deutscher Titel mit Conventional-Präfix (`fix(compliance): …` für einen falschen Manifest-Eintrag, `docs(behoerden): …` für eine Vorlage), Kontext mit Verweis auf Epic #2542 und das Release, Begründung mit Datei:Zeile beider Seiten, Abnahmekriterien, passende vorhandene Labels einschließlich `size:S/M/L`; `data-impact`, wenn die Korrektur die Fakten ändert, die eine Behörde erhält. Entwürfe für Hinweise oder Vorlagentext stehen im Issue; umgesetzt werden sie über einen PR einer Liefer-Rolle.
+Je Befund ein Issue nach den Regeln aus `AGENTS.md` und [AGENT-ORGANIZATION.md](../../docs/AGENT-ORGANIZATION.md#issues): deutscher Titel mit Conventional-Präfix (`fix(compliance): …` für einen falschen Manifest-Eintrag, `docs(behoerden): …` für eine Vorlage), Kontext mit Verweis auf das Release, als Sub-Issue an das fachlich zuständige Teil-Epic von #2542 gehängt (Manifest und Faktenblätter: #2543, Vorlagen: #2560; Befehl in [AGENT-ORGANIZATION.md](../../docs/AGENT-ORGANIZATION.md#befehle)), Begründung mit Datei:Zeile beider Seiten, Abnahmekriterien, passende vorhandene Labels einschließlich `size:S/M/L`; `data-impact`, wenn die Korrektur die Fakten ändert, die eine Behörde erhält. Entwürfe für Hinweise oder Vorlagentext stehen im Issue; umgesetzt werden sie über einen PR einer Liefer-Rolle.
 
 ## Grenzen
 

@@ -15,9 +15,8 @@ Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselb
 | **QA Engineer** | Produktqualität über das jeweilige PR-Review hinaus: alleiniger Eigentümer der E2E-Suite (implementiert die dedizierten `test(e2e)`-Issues, die zum Spezifikationszeitpunkt erstellt wurden), RAG-Antwortqualitäts-Evaluierung (Golden Dataset + Evaluatoren), Coverage-/Flakiness-Trends, Release-Bewertung. | Subagent `qa-engineer` |
 | **Marketing** | Positionierung zuerst: schärft Pitch und Mission, pflegt die Messaging-Quelle der Wahrheit (`docs/market/MESSAGING.md`), leitet stakeholder-spezifische Assets davon ab — Landing Page (`page/`), Pitch-Decks, One-Pager, README-Messaging, Website-i18n. Positionierungsentscheidungen verbleiben beim Maintainer. | Subagent `marketing` |
 | **UX-Designer** | Gestaltet die Bedienung vor der Implementierung: Interaktionskonzepte in `docs/design/` für Issues mit nennenswerter UI-Fläche, Begriffs- und Textkonventionen (`docs/design/GLOSSAR.md`), UX-Review nach dem Merge. Kein Produktivcode, keine Funktionsdefinition. | Subagent `ux-designer` |
-| **Behördenkontakt** | Liest vor jedem Release und gelegentlich Fakten-Manifest, Faktenblätter, Update-Paket und die Vorlagen unter `docs/behoerden/` aus Sicht einer Behörde: prüft Manifest-Einträge gegen den Code, entwirft erläuternde Hinweise, stößt bei Stufe Zustimmung ein Stakeholder-Review an und meldet überschrittene Durchsichten. Befunde werden Issues. Kein Code, keine Vorlagenänderung ohne PR, **keine verbindliche Rechtsbeobachtung und keine Rechtsberatung**. | Subagent `behoerdenkontakt` |
 
-Neben diesen Liefer-Rollen gibt es **Stakeholder-Rollen**, die nichts herstellen, sondern bewerten — siehe [Stakeholder-Review](#stakeholder-review).
+Neben diesen Liefer-Rollen gibt es **Stakeholder-Rollen**, die nichts herstellen, sondern bewerten — siehe [Stakeholder-Review](#stakeholder-review) —, und die Prüfrolle **Behördenkontakt** (Subagent `behoerdenkontakt`): Sie liest vor jedem Release und gelegentlich Fakten-Manifest, Faktenblätter, Update-Paket und die Vorlagen unter `docs/behoerden/` aus Sicht einer Behörde, legt Befunde als Issues an und leistet **keine verbindliche Rechtsbeobachtung und keine Rechtsberatung** — siehe [Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release).
 
 Designprinzip: Ein Agent hat eine Spur, Arbeit wird über Artefakte (Spezifikationen, Issues, PRs) statt Dialog übergeben, Schreibvorgänge sind single-threaded (Parallelität nur über *verschiedene* Issues), und der Reviewer ist immer vom Implementierer getrennt.
 
@@ -39,6 +38,8 @@ Die Liefer-Rollen bewerten Konzepte aus der Perspektive derer, die sie entwerfen
 Nach einer Konzept- oder Spezifikationsänderung von struktureller Tragweite und **bevor** der zugehörige Implementierungs-Backlog freigegeben wird. Ein Review nach der Implementierung erzeugt Nacharbeit statt Erkenntnis.
 
 Pflichtanlass ist eine Spezifikation, deren Abschnitt „Wirkung auf Behördenunterlagen“ die Stufe **Zustimmung** vorschlägt: Der Product Manager fordert das Review an, Personalrat und Betriebsverantwortlicher laufen mindestens, und die Issues werden erst danach geschnitten ([Stufenregeln](features/behoerdenunterlagen.md#die-stufenregeln)).
+
+Zweiter Pflichtanlass ist eine Änderung der Stufe **Zustimmung**, die der Behördenkontakt vor einem Release meldet ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)): Geprüft werden das Update-Paket bzw., solange es keines gibt, der Manifest-Diff seit dem letzten Tag und die Faktenblätter, mindestens durch Personalrat und Betriebsverantwortlichen.
 
 Der Orchestrator startet die Rollen parallel gegen dieselbe Dokumentenmenge und legt dem Maintainer die Bewertungen gebündelt vor. Nicht jede Änderung braucht alle sechs — die Auswahl richtet sich danach, wessen Wirklichkeit betroffen ist.
 
@@ -65,7 +66,7 @@ Jeder unterstützte Client hat einen dünnen projektlokalen Adapter, der auf den
 | Codex | `.codex/agents/` | TOML-Dateien definieren Codex Custom Agents. Der Reviewer verwendet eine schreibgeschützte Sandbox. |
 | OpenCode | `.opencode/agents/` | Markdown-Frontmatter definiert OpenCode-Subagenten und ihre Berechtigungen. Der Reviewer verweigert Bearbeitungen. |
 
-Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die sechs Liefer-Rollen sind Product Manager, Developer, Code Reviewer, QA Engineer, Marketing und UX-Designer (Letzterer noch ohne Provider-Adapter); hinzu kommen die Rolle `behoerdenkontakt` und die sechs Stakeholder-Rollen `stakeholder-sachbearbeiter`, `stakeholder-referatsleitung`, `stakeholder-ki-champion`, `stakeholder-betrieb`, `stakeholder-skeptiker` und `stakeholder-personalrat`.
+Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument und seinen gemeinsamen Rollenvertrag zu lesen, bevor er arbeitet. Eine Rolle muss in `agents/roles/` hinzugefügt werden, bevor sie Provider-Adapter erhält. Die sechs Liefer-Rollen sind Product Manager, Developer, Code Reviewer, QA Engineer, Marketing und UX-Designer (Letzterer noch ohne Provider-Adapter); hinzu kommen die Prüfrolle `behoerdenkontakt` und die sechs Stakeholder-Rollen `stakeholder-sachbearbeiter`, `stakeholder-referatsleitung`, `stakeholder-ki-champion`, `stakeholder-betrieb`, `stakeholder-skeptiker` und `stakeholder-personalrat`.
 
 ## Workflow: von der Idee bis zum Merge
 
