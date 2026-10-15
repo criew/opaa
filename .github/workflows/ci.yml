@@ -42,6 +42,7 @@ jobs:
       backendCore: ${{ steps.filter.outputs.backendCore }}
       bundleParity: ${{ steps.filter.outputs.bundleParity }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      helm: ${{ steps.filter.outputs.helm }}
       images: ${{ steps.filter.outputs.images }}
       scripts: ${{ steps.filter.outputs.scripts }}
       seed: ${{ steps.filter.outputs.seed }}
@@ -85,6 +86,11 @@ jobs:
               - '.github/licenses/**'
               - '.github/scripts/check_licenses.py'
               - '.github/workflows/ci.yml'
+            # helm runs backend-test, not backend-build: ConfigurationSettingsTest (shard core) reads
+            # the chart and checks it against the compliance manifest, nothing else in the backend
+            # build reads deploy/helm. A chart-only PR therefore runs the test shards alone.
+            helm:
+              - 'deploy/helm/opaa/**'
             # The frontend build regenerates its API types from the OpenAPI
             # fragments under opaa-api/ on every pnpm run build/test (ADR-0006),
             # so a spec-only change must also run the frontend job. Both jobs run the license check,
@@ -325,7 +331,10 @@ jobs:
   backend-test:
     name: backend-test (${{ matrix.shard }})
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
+    if: >-
+      github.event_name != 'pull_request'
+      || needs.changes.outputs.backend == 'true'
+      || needs.changes.outputs.helm == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -402,10 +411,11 @@ jobs:
     needs: [changes, backend-build, backend-test, openapi-bundle-parity]
     # always(): the aggregate must run even when a shard failed, otherwise it would be skipped
     # and a skipped required check reads as passed. The path-filter condition is repeated so a
-    # PR without backend or bundle changes still skips this job.
+    # PR without backend, chart or bundle changes still skips this job.
     if: >-
       always() && (github.event_name != 'pull_request'
       || needs.changes.outputs.backend == 'true'
+      || needs.changes.outputs.helm == 'true'
       || needs.changes.outputs.bundleParity == 'true')
     runs-on: ubuntu-latest
     steps:
@@ -415,13 +425,17 @@ jobs:
           TEST_RESULT: ${{ needs.backend-test.result }}
           PARITY_RESULT: ${{ needs.openapi-bundle-parity.result }}
           BACKEND_EXPECTED: ${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}
+          TEST_EXPECTED: ${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.helm == 'true' }}
           PARITY_EXPECTED: ${{ github.event_name != 'pull_request' || needs.changes.outputs.bundleParity == 'true' }}
         run: |
           echo "backend-build:         $BUILD_RESULT (erwartet: $BACKEND_EXPECTED)"
-          echo "backend-test:          $TEST_RESULT (erwartet: $BACKEND_EXPECTED)"
+          echo "backend-test:          $TEST_RESULT (erwartet: $TEST_EXPECTED)"
           echo "openapi-bundle-parity: $PARITY_RESULT (erwartet: $PARITY_EXPECTED)"
           failed=0
-          if [ "$BACKEND_EXPECTED" = "true" ] && { [ "$BUILD_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ]; }; then
+          if [ "$BACKEND_EXPECTED" = "true" ] && [ "$BUILD_RESULT" != "success" ]; then
+            failed=1
+          fi
+          if [ "$TEST_EXPECTED" = "true" ] && [ "$TEST_RESULT" != "success" ]; then
             failed=1
           fi
           if [ "$PARITY_EXPECTED" = "true" ] && [ "$PARITY_RESULT" != "success" ]; then
