@@ -445,8 +445,9 @@ Dienstvereinbarung/Prozess, bis ein eigenes Ticket sie technisch abbildet.
 
 **Aufbewahrung der Freigaben (#2859).** Antrag und Freigabe sind nach dem Ende der Nutzbarkeit nur
 noch Nachweis und haben eine Löschfrist: Gelöscht wird am Ende des Kalenderjahres, das auf das Ende
-der Nutzbarkeit folgt (Vorbild § 76 Abs. 4 BDSG), freigegebene und nie freigegebene gleich; für einen
-nie freigegebenen Antrag gilt als Ende der Nutzbarkeit der Antragszeitpunkt plus die 30 Tage. Die
+der Nutzbarkeit folgt (Vorbild § 76 Abs. 4 BDSG), freigegebene und nie freigegebene gleich; für die
+Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antragszeitpunkt
+plus die 30 Tage (freigeben lässt er sich unverändert auch danach). Die
 Frist ist einstellbar (`opaa.audit.incident-scope-retention-years`, 1 bis 10 Jahre), damit eine
 Dienstvereinbarung sie verlängern kann; gelöscht wird in einem täglichen Lauf ohne eigenen
 Protokolleintrag, wie bei den übrigen Löschläufen. **Die Zahl der Fälle für den Jahresbericht bleibt

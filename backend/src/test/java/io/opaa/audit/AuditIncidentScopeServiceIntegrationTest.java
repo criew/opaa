@@ -26,6 +26,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -360,6 +365,58 @@ class AuditIncidentScopeServiceIntegrationTest {
     assertThat(caseCounts(year))
         .containsExactlyInAnyOrderEntriesOf(
             Map.of("SECURITY_INCIDENT", 2, "DATA_BREACH_INVESTIGATION", 1));
+  }
+
+  /**
+   * Two approvals of the same grant at once, by two different persons, against the real row lock:
+   * exactly one succeeds, the other is rejected as no longer pending, and the case is counted once.
+   * Repeated over several grants, since a single pair may not overlap.
+   */
+  @Test
+  void concurrentApprovalsOfOneGrantSucceedAndCountOnce() throws Exception {
+    int grants = 5;
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      for (int i = 0; i < grants; i++) {
+        UUID grantId =
+            incidentScopeService
+                .request(
+                    organizationId,
+                    requester,
+                    subject,
+                    scopeStart,
+                    scopeEnd,
+                    AuditIncidentScopePurpose.SECURITY_INCIDENT,
+                    REASON)
+                .getId();
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Boolean>> attempts = new ArrayList<>();
+        for (UUID approvingPerson : List.of(approver, auditor)) {
+          attempts.add(
+              pool.submit(
+                  () -> {
+                    start.await();
+                    try {
+                      incidentScopeService.approve(organizationId, grantId, approvingPerson);
+                      return true;
+                    } catch (ValidationException alreadyApproved) {
+                      return false;
+                    }
+                  }));
+        }
+        start.countDown();
+        int succeeded = 0;
+        for (Future<Boolean> attempt : attempts) {
+          succeeded += attempt.get(30, TimeUnit.SECONDS) ? 1 : 0;
+        }
+        assertThat(succeeded).as("successful approvals of grant %s", grantId).isEqualTo(1);
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    int year = Instant.now(clock).atZone(clock.getZone()).getYear();
+    assertThat(caseCounts(year)).containsExactlyEntriesOf(Map.of("SECURITY_INCIDENT", grants));
   }
 
   /**

@@ -1,10 +1,12 @@
 package io.opaa.audit;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,6 +20,17 @@ public interface AuditIncidentScopeGrantRepository
     extends JpaRepository<AuditIncidentScopeGrant, UUID> {
 
   Optional<AuditIncidentScopeGrant> findByIdAndOrganizationId(UUID id, UUID organizationId);
+
+  /**
+   * The grant with its row locked ({@code SELECT ... FOR UPDATE}) until the caller's transaction
+   * ends: a second approval of the same grant waits here and then finds it no longer pending.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      "SELECT g FROM AuditIncidentScopeGrant g"
+          + " WHERE g.id = :id AND g.organizationId = :organizationId")
+  Optional<AuditIncidentScopeGrant> findForApproval(
+      @Param("id") UUID id, @Param("organizationId") UUID organizationId);
 
   /**
    * Deletes every grant whose usability ended before the cutoff: an approved one by its {@code

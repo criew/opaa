@@ -127,8 +127,9 @@ data:
       rule: >-
         Anträge und Freigaben samt Zweck und Begründung bis zum Ende des Kalenderjahres, das auf
         das Ende der Nutzbarkeit folgt (Voreinstellung, verlängerbar auf bis zu 10 Jahre). Eine
-        Freigabe ist 30 Tage ab Freigabe nutzbar, danach nur noch Nachweis; ein nie freigegebener
-        Antrag gilt 30 Tage nach dem Antrag als beendet
+        Freigabe ist 30 Tage ab Freigabe nutzbar, danach nur noch Nachweis. Für die Löschfrist zählt
+        bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antragszeitpunkt plus 30
+        Tage; freigeben lässt er sich unverändert auch danach
       settings:
         - io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW
         - opaa.audit.incident-scope-retention-years

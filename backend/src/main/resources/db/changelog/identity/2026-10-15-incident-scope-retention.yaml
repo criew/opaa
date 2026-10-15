@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: identity-2026-10-15-incident-scope-retention
       author: opaa
-      comment: "A grant of the anlassbezogene Klärung no longer holds the accounts of the persons it names: deleting one keeps the person in the grant as the protocol's own pseudonym and lets the account go. The grants get a deletion period, so the number of cases per year and purpose is kept apart from them for the annual report."
+      comment: "A grant of the anlassbezogene Klärung no longer holds the accounts of the persons it names: deleting one keeps the person in the grant as the protocol's own pseudonym and lets the account go."
       changes:
         - sql:
             splitStatements: false
@@ -77,7 +77,14 @@ databaseChangeLog:
 
               CREATE TRIGGER trg_users_pseudonymize_incident_scope_grants BEFORE DELETE ON users
                   FOR EACH ROW EXECUTE FUNCTION audit_incident_scope_grants_pseudonymize_person();
-
+  - changeSet:
+      id: identity-2026-10-15-incident-scope-retention--case-counts
+      author: opaa
+      comment: "The grants get a deletion period, so the number of approved cases per year and purpose is kept apart from them for the annual report; the approvals already there are counted once."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
               CREATE TABLE audit_incident_scope_case_counts (
                   organization_id uuid NOT NULL,
                   case_year integer NOT NULL,

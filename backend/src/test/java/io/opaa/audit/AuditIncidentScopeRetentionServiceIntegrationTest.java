@@ -27,6 +27,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * an approved grant goes at the end of the calendar year after its {@code usable_until}, a request
  * never approved at the end of the year after its request time plus the usable window, and the
  * number of cases counted at approval stays behind.
+ *
+ * <p>The deletion pass is installation-wide and cannot be narrowed to this class's organization.
+ * The rows here are therefore moved back to the years around 2000 and the fixed clocks stay before
+ * 2005: a pass deletes nothing whose usability ended after its cutoff, so grants other classes
+ * create at the real present are out of its reach.
  */
 @OpaaIntegrationTest
 class AuditIncidentScopeRetentionServiceIntegrationTest {
@@ -73,41 +78,41 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
 
   @Test
   void anApprovedGrantIsDeletedAtTheEndOfTheYearAfterItsUsabilityEnded() {
-    UUID grant = approvedGrantUsableUntil(Instant.parse("2026-03-01T10:00:00Z"));
+    UUID grant = approvedGrantUsableUntil(Instant.parse("2000-03-01T10:00:00Z"));
 
-    runAt("2027-12-31T23:59:59Z");
+    runAt("2001-12-31T23:59:59Z", 1);
     assertThat(grantRepository.existsById(grant)).isTrue();
 
-    runAt("2028-01-01T00:00:00Z");
+    runAt("2002-01-01T00:00:00Z", 1);
     assertThat(grantRepository.existsById(grant)).isFalse();
   }
 
   @Test
   void aRequestNeverApprovedCountsFromItsRequestTimePlusTheUsableWindow() {
-    // usable at the latest until 14 January 2027, so it is kept through 2028
-    UUID request = pendingRequestAt(Instant.parse("2026-12-15T10:00:00Z"));
+    // usable at the latest until 14 January 2001, so it is kept through 2002
+    UUID request = pendingRequestAt(Instant.parse("2000-12-15T10:00:00Z"));
 
-    runAt("2028-01-01T00:00:00Z");
+    runAt("2002-01-01T00:00:00Z", 1);
     assertThat(grantRepository.existsById(request)).isTrue();
 
-    runAt("2029-01-01T00:00:00Z");
+    runAt("2003-01-01T00:00:00Z", 1);
     assertThat(grantRepository.existsById(request)).isFalse();
   }
 
   @Test
   void aLongerConfiguredPeriodKeepsTheGrantForAsManyMoreYears() {
-    UUID grant = approvedGrantUsableUntil(Instant.parse("2026-03-01T10:00:00Z"));
-    AuditIncidentScopeRetentionService threeYears =
-        new AuditIncidentScopeRetentionService(
-            grantRepository, new AuditIncidentScopeRetention(3), clockAt("2029-12-31T12:00:00Z"));
+    UUID grant = approvedGrantUsableUntil(Instant.parse("2000-03-01T10:00:00Z"));
 
-    threeYears.runOnce();
+    runAt("2003-12-31T23:59:59Z", 3);
     assertThat(grantRepository.existsById(grant)).isTrue();
+
+    runAt("2004-01-01T00:00:00Z", 3);
+    assertThat(grantRepository.existsById(grant)).isFalse();
   }
 
   @Test
   void theCaseCountOutlivesTheDeletedGrant() {
-    UUID grant = approvedGrantUsableUntil(Instant.parse("2026-03-01T10:00:00Z"));
+    UUID grant = approvedGrantUsableUntil(Instant.parse("2000-03-01T10:00:00Z"));
     int approvalYear =
         grantRepository
             .findById(grant)
@@ -116,7 +121,7 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
             .atZone(clock.getZone())
             .getYear();
 
-    runAt("2028-01-01T00:00:00Z");
+    runAt("2002-01-01T00:00:00Z", 1);
 
     assertThat(grantRepository.existsById(grant)).isFalse();
     assertThat(grantRepository.findCaseCounts(organizationId, approvalYear))
@@ -128,14 +133,12 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
             });
   }
 
-  private void runAt(String instant) {
+  private void runAt(String instant, int retentionYears) {
     new AuditIncidentScopeRetentionService(
-            grantRepository, AuditIncidentScopeRetention.defaults(), clockAt(instant))
+            grantRepository,
+            new AuditIncidentScopeRetention(retentionYears),
+            Clock.fixed(Instant.parse(instant), ZoneOffset.UTC))
         .runOnce();
-  }
-
-  private static Clock clockAt(String instant) {
-    return Clock.fixed(Instant.parse(instant), ZoneOffset.UTC);
   }
 
   private UUID approvedGrantUsableUntil(Instant usableUntil) {
