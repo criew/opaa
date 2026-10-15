@@ -141,10 +141,13 @@ durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
 
 ### K · Verwaltungs-Spezifika
 
-**[`features/public-sector.md`](./features/public-sector.md)**
+**[`features/public-sector.md`](./features/public-sector.md)** ·
+**[`features/behoerdenunterlagen.md`](./features/behoerdenunterlagen.md)**
 
 Leichte Sprache und Amtssprache · Barrierefreiheit nach BITV · Revisionssicherheit im Verwaltungssinn ·
-Anbindung an die elektronische Akte und an Dokumentenmanagement.
+Anbindung an die elektronische Akte und an Dokumentenmanagement · Unterlagen entlang der Behördenreise,
+die mit dem Produkt mitziehen: Fakten-Manifest mit CI-Wächter, Update-Paket mit kumuliertem Delta und
+Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 
 ---
 
@@ -173,6 +176,15 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   CycloneDX-CI-Artefakte für Backend und Frontend und die Lizenzprüfung der Abhängigkeiten
 - **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts,
   Trivy-Image-Scan und die Triage von Image-Alerts
+- **[`SECURITY.md`](../SECURITY.md)** — Sicherheitsrichtlinie: vertraulicher Meldeweg für
+  Sicherheitslücken, unterstützte Versionen und Ablauf bis zum Security Advisory
+
+### Unterlagen für Behörden
+
+- **[`behoerden/README.md`](./behoerden/README.md)** — Vorlagen und Erläuterungen entlang der
+  Behördenreise (Entscheidung, Markterkundung, Vergabe, Datenschutz, Mitbestimmung,
+  Informationssicherheit, Betrieb); Aufbau, Kopfvermerk, Haftungshinweis und Verweise auf die
+  generierten Faktenblätter
 
 ### Architekturentscheidungen
 

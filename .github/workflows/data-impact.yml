@@ -1,0 +1,65 @@
+name: Datenwirkung
+
+# Every pull request either carries the label data-impact or states "Keine Wirkung" when it touches
+# a path from .github/data-impact-paths.txt (docs/releases.md, "Datenwirkung kennzeichnen"). Runs
+# without a paths filter so that it can serve as a required check, and again when labels or the
+# description change. Renovate pull requests are skipped: dependency updates have no template and
+# touch values.yaml and docker-compose.yml for image tags only. Renovate is recognised by branch
+# prefix, same repository and author; the author list follows gitAuthor in renovate.json5
+# (test_check_data_impact.py). A merge queue run passes without a check, the pull request was
+# checked before it entered the queue.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-impact-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: >-
+      github.event_name != 'pull_request' || !(
+        startsWith(github.head_ref, 'renovate/') &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        contains(fromJSON('["bigpuritz","renovate[bot]"]'), github.event.pull_request.user.login)
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Merge-Queue-Lauf ohne Prüfung
+        if: github.event_name == 'merge_group'
+        run: echo "Checked on the pull request before it entered the merge queue."
+
+      # The merge commit of the pull request and its first parent, the base it is compared with.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      # The path list must cover every backend file with an outgoing client, a model call, a system
+      # prompt or a retention period. Checked here on every pull request, because the report-script
+      # job of ci.yml runs only when .github/scripts changes.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: github.event_name == 'pull_request'
+        with:
+          python-version: '3.15'
+
+      - name: Pfadliste gegen den Code prüfen
+        if: github.event_name == 'pull_request'
+        run: |
+          pip install pytest
+          pytest .github/scripts/test_check_data_impact.py
+
+      - name: Datenwirkung prüfen
+        if: github.event_name == 'pull_request'
+        env:
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'data-impact') }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: .github/scripts/check_data_impact.sh HEAD^1 HEAD

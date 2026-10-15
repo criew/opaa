@@ -580,6 +580,12 @@ danach jährlich als Nachweis, dass sich nichts stillschweigend verschoben hat.
 oder je Organisationseinheit und keine Objektlisten. Ein Auszug, der belegen soll, dass es keine
 personenbezogene Auswertung gibt, darf nicht selbst eine sein.
 
+**Quelle und Versionsbindung (Zielbild):** Ereignisarten, Feldliste und Fristen des Auszugs kommen
+aus dem Fakten-Manifest, das ein CI-Wächter gegen den Code vollständig hält; jede Änderung daran
+erscheint im Update-Paket mit Stufenvorschlag, und die Muster-Dienstvereinbarung legt den Auszug als
+statische Anlage auf eine Version fest — siehe [Behördenunterlagen und
+Update-Paket](./behoerdenunterlagen.md#das-faktenmodell).
+
 ### Unveränderlichkeit und Löschrecht
 
 Ein nur anfügendes Protokoll und ein nachträgliches Schwärzen schließen einander aus. Der Widerspruch wird
@@ -915,6 +921,11 @@ Die Selbstauskunft ist der einzige Weg, auf dem personenbezogene Daten gebündel
 geht ausschließlich an die betroffene Person, weder über eine Vertretungsfunktion noch durch einen Admin
 „im Auftrag" noch in ein fremdes Postfach.
 
+Die **Auskunft über die Datenerhebung** ist noch nicht gebaut. Ihr Zielbild — das Fakten-Manifest der
+eingesetzten Version, verbunden mit den wirksamen Werten der Instanz, als Eingang für das Update-Delta
+gegen die Instanz und für die statischen Anlagen der Dienstvereinbarung — steht in [Behördenunterlagen
+und Update-Paket](./behoerdenunterlagen.md#instanzbezug) (#2558).
+
 ### Berichte
 
 - **Rechteänderungen an einem Objekt:** wer hat wem was freigegeben, mit Rechtestand zum Stichtag aus der
@@ -1195,6 +1206,9 @@ Fristen, Schwellen und Zuständigkeiten — nicht die Frage, ob eine Überwachun
   [llm-integration.md](./llm-integration.md)
 - **Betrieb:** Verschlüsselung ruhender Daten, Schlüsselverwaltung, Sicherung und Wiederanlauf liegen
   beim Betreiber → [deployment-infrastructure.md](./deployment-infrastructure.md)
+- **Behördenunterlagen:** Fakten-Manifest, Update-Paket und Vorlagen für Datenschutz, Mitbestimmung und
+  Informationssicherheit machen die Eigenschaften dieses Dokuments für eine Behörde je Version
+  belegbar → [behoerdenunterlagen.md](./behoerdenunterlagen.md)
 
 ---
 

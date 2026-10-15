@@ -127,9 +127,12 @@ jobs:
             # rule covers every workflow, like the action pin guard. publish-images.yml belongs here
             # because test_publish_images_cache.py checks that release builds skip the gha cache,
             # renovate.yml because test_renovate_image_pin.py checks its image pin against the regex
-            # manager. .github/licenses/** because test_check_licenses.py loads the policy files.
+            # manager. data-impact-paths.txt belongs here because test_check_data_impact.py checks
+            # that each of its patterns still matches a tracked file, .github/licenses/** because
+            # test_check_licenses.py loads the policy files.
             scripts:
               - '.github/scripts/**'
+              - '.github/data-impact-paths.txt'
               - '.github/licenses/**'
               - '.github/workflows/ci.yml'
               - '.github/workflows/publish-images.yml'
@@ -143,6 +146,10 @@ jobs:
             adrs:
               - 'docs/decisions/**'
               - '.github/scripts/check_adr_style.sh'
+            # Step-level filter of the header guard for docs/behoerden below, not a job output.
+            behoerden:
+              - 'docs/behoerden/**'
+              - '.github/scripts/check_behoerden_headers.sh'
             # Step-level filter of the comment rule guard below, not a job output.
             comments:
               - 'backend/src/main/**'
@@ -207,6 +214,13 @@ jobs:
       - name: ADR-Stil in docs/decisions prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
         run: .github/scripts/check_adr_style.sh
+
+      # Every editorial document under docs/behoerden carries header block, disclaimer and only
+      # well-formed fact sheet placeholders (docs/behoerden/README.md); new files are found by
+      # directory walk.
+      - name: Kopfvermerk der Behördenunterlagen prüfen
+        if: github.event_name != 'pull_request' || steps.filter.outputs.behoerden == 'true'
+        run: .github/scripts/check_behoerden_headers.sh
 
       # Comments in every tree listed in the script header carry no review protocol, no history
       # anchored at an issue and no bare origin marker (AGENTS.md, "Code-Kommentare").
