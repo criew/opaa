@@ -45,11 +45,11 @@ class TikaWithoutExcludedLibrariesTest {
 
   @Test
   void fixturesCoverEveryAdmittedExtension() throws IOException {
-    List<String> fixtureExtensions = fixtures().map(TikaWithoutExcludedLibrariesTest::extension)
-        .sorted()
-        .toList();
+    List<String> fixtureExtensions =
+        fixtures().map(TikaWithoutExcludedLibrariesTest::extension).sorted().toList();
 
-    assertThat(fixtureExtensions).containsExactlyInAnyOrderElementsOf(supportedFormats.extensions());
+    assertThat(fixtureExtensions)
+        .containsExactlyInAnyOrderElementsOf(supportedFormats.extensions());
   }
 
   @ParameterizedTest
