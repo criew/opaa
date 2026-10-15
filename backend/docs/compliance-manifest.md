@@ -56,6 +56,13 @@ nonPersonalTables:
 Bekommt eine solche Tabelle eine Spalte mit Personenbezug, wandert sie unter die `tables` eines Datums. Eine Tabelle,
 die nicht zu einem bestehenden Datum passt, bekommt ein neues Datum mit allen Pflichtfeldern des Records `DataEntry`.
 
+## Zugriffsweg
+
+`accessPaths` nennt jeden Weg, auf dem das Datum lesbar ist: `UI` (Oberfläche), `API`, `EXPORT` und den direkten
+Zugriff auf den Speicher, in dem es liegt. Liegt es in der Anwendungsdatenbank, ist das `DATABASE`; liegt es in einer
+Ablage des Betriebs außerhalb davon (Dateisystem, Objektspeicher, Container-Log), ist es `STORAGE`. Ein Datum ohne
+Tabelle (`tables: []`) trägt nie `DATABASE`, das prüft `ComplianceManifestTest`.
+
 ## Konfigurationsschlüssel
 
 Jeder `opaa.*`-Schlüssel steht mit Beschreibung in den Konfigurationsmetadaten, die der Build erzeugt

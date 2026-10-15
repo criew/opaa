@@ -62,7 +62,12 @@ public record ComplianceManifest(
     UI,
     API,
     EXPORT,
-    DATABASE
+    /** Directly in the application database. */
+    DATABASE,
+    /**
+     * Directly in a store the operator runs outside the database: file system, object store, log.
+     */
+    STORAGE
   }
 
   /** What a default bears on ("Bezug"). */
