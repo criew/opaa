@@ -21,6 +21,7 @@ data:
     tables:
       - name: audit_log
         personalColumns: [actor_ref, subject_ref]
+        nonPersonalColumns: [event_id, recorded_at]
     storage: Datenbank
     retention:
       rule: 36 Monate
@@ -29,7 +30,8 @@ data:
     accessPaths: [UI]
     deletion: Partitionen
     evaluations: keine personenbezogenen
-nonPersonalTables: [audit_retention_settings]
+nonPersonalTables:
+  audit_retention_settings: [id, retention_months]
 auditEvents:
   - id: FIRST_EVENT
     trigger: Etwas geschieht

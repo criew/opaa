@@ -29,10 +29,16 @@ class ComplianceManifestLoaderTest {
               assertThat(data.area()).isEqualTo("protocol");
               assertThat(data.personalReference()).isEqualTo(PersonalReference.EMPLOYEE);
               assertThat(data.tables().getFirst().personalColumns()).contains("actor_ref");
+              assertThat(data.tables().getFirst().nonPersonalColumns())
+                  .containsExactly("event_id", "recorded_at");
             });
     assertThat(manifest.nonPersonalTables())
-        .extracting(ComplianceManifest.NonPersonalTable::table)
-        .containsExactly("audit_retention_settings");
+        .singleElement()
+        .satisfies(
+            table -> {
+              assertThat(table.table()).isEqualTo("audit_retention_settings");
+              assertThat(table.columns()).containsExactly("id", "retention_months");
+            });
     assertThat(manifest.roles())
         .extracting(ComplianceManifest.RoleEntry::id)
         .containsExactly("USER");
@@ -147,6 +153,18 @@ class ComplianceManifestLoaderTest {
                     .containsExactlyInAnyOrder(
                         "roles: 'USER' appears more than once",
                         "nonPersonalTables: 'organizations' appears more than once"));
+  }
+
+  @Test
+  void aTableWithoutPersonalReferenceListsItsColumns() {
+    assertThatThrownBy(() -> ComplianceManifestLoader.load(FIXTURES + "non-personal-list/*.yaml"))
+        .isInstanceOfSatisfying(
+            ComplianceManifestException.class,
+            e ->
+                assertThat(e.violations())
+                    .containsExactly(
+                        "tables: 'nonPersonalTables' must map each table to its columns"
+                            + " (table: [column, ...])"));
   }
 
   @Test

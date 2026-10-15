@@ -243,14 +243,36 @@ public final class ComplianceManifestLoader {
       }
     }
 
-    for (Object table :
-        listOrEmpty(file.get("nonPersonalTables"), area, "nonPersonalTables", violations)) {
-      if (table instanceof String name && !name.isBlank()) {
-        nonPersonalTables.add(new NonPersonalTable(area, name));
-      } else {
-        violations.add(area + ": nonPersonalTables holds a value that is no table name");
-      }
+    readNonPersonalTables(area, file.get("nonPersonalTables"), violations, nonPersonalTables);
+  }
+
+  /** {@code nonPersonalTables} maps each table to the list of all its columns. */
+  private static void readNonPersonalTables(
+      String area, Object value, List<String> violations, List<NonPersonalTable> tables) {
+    if (value == null) {
+      return;
     }
+    if (!(value instanceof Map<?, ?> map)) {
+      violations.add(
+          area + ": 'nonPersonalTables' must map each table to its columns (table: [column, ...])");
+      return;
+    }
+    stringKeys(map)
+        .forEach(
+            (table, columns) -> {
+              if (columns instanceof List<?> list
+                  && !list.isEmpty()
+                  && list.stream().allMatch(c -> c instanceof String s && !s.isBlank())) {
+                tables.add(
+                    new NonPersonalTable(area, table, list.stream().map(String::valueOf).toList()));
+              } else {
+                violations.add(
+                    area
+                        + ": nonPersonalTables '"
+                        + table
+                        + "' must list the table's columns (table: [column, ...])");
+              }
+            });
   }
 
   private static Object convert(

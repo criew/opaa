@@ -7,6 +7,8 @@ data:
     tables:
       - name: external_access_tokens
         personalColumns: [user_id, name, created_at, expires_at, last_used_on, revoked_at]
+        nonPersonalColumns:
+          [id, token_prefix, token_lookup_hash, revocation_reason, lapse_recorded_at]
     storage: Anwendungsdatenbank; Token nur als Hash
     retention:
       rule: >-
@@ -21,7 +23,8 @@ data:
     evaluations: >-
       Letzter Nutzungstag je Token; die Nutzung selbst wird nicht protokolliert, der Zähler des
       Abflussalarms lebt nur im Arbeitsspeicher
-nonPersonalTables: [external_access_token_libraries]
+nonPersonalTables:
+  external_access_token_libraries: [token_id, library_id, extinguished_at]
 settings:
   - key: external_access_settings.token_max_lifetime_days
     source: DATABASE
