@@ -75,29 +75,29 @@ final class ClientCredentialsGrant {
         client.post(registration, endpoint, form, headers, TIMEOUT, OAuthClient.TOKEN_ENDPOINT);
     JsonNode body = readBody(response);
     if (!response.isSuccess()) {
-      String error = field(body, "error");
+      TokenEndpointRefusal refusal = TokenEndpointRefusal.of(body);
+      String error = refusal.error();
       log.warn(
           "Token endpoint {} refused the client of profile {} (HTTP {}, {})",
           endpoint,
           registration.profileId(),
           response.statusCode(),
-          error.isEmpty() ? "no error code" : error);
+          refusal.logDetail());
+      String hint = refusal.hint(scope, true);
       if ("invalid_client".equals(error) || error.isEmpty() && response.statusCode() == 401) {
         throw new SignInRejectedException(
             "Der Token-Endpunkt "
                 + endpoint
-                + " hat die App-Registrierung des Zugangs abgewiesen: Client-ID oder"
-                + " Client-Secret werden nicht angenommen.");
-      }
-      if ("invalid_scope".equals(error)) {
-        throw new SourceCredentialsException("Der Scope des Zugangs wird nicht angenommen.");
+                + " hat die App-Registrierung des Zugangs abgewiesen: "
+                + (hint != null ? hint : TokenEndpointRefusal.INVALID_CLIENT));
       }
       throw new SourceCredentialsException(
           "Der Token-Endpunkt "
               + endpoint
               + " hat die Anmeldung abgewiesen (HTTP "
               + response.statusCode()
-              + ").");
+              + ")"
+              + (hint != null ? ": " + hint : "."));
     }
     JsonNode accessToken = body == null ? null : body.get("access_token");
     if (accessToken == null || !accessToken.isString() || accessToken.asString().isBlank()) {
@@ -122,12 +122,5 @@ final class ClientCredentialsGrant {
     } catch (JacksonException e) {
       return null;
     }
-  }
-
-  private static String field(JsonNode body, String name) {
-    if (body == null || body.get(name) == null || !body.get(name).isString()) {
-      return "";
-    }
-    return body.get(name).asString();
   }
 }

@@ -35,8 +35,9 @@ flowchart LR
 1. **App-Registrierung.** Im Microsoft-Entra-Admin-Center „App-Registrierungen" → „Neue
    Registrierung", etwa `opaa-sharepoint`, nur Konten dieses Verzeichnisses, ohne Umleitungs-URI.
    Anwendungs-ID (Client-ID) und Verzeichnis-ID (Mandanten-ID) notieren.
-2. **Secret.** „Zertifikate & Geheimnisse" → „Neuer geheimer Clientschlüssel"; den Wert sofort
-   kopieren und das Ablaufdatum notieren.
+2. **Secret.** „Zertifikate & Geheimnisse" → „Neuer geheimer Clientschlüssel"; die Spalte „Wert"
+   sofort kopieren, nicht die „Geheime ID" daneben, und das Ablaufdatum notieren. Den Wert zeigt
+   Entra nur direkt nach dem Anlegen.
 3. **Berechtigung.** „API-Berechtigungen" → „Microsoft Graph" → „Anwendungsberechtigungen":
    **`Sites.Selected`** (empfohlen) oder `Sites.Read.All` (alle Sites, etwa für eine Erprobung), dann
    „Administratorzustimmung erteilen". `Files.Read.All` ist nicht nötig und schlösse alle OneDrives
@@ -76,7 +77,9 @@ nicht.
 Weist Entra die App ab (Secret abgelaufen, falsch, Zustimmung fehlt), zeigen alle Bibliotheken des
 Zugangs „Abgelaufen" mit der Systemverwaltung als zuständig, bis ein neues Secret oder „Anmeldung
 testen" das aufhebt. „Alle Verbindungen trennen" löscht das Secret in OPAA; bei Microsoft widerruft
-es die Verwaltung in der App-Registrierung.
+es die Verwaltung in der App-Registrierung. Liefert Entra einen bekannten Fehlercode, nennt die
+Meldung die Ursache, etwa die Geheime ID statt des Werts; die Fälle stehen unter „Protokoll und
+Fehlerbilder".
 
 ## 4. Betriebsarten und Änderungserkennung
 
@@ -153,8 +156,21 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 
 ## 9. Protokoll und Fehlerbilder
 
+Weist Entra die Anmeldung des Zugangs ab, beginnt die Meldung mit „Der Token-Endpunkt … hat die
+App-Registrierung des Zugangs abgewiesen" oder „… hat die Anmeldung abgewiesen". Den Text von Entra
+gibt OPAA nicht weiter; das Log nennt zusätzlich den Entra-Fehlercode (`AADSTS…`) mit Trace- und
+Correlation-ID für eine Anfrage beim Microsoft-Support.
+
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
+| „Das Client-Secret wird nicht angenommen. Häufigste Ursache: …" | Am Zugang steht meist die Geheime ID (eine GUID) statt des Werts | neues Secret anlegen, den Wert kopieren und eintragen (siehe „Einrichtung") |
+| „Das Client-Secret ist abgelaufen …" | Ablaufdatum überschritten | neues Secret eintragen, „Ablaufdatum des Secrets" nachziehen |
+| „Der Anfrage fehlt das Client-Secret …" / „Der Anfrage fehlt ein Pflichtparameter …" | Secret oder Angabe am Zugang leer | Client-ID, Client-Secret und „Scopes" prüfen |
+| „Die Client-ID ist im Mandanten nicht bekannt …" | Objekt-ID statt Anwendungs-ID oder falscher Mandant | Anwendungs-ID (Client-ID) und Mandant prüfen |
+| „Der Mandant existiert nicht …" / „Die Angabe des Mandanten ist ungültig …" | Mandant vertippt oder in falscher Form | Verzeichnis-ID oder Domain wie `contoso.onmicrosoft.com` eintragen |
+| „Die App-Registrierung ist im Mandanten deaktiviert …" | Anwendung in Entra abgeschaltet | in Entra wieder aktivieren |
+| „Der Scope … des Zugangs wird nicht angenommen …" / „Die Ressource des Scopes ist im Mandanten nicht bekannt …" | „Scopes" am Zugang falsch gefüllt | „Scopes" leer lassen |
+| „Client-ID oder Client-Secret werden nicht angenommen. Häufige Ursachen: …" | Entra nannte keinen bekannten Fehlercode | die genannten Ursachen prüfen, Entra-Code im Log nachschlagen |
 | „Microsoft Graph hat das Zugriffstoken abgewiesen" | Secret, Mandant oder Zustimmung stimmen nicht | Zugang prüfen |
 | „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein." / „… Dokumentbibliothek ist für die Anwendung nicht sichtbar …" | Site nicht freigegeben oder Kennung falsch; der Bestand bleibt | Site freigeben (Abschnitt 2) |
 | „Microsoft Graph kennt die Site oder Bibliothek nicht …" | Adresse falsch oder Site gelöscht | Adresse prüfen |

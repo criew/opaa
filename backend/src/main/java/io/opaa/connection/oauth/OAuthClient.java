@@ -235,14 +235,16 @@ public final class OAuthClient {
         post(registration, endpoint, form, headers, timeout, TOKEN_ENDPOINT);
     JsonNode body = readBody(response);
     if (!response.isSuccess()) {
-      String error = field(body, "error");
+      TokenEndpointRefusal refusal = TokenEndpointRefusal.of(body);
+      String error = refusal.error();
       log.warn(
           "Token endpoint {} refused a {} of profile {} (HTTP {}, {})",
           endpoint,
           renewal ? "renewal" : "code exchange",
           registration.profileId(),
           response.statusCode(),
-          error.isEmpty() ? "no error code" : error);
+          refusal.logDetail());
+      String hint = refusal.hint(scopeOf(registration, auth), false);
       if (renewal && "invalid_grant".equals(error)) {
         throw new SignInRejectedException(
             "Der Anbieter nimmt die Zustimmung nicht mehr an; das Konto muss neu verbunden"
@@ -253,8 +255,9 @@ public final class OAuthClient {
         throw new SourceCredentialsException(
             "Der Token-Endpunkt "
                 + endpoint
-                + " hat die App-Registrierung des Zugangs abgewiesen: Client-ID oder"
-                + " Client-Secret werden nicht angenommen. Zuständig ist die Systemverwaltung.");
+                + " hat die App-Registrierung des Zugangs abgewiesen: "
+                + hint
+                + " Zuständig ist die Systemverwaltung.");
       }
       if ("invalid_grant".equals(error)) {
         throw new SourceCredentialsException(
@@ -268,7 +271,8 @@ public final class OAuthClient {
                   + endpoint
                   + " hat die Anmeldung abgewiesen (HTTP "
                   + response.statusCode()
-                  + ")."));
+                  + ")"
+                  + (hint != null ? ": " + hint + " Zuständig ist die Systemverwaltung." : ".")));
     }
     String accessToken = field(body, "access_token");
     if (accessToken.isBlank()) {

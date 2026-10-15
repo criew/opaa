@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * The OAuth client against a fake authorization server: the authorization request with PKCE, the
@@ -242,6 +244,68 @@ class OAuthClientTest {
         .isInstanceOf(SourceCredentialsException.class)
         .isNotInstanceOf(SignInRejectedException.class)
         .hasMessageNotContaining(grant.refreshToken());
+  }
+
+  /**
+   * A refused renewal names the Entra hint, or without an Entra code ({@code 0}) the hint of the
+   * error; never the person's grant, never the provider's description.
+   */
+  @ParameterizedTest(name = "{0} AADSTS{1}")
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "invalid_client      | 7000215 | Geheime ID",
+        "invalid_client      | 7000222 | abgelaufen",
+        "invalid_request     | 90002   | Verzeichnis-ID (Mandanten-ID)",
+        "unauthorized_client | 7000112 | deaktiviert",
+        "invalid_client      | 0       | Secret-ID statt Secret-Wert",
+        "unauthorized_client | 0       | Anmeldeweg (Grant-Typ)",
+      })
+  void aRefusedRegistrationNamesAConcreteHintForTheAdministration(
+      String error, int code, String hint) {
+    OAuthClient.Grant grant = consent();
+    if (code == 0) {
+      server.rejectWith(401, error);
+    } else {
+      server.rejectWithBody(
+          401, ClientCredentialsGrantTest.entraBody(error, "[" + code + "]", code));
+    }
+
+    assertThatThrownBy(
+            () ->
+                client.refresh(
+                    registration(ProfileEndpoints.NONE),
+                    fixed(new Revocation.None()),
+                    grant.refreshToken(),
+                    NOW))
+        .isInstanceOf(SourceCredentialsException.class)
+        .isNotInstanceOf(SignInRejectedException.class)
+        .hasMessageContaining(server.tokenEndpoint().toString())
+        .hasMessageContaining(hint)
+        .hasMessageContaining("Zuständig ist die Systemverwaltung.")
+        .hasMessageNotContaining("provider prose")
+        .hasMessageNotContaining(SECRET);
+  }
+
+  /** A delegated sign-in is never pointed to the app-only {@code .default} scope of Graph. */
+  @Test
+  void aRefusedScopeOfADelegatedSignInNamesTheScopeWithoutTheAppOnlyAdvice() {
+    OAuthClient.Grant grant = consent();
+    server.rejectWithBody(
+        400, ClientCredentialsGrantTest.entraBody("invalid_scope", "[70011]", 70011));
+
+    assertThatThrownBy(
+            () ->
+                client.refresh(
+                    registration(ProfileEndpoints.NONE),
+                    fixed(new Revocation.None()),
+                    grant.refreshToken(),
+                    NOW))
+        .isInstanceOf(SourceCredentialsException.class)
+        .isNotInstanceOf(SignInRejectedException.class)
+        .hasMessageContaining("Der Scope „files.read offline_access“ des Zugangs")
+        .hasMessageNotContaining("graph.microsoft.com")
+        .hasMessageNotContaining("provider prose");
   }
 
   @Test
