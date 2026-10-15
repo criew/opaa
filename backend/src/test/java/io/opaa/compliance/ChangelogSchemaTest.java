@@ -5,7 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.compliance.ChangelogSchema.Table;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /** How {@link ChangelogSchema} folds changelog SQL into tables and columns, and what it rejects. */
 class ChangelogSchemaTest {
@@ -63,24 +67,57 @@ class ChangelogSchemaTest {
   }
 
   @Test
-  void rejectsWhatItCannotRead() {
-    assertThatThrownBy(() -> ChangelogSchema.of(FILE, "CREATE TABLE a AS SELECT 1 AS id;"))
-        .hasMessageContaining("CREATE TABLE form");
-    assertThatThrownBy(
-            () ->
-                ChangelogSchema.of(
-                    FILE, "CREATE TABLE a (id int); ALTER TABLE a ATTACH PARTITION b FOR VALUES;"))
-        .hasMessageContaining("ALTER TABLE action 'ATTACH PARTITION");
-    assertThatThrownBy(
-            () ->
-                ChangelogSchema.of(
-                    FILE, "DO $$ BEGIN EXECUTE 'ALTER TABLE a ADD COLUMN b int'; END $$;"))
-        .hasMessageContaining("column DDL inside a procedural body");
-    assertThatThrownBy(
-            () -> ChangelogSchema.of(FILE, "DO $body$ BEGIN CREATE TABLE a (id int); END $body$;"))
-        .hasMessageContaining("CREATE TABLE inside a procedural body");
-    assertThatThrownBy(() -> ChangelogSchema.of(FILE, "ALTER TABLE missing ADD COLUMN x int;"))
-        .hasMessageContaining("table missing is not known");
+  void dropsThePublicSchemaAndHonoursQuotedNames() {
+    Map<String, Table> schema =
+        ChangelogSchema.of(
+            FILE,
+            """
+            CREATE TABLE public.users (id uuid);
+            ALTER TABLE public.users ADD COLUMN phone text;
+            ALTER TABLE users ADD COLUMN "Phone" text, ADD "Mobile";
+            /* outer /* nested */ CREATE TABLE hidden (a int); */
+            ALTER/* inline */TABLE users ADD COLUMN fax text;
+            """);
+
+    assertThat(schema).containsOnlyKeys("users");
+    assertThat(schema.get("users").columns())
+        .containsOnlyKeys("id", "phone", "Phone", "Mobile", "fax");
+  }
+
+  /** Each case is a probe changelog the reader must refuse rather than pass over. */
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("unreadable")
+  void rejectsWhatItCannotRead(String sql, String message) {
+    assertThatThrownBy(() -> ChangelogSchema.of(FILE, "CREATE TABLE users (id uuid);\n" + sql))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(message);
+  }
+
+  static Stream<Arguments> unreadable() {
+    String body = "table DDL inside a procedural body";
+    return Stream.of(
+        Arguments.of("CREATE TABLE a AS SELECT 1 AS id;", "CREATE TABLE form"),
+        Arguments.of("CREATE TABLE a (LIKE users);", "LIKE"),
+        Arguments.of("CREATE TABLE a (id int) INHERITS (users);", "CREATE TABLE clause"),
+        Arguments.of("ALTER TABLE users ATTACH PARTITION b FOR VALUES;", "ATTACH PARTITION"),
+        Arguments.of("ALTER TABLE users;", "ALTER TABLE form"),
+        Arguments.of("ALTER TABLE other.users ADD COLUMN phone text;", "outside the schema"),
+        Arguments.of("CREATE TABLE other.t (id int);", "outside the schema"),
+        Arguments.of("DROP TABLE other.users;", "outside the schema"),
+        Arguments.of("ALTER TABLE users ADD COLUMN;", "column name 'COLUMN'"),
+        Arguments.of("ALTER TABLE missing ADD COLUMN x int;", "table missing is not known"),
+        Arguments.of("DO $$ BEGIN ALTER TABLE users ADD phone text; END $$;", body),
+        Arguments.of("DO $$ BEGIN EXECUTE 'ALTER TABLE users RENAME a TO b'; END $$;", body),
+        Arguments.of("DO $$ BEGIN EXECUTE 'RENAME a TO b'; END $$;", body),
+        Arguments.of("DO $body$ BEGIN CREATE TABLE a (id int); END $body$;", body),
+        Arguments.of("DO $$ BEGIN CREATE UNLOGGED TABLE a (id int); END $$;", body),
+        Arguments.of("DO $$ BEGIN DROP TABLE users; END $$;", body),
+        Arguments.of(
+            "CREATE FUNCTION f() RETURNS void LANGUAGE sql AS $$ CREATE SCHEMA s $$;", body),
+        Arguments.of("SELECT * INTO users_copy FROM users;", "statement"),
+        Arguments.of("CREATE SCHEMA s CREATE TABLE t (id int);", "statement"),
+        Arguments.of("CREATE MATERIALIZED VIEW v AS SELECT id FROM users;", "statement"),
+        Arguments.of("/* unterminated /* nested */ CREATE TABLE t (id int);", "block comment"));
   }
 
   @Test

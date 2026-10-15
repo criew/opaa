@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import liquibase.change.Change;
@@ -22,86 +23,127 @@ import liquibase.resource.ResourceAccessor;
  * The tables and columns the Liquibase changelog leaves behind, read from its SQL without a
  * database: {@code CREATE TABLE}, {@code ALTER TABLE ... ADD/DROP/RENAME [COLUMN]}, {@code ALTER
  * TABLE ... RENAME TO} and {@code DROP TABLE}, folded in master order. Partitions count as their
- * parent. Fails closed: a change that is no {@code sql:} block (ADR-0034), an {@code ALTER TABLE}
- * action or {@code CREATE TABLE} form it does not know, or table DDL inside a procedural body other
- * than partition maintenance throws instead of being skipped. {@code ChangelogSchemaParityTest}
- * compares the result with the catalog of a migrated database.
+ * parent; {@code public.} is dropped from a table name, any other schema is rejected.
+ *
+ * <p>Throws instead of skipping: on a change that is no {@code sql:} block (ADR-0034); on every
+ * statement starting with {@code CREATE TABLE}, {@code ALTER TABLE} or {@code DROP TABLE} that it
+ * cannot read completely; on {@code CREATE SCHEMA}, {@code CREATE MATERIALIZED VIEW} and top-level
+ * {@code SELECT ... INTO}; and in a procedural body ({@code DO}, function) on every {@code CREATE
+ * TABLE}, {@code ALTER TABLE}, {@code DROP TABLE}, {@code CREATE SCHEMA} and {@code RENAME} but the
+ * partition maintenance on run-time names ({@code %I}, {@code %s}). Dynamic SQL assembled from
+ * fragments stays unseen; {@code ChangelogSchemaParityTest} compares the result with the catalog of
+ * a migrated database.
  */
 public final class ChangelogSchema {
 
   /** The master changelog on the classpath. */
   public static final String MASTER = "db/changelog/db.changelog-master.yaml";
 
-  private static final String IDENTIFIER = "(\"(?:[^\"]|\"\")+\"|[A-Za-z_][A-Za-z0-9_$]*)";
+  /**
+   * Tables of the delivered schema no changelog creates, with their columns: Spring AI's {@code
+   * PgVectorStore} creates {@code vector_store} at start-up; {@code ChangelogSchemaParityTest}
+   * holds the columns against the table it creates.
+   */
+  public static final Map<String, List<String>> TABLES_OUTSIDE_THE_CHANGELOG =
+      Map.of("vector_store", List.of("id", "content", "metadata", "embedding"));
+
+  private static final int FLAGS = Pattern.CASE_INSENSITIVE | Pattern.DOTALL;
+
+  private static final String IDENT = "(?:\"(?:[^\"]|\"\")+\"|[A-Za-z_][A-Za-z0-9_$]*)";
+
+  private static final String IDENTIFIER = "(" + IDENT + ")";
+
+  /** A table name, optionally schema-qualified. */
+  private static final String TABLE_NAME = "(" + IDENT + "(?:\\s*\\.\\s*" + IDENT + ")?)";
+
+  private static final Pattern QUALIFIED =
+      Pattern.compile(IDENTIFIER + "\\s*\\.\\s*" + IDENTIFIER, Pattern.DOTALL);
+
+  private static final Pattern SIMPLE = Pattern.compile(IDENT, Pattern.DOTALL);
+
+  private static final Pattern STARTS_CREATE_TABLE =
+      Pattern.compile(
+          "CREATE\\s+(?:(?:GLOBAL|LOCAL)\\s+)?(?:(?:TEMP|TEMPORARY|UNLOGGED)\\s+)?TABLE\\b.*",
+          FLAGS);
+
+  private static final Pattern STARTS_ALTER_TABLE = Pattern.compile("ALTER\\s+TABLE\\b.*", FLAGS);
+
+  private static final Pattern STARTS_DROP_TABLE = Pattern.compile("DROP\\s+TABLE\\b.*", FLAGS);
+
+  /** Statements that create or fill tables in a way this reader does not follow. */
+  private static final Pattern REJECTED =
+      Pattern.compile(
+          "(?:CREATE\\s+SCHEMA\\b|CREATE\\s+MATERIALIZED\\s+VIEW\\b|SELECT\\b.*\\bINTO\\b).*",
+          FLAGS);
 
   private static final Pattern CREATE_TABLE =
       Pattern.compile(
-          "CREATE\\s+(?:(?:GLOBAL|LOCAL)\\s+)?(?:TEMP\\s+|TEMPORARY\\s+|UNLOGGED\\s+)?TABLE\\s+"
+          "CREATE\\s+(?:(?:GLOBAL|LOCAL)\\s+)?(?:(?:TEMP|TEMPORARY|UNLOGGED)\\s+)?TABLE\\s+"
               + "(?:IF\\s+NOT\\s+EXISTS\\s+)?"
-              + IDENTIFIER
+              + TABLE_NAME
               + "\\s*(.*)",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          FLAGS);
 
   private static final Pattern ALTER_TABLE =
       Pattern.compile(
-          "ALTER\\s+TABLE\\s+(IF\\s+EXISTS\\s+)?(?:ONLY\\s+)?" + IDENTIFIER + "\\s+(.*)",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          "ALTER\\s+TABLE\\s+(IF\\s+EXISTS\\s+)?(?:ONLY\\s+)?" + TABLE_NAME + "\\s+(.*)", FLAGS);
 
   private static final Pattern DROP_TABLE =
       Pattern.compile(
-          "DROP\\s+TABLE\\s+(IF\\s+EXISTS\\s+)?(.*?)(?:\\s+(?:CASCADE|RESTRICT))?",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          "DROP\\s+TABLE\\s+(IF\\s+EXISTS\\s+)?(.*?)(?:\\s+(?:CASCADE|RESTRICT))?", FLAGS);
 
   private static final Pattern RENAME_TABLE =
-      Pattern.compile("RENAME\\s+TO\\s+" + IDENTIFIER, Pattern.CASE_INSENSITIVE);
+      Pattern.compile("RENAME\\s+TO\\s+" + TABLE_NAME, FLAGS);
 
   private static final Pattern ADD_COLUMN =
       Pattern.compile(
-          "ADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?" + IDENTIFIER + "\\b.*",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          "ADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?" + IDENTIFIER + "(?=\\s|$).*", FLAGS);
 
   private static final Pattern DROP_COLUMN =
       Pattern.compile(
           "DROP\\s+(?:COLUMN\\s+)?(IF\\s+EXISTS\\s+)?"
               + IDENTIFIER
               + "(?:\\s+(?:CASCADE|RESTRICT))?",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          FLAGS);
 
   private static final Pattern RENAME_COLUMN =
-      Pattern.compile(
-          "RENAME\\s+(?:COLUMN\\s+)?" + IDENTIFIER + "\\s+TO\\s+" + IDENTIFIER,
-          Pattern.CASE_INSENSITIVE);
+      Pattern.compile("RENAME\\s+(?:COLUMN\\s+)?" + IDENTIFIER + "\\s+TO\\s+" + IDENTIFIER, FLAGS);
 
   /** Actions that add, drop or rename a constraint rather than a column. */
   private static final Pattern CONSTRAINT_ACTION =
       Pattern.compile(
           "(?:ADD|DROP|RENAME)\\s+(?:CONSTRAINT|PRIMARY\\s+KEY|UNIQUE|CHECK|FOREIGN\\s+KEY|EXCLUDE)\\b.*",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          FLAGS);
 
   /** Actions that leave the set of tables and columns as it is. */
   private static final Pattern NEUTRAL_ACTION =
       Pattern.compile(
           "(?:ALTER|OWNER\\s+TO|ENABLE|DISABLE|FORCE|NO\\s+FORCE|SET|RESET|VALIDATE|CLUSTER"
               + "|REPLICA\\s+IDENTITY)\\b.*",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          FLAGS);
 
   /** Elements of a {@code CREATE TABLE} body that are no column. */
   private static final Pattern TABLE_CONSTRAINT =
       Pattern.compile(
-          "(?:CONSTRAINT|PRIMARY\\s+KEY|UNIQUE|CHECK|FOREIGN\\s+KEY|EXCLUDE)\\b.*",
-          Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+          "(?:CONSTRAINT|PRIMARY\\s+KEY|UNIQUE|CHECK|FOREIGN\\s+KEY|EXCLUDE)\\b.*", FLAGS);
 
-  private static final Pattern BODY_CREATE_TABLE =
+  /** Table DDL in a procedural body; each occurrence must be {@link #BODY_ALLOWED}. */
+  private static final Pattern BODY_TABLE_DDL =
       Pattern.compile(
-          "CREATE\\s+(?:UNLOGGED\\s+)?TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?\\S+\\s+(PARTITION\\s+OF)?",
-          Pattern.CASE_INSENSITIVE);
+          "\\b(?:CREATE(?:\\s+\\w+){0,3}?\\s+TABLE|ALTER\\s+TABLE|DROP\\s+TABLE|CREATE\\s+SCHEMA"
+              + "|RENAME)\\b",
+          FLAGS);
 
-  private static final Pattern BODY_DROP_TABLE =
-      Pattern.compile("DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(%)?", Pattern.CASE_INSENSITIVE);
-
-  private static final Pattern BODY_COLUMN_DDL =
+  /** The partition maintenance of the protocol tables, on names given at run time. */
+  private static final Pattern BODY_ALLOWED =
       Pattern.compile(
-          "\\b(?:ADD|DROP|RENAME)\\s+COLUMN\\b|\\bRENAME\\s+TO\\b", Pattern.CASE_INSENSITIVE);
+          "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?%[Is]\\s+PARTITION\\s+OF\\b"
+              + "|ALTER\\s+TABLE\\s+(?:ONLY\\s+)?%[Is]\\s+OWNER\\s+TO\\b"
+              + "|DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?%[Is]\\b",
+          FLAGS);
+
+  /** Words a column pattern must never take for an unquoted column name. */
+  private static final Set<String> KEYWORDS = Set.of("column", "constraint", "if", "only");
 
   /** A table with its columns in creation order, each mapped to the file that added it. */
   public record Table(String name, String file, Map<String, String> columns) {
@@ -180,20 +222,32 @@ public final class ChangelogSchema {
   }
 
   private void applyStatement(String statement) {
-    Matcher create = CREATE_TABLE.matcher(statement);
-    if (create.matches()) {
-      createTable(name(create.group(1)), create.group(2).strip(), statement);
-      return;
+    if (REJECTED.matcher(statement).matches()) {
+      throw unsupported("statement", statement);
     }
-    Matcher alter = ALTER_TABLE.matcher(statement);
-    if (alter.matches()) {
-      alterTable(alter.group(1) != null, name(alter.group(2)), alter.group(3).strip(), statement);
-      return;
-    }
-    Matcher drop = DROP_TABLE.matcher(statement);
-    if (drop.matches()) {
+    if (STARTS_CREATE_TABLE.matcher(statement).matches()) {
+      Matcher create = CREATE_TABLE.matcher(statement);
+      if (!create.matches()) {
+        throw unsupported("CREATE TABLE form", statement);
+      }
+      createTable(tableName(create.group(1), statement), create.group(2).strip(), statement);
+    } else if (STARTS_ALTER_TABLE.matcher(statement).matches()) {
+      Matcher alter = ALTER_TABLE.matcher(statement);
+      if (!alter.matches()) {
+        throw unsupported("ALTER TABLE form", statement);
+      }
+      alterTable(
+          alter.group(1) != null,
+          tableName(alter.group(2), statement),
+          alter.group(3).strip(),
+          statement);
+    } else if (STARTS_DROP_TABLE.matcher(statement).matches()) {
+      Matcher drop = DROP_TABLE.matcher(statement);
+      if (!drop.matches()) {
+        throw unsupported("DROP TABLE form", statement);
+      }
       for (String table : splitTopLevel(drop.group(2))) {
-        String name = name(table.strip());
+        String name = tableName(table.strip(), statement);
         if (columns.remove(name) == null && drop.group(1) == null) {
           throw unknown("table " + name, statement);
         }
@@ -203,7 +257,7 @@ public final class ChangelogSchema {
   }
 
   private void createTable(String table, String rest, String statement) {
-    if (rest.regionMatches(true, 0, "PARTITION OF", 0, "PARTITION OF".length())) {
+    if (Pattern.compile("PARTITION\\s+OF\\b.*", FLAGS).matcher(rest).matches()) {
       return;
     }
     if (!rest.startsWith("(")) {
@@ -211,13 +265,14 @@ public final class ChangelogSchema {
     }
     int close = matchingParenthesis(rest);
     String after = rest.substring(close + 1).strip();
-    if (!after.isEmpty() && !after.regionMatches(true, 0, "PARTITION BY", 0, 12)) {
+    if (!after.isEmpty()
+        && !Pattern.compile("PARTITION\\s+BY\\b.*", FLAGS).matcher(after).matches()) {
       throw unsupported("CREATE TABLE clause '" + after + "'", statement);
     }
     if (columns.containsKey(table)) {
-      if (Pattern.compile("^CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS", Pattern.CASE_INSENSITIVE)
+      if (Pattern.compile("CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\b.*", FLAGS)
           .matcher(statement)
-          .find()) {
+          .matches()) {
         return;
       }
       throw unsupported("second CREATE TABLE of " + table, statement);
@@ -228,14 +283,14 @@ public final class ChangelogSchema {
       if (trimmed.isEmpty() || TABLE_CONSTRAINT.matcher(trimmed).matches()) {
         continue;
       }
-      if (trimmed.regionMatches(true, 0, "LIKE", 0, 4)) {
+      if (Pattern.compile("LIKE\\b.*", FLAGS).matcher(trimmed).matches()) {
         throw unsupported("CREATE TABLE ... (LIKE ...)", statement);
       }
-      Matcher column = Pattern.compile(IDENTIFIER).matcher(trimmed);
+      Matcher column = Pattern.compile(IDENTIFIER + "(?=\\s|$)").matcher(trimmed);
       if (!column.lookingAt()) {
         throw unsupported("column definition '" + trimmed + "'", statement);
       }
-      tableColumns.put(name(column.group(1)), file);
+      tableColumns.put(columnName(column.group(1), statement), file);
     }
     columns.put(table, tableColumns);
     tableFiles.put(table, file);
@@ -251,7 +306,7 @@ public final class ChangelogSchema {
     }
     Matcher renameTable = RENAME_TABLE.matcher(actions);
     if (renameTable.matches()) {
-      String target = name(renameTable.group(1));
+      String target = tableName(renameTable.group(1), statement);
       columns.put(target, columns.remove(table));
       tableFiles.put(target, tableFiles.remove(table));
       return;
@@ -265,18 +320,18 @@ public final class ChangelogSchema {
       Matcher drop = DROP_COLUMN.matcher(action);
       Matcher rename = RENAME_COLUMN.matcher(action);
       if (add.matches()) {
-        tableColumns.putIfAbsent(name(add.group(1)), file);
+        tableColumns.putIfAbsent(columnName(add.group(1), statement), file);
       } else if (drop.matches()) {
-        String column = name(drop.group(2));
+        String column = columnName(drop.group(2), statement);
         if (tableColumns.remove(column) == null && drop.group(1) == null) {
           throw unknown("column " + table + "." + column, statement);
         }
       } else if (rename.matches()) {
-        String source = name(rename.group(1));
+        String source = columnName(rename.group(1), statement);
         if (tableColumns.remove(source) == null) {
           throw unknown("column " + table + "." + source, statement);
         }
-        tableColumns.put(name(rename.group(2)), file);
+        tableColumns.put(columnName(rename.group(2), statement), file);
       } else {
         throw unsupported("ALTER TABLE action '" + action + "'", statement);
       }
@@ -284,26 +339,43 @@ public final class ChangelogSchema {
   }
 
   /**
-   * Procedural bodies ({@code DO}, functions) may only create partitions and drop tables named at
-   * run time - the partition maintenance of the protocol tables; any other table DDL is invisible
-   * to this reader and therefore rejected.
+   * A procedural body ({@code DO}, function) holds no table DDL but the partition maintenance of
+   * the protocol tables on run-time names; anything else would be invisible to this reader.
    */
   private void checkProceduralBody(String body) {
-    Matcher create = BODY_CREATE_TABLE.matcher(body);
-    while (create.find()) {
-      if (create.group(1) == null) {
-        throw unsupported("CREATE TABLE inside a procedural body (only partitions)", body);
+    Matcher ddl = BODY_TABLE_DDL.matcher(body);
+    while (ddl.find()) {
+      Matcher allowed = BODY_ALLOWED.matcher(body);
+      allowed.region(ddl.start(), body.length());
+      if (!allowed.lookingAt()) {
+        throw unsupported(
+            "table DDL inside a procedural body (only partition maintenance)",
+            body.substring(ddl.start()));
       }
     }
-    Matcher drop = BODY_DROP_TABLE.matcher(body);
-    while (drop.find()) {
-      if (drop.group(1) == null) {
-        throw unsupported("DROP TABLE of a named table inside a procedural body", body);
+  }
+
+  /** A table name without {@code public.}; any other schema is rejected. */
+  private String tableName(String raw, String statement) {
+    Matcher qualified = QUALIFIED.matcher(raw);
+    if (qualified.matches()) {
+      if (!name(qualified.group(1)).equals("public")) {
+        throw unsupported("table outside the schema of the installation", statement);
       }
+      return name(qualified.group(2));
     }
-    if (BODY_COLUMN_DDL.matcher(body).find()) {
-      throw unsupported("column DDL inside a procedural body", body);
+    if (!SIMPLE.matcher(raw).matches()) {
+      throw unsupported("table name '" + raw + "'", statement);
     }
+    return name(raw);
+  }
+
+  private String columnName(String raw, String statement) {
+    String column = name(raw);
+    if (!raw.startsWith("\"") && KEYWORDS.contains(column)) {
+      throw unsupported("column name '" + raw + "'", statement);
+    }
+    return column;
   }
 
   private IllegalStateException unsupported(String what, String statement) {
@@ -370,8 +442,9 @@ public final class ChangelogSchema {
   }
 
   /**
-   * SQL split into top-level statements, with comments removed, string literals emptied and
-   * dollar-quoted bodies taken out; the bodies are kept apart for {@link #checkProceduralBody}.
+   * SQL split into top-level statements, with comments removed (block comments nest, as in
+   * PostgreSQL), string literals emptied and dollar-quoted bodies taken out; the bodies are kept
+   * apart for {@link #checkProceduralBody}.
    */
   private record SqlText(List<String> statements, List<String> bodies) {
 
@@ -386,8 +459,8 @@ public final class ChangelogSchema {
           int end = sql.indexOf('\n', i);
           i = end < 0 ? sql.length() : end;
         } else if (c == '/' && sql.startsWith("/*", i)) {
-          int end = sql.indexOf("*/", i + 2);
-          i = end < 0 ? sql.length() : end + 2;
+          i = skipBlockComment(sql, i);
+          current.append(' ');
         } else if (c == '\'') {
           i = skipQuoted(sql, i, '\'');
           current.append("''");
@@ -416,6 +489,25 @@ public final class ChangelogSchema {
       statements.add(current.toString());
       return new SqlText(
           statements.stream().filter(statement -> !statement.isBlank()).toList(), bodies);
+    }
+
+    private static int skipBlockComment(String sql, int start) {
+      int depth = 0;
+      int i = start;
+      while (i < sql.length()) {
+        if (sql.startsWith("/*", i)) {
+          depth++;
+          i += 2;
+        } else if (sql.startsWith("*/", i)) {
+          i += 2;
+          if (--depth == 0) {
+            return i;
+          }
+        } else {
+          i++;
+        }
+      }
+      throw new IllegalStateException("unterminated block comment in " + abbreviate(sql));
     }
 
     private static int skipQuoted(String sql, int start, char quote) {

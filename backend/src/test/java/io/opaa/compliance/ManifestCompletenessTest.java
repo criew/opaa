@@ -45,11 +45,11 @@ class ManifestCompletenessTest {
                 + FILE
                 + ").\n"
                 + "  In backend/src/main/resources/compliance/manifest/protocol.yaml, data entry"
-                + " 'audit-log', table 'audit_log', replace the list that fits each column -"
-                + " personalColumns if it"
-                + " identifies a person or records what a person did or when (id, name, address,"
-                + " free text, time of an action), nonPersonalColumns otherwise:\n"
+                + " 'audit-log', table 'audit_log', either, if the column identifies a person or"
+                + " records what a person did or when (id, name, address, free text, time of an"
+                + " action), replace\n"
                 + "        personalColumns: [actor_ref, subject_ref, phone]\n"
+                + "  or otherwise replace\n"
                 + "        nonPersonalColumns: [event_id, recorded_at, phone]");
   }
 

@@ -29,19 +29,12 @@ final class ManifestCompleteness {
 
   static final String CONVENTION = "backend/docs/compliance-manifest.md";
 
-  /**
-   * Tables no changelog creates: Spring AI's {@code PgVectorStore} creates {@code vector_store} at
-   * start-up with these columns.
-   */
-  static final Map<String, List<String>> TABLES_OUTSIDE_THE_CHANGELOG =
-      Map.of("vector_store", List.of("id", "content", "metadata", "embedding"));
-
   private ManifestCompleteness() {}
 
   /** The tables of the delivered schema: the changelog's and those created outside it. */
   static Map<String, Table> deliveredSchema() {
     Map<String, Table> schema = new LinkedHashMap<>(ChangelogSchema.read());
-    TABLES_OUTSIDE_THE_CHANGELOG.forEach(
+    ChangelogSchema.TABLES_OUTSIDE_THE_CHANGELOG.forEach(
         (name, columns) -> {
           Map<String, String> sources = new LinkedHashMap<>();
           columns.forEach(column -> sources.put(column, "Spring AI PgVectorStore"));
@@ -218,13 +211,16 @@ final class ManifestCompleteness {
           + flow(place.nonPersonal());
     }
     return head
-        + "replace the list that fits each column - personalColumns if it identifies a person or"
-        + " records what a person did or when (id, name, address, free text, time of an action),"
-        + " nonPersonalColumns otherwise:\n"
+        + "either, if the column identifies a person or records what a person did or when (id,"
+        + " name, address, free text, time of an action), replace\n"
         + "        personalColumns: "
         + flow(append(place.personal(), missing))
-        + "\n        nonPersonalColumns: "
-        + flow(append(place.nonPersonal(), missing));
+        + "\n  or otherwise replace\n"
+        + "        nonPersonalColumns: "
+        + flow(append(place.nonPersonal(), missing))
+        + (missing.size() > 1
+            ? "\n  Several new columns: append each to the list that fits it."
+            : "");
   }
 
   private static String missingTable(

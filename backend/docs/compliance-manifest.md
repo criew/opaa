@@ -54,10 +54,14 @@ die nicht zu einem bestehenden Datum passt, bekommt ein neues Datum mit allen Pf
 
 - Der Wächter prüft, **dass** ein Eintrag existiert, nicht, ob er stimmt. Ob Personenbezug, Zweck und Sichtbarkeit
   zutreffen, sichern Review und die wöchentliche Drift-Routine.
-- Das Schema liest `ChangelogSchema` aus den `sql:`-Blöcken des Master-Changelogs, ohne Datenbank. DDL, die es nicht
-  sicher lesen kann (native Liquibase-Changes, `CREATE TABLE … AS`, Spalten-DDL in `DO`-Blöcken oder Funktionen),
-  lässt den Test scheitern statt sie zu überspringen. `ChangelogSchemaParityTest` (`io.opaa.migration`, braucht
-  Docker) vergleicht das Ergebnis mit dem Katalog einer migrierten Datenbank.
+- Das Schema liest `ChangelogSchema` aus den `sql:`-Blöcken des Master-Changelogs, ohne Datenbank. Es scheitert statt
+  zu überspringen: bei nativen Liquibase-Changes, bei jeder `CREATE TABLE`-, `ALTER TABLE`- oder `DROP TABLE`-Anweisung,
+  die es nicht vollständig liest, bei einem anderen Schema als `public`, bei `CREATE SCHEMA`,
+  `CREATE MATERIALIZED VIEW` und `SELECT … INTO` sowie bei jeder Tabellen-DDL in `DO`-Blöcken und Funktionen außer
+  der Partitionspflege der Protokolltabellen. Aus Bruchstücken zusammengesetztes dynamisches SQL sieht es nicht.
+  `ChangelogSchemaParityTest` (`io.opaa.migration`, braucht Docker, läuft in der CI) vergleicht das Ergebnis mit dem
+  Katalog einer migrierten Datenbank.
 - `vector_store` legt Spring AI an, nicht Liquibase; seine Spalten stehen fest in
-  `ManifestCompleteness.TABLES_OUTSIDE_THE_CHANGELOG`.
+  `ChangelogSchema.TABLES_OUTSIDE_THE_CHANGELOG`. `ChangelogSchemaParityTest` lässt Spring AI die Tabelle anlegen und
+  vergleicht die Spalten; ändert ein Spring-AI-Update sie, scheitert er dort.
 - Konfigurationsschlüssel (#2548) und ausgehende Datenflüsse (#2549) prüft der Wächter noch nicht.

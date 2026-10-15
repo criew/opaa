@@ -78,9 +78,10 @@ Konstantenbestand und damit eine andere Prüfsumme erzeugen.
 Spalte steht genau einmal, als `personalColumns` oder `nonPersonalColumns` ihrer Tabelle oder in der
 Spaltenliste unter `nonPersonalTables`; so fällt auch eine neue Spalte einer Tabelle ohne
 Personenbezug auf. Das Schema liest `ChangelogSchema` aus den `sql:`-Blöcken des Master-Changelogs
-(ADR-0034) und scheitert an DDL, die es nicht sicher lesen kann. Ein Test gegen eine Testcontainers-
-Datenbank würde ohne Docker still übersprungen; der Abgleich des Lesers mit dem Katalog einer
-migrierten Datenbank (`ChangelogSchemaParityTest`) läuft deshalb getrennt davon in der CI. Jede
+(ADR-0034); jede Tabellen-DDL, die es nicht vollständig liest, auch in Prozedurrümpfen außer der
+Partitionspflege, lässt es scheitern. Ein Test gegen eine Testcontainers-Datenbank würde ohne
+Docker still übersprungen; der Abgleich des Lesers und der festen Spalten von `vector_store` mit dem
+Katalog einer migrierten Datenbank (`ChangelogSchemaParityTest`) läuft deshalb getrennt in der CI. Jede
 Meldung nennt Datei und einzufügendes YAML; die Konvention steht in `backend/docs/compliance-manifest.md`.
 
 ## Konsequenzen
