@@ -23,15 +23,36 @@ flowchart LR
     BE --> DB[(PostgreSQL<br/>mit pgvector)]
     BE --> O[(Original-<br/>ablage)]
     BE --> SMTP[Mailserver]
-    BE -.->|Ausgangs-<br/>proxy| M[Modelle]
+    BE -.->|Ausgangs-<br/>proxy| M
     BE -.-> I[Identitäts-<br/>anbieter]
-    BE -.-> Q[Quellen]
+    BE -.-> QW
+    BE -.-> QC
+    BE -.-> QA
+    BE --> QS
     B -.->|Anmeldung| I
+    subgraph M[Modelle]
+        MC[Chat]
+        ME[Embedding]
+        MR[Reranking]
+        MT[Transkription]
+    end
+    subgraph Q[Quellen]
+        QW[Webverzeichnis<br/>und Feeds]
+        QC[Wiki]
+        QA[Ablagedienste]
+        QS[SMB-Freigaben]
+    end
 ```
 
 Gestrichelt sind die Verbindungen des Backends, die über den Ausgangsproxy gehen können, und die
 Anmeldung des Browsers beim Identitätsanbieter. Die Originalablage ist ein Verzeichnis oder ein
-Objektspeicher; die Modelle sind Chat, Embedding und Reranking.
+Objektspeicher. Die Modelle sind die vier Modellrollen; Chat und Embedding sind Pflicht, Reranking
+und Transkription optional. Die Quellen sind nach der Art ihrer Verbindung gruppiert: Webverzeichnisse
+und Feeds, Confluence als Wiki, Ablagedienste wie S3, SharePoint oder Nextcloud über deren
+Schnittstelle und Windows-Dateifreigaben über SMB, das nie über den Ausgangsproxy geht. Ein
+Verzeichnis im Dateisystem liest das Backend lokal. Alle Quellen nennt die Übersicht der
+[Konnektoren](konnektoren/README.md); jede einzelne Verbindung nach außen mit ihren Daten listet
+das Faktenblatt `datenfluesse` (siehe [Nachvollziehbarkeit](nachvollziehbarkeit.md)).
 
 | Baustein | Aufgabe | Pflicht | Kapitel |
 |---|---|---|---|
@@ -39,7 +60,7 @@ Objektspeicher; die Modelle sind Chat, Embedding und Reranking.
 | Backend | die Anwendung: Suche, Antwort, Indexierung, Rechte, Verwaltung | ja, genau eine Instanz | [Backend-Laufzeitimage](#backend-laufzeitimage) |
 | PostgreSQL mit pgvector | die einzige Wahrheit: Dokumente, Chunks samt Vektoren, Volltext, Metadaten, Rechte, Chats, Protokolle | ja | [Datenbank](datenbank.md) |
 | Originalablage | die Originale hochgeladener Dokumente, in einem Verzeichnis, auf einem Netzlaufwerk oder in einem Objektspeicher | ja, sobald hochgeladen wird | [Originalablage](originalablage.md) |
-| Modelle | Chat, Einbettung und optional Reranking über openai-kompatible Endpunkte, im Haus oder außerhalb | Chat und Einbettung | [Modelle](modelle.md) |
+| Modelle | Chat, Einbettung und optional Reranking und Transkription über openai-kompatible Endpunkte, im Haus oder außerhalb | Chat und Einbettung | [Modelle](modelle.md) |
 | Identitätsanbieter | Anmeldung über OpenID Connect; ohne ihn melden sich nur lokale Konten an | nein | [Authentifizierung](authentifizierung.md) |
 | Mailserver | Einladungen, Rücksetzlinks, Benachrichtigungen | nein | [E-Mail-Versand](e-mail.md) |
 | Quellen | Dateisysteme, Webverzeichnisse, Feeds, Confluence, Objektspeicher und weitere, angebunden über Konnektoren | nein | [Konnektoren](konnektoren/README.md) |
@@ -352,7 +373,7 @@ CI-Laufs auf `main`.
 
 - **Was über den Proxy geht:** jede HTTP(S)-Verbindung des Backends — Quellen der Bibliotheken samt
   Weiterleitungen und Original-Abruf, OAuth- und Token-Endpunkte der Zugänge, Dienstkonto-Tokens,
-  MCP-Server, Chat-, Einbettungs- und Rerank-Endpunkte samt Verbindungstest, Discovery-Dokument und
+  MCP-Server, Chat-, Einbettungs-, Rerank- und Transkriptions-Endpunkte samt Verbindungstest, Discovery-Dokument und
   Signaturschlüssel der Identitätsanbieter und der Verzeichnisabgleich. `http`-Ziele gehen als
   gewöhnliche Proxy-Anfrage hinaus, `https`-Ziele als Tunnel (`CONNECT`).
 - **Was nie über den Proxy geht:** Ziele auf `localhost` und Loopback-Adressen, die Datenbank, der

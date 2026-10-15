@@ -74,6 +74,8 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
   - [Authentifizierung](authentifizierung.md) — Betriebsmodi, Identitätsanbieter und
     Verzeichnisabgleich, Härtung des Keycloak, Erststart, Notfallprozedur, Testkonten
   - [Branding](branding.md) — Produktname, Farben und Bilder der Installation
+  - [Nachvollziehbarkeit](nachvollziehbarkeit.md) — was OPAA aus dem Code nachweist: Faktenblätter,
+    wo sie liegen, wie man sie erzeugt, was bei jeder Änderung geprüft wird
 - **Konten und Rechte**
   - [Benutzerverwaltung](benutzerverwaltung.md) — lokale Konten, Rollen und Anlegerechte,
     Selbstregistrierung, verbundene Konten
@@ -123,6 +125,7 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
 | Ein Modell anbinden oder wechseln | [Modelle](modelle.md) |
 | Einen Identitätsanbieter anbinden | [Authentifizierung](authentifizierung.md): „OIDC (Keycloak)" → [Berechtigungen](berechtigungen.md): „Woher Gruppen kommen" |
 | Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](konfiguration.md): „Grenzwerte im Überblick" |
+| Datenschutz, Personalrat oder Informationssicherheit fragen, welche Daten anfallen und wohin sie gehen | [Nachvollziehbarkeit](nachvollziehbarkeit.md) |
 | Die Installation zeigt eine Störung | [Betriebsübersicht](betrieb.md): „Fehlerbehebung", „Logs und Metriken" |
 
 ## 5. Glossar
@@ -152,6 +155,8 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Suchbereich** | Die Bibliotheken, in denen eine Frage sucht; steht in der Chip-Leiste des Chats (Standard `@Space-Wissen`) und ist nie weiter als Zuordnung und Leserechte |
 | **Fundstelle** (Beleg) | Eine Quellenangabe unter einer Antwort, eine je Dokument, mit Rang, Ortsangabe und Kernfeldern |
 | **Ortsangabe** | Die Stelle eines Chunks im Dokument, etwa „S. 3 · Abschn. Fristen" |
+| **Fakten-Manifest** | Die Beschreibung im Code, welche Daten OPAA speichert, protokolliert, wem es sie zeigt, wohin es sie sendet und was voreingestellt ist; Prüfungen im Build halten sie mit dem Code gleich |
+| **Faktenblatt** | Ein aus dem Fakten-Manifest erzeugtes Dokument zu einem Thema, etwa Datenflüsse oder Fristen, mit Version und Commit im Kopf ([Nachvollziehbarkeit](nachvollziehbarkeit.md)) |
 | **Modellrolle** | Eine der vier Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking, Transkription |
 | **Rechteprofil** | Eine Gruppe samt der Bibliotheken, die sie lesen darf; der voreingestellte Kontext des Diagnosewerkzeugs |
 | **Diagnosesperre** | Grundzustand jeder Bibliothek, der sie aus einer Diagnose im Rechtekontext einer benannten Person heraushält |
