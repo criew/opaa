@@ -71,6 +71,23 @@ Fehlermeldung derselben Klasse ändert sie ebenfalls. In der Datenbank ist sie S
 Gradle-Toolchain; ein anderer Compiler (ECJ in Eclipse oder VS Code) kann einen abweichenden
 Konstantenbestand und damit eine andere Prüfsumme erzeugen.
 
+### 8. Konfigurationsschlüssel und Voreinstellungen
+
+Der Build liefert `META-INF/spring-configuration-metadata.json`: `spring-boot-configuration-processor`
+in einem eigenen Lauf über alle Quellen, ergänzt um `additional-spring-configuration-metadata.json`
+für Schlüssel ohne `@ConfigurationProperties`-Typ und um den Standardwert aus dem Basisdokument von
+`application.yml`. Jeder `opaa.*`-Schlüssel trägt `@DataImpact` oder `@NoDataImpact(Grund)` an seiner
+Komponente oder pauschal an seinem Typ; Schalter, Modelle, Adressen und Fristen entscheidet die
+Komponente selbst. Datenwirksam ist ein Standardwert, der bestimmt, was über Personen anfällt, wie
+lange es bleibt, wer es sieht, was sich auswerten lässt oder wohin Daten gehen; Schutzgrenzen,
+Zeitlimits, Suchgüte und Geheimnisse sind es nicht. Ein datenwirksamer Schlüssel steht mit seinem
+Standardwert unter `settings`, ebenso Modell und Adresse jeder Modellrolle (Standardmodelle). Setzt
+das Helm-Chart den Schlüssel, nennt der Eintrag Wert und Voreinstellung aus `values.yaml` (`helm`).
+
+`ConfigurationSettingsTest` prüft alles davon. Die Markierung steht dort, wo ein neuer Schlüssel
+entsteht, damit sie niemand in einer zweiten Liste nachtragen muss. Der Prozessor läuft getrennt,
+weil Gradle beim inkrementellen Übersetzen unveränderte Typen ohne Javadoc nachverarbeitet.
+
 ## Konsequenzen
 
 Einfacher: Ein Bereich wächst ohne Konflikt in seiner eigenen Datei. Faktenblätter, Delta und
@@ -78,7 +95,8 @@ Instanzexport lesen typisierte Records statt YAML. Ein Tippfehler im Schlüssel 
 zu verschwinden.
 
 Schwieriger: Eine Prompt-Klasse mit vielen Meldungen erzeugt Fehlalarme; die Nachpflege ist eine
-neue Prüfsumme.
+neue Prüfsumme. Jede neue Konfigurationsklasse braucht eine Markierung, jeder geänderte Standardwert
+eines datenwirksamen Schlüssels einen nachgezogenen Eintrag.
 
 Restrisiken: Das Manifest belegt Vollständigkeit, nicht Richtigkeit; die sichern Review und
 Drift-Routine.
@@ -89,7 +107,7 @@ Drift-Routine.
 - Eigenes Gradle-Modul — sieht die geprüften Code-Stellen nicht und spart keinen Build.
 - Prüfsumme über die Quelldatei — jede Formatierung oder Javadoc-Änderung schlüge an.
 - Prüfsumme über den gerenderten Prompt — braucht je Prompt eigene Eingaben und Aufrufcode.
-
-## Offen
-
-- Standardmodelle als Voreinstellungen (Eintragsart oder `settings`) — mit den Konfigurationsmetadaten.
+- Liste der datenwirksamen Schlüssel im Test — ein neuer Schlüssel fiele dort nicht auf.
+- Jeder Schlüssel ohne Datenwirkung einzeln markiert — rund 300 Markierungen ohne Erkenntnis.
+- Eigene Eintragsart für Standardmodelle — Modell und Adresse sind gewöhnliche Voreinstellungen.
+- Prozessor im regulären `compileJava` — verliert beim inkrementellen Übersetzen die Beschreibungen.
