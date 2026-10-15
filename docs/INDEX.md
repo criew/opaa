@@ -141,10 +141,13 @@ durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
 
 ### K · Verwaltungs-Spezifika
 
-**[`features/public-sector.md`](./features/public-sector.md)**
+**[`features/public-sector.md`](./features/public-sector.md)** ·
+**[`features/behoerdenunterlagen.md`](./features/behoerdenunterlagen.md)**
 
 Leichte Sprache und Amtssprache · Barrierefreiheit nach BITV · Revisionssicherheit im Verwaltungssinn ·
-Anbindung an die elektronische Akte und an Dokumentenmanagement.
+Anbindung an die elektronische Akte und an Dokumentenmanagement · Unterlagen entlang der Behördenreise,
+die mit dem Produkt mitziehen: Fakten-Manifest mit CI-Wächter, Update-Paket mit kumuliertem Delta und
+Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 
 ---
 
