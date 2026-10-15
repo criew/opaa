@@ -65,6 +65,7 @@ backend/src/main/java/io/opaa/indexing/IndexingConfiguration.java
 backend/src/main/java/io/opaa/knowledge/S3UploadedOriginalStore.java
 backend/src/main/java/io/opaa/health/ChatHealthIndicator.java
 backend/src/main/java/io/opaa/health/EmbeddingsHealthIndicator.java
+backend/src/main/java/io/opaa/health/VectorStoreHealthIndicator.java
 deploy/helm/opaa/templates/networkpolicies.yaml
 
 # Text sent to the embedding and rerank models
