@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.compliance.DataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -15,7 +16,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     still expires on its own, it just does so unannounced.
  */
 @ConfigurationProperties(prefix = "opaa.external-access")
-public record ExternalAccessProperties(int maxReleaseDays, int reminderLeadDays) {
+public record ExternalAccessProperties(
+    @DataImpact int maxReleaseDays, @DataImpact int reminderLeadDays) {
 
   public ExternalAccessProperties {
     if (maxReleaseDays <= 0) {

@@ -2,6 +2,7 @@ package io.opaa.indexing.spi;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -29,6 +30,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     1.4 Mbit/s for a body at the default {@code maxBytes} - or {@code timeoutSeconds} if that is
  *     longer; a value set explicitly below {@code timeoutSeconds} fails the start.
  */
+@NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.documents.remote-content")
 public record RemoteContentProperties(
     long maxBytes, int timeoutSeconds, int transferTimeoutSeconds) {

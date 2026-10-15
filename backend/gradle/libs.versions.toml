@@ -184,6 +184,7 @@ jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api" 
 # Infrastructure (versions managed by Spring Boot BOM)
 # Spring Boot 4 moved the Liquibase auto-configuration into its own starter module
 spring-boot-starter-liquibase = { module = "org.springframework.boot:spring-boot-starter-liquibase" }
+spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus" }
 postgresql = { module = "org.postgresql:postgresql" }
 

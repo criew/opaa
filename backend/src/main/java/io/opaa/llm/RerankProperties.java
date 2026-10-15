@@ -2,6 +2,8 @@ package io.opaa.llm;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -41,11 +43,12 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     billed by a paid endpoint; a real call resets the interval. At least {@value
  *     #MIN_PROBE_INTERVAL_SECONDS} seconds, anything shorter fails the start.
  */
+@NoDataImpact("credentials, timeouts and probing of the rerank role")
 @ConfigurationProperties(prefix = "opaa.rerank")
 public record RerankProperties(
-    @DefaultValue("false") boolean enabled,
-    String baseUrl,
-    String model,
+    @DefaultValue("false") @DataImpact boolean enabled,
+    @DataImpact String baseUrl,
+    @DataImpact String model,
     String apiKey,
     @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") Duration timeout,
     @DefaultValue(DEFAULT_PROBE_INTERVAL_SECONDS + "s") Duration probeInterval) {

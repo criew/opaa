@@ -2,6 +2,7 @@ package io.opaa.indexing.attachment;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -15,6 +16,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxPerParent how many attachments of one parent are indexed. Default 10.
  * @param maxSizeBytes the most bytes a single attachment download may transfer. Default 20 MiB.
  */
+@NoDataImpact("attachment bounds")
 @ConfigurationProperties(prefix = "opaa.indexing.attachments")
 public record AttachmentProperties(int maxDepth, int maxPerParent, long maxSizeBytes) {
 

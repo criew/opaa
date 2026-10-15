@@ -1,6 +1,7 @@
 package io.opaa.retrieval;
 
 import io.opaa.api.types.RetrievalStageName;
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
@@ -18,6 +19,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param kneeDrop {@link Mode#KNEE}: the selection ends before the first chunk whose score lies
  *     this share of the best score below its predecessor's. Default 0.25, above 0 and at most 1.
  */
+@NoDataImpact("search quality")
 @ConfigurationProperties(prefix = "opaa.query.relevance-cutoff")
 public record RelevanceCutoffProperties(
     @DefaultValue("FIXED") Mode mode,

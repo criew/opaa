@@ -1,5 +1,6 @@
 package io.opaa.connection.token;
 
+import io.opaa.compliance.DataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -7,9 +8,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * The installation's setting of the connections' lifecycle (ADR-0041, Entscheidung 7): without a
  * sign-in for {@code inactivityThresholdDays} a person's connections rest. The bounds are fixed in
  * code, so no configuration and no SQL can stretch them; a start with a value outside them fails.
+ *
+ * @param inactivityThresholdDays days without a sign-in after which a person's connections rest
  */
 @ConfigurationProperties(prefix = "opaa.connection")
-public record ConnectionLifecycleProperties(Integer inactivityThresholdDays) {
+public record ConnectionLifecycleProperties(@DataImpact Integer inactivityThresholdDays) {
 
   public static final int DEFAULT_INACTIVITY_DAYS = 90;
   public static final int MIN_INACTIVITY_DAYS = 30;

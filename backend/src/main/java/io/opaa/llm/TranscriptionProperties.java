@@ -2,6 +2,8 @@ package io.opaa.llm;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -22,11 +24,12 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param maxConcurrent how many recordings the whole installation passes on at the same time; each
  *     one is held in memory until its call ends.
  */
+@NoDataImpact("credentials, bounds and timeouts of the transcription role")
 @ConfigurationProperties(prefix = "opaa.transcription")
 public record TranscriptionProperties(
-    @DefaultValue("false") boolean enabled,
-    String baseUrl,
-    String model,
+    @DefaultValue("false") @DataImpact boolean enabled,
+    @DataImpact String baseUrl,
+    @DataImpact String model,
     String apiKey,
     String language,
     @DefaultValue("" + DEFAULT_MAX_AUDIO_BYTES) long maxAudioBytes,

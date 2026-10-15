@@ -1,5 +1,7 @@
 package io.opaa.knowledge;
 
+import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.NoDataImpact;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
@@ -21,15 +23,18 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     filesystem adapter (ADR-0030, Entscheidung 4)
  * @param pathStyle {@code endpoint/bucket/key} when {@code true} (MinIO, Ceph, the default), {@code
  *     bucket.endpoint/key} otherwise (AWS, Hetzner)
+ * @param accessKey the access key of the object store account
+ * @param secretKey the secret key of the object store account
  * @param tempDirectory where working files and local copies are written; {@code null} means the
  *     JVM's temporary directory
  * @param targetValidation the SSRF check of every request's target, in its own namespace so
  *     switching the connectors' check off never switches this one off (ADR-0030, Entscheidung 8);
  *     the configured endpoint itself always passes
  */
+@NoDataImpact("addressing and credentials of the object store")
 @ConfigurationProperties(prefix = "opaa.upload.s3")
 public record UploadS3Properties(
-    String endpoint,
+    @DataImpact String endpoint,
     String region,
     String bucket,
     String keyPrefix,
@@ -128,8 +133,13 @@ public record UploadS3Properties(
    * {@code opaa.upload.s3.target-validation}. {@code enabled} is a boxed {@link Boolean} so an
    * operator who sets only the allowlist does not silently switch the check off; {@code null} means
    * enabled.
+   *
+   * @param enabled whether the object store address is checked against internal networks
+   * @param allowlist hosts that may resolve to internal addresses
    */
-  public record TargetValidation(Boolean enabled, List<String> allowlist) {
+  public record TargetValidation(
+      @NoDataImpact("SSRF hardening of the object store address") Boolean enabled,
+      List<String> allowlist) {
 
     public TargetValidation {
       if (enabled == null) {

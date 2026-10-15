@@ -1,0 +1,27 @@
+opaa:
+  fixture:
+    keep-days: ${OPAA_FIXTURE_KEEP_DAYS:30}
+    page-size: ${OPAA_FIXTURE_PAGE_SIZE:100}
+spring:
+  ai:
+    openai:
+      chat:
+        model: ${OPAA_FIXTURE_CHAT_MODEL:small-model}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+opaa:
+  fixture:
+    keep-days: 60
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+opaa:
+  fixture:
+    keep-days: 1

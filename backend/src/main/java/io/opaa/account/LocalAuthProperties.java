@@ -1,5 +1,7 @@
 package io.opaa.account;
 
+import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.NoDataImpact;
 import io.opaa.security.ValidSecret;
 import java.time.Duration;
 import java.util.List;
@@ -36,14 +38,15 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  * @param adminAllowedCidrs {@code OPAA_LOCAL_ADMIN_ALLOWED_CIDRS}: the networks a local {@code
  *     SYSTEM_ADMIN} may sign in from (Entscheidung 9); empty means no restriction
  */
+@NoDataImpact("signing secret, cookie and bootstrap of local accounts")
 @ConfigurationProperties(prefix = "opaa.auth.local")
 public record LocalAuthProperties(
     @ValidSecret String jwtSecret,
-    Duration accessTokenTtl,
-    Duration refreshTokenTtl,
-    Duration sessionMaxLifetime,
-    Duration adminRefreshTokenTtl,
-    Duration adminSessionMaxLifetime,
+    @DataImpact Duration accessTokenTtl,
+    @DataImpact Duration refreshTokenTtl,
+    @DataImpact Duration sessionMaxLifetime,
+    @DataImpact Duration adminRefreshTokenTtl,
+    @DataImpact Duration adminSessionMaxLifetime,
     Boolean cookieSecure,
     String initialAdminPassword,
     String adminReset,

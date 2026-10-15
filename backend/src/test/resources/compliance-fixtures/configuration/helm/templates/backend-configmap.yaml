@@ -1,0 +1,3 @@
+data:
+  OPAA_FIXTURE_KEEP_DAYS: {{ .Values.retention.keepDays | quote }}
+  OPAA_NOT_READ: "x"

@@ -2,6 +2,7 @@ package io.opaa.format.file.office;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -41,6 +42,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     styles.xml} handler each start their own counter at zero, so this is a per-entry budget, not
  *     a total-document one, the same as {@link #maxContentXmlBytes}. Default 10 000 000.
  */
+@NoDataImpact("parser bounds")
 @ConfigurationProperties(prefix = "opaa.indexing.odf")
 public record OdfProperties(
     long maxContentXmlBytes,

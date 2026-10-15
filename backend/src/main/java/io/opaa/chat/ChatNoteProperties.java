@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.compliance.DataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
@@ -18,7 +19,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     50. Its effect is only visible with the multi-turn {@code constraint_carryover} cases.
  */
 @ConfigurationProperties(prefix = "opaa.chat.note")
-public record ChatNoteProperties(@DefaultValue("10") int maxItems) {
+public record ChatNoteProperties(@DefaultValue("10") @DataImpact int maxItems) {
 
   public ChatNoteProperties {
     if (maxItems < 1 || maxItems > 50) {

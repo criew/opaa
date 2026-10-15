@@ -1,5 +1,6 @@
 package io.opaa.space;
 
+import io.opaa.compliance.DataImpact;
 import java.time.Duration;
 import java.time.Instant;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -17,7 +18,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  */
 @ConfigurationProperties(prefix = "opaa.chat.auto-cleanup")
 public record ChatAutoCleanupProperties(
-    @DefaultValue("90") int archiveAfterDays, @DefaultValue("365") int deleteAfterDays) {
+    @DefaultValue("90") @DataImpact int archiveAfterDays,
+    @DefaultValue("365") @DataImpact int deleteAfterDays) {
 
   public static final int MIN_ARCHIVE_AFTER_DAYS = 90;
   public static final int MIN_DELETE_AFTER_DAYS = 30;

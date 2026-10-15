@@ -1,5 +1,6 @@
 package io.opaa.retrieval.context;
 
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
@@ -13,6 +14,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     add to the prompt. Every selected chunk gets one neighbour first, the rest goes nearest first
  *     and in rank order; one that no longer fits is left out. Default 40000.
  */
+@NoDataImpact("search quality")
 @ConfigurationProperties(prefix = "opaa.query.neighbor-chunks")
 public record NeighborChunkProperties(
     @DefaultValue("1") int radius, @DefaultValue("40000") int maxAddedCharacters) {

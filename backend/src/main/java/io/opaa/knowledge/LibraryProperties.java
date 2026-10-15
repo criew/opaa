@@ -1,5 +1,6 @@
 package io.opaa.knowledge;
 
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -25,6 +26,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param privateStorageQuotaBytes the default of {@link PersonalStorageQuota} until the system
  *     administration sets its own value; {@code 0} or negative means unlimited.
  */
+@NoDataImpact("storage quotas")
 @ConfigurationProperties(prefix = "opaa.library")
 public record LibraryProperties(long quotaBytes, long privateStorageQuotaBytes) {
 

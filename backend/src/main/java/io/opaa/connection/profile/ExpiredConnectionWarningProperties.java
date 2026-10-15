@@ -1,5 +1,6 @@
 package io.opaa.connection.profile;
 
+import io.opaa.compliance.DataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -10,7 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param warningThreshold expired connections per profile (default 10, at least 1)
  */
 @ConfigurationProperties(prefix = "opaa.connection.expired-connections")
-public record ExpiredConnectionWarningProperties(Integer warningThreshold) {
+public record ExpiredConnectionWarningProperties(@DataImpact Integer warningThreshold) {
 
   public static final int DEFAULT_THRESHOLD = 10;
 

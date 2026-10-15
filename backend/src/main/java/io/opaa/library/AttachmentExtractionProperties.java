@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -18,6 +19,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     fails, short enough that a caller never holds a request thread indefinitely behind a slow
  *     extraction. Must be positive.
  */
+@NoDataImpact("concurrency bounds")
 @ConfigurationProperties(prefix = "opaa.documents.attachment-extraction")
 public record AttachmentExtractionProperties(int maxConcurrent, Duration acquireTimeout) {
 

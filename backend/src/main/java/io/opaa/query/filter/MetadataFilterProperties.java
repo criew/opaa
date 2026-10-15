@@ -1,5 +1,6 @@
 package io.opaa.query.filter;
 
+import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -24,12 +25,14 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param optionsCacheTtl how long a person's filter options stay cached before they are recomputed
  *     over the current bestand - a rights change discards them earlier.
  */
+@NoDataImpact("thresholds of the filter offer")
 @ConfigurationProperties(prefix = "opaa.query.metadata-filter")
 public record MetadataFilterProperties(
     @DefaultValue("0.90") double documentTypeOfferThreshold,
     @DefaultValue("0.75") double documentDateOfferThreshold,
     @DefaultValue("0.75") double libraryFieldOfferThreshold,
-    @DefaultValue("5m") Duration optionsCacheTtl) {
+    @DefaultValue("5m") @NoDataImpact("staleness of cached filter options")
+        Duration optionsCacheTtl) {
 
   public MetadataFilterProperties {
     requireShare("documentTypeOfferThreshold", documentTypeOfferThreshold);

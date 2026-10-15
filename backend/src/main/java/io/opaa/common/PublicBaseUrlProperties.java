@@ -1,5 +1,6 @@
 package io.opaa.common;
 
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -12,4 +13,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     default - a deployment that has not set it simply has no flows that depend on a link.
  */
 @ConfigurationProperties(prefix = "opaa")
-public record PublicBaseUrlProperties(String publicBaseUrl) {}
+public record PublicBaseUrlProperties(
+    @NoDataImpact("own address for links in mail; no default") String publicBaseUrl) {}

@@ -1,0 +1,219 @@
+title: Konfiguration und Standardmodelle
+defaults:
+  settings:
+    source: PROPERTY
+settings:
+  # Standardmodelle: Modell und Adresse jeder Modellrolle
+  - key: spring.ai.openai.base-url
+    defaultValue: http://localhost:11434/v1
+    effect: >-
+      Gemeinsame Adresse von Chat- und Embedding-Modell, solange keine eigene gesetzt ist; die
+      Voreinstellung zeigt auf einen Modellserver auf demselben Rechner
+    bearings: [DATA_FLOW]
+    notes:
+      - "Profil docker: http://ollama:11434/v1"
+  - key: spring.ai.openai.chat.base-url
+    defaultValue: http://localhost:11434/v1
+    effect: Adresse des Chat-Modells, an das Fragen, Gesprächsverlauf und Fundstellen gehen
+    bearings: [DATA_FLOW]
+    helm:
+      values: bootstrap.chatModel.baseUrl
+      defaultValue: ""
+    notes:
+      - "Profil docker: http://ollama:11434/v1"
+      - >-
+        Wird beim ersten Start als aktives Chat-Modell übernommen; danach führt die Modellverwaltung
+        der Systemverwaltung
+  - key: spring.ai.openai.chat.model
+    defaultValue: phi3:mini
+    effect: Standard-Chatmodell, das Antworten, Titel, Gesprächsnotizen und Teilfragen erzeugt
+    bearings: [DATA_FLOW]
+    helm:
+      values: bootstrap.chatModel.model
+      defaultValue: ""
+    notes:
+      - >-
+        Wird beim ersten Start als aktives Chat-Modell übernommen; danach führt die Modellverwaltung
+        der Systemverwaltung
+  - key: spring.ai.openai.embedding.base-url
+    defaultValue: http://localhost:11434/v1
+    effect: Adresse des Embedding-Modells, an das Dokumentabschnitte und Suchanfragen gehen
+    bearings: [DATA_FLOW]
+    helm:
+      values: embedding.baseUrl
+      defaultValue: ""
+    notes:
+      - "Profil docker: http://ollama:11434/v1"
+      - Das Helm-Chart verlangt die Angabe und setzt keine eigene Voreinstellung
+  - key: spring.ai.openai.embedding.model
+    defaultValue: bge-m3
+    effect: Standard-Embedding-Modell, das Dokumentabschnitte und Suchanfragen in Vektoren umrechnet
+    bearings: [DATA_FLOW]
+    helm:
+      values: embedding.model
+      defaultValue: ""
+    notes:
+      - Das Helm-Chart verlangt die Angabe und setzt keine eigene Voreinstellung
+  - key: opaa.rerank.enabled
+    defaultValue: "false"
+    effect: Ob die Rerank-Rolle Suchtreffer samt Frage an ein Rerank-Modell sendet
+    bearings: [DATA_FLOW]
+    helm:
+      values: rerank.enabled
+      defaultValue: "false"
+  - key: opaa.rerank.base-url
+    defaultValue: ""
+    effect: Adresse des Rerank-Modells; ohne Angabe ist die Rolle nicht gebunden
+    bearings: [DATA_FLOW]
+    helm:
+      values: rerank.baseUrl
+      defaultValue: ""
+  - key: opaa.rerank.model
+    defaultValue: ""
+    effect: Standard-Rerank-Modell; ohne Angabe ist die Rolle nicht gebunden
+    bearings: [DATA_FLOW]
+    helm:
+      values: rerank.model
+      defaultValue: ""
+  - key: opaa.transcription.enabled
+    defaultValue: "false"
+    effect: Ob die Spracheingabe Aufnahmen an ein Transkriptionsmodell sendet
+    bearings: [DATA_FLOW]
+    helm:
+      values: transcription.enabled
+      defaultValue: "false"
+  - key: opaa.transcription.base-url
+    defaultValue: ""
+    effect: Adresse des Transkriptionsmodells; ohne Angabe ist die Rolle nicht gebunden
+    bearings: [DATA_FLOW]
+    helm:
+      values: transcription.baseUrl
+      defaultValue: ""
+  - key: opaa.transcription.model
+    defaultValue: ""
+    effect: Standard-Transkriptionsmodell; ohne Angabe ist die Rolle nicht gebunden
+    bearings: [DATA_FLOW]
+    helm:
+      values: transcription.model
+      defaultValue: ""
+  # Funktionen
+  - key: opaa.features.prompt-libraries.enabled
+    defaultValue: "true"
+    effect: Prompt-Bibliotheken sind angeboten; ausgeschaltet bleiben ihre Daten erhalten
+    bearings: [DATA, VISIBILITY]
+    helm:
+      values: features.promptLibraries.enabled
+      defaultValue: "true"
+  - key: opaa.features.metadata.enabled
+    defaultValue: "true"
+    effect: >-
+      Metadaten von Dokumenten und Bibliotheken werden erhoben und gezeigt, auch durch ein Modell
+      extrahiert; ausgeschaltet bleibt nur der Titel sichtbar
+    bearings: [DATA, EVALUATION, DATA_FLOW]
+    helm:
+      values: features.metadata.enabled
+      defaultValue: "true"
+  - key: opaa.features.speech-input.enabled
+    defaultValue: "true"
+    effect: Spracheingabe im Chat ist angeboten, sobald die Transkriptionsrolle gebunden ist
+    bearings: [DATA_FLOW]
+    helm:
+      values: features.speechInput.enabled
+      defaultValue: "true"
+  - key: opaa.features.external-access.enabled
+    defaultValue: "true"
+    effect: >-
+      Der Kanal für Fremdzugänge (Zugangstokens, Freigaben, MCP-Server) besteht; geöffnet wird er
+      erst über seinen Schalter in der Administration
+    bearings: [VISIBILITY, DATA_FLOW]
+    helm:
+      values: features.externalAccess.enabled
+      defaultValue: "true"
+  - key: opaa.demo.chat-import.enabled
+    defaultValue: "false"
+    effect: Ob vorbereitete Chatverläufe ohne Modellaufruf eingespielt werden können (nur Demo)
+    bearings: [DATA]
+  # Chats, Rechte und Auswertung
+  - key: opaa.chat.note.max-items
+    defaultValue: "10"
+    range: 1 bis 50
+    effect: Punkte, die die Gesprächsnotiz eines Chats höchstens festhält; der älteste fällt weg
+    bearings: [DATA]
+  - key: opaa.permission.minimum-group-size
+    defaultValue: "5"
+    range: mindestens 5, nur nach oben änderbar
+    effect: Kleinste Gruppe, die ein Rechteprofil-Lauf mit Space-Kontext zeigt
+    bearings: [VISIBILITY, EVALUATION]
+  - key: opaa.succession.aging-threshold-months
+    defaultValue: "12"
+    effect: Ab welchem Alter ein Eintrag der Nachfolge-Betriebsliste hervorgehoben wird
+    bearings: [VISIBILITY, EVALUATION]
+  - key: opaa.directory-sync.schedule-enabled
+    defaultValue: "true"
+    effect: >-
+      Ob die Verzeichnis-Synchronisation planmäßig läuft und Gruppen, Mitgliedschaften und
+      Kontostatus aus dem Verzeichnis übernimmt
+    bearings: [DATA, VISIBILITY]
+  - key: opaa.connection.expired-connections.warning-threshold
+    defaultValue: "10"
+    range: mindestens 1
+    effect: >-
+      Ab wie vielen abgelaufenen verbundenen Konten eines Zugangs die Übersicht der Administration
+      warnt
+    bearings: [EVALUATION]
+  - key: opaa.external-access.reminder-lead-days
+    defaultValue: "14"
+    range: 0 schaltet die Erinnerung ab
+    effect: >-
+      Tage vor Ablauf einer Fremdzugangsfreigabe, an denen die verantwortliche Person per E-Mail
+      erinnert wird
+    bearings: [DATA_FLOW]
+  # Ablage der Originale und Quellen
+  - key: opaa.upload.store
+    defaultValue: filesystem
+    range: filesystem oder s3
+    effect: Wo hochgeladene Originale liegen
+    bearings: [DATA]
+    helm:
+      values: uploads.store
+      defaultValue: s3
+  - key: opaa.upload.s3.endpoint
+    defaultValue: ""
+    effect: Adresse des Objektspeichers der Originale, wenn sie in S3 liegen
+    bearings: [DATA, DATA_FLOW]
+    helm:
+      values: uploads.s3.endpoint
+      defaultValue: ""
+  - key: opaa.upload.orphan-grace-minutes
+    defaultValue: "60"
+    effect: Alter, ab dem ein Original ohne Dokument von der Bereinigung gemeldet oder entfernt wird
+    bearings: [DATA]
+  - key: opaa.indexing.filesystem.allowlist
+    defaultValue: ""
+    effect: >-
+      Verzeichnisse des Servers, aus denen Bibliotheken indexieren dürfen; leer schaltet die
+      Dateisystem-Quelle ab
+    bearings: [DATA]
+    helm:
+      values: filesystemSources
+      defaultValue: ""
+  - key: opaa.indexing.dropbox.api-base
+    defaultValue: https://api.dropboxapi.com
+    effect: Adresse der Dropbox-API, an die Zugangstoken und Abfragen gehen
+    bearings: [DATA_FLOW]
+  - key: opaa.indexing.dropbox.content-base
+    defaultValue: https://content.dropboxapi.com
+    effect: Adresse, von der Dropbox-Dateien geladen werden
+    bearings: [DATA_FLOW]
+  - key: opaa.indexing.dropbox.authorization-endpoint
+    defaultValue: https://www.dropbox.com/oauth2/authorize
+    effect: Adresse, an der eine Person der Dropbox-Anbindung zustimmt
+    bearings: [DATA_FLOW]
+  - key: opaa.indexing.dropbox.token-endpoint
+    defaultValue: https://api.dropboxapi.com/oauth2/token
+    effect: Adresse, an der Zustimmungscodes und Erneuerungstoken gegen Zugangstoken getauscht werden
+    bearings: [DATA_FLOW]
+  - key: opaa.indexing.dropbox.revocation-endpoint
+    defaultValue: https://api.dropboxapi.com/2/auth/token/revoke
+    effect: Adresse, an der ein verworfenes Dropbox-Token widerrufen wird
+    bearings: [DATA_FLOW]

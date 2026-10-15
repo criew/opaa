@@ -1,5 +1,6 @@
 package io.opaa.directory.sync.keycloak;
 
+import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -22,6 +23,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param connectTimeout how long a single connection attempt may take
  * @param requestTimeout how long a single request may take
  */
+@NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.directory-sync.keycloak")
 public record KeycloakDirectoryProperties(
     int pageSize,

@@ -2,6 +2,7 @@ package io.opaa.format.file.mail;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -21,6 +22,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxMessageBytes the maximum size, in bytes, of the message file itself that either reader
  *     is allowed to parse at all. Default 100 MiB.
  */
+@NoDataImpact("parser bounds")
 @ConfigurationProperties(prefix = "opaa.indexing.mail")
 public record MailProperties(
     int maxAttachmentsPerMessage, long maxAttachmentBytes, long maxMessageBytes) {
