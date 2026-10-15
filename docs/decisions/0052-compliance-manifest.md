@@ -84,7 +84,7 @@ Docker still übersprungen; der Abgleich des Lesers und der festen Spalten von `
 Katalog einer migrierten Datenbank (`ChangelogSchemaParityTest`) läuft deshalb getrennt in der CI. Jede
 Meldung nennt Datei und einzufügendes YAML; die Konvention steht in `backend/docs/compliance-manifest.md`.
 
-### 8. Konfigurationsschlüssel und Voreinstellungen
+### 9. Konfigurationsschlüssel und Voreinstellungen
 
 Der Build liefert `META-INF/spring-configuration-metadata.json`: `spring-boot-configuration-processor`
 in einem eigenen Lauf über alle Quellen, ergänzt um `additional-spring-configuration-metadata.json`

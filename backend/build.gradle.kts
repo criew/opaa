@@ -58,7 +58,7 @@ configurations.named("evalTestRuntimeOnly") {
     extendsFrom(configurations["testRuntimeOnly"])
 }
 
-// Configuration metadata (ADR-0052, Entscheidung 8): spring-boot-configuration-processor describes
+// Configuration metadata (ADR-0052, Entscheidung 9): spring-boot-configuration-processor describes
 // every @ConfigurationProperties key; writeConfigurationMetadata adds the keys of
 // additional-spring-configuration-metadata.json and the defaults of application.yml and ships the
 // result as META-INF/spring-configuration-metadata.json. The processor runs in a pass of its own

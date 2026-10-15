@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a configuration key whose default bears on data, visibility, evaluation or data flows
- * (ADR-0052, Entscheidung 8): its default is a {@code settings} entry of the compliance manifest,
+ * (ADR-0052, Entscheidung 9): its default is a {@code settings} entry of the compliance manifest,
  * and a changed default fails the build until that entry follows.
  *
  * <p>On a component of a {@code @ConfigurationProperties} record it marks that key; on a type it

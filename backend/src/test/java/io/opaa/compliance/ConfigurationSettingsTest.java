@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The configuration side of the completeness guard on the delivered state (ADR-0052, Entscheidung
- * 8): metadata, markers, {@code settings} entries and the Helm chart in step. A changed default of
+ * 9): metadata, markers, {@code settings} entries and the Helm chart in step. A changed default of
  * a key with data impact fails here until its entry follows; the message names the YAML to set.
  */
 class ConfigurationSettingsTest {

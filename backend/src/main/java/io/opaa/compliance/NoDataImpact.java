@@ -8,7 +8,7 @@ import java.lang.annotation.Target;
 
 /**
  * Marks configuration keys whose defaults bear neither on data nor on visibility, evaluation or
- * data flows (ADR-0052, Entscheidung 8): technical bounds, timeouts, budgets, rate limits, search
+ * data flows (ADR-0052, Entscheidung 9): technical bounds, timeouts, budgets, rate limits, search
  * tuning, secrets without a default.
  *
  * <p>On a type it covers every key the configuration metadata attributes to the type and its nested

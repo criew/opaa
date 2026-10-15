@@ -41,7 +41,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The configuration side of the completeness guard (ADR-0052, Entscheidung 8): every {@code opaa.*}
+ * The configuration side of the completeness guard (ADR-0052, Entscheidung 9): every {@code opaa.*}
  * key is described and classified by {@link DataImpact} or {@link NoDataImpact}; every key with
  * data impact has a {@code settings} entry whose default is the one {@code application.yml}
  * delivers; and every key the Helm chart sets names the chart's value and its default. Each gap is
@@ -632,7 +632,7 @@ final class ConfigurationGuard {
     return gaps.size()
         + " gap(s) between the configuration ("
         + what
-        + ") and the compliance manifest (ADR-0052, Entscheidung 8):\n\n"
+        + ") and the compliance manifest (ADR-0052, Entscheidung 9):\n\n"
         + String.join("\n\n", gaps);
   }
 

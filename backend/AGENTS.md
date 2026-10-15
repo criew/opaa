@@ -150,4 +150,4 @@ Jeder `opaa.*`-Schlüssel hat eine Beschreibung (`@param` der Record-Komponente,
 ein Eintrag in `src/main/resources/META-INF/additional-spring-configuration-metadata.json`) und trägt `@DataImpact`
 oder `@NoDataImpact("Grund")` an der Komponente oder pauschal am Typ; Schalter, Modelle, Adressen und Fristen an
 der Komponente. Ein datenwirksamer Schlüssel steht mit seinem Standardwert aus `application.yml` unter `settings`.
-`ConfigurationSettingsTest` prüft das samt Helm-Chart (ADR-0052, Entscheidung 8).
+`ConfigurationSettingsTest` prüft das samt Helm-Chart (ADR-0052, Entscheidung 9).
