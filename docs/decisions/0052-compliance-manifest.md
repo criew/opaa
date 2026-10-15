@@ -84,6 +84,21 @@ Docker still übersprungen; der Abgleich des Lesers und der festen Spalten von `
 Katalog einer migrierten Datenbank (`ChangelogSchemaParityTest`) läuft deshalb getrennt in der CI. Jede
 Meldung nennt Datei und einzufügendes YAML; die Konvention steht in `backend/docs/compliance-manifest.md`.
 
+### 8. Datenflüsse: Anker im Code
+
+Jede Klasse, die Daten aus der Installation sendet, trägt `@DataFlow` mit den Kennungen ihrer
+Datenflüsse; eine Hüllklasse, die einen Client nur für ihre Aufrufer baut oder kapselt, trägt
+`@DataFlowCarrier` (beide in `io.opaa.compliance`). Ziel, Daten, Anlass, Abschaltbarkeit und
+Einstellungen stehen nur im Manifest unter `dataFlows` in `outbound.yaml`, die Annotation trägt nur
+die Kennung. `ComplianceManifestTest` gleicht Kennungen und Einträge in beiden Richtungen ab;
+`ModularArchitectureTest` lässt keinen Client aus `OUTBOUND_CLIENTS` und keine Abhängigkeit von
+`OUTBOUND_BEANS` ohne Annotation zu. Ein neuer Client kostet eine Annotationszeile und einen
+YAML-Eintrag; eine neue Kennung ist ein neuer externer Datenfluss. Die Registry beschreibt und sperrt
+nichts: Weg und Zielprüfung bleiben beim Ausgangsproxy (ADR-0050) und bei `TargetAddressValidator`.
+
+Eine Liste allein veraltet unbemerkt, ein Anker am Code fällt beim Bauen auf. Der Fachtext bleibt im
+Manifest, damit Faktenblätter ihn lesen, ohne den Code zu kennen.
+
 ## Konsequenzen
 
 Einfacher: Ein Bereich wächst ohne Konflikt in seiner eigenen Datei. Faktenblätter, Delta und
@@ -95,6 +110,11 @@ neue Prüfsumme. Jede neue Spalte braucht eine Zeile im Manifest, auch ohne Pers
 
 Restrisiken: Das Manifest belegt Vollständigkeit, nicht Richtigkeit; die sichern Review und
 Drift-Routine.
+Ein ausgehender Client eines Typs, der weder in `OUTBOUND_CLIENTS` noch in `OUTBOUND_BEANS` steht, oder
+ein Zugriff über Reflection entgeht dem Strukturtest (Entscheidung 8); die Liste wächst mit jedem neuen
+Client-Typ, und das Review prüft neue Abhängigkeiten darauf. Bewusst nicht erkannt wird eine neue
+Klasse, die über eine bereits annotierte Klasse (etwa `RerankClient`) Daten an ein bestehendes Ziel
+schickt; das fangen die Kennzeichnung der Datenwirkung am PR und die Drift-Routine auf.
 
 ## Verworfene Alternativen
 
@@ -104,6 +124,7 @@ Drift-Routine.
 - Prüfsumme über den gerenderten Prompt — braucht je Prompt eigene Eingaben und Aufrufcode.
 - Personenbezogene Spalten allein nennen — eine neue Spalte bliebe unbemerkt.
 - Schema aus der Testcontainers-Datenbank — ohne Docker übersprungen, nicht in jedem Testlauf.
+- Datenflüsse als Java-Enum mit allen Angaben — Fachtext im Code, zweite Quelle neben dem Manifest.
 
 ## Offen
 

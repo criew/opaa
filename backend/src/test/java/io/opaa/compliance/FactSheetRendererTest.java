@@ -184,10 +184,12 @@ class FactSheetRendererTest {
   }
 
   @Test
-  void dataFlowsAndDefaultModelsAreMarkedAsNotYetCaptured() {
+  void theDataFlowsAreCapturedAndTheDefaultModelsMarkedAsNotYet() {
     Map<FactSheet, String> sheets = FactSheetRenderer.render(SHIPPED, PROVENANCE);
 
-    assertThat(sheets.get(FactSheet.DATENFLUESSE)).contains("## Noch nicht erfasst");
+    assertThat(sheets.get(FactSheet.DATENFLUESSE))
+        .doesNotContain("Noch nicht erfasst")
+        .contains("<a id=\"chat-model\"></a>", "<a id=\"mail\"></a>");
     assertThat(sheets.get(FactSheet.VOREINSTELLUNGEN))
         .contains("## Noch nicht erfasst")
         .contains("Standardmodelle");
@@ -211,7 +213,8 @@ class FactSheetRendererTest {
             "datenfluesse",
             "voreinstellungen",
             "fristen");
-    assertThat(json.get("notYetCaptured").has("datenfluesse")).isTrue();
+    assertThat(json.get("notYetCaptured").has("datenfluesse")).isFalse();
+    assertThat(json.get("notYetCaptured").has("voreinstellungen")).isTrue();
     JsonNode manifest = json.get("manifest");
     assertThat(manifest.get("data").size()).isEqualTo(SHIPPED.data().size());
     assertThat(manifest.get("auditEvents").size()).isEqualTo(SHIPPED.auditEvents().size());

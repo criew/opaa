@@ -20,18 +20,9 @@ REPO_ROOT = SCRIPTS.parent.parent
 PATHS = REPO_ROOT / ".github" / "data-impact-paths.txt"
 BASH = shutil.which("bash") or "bash"
 
-# Code that sends data out of OPAA: HTTP, mail and S3 clients, model calls and the project's own
-# wrappers around them. A new wrapper belongs here as well.
-FLOW = re.compile(
-    r"\b(RestClient|RestTemplate|WebClient|HttpClient|HttpURLConnection|URLConnection|Socket"
-    r"|ChatClient|ChatModel|StreamingChatModel|EmbeddingModel|ImageModel|TranscriptionModel"
-    r"|JavaMailSender|S3Client|S3AsyncClient|S3Presigner|McpSyncClient|McpAsyncClient"
-    r"|SourceHttpClientFactory|ActiveChatModelResolver|BoundedDownloader|RedirectFollowingFetcher"
-    r"|SourceFormPost|RemoteOriginalAccess|RerankClient|TranscriptionClient"
-    r"|MailService|MailSenderProvider|GraphClient|GraphConnections|S3SdkClient|S3ObjectStore"
-    r"|SmbShareClient|KeycloakAdminApi|ConfluenceClient|DriveApi|DropboxApi|NextcloudDav"
-    r"|FeedFetcher|OAuthClient|OidcDiscoveryClient|McpServerDiscovery)\b"
-)
+# Code that sends data out of OPAA: a class marked @DataFlow or @DataFlowCarrier. Which client
+# types need the mark is decided in one place, OUTBOUND_CLIENTS in ModularArchitecture.
+FLOW = re.compile(r"@(DataFlow|DataFlowCarrier)\b")
 # Text given to a model as instruction.
 PROMPT = re.compile(
     r"\b[A-Z_]*PROMPT[A-Z_]*\s*=|\.system\(\s*[^)\s]|\bSystemMessage\b|\bSystemPromptTemplate\b"
@@ -225,7 +216,9 @@ def test_marker_detects_flow_prompt_and_retention() -> None:
         marker("backend/src/main/java/io/opaa/x/FooRetentionService.java")
         == "retention class"
     )
-    assert FLOW.search("private final RestClient client;")
+    assert FLOW.search('@DataFlow("mail")')
+    assert FLOW.search("@DataFlowCarrier")
+    assert not FLOW.search("private final RestClient client;")
     assert PROMPT.search('static final String SYSTEM_PROMPT = """')
     assert not PROMPT.search("ConnectionLogActor.system()")
     assert RETENTION.search("static final Duration RETENTION = Duration.ofDays(14);")

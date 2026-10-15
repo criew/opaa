@@ -345,6 +345,11 @@ Muss das Backend über einen Proxy ins Netz, trägt die Systemverwaltung ihn in 
 Proxy für das ganze Haus; ohne Eintrag gehen alle Verbindungen direkt hinaus. Die JVM-Eigenschaft
 `http.proxyHost` und die Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus.
 
+Welche Verbindungen das Backend nach außen aufbaut, mit Ziel, übermittelten Daten, Anlass,
+Abschaltbarkeit und zuständiger Einstellung, listet das Faktenblatt `datenfluesse` („Datenflüsse
+nach außen“). Es entsteht aus dem Code und liegt im Artefakt `compliance-faktenblaetter` des
+CI-Laufs auf `main`.
+
 - **Was über den Proxy geht:** jede HTTP(S)-Verbindung des Backends — Quellen der Bibliotheken samt
   Weiterleitungen und Original-Abruf, OAuth- und Token-Endpunkte der Zugänge, Dienstkonto-Tokens,
   MCP-Server, Chat-, Einbettungs- und Rerank-Endpunkte samt Verbindungstest, Discovery-Dokument und

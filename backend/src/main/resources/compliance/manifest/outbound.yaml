@@ -1,0 +1,177 @@
+title: Ausgehende Datenflüsse
+# One entry per id of @io.opaa.compliance.DataFlow; ComplianceManifestTest holds both sides equal.
+defaults:
+  dataFlows:
+    notes:
+      - >-
+        Geht über den Ausgangsproxy, sofern einer eingetragen ist (Handbuch Betrieb, Abschnitt
+        „Ausgangsproxy“)
+dataFlows:
+  - id: chat-model
+    target: Das systemweit aktive Chat-Modell, ein OpenAI-kompatibler Endpunkt der Systemverwaltung
+    data: >-
+      Frage und Gesprächsverlauf, die gefundenen Textstellen aus den Bibliotheken samt Titeln und
+      System-Prompt; Chatinhalte für Titel und Notizen; Dokumenttext für die modellgestützte
+      Metadatenextraktion
+    trigger: >-
+      Jede Chat-Anfrage, Zerlegung einer Suchanfrage, Chattitel und -notiz, Metadatenextraktion beim
+      Indizieren, Statusprüfung des Modells
+    switchOff: >-
+      Nicht abschaltbar, der Chat braucht ein Modell; das Ziel bestimmt die Systemverwaltung, die
+      Voreinstellung ist ein lokaler Modellserver
+    settings: [llm_models.base_url, llm_models.model_identifier, opaa.query.query-decomposition-enabled]
+  - id: embedding-model
+    target: Der Einbettungs-Endpunkt (OpenAI-kompatibel), den der Betrieb konfiguriert
+    data: Textabschnitte der indizierten Dokumente, Suchanfragen, Prüftexte der Statusanzeige
+    trigger: Indizierung und Neueinbettung, jede Suche und jede Chat-Anfrage, Statusprüfung
+    switchOff: >-
+      Nicht abschaltbar, die Suche braucht Einbettungen; Voreinstellung ist ein lokaler
+      Modellserver
+    settings: [spring.ai.openai.embedding.base-url, spring.ai.openai.embedding.model]
+  - id: rerank-model
+    target: Der Rerank-Endpunkt, den der Betrieb konfiguriert
+    data: Suchanfrage und die Kandidaten-Textstellen
+    trigger: Jede Suche und Chat-Anfrage bei eingeschaltetem Reranking, Statusprüfung
+    switchOff: Abschaltbar, Voreinstellung aus
+    settings: [opaa.rerank.enabled, opaa.rerank.base-url]
+  - id: transcription-model
+    target: Der Transkriptions-Endpunkt, den der Betrieb konfiguriert
+    data: Die Sprachaufnahme einer Person
+    trigger: Spracheingabe im Chat
+    switchOff: Abschaltbar, Voreinstellung aus; zusätzlich über das Feature-Flag der Spracheingabe
+    settings: [opaa.transcription.enabled, opaa.transcription.base-url, opaa.features.speech-input.enabled]
+  - id: model-endpoint
+    target: Die Adresse eines Chat-Modells, die die Systemverwaltung im Formular angibt
+    data: >-
+      Abruf der angebotenen Modelle, eine Testanfrage von einem Token; der hinterlegte API-Schlüssel
+      nur an die Herkunft des eigenen Modells
+    trigger: Modellauswahl und Verbindungstest in der Verwaltung der Chat-Modelle
+    switchOff: Findet nur auf Handlung der Systemverwaltung statt
+    settings: [llm_models.base_url]
+  - id: source-web
+    target: Webserver mit Verzeichnisauflistung, die eine Bibliothek als Quelle nennt
+    data: Abrufanfragen und die Zugangsdaten der Bibliothek; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf (manuell, Zeitplan), Verbindungstest
+    switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
+    settings: [knowledge_libraries.source_url, knowledge_libraries.schedule_enabled]
+  - id: source-rss
+    target: RSS- und Atom-Feeds und die verlinkten Detailseiten
+    data: Abrufanfragen und die Zugangsdaten der Bibliothek; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf (manuell, Zeitplan), Verbindungstest
+    switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
+    settings: [knowledge_libraries.source_url, knowledge_libraries.schedule_enabled]
+  - id: source-confluence
+    target: Confluence (Cloud oder Data Center) des Zugangs bzw. der Bibliothek
+    data: >-
+      API-Anfragen mit Zugangsdaten oder Token des Zugangs; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf, Benachrichtigung der Quelle, Verbindungstest, Original öffnen
+    switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
+    settings:
+      - connection_profiles.server_url
+      - knowledge_libraries.source_url
+      - knowledge_libraries.schedule_enabled
+  - id: source-dropbox
+    target: Die Dropbox-API (api.dropboxapi.com, content.dropboxapi.com)
+    data: API-Anfragen mit dem Token des Zugangs; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf, Verbindungstest, Original öffnen
+    switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
+    settings:
+      - opaa.indexing.dropbox.api-base
+      - opaa.indexing.dropbox.content-base
+      - knowledge_libraries.schedule_enabled
+  - id: source-google-drive
+    target: Die Google-Drive-API (www.googleapis.com)
+    data: API-Anfragen mit dem Token des Zugangs oder Dienstkontos; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf, Verbindungstest, Original öffnen
+    switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
+    settings: [knowledge_libraries.schedule_enabled]
+  - id: source-nextcloud
+    target: Der Nextcloud-Server des Zugangs (WebDAV)
+    data: WebDAV-Anfragen mit den Zugangsdaten; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf, Verbindungstest, Original öffnen
+    switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
+    settings: [connection_profiles.server_url, knowledge_libraries.schedule_enabled]
+  - id: source-sharepoint
+    target: Microsoft Graph (graph.microsoft.com) und die Anmeldung bei login.microsoftonline.com
+    data: API-Anfragen mit dem Token des Zugangs; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf, Ordnerauswahl, Verbindungstest, Original öffnen
+    switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
+    settings: [connection_profiles.tenant, knowledge_libraries.schedule_enabled]
+  - id: source-s3
+    target: Der S3-kompatible Objektspeicher, den die Bibliothek nennt
+    data: Signierte Anfragen mit den Zugangsdaten; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf, Verbindungstest, Original öffnen
+    switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
+    settings: [knowledge_libraries.source_url, knowledge_libraries.schedule_enabled]
+  - id: source-smb
+    target: Die SMB-Freigabe, die die Bibliothek nennt
+    data: SMB-Anmeldung und Leseanfragen; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf, Verbindungstest, Original öffnen
+    switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
+    settings: [knowledge_libraries.source_url, knowledge_libraries.schedule_enabled]
+    notes: [Geht nie über den Ausgangsproxy]
+  - id: source-original
+    target: Der Webserver bzw. Feed, aus dem ein Dokument einer Web- oder RSS-Bibliothek stammt
+    data: Abruf des Originals mit den Zugangsdaten der Bibliothek
+    trigger: Eine Person öffnet das Original eines solchen Dokuments
+    switchOff: Findet nur auf Handlung einer berechtigten Person statt
+    settings: [knowledge_libraries.source_url]
+  - id: source-attachment
+    target: Die Ziele der Anhänge, die ein Feed-Eintrag verlinkt
+    data: Abrufanfragen; die Zugangsdaten nur an die Herkunft des Feeds
+    trigger: Indizierungslauf einer RSS-Bibliothek
+    switchOff: Über das Anhangsprofil und die Höchstzahl der Anhänge je Eintrag
+    settings: [opaa.indexing.rss.attachment-profile, opaa.indexing.rss.max-attachments-per-entry]
+  - id: service-account-token
+    target: Der Token-Endpunkt des Anbieters eines Dienstkontos (Google Drive)
+    data: Eine mit dem Dienstkontoschlüssel signierte Anforderung eines Zugriffstokens
+    trigger: Vor Anfragen eines Laufs oder Tests, höchstens etwa einmal je Stunde
+    switchOff: Entfällt ohne Zugang mit Dienstkonto
+    settings: [connection_profiles.auth_method]
+  - id: connection-oauth
+    target: Der Autorisierungsserver eines Zugangs (OAuth)
+    data: >-
+      Client-Kennung und -Geheimnis, Autorisierungscode, Erneuerungs- und Widerrufsanfragen der
+      Tokens
+    trigger: Verbinden eines Kontos, Erneuerung eines Tokens, Trennen
+    switchOff: Entfällt ohne Zugang mit OAuth
+    settings: [connection_profiles.server_url, connection_profiles.auth_method]
+  - id: mcp-discovery
+    target: Ein externer MCP-Server und sein Autorisierungsserver
+    data: Abruf der veröffentlichten Metadaten (RFC 9728, RFC 8414)
+    trigger: Speichern eines MCP-Server-Profils durch die Systemverwaltung
+    switchOff: Findet nur auf Handlung der Systemverwaltung statt
+    settings: [connection_profiles.server_url]
+  - id: oidc-provider
+    target: Die Identitätsanbieter (OIDC), die die Systemverwaltung einträgt
+    data: Abruf des Discovery-Dokuments und der Signaturschlüssel
+    trigger: Anmeldung über den Anbieter, Verbindungstest in der Verwaltung
+    switchOff: Je Anbieter abschaltbar; ohne Anbieter nur lokale Anmeldung
+    settings: [oidc_providers.enabled, oidc_providers.issuer_uri, oidc_providers.jwk_set_uri]
+  - id: directory-sync
+    target: Die Admin-Schnittstelle des Verzeichnisses (Keycloak)
+    data: Anmeldung des Dienstkontos, Abruf von Gruppen, Mitgliedschaften und Konten
+    trigger: Zeitplan des Verzeichnisabgleichs, manueller Abgleich
+    switchOff: Je Anbieter abschaltbar; der Takt global
+    settings:
+      - oidc_providers.directory_sync_enabled
+      - directory_connectors.base_url
+      - opaa.directory-sync.schedule-enabled
+  - id: mail
+    target: Der Mailserver (SMTP), den die Systemverwaltung einträgt
+    data: >-
+      E-Mail-Adresse und Name der Empfängerin oder des Empfängers, Inhalt der Benachrichtigung
+      (Einladung, Kennwort, Zugangslinks, Erinnerungen, Testmail)
+    trigger: >-
+      Einladung und Kennwortvorgänge lokaler Konten, Anmeldung des Bootstrap-Kontos der Systemverwaltung, ablaufende
+      Fremdzugänge, Testmail
+    switchOff: Abschaltbar, Voreinstellung aus
+    settings: [mail_settings.enabled, mail_settings.host]
+    notes: [Geht nie über den Ausgangsproxy]
+  - id: original-store
+    target: Der S3-kompatible Objektspeicher der Originalablage
+    data: Die hochgeladenen Originaldateien
+    trigger: Upload, Öffnen und Löschen eines Originals
+    switchOff: Nur bei Ablage in S3; Voreinstellung ist das Dateisystem
+    settings: [opaa.upload.store, opaa.upload.s3.endpoint]
+    notes: [Geht nie über den Ausgangsproxy]
