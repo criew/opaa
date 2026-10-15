@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Persistence for {@link AuditIncidentScopeGrant} - a plain, mutable JPA entity, unlike {@link
@@ -35,8 +36,11 @@ public interface AuditIncidentScopeGrantRepository
   /**
    * Deletes every grant whose usability ended before the cutoff: an approved one by its {@code
    * usable_until}, a request never approved by its request time, which {@code requestedBefore}
-   * already moves back by {@link AuditIncidentScopeGrant#USABLE_WINDOW}.
+   * already moves back by {@link AuditIncidentScopeGrant#USABLE_WINDOW}. Runs in its own
+   * transaction when the caller has none, so the deletion pass does not depend on being invoked
+   * through a transactional proxy.
    */
+  @Transactional
   @Modifying
   @Query(
       "DELETE FROM AuditIncidentScopeGrant g"
