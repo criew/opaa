@@ -170,7 +170,14 @@ public final class FactSheetRenderer {
                 rows.add(List.of("Kennung", code(entry.id())));
                 rows.add(List.of("Zweck", text(entry.purpose())));
                 rows.add(List.of("Personenbezug", personalReference(entry.personalReference())));
-                rows.add(List.of("Tabellen und Spalten", tables(entry.tables())));
+                rows.add(
+                    List.of(
+                        "Spalten mit Personenbezug",
+                        columns(entry.tables(), TableRef::personalColumns)));
+                rows.add(
+                    List.of(
+                        "Spalten ohne Personenbezug",
+                        columns(entry.tables(), TableRef::nonPersonalColumns)));
                 rows.addAll(factRows(entry, settings));
                 sheet.table(List.of("Angabe", "Inhalt"), rows);
               }
@@ -178,9 +185,14 @@ public final class FactSheetRenderer {
 
     sheet.heading(2, "tabellen-ohne-personenbezug", "Tabellen ohne Personenbezug");
     sheet.table(
-        List.of("Tabelle", "Bereich"),
+        List.of("Tabelle", "Spalten", "Bereich"),
         manifest.nonPersonalTables().stream()
-            .map(table -> List.of(code(table.table()), text(areaTitle(manifest, table.area()))))
+            .map(
+                table ->
+                    List.of(
+                        code(table.table()),
+                        table.columns() == null ? NONE : codes(table.columns()),
+                        text(areaTitle(manifest, table.area()))))
             .toList());
     return sheet.toString();
   }
@@ -660,18 +672,20 @@ public final class FactSheetRenderer {
     return codes(entry.classes());
   }
 
-  private static String tables(List<TableRef> tables) {
+  /**
+   * The columns of the tables holding a datum, per table, either those pointing at a person or the
+   * remaining ones; a table without such columns is left out.
+   */
+  private static String columns(List<TableRef> tables, Function<TableRef, List<String>> columns) {
     if (tables.isEmpty()) {
       return "keine Tabelle (außerhalb der Datenbank)";
     }
-    return tables.stream()
-        .map(
-            table ->
-                code(table.name())
-                    + (table.personalColumns().isEmpty()
-                        ? ""
-                        : " (" + codes(table.personalColumns()) + ")"))
-        .collect(Collectors.joining("; "));
+    String listed =
+        tables.stream()
+            .filter(table -> columns.apply(table) != null && !columns.apply(table).isEmpty())
+            .map(table -> code(table.name()) + ": " + codes(columns.apply(table)))
+            .collect(Collectors.joining("; "));
+    return listed.isEmpty() ? "keine" : listed;
   }
 
   private static <T> Map<String, List<T>> byArea(List<T> entries, Function<T, String> area) {

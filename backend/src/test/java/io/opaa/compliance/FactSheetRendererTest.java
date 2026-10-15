@@ -144,6 +144,17 @@ class FactSheetRendererTest {
   }
 
   @Test
+  void theDataCatalogueSplitsColumnsByPersonalReference() {
+    String catalogue = FactSheetRenderer.render(SHIPPED, PROVENANCE).get(FactSheet.DATENKATALOG);
+
+    assertThat(catalogue)
+        .contains("| Spalten mit Personenbezug | `external_access_tokens`: `user_id`, `name`")
+        .contains("| Spalten ohne Personenbezug | `external_access_tokens`: `id`, `token_prefix`")
+        .contains(
+            "| `external_access_token_libraries` | `token_id`, `library_id`, `extinguished_at` |");
+  }
+
+  @Test
   void theMatrixHasNoColumnForARoleNoVisibilityNames() {
     String roles = FactSheetRenderer.render(SHIPPED, PROVENANCE).get(FactSheet.ROLLENSICHT);
 
