@@ -19,7 +19,7 @@ Schnipsel lässt sich übernehmen, nur Platzhalter in `<…>` sind auszufüllen.
 | geänderter Prompt-Text (auch Log- oder Fehlertext derselben Klasse) | neue `sha256` beim Prompt in `prompts.yaml` |
 | neue Tabelle | unter `tables` eines Datums oder, ganz ohne Personenbezug, unter `nonPersonalTables` |
 | neue Spalte | in `personalColumns` oder `nonPersonalColumns` ihrer Tabelle bzw. in die Spaltenliste unter `nonPersonalTables` |
-| neuer ausgehender Client (`ModularArchitectureTest` verlangt `@DataFlow("<kennung>")` an der Klasse) | `dataFlows` in `outbound.yaml`: `id`, `target`, `data`, `trigger`, `switchOff`, `settings`; eine bestehende Kennung braucht keinen neuen Eintrag |
+| neuer ausgehender Client (`ModularArchitectureTest` verlangt `@DataFlow("<kennung>")` an der Klasse) | `dataFlows` in `outbound.yaml`: `id`, `group` (Gruppe im Übersichtsbild des Faktenblatts), `target`, `data`, `trigger`, `switchOff`, `settings`, `viaOutboundProxy` (ob die Verbindung über den Ausgangsproxy geht; gegen den Code prüfen: über `OutboundProxySelector` laufen nur `http`/`https`, nie `socket://` wie SMB und SMTP, das AWS SDK nur, wo es `proxyFor` bekommt); beide Felder je Eintrag, nie unter `defaults`; eine bestehende Kennung braucht keinen neuen Eintrag |
 | entfernte oder umbenannte Tabelle, Spalte, Konstante | Eintrag entfernen oder umbenennen |
 | neuer `opaa.*`-Schlüssel | Beschreibung und Markierung im Code, bei Datenwirkung ein Eintrag unter `settings` (siehe unten) |
 | geänderter Standardwert eines datenwirksamen Schlüssels in `application.yml` | neuer `defaultValue` seines Eintrags |

@@ -13,6 +13,8 @@ prompts:
     sha256: "0000000000000000000000000000000000000000000000000000000000000000"
 dataFlows:
   - id: chat-model
+    group: MODEL
+    viaOutboundProxy: true
     target: Sprachmodell
     data: Frage und Passagen
     trigger: jede Frage

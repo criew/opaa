@@ -196,6 +196,79 @@ class FactSheetRendererTest {
   }
 
   @Test
+  void theDataFlowSheetOpensWithTheGeneratedDiagram() {
+    String sheet = FactSheetRenderer.render(SHIPPED, PROVENANCE).get(FactSheet.DATENFLUESSE);
+
+    assertThat(sheet)
+        .contains(
+            "## <a id=\"uebersicht\"></a>Übersicht\n\n```mermaid\n"
+                + DataFlowDiagram.render(SHIPPED.dataFlows())
+                + "```\n");
+    assertThat(sheet.indexOf("```mermaid"))
+        .isLessThan(sheet.indexOf("<a id=\"datenfluesse\"></a>"));
+    assertThat(FactSheetRenderer.render(EMPTY, PROVENANCE).get(FactSheet.DATENFLUESSE))
+        .doesNotContain("```mermaid");
+  }
+
+  @Test
+  void eachDataFlowNamesItsGroupAndWhetherItTakesTheOutboundProxy() {
+    ComplianceManifest.DataFlowEntry proxied =
+        new ComplianceManifest.DataFlowEntry(
+            "outbound",
+            "chat-model",
+            ComplianceManifest.DataFlowGroup.MODEL,
+            true,
+            "Ziel",
+            "Daten",
+            "Anlass",
+            "Aus",
+            List.of(),
+            null);
+    ComplianceManifest.DataFlowEntry direct =
+        new ComplianceManifest.DataFlowEntry(
+            "outbound",
+            "mail",
+            ComplianceManifest.DataFlowGroup.MAIL,
+            false,
+            "Ziel",
+            "Daten",
+            "Anlass",
+            "Aus",
+            List.of(),
+            null);
+    ComplianceManifest manifest =
+        new ComplianceManifest(
+            Map.of("outbound", "Ausgehende Datenflüsse"),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(proxied, direct),
+            List.of());
+
+    String sheet = FactSheetRenderer.render(manifest, PROVENANCE).get(FactSheet.DATENFLUESSE);
+
+    assertThat(section(sheet, "chat-model"))
+        .contains("| Gruppe | Modelle |")
+        .contains(
+            "| Ausgangsproxy | ja, über den Ausgangsproxy, sofern einer eingetragen ist und das"
+                + " Ziel weder lokal ist noch auf seiner Ausnahmeliste steht");
+    assertThat(section(sheet, "mail"))
+        .contains("| Gruppe | Mail |")
+        .contains("| Ausgangsproxy | nein, nie |");
+  }
+
+  private static String section(String sheet, String anchor) {
+    int start = sheet.indexOf("<a id=\"" + anchor + "\"></a>");
+    assertThat(start).as("anchor %s", anchor).isNotNegative();
+    int end = sheet.indexOf("\n#### ", start);
+    return end < 0 ? sheet.substring(start) : sheet.substring(start, end);
+  }
+
+  @Test
   void theJsonFormHoldsProvenanceAndTheWholeManifest() {
     JsonNode json =
         JsonMapper.builder().build().readTree(FactSheetRenderer.renderJson(SHIPPED, PROVENANCE));

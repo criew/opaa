@@ -101,7 +101,24 @@ class ComplianceManifestLoaderTest {
                         "protocol: data 'no-retention-rule': mandatory field 'retention.rule' is"
                             + " missing or empty",
                         "protocol: data 'no-retention-rule': mandatory field 'accessPaths' is"
-                            + " missing or empty"));
+                            + " missing or empty",
+                        "outbound: dataFlows 'without-group': mandatory field 'group' is missing"
+                            + " or empty",
+                        "outbound: dataFlows 'without-proxy-route': mandatory field"
+                            + " 'viaOutboundProxy' is missing or empty"));
+  }
+
+  @Test
+  void aDataFlowStatesGroupAndProxyRouteItselfNotThroughDefaults() {
+    assertThatThrownBy(() -> ComplianceManifestLoader.load(FIXTURES + "per-entry-default/*.yaml"))
+        .isInstanceOfSatisfying(
+            ComplianceManifestException.class,
+            e ->
+                assertThat(e.violations())
+                    .containsExactly(
+                        "outbound: defaults.dataFlows must not set 'group'; each entry states it",
+                        "outbound: defaults.dataFlows must not set 'viaOutboundProxy'; each entry"
+                            + " states it"));
   }
 
   @Test

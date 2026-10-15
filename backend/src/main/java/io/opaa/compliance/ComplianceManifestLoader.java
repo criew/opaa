@@ -47,7 +47,8 @@ import tools.jackson.databind.json.JsonMapper;
  * list value with unbalanced parentheses.
  *
  * <p>An entry is the {@code defaults} of its section in the same file, overridden key by key by the
- * entry itself; the mandatory check runs on that result.
+ * entry itself; the mandatory check runs on that result. Keys of {@link #PER_ENTRY_KEYS} must be
+ * decided by each entry and are rejected in {@code defaults}.
  */
 public final class ComplianceManifestLoader {
 
@@ -61,6 +62,10 @@ public final class ComplianceManifestLoader {
   private static final Map<String, Class<?>> SECTIONS = sections();
 
   private static final Set<String> FILE_KEYS = fileKeys();
+
+  /** Section to the keys each entry states itself, because a default would hide the decision. */
+  static final Map<String, Set<String>> PER_ENTRY_KEYS =
+      Map.of("dataFlows", Set.of("group", "viaOutboundProxy"));
 
   private ComplianceManifestLoader() {}
 
@@ -221,6 +226,18 @@ public final class ComplianceManifestLoader {
       String name = section.getKey();
       Map<String, Object> sectionDefaults =
           mapOrEmpty(defaults.get(name), area, "defaults." + name, violations);
+      PER_ENTRY_KEYS.getOrDefault(name, Set.of()).stream()
+          .filter(sectionDefaults::containsKey)
+          .sorted()
+          .forEach(
+              key ->
+                  violations.add(
+                      area
+                          + ": defaults."
+                          + name
+                          + " must not set '"
+                          + key
+                          + "'; each entry states it"));
       List<Object> entries = listOrEmpty(file.get(name), area, name, violations);
       for (int i = 0; i < entries.size(); i++) {
         String where = area + ": " + name + "[" + i + "]";

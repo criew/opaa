@@ -55,7 +55,7 @@ Die Faktenblätter entstehen aus dem Fakten-Manifest und beschreiben die Voreins
 | `datenkatalog` | alle gespeicherten Daten mit Zweck, Personenbezug, Speicherort, Frist, Sichtbarkeit, Zugriffsweg, Löschmechanismus und möglichen Auswertungen; Tabellen ohne Personenbezug |
 | `protokollereignisse` | jedes Ereignis des revisionssicheren Protokolls mit Auslöser, Feldern des Protokollsatzes und Lesern |
 | `rollensicht` | was jede Systemrolle und Fähigkeit über andere sieht, Matrix Rolle × Datenkategorie |
-| `datenfluesse` | Datenflüsse nach außen |
+| `datenfluesse` | Datenflüsse nach außen, mit einem daraus erzeugten Übersichtsbild |
 | `voreinstellungen` | Einstellungen mit Standardwert und Wirkung, System-Prompts mit Prüfsumme, KI-Funktionen |
 | `fristen` | Fristen je Datum und Protokollereignis mit Konfigurationsschlüssel |
 
