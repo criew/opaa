@@ -71,6 +71,21 @@ Fehlermeldung derselben Klasse ändert sie ebenfalls. In der Datenbank ist sie S
 Gradle-Toolchain; ein anderer Compiler (ECJ in Eclipse oder VS Code) kann einen abweichenden
 Konstantenbestand und damit eine andere Prüfsumme erzeugen.
 
+### 8. Datenflüsse: Anker im Code
+
+Jede Klasse, die Daten aus der Installation sendet, trägt `@DataFlow` mit den Kennungen ihrer
+Datenflüsse; eine Hüllklasse, die einen Client nur für ihre Aufrufer baut oder kapselt, trägt
+`@DataFlowCarrier` (beide in `io.opaa.compliance`). Ziel, Daten, Anlass, Abschaltbarkeit und
+Einstellungen stehen nur im Manifest unter `dataFlows` in `outbound.yaml`, die Annotation trägt nur
+die Kennung. `ComplianceManifestTest` gleicht Kennungen und Einträge in beiden Richtungen ab;
+`ModularArchitectureTest` lässt keinen Client aus `OUTBOUND_CLIENTS` und keine Abhängigkeit von
+`OUTBOUND_BEANS` ohne Annotation zu. Ein neuer Client kostet eine Annotationszeile und einen
+YAML-Eintrag; eine neue Kennung ist ein neuer externer Datenfluss. Die Registry beschreibt und sperrt
+nichts: Weg und Zielprüfung bleiben beim Ausgangsproxy (ADR-0050) und bei `TargetAddressValidator`.
+
+Eine Liste allein veraltet unbemerkt, ein Anker am Code fällt beim Bauen auf. Der Fachtext bleibt im
+Manifest, damit Faktenblätter ihn lesen, ohne den Code zu kennen.
+
 ## Konsequenzen
 
 Einfacher: Ein Bereich wächst ohne Konflikt in seiner eigenen Datei. Faktenblätter, Delta und
@@ -89,6 +104,7 @@ Drift-Routine.
 - Eigenes Gradle-Modul — sieht die geprüften Code-Stellen nicht und spart keinen Build.
 - Prüfsumme über die Quelldatei — jede Formatierung oder Javadoc-Änderung schlüge an.
 - Prüfsumme über den gerenderten Prompt — braucht je Prompt eigene Eingaben und Aufrufcode.
+- Datenflüsse als Java-Enum mit allen Angaben — Fachtext im Code, zweite Quelle neben dem Manifest.
 
 ## Offen
 
