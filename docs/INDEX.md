@@ -173,6 +173,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   CycloneDX-CI-Artefakte für Backend und Frontend
 - **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts,
   Trivy-Image-Scan und die Triage von Image-Alerts
+- **[`SECURITY.md`](../SECURITY.md)** — Sicherheitsrichtlinie: vertraulicher Meldeweg für
+  Sicherheitslücken, unterstützte Versionen und Ablauf bis zum Security Advisory
 
 ### Architekturentscheidungen
 
