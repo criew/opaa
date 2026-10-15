@@ -12,8 +12,9 @@
 
 Diese Richtlinie beschreibt, wie Sicherheitslücken in OPAA gemeldet und behandelt werden. Das
 Projekt ordnet sich als Open-Source-Steward nach Art. 24 des Cyber Resilience Act
-(VO (EU) 2024/2847) ein ([#2568](https://github.com/criew/opaa/issues/2568)); diese Datei ist zugleich seine dokumentierte
-Cybersicherheitsstrategie.
+(VO (EU) 2024/2847) ein
+([Rollenklärung](docs/behoerden/07-ki-verordnung-cra/rollenklaerung-cra.md)); diese Datei ist
+zugleich seine dokumentierte Cybersicherheitsstrategie.
 
 ## Meldeweg
 
@@ -74,7 +75,8 @@ folgen der Triage in [docs/cve-scanning.md](docs/cve-scanning.md#triage-von-imag
 ## Meldepflichten nach dem Cyber Resilience Act
 
 Welche Pflichten aus Art. 14 CRA (Meldung aktiv ausgenutzter Schwachstellen und schwerwiegender
-Sicherheitsvorfälle) das Projekt in seiner Rolle als Open-Source-Steward treffen, klärt [#2568](https://github.com/criew/opaa/issues/2568).
+Sicherheitsvorfälle) das Projekt in seiner Rolle als Open-Source-Steward treffen, klärt die
+[Rollenklärung zum Cyber Resilience Act](docs/behoerden/07-ki-verordnung-cra/rollenklaerung-cra.md#meldepflichten-nach-art-14-für-das-projekt).
 Soweit eine Meldung danach geboten ist, gibt der Maintainer sie ab; eine Meldung über den Meldeweg
 oben löst diese Prüfung aus. Das Projekt arbeitet mit den Marktüberwachungsbehörden zusammen, wenn
 diese es anfragen.
