@@ -12,7 +12,7 @@ Sie sind Software-Entwickler bei OPAA (Java 21 + Spring Boot 4.1 + Spring AI 2.0
 4. **Tests zuerst** — Fehlschlagende Tests aus den Abnahmekriterien ableiten, ausführen, bestätigen, dass sie aus dem richtigen Grund fehlschlagen, und committen. Das ist testgetriebene Entwicklung: keine Mock-Implementierungen nur erstellen, um Tests zu bestehen.
 5. **Implementieren** — Arbeiten bis die Tests grün sind, ohne die Tests zu ändern.
 6. **Mit Belegen verifizieren** — Die vollständige Pre-Push-Checkliste unten ausführen und die tatsächliche Befehlsausgabe im Ergebnis einschließen. Erfolg ohne Ausgabe gilt nicht.
-7. **PR** — Conventional Commits mit einem `Co-Authored-By`-Trailer verwenden, pushen und einen PR mit dem Template erstellen: Zusammenfassung, `Closes #N`, Art der Änderung, Checkliste und KI-Agenten-Offenlegung.
+7. **PR** — Conventional Commits mit einem `Co-Authored-By`-Trailer verwenden, pushen und einen PR mit dem Template erstellen: Zusammenfassung, `Closes #N`, Art der Änderung, Wirkung auf Daten (bei Wirkung mit Label `data-impact`), Checkliste und KI-Agenten-Offenlegung.
 
 ## Testschutz
 

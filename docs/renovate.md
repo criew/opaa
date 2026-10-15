@@ -50,7 +50,8 @@ siehe `e2e/docker-compose.e2e.yml`; einzige Ausnahme ist das Renovate-Image selb
 Über `dependencies` führen die Release-Notizen Renovate-Updates unter der eigenen Rubrik
 „Abhängigkeiten“ statt unter „Neue Funktionen“ (#2458). Die Rubrik steht in `.github/release.yml`
 hinter „Sicherheit“; trägt ein Update-PR zusätzlich `security`, erscheint er weiter dort, weil
-die erste passende Rubrik gewinnt. Renovate vergibt `security` nicht selbst, das Label setzt
+die erste passende Rubrik gewinnt. Davor steht nur noch „Datenrelevante Änderungen“ (Label
+`data-impact`, [releases.md](releases.md#datenwirkung-kennzeichnen)). Renovate vergibt `security` nicht selbst, das Label setzt
 bei Bedarf ein Mensch. Bereichs-Labels ergänzen die `packageRules` per `addLabels`; eine Regel
 mit `labels` würde `dependencies` ersetzen. Die Abhängigkeits-Übersicht trägt `ci`.
 
@@ -503,6 +504,10 @@ es dann nicht erneut vor). Zu beachten: `e2e` ist kein Required Check und hält 
 nicht auf — die E2E-Suite läuft seit #1226 gar nicht mehr bei PRs; der Lauf bei jedem Push auf
 `main` und der nächtliche Lauf bleiben das Sicherheitsnetz und legen bei Fehlschlag ein
 Alarm-Issue an (bewusste Repo-Entscheidung, vgl. #792).
+
+**Lizenzen:** Die Required Checks `backend` und `frontend` prüfen auch die Lizenzen der
+Laufzeit-Abhängigkeiten. Bringt ein Update eine nicht freigegebene oder geänderte Lizenz mit,
+bleibt der PR offen; das Vorgehen steht in [`docs/sbom.md`](./sbom.md#lizenzprüfung).
 
 ## Konfiguration validieren
 

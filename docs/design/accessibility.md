@@ -113,12 +113,15 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
 Drei Stufen; die erste ist automatisiert, die anderen beiden sind Handarbeit am berührten
 Ausschnitt.
 
-### 3.1 Automatisiert (jeder PR)
+### 3.1 Automatisiert
 
 - `eslint-plugin-jsx-a11y-x` (ESLint-10-kompatibler Fork von `eslint-plugin-jsx-a11y`,
   Rückwechsel: #635) im Frontend-Lint, Regelset `recommended`, jeder Verstoß ein Lint-Fehler.
+  Takt: an jedem PR.
 - **axe-core** (`@axe-core/playwright`) in der Playwright-E2E-Suite
-  (`e2e/tests/accessibility.spec.ts`, eingeführt mit #586): Anmeldung, Chat in beiden
+  (`e2e/tests/accessibility.spec.ts`, eingeführt mit #586). Takt: nach jedem Merge auf `main`,
+  nächtlich und auf Anforderung (`.github/workflows/e2e.yml`), keine Bedingung eines PRs; ein
+  Fehlschlag öffnet ein Alarm-Issue. Geprüft werden Anmeldung, Chat in beiden
   Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich, Benutzer-Einstellungen.
   Verstöße der Stufen
   „serious" und „critical" lassen die Prüfung fehlschlagen, „minor"/„moderate" erscheinen als

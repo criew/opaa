@@ -43,6 +43,30 @@ Wie dieses Feature mit anderen Features/Spezifikationen verbunden ist.
 
 ---
 
+## Wirkung auf Behördenunterlagen
+
+<!--
+Pflicht in jeder Spezifikation, die Verhalten oder Konfiguration festlegt. Die Punkte sind dieselben
+wie im Abschnitt „Wirkung auf Daten und Behördenunterlagen“ des PR-Templates (Label `data-impact`),
+ergänzt um die KI-Einstufung; die Stufe folgt den Stufenregeln in `behoerdenunterlagen.md`.
+Bei Stufe Zustimmung läuft vor dem Schneiden der Issues ein Stakeholder-Review mit Personalrat und Betrieb.
+-->
+
+- [ ] Neue oder geänderte personenbezogene Daten oder Protokollereignisse
+- [ ] Neue Sichtbarkeit: Daten werden für weitere Rollen oder Personen sichtbar
+- [ ] Neue Auswertung oder neuer Export, auch von bereits gespeicherten Daten
+- [ ] Geänderte Aufbewahrungs- oder Löschfrist
+- [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)
+- [ ] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt
+- [ ] Geänderte KI-Einstufung (Zweck oder Einsatzbereich im Sinne der KI-Verordnung)
+- [ ] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen
+
+**Voraussichtliche Stufe** (entfällt bei „Keine Wirkung“, im Zweifel Zustimmung): Bagatelle / Anzeige / Zustimmung
+
+**Betroffene Vorlagen in `docs/behoerden/`** (Verzeichnis, z. B. `04-datenschutz/`, oder „keine“):
+
+---
+
 ## Offene Fragen / Zukünftige Erweiterungen
 
 - Frage oder zurückgestellte Idee 1?

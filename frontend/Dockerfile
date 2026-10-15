@@ -11,7 +11,9 @@ COPY opaa-api/src/main/openapi/ /opaa-api/src/main/openapi/
 # empty means 0.0.0-dev; vite.config.ts fails the build on any other format. Declared after the
 # dependency layer, so a version change does not invalidate the pnpm install.
 ARG OPAA_VERSION=
-RUN pnpm run build && rm -rf dist/.vite
+# Vite copies public/ verbatim; the MSW worker only serves VITE_ENABLE_MOCKS development runs and
+# belongs to a devDependency, so the image ships without it (docs/sbom.md, "Lizenzprüfung").
+RUN pnpm run build && rm -rf dist/.vite dist/mockServiceWorker.js
 
 # The unprivileged variant runs nginx as UID 101 on port 8080 and keeps its pid and temp files
 # under /tmp - the prerequisite for Kubernetes' restricted Pod Security Standard (ADR-0042).
