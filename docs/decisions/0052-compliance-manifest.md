@@ -71,6 +71,19 @@ Fehlermeldung derselben Klasse ändert sie ebenfalls. In der Datenbank ist sie S
 Gradle-Toolchain; ein anderer Compiler (ECJ in Eclipse oder VS Code) kann einen abweichenden
 Konstantenbestand und damit eine andere Prüfsumme erzeugen.
 
+### 7. Vollständigkeitswächter ohne Datenbank
+
+`ComplianceManifestTest` gleicht das Manifest in beiden Richtungen ab: Werte von `AuditEventType`,
+`SystemRole` und `Capability`, Prompt-Prüfsummen sowie jede Tabelle und jede Spalte des Schemas. Jede
+Spalte steht genau einmal, als `personalColumns` oder `nonPersonalColumns` ihrer Tabelle oder in der
+Spaltenliste unter `nonPersonalTables`; so fällt auch eine neue Spalte einer Tabelle ohne
+Personenbezug auf. Das Schema liest `ChangelogSchema` aus den `sql:`-Blöcken des Master-Changelogs
+(ADR-0034); jede Tabellen-DDL, die es nicht vollständig liest, auch in Prozedurrümpfen außer der
+Partitionspflege, lässt es scheitern. Ein Test gegen eine Testcontainers-Datenbank würde ohne
+Docker still übersprungen; der Abgleich des Lesers und der festen Spalten von `vector_store` mit dem
+Katalog einer migrierten Datenbank (`ChangelogSchemaParityTest`) läuft deshalb getrennt in der CI. Jede
+Meldung nennt Datei und einzufügendes YAML; die Konvention steht in `backend/docs/compliance-manifest.md`.
+
 ### 8. Datenflüsse: Anker im Code
 
 Jede Klasse, die Daten aus der Installation sendet, trägt `@DataFlow` mit den Kennungen ihrer
@@ -93,7 +106,7 @@ Instanzexport lesen typisierte Records statt YAML. Ein Tippfehler im Schlüssel 
 zu verschwinden.
 
 Schwieriger: Eine Prompt-Klasse mit vielen Meldungen erzeugt Fehlalarme; die Nachpflege ist eine
-neue Prüfsumme.
+neue Prüfsumme. Jede neue Spalte braucht eine Zeile im Manifest, auch ohne Personenbezug.
 
 Restrisiken: Das Manifest belegt Vollständigkeit, nicht Richtigkeit; die sichern Review und
 Drift-Routine.
@@ -104,6 +117,8 @@ Drift-Routine.
 - Eigenes Gradle-Modul — sieht die geprüften Code-Stellen nicht und spart keinen Build.
 - Prüfsumme über die Quelldatei — jede Formatierung oder Javadoc-Änderung schlüge an.
 - Prüfsumme über den gerenderten Prompt — braucht je Prompt eigene Eingaben und Aufrufcode.
+- Personenbezogene Spalten allein nennen — eine neue Spalte bliebe unbemerkt.
+- Schema aus der Testcontainers-Datenbank — ohne Docker übersprungen, nicht in jedem Testlauf.
 - Datenflüsse als Java-Enum mit allen Angaben — Fachtext im Code, zweite Quelle neben dem Manifest.
 
 ## Offen

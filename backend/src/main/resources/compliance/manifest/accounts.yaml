@@ -8,6 +8,7 @@ data:
       - name: users
         personalColumns:
           [subject, issuer, email, display_name, last_login_at, system_role, directory_locked_at]
+        nonPersonalColumns: [id, created_at, organization_id]
     storage: Anwendungsdatenbank
     retention:
       rule: Bis zur Löschung des Kontos
@@ -39,6 +40,14 @@ data:
           - expires_at
           - email_verified_at
           - created_reason
+        nonPersonalColumns:
+          - password_change_required
+          - password_change_reason
+          - password_invalidated_before
+          - is_bootstrap
+          - created_at
+          - updated_at
+          - version
     storage: Anwendungsdatenbank; Passwort nur als Hash
     retention:
       rule: >-
@@ -60,10 +69,14 @@ data:
     tables:
       - name: local_refresh_tokens
         personalColumns: [user_id, issued_at, revoked_at, revocation_reason]
+        nonPersonalColumns:
+          [id, family_id, token_lookup_hash, expires_at, family_expires_at, rotated_to_id]
       - name: local_revoked_tokens
         personalColumns: [user_id]
+        nonPersonalColumns: [jti_hash, expires_at, revoked_at]
       - name: local_action_tokens
         personalColumns: [user_id, reason, provider_id]
+        nonPersonalColumns: [id, purpose, token_hash, created_at, expires_at, consumed_at]
     storage: Anwendungsdatenbank; Token nur als Hash
     retention:
       rule: >-
@@ -89,6 +102,7 @@ data:
     tables:
       - name: account_state_history
         personalColumns: [user_id, state, cause, valid_from, valid_to]
+        nonPersonalColumns: [id, organization_id, created_at]
     storage: Anwendungsdatenbank
     retention:
       rule: Höchstdauer der Rechtehistorie, Voreinstellung 36 Monate nach Ende des Intervalls
@@ -104,12 +118,46 @@ data:
     tables:
       - name: local_auth_settings
         personalColumns: [updated_by]
+        nonPersonalColumns:
+          - id
+          - self_registration_enabled
+          - self_registration_allowed_domains
+          - password_reset_enabled
+          - password_min_length
+          - invitation_token_ttl_hours
+          - reset_token_ttl_minutes
+          - default_expiry_days
+          - inactive_days
+          - updated_at
+          - version
       - name: mail_settings
         personalColumns: [updated_by, username, from_address, from_name]
+        nonPersonalColumns:
+          - id
+          - enabled
+          - host
+          - port
+          - password_ciphertext
+          - encryption
+          - last_success_at
+          - last_failure_at
+          - last_failure_reason
+          - updated_at
       - name: mail_templates
         personalColumns: [updated_by]
+        nonPersonalColumns: [id, template_key, locale, subject, body_plain, body_html, updated_at]
       - name: external_access_settings
         personalColumns: [updated_by]
+        nonPersonalColumns:
+          - id
+          - enabled
+          - token_max_lifetime_days
+          - token_rate_limit_per_hour
+          - allowed_cidrs
+          - mass_retrieval_alert_threshold
+          - server_instructions
+          - updated_at
+          - version
     storage: Anwendungsdatenbank
     retention:
       rule: Bis zur nächsten Änderung der Einstellung
@@ -125,6 +173,7 @@ data:
     tables:
       - name: notifications
         personalColumns: [recipient_user_id, title, body, read_at]
+        nonPersonalColumns: [id, organization_id, type, object_type, object_id, created_at]
     storage: Anwendungsdatenbank
     retention:
       rule: >-
@@ -151,12 +200,50 @@ data:
     notes:
       - Kurze Frist im Betrieb festlegen; Konto-Kennung statt Adresse
 nonPersonalTables:
-  - organizations
-  - oidc_providers
-  - oidc_provider_seed_marker
-  - oidc_provider_removals
-  - local_admin_seed_marker
-  - branding_settings
+  organizations: [id, name, created_at]
+  oidc_providers:
+    - id
+    - display_name
+    - enabled
+    - is_default
+    - sort_order
+    - issuer_uri
+    - client_id
+    - jwk_set_uri
+    - email_claim
+    - display_name_claim
+    - roles_claim
+    - system_admin_role
+    - auditor_role
+    - groups_claim
+    - created_at
+    - updated_at
+    - provider_type
+    - is_external
+    - directory_sync_enabled
+    - directory_sync_interval_minutes
+  oidc_provider_seed_marker: [id, seeded_at]
+  oidc_provider_removals: [issuer_uri_normalized, removed_at]
+  local_admin_seed_marker: [id, seeded_at]
+  branding_settings:
+    - id
+    - product_name
+    - claim
+    - primary_color
+    - default_color_scheme
+    - logo_content
+    - logo_content_type
+    - logo_version
+    - logo_updated_at
+    - updated_at
+    - login_logo_content
+    - login_logo_content_type
+    - login_logo_version
+    - login_logo_updated_at
+    - login_background_content
+    - login_background_content_type
+    - login_background_version
+    - login_background_updated_at
 settings:
   - key: opaa.auth.local.access-token-ttl
     source: PROPERTY
