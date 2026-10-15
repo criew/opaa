@@ -435,44 +435,45 @@ public final class FactSheetRenderer {
     if (manifest.prompts().isEmpty()) {
       sheet.paragraph(EMPTY_SECTION);
     }
-    byArea(manifest.prompts(), PromptEntry::area)
-        .forEach(
-            (area, entries) -> {
-              sheet.heading(3, null, text(areaTitle(manifest, area)));
-              sheet.table(
-                  List.of("Prompt", "Zweck", "Fundstelle", "Prüfsumme (SHA-256)", "Hinweise"),
-                  entries.stream()
-                      .map(
-                          entry ->
-                              List.of(
-                                  anchored("prompt-" + anchor(entry.id()), code(entry.id())),
-                                  text(entry.purpose()),
-                                  promptLocation(entry),
-                                  code(entry.sha256()),
-                                  texts(entry.notes())))
-                      .toList());
-            });
+    Map<String, List<PromptEntry>> promptAreas = byArea(manifest.prompts(), PromptEntry::area);
+    promptAreas.forEach(
+        (area, entries) -> {
+          areaHeading(sheet, manifest, area, promptAreas.size());
+          sheet.table(
+              List.of("Prompt", "Zweck", "Fundstelle", "Prüfsumme (SHA-256)", "Hinweise"),
+              entries.stream()
+                  .map(
+                      entry ->
+                          List.of(
+                              anchored("prompt-" + anchor(entry.id()), code(entry.id())),
+                              text(entry.purpose()),
+                              promptLocation(entry),
+                              code(entry.sha256()),
+                              texts(entry.notes())))
+                  .toList());
+        });
 
     sheet.heading(2, "ki-funktionen", "KI-Funktionen");
     if (manifest.aiFunctions().isEmpty()) {
       sheet.paragraph(EMPTY_SECTION);
     }
-    byArea(manifest.aiFunctions(), AiFunctionEntry::area)
-        .forEach(
-            (area, entries) -> {
-              sheet.heading(3, null, text(areaTitle(manifest, area)));
-              sheet.table(
-                  List.of(
-                      "Funktion",
-                      "Zweck",
-                      "Ausgabe",
-                      "Interaktion mit Personen",
-                      "Bewertung von Personen",
-                      "Kennzeichnung",
-                      "System-Prompts",
-                      "Hinweise"),
-                  entries.stream().map(FactSheetRenderer::aiFunctionRow).toList());
-            });
+    Map<String, List<AiFunctionEntry>> aiAreas =
+        byArea(manifest.aiFunctions(), AiFunctionEntry::area);
+    aiAreas.forEach(
+        (area, entries) -> {
+          areaHeading(sheet, manifest, area, aiAreas.size());
+          sheet.table(
+              List.of(
+                  "Funktion",
+                  "Zweck",
+                  "Ausgabe",
+                  "Interaktion mit Personen",
+                  "Bewertung von Personen",
+                  "Kennzeichnung",
+                  "System-Prompts",
+                  "Hinweise"),
+              entries.stream().map(FactSheetRenderer::aiFunctionRow).toList());
+        });
 
     sheet.notYetCaptured(NOT_YET_CAPTURED.get(FactSheet.VOREINSTELLUNGEN));
     return sheet.toString();
@@ -713,6 +714,17 @@ public final class FactSheetRenderer {
     return grouped;
   }
 
+  /**
+   * The heading of an area within a section without area anchors; a section of a single area has
+   * none, as its title would only repeat across the sections of the sheet.
+   */
+  private static void areaHeading(
+      Sheet sheet, ComplianceManifest manifest, String area, int areasInSection) {
+    if (areasInSection > 1) {
+      sheet.heading(3, null, text(areaTitle(manifest, area)));
+    }
+  }
+
   private static String areaTitle(ComplianceManifest manifest, String area) {
     return manifest.areas().getOrDefault(area, area);
   }
@@ -822,16 +834,7 @@ public final class FactSheetRenderer {
   }
 
   private static Map<FactSheet, List<Pending>> notYetCaptured() {
-    Map<FactSheet, List<Pending>> pending = new EnumMap<>(FactSheet.class);
-    pending.put(
-        FactSheet.VOREINSTELLUNGEN,
-        List.of(
-            new Pending(
-                "Vollständige Liste der Konfigurationsschlüssel mit Wirkung auf Daten,"
-                    + " Sichtbarkeit, Auswertung oder Datenflüsse",
-                2548),
-            new Pending("Standardmodelle (Chat-, Embedding- und weitere Modellrollen)", 2548)));
-    return pending;
+    return new EnumMap<>(FactSheet.class);
   }
 
   /** A Markdown document under construction with the shared head of every fact sheet. */
