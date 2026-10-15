@@ -114,7 +114,7 @@ Art. 50 gilt seit 2.8.2026, auch für einen Einsatz, der nicht hochriskant ist.
 | Abs. 1 | Personen, die mit einem KI-System interagieren, werden darüber informiert, es sei denn, es ist für eine angemessen informierte, aufmerksame und verständige Person aus den Umständen offensichtlich | Anbieter | Chat-Oberfläche, siehe [Ist-Stand](#ist-stand-der-kennzeichnung-in-opaa) |
 | Abs. 2 | Erzeugte Texte, Bilder, Audio- und Videoinhalte werden in maschinenlesbarem Format gekennzeichnet und als künstlich erzeugt erkennbar; Übergangsfrist für Altsysteme bis 2.12.2026 (Fachbeitrag) | Anbieter | Antworttexte im Chat und beim Kopieren |
 | Abs. 4 | Ein künstlich erzeugter oder veränderter Text, der veröffentlicht wird, um die Öffentlichkeit über Angelegenheiten von öffentlichem Interesse zu informieren, wird offengelegt, es sei denn, er wurde menschlich überprüft oder redaktionell kontrolliert und eine Person trägt die redaktionelle Verantwortung | Betreiber | Übernimmt die Behörde eine Antwort in eine Veröffentlichung, liegt die Pflicht bei ihr, nicht in der Software |
-| Abs. 5 | Die Information erfolgt klar und erkennbar spätestens bei der ersten Interaktion und entspricht den Anforderungen an die Barrierefreiheit | Anbieter und Betreiber | gilt für jeden Hinweis nach Abs. 1 bis 4 |
+| Abs. 5 | Die Information nach Abs. 1 bis 4 erfolgt klar und erkennbar spätestens bei der ersten Interaktion und entspricht den Anforderungen an die Barrierefreiheit | wer nach Abs. 1 bis 4 informieren muss | gilt für jeden Hinweis nach Abs. 1 bis 4 |
 
 Wortlaut und Ausnahmen stehen in Art. 50 KI-VO (Normtext); die Ausnahmen nach Abs. 2 (unterstützende
 Funktion bei Standardbearbeitung, keine wesentliche Veränderung der Eingabe) prüft die Behörde dort.
@@ -131,11 +131,11 @@ Geprüft am Stand von `main` zum Datum im Feld `stand`:
 | Produktname, Anmeldeseite, „Info zu …“ | Produktname und Claim aus dem Branding, Version | Ersetzt die Behörde den Namen, entfällt auch der mittelbare Hinweis im Namen. |
 | Eigener Hinweistext | Die Oberfläche bietet keinen Ort, an dem die Behörde einen eigenen Hinweis zur KI-Nutzung hinterlegen kann. | — |
 
-**Folgerung für die Behörde:** Ob die Umstände des Einsatzes die KI-Interaktion offensichtlich machen
-(Abs. 1), bewertet die Behörde selbst; eine Dienstanweisung oder Nutzungsrichtlinie allein ersetzt den
-Hinweis in der Oberfläche nach Abs. 5 nicht ohne Weiteres. Bis die Software einen Hinweis bietet,
-bleiben ihr organisatorische Mittel: Hinweis bei der Freischaltung des Zugangs, auf der Intranetseite
-mit dem Einstieg, in der Nutzungsrichtlinie. Für Abs. 2 bietet OPAA derzeit keine maschinenlesbare
+**Hinweis für die Behörde:** Ob die Umstände des Einsatzes die KI-Interaktion offensichtlich machen
+(Abs. 1) und ob ein Hinweis außerhalb der Oberfläche den Anforderungen nach Abs. 5 genügt, bewertet
+die Behörde selbst. Solange die Software keinen Hinweis bietet, kommen organisatorische Mittel in
+Betracht: Hinweis bei der Freischaltung des Zugangs, auf der Intranetseite mit dem Einstieg, in der
+Nutzungsrichtlinie. Für Abs. 2 bietet OPAA derzeit keine maschinenlesbare
 Kennzeichnung.
 
 ## Frage 4: Was verlangt Art. 4?

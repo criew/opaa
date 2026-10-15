@@ -37,7 +37,7 @@ Fachbeitrag stammen, sind als solche gekennzeichnet.
 | Beteiligte | Rolle nach CRA | Begriff | Pflichten im Kern |
 |---|---|---|---|
 | **Projekt OPAA** | Open-Source-Steward | Art. 3 Nr. 14, Art. 24 | Cybersicherheitsstrategie, Zusammenarbeit mit den Marktüberwachungsbehörden, Meldepflichten nur im Umfang des Art. 24 Abs. 3 |
-| **Dienstleister**, der OPAA kommerziell als Produkt bereitstellt (gepackt, als Appliance, als bezahlte Distribution) | Hersteller | Art. 3 Nr. 13 | Pflichten des Herstellers, insbesondere Art. 13 und Art. 14; ab 11.12.2027 auch Konformitätsbewertung und CE-Kennzeichnung |
+| **Dienstleister**, der OPAA kommerziell als Produkt bereitstellt (gepackt, als Appliance, als bezahlte Distribution) | Hersteller (Fachbeitrag: [OpenSSF](https://policy.openssf.org/CRA/stewards-one-pager.html)) | Art. 3 Nr. 13 | Pflichten des Herstellers, insbesondere Art. 13 und Art. 14; ab 11.12.2027 auch Konformitätsbewertung und CE-Kennzeichnung |
 | **Dienstleister**, der OPAA nur als Dienst betreibt (reines SaaS) | grundsätzlich keine Rolle nach CRA (Fachbeitrag: [OpenSSF](https://policy.openssf.org/CRA/stewards-one-pager.html)) | — | — |
 | **Behörde**, die OPAA für sich betreibt | Betreiberin; der CRA kennt diese Rolle nicht, seine Pflichten treffen Wirtschaftsakteure (Art. 3 Nr. 12) | — | für den Eigenbetrieb nennt die Recherche keine Pflichten; die Behörde profitiert von den Pflichten der anderen |
 
@@ -50,6 +50,10 @@ gesondert; diese Seite deckt den Fall nicht ab.
 Das Projekt ordnet sich als Open-Source-Steward nach Art. 24 CRA ein (Beschluss des Maintainers vom
 13.10.2026). Die Einordnung selbst ist entschieden; ihre rechtliche Prüfung liegt außerhalb dieser
 Vorlage.
+
+**Hinweis:** Art. 3 Nr. 14 CRA setzt für den Open-Source-Steward eine juristische Person voraus. Wie
+das Projekt diese Anforderung erfüllt, ist nicht Gegenstand dieser Vorlage. Behörden sollten das bei
+der Vergabe erfragen.
 
 | Pflicht des Stewards | Fundstelle | Umsetzung im Projekt |
 |---|---|---|
@@ -76,7 +80,7 @@ Prüfung aus, ob eine Meldung nach Art. 14 geboten ist; abgegeben wird sie vom M
 ## Der Dienstleister als Hersteller
 
 Wer OPAA im Rahmen einer Geschäftstätigkeit als Produkt bereitstellt, ist nach der Recherche
-Hersteller. Für die Behörde als Auftraggeberin wichtig:
+Hersteller (Fachbeitrag: [OpenSSF](https://policy.openssf.org/CRA/stewards-one-pager.html)). Für die Behörde als Auftraggeberin wichtig:
 
 - **Meldepflichten seit 11.9.2026 (Art. 14):** Frühwarnung binnen 24 Stunden, Meldung binnen 72
   Stunden und Abschlussbericht für aktiv ausgenutzte Schwachstellen (Art. 14 Abs. 2) und
