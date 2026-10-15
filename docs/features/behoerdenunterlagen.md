@@ -10,8 +10,9 @@
 > ([cve-scanning.md](../cve-scanning.md)) und die Upgrade-Hinweise je Release
 > ([releases.md](../releases.md#vorbereitung-für-bestandsinstallationen)). **Gebaut** ist die
 > wöchentliche Drift-Routine ([Schicht 3](#schicht-3-wöchentliche-drift-routine)); die Kennzeichnung
-> am PR ([Schicht 2](#schicht-2-kennzeichnung-datenrelevanter-änderungen-am-pr)) liefert #2553. Alles
-> Übrige ist Zielbild.
+> am PR ([Schicht 2](#schicht-2-kennzeichnung-datenrelevanter-änderungen-am-pr)) liefert #2553. Gebaut ist
+> außerdem der Abschnitt „Wirkung auf Behördenunterlagen“ in Spezifikationsvorlage und
+> Produktmanager-Rolle (#2571). Alles Übrige ist Zielbild.
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
