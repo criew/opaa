@@ -636,3 +636,30 @@ tasks.register<Javadoc>("testJavadoc") {
 tasks.named("javadoc") {
     dependsOn("testJavadoc")
 }
+
+// Fact sheets for authorities from the compliance manifest (docs/behoerden/README.md): six Markdown
+// sheets and their JSON form under build/compliance/faktenblaetter/, headed with version, commit and
+// generation date. Not checked in; CI uploads them as an artifact. Never up to date, as the head
+// carries the date.
+tasks.register<JavaExec>("complianceDocs") {
+    group = "documentation"
+    description = "Renders the compliance fact sheets and their JSON form from the manifest."
+    val outputDir = layout.buildDirectory.dir("compliance/faktenblaetter")
+    val opaaVersion = project.version.toString()
+    val commit =
+        providers
+            .exec {
+                commandLine("git", "rev-parse", "HEAD")
+                isIgnoreExitValue = true
+            }.standardOutput.asText
+            .map { it.trim().ifEmpty { "unbekannt" } }
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "io.opaa.compliance.FactSheetGenerator"
+    outputs.dir(outputDir)
+    outputs.upToDateWhen { false }
+    argumentProviders.add(
+        CommandLineArgumentProvider {
+            listOf(outputDir.get().asFile.path, opaaVersion, commit.get())
+        },
+    )
+}
