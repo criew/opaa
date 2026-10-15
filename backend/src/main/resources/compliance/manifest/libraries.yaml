@@ -7,6 +7,27 @@ data:
     tables:
       - name: knowledge_libraries
         personalColumns: [external_access_set_by_user_id, source_credentials, source_url]
+        nonPersonalColumns:
+          - id
+          - organization_id
+          - source_type
+          - source_path
+          - schedule_enabled
+          - schedule_cron
+          - diagnostics_locked
+          - source_webhook_secret
+          - core_context_prefix_document_type
+          - core_context_prefix_document_date
+          - model_extraction_enabled
+          - keywords_enabled
+          - source_settings
+          - external_access_state
+          - external_access_expires_at
+          - external_access_set_at
+          - external_access_reminder_sent_at
+          - all_accounts_grant_allowed
+          - erasure_requested_at
+          - erasure_cause
     storage: Anwendungsdatenbank; Zugangsdaten verschlüsselt
     retention:
       rule: Solange die Bibliothek besteht
@@ -22,16 +43,60 @@ data:
     tables:
       - name: documents
         personalColumns: [file_name, file_path, uploaded_by_user_id, source_entry_url]
+        nonPersonalColumns:
+          - id
+          - content_type
+          - file_size
+          - chunk_count
+          - indexed_at
+          - checksum
+          - status
+          - source_type
+          - last_modified_remote
+          - library_id
+          - organization_id
+          - error_message
+          - created_at
+          - folder_id
+          - parent_document_id
+          - source_container_key
+          - source_hierarchy_path
+          - metadata_extraction_version
+          - context_prefix_stamp
+          - context_prefix_eligible
+          - context_prefix_title
+          - model_extraction_version
+          - keyword_extraction_version
       - name: chunk_full_text
         personalColumns: [content_tsv]
+        nonPersonalColumns: [chunk_id, document_id, library_id, content_tsv_version]
       - name: vector_store
         personalColumns: [content, metadata]
+        nonPersonalColumns: [id, embedding]
       - name: document_metadata_values
         personalColumns: [text_value, actor_user_id]
+        nonPersonalColumns:
+          - id
+          - document_id
+          - field_key
+          - value_state
+          - vocabulary_code
+          - date_value
+          - date_precision
+          - origin
+          - confidence
+          - model_id
+          - extraction_version
+          - created_at
+          - updated_at
+          - library_field_id
+          - library_value_id
       - name: indexing_run_events
         personalColumns: [message, reference]
+        nonPersonalColumns: [id, job_id, category, created_at]
       - name: source_sync_revisits
         personalColumns: [hierarchy_path]
+        nonPersonalColumns: [id, sync_state_id, container_key, created_at]
     storage: >-
       Anwendungsdatenbank (Textabschnitte, Volltext- und Vektorindex); Originale in der
       Originalablage
@@ -68,8 +133,50 @@ data:
     tables:
       - name: indexing_jobs
         personalColumns: [triggered_by]
+        nonPersonalColumns:
+          - id
+          - status
+          - documents_total
+          - documents_processed
+          - documents_failed
+          - documents_skipped
+          - started_at
+          - completed_at
+          - error_message
+          - library_id
+          - documents_indexed_total
+          - events_truncated_count
+          - last_progress_at
+          - organization_id
+          - run_mode
+          - requests_sent
+          - throttle_count
+          - throttle_wait_millis
+          - attachments_processed
+          - attachments_skipped
+          - attachments_failed
+          - incomplete
+          - listing_complete
+          - unlisted_scope_keys
+          - bytes_downloaded
+          - unreadable_scope_count
+          - failure_category
       - name: embedding_index
         personalColumns: [run_started_by]
+        nonPersonalColumns:
+          - id
+          - model
+          - base_url
+          - dimensions
+          - target_model
+          - target_base_url
+          - target_dimensions
+          - run_status
+          - run_started_at
+          - run_organization_id
+          - run_finished_at
+          - run_message
+          - updated_at
     storage: Anwendungsdatenbank
     retention:
       rule: Ohne eigene Löschfrist; mit der Bibliothek
@@ -79,21 +186,75 @@ data:
     deletion: Mit der Bibliothek
     evaluations: keine
 nonPersonalTables:
-  - library_folders
-  - source_sync_state
-  - source_sync_presence
-  - document_keywords
-  - document_type_vocabulary
-  - document_type_synonyms
-  - document_type_suffixes
-  - document_type_suffix_exclusions
-  - library_metadata_fields
-  - library_metadata_field_values
-  - library_metadata_schema_changes
-  - metadata_model_extraction_stats
-  - metadata_model_rejections
-  - llm_models
-  - llm_model_seed_marker
-  - private_storage_quota_settings
-  - rss_feed_state
-  - outbound_proxy_settings
+  library_folders: [id, library_id, parent_folder_id, name, organization_id, created_at]
+  source_sync_state:
+    - id
+    - library_id
+    - full_sync_job_id
+    - completed_scope_keys
+    - full_sync_completed_at
+    - incremental_anchor
+    - updated_at
+    - change_cursors
+    - subtree_markers
+    - scan_progress
+    - settings_basis
+    - full_sync_quota_held
+  source_sync_presence: [document_id, sync_state_id, scan_id]
+  document_keywords:
+    [id, document_id, library_id, keyword, model_id, extraction_version, created_at]
+  document_type_vocabulary: [code, label, sort_order]
+  document_type_synonyms: [code, synonym]
+  document_type_suffixes: [code, suffix, min_prefix_length]
+  document_type_suffix_exclusions: [code, token]
+  library_metadata_fields:
+    - id
+    - library_id
+    - field_key
+    - label
+    - field_type
+    - value_pattern
+    - filter_enabled
+    - context_prefix_enabled
+    - citation_enabled
+    - citation_position
+    - sort_order
+    - created_at
+    - updated_at
+  library_metadata_field_values: [id, field_id, code, label, sort_order]
+  library_metadata_schema_changes:
+    - id
+    - field_id
+    - value_id
+    - target_value_id
+    - change_kind
+    - correlation_ref
+    - requested_at
+    - processed_documents
+  metadata_model_extraction_stats:
+    - library_id
+    - calls
+    - accepted_values
+    - rejected_below_threshold
+    - rejected_outside_vocabulary
+    - failures
+    - rejected_pool_full
+    - keywords_assigned
+    - last_call_at
+  metadata_model_rejections:
+    [id, library_id, document_id, field_key, proposed_value, confidence, reason, created_at]
+  llm_models:
+    - id
+    - display_name
+    - base_url
+    - model_identifier
+    - temperature
+    - max_tokens
+    - api_key_ciphertext
+    - active
+    - created_at
+    - updated_at
+  llm_model_seed_marker: [id, seeded_at]
+  private_storage_quota_settings: [id, quota_bytes, updated_at]
+  rss_feed_state: [id, feed_url, etag, last_modified, updated_at, library_id]
+  outbound_proxy_settings: [id, proxy_host, proxy_port, no_proxy, updated_at]
