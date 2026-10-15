@@ -58,12 +58,10 @@ configurations.named("evalTestRuntimeOnly") {
     extendsFrom(configurations["testRuntimeOnly"])
 }
 
-// Configuration metadata (ADR-0052, Entscheidung 9): spring-boot-configuration-processor describes
-// every @ConfigurationProperties key; writeConfigurationMetadata adds the keys of
-// additional-spring-configuration-metadata.json and the defaults of application.yml and ships the
-// result as META-INF/spring-configuration-metadata.json. The processor runs in a pass of its own
-// over all sources: inside an incremental compileJava, Gradle hands it unchanged types as class
-// files, which carry no Javadoc, and every description of those types would be lost.
+// Configuration metadata (ADR-0052, Entscheidung 9): the configuration processor's keys, plus
+// additional-spring-configuration-metadata.json and the defaults of application.yml, ship as
+// META-INF/spring-configuration-metadata.json. The processor runs in a pass of its own, because an
+// incremental compileJava hands it unchanged types as class files without Javadoc.
 val configMetadata = sourceSets.create("configMetadata")
 val configurationProcessor = configurations.create("configurationProcessor")
 val processorOutputDir = layout.buildDirectory.dir("configuration-metadata")

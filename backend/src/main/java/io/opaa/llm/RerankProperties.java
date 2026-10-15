@@ -50,8 +50,11 @@ public record RerankProperties(
     @DataImpact String baseUrl,
     @DataImpact String model,
     String apiKey,
-    @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") Duration timeout,
-    @DefaultValue(DEFAULT_PROBE_INTERVAL_SECONDS + "s") Duration probeInterval) {
+    @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") @NoDataImpact("a timeout of one request")
+        Duration timeout,
+    @DefaultValue(DEFAULT_PROBE_INTERVAL_SECONDS + "s")
+        @NoDataImpact("a probe sends a fixed test document, no user content")
+        Duration probeInterval) {
 
   /** See {@link #timeout}. */
   static final int DEFAULT_TIMEOUT_SECONDS = 240;

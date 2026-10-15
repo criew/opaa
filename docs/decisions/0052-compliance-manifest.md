@@ -90,8 +90,8 @@ Der Build liefert `META-INF/spring-configuration-metadata.json`: `spring-boot-co
 in einem eigenen Lauf über alle Quellen, ergänzt um `additional-spring-configuration-metadata.json`
 für Schlüssel ohne `@ConfigurationProperties`-Typ und um den Standardwert aus dem Basisdokument von
 `application.yml`. Jeder `opaa.*`-Schlüssel trägt `@DataImpact` oder `@NoDataImpact(Grund)` an seiner
-Komponente oder pauschal an seinem Typ; Schalter, Modelle, Adressen und Fristen entscheidet die
-Komponente selbst. Datenwirksam ist ein Standardwert, der bestimmt, was über Personen anfällt, wie
+Komponente oder pauschal an seinem Typ; Schalter, Modelle, Adressen, Fristen, Abstände und jede
+Zeitspanne (`Duration`, `Period`) entscheidet die Komponente selbst. Datenwirksam ist ein Standardwert, der bestimmt, was über Personen anfällt, wie
 lange es bleibt, wer es sieht, was sich auswerten lässt oder wohin Daten gehen; Schutzgrenzen,
 Zeitlimits, Suchgüte und Geheimnisse sind es nicht. Ein datenwirksamer Schlüssel steht mit seinem
 Standardwert unter `settings`, ebenso Modell und Adresse jeder Modellrolle (Standardmodelle). Setzt

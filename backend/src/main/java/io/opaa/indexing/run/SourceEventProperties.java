@@ -24,7 +24,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @NoDataImpact("timing of the event intake")
 @ConfigurationProperties(prefix = "opaa.indexing.events")
-public record SourceEventProperties(Duration debounce, int maxPendingKeys, int maxDeferrals) {
+public record SourceEventProperties(
+    @NoDataImpact("delay before a targeted run") Duration debounce,
+    int maxPendingKeys,
+    int maxDeferrals) {
 
   public SourceEventProperties {
     debounce = positiveOr(debounce, Duration.ofSeconds(5));

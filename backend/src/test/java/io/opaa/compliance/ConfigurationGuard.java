@@ -7,9 +7,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Field;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -58,7 +61,16 @@ final class ConfigurationGuard {
   private static final String PROFILE_KEY = "spring.config.activate.on-profile";
   private static final Pattern ENV_PLACEHOLDER = Pattern.compile("\\$\\{(OPAA_[A-Z0-9_]+)");
   private static final Pattern ENV_ASSIGNMENT = Pattern.compile("(?m)^\\s*(OPAA_[A-Z0-9_]+)\\s*:");
-  private static final String FEATURE_RANGE = "OPAA_FEATURES_{{";
+  private static final Pattern BLOCK_START = Pattern.compile("\\{\\{-?\\s*(if|with|range)\\b");
+  private static final Pattern BLOCK_END = Pattern.compile("\\{\\{-?\\s*end\\b");
+  private static final Pattern TEMPLATE_ASSIGNMENT =
+      Pattern.compile("\\s*(OPAA_[A-Z0-9_]*)(\\{\\{[^}]*}})?([A-Z0-9_]*)\\s*:");
+  private static final Pattern RANGE_NAME =
+      Pattern.compile("\\{\\{-?\\s*\\$(\\w+)\\s*\\|\\s*snakecase\\s*\\|\\s*upper\\s*-?}}");
+  private static final Pattern RANGE_HEADER =
+      Pattern.compile("range\\s+\\$(\\w+)\\s*,\\s*\\$(\\w+)\\s*:=\\s*\\.Values\\.([\\w.]+)");
+  private static final Pattern INCLUDE = Pattern.compile("include\\s+\"([^\"]+)\"");
+  private static final Pattern DEFINE = Pattern.compile("\\{\\{-?\\s*define\\s+\"([^\"]+)\"");
   private static final Pattern SPRING_AI_MODEL_KEY =
       Pattern.compile("spring\\.ai\\..*\\.(model|base-url)");
 
@@ -120,24 +132,26 @@ final class ConfigurationGuard {
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
-      EnumerablePropertySource<?> base = null;
+      List<EnumerablePropertySource<?>> bases = new ArrayList<>();
       Map<String, EnumerablePropertySource<?>> profiles = new LinkedHashMap<>();
       Map<String, String> raw = new LinkedHashMap<>();
       for (PropertySource<?> document : documents) {
         EnumerablePropertySource<?> source = (EnumerablePropertySource<?>) document;
         Object profile = source.getProperty(PROFILE_KEY);
         if (profile == null) {
-          base = source;
+          bases.add(source);
         } else {
           profiles.put(profile.toString(), source);
         }
         for (String name : source.getPropertyNames()) {
-          raw.putIfAbsent(name, String.valueOf(source.getProperty(name)));
+          raw.merge(name, String.valueOf(source.getProperty(name)), (a, b) -> a + "\n" + b);
         }
       }
-      if (base == null) {
-        throw new IllegalStateException(resource + " has no document without a profile");
+      if (bases.size() != 1) {
+        throw new IllegalStateException(
+            resource + " must hold exactly one document without a profile, found " + bases.size());
       }
+      EnumerablePropertySource<?> base = bases.getFirst();
       Map<String, Map<String, String>> resolvedProfiles = new LinkedHashMap<>();
       for (Map.Entry<String, EnumerablePropertySource<?>> profile : profiles.entrySet()) {
         resolvedProfiles.put(profile.getKey(), resolve(profile.getValue(), base));
@@ -155,8 +169,19 @@ final class ConfigurationGuard {
       PropertySourcesPropertyResolver resolver = new PropertySourcesPropertyResolver(sources);
       Map<String, String> values = new LinkedHashMap<>();
       for (String name : document.getPropertyNames()) {
-        if (!name.equals(PROFILE_KEY)) {
+        if (name.equals(PROFILE_KEY)) {
+          continue;
+        }
+        try {
           values.put(name, resolver.getProperty(name));
+        } catch (IllegalArgumentException e) {
+          throw new IllegalStateException(
+              name
+                  + " in application.yml has no default: write the placeholder as"
+                  + " ${VARIABLE:<default>} ("
+                  + e.getMessage()
+                  + ")",
+              e);
         }
       }
       return values;
@@ -169,7 +194,7 @@ final class ConfigurationGuard {
       return keys;
     }
 
-    /** The environment variables the documents read for {@code key}. */
+    /** The environment variables any document reads for {@code key}. */
     Set<String> environmentVariables(String key) {
       Set<String> names = new LinkedHashSet<>();
       String value = raw.get(key);
@@ -189,8 +214,17 @@ final class ConfigurationGuard {
     }
   }
 
-  /** The backend's environment as the Helm chart renders it, and the chart's value defaults. */
-  record HelmChart(Set<String> configured, Set<String> secret, Map<String, Object> values) {
+  /**
+   * The backend's environment as the Helm chart renders it: for every variable of the ConfigMap the
+   * template text that feeds it (its line, the enclosing {@code if}/{@code with}/{@code range}
+   * headers and the helpers it includes), the variables of the Secret, the chart's value defaults
+   * and the assignments whose variable name this reader cannot work out.
+   */
+  record HelmChart(
+      Map<String, String> configured,
+      Set<String> secret,
+      Map<String, Object> values,
+      List<String> unreadable) {
 
     static HelmChart delivered() {
       return read(Path.of("../deploy/helm/opaa"));
@@ -198,15 +232,112 @@ final class ConfigurationGuard {
 
     static HelmChart read(Path chart) {
       Map<String, Object> values = yaml(chart.resolve("values.yaml"));
-      String configMap = text(chart.resolve("templates/backend-configmap.yaml"));
-      Set<String> configured = assigned(configMap);
-      if (configMap.contains(FEATURE_RANGE) && values.get("features") instanceof Map<?, ?> flags) {
-        for (Object flag : flags.keySet()) {
-          configured.add("OPAA_FEATURES_" + snake(flag.toString()) + "_ENABLED");
+      Path helpers = chart.resolve("templates/_helpers.tpl");
+      Map<String, String> defines = Files.exists(helpers) ? defines(text(helpers)) : Map.of();
+      Map<String, String> configured = new TreeMap<>();
+      List<String> unreadable = new ArrayList<>();
+      List<String> open = new ArrayList<>();
+      for (String line : text(chart.resolve("templates/backend-configmap.yaml")).split("\n")) {
+        String trimmed = line.trim();
+        if (BLOCK_START.matcher(trimmed).lookingAt()) {
+          open.add(trimmed);
+          continue;
+        }
+        if (BLOCK_END.matcher(trimmed).lookingAt()) {
+          if (!open.isEmpty()) {
+            open.removeLast();
+          }
+          continue;
+        }
+        Matcher assignment = TEMPLATE_ASSIGNMENT.matcher(line);
+        if (!assignment.lookingAt()) {
+          continue;
+        }
+        if (assignment.group(2) == null) {
+          String context = String.join("\n", open) + "\n" + withHelpers(line, defines);
+          feed(configured, assignment.group(1), context);
+        } else if (!ranged(assignment, line, open, values, configured)) {
+          unreadable.add(trimmed);
         }
       }
       return new HelmChart(
-          configured, assigned(text(chart.resolve("templates/secret.yaml"))), values);
+          configured, assigned(text(chart.resolve("templates/secret.yaml"))), values, unreadable);
+    }
+
+    /**
+     * A variable named per key of a map, {@code OPAA_X_{{ $name | snakecase | upper }}_Y} inside
+     * {@code range $name, $value := .Values.map}: one variable per key, its value reference spelled
+     * out as {@code .Values.map.<key>.}.
+     */
+    private static boolean ranged(
+        Matcher assignment,
+        String line,
+        List<String> open,
+        Map<String, Object> values,
+        Map<String, String> configured) {
+      Matcher name = RANGE_NAME.matcher(assignment.group(2));
+      if (!name.matches()) {
+        return false;
+      }
+      for (String header : open.reversed()) {
+        Matcher range = RANGE_HEADER.matcher(header);
+        if (range.find() && range.group(1).equals(name.group(1))) {
+          if (!(valueAt(values, range.group(3)) instanceof Map<?, ?> map)) {
+            return false;
+          }
+          for (Object key : map.keySet()) {
+            String variable = assignment.group(1) + snake(key.toString()) + assignment.group(3);
+            String reference = ".Values." + range.group(3) + "." + key + ".";
+            feed(configured, variable, line.replace("$" + range.group(2) + ".", reference));
+          }
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private static void feed(Map<String, String> configured, String variable, String text) {
+      configured.merge(variable, text, (a, b) -> a + "\n" + b);
+    }
+
+    private static String withHelpers(String line, Map<String, String> defines) {
+      StringBuilder text = new StringBuilder(line);
+      Matcher include = INCLUDE.matcher(line);
+      while (include.find()) {
+        text.append('\n').append(defines.getOrDefault(include.group(1), ""));
+      }
+      return text.toString();
+    }
+
+    /** Each {@code define} of the helpers, up to the next one. */
+    private static Map<String, String> defines(String helpers) {
+      Map<String, String> defines = new LinkedHashMap<>();
+      for (String part : helpers.split("(?=\\{\\{-?\\s*define\\s)")) {
+        Matcher define = DEFINE.matcher(part);
+        if (define.lookingAt()) {
+          defines.put(define.group(1), part);
+        }
+      }
+      return defines;
+    }
+
+    /** Whether {@code path} of {@code values.yaml} feeds one of {@code variables}. */
+    boolean feeds(String path, Collection<String> variables) {
+      Pattern reference = Pattern.compile("\\.Values\\." + Pattern.quote(path) + "(?![\\w.])");
+      return variables.stream()
+          .map(variable -> configured.getOrDefault(variable, ""))
+          .anyMatch(text -> reference.matcher(text).find());
+    }
+
+    private static Object valueAt(Map<String, Object> values, String path) {
+      Object node = values;
+      for (String segment : path.split("\\.")) {
+        if (!(node instanceof Map<?, ?> map)) {
+          return null;
+        }
+        node = map.get(segment);
+      }
+      return node;
     }
 
     /** The default at a dotted path of {@code values.yaml}, empty when the path does not exist. */
@@ -257,8 +388,9 @@ final class ConfigurationGuard {
 
   /**
    * Whether a key needs a marker of its own rather than the blanket {@link NoDataImpact} of its
-   * {@code @ConfigurationProperties} type: a switch, a model, an address or a period, judged by the
-   * last segment of the key.
+   * {@code @ConfigurationProperties} type: a switch, a model, an address, a period or an interval,
+   * judged by the last segment of the key. A component of type {@link Duration} or {@link Period}
+   * needs one too, whatever its name ({@link #isTimeSpan}).
    */
   static boolean needsOwnDecision(String key) {
     String last = key.substring(key.lastIndexOf('.') + 1);
@@ -271,6 +403,9 @@ final class ConfigurationGuard {
         || last.contains("endpoint")
         || last.endsWith("-days")
         || last.endsWith("-months")
+        || last.endsWith("-hours")
+        || last.endsWith("-minutes")
+        || last.contains("interval")
         || last.endsWith("ttl")
         || last.contains("lifetime")
         || last.contains("retention");
@@ -318,10 +453,12 @@ final class ConfigurationGuard {
         problems.add(key.name() + ": both @DataImpact and @NoDataImpact on " + current);
         return Optional.empty();
       }
-      if (blanket == Marker.NONE && propertiesType && needsOwnDecision(key.name())) {
+      boolean timeSpan = component.filter(ConfigurationGuard::isTimeSpan).isPresent();
+      if (blanket == Marker.NONE && propertiesType && (needsOwnDecision(key.name()) || timeSpan)) {
         problems.add(
             key.name()
-                + ": a switch, model, address or period is decided on its own - annotate the"
+                + ": a switch, model, address, period or duration is decided on its own - annotate"
+                + " the"
                 + " component '"
                 + camel(segment)
                 + "' of "
@@ -340,6 +477,17 @@ final class ConfigurationGuard {
             + " with @DataImpact or @NoDataImpact(\"<why not>\"), or the type with"
             + " @NoDataImpact(\"<why none of its keys>\")");
     return Optional.empty();
+  }
+
+  /** Whether a component holds a span of time, which may bound how long something is kept. */
+  static boolean isTimeSpan(AnnotatedElement component) {
+    Class<?> type =
+        switch (component) {
+          case RecordComponent recordComponent -> recordComponent.getType();
+          case Field field -> field.getType();
+          default -> Object.class;
+        };
+    return type == Duration.class || type == Period.class;
   }
 
   /** The markers present on one element. */
@@ -566,7 +714,14 @@ final class ConfigurationGuard {
   static List<String> helmGaps(List<SettingEntry> settings, ApplicationYaml yaml, HelmChart chart) {
     List<String> gaps = new ArrayList<>();
     Set<String> read = yaml.allEnvironmentVariables();
-    Set<String> rendered = new TreeSet<>(chart.configured());
+    for (String line : chart.unreadable()) {
+      gaps.add(
+          line
+              + ": the Helm ConfigMap builds a variable name this check cannot read - name the"
+              + " variable plainly, or as OPAA_X_{{ $name | snakecase | upper }}_Y inside"
+              + " range $name, $value := .Values.<map>");
+    }
+    Set<String> rendered = new TreeSet<>(chart.configured().keySet());
     rendered.addAll(chart.secret());
     for (String variable : rendered) {
       if (!read.contains(variable)) {
@@ -581,7 +736,7 @@ final class ConfigurationGuard {
         continue;
       }
       Set<String> variables = yaml.environmentVariables(entry.key());
-      List<String> set = variables.stream().filter(chart.configured()::contains).toList();
+      List<String> set = variables.stream().filter(chart.configured()::containsKey).toList();
       HelmValue helm = entry.helm();
       String file = "compliance/manifest/" + entry.area() + ".yaml";
       if (!set.isEmpty() && helm == null) {
@@ -621,6 +776,15 @@ final class ConfigurationGuard {
                   + helm.values()
                   + "\n      defaultValue: "
                   + quoted(chartDefault.get()));
+        } else if (!chart.feeds(helm.values(), set)) {
+          gaps.add(
+              entry.key()
+                  + ": deploy/helm/opaa/templates/backend-configmap.yaml sets "
+                  + set
+                  + " without reading '.Values."
+                  + helm.values()
+                  + "' - name the value that feeds it in 'helm.values' in "
+                  + file);
         }
       }
     }

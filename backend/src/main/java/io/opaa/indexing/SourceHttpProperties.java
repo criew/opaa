@@ -39,9 +39,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record SourceHttpProperties(
     String userAgent,
     int maxRateLimitRetries,
-    Duration maxRetryAfter,
+    @NoDataImpact("pacing of retries") Duration maxRetryAfter,
     int requestBudgetPerRun,
-    Duration maxRateLimitWaitPerRun) {
+    @NoDataImpact("pacing of retries") Duration maxRateLimitWaitPerRun) {
 
   public SourceHttpProperties {
     if (userAgent == null || userAgent.isBlank()) {

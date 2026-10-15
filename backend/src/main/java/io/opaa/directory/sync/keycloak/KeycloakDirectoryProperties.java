@@ -30,8 +30,8 @@ public record KeycloakDirectoryProperties(
     int maxGroups,
     int maxMembersPerGroup,
     int maxAccounts,
-    Duration connectTimeout,
-    Duration requestTimeout) {
+    @NoDataImpact("a timeout of one request") Duration connectTimeout,
+    @NoDataImpact("a timeout of one request") Duration requestTimeout) {
 
   public KeycloakDirectoryProperties {
     if (pageSize < 1) {

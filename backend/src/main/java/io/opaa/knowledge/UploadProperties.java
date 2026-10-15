@@ -49,7 +49,8 @@ public record UploadProperties(
     @DataImpact String store,
     long maxFileSize,
     ThreadPool threadPool,
-    int pendingRecoveryThresholdMinutes,
+    @NoDataImpact("marks an abandoned upload failed; it deletes nothing")
+        int pendingRecoveryThresholdMinutes,
     @DataImpact int orphanGraceMinutes) {
 
   public UploadProperties {

@@ -1,6 +1,7 @@
 package io.opaa.compliance;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.compliance.ComplianceManifest.Bearing;
 import io.opaa.compliance.ComplianceManifest.HelmValue;
@@ -34,6 +35,7 @@ class ConfigurationGuardTest {
       int pageSize,
       boolean enabled,
       @NoDataImpact("fixture cache") Duration cacheTtl,
+      Duration syncPause,
       @DataImpact @NoDataImpact("contradiction") int both) {}
 
   @ConfigurationProperties("opaa.unmarked")
@@ -177,17 +179,33 @@ class ConfigurationGuardTest {
     List<String> wrongPath =
         ConfigurationGuard.helmGaps(
             List.of(entryWithHelm(new HelmValue("retention.keep", "30"))), YAML, CHART);
+    List<String> notFeeding =
+        ConfigurationGuard.helmGaps(
+            List.of(entryWithHelm(new HelmValue("retention.unused", "30"))), YAML, CHART);
     List<String> current =
         ConfigurationGuard.helmGaps(
             List.of(entryWithHelm(new HelmValue("retention.keepDays", "30"))), YAML, CHART);
 
-    assertThat(missing).hasSize(2);
-    assertThat(missing.get(0)).contains("OPAA_NOT_READ", "no key of application.yml reads it");
-    assertThat(missing.get(1)).contains("[OPAA_FIXTURE_KEEP_DAYS]", "values: <dotted path>");
-    assertThat(stale.get(1))
+    assertThat(missing).hasSize(3);
+    assertThat(missing.get(0)).contains("OPAA_{{ .Values.dynamic }}", "cannot read");
+    assertThat(missing.get(1)).contains("OPAA_NOT_READ", "no key of application.yml reads it");
+    assertThat(missing.get(2)).contains("[OPAA_FIXTURE_KEEP_DAYS]", "values: <dotted path>");
+    assertThat(stale.get(2))
         .contains("now defaults 'retention.keepDays' to \"30\"", "defaultValue: \"30\"");
-    assertThat(wrongPath.get(1)).contains("has no value 'retention.keep'");
-    assertThat(current).singleElement().asString().contains("OPAA_NOT_READ");
+    assertThat(wrongPath.get(2)).contains("has no value 'retention.keep'");
+    assertThat(notFeeding.get(2))
+        .contains("sets [OPAA_FIXTURE_KEEP_DAYS] without reading '.Values.retention.unused'");
+    assertThat(current).hasSize(2);
+  }
+
+  @Test
+  void readsWhichValueFeedsAVariableThroughWithRangeAndHelpers() {
+    assertThat(CHART.configured())
+        .containsKeys("OPAA_FIXTURE_KEEP_DAYS", "OPAA_FLAG_FOO_BAR_ENABLED", "OPAA_NOT_READ");
+    assertThat(CHART.feeds("retention.keepDays", List.of("OPAA_FIXTURE_KEEP_DAYS"))).isTrue();
+    assertThat(CHART.feeds("flags.fooBar.enabled", List.of("OPAA_FLAG_FOO_BAR_ENABLED"))).isTrue();
+    assertThat(CHART.feeds("retention", List.of("OPAA_FIXTURE_KEEP_DAYS"))).isFalse();
+    assertThat(CHART.unreadable()).containsExactly("OPAA_{{ .Values.dynamic }}: \"y\"");
   }
 
   @Test
@@ -195,6 +213,32 @@ class ConfigurationGuardTest {
     assertThat(CHART.defaultAt("sources")).contains("");
     assertThat(CHART.defaultAt("retention.keepDays")).contains("30");
     assertThat(CHART.defaultAt("missing")).isEmpty();
+  }
+
+  @Test
+  void needsExactlyOneBaseDocumentAndADefaultForEveryPlaceholder() {
+    assertThatThrownBy(
+            () ->
+                ApplicationYaml.read(
+                    new ClassPathResource("compliance-fixtures/configuration/two-bases.yml")))
+        .hasMessageContaining("exactly one document without a profile, found 2");
+    assertThatThrownBy(
+            () ->
+                ApplicationYaml.read(
+                    new ClassPathResource("compliance-fixtures/configuration/no-default.yml")))
+        .hasMessageContaining("opaa.fixture.keep-days in application.yml has no default")
+        .hasMessageContaining("UNSET_WITHOUT_DEFAULT");
+  }
+
+  @Test
+  void aDurationOnABlanketPropertiesTypeIsDecidedOnItsOwn() {
+    List<String> gaps = new ArrayList<>();
+
+    assertThat(ConfigurationGuard.impactOf(key("opaa.fixture.sync-pause", null), gaps)).isEmpty();
+    assertThat(gaps).singleElement().asString().contains("decided on its own", "'syncPause'");
+    assertThat(ConfigurationGuard.needsOwnDecision("opaa.x.full-sync-interval")).isTrue();
+    assertThat(ConfigurationGuard.needsOwnDecision("opaa.x.orphan-grace-minutes")).isTrue();
+    assertThat(ConfigurationGuard.needsOwnDecision("opaa.x.token-ttl-hours")).isTrue();
   }
 
   private static Impact impact(String name) {

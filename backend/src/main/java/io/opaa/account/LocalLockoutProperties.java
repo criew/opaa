@@ -15,7 +15,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @NoDataImpact("a protection limit against guessing")
 @ConfigurationProperties(prefix = "opaa.auth.local.lockout")
-public record LocalLockoutProperties(Integer maxAttempts, Duration duration) {
+public record LocalLockoutProperties(
+    Integer maxAttempts,
+    @NoDataImpact("how long a sign-in lock lasts; it keeps no data") Duration duration) {
 
   public static final String MAX_ATTEMPTS_VARIABLE = "OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS";
   public static final String DURATION_VARIABLE = "OPAA_AUTH_LOCAL_LOCKOUT_DURATION";

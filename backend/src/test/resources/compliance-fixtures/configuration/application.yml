@@ -2,6 +2,8 @@ opaa:
   fixture:
     keep-days: ${OPAA_FIXTURE_KEEP_DAYS:30}
     page-size: ${OPAA_FIXTURE_PAGE_SIZE:100}
+fixture:
+  foo-bar: ${OPAA_FLAG_FOO_BAR_ENABLED:true}
 spring:
   ai:
     openai:

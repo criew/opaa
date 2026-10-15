@@ -63,7 +63,7 @@ public record IndexingProperties(
     int chunkOverlap,
     int batchSize,
     ThreadPool threadPool,
-    Duration staleJobTimeout,
+    @NoDataImpact("marks a stuck run failed; it deletes nothing") Duration staleJobTimeout,
     TargetValidation targetValidation,
     int embeddingConcurrency)
     implements ChunkSizing, EmbeddingBatching, RunRecoverySettings {

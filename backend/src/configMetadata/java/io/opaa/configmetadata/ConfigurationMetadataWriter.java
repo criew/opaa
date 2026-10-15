@@ -11,7 +11,6 @@ import java.util.Map;
 import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.env.MutablePropertySources;
-import org.springframework.core.env.PropertySource;
 import org.springframework.core.env.PropertySourcesPropertyResolver;
 import org.springframework.core.io.FileSystemResource;
 import tools.jackson.databind.JsonNode;
@@ -80,23 +79,44 @@ public final class ConfigurationMetadataWriter {
     return name(node) + "|" + node.path("sourceType").asString("");
   }
 
-  /** Every key of the document without a profile, resolved as a fresh installation reads it. */
+  /**
+   * Every key of the one document without a profile, resolved as a fresh installation reads it.
+   *
+   * @throws IllegalStateException when there is not exactly one such document, or when a value
+   *     names a placeholder that neither has a default nor is a key of that document
+   */
   static Map<String, String> baseDefaults(Path applicationYml) throws IOException {
-    List<PropertySource<?>> documents =
+    List<EnumerablePropertySource<?>> bases =
         new YamlPropertySourceLoader()
-            .load("application.yml", new FileSystemResource(applicationYml));
-    EnumerablePropertySource<?> base =
-        documents.stream()
-            .filter(document -> document.getProperty(PROFILE_KEY) == null)
-            .map(document -> (EnumerablePropertySource<?>) document)
-            .findFirst()
-            .orElseThrow(() -> new IllegalStateException("no document without a profile"));
+            .load("application.yml", new FileSystemResource(applicationYml)).stream()
+                .filter(document -> document.getProperty(PROFILE_KEY) == null)
+                .<EnumerablePropertySource<?>>map(
+                    document -> (EnumerablePropertySource<?>) document)
+                .toList();
+    if (bases.size() != 1) {
+      throw new IllegalStateException(
+          applicationYml
+              + " must hold exactly one document without a profile, found "
+              + bases.size());
+    }
+    EnumerablePropertySource<?> base = bases.getFirst();
     MutablePropertySources sources = new MutablePropertySources();
     sources.addFirst(base);
     PropertySourcesPropertyResolver resolver = new PropertySourcesPropertyResolver(sources);
     Map<String, String> defaults = new LinkedHashMap<>();
     for (String name : base.getPropertyNames()) {
-      defaults.put(name, resolver.getProperty(name));
+      try {
+        defaults.put(name, resolver.getProperty(name));
+      } catch (IllegalArgumentException e) {
+        throw new IllegalStateException(
+            name
+                + " in "
+                + applicationYml
+                + " has no default: write the placeholder as ${VARIABLE:<default>} ("
+                + e.getMessage()
+                + ")",
+            e);
+      }
     }
     return defaults;
   }

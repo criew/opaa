@@ -217,3 +217,42 @@ settings:
     defaultValue: https://api.dropboxapi.com/2/auth/token/revoke
     effect: Adresse, an der ein verworfenes Dropbox-Token widerrufen wird
     bearings: [DATA_FLOW]
+  # Vollabgleiche: erst sie entfernen, was in der Quelle gelöscht wurde
+  - key: opaa.indexing.confluence.full-sync-interval
+    defaultValue: 7d
+    effect: >-
+      Abstand der Vollabgleiche von Confluence; nur sie entfernen Seiten aus dem Bestand, die in der
+      Quelle gelöscht wurden
+    bearings: [DATA]
+    notes:
+      - Je Bibliothek überschreibbar
+  - key: opaa.indexing.sharepoint.full-sync-interval
+    defaultValue: 1d
+    effect: >-
+      Abstand der Vollabgleiche von SharePoint; sie entfernen Dateien gelöschter oder verschobener
+      Ordner, die der Änderungslauf nicht einzeln meldet
+    bearings: [DATA]
+    notes:
+      - Je Bibliothek überschreibbar
+  - key: opaa.indexing.dropbox.full-sync-interval
+    defaultValue: 7d
+    effect: >-
+      Abstand der Vollabgleiche von Dropbox; sie entfernen, was der Änderungslauf nicht als gelöscht
+      gemeldet hat
+    bearings: [DATA]
+    notes:
+      - Je Bibliothek überschreibbar
+  - key: opaa.indexing.google-drive.full-sync-interval
+    defaultValue: 7d
+    effect: >-
+      Abstand der Vollabgleiche von Google Drive; sie entfernen, was der Änderungslauf nicht als
+      gelöscht gemeldet hat
+    bearings: [DATA]
+    notes:
+      - Je Bibliothek überschreibbar
+  - key: opaa.indexing.nextcloud.full-descent-interval
+    defaultValue: 7d
+    effect: >-
+      Wie lange gemerkte Ordnerkennungen einen Ordner von der Auflistung verschonen; erst die volle
+      Auflistung entfernt, was dort fehlt
+    bearings: [DATA]

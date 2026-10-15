@@ -74,9 +74,11 @@ public record RerankProperties(@DataImpact boolean enabled, @DataImpact String b
 sich über Personen auswerten lässt oder wohin Daten gehen (Fristen, Löschung, Sichtbarkeit, Schwellen,
 Modellrollen, Adressen, Schalter von Funktionen mit Daten). **`@NoDataImpact("Grund")`** für Schutzgrenzen,
 Zeitlimits, Budgets, Ratenlimits, Suchgüte und Geheimnisse ohne Standardwert. Im Zweifel `@DataImpact`. Die
-Pauschalmarkierung am `@ConfigurationProperties`-Typ deckt keine Schalter, Modelle, Adressen und Fristen (letztes
-Segment `enabled`, `model`, `…url`, `…uri`, `…endpoint`, `…-days`, `…-months`, `…ttl`, `…lifetime…`, `…retention…`);
-sie werden an der Komponente entschieden. Eine Begründung an einer Prompt-Klasse ändert deren Prüfsumme; dort die
+Pauschalmarkierung am `@ConfigurationProperties`-Typ deckt keine Schalter, Modelle, Adressen, Fristen und Abstände
+(letztes Segment `enabled`, `model`, `…url`, `…uri`, `…endpoint`, `…-days`, `…-months`, `…-hours`, `…-minutes`,
+`…ttl`, `…lifetime…`, `…retention…`, `…interval…`) und keine Komponente vom Typ `Duration` oder `Period`; sie werden
+an der Komponente entschieden. Ein Vollabgleich-Rhythmus ist datenwirksam: Erst der Vollabgleich entfernt, was in
+der Quelle gelöscht wurde. Eine Begründung an einer Prompt-Klasse ändert deren Prüfsumme; dort die
 Markierung an eine andere lesende Klasse legen.
 
 Ein datenwirksamer Schlüssel steht unter `settings`, in der Datei des Bereichs, auf den er wirkt, sonst in
@@ -96,7 +98,10 @@ settings:
 ```
 
 `helm` ist Pflicht, sobald `deploy/helm/opaa/templates/backend-configmap.yaml` die Umgebungsvariable des Schlüssels
-setzt, und verboten, sobald nicht mehr. Überschreibt ein Produktivprofil von `application.yml` (alle außer `dev`)
+setzt, und verboten, sobald nicht mehr. `helm.values` muss die Variable speisen: `.Values.<pfad>` steht in ihrer
+Zeile, in einem umschließenden `if`/`with`/`range` oder in einem eingebundenen Helfer aus `_helpers.tpl`. Per
+`range $name, $wert := .Values.<map>` erzeugte Variablen (`OPAA_X_{{ $name | snakecase | upper }}_Y`) liest der
+Test je Schlüssel der Map; jede andere zusammengesetzte Variable lässt ihn scheitern. Überschreibt ein Produktivprofil von `application.yml` (alle außer `dev`)
 den Standardwert, nennt der Eintrag den Wert in `notes` als `"Profil <name>: <wert>"`.
 
 ## Grenzen

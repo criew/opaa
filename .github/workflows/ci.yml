@@ -153,6 +153,7 @@ jobs:
             # Step-level filter of the comment rule guard below, not a job output.
             comments:
               - 'backend/src/main/**'
+              - 'backend/src/configMetadata/**'
               - 'backend/src/test/**'
               - 'backend/src/evalTest/**'
               - 'opaa-api/src/main/**'

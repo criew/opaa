@@ -24,7 +24,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "opaa.indexing.smb")
 public record SmbProperties(
     long maxFileSizeBytes,
-    Duration requestTimeout,
+    @NoDataImpact("a timeout of one request") Duration requestTimeout,
     int requestBudgetPerRun,
     int maxEntriesPerRun,
     int downloadConcurrency,

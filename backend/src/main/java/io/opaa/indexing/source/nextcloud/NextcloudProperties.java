@@ -3,6 +3,7 @@ package io.opaa.indexing.source.nextcloud;
 import static io.opaa.common.PropertyDefaults.notNegativeOr;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
+import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -25,12 +26,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "opaa.indexing.nextcloud")
 public record NextcloudProperties(
     long maxFileSizeBytes,
-    Duration requestTimeout,
+    @NoDataImpact("a timeout of one request") Duration requestTimeout,
     int requestBudgetPerRun,
     int maxEntriesPerRun,
     int downloadConcurrency,
     long maxResponseBytes,
-    Duration fullDescentInterval) {
+    @DataImpact Duration fullDescentInterval) {
 
   public static final long DEFAULT_MAX_FILE_SIZE_BYTES = 50L * 1024 * 1024;
   public static final int DEFAULT_REQUEST_BUDGET_PER_RUN = 20_000;

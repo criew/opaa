@@ -33,7 +33,8 @@ public record TranscriptionProperties(
     String apiKey,
     String language,
     @DefaultValue("" + DEFAULT_MAX_AUDIO_BYTES) long maxAudioBytes,
-    @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") Duration timeout,
+    @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") @NoDataImpact("a timeout of one request")
+        Duration timeout,
     @DefaultValue("" + DEFAULT_MAX_CONCURRENT) int maxConcurrent) {
 
   static final long DEFAULT_MAX_AUDIO_BYTES = 10L * 1024 * 1024;

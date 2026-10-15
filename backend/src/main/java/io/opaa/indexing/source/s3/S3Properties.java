@@ -45,9 +45,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record S3Properties(
     int listPageSize,
     long maxObjectSizeBytes,
-    Duration requestTimeout,
+    @NoDataImpact("a timeout of one request") Duration requestTimeout,
     Integer maxRetries,
-    Duration retryBackoff,
+    @NoDataImpact("pacing of retries") Duration retryBackoff,
     int requestBudgetPerRun,
     Path tempDirectory,
     int maxObjectsPerRun,

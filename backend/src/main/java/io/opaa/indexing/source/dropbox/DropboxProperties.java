@@ -47,14 +47,14 @@ public record DropboxProperties(
     @DataImpact URI revocationEndpoint,
     int pageSize,
     long maxFileSizeBytes,
-    Duration requestTimeout,
-    Duration downloadTimeout,
+    @NoDataImpact("a timeout of one request") Duration requestTimeout,
+    @NoDataImpact("a timeout of one request") Duration downloadTimeout,
     Integer maxRetries,
-    Duration maxRetryWait,
+    @NoDataImpact("pacing of retries") Duration maxRetryWait,
     int requestBudgetPerRun,
     int maxFilesPerRun,
     int downloadConcurrency,
-    Duration fullSyncInterval) {
+    @DataImpact Duration fullSyncInterval) {
 
   public static final String API_BASE = "https://api.dropboxapi.com";
   public static final String CONTENT_BASE = "https://content.dropboxapi.com";

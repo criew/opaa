@@ -13,9 +13,10 @@ import java.lang.annotation.Target;
  *
  * <p>On a type it covers every key the configuration metadata attributes to the type and its nested
  * types. On a {@code @ConfigurationProperties} type that blanket does not cover a switch, a model,
- * an address or a period (a key ending in {@code enabled}, {@code model}, {@code url}, {@code uri},
- * {@code endpoint}, {@code days}, {@code months} or {@code ttl}, or naming a lifetime or
- * retention); such a key carries its own marker on its component.
+ * an address, a period or an interval (a key ending in {@code enabled}, {@code model}, {@code url},
+ * {@code uri}, {@code endpoint}, {@code days}, {@code months}, {@code hours}, {@code minutes} or
+ * {@code ttl}, or naming a lifetime, retention or interval), nor any component of type {@code
+ * Duration} or {@code Period}; such a key carries its own marker on its component.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

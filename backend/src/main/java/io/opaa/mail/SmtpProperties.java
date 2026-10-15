@@ -21,4 +21,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @NoDataImpact("timeouts")
 @ConfigurationProperties(prefix = "opaa.mail")
 public record SmtpProperties(
-    Duration connectTimeout, Duration readTimeout, Duration writeTimeout) {}
+    @NoDataImpact("a timeout of one request") Duration connectTimeout,
+    @NoDataImpact("a timeout of one request") Duration readTimeout,
+    @NoDataImpact("a timeout of one request") Duration writeTimeout) {}

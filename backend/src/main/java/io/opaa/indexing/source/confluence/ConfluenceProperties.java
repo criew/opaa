@@ -4,6 +4,7 @@ import static io.opaa.common.PropertyDefaults.notNegativeOr;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 import static io.opaa.common.PropertyDefaults.requireNotNegative;
 
+import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -52,15 +53,16 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "opaa.indexing.confluence")
 public record ConfluenceProperties(
     int pageSize,
-    Duration requestTimeout,
-    Duration detectionTimeout,
+    @NoDataImpact("a timeout of one request") Duration requestTimeout,
+    @NoDataImpact("a timeout of one request") Duration detectionTimeout,
     int maxRateLimitRetries,
-    Duration maxRetryAfter,
+    @NoDataImpact("pacing of retries") Duration maxRetryAfter,
     long maxResponseBytes,
     long maxAttachmentSizeBytes,
     int maxListingPages,
-    Duration fullSyncInterval,
-    Duration incrementalOverlap,
+    @DataImpact Duration fullSyncInterval,
+    @NoDataImpact("search window overlap; a full sync still removes what is gone")
+        Duration incrementalOverlap,
     int requestBudgetPerRun) {
 
   /**
