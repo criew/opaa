@@ -36,6 +36,57 @@ class PromptChecksumTest {
     }
   }
 
+  private static final String TOOL = PromptChecksumTest.class.getName() + "$Tool";
+
+  private static final String RETOOLED = PromptChecksumTest.class.getName() + "$Retooled";
+
+  @interface Described {
+    String value();
+
+    String[] examples() default {};
+  }
+
+  @SuppressWarnings("unused")
+  static final class Tool {
+    @Described(value = "Durchsucht die Wissensbasis.", examples = "Bauantrag")
+    String search(@Described("Die Suchfrage.") String question) {
+      return question;
+    }
+  }
+
+  @SuppressWarnings("unused")
+  static final class Retooled {
+    @Described(value = "Durchsucht die Wissensbasis gründlich.", examples = "Bauantrag")
+    String search(@Described("Die Suchfrage.") String question) {
+      return question;
+    }
+  }
+
+  @Test
+  void readsTheStringValuesOfAnnotationsOnMethodsAndParameters() {
+    assertThat(PromptChecksum.stringConstants(TOOL))
+        .contains("Durchsucht die Wissensbasis.", "Bauantrag", "Die Suchfrage.");
+  }
+
+  @Test
+  void aChangedAnnotationValueChangesTheChecksum() {
+    assertThat(PromptChecksum.of(List.of(TOOL))).isNotEqualTo(PromptChecksum.of(List.of(RETOOLED)));
+  }
+
+  @Test
+  void readsTheDefaultTheChangelogGivesAColumn() {
+    assertThat(PromptChecksum.databaseDefault("external_access_settings.server_instructions"))
+        .startsWith("Bei Fragen zu Verwaltungsvorgängen dieser Behörde zuerst „search“ aufrufen.")
+        .endsWith("Nichts erfinden, was die Treffer nicht hergeben.");
+  }
+
+  @Test
+  void aColumnWithoutDefaultFails() {
+    assertThatThrownBy(() -> PromptChecksum.databaseDefault("external_access_settings.version"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("external_access_settings.version");
+  }
+
   @Test
   void readsTextBlocksAndTheTemplatesOfRuntimeConcatenation() {
     assertThat(PromptChecksum.stringConstants(WORDING))

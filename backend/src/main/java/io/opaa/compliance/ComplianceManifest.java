@@ -1,6 +1,7 @@
 package io.opaa.compliance;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -207,18 +208,30 @@ public record ComplianceManifest(
       List<@NotBlank String> notes) {}
 
   /**
-   * A system prompt sent to a model. {@code sha256} is {@link PromptChecksum#of} over {@code
-   * classes}, so any change of its wording changes the checksum.
+   * A system prompt sent to a model, held either in code or as a database default ("Fundstelle":
+   * exactly one of the two). {@code sha256} is {@link PromptChecksum#of(PromptEntry)}, so any
+   * change of its wording changes the checksum.
    *
-   * @param classes the binary names of the classes holding the prompt text ("Fundstelle")
+   * @param classes the binary names of the classes holding the prompt text
+   * @param databaseDefault {@code table.column} whose changelog default is the prompt text
    */
   public record PromptEntry(
       @NotBlank String area,
       @NotBlank String id,
       @NotBlank String purpose,
-      @NotEmpty List<@NotBlank String> classes,
+      List<@NotBlank String> classes,
+      String databaseDefault,
       @NotBlank @Pattern(regexp = "[0-9a-f]{64}") String sha256,
-      List<@NotBlank String> notes) {}
+      List<@NotBlank String> notes) {
+
+    /** Validated as property {@code locatedOnce}. */
+    @AssertTrue
+    public boolean isLocatedOnce() {
+      boolean inCode = classes != null && !classes.isEmpty();
+      boolean inDatabase = databaseDefault != null && !databaseDefault.isBlank();
+      return inCode != inDatabase;
+    }
+  }
 
   /**
    * A kind of data leaving the installation ("ausgehender Datenfluss").

@@ -42,14 +42,16 @@ class ComplianceManifestTest {
   }
 
   @Test
-  void everyPromptChecksumMatchesTheClassesItNames() {
+  void everyPromptChecksumMatchesTheTextAtItsLocation() {
     assertThat(MANIFEST.prompts()).isNotEmpty();
     for (PromptEntry prompt : MANIFEST.prompts()) {
-      assertThat(PromptChecksum.of(prompt.classes()))
+      assertThat(PromptChecksum.of(prompt))
           .as(
               "prompt '%s' (%s) changed - review the wording, then set its sha256 in"
                   + " compliance/manifest/%s.yaml",
-              prompt.id(), prompt.classes(), prompt.area())
+              prompt.id(),
+              prompt.databaseDefault() != null ? prompt.databaseDefault() : prompt.classes(),
+              prompt.area())
           .isEqualTo(prompt.sha256());
     }
   }

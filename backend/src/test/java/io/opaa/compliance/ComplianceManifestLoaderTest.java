@@ -142,6 +142,33 @@ class ComplianceManifestLoaderTest {
   }
 
   @Test
+  void aKeyRepeatedInOneMappingIsRejectedInsteadOfOverwritten() {
+    assertThatThrownBy(() -> ComplianceManifestLoader.load(FIXTURES + "duplicate-key/*.yaml"))
+        .isInstanceOfSatisfying(
+            ComplianceManifestException.class,
+            e ->
+                assertThat(e.violations())
+                    .singleElement()
+                    .satisfies(
+                        v ->
+                            assertThat(v)
+                                .startsWith("roles: unreadable YAML")
+                                .contains("seesAboutOthers")));
+  }
+
+  @Test
+  void aPromptNamesExactlyOneLocation() {
+    assertThatThrownBy(() -> ComplianceManifestLoader.load(FIXTURES + "prompt-location/*.yaml"))
+        .isInstanceOfSatisfying(
+            ComplianceManifestException.class,
+            e ->
+                assertThat(e.violations())
+                    .containsExactlyInAnyOrder(
+                        "prompts: prompts 'both': rule 'locatedOnce' is not met",
+                        "prompts: prompts 'neither': rule 'locatedOnce' is not met"));
+  }
+
+  @Test
   void noFileAtTheLocationIsAnErrorNotAnEmptyManifest() {
     assertThatThrownBy(() -> ComplianceManifestLoader.load(FIXTURES + "absent/*.yaml"))
         .isInstanceOf(ComplianceManifestException.class)

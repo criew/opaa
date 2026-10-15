@@ -1,0 +1,5 @@
+title: Konten und Rollen
+roles:
+  - id: USER
+    seesAboutOthers: nichts
+    seesAboutOthers: der zweite Wert würde den ersten still ersetzen

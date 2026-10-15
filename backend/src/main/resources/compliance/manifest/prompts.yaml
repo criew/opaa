@@ -19,7 +19,7 @@ prompts:
   - id: chat-title
     purpose: Erzeugt aus erster Frage und Antwort einen Titel für den Chat
     classes: [io.opaa.chat.ChatTitleGenerationService]
-    sha256: "79a8d44ad4eb5388a73a24508f9b3e6ff04f4a79a75b21d4d5373991ea18b304"
+    sha256: "39bca6465915479339ef99bbcfbdf68996bd206a7232af564ba559c6f1bd61db"
   - id: chat-note-extraction
     purpose: Verdichtet eine Nachricht zu Punkten der Gesprächsnotiz
     classes: [io.opaa.chat.ChatNoteExtraction]
@@ -33,11 +33,17 @@ prompts:
     classes:
       - io.opaa.query.spike.SpikeToolLoopQueryHandler
       - io.opaa.query.spike.SearchKnowledgeTool
-    sha256: "c7d6f9eb109153328c651613f5cb7ac044ac2896897ad8d8ee88d8887c23320f"
+    sha256: "dffb4c868f75c62b485fb33ebe3a97213c6f33680c0ea54839a48d29a2ed145d"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen ein fremdes Modell über Fremdzugänge entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
     sha256: "23fb0175fe80bc2cb8803dd90e2b7f5b30de4c40aea9a4c7fce3a1adf81a3fff"
+  - id: mcp-server-instructions
+    purpose: >-
+      Voreingestellter Einleitungstext an fremde Werkzeuge der Fremdzugänge; die Systemverwaltung
+      kann ihn ändern, die Änderung erzeugt keinen Protokolleintrag
+    databaseDefault: external_access_settings.server_instructions
+    sha256: "03e9f6a06f99e00871a97cb9ad39a7907d712a64bb955d03f86814560b07e7da"
 aiFunctions:
   - id: chat-answer
     purpose: Beantwortet Fragen einer Person im Chat auf Grundlage der lesbaren Bibliotheken

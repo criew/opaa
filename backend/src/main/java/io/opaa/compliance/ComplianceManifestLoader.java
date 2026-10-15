@@ -130,7 +130,9 @@ public final class ComplianceManifestLoader {
   private static Map<String, Object> parse(
       Resource resource, String area, List<String> violations) {
     try (InputStream in = resource.getInputStream()) {
-      Object root = new Yaml(new SafeConstructor(new LoaderOptions())).load(in);
+      LoaderOptions options = new LoaderOptions();
+      options.setAllowDuplicateKeys(false);
+      Object root = new Yaml(new SafeConstructor(options)).load(in);
       if (root instanceof Map<?, ?> map) {
         return stringKeys(map);
       }
@@ -225,6 +227,7 @@ public final class ComplianceManifestLoader {
               + switch (kind) {
                 case "NotBlank", "NotNull", "NotEmpty" ->
                     "mandatory field '" + field + "' is missing or empty";
+                case "AssertTrue" -> "rule '" + field + "' is not met";
                 default -> "field '" + field + "' violates @" + kind;
               });
     }

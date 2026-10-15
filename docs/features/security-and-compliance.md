@@ -310,15 +310,19 @@ sie abgerufen hat. Wer die Gruppe selbst verantwortet, erzeugt beim Lesen nichts
 eigene Gruppe. Die Anfrage
 „Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
 der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungsakt — beide
-erzeugen kein Ereignis. Noch **nicht** verdrahtet — weil
+erzeugen kein Ereignis. Ebenfalls verdrahtet sind die Freigabe-Obergrenze konnektor-gespeister
+Bibliotheken (`CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED`; eine gesenkte Obergrenze setzt den Grant an
+„Alle Konten" nicht aus, sondern entzieht ihn über den gewöhnlichen Weg als `ASSET_GRANT_REVOKED`),
+die Fremdzugangsfreigabe einer Wissensbibliothek (`ASSET_EXTERNAL_ACCESS_CHANGED`, ihr Erlöschen als
+`ASSET_EXTERNAL_ACCESS_EXPIRED`), die Bereitstellung eines Assets in einem Space
+(`ASSET_SHARED_TO_SPACE`, `ASSET_DETACHED_FROM_SPACE`) und die Aufbewahrungsfrist des Protokolls als
+Teil der Protokollkonfiguration (`AUDIT_LOG_CONFIGURATION_CHANGED`). Noch **nicht** verdrahtet — weil
 die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Ablauf einer
-Grant-Befristung (kein Scheduler; der Ablauf eines Zugangstokens hat mit #1718 einen), Aussetzen
-von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
-Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge
-offen", Deaktivierung eines Kontos, erzwungene Neuanmeldung, die übrigen Systemeinstellungen
-(Governance außer der Aufbewahrungshöchstdauer der Rechtehistorie, Protokollkonfiguration,
-Modellvorgaben, Freigabe-Obergrenze konnektor-gespeister
-Bibliotheken) und die Fremdzugangsfreigabe einer Wissensbibliothek. Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
+Grant-Befristung (kein Scheduler; der Ablauf eines Zugangstokens hat mit #1718 einen),
+Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge offen", Deaktivierung eines
+Kontos, erzwungene Neuanmeldung und die übrigen Systemeinstellungen (Governance außer der
+Aufbewahrungshöchstdauer der Rechtehistorie, Protokollkonfiguration außer der Frist,
+Modellvorgaben). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
 die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und ändert sich nicht.
 
 ### Was ausdrücklich nicht protokolliert wird

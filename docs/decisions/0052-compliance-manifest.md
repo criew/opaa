@@ -32,7 +32,8 @@ Ressource übersetzt keinen Code neu.
 `ComplianceManifest` und seine verschachtelten Records beschreiben jede Eintragsart; Bean-Validation-
 Annotationen markieren die Pflichtfelder. `ComplianceManifestLoader` weist das Manifest als Ganzes ab,
 mit allen Verstößen: fehlendes oder leeres Pflichtfeld, unbekannter Schlüssel, doppelte Kennung,
-Fristverweis ohne Einstellungseintrag, KI-Funktion mit unbeschriebenem Prompt. Schlüssel sind
+Fristverweis ohne Einstellungseintrag, KI-Funktion mit unbeschriebenem Prompt, doppelter Schlüssel in
+einer Zuordnung, Prompt ohne oder mit zwei Fundstellen. Schlüssel sind
 englisch und Code-Bezeichner, Werte deutsch für die Behörde.
 
 ### 3. Nur, was nicht aus dem Code folgt
@@ -59,10 +60,16 @@ Verweis ohne Eintrag scheitert. Ein Datum mit festem Ende verweist auf nichts un
 
 ### 6. Prüfsumme eines Prompts
 
-Die Prüfsumme ist SHA-256 über alle Zeichenkettenkonstanten der genannten Klassen, gelesen aus ihren
-Klassendateien, sortiert (`PromptChecksum`). Sie erfasst Textblöcke, zusammengesetzte Konstanten und
-Vorlagen der Laufzeitverkettung, auch wenn ein Prompt im Code verteilt aufgebaut wird; eine geänderte
-Log- oder Fehlermeldung derselben Klasse ändert sie ebenfalls.
+Ein Prompt liegt entweder in Klassen (`classes`) oder als Default einer Spalte (`databaseDefault`,
+`tabelle.spalte`), nie beides. Im Code ist die Prüfsumme SHA-256 über alle Zeichenkettenkonstanten
+und alle Zeichenkettenwerte von Annotationen an Klasse, Feldern, Methoden und Parametern
+(`@Tool(description = …)`) der genannten Klassen, gelesen aus ihren Klassendateien, sortiert
+(`PromptChecksum`). Sie erfasst Textblöcke, zusammengesetzte Konstanten und Vorlagen der
+Laufzeitverkettung, auch wenn ein Prompt im Code verteilt aufgebaut wird; eine geänderte Log- oder
+Fehlermeldung derselben Klasse ändert sie ebenfalls. In der Datenbank ist sie SHA-256 über den letzten
+`DEFAULT`, den das Changelog der Spalte gibt. Maßgeblich ist die mit javac übersetzte Klassendatei der
+Gradle-Toolchain; ein anderer Compiler (ECJ in Eclipse oder VS Code) kann einen abweichenden
+Konstantenbestand und damit eine andere Prüfsumme erzeugen.
 
 ## Konsequenzen
 
