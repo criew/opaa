@@ -142,6 +142,6 @@ Herleitung und Prüfungen: [docs/liquibase.md](docs/liquibase.md).
 ## Fakten-Manifest
 
 `ComplianceManifestTest` hält das Manifest unter `src/main/resources/compliance/manifest/` gegen Liquibase-Tabellen
-und -Spalten, `AuditEventType`, `SystemRole`, `Capability` und die Prüfsummen der System-Prompts
-([ADR-0052](../docs/decisions/0052-compliance-manifest.md)). Scheitert er, nennt er Datei und einzufügendes YAML;
-Einordnung der Spalten und Beispiele: [docs/compliance-manifest.md](docs/compliance-manifest.md).
+und -Spalten, `AuditEventType`, `SystemRole`, `Capability`, die Prüfsummen der System-Prompts und die Kennungen
+von `@DataFlow` ([ADR-0052](../docs/decisions/0052-compliance-manifest.md)). Scheitert er, nennt er Datei und
+einzufügendes YAML; Einordnung der Spalten und Beispiele: [docs/compliance-manifest.md](docs/compliance-manifest.md).

@@ -19,6 +19,7 @@ Schnipsel lässt sich übernehmen, nur Platzhalter in `<…>` sind auszufüllen.
 | geänderter Prompt-Text (auch Log- oder Fehlertext derselben Klasse) | neue `sha256` beim Prompt in `prompts.yaml` |
 | neue Tabelle | unter `tables` eines Datums oder, ganz ohne Personenbezug, unter `nonPersonalTables` |
 | neue Spalte | in `personalColumns` oder `nonPersonalColumns` ihrer Tabelle bzw. in die Spaltenliste unter `nonPersonalTables` |
+| neuer ausgehender Client (`ModularArchitectureTest` verlangt `@DataFlow("<kennung>")` an der Klasse) | `dataFlows` in `outbound.yaml`: `id`, `target`, `data`, `trigger`, `switchOff`, `settings`; eine bestehende Kennung braucht keinen neuen Eintrag |
 | entfernte oder umbenannte Tabelle, Spalte, Konstante | Eintrag entfernen oder umbenennen |
 
 ## Tabellen und Spalten
@@ -64,4 +65,4 @@ die nicht zu einem bestehenden Datum passt, bekommt ein neues Datum mit allen Pf
 - `vector_store` legt Spring AI an, nicht Liquibase; seine Spalten stehen fest in
   `ChangelogSchema.TABLES_OUTSIDE_THE_CHANGELOG`. `ChangelogSchemaParityTest` lässt Spring AI die Tabelle anlegen und
   vergleicht die Spalten; ändert ein Spring-AI-Update sie, scheitert er dort.
-- Konfigurationsschlüssel (#2548) und ausgehende Datenflüsse (#2549) prüft der Wächter noch nicht.
+- Konfigurationsschlüssel (#2548) prüft der Wächter noch nicht.
