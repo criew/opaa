@@ -663,3 +663,15 @@ tasks.register<JavaExec>("complianceDocs") {
         },
     )
 }
+
+// The placeholder targets of the fact sheets (sheet names and anchors), checked in at
+// .github/fact-sheet-anchors.txt so the header check of docs/behoerden/ needs no backend build.
+// FactSheetReferenceTest fails while the file differs from the manifest.
+tasks.register<JavaExec>("complianceAnchors") {
+    group = "documentation"
+    description = "Writes the fact sheet placeholder targets to .github/fact-sheet-anchors.txt."
+    val anchorFile = layout.projectDirectory.file("../.github/fact-sheet-anchors.txt").asFile.path
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "io.opaa.compliance.FactSheetGenerator"
+    args("--anchors", anchorFile)
+}

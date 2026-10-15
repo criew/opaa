@@ -6,8 +6,9 @@ import java.util.Optional;
 /**
  * The fact sheets rendered from the {@link ComplianceManifest}. {@link #sheetName()} is the name a
  * template under {@code docs/behoerden/} uses in its placeholder {@code {{faktenblatt:<name>}}} and
- * the file name of the rendered sheet without {@code .md}; the name lists in {@code
- * docs/behoerden/README.md} and {@code check_behoerden_headers.sh} hold exactly these.
+ * the file name of the rendered sheet without {@code .md}. The checked-in target list {@code
+ * .github/fact-sheet-anchors.txt} ({@code ./gradlew complianceAnchors}) carries these names to the
+ * header check of {@code docs/behoerden/}.
  */
 public enum FactSheet {
   DATENKATALOG("datenkatalog", "Datenkatalog"),

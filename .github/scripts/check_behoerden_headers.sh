@@ -6,9 +6,11 @@
 #   naechste-durchsicht, each exactly once and well-formed; an overdue naechste-durchsicht is no
 #   error, the review role reports it
 # - the verbatim disclaimer as the first line after the front matter and an optional H1 title
-# - fact sheet placeholders only in the form {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}};
-#   FACT_SHEETS names exactly the sheets io.opaa.compliance.FactSheet renders, and the backend test
-#   FactSheetReferenceTest checks that list and every placeholder's sheet and anchor
+# - fact sheet placeholders only in the form {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}},
+#   each naming a target of .github/fact-sheet-anchors.txt: the sheet names and anchors the
+#   generator renders, checked in and kept current by the backend test FactSheetReferenceTest
+# The name list in docs/behoerden/README.md ("`<name>` ist eines der Faktenblätter: ...") equals the
+# sheet names of that file.
 # Errors fail the run (exit 1). A configuration key (opaa.*) or an enum constant (UPPER_SNAKE_CASE)
 # outside fenced code blocks is only a warning: it hints at a fact copied instead of referenced.
 # Designations with a digit after an underscore (ISO_27001) are no enum constants and stay silent.
@@ -19,13 +21,20 @@ cd "$(git rev-parse --show-toplevel)"
 FOLDER=docs/behoerden
 DISCLAIMER='> Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.'
 FIELDS=(stand gilt-fuer erzeugung rechtsstand pruefvermerk naechste-durchsicht)
-FACT_SHEETS='datenkatalog|protokollereignisse|rollensicht|datenfluesse|voreinstellungen|fristen'
+ANCHORS=.github/fact-sheet-anchors.txt
 DATE_RE='^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
 
 if [ ! -f "$FOLDER/README.md" ]; then
   echo "::error::$FOLDER/README.md not found - the guard would pass without checking anything. Verify this script."
   exit 1
 fi
+
+if [ ! -f "$ANCHORS" ]; then
+  echo "::error::$ANCHORS not found - run ./gradlew complianceAnchors in backend/ and commit it."
+  exit 1
+fi
+targets="$(tr -d '\r' < "$ANCHORS" | grep -vE '^(#|[[:space:]]*$)' || true)"
+FACT_SHEETS="$(printf '%s\n' "$targets" | grep -v '#' | paste -sd '|' - || true)"
 
 checked=0
 rejected=0
@@ -40,6 +49,23 @@ report() {
     echo "::error file=$1::$3"
   fi
 }
+
+# The README names exactly the sheets of the target file.
+readme_names="$(tr -d '\r' < "$FOLDER/README.md" | tr '\n' ' ' |
+  sed -n 's/.*`<name>` ist eines der Faktenblätter:\([^.]*\)\..*/\1/p' |
+  grep -oE '`[a-z0-9-]+`' | tr -d '`' | sort | paste -sd '|' - || true)"
+expected_names="$(printf '%s\n' "$targets" | grep -v '#' | sort | paste -sd '|' - || true)"
+if [ "$readme_names" != "$expected_names" ]; then
+  report "$FOLDER/README.md" "" "the fact sheet name list (\"\`<name>\` ist eines der Faktenblätter: ...\") must name exactly ${expected_names//|/, } from $ANCHORS, found \"${readme_names//|/, }\""
+fi
+# The README's examples name real targets; its syntax descriptions (<name>, <anker>) are skipped.
+while IFS=: read -r line match; do
+  [ -n "$line" ] || continue
+  target="${match#'{{faktenblatt:'}"
+  target="${target%'}}'}"
+  printf '%s\n' "$targets" | grep -qxF "$target" ||
+    report "$FOLDER/README.md" "$line" "example \"$match\" names no target of $ANCHORS"
+done < <(tr -d '\r' < "$FOLDER/README.md" | grep -noE '\{\{faktenblatt:[a-z0-9-]+(#[a-z0-9-]+)?\}\}' || true)
 
 check_value() {
   # $1 file, $2 field, $3 value
@@ -103,6 +129,11 @@ while IFS= read -r -d '' file; do
     [ -n "$line" ] || continue
     if ! printf '%s' "$match" | grep -Eq "^\{\{faktenblatt:($FACT_SHEETS)(#[a-z0-9-]+)?\}\}$"; then
       report "$file" "$line" "malformed fact sheet placeholder \"$match\": use {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}} with <name> one of ${FACT_SHEETS//|/, }"
+    else
+      target="${match#'{{faktenblatt:'}"
+      target="${target%'}}'}"
+      printf '%s\n' "$targets" | grep -qxF "$target" ||
+        report "$file" "$line" "fact sheet placeholder \"$match\" names no anchor of the rendered sheet; the targets are listed in $ANCHORS"
     fi
   done < <(printf '%s\n' "$content" | grep -noiE '\{\{[[:space:]]*faktenblatt[^}]*(\}\})?' || true)
 

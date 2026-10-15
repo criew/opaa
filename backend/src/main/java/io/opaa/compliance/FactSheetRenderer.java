@@ -14,6 +14,7 @@ import io.opaa.compliance.ComplianceManifest.RoleEntry;
 import io.opaa.compliance.ComplianceManifest.SettingEntry;
 import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.ComplianceManifest.TableRef;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -57,6 +58,7 @@ public final class FactSheetRenderer {
   private static final Map<FactSheet, List<Pending>> NOT_YET_CAPTURED = notYetCaptured();
 
   private static final Pattern NOT_ANCHOR = Pattern.compile("[^a-z0-9]+");
+  private static final Pattern ANCHOR = Pattern.compile("<a id=\"([a-z0-9-]+)\"></a>");
 
   private static final JsonMapper JSON =
       JsonMapper.builder()
@@ -100,6 +102,29 @@ public final class FactSheetRenderer {
     root.put("notYetCaptured", pending);
     root.put("manifest", manifest);
     return JSON.writeValueAsString(root) + "\n";
+  }
+
+  /**
+   * Every placeholder target the rendered sheets offer, one per line in the form of {@code
+   * {{faktenblatt:<target>}}}: each sheet name, then {@code <name>#<anchor>} for each anchor in it,
+   * sorted. Anchors do not depend on the provenance.
+   */
+  public static List<String> placeholderTargets(ComplianceManifest manifest) {
+    FactSheetProvenance any = new FactSheetProvenance("0.0.0-dev", "-", LocalDate.EPOCH);
+    List<String> targets = new ArrayList<>();
+    render(manifest, any)
+        .forEach(
+            (sheet, content) -> {
+              targets.add(sheet.sheetName());
+              ANCHOR
+                  .matcher(content)
+                  .results()
+                  .map(match -> match.group(1))
+                  .sorted()
+                  .distinct()
+                  .forEach(anchor -> targets.add(sheet.sheetName() + "#" + anchor));
+            });
+    return targets;
   }
 
   /**

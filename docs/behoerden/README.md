@@ -84,7 +84,10 @@ Zeichen als Buchstaben und Ziffern wird ein Bindestrich:
 | `fristen` | Schlüssel | `{{faktenblatt:fristen#audit-retention-settings-retention-months}}` |
 
 Abschnitte haben eigene Anker, etwa `#matrix` in der Rollensicht und `#bereich-<bereich>` für einen
-Bereich des Manifests.
+Bereich des Manifests. Alle gültigen Ziele eines Platzhalters stehen in
+[`.github/fact-sheet-anchors.txt`](../../.github/fact-sheet-anchors.txt). Die Datei ist aus dem
+Manifest erzeugt (`./gradlew complianceAnchors` aus `backend/`) und eingecheckt; ein Backend-Test
+schlägt fehl, solange sie nicht zum Manifest passt.
 
 Das Fakten-Manifest selbst liegt als Quelltext im Backend unter
 [`backend/src/main/resources/compliance/manifest/`](../../backend/src/main/resources/compliance/manifest/),
@@ -161,8 +164,8 @@ Ein Verweis auf ein Faktenblatt hat immer diese Form:
 - Der Platzhalter wird nicht als Link geschrieben, weil die Faktenblätter nicht eingecheckt sind. Er
   steht für das gleichnamige Faktenblatt der Version, die die Behörde einsetzt; bei einem Release liegt
   es am GitHub-Release, für `main` im CI-Artefakt des letzten Laufs.
-- Ein neues Faktenblatt wird zuerst hier, in der Namensliste des Prüfskripts und im Generator
-  (`io.opaa.compliance.FactSheet`) ergänzt.
+- Ein neues Faktenblatt entsteht im Generator (`io.opaa.compliance.FactSheet`); im selben PR werden
+  die Liste der Platzhalterziele neu erzeugt und die Namensliste hier ergänzt.
 
 ### Amtliche Muster verlinken statt nachbauen
 
@@ -191,8 +194,11 @@ außerhalb von Codeblöcken nur eine Warnung: Beides deutet auf einen abgeschrie
 kann aber auch berechtigt sein. Bezeichnungen mit Ziffern nach dem Unterstrich (`ISO_27001`) bleiben
 ohne Warnung. Ob ein Verweis inhaltlich stimmt, prüft das Skript nicht.
 
-Der Backend-Test `FactSheetReferenceTest` prüft dazu gegen die erzeugten Faktenblätter: Die Namen in
-dieser README und im Prüfskript sind genau die erzeugten Blätter, und jeder Platzhalter in diesem
-Ordner trifft ein Blatt und, mit Anker, einen Anker darin.
+Gegen die erzeugte Liste der Platzhalterziele
+([`.github/fact-sheet-anchors.txt`](../../.github/fact-sheet-anchors.txt)) prüft das Skript außerdem:
+Jeder Platzhalter, auch ein Beispiel in dieser README, trifft ein Blatt und, mit Anker, einen Anker
+darin, und die Namensliste oben nennt genau die Blätter der Liste. Ob die Liste zum Manifest passt,
+prüft der Backend-Test `FactSheetReferenceTest`; eine Vorlagenänderung braucht deshalb keinen
+Backend-Lauf.
 
 Lokal: `.github/scripts/check_behoerden_headers.sh`

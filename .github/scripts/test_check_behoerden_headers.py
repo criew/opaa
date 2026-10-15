@@ -29,6 +29,20 @@ BODY = (
 )
 
 
+SHEETS = ["datenkatalog", "protokollereignisse", "rollensicht", "datenfluesse", "voreinstellungen", "fristen"]
+ANCHORS = (
+    "# Generated; do not edit.\n"
+    + "".join(f"{sheet}\n" for sheet in SHEETS)
+    + "protokollereignisse#anmeldung\nfristen#audit-retention\n"
+)
+README = (
+    "# Unterlagen für Behörden\n\n"
+    "- `<name>` ist eines der Faktenblätter: `datenkatalog`, `protokollereignisse`,\n"
+    "  `rollensicht`, `datenfluesse`, `voreinstellungen`, `fristen`.\n\n"
+    "Beispiel: `{{faktenblatt:<name>#<anker>}}`, `{{faktenblatt:fristen#audit-retention}}`.\n"
+)
+
+
 def document(header: dict[str, str] | None = None, body: str = BODY) -> str:
     fields = HEADER if header is None else header
     lines = "".join(f"{key}: {value}\n" for key, value in fields.items())
@@ -44,7 +58,9 @@ def repo(tmp_path: Path) -> Path:
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
     folder = tmp_path / "docs" / "behoerden"
     (folder / "04-datenschutz").mkdir(parents=True)
-    (folder / "README.md").write_text("# Unterlagen für Behörden\n", encoding="utf-8")
+    (folder / "README.md").write_text(README, encoding="utf-8")
+    (tmp_path / ".github").mkdir()
+    (tmp_path / ".github" / "fact-sheet-anchors.txt").write_text(ANCHORS, encoding="utf-8")
     return tmp_path
 
 
@@ -234,3 +250,32 @@ def test_designations_with_digits_after_underscore_do_not_warn(repo: Path) -> No
 def test_text_after_code_block_still_warns(repo: Path) -> None:
     write(repo, document(body=BODY + "\n```\nx\n```\n\nEreignis DOCUMENT_DELETED.\n"))
     assert "::warning" in run_check(repo).stdout
+
+
+def test_rejects_placeholder_with_unknown_anchor(repo: Path) -> None:
+    write(repo, document(body=BODY + "\nSiehe {{faktenblatt:fristen#gibt-es-nicht}}.\n"))
+    assert_rejected(repo, "names no anchor")
+
+
+def test_rejects_sheet_name_missing_from_the_anchor_file(repo: Path) -> None:
+    anchors = repo / ".github" / "fact-sheet-anchors.txt"
+    anchors.write_text(ANCHORS.replace("fristen\n", ""), encoding="utf-8")
+    write(repo, document())
+    assert_rejected(repo, "fact sheet name list")
+
+
+def test_rejects_missing_anchor_file(repo: Path) -> None:
+    (repo / ".github" / "fact-sheet-anchors.txt").unlink()
+    assert_rejected(repo, "complianceAnchors")
+
+
+def test_rejects_readme_name_list_that_differs(repo: Path) -> None:
+    readme = repo / "docs" / "behoerden" / "README.md"
+    readme.write_text(README.replace("`fristen`", "`speicherfristen`"), encoding="utf-8")
+    assert_rejected(repo, "fact sheet name list")
+
+
+def test_rejects_readme_example_with_unknown_anchor(repo: Path) -> None:
+    readme = repo / "docs" / "behoerden" / "README.md"
+    readme.write_text(README + "{{faktenblatt:rollensicht#gibt-es-nicht}}\n", encoding="utf-8")
+    assert_rejected(repo, "names no target")
