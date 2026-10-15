@@ -57,6 +57,16 @@ data:
     tables:
       - name: audit_log
         personalColumns: [actor_ref, subject_ref, object_id, object_label, before, after, reason]
+        nonPersonalColumns:
+          - event_id
+          - recorded_at
+          - organization_id
+          - actor_kind
+          - event_type
+          - object_type
+          - subject_kind
+          - outcome
+          - correlation_ref
     storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
     retention:
       rule: Voreinstellung 36 Monate, einstellbar 12 bis 120 Monate
@@ -76,6 +86,7 @@ data:
     tables:
       - name: audit_actor_pseudonyms
         personalColumns: [user_id, pseudonym_id]
+        nonPersonalColumns: [organization_id, created_at]
     storage: Anwendungsdatenbank, eigene Tabelle getrennt vom Protokoll
     retention:
       rule: Bis zur Löschung des Kontos
@@ -94,6 +105,15 @@ data:
       - name: audit_incident_scope_grants
         personalColumns:
           [subject_user_id, requested_by_user_id, approved_by_user_id, purpose, reason]
+        nonPersonalColumns:
+          - id
+          - organization_id
+          - scope_start
+          - scope_end
+          - requested_at
+          - approved_at
+          - usable_until
+          - status
     storage: Anwendungsdatenbank
     retention:
       rule: >-
@@ -106,7 +126,8 @@ data:
     evaluations: Zahl der Fälle für den Jahresbericht an die Personalvertretung (organisatorisch)
     notes:
       - Die Zahl der Klärungen gehört nach der Spezifikation in den Jahresbericht
-nonPersonalTables: [audit_retention_settings]
+nonPersonalTables:
+  audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
 settings:
   - key: audit_retention_settings.retention_months
     source: DATABASE

@@ -127,8 +127,15 @@ public record ComplianceManifest(
    */
   public record Retention(@NotBlank String rule, @NotNull List<@NotBlank String> settings) {}
 
-  /** A table of the schema and those of its columns that point at a person. */
-  public record TableRef(@NotBlank String name, @NotNull List<@NotBlank String> personalColumns) {}
+  /**
+   * A table of the schema with every one of its columns, split by whether it points at a person.
+   *
+   * @param nonPersonalColumns the remaining columns; absent when every column points at a person
+   */
+  public record TableRef(
+      @NotBlank String name,
+      @NotNull List<@NotBlank String> personalColumns,
+      List<@NotBlank String> nonPersonalColumns) {}
 
   /**
    * A category of stored data ("Datum"), spanning the tables that hold it; {@code tables} is empty
@@ -150,8 +157,11 @@ public record ComplianceManifest(
       List<@NotBlank String> notes)
       implements DataFacts {}
 
-  /** A table without any column pointing at a person, marked as such as a whole. */
-  public record NonPersonalTable(String area, String table) {}
+  /**
+   * A table without any column pointing at a person, marked as such as a whole; {@code columns}
+   * names all of them, so a new column is a conscious decision.
+   */
+  public record NonPersonalTable(String area, String table, List<String> columns) {}
 
   /**
    * One {@code AuditEventType} value. The facts every event shares come from the {@code defaults}

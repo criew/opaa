@@ -117,11 +117,6 @@ archunit = "1.5.1"
 # artifacts ship from the same release and must carry the same version. Remove this entry, its
 # [libraries] entries and the override once Tika resolves >= 1.85 on its own.
 bouncycastle = "1.86"
-# Transitive-only pin (see the dependencyManagement block in build.gradle.kts). Tika's pkg parser
-# module resolves junrar 7.6.0, which is affected by CVE-2026-86071 (directory escape while
-# extracting). Remove this entry, its [libraries] entry and the override once Tika resolves
-# >= 7.6.1 on its own.
-junrar = "8.1.2"
 
 [libraries]
 # Spring Boot starters (versions managed by Spring Boot BOM)
@@ -217,7 +212,6 @@ bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref 
 bouncycastle-bcutil = { module = "org.bouncycastle:bcutil-jdk18on", version.ref = "bouncycastle" }
 bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 bouncycastle-bcjmail = { module = "org.bouncycastle:bcjmail-jdk18on", version.ref = "bouncycastle" }
-junrar = { module = "com.github.junrar:junrar", version.ref = "junrar" }
 
 [bundles]
 spring-boot = [

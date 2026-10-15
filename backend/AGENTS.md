@@ -14,15 +14,6 @@ Abhängigkeiten stehen dort in `[libraries]`, verwandte in `[bundles]` (`spring-
 Services lesen die Zeit über die `Clock`-Bean aus `io.opaa.common.ClockConfiguration` (`Instant.now(clock)`), damit
 Fristen testbar sind; Entities setzen ihre Zeitstempel (`createdAt` u. ä.) selbst im Konstruktor oder `@PrePersist`.
 
-## Konfigurationsschlüssel
-
-Jeder `opaa.*`-Schlüssel hat eine Beschreibung (`@param` der Record-Komponente, ohne `@ConfigurationProperties`-Typ
-ein Eintrag in `src/main/resources/META-INF/additional-spring-configuration-metadata.json`) und trägt `@DataImpact`
-oder `@NoDataImpact("Grund")` an der Komponente oder pauschal am Typ; Schalter, Modelle, Adressen und Fristen an
-der Komponente. Ein datenwirksamer Schlüssel steht mit seinem Standardwert aus `application.yml` unter `settings`
-im Fakten-Manifest. `ConfigurationSettingsTest` prüft das samt Helm-Chart und nennt das einzufügende YAML
-([ADR-0052](../docs/decisions/0052-compliance-manifest.md), Entscheidung 8).
-
 ## API & DTO-Konvention (Fortsetzung)
 
 Die Kernregeln (DTOs nie von Hand, Änderungen beginnen in der Spec) stehen in der Wurzel-`AGENTS.md`, die Begründung
@@ -146,3 +137,17 @@ Herleitung und Prüfungen: [docs/liquibase.md](docs/liquibase.md).
 - Rein additive DDL (neue Tabelle, nullable Spalte ohne Default und `GENERATED`, nicht eindeutiger Index, Constraint
   auf neuer Tabelle) kommt ohne eigenen Test aus; alles andere braucht einen Delta-Test unter `io.opaa.migration`
   (`AbstractMigrationTest`). Im Zweifel ist es nicht additiv.
+- Jede neue Tabelle und Spalte braucht einen Eintrag im Fakten-Manifest, siehe nächster Abschnitt.
+
+## Fakten-Manifest
+
+`ComplianceManifestTest` hält das Manifest unter `src/main/resources/compliance/manifest/` gegen Liquibase-Tabellen
+und -Spalten, `AuditEventType`, `SystemRole`, `Capability` und die Prüfsummen der System-Prompts
+([ADR-0052](../docs/decisions/0052-compliance-manifest.md)). Scheitert er, nennt er Datei und einzufügendes YAML;
+Einordnung der Spalten und Beispiele: [docs/compliance-manifest.md](docs/compliance-manifest.md).
+
+Jeder `opaa.*`-Schlüssel hat eine Beschreibung (`@param` der Record-Komponente, ohne `@ConfigurationProperties`-Typ
+ein Eintrag in `src/main/resources/META-INF/additional-spring-configuration-metadata.json`) und trägt `@DataImpact`
+oder `@NoDataImpact("Grund")` an der Komponente oder pauschal am Typ; Schalter, Modelle, Adressen und Fristen an
+der Komponente. Ein datenwirksamer Schlüssel steht mit seinem Standardwert aus `application.yml` unter `settings`.
+`ConfigurationSettingsTest` prüft das samt Helm-Chart (ADR-0052, Entscheidung 8).
