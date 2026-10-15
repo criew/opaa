@@ -142,12 +142,13 @@ Herleitung und Prüfungen: [docs/liquibase.md](docs/liquibase.md).
 ## Fakten-Manifest
 
 `ComplianceManifestTest` hält das Manifest unter `src/main/resources/compliance/manifest/` gegen Liquibase-Tabellen
-und -Spalten, `AuditEventType`, `SystemRole`, `Capability` und die Prüfsummen der System-Prompts
-([ADR-0052](../docs/decisions/0052-compliance-manifest.md)). Scheitert er, nennt er Datei und einzufügendes YAML;
-Einordnung der Spalten und Beispiele: [docs/compliance-manifest.md](docs/compliance-manifest.md).
+und -Spalten, `AuditEventType`, `SystemRole`, `Capability`, die Prüfsummen der System-Prompts und die Kennungen
+von `@DataFlow` ([ADR-0052](../docs/decisions/0052-compliance-manifest.md)). Scheitert er, nennt er Datei und
+einzufügendes YAML; Einordnung der Spalten und Beispiele: [docs/compliance-manifest.md](docs/compliance-manifest.md).
 
 Jeder `opaa.*`-Schlüssel hat eine Beschreibung (`@param` der Record-Komponente, ohne `@ConfigurationProperties`-Typ
 ein Eintrag in `src/main/resources/META-INF/additional-spring-configuration-metadata.json`) und trägt `@DataImpact`
 oder `@NoDataImpact("Grund")` an der Komponente oder pauschal am Typ; Schalter, Modelle, Adressen, Fristen und
-Zeitspannen an der Komponente. Ein datenwirksamer Schlüssel steht mit seinem Standardwert aus `application.yml` unter `settings`.
+Zeitspannen an der Komponente. Ein datenwirksamer Schlüssel steht mit seinem Standardwert aus `application.yml`
+unter `settings`.
 `ConfigurationSettingsTest` prüft das samt Helm-Chart (ADR-0052, Entscheidung 9).

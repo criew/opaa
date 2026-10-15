@@ -1,5 +1,6 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
  * check, and neither does {@link RedirectPolicy#DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN}, which is
  * safe only because no production client here auto-follows.
  */
+@DataFlowCarrier
 public final class RedirectFollowingFetcher {
 
   private static final Logger log = LoggerFactory.getLogger(RedirectFollowingFetcher.class);

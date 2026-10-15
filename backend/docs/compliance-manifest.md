@@ -19,6 +19,7 @@ Schnipsel lässt sich übernehmen, nur Platzhalter in `<…>` sind auszufüllen.
 | geänderter Prompt-Text (auch Log- oder Fehlertext derselben Klasse) | neue `sha256` beim Prompt in `prompts.yaml` |
 | neue Tabelle | unter `tables` eines Datums oder, ganz ohne Personenbezug, unter `nonPersonalTables` |
 | neue Spalte | in `personalColumns` oder `nonPersonalColumns` ihrer Tabelle bzw. in die Spaltenliste unter `nonPersonalTables` |
+| neuer ausgehender Client (`ModularArchitectureTest` verlangt `@DataFlow("<kennung>")` an der Klasse) | `dataFlows` in `outbound.yaml`: `id`, `target`, `data`, `trigger`, `switchOff`, `settings`; eine bestehende Kennung braucht keinen neuen Eintrag |
 | entfernte oder umbenannte Tabelle, Spalte, Konstante | Eintrag entfernen oder umbenennen |
 | neuer `opaa.*`-Schlüssel | Beschreibung und Markierung im Code, bei Datenwirkung ein Eintrag unter `settings` (siehe unten) |
 | geänderter Standardwert eines datenwirksamen Schlüssels in `application.yml` | neuer `defaultValue` seines Eintrags |
@@ -121,4 +122,3 @@ den Standardwert, nennt der Eintrag den Wert in `notes` als `"Profil <name>: <we
 - Ob ein Schlüssel richtig eingeordnet ist, prüft der Wächter nicht. Ein Schlüssel, den nur eine Bedingung wie
   `@ConditionalOnProperty` liest und der in `application.yml` fehlt, erscheint nicht in den Metadaten. Die Belegung
   aus `.env.docker.example` (Compose) prüft er nicht; sie fällt unter die Kennzeichnung am PR.
-- Ausgehende Datenflüsse (#2549) prüft der Wächter noch nicht.

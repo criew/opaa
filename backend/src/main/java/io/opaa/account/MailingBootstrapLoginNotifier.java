@@ -3,6 +3,7 @@ package io.opaa.account;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.compliance.DataFlow;
 import io.opaa.mail.MailDispatchExecutor;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Component;
  * business ({@code MailService} logs and records it). One WARN line with the account id - never the
  * address - stays, so an operator reading the log sees the emergency access was used.
  */
+@DataFlow("mail")
 @Component
 public class MailingBootstrapLoginNotifier implements BootstrapLoginNotifier {
 

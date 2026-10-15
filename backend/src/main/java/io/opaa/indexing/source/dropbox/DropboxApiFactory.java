@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.dropbox;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.indexing.spi.RunCredentials;
 import io.opaa.indexing.spi.SourceSettings;
@@ -13,6 +14,7 @@ import java.util.function.Supplier;
  * Opens a {@link DropboxApi} on the resolved settings of a library: the configured API and content
  * hosts, certificate validation always on.
  */
+@DataFlow("source-dropbox")
 final class DropboxApiFactory {
 
   private final DropboxProperties properties;

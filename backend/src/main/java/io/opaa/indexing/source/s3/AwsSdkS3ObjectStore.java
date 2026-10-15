@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.indexing.spi.RenewableCredential;
@@ -45,6 +46,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * and the request budget that ends a run in an orderly way. A run's store signs every request with
  * the credentials valid then.
  */
+@DataFlow("source-s3")
 final class AwsSdkS3ObjectStore implements S3ObjectStore {
 
   private final S3Properties properties;

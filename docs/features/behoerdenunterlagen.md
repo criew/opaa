@@ -185,7 +185,7 @@ Kopfvermerk hält das Datum dieser Prüfung als `rechtsstand` fest.
 | Fristen | Aufbewahrungs-Konfiguration, Teile in der Datenbank | Datenbankteil nur über den Instanzexport |
 | Konfiguration und Voreinstellungen | rund 50 Konfigurationsklassen, Helm-Schema | **Lücke:** keine Konfigurationsmetadaten |
 | System-Prompts, Standardmodelle | Quellcode der Antwort- und Suchstrecke, Anwendungskonfiguration | nicht erfasst |
-| Ausgehende Datenflüsse | verteilt über Modellanbindung, Konnektoren, E-Mail, ausgehende Aufrufe, MCP | **Lücke:** keine zentrale Registry |
+| Ausgehende Datenflüsse | `@DataFlow` an den sendenden Klassen, Fachtext im Manifest (`outbound.yaml`, ADR-0052, Entscheidung 8) | maschinenlesbar; per Strukturtest vollständig für die Typen in `OUTBOUND_CLIENTS`/`OUTBOUND_BEANS` |
 | Lizenzen | implizit im CycloneDX-SBOM | **Lücke:** keine Lizenzprüfung |
 
 ### Das Manifest

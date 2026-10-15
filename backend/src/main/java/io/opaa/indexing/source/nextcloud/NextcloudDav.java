@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.nextcloud;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.spi.RenewableCredential;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.outbound.ProxyRefusal;
@@ -35,6 +36,7 @@ import javax.net.ssl.SSLException;
  * carries the {@code Authorization} its supplier answers then; a {@code 401} is retried once when
  * the supplier holds a renewed one.
  */
+@DataFlow("source-nextcloud")
 final class NextcloudDav implements AutoCloseable {
 
   /** Appended when the target validation refuses the host, naming the setting that opens it. */

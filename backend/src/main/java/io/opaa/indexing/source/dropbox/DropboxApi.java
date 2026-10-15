@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.dropbox;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
@@ -39,6 +40,7 @@ import tools.jackson.databind.json.JsonMapper;
  * rejected token ({@code 401}) is retried once when the run's credentials hold a renewed one; every
  * other failure becomes a {@link DropboxApiException}.
  */
+@DataFlow("source-dropbox")
 final class DropboxApi {
 
   private static final Logger log = LoggerFactory.getLogger(DropboxApi.class);

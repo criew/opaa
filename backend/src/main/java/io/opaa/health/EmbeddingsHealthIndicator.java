@@ -1,11 +1,13 @@
 package io.opaa.health;
 
+import io.opaa.compliance.DataFlow;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
+@DataFlow("embedding-model")
 @Component
 @ConditionalOnProperty(name = "management.health.embeddings.enabled", matchIfMissing = true)
 public class EmbeddingsHealthIndicator implements HealthIndicator {

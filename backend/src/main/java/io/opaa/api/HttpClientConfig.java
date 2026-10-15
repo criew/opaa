@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.compliance.NoDataImpact;
 import java.net.http.HttpClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,6 +18,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
  * @see <a href="https://github.com/spring-projects/spring-ai/issues/2042">Spring AI #2042</a>
  */
 @NoDataImpact("HTTP version of outgoing clients")
+@DataFlowCarrier
 @Configuration
 @ConditionalOnProperty(name = "opaa.http.force-http1", havingValue = "true")
 public class HttpClientConfig {

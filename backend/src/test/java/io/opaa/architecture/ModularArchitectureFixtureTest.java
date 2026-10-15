@@ -744,6 +744,47 @@ class ModularArchitectureFixtureTest {
     assertThat(scenario.violations(ModularArchitecture::noPackageDependsOnAHigherLayer)).isEmpty();
   }
 
+  /**
+   * Creating a client, sending through a client bean, opening a Jsoup connection, calling a carrier
+   * and holding an outbound bean without {@code @DataFlow} are reported, each naming the fix; the
+   * registered class with its nested class and lambda, the carrier itself, a class that only passes
+   * a client on, and building a carrier, reading its constant or calling a listed helper are not.
+   */
+  @Test
+  void anOutboundClientOutsideTheRegistryIsReported() {
+    Scenario scenario = new Scenario("unregisteredclient");
+    String root = FIXTURES + ".unregisteredclient.";
+
+    assertThat(scenario.violations(ModularArchitecture::everyOutboundClientIsRegistered))
+        .hasSize(5)
+        .allSatisfy(violation -> assertThat(violation).contains("add @DataFlow(\"<id>\") to"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith(root + "llm.UnregisteredClient uses")
+                    .contains("org.springframework.web.client.RestClient", "RestClient.create"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith(root + "llm.ProbeSender uses java.net.http.HttpClient")
+                    .contains("HttpClient.send"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith(root + "search.PageScraper uses org.jsoup.Jsoup")
+                    .contains("Jsoup.connect"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith(root + "indexing.source.web.PageFetcher calls the carrier")
+                    .contains("RedirectFollowingFetcher.client()"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith(root + "search.EmbeddingProbe depends on the outbound bean")
+                    .contains("org.springframework.ai.embedding.EmbeddingModel"));
+  }
+
   /** A class, a nested class and a member that are gone are reported; the live ones resolve. */
   @Test
   void aNameThatResolvesToNothingIsReported() {

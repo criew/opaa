@@ -84,6 +84,21 @@ Docker still übersprungen; der Abgleich des Lesers und der festen Spalten von `
 Katalog einer migrierten Datenbank (`ChangelogSchemaParityTest`) läuft deshalb getrennt in der CI. Jede
 Meldung nennt Datei und einzufügendes YAML; die Konvention steht in `backend/docs/compliance-manifest.md`.
 
+### 8. Datenflüsse: Anker im Code
+
+Jede Klasse, die Daten aus der Installation sendet, trägt `@DataFlow` mit den Kennungen ihrer
+Datenflüsse; eine Hüllklasse, die einen Client nur für ihre Aufrufer baut oder kapselt, trägt
+`@DataFlowCarrier` (beide in `io.opaa.compliance`). Ziel, Daten, Anlass, Abschaltbarkeit und
+Einstellungen stehen nur im Manifest unter `dataFlows` in `outbound.yaml`, die Annotation trägt nur
+die Kennung. `ComplianceManifestTest` gleicht Kennungen und Einträge in beiden Richtungen ab;
+`ModularArchitectureTest` lässt keinen Client aus `OUTBOUND_CLIENTS` und keine Abhängigkeit von
+`OUTBOUND_BEANS` ohne Annotation zu. Ein neuer Client kostet eine Annotationszeile und einen
+YAML-Eintrag; eine neue Kennung ist ein neuer externer Datenfluss. Die Registry beschreibt und sperrt
+nichts: Weg und Zielprüfung bleiben beim Ausgangsproxy (ADR-0050) und bei `TargetAddressValidator`.
+
+Eine Liste allein veraltet unbemerkt, ein Anker am Code fällt beim Bauen auf. Der Fachtext bleibt im
+Manifest, damit Faktenblätter ihn lesen, ohne den Code zu kennen.
+
 ### 9. Konfigurationsschlüssel und Voreinstellungen
 
 Der Build liefert `META-INF/spring-configuration-metadata.json`: `spring-boot-configuration-processor`
@@ -91,8 +106,8 @@ in einem eigenen Lauf über alle Quellen, ergänzt um `additional-spring-configu
 für Schlüssel ohne `@ConfigurationProperties`-Typ und um den Standardwert aus dem Basisdokument von
 `application.yml`. Jeder `opaa.*`-Schlüssel trägt `@DataImpact` oder `@NoDataImpact(Grund)` an seiner
 Komponente oder pauschal an seinem Typ; Schalter, Modelle, Adressen, Fristen, Abstände und jede
-Zeitspanne (`Duration`, `Period`) entscheidet die Komponente selbst. Datenwirksam ist ein Standardwert, der bestimmt, was über Personen anfällt, wie
-lange es bleibt, wer es sieht, was sich auswerten lässt oder wohin Daten gehen; Schutzgrenzen,
+Zeitspanne (`Duration`, `Period`) entscheidet die Komponente selbst. Datenwirksam ist ein
+Standardwert, der bestimmt, was über Personen anfällt, wie lange es bleibt, wer es sieht, was sich auswerten lässt oder wohin Daten gehen; Schutzgrenzen,
 Zeitlimits, Suchgüte und Geheimnisse sind es nicht. Ein datenwirksamer Schlüssel steht mit seinem
 Standardwert unter `settings`, ebenso Modell und Adresse jeder Modellrolle (Standardmodelle). Setzt
 das Helm-Chart den Schlüssel, nennt der Eintrag Wert und Voreinstellung aus `values.yaml` (`helm`).
@@ -114,6 +129,11 @@ datenwirksamen Schlüssels einen nachgezogenen Eintrag.
 
 Restrisiken: Das Manifest belegt Vollständigkeit, nicht Richtigkeit; die sichern Review und
 Drift-Routine.
+Ein ausgehender Client eines Typs, der weder in `OUTBOUND_CLIENTS` noch in `OUTBOUND_BEANS` steht, oder
+ein Zugriff über Reflection entgeht dem Strukturtest (Entscheidung 8); die Liste wächst mit jedem neuen
+Client-Typ, und das Review prüft neue Abhängigkeiten darauf. Bewusst nicht erkannt wird eine neue
+Klasse, die über eine bereits annotierte Klasse (etwa `RerankClient`) Daten an ein bestehendes Ziel
+schickt; das fangen die Kennzeichnung der Datenwirkung am PR und die Drift-Routine auf.
 
 ## Verworfene Alternativen
 
@@ -127,3 +147,4 @@ Drift-Routine.
 - Jeder Schlüssel ohne Datenwirkung einzeln markiert — rund 300 Markierungen ohne Erkenntnis.
 - Eigene Eintragsart für Standardmodelle — Modell und Adresse sind gewöhnliche Voreinstellungen.
 - Prozessor im regulären `compileJava` — verliert beim inkrementellen Übersetzen die Beschreibungen.
+- Datenflüsse als Java-Enum mit allen Angaben — Fachtext im Code, zweite Quelle neben dem Manifest.

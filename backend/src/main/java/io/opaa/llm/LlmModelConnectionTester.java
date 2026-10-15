@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.compliance.DataFlow;
 import io.opaa.security.SettingsEncryptor;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -30,6 +31,7 @@ import tools.jackson.databind.ObjectMapper;
  * <p>No target-address blocking: a model address on the operator's own network is the normal case.
  * The stored key is only ever sent to the origin of the model's own stored {@code baseUrl}.
  */
+@DataFlow("model-endpoint")
 @Service
 public class LlmModelConnectionTester {
 

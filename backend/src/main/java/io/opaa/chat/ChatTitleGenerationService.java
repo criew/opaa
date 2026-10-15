@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ActiveChatModelResolver;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -43,6 +44,7 @@ import org.springframework.stereotype.Service;
  * RuntimeException}, so it is caught by {@link #generateTitleAsync}'s existing catch-all exactly
  * like any other title-generation failure.
  */
+@DataFlow("chat-model")
 @Service
 public class ChatTitleGenerationService {
 

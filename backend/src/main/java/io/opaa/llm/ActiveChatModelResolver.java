@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
+import io.opaa.compliance.DataFlow;
 import io.opaa.security.SettingsEncryptor;
 import java.time.Duration;
 import java.util.List;
@@ -30,6 +31,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * #generation} guarantees that a build running across an invalidation is returned but never cached.
  * The decrypted access key lives only inside the built client.
  */
+@DataFlow("chat-model")
 @Component
 public class ActiveChatModelResolver {
 

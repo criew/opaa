@@ -1,6 +1,7 @@
 package io.opaa.externalaccess.token;
 
 import io.opaa.auth.User;
+import io.opaa.compliance.DataFlow;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
 import io.opaa.mail.SendResult;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
  * recognises which tool will stop working - and unlike the audit trail, a mail to the person
  * themselves is not a Nachweisbestand.
  */
+@DataFlow("mail")
 @Component
 public class ExternalAccessTokenMailer {
 

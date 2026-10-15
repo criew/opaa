@@ -1,5 +1,6 @@
 package io.opaa.indexing.chunk;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.chunk.ChunkMetadataKeys;
@@ -50,6 +51,7 @@ import org.springframework.stereotype.Component;
  * atomic statement, idempotent if only one of the two ever runs.
  */
 @NoDataImpact("input limit of the embedding endpoint")
+@DataFlow("embedding-model")
 @Component
 public class VectorChunkStore implements ChunkMetadataStore {
 
