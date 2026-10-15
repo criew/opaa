@@ -130,15 +130,17 @@ Vorlage gegen den Normtext zu prüfen. Das Datum dieser Prüfung steht im Feld `
 ## Automatische Prüfung
 
 [`.github/scripts/check_behoerden_headers.sh`](../../.github/scripts/check_behoerden_headers.sh) läuft
-in der CI bei jeder Änderung unter `docs/behoerden/`. Es erfasst jede Markdown-Datei in diesem Ordner
-und allen Unterverzeichnissen außer dieser README, ohne Dateiliste, und lässt den Lauf scheitern bei:
+in der CI bei jeder Änderung unter `docs/behoerden/`. Es erfasst jede Markdown-Datei (`.md`,
+`.markdown`) in diesem Ordner und allen Unterverzeichnissen außer dieser README, ohne Dateiliste, und
+lässt den Lauf scheitern bei:
 
 - fehlendem oder unvollständigem Kopfvermerk, doppeltem Feld oder falschem Wert,
 - fehlendem oder abgewandeltem Haftungshinweis,
 - einem Faktenblatt-Platzhalter in anderer als der oben festgelegten Form.
 
 Ein Konfigurationsschlüssel (`opaa.…`) oder eine Enum-Konstante (`GROSS_GESCHRIEBEN`) im Text ergibt
-nur eine Warnung: Beides deutet auf einen abgeschriebenen Faktenwert hin, kann aber auch berechtigt
-sein. Ob ein Verweis inhaltlich stimmt, prüft das Skript nicht.
+außerhalb von Codeblöcken nur eine Warnung: Beides deutet auf einen abgeschriebenen Faktenwert hin,
+kann aber auch berechtigt sein. Bezeichnungen mit Ziffern nach dem Unterstrich (`ISO_27001`) bleiben
+ohne Warnung. Ob ein Verweis inhaltlich stimmt, prüft das Skript nicht.
 
 Lokal: `.github/scripts/check_behoerden_headers.sh`

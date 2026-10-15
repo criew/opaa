@@ -196,3 +196,41 @@ def test_placeholder_and_legal_references_do_not_warn(repo: Path) -> None:
     result = run_check(repo)
     assert result.returncode == 0
     assert "::warning" not in result.stdout
+
+
+@pytest.mark.parametrize("name", ["vorlage.MD", "vorlage.markdown", "vorlage.Markdown"])
+def test_checks_markdown_files_regardless_of_extension_case(repo: Path, name: str) -> None:
+    write(repo, "# Ohne Kopf\n", name)
+    assert_rejected(repo, f"docs/behoerden/{name}")
+
+
+@pytest.mark.parametrize("value", ["2026-02-31", "2026-04-31", "2027-02-29"])
+def test_rejects_impossible_calendar_date(repo: Path, value: str) -> None:
+    write(repo, document({**HEADER, "stand": value}))
+    assert_rejected(repo, 'field "stand"')
+
+
+def test_accepts_leap_day(repo: Path) -> None:
+    write(repo, document({**HEADER, "stand": "2028-02-29"}))
+    assert run_check(repo).returncode == 0
+
+
+@pytest.mark.parametrize("fence", ["```", "~~~"])
+def test_code_blocks_do_not_warn(repo: Path, fence: str) -> None:
+    block = f"\n{fence}yaml\nopaa.chat.auto-cleanup.max-age: 30d\nDOCUMENT_DELETED\n{fence}\n"
+    write(repo, document(body=BODY + block))
+    result = run_check(repo)
+    assert result.returncode == 0, result.stdout
+    assert "::warning" not in result.stdout
+
+
+def test_designations_with_digits_after_underscore_do_not_warn(repo: Path) -> None:
+    write(repo, document(body=BODY + "\nNach ISO_27001 und EN_301_549.\n"))
+    result = run_check(repo)
+    assert result.returncode == 0
+    assert "::warning" not in result.stdout
+
+
+def test_text_after_code_block_still_warns(repo: Path) -> None:
+    write(repo, document(body=BODY + "\n```\nx\n```\n\nEreignis DOCUMENT_DELETED.\n"))
+    assert "::warning" in run_check(repo).stdout

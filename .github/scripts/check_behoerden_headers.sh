@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Every Markdown file under docs/behoerden/ except docs/behoerden/README.md follows the conventions
-# of that README, found by directory walk, so a new template is checked without any list:
+# Every Markdown file (*.md, *.markdown, any case) under docs/behoerden/ except
+# docs/behoerden/README.md follows the conventions of that README, found by directory walk, so a
+# new template is checked without any list:
 # - a YAML front matter block with stand, gilt-fuer, erzeugung, rechtsstand, pruefvermerk and
 #   naechste-durchsicht, each exactly once and well-formed; an overdue naechste-durchsicht is no
 #   error, the review role reports it
 # - the verbatim disclaimer as the first line after the front matter and an optional H1 title
 # - fact sheet placeholders only in the form {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}}
 # Errors fail the run (exit 1). A configuration key (opaa.*) or an enum constant (UPPER_SNAKE_CASE)
-# in the text is only a warning: it hints at a fact copied instead of referenced.
+# outside fenced code blocks is only a warning: it hints at a fact copied instead of referenced.
+# Designations with a digit after an underscore (ISO_27001) are no enum constants and stay silent.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -42,8 +44,9 @@ check_value() {
   local file=$1 field=$2 value=$3
   case "$field" in
     stand | rechtsstand | naechste-durchsicht)
-      printf '%s' "$value" | grep -Eq "$DATE_RE" ||
-        report "$file" "" "field \"$field\" must be a date JJJJ-MM-TT, found \"$value\""
+      { printf '%s' "$value" | grep -Eq "$DATE_RE" &&
+        [ "$(date -u -d "$value" +%F 2>/dev/null || true)" = "$value" ]; } ||
+        report "$file" "" "field \"$field\" must be a calendar date JJJJ-MM-TT, found \"$value\""
       ;;
     gilt-fuer)
       printf '%s' "$value" | grep -Eq '^(main|[0-9]+\.[0-9]+\.[0-9]+)$' ||
@@ -107,8 +110,10 @@ while IFS= read -r -d '' file; do
     [ -z "$end" ] || [ "$line" -gt "$end" ] || continue
     warned=$((warned + 1))
     echo "::warning file=$file,line=$line::\"$match\" looks like a value from the fact sheets: reference it via {{faktenblatt:<name>}} instead of copying it ($FOLDER/README.md)"
-  done < <(printf '%s\n' "$content" | grep -noE '\bopaa\.[a-z][a-z0-9.-]*|\b[A-Z][A-Z0-9]*(_[A-Z0-9]+)+\b' || true)
-done < <(find "$FOLDER" -type f -name '*.md' ! -path "$FOLDER/README.md" -print0 | sort -z)
+  done < <(printf '%s\n' "$content" |
+    awk '/^[[:space:]]*(```|~~~)/{fenced=!fenced; print ""; next} {print fenced ? "" : $0}' |
+    grep -noE '\bopaa\.[a-z][a-z0-9.-]*|\b[A-Z][A-Z0-9]*(_[A-Z0-9]+)+\b' | grep -vE '_[0-9]' || true)
+done < <(find "$FOLDER" -type f \( -iname '*.md' -o -iname '*.markdown' \) ! -path "$FOLDER/README.md" -print0 | sort -z)
 
 if [ "$rejected" -gt 0 ]; then
   echo "::error::$rejected finding(s) in $checked document(s) under $FOLDER ($FOLDER/README.md)."
