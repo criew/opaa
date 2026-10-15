@@ -7,6 +7,7 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.Secret;
 import io.opaa.indexing.spi.SecretKind;
@@ -43,6 +44,7 @@ import tools.jackson.databind.json.JsonMapper;
  * a run asking per request costs one exchange an hour. Key, assertion and token reach no log and no
  * message.
  */
+@DataFlow("service-account-token")
 public class ServiceAccountTokens {
 
   private static final Logger log = LoggerFactory.getLogger(ServiceAccountTokens.class);

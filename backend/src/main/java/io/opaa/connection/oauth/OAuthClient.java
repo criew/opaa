@@ -1,5 +1,6 @@
 package io.opaa.connection.oauth;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.connection.profile.ClientRegistration;
 import io.opaa.connection.profile.ProfileEndpoints;
 import io.opaa.indexing.credentials.SignInRejectedException;
@@ -38,6 +39,7 @@ import tools.jackson.databind.json.JsonMapper;
  * request, the code exchange and every renewal name it, so the tokens are issued for that server
  * alone. Client secret, code, verifier and tokens reach no log and no message.
  */
+@DataFlow("connection-oauth")
 public final class OAuthClient {
 
   private static final Logger log = LoggerFactory.getLogger(OAuthClient.class);

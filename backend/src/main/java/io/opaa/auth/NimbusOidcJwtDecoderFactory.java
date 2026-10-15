@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.compliance.DataFlow;
 import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,7 @@ import org.springframework.web.client.RestTemplate;
  * no discovery happens at all, which is what makes the Compose split ({@code keycloak:8180} for the
  * backend, {@code localhost:8180} for the browser) work.
  */
+@DataFlow("oidc-provider")
 public class NimbusOidcJwtDecoderFactory implements OidcJwtDecoderFactory {
 
   private final OidcDiscoveryClient discoveryClient;

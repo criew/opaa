@@ -8,6 +8,7 @@ import static io.opaa.indexing.spi.ConnectorChecks.validateAtFixedAddress;
 
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.filesync.FileAccessException;
 import io.opaa.indexing.spi.ClientAuthentication;
 import io.opaa.indexing.spi.ClientCredentialsAuth;
@@ -61,6 +62,7 @@ import tools.jackson.databind.JsonNode;
  * selection discards the run state. Documents carry no deep link - the original comes through
  * Graph.
  */
+@DataFlow("source-sharepoint")
 public class SharePointSourceConnector implements SourceConnector, SourceBrowser, OriginalAccess {
 
   /** The type key this connector serves. */

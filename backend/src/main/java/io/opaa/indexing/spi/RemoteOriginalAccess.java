@@ -1,5 +1,6 @@
 package io.opaa.indexing.spi;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
  * unattended run. Every failure - source offline, target refused, invalid stored configuration - is
  * "no original", never a 5xx that would suggest an OPAA-side error.
  */
+@DataFlow("source-original")
 public class RemoteOriginalAccess implements OriginalAccess {
 
   private static final Logger log = LoggerFactory.getLogger(RemoteOriginalAccess.class);

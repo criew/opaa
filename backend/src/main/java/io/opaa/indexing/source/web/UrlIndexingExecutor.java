@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.web;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.compliance.DataFlow;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -54,6 +55,7 @@ import org.springframework.scheduling.annotation.Async;
  * prefixes, downloads - counts on the run's {@link RequestBudget} under the shared {@link
  * SourceRequestPolicy}'s bounds; reaching one ends the run through the frame as truncated.
  */
+@DataFlow("source-web")
 public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(UrlIndexingExecutor.class);

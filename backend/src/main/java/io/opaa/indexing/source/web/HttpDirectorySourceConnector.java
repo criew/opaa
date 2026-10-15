@@ -11,6 +11,7 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.api.types.PersonalSecretForm;
+import io.opaa.compliance.DataFlow;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.spi.ConnectorChecks;
 import io.opaa.indexing.spi.ConnectorData;
@@ -53,6 +54,7 @@ import org.slf4j.LoggerFactory;
  * counts by file name; the run itself decides from each downloaded file. The original of an indexed
  * document is streamed from its stored URL ({@link RemoteOriginalAccess}).
  */
+@DataFlow("source-web")
 public class HttpDirectorySourceConnector implements SourceConnector, OriginalAccess {
 
   /** The type key this connector serves. */

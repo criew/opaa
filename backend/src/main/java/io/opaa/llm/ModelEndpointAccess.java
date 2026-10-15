@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -30,6 +31,7 @@ import org.springframework.util.StringUtils;
  * is rejected with 400 before the key is decrypted. Redirects are never followed, so the {@code
  * Authorization} header cannot be replayed to an origin this rule never checked.
  */
+@DataFlowCarrier
 final class ModelEndpointAccess {
 
   /** Short enough that a caller trying several drafts in a row is never left waiting long. */

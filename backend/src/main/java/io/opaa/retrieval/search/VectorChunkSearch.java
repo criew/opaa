@@ -1,6 +1,7 @@
 package io.opaa.retrieval.search;
 
 import com.pgvector.PGvector;
+import io.opaa.compliance.DataFlow;
 import io.opaa.knowledge.VectorTable;
 import io.opaa.retrieval.VectorIndexScanProperties;
 import java.util.LinkedHashMap;
@@ -32,6 +33,7 @@ import tools.jackson.databind.ObjectMapper;
  * so no connection is held during the embedding call. They last until the transaction ends: this
  * search's own, or a caller's it joins.
  */
+@DataFlow("embedding-model")
 @Component
 public class VectorChunkSearch {
 

@@ -1,5 +1,6 @@
 package io.opaa.query.answer;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ChatResponses;
 import io.opaa.retrieval.ConversationNoteBlock;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Service;
  * io.opaa.llm.NoActiveChatModelException}, which propagates like any other domain error and reaches
  * the caller as a German error response rather than an NPE.
  */
+@DataFlow("chat-model")
 @Service
 public class AnswerGenerationService {
 

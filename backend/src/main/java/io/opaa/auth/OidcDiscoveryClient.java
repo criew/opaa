@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import io.opaa.common.ValidationException;
+import io.opaa.compliance.DataFlow;
 import io.opaa.outbound.ProxyRefusal;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,6 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
  * check as the issuer the operator typed, before the first byte is read from it. Shared by the
  * connection test and the decoder factory, so both see exactly the same provider.
  */
+@DataFlow("oidc-provider")
 public class OidcDiscoveryClient {
 
   private static final Logger log = LoggerFactory.getLogger(OidcDiscoveryClient.class);

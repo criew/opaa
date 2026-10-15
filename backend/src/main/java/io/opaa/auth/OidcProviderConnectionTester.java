@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import com.nimbusds.jose.jwk.JWKSet;
+import io.opaa.compliance.DataFlow;
 
 /**
  * Probes a provider before it is saved (the "Verbindungstest" of the Anbieterverwaltung): the
@@ -16,6 +17,7 @@ import com.nimbusds.jose.jwk.JWKSet;
  * the address policy, is {@link OidcDiscoveryClient}'s, so the test probes exactly what the
  * registry will later read.
  */
+@DataFlow("oidc-provider")
 public class OidcProviderConnectionTester {
 
   private final OidcDiscoveryClient discoveryClient;

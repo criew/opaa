@@ -121,6 +121,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void everyOutboundClientIsRegistered() {
+    ARCHITECTURE.everyOutboundClientIsRegistered().check(mainClasses);
+  }
+
+  @Test
   void everyConfigurationPropertiesClassIsRegisteredOnce() {
     ARCHITECTURE.everyConfigurationPropertiesClassIsRegisteredOnce().check(mainClasses);
   }

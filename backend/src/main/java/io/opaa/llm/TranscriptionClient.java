@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import io.opaa.compliance.DataFlow;
 import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -41,6 +42,7 @@ import tools.jackson.databind.ObjectMapper;
  * RerankClient}, so the installation-wide outbound proxy and the JVM truststore apply; redirects
  * are never followed, so the key cannot be replayed elsewhere.
  */
+@DataFlow("transcription-model")
 @Component
 public class TranscriptionClient {
 

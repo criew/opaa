@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.googledrive;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.indexing.spi.RunCredentials;
 import io.opaa.indexing.spi.SourceSettings;
@@ -14,6 +15,7 @@ import java.util.function.Supplier;
  * Opens a {@link DriveApi} on the resolved settings of a library: {@code sourceUrl} as the only
  * target of the token, certificate validation always on.
  */
+@DataFlow("source-google-drive")
 final class DriveApiFactory {
 
   private final GoogleDriveProperties properties;

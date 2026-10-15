@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.Sleeper;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
@@ -14,6 +15,7 @@ import java.net.http.HttpClient;
  * other outbound source fetch uses, so a private on-premises address is rejected here exactly as it
  * is for a web directory, with the allowlist hint appended to the message.
  */
+@DataFlow("source-confluence")
 public class ConfluenceClientFactory {
 
   private final ConfluenceProperties properties;

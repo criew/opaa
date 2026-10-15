@@ -1,6 +1,7 @@
 package io.opaa.metadata;
 
 import io.opaa.api.types.LibraryMetadataFieldType;
+import io.opaa.compliance.DataFlow;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -38,6 +39,7 @@ import org.springframework.stereotype.Service;
  * overwritten. Timeout, transport error and unusable answer all leave the field empty, count as a
  * failure and never block the ingest - there is no retry and no queue.
  */
+@DataFlow("chat-model")
 @Service
 public class ModelMetadataExtractor {
 

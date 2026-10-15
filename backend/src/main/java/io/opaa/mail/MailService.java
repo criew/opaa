@@ -1,5 +1,6 @@
 package io.opaa.mail;
 
+import io.opaa.compliance.DataFlowCarrier;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
@@ -32,6 +33,7 @@ import org.springframework.util.StringUtils;
  * <p>Sending is synchronous and bounded by the {@link SmtpProperties} timeouts - no outbox, no
  * retry; a message with an HTML part goes out as {@code multipart/alternative}.
  */
+@DataFlowCarrier
 @Service
 public class MailService {
 

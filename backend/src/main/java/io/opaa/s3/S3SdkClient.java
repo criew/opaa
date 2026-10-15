@@ -1,5 +1,6 @@
 package io.opaa.s3;
 
+import io.opaa.compliance.DataFlowCarrier;
 import java.net.URI;
 import java.time.Duration;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -25,6 +26,7 @@ import software.amazon.awssdk.services.s3.S3Client;
  * when asked; the SDK's full certificate check; and an exponential, capped retry strategy without a
  * circuit breaker. Holds the HTTP connection pool and must be closed.
  */
+@DataFlowCarrier
 public final class S3SdkClient implements AutoCloseable {
 
   private static final Duration MAX_BACKOFF = Duration.ofSeconds(20);

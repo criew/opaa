@@ -2,6 +2,7 @@ package io.opaa.directory.sync.connector;
 
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcProviderRepository;
+import io.opaa.compliance.DataFlow;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryConnector;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryProperties;
 import io.opaa.security.CredentialsEncryptor;
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Configuration;
  * a redirect: every address it is given has passed {@link OidcAddressPolicy}, a redirect target
  * would not have.
  */
+@DataFlow("directory-sync")
 @Configuration
 @EnableConfigurationProperties(KeycloakDirectoryProperties.class)
 public class DirectoryConnectorConfiguration {

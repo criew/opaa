@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.sharepoint;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.indexing.filesync.AbsenceProof;
 import io.opaa.indexing.filesync.Change;
 import io.opaa.indexing.filesync.ChangeFeed;
@@ -45,6 +46,7 @@ import tools.jackson.databind.JsonNode;
  * follows the parents by id, each unknown folder read once per run. A folder filter keeps only
  * files below one of its folders. The identity is {@code sharepoint://<drive>/<item>}.
  */
+@DataFlow("source-sharepoint")
 final class SharePointFileStore implements FileStore, ChangeFeed {
 
   private static final Logger log = LoggerFactory.getLogger(SharePointFileStore.class);

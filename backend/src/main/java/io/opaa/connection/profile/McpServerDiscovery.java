@@ -1,6 +1,7 @@
 package io.opaa.connection.profile;
 
 import io.opaa.common.ValidationException;
+import io.opaa.compliance.DataFlow;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -35,6 +36,7 @@ import tools.jackson.databind.json.JsonMapper;
  * authorization endpoint is opened by the browser, which no target check covers. A redirect leaves
  * no origin.
  */
+@DataFlow("mcp-discovery")
 @Component
 public class McpServerDiscovery {
 
