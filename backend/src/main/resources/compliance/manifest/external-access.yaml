@@ -17,7 +17,7 @@ data:
       settings:
         - external_access_settings.token_max_lifetime_days
         - audit_retention_settings.retention_months
-    visibility: [die Person selbst, SYSTEM_ADMIN (Kennung, Ablauf, Zustand)]
+    visibility: [die Person selbst, "SYSTEM_ADMIN (Kennung, Ablauf, Zustand)"]
     accessPaths: [UI, API, DATABASE]
     deletion: Retention-Schritt gekoppelt an die Protokollfrist
     evaluations: >-

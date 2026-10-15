@@ -1,0 +1,5 @@
+title: Konten und Rollen
+roles:
+  - id: USER
+    seesAboutOthers: nichts
+    notes: [Konto (Zustand, nie Passwort), die Person selbst, "Klammer (bewusst, gequotet)"]
