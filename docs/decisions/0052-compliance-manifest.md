@@ -110,6 +110,9 @@ neue Prüfsumme. Jede neue Spalte braucht eine Zeile im Manifest, auch ohne Pers
 
 Restrisiken: Das Manifest belegt Vollständigkeit, nicht Richtigkeit; die sichern Review und
 Drift-Routine.
+Ein ausgehender Client eines Typs, der weder in `OUTBOUND_CLIENTS` noch in `OUTBOUND_BEANS` steht, oder
+ein Zugriff über Reflection entgeht dem Strukturtest (Entscheidung 8); die Liste wächst mit jedem neuen
+Client-Typ, und das Review prüft neue Abhängigkeiten darauf.
 
 ## Verworfene Alternativen
 
