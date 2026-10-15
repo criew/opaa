@@ -190,7 +190,7 @@ class FactSheetRendererTest {
     assertThat(sheets.get(FactSheet.DATENFLUESSE))
         .doesNotContain("Noch nicht erfasst")
         .contains("<a id=\"chat-model\"></a>", "<a id=\"mail\"></a>");
-    // regression guard for #2854: settings and default models are in the manifest since #2548
+    // regression guard for #2854: the manifest holds settings and default models, none pending
     assertThat(sheets.get(FactSheet.VOREINSTELLUNGEN))
         .doesNotContain("Noch nicht erfasst")
         .doesNotContain("issues/2548")
