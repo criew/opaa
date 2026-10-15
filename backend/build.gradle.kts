@@ -64,7 +64,15 @@ dependencies {
     // sourceSet output, without recompiling them here.
     implementation(project(":opaa-api"))
     implementation(libs.bundles.spring.boot)
-    implementation(libs.bundles.spring.ai)
+    // Tika's standard parser package brings libraries for formats OPAA never admits (RAR, MATLAB,
+    // TIFF/JPEG 2000 images, RSS/Atom feeds) under licenses outside .github/licenses/allowed.txt.
+    // TikaWithoutExcludedLibrariesTest proves every admitted format still detects and extracts.
+    implementation(libs.bundles.spring.ai) {
+        exclude(group = "com.github.junrar", module = "junrar")
+        exclude(group = "org.tallison", module = "jmatio")
+        exclude(group = "com.github.jai-imageio", module = "jai-imageio-core")
+        exclude(group = "com.rometools", module = "rome")
+    }
     implementation(libs.spring.boot.starter.liquibase)
     implementation(libs.caffeine)
     implementation(libs.jtokkit)
@@ -523,8 +531,8 @@ dependencyManagement {
         mavenBom(libs.jackson2.bom.get().toString())
     }
     // Security overrides for artifacts nothing here declares directly: the embedded Tomcat pinned
-    // by spring-boot-dependencies and the Bouncy Castle / junrar versions Tika's parser modules
-    // resolve (CVE-2026-8763, CVE-2026-13506, CVE-2026-86071). Each entry states its own removal
+    // by spring-boot-dependencies and the Bouncy Castle versions Tika's parser modules resolve
+    // (CVE-2026-8763, CVE-2026-13506). Each entry states its own removal
     // condition in libs.versions.toml, which is also where the versions live.
     dependencies {
         dependency(libs.tomcat.embed.core.get().toString())
@@ -534,7 +542,6 @@ dependencyManagement {
         dependency(libs.bouncycastle.bcutil.get().toString())
         dependency(libs.bouncycastle.bcpkix.get().toString())
         dependency(libs.bouncycastle.bcjmail.get().toString())
-        dependency(libs.junrar.get().toString())
     }
 }
 
