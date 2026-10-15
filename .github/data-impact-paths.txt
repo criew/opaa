@@ -2,7 +2,9 @@
 # Read by .github/scripts/check_data_impact.sh (workflow data-impact.yml): a pull request touching
 # one of them carries the label data-impact or ticks "Keine Wirkung" in its description.
 # One git glob pathspec per line ('**' spans directories, '*' stays within one); '#' starts a
-# comment. Every pattern must match at least one tracked file (test_check_data_impact.py).
+# comment. Every pattern must match at least one tracked file, and every backend file with an
+# outgoing client, a model call, a system prompt or a retention period must match a pattern; both
+# are checked by test_check_data_impact.py, which names the file to add.
 
 # Database schema: new or changed stored data
 backend/src/main/resources/db/changelog/**
@@ -38,10 +40,43 @@ backend/src/main/java/io/opaa/mail/**/*.java
 backend/src/main/java/io/opaa/mcp/**/*.java
 backend/src/main/java/io/opaa/outbound/**/*.java
 backend/src/main/java/io/opaa/llm/**/*.java
+backend/src/main/java/io/opaa/sourceaccess/**/*.java
+backend/src/main/java/io/opaa/connection/oauth/**/*.java
+backend/src/main/java/io/opaa/connection/profile/McpServerDiscovery.java
+backend/src/main/java/io/opaa/connection/profile/ServerAddress.java
+backend/src/main/java/io/opaa/auth/OidcDiscoveryClient.java
+backend/src/main/java/io/opaa/auth/NimbusOidcJwtDecoderFactory.java
+backend/src/main/java/io/opaa/api/HttpClientConfig.java
+backend/src/main/java/io/opaa/indexing/attachment/**/*.java
+backend/src/main/java/io/opaa/indexing/credentials/**/*.java
+backend/src/main/java/io/opaa/indexing/spi/RemoteOriginalAccess.java
+backend/src/main/java/io/opaa/indexing/document/AttachmentIndexer.java
+backend/src/main/java/io/opaa/indexing/IndexingConfiguration.java
+backend/src/main/java/io/opaa/knowledge/S3UploadedOriginalStore.java
+backend/src/main/java/io/opaa/health/ChatHealthIndicator.java
+backend/src/main/java/io/opaa/health/EmbeddingsHealthIndicator.java
 deploy/helm/opaa/templates/networkpolicies.yaml
+
+# Text sent to the embedding and rerank models
+backend/src/main/java/io/opaa/indexing/chunk/VectorChunkStore.java
+backend/src/main/java/io/opaa/indexing/chunk/VectorStoreWriter.java
+backend/src/main/java/io/opaa/retrieval/search/VectorChunkSearch.java
+backend/src/main/java/io/opaa/retrieval/ranking/RerankStage.java
+backend/src/main/java/io/opaa/searchadmin/SearchStatusService.java
 
 # Prompts and answer generation: system prompts and their inputs
 backend/src/main/java/io/opaa/prompt/**/*.java
 backend/src/main/java/io/opaa/query/answer/**/*.java
 backend/src/main/java/io/opaa/retrieval/search/QueryDecompositionService.java
 backend/src/main/java/io/opaa/metadata/ModelExtractionPrompt.java
+backend/src/main/java/io/opaa/metadata/LibraryMetadataExtractionService.java
+backend/src/main/java/io/opaa/metadata/ModelMetadataExtractor.java
+backend/src/main/java/io/opaa/chat/ChatTitleGenerationService.java
+backend/src/main/java/io/opaa/chat/ChatNoteExtraction.java
+backend/src/main/java/io/opaa/chat/ChatNoteExtractionService.java
+backend/src/main/java/io/opaa/query/spike/**/*.java
+
+# Retention and deletion periods
+backend/src/main/java/**/*Retention*.java
+backend/src/main/java/**/*Cleanup*.java
+backend/src/main/java/io/opaa/diagnosticaccess/**/*.java

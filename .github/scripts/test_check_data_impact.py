@@ -1,8 +1,12 @@
 """Self-check for check_data_impact.sh: a matched path without label and without "Keine Wirkung"
 fails, the label or a ticked "Keine Wirkung" passes, a ticked impact without label fails, unmatched
-paths pass; every pattern of the real path list matches a tracked file."""
+paths pass. For the real path list: every pattern matches a tracked file, every backend file with an
+outgoing client, a model call, a system prompt or a retention period matches a pattern, and the
+Renovate exception of data-impact.yml names the account of gitAuthor in renovate.json5."""
 
+import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -15,14 +19,40 @@ REPO_ROOT = SCRIPTS.parent.parent
 PATHS = REPO_ROOT / ".github" / "data-impact-paths.txt"
 BASH = shutil.which("bash") or "bash"
 
+# Code that sends data out of OPAA: HTTP, mail and S3 clients, model calls and the project's own
+# wrappers around them. A new wrapper belongs here as well.
+FLOW = re.compile(
+    r"\b(RestClient|RestTemplate|WebClient|HttpClient|HttpURLConnection|URLConnection|Socket"
+    r"|ChatClient|ChatModel|StreamingChatModel|EmbeddingModel|ImageModel|TranscriptionModel"
+    r"|JavaMailSender|S3Client|S3AsyncClient|S3Presigner|McpSyncClient|McpAsyncClient"
+    r"|SourceHttpClientFactory|ActiveChatModelResolver|BoundedDownloader|RedirectFollowingFetcher"
+    r"|SourceFormPost|RemoteOriginalAccess|RerankClient|TranscriptionClient)\b"
+)
+# Text given to a model as instruction.
+PROMPT = re.compile(
+    r"\b[A-Z_]*PROMPT[A-Z_]*\s*=|\.system\(\s*[^)\s]|\bSystemMessage\b|\bSystemPromptTemplate\b"
+)
+# A default period after which data is deleted or archived.
+RETENTION = re.compile(
+    r"static\s+final\s+(Duration|Period)\s+\w*(RETENTION|DELET|KEEP|PURGE|CLEANUP|ARCHIV)\w*\s*="
+)
+RETENTION_NAME = re.compile(r"Retention|Cleanup|Purge")
+COMMENT_LINE = re.compile(r"\s*(//|/?\*)")
+
 SECTION = "## Wirkung auf Daten und Behördenunterlagen\n\n"
 NO_IMPACT = (
     SECTION + "- [ ] Neue Sichtbarkeit\n"
     "- [x] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen\n"
     "\n## Checkliste\n\n- [x] Tests bestehen lokal\n"
 )
-IMPACT = SECTION + "- [X] Neue Sichtbarkeit: Daten werden für weitere Rollen sichtbar\n- [ ] Keine Wirkung\n"
-UNTICKED = SECTION + "- [ ] Neue Sichtbarkeit\n- [ ] Keine Wirkung\n\n## Checkliste\n\n- [x] Keine Wirkung\n"
+IMPACT = (
+    SECTION
+    + "- [X] Neue Sichtbarkeit: Daten werden für weitere Rollen sichtbar\n- [ ] Keine Wirkung\n"
+)
+UNTICKED = (
+    SECTION
+    + "- [ ] Neue Sichtbarkeit\n- [ ] Keine Wirkung\n\n## Checkliste\n\n- [x] Keine Wirkung\n"
+)
 
 
 def git(repo: Path, *args: str) -> str:
@@ -65,6 +95,7 @@ def run(repo: Path, body: str = "", label: bool = False) -> subprocess.Completed
     env.pop("GITHUB_STEP_SUMMARY", None)
     return subprocess.run(
         [BASH, SCRIPT.as_posix(), "HEAD^1", "HEAD"],
+        check=False,
         cwd=repo,
         capture_output=True,
         text=True,
@@ -109,7 +140,9 @@ def test_no_impact_ticked_outside_section_does_not_count(repo: Path) -> None:
     assert run(repo, body=UNTICKED).returncode == 1
 
 
-def test_ticked_impact_without_label_fails_even_without_matched_path(repo: Path) -> None:
+def test_ticked_impact_without_label_fails_even_without_matched_path(
+    repo: Path,
+) -> None:
     change(repo, "frontend/src/features/x.tsx")
     result = run(repo, body=IMPACT)
     assert result.returncode == 1
@@ -128,16 +161,85 @@ def test_unmatched_path_passes(repo: Path) -> None:
     assert "No changed file matches" in result.stdout
 
 
-def test_every_pattern_matches_a_tracked_file() -> None:
-    patterns = [
+def patterns() -> list[str]:
+    return [
         line.strip()
         for line in PATHS.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.startswith("#")
     ]
-    assert patterns
-    stale = [
-        p
-        for p in patterns
-        if not git(REPO_ROOT, "ls-files", "--", f":(glob){p}")
-    ]
+
+
+def tracked(*pathspecs: str) -> set[str]:
+    return set(git(REPO_ROOT, "ls-files", "--", *pathspecs).split())
+
+
+def marker(path: str) -> str | None:
+    if path.startswith("backend/src/main/resources/") and "prompt" in path.lower():
+        return "prompt resource"
+    if not path.endswith(".java"):
+        return None
+    if RETENTION_NAME.search(Path(path).name):
+        return "retention class"
+    code = "\n".join(
+        line
+        for line in (REPO_ROOT / path).read_text(encoding="utf-8").splitlines()
+        if not COMMENT_LINE.match(line)
+    )
+    for name, pattern in (
+        ("data flow", FLOW),
+        ("prompt", PROMPT),
+        ("retention", RETENTION),
+    ):
+        found = pattern.search(code)
+        if found:
+            return f"{name}: {found.group(0).strip()}"
+    return None
+
+
+def test_every_pattern_matches_a_tracked_file() -> None:
+    assert patterns()
+    stale = [p for p in patterns() if not tracked(f":(glob){p}")]
     assert stale == [], f"patterns without a tracked file in {PATHS.name}: {stale}"
+
+
+def test_every_data_flow_prompt_and_retention_file_is_covered() -> None:
+    covered = tracked(*(f":(glob){p}" for p in patterns()))
+    candidates = tracked(
+        ":(glob)backend/src/main/java/**/*.java", ":(glob)backend/src/main/resources/**"
+    )
+    missing = sorted(
+        f"{path} ({reason})"
+        for path in candidates - covered
+        if (reason := marker(path)) is not None
+    )
+    assert missing == [], f"add a pattern to {PATHS.name} for: {missing}"
+
+
+def test_marker_detects_flow_prompt_and_retention() -> None:
+    assert marker("backend/src/main/resources/prompts/answer.st") == "prompt resource"
+    assert (
+        marker("backend/src/main/java/io/opaa/x/FooRetentionService.java")
+        == "retention class"
+    )
+    assert FLOW.search("private final RestClient client;")
+    assert PROMPT.search('static final String SYSTEM_PROMPT = """')
+    assert not PROMPT.search("ConnectionLogActor.system()")
+    assert RETENTION.search("static final Duration RETENTION = Duration.ofDays(14);")
+    assert not RETENTION.search(
+        "static final Duration HANDOVER_TTL = Duration.ofHours(1);"
+    )
+
+
+def test_renovate_exception_names_the_renovate_account() -> None:
+    renovate = (REPO_ROOT / "renovate.json5").read_text(encoding="utf-8")
+    author = re.search(r"gitAuthor:\s*'[^<]*<\d+\+([^@]+)@", renovate)
+    assert author, "gitAuthor in renovate.json5 no longer names a noreply account"
+    workflow = (REPO_ROOT / ".github/workflows/data-impact.yml").read_text(
+        encoding="utf-8"
+    )
+    accounts = re.search(
+        r"fromJSON\('(\[[^']*\])'\),\s*github\.event\.pull_request\.user\.login",
+        workflow,
+    )
+    assert accounts, "data-impact.yml no longer checks the Renovate author"
+    assert author.group(1) in json.loads(accounts.group(1))
