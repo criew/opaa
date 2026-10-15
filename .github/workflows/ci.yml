@@ -73,13 +73,17 @@ jobs:
             # otherwise skip them. eval/README.md and eval/generator/** are
             # excluded: no evalUnitTest-included test reads either at runtime,
             # both are only referenced from Javadoc/error messages in the
-            # excluded *RetrievalEvaluationHarnessTest classes.
+            # excluded *RetrievalEvaluationHarnessTest classes. docs/behoerden/** and the header
+            # script belong here because FactSheetReferenceTest checks their fact sheet names and
+            # placeholders against the rendered sheets.
             backend:
               - 'backend/**'
               - 'opaa-api/**'
               - 'eval/**'
               - '!eval/README.md'
               - '!eval/generator/**'
+              - 'docs/behoerden/**'
+              - '.github/scripts/check_behoerden_headers.sh'
               - '.github/licenses/**'
               - '.github/scripts/check_licenses.py'
               - '.github/workflows/ci.yml'
@@ -287,6 +291,20 @@ jobs:
           name: license-report-backend
           path: backend/build/reports/licenses/
           if-no-files-found: ignore
+          retention-days: 90
+
+      # Fact sheets for authorities from the compliance manifest (docs/behoerden/README.md,
+      # "Faktenblätter"). Not checked in: the artifact of the latest run on main is the published
+      # state of main; a release attaches its own.
+      - name: Faktenblätter erzeugen
+        run: ./gradlew complianceDocs
+
+      - name: Faktenblätter ablegen
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: compliance-faktenblaetter
+          path: backend/build/compliance/faktenblaetter/
+          if-no-files-found: error
           retention-days: 90
 
       # `javadoc` is not part of `build`'s dependency graph. This step catches unresolvable

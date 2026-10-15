@@ -6,7 +6,9 @@
 #   naechste-durchsicht, each exactly once and well-formed; an overdue naechste-durchsicht is no
 #   error, the review role reports it
 # - the verbatim disclaimer as the first line after the front matter and an optional H1 title
-# - fact sheet placeholders only in the form {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}}
+# - fact sheet placeholders only in the form {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}};
+#   FACT_SHEETS names exactly the sheets io.opaa.compliance.FactSheet renders, and the backend test
+#   FactSheetReferenceTest checks that list and every placeholder's sheet and anchor
 # Errors fail the run (exit 1). A configuration key (opaa.*) or an enum constant (UPPER_SNAKE_CASE)
 # outside fenced code blocks is only a warning: it hints at a fact copied instead of referenced.
 # Designations with a digit after an underscore (ISO_27001) are no enum constants and stay silent.
