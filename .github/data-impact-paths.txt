@@ -1,0 +1,47 @@
+# Paths whose change may affect data, visibility, evaluation, data flows or defaults.
+# Read by .github/scripts/check_data_impact.sh (workflow data-impact.yml): a pull request touching
+# one of them carries the label data-impact or ticks "Keine Wirkung" in its description.
+# One git glob pathspec per line ('**' spans directories, '*' stays within one); '#' starts a
+# comment. Every pattern must match at least one tracked file (test_check_data_impact.py).
+
+# Database schema: new or changed stored data
+backend/src/main/resources/db/changelog/**
+
+# Audit and connection log events, roles, capabilities, visibility
+opaa-api/src/main/java/io/opaa/api/types/AuditEventType.java
+opaa-api/src/main/java/io/opaa/api/types/ConnectionLogEventType.java
+opaa-api/src/main/java/io/opaa/api/types/SystemRole.java
+opaa-api/src/main/java/io/opaa/api/types/SpaceRole.java
+opaa-api/src/main/java/io/opaa/api/types/AssetRole.java
+opaa-api/src/main/java/io/opaa/api/types/Capability.java
+opaa-api/src/main/java/io/opaa/api/types/CatalogVisibility.java
+backend/src/main/java/io/opaa/audit/**/*.java
+backend/src/main/java/io/opaa/permission/**/*.java
+
+# API surface: new fields, endpoints and exports
+opaa-api/src/main/openapi/**
+
+# Configuration keys and defaults
+backend/src/main/resources/application*.yml
+backend/src/main/java/**/*Properties.java
+deploy/helm/opaa/values.yaml
+deploy/helm/opaa/values.schema.json
+docker-compose.yml
+.env*.example
+
+# Outgoing data flows: connectors, directories, model providers, mail, proxies, network policy
+backend/src/main/java/io/opaa/indexing/source/**/*.java
+backend/src/main/java/io/opaa/directory/**/*.java
+backend/src/main/java/io/opaa/msgraph/**/*.java
+backend/src/main/java/io/opaa/s3/**/*.java
+backend/src/main/java/io/opaa/mail/**/*.java
+backend/src/main/java/io/opaa/mcp/**/*.java
+backend/src/main/java/io/opaa/outbound/**/*.java
+backend/src/main/java/io/opaa/llm/**/*.java
+deploy/helm/opaa/templates/networkpolicies.yaml
+
+# Prompts and answer generation: system prompts and their inputs
+backend/src/main/java/io/opaa/prompt/**/*.java
+backend/src/main/java/io/opaa/query/answer/**/*.java
+backend/src/main/java/io/opaa/retrieval/search/QueryDecompositionService.java
+backend/src/main/java/io/opaa/metadata/ModelExtractionPrompt.java

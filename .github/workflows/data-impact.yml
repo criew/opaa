@@ -1,0 +1,36 @@
+name: Datenwirkung
+
+# Every pull request either carries the label data-impact or states "Keine Wirkung" when it touches
+# a path from .github/data-impact-paths.txt (docs/releases.md, "Datenwirkung kennzeichnen"). Runs
+# without a paths filter so that it can serve as a required check, and again when labels or the
+# description change. Renovate branches are skipped: dependency updates have no template and touch
+# values.yaml and docker-compose.yml for image tags only.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-impact-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: ${{ !startsWith(github.head_ref, 'renovate/') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The merge commit of the pull request and its first parent, the base it is compared with.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Datenwirkung prüfen
+        env:
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'data-impact') }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: .github/scripts/check_data_impact.sh HEAD^1 HEAD
