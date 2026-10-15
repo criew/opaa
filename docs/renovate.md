@@ -27,7 +27,7 @@ jederzeit auch lokal ausführen (unten).
 | Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) | `custom.regex` | `ci` |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
-angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle, junrar —
+angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle —
 siehe den `dependencyManagement`-Block in `backend/build.gradle.kts`), genügt ein bloßer
 `[versions]`-Eintrag nicht: Der `gradle`-Manager leitet seine Koordinaten aus `[libraries]` ab und
 sieht eine Version ohne `module` überhaupt nicht. Der Pin bekäme dann nie einen Update-PR und
