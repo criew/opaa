@@ -26,7 +26,6 @@ import com.tngtech.archunit.core.domain.JavaAccess;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaCodeUnit;
 import com.tngtech.archunit.core.domain.JavaFieldAccess;
-import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvent;
@@ -581,20 +580,30 @@ public final class ModularArchitecture {
           "RequestLoggingFilter");
 
   /**
-   * The clients that open a connection out of the installation, the one list of them. A class
-   * creates one by calling its constructor, a static method of the type or a method of a nested
-   * builder that returns it; a non-empty {@code creators} narrows that to the named methods.
+   * The clients that open a connection out of the installation, the one list of them. A class uses
+   * one by calling a constructor or method of the type (or of a subtype), or a method of a nested
+   * builder that returns it; a non-empty {@code members} narrows that to the named methods. Only
+   * passing a client on, without calling it, is no use.
    */
   static final List<OutboundClient> OUTBOUND_CLIENTS =
       List.of(
           new OutboundClient(java.net.http.HttpClient.class),
           new OutboundClient(org.springframework.web.client.RestTemplate.class),
+          new OutboundClient(
+              org.springframework.boot.restclient.RestTemplateBuilder.class, "build"),
           new OutboundClient(org.springframework.web.client.RestClient.class),
           new OutboundClient(org.springframework.web.reactive.function.client.WebClient.class),
+          new OutboundClient(
+              org.springframework.http.client.ClientHttpRequestFactory.class, "createRequest"),
           new OutboundClient(java.net.URL.class, "openConnection", "openStream"),
+          new OutboundClient(org.springframework.core.io.UrlResource.class),
           new OutboundClient(java.net.Socket.class),
+          new OutboundClient(javax.net.ssl.SSLSocketFactory.class, "createSocket"),
+          new OutboundClient(org.jsoup.Jsoup.class, "connect"),
           new OutboundClient(software.amazon.awssdk.services.s3.S3Client.class),
           new OutboundClient(org.springframework.mail.javamail.JavaMailSenderImpl.class),
+          new OutboundClient(jakarta.mail.Transport.class),
+          new OutboundClient(java.sql.DriverManager.class, "getConnection"),
           new OutboundClient(org.springframework.ai.openai.OpenAiChatModel.class),
           new OutboundClient(org.springframework.ai.chat.client.ChatClient.class),
           new OutboundClient(com.hierynomus.smbj.SMBClient.class),
@@ -1704,10 +1713,10 @@ public final class ModularArchitecture {
   }
 
   /**
-   * Classes that create one of {@link #OUTBOUND_CLIENTS}, depend on one of {@link #OUTBOUND_BEANS}
-   * or call a class marked {@link #DATA_FLOW_CARRIER}, unless their top-level class is marked
-   * {@link #DATA_FLOW} or {@link #DATA_FLOW_CARRIER}: no data leaves the installation past the
-   * registry (ADR-0051, Entscheidung 2).
+   * Classes that use one of {@link #OUTBOUND_CLIENTS}, depend on one of {@link #OUTBOUND_BEANS} or
+   * call a class marked {@link #DATA_FLOW_CARRIER}, unless their top-level class is marked {@link
+   * #DATA_FLOW} or {@link #DATA_FLOW_CARRIER}: no data leaves the installation past the registry
+   * (ADR-0051, Entscheidung 2).
    */
   ArchRule everyOutboundClientIsRegistered() {
     String dataFlow = root + "." + DATA_FLOW;
@@ -1763,7 +1772,7 @@ public final class ModularArchitecture {
   }
 
   /**
-   * What {@code access} opens: a client it creates, a carrier it calls, or {@code null}. Building a
+   * What {@code access} opens: a client it uses, a carrier it calls, or {@code null}. Building a
    * carrier, reading its constants and calling one of {@link #CARRIER_HELPERS} open nothing.
    */
   private String opensOutbound(JavaAccess<?> access, String carrier) {
@@ -1776,8 +1785,8 @@ public final class ModularArchitecture {
       return opensNothing ? null : "calls the carrier " + owner.getName() + ":";
     }
     for (OutboundClient client : OUTBOUND_CLIENTS) {
-      if (client.isCreatedBy(access)) {
-        return "creates " + client.type().getName() + ":";
+      if (client.isUsedBy(access)) {
+        return "uses " + client.type().getName() + ":";
       }
     }
     return null;
@@ -1795,31 +1804,28 @@ public final class ModularArchitecture {
   }
 
   /**
-   * A client type of {@link #OUTBOUND_CLIENTS}; {@code creators} names the only methods that create
-   * one, empty for every constructor, static method and builder method returning it.
+   * A client type of {@link #OUTBOUND_CLIENTS}; {@code members} names the only methods that use it,
+   * empty for every constructor and method of the type and every builder method returning it.
    */
-  record OutboundClient(Class<?> type, Set<String> creators) {
+  record OutboundClient(Class<?> type, Set<String> members) {
 
-    OutboundClient(Class<?> type, String... creators) {
-      this(type, Set.of(creators));
+    OutboundClient(Class<?> type, String... members) {
+      this(type, Set.of(members));
     }
 
-    boolean isCreatedBy(JavaAccess<?> access) {
-      JavaClass owner = access.getTargetOwner();
-      if (!creators.isEmpty()) {
-        return owner.isEquivalentTo(type) && creators.contains(access.getName());
-      }
-      if (!(access.getTarget() instanceof CodeUnitAccessTarget target)) {
+    boolean isUsedBy(JavaAccess<?> access) {
+      if (access instanceof JavaFieldAccess) {
         return false;
       }
-      if (owner.isEquivalentTo(type)) {
-        return target instanceof ConstructorCallTarget
-            || target
-                .resolveMember()
-                .map(member -> member.getModifiers().contains(JavaModifier.STATIC))
-                .orElse(false);
+      JavaClass owner = access.getTargetOwner();
+      if (!members.isEmpty()) {
+        return owner.isAssignableTo(type) && members.contains(access.getName());
       }
-      return owner.getEnclosingClass().map(outer -> outer.isEquivalentTo(type)).orElse(false)
+      if (owner.isAssignableTo(type)) {
+        return true;
+      }
+      return access.getTarget() instanceof CodeUnitAccessTarget target
+          && owner.getEnclosingClass().map(outer -> outer.isEquivalentTo(type)).orElse(false)
           && target.getRawReturnType().isEquivalentTo(type);
     }
   }
