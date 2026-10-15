@@ -112,7 +112,9 @@ Restrisiken: Das Manifest belegt Vollständigkeit, nicht Richtigkeit; die sicher
 Drift-Routine.
 Ein ausgehender Client eines Typs, der weder in `OUTBOUND_CLIENTS` noch in `OUTBOUND_BEANS` steht, oder
 ein Zugriff über Reflection entgeht dem Strukturtest (Entscheidung 8); die Liste wächst mit jedem neuen
-Client-Typ, und das Review prüft neue Abhängigkeiten darauf.
+Client-Typ, und das Review prüft neue Abhängigkeiten darauf. Bewusst nicht erkannt wird eine neue
+Klasse, die über eine bereits annotierte Klasse (etwa `RerankClient`) Daten an ein bestehendes Ziel
+schickt; das fangen die Kennzeichnung der Datenwirkung am PR und die Drift-Routine auf.
 
 ## Verworfene Alternativen
 
