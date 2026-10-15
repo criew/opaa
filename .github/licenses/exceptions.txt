@@ -1,0 +1,26 @@
+# Ausnahmeliste der Lizenzprüfung (.github/scripts/check_licenses.py), eine Zeile je Ausnahme:
+#
+#   <purl ohne Version> | <Lizenz, wie sie die Prüfung meldet> | <Begründung>
+#
+# Der purl darf auf * enden (alle Artefakte einer Gruppe). Die Ausnahme gilt nur, solange das Paket
+# genau die eingetragene Lizenz trägt; ändert ein Update die Lizenz, schlägt die Prüfung erneut an.
+# Versionswechsel brauchen keine Pflege. Verfahren in docs/sbom.md, Abschnitt „Lizenzprüfung“.
+
+# Backend: Lizenz im POM nur als Name, nicht als SPDX-Kennung
+pkg:maven/org.bouncycastle/* | Bouncy Castle Licence | Name aus dem POM; der Lizenztext auf bouncycastle.org ist der MIT-Lizenztext (SPDX: MIT). Über smbj (SMB-Konnektor).
+pkg:maven/com.samskivert/jmustache | The (New) BSD License | Name aus dem POM, verweist auf die BSD-Lizenz der OSI (gemeint BSD-3-Clause). Direkte Abhängigkeit.
+pkg:maven/org.antlr/antlr-runtime | BSD licence | Name aus dem POM; ANTLR 3 steht unter BSD-3-Clause. Über ST4 (spring-ai-template-st).
+pkg:maven/org.jdom/jdom2 | Similar to Apache License but with the acknowledgment clause removed | JDOM-Lizenz: Apache-1.1-artig ohne Werbeklausel, keine eigene SPDX-Kennung in der Freigabeliste. Über rome (Apache Tika, RSS/Atom).
+
+# Backend: Lizenz mit Werbeklausel (BSD-4-Clause), nach FSF nicht GPL-verträglich
+pkg:maven/org.antlr/ST4 | BSD-4-Clause | Das POM nennt „The BSD License“ (antlr.org/license.html), das SBOM-Plugin ordnet BSD-4-Clause zu; StringTemplate 4 steht nach Angabe des Projekts unter BSD-3-Clause. Über spring-ai-template-st.
+pkg:maven/org.tallison/jmatio | BSD-4-Clause | Das POM nennt „BSD, free for open or commercial use, with credit line“. Über Apache Tika (Parser für MATLAB-Dateien), nur Lesen hochgeladener Dateien.
+
+# Backend: Lizenzen außerhalb von FSF/OSI-Freigaben, transitiv und unverändert ausgeliefert
+pkg:maven/org.liquibase/liquibase-core | FSL-1.1-ALv2 | Functional Source License, nicht OSI-/FSF-frei: untersagt nur konkurrierende Nutzung, jede Version wird zwei Jahre nach Erscheinen Apache-2.0. OPAA nutzt Liquibase ausschließlich für die eigenen Datenbankmigrationen.
+pkg:maven/com.github.junrar/junrar | UnRAR | UnRAR-Lizenz, nicht OSI-/FSF-frei: verbietet nur, daraus einen RAR-Packer zu bauen. Über Apache Tika (Entpacken von RAR-Archiven beim Indizieren).
+pkg:maven/com.github.jai-imageio/jai-imageio-core | BSD-3-Clause-No-Nuclear-License | BSD-3-Clause mit Hinweis, nicht für kerntechnische Anlagen bestimmt; nicht OSI-anerkannt. Über Apache Tika (Bildformate).
+pkg:maven/org.aspectj/aspectjweaver | EPL-2.0 | EPL-2.0 ist nach FSF nicht GPL-verträglich; unveränderte, separat ausgelieferte Laufzeitbibliothek von Spring Data JPA (spring-aspects).
+
+# Frontend
+pkg:npm/@fontsource/* | OFL-1.1 | SIL Open Font License, FSF-frei und OSI-anerkannt; ausgeliefert werden nur die Schriftdateien als eigenständige Werke neben dem Programm.

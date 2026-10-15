@@ -504,6 +504,10 @@ nicht auf — die E2E-Suite läuft seit #1226 gar nicht mehr bei PRs; der Lauf b
 `main` und der nächtliche Lauf bleiben das Sicherheitsnetz und legen bei Fehlschlag ein
 Alarm-Issue an (bewusste Repo-Entscheidung, vgl. #792).
 
+**Lizenzen:** Die Required Checks `backend` und `frontend` prüfen auch die Lizenzen der
+Laufzeit-Abhängigkeiten. Bringt ein Update eine nicht freigegebene oder geänderte Lizenz mit,
+bleibt der PR offen; das Vorgehen steht in [`docs/sbom.md`](./sbom.md#lizenzprüfung).
+
 ## Konfiguration validieren
 
 Nach Änderungen an `renovate.json5`:

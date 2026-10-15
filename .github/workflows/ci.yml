@@ -80,13 +80,18 @@ jobs:
               - 'eval/**'
               - '!eval/README.md'
               - '!eval/generator/**'
+              - '.github/licenses/**'
+              - '.github/scripts/check_licenses.py'
               - '.github/workflows/ci.yml'
             # The frontend build regenerates its API types from the OpenAPI
             # fragments under opaa-api/ on every pnpm run build/test (ADR-0006),
-            # so a spec-only change must also run the frontend job.
+            # so a spec-only change must also run the frontend job. Both jobs run the license check,
+            # so a change to its policy files or script runs both.
             frontend:
               - 'frontend/**'
               - 'opaa-api/src/main/openapi/**'
+              - '.github/licenses/**'
+              - '.github/scripts/check_licenses.py'
               - '.github/workflows/ci.yml'
             bundleParity:
               - 'opaa-api/src/main/openapi/**'
@@ -122,9 +127,10 @@ jobs:
             # rule covers every workflow, like the action pin guard. publish-images.yml belongs here
             # because test_publish_images_cache.py checks that release builds skip the gha cache,
             # renovate.yml because test_renovate_image_pin.py checks its image pin against the regex
-            # manager.
+            # manager. .github/licenses/** because test_check_licenses.py loads the policy files.
             scripts:
               - '.github/scripts/**'
+              - '.github/licenses/**'
               - '.github/workflows/ci.yml'
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/renovate.yml'
@@ -245,6 +251,29 @@ jobs:
 
       - name: Build (ohne Testsuite)
         run: ./gradlew build -x :test
+
+      # Checks the runtime SBOM the build just wrote against .github/licenses/ (docs/sbom.md,
+      # "Lizenzprüfung"). Runs inside a required check, so a dependency update that brings an
+      # unapproved license blocks a Renovate auto-merge.
+      - name: Lizenzen der Abhängigkeiten prüfen
+        working-directory: .
+        run: >-
+          python3 .github/scripts/check_licenses.py
+          --allowed .github/licenses/allowed.txt
+          --exceptions .github/licenses/exceptions.txt
+          --cyclonedx backend/build/reports/cyclonedx/application.cdx.json
+          --ignore 'pkg:maven/io.opaa/*'
+          --title Backend
+          --report backend/build/reports/licenses/licenses-backend.md
+
+      - name: Lizenzübersicht ablegen
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: license-report-backend
+          path: backend/build/reports/licenses/
+          if-no-files-found: ignore
+          retention-days: 90
 
       # `javadoc` is not part of `build`'s dependency graph. This step catches unresolvable
       # {@link}/@see references.
@@ -466,6 +495,26 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
+      # Same check as in backend-build, over the production dependencies (docs/sbom.md,
+      # "Lizenzprüfung"); the frontend job is a required check as well.
+      - name: Lizenzen der Abhängigkeiten prüfen
+        run: |
+          mkdir -p build/licenses
+          pnpm licenses list --prod --json > build/licenses/pnpm-licenses.json
+          python3 ../.github/scripts/check_licenses.py \
+            --allowed ../.github/licenses/allowed.txt \
+            --exceptions ../.github/licenses/exceptions.txt \
+            --pnpm build/licenses/pnpm-licenses.json \
+            --title Frontend \
+            --report build/licenses/licenses-frontend.md
+      - name: Lizenzübersicht ablegen
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: license-report-frontend
+          path: frontend/build/licenses/licenses-frontend.md
+          if-no-files-found: ignore
+          retention-days: 90
       - run: pnpm run format:check
       - run: pnpm run lint
       # Theme boundaries beyond eslint: the rule is active as error, no bulk suppressions (file or

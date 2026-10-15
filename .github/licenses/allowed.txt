@@ -1,0 +1,43 @@
+# Freigabeliste der Abhängigkeitslizenzen (SPDX-Kennungen), geprüft von
+# .github/scripts/check_licenses.py; Verfahren in docs/sbom.md, Abschnitt „Lizenzprüfung“.
+#
+# Aufgenommen ist nur, was die FSF als frei und als mit GPLv3 (und damit AGPL-3.0) verträglich
+# führt und die OSI anerkennt; 0BSD und MIT-0 führt die FSF nicht eigens, sie verlangen aber
+# weniger als ISC und MIT (keine Hinweispflicht). Eine Abhängigkeit unter einer Lizenz,
+# die hier fehlt, braucht eine begründete Zeile in exceptions.txt; eine Erweiterung dieser Liste
+# ist eine Grundsatzentscheidung und gehört in einen eigenen PR.
+# Ein Ausdruck „A WITH B“ gilt als freigegeben, wenn A freigegeben ist (eine Zusatzklausel
+# erweitert nur Rechte); „A OR B“ genügt eine freigegebene Seite, „A AND B“ braucht beide.
+
+# Freizügige Lizenzen
+0BSD
+Apache-2.0
+BSD-2-Clause
+BSD-3-Clause
+BSL-1.0
+ISC
+MIT
+MIT-0
+Unlicense
+UPL-1.0
+Zlib
+
+# Schwaches Copyleft, mit AGPL-3.0 verträglich
+LGPL-2.1-only
+LGPL-2.1-or-later
+LGPL-3.0-only
+LGPL-3.0-or-later
+MPL-2.0
+
+# Starkes Copyleft, mit AGPL-3.0 verträglich (GPL-3.0 über AGPL-3.0 Abschnitt 13)
+GPL-2.0-or-later
+GPL-3.0-only
+GPL-3.0-or-later
+AGPL-3.0-only
+AGPL-3.0-or-later
+
+# GPL-2.0 mit Classpath-Ausnahme: erlaubt das Linken unabhängiger Module unter beliebiger Lizenz
+# (Lizenz der OpenJDK-Klassenbibliothek). Die zweite Zeile ist die veraltete SPDX-Kennung, unter
+# der Maven-POMs sie noch führen.
+GPL-2.0-only WITH Classpath-exception-2.0
+GPL-2.0-with-classpath-exception

@@ -169,8 +169,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
     [`private-bibliotheken.md`](./handbuch/private-bibliotheken.md);
     [`prompt-bibliotheken.md`](./handbuch/prompt-bibliotheken.md); [`zugaenge.md`](./handbuch/zugaenge.md)
   - Regeln für Schreibende: [`handbuch/AGENTS.md`](./handbuch/AGENTS.md)
-- **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen und
-  CycloneDX-CI-Artefakte für Backend und Frontend
+- **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen,
+  CycloneDX-CI-Artefakte für Backend und Frontend und die Lizenzprüfung der Abhängigkeiten
 - **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts,
   Trivy-Image-Scan und die Triage von Image-Alerts
 
