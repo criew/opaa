@@ -1,5 +1,6 @@
 package io.opaa.retrieval.search;
 
+import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ChatResponses;
 import io.opaa.observability.QueryMetrics;
@@ -33,6 +34,7 @@ import org.springframework.stereotype.Service;
  * {@link ChatClient} is resolved fresh per call, from the same systemwide active chat model the
  * answer uses.
  */
+@DataFlow("chat-model")
 @Service
 public class QueryDecompositionService {
 

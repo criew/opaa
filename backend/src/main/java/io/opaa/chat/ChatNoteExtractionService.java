@@ -2,6 +2,7 @@ package io.opaa.chat;
 
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.ChatMetrics;
 import java.util.List;
@@ -33,6 +34,7 @@ import org.springframework.stereotype.Service;
  * ChatNoteService#append}, called directly on the injected bean, which carries the transaction
  * itself.
  */
+@DataFlow("chat-model")
 @Service
 public class ChatNoteExtractionService {
 

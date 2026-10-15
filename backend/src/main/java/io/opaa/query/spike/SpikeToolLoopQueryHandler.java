@@ -6,6 +6,7 @@ import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.UsedPrompt;
+import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ChatResponses;
@@ -59,6 +60,7 @@ import org.springframework.stereotype.Service;
  * #MAX_TOOL_CALLS} - the auto-registered default has no configurable limit - which the presence
  * check in {@code DefaultChatClient} then leaves untouched instead of adding a second one.
  */
+@DataFlow("chat-model")
 @Service
 @ConditionalOnProperty(name = "opaa.spike.tool-loop.enabled", havingValue = "true")
 public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
