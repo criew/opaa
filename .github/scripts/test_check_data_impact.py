@@ -27,7 +27,10 @@ FLOW = re.compile(
     r"|ChatClient|ChatModel|StreamingChatModel|EmbeddingModel|ImageModel|TranscriptionModel"
     r"|JavaMailSender|S3Client|S3AsyncClient|S3Presigner|McpSyncClient|McpAsyncClient"
     r"|SourceHttpClientFactory|ActiveChatModelResolver|BoundedDownloader|RedirectFollowingFetcher"
-    r"|SourceFormPost|RemoteOriginalAccess|RerankClient|TranscriptionClient)\b"
+    r"|SourceFormPost|RemoteOriginalAccess|RerankClient|TranscriptionClient"
+    r"|MailService|MailSenderProvider|GraphClient|GraphConnections|S3SdkClient|S3ObjectStore"
+    r"|SmbShareClient|KeycloakAdminApi|ConfluenceClient|DriveApi|DropboxApi|NextcloudDav"
+    r"|FeedFetcher|OAuthClient|OidcDiscoveryClient|McpServerDiscovery)\b"
 )
 # Text given to a model as instruction.
 PROMPT = re.compile(
