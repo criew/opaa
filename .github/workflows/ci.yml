@@ -73,13 +73,15 @@ jobs:
             # otherwise skip them. eval/README.md and eval/generator/** are
             # excluded: no evalUnitTest-included test reads either at runtime,
             # both are only referenced from Javadoc/error messages in the
-            # excluded *RetrievalEvaluationHarnessTest classes.
+            # excluded *RetrievalEvaluationHarnessTest classes. .github/fact-sheet-anchors.txt belongs
+            # here because FactSheetReferenceTest checks it against the manifest.
             backend:
               - 'backend/**'
               - 'opaa-api/**'
               - 'eval/**'
               - '!eval/README.md'
               - '!eval/generator/**'
+              - '.github/fact-sheet-anchors.txt'
               - '.github/licenses/**'
               - '.github/scripts/check_licenses.py'
               - '.github/workflows/ci.yml'
@@ -150,6 +152,7 @@ jobs:
             behoerden:
               - 'docs/behoerden/**'
               - '.github/scripts/check_behoerden_headers.sh'
+              - '.github/fact-sheet-anchors.txt'
             # Step-level filter of the comment rule guard below, not a job output.
             comments:
               - 'backend/src/main/**'
@@ -217,8 +220,8 @@ jobs:
         run: .github/scripts/check_adr_style.sh
 
       # Every editorial document under docs/behoerden carries header block, disclaimer and only
-      # well-formed fact sheet placeholders (docs/behoerden/README.md); new files are found by
-      # directory walk.
+      # fact sheet placeholders naming a target of .github/fact-sheet-anchors.txt
+      # (docs/behoerden/README.md); new files are found by directory walk.
       - name: Kopfvermerk der Behördenunterlagen prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.behoerden == 'true'
         run: .github/scripts/check_behoerden_headers.sh
@@ -288,6 +291,20 @@ jobs:
           name: license-report-backend
           path: backend/build/reports/licenses/
           if-no-files-found: ignore
+          retention-days: 90
+
+      # Fact sheets for authorities from the compliance manifest (docs/behoerden/README.md,
+      # "Faktenblätter"). Not checked in: the artifact of the latest run on main is the published
+      # state of main.
+      - name: Faktenblätter erzeugen
+        run: ./gradlew complianceDocs
+
+      - name: Faktenblätter ablegen
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: compliance-faktenblaetter
+          path: backend/build/compliance/faktenblaetter/
+          if-no-files-found: error
           retention-days: 90
 
       # `javadoc` is not part of `build`'s dependency graph. This step catches unresolvable

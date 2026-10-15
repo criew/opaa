@@ -46,6 +46,49 @@ für die Reihenfolge und keine Umlaute. Ein Verzeichnis entsteht mit seiner erst
 Jedes Dokument in diesem Ordner außer dieser README ist redaktionell. Generierte Faktenblätter tragen
 ihren Stand (Version, Commit, Erzeugungsdatum, `erzeugung: generiert`) im eigenen Kopf.
 
+## Faktenblätter
+
+Die Faktenblätter entstehen aus dem Fakten-Manifest und beschreiben die Voreinstellung einer Version:
+
+| Name | Inhalt |
+|---|---|
+| `datenkatalog` | alle gespeicherten Daten mit Zweck, Personenbezug, Speicherort, Frist, Sichtbarkeit, Zugriffsweg, Löschmechanismus und möglichen Auswertungen; Tabellen ohne Personenbezug |
+| `protokollereignisse` | jedes Ereignis des revisionssicheren Protokolls mit Auslöser, Feldern des Protokollsatzes und Lesern |
+| `rollensicht` | was jede Systemrolle und Fähigkeit über andere sieht, Matrix Rolle × Datenkategorie |
+| `datenfluesse` | Datenflüsse nach außen |
+| `voreinstellungen` | Einstellungen mit Standardwert und Wirkung, System-Prompts mit Prüfsumme, KI-Funktionen |
+| `fristen` | Fristen je Datum und Protokollereignis mit Konfigurationsschlüssel |
+
+Dazu kommt `faktenblaetter.json` mit allen Inhalten für Werkzeuge. Was das Manifest noch nicht
+beschreibt, steht im Blatt unter „Noch nicht erfasst“, statt zu fehlen.
+
+**Wo sie liegen:** Für `main` als Artefakt `compliance-faktenblaetter` des letzten Laufs des
+Workflows CI auf `main` (GitHub, Reiter „Actions“, Lauf öffnen, Abschnitt „Artifacts“), für ein
+Release am GitHub-Release der Version ([#2556](https://github.com/criew/opaa/issues/2556)). Lokal
+erzeugt sie `./gradlew complianceDocs` (aus `backend/`) unter `backend/build/compliance/faktenblaetter/`.
+
+**Kopf:** `gilt-fuer` (OPAA-Version, außerhalb eines Release `0.0.0-dev`), `commit`, `erzeugt-am`
+und `erzeugung: generiert`; unter dem Titel der Hinweis „Fakten aus dem Code; rechtliche Bewertung
+bleibt bei der Behörde.“
+
+**Anker:** Jeder Eintrag hat einen Anker aus seiner Kennung in Kleinbuchstaben, jede Folge anderer
+Zeichen als Buchstaben und Ziffern wird ein Bindestrich:
+
+| Blatt | Anker | Beispiel |
+|---|---|---|
+| `datenkatalog` | Kennung des Datums | `{{faktenblatt:datenkatalog#audit-log}}` |
+| `protokollereignisse` | Ereignis | `{{faktenblatt:protokollereignisse#asset-grant-granted}}` |
+| `rollensicht` | Rolle oder Fähigkeit | `{{faktenblatt:rollensicht#auditor}}` |
+| `datenfluesse` | Kennung des Datenflusses | — |
+| `voreinstellungen` | Schlüssel; `prompt-`, `ki-funktion-` vor Prompt und KI-Funktion | `{{faktenblatt:voreinstellungen#prompt-answer-generation}}` |
+| `fristen` | Schlüssel | `{{faktenblatt:fristen#audit-retention-settings-retention-months}}` |
+
+Abschnitte haben eigene Anker, etwa `#matrix` in der Rollensicht und `#bereich-<bereich>` für einen
+Bereich des Manifests. Alle gültigen Ziele eines Platzhalters stehen in
+[`.github/fact-sheet-anchors.txt`](../../.github/fact-sheet-anchors.txt). Die Datei ist aus dem
+Manifest erzeugt (`./gradlew complianceAnchors` aus `backend/`) und eingecheckt; ein Backend-Test
+schlägt fehl, solange sie nicht zum Manifest passt.
+
 Das Fakten-Manifest selbst liegt als Quelltext im Backend unter
 [`backend/src/main/resources/compliance/manifest/`](../../backend/src/main/resources/compliance/manifest/),
 eine YAML-Datei je Bereich; Schema und Regeln stehen in
@@ -116,11 +159,13 @@ Ein Verweis auf ein Faktenblatt hat immer diese Form:
 - `<name>` ist eines der Faktenblätter: `datenkatalog`, `protokollereignisse`, `rollensicht`,
   `datenfluesse`, `voreinstellungen`, `fristen`.
 - `<anker>` ist optional und verweist auf einen Abschnitt oder Eintrag im Faktenblatt; nur
-  Kleinbuchstaben, Ziffern und Bindestriche.
+  Kleinbuchstaben, Ziffern und Bindestriche, gebildet wie unter [Faktenblätter](#faktenblätter)
+  beschrieben.
 - Der Platzhalter wird nicht als Link geschrieben, weil die Faktenblätter nicht eingecheckt sind. Er
   steht für das gleichnamige Faktenblatt der Version, die die Behörde einsetzt; bei einem Release liegt
   es am GitHub-Release, für `main` im CI-Artefakt des letzten Laufs.
-- Ein neues Faktenblatt wird zuerst hier und in der Namensliste des Prüfskripts ergänzt.
+- Ein neues Faktenblatt entsteht im Generator (`io.opaa.compliance.FactSheet`); im selben PR werden
+  die Liste der Platzhalterziele neu erzeugt und die Namensliste hier ergänzt.
 
 ### Amtliche Muster verlinken statt nachbauen
 
@@ -148,5 +193,12 @@ Ein Konfigurationsschlüssel (`opaa.…`) oder eine Enum-Konstante (`GROSS_GESCH
 außerhalb von Codeblöcken nur eine Warnung: Beides deutet auf einen abgeschriebenen Faktenwert hin,
 kann aber auch berechtigt sein. Bezeichnungen mit Ziffern nach dem Unterstrich (`ISO_27001`) bleiben
 ohne Warnung. Ob ein Verweis inhaltlich stimmt, prüft das Skript nicht.
+
+Gegen die erzeugte Liste der Platzhalterziele
+([`.github/fact-sheet-anchors.txt`](../../.github/fact-sheet-anchors.txt)) prüft das Skript außerdem:
+Jeder Platzhalter, auch ein Beispiel in dieser README, trifft ein Blatt und, mit Anker, einen Anker
+darin, und die Namensliste oben nennt genau die Blätter der Liste. Ob die Liste zum Manifest passt,
+prüft der Backend-Test `FactSheetReferenceTest`; eine Vorlagenänderung braucht deshalb keinen
+Backend-Lauf.
 
 Lokal: `.github/scripts/check_behoerden_headers.sh`
