@@ -122,10 +122,19 @@ class ComplianceManifestLoaderTest {
             e ->
                 assertThat(e.violations())
                     .containsExactly(
-                        "roles: list value 'Konto (Zustand' has unbalanced parentheses; a comma"
-                            + " in a [flow, list] splits the value, quote it",
-                        "roles: list value 'nie Passwort)' has unbalanced parentheses; a comma"
-                            + " in a [flow, list] splits the value, quote it"));
+                        "roles: flow list value 'Konto (Zustand' has unbalanced parentheses; a"
+                            + " comma inside them splits the value, quote it",
+                        "roles: flow list value 'nie Passwort)' has unbalanced parentheses; a"
+                            + " comma inside them splits the value, quote it"));
+  }
+
+  @Test
+  void aBlockListValueWithAnOpenParenthesisIsAccepted() {
+    ComplianceManifest manifest =
+        ComplianceManifestLoader.load(FIXTURES + "block-list-parenthesis/*.yaml");
+
+    assertThat(manifest.roles().getFirst().notes())
+        .containsExactly("a) Zustand, nie Passwort", "b) die Person selbst");
   }
 
   @Test

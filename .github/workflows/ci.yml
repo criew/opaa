@@ -294,7 +294,7 @@ jobs:
 
       # Fact sheets for authorities from the compliance manifest (docs/behoerden/README.md,
       # "Faktenblätter"). Not checked in: the artifact of the latest run on main is the published
-      # state of main; a release attaches its own.
+      # state of main.
       - name: Faktenblätter erzeugen
         run: ./gradlew complianceDocs
 

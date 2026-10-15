@@ -49,6 +49,7 @@ public final class FactSheetRenderer {
   private static final String EMPTY_SECTION =
       "Noch nicht erfasst: Das Manifest enthält hierzu noch keine Einträge.";
   private static final String NONE = "—";
+  private static final String NOT_NAMED = "nicht genannt";
   private static final String ISSUES = "https://github.com/criew/opaa/issues/";
 
   /**
@@ -144,6 +145,7 @@ public final class FactSheetRenderer {
             "Alle Daten, die OPAA speichert, je Bereich mit Zweck, Personenbezug, Speicherort, Frist,"
                 + " Sichtbarkeit, Zugriffsweg, Löschmechanismus und möglichen Auswertungen. Am Ende"
                 + " stehen die Tabellen ohne Personenbezug.");
+    Map<String, SettingEntry> settings = settingsByKey(manifest);
 
     sheet.heading(2, null, "Übersicht");
     sheet.table(
@@ -169,7 +171,7 @@ public final class FactSheetRenderer {
                 rows.add(List.of("Zweck", text(entry.purpose())));
                 rows.add(List.of("Personenbezug", personalReference(entry.personalReference())));
                 rows.add(List.of("Tabellen und Spalten", tables(entry.tables())));
-                rows.addAll(factRows(entry));
+                rows.addAll(factRows(entry, settings));
                 sheet.table(List.of("Angabe", "Inhalt"), rows);
               }
             });
@@ -203,7 +205,8 @@ public final class FactSheetRenderer {
             .toList());
 
     Map<AuditEventEntry, List<List<String>>> facts = new LinkedHashMap<>();
-    manifest.auditEvents().forEach(entry -> facts.put(entry, eventFactRows(entry)));
+    Map<String, SettingEntry> settings = settingsByKey(manifest);
+    manifest.auditEvents().forEach(entry -> facts.put(entry, eventFactRows(entry, settings)));
     Set<List<String>> shared = sharedRows(facts.values());
     if (!shared.isEmpty()) {
       sheet.heading(2, "gemeinsame-angaben", "Gemeinsame Angaben aller Ereignisse");
@@ -229,13 +232,14 @@ public final class FactSheetRenderer {
     return sheet.toString();
   }
 
-  private static List<List<String>> eventFactRows(AuditEventEntry entry) {
+  private static List<List<String>> eventFactRows(
+      AuditEventEntry entry, Map<String, SettingEntry> settings) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("Felder des Protokollsatzes", codes(entry.recordFields())));
     rows.add(List.of("Wer liest zu welchem Zweck", texts(entry.readers())));
     rows.add(List.of("Zweck", text(entry.purpose())));
     rows.add(List.of("Personenbezug", personalReference(entry.personalReference())));
-    rows.addAll(factRows(entry));
+    rows.addAll(factRows(entry, settings));
     return rows;
   }
 
@@ -267,12 +271,31 @@ public final class FactSheetRenderer {
     sheet.paragraph(
         "Eine Zelle zeigt die Angaben zur Sichtbarkeit eines Datums, die die Systemrolle beim Namen"
             + " nennen. Angaben ohne Rollennamen (die Person selbst, Mitglieder, Verwaltende eines"
-            + " Assets, der Betrieb) stehen unter „Weitere Sichtbarkeit“. „—“ heißt: keine Angabe"
-            + " nennt die Rolle. Maßgeblich für eine Rolle bleibt ihr Abschnitt oben.");
+            + " Assets, der Betrieb) stehen unter „Weitere Sichtbarkeit“. „nicht genannt“ heißt nur,"
+            + " dass die Angaben zu diesem Datum die Rolle nicht nennen; was eine Rolle insgesamt"
+            + " sieht, steht in ihrem Abschnitt oben.");
     if (manifest.roles().isEmpty()) {
       sheet.paragraph(EMPTY_SECTION);
     } else {
-      List<String> roleIds = manifest.roles().stream().map(RoleEntry::id).toList();
+      List<String> allVisibility = new ArrayList<>();
+      manifest.data().forEach(entry -> allVisibility.addAll(entry.visibility()));
+      manifest.auditEvents().forEach(entry -> allVisibility.addAll(entry.visibility()));
+      List<String> roleIds =
+          manifest.roles().stream()
+              .map(RoleEntry::id)
+              .filter(id -> allVisibility.stream().anyMatch(v -> mentions(v, id)))
+              .toList();
+      List<String> unnamed =
+          manifest.roles().stream().map(RoleEntry::id).filter(id -> !roleIds.contains(id)).toList();
+      if (!unnamed.isEmpty()) {
+        sheet.paragraph(
+            "Keine Angabe zur Sichtbarkeit nennt "
+                + unnamed.stream()
+                    .map(id -> link(code(id), "#" + anchor(id)))
+                    .collect(Collectors.joining(", "))
+                + " beim Namen; die Matrix hat dafür keine Spalte. Was diese Rolle über andere"
+                + " sieht, steht in ihrem Abschnitt oben.");
+      }
       List<String> headers = new ArrayList<>();
       headers.add("Datenkategorie");
       roleIds.forEach(id -> headers.add(code(id)));
@@ -306,7 +329,7 @@ public final class FactSheetRenderer {
             provenance,
             "Daten, die die Installation verlassen: Ziel, übermittelte Daten, Anlass, Abschaltbarkeit"
                 + " und die zuständige Konfiguration.");
-    Set<String> settingKeys = settingKeys(manifest);
+    Map<String, SettingEntry> settingKeys = settingsByKey(manifest);
 
     sheet.heading(2, "datenfluesse", "Ausgehende Datenflüsse");
     if (manifest.dataFlows().isEmpty()) {
@@ -370,7 +393,7 @@ public final class FactSheetRenderer {
                               List.of(
                                   anchored(anchor(entry.key()), code(entry.key())),
                                   source(entry.source()),
-                                  code(entry.defaultValue()),
+                                  defaultValue(entry),
                                   orNone(entry.range()),
                                   text(entry.effect()),
                                   bearings(entry.bearings()),
@@ -433,7 +456,7 @@ public final class FactSheetRenderer {
             "Wie lange OPAA Daten und Protokolleinträge aufbewahrt, und welcher"
                 + " Konfigurationsschlüssel eine Frist setzt. Standardwerte gelten für die"
                 + " Auslieferung.");
-    Set<String> settingKeys = settingKeys(manifest);
+    Map<String, SettingEntry> settingKeys = settingsByKey(manifest);
 
     Map<String, List<String>> usedBy = new LinkedHashMap<>();
     for (DataEntry entry : manifest.data()) {
@@ -466,7 +489,7 @@ public final class FactSheetRenderer {
                     List.of(
                         anchored(anchor(entry.key()), code(entry.key())),
                         source(entry.source()),
-                        code(entry.defaultValue()),
+                        defaultValue(entry),
                         orNone(entry.range()),
                         text(entry.effect()),
                         String.join("; ", usedBy.get(entry.key()))))
@@ -509,7 +532,7 @@ public final class FactSheetRenderer {
   }
 
   /** Storage, retention, visibility, access, deletion, evaluations and notes of a datum. */
-  private static List<List<String>> factRows(DataFacts entry) {
+  private static List<List<String>> factRows(DataFacts entry, Map<String, SettingEntry> settings) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("Speicherort", text(entry.storage())));
     rows.add(
@@ -520,7 +543,9 @@ public final class FactSheetRenderer {
                     ? ""
                     : "; Konfiguration: "
                         + settingLinks(
-                            entry.retention().settings(), FactSheet.FRISTEN.fileName(), null))));
+                            entry.retention().settings(),
+                            FactSheet.FRISTEN.fileName(),
+                            settings))));
     rows.add(List.of("Sichtbarkeit", texts(entry.visibility())));
     rows.add(List.of("Zugriffsweg", accessPaths(entry.accessPaths())));
     rows.add(List.of("Löschmechanismus", text(entry.deletion())));
@@ -563,14 +588,20 @@ public final class FactSheetRenderer {
     row.add(label);
     Set<String> named = new LinkedHashSet<>();
     for (String role : roles) {
-      Pattern mention = Pattern.compile("(?<![A-Z_])" + Pattern.quote(role) + "(?![A-Z_])");
-      List<String> hits = visibility.stream().filter(v -> mention.matcher(v).find()).toList();
+      List<String> hits = visibility.stream().filter(v -> mentions(v, role)).toList();
       named.addAll(hits);
-      row.add(hits.isEmpty() ? NONE : texts(hits));
+      row.add(hits.isEmpty() ? NOT_NAMED : texts(hits));
     }
     List<String> others = visibility.stream().filter(v -> !named.contains(v)).toList();
-    row.add(others.isEmpty() ? NONE : texts(others));
+    row.add(others.isEmpty() ? "keine weiteren Angaben" : texts(others));
     return row;
+  }
+
+  /** Whether a visibility statement names the role, as a whole word. */
+  private static boolean mentions(String visibility, String role) {
+    return Pattern.compile("(?<![A-Z_])" + Pattern.quote(role) + "(?![A-Z_])")
+        .matcher(visibility)
+        .find();
   }
 
   private static String eventsLabel(List<AuditEventEntry> events, int total) {
@@ -588,24 +619,38 @@ public final class FactSheetRenderer {
   }
 
   /**
-   * Setting keys as links to their anchor in {@code targetFile} ({@code ""} for this sheet); a key
-   * no settings entry describes stays plain code when {@code known} is given.
+   * Setting keys as links to their anchor in {@code targetFile} ({@code ""} for this sheet), each
+   * with its delivered value; a key no settings entry describes stays plain code.
    */
-  private static String settingLinks(List<String> keys, String targetFile, Set<String> known) {
+  private static String settingLinks(
+      List<String> keys, String targetFile, Map<String, SettingEntry> settings) {
     if (keys == null || keys.isEmpty()) {
       return "keine";
     }
     return keys.stream()
         .map(
-            key ->
-                known != null && !known.contains(key)
-                    ? code(key)
-                    : link(code(key), targetFile + "#" + anchor(key)))
+            key -> {
+              SettingEntry setting = settings.get(key);
+              return setting == null
+                  ? code(key)
+                  : link(code(key), targetFile + "#" + anchor(key))
+                      + " (Standard: "
+                      + defaultValue(setting)
+                      + ")";
+            })
         .collect(Collectors.joining(", "));
   }
 
-  private static Set<String> settingKeys(ComplianceManifest manifest) {
-    return manifest.settings().stream().map(SettingEntry::key).collect(Collectors.toSet());
+  private static Map<String, SettingEntry> settingsByKey(ComplianceManifest manifest) {
+    Map<String, SettingEntry> settings = new LinkedHashMap<>();
+    manifest.settings().forEach(setting -> settings.put(setting.key(), setting));
+    return settings;
+  }
+
+  /** The delivered value as written, followed by its reading where it is a duration. */
+  static String defaultValue(SettingEntry setting) {
+    String reading = DurationReading.of(setting.defaultValue(), setting.key());
+    return code(setting.defaultValue()) + (reading == null ? "" : " = " + reading);
   }
 
   private static String promptLocation(PromptEntry entry) {
@@ -695,8 +740,9 @@ public final class FactSheetRenderer {
   }
 
   /** Free text from the manifest, safe inside a table cell and as inline Markdown. */
-  private static String text(String value) {
+  static String text(String value) {
     return value
+        .replace("\\", "\\\\")
         .replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace("|", "\\|")
@@ -715,8 +761,20 @@ public final class FactSheetRenderer {
     return value == null || value.isBlank() ? NONE : text(value);
   }
 
-  private static String code(String value) {
-    return "`" + value.replace("|", "\\|") + "`";
+  /**
+   * A code span that holds any value: the fence is one backtick longer than the longest backtick
+   * run inside, padded with spaces when the value starts or ends with a backtick.
+   */
+  static String code(String value) {
+    int longest = 0;
+    int run = 0;
+    for (char c : value.toCharArray()) {
+      run = c == '`' ? run + 1 : 0;
+      longest = Math.max(longest, run);
+    }
+    String fence = "`".repeat(longest + 1);
+    String pad = value.startsWith("`") || value.endsWith("`") ? " " : "";
+    return fence + pad + value.replace("|", "\\|") + pad + fence;
   }
 
   private static String codes(List<String> values) {

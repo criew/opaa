@@ -100,6 +100,60 @@ class FactSheetRendererTest {
   }
 
   @Test
+  void textMasksBackslashBeforePipeAndHtml() {
+    assertThat(FactSheetRenderer.text("a\\|b <c> & d")).isEqualTo("a\\\\\\|b &lt;c> &amp; d");
+  }
+
+  @Test
+  void codeSpanFenceOutlastsBackticksInTheValue() {
+    assertThat(FactSheetRenderer.code("plain")).isEqualTo("`plain`");
+    assertThat(FactSheetRenderer.code("a`b")).isEqualTo("``a`b``");
+    assertThat(FactSheetRenderer.code("``x")).isEqualTo("``` ``x ```");
+    assertThat(FactSheetRenderer.code("a|b")).isEqualTo("`a\\|b`");
+  }
+
+  @Test
+  void durationsAreReadInWords() {
+    assertThat(DurationReading.of("P7D", "x")).isEqualTo("7 Tage");
+    assertThat(DurationReading.of("PT15M", "x")).isEqualTo("15 Minuten");
+    assertThat(DurationReading.of("P1Y2M", "x")).isEqualTo("1 Jahr 2 Monate");
+    assertThat(DurationReading.of("15m", "x")).isEqualTo("15 Minuten");
+    assertThat(DurationReading.of("7d", "x")).isEqualTo("7 Tage");
+    assertThat(DurationReading.of("1h", "x")).isEqualTo("1 Stunde");
+    assertThat(DurationReading.of("72", "local_auth_settings.invitation_token_ttl_hours"))
+        .isEqualTo("72 Stunden");
+    assertThat(DurationReading.of("36", "audit_retention_settings.retention_months"))
+        .isEqualTo("36 Monate");
+    assertThat(DurationReading.of("90", "opaa.connection.inactivity-threshold-days"))
+        .isEqualTo("90 Tage");
+    assertThat(DurationReading.of("90", "opaa.limits.max-items")).isNull();
+    assertThat(DurationReading.of("true", "x")).isNull();
+  }
+
+  @Test
+  void deadlinesAndDefaultsShowTheReadingAndConstantsTheirValue() {
+    Map<FactSheet, String> sheets = FactSheetRenderer.render(SHIPPED, PROVENANCE);
+
+    assertThat(sheets.get(FactSheet.FRISTEN)).contains("`P7D` = 7 Tage", "`36` = 36 Monate");
+    assertThat(sheets.get(FactSheet.VOREINSTELLUNGEN)).contains("`15m` = 15 Minuten");
+    assertThat(sheets.get(FactSheet.DATENKATALOG))
+        .contains(
+            "[`io.opaa.account.LocalTokenCleanupService#RETENTION`]"
+                + "(fristen.md#io-opaa-account-localtokencleanupservice-retention)"
+                + " (Standard: `P7D` = 7 Tage)");
+  }
+
+  @Test
+  void theMatrixHasNoColumnForARoleNoVisibilityNames() {
+    String roles = FactSheetRenderer.render(SHIPPED, PROVENANCE).get(FactSheet.ROLLENSICHT);
+
+    assertThat(roles)
+        .contains("| Datenkategorie | `SYSTEM_ADMIN` | `AUDITOR` | Weitere Sichtbarkeit |")
+        .contains("Keine Angabe zur Sichtbarkeit nennt [`USER`](#user) beim Namen")
+        .contains("| nicht genannt |");
+  }
+
+  @Test
   void anchorIsLowerCaseWithHyphens() {
     assertThat(FactSheetRenderer.anchor("ASSET_GRANT_GRANTED")).isEqualTo("asset-grant-granted");
     assertThat(FactSheetRenderer.anchor("opaa.auth.local.access-token-ttl"))

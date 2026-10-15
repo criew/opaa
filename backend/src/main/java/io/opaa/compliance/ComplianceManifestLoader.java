@@ -14,6 +14,8 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -26,9 +28,14 @@ import java.util.TreeMap;
 import java.util.function.Function;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
+import org.yaml.snakeyaml.nodes.MappingNode;
+import org.yaml.snakeyaml.nodes.Node;
+import org.yaml.snakeyaml.nodes.ScalarNode;
+import org.yaml.snakeyaml.nodes.SequenceNode;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
@@ -36,8 +43,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Reads the {@link ComplianceManifest} from the classpath and rejects it as a whole, with every
  * violation named, when an entry misses a mandatory field, carries an unknown key, repeats an id of
- * its kind, names a retention setting no {@code settings} entry describes or holds a list value
- * with unbalanced parentheses.
+ * its kind, names a retention setting no {@code settings} entry describes or holds an unquoted flow
+ * list value with unbalanced parentheses.
  *
  * <p>An entry is the {@code defaults} of its section in the same file, overridden key by key by the
  * entry itself; the mandatory check runs on that result.
@@ -131,11 +138,13 @@ public final class ComplianceManifestLoader {
   private static Map<String, Object> parse(
       Resource resource, String area, List<String> violations) {
     try (InputStream in = resource.getInputStream()) {
+      String content = new String(in.readAllBytes(), StandardCharsets.UTF_8);
       LoaderOptions options = new LoaderOptions();
       options.setAllowDuplicateKeys(false);
-      Object root = new Yaml(new SafeConstructor(options)).load(in);
+      Yaml yaml = new Yaml(new SafeConstructor(options));
+      Object root = yaml.load(content);
       if (root instanceof Map<?, ?> map) {
-        checkSplitListValues(map, area, violations);
+        checkSplitFlowValues(yaml.compose(new StringReader(content)), area, violations);
         return stringKeys(map);
       }
       violations.add(area + ": the file must hold a mapping");
@@ -146,28 +155,40 @@ public final class ComplianceManifestLoader {
   }
 
   /**
-   * A list value with unbalanced parentheses: in a flow list {@code [a (b, c), d]} the comma inside
-   * the parentheses splits one value into two, silently.
+   * An unquoted value of a flow list {@code [a (b, c), d]} with unbalanced parentheses: the comma
+   * inside the parentheses has split one value into two, silently. Block lists and quoted values
+   * cannot split and are not checked.
    */
-  private static void checkSplitListValues(Object node, String area, List<String> violations) {
-    if (node instanceof Map<?, ?> map) {
-      map.values().forEach(value -> checkSplitListValues(value, area, violations));
-    } else if (node instanceof List<?> list) {
-      for (Object value : list) {
-        if (value instanceof String text
-            && text.chars().filter(c -> c == '(').count()
-                != text.chars().filter(c -> c == ')').count()) {
-          violations.add(
-              area
-                  + ": list value '"
-                  + text
-                  + "' has unbalanced parentheses; a comma in a [flow, list] splits the value,"
-                  + " quote it");
-        } else {
-          checkSplitListValues(value, area, violations);
+  private static void checkSplitFlowValues(Node node, String area, List<String> violations) {
+    switch (node) {
+      case MappingNode mapping ->
+          mapping
+              .getValue()
+              .forEach(tuple -> checkSplitFlowValues(tuple.getValueNode(), area, violations));
+      case SequenceNode sequence -> {
+        boolean flow = sequence.getFlowStyle() == DumperOptions.FlowStyle.FLOW;
+        for (Node value : sequence.getValue()) {
+          if (flow
+              && value instanceof ScalarNode scalar
+              && scalar.getScalarStyle() == DumperOptions.ScalarStyle.PLAIN
+              && unbalanced(scalar.getValue())) {
+            violations.add(
+                area
+                    + ": flow list value '"
+                    + scalar.getValue()
+                    + "' has unbalanced parentheses; a comma inside them splits the value, quote"
+                    + " it");
+          } else {
+            checkSplitFlowValues(value, area, violations);
+          }
         }
       }
+      default -> {}
     }
+  }
+
+  private static boolean unbalanced(String text) {
+    return text.chars().filter(c -> c == '(').count() != text.chars().filter(c -> c == ')').count();
   }
 
   private static void readArea(
