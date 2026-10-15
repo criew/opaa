@@ -251,6 +251,11 @@ Aus dem Manifest entstehen bei jedem Lauf auf `main` (#2550):
 - **Fristen** mit Konfigurationsschlüssel
 - eine **JSON-Fassung** aller Inhalte für Werkzeuge und für das Delta
 
+Die KI-Funktionen stehen mit den System-Prompts im Blatt Voreinstellungen. Erzeugt werden die Blätter
+mit `./gradlew complianceDocs`; der Job `backend-build` der CI legt sie als Artefakt
+`compliance-faktenblaetter` ab. Namen, Kopf und Anker beschreibt
+[`docs/behoerden/README.md`](../behoerden/README.md#faktenblätter).
+
 Die Faktenblätter beschreiben die Voreinstellung einer Version. Was eine konkrete Instanz tatsächlich
 tut, beschreibt erst der [Instanzbezug](#instanzbezug).
 

@@ -1041,6 +1041,13 @@ Räumlichkeiten, Verfahren —, nicht ein Stück Software. Ein Softwareherstelle
 deshalb nicht bestehen, weil er den geprüften Gegenstand gar nicht betreibt. Wer mit einem
 „C5-zertifizierten Produkt" wirbt, beschreibt etwas, das es nicht gibt.
 
+Maßgeblich ist **C5:2026**: Die Fassung ist seit April 2026 final und für Prüfzeiträume ab dem
+1.6.2027 verbindlich (Recherche vom 13.10.2026 in Epic #2542). An der Abgrenzung ändert die neue
+Fassung nichts; testiert wird weiterhin der Anbieter eines Cloud-Dienstes. Für Behörden, die OPAA über
+einen solchen Anbieter beziehen, ordnet die Vorlage
+[C5:2026 für das Betriebsmodell Cloud-Anbieter](../behoerden/06-informationssicherheit/c5-2026-cloud-anbieter.md)
+die Prüfbereiche Produkt und Anbieter zu.
+
 Das Produktziel ist deshalb die **C5-Fähigkeit**: OPAA ist so gebaut und dokumentiert, dass ein Betreiber
 die Prüfung **mit OPAA im Prüfumfang** besteht. Was dafür nötig ist, sind die vier Blöcke dieses
 Dokuments — revisionssicheres Protokoll, Vollständigkeit nach DSGVO mit Löschung und Export, sichere
@@ -1054,7 +1061,8 @@ Voreinstellungen und Produkthärtung, geordneter Entwicklungsprozess mit Stückl
 | **Rein betreiberseitig** — OPAA kann dazu nichts beitragen | Physische Sicherheit (PS) · Personal (HR) · Organisation der Informationssicherheit (OIS) · Sicherheitsrichtlinien und Arbeitsanweisungen (SP) · Steuerung und Überwachung von Dienstleistern (SSO) · Umgang mit Ermittlungsanfragen staatlicher Stellen (INQ) · Verwaltung der Werte (AM) |
 
 Diese Zuordnung ist eine Einschätzung aus Produktsicht und ersetzt keine Prüfungsplanung; maßgeblich ist
-der Prüfumfang, den Betreiber und Prüfstelle vereinbaren.
+der Prüfumfang, den Betreiber und Prüfstelle vereinbaren. Die Bereiche folgen der Gliederung von
+C5:2020; ob C5:2026 Bereiche neu zuschneidet, ist vor einer Prüfungsplanung am Katalog selbst zu prüfen.
 
 ### Zwei Wege — die Behörde wählt
 
