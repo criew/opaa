@@ -45,6 +45,11 @@ stehen nur Stolperdrähte: Standardwerte von Einstellungen und Prüfsummen von P
 Änderung am Code ohne Nachpflege auffällt. Rechtliche Einstufungen stehen nie im Manifest, Hinweise
 darauf nur in `notes`.
 
+Der Zugriffsweg nennt neben `UI`, `API` und `EXPORT` den direkten Zugriff auf den Speicher: `DATABASE`
+für die Anwendungsdatenbank, `STORAGE` für eine Ablage des Betriebs außerhalb davon (Dateisystem,
+Objektspeicher, Log). Ein Datum ohne Tabelle trägt nie `DATABASE`; das prüft `ComplianceManifestTest`.
+TOM und Sicherheitskonzept schützen den Speicher, in dem das Datum tatsächlich liegt.
+
 ### 4. Voreinstellungen je Datei
 
 Ein Bereich kann unter `defaults` je Abschnitt gemeinsame Felder setzen; ein Eintrag überschreibt sie

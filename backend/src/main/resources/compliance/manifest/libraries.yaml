@@ -127,7 +127,7 @@ data:
       rule: Solange das Dokument besteht; verwaiste Originale entfernt die Verwaltung
       settings: []
     visibility: [Personen mit Leserecht an der Bibliothek]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, STORAGE]
     deletion: Mit dem Dokument; verwaiste Originale auf Anstoß der Systemverwaltung
     evaluations: keine
   - id: indexing-runs
