@@ -441,13 +441,18 @@ class FactSheetRendererTest {
     Map<FactSheet, String> sheets = FactSheetRenderer.render(manifest, PROVENANCE);
     String all = String.join("\n", sheets.values());
 
-    // prompts and AI functions name their area only where a section spans several
+    // prompts, AI functions and data flows name their area only where a section spans several
     Set<String> grouped = new HashSet<>();
     manifest.data().forEach(entry -> grouped.add(entry.area()));
     manifest.auditEvents().forEach(entry -> grouped.add(entry.area()));
     manifest.settings().forEach(entry -> grouped.add(entry.area()));
-    manifest.dataFlows().forEach(entry -> grouped.add(entry.area()));
     grouped.forEach(area -> assertThat(all).contains(manifest.areas().get(area)));
+    manifest
+        .dataFlows()
+        .forEach(
+            entry ->
+                assertThat(anchors(sheets.get(FactSheet.DATENFLUESSE)))
+                    .contains("bereich-" + FactSheetRenderer.anchor(entry.area())));
     manifest
         .data()
         .forEach(entry -> assertListed(sheets, FactSheet.DATENKATALOG, entry.id(), entry.id()));

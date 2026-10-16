@@ -355,38 +355,44 @@ public final class FactSheetRenderer {
               + VIA_PROXY
               + ". Durchgezogen: nie über den Ausgangsproxy.");
     }
-    sheet.heading(2, "datenfluesse", "Ausgehende Datenflüsse");
+    // a single area has no heading of its own; its anchor moves onto the section heading
+    Map<String, List<DataFlowEntry>> flowAreas = byArea(manifest.dataFlows(), DataFlowEntry::area);
+    boolean severalAreas = flowAreas.size() > 1;
+    String singleAreaAnchor =
+        flowAreas.size() == 1
+            ? anchored("bereich-" + anchor(flowAreas.keySet().iterator().next()), "")
+            : "";
+    sheet.heading(2, "datenfluesse", singleAreaAnchor + "Ausgehende Datenflüsse");
     if (manifest.dataFlows().isEmpty()) {
       sheet.paragraph(EMPTY_SECTION);
     }
-    byArea(manifest.dataFlows(), DataFlowEntry::area)
-        .forEach(
-            (area, entries) -> {
-              sheet.heading(3, "bereich-" + anchor(area), text(areaTitle(manifest, area)));
-              for (DataFlowEntry entry : entries) {
-                sheet.heading(4, anchor(entry.id()), code(entry.id()));
-                sheet.table(
-                    List.of("Angabe", "Inhalt"),
+    flowAreas.forEach(
+        (area, entries) -> {
+          if (severalAreas) {
+            sheet.heading(3, "bereich-" + anchor(area), text(areaTitle(manifest, area)));
+          }
+          for (DataFlowEntry entry : entries) {
+            sheet.heading(severalAreas ? 4 : 3, anchor(entry.id()), code(entry.id()));
+            sheet.table(
+                List.of("Angabe", "Inhalt"),
+                List.of(
+                    List.of("Gruppe", DataFlowDiagram.title(entry.group())),
                     List.of(
-                        List.of("Gruppe", DataFlowDiagram.title(entry.group())),
-                        List.of(
-                            "Ausgangsproxy",
-                            Boolean.TRUE.equals(entry.viaOutboundProxy())
-                                ? "ja, " + VIA_PROXY
-                                : "nein, nie"),
-                        List.of("Ziel", text(entry.target())),
-                        List.of("Übermittelte Daten", text(entry.data())),
-                        List.of("Anlass", text(entry.trigger())),
-                        List.of("Abschaltbarkeit", text(entry.switchOff())),
-                        List.of(
-                            "Konfiguration",
-                            settingLinks(
-                                entry.settings(),
-                                FactSheet.VOREINSTELLUNGEN.fileName(),
-                                settingKeys)),
-                        List.of("Hinweise", texts(entry.notes()))));
-              }
-            });
+                        "Ausgangsproxy",
+                        Boolean.TRUE.equals(entry.viaOutboundProxy())
+                            ? "ja, " + VIA_PROXY
+                            : "nein, nie"),
+                    List.of("Ziel", text(entry.target())),
+                    List.of("Übermittelte Daten", text(entry.data())),
+                    List.of("Anlass", text(entry.trigger())),
+                    List.of("Abschaltbarkeit", text(entry.switchOff())),
+                    List.of(
+                        "Konfiguration",
+                        settingLinks(
+                            entry.settings(), FactSheet.VOREINSTELLUNGEN.fileName(), settingKeys)),
+                    List.of("Hinweise", texts(entry.notes()))));
+          }
+        });
     sheet.notYetCaptured(NOT_YET_CAPTURED.get(FactSheet.DATENFLUESSE));
     return sheet.toString();
   }
