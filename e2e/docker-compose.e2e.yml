@@ -180,7 +180,7 @@ services:
   # throttling a deliberately refused password would otherwise trigger. The backend reaches it as
   # "nextcloud" (allowlisted above); Playwright reaches it on the published host port.
   nextcloud:
-    image: nextcloud:35.0.1-apache
+    image: nextcloud:35.0.2-apache
     environment:
       SQLITE_DATABASE: nextcloud
       NEXTCLOUD_ADMIN_USER: admin
