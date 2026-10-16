@@ -112,6 +112,25 @@ Zeile, in einem umschließenden `if`/`with`/`range` oder in einem eingebundenen 
 Test je Schlüssel der Map; jede andere zusammengesetzte Variable lässt ihn scheitern. Überschreibt ein Produktivprofil von `application.yml` (alle außer `dev`)
 den Standardwert, nennt der Eintrag den Wert in `notes` als `"Profil <name>: <wert>"`.
 
+## Delta zwischen zwei Versionen
+
+`./gradlew complianceDelta -PfromRef=<tag oder commit> [-PtoRef=<tag oder commit>]` schreibt das kumulierte
+Delta mit Stufenvorschlägen nach `build/compliance/delta/` (`manifest-delta.md`, `manifest-delta.json`); statt
+eines Stands nimmt `-PfromJson`/`-PtoJson` die JSON-Fassung der Faktenblätter, ohne `-PtoRef` und `-PtoJson`
+gilt der Arbeitsstand. `-PlabelledPrs=<datei>` nimmt die Ausgabe von
+`gh pr list --state merged --label data-impact --json number,title,url`. Ein Stand muss lokal vorhanden sein
+(Checkout mit Tags, `fetch-depth: 0`), Netz braucht der Lauf nicht
+([ADR-0052, Entscheidung 10](../../docs/decisions/0052-compliance-manifest.md#10-delta-zwischen-zwei-versionen)).
+
+Das Delta liest das Manifest ohne die Records, Feld für Feld; Listen vergleicht es ohne Reihenfolge. Git
+startet nur `ManifestSnapshot`, jeder Wert von außen steht nach `--end-of-options`, und ein Commit aus der
+JSON-Fassung zählt nur als Commit-Kennung (`ModularArchitectureTest` lässt keinen anderen Prozessstart zu). Wer einen Abschnitt oder ein Feld zum Schema
+hinzufügt, ordnet es in `StageRules` ein, der einzigen Stelle der Stufenregeln im Code, und gibt ihm in
+`ManifestDeltaRenderer` eine deutsche Bezeichnung; ein Feld ohne Regel wird „Zustimmung, Zuordnung offen“.
+Die Zuordnung steht auch in der
+[Spezifikation](../../docs/features/behoerdenunterlagen.md#zuordnung-im-werkzeug); beide Stellen ändern sich
+zusammen. Die Fälle sichert `ManifestDeltaTest` auf der Vorlage `src/test/resources/compliance/delta/base.yaml`.
+
 ## Grenzen
 
 - Der Wächter prüft, **dass** ein Eintrag existiert, nicht, ob er stimmt. Ob Personenbezug, Zweck und Sichtbarkeit

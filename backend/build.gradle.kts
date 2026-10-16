@@ -729,6 +729,48 @@ tasks.register<JavaExec>("complianceDocs") {
     )
 }
 
+// Cumulative manifest delta between two versions with stage proposals (ManifestDeltaGenerator):
+// manifest-delta.md and manifest-delta.json under build/compliance/delta/. Older side: -PfromRef
+// (Git tag or commit) or -PfromJson (faktenblaetter.json); newer side: -PtoRef or -PtoJson, else
+// the working tree. -PlabelledPrs names the output of `gh pr list --label data-impact --json
+// number,title,url`. Offline; a ref needs the Git history with tags.
+tasks.register<JavaExec>("complianceDelta") {
+    group = "documentation"
+    description = "Renders the cumulative compliance manifest delta between two versions."
+    val outputDir = layout.buildDirectory.dir("compliance/delta")
+    val projectDirectory = layout.projectDirectory.asFile
+    val workingTreeManifest = layout.projectDirectory.dir("src/main/resources/compliance/manifest")
+    val fromRef = providers.gradleProperty("fromRef")
+    val fromJson = providers.gradleProperty("fromJson")
+    val toRef = providers.gradleProperty("toRef")
+    val toJson = providers.gradleProperty("toJson")
+    val labelledPrs = providers.gradleProperty("labelledPrs")
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass = "io.opaa.compliance.ManifestDeltaGenerator"
+    outputs.dir(outputDir)
+    outputs.upToDateWhen { false }
+    argumentProviders.add(
+        CommandLineArgumentProvider {
+            fun path(value: String) = projectDirectory.resolve(value).path
+            val args = mutableListOf("--out", outputDir.get().asFile.path, "--repo", projectDirectory.path)
+            when {
+                fromRef.isPresent -> args += listOf("--from-ref", fromRef.get())
+                fromJson.isPresent -> args += listOf("--from-json", path(fromJson.get()))
+                else -> throw GradleException("complianceDelta needs -PfromRef=<tag or commit> or -PfromJson=<file>")
+            }
+            when {
+                toRef.isPresent -> args += listOf("--to-ref", toRef.get())
+                toJson.isPresent -> args += listOf("--to-json", path(toJson.get()))
+                else -> args += listOf("--to-dir", workingTreeManifest.asFile.path)
+            }
+            if (labelledPrs.isPresent) {
+                args += listOf("--labelled-prs", path(labelledPrs.get()))
+            }
+            args
+        },
+    )
+}
+
 // The placeholder targets of the fact sheets (sheet names and anchors), checked in at
 // .github/fact-sheet-anchors.txt so the header check of docs/behoerden/ needs no backend build.
 // FactSheetReferenceTest fails while the file differs from the manifest.

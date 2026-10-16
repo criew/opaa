@@ -39,7 +39,7 @@ Nach einer Konzept- oder Spezifikationsänderung von struktureller Tragweite und
 
 Pflichtanlass ist eine Spezifikation, deren Abschnitt „Wirkung auf Behördenunterlagen“ die Stufe **Zustimmung** vorschlägt: Der Product Manager fordert das Review an, Personalrat und Betriebsverantwortlicher laufen mindestens, und die Issues werden erst danach geschnitten ([Stufenregeln](features/behoerdenunterlagen.md#die-stufenregeln)).
 
-Zweiter Pflichtanlass ist eine Änderung der Stufe **Zustimmung**, die der Behördenkontakt vor einem Release meldet ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)): Geprüft werden das Update-Paket bzw., solange es keines gibt, der Manifest-Diff seit dem letzten Tag und die Faktenblätter, mindestens durch Personalrat und Betriebsverantwortlichen.
+Zweiter Pflichtanlass ist eine Änderung der Stufe **Zustimmung**, die der Behördenkontakt vor einem Release meldet ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)): Geprüft werden das Update-Paket bzw., solange es keines gibt, das Manifest-Delta seit dem letzten Tag (`./gradlew complianceDelta`) und die Faktenblätter, mindestens durch Personalrat und Betriebsverantwortlichen.
 
 Der Orchestrator startet die Rollen parallel gegen dieselbe Dokumentenmenge und legt dem Maintainer die Bewertungen gebündelt vor. Nicht jede Änderung braucht alle sechs — die Auswahl richtet sich danach, wessen Wirklichkeit betroffen ist.
 
@@ -106,7 +106,7 @@ Es gibt also zwei Schleifen: die schnelle **PR-Schleife** (Code Reviewer + CI, v
 
 ### Behördenkontakt vor dem Release
 
-Der Koordinator startet die Rolle `behoerdenkontakt` **vor jedem Release**, bevor der Maintainer das Tag setzt, und **gelegentlich** darüber hinaus, etwa nach einer Reihe von Merges mit Label `data-impact` oder wenn eine Vorlage unter `docs/behoerden/` ihre `naechste-durchsicht` erreicht. Die Rolle liest das Update-Paket des Release, solange es keines gibt den Manifest-Diff seit dem letzten Tag und die Faktenblätter, legt ihre Befunde als Issues an und liefert einen Bericht. Meldet sie eine Änderung der Stufe Zustimmung, startet der Koordinator ein [Stakeholder-Review](#stakeholder-review) mit mindestens Personalrat und Betriebsverantwortlichem. Der Maintainer klärt die Befunde vor dem Tag oder nimmt sie als bekannt in die Release-Notizen auf. Die wöchentliche Drift-Routine ([Behördenunterlagen, Schicht 3](features/behoerdenunterlagen.md#schicht-3-wöchentliche-drift-routine)) ersetzt den Lauf nicht: Sie prüft die Änderungen einer Woche, die Rolle den Stand eines Release.
+Der Koordinator startet die Rolle `behoerdenkontakt` **vor jedem Release**, bevor der Maintainer das Tag setzt, und **gelegentlich** darüber hinaus, etwa nach einer Reihe von Merges mit Label `data-impact` oder wenn eine Vorlage unter `docs/behoerden/` ihre `naechste-durchsicht` erreicht. Die Rolle liest das Update-Paket des Release, solange es keines gibt das Manifest-Delta seit dem letzten Tag und die Faktenblätter, legt ihre Befunde als Issues an und liefert einen Bericht. Meldet sie eine Änderung der Stufe Zustimmung, startet der Koordinator ein [Stakeholder-Review](#stakeholder-review) mit mindestens Personalrat und Betriebsverantwortlichem. Der Maintainer klärt die Befunde vor dem Tag oder nimmt sie als bekannt in die Release-Notizen auf. Die wöchentliche Drift-Routine ([Behördenunterlagen, Schicht 3](features/behoerdenunterlagen.md#schicht-3-wöchentliche-drift-routine)) ersetzt den Lauf nicht: Sie prüft die Änderungen einer Woche, die Rolle den Stand eines Release.
 
 ## Regeln
 
