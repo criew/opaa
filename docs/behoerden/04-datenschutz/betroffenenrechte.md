@@ -67,7 +67,10 @@ welchen Weg sie erhoben werden, entscheidet die Behörde mit ihrer oder ihrem Da
 und, wo eine Dienstvereinbarung den Zugriff auf das Protokoll regelt, nach deren Verfahren
 ([#2566](https://github.com/criew/opaa/issues/2566)). Eine Löschung des Kontos lässt das Protokoll
 unverändert und hebt nur den Personenbezug auf
-([Unveränderlichkeit und Löschrecht](../../features/security-and-compliance.md#unveränderlichkeit-und-löschrecht)).
+([Unveränderlichkeit und Löschrecht](../../features/security-and-compliance.md#unveränderlichkeit-und-löschrecht));
+ausgenommen bleibt eine Freigabe der anlassbezogenen Klärung, die die Person nennt: Über sie lassen
+sich deren Protokolleinträge bis zur Löschfrist der Freigabe weiter zuordnen
+({{faktenblatt:datenkatalog#audit-incident-scopes}}).
 Ist das Konto nur gesperrt, weil es nicht gelöscht werden kann, bleibt der Personenbezug bestehen;
 die Behörde berücksichtigt das bei der Antwort auf ein Löschbegehren.
 

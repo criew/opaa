@@ -71,7 +71,8 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "audit_log",
                   "audit_actor_pseudonyms",
                   "audit_retention_settings",
-                  "audit_incident_scope_grants")),
+                  "audit_incident_scope_grants",
+                  "audit_incident_scope_case_counts")),
           Map.entry(
               RIGHTS,
               List.of(
