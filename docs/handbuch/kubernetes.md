@@ -1314,12 +1314,13 @@ startet, und die Sperren der Zwischenzeit erneut setzen. `OPAA_CREDENTIALS_ENCRY
 `OPAA_SETTINGS_ENCRYPTION_KEY` bleiben dieselben, sonst sind die gespeicherten Geheimnisse unlesbar. Sind Fremdzugänge in Betrieb, folgt die Prüfliste aus
 [Fremdzugänge](fremdzugaenge.md).
 
-**Im Projekt geprüft.** Die Befehle dieses Abschnitts und von
-[Erprobungsdatenbank sichern](#erprobungsdatenbank-sichern) laufen bei jeder Änderung an Chart oder
-Images als automatische Wiederherstellungsprobe auf einem Testcluster: Sicherung bei angehaltenem
-Backend, Wiederherstellung in einen zweiten, leeren Namespace mit neuem Signaturgeheimnis, danach
-Vergleich der Zeilenzahlen aller Tabellen und der Prüfsummen aller Originale, Prüfung der Version und
-der Lesbarkeit beider Verschlüsselungsschlüssel.
+**Im Projekt geprüft.** Eine automatische Wiederherstellungsprobe auf einem Testcluster läuft
+nächtlich und bei Änderungen an Chart oder Images: Sicherung von Erprobungsdatenbank und Originalen
+bei angehaltenem Backend, *Wiederherstellung auf einem neuen Cluster* in einen zweiten, leeren
+Namespace mit neuem Signaturgeheimnis, danach Vergleich der Zeilenzahlen aller Tabellen und der
+Prüfsummen aller Originale, Prüfung der Version und der Lesbarkeit beider Verschlüsselungsschlüssel.
+Nicht geprüft sind das Zurückspielen in derselben Installation, das Ersetzen des Signaturgeheimnisses
+im vorhandenen Secret und das Leeren und Neuanlegen der Erprobungsdatenbank.
 
 ### Erprobungsdatenbank sichern
 

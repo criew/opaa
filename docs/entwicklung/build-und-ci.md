@@ -89,10 +89,13 @@ deploy/helm/ci/restore-test.sh          # Wiederherstellungsprobe (docs/behoerde
                                         # die API füllen, mit den Befehlen des Handbuchs sichern, in
                                         # einen zweiten Namespace zurückspielen, P1-P4, P6, P9-P12
                                         # prüfen; Ergebnis, Zeiten und Größen in der Job-
-                                        # Zusammenfassung. Braucht kubectl, helm, curl, jq, openssl
-                                        # und denselben kind-Cluster wie install-test.sh; läuft in CI
-                                        # im selben Job direkt danach. KEEP_NAMESPACES=1 lässt
-                                        # Quelle und Ziel zur Fehlersuche stehen
+                                        # Zusammenfassung. Braucht kubectl, helm, curl, jq, openssl,
+                                        # die GNU-Werkzeuge date (-d), sha256sum, comm und paste und
+                                        # denselben kind-Cluster wie install-test.sh; läuft in CI im
+                                        # selben Job direkt danach. Löscht die Namespaces
+                                        # opaa-probe-quelle und opaa-probe-ziel ohne Rückfrage, vor
+                                        # dem Lauf und nach einem erfolgreichen; ein fehlgeschlagener
+                                        # Lauf und KEEP_NAMESPACES=1 lassen sie zur Fehlersuche stehen
 deploy/helm/ci/rule-test.sh             # Unit-Tests der Alarmregeln: rendert die PrometheusRule
                                         # und führt deploy/helm/opaa/ci/prometheusrule-test.yaml
                                         # mit promtool aus; braucht helm, yq und promtool. In CI

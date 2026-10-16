@@ -8,7 +8,9 @@
 # Checks P1 to P4, P6 and P9 to P12; P5, P7 and P8 need a model endpoint and stay manual. Any
 # deviation fails the run. Expects the current kubectl context to point at a kind cluster that
 # already holds the images named in install-values.yaml. Writes checks, times and sizes to
-# $GITHUB_STEP_SUMMARY when set, to stdout otherwise. Needs kubectl, helm, curl, jq and openssl.
+# $GITHUB_STEP_SUMMARY when set, to stdout otherwise. Deletes the namespaces opaa-probe-quelle and
+# opaa-probe-ziel without asking, before the run and after a successful one; a failed run keeps them.
+# Needs kubectl, helm, curl, jq, openssl and GNU date, sha256sum, comm and paste.
 set -euo pipefail
 
 CI_DIR="deploy/helm/ci"
@@ -100,7 +102,8 @@ cleanup() {
     done
   fi
   write_summary "$status" || true
-  if [[ "${KEEP_NAMESPACES:-}" != 1 ]]; then
+  # A failed run keeps both namespaces for the cluster diagnostics of the workflow.
+  if [[ "$status" == 0 && "${KEEP_NAMESPACES:-}" != 1 ]]; then
     kubectl delete namespace "$QUELLE" "$ZIEL" --ignore-not-found --wait=false || true
   fi
   rm -rf "$work_dir"
@@ -121,6 +124,7 @@ stop_forwards() {
   local pid
   for pid in "${forward_pids[@]}"; do
     kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
   done
   forward_pids=()
 }
@@ -387,6 +391,8 @@ kubectl -n "$ZIEL" rollout status deploy/opaa-backend --timeout="$ROLLOUT_TIMEOU
 note_time t3
 
 echo "--- target: checks"
+[[ -s "$work_dir/zaehlung-quelle.txt" && -s "$work_dir/zaehlung-ziel.txt" ]] ||
+  fail P2 "Die Zeilenzählung von Quelle oder Ziel ist leer"
 if ! diff "$work_dir/zaehlung-quelle.txt" "$work_dir/zaehlung-ziel.txt"; then
   fail P2 "Zeilenzahlen von Quelle und Ziel weichen ab (Ausgabe von diff im Log)"
 fi
@@ -399,6 +405,9 @@ pass P3 "${sizes[original_files]} Originale bitgleich"
 
 connect "$ZIEL"
 info_target="$(curl -sS --fail "http://127.0.0.1:$MANAGEMENT_PORT/actuator/info" | jq -S .)"
+for info in "$info_source" "$info_target"; do
+  jq -e '.build.version' <<<"$info" >/dev/null || fail P4 "/actuator/info nennt keine Version: $(jq -c . <<<"$info")"
+done
 [[ "$info_target" == "$info_source" ]] || fail P4 "Version im Ziel weicht ab: $(jq -c . <<<"$info_target")"
 changesets "$ZIEL" >"$work_dir/changesets-nach-dem-start.txt"
 if ! diff "$work_dir/changesets-quelle.txt" "$work_dir/changesets-vor-dem-start.txt" >/dev/null; then
@@ -408,7 +417,8 @@ fi
 # Spring AI creates during the first start and therefore run on the second (kubernetes.md, "Rückweg").
 added="$(LC_ALL=C comm -13 "$work_dir/changesets-vor-dem-start.txt" "$work_dir/changesets-nach-dem-start.txt")"
 removed="$(LC_ALL=C comm -23 "$work_dir/changesets-vor-dem-start.txt" "$work_dir/changesets-nach-dem-start.txt")"
-if [[ -n "$removed" ]] || grep -v -e '--vector-store-' <<<"$added" | grep -q .; then
+if [[ -n "$removed" ]] || grep -vxF -e knowledge-2026-09-27-baseline--vector-store-library-id \
+  -e knowledge-2026-09-27-baseline--vector-store-document-id <<<"$added" | grep -q .; then
   fail P4 "Der Start änderte \`databasechangelog\`: hinzu $(paste -sd ' ' <<<"$added"), weg $(paste -sd ' ' <<<"$removed")"
 fi
 before="$(wc -l <"$work_dir/changesets-vor-dem-start.txt")"

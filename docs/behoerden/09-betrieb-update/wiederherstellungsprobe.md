@@ -30,17 +30,21 @@ sind darin umgesetzt.
 
 | Feld | Eintrag |
 |---|---|
-| Stand im Projekt | **Automatisiert.** Der Installationstest des Helm-Charts führt die Probe auf dem Referenzaufbau aus, mit den Abweichungen unter [Automatisierte Probe im Projekt](#automatisierte-probe-im-projekt). Ergebnis, Version, Datum, Zeiten und Größen stehen in der Zusammenfassung jedes Laufs |
-| Datum der Probe | [JJJJ-MM-TT] |
-| OPAA-Version (Release-Tag, Image-Digests) | [X.Y.Z, sha256:…] |
-| Helm-Chart-Version bzw. Compose-Stand | [X.Y.Z] |
-| Betriebsweg und Ablage | [Kubernetes oder Docker Compose; Erprobungsdatenbank oder eigene PostgreSQL; Volume oder Objektspeicher] |
-| Größe des Bestands | [Datenbank in MB, Originale in MB, Zahl der Dokumente] |
-| RTO-Ist (Beginn der Wiederherstellung bis arbeitsfähig) | [hh:mm] |
-| RPO-Ist (Sicherungszeitpunkt bis simulierter Ausfall) | [hh:mm] |
-| Prüfkriterien P1 bis P12 | [alle erfüllt / Abweichungen siehe unten] |
-| Abweichungen und Folgemaßnahmen | [Beschreibung, Ticket oder Änderung am Notfallkonzept] |
-| Durchgeführt von, abgenommen von | [Namen, Stellen] |
+| Stand im Projekt | **Automatisiert durchgeführt**, mit den Abweichungen unter [Automatisierte Probe im Projekt](#automatisierte-probe-im-projekt); erster grüner Lauf: [Lauf 38857652429, Job 116832643624](https://github.com/criew/opaa/actions/runs/38857652429/job/116832643624) |
+| Datum der Probe | 2026-10-16 |
+| OPAA-Version (Release-Tag, Image-Digests) | Entwicklungsstand `main`, Commit `ef3b795`, Backend `0.0.0-dev`, kein Release; Images aus dem Commit gebaut |
+| Helm-Chart-Version bzw. Compose-Stand | Chart `0.0.0-dev` aus dem Repository |
+| Betriebsweg und Ablage | Kubernetes (kind), Erprobungsdatenbank, Originale auf einem Volume |
+| Größe des Bestands | kleiner Testbestand: drei Dokumente mit je einem Original; Größen von Dump und Originalen siehe Zusammenfassung des Laufs |
+| RTO-Ist (Beginn der Wiederherstellung bis arbeitsfähig) | 59 s bis zum bereiten Backend (`t3 − t0`), 62 s bis zum Abschluss der Prüfungen (`t4 − t0`); davon Originale 35 s, Datenbank 3 s, Start 21 s |
+| RPO-Ist (Sicherungszeitpunkt bis simulierter Ausfall) | 60 s, im Lauf gesetzt |
+| Zeitpunkte (UTC) | tS 05:56:23, tA 05:57:23, t0 05:57:23, t1 05:57:58, t2 05:58:01, t3 05:58:22, t4 05:58:25 |
+| Prüfkriterien P1 bis P12 | P1 bis P4, P6 und P9 bis P12 erfüllt; P5, P7 und P8 nicht automatisiert, sie bleiben in der manuellen Probe |
+| Abweichungen und Folgemaßnahmen | P4: Der erste Start des Ziels holte zwei Indizes auf dem Vektorindex nach, weil die Quelle nur einmal gestartet war; P4 und der [Rückweg](../../handbuch/kubernetes.md#rückweg) nennen diese Ausnahme |
+| Durchgeführt von, abgenommen von | CI des Projekts; nicht abgenommen |
+
+Die Zeiten stammen aus dem kleinen Testbestand auf einem CI-Rechner und sind nicht auf den Betrieb
+übertragbar. Eine Behörde trägt hier das Ergebnis ihrer eigenen Probe ein.
 
 Zeigt die Probe eine Abweichung vom Handbuch, ist das ein Fehler in der Dokumentation oder im
 Produkt; bitte als Issue im Projekt melden, bei einer Sicherheitsfrage über den
@@ -51,10 +55,14 @@ Produkt; bitte als Issue im Projekt melden, bei einer Sicherheitsfrage über den
 Das Projekt führt die Probe selbst aus: Im Workflow
 [`helm-chart.yml`](../../../.github/workflows/helm-chart.yml) folgt im Job „Installationstest auf
 kind“ auf den Installationstest der Schritt „Wiederherstellungsprobe“ mit dem Skript
-[`deploy/helm/ci/restore-test.sh`](../../../deploy/helm/ci/restore-test.sh). Er läuft bei jeder
-Änderung an Chart und Images, nächtlich und auf Anforderung; das Skript läuft lokal gegen einen
-kind-Cluster genauso. Es baut den Referenzaufbau mit zwei Namespaces auf, folgt dem Ablauf unten mit
-den Befehlen des Handbuchs und bricht bei der ersten verfehlten Prüfung ab. Die Zusammenfassung des
+[`deploy/helm/ci/restore-test.sh`](../../../deploy/helm/ci/restore-test.sh). Er läuft nächtlich, in
+Pull Requests mit Änderungen an Chart, Workflow oder Images und auf Anforderung über das Label
+`helm-suite`; das Skript läuft lokal gegen einen kind-Cluster genauso. Es baut den Referenzaufbau mit
+zwei Namespaces auf, folgt dem Ablauf unten mit den Befehlen des Handbuchs und bricht bei der ersten
+verfehlten Prüfung ab. Geprüft sind damit das Sichern der Erprobungsdatenbank und der Originale und
+die Wiederherstellung in eine neue Installation mit neuem Signaturgeheimnis. Nicht geprüft sind das
+Zurückspielen in dieselbe Installation, das Ersetzen des Signaturgeheimnisses im vorhandenen Secret
+und das Leeren und Neuanlegen der Erprobungsdatenbank vor dem Einspielen. Die Zusammenfassung des
 Laufs nennt Commit, Version des Backends, Datum, das Ergebnis jeder Prüfung, die Dauern aus der
 [Messung](#messung) und die Größen von Dump, Originalen und Bestand.
 
