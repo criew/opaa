@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-15</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Donnerstag, 15. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-14.html" rel="prev" title="Mittwoch, 14. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/38797658452" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">83</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+31</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">38</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">28</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2543">#2543</a> feat(compliance): Compliance-Fakten aus dem Code — Manifest, Wächter, Datenflüsse, Konfigurationsmetadaten, Datenkatalog</span>
+<span class="epic-progress">18 / 21 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 86%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2856">#2856</a></span>docs(features): Ist-Stand der Spezifikation „Behördenunterlagen“ nach #2548 bis #2551 nachziehen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2855">#2855</a></span>fix(compliance): Zugriffsweg „Datenbank“ für Anwendungslog und Originalablage</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2854">#2854</a></span>fix(compliance): Faktenblatt Voreinstellungen meldet Konfigurationsschlüssel und Standardmodelle als „noch nicht erfasst“</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2853">#2853</a></span>fix(compliance): Datenfluss original-store nennt das Dateisystem als Voreinstellung, das Helm-Chart setzt S3</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2864">#2864</a></span>fix(compliance): Zugriffsweg „Ablage des Betriebs“ für Anwendungslog und Originalablage (+66/−5, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2863">#2863</a></span>docs(features): Ist-Stand der Spezifikation „Behördenunterlagen“ nachziehen (+109/−53, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2862">#2862</a></span>fix(compliance): Faktenblatt Voreinstellungen ohne erledigte Lücken und doppelte Überschrift (+116/−48, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2861">#2861</a></span>fix(compliance): Manifest-Einträge auf den Ist-Stand bringen (+58/−30, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2848">#2848</a></span>ci(ci): Helm-Chart-Änderungen starten die Backend-Testshards (+18/−4, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2846">#2846</a></span>docs(handbuch): Kapitel „Nachvollziehbarkeit“ und generiertes Datenfluss-Diagramm (+661/−23, 19 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2842">#2842</a></span>feat(compliance): Konfigurationsmetadaten erzeugen und datenwirksame Voreinstellungen im Manifest prüfen (+2202/−88, 85 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2837">#2837</a></span>feat(compliance): Ausgehende Datenflüsse im Fakten-Manifest mit Abgleich gegen @DataFlow (+312/−35, 14 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2835">#2835</a></span>feat(compliance): Faktenblätter aus dem Fakten-Manifest erzeugen und als CI-Artefakt ablegen (+2136/−18, 21 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2834">#2834</a></span>feat(compliance): Vollständigkeitswächter für Liquibase-Tabellen und -Spalten im Fakten-Manifest (+2082/−86, 27 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2833">#2833</a></span>build(deps): Tika-Abhängigkeiten junrar, jmatio, jai-imageio und rome ausschließen (+161/−14, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2832">#2832</a></span>feat(compliance): Fakten-Manifest mit Schema, Lader und Erstbefüllung (+2854/−20, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2821">#2821</a></span>ci(dependencies): Lizenzen der Abhängigkeiten gegen eine Freigabeliste prüfen (+908/−6, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2818">#2818</a></span>docs(features): Spezifikation „Behördenunterlagen und Update-Paket“ aufnehmen (+579/−2, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2817">#2817</a></span>docs(behoerden): Ordner docs/behoerden mit README, Kopfvermerk und Haftungshinweis anlegen (+524/−0, 6 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2560">#2560</a> docs(behoerden): Behördenunterlagen — redaktionelle Vorlagen entlang der Behördenreise</span>
+<span class="epic-progress">5 / 10 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 50%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2569">#2569</a></span>docs(behoerden): Erklärung zur Barrierefreiheit und Muster-Nutzungsrichtlinie</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2568">#2568</a></span>docs(behoerden): Einstufungshilfe KI-Verordnung und Rollenklärung Cyber Resilience Act</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2567">#2567</a></span>docs(behoerden): Informationssicherheit und Notfall — IT-Grundschutz, NIS2, C5:2026 für Cloud-Betreiber</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2565">#2565</a></span>docs(behoerden): Datenschutz-Bausteine (VVT, DSFA, TOM, Löschkonzept) und AVV-Entscheidungsmatrix</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2841">#2841</a></span>docs(behoerden): Vorlagen zu Informationssicherheit, Notfall und Wiederherstellungsprobe (+873/−1, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2839">#2839</a></span>docs(behoerden): Datenschutz-Bausteine und AVV-Entscheidungsmatrix (+699/−0, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2830">#2830</a></span>docs(behoerden): Erklärung zur Barrierefreiheit und Muster-Nutzungsrichtlinie (+271/−2, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2829">#2829</a></span>docs(behoerden): Einstufungshilfe KI-Verordnung und Rollenklärung Cyber Resilience Act (+326/−3, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2816">#2816</a></span>docs(security): Sicherheitsrichtlinie mit Meldeweg (SECURITY.md) ergänzen (+92/−1, 5 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2570">#2570</a> docs(agents): Behördenunterlagen in der Agentenorganisation verankern</span>
+<span class="epic-progress">4 / 5 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 80%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2819">#2819</a></span>docs(agents): Wöchentliche Compliance-Drift-Routine nach Vorbild ADR-0051, Entscheidung 7</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2573">#2573</a></span>feat(agents): Neue Rolle „Behördenkontakt“ mit Adaptern für Claude Code und Codex</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2572">#2572</a></span>docs(agents): Manifest-Pflege für Entwickler und Prüfpunkt im Code-Review</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2571">#2571</a></span>docs(agents): Abschnitt „Wirkung auf Behördenunterlagen“ in Spezifikationsvorlage und Produktmanager-Rolle</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2857">#2857</a></span>feat(agents): Rolle „Behördenkontakt“ mit Adaptern für Claude Code, Codex und OpenCode (+106/−4, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2849">#2849</a></span>docs(agents): Manifest-Pflege für Entwickler und Prüfpunkt im Code-Review (+2/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2822">#2822</a></span>docs(agents): Abschnitt „Wirkung auf Behördenunterlagen“ in Spezifikationsvorlage und Produktmanager-Rolle (+34/−5, 4 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2552">#2552</a> feat(release): Update-Paket je Release — kumuliertes Delta, Betriebsfolgen, Attestierung, Offline-Bündel, Instanzbezug</span>
+<span class="epic-progress">1 / 7 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 14%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2553">#2553</a></span>ci(release): Datenwirkung in PRs kennzeichnen und in den Release-Notizen ausweisen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2820">#2820</a></span>ci(release): Datenwirkung in PRs kennzeichnen, in der CI prüfen und in den Release-Notizen ausweisen (+611/−6, 10 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2845">#2845</a></span>ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2843">#2843</a></span>ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2838">#2838</a></span>ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2831">#2831</a></span>ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2836">#2836</a></span>feat(compliance): Ausgehende Datenflüsse mit @DataFlow verankern und per ArchUnit erzwingen (+567/−7, 80 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2815">#2815</a></span>feat(connections): Entra-Fehlercodes am Token-Endpunkt mit konkreten Hinweisen melden (+538/−30, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2813">#2813</a></span>fix(deps): Jackson auf dem Buildscript-Classpath der Gradle-Plugins anheben (+24/−0, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2805">#2805</a></span>fix(deps): pnpm-Lockfile nach Renovate-Merge #2668 reparieren (+16/−40, 1 Datei)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-16 um 06:48 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-15T00:00:00 bis 2026-10-15T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

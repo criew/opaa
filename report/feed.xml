@@ -5,8 +5,36 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-15T04:59:36Z</updated>
+  <updated>2026-10-16T04:48:43Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Donnerstag, 15. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-15.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-15.html</id>
+    <updated>2026-10-16T04:48:43Z</updated>
+    <summary type="text">feat(compliance): Compliance-Fakten aus dem Code — Manifest, Wächter, Datenflüsse, Konfigurationsmetadaten, Datenkatalog:
+— docs(features): Ist-Stand der Spezifikation „Behördenunterlagen“ nach #2548 bis #2551 nachziehen
+— fix(compliance): Zugriffsweg „Datenbank“ für Anwendungslog und Originalablage
+— fix(compliance): Faktenblatt Voreinstellungen meldet Konfigurationsschlüssel und Standardmodelle als „noch nicht erfasst“
+— fix(compliance): Datenfluss original-store nennt das Dateisystem als Voreinstellung, das Helm-Chart setzt S3
+docs(behoerden): Behördenunterlagen — redaktionelle Vorlagen entlang der Behördenreise:
+— docs(behoerden): Erklärung zur Barrierefreiheit und Muster-Nutzungsrichtlinie
+— docs(behoerden): Einstufungshilfe KI-Verordnung und Rollenklärung Cyber Resilience Act
+— docs(behoerden): Informationssicherheit und Notfall — IT-Grundschutz, NIS2, C5:2026 für Cloud-Betreiber
+— docs(behoerden): Datenschutz-Bausteine (VVT, DSFA, TOM, Löschkonzept) und AVV-Entscheidungsmatrix
+docs(agents): Behördenunterlagen in der Agentenorganisation verankern:
+— docs(agents): Wöchentliche Compliance-Drift-Routine nach Vorbild ADR-0051, Entscheidung 7
+— feat(agents): Neue Rolle „Behördenkontakt“ mit Adaptern für Claude Code und Codex
+— docs(agents): Manifest-Pflege für Entwickler und Prüfpunkt im Code-Review
+— docs(agents): Abschnitt „Wirkung auf Behördenunterlagen“ in Spezifikationsvorlage und Produktmanager-Rolle
+feat(release): Update-Paket je Release — kumuliertes Delta, Betriebsfolgen, Attestierung, Offline-Bündel, Instanzbezug:
+— ci(release): Datenwirkung in PRs kennzeichnen und in den Release-Notizen ausweisen
+Sonstiges:
+— ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)
+— ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)
+— ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)
+— ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)</summary>
+  </entry>
   <entry>
     <title>Tagesreport Mittwoch, 14. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-14.html"/>
@@ -843,16 +871,5 @@ Sonstiges:
 — Verwaltungsgebührensatzung-PDF in Query-Ranking verbessert, Dokumentkontext in Embeddings integriert
 — Mehrthemen-Fragen: Retrieval-Monokultur behoben, schwächeres Thema erhält Chunks
 — Leistungsinventur um 159 Bausteine nachgezogen, Meilenstein-1-Bericht aktualisiert</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Mittwoch, 26. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-26.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-26.html</id>
-    <updated>2026-08-27T10:06:29Z</updated>
-    <summary type="text">Sonstiges:
-— Zitatvalidierung um deterministische Faktenprüfung ergänzt
-— Ist-Stand-Spezifikation des Retrieval-Algorithmus dokumentiert
-— DocumentCompletion um Stufe-2-Verdrängung nachgeschärft
-— Chunk-Auswahl nach Fusion um Dokument-Vervollständigung ergänzt</summary>
   </entry>
 </feed>
