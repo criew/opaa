@@ -28,8 +28,11 @@
 >   Umsetzung und Review (#2572) und die Rolle „Behördenkontakt“
 >   ([Rollenvertrag](../../agents/roles/behoerdenkontakt.md), #2573)
 > - das Handbuchkapitel [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md)
+> - das [kumulierte Delta](#das-kumulierte-delta) des Manifests zwischen zwei Versionen mit
+>   Stufenvorschlag nach den [Stufenregeln](#die-stufenregeln), lokal mit
+>   `./gradlew complianceDelta` (#2554)
 >
-> **Zielbild** sind das [Update-Paket](#das-update-paket) (#2552 mit #2554–#2559) einschließlich
+> **Zielbild** sind das [Update-Paket](#das-update-paket) (#2552 mit #2555–#2559) einschließlich
 > Konfigurationsexport der Instanz (#2558), der Release-Schritt des Maintainers (#2574), die
 > Vorlagen der Phasen 0 bis 4 und der Mitbestimmung (#2562, #2563, #2564, #2566) und die
 > Supportlinien (#2575). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
@@ -156,7 +159,7 @@ darum herum.
 
 | Erzeugungsart | Was | Wo | Eingecheckt |
 |---|---|---|---|
-| **generiert** | Faktenblätter, JSON-Fassung, Update-Delta, Lizenzübersicht | CI-Artefakt jedes `main`-Laufs (Faktenblätter und Lizenzübersicht, gebaut); Anhang am GitHub-Release und Update-Delta (Zielbild, #2554, #2556) | nein — vermeidet Konflikte zwischen parallelen PRs |
+| **generiert** | Faktenblätter, JSON-Fassung, Update-Delta, Lizenzübersicht | CI-Artefakt jedes `main`-Laufs (Faktenblätter und Lizenzübersicht, gebaut); Update-Delta lokal mit `./gradlew complianceDelta` (gebaut, #2554); Anhang am GitHub-Release (Zielbild, #2556) | nein — vermeidet Konflikte zwischen parallelen PRs |
 | **redaktionell** | Vorlagen entlang der Behördenreise | `docs/behoerden/` | ja |
 
 Das Manifest selbst ist Quelltext, keine Dokumentation: Es liegt im Klassenpfad des Backends
@@ -399,7 +402,9 @@ Rolle „Behördenkontakt“ läuft anlassbezogen vor jedem Release und nutzt di
 ## Das Update-Paket
 
 **(Zielbild, #2552)** Gebaut sind davon nur Bausteine: die Faktenblätter und die Lizenzübersicht
-(Teil 9) und die Kennzeichnung `data-impact` mit der Rubrik in den Release-Notizen (Teil 6, #2553).
+(Teil 9), die Kennzeichnung `data-impact` mit der Rubrik in den Release-Notizen (Teil 6, #2553) und
+das Werkzeug für das [kumulierte Delta](#das-kumulierte-delta) mit Hinweisen und den gekennzeichneten
+Pull Requests (Teile 1, 2, 5 und 6, #2554), das noch nicht im Release-Lauf läuft.
 
 Zu jedem Release entsteht ein Update-Paket, mit dem eine Behörde ein Update gegenüber Hausleitung,
 Datenschutzbeauftragten, Personalrat und ISB verantworten kann, ohne Diffs zu lesen. Es ist an Tag
@@ -434,6 +439,28 @@ Delta über drei Versionen ist damit gleich der Zusammenfassung der Einzeldeltas
 Am Release wird das Delta zum vorigen finalen Release erzeugt, bei Vorab-Releases ebenso. Welches
 Release bei mehreren Supportlinien als Vorgänger gilt, folgt aus der Entscheidung in #2575; bis dahin
 ist es das letzte finale Tag auf `main`.
+
+**(gebaut, #2554)** Erzeugt wird das Delta aus `backend/` ohne Netz
+([ADR-0052, Entscheidung 10](../decisions/0052-compliance-manifest.md#10-delta-zwischen-zwei-versionen)):
+
+```bash
+./gradlew complianceDelta -PfromRef=v0.12.0 -PtoRef=v0.17.0 [-PlabelledPrs=prs.json]
+```
+
+Statt eines Tags oder Commits nimmt `-PfromJson`/`-PtoJson` die JSON-Fassung der Faktenblätter einer
+Version; ohne `-PtoRef` und `-PtoJson` ist der Arbeitsstand die neuere Seite. Eine Version ohne
+Manifest gilt als leer, und das Delta sagt das im Kopf. Unter `backend/build/compliance/delta/`
+entstehen `manifest-delta.md` für die Behörde und `manifest-delta.json` für Werkzeuge; beide tragen
+kein Erzeugungsdatum, gleiche Versionen ergeben gleiche Dateien. Das Markdown gliedert nach Daten,
+Protokollereignissen, Rollen und Sichtbarkeit, Datenflüssen, Fristen, Voreinstellungen,
+Standardmodellen und Prompts sowie KI-Funktionen und nennt je Änderung vorher und nachher,
+Stufenvorschlag mit Klasse und Begründung und die Bezüge zu VVT, DSFA und Sicherheitskonzept;
+dieselbe Änderung an vielen Einträgen, etwa über die gemeinsamen Angaben aller Protokollereignisse,
+steht dort einmal. Die JSON-Fassung führt jede Änderung einzeln mit Abschnitt und Kennung des
+Eintrags. `-PlabelledPrs` nimmt die Ausgabe von
+`gh pr list --state merged --label data-impact --json number,title,url`; aufgenommen werden die Pull
+Requests, deren Nummer ein Commit zwischen beiden Versionen im Betreff trägt, als „Weitere
+gekennzeichnete Änderungen“. Ohne die Liste sagt der Abschnitt, dass sie nicht abgefragt wurde.
 
 ### Die Stufenregeln
 
@@ -473,6 +500,34 @@ Datenflüsse, Ports, Egress-Ziele, Rollen oder Protokollereignisse). Rechtsgrund
 DSFA-Überprüfung ist Art. 35 Abs. 11 DSGVO, der an eine Änderung des Risikos anknüpft; dass das Delta
 sie bei jeder Änderung der Stufe Zustimmung vorschlägt, ist eine **Heuristik**, keine Ableitung aus der
 Norm. Der Kopf des Deltas sagt: Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.
+
+#### Zuordnung im Werkzeug
+
+**(gebaut, #2554)** Das Werkzeug wendet die Regeln so auf Änderungen am Manifest an; im Code stehen
+sie nur in `StageRules` (`io.opaa.compliance`). „Offen“ heißt: Zustimmung, weil sich die Klasse aus
+dem Manifest nicht ablesen lässt, etwa bei einer neu formulierten Beschreibung, die ebenso gut nur
+redaktionell sein kann.
+
+| Änderung im Manifest | Vorschlag | VVT | Sicherheitskonzept |
+|---|---|---|---|
+| neues Datum mit Personenbezug, neue personenbezogene Spalte, stärkerer Personenbezug | Zustimmung Z1 | ja | — |
+| neues Protokollereignis, neues Feld im Protokollsatz | Zustimmung Z1 | ja | bei neuem Ereignis |
+| neue Rolle oder Fähigkeit; weitere Rolle in Sichtbarkeit oder Lesern; neuer Zugriffsweg außer Export | Zustimmung Z2 | ja, außer beim Zugriffsweg | bei neuer Rolle |
+| neuer Zugriffsweg Export | Zustimmung Z3 | ja | — |
+| längere Frist (Standardwert einer Fristeinstellung) | Zustimmung Z4 | ja | — |
+| neuer Datenfluss, neues Ziel eines Datenflusses, geänderte Adresse einer Modellrolle oder eines Konnektors | Zustimmung Z5 (Adresse auch Z7) | ja | ja |
+| neue KI-Funktion; geänderte Ausgabeart, Interaktion, Bewertung von Personen, Kennzeichnung oder Prompts einer KI-Funktion | Zustimmung Z6 | — | — |
+| neue Voreinstellung (als Frist auch Z4), geänderter Standardwert oder geänderte Helm-Voreinstellung | Zustimmung Z7 | bei neuer Frist | — |
+| neu formulierte Auswertungen, Frist, Zweck, Löschweg, Sichtbarkeit, übermittelte Daten, Sicht einer Rolle; neuer System-Prompt; entfallene Voreinstellung; jede andere Angabe ohne eigene Regel | Zustimmung, offen | bei Zweck, Frist, Löschweg, Sichtbarkeit, übermittelten Daten, Sicht einer Rolle | beim Weg über den Ausgangsproxy |
+| kürzere Frist, entfallene Daten, Spalten, Ereignisse, Rollen, Datenflüsse, KI-Funktionen, Prompts oder Zugriffswege, eingeschränkte Sichtbarkeit, schwächerer Personenbezug | Anzeige | außer bei Spalten ohne Personenbezug, Zugriffswegen, KI-Funktionen und Prompts | — |
+| geänderter System-Prompt (Prüfsumme), geändertes Standardmodell bei gleicher Adresse | Anzeige | — | — |
+| neue Tabelle oder Spalte ohne Personenbezug, neues Datum ohne Personenbezug | Bagatelle | — | — |
+| nur Bezeichnung, Leerzeichen, Bereich des Eintrags, Gruppe im Übersichtsbild oder Fundstelle eines unveränderten Prompts; neuer oder entfallener Bereich des Manifests | Bagatelle | — | — |
+
+Die DSFA-Überprüfung schlägt das Werkzeug bei jeder Zustimmung vor. Eine Frist ist eine Einstellung,
+die ein Datum oder Protokollereignis als Frist nennt; ihre Länge vergleicht es über die Einheit des
+Werts oder des Schlüssels, ein Wert ohne Länge oder von 0 ist offen. Ein neuer Konfigurationsschlüssel
+ohne Datenwirkung steht nicht im Manifest und erscheint deshalb nicht im Delta.
 
 ### Instanzbezug
 
@@ -540,8 +595,8 @@ an jedem Schritt des Workflows aus [AGENT-ORGANIZATION.md](../AGENT-ORGANIZATION
 **(gebaut, #2571, #2572, #2573)** Die Pflichten von Product Manager, Developer, Code Reviewer und
 Behördenkontakt stehen in deren Rollenverträgen unter `agents/roles/`, den Lauf des Behördenkontakts
 vor jedem Release beschreibt [AGENT-ORGANIZATION.md](../AGENT-ORGANIZATION.md). Solange es kein
-Update-Paket gibt, liest der Behördenkontakt den Manifest-Diff seit dem letzten Tag und die
-Faktenblätter. **(Zielbild, #2574)** Der Schritt des Maintainers im Release-Ablauf von
+Update-Paket gibt, erzeugt der Behördenkontakt das Manifest-Delta seit dem letzten Tag und liest es
+mit den Faktenblättern. **(Zielbild, #2574)** Der Schritt des Maintainers im Release-Ablauf von
 [releases.md](../releases.md).
 
 ---

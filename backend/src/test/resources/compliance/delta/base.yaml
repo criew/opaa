@@ -1,0 +1,90 @@
+title: Testbereich
+defaults:
+  auditEvents:
+    recordFields: [Zeitpunkt, handelnde Person]
+    readers: [AUDITOR zur Prüfung]
+    purpose: Nachweis des Verwaltungshandelns
+    personalReference: EMPLOYEE
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Voreinstellung 36 Monate
+      settings: [audit_retention_settings.retention_months]
+    visibility: [AUDITOR]
+    accessPaths: [UI, DATABASE]
+    deletion: Monatlicher Lauf
+    evaluations: Wer hat wann was getan
+data:
+  - id: accounts
+    title: Benutzerkonten
+    purpose: Anmeldung und Zuordnung
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: users
+        personalColumns: [subject, email]
+        nonPersonalColumns: [id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Bis zur Löschung des Kontos
+      settings: []
+    visibility: [SYSTEM_ADMIN]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Durch die Systemverwaltung
+    evaluations: Wer hat ein Konto
+nonPersonalTables:
+  audit_retention_settings: [id, retention_months]
+auditEvents:
+  - id: LIBRARY_CREATED
+    trigger: Eine Bibliothek wird angelegt
+roles:
+  - id: AUDITOR
+    seesAboutOthers: Protokolleinträge über die begrenzten Abfragewege
+capabilities:
+  - id: GROUP_MANAGER
+    seesAboutOthers: Mitglieder der verwalteten Gruppen
+settings:
+  - key: audit_retention_settings.retention_months
+    source: DATABASE
+    defaultValue: "36"
+    range: 12 bis 120 Monate
+    effect: Frist des Protokolls
+    bearings: [DATA]
+  - key: opaa.rerank.enabled
+    source: PROPERTY
+    defaultValue: "false"
+    effect: Ob Suchtreffer an ein Rerank-Modell gehen
+    bearings: [DATA_FLOW]
+    helm:
+      values: rerank.enabled
+      defaultValue: "false"
+  - key: opaa.rerank.base-url
+    source: PROPERTY
+    defaultValue: ""
+    effect: Adresse des Rerank-Modells
+    bearings: [DATA_FLOW]
+  - key: spring.ai.openai.chat.model
+    source: PROPERTY
+    defaultValue: phi3:mini
+    effect: Chat-Modell
+    bearings: [DATA_FLOW]
+prompts:
+  - id: answer-generation
+    purpose: Regeln für die Antwort auf eine Frage
+    classes: [io.opaa.query.answer.AnswerGenerationService]
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+dataFlows:
+  - id: chat-model
+    group: MODEL
+    viaOutboundProxy: true
+    target: Das aktive Chat-Modell der Systemverwaltung
+    data: Frage, Gesprächsverlauf und gefundene Textstellen
+    trigger: Jede Chat-Anfrage
+    switchOff: Nicht abschaltbar
+    settings: [spring.ai.openai.chat.model]
+aiFunctions:
+  - id: answer
+    purpose: Beantwortet Fragen aus den Bibliotheken
+    outputKind: TEXT
+    interactsWithPersons: true
+    assessesPersons: false
+    labelling: Hinweis unter jeder Antwort
+    prompts: [answer-generation]

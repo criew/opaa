@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-15
+Akzeptiert · zuletzt geändert 2026-10-16
 
 ## Kontext
 
@@ -121,10 +121,26 @@ das Helm-Chart den Schlüssel, nennt der Eintrag Wert und Voreinstellung aus `va
 entsteht, damit sie niemand in einer zweiten Liste nachtragen muss. Der Prozessor läuft getrennt,
 weil Gradle beim inkrementellen Übersetzen unveränderte Typen ohne Javadoc nachverarbeitet.
 
+### 10. Delta zwischen zwei Versionen
+
+`./gradlew complianceDelta` vergleicht die Manifeste zweier Versionen direkt (`ManifestDelta`),
+nicht als Kette von Einzeldeltas. Eine Version kommt aus Git (Tag oder Commit), aus der JSON-Fassung
+der Faktenblätter oder aus dem Arbeitsstand, ohne Netz. `ManifestSnapshot` liest das Manifest
+schemafrei: Einträge je Abschnitt über ihre Kennung, Felder als Pfad und Wert, `defaults` gemergt,
+nicht validiert; ein Feld, das nur eine Version kennt, ist eine Änderung, eine Version ohne Manifest
+ist leer. Den Stufenvorschlag je Änderung gibt `StageRules`, die einzige Stelle der Stufenregeln im
+Code. Markdown für die Behörde und JSON für Werkzeuge tragen kein Erzeugungsdatum; gleiche Eingaben
+ergeben gleiche Dateien.
+
+Die Records ändern sich mit dem Schema; der aktuelle Lader wiese ein älteres Manifest ab, dem ein
+inzwischen verlangtes Feld fehlt. Ein Release hält sein Manifest im Repository, nicht als Anhang;
+Git-Stände gibt es für jedes Versionspaar.
+
 ## Konsequenzen
 
-Einfacher: Ein Bereich wächst ohne Konflikt in seiner eigenen Datei. Faktenblätter, Delta und
-Instanzexport lesen typisierte Records statt YAML. Ein Tippfehler im Schlüssel scheitert, statt still
+Einfacher: Ein Bereich wächst ohne Konflikt in seiner eigenen Datei. Faktenblätter und
+Instanzexport lesen typisierte Records statt YAML; das Delta liest schemafrei und vergleicht so auch
+Versionen mit verschiedenem Schema. Ein Tippfehler im Schlüssel scheitert, statt still
 zu verschwinden.
 
 Schwieriger: Eine Prompt-Klasse mit vielen Meldungen erzeugt Fehlalarme; die Nachpflege ist eine
@@ -139,6 +155,8 @@ ein Zugriff über Reflection entgeht dem Strukturtest (Entscheidung 8); die List
 Client-Typ, und das Review prüft neue Abhängigkeiten darauf. Bewusst nicht erkannt wird eine neue
 Klasse, die über eine bereits annotierte Klasse (etwa `RerankClient`) Daten an ein bestehendes Ziel
 schickt; das fangen die Kennzeichnung der Datenwirkung am PR und die Drift-Routine auf.
+Das Delta erkennt eine rein redaktionelle Textänderung nur an Leerzeichen; jede andere geänderte
+Beschreibung schlägt es mit offener Zuordnung als Zustimmung vor (Entscheidung 10).
 
 ## Verworfene Alternativen
 
@@ -153,3 +171,5 @@ schickt; das fangen die Kennzeichnung der Datenwirkung am PR und die Drift-Routi
 - Eigene Eintragsart für Standardmodelle — Modell und Adresse sind gewöhnliche Voreinstellungen.
 - Prozessor im regulären `compileJava` — verliert beim inkrementellen Übersetzen die Beschreibungen.
 - Datenflüsse als Java-Enum mit allen Angaben — Fachtext im Code, zweite Quelle neben dem Manifest.
+- Delta über die Records des aktuellen Laders — weist ältere Manifeste mit fehlendem Pflichtfeld ab.
+- Delta nur aus zwei JSON-Fassungen — ältere Releases haben keine als Anhang.

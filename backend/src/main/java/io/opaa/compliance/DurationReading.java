@@ -26,6 +26,12 @@ final class DurationReading {
     {"Minute", "Minuten"},
     {"Sekunde", "Sekunden"}
   };
+
+  /** Seconds per unit of {@link #ISO_UNITS}, a month as 30 days and a year as 365. */
+  private static final long[] ISO_SECONDS = {
+    365L * 86_400, 30L * 86_400, 7L * 86_400, 86_400, 3_600, 60, 1
+  };
+
   private static final Pattern SHORT = Pattern.compile("(\\d+)(ms|s|m|h|d)");
   private static final Pattern NUMBER = Pattern.compile("\\d+");
   private static final Pattern KEY_UNIT =
@@ -72,6 +78,51 @@ final class DurationReading {
       return words(Long.parseLong(trimmed), ISO_UNITS[index]);
     }
     return null;
+  }
+
+  /**
+   * The approximate length of {@code value} of the setting {@code key} in seconds, for comparing
+   * two values of one setting (a month counts 30 days, a year 365), or {@code null} if it has no
+   * reading or is not positive, as zero often stands for "no limit".
+   */
+  static Long approximateSeconds(String value, String key) {
+    String trimmed = value.strip();
+    long seconds = -1;
+    Matcher iso = ISO.matcher(trimmed.toUpperCase(Locale.ROOT));
+    Matcher shortForm = SHORT.matcher(trimmed);
+    Matcher unit = KEY_UNIT.matcher(key.toLowerCase(Locale.ROOT));
+    if (trimmed.length() > 1 && iso.matches()) {
+      seconds = 0;
+      for (int i = 0; i < ISO_SECONDS.length; i++) {
+        if (iso.group(i + 1) != null) {
+          seconds += Long.parseLong(iso.group(i + 1)) * ISO_SECONDS[i];
+        }
+      }
+    } else if (shortForm.matches()) {
+      long amount = Long.parseLong(shortForm.group(1));
+      seconds =
+          switch (shortForm.group(2)) {
+            case "ms" -> amount / 1000;
+            case "s" -> amount;
+            case "m" -> amount * 60;
+            case "h" -> amount * 3_600;
+            default -> amount * 86_400;
+          };
+    } else if (NUMBER.matcher(trimmed).matches() && unit.matches()) {
+      long amount = Long.parseLong(trimmed);
+      seconds =
+          amount
+              * switch (unit.group(1)) {
+                case "years" -> ISO_SECONDS[0];
+                case "months" -> ISO_SECONDS[1];
+                case "weeks" -> ISO_SECONDS[2];
+                case "days" -> ISO_SECONDS[3];
+                case "hours" -> ISO_SECONDS[4];
+                case "minutes" -> ISO_SECONDS[5];
+                default -> ISO_SECONDS[6];
+              };
+    }
+    return seconds > 0 ? seconds : null;
   }
 
   private static String words(long amount, String[] unit) {
