@@ -217,7 +217,9 @@ public class AuditQueryService {
    * <p>Looks the subject's pseudonym up, never mints one: unlike {@link
    * AuditActorPseudonymService#pseudonymFor}, a read must never have the side effect of creating a
    * re-identification row for a person who never triggered one themselves. If none exists, the
-   * person has no entries in the log at all, so an empty page is correct.
+   * person has no entries in the log at all, so an empty page is correct. The same holds once the
+   * person's account is deleted: the mapping is gone with it, and the grant's own pseudonym is not
+   * used as a filter.
    */
   public Page<AuditLogEntry> byIncidentScope(
       UUID organizationId,
@@ -247,6 +249,9 @@ public class AuditQueryService {
                 "Der angefragte Zeitraum liegt außerhalb der freigegebenen Klärung");
           }
           Pageable pageable = pageable(page, size);
+          if (grant.getSubjectUserId() == null) {
+            return Page.empty(pageable);
+          }
           return pseudonymService
               .findExistingPseudonym(grant.getSubjectUserId())
               .map(

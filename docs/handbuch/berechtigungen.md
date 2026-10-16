@@ -616,6 +616,17 @@ Eine Vollmacht wird nicht historisiert: Sie ist ein Betriebsrecht der Gegenwart 
 darüber, wer am Tag X was lesen durfte. Ihre Erteilung, Nutzung und ihr Entzug stehen im
 Nachweisprotokoll.
 
+**Wie lange eine anlassbezogene Klärung liegt.** Antrag und Freigabe bleiben mit Person, Zeitraum,
+Zweck und Begründung als Nachweis erhalten, nachdem die Freigabe nicht mehr nutzbar ist, und werden
+dann automatisch gelöscht, freigegebene wie nie freigegebene; die Frist steht in der Konfiguration
+(Abschnitt 15, `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS`). Eine Dienstvereinbarung kann sie
+verlängern. Für den Jahresbericht an die Personalvertretung zählt OPAA jede Freigabe bei ihrer
+Erteilung je Jahr und Zweck mit; diese Zahl bleibt nach dem Löschen der einzelnen Klärungen
+erhalten und nennt keine Person. Solange ein Antrag offen oder eine Freigabe noch nutzbar ist,
+lässt sich keines der Konten löschen, die sie nennt. Danach hält sie das Löschen nicht mehr auf und
+nennt die Person nur noch unter ihrem Pseudonym aus dem Nachweisprotokoll; über die Klärung lassen
+sich deren Protokolleinträge damit bis zu ihrer Löschung weiter der Person zuordnen.
+
 ## 11. „Warum sehe ich das?" — die Herleitung
 
 Für jedes Arbeitsmittel und jeden Space, die eine Person sieht, zeigt die Oberfläche ihr **den eigenen
@@ -962,7 +973,7 @@ Kapitel [Suche](suche.md), Abschnitt 8.
 
 ## 15. Konfiguration
 
-Vier der Größen sind Umgebungsvariablen und stehen mit ihrer vollständigen Beschreibung in der
+Fünf der Größen sind Umgebungsvariablen und stehen mit ihrer vollständigen Beschreibung in der
 [Konfiguration](konfiguration.md#alle-umgebungsvariablen); das Abgleichintervall ist eine Einstellung
 der Anbieterzeile, drei sind Verwaltungseinstellungen, und die beiden letzten Werte sind fest
 eingebaut.
@@ -976,6 +987,7 @@ eingebaut.
 | `OPAA_SUCCESSION_DETECTION_CRON` | **stündlich** (`0 5 * * * *`) | Spring-Cron, sechs Felder | Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende eines Vorgangs; der Zustand selbst ist abgeleitet und gilt auch ohne ihn — ohne den Lauf fehlt den Einträgen nur das Alter |
 | Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](suche.md), Abschnitt 8.4). Jede Änderung ist ein Protokollereignis |
 | Aufbewahrungsfrist des Nachweisprotokolls | **36 Monate** | 12 bis 120 Monate | Verwaltungseinstellung; ihr folgen auch die abgeschlossenen Nachfolgevorgänge (Abschnitt 13.3). Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
+| `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` | **1 Jahr** | 1 bis 10 Jahre; ein Wert außerhalb bricht den Start ab | Löschfrist der anlassbezogenen Klärungen (Abschnitt 10): gelöscht wird am Ende des Kalenderjahres, das so viele Jahre nach dem Ende der Nutzbarkeit liegt. Die Nutzbarkeit einer Freigabe ist fest **30 Tage**; für die Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antrag plus 30 Tage — freigeben lässt er sich auch danach |
 | Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Verwaltungseinstellung der Systemverwaltung unter Administration → Anbindungen → Einstellungen, Abschnitt „Verbindungsprotokoll“; einen Wert außerhalb der Grenzen weist sie ab, und die Datenbank erzwingt sie zusätzlich. Jede Änderung ist ein Protokollereignis. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Obergrenze einer Übertragung | **500 Zeilen** | fest | Mehr bewegt eine Übertragung nicht; darüber wird sie abgelehnt und in mehreren Schritten gefahren (Abschnitt 13.2) |
 | Gültigkeit einer Übertragungsvorschau | **30 Minuten** | fest | Danach wird gegen einen frischen Stand neu gerechnet, statt eine alte Vorschau anzuwenden |

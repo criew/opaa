@@ -443,6 +443,35 @@ selbst ist ein organisatorischer Prozessschritt, kein technisches Gate), die **U
 betroffenen Person** nach Abschluss und die Aufnahme in den Jahresbericht. Diese drei bleiben
 Dienstvereinbarung/Prozess, bis ein eigenes Ticket sie technisch abbildet.
 
+**Aufbewahrung der Freigaben (#2859).** Antrag und Freigabe sind nach dem Ende der Nutzbarkeit nur
+noch Nachweis und haben eine Löschfrist: Gelöscht wird am Ende des Kalenderjahres, das auf das Ende
+der Nutzbarkeit folgt (Vorbild § 76 Abs. 4 BDSG), freigegebene und nie freigegebene gleich; für die
+Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antragszeitpunkt
+plus die 30 Tage (freigeben lässt er sich unverändert auch danach). Die
+Frist ist einstellbar (`opaa.audit.incident-scope-retention-years`, 1 bis 10 Jahre), damit eine
+Dienstvereinbarung sie verlängern kann; gelöscht wird in einem täglichen Lauf ohne eigenen
+Protokolleintrag, wie bei den übrigen Löschläufen. **Die Zahl der Fälle für den Jahresbericht bleibt
+erhalten:** Jede Freigabe wird bei ihrer Erteilung je Kalenderjahr und Zweck gezählt, in einer
+Zähltabelle ohne Person und ohne Verweis auf die Freigabe; nie freigegebene Anträge zählen nicht.
+Den Bericht selbst erstellt OPAA nicht.
+
+**Eine laufende Klärung hält die Konten, eine abgeschlossene nicht.** Solange ein Antrag offen ist
+oder eine Freigabe noch nutzbar, lehnt OPAA die Löschung der Konten der betroffenen, der
+beantragenden und der freigebenden Person ab (Legal Hold); die Klärung soll nicht dadurch enden,
+dass ein beteiligtes Konto verschwindet. Danach hält sie kein Konto mehr: Wird eines davon gelöscht,
+bleibt die Freigabe bestehen und nennt die Person unter ihrem Pseudonym aus dem Protokoll — hatte die
+Person keine Protokolleinträge, unter einem eigenen. Damit bleibt der Nachweis bis zum Fristende
+lesbar und zum Protokoll stimmig, ohne Klarnamen über die Löschung hinaus zu halten.
+
+**Das Pseudonym bleibt bewusst zuordenbar (Entscheidung des Maintainers, #2859).** Solange eine
+Freigabe die gelöschte Person nennt, bleibt dort ihr Protokollpseudonym bis zur Löschfrist der
+Freigabe. Bis dahin lassen sich die Protokolleinträge der gelöschten Person über die Freigabe — mit
+Begründung und Zeitraum — wieder ihr zuordnen; das ist die Ausnahme zur
+[Löschung](#unveränderlichkeit-und-löschrecht), nach der das Protokoll sonst nicht mehr auf die
+Person zurückführbar ist. OPAA nutzt das Pseudonym nicht als Filter: Nach der Löschung liefert die
+Klärung zur betroffenen Person keine Einträge mehr. Ein offener Antrag, dessen betroffene oder
+beantragende Person an der Anwendung vorbei gelöscht wurde, kann nicht mehr freigegeben werden.
+
 Wer Protokolldaten liest, exportiert oder auswertet, erzeugt damit einen eigenen Protokolleintrag — mit
 Person, Zeitpunkt, Anlass und Umfang der Abfrage. Der Eintrag ist für die auswertende Stelle nicht
 unterdrückbar. **Auch der abgewiesene Versuch** erzeugt einen Eintrag; ein Zugriffsversuch, der nur bei
@@ -598,7 +627,11 @@ zugunsten der Unveränderlichkeit aufgelöst:
 **Der Personenbezug wird ab dem Schreibzeitpunkt pseudonymisiert.** Das Protokoll enthält eine Kennung,
 die Zuordnung zur Person liegt in einer getrennt gehaltenen Tabelle. Beim Löschen eines Kontos entfällt
 dieser Eintrag — das Protokoll bleibt unverändert und ist danach nicht mehr auf eine Person zurückführbar.
-Es wird nichts nachträglich verändert und nichts überschrieben.
+Es wird nichts nachträglich verändert und nichts überschrieben. Eine Ausnahme ist befristet: Nennt
+eine Freigabe der anlassbezogenen Klärung die Person, bleibt dort ihr Protokollpseudonym bis zur
+Löschfrist der Freigabe, und über die Freigabe (mit Begründung und Zeitraum) lassen sich ihre
+Protokolleinträge bis dahin wieder ihr zuordnen (siehe
+[Zugriffswege](#zugriffswege-was-es-gibt-und-was-es-nicht-gibt)).
 
 ### Anbindung an ein zentrales Sicherheitsmonitoring
 
@@ -879,7 +912,8 @@ Standard-Space wird deaktiviert statt gelöscht, private Inhalte bleiben darin u
 niemanden, auch nicht für einen Nachfolger. Das ist der Sperr-Pfad, der Regelweg für jedes Konto,
 das je benutzt wurde. Die **echte Löschung** eines lokalen Kontos (#1537) ist auf Konten beschränkt,
 die nichts referenziert — keine Bibliothek, kein Chat, kein Eintrag in Rechte- oder
-Nachweisbeständen; praktisch ein nie benutztes Konto —, und löscht dessen persönlichen Space mit
+Nachweisbeständen, kein offener Antrag und keine noch nutzbare Freigabe der anlassbezogenen Klärung;
+praktisch ein nie benutztes Konto —, und löscht dessen persönlichen Space mit
 (als `SPACE_DELETED` protokolliert), weil das Schema einen Space ohne Eigentümer nicht zulässt. Geteilte Chats und Artefakte sind Arbeitsergebnisse der
 Organisation und verschwinden nicht mit dem Konto ihres Erstellers, werden aber nach Ablauf der
 Aufbewahrungsfrist gelöscht.
@@ -1259,7 +1293,8 @@ Fristen, Schwellen und Zuständigkeiten — nicht die Frage, ob eine Überwachun
   `DELETE` und `TRUNCATE` auf der Protokollablage scheitern. Die Grenze dieses Nachweises ist benannt:
   Er sagt nichts über einen Zugang an der Anwendung vorbei.
 - **Löschtreue:** Nach Ablauf der Höchstfrist existieren keine Sätze mehr; nach einer Kontolöschung ist
-  kein Protokollsatz auf eine Person zurückführbar, und kein Satz wurde verändert.
+  kein Protokollsatz auf eine Person zurückführbar, und kein Satz wurde verändert — ausgenommen über
+  eine Freigabe der anlassbezogenen Klärung, die die Person nennt, bis zu deren Löschfrist.
 - **Einführungsreife:** Das Nachweispaket ist vor der ersten Prüfung vollständig vorlegbar — gemessen
   daran, wie viele Rückfragen einer Prüfstelle es nicht schon beantwortet.
 

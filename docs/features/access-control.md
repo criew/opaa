@@ -112,7 +112,7 @@ sind eigene Tabellenzeilen, keine Rolleneigenschaft:
 | Befugnis | Ablage | Wer vergibt | Technische Grenze |
 |---|---|---|---|
 | **„Sicht als"** — eine Suchdiagnose im Rechtekontext einer anderen Person ausführen | `diagnostic_impersonation_grants` | die Systemverwaltung | Geltungsbereich ist genau eine **Anbietergruppe** (`ORG_UNIT` oder `IDENTITY_PROVIDER`) oberhalb der Mindestgruppengröße, geprüft bei Erteilung **und** bei jeder Nutzung (#1879); Laufzeit höchstens zwölf Monate je Vergabe, als `CHECK` in der Datenbank |
-| **Vorfallsbereich** — die anlassbezogene Klärung mit Personenfilter | `audit_incident_scope_grants` | zwei verschiedene `AUDITOR`-Konten, eines beantragt, ein anderes gibt frei | Vier-Augen-Prinzip als `CHECK` in der Datenbank; Person, Zeitraum und Zweck vorab festgelegt; die Freigabe ist 30 Tage nutzbar |
+| **Vorfallsbereich** — die anlassbezogene Klärung mit Personenfilter | `audit_incident_scope_grants` | zwei verschiedene `AUDITOR`-Konten, eines beantragt, ein anderes gibt frei | Vier-Augen-Prinzip als `CHECK` in der Datenbank; Person, Zeitraum und Zweck vorab festgelegt; die Freigabe ist 30 Tage nutzbar und wird am Ende des darauf folgenden Kalenderjahres gelöscht (einstellbar); offen oder noch nutzbar hält sie die Löschung der genannten Konten auf, danach nicht mehr |
 
 > **`SYSTEM_ADMIN` schließt keine von beiden ein**, und die beiden schließen einander nicht ein.
 
@@ -624,7 +624,7 @@ gesendet) oder mit **erzeugtem Passwort** (einmalig in der Antwort, Wechsel mit 
 `LOCAL_USER_PASSWORD_GENERATED`) — beides beendet alle Sitzungen. **Löschen** ist die Ausnahme:
 nur ein Konto, das nichts referenziert — keine Bibliothek, kein Space außer dem persönlichen, kein
 Chat und kein Eintrag in den Rechte- und Nachweisbeständen mit Nutzerbezug (Gruppenhistorie,
-Grant-Historie, Grants, Space-Zuordnungen, Klärungsvorgänge) —, praktisch also
+Grant-Historie, Grants, Space-Zuordnungen, offene oder noch nutzbare Klärungsvorgänge) —, praktisch also
 ein nie benutztes Konto; sonst 409 `ACCOUNT_OWNS_CONTENT` mit dem Rat zu sperren (die blockierenden
 Tabellen stehen nur im Anwendungslog), nie das Notanker-Konto (409 `BOOTSTRAP_ACCOUNT`). Der
 persönliche Space wird als `SPACE_DELETED` protokolliert mitgelöscht, Zugangsdaten, Tokens und die
