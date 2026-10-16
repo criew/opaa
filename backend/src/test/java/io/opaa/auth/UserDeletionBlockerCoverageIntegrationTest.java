@@ -6,6 +6,7 @@ import io.opaa.account.LocalUserService;
 import io.opaa.test.OpaaIntegrationTest;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -41,6 +42,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * mention, not per predicate: a narrowing condition beside it stays unseen - the {@code spaces}
  * sub-query already carries {@code AND is_default = false}, and a future {@code AND created_at >
  * :cutoff} would leave this guard green while the count lost blocking rows.
+ *
+ * <p><b>One documented exception:</b> {@link #TIME_BOUNDED_HOLDS} are counted although their
+ * foreign keys let the account go - a hold while a condition beside them is met, which {@link
+ * #everyTimeBoundedHoldFacesAForeignKeyThatLetsTheAccountGo()} keeps from covering for a
+ * restricting key.
  */
 @OpaaIntegrationTest
 class UserDeletionBlockerCoverageIntegrationTest {
@@ -86,7 +92,35 @@ class UserDeletionBlockerCoverageIntegrationTest {
    * pair a table with another sub-query's alias.
    */
   private static final Pattern SUB_QUERY =
-      Pattern.compile("\\(SELECT count\\(\\*\\) FROM (\\w+) WHERE ([^)]+)\\) AS (\\w+)");
+      Pattern.compile(
+          "\\(SELECT count\\(\\*\\) FROM (\\w+) WHERE ((?:[^()]|\\([^()]*\\))+)\\) AS (\\w+)");
+
+  /**
+   * Counted references whose foreign key is {@code ON DELETE SET NULL}: the grants of the
+   * anlassbezogene Klärung keep the person as a pseudonym, but hold the account while a request is
+   * open or a grant still usable (the time condition of their sub-query).
+   */
+  private static final Set<String> TIME_BOUNDED_HOLDS =
+      Set.of(
+          "audit_incident_scope_grants.subject_user_id",
+          "audit_incident_scope_grants.requested_by_user_id",
+          "audit_incident_scope_grants.approved_by_user_id");
+
+  /** The delete rules of the foreign keys from {@code table.column} to {@code users}. */
+  private static final String DELETE_RULES_OF_REFERENCE =
+      """
+      SELECT fk.confdeltype::text
+      FROM pg_constraint fk
+      JOIN pg_class child ON child.oid = fk.conrelid
+      JOIN LATERAL unnest(fk.conkey) AS key_column(child_attnum) ON true
+      JOIN pg_attribute child_column
+        ON child_column.attrelid = fk.conrelid
+       AND child_column.attnum = key_column.child_attnum
+      WHERE fk.contype = 'f'
+        AND fk.confrelid = 'users'::regclass
+        AND child.relname = ?
+        AND child_column.attname = ?
+      """;
 
   /** The columns such a condition compares against the account being deleted. */
   private static final Pattern USER_COLUMN = Pattern.compile("(\\w+) = :id");
@@ -122,6 +156,7 @@ class UserDeletionBlockerCoverageIntegrationTest {
     List<String> beyond =
         countedReferences().stream()
             .filter(counted -> !restricting.contains(counted))
+            .filter(counted -> !TIME_BOUNDED_HOLDS.contains(counted))
             .sorted()
             .toList();
 
@@ -131,6 +166,23 @@ class UserDeletionBlockerCoverageIntegrationTest {
                 + " schema lets them go - the sub-query outlived its foreign key, and the refusal"
                 + " it causes is one the schema no longer asks for (#1589, #1697)")
         .isEmpty();
+  }
+
+  /**
+   * The exception stays narrow: each hold is counted, and its foreign key lets the account go with
+   * {@code SET NULL} - a restricting one belongs in the comparison above, and a hold whose
+   * sub-query is gone would leave an open Klärung without its persons.
+   */
+  @Test
+  void everyTimeBoundedHoldFacesAForeignKeyThatLetsTheAccountGo() {
+    assertThat(countedReferences()).containsAll(TIME_BOUNDED_HOLDS);
+    for (String hold : TIME_BOUNDED_HOLDS) {
+      String[] tableAndColumn = hold.split("\\.");
+      List<String> rules =
+          jdbc.queryForList(
+              DELETE_RULES_OF_REFERENCE, String.class, tableAndColumn[0], tableAndColumn[1]);
+      assertThat(rules).as("delete rule of the foreign key on " + hold).containsExactly("n");
+    }
   }
 
   /**
@@ -275,7 +327,7 @@ class UserDeletionBlockerCoverageIntegrationTest {
   private static String normalizedQuery() {
     try {
       return UserRepository.class
-          .getMethod("countDeletionBlockers", UUID.class)
+          .getMethod("countDeletionBlockers", UUID.class, Instant.class)
           .getAnnotation(Query.class)
           .value()
           .replaceAll("\\s+", " ");

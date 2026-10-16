@@ -149,6 +149,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    * io.opaa.auth.UserDeletionBlockerCoverageIntegrationTest} compares the list against the schema's
    * delete rules, and every counted reference against the branch of {@code
    * LocalUserService#blockers} that names it.
+   *
+   * <p>One count is a hold, not a constraint: the grants of the anlassbezogene Klärung let the
+   * account go ({@code ON DELETE SET NULL}, the person stays as a pseudonym), but an open request
+   * or a grant still usable at {@code now} keeps every person it names - until then the Klärung
+   * must be able to run against the live account.
    */
   @Query(
       value =
@@ -162,6 +167,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + "   OR granted_by_user_id = :id) AS grants,"
               + " (SELECT count(*) FROM space_asset_associations WHERE created_by_user_id = :id)"
               + "   AS associations,"
+              + " (SELECT count(*) FROM audit_incident_scope_grants WHERE (subject_user_id = :id"
+              + "   OR requested_by_user_id = :id OR approved_by_user_id = :id)"
+              + "   AND (status = 'PENDING' OR usable_until >= :now)) AS incident_scopes,"
               + " (SELECT count(*) FROM capability_grants WHERE subject_user_id = :id"
               + "   OR granted_by_user_id = :id) AS capabilities,"
               + " (SELECT count(*) FROM capability_grant_history WHERE subject_user_id = :id)"
@@ -177,7 +185,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + " (SELECT count(*) FROM connected_accounts WHERE user_id = :id)"
               + "   AS connected_accounts",
       nativeQuery = true)
-  DeletionBlockers countDeletionBlockers(@Param("id") UUID userId);
+  DeletionBlockers countDeletionBlockers(@Param("id") UUID userId, @Param("now") Instant now);
 
   /** The result of {@link #countDeletionBlockers}; every non-zero count refuses the deletion. */
   interface DeletionBlockers {
@@ -194,6 +202,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getGrants();
 
     long getAssociations();
+
+    long getIncidentScopes();
 
     long getCapabilities();
 

@@ -53,12 +53,14 @@ import jakarta.mail.internet.MimeMultipart;
 import jakarta.servlet.http.Cookie;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -765,48 +767,145 @@ class LocalUserAdminIntegrationTest {
   }
 
   /**
-   * A grant of the anlassbezogene Klärung does not hold the accounts it names: the person named in
-   * it and the person who requested it are both deleted, and the grant stays with each of them as
-   * the protocol's pseudonym until its own deletion period ends.
+   * An open request of the anlassbezogene Klärung holds the accounts it names: neither the person
+   * named in it nor the requesting one is deleted while it waits for approval.
    */
   @Test
-  void anAccountNamedInAnIncidentScopeGrantIsDeletedAndKeptInTheGrantAsAPseudonym()
+  void anOpenIncidentScopeRequestRefusesTheDeletionOfTheAccountsItNames() throws Exception {
+    LocalAccount named = fixtures.activeUser("betroffen-" + UUID.randomUUID() + "@stadt.example");
+    LocalAccount requester =
+        fixtures.activeUser("revision-" + UUID.randomUUID() + "@stadt.example");
+    AuditIncidentScopeGrant grant = requestIncidentScope(named, requester);
+    try {
+      for (LocalAccount account : List.of(named, requester)) {
+        asAdmin(delete(LOCAL_USERS + "/" + account.id()))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("ACCOUNT_OWNS_CONTENT"));
+        assertThat(users.findById(account.id())).isPresent();
+      }
+    } finally {
+      incidentScopeGrants.deleteById(grant.getId());
+    }
+  }
+
+  /** A grant still usable holds all three accounts it names, the approving one included. */
+  @Test
+  void aStillUsableIncidentScopeGrantRefusesTheDeletionOfTheAccountsItNames() throws Exception {
+    LocalAccount named = fixtures.activeUser("betroffen-" + UUID.randomUUID() + "@stadt.example");
+    LocalAccount requester =
+        fixtures.activeUser("revision-" + UUID.randomUUID() + "@stadt.example");
+    LocalAccount approver = fixtures.activeUser("freigabe-" + UUID.randomUUID() + "@stadt.example");
+    AuditIncidentScopeGrant grant = requestIncidentScope(named, requester);
+    approveIncidentScope(grant, approver, Instant.now().plus(Duration.ofDays(30)));
+    try {
+      for (LocalAccount account : List.of(named, requester, approver)) {
+        asAdmin(delete(LOCAL_USERS + "/" + account.id()))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("ACCOUNT_OWNS_CONTENT"));
+        assertThat(users.findById(account.id())).isPresent();
+      }
+    } finally {
+      incidentScopeGrants.deleteById(grant.getId());
+    }
+  }
+
+  /**
+   * The hold ends with the usability of the grant, at a fixed instant: up to and including {@code
+   * usable_until} the grant is counted, a second later it is not.
+   */
+  @Test
+  void theIncidentScopeHoldEndsWithTheUsabilityOfTheGrant() {
+    LocalAccount named = fixtures.activeUser("betroffen-" + UUID.randomUUID() + "@stadt.example");
+    LocalAccount requester =
+        fixtures.activeUser("revision-" + UUID.randomUUID() + "@stadt.example");
+    LocalAccount approver = fixtures.activeUser("freigabe-" + UUID.randomUUID() + "@stadt.example");
+    Instant usableUntil = Instant.parse("2099-03-01T10:00:00Z");
+    AuditIncidentScopeGrant grant = requestIncidentScope(named, requester);
+    try {
+      assertThat(
+              users
+                  .countDeletionBlockers(named.id(), Instant.parse("2199-01-01T00:00:00Z"))
+                  .getIncidentScopes())
+          .as("an open request holds regardless of time")
+          .isEqualTo(1L);
+      approveIncidentScope(grant, approver, usableUntil);
+      for (LocalAccount account : List.of(named, requester, approver)) {
+        assertThat(users.countDeletionBlockers(account.id(), usableUntil).getIncidentScopes())
+            .isEqualTo(1L);
+        assertThat(
+                users
+                    .countDeletionBlockers(account.id(), usableUntil.plusSeconds(1))
+                    .getIncidentScopes())
+            .isZero();
+      }
+    } finally {
+      incidentScopeGrants.deleteById(grant.getId());
+    }
+  }
+
+  /**
+   * Once the grant is no longer usable it holds no account: the persons named in it, the requesting
+   * and the approving one are deleted, and the grant keeps each of them as the protocol's pseudonym
+   * until its own deletion period ends.
+   */
+  @Test
+  void anAccountNamedInAnExpiredIncidentScopeGrantIsDeletedAndKeptInTheGrantAsAPseudonym()
       throws Exception {
     LocalAccount named = fixtures.activeUser("betroffen-" + UUID.randomUUID() + "@stadt.example");
     LocalAccount requester =
         fixtures.activeUser("revision-" + UUID.randomUUID() + "@stadt.example");
+    LocalAccount approver = fixtures.activeUser("freigabe-" + UUID.randomUUID() + "@stadt.example");
     UUID namedPseudonym = audit.pseudonymFor(named.id(), Organization.DEFAULT_ID);
-    Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-    AuditIncidentScopeGrant grant =
-        incidentScopes.request(
-            Organization.DEFAULT_ID,
-            requester.id(),
-            named.id(),
-            now.minus(Duration.ofDays(7)),
-            now,
-            AuditIncidentScopePurpose.SECURITY_INCIDENT,
-            "Verdacht auf unbefugten Zugriff");
-    UUID requesterPseudonym = null;
+    AuditIncidentScopeGrant grant = requestIncidentScope(named, requester);
+    approveIncidentScope(grant, approver, Instant.now().minus(Duration.ofDays(1)));
+    List<UUID> pseudonyms = new ArrayList<>(List.of(namedPseudonym));
     try {
-      asAdmin(delete(LOCAL_USERS + "/" + named.id())).andExpect(status().isNoContent());
-      asAdmin(delete(LOCAL_USERS + "/" + requester.id())).andExpect(status().isNoContent());
+      for (LocalAccount account : List.of(named, requester, approver)) {
+        asAdmin(delete(LOCAL_USERS + "/" + account.id())).andExpect(status().isNoContent());
+        assertThat(users.findById(account.id())).isEmpty();
+      }
 
-      assertThat(users.findById(named.id())).isEmpty();
-      assertThat(users.findById(requester.id())).isEmpty();
       AuditIncidentScopeGrant kept = incidentScopeGrants.findById(grant.getId()).orElseThrow();
-      requesterPseudonym = kept.getRequestedByPseudonymId();
+      pseudonyms.add(kept.getRequestedByPseudonymId());
+      pseudonyms.add(kept.getApprovedByPseudonymId());
       assertThat(kept.getSubjectUserId()).isNull();
       assertThat(kept.getRequestedByUserId()).isNull();
+      assertThat(kept.getApprovedByUserId()).isNull();
       assertThat(kept.getSubjectPseudonymId()).isEqualTo(namedPseudonym);
-      assertThat(requesterPseudonym).isNotNull().isNotEqualTo(namedPseudonym);
+      assertThat(pseudonyms).doesNotContainNull().doesNotHaveDuplicates();
       assertThat(kept.getReason()).isEqualTo("Verdacht auf unbefugten Zugriff");
     } finally {
       incidentScopeGrants.deleteById(grant.getId());
-      fixtures.deleteAuditRowsNaming(namedPseudonym);
-      if (requesterPseudonym != null) {
-        fixtures.deleteAuditRowsNaming(requesterPseudonym);
-      }
+      pseudonyms.stream().filter(Objects::nonNull).forEach(fixtures::deleteAuditRowsNaming);
     }
+  }
+
+  private AuditIncidentScopeGrant requestIncidentScope(LocalAccount named, LocalAccount requester) {
+    Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+    return incidentScopes.request(
+        Organization.DEFAULT_ID,
+        requester.id(),
+        named.id(),
+        now.minus(Duration.ofDays(7)),
+        now,
+        AuditIncidentScopePurpose.SECURITY_INCIDENT,
+        "Verdacht auf unbefugten Zugriff");
+  }
+
+  /**
+   * Marks the grant approved by {@code approver} and usable until {@code usableUntil} directly in
+   * the row: the approval path of the service also counts the case, a row of the shared default
+   * organization this class could not take back.
+   */
+  private void approveIncidentScope(
+      AuditIncidentScopeGrant grant, LocalAccount approver, Instant usableUntil) {
+    jdbc.update(
+        "UPDATE audit_incident_scope_grants SET status = 'APPROVED', approved_by_user_id = ?,"
+            + " approved_at = ?, usable_until = ? WHERE id = ?",
+        approver.id(),
+        Timestamp.from(usableUntil.minus(Duration.ofDays(30))),
+        Timestamp.from(usableUntil),
+        grant.getId());
   }
 
   /**

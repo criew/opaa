@@ -622,8 +622,10 @@ dann automatisch gelöscht, freigegebene wie nie freigegebene; die Frist steht i
 (Abschnitt 15, `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS`). Eine Dienstvereinbarung kann sie
 verlängern. Für den Jahresbericht an die Personalvertretung zählt OPAA jede Freigabe bei ihrer
 Erteilung je Jahr und Zweck mit; diese Zahl bleibt nach dem Löschen der einzelnen Klärungen
-erhalten und nennt keine Person. Eine Klärung hält das Löschen der Konten, die sie nennt, nicht
-auf; sie nennt die Person danach nur noch unter ihrem Pseudonym aus dem Nachweisprotokoll.
+erhalten und nennt keine Person. Solange ein Antrag offen oder eine Freigabe noch nutzbar ist,
+lässt sich keines der Konten löschen, die sie nennt. Danach hält sie das Löschen nicht mehr auf und
+nennt die Person nur noch unter ihrem Pseudonym aus dem Nachweisprotokoll; über die Klärung lassen
+sich deren Protokolleinträge damit bis zu ihrer Löschung weiter der Person zuordnen.
 
 ## 11. „Warum sehe ich das?" — die Herleitung
 

@@ -18,7 +18,10 @@ defaults:
     deletion: >-
       Automatisch über die Datenbankfunktion opaa_audit_delete_expired_partitions (ganze
       Monatspartitionen); einzelne Einträge sind nicht löschbar. Mit dem Konto entfällt die
-      Pseudonymzuordnung, der Eintrag bleibt ohne Personenbezug
+      Pseudonymzuordnung, der Eintrag bleibt ohne Personenbezug. Ausnahme: Nennt eine Freigabe der
+      anlassbezogenen Klärung die Person, bleibt dort ihr Protokollpseudonym bis zur Löschfrist der
+      Freigabe; bis dahin lassen sich ihre Protokolleinträge über die Freigabe (mit Begründung und
+      Zeitraum) wieder ihr zuordnen
     evaluations: >-
       Abfragen nach Objekt, Zeitraum, Ereignisart oder Vorgang mit Zeitraum bis 92 Tage und
       höchstens 50 Seiten; kein Filter, keine Zählung und keine Zeitreihe je Person, keine
@@ -80,7 +83,10 @@ data:
       - Beschäftigtendaten; Mitbestimmung bei Verhaltens- und Leistungskontrolle prüfen
   - id: audit-pseudonyms
     title: Pseudonymzuordnung des Protokolls
-    purpose: Trennt die Person vom Protokolleintrag; nur über sie ist ein Eintrag zuordenbar
+    purpose: >-
+      Trennt die Person vom Protokolleintrag; nur über sie ist ein Eintrag zuordenbar, nach
+      Löschung des Kontos nur noch über eine Freigabe der anlassbezogenen Klärung, die die Person
+      nennt, bis zu deren Löschfrist
     personalReference: IDENTIFIABLE
     tables:
       - name: audit_actor_pseudonyms
@@ -137,10 +143,11 @@ data:
     accessPaths: [UI, API, DATABASE]
     deletion: >-
       Automatisch im täglichen Löschlauf nach Ablauf der Frist, freigegebene und nie freigegebene
-      gleich; kein Löschweg von Hand. Ein Antrag oder eine Freigabe hält die Löschung eines Kontos
-      nicht auf: Wird das Konto der betroffenen, beantragenden oder freigebenden Person gelöscht,
-      bleibt die Person im Nachweis als Pseudonym des Protokolls erhalten (ohne Protokolleinträge
-      ein eigenes), bis die Frist abläuft. Der Löschlauf schreibt keinen Protokolleintrag
+      gleich; kein Löschweg von Hand. Ein offener Antrag und eine noch nutzbare Freigabe halten die
+      Löschung der Konten der betroffenen, beantragenden und freigebenden Person auf. Danach nicht
+      mehr: Wird eines dieser Konten gelöscht, bleibt die Person im Nachweis als Pseudonym des
+      Protokolls erhalten (ohne Protokolleinträge ein eigenes), bis die Frist abläuft. Der
+      Löschlauf schreibt keinen Protokolleintrag
     evaluations: >-
       Einzelne Klärungen mit Person, Zeitraum, Zweck und Begründung; nach Löschung eines Kontos
       lässt sich über das Pseudonym erkennen, welche Protokolleinträge dieselbe Person betreffen.

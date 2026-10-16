@@ -218,8 +218,8 @@ public class AuditQueryService {
    * AuditActorPseudonymService#pseudonymFor}, a read must never have the side effect of creating a
    * re-identification row for a person who never triggered one themselves. If none exists, the
    * person has no entries in the log at all, so an empty page is correct. The same holds once the
-   * person's account is deleted: the log is then no longer attributable to them, and the grant's
-   * own pseudonym is not used as a filter.
+   * person's account is deleted: the mapping is gone with it, and the grant's own pseudonym is not
+   * used as a filter.
    */
   public Page<AuditLogEntry> byIncidentScope(
       UUID organizationId,

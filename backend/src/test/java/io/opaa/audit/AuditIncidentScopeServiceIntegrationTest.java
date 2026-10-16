@@ -420,9 +420,10 @@ class AuditIncidentScopeServiceIntegrationTest {
   }
 
   /**
-   * A grant does not hold the accounts it names: each of them can be deleted, and the grant keeps
-   * the person as the pseudonym the protocol carries for them - one never seen in the protocol gets
-   * a fresh one - so the Nachweis stays readable until the grant's own deletion period ends.
+   * In the schema a grant does not hold the accounts it names (the hold of an open or usable one is
+   * the application's, in {@code LocalUserService#delete}): each of them can be deleted, and the
+   * grant keeps the person as the pseudonym the protocol carries for them - one never seen in the
+   * protocol gets a fresh one - so the Nachweis stays readable until its deletion period ends.
    */
   @Test
   void deletingTheAccountsAGrantNamesKeepsThemInItAsPseudonyms() {

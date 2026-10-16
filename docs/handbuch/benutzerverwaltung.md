@@ -291,12 +291,14 @@ Konto beteiligt war — die abgelaufenen und die bereits entzogenen, die es erte
 und die es selbst hielt —, enden mit ihm, aber **ohne eigenen Eintrag**. Unberührt bleibt, woran das
 Konto nicht beteiligt war.
 
-Auch eine **anlassbezogene Klärung** hält keine Löschung auf, gleich ob das Konto darin als
-betroffene, beantragende oder freigebende Person steht und ob die Klärung freigegeben ist. Die
+Eine **anlassbezogene Klärung** hält die Löschung nur auf, solange sie läuft: Steht das Konto in
+einem offenen Antrag oder einer noch nutzbaren Freigabe als betroffene, beantragende oder
+freigebende Person, lehnt OPAA die Löschung ab. Danach hält sie keine Löschung mehr auf. Die
 Klärung bleibt als Nachweis bestehen; statt des Kontos nennt sie die Person danach nur noch unter
-dem Pseudonym, das auch das Nachweisprotokoll für sie führt. Einen Personenfilter führt sie nicht
-mehr aus, und ein noch offener Antrag lässt sich nicht mehr freigeben. Wie lange Klärungen liegen,
-steht im Kapitel [Berechtigungen](berechtigungen.md), Abschnitt „Systemrollen und Vollmachten".
+dem Pseudonym, das auch das Nachweisprotokoll für sie führt. Über die Klärung lassen sich deren
+Protokolleinträge damit bis zur Löschung der Klärung weiter der Person zuordnen; einen
+Personenfilter führt sie nicht mehr aus. Wie lange Klärungen liegen, steht im Kapitel
+[Berechtigungen](berechtigungen.md), Abschnitt „Systemrollen und Vollmachten".
 
 Praktisch heißt das: Löschen ist der Weg für ein Konto, das nie benutzt wurde — eine falsch getippte
 Adresse, eine Einladung an die falsche Person, ein Testkonto. Wer dagegen je Mitglied einer Gruppe

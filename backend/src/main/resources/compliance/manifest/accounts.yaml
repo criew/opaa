@@ -23,9 +23,9 @@ data:
     deletion: >-
       Durch die Systemverwaltung nur bei lokalen Konten, auf die nichts verweist (u. a. kein Chat,
       kein Besitz, keine Rechtevergabe, keine Verbindung, kein Eintrag der Rechtehistorie),
-      praktisch also bei nie benutzten Konten. Ein Antrag oder eine Freigabe der anlassbezogenen
-      Klärung hält die Löschung nicht auf; die Person bleibt dort als Pseudonym bis zu deren
-      Löschfrist. Konten eines
+      praktisch also bei nie benutzten Konten. Ein offener Antrag oder eine noch nutzbare Freigabe
+      der anlassbezogenen Klärung hält die Löschung auf; danach nicht mehr, die Person bleibt dort
+      als Pseudonym bis zu deren Löschfrist. Konten eines
       Identitätsanbieters haben keinen Löschweg; benutzte Konten werden gesperrt, nicht gelöscht
     evaluations: >-
       Letzte Anmeldung ist ein Anwesenheitsmerkmal; die Kontenübersicht zeigt Inaktivitätsklassen

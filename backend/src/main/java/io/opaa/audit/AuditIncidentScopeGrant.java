@@ -28,8 +28,9 @@ import java.util.UUID;
  * ValidationException}. There is no reject/revoke state on purpose - see {@link
  * AuditIncidentScopeStatus}'s Javadoc.
  *
- * <p>A grant does not hold the accounts it names: deleting one leaves the person in the grant as a
- * pseudonym. Approved or not, the grant itself goes by {@link AuditIncidentScopeRetention}.
+ * <p>While {@code PENDING} or usable, a grant holds the accounts it names (counted by {@code
+ * UserRepository#countDeletionBlockers}); afterwards deleting one leaves the person in the grant as
+ * a pseudonym. Approved or not, the grant itself goes by {@link AuditIncidentScopeRetention}.
  */
 @Entity
 @Table(name = "audit_incident_scope_grants")
