@@ -256,6 +256,71 @@ class FactSheetRendererTest {
         .contains("<a id=\"prompt-one\"></a>", "<a id=\"prompt-two\"></a>");
   }
 
+  @Test
+  void noHeadingRepeatsInTheDataFlowsSheet() {
+    for (ComplianceManifest manifest : List.of(SHIPPED, FIXTURE)) {
+      assertThat(
+              headings(FactSheetRenderer.render(manifest, PROVENANCE).get(FactSheet.DATENFLUESSE)))
+          .doesNotHaveDuplicates();
+    }
+  }
+
+  @Test
+  void dataFlowsAreGroupedByAreaOnlyWhenThereAreSeveralAndKeepTheAreaAnchor() {
+    ComplianceManifest twoAreas =
+        dataFlowsIn(
+            Map.of("first", "Erster Bereich", "second", "Zweiter Bereich"),
+            dataFlow("first", "one"),
+            dataFlow("second", "two"));
+    ComplianceManifest oneArea =
+        dataFlowsIn(
+            Map.of("first", "Erster Bereich"), dataFlow("first", "one"), dataFlow("first", "two"));
+
+    assertThat(FactSheetRenderer.render(twoAreas, PROVENANCE).get(FactSheet.DATENFLUESSE))
+        .contains(
+            "### <a id=\"bereich-first\"></a>Erster Bereich",
+            "### <a id=\"bereich-second\"></a>Zweiter Bereich",
+            "#### <a id=\"one\"></a>`one`");
+    String single = FactSheetRenderer.render(oneArea, PROVENANCE).get(FactSheet.DATENFLUESSE);
+    assertThat(single)
+        .doesNotContain("Erster Bereich")
+        .contains(
+            "## <a id=\"datenfluesse\"></a><a id=\"bereich-first\"></a>Ausgehende Datenflüsse",
+            "### <a id=\"one\"></a>`one`",
+            "### <a id=\"two\"></a>`two`");
+    assertThat(FactSheetRenderer.placeholderTargets(SHIPPED))
+        .contains("datenfluesse#bereich-outbound");
+  }
+
+  private static ComplianceManifest dataFlowsIn(
+      Map<String, String> areas, ComplianceManifest.DataFlowEntry... flows) {
+    return new ComplianceManifest(
+        areas,
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of(flows),
+        List.of());
+  }
+
+  private static ComplianceManifest.DataFlowEntry dataFlow(String area, String id) {
+    return new ComplianceManifest.DataFlowEntry(
+        area,
+        id,
+        ComplianceManifest.DataFlowGroup.MAIL,
+        false,
+        "Ziel",
+        "Daten",
+        "Anlass",
+        "Aus",
+        List.of(),
+        null);
+  }
+
   private static ComplianceManifest.PromptEntry prompt(String area, String id) {
     return new ComplianceManifest.PromptEntry(
         area, id, "Zweck", List.of("io.opaa.Example"), null, "0".repeat(64), null);
@@ -376,13 +441,18 @@ class FactSheetRendererTest {
     Map<FactSheet, String> sheets = FactSheetRenderer.render(manifest, PROVENANCE);
     String all = String.join("\n", sheets.values());
 
-    // prompts and AI functions name their area only where a section spans several
+    // prompts, AI functions and data flows name their area only where a section spans several
     Set<String> grouped = new HashSet<>();
     manifest.data().forEach(entry -> grouped.add(entry.area()));
     manifest.auditEvents().forEach(entry -> grouped.add(entry.area()));
     manifest.settings().forEach(entry -> grouped.add(entry.area()));
-    manifest.dataFlows().forEach(entry -> grouped.add(entry.area()));
     grouped.forEach(area -> assertThat(all).contains(manifest.areas().get(area)));
+    manifest
+        .dataFlows()
+        .forEach(
+            entry ->
+                assertThat(anchors(sheets.get(FactSheet.DATENFLUESSE)))
+                    .contains("bereich-" + FactSheetRenderer.anchor(entry.area())));
     manifest
         .data()
         .forEach(entry -> assertListed(sheets, FactSheet.DATENKATALOG, entry.id(), entry.id()));
