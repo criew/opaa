@@ -27,6 +27,10 @@ import java.util.UUID;
  * {@link #approve}, which rejects a matching id (Selbstfreigabe) with a {@link
  * ValidationException}. There is no reject/revoke state on purpose - see {@link
  * AuditIncidentScopeStatus}'s Javadoc.
+ *
+ * <p>While {@code PENDING} or usable, a grant holds the accounts it names (counted by {@code
+ * UserRepository#countDeletionBlockers}); afterwards deleting one leaves the person in the grant as
+ * a pseudonym. Approved or not, the grant itself goes by {@link AuditIncidentScopeRetention}.
  */
 @Entity
 @Table(name = "audit_incident_scope_grants")
@@ -37,7 +41,11 @@ public class AuditIncidentScopeGrant {
   @Column(name = "organization_id", nullable = false)
   private UUID organizationId;
 
-  @Column(name = "subject_user_id", nullable = false)
+  /**
+   * Null once the person's account is deleted; {@link #subjectPseudonymId} then names the person.
+   * The same holds for the requesting and the approving person.
+   */
+  @Column(name = "subject_user_id", updatable = false)
   private UUID subjectUserId;
 
   @Column(name = "scope_start", nullable = false)
@@ -53,7 +61,7 @@ public class AuditIncidentScopeGrant {
   @Column(name = "reason", nullable = false, length = 1000)
   private String reason;
 
-  @Column(name = "requested_by_user_id", nullable = false)
+  @Column(name = "requested_by_user_id", updatable = false)
   private UUID requestedByUserId;
 
   @Column(name = "requested_at", nullable = false)
@@ -76,6 +84,20 @@ public class AuditIncidentScopeGrant {
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 10)
   private AuditIncidentScopeStatus status;
+
+  /**
+   * Set by the database alone, when the account of the named person is deleted: the pseudonym the
+   * protocol carries for that person, or a fresh one if the person never acted in it. Null while
+   * the account exists. The same holds for the two columns below.
+   */
+  @Column(name = "subject_pseudonym_id", insertable = false, updatable = false)
+  private UUID subjectPseudonymId;
+
+  @Column(name = "requested_by_pseudonym_id", insertable = false, updatable = false)
+  private UUID requestedByPseudonymId;
+
+  @Column(name = "approved_by_pseudonym_id", insertable = false, updatable = false)
+  private UUID approvedByPseudonymId;
 
   /**
    * How long an approved grant remains usable after approval: 30 days - long enough to carry out an
@@ -118,20 +140,27 @@ public class AuditIncidentScopeGrant {
   }
 
   /**
-   * Approves this grant, making it usable for {@link AuditQueryService#byIncidentScope}.
+   * Approves this grant at {@code now}, making it usable for {@link
+   * AuditQueryService#byIncidentScope} until {@code now} plus {@link #USABLE_WINDOW}.
    *
    * @throws ValidationException if {@code approvedByUserId} equals {@link #requestedByUserId}
-   *     (Selbstfreigabe) or the grant is not {@code PENDING}
+   *     (Selbstfreigabe), the grant is not {@code PENDING}, or the account of the named or of the
+   *     requesting person is deleted - a Klärung about nobody, or one whose Vier-Augen-Prinzip can
+   *     no longer be checked, is not approvable
    */
-  public void approve(UUID approvedByUserId) {
+  public void approve(UUID approvedByUserId, Instant now) {
     if (status != AuditIncidentScopeStatus.PENDING) {
       throw new ValidationException("Die Klärung wartet nicht auf eine Freigabe");
+    }
+    if (subjectUserId == null || requestedByUserId == null) {
+      throw new ValidationException(
+          "Ein am Antrag beteiligtes Konto ist gelöscht; der Antrag kann nicht freigegeben werden");
     }
     if (approvedByUserId.equals(requestedByUserId)) {
       throw new ValidationException("Selbstfreigabe ist nicht zulässig");
     }
     this.approvedByUserId = approvedByUserId;
-    this.approvedAt = Instant.now();
+    this.approvedAt = now;
     this.usableUntil = approvedAt.plus(USABLE_WINDOW);
     this.status = AuditIncidentScopeStatus.APPROVED;
   }
@@ -205,5 +234,17 @@ public class AuditIncidentScopeGrant {
 
   public AuditIncidentScopeStatus getStatus() {
     return status;
+  }
+
+  public UUID getSubjectPseudonymId() {
+    return subjectPseudonymId;
+  }
+
+  public UUID getRequestedByPseudonymId() {
+    return requestedByPseudonymId;
+  }
+
+  public UUID getApprovedByPseudonymId() {
+    return approvedByPseudonymId;
   }
 }

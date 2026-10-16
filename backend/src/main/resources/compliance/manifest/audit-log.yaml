@@ -18,7 +18,10 @@ defaults:
     deletion: >-
       Automatisch über die Datenbankfunktion opaa_audit_delete_expired_partitions (ganze
       Monatspartitionen); einzelne Einträge sind nicht löschbar. Mit dem Konto entfällt die
-      Pseudonymzuordnung, der Eintrag bleibt ohne Personenbezug
+      Pseudonymzuordnung, der Eintrag bleibt ohne Personenbezug. Ausnahme: Nennt eine Freigabe der
+      anlassbezogenen Klärung die Person, bleibt dort ihr Protokollpseudonym bis zur Löschfrist der
+      Freigabe; bis dahin lassen sich ihre Protokolleinträge über die Freigabe (mit Begründung und
+      Zeitraum) wieder ihr zuordnen
     evaluations: >-
       Abfragen nach Objekt, Zeitraum, Ereignisart oder Vorgang mit Zeitraum bis 92 Tage und
       höchstens 50 Seiten; kein Filter, keine Zählung und keine Zeitreihe je Person, keine
@@ -80,7 +83,10 @@ data:
       - Beschäftigtendaten; Mitbestimmung bei Verhaltens- und Leistungskontrolle prüfen
   - id: audit-pseudonyms
     title: Pseudonymzuordnung des Protokolls
-    purpose: Trennt die Person vom Protokolleintrag; nur über sie ist ein Eintrag zuordenbar
+    purpose: >-
+      Trennt die Person vom Protokolleintrag; nur über sie ist ein Eintrag zuordenbar, nach
+      Löschung des Kontos nur noch über eine Freigabe der anlassbezogenen Klärung, die die Person
+      nennt, bis zu deren Löschfrist
     personalReference: IDENTIFIABLE
     tables:
       - name: audit_actor_pseudonyms
@@ -92,7 +98,9 @@ data:
       settings: []
     visibility: [AUDITOR nur innerhalb der anlassbezogenen Klärung]
     accessPaths: [DATABASE]
-    deletion: Fällt mit der Löschung des Kontos weg (Fremdschlüssel mit ON DELETE CASCADE)
+    deletion: >-
+      Fällt mit der Löschung des Kontos weg (Fremdschlüssel mit ON DELETE CASCADE); nennt eine
+      Freigabe der anlassbezogenen Klärung die Person, übernimmt sie vorher deren Pseudonym
     evaluations: keine eigene Auswertung
   - id: audit-incident-scopes
     title: Freigaben der anlassbezogenen Klärung
@@ -103,7 +111,14 @@ data:
     tables:
       - name: audit_incident_scope_grants
         personalColumns:
-          [subject_user_id, requested_by_user_id, approved_by_user_id, purpose, reason]
+          - subject_user_id
+          - requested_by_user_id
+          - approved_by_user_id
+          - subject_pseudonym_id
+          - requested_by_pseudonym_id
+          - approved_by_pseudonym_id
+          - purpose
+          - reason
         nonPersonalColumns:
           - id
           - organization_id
@@ -116,19 +131,38 @@ data:
     storage: Anwendungsdatenbank
     retention:
       rule: >-
-        Anträge und Freigaben unbegrenzt, ohne Löschfrist und ohne Löschweg, samt Zweck und
-        Begründung, auch nie freigegebene Anträge; eine Freigabe ist 30 Tage ab Freigabe nutzbar,
-        danach nur noch Nachweis
-      settings: [io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW]
+        Anträge und Freigaben samt Zweck und Begründung bis zum Ende des Kalenderjahres, das auf
+        das Ende der Nutzbarkeit folgt (Voreinstellung, verlängerbar auf bis zu 10 Jahre). Eine
+        Freigabe ist 30 Tage ab Freigabe nutzbar, danach nur noch Nachweis. Für die Löschfrist zählt
+        bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antragszeitpunkt plus 30
+        Tage; freigeben lässt er sich unverändert auch danach
+      settings:
+        - io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW
+        - opaa.audit.incident-scope-retention-years
     visibility: [AUDITOR]
     accessPaths: [UI, API, DATABASE]
     deletion: >-
-      Kein Löschweg, weder automatisch noch von Hand; ein Antrag oder eine Freigabe verhindert die
-      Löschung der Konten der betroffenen, der beantragenden und der freigebenden Person
-    evaluations: Zahl der Fälle für den Jahresbericht an die Personalvertretung (organisatorisch)
+      Automatisch im täglichen Löschlauf nach Ablauf der Frist, freigegebene und nie freigegebene
+      gleich; kein Löschweg von Hand. Ein offener Antrag und eine noch nutzbare Freigabe halten die
+      Löschung der Konten der betroffenen, beantragenden und freigebenden Person auf. Danach nicht
+      mehr: Wird eines dieser Konten gelöscht, bleibt die Person im Nachweis als Pseudonym des
+      Protokolls erhalten (ohne Protokolleinträge ein eigenes), bis die Frist abläuft. Der
+      Löschlauf schreibt keinen Protokolleintrag
+    evaluations: >-
+      Einzelne Klärungen mit Person, Zeitraum, Zweck und Begründung; nach Löschung eines Kontos
+      lässt sich über das Pseudonym erkennen, welche Protokolleinträge dieselbe Person betreffen.
+      Zahl der Fälle je Jahr und Zweck für den Jahresbericht an die Personalvertretung
     notes:
-      - Die Zahl der Klärungen gehört nach der Spezifikation in den Jahresbericht
+      - >-
+        Nach Löschung eines Kontos führt die Klärung keinen Personenfilter mehr aus; das Pseudonym
+        im Nachweis wird nicht als Filter verwendet
+      - >-
+        Für den Jahresbericht an die Personalvertretung zählt OPAA jede Freigabe bei ihrer Erteilung
+        je Kalenderjahr und Zweck in einer eigenen Tabelle ohne Person und ohne Verweis auf die
+        Freigabe; die Zahl bleibt nach Löschung der Freigaben unbefristet erhalten. Nie freigegebene
+        Anträge zählen nicht
 nonPersonalTables:
+  audit_incident_scope_case_counts: [organization_id, case_year, purpose, case_count]
   audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
 settings:
   - key: audit_retention_settings.retention_months
@@ -142,6 +176,14 @@ settings:
     defaultValue: P30D
     effect: Wie lange eine freigegebene anlassbezogene Klärung genutzt werden kann
     bearings: [VISIBILITY, EVALUATION]
+  - key: opaa.audit.incident-scope-retention-years
+    source: PROPERTY
+    defaultValue: "1"
+    range: 1 bis 10 Jahre
+    effect: >-
+      Löschfrist der Anträge und Freigaben der anlassbezogenen Klärung: gelöscht wird am Ende des
+      Kalenderjahres, das so viele Jahre nach dem Ende der Nutzbarkeit liegt
+    bearings: [DATA]
 auditEvents:
   - id: ASSET_GRANT_GRANTED
     trigger: Ein Recht an einem Asset wird vergeben, auch als Mitfreigabe aus der Freigabekette

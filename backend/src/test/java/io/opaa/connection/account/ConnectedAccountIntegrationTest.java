@@ -44,6 +44,7 @@ import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -626,7 +627,8 @@ class ConnectedAccountIntegrationTest {
   void anAccountWithAConnectionIsNotDeleted() throws Exception {
     connect("dev-user", PASSWORD).andExpect(status().isOk());
 
-    assertThat(users.countDeletionBlockers(person).getConnectedAccounts()).isEqualTo(1);
+    assertThat(users.countDeletionBlockers(person, Instant.now()).getConnectedAccounts())
+        .isEqualTo(1);
   }
 
   @Test

@@ -1,0 +1,51 @@
+package io.opaa.audit;
+
+import java.time.Clock;
+import java.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * The deletion of the grants of the anlassbezogene Klärung after {@link
+ * AuditIncidentScopeRetention}, approved ones and requests never approved alike. The number of
+ * cases per year stays behind in {@code audit_incident_scope_case_counts}; nothing else of a grant
+ * does. {@link AuditIncidentScopeRetentionScheduler} is the only production caller.
+ */
+@Service
+public class AuditIncidentScopeRetentionService {
+
+  private static final Logger log =
+      LoggerFactory.getLogger(AuditIncidentScopeRetentionService.class);
+
+  private final AuditIncidentScopeGrantRepository repository;
+  private final AuditIncidentScopeRetention retention;
+  private final Clock clock;
+
+  AuditIncidentScopeRetentionService(
+      AuditIncidentScopeGrantRepository repository,
+      AuditIncidentScopeRetention retention,
+      Clock clock) {
+    this.repository = repository;
+    this.retention = retention;
+    this.clock = clock;
+  }
+
+  /**
+   * One deletion pass; idempotent, and a no-op while nothing is due. Year boundaries are those of
+   * the clock's zone, the server time the schedule runs in.
+   */
+  @Transactional
+  public int runOnce() {
+    Instant cutoff = retention.deletionCutoff(clock.instant(), clock.getZone());
+    int deleted =
+        repository.deleteUsabilityEndedBefore(
+            cutoff, cutoff.minus(AuditIncidentScopeGrant.USABLE_WINDOW));
+    if (deleted > 0) {
+      log.info(
+          "Incident scope retention: {} grant(s) deleted, usable until before {}", deleted, cutoff);
+    }
+    return deleted;
+  }
+}

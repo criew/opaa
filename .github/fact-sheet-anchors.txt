@@ -246,6 +246,7 @@ voreinstellungen#local-auth-settings-default-expiry-days
 voreinstellungen#local-auth-settings-inactive-days
 voreinstellungen#local-auth-settings-invitation-token-ttl-hours
 voreinstellungen#local-auth-settings-reset-token-ttl-minutes
+voreinstellungen#opaa-audit-incident-scope-retention-years
 voreinstellungen#opaa-auth-local-access-token-ttl
 voreinstellungen#opaa-auth-local-admin-refresh-token-ttl
 voreinstellungen#opaa-auth-local-admin-session-max-lifetime
@@ -316,6 +317,7 @@ fristen#local-auth-settings-default-expiry-days
 fristen#local-auth-settings-inactive-days
 fristen#local-auth-settings-invitation-token-ttl-hours
 fristen#local-auth-settings-reset-token-ttl-minutes
+fristen#opaa-audit-incident-scope-retention-years
 fristen#opaa-auth-local-access-token-ttl
 fristen#opaa-auth-local-admin-refresh-token-ttl
 fristen#opaa-auth-local-admin-session-max-lifetime

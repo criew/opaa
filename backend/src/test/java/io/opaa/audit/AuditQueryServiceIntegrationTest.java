@@ -899,9 +899,8 @@ class AuditQueryServiceIntegrationTest {
             .isEqualTo(AuditOutcome.DENIED);
       }
     } finally {
-      // The grant references otherAuditorId as approver (and auditorId/regularUserId as
-      // requester/subject) - must go first, or deleting the user violates
-      // fk_audit_incident_scope_grants_approved_by (no cascade, unlike audit_actor_pseudonyms).
+      // The grant outlives its accounts as pseudonyms but holds the organization
+      // (fk_audit_incident_scope_grants_organization), so it goes here, before the organization.
       jdbcTemplate.update(
           "DELETE FROM audit_incident_scope_grants WHERE organization_id = ?", organizationId);
       userRepository.deleteById(otherAuditorId);
