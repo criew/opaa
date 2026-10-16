@@ -8,6 +8,8 @@ import io.opaa.compliance.StageRules.Assessment;
 import io.opaa.compliance.StageRules.Stage;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,7 +47,6 @@ public final class ManifestDeltaRenderer {
           .build();
 
   private static final Map<String, String> FIELD_LABELS = fieldLabels();
-  private static final Map<String, List<String>> SUMMARY_FIELDS = summaryFields();
   private static final Set<String> CODE_FIELDS =
       Set.of(
           "columns",
@@ -270,8 +271,8 @@ public final class ManifestDeltaRenderer {
     }
     out.append('\n');
     switch (change.kind()) {
-      case ADDED -> item(out, "Angaben", summaryOf(change.section(), change.after()));
-      case REMOVED -> item(out, "Bisher", summaryOf(change.section(), change.before()));
+      case ADDED -> entry(out, "Angaben", change.after());
+      case REMOVED -> entry(out, "Bisher", change.before());
       case CHANGED -> {
         if (change.before() instanceof List<?> || change.after() instanceof List<?>) {
           List<String> before = strings(change.before());
@@ -279,22 +280,22 @@ public final class ManifestDeltaRenderer {
           List<String> added = after.stream().filter(v -> !before.contains(v)).toList();
           List<String> removed = before.stream().filter(v -> !after.contains(v)).toList();
           if (!added.isEmpty()) {
-            item(out, "Hinzu", value(change.field(), added));
+            item(out, "  ", "Hinzu", change.field(), added);
           }
           if (!removed.isEmpty()) {
-            item(out, "Entfällt", value(change.field(), removed));
+            item(out, "  ", "Entfällt", change.field(), removed);
           }
           if (added.isEmpty() && removed.isEmpty()) {
-            item(out, "Vorher", value(change.field(), change.before()));
-            item(out, "Nachher", value(change.field(), change.after()));
+            item(out, "  ", "Vorher", change.field(), change.before());
+            item(out, "  ", "Nachher", change.field(), change.after());
           }
         } else {
-          item(out, "Vorher", value(change.field(), change.before()));
-          item(out, "Nachher", value(change.field(), change.after()));
+          item(out, "  ", "Vorher", change.field(), change.before());
+          item(out, "  ", "Nachher", change.field(), change.after());
         }
       }
     }
-    item(out, "Begründung", FactSheetRenderer.text(assessment.reason()));
+    out.append("  - Begründung: ").append(FactSheetRenderer.text(assessment.reason())).append('\n');
     out.append("  - VVT anpassen: ")
         .append(yesNo(assessment.vvt()))
         .append(" · DSFA überprüfen: ")
@@ -363,22 +364,44 @@ public final class ManifestDeltaRenderer {
         : noun + " „" + FactSheetRenderer.text(change.title()) + "“ (" + id + ")";
   }
 
-  private static String summaryOf(String section, Object entry) {
-    if (!(entry instanceof Map<?, ?> fields)) {
-      return NONE;
+  /** Every field of an added or removed entry, in the order of the labels, as sub-items. */
+  private static void entry(StringBuilder out, String name, Object entry) {
+    if (!(entry instanceof Map<?, ?> fields) || fields.isEmpty()) {
+      out.append("  - ").append(name).append(": ").append(NONE).append('\n');
+      return;
     }
-    List<String> parts = new ArrayList<>();
-    for (String field : SUMMARY_FIELDS.getOrDefault(section, List.of())) {
-      Object value = fields.get(field);
-      if (value != null) {
-        parts.add(label(field) + ": " + value(field, value));
-      }
-    }
-    return parts.isEmpty() ? NONE : String.join("; ", parts);
+    out.append("  - ").append(name).append(":\n");
+    List<String> order = List.copyOf(FIELD_LABELS.keySet());
+    fields.keySet().stream()
+        .map(String::valueOf)
+        .sorted(
+            Comparator.comparingInt(
+                    (String field) -> {
+                      int rank = order.indexOf(baseName(field));
+                      return rank < 0 ? order.size() : rank;
+                    })
+                .thenComparing(Comparator.naturalOrder()))
+        .forEach(field -> item(out, "    ", label(field), field, fields.get(field)));
   }
 
-  private static void item(StringBuilder out, String name, String value) {
-    out.append("  - ").append(name).append(": ").append(value).append('\n');
+  /**
+   * One line {@code - name: value}; a list of more than one value continues as a nested list, one
+   * value per line.
+   */
+  private static void item(
+      StringBuilder out, String indent, String name, String field, Object value) {
+    out.append(indent).append("- ").append(name).append(':');
+    List<String> values = values(field, value);
+    if (values.size() == 1) {
+      out.append(' ').append(values.getFirst()).append('\n');
+      return;
+    }
+    out.append('\n');
+    values.forEach(v -> out.append(indent).append("  - ").append(v).append('\n'));
+  }
+
+  private static String baseName(String field) {
+    return field.contains("].") ? field.substring(field.indexOf("].") + 2) : field;
   }
 
   /** The German label of a field path. */
@@ -394,22 +417,18 @@ public final class ManifestDeltaRenderer {
     return FIELD_LABELS.getOrDefault(field, FactSheetRenderer.code(field));
   }
 
-  private static String value(String field, Object value) {
+  /** The rendered values of a field: one for a scalar, one per item for a list. */
+  private static List<String> values(String field, Object value) {
     if (value == null) {
-      return "nicht angegeben";
+      return List.of("nicht angegeben");
     }
-    String name = field.contains("].") ? field.substring(field.indexOf("].") + 2) : field;
+    String name = baseName(field);
     if (value instanceof List<?> list) {
-      if (list.isEmpty()) {
-        return "keine";
-      }
-      return list.stream()
-          .map(item -> scalar(name, String.valueOf(item)))
-          .collect(
-              Collectors.joining(
-                  CODE_FIELDS.contains(name) || name.endsWith("Columns") ? ", " : "; "));
+      return list.isEmpty()
+          ? List.of("keine")
+          : list.stream().map(item -> scalar(name, String.valueOf(item))).toList();
     }
-    return scalar(name, String.valueOf(value));
+    return List.of(scalar(name, String.valueOf(value)));
   }
 
   private static String scalar(String field, String value) {
@@ -548,30 +567,6 @@ public final class ManifestDeltaRenderer {
     labels.put("assessesPersons", "Bewertung oder Profiling von Personen");
     labels.put("labelling", "Kennzeichnung nach Art. 50 KI-VO");
     labels.put("prompts", "System-Prompts");
-    return Map.copyOf(labels);
-  }
-
-  private static Map<String, List<String>> summaryFields() {
-    return Map.of(
-        "data",
-        List.of("personalReference", "purpose", "visibility", "retention.rule"),
-        "nonPersonalTables",
-        List.of("columns"),
-        "auditEvents",
-        List.of("trigger", "recordFields"),
-        "roles",
-        List.of("seesAboutOthers"),
-        "capabilities",
-        List.of("seesAboutOthers"),
-        "settings",
-        List.of("defaultValue", "effect"),
-        "prompts",
-        List.of("purpose"),
-        "dataFlows",
-        List.of("target", "data", "switchOff"),
-        "aiFunctions",
-        List.of("purpose", "outputKind", "assessesPersons"),
-        ManifestDelta.AREAS,
-        List.of("title"));
+    return Collections.unmodifiableMap(labels);
   }
 }

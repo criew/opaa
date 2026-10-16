@@ -109,7 +109,14 @@ public final class StageRules {
       case "data" ->
           personal(entry)
               ? zustimmung("Z1", "Neue personenbezogene Daten.", true, false)
-              : bagatelle("Neue Daten ohne Personenbezug.");
+              : hasTable(entry)
+                  ? bagatelle("Neue Tabelle ohne Personenbezug.")
+                  : undecided(
+                      List.of(),
+                      "Neue Daten ohne Personenbezug außerhalb der Datenbank; die Bagatell-Liste"
+                          + " nennt nur Tabellen und Spalten.",
+                      true,
+                      false);
       case "nonPersonalTables" -> bagatelle("Neue Tabelle ohne Personenbezug.");
       case "auditEvents" ->
           zustimmung("Z1", "Neues Protokollereignis: Es hält fest, was Personen tun.", true, true);
@@ -267,7 +274,13 @@ public final class StageRules {
           yield anzeige("Ein Zugriffsweg entfällt.", false);
         }
         if (list.added().contains("EXPORT")) {
-          yield zustimmung("Z3", "Neuer Export.", true, false);
+          yield list.added().size() > 1
+              ? zustimmung(
+                  List.of("Z2", "Z3"),
+                  "Neuer Export und weiterer Zugriffsweg: Die Daten werden auf weiterem Weg sichtbar.",
+                  true,
+                  false)
+              : zustimmung("Z3", "Neuer Export.", true, false);
         }
         yield zustimmung(
             "Z2", "Neuer Zugriffsweg: Die Daten werden auf weiterem Weg sichtbar.", false, false);
@@ -301,6 +314,9 @@ public final class StageRules {
             before == null ? null : DurationReading.approximateSeconds(String.valueOf(before), key);
         Long to =
             after == null ? null : DurationReading.approximateSeconds(String.valueOf(after), key);
+        if (from != null && from.equals(to)) {
+          return bagatelle("Gleiche Länge der Frist in anderer Schreibweise.");
+        }
         if (from != null && to != null) {
           return to > from
               ? zustimmung("Z4", "Längere Frist.", true, false)
@@ -355,7 +371,13 @@ public final class StageRules {
   private static Assessment dataFlow(String field) {
     return switch (field) {
       case "target" -> zustimmung("Z5", "Neues Ziel eines bestehenden Datenflusses.", true, true);
-      case "group" -> bagatelle("Nur die Gruppe im Übersichtsbild ändert sich.");
+      case "group" ->
+          undecided(
+              List.of("Z5"),
+              "Die Art des Gegenübers (Gruppe im Übersichtsbild) ändert sich; ob damit ein anderes"
+                  + " Ziel gemeint ist, lässt sich aus dem Manifest nicht ablesen.",
+              false,
+              false);
       case "data" ->
           undecided(
               List.of("Z5"),
@@ -393,6 +415,10 @@ public final class StageRules {
                 e.getKey().endsWith(".personalColumns")
                     && e.getValue() instanceof List<?> columns
                     && !columns.isEmpty());
+  }
+
+  private static boolean hasTable(Map<String, Object> entry) {
+    return entry.keySet().stream().anyMatch(field -> field.startsWith("tables["));
   }
 
   private static String lastSegment(String key) {

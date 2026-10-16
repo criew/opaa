@@ -513,21 +513,24 @@ redaktionell sein kann.
 | neues Datum mit Personenbezug, neue personenbezogene Spalte, stärkerer Personenbezug | Zustimmung Z1 | ja | — |
 | neues Protokollereignis, neues Feld im Protokollsatz | Zustimmung Z1 | ja | bei neuem Ereignis |
 | neue Rolle oder Fähigkeit; weitere Rolle in Sichtbarkeit oder Lesern; neuer Zugriffsweg außer Export | Zustimmung Z2 | ja, außer beim Zugriffsweg | bei neuer Rolle |
-| neuer Zugriffsweg Export | Zustimmung Z3 | ja | — |
+| neuer Zugriffsweg Export (zusammen mit einem weiteren Zugriffsweg Z2 und Z3) | Zustimmung Z3 | ja | — |
 | längere Frist (Standardwert einer Fristeinstellung) | Zustimmung Z4 | ja | — |
 | neuer Datenfluss, neues Ziel eines Datenflusses, geänderte Adresse einer Modellrolle oder eines Konnektors | Zustimmung Z5 (Adresse auch Z7) | ja | ja |
 | neue KI-Funktion; geänderte Ausgabeart, Interaktion, Bewertung von Personen, Kennzeichnung oder Prompts einer KI-Funktion | Zustimmung Z6 | — | — |
 | neue Voreinstellung (als Frist auch Z4), geänderter Standardwert oder geänderte Helm-Voreinstellung | Zustimmung Z7 | bei neuer Frist | — |
-| neu formulierte Auswertungen, Frist, Zweck, Löschweg, Sichtbarkeit, übermittelte Daten, Sicht einer Rolle; neuer System-Prompt; entfallene Voreinstellung; jede andere Angabe ohne eigene Regel | Zustimmung, offen | bei Zweck, Frist, Löschweg, Sichtbarkeit, übermittelten Daten, Sicht einer Rolle | beim Weg über den Ausgangsproxy |
+| neu formulierte Auswertungen, Frist, Zweck, Löschweg, Sichtbarkeit, übermittelte Daten, Sicht einer Rolle; geänderte Gruppe eines Datenflusses (Z5); neuer System-Prompt; neues Datum ohne Personenbezug und ohne Tabelle; entfallene Voreinstellung; jede andere Angabe ohne eigene Regel | Zustimmung, offen | bei Zweck, Frist, Löschweg, Sichtbarkeit, übermittelten Daten, Sicht einer Rolle | beim Weg über den Ausgangsproxy |
 | kürzere Frist, entfallene Daten, Spalten, Ereignisse, Rollen, Datenflüsse, KI-Funktionen, Prompts oder Zugriffswege, eingeschränkte Sichtbarkeit, schwächerer Personenbezug | Anzeige | außer bei Spalten ohne Personenbezug, Zugriffswegen, KI-Funktionen und Prompts | — |
 | geänderter System-Prompt (Prüfsumme), geändertes Standardmodell bei gleicher Adresse | Anzeige | — | — |
-| neue Tabelle oder Spalte ohne Personenbezug, neues Datum ohne Personenbezug | Bagatelle | — | — |
-| nur Bezeichnung, Leerzeichen, Bereich des Eintrags, Gruppe im Übersichtsbild oder Fundstelle eines unveränderten Prompts; neuer oder entfallener Bereich des Manifests | Bagatelle | — | — |
+| neue Tabelle oder Spalte ohne Personenbezug, neues Datum, dessen Tabellen keine personenbezogene Spalte haben | Bagatelle (Liste, Punkt 3: neue Spalte oder Tabelle ohne Personenbezug) | — | — |
+| nur Bezeichnung, Leerzeichen, Bereich des Eintrags oder Fundstelle eines unveränderten Prompts; gleiche Fristlänge in anderer Schreibweise (`P1Y` statt `12` Monate); neuer oder entfallener Bereich des Manifests | Bagatelle (Liste, Punkt 1: redaktionelle Präzisierung ohne inhaltliche Änderung) | — | — |
 
-Die DSFA-Überprüfung schlägt das Werkzeug bei jeder Zustimmung vor. Eine Frist ist eine Einstellung,
-die ein Datum oder Protokollereignis als Frist nennt; ihre Länge vergleicht es über die Einheit des
-Werts oder des Schlüssels, ein Wert ohne Länge oder von 0 ist offen. Ein neuer Konfigurationsschlüssel
-ohne Datenwirkung steht nicht im Manifest und erscheint deshalb nicht im Delta.
+Die DSFA-Überprüfung schlägt das Werkzeug bei jeder Zustimmung vor. Listen (Spalten, Rollen,
+Zugriffswege, Einstellungen, Prompts) vergleicht es ohne Reihenfolge; eine bloße Umsortierung ist keine
+Änderung. Eine Frist ist eine Einstellung, die ein Datum oder Protokollereignis als Frist nennt; ihre
+Länge vergleicht es über die Einheit des Werts oder des Schlüssels (ein Jahr 365 Tage, ein Monat ein
+Zwölftel davon), ein Wert ohne Länge oder von 0 ist offen. Punkt 2 der Bagatell-Liste (neuer
+Konfigurationsschlüssel ohne Datenwirkung) erreicht das Werkzeug nicht: Ein solcher Schlüssel steht
+nicht im Manifest und erscheint deshalb nicht im Delta.
 
 ### Instanzbezug
 

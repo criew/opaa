@@ -195,15 +195,21 @@ public record ManifestDelta(Origin from, Origin to, List<Change> changes) {
     };
   }
 
-  /** An absent list and an empty one are the same; everything else compares by value. */
+  /**
+   * An absent list and an empty one are the same, and lists compare regardless of order: every list
+   * of the manifest (columns, roles, access paths, settings, prompts) is a set in its meaning.
+   */
   private static boolean same(Object before, Object after) {
-    if (before == null && after instanceof List<?> list) {
-      return list.isEmpty();
-    }
-    if (after == null && before instanceof List<?> list) {
-      return list.isEmpty();
+    if (before instanceof List<?> || after instanceof List<?>) {
+      return sorted(before).equals(sorted(after));
     }
     return Objects.equals(before, after);
+  }
+
+  private static List<String> sorted(Object value) {
+    return value instanceof List<?> list
+        ? list.stream().map(String::valueOf).sorted().toList()
+        : value == null ? List.of() : List.of(String.valueOf(value));
   }
 
   private static String title(String id, Map<String, Object> entry) {

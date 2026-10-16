@@ -448,6 +448,18 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(violation -> assertThat(violation).contains("ProbeConnector.onSourceChanged("));
   }
 
+  /** A library class starts a process and calls {@code Runtime#exec}; the manifest delta may. */
+  @Test
+  void aProcessStartedOutsideTheManifestDeltaIsReported() {
+    Scenario scenario = new Scenario("processstart");
+
+    assertThat(scenario.violations(ModularArchitecture::onlyTheManifestDeltaStartsProcesses))
+        .isNotEmpty()
+        .allSatisfy(violation -> assertThat(violation).contains("library.Shell"))
+        .anySatisfy(violation -> assertThat(violation).contains("ProcessBuilder"))
+        .anySatisfy(violation -> assertThat(violation).contains("Runtime.exec("));
+  }
+
   /**
    * A sweep deletes documents, also by method reference and through a modifying query that deletes
    * under another name; the document service may, and a modifying update is no deletion.

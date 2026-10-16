@@ -1,12 +1,11 @@
 package io.opaa.compliance;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -41,6 +42,11 @@ public record ManifestSnapshot(
     Origin origin,
     SortedMap<String, String> areas,
     SortedMap<String, SortedMap<String, SortedMap<String, Object>>> sections) {
+
+  /** The commit of a version that has none or states none that can be trusted. */
+  public static final String UNKNOWN = "unbekannt";
+
+  private static final Pattern COMMIT = Pattern.compile("[0-9a-f]{7,64}");
 
   /** Path of the area files in the repository, relative to its top level. */
   public static final String REPOSITORY_PATH = "backend/src/main/resources/compliance/manifest";
@@ -80,7 +86,7 @@ public record ManifestSnapshot(
       throw new UncheckedIOException("cannot read " + directory, e);
     }
     Origin origin =
-        new Origin("directory", directory.toString(), "Arbeitsstand", commit, !files.isEmpty());
+        new Origin("directory", displayPath(directory), "Arbeitsstand", commit, !files.isEmpty());
     return fromYaml(origin, files);
   }
 
@@ -124,9 +130,9 @@ public record ManifestSnapshot(
     Origin origin =
         new Origin(
             "json",
-            file.toString(),
-            text(root.path("opaaVersion"), "unbekannt"),
-            text(root.path("commit"), "unbekannt"),
+            displayPath(file),
+            text(root.path("opaaVersion"), UNKNOWN),
+            commit(text(root.path("commit"), UNKNOWN)),
             true);
     SortedMap<String, String> areas = new TreeMap<>();
     manifest
@@ -262,19 +268,54 @@ public record ManifestSnapshot(
     return result;
   }
 
+  /**
+   * A commit id as the JSON form states it; anything else, which could pass as option, is unknown.
+   */
+  private static String commit(String value) {
+    return COMMIT.matcher(value).matches() ? value : UNKNOWN;
+  }
+
+  /**
+   * {@code path} relative to the working directory when it lies below it, else its file name, so
+   * the output names no machine-specific absolute path.
+   */
+  static String displayPath(Path path) {
+    Path absolute = path.toAbsolutePath().normalize();
+    Path base = Path.of("").toAbsolutePath().normalize();
+    if (absolute.startsWith(base) && !absolute.equals(base)) {
+      return base.relativize(absolute).toString().replace('\\', '/');
+    }
+    Path name = absolute.getFileName();
+    return name == null ? absolute.toString() : name.toString();
+  }
+
   private static String text(JsonNode node, String fallback) {
     return node.isString() && !node.asString().isBlank() ? node.asString() : fallback;
   }
 
-  /** The {@code git} commands the delta needs, run in the repository containing a directory. */
+  /**
+   * The {@code git} commands the delta needs, run in the repository containing a directory. Every
+   * value from outside (reference, commit) follows {@code --end-of-options}, so none is read as an
+   * option.
+   */
   static final class Git {
+
+    /** How long one {@code git} command may take. */
+    private static final Duration TIMEOUT = Duration.ofMinutes(2);
 
     private Git() {}
 
     /** The commit {@code ref} points to; fails for an unknown reference. */
     static String resolve(Path repository, String ref) {
       try {
-        return run(repository, "rev-parse", "--verify", "--quiet", ref + "^{commit}").strip();
+        return run(
+                repository,
+                "rev-parse",
+                "--verify",
+                "--quiet",
+                "--end-of-options",
+                ref + "^{commit}")
+            .strip();
       } catch (IllegalStateException e) {
         throw new IllegalArgumentException(
             "unknown Git reference '" + ref + "' in " + repository + " (fetched with tags?)", e);
@@ -286,41 +327,76 @@ public record ManifestSnapshot(
       try {
         return resolve(repository, "HEAD");
       } catch (IllegalArgumentException | IllegalStateException | UncheckedIOException e) {
-        return "unbekannt";
+        return UNKNOWN;
       }
     }
 
     /** The subjects of the commits reachable from {@code to} but not from {@code from}. */
     static List<String> subjects(Path repository, String from, String to) {
-      return run(repository, "log", "--format=%s", from + ".." + to).lines().toList();
+      return run(repository, "log", "--format=%s", "--end-of-options", from + ".." + to)
+          .lines()
+          .toList();
     }
 
+    /**
+     * Runs {@code git -C repository arguments}; output and errors go to temporary files, so neither
+     * stream can fill up and block the process, and a command past {@link #TIMEOUT} is killed.
+     */
     static String run(Path repository, String... arguments) {
       List<String> command = new ArrayList<>(List.of("git", "-C", repository.toString()));
       command.addAll(List.of(arguments));
+      Path out = null;
+      Path err = null;
       try {
-        Process process = new ProcessBuilder(command).start();
-        process.getOutputStream().close();
-        String out = read(process.getInputStream());
-        String err = read(process.getErrorStream());
-        int exit = process.waitFor();
-        if (exit != 0) {
+        out = Files.createTempFile("opaa-git", ".out");
+        err = Files.createTempFile("opaa-git", ".err");
+        Process process =
+            new ProcessBuilder(command)
+                .redirectInput(ProcessBuilder.Redirect.from(nullDevice()))
+                .redirectOutput(out.toFile())
+                .redirectError(err.toFile())
+                .start();
+        if (!process.waitFor(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
+          process.destroyForcibly();
           throw new IllegalStateException(
-              String.join(" ", command) + " failed (" + exit + "): " + err.strip());
+              String.join(" ", command) + " timed out after " + TIMEOUT);
         }
-        return out;
+        if (process.exitValue() != 0) {
+          throw new IllegalStateException(
+              String.join(" ", command)
+                  + " failed ("
+                  + process.exitValue()
+                  + "): "
+                  + Files.readString(err, StandardCharsets.UTF_8).strip());
+        }
+        return Files.readString(out, StandardCharsets.UTF_8);
       } catch (IOException e) {
         throw new UncheckedIOException("cannot run " + String.join(" ", command), e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new IllegalStateException("interrupted: " + String.join(" ", command), e);
+      } finally {
+        deleteQuietly(out);
+        deleteQuietly(err);
       }
     }
 
-    private static String read(InputStream in) throws IOException {
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      in.transferTo(out);
-      return out.toString(StandardCharsets.UTF_8);
+    private static java.io.File nullDevice() {
+      return new java.io.File(
+          System.getProperty("os.name").toLowerCase(java.util.Locale.ROOT).startsWith("windows")
+              ? "NUL"
+              : "/dev/null");
+    }
+
+    private static void deleteQuietly(Path file) {
+      if (file == null) {
+        return;
+      }
+      try {
+        Files.deleteIfExists(file);
+      } catch (IOException e) {
+        file.toFile().deleteOnExit();
+      }
     }
   }
 }

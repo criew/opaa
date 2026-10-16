@@ -69,6 +69,38 @@ class ManifestSnapshotTest {
   }
 
   @Test
+  void aCommitOfTheJsonFormThatIsNoCommitIdIsUnknownAndTheFileIsNamedWithoutItsPath()
+      throws IOException {
+    Path json = dir.resolve("faktenblaetter.json");
+    Files.writeString(
+        json,
+        """
+        {"opaaVersion": "1.0.0", "commit": "--output=%s", "manifest": {"areas": {}}}
+        """
+            .formatted(dir.resolve("pwned")));
+
+    ManifestSnapshot snapshot = ManifestSnapshot.fromJson(json);
+
+    assertThat(snapshot.origin().commit()).isEqualTo(ManifestSnapshot.UNKNOWN);
+    assertThat(snapshot.origin().source()).isEqualTo("faktenblaetter.json");
+  }
+
+  @Test
+  void aValueThatLooksLikeAnOptionIsNeverReadAsOneByGit() throws IOException {
+    Path repository = GitFixture.repository(dir.resolve("repo"));
+    Path pwned = dir.resolve("pwned");
+
+    assertThatThrownBy(() -> ManifestSnapshot.Git.subjects(repository, "--output=" + pwned, "v3"))
+        .isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> ManifestSnapshot.fromGit(repository, "--output=" + pwned))
+        .isInstanceOf(IllegalArgumentException.class);
+    try (var files = Files.list(dir)) {
+      assertThat(files.map(file -> file.getFileName().toString()))
+          .noneMatch(f -> f.startsWith("pwned"));
+    }
+  }
+
+  @Test
   void anUnknownReferenceFails() throws IOException {
     Path repository = GitFixture.repository(dir.resolve("repo"));
 

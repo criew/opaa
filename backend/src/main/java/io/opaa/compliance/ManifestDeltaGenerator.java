@@ -125,7 +125,7 @@ public final class ManifestDeltaGenerator {
       Path repository, ManifestSnapshot from, ManifestSnapshot to) {
     String fromCommit = from.origin().commit();
     String toCommit = to.origin().commit();
-    if (fromCommit.equals("unbekannt") || toCommit.equals("unbekannt")) {
+    if (fromCommit.equals(ManifestSnapshot.UNKNOWN) || toCommit.equals(ManifestSnapshot.UNKNOWN)) {
       return null;
     }
     try {

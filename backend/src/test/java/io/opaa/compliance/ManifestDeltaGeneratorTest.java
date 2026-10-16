@@ -139,6 +139,43 @@ class ManifestDeltaGeneratorTest {
   }
 
   @Test
+  void aForgedCommitInTheJsonFormNeitherReachesGitNorNarrowsTheList() throws IOException {
+    Path repository = GitFixture.repository(dir.resolve("repo"));
+    Path pwned = dir.resolve("pwned");
+    Path json = dir.resolve("faktenblaetter.json");
+    Files.writeString(
+        json,
+        """
+        {"opaaVersion": "1.0.0", "commit": "--output=%s", "manifest": {"areas": {}}}
+        """
+            .formatted(pwned));
+    Path prs = dir.resolve("prs.json");
+    Files.writeString(prs, "[{\"number\": 12, \"title\": \"Manifest\", \"url\": \"\"}]");
+    Path out = dir.resolve("delta");
+
+    run(
+        "--out",
+        out.toString(),
+        "--repo",
+        repository.toString(),
+        "--from-json",
+        json.toString(),
+        "--to-ref",
+        "v3",
+        "--labelled-prs",
+        prs.toString());
+
+    try (var files = Files.list(dir)) {
+      assertThat(files.map(file -> file.getFileName().toString()))
+          .noneMatch(f -> f.startsWith("pwned"));
+    }
+    JsonNode result =
+        JSON.readTree(Files.readString(out.resolve(ManifestDeltaGenerator.JSON_FILE)));
+    assertThat(result.path("from").path("commit").asString()).isEqualTo("unbekannt");
+    assertThat(result.path("labelledPullRequests").path("filteredByRange").asBoolean()).isFalse();
+  }
+
+  @Test
   void needsExactlyOneSourcePerSide() {
     assertThatThrownBy(() -> run("--out", dir.toString(), "--to-ref", "v1"))
         .isInstanceOf(IllegalArgumentException.class)

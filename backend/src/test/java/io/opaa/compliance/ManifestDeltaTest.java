@@ -76,6 +76,25 @@ class ManifestDeltaTest {
     }
 
     @Test
+    void newDatumWithoutPersonalReferenceAndWithoutTableIsUndecided() {
+      Change change =
+          only(
+              BASE,
+              edit(
+                  BASE,
+                  "nonPersonalTables:",
+                  """
+                    - id: metrics
+                      title: Kennzahlen
+                      personalReference: NONE
+                      tables: []
+                  nonPersonalTables:"""));
+
+      assertProposal(change, Stage.ZUSTIMMUNG);
+      assertThat(change.assessment().undecided()).isTrue();
+    }
+
+    @Test
     void removedDatumIsANotice() {
       String without =
           BASE.substring(0, BASE.indexOf("  - id: accounts"))
@@ -111,6 +130,35 @@ class ManifestDeltaTest {
       assertProposal(
           only(BASE, edit(BASE, "nonPersonalColumns: [id]", "nonPersonalColumns: [created_at]")),
           Stage.ANZEIGE);
+    }
+
+    @Test
+    void reorderedListsAreNoChange() {
+      String reordered =
+          edit(
+              BASE,
+              "personalColumns: [subject, email]",
+              "personalColumns: [email, subject]",
+              "accessPaths: [UI, API, DATABASE]",
+              "accessPaths: [DATABASE, UI, API]",
+              "recordFields: [Zeitpunkt, handelnde Person]",
+              "recordFields: [handelnde Person, Zeitpunkt]",
+              "[id, retention_months]",
+              "[retention_months, id]");
+
+      assertThat(delta(BASE, reordered).changes()).isEmpty();
+    }
+
+    @Test
+    void exportAndApiTogetherMeetZ2AndZ3() {
+      assertProposal(
+          only(
+              BASE,
+              edit(
+                  BASE, "accessPaths: [UI, DATABASE]", "accessPaths: [UI, API, EXPORT, DATABASE]")),
+          Stage.ZUSTIMMUNG,
+          "Z2",
+          "Z3");
     }
 
     @Test
@@ -290,6 +338,14 @@ class ManifestDeltaTest {
       assertThat(change.after()).isEqualTo("48");
       assertProposal(change, Stage.ZUSTIMMUNG, "Z4");
       assertThat(change.assessment().vvt()).isTrue();
+    }
+
+    @Test
+    void theSameLengthWrittenDifferentlyIsATrifle() {
+      assertProposal(
+          only(BASE, edit(BASE, "defaultValue: \"36\"", "defaultValue: \"P3Y\"")), Stage.BAGATELLE);
+      assertThat(DurationReading.approximateSeconds("P1Y", "x"))
+          .isEqualTo(DurationReading.approximateSeconds("P12M", "x"));
     }
 
     @Test
@@ -473,7 +529,7 @@ class ManifestDeltaTest {
     }
 
     @Test
-    void newTargetNeedsConsentZ5AndANewGroupIsATrifle() {
+    void newTargetNeedsConsentZ5AndANewGroupIsUndecided() {
       assertProposal(
           only(
               BASE,
@@ -483,7 +539,9 @@ class ManifestDeltaTest {
                   "target: Ein Cloud-Dienst")),
           Stage.ZUSTIMMUNG,
           "Z5");
-      assertProposal(only(BASE, edit(BASE, "group: MODEL", "group: CONNECTOR")), Stage.BAGATELLE);
+      Change group = only(BASE, edit(BASE, "group: MODEL", "group: CONNECTOR"));
+      assertProposal(group, Stage.ZUSTIMMUNG, "Z5");
+      assertThat(group.assessment().undecided()).isTrue();
     }
 
     @Test

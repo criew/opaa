@@ -481,6 +481,12 @@ public final class ModularArchitecture {
    * library delete a library together with its sync state, and the cleanup service removes inside a
    * run.
    */
+  /**
+   * The only main classes that start operating system processes: the Git reader of the manifest
+   * delta, which a build task runs and the application never does.
+   */
+  static final Set<String> PROCESS_STARTERS = Set.of("compliance.ManifestSnapshot");
+
   static final Set<String> DOCUMENT_DELETERS =
       Set.of(
           "library.LibraryDocumentService",
@@ -1651,6 +1657,31 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Any use of {@code ProcessBuilder} (also its nested types) or a call of {@code Runtime#exec}
+   * outside {@link #PROCESS_STARTERS} and the classes nested in them.
+   */
+  ArchRule onlyTheManifestDeltaStartsProcesses() {
+    return noClasses()
+        .that(
+            DescribedPredicate.describe(
+                "are not one of " + PROCESS_STARTERS,
+                javaClass -> !PROCESS_STARTERS.contains(relativeName(topLevel(javaClass)))))
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "start an operating system process",
+                access -> {
+                  String owner = access.getTargetOwner().getName();
+                  return owner.startsWith("java.lang.ProcessBuilder")
+                      || (owner.equals("java.lang.Runtime") && access.getName().equals("exec"));
+                }))
+        .because(
+            "the application starts no processes; only the manifest delta reads Git history, run"
+                + " by a build task")
+        .allowEmptyShould(true);
+  }
+
+  /**
    * Calls of a {@code delete…} method of {@link #DOCUMENT_REPOSITORY}, or of one whose modifying
    * query deletes, also by method reference, outside {@link #DOCUMENT_DELETERS} and the classes
    * nested in them.
@@ -1931,6 +1962,7 @@ public final class ModularArchitecture {
         privateAssetsAreAuditedNeutrally(),
         theProfileSupportIsReadInOnePlace(),
         onlyTheKnownClassesDeleteDocuments(),
+        onlyTheManifestDeltaStartsProcesses(),
         onlyTheRunRemovesThroughTheCleanupService(),
         theSecretPortStaysWithTheCore(),
         theConnectorReleaseIsDecidedInConnections(),

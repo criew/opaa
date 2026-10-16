@@ -27,9 +27,12 @@ final class DurationReading {
     {"Sekunde", "Sekunden"}
   };
 
-  /** Seconds per unit of {@link #ISO_UNITS}, a month as 30 days and a year as 365. */
+  /**
+   * Seconds per unit of {@link #ISO_UNITS}: a year as 365 days and a month as a twelfth of it, so
+   * that {@code P1Y} and {@code P12M} are equally long.
+   */
   private static final long[] ISO_SECONDS = {
-    365L * 86_400, 30L * 86_400, 7L * 86_400, 86_400, 3_600, 60, 1
+    365L * 86_400, 365L * 86_400 / 12, 7L * 86_400, 86_400, 3_600, 60, 1
   };
 
   private static final Pattern SHORT = Pattern.compile("(\\d+)(ms|s|m|h|d)");
@@ -82,8 +85,8 @@ final class DurationReading {
 
   /**
    * The approximate length of {@code value} of the setting {@code key} in seconds, for comparing
-   * two values of one setting (a month counts 30 days, a year 365), or {@code null} if it has no
-   * reading or is not positive, as zero often stands for "no limit".
+   * two values of one setting (a year counts 365 days, a month a twelfth of it), or {@code null} if
+   * it has no reading or is not positive, as zero often stands for "no limit".
    */
   static Long approximateSeconds(String value, String key) {
     String trimmed = value.strip();

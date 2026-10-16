@@ -8,4 +8,4 @@ permission:
 
 `AGENTS.md`, `docs/AGENT-ORGANIZATION.md` und `agents/roles/behoerdenkontakt.md` vor dem Start lesen.
 
-Der gemeinsame Rollenvertrag ist bindend. Sie lesen und prüfen; einzige schreibende Handlungen sind `gh issue create` und `gh issue comment` für Ihre Befunde — niemals Dateien im Repository ändern, PRs öffnen oder mergen. Ohne Webzugriff kennzeichnen Sie jede Fundstelle als nicht gegen den Normtext geprüft.
+Der gemeinsame Rollenvertrag ist bindend. Sie lesen und prüfen; einzige schreibende Handlungen sind `gh issue create` und `gh issue comment` für Ihre Befunde, `./gradlew complianceDocs` und `./gradlew complianceDelta` (nur Build-Ausgabe unter `backend/build/`) und das Ablegen der PR-Liste unter `/tmp/data-impact-prs.json` — niemals Dateien im Repository ändern, PRs öffnen oder mergen. Ohne Webzugriff kennzeichnen Sie jede Fundstelle als nicht gegen den Normtext geprüft.

@@ -53,7 +53,19 @@ class ManifestDeltaRendererTest {
         .contains(
             "### Protokollereignis `LIBRARY_DELETED`\n\n- **Neu**: Vorschlag **Zustimmung** (Z1)\n")
         .contains(
-            "  - Angaben: Auslöser: Gelöscht; Felder des Protokollsatzes: Zeitpunkt; handelnde Person\n")
+            "  - Angaben:\n    - Bereich: `test`\n    - Zweck: Nachweis des Verwaltungshandelns\n"
+                + "    - Personenbezug: Beschäftigtendaten\n")
+        .contains(
+            "    - Speicherort: Anwendungsdatenbank\n"
+                + "    - Frist: Voreinstellung 36 Monate\n"
+                + "    - Einstellung der Frist: `audit_retention_settings.retention_months`\n"
+                + "    - Sichtbarkeit: AUDITOR\n"
+                + "    - Zugriffsweg:\n      - Oberfläche\n      - Datenbank\n"
+                + "    - Löschweg: Monatlicher Lauf\n"
+                + "    - Mögliche Auswertungen: Wer hat wann was getan\n")
+        .contains(
+            "    - Auslöser: Gelöscht\n"
+                + "    - Felder des Protokollsatzes:\n      - Zeitpunkt\n      - handelnde Person\n")
         .contains(
             "- **Sichtbarkeit geändert**: Vorschlag **Zustimmung** (Z2, Zuordnung offen)\n  - Hinzu: AUDITOR\n  - Entfällt: SYSTEM_ADMIN\n");
   }
@@ -79,6 +91,23 @@ class ManifestDeltaRendererTest {
   }
 
   @Test
+  void anAddedDataFlowShowsEveryField() {
+    String markdown =
+        ManifestDeltaRenderer.markdown(
+            delta(edit(BASE, "  - id: chat-model", "  - id: other-model"), BASE),
+            LabelledChanges.notQueried());
+
+    assertThat(markdown)
+        .contains("### Datenfluss `chat-model`\n\n- **Neu**")
+        .contains("    - Gruppe im Übersichtsbild: Modelle\n")
+        .contains("    - Über den Ausgangsproxy: ja\n")
+        .contains("    - Ziel: Das aktive Chat-Modell der Systemverwaltung\n")
+        .contains("    - Auslöser: Jede Chat-Anfrage\n")
+        .contains("    - Abschaltbarkeit: Nicht abschaltbar\n")
+        .contains("    - Einstellungen: `spring.ai.openai.chat.model`\n");
+  }
+
+  @Test
   void labelledPullRequestsAreListed() {
     String markdown =
         ManifestDeltaRenderer.markdown(
@@ -100,7 +129,7 @@ class ManifestDeltaRendererTest {
     JsonNode root = JsonMapper.builder().build().readTree(json);
     assertThat(root.path("proposalNotice").asString())
         .isEqualTo(ManifestDeltaRenderer.PROPOSAL_NOTICE);
-    assertThat(root.path("summary").path("stages").path("BAGATELLE").asInt()).isEqualTo(1);
+    assertThat(root.path("summary").path("stages").path("ZUSTIMMUNG").asInt()).isEqualTo(1);
     JsonNode change = root.path("changes").get(0);
     assertThat(change.path("group").asString()).isEqualTo("DATA_FLOWS");
     assertThat(change.path("section").asString()).isEqualTo("dataFlows");
@@ -108,7 +137,7 @@ class ManifestDeltaRendererTest {
     assertThat(change.path("field").asString()).isEqualTo("group");
     assertThat(change.path("before").asString()).isEqualTo("MODEL");
     assertThat(change.path("after").asString()).isEqualTo("CONNECTOR");
-    assertThat(change.path("assessment").path("stage").asString()).isEqualTo("BAGATELLE");
+    assertThat(change.path("assessment").path("stage").asString()).isEqualTo("ZUSTIMMUNG");
     assertThat(root.path("labelledPullRequests").path("queried").asBoolean()).isFalse();
   }
 }

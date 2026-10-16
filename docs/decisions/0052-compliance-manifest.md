@@ -127,8 +127,9 @@ weil Gradle beim inkrementellen Übersetzen unveränderte Typen ohne Javadoc nac
 nicht als Kette von Einzeldeltas. Eine Version kommt aus Git (Tag oder Commit), aus der JSON-Fassung
 der Faktenblätter oder aus dem Arbeitsstand, ohne Netz. `ManifestSnapshot` liest das Manifest
 schemafrei: Einträge je Abschnitt über ihre Kennung, Felder als Pfad und Wert, `defaults` gemergt,
-nicht validiert; ein Feld, das nur eine Version kennt, ist eine Änderung, eine Version ohne Manifest
-ist leer. Den Stufenvorschlag je Änderung gibt `StageRules`, die einzige Stelle der Stufenregeln im
+nicht validiert; Listen gelten ohne Reihenfolge, ein Feld, das nur eine Version kennt, ist eine
+Änderung, eine Version ohne Manifest ist leer. Git ruft nur `ManifestSnapshot` auf, jeder Wert von
+außen nach `--end-of-options`; `ModularArchitectureTest` lässt sonst keinen Prozessstart zu. Den Stufenvorschlag je Änderung gibt `StageRules`, die einzige Stelle der Stufenregeln im
 Code. Markdown für die Behörde und JSON für Werkzeuge tragen kein Erzeugungsdatum; gleiche Eingaben
 ergeben gleiche Dateien.
 

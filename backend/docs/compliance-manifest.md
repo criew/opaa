@@ -122,7 +122,9 @@ gilt der Arbeitsstand. `-PlabelledPrs=<datei>` nimmt die Ausgabe von
 (Checkout mit Tags, `fetch-depth: 0`), Netz braucht der Lauf nicht
 ([ADR-0052, Entscheidung 10](../../docs/decisions/0052-compliance-manifest.md#10-delta-zwischen-zwei-versionen)).
 
-Das Delta liest das Manifest ohne die Records, Feld für Feld. Wer einen Abschnitt oder ein Feld zum Schema
+Das Delta liest das Manifest ohne die Records, Feld für Feld; Listen vergleicht es ohne Reihenfolge. Git
+startet nur `ManifestSnapshot`, jeder Wert von außen steht nach `--end-of-options`, und ein Commit aus der
+JSON-Fassung zählt nur als Commit-Kennung (`ModularArchitectureTest` lässt keinen anderen Prozessstart zu). Wer einen Abschnitt oder ein Feld zum Schema
 hinzufügt, ordnet es in `StageRules` ein, der einzigen Stelle der Stufenregeln im Code, und gibt ihm in
 `ManifestDeltaRenderer` eine deutsche Bezeichnung; ein Feld ohne Regel wird „Zustimmung, Zuordnung offen“.
 Die Zuordnung steht auch in der

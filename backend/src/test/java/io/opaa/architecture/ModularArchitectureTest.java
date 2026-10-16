@@ -161,6 +161,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void onlyTheManifestDeltaStartsProcesses() {
+    ARCHITECTURE.onlyTheManifestDeltaStartsProcesses().check(mainClasses);
+  }
+
+  @Test
   void onlyTheKnownClassesDeleteDocuments() {
     ARCHITECTURE.onlyTheKnownClassesDeleteDocuments().check(mainClasses);
   }
