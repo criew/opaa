@@ -84,7 +84,7 @@ jobs:
           # Oldest supported Helm 3 (ADR-0042, Entscheidung 1); changes only together with the ADR.
           - v3.8.0
           # renovate: datasource=github-releases depName=helm/helm
-          - v4.3.0
+          - v4.3.1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -189,7 +189,7 @@ jobs:
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           # renovate: datasource=github-releases depName=helm/helm
-          version: v4.3.0
+          version: v4.3.1
 
       # v2.9.0 or later: older releases, which the floating v2 tag still points to, cannot verify the
       # signature of current ct.
