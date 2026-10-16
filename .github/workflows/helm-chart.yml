@@ -2,9 +2,9 @@ name: Helm-Chart
 
 # Checks the chart under deploy/helm/opaa (ADR-0042) so it cannot silently fall behind the images
 # and their configuration. The static check, including the unit test of the alerts, runs on every PR
-# touching the chart; the installation test on kind runs for chart and image changes, nightly, and on
-# a PR labelled "helm-suite" - the opt-in for changes that affect the running chart without touching
-# it.
+# touching the chart; the installation test on kind, followed by the restore drill, runs for chart
+# and image changes, nightly, and on a PR labelled "helm-suite" - the opt-in for changes that affect
+# the running chart without touching it.
 on:
   # No branches filter: stacked PRs (base = another feature branch) must run the checks too.
   pull_request:
@@ -137,8 +137,9 @@ jobs:
       || needs.changes.outputs.install == 'true'
       || (github.event.action == 'labeled' && github.event.label.name == 'helm-suite')) }}
     runs-on: ubuntu-latest
-    # Image builds plus the first backend start with its schema migration.
-    timeout-minutes: 40
+    # Image builds, the first backend start with its schema migration and the restore drill with
+    # two further installations.
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -198,6 +199,13 @@ jobs:
 
       - name: Chart installieren und helm test ausführen
         run: deploy/helm/ci/install-test.sh
+
+      # The restore drill of docs/behoerden/09-betrieb-update/wiederherstellungsprobe.md: backup with
+      # the handbook's commands, restore into a second namespace, checks; results, times and sizes go
+      # to the job summary.
+      - name: Wiederherstellungsprobe
+        timeout-minutes: 30
+        run: deploy/helm/ci/restore-test.sh
 
       # ct prints the logs of the release's pods itself, the evaluation database included; this adds
       # pods and events of the whole cluster. Diagnostics only: a step that failed before the cluster

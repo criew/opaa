@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-16
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -30,21 +30,62 @@ sind darin umgesetzt.
 
 | Feld | Eintrag |
 |---|---|
-| Stand im Projekt | **Noch nicht durchgeführt.** Die automatisierte Probe im Installationstest des Helm-Charts entsteht in [#2840](https://github.com/criew/opaa/issues/2840); bis dahin ist das Verfahren unten nicht durch einen Lauf belegt |
-| Datum der Probe | [JJJJ-MM-TT] |
-| OPAA-Version (Release-Tag, Image-Digests) | [X.Y.Z, sha256:…] |
-| Helm-Chart-Version bzw. Compose-Stand | [X.Y.Z] |
-| Betriebsweg und Ablage | [Kubernetes oder Docker Compose; Erprobungsdatenbank oder eigene PostgreSQL; Volume oder Objektspeicher] |
-| Größe des Bestands | [Datenbank in MB, Originale in MB, Zahl der Dokumente] |
-| RTO-Ist (Beginn der Wiederherstellung bis arbeitsfähig) | [hh:mm] |
-| RPO-Ist (Sicherungszeitpunkt bis simulierter Ausfall) | [hh:mm] |
-| Prüfkriterien P1 bis P12 | [alle erfüllt / Abweichungen siehe unten] |
-| Abweichungen und Folgemaßnahmen | [Beschreibung, Ticket oder Änderung am Notfallkonzept] |
-| Durchgeführt von, abgenommen von | [Namen, Stellen] |
+| Stand im Projekt | **Automatisiert durchgeführt**, mit den Abweichungen unter [Automatisierte Probe im Projekt](#automatisierte-probe-im-projekt); erster grüner Lauf: [Lauf 38857652429, Job 116832643624](https://github.com/criew/opaa/actions/runs/38857652429/job/116832643624) |
+| Datum der Probe | 2026-10-16 |
+| OPAA-Version (Release-Tag, Image-Digests) | Entwicklungsstand `main`, Commit `ef3b795`, Backend `0.0.0-dev`, kein Release; Images aus dem Commit gebaut |
+| Helm-Chart-Version bzw. Compose-Stand | Chart `0.0.0-dev` aus dem Repository |
+| Betriebsweg und Ablage | Kubernetes (kind), Erprobungsdatenbank, Originale auf einem Volume |
+| Größe des Bestands | kleiner Testbestand: drei Dokumente mit je einem Original; Größen von Dump und Originalen siehe Zusammenfassung des Laufs |
+| RTO-Ist (Beginn der Wiederherstellung bis arbeitsfähig) | 59 s bis zum bereiten Backend (`t3 − t0`), 62 s bis zum Abschluss der Prüfungen (`t4 − t0`); davon Originale 35 s, Datenbank 3 s, Start 21 s |
+| RPO-Ist (Sicherungszeitpunkt bis simulierter Ausfall) | 60 s, im Lauf gesetzt |
+| Zeitpunkte (UTC) | tS 05:56:23, tA 05:57:23, t0 05:57:23, t1 05:57:58, t2 05:58:01, t3 05:58:22, t4 05:58:25 |
+| Prüfkriterien P1 bis P12 | P1 bis P4, P6 und P9 bis P12 erfüllt; P5, P7 und P8 nicht automatisiert, sie bleiben in der manuellen Probe |
+| Abweichungen und Folgemaßnahmen | P4: Der erste Start des Ziels holte zwei Indizes auf dem Vektorindex nach, weil die Quelle nur einmal gestartet war; P4 und der [Rückweg](../../handbuch/kubernetes.md#rückweg) nennen diese Ausnahme |
+| Durchgeführt von, abgenommen von | CI des Projekts; nicht abgenommen |
+
+Die Zeiten stammen aus dem kleinen Testbestand auf einem CI-Rechner und sind nicht auf den Betrieb
+übertragbar. Eine Behörde trägt hier das Ergebnis ihrer eigenen Probe ein.
 
 Zeigt die Probe eine Abweichung vom Handbuch, ist das ein Fehler in der Dokumentation oder im
 Produkt; bitte als Issue im Projekt melden, bei einer Sicherheitsfrage über den
 [Meldeweg](../../../SECURITY.md#meldeweg).
+
+## Automatisierte Probe im Projekt
+
+Das Projekt führt die Probe selbst aus: Im Workflow
+[`helm-chart.yml`](../../../.github/workflows/helm-chart.yml) folgt im Job „Installationstest auf
+kind“ auf den Installationstest der Schritt „Wiederherstellungsprobe“ mit dem Skript
+[`deploy/helm/ci/restore-test.sh`](../../../deploy/helm/ci/restore-test.sh). Er läuft nächtlich, in
+Pull Requests mit Änderungen an Chart, Workflow oder Images und auf Anforderung über das Label
+`helm-suite`; das Skript läuft lokal gegen einen kind-Cluster genauso. Es baut den Referenzaufbau mit
+zwei Namespaces auf, folgt dem Ablauf unten mit den Befehlen des Handbuchs und bricht bei der ersten
+verfehlten Prüfung ab. Geprüft sind damit das Sichern der Erprobungsdatenbank und der Originale und
+die Wiederherstellung in eine neue Installation mit neuem Signaturgeheimnis. Nicht geprüft sind das
+Zurückspielen in dieselbe Installation, das Ersetzen des Signaturgeheimnisses im vorhandenen Secret
+und das Leeren und Neuanlegen der Erprobungsdatenbank vor dem Einspielen. Die Zusammenfassung des
+Laufs nennt Commit, Version des Backends, Datum, das Ergebnis jeder Prüfung, die Dauern aus der
+[Messung](#messung) und die Größen von Dump, Originalen und Bestand.
+
+Geprüft werden P1 bis P4, P6 und P9 bis P12. Gegenüber dem Verfahren für eine Installation weicht
+der Lauf so ab:
+
+| Punkt | Im automatisierten Lauf |
+|---|---|
+| Modell-Endpunkt | keiner; die Modelladressen der Werte-Datei sind nicht auflösbar. Die Indexierung schlägt fehl, die Dokumente bleiben mit ihren Originalen stehen |
+| Testbestand | T1 mit drei Textdateien (TXT, Markdown, CSV), eine davon mit dem Probe-Marker, dazu T6 und T7. T3 bis T5 entfallen, weil die Prüfungen fehlen, die sie brauchen |
+| Bedienung | über die API mit dem Systemverwalter-Konto statt über die Oberfläche |
+| Ausfall | Nach dem Upload aus Schritt 3 wird das Backend der Quelle angehalten |
+| P4 | Statt der Zahl werden die Changesets einzeln verglichen; zulässig sind nur die beiden nachgeholten Indizes, die P4 nennt |
+| P9 | nur der Upload; die Frage nach M2 und der Chat entfallen mangels Chat-Modell |
+| P10 | Statt der Browsersitzung dient ein Zugangstoken aus Schritt 1. Seine Gültigkeit ist im Lauf verlängert, damit die Ablehnung nur vom neuen Signaturgeheimnis kommen kann; die Quelle nimmt es nach ihrem Neustart in Schritt 2 noch an |
+| P11 | Der Verbindungstest erreicht keinen Endpunkt, entschlüsselt den gespeicherten Schlüssel aber vor dem Aufruf. Erwartet wird im Ziel genau die Antwort der Quelle; mit einem falschen Schlüssel endet der Test mit einem Serverfehler |
+| P12 | nur die Anzeige der hinterlegten Zugangsdaten, ohne Verbindungstest |
+| Messung | Zeiten mit dem kleinen Testbestand auf einem CI-Rechner; sie belegen das Verfahren, nicht die Wiederherstellungszeit einer Installation |
+
+**P5, P7 und P8 bleiben in der manuellen Probe.** P7 und P8 brauchen ein Chat-Modell für die belegte
+Antwort, alle drei einen gefüllten Vektorindex und damit ein Embedding-Modell. Ein Modell-Server mit
+kleinem Embedding-Modell im Lauf brächte Modell-Download und Indexierung in jeden Lauf und deckte P7
+und P8 trotzdem nicht ab.
 
 ## Rahmen
 
@@ -226,7 +267,7 @@ Die Reihenfolge folgt [Wiederherstellung auf einem neuen Cluster](../../handbuch
 | P1 | `pg_restore --exit-on-error` | Rückgabewert 0, keine Fehlermeldung |
 | P2 | `diff zaehlung-quelle.txt zaehlung-ziel.txt` | keine Ausgabe: jede Tabelle hat im Ziel so viele Zeilen wie in der Quelle zum Zeitpunkt `tS`, einschließlich Vektor- und Volltextindex und Nachweisprotokoll |
 | P3 | `diff originale-quelle.txt originale-ziel.txt` | keine Ausgabe: jedes Original ist bitgleich zurück |
-| P4 | Version nach dem Start; Zahl der Zeilen in `databasechangelog` vor und nach dem Start ([Rückweg](../../handbuch/kubernetes.md#rückweg)) | Version wie in Schritt 1; die Zahl bleibt gleich, der Start wendet kein Changeset erneut an |
+| P4 | Version nach dem Start; Zahl der Zeilen in `databasechangelog` vor und nach dem Start ([Rückweg](../../handbuch/kubernetes.md#rückweg)) | Version wie in Schritt 1; die Zahl bleibt gleich, der Start wendet kein Changeset erneut an. Einzige Ausnahme: War das Backend der Quelle vor der Sicherung nur ein einziges Mal gestartet, holt der erste Start des Ziels zwei Indizes auf dem Vektorindex nach, und die Zahl wächst um genau zwei |
 | P5 | Seite „Suche & Indexierung“; Gesundheitsgruppen `embedding-model` und `vector-store` | gleiches Embedding-Modell wie in Schritt 1, kein Hinweis „Index veraltet“, Vektorsuche aktiv; beide Gruppen `UP` |
 | P6 | Bericht verwaister Originale für T1 ([Originale einer vorhandenen Bibliothek](../../handbuch/originalablage.md#originale-einer-vorhandenen-bibliothek)) | keine verwaisten Originale; die Zahl der referenzierten Originale gleich der Zahl der Dokumente aus Schritt 1, also kein Dokument ohne Original |
 | P7 | Fachliche Stichprobe: Anmeldung, Space T3 mit seinen Mitgliedern, Frage nach M1, „Original öffnen“ an der Fundstelle | belegte Antwort mit Fundstelle in T1; das geöffnete Original hat dieselbe Prüfsumme wie die hochgeladene Datei; der Chat T5 ist vorhanden |
