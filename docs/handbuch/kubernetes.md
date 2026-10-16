@@ -1141,6 +1141,11 @@ kubectl -n opaa exec opaa-postgresql-0 -- \
 Sichern und Zurückspielen der Erprobungsdatenbank stehen unter
 [Erprobungsdatenbank sichern](#erprobungsdatenbank-sichern).
 
+Nach dem allerersten Start einer Installation wächst die Zahl beim nächsten Start einmalig um zwei,
+auch ohne neue Version: Zwei Indizes auf dem Vektorindex legt OPAA erst an, wenn dessen Tabelle
+besteht, und die entsteht während des ersten Starts. Dasselbe gilt für den ersten Start nach einer
+Rücksicherung, wenn die Sicherung von einer Installation stammt, die nur einmal gestartet war.
+
 - **Gleiche Zahl:** Kein Changeset ist hinzugekommen. `helm rollback` ist dann der vorgesehene Weg,
   aber keine Garantie: Eine neue Version kann Daten in einer Form schreiben, die die alte nicht liest,
   ohne dass dafür ein Changeset nötig war, etwa einen neuen Wert in einer Spalte ohne Prüfregel. Zeigt
@@ -1308,6 +1313,13 @@ dazu: `OPAA_AUTH_JWT_SECRET` im Secret ersetzen, bevor das Backend auf der zurü
 startet, und die Sperren der Zwischenzeit erneut setzen. `OPAA_CREDENTIALS_ENCRYPTION_KEY` und
 `OPAA_SETTINGS_ENCRYPTION_KEY` bleiben dieselben, sonst sind die gespeicherten Geheimnisse unlesbar. Sind Fremdzugänge in Betrieb, folgt die Prüfliste aus
 [Fremdzugänge](fremdzugaenge.md).
+
+**Im Projekt geprüft.** Die Befehle dieses Abschnitts und von
+[Erprobungsdatenbank sichern](#erprobungsdatenbank-sichern) laufen bei jeder Änderung an Chart oder
+Images als automatische Wiederherstellungsprobe auf einem Testcluster: Sicherung bei angehaltenem
+Backend, Wiederherstellung in einen zweiten, leeren Namespace mit neuem Signaturgeheimnis, danach
+Vergleich der Zeilenzahlen aller Tabellen und der Prüfsummen aller Originale, Prüfung der Version und
+der Lesbarkeit beider Verschlüsselungsschlüssel.
 
 ### Erprobungsdatenbank sichern
 

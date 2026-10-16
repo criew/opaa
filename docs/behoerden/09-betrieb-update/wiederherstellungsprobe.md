@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-16
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -30,7 +30,7 @@ sind darin umgesetzt.
 
 | Feld | Eintrag |
 |---|---|
-| Stand im Projekt | **Noch nicht durchgeführt.** Die automatisierte Probe im Installationstest des Helm-Charts entsteht in [#2840](https://github.com/criew/opaa/issues/2840); bis dahin ist das Verfahren unten nicht durch einen Lauf belegt |
+| Stand im Projekt | **Automatisiert.** Der Installationstest des Helm-Charts führt die Probe auf dem Referenzaufbau aus, mit den Abweichungen unter [Automatisierte Probe im Projekt](#automatisierte-probe-im-projekt). Ergebnis, Version, Datum, Zeiten und Größen stehen in der Zusammenfassung jedes Laufs |
 | Datum der Probe | [JJJJ-MM-TT] |
 | OPAA-Version (Release-Tag, Image-Digests) | [X.Y.Z, sha256:…] |
 | Helm-Chart-Version bzw. Compose-Stand | [X.Y.Z] |
@@ -45,6 +45,39 @@ sind darin umgesetzt.
 Zeigt die Probe eine Abweichung vom Handbuch, ist das ein Fehler in der Dokumentation oder im
 Produkt; bitte als Issue im Projekt melden, bei einer Sicherheitsfrage über den
 [Meldeweg](../../../SECURITY.md#meldeweg).
+
+## Automatisierte Probe im Projekt
+
+Das Projekt führt die Probe selbst aus: Im Workflow
+[`helm-chart.yml`](../../../.github/workflows/helm-chart.yml) folgt im Job „Installationstest auf
+kind“ auf den Installationstest der Schritt „Wiederherstellungsprobe“ mit dem Skript
+[`deploy/helm/ci/restore-test.sh`](../../../deploy/helm/ci/restore-test.sh). Er läuft bei jeder
+Änderung an Chart und Images, nächtlich und auf Anforderung; das Skript läuft lokal gegen einen
+kind-Cluster genauso. Es baut den Referenzaufbau mit zwei Namespaces auf, folgt dem Ablauf unten mit
+den Befehlen des Handbuchs und bricht bei der ersten verfehlten Prüfung ab. Die Zusammenfassung des
+Laufs nennt Commit, Version des Backends, Datum, das Ergebnis jeder Prüfung, die Dauern aus der
+[Messung](#messung) und die Größen von Dump, Originalen und Bestand.
+
+Geprüft werden P1 bis P4, P6 und P9 bis P12. Gegenüber dem Verfahren für eine Installation weicht
+der Lauf so ab:
+
+| Punkt | Im automatisierten Lauf |
+|---|---|
+| Modell-Endpunkt | keiner; die Modelladressen der Werte-Datei sind nicht auflösbar. Die Indexierung schlägt fehl, die Dokumente bleiben mit ihren Originalen stehen |
+| Testbestand | T1 mit drei Textdateien (TXT, Markdown, CSV), eine davon mit dem Probe-Marker, dazu T6 und T7. T3 bis T5 entfallen, weil die Prüfungen fehlen, die sie brauchen |
+| Bedienung | über die API mit dem Systemverwalter-Konto statt über die Oberfläche |
+| Ausfall | Nach dem Upload aus Schritt 3 wird das Backend der Quelle angehalten |
+| P4 | Statt der Zahl werden die Changesets einzeln verglichen; zulässig sind nur die beiden nachgeholten Indizes, die P4 nennt |
+| P9 | nur der Upload; die Frage nach M2 und der Chat entfallen mangels Chat-Modell |
+| P10 | Statt der Browsersitzung dient ein Zugangstoken aus Schritt 1. Seine Gültigkeit ist im Lauf verlängert, damit die Ablehnung nur vom neuen Signaturgeheimnis kommen kann; die Quelle nimmt es nach ihrem Neustart in Schritt 2 noch an |
+| P11 | Der Verbindungstest erreicht keinen Endpunkt, entschlüsselt den gespeicherten Schlüssel aber vor dem Aufruf. Erwartet wird im Ziel genau die Antwort der Quelle; mit einem falschen Schlüssel endet der Test mit einem Serverfehler |
+| P12 | nur die Anzeige der hinterlegten Zugangsdaten, ohne Verbindungstest |
+| Messung | Zeiten mit dem kleinen Testbestand auf einem CI-Rechner; sie belegen das Verfahren, nicht die Wiederherstellungszeit einer Installation |
+
+**P5, P7 und P8 bleiben in der manuellen Probe.** P7 und P8 brauchen ein Chat-Modell für die belegte
+Antwort, alle drei einen gefüllten Vektorindex und damit ein Embedding-Modell. Ein Modell-Server mit
+kleinem Embedding-Modell im Lauf brächte Modell-Download und Indexierung in jeden Lauf und deckte P7
+und P8 trotzdem nicht ab.
 
 ## Rahmen
 
@@ -226,7 +259,7 @@ Die Reihenfolge folgt [Wiederherstellung auf einem neuen Cluster](../../handbuch
 | P1 | `pg_restore --exit-on-error` | Rückgabewert 0, keine Fehlermeldung |
 | P2 | `diff zaehlung-quelle.txt zaehlung-ziel.txt` | keine Ausgabe: jede Tabelle hat im Ziel so viele Zeilen wie in der Quelle zum Zeitpunkt `tS`, einschließlich Vektor- und Volltextindex und Nachweisprotokoll |
 | P3 | `diff originale-quelle.txt originale-ziel.txt` | keine Ausgabe: jedes Original ist bitgleich zurück |
-| P4 | Version nach dem Start; Zahl der Zeilen in `databasechangelog` vor und nach dem Start ([Rückweg](../../handbuch/kubernetes.md#rückweg)) | Version wie in Schritt 1; die Zahl bleibt gleich, der Start wendet kein Changeset erneut an |
+| P4 | Version nach dem Start; Zahl der Zeilen in `databasechangelog` vor und nach dem Start ([Rückweg](../../handbuch/kubernetes.md#rückweg)) | Version wie in Schritt 1; die Zahl bleibt gleich, der Start wendet kein Changeset erneut an. Einzige Ausnahme: War das Backend der Quelle vor der Sicherung nur ein einziges Mal gestartet, holt der erste Start des Ziels zwei Indizes auf dem Vektorindex nach, und die Zahl wächst um genau zwei |
 | P5 | Seite „Suche & Indexierung“; Gesundheitsgruppen `embedding-model` und `vector-store` | gleiches Embedding-Modell wie in Schritt 1, kein Hinweis „Index veraltet“, Vektorsuche aktiv; beide Gruppen `UP` |
 | P6 | Bericht verwaister Originale für T1 ([Originale einer vorhandenen Bibliothek](../../handbuch/originalablage.md#originale-einer-vorhandenen-bibliothek)) | keine verwaisten Originale; die Zahl der referenzierten Originale gleich der Zahl der Dokumente aus Schritt 1, also kein Dokument ohne Original |
 | P7 | Fachliche Stichprobe: Anmeldung, Space T3 mit seinen Mitgliedern, Frage nach M1, „Original öffnen“ an der Fundstelle | belegte Antwort mit Fundstelle in T1; das geöffnete Original hat dieselbe Prüfsumme wie die hochgeladene Datei; der Chat T5 ist vorhanden |

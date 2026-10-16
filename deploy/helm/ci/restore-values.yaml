@@ -1,0 +1,10 @@
+# Additions for the restore test on kind (restore-test.sh), layered over install-values.yaml. A known
+# password of the bootstrap administrator lets the test sign in through the API. Access tokens
+# outlive the whole run, so a 401 for a token issued before the backup (P10) can only come from the
+# replaced signing secret, never from expiry.
+secrets:
+  initialAdminPassword: ci-only-restore-probe-admin-0123456789
+backend:
+  extraEnv:
+    - name: OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL
+      value: 2h
