@@ -60,6 +60,7 @@ export default function SuccessionRow({
   const titleId = useId()
   const [transferOpen, setTransferOpen] = useState(false)
   const [handoverOpen, setHandoverOpen] = useState(false)
+  const [ownerTransferOpen, setOwnerTransferOpen] = useState(false)
   const step = nextStepOf(kind, entry)
   const href = objectHref(entry)
   const Icon = ICONS[entry.objectType]
@@ -152,6 +153,11 @@ export default function SuccessionRow({
             Rechte übergeben
           </Button>
         )}
+        {step === 'OWNER_GROUP_TRANSFER' && (
+          <Button size="small" variant="outlined" onClick={() => setOwnerTransferOpen(true)}>
+            Rechte übergeben
+          </Button>
+        )}
         {step === 'GROUP_ADMIN' && (
           <Button size="small" variant="outlined" component={RouterLink} to="/admin/groups">
             Zur Gruppenverwaltung
@@ -169,6 +175,23 @@ export default function SuccessionRow({
           intro={`Eigentum und Rechte von „${entry.objectName}“ gehen an die gewählte Gruppe. Diese Gruppe sollte aktive Mitglieder haben, damit die Rechte wieder jemanden erreichen.`}
           onTransferred={onChanged}
           labels={{ title: 'Rechte übergeben', targetGroup: 'Neue Gruppe' }}
+        />
+      )}
+
+      {ownerTransferOpen && entry.ownerGroupId && (
+        <PermissionTransferDialog
+          open
+          onClose={() => setOwnerTransferOpen(false)}
+          source={{ type: 'GROUP', id: entry.ownerGroupId, name: entry.ownerHint ?? 'Gruppe' }}
+          targetKinds={['GROUP']}
+          scopes={['OWNERSHIP', 'ASSET_GRANTS', 'SPACE_MEMBERSHIPS', 'CAPABILITIES']}
+          intro={`„${entry.objectName}“ gehört einer Gruppe, die es nicht mehr gibt oder die keine aktiven Mitglieder hat. Eigentum und Rechte dieser Gruppe gehen an die gewählte Gruppe, auch an allem anderen, was ihr gehört. Die neue Gruppe sollte aktive Mitglieder haben.`}
+          onTransferred={onChanged}
+          labels={{
+            title: 'Rechte übergeben',
+            source: 'Bisherige Gruppe',
+            targetGroup: 'Neue Gruppe',
+          }}
         />
       )}
 

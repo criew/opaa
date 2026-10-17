@@ -451,6 +451,16 @@ components:
       enum: [SPACE_ADMINS, GROUP_STEWARDS, SYSTEM_ADMINISTRATION]
       example: SYSTEM_ADMINISTRATION
 
+    SuccessionOwnerType:
+      type: string
+      description: >
+        Who holds an asset of the operational list - the kind, never the party. USER for a person,
+        GROUP for a group, UNKNOWN when the owning group can no longer be resolved. It decides
+        which way out of the entry can move the asset; it is no filter, no sort key and no count
+        (Personalrat E1).
+      enum: [USER, GROUP, UNKNOWN]
+      example: GROUP
+
     SuccessionEntryResponse:
       type: object
       required: [objectType, objectId, objectName, addressee, highlighted, affectedObjects]
@@ -486,6 +496,22 @@ components:
           description: >
             Who holds the object today - readable here for the administration's orientation, and
             deliberately no query parameter, no sort key and no count (Personalrat E1).
+        ownerType:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SuccessionOwnerType"
+          description: >
+            The kind of owner of an asset - set exactly when objectType is ASSET. Names the kind
+            only, never the person, and is no query parameter, no sort key and no count
+            (Personalrat E1).
+        ownerGroupId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The owning group - set exactly when ownerType is GROUP, as the source of a transfer of
+            its ownership and rights (ADR-0036 Entscheidung 10), which also accepts a dissolved
+            group. A person as the owner is never identified here.
         membershipHints:
           type: array
           description: >

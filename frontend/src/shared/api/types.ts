@@ -101,6 +101,7 @@ export type PermissionTransferCountsResponse =
 export type SuccessionKind = components['schemas']['SuccessionKind']
 export type SuccessionObjectType = components['schemas']['SuccessionObjectType']
 export type SuccessionAddressee = components['schemas']['SuccessionAddressee']
+export type SuccessionOwnerType = components['schemas']['SuccessionOwnerType']
 export type SuccessionEntryResponse = components['schemas']['SuccessionEntryResponse']
 export type SuccessionListResponse = components['schemas']['SuccessionListResponse']
 export type SuccessionStateResponse = components['schemas']['SuccessionStateResponse']

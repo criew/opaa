@@ -16,6 +16,7 @@ export const mockSuccessionEntries: Record<SuccessionKind, SuccessionEntryRespon
       addressee: 'SYSTEM_ADMINISTRATION',
       addresseeLabel: 'die Systemverwaltung',
       ownerHint: 'Andrea Vogt (Konto gesperrt)',
+      ownerType: 'USER',
       membershipHints: ['war Mitglied von Referat 50'],
       affectedObjects: 0,
       firstSeenAt: '2025-06-01T08:00:00Z',

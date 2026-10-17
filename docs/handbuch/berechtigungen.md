@@ -901,7 +901,7 @@ zeigt, wie viele Einträge er enthält; gezählt wird nur nach Art des Eintrags,
 
 | Reiter | Was darin steht | Nächster Schritt |
 |---|---|---|
-| Inhalte ohne Verantwortliche | Arbeitsmittel, Spaces und interne Gruppen, deren Eigentümerin oder Verantwortliche nicht mehr handeln kann | „Nachfolge bestimmen“; bei einer internen Gruppe ohne Verantwortliche und bei einem Objekt einer internen Gruppe „Zur Gruppenverwaltung“ |
+| Inhalte ohne Verantwortliche | Arbeitsmittel, Spaces und interne Gruppen, deren Eigentümerin oder Verantwortliche nicht mehr handeln kann | „Nachfolge bestimmen“; bei einem Objekt einer Gruppe eines Anbieters „Rechte übergeben“; bei einer internen Gruppe ohne Verantwortliche und bei einem Objekt einer internen Gruppe „Zur Gruppenverwaltung“ |
 | Gruppen ohne aktive Mitglieder | Gruppen, die Rechte tragen, aber kein aktives Mitglied mehr haben — die Rechte erreichen niemanden | „Rechte übergeben“ an eine andere Gruppe |
 | Leere Gruppen | interne Gruppen, die weder aktive Mitglieder noch Rechte haben | in der Gruppenverwaltung auflösen |
 
@@ -919,21 +919,31 @@ E-Mail — die Liste zeigt, sie treibt nicht.
 steht in der Zeile, ist aber weder sortierbar noch zählbar. Dasselbe gilt für die Person, die einen
 Vorgang beendet hat.
 
-**Der Ausgang ist die Übertragung** (Abschnitt 13.2) mit dem Umfang „Eigentum und Verantwortung".
+**Der Ausgang ist die Übertragung** (Abschnitt 13.2): bei einer Person mit dem Umfang „Eigentum und
+Verantwortung", bei einer Gruppe mit Eigentum und Rechten der Gruppe.
 Endet der Zustand damit wirklich, wird der Vorgang geschlossen und die handelnde Person am Vorgang
 vermerkt; geht das Objekt an jemanden, der ebenfalls nicht handeln kann, bleibt der Vorgang offen —
 sonst begänne sein Alter von vorn.
 
 **Was eine Zeile zeigt und anbietet.** Das Objekt mit seiner Art, darunter in einem Satz das
-Problem („Wem die Bibliothek gehört, kann nicht mehr handeln.“), seit wann der Eintrag
+Problem, seit wann der Eintrag
 offen ist („offen seit 12 Tagen“, vor dem ersten Feststellungslauf „gerade erkannt“) und wer
-zuständig ist. Die bisherige Eigentümerin und Hinweise, wo eine Nachfolge zu suchen ist, stehen als
+zuständig ist. Der Satz zum Problem richtet sich danach, wem das Objekt gehört: „Das Konto, dem die
+Bibliothek gehört, ist nicht mehr aktiv.“ bei einer Person, „Die Gruppe, der die Bibliothek gehört,
+gibt es nicht mehr oder sie hat keine aktiven Mitglieder.“ bei einer Gruppe eines Anbieters, etwa
+nach einer Reorganisation im Verzeichnis. Die Liste nennt dafür nur die Art der Eigentümerin, nie
+eine Person als Kennung. Die bisherige Eigentümerin und Hinweise, wo eine Nachfolge zu suchen ist, stehen als
 Text daneben. Der Name des Objekts führt in das Arbeitsmittel beziehungsweise in den Space. Jede Zeile
 hat **genau einen** hervorgehobenen nächsten Schritt:
 
 - **„Nachfolge bestimmen“** bei einem Objekt einer Person: Übergabe von Person zu Person, Umfang
   Eigentum und Verantwortung. Wessen Bestand übergeben wird, wählt die Systemverwaltung dabei
   selbst („Bisheriges Konto“); die Liste nennt die Person nur als Text.
+- **„Rechte übergeben“** bei einem Objekt einer Gruppe eines Anbieters: Die Gruppe ist als
+  „Bisherige Gruppe“ schon eingetragen, auch wenn sie aufgelöst ist; ihr Eigentum und ihre Rechte
+  gehen an die gewählte neue Gruppe. Das betrifft alles, was diese Gruppe hält, nicht nur das eine
+  Objekt. Eine Übergabe von Person zu Person könnte ein solches Objekt nicht bewegen, weil kein
+  Konto es hält.
 - **„Rechte übergeben“** bei einer Gruppe ohne aktive Mitglieder: Übernahme durch eine andere Gruppe.
 - **„Zur Gruppenverwaltung“** bei einer internen Gruppe ohne Verantwortliche (dort werden neue
   Verantwortliche ernannt; die Gruppe arbeitet mit ihren Mitgliedern weiter und gibt ihre Rechte
