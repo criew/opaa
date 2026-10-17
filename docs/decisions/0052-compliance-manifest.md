@@ -147,6 +147,10 @@ Anker. Werte aus der Datenbank, Datenflüsse, Konnektornutzung und Modellanbiete
 über den Port `InstanceStateSource` in `io.opaa.compliance`; private Bibliotheken zählen nicht.
 Abrufen darf nur `SYSTEM_ADMIN`. Jeder Abruf schreibt `DATA_COLLECTION_DISCLOSURE_EXPORTED`, auch
 der abgewiesene (`DENIED`) und der gescheiterte (`FAILURE`); deshalb prüft der Service die Rolle.
+Das Ereignis nennt Format und Berichtszeitraum. Der Berichtszeitraum besteht aus ganzen
+Kalendermonaten und gilt für die Zahl der anlassbezogenen Klärungen je Anlass (beantragt,
+freigegeben, abgelaufen), die das Modul des Protokolls aus einer Monatszählung ohne Personen liefert;
+Zahlen unter 3 gehen nur als „weniger als 3“ hinaus.
 
 Eine Negativliste geheimer Schlüssel veraltet unbemerkt, das Manifest führt ohnehin jeden
 datenwirksamen Schlüssel. Der Port hält foundation frei von Abhängigkeiten nach oben und legt jede
