@@ -412,7 +412,7 @@ DELTA_JSON = {
     "changes": [
         {"group": "DATA_FLOWS", "section": "dataFlows", "id": "mail-gateway", "title": "mail-gateway",
          "kind": "ADDED", "field": None, "before": None,
-         "after": {"id": "mail-gateway", "target": "Der SMTP-Server des Hauses", "viaOutboundProxy": False}},
+         "after": {"id": "mail-gateway", "target": "Der SMTP-Server des Hauses", "viaOutboundProxy": "false"}},
         {"group": "DATA_FLOWS", "section": "dataFlows", "id": "chat-model", "title": "chat-model",
          "kind": "CHANGED", "field": "target", "before": "Das Chat-Modell", "after": "Das aktive Chat-Modell"},
         {"group": "DEFAULTS", "section": "settings", "id": "opaa.rerank.enabled", "title": "x",
@@ -494,7 +494,7 @@ def test_note_changeset_and_new_data_flow_of_an_interval_appear_in_the_package(
     assert "| identity | 2 |" in migration and "| workspace | 1 |" in migration
     assert "nur vorwärts" in migration and "Datenbank sichern" in migration
     egress = section(text, "Neue Ports und Egress-Ziele")
-    assert "`mail-gateway`" in egress and "Der SMTP-Server des Hauses" in egress
+    assert "`mail-gateway`: Der SMTP-Server des Hauses; über den Ausgangsproxy: nein" in egress
     assert "Das Chat-Modell" in egress and "Das aktive Chat-Modell" in egress
     assert "opaa.rerank.enabled" not in egress
 
