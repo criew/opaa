@@ -74,6 +74,20 @@ public class RateLimitService {
     }
   }
 
+  /**
+   * Gives back one request counted for {@code key} by {@link #tryAcquire} - for a request that,
+   * once answered, turns out not to belong to this scope. A key without requests is left alone.
+   */
+  public void release(String key) {
+    Deque<Long> timestamps = requestLog.getIfPresent(key);
+    if (timestamps == null) {
+      return;
+    }
+    synchronized (timestamps) {
+      timestamps.pollLast();
+    }
+  }
+
   private void evictExpired(Deque<Long> timestamps, long now) {
     long cutoff = now - windowMillis;
     while (!timestamps.isEmpty() && timestamps.peekFirst() < cutoff) {

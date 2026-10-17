@@ -1163,7 +1163,9 @@ Zwei bekannte, offene Schwächen gehören hierher, weil sie wie Fehler aussehen:
 ### 10.1 Ratenbegrenzung
 
 Fragen sind je IP-Adresse und über alle Adressen zusammen auf eine Anzahl je Zeitfenster begrenzt.
-Darüber antwortet das Backend mit HTTP 429. Die Werte stehen unter `opaa.rate-limit.query.*`.
+Darüber antwortet das Backend mit HTTP 429. Die Grenze über alle Adressen zählt nur angemeldete
+Anfragen; Anfragen ohne gültige Anmeldung können sie nicht für alle aufbrauchen. Die Werte stehen
+unter `opaa.rate-limit.query.*`.
 
 Die Chatsuche (Abschnitt 7.2) hat eine **eigene** Grenze unter `opaa.rate-limit.chat-search.*`,
 ebenfalls je IP-Adresse und über alle Adressen. Sie läuft beim Tippen — eine Anfrage je

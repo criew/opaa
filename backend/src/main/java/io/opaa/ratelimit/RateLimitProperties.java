@@ -114,7 +114,8 @@ public record RateLimitProperties(
    *
    * @param maxRequests maximum requests per IP within the window. Must be at least 1.
    * @param windowSeconds sliding window duration in seconds. Must be at least 1.
-   * @param globalMaxRequests maximum requests across all IPs within the window. Must be at least 1.
+   * @param globalMaxRequests maximum requests across all IPs within the window; a request answered
+   *     {@code 401} does not count. Must be at least 1.
    */
   public record EndpointLimit(int maxRequests, int windowSeconds, int globalMaxRequests) {
 
@@ -172,7 +173,8 @@ public record RateLimitProperties(
    * @param maxRequests requests per key (client address or account) within the window
    * @param windowSeconds sliding window in seconds
    * @param globalMaxRequests requests across all keys within the window, or {@code null} for no
-   *     global ceiling; exceeding it is a {@code WARN} line and a metric
+   *     global ceiling. Every attempt counts, failed ones included; past it the answer is {@code
+   *     429} for every client, with a {@code WARN} line and a metric
    * @param maxRequestsPerAddress requests naming the same e-mail address within the window, or
    *     {@code null} when the endpoint names none
    */

@@ -87,4 +87,18 @@ class RateLimitServiceTest {
     assertThat(service.tryAcquire("k").allowed()).isFalse();
     assertThat(service.tryAcquire("other").allowed()).isTrue();
   }
+
+  @Test
+  void aReleasedRequestFreesItsPlaceInTheWindowOfItsKeyOnly() {
+    var service = new RateLimitService(1, 60);
+    assertThat(service.tryAcquire("k").allowed()).isTrue();
+    assertThat(service.tryAcquire("other").allowed()).isTrue();
+
+    service.release("k");
+    service.release("never-seen");
+
+    assertThat(service.tryAcquire("k").allowed()).isTrue();
+    assertThat(service.tryAcquire("other").allowed()).isFalse();
+    assertThat(service.trackedKeys()).isEqualTo(2);
+  }
 }

@@ -548,8 +548,9 @@ steht im Kapitel [Benutzerverwaltung](benutzerverwaltung.md). Für den Betrieb z
 **Anmeldegrenzen.** Die lokale Anmeldung ist je Client-Adresse, je Konto und insgesamt begrenzt
 (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`); eine überschrittene Grenze antwortet `429` mit `Retry-After`. Die
 Gesamtgrenze für Anmeldung, Registrierung und „Passwort vergessen" ist das Frühwarnsignal gegen
-verteiltes Ausprobieren gestohlener Zugangsdaten: Ihr Überschreiten steht als Warnung im Protokoll und
-in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](betrieb.md#logs-und-metriken)).
+verteiltes Ausprobieren gestohlener Zugangsdaten. Sie zählt auch Fehlversuche und gilt für alle Adressen
+zugleich: Ist sie erreicht, antwortet der Endpunkt jeder Adresse mit `429`, und das Überschreiten steht
+als Warnung im Protokoll und in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](betrieb.md#logs-und-metriken)).
 Nach `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` falschen Passwörtern ist ein Konto für
 `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` gesperrt; die Anmeldung antwortet dann wie bei einem falschen
 Passwort, die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch

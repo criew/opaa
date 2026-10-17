@@ -609,6 +609,9 @@ opaa:
     # profile warns about at start-up. Serves the rate limits and OPAA_LOCAL_ADMIN_ALLOWED_CIDRS
     # alike; a wildcard (0.0.0.0/0, ::/0) refuses the start.
     trusted-proxy-cidrs: ${OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
+    # query to chat-search: max-requests per client, global-max-requests across all clients; past
+    # either the answer is 429. The global ceiling counts only requests that authenticated (not
+    # answered 401), so strangers cannot use it up for everyone signed in.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
@@ -635,9 +638,10 @@ opaa:
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS:100}
     # The push intake is reachable without a session; the limiter bounds the secret checks an
-    # unauthenticated caller can cause. Per library (capture group), generous enough for a busy
-    # source - an author saving every few seconds - and the intake debounces
-    # anyway, so a burst above this costs freshness, not correctness.
+    # unauthenticated caller can cause. Per library (capture group, a well-formed library id only),
+    # generous enough for a busy source - an author saving every few seconds - and the intake
+    # debounces anyway, so a burst above this costs freshness, not correctness. Pushes that do not
+    # authenticate draw on one budget per address, whichever library they name.
     webhook:
       max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS:120}
       window-seconds: ${OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS:60}
@@ -654,8 +658,9 @@ opaa:
     # RateLimitFilter; change-password by the authenticated account, register and forgot-password
     # additionally by the (hashed) e-mail address they name - both in
     # io.opaa.account.LocalAuthRateLimiter. The global ceilings of login, register and
-    # forgot-password are the operator's early warning against distributed credential stuffing:
-    # exceeding one is a WARN line and a metric.
+    # forgot-password count every attempt, failed ones included, and are the operator's early
+    # warning against distributed credential stuffing: past one the answer is 429 for every client,
+    # with a WARN line and a metric.
     local-auth:
       login:
         max-requests: ${OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS:10}
