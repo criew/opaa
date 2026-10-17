@@ -294,6 +294,16 @@ def test_a_first_release_names_its_comparison_base_without_the_raw_commit(
     assert "b" * 40 not in body
 
 
+def test_a_given_commit_without_manifest_is_named_readably(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(
+        release(previous="c" * 40, previous_commit="c" * 40, previous_given=True, previous_bare=True),
+        out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "Änderungen gegenüber dem Stand ohne Fakten-Manifest (Commit `ccccccc`)." in text
+    assert "c" * 40 not in text.split("\n---\n", 1)[1]
+
+
 def package_markdown(archive: Path) -> dict[str, str]:
     with tarfile.open(archive) as tar:
         return {m.name.split("/", 1)[1]: tar.extractfile(m).read().decode()

@@ -685,6 +685,8 @@ class Release:
     epoch: int
     # True when --previous named the comparison; only an automatic one is called the previous release.
     previous_given: bool = False
+    # True when the given comparison is a commit id without manifest (Side.bare).
+    previous_bare: bool = False
 
 
 def readme(release: Release) -> str:
@@ -714,7 +716,9 @@ def readme(release: Release) -> str:
         f"Dieses Paket gehört zu OPAA {release.version} (Commit `{release.commit}`). Es enthält die"
         " Fakten dieser Version und ihre Änderungen gegenüber"
         + (
-            f" {release.previous}."
+            f" dem {bare_name(release.previous_commit)}."
+            if release.previous and release.previous_given and release.previous_bare
+            else f" {release.previous}."
             if release.previous and release.previous_given
             else f" {release.previous}, dem vorigen finalen Release."
             if release.previous
@@ -892,6 +896,7 @@ def build(args: argparse.Namespace) -> Path:
         previous_commit=from_commit,
         trial=tag_commit is None,
         previous_given=bool(args.previous),
+        previous_bare=bool(args.previous) and is_bare(ROOT, previous, from_commit),
         repository=args.repository,
         epoch=epoch,
     )
