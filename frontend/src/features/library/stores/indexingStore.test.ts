@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { IDLE_RUN_STATE, UPLOAD_LIBRARY_INDEXING_ERROR, useIndexingStore } from './indexingStore'
+import {
+  IDLE_RUN_STATE,
+  MAX_CONSECUTIVE_STATUS_FAILURES,
+  UPLOAD_LIBRARY_INDEXING_ERROR,
+  useIndexingStore,
+} from './indexingStore'
 import { resetAllStores } from '@/shared/session/resettableStores'
 import type { IndexingStatusResponse } from '@/shared/api/types'
 
@@ -321,5 +326,81 @@ describe('indexingStore', () => {
     expect(mockTriggerIndexing).toHaveBeenLastCalledWith('library-a', 'FULL')
     await useIndexingStore.getState().triggerIndexing('library-a', 'CONFLUENCE')
     expect(mockTriggerIndexing).toHaveBeenLastCalledWith('library-a')
+  })
+  describe('status fetch failures while polling (#2908)', () => {
+    it('keeps the run status and keeps polling after a single failed fetch', async () => {
+      vi.useFakeTimers()
+      mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+      await useIndexingStore.getState().triggerIndexing('library-a', 'FILESYSTEM')
+
+      mockGetIndexingStatus.mockRejectedValueOnce(new Error('Network Error'))
+      await vi.advanceTimersByTimeAsync(2000)
+
+      const afterFailure = useIndexingStore.getState().runsByLibrary['library-a']
+      expect(afterFailure?.status).toBe('RUNNING')
+      expect(afterFailure?.isPolling).toBe(true)
+      expect(afterFailure?.statusUnknown).toBe(false)
+      expect(useIndexingStore.getState().snackbar.open).toBe(false)
+
+      mockGetIndexingStatus.mockResolvedValueOnce(runningStatus({ documentCount: 3 }))
+      await vi.advanceTimersByTimeAsync(30_000)
+
+      const recovered = useIndexingStore.getState().runsByLibrary['library-a']
+      expect(recovered?.status).toBe('RUNNING')
+      expect(recovered?.documentCount).toBe(3)
+      expect(recovered?.isPolling).toBe(true)
+    })
+
+    it('backs off after a failed fetch instead of retrying at the normal interval', async () => {
+      vi.useFakeTimers()
+      mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+      await useIndexingStore.getState().triggerIndexing('library-a', 'FILESYSTEM')
+      mockGetIndexingStatus.mockRejectedValue(new Error('Network Error'))
+
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(mockGetIndexingStatus).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(mockGetIndexingStatus).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(mockGetIndexingStatus).toHaveBeenCalledTimes(2)
+    })
+
+    it('gives up after consecutive failures with an unknown status, never FAILED', async () => {
+      vi.useFakeTimers()
+      mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+      await useIndexingStore.getState().triggerIndexing('library-a', 'FILESYSTEM')
+      mockGetIndexingStatus.mockRejectedValue(new Error('Request failed with status code 502'))
+
+      await vi.advanceTimersByTimeAsync(10 * 60_000)
+
+      expect(MAX_CONSECUTIVE_STATUS_FAILURES).toBeGreaterThan(1)
+      expect(mockGetIndexingStatus).toHaveBeenCalledTimes(MAX_CONSECUTIVE_STATUS_FAILURES)
+      const run = useIndexingStore.getState().runsByLibrary['library-a']
+      expect(run?.status).toBe('RUNNING')
+      expect(run?.statusUnknown).toBe(true)
+      expect(run?.isPolling).toBe(false)
+      expect(run?.message).toBeNull()
+    })
+
+    it('resumes polling on retry once the status was unknown', async () => {
+      vi.useFakeTimers()
+      mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
+      await useIndexingStore.getState().triggerIndexing('library-a', 'FILESYSTEM')
+      mockGetIndexingStatus.mockRejectedValue(new Error('Network Error'))
+      await vi.advanceTimersByTimeAsync(10 * 60_000)
+      expect(useIndexingStore.getState().runsByLibrary['library-a']?.statusUnknown).toBe(true)
+
+      mockGetIndexingStatus.mockReset()
+      mockGetIndexingStatus.mockResolvedValue(runningStatus({ status: 'COMPLETED' }))
+      mockGetIndexingRuns.mockResolvedValue({ runs: [] })
+      useIndexingStore.getState().retryStatusPolling('library-a')
+      expect(useIndexingStore.getState().runsByLibrary['library-a']?.statusUnknown).toBe(false)
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(mockGetIndexingStatus).toHaveBeenCalledTimes(1)
+      const run = useIndexingStore.getState().runsByLibrary['library-a']
+      expect(run?.status).toBe('COMPLETED')
+      expect(run?.isPolling).toBe(false)
+    })
   })
 })

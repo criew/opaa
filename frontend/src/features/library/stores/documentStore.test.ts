@@ -663,6 +663,40 @@ describe('documentStore', () => {
     })
   })
 
+  describe('document polling stopping (#2908)', () => {
+    it('shows a hint when a poll tick fails and polling stops', async () => {
+      vi.useFakeTimers()
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+      await useDocumentStore.getState().loadDocuments('library-1')
+      expect(useDocumentStore.getState().pollingStoppedMessage).toBeNull()
+
+      mockGetLibraryDocuments.mockRejectedValueOnce(new Error('Network Error'))
+      await vi.advanceTimersByTimeAsync(3000)
+
+      expect(useDocumentStore.getState().pollingStoppedMessage).toMatch(
+        /nicht mehr automatisch aktualisiert/,
+      )
+      expect(useDocumentStore.getState().error).toBeNull()
+      mockGetLibraryDocuments.mockClear()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(mockGetLibraryDocuments).not.toHaveBeenCalled()
+    })
+
+    it('drops the hint once the list was loaded again', async () => {
+      vi.useFakeTimers()
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+      await useDocumentStore.getState().loadDocuments('library-1')
+      mockGetLibraryDocuments.mockRejectedValueOnce(new Error('Network Error'))
+      await vi.advanceTimersByTimeAsync(3000)
+      expect(useDocumentStore.getState().pollingStoppedMessage).not.toBeNull()
+
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([indexedDocument]))
+      await useDocumentStore.getState().loadDocuments('library-1', {})
+
+      expect(useDocumentStore.getState().pollingStoppedMessage).toBeNull()
+    })
+  })
+
   describe('folder CRUD (#822)', () => {
     it('creates a folder under the currently open folder and reloads the current page', async () => {
       useDocumentStore.setState({
