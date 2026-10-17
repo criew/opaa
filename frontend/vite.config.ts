@@ -13,7 +13,8 @@ export default defineConfig({
     alias: [{ find: /^@\//, replacement: fileURLToPath(new URL('./src/', import.meta.url)) }],
   },
   // The version shown under "Info zu OPAA"; release builds pass their tag's version as OPAA_VERSION
-  // (frontend/Dockerfile), every other build - tests included - is 0.0.0-dev.
+  // (frontend/Dockerfile), main images 0.0.0-dev+<commit>, every other build - tests included - is
+  // 0.0.0-dev.
   define: {
     __OPAA_VERSION__: JSON.stringify(resolveOpaaVersion(process.env.OPAA_VERSION)),
   },

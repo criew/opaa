@@ -7,8 +7,9 @@ COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml 
 RUN pnpm install --frozen-lockfile
 COPY frontend/ .
 COPY opaa-api/src/main/openapi/ /opaa-api/src/main/openapi/
-# The version shown under "Info zu OPAA": a release build passes its tag's version (docs/releases.md),
-# empty means 0.0.0-dev; vite.config.ts fails the build on any other format. Declared after the
+# The version shown under "Info zu OPAA": a release build passes its tag's version, a main build
+# 0.0.0-dev+<commit> (docs/releases.md), empty means 0.0.0-dev; vite.config.ts fails the build on
+# any other format. Declared after the
 # dependency layer, so a version change does not invalidate the pnpm install.
 ARG OPAA_VERSION=
 # Vite copies public/ verbatim; the MSW worker only serves VITE_ENABLE_MOCKS development runs and
