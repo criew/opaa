@@ -81,6 +81,16 @@ export function chatSidebarEntries(page: Page): Locator {
 }
 
 /**
+ * The sidebar entry of the chat whose page is at chatUrl, keyed on the chat id (ChatList.tsx
+ * `chat-entry-<id>`) - unlike a count of {@link chatSidebarEntries}, unaffected by how many chats
+ * earlier scenarios left behind and by "Zuletzt verwendet" showing only its first page.
+ */
+export function sidebarChatEntry(page: Page, chatUrl: string): Locator {
+  const chatId = new URL(chatUrl).pathname.split('/').pop()
+  return page.getByRole('navigation').getByTestId(`chat-entry-${chatId}`)
+}
+
+/**
  * Asserts the sidebar's most recently used chat (topmost in the "Zuletzt verwendet" group - pinned chats sit
  * above it in their own group, see ChatList.tsx) has a real title - present and not the
  * "Unbenannter Chat" fallback ChatList.tsx renders for a still-empty one. Used in place of asserting the exact (LLM-generated, and per chatSidebarEntries'
