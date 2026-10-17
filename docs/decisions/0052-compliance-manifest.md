@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-16
+Akzeptiert · zuletzt geändert 2026-10-17
 
 ## Kontext
 
@@ -137,6 +137,21 @@ Die Records ändern sich mit dem Schema; der aktuelle Lader wiese ein älteres M
 inzwischen verlangtes Feld fehlt. Ein Release hält sein Manifest im Repository, nicht als Anhang;
 Git-Stände gibt es für jedes Versionspaar.
 
+### 11. Auskunft über die Datenerhebung einer Instanz
+
+Eine laufende Instanz gibt das Manifest ihrer Version mit ihren wirksamen Werten heraus
+(`InstanceDisclosureAssembler`, als JSON mit dem Manifest in der Form von `faktenblaetter.json` und
+als Markdown). Werte gibt es nur für Schlüssel unter `settings` (Positivliste); jeder Wert läuft
+durch `InstanceDisclosureAssembler#exportable`, Adressen verlieren Zugangsdaten, Abfrageteil und
+Anker. Werte aus der Datenbank, Datenflüsse, Konnektornutzung und Modellanbieter meldet jedes Modul
+über den Port `InstanceStateSource` in `io.opaa.compliance`; private Bibliotheken zählen nicht.
+Abrufen darf nur `SYSTEM_ADMIN`. Jeder Abruf schreibt `DATA_COLLECTION_DISCLOSURE_EXPORTED`, auch
+der abgewiesene (`DENIED`) und der gescheiterte (`FAILURE`); deshalb prüft der Service die Rolle.
+
+Eine Negativliste geheimer Schlüssel veraltet unbemerkt, das Manifest führt ohnehin jeden
+datenwirksamen Schlüssel. Der Port hält foundation frei von Abhängigkeiten nach oben und legt jede
+Auskunft in das Modul, dem die Daten gehören.
+
 ## Konsequenzen
 
 Einfacher: Ein Bereich wächst ohne Konflikt in seiner eigenen Datei. Faktenblätter und
@@ -173,4 +188,6 @@ Beschreibung schlägt es mit offener Zuordnung als Zustimmung vor (Entscheidung 
 - Prozessor im regulären `compileJava` — verliert beim inkrementellen Übersetzen die Beschreibungen.
 - Datenflüsse als Java-Enum mit allen Angaben — Fachtext im Code, zweite Quelle neben dem Manifest.
 - Delta über die Records des aktuellen Laders — weist ältere Manifeste mit fehlendem Pflichtfeld ab.
+- Negativliste geheimer Schlüssel im Export — ein neues Geheimnis ginge unbemerkt hinaus.
+- Ein Export in einem oberen Modul, das alle Fachpakete liest — neue Kanten über alle Module.
 - Delta nur aus zwei JSON-Fassungen — ältere Releases haben keine als Anhang.

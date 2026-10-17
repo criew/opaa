@@ -3,6 +3,7 @@ package io.opaa.auth;
 import io.opaa.compliance.InstanceStateSource;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,7 +20,7 @@ class OidcProviderInstanceState implements InstanceStateSource {
   }
 
   @Override
-  public Map<String, Boolean> dataFlows() {
+  public Map<String, Boolean> dataFlows(UUID organizationId) {
     List<OidcProvider> external =
         repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc().stream()
             .filter(provider -> !provider.isLocal())

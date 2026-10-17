@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,7 +28,7 @@ class ConnectionProfileInstanceState implements InstanceStateSource {
   }
 
   @Override
-  public List<ConnectorUsage> connectorUsage() {
+  public List<ConnectorUsage> connectorUsage(UUID organizationId) {
     Map<String, Long> byType = new TreeMap<>();
     for (ConnectionProfile profile : profiles.findConnectorsByName()) {
       byType.merge(profile.getSourceType().key(), 1L, Long::sum);
@@ -38,7 +39,7 @@ class ConnectionProfileInstanceState implements InstanceStateSource {
   }
 
   @Override
-  public Map<String, Boolean> dataFlows() {
+  public Map<String, Boolean> dataFlows(UUID organizationId) {
     List<ConnectionProfile> connectors = profiles.findConnectorsByName();
     Map<String, Boolean> flows = new HashMap<>();
     for (ConnectionProfile profile : connectors) {

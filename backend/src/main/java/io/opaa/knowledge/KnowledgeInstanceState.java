@@ -6,13 +6,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * The connector types shared libraries read from and the store of the originals, for the
- * disclosure. A private library is counted nowhere, so the disclosure cannot tell one from none
- * (ADR-0049, Entscheidung 1); the flows it may open are reported by the connection profiles that
- * admit persons.
+ * The connector types the shared libraries of one organization read from and the store of the
+ * originals, for the disclosure. A private library is counted nowhere, so the disclosure cannot
+ * tell one from none (ADR-0049, Entscheidung 1); the flows it may open are reported by the
+ * connection profiles that admit persons.
  */
 @Component
 class KnowledgeInstanceState implements InstanceStateSource {
@@ -30,9 +31,9 @@ class KnowledgeInstanceState implements InstanceStateSource {
   }
 
   @Override
-  public List<ConnectorUsage> connectorUsage() {
+  public List<ConnectorUsage> connectorUsage(UUID organizationId) {
     List<ConnectorUsage> usage = new ArrayList<>();
-    sharedLibraryCounts()
+    sharedLibraryCounts(organizationId)
         .forEach(
             (type, count) -> {
               if (!SourceType.UPLOAD.key().equals(type)) {
@@ -43,8 +44,8 @@ class KnowledgeInstanceState implements InstanceStateSource {
   }
 
   @Override
-  public Map<String, Boolean> dataFlows() {
-    Map<String, Long> counts = sharedLibraryCounts();
+  public Map<String, Boolean> dataFlows(UUID organizationId) {
+    Map<String, Long> counts = sharedLibraryCounts(organizationId);
     Map<String, Boolean> flows = new HashMap<>();
     ConnectorDataFlows.BY_TYPE.forEach(
         (type, flow) -> flows.put(flow, counts.getOrDefault(type, 0L) > 0));
@@ -54,9 +55,9 @@ class KnowledgeInstanceState implements InstanceStateSource {
     return flows;
   }
 
-  private Map<String, Long> sharedLibraryCounts() {
+  private Map<String, Long> sharedLibraryCounts(UUID organizationId) {
     Map<String, Long> counts = new HashMap<>();
-    for (Object[] row : libraries.countSharedBySourceType()) {
+    for (Object[] row : libraries.countSharedBySourceType(organizationId)) {
       counts.put(((SourceType) row[0]).key(), ((Number) row[1]).longValue());
     }
     return counts;

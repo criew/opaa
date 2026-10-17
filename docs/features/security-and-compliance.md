@@ -972,8 +972,8 @@ jeder Abruf, auch der abgewiesene, ist ein Protokollereignis `DATA_COLLECTION_DI
 Abruf und Inhalt beschreibt das Handbuch unter [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
 sie ist der Eingang für das Update-Delta gegen die Instanz (#2559) und für die statischen Anlagen der
 Dienstvereinbarung ([Behördenunterlagen und Update-Paket](./behoerdenunterlagen.md#instanzbezug)).
-Noch nicht enthalten sind aus dem Auszug die Zahl der anlassbezogenen Klärungen im Berichtszeitraum
-und das Ergebnis der automatisierten Prüfung je Abfrageweg.
+Die Zahl und Anlasskategorien der anlassbezogenen Klärungen im Berichtszeitraum folgen mit #2895;
+das Ergebnis der automatisierten Prüfung je Abfrageweg ist noch nicht enthalten.
 
 ### Berichte
 

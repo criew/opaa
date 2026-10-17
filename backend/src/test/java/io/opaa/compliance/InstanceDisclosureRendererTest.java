@@ -71,8 +71,8 @@ class InstanceDisclosureRendererTest {
 
     assertThat(markdown)
         .startsWith("# Auskunft über die Datenerhebung\n")
-        .contains("OPAA-Version: 1.4.0")
-        .contains("Commit: abc123")
+        .contains("OPAA-Version: `1.4.0`")
+        .contains("Commit: `abc123`")
         .contains("2026-10-17T08:00:00Z")
         .contains(FactSheetRenderer.NOTICE);
   }
@@ -87,7 +87,7 @@ class InstanceDisclosureRendererTest {
     String deviationSection = markdown.substring(deviations, settings);
     assertThat(deviationSection)
         .contains(
-            "| `audit_retention_settings.retention_months` | 36 | 24 | 2026-10-01T10:00:00Z |")
+            "| `audit_retention_settings.retention_months` | `36` | `24` | 2026-10-01T10:00:00Z |")
         .doesNotContain("opaa.rerank.enabled");
   }
 
@@ -109,7 +109,7 @@ class InstanceDisclosureRendererTest {
         .contains("## Konnektortypen in Gebrauch")
         .contains("| `HTTP_DIRECTORY` | 1 | 0 |")
         .contains("## Modellanbieter")
-        .contains("| CHAT | Hausmodell | https://llm.example/v1 | llama | ja |")
+        .contains("| CHAT | `Hausmodell` | `https://llm.example/v1` | `llama` | ja |")
         .contains("## Gespeicherte Daten")
         .contains("`audit-log`")
         .contains("## Protokoll")
@@ -120,6 +120,28 @@ class InstanceDisclosureRendererTest {
         .contains("### Nicht vorhandene Abfragewege")
         .contains("- kein Filter nach handelnder Person")
         .contains("Wird nicht erhoben");
+  }
+
+  @Test
+  void rendersNoValueOfTheInstanceAsMarkup() {
+    InstanceDisclosure withImage =
+        new InstanceDisclosure(
+            "1.4.0",
+            "abc123",
+            DISCLOSURE.generatedAt(),
+            MANIFEST,
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(
+                new ModelProvider("CHAT", "![x](https://tracker.example/p.png)", null, "m", true)),
+            DISCLOSURE.protocol());
+
+    String markdown = InstanceDisclosureRenderer.render(withImage);
+
+    assertThat(markdown)
+        .contains("| CHAT | `![x](https://tracker.example/p.png)` | – | `m` | ja |")
+        .doesNotContain("| ![x]");
   }
 
   @Test

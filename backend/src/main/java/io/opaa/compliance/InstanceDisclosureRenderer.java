@@ -43,10 +43,8 @@ public final class InstanceDisclosureRenderer {
   public static String render(InstanceDisclosure disclosure) {
     StringBuilder out = new StringBuilder();
     out.append("# Auskunft über die Datenerhebung\n\n");
-    out.append("- OPAA-Version: ")
-        .append(FactSheetRenderer.text(disclosure.opaaVersion()))
-        .append('\n');
-    out.append("- Commit: ").append(FactSheetRenderer.text(disclosure.commit())).append('\n');
+    out.append("- OPAA-Version: ").append(shown(disclosure.opaaVersion())).append('\n');
+    out.append("- Commit: ").append(shown(disclosure.commit())).append('\n');
     out.append("- Stand: ").append(disclosure.generatedAt()).append("\n\n");
     out.append(FactSheetRenderer.NOTICE).append("\n\n");
     out.append(
@@ -212,11 +210,16 @@ public final class InstanceDisclosureRenderer {
     out.append("| ").append(String.join(" | ", cells)).append(" |\n");
   }
 
+  /**
+   * A value of the instance as a code span, so that nothing an administration typed (a model name,
+   * an address) is rendered as a link, an image or markup.
+   */
   private static String shown(String value) {
     if (value == null) {
       return "–";
     }
-    return value.isBlank() ? "(leer)" : FactSheetRenderer.text(value);
+    String line = value.replaceAll("\\s*\\R\\s*", " ").strip();
+    return line.isEmpty() ? "(leer)" : FactSheetRenderer.code(line);
   }
 
   private static String time(Instant value) {

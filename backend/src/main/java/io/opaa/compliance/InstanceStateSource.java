@@ -5,6 +5,7 @@ import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.StoredValue;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * What a module tells the {@link InstanceDisclosure} about the current state of this instance; a
@@ -20,13 +21,19 @@ public interface InstanceStateSource {
     return Map.of();
   }
 
-  /** Whether the data flows the module decides are switched on, by flow id. */
-  default Map<String, Boolean> dataFlows() {
+  /**
+   * Whether the data flows the module decides are switched on, by flow id; what one organization
+   * holds is counted for {@code organizationId} only.
+   */
+  default Map<String, Boolean> dataFlows(UUID organizationId) {
     return Map.of();
   }
 
-  /** The connector types in use as far as the module sees them; the disclosure adds them up. */
-  default List<ConnectorUsage> connectorUsage() {
+  /**
+   * The connector types in use as far as the module sees them, for {@code organizationId} where the
+   * data belongs to an organization; the disclosure adds them up.
+   */
+  default List<ConnectorUsage> connectorUsage(UUID organizationId) {
     return List.of();
   }
 

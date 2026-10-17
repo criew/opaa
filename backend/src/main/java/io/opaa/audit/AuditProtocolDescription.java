@@ -32,7 +32,7 @@ final class AuditProtocolDescription {
   private static final List<String> ABSENT_QUERY_PATHS =
       List.of(
           "Kein Filter nach handelnder Person, weder als Parameter noch als Spaltenfilter noch über"
-              + " eine Sortierung",
+              + " eine Sortierung, außer in der freigegebenen anlassbezogenen Klärung",
           "Keine Gruppierung und keine Zählung je Person",
           "Keine Zeitreihe je Person, in keiner Auflösung",
           "Keine Freitextsuche über das Protokoll",
@@ -56,7 +56,15 @@ final class AuditProtocolDescription {
         new QueryPath("nach Zeitraum", "Alle Ereignisse eines Zeitraums" + bounds),
         new QueryPath("nach Ereignisart", "Alle Ereignisse einer Art in einem Zeitraum" + bounds),
         new QueryPath(
-            "nach Vorgang", "Alle Einträge eines technischen Vorgangs, etwa eines Laufs" + bounds));
+            "nach Vorgang", "Alle Einträge eines technischen Vorgangs, etwa eines Laufs" + bounds),
+        new QueryPath(
+            "anlassbezogene Klärung",
+            "Die einzige Abfrage nach handelnder Person: alle Ereignisse der vorab festgelegten"
+                + " Person in einem Zeitraum innerhalb des freigegebenen Zeitraums; nur mit"
+                + " Freigabe im Vier-Augen-Prinzip durch eine zweite Person, nutzbar "
+                + AuditIncidentScopeGrant.USABLE_WINDOW.toDays()
+                + " Tage ab Freigabe"
+                + bounds));
   }
 
   private static List<ProtocolField> fields(String retention) {

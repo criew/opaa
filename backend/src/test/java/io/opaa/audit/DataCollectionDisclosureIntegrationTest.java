@@ -101,7 +101,7 @@ class DataCollectionDisclosureIntegrationTest {
         .andExpect(
             jsonPath("$.instance.settings[?(@.key == '" + RETENTION_KEY + "')].effectiveValue")
                 .value("36"))
-        .andExpect(jsonPath("$.protocol.queryPaths.length()").value(4))
+        .andExpect(jsonPath("$.protocol.queryPaths.length()").value(5))
         .andExpect(jsonPath("$.protocol.absentQueryPaths").isNotEmpty());
   }
 
@@ -237,6 +237,37 @@ class DataCollectionDisclosureIntegrationTest {
       }
     }
     assertThat(open).containsExactlyInAnyOrder("model-endpoint", "mcp-discovery");
+  }
+
+  /** The field list of the protocol description names exactly the columns of the audit log. */
+  @Test
+  void theProtocolDescriptionNamesEveryColumnOfTheAuditLog() throws Exception {
+    List<String> columns =
+        jdbcTemplate.queryForList(
+            "SELECT column_name FROM information_schema.columns WHERE table_schema ="
+                + " current_schema() AND table_name = 'audit_log'",
+            String.class);
+    List<String> fields = new ArrayList<>();
+    for (JsonNode field : exportAsAdmin().path("protocol").path("fields")) {
+      fields.add(field.path("name").asString());
+    }
+
+    assertThat(columns).isNotEmpty();
+    assertThat(fields).containsExactlyInAnyOrderElementsOf(columns);
+  }
+
+  /** The incident scope is the one query path that filters by the acting person, and says so. */
+  @Test
+  void theIncidentScopeIsNamedAsTheOnePathByPerson() throws Exception {
+    JsonNode protocol = exportAsAdmin().path("protocol");
+
+    List<String> names = new ArrayList<>();
+    for (JsonNode path : protocol.path("queryPaths")) {
+      names.add(path.path("name").asString());
+    }
+    assertThat(names).contains("anlassbezogene Klärung");
+    assertThat(protocol.path("absentQueryPaths").get(0).asString())
+        .contains("außer in der freigegebenen anlassbezogenen Klärung");
   }
 
   private JsonNode exportAsAdmin() throws Exception {

@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 import tools.jackson.databind.MapperFeature;
@@ -29,6 +30,7 @@ class InstanceDisclosureAssemblerTest {
   private static final ComplianceManifest MANIFEST = ComplianceManifestLoader.load();
   private static final Instant NOW = Instant.parse("2026-10-17T08:00:00Z");
   private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+  private static final UUID ORGANIZATION = UUID.randomUUID();
   private static final Protocol PROTOCOL = new Protocol(List.of(), List.of(), List.of(), "nein");
 
   private static final String API_KEY = "sk-S3CR3T-API-KEY-4711";
@@ -57,7 +59,7 @@ class InstanceDisclosureAssemblerTest {
         };
 
     InstanceDisclosure disclosure =
-        assembler(environment, List.of(audit)).assemble(MANIFEST, PROTOCOL);
+        assembler(environment, List.of(audit)).assemble(MANIFEST, PROTOCOL, ORGANIZATION);
 
     assertThat(disclosure.deviations())
         .extracting(SettingValue::key)
@@ -73,7 +75,7 @@ class InstanceDisclosureAssemblerTest {
   @Test
   void leavesAValueItCannotDetermineOpenInsteadOfCallingItADeviation() {
     InstanceDisclosure disclosure =
-        assembler(new MockEnvironment(), List.of()).assemble(MANIFEST, PROTOCOL);
+        assembler(new MockEnvironment(), List.of()).assemble(MANIFEST, PROTOCOL, ORGANIZATION);
 
     SettingValue retention = setting(disclosure, "audit_retention_settings.retention_months");
     assertThat(retention.effectiveValue()).isNull();
@@ -86,7 +88,7 @@ class InstanceDisclosureAssemblerTest {
   @Test
   void aConstantIsAlwaysItsDefault() {
     InstanceDisclosure disclosure =
-        assembler(new MockEnvironment(), List.of()).assemble(MANIFEST, PROTOCOL);
+        assembler(new MockEnvironment(), List.of()).assemble(MANIFEST, PROTOCOL, ORGANIZATION);
 
     SettingValue window =
         setting(disclosure, "io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW");
@@ -130,7 +132,7 @@ class InstanceDisclosureAssemblerTest {
         };
 
     InstanceDisclosure disclosure =
-        assembler(environment, List.of(mail)).assemble(MANIFEST, PROTOCOL);
+        assembler(environment, List.of(mail)).assemble(MANIFEST, PROTOCOL, ORGANIZATION);
 
     String json = JSON.writeValueAsString(disclosure);
     String markdown = InstanceDisclosureRenderer.render(disclosure);
@@ -161,24 +163,35 @@ class InstanceDisclosureAssemblerTest {
   }
 
   @Test
+  void aCommaInsideUserInformationLeaksNoPartOfTheAddress() {
+    assertThat(InstanceDisclosureAssembler.exportable("https://u:abc,SECRETTAIL@llm.example/v1"))
+        .isEqualTo(InstanceDisclosureAssembler.UNREADABLE_ADDRESS);
+    assertThat(InstanceDisclosureAssembler.exportable("https://ok.example/v1,not a uri://x y"))
+        .isEqualTo(InstanceDisclosureAssembler.UNREADABLE_ADDRESS);
+    assertThat(InstanceDisclosureAssembler.exportable("https://ok.example/v1,user@host"))
+        .isEqualTo(InstanceDisclosureAssembler.UNREADABLE_ADDRESS);
+  }
+
+  @Test
   void aFlowIsOnWhenAnySourceSwitchesItOnAndOpenWhenNoneDecides() {
     InstanceStateSource libraries =
         new InstanceStateSource() {
           @Override
-          public Map<String, Boolean> dataFlows() {
+          public Map<String, Boolean> dataFlows(UUID organizationId) {
             return Map.of("source-web", true, "source-rss", false);
           }
         };
     InstanceStateSource other =
         new InstanceStateSource() {
           @Override
-          public Map<String, Boolean> dataFlows() {
+          public Map<String, Boolean> dataFlows(UUID organizationId) {
             return Map.of("source-web", false);
           }
         };
 
     InstanceDisclosure disclosure =
-        assembler(new MockEnvironment(), List.of(libraries, other)).assemble(MANIFEST, PROTOCOL);
+        assembler(new MockEnvironment(), List.of(libraries, other))
+            .assemble(MANIFEST, PROTOCOL, ORGANIZATION);
 
     assertThat(flow(disclosure, "source-web").active()).isTrue();
     assertThat(flow(disclosure, "source-rss").active()).isFalse();
@@ -194,21 +207,22 @@ class InstanceDisclosureAssemblerTest {
     InstanceStateSource libraries =
         new InstanceStateSource() {
           @Override
-          public List<ConnectorUsage> connectorUsage() {
+          public List<ConnectorUsage> connectorUsage(UUID organizationId) {
             return List.of(new ConnectorUsage("HTTP_DIRECTORY", 2, 0));
           }
         };
     InstanceStateSource profiles =
         new InstanceStateSource() {
           @Override
-          public List<ConnectorUsage> connectorUsage() {
+          public List<ConnectorUsage> connectorUsage(UUID organizationId) {
             return List.of(
                 new ConnectorUsage("HTTP_DIRECTORY", 0, 1), new ConnectorUsage("CONFLUENCE", 0, 1));
           }
         };
 
     InstanceDisclosure disclosure =
-        assembler(new MockEnvironment(), List.of(libraries, profiles)).assemble(MANIFEST, PROTOCOL);
+        assembler(new MockEnvironment(), List.of(libraries, profiles))
+            .assemble(MANIFEST, PROTOCOL, ORGANIZATION);
 
     assertThat(disclosure.connectorTypes())
         .containsExactly(
@@ -223,9 +237,9 @@ class InstanceDisclosureAssemblerTest {
                 "1.4.0",
                 List.of(),
                 CLOCK)
-            .assemble(MANIFEST, PROTOCOL);
+            .assemble(MANIFEST, PROTOCOL, ORGANIZATION);
     InstanceDisclosure withoutCommit =
-        assembler(new MockEnvironment(), List.of()).assemble(MANIFEST, PROTOCOL);
+        assembler(new MockEnvironment(), List.of()).assemble(MANIFEST, PROTOCOL, ORGANIZATION);
 
     assertThat(withCommit.opaaVersion()).isEqualTo("1.4.0");
     assertThat(withCommit.commit()).isEqualTo("abc123");

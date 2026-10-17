@@ -20,7 +20,8 @@ import org.springframework.stereotype.Service;
  * AuditEventType#DATA_COLLECTION_DISCLOSURE_EXPORTED}), a refused one included - the role is
  * therefore checked here and not by {@code @PreAuthorize}, whose refusal would never reach this
  * class. A granted export is logged after it was assembled and before it is handed out; when the
- * event cannot be written, nothing is handed out. The event names the format, never the content.
+ * event cannot be written, nothing is handed out, and an export that fails to assemble is logged as
+ * {@code FAILURE}. The event names the format, never the content.
  */
 @Service
 public class DataCollectionDisclosureService {
@@ -65,8 +66,16 @@ public class DataCollectionDisclosureService {
       record(organizationId, callerId, format, AuditOutcome.DENIED);
       throw new AccessDeniedException(ADMIN_ONLY);
     }
-    InstanceDisclosure disclosure =
-        assembler.assemble(AuditProtocolDescription.of(retentionSettings.currentRetentionMonths()));
+    InstanceDisclosure disclosure;
+    try {
+      disclosure =
+          assembler.assemble(
+              AuditProtocolDescription.of(retentionSettings.currentRetentionMonths()),
+              organizationId);
+    } catch (RuntimeException e) {
+      record(organizationId, callerId, format, AuditOutcome.FAILURE);
+      throw e;
+    }
     record(organizationId, callerId, format, AuditOutcome.SUCCESS);
     return disclosure;
   }

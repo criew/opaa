@@ -2,6 +2,7 @@ package io.opaa.mail;
 
 import io.opaa.compliance.InstanceStateSource;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /** Whether this instance sends mail, for the disclosure; nothing of the server or its account. */
@@ -15,7 +16,7 @@ class MailInstanceState implements InstanceStateSource {
   }
 
   @Override
-  public Map<String, Boolean> dataFlows() {
+  public Map<String, Boolean> dataFlows(UUID organizationId) {
     return Map.of("mail", repository.findSingleton().map(MailSettings::isEnabled).orElse(false));
   }
 }

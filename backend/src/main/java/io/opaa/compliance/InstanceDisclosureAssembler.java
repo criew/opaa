@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,12 +87,15 @@ public class InstanceDisclosureAssembler {
     this.clock = clock;
   }
 
-  /** The disclosure of this instance with the manifest delivered with this build. */
-  public InstanceDisclosure assemble(Protocol protocol) {
-    return assemble(ComplianceManifestLoader.load(), protocol);
+  /**
+   * The disclosure of this instance with the manifest delivered with this build; what belongs to an
+   * organization is counted for {@code organizationId}.
+   */
+  public InstanceDisclosure assemble(Protocol protocol, UUID organizationId) {
+    return assemble(ComplianceManifestLoader.load(), protocol, organizationId);
   }
 
-  InstanceDisclosure assemble(ComplianceManifest manifest, Protocol protocol) {
+  InstanceDisclosure assemble(ComplianceManifest manifest, Protocol protocol, UUID organizationId) {
     String commit = environment.getProperty(COMMIT_PROPERTY, "").trim();
     return new InstanceDisclosure(
         version,
@@ -99,16 +103,18 @@ public class InstanceDisclosureAssembler {
         Instant.now(clock),
         manifest,
         settings(manifest),
-        dataFlows(manifest),
-        connectorUsage(),
+        dataFlows(manifest, organizationId),
+        connectorUsage(organizationId),
         modelProviders(),
         protocol);
   }
 
   /**
    * {@code value} as it may leave the installation: every comma-separated part that is an address
-   * ({@code scheme://…}) keeps only scheme, host, port and path; one that cannot be read is
-   * replaced by {@link #UNREADABLE_ADDRESS}. Anything else is returned unchanged.
+   * ({@code scheme://…}) keeps only scheme, host, port and path. When one part cannot be read, or a
+   * part without a scheme holds an {@code @} (a comma inside user information splits it), the whole
+   * value becomes {@link #UNREADABLE_ADDRESS}, so no piece of it leaves. Anything else is returned
+   * unchanged.
    */
   public static String exportable(String value) {
     if (value == null || !value.contains("://")) {
@@ -116,7 +122,18 @@ public class InstanceDisclosureAssembler {
     }
     List<String> parts = new ArrayList<>();
     for (String part : value.split(",", -1)) {
-      parts.add(part.contains("://") ? address(part.trim()) : part);
+      if (!part.contains("://")) {
+        if (part.contains("@")) {
+          return UNREADABLE_ADDRESS;
+        }
+        parts.add(part);
+        continue;
+      }
+      String address = address(part.trim());
+      if (address.equals(UNREADABLE_ADDRESS)) {
+        return UNREADABLE_ADDRESS;
+      }
+      parts.add(address);
     }
     return String.join(",", parts);
   }
@@ -195,10 +212,12 @@ public class InstanceDisclosureAssembler {
     return lower.equals("true") || lower.equals("false");
   }
 
-  private List<DataFlowState> dataFlows(ComplianceManifest manifest) {
+  private List<DataFlowState> dataFlows(ComplianceManifest manifest, UUID organizationId) {
     Map<String, Boolean> active = new HashMap<>();
     for (InstanceStateSource source : sources) {
-      source.dataFlows().forEach((id, on) -> active.merge(id, on, Boolean::logicalOr));
+      source
+          .dataFlows(organizationId)
+          .forEach((id, on) -> active.merge(id, on, Boolean::logicalOr));
     }
     List<DataFlowState> states = new ArrayList<>();
     for (DataFlowEntry entry : manifest.dataFlows()) {
@@ -208,10 +227,10 @@ public class InstanceDisclosureAssembler {
     return states;
   }
 
-  private List<ConnectorUsage> connectorUsage() {
+  private List<ConnectorUsage> connectorUsage(UUID organizationId) {
     Map<String, ConnectorUsage> byType = new TreeMap<>();
     for (InstanceStateSource source : sources) {
-      for (ConnectorUsage usage : source.connectorUsage()) {
+      for (ConnectorUsage usage : source.connectorUsage(organizationId)) {
         byType.merge(
             usage.type(),
             usage,

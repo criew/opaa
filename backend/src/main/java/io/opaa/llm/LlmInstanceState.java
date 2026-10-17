@@ -5,6 +5,7 @@ import io.opaa.compliance.InstanceStateSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,7 +33,7 @@ class LlmInstanceState implements InstanceStateSource {
   }
 
   @Override
-  public Map<String, Boolean> dataFlows() {
+  public Map<String, Boolean> dataFlows(UUID organizationId) {
     return Map.of(
         "chat-model", !models.findAllByActiveTrue().isEmpty(),
         "embedding-model", true,
