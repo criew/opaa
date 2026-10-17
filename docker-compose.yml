@@ -369,7 +369,7 @@ services:
   # provider-specific configuration exists, so activating this profile needs no
   # environment variable changes at all: the application defaults already point here.
   ollama:
-    image: ollama/ollama:0.40.5
+    image: ollama/ollama:0.40.6
     volumes:
       - opaa-ollama-data:/root/.ollama
     # Not published to the host: the backend and the ollama-pull init step below reach this
@@ -402,7 +402,7 @@ services:
   # opaa-ollama-data, and the create reuses them. Runs to completion and exits (no restart); watch
   # `docker compose logs -f ollama-pull` for progress.
   ollama-pull:
-    image: ollama/ollama:0.40.5
+    image: ollama/ollama:0.40.6
     environment:
       OLLAMA_HOST: "ollama:11434"
     entrypoint: ["/bin/sh", "-c"]
