@@ -64,7 +64,7 @@ class RateLimitConfigurationTest {
     Filter filter =
         filter(
             new RateLimitProperties(
-                true, List.of(), wide, wide, wide, wide, wide, chatSearch, null));
+                true, List.of(), wide, wide, wide, wide, wide, chatSearch, null, null));
 
     assertThat(statusAfter(filter, chatSearchIn(UUID.randomUUID()), 3)).isEqualTo(200);
     // one bucket per client across spaces: another space buys no fresh budget
@@ -91,6 +91,7 @@ class RateLimitConfigurationTest {
                 ceilingOfTwo,
                 ceilingOfTwo,
                 ceilingOfTwo,
+                null,
                 null));
 
     for (String path :
@@ -122,7 +123,7 @@ class RateLimitConfigurationTest {
     Filter filter =
         filter(
             new RateLimitProperties(
-                true, List.of(), wide, wide, wide, wide, wide, wide, localAuth));
+                true, List.of(), wide, wide, wide, wide, wide, wide, localAuth, null));
 
     assertThat(answer(filter, LOGIN, "198.51.100.1", 401)).isEqualTo(401);
     assertThat(answer(filter, LOGIN, "198.51.100.2", 401)).isEqualTo(401);
@@ -143,6 +144,7 @@ class RateLimitConfigurationTest {
                 onePerClient,
                 onePerClient,
                 onePerClient,
+                null,
                 null));
     UUID library = UUID.randomUUID();
 
@@ -172,7 +174,8 @@ class RateLimitConfigurationTest {
     EndpointLimit webhook = new EndpointLimit(3, 60, 1000);
     Filter filter =
         filter(
-            new RateLimitProperties(true, List.of(), wide, wide, wide, wide, webhook, wide, null));
+            new RateLimitProperties(
+                true, List.of(), wide, wide, wide, wide, webhook, wide, null, null));
 
     for (int attempt = 0; attempt < 3; attempt++) {
       assertThat(answer(filter, pushTo(UUID.randomUUID()), CLIENT, 401)).isEqualTo(401);
@@ -187,7 +190,8 @@ class RateLimitConfigurationTest {
     EndpointLimit webhook = new EndpointLimit(1, 60, 1000);
     Filter filter =
         filter(
-            new RateLimitProperties(true, List.of(), wide, wide, wide, wide, webhook, wide, null));
+            new RateLimitProperties(
+                true, List.of(), wide, wide, wide, wide, webhook, wide, null, null));
 
     for (int library = 0; library < 3; library++) {
       assertThat(answerSignedIn(filter, pushTo(UUID.randomUUID()), CLIENT, 202)).isEqualTo(202);
@@ -250,7 +254,7 @@ class RateLimitConfigurationTest {
   private Filter filter() {
     EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
     return filter(
-        new RateLimitProperties(true, List.of(), wide, wide, wide, wide, wide, wide, null));
+        new RateLimitProperties(true, List.of(), wide, wide, wide, wide, wide, wide, null, null));
   }
 
   private Filter filter(RateLimitProperties properties) {

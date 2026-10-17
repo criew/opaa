@@ -72,6 +72,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Behind the sign-in: a request the security chain did not authenticate - refused by the
      * firewall or the chain - gives its client and its global token back. Strangers neither use up
      * the ceiling shared by everyone signed in nor the budget of a person whose token just expired.
+     * Such requests count instead against one budget per address shared by all these rules; while
+     * it is used up, the address is refused on all of them, since whether a request will
+     * authenticate is only known after the chain.
      */
     AUTHENTICATED,
 
@@ -154,9 +157,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
       Decision keyGrant,
       String client,
       Decision address,
-      Decision global) {}
+      Decision global,
+      Decision unauthenticated) {}
 
   private final List<CompiledRule> rules;
+  private final RateLimitService unauthenticated;
   private final ClientIpResolver clientIpResolver;
   private final RateLimitMetrics metrics;
   private final JsonMapper jsonMapper;
@@ -166,6 +171,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
       ClientIpResolver clientIpResolver,
       RateLimitMetrics metrics,
       JsonMapper jsonMapper) {
+    this(rules, null, clientIpResolver, metrics, jsonMapper);
+  }
+
+  /**
+   * @param unauthenticated the budget per address of unauthenticated requests on {@link
+   *     Counting#AUTHENTICATED} rules, or {@code null} for none
+   */
+  public RateLimitFilter(
+      List<Rule> rules,
+      RateLimitService unauthenticated,
+      ClientIpResolver clientIpResolver,
+      RateLimitMetrics metrics,
+      JsonMapper jsonMapper) {
+    this.unauthenticated = unauthenticated;
     this.rules =
         rules.stream()
             .map(
@@ -247,7 +266,37 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return null;
       }
     }
-    return new Admission(rule, key, keyGrant, client, address, global);
+    return reserveUnauthenticated(
+        new Admission(rule, key, keyGrant, client, address, global, null), response, path);
+  }
+
+  /**
+   * On an {@link Counting#AUTHENTICATED} rule, also takes a token of the address's budget of
+   * unauthenticated requests; refused, the rule's own tokens go back and the answer is {@code 429}.
+   */
+  private Admission reserveUnauthenticated(
+      Admission admission, HttpServletResponse response, String path) throws IOException {
+    CompiledRule rule = admission.rule();
+    if (rule.counting() != Counting.AUTHENTICATED || unauthenticated == null) {
+      return admission;
+    }
+    Decision grant = unauthenticated.tryAcquire(admission.client());
+    if (grant.allowed()) {
+      return new Admission(
+          rule,
+          admission.key(),
+          admission.keyGrant(),
+          admission.client(),
+          admission.address(),
+          admission.global(),
+          grant);
+    }
+    rule.perClient().release(admission.key(), admission.keyGrant());
+    releaseGlobal(admission);
+    metrics.recordRejected(rule.name(), "unauthenticated");
+    log.info("Unauthenticated budget exceeded for {} on {}", admission.client(), path);
+    writeRateLimitResponse(response, grant.retryAfterSeconds());
+    return null;
   }
 
   private Decision acquireForClient(
@@ -263,7 +312,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   /** Gives back what the request's mark shows it did not owe - see {@link Counting}. */
-  private static void settle(Admission admission, HttpServletRequest request) {
+  private void settle(Admission admission, HttpServletRequest request) {
     CompiledRule rule = admission.rule();
     switch (rule.counting()) {
       case EVERY_REQUEST -> {}
@@ -271,6 +320,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (!RateLimitAuthentication.isMarked(request, RateLimitAuthentication.SESSION_ATTRIBUTE)) {
           rule.perClient().release(admission.key(), admission.keyGrant());
           releaseGlobal(admission);
+        } else if (admission.unauthenticated() != null) {
+          unauthenticated.release(admission.client(), admission.unauthenticated());
         }
       }
       case AUTHENTICATED_BY_HANDLER -> {

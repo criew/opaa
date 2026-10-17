@@ -21,8 +21,8 @@ public class RateLimitMetrics {
 
   /**
    * @param limit the rule's name (e.g. {@code query}, {@code local-auth-login})
-   * @param scope what was exhausted: {@code client}, {@code global}, {@code subject} or {@code
-   *     address}
+   * @param scope what was exhausted: {@code client}, {@code global}, {@code unauthenticated} (the
+   *     budget per address of unauthenticated requests), {@code subject} or {@code address}
    */
   public void recordRejected(String limit, String scope) {
     Counter.builder(REJECTED_METRIC)

@@ -654,6 +654,12 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS:60}
       window-seconds: ${OPAA_RATE_LIMIT_CHAT_SEARCH_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_GLOBAL_MAX_REQUESTS:1200}
+    # Requests to query .. chat-search that the security chain does not authenticate give their
+    # endpoint's tokens back and count here instead: one budget per client address across all of
+    # them, the bound on how many invalid credentials one address can have checked.
+    unauthenticated:
+      max-requests: ${OPAA_RATE_LIMIT_UNAUTHENTICATED_MAX_REQUESTS:60}
+      window-seconds: ${OPAA_RATE_LIMIT_UNAUTHENTICATED_WINDOW_SECONDS:60}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
     # register, forgot-password, set-password and verify-email are keyed by client address in
     # RateLimitFilter; change-password by the authenticated account, register and forgot-password

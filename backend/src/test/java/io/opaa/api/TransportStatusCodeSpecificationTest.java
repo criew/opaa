@@ -359,7 +359,8 @@ class TransportStatusCodeSpecificationTest {
             one,
             one,
             new LocalAuthLimits(
-                oneLocal, oneLocal, oneLocal, oneLocal, oneLocal, oneLocal, oneLocal, oneLocal));
+                oneLocal, oneLocal, oneLocal, oneLocal, oneLocal, oneLocal, oneLocal, oneLocal),
+            null);
     return new RateLimitConfiguration()
         .rateLimitFilterRegistration(
             properties,

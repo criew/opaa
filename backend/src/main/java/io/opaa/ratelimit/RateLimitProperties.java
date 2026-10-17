@@ -34,6 +34,10 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     person types and would exhaust the query budget within seconds
  * @param localAuth the limits of the local sign-in and its self-service endpoints (ADR-0033,
  *     Entscheidung 9); every absent value is the ADR's default
+ * @param unauthenticated the budget per client address of requests to the endpoints behind the
+ *     sign-in that the security chain does not authenticate, shared by all of them - such requests
+ *     give their endpoint's own tokens back, so this bounds how many invalid credentials one
+ *     address can have checked; absent means 60 per 60 seconds
  */
 @NoDataImpact("request limits")
 @ConfigurationProperties(prefix = "opaa.rate-limit")
@@ -46,13 +50,15 @@ public record RateLimitProperties(
     EndpointLimit documentContent,
     EndpointLimit webhook,
     EndpointLimit chatSearch,
-    LocalAuthLimits localAuth) {
+    LocalAuthLimits localAuth,
+    UnauthenticatedLimit unauthenticated) {
 
   public static final String TRUSTED_PROXY_CIDRS_VARIABLE = "OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS";
   public static final int NARROWEST_ALLOWED_PREFIX_LENGTH = 8;
 
   public RateLimitProperties {
     trustedProxyCidrs = normalizeTrustedProxies(trustedProxyCidrs);
+    unauthenticated = unauthenticated != null ? unauthenticated : new UnauthenticatedLimit(60, 60);
     localAuth =
         localAuth != null
             ? localAuth
@@ -208,6 +214,25 @@ public record RateLimitProperties(
 
     public boolean hasAddressLimit() {
       return maxRequestsPerAddress != null;
+    }
+  }
+
+  /**
+   * The budget of unauthenticated requests per client address.
+   *
+   * @param maxRequests unauthenticated requests per address within the window. Must be at least 1.
+   * @param windowSeconds sliding window in seconds. Must be at least 1.
+   */
+  public record UnauthenticatedLimit(int maxRequests, int windowSeconds) {
+
+    public UnauthenticatedLimit {
+      if (maxRequests < 1) {
+        throw new IllegalArgumentException("maxRequests must be at least 1, got " + maxRequests);
+      }
+      if (windowSeconds < 1) {
+        throw new IllegalArgumentException(
+            "windowSeconds must be at least 1, got " + windowSeconds);
+      }
     }
   }
 }
