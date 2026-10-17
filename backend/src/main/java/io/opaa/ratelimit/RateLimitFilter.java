@@ -72,6 +72,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Behind the sign-in: a request the security chain did not authenticate - refused by the
      * firewall or the chain - gives its client and its global token back. Strangers neither use up
      * the ceiling shared by everyone signed in nor the budget of a person whose token just expired.
+     * Attempts with invalid credentials are thereby not bounded per address, as on every other
+     * endpoint: a budget checked before the chain would refuse signed-in people behind the same
+     * address too.
      */
     AUTHENTICATED,
 
