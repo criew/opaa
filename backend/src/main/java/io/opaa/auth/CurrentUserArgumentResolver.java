@@ -2,6 +2,7 @@ package io.opaa.auth;
 
 import io.opaa.common.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.UUID;
 import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
@@ -39,12 +40,14 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
   /**
    * Attaches the caller of an external-access token call to {@code request} - always the reduced
-   * snapshot of {@link CurrentUser#forExternalAccess}, never the person's full identity. Its one
-   * intended caller is the access-token filter of {@code io.opaa.externalaccess}; nothing else
-   * binds a caller through it.
+   * snapshot of {@link CurrentUser#forExternalAccess}, never the person's full identity, and always
+   * carrying {@code accessTokenId}; without one it binds nothing and throws. Its one intended
+   * caller is the access-token filter of {@code io.opaa.externalaccess}; nothing else binds a
+   * caller through it.
    */
-  public static void bindExternalAccessCaller(HttpServletRequest request, User user) {
-    request.setAttribute(REQUEST_ATTRIBUTE, CurrentUser.forExternalAccess(user));
+  public static void bindExternalAccessCaller(
+      HttpServletRequest request, User user, UUID accessTokenId) {
+    request.setAttribute(REQUEST_ATTRIBUTE, CurrentUser.forExternalAccess(user, accessTokenId));
   }
 
   @Override
