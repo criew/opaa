@@ -15,8 +15,8 @@ is a trial and the package says so. It renders fact sheets and manifest delta wi
 the licenses of backend and frontend (frontend/node_modules must be installed) and writes
 opaa-update-paket-<version>.tar.gz with its .sha256 file into --out. Without a previous final
 release the delta starts from the oldest root commit, which has no manifest. Fact sheet
-placeholders in the Markdown files of the package become links to faktenblaetter/; an unknown
-sheet or anchor fails the run. Dates and file metadata come from the commit, so the same commit
+placeholders in update-vermerk.md become links to faktenblaetter/, outside code; an unknown sheet
+or anchor fails the run. Links of the delta point into --repository. Dates and file metadata come from the commit, so the same commit
 yields the same files.
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
@@ -72,6 +72,11 @@ BARE = "Stand ohne Fakten-Manifest"
 PLACEHOLDER = re.compile(r"\{\{faktenblatt:([a-z0-9-]+)(?:#([a-z0-9-]+))?\}\}")
 LEFTOVER = re.compile(r"\{\{\s*faktenblatt[^\n]{0,40}", re.IGNORECASE)
 ANCHOR = re.compile(r'<a id="([^"]+)"></a>')
+FENCE = re.compile(r" {0,3}(`{3,}|~{3,})")
+CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.DOTALL)
+# Package files whose text comes from a template; only there placeholders are resolved, never in
+# text from elsewhere such as pull request titles or upgrade notes.
+TEMPLATED = ("update-vermerk.md",)
 COMMIT_ID = re.compile(r"[0-9a-f]{7,64}")
 
 
@@ -176,11 +181,14 @@ def bare_name(commit: str) -> str:
     return f"{BARE} (Commit `{commit[:7]}`)"
 
 
+def names_bare_commit(label: str, commit: str, has_manifest: bool) -> bool:
+    """Whether `label` is the id of `commit` without manifest; ManifestDeltaRenderer applies the
+    same rule, both checked against backend/src/test/resources/compliance/delta/bare-commit-names.json."""
+    return not has_manifest and COMMIT_ID.fullmatch(label) is not None and commit.startswith(label)
+
+
 def is_bare(repo: Path, label: str, commit: str) -> bool:
-    """Whether `label` is the id of `commit` and its tree has no manifest; ManifestDeltaRenderer
-    names such a version the same way."""
-    return (COMMIT_ID.fullmatch(label) is not None and commit.startswith(label)
-            and not files_at(repo, commit, MANIFEST_PATH))
+    return names_bare_commit(label, commit, bool(files_at(repo, commit, MANIFEST_PATH)))
 
 
 def where(side: Side) -> str:
@@ -779,35 +787,64 @@ def sheet_title(text: str, name: str) -> str:
     return f"Faktenblatt {title}" if title else f"Faktenblatt `{name}`"
 
 
-def resolve_placeholders(files: dict[str, bytes]) -> None:
-    """Replaces every {{faktenblatt:<name>[#<anchor>]}} in the Markdown files of the package by a
-    link relative to the file to faktenblaetter/<name>.md; an unknown sheet or anchor and anything
-    left over that looks like a placeholder fails the run (docs/behoerden/README.md)."""
-    sheets = {path[len("faktenblaetter/"):-3]: content.decode("utf-8") for path, content in files.items()
-              if path.startswith("faktenblaetter/") and path.endswith(".md")}
-    anchors = {name: set(ANCHOR.findall(text)) for name, text in sheets.items()}
-    for path in sorted(files):
-        if not path.endswith(".md") or path.startswith("faktenblaetter/"):
-            continue
-        text = files[path].decode("utf-8")
+def outside_code(text: str, transform) -> str:
+    """`text` with `transform` applied to everything outside fenced code blocks and code spans,
+    which keep their content as written (CommonMark fences of ``` or ~~~, spans of equal backtick
+    runs)."""
+    out: list[str] = []
+    prose: list[str] = []
 
-        def link(match: re.Match) -> str:
-            name, anchor = match.group(1), match.group(2)
-            if name not in sheets:
-                raise PackageError(f"{path}: placeholder {match.group(0)} names no fact sheet of the"
-                                   f" package ({', '.join(sorted(sheets))})")
-            if anchor and anchor not in anchors[name]:
-                raise PackageError(f"{path}: placeholder {match.group(0)} names no anchor of"
-                                   f" faktenblaetter/{name}.md")
-            target = posixpath.relpath(f"faktenblaetter/{name}.md", posixpath.dirname(path) or ".")
-            return f"[{sheet_title(sheets[name], name)}]({target}{'#' + anchor if anchor else ''})"
+    def flush() -> None:
+        chunk, position = "".join(prose), 0
+        prose.clear()
+        for span in CODE_SPAN.finditer(chunk):
+            out.extend([transform(chunk[position:span.start()]), span.group(0)])
+            position = span.end()
+        out.append(transform(chunk[position:]))
 
-        resolved = PLACEHOLDER.sub(link, text)
+    fence = None
+    for line in text.splitlines(keepends=True):
+        marker = FENCE.match(line)
+        if fence is None and marker:
+            flush()
+            fence = marker.group(1)
+            out.append(line)
+        elif fence is not None:
+            out.append(line)
+            if re.fullmatch(rf" {{0,3}}{re.escape(fence[0])}{{{len(fence)},}}[ \t]*\n?", line):
+                fence = None
+        else:
+            prose.append(line)
+    flush()
+    return "".join(out)
+
+
+def resolve_placeholders(text: str, path: str, sheets: dict[str, str]) -> str:
+    """`text` of the package file `path` with every {{faktenblatt:<name>[#<anchor>]}} outside code
+    replaced by a link relative to `path` to faktenblaetter/<name>.md. `sheets` holds the text of
+    each sheet by name; an unknown sheet or anchor, or anything left that looks like a placeholder,
+    fails the run (docs/behoerden/README.md)."""
+
+    def link(match: re.Match) -> str:
+        name, anchor = match.group(1), match.group(2)
+        if name not in sheets:
+            raise PackageError(f"{path}: placeholder {match.group(0)} names no fact sheet of the"
+                               f" package ({', '.join(sorted(sheets))})")
+        if anchor and anchor not in ANCHOR.findall(sheets[name]):
+            raise PackageError(f"{path}: placeholder {match.group(0)} names no anchor of"
+                               f" faktenblaetter/{name}.md")
+        target = posixpath.relpath(f"faktenblaetter/{name}.md", posixpath.dirname(path) or ".")
+        return f"[{sheet_title(sheets[name], name)}]({target}{'#' + anchor if anchor else ''})"
+
+    def prose(chunk: str) -> str:
+        resolved = PLACEHOLDER.sub(link, chunk)
         left = LEFTOVER.search(resolved)
         if left:
             raise PackageError(f"{path}: malformed placeholder {left.group(0)!r}; use"
                                " {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}}")
-        files[path] = resolved.encode("utf-8")
+        return resolved
+
+    return outside_code(text, prose)
 
 
 def assemble(
@@ -842,7 +879,10 @@ def assemble(
     if not template.is_file():
         raise PackageError(f"update note template {template} is missing")
     files["update-vermerk.md"] = template.read_bytes()
-    resolve_placeholders(files)
+    sheets = {path[len("faktenblaetter/"):-3]: content.decode("utf-8") for path, content in files.items()
+              if path.startswith("faktenblaetter/") and path.endswith(".md")}
+    for path in TEMPLATED:
+        files[path] = resolve_placeholders(files[path].decode("utf-8"), path, sheets).encode("utf-8")
     files["SHA256SUMS"] = "".join(
         f"{hashlib.sha256(content).hexdigest()}  {path}\n" for path, content in sorted(files.items())
     ).encode()
@@ -869,6 +909,19 @@ def entry(path: str, kind: bytes, mode: int, size: int, mtime: int) -> tarfile.T
     info.uid = info.gid = 0
     info.uname = info.gname = ""
     return info
+
+
+def gradle_command(version: str, day: str, from_ref: str, to_ref: str, repository: str,
+                   labelled_prs: str | None) -> list[str]:
+    """The Gradle run for fact sheets, delta and SBOM; the delta links into `repository`."""
+    gradle = [
+        "./gradlew", "complianceDocs", "complianceDelta", "cyclonedxBom",
+        f"-PopaaVersion={version}", f"-PgeneratedOn={day}",
+        f"-PfromRef={from_ref}", f"-PtoRef={to_ref}", f"-Prepository={repository}",
+    ]
+    if labelled_prs:
+        gradle.append(f"-PlabelledPrs={Path(labelled_prs).resolve()}")
+    return gradle
 
 
 def build(args: argparse.Namespace) -> Path:
@@ -901,13 +954,8 @@ def build(args: argparse.Namespace) -> Path:
         epoch=epoch,
     )
     day = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).date().isoformat()
-    gradle = [
-        "./gradlew", "complianceDocs", "complianceDelta", "cyclonedxBom",
-        f"-PopaaVersion={version}", f"-PgeneratedOn={day}",
-        f"-PfromRef={previous or from_commit}", f"-PtoRef={args.tag if tag_commit else head}",
-    ]
-    if args.labelled_prs:
-        gradle.append(f"-PlabelledPrs={Path(args.labelled_prs).resolve()}")
+    gradle = gradle_command(version, day, previous or from_commit, args.tag if tag_commit else head,
+                            args.repository, args.labelled_prs)
     run(gradle, ROOT / "backend", stdout=None)
 
     with tempfile.TemporaryDirectory() as work:

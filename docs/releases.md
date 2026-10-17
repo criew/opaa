@@ -450,10 +450,14 @@ Fakten-Manifest (Commit `abc1234`)“, nicht mit der rohen Commit-ID; das gilt f
 Manifest, der als Vergleich angegeben ist. Welcher Vorgänger bei mehreren Supportlinien gilt,
 entscheidet #2575; bis dahin gilt diese Regel.
 
-**Verweise im Paket.** Jeder Faktenblatt-Platzhalter `{{faktenblatt:<name>[#<anker>]}}` in den
-Markdown-Dateien des Pakets wird beim Zusammenstellen ein relativer Link auf
-`faktenblaetter/<name>.md`; ein Blatt oder Anker, das es im Paket nicht gibt, bricht den Lauf ab. Der
-Link des Deltas auf die Stufenregeln zeigt auf den Commit des Release, nicht auf `main`.
+**Verweise im Paket.** Jeder Faktenblatt-Platzhalter `{{faktenblatt:<name>[#<anker>]}}` in der
+Vorlage `update-vermerk.md` wird beim Zusammenstellen ein relativer Link auf
+`faktenblaetter/<name>.md`; ein Blatt oder Anker, das es im Paket nicht gibt, bricht den Lauf ab.
+Platzhalter in Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage
+stammt, etwa Titel von Pull Requests im Delta oder Upgrade-Hinweise in den Betriebsfolgen. Der Link
+des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository des Laufs
+(`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
+auf `main`.
 
 **Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`) und Zeitstempel im Archiv
 sind die Commit-Zeit, Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt

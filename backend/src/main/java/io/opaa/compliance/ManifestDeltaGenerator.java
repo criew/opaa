@@ -25,10 +25,12 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p>Arguments: {@code --out <dir>}, one of {@code --from-ref <ref>}, {@code --from-json <file>},
  * {@code --from-dir <dir>}, one of {@code --to-ref}, {@code --to-json}, {@code --to-dir}, and
- * optionally {@code --repo <dir>} (default: the working directory) and {@code --labelled-prs
- * <file>}: a JSON array of pull requests labelled {@code data-impact} with {@code number}, {@code
- * title} and {@code url}, as {@code gh pr list --json number,title,url} writes it. The list is
- * narrowed to the pull requests whose number a commit subject between both versions names.
+ * optionally {@code --repo <dir>} (default: the working directory), {@code --repository
+ * <owner>/<name>} (the GitHub repository links point into, default {@value
+ * ManifestDeltaRenderer#DEFAULT_REPOSITORY}) and {@code --labelled-prs <file>}: a JSON array of
+ * pull requests labelled {@code data-impact} with {@code number}, {@code title} and {@code url}, as
+ * {@code gh pr list --json number,title,url} writes it. The list is narrowed to the pull requests
+ * whose number a commit subject between both versions names.
  */
 public final class ManifestDeltaGenerator {
 
@@ -40,10 +42,13 @@ public final class ManifestDeltaGenerator {
 
   private static final Pattern PR_IN_SUBJECT =
       Pattern.compile("\\(#(\\d+)\\)|^Merge pull request #(\\d+)");
+  private static final Pattern GITHUB_REPOSITORY =
+      Pattern.compile("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+");
   private static final Set<String> OPTIONS =
       Set.of(
           "--out",
           "--repo",
+          "--repository",
           "--from-ref",
           "--from-json",
           "--from-dir",
@@ -54,12 +59,17 @@ public final class ManifestDeltaGenerator {
   private static final String USAGE =
       "usage: ManifestDeltaGenerator --out <dir> (--from-ref <ref> | --from-json <file> |"
           + " --from-dir <dir>) (--to-ref <ref> | --to-json <file> | --to-dir <dir>)"
-          + " [--repo <dir>] [--labelled-prs <file>]";
+          + " [--repo <dir>] [--repository <owner>/<name>] [--labelled-prs <file>]";
 
   private ManifestDeltaGenerator() {}
 
   public static void main(String[] args) {
     Map<String, String> options = options(args);
+    String github = options.getOrDefault("--repository", ManifestDeltaRenderer.DEFAULT_REPOSITORY);
+    if (!GITHUB_REPOSITORY.matcher(github).matches() || github.contains("..")) {
+      throw new IllegalArgumentException(
+          "--repository must be <owner>/<name>, not '" + github + "'");
+    }
     Path repository = Path.of(options.getOrDefault("--repo", "."));
     ManifestSnapshot from = snapshot(options, "--from", repository);
     ManifestSnapshot to = snapshot(options, "--to", repository);
@@ -68,22 +78,27 @@ public final class ManifestDeltaGenerator {
             ? labelled(Path.of(options.get("--labelled-prs")), repository, from, to)
             : LabelledChanges.notQueried();
     List<Path> written =
-        write(Path.of(require(options, "--out")), ManifestDelta.between(from, to), labelled);
+        write(
+            Path.of(require(options, "--out")), ManifestDelta.between(from, to), labelled, github);
     written.forEach(file -> System.out.println("written: " + file));
   }
 
-  /** Writes both forms of {@code delta} into {@code directory}, replacing earlier ones. */
-  static List<Path> write(Path directory, ManifestDelta delta, LabelledChanges labelled) {
+  /**
+   * Writes both forms of {@code delta} into {@code directory}, replacing earlier ones; links point
+   * into the GitHub repository {@code github}.
+   */
+  static List<Path> write(
+      Path directory, ManifestDelta delta, LabelledChanges labelled, String github) {
     try {
       Files.createDirectories(directory);
       return List.of(
           Files.writeString(
               directory.resolve(MARKDOWN_FILE),
-              ManifestDeltaRenderer.markdown(delta, labelled),
+              ManifestDeltaRenderer.markdown(delta, labelled, github),
               StandardCharsets.UTF_8),
           Files.writeString(
               directory.resolve(JSON_FILE),
-              ManifestDeltaRenderer.json(delta, labelled),
+              ManifestDeltaRenderer.json(delta, labelled, github),
               StandardCharsets.UTF_8));
     } catch (IOException e) {
       throw new UncheckedIOException("cannot write the manifest delta to " + directory, e);

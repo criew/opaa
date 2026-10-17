@@ -33,7 +33,9 @@ public final class ManifestDeltaRenderer {
   public static final String PROPOSAL_NOTICE =
       "Stufen und Bezüge sind Vorschläge; die Bewertung trifft die Behörde.";
 
-  private static final String REPOSITORY_FILES = "https://github.com/criew/opaa/blob/";
+  /** The GitHub repository {@code <owner>/<name>} links point into unless another is given. */
+  public static final String DEFAULT_REPOSITORY = "criew/opaa";
+
   private static final String STAGE_RULES_PATH =
       "/docs/features/behoerdenunterlagen.md#die-stufenregeln";
   private static final Pattern COMMIT_ID = Pattern.compile("[0-9a-f]{7,64}");
@@ -91,8 +93,13 @@ public final class ManifestDeltaRenderer {
   /** A labelled pull request; {@code url} may be empty. */
   public record PullRequest(int number, String title, String url) {}
 
-  /** The Markdown document. */
+  /** The Markdown document, linking into {@value #DEFAULT_REPOSITORY}. */
   public static String markdown(ManifestDelta delta, LabelledChanges labelled) {
+    return markdown(delta, labelled, DEFAULT_REPOSITORY);
+  }
+
+  /** The Markdown document, linking into the GitHub repository {@code <owner>/<name>}. */
+  public static String markdown(ManifestDelta delta, LabelledChanges labelled, String repository) {
     StringBuilder out = new StringBuilder();
     Origin from = delta.from();
     Origin to = delta.to();
@@ -134,7 +141,7 @@ public final class ManifestDeltaRenderer {
         .append(". Was zwischen beiden Versionen hinzukam und wieder entfiel, fehlt; ein mehrfach")
         .append(" geänderter Wert erscheint einmal mit Anfangs- und Endstand. Jede Änderung trägt")
         .append(" einen Stufenvorschlag nach den [Stufenregeln](")
-        .append(stageRules(to))
+        .append(stageRules(repository, to))
         .append(") (Bagatelle, Anzeige, Zustimmung mit den Klassen Z1 bis Z7; im Zweifel")
         .append(" Zustimmung) und den Bezug zu Verzeichnis der Verarbeitungstätigkeiten (VVT),")
         .append(" Datenschutz-Folgenabschätzung (DSFA) und Sicherheitskonzept. Die Überprüfung der")
@@ -204,13 +211,18 @@ public final class ManifestDeltaRenderer {
     return out.toString().stripTrailing() + "\n";
   }
 
-  /** The JSON document. */
+  /** The JSON document, linking into {@value #DEFAULT_REPOSITORY}. */
   public static String json(ManifestDelta delta, LabelledChanges labelled) {
+    return json(delta, labelled, DEFAULT_REPOSITORY);
+  }
+
+  /** The JSON document, linking into the GitHub repository {@code <owner>/<name>}. */
+  public static String json(ManifestDelta delta, LabelledChanges labelled, String repository) {
     Map<String, Object> root = new LinkedHashMap<>();
     root.put("erzeugung", "generiert");
     root.put("notice", FactSheetRenderer.NOTICE);
     root.put("proposalNotice", PROPOSAL_NOTICE);
-    root.put("stageRules", stageRules(delta.to()));
+    root.put("stageRules", stageRules(repository, delta.to()));
     root.put("from", delta.from());
     root.put("to", delta.to());
     root.put("summary", summary(delta));
@@ -534,9 +546,9 @@ public final class ManifestDeltaRenderer {
    * The stage rules as of the newer version's commit, the rules its proposals follow; on {@code
    * main} only when that commit is unknown.
    */
-  private static String stageRules(Origin to) {
+  private static String stageRules(String repository, Origin to) {
     String commit = to.commit().equals(ManifestSnapshot.UNKNOWN) ? "main" : to.commit();
-    return REPOSITORY_FILES + commit + STAGE_RULES_PATH;
+    return "https://github.com/" + repository + "/blob/" + commit + STAGE_RULES_PATH;
   }
 
   /**
@@ -551,7 +563,7 @@ public final class ManifestDeltaRenderer {
   }
 
   /** The version as named in the title. */
-  private static String name(Origin origin) {
+  static String name(Origin origin) {
     return bareCommit(origin)
         ? "Stand ohne Fakten-Manifest (Commit " + shortCommit(origin) + ")"
         : FactSheetRenderer.text(origin.version());

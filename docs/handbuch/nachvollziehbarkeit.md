@@ -92,8 +92,8 @@ ein Update verantworten, ohne den Code zu lesen:
 | `update-vermerk.md` | Vorlage, in der die Behörde Bewertung je Stelle und Entscheidung festhält; ihre Verweise auf Faktenblätter führen auf die Blätter im Paket |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
-Vor dem ersten finalen Release gibt es keinen Vergleichsstand; das Paket vergleicht dann mit dem
-„Stand ohne Fakten-Manifest“, und im Delta erscheint jeder Eintrag als neu. Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.
+Vor dem ersten finalen Release vergleicht das Paket mit dem „Stand ohne Fakten-Manifest“; im Delta
+erscheint deshalb jeder Eintrag als neu. Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.
 
 Das Paket ist attestiert wie die Images. Die Herkunft prüft:
 

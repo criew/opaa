@@ -478,7 +478,8 @@ Entscheidung in #2575; bis dahin gilt diese Regel.
 ```
 
 Statt eines Tags oder Commits nimmt `-PfromJson`/`-PtoJson` die JSON-Fassung der Faktenblätter einer
-Version; ohne `-PtoRef` und `-PtoJson` ist der Arbeitsstand die neuere Seite. Eine Version ohne
+Version; ohne `-PtoRef` und `-PtoJson` ist der Arbeitsstand die neuere Seite. `-Prepository=<owner>/<name>`
+bestimmt das GitHub-Repository der Links (Vorgabe `criew/opaa`). Eine Version ohne
 Manifest gilt als leer, und das Delta sagt das im Kopf. Unter `backend/build/compliance/delta/`
 entstehen `manifest-delta.md` für die Behörde und `manifest-delta.json` für Werkzeuge; beide tragen
 kein Erzeugungsdatum, gleiche Versionen ergeben gleiche Dateien. Das Markdown gliedert nach Daten,
