@@ -55,7 +55,7 @@ OPAA als quelloffenes Produkt ohne Vertragspartner beantwortet das Projekt die �
 
 | Frage | Antwort |
 |---|---|
-| Wer liefert, und gibt es einen Vertrag? | Das Projekt stellt OPAA quelloffen bereit, ohne Vertrag und ohne Zusage zu Verfügbarkeit oder Reaktionszeit. Wer Zusagen braucht, schließt sie mit einem Dienstleister; Vorlagen zur Vergabe entstehen in [#2564](https://github.com/criew/opaa/issues/2564) |
+| Wer liefert, und gibt es einen Vertrag? | Das Projekt stellt OPAA quelloffen bereit, ohne Vertrag und ohne Zusage zu Verfügbarkeit oder Reaktionszeit. Wer Zusagen braucht, schließt sie mit einem Dienstleister ([Gewährleistung und Haftung](../03-vergabe/gewaehrleistung-haftung.md), [Anforderungskatalog](../03-vergabe/anforderungskatalog.md)) |
 | Woraus besteht das Produkt? | Software-Stückliste je Image und je Ökosystem ([SBOM](sicherheitsnachweise.md#software-stückliste-sbom)) |
 | Ist das Ausgelieferte das Geprüfte? | Provenance-Attestierungen der Images und eine signierte Attestierung des Helm-Charts; Release-Images werden nie überschrieben ([Release-Verfahren](../../releases.md#was-ein-release-erzeugt)) |
 | Wie werden Schwachstellen erkannt und behoben? | [Schwachstellen und Sicherheitsupdates](sicherheitsnachweise.md#schwachstellen-und-sicherheitsupdates) |

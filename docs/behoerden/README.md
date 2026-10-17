@@ -182,6 +182,20 @@ wird es verlinkt. Die Vorlage ergänzt nur, was für OPAA spezifisch ist.
 Fundstellen aus Fachblogs, Kanzlei-Beiträgen oder Pressemitteilungen sind vor der Übernahme in eine
 Vorlage gegen den Normtext zu prüfen. Das Datum dieser Prüfung steht im Feld `rechtsstand`.
 
+### Rechtsangaben mit Fundstelle
+
+Eine Vorlage mit Rechtsangaben führt sie im Abschnitt `## Quellen und Prüfstand` als Tabelle: je
+Aussage die Fundstelle mit Link und die Herkunft (Normtext, amtliche Veröffentlichung, Fachbeitrag,
+Recherche). Eine Angabe, deren Fundstelle nicht belegt ist, trägt „zu prüfen“, statt einen Paragrafen
+zu raten. Der Prüfstand aller Angaben ist das Feld `rechtsstand` des Kopfvermerks; die Drift-Routine
+und die Rolle „Behördenkontakt“ finden über beides, was nachzuprüfen ist.
+
+### Herstellerneutral in der Vergabe
+
+Die Bausteine in `03-vergabe/`, die in eine Leistungsbeschreibung übernommen werden
+(Anforderungskatalog, Zuschlagskriterien), nennen OPAA nicht. Wie OPAA sie erfüllt, steht getrennt in
+der [Erfüllungsmatrix](03-vergabe/erfuellungsmatrix.md).
+
 ## Automatische Prüfung
 
 [`.github/scripts/check_behoerden_headers.sh`](../../.github/scripts/check_behoerden_headers.sh) läuft
@@ -191,7 +205,15 @@ lässt den Lauf scheitern bei:
 
 - fehlendem oder unvollständigem Kopfvermerk, doppeltem Feld oder falschem Wert,
 - fehlendem oder abgewandeltem Haftungshinweis,
-- einem Faktenblatt-Platzhalter in anderer als der oben festgelegten Form.
+- einem Faktenblatt-Platzhalter in anderer als der oben festgelegten Form,
+- einem relativen Link, auch in dieser README, dessen Datei fehlt oder dessen Anker keine
+  Überschrift (in der Schreibweise von GitHub) und kein `<a id>` der Zieldatei trifft; eine
+  umbenannte Überschrift im Handbuch fällt so auf,
+- in `03-vergabe/`: fehlendem Abschnitt `## Quellen und Prüfstand`, einer Zeile darin ohne Link und
+  ohne „zu prüfen“, einer Fundstelle der Form `§ 31 Abs. 6 VgV` oder `Art. 28 DSGVO` im Text, die
+  dort fehlt (verglichen ohne Absatz, Satz und Nummer), einem `rechtsstand` nach `stand`, dem Namen
+  OPAA in Anforderungskatalog oder Zuschlagskriterien und einer Anforderungsnummer, die nur im
+  Katalog oder nur in der Erfüllungsmatrix steht.
 
 Ein Konfigurationsschlüssel (`opaa.…`) oder eine Enum-Konstante (`GROSS_GESCHRIEBEN`) im Text ergibt
 außerhalb von Codeblöcken nur eine Warnung: Beides deutet auf einen abgeschriebenen Faktenwert hin,
