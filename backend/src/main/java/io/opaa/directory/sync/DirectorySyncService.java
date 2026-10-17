@@ -72,6 +72,14 @@ public class DirectorySyncService {
   /** The 409 code when the confirmed plan no longer matches a fresh snapshot (ADR-0036/3). */
   public static final String PLAN_CHANGED_CODE = "DIRECTORY_SYNC_PLAN_CHANGED";
 
+  /**
+   * The status message of a run that broke off with an error. Names no cause: the exception may
+   * carry SQL, directory values or connection details, which belong in the log only.
+   */
+  static final String FAILED_MESSAGE =
+      "Der Abgleich ist mit einem Fehler abgebrochen und hat nichts geändert. Der letzte bekannte"
+          + " Stand bleibt in Kraft; die Ursache steht im Anwendungsprotokoll.";
+
   private final DirectoryClient directoryClient;
   private final DirectorySyncPlanExecutor planExecutor;
   private final DirectorySyncStatusRecorder statusRecorder;

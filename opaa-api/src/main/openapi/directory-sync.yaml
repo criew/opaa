@@ -224,7 +224,9 @@ paths:
         would be removed does not exceed the configured threshold. Above the threshold the run
         writes nothing and leaves a pending plan behind (outcome PENDING_CONFIRMATION), replacing
         any plan this provider already had; an empty group list stays a hard abort and leaves no
-        plan at all. Same 409s as the dry run.
+        plan at all. Same 409s as the dry run. A run that breaks off with an error writes nothing,
+        answers with the generic internal error and leaves outcome FAILED in the status line; the
+        same holds for the dry run and for confirming a plan.
         A report naming persons is recorded as one DIRECTORY_SYNC_REPORT_READ audit entry with the
         number of groups and persons it named (ADR-0036, Entscheidung 9).
       parameters:
@@ -379,7 +381,11 @@ components:
         ABORTED_THRESHOLD is the same measurement on a dry run, which never leaves a plan.
         ABORTED_EMPTY_RESULT stays a hard abort - "the source did not answer the way it should"
         is nothing anyone may click away - and UNREACHABLE keeps the last known good state in
-        force.
+        force. FAILED is a run that broke off with an error after the directory was reached, for
+        example on a value the database refuses; it wrote nothing, keeps the last known good
+        state in force like UNREACHABLE and appears only in the status line, since the run that
+        failed answers with an error rather than a report. The next scheduled run still waits
+        for the configured interval.
       enum:
         [
           APPLIED,
@@ -388,6 +394,7 @@ components:
           ABORTED_THRESHOLD,
           ABORTED_EMPTY_RESULT,
           UNREACHABLE,
+          FAILED,
         ]
       example: APPLIED
 
