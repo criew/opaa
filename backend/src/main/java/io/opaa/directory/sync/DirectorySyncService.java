@@ -316,13 +316,15 @@ public class DirectorySyncService {
   }
 
   /**
-   * Records a run that broke off with an error as {@code FAILED}, so the schedule waits for the
-   * interval instead of fetching the directory on every tick. The caller rethrows {@code cause},
-   * which is logged there; neither the status nor the audit entry names it. A failure of either
-   * write is logged and attached to {@code cause} rather than replacing it.
+   * Records a run that broke off with an error - while reading the directory (other than an
+   * unreachable one) or while planning and applying - as {@code FAILED}, so the schedule waits for
+   * the interval instead of fetching the directory on every tick. The caller rethrows {@code
+   * cause}, which is logged there; neither the status nor the audit entry names it. A failure of
+   * either write is logged and attached to {@code cause} rather than replacing it.
    */
   private void recordFailed(SyncTarget target, Instant now, RuntimeException cause) {
-    recordStatusSafely(target, now, DirectorySyncOutcome.FAILED, FAILED_MESSAGE, 0.0);
+    recordStatusSafely(target, now, DirectorySyncOutcome.FAILED, FAILED_MESSAGE, 0.0)
+        .ifPresent(cause::addSuppressed);
     try {
       recordFailureEntry(target, DirectorySyncOutcome.FAILED, FAILED_MESSAGE);
     } catch (RuntimeException auditFailure) {
@@ -392,9 +394,9 @@ public class DirectorySyncService {
    * needs the report. Under-recording the status is the safer direction of the two failure modes: a
    * missing or stale status line is visible and prompts an operator to check, whereas swallowing
    * the report behind an exception here would additionally invite a retry of a run that already
-   * applied.
+   * applied. Returns the failure, so a caller that rethrows a run's own error can attach it.
    */
-  private void recordStatusSafely(
+  private Optional<RuntimeException> recordStatusSafely(
       SyncTarget target,
       Instant now,
       DirectorySyncOutcome outcome,
@@ -403,14 +405,15 @@ public class DirectorySyncService {
     try {
       statusRecorder.record(
           target.organizationId(), target.providerId(), now, outcome, message, changedFraction);
+      return Optional.empty();
     } catch (RuntimeException e) {
       log.error(
-          "Directory sync: failed to record the outcome ({}) for provider {} - the run itself"
-              + " completed and its report is still returned, but the status table may now be"
-              + " stale",
+          "Directory sync: failed to record the outcome ({}) for provider {} - the run's own"
+              + " result is unaffected, but the status table may now be stale",
           outcome,
           target.providerId(),
           e);
+      return Optional.of(e);
     }
   }
 }

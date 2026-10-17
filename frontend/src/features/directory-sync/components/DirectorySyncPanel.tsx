@@ -44,6 +44,7 @@ import {
   DIRECTORY_SYNC_CONFLICT_MESSAGES,
   formatDateTime,
   formatFraction,
+  measuresChanges,
   outcomeLabel,
   outcomeTone,
 } from './directorySyncLabels'
@@ -280,6 +281,7 @@ export default function DirectorySyncPanel({
                   ` · ${formatDateTime(status.lastRunAt)} (${agoLabel(status.lastRunAt)})`}
                 {status?.lastChangedFraction !== null &&
                   status?.lastChangedFraction !== undefined &&
+                  measuresChanges(status.lastOutcome) &&
                   ` · Änderungsanteil ${formatFraction(status.lastChangedFraction)}`}
               </>
             }

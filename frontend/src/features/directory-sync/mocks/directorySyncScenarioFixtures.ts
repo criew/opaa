@@ -141,6 +141,13 @@ function providerOf(row: ScenarioRow, index: number): OidcProviderResponse {
   }
 }
 
+/** As the backend writes it: an unreachable or failed run measured nothing and records 0. */
+function changedFractionOf(row: ScenarioRow): number | null {
+  if (!row.outcome) return null
+  if (row.outcome === 'UNREACHABLE' || row.outcome === 'FAILED') return 0
+  return row.plan ? 0.42 : 0.03
+}
+
 function statusOf(row: ScenarioRow, now: number): DirectorySyncStatusResponse {
   const sync = row.sync ?? true
   const lastRunAt = row.lastRunHoursAgo === undefined ? null : hoursAgo(row.lastRunHoursAgo, now)
@@ -154,7 +161,7 @@ function statusOf(row: ScenarioRow, now: number): DirectorySyncStatusResponse {
     lastOutcome: row.outcome ?? null,
     lastMessage: row.outcome ? (row.message ?? 'Synchronisation angewendet.') : null,
     lastAppliedAt: row.outcome === 'APPLIED' ? lastRunAt : null,
-    lastChangedFraction: row.outcome ? (row.plan ? 0.42 : 0.03) : null,
+    lastChangedFraction: changedFractionOf(row),
     pendingPlan: row.plan
       ? {
           id: `${idOf(row.name)}-plan`,

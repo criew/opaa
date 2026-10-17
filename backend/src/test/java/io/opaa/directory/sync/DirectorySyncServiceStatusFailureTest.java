@@ -115,7 +115,13 @@ class DirectorySyncServiceStatusFailureTest {
         new DirectoryGroup(DIRECTORY_GUID, "x".repeat(300), null, null, Set.of()));
 
     assertThatThrownBy(() -> directorySyncService.run(organizationId, syncProvider.getId()))
-        .isInstanceOf(DataIntegrityViolationException.class);
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .satisfies(
+            thrown ->
+                assertThat(thrown.getSuppressed())
+                    .anySatisfy(
+                        suppressed ->
+                            assertThat(suppressed).hasMessage("simulated status write failure")));
   }
 
   @Test

@@ -1189,8 +1189,8 @@ Gruppenmitgliedschaft kann Zugriff auf ganze Bestände geben oder nehmen.
   gemeldet. Ein leeres Abgleichergebnis darf nie als „alle Gruppenmitgliedschaften entfallen" gedeutet
   werden — und es ist der eine Fall, der **nicht** bestätigungsfähig ist: „Die Quelle hat nicht
   geantwortet, wie sie soll" darf niemand wegklicken.
-- Bricht ein Lauf nach dem Lesen des Verzeichnisses mit einem Fehler ab, etwa an einem Wert, den die
-  Datenbank ablehnt, gilt ebenfalls der **letzte bekannte Stand weiter**. Der Lauf steht mit
+- Bricht ein Lauf beim Lesen des Verzeichnisses oder danach mit einem anderen Fehler als „nicht
+  erreichbar" ab, etwa an einem Wert, den die Datenbank ablehnt, gilt ebenfalls der **letzte bekannte Stand weiter**. Der Lauf steht mit
   Zeitpunkt und Ergebnis „fehlgeschlagen" (`FAILED`) in der Statuszeile und als Kopfeintrag im
   Nachweisprotokoll, beides ohne die Ursache; die steht im Anwendungsprotokoll. Er zählt als Lauf,
   der Zeitplan wartet also das Intervall ab, statt das Verzeichnis jede Minute erneut abzurufen

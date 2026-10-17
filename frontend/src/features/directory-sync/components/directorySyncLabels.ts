@@ -29,6 +29,11 @@ export function outcomeTone(outcome: DirectorySyncOutcome | null | undefined): S
   return outcome ? outcomeTones[outcome] : 'neutral'
 }
 
+/** Whether a run with this outcome measured a change fraction; an unreachable or failed one did not. */
+export function measuresChanges(outcome: DirectorySyncOutcome | null | undefined): boolean {
+  return outcome !== 'UNREACHABLE' && outcome !== 'FAILED'
+}
+
 /**
  * The mechanism conflict as a sentence instead of a raw `409` (ADR-0036, Entscheidung 2): per
  * provider there is exactly one group mechanism.

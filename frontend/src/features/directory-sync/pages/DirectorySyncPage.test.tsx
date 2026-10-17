@@ -314,11 +314,14 @@ describe('DirectorySyncPage', () => {
 
     const panel = await openPanel(user, 'Verzeichnisdienst')
     expect(within(panel).getByText('Angewendet')).toBeInTheDocument()
+    expect(within(panel).getByText(/Änderungsanteil 67 %/)).toBeInTheDocument()
     await user.click(within(panel).getByRole('button', { name: 'Jetzt abgleichen' }))
 
     expect(await within(panel).findByText('Abgleich fehlgeschlagen')).toBeInTheDocument()
     expect(within(panel).getByText(/Der Abgleich ist mit einem Fehler abgebrochen/)).toBeVisible()
     expect(within(panel).getByRole('alert')).toHaveTextContent(/widerspricht bestehenden Daten/)
+    // a failed run measured nothing, so it names no change fraction
+    expect(within(panel).queryByText(/Änderungsanteil/)).not.toBeInTheDocument()
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(

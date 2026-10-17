@@ -264,8 +264,9 @@ wartet ebenfalls ein Intervall ab. Verpasste Zeitpunkte werden nicht nachgeholt.
 `OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED=false` schaltet den Takt ganz ab; dann laufen Abgleiche nur von
 Hand.
 
-**Gescheiterter Lauf.** Bricht ein Lauf nach dem Lesen des Verzeichnisses mit einem Fehler ab, etwa
-weil die Datenbank einen gelieferten Wert ablehnt, schreibt er nichts; der letzte bekannte Stand
+**Gescheiterter Lauf.** Bricht ein Lauf beim Lesen des Verzeichnisses oder danach mit einem Fehler
+ab, der nicht „Verzeichnis nicht erreichbar" ist, etwa weil die Datenbank einen gelieferten Wert
+ablehnt, schreibt er nichts; der letzte bekannte Stand
 bleibt in Kraft. Das Seitenpanel zeigt **Abgleich fehlgeschlagen** mit Zeitpunkt und Meldung, die
 Übersicht **Letzter Lauf gescheitert**. Die Ursache steht nur im Anwendungsprotokoll des Backends;
 das Nachweisprotokoll erhält wie bei einem unerreichbaren Verzeichnis einen Kopfeintrag mit dem
@@ -699,11 +700,12 @@ Die Anwendung wird über `http://` ausgeliefert; die Abstimmung zwischen Tabs br
 
 ### Der Verzeichnisabgleich meldet „Abgleich fehlgeschlagen"
 
-Der Lauf ist nach dem Lesen des Verzeichnisses abgebrochen und hat nichts geändert. Die Ursache nennt
-das Anwendungsprotokoll des Backends zum Zeitpunkt der Statuszeile, häufig ein Wert aus dem
-Verzeichnis, der zu lang ist, etwa ein sehr tiefer Gruppenpfad. Nach der Korrektur im Verzeichnis
-mit **Trockenlauf** prüfen; der Zeitplan versucht es sonst erst nach einem Intervall erneut
-([Gescheiterter Lauf](#verzeichnisabgleich-je-anbieter)).
+Der Lauf ist mit einem Fehler abgebrochen und hat nichts geändert. Die Ursache nennt das
+Anwendungsprotokoll des Backends zum Zeitpunkt der Statuszeile, häufig ein Wert aus dem Verzeichnis,
+der zu lang ist, etwa ein sehr tiefer Gruppenpfad. Nach der Korrektur im Verzeichnis **Jetzt
+abgleichen** wählen; der Zeitplan versucht es sonst erst nach einem Intervall erneut
+([Gescheiterter Lauf](#verzeichnisabgleich-je-anbieter)). Auch ein **Trockenlauf** zählt als Lauf:
+Er verschiebt den nächsten geplanten Lauf um ein Intervall, ohne etwas anzuwenden.
 
 ### Jeder Aufruf eines eigenen Dienst-Clients endet mit 401
 

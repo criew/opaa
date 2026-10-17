@@ -381,8 +381,9 @@ components:
         ABORTED_THRESHOLD is the same measurement on a dry run, which never leaves a plan.
         ABORTED_EMPTY_RESULT stays a hard abort - "the source did not answer the way it should"
         is nothing anyone may click away - and UNREACHABLE keeps the last known good state in
-        force. FAILED is a run that broke off with an error after the directory was reached, for
-        example on a value the database refuses; it wrote nothing, keeps the last known good
+        force. FAILED is a run that broke off with an error other than an unreachable directory,
+        while reading the directory or while planning and applying - for example on a value the
+        database refuses; it wrote nothing, keeps the last known good
         state in force like UNREACHABLE and appears only in the status line, since the run that
         failed answers with an error rather than a report. The next scheduled run still waits
         for the configured interval.
