@@ -14,8 +14,8 @@ import org.springframework.stereotype.Component;
  * QueryService} builds its answer from what this returns, {@code SearchService} returns it as hits.
  * Both therefore run the same sub-question decomposition, the same vector and full-text search, the
  * same fusion, the same reranking and the same permission filter - a second ranking path would be a
- * second quality truth that nobody maintains (docs/features/external-access.md, "Was ein
- * externes KI-Werkzeug erreicht").
+ * second quality truth that nobody maintains (docs/features/external-access.md, "Was ein externes
+ * KI-Werkzeug erreicht").
  *
  * <p>{@code searchScope} is taken as given
  * (docs/features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers); resolving

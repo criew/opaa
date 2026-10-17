@@ -263,7 +263,7 @@ Die ausdrückliche Bereitstellung eines [Assets](#ki-asset) in einem [Space](#sp
 zugeordnet ist. Im Chat ist nur nutzbar, was zugeordnet **und** für die Person lesbar ist —
 zugeordnetes Wissen als Suchbereich, Prompts zugeordneter Prompt-Bibliotheken per `/`, zugeordnete
 Agenten. Ein Space ohne zugeordnetes Wissen durchsucht keines und sagt das mit einem Hinweis samt
-Direktlink zur Zuordnung. Der Fremdzugang über Zugangstokens hat keinen Space; dort ist die
+Direktlink zur Zuordnung. Der Zugriff externer KI-Werkzeuge über Zugangstokens hat keinen Space; dort ist die
 Bibliotheksauswahl des Tokens die entsprechende Auswahl.
 
 Zuordnen darf, wer im Space `CURATOR` ist und das Asset selbst lesen kann — im Space-Assistenten,

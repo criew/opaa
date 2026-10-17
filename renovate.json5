@@ -421,7 +421,7 @@
     // mcp-core mit, und mcp-core entscheidet, welche MCP-Protokollfassungen diese Installation
     // spricht. Ein Wechsel ist damit keine Abhängigkeitsaktualisierung, sondern eine
     // Protokolländerung — und weil es genau einen Server gibt, fallen bei einem Bruch alle
-    // Fremdzugänge des Hauses zugleich aus. Die angekündigte Fassungsliste
+    // externen KI-Werkzeuge des Hauses zugleich aus. Die angekündigte Fassungsliste
     // (opaa.mcp.protocol-versions) ist bei jedem Vorschlag gegen die Fassungen zu prüfen, die die
     // neue Bibliothek tatsächlich bedient. Der eigene groupName hebt ihn aus dem Sammel-PR der
     // Spring-Plattform heraus; mcp-core selbst steht in keinem Katalog und ist für Renovate
