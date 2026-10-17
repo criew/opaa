@@ -1,0 +1,61 @@
+databaseChangeLog:
+  - changeSet:
+      id: identity-2026-10-17-incident-scope-monthly-counts
+      author: opaa
+      comment: "The disclosure of the data collection reports the anlassbezogenen Klärungen of a reporting period: the yearly count of approvals becomes a count per month of requests, approvals and ends of usability, filled once from the grants there are."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE audit_incident_scope_monthly_counts (
+                  organization_id uuid NOT NULL,
+                  case_month date NOT NULL,
+                  purpose character varying(40) NOT NULL,
+                  transition character varying(10) NOT NULL,
+                  case_count integer NOT NULL,
+                  CONSTRAINT audit_incident_scope_monthly_counts_pkey
+                      PRIMARY KEY (organization_id, case_month, purpose, transition),
+                  CONSTRAINT chk_audit_incident_scope_monthly_counts_count CHECK ((case_count > 0)),
+                  CONSTRAINT chk_audit_incident_scope_monthly_counts_month
+                      CHECK ((case_month = (date_trunc('month', case_month))::date)),
+                  CONSTRAINT chk_audit_incident_scope_monthly_counts_purpose CHECK ((purpose IN ('SECURITY_INCIDENT', 'UNAUTHORIZED_ACCESS_SUSPICION', 'DATA_BREACH_INVESTIGATION', 'EXTERNAL_AUDIT_OR_INSPECTION'))),
+                  CONSTRAINT chk_audit_incident_scope_monthly_counts_transition
+                      CHECK ((transition IN ('REQUESTED', 'APPROVED', 'EXPIRED'))),
+                  CONSTRAINT fk_audit_incident_scope_monthly_counts_organization
+                      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+              );
+
+              -- Months in the session time zone, which the JDBC driver sets to the zone of the JVM,
+              -- the zone the application counts in.
+              INSERT INTO audit_incident_scope_monthly_counts
+                  (organization_id, case_month, purpose, transition, case_count)
+              SELECT organization_id, case_month, purpose, transition, count(*)
+              FROM (
+                  SELECT organization_id, date_trunc('month', requested_at)::date AS case_month,
+                         purpose, 'REQUESTED' AS transition
+                  FROM audit_incident_scope_grants
+                  UNION ALL
+                  SELECT organization_id, date_trunc('month', approved_at)::date, purpose, 'APPROVED'
+                  FROM audit_incident_scope_grants WHERE approved_at IS NOT NULL
+                  UNION ALL
+                  SELECT organization_id, date_trunc('month', usable_until)::date, purpose, 'EXPIRED'
+                  FROM audit_incident_scope_grants WHERE usable_until IS NOT NULL
+              ) AS transitions
+              GROUP BY organization_id, case_month, purpose, transition;
+
+              -- The yearly count holds nothing the grants do not, unless a grant it counted was
+              -- deleted already; that count cannot be placed in a month and must not be lost.
+              DO $$
+              BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM audit_incident_scope_case_counts c
+                    WHERE c.case_count > (
+                        SELECT count(*) FROM audit_incident_scope_grants g
+                        WHERE g.organization_id = c.organization_id AND g.purpose = c.purpose
+                          AND g.approved_at IS NOT NULL
+                          AND extract(year FROM g.approved_at)::integer = c.case_year)) THEN
+                  RAISE EXCEPTION 'audit_incident_scope_case_counts counts approvals whose grants are gone; they cannot be moved to audit_incident_scope_monthly_counts';
+                END IF;
+              END $$;
+
+              DROP TABLE audit_incident_scope_case_counts;

@@ -2,11 +2,14 @@ package io.opaa.compliance;
 
 import io.opaa.compliance.ComplianceManifest.AuditEventEntry;
 import io.opaa.compliance.ComplianceManifest.DataEntry;
+import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
 import io.opaa.compliance.InstanceDisclosure.ProtocolField;
+import io.opaa.compliance.InstanceDisclosure.PurposeCases;
 import io.opaa.compliance.InstanceDisclosure.QueryPath;
 import io.opaa.compliance.InstanceDisclosure.SettingValue;
 import java.time.Instant;
@@ -204,6 +207,36 @@ public final class InstanceDisclosureRenderer {
     }
     out.append("\n### Netzadresse\n\n");
     out.append(FactSheetRenderer.text(protocol.networkAddress())).append('\n');
+    incidentScopeCases(out, protocol.incidentScopeCases());
+  }
+
+  private static void incidentScopeCases(StringBuilder out, IncidentScopeCases cases) {
+    out.append("\n### Anlassbezogene Klärungen im Berichtszeitraum\n\n");
+    out.append("Berichtszeitraum: ")
+        .append(cases.period().from())
+        .append(" bis ")
+        .append(cases.period().to())
+        .append("\n\n");
+    out.append("| Anlass | Beantragt | Freigegeben | Abgelaufen |\n");
+    out.append("|---|---|---|---|\n");
+    for (PurposeCases purpose : cases.purposes()) {
+      row(
+          out,
+          FactSheetRenderer.text(purpose.label()),
+          count(purpose.requested()),
+          count(purpose.approved()),
+          count(purpose.expired()));
+    }
+    out.append('\n');
+    for (String note : cases.notes()) {
+      out.append("- ").append(FactSheetRenderer.text(note)).append('\n');
+    }
+  }
+
+  private static String count(CaseCount count) {
+    return count.belowThreshold()
+        ? "weniger als " + CaseCount.THRESHOLD
+        : Long.toString(count.count());
   }
 
   private static void row(StringBuilder out, String... cells) {

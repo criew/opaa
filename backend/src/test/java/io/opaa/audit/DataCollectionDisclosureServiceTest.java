@@ -14,14 +14,17 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.audit.DataCollectionDisclosureService.Format;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ReportingPeriod;
 import io.opaa.compliance.InstanceDisclosureAssembler;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -41,6 +44,12 @@ class DataCollectionDisclosureServiceTest {
   private final AuditEventRecorder recorder = mock(AuditEventRecorder.class);
   private final DataCollectionDisclosureService service =
       new DataCollectionDisclosureService(assembler, retention, caseReport, recorder, CLOCK);
+
+  @BeforeEach
+  void reportNoCases() {
+    when(caseReport.report(any(), any()))
+        .thenAnswer(call -> new IncidentScopeCases(call.getArgument(1), List.of(), List.of()));
+  }
 
   @Test
   void anExportThatFailsToAssembleIsLoggedAsAFailure() {

@@ -10,8 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * The deletion of the grants of the anlassbezogene Klärung after {@link
  * AuditIncidentScopeRetention}, approved ones and requests never approved alike. The number of
- * cases per year stays behind in {@code audit_incident_scope_case_counts}; nothing else of a grant
- * does. {@link AuditIncidentScopeRetentionScheduler} is the only production caller.
+ * requests, approvals and ends of usability per month stays behind in {@code
+ * audit_incident_scope_monthly_counts}; nothing else of a grant does. {@link
+ * AuditIncidentScopeRetentionScheduler} is the only production caller.
  */
 @Service
 public class AuditIncidentScopeRetentionService {

@@ -68,7 +68,7 @@ public class DataCollectionDisclosureService {
   /**
    * The disclosure for {@code callerId} of {@code organizationId}, with the anlassbezogenen
    * Klärungen from {@code from} to {@code to}; either bound may be {@code null}, see {@link
-   * ReportingPeriod#of}.
+   * IncidentScopeReportingPeriods#of}.
    *
    * @throws ValidationException when the period is not made of whole months or starts after it ends
    * @throws AccessDeniedException when {@code callerRole} is not {@link SystemRole#SYSTEM_ADMIN},
@@ -81,7 +81,7 @@ public class DataCollectionDisclosureService {
       Format format,
       LocalDate from,
       LocalDate to) {
-    ReportingPeriod period = ReportingPeriod.of(from, to, LocalDate.now(clock));
+    ReportingPeriod period = IncidentScopeReportingPeriods.of(from, to, LocalDate.now(clock));
     if (callerRole != SystemRole.SYSTEM_ADMIN) {
       record(organizationId, callerId, format, period, AuditOutcome.DENIED);
       throw new AccessDeniedException(ADMIN_ONLY);

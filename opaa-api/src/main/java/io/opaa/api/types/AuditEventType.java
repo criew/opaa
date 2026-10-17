@@ -560,8 +560,8 @@ public enum AuditEventType {
   // Auskunft über die Datenerhebung (ADR-0052)
   /**
    * The disclosure of the data collection with the configuration export of the instance was
-   * retrieved, or the attempt refused; {@code after} names the format. Carries no content of the
-   * disclosure itself.
+   * retrieved, or the attempt refused; {@code after} names the format and the reporting period
+   * ({@code periodFrom}, {@code periodTo}). Carries no content of the disclosure itself.
    */
   DATA_COLLECTION_DISCLOSURE_EXPORTED
 }

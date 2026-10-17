@@ -1,6 +1,5 @@
 package io.opaa.compliance;
 
-import io.opaa.common.ValidationException;
 import io.opaa.compliance.ComplianceManifest.DataFlowGroup;
 import io.opaa.compliance.ComplianceManifest.SettingSource;
 import java.time.Instant;
@@ -140,35 +139,20 @@ public record InstanceDisclosure(
   /**
    * The reporting period of the disclosure: whole calendar months, because the cases of the
    * anlassbezogene Klärung are counted per month and a finer period would claim a precision the
-   * counts do not have.
+   * counts do not have. The caller checks a period it was asked for and refuses it in words; this
+   * record only holds the invariant.
    */
   public record ReportingPeriod(LocalDate from, LocalDate to) {
 
     public ReportingPeriod {
       Objects.requireNonNull(from, "from");
       Objects.requireNonNull(to, "to");
-      if (from.getDayOfMonth() != 1) {
-        throw new ValidationException("Der Berichtszeitraum beginnt am Ersten eines Monats");
+      if (from.getDayOfMonth() != 1
+          || !to.equals(to.with(TemporalAdjusters.lastDayOfMonth()))
+          || from.isAfter(to)) {
+        throw new IllegalArgumentException(
+            "a reporting period is whole calendar months, got " + from + " to " + to);
       }
-      if (!to.equals(to.with(TemporalAdjusters.lastDayOfMonth()))) {
-        throw new ValidationException("Der Berichtszeitraum endet am Letzten eines Monats");
-      }
-      if (from.isAfter(to)) {
-        throw new ValidationException("Der Berichtszeitraum beginnt nach seinem Ende");
-      }
-    }
-
-    /**
-     * The period asked for; a missing start is 1 January of the year before {@code today}, a
-     * missing end 31 December of the year of {@code today}.
-     *
-     * @throws ValidationException when the period is not made of whole months or starts after it
-     *     ends
-     */
-    public static ReportingPeriod of(LocalDate from, LocalDate to, LocalDate today) {
-      return new ReportingPeriod(
-          from != null ? from : LocalDate.of(today.getYear() - 1, 1, 1),
-          to != null ? to : LocalDate.of(today.getYear(), 12, 31));
     }
   }
 

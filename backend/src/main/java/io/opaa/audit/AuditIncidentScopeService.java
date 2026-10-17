@@ -5,6 +5,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,12 +31,14 @@ public class AuditIncidentScopeService {
   }
 
   /**
-   * Creates a new {@code PENDING} incident scope grant. Not usable for querying until approved.
+   * Creates a new {@code PENDING} incident scope grant, not usable for querying until approved, and
+   * counts the request in the current month.
    *
    * @throws NotFoundException if {@code subjectUserId} does not belong to {@code organizationId} -
    *     a grant must never be created, and no pseudonym ever minted at query time, against a person
    *     outside the requester's own organization.
    */
+  @Transactional
   public AuditIncidentScopeGrant request(
       UUID organizationId,
       UUID requestedByUserId,
@@ -47,20 +50,24 @@ public class AuditIncidentScopeService {
     if (!people.belongsTo(organizationId, subjectUserId)) {
       throw new NotFoundException("Person nicht in dieser Organisation gefunden");
     }
-    return repository.save(
-        new AuditIncidentScopeGrant(
-            organizationId,
-            subjectUserId,
-            scopeStart,
-            scopeEnd,
-            purpose,
-            reason,
-            requestedByUserId));
+    AuditIncidentScopeGrant grant =
+        repository.save(
+            new AuditIncidentScopeGrant(
+                organizationId,
+                subjectUserId,
+                scopeStart,
+                scopeEnd,
+                purpose,
+                reason,
+                requestedByUserId));
+    count(organizationId, Instant.now(clock), purpose, AuditIncidentScopeTransition.REQUESTED);
+    return grant;
   }
 
   /**
-   * Approves a pending grant and counts it as a case of its purpose in the current year, so the
-   * annual report still has the number once the grant itself is deleted. Throws {@link
+   * Approves a pending grant and counts the approval in the current month and the end of its
+   * usability in the month of {@link AuditIncidentScopeGrant#getUsableUntil()}, so the report to
+   * the staff council still has both once the grant itself is deleted. Throws {@link
    * ValidationException} on Selbstfreigabe or a grant that is not pending - caller error, not "not
    * found". The grant's row is locked for the transaction, so of two concurrent approvals of the
    * same grant exactly one succeeds and is counted; the other waits and is then rejected as no
@@ -75,9 +82,25 @@ public class AuditIncidentScopeService {
     Instant now = Instant.now(clock);
     grant.approve(approvedByUserId, now);
     AuditIncidentScopeGrant approved = repository.save(grant);
-    repository.countCase(
-        organizationId, now.atZone(clock.getZone()).getYear(), grant.getPurpose().name());
+    count(organizationId, now, grant.getPurpose(), AuditIncidentScopeTransition.APPROVED);
+    count(
+        organizationId,
+        grant.getUsableUntil(),
+        grant.getPurpose(),
+        AuditIncidentScopeTransition.EXPIRED);
     return approved;
+  }
+
+  private void count(
+      UUID organizationId,
+      Instant at,
+      AuditIncidentScopePurpose purpose,
+      AuditIncidentScopeTransition transition) {
+    repository.countTransition(
+        organizationId,
+        LocalDate.ofInstant(at, clock.getZone()).withDayOfMonth(1),
+        purpose.name(),
+        transition.name());
   }
 
   /**
