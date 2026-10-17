@@ -435,7 +435,8 @@ und Commit gebunden, attestiert wie Images und Chart und als Offline-Bündel erh
 am GitHub-Release und trägt eine Provenance-Attestierung, prüfbar mit `gh attestation verify`. Im
 Archiv liegen `LIESMICH.md`, die Teile 1, 2, 5 und 6 im Delta, die Faktenblätter, die Lizenzübersicht,
 die Vorlage Update-Vermerk und `SHA256SUMS`; Aufbau, Erzeugung und Probelauf ohne Release beschreibt
-[releases.md](../releases.md#update-paket). Gleicher Commit ergibt gleiche Dateien.
+[releases.md](../releases.md#update-paket). Gleicher Commit ergibt gleiche Dateien, bis auf die
+gekennzeichneten Pull Requests im Delta, die dem Label-Stand zum Zeitpunkt des Laufs folgen.
 **(Zielbild, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
 Chart, SBOMs und Attestierungen für Netze ohne Internetzugang.
 

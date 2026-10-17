@@ -256,12 +256,31 @@ jobs:
       contents: read
       # gh pr list reads the pull requests labelled data-impact for the delta.
       pull-requests: read
+    env:
+      # No Gradle daemon outlives a step, the call from update_package.py included.
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The previous release and the delta need every tag and the history between them.
           fetch-depth: 0
           persist-credentials: false
+
+      # Before any Gradle or pnpm step, so no build code runs while the token is in use. A list
+      # that reaches the limit may be cut off; the run fails rather than drop a labelled PR.
+      - name: Gekennzeichnete Pull Requests abfragen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          LIMIT: 1000
+        run: |
+          gh pr list --state merged --label data-impact --limit "$LIMIT" --json number,title,url >"$RUNNER_TEMP/data-impact-prs.json"
+          count=$(jq length "$RUNNER_TEMP/data-impact-prs.json")
+          if ((count >= LIMIT)); then
+            echo "::error::$count PRs mit data-impact erreichen das Limit $LIMIT; die Liste kann abgeschnitten sein, Limit im Workflow erhöhen"
+            exit 1
+          fi
+          echo "$count PRs mit data-impact"
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -293,12 +312,6 @@ jobs:
       - name: Frontend-Abhängigkeiten installieren
         working-directory: frontend
         run: pnpm install --frozen-lockfile
-
-      - name: Gekennzeichnete Pull Requests abfragen
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: gh pr list --state merged --label data-impact --limit 1000 --json number,title,url >"$RUNNER_TEMP/data-impact-prs.json"
 
       - name: Update-Paket erzeugen
         env:
@@ -585,6 +598,9 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # gh reads GH_TOKEN from the step's env; the checkout keeps no token behind.
+          persist-credentials: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:

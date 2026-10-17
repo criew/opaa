@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-17
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -48,8 +48,12 @@ Kommunikationsverbindungen oder Voreinstellungen ändern, und der Baustein OPS.1
 4. **Vor dem Update sichern**; der Rückweg auf eine ältere Version führt nur über die Sicherung
    ([Notfallkonzept](../09-betrieb-update/notfallkonzept.md)).
 
-Das Update-Paket je Release, das diese Schritte bündeln soll, entsteht in
-[#2552](https://github.com/criew/opaa/issues/2552).
+Jedes Release trägt am GitHub-Release ein Update-Paket mit den Faktenblättern der neuen Version,
+dem Delta zum vorigen finalen Release (je Änderung mit Hinweis, ob das Sicherheitskonzept
+fortzuschreiben ist) und der Vorlage [Update-Vermerk](../09-betrieb-update/update-vermerk.md);
+Inhalt und Prüfung beschreibt das [Release-Verfahren](../../releases.md#update-paket). Betriebsfolgen
+wie neue Ports oder Egress-Ziele enthält es noch nicht
+([#2555](https://github.com/criew/opaa/issues/2555)); bis dahin gilt Schritt 1.
 
 ## Zielobjekte einer Installation
 

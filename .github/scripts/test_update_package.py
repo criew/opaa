@@ -254,10 +254,22 @@ def test_a_first_release_says_that_every_entry_is_new(tmp_path: Path, inputs: di
     assert "kein voriges finales Release" in text
 
 
-def test_a_trial_says_it_is_no_published_release(tmp_path: Path, inputs: dict) -> None:
+def test_a_trial_says_it_is_no_published_release_and_names_the_commit(tmp_path: Path, inputs: dict) -> None:
     archive = update_package.assemble(release(trial=True), out=tmp_path / "out", **inputs)
 
-    assert "**Probelauf:**" in read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "**Probelauf:**" in text
+    assert "-PtoRef=" + "a" * 40 in text
+    assert "-PtoRef=v1.2.3" not in text
+
+
+def test_a_given_comparison_is_not_called_the_previous_final_release(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(
+        release(previous="520713d46", previous_given=True), out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "Änderungen gegenüber 520713d46." in text
+    assert "vorigen finalen Release" not in text
 
 
 @pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses"])
@@ -313,6 +325,20 @@ def test_the_package_job_runs_on_release_tags_without_any_cache() -> None:
     assert caches == ["package-manager-cache: false"]
     assert "setup-gradle" not in body and "actions/cache" not in body
     assert "fetch-depth: 0" in body
+    assert "GRADLE_OPTS: -Dorg.gradle.daemon=false" in body
+    query = body.index("gh pr list")
+    assert query < body.index("setup-java") and query < body.index("./gradlew")
+    assert query < body.index("pnpm install")
+
+
+def test_a_labelled_list_that_reaches_the_limit_fails_the_run() -> None:
+    body = job("update-package")
+    step = body[body.index("name: Gekennzeichnete Pull Requests abfragen"):]
+    step = step[: step.index("\n      - ")]
+
+    assert '--limit "$LIMIT"' in step
+    assert "LIMIT: 1000" in step
+    assert re.search(r"if \(\(count >= LIMIT\)\); then\n.*\n\s+exit 1", step)
     assert permissions(body) == ["contents: read", "pull-requests: read"]
 
 
@@ -323,5 +349,7 @@ def test_publication_waits_for_the_package_and_the_release_carries_it() -> None:
     assert permissions(attestation) == ["id-token: write", "attestations: write"]
     assert "subject-path:" in attestation
     release_job = job("release")
+    assert "persist-credentials: false" in release_job
+    assert "GH_TOKEN: ${{ github.token }}" in release_job
     assert "update-package-attestation" in release_job
     assert "update-package/" in release_job

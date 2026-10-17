@@ -392,9 +392,22 @@ entscheidet #2575; bis dahin gilt diese Regel.
 
 **Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`) und Zeitstempel im Archiv
 sind die Commit-Zeit, Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt
-dieselben Dateien und dieselben Zeilen in `SHA256SUMS`; die Bytes des Archivs hängen zusätzlich von
-der zlib-Version des Runners ab. Ein wiederholter Job `update-package` erzeugt das Archiv neu, eine
-wiederholte Attestierung attestiert das dann hochgeladene.
+dieselben Dateien und dieselben Zeilen in `SHA256SUMS`, mit einer Ausnahme: Der Abschnitt
+„Weitere gekennzeichnete Änderungen“ im Delta folgt dem Stand des Labels `data-impact` zum
+Zeitpunkt des Laufs; wird ein Label zwischen zwei Läufen gesetzt oder entfernt, unterscheidet sich
+das Delta. Die Bytes des Archivs hängen zusätzlich von der zlib-Version des Runners ab. Ein
+wiederholter Job `update-package` erzeugt das Archiv neu, eine wiederholte Attestierung attestiert
+das dann hochgeladene. Die PR-Liste fragt der Job mit einem Limit von 1000 ab; erreicht sie es,
+bricht er ab, statt eine abgeschnittene Liste zu verwenden.
+
+**Anhängen ist nicht atomar.** `gh release create` mit Anhängen legt das Release zuerst als
+Entwurf an, lädt dann die Dateien hoch und veröffentlicht erst danach. Scheitert der Upload, bleibt
+ein Entwurf ohne Anhänge, und eine Wiederholung des Jobs `release` scheitert daran, dass es das
+Release schon gibt. Vor *Re-run failed jobs* deshalb den Entwurf löschen; das Tag bleibt stehen:
+
+```bash
+gh release delete vX.Y.Z --repo criew/opaa --yes   # ohne --cleanup-tag
+```
 
 **Ohne Cache.** Wie die Image-Builds eines Release liest und schreibt `update-package` keinen
 Cache: kein `setup-gradle`, kein Cache von pnpm oder `setup-node`. Gradle und pnpm laden ihre
