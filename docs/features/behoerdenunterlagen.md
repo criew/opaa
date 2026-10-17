@@ -433,7 +433,8 @@ und Commit gebunden, attestiert wie Images und Chart und als Offline-Bündel erh
 
 **(gebaut, #2556)** Das Paket hängt als Archiv `opaa-update-paket-X.Y.Z.tar.gz` mit Prüfsummendatei
 am GitHub-Release und trägt eine Provenance-Attestierung, prüfbar mit `gh attestation verify`. Im
-Archiv liegen `LIESMICH.md`, die Teile 1, 2, 5 und 6 im Delta, die Faktenblätter, die Lizenzübersicht,
+Archiv liegen `LIESMICH.md`, die Teile 1, 2, 5 und 6 im Delta, die Teile 3 und 4 unter `betrieb/`, die
+Faktenblätter, die Lizenzübersicht,
 die Vorlage Update-Vermerk und `SHA256SUMS`; Aufbau, Erzeugung und Probelauf ohne Release beschreibt
 [releases.md](../releases.md#update-paket).
 

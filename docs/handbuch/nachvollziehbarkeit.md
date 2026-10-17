@@ -110,9 +110,11 @@ Release. Wer etwa von 0.12 auf 0.17 geht, erzeugt das Delta über den ganzen Spr
 mit Tags:
 
 ```bash
-# aus backend/
+# Delta, aus backend/
+cd backend
 ./gradlew complianceDelta -PfromRef=v0.12.0 -PtoRef=v0.17.0
-# danach aus der Wurzel des Checkouts: Betriebsfolgen und Suchqualität für denselben Sprung
+# Betriebsfolgen und Suchqualität für denselben Sprung, aus der Wurzel des Checkouts
+cd ..
 python3 .github/scripts/update_package.py operations --from v0.12.0 --to v0.17.0 \
   --out /tmp/betrieb --delta-json backend/build/compliance/delta/manifest-delta.json
 ```

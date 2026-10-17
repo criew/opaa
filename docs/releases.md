@@ -500,7 +500,7 @@ Abschnitt nennt seine Quelle mit Pfad und Commit.
 | Abschnitt | Quelle | Regel |
 |---|---|---|
 | Bruch und Vorbereitung | `docs/upgrade-notes/<Version>.md` im neuen Stand | jede Version über dem Vergleichsstand bis zur eigenen, kumuliert; ist der Vergleichsstand kein Release-Tag, die Dateien, die er nicht enthält. Ein Hinweis zu `X.Y.Z` ersetzt die seiner Vorab-Releases. Bruch ist „ja“, sobald ein Hinweis mehr sagt als „Keine Vorbereitung nötig.“ |
-| Neuindizierung | die Zeile `Neuindizierung:` der Hinweise ([Vorbereitung](#vorbereitung-für-bestandsinstallationen)) | „nötig“ mit der Dauerschätzung des Hinweises; „nicht gekennzeichnet“, wenn ein Hinweis mit Vorbereitung die Zeile nicht trägt; „nicht nötig“ ohne Hinweis mit Vorbereitung |
+| Neuindizierung | die Zeile `Neuindizierung:` der Hinweise ([Vorbereitung](#vorbereitung-für-bestandsinstallationen)) | „nötig“ mit der Dauerschätzung des Hinweises; „nicht gekennzeichnet“, wenn ein Hinweis mit Vorbereitung die Zeile nicht trägt; „nicht nötig“, wenn kein Hinweis Vorbereitung verlangt oder jeder Hinweis mit Vorbereitung `Neuindizierung: nein` sagt. Die Zeile allein ist keine Vorbereitung: „Keine Vorbereitung nötig.“ mit `Neuindizierung: nein` ist kein Bruch |
 | Nachzug | `ingestionPipelineFingerprint` der Baselines unter `eval/baseline/` beider Stände | jedes Format mit neuer Pipeline-Version; `PipelinePathIsolationTest` hält den Abdruck gleich dem Code |
 | Neueinbettung | Eintrag `spring.ai.openai.embedding.model` im Manifest-Delta | geänderte Vorgabe des Embedding-Modells |
 | Schemamigration | Kennungen der `changeSet`-Einträge unter `backend/src/main/resources/db/changelog/` beider Stände | neu ist jede Kennung, die nur der neue Stand hat; Anzahl je Modulverzeichnis, Hinweis „nur vorwärts, vorher sichern“ |
@@ -519,14 +519,21 @@ Annahmen und Grenzen:
 - **Keine Dauerschätzung aus der Evaluierung.** Die Evaluierung hält ihre Laufzeit nur als Freitext
   fest, mit einem kleinen Modell auf CPU; auf eine Installation übertragbar ist das nicht. Die
   Schätzung kommt allein aus der Zeile `Neuindizierung:` des Hinweises.
-- **Ports nur aus dem Chart**, Docker Compose bleibt außen vor. Ein Egress-Ziel ist eine Rolle (etwa
+- **Ports nur aus dem Chart**, Docker Compose bleibt außen vor. Gelesen werden nur die Port-Schlüssel
+  in `values.yaml` und die `containerPort`-Zeilen der Templates; gleiche `containerPort`-Zeilen in
+  einer Datei erscheinen einmal. Feste Ports an anderer Stelle der Templates, etwa in einer
+  NetworkPolicy oder einem Service, erfasst das Paket nicht. Ein Egress-Ziel ist eine Rolle (etwa
   „der Einbettungs-Endpunkt“), keine Adresse; die Adresse legt die Konfiguration der Installation fest.
+- **Das Manifest-Delta muss zum Intervall passen.** Nennt `manifest-delta.json` andere Commits als
+  das Intervall, oder fehlt eine ausdrücklich angegebene Datei, bricht der Lauf ab, statt fremde
+  Datenflüsse zu zeigen.
 - **Neue Changesets sind eine Obergrenze**, wenn die Historie zu einer neuen Baseline zusammengefasst
   wurde; dann fehlen Kennungen des Vergleichsstands, und die Datei sagt das.
 
-Für ein anderes Versionspaar erzeugt `operations` die Dateien aus der Wurzel eines Checkouts mit
-Tags, nach `./gradlew complianceDelta` mit denselben Ständen; ohne `--delta-json` stehen Datenflüsse
-und Embedding-Vorgabe als „nicht ermittelt“ da:
+Für ein anderes Versionspaar erzeugt `operations` die Dateien in einem Checkout mit Tags, nach
+`./gradlew complianceDelta` mit denselben Ständen. Es liest immer ab der Wurzel des Repositorys,
+auch aus einem Unterverzeichnis gestartet; relative Pfade gelten ab dem Startverzeichnis. Ohne
+`--delta-json` stehen Datenflüsse und Embedding-Vorgabe als „nicht ermittelt“ da. Aus der Wurzel:
 
 ```bash
 python3 .github/scripts/update_package.py operations --from v0.12.0 --to v0.17.0 --out /tmp/betrieb \

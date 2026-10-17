@@ -19,9 +19,10 @@ metadata come from the commit, so the same commit yields the same files.
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
 preparation, reindexing, schema migration, new ports and egress targets, answer quality. Every
-value is read from Git at the two commits, never from the working tree; data flows come from the
-manifest delta (--delta-json, as `./gradlew complianceDelta` writes it) and are reported as not
-determined without it. `build` writes the same files for its interval into the package.
+value is read from Git at the two commits from the repository root, never from the working tree;
+data flows come from the manifest delta (--delta-json, as `./gradlew complianceDelta` writes it)
+and are reported as not determined without it. A delta of other commits or a missing --delta-json
+file fails the run. `build` writes the same files for its interval into the package.
 
 Exit codes: 0 success, 1 failure, 2 usage. Standard library only.
 """
@@ -140,7 +141,9 @@ class Side:
 
 
 def files_at(repo: Path, commit: str, directory: str) -> list[str]:
-    return sorted(git(repo, "ls-tree", "-r", "--name-only", commit, "--", directory).splitlines())
+    """Paths from the repository root, whatever the working directory of `repo`."""
+    return sorted(git(repo, "ls-tree", "-r", "--full-tree", "--name-only", commit, "--", directory)
+                  .splitlines())
 
 
 def read_at(repo: Path, commit: str, path: str) -> str:
@@ -191,7 +194,7 @@ def header(title: str, previous: Side, current: Side) -> list[str]:
 
 NO_PREPARATION = re.compile(r"\s*Keine Vorbereitung nötig\.?\s*")
 REINDEXING_MARK = re.compile(
-    r"^\s*(?:[-*]\s+)?(?:\*\*)?Neuindizierung:(?:\*\*)?\s*(ja|nein)\b[\s,.;:–-]*(.*?)\s*$",
+    r"^\s*(?:[-*]\s+)?(?:\*\*)?Neuindizierung:(?:\*\*)?\s*(ja|nein)\b[\s,.;:–-]*(.*?)\s*(?:\*\*)?\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -204,7 +207,9 @@ class Note:
 
     @property
     def prepares(self) -> bool:
-        return NO_PREPARATION.fullmatch(self.text) is None
+        """Whether the note asks for more than "Keine Vorbereitung nötig."; a reindexing line alone
+        is no preparation."""
+        return NO_PREPARATION.fullmatch(REINDEXING_MARK.sub("", self.text)) is None
 
 
 def upgrade_notes(repo: Path, previous: Side, current: Side) -> list[Note]:
@@ -290,10 +295,22 @@ def pipeline_versions(baselines: dict[str, dict | None]) -> tuple[str, dict[str,
     return None
 
 
-def delta_changes(delta_json: Path | None) -> list[dict] | None:
-    if delta_json is None or not delta_json.is_file():
+def delta_changes(delta_json: Path | None, previous: Side, current: Side) -> list[dict] | None:
+    """The changes of a manifest delta written for exactly this interval; None without a delta."""
+    if delta_json is None:
         return None
-    changes = json.loads(delta_json.read_text(encoding="utf-8")).get("changes")
+    if not delta_json.is_file():
+        raise PackageError(f"manifest delta {delta_json} is missing")
+    try:
+        delta = json.loads(delta_json.read_text(encoding="utf-8"))
+    except ValueError as error:
+        raise PackageError(f"{delta_json} is no JSON: {error}") from error
+    for end, side in (("from", previous), ("to", current)):
+        commit = ((delta.get(end) if isinstance(delta, dict) else None) or {}).get("commit")
+        if commit != side.commit:
+            raise PackageError(f"{delta_json} compares {end} commit {commit}, the interval has"
+                               f" {side.commit} ({side.label})")
+    changes = delta.get("changes")
     if not isinstance(changes, list):
         raise PackageError(f"{delta_json} holds no list 'changes'")
     return changes
@@ -600,7 +617,7 @@ def quality(sides: tuple[dict, dict], previous: Side, current: Side) -> str:
 def operations(repo: Path, previous: Side, current: Side, delta_json: Path | None) -> dict[str, str]:
     """The files of betrieb/ for the interval from `previous` to `current`, by file name."""
     notes = upgrade_notes(repo, previous, current)
-    changes = delta_changes(delta_json)
+    changes = delta_changes(delta_json, previous, current)
     baselines = (read_baselines(repo, previous.commit), read_baselines(repo, current.commit))
     lines = header("Betriebsfolgen", previous, current)
     lines += [
@@ -877,7 +894,7 @@ def main(argv: list[str]) -> int:
             if found:
                 print(found)
         elif args.command == "operations":
-            repo = Path.cwd()
+            repo = Path(git(Path.cwd(), "rev-parse", "--show-toplevel"))
             sides = []
             for ref in (args.from_ref, args.to_ref):
                 sha = resolve(repo, ref)

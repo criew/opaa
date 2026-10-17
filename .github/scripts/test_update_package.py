@@ -454,8 +454,7 @@ def interval(tmp_path: Path) -> dict:
     put(work, BASELINE + "verwaltung.json", baseline("2026-02-10", 0.718, "markdown:4,pdf:5"))
     put(work, BASELINE + "pipeline-verwaltung.json", baseline("2026-02-11", 0.640, "markdown:4,pdf:5"))
     new = snapshot(work, "v1.2.3")
-    delta = tmp_path / "manifest-delta.json"
-    delta.write_text(json.dumps(DELTA_JSON), encoding="utf-8")
+    delta = write_delta(tmp_path / "manifest-delta.json", old, new, DELTA_JSON["changes"])
     return dict(
         repo=work,
         old=update_package.Side(label="v1.2.2", commit=old, version="1.2.2"),
@@ -464,10 +463,25 @@ def interval(tmp_path: Path) -> dict:
     )
 
 
+def write_delta(path: Path, from_commit: str, to_commit: str, changes: list[dict]) -> Path:
+    """A manifest delta as ManifestDeltaGenerator writes it, reduced to what the package reads."""
+    path.write_text(json.dumps({
+        "from": {"kind": "ref", "commit": from_commit},
+        "to": {"kind": "ref", "commit": to_commit},
+        "changes": changes,
+    }), encoding="utf-8")
+    return path
+
+
 def report(interval: dict, **changes) -> dict[str, str]:
-    args = dict(repo=interval["repo"], previous=interval["old"], current=interval["new"],
-                delta_json=interval["delta"])
+    """The files for the interval; without an explicit delta_json, DELTA_JSON written for the
+    actual two commits."""
+    args = dict(repo=interval["repo"], previous=interval["old"], current=interval["new"])
     args.update(changes)
+    if "delta_json" not in changes:
+        args["delta_json"] = write_delta(
+            interval["delta"].with_name("delta-for-interval.json"), args["previous"].commit,
+            args["current"].commit, DELTA_JSON["changes"])
     return update_package.operations(**args)
 
 
@@ -559,11 +573,10 @@ def test_a_note_without_reindexing_mark_says_so_and_names_no_estimate(interval: 
 
 
 def test_a_changed_default_embedding_model_asks_for_re_embedding(interval: dict, tmp_path: Path) -> None:
-    delta = tmp_path / "embedding-delta.json"
-    delta.write_text(json.dumps({"changes": [
+    delta = write_delta(tmp_path / "embedding-delta.json", interval["old"].commit, interval["new"].commit, [
         {"group": "MODELS_AND_PROMPTS", "section": "settings", "id": "spring.ai.openai.embedding.model",
          "title": "x", "kind": "CHANGED", "field": "defaultValue", "before": "nomic-embed-text",
-         "after": "bge-m3"}]}), encoding="utf-8")
+         "after": "bge-m3"}])
 
     reindexing = section(report(interval, delta_json=delta)["betriebsfolgen.md"], "Neuindizierung")
 
@@ -650,3 +663,59 @@ def test_the_operations_command_writes_both_files(tmp_path: Path, interval: dict
     assert result.returncode == 0, result.stderr
     assert sorted(p.name for p in out.iterdir()) == sorted(update_package.OPERATIONS_FILES)
     assert "`mail-gateway`" in (out / "betriebsfolgen.md").read_text(encoding="utf-8")
+
+
+def test_the_operations_command_reads_from_the_repository_root_when_started_in_a_subdirectory(
+        tmp_path: Path, interval: dict, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = tmp_path / "from-subdirectory"
+    monkeypatch.chdir(interval["repo"] / "backend")
+
+    code = update_package.main(["operations", "--from", "v1.2.2", "--to", "HEAD", "--out", str(out),
+                                "--delta-json", str(interval["delta"])])
+
+    assert code == 0
+    text = (out / "betriebsfolgen.md").read_text(encoding="utf-8")
+    assert "**Ja.**" in section(text, "Bruch und Vorbereitung")
+    assert "3 neue Changesets" in section(text, "Schemamigration")
+    assert "`metrics.exporterPort`: 9464" in text
+
+
+def test_a_manifest_delta_of_another_interval_is_refused(tmp_path: Path, interval: dict) -> None:
+    other = write_delta(tmp_path / "other.json", interval["new"].commit, interval["new"].commit, [])
+
+    with pytest.raises(update_package.PackageError, match="from commit"):
+        report(interval, delta_json=other)
+
+
+def test_a_manifest_delta_without_commits_is_refused(tmp_path: Path, interval: dict) -> None:
+    bare = tmp_path / "bare.json"
+    bare.write_text(json.dumps(DELTA_JSON), encoding="utf-8")
+
+    with pytest.raises(update_package.PackageError, match="compares"):
+        report(interval, delta_json=bare)
+
+
+def test_a_given_manifest_delta_that_does_not_exist_is_an_error(tmp_path: Path, interval: dict) -> None:
+    with pytest.raises(update_package.PackageError, match="is missing"):
+        report(interval, delta_json=tmp_path / "missing.json")
+
+
+def test_no_preparation_with_a_reindexing_line_is_no_break(interval: dict) -> None:
+    repo = interval["repo"]
+    put(repo, NOTES + "1.2.3.md", "Keine Vorbereitung nötig.\n\nNeuindizierung: nein\n")
+    now = update_package.Side(label="v1.2.3", commit=snapshot(repo, "none, marked"), version="1.2.3")
+
+    text = report(interval, current=now)["betriebsfolgen.md"]
+
+    assert "**Nein.**" in section(text, "Bruch und Vorbereitung")
+    assert "Neuindizierung: nicht nötig" in section(text, "Neuindizierung")
+
+
+def test_a_bold_reindexing_line_keeps_no_asterisks_in_the_estimate(interval: dict) -> None:
+    repo = interval["repo"]
+    put(repo, NOTES + "1.2.3.md", "- Datenbank sichern.\n\n**Neuindizierung: ja, rund 2 h**\n")
+    now = update_package.Side(label="v1.2.3", commit=snapshot(repo, "bold"), version="1.2.3")
+
+    reindexing = section(report(interval, current=now)["betriebsfolgen.md"], "Neuindizierung")
+
+    assert "Dauerschätzung (1.2.3): rund 2 h\n" in reindexing
