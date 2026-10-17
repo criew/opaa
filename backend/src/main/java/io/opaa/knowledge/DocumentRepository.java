@@ -421,9 +421,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Backs {@code UploadPendingRecoveryRunner}: every {@code PENDING} upload created before {@code
-   * threshold} is stuck for good - the process that would have finished it died. A bulk {@code
-   * UPDATE}, for the same reason as {@link #deleteByLibraryId}, scoped to {@code UPLOAD}: a
-   * connector run's transient {@code PENDING} row belongs to {@code indexing_jobs}' own recovery.
+   * createdBefore}, the start of this process, is stuck for good - the process that would have
+   * finished it is gone. A bulk {@code UPDATE}, for the same reason as {@link #deleteByLibraryId},
+   * scoped to {@code UPLOAD}: a connector run's transient {@code PENDING} row belongs to {@code
+   * indexing_jobs}' own recovery.
    *
    * @return the number of rows transitioned to {@code FAILED}
    */
@@ -432,15 +433,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Query(
       "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
           + " :errorMessage where d.status = io.opaa.api.types.DocumentStatus.PENDING and"
-          + " d.sourceType = :sourceType and d.createdAt <"
-          + " :threshold")
-  int failStalePendingOfType(
+          + " d.sourceType = :sourceType and d.createdAt < :createdBefore")
+  int failPendingOfTypeCreatedBefore(
       @Param("sourceType") SourceType sourceType,
       @Param("errorMessage") String errorMessage,
-      @Param("threshold") Instant threshold);
+      @Param("createdBefore") Instant createdBefore);
 
-  default int failStalePending(String errorMessage, Instant threshold) {
-    return failStalePendingOfType(SourceType.UPLOAD, errorMessage, threshold);
+  default int failPendingUploadsCreatedBefore(String errorMessage, Instant createdBefore) {
+    return failPendingOfTypeCreatedBefore(SourceType.UPLOAD, errorMessage, createdBefore);
   }
 
   /**

@@ -90,7 +90,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
   }
 
   @Test
-  void marksOnlyStalePendingUploadsAsFailedOnStartup() {
+  void marksOnlyPendingUploadsOfThePreviousProcessAsFailedOnStartup() {
     UUID stalePendingId =
         savePendingDocument("staleUpload.pdf", Instant.now().minus(2, ChronoUnit.HOURS));
     UUID freshPendingId = savePendingDocument("freshUpload.pdf", Instant.now());
@@ -108,7 +108,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
 
     Document freshUpload = documentRepository.findById(freshPendingId).orElseThrow();
     assertThat(freshUpload.getStatus())
-        .as("A PENDING row younger than the threshold is still legitimately in flight")
+        .as("A PENDING row created after the process start is still legitimately in flight")
         .isEqualTo(DocumentStatus.PENDING);
 
     Document staleIndexed = documentRepository.findById(staleIndexedId).orElseThrow();

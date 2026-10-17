@@ -381,16 +381,19 @@ public class IndexingJobService {
   }
 
   /**
-   * Fails every row still {@link JobStatus#RUNNING} from a previous application run. Called once at
-   * startup: a fresh JVM cannot be running the {@code @Async} task such a row refers to, so no age
-   * threshold applies, unlike {@link #recoverStaleJobs}. Assumes exactly one backend process; under
-   * genuine multi-instance operation this would abort another instance's live jobs (ADR-0021).
+   * Fails every row still {@link JobStatus#RUNNING} that was started before {@code processStart}.
+   * Called once at startup, when the web server and the schedulers may already have started runs of
+   * their own: those are younger than the process and stay {@code RUNNING}, while an older row has
+   * no {@code @Async} task left and needs no age threshold, unlike {@link #recoverStaleJobs}.
+   * Assumes exactly one backend process; under multi-instance operation this would abort another
+   * instance's live jobs (ADR-0021).
    *
    * @return the number of rows recovered
    */
   @Transactional
   public int recoverJobsOrphanedByRestart(Instant processStart) {
-    return indexingJobRepository.failAllRunningJobs(RESTART_ABORTED_MESSAGE, Instant.now(clock));
+    return indexingJobRepository.failRunningJobsStartedBefore(
+        RESTART_ABORTED_MESSAGE, processStart, Instant.now(clock));
   }
 
   /**

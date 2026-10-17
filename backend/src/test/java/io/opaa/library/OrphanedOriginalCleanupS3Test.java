@@ -96,7 +96,7 @@ class OrphanedOriginalCleanupS3Test {
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findFilePathsByLibraryId(libraryId)).thenReturn(rows);
     UploadProperties uploadProperties =
-        new UploadProperties(tempDir.toString(), null, 1024L, null, 0, GRACE_MINUTES);
+        new UploadProperties(tempDir.toString(), null, 1024L, null, GRACE_MINUTES);
     service =
         new OrphanedOriginalCleanupService(
             libraryRepository,

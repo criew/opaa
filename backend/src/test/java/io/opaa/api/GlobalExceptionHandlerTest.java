@@ -42,7 +42,7 @@ class GlobalExceptionHandlerTest {
 
   private final GlobalExceptionHandler handler =
       new GlobalExceptionHandler(
-          new UploadProperties(null, null, 52_428_800L, null, 0, 0), Clock.systemUTC());
+          new UploadProperties(null, null, 52_428_800L, null, 0), Clock.systemUTC());
 
   /** ADR-0033: a conflict may carry a stable code the client acts on; without one, none is sent. */
   @Test

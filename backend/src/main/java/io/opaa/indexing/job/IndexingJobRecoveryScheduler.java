@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
  * task left to complete them. Such a row is not merely stale bookkeeping: the partial unique index
  * locks its library out of every future trigger, with no way to resolve it from the UI.
  *
- * <p>{@link #recoverOnStartup()} covers the restart case - a fresh JVM cannot be running any task a
- * {@code RUNNING} row refers to (ADR-0021 assumes one process) - and {@link
+ * <p>{@link #recoverOnStartup()} covers the restart case - a row started before the {@link
+ * ProcessStart} has no task of this process behind it (ADR-0021 assumes one process) - and {@link
  * #recoverStaleRunningJobs()} covers everything without a restart: a task dropped while the
  * application kept running, or a run implausibly long in progress.
  */
@@ -37,10 +37,9 @@ public class IndexingJobRecoveryScheduler {
   }
 
   /**
-   * Runs once, right after the application is ready to serve traffic. Deliberately an {@link
-   * ApplicationReadyEvent} listener, not something invoked from {@code main} directly: by the time
-   * this fires, the datasource and every {@code @Async} executor are fully initialized, so there is
-   * no risk of racing the very infrastructure this recovery depends on.
+   * Runs once, when the application is ready: the datasource and every {@code @Async} executor are
+   * initialized by then. The web server and the {@code @Scheduled} ticks may already have started
+   * runs, so only rows started before the {@link ProcessStart} are failed.
    */
   @EventListener(ApplicationReadyEvent.class)
   public void recoverOnStartup() {

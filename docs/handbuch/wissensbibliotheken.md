@@ -216,8 +216,9 @@ zeigt die Übersicht der [Konnektoren](konnektoren/README.md).
 
 Ein hängender Lauf würde seine Bibliothek dauerhaft blockieren. Zwei Aufräumer verhindern das:
 
-- **Beim Start des Backends** werden alle noch laufenden Läufe mit „Durch Neustart abgebrochen"
-  beendet (Abschnitt 7.3).
+- **Beim Start des Backends** werden alle Läufe, die vor dem Start begonnen haben und noch als
+  laufend gelten, mit „Durch Neustart abgebrochen" beendet (Abschnitt 7.3). Ein Lauf, den das
+  frisch gestartete Backend schon selbst begonnen hat, läuft weiter.
 - **Regelmäßig** werden Läufe beendet, die länger als eine Frist (`stale-job-timeout`) keinen
   Fortschritt gemeldet haben. Maßgeblich ist der letzte Fortschritt, nicht der Start: Ein großer
   Erstlauf darf lange dauern, solange er arbeitet.
@@ -225,6 +226,10 @@ Ein hängender Lauf würde seine Bibliothek dauerhaft blockieren. Zwei Aufräume
 Ein abgebrochener Lauf lässt den Bestand stehen. Was er fertig verarbeitet hat, bleibt indiziert;
 was er nicht erreicht hat, bleibt auf dem alten Stand. Das eine Dokument, das gerade in Arbeit war,
 verarbeitet der nächste Lauf erneut.
+
+Ebenso beim Upload: Eine hochgeladene Datei, deren Verarbeitung ein Neustart unterbrochen hat, steht
+nach dem Start auf fehlgeschlagen („Die Verarbeitung wurde durch einen Neustart abgebrochen“), wie
+kurz vor dem Neustart sie auch angenommen wurde, und lässt sich erneut hochladen.
 
 ## 5. Was mit jedem Dokument passiert
 

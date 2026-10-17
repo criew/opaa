@@ -2,10 +2,7 @@ package io.opaa.library;
 
 import io.opaa.common.ProcessStart;
 import io.opaa.knowledge.DocumentRepository;
-import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalStore;
-import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,18 +15,15 @@ import org.springframework.stereotype.Component;
  * uploadTaskExecutor} task. {@code DocumentIngestService#processUploadedFileAsync} always leaves a
  * row at either {@code INDEXED} or {@code FAILED} when it runs to completion - but if the JVM stops
  * before that (a crash, an operator-initiated restart, an out-of-memory kill), the in-flight task
- * simply vanishes with it, and nothing was ever running to finish the row on the next start.
- * Without this recovery, such a row would poll {@code PENDING} forever in the frontend, and a retry
- * of the same file would answer {@code 409} because only a {@code FAILED} row is replaced by a new
- * upload ({@code LibraryDocumentService#uploadDocument}) - a dead end the caller cannot resolve on
- * their own.
+ * vanishes with it, since the executor's queue lives only in memory. Without this recovery, such a
+ * row would poll {@code PENDING} forever in the frontend, and a retry of the same file would answer
+ * {@code 409} because only a {@code FAILED} row is replaced by a new upload ({@code
+ * LibraryDocumentService#uploadDocument}).
  *
- * <p>Runs once, synchronously, at application startup, before any request can be served - so a row
- * genuinely still being processed by this same, freshly-started JVM can never be caught here: no
- * upload could have begun before this runner ran. Only rows older than {@link
- * UploadProperties#pendingRecoveryThresholdMinutes} are touched, so a row created moments before an
- * unrelated restart (already {@code PENDING}, its own worker task simply not scheduled yet) is left
- * alone rather than being failed the instant the new process comes up.
+ * <p>Runs once at application startup, when the web server already accepts uploads. The cutoff is
+ * therefore the {@link ProcessStart}, not an age: every {@code PENDING} upload created before it
+ * belonged to an earlier process and is failed, however young; one created after it has a task of
+ * this process behind it and is left alone (ADR-0021).
  */
 @Component
 public class UploadPendingRecoveryRunner implements ApplicationRunner {
@@ -39,44 +33,36 @@ public class UploadPendingRecoveryRunner implements ApplicationRunner {
   static final String FAILURE_REASON = "Die Verarbeitung wurde durch einen Neustart abgebrochen";
 
   private final DocumentRepository documentRepository;
-  private final UploadProperties uploadProperties;
   private final UploadedOriginalStore uploadedOriginalStore;
-  private final Clock clock;
   private final ProcessStart processStart;
 
   public UploadPendingRecoveryRunner(
       DocumentRepository documentRepository,
-      UploadProperties uploadProperties,
       UploadedOriginalStore uploadedOriginalStore,
-      Clock clock,
       ProcessStart processStart) {
     this.documentRepository = documentRepository;
-    this.uploadProperties = uploadProperties;
     this.uploadedOriginalStore = uploadedOriginalStore;
-    this.clock = clock;
     this.processStart = processStart;
   }
 
   /**
    * The rows first, then the store's own leftovers ({@link
    * UploadedOriginalStore#recoverAfterRestart}): both are what a process that died mid-task leaves
-   * behind, and both are settled before the first request (ADR-0030, Entscheidung 7).
+   * behind (ADR-0030, Entscheidung 7).
    */
   @Override
   public void run(ApplicationArguments args) {
     recover(processStart.instant());
   }
 
+  /** Fails every {@code PENDING} upload created before {@code processStarted}. */
   void recover(Instant processStarted) {
-    Instant threshold =
-        Instant.now(clock)
-            .minus(Duration.ofMinutes(uploadProperties.pendingRecoveryThresholdMinutes()));
-    int recovered = documentRepository.failStalePending(FAILURE_REASON, threshold);
+    int recovered =
+        documentRepository.failPendingUploadsCreatedBefore(FAILURE_REASON, processStarted);
     if (recovered > 0) {
       log.warn(
-          "Marked {} upload(s) stuck at PENDING for more than {} minute(s) as FAILED on startup",
-          recovered,
-          uploadProperties.pendingRecoveryThresholdMinutes());
+          "Marked {} upload(s) left PENDING by the previous process as FAILED on startup",
+          recovered);
     }
     uploadedOriginalStore.recoverAfterRestart();
   }
