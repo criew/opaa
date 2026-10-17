@@ -277,7 +277,34 @@ Grenze und braucht dafür Admin-Rechte. Ablauf:
    `vX.Y.0` ist sie Pflicht, notfalls mit dem Text „Keine Vorbereitung nötig.“; ohne sie bricht der
    Lauf ab, bevor etwas veröffentlicht ist. Ein Patch-Release verlangt nie Vorbereitung und braucht
    keine Datei.
-4. Tag setzen und pushen:
+4. Den Stand aus Behördensicht lesen lassen. Das Update-Paket entsteht erst im Lauf des Tags;
+   vorher wird deshalb sein Delta lokal erzeugt, auf dem Commit, der das Tag bekommt, und gegen
+   denselben Vorgänger wie das Paket (Beispiel `v0.3.0`):
+
+   ```bash
+   git fetch origin --tags
+   git switch --detach origin/main
+   vorg=$(python3 .github/scripts/update_package.py previous --tag v0.3.0 --commit HEAD)
+   [ -n "$vorg" ] || vorg=$(git rev-list --max-parents=0 HEAD | tail -n 1)   # erstes finales Release
+   gh pr list --state merged --label data-impact --limit 1000 --json number,title,url \
+     >/tmp/data-impact-prs.json
+   (cd backend && ./gradlew complianceDelta -PfromRef="$vorg" -PtoRef=HEAD \
+     -PlabelledPrs=/tmp/data-impact-prs.json)
+   ```
+
+   Das Delta liegt unter `backend/build/compliance/delta/manifest-delta.md`. Wer das ganze Paket
+   vorab sehen will, erzeugt es im [Probelauf](#update-paket) mit
+   `update_package.py build --tag v0.3.0 …`. Dann startet der Koordinator die Rolle
+   `behoerdenkontakt` ([Rollenvertrag](../agents/roles/behoerdenkontakt.md), Adapter für Claude
+   Code, Codex und OpenCode) mit Version, Commit und Vergleichsstand `$vorg`. Ihre Befunde werden
+   vor dem Tag geklärt oder nach dem Lauf mit `gh release edit` als bekannt in die Release-Notizen
+   aufgenommen ([Behördenkontakt vor dem Release](AGENT-ORGANIZATION.md#behördenkontakt-vor-dem-release)).
+
+   Für welche Supportlinien ein Delta entsteht, ist noch offen
+   ([#2575](https://github.com/criew/opaa/issues/2575)). Bis dahin gilt die Regel unter
+   [Update-Paket](#update-paket): ein Delta je Release, nur gegen das vorige finale Release der
+   eigenen Linie.
+5. Tag setzen und pushen:
 
    ```bash
    git fetch origin
@@ -285,15 +312,15 @@ Grenze und braucht dafür Admin-Rechte. Ablauf:
    git push origin v0.1.0
    ```
 
-5. Den Lauf von „Publish Images“ abwarten. Danach stehen Images und Chart in GHCR und das
+6. Den Lauf von „Publish Images“ abwarten. Danach stehen Images und Chart in GHCR und das
    GitHub-Release unter *Releases*.
    Das erste Release trägt nur einen festen Text: Ohne Vorgänger umfassten generierte Notizen die
    gesamte Historie.
 
-Von Hand nachbearbeiten muss man die Notizen nicht: Was ein Release von Bestandsinstallationen
-verlangt, kommt über Schritt 3 aus dem Repository, datenrelevante Änderungen ordnet das Label
-`data-impact` ein. Die Sätze zur Datenwirkung aus den PRs lassen sich auf Wunsch ergänzen
-([Datenwirkung kennzeichnen](#datenwirkung-kennzeichnen)).
+Von Hand nachbearbeiten muss man die Notizen nur für bekannte Befunde aus Schritt 4: Was ein
+Release von Bestandsinstallationen verlangt, kommt über Schritt 3 aus dem Repository,
+datenrelevante Änderungen ordnet das Label `data-impact` ein. Die Sätze zur Datenwirkung aus den
+PRs lassen sich auf Wunsch ergänzen ([Datenwirkung kennzeichnen](#datenwirkung-kennzeichnen)).
 
 Die erste Version ist `v0.1.0`. Auch sie ist ein finales `X.Y.0` und braucht deshalb
 `docs/upgrade-notes/0.1.0.md`, bevor das Tag gesetzt wird.

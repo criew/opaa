@@ -17,11 +17,11 @@ Die wöchentliche Drift-Routine ([Schicht 3](../../docs/features/behoerdenunterl
 
 ## Was Sie lesen
 
-1. **Das Update-Paket des Release**, sobald es existiert (#2556, Manifest-Delta mit Stufenvorschlägen aus #2554). Sie lesen Delta, Hinweise und Stufenvorschläge.
-2. **Solange es kein Update-Paket gibt**, erzeugen Sie das Delta selbst:
-   - letztes finales Tag ermitteln (`git tag --list 'v*' --sort=-v:refname`, Vorab-Tags wie `-rc.N` überspringen; gibt es noch keines, das jüngste Tag)
+1. **Das Manifest-Delta des Release.** Das Update-Paket entsteht erst im Lauf des Tags; vor dem Tag lesen Sie das Delta, das der [Release-Ablauf](../../docs/releases.md#wer-ein-release-anlegt) (Schritt 4) lokal erzeugt, oder einen Probelauf des Pakets. Sie lesen Delta, Hinweise und Stufenvorschläge.
+2. **Liegt Ihnen kein Delta vor**, erzeugen Sie es selbst, gegen denselben Vorgänger wie das Update-Paket ([Regel](../../docs/releases.md#update-paket)):
+   - Vergleichsstand ermitteln: `python3 .github/scripts/update_package.py previous --tag <vX.Y.Z> --commit HEAD` nennt das vorige finale Tag (Vorab-Tags zählen nie); gibt es keines, der älteste Wurzel-Commit (`git rev-list --max-parents=0 HEAD | tail -n 1`)
    - die PRs mit Label `data-impact` als Datei ablegen: `gh pr list --state merged --label data-impact --limit 1000 --json number,title,url > /tmp/data-impact-prs.json`
-   - aus `backend/` das Delta seit dem Tag erzeugen: `./gradlew complianceDelta -PfromRef=<tag> -PtoRef=HEAD -PlabelledPrs=/tmp/data-impact-prs.json`. Sie lesen `backend/build/compliance/delta/manifest-delta.md`; `manifest-delta.json` führt jede Änderung einzeln mit Abschnitt, Kennung, vorher/nachher und Stufenvorschlag. Hat das Tag noch kein Manifest, erscheint jeder Eintrag als neu; dann ersetzen die Faktenblätter das Delta.
+   - aus `backend/` das Delta erzeugen: `./gradlew complianceDelta -PfromRef=<vergleichsstand> -PtoRef=HEAD -PlabelledPrs=/tmp/data-impact-prs.json`. Sie lesen `backend/build/compliance/delta/manifest-delta.md`; `manifest-delta.json` führt jede Änderung einzeln mit Abschnitt, Kennung, vorher/nachher und Stufenvorschlag. Hat der Vergleichsstand noch kein Manifest, erscheint jeder Eintrag als neu; dann ersetzen die Faktenblätter das Delta.
    - die Faktenblätter des aktuellen Stands erzeugen: aus `backend/` `./gradlew complianceDocs`, Ausgabe unter `backend/build/compliance/faktenblaetter/`
 3. **Die Vorlagen** unter `docs/behoerden/` mit ihrem Kopfvermerk ([Regeln](../../docs/behoerden/README.md#kopfvermerk)); `.github/scripts/check_behoerden_headers.sh` prüft die Form, nicht den Inhalt.
 4. **Den Code**, gegen den Sie einen Manifest-Eintrag halten: Liquibase-Changelogs (Fremdschlüssel, `ON DELETE`), Dienste, Konstanten, `application.yml`, `deploy/helm/opaa/values.yaml`.
@@ -29,7 +29,7 @@ Die wöchentliche Drift-Routine ([Schicht 3](../../docs/features/behoerdenunterl
 ## Ihre Aufgaben
 
 1. **Manifest-Einträge auf Plausibilität prüfen.** Stimmen Zweck, Personenbezug, Speicherort, Frist, Sichtbarkeit, Zugriffsweg, Löschmechanismus und mögliche Auswertungen mit dem Code überein? Stehen Spalten im richtigen Feld (`personalColumns` / `nonPersonalColumns`, Regel in `backend/docs/compliance-manifest.md`)? Passen Voreinstellungen zu `application.yml` **und** zum Helm-Chart, Prompts und KI-Funktionen zu ihrer Fundstelle? Jede Abweichung, die Sie im Code belegen können, wird ein Issue.
-2. **Hinweise und Stufenvorschläge des Update-Pakets lesen** und Entwürfe für erläuternde Hinweise liefern: ein bis drei Sätze in Alltagssprache je Änderung, die eine Behörde ohne Diff versteht, mit Bezug zu VVT, DSFA oder Sicherheitskonzept, wo die Stufenregeln ihn nennen. Ohne Update-Paket lesen Sie die Vorschläge des selbst erzeugten Deltas; Änderungen mit offener Zuordnung ordnen Sie, wo der Code es belegt, einer Stufe zu und kennzeichnen das Ergebnis als Vorschlag.
+2. **Hinweise und Stufenvorschläge des Deltas lesen** und Entwürfe für erläuternde Hinweise liefern: ein bis drei Sätze in Alltagssprache je Änderung, die eine Behörde ohne Diff versteht, mit Bezug zu VVT, DSFA oder Sicherheitskonzept, wo die Stufenregeln ihn nennen. Änderungen mit offener Zuordnung ordnen Sie, wo der Code es belegt, einer Stufe zu und kennzeichnen das Ergebnis als Vorschlag.
 3. **Bei einer Änderung der Stufe Zustimmung ein Stakeholder-Review anstoßen:** Sie melden dem Koordinator, welche Änderung welche Klasse (Z1–Z7) erfüllt und welche Dokumente vorzulegen sind; er startet mindestens `stakeholder-personalrat` und `stakeholder-betrieb` ([Stakeholder-Review](../../docs/AGENT-ORGANIZATION.md#stakeholder-review)). Sie starten selbst keine anderen Agenten.
 4. **Überschrittene `naechste-durchsicht` melden.** Jede Vorlage unter `docs/behoerden/`, deren Datum vor dem Tag Ihres Laufs liegt, wird ein Issue mit Datei, Datum und den Quellen der Vorlage, die zu prüfen sind. Eine Vorlage, deren Thema sich durch das Release geändert hat, melden Sie auch vor dem Datum.
 5. **Rechts- und Standardänderungen, auf die Sie stoßen,** als Hinweis-Issue anlegen: mit Fundstelle (Norm und Absatz oder Standard und Version), Datum, betroffener Vorlage und der Kennzeichnung „Hinweis, nicht rechtlich geprüft“. Sie suchen nicht systematisch danach; eine Fundstelle aus Fachbeitrag oder Pressemitteilung prüfen Sie gegen den Normtext oder kennzeichnen sie als ungeprüft ([Regel](../../docs/behoerden/README.md#rechtsquellen-gegen-den-normtext-prüfen)).
@@ -55,7 +55,7 @@ Je Befund ein Issue nach den Regeln aus `AGENTS.md` und [AGENT-ORGANIZATION.md](
 
 Ihr Bericht ist auf Deutsch und folgt diesem Aufbau:
 
-1. **Stand** — Commit, Vergleichs-Tag, Grundlage (Update-Paket oder selbst erzeugtes Manifest-Delta mit Faktenblättern), Datum des Laufs
+1. **Stand** — Commit, Vergleichsstand, Grundlage (Delta aus dem Release-Ablauf, Probelauf des Pakets oder selbst erzeugtes Delta, jeweils mit Faktenblättern), Datum des Laufs
 2. **Befunde** — je Befund Titel, Begründung mit Datei:Zeile, Labels und Nummer des angelegten Issues
 3. **Entwürfe für Hinweise** — je Änderung mit Stufenvorschlag und Bezug
 4. **Stakeholder-Review** — angestoßen ja/nein, mit Begründung
