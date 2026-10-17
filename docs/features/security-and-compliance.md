@@ -962,7 +962,8 @@ geht ausschließlich an die betroffene Person, weder über eine Vertretungsfunkt
 Die **Auskunft über die Datenerhebung** ist gebaut (#2558): das Fakten-Manifest der eingesetzten
 Version, verbunden mit den wirksamen Werten der Instanz — jede datenwirksame Einstellung mit
 Voreinstellung, wirksamem Wert und, bei Fristen in der Datenbank, dem Zeitpunkt der letzten Änderung;
-eingeschaltete Datenflüsse, Konnektortypen in Gebrauch und Modellanbieter; dazu die Beschreibung des
+eingeschaltete Datenflüsse, Konnektortypen in Gebrauch (ohne private Bibliotheken, die für niemanden
+außer ihrer Besitzerin existieren) und Modellanbieter; dazu die Beschreibung des
 Protokolls aus dem [Auszug für die Personalvertretung](#der-auszug-für-die-personalvertretung). Sie
 geht als JSON und als Markdown heraus, ohne Geheimnisse, ohne personenbezogene Daten und ohne
 Inhalte: Ausgegeben wird nur der Wert eines Schlüssels, den das Manifest als datenwirksam führt

@@ -200,6 +200,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listAccounts",
             "listCapabilities",
             "getConnectionLogRetention",
+            "getDataCollectionDisclosure",
+            "getDataCollectionDisclosureMarkdown",
             "listConnectionProfiles",
             "getConnectionProfile",
             "getConnectionProfileImpact",

@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * registers that reaches outside has its data flow, and every such flow is one of the manifest.
  */
 @OpaaIntegrationTest
-class KnowledgeInstanceStateIntegrationTest {
+class ConnectorDataFlowsIntegrationTest {
 
   /** Source types that read only from the server itself or from uploads and send nothing out. */
   private static final Set<String> LOCAL_CONNECTORS = Set.of("FILESYSTEM", "UPLOAD");
@@ -35,7 +35,7 @@ class KnowledgeInstanceStateIntegrationTest {
             .collect(Collectors.toSet());
 
     assertThat(types).isNotEmpty();
-    assertThat(KnowledgeInstanceState.CONNECTOR_FLOWS).containsOnlyKeys(types);
+    assertThat(ConnectorDataFlows.BY_TYPE).containsOnlyKeys(types);
   }
 
   /** A connector of the product, not a probe the test context registers from the test classes. */
@@ -44,7 +44,7 @@ class KnowledgeInstanceStateIntegrationTest {
         .getProtectionDomain()
         .getCodeSource()
         .getLocation()
-        .equals(KnowledgeInstanceState.class.getProtectionDomain().getCodeSource().getLocation());
+        .equals(ConnectorDataFlows.class.getProtectionDomain().getCodeSource().getLocation());
   }
 
   @Test
@@ -54,6 +54,6 @@ class KnowledgeInstanceStateIntegrationTest {
             .map(DataFlowEntry::id)
             .collect(Collectors.toSet());
 
-    assertThat(flows).containsAll(KnowledgeInstanceState.CONNECTOR_FLOWS.values());
+    assertThat(flows).containsAll(ConnectorDataFlows.BY_TYPE.values());
   }
 }

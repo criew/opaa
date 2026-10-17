@@ -165,8 +165,8 @@ Die Auskunft enthält:
 | Kopf | OPAA-Version, Commit des Images und Zeitpunkt des Abrufs |
 | Abweichungen von der Voreinstellung | jede Einstellung mit Datenwirkung, deren Wert in dieser Installation vom ausgelieferten abweicht |
 | Einstellungen mit Datenwirkung | alle diese Einstellungen mit Voreinstellung, wirksamem Wert und, bei Fristen aus der Verwaltung, dem Zeitpunkt der letzten Änderung |
-| Ausgehende Datenflüsse | jede Verbindung nach außen und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht |
-| Konnektortypen in Gebrauch | je Konnektor die Zahl der Bibliotheken und Zugänge |
+| Ausgehende Datenflüsse | jede Verbindung nach außen und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
+| Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
 | Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
 
@@ -176,7 +176,8 @@ beide gleich.
 **Ohne Geheimnisse, Personen und Inhalte.** Ausgegeben wird nur der Wert einer Einstellung, die das
 Manifest als datenwirksam führt; Schlüssel, Passwörter und Token gehören nie dazu. Adressen
 erscheinen ohne Zugangsdaten, Abfrageteil und Anker. Namen von Personen, Protokollsätze und Inhalte
-von Bibliotheken enthält die Auskunft nicht, Zählungen nur je Konnektortyp.
+von Bibliotheken enthält die Auskunft nicht, Zählungen nur je Konnektortyp und ohne private
+Bibliotheken.
 
 ## Was bei jeder Änderung geprüft wird
 

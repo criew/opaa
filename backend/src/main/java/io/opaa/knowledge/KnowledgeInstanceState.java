@@ -9,27 +9,13 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * The connector types libraries read from and the store of the originals, for the disclosure. A
- * connector's data flow is on while at least one library reads from it.
+ * The connector types shared libraries read from and the store of the originals, for the
+ * disclosure. A private library is counted nowhere, so the disclosure cannot tell one from none
+ * (ADR-0049, Entscheidung 1); the flows it may open are reported by the connection profiles that
+ * admit persons.
  */
 @Component
 class KnowledgeInstanceState implements InstanceStateSource {
-
-  /**
-   * The data flow of each connector type that fetches from outside the installation; a type missing
-   * here ({@code FILESYSTEM}) reads only from the server itself.
-   */
-  static final Map<String, String> CONNECTOR_FLOWS =
-      Map.of(
-          "HTTP_DIRECTORY", "source-web",
-          "RSS_FEED", "source-rss",
-          "CONFLUENCE", "source-confluence",
-          "DROPBOX", "source-dropbox",
-          "GOOGLE_DRIVE", "source-google-drive",
-          "NEXTCLOUD", "source-nextcloud",
-          "SHAREPOINT", "source-sharepoint",
-          "S3", "source-s3",
-          "SMB", "source-smb");
 
   /** The types whose documents a person can open at the source ({@code source-original}). */
   private static final List<String> ORIGINAL_AT_THE_SOURCE = List.of("HTTP_DIRECTORY", "RSS_FEED");
@@ -46,7 +32,7 @@ class KnowledgeInstanceState implements InstanceStateSource {
   @Override
   public List<ConnectorUsage> connectorUsage() {
     List<ConnectorUsage> usage = new ArrayList<>();
-    libraryCounts()
+    sharedLibraryCounts()
         .forEach(
             (type, count) -> {
               if (!SourceType.UPLOAD.key().equals(type)) {
@@ -58,19 +44,20 @@ class KnowledgeInstanceState implements InstanceStateSource {
 
   @Override
   public Map<String, Boolean> dataFlows() {
-    Map<String, Long> counts = libraryCounts();
+    Map<String, Long> counts = sharedLibraryCounts();
     Map<String, Boolean> flows = new HashMap<>();
-    CONNECTOR_FLOWS.forEach((type, flow) -> flows.put(flow, counts.getOrDefault(type, 0L) > 0));
+    ConnectorDataFlows.BY_TYPE.forEach(
+        (type, flow) -> flows.put(flow, counts.getOrDefault(type, 0L) > 0));
     flows.put("source-original", ORIGINAL_AT_THE_SOURCE.stream().anyMatch(counts::containsKey));
     flows.put("source-attachment", counts.containsKey("RSS_FEED"));
     flows.put("original-store", originalStore instanceof S3UploadedOriginalStore);
     return flows;
   }
 
-  private Map<String, Long> libraryCounts() {
+  private Map<String, Long> sharedLibraryCounts() {
     Map<String, Long> counts = new HashMap<>();
-    for (Object[] row : libraries.countBySourceType()) {
-      counts.put((String) row[0], ((Number) row[1]).longValue());
+    for (Object[] row : libraries.countSharedBySourceType()) {
+      counts.put(((SourceType) row[0]).key(), ((Number) row[1]).longValue());
     }
     return counts;
   }

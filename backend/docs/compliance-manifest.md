@@ -126,13 +126,15 @@ selbst, damit auch der abgewiesene Abruf das Ereignis `DATA_COLLECTION_DISCLOSUR
   durch `InstanceDisclosureAssembler#exportable` (Adressen ohne Zugangsdaten, Abfrageteil, Anker).
 - Derselbe Port meldet, ob ein Datenfluss eingeschaltet ist, welche Konnektortypen Bibliotheken und
   Zugänge nutzen und welche Modellanbieter konfiguriert sind. Ein Port-Wert verlässt die
-  Installation: nie ein Geheimnis, ein Name einer Person oder ein Inhalt.
+  Installation: nie ein Geheimnis, ein Name einer Person oder ein Inhalt. Private Bibliotheken
+  zählen nirgends (ADR-0049, Entscheidung 1); den Datenfluss ihres Konnektors schaltet ein Zugang
+  ein, der Personen zulässt.
 
 | Änderung im Code | Nachzuziehen |
 |---|---|
 | neuer `DATABASE`-Eintrag unter `settings` | eine `InstanceStateSource` im Modul der Tabelle liefert Wert und Änderungszeitpunkt (`DataCollectionDisclosureIntegrationTest` scheitert sonst) |
 | neuer Datenfluss mit Schalter | eine `InstanceStateSource` meldet ihn; offen bleiben nur Flüsse, die allein auf eine Handlung hin entstehen |
-| neuer Konnektor, der nach außen geht | Typ und Datenfluss in `KnowledgeInstanceState#CONNECTOR_FLOWS` (`KnowledgeInstanceStateIntegrationTest`) |
+| neuer Konnektor, der nach außen geht | Typ und Datenfluss in `io.opaa.knowledge.ConnectorDataFlows` (`ConnectorDataFlowsIntegrationTest`) |
 | neue Spalte von `audit_log` oder neuer Abfrageweg | `io.opaa.audit.AuditProtocolDescription` |
 
 ## Delta zwischen zwei Versionen

@@ -316,11 +316,12 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   int eraseWebhookSecret(@Param("id") UUID id);
 
   /**
-   * How many libraries of the whole installation read from each source type, as rows of type key
-   * and count; types without a library are absent.
+   * How many shared libraries of the whole installation read from each source type, as rows of
+   * {@link SourceType} and count; private libraries are not counted, types without a library are
+   * absent.
    */
   @Query(
-      value = "select source_type, count(*) from knowledge_libraries group by source_type",
-      nativeQuery = true)
-  List<Object[]> countBySourceType();
+      "select l.sourceType, count(l) from KnowledgeLibrary l where l.ownerOnly = false"
+          + " group by l.sourceType")
+  List<Object[]> countSharedBySourceType();
 }
