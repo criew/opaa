@@ -36,5 +36,12 @@ public enum DirectorySyncOutcome {
   ABORTED_EMPTY_RESULT,
 
   /** The directory could not be reached. Nothing was written; the last-known-good state stands. */
-  UNREACHABLE
+  UNREACHABLE,
+
+  /**
+   * The run broke off with an error after the directory was reached, e.g. on a directory value the
+   * database refuses. Nothing was written; the last-known-good state stands, and the schedule waits
+   * for the interval as after any other run.
+   */
+  FAILED
 }
