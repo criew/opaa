@@ -230,7 +230,9 @@ export async function gotoLibraryDetail(page: Page, libraryName: string): Promis
 
 /**
  * Starts the knowledge-library wizard the way a person does: "Neu" in the catalog, the type
- * choice "Wissen", "Weiter" (ADR-0039, Entscheidung 1).
+ * choice "Wissen", "Weiter" (ADR-0039, Entscheidung 1). Resolves only once the wizard has
+ * rendered: the URL changes before the wizard's lazily loaded chunk arrives, and until then the
+ * catalog page with its own "Weiter" button stays on screen.
  */
 export async function openNewLibraryWizard(page: Page): Promise<void> {
   await page.goto('/catalog')
@@ -240,6 +242,9 @@ export async function openNewLibraryWizard(page: Page): Promise<void> {
     page.waitForURL(/\/libraries\/new$/),
     page.getByRole('button', { name: 'Weiter', exact: true }).click(),
   ])
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Neue Wissensbibliothek' }),
+  ).toBeAttached()
 }
 
 /**

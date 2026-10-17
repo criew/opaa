@@ -102,7 +102,9 @@ export async function gotoPromptLibraryDetail(page: Page, name: string): Promise
 
 /**
  * Startet den Assistenten einer Prompt-Bibliothek wie eine Person: „Neu“ im Katalog, Typwahl
- * „Prompts“, „Weiter“ (ADR-0039, Entscheidung 1).
+ * „Prompts“, „Weiter“ (ADR-0039, Entscheidung 1). Kehrt erst zurück, wenn der Assistent steht:
+ * Die URL wechselt vor dem nachgeladenen Chunk des Assistenten, bis dahin bleibt die Katalogseite
+ * mit ihrem eigenen „Weiter“ stehen.
  */
 export async function openNewPromptLibraryWizard(page: Page): Promise<void> {
   await page.goto('/catalog')
@@ -112,6 +114,9 @@ export async function openNewPromptLibraryWizard(page: Page): Promise<void> {
     page.waitForURL(/\/prompts\/new$/),
     page.getByRole('button', { name: 'Weiter', exact: true }).click(),
   ])
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Neue Prompt-Bibliothek' }),
+  ).toBeAttached()
 }
 
 /**
