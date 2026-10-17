@@ -277,6 +277,55 @@ describe('DirectorySyncPage', () => {
     expect(within(row).queryByText('Entscheidung nötig')).not.toBeInTheDocument()
   })
 
+  // regression guard for #2902: a run that broke off is on record as FAILED, and the panel shows
+  // that status line, not the last successful run.
+  it('shows a run that broke off as failed in the status line', async () => {
+    const applied = {
+      ...mockDirectorySyncStatus[0],
+      lastOutcome: 'APPLIED' as const,
+      lastMessage: 'Synchronisation angewendet.',
+      pendingPlan: null,
+    }
+    let runs = 0
+    server.use(
+      http.post('/api/v1/admin/oidc-providers/:providerId/directory-sync/run', () => {
+        runs++
+        return HttpResponse.json(
+          { error: 'Die Aktion widerspricht bestehenden Daten und wurde nicht ausgeführt' },
+          { status: 409 },
+        )
+      }),
+      http.get('/api/v1/admin/directory-sync/status', () =>
+        HttpResponse.json([
+          runs === 0
+            ? applied
+            : {
+                ...applied,
+                lastRunAt: '2026-09-18T07:00:00Z',
+                lastOutcome: 'FAILED',
+                lastMessage: 'Der Abgleich ist mit einem Fehler abgebrochen.',
+                lastChangedFraction: 0,
+              },
+        ]),
+      ),
+    )
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Verzeichnisdienst')
+    expect(within(panel).getByText('Angewendet')).toBeInTheDocument()
+    await user.click(within(panel).getByRole('button', { name: 'Jetzt abgleichen' }))
+
+    expect(await within(panel).findByText('Abgleich fehlgeschlagen')).toBeInTheDocument()
+    expect(within(panel).getByText(/Der Abgleich ist mit einem Fehler abgebrochen/)).toBeVisible()
+    expect(within(panel).getByRole('alert')).toHaveTextContent(/widerspricht bestehenden Daten/)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(
+      within(await rowOf('Verzeichnisdienst')).getByText('Abgleich fehlgeschlagen'),
+    ).toBeVisible()
+  })
+
   // regression guard: a failed plan load says so and offers another try instead of loading forever.
   it('names a failed plan load and loads it again on request', async () => {
     let planCalls = 0
@@ -397,7 +446,10 @@ describe('DirectorySyncPage', () => {
       const table = await overview()
       await within(table).findByText('Personalverwaltung')
       const attention = manyDirectoryStatuses().filter(
-        (status) => status.pendingPlan || status.lastOutcome === 'UNREACHABLE',
+        (status) =>
+          status.pendingPlan ||
+          status.lastOutcome === 'UNREACHABLE' ||
+          status.lastOutcome === 'FAILED',
       )
 
       await user.click(screen.getByRole('button', { name: /Handlungsbedarf/ }))

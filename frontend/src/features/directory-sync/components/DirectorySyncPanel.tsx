@@ -121,9 +121,14 @@ export default function DirectorySyncPanel({
   /**
    * A refused confirmation leaves a **new** plan with a new id behind on the server
    * (`DIRECTORY_SYNC_PLAN_CHANGED`). The error path loads it, so the next confirmation does not
-   * run into the old id (404) and the report shown is the one that would now be applied.
+   * run into the old id (404) and the report shown is the one that would now be applied. A sync
+   * run that broke off is on record as `FAILED`; `syncRun` reloads the status line to show it.
    */
-  async function run(action: () => Promise<void>, fallback: string): Promise<boolean> {
+  async function run(
+    action: () => Promise<void>,
+    fallback: string,
+    syncRun = false,
+  ): Promise<boolean> {
     setBusy(true)
     setError(null)
     try {
@@ -133,6 +138,8 @@ export default function DirectorySyncPanel({
       setError(apiErrorMessage(err, DIRECTORY_SYNC_CONFLICT_MESSAGES, fallback))
       if (apiErrorCode(err) === 'DIRECTORY_SYNC_PLAN_CHANGED') {
         onPlanReplaced(await getPendingPlan(providerId).catch(() => null))
+        await onChanged()
+      } else if (syncRun) {
         await onChanged()
       }
       return false
@@ -215,14 +222,18 @@ export default function DirectorySyncPanel({
               busy={busy}
               confirmBlocker={confirmBlocker(provider)}
               onConfirm={(reason) =>
-                run(async () => {
-                  setResult({
-                    kind: 'CONFIRM',
-                    report: await confirmPendingPlan(providerId, plan.id, reason),
-                  })
-                  notify('Der Plan wurde angewendet.', 'success')
-                  await onChanged()
-                }, 'Der Plan konnte nicht angewendet werden.')
+                run(
+                  async () => {
+                    setResult({
+                      kind: 'CONFIRM',
+                      report: await confirmPendingPlan(providerId, plan.id, reason),
+                    })
+                    notify('Der Plan wurde angewendet.', 'success')
+                    await onChanged()
+                  },
+                  'Der Plan konnte nicht angewendet werden.',
+                  true,
+                )
               }
               onDiscard={(reason) =>
                 run(async () => {
@@ -285,9 +296,13 @@ export default function DirectorySyncPanel({
               size="small"
               disabled={busy || Boolean(blocker)}
               onClick={() =>
-                void run(async () => {
-                  setResult({ kind: 'DRY_RUN', report: await runDirectorySyncDryRun(providerId) })
-                }, 'Der Trockenlauf ist fehlgeschlagen.')
+                void run(
+                  async () => {
+                    setResult({ kind: 'DRY_RUN', report: await runDirectorySyncDryRun(providerId) })
+                  },
+                  'Der Trockenlauf ist fehlgeschlagen.',
+                  true,
+                )
               }
             >
               Trockenlauf
@@ -297,10 +312,14 @@ export default function DirectorySyncPanel({
               size="small"
               disabled={busy || Boolean(blocker)}
               onClick={() =>
-                void run(async () => {
-                  setResult({ kind: 'RUN', report: await runDirectorySync(providerId) })
-                  await onChanged()
-                }, 'Der Lauf ist fehlgeschlagen.')
+                void run(
+                  async () => {
+                    setResult({ kind: 'RUN', report: await runDirectorySync(providerId) })
+                    await onChanged()
+                  },
+                  'Der Lauf ist fehlgeschlagen.',
+                  true,
+                )
               }
             >
               Jetzt abgleichen

@@ -8,6 +8,7 @@ const outcomeLabels: Record<DirectorySyncOutcome, string> = {
   ABORTED_THRESHOLD: 'Über der Schwelle abgebrochen',
   ABORTED_EMPTY_RESULT: 'Abgebrochen: leeres Ergebnis',
   UNREACHABLE: 'Verzeichnis nicht erreichbar',
+  FAILED: 'Abgleich fehlgeschlagen',
 }
 
 const outcomeTones: Record<DirectorySyncOutcome, StatusTone> = {
@@ -17,6 +18,7 @@ const outcomeTones: Record<DirectorySyncOutcome, StatusTone> = {
   ABORTED_THRESHOLD: 'warning',
   ABORTED_EMPTY_RESULT: 'error',
   UNREACHABLE: 'error',
+  FAILED: 'error',
 }
 
 export function outcomeLabel(outcome: DirectorySyncOutcome | null | undefined): string {

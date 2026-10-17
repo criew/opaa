@@ -66,6 +66,13 @@ const ROWS: ScenarioRow[] = [
     message: 'Abgebrochen: Das Verzeichnis lieferte keine einzige Gruppe.',
   },
   { name: 'Jugendamt', sync: false },
+  {
+    name: 'Landratsamt',
+    lastRunHoursAgo: 1.5,
+    outcome: 'FAILED',
+    message:
+      'Der Abgleich ist mit einem Fehler abgebrochen und hat nichts geändert. Der letzte bekannte Stand bleibt in Kraft; die Ursache steht im Anwendungsprotokoll.',
+  },
 ]
 
 /** Switches made in the browser while the scenario is open; a reload starts over. */
