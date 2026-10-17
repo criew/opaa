@@ -78,6 +78,7 @@ class SpecEnumParityTest {
         Arguments.of("SuccessionKind", SuccessionKind.values()),
         Arguments.of("SuccessionObjectType", SuccessionObjectType.values()),
         Arguments.of("SuccessionAddressee", SuccessionAddressee.values()),
+        Arguments.of("SuccessionOwnerType", SuccessionOwnerType.values()),
         Arguments.of("Capability", Capability.values()),
         Arguments.of("CapabilitySubjectType", CapabilitySubjectType.values()),
         Arguments.of("MetadataOrigin", MetadataOrigin.values()),

@@ -22,7 +22,18 @@ function entry(overrides: Partial<SuccessionEntryResponse>): SuccessionEntryResp
 
 describe('problemOf', () => {
   test('names the problem of each kind of entry in one plain sentence', () => {
-    // the owner may be a person or a group from a directory - the API does not say which
+    expect(problemOf('OPEN_SUCCESSION', entry({ ownerType: 'USER' }))).toBe(
+      'Das Konto, dem die Bibliothek gehört, ist nicht mehr aktiv.',
+    )
+    expect(
+      problemOf('OPEN_SUCCESSION', entry({ ownerType: 'GROUP', ownerGroupId: 'group-1' })),
+    ).toBe(
+      'Die Gruppe, der die Bibliothek gehört, gibt es nicht mehr oder sie hat keine aktiven Mitglieder.',
+    )
+    // an owner the backend cannot resolve keeps the neutral sentence
+    expect(problemOf('OPEN_SUCCESSION', entry({ ownerType: 'UNKNOWN' }))).toBe(
+      'Wem die Bibliothek gehört, kann nicht mehr handeln.',
+    )
     expect(problemOf('OPEN_SUCCESSION', entry({}))).toBe(
       'Wem die Bibliothek gehört, kann nicht mehr handeln.',
     )
@@ -32,9 +43,12 @@ describe('problemOf', () => {
     expect(problemOf('OPEN_SUCCESSION', entry({ objectType: 'GROUP', assetType: null }))).toBe(
       'Die Gruppe hat keine aktiven Verantwortlichen mehr.',
     )
-    expect(problemOf('OPEN_SUCCESSION', entry({ addressee: 'GROUP_STEWARDS' }))).toBe(
-      'Die Gruppe, der die Bibliothek gehört, hat keine aktiven Mitglieder mehr.',
-    )
+    expect(
+      problemOf(
+        'OPEN_SUCCESSION',
+        entry({ addressee: 'GROUP_STEWARDS', ownerType: 'GROUP', ownerGroupId: 'group-1' }),
+      ),
+    ).toBe('Die Gruppe, der die Bibliothek gehört, hat keine aktiven Mitglieder mehr.')
     expect(
       problemOf(
         'GRANTS_WITHOUT_RECIPIENT',
@@ -59,6 +73,18 @@ describe('problemOf', () => {
 describe('nextStepOf', () => {
   test('offers exactly one next step per kind of entry', () => {
     expect(nextStepOf('OPEN_SUCCESSION', entry({}))).toBe('HANDOVER')
+    expect(nextStepOf('OPEN_SUCCESSION', entry({ ownerType: 'USER' }))).toBe('HANDOVER')
+    // regression guard for #2340: no account holds a group's asset - the group is the source
+    expect(
+      nextStepOf('OPEN_SUCCESSION', entry({ ownerType: 'GROUP', ownerGroupId: 'group-1' })),
+    ).toBe('OWNER_GROUP_TRANSFER')
+    // an internal group's asset stays with that group's stewards
+    expect(
+      nextStepOf(
+        'OPEN_SUCCESSION',
+        entry({ addressee: 'GROUP_STEWARDS', ownerType: 'GROUP', ownerGroupId: 'group-1' }),
+      ),
+    ).toBe('GROUP_ADMIN')
     expect(nextStepOf('OPEN_SUCCESSION', entry({ objectType: 'SPACE' }))).toBe('HANDOVER')
     expect(nextStepOf('OPEN_SUCCESSION', entry({ addressee: 'GROUP_STEWARDS' }))).toBe(
       'GROUP_ADMIN',
