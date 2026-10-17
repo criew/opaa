@@ -6,8 +6,10 @@ import java.util.Objects;
 
 /**
  * The moment this backend process started. Everything the process writes is stamped after it, so a
- * row stamped before it was left behind by an earlier process - the cutoff of every startup
- * recovery, which runs while the web server and the schedulers are already working (ADR-0021).
+ * row stamped before it was left behind by an earlier process - the cutoff of the startup
+ * recoveries, which run while the web server and the schedulers are already working (ADR-0021).
+ * This assumes one wall clock that does not jump back across a restart, i.e. NTP-synchronised
+ * nodes.
  *
  * @param instant the start of the JVM, as {@link java.lang.management.RuntimeMXBean#getStartTime}
  */
