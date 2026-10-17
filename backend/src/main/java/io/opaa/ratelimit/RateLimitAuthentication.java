@@ -20,7 +20,11 @@ public final class RateLimitAuthentication {
     request.setAttribute(HANDLER_ATTRIBUTE, Boolean.TRUE);
   }
 
-  static void markAuthenticatedBySession(HttpServletRequest request) {
+  /**
+   * Marks {@code request} as authenticated by the security chain - the job of {@link
+   * AuthenticatedRequestMarkerFilter}; elsewhere only for tests that stand in for the chain.
+   */
+  public static void markAuthenticatedBySession(HttpServletRequest request) {
     request.setAttribute(SESSION_ATTRIBUTE, Boolean.TRUE);
   }
 

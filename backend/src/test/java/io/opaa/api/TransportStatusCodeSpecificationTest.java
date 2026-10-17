@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.ratelimit.RateLimitAuthentication;
 import io.opaa.ratelimit.RateLimitConfiguration;
 import io.opaa.ratelimit.RateLimitFilter;
 import io.opaa.ratelimit.RateLimitProperties;
@@ -17,6 +18,7 @@ import io.opaa.ratelimit.SelfServiceEndpointAvailability;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import io.opaa.test.JavaSources;
 import jakarta.servlet.Filter;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -34,7 +36,6 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.yaml.snakeyaml.Yaml;
@@ -329,7 +330,14 @@ class TransportStatusCodeSpecificationTest {
       MockHttpServletRequest request = new MockHttpServletRequest("POST", path);
       request.setRemoteAddr(CLIENT);
       try {
-        filter.doFilter(request, response, new MockFilterChain());
+        // a signed-in call: only requests that authenticated keep their budget
+        filter.doFilter(
+            request,
+            response,
+            (req, res) -> {
+              RateLimitAuthentication.markAuthenticatedBySession((HttpServletRequest) req);
+              RateLimitAuthentication.markAuthenticatedByHandler((HttpServletRequest) req);
+            });
       } catch (Exception e) {
         throw new IllegalStateException("filtering " + path + " failed", e);
       }
