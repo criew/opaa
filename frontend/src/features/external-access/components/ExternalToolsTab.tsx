@@ -257,7 +257,7 @@ export default function ExternalToolsTab() {
       <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2.5, maxWidth: 760 }}>
         Externe KI-Werkzeuge, etwa ein Entwicklungsassistent oder ein eigenes Skript, lesen über
         diesen Weg Fundstellen aus freigegebenen Bibliotheken - mit den Rechten der Person, der das
-        Zugangstoken gehört. In anderen Teilen von OPAA heißt dieser Weg „Fremdzugang“.
+        Zugangstoken gehört.
       </Typography>
 
       <Box sx={{ mb: 4 }}>

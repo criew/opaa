@@ -302,7 +302,7 @@ wechseln, persönliche Verwalterkonten anlegen, Notanker versiegeln), steht unte
 ### 8. Nach der Ersteinrichtung
 
 - **In der Oberfläche einrichten:** Mailserver ([E-Mail-Versand](e-mail.md)),
-  weitere Identitätsanbieter, weitere Chat-Modelle, Verzeichnisabgleich und Fremdzugänge.
+  weitere Identitätsanbieter, weitere Chat-Modelle, Verzeichnisabgleich und der Zugriff externer KI-Werkzeuge.
 - **Client-Adresse richtigstellen:** `trustedProxyCidrs` und die Eingangs-Policy des Frontends setzen
   (siehe [Proxy-Kette und Client-Adresse](#proxy-kette-und-client-adresse)). Bis dahin teilen sich
   alle Personen einen Zähler der Rate-Limits und der Anmeldesperre.
@@ -464,8 +464,8 @@ Kopie außerhalb des Clusters zur Sicherung.
 **Ein geänderter Schlüssel wirkt erst nach einem Neustart.** Bei einem vorhandenen Secret startet
 `kubectl -n opaa rollout restart deploy/opaa-backend` das Backend neu. Bei Geheimnissen aus den Werten
 startet `helm upgrade` es von selbst. Eine Änderung von `OPAA_AUTH_JWT_SECRET` beendet alle lokalen
-Sitzungen und entwertet alle offenen Einladungs- und Rücksetzlinks und alle Zugangstokens der
-Fremdzugänge.
+Sitzungen und entwertet alle offenen Einladungs- und Rücksetzlinks und alle Zugangstokens für
+externe KI-Werkzeuge.
 
 ## Wertereferenz
 
@@ -536,7 +536,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `features.promptLibraries.enabled` | `true` | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | `false` schaltet die Prompt-Bibliotheken ab (siehe [Prompt-Bibliotheken](prompt-bibliotheken.md#9-abschalten)) |
 | `features.metadata.enabled` | `true` | `OPAA_FEATURES_METADATA_ENABLED` | Schalter für die Metadaten von Dokumenten und Bibliotheken; `false` lässt nur den Titel eines Dokuments übrig |
 | `features.speechInput.enabled` | `true` | `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | `false` schaltet die Spracheingabe im Chat ab, auch mit eingetragenem Transkriptionsdienst |
-| `features.externalAccess.enabled` | `true` | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `false` schaltet die Fremdzugänge samt MCP-Server unter `/mcp` ab (siehe [Fremdzugänge](fremdzugaenge.md#fremdzugänge-ganz-abschalten)); an, öffnet erst der Schalter der Verwaltung den Kanal |
+| `features.externalAccess.enabled` | `true` | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `false` schaltet den Zugriff externer KI-Werkzeuge samt MCP-Server unter `/mcp` ab (siehe [Externe KI-Werkzeuge](fremdzugaenge.md#externe-ki-werkzeuge-ganz-abschalten)); an, öffnet erst der Schalter der Verwaltung den Kanal |
 
 Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
 Unterstrichen. Wie überall lehnt `values.schema.json` einen unbekannten Namen ab, etwa einen
@@ -821,7 +821,7 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 | erster Identitätsanbieter | Startwert | `bootstrap.oidc`; danach Administration → Benutzer → Anbieter |
 | erstes Chat-Modell samt Schlüssel | Startwert | `bootstrap.chatModel` und `OPAA_OPENAI_CHAT_API_KEY`; danach die Modellverwaltung ([LLM-Anbieter](modelle.md#llm-anbieter)) |
 | erster Systemverwalter | Startwert | `bootstrap.initialAdmin.email` und `OPAA_INITIAL_ADMIN_PASSWORD`; danach [Benutzerverwaltung](benutzerverwaltung.md) |
-| Mailserver, weitere Anbieter, Verzeichnisabgleich, Fremdzugänge | Verwaltungseinstellungen | keine Werte; nur in der Oberfläche |
+| Mailserver, weitere Anbieter, Verzeichnisabgleich, Zugriff externer KI-Werkzeuge | Verwaltungseinstellungen | keine Werte; nur in der Oberfläche |
 
 **Eine geänderte Werte-Datei ändert an einem Startwert nichts.** Nach dem ersten Start führt die
 Datenbank; ein GitOps-Werkzeug kann Anbieter, Modelle und Mailserver nicht nachführen. Der
@@ -1311,8 +1311,8 @@ installiert, sobald auch die Datenbank zurückgespielt ist.
 [Nacharbeit nach einer Rücksicherung der Datenbank](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
 dazu: `OPAA_AUTH_JWT_SECRET` im Secret ersetzen, bevor das Backend auf der zurückgespielten Datenbank
 startet, und die Sperren der Zwischenzeit erneut setzen. `OPAA_CREDENTIALS_ENCRYPTION_KEY` und
-`OPAA_SETTINGS_ENCRYPTION_KEY` bleiben dieselben, sonst sind die gespeicherten Geheimnisse unlesbar. Sind Fremdzugänge in Betrieb, folgt die Prüfliste aus
-[Fremdzugänge](fremdzugaenge.md).
+`OPAA_SETTINGS_ENCRYPTION_KEY` bleiben dieselben, sonst sind die gespeicherten Geheimnisse unlesbar. Ist der Zugriff externer KI-Werkzeuge eingeschaltet, folgt die Prüfliste aus
+[Externe KI-Werkzeuge](fremdzugaenge.md).
 
 **Im Projekt geprüft.** Eine automatische Wiederherstellungsprobe auf einem Testcluster läuft
 nächtlich und bei Änderungen an Chart oder Images: Sicherung von Erprobungsdatenbank und Originalen

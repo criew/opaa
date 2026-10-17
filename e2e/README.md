@@ -568,8 +568,8 @@ lassen.
   Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
 
-- `tests/external-access.spec.ts` (#1723, Teil von Epic #1715) — die Fremdzugänge über den vollen
-  Stack (`docs/features/external-access.md`, ADR-0035): der Weg von der Freigabe über das
+- `tests/external-access.spec.ts` (#1723, Teil von Epic #1715) — der Zugriff externer KI-Werkzeuge über
+  den vollen Stack (`docs/features/external-access.md`, ADR-0035): der Weg von der Freigabe über das
   Zugangstoken bis zum Treffer, und die Gegenprobe zu jedem der vier Faktoren der effektiven Sicht.
   Die Systemverwaltung schaltet den Kanal ein, eine Bibliotheksverantwortliche gibt ihre Bibliothek
   befristet frei, die Person erzeugt dafür ein Token — und ein MCP-Aufruf gegen den laufenden Stack

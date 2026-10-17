@@ -13,7 +13,7 @@ export const externalAccessLibraryHandlers = [
     const body = (await request.json()) as { enabled: boolean; expiresAt?: string | null }
     if (body.enabled && !body.expiresAt) {
       return HttpResponse.json(
-        { error: 'Eine Freigabe für Fremdzugänge braucht ein Ablaufdatum' },
+        { error: 'Eine Freigabe für externe KI-Werkzeuge braucht ein Ablaufdatum' },
         { status: 400 },
       )
     }
@@ -22,7 +22,7 @@ export const externalAccessLibraryHandlers = [
       const days = (new Date(body.expiresAt).getTime() - Date.now()) / 86_400_000
       if (days > maxDays) {
         return HttpResponse.json(
-          { error: `Eine Freigabe für Fremdzugänge gilt höchstens ${maxDays} Tage` },
+          { error: `Eine Freigabe für externe KI-Werkzeuge gilt höchstens ${maxDays} Tage` },
           { status: 400 },
         )
       }

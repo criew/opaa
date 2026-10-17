@@ -88,7 +88,7 @@ Stufenname: `SEARCH_SCOPE`. `QueryService#query` unterscheidet zunächst zwei F�
 nicht nur überschrieben. Eine ephemere Anfrage hat keinen Space und durchsucht **kein Wissen**, gleich
 was `useKnowledge` und `requestedLibraryIds` sagen (`SearchScopeResolver#resolveSearchScope`); ihre
 Antwort trägt `noSpaceContext`. Jede Anfrage der Weboberfläche braucht einen Space-Bezug; ohne Space
-suchen nur der Fremdzugang und `POST /api/v1/search` ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
+suchen nur externe KI-Werkzeuge und `POST /api/v1/search` ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
 Die lesbaren Bibliotheken selbst liefert
 `LibraryAccessService#readableLibraryIds`; der resultierende Suchbereich (`searchScope`, eine Menge von
 Bibliotheks-Kennungen) wird als `library_id IN (...)`-Filter (`SearchScopeStage#libraryFilter`) **Teil der

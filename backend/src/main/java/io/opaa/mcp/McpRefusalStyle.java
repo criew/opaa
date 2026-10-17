@@ -34,7 +34,7 @@ import tools.jackson.databind.json.JsonMapper;
 class McpRefusalStyle implements ExternalAccessRefusalStyle {
 
   static final String CLOSED_MESSAGE =
-      "Der Fremdzugang dieser Installation ist zurzeit ausgeschaltet.";
+      "Der Zugriff externer KI-Werkzeuge ist in dieser Installation zurzeit ausgeschaltet.";
 
   private final McpEndpoint endpoint;
   private final ExternalAccessSettingsService settings;

@@ -53,7 +53,7 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
   /** After an alert, the channel stays quiet for this long - see the class comment. */
   static final Duration COOLDOWN = Duration.ofHours(6);
 
-  private static final String TITLE = "Auffällig viele Abrufe über Fremdzugänge";
+  private static final String TITLE = "Auffällig viele Abrufe durch externe KI-Werkzeuge";
 
   private final ExternalAccessSettingsService settings;
   private final UserRepository users;
@@ -117,7 +117,7 @@ public class ExternalAccessMassRetrievalAlarm implements MassRetrievalAlarm {
     // turn a sequence of kept messages into a usage curve per token. It stands in the application
     // log, which is where the incident is investigated.
     String body =
-        "Der Fremdzugangskanal hat die Schwelle für Massenabrufe in der Stunde bis "
+        "Der Zugriff externer KI-Werkzeuge hat die Schwelle für Massenabrufe in der Stunde bis "
             + at
             + " überschritten. Betroffenes Zugangstoken: "
             + accessTokenId

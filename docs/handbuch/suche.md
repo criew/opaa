@@ -114,7 +114,7 @@ Bibliotheken und bietet nur die Prompts der zugeordneten Prompt-Bibliotheken an.
 lesen darf, aber dem Space nicht zugeordnet ist, bleibt im Chat dieses Space außen vor. Das gilt
 ohne Ausnahme, auch für den persönlichen Space „Privater Bereich". Eine Frage braucht immer einen
 Space: Wer `POST /api/v1/query` ohne einen eigenen Chat aufruft, bekommt eine Antwort ohne Suche und
-ohne Belege. Ohne Space suchen nur der Fremdzugang und `POST /api/v1/search`. Zuordnen dürfen Kuratoren und
+ohne Belege. Ohne Space suchen nur externe KI-Werkzeuge und `POST /api/v1/search`. Zuordnen dürfen Kuratoren und
 Administratoren des Space ([Spaces](spaces.md), Abschnitt 3).
 
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
@@ -887,16 +887,16 @@ Liste, Fusion, Reranking, Relevanzschnitt und Dokument-Vervollständigung, mit d
 Es gibt keinen zweiten Suchweg: Was hier gefunden wird, hätte dieselbe Person auch über die Abfrage
 gefunden, und in derselben Reihenfolge. Eine Regressionsprüfung hält diese Gleichheit fest.
 
-Der Endpunkt steht **jeder angemeldeten Person** offen und hängt nicht am Schalter der Fremdzugänge
-— der ist der Notaus des Fremdzugangskanals, nicht der dieses Endpunkts. Gedacht ist er für fremde
+Der Endpunkt steht **jeder angemeldeten Person** offen und hängt nicht am Schalter für externe
+KI-Werkzeuge — der ist der Notaus ihres Zugriffswegs, nicht der dieses Endpunkts. Gedacht ist er für fremde
 Werkzeuge, die die Antwort selbst formulieren; wie diese angebunden werden, steht im Kapitel
-[Fremdzugänge](fremdzugaenge.md).
+[Externe KI-Werkzeuge](fremdzugaenge.md).
 
 Ein Treffer ist eine **einzelne Fundstelle**, nicht ein Dokument: Trefferkennung, Titel, Auszug der
 Passage, Herkunft (Bibliothek, Dokument, Ortsangabe), die Metadaten des Dokuments, der Rangwert und
 der Pfad, unter dem das Original heruntergeladen wird. Diesen Pfad bekommt nur eine angemeldete
-Person: Ein Aufruf mit Zugangstoken erhält keinen Download-Link, weil der Fremdzugangskanal
-Fundstellen herausgibt und keine Originaldateien. Die Trefferkennung ist stabil und nicht
+Person: Ein Aufruf mit Zugangstoken erhält keinen Download-Link, weil der Zugriffsweg für
+externe KI-Werkzeuge Fundstellen herausgibt und keine Originaldateien. Die Trefferkennung ist stabil und nicht
 durchzählbar; eine ratbare Kennung machte den Abruf zu einem Auflistungsweg über fremde Bestände,
 auch wenn jeder einzelne Abruf richtig geprüft wird. Der Rechtefilter bleibt trotzdem die erste
 Schranke.
@@ -966,7 +966,7 @@ Space antwortet der Endpunkt wie die Chatliste des Space (`403`, bei unbekanntem
 **Kein Durchgriff.** Weder Space- noch Systemadministratoren durchsuchen fremde Chats; es gibt
 dafür keinen Parameter und keine Rolle.
 
-**Nicht über Fremdzugänge.** Die Chatsuche ist nur in der angemeldeten Sitzung erreichbar. Ein
+**Nicht für externe KI-Werkzeuge.** Die Chatsuche ist nur in der angemeldeten Sitzung erreichbar. Ein
 Zugangstoken erhält `403`, und der MCP-Server bietet sie nicht an.
 
 **Keine Protokollierung.** Der Suchbegriff steht im Anfragekörper, nie in der Adresse, und
@@ -1288,5 +1288,5 @@ entsprechen.
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](metadaten.md)
 - Umgebungsvariablen: [Konfiguration](konfiguration.md); Reranking und Spracheingabe einschalten: [Modelle](modelle.md#reranking-einschalten);
   Grenze des Volltextpfads: [Datenbank](datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25)
-- Wie fremde KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Fremdzugänge](fremdzugaenge.md)
+- Wie externe KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Externe KI-Werkzeuge](fremdzugaenge.md)
 - Spaces, Chats und was ihnen zugeordnet ist: [Spaces](spaces.md)

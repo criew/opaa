@@ -43,7 +43,7 @@ ein Nachweis inhaltlich noch trägt, prüft die Durchsicht zu `naechste-durchsic
 | F-04 | ja | [Zugelassene Formate](../../handbuch/formate/README.md#zugelassene-formate) | Handbuch |
 | F-05 | ja | [Suchen ohne Antwort](../../handbuch/suche.md#71-suchen-ohne-antwort) | Handbuch |
 | F-06 | ja | [Spracheingabe einschalten](../../handbuch/modelle.md#spracheingabe-einschalten), [Endpunkt im Haus](../../handbuch/modelle.md#vorhandenen-endpunkt-im-haus-eintragen), {{faktenblatt:voreinstellungen#ki-funktion-speech-transcription}} | Handbuch, Konfiguration, Faktenblatt |
-| F-07 | ja | [Was ein Fremdzugang erreicht](../../handbuch/fremdzugaenge.md#8-was-ein-fremdzugang-erreicht), [Fremdzugänge abschalten](../../handbuch/fremdzugaenge.md#fremdzugänge-ganz-abschalten), [OpenAPI-Spezifikation](../../../opaa-api/src/main/openapi/) | Handbuch, Konfiguration |
+| F-07 | ja | [Was ein externes KI-Werkzeug erreicht](../../handbuch/fremdzugaenge.md#8-was-ein-externes-ki-werkzeug-erreicht), [Externe KI-Werkzeuge abschalten](../../handbuch/fremdzugaenge.md#externe-ki-werkzeuge-ganz-abschalten), [OpenAPI-Spezifikation](../../../opaa-api/src/main/openapi/) | Handbuch, Konfiguration |
 
 ## M · Modelle und Datenflüsse
 

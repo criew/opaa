@@ -120,7 +120,7 @@ paths:
       tags: [search]
       summary: >
         Hits without a generated answer (docs/features/external-access.md, "Was ein
-        Fremdzugang erreicht"). Runs the same retrieval the answer of POST /api/v1/query is built
+        externes KI-Werkzeug erreicht"). Runs the same retrieval the answer of POST /api/v1/query is built
         from - sub-questions, vector and full-text search, fusion, reranking and the permission
         filter inside the search itself - and returns its passages instead of an answer. No chat
         model is asked to generate anything, and nothing is persisted. Open to every signed-in

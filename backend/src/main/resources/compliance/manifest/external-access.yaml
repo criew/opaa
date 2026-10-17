@@ -1,4 +1,4 @@
-title: Fremdzugänge
+title: Externe KI-Werkzeuge
 data:
   - id: external-access-tokens
     title: Persönliche Zugangstokens für fremde Werkzeuge
@@ -35,7 +35,7 @@ settings:
   - key: opaa.external-access.max-release-days
     source: PROPERTY
     defaultValue: "365"
-    effect: Längste Befristung der Fremdzugangsfreigabe einer Bibliothek
+    effect: Längste Befristung der Freigabe einer Bibliothek für externe KI-Werkzeuge
     bearings: [VISIBILITY, DATA_FLOW]
   - key: io.opaa.externalaccess.ExternalAccessAlertRetention#RETENTION
     source: CONSTANT

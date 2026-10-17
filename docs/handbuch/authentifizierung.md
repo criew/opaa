@@ -13,7 +13,7 @@ für Rechte bedeuten, im Kapitel [Berechtigungen](berechtigungen.md).
 > für den Tag, an dem die Anbindung an Keycloak bricht.
 
 Der Zugang fremder KI-Werkzeuge (persönliche Zugangstokens, MCP-Server) ist ein eigener Schalter,
-unabhängig vom Anmeldeverfahren, und im Auslieferungszustand aus ([Fremdzugänge](fremdzugaenge.md)).
+unabhängig vom Anmeldeverfahren, und im Auslieferungszustand aus ([Externe KI-Werkzeuge](fremdzugaenge.md)).
 
 ## Betriebsmodi
 
@@ -195,7 +195,7 @@ Fehlerstatus, gesperrte Adresse), bleibt ein Fehler.
 **Konten.** Die Identität eines Kontos ist das Paar aus Issuer und Subject. Dieselbe Person bei zwei
 Anbietern hat **zwei Konten**; eine Zusammenführung über die E-Mail gibt es nicht. Wird ein Anbieter
 gelöscht, bleiben seine Konten und sind wieder nutzbar, sobald ein Anbieter mit derselben Issuer-URI
-existiert; ihre Fremdzugangstokens enden dagegen endgültig. Die Issuer-URI eines Anbieters mit Konten
+existiert; ihre Zugangstokens für externe KI-Werkzeuge enden dagegen endgültig. Die Issuer-URI eines Anbieters mit Konten
 ist deshalb nicht änderbar. Konten eines Anbieters werden Systemverwalter nur durch Rollenvergabe oder
 den Rollen-Claim.
 
@@ -601,13 +601,13 @@ Passworthash ist auf dem alten Stand. Nach **jeder** Rücksicherung gehören des
 
 1. **`OPAA_AUTH_JWT_SECRET` ersetzen**, bevor das Backend startet. Ein neuer Wert beendet alle lokalen
    Sitzungen und entwertet alle offenen Einladungs-, Rücksetz- und Übergabelinks und alle
-   Zugangstokens der Fremdzugänge in einem Schritt.
+   Zugangstokens für externe KI-Werkzeuge in einem Schritt.
 2. **Sperren und Rücksetzungen seit dem Sicherungszeitpunkt erneut vornehmen.** Das Nachweisprotokoll
    der Zwischenzeit ist die Liste, sofern es nicht selbst mit zurückgesichert wurde.
 
 Die beiden Verschlüsselungsschlüssel bleiben dieselben, sonst sind die gespeicherten Geheimnisse
-unlesbar. Sind Fremdzugänge in Betrieb, rollen Schalter, Freigaben und Zugangstokens mit zurück,
-einschließlich eines Notaus; die Prüfliste steht im Kapitel [Fremdzugänge](fremdzugaenge.md).
+unlesbar. Ist der Zugriff externer KI-Werkzeuge eingeschaltet, rollen Schalter, Freigaben und Zugangstokens mit zurück,
+einschließlich eines Notaus; die Prüfliste steht im Kapitel [Externe KI-Werkzeuge](fremdzugaenge.md).
 
 ## Testkonten im Überblick
 

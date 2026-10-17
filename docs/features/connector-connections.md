@@ -77,8 +77,8 @@ Quellfreigabe dort „Quelle verbinden“, und die Konnektor-Freigabe wird als F
 
 **Abgrenzung:**
 
-- **Fremdzugang** ([external-access.md](./external-access.md)) ist die Gegenrichtung: OPAA als
-  MCP-*Server* für fremde KI-Werkzeuge.
+- **Zugriff externer KI-Werkzeuge** ([external-access.md](./external-access.md)) ist die Gegenrichtung: OPAA als
+  MCP-*Server* für externe KI-Werkzeuge.
 - **Anmeldung an OPAA** ([ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md)): Die Token der
   OIDC-Anbieter dienen nur der Identität und werden hier nicht verwendet. Einzige mögliche
   Ausnahme ist der Token-Austausch (offen, siehe [Anmeldearten](#anmeldearten)): Er reicht das
@@ -341,7 +341,7 @@ Token Exchange (RFC 8693) gegen ein Nextcloud-Token tauschen kann.
 
 | Nutzung | Token-Austausch | Begründung |
 |---|---|---|
-| Live-Zugriff (Chat, MCP; #1747) | **geeignet** | Kein Token-Speicher, keine eigene Zustimmung je Dienst; Tausch je Anfrage mit dem eingehenden Anmeldetoken. Nur für Personen, die über denselben Keycloak angemeldet sind; nicht für lokale Konten und nicht für Fremdzugangs-Token |
+| Live-Zugriff (Chat, MCP; #1747) | **geeignet** | Kein Token-Speicher, keine eigene Zustimmung je Dienst; Tausch je Anfrage mit dem eingehenden Anmeldetoken. Nur für Personen, die über denselben Keycloak angemeldet sind; nicht für lokale Konten und nicht für Zugangstokens externer KI-Werkzeuge |
 | Hintergrundläufe (Indexierung) | **nicht geeignet** | Erneuerung endet spätestens mit der Abmeldung (gemessen); Offline-Token sind im Austausch gesperrt |
 
 Für Hintergrundläufe in openDesk ist nach dem Kontrollversuch voraussichtlich keine neue
@@ -449,14 +449,14 @@ Anbieter selbst sehen darf. Niemand sonst darf ihn sehen.
 **Nur-Besitzerin-Regel.** Eine private Bibliothek hat außer ihrer Besitzerin keine Leserin. Das ist
 eine **eigene, harte Regel**, nicht eine Stufe der bestehenden Freigabe-Obergrenze: Jene deckelt nur
 den Grant an „Alle Konten“ und ist von der Systemverwaltung je Bibliothek einstellbar. Diese Regel
-sitzt am Grant-Pfad und am Pfad der Fremdzugangsfreigabe und gilt für jede private Bibliothek, ohne
+sitzt am Grant-Pfad und am Pfad der Freigabe für externe KI-Werkzeuge und gilt für jede private Bibliothek, ohne
 Einstellung. **Die Systemverwaltung kann sie nicht lockern.**
 
 | Regel | Durchsetzung |
 |---|---|
 | Genau eine Besitzerin, eine Person | beim Anlegen festgelegt, nicht übertragbar |
 | Keine Grants an Personen, Gruppen oder „Alle Konten“ | Nur-Besitzerin-Regel am Grant-Pfad |
-| Keine Fremdzugangsfreigabe | Nur-Besitzerin-Regel am Pfad der Fremdzugangsfreigabe |
+| Keine Freigabe für externe KI-Werkzeuge | Nur-Besitzerin-Regel am Pfad der Freigabe für externe KI-Werkzeuge |
 | Keine Nachfolge | Eigentum geht an niemanden über |
 | **„Sicht als“ ausgeschlossen** | private Bibliotheken liegen nie im fremden Rechtekontext |
 | Inhalt folgt der Rechteformel | die Verwaltungsrolle öffnet ihn nicht |
@@ -702,7 +702,7 @@ Der Spike zum Token-Austausch gegen openDesk ist abgeschlossen
 | ADR | Nachtrag |
 |---|---|
 | [ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md) | „OPAA speichert keine Tokens“ gilt für die Anmeldung an OPAA, nicht für Quellverbindungen und verbundene Konten |
-| [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage (Neuverbinden ist keine), Sperre auf Läufe; **Nur-Besitzerin-Regel** für private Bibliotheken als eigene Sperre am Grant- und Fremdzugangspfad, von der Systemverwaltung nicht lockerbar; „Sicht als“ für private Bibliotheken ausgeschlossen; ~~**Vorfallszugriff auf Inhalte** als neue Befugnis neben den Rollen~~ (mit dem Nachtrag vom 11.10.2026 entfallen, #2171: kein Vorfallszugriff, Untersuchung in der Originalquelle); Leserolle des Verbindungsprotokolls |
+| [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage (Neuverbinden ist keine), Sperre auf Läufe; **Nur-Besitzerin-Regel** für private Bibliotheken als eigene Sperre am Grant-Pfad und am Pfad der Freigabe für externe KI-Werkzeuge, von der Systemverwaltung nicht lockerbar; „Sicht als“ für private Bibliotheken ausgeschlossen; ~~**Vorfallszugriff auf Inhalte** als neue Befugnis neben den Rollen~~ (mit dem Nachtrag vom 11.10.2026 entfallen, #2171: kein Vorfallszugriff, Untersuchung in der Originalquelle); Leserolle des Verbindungsprotokolls |
 | [ADR-0038](../decisions/0038-steckbare-konnektoren.md) | Profilangabe (verboten, optional, Pflicht) und Anmeldearten gehören in die Konnektor-Beschreibung; das Ziel der Zugangsdaten leitet sich bei Profilen aus der Server-Adresse des Profils ab; Entscheidung 3 („genau zwei Plätze für Geheimnisse“) wird um das Client-Secret am Profil und den Token-Speicher erweitert, beide auf demselben Verschlüsselungsweg |
 
 Bedingt, nur falls der Token-Austausch zur fünften Anmeldeart wird: je eine Fortschreibung von

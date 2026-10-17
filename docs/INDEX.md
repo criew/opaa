@@ -125,7 +125,7 @@ an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäl
 
 **[`features/external-access.md`](./features/external-access.md)**
 
-Fremdzugänge für andere KI-Werkzeuge · persönliche Zugangstokens nur mit Lese- und Suchrecht ·
+Externe KI-Werkzeuge · persönliche Zugangstokens nur mit Lese- und Suchrecht ·
 Freigabe je Wissensbibliothek und installationsweiter Schalter, beides standardmäßig aus · MCP-Server
 über Streamable HTTP mit `search`, `fetch` und `list_libraries` · Kontingent je Token · die einzelne
 Abfrage bleibt unprotokolliert.

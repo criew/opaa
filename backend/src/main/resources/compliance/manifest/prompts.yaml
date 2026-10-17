@@ -35,12 +35,12 @@ prompts:
       - io.opaa.query.spike.SearchKnowledgeTool
     sha256: "f86c65c9c6773c6427efa3a8ad3b39f9c4a9c727b5380a23a197781a09ef9975"
   - id: mcp-tool-descriptions
-    purpose: Beschreibungen der Werkzeuge, nach denen ein fremdes Modell über Fremdzugänge entscheidet
+    purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]
     sha256: "23fb0175fe80bc2cb8803dd90e2b7f5b30de4c40aea9a4c7fce3a1adf81a3fff"
   - id: mcp-server-instructions
     purpose: >-
-      Voreingestellter Einleitungstext an fremde Werkzeuge der Fremdzugänge; die Systemverwaltung
+      Voreingestellter Einleitungstext an externe KI-Werkzeuge; die Systemverwaltung
       kann ihn ändern, die Änderung erzeugt keinen Protokolleintrag
     databaseDefault: external_access_settings.server_instructions
     sha256: "03e9f6a06f99e00871a97cb9ad39a7907d712a64bb955d03f86814560b07e7da"

@@ -4014,7 +4014,7 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  describe('ohne Fremdzugänge (Feature-Flag aus)', () => {
+  describe('ohne externe KI-Werkzeuge (Feature-Flag aus)', () => {
     afterEach(() => {
       useAuthStore.setState({ features: {} })
     })
@@ -4039,7 +4039,7 @@ describe('LibraryDetailPage', () => {
 
       expect(await screen.findByRole('heading', { name: 'Diagnosesperre' })).toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Externer Zugang' })).not.toBeInTheDocument()
-      expect(screen.queryByText(/Fremdzugang/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/KI-Werkzeug/)).not.toBeInTheDocument()
       unmount()
 
       const privateLibrary: LibraryListResponse = {
@@ -4057,7 +4057,7 @@ describe('LibraryDetailPage', () => {
       await user.click(await screen.findByRole('tab', { name: 'Freigaben' }))
 
       expect(await screen.findByText(/Nur Sie sehen diese Bibliothek/)).toBeVisible()
-      expect(screen.queryByText(/Fremdzugang/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/KI-Werkzeug/)).not.toBeInTheDocument()
     })
   })
 })

@@ -55,7 +55,7 @@ public class ExternalAccessSettingsService {
           "massRetrievalAlertThreshold");
 
   private static final String SETTINGS_OBJECT_ID = "external_access_settings";
-  private static final String SETTINGS_OBJECT_LABEL = "Fremdzugänge";
+  private static final String SETTINGS_OBJECT_LABEL = "Externe KI-Werkzeuge";
 
   /** The stored values plus when and by whom they were changed last. */
   public record View(Values values, Instant updatedAt, String updatedBy) {}
@@ -197,7 +197,7 @@ public class ExternalAccessSettingsService {
     }
     if (!errors.isEmpty()) {
       throw new FieldValidationException(
-          "Die Einstellungen der Fremdzugänge sind unvollständig oder außerhalb der zulässigen"
+          "Die Einstellungen für externe KI-Werkzeuge sind unvollständig oder außerhalb der zulässigen"
               + " Grenzen.",
           errors);
     }

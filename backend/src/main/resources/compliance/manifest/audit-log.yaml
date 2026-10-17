@@ -201,10 +201,10 @@ auditEvents:
       Nicht mehr geschrieben; frühere Änderung der Katalog-Auffindbarkeit, lesbar bis zum
       Fristablauf
   - id: ASSET_EXTERNAL_ACCESS_CHANGED
-    trigger: Die Freigabe einer Bibliothek für Fremdzugänge wird gesetzt oder zurückgenommen
+    trigger: Die Freigabe einer Bibliothek für externe KI-Werkzeuge wird gesetzt oder zurückgenommen
     details: Richtung und Ablaufdatum, nie ein Name von Token-Inhabern
   - id: ASSET_EXTERNAL_ACCESS_EXPIRED
-    trigger: Die Fremdzugangsfreigabe einer Bibliothek erlischt durch Fristablauf (Systemvorgang)
+    trigger: Die Freigabe einer Bibliothek für externe KI-Werkzeuge erlischt durch Fristablauf (Systemvorgang)
   - id: SPACE_CREATED
     trigger: Ein Space wird angelegt
   - id: SPACE_CHANGED
@@ -306,7 +306,7 @@ auditEvents:
   - id: ACCOUNT_REAUTHENTICATION_FORCED
     trigger: Eine erneute Anmeldung wird erzwungen (noch nicht verdrahtet)
   - id: API_TOKEN_ISSUED
-    trigger: Ein persönliches Zugangstoken für Fremdzugänge wird ausgestellt
+    trigger: Ein persönliches Zugangstoken für externe KI-Werkzeuge wird ausgestellt
     details: Bibliotheksauswahl und Ablauf; Token-Kennung statt Tokenname
   - id: API_TOKEN_REVOKED
     trigger: Ein Zugangstoken wird von der Person oder der Systemverwaltung widerrufen
@@ -474,7 +474,7 @@ auditEvents:
   - id: LOCAL_USER_HANDED_OVER
     trigger: Die Person schließt die Übergabe an die Anbieteridentität ab
   - id: EXTERNAL_ACCESS_SETTINGS_CHANGED
-    trigger: Die Kanaleinstellungen der Fremdzugänge ändern sich
+    trigger: Die Einstellungen für externe KI-Werkzeuge ändern sich
     details: Vorher/Nachher der geänderten Schlüssel; der Einleitungstext erzeugt keinen Eintrag
   - id: CONNECTION_PROFILE_CREATED
     trigger: Ein Verbindungsprofil wird angelegt

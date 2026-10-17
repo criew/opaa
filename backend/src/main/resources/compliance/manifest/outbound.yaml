@@ -202,7 +202,7 @@ dataFlows:
       (Einladung, Kennwort, Zugangslinks, Erinnerungen, Testmail)
     trigger: >-
       Einladung und Kennwortvorgänge lokaler Konten, Anmeldung des Bootstrap-Kontos der Systemverwaltung, ablaufende
-      Fremdzugänge, Testmail
+      Freigaben für externe KI-Werkzeuge, Testmail
     switchOff: Abschaltbar, Voreinstellung aus
     settings: [mail_settings.enabled, mail_settings.host]
   - id: original-store

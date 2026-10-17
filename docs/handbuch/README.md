@@ -87,7 +87,7 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
     Einstellungen, anlegen, Chats
   - [Suche](suche.md) — wie eine Frage beantwortet wird: Suchbereich, Suchstrecke, Antwort, Belege,
     Diagnose
-  - [Fremdzugänge](fremdzugaenge.md) — freigegebenes Wissen in fremden KI-Werkzeugen nutzen
+  - [Externe KI-Werkzeuge](fremdzugaenge.md) — freigegebenes Wissen in externen KI-Werkzeugen nutzen
 - **Arbeitsmittel**
   - [Katalog](katalog.md) — was für jede Art gilt: finden, favorisieren, anlegen, Detailansicht,
     in einem Space verwenden
@@ -119,7 +119,7 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
 | Eine Antwort ist schlecht | [Suche](suche.md): „Diagnose" und „Typische Befunde" → je nach Befund [Wissensbibliotheken](wissensbibliotheken.md) oder [Metadaten](metadaten.md) |
 | Ein Update steht an | [Betriebsübersicht](betrieb.md): „Aktualisierung" → [Docker Compose](docker-compose.md) bzw. [Kubernetes](kubernetes.md): „Aktualisierung …" |
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) → [Spaces](spaces.md) |
-| Ein fremdes KI-Werkzeug anschließen | [Fremdzugänge](fremdzugaenge.md) |
+| Ein externes KI-Werkzeug anschließen | [Externe KI-Werkzeuge](fremdzugaenge.md) |
 | Postfächer anbinden wollen | [Berechtigungen](berechtigungen.md): „Prüfliste vor einem Postfach-Konnektor" → [Private Bibliotheken](private-bibliotheken.md) |
 | Originalablage wählen, sichern oder umstellen | [Originalablage](originalablage.md) |
 | Sichern und wiederherstellen | [Betriebsübersicht](betrieb.md): „Sicherung und Wiederherstellung" → Kapitel des Betriebswegs → [Authentifizierung](authentifizierung.md): „Nacharbeit nach einer Rücksicherung" |
@@ -173,9 +173,9 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Rechtehistorie** | Die Zeiträume, in denen ein Recht galt — die Grundlage der Stichtagsauskunft; getrennt vom Nachweisprotokoll, das Handlungen festhält |
 | **Anlagegrund** | Pflichtangabe zu jedem lokalen Konto: der dienstliche Anlass und der Grund seiner Befristung; die betroffene Person kann ihn lesen |
 | **Aktivitätsklasse** | Die einzige Angabe zur Nutzung eines lokalen Kontos in der Kontenliste („nie", „länger nicht genutzt", „aktiv") — kein Zeitstempel, nicht sortierbar |
-| **Fremdzugang** | Der lesende Kanal, über den ein KI-Werkzeug außerhalb von OPAA in freigegebenen Bibliotheken sucht; installationsweit schaltbar und standardmäßig aus |
-| **Zugangstoken** | Ein persönliches Zugangsmerkmal für einen Fremdzugang, mit Name, unveränderlicher Bibliotheksauswahl und Pflicht-Ablaufdatum; Ausschnitt der Rechte seiner Person, nie mehr |
-| **Fremdzugangsfreigabe** | Das befristete Merkmal einer Wissensbibliothek „darf über Fremdzugänge genutzt werden"; wird wie die übrigen Reichweitenfelder historisiert |
+| **Externe KI-Werkzeuge** | KI-Werkzeuge außerhalb von OPAA, die über einen eigenen, lesenden Zugriffsweg in freigegebenen Bibliotheken suchen; der Zugriffsweg ist installationsweit schaltbar und standardmäßig aus |
+| **Zugangstoken** | Ein persönliches Zugangsmerkmal für externe KI-Werkzeuge, mit Name, unveränderlicher Bibliotheksauswahl und Pflicht-Ablaufdatum; Ausschnitt der Rechte seiner Person, nie mehr |
+| **Freigabe für externe KI-Werkzeuge** | Das befristete Merkmal einer Wissensbibliothek „Für externe KI-Werkzeuge nutzbar"; wird wie die übrigen Reichweitenfelder historisiert |
 | **Effektive Sicht** | Was ein Zugangstoken bei einem Aufruf sieht: die Schnittmenge aus Rechten der Person, gültiger Freigabe, Tokenauswahl und Installationsschalter, je Aufruf neu ausgewertet |
 
 ## 6. Für Schreibende

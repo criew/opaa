@@ -38,7 +38,7 @@ sie liest ihre privaten Bibliotheken; die Kennzeichnung wird mit der Antwort ges
 auch, wenn die Bibliothek später gelöscht und ihr Beleg zu „Quelle entfernt“ wird.
 
 **Was nicht geht — auch nicht für die Systemverwaltung:** Rechte an Personen, Gruppen oder „Alle
-Konten“, Übertragung, Fremdzugangsfreigabe, eine Freigabe-Obergrenze, Nachfolge und „Sicht als“. Die
+Konten“, Übertragung, Freigabe für externe KI-Werkzeuge, eine Freigabe-Obergrenze, Nachfolge und „Sicht als“. Die
 Diagnosesperre ist bei einer privaten Bibliothek fest gesetzt und lässt sich nicht lösen. Vom Zugang
 lösen lässt sie sich nicht; einem anderen Zugang ordnet sie nur ihre Besitzerin zu, und nur einem
 Zugang für Personen, auf dem sie ein verbundenes Konto hat. Für alle anderen gibt es die Bibliothek

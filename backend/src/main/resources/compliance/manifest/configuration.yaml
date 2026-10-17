@@ -123,7 +123,7 @@ settings:
   - key: opaa.features.external-access.enabled
     defaultValue: "true"
     effect: >-
-      Der Kanal für Fremdzugänge (Zugangstokens, Freigaben, MCP-Server) besteht; geöffnet wird er
+      Der Zugriffsweg für externe KI-Werkzeuge (Zugangstokens, Freigaben, MCP-Server) besteht; geöffnet wird er
       erst über seinen Schalter in der Administration
     bearings: [VISIBILITY, DATA_FLOW]
     helm:
@@ -165,7 +165,7 @@ settings:
     defaultValue: "14"
     range: 0 schaltet die Erinnerung ab
     effect: >-
-      Tage vor Ablauf einer Fremdzugangsfreigabe, an denen die verantwortliche Person per E-Mail
+      Tage vor Ablauf einer Freigabe für externe KI-Werkzeuge, an denen die verantwortliche Person per E-Mail
       erinnert wird
     bearings: [DATA_FLOW]
   # Ablage der Originale und Quellen
