@@ -131,4 +131,8 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 docker build -t opaa-smoke/backend -f backend/Dockerfile .
 docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend
+# Härtung des Frontend-nginx ohne Backend: ein Echo statt des Backends belegt, dass vom Client
+# gesetzte Forwarded/X-Forwarded-Host/-Port/-Prefix nicht ankommen; dazu Permissions-Policy auf
+# jeder Antwort und die Startprüfung von OPAA_CSP_CONNECT_SRC_EXTRA; in CI im selben Job
+.github/scripts/frontend_hardening_test.sh opaa-smoke/frontend
 ```
