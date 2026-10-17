@@ -20,7 +20,11 @@ paths:
         every setting of the manifest with its effective value and the time of its last change,
         whether each outbound data flow currently happens, the connector types in use and the
         configured model providers. A configuration value is exported only when the manifest names
-        its key as a setting; addresses lose user information, query and fragment.
+        its key as a setting; addresses lose user information, query and fragment. The protocol part
+        counts the anlassbezogenen Klärungen of the reporting period by purpose, without persons.
+      parameters:
+        - $ref: "#/components/parameters/DisclosurePeriodFrom"
+        - $ref: "#/components/parameters/DisclosurePeriodTo"
       responses:
         "200":
           description: The disclosure of this instance
@@ -28,6 +32,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DataCollectionDisclosure"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -38,6 +44,9 @@ paths:
       summary: >-
         The same disclosure as readable Markdown for the data protection officer and the staff
         council (system admin only); also written to the audit log on every call.
+      parameters:
+        - $ref: "#/components/parameters/DisclosurePeriodFrom"
+        - $ref: "#/components/parameters/DisclosurePeriodTo"
       responses:
         "200":
           description: The disclosure of this instance as Markdown
@@ -45,10 +54,35 @@ paths:
             text/markdown:
               schema:
                 type: string
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
 
 components:
+  parameters:
+    DisclosurePeriodFrom:
+      name: from
+      in: query
+      required: false
+      description: >-
+        First day of the reporting period, always the first day of a month: the cases are counted
+        per calendar month. Without it, 1 January of the previous calendar year. A day that is not
+        the first of a month, or a period whose start lies after its end, is answered with 400.
+      schema:
+        type: string
+        format: date
+    DisclosurePeriodTo:
+      name: to
+      in: query
+      required: false
+      description: >-
+        Last day of the reporting period, always the last day of a month. Without it, 31 December
+        of the current calendar year.
+      schema:
+        type: string
+        format: date
+
   schemas:
     DataCollectionDisclosure:
       type: object
@@ -186,7 +220,7 @@ components:
       description: >-
         The description of the audit log for the staff council: its fields with granularity,
         purpose and retention, the query paths there are and the ones there are not.
-      required: [fields, queryPaths, absentQueryPaths, networkAddress]
+      required: [fields, queryPaths, absentQueryPaths, networkAddress, incidentScopeCases]
       properties:
         fields:
           type: array
@@ -202,6 +236,67 @@ components:
             type: string
         networkAddress:
           type: string
+        incidentScopeCases:
+          $ref: "#/components/schemas/DisclosureIncidentScopeCases"
+
+    DisclosureIncidentScopeCases:
+      type: object
+      description: >-
+        How often the anlassbezogene Klärung was requested, approved and ended in the reporting
+        period, by purpose: no person, no reason, no grant id and no date finer than the month.
+      required: [from, to, smallCountThreshold, purposes, notes]
+      properties:
+        from:
+          type: string
+          format: date
+          description: First day of the reporting period.
+        to:
+          type: string
+          format: date
+          description: Last day of the reporting period.
+        smallCountThreshold:
+          type: integer
+          description: >-
+            A count from 1 up to below this value is not given exactly but as belowThreshold.
+        purposes:
+          type: array
+          description: Every purpose of the closed list, in its order, with zero counts as well.
+          items:
+            $ref: "#/components/schemas/DisclosureIncidentScopePurposeCases"
+        notes:
+          type: array
+          description: What the counts mean and where they end, as readable sentences.
+          items:
+            type: string
+
+    DisclosureIncidentScopePurposeCases:
+      type: object
+      required: [purpose, label, requested, approved, expired]
+      properties:
+        purpose:
+          $ref: "#/components/schemas/AuditIncidentScopePurpose"
+        label:
+          type: string
+          description: The purpose in words.
+        requested:
+          $ref: "#/components/schemas/DisclosureCaseCount"
+        approved:
+          $ref: "#/components/schemas/DisclosureCaseCount"
+        expired:
+          $ref: "#/components/schemas/DisclosureCaseCount"
+
+    DisclosureCaseCount:
+      type: object
+      description: >-
+        One count of the reporting period. Zero and counts from the threshold on are exact; a count
+        below it has no count, only belowThreshold.
+      required: [belowThreshold]
+      properties:
+        count:
+          type: integer
+          nullable: true
+        belowThreshold:
+          type: boolean
 
     DisclosureProtocolField:
       type: object
