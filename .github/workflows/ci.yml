@@ -11,6 +11,10 @@ on:
   # Without an active queue this trigger never fires.
   merge_group:
 
+# Read-only token for every job; a job that needs more names it in its own permissions: block.
+permissions:
+  contents: read
+
 # A new push to a PR branch makes the previous run's result irrelevant —
 # cancel it instead of blocking a runner. Non-PR events get the SHA in the
 # group: without it, GitHub would silently discard a *pending* main run when
@@ -137,9 +141,11 @@ jobs:
             # renovate.yml because test_renovate_image_pin.py checks its image pin against the regex
             # manager. data-impact-paths.txt belongs here because test_check_data_impact.py checks
             # that each of its patterns still matches a tracked file, .github/licenses/** because
-            # test_check_licenses.py loads the policy files.
+            # test_check_licenses.py loads the policy files. requirements-ci.txt pins the pytest this
+            # job and seed-script install, so a Renovate bump of it runs both.
             scripts:
               - '.github/scripts/**'
+              - '.github/requirements-ci.txt'
               - '.github/data-impact-paths.txt'
               - '.github/licenses/**'
               - '.github/workflows/ci.yml'
@@ -150,6 +156,7 @@ jobs:
             workflows:
               - '.github/workflows/**'
               - '.github/scripts/check_action_pins.sh'
+              - '.github/scripts/check_workflow_hardening.sh'
             # Step-level filter of the ADR style guard below, not a job output.
             adrs:
               - 'docs/decisions/**'
@@ -192,10 +199,13 @@ jobs:
             seed:
               - 'demo/seed/**'
               - 'demo/corpus/**'
+              - '.github/requirements-ci.txt'
               - 'keycloak/**'
               - '.github/workflows/ci.yml'
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Guards the Corepack integrity hash that frontend/Dockerfile relies on
       # ("corepack enable", then "pnpm install --frozen-lockfile"): corepack verifies
@@ -213,6 +223,13 @@ jobs:
       - name: SHA-Pins der Actions in allen Workflows prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.workflows == 'true'
         run: .github/scripts/check_action_pins.sh
+
+      # No run: or script: block interpolates github.head_ref, github.event.*, inputs.* or secrets.*,
+      # every workflow sets top-level permissions: and every checkout states persist-credentials
+      # (AGENTS.md, "GitHub-Actions-Workflows").
+      - name: Kontextwerte, Token-Rechte und Checkout-Credentials der Workflows prüfen
+        if: github.event_name != 'pull_request' || steps.filter.outputs.workflows == 'true'
+        run: .github/scripts/check_workflow_hardening.sh
 
       # Every ADR follows docs/decisions/README.md (current state instead of appended notes, status line
       # with date).
@@ -255,6 +272,8 @@ jobs:
         working-directory: backend/
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -340,6 +359,8 @@ jobs:
         working-directory: backend/
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -368,6 +389,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -452,6 +475,8 @@ jobs:
         working-directory: backend/
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -479,13 +504,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.15'
 
       - name: Install pytest
-        run: pip install pytest
+        run: pip install -r .github/requirements-ci.txt
 
       # Der Tagesreport läuft nur nachts; ein Fehler fiele sonst erst dann auf.
       # Die Selbstprobe des Corepack-Guards liegt daneben, weil dessen CI-Lauf nur
@@ -500,13 +527,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.15'
 
       - name: Install dependencies
-        run: pip install pytest -r demo/seed/requirements.txt
+        run: pip install -r .github/requirements-ci.txt -r demo/seed/requirements.txt
 
       # Der Seed-Lauf selbst wird nur vom nächtlichen Demo-Smoke ausgeübt; was ohne
       # laufenden Stack prüfbar ist, gehört deshalb in jeden PR-Lauf.
@@ -522,6 +551,8 @@ jobs:
         working-directory: frontend/
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Installs the pnpm version pinned in the "packageManager" field of
       # frontend/package.json.
@@ -583,6 +614,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
