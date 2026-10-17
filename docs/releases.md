@@ -433,7 +433,7 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 | `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
 | `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |
 | `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
-| `update-vermerk.md` | Vorlage aus `docs/behoerden/09-betrieb-update/` |
+| `update-vermerk.md` | Vorlage aus `docs/behoerden/09-betrieb-update/`, Faktenblatt-Platzhalter als Links auf `faktenblaetter/` |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
 Daneben liegt `opaa-update-paket-X.Y.Z.tar.gz.sha256`. Der Job `update-package-attestation`
@@ -445,8 +445,19 @@ der getaggte Commit enthält. Vorab-Tags zählen nie, auch nicht für ein Vorab-
 Patch-Release ohne Codeänderung vergleicht mit dem Release auf demselben Commit, sein Delta ist
 leer. Gibt es kein finales Tag davor (das erste finale Release), vergleicht das Delta mit dem
 ältesten Wurzel-Commit, der kein Manifest hat: Jeder Eintrag erscheint als neu, und
-`LIESMICH.md` und der Kopf des Deltas sagen das. Welcher Vorgänger bei mehreren Supportlinien gilt,
+`LIESMICH.md` und der Kopf des Deltas sagen das. Überschriften und Text nennen ihn „Stand ohne
+Fakten-Manifest (Commit `abc1234`)“, nicht mit der rohen Commit-ID; das gilt für jeden Commit ohne
+Manifest, der als Vergleich angegeben ist. Welcher Vorgänger bei mehreren Supportlinien gilt,
 entscheidet #2575; bis dahin gilt diese Regel.
+
+**Verweise im Paket.** Jeder Faktenblatt-Platzhalter `{{faktenblatt:<name>[#<anker>]}}` in der
+Vorlage `update-vermerk.md` wird beim Zusammenstellen ein relativer Link auf
+`faktenblaetter/<name>.md`; ein Blatt oder Anker, das es im Paket nicht gibt, bricht den Lauf ab.
+Platzhalter in Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage
+stammt, etwa Titel von Pull Requests im Delta oder Upgrade-Hinweise in den Betriebsfolgen. Der Link
+des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository des Laufs
+(`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
+auf `main`.
 
 **Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`) und Zeitstempel im Archiv
 sind die Commit-Zeit, Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt

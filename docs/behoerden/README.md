@@ -167,7 +167,9 @@ Ein Verweis auf ein Faktenblatt hat immer diese Form:
   beschrieben.
 - Der Platzhalter wird nicht als Link geschrieben, weil die Faktenblätter nicht eingecheckt sind. Er
   steht für das gleichnamige Faktenblatt der Version, die die Behörde einsetzt; bei einem Release liegt
-  es am GitHub-Release, für `main` im CI-Artefakt des letzten Laufs.
+  es am GitHub-Release, für `main` im CI-Artefakt des letzten Laufs. Im Update-Paket ersetzt der
+  Release-Lauf ihn im Update-Vermerk durch einen Link auf das Blatt unter `faktenblaetter/`, außer
+  in Code-Spans und Codeblöcken.
 - Ein neues Faktenblatt entsteht im Generator (`io.opaa.compliance.FactSheet`); im selben PR werden
   die Liste der Platzhalterziele neu erzeugt und die Namensliste hier ergänzt.
 

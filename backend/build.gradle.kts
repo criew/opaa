@@ -737,7 +737,8 @@ tasks.register<JavaExec>("complianceDocs") {
 // manifest-delta.md and manifest-delta.json under build/compliance/delta/. Older side: -PfromRef
 // (Git tag or commit) or -PfromJson (faktenblaetter.json); newer side: -PtoRef or -PtoJson, else
 // the working tree. -PlabelledPrs names the output of `gh pr list --label data-impact --json
-// number,title,url`. Offline; a ref needs the Git history with tags.
+// number,title,url`; -Prepository=<owner>/<name> the GitHub repository links point into (default
+// criew/opaa). Offline; a ref needs the Git history with tags.
 tasks.register<JavaExec>("complianceDelta") {
     group = "documentation"
     description = "Renders the cumulative compliance manifest delta between two versions."
@@ -749,6 +750,7 @@ tasks.register<JavaExec>("complianceDelta") {
     val toRef = providers.gradleProperty("toRef")
     val toJson = providers.gradleProperty("toJson")
     val labelledPrs = providers.gradleProperty("labelledPrs")
+    val githubRepository = providers.gradleProperty("repository")
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass = "io.opaa.compliance.ManifestDeltaGenerator"
     outputs.dir(outputDir)
@@ -769,6 +771,9 @@ tasks.register<JavaExec>("complianceDelta") {
             }
             if (labelledPrs.isPresent) {
                 args += listOf("--labelled-prs", path(labelledPrs.get()))
+            }
+            if (githubRepository.isPresent) {
+                args += listOf("--repository", githubRepository.get())
             }
             args
         },

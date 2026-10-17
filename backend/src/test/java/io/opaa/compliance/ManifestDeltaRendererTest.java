@@ -7,6 +7,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.compliance.ManifestDeltaRenderer.LabelledChanges;
 import io.opaa.compliance.ManifestDeltaRenderer.PullRequest;
+import io.opaa.compliance.ManifestSnapshot.Origin;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -139,5 +142,33 @@ class ManifestDeltaRendererTest {
     assertThat(change.path("after").asString()).isEqualTo("CONNECTOR");
     assertThat(change.path("assessment").path("stage").asString()).isEqualTo("ZUSTIMMUNG");
     assertThat(root.path("labelledPullRequests").path("queried").asBoolean()).isFalse();
+  }
+
+  /**
+   * The cases in {@code compliance/delta/bare-commit-names.json} are shared with {@code
+   * .github/scripts/test_update_package.py}, so delta and update package name a version without
+   * manifest by the same rule.
+   */
+  @Test
+  void namesAVersionLikeTheUpdatePackage() throws IOException {
+    JsonNode cases;
+    try (InputStream in =
+        ManifestDeltaRendererTest.class.getResourceAsStream(
+            "/compliance/delta/bare-commit-names.json")) {
+      cases = JsonMapper.builder().build().readTree(in);
+    }
+    assertThat(cases).hasSizeGreaterThan(5);
+    for (JsonNode c : cases) {
+      Origin origin =
+          new Origin(
+              "ref",
+              c.path("label").asString(),
+              c.path("label").asString(),
+              c.path("commit").asString(),
+              c.path("hasManifest").asBoolean());
+      assertThat(ManifestDeltaRenderer.name(origin))
+          .as(c.toString())
+          .isEqualTo(c.path("name").asString());
+    }
   }
 }
