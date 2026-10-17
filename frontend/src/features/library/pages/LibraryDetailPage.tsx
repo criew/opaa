@@ -1,236 +1,50 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
-import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Checkbox from '@mui/material/Checkbox'
-import Chip from '@mui/material/Chip'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import LinearProgress from '@mui/material/LinearProgress'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
-import Tab from '@mui/material/Tab'
-import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
 import DataUsageIcon from '@mui/icons-material/DataUsage'
 import HistoryIcon from '@mui/icons-material/History'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import WarningAmberIcon from '@mui/icons-material/WarningAmber'
-import { alpha } from '@mui/material/styles'
-import type { AssetRole } from '@/shared/api/types'
 import { confluenceSettingsOf } from '../utils/confluenceSource'
 import { sourceRegistration } from '../components/sources/registry'
 import { useAuthStore } from '@/shared/session/authStore'
-import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import { assetRoleLabel, formatFileSize } from '@/shared/utils/labels'
 import { documentSourceTypeLabel } from '../components/sources/sourceLabels'
-import { AssetAccessDerivationSection } from '@/features/asset'
 import { AssetDetailHeader, HeaderFigure } from '@/features/asset'
-import { AssetOwnerSection } from '@/features/asset'
-import { AssetSpacesSection } from '@/features/asset'
 import { responsibleParty } from '@/features/asset'
 import { ErasingMark, PrivateMark } from '@/features/asset'
-import {
-  PRIVATE_LIBRARY_ERASING_NOTE,
-  PRIVATE_LIBRARY_ERASURE_CONSEQUENCE,
-  PRIVATE_LIBRARY_NOTE,
-  QUOTA_EXHAUSTED_LABEL,
-  QUOTA_EXHAUSTED_REMEDY,
-} from '../components/privateLibrary'
 import { useMyPrivateStorage } from '../components/useMyPrivateStorage'
-import { notify } from '@/shared/stores/notificationStore'
 import { useAssetCatalogEntry } from '@/features/asset'
-import { AssetGrantsSection } from '@/features/asset'
-import LibraryExternalAccessSection from '../components/LibraryExternalAccessSection'
+import { AssetSpacesSection } from '@/features/asset'
 import LibraryDocumentsSection from '../components/LibraryDocumentsSection'
 import LibrarySourceSection from '../components/LibrarySourceSection'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
-import LibraryMetadataFieldsSection from '../components/metadata/LibraryMetadataFieldsSection'
-import MetadataExtractionSettingsSection from '../components/metadata/MetadataExtractionSettingsSection'
-import PageSection from '@/shared/ui/PageSection'
 import MetaBadge from '@/shared/ui/MetaBadge'
-import { SuccessionStateNote } from '@/features/succession'
 import { successionAwareMessage } from '@/features/succession'
-import { CATALOG_ROUTE } from '@/shared/routes'
-
-function canEditLibrary(role: AssetRole | undefined): boolean {
-  return role === 'MANAGER' || role === 'OWNER'
-}
-
-function canDeleteLibrary(role: AssetRole | undefined): boolean {
-  return role === 'OWNER'
-}
-
-// ADR-0018, Entscheidung 2: whoever is at least EDITOR on the library may trigger it - the same
-// threshold as for uploading and deleting documents.
-function canManageDocuments(role: AssetRole | undefined): boolean {
-  return role === 'EDITOR' || role === 'MANAGER' || role === 'OWNER'
-}
-
-function formatIndexedAt(indexedAt: string | null | undefined): string {
-  if (!indexedAt) return '—'
-  return new Date(indexedAt).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
-/** The page's areas; the active one is shareable via the "tab" search param (URL as state). */
-type LibraryDetailTab = 'dokumente' | 'quelle' | 'metadaten' | 'freigaben' | 'zuordnungen'
-
-/**
- * The area named by `?tab=`. Every role sees every area, so only the source area can be missing -
- * an UPLOAD library has no source - and the metadata area, while the installation has switched
- * metadata off (ADR-0044). An unknown or retired value (such as
- * „indizierung" and „verwaltung") falls back to the documents.
- */
-function resolveTab(
-  requested: string | null,
-  hasSourceTab: boolean,
-  hasMetadataTab: boolean,
-): LibraryDetailTab {
-  switch (requested) {
-    case 'quelle':
-      return hasSourceTab ? 'quelle' : 'dokumente'
-    case 'metadaten':
-      return hasMetadataTab ? 'metadaten' : 'dokumente'
-    case 'freigaben':
-      return 'freigaben'
-    case 'zuordnungen':
-      return 'zuordnungen'
-    default:
-      return 'dokumente'
-  }
-}
-
-interface DiagnosticsLockControlProps {
-  locked: boolean
-  canToggle: boolean
-  saving: boolean
-  error: string | null
-  onToggle: () => void
-  onDismissError: () => void
-}
-
-// Renders the Diagnosesperre state (docs/features/hybrid-retrieval.md, Leitplanke (e)) -
-// visible to everyone who may read the library (see LibraryResponse#diagnosticsLocked), but only
-// togglable by the responsible body itself. The 403 a caller without that standing gets back from
-// PUT .../diagnostics-lock is shown verbatim (see normalizeError) - it already names, in German,
-// who may act instead.
-function DiagnosticsLockControl({
-  locked,
-  canToggle,
-  saving,
-  error,
-  onToggle,
-  onDismissError,
-}: DiagnosticsLockControlProps) {
-  return (
-    <Box>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <Chip
-          label={locked ? 'Diagnose gesperrt' : 'Diagnose freigegeben'}
-          size="small"
-          color={locked ? 'default' : 'warning'}
-          variant="outlined"
-        />
-        {canToggle && (
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={onToggle}
-            disabled={saving}
-            aria-label={locked ? 'Diagnosesperre lösen' : 'Diagnosesperre setzen'}
-          >
-            {saving ? 'Wird gespeichert …' : locked ? 'Sperre lösen' : 'Sperre setzen'}
-          </Button>
-        )}
-      </Stack>
-      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
-        Solange gesperrt, bleibt diese Bibliothek von einer Suchdiagnose im Rechtekontext einer
-        anderen Person ausgeschlossen — dort ist dann weder ein Treffer noch ein Titel aus ihr zu
-        sehen.
-        {!canToggle &&
-          ' Setzen und lösen kann die Sperre nur die für die Bibliothek zuständige Stelle (Eigentümer), nicht die Systemverwaltung als solche.'}
-      </Typography>
-      {error && (
-        <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
-          {error}
-        </Alert>
-      )}
-    </Box>
-  )
-}
-
-interface ShareCapSwitchProps {
-  label: string
-  description: string
-  checked: boolean
-  onSave: (checked: boolean) => Promise<void>
-}
-
-/**
- * The upper bound the system administration sets for a connector library: whether it may be
- * shared with „Alle Konten". Visible and settable only here, never for the library's owner:
- * they see the effect (a release above the bound answers 409), not the switch.
- */
-function ShareCapSwitch({ label, description, checked, onSave }: ShareCapSwitchProps) {
-  const [draft, setDraft] = useState(checked)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const changed = draft !== checked
-
-  async function handleSave() {
-    setError(null)
-    setSaving(true)
-    try {
-      await onSave(draft)
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Freigabe-Obergrenze konnte nicht geändert werden',
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-      <Typography variant="subtitle2" component="h3">
-        Obergrenze (Systemverwaltung)
-      </Typography>
-      <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mb: 1 }}>
-        {description}
-      </Typography>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <FormControlLabel
-          control={<Checkbox checked={draft} onChange={(e) => setDraft(e.target.checked)} />}
-          label={label}
-        />
-        <Button
-          size="small"
-          variant="outlined"
-          disabled={saving || !changed}
-          // Both halves of the upper bound are on the same page; the visible text is
-          // the same, so the accessible name says which half is saved.
-          aria-label={`Obergrenze „${label}“ speichern`}
-          onClick={() => void handleSave()}
-        >
-          {saving ? 'Wird gespeichert …' : 'Obergrenze speichern'}
-        </Button>
-      </Stack>
-      {error && (
-        <Alert severity="error" sx={{ mt: 1 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-    </Box>
-  )
-}
+import {
+  canDeleteLibrary,
+  canEditLibrary,
+  canManageDocuments,
+  formatIndexedAt,
+  resolveTab,
+} from '../components/libraryDetailAccess'
+import type { LibraryDetailTab } from '../components/libraryDetailAccess'
+import { useLibraryDeletion } from '../components/useLibraryDeletion'
+import LibraryHeaderNote from '../components/LibraryHeaderNote'
+import LibraryScopeHero from '../components/LibraryScopeHero'
+import LibraryRoleNotices from '../components/LibraryRoleNotices'
+import LibraryDetailTabBar from '../components/LibraryDetailTabBar'
+import LibraryMetadataTab from '../components/LibraryMetadataTab'
+import LibrarySharingTab from '../components/LibrarySharingTab'
 
 export default function LibraryDetailPage() {
   const { libraryId } = useParams()
-  const navigate = useNavigate()
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
 
   const listEntry = useLibraryStore((s) => s.libraries.find((l) => l.id === libraryId))
@@ -238,7 +52,6 @@ export default function LibraryDetailPage() {
   const loadLibraries = useLibraryStore((s) => s.loadLibraries)
   const loadLibraryDetails = useLibraryStore((s) => s.loadLibraryDetails)
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
-  const deleteExistingLibrary = useLibraryStore((s) => s.deleteExistingLibrary)
   const setLibraryDiagnosticsLock = useLibraryStore((s) => s.setLibraryDiagnosticsLock)
   const setLibraryShareCap = useLibraryStore((s) => s.setLibraryShareCap)
   const storeError = useLibraryStore((s) => s.error)
@@ -280,10 +93,13 @@ export default function LibraryDetailPage() {
   const canTrigger = canManageDocuments(library?.myRole) || isSystemAdmin
   const mayChange = canEdit && !erasing
   const mayManageDocuments = canTrigger && !erasing
-  const erasureNoticeRef = useRef<HTMLDivElement>(null)
-  // Set by a 202: the menu that held „Sofort löschen" is gone, so the focus moves to the notice.
-  const focusErasureNoticeRef = useRef(false)
-  const [eraseBusy, setEraseBusy] = useState(false)
+  const { erasureNoticeRef, eraseBusy, handleErase, handleDelete } = useLibraryDeletion({
+    libraryId,
+    library,
+    details,
+    erasing,
+    setLocalError,
+  })
   const newestRunCategory = useIndexingStore((s) =>
     libraryId ? s.runsByLibrary[libraryId]?.failureCategory : undefined,
   )
@@ -291,13 +107,6 @@ export default function LibraryDetailPage() {
   const ownsPrivateLibrary = privateLibrary && library?.myRole === 'OWNER'
   const [storageRefreshToken, setStorageRefreshToken] = useState(0)
   const privateStorage = useMyPrivateStorage(ownsPrivateLibrary, storageRefreshToken)
-
-  useEffect(() => {
-    if (focusErasureNoticeRef.current && erasing) {
-      focusErasureNoticeRef.current = false
-      erasureNoticeRef.current?.focus()
-    }
-  }, [erasing])
 
   // The connector-only concerns (status polling, trigger actions, the "Indizierung" area) hang
   // off the details' sourceType; a plain UPLOAD library has none of them.
@@ -400,68 +209,6 @@ export default function LibraryDetailPage() {
       await saveLibrary({ name: nextName, description: nextDescription })
     } catch (err) {
       throw new Error(successionAwareMessage(err, 'Aktualisierung fehlgeschlagen'), { cause: err })
-    }
-  }
-
-  /**
-   * „Sofort löschen" of a private library: 204 erased it, 202 marked it while a run still ends -
-   * the page then stays and shows the state, without promising when the erasure completes.
-   */
-  async function handleErase() {
-    if (!libraryId || !library || eraseBusy) return
-    const confirmed = await confirmAction({
-      question: `„${library.name}“ sofort löschen?`,
-      consequence: PRIVATE_LIBRARY_ERASURE_CONSEQUENCE,
-      confirmLabel: 'Endgültig löschen',
-      tone: 'danger',
-    })
-    if (!confirmed) return
-    setLocalError(null)
-    setEraseBusy(true)
-    // armed before the request: the store reloads the marked library before it answers
-    focusErasureNoticeRef.current = true
-    try {
-      const outcome = await deleteExistingLibrary(libraryId)
-      if (outcome === 'ERASURE_PENDING') {
-        // also when reloading the marked library failed and the page cannot show its state
-        notify(
-          `„${library.name}“ ist zur Löschung vorgemerkt. Die Löschung schließt ab, sobald die laufende Indexierung beendet ist.`,
-          'info',
-        )
-        return
-      }
-      focusErasureNoticeRef.current = false
-      notify(`„${library.name}“ ist gelöscht.`, 'success')
-      navigate(CATALOG_ROUTE)
-    } catch (err) {
-      focusErasureNoticeRef.current = false
-      setLocalError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
-    } finally {
-      setEraseBusy(false)
-    }
-  }
-
-  async function handleDelete() {
-    if (!libraryId || !library) return
-    // ADR-0018, Entscheidung 5: deleting a connector library also removes its
-    // entire indexed content - a stronger effect than for an UPLOAD library, whose
-    // deletion stays blocked as long as it still contains documents.
-    const isConnectorLibrary = details != null && details.sourceType !== 'UPLOAD'
-    const confirmed = await confirmAction({
-      question: `Bibliothek "${library.name}" löschen?`,
-      consequence: isConnectorLibrary
-        ? 'Das entfernt auch alle indizierten Dokumente dieser Bibliothek. Diese Aktion kann nicht rückgängig gemacht werden.'
-        : 'Diese Aktion kann nicht rückgängig gemacht werden.',
-      confirmLabel: 'Löschen',
-      tone: 'danger',
-    })
-    if (!confirmed) return
-    setLocalError(null)
-    try {
-      await deleteExistingLibrary(libraryId)
-      navigate(CATALOG_ROUTE)
-    } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
     }
   }
 
@@ -644,35 +391,12 @@ export default function LibraryDetailPage() {
         // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
         // owner, no reason.
         note={
-          <>
-            <SuccessionStateNote succession={details?.succession} />
-            {erasureRequestedAt && (
-              <Alert
-                ref={erasureNoticeRef}
-                tabIndex={-1}
-                role="status"
-                severity="error"
-                icon={false}
-                sx={{ mt: 1.5 }}
-                data-testid="library-erasure-notice"
-              >
-                <AlertTitle>
-                  Wird gelöscht – vorgemerkt am {formatIndexedAt(erasureRequestedAt)}
-                </AlertTitle>
-                {PRIVATE_LIBRARY_ERASING_NOTE}
-              </Alert>
-            )}
-            {quotaExhausted && (
-              <Alert
-                severity="warning"
-                sx={{ mt: 1.5 }}
-                data-testid="private-quota-exhausted-notice"
-              >
-                <AlertTitle>Letzter Lauf {QUOTA_EXHAUSTED_LABEL}</AlertTitle>
-                {QUOTA_EXHAUSTED_REMEDY}
-              </Alert>
-            )}
-          </>
+          <LibraryHeaderNote
+            succession={details?.succession}
+            erasureRequestedAt={erasureRequestedAt}
+            erasureNoticeRef={erasureNoticeRef}
+            quotaExhausted={quotaExhausted}
+          />
         }
       >
         {/* The header shows the scope only as a short line with a jump into the „Quelle"
@@ -680,61 +404,12 @@ export default function LibraryDetailPage() {
            partially read scope, by contrast, stays here: it concerns the content that
            every view of the page shows, not the setting behind it. */}
         {details && connectorConfiguration?.scopeHero && (
-          <Box
-            sx={{
-              mt: 2.5,
-              pt: 2,
-              borderTop: 1,
-              borderTopColor: 'divider',
-              position: 'relative',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 1,
-            }}
-          >
-            <Typography variant="body2" data-testid="library-scope-summary">
-              {connectorConfiguration.scopeHero.summary(details)}
-              {' · '}
-              <Link
-                component={RouterLink}
-                to={{ search: tabSearch('quelle') }}
-                replace
-                underline="hover"
-              >
-                Details
-              </Link>
-            </Typography>
-            {run.unlistedScopeKeys.length > 0 && (
-              <Stack
-                direction="row"
-                spacing={1}
-                role="note"
-                data-testid={connectorConfiguration.scopeHero.unlistedTestId}
-                sx={{
-                  alignItems: 'flex-start',
-                  mt: 0.5,
-                  pl: 1.5,
-                  pr: 1.25,
-                  py: 1,
-                  // Highlighting as a signal edge on the left instead of a frame all around
-                  // (rule 4): the same means as in the confirmation overlay, so that a hint
-                  // looks the same everywhere. The signal colour stays in edge and icon — never
-                  // in running text.
-                  borderLeft: 3,
-                  borderColor: 'warning.main',
-                  bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
-                }}
-              >
-                <WarningAmberIcon
-                  aria-hidden
-                  sx={{ fontSize: 16, color: 'warning.main', mt: '2px', flexShrink: 0 }}
-                />
-                <Typography sx={{ fontSize: 12.5 }}>
-                  {connectorConfiguration.scopeHero.unlistedWarning(run.unlistedScopeKeys, details)}
-                </Typography>
-              </Stack>
-            )}
-          </Box>
+          <LibraryScopeHero
+            details={details}
+            scopeHero={connectorConfiguration.scopeHero}
+            unlistedScopeKeys={run.unlistedScopeKeys}
+            sourceSearch={tabSearch('quelle')}
+          />
         )}
 
         {/* A running indexing stays visible no matter which area below is active (guidelines
@@ -793,60 +468,13 @@ export default function LibraryDetailPage() {
           {storeError}
         </Alert>
       )}
-      {/* One hint about the own role, not two — the documents area no longer
-         carries a second one. The two levels say different things: whoever may maintain documents
-         does not merely read. */}
-      {!canTrigger && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Sie haben in dieser Bibliothek nur Leserechte.
-        </Alert>
-      )}
-      {canTrigger && !canEdit && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Sie können Dokumente dieser Bibliothek pflegen, ihre Einstellungen aber nicht ändern.
-        </Alert>
-      )}
-      {isAdministrativeOverride && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Sie bearbeiten diese Bibliothek als System-Administrator, nicht über eine eigene
-          Berechtigung.
-        </Alert>
-      )}
+      <LibraryRoleNotices
+        canTrigger={canTrigger}
+        canEdit={canEdit}
+        isAdministrativeOverride={isAdministrativeOverride}
+      />
 
-      {/* Every tab is a link to the same page with another `?tab=` — middle click and
-         „in neuem Tab öffnen" work, and a bookmark lands in the right area. */}
-      <Tabs
-        value={activeTab}
-        aria-label="Bereiche dieser Bibliothek"
-        sx={{
-          borderBottom: 1,
-          borderColor: 'divider',
-          mb: 4,
-          minHeight: 42,
-          '& .MuiTab-root': {
-            textTransform: 'none',
-            fontSize: 13.5,
-            fontWeight: 500,
-            minHeight: 42,
-            px: 2,
-          },
-        }}
-      >
-        {tabs.map((entry) => (
-          <Tab
-            key={entry.value}
-            label={entry.label}
-            value={entry.value}
-            component={RouterLink}
-            to={{ search: tabSearch(entry.value) }}
-            // The area is a state of the same page, not a stop of its own: whoever looks through
-            // four tabs should leave the page with one „Zurück", not with four.
-            replace
-            id={`library-tab-${entry.value}`}
-            aria-controls={`library-tabpanel-${entry.value}`}
-          />
-        ))}
-      </Tabs>
+      <LibraryDetailTabBar activeTab={activeTab} tabs={tabs} tabSearch={tabSearch} />
 
       {/* Every area stays mounted while another one is active: status polling, running uploads
           and loaded run protocols keep living, only their visibility toggles. */}
@@ -903,25 +531,7 @@ export default function LibraryDetailPage() {
           aria-labelledby="library-tab-metadaten"
           hidden={activeTab !== 'metadaten'}
         >
-          <Stack>
-            <PageSection
-              title="Metadatenfelder"
-              description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
-            >
-              <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
-            </PageSection>
-            {/* The extraction settings are readable only from MANAGER on
-               (GET .../metadata/extraction-settings) - for a reading role only an error message
-               would remain here. */}
-            {canEdit && (
-              <PageSection
-                title="Modellgestützte Extraktion"
-                description="Ob das Sprachmodell leer gebliebene Felder ergänzt und freie Schlagworte vergibt — und wie gut die Extraktion diese Bibliothek beschreibt."
-              >
-                <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />
-              </PageSection>
-            )}
-          </Stack>
+          <LibraryMetadataTab libraryId={libraryId} mayChange={mayChange} canEdit={canEdit} />
         </Box>
       )}
 
@@ -931,82 +541,21 @@ export default function LibraryDetailPage() {
         aria-labelledby="library-tab-freigaben"
         hidden={activeTab !== 'freigaben'}
       >
-        {/* The order of the target design: owner · permissions · external
-           access · diagnostics lock · derivation. Every section saves on its own;
-           there is no shared „Speichern" button across sections. */}
-        <Stack>
-          <AssetOwnerSection
-            assetType="KNOWLEDGE_LIBRARY"
-            assetId={libraryId}
-            ownerType={library.ownerType}
-            ownerName={library.ownerName}
-            // Only whoever holds the ownership may hand over - myRole carries OWNER for a system
-            // administration anyway, and the endpoint lets exactly that do so.
-            canTransfer={library.myRole === 'OWNER' && !privateLibrary}
-            onTransferred={() => reloadLibrary()}
-          />
-
-          {privateLibrary && (
-            <Alert severity="info" sx={{ mb: 4 }} data-testid="library-private-note">
-              {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto und lässt sich weder
-              freigeben noch übertragen
-              {externalAccessEnabled ? ' noch für externe KI-Werkzeuge öffnen' : ''} — auch nicht
-              durch die Systemverwaltung.
-            </Alert>
-          )}
-
-          {canEdit && !privateLibrary && (
-            <>
-              <AssetGrantsSection
-                assetType="KNOWLEDGE_LIBRARY"
-                assetId={library.id}
-                capControl={
-                  shareCapVisible ? (
-                    <ShareCapSwitch
-                      label="Freigabe an Alle erlaubt"
-                      description="Legt fest, ob diese Konnektorbibliothek überhaupt an alle Konten freigegeben werden darf. Wird die Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen."
-                      checked={details?.allAccountsGrantAllowed ?? true}
-                      onSave={(allowed) => handleSaveShareCap(allowed)}
-                    />
-                  ) : null
-                }
-              />
-
-              {externalAccessEnabled && (
-                <PageSection
-                  title="Externer Zugang"
-                  description="Ob externe KI-Werkzeuge diese Bibliothek außerhalb der Anmeldung erreichen."
-                >
-                  <LibraryExternalAccessSection libraryId={libraryId} />
-                </PageSection>
-              )}
-            </>
-          )}
-
-          {details && (
-            <PageSection
-              title="Diagnosesperre"
-              description="Ob diese Bibliothek in einer Suchdiagnose im Rechtekontext einer anderen Person auftauchen darf."
-            >
-              <DiagnosticsLockControl
-                locked={details.diagnosticsLocked ?? true}
-                // myRole bypasses to OWNER for a system admin unconditionally
-                // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
-                // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
-                // grant never sees a button that is guaranteed to fail with 403.
-                canToggle={details.diagnosticsLockToggleable ?? false}
-                saving={diagnosticsLockSaving}
-                error={diagnosticsLockError}
-                onToggle={() => void handleToggleDiagnosticsLock()}
-                onDismissError={() => setDiagnosticsLockError(null)}
-              />
-            </PageSection>
-          )}
-
-          {!privateLibrary && (
-            <AssetAccessDerivationSection assetType="KNOWLEDGE_LIBRARY" assetId={libraryId} />
-          )}
-        </Stack>
+        <LibrarySharingTab
+          libraryId={libraryId}
+          library={library}
+          details={details}
+          privateLibrary={privateLibrary}
+          canEdit={canEdit}
+          externalAccessEnabled={externalAccessEnabled}
+          shareCapVisible={shareCapVisible}
+          onTransferred={() => reloadLibrary()}
+          onSaveShareCap={(allowed) => handleSaveShareCap(allowed)}
+          diagnosticsLockSaving={diagnosticsLockSaving}
+          diagnosticsLockError={diagnosticsLockError}
+          onToggleDiagnosticsLock={() => void handleToggleDiagnosticsLock()}
+          onDismissDiagnosticsLockError={() => setDiagnosticsLockError(null)}
+        />
       </Box>
 
       <Box
