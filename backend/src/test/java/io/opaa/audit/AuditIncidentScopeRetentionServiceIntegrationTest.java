@@ -43,7 +43,6 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private Clock clock;
 
   private UUID organizationId;
   private UUID requester;
@@ -69,7 +68,8 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM audit_incident_scope_grants WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
-        "DELETE FROM audit_incident_scope_case_counts WHERE organization_id = ?", organizationId);
+        "DELETE FROM audit_incident_scope_monthly_counts WHERE organization_id = ?",
+        organizationId);
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }
@@ -113,24 +113,20 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
   @Test
   void theCaseCountOutlivesTheDeletedGrant() {
     UUID grant = approvedGrantUsableUntil(Instant.parse("2000-03-01T10:00:00Z"));
-    int approvalYear =
-        grantRepository
-            .findById(grant)
-            .orElseThrow()
-            .getApprovedAt()
-            .atZone(clock.getZone())
-            .getYear();
 
     runAt("2002-01-01T00:00:00Z", 1);
 
     assertThat(grantRepository.existsById(grant)).isFalse();
-    assertThat(grantRepository.findCaseCounts(organizationId, approvalYear))
-        .singleElement()
-        .satisfies(
-            row -> {
-              assertThat(row.getPurpose()).isEqualTo("SECURITY_INCIDENT");
-              assertThat(row.getCaseCount()).isEqualTo(1);
-            });
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT purpose || ':' || transition || ':' || case_count"
+                    + " FROM audit_incident_scope_monthly_counts WHERE organization_id = ?",
+                String.class,
+                organizationId))
+        .containsExactlyInAnyOrder(
+            "SECURITY_INCIDENT:REQUESTED:1",
+            "SECURITY_INCIDENT:APPROVED:1",
+            "SECURITY_INCIDENT:EXPIRED:1");
   }
 
   private void runAt(String instant, int retentionYears) {

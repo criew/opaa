@@ -3,6 +3,8 @@ package io.opaa.compliance;
 import io.opaa.compliance.ComplianceManifest.DataFlowGroup;
 import io.opaa.compliance.ComplianceManifest.SettingSource;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Objects;
 
@@ -116,18 +118,99 @@ public record InstanceDisclosure(
    * @param queryPaths the ways the log can be read
    * @param absentQueryPaths the ways that deliberately do not exist
    * @param networkAddress whether the network address is recorded
+   * @param incidentScopeCases the anlassbezogenen Klärungen of the reporting period, by purpose
    */
   public record Protocol(
       List<ProtocolField> fields,
       List<QueryPath> queryPaths,
       List<String> absentQueryPaths,
-      String networkAddress) {
+      String networkAddress,
+      IncidentScopeCases incidentScopeCases) {
 
     public Protocol {
       fields = List.copyOf(fields);
       queryPaths = List.copyOf(queryPaths);
       absentQueryPaths = List.copyOf(absentQueryPaths);
       Objects.requireNonNull(networkAddress, "networkAddress");
+      Objects.requireNonNull(incidentScopeCases, "incidentScopeCases");
+    }
+  }
+
+  /**
+   * The reporting period of the disclosure: whole calendar months, because the cases of the
+   * anlassbezogene Klärung are counted per month and a finer period would claim a precision the
+   * counts do not have. The caller checks a period it was asked for and refuses it in words; this
+   * record only holds the invariant.
+   */
+  public record ReportingPeriod(LocalDate from, LocalDate to) {
+
+    public ReportingPeriod {
+      Objects.requireNonNull(from, "from");
+      Objects.requireNonNull(to, "to");
+      if (from.getDayOfMonth() != 1
+          || !to.equals(to.with(TemporalAdjusters.lastDayOfMonth()))
+          || from.isAfter(to)) {
+        throw new IllegalArgumentException(
+            "a reporting period is whole calendar months, got " + from + " to " + to);
+      }
+    }
+  }
+
+  /**
+   * How often the anlassbezogene Klärung was requested, approved and ended in a reporting period,
+   * by purpose. It holds no person, no reason, no grant and no date finer than a month.
+   *
+   * @param purposes every purpose of the closed list, zero counts included
+   * @param notes what the counts mean and where they end
+   */
+  public record IncidentScopeCases(
+      ReportingPeriod period, List<PurposeCases> purposes, List<String> notes) {
+
+    public IncidentScopeCases {
+      Objects.requireNonNull(period, "period");
+      purposes = List.copyOf(purposes);
+      notes = List.copyOf(notes);
+    }
+  }
+
+  /**
+   * The counts of one purpose.
+   *
+   * @param purpose the purpose as its constant, such as {@code SECURITY_INCIDENT}
+   * @param label the purpose in words
+   * @param requested requests made in the period
+   * @param approved approvals given in the period
+   * @param expired approvals whose usability ended in the period, up to the time of the disclosure
+   */
+  public record PurposeCases(
+      String purpose, String label, CaseCount requested, CaseCount approved, CaseCount expired) {}
+
+  /**
+   * One count as it may leave: zero and counts from {@link #THRESHOLD} on exactly, a count below it
+   * only as "weniger als {@value #THRESHOLD}", so that a single case does not stand out in the
+   * disclosure. {@code count} is {@code null} exactly when the count is below the threshold.
+   */
+  public record CaseCount(Long count) {
+
+    /** The smallest count given exactly, zero aside. */
+    public static final int THRESHOLD = 3;
+
+    public CaseCount {
+      if (count != null && (count < 0 || (count > 0 && count < THRESHOLD))) {
+        throw new IllegalArgumentException("a count below the threshold is not given exactly");
+      }
+    }
+
+    /** {@code raw} as it may leave. */
+    public static CaseCount of(long raw) {
+      if (raw < 0) {
+        throw new IllegalArgumentException("a count is never negative: " + raw);
+      }
+      return new CaseCount(raw > 0 && raw < THRESHOLD ? null : raw);
+    }
+
+    public boolean belowThreshold() {
+      return count == null;
     }
   }
 

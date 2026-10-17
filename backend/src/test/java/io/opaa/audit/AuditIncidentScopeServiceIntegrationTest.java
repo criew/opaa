@@ -20,6 +20,7 @@ import io.opaa.test.OpaaIntegrationTest;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -99,7 +100,8 @@ class AuditIncidentScopeServiceIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM audit_incident_scope_grants WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
-        "DELETE FROM audit_incident_scope_case_counts WHERE organization_id = ?", organizationId);
+        "DELETE FROM audit_incident_scope_monthly_counts WHERE organization_id = ?",
+        organizationId);
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }
@@ -340,8 +342,8 @@ class AuditIncidentScopeServiceIntegrationTest {
   }
 
   @Test
-  void everyApprovalIsCountedAsACaseOfItsYearAndPurpose() {
-    int year = Instant.now(clock).atZone(clock.getZone()).getYear();
+  void everyRequestAndApprovalIsCountedInItsMonthAndTheEndOfUsabilityInItsOwn() {
+    Instant before = Instant.now(clock);
     for (AuditIncidentScopePurpose purpose :
         List.of(
             AuditIncidentScopePurpose.SECURITY_INCIDENT,
@@ -352,7 +354,7 @@ class AuditIncidentScopeServiceIntegrationTest {
               organizationId, requester, subject, scopeStart, scopeEnd, purpose, REASON);
       incidentScopeService.approve(organizationId, grant.getId(), approver);
     }
-    // a request never approved is no case
+    // a request never approved counts as requested only
     incidentScopeService.request(
         organizationId,
         requester,
@@ -361,10 +363,26 @@ class AuditIncidentScopeServiceIntegrationTest {
         scopeEnd,
         AuditIncidentScopePurpose.EXTERNAL_AUDIT_OR_INSPECTION,
         REASON);
+    Instant after = Instant.now(clock);
 
-    assertThat(caseCounts(year))
+    assertThat(caseCounts("REQUESTED"))
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "SECURITY_INCIDENT", 2,
+                "DATA_BREACH_INVESTIGATION", 1,
+                "EXTERNAL_AUDIT_OR_INSPECTION", 1));
+    assertThat(caseCounts("APPROVED"))
         .containsExactlyInAnyOrderEntriesOf(
             Map.of("SECURITY_INCIDENT", 2, "DATA_BREACH_INVESTIGATION", 1));
+    assertThat(caseCounts("EXPIRED"))
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of("SECURITY_INCIDENT", 2, "DATA_BREACH_INVESTIGATION", 1));
+    assertThat(caseMonths("REQUESTED")).isSubsetOf(month(before), month(after));
+    assertThat(caseMonths("APPROVED")).isSubsetOf(month(before), month(after));
+    assertThat(caseMonths("EXPIRED"))
+        .isSubsetOf(
+            month(before.plus(AuditIncidentScopeGrant.USABLE_WINDOW)),
+            month(after.plus(AuditIncidentScopeGrant.USABLE_WINDOW)));
   }
 
   /**
@@ -415,8 +433,9 @@ class AuditIncidentScopeServiceIntegrationTest {
       pool.shutdownNow();
     }
 
-    int year = Instant.now(clock).atZone(clock.getZone()).getYear();
-    assertThat(caseCounts(year)).containsExactlyEntriesOf(Map.of("SECURITY_INCIDENT", grants));
+    assertThat(caseCounts("APPROVED"))
+        .containsExactlyEntriesOf(Map.of("SECURITY_INCIDENT", grants));
+    assertThat(caseCounts("EXPIRED")).containsExactlyEntriesOf(Map.of("SECURITY_INCIDENT", grants));
   }
 
   /**
@@ -505,13 +524,31 @@ class AuditIncidentScopeServiceIntegrationTest {
         .isInstanceOf(ValidationException.class);
   }
 
-  private Map<String, Integer> caseCounts(int year) {
+  /** The counted cases of one transition by purpose, over every month. */
+  private Map<String, Integer> caseCounts(String transition) {
     Map<String, Integer> counts = new LinkedHashMap<>();
-    for (AuditIncidentScopeGrantRepository.CaseCount row :
-        grantRepository.findCaseCounts(organizationId, year)) {
-      counts.put(row.getPurpose(), row.getCaseCount());
-    }
+    jdbcTemplate.query(
+        "SELECT purpose, sum(case_count) AS total FROM audit_incident_scope_monthly_counts"
+            + " WHERE organization_id = ? AND transition = ? GROUP BY purpose",
+        row -> {
+          counts.put(row.getString("purpose"), row.getInt("total"));
+        },
+        organizationId,
+        transition);
     return counts;
+  }
+
+  private List<LocalDate> caseMonths(String transition) {
+    return jdbcTemplate.queryForList(
+        "SELECT DISTINCT case_month FROM audit_incident_scope_monthly_counts"
+            + " WHERE organization_id = ? AND transition = ?",
+        LocalDate.class,
+        organizationId,
+        transition);
+  }
+
+  private LocalDate month(Instant instant) {
+    return LocalDate.ofInstant(instant, clock.getZone()).withDayOfMonth(1);
   }
 
   private AuditLogEntry writeAuditEntryForActor(UUID actorUserId, Instant recordedAt) {

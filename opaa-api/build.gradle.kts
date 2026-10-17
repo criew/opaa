@@ -115,6 +115,7 @@ tasks.withType<JavaCompile> {
 // fails the build instead of going unnoticed.
 val typeMappingsConfig = mapOf(
     "DateTime" to "Instant",
+    "date" to "LocalDate",
     "SpaceRole" to "SpaceRole",
     "SystemRole" to "SystemRole",
     "GroupKind" to "GroupKind",
@@ -194,10 +195,13 @@ val typeMappingsConfig = mapOf(
 tasks.withType<Test> {
     useJUnitPlatform()
     // See the comment on typeMappingsConfig above: SpecEnumParityTest cross-checks its own
-    // manually listed schema names against this key set. "DateTime" is excluded - it is a scalar
-    // substitution, not a domain enum mapped to an io.opaa.api.types class, so it has no parity
-    // test case to check against.
-    systemProperty("opaa.api.typeMappingsKeys", (typeMappingsConfig.keys - "DateTime").joinToString(","))
+    // manually listed schema names against this key set. "DateTime" and "date" are excluded - they
+    // are scalar substitutions, not domain enums mapped to an io.opaa.api.types class, so they have
+    // no parity test case to check against.
+    systemProperty(
+        "opaa.api.typeMappingsKeys",
+        (typeMappingsConfig.keys - setOf("DateTime", "date")).joinToString(","),
+    )
 }
 
 tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerate") {
@@ -234,6 +238,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
     typeMappings.set(typeMappingsConfig)
     importMappings.set(mapOf(
         "Instant" to "java.time.Instant",
+        "LocalDate" to "java.time.LocalDate",
         "SpaceRole" to "io.opaa.api.types.SpaceRole",
         "SystemRole" to "io.opaa.api.types.SystemRole",
         "GroupKind" to "io.opaa.api.types.GroupKind",
@@ -324,12 +329,14 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
     // did; that mismatch is the whole reason this doLast block exists). Both the OpenAPI schema
     // name (the typeMappings key, e.g. "AuditActorKind") and the mapped Java type name (the value,
     // e.g. "ActorKind") are included defensively, since it is not contractually specified which one
-    // a future generator version would use for the file name. "DateTime"/ "Instant" is excluded: it
-    // is a scalar substitution, not a domain enum, and names no generated model file.
+    // a future generator version would use for the file name. "DateTime"/"Instant" and
+    // "date"/"LocalDate" are excluded: they are scalar substitutions, not domain enums, and name no
+    // generated model file.
+    val scalarMappings = setOf("DateTime", "Instant", "date", "LocalDate")
     val generatedEnumFileNames =
         typeMappings.map { mappings ->
             (mappings.keys + mappings.values)
-                .filter { it != "DateTime" && it != "Instant" }
+                .filter { it !in scalarMappings }
                 .map { "$it.java" }
         }
     doLast {

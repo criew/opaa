@@ -151,18 +151,23 @@ data:
     evaluations: >-
       Einzelne Klärungen mit Person, Zeitraum, Zweck und Begründung; nach Löschung eines Kontos
       lässt sich über das Pseudonym erkennen, welche Protokolleinträge dieselbe Person betreffen.
-      Zahl der Fälle je Jahr und Zweck für den Jahresbericht an die Personalvertretung
+      Zahl der beantragten, freigegebenen und abgelaufenen Klärungen je Kalendermonat und Zweck,
+      in der Auskunft über die Datenerhebung für einen wählbaren Berichtszeitraum aus ganzen
+      Monaten an die Personalvertretung; aus überlappenden Zeiträumen lässt sich die Zahl eines
+      einzelnen Monats erschließen
     notes:
       - >-
         Nach Löschung eines Kontos führt die Klärung keinen Personenfilter mehr aus; das Pseudonym
         im Nachweis wird nicht als Filter verwendet
       - >-
-        Für den Jahresbericht an die Personalvertretung zählt OPAA jede Freigabe bei ihrer Erteilung
-        je Kalenderjahr und Zweck in einer eigenen Tabelle ohne Person und ohne Verweis auf die
-        Freigabe; die Zahl bleibt nach Löschung der Freigaben unbefristet erhalten. Nie freigegebene
-        Anträge zählen nicht
+        Für den Bericht an die Personalvertretung zählt OPAA jeden Antrag bei seiner Stellung, jede
+        Freigabe bei ihrer Erteilung und das Ende ihrer Nutzbarkeit je Kalendermonat und Zweck in
+        einer eigenen Tabelle ohne Person und ohne Verweis auf den Antrag; die Zahlen bleiben nach
+        Löschung der Anträge und Freigaben unbefristet erhalten. Eine Ablehnung gibt es nicht. In
+        der Auskunft erscheinen Zahlen von 1 bis 2 nur als „weniger als 3“
 nonPersonalTables:
-  audit_incident_scope_case_counts: [organization_id, case_year, purpose, case_count]
+  audit_incident_scope_monthly_counts:
+    [organization_id, case_month, purpose, transition, case_count]
   audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
 settings:
   - key: audit_retention_settings.retention_months
@@ -501,4 +506,6 @@ auditEvents:
     trigger: >-
       Die Auskunft über die Datenerhebung samt Konfigurationsexport der Installation wird
       abgerufen, auch abgewiesen
-    details: Das Format (JSON oder Markdown); nie der Inhalt der Auskunft
+    details: >-
+      Das Format (JSON oder Markdown) und der Berichtszeitraum (erster und letzter Tag); nie der
+      Inhalt der Auskunft

@@ -6,8 +6,12 @@ import io.opaa.audit.DataCollectionDisclosureService.Format;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.compliance.InstanceDisclosureRenderer;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -29,16 +33,22 @@ public class DataCollectionDisclosureController {
   }
 
   @GetMapping
-  public DataCollectionDisclosure getDataCollectionDisclosure(@Caller CurrentUser caller) {
+  public DataCollectionDisclosure getDataCollectionDisclosure(
+      @Caller CurrentUser caller,
+      @RequestParam(name = "from", required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+      @RequestParam(name = "to", required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
     return DataCollectionDisclosureResponseMapper.toResponse(
         disclosureService.disclose(
-            caller.organizationId(), caller.id(), caller.systemRole(), Format.JSON));
+            caller.organizationId(), caller.id(), caller.systemRole(), Format.JSON, from, to));
   }
 
   @GetMapping(value = "/markdown", produces = TEXT_MARKDOWN)
-  public String getDataCollectionDisclosureMarkdown(@Caller CurrentUser caller) {
+  public String getDataCollectionDisclosureMarkdown(
+      @Caller CurrentUser caller,
+      @RequestParam(name = "from", required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+      @RequestParam(name = "to", required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
     return InstanceDisclosureRenderer.render(
         disclosureService.disclose(
-            caller.organizationId(), caller.id(), caller.systemRole(), Format.MARKDOWN));
+            caller.organizationId(), caller.id(), caller.systemRole(), Format.MARKDOWN, from, to));
   }
 }

@@ -3,19 +3,25 @@ package io.opaa.audit.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.DataCollectionDisclosure;
+import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.compliance.ComplianceManifest.DataFlowGroup;
 import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.ComplianceManifestLoader;
 import io.opaa.compliance.FactSheetRenderer;
 import io.opaa.compliance.InstanceDisclosure;
+import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
 import io.opaa.compliance.InstanceDisclosure.ProtocolField;
+import io.opaa.compliance.InstanceDisclosure.PurposeCases;
 import io.opaa.compliance.InstanceDisclosure.QueryPath;
+import io.opaa.compliance.InstanceDisclosure.ReportingPeriod;
 import io.opaa.compliance.InstanceDisclosure.SettingValue;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -24,6 +30,8 @@ class DataCollectionDisclosureResponseMapperTest {
 
   private static final Instant GENERATED = Instant.parse("2026-10-17T08:00:00Z");
   private static final Instant CHANGED = Instant.parse("2026-10-01T10:00:00Z");
+  private static final LocalDate FROM = LocalDate.parse("2025-01-01");
+  private static final LocalDate TO = LocalDate.parse("2026-12-31");
 
   @Test
   void mapsEveryField() {
@@ -51,7 +59,17 @@ class DataCollectionDisclosureResponseMapperTest {
                 List.of(new ProtocolField("recorded_at", "Mikrosekunde", "Zeitachse", "24")),
                 List.of(new QueryPath("nach Objekt", "Objekt")),
                 List.of("kein Personenfilter"),
-                "nein"));
+                "nein",
+                new IncidentScopeCases(
+                    new ReportingPeriod(FROM, TO),
+                    List.of(
+                        new PurposeCases(
+                            "DATA_BREACH_INVESTIGATION",
+                            "Untersuchung einer Datenschutzverletzung",
+                            CaseCount.of(5),
+                            CaseCount.of(2),
+                            CaseCount.of(0))),
+                    List.of("Eine Ablehnung gibt es nicht"))));
 
     DataCollectionDisclosure response =
         DataCollectionDisclosureResponseMapper.toResponse(disclosure);
@@ -95,5 +113,19 @@ class DataCollectionDisclosureResponseMapperTest {
     assertThat(response.getProtocol().getQueryPaths().get(0).getDescription()).isEqualTo("Objekt");
     assertThat(response.getProtocol().getAbsentQueryPaths()).containsExactly("kein Personenfilter");
     assertThat(response.getProtocol().getNetworkAddress()).isEqualTo("nein");
+    var cases = response.getProtocol().getIncidentScopeCases();
+    assertThat(cases.getFrom()).isEqualTo(FROM);
+    assertThat(cases.getTo()).isEqualTo(TO);
+    assertThat(cases.getSmallCountThreshold()).isEqualTo(CaseCount.THRESHOLD);
+    assertThat(cases.getNotes()).containsExactly("Eine Ablehnung gibt es nicht");
+    var purpose = cases.getPurposes().get(0);
+    assertThat(purpose.getPurpose()).isEqualTo(AuditIncidentScopePurpose.DATA_BREACH_INVESTIGATION);
+    assertThat(purpose.getLabel()).isEqualTo("Untersuchung einer Datenschutzverletzung");
+    assertThat(purpose.getRequested().getCount()).isEqualTo(5);
+    assertThat(purpose.getRequested().getBelowThreshold()).isFalse();
+    assertThat(purpose.getApproved().getCount()).isNull();
+    assertThat(purpose.getApproved().getBelowThreshold()).isTrue();
+    assertThat(purpose.getExpired().getCount()).isZero();
+    assertThat(purpose.getExpired().getBelowThreshold()).isFalse();
   }
 }

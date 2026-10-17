@@ -451,9 +451,10 @@ plus die 30 Tage (freigeben lässt er sich unverändert auch danach). Die
 Frist ist einstellbar (`opaa.audit.incident-scope-retention-years`, 1 bis 10 Jahre), damit eine
 Dienstvereinbarung sie verlängern kann; gelöscht wird in einem täglichen Lauf ohne eigenen
 Protokolleintrag, wie bei den übrigen Löschläufen. **Die Zahl der Fälle für den Jahresbericht bleibt
-erhalten:** Jede Freigabe wird bei ihrer Erteilung je Kalenderjahr und Zweck gezählt, in einer
-Zähltabelle ohne Person und ohne Verweis auf die Freigabe; nie freigegebene Anträge zählen nicht.
-Den Bericht selbst erstellt OPAA nicht.
+erhalten:** Jeder Antrag wird bei seiner Stellung, jede Freigabe bei ihrer Erteilung und das Ende
+ihrer Nutzbarkeit je Kalendermonat und Zweck gezählt (#2895), in einer Zähltabelle ohne Person und
+ohne Verweis auf den Antrag. Die [Auskunft über die
+Datenerhebung](#export-und-auskunft) gibt diese Zahlen für einen Berichtszeitraum aus.
 
 **Eine laufende Klärung hält die Konten, eine abgeschlossene nicht.** Solange ein Antrag offen ist
 oder eine Freigabe noch nutzbar, lehnt OPAA die Löschung der Konten der betroffenen, der
@@ -972,8 +973,36 @@ jeder Abruf, auch der abgewiesene, ist ein Protokollereignis `DATA_COLLECTION_DI
 Abruf und Inhalt beschreibt das Handbuch unter [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
 sie ist der Eingang für das Update-Delta gegen die Instanz (#2559) und für die statischen Anlagen der
 Dienstvereinbarung ([Behördenunterlagen und Update-Paket](./behoerdenunterlagen.md#instanzbezug)).
-Die Zahl und Anlasskategorien der anlassbezogenen Klärungen im Berichtszeitraum folgen mit #2895;
-das Ergebnis der automatisierten Prüfung je Abfrageweg ist noch nicht enthalten.
+Das Ergebnis der automatisierten Prüfung je Abfrageweg ist noch nicht enthalten.
+
+**Anlassbezogene Klärungen im Berichtszeitraum (#2895).** Der Abruf nimmt einen Berichtszeitraum
+(`from`, `to`) aus ganzen Kalendermonaten, ohne Angabe das laufende und das vorige Kalenderjahr; der
+Zeitraum steht im Protokollereignis des Abrufs. Je Anlasskategorie nennt die Auskunft, wie viele
+Klärungen im Zeitraum beantragt, freigegeben und abgelaufen sind, ohne Personen, Begründungen und
+Kennungen der Freigaben. Die Grenzen dieser Zahlen:
+
+- **Ganze Monate.** Gezählt wird je Kalendermonat; ein Zeitraum, der einen Monat anschneidet, wird
+  abgewiesen, statt eine Genauigkeit vorzutäuschen, die die Zählung nicht hat. Der Monat ist zugleich
+  die feinste zeitliche Auflösung, die über einen Fall erkennbar wird.
+- **Kleine Zahlen.** Eine Zahl von 1 oder 2 erscheint als „weniger als 3". In einem kleinen Haus
+  kann schon die Angabe „eine Klärung wegen Verdachts auf unbefugten Zugriff im März" mit
+  Flurwissen auf eine Person deuten; der Auszug geht über die Personalvertretung hinaus in
+  Anlagen und Akten. Die Schwelle schützt die einzelne Auskunft, nicht gegen gezieltes Abfragen:
+  Aus zwei überlappenden Zeiträumen lässt sich die Zahl eines Monats erschließen. Dagegen steht,
+  dass jeder Abruf mit seinem Zeitraum im Revisionsprotokoll steht und nur die Systemverwaltung
+  ihn auslösen kann.
+- **Keine Ablehnung.** Einen Zustand „abgelehnt" gibt es nicht (ein nicht gewollter Antrag wird nicht
+  freigegeben und mit seiner Frist gelöscht); die Auskunft erfindet ihn nicht. „Beantragt" minus
+  „freigegeben" ist keine Zahl abgelehnter Anträge, weil Antrag und Freigabe in verschiedene Monate
+  fallen können.
+- **Abgelaufen** heißt: Die Nutzbarkeit einer Freigabe (30 Tage) endete im Zeitraum, gezählt bis
+  zum Zeitpunkt der Auskunft. Weil nichts eine Freigabe widerruft oder verlängert, steht ihr Ende
+  bei der Freigabe fest und wird dann gezählt; für den laufenden Monat liest die Auskunft es aus den
+  Freigaben selbst, die zu diesem Zeitpunkt noch nicht gelöscht sein können.
+- **Bestand vor der Monatszählung.** Die jährliche Zählung der Freigaben (#2859) ist in die
+  monatliche übergegangen; die Monate wurden einmal aus den vorhandenen Anträgen und Freigaben
+  ermittelt. Hätte eine Installation schon Freigaben gelöscht, die die Jahreszählung enthält, bricht
+  die Migration ab, statt Zahlen zu verlieren oder einem erfundenen Monat zuzuordnen.
 
 ### Berichte
 
