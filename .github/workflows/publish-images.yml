@@ -15,6 +15,9 @@ on:
     - cron: '50 1 * * 1'
   workflow_dispatch:
 
+# No job inherits a right: each one names what it needs in its own permissions: block.
+permissions: {}
+
 env:
   REGISTRY: ghcr.io
 
@@ -46,6 +49,7 @@ jobs:
         with:
           # The release guard below needs main's history to tell whether the tag lies on it.
           fetch-depth: ${{ startsWith(github.ref, 'refs/tags/') && '0' || '1' }}
+          persist-credentials: false
 
       # Lower case like the names metadata-action derives: a push by digest takes the name verbatim,
       # and an OCI repository name has no upper case.
@@ -185,6 +189,8 @@ jobs:
       IMAGE: ${{ needs.prepare.outputs.image-prefix }}-${{ matrix.image.name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -391,6 +397,8 @@ jobs:
       EXPECTED_PLATFORMS: linux/amd64 linux/arm64
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -494,6 +502,8 @@ jobs:
       CHART_REPOSITORY: ghcr.io/${{ github.repository_owner }}/charts
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:

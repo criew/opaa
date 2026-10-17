@@ -5,16 +5,16 @@ on:
     branches: [main]
   workflow_dispatch:
   # Self-validates this workflow file itself inside a PR that touches it -
-  # resolution only, never submitted (see dependency-graph input below).
+  # resolution only, never submitted (see the resolve job below).
   pull_request:
     branches: [main]
     paths:
       - ".github/workflows/dependency-graph.yml"
 
-# Submits the resolved dependency graph to GitHub's Dependency Graph API,
-# which requires write access to Dependency Graph snapshots.
+# Read-only by default. Only the submit job, which never runs on pull_request, may write the
+# dependency graph snapshot (contents: write).
 permissions:
-  contents: write
+  contents: read
 
 # A new push to main or a new push to this workflow's own PR makes the
 # previous run's result irrelevant - without the SHA in the non-PR group, a
@@ -25,24 +25,46 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Resolves the Gradle dependency graph for backend + opaa-api (single
+  # multi-module build rooted at backend/) so Dependabot alerts cover the
+  # JVM dependency tree; the pnpm lockfiles (frontend/, e2e/) are read by
+  # GitHub itself without a submission step.
   submit:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: "25.0.4+101.0.LTS"
 
-      # Resolves the Gradle dependency graph for backend + opaa-api (single
-      # multi-module build rooted at backend/) so Dependabot alerts cover the
-      # JVM dependency tree; the pnpm lockfiles (frontend/, e2e/) are read by
-      # GitHub itself without a submission step. On pull_request the graph is
-      # only generated and uploaded as a workflow artifact for inspection,
-      # never submitted to the Dependency Submission API - that only happens
-      # on push to main.
       - uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           build-root-directory: backend
-          dependency-graph: ${{ github.event_name == 'pull_request' && 'generate-and-upload' || 'generate-and-submit' }}
+          dependency-graph: generate-and-submit
+
+  # Same resolution inside a PR that changes this workflow: the graph is only uploaded as a
+  # workflow artifact for inspection, never submitted.
+  resolve:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "25.0.4+101.0.LTS"
+
+      - uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          build-root-directory: backend
+          dependency-graph: generate-and-upload
