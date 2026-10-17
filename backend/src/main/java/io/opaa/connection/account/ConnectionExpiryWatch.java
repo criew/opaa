@@ -134,8 +134,7 @@ public class ConnectionExpiryWatch {
     Instant now = clock.instant();
     LocalDate today = LocalDate.ofInstant(now, clock.getZone());
     List<UUID> due =
-        profiles.lockSecretsExpiringUnwarned(
-            today.plusDays(ConnectionProfileService.SECRET_EXPIRY_WARNING_DAYS));
+        profiles.lockSecretsExpiringUnwarned(ConnectionProfileService.lastSecretWarningDay(clock));
     if (due.isEmpty()) {
       return 0;
     }
