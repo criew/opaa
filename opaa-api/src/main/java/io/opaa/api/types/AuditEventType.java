@@ -555,5 +555,13 @@ public enum AuditEventType {
    * The system administration tested a profile's own sign-in; the outcome says whether it held, and
    * a success lifts a rejection. Never carries the message, the secret or the token.
    */
-  CONNECTION_PROFILE_SIGN_IN_TESTED
+  CONNECTION_PROFILE_SIGN_IN_TESTED,
+
+  // Auskunft über die Datenerhebung (ADR-0052)
+  /**
+   * The disclosure of the data collection with the configuration export of the instance was
+   * retrieved, or the attempt refused; {@code after} names the format. Carries no content of the
+   * disclosure itself.
+   */
+  DATA_COLLECTION_DISCLOSURE_EXPORTED
 }

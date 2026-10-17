@@ -80,6 +80,7 @@ protokollereignisse#connector-locked
 protokollereignisse#connector-profile-optional
 protokollereignisse#connector-profile-required
 protokollereignisse#connector-unlocked
+protokollereignisse#data-collection-disclosure-exported
 protokollereignisse#diagnostic-context-retention-changed
 protokollereignisse#diagnostic-impersonation-granted
 protokollereignisse#diagnostic-impersonation-revoked

@@ -206,8 +206,12 @@ jobs:
           # Backend and frontend report the version of the release tag, outside a release
           # 0.0.0-dev+<commit>. The Dockerfiles declare the argument after their dependency layers,
           # so a new commit rebuilds only the build step, which its changed sources rebuild anyway;
-          # the weekly rebuild of an unchanged commit keeps the same value and cache key.
-          build-args: OPAA_VERSION=${{ needs.prepare.outputs.build-version }}
+          # the weekly rebuild of an unchanged commit keeps the same value and cache key. The full
+          # commit is read only by the backend's last stage (data collection disclosure), so no
+          # build layer depends on it.
+          build-args: |
+            OPAA_VERSION=${{ needs.prepare.outputs.build-version }}
+            OPAA_COMMIT=${{ github.sha }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           # SBOM and provenance attestations are attached per platform and carried over into the
           # index by publish; retrieval is documented in docs/sbom.md.

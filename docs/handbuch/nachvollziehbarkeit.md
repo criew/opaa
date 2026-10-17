@@ -36,9 +36,9 @@ Fristen laufen. Das Manifest wird wie Code geändert und geprüft. Aus ihm entst
 | `fristen` | Welche Aufbewahrungs- und Löschfristen gelten, mit welchem Konfigurationsschlüssel? |
 
 Jedes Blatt beschreibt die **Voreinstellung einer Version**, nicht die Einstellungen einer
-bestimmten Installation. Was eine Installation abweichend konfiguriert hat, prüft der Betrieb in
-ihrer [Konfiguration](konfiguration.md). Was das Manifest noch nicht beschreibt, steht im Blatt
-unter „Noch nicht erfasst“, statt zu fehlen.
+bestimmten Installation. Was eine Installation abweichend konfiguriert hat, zeigt ihre [Auskunft
+über die Datenerhebung](#auskunft-über-die-datenerhebung-einer-installation). Was das Manifest
+noch nicht beschreibt, steht im Blatt unter „Noch nicht erfasst“, statt zu fehlen.
 
 ```mermaid
 flowchart LR
@@ -136,6 +136,56 @@ Die Blätter liegen danach unter `backend/build/compliance/faktenblaetter/`. Der
 stammt aus dem ausgecheckten Stand, die Version aus der Angabe `-PopaaVersion`; ohne sie steht dort
 `0.0.0-dev`.
 
+## Auskunft über die Datenerhebung einer Installation
+
+Die Faktenblätter beschreiben eine Version. Die **Auskunft über die Datenerhebung** beschreibt eine
+laufende Installation: das Fakten-Manifest der eingesetzten Version, verbunden mit den Werten, die
+diese Installation tatsächlich verwendet. Sie ist für Datenschutz und Personalrat gedacht, etwa vor
+dem Rollout als Anlage einer Dienstvereinbarung oder jährlich als Nachweis, dass sich nichts
+stillschweigend verschoben hat.
+
+> **Beispiel.** Der Personalrat will wissen, ob die Dienststelle das Revisionsprotokoll länger als
+> voreingestellt aufbewahrt und welche Quellen angebunden sind. Die Systemverwaltung ruft die
+> Auskunft als Markdown ab. Unter „Abweichungen von der Voreinstellung“ steht die verlängerte Frist
+> mit dem Zeitpunkt ihrer letzten Änderung, unter „Konnektortypen in Gebrauch“ jeder Konnektor, aus
+> dem eine Bibliothek liest.
+
+Abrufen darf sie nur die Systemverwaltung, mit dem Zugangstoken einer angemeldeten Sitzung:
+
+```bash
+# maschinenlesbar, als Eingang für Werkzeuge
+curl -s -H "Authorization: Bearer <token>" \
+  https://<host>/api/v1/admin/compliance/data-collection-disclosure > auskunft.json
+# lesbar, für Datenschutz und Personalrat
+curl -s -H "Authorization: Bearer <token>" \
+  https://<host>/api/v1/admin/compliance/data-collection-disclosure/markdown > auskunft.md
+```
+
+Ein Konto ohne die Rolle erhält `403`. **Jeder Abruf steht im Revisionsprotokoll**, auch der
+abgewiesene, mit dem Format, aber ohne den Inhalt der Auskunft. Die Ereignisart dafür führt das
+Faktenblatt `protokollereignisse` wie jede andere.
+
+Die Auskunft enthält:
+
+| Teil | Inhalt |
+|---|---|
+| Kopf | OPAA-Version, Commit des Images und Zeitpunkt des Abrufs |
+| Abweichungen von der Voreinstellung | jede Einstellung mit Datenwirkung, deren Wert in dieser Installation vom ausgelieferten abweicht |
+| Einstellungen mit Datenwirkung | alle diese Einstellungen mit Voreinstellung, wirksamem Wert und, bei Fristen aus der Verwaltung, dem Zeitpunkt der letzten Änderung |
+| Ausgehende Datenflüsse | jede Verbindung nach außen und ob sie eingeschaltet ist; „nur auf Handlung“, wo sie allein auf eine Aktion der Systemverwaltung hin entsteht. Ein Konnektor gilt als eingeschaltet, sobald eine geteilte Bibliothek aus ihm liest oder ein Zugang private Bibliotheken zulässt |
+| Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
+| Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
+| Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
+
+Die JSON-Fassung trägt das Manifest in derselben Form wie `faktenblaetter.json`; ein Werkzeug liest
+beide gleich.
+
+**Ohne Geheimnisse, Personen und Inhalte.** Ausgegeben wird nur der Wert einer Einstellung, die das
+Manifest als datenwirksam führt; Schlüssel, Passwörter und Token gehören nie dazu. Adressen
+erscheinen ohne Zugangsdaten, Abfrageteil und Anker. Namen von Personen, Protokollsätze und Inhalte
+von Bibliotheken enthält die Auskunft nicht, Zählungen nur je Konnektortyp und ohne private
+Bibliotheken.
+
 ## Was bei jeder Änderung geprüft wird
 
 Kein Mensch muss daran denken, die Fakten nachzutragen: Mehrere Prüfungen schlagen fehl, wenn
@@ -167,9 +217,11 @@ Form der Verweise. Wie Entwickler das Manifest nachpflegen, steht in
 
 - Ein Messwert der Suchqualität genau für die Commits eines Release; das Update-Paket nennt die
   Referenzwerte, die im Stand jeder Version gelten, mit ihrem Messdatum.
-- Ein Abgleich des Deltas mit der Konfiguration einer bestimmten Installation
-  ([#2558](https://github.com/criew/opaa/issues/2558),
-  [#2559](https://github.com/criew/opaa/issues/2559)).
+- Ein Abgleich des Deltas mit der [Auskunft einer
+  Installation](#auskunft-über-die-datenerhebung-einer-installation)
+  ([#2559](https://github.com/criew/opaa/issues/2559)).
+- Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
+  Schnittstelle oben.
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
   ([#2557](https://github.com/criew/opaa/issues/2557)).
 
