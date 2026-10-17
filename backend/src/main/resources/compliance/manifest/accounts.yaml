@@ -185,7 +185,7 @@ data:
     storage: Anwendungsdatenbank
     retention:
       rule: >-
-        Bis zur Löschung des Kontos oder des betroffenen Objekts; Abflussalarme der externen KI-Werkzeuge
+        Bis zur Löschung des Kontos oder des betroffenen Objekts; Abflussalarme zum Zugriff externer KI-Werkzeuge
         14 Tage
       settings: [io.opaa.externalaccess.ExternalAccessAlertRetention#RETENTION]
     visibility: [die empfangende Person]

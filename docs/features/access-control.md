@@ -332,7 +332,7 @@ Benutzer authentifizieren sich über:
 - **Single Sign-On (SSO)** — OIDC (empfohlen für den Regelbetrieb; SAML nur über eine Föderation)
 - **Lokale Konten** — E-Mail-Adresse und Passwort, von OPAA selbst geführt (optional, Standard aus;
   das Konto der Systemverwaltung ist immer ein lokales Konto)
-- **API-Tokens** — persönliche Zugangstokens für programmatischen Zugang und für fremde KI-Werkzeuge
+- **API-Tokens** — persönliche Zugangstokens für programmatischen Zugang und für externe KI-Werkzeuge
   über den MCP-Server; entschieden am 18.09.2026, noch nicht gebaut. Nur lesend, mit Pflicht-Ablauf,
   installationsweit abschaltbar und nur für Bibliotheken, die dafür ausdrücklich freigegeben sind —
   siehe [external-access.md](./external-access.md)

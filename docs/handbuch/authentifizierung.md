@@ -606,7 +606,7 @@ Passworthash ist auf dem alten Stand. Nach **jeder** Rücksicherung gehören des
    der Zwischenzeit ist die Liste, sofern es nicht selbst mit zurückgesichert wurde.
 
 Die beiden Verschlüsselungsschlüssel bleiben dieselben, sonst sind die gespeicherten Geheimnisse
-unlesbar. Sind externe KI-Werkzeuge in Betrieb, rollen Schalter, Freigaben und Zugangstokens mit zurück,
+unlesbar. Ist der Zugriff externer KI-Werkzeuge eingeschaltet, rollen Schalter, Freigaben und Zugangstokens mit zurück,
 einschließlich eines Notaus; die Prüfliste steht im Kapitel [Externe KI-Werkzeuge](fremdzugaenge.md).
 
 ## Testkonten im Überblick

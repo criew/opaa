@@ -496,7 +496,7 @@ Werkzeuge und Fremdsysteme werden über das **Model Context Protocol (MCP)** ang
 
 **Abgrenzung der Richtung.** Dieses Kapitel beschreibt OPAA als MCP-**Client**: Ein Agent von OPAA
 ruft ein fremdes Werkzeug auf. Das bleibt Phase 2. Die **Gegenrichtung** — OPAA als MCP-**Server**,
-den ein fremdes KI-Werkzeug als Wissensquelle anspricht — ist am 18.09.2026 entschieden und in
+den ein externes KI-Werkzeug als Wissensquelle anspricht — ist am 18.09.2026 entschieden und in
 [external-access.md](./external-access.md) beschrieben. Die beiden Richtungen teilen nur den
 Protokollnamen: Die Client-Richtung führt Daten aus OPAA heraus in ein Werkzeug, das handelt; die
 Server-Richtung liefert Fundstellen an ein Werkzeug, das fragt. Entscheidungen der einen Richtung
@@ -577,7 +577,7 @@ Fachverfahren, Vorgangsbearbeitung und elektronische Akte sind die Systeme, in d
 |---|---|
 | [spaces-and-assets.md](./spaces-and-assets.md) | Rechte an Agenten, Freigabekette für das Wissen, Verteilungsstufen, Katalog, Versionierung, Freigabeweg, Export und Import — **das Leitdokument** |
 | [access-control.md](./access-control.md) | Identität, Gruppen, Systemverwaltung, Protokollierung |
-| [external-access.md](./external-access.md) | Die **Gegenrichtung**: OPAA als MCP-Server für fremde KI-Werkzeuge, mit Zugangstokens, Bibliotheksfreigabe und Installationsschalter. Nicht Gegenstand dieses Dokuments |
+| [external-access.md](./external-access.md) | Die **Gegenrichtung**: OPAA als MCP-Server für externe KI-Werkzeuge, mit Zugangstokens, Bibliotheksfreigabe und Installationsschalter. Nicht Gegenstand dieses Dokuments |
 | [data-indexing-rag.md](./data-indexing-rag.md) | Abfrageablauf, Quellenbindung und Belegvalidierung, auf denen Belegtreue und Prüfagenten aufsetzen |
 | [search-quality-evaluation.md](./search-quality-evaluation.md) | Messrahmen für Referenzfälle, den der Prüfstand auf Agentenebene weiterverwendet |
 | [llm-integration.md](./llm-integration.md) | Modellwahl und zentrale Vorgaben als Obergrenze für die Modellwahl eines Agenten; die Fähigkeiten eines Modelleintrags, darunter „Werkzeugaufrufe"; und die harte Regel, dass der **Systemvorspann nicht über den Chat änderbar** ist — Skills und Agenten setzen ihre Blöcke daneben, sie ersetzen ihn nicht |

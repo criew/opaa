@@ -343,12 +343,12 @@ function SettingsForm({
 
         <PanelSection
           id="external-tools-settings-instructions"
-          title="Einleitungstext für fremde Werkzeuge"
+          title="Einleitungstext für externe KI-Werkzeuge"
         >
           <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
-            Er wird dem fremden Modell beim Verbindungsaufbau mitgegeben, damit es erkennt, welche
-            Fragen hierher gehören. Seine Änderung ändert keine Reichweite und wird nicht
-            protokolliert.
+            Er wird dem Modell des externen KI-Werkzeugs beim Verbindungsaufbau mitgegeben, damit es
+            erkennt, welche Fragen hierher gehören. Seine Änderung ändert keine Reichweite und wird
+            nicht protokolliert.
           </Typography>
           <TextField
             label="Einleitungstext"

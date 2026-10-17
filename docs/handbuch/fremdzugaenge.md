@@ -119,8 +119,8 @@ und wird deshalb **nicht** protokolliert — jede andere Änderung in diesem Pan
 
 ### Externe KI-Werkzeuge ganz abschalten
 
-Über dem Schalter steht eine Entscheidung des Betriebs: Eine Installation kann externe KI-Werkzeuge
-ganz abschalten, etwa für eine Demo oder bis die Beteiligung der Personalvertretung geklärt ist
+Über dem Schalter steht eine Entscheidung des Betriebs: Eine Installation kann den Zugriff externer
+KI-Werkzeuge ganz abschalten, etwa für eine Demo oder bis die Beteiligung der Personalvertretung geklärt ist
 (`OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED=false`, siehe
 [Konfiguration](konfiguration.md#funktionen-abschalten)). Offen ist der Kanal nur, wenn die Funktion
 an **und** der Schalter eingeschaltet ist. Ist die Funktion aus,
@@ -726,7 +726,7 @@ Namensauflösung findet dabei nicht statt.
 
 | Variable | Standard | Wirkung |
 |---|---|---|
-| `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `true` | `false` schaltet externe KI-Werkzeuge für die Installation ab, unabhängig vom Schalter (Abschnitt 3, „Externe KI-Werkzeuge ganz abschalten"); Tokens, Freigaben und Einstellungen bleiben gespeichert |
+| `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `true` | `false` schaltet den Zugriff externer KI-Werkzeuge für die Installation ab, unabhängig vom Schalter (Abschnitt 3, „Externe KI-Werkzeuge ganz abschalten"); Tokens, Freigaben und Einstellungen bleiben gespeichert |
 | `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` | `365` | Längste zulässige Befristung einer Bibliotheksfreigabe in Tagen. Muss positiv sein — eine Freigabe ohne Obergrenze ist genau die Ratsche, die die Befristung verhindert |
 | `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `14` | Vorlauf der Wiedervorlage an die Person, die die Freigabe zuletzt gesetzt hat (Abschnitt 4). `0` schaltet die Erinnerung ab; die Freigabe erlischt trotzdem, nur unangekündigt |
 | `OPAA_MCP_DEFAULT_MAX_HITS` | `5` | Dokumente, die eine `search` über MCP ohne eigenes `maxHits` liefert. Bewusst niedriger als die Vorgabe des REST-Suchwegs: Hier ist ein Treffer eine Station auf dem Weg zum Abruf, nicht die Antwort |

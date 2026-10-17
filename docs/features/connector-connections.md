@@ -78,7 +78,7 @@ Quellfreigabe dort „Quelle verbinden“, und die Konnektor-Freigabe wird als F
 **Abgrenzung:**
 
 - **Zugriff externer KI-Werkzeuge** ([external-access.md](./external-access.md)) ist die Gegenrichtung: OPAA als
-  MCP-*Server* für fremde KI-Werkzeuge.
+  MCP-*Server* für externe KI-Werkzeuge.
 - **Anmeldung an OPAA** ([ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md)): Die Token der
   OIDC-Anbieter dienen nur der Identität und werden hier nicht verwendet. Einzige mögliche
   Ausnahme ist der Token-Austausch (offen, siehe [Anmeldearten](#anmeldearten)): Er reicht das

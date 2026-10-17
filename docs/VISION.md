@@ -121,7 +121,7 @@ an Barrierefreiheit und Missbrauchsschutz.
 | **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [access-control.md](./features/access-control.md) |
 | **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [security-and-compliance.md](./features/security-and-compliance.md) |
 | **H** | Monitoring, Kosten & Governance | Grenzen je Nutzer, Kostentransparenz, Auswertung des KI-Rollouts — aggregiert, ohne Personenbezug | [monitoring-and-governance.md](./features/monitoring-and-governance.md) |
-| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für fremde KI-Werkzeuge | [user-frontends.md](./features/user-frontends.md) |
+| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für externe KI-Werkzeuge | [user-frontends.md](./features/user-frontends.md) |
 | **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [deployment-infrastructure.md](./features/deployment-infrastructure.md) |
 | **K** | Verwaltungs-Spezifika | Leichte Sprache und Amtssprache, Barrierefreiheit, Revisionssicherheit, Anbindung an die elektronische Akte | [public-sector.md](./features/public-sector.md) |
 
@@ -150,7 +150,7 @@ Protokoll und Vollständigkeit nach DSGVO · Web-Oberfläche und REST-API · Bet
 Agenten und Skills als teilbare Pakete · geführtes Agenten-Onboarding · Prüfstand vor der Freigabe ·
 Prüfagenten für kritische Vorgänge · isolierte Ausführungsumgebung für Dateiverarbeitung, Auswertungen,
 Texterkennung, Transkription und Diagramme · Deep Research · schreibende Integrationen mit menschlicher
-Freigabe · MCP · Asset-Katalog mit Export und Import · OPAA als Wissensschicht für fremde KI-Werkzeuge,
+Freigabe · MCP · Asset-Katalog mit Export und Import · OPAA als Wissensschicht für externe KI-Werkzeuge,
 erreichbar über persönliche Zugangstokens und einen MCP-Server · Auswertung von Nutzung und Kosten.
 
 ### Phase 3 — Kollaboration und organisationsweiter Rollout

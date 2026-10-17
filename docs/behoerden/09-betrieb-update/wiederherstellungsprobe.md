@@ -133,7 +133,7 @@ Vor der Sicherung legt die Systemverwaltung in der Quelle an:
 | T7 | Eine Bibliothek mit Webquelle und hinterlegten Zugangsdaten für die Basic-Anmeldung (`benutzer:passwort`), am besten gegen eine Quelle, die die Anmeldung verlangt | Schlüssel für die Zugangsdaten richtig zurückgespielt (P12) |
 
 Wo die Installation weitere Bausteine nutzt, kommen sie dazu, etwa eine Bibliothek mit einer
-angebundenen Quelle oder externe KI-Werkzeuge.
+angebundenen Quelle oder der Zugriff externer KI-Werkzeuge.
 
 ## Ablauf
 

@@ -565,7 +565,7 @@ Nicht zu sichern sind Container und Pods, `/tmp`, das Frontend und die herunterg
   Datenbank bekommt `OPAA_AUTH_JWT_SECRET` einen neuen Wert, bevor das Backend startet, und die
   Sperren der Zwischenzeit werden erneut gesetzt
   ([Nacharbeit nach einer Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)).
-  Sind externe KI-Werkzeuge in Betrieb, kommt deren Prüfliste dazu ([Externe KI-Werkzeuge](fremdzugaenge.md)).
+  Ist der Zugriff externer KI-Werkzeuge eingeschaltet, kommt dessen Prüfliste dazu ([Externe KI-Werkzeuge](fremdzugaenge.md)).
 
 Die Befehle stehen je Betriebsweg unter [Docker Compose](docker-compose.md#sicherung-und-wiederherstellung)
 und [Kubernetes](kubernetes.md#sicherung-und-wiederherstellung).
