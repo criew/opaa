@@ -332,6 +332,9 @@ export default function LibraryDetailPage() {
   const triggerIndexing = useIndexingStore((s) => s.triggerIndexing)
   const loadStatus = useIndexingStore((s) => s.loadStatus)
   const stopPolling = useIndexingStore((s) => s.stopPolling)
+  const retryStatusPolling = useIndexingStore((s) => s.retryStatusPolling)
+  // Takes the focus from „Erneut versuchen", which disappears with the notice it belongs to.
+  const runStatusRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!libraryId || !connectorSourceType) return
@@ -741,40 +744,69 @@ export default function LibraryDetailPage() {
             5.7) - anchored in the hero with a pulsing dot as the one moving element. */}
         {connectorSourceType && isRunning && (
           <Box
+            ref={runStatusRef}
+            tabIndex={-1}
             sx={{ mt: 2.5, pt: 2, borderTop: 1, borderTopColor: 'divider', position: 'relative' }}
           >
-            <LinearProgress
-              variant={run.totalDocuments > 0 ? 'determinate' : 'indeterminate'}
-              value={runProgressPercent}
-              sx={{ mb: 1, borderRadius: 999 }}
-            />
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <Box
-                aria-hidden
-                sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '999px',
-                  bgcolor: 'primary.main',
-                  '@keyframes opaaPulse': {
-                    '0%': { opacity: 0.35 },
-                    '50%': { opacity: 1 },
-                    '100%': { opacity: 0.35 },
-                  },
-                  animation: 'opaaPulse 1.2s ease-in-out infinite',
-                  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-                }}
-              />
-              <Typography variant="body2" sx={{ color: 'text.secondary' }} role="status">
-                {run.totalDocuments > 0
-                  ? isRssFeedRun
-                    ? `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Feed-Einträgen verarbeitet (${run.documentsIndexedTotal} Dokumente indiziert)`
-                    : `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Dokumenten verarbeitet`
-                  : isRssFeedRun
-                    ? 'Feed-Einträge werden ermittelt …'
-                    : 'Dokumente werden ermittelt …'}
-              </Typography>
-            </Stack>
+            {run.statusUnknown ? (
+              // The last known status stays RUNNING: failed fetches say nothing about the run.
+              <Alert
+                severity="warning"
+                role="status"
+                data-testid="library-run-status-unknown"
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => {
+                      runStatusRef.current?.focus()
+                      retryStatusPolling(libraryId)
+                    }}
+                  >
+                    Erneut versuchen
+                  </Button>
+                }
+              >
+                <AlertTitle>Status unbekannt</AlertTitle>
+                Der Stand des Indizierungslaufs konnte wiederholt nicht abgerufen werden. Der Lauf
+                kann im Hintergrund weiterlaufen.
+              </Alert>
+            ) : (
+              <>
+                <LinearProgress
+                  variant={run.totalDocuments > 0 ? 'determinate' : 'indeterminate'}
+                  value={runProgressPercent}
+                  sx={{ mb: 1, borderRadius: 999 }}
+                />
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <Box
+                    aria-hidden
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '999px',
+                      bgcolor: 'primary.main',
+                      '@keyframes opaaPulse': {
+                        '0%': { opacity: 0.35 },
+                        '50%': { opacity: 1 },
+                        '100%': { opacity: 0.35 },
+                      },
+                      animation: 'opaaPulse 1.2s ease-in-out infinite',
+                      '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                    }}
+                  />
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }} role="status">
+                    {run.totalDocuments > 0
+                      ? isRssFeedRun
+                        ? `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Feed-Einträgen verarbeitet (${run.documentsIndexedTotal} Dokumente indiziert)`
+                        : `${run.documentCount + run.documentsSkipped} von ${run.totalDocuments} Dokumenten verarbeitet`
+                      : isRssFeedRun
+                        ? 'Feed-Einträge werden ermittelt …'
+                        : 'Dokumente werden ermittelt …'}
+                  </Typography>
+                </Stack>
+              </>
+            )}
           </Box>
         )}
       </AssetDetailHeader>

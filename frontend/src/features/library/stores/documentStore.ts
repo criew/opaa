@@ -29,6 +29,8 @@ function isNotFoundError(err: unknown): boolean {
 }
 
 const POLL_INTERVAL_MS = 3000
+const POLLING_STOPPED_MESSAGE =
+  'Die Dokumentliste wird nicht mehr automatisch aktualisiert, weil der Abruf fehlgeschlagen ist.'
 export const DEFAULT_PAGE_SIZE = 20
 
 // The paging/search state a library's document list was last loaded with - kept alongside
@@ -73,6 +75,9 @@ interface DocumentState {
   // dead "loading failed" state, so a stale bookmark or a deleted folder's deep link recovers
   // silently into a valid view.
   folderNotFoundMessage: string | null
+  // Set when a poll tick failed and the automatic refresh during indexing stopped; cleared by
+  // the next successful foreground load.
+  pollingStoppedMessage: string | null
   folderError: string | null
   // A list rather than a single message: uploadNewDocument is called once per file from a
   // multi-file drop/selection, and a failure on one file must not erase - or be erased by - the
@@ -156,6 +161,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   isLoading: false,
   error: null,
   folderNotFoundMessage: null,
+  pollingStoppedMessage: null,
   folderError: null,
   uploadErrors: [],
   deleteError: null,
@@ -174,6 +180,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       isLoading: false,
       error: null,
       folderNotFoundMessage: null,
+      pollingStoppedMessage: null,
       folderError: null,
       uploadErrors: [],
       deleteError: null,
@@ -348,8 +355,8 @@ registerSessionStore(useDocumentStore)
 // through get().loadDocuments(), which would immediately clear the very
 // folderNotFoundMessage this call is in the middle of setting.
 //
-// A background load (the poll tick) leaves isLoading and error untouched and stops polling on a
-// failure instead of surfacing it.
+// A background load (the poll tick) leaves isLoading and error untouched; on a failure it stops
+// polling and sets pollingStoppedMessage instead of error.
 async function runLoadDocuments(
   libraryId: string,
   options: LoadOptions | undefined,
@@ -414,7 +421,7 @@ async function runLoadDocuments(
       },
       foldersByLibrary: { ...get().foldersByLibrary, [libraryId]: response.folders },
       breadcrumbByLibrary: { ...get().breadcrumbByLibrary, [libraryId]: response.breadcrumb },
-      ...(mode.background ? {} : { isLoading: false }),
+      ...(mode.background ? {} : { isLoading: false, pollingStoppedMessage: null }),
       // A genuinely new successful load means whichever folder was missing before is no longer
       // relevant - reset the hint so it does not keep showing once the user
       // has navigated elsewhere. Suppressed for the fallback's own retry call itself (see the catch
@@ -432,6 +439,7 @@ async function runLoadDocuments(
     settleRequest(libraryId, sequence)
     if (mode.background) {
       get().stopPolling(libraryId)
+      set({ pollingStoppedMessage: POLLING_STOPPED_MESSAGE })
       return
     }
     // GET .../documents validates a given folderId regardless of q and rejects an
