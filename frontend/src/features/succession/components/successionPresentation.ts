@@ -66,7 +66,11 @@ export function problemOf(kind: SuccessionKind, entry: SuccessionEntryResponse):
     return `Die Gruppe, der ${noun} gehört, hat keine aktiven Mitglieder mehr.`
   }
   if (entry.objectType === 'SPACE') return 'Das Konto, dem der Space gehört, ist nicht mehr aktiv.'
-  // An asset's owner may be a person or a directory group; the entry does not say which.
+  if (entry.ownerType === 'USER') return `Das Konto, dem ${noun} gehört, ist nicht mehr aktiv.`
+  if (entry.ownerType === 'GROUP') {
+    return `Die Gruppe, der ${noun} gehört, gibt es nicht mehr oder sie hat keine aktiven Mitglieder.`
+  }
+  // An owner the backend cannot resolve keeps the neutral sentence.
   return `Wem ${noun} gehört, kann nicht mehr handeln.`
 }
 
@@ -81,12 +85,14 @@ export function addresseeOf(entry: SuccessionEntryResponse): string {
   return ADDRESSEES[entry.addressee] ?? entry.addresseeLabel ?? ''
 }
 
-export type SuccessionNextStep = 'HANDOVER' | 'GROUP_TRANSFER' | 'GROUP_ADMIN'
+export type SuccessionNextStep =
+  'HANDOVER' | 'GROUP_TRANSFER' | 'OWNER_GROUP_TRANSFER' | 'GROUP_ADMIN'
 
 /**
- * The one recommended way out of an entry: an object goes to a successor, the rights of a group
- * without members go to another group, and a group without stewards, an object of an internal
- * group and a group that holds nothing are settled in the group management.
+ * The one recommended way out of an entry: an object of a person goes to a successor, an object of
+ * a provider's group moves with a transfer from that group, the rights of a group without members
+ * go to another group, and a group without stewards, an object of an internal group and a group
+ * that holds nothing are settled in the group management.
  */
 export function nextStepOf(
   kind: SuccessionKind,
@@ -95,6 +101,8 @@ export function nextStepOf(
   if (kind === 'GRANTS_WITHOUT_RECIPIENT') return 'GROUP_TRANSFER'
   if (entry.objectType === 'GROUP') return 'GROUP_ADMIN'
   if (entry.addressee === 'GROUP_STEWARDS') return 'GROUP_ADMIN'
+  // No account holds a group's object, so only a transfer naming the group can move it.
+  if (entry.ownerType === 'GROUP' && entry.ownerGroupId) return 'OWNER_GROUP_TRANSFER'
   return 'HANDOVER'
 }
 

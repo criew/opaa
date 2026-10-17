@@ -43,6 +43,8 @@ final class SuccessionResponseMapper {
                 : io.opaa.api.dto.AssetType.fromValue(finding.assetType().value()))
         .addresseeLabel(finding.addresseeLabel())
         .ownerHint(finding.ownerHint())
+        .ownerType(finding.ownerType())
+        .ownerGroupId(finding.ownerGroupId())
         .membershipHints(finding.membershipHints())
         .firstSeenAt(entry.firstSeenAt());
   }
