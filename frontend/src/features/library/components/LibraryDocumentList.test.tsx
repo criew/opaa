@@ -121,4 +121,37 @@ describe('LibraryDocumentList (#1943)', () => {
 
     expect(screen.getByText('Space: Soziales (SOZ) · Handbuch / Kapitel 3')).toBeInTheDocument()
   })
+
+  // regression guard for #2912: a source address from third-party metadata only becomes a link
+  // target with an http(s) scheme; any other address stays visible as plain text.
+  describe('source addresses', () => {
+    it.each([
+      ['sourceEntryUrl', 'Herkunft:', 'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='],
+      ['sourceEntryUrl', 'Herkunft:', 'javascript:alert(1)'],
+      ['sourceUrl', 'Quelle:', 'data:text/html,<script>alert(1)</script>'],
+      ['sourceUrl', 'Quelle:', 'JaVaScRiPt:alert(1)'],
+    ] as const)(
+      'shows a %s (%s) with the address %j as text, not as a link',
+      (field, label, url) => {
+        renderList({ documents: [{ ...document, sourceType: 'RSS_FEED', [field]: url }] })
+
+        expect(screen.getByText(url)).toBeInTheDocument()
+        expect(screen.getByText(url).closest('a')).toBeNull()
+        expect(screen.getByText(new RegExp(`^${label}`))).toBeInTheDocument()
+        expect(screen.queryAllByRole('link').filter((a) => a.textContent === url)).toEqual([])
+      },
+    )
+
+    it.each([
+      ['sourceEntryUrl', 'https://example.gov/feed/eintrag-7'],
+      ['sourceUrl', 'https://example.gov/verzeichnis/doc.pdf'],
+    ] as const)('keeps a %s with an https address as a link', (field, url) => {
+      renderList({ documents: [{ ...document, sourceType: 'RSS_FEED', [field]: url }] })
+
+      const link = screen.getByRole('link', { name: url })
+      expect(link).toHaveAttribute('href', url)
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    })
+  })
 })

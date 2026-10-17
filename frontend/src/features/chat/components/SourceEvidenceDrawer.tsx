@@ -31,6 +31,7 @@ import type {
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import type { OpenableDocument } from '@/features/library'
 import { fontFamily } from '@/shared/theme/tokens'
+import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 
 interface SourceEvidenceDrawerProps {
   open: boolean
@@ -352,6 +353,8 @@ export default function SourceEvidenceDrawer({
         ) : (
           visibleDocs.map((doc) => {
             const focused = doc.docIndex !== undefined && focusedDocIndexes.includes(doc.docIndex)
+            const sourceAddress = doc.sourceEntryUrl ?? doc.sourceUrl
+            const sourceHref = safeExternalHref(sourceAddress)
             return (
               <Box
                 // Two distinct documents may share a file name and each get their own row,
@@ -518,7 +521,8 @@ export default function SourceEvidenceDrawer({
                     the raw URL as its title tooltip and aria-label - a plain
                     title alone is generally not announced by a screen reader once the element
                     already has visible text), since that address may only be reachable from
-                    OPAA's own network, not the caller's browser. */}
+                    OPAA's own network, not the caller's browser. An address without an http(s)
+                    scheme gets no link at all. */}
                   {doc.documentId && (
                     <Link
                       component="button"
@@ -530,14 +534,14 @@ export default function SourceEvidenceDrawer({
                       Im Dokument öffnen
                     </Link>
                   )}
-                  {(doc.sourceEntryUrl ?? doc.sourceUrl) && (
+                  {sourceHref && (
                     <Link
-                      href={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
+                      href={sourceHref}
                       target="_blank"
                       rel="noopener noreferrer"
                       underline="hover"
-                      title={doc.sourceEntryUrl ?? doc.sourceUrl ?? undefined}
-                      aria-label={`Quelle: ${doc.sourceEntryUrl ?? doc.sourceUrl ?? ''}`}
+                      title={sourceAddress ?? undefined}
+                      aria-label={`Quelle: ${sourceAddress ?? ''}`}
                       sx={{ fontSize: 11.5, color: 'text.disabled' }}
                     >
                       Quelle

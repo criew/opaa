@@ -170,4 +170,28 @@ describe('useDocumentPreview', () => {
       expect.objectContaining({ severity: 'error' }),
     ])
   })
+
+  // regression guard for #2912: a source address from third-party metadata is only navigated to
+  // with an http(s) scheme; any other counts as no usable address.
+  it.each([
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'file:///etc/passwd',
+  ])('opens no tab for a Confluence document whose source URL is %j', async (sourceUrl) => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    const { result } = renderHook(() => useDocumentPreview())
+
+    await act(async () => {
+      await result.current.openDocument({
+        id: 'doc-1',
+        fileName: 'Betriebshandbuch',
+        sourceType: 'CONFLUENCE',
+        sourceUrl,
+      })
+    })
+
+    expect(openSpy).not.toHaveBeenCalled()
+    expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+    expect(queuedMessages()).toEqual(['Für dieses Dokument ist keine Quell-Adresse hinterlegt.'])
+  })
 })

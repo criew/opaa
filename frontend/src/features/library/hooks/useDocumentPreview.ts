@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { openDocumentContent } from '../utils/documentContent'
 import type { TextPreviewResult } from '../utils/documentContent'
 import { notify } from '@/shared/stores/notificationStore'
+import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/sources/registry'
 
@@ -33,7 +34,8 @@ export function useDocumentPreview() {
     // own - the backend's content endpoint deliberately answers 404 there. It opens directly at
     // the source URL, exactly like the citation deep link.
     if (sourceRegistration(document.sourceType)?.opensAtSource) {
-      const target = document.sourceUrl ?? document.sourceEntryUrl
+      // Only an http(s) address is opened; any other scheme counts as no address at all.
+      const target = safeExternalHref(document.sourceUrl ?? document.sourceEntryUrl)
       if (!target) {
         notify('Für dieses Dokument ist keine Quell-Adresse hinterlegt.', 'error')
         return
