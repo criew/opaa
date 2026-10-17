@@ -524,11 +524,10 @@ class McpServerIntegrationTest {
   }
 
   /**
-   * The effective view hangs on the tool call running on the request's thread: the token id comes
-   * from {@code RequestContextHolder}, and without it the scope would widen to everything the
-   * person may read. Two things hold that here - the servlet environment, which is what makes the
-   * stateless autoconfiguration execute tools immediately, and the quota, which is keyed by the
-   * token and could not apply at all if the id were invisible.
+   * The token decides a tool call: the quota is keyed by the token the caller carries in the
+   * transport context and could not apply at all if the tool lost sight of it. The servlet
+   * environment is what makes the stateless autoconfiguration execute tools immediately; the view
+   * no longer depends on that thread (see {@code ExternalAccessSearchIntegrationTest}).
    */
   @Test
   void theToolsRunOnTheThreadOfTheRequestSoTheTokenDecides() {
