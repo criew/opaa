@@ -15,7 +15,7 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
 | GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket |
-| `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Lizenzübersicht, Vorlage Update-Vermerk; **attestiert** |
+| `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, Lizenzübersicht, Vorlage Update-Vermerk; **attestiert** |
 
 Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
 ([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
@@ -384,7 +384,15 @@ Eigentumsrechte, eine Neuindizierung. Ein Beispiel:
 - **Kubernetes:** Keine.
 - **Docker Compose:** `OPAA_BEISPIEL` in der `.env.docker` setzen, sonst startet das Backend nicht
   (Handbuch, Deployment, Vorbereitungsschritte für Bestandsinstallationen).
+
+Neuindizierung: nein
 ```
+
+Eine Datei mit Vorbereitung trägt eine eigene Zeile `Neuindizierung: ja` oder `Neuindizierung: nein`
+(auch fett, `**Neuindizierung:** ja`). Hinter `ja` folgt die Dauerschätzung, etwa
+`Neuindizierung: ja, rund eine Stunde je 10.000 Dokumente bei GPU-Einbettung`. Das
+[Update-Paket](#betriebsfolgen-und-antwortqualität) liest die Zeile; fehlt sie, steht dort „nicht
+gekennzeichnet“. Eine Datei „Keine Vorbereitung nötig.“ braucht sie nicht.
 
 Regeln:
 
@@ -422,6 +430,7 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 | `LIESMICH.md` | Version, Commit, Vergleichsstand, Prüfbefehle, was noch fehlt |
 | `faktenblaetter/` | die Faktenblätter der Version mit `faktenblaetter.json` (`./gradlew complianceDocs -PopaaVersion=X.Y.Z`) |
 | `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
+| `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |
 | `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
 | `update-vermerk.md` | Vorlage aus `docs/behoerden/09-betrieb-update/` |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
@@ -476,9 +485,53 @@ python3 .github/scripts/update_package.py previous --tag v0.3.0 --commit HEAD   
 
 Ohne `--labelled-prs` sagt das Delta, dass die gekennzeichneten PRs nicht abgefragt wurden.
 
-**Erweiterungen.** Betriebsfolgen und Antwortqualität (#2555) kommen als weitere Verzeichnisse in
-`assemble` hinzu und erscheinen in der Tabelle von `LIESMICH.md`; das Offline-Bündel (#2557) nimmt das
-Archiv aus dem Artefakt `update-package` des Laufs, statt es neu zu erzeugen.
+**Erweiterungen.** Das Offline-Bündel (#2557) nimmt das Archiv aus dem Artefakt `update-package` des
+Laufs, statt es neu zu erzeugen.
+
+### Betriebsfolgen und Antwortqualität
+
+`betrieb/betriebsfolgen.md` sagt Betrieb und ISB, was das Update für Wartungsfenster, Sicherung und
+Freigaben bedeutet, `betrieb/antwortqualitaet.md` der Fachseite, ob die Suche schlechter wird. Beide
+entstehen in `update_package.py`, nicht im Manifest-Delta: Ihre Quellen sind keine Fakten des
+Manifests, und `ModularArchitectureTest` lässt im Backend nur `ManifestSnapshot` Git starten.
+Gelesen wird jede Angabe aus Git an den beiden Commits des Intervalls, nie aus dem Arbeitsstand; jeder
+Abschnitt nennt seine Quelle mit Pfad und Commit.
+
+| Abschnitt | Quelle | Regel |
+|---|---|---|
+| Bruch und Vorbereitung | `docs/upgrade-notes/<Version>.md` im neuen Stand | jede Version über dem Vergleichsstand bis zur eigenen, kumuliert; ist der Vergleichsstand kein Release-Tag, die Dateien, die er nicht enthält. Ein Hinweis zu `X.Y.Z` ersetzt die seiner Vorab-Releases. Bruch ist „ja“, sobald ein Hinweis mehr sagt als „Keine Vorbereitung nötig.“ |
+| Neuindizierung | die Zeile `Neuindizierung:` der Hinweise ([Vorbereitung](#vorbereitung-für-bestandsinstallationen)) | „nötig“ mit der Dauerschätzung des Hinweises; „nicht gekennzeichnet“, wenn ein Hinweis mit Vorbereitung die Zeile nicht trägt; „nicht nötig“ ohne Hinweis mit Vorbereitung |
+| Nachzug | `ingestionPipelineFingerprint` der Baselines unter `eval/baseline/` beider Stände | jedes Format mit neuer Pipeline-Version; `PipelinePathIsolationTest` hält den Abdruck gleich dem Code |
+| Neueinbettung | Eintrag `spring.ai.openai.embedding.model` im Manifest-Delta | geänderte Vorgabe des Embedding-Modells |
+| Schemamigration | Kennungen der `changeSet`-Einträge unter `backend/src/main/resources/db/changelog/` beider Stände | neu ist jede Kennung, die nur der neue Stand hat; Anzahl je Modulverzeichnis, Hinweis „nur vorwärts, vorher sichern“ |
+| Ports | Schlüssel auf `port` mit Zahlenwert in `deploy/helm/opaa/values.yaml` und `containerPort` in den Templates | neu, geändert, entfallen; nur Blockschreibweise |
+| Egress-Ziele | Abschnitt `dataFlows` im Manifest-Delta (`delta/manifest-delta.json`) | neue und entfallene Datenflüsse, geändertes Ziel, geänderter Weg über den Ausgangsproxy |
+| Antwortqualität | `eval/baseline/*.json` beider Stände, Gruppe `overall` | Kennzahlen, Messdatum, Messlauf und Messvertrag je Messpfad und Domäne; fehlt eine Baseline oder Kennzahl, steht „nicht gemessen“; abweichende Festpunkte heißen „Messgrundlage geändert“ |
+
+Annahmen und Grenzen:
+
+- **Antwortqualität sind Referenzwerte.** Je Stand sind es die committeten Baselines der
+  [Retrieval-Regression](features/search-quality-evaluation.md), also der zuletzt angenommene Messlauf
+  mit seinem Datum, nicht ein Lauf auf dem Release-Commit. Die Ergebnisse der einzelnen Läufe liegen
+  nur 90 Tage als Artefakt am Workflow-Lauf; die Datei sagt deshalb ausdrücklich „Messlauf auf dem
+  Commit dieser Version: nicht gemessen“. Einen Wert je Release gäbe erst ein Messbericht im
+  Repository oder am Release. Die Kennzahlen messen die Suche, nicht die formulierte Antwort.
+- **Keine Dauerschätzung aus der Evaluierung.** Die Evaluierung hält ihre Laufzeit nur als Freitext
+  fest, mit einem kleinen Modell auf CPU; auf eine Installation übertragbar ist das nicht. Die
+  Schätzung kommt allein aus der Zeile `Neuindizierung:` des Hinweises.
+- **Ports nur aus dem Chart**, Docker Compose bleibt außen vor. Ein Egress-Ziel ist eine Rolle (etwa
+  „der Einbettungs-Endpunkt“), keine Adresse; die Adresse legt die Konfiguration der Installation fest.
+- **Neue Changesets sind eine Obergrenze**, wenn die Historie zu einer neuen Baseline zusammengefasst
+  wurde; dann fehlen Kennungen des Vergleichsstands, und die Datei sagt das.
+
+Für ein anderes Versionspaar erzeugt `operations` die Dateien aus der Wurzel eines Checkouts mit
+Tags, nach `./gradlew complianceDelta` mit denselben Ständen; ohne `--delta-json` stehen Datenflüsse
+und Embedding-Vorgabe als „nicht ermittelt“ da:
+
+```bash
+python3 .github/scripts/update_package.py operations --from v0.12.0 --to v0.17.0 --out /tmp/betrieb \
+  --delta-json backend/build/compliance/delta/manifest-delta.json
+```
 
 ## Versionsnummern
 
