@@ -44,6 +44,7 @@ import org.springframework.test.context.TestPropertySource;
       // no other class of this family calls these endpoints.
       "opaa.rate-limit.query.global-max-requests=3",
       "opaa.rate-limit.webhook.max-requests=3",
-      "opaa.rate-limit.webhook.global-max-requests=4"
+      "opaa.rate-limit.webhook.global-max-requests=4",
+      "opaa.rate-limit.unauthenticated.max-requests=5"
     })
 public @interface OpaaLocalAuthRateLimitTest {}
