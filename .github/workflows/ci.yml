@@ -154,11 +154,6 @@ jobs:
             adrs:
               - 'docs/decisions/**'
               - '.github/scripts/check_adr_style.sh'
-            # Step-level filter of the header guard for docs/behoerden below, not a job output.
-            behoerden:
-              - 'docs/behoerden/**'
-              - '.github/scripts/check_behoerden_headers.sh'
-              - '.github/fact-sheet-anchors.txt'
             # Step-level filter of the comment rule guard below, not a job output.
             comments:
               - 'backend/src/main/**'
@@ -225,11 +220,11 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
         run: .github/scripts/check_adr_style.sh
 
-      # Every editorial document under docs/behoerden carries header block, disclaimer and only
-      # fact sheet placeholders naming a target of .github/fact-sheet-anchors.txt
-      # (docs/behoerden/README.md); new files are found by directory walk.
+      # Every editorial document under docs/behoerden carries header block, disclaimer, only
+      # fact sheet placeholders naming a target of .github/fact-sheet-anchors.txt and only
+      # relative links that resolve (docs/behoerden/README.md); new files are found by directory walk.
+      # Runs on every event: link targets lie all over the repository, a path filter would miss them.
       - name: Kopfvermerk der Behördenunterlagen prüfen
-        if: github.event_name != 'pull_request' || steps.filter.outputs.behoerden == 'true'
         run: .github/scripts/check_behoerden_headers.sh
 
       # Comments in every tree listed in the script header carry no review protocol, no history

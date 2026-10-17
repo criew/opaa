@@ -21,9 +21,9 @@
 > - alle drei Schichten der [Drift-Erkennung](#automatisierung-und-drift-erkennung): Wächter,
 >   Kennzeichnung am PR (#2553) und wöchentliche Drift-Routine (#2819)
 > - der Ordner `docs/behoerden/` mit Kopfvermerk und Haftungshinweis (#2545) und den Vorlagen für
->   Datenschutz (#2565), Informationssicherheit und Notfall (#2567), KI-Verordnung und Cyber
->   Resilience Act (#2568) sowie Barrierefreiheit und Nutzung (#2569); die Sicherheitsrichtlinie mit
->   Meldeweg steht in [SECURITY.md](../../SECURITY.md) (#2561)
+>   Vergabe (#2564), Datenschutz (#2565), Informationssicherheit und Notfall (#2567), KI-Verordnung
+>   und Cyber Resilience Act (#2568) sowie Barrierefreiheit und Nutzung (#2569); die
+>   Sicherheitsrichtlinie mit Meldeweg steht in [SECURITY.md](../../SECURITY.md) (#2561)
 > - die [Pflichten der Rollen](#verankerung-in-der-agentenorganisation) für Spezifikation (#2571),
 >   Umsetzung und Review (#2572) und die Rolle „Behördenkontakt“
 >   ([Rollenvertrag](../../agents/roles/behoerdenkontakt.md), #2573)
@@ -34,11 +34,12 @@
 > - das [Update-Paket](#das-update-paket) am GitHub-Release jeder Version mit Faktenblättern, Delta
 >   zum vorigen finalen Release, Lizenzübersicht und Vorlage Update-Vermerk, attestiert; der
 >   Release-Lauf bricht vorher bei unvollständigem Manifest ab (#2556)
+> - Betriebsfolgen und Antwortqualität im Update-Paket (#2555)
 >
-> **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Betriebsfolgen und
-> Antwortqualität (#2555), Instanzbezug mit Konfigurationsexport der Instanz (#2558, #2559) und das
-> Offline-Bündel (#2557); außerdem der Release-Schritt des Maintainers (#2574), die
-> Vorlagen der Phasen 0 bis 4 und der Mitbestimmung (#2562, #2563, #2564, #2566) und die
+> **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Instanzbezug mit
+> Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der
+> Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
+> (#2562, #2563, #2566) und die
 > Supportlinien (#2575). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
@@ -129,7 +130,7 @@ mitbestimmungspflichtig sein kann.
 | 1 | Markterkundung | Produktdatenblatt, Antworten auf typische Fragebögen, Projektstatus (Trägerschaft, Fortbestand, Release-Zyklus), Lizenz einschließlich Abhängigkeiten, Reifegrad (nur Belegbares), Meldestelle für Sicherheitslücken | Lizenzübersicht, Faktenblätter | #2562, #2561 |
 | 2 | Pilot-Beteiligung | Pilot-Vereinbarung mit statischer Anlage, Kurzprüfung je Stelle (DSB, ISB, Personalrat) | Datenkatalog der eingesetzten Version | #2563 |
 | 3 | Teststellung | Szenario mit **eigenen Dokumenten der Behörde**, Erfolgs- und Abbruchkriterien vor Beginn, Evaluierungswerte mit Version, Teststellungsvereinbarung, Löschnachweis | Faktenblätter, Antwortqualität | #2563 |
-| 4 | Vergabe | herstellerneutrale Anforderungsbausteine, Hinweise zur Zuordnung in den EVB-IT (Fassung 2026) | SBOM, Lizenzübersicht | #2564 |
+| 4 | Vergabe | herstellerneutrale Anforderungsbausteine (Muss/Kann) mit getrennter Erfüllungsmatrix, Auftragswertschätzung, Zuschlagskriterien mit Souveränität, Hinweise zur Zuordnung in den EVB-IT (Fassung 2026), Gewährleistung und Haftung, Wege ohne Angebot | SBOM, Lizenzübersicht, Faktenblätter | #2564 |
 | 5 | Einführung: Datenschutz | VVT-, DSFA-Baustein, TOM des Produktanteils, Löschkonzept, Informationspflichten, Betroffenenrechte, AVV-Entscheidungsmatrix | Datenkatalog, Fristen, Datenflüsse, Voreinstellungen | #2565 |
 | 5 | Einführung: Mitbestimmung | Muster-Dienstvereinbarung, Informationsmappe für den Personalrat | alle Faktenblätter, Konfigurationsexport | #2566 |
 | 5–6 | Informationssicherheit, Betrieb, Notfall | Grundschutz-Modellierung, C5:2026-Zuordnung nur für Cloud-Betreiber, NIS2-Hinweis, Notfallkapitel mit RTO/RPO-Annahmen und Wiederherstellungsprobe | Protokollereignisse, Datenflüsse | #2567 |
@@ -137,12 +138,15 @@ mitbestimmungspflichtig sein kann.
 | 5 | Barrierefreiheit, Nutzung | Erklärung zur Barrierefreiheit, Muster-Nutzungsrichtlinie | vorhandene Prüfbelege | #2569 |
 | 7 | Update | Update-Paket mit Vorlage Update-Vermerk | Delta zwischen zwei Versionen | #2552 |
 
-**(gebaut, #2565, #2567, #2568, #2569)** Vorlagen liegen für Datenschutz, Informationssicherheit
-und Notfall, KI-Verordnung und Cyber Resilience Act sowie Barrierefreiheit und Nutzung in
-`docs/behoerden/`; die Meldestelle für Sicherheitslücken aus Phase 1 ist
+**(gebaut, #2564, #2565, #2567, #2568, #2569)** Vorlagen liegen für Vergabe, Datenschutz,
+Informationssicherheit und Notfall, KI-Verordnung und Cyber Resilience Act sowie Barrierefreiheit und
+Nutzung in `docs/behoerden/`. Bei den Vergabevorlagen prüft die CI zusätzlich, dass jedes Zitat
+mit `§` oder `Art.` in der Quellentabelle steht und jede Zeile dort einen Link oder „zu prüfen“
+trägt, und dass Katalog und Erfüllungsmatrix dieselben Anforderungsnummern führen; das Ziel jedes
+Links prüft sie in allen Vorlagen. Die Meldestelle für Sicherheitslücken aus Phase 1 ist
 [SECURITY.md](../../SECURITY.md) (#2561). **(gebaut, #2556)** Die Vorlage Update-Vermerk liegt in
 `docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(Zielbild)** Die übrigen
-Vorlagen der Phasen 0 bis 4 und die Mitbestimmung.
+Vorlagen der Phasen 0 bis 3 und die Mitbestimmung.
 
 **Markterkundung und Codeentstehung (Beschluss 4):** Die Markterkundungsunterlagen enthalten keine
 Aussage dazu, wie der Code entstanden ist. Fragt eine Behörde ausdrücklich danach, lautet die Antwort:
@@ -407,11 +411,11 @@ Rolle „Behördenkontakt“ läuft anlassbezogen vor jedem Release und nutzt di
 
 ## Das Update-Paket
 
-**(in Teilen gebaut, #2552)** Gebaut sind die Teile 1, 2, 5, 6, 8 und 9: Der Release-Lauf erzeugt das
+**(in Teilen gebaut, #2552)** Gebaut sind die Teile 1 bis 6, 8 und 9: Der Release-Lauf erzeugt das
 Paket zu jedem Release, hängt es an und attestiert es (#2556); Faktenblätter und Lizenzübersicht
 stammen aus #2550 und #2551, das [kumulierte Delta](#das-kumulierte-delta) mit Hinweisen und den
-gekennzeichneten Pull Requests aus #2553 und #2554. **(Zielbild)** Die Teile 3 und 4 (#2555), Teil 7
-(#2558, #2559) und das Offline-Bündel (#2557).
+gekennzeichneten Pull Requests aus #2553 und #2554, Betriebsfolgen und Antwortqualität aus #2555.
+**(Zielbild)** Teil 7 (#2558, #2559) und das Offline-Bündel (#2557).
 
 Zu jedem Release entsteht ein Update-Paket, mit dem eine Behörde ein Update gegenüber Hausleitung,
 Datenschutzbeauftragten, Personalrat und ISB verantworten kann, ohne Diffs zu lesen. Es ist an Tag
@@ -433,9 +437,21 @@ und Commit gebunden, attestiert wie Images und Chart und als Offline-Bündel erh
 
 **(gebaut, #2556)** Das Paket hängt als Archiv `opaa-update-paket-X.Y.Z.tar.gz` mit Prüfsummendatei
 am GitHub-Release und trägt eine Provenance-Attestierung, prüfbar mit `gh attestation verify`. Im
-Archiv liegen `LIESMICH.md`, die Teile 1, 2, 5 und 6 im Delta, die Faktenblätter, die Lizenzübersicht,
+Archiv liegen `LIESMICH.md`, die Teile 1, 2, 5 und 6 im Delta, die Teile 3 und 4 unter `betrieb/`, die
+Faktenblätter, die Lizenzübersicht,
 die Vorlage Update-Vermerk und `SHA256SUMS`; Aufbau, Erzeugung und Probelauf ohne Release beschreibt
-[releases.md](../releases.md#update-paket). Gleicher Commit ergibt gleiche Dateien, bis auf die
+[releases.md](../releases.md#update-paket).
+
+**(gebaut, #2555)** Die Teile 3 und 4 liegen als `betrieb/betriebsfolgen.md` und
+`betrieb/antwortqualitaet.md` im Archiv, für dasselbe Intervall wie das Delta und jede Angabe mit
+Quelle. Sie stehen neben dem Delta, nicht darin: Ihre Quellen sind keine Fakten des Manifests.
+Bruch, Vorbereitung und Neuindizierung mit Dauerschätzung kommen aus den Upgrade-Hinweisen aller
+Versionen im Intervall (Zeile `Neuindizierung: ja|nein`), der Nachzug aus den Pipeline-Versionen der
+Baselines, die Schemamigration aus den Kennungen der Liquibase-Changesets, Ports aus dem Helm-Chart,
+Egress-Ziele aus den Datenflüssen des Manifest-Deltas. Die Antwortqualität sind die Referenzwerte der
+Retrieval-Regression beider Versionen mit Messdatum; einen Messlauf auf dem Release-Commit legt das
+Projekt nicht ab, das Paket sagt das als „nicht gemessen“. Quellen, Regeln und Grenzen im Einzelnen:
+[releases.md](../releases.md#betriebsfolgen-und-antwortqualität). Gleicher Commit ergibt gleiche Dateien, bis auf die
 gekennzeichneten Pull Requests im Delta, die dem Label-Stand zum Zeitpunkt des Laufs folgen.
 **(Zielbild, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
 Chart, SBOMs und Attestierungen für Netze ohne Internetzugang.
