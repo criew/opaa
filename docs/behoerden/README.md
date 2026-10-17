@@ -185,7 +185,7 @@ Vorlage gegen den Normtext zu prüfen. Das Datum dieser Prüfung steht im Feld `
 ### Rechtsangaben mit Fundstelle
 
 Eine Vorlage mit Rechtsangaben führt sie im Abschnitt `## Quellen und Prüfstand` als Tabelle: je
-Aussage die Fundstelle mit Link und die Herkunft (Normtext, amtliche Veröffentlichung, Fachbeitrag,
+Aussage die Fundstelle mit Link in der Spalte „Fundstelle“ und die Herkunft (Normtext, amtliche Veröffentlichung, Fachbeitrag,
 Recherche). Eine Angabe, deren Fundstelle nicht belegt ist, trägt „zu prüfen“, statt einen Paragrafen
 zu raten. Der Prüfstand aller Angaben ist das Feld `rechtsstand` des Kopfvermerks; die Drift-Routine
 und die Rolle „Behördenkontakt“ finden über beides, was nachzuprüfen ist.
@@ -199,7 +199,7 @@ der [Erfüllungsmatrix](03-vergabe/erfuellungsmatrix.md).
 ## Automatische Prüfung
 
 [`.github/scripts/check_behoerden_headers.sh`](../../.github/scripts/check_behoerden_headers.sh) läuft
-in der CI bei jeder Änderung unter `docs/behoerden/`. Es erfasst jede Markdown-Datei (`.md`,
+in der CI bei jedem Lauf, ohne Pfadfilter, weil Linkziele im ganzen Repository liegen. Es erfasst jede Markdown-Datei (`.md`,
 `.markdown`) in diesem Ordner und allen Unterverzeichnissen außer dieser README, ohne Dateiliste, und
 lässt den Lauf scheitern bei:
 
@@ -209,11 +209,23 @@ lässt den Lauf scheitern bei:
 - einem relativen Link, auch in dieser README, dessen Datei fehlt oder dessen Anker keine
   Überschrift (in der Schreibweise von GitHub) und kein `<a id>` der Zieldatei trifft; eine
   umbenannte Überschrift im Handbuch fällt so auf,
-- in `03-vergabe/`: fehlendem Abschnitt `## Quellen und Prüfstand`, einer Zeile darin ohne Link und
-  ohne „zu prüfen“, einer Fundstelle der Form `§ 31 Abs. 6 VgV` oder `Art. 28 DSGVO` im Text, die
-  dort fehlt (verglichen ohne Absatz, Satz und Nummer), einem `rechtsstand` nach `stand`, dem Namen
-  OPAA in Anforderungskatalog oder Zuschlagskriterien und einer Anforderungsnummer, die nur im
-  Katalog oder nur in der Erfüllungsmatrix steht.
+- in `03-vergabe/`:
+  - fehlendem Abschnitt `## Quellen und Prüfstand`, einer Tabelle darin ohne Spalte „Fundstelle“
+    oder einer Zeile ohne Link und ohne „zu prüfen“ in dieser Spalte,
+  - einem `§`, `§§` oder `Art.` im Text, das nicht die Form `§ 31 Abs. 6 VgV` hat (erlaubt sind
+    zwischen Nummer und Gesetz `Abs.`, `Absatz`, `Satz`, `S.`, `Nr.`, `UAbs.`, `lit.` und `ff.`;
+    ein Zitat darf über einen Zeilenumbruch gehen),
+  - einem solchen Zitat, das keine Tabellenzeile des Quellenabschnitts nennt (verglichen als
+    `§ 31 VgV` bzw. `Art. 28 DSGVO`),
+  - einem `rechtsstand` nach `stand`,
+  - „OPAA“ in beliebiger Schreibweise, auch in Links, in Anforderungskatalog oder Zuschlagskriterien,
+  - einer Anforderungsnummer, die nur im Katalog oder nur in der Erfüllungsmatrix oder in einer der
+    beiden doppelt steht.
+
+Die Prüfung erkennt Rechtsangaben nur an diesen Zeichen. Ob eine Aussage ohne Paragrafen eine
+Rechtsangabe ist und ob die Fundstelle sie trägt, prüft sie nicht; das bleibt der Durchsicht.
+
+Das Skript braucht GNU sed, GNU realpath und die Locale C.UTF-8, wie auf den CI-Runnern.
 
 Ein Konfigurationsschlüssel (`opaa.…`) oder eine Enum-Konstante (`GROSS_GESCHRIEBEN`) im Text ergibt
 außerhalb von Codeblöcken nur eine Warnung: Beides deutet auf einen abgeschriebenen Faktenwert hin,

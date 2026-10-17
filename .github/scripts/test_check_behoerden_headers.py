@@ -304,8 +304,11 @@ def test_long_document_passes_every_run(repo: Path) -> None:
 # Links: a relative link names an existing file and, with an anchor, a rendered heading.
 
 HANDBOOK = (
+    "---\ntitel: vorspann\n---\n\n"
     "# Betrieb\n\n## Software-Stückliste (SBOM)\n\n## Ebene 1 — Images\n\n"
-    "## Teil\n\n## Teil\n\n## Anmeldung mit `oidc`\n\n```text\n# im-codeblock\n```\n\n"
+    "## Teil\n\n## Teil 1\n\n## Teil\n\n## Anmeldung mit `oidc`\n\n```text\n# im-codeblock\n```\n\n"
+    "## Ein _kursiver_ Titel mit snake_case\n\n   ### Eingerückt\n\n"
+    "Setext Titel\n============\n\nZweiter Setext\n---\n\n"
     '<a id="eigener-anker"></a>\n'
 )
 
@@ -322,7 +325,13 @@ def write_handbook(repo: Path) -> None:
         "ebene-1--images",
         "teil",
         "teil-1",
+        "teil-2",
         "anmeldung-mit-oidc",
+        "ein-kursiver-titel-mit-snake_case",
+        "eingerückt",
+        "setext-titel",
+        "zweiter-setext",
+        "software-st%C3%BCckliste-sbom",
         "eigener-anker",
     ],
 )
@@ -333,7 +342,9 @@ def test_accepts_link_to_rendered_heading(repo: Path, anchor: str) -> None:
     assert result.returncode == 0, result.stdout
 
 
-@pytest.mark.parametrize("anchor", ["software-stueckliste-sbom", "teil-2", "im-codeblock", "Teil"])
+@pytest.mark.parametrize(
+    "anchor", ["software-stueckliste-sbom", "teil-3", "im-codeblock", "Teil", "titel-vorspann"]
+)
 def test_rejects_link_to_heading_that_does_not_render(repo: Path, anchor: str) -> None:
     write_handbook(repo)
     write(repo, document(body=BODY + f"\n[Betrieb](../../handbuch/betrieb.md#{anchor})\n"))
@@ -466,3 +477,74 @@ def test_matrix_with_the_catalog_numbers_passes(repo: Path) -> None:
     write_legal(repo, BODY + requirement_table(ids) + SOURCES, "erfuellungsmatrix.md")
     result = run_check(repo)
     assert result.returncode == 0, result.stdout
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "Nach § 31\nAbs. 6 VgV.",
+        "Nach § 31 Absatz 6 S. 1 VgV.",
+        "Nach §§ 31 ff. VgV.",
+        "(§ 31 Abs. 6 VgV)",
+    ],
+)
+def test_recognises_citation_forms(repo: Path, statement: str) -> None:
+    write_legal(repo, BODY + f"\n{statement}\n" + SOURCES)
+    result = run_check(repo)
+    assert result.returncode == 0, result.stdout
+
+
+def test_citation_spanning_lines_must_be_listed(repo: Path) -> None:
+    write_legal(repo, BODY + "\nMarkterkundung nach § 28\nVgV.\n" + SOURCES)
+    assert_rejected(repo, 'citation "§ 28 VgV" is missing')
+
+
+def test_recognises_article_with_letter(repo: Path) -> None:
+    sources = SOURCES + "| Rechtsgrundlage | [Art. 6 DSGVO](https://example.org) | Normtext |\n"
+    write_legal(repo, BODY + "\nNach Art. 6 Abs. 1 lit. e DSGVO.\n" + sources)
+    result = run_check(repo)
+    assert result.returncode == 0, result.stdout
+
+
+@pytest.mark.parametrize("statement", ["Nach § 31 der Verordnung.", "Siehe Art. 5 dazu.", "Das § gilt."])
+def test_rejects_unrecognised_citation(repo: Path, statement: str) -> None:
+    write_legal(repo, BODY + f"\n{statement}\n" + SOURCES)
+    assert_rejected(repo, "not recognised")
+
+
+def test_citation_in_sources_prose_is_not_a_listing(repo: Path) -> None:
+    write_legal(repo, BODY + "\nNach § 28 VgV.\n" + SOURCES + "\nSiehe auch § 28 VgV.\n")
+    assert_rejected(repo, 'citation "§ 28 VgV" is missing')
+
+
+def test_reports_the_line_of_a_missing_citation(repo: Path) -> None:
+    write_legal(repo, BODY + "\n\nMarkterkundung nach § 28 VgV.\n" + SOURCES)
+    content = (repo / "docs/behoerden/03-vergabe/zuschlag.md").read_text(encoding="utf-8")
+    line = content.splitlines().index("Markterkundung nach § 28 VgV.") + 1
+    assert_rejected(repo, f"zuschlag.md,line={line}::citation")
+
+
+def test_link_must_stand_in_the_fundstelle_column(repo: Path) -> None:
+    write_legal(repo, BODY + SOURCES + "| Schwellen | Vergabeverordnung | [Fachbeitrag](https://example.org) |\n")
+    assert_rejected(repo, 'in column "Fundstelle"')
+
+
+def test_rejects_sources_table_without_fundstelle_column(repo: Path) -> None:
+    sources = "\n## Quellen und Prüfstand\n\n| Aussage | Quelle |\n|---|---|\n| X | [Y](https://example.org) |\n"
+    write_legal(repo, BODY + sources)
+    assert_rejected(repo, 'needs a column "Fundstelle"')
+
+
+@pytest.mark.parametrize(
+    "mention", ["opaa", "Opaa", "[Projekt](https://github.com/criew/opaa/issues/1)"]
+)
+def test_rejects_product_name_in_any_case_and_in_links(repo: Path, mention: str) -> None:
+    write_legal(repo, BODY + f"\nSiehe {mention}.\n" + SOURCES, "anforderungskatalog.md")
+    write_legal(repo, BODY + SOURCES, "erfuellungsmatrix.md")
+    assert_rejected(repo, "must not name OPAA")
+
+
+def test_rejects_duplicate_requirement_number(repo: Path) -> None:
+    write_legal(repo, BODY + requirement_table(["F-01"]) + SOURCES, "anforderungskatalog.md")
+    write_legal(repo, BODY + requirement_table(["F-01", "F-01"]) + SOURCES, "erfuellungsmatrix.md")
+    assert_rejected(repo, "requirement F-01 has more than one row")

@@ -24,7 +24,7 @@ ist ein Beispiel, keine Empfehlung.
 | Kriterium | Gewicht im Beispiel | Bewertet |
 |---|---|---|
 | Preis | 40 % | Gesamtpreis über die Laufzeit nach der [Auftragswertschätzung](auftragswertschaetzung.md), einschließlich Optionen |
-| Qualität der Leistungen | 35 % | Unterkriterien Q1 bis Q6 |
+| Qualität der Leistungen | 35 % | Unterkriterien Q1 bis Q7 |
 | Digitale Souveränität | 25 % | Unterkriterien SO1 bis SO4 |
 
 **Preis:** Das niedrigste Angebot erhält die volle Punktzahl, jedes andere anteilig:
@@ -48,11 +48,14 @@ Punkte = Höchstpunktzahl × niedrigster Preis ÷ Preis des Angebots.
 | Q3 | Pflegekonzept: Fristen für neue und für sicherheitsrelevante Versionen, Umgang mit Änderungen mit Datenwirkung | L-03, D-05 |
 | Q4 | Supportzusagen: Erreichbarkeit, Reaktionszeiten je Schwere | L-04 |
 | Q5 | Schulungskonzept und Unterlagen | L-05 |
-| Q6 | Erfüllte Kann-Anforderungen der Gruppen F, M und S | F-05 bis F-07, M-03, M-04, S-06 |
+| Q6 | Nachvollziehbarkeit je Version: Datenbeschreibung, Rollensicht, Datenflüsse, Änderungen gegenüber der Vorversion | D-01, D-04, D-05, M-02 |
+| Q7 | Übrige erfüllte Kann-Anforderungen, auch solche, die die Behörde von „Muss oder Kann“ auf Kann gesetzt hat | F-05 bis F-07, M-03, M-04, S-06, L-06, L-08; gegebenenfalls D-03, S-03, S-05, O-01, O-03 |
 
 ## Digitale Souveränität
 
-Der Kriterienkatalog C3A des BSI zur digitalen Souveränität ist als Beschaffungsinstrument gedacht.
+Der Kriterienkatalog C3A des BSI zur digitalen Souveränität ist als Beschaffungsinstrument gedacht,
+veröffentlicht für die Beschaffung von Cloud-Diensten; ob er auf den Betrieb im eigenen Haus oder
+durch einen Dienstleister übertragbar ist, prüft die Behörde.
 Die Behörde ordnet die Unterkriterien unten den Kriterien von C3A zu und übernimmt dessen Wortlaut,
 wo er passt. Diese Vorlage gibt den Katalog nicht wieder; seine Kriterien sind gegen die aktuelle
 Fassung beim BSI zu prüfen.
@@ -68,9 +71,8 @@ Fassung beim BSI zu prüfen.
 
 | Aussage | Fundstelle | Herkunft |
 |---|---|---|
-| Kriterienkatalog C3A des BSI als Beschaffungsinstrument für digitale Souveränität | BSI, Kriterienkatalog C3A; Fassung und Fundstelle zu prüfen | Recherche vom 13.10.2026 |
+| Kriterienkatalog C3A des BSI als Beschaffungsinstrument für digitale Souveränität, veröffentlicht für die Cloud-Beschaffung; Übertragbarkeit zu prüfen | BSI, Kriterienkatalog C3A; Fassung und Fundstelle zu prüfen | Recherche vom 13.10.2026 |
 | Zuschlag auf das wirtschaftlichste Angebot; Kriterien und Gewichtung vorab bekannt geben; Bezug zum Auftragsgegenstand | GWB und VgV oberhalb, UVgO bzw. Landesrecht unterhalb der EU-Schwellenwerte; Paragrafen zu prüfen | nicht Teil der Recherche |
 | Pflichten eines kommerziellen Bereitstellers als Hersteller | [VO (EU) 2024/2847](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/deu) | Normtext; Recherche vom 13.10.2026 |
 
-Die Recherche vom 13.10.2026 steht im ersten Kommentar von Epic
-[#2542](https://github.com/criew/opaa/issues/2542).
+Die Angaben stammen aus der Rechtsrecherche vom 13.10.2026.

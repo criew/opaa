@@ -37,8 +37,10 @@ Zuordnung; die Behörde regelt sie in dem Vertrag, zu dem sie gehören, meist Se
 
 **Lizenz bei Anpassungen und SaaS:** OPAA steht unter der GNU Affero General Public License v3.0.
 Wer OPAA verändert und Nutzern über ein Netz zugänglich macht, muss ihnen den Quellcode der
-veränderten Fassung anbieten (Abschnitt 13 der [Lizenz](../../../LICENSE)). Das betrifft
-Erstellung und Cloud; die Behörde lässt sich die Einhaltung zusichern.
+veränderten Fassung anbieten (Abschnitt 13 der [Lizenz](../../../LICENSE)). Das betrifft Erstellung
+und Cloud, und es trifft auch die Behörde selbst, wenn sie eine angepasste Fassung für ihre
+Beschäftigten betreibt. Von einem Dienstleister lässt sie sich die Einhaltung zusichern; für den
+Eigenbetrieb einer angepassten Fassung plant sie das Quellcode-Angebot selbst ein.
 
 ## Programmstände, SBOM und Supportzeiträume
 

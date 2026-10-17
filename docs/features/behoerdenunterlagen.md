@@ -139,9 +139,10 @@ mitbestimmungspflichtig sein kann.
 
 **(gebaut, #2564, #2565, #2567, #2568, #2569)** Vorlagen liegen für Vergabe, Datenschutz,
 Informationssicherheit und Notfall, KI-Verordnung und Cyber Resilience Act sowie Barrierefreiheit und
-Nutzung in `docs/behoerden/`. Bei den Vergabevorlagen prüft die CI zusätzlich die Fundstelle jeder
-Rechtsangabe und dass Katalog und Erfüllungsmatrix dieselben Anforderungsnummern führen; das Ziel
-jedes Links prüft sie in allen Vorlagen. Die Meldestelle für Sicherheitslücken aus Phase 1 ist
+Nutzung in `docs/behoerden/`. Bei den Vergabevorlagen prüft die CI zusätzlich, dass jedes Zitat
+mit `§` oder `Art.` in der Quellentabelle steht und jede Zeile dort einen Link oder „zu prüfen“
+trägt, und dass Katalog und Erfüllungsmatrix dieselben Anforderungsnummern führen; das Ziel jedes
+Links prüft sie in allen Vorlagen. Die Meldestelle für Sicherheitslücken aus Phase 1 ist
 [SECURITY.md](../../SECURITY.md) (#2561). **(gebaut, #2556)** Die Vorlage Update-Vermerk liegt in
 `docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(Zielbild)** Die übrigen
 Vorlagen der Phasen 0 bis 3 und die Mitbestimmung.

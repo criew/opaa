@@ -38,7 +38,7 @@ ein Nachweis inhaltlich noch trägt, prüft die Durchsicht zu `naechste-durchsic
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
 | F-01 | ja | [Belege prüfen und Fundstellen bilden](../../handbuch/suche.md#7-belege-prüfen-und-fundstellen-bilden) | Handbuch |
-| F-02 | ja; Leserechte werden je Bibliothek vergeben und wirken in jeder Suchabfrage | [Aufbau der Berechtigungen](../../handbuch/berechtigungen.md#1-der-aufbau-in-vier-objekten), {{faktenblatt:rollensicht#matrix}} | Handbuch, Faktenblatt |
+| F-02 | teilweise; Rechte der Quelle werden nicht übernommen, Leserechte werden je Bibliothek in OPAA vergeben und wirken in jeder Suchabfrage | [Aufbau der Berechtigungen](../../handbuch/berechtigungen.md#1-der-aufbau-in-vier-objekten), {{faktenblatt:rollensicht#matrix}} | Handbuch, Faktenblatt |
 | F-03 | je nach Liste der Behörde | [Konnektoren im Überblick](../../handbuch/konnektoren/README.md#3-die-konnektoren-im-überblick); Verbindungen je Quelle in {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
 | F-04 | ja | [Zugelassene Formate](../../handbuch/formate/README.md#zugelassene-formate) | Handbuch |
 | F-05 | ja | [Suchen ohne Antwort](../../handbuch/suche.md#71-suchen-ohne-antwort) | Handbuch |
@@ -116,6 +116,6 @@ ein Nachweis inhaltlich noch trägt, prüft die Durchsicht zu `naechste-durchsic
 
 | Aussage | Fundstelle | Herkunft |
 |---|---|---|
-| Die Leistungsbeschreibung bleibt produktneutral; die Matrix steht deshalb getrennt vom Katalog | [§ 31 Abs. 6 VgV](https://www.gesetze-im-internet.de/vgv_2016/__31.html) | Normtext; Recherche vom 13.10.2026 |
+| Die Leistungsbeschreibung bleibt produktneutral; die Matrix steht deshalb getrennt vom Katalog | [§ 31 Abs. 6 VgV](https://www.gesetze-im-internet.de/vgv_2016/__31.html) | Recherche vom 13.10.2026; Wortlaut zu prüfen |
 
 Alle übrigen Angaben sind Fakten über OPAA und verweisen auf die jeweilige Projektunterlage.
