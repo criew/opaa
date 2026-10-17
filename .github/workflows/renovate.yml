@@ -34,7 +34,7 @@ jobs:
           # multi-arch index digest. Renovate proposes updates of both; they never merge
           # automatically (renovate.json5, docs/renovate.md).
           # renovate: datasource=docker depName=renovate/renovate
-          IMAGE: renovate/renovate:44.155.2@sha256:93e8dc64410276bb44854b4f6fce2306f8fe24c87301d558a920381130b30851
+          IMAGE: renovate/renovate:44.156.0@sha256:10521c4d1136710559603b08f530ce6f264dc26ce6f95e7e20de7b2ae0e7def4
         run: |
           if [ -z "$RENOVATE_TOKEN" ]; then
             echo "::error::Secret RENOVATE_TOKEN fehlt - PAT mit repo+workflow-Scope hinterlegen (docs/renovate.md)."
