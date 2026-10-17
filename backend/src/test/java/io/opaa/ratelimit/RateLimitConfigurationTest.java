@@ -13,13 +13,13 @@ import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import tools.jackson.databind.json.JsonMapper;
@@ -104,10 +104,10 @@ class RateLimitConfigurationTest {
       for (int stranger = 1; stranger <= 5; stranger++) {
         assertThat(answer(filter, path, "198.51.100." + stranger, 401)).as(path).isEqualTo(401);
       }
-      assertThat(answer(filter, path, "203.0.113.20", 200)).as(path).isEqualTo(200);
-      assertThat(answer(filter, path, "203.0.113.21", 200)).as(path).isEqualTo(200);
+      assertThat(answerSignedIn(filter, path, "203.0.113.20", 200)).as(path).isEqualTo(200);
+      assertThat(answerSignedIn(filter, path, "203.0.113.21", 200)).as(path).isEqualTo(200);
       // the two admitted requests spend the ceiling, as before
-      assertThat(answer(filter, path, "203.0.113.22", 200)).as(path).isEqualTo(429);
+      assertThat(answerSignedIn(filter, path, "203.0.113.22", 200)).as(path).isEqualTo(429);
     }
   }
 
@@ -147,13 +147,18 @@ class RateLimitConfigurationTest {
     UUID library = UUID.randomUUID();
 
     for (String suffix : List.of("/indexing", "/push")) {
-      assertThat(answer(filter, "/api/v1/libraries/a" + suffix, CLIENT, 400)).isEqualTo(400);
-      assertThat(answer(filter, "/api/v1/libraries/b" + suffix, CLIENT, 400)).isEqualTo(429);
+      assertThat(answerSignedIn(filter, "/api/v1/libraries/a" + suffix, CLIENT, 404))
+          .isEqualTo(404);
+      assertThat(answerSignedIn(filter, "/api/v1/libraries/b" + suffix, CLIENT, 404))
+          .isEqualTo(429);
       // another spelling of the same id is the same library
-      assertThat(answer(filter, "/api/v1/libraries/" + library + suffix, "203.0.113.30", 200))
+      assertThat(
+              answerSignedIn(filter, "/api/v1/libraries/" + library + suffix, "203.0.113.30", 200))
           .isEqualTo(200);
       String upperCase = library.toString().toUpperCase(Locale.ROOT);
-      assertThat(answer(filter, "/api/v1/libraries/" + upperCase + suffix, "203.0.113.30", 200))
+      assertThat(
+              answerSignedIn(
+                  filter, "/api/v1/libraries/" + upperCase + suffix, "203.0.113.30", 200))
           .as(suffix)
           .isEqualTo(429);
     }
@@ -185,7 +190,7 @@ class RateLimitConfigurationTest {
             new RateLimitProperties(true, List.of(), wide, wide, wide, wide, webhook, wide, null));
 
     for (int library = 0; library < 3; library++) {
-      assertThat(answer(filter, pushTo(UUID.randomUUID()), CLIENT, 202)).isEqualTo(202);
+      assertThat(answerSignedIn(filter, pushTo(UUID.randomUUID()), CLIENT, 202)).isEqualTo(202);
     }
   }
 
@@ -194,15 +199,34 @@ class RateLimitConfigurationTest {
   }
 
   /**
-   * One request from {@code client}; behind the filter the request is answered with {@code status},
-   * the way the security chain or the handler would. Returns the status the client sees.
+   * One request from {@code client} that does not authenticate; behind the filter it is answered
+   * with {@code status}. Returns the status the client sees.
    */
   private static int answer(Filter filter, String path, String client, int status)
+      throws Exception {
+    return answer(filter, path, client, status, false);
+  }
+
+  /** As {@link #answer}, for a request the security chain or the push handler authenticated. */
+  private static int answerSignedIn(Filter filter, String path, String client, int status)
+      throws Exception {
+    return answer(filter, path, client, status, true);
+  }
+
+  private static int answer(
+      Filter filter, String path, String client, int status, boolean authenticated)
       throws Exception {
     MockHttpServletRequest request = new MockHttpServletRequest("POST", path);
     request.setRemoteAddr(client);
     MockHttpServletResponse response = new MockHttpServletResponse();
-    FilterChain chain = (req, res) -> ((HttpServletResponse) res).setStatus(status);
+    FilterChain chain =
+        (req, res) -> {
+          if (authenticated) {
+            RateLimitAuthentication.markAuthenticatedBySession((HttpServletRequest) req);
+            RateLimitAuthentication.markAuthenticatedByHandler((HttpServletRequest) req);
+          }
+          ((HttpServletResponse) res).setStatus(status);
+        };
     filter.doFilter(request, response, chain);
     return response.getStatus();
   }
@@ -211,16 +235,16 @@ class RateLimitConfigurationTest {
     return "/api/v1/spaces/" + spaceId + "/chats/search";
   }
 
-  /** The status of the last of {@code count} requests from one client; earlier ones are ignored. */
+  /**
+   * The status of the last of {@code count} signed-in requests from one client; earlier ones are
+   * ignored.
+   */
   private static int statusAfter(Filter filter, String path, int count) throws Exception {
-    MockHttpServletResponse response = new MockHttpServletResponse();
+    int status = 0;
     for (int i = 0; i < count; i++) {
-      response = new MockHttpServletResponse();
-      MockHttpServletRequest request = new MockHttpServletRequest("POST", path);
-      request.setRemoteAddr(CLIENT);
-      filter.doFilter(request, response, new MockFilterChain());
+      status = answerSignedIn(filter, path, CLIENT, 200);
     }
-    return response.getStatus();
+    return status;
   }
 
   private Filter filter() {

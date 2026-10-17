@@ -114,8 +114,8 @@ public record RateLimitProperties(
    *
    * @param maxRequests maximum requests per IP within the window. Must be at least 1.
    * @param windowSeconds sliding window duration in seconds. Must be at least 1.
-   * @param globalMaxRequests maximum requests across all IPs within the window; a request answered
-   *     {@code 401} does not count. Must be at least 1.
+   * @param globalMaxRequests maximum requests across all IPs within the window; only requests that
+   *     authenticated count ({@code RateLimitFilter.Counting}). Must be at least 1.
    */
   public record EndpointLimit(int maxRequests, int windowSeconds, int globalMaxRequests) {
 

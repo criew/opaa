@@ -610,8 +610,8 @@ opaa:
     # alike; a wildcard (0.0.0.0/0, ::/0) refuses the start.
     trusted-proxy-cidrs: ${OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
     # query to chat-search: max-requests per client, global-max-requests across all clients; past
-    # either the answer is 429. The global ceiling counts only requests that authenticated (not
-    # answered 401), so strangers cannot use it up for everyone signed in.
+    # either the answer is 429. Both count only requests the security chain authenticated (the push
+    # intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
@@ -641,7 +641,8 @@ opaa:
     # unauthenticated caller can cause. Per library (capture group, a well-formed library id only),
     # generous enough for a busy source - an author saving every few seconds - and the intake
     # debounces anyway, so a burst above this costs freshness, not correctness. Pushes that do not
-    # authenticate draw on one budget per address, whichever library they name.
+    # authenticate, or are refused before the secret check, draw on one budget per address,
+    # whichever library they name.
     webhook:
       max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS:120}
       window-seconds: ${OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS:60}

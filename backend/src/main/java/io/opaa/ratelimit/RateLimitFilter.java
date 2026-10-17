@@ -55,8 +55,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
   public static final BooleanSupplier ALWAYS_SERVED = () -> true;
 
   /**
-   * Which of the requests a rule admitted keep their tokens once they are answered. A request
-   * answered {@code 401} did not authenticate.
+   * Which of the requests a rule admitted keep their tokens once they are answered. Whether a
+   * request authenticated is read from its mark ({@link RateLimitAuthentication}), never from its
+   * status code. Tokens are taken before the request runs and given back after it, so an
+   * unauthenticated request holds them while it is being answered; the ceilings are exact for the
+   * requests that keep their tokens.
    */
   public enum Counting {
     /**
@@ -66,16 +69,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
     EVERY_REQUEST,
 
     /**
-     * Behind the sign-in: a request answered {@code 401} gives its global token back, so strangers
-     * cannot exhaust the ceiling shared by everyone signed in.
+     * Behind the sign-in: a request the security chain did not authenticate - refused by the
+     * firewall or the chain - gives its client and its global token back. Strangers neither use up
+     * the ceiling shared by everyone signed in nor the budget of a person whose token just expired.
      */
     AUTHENTICATED,
 
     /**
-     * Reachable without a session, the handler authenticates: as {@link #AUTHENTICATED}, and a
-     * request answered {@code 401} also counts under the client's address alone - every library id
-     * a stranger names draws on one budget per address, and while it is used up the address is
-     * refused for every library.
+     * Reachable without a session, the handler authenticates (the push intake): a request its
+     * handler did not mark gives its global token back and also counts under the client's address
+     * alone - every library id a stranger names draws on one budget per address, and while it is
+     * used up the address is refused for every library. A marked request gives the address token
+     * back and keeps its budget per library.
      */
     AUTHENTICATED_BY_HANDLER
   }
@@ -138,9 +143,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
       BooleanSupplier served,
       Counting counting) {}
 
-  /** The tokens an admitted request took that its answer may still give back. */
+  /**
+   * The tokens an admitted request took, each with the grant that identifies it, so that its answer
+   * can give back exactly these; {@code address} and {@code global} are {@code null} when not
+   * taken.
+   */
   private record Admission(
-      CompiledRule rule, String client, boolean addressTaken, boolean globalTaken) {}
+      CompiledRule rule,
+      String key,
+      Decision keyGrant,
+      String client,
+      Decision address,
+      Decision global) {}
 
   private final List<CompiledRule> rules;
   private final ClientIpResolver clientIpResolver;
@@ -192,7 +206,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
       filterChain.doFilter(request, response);
     } finally {
       if (admission != null) {
-        settle(admission, response.getStatus());
+        settle(admission, request);
       }
     }
   }
@@ -200,7 +214,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
   /**
    * Takes the tokens of one request, or answers {@code 429} and returns {@code null}. A request of
    * an {@link Counting#AUTHENTICATED_BY_HANDLER} rule that names a library also takes a token of
-   * its address alone, which {@link #settle} gives back once the request authenticated.
+   * its address alone, which {@link #settle} gives back once the handler marked the request.
    */
   private Admission admit(
       CompiledRule rule,
@@ -211,19 +225,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
       throws IOException {
     String client = bucketKey(clientIpResolver.resolve(request));
     String key = clientKey(client, matcher);
-    boolean addressTaken =
-        rule.counting() == Counting.AUTHENTICATED_BY_HANDLER && !key.equals(client);
-    for (String clientScope : addressTaken ? List.of(key, client) : List.of(key)) {
-      Decision decision = rule.perClient().tryAcquire(clientScope);
-      if (!decision.allowed()) {
-        metrics.recordRejected(rule.name(), "client");
-        log.info("Rate limit {} exceeded for {} on {}", rule.name(), clientScope, path);
-        writeRateLimitResponse(response, decision.retryAfterSeconds());
+    Decision keyGrant = acquireForClient(rule, key, response, path);
+    if (keyGrant == null) {
+      return null;
+    }
+    Decision address = null;
+    if (rule.counting() == Counting.AUTHENTICATED_BY_HANDLER && !key.equals(client)) {
+      address = acquireForClient(rule, client, response, path);
+      if (address == null) {
         return null;
       }
     }
+    Decision global = null;
     if (rule.global() != null) {
-      Decision global = rule.global().tryAcquire(GLOBAL_KEY);
+      global = rule.global().tryAcquire(GLOBAL_KEY);
       if (!global.allowed()) {
         metrics.recordRejected(rule.name(), "global");
         log.warn(
@@ -232,18 +247,47 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return null;
       }
     }
-    return new Admission(rule, client, addressTaken, rule.global() != null);
+    return new Admission(rule, key, keyGrant, client, address, global);
   }
 
-  /** Gives back what the answer shows the request did not owe - see {@link Counting}. */
-  private static void settle(Admission admission, int status) {
-    CompiledRule rule = admission.rule();
-    boolean authenticated = status != HttpStatus.UNAUTHORIZED.value();
-    if (admission.globalTaken() && !authenticated && rule.counting() != Counting.EVERY_REQUEST) {
-      rule.global().release(GLOBAL_KEY);
+  private Decision acquireForClient(
+      CompiledRule rule, String key, HttpServletResponse response, String path) throws IOException {
+    Decision decision = rule.perClient().tryAcquire(key);
+    if (decision.allowed()) {
+      return decision;
     }
-    if (admission.addressTaken() && authenticated) {
-      rule.perClient().release(admission.client());
+    metrics.recordRejected(rule.name(), "client");
+    log.info("Rate limit {} exceeded for {} on {}", rule.name(), key, path);
+    writeRateLimitResponse(response, decision.retryAfterSeconds());
+    return null;
+  }
+
+  /** Gives back what the request's mark shows it did not owe - see {@link Counting}. */
+  private static void settle(Admission admission, HttpServletRequest request) {
+    CompiledRule rule = admission.rule();
+    switch (rule.counting()) {
+      case EVERY_REQUEST -> {}
+      case AUTHENTICATED -> {
+        if (!RateLimitAuthentication.isMarked(request, RateLimitAuthentication.SESSION_ATTRIBUTE)) {
+          rule.perClient().release(admission.key(), admission.keyGrant());
+          releaseGlobal(admission);
+        }
+      }
+      case AUTHENTICATED_BY_HANDLER -> {
+        if (RateLimitAuthentication.isMarked(request, RateLimitAuthentication.HANDLER_ATTRIBUTE)) {
+          if (admission.address() != null) {
+            rule.perClient().release(admission.client(), admission.address());
+          }
+        } else {
+          releaseGlobal(admission);
+        }
+      }
+    }
+  }
+
+  private static void releaseGlobal(Admission admission) {
+    if (admission.global() != null) {
+      admission.rule().global().release(GLOBAL_KEY, admission.global());
     }
   }
 

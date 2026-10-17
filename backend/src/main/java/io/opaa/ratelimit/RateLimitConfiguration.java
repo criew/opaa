@@ -18,6 +18,7 @@ import java.util.function.Predicate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,6 +66,24 @@ public class RateLimitConfiguration {
   @Bean
   RateLimitMetrics rateLimitMetrics(MeterRegistry meterRegistry) {
     return new RateLimitMetrics(meterRegistry);
+  }
+
+  /**
+   * Marks requests the security chain authenticated, for {@link RateLimitFilter}; ordered directly
+   * behind the chain, whatever order the chain is given.
+   */
+  @Bean
+  @ConditionalOnProperty(
+      name = "opaa.rate-limit.enabled",
+      havingValue = "true",
+      matchIfMissing = true)
+  FilterRegistrationBean<AuthenticatedRequestMarkerFilter> authenticatedRequestMarkerRegistration(
+      ObjectProvider<SecurityFilterProperties> securityFilter) {
+    var registration = new FilterRegistrationBean<>(new AuthenticatedRequestMarkerFilter());
+    registration.addUrlPatterns("/api/*");
+    registration.setOrder(
+        securityFilter.getIfAvailable(SecurityFilterProperties::new).getOrder() + 1);
+    return registration;
   }
 
   @Bean

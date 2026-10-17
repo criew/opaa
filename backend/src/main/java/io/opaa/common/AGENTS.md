@@ -27,7 +27,7 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client 
   `OPAA_AUTH_JWT_SECRET` ab**, je Zweck ein eigenes Label. Eine Rotation beendet alle lokalen
   Sitzungen, offenen Links und Zugangstokens zugleich.
 - **Ratenbegrenzung:** `RateLimitService`: Gleitfenster, Schlüsselraum gedeckelt (jenseits offen), Wildcard-Proxy-CIDR
-  verweigert den Start. Ein `401` gibt außer an der Anmeldung die globale Marke zurück; Segmente zählen nur als UUID.
+  verweigert den Start. Unangemeldete geben außer an der Anmeldung ihre Marken zurück; Segmente zählen nur als UUID.
 - **`TargetAddressValidator` kann DNS-Rebinding nicht ausschließen** — eine akzeptierte Grenze.
 - **Feature-Flags sind ohne Angabe an;** `@ConditionalOnFeature` an Blatt-Beans und rein bedingten Teilgraphen.
 - **`OutboundProxySelector` ist der Proxy-Standard der JVM:** nur `http`/`https` über den Proxy,
