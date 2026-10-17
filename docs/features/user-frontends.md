@@ -289,7 +289,7 @@ Zweck, nicht nach Pfad.
 | Zweck | Endpunkt | Heute gebaut |
 |---|---|---|
 | Frage stellen und belegte Antwort erhalten — mit Fundstellen, Relevanz je Quelle, Kennzeichnung der tatsächlich zitierten Quellen und einer Gesprächskennung für Rückfragen; der Suchbereich wird über die Chip-Leiste des Gesprächs gesteuert, nicht per Space-Auswahl je Anfrage, und bleibt auf das dem Arbeitsraum Zugeordnete begrenzt | `POST /api/v1/query` | teilweise — Frage, Antwort, Fundstellen und die Chip-Leiste (@-Referenzen, leere Leiste) sind gebaut; die Space↔Bibliothek-Assoziation (#203/#706) ist umgesetzt, als harte Grenze mit „@Space-Wissen"; eine Anfrage ohne eigenen Chat durchsucht kein Wissen (`noSpaceContext`) |
-| Treffer ohne erzeugte Antwort erhalten — Fundstellen mit Auszug, Herkunft (Bibliothek, Dokument, Fundstelle), Metadaten, Relevanz und dem Downloadpfad des Originals; derselbe Retrieval-Pfad wie `POST /api/v1/query` (Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Rechtefilter in der Suche), nur ohne Generierung. Hängt bewusst **nicht** am Fremdzugangsschalter — der ist der Notaus des Fremdzugangskanals, nicht der dieses Endpunkts | `POST /api/v1/search` | ja (#1720) |
+| Treffer ohne erzeugte Antwort erhalten — Fundstellen mit Auszug, Herkunft (Bibliothek, Dokument, Fundstelle), Metadaten, Relevanz und dem Downloadpfad des Originals; derselbe Retrieval-Pfad wie `POST /api/v1/query` (Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Rechtefilter in der Suche), nur ohne Generierung. Hängt bewusst **nicht** am Schalter für externe KI-Werkzeuge — der ist der Notaus des Zugriffswegs für externe KI-Werkzeuge, nicht der dieses Endpunkts | `POST /api/v1/search` | ja (#1720) |
 | Text zu einer Trefferkennung abrufen — Vorgabe ist der Abschnitt mit angrenzendem Kontext und Überschriftenpfad, das ganze Dokument nur über `full=true` und nur bis zu einem serverseitigen Zeichen-Deckel. Eine Kennung außerhalb der eigenen Sicht ist von einer unbekannten nicht unterscheidbar | `GET /api/v1/search/hits/{hitId}` | ja (#1720) |
 | Die Bibliotheken auflisten, in denen der Aufrufer suchen kann — Kennung, Name, Beschreibung; für eine Person ihre lesbaren, für ein Zugangstoken die effektive Sicht, aus derselben Stelle, die auch den Suchbereich bestimmt. Diese Endpunkte haben keinen Space-Bezug und sind deshalb nicht an eine Zuordnung gebunden ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 5) | `GET /api/v1/search/libraries` | ja (#1720) |
 | Antwort auf eine Antwort geben (Bewertung, Fehltreffer melden) | — | nein — Zielbild, siehe [Rückmeldung](#rückmeldung-zur-antwortqualität) |
@@ -331,7 +331,7 @@ Zweck, nicht nach Pfad.
 **Was der frühere Stand dieses Dokuments nannte und heute nicht existiert:** das Auflisten der
 eigenen Uploads, ein Endpunkt für Rückmeldungen sowie Sammelverarbeitung mehrerer Fragen in einem
 Aufruf. Drei der damals genannten Lücken sind inzwischen geschlossen: das **Hochladen von
-Dokumenten** (`POST /api/v1/libraries/{libraryId}/documents`) sowie — mit dem Fremdzugangs-Kanal
+Dokumenten** (`POST /api/v1/libraries/{libraryId}/documents`) sowie — mit dem Zugriffsweg für externe KI-Werkzeuge
 ([external-access.md](./external-access.md), #1720) — der **eigene Such-Endpunkt** neben der Abfrage
 (`POST /api/v1/search`, Treffer ohne erzeugte Antwort) und das **Abrufen eines einzelnen Dokuments**
 (`GET /api/v1/search/hits/{hitId}`); beide stehen jeder angemeldeten Person offen, nicht nur einem

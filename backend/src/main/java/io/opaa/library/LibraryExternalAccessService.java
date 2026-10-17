@@ -98,7 +98,7 @@ public class LibraryExternalAccessService {
       // and reach is frozen while the succession is open. Taking one back, and shortening a
       // running release, stay possible.
       successionGuard.requireAssetReachNotFrozen(
-          KnowledgeLibrary.ASSET_TYPE, library.getId(), "Eine Freigabe für Fremdzugänge");
+          KnowledgeLibrary.ASSET_TYPE, library.getId(), "Eine Freigabe für externe KI-Werkzeuge");
     }
     if (!enabled && previousState != ExternalAccessState.ACTIVE) {
       return describe(library);
@@ -198,7 +198,8 @@ public class LibraryExternalAccessService {
 
   private Instant validateExpiry(Instant expiresAt, Instant now) {
     if (expiresAt == null) {
-      throw new ValidationException("Eine Freigabe für Fremdzugänge braucht ein Ablaufdatum");
+      throw new ValidationException(
+          "Eine Freigabe für externe KI-Werkzeuge braucht ein Ablaufdatum");
     }
     if (!expiresAt.isAfter(now)) {
       throw new ValidationException("Das Ablaufdatum der Freigabe muss in der Zukunft liegen");
@@ -206,7 +207,7 @@ public class LibraryExternalAccessService {
     Instant latest = now.plus(Duration.ofDays(properties.maxReleaseDays()));
     if (expiresAt.isAfter(latest)) {
       throw new ValidationException(
-          "Eine Freigabe für Fremdzugänge gilt höchstens "
+          "Eine Freigabe für externe KI-Werkzeuge gilt höchstens "
               + properties.maxReleaseDays()
               + " Tage; danach muss sie bewusst erneuert werden");
     }

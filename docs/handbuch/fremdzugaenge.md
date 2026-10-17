@@ -1,22 +1,22 @@
-# Fremdzugänge: Zugangstokens und MCP-Server
+# Externe KI-Werkzeuge: Zugangstokens und MCP-Server
 
-Fremdzugänge machen freigegebene Wissensbibliotheken für KI-Werkzeuge erreichbar, die außerhalb von
-OPAA laufen — einen Entwicklungsassistenten, ein Automatisierungswerkzeug, ein eigenes Skript. Das
-fremde Werkzeug bleibt, wo es ist, und holt sich Fundstellen aus dem Bestand des Hauses: mit den
+Externe KI-Werkzeuge laufen außerhalb von OPAA — ein Entwicklungsassistent, ein
+Automatisierungswerkzeug, ein eigenes Skript — und erreichen freigegebene Wissensbibliotheken über
+einen eigenen Zugriffsweg. Das fremde Werkzeug bleibt, wo es ist, und holt sich Fundstellen aus dem Bestand des Hauses: mit den
 Rechten der Person, die es benutzt, und nur aus den Beständen, die dafür ausdrücklich freigegeben
 sind.
 
 Eine frische Installation liefert den Kanal **ausgeschaltet** aus. Ihn einzuschalten ist eine
 Entscheidung mit organisatorischen Vorbedingungen, kein Konfigurationsschritt — Abschnitt 2.
 
-## 1. Was Fremdzugänge sind — und was nicht
+## 1. Was der Zugriff externer KI-Werkzeuge ist — und was nicht
 
 | | |
 |---|---|
 | **Ist** | Ein **lesender** Zugang für Werkzeuge, die eine Person auf ihrem Arbeitsplatz oder im Hausnetz betreibt |
 | **Ist** | Ein Kanal hinter **drei** Freigaben: Schalter der Installation, Freigabe der Bibliothek, Auswahl im Zugangstoken |
 | **Ist nicht** | Ein Zugang für fremd betriebene Dienste im offenen Netz. OPAA wird dafür nicht öffentlich erreichbar gemacht und betreibt keinen Autorisierungsserver |
-| **Ist nicht** | Eine zweite Assistenzoberfläche. Fremdzugänge liefern **Fundstellen**, keine erzeugten Antworten; formuliert wird im fremden Werkzeug, mit dessen Modell |
+| **Ist nicht** | Eine zweite Assistenzoberfläche. Externe KI-Werkzeuge erhalten **Fundstellen**, keine erzeugten Antworten; formuliert wird im fremden Werkzeug, mit dessen Modell |
 | **Ist nicht** | Ein Verwaltungs-, Indizierungs- oder Schreibweg. Ein Zugangstoken erreicht ausschließlich die drei Lesewege aus Abschnitt 8; jeder andere Pfad wird abgewiesen |
 | **Ist nicht** | Der Zugang für ein Fachverfahren — siehe Abschnitt 7 |
 
@@ -37,9 +37,9 @@ flowchart TB
 ```
 
 - **Rechte der Person:** was sie heute lesen darf.
-- **Freigabe der Bibliothek:** für Fremdzugänge gesetzt und noch gültig.
+- **Freigabe der Bibliothek:** für externe KI-Werkzeuge gesetzt und noch gültig.
 - **Auswahl im Token:** die Bibliotheken, die bei der Ausstellung festgelegt wurden.
-- **Kanal der Installation:** der Schalter für Fremdzugänge ist eingeschaltet.
+- **Kanal der Installation:** der Schalter für externe KI-Werkzeuge ist eingeschaltet.
 
 Fällt eine Bibliothek aus einem dieser vier Gründe weg, verschwindet sie aus den Treffern. Sie
 erzeugt keinen Fehler und keinen Hinweis auf ihre Existenz — dieselbe Regel wie in der
@@ -47,7 +47,7 @@ Web-Oberfläche.
 
 ## 2. Vor dem Einschalten
 
-Der Fremdzugang ist eine technische Einrichtung, die zur Überwachung von Verhalten und Leistung
+Der Zugriff externer KI-Werkzeuge ist eine technische Einrichtung, die zur Überwachung von Verhalten und Leistung
 geeignet sein kann. **Ob und in welchem Umfang daraus ein Mitbestimmungstatbestand folgt, richtet
 sich nach dem einschlägigen Personalvertretungsrecht und ist von der einführenden Stelle rechtlich
 zu prüfen.** Vier Punkte gehören deshalb **vor** das Einschalten, nicht danach:
@@ -55,7 +55,7 @@ zu prüfen.** Vier Punkte gehören deshalb **vor** das Einschalten, nicht danach
 - **Beteiligung der Personalvertretung klären.** Der Schalter ist ein Verwaltungsakt; er lässt sich
   technisch in einer Minute umlegen, und genau deshalb steht dieser Punkt hier.
 - **Die Beschäftigten unterrichten** über den Kanal, über die dabei erhobenen Angaben (Abschnitt 11)
-  und über die **Freiwilligkeit** der Nutzung. Aus der Nichtnutzung eines Fremdzugangs entsteht kein
+  und über die **Freiwilligkeit** der Nutzung. Wer keine externen KI-Werkzeuge nutzt, hat dadurch keinen
   Nachteil: Jede Fachaufgabe bleibt über die Web-Oberfläche vollständig erledigbar.
 - **Abstimmung mit dem behördlichen Datenschutzbeauftragten**, insbesondere darüber, dass Fragen und
   abgerufene Inhalte im fremden Werkzeug weiterverarbeitet werden — mit dessen Protokollierung,
@@ -117,18 +117,18 @@ meisten Häuser ausreichend. Er sagt dem fremden Modell, wann es den Kanal in Be
 und dass es seine Antworten mit Fundstellen zu belegen hat. Seine Änderung ändert keine Reichweite
 und wird deshalb **nicht** protokolliert — jede andere Änderung in diesem Panel schon.
 
-### Fremdzugänge ganz abschalten
+### Externe KI-Werkzeuge ganz abschalten
 
-Über dem Schalter steht eine Entscheidung des Betriebs: Eine Installation kann Fremdzugänge ganz
-abschalten, etwa für eine Demo oder bis die Beteiligung der Personalvertretung geklärt ist
+Über dem Schalter steht eine Entscheidung des Betriebs: Eine Installation kann externe KI-Werkzeuge
+ganz abschalten, etwa für eine Demo oder bis die Beteiligung der Personalvertretung geklärt ist
 (`OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED=false`, siehe
 [Konfiguration](konfiguration.md#funktionen-abschalten)). Offen ist der Kanal nur, wenn die Funktion
 an **und** der Schalter eingeschaltet ist. Ist die Funktion aus,
 
-- erwähnt die Oberfläche Fremdzugänge nirgends, auch nicht für die Systemverwaltung: Es gibt keinen
+- erwähnt die Oberfläche externe KI-Werkzeuge nirgends, auch nicht für die Systemverwaltung: Es gibt keinen
   Reiter „Externe KI-Werkzeuge", keinen Bereich „Zugangstokens" in den eigenen Einstellungen und
   keinen Abschnitt „Externer Zugang" an der Bibliothek;
-- antworten der MCP-Endpunkt und alle Adressen der Fremdzugänge wie eine Adresse, die es nicht gibt,
+- antworten der MCP-Endpunkt und alle Adressen für externe KI-Werkzeuge wie eine Adresse, die es nicht gibt,
   und kein Token wirkt — auch nicht bei eingeschaltetem Schalter;
 - geht keine Erinnerungsmail vor dem Ablauf eines Tokens hinaus, und die nächtliche Wiedervorlage
   und der Ablauflauf der Bibliotheksfreigaben entfallen.
@@ -142,7 +142,7 @@ enden ihre Tokens ebenfalls.
 ## 4. Die Freigabe einer Wissensbibliothek
 
 Freigabe-Einheit ist die **Wissensbibliothek**, nicht der Space. Jede Bibliothek trägt im Reiter
-**„Freigaben"** ihrer Detailseite, Abschnitt **„Externer Zugang"**, das Merkmal „über Fremdzugänge
+**„Freigaben"** ihrer Detailseite, Abschnitt **„Externer Zugang"**, das Merkmal „Für externe KI-Werkzeuge
 nutzbar", Standard **aus**. Setzen darf es, wer die Bibliothek verwaltet (Verwalter-Rolle), sowie
 die Systemverwaltung. Eine zusätzliche
 Genehmigungsstufe gibt es nicht: Wer den Bestand verantwortet, entscheidet über ihn.
@@ -162,7 +162,7 @@ wer den Bestand verantwortet.
   ist; bei gruppeneigenen Bibliotheken gehört das Ablaufdatum deshalb in die eigene Wiedervorlage.
 - Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag. Zusätzlich ist das Merkmal
   **historisiert** wie die übrigen Reichweitenfelder: Zu einem beliebigen vergangenen Stichtag ist
-  belegbar, ob eine Bibliothek über Fremdzugänge erreichbar war — auch nachdem der Protokollzeitraum
+  belegbar, ob eine Bibliothek für externe KI-Werkzeuge erreichbar war — auch nachdem der Protokollzeitraum
   nach Frist gelöscht wurde.
 - Der Verantwortliche sieht die **Anzahl** der Zugangstokens, die seine Bibliothek gerade enthalten.
   Eine Zahl, keine Namen, keine Personen, keine Nutzung — der eine Anhalt für die Frage, ob die
@@ -287,7 +287,7 @@ still, sobald die Person ausscheidet, sich ihre Rechte ändern oder ihr Konto ge
 niemand weiß dann, woran es hing. Das ist keine unterstützte Betriebsform. Für maschinelle Zugänge
 ohne Person gibt es bisher keine Lösung; bis dahin bleibt der Weg über die Oberfläche.
 
-## 8. Was ein Fremdzugang erreicht
+## 8. Was ein externes KI-Werkzeug erreicht
 
 Drei Zugriffe, in dieser Reihenfolge gedacht: erst wissen, was da ist, dann suchen, dann das
 Gefundene ganz lesen.
@@ -569,8 +569,8 @@ welchem Umfang" genügt die Kennung.
 
 **Ausdrücklich nicht protokolliert wird die einzelne Abfrage** — weder die Frage noch die
 Suchbegriffe, der Suchbereich, die Trefferzahl noch die abgerufenen Dokumente. Weder die Suche noch
-der Abruf noch die Auflistung erzeugt einen Eintrag. Das gilt für den Fremdzugang genau wie für die
-Web-Oberfläche.
+der Abruf noch die Auflistung erzeugt einen Eintrag. Das gilt für externe KI-Werkzeuge genau wie für
+die Web-Oberfläche.
 
 Ebenfalls nicht:
 
@@ -647,7 +647,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | Die Bibliothek ist im Token als **ausgesetzt** markiert | Die Freigabe wurde zurückgenommen oder ist erloschen | Freigabe erneuern lassen, dann ein **neues** Token erzeugen |
 | `429` mit Wartehinweis (REST) — oder am MCP-Endpunkt eine Fehlerantwort mit dem Code `-32000` bzw. ein Werkzeugergebnis mit dem Wort „Kontingent" | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife. **Am MCP-Endpunkt ist das keine `429`**: Die Ablehnung kommt als Protokollfehler bzw. als Fehlerergebnis des Werkzeugs zurück, damit das fremde Modell damit umgehen kann. Schon das Verbinden zählt (Abschnitt 10) — ein Client, der sich in Schleife neu verbindet, kann das Kontingent allein damit ausschöpfen | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
 | `403` bei einem Aufruf, der bis gestern lief | Ein Proxy hängt der Adresse etwas an (`/mcp;x=1`); solche Pfade weist die Anwendung ab, bevor sie den Endpunkt erreichen | Proxy-Regel bereinigen. Eine prozentkodierte Schreibweise (`/%6Dcp`) ist dagegen unschädlich — sie wird wie `/mcp` behandelt |
-| Der Client meldet „MCP server failed" o. ä., **alle** Fremdzugänge des Hauses zugleich | **Fassungsbruch** nach einem Client- oder Server-Update — siehe unten |
+| Der Client meldet „MCP server failed" o. ä., **alle** externen KI-Werkzeuge des Hauses zugleich | **Fassungsbruch** nach einem Client- oder Server-Update — siehe unten |
 | Die Antwort ist **HTML** statt JSON — etwa eine Seite der Anwendung oder `405` mit HTML-Rumpf | Ein vorgelagerter Reverse-Proxy reicht `/mcp` nicht an OPAA durch, sondern beantwortet den Pfad mit der Auslieferung der Oberfläche. Der Endpunkt selbst antwortet immer als JSON | Die Proxy-Regel um `/mcp` ergänzen — sie muss den Pfad genauso weiterreichen wie `/` ([Deployment](betrieb.md#netzwerkzugang)) |
 | Der Client startet einen Anmelde- oder OAuth-Ablauf statt die Ursache zu zeigen | Der Client hat auf `401` mit einer OAuth-Erkennung reagiert | Im Client OAuth abschalten (bei OpenCode `"oauth": false`, Abschnitt 9) und die eigentliche Ursache aus der `reason`-Angabe lesen |
 | Es lässt sich kein neues Token anlegen, keine Bibliothek ist wählbar | Kanal geschlossen, oder es ist keine der lesbaren Bibliotheken freigegeben | Abschnitt 3 bzw. 4 |
@@ -655,7 +655,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 ### Fassungsbruch: ein Ticket, das kein Einzelfall ist
 
 Es gibt genau **einen** MCP-Server für die ganze Installation. Spricht ein Client eine
-Protokollfassung, die er nicht bedient, fallen deshalb **alle Fremdzugänge des Hauses zugleich aus**
+Protokollfassung, die er nicht bedient, fallen deshalb **alle externen KI-Werkzeuge des Hauses zugleich aus**
 — nicht der eine Arbeitsplatz, von dem das Ticket kam.
 
 Woran der Betrieb es erkennt:
@@ -664,7 +664,7 @@ Woran der Betrieb es erkennt:
   formulierten Fehlern.
 - **Die Meldung stammt nicht von OPAA.** „MCP server failed", „failed to connect" und Ähnliches
   formuliert der Client; OPAA hat auf diesen Wortlaut keinen Einfluss.
-- **Die Web-Oberfläche funktioniert unverändert** — Fremdzugänge sind ein eigener Weg.
+- **Die Web-Oberfläche funktioniert unverändert** — externe KI-Werkzeuge nutzen einen eigenen Weg.
 - **Die Antwort ist `400`** mit einer Klartextmeldung, die die bedienten Fassungen aufzählt, wenn der
   Client seine Fassung im Kopf `MCP-Protocol-Version` nennt. Im Handschlag verlangt, wird sie als
   Fehler mit derselben Aufzählung beantwortet. Ein Client wird **nie** stillschweigend unter einer
@@ -726,7 +726,7 @@ Namensauflösung findet dabei nicht statt.
 
 | Variable | Standard | Wirkung |
 |---|---|---|
-| `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `true` | `false` schaltet die Fremdzugänge für die Installation ab, unabhängig vom Schalter (Abschnitt 3, „Fremdzugänge ganz abschalten"); Tokens, Freigaben und Einstellungen bleiben gespeichert |
+| `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `true` | `false` schaltet externe KI-Werkzeuge für die Installation ab, unabhängig vom Schalter (Abschnitt 3, „Externe KI-Werkzeuge ganz abschalten"); Tokens, Freigaben und Einstellungen bleiben gespeichert |
 | `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` | `365` | Längste zulässige Befristung einer Bibliotheksfreigabe in Tagen. Muss positiv sein — eine Freigabe ohne Obergrenze ist genau die Ratsche, die die Befristung verhindert |
 | `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | `14` | Vorlauf der Wiedervorlage an die Person, die die Freigabe zuletzt gesetzt hat (Abschnitt 4). `0` schaltet die Erinnerung ab; die Freigabe erlischt trotzdem, nur unangekündigt |
 | `OPAA_MCP_DEFAULT_MAX_HITS` | `5` | Dokumente, die eine `search` über MCP ohne eigenes `maxHits` liefert. Bewusst niedriger als die Vorgabe des REST-Suchwegs: Hier ist ein Treffer eine Station auf dem Weg zum Abruf, nicht die Antwort |

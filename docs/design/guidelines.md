@@ -524,7 +524,7 @@ Auswahlliste, kein Dropdown, keine Checkbox-Liste. Es gilt für:
 | **Asset-Art** beim Anlegen | einfach | erster Schritt von „Neu" im Katalog; nur Arten mit Anlegerecht |
 | **Quellart** einer Wissensbibliothek | einfach | Assistent „Neue Wissensbibliothek" |
 | **Zuordnung** von Assets zu einem Space | mehrfach | Space-Assistent, Space-Einstellungen, „In Space verwenden" |
-| **Bibliotheken eines Zugangstokens** | mehrfach | Ausstellung eines Fremdzugangs-Tokens |
+| **Bibliotheken eines Zugangstokens** | mehrfach | Ausstellung eines Zugangstokens für externe KI-Werkzeuge |
 
 Weitere Wahlen dieser Art folgen dem Muster ohne eigene Entscheidung. Ein **Dropdown** bleibt
 richtig, wo die Menge lang und homogen ist und kein Icon unterscheidet (Rolle, Sprache, Zeitraum).

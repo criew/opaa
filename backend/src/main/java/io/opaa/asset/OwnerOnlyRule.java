@@ -34,7 +34,7 @@ public class OwnerOnlyRule {
           "Diese "
               + singular
               + " ist privat und gehört allein ihrer Besitzerin. Sie lässt sich weder teilen noch"
-              + " übertragen noch für Fremdzugänge freigeben.",
+              + " übertragen noch für externe KI-Werkzeuge freigeben.",
           OWNER_ONLY_ASSET);
     }
   }

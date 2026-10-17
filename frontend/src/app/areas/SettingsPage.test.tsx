@@ -211,7 +211,7 @@ describe('SettingsPage', () => {
     expect(await screen.findByText('Zugang Nextcloud intern')).toBeInTheDocument()
   })
 
-  describe('ohne Fremdzugänge (Feature-Flag aus)', () => {
+  describe('ohne externe KI-Werkzeuge (Feature-Flag aus)', () => {
     afterEach(() => {
       useAuthStore.setState({ features: {} })
     })

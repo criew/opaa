@@ -65,10 +65,10 @@ describe('LibraryExternalAccessSection', () => {
 
     renderWithProviders(<LibraryExternalAccessSection libraryId="library-1" />)
 
-    const toggle = await screen.findByRole('switch', { name: 'Über Fremdzugänge nutzbar' })
+    const toggle = await screen.findByRole('switch', { name: 'Für externe KI-Werkzeuge nutzbar' })
     expect(toggle).not.toBeChecked()
     expect(
-      screen.getByText(/noch nie für Fremdzugänge freigegeben/, { exact: false }),
+      screen.getByText(/noch nie für externe KI-Werkzeuge freigegeben/, { exact: false }),
     ).toBeInTheDocument()
   })
 
@@ -105,7 +105,7 @@ describe('LibraryExternalAccessSection', () => {
     const dateField = await screen.findByLabelText('Freigabe bis')
     await user.clear(dateField)
     await user.type(dateField, '2027-03-01')
-    await user.click(screen.getByRole('switch', { name: 'Über Fremdzugänge nutzbar' }))
+    await user.click(screen.getByRole('switch', { name: 'Für externe KI-Werkzeuge nutzbar' }))
 
     await waitFor(() => expect(mockUpdateLibraryExternalAccess).toHaveBeenCalledTimes(1))
     const [libraryId, enabled, expiresAt] = mockUpdateLibraryExternalAccess.mock.calls[0]
@@ -121,7 +121,9 @@ describe('LibraryExternalAccessSection', () => {
 
     renderWithProviders(<LibraryExternalAccessSection libraryId="library-1" />)
 
-    await user.click(await screen.findByRole('switch', { name: 'Über Fremdzugänge nutzbar' }))
+    await user.click(
+      await screen.findByRole('switch', { name: 'Für externe KI-Werkzeuge nutzbar' }),
+    )
 
     expect(await screen.findByText(/Bitte ein Ablaufdatum angeben/)).toBeInTheDocument()
     expect(mockUpdateLibraryExternalAccess).not.toHaveBeenCalled()
@@ -146,7 +148,9 @@ describe('LibraryExternalAccessSection', () => {
 
     renderWithProviders(<LibraryExternalAccessSection libraryId="library-1" />)
 
-    await user.click(await screen.findByRole('switch', { name: 'Über Fremdzugänge nutzbar' }))
+    await user.click(
+      await screen.findByRole('switch', { name: 'Für externe KI-Werkzeuge nutzbar' }),
+    )
 
     await waitFor(() =>
       expect(mockUpdateLibraryExternalAccess).toHaveBeenCalledWith('library-1', false, null),
@@ -162,7 +166,7 @@ describe('LibraryExternalAccessSection', () => {
 
     await waitFor(() => expect(mockGetLibrary).toHaveBeenCalled())
     expect(
-      screen.queryByRole('switch', { name: 'Über Fremdzugänge nutzbar' }),
+      screen.queryByRole('switch', { name: 'Für externe KI-Werkzeuge nutzbar' }),
     ).not.toBeInTheDocument()
   })
 })

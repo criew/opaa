@@ -51,7 +51,7 @@ function stateLine(access: LibraryExternalAccessResponse): string {
     case 'SUSPENDED':
       return 'Die Freigabe ist ausgesetzt und wirkt derzeit nicht.'
     default:
-      return 'Diese Bibliothek war noch nie für Fremdzugänge freigegeben.'
+      return 'Diese Bibliothek war noch nie für externe KI-Werkzeuge freigegeben.'
   }
 }
 
@@ -130,7 +130,7 @@ export default function LibraryExternalAccessSection({
          the backend does not deliver the release at all, and a divider without a following section
          would be a line that separates nothing. */}
       <Divider sx={{ my: 1 }} />
-      <SectionHead component="h3">Fremdzugänge</SectionHead>
+      <SectionHead component="h3">Externe KI-Werkzeuge</SectionHead>
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
           {error}
@@ -141,11 +141,11 @@ export default function LibraryExternalAccessSection({
           <Switch
             checked={released}
             disabled={saving}
-            slotProps={{ input: { 'aria-label': 'Über Fremdzugänge nutzbar' } }}
+            slotProps={{ input: { 'aria-label': 'Für externe KI-Werkzeuge nutzbar' } }}
             onChange={(event) => void apply(event.target.checked)}
           />
         }
-        label="Über Fremdzugänge nutzbar"
+        label="Für externe KI-Werkzeuge nutzbar"
       />
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <TextField

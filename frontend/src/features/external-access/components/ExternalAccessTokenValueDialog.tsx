@@ -115,7 +115,7 @@ export default function ExternalAccessTokenValueDialog({
           Wert im Klartext trägt nur der Claude-Code-Befehl, der ihn in Ihre benutzereigene
           Konfiguration schreibt; die beiden JSON-Schnipsel fragen ihn ab (VS Code) oder lesen ihn
           aus der Umgebungsvariablen OPAA_TOKEN (Cursor), damit er nicht in einer eingecheckten
-          Datei landet. Ausführliche Anleitung im Handbuch, Kapitel Fremdzugänge.
+          Datei landet. Ausführliche Anleitung im Handbuch, Kapitel Externe KI-Werkzeuge.
         </Typography>
         <Stack spacing={2}>
           <Snippet label="Claude Code" value={snippets.claudeCode} />

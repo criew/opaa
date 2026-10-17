@@ -94,7 +94,7 @@ gestuft; was „Inhalt pflegen" heißt, hängt von der Art ab.
 |---|---|---|
 | **Leser** (`VIEWER`) | das Arbeitsmittel und seinen Inhalt lesen und nutzen | durchsuchen, Treffer und Dokumentliste sehen |
 | **Bearbeiter** (`EDITOR`) | zusätzlich den Inhalt pflegen, bei einer Prompt-Bibliothek etwa Prompts anlegen, ändern und löschen | Dokumente hochladen und löschen, Ordner pflegen, einen Lauf anstoßen, Metadaten pflegen |
-| **Verwalter** (`MANAGER`) | zusätzlich Name und Beschreibung ändern, Rechte vergeben und entziehen, auch an alle Konten | die Quellverbindung sehen und ändern, die Bibliothek für [Fremdzugänge](fremdzugaenge.md) freigeben |
+| **Verwalter** (`MANAGER`) | zusätzlich Name und Beschreibung ändern, Rechte vergeben und entziehen, auch an alle Konten | die Quellverbindung sehen und ändern, die Bibliothek für [externe KI-Werkzeuge](fremdzugaenge.md) freigeben |
 | **Eigentümer** (`OWNER`) | zusätzlich das Arbeitsmittel löschen und das Eigentum übertragen | — |
 
 Die Rollen sind gestuft: Wer Verwalter ist, darf alles, was ein Bearbeiter darf. Die
@@ -111,7 +111,7 @@ eines Arbeitsmittels in dieser Reihenfolge:
 |---|---|
 | **Eigentümer** | die zuständige Stelle mit Namen; über „Eigentum übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt ein Arbeitsmittel mit offener Nachfolge wieder eine handlungsfähige Stelle. Jede Übergabe steht mit Namen im Nachweisprotokoll |
 | **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben". Für „Alle Konten" stehen nur **Leser** und **Bearbeiter** zur Wahl; bei einer Konnektorbibliothek für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
-| **Externer Zugang** | nur bei einer Wissensbibliothek: die Freigabe für Fremdzugänge |
+| **Externer Zugang** | nur bei einer Wissensbibliothek: die Freigabe für externe KI-Werkzeuge |
 | **Diagnosesperre** | nur bei einer Wissensbibliothek: ob sie in einer fremden Suchdiagnose auftauchen darf |
 | **Warum sehe ich das?** | die eigene Herleitung (Abschnitt 11) |
 
@@ -158,7 +158,7 @@ oder Beschreibung. Wer ein Arbeitsmittel für andere sichtbar machen will, gibt 
 
 Die Freigabe an alle Konten wird **historisiert** wie jede erteilte Rolle: Zu jedem Stichtag
 innerhalb der Aufbewahrungsfrist ist belegbar, wie weit ein Arbeitsmittel gereicht hat (Abschnitt 12).
-Die Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein weiteres Reichweitenfeld und wird
+Die Freigabe für [externe KI-Werkzeuge](fremdzugaenge.md) ist ein weiteres Reichweitenfeld und wird
 ebenso historisiert.
 
 Wie Arbeitsmittel im Katalog erscheinen, als Favorit markiert und angelegt werden, beschreibt das
@@ -193,8 +193,9 @@ sichtbar und änderbar nur für die Systemverwaltung. Sie besteht aus einer Erla
 **Wird die Erlaubnis entzogen, wirkt das sofort — aber ausschließlich für die Freigabe an alle
 Konten.**
 Es gibt keine Übergangszeit und keinen Zustand „noch zu weit, aber geduldet". **Unberührt bleiben
-erteilte Rechte an einzelnen Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe**
-(Abschnitt „Die Freigabe einer Wissensbibliothek" im Kapitel [Fremdzugänge](fremdzugaenge.md)) —
+erteilte Rechte an einzelnen Personen und Gruppen sowie eine bestehende Freigabe für externe
+KI-Werkzeuge** (Abschnitt „Die Freigabe einer Wissensbibliothek" im Kapitel
+[Externe KI-Werkzeuge](fremdzugaenge.md)) —
 beide müssen gesondert geprüft und, falls gewünscht, gesondert zurückgenommen werden. Jeder Vorgang
 steht im Nachweisprotokoll: das Setzen der Obergrenze selbst und, falls ausgelöst, die dadurch
 bewirkte Rücknahme der Freigabe.
@@ -494,7 +495,7 @@ Fünf Punkte dazu:
   geben.
 - **Konnektorbibliotheken sind der erste Kandidat für eine Einschränkung.** Sie erreichen Serverpfade
   und hinterlegte Zugangsdaten, tragen die Freigabe-Obergrenze und die Freigabe für
-  [Fremdzugänge](fremdzugaenge.md). Wer das Anlegen dieser Bibliotheken auf eine benannte Gruppe
+  [externe KI-Werkzeuge](fremdzugaenge.md). Wer das Anlegen dieser Bibliotheken auf eine benannte Gruppe
   begrenzt, begrenzt zugleich, wer serverseitige Quellen anschließen kann — und muss die
   Freigabe-Obergrenze nicht hinter jeder Neuanlage nachziehen.
 - **„Interne Gruppen anlegen" wird bei der Einführung an eine benannte Gruppe vergeben**, etwa
@@ -877,7 +878,7 @@ ist, ist er vorbei.
 **Was der Zustand bedeutet — und was nicht.** Das Objekt bleibt nutzbar, alle bestehenden Rechte
 bleiben, **nichts wird gelöscht**. Eingefroren ist allein die **Reichweite**: keine neuen oder
 größeren Berechtigungen, keine größere Sichtbarkeit, keine neue oder verlängerte Freigabe für
-Fremdzugänge, keine neue Bereitstellung in einem Space, keine neuen Space-Mitglieder. Der Versuch wird
+externe KI-Werkzeuge, keine neue Bereitstellung in einem Space, keine neuen Space-Mitglieder. Der Versuch wird
 mit einer Meldung abgelehnt, die auch sagt, wer zuständig ist.
 
 **Alles, was Reichweite wegnimmt, bleibt möglich** — und zwar dieselben Wege wie sonst: eine
@@ -1125,5 +1126,5 @@ Postfächer.
   [Suche](suche.md)
 - Arbeitsmittel finden, anlegen und zuordnen: [Katalog](katalog.md)
 - Rollen, Zuordnung und Einstellungen eines Space: [Spaces](spaces.md)
-- Der lesende Kanal für fremde KI-Werkzeuge und seine Freigabe je Bibliothek:
-  [Fremdzugänge](fremdzugaenge.md)
+- Der lesende Kanal für externe KI-Werkzeuge und seine Freigabe je Bibliothek:
+  [Externe KI-Werkzeuge](fremdzugaenge.md)

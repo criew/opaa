@@ -282,25 +282,25 @@ public enum MailTemplateKey {
       "actionUrl"),
 
   EXTERNAL_ACCESS_RELEASE_EXPIRING(
-      "Ablauf einer Fremdzugangsfreigabe",
-      "Freigabe von „{{libraryName}}“ für Fremdzugänge läuft ab",
+      "Ablauf einer Freigabe für externe KI-Werkzeuge",
+      "Freigabe von „{{libraryName}}“ für externe KI-Werkzeuge läuft ab",
       """
       Guten Tag {{displayName}},
 
-      die Freigabe der Bibliothek „{{libraryName}}“ für Fremdzugänge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.
+      die Freigabe der Bibliothek „{{libraryName}}“ für externe KI-Werkzeuge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.
 
       Ob die Freigabe erneuert wird, entscheiden Sie:
 
       {{actionUrl}}
       """,
       """
-      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Eine Freigabe für Fremdzugänge läuft ab</h1>
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Eine Freigabe für externe KI-Werkzeuge läuft ab</h1>
       <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
-      <p style="margin:0 0 14px;">die Freigabe der Bibliothek <strong>{{libraryName}}</strong> für Fremdzugänge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.</p>
+      <p style="margin:0 0 14px;">die Freigabe der Bibliothek <strong>{{libraryName}}</strong> für externe KI-Werkzeuge endet {{expiresAtDate}}. Danach erlischt sie; die Bibliothek verschwindet aus allen Zugangstokens, die sie enthalten.</p>
       <p style="margin:0;font-size:13px;">Ob die Freigabe erneuert wird, entscheiden Sie.</p>
       """,
       "Freigabe prüfen",
-      "Die Freigabe von „{{libraryName}}“ für Fremdzugänge endet {{expiresAtDate}}.",
+      "Die Freigabe von „{{libraryName}}“ für externe KI-Werkzeuge endet {{expiresAtDate}}.",
       "productName",
       "displayName",
       "libraryName",

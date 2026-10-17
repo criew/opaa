@@ -123,7 +123,7 @@ Sicherungen stammen. Für OPAA gilt:
 3. **Datenbank zurückspielen**, mit denselben Voraussetzungen wie bei einer Neuinstallation
    ([Voraussetzungen einer eigenen PostgreSQL](../../handbuch/datenbank.md#voraussetzungen-einer-eigenen-postgresql)).
 4. **Signaturgeheimnis ersetzen, bevor das Backend startet**, und die übrige Nacharbeit erledigen:
-   Sperren und Rücksetzungen der Zwischenzeit erneut vornehmen, bei Fremdzugängen deren Prüfliste
+   Sperren und Rücksetzungen der Zwischenzeit erneut vornehmen, bei externen KI-Werkzeugen deren Prüfliste
    abarbeiten ([Nacharbeit nach einer Rücksicherung der Datenbank](../../handbuch/authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)).
    Die Verschlüsselungsschlüssel bleiben dieselben (A5).
 5. **Backend starten und prüfen** nach den Prüfkriterien der

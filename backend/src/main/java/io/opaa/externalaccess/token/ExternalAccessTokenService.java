@@ -96,7 +96,8 @@ public class ExternalAccessTokenService {
   public IssuedExternalAccessToken issue(
       UUID ownerId, UUID organizationId, String rawName, List<UUID> libraryIds, Instant expiresAt) {
     if (!settings.isEnabled()) {
-      throw new AccessDeniedException("Fremdzugänge sind für diese Installation abgeschaltet");
+      throw new AccessDeniedException(
+          "Externe KI-Werkzeuge sind für diese Installation ausgeschaltet");
     }
     String name = rawName == null ? "" : rawName.trim();
     if (name.isEmpty()) {
@@ -251,13 +252,13 @@ public class ExternalAccessTokenService {
       // never confirms the existence of a library the person may not see.
       throw new ValidationException(
           "Mindestens eine Bibliothek ist nicht auswählbar - sie ist Ihnen nicht zugänglich oder"
-              + " nicht für Fremdzugänge freigegeben");
+              + " nicht für externe KI-Werkzeuge freigegeben");
     }
     Set<UUID> released = release.releasedAmong(selected);
     if (!released.containsAll(selected)) {
       throw new ValidationException(
           "Mindestens eine Bibliothek ist nicht auswählbar - sie ist Ihnen nicht zugänglich oder"
-              + " nicht für Fremdzugänge freigegeben");
+              + " nicht für externe KI-Werkzeuge freigegeben");
     }
   }
 

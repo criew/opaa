@@ -26,9 +26,9 @@ export const SHOWN_ONCE_HINT =
   'Legen Sie ihn nicht in einem Repository und nicht in einem synchronisierten Profil ab.'
 
 export const CHANNEL_OFF_HINT =
-  'Fremdzugänge sind für diese Installation abgeschaltet. Vorhandene Tokens wirken nicht, bleiben ' +
-  'aber erhalten und lassen sich weiterhin widerrufen. Ein neues Token kann erst angelegt werden, ' +
-  'wenn Ihre Systemverwaltung den Kanal wieder öffnet.'
+  'Externe KI-Werkzeuge sind für diese Installation ausgeschaltet. Vorhandene Tokens wirken nicht, ' +
+  'bleiben aber erhalten und lassen sich weiterhin widerrufen. Ein neues Token kann erst angelegt ' +
+  'werden, wenn Ihre Systemverwaltung externe KI-Werkzeuge wieder zulässt.'
 
 export const SUSPENDED_LIBRARY_HINT =
   'Die Freigabe wurde zurückgenommen oder ist abgelaufen. Die Bibliothek wirkt in diesem Token ' +
@@ -36,8 +36,9 @@ export const SUSPENDED_LIBRARY_HINT =
   'Token nötig.'
 
 export const NO_LIBRARIES_HINT =
-  'Derzeit ist keine Bibliothek für Fremdzugänge wählbar: Entweder haben Sie auf die betreffenden ' +
-  'Bibliotheken keinen Lesezugriff, oder sie sind nicht für Fremdzugänge freigegeben. Beides ' +
+  'Derzeit ist keine Bibliothek für externe KI-Werkzeuge wählbar: Entweder haben Sie auf die ' +
+  'betreffenden Bibliotheken keinen Lesezugriff, oder sie sind nicht für externe KI-Werkzeuge ' +
+  'freigegeben. Beides ' +
   'entscheidet, wer die jeweilige Bibliothek verwaltet - sprechen Sie diese Verwaltung an. Einen ' +
   'Antragsweg in der Anwendung gibt es dafür bewusst nicht.'
 

@@ -950,7 +950,7 @@ export default function LibraryDetailPage() {
             <Alert severity="info" sx={{ mb: 4 }} data-testid="library-private-note">
               {PRIVATE_LIBRARY_NOTE} Sie läuft über Ihr verbundenes Konto und lässt sich weder
               freigeben noch übertragen
-              {externalAccessEnabled ? ' oder über einen Fremdzugang erreichen' : ''} — auch nicht
+              {externalAccessEnabled ? ' noch für externe KI-Werkzeuge öffnen' : ''} — auch nicht
               durch die Systemverwaltung.
             </Alert>
           )}
@@ -975,7 +975,7 @@ export default function LibraryDetailPage() {
               {externalAccessEnabled && (
                 <PageSection
                   title="Externer Zugang"
-                  description="Ob diese Bibliothek über einen Fremdzugang außerhalb der Anmeldung erreichbar ist."
+                  description="Ob externe KI-Werkzeuge diese Bibliothek außerhalb der Anmeldung erreichen."
                 >
                   <LibraryExternalAccessSection libraryId={libraryId} />
                 </PageSection>

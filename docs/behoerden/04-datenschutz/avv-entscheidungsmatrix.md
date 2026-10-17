@@ -86,8 +86,8 @@ Kandidaten, je nach Einrichtung:
 
 - ein Identitätsanbieter als Cloud-Dienst ([Handbuch, Authentifizierung](../../handbuch/authentifizierung.md)),
 - ein externer Dienst für den E-Mail-Versand ([Handbuch, E-Mail-Versand](../../handbuch/e-mail.md)),
-- fremde Werkzeuge über Fremdzugänge, die Inhalte an ihre eigenen Modellanbieter weitergeben können
-  ([Handbuch, Fremdzugänge](../../handbuch/fremdzugaenge.md)),
+- externe KI-Werkzeuge, die Inhalte an ihre eigenen Modellanbieter weitergeben können
+  ([Handbuch, Externe KI-Werkzeuge](../../handbuch/fremdzugaenge.md)),
 - ein Ausgangsproxy eines Dritten ([Handbuch, Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy)).
 
 ## Ergebnis festhalten

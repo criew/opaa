@@ -802,7 +802,7 @@ Die Systemverwaltung setzt sie je Bibliothek — ausgeliefert ist die **Obergren
 diese Bibliothek eigens senkt; die Bibliothek selbst startet geschlossen, nur mit den Rechten, die ihr
 jemand erteilt —, und ein nachträgliches Senken
 nimmt eine bestehende Freigabe an „Alle Konten" sofort zurück; erteilte Rechte an
-Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben davon unberührt. Die
+Personen und Gruppen sowie eine bestehende Freigabe für externe KI-Werkzeuge bleiben davon unberührt. Die
 Grundannahme, auf der sie ursprünglich beruhte — „die Systemverwaltung speist ein, der Eigentümer
 gibt frei" —, gilt mit der freien Anlageberechtigung nicht mehr uneingeschränkt; die Obergrenze
 bleibt deshalb die tragende

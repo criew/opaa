@@ -503,7 +503,7 @@ Server-Richtung liefert Fundstellen an ein Werkzeug, das fragt. Entscheidungen d
 gelten nicht automatisch für die andere. Die Server-Richtung ist inzwischen **gebaut** — Schalter,
 Bibliotheksfreigabe, persönliche Zugangstokens, Such- und Abrufweg und der MCP-Server unter `/mcp`;
 wer sie betreiben oder anschließen will, findet beides in
-[external-access.md](./external-access.md) und im Handbuchkapitel „Fremdzugänge".
+[external-access.md](./external-access.md) und im Handbuchkapitel „Externe KI-Werkzeuge".
 
 **Nur über gesicherte Netzverbindungen, und nur von einer Zulassungsliste.** Welche fremden Werkzeugserver überhaupt in Frage kommen, entscheidet die **Systemverwaltung** und hinterlegt es in einer Zulassungsliste; ein Agenten- oder Skill-Autor wählt aus dieser Liste aus, er erweitert sie nicht. Der Grund ist derselbe, aus dem die Zielprüfung der Konnektoren existiert: Ein Werkzeug, dessen Adresse jemand frei eintragen darf, ist ein Weg nach draußen, den niemand beschlossen hat. Zugangsdaten liegen verschlüsselt in der Anwendung, nie in einer Werkzeugbeschreibung. Anbindungen, die einen lokalen Prozess starten, sind ausgeschlossen — „der Nutzer darf das Kommando festlegen" ist keine Einstellmöglichkeit, sondern eine Ausführungslücke.
 

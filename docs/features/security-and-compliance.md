@@ -161,7 +161,7 @@ ersten Stufe nicht geschrieben.
   wird als solcher protokolliert; ein eigenes Auffindbarkeitsfeld (`listed`) gibt es seit
   [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) nicht mehr
 - Setzen, Zurücknehmen, Erlöschen und Aussetzen der **Freigabe einer Wissensbibliothek für
-  Fremdzugänge** ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) — sie ist
+  externe KI-Werkzeuge** ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) — sie ist
   das verbliebene Reichweitenfeld neben den Grants und entscheidet zusätzlich über die Hausgrenze;
   beim Erlöschen mit dem Anlass (Fristablauf, gesenkte Freigabe-Obergrenze)
 - Aussetzen von Grants durch eine nachträglich gesenkte Freigabe-Obergrenze
@@ -230,7 +230,7 @@ ersten Stufe nicht geschrieben.
   zusätzlich angezeigt
 - Modellvorgaben und die Freigabe externer Modelle
 - Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken
-- **Die Kanaleinstellungen der Fremdzugänge** ([external-access.md](./external-access.md#der-schalter-der-installation)):
+- **Die Einstellungen für externe KI-Werkzeuge** ([external-access.md](./external-access.md#der-schalter-der-installation)):
   Ein- und Ausschalten des Kanals, Ablauf-Obergrenze für Zugangstokens, Kontingent je Token,
   Netzbereiche des Kanals und die Schwelle des Abflussalarms. Sie stehen aus demselben Grund hier
   wie die Freigabe-Obergrenze: Sie entscheiden über die Reichweite eines Bestands, nicht über
@@ -276,8 +276,8 @@ Mail-Einstellungen (`MAIL_SETTINGS_CHANGED` ohne den Passwortwert, `MAIL_TEMPLAT
 eines lokalen Kontos an eine Anbieteridentität (`LOCAL_USER_HANDOVER_REQUESTED` mit
 Anbieter-Kennung und Zustellweg, `LOCAL_USER_HANDED_OVER` mit Anbieter-Kennung und den Zahlen
 dessen, was mitgegangen ist — nie mit dem Subject der Anbieteridentität; das Widerrufsereignis der
-Sitzungen trägt den Grund `HANDED_OVER`) und — seit #1717 — die Kanaleinstellungen der
-Fremdzugänge (`EXTERNAL_ACCESS_SETTINGS_CHANGED` mit Vorher/Nachher nur der geänderten Schlüssel:
+Sitzungen trägt den Grund `HANDED_OVER`) und — seit #1717 — die Einstellungen für
+externe KI-Werkzeuge (`EXTERNAL_ACCESS_SETTINGS_CHANGED` mit Vorher/Nachher nur der geänderten Schlüssel:
 Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle — der Einleitungstext für
 fremde Werkzeuge erzeugt bewusst keinen Eintrag) und — seit #1718 — die persönlichen Zugangstokens
 desselben Kanals (`API_TOKEN_ISSUED` mit Bibliotheksauswahl und Ablauf, `API_TOKEN_REVOKED` mit
@@ -313,7 +313,7 @@ der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungs
 erzeugen kein Ereignis. Ebenfalls verdrahtet sind die Freigabe-Obergrenze konnektor-gespeister
 Bibliotheken (`CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED`; eine gesenkte Obergrenze setzt den Grant an
 „Alle Konten" nicht aus, sondern entzieht ihn über den gewöhnlichen Weg als `ASSET_GRANT_REVOKED`),
-die Fremdzugangsfreigabe einer Wissensbibliothek (`ASSET_EXTERNAL_ACCESS_CHANGED`, ihr Erlöschen als
+die Freigabe einer Wissensbibliothek für externe KI-Werkzeuge (`ASSET_EXTERNAL_ACCESS_CHANGED`, ihr Erlöschen als
 `ASSET_EXTERNAL_ACCESS_EXPIRED`), die Bereitstellung eines Assets in einem Space
 (`ASSET_SHARED_TO_SPACE`, `ASSET_DETACHED_FROM_SPACE`) und die Aufbewahrungsfrist des Protokolls als
 Teil der Protokollkonfiguration (`AUDIT_LOG_CONFIGURATION_CHANGED`). Noch **nicht** verdrahtet — weil
@@ -333,7 +333,7 @@ die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und �
 | **Antwortinhalte, Zitate, Modellaufrufe** | dasselbe, zusätzlich mit Inhalten aus dem Fachverfahren |
 | **Erfolgreiche Anmeldungen und Sitzungsverläufe** | reines Anwesenheitsmerkmal, ohne Aussage über Rechte |
 | **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie kommen mit der [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring), nicht mit dieser Stufe. Das gilt unverändert für die lokale Anmeldung ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Der einzelne Fehlversuch steht nur im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche, Konto-Kennung statt Adresse); in das Nachweisprotokoll gelangt allein die daraus folgende **Kontosperre** als Zustandsänderung. Der Fehlversuchszähler eines Kontos wird weder ausgegeben noch historisiert und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null |
-| **Der Schwellenwertalarm des Fremdzugangskanals** | Dasselbe Muster wie eine Zeile höher: Er ist ein Sicherheitsereignis, keine Zugriffsänderung. Die Überschreitung erzeugt eine Meldung an die Systemverwaltung und einen Eintrag im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche); der Zähler lebt nur im Arbeitsspeicher und wird nicht historisiert. In das Nachweisprotokoll gelangt allein die daraus folgende **Sperre des Tokens** als Zustandsänderung. Einzelheiten: [external-access.md](./external-access.md#kontingente-und-der-abflussalarm) |
+| **Der Schwellenwertalarm des Zugriffswegs für externe KI-Werkzeuge** | Dasselbe Muster wie eine Zeile höher: Er ist ein Sicherheitsereignis, keine Zugriffsänderung. Die Überschreitung erzeugt eine Meldung an die Systemverwaltung und einen Eintrag im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche); der Zähler lebt nur im Arbeitsspeicher und wird nicht historisiert. In das Nachweisprotokoll gelangt allein die daraus folgende **Sperre des Tokens** als Zustandsänderung. Einzelheiten: [external-access.md](./external-access.md#kontingente-und-der-abflussalarm) |
 | **Lesezugriffe auf Dokumente und Chats** | Verhalten; wer worauf zugreifen **durfte**, belegt die Rechtehistorie |
 | **Favoriten an Assets** — Setzen, Entfernen, Bestand | Persönliche Ordnung, keine Zugriffsänderung; in der Menge ein Interessenprofil. Favoriten werden weder protokolliert noch historisiert, nicht gezählt und sind für niemanden außer der Person selbst abrufbar; exportiert werden sie nur in ihrer Selbstauskunft, und als personenbeziehbares Feld gehören sie in die Auskunft über die Datenerhebung ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 7) |
 
@@ -662,7 +662,7 @@ schwierigere, und ein Ereignisprotokoll kann sie nicht beantworten, solange es L
 
 Deshalb werden **alle Quellen historisiert**: Grants — Empfänger Person, Gruppe **und „Alle
 Beschäftigten"** —, Gruppenmitgliedschaften und das verbleibende Reichweitenfeld am Asset (die
-Freigabe einer Wissensbibliothek für Fremdzugänge, siehe
+Freigabe einer Wissensbibliothek für externe KI-Werkzeuge, siehe
 [external-access.md](./external-access.md#die-freigabe-der-bibliothek); `listed` entfällt mit
 [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) samt seiner
 Intervalle). Die Space-Zuordnung wird nicht historisiert: Sie gewährt keinen Zugriff. Zu jedem Zeitpunkt ist
@@ -763,13 +763,13 @@ stattdessen ein Integrationstest gegen eine echte Datenbank ab — für jede Ope
 Menge verändert: Berechtigung erteilen, ändern und entziehen, Gruppenmitglied hinzufügen und entfernen,
 Gruppe löschen, Verzeichnisabgleich (Mitgliedschaft hinzugefügt, entfernt, Gruppe samt Mitglied neu
 angelegt), Gruppenmitgliedschaft aus dem Anmeldetoken (hinzugefügt und entfernt), Bibliothek anlegen, in
-der Sichtbarkeit ändern und löschen sowie die **Fremdzugangsfreigabe einer Bibliothek setzen,
+der Sichtbarkeit ändern und löschen sowie die **Freigabe einer Bibliothek für externe KI-Werkzeuge setzen,
 zurücknehmen und erlöschen lassen**. Ein Schreibpfad, der Leserechte ändert, ohne seine Historienzeile zu
 schreiben, fällt dort auf, bevor er in Betrieb geht. Welche Klassen dabei überhaupt in Frage kommen, hält
 derselbe Test gegen den Anwendungskontext, damit eine neue Klasse an den Rechtetabellen nicht unbemerkt
 hinzukommt.
 
-Für die **Reichweitenfelder** einer Bibliothek — die Fremdzugangsfreigabe und die Freigabe-Obergrenze —
+Für die **Reichweitenfelder** einer Bibliothek — die Freigabe für externe KI-Werkzeuge und die Freigabe-Obergrenze —
 kommt ein Strukturtest hinzu (`KnowledgeLibraryReachWriterTest`): Er liest die übersetzten Klassen
 und lässt jede ändernde Methode der Bibliothek nur aus genau einem Dienst zu — `updateExternalAccess`
 aus `LibraryExternalAccessService`, `expireExternalAccess` aus `LibraryExternalAccessExpiryService`,
@@ -808,8 +808,8 @@ Recht falsch, nicht bloß lückenhaft. Die Historie überlebt die Löschung eine
 (siehe [ADR-0016](../decisions/0016-loeschschicksal-rechtehistorie.md)): Die Fachobjekt-Spalten tragen
 bewusst keinen Fremdschlüssel, damit eine reguläre Lösch-Operation die Beweislage nicht mit sich reißt.
 
-**Umsetzungsstand der Fremdzugangsfreigabe (#1731):** Die Freigabe einer
-Wissensbibliothek für Fremdzugänge ist gebaut und liegt in `asset_visibility_history`, mit demselben Schreibpfadschutz (Integrationstest je Operation und
+**Umsetzungsstand der Freigabe für externe KI-Werkzeuge (#1731):** Die Freigabe einer
+Wissensbibliothek für externe KI-Werkzeuge ist gebaut und liegt in `asset_visibility_history`, mit demselben Schreibpfadschutz (Integrationstest je Operation und
 `KnowledgeLibraryReachWriterTest`, siehe oben). Setzen, Zurücknehmen und Erlöschen erzeugen je einen Protokolleintrag
 (`ASSET_EXTERNAL_ACCESS_CHANGED`, `ASSET_EXTERNAL_ACCESS_EXPIRED`) und öffnen je ein neues Intervall;
 der Ablauflauf schreibt ohne handelnde Person, unter einem Systemakteur. Die
@@ -822,7 +822,7 @@ Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`)
 von nichts gesetzt: [#797](https://github.com/criew/opaa/issues/797) hat die Freigabe-Obergrenze
 konnektor-gespeister Bibliotheken ausdrücklich auf die Freigabe an „Alle Konten" (bis ADR-0039
 zusätzlich auf `listed`) begrenzt und lässt die
-Fremdzugangsfreigabe unberührt (siehe [external-access.md](./external-access.md#die-freigabe-ist-ein-reichweitenfeld-und-wird-wie-eines-behandelt)).
+Freigabe für externe KI-Werkzeuge unberührt (siehe [external-access.md](./external-access.md#die-freigabe-ist-ein-reichweitenfeld-und-wird-wie-eines-behandelt)).
 
 **Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**
 Aufeinanderfolgende Zustandsintervalle desselben Objekts haben streng aufsteigende Grenzen — auch dann,

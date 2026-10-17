@@ -229,7 +229,7 @@ Kopfvermerk hält das Datum dieser Prüfung als `rechtsstand` fest.
 
 **(gebaut, #2546, #2548, #2549)** Das Fakten-Manifest beschreibt in einer Datei je Bereich
 (Protokoll; Konten, Anmeldung und Rollen; Rechte und Gruppen; Spaces; Chats; Bibliotheken und
-Indexierung; Verbindungen; Fremdzugänge; Konfiguration und Standardmodelle; System-Prompts und
+Indexierung; Verbindungen; Externe KI-Werkzeuge; Konfiguration und Standardmodelle; System-Prompts und
 KI-Funktionen; ausgehende Datenflüsse), welche Daten OPAA erhebt und verarbeitet. Jeder Eintrag hat
 feste Pflichtfelder:
 

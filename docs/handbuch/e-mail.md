@@ -49,8 +49,8 @@ Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start
 Vierzehn Vorlagen werden mit deutschem Text ausgeliefert: Einladung, Passwort vergessen,
 administratives Zurücksetzen, Bestätigung der Selbstregistrierung, Sperrung, Entsperrung,
 Ablaufhinweis, Übergabe angestoßen, Übergabe abgeschlossen, Benutzung des Notanker-Kontos,
-Erinnerung an die Kontenprüfung, Ablaufhinweis einer Fremdzugangsfreigabe und eines
-Zugangstokens und die Testnachricht.
+Erinnerung an die Kontenprüfung, Ablaufhinweis einer Freigabe für externe KI-Werkzeuge und
+eines Zugangstokens und die Testnachricht.
 
 Eine Vorlage lässt sich überschreiben (Betreff, Textteil, wahlweise ein eigener HTML-Teil) und
 jederzeit auf den ausgelieferten Stand zurücksetzen. Es lassen sich weder Vorlagen anlegen noch

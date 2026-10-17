@@ -294,7 +294,7 @@ aus dem privaten Arbeitsbereich.
   Risiko, etwas nicht wiederzufinden, und unterbliebe.
 - **Kein Durchgriff.** Weder Space- noch System-Admins können fremde Chats durchsuchen; es gibt dafür
   keinen Parameter und keine Rolle. Die Suche ist nur in der angemeldeten Sitzung erreichbar, nicht über
-  persönliche Zugangstokens und nicht über den MCP-Server der [Fremdzugänge](./external-access.md).
+  persönliche Zugangstokens und nicht über den MCP-Server für [externe KI-Werkzeuge](./external-access.md).
 
 ### Bedienung
 
@@ -379,7 +379,7 @@ Entschieden vom Maintainer am 18.09.2026 (Epic #1762, Phase 1):
 Im Konzept festgelegt, ohne gesonderte Maintainer-Frage: Suche nur im aktiven Space; Suchbegriffe nicht
 protokolliert; Archiv in der Suche einbezogen; persönliche Merkmale als eigene Zeilen je Person und
 Chat; kein automatisches Archivieren (seit #1923 je Space einschaltbar, siehe oben); keine Obergrenze beim Anheften; Merkmale auch im archivierten Space
-setzbar; Chatsuche nicht über Fremdzugänge erreichbar; durchsucht werden Titel, Fragen und Antworten.
+setzbar; Chatsuche nicht für externe KI-Werkzeuge erreichbar; durchsucht werden Titel, Fragen und Antworten.
 
 ### Mustervergleich
 
@@ -419,7 +419,7 @@ Handbuch und E2E-Abdeckung gehören in jede Phase, nicht gesammelt ans Ende.
   derselben Art (je Person und Chat) und passt in das hier festgelegte Modell.
 - **[security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)** —
   Suchbegriffe sind Abfragen und werden nicht protokolliert.
-- **[external-access.md](./external-access.md)** — die Chatsuche ist kein Fremdzugangsweg.
+- **[external-access.md](./external-access.md)** — die Chatsuche ist kein Zugriffsweg für externe KI-Werkzeuge.
 - **[conversation-memory.md](./conversation-memory.md)** — die Gesprächsnotiz folgt dem Chat, wird aber
   nicht durchsucht.
 - **Benachrichtigungssystem (#1297)** — das Postfach verweist auf Chats; ein Verweis auf einen

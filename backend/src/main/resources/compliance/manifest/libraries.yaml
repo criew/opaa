@@ -2,7 +2,7 @@ title: Bibliotheken und Indexierung
 data:
   - id: library-settings
     title: Bibliotheksverwaltung
-    purpose: Quellkonfiguration, Fremdzugangsfreigabe und Löschantrag einer Bibliothek
+    purpose: Quellkonfiguration, Freigabe für externe KI-Werkzeuge und Löschantrag einer Bibliothek
     personalReference: IDENTIFIABLE
     tables:
       - name: knowledge_libraries

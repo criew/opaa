@@ -143,7 +143,7 @@ export const externalAccessTokenHandlers = [
     }
     if (!mockExternalAccessSettings.enabled) {
       return HttpResponse.json(
-        { error: 'Fremdzugänge sind für diese Installation abgeschaltet' },
+        { error: 'Externe KI-Werkzeuge sind für diese Installation ausgeschaltet' },
         { status: 403 },
       )
     }
@@ -154,7 +154,7 @@ export const externalAccessTokenHandlers = [
     if (body.libraryIds.some((id) => !selectable.includes(id))) {
       return fieldError(
         'libraryIds',
-        'Mindestens eine Bibliothek ist nicht auswählbar - sie ist Ihnen nicht zugänglich oder nicht für Fremdzugänge freigegeben.',
+        'Mindestens eine Bibliothek ist nicht auswählbar - sie ist Ihnen nicht zugänglich oder nicht für externe KI-Werkzeuge freigegeben.',
       )
     }
     const latest = Date.now() + mockExternalAccessSettings.tokenMaxLifetimeDays * DAY

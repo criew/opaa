@@ -205,7 +205,7 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 ablöst.
 - **Verwaltet wird die Fähigkeit von `SYSTEM_ADMIN`** (`/api/v1/admin/capabilities`). Eine Fähigkeit zu
   *halten* heißt nicht, sie *vergeben* zu dürfen.
 - **Was keine Fähigkeit ist:** „Space organisationsweit sichtbar machen", „Bibliothek organisationsweit
-  freigeben" und „Fremdzugang freigeben" sind Reichweitenentscheidungen am Objekt und bleiben bei
+  freigeben" und „Für externe KI-Werkzeuge freigeben" sind Reichweitenentscheidungen am Objekt und bleiben bei
   `MANAGER`/`OWNER`. „Sicht als" und Vorfallsbereich bleiben Befugnisse und werden nie Fähigkeiten.
 
 ### Verwalten ist nicht Lesen: die Asymmetrie bei Wissensbibliotheken
@@ -267,7 +267,7 @@ Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
   Gruppengrößen-Schwelle für Grants (eine frühere Fassung dieses Abschnitts sah eine solche Schwelle
   vor; sie entfällt ersatzlos, mit derselben Begründung wie die gestrichene Größenschwelle bei Grants
   im Allgemeinen, siehe [spaces-and-assets.md](./spaces-and-assets.md#freigabe-an-eine-gruppe-braucht-keine-zustimmung)),
-  ohne die Freigabe für Fremdzugänge ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)
+  ohne die Freigabe für externe KI-Werkzeuge ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)
   hält fest, warum diese trotz einer früheren, anderslautenden Absicht außen vor bleibt), und ohne
   erteilte Rechte an **Personen und Gruppen** — ein bestehender Grant an eine benannte Person oder
   Gruppe bleibt auch nach dem Senken der Obergrenze bestehen und muss gesondert zurückgenommen
@@ -298,7 +298,7 @@ Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
   **sofort zurück**: Ein bestehender Grant an „Alle Konten" wird über den gewöhnlichen
   Widerrufsweg entzogen (`ASSET_GRANT_REVOKED`, ein Grant-Intervall). Das Setzen der
   Obergrenze selbst steht getrennt daneben (`CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED`). Erteilte
-  Rechte an Personen und Gruppen sowie eine bestehende Fremdzugangsfreigabe bleiben unberührt (siehe
+  Rechte an Personen und Gruppen sowie eine bestehende Freigabe für externe KI-Werkzeuge bleiben unberührt (siehe
   oben) und sind gesondert zu prüfen. Es gibt bewusst **keinen** Zustand „verletzt, aber geduldet" —
   eine frühere Fassung sah ein Aussetzen ohne Entzug vor; das ist mit der Maintainer-Festlegung
   entschieden anders: Die Bibliothek liegt in der Hand der Systemverwaltung, die die Obergrenze
@@ -1521,7 +1521,7 @@ Zuständigkeit in der Meldung (`409`, Code `SUCCESSION_OPEN`):
 
 - eine neue oder geänderte Berechtigung an der Bibliothek,
 - eine größere Sichtbarkeit (eine Freigabe an „Alle Konten" ist eine neue Berechtigung, siehe oben),
-- eine Freigabe für Fremdzugänge,
+- eine Freigabe für externe KI-Werkzeuge,
 - eine neue Bereitstellung in einem Space (beide Seiten),
 - ein neues Mitglied im Space.
 
@@ -1628,7 +1628,7 @@ Anmeldung und für API-Identitäten:
 ```
 Netzbereiche (organisationsweite Vorgabe):
   interaktiv:    Hausnetz + VPN-Bereich der Dienststelle
-  Fremdzugänge:  für den ganzen Kanal gesetzt, Voreinstellung: nur Hausnetz
+  externe KI-Werkzeuge:  für den ganzen Zugriffsweg gesetzt, Voreinstellung: nur Hausnetz
   Ausnahmen:     benannt, befristet, begründet
 ```
 
@@ -1694,7 +1694,7 @@ Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adres
 ## API-Tokens und Service-Accounts
 
 > **Erste Stufe entschieden (18.09.2026):** Gebaut wird zunächst nur das **persönliche Zugangstoken**
-> für lesende Fremdzugänge — fest auf Suchen und Abrufen begrenzt (kein Umfangsmenü), mit
+> für lesende Zugriffe externer KI-Werkzeuge — fest auf Suchen und Abrufen begrenzt (kein Umfangsmenü), mit
 > Pflicht-Ablaufdatum unter einer systemweiten Obergrenze, mit einer konkreten und danach
 > unveränderlichen Bibliotheksauswahl und einem Kontingent je Token, hinter einem installationsweiten
 > Schalter (Standard aus), einer kanalweiten Netzbeschränkung (Vorgabe Hausnetz) und einer
@@ -1809,7 +1809,7 @@ automatisch greift.
 - **Daten-Indizierung:** Zuordnung von Quellen zu Wissensbibliotheken →
   [data-indexing-rag.md](./data-indexing-rag.md)
 - **RAG-Engine:** Filter über die lesbaren Bibliotheken des Nutzers, als Teil der Vektorsuche
-- **Fremdzugänge:** Zugangstokens und MCP-Server als Ausschnitt bestehender Leserechte, mit eigener
+- **Externe KI-Werkzeuge:** Zugangstokens und MCP-Server als Ausschnitt bestehender Leserechte, mit eigener
   Freigabe je Bibliothek → [external-access.md](./external-access.md)
 - **Modelle:** zentrale Vorgaben gelten je Organisation → [llm-integration.md](./llm-integration.md)
 - **Sicherheit und Nachweis:** jede Rechte- und Kontenänderung erzeugt einen Protokolleintrag →

@@ -55,7 +55,7 @@ function fieldError(field: string, message: string) {
   return HttpResponse.json(
     {
       error:
-        'Die Einstellungen der Fremdzugänge sind unvollständig oder außerhalb der zulässigen Grenzen.',
+        'Die Einstellungen für externe KI-Werkzeuge sind unvollständig oder außerhalb der zulässigen Grenzen.',
       fieldErrors: [{ field, code: 'INVALID', message }],
     },
     { status: 400 },

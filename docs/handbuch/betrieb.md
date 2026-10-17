@@ -330,8 +330,8 @@ Compose-Stapel oder der Ingress-Controller des Clusters. Für ihn gilt:
   Backend den Header auswertet, steht unter [Vertraute Proxys](#vertraute-proxys-und-client-adresse).
   Der nginx im Frontend-Container hängt die Kette an (`$proxy_add_x_forwarded_for`) und verwirft
   `Forwarded`, weil das Backend diesen Header sonst vorziehen würde.
-- **`/`, `/api/` und `/mcp` an das Frontend reichen.** `/mcp` ist der Kanal der
-  [Fremdzugänge](fremdzugaenge.md); fehlt er, beantwortet die Auslieferung den Aufruf mit ihrer
+- **`/`, `/api/` und `/mcp` an das Frontend reichen.** `/mcp` ist der Zugriffsweg der
+  [externen KI-Werkzeuge](fremdzugaenge.md); fehlt er, beantwortet die Auslieferung den Aufruf mit ihrer
   Startseite, und der Client meldet eine unverständliche Antwort. Antworten auf `/mcp` nicht
   puffern: Der Kanal kann als Ereignisstrom antworten.
 - **Zeitgrenze mindestens so lang wie `OPAA_BACKEND_READ_TIMEOUT`** für `/api/` und `/mcp` (bei nginx
@@ -498,7 +498,7 @@ unterliegt einem eigenen, engen Rate-Limit (`OPAA_RATE_LIMIT_INDEXING_*`).
 
 | Geheimnis | Wofür | Ohne eigenen Wert | Bei Verlust oder Wechsel |
 |---|---|---|---|
-| `OPAA_AUTH_JWT_SECRET` | Wurzelgeheimnis lokal ausgestellter Tokens und der Prüfwerte von Refresh-, Einladungs-, Rücksetz- und Übergabelinks | im Betriebsmodus `oidc` bricht der Start ab (auch unter 32 Zeichen oder bei einem Platzhalter wie `change_me`) | alle lokalen Sitzungen enden, alle offenen Links verfallen, alle Zugangstokens der [Fremdzugänge](fremdzugaenge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
+| `OPAA_AUTH_JWT_SECRET` | Wurzelgeheimnis lokal ausgestellter Tokens und der Prüfwerte von Refresh-, Einladungs-, Rücksetz- und Übergabelinks | im Betriebsmodus `oidc` bricht der Start ab (auch unter 32 Zeichen oder bei einem Platzhalter wie `change_me`) | alle lokalen Sitzungen enden, alle offenen Links verfallen, alle Zugangstokens für [externe KI-Werkzeuge](fremdzugaenge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten der Quellen, Zugänge und verbundenen Konten, Webhook-Geheimnisse, Zugang des Verzeichnisabgleichs | nur das Speichern solcher Zugangsdaten scheitert | gespeicherte Werte sind unlesbar und neu einzutragen |
 | `OPAA_SETTINGS_ENCRYPTION_KEY` | Zugangsschlüssel der Chat-Modelle, SMTP-Passwort | nur das Speichern solcher Werte scheitert | gespeicherte Werte sind unlesbar und neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)) |
 | `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | Konto der Datenbank | Vorgabe `opaa`/`opaa`, nur für die Entwicklung | Der mitgelieferte Datenbankcontainer legt das Konto nur beim ersten Start an; das Paar vor dem ersten Start setzen |
@@ -565,7 +565,7 @@ Nicht zu sichern sind Container und Pods, `/tmp`, das Frontend und die herunterg
   Datenbank bekommt `OPAA_AUTH_JWT_SECRET` einen neuen Wert, bevor das Backend startet, und die
   Sperren der Zwischenzeit werden erneut gesetzt
   ([Nacharbeit nach einer Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)).
-  Sind Fremdzugänge in Betrieb, kommt deren Prüfliste dazu ([Fremdzugänge](fremdzugaenge.md)).
+  Sind externe KI-Werkzeuge in Betrieb, kommt deren Prüfliste dazu ([Externe KI-Werkzeuge](fremdzugaenge.md)).
 
 Die Befehle stehen je Betriebsweg unter [Docker Compose](docker-compose.md#sicherung-und-wiederherstellung)
 und [Kubernetes](kubernetes.md#sicherung-und-wiederherstellung).

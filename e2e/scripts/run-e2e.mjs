@@ -465,7 +465,7 @@ async function main() {
         ? {}
         : {
             E2E_AI_STUB_BASE_URL: `http://localhost:${aiStubPort}`,
-            // test(e2e) #1723: der MCP-Server des Fremdzugangs liegt unter /mcp am Backend, und die
+            // test(e2e) #1723: der MCP-Server für externe KI-Werkzeuge liegt unter /mcp am Backend, und die
             // nginx-Auslieferung des Frontends leitet ausschließlich /api/ weiter - die Szenarien
             // sprechen ihn deshalb unter dem Host-Port dieses Laufs an, wie den KI-Stub darüber.
             E2E_BACKEND_BASE_URL: `http://localhost:${backendPort}`,

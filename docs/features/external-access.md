@@ -1,4 +1,4 @@
-# Fremdzugänge: Zugangstokens und MCP-Server
+# Externe KI-Werkzeuge: Zugangstokens und MCP-Server
 
 > **Status: Umgesetzt und abgenommen (18.09.2026).** Beschlossen am 18.09.2026 auf Grundlage der Recherche „OPAA als Wissensschicht
 > für andere KI-Tools", überarbeitet am 18.09.2026 nach fünf Stakeholder-Bewertungen (Betrieb,
@@ -7,7 +7,7 @@
 > (#1717), die Bibliotheksfreigabe (#1731), die Zugangstokens samt Oberfläche (#1718, #1719), der
 > Such- und Abrufweg mit Kontingent und Abflussalarm (#1720) sowie der MCP-Server (#1721);** die
 > Abschnitte „Umsetzungsstand" nennen die Einzelheiten. Das Betriebs- und Anwendungswissen dazu steht
-> im Handbuchkapitel „Fremdzugänge" (`docs/handbuch/fremdzugaenge.md`), einschließlich der
+> im Handbuchkapitel „Externe KI-Werkzeuge" (`docs/handbuch/fremdzugaenge.md`), einschließlich der
 > Einrichtungsanleitungen je Client und der Störungssuche. Abgenommen vom Maintainer am 18.09.2026 auf der
 > Demo-Installation; Nachträge #1765 und #1766 sind enthalten.
 
@@ -33,9 +33,9 @@ Abflussproblems verkauft, verspricht etwas, das er nicht halten kann — der unk
 die Zwischenablage bleibt daneben offen, und er bleibt es auch, solange Schalter oder Freigabe noch
 fehlen.
 
-Das ist eine Öffnung, und Öffnungen erzeugen Risiken. Eine Bibliothek, die über einen Fremdzugang
+Das ist eine Öffnung, und Öffnungen erzeugen Risiken. Eine Bibliothek, die über ein externes KI-Werkzeug
 erreichbar ist, kann von einem Werkzeug gelesen werden, dessen Betreiber die Behörde nicht kennt.
-Deshalb ist der Fremdzugang **kein Nebeneffekt der bestehenden Leserechte**, sondern eine eigene,
+Deshalb ist der Zugriff externer KI-Werkzeuge **kein Nebeneffekt der bestehenden Leserechte**, sondern eine eigene,
 mehrfach eingeschränkte Entscheidung: Die Installation muss ihn einschalten, die Bibliothek muss
 freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst erteilen.
 
@@ -43,14 +43,14 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
 
 ## Überblick
 
-1. **Fremdzugänge sind ein eigener Kanal mit eigener Freigabe.** Wer eine Bibliothek in der
+1. **Externe KI-Werkzeuge nutzen einen eigenen Kanal mit eigener Freigabe.** Wer eine Bibliothek in der
    Web-Oberfläche lesen darf, darf sie deshalb noch lange nicht über ein fremdes Werkzeug lesen.
 2. **Drei Schalter müssen zugleich offen sein**: der Schalter der Installation, die Freigabe der
    Bibliothek und die Auswahl im Zugangstoken. Die effektive Sicht ist ihre Schnittmenge mit den
    Rechten der Person — bei **jedem Werkzeugaufruf** neu ausgewertet, nie eingefroren.
 3. **Ein Zugangstoken kann nie mehr als seine Person.** Es ist ein Ausschnitt ihrer Rechte, kein
    eigener Rechteträger; verliert die Person ein Recht, verliert es das Token in derselben Sekunde.
-4. **Fremdzugänge lesen und suchen — mehr nicht.** Kein Verwalten, kein Indizieren, kein Hochladen,
+4. **Externe KI-Werkzeuge lesen und suchen — mehr nicht.** Kein Verwalten, kein Indizieren, kein Hochladen,
    kein Rechtevergeben. Der Rechteumfang ist fest und nicht wählbar.
 5. **Dieselben Domain-Dienste wie die Web-Oberfläche.** Der Suchendpunkt und die MCP-Werkzeuge rufen
    den Dienst hinter `POST /api/v1/query` auf; es gibt keinen zweiten Weg an den Index. Die
@@ -76,8 +76,8 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
     Einleitungstext des Servers werden aus der effektiven Sicht des Tokens erzeugt, damit das fremde
     Werkzeug von allein erkennt, welche Fragen hierher gehören.
 11. **Ohne Space, mit eigener ausdrücklicher Auswahl.** Ein Chat in der Web-Oberfläche durchsucht nur,
-    was seinem Space zugeordnet ist. Der Fremdzugang hat keinen Space und bleibt bewusst ohne:
-    Durchsucht wird lesbar ∩ Fremdzugangsfreigabe ∩ Bibliotheksauswahl des Tokens — die Auswahl ist
+    was seinem Space zugeordnet ist. Der Zugriff externer KI-Werkzeuge hat keinen Space und bleibt bewusst ohne:
+    Durchsucht wird lesbar ∩ Freigabe für externe KI-Werkzeuge ∩ Bibliotheksauswahl des Tokens — die Auswahl ist
     im Kleinen dieselbe ausdrückliche Entscheidung wie die Zuordnung eines Space und wird mit
     derselben Kachelauswahl getroffen
     ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 5;
@@ -91,7 +91,7 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
 |---|---|
 | **Ist** | Ein lesender Zugang für Werkzeuge, die eine Person auf ihrem Arbeitsplatz oder im Hausnetz betreibt: Entwicklungsassistenten, Automatisierungswerkzeuge, eigene Skripte |
 | **Ist nicht** | Ein Zugang für fremd betriebene Verbraucherdienste. OPAA wird dafür nicht ins offene Netz gestellt, betreibt keinen Autorisierungsserver und kennt keine dynamische Client-Registrierung |
-| **Ist nicht** | Eine zweite Assistenzoberfläche. Fremdzugänge liefern Fundstellen, keine erzeugten Antworten; die Generierung findet im fremden Werkzeug statt, mit dessen Modell |
+| **Ist nicht** | Eine zweite Assistenzoberfläche. Externe KI-Werkzeuge erhalten Fundstellen, keine erzeugten Antworten; die Generierung findet im fremden Werkzeug statt, mit dessen Modell |
 | **Ist nicht** | Die Gegenrichtung. Dass OPAA selbst fremde MCP-Server als Werkzeuge einbindet, ist ein anderes Thema und bleibt bei den Agenten (siehe [agents-and-tools.md](./agents-and-tools.md#mcp-als-standardisierte-anbindung), Phase 2) |
 | **Ist nicht** | Ein modellkompatibler Chat-Endpunkt. Ein OpenAI-förmiges `/v1/chat/completions` wird bewusst **nicht** gebaut: Es würde die Belege auf ein Textfeld reduzieren und die Modellvorgaben der Systemverwaltung umgehen |
 | **Ist nicht** | Der Zugang für ein Fachverfahren. Diese Stufe kennt nur **persönliche** Tokens; ein Fachverfahren hinge damit am Konto einer Person und stünde still, sobald sie ausscheidet. Das Handbuch rät ausdrücklich davon ab, bis es Service-Accounts gibt |
@@ -100,7 +100,7 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
 
 ## Der Schalter der Installation
 
-Der Fremdzugang ist eine Einstellung der Systemverwaltung, installationsweit, **Standard aus**.
+Der Zugriff externer KI-Werkzeuge ist eine Einstellung der Systemverwaltung, installationsweit, **Standard aus**.
 
 > **Gebaut (#1717).** Die Einstellungszeile, ihre Oberfläche (heute *Administration → Anbindungen →
 > Externe KI-Werkzeuge → Einstellungen*, #2504) und das Protokollereignis `EXTERNAL_ACCESS_SETTINGS_CHANGED` existieren. Die
@@ -152,7 +152,7 @@ Sitzungen kennt: Was mit einer beendeten Sitzung weiterläuft, trägt Rechte wei
 mehr gibt.
 
 **Der Netzbereich gehört dem Kanal, nicht dem Token.** Die Einschränkung auf Netzbereiche gilt
-installationsweit für den gesamten Fremdzugangskanal, Vorgabe **nur Hausnetz**. Der realistische Weg,
+installationsweit für den gesamten Zugriffsweg für externe KI-Werkzeuge, Vorgabe **nur Hausnetz**. Der realistische Weg,
 auf dem ein Token nach außen gerät, ist kein Angriff, sondern eine MCP-Konfigurationsdatei, die im
 Klartext in einem Repository oder einem synchronisierten Profil landet; mit der Vorgabe wirkt es
 dort nicht. Eine Einschränkung **je Token** wird bewusst nicht gebaut — siehe
@@ -186,14 +186,14 @@ Systemeinstellungen einzeln auf, statt „alle Einstellungen" zu sagen; der Scha
 ist dort als eigener Punkt **ergänzt** — neben der Freigabe-Obergrenze, die aus demselben Grund einen
 eigenen hat —, der Einleitungstext ausdrücklich nicht.
 
-**Das Einschalten ist ein Verwaltungsakt, kein Konfigurationsschritt.** Der Fremdzugang ist eine
+**Das Einschalten ist ein Verwaltungsakt, kein Konfigurationsschritt.** Der Zugriff externer KI-Werkzeuge ist eine
 technische Einrichtung, die zur Überwachung von Verhalten und Leistung geeignet sein kann — ob und in
 welchem Umfang daraus ein Mitbestimmungstatbestand folgt, richtet sich nach dem einschlägigen
 Personalvertretungsrecht und ist von der einführenden Stelle **rechtlich zu prüfen**. Handbuch und
 Oberfläche sagen deshalb ausdrücklich: Die Beteiligung der Personalvertretung ist **vor** dem
 Einschalten zu klären, und die Beschäftigten werden über den Kanal, die dabei erhobenen Angaben und
-die **Freiwilligkeit** der Nutzung vorab unterrichtet. Aus der Nichtnutzung eines Fremdzugangs
-entsteht kein Nachteil; jede Fachaufgabe bleibt über die Web-Oberfläche vollständig erledigbar.
+die **Freiwilligkeit** der Nutzung vorab unterrichtet. Wer keine externen KI-Werkzeuge nutzt, hat
+dadurch keinen Nachteil; jede Fachaufgabe bleibt über die Web-Oberfläche vollständig erledigbar.
 
 **Nach einer Wiederherstellung aus einer Sicherung gilt nichts von alledem automatisch weiter.**
 Schalter, Freigaben und Tokens sind Zeilen in der Datenbank; ein Restore von vorgestern setzt alle
@@ -224,7 +224,7 @@ Schalter bleibt ausgeliefert aus.
 
 **Ist das Flag aus, gibt es den Kanal nicht:**
 
-- `/mcp` und alle Routen der Fremdzugänge (Einstellungen, eigene und verwaltete Zugangstokens,
+- `/mcp` und alle Routen für externe KI-Werkzeuge (Einstellungen, eigene und verwaltete Zugangstokens,
   Bibliotheksfreigabe und Bestandsliste der Freigaben) antworten wie jede unbekannte Adresse. Die
   Filterkette des Kanals entfällt, und der MCP-Starter registriert keinen Endpunkt; ein Aufruf mit
   einem Tokenwert trifft auf die Filterkette des Anmeldemodus wie jeder andere unlesbare Wert.
@@ -258,7 +258,7 @@ Die **Freigabe-Einheit ist die Wissensbibliothek**, nicht der Arbeitsraum. Der A
 Sicht auf Bibliotheken; Rechte hängen ohnehin an der Bibliothek, und eine Freigabe, die an einer
 Sicht hängt, ließe sich durch eine zweite Sicht umgehen.
 
-Jede Bibliothek trägt ein Merkmal **„darf über Fremdzugänge genutzt werden"**, Standard **aus**.
+Jede Bibliothek trägt ein Merkmal **„darf von externen KI-Werkzeugen genutzt werden"**, Standard **aus**.
 Gesetzt wird es von dem, der die Bibliothek verwaltet — mindestens Verwalter-Rolle an ihr — sowie von
 der Systemverwaltung.
 
@@ -289,11 +289,11 @@ entschieden:
    Eine Bibliothek, die aus einem Konnektor gespeist wird, trägt eine Freigabe-Obergrenze
    ([access-control.md](./access-control.md#dokumentenfluss-konnektoren-gegen-benutzer-uploads)) —
    eine frühere Fassung dieses Kapitels ging davon aus, dass sie auch dieses Merkmal deckeln würde,
-   um den Fremdzugang nicht zum Weg an ihr vorbei zu machen. #797 hat das Feld der Obergrenze
+   um den Zugriff externer KI-Werkzeuge nicht zum Weg an ihr vorbei zu machen. #797 hat das Feld der Obergrenze
    **ausdrücklich auf `visibility` und `listed`** begrenzt — heute, nach ADR-0037 und ADR-0039, allein
-   auf die Freigabe an „Alle Konten"; die Fremdzugangsfreigabe bleibt außen vor.
-   Der Fremdzugang bleibt damit unabhängig von der Freigabe-Obergrenze zu setzen und zurückzunehmen —
-   der Schutz gegen „Fachverfahrensdaten eingespeist, dann über den Fremdzugang organisationsweit
+   auf die Freigabe an „Alle Konten"; die Freigabe für externe KI-Werkzeuge bleibt außen vor.
+   Der Zugriff externer KI-Werkzeuge bleibt damit unabhängig von der Freigabe-Obergrenze zu setzen und zurückzunehmen —
+   der Schutz gegen „Fachverfahrensdaten eingespeist, dann über externe KI-Werkzeuge organisationsweit
    erreichbar" liegt stattdessen ausschließlich in Punkt 3 (Pflichtbefristung) und darin, dass Setzen
    und Zurücknehmen an dieselbe MANAGER-Schranke gebunden bleiben wie jede andere Reichweitenänderung
    der Bibliothek.
@@ -319,7 +319,7 @@ mit der handelnden Person, der betroffenen Bibliothek und dem Ablaufdatum der Fr
 Bibliothek „Baugenehmigungen 2024"
   Zugriff
     Leserechte …
-    [ ] Über Fremdzugänge nutzbar        bis [ 17.09.2027 ]  (höchstens ein Jahr)
+    [ ] Für externe KI-Werkzeuge nutzbar        bis [ 17.09.2027 ]  (höchstens ein Jahr)
         Wenn gesetzt, können Personen mit Lesezugriff diese Bibliothek in einem
         eigenen Zugangstoken auswählen und aus fremden Werkzeugen darin suchen.
         Derzeit in 4 Zugangstokens enthalten.
@@ -525,7 +525,7 @@ Fünf Festlegungen weichen vom Entwurf oben ab oder ergänzen ihn:
 ```
         Rechte der Person            (was sie heute lesen darf)
                  ∩
-        Freigabe der Bibliothek      (darf sie über Fremdzugänge genutzt werden,
+        Freigabe der Bibliothek      (darf sie von externen KI-Werkzeugen genutzt werden,
                                       und ist die Freigabe noch gültig?)
                  ∩
         Auswahl im Token             (hat die Person sie diesem Werkzeug erteilt?)
@@ -546,7 +546,7 @@ Web-Oberfläche: Ein fremder Chunk wird nicht geladen, und seine Abwesenheit wir
 
 ---
 
-## Was ein Fremdzugang erreicht
+## Was ein externes KI-Werkzeug erreicht
 
 Drei Zugriffe, in dieser Reihenfolge gedacht: erst wissen, was da ist, dann suchen, dann das
 Gefundene ganz lesen.
@@ -579,8 +579,8 @@ Dokumentabruf). Er ist nicht auf Tokens beschränkt — auch eine angemeldete Pe
 schließt zugleich eine Lücke, die
 [user-frontends.md](./user-frontends.md#was-die-schnittstelle-anbietet) heute ausdrücklich als
 fehlend führt: „ein eigener Such-Endpunkt neben der Abfrage" und „das Abrufen eines einzelnen
-Dokuments". **Er hängt nicht am Fremdzugangsschalter:** Der Schalter ist der Notaus des
-Fremdzugangskanals, nicht der des Suchendpunkts für angemeldete Personen. Für Token-Aufrufe gilt er
+Dokuments". **Er hängt nicht am Schalter für externe KI-Werkzeuge:** Der Schalter ist der Notaus des
+Zugriffswegs für externe KI-Werkzeuge, nicht der des Suchendpunkts für angemeldete Personen. Für Token-Aufrufe gilt er
 selbstverständlich.
 
 ---
@@ -670,7 +670,7 @@ Aushandlung zu wiederholen, die es hier nicht gibt. Jede erfolgreiche Initialisi
 Fassungsliste zusätzlich im `_meta`-Feld.
 
 Das Störungsbild ist eigen: Weil es genau einen Server gibt, fallen bei einem Fassungsbruch **alle
-Fremdzugänge des Hauses zugleich** aus, und die Meldung sieht die Person in ihrem Client („MCP server
+externen KI-Werkzeuge des Hauses zugleich** aus, und die Meldung sieht die Person in ihrem Client („MCP server
 failed") — eine Meldung, die OPAA nicht formuliert hat und nicht beeinflussen kann. Das
 Handbuchkapitel führt dieses Bild in der Störungssuche, damit das Ticket beim Betrieb nicht als
 Einzelfall untersucht wird.
@@ -691,7 +691,7 @@ Merkmal:  Authorization: Bearer opaa_pat_…
 
 ## Kontingente und der Abflussalarm
 
-Ein Skript stellt in einer Minute mehr Anfragen als ein Mensch an einem Tag. Der Fremdzugang bekommt
+Ein Skript stellt in einer Minute mehr Anfragen als ein Mensch an einem Tag. Der Zugriff externer KI-Werkzeuge bekommt
 deshalb ein **Kontingent je Token** — nicht nur je Netzadresse, wie es die bestehenden Grenzen tun.
 Der Grund steht schon in [user-frontends.md](./user-frontends.md#authentifizierung-und-zugang): Hinter
 einem gemeinsamen Ausgangspunkt im Behördennetz teilen sich alle dieselbe Adresse; ein Kontingent je
@@ -766,12 +766,12 @@ dafür an drei Stellen **erweitert** — die Liste zählt einzeln auf, und was d
 nicht geschrieben; eine Behauptung, man fülle nur vorhandene Punkte aus, wäre an dieser Stelle
 unehrlich. Die drei Ergänzungen sind im selben Zug dort eingetragen:
 
-- die **Fremdzugangsfreigabe einer Wissensbibliothek** — sie stand neben `visibility` und `listed`,
+- die **Freigabe einer Wissensbibliothek für externe KI-Werkzeuge** — sie stand neben `visibility` und `listed`,
   weil sie dieselbe Art Reichweitenfeld ist; seit deren Wegfall ist sie das einzige Reichweitenfeld
   neben den Grants;
 - das **Außerkrafttreten eines Zugangstokens** — es steht neben Ausstellung und Widerruf, die der
   Punkt zu den API-Tokens bereits nennt;
-- die **Kanaleinstellungen des Fremdzugangs** — sie stehen neben der Freigabe-Obergrenze, die
+- die **Einstellungen für externe KI-Werkzeuge** — sie stehen neben der Freigabe-Obergrenze, die
   ebenfalls einen eigenen Punkt hat, weil beide über die Reichweite eines Bestands entscheiden.
 
 | Ereignis | Eintrag |
@@ -799,7 +799,7 @@ Für den Nachweis „welcher Zugang entstand wann, mit welchem Umfang" genügt d
 **Nicht protokolliert wird die einzelne Abfrage** — weder die Frage noch die Suchbegriffe, der
 angewandte Suchbereich, die Trefferzahl oder die abgerufenen Dokumente. Das ist Verhalten, nicht
 Zugriffsänderung, und in der Menge ergibt es das Tätigkeitsprofil, das die Mitbestimmungsfähigkeit
-ausschließt. Für den Fremdzugang gilt hier nichts anderes als für die Web-Oberfläche; ein Kanal, in
+ausschließt. Für externe KI-Werkzeuge gilt hier nichts anderes als für die Web-Oberfläche; ein Kanal, in
 dem plötzlich doch mitgeschrieben würde, wäre der Einstieg, den die Zusage ausschließt.
 
 **Auch die Ausstellungsereignisse ergeben in der Menge ein Bild.** Über drei Jahre zeigt die Folge
@@ -811,8 +811,8 @@ dieselbe Frist, dieselbe Pseudonymisierung.
 
 Die Prüfbarkeit hängt nicht an den Abfragen: Die Frage „wer konnte wann worauf zugreifen?"
 beantwortet die **Rechtehistorie** — die Grants, die Gruppenmitgliedschaften, die Reichweitenfelder
-und, seit dieser Stufe, die Fremdzugangsfreigabe — zusammen mit den Ereignissen oben. Sie halten
-fest, wann ein Fremdzugang entstand, welchen Umfang er hatte und wann er endete. Was **über ihn
+und, seit dieser Stufe, die Freigabe für externe KI-Werkzeuge — zusammen mit den Ereignissen oben. Sie halten
+fest, wann ein Zugang für ein externes KI-Werkzeug entstand, welchen Umfang er hatte und wann er endete. Was **über ihn
 tatsächlich gelesen** wurde, hält OPAA nicht fest; siehe
 [Abwägungen](#abwägungen-und-verworfene-alternativen).
 
@@ -895,7 +895,7 @@ dasselbe ohne Beobachtung: Ein ungenutztes Token verschwindet spätestens nach 9
 ## Integrationspunkte
 
 - **[access-control.md](./access-control.md#api-tokens-und-service-accounts)** — Rechtemodell, an das
-  der Fremdzugang gebunden ist, der Kontenlebenszyklus, dem die Tokens folgen, die Freigabe-Obergrenze
+  der Zugriff externer KI-Werkzeuge gebunden ist, der Kontenlebenszyklus, dem die Tokens folgen, die Freigabe-Obergrenze
   konnektor-gespeister Bibliotheken und die Netzbereichseinschränkung
 - **[user-frontends.md](./user-frontends.md#rest-api)** — die REST-API, deren Such- und
   Abrufendpunkt dieser Kanal mitbringt, und die kanalübergreifenden Eigenschaften
@@ -915,7 +915,7 @@ dasselbe ohne Beobachtung: Ein ungenutztes Token verschwindet spätestens nach 9
 - **[ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)** — Ausstellung, Widerruf und die
   Mailwege, auf denen die Erinnerungen laufen
 - **[ADR-0005](../decisions/0005-authentication-strategy.md)** — Betriebsmodi der Authentifizierung;
-  der Fremdzugang ist ein zusätzlicher Prüfweg, kein zusätzlicher Betriebsmodus
+  der Zugriff externer KI-Werkzeuge ist ein zusätzlicher Prüfweg, kein zusätzlicher Betriebsmodus
 
 ---
 
@@ -932,7 +932,7 @@ dasselbe ohne Beobachtung: Ein ungenutztes Token verschwindet spätestens nach 9
   [access-control.md](./access-control.md#api-tokens-und-service-accounts) beschreibt. Diese Stufe
   kennt nur persönliche Tokens; ein Fachverfahren hinge damit am Konto einer Person, was genau der
   Prüfungsbefund ist, den Service-Accounts auflösen sollen. Bis dahin rät das Handbuch davon ab.
-- **Schreibende Werkzeuge** — ein Fremdzugang, der indizieren oder hochladen darf, ist betrieblich
+- **Schreibende Werkzeuge** — ein Zugriff externer KI-Werkzeuge, der indizieren oder hochladen darf, ist betrieblich
   etwas anderes als einer, der nur fragt. Bewusst außerhalb.
 - **Ein Werkzeug, das Antworten erzeugt** (`ask` statt `search`), würde den Modellverbrauch der
   Installation an ein fremdes Werkzeug hängen. Erst sinnvoll, wenn Bedarf belegt ist.
