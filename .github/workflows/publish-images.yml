@@ -241,11 +241,112 @@ jobs:
           # already uploaded by the first attempt.
           overwrite: true
 
+  # The update package for authorities (docs/releases.md, "Update-Paket"): runs the completeness
+  # guard of the compliance manifest, then update_package.py builds fact sheets, delta to the
+  # previous final release, license overview and update note template into one archive. publish
+  # waits for this job, so an incomplete manifest stops a release before any tag is set. Like the
+  # image builds of a release it takes nothing from a cache: no Gradle, pnpm or gha cache.
+  update-package:
+    needs: prepare
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    # Gradle and pnpm start cold; the guard and the package take about five to ten minutes.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # gh pr list reads the pull requests labelled data-impact for the delta.
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The previous release and the delta need every tag and the history between them.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '25.0.4+101.0.LTS'
+
+      # Installs the pnpm version pinned in the "packageManager" field of frontend/package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # The same guard as in every backend test run: manifest against schema, audit events, roles,
+      # prompts, data flows and configuration keys, and the placeholder targets of docs/behoerden/.
+      - name: Vollständigkeitswächter des Fakten-Manifests
+        working-directory: backend
+        run: >-
+          ./gradlew :test
+          --tests 'io.opaa.compliance.ComplianceManifestTest'
+          --tests 'io.opaa.compliance.ConfigurationSettingsTest'
+          --tests 'io.opaa.compliance.FactSheetReferenceTest'
+          --tests 'io.opaa.architecture.ModularArchitectureTest'
+
+      # The frontend license overview reads the installed production dependencies.
+      - name: Frontend-Abhängigkeiten installieren
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Gekennzeichnete Pull Requests abfragen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh pr list --state merged --label data-impact --limit 1000 --json number,title,url >"$RUNNER_TEMP/data-impact-prs.json"
+
+      - name: Update-Paket erzeugen
+        env:
+          TAG: ${{ github.ref_name }}
+        run: >-
+          python3 .github/scripts/update_package.py build
+          --tag "$TAG"
+          --out "$RUNNER_TEMP/update-package"
+          --labelled-prs "$RUNNER_TEMP/data-impact-prs.json"
+          --repository "$GITHUB_REPOSITORY"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: update-package
+          path: ${{ runner.temp }}/update-package/*
+          if-no-files-found: error
+          retention-days: 7
+          # "Re-run failed jobs" builds the same files again under the same name.
+          overwrite: true
+
+  # Signed SLSA provenance for the archive, stored with GitHub, so `gh attestation verify` ties the
+  # asset of the release to this workflow and commit. Kept apart from update-package, so no step
+  # that runs Gradle or pnpm ever holds the OIDC token.
+  update-package-attestation:
+    needs: update-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: update-package
+          path: ${{ runner.temp }}/update-package
+
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/update-package/*.tar.gz
+
   # Joins the platform digests of one image into a manifest index and gives the index the tags -
   # the first moment a tag of this run appears. Each platform's SBOM and provenance attestation
   # moves into the index along with its image.
   publish:
-    needs: [prepare, build]
+    needs: [prepare, build, update-package]
+    # update-package runs on release tags only; elsewhere its skip must not skip publish. On a tag
+    # a failed package, and with it an incomplete manifest, keeps every tag unset.
+    if: ${{ !cancelled() && needs.build.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.update-package.result) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
@@ -471,11 +572,12 @@ jobs:
           push-to-registry: true
           create-storage-record: false
 
-  # The GitHub release follows images and chart, so its notes never announce an artifact that failed
-  # to publish. Notes are generated from the merged PRs, grouped by .github/release.yml; the fixed
-  # part with images, chart and installation comes from deploy/helm/ci/release-notes.sh.
+  # The GitHub release follows images, chart and update package, so its notes never announce an
+  # artifact that failed to publish. Notes are generated from the merged PRs, grouped by
+  # .github/release.yml; the fixed part with images, chart, installation and update package comes
+  # from deploy/helm/ci/release-notes.sh. The attested archive and its .sha256 file become assets.
   release:
-    needs: [publish, chart, chart-attestation]
+    needs: [publish, chart, chart-attestation, update-package-attestation]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -483,6 +585,11 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: update-package
+          path: ${{ runner.temp }}/update-package/
 
       - name: GitHub-Release anlegen
         env:
@@ -500,4 +607,4 @@ jobs:
             flags+=(--generate-notes --notes "$notes")
           fi
           if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); else flags+=(--latest); fi
-          gh release create "$TAG" "${flags[@]}"
+          gh release create "$TAG" "${flags[@]}" "$RUNNER_TEMP"/update-package/*

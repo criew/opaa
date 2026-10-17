@@ -144,6 +144,11 @@ je eine CycloneDX-SBOM der ausgelieferten Laufzeit-Abhängigkeiten von Backend u
 Workflow-Artefakte `sbom-backend` und `sbom-frontend` ab (90 Tage Aufbewahrung, ohne Test- und
 Build-Werkzeuge).
 
+**Update-Paket.** Am GitHub-Release jeder Version hängt neben den Release-Notizen ein attestiertes
+Update-Paket für Datenschutz, Personalvertretung und Informationssicherheit: die Faktenblätter der
+Version und die Änderungen der Fakten seit dem vorigen Release mit Stufenvorschlag. Inhalt und
+Prüfung beschreibt [Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release).
+
 ## Backend-Laufzeitimage
 
 Das Backend läuft in einem bewusst minimalen Image: eine mit `jlink` erzeugte Java-21-Laufzeit auf
@@ -573,7 +578,8 @@ das Backend neu. Im Grundsatz:
 1. **Die Notizen des Release lesen.** Jedes Release nennt im Abschnitt „Vorbereitung für
    Bestandsinstallationen" die Schritte, die vor dem Update zu erledigen sind, oder sagt „Keine
    Vorbereitung nötig". Wer Versionen überspringt, prüft diesen Abschnitt bei jedem übersprungenen
-   Release.
+   Release. Muss das Update mit Datenschutz oder Personalvertretung abgestimmt werden, ist das
+   [Update-Paket](#images-und-versionen) des Release die Grundlage.
 2. **Sichern** ([Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)).
 3. **Vorbereitung erledigen**, dann die Images tauschen. Backend und Frontend bekommen dieselbe
    Version.

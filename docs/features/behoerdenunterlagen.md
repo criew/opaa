@@ -31,9 +31,13 @@
 > - das [kumulierte Delta](#das-kumulierte-delta) des Manifests zwischen zwei Versionen mit
 >   Stufenvorschlag nach den [Stufenregeln](#die-stufenregeln), lokal mit
 >   `./gradlew complianceDelta` (#2554)
+> - das [Update-Paket](#das-update-paket) am GitHub-Release jeder Version mit Faktenblättern, Delta
+>   zum vorigen finalen Release, Lizenzübersicht und Vorlage Update-Vermerk, attestiert; der
+>   Release-Lauf bricht vorher bei unvollständigem Manifest ab (#2556)
 >
-> **Zielbild** sind das [Update-Paket](#das-update-paket) (#2552 mit #2555–#2559) einschließlich
-> Konfigurationsexport der Instanz (#2558), der Release-Schritt des Maintainers (#2574), die
+> **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Betriebsfolgen und
+> Antwortqualität (#2555), Instanzbezug mit Konfigurationsexport der Instanz (#2558, #2559) und das
+> Offline-Bündel (#2557); außerdem der Release-Schritt des Maintainers (#2574), die
 > Vorlagen der Phasen 0 bis 4 und der Mitbestimmung (#2562, #2563, #2564, #2566) und die
 > Supportlinien (#2575). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
@@ -136,8 +140,9 @@ mitbestimmungspflichtig sein kann.
 **(gebaut, #2565, #2567, #2568, #2569)** Vorlagen liegen für Datenschutz, Informationssicherheit
 und Notfall, KI-Verordnung und Cyber Resilience Act sowie Barrierefreiheit und Nutzung in
 `docs/behoerden/`; die Meldestelle für Sicherheitslücken aus Phase 1 ist
-[SECURITY.md](../../SECURITY.md) (#2561). **(Zielbild)** Die übrigen Vorlagen der Phasen 0 bis 4, die Mitbestimmung und das
-Update-Paket.
+[SECURITY.md](../../SECURITY.md) (#2561). **(gebaut, #2556)** Die Vorlage Update-Vermerk liegt in
+`docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(Zielbild)** Die übrigen
+Vorlagen der Phasen 0 bis 4 und die Mitbestimmung.
 
 **Markterkundung und Codeentstehung (Beschluss 4):** Die Markterkundungsunterlagen enthalten keine
 Aussage dazu, wie der Code entstanden ist. Fragt eine Behörde ausdrücklich danach, lautet die Antwort:
@@ -159,7 +164,7 @@ darum herum.
 
 | Erzeugungsart | Was | Wo | Eingecheckt |
 |---|---|---|---|
-| **generiert** | Faktenblätter, JSON-Fassung, Update-Delta, Lizenzübersicht | CI-Artefakt jedes `main`-Laufs (Faktenblätter und Lizenzübersicht, gebaut); Update-Delta lokal mit `./gradlew complianceDelta` (gebaut, #2554); Anhang am GitHub-Release (Zielbild, #2556) | nein — vermeidet Konflikte zwischen parallelen PRs |
+| **generiert** | Faktenblätter, JSON-Fassung, Update-Delta, Lizenzübersicht | CI-Artefakt jedes `main`-Laufs (Faktenblätter und Lizenzübersicht, gebaut); Update-Delta lokal mit `./gradlew complianceDelta` (gebaut, #2554); alles zusammen als Update-Paket am GitHub-Release (gebaut, #2556) | nein — vermeidet Konflikte zwischen parallelen PRs |
 | **redaktionell** | Vorlagen entlang der Behördenreise | `docs/behoerden/` | ja |
 
 Das Manifest selbst ist Quelltext, keine Dokumentation: Es liegt im Klassenpfad des Backends
@@ -317,9 +322,10 @@ kommt aber erst nach dem Merge. Drei Schichten ergänzen sich deshalb:
 | 2 · Kennzeichnung am PR | jeder PR | deterministisch, blockierend | Label `data-impact` oder Angabe „Keine Wirkung“ | #2553 (gebaut, PR #2820) |
 | 3 · Drift-Routine | wöchentlich | Agent, nur lesend | inhaltliche Richtigkeit, Verhaltensänderungen ohne Schemaänderung, Lücken der Pfadliste | eingerichtete Claude-Routine (gebaut, #2819) |
 
-**(Zielbild, #2556)** Der Release-Lauf führt Schicht 1 zusätzlich vor jeder Veröffentlichung aus und
-bricht bei einem unvollständigen Manifest ab, **bevor** Images erscheinen. Heute läuft Schicht 1 in
-der CI jedes PRs mit Backend-Änderung und jedes Stands auf `main`, nicht im Release-Workflow selbst.
+**(gebaut, #2556)** Der Release-Lauf führt Schicht 1 zusätzlich vor jeder Veröffentlichung aus und
+bricht bei einem unvollständigen Manifest ab, **bevor** ein Image-Tag gesetzt ist: Der Job
+`update-package` läuft den Wächter neben den Image-Builds, und erst nach ihm setzt `publish` Tags
+([releases.md](../releases.md#schutzregeln-im-workflow)).
 
 ### Schicht 1: deterministische CI-Wächter
 
@@ -401,10 +407,11 @@ Rolle „Behördenkontakt“ läuft anlassbezogen vor jedem Release und nutzt di
 
 ## Das Update-Paket
 
-**(Zielbild, #2552)** Gebaut sind davon nur Bausteine: die Faktenblätter und die Lizenzübersicht
-(Teil 9), die Kennzeichnung `data-impact` mit der Rubrik in den Release-Notizen (Teil 6, #2553) und
-das Werkzeug für das [kumulierte Delta](#das-kumulierte-delta) mit Hinweisen und den gekennzeichneten
-Pull Requests (Teile 1, 2, 5 und 6, #2554), das noch nicht im Release-Lauf läuft.
+**(in Teilen gebaut, #2552)** Gebaut sind die Teile 1, 2, 5, 6, 8 und 9: Der Release-Lauf erzeugt das
+Paket zu jedem Release, hängt es an und attestiert es (#2556); Faktenblätter und Lizenzübersicht
+stammen aus #2550 und #2551, das [kumulierte Delta](#das-kumulierte-delta) mit Hinweisen und den
+gekennzeichneten Pull Requests aus #2553 und #2554. **(Zielbild)** Die Teile 3 und 4 (#2555), Teil 7
+(#2558, #2559) und das Offline-Bündel (#2557).
 
 Zu jedem Release entsteht ein Update-Paket, mit dem eine Behörde ein Update gegenüber Hausleitung,
 Datenschutzbeauftragten, Personalrat und ISB verantworten kann, ohne Diffs zu lesen. Es ist an Tag
@@ -424,9 +431,13 @@ und Commit gebunden, attestiert wie Images und Chart und als Offline-Bündel erh
 | 8 | **Vorlage Update-Vermerk:** Version, Delta, Bewertung je Stelle, Entscheidung, Name, Datum | #2556 |
 | 9 | Faktenblätter der neuen Version und Lizenzübersicht | #2550, #2551 |
 
-Das Paket hängt als Archiv mit Prüfsummendatei am GitHub-Release und trägt eine
-Provenance-Attestierung (#2556). Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
-Chart, SBOMs und Attestierungen für Netze ohne Internetzugang (#2557).
+**(gebaut, #2556)** Das Paket hängt als Archiv `opaa-update-paket-X.Y.Z.tar.gz` mit Prüfsummendatei
+am GitHub-Release und trägt eine Provenance-Attestierung, prüfbar mit `gh attestation verify`. Im
+Archiv liegen `LIESMICH.md`, die Teile 1, 2, 5 und 6 im Delta, die Faktenblätter, die Lizenzübersicht,
+die Vorlage Update-Vermerk und `SHA256SUMS`; Aufbau, Erzeugung und Probelauf ohne Release beschreibt
+[releases.md](../releases.md#update-paket). Gleicher Commit ergibt gleiche Dateien.
+**(Zielbild, #2557)** Das Offline-Bündel enthält zusätzlich Images beider Architekturen,
+Chart, SBOMs und Attestierungen für Netze ohne Internetzugang.
 
 ### Das kumulierte Delta
 
@@ -436,9 +447,11 @@ direkt, nicht die Kette der Einzeldeltas: Ein Eintrag, der zwischendurch hinzuko
 erscheint nicht; ein Wert, der sich mehrmals ändert, erscheint einmal mit Anfangs- und Endstand. Das
 Delta über drei Versionen ist damit gleich der Zusammenfassung der Einzeldeltas.
 
-Am Release wird das Delta zum vorigen finalen Release erzeugt, bei Vorab-Releases ebenso. Welches
-Release bei mehreren Supportlinien als Vorgänger gilt, folgt aus der Entscheidung in #2575; bis dahin
-ist es das letzte finale Tag auf `main`.
+**(gebaut, #2556)** Am Release wird das Delta zum vorigen finalen Release erzeugt, bei
+Vorab-Releases ebenso: zum höchsten finalen Tag unter der eigenen Version, das der getaggte Commit
+enthält. Vor dem ersten finalen Release vergleicht es mit einem Stand ohne Manifest, jeder Eintrag
+erscheint als neu. Welches Release bei mehreren Supportlinien als Vorgänger gilt, folgt aus der
+Entscheidung in #2575; bis dahin gilt diese Regel.
 
 **(gebaut, #2554)** Erzeugt wird das Delta aus `backend/` ohne Netz
 ([ADR-0052, Entscheidung 10](../decisions/0052-compliance-manifest.md#10-delta-zwischen-zwei-versionen)):

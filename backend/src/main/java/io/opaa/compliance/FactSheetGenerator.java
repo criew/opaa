@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,8 @@ import java.util.stream.Stream;
  * writes every {@link FactSheet} as {@code <name>.md} plus the JSON form {@value #JSON_FILE} into
  * the output directory, replacing the files of an earlier run.
  *
- * <p>Arguments: output directory, OPAA version, commit. The generation date is today in UTC. With
+ * <p>Arguments: output directory, OPAA version, commit and optionally the generation date ({@code
+ * YYYY-MM-DD}), else today in UTC; with a given date the same manifest yields the same files. With
  * {@code --anchors <file>} it writes the placeholder targets ({@link #ANCHOR_HEADER}) instead,
  * which the header check of {@code docs/behoerden/} reads.
  */
@@ -48,15 +50,25 @@ public final class FactSheetGenerator {
       System.out.println("written: " + file);
       return;
     }
-    if (args.length != 3) {
+    if (args.length != 3 && args.length != 4) {
       throw new IllegalArgumentException(
-          "usage: FactSheetGenerator <output directory> <version> <commit>"
+          "usage: FactSheetGenerator <output directory> <version> <commit> [<YYYY-MM-DD>]"
               + " | --anchors <file>");
     }
     FactSheetProvenance provenance =
-        new FactSheetProvenance(args[1], args[2], LocalDate.now(ZoneOffset.UTC));
+        new FactSheetProvenance(
+            args[1], args[2], args.length == 4 ? date(args[3]) : LocalDate.now(ZoneOffset.UTC));
     List<Path> written = write(Path.of(args[0]), ComplianceManifestLoader.load(), provenance);
     written.forEach(file -> System.out.println("written: " + file));
+  }
+
+  private static LocalDate date(String value) {
+    try {
+      return LocalDate.parse(value);
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException(
+          "generation date '" + value + "' is no calendar day YYYY-MM-DD", e);
+    }
   }
 
   /** The content of the placeholder target file for {@code manifest}. */
