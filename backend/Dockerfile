@@ -14,7 +14,7 @@ COPY backend/src/ backend/src/
 COPY opaa-api/src/ opaa-api/src/
 WORKDIR /app/backend
 # Version the backend reports (start line, /actuator/info). A release build passes the version of
-# its tag; left empty, Gradle keeps its development placeholder. Declared after the dependency layer
+# its tag, a main build 0.0.0-dev+<commit>; left empty, Gradle keeps its development placeholder. Declared after the dependency layer
 # so that changing it does not invalidate the downloaded dependencies.
 ARG OPAA_VERSION=
 RUN ./gradlew bootJar --no-daemon -x test "-PopaaVersion=${OPAA_VERSION}"

@@ -4,7 +4,6 @@ import { expect, test } from '../fixtures/auth'
 import { expectNoSeriousA11yViolations } from '../fixtures/a11y'
 import {
   askQuestion,
-  chatSidebarEntries,
   clearSearchScope,
   createLibraryWithDocument,
   expectCitedSource,
@@ -12,6 +11,7 @@ import {
   expectCitedExclusively,
   expectTopSidebarChatToBeNamed,
   shareLibraryWithPerson,
+  sidebarChatEntry,
   startAnotherChatViaSidebar,
   startFreshChat,
 } from '../fixtures/chat'
@@ -294,11 +294,6 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // The message history, not <main>: the chat header repeats the fallback title.
     const main = page.getByTestId('message-list')
 
-    // Captured before either chat exists, so the count-based assertions
-    // below (chat titles are no reliable per-chat anchor, see the module doc comment) can
-    // check "exactly two more entries appeared" without needing an absolute baseline of zero.
-    const chatCountBefore = await chatSidebarEntries(page).count()
-
     await createLibraryWithDocument(page, libraryName, DOCUMENT_A_PATH, DOCUMENT_A_NAME)
     await assignLibraryToDefaultSpace('dev-admin', libraryName)
 
@@ -323,10 +318,11 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(main.getByText(questionChat2)).toBeVisible()
     await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toBeVisible()
 
-    // Both chats are listed in the sidebar as two distinct entries (not
-    // asserted via their title text, which - unlike the question text above - can end up
-    // identical for both, see the module doc comment on uniqueId/title generation).
-    await expect(chatSidebarEntries(page)).toHaveCount(chatCountBefore + 2)
+    // Both chats are listed in the sidebar as two distinct entries, keyed on their ids (not on
+    // their title text, which - unlike the question text above - can end up identical for both,
+    // see the module doc comment on uniqueId/title generation).
+    await expect(sidebarChatEntry(page, chat1Url)).toHaveCount(1)
+    await expect(sidebarChatEntry(page, chat2Url)).toHaveCount(1)
 
     // Back to chat 1 directly by URL (a sidebar click keyed on chat 1's title text is not
     // reliable, same reasoning as above), then a reload: the reload is what actually proves

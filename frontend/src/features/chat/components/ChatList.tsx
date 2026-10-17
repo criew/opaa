@@ -300,6 +300,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
     return (
       <ListItem
         key={chat.id}
+        data-testid={`chat-entry-${chat.id}`}
         disablePadding
         // Mockup 1a keeps chat rows quiet - the actions only surface on hover or
         // keyboard focus. They stay in the tab order either way.

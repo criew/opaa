@@ -33,9 +33,11 @@ jobs:
       packages: write
     outputs:
       image-prefix: ${{ steps.prefix.outputs.image-prefix }}
-      # X.Y.Z[-<pre>] on a release tag, empty otherwise; backend and frontend report it as their
-      # version.
+      # X.Y.Z[-<pre>] on a release tag, empty otherwise.
       version: ${{ steps.release.outputs.version }}
+      # The version backend and frontend report: the release version on a tag, otherwise
+      # 0.0.0-dev+<commit>, so a main image names the state it was built from.
+      build-version: ${{ steps.release.outputs.version || steps.dev-version.outputs.version }}
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
       annotations: ${{ steps.meta.outputs.annotations }}
@@ -93,6 +95,11 @@ jobs:
             fi
           done
           echo "version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: Entwicklungsversion bestimmen
+        id: dev-version
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: echo "version=0.0.0-dev+${GITHUB_SHA::7}" >>"$GITHUB_OUTPUT"
 
       - name: Extract metadata
         id: meta
@@ -196,13 +203,14 @@ jobs:
           file: ${{ matrix.image.dockerfile }}
           platforms: linux/${{ matrix.platform.arch }}
           labels: ${{ needs.prepare.outputs.labels }}
-          # Backend and frontend report the version of the release tag. Outside a release the value
-          # is empty and both keep their development version, with the same cache key as without
-          # the argument (the Dockerfiles declare it with an empty default). The commit is only
-          # read by the backend's last stage (data collection disclosure), so no build layer
-          # depends on it.
+          # Backend and frontend report the version of the release tag, outside a release
+          # 0.0.0-dev+<commit>. The Dockerfiles declare the argument after their dependency layers,
+          # so a new commit rebuilds only the build step, which its changed sources rebuild anyway;
+          # the weekly rebuild of an unchanged commit keeps the same value and cache key. The full
+          # commit is read only by the backend's last stage (data collection disclosure), so no
+          # build layer depends on it.
           build-args: |
-            OPAA_VERSION=${{ needs.prepare.outputs.version }}
+            OPAA_VERSION=${{ needs.prepare.outputs.build-version }}
             OPAA_COMMIT=${{ github.sha }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           # SBOM and provenance attestations are attached per platform and carried over into the
