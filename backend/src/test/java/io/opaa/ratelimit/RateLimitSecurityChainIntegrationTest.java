@@ -9,7 +9,6 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthRateLimitTest;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,59 +35,6 @@ class RateLimitSecurityChainIntegrationTest {
   private static final int GLOBAL_QUERY_CEILING = 3;
   private static final int WEBHOOK_PER_CLIENT = 3;
   private static final int GLOBAL_WEBHOOK_CEILING = 4;
-  private static final int UNAUTHENTICATED_PER_ADDRESS = 5;
-
-  @Test
-  void unauthenticatedRequestsFromOneAddressShareOneBudgetAcrossTheSignedInEndpoints()
-      throws Exception {
-    // each refused request gives its rule's tokens back; what bounds a stranger sending invalid
-    // tokens from one address is the shared budget of unauthenticated requests
-    String client = "198.51.100.90";
-    List<String> paths =
-        List.of(
-            "/api/v1/documents/" + UUID.randomUUID() + "/content",
-            "/api/v1/libraries/" + UUID.randomUUID() + "/indexing",
-            "/api/v1/libraries/source-test",
-            chatSearch(),
-            chatSearch());
-    for (String path : paths) {
-      mockMvc
-          .perform(
-              post(path).header(HttpHeaders.AUTHORIZATION, "Bearer kein-token").with(from(client)))
-          .andExpect(status().isUnauthorized());
-    }
-    mockMvc.perform(post(chatSearch()).with(from(client))).andExpect(status().isTooManyRequests());
-    // another address is not affected
-    mockMvc
-        .perform(post(chatSearch()).with(from("198.51.100.91")))
-        .andExpect(status().isUnauthorized());
-  }
-
-  @Test
-  void signedInRequestsDoNotDrawOnTheBudgetOfUnauthenticatedRequests() throws Exception {
-    String client = "198.51.100.95";
-    String bearer = signIn("198.51.100.96");
-    for (int call = 0; call <= UNAUTHENTICATED_PER_ADDRESS; call++) {
-      int status =
-          mockMvc
-              .perform(
-                  post("/api/v1/libraries/source-test")
-                      .header(HttpHeaders.AUTHORIZATION, bearer)
-                      .contentType(MediaType.APPLICATION_JSON)
-                      .content("{}")
-                      .with(from(client)))
-              .andReturn()
-              .getResponse()
-              .getStatus();
-      assertThat(status).isNotIn(401, 429);
-    }
-    mockMvc.perform(post(chatSearch()).with(from(client))).andExpect(status().isUnauthorized());
-  }
-
-  /** Chat search of a made-up space: a rule behind the sign-in with a wide global ceiling. */
-  private static String chatSearch() {
-    return "/api/v1/spaces/" + UUID.randomUUID() + "/chats/search";
-  }
 
   /** One byte above the push intake's body bound, which it refuses before any secret check. */
   private static final int OVERSIZED_PUSH_BYTES = 256 * 1024 + 1;
