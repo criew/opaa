@@ -14,8 +14,10 @@ never count; it prints nothing before the first final release.
 is a trial and the package says so. It renders fact sheets and manifest delta with Gradle, checks
 the licenses of backend and frontend (frontend/node_modules must be installed) and writes
 opaa-update-paket-<version>.tar.gz with its .sha256 file into --out. Without a previous final
-release the delta starts from the oldest root commit, which has no manifest. Dates and file
-metadata come from the commit, so the same commit yields the same files.
+release the delta starts from the oldest root commit, which has no manifest. Fact sheet
+placeholders in the Markdown files of the package become links to faktenblaetter/; an unknown
+sheet or anchor fails the run. Dates and file metadata come from the commit, so the same commit
+yields the same files.
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
 preparation, reindexing, schema migration, new ports and egress targets, answer quality. Every
@@ -36,6 +38,7 @@ import hashlib
 import io
 import json
 import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -65,6 +68,11 @@ OUTBOUND = MANIFEST_PATH + "outbound.yaml"
 EMBEDDING_MODEL = "spring.ai.openai.embedding.model"
 OPERATIONS_FILES = ("antwortqualitaet.md", "betriebsfolgen.md")
 NOT_MEASURED = "nicht gemessen"
+BARE = "Stand ohne Fakten-Manifest"
+PLACEHOLDER = re.compile(r"\{\{faktenblatt:([a-z0-9-]+)(?:#([a-z0-9-]+))?\}\}")
+LEFTOVER = re.compile(r"\{\{\s*faktenblatt[^\n]{0,40}", re.IGNORECASE)
+ANCHOR = re.compile(r'<a id="([^"]+)"></a>')
+COMMIT_ID = re.compile(r"[0-9a-f]{7,64}")
 
 
 class PackageError(Exception):
@@ -133,11 +141,18 @@ def empty_base(repo: Path, commit: str) -> str:
 @dataclass(frozen=True)
 class Side:
     """One end of the interval: the reference as named, its commit and its release version (None
-    for anything that is no release tag)."""
+    for anything that is no release tag). `bare` marks a commit without manifest named by its id,
+    such as the root commit a first final release compares with."""
 
     label: str
     commit: str
     version: str | None
+    bare: bool = False
+
+    @property
+    def name(self) -> str:
+        """The side as headings and prose name it."""
+        return bare_name(self.commit) if self.bare else self.label
 
 
 def files_at(repo: Path, commit: str, directory: str) -> list[str]:
@@ -155,6 +170,17 @@ def version_key(version: str) -> tuple:
     pre = version.partition("-")[2]
     ids = tuple((0, int(p), "") if p.isdigit() else (1, 0, p) for p in pre.split(".")) if pre else ()
     return core(version), 0 if pre else 1, ids
+
+
+def bare_name(commit: str) -> str:
+    return f"{BARE} (Commit `{commit[:7]}`)"
+
+
+def is_bare(repo: Path, label: str, commit: str) -> bool:
+    """Whether `label` is the id of `commit` and its tree has no manifest; ManifestDeltaRenderer
+    names such a version the same way."""
+    return (COMMIT_ID.fullmatch(label) is not None and commit.startswith(label)
+            and not files_at(repo, commit, MANIFEST_PATH))
 
 
 def where(side: Side) -> str:
@@ -183,7 +209,7 @@ def header(title: str, previous: Side, current: Side) -> list[str]:
         f"vergleich-commit: {previous.commit}",
         "---",
         "",
-        f"# {title} OPAA {current.label} gegenüber {previous.label}",
+        f"# {title} OPAA {current.name} gegenüber {previous.name}",
         "",
         NOTICE,
         "",
@@ -415,7 +441,7 @@ def migration_section(repo: Path, previous: Side, current: Side) -> list[str]:
             ids = [i for i in added if after[i] == area]
             lines.append(f"| {area} | {len(ids)} | {', '.join(f'`{i}`' for i in ids)} |")
         lines += ["", f"Schemaänderungen laufen nur vorwärts. **Vor dem Update die Datenbank sichern:**"
-                  f" Zurück auf {previous.label} geht es nur über diese Sicherung."]
+                  f" Zurück auf {previous.name} geht es nur über diese Sicherung."]
     else:
         lines.append("Keine neuen Changesets: Das Update ändert das Datenbankschema nicht.")
     if removed:
@@ -595,7 +621,7 @@ def quality(sides: tuple[dict, dict], previous: Side, current: Side) -> str:
         keys = list(dict.fromkeys([*metrics(old), *metrics(new)]))
         rows += [(metric_name(k), lambda e, k=k: metrics(e).get(k)) for k in keys]
         lines += [f"## {baseline_title(name)}", "", f"Datei `{BASELINES}{name}`, Gruppe `overall`.", "",
-                  f"| Kennzahl | {previous.label} | {current.label} |", "|---|---|---|"]
+                  f"| Kennzahl | {previous.name} | {current.name} |", "|---|---|---|"]
         for title, getter in rows:
             lines.append(f"| {title} | {value(old, present[0], getter)} | {value(new, present[1], getter)} |")
         lines.append("")
@@ -621,7 +647,7 @@ def operations(repo: Path, previous: Side, current: Side, delta_json: Path | Non
     baselines = (read_baselines(repo, previous.commit), read_baselines(repo, current.commit))
     lines = header("Betriebsfolgen", previous, current)
     lines += [
-        f"Was ein Update von {previous.label} auf {current.label} für den Betrieb bedeutet. Jede Angabe"
+        f"Was ein Update von {previous.name} auf {current.name} für den Betrieb bedeutet. Jede Angabe"
         " nennt ihre Quelle; gelesen wird aus Git im Stand beider Commits, nicht aus einem Arbeitsstand.",
         "",
         *break_section(notes, previous, current),
@@ -692,8 +718,8 @@ def readme(release: Release) -> str:
             if release.previous and release.previous_given
             else f" {release.previous}, dem vorigen finalen Release."
             if release.previous
-            else " einem Stand ohne Fakten-Manifest: Es gibt kein voriges finales Release, deshalb"
-            " erscheint im Delta jeder Eintrag als neu."
+            else f" dem {bare_name(release.previous_commit)}: Es gibt kein voriges finales"
+            " Release, deshalb erscheint im Delta jeder Eintrag als neu."
         )
     )
     lines += [
@@ -742,6 +768,44 @@ def readme(release: Release) -> str:
     return "\n".join(lines)
 
 
+def sheet_title(text: str, name: str) -> str:
+    """The link text "Faktenblatt <Titel>" from the heading `# Faktenblatt: <Titel>` of a sheet."""
+    heading = next((line[2:].strip() for line in text.splitlines() if line.startswith("# ")), "")
+    title = heading.removeprefix("Faktenblatt:").strip()
+    return f"Faktenblatt {title}" if title else f"Faktenblatt `{name}`"
+
+
+def resolve_placeholders(files: dict[str, bytes]) -> None:
+    """Replaces every {{faktenblatt:<name>[#<anchor>]}} in the Markdown files of the package by a
+    link relative to the file to faktenblaetter/<name>.md; an unknown sheet or anchor and anything
+    left over that looks like a placeholder fails the run (docs/behoerden/README.md)."""
+    sheets = {path[len("faktenblaetter/"):-3]: content.decode("utf-8") for path, content in files.items()
+              if path.startswith("faktenblaetter/") and path.endswith(".md")}
+    anchors = {name: set(ANCHOR.findall(text)) for name, text in sheets.items()}
+    for path in sorted(files):
+        if not path.endswith(".md") or path.startswith("faktenblaetter/"):
+            continue
+        text = files[path].decode("utf-8")
+
+        def link(match: re.Match) -> str:
+            name, anchor = match.group(1), match.group(2)
+            if name not in sheets:
+                raise PackageError(f"{path}: placeholder {match.group(0)} names no fact sheet of the"
+                                   f" package ({', '.join(sorted(sheets))})")
+            if anchor and anchor not in anchors[name]:
+                raise PackageError(f"{path}: placeholder {match.group(0)} names no anchor of"
+                                   f" faktenblaetter/{name}.md")
+            target = posixpath.relpath(f"faktenblaetter/{name}.md", posixpath.dirname(path) or ".")
+            return f"[{sheet_title(sheets[name], name)}]({target}{'#' + anchor if anchor else ''})"
+
+        resolved = PLACEHOLDER.sub(link, text)
+        left = LEFTOVER.search(resolved)
+        if left:
+            raise PackageError(f"{path}: malformed placeholder {left.group(0)!r}; use"
+                               " {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}}")
+        files[path] = resolved.encode("utf-8")
+
+
 def assemble(
     release: Release,
     fact_sheets: Path,
@@ -774,6 +838,7 @@ def assemble(
     if not template.is_file():
         raise PackageError(f"update note template {template} is missing")
     files["update-vermerk.md"] = template.read_bytes()
+    resolve_placeholders(files)
     files["SHA256SUMS"] = "".join(
         f"{hashlib.sha256(content).hexdigest()}  {path}\n" for path, content in sorted(files.items())
     ).encode()
@@ -858,7 +923,9 @@ def build(args: argparse.Namespace) -> Path:
         write_operations(
             operations(
                 ROOT,
-                Side(previous or from_commit, from_commit, release_version(previous) if previous else None),
+                Side(previous or from_commit, from_commit,
+                     release_version(previous) if previous else None,
+                     bare=is_bare(ROOT, previous or from_commit, from_commit)),
                 Side(args.tag if tag_commit else head, head, version),
                 ROOT / DELTA / "manifest-delta.json",
             ),
@@ -900,7 +967,7 @@ def main(argv: list[str]) -> int:
                 sha = resolve(repo, ref)
                 if sha is None:
                     raise PackageError(f"unknown reference {ref!r} (checked out with tags and history?)")
-                sides.append(Side(ref, sha, release_version(ref)))
+                sides.append(Side(ref, sha, release_version(ref), bare=is_bare(repo, ref, sha)))
             delta_json = Path(args.delta_json) if args.delta_json else None
             for written in write_operations(operations(repo, *sides, delta_json), Path(args.out)):
                 print(written)

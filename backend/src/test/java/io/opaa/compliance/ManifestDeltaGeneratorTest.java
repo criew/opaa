@@ -99,8 +99,7 @@ class ManifestDeltaGeneratorTest {
 
     String markdown = Files.readString(out.resolve(ManifestDeltaGenerator.MARKDOWN_FILE));
     String readable = "Stand ohne Fakten-Manifest (Commit `" + root.substring(0, 7) + "`)";
-    String title =
-        markdown.lines().filter(line -> line.startsWith("# ")).findFirst().orElseThrow();
+    String title = markdown.lines().filter(line -> line.startsWith("# ")).findFirst().orElseThrow();
     assertThat(title).isEqualTo("# Änderungen der Fakten von " + readable + " bis v3");
     assertThat(markdown)
         .contains("> **Hinweis:** Der Stand (Commit `" + root.substring(0, 7) + "`) hat noch kein")

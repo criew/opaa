@@ -89,11 +89,11 @@ ein Update verantworten, ohne den Code zu lesen:
 | `betrieb/` | Was das Update für den Betrieb bedeutet: ob vorher etwas vorzubereiten ist, ob eine Neuindizierung (mit Dauerschätzung), ein Nachzug oder eine Neueinbettung ansteht, wie viele Schemaänderungen beim Start laufen, welche Ports und Ziele ausgehender Verbindungen neu sind; dazu die Kennzahlen der Suchqualität beider Versionen mit Messdatum. Jede Angabe nennt ihre Quelle; ein fehlender Messwert steht als „nicht gemessen“ da |
 | `faktenblaetter/` | die Faktenblätter dieser Version |
 | `lizenzen/` | die Lizenzübersicht der ausgelieferten Abhängigkeiten |
-| `update-vermerk.md` | Vorlage, in der die Behörde Bewertung je Stelle und Entscheidung festhält |
+| `update-vermerk.md` | Vorlage, in der die Behörde Bewertung je Stelle und Entscheidung festhält; ihre Verweise auf Faktenblätter führen auf die Blätter im Paket |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
-Vor dem ersten finalen Release gibt es keinen Vergleichsstand; dann erscheint im Delta jeder
-Eintrag als neu. Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.
+Vor dem ersten finalen Release gibt es keinen Vergleichsstand; das Paket vergleicht dann mit dem
+„Stand ohne Fakten-Manifest“, und im Delta erscheint jeder Eintrag als neu. Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.
 
 Das Paket ist attestiert wie die Images. Die Herkunft prüft:
 

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.SerializationFeature;
@@ -32,8 +33,11 @@ public final class ManifestDeltaRenderer {
   public static final String PROPOSAL_NOTICE =
       "Stufen und Bezüge sind Vorschläge; die Bewertung trifft die Behörde.";
 
-  private static final String STAGE_RULES =
-      "https://github.com/criew/opaa/blob/main/docs/features/behoerdenunterlagen.md#die-stufenregeln";
+  private static final String REPOSITORY_FILES = "https://github.com/criew/opaa/blob/";
+  private static final String STAGE_RULES_PATH =
+      "/docs/features/behoerdenunterlagen.md#die-stufenregeln";
+  private static final Pattern COMMIT_ID = Pattern.compile("[0-9a-f]{7,64}");
+  private static final int SHORT_COMMIT = 7;
   private static final String NONE = "—";
 
   /** From this many entries on, one identical change is shown once with the entries it concerns. */
@@ -104,22 +108,33 @@ public final class ManifestDeltaRenderer {
         .append(to.commit())
         .append("\n---\n\n")
         .append("# Änderungen der Fakten von ")
-        .append(FactSheetRenderer.text(from.version()))
+        .append(name(from))
         .append(" bis ")
-        .append(FactSheetRenderer.text(to.version()))
+        .append(name(to))
         .append("\n\n> ")
         .append(FactSheetRenderer.NOTICE)
         .append("\n> ")
         .append(PROPOSAL_NOTICE)
         .append("\n\n")
-        .append("Dieses Delta vergleicht das Fakten-Manifest von OPAA ")
-        .append(version(from))
-        .append(" direkt mit dem von ")
-        .append(version(to))
+        .append("Dieses Delta vergleicht ")
+        .append(
+            bareCommit(from)
+                ? "den Stand ohne Fakten-Manifest (Commit "
+                    + FactSheetRenderer.code(from.commit())
+                    + ")"
+                : "das Fakten-Manifest von OPAA " + version(from))
+        .append(" direkt mit ")
+        .append(
+            bareCommit(to)
+                ? "dem Stand ohne Fakten-Manifest (Commit "
+                    + FactSheetRenderer.code(to.commit())
+                    + ")"
+                : (bareCommit(from) ? "dem Fakten-Manifest von OPAA " : "dem von OPAA ")
+                    + version(to))
         .append(". Was zwischen beiden Versionen hinzukam und wieder entfiel, fehlt; ein mehrfach")
         .append(" geänderter Wert erscheint einmal mit Anfangs- und Endstand. Jede Änderung trägt")
         .append(" einen Stufenvorschlag nach den [Stufenregeln](")
-        .append(STAGE_RULES)
+        .append(stageRules(to))
         .append(") (Bagatelle, Anzeige, Zustimmung mit den Klassen Z1 bis Z7; im Zweifel")
         .append(" Zustimmung) und den Bezug zu Verzeichnis der Verarbeitungstätigkeiten (VVT),")
         .append(" Datenschutz-Folgenabschätzung (DSFA) und Sicherheitskonzept. Die Überprüfung der")
@@ -129,8 +144,10 @@ public final class ManifestDeltaRenderer {
         .append(" hier.\n\n");
     for (Origin origin : List.of(from, to)) {
       if (!origin.hasManifest()) {
-        out.append("> **Hinweis:** OPAA ")
-            .append(FactSheetRenderer.text(origin.version()))
+        out.append(
+                bareCommit(origin)
+                    ? "> **Hinweis:** Der Stand (Commit " + shortCommit(origin) + ")"
+                    : "> **Hinweis:** OPAA " + FactSheetRenderer.text(origin.version()))
             .append(" hat noch kein Fakten-Manifest. ")
             .append(
                 origin == from
@@ -193,7 +210,7 @@ public final class ManifestDeltaRenderer {
     root.put("erzeugung", "generiert");
     root.put("notice", FactSheetRenderer.NOTICE);
     root.put("proposalNotice", PROPOSAL_NOTICE);
-    root.put("stageRules", STAGE_RULES);
+    root.put("stageRules", stageRules(delta.to()));
     root.put("from", delta.from());
     root.put("to", delta.to());
     root.put("summary", summary(delta));
@@ -511,6 +528,38 @@ public final class ManifestDeltaRenderer {
     Set<String> classes = new TreeSet<>();
     delta.changes().forEach(c -> classes.addAll(c.assessment().classes()));
     return List.copyOf(classes);
+  }
+
+  /**
+   * The stage rules as of the newer version's commit, the rules its proposals follow; on {@code
+   * main} only when that commit is unknown.
+   */
+  private static String stageRules(Origin to) {
+    String commit = to.commit().equals(ManifestSnapshot.UNKNOWN) ? "main" : to.commit();
+    return REPOSITORY_FILES + commit + STAGE_RULES_PATH;
+  }
+
+  /**
+   * A version named by a bare commit id whose tree has no manifest, such as the root commit a first
+   * final release compares with; it is named as such, not by the id alone.
+   */
+  private static boolean bareCommit(Origin origin) {
+    return !origin.hasManifest()
+        && "ref".equals(origin.kind())
+        && COMMIT_ID.matcher(origin.version()).matches()
+        && origin.commit().startsWith(origin.version());
+  }
+
+  /** The version as named in the title. */
+  private static String name(Origin origin) {
+    return bareCommit(origin)
+        ? "Stand ohne Fakten-Manifest (Commit " + shortCommit(origin) + ")"
+        : FactSheetRenderer.text(origin.version());
+  }
+
+  private static String shortCommit(Origin origin) {
+    return FactSheetRenderer.code(
+        origin.commit().substring(0, Math.min(SHORT_COMMIT, origin.commit().length())));
   }
 
   private static String version(Origin origin) {
