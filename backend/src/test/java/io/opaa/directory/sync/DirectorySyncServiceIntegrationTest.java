@@ -736,7 +736,7 @@ class DirectorySyncServiceIntegrationTest {
 
   // ---------------------------------------------------------------------------------------
   // A failed apply is recorded as FAILED, never as APPLIED: the status is written only after
-  // the apply transaction has rolled back (#2902).
+  // the apply transaction has rolled back.
   // ---------------------------------------------------------------------------------------
 
   @Test
