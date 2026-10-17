@@ -30,6 +30,7 @@ import type { DocumentPageState } from '../stores/documentStore'
 import { DEFAULT_PAGE_SIZE } from '../stores/documentStore'
 import { documentStatusLabel } from './indexingLabels'
 import { formatFileSize } from '@/shared/utils/labels'
+import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import { sourceRegistration } from './sources/registry'
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {
@@ -89,6 +90,17 @@ export interface LibraryDocumentListProps {
   /** Per-parent expansion of the attachment group. */
   isGroupExpanded: (parentId: string) => boolean
   onToggleAttachmentGroup: (parentId: string) => void
+}
+
+/** A source address from the document's metadata: a link for http(s), plain text otherwise. */
+function ExternalAddress({ address }: { address: string }) {
+  const href = safeExternalHref(address)
+  if (!href) return <span>{address}</span>
+  return (
+    <Link href={href} target="_blank" rel="noopener noreferrer">
+      {address}
+    </Link>
+  )
 }
 
 /**
@@ -247,10 +259,7 @@ export default function LibraryDocumentList({
                 variant="caption"
                 sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
               >
-                Herkunft:{' '}
-                <Link href={document.sourceEntryUrl} target="_blank" rel="noopener noreferrer">
-                  {document.sourceEntryUrl}
-                </Link>
+                Herkunft: <ExternalAddress address={document.sourceEntryUrl} />
               </Typography>
             )}
             {/* Only shown when sourceEntryUrl above is absent, so the same remote address
@@ -260,10 +269,7 @@ export default function LibraryDocumentList({
                 variant="caption"
                 sx={{ color: 'text.secondary', wordBreak: 'break-word' }}
               >
-                Quelle:{' '}
-                <Link href={document.sourceUrl} target="_blank" rel="noopener noreferrer">
-                  {document.sourceUrl}
-                </Link>
+                Quelle: <ExternalAddress address={document.sourceUrl} />
               </Typography>
             )}
             {attachments.length > 0 && (
