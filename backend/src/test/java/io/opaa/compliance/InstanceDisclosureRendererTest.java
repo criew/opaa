@@ -86,7 +86,8 @@ class InstanceDisclosureRendererTest {
     assertThat(deviations).isPositive().isLessThan(settings);
     String deviationSection = markdown.substring(deviations, settings);
     assertThat(deviationSection)
-        .contains("| `audit_retention_settings.retention_months` | 36 | 24 | 2026-10-01T10:00:00Z |")
+        .contains(
+            "| `audit_retention_settings.retention_months` | 36 | 24 | 2026-10-01T10:00:00Z |")
         .doesNotContain("opaa.rerank.enabled");
   }
 

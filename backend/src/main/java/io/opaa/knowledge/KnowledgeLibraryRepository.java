@@ -314,4 +314,13 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
       "update KnowledgeLibrary l set l.webhookSecret = null"
           + " where l.id = :id and l.webhookSecret is not null")
   int eraseWebhookSecret(@Param("id") UUID id);
+
+  /**
+   * How many libraries of the whole installation read from each source type, as rows of type key
+   * and count; types without a library are absent.
+   */
+  @Query(
+      value = "select source_type, count(*) from knowledge_libraries group by source_type",
+      nativeQuery = true)
+  List<Object[]> countBySourceType();
 }

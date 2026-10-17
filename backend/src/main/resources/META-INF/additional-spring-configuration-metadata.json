@@ -1,6 +1,12 @@
 {
   "properties": [
     {
+      "name": "opaa.build.commit",
+      "type": "java.lang.String",
+      "description": "Commit the running image was built from, named in the data collection disclosure; the release image sets it, empty means unknown.",
+      "sourceType": "io.opaa.compliance.InstanceDisclosureAssembler"
+    },
+    {
       "name": "opaa.cors.allowed-origins",
       "type": "java.lang.String",
       "description": "Comma-separated origins allowed to call /api/** from a browser on another origin.",

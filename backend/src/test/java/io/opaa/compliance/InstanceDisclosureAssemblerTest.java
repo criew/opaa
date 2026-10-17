@@ -56,11 +56,13 @@ class InstanceDisclosureAssemblerTest {
           }
         };
 
-    InstanceDisclosure disclosure = assembler(environment, List.of(audit)).assemble(MANIFEST, PROTOCOL);
+    InstanceDisclosure disclosure =
+        assembler(environment, List.of(audit)).assemble(MANIFEST, PROTOCOL);
 
     assertThat(disclosure.deviations())
         .extracting(SettingValue::key)
-        .containsExactlyInAnyOrder("opaa.rerank.enabled", "audit_retention_settings.retention_months");
+        .containsExactlyInAnyOrder(
+            "opaa.rerank.enabled", "audit_retention_settings.retention_months");
     SettingValue retention = setting(disclosure, "audit_retention_settings.retention_months");
     assertThat(retention.source()).isEqualTo(SettingSource.DATABASE);
     assertThat(retention.defaultValue()).isEqualTo("36");
@@ -86,7 +88,8 @@ class InstanceDisclosureAssemblerTest {
     InstanceDisclosure disclosure =
         assembler(new MockEnvironment(), List.of()).assemble(MANIFEST, PROTOCOL);
 
-    SettingValue window = setting(disclosure, "io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW");
+    SettingValue window =
+        setting(disclosure, "io.opaa.audit.AuditIncidentScopeGrant#USABLE_WINDOW");
     assertThat(window.effectiveValue()).isEqualTo(window.defaultValue());
     assertThat(window.deviates()).isFalse();
   }
@@ -102,7 +105,10 @@ class InstanceDisclosureAssemblerTest {
             .withProperty("opaa.upload.s3.secret-key", PASSWORD)
             .withProperty(
                 "spring.ai.openai.chat.base-url",
-                "https://nutzer:" + URL_PASSWORD + "@llm.example:8443/v1?key=" + URL_QUERY_TOKEN
+                "https://nutzer:"
+                    + URL_PASSWORD
+                    + "@llm.example:8443/v1?key="
+                    + URL_QUERY_TOKEN
                     + "#frag");
     InstanceStateSource mail =
         new InstanceStateSource() {
@@ -123,7 +129,8 @@ class InstanceDisclosureAssemblerTest {
           }
         };
 
-    InstanceDisclosure disclosure = assembler(environment, List.of(mail)).assemble(MANIFEST, PROTOCOL);
+    InstanceDisclosure disclosure =
+        assembler(environment, List.of(mail)).assemble(MANIFEST, PROTOCOL);
 
     String json = JSON.writeValueAsString(disclosure);
     String markdown = InstanceDisclosureRenderer.render(disclosure);
@@ -145,9 +152,7 @@ class InstanceDisclosureAssemblerTest {
         .isEqualTo("https://host.example/path");
     assertThat(InstanceDisclosureAssembler.exportable("http://localhost:11434/v1"))
         .isEqualTo("http://localhost:11434/v1");
-    assertThat(
-            InstanceDisclosureAssembler.exportable(
-                "/srv/a,https://u:p@b.example/x?y=z,/srv/c"))
+    assertThat(InstanceDisclosureAssembler.exportable("/srv/a,https://u:p@b.example/x?y=z,/srv/c"))
         .isEqualTo("/srv/a,https://b.example/x,/srv/c");
     assertThat(InstanceDisclosureAssembler.exportable("not a uri://@ %%"))
         .doesNotContain("@")
@@ -203,8 +208,7 @@ class InstanceDisclosureAssemblerTest {
         };
 
     InstanceDisclosure disclosure =
-        assembler(new MockEnvironment(), List.of(libraries, profiles))
-            .assemble(MANIFEST, PROTOCOL);
+        assembler(new MockEnvironment(), List.of(libraries, profiles)).assemble(MANIFEST, PROTOCOL);
 
     assertThat(disclosure.connectorTypes())
         .containsExactly(

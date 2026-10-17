@@ -37,8 +37,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The disclosure of the data collection with the configuration export of this instance, over HTTP
- * against the real schema: the manifest joined with the effective values, exactly the deviations
- * an administration made, no secret, only for the system administration, and every retrieval - a
+ * against the real schema: the manifest joined with the effective values, exactly the deviations an
+ * administration made, no secret, only for the system administration, and every retrieval - a
  * refused one included - an audit event.
  */
 @OpaaIntegrationTest
@@ -81,7 +81,8 @@ class DataCollectionDisclosureIntegrationTest {
   void tearDown() {
     deleteOwnEvents();
     jdbcTemplate.update("DELETE FROM assets WHERE id = ?", libraryId);
-    jdbcTemplate.update("DELETE FROM asset_ownership_history WHERE owner_user_id = ?", libraryOwnerId);
+    jdbcTemplate.update(
+        "DELETE FROM asset_ownership_history WHERE owner_user_id = ?", libraryOwnerId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", libraryOwnerId);
     jdbcTemplate.update("DELETE FROM llm_models WHERE id = ?", modelId);
   }
@@ -147,7 +148,9 @@ class DataCollectionDisclosureIntegrationTest {
         secrets.add(value);
       }
     }
-    assertThat(secrets).as("the context sets the secrets this test looks for").hasSizeGreaterThan(3);
+    assertThat(secrets)
+        .as("the context sets the secrets this test looks for")
+        .hasSizeGreaterThan(3);
     for (String secret : secrets) {
       assertThat(json).as("JSON form").doesNotContain(secret);
       assertThat(markdown).as("Markdown form").doesNotContain(secret);
@@ -179,9 +182,7 @@ class DataCollectionDisclosureIntegrationTest {
             after -> assertThat(after).contains("JSON"),
             after -> assertThat(after).contains("MARKDOWN"),
             after -> assertThat(after).contains("JSON"));
-    assertThat(events)
-        .extracting(event -> event.get("object_type"))
-        .containsOnly("SYSTEM_SETTING");
+    assertThat(events).extracting(event -> event.get("object_type")).containsOnly("SYSTEM_SETTING");
   }
 
   @Test
@@ -198,8 +199,7 @@ class DataCollectionDisclosureIntegrationTest {
   }
 
   @Test
-  void theExportReadsAsTheManifestOfTheDeltaTooling(@TempDir Path dir)
-      throws Exception {
+  void theExportReadsAsTheManifestOfTheDeltaTooling(@TempDir Path dir) throws Exception {
     Path file = dir.resolve("auskunft.json");
     Files.writeString(file, body(JSON_PATH, "dev-admin"), StandardCharsets.UTF_8);
 

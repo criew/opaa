@@ -71,6 +71,10 @@ WORKDIR /app
 # The absolute form of the application default ./uploads, so the path does not depend on the
 # working directory of whoever starts the image.
 ENV OPAA_UPLOAD_STORAGE_PATH=/app/uploads
+# The commit the image was built from, named in the data collection disclosure. Declared in this
+# last stage only, so a new commit changes no build layer and no cache entry before it.
+ARG OPAA_COMMIT=
+ENV OPAA_BUILD_COMMIT=${OPAA_COMMIT}
 COPY --from=build /app/backend/build/libs/*.jar app.jar
 # The process needs no privilege of its own: it binds 8080 (above 1024) and writes to /app/uploads,
 # to /tmp (1777 in the base, java.io.tmpdir) and to whatever temp directory the operator configures.
