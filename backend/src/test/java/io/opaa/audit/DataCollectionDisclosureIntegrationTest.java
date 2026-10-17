@@ -1,6 +1,7 @@
 package io.opaa.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -347,6 +348,26 @@ class DataCollectionDisclosureIntegrationTest {
         .andExpect(status().isBadRequest());
     mockMvc
         .perform(get(MARKDOWN_PATH + "?from=2001-05-01&to=2001-04-30").with(devUser("dev-admin")))
+        .andExpect(status().isBadRequest());
+  }
+
+  /** A year the database cannot compare as a date is refused, never an internal error. */
+  @Test
+  void aPeriodBeyondTheYearsOfTheDatabaseIsRefused() throws Exception {
+    mockMvc
+        .perform(
+            get(JSON_PATH)
+                .param("from", "-5000-01-01")
+                .param("to", "2001-04-30")
+                .with(devUser("dev-admin")))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().string(containsString("1970")));
+    mockMvc
+        .perform(
+            get(MARKDOWN_PATH)
+                .param("from", "2001-01-01")
+                .param("to", "+6000000-12-31")
+                .with(devUser("dev-admin")))
         .andExpect(status().isBadRequest());
   }
 

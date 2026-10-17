@@ -65,13 +65,10 @@ public class AuditIncidentScopeService {
   }
 
   /**
-   * Approves a pending grant and counts the approval in the current month and the end of its
-   * usability in the month of {@link AuditIncidentScopeGrant#getUsableUntil()}, so the report to
-   * the staff council still has both once the grant itself is deleted. Throws {@link
-   * ValidationException} on Selbstfreigabe or a grant that is not pending - caller error, not "not
-   * found". The grant's row is locked for the transaction, so of two concurrent approvals of the
-   * same grant exactly one succeeds and is counted; the other waits and is then rejected as no
-   * longer pending.
+   * Approves a pending grant, counting the approval in the current month and its end of usability
+   * in the month of {@link AuditIncidentScopeGrant#getUsableUntil()}. Throws {@link
+   * ValidationException} on Selbstfreigabe or a grant not pending. The row is locked, so of two
+   * concurrent approvals exactly one succeeds and is counted; the other is rejected.
    */
   @Transactional
   public AuditIncidentScopeGrant approve(UUID organizationId, UUID scopeId, UUID approvedByUserId) {

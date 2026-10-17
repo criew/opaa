@@ -59,6 +59,26 @@ class IncidentScopeReportingPeriodsTest {
   }
 
   @Test
+  void aPeriodBeyondTheYearsTheDatabaseCanCompareIsRefused() {
+    assertThatThrownBy(
+            () ->
+                IncidentScopeReportingPeriods.of(
+                    LocalDate.parse("-5000-01-01"), LocalDate.parse("2026-12-31"), TODAY))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("zwischen den Jahren 1970 und 9999");
+    assertThatThrownBy(
+            () ->
+                IncidentScopeReportingPeriods.of(
+                    LocalDate.parse("2026-01-01"), LocalDate.parse("+6000000-12-31"), TODAY))
+        .isInstanceOf(ValidationException.class);
+    assertThat(
+            IncidentScopeReportingPeriods.of(
+                    LocalDate.parse("1970-01-01"), LocalDate.parse("9999-12-31"), TODAY)
+                .to())
+        .isEqualTo(LocalDate.parse("9999-12-31"));
+  }
+
+  @Test
   void aPeriodStartingAfterItsEndIsRefused() {
     assertThatThrownBy(
             () ->

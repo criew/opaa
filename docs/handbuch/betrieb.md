@@ -588,6 +588,12 @@ das Backend neu. Im Grundsatz:
 5. **Prüfen:** Version unter `/actuator/info`, eine Frage im Chat, auf der Seite „Suche & Indexierung"
    ein ausstehender Nachzug.
 
+Bricht der Start mit der Meldung ab, `audit_incident_scope_case_counts` zähle Freigaben, die es
+nicht mehr gibt, hat die Installation schon Freigaben der anlassbezogenen Klärung gelöscht, deren
+Jahreszahl sich keinem Monat mehr zuordnen lässt: die bisherige Version weiterbetreiben, die
+Jahreszahlen je Zweck für den Bericht an die Personalvertretung sichern und das Projekt
+ansprechen, statt die Meldung zu umgehen.
+
 Einen Rückweg auf eine ältere Version gibt es nur über die Sicherung: Schemaänderungen werden nicht
 zurückgenommen. Die Befehle stehen unter
 [Docker Compose](docker-compose.md#aktualisierung-auf-einen-neuen-stand) und

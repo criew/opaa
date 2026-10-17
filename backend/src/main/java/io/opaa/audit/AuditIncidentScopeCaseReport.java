@@ -17,15 +17,10 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * How often the anlassbezogene Klärung was requested, approved and ended in a reporting period, by
- * purpose, for the disclosure of the data collection ("Auszug für die Personalvertretung"). It
- * reads the counts per month of {@code audit_incident_scope_monthly_counts}, which outlive the
- * grants, and gives no person, no reason, no grant and nothing finer than a month; a count below
- * {@link CaseCount#THRESHOLD} leaves only as such.
- *
- * <p>An end of usability is counted ahead at approval. For the months before the running one the
- * counts are therefore exact; for the running month the ends up to now are read from the grants,
- * which are deleted at the earliest at the end of the following year; later months show none.
+ * Requests, approvals and ends of usability of the anlassbezogene Klärung per purpose in a period,
+ * from the monthly counts that outlive the grants: no person, no grant, nothing finer than a month,
+ * a count below {@link CaseCount#THRESHOLD} only as such. Ends are counted ahead at approval, so
+ * the running month reads them up to now from the grants, still undeleted; later months show none.
  */
 @Service
 public class AuditIncidentScopeCaseReport {

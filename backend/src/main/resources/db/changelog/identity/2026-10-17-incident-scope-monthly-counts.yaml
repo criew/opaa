@@ -45,15 +45,19 @@ databaseChangeLog:
 
               -- The yearly count holds nothing the grants do not, unless a grant it counted was
               -- deleted already; that count cannot be placed in a month and must not be lost.
+              -- Compared over all years, so a time zone other than the one the yearly count was
+              -- written in cannot move an approval across a year boundary into a false alarm.
               DO $$
               BEGIN
                 IF EXISTS (
-                    SELECT 1 FROM audit_incident_scope_case_counts c
-                    WHERE c.case_count > (
+                    SELECT 1 FROM (
+                        SELECT organization_id, purpose, sum(case_count) AS counted
+                        FROM audit_incident_scope_case_counts
+                        GROUP BY organization_id, purpose) c
+                    WHERE c.counted > (
                         SELECT count(*) FROM audit_incident_scope_grants g
                         WHERE g.organization_id = c.organization_id AND g.purpose = c.purpose
-                          AND g.approved_at IS NOT NULL
-                          AND extract(year FROM g.approved_at)::integer = c.case_year)) THEN
+                          AND g.approved_at IS NOT NULL)) THEN
                   RAISE EXCEPTION 'audit_incident_scope_case_counts counts approvals whose grants are gone; they cannot be moved to audit_incident_scope_monthly_counts';
                 END IF;
               END $$;

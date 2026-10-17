@@ -82,6 +82,29 @@ class IncidentScopeMonthlyCountsMigrationTest extends AbstractBaselineTest {
         .hasStackTraceContaining("audit_incident_scope_case_counts");
   }
 
+  /**
+   * An approval counted for 2025 in UTC falls into January 2026 in Berlin: a session time zone
+   * other than the one the yearly count was written in must not stop the migration.
+   */
+  @Test
+  void anApprovalAtAYearBoundaryUnderAnotherTimeZoneDoesNotStopTheMigration() throws Exception {
+    insertGrant("SECURITY_INCIDENT", "2025-12-20T10:00:00Z", "2025-12-31T23:30:00Z");
+    execute(
+        "INSERT INTO audit_incident_scope_case_counts (organization_id, case_year, purpose,"
+            + " case_count) VALUES ('"
+            + SEEDED_ORGANIZATION_ID
+            + "', 2025, 'SECURITY_INCIDENT', 1)");
+    execute("SET TIME ZONE 'Europe/Berlin'");
+
+    applyChangelog(connection, FILE);
+
+    assertThat(counts())
+        .containsExactlyInAnyOrder(
+            "2025-12-01 SECURITY_INCIDENT REQUESTED 1",
+            "2026-01-01 SECURITY_INCIDENT APPROVED 1",
+            "2026-01-01 SECURITY_INCIDENT EXPIRED 1");
+  }
+
   @Test
   void aMonthIsAlwaysItsFirstDayAndACountNeverZero() throws Exception {
     applyChangelog(connection, FILE);
