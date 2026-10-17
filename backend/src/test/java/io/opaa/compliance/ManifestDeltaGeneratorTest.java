@@ -82,6 +82,59 @@ class ManifestDeltaGeneratorTest {
   }
 
   @Test
+  void aCommitWithoutManifestIsNamedAsSuchNotByItsRawId() throws IOException {
+    Path repository = GitFixture.repository(dir.resolve("repo"));
+    String root = ManifestSnapshot.Git.resolve(repository, "v1");
+    Path out = dir.resolve("delta");
+
+    run(
+        "--out",
+        out.toString(),
+        "--repo",
+        repository.toString(),
+        "--from-ref",
+        root,
+        "--to-ref",
+        "v3");
+
+    String markdown = Files.readString(out.resolve(ManifestDeltaGenerator.MARKDOWN_FILE));
+    String readable = "Stand ohne Fakten-Manifest (Commit `" + root.substring(0, 7) + "`)";
+    String title =
+        markdown.lines().filter(line -> line.startsWith("# ")).findFirst().orElseThrow();
+    assertThat(title).isEqualTo("# Änderungen der Fakten von " + readable + " bis v3");
+    assertThat(markdown)
+        .contains("> **Hinweis:** Der Stand (Commit `" + root.substring(0, 7) + "`) hat noch kein")
+        .doesNotContain("OPAA " + root);
+  }
+
+  @Test
+  void theLinkToTheStageRulesPointsToTheCommitOfTheNewerVersion() throws IOException {
+    Path repository = GitFixture.repository(dir.resolve("repo"));
+    String newer = ManifestSnapshot.Git.resolve(repository, "v3");
+    Path out = dir.resolve("delta");
+
+    run(
+        "--out",
+        out.toString(),
+        "--repo",
+        repository.toString(),
+        "--from-ref",
+        "v2",
+        "--to-ref",
+        "v3");
+
+    String rules =
+        "https://github.com/criew/opaa/blob/"
+            + newer
+            + "/docs/features/behoerdenunterlagen.md#die-stufenregeln";
+    assertThat(Files.readString(out.resolve(ManifestDeltaGenerator.MARKDOWN_FILE)))
+        .contains("[Stufenregeln](" + rules + ")")
+        .doesNotContain("/blob/main/");
+    JsonNode json = JSON.readTree(Files.readString(out.resolve(ManifestDeltaGenerator.JSON_FILE)));
+    assertThat(json.path("stageRules").asString()).isEqualTo(rules);
+  }
+
+  @Test
   void twoRunsOnTheSameVersionsWriteTheSameFiles() throws IOException {
     Path repository = GitFixture.repository(dir.resolve("repo"));
     Path first = dir.resolve("first");

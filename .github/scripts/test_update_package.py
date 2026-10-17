@@ -284,6 +284,83 @@ def test_a_given_comparison_is_not_called_the_previous_final_release(tmp_path: P
     assert "vorigen finalen Release" not in text
 
 
+def test_a_first_release_names_its_comparison_base_without_the_raw_commit(
+        tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(previous=None), out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    body = text.split("\n---\n", 1)[1]
+    assert "Stand ohne Fakten-Manifest (Commit `bbbbbbb`)" in body
+    assert "b" * 40 not in body
+
+
+def package_markdown(archive: Path) -> dict[str, str]:
+    with tarfile.open(archive) as tar:
+        return {m.name.split("/", 1)[1]: tar.extractfile(m).read().decode()
+                for m in tar.getmembers() if m.isfile() and m.name.endswith(".md")}
+
+
+def with_placeholders(inputs: dict, template: str, operations: str = "") -> dict:
+    (inputs["fact_sheets"] / "fristen.md").write_text(
+        "# Faktenblatt: Fristen\n\n| <a id=\"audit-retention\"></a>`audit` |\n")
+    (inputs["fact_sheets"] / "datenkatalog.md").write_text(
+        "# Faktenblatt: Datenkatalog\n\n## <a id=\"bereich-audit-log\"></a>Protokoll\n")
+    inputs["template"].write_text(template)
+    if operations:
+        (inputs["operations"] / "betriebsfolgen.md").write_text(operations)
+    return inputs
+
+
+def test_fact_sheet_placeholders_become_links_to_the_sheets_in_the_package(
+        tmp_path: Path, inputs: dict) -> None:
+    with_placeholders(
+        inputs,
+        "- `faktenblaetter/`: etwa {{faktenblatt:fristen}} und\n  {{faktenblatt:datenkatalog}},\n"
+        "Frist: {{faktenblatt:fristen#audit-retention}}\n",
+        "# Betriebsfolgen\n\nSiehe {{faktenblatt:datenkatalog#bereich-audit-log}}.\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    assert ("etwa [Faktenblatt Fristen](faktenblaetter/fristen.md) und\n"
+            "  [Faktenblatt Datenkatalog](faktenblaetter/datenkatalog.md),") in files["update-vermerk.md"]
+    assert "[Faktenblatt Fristen](faktenblaetter/fristen.md#audit-retention)" in files["update-vermerk.md"]
+    assert ("Siehe [Faktenblatt Datenkatalog](../faktenblaetter/datenkatalog.md#bereich-audit-log)."
+            in files["betrieb/betriebsfolgen.md"])
+    for path, text in files.items():
+        assert "{{" not in text, path
+        for target in re.findall(r"\]\(([^)#]+\.md)(?:#[^)]*)?\)", text):
+            assert os.path.normpath(os.path.join(os.path.dirname(path), target)) in files, (path, target)
+
+
+@pytest.mark.parametrize("placeholder", [
+    "{{faktenblatt:speicherorte}}",
+    "{{faktenblatt:fristen#gibt-es-nicht}}",
+    "{{ faktenblatt:fristen }}",
+    "{{faktenblatt:fristen",
+    "{{faktenblatt:faktenblaetter}}",
+])
+def test_an_unknown_or_malformed_placeholder_fails_the_package(
+        tmp_path: Path, inputs: dict, placeholder: str) -> None:
+    with_placeholders(inputs, f"Siehe {placeholder}.\n")
+
+    with pytest.raises(update_package.PackageError, match="placeholder"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+def test_operations_name_a_comparison_without_manifest_readably(interval: dict) -> None:
+    old = interval["old"]
+    bare = update_package.Side(label=old.commit, commit=old.commit, version=None, bare=True)
+
+    files = report(interval, previous=bare)
+
+    readable = f"Stand ohne Fakten-Manifest (Commit `{old.commit[:7]}`)"
+    for name, text in files.items():
+        title = next(line for line in text.splitlines() if line.startswith("# "))
+        assert title.endswith(f"gegenüber {readable}"), name
+    assert f"| Kennzahl | {readable} | v1.2.3 |" in files["antwortqualitaet.md"]
+
+
 @pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses", "operations"])
 def test_a_missing_part_fails_the_package(tmp_path: Path, inputs: dict, missing: str) -> None:
     if missing == "operations":
