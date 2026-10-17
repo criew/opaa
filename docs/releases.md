@@ -299,6 +299,8 @@ Grenze und braucht dafür Admin-Rechte. Ablauf:
      -PfromRef="$prev" -PtoRef="$commit" -PlabelledPrs=/tmp/data-impact-prs.json)
    ```
 
+   Der Block beendet bei einem Fehler die Shell (`exit 1`). Wer ihn in die eigene Terminal-Shell
+   einfügt, startet vorher `bash` und behält so die Variablen `commit` und `prev` für Schritt 5.
    Wie im Workflow bricht die Abfrage am Limit ab, statt gekennzeichnete PRs zu verlieren. Wo
    `gh pr list` (GraphQL) nicht erreichbar ist, etwa in Cloud-Sessions, liefert die REST-API
    dieselbe Liste im selben Format:
