@@ -161,14 +161,7 @@ public class RateLimitConfiguration {
 
     var registration =
         new FilterRegistrationBean<>(
-            new RateLimitFilter(
-                rules,
-                new RateLimitService(
-                    properties.unauthenticated().maxRequests(),
-                    properties.unauthenticated().windowSeconds()),
-                clientIpResolver,
-                metrics,
-                jsonMapper));
+            new RateLimitFilter(rules, clientIpResolver, metrics, jsonMapper));
     registration.addUrlPatterns("/api/*");
     registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
     return registration;

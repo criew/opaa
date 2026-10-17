@@ -19,15 +19,7 @@ class RateLimitPropertiesTest {
       new RateLimitProperties.EndpointLimit(1, 1, 1);
 
   private static RateLimitProperties properties(List<String> cidrs, LocalAuthLimits localAuth) {
-    return new RateLimitProperties(true, cidrs, ANY, ANY, ANY, ANY, ANY, ANY, localAuth, null);
-  }
-
-  @Test
-  void theBudgetOfUnauthenticatedRequestsDefaultsToSixtyAMinuteAndRefusesZero() {
-    assertThat(properties(null, null).unauthenticated())
-        .isEqualTo(new RateLimitProperties.UnauthenticatedLimit(60, 60));
-    assertThatThrownBy(() -> new RateLimitProperties.UnauthenticatedLimit(0, 60))
-        .hasMessageContaining("maxRequests");
+    return new RateLimitProperties(true, cidrs, ANY, ANY, ANY, ANY, ANY, ANY, localAuth);
   }
 
   @Test
