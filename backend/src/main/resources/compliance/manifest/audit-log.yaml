@@ -497,3 +497,8 @@ auditEvents:
     trigger: Nicht mehr geschrieben; frühere Erledigung einer Profilanfrage
   - id: CONNECTION_PROFILE_SIGN_IN_TESTED
     trigger: Die Systemverwaltung testet die Anmeldung eines Profils
+  - id: DATA_COLLECTION_DISCLOSURE_EXPORTED
+    trigger: >-
+      Die Auskunft über die Datenerhebung samt Konfigurationsexport der Installation wird
+      abgerufen, auch abgewiesen
+    details: Das Format (JSON oder Markdown); nie der Inhalt der Auskunft

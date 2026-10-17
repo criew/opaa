@@ -1,0 +1,226 @@
+# Topic "compliance": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: compliance
+    description: >-
+      Data collection disclosure of the installation: the compliance fact manifest of the running
+      version joined with the effective values of this instance (ADR-0052).
+paths:
+  /api/v1/admin/compliance/data-collection-disclosure:
+    get:
+      operationId: getDataCollectionDisclosure
+      tags: [compliance]
+      summary: >-
+        Auskunft über die Datenerhebung with configuration export, machine-readable (system admin
+        only). Holds no secrets, no personal data and no content. Every call, a refused one
+        included, writes an audit event DATA_COLLECTION_DISCLOSURE_EXPORTED.
+      description: >-
+        The fact manifest of the running version in the form of `manifest` in faktenblaetter.json,
+        so the delta tooling reads both the same way, plus the effective values of this instance:
+        every setting of the manifest with its effective value and the time of its last change,
+        whether each outbound data flow currently happens, the connector types in use and the
+        configured model providers. A configuration value is exported only when the manifest names
+        its key as a setting; addresses lose user information, query and fragment.
+      responses:
+        "200":
+          description: The disclosure of this instance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataCollectionDisclosure"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/compliance/data-collection-disclosure/markdown:
+    get:
+      operationId: getDataCollectionDisclosureMarkdown
+      tags: [compliance]
+      summary: >-
+        The same disclosure as readable Markdown for the data protection officer and the staff
+        council (system admin only); also written to the audit log on every call.
+      responses:
+        "200":
+          description: The disclosure of this instance as Markdown
+          content:
+            text/markdown:
+              schema:
+                type: string
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  schemas:
+    DataCollectionDisclosure:
+      type: object
+      required:
+        [opaaVersion, commit, generatedAt, notice, manifest, instance, protocol]
+      properties:
+        opaaVersion:
+          type: string
+          description: Version of the running backend, 0.0.0-dev outside a release.
+        commit:
+          type: string
+          description: Commit the running image was built from, "unbekannt" when not known.
+        generatedAt:
+          type: string
+          format: date-time
+        notice:
+          type: string
+        manifest:
+          type: object
+          additionalProperties: true
+          description: >-
+            The compliance fact manifest of the running version, the same object as `manifest` in
+            faktenblaetter.json. Its schema is the record io.opaa.compliance.ComplianceManifest
+            (ADR-0052, Entscheidung 2), not repeated here.
+        instance:
+          $ref: "#/components/schemas/DisclosureInstanceState"
+        protocol:
+          $ref: "#/components/schemas/DisclosureProtocol"
+
+    DisclosureInstanceState:
+      type: object
+      required: [settings, dataFlows, connectorTypes, modelProviders]
+      properties:
+        settings:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisclosureSetting"
+        dataFlows:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisclosureDataFlow"
+        connectorTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisclosureConnectorType"
+        modelProviders:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisclosureModelProvider"
+
+    DisclosureSetting:
+      type: object
+      description: One setting of the manifest with its effective value in this instance.
+      required: [key, area, source, defaultValue, deviates, effect]
+      properties:
+        key:
+          type: string
+        area:
+          type: string
+        source:
+          type: string
+          description: PROPERTY, DATABASE or CONSTANT, as in the manifest.
+        defaultValue:
+          type: string
+        effectiveValue:
+          type: string
+          nullable: true
+          description: Absent when this instance could not determine the value.
+        deviates:
+          type: boolean
+          description: Whether the effective value differs from the delivered default.
+        changedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            Last change of the settings row holding a DATABASE setting; absent for other sources.
+        range:
+          type: string
+          nullable: true
+        effect:
+          type: string
+
+    DisclosureDataFlow:
+      type: object
+      required: [id, group, target]
+      properties:
+        id:
+          type: string
+        group:
+          type: string
+        target:
+          type: string
+        active:
+          type: boolean
+          nullable: true
+          description: >-
+            Whether the flow is switched on in this instance; absent where it happens only on an
+            action of a person and no switch decides it.
+
+    DisclosureConnectorType:
+      type: object
+      required: [type, libraries, connectionProfiles]
+      properties:
+        type:
+          type: string
+        libraries:
+          type: integer
+          format: int64
+        connectionProfiles:
+          type: integer
+          format: int64
+
+    DisclosureModelProvider:
+      type: object
+      required: [role, active]
+      properties:
+        role:
+          type: string
+          description: CHAT, EMBEDDING, RERANK or TRANSCRIPTION.
+        name:
+          type: string
+          nullable: true
+        baseUrl:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+
+    DisclosureProtocol:
+      type: object
+      description: >-
+        The description of the audit log for the staff council: its fields with granularity,
+        purpose and retention, the query paths there are and the ones there are not.
+      required: [fields, queryPaths, absentQueryPaths, networkAddress]
+      properties:
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisclosureProtocolField"
+        queryPaths:
+          type: array
+          items:
+            $ref: "#/components/schemas/DisclosureQueryPath"
+        absentQueryPaths:
+          type: array
+          items:
+            type: string
+        networkAddress:
+          type: string
+
+    DisclosureProtocolField:
+      type: object
+      required: [name, granularity, purpose, retention]
+      properties:
+        name:
+          type: string
+        granularity:
+          type: string
+        purpose:
+          type: string
+        retention:
+          type: string
+
+    DisclosureQueryPath:
+      type: object
+      required: [name, description]
+      properties:
+        name:
+          type: string
+        description:
+          type: string

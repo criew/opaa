@@ -314,4 +314,13 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
       "update KnowledgeLibrary l set l.webhookSecret = null"
           + " where l.id = :id and l.webhookSecret is not null")
   int eraseWebhookSecret(@Param("id") UUID id);
+
+  /**
+   * How many shared libraries of one organization read from each source type, as rows of {@link
+   * SourceType} and count; private libraries are not counted, types without a library are absent.
+   */
+  @Query(
+      "select l.sourceType, count(l) from KnowledgeLibrary l where l.ownerOnly = false"
+          + " and l.organizationId = :organizationId group by l.sourceType")
+  List<Object[]> countSharedBySourceType(@Param("organizationId") UUID organizationId);
 }
