@@ -54,7 +54,8 @@ Namespace vor `helm install` mit beiden Labels anlegt.
 Das Backend eines Release-Images meldet dieselbe Version in seiner Startzeile
 (`Starting OpaaApplication vX.Y.Z`) und unter `/actuator/info`, das Frontend im Dialog „Info zu
 OPAA“ (`OPAA vX.Y.Z`); der Release-Lauf übergibt sie beiden Image-Builds als Build-Argument
-`OPAA_VERSION`. Ein Image von `main` und jeder lokale Build melden `0.0.0-dev`.
+`OPAA_VERSION`. Ein Image von `main` meldet `0.0.0-dev+<Commit>` mit dem kurzen Hash des Commits,
+aus dem es gebaut ist (`0.0.0-dev+3f2a9c1`), jeder lokale Build `0.0.0-dev`.
 
 Im Repository trägt der Chart zwischen zwei Releases die Platzhalterversion `0.0.0-dev`; erst der
 Release-Lauf setzt die Version ([ADR-0042](decisions/0042-kubernetes-lieferung-mit-helm.md),

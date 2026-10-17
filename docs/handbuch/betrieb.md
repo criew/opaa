@@ -127,7 +127,7 @@ Es gibt zwei Arten von Ständen:
 Welche Version läuft, nennen `/actuator/info` unter `build.version` und die Startzeile des
 Protokolls (`Starting OpaaApplication v<Version>`), für das Frontend der Dialog „Info zu …" im
 Profilmenü. Ein Release-Image meldet die Version seines Tags, ein Image von `main` den
-Entwicklungsstand `0.0.0-dev`.
+Entwicklungsstand mit dem kurzen Hash seines Commits, etwa `0.0.0-dev+3f2a9c1`.
 
 **SBOM und Herkunft.** Jedes Image trägt je Architektur eine SBOM- und eine Provenance-Attestierung;
 die SBOM deckt auch die Betriebssystempakete des Basis-Images ab:
