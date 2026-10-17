@@ -1,27 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import FormControl from '@mui/material/FormControl'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import FormHelperText from '@mui/material/FormHelperText'
-import FormLabel from '@mui/material/FormLabel'
-import Radio from '@mui/material/Radio'
-import RadioGroup from '@mui/material/RadioGroup'
-import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import ChoiceTileGroup from '@/shared/ui/choice/ChoiceTileGroup'
 import { CATALOG_ROUTE } from '@/shared/routes'
-import LibraryScheduleForm from '../components/LibraryScheduleForm'
 import { sourceTypeIcon as SourceTypeIcon } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from '../components/sources/registry'
 import type { SourceFormContext } from '../components/sources/types'
 import { reportSourceIssue } from '../components/sources/reportSourceIssue'
-import { SourceIssueContext } from '../components/sources/sourceIssueContext'
 import type { SourceIssue } from '../utils/sourceIssue'
-import ConnectionProfileSelect from '../components/ConnectionProfileSelect'
 import {
   OWN_ADDRESS,
   effectiveConnection,
@@ -30,14 +19,7 @@ import {
   selectableConnections,
 } from '../components/connectionChoice'
 import { PRIVATE_LIBRARY_NOTE } from '../components/privateLibrary'
-import SourceConsentPanel from '../components/SourceConsentPanel'
-import {
-  connectsSource,
-  readConsentIntent,
-  rememberConsentIntent,
-  draftValues,
-  type SourceConsentIntent,
-} from '../components/sourceConsent'
+import { connectsSource, rememberConsentIntent, draftValues } from '../components/sourceConsent'
 import { forgetConsentIntent } from '@/features/connection'
 import { startSourceAuthorization } from '@/features/connection'
 import { leaveFor } from '@/shared/api/leaveApp'
@@ -65,16 +47,10 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
 import { useMyGroups } from '@/features/principal'
-import { useSourceTypes } from '@/features/connection'
 import { AssetNameFields } from '@/features/asset'
-import { AssetOwnerFields } from '@/features/asset'
-import { AssetRightsFields } from '@/features/asset'
 import { applyPendingGrantsAfterCreation, type PendingGrant } from '@/features/asset'
 import { capabilityMissingMessage } from '@/shared/utils/labels'
-import {
-  documentSourceTypeLabel,
-  documentSourceTypeDescription,
-} from '../components/sources/sourceLabels'
+import { documentSourceTypeDescription } from '../components/sources/sourceLabels'
 import type {
   Capability,
   SourceTypeKey,
@@ -82,56 +58,23 @@ import type {
   AssetOwnerType,
   PendingSourceConnection,
 } from '@/shared/api/types'
-
-/**
- * The wizard's steps: the first two are named after what one does in them, „Name & Beschreibung“
- * and „Freigaben“ after the head and tab of the detail view. An upload library has no source and
- * therefore three steps.
- */
-const STEP_SOURCE_TYPE = 'Quellart'
-const STEP_SOURCE_SETUP = 'Quelle einrichten'
-const STEP_NAME = 'Name & Beschreibung'
-const STEP_SHARING = 'Freigaben'
-
-/** A private library has no sharing step: only its owner ever reads it. */
-function stepsFor(acceptsUploads: boolean, privateLibrary: boolean): string[] {
-  if (acceptsUploads) return [STEP_SOURCE_TYPE, STEP_NAME, STEP_SHARING]
-  return privateLibrary
-    ? [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME]
-    : [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_SHARING]
-}
-
-const stepHeadings: Record<string, string> = {
-  [STEP_SOURCE_TYPE]: 'Woher kommt das Wissen?',
-  [STEP_SOURCE_SETUP]: 'Quelle einrichten',
-  [STEP_NAME]: 'Name & Beschreibung',
-  [STEP_SHARING]: 'Freigaben',
-}
-
-const CONSENT_REQUIRED = 'Bitte verbinden Sie zuerst die Quelle.'
-const NOTHING_CREATABLE =
-  'Sie dürfen derzeit keine Bibliothek anlegen. Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.'
-const PENDING_CONNECTION_UNUSABLE =
-  'Die Zustimmung beim Anbieter ist abgelaufen oder schon verwendet. Bitte verbinden Sie die Quelle erneut.'
-
-type DraftIntent = Extract<SourceConsentIntent, { purpose: 'LIBRARY_NEW' }>
-
-/** The draft the provider returned to; the wizard forgets it as soon as it has mounted. */
-function restoredDraft(): DraftIntent | null {
-  const intent = readConsentIntent()
-  return intent?.purpose === 'LIBRARY_NEW' ? intent : null
-}
-
-/** The entered values of a restored draft under the key its form keeps them. */
-function restoredSourceValues(intent: DraftIntent | null): Record<SourceTypeKey, unknown> {
-  if (!intent) return {}
-  const type = intent.draft.sourceType
-  const configuration = sourceRegistration(type)?.configuration
-  if (!configuration) return {}
-  return {
-    [configuration.valuesKey ?? type]: { ...configuration.empty, ...intent.draft.sourceValues },
-  }
-}
+import {
+  CONSENT_REQUIRED,
+  NOTHING_CREATABLE,
+  PENDING_CONNECTION_UNUSABLE,
+  STEP_NAME,
+  STEP_SHARING,
+  STEP_SOURCE_SETUP,
+  STEP_SOURCE_TYPE,
+  restoredDraft,
+  restoredSourceValues,
+  stepHeadings,
+  stepsFor,
+} from '../components/libraryCreateWizard'
+import { useSourceTypeChoice } from '../components/useSourceTypeChoice'
+import CreateSourceSetupStep from '../components/CreateSourceSetupStep'
+import CreateSharingStep from '../components/CreateSharingStep'
+import LibraryCreateFooter from '../components/LibraryCreateFooter'
 
 /**
  * The creation wizard for knowledge libraries. Every step
@@ -196,78 +139,19 @@ export default function LibraryCreatePage() {
   const [connectingSource, setConnectingSource] = useState(false)
   const [responsibleIsGroup, setResponsibleIsGroup] = useState(draft?.responsibleIsGroup ?? false)
 
-  // The tiles are the source types the backend has a connector for (ADR-0038), in the
-  // order of the input forms; a type without a form is at the end and cannot be selected.
-  const { sourceTypes, error: sourceTypesError, loaded: sourceTypesLoaded } = useSourceTypes()
-  const offeredTypes: SourceTypeKey[] = [
-    ...registeredSourceTypes.filter((type) => sourceTypes.some((d) => d.type === type)),
-    ...sourceTypes.map((d) => d.type).filter((type) => sourceRegistration(type) === undefined),
-  ]
-  const displayNameOf = (type: SourceTypeKey) =>
-    sourceRegistration(type) !== undefined
-      ? documentSourceTypeLabel(type)
-      : (sourceTypes.find((d) => d.type === type)?.displayName ?? type)
-  const acceptsUploads = (type: SourceTypeKey) =>
-    sourceTypes.find((d) => d.type === type)?.uploads ?? type === 'UPLOAD'
-  const capabilityFor = (type: SourceTypeKey): Capability =>
-    acceptsUploads(type) ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
-
-  /** The reason why this type cannot be chosen here - or `null` when it can. */
-  function hasForm(type: SourceTypeKey): boolean {
-    const registration = sourceRegistration(type)
-    return (
-      registration !== undefined && (acceptsUploads(type) || Boolean(registration.configuration))
-    )
-  }
-
-  function missingFor(type: SourceTypeKey): string | null {
-    if (!hasForm(type)) {
-      return 'Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.'
-    }
-    const capability = capabilityFor(type)
-    if (isMissing(capability)) return capabilityMissingMessage(capability)
-    return releaseMissingFor(type)
-  }
-
-  /**
-   * The connector release applies per type and per profile (ADR-0036): a type the person may create
-   * neither with an own address nor through a profile, or a locked one, has no usable way and gets
-   * no tile; the backend's notice only explains a choice left without a tile. Which way is open is
-   * chosen in the step „Quelle einrichten“.
-   */
-  function releaseMissingFor(type: SourceTypeKey): string | null {
-    const descriptor = sourceTypes.find((d) => d.type === type)
-    if (descriptor === undefined || descriptor.uploads) return null
-    if (descriptor.creatableWithOwnAddress) return null
-    if (descriptor.creatable && descriptor.profileSupport !== 'FORBIDDEN') return null
-    return (
-      descriptor.creationNotice ??
-      `Die Quellart „${descriptor.displayName}“ ist für Sie nicht freigegeben. Freigaben erteilt die Systemverwaltung.`
-    )
-  }
-
-  const selectableTypes = offeredTypes.filter((type) => missingFor(type) === null)
-  /**
-   * The tiles: a type with a form shows only while the person may use it - right, release and lock
-   * included. A type without a form in this client stays as a locked tile with its reason.
-   */
-  const shownTypes = offeredTypes.filter((type) => !hasForm(type) || missingFor(type) === null)
-  /** Nothing the person may create at all: the step shows no tile, only the hint above it. */
-  const nothingUsable =
-    sourceTypesLoaded && sourceTypesError == null && selectableTypes.length === 0
-
-  /**
-   * The type actually chosen. The creation rights arrive only after the first render; whatever
-   * is then disabled must not stay selected, otherwise „Weiter" would lead into a path that can
-   * never create. The choice moves to the first permitted tile - derived, not caught up in
-   * an effect. If none is permitted at all, it stays, and the hint above the
-   * stepper explains why nothing will be created in the end.
-   */
-  const sourceType =
-    (missingFor(chosenType) !== null || !selectableTypes.includes(chosenType)) &&
-    selectableTypes.length > 0
-      ? selectableTypes[0]
-      : chosenType
+  const {
+    sourceTypes,
+    sourceTypesError,
+    sourceTypesLoaded,
+    displayNameOf,
+    acceptsUploads,
+    capabilityFor,
+    missingFor,
+    releaseMissingFor,
+    shownTypes,
+    nothingUsable,
+    sourceType,
+  } = useSourceTypeChoice(chosenType, isMissing)
 
   const uploadLibrary = acceptsUploads(sourceType)
   const configuration = uploadLibrary
@@ -655,84 +539,46 @@ export default function LibraryCreatePage() {
           )}
 
         {currentStep === STEP_SOURCE_SETUP && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
-            {showConnectionSelect && descriptor && (
-              <ConnectionProfileSelect
-                descriptor={descriptor}
-                state={profileOptions}
-                value={connectionChoice}
-                onChange={chooseConnection}
-                offerOwnAddress
-                offerPrivate
-                idPrefix="library-create"
-              />
-            )}
-            {consentProfile && (
-              <SourceConsentPanel
-                profileName={consentProfile.name}
-                pending={pendingConnection}
-                confirmed={serviceAccountConfirmed}
-                onConfirmedChange={(checked) => {
-                  setServiceAccountConfirmed(checked)
-                  if (checked) setConfirmationMissing(false)
-                }}
-                confirmationMissing={confirmationMissing}
-                busy={connectingSource}
-                onConnect={() => void handleConnectSource()}
-              />
-            )}
-            {SourceForm && connectionChoice !== null && !awaitsConsent && (
-              <Box ref={sourceFormRef}>
-                <SourceIssueContext value={sourceIssue}>
-                  <SourceForm
-                    // a new profile starts the form afresh, so no probe result outlives its profile
-                    key={connectionChoice}
-                    values={values}
-                    context={formContext}
-                    onChange={(patch: object) => {
-                      setSourceValues((prev) => ({
-                        ...prev,
-                        [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
-                      }))
-                      setError(null)
-                      setSourceIssue(null)
-                    }}
-                  />
-                </SourceIssueContext>
-              </Box>
-            )}
-
-            {/* Schedule and immediate start apply to every connector type. */}
-            <Box>
-              <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
-                Zeitplan
-              </Typography>
-              <LibraryScheduleForm
-                idPrefix="library-create-schedule"
-                values={schedule}
-                onChange={(patch) => {
-                  setSchedule((prev) => ({ ...prev, ...patch }))
-                  setError(null)
-                }}
-                confluence={confluenceRhythm}
-              />
-              <FormControlLabel
-                sx={{ mt: 2 }}
-                control={
-                  <Switch
-                    checked={startFirstRun}
-                    onChange={(e) => setStartFirstRun(e.target.checked)}
-                  />
-                }
-                label="Erste Indizierung sofort nach dem Anlegen starten"
-              />
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-                {startFirstRun
-                  ? firstRunHint
-                  : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
-              </Typography>
-            </Box>
-          </Box>
+          <CreateSourceSetupStep
+            showConnectionSelect={showConnectionSelect}
+            descriptor={descriptor}
+            profileOptions={profileOptions}
+            connectionChoice={connectionChoice}
+            onChooseConnection={chooseConnection}
+            consentProfile={consentProfile}
+            pendingConnection={pendingConnection}
+            serviceAccountConfirmed={serviceAccountConfirmed}
+            onServiceAccountConfirmedChange={(checked) => {
+              setServiceAccountConfirmed(checked)
+              if (checked) setConfirmationMissing(false)
+            }}
+            confirmationMissing={confirmationMissing}
+            connectingSource={connectingSource}
+            onConnectSource={() => void handleConnectSource()}
+            SourceForm={SourceForm}
+            awaitsConsent={awaitsConsent}
+            sourceFormRef={sourceFormRef}
+            sourceIssue={sourceIssue}
+            values={values}
+            formContext={formContext}
+            onSourceChange={(patch: object) => {
+              setSourceValues((prev) => ({
+                ...prev,
+                [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
+              }))
+              setError(null)
+              setSourceIssue(null)
+            }}
+            schedule={schedule}
+            onScheduleChange={(patch) => {
+              setSchedule((prev) => ({ ...prev, ...patch }))
+              setError(null)
+            }}
+            confluenceRhythm={confluenceRhythm}
+            startFirstRun={startFirstRun}
+            onStartFirstRunChange={setStartFirstRun}
+            firstRunHint={firstRunHint}
+          />
         )}
 
         {currentStep === STEP_NAME && (
@@ -765,113 +611,41 @@ export default function LibraryCreatePage() {
         )}
 
         {currentStep === STEP_SHARING && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, maxWidth: 640 }}>
-            <AssetOwnerFields
-              idPrefix="library-create"
-              assetType="KNOWLEDGE_LIBRARY"
-              ownerType={ownerType}
-              onOwnerTypeChange={(next) => {
-                setOwnerType(next)
-                setError(null)
-              }}
-              myGroups={myGroups}
-              selectedGroup={selectedGroup}
-              onSelectedGroupChange={setSelectedGroup}
-            />
-            {consentProfile &&
-              (groupResponsible ? (
-                <FormControl>
-                  <FormLabel id="library-create-responsible-label">
-                    Verantwortlich für die Verbindung der Quelle
-                  </FormLabel>
-                  <RadioGroup
-                    aria-labelledby="library-create-responsible-label"
-                    aria-describedby="library-create-responsible-hint"
-                    value={responsibleIsGroup ? 'GROUP' : 'USER'}
-                    onChange={(event) => setResponsibleIsGroup(event.target.value === 'GROUP')}
-                  >
-                    <FormControlLabel value="USER" control={<Radio />} label="Ich" />
-                    <FormControlLabel
-                      value="GROUP"
-                      control={<Radio />}
-                      label={`Gruppe „${selectedGroup?.name}“`}
-                    />
-                  </RadioGroup>
-                  <FormHelperText id="library-create-responsible-hint">
-                    Erhält die Warnung, bevor die Zustimmung beim Anbieter endet, und die Nachricht,
-                    wenn sie endet, und kann die Quelle neu verbinden.
-                  </FormHelperText>
-                </FormControl>
-              ) : (
-                <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-                  Für die Verbindung der Quelle sind Sie verantwortlich: Sie erhalten die Warnung,
-                  bevor die Zustimmung beim Anbieter endet, und die Nachricht, wenn sie endet, und
-                  können die Quelle neu verbinden.
-                </Typography>
-              ))}
-            <AssetRightsFields
-              pendingGrants={pendingGrants}
-              onPendingGrantsChange={setPendingGrants}
-            />
-          </Box>
+          <CreateSharingStep
+            ownerType={ownerType}
+            onOwnerTypeChange={(next) => {
+              setOwnerType(next)
+              setError(null)
+            }}
+            myGroups={myGroups}
+            selectedGroup={selectedGroup}
+            onSelectedGroupChange={setSelectedGroup}
+            connectsSource={consentProfile !== undefined}
+            groupResponsible={groupResponsible}
+            responsibleIsGroup={responsibleIsGroup}
+            onResponsibleIsGroupChange={setResponsibleIsGroup}
+            pendingGrants={pendingGrants}
+            onPendingGrantsChange={setPendingGrants}
+          />
         )}
 
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5,
-            mt: 4,
-            pt: 2,
-            borderTop: 1,
-            borderColor: 'divider',
+        <LibraryCreateFooter
+          activeStep={activeStep}
+          stepCount={steps.length}
+          submitting={submitting}
+          pendingGrantCount={currentStep === STEP_SHARING ? pendingGrants.length : 0}
+          nextDisabled={currentStep === STEP_SOURCE_TYPE && (typesUnavailable || nothingUsable)}
+          missingCapability={missingCapability}
+          hasName={name.trim() !== ''}
+          onCancel={() => void handleCancel()}
+          onBack={() => {
+            setError(null)
+            setSourceIssue(null)
+            setActiveStep((s) => s - 1)
           }}
-        >
-          <Button variant="text" onClick={() => void handleCancel()} disabled={submitting}>
-            Abbrechen
-          </Button>
-          <Box sx={{ flex: 1 }} />
-          {currentStep === STEP_SHARING && pendingGrants.length > 0 && (
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-              {pendingGrants.length === 1
-                ? '1 Freigabe vorgemerkt'
-                : `${pendingGrants.length} Freigaben vorgemerkt`}
-            </Typography>
-          )}
-          {activeStep > 0 && (
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setError(null)
-                setSourceIssue(null)
-                setActiveStep((s) => s - 1)
-              }}
-              disabled={submitting}
-            >
-              Zurück
-            </Button>
-          )}
-          {activeStep < steps.length - 1 ? (
-            <Button
-              variant="contained"
-              onClick={handleNext}
-              disabled={currentStep === STEP_SOURCE_TYPE && (typesUnavailable || nothingUsable)}
-            >
-              Weiter
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              onClick={() => void handleCreate()}
-              disabled={submitting || missingCapability !== null || name.trim() === ''}
-              aria-describedby={
-                missingCapability !== null ? 'library-create-capability-hint' : undefined
-              }
-            >
-              {submitting ? 'Wird angelegt …' : 'Bibliothek anlegen'}
-            </Button>
-          )}
-        </Box>
+          onNext={handleNext}
+          onCreate={() => void handleCreate()}
+        />
       </Box>
     </Box>
   )
