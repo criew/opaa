@@ -11,6 +11,12 @@
 #   generator renders, checked in and kept current by the backend test FactSheetReferenceTest
 # The name list in docs/behoerden/README.md ("`<name>` ist eines der Faktenblätter: ...") equals the
 # sheet names of that file.
+# Every relative Markdown link in these files and the README names an existing file and, with an
+# anchor, a heading (GitHub slug) or <a id> of the target, so a renamed heading fails here.
+# Under 03-vergabe/ every document has a section "## Quellen und Prüfstand" whose table rows name
+# a source (link) or say "zu prüfen", every citation (§/Art. <n> <LAW>) also appears there, and
+# rechtsstand is not after stand; the requirement catalog and the award criteria never name OPAA,
+# and the compliance matrix lists exactly the requirement numbers of the catalog.
 # Errors fail the run (exit 1). A configuration key (opaa.*) or an enum constant (UPPER_SNAKE_CASE)
 # outside fenced code blocks is only a warning: it hints at a fact copied instead of referenced.
 # Designations with a digit after an underscore (ISO_27001) are no enum constants and stay silent.
@@ -25,6 +31,13 @@ DISCLAIMER='> Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortu
 FIELDS=(stand gilt-fuer erzeugung rechtsstand pruefvermerk naechste-durchsicht)
 ANCHORS=.github/fact-sheet-anchors.txt
 DATE_RE='^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+LEGAL_DIRS=("$FOLDER/03-vergabe")
+SOURCES_HEADING='## Quellen und Prüfstand'
+CITATION_RE='(§|Art\.) [0-9]+[a-z]?( (Abs\.|Satz|Nr\.|UAbs\.) [0-9]+[a-z]?)* [A-ZÄÖÜ][A-Za-zÄÖÜäöü]*[A-Z][A-Za-zÄÖÜäöü]*'
+NEUTRAL_FILES=("$FOLDER/03-vergabe/anforderungskatalog.md" "$FOLDER/03-vergabe/zuschlagskriterien.md")
+CATALOG="$FOLDER/03-vergabe/anforderungskatalog.md"
+MATRIX="$FOLDER/03-vergabe/erfuellungsmatrix.md"
+REQUIREMENT_RE='^\| [A-Z]-[0-9]{2} \|'
 
 if [ ! -f "$FOLDER/README.md" ]; then
   echo "::error::$FOLDER/README.md not found - the guard would pass without checking anything. Verify this script."
@@ -68,6 +81,86 @@ while IFS=: read -r line match; do
   grep -qxF -- "$target" <<<"$targets" ||
     report "$FOLDER/README.md" "$line" "example \"$match\" names no target of $ANCHORS"
 done < <(tr -d '\r' < "$FOLDER/README.md" | grep -noE '\{\{faktenblatt:[a-z0-9-]+(#[a-z0-9-]+)?\}\}' || true)
+
+# Stores in ANCHOR_CACHE[file] the anchors GitHub renders for a Markdown file: one slug per heading
+# outside fenced code (lowercase, only letters, digits, space, "_" and "-", spaces to "-", "-1",
+# "-2" for repeats) and every <a id="..."> or <a name="...">. Runs in the current shell.
+declare -A ANCHOR_CACHE=()
+load_anchors() {
+  if [ -z "${ANCHOR_CACHE[$1]+set}" ]; then
+    ANCHOR_CACHE[$1]="$(
+      tr -d '\r' < "$1" |
+        awk '/^[[:space:]]*(```|~~~)/{f=!f; next} !f && /^#{1,6}[[:space:]]/{sub(/^#+[[:space:]]+/, ""); sub(/[[:space:]]+#+[[:space:]]*$/, ""); sub(/[[:space:]]+$/, ""); print}' |
+        LC_ALL=C.UTF-8 sed -E 's/!?\[([^]]*)\]\([^)]*\)/\1/g; s/<[^>]*>//g; s/.*/\L&/; s/[^[:alnum:] _-]//g; s/ /-/g' |
+        awk '{c = seen[$0]++; print (c ? $0 "-" c : $0)}'
+      tr -d '\r' < "$1" | grep -oE '<a (id|name)="[^"]+"' | sed -E 's/.*="([^"]+)"/\1/' || true
+    )"
+  fi
+}
+
+check_links() {
+  # $1 file: relative links outside fenced and inline code resolve to a file and an anchor
+  local file=$1 line target path anchor resolved
+  while IFS=: read -r line target; do
+    [ -n "$line" ] || continue
+    target="${target#']('}"
+    case "$target" in http://* | https://* | mailto:*) continue ;; esac
+    path="${target%%#*}"
+    anchor=""
+    [ "$path" = "$target" ] || anchor="${target#*#}"
+    if [ -z "$path" ]; then
+      resolved="$file"
+    else
+      resolved="$(realpath -m --relative-to=. "$(dirname "$file")/$path")"
+    fi
+    if [ ! -e "$resolved" ]; then
+      report "$file" "$line" "link \"$target\" points to a missing file ($resolved)"
+      continue
+    fi
+    [ -n "$anchor" ] && [[ "$resolved" == *.md ]] || continue
+    load_anchors "$resolved"
+    if ! grep -qxF -- "$anchor" <<<"${ANCHOR_CACHE[$resolved]}"; then
+      report "$file" "$line" "link \"$target\" names no heading or anchor in $resolved"
+    fi
+  done < <(tr -d '\r' < "$file" |
+    awk '/^[[:space:]]*(```|~~~)/{f=!f; print ""; next} {print f ? "" : $0}' |
+    sed -E 's/`[^`]*`//g' | grep -noE '\]\([^) ]+' || true)
+}
+
+check_legal() {
+  # $1 file, $2 content, $3 line of the header end: sources and rechtsstand of legal statements
+  local file=$1 content=$2 end=$3 sources body row stand rechtsstand
+  if ! grep -qxF -- "$SOURCES_HEADING" <<<"$content"; then
+    report "$file" "" "missing section \"$SOURCES_HEADING\": every legal statement needs its source and the rechtsstand ($FOLDER/README.md)"
+    return
+  fi
+  sources="$(awk -v h="$SOURCES_HEADING" '$0==h{s=1; next} s && /^## /{s=0} s' <<<"$content")"
+  body="$(awk -v h="$SOURCES_HEADING" -v start="$end" 'NR<=start{next} $0==h{s=1; next} s && /^## /{s=0} !s' <<<"$content")"
+  while IFS= read -r row; do
+    [ -n "$row" ] || continue
+    grep -qE '\]\(|zu prüfen' <<<"$row" ||
+      report "$file" "" "source row without link and without \"zu prüfen\": $row"
+  done < <(grep -E '^\|' <<<"$sources" | grep -vE '^\|[-:| ]+\|$' | tail -n +2 || true)
+  while IFS= read -r row; do
+    [ -n "$row" ] || continue
+    report "$file" "" "citation \"$row\" is missing from \"$SOURCES_HEADING\""
+  done < <(comm -23 <(citations <<<"$body") <(citations <<<"$sources"))
+  stand="$(sed -n "2,$((end - 1))p" <<<"$content" | sed -n 's/^stand:[[:space:]]*//p' | tr -d "\"' ")"
+  rechtsstand="$(sed -n "2,$((end - 1))p" <<<"$content" | sed -n 's/^rechtsstand:[[:space:]]*//p' | tr -d "\"' ")"
+  if [[ "$rechtsstand" > "$stand" ]]; then
+    report "$file" "" "rechtsstand $rechtsstand lies after stand $stand"
+  fi
+}
+
+# Citations "§ 31 Abs. 6 VgV" or "Art. 28 Abs. 3 DSGVO" as "§ 31 VgV", "Art. 28 DSGVO", one per line.
+citations() {
+  { grep -oE "$CITATION_RE" || true; } | sed -E 's/ (Abs\.|Satz|Nr\.|UAbs\.) [0-9]+[a-z]?//g' | sort -u
+}
+
+requirement_ids() {
+  [ -f "$1" ] || return 0
+  tr -d '\r' < "$1" | { grep -oE "$REQUIREMENT_RE" || true; } | grep -oE '[A-Z]-[0-9]{2}' | sort -u
+}
 
 check_value() {
   # $1 file, $2 field, $3 value
@@ -148,7 +241,36 @@ while IFS= read -r -d '' file; do
   done < <(printf '%s\n' "$content" |
     awk '/^[[:space:]]*(```|~~~)/{fenced=!fenced; print ""; next} {print fenced ? "" : $0}' |
     grep -noE '\bopaa\.[a-z][a-z0-9.-]*|\b[A-Z][A-Z0-9]*(_[A-Z0-9]+)+\b' | grep -vE '_[0-9]' || true)
+
+  # (e) links; for legal templates sources and rechtsstand; vendor-neutral templates
+  check_links "$file"
+  for dir in "${LEGAL_DIRS[@]}"; do
+    if [[ "$file" == "$dir"/* ]] && [ -n "$end" ]; then
+      check_legal "$file" "$content" "$end"
+    fi
+  done
+  for neutral in "${NEUTRAL_FILES[@]}"; do
+    [ "$file" = "$neutral" ] || continue
+    while IFS=: read -r line _; do
+      [ -n "$line" ] || continue
+      report "$file" "$line" "a vendor-neutral template must not name OPAA; product evidence belongs in $MATRIX"
+    done < <(grep -nwF OPAA <<<"$content" || true)
+  done
 done < <(find "$FOLDER" -type f \( -iname '*.md' -o -iname '*.markdown' \) ! -path "$FOLDER/README.md" -print0 | sort -z)
+
+check_links "$FOLDER/README.md"
+
+# (f) the compliance matrix answers exactly the requirements of the catalog
+if [ -f "$CATALOG" ] || [ -f "$MATRIX" ]; then
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    report "$MATRIX" "" "requirement $id of $CATALOG has no row in the compliance matrix"
+  done < <(comm -23 <(requirement_ids "$CATALOG") <(requirement_ids "$MATRIX"))
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    report "$MATRIX" "" "requirement $id is not in $CATALOG"
+  done < <(comm -13 <(requirement_ids "$CATALOG") <(requirement_ids "$MATRIX"))
+fi
 
 if [ "$rejected" -gt 0 ]; then
   echo "::error::$rejected finding(s) in $checked document(s) under $FOLDER ($FOLDER/README.md)."
