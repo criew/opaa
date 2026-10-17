@@ -326,8 +326,7 @@ def test_fact_sheet_placeholders_become_links_to_the_sheets_in_the_package(
     with_placeholders(
         inputs,
         "- `faktenblaetter/`: etwa {{faktenblatt:fristen}} und\n  {{faktenblatt:datenkatalog}},\n"
-        "Frist: {{faktenblatt:fristen#audit-retention}}\n",
-        "# Betriebsfolgen\n\nSiehe {{faktenblatt:datenkatalog#bereich-audit-log}}.\n")
+        "Frist: {{faktenblatt:fristen#audit-retention}}\n")
 
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
@@ -335,8 +334,6 @@ def test_fact_sheet_placeholders_become_links_to_the_sheets_in_the_package(
     assert ("etwa [Faktenblatt Fristen](faktenblaetter/fristen.md) und\n"
             "  [Faktenblatt Datenkatalog](faktenblaetter/datenkatalog.md),") in files["update-vermerk.md"]
     assert "[Faktenblatt Fristen](faktenblaetter/fristen.md#audit-retention)" in files["update-vermerk.md"]
-    assert ("Siehe [Faktenblatt Datenkatalog](../faktenblaetter/datenkatalog.md#bereich-audit-log)."
-            in files["betrieb/betriebsfolgen.md"])
     for path, text in files.items():
         assert "{{" not in text, path
         for target in re.findall(r"\]\(([^)#]+\.md)(?:#[^)]*)?\)", text):
@@ -356,6 +353,71 @@ def test_an_unknown_or_malformed_placeholder_fails_the_package(
 
     with pytest.raises(update_package.PackageError, match="placeholder"):
         update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+def test_a_link_from_a_subdirectory_is_relative_to_it() -> None:
+    sheets = {"datenkatalog": "# Faktenblatt: Datenkatalog\n\n<a id=\"audit-log\"></a>\n"}
+
+    text = update_package.resolve_placeholders(
+        "Siehe {{faktenblatt:datenkatalog#audit-log}}.", "betrieb/x.md", sheets)
+
+    assert text == "Siehe [Faktenblatt Datenkatalog](../faktenblaetter/datenkatalog.md#audit-log)."
+
+
+def test_placeholders_in_code_stay_as_written(tmp_path: Path, inputs: dict) -> None:
+    template = ("Form: `{{faktenblatt:<name>}}` oder ``{{faktenblatt:fristen}}``.\n\n"
+                "```text\n{{faktenblatt:<name>#<anker>}}\n```\n\n"
+                "~~~\n{{ faktenblatt:fristen }}\n~~~\n\n"
+                "Siehe {{faktenblatt:fristen}}.\n")
+    with_placeholders(inputs, template)
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    assert package_markdown(archive)["update-vermerk.md"] == template.replace(
+        "Siehe {{faktenblatt:fristen}}.", "Siehe [Faktenblatt Fristen](faktenblaetter/fristen.md).")
+
+
+def test_a_placeholder_in_a_pull_request_title_stays_text(tmp_path: Path, inputs: dict) -> None:
+    delta = ("# Delta\n\n## Weitere gekennzeichnete Änderungen\n\n"
+             "- [#7 docs: Verweis {{faktenblatt:fristen}} ergaenzen](https://github.com/criew/opaa/pull/7)\n"
+             "- [#8 docs: {{faktenblatt:gibt-es-nicht}}](https://github.com/criew/opaa/pull/8)\n")
+    with_placeholders(inputs, "# Update-Vermerk\n")
+    (inputs["delta"] / "manifest-delta.md").write_text(delta)
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    assert package_markdown(archive)["delta/manifest-delta.md"] == delta
+
+
+def test_an_upgrade_note_with_a_placeholder_stays_as_written(tmp_path: Path, inputs: dict) -> None:
+    operations = ("# Betriebsfolgen\n\n### Vorbereitung für 1.2.3\n\n"
+                  "- Vorlagen nutzen jetzt `{{faktenblatt:<name>}}`, etwa {{faktenblatt:speicherorte}}.\n")
+    with_placeholders(inputs, "# Update-Vermerk\n", operations)
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    assert package_markdown(archive)["betrieb/betriebsfolgen.md"] == operations
+
+
+def test_the_delta_is_rendered_for_the_given_repository() -> None:
+    command = update_package.gradle_command(
+        version="1.2.3", day="2026-01-01", from_ref="v1.2.2", to_ref="v1.2.3",
+        repository="example/opaa-fork", labelled_prs=None)
+
+    assert "-Prepository=example/opaa-fork" in command
+    assert "complianceDelta" in command
+
+
+def test_the_update_package_names_a_version_like_the_delta() -> None:
+    """The cases are shared with ManifestDeltaRendererTest, which checks the delta against them."""
+    cases = json.loads((HERE.parents[1] / "backend" / "src" / "test" / "resources" / "compliance"
+                        / "delta" / "bare-commit-names.json").read_text(encoding="utf-8"))
+
+    assert len(cases) > 5
+    for case in cases:
+        bare = update_package.names_bare_commit(case["label"], case["commit"], case["hasManifest"])
+        side = update_package.Side(case["label"], case["commit"], None, bare=bare)
+        assert side.name == case["name"], case
 
 
 def test_operations_name_a_comparison_without_manifest_readably(interval: dict) -> None:

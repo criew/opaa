@@ -134,6 +134,49 @@ class ManifestDeltaGeneratorTest {
   }
 
   @Test
+  void theLinkToTheStageRulesNamesTheGivenRepository() throws IOException {
+    Path repository = GitFixture.repository(dir.resolve("repo"));
+    String newer = ManifestSnapshot.Git.resolve(repository, "v3");
+    Path out = dir.resolve("delta");
+
+    run(
+        "--out",
+        out.toString(),
+        "--repo",
+        repository.toString(),
+        "--repository",
+        "example/opaa-fork",
+        "--from-ref",
+        "v2",
+        "--to-ref",
+        "v3");
+
+    JsonNode json = JSON.readTree(Files.readString(out.resolve(ManifestDeltaGenerator.JSON_FILE)));
+    assertThat(json.path("stageRules").asString())
+        .isEqualTo(
+            "https://github.com/example/opaa-fork/blob/"
+                + newer
+                + "/docs/features/behoerdenunterlagen.md#die-stufenregeln");
+  }
+
+  @Test
+  void aRepositoryThatIsNoOwnerAndNameIsRefused() {
+    assertThatThrownBy(
+            () ->
+                run(
+                    "--out",
+                    dir.toString(),
+                    "--repository",
+                    "../evil",
+                    "--from-ref",
+                    "v1",
+                    "--to-ref",
+                    "v2"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("--repository must be <owner>/<name>");
+  }
+
+  @Test
   void twoRunsOnTheSameVersionsWriteTheSameFiles() throws IOException {
     Path repository = GitFixture.repository(dir.resolve("repo"));
     Path first = dir.resolve("first");
