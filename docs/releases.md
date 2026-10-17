@@ -278,25 +278,43 @@ Grenze und braucht dafür Admin-Rechte. Ablauf:
    Lauf ab, bevor etwas veröffentlicht ist. Ein Patch-Release verlangt nie Vorbereitung und braucht
    keine Datei.
 4. Den Stand aus Behördensicht lesen lassen. Das Update-Paket entsteht erst im Lauf des Tags;
-   vorher wird deshalb sein Delta lokal erzeugt, auf dem Commit, der das Tag bekommt, und gegen
-   denselben Vorgänger wie das Paket (Beispiel `v0.3.0`):
+   vorher werden deshalb sein Delta und die Faktenblätter lokal erzeugt, auf dem Commit, der das
+   Tag bekommt, und gegen denselben Vorgänger wie das Paket (Beispiel `v0.3.0`; bei einem
+   Patch-Release ohne Codeänderung ist `commit` der Commit des vorigen Release):
 
    ```bash
    git fetch origin --tags
-   git switch --detach origin/main
-   vorg=$(python3 .github/scripts/update_package.py previous --tag v0.3.0 --commit HEAD)
-   [ -n "$vorg" ] || vorg=$(git rev-list --max-parents=0 HEAD | tail -n 1)   # erstes finales Release
+   if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow origin; fi
+   commit=$(git rev-parse origin/main)
+   git switch --detach "$commit"
+   prev=$(python3 .github/scripts/update_package.py previous --tag v0.3.0 --commit "$commit") \
+     || { echo "Vorgänger nicht bestimmbar" >&2; exit 1; }
+   [ -n "$prev" ] || prev=$(git rev-list --max-parents=0 "$commit" | tail -n 1)   # erstes finales Release
    gh pr list --state merged --label data-impact --limit 1000 --json number,title,url \
      >/tmp/data-impact-prs.json
-   (cd backend && ./gradlew complianceDelta -PfromRef="$vorg" -PtoRef=HEAD \
-     -PlabelledPrs=/tmp/data-impact-prs.json)
+   if [ "$(jq length /tmp/data-impact-prs.json)" -ge 1000 ]; then
+     echo "Limit 1000 erreicht, die Liste kann abgeschnitten sein" >&2; exit 1
+   fi
+   (cd backend && ./gradlew complianceDocs complianceDelta -PopaaVersion=0.3.0 \
+     -PfromRef="$prev" -PtoRef="$commit" -PlabelledPrs=/tmp/data-impact-prs.json)
    ```
 
-   Das Delta liegt unter `backend/build/compliance/delta/manifest-delta.md`. Wer das ganze Paket
-   vorab sehen will, erzeugt es im [Probelauf](#update-paket) mit
-   `update_package.py build --tag v0.3.0 …`. Dann startet der Koordinator die Rolle
-   `behoerdenkontakt` ([Rollenvertrag](../agents/roles/behoerdenkontakt.md), Adapter für Claude
-   Code, Codex und OpenCode) mit Version, Commit und Vergleichsstand `$vorg`. Ihre Befunde werden
+   Wie im Workflow bricht die Abfrage am Limit ab, statt gekennzeichnete PRs zu verlieren. Wo
+   `gh pr list` (GraphQL) nicht erreichbar ist, etwa in Cloud-Sessions, liefert die REST-API
+   dieselbe Liste im selben Format:
+
+   ```bash
+   gh api --paginate 'repos/criew/opaa/issues?state=closed&labels=data-impact&per_page=100' \
+     --jq '.[] | select(.pull_request.merged_at) | {number, title, url: .html_url}' \
+     | jq -s . >/tmp/data-impact-prs.json
+   ```
+
+   Das Delta liegt unter `backend/build/compliance/delta/`, die Faktenblätter unter
+   `backend/build/compliance/faktenblaetter/`. Wer das ganze Paket vorab sehen will, erzeugt es im
+   [Probelauf](#update-paket) mit `update_package.py build --tag v0.3.0 …`. Dann startet der
+   Koordinator die Rolle `behoerdenkontakt` ([Rollenvertrag](../agents/roles/behoerdenkontakt.md),
+   Adapter für Claude Code, Codex und OpenCode) mit Version, `$commit`, Vergleichsstand `$prev`
+   und den Pfaden von Delta und Faktenblättern. Ihre Befunde werden
    vor dem Tag geklärt oder nach dem Lauf mit `gh release edit` als bekannt in die Release-Notizen
    aufgenommen ([Behördenkontakt vor dem Release](AGENT-ORGANIZATION.md#behördenkontakt-vor-dem-release)).
 
@@ -304,13 +322,14 @@ Grenze und braucht dafür Admin-Rechte. Ablauf:
    ([#2575](https://github.com/criew/opaa/issues/2575)). Bis dahin gilt die Regel unter
    [Update-Paket](#update-paket): ein Delta je Release, nur gegen das vorige finale Release der
    eigenen Linie.
-5. Tag setzen und pushen:
+5. Den in Schritt 4 begutachteten Commit taggen und das Tag pushen:
 
    ```bash
-   git fetch origin
-   git tag -a v0.1.0 origin/main -m "OPAA v0.1.0"
-   git push origin v0.1.0
+   git tag -a v0.3.0 "$commit" -m "OPAA v0.3.0"
+   git push origin v0.3.0
    ```
+
+   Ist `main` inzwischen weiter und soll das mit ins Release, Schritt 4 wiederholen.
 
 6. Den Lauf von „Publish Images“ abwarten. Danach stehen Images und Chart in GHCR und das
    GitHub-Release unter *Releases*.

@@ -39,7 +39,7 @@ Nach einer Konzept- oder Spezifikationsänderung von struktureller Tragweite und
 
 Pflichtanlass ist eine Spezifikation, deren Abschnitt „Wirkung auf Behördenunterlagen“ die Stufe **Zustimmung** vorschlägt: Der Product Manager fordert das Review an, Personalrat und Betriebsverantwortlicher laufen mindestens, und die Issues werden erst danach geschnitten ([Stufenregeln](features/behoerdenunterlagen.md#die-stufenregeln)).
 
-Zweiter Pflichtanlass ist eine Änderung der Stufe **Zustimmung**, die der Behördenkontakt vor einem Release meldet ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)): Geprüft werden das vor dem Tag lokal erzeugte Manifest-Delta zum vorigen finalen Release (`./gradlew complianceDelta`, Befehle im [Release-Ablauf](releases.md#wer-ein-release-anlegt)) bzw. das Update-Paket und die Faktenblätter, mindestens durch Personalrat und Betriebsverantwortlichen.
+Zweiter Pflichtanlass ist eine Änderung der Stufe **Zustimmung**, die der Behördenkontakt vor einem Release meldet ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)): Geprüft werden das vor dem Tag lokal erzeugte Manifest-Delta zum vorigen finalen Release (`./gradlew complianceDelta`, Befehle im [Release-Ablauf](releases.md#wer-ein-release-anlegt)) bzw. ein Probelauf des Pakets und die Faktenblätter, mindestens durch Personalrat und Betriebsverantwortlichen.
 
 Der Orchestrator startet die Rollen parallel gegen dieselbe Dokumentenmenge und legt dem Maintainer die Bewertungen gebündelt vor. Nicht jede Änderung braucht alle sechs — die Auswahl richtet sich danach, wessen Wirklichkeit betroffen ist.
 
@@ -151,7 +151,7 @@ Regeln für den Koordinator/Orchestrator, unabhängig von der Umgebung, in der e
 - **Review ab PR-Eröffnung:** Das Review startet, sobald ein PR eröffnet ist, nicht nach grüner CI; ein roter CI-Lauf und Review-Befunde gehen in dieselbe Nachbesserungsrunde.
 - **Security-Arbeit wird delegiert:** Security-Analysen, -Fixes und -Issues führt der Koordinator nicht selbst aus, sondern gibt sie an Agenten, dieselbe Rollentrennung wie zwischen Implementierung und Review.
 - **Handbuch nach Abhängigkeits-Updates:** Ändert ein gemergter Renovate-PR eine Version oder einen Default, den das Handbuch nennt (`betrieb.md`, `konfiguration.md`), zieht der Koordinator das Kapitel nach.
-- **Behördenkontakt vor jedem Release:** Die Release-Vorbereitung startet den Behördenkontakt: Bevor der Maintainer das Tag setzt, erzeugt der Koordinator das Manifest-Delta zum vorigen finalen Release und startet die Rolle `behoerdenkontakt` darauf (Schritt 4 im [Release-Ablauf](releases.md#wer-ein-release-anlegt)); gelegentlich läuft sie auch darüber hinaus ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)).
+- **Behördenkontakt vor jedem Release:** Die Release-Vorbereitung startet den Behördenkontakt: Bevor der Maintainer das Tag setzt, erzeugt der Koordinator das Manifest-Delta zum vorigen finalen Release und die Faktenblätter und startet die Rolle `behoerdenkontakt` darauf (Schritt 4 im [Release-Ablauf](releases.md#wer-ein-release-anlegt)); gelegentlich läuft sie auch darüber hinaus ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)).
 - **Prozess- und Worktree-Hygiene:** Nie ein globales `gradlew --stop`, nur den eigenen Prozess beenden, und nach dem Merge zuerst Branch löschen und `git worktree prune`, ein gesperrtes Verzeichnis später entfernen.
 
 ### Autonomie und Eskalation
