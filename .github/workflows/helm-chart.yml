@@ -67,7 +67,7 @@ jobs:
               - '.github/workflows/helm-chart.yml'
               - 'backend/Dockerfile'
               - 'frontend/Dockerfile'
-              - 'frontend/nginx.conf'
+              - 'frontend/nginx*.conf'
               - 'frontend/docker-entrypoint.d/**'
               - 'frontend/scripts/check-backend-read-timeout.sh'
 
