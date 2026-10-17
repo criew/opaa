@@ -119,6 +119,31 @@ interface DocumentState {
 
 const pollIntervalIds: Record<string, ReturnType<typeof setInterval>> = {}
 
+type LoadOptions = {
+  page?: number
+  size?: number
+  q?: string
+  folderId?: string | null
+  missingMetadataField?: string | null
+}
+
+type RequestedPageState = Omit<DocumentPageState, 'totalElements'>
+
+// The newest list request per library that has not settled yet. Only the request holding the
+// current sequence number may write its response (or error) back; anything older is discarded.
+// Its params are also the base for the next request's omitted options, so a page change during a
+// running search keeps the requested search term rather than the last loaded one.
+let loadSequence = 0
+const latestRequestByLibrary: Record<string, { sequence: number; params: RequestedPageState }> = {}
+
+function isLatestRequest(libraryId: string, sequence: number): boolean {
+  return latestRequestByLibrary[libraryId]?.sequence === sequence
+}
+
+function settleRequest(libraryId: string, sequence: number) {
+  if (isLatestRequest(libraryId, sequence)) delete latestRequestByLibrary[libraryId]
+}
+
 function hasPendingDocument(documents: LibraryDocumentResponse[] | undefined): boolean {
   return (documents ?? []).some((doc) => doc.status === 'PENDING')
 }
@@ -138,6 +163,9 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   reset: () => {
     Object.keys(pollIntervalIds).forEach((libraryId) => get().stopPolling(libraryId))
+    Object.keys(latestRequestByLibrary).forEach((libraryId) => {
+      delete latestRequestByLibrary[libraryId]
+    })
     set({
       documentsByLibrary: {},
       pageStateByLibrary: {},
@@ -154,7 +182,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   loadDocuments: async (libraryId, options) => {
-    await runLoadDocuments(libraryId, options, set, get, false)
+    await runLoadDocuments(libraryId, options, set, get, { isFolderFallbackRetry: false })
   },
 
   uploadNewDocument: async (libraryId: string, file: File, folderPath?: string) => {
@@ -319,27 +347,25 @@ registerSessionStore(useDocumentStore)
 // recurse into it directly with isFolderFallbackRetry=true, rather than
 // through get().loadDocuments(), which would immediately clear the very
 // folderNotFoundMessage this call is in the middle of setting.
+//
+// A background load (the poll tick) leaves isLoading and error untouched and stops polling on a
+// failure instead of surfacing it.
 async function runLoadDocuments(
   libraryId: string,
-  options:
-    | {
-        page?: number
-        size?: number
-        q?: string
-        folderId?: string | null
-        missingMetadataField?: string | null
-      }
-    | undefined,
+  options: LoadOptions | undefined,
   set: (partial: Partial<DocumentState>) => void,
   get: () => DocumentState,
-  isFolderFallbackRetry: boolean,
+  mode: { isFolderFallbackRetry: boolean; background?: boolean },
 ) {
   // Captured before the await below - checked again once it resolves, so a response
   // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
   // previous user's documents into the now-emptied store, and does not start a poll interval
   // whose ticks would keep writing into it afterwards.
   const sessionEpoch = currentSessionEpoch()
-  const previous = get().pageStateByLibrary[libraryId] ?? defaultPageState
+  const previous: RequestedPageState =
+    latestRequestByLibrary[libraryId]?.params ??
+    get().pageStateByLibrary[libraryId] ??
+    defaultPageState
   const page = options?.page ?? previous.page
   const size = options?.size ?? previous.size
   const q = options?.q ?? previous.q
@@ -357,7 +383,12 @@ async function runLoadDocuments(
       ? (options.missingMetadataField ?? null)
       : previous.missingMetadataField
 
-  set({ isLoading: true, error: null })
+  const sequence = ++loadSequence
+  latestRequestByLibrary[libraryId] = {
+    sequence,
+    params: { page, size, q, folderId, missingMetadataField },
+  }
+  if (!mode.background) set({ isLoading: true, error: null })
   try {
     const response = await getLibraryDocuments(libraryId, {
       page,
@@ -366,7 +397,8 @@ async function runLoadDocuments(
       folderId,
       missingMetadataField,
     })
-    if (isStaleSessionEpoch(sessionEpoch)) return
+    if (isStaleSessionEpoch(sessionEpoch) || !isLatestRequest(libraryId, sequence)) return
+    settleRequest(libraryId, sequence)
     set({
       documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
       pageStateByLibrary: {
@@ -382,13 +414,13 @@ async function runLoadDocuments(
       },
       foldersByLibrary: { ...get().foldersByLibrary, [libraryId]: response.folders },
       breadcrumbByLibrary: { ...get().breadcrumbByLibrary, [libraryId]: response.breadcrumb },
-      isLoading: false,
+      ...(mode.background ? {} : { isLoading: false }),
       // A genuinely new successful load means whichever folder was missing before is no longer
       // relevant - reset the hint so it does not keep showing once the user
       // has navigated elsewhere. Suppressed for the fallback's own retry call itself (see the catch
       // block below): that call's success is what *produces* the hint, so resetting it here too
       // would erase it before it was ever shown.
-      ...(isFolderFallbackRetry ? {} : { folderNotFoundMessage: null }),
+      ...(mode.isFolderFallbackRetry || mode.background ? {} : { folderNotFoundMessage: null }),
     })
     if (hasPendingDocument(response.items)) {
       startPolling(libraryId, set, get)
@@ -396,7 +428,12 @@ async function runLoadDocuments(
       get().stopPolling(libraryId)
     }
   } catch (err) {
-    if (isStaleSessionEpoch(sessionEpoch)) return
+    if (isStaleSessionEpoch(sessionEpoch) || !isLatestRequest(libraryId, sequence)) return
+    settleRequest(libraryId, sequence)
+    if (mode.background) {
+      get().stopPolling(libraryId)
+      return
+    }
     // GET .../documents validates a given folderId regardless of q and rejects an
     // unknown/foreign one with 404 (ADR-0020) - rather than surface that as a dead "loading
     // failed" error, fall back to the library's root exactly once (folderId is null on the retry,
@@ -407,7 +444,9 @@ async function runLoadDocuments(
     // normal error like every other endpoint here.
     if (folderId !== null && isNotFoundError(err)) {
       set({ folderNotFoundMessage: 'Der Ordner wurde nicht gefunden. Zurück zur Wurzelebene.' })
-      await runLoadDocuments(libraryId, { ...options, folderId: null, page: 0 }, set, get, true)
+      await runLoadDocuments(libraryId, { ...options, folderId: null, page: 0 }, set, get, {
+        isFolderFallbackRetry: true,
+      })
       return
     }
     const message = err instanceof Error ? err.message : 'Dokumente konnten nicht geladen werden'
@@ -418,14 +457,10 @@ async function runLoadDocuments(
 // Re-fetches the page/search a library's document list is currently showing - shared by
 // uploadNewDocument/removeDocument so a mutation is always followed by server truth instead of a
 // local array splice/unshift that can drift from totalElements or the active search filter.
+// Omitted options resolve to the newest requested view, so a reload never reverts a page or
+// search change that is still in flight.
 async function reloadCurrentPage(libraryId: string, get: () => DocumentState) {
-  const pageState = get().pageStateByLibrary[libraryId] ?? defaultPageState
-  await get().loadDocuments(libraryId, {
-    page: pageState.page,
-    size: pageState.size,
-    q: pageState.q,
-    folderId: pageState.folderId,
-  })
+  await get().loadDocuments(libraryId, {})
 }
 
 function startPolling(
@@ -435,35 +470,14 @@ function startPolling(
 ) {
   if (pollIntervalIds[libraryId]) return
 
-  pollIntervalIds[libraryId] = setInterval(async () => {
-    // This tick's token in the session epoch, captured before the await below.
-    // clearInterval (see stopPolling, called by reset()) only stops *future* ticks - a tick
-    // already in flight when reset() runs would otherwise still write into documentsByLibrary
-    // once its own await resolves, right after reset() just emptied it.
-    const sessionEpoch = currentSessionEpoch()
-    try {
-      const pageState = get().pageStateByLibrary[libraryId] ?? defaultPageState
-      const response = await getLibraryDocuments(libraryId, {
-        page: pageState.page,
-        size: pageState.size,
-        q: pageState.q,
-        folderId: pageState.folderId,
-      })
-      if (isStaleSessionEpoch(sessionEpoch)) return
-      set({
-        documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
-        pageStateByLibrary: {
-          ...get().pageStateByLibrary,
-          [libraryId]: { ...pageState, totalElements: response.totalElements },
-        },
-        foldersByLibrary: { ...get().foldersByLibrary, [libraryId]: response.folders },
-        breadcrumbByLibrary: { ...get().breadcrumbByLibrary, [libraryId]: response.breadcrumb },
-      })
-      if (!hasPendingDocument(response.items)) {
-        get().stopPolling(libraryId)
-      }
-    } catch {
-      get().stopPolling(libraryId)
-    }
+  // A tick re-requests exactly the view the newest load asked for, through the same path. It is
+  // skipped while another request for this library is still running - that request refreshes the
+  // list itself, and a tick started after it would discard its response.
+  pollIntervalIds[libraryId] = setInterval(() => {
+    if (latestRequestByLibrary[libraryId]) return
+    void runLoadDocuments(libraryId, {}, set, get, {
+      isFolderFallbackRetry: false,
+      background: true,
+    })
   }, POLL_INTERVAL_MS)
 }
