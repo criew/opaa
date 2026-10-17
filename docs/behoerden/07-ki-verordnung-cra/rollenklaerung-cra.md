@@ -92,8 +92,8 @@ Hersteller (Fachbeitrag: [OpenSSF](https://policy.openssf.org/CRA/stewards-one-p
 - **Ab 11.12.2027** gelten die übrigen Herstellerpflichten, darunter die grundlegenden
   Anforderungen nach Anhang I, die Konformitätsbewertung und die CE-Kennzeichnung.
 
-Was die Behörde vom Dienstleister verlangt, legt sie in der Vergabe fest (Vorlagen dazu entstehen in
-[#2564](https://github.com/criew/opaa/issues/2564)). Mögliche Fragen:
+Was die Behörde vom Dienstleister verlangt, legt sie in der Vergabe fest
+([Anforderungskatalog](../03-vergabe/anforderungskatalog.md), Baustein L-08). Mögliche Fragen:
 
 1. Stellen Sie OPAA als Produkt im Sinne des CRA bereit, und in welcher Rolle?
 2. Wie erfüllen Sie die Meldepflichten nach Art. 14, und wie erfahren wir von einer Meldung?

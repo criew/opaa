@@ -21,9 +21,9 @@
 > - alle drei Schichten der [Drift-Erkennung](#automatisierung-und-drift-erkennung): Wächter,
 >   Kennzeichnung am PR (#2553) und wöchentliche Drift-Routine (#2819)
 > - der Ordner `docs/behoerden/` mit Kopfvermerk und Haftungshinweis (#2545) und den Vorlagen für
->   Datenschutz (#2565), Informationssicherheit und Notfall (#2567), KI-Verordnung und Cyber
->   Resilience Act (#2568) sowie Barrierefreiheit und Nutzung (#2569); die Sicherheitsrichtlinie mit
->   Meldeweg steht in [SECURITY.md](../../SECURITY.md) (#2561)
+>   Vergabe (#2564), Datenschutz (#2565), Informationssicherheit und Notfall (#2567), KI-Verordnung
+>   und Cyber Resilience Act (#2568) sowie Barrierefreiheit und Nutzung (#2569); die
+>   Sicherheitsrichtlinie mit Meldeweg steht in [SECURITY.md](../../SECURITY.md) (#2561)
 > - die [Pflichten der Rollen](#verankerung-in-der-agentenorganisation) für Spezifikation (#2571),
 >   Umsetzung und Review (#2572) und die Rolle „Behördenkontakt“
 >   ([Rollenvertrag](../../agents/roles/behoerdenkontakt.md), #2573)
@@ -37,8 +37,9 @@
 > - Betriebsfolgen und Antwortqualität im Update-Paket (#2555)
 >
 > **Zielbild** sind die übrigen Teile des [Update-Pakets](#das-update-paket): Instanzbezug mit
-> Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der Release-Schritt des Maintainers (#2574), die
-> Vorlagen der Phasen 0 bis 4 und der Mitbestimmung (#2562, #2563, #2564, #2566) und die
+> Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der
+> Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
+> (#2562, #2563, #2566) und die
 > Supportlinien (#2575). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
@@ -129,7 +130,7 @@ mitbestimmungspflichtig sein kann.
 | 1 | Markterkundung | Produktdatenblatt, Antworten auf typische Fragebögen, Projektstatus (Trägerschaft, Fortbestand, Release-Zyklus), Lizenz einschließlich Abhängigkeiten, Reifegrad (nur Belegbares), Meldestelle für Sicherheitslücken | Lizenzübersicht, Faktenblätter | #2562, #2561 |
 | 2 | Pilot-Beteiligung | Pilot-Vereinbarung mit statischer Anlage, Kurzprüfung je Stelle (DSB, ISB, Personalrat) | Datenkatalog der eingesetzten Version | #2563 |
 | 3 | Teststellung | Szenario mit **eigenen Dokumenten der Behörde**, Erfolgs- und Abbruchkriterien vor Beginn, Evaluierungswerte mit Version, Teststellungsvereinbarung, Löschnachweis | Faktenblätter, Antwortqualität | #2563 |
-| 4 | Vergabe | herstellerneutrale Anforderungsbausteine, Hinweise zur Zuordnung in den EVB-IT (Fassung 2026) | SBOM, Lizenzübersicht | #2564 |
+| 4 | Vergabe | herstellerneutrale Anforderungsbausteine (Muss/Kann) mit getrennter Erfüllungsmatrix, Auftragswertschätzung, Zuschlagskriterien mit Souveränität, Hinweise zur Zuordnung in den EVB-IT (Fassung 2026), Gewährleistung und Haftung, Wege ohne Angebot | SBOM, Lizenzübersicht, Faktenblätter | #2564 |
 | 5 | Einführung: Datenschutz | VVT-, DSFA-Baustein, TOM des Produktanteils, Löschkonzept, Informationspflichten, Betroffenenrechte, AVV-Entscheidungsmatrix | Datenkatalog, Fristen, Datenflüsse, Voreinstellungen | #2565 |
 | 5 | Einführung: Mitbestimmung | Muster-Dienstvereinbarung, Informationsmappe für den Personalrat | alle Faktenblätter, Konfigurationsexport | #2566 |
 | 5–6 | Informationssicherheit, Betrieb, Notfall | Grundschutz-Modellierung, C5:2026-Zuordnung nur für Cloud-Betreiber, NIS2-Hinweis, Notfallkapitel mit RTO/RPO-Annahmen und Wiederherstellungsprobe | Protokollereignisse, Datenflüsse | #2567 |
@@ -137,12 +138,15 @@ mitbestimmungspflichtig sein kann.
 | 5 | Barrierefreiheit, Nutzung | Erklärung zur Barrierefreiheit, Muster-Nutzungsrichtlinie | vorhandene Prüfbelege | #2569 |
 | 7 | Update | Update-Paket mit Vorlage Update-Vermerk | Delta zwischen zwei Versionen | #2552 |
 
-**(gebaut, #2565, #2567, #2568, #2569)** Vorlagen liegen für Datenschutz, Informationssicherheit
-und Notfall, KI-Verordnung und Cyber Resilience Act sowie Barrierefreiheit und Nutzung in
-`docs/behoerden/`; die Meldestelle für Sicherheitslücken aus Phase 1 ist
+**(gebaut, #2564, #2565, #2567, #2568, #2569)** Vorlagen liegen für Vergabe, Datenschutz,
+Informationssicherheit und Notfall, KI-Verordnung und Cyber Resilience Act sowie Barrierefreiheit und
+Nutzung in `docs/behoerden/`. Bei den Vergabevorlagen prüft die CI zusätzlich, dass jedes Zitat
+mit `§` oder `Art.` in der Quellentabelle steht und jede Zeile dort einen Link oder „zu prüfen“
+trägt, und dass Katalog und Erfüllungsmatrix dieselben Anforderungsnummern führen; das Ziel jedes
+Links prüft sie in allen Vorlagen. Die Meldestelle für Sicherheitslücken aus Phase 1 ist
 [SECURITY.md](../../SECURITY.md) (#2561). **(gebaut, #2556)** Die Vorlage Update-Vermerk liegt in
 `docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(Zielbild)** Die übrigen
-Vorlagen der Phasen 0 bis 4 und die Mitbestimmung.
+Vorlagen der Phasen 0 bis 3 und die Mitbestimmung.
 
 **Markterkundung und Codeentstehung (Beschluss 4):** Die Markterkundungsunterlagen enthalten keine
 Aussage dazu, wie der Code entstanden ist. Fragt eine Behörde ausdrücklich danach, lautet die Antwort:
