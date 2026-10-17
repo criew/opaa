@@ -735,14 +735,12 @@ class DirectorySyncServiceIntegrationTest {
   }
 
   // ---------------------------------------------------------------------------------------
-  // Failed apply must not be recorded as APPLIED: an earlier version wrote the status via a
-  // REQUIRES_NEW transaction that committed before the surrounding apply transaction could
-  // roll back, so a run that failed to actually apply could still end up durably marked
-  // APPLIED.
+  // A failed apply is recorded as FAILED, never as APPLIED: the status is written only after
+  // the apply transaction has rolled back (#2902).
   // ---------------------------------------------------------------------------------------
 
   @Test
-  void aFailedApplyDoesNotRecordAnAppliedStatus() {
+  void aFailedApplyIsRecordedAsFailedAndNotAsApplied() {
     UUID member = createUser(organizationId, "member-1");
     persistOrgUnit("dir-guid-1", "Referat 50", member);
     directoryClient.respondWith(
@@ -769,7 +767,8 @@ class DirectorySyncServiceIntegrationTest {
         statusRepository
             .findByOrganizationIdAndProviderId(organizationId, providerId)
             .orElseThrow();
-    assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.DRY_RUN);
+    assertThat(status.getLastOutcome()).isEqualTo(DirectorySyncOutcome.FAILED);
+    assertThat(status.getLastMessage()).isEqualTo(DirectorySyncService.FAILED_MESSAGE);
     assertThat(status.getLastAppliedAt()).isNull();
   }
 
