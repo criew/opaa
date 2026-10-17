@@ -9,6 +9,7 @@ stand-in inputs and check the release job of publish-images.yml as text.
 import gzip
 import hashlib
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -177,7 +178,12 @@ def inputs(tmp_path: Path) -> dict:
         report.write_text("| Paket |\n")
     template = tmp_path / "in" / "update-vermerk.md"
     template.write_text("# Update-Vermerk\n")
-    return dict(fact_sheets=sheets, delta=delta, licenses=licenses, template=template)
+    operations = tmp_path / "in" / "betrieb"
+    operations.mkdir()
+    for name in update_package.OPERATIONS_FILES:
+        (operations / name).write_text(f"# {name}\n")
+    return dict(fact_sheets=sheets, delta=delta, operations=operations, licenses=licenses,
+                template=template)
 
 
 def members(archive: Path) -> dict[str, tarfile.TarInfo]:
@@ -198,6 +204,8 @@ def test_the_package_holds_every_part_under_one_versioned_directory(tmp_path: Pa
     assert files == [
         "opaa-update-paket-1.2.3/LIESMICH.md",
         "opaa-update-paket-1.2.3/SHA256SUMS",
+        "opaa-update-paket-1.2.3/betrieb/antwortqualitaet.md",
+        "opaa-update-paket-1.2.3/betrieb/betriebsfolgen.md",
         "opaa-update-paket-1.2.3/delta/manifest-delta.json",
         "opaa-update-paket-1.2.3/delta/manifest-delta.md",
         "opaa-update-paket-1.2.3/faktenblaetter/datenkatalog.md",
@@ -213,7 +221,7 @@ def test_the_checksum_files_match_the_package(tmp_path: Path, inputs: dict) -> N
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
     sums = read(archive, "opaa-update-paket-1.2.3/SHA256SUMS").decode().splitlines()
-    assert len(sums) == 9
+    assert len(sums) == 11
     for line in sums:
         digest, path = line.split("  ")
         assert hashlib.sha256(read(archive, f"opaa-update-paket-1.2.3/{path}")).hexdigest() == digest
@@ -244,6 +252,10 @@ def test_the_readme_names_version_previous_release_and_the_verification(tmp_path
     assert "gh attestation verify opaa-update-paket-1.2.3.tar.gz --repo criew/opaa" in text
     assert "-PtoRef=v1.2.3" in text
     assert "Probelauf" not in text
+    assert "| `betrieb/betriebsfolgen.md` |" in text
+    assert "| `betrieb/antwortqualitaet.md` |" in text
+    assert "update_package.py operations --from <älteres Tag> --to v1.2.3" in text
+    assert "Betriebsfolgen (Bruch" not in text
 
 
 def test_a_first_release_says_that_every_entry_is_new(tmp_path: Path, inputs: dict) -> None:
@@ -272,9 +284,11 @@ def test_a_given_comparison_is_not_called_the_previous_final_release(tmp_path: P
     assert "vorigen finalen Release" not in text
 
 
-@pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses"])
+@pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses", "operations"])
 def test_a_missing_part_fails_the_package(tmp_path: Path, inputs: dict, missing: str) -> None:
-    if missing == "delta":
+    if missing == "operations":
+        (inputs["operations"] / "antwortqualitaet.md").unlink()
+    elif missing == "delta":
         (inputs["delta"] / "manifest-delta.json").unlink()
     elif missing == "fact_sheets":
         (inputs["fact_sheets"] / "faktenblaetter.json").unlink()
@@ -353,3 +367,355 @@ def test_publication_waits_for_the_package_and_the_release_carries_it() -> None:
     assert "GH_TOKEN: ${{ github.token }}" in release_job
     assert "update-package-attestation" in release_job
     assert "update-package/" in release_job
+
+
+# Operational consequences and answer quality (betrieb/), read from Git at both ends of the interval.
+
+NOTES = "docs/upgrade-notes/"
+CHANGELOG = "backend/src/main/resources/db/changelog/"
+VALUES = "deploy/helm/opaa/values.yaml"
+DEPLOYMENT = "deploy/helm/opaa/templates/backend-deployment.yaml"
+BASELINE = "eval/baseline/"
+
+
+def put(repo: Path, path: str, text: str) -> None:
+    target = repo / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+
+
+def snapshot(repo: Path, message: str) -> str:
+    git(repo, "add", "-A")
+    return commit(repo, message)
+
+
+def changeset_file(*ids: str) -> str:
+    return "databaseChangeLog:\n" + "".join(
+        f"  - changeSet:\n      id: {i}\n      author: opaa\n      changes:\n"
+        f"        - sql:\n            sql: SELECT 1;\n" for i in ids)
+
+
+def baseline(measured: str, ndcg: float, fingerprint: str = "markdown:3,pdf:5") -> str:
+    overall = {"n": 49, "hitRateAt5": 0.857, "mrr": 0.731, "ndcgAt10": ndcg, "recallAt10": 0.823,
+               "recallAt10Ceiling": 1.0, "hitCountAt5": 42}
+    return json.dumps({
+        "measurementContractVersion": 16,
+        "fixedPoints": {"embeddingModel": "nomic-embed-text:v1.5",
+                        "ingestionPipelineFingerprint": fingerprint},
+        "groups": {"overall": overall},
+        "measuredAt": measured,
+        "provenance": {"sourcePullRequest": f"CI-Lauf vom {measured}"},
+    }, indent=2)
+
+
+DELTA_JSON = {
+    "changes": [
+        {"group": "DATA_FLOWS", "section": "dataFlows", "id": "mail-gateway", "title": "mail-gateway",
+         "kind": "ADDED", "field": None, "before": None,
+         "after": {"id": "mail-gateway", "target": "Der SMTP-Server des Hauses", "viaOutboundProxy": "false"}},
+        {"group": "DATA_FLOWS", "section": "dataFlows", "id": "chat-model", "title": "chat-model",
+         "kind": "CHANGED", "field": "target", "before": "Das Chat-Modell", "after": "Das aktive Chat-Modell"},
+        {"group": "DEFAULTS", "section": "settings", "id": "opaa.rerank.enabled", "title": "x",
+         "kind": "CHANGED", "field": "defaultValue", "before": "false", "after": "true"},
+    ],
+}
+
+
+@pytest.fixture
+def interval(tmp_path: Path) -> dict:
+    """v1.2.2 holds one changeset, a raw-vector baseline and the chart; the commit after it adds
+    upgrade notes, three changesets, a chart port, a container port and a pipeline baseline."""
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    put(work, CHANGELOG + "db.changelog-master.yaml", "databaseChangeLog: []\n")
+    put(work, CHANGELOG + "foundation/2026-01-01-start.yaml", changeset_file("foundation-2026-01-01-start"))
+    put(work, VALUES, "backend:\n  # Port of the actuator\n  managementPort: 8081\n"
+                      "  service:\n    port: 8080\n")
+    put(work, DEPLOYMENT, "        ports:\n          - name: http\n            containerPort: 8080\n")
+    put(work, BASELINE + "verwaltung.json", baseline("2026-01-10", 0.700))
+    put(work, NOTES + "1.2.2.md", "- Alte Vorbereitung, die nicht mehr gilt.\n")
+    old = snapshot(work, "v1.2.2")
+    git(work, "tag", "v1.2.2", old)
+
+    put(work, NOTES + "1.2.3-rc.1.md", "- Vorbereitung des Kandidaten.\n")
+    put(work, NOTES + "1.2.3.md",
+        "1. **Datenbank sichern.** Dieser Stand entfernt eine Tabelle.\n"
+        "2. **Ports freigeben.** Der neue Metrik-Port muss erreichbar sein.\n\n"
+        "Neuindizierung: ja, rund eine Stunde je 10.000 Dokumente bei GPU-Einbettung\n")
+    put(work, NOTES + "1.3.0.md", "- Vorbereitung einer späteren Version.\n")
+    put(work, CHANGELOG + "identity/2026-02-01-sessions.yaml",
+        changeset_file("identity-2026-02-01-sessions", "identity-2026-02-01-sessions--index"))
+    put(work, CHANGELOG + "workspace/2026-02-02-spaces.yaml", changeset_file("workspace-2026-02-02-spaces"))
+    put(work, VALUES, "backend:\n  # Port of the actuator\n  managementPort: 8081\n"
+                      "  service:\n    port: 8080\nmetrics:\n  exporterPort: 9464\n")
+    put(work, DEPLOYMENT, "        ports:\n          - name: http\n            containerPort: 8080\n"
+                          "          - name: metrics\n"
+                          "            containerPort: {{ .Values.metrics.exporterPort }}\n")
+    put(work, BASELINE + "verwaltung.json", baseline("2026-02-10", 0.718, "markdown:4,pdf:5"))
+    put(work, BASELINE + "pipeline-verwaltung.json", baseline("2026-02-11", 0.640, "markdown:4,pdf:5"))
+    new = snapshot(work, "v1.2.3")
+    delta = write_delta(tmp_path / "manifest-delta.json", old, new, DELTA_JSON["changes"])
+    return dict(
+        repo=work,
+        old=update_package.Side(label="v1.2.2", commit=old, version="1.2.2"),
+        new=update_package.Side(label="v1.2.3", commit=new, version="1.2.3"),
+        delta=delta,
+    )
+
+
+def write_delta(path: Path, from_commit: str, to_commit: str, changes: list[dict]) -> Path:
+    """A manifest delta as ManifestDeltaGenerator writes it, reduced to what the package reads."""
+    path.write_text(json.dumps({
+        "from": {"kind": "ref", "commit": from_commit},
+        "to": {"kind": "ref", "commit": to_commit},
+        "changes": changes,
+    }), encoding="utf-8")
+    return path
+
+
+def report(interval: dict, **changes) -> dict[str, str]:
+    """The files for the interval; without an explicit delta_json, DELTA_JSON written for the
+    actual two commits."""
+    args = dict(repo=interval["repo"], previous=interval["old"], current=interval["new"])
+    args.update(changes)
+    if "delta_json" not in changes:
+        args["delta_json"] = write_delta(
+            interval["delta"].with_name("delta-for-interval.json"), args["previous"].commit,
+            args["current"].commit, DELTA_JSON["changes"])
+    return update_package.operations(**args)
+
+
+def section(text: str, heading: str) -> str:
+    start = text.index(f"## {heading}")
+    end = text.find("\n## ", start + 1)
+    return text[start:] if end < 0 else text[start:end]
+
+
+def test_note_changeset_and_new_data_flow_of_an_interval_appear_in_the_package(
+        tmp_path: Path, inputs: dict, interval: dict) -> None:
+    operations = tmp_path / "betrieb"
+    operations.mkdir()
+    for name, text in report(interval).items():
+        (operations / name).write_text(text, encoding="utf-8")
+    archive = update_package.assemble(
+        release(), out=tmp_path / "out", **{**inputs, "operations": operations})
+
+    text = read(archive, "opaa-update-paket-1.2.3/betrieb/betriebsfolgen.md").decode()
+    assert "**Ja.**" in section(text, "Bruch und Vorbereitung")
+    assert "Dieser Stand entfernt eine Tabelle." in text
+    migration = section(text, "Schemamigration")
+    assert "3 neue Changesets" in migration
+    assert "| identity | 2 |" in migration and "| workspace | 1 |" in migration
+    assert "nur vorwärts" in migration and "Datenbank sichern" in migration
+    egress = section(text, "Neue Ports und Egress-Ziele")
+    assert "`mail-gateway`: Der SMTP-Server des Hauses; über den Ausgangsproxy: nein" in egress
+    assert "Das Chat-Modell" in egress and "Das aktive Chat-Modell" in egress
+    assert "opaa.rerank.enabled" not in egress
+
+
+def test_only_the_notes_inside_the_interval_count_and_a_final_note_replaces_its_candidates(
+        interval: dict) -> None:
+    text = report(interval)["betriebsfolgen.md"]
+
+    assert "Vorbereitung für 1.2.3" in text
+    assert "Vorbereitung des Kandidaten" not in text
+    assert "Alte Vorbereitung" not in text
+    assert "späteren Version" not in text
+
+
+def test_a_pre_release_counts_the_notes_of_its_candidates_up_to_its_own(interval: dict) -> None:
+    candidate = update_package.Side(label="v1.2.3-rc.2", commit=interval["new"].commit, version="1.2.3-rc.2")
+    text = report(interval, current=candidate)["betriebsfolgen.md"]
+
+    assert "Vorbereitung des Kandidaten" in text
+    assert "Dieser Stand entfernt eine Tabelle." not in text
+
+
+def test_a_given_commit_as_comparison_counts_the_notes_it_does_not_hold(interval: dict) -> None:
+    previous = update_package.Side(label=interval["old"].commit[:9], commit=interval["old"].commit,
+                                   version=None)
+    text = report(interval, previous=previous)["betriebsfolgen.md"]
+
+    assert "Dieser Stand entfernt eine Tabelle." in text
+    assert "Alte Vorbereitung" not in text
+
+
+def test_an_interval_without_preparation_names_no_break(interval: dict) -> None:
+    repo = interval["repo"]
+    for name in ("1.2.3-rc.1.md", "1.3.0.md"):
+        (repo / NOTES / name).unlink()
+    put(repo, NOTES + "1.2.3.md", "Keine Vorbereitung nötig.\n")
+    now = update_package.Side(label="v1.2.3", commit=snapshot(repo, "none"), version="1.2.3")
+
+    text = report(interval, current=now)["betriebsfolgen.md"]
+
+    assert "**Nein.**" in section(text, "Bruch und Vorbereitung")
+    assert "Neuindizierung: nicht nötig" in section(text, "Neuindizierung")
+
+
+def test_the_reindexing_mark_and_its_estimate_come_from_the_note(interval: dict) -> None:
+    reindexing = section(report(interval)["betriebsfolgen.md"], "Neuindizierung")
+
+    assert "Neuindizierung: **nötig**" in reindexing
+    assert "rund eine Stunde je 10.000 Dokumente bei GPU-Einbettung" in reindexing
+    assert "`markdown` 3 → 4" in reindexing
+
+
+def test_a_note_without_reindexing_mark_says_so_and_names_no_estimate(interval: dict) -> None:
+    repo = interval["repo"]
+    put(repo, NOTES + "1.2.3.md", "- Datenbank sichern.\n")
+    now = update_package.Side(label="v1.2.3", commit=snapshot(repo, "unmarked"), version="1.2.3")
+
+    reindexing = section(report(interval, current=now)["betriebsfolgen.md"], "Neuindizierung")
+
+    assert "nicht gekennzeichnet" in reindexing
+    assert "Dauerschätzung: nicht angegeben" in reindexing
+
+
+def test_a_changed_default_embedding_model_asks_for_re_embedding(interval: dict, tmp_path: Path) -> None:
+    delta = write_delta(tmp_path / "embedding-delta.json", interval["old"].commit, interval["new"].commit, [
+        {"group": "MODELS_AND_PROMPTS", "section": "settings", "id": "spring.ai.openai.embedding.model",
+         "title": "x", "kind": "CHANGED", "field": "defaultValue", "before": "nomic-embed-text",
+         "after": "bge-m3"}])
+
+    reindexing = section(report(interval, delta_json=delta)["betriebsfolgen.md"], "Neuindizierung")
+
+    assert "Neueinbettung" in reindexing and "`nomic-embed-text` → `bge-m3`" in reindexing
+
+
+def test_new_ports_of_the_chart_appear_with_their_file(interval: dict) -> None:
+    egress = section(report(interval)["betriebsfolgen.md"], "Neue Ports und Egress-Ziele")
+
+    assert "`metrics.exporterPort`: 9464" in egress
+    assert "managementPort" not in egress
+    assert "`containerPort: {{ .Values.metrics.exporterPort }}`" in egress
+    assert "backend-deployment.yaml" in egress
+
+
+def test_without_the_manifest_delta_the_data_flows_are_reported_as_not_determined(interval: dict) -> None:
+    egress = section(report(interval, delta_json=None)["betriebsfolgen.md"], "Neue Ports und Egress-Ziele")
+
+    assert "nicht ermittelt" in egress
+
+
+def test_every_section_names_its_source(interval: dict) -> None:
+    files = report(interval)
+    text = files["betriebsfolgen.md"]
+
+    for heading, source in [
+        ("Bruch und Vorbereitung", "`docs/upgrade-notes/"),
+        ("Neuindizierung", "`docs/upgrade-notes/"),
+        ("Neuindizierung", "`eval/baseline/"),
+        ("Schemamigration", "`backend/src/main/resources/db/changelog/`"),
+        ("Neue Ports und Egress-Ziele", "`deploy/helm/opaa/"),
+        ("Neue Ports und Egress-Ziele", "delta/manifest-delta.json"),
+    ]:
+        part = section(text, heading)
+        assert "Quelle:" in part and source in part, (heading, source)
+    assert "Quelle:" in files["antwortqualitaet.md"] and "`eval/baseline/" in files["antwortqualitaet.md"]
+    assert interval["old"].commit in text and interval["new"].commit in text
+
+
+def test_answer_quality_names_both_versions_with_measurement_date(interval: dict) -> None:
+    raw = section(report(interval)["antwortqualitaet.md"], "Rohvektor-Pfad, verwaltung")
+
+    assert "| nDCG@10 | 0,700 | 0,718 |" in raw
+    assert "2026-01-10" in raw and "2026-02-10" in raw
+    assert "v1.2.2" in raw and "v1.2.3" in raw
+    assert "Messgrundlage geändert" in raw
+
+
+def test_missing_quality_values_are_reported_as_not_measured(interval: dict) -> None:
+    text = report(interval)["antwortqualitaet.md"]
+    pipeline = section(text, "Pipeline-Pfad, verwaltung")
+
+    assert "| nDCG@10 | nicht gemessen | 0,640 |" in pipeline
+    assert "Messlauf auf dem Commit dieser Version: nicht gemessen" in text
+
+
+def test_a_comparison_without_any_baseline_is_not_measured_for_every_value(tmp_path: Path) -> None:
+    work = tmp_path / "root-repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    root = commit(work, "root")
+    put(work, BASELINE + "verwaltung.json", baseline("2026-02-10", 0.718))
+    tip = snapshot(work, "tip")
+
+    files = update_package.operations(
+        work, update_package.Side(label=root, commit=root, version=None),
+        update_package.Side(label="v1.2.3", commit=tip, version="1.2.3"), None)
+
+    assert "| Hit Rate@5 | nicht gemessen | 0,857 |" in files["antwortqualitaet.md"]
+    assert "Kein Upgrade-Hinweis" in files["betriebsfolgen.md"]
+
+
+def test_the_same_interval_gives_the_same_files(interval: dict) -> None:
+    assert report(interval) == report(interval)
+
+
+def test_the_operations_command_writes_both_files(tmp_path: Path, interval: dict) -> None:
+    out = tmp_path / "betrieb-out"
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "operations", "--from", "v1.2.2", "--to", "HEAD",
+         "--out", str(out), "--delta-json", str(interval["delta"])],
+        cwd=interval["repo"], capture_output=True, text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert sorted(p.name for p in out.iterdir()) == sorted(update_package.OPERATIONS_FILES)
+    assert "`mail-gateway`" in (out / "betriebsfolgen.md").read_text(encoding="utf-8")
+
+
+def test_the_operations_command_reads_from_the_repository_root_when_started_in_a_subdirectory(
+        tmp_path: Path, interval: dict, monkeypatch: pytest.MonkeyPatch) -> None:
+    out = tmp_path / "from-subdirectory"
+    monkeypatch.chdir(interval["repo"] / "backend")
+
+    code = update_package.main(["operations", "--from", "v1.2.2", "--to", "HEAD", "--out", str(out),
+                                "--delta-json", str(interval["delta"])])
+
+    assert code == 0
+    text = (out / "betriebsfolgen.md").read_text(encoding="utf-8")
+    assert "**Ja.**" in section(text, "Bruch und Vorbereitung")
+    assert "3 neue Changesets" in section(text, "Schemamigration")
+    assert "`metrics.exporterPort`: 9464" in text
+
+
+def test_a_manifest_delta_of_another_interval_is_refused(tmp_path: Path, interval: dict) -> None:
+    other = write_delta(tmp_path / "other.json", interval["new"].commit, interval["new"].commit, [])
+
+    with pytest.raises(update_package.PackageError, match="from commit"):
+        report(interval, delta_json=other)
+
+
+def test_a_manifest_delta_without_commits_is_refused(tmp_path: Path, interval: dict) -> None:
+    bare = tmp_path / "bare.json"
+    bare.write_text(json.dumps(DELTA_JSON), encoding="utf-8")
+
+    with pytest.raises(update_package.PackageError, match="compares"):
+        report(interval, delta_json=bare)
+
+
+def test_a_given_manifest_delta_that_does_not_exist_is_an_error(tmp_path: Path, interval: dict) -> None:
+    with pytest.raises(update_package.PackageError, match="is missing"):
+        report(interval, delta_json=tmp_path / "missing.json")
+
+
+def test_no_preparation_with_a_reindexing_line_is_no_break(interval: dict) -> None:
+    repo = interval["repo"]
+    put(repo, NOTES + "1.2.3.md", "Keine Vorbereitung nötig.\n\nNeuindizierung: nein\n")
+    now = update_package.Side(label="v1.2.3", commit=snapshot(repo, "none, marked"), version="1.2.3")
+
+    text = report(interval, current=now)["betriebsfolgen.md"]
+
+    assert "**Nein.**" in section(text, "Bruch und Vorbereitung")
+    assert "Neuindizierung: nicht nötig" in section(text, "Neuindizierung")
+
+
+def test_a_bold_reindexing_line_keeps_no_asterisks_in_the_estimate(interval: dict) -> None:
+    repo = interval["repo"]
+    put(repo, NOTES + "1.2.3.md", "- Datenbank sichern.\n\n**Neuindizierung: ja, rund 2 h**\n")
+    now = update_package.Side(label="v1.2.3", commit=snapshot(repo, "bold"), version="1.2.3")
+
+    reindexing = section(report(interval, current=now)["betriebsfolgen.md"], "Neuindizierung")
+
+    assert "Dauerschätzung (1.2.3): rund 2 h\n" in reindexing
