@@ -1,5 +1,6 @@
 package io.opaa.indexing.job;
 
+import io.opaa.common.ProcessStart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -12,8 +13,8 @@ import org.springframework.stereotype.Component;
  * task left to complete them. Such a row is not merely stale bookkeeping: the partial unique index
  * locks its library out of every future trigger, with no way to resolve it from the UI.
  *
- * <p>{@link #recoverOnStartup()} covers the restart case - a fresh JVM cannot be running any task a
- * {@code RUNNING} row refers to (ADR-0021 assumes one process) - and {@link
+ * <p>{@link #recoverOnStartup()} covers the restart case - a row started before the {@link
+ * ProcessStart} has no task of this process behind it (ADR-0021 assumes one process) - and {@link
  * #recoverStaleRunningJobs()} covers everything without a restart: a task dropped while the
  * application kept running, or a run implausibly long in progress.
  */
@@ -24,22 +25,25 @@ public class IndexingJobRecoveryScheduler {
 
   private final IndexingJobService indexingJobService;
   private final RunRecoverySettings properties;
+  private final ProcessStart processStart;
 
   public IndexingJobRecoveryScheduler(
-      IndexingJobService indexingJobService, RunRecoverySettings properties) {
+      IndexingJobService indexingJobService,
+      RunRecoverySettings properties,
+      ProcessStart processStart) {
     this.indexingJobService = indexingJobService;
     this.properties = properties;
+    this.processStart = processStart;
   }
 
   /**
-   * Runs once, right after the application is ready to serve traffic. Deliberately an {@link
-   * ApplicationReadyEvent} listener, not something invoked from {@code main} directly: by the time
-   * this fires, the datasource and every {@code @Async} executor are fully initialized, so there is
-   * no risk of racing the very infrastructure this recovery depends on.
+   * Runs once, when the application is ready: the datasource and every {@code @Async} executor are
+   * initialized by then. The web server and the {@code @Scheduled} ticks may already have started
+   * runs, so only rows started before the {@link ProcessStart} are failed.
    */
   @EventListener(ApplicationReadyEvent.class)
   public void recoverOnStartup() {
-    int recovered = indexingJobService.recoverJobsOrphanedByRestart();
+    int recovered = indexingJobService.recoverJobsOrphanedByRestart(processStart.instant());
     if (recovered > 0) {
       log.warn(
           "Recovered {} indexing job(s) left RUNNING by a previous application run - each is now"

@@ -53,7 +53,7 @@ class GlobalExceptionHandlerProducibleTypesTest {
       MockMvcBuilders.standaloneSetup(new ProbeController())
           .setControllerAdvice(
               new GlobalExceptionHandler(
-                  new UploadProperties(null, null, 52_428_800L, null, 0, 0), Clock.systemUTC()))
+                  new UploadProperties(null, null, 52_428_800L, null, 0), Clock.systemUTC()))
           .build();
 
   private Logger rootLogger;

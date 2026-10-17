@@ -90,7 +90,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
   }
 
   @Test
-  void marksOnlyStalePendingUploadsAsFailedOnStartup() {
+  void marksOnlyPendingUploadsOfThePreviousProcessAsFailedOnStartup() {
     UUID stalePendingId =
         savePendingDocument("staleUpload.pdf", Instant.now().minus(2, ChronoUnit.HOURS));
     UUID freshPendingId = savePendingDocument("freshUpload.pdf", Instant.now());
@@ -108,7 +108,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
 
     Document freshUpload = documentRepository.findById(freshPendingId).orElseThrow();
     assertThat(freshUpload.getStatus())
-        .as("A PENDING row younger than the threshold is still legitimately in flight")
+        .as("A PENDING row created after the process start is still legitimately in flight")
         .isEqualTo(DocumentStatus.PENDING);
 
     Document staleIndexed = documentRepository.findById(staleIndexedId).orElseThrow();
@@ -122,6 +122,33 @@ class UploadPendingRecoveryRunnerIntegrationTest {
         .as(
             "#614 covers only the upload path - a stuck connector row"
                 + " is #501's still-open RUNNING recovery to fix, not this runner's")
+        .isEqualTo(DocumentStatus.PENDING);
+  }
+
+  /**
+   * The cutoff is the start of the process, not an age: an upload accepted seconds before the
+   * restart is as orphaned as an old one, and one accepted by this process after its start is still
+   * being worked on.
+   */
+  @Test
+  void failsAPendingUploadCreatedJustBeforeTheProcessStartedButNotOneCreatedAfter() {
+    Instant processStarted = Instant.now().minus(10, ChronoUnit.SECONDS);
+    UUID beforeStartId =
+        savePendingDocument("beforeStart.pdf", processStarted.minus(10, ChronoUnit.SECONDS));
+    UUID afterStartId =
+        savePendingDocument("afterStart.pdf", processStarted.plus(5, ChronoUnit.SECONDS));
+
+    runner.recover(processStarted);
+
+    Document beforeStart = documentRepository.findById(beforeStartId).orElseThrow();
+    assertThat(beforeStart.getStatus())
+        .as("An upload the previous process accepted just before it ended has no task left")
+        .isEqualTo(DocumentStatus.FAILED);
+    assertThat(beforeStart.getErrorMessage()).isEqualTo(UploadPendingRecoveryRunner.FAILURE_REASON);
+
+    Document afterStart = documentRepository.findById(afterStartId).orElseThrow();
+    assertThat(afterStart.getStatus())
+        .as("An upload this process accepted after its start is still in flight")
         .isEqualTo(DocumentStatus.PENDING);
   }
 

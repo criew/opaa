@@ -124,10 +124,11 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy);
 
   /**
-   * Fails every currently {@link JobStatus#RUNNING} row, unconditionally, once right after startup:
-   * a fresh JVM cannot still be running the {@code @Async} task such a row refers to, and leaving
-   * it {@code RUNNING} would lock its library out of every future trigger with no way to resolve it
-   * from the UI. A bulk {@code UPDATE}, so one statement covers every library's stuck row.
+   * Fails every {@link JobStatus#RUNNING} row started before {@code startedBefore}, the start of
+   * this process: no task of this process can be behind such a row, and leaving it {@code RUNNING}
+   * would lock its library out of every future trigger with no way to resolve it from the UI. A row
+   * started later is a live run of this process and stays. A bulk {@code UPDATE}, so one statement
+   * covers every library's stuck row.
    *
    * @return the number of rows recovered, purely for logging - the caller does not otherwise act on
    *     it
@@ -137,9 +138,11 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
   @Query(
       "update IndexingJob j set j.status = io.opaa.indexing.job.JobStatus.FAILED, j.errorMessage ="
           + " :errorMessage, j.completedAt = :completedAt where j.status ="
-          + " io.opaa.indexing.job.JobStatus.RUNNING")
-  int failAllRunningJobs(
-      @Param("errorMessage") String errorMessage, @Param("completedAt") Instant completedAt);
+          + " io.opaa.indexing.job.JobStatus.RUNNING and j.startedAt < :startedBefore")
+  int failRunningJobsStartedBefore(
+      @Param("errorMessage") String errorMessage,
+      @Param("startedBefore") Instant startedBefore,
+      @Param("completedAt") Instant completedAt);
 
   /**
    * Fails every {@link JobStatus#RUNNING} row whose {@link IndexingJob#getLastProgressAt()}

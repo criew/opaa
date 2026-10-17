@@ -154,7 +154,7 @@ class OperationalFailureStatusSpecificationTest {
   void theTwoStatusesAreTheOnesTheProductionHandlersAnswer() {
     GlobalExceptionHandler handler =
         new GlobalExceptionHandler(
-            new UploadProperties(null, null, 52_428_800L, null, 0, 0), Clock.systemUTC());
+            new UploadProperties(null, null, 52_428_800L, null, 0), Clock.systemUTC());
     Headers noHeaders = Headers.builder().build();
 
     assertThat(status(handler.handleTransientAiException(new TransientAiException("x"))))

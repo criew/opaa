@@ -37,7 +37,7 @@ class FilesystemUploadedOriginalStoreTest {
   void setUp() {
     store =
         new FilesystemUploadedOriginalStore(
-            new UploadProperties(storageDir.toString(), null, 1024L, null, 0, 0));
+            new UploadProperties(storageDir.toString(), null, 1024L, null, 0));
   }
 
   @Test

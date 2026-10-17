@@ -30,27 +30,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     executors read the same properties, actually double it instead, since the upload pool grew by
  *     the same amount unnoticed. Defaults (core=2, max=4, queue=20) mirror {@code
  *     opaa.indexing.thread-pool}'s own conservative defaults.
- * @param pendingRecoveryThresholdMinutes how long a document may stay {@code PENDING} before {@code
- *     UploadPendingRecoveryRunner} treats it as abandoned by a process that died mid-task and sets
- *     it to {@code FAILED} at the next application startup. Default 30 minutes: comfortably longer
- *     than parsing/embedding even a large upload should ever take, so a row is only ever caught
- *     here because nothing is actually still working on it.
  * @param orphanGraceMinutes how old a stored original must be before {@code
  *     OrphanedOriginalCleanupService} may report or remove it as orphaned (ADR-0030,
  *     "Konsequenzen"): the window between storing the bytes and inserting the row, and the whole
- *     asynchronous processing of an upload, must lie inside it. Default 60 minutes - twice {@link
- *     #pendingRecoveryThresholdMinutes}, so an upload still legitimately in flight is never
- *     mistaken for an orphan. A report may raise it per call, never lower it.
+ *     asynchronous processing of an upload, must lie inside it. Default 60 minutes, so an upload
+ *     still legitimately in flight is never mistaken for an orphan. A report may raise it per call,
+ *     never lower it.
  */
-@NoDataImpact("sizes, pools and recovery of uploads")
+@NoDataImpact("sizes and pools of uploads")
 @ConfigurationProperties(prefix = "opaa.upload")
 public record UploadProperties(
     String storagePath,
     @DataImpact String store,
     long maxFileSize,
     ThreadPool threadPool,
-    @NoDataImpact("marks an abandoned upload failed; it deletes nothing")
-        int pendingRecoveryThresholdMinutes,
     @DataImpact int orphanGraceMinutes) {
 
   public UploadProperties {
@@ -64,7 +57,6 @@ public record UploadProperties(
     if (threadPool == null) {
       threadPool = new ThreadPool(2, 4, 20);
     }
-    pendingRecoveryThresholdMinutes = positiveOr(pendingRecoveryThresholdMinutes, 30);
     orphanGraceMinutes = positiveOr(orphanGraceMinutes, 60);
   }
 

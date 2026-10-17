@@ -72,7 +72,7 @@ class OrphanedOriginalCleanupServiceTest {
     store =
         spy(
             new FilesystemUploadedOriginalStore(
-                new UploadProperties(storageDir.toString(), null, 1024L, null, 0, GRACE_MINUTES)));
+                new UploadProperties(storageDir.toString(), null, 1024L, null, GRACE_MINUTES)));
     service = service(store);
   }
 
@@ -81,7 +81,7 @@ class OrphanedOriginalCleanupServiceTest {
         libraryRepository,
         documentRepository,
         withStore,
-        new UploadProperties(storageDir.toString(), null, 1024L, null, 0, GRACE_MINUTES),
+        new UploadProperties(storageDir.toString(), null, 1024L, null, GRACE_MINUTES),
         Clock.fixed(now, ZoneOffset.UTC));
   }
 

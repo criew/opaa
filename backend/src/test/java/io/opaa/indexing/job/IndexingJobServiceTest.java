@@ -439,14 +439,18 @@ class IndexingJobServiceTest {
   // --- recovery of RUNNING rows orphaned by a restart or a stale/dropped task ---
 
   @Test
-  void recoverJobsOrphanedByRestartFailsEveryRunningRowWithARestartMessage() {
-    when(indexingJobRepository.failAllRunningJobs(anyString(), any(Instant.class))).thenReturn(3);
+  void recoverJobsOrphanedByRestartFailsRunningRowsStartedBeforeTheProcessWithARestartMessage() {
+    Instant processStart = Instant.parse("2026-10-17T08:00:00Z");
+    when(indexingJobRepository.failRunningJobsStartedBefore(
+            anyString(), eq(processStart), any(Instant.class)))
+        .thenReturn(3);
 
-    int recovered = service.recoverJobsOrphanedByRestart();
+    int recovered = service.recoverJobsOrphanedByRestart(processStart);
 
     assertThat(recovered).isEqualTo(3);
     verify(indexingJobRepository)
-        .failAllRunningJobs(eq("Durch Neustart abgebrochen"), any(Instant.class));
+        .failRunningJobsStartedBefore(
+            eq("Durch Neustart abgebrochen"), eq(processStart), any(Instant.class));
   }
 
   @Test
