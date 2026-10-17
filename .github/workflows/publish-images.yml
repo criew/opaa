@@ -198,8 +198,12 @@ jobs:
           labels: ${{ needs.prepare.outputs.labels }}
           # Backend and frontend report the version of the release tag. Outside a release the value
           # is empty and both keep their development version, with the same cache key as without
-          # the argument (the Dockerfiles declare it with an empty default).
-          build-args: OPAA_VERSION=${{ needs.prepare.outputs.version }}
+          # the argument (the Dockerfiles declare it with an empty default). The commit is only
+          # read by the backend's last stage (data collection disclosure), so no build layer
+          # depends on it.
+          build-args: |
+            OPAA_VERSION=${{ needs.prepare.outputs.version }}
+            OPAA_COMMIT=${{ github.sha }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           # SBOM and provenance attestations are attached per platform and carried over into the
           # index by publish; retrieval is documented in docs/sbom.md.
