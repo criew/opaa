@@ -75,8 +75,8 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
     Verzeichnisabgleich, Härtung des Keycloak, Erststart, Notfallprozedur, Testkonten
   - [Branding](branding.md) — Produktname, Farben und Bilder der Installation
   - [Nachvollziehbarkeit](nachvollziehbarkeit.md) — was OPAA aus dem Code nachweist: Faktenblätter,
-    wo sie liegen, das Update-Paket eines Release, wie man sie erzeugt, was bei jeder Änderung
-    geprüft wird
+    wo sie liegen, das Update-Paket eines Release, wie man sie erzeugt, die Auskunft über die
+    Datenerhebung einer Installation, was bei jeder Änderung geprüft wird
 - **Konten und Rechte**
   - [Benutzerverwaltung](benutzerverwaltung.md) — lokale Konten, Rollen und Anlegerechte,
     Selbstregistrierung, verbundene Konten

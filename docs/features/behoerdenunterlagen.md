@@ -552,11 +552,11 @@ Eine geänderte Voreinstellung betrifft nur Instanzen, die sie nicht überschrie
 Konnektor nur, wer ihn einschaltet. Umgekehrt ist eine von der Dienststelle verlängerte Frist ebenso
 beteiligungsrelevant wie eine Produktänderung. Deshalb:
 
-- Eine Instanz erzeugt die **Auskunft über die Datenerhebung** samt Konfigurationsexport: das Manifest
-  der eingesetzten Version, verbunden mit den wirksamen Werten der Instanz, ohne Geheimnisse und ohne
-  personenbezogene Daten; jeder Abruf wird protokolliert (#2558). Das ist der in
-  [security-and-compliance.md](./security-and-compliance.md#export-und-auskunft) beschriebene, bisher
-  nicht gebaute zweite Export.
+- **(gebaut, #2558)** Eine Instanz erzeugt die **Auskunft über die Datenerhebung** samt
+  Konfigurationsexport: das Manifest der eingesetzten Version, verbunden mit den wirksamen Werten der
+  Instanz, ohne Geheimnisse und ohne personenbezogene Daten; jeder Abruf wird protokolliert. Das ist
+  der in [security-and-compliance.md](./security-and-compliance.md#export-und-auskunft) beschriebene
+  zweite Export; die JSON-Fassung trägt das Manifest in der Form von `faktenblaetter.json`.
 - Ein Werkzeug gleicht das Delta gegen diesen Export ab und kennzeichnet je Eintrag „betrifft diese
   Instanz“ oder „betrifft sie nicht“; der Vergleich zweier Exporte zeigt zusätzlich die „Änderungen der
   Dienststelle“ mit denselben Stufenregeln. Es läuft offline auf Dateien, auch beim
