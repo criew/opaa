@@ -287,10 +287,10 @@ public class DirectorySyncService {
 
   /**
    * Reads the provider's directory and hands the snapshot to {@code plan}. An unreachable directory
-   * never reaches {@link DirectorySyncPlanExecutor} at all, so the header entry of such a run is
-   * written here - "Kopfeintrag des Laufs mit Ergebnis" is otherwise not written for this outcome.
-   * No ambient transaction is open here (this class deliberately holds none - see the class
-   * Javadoc), so that call commits immediately on its own.
+   * never reaches {@link DirectorySyncPlanExecutor} at all, and a failed run leaves nothing of the
+   * executor's behind, so the header entry of both is written here. No ambient transaction is open
+   * here (this class deliberately holds none - see the class Javadoc), so each write commits on its
+   * own, and a failure is recorded only after the executor's transaction has rolled back.
    */
   private SyncReport execute(
       SyncTarget target, BiFunction<DirectorySnapshot, Instant, SyncReport> plan) {
@@ -300,28 +300,45 @@ public class DirectorySyncService {
       snapshot = directoryClient.fetchSnapshot(target.organizationId(), target.providerId());
     } catch (DirectoryUnavailableException e) {
       return recordUnreachable(target, now, e);
+    } catch (RuntimeException e) {
+      recordFailed(target, now, e);
+      throw e;
     }
-
-    // If the executor's transaction fails to commit (e.g. a directory-supplied value that violates
-    // a column constraint), the exception propagates from here and nothing below runs - so a failed
-    // apply can never be recorded as APPLIED.
-    SyncReport report = plan.apply(snapshot, now);
+    SyncReport report;
+    try {
+      report = plan.apply(snapshot, now);
+    } catch (RuntimeException e) {
+      recordFailed(target, now, e);
+      throw e;
+    }
     recordStatusSafely(target, now, report.outcome(), report.message(), report.changedFraction());
     return report;
   }
 
-  private SyncReport recordUnreachable(
-      SyncTarget target, Instant now, DirectoryUnavailableException cause) {
-    String message = "Verzeichnis nicht erreichbar. Der letzte bekannte Stand bleibt in Kraft.";
-    log.warn(
-        "Directory sync: directory unreachable for provider {} of organization {}: {}",
-        target.providerId(),
-        target.organizationId(),
-        cause.getMessage());
-    recordStatusSafely(target, now, DirectorySyncOutcome.UNREACHABLE, message, 0.0);
+  /**
+   * Records a run that broke off with an error as {@code FAILED}, so the schedule waits for the
+   * interval instead of fetching the directory on every tick. The caller rethrows {@code cause},
+   * which is logged there; neither the status nor the audit entry names it. A failure of either
+   * write is logged and attached to {@code cause} rather than replacing it.
+   */
+  private void recordFailed(SyncTarget target, Instant now, RuntimeException cause) {
+    recordStatusSafely(target, now, DirectorySyncOutcome.FAILED, FAILED_MESSAGE, 0.0);
+    try {
+      recordFailureEntry(target, DirectorySyncOutcome.FAILED, FAILED_MESSAGE);
+    } catch (RuntimeException auditFailure) {
+      log.error(
+          "Directory sync: failed to record the audit entry of the failed run for provider {}",
+          target.providerId(),
+          auditFailure);
+      cause.addSuppressed(auditFailure);
+    }
+  }
+
+  /** The header entry of a run for which {@link DirectorySyncPlanExecutor} wrote none. */
+  private void recordFailureEntry(SyncTarget target, DirectorySyncOutcome outcome, String message) {
     UUID correlationRef = UUID.randomUUID();
     Map<String, Object> after = new HashMap<>();
-    after.put("outcome", DirectorySyncOutcome.UNREACHABLE.name());
+    after.put("outcome", outcome.name());
     after.put("providerId", target.providerId().toString());
     auditEventRecorder.recordSystemProcessAction(
         AuditEvent.builder()
@@ -337,6 +354,18 @@ public class DirectorySyncService {
             .reason(message)
             .correlationRef(correlationRef.toString())
             .build());
+  }
+
+  private SyncReport recordUnreachable(
+      SyncTarget target, Instant now, DirectoryUnavailableException cause) {
+    String message = "Verzeichnis nicht erreichbar. Der letzte bekannte Stand bleibt in Kraft.";
+    log.warn(
+        "Directory sync: directory unreachable for provider {} of organization {}: {}",
+        target.providerId(),
+        target.organizationId(),
+        cause.getMessage());
+    recordStatusSafely(target, now, DirectorySyncOutcome.UNREACHABLE, message, 0.0);
+    recordFailureEntry(target, DirectorySyncOutcome.UNREACHABLE, message);
     return new SyncReport(
         DirectorySyncOutcome.UNREACHABLE,
         now,
