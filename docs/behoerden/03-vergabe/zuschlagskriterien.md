@@ -71,7 +71,7 @@ Fassung beim BSI zu prüfen.
 
 | Aussage | Fundstelle | Herkunft |
 |---|---|---|
-| Kriterienkatalog C3A des BSI als Beschaffungsinstrument für digitale Souveränität, veröffentlicht für die Cloud-Beschaffung; Übertragbarkeit zu prüfen | BSI, Kriterienkatalog C3A; Fassung und Fundstelle zu prüfen | Recherche vom 13.10.2026 |
+| Kriterienkatalog C3A des BSI (27.4.2026) als Beschaffungsinstrument für digitale Souveränität, veröffentlicht für die Cloud-Beschaffung; Übertragbarkeit zu prüfen | [vergabeblog.de, 30.4.2026](https://vergabeblog.de/2026-04-30/bsi-veroeffentlicht-c3a-neuer-massstab-fuer-digitale-souveraenitaet-in-der-cloud-beschaffung/); amtliche Fundstelle beim BSI zu prüfen | Fachblog, kein Normtext; Recherche vom 13.10.2026 |
 | Zuschlag auf das wirtschaftlichste Angebot; Kriterien und Gewichtung vorab bekannt geben; Bezug zum Auftragsgegenstand | GWB und VgV oberhalb, UVgO bzw. Landesrecht unterhalb der EU-Schwellenwerte; Paragrafen zu prüfen | nicht Teil der Recherche |
 | Pflichten eines kommerziellen Bereitstellers als Hersteller | [VO (EU) 2024/2847](https://eur-lex.europa.eu/eli/reg/2024/2847/oj/deu) | Normtext; Recherche vom 13.10.2026 |
 
