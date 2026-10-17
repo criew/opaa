@@ -328,6 +328,10 @@ describe('indexingStore', () => {
     expect(mockTriggerIndexing).toHaveBeenLastCalledWith('library-a')
   })
   describe('status fetch failures while polling (#2908)', () => {
+    beforeEach(() => {
+      mockGetIndexingStatus.mockReset()
+    })
+
     it('keeps the run status and keeps polling after a single failed fetch', async () => {
       vi.useFakeTimers()
       mockTriggerIndexing.mockResolvedValueOnce(runningStatus())
@@ -342,7 +346,7 @@ describe('indexingStore', () => {
       expect(afterFailure?.statusUnknown).toBe(false)
       expect(useIndexingStore.getState().snackbar.open).toBe(false)
 
-      mockGetIndexingStatus.mockResolvedValueOnce(runningStatus({ documentCount: 3 }))
+      mockGetIndexingStatus.mockResolvedValue(runningStatus({ documentCount: 3 }))
       await vi.advanceTimersByTimeAsync(30_000)
 
       const recovered = useIndexingStore.getState().runsByLibrary['library-a']

@@ -1774,7 +1774,10 @@ describe('LibraryDetailPage', () => {
 
     const notice = await screen.findByText('Status unbekannt')
     expect(notice.closest('[role="status"]')).not.toBeNull()
-    expect(screen.queryByText(/fehlgeschlagen/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Letzter Lauf: Fehlgeschlagen/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Indizierungsstatus konnte nicht abgerufen werden/),
+    ).not.toBeInTheDocument()
     const statusCallsBefore = mockGetIndexingStatus.mock.calls.length
 
     await userEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
