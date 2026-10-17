@@ -86,6 +86,7 @@ ein Update verantworten, ohne den Code zu lesen:
 |---|---|
 | `LIESMICH.md` | Version, Commit, Vergleichsstand, Prüfbefehle |
 | `delta/` | Was sich an den Fakten seit dem vorigen finalen Release geändert hat, je Änderung vorher und nachher, mit Stufenvorschlag (Bagatelle, Anzeige, Zustimmung) und dem Hinweis, ob Verzeichnis der Verarbeitungstätigkeiten, Datenschutz-Folgenabschätzung oder Sicherheitskonzept betroffen sind; dazu die als datenrelevant gekennzeichneten Änderungen, deren Wirkung nicht im Manifest steht |
+| `betrieb/` | Was das Update für den Betrieb bedeutet: ob vorher etwas vorzubereiten ist, ob eine Neuindizierung (mit Dauerschätzung), ein Nachzug oder eine Neueinbettung ansteht, wie viele Schemaänderungen beim Start laufen, welche Ports und Ziele ausgehender Verbindungen neu sind; dazu die Kennzahlen der Suchqualität beider Versionen mit Messdatum. Jede Angabe nennt ihre Quelle; ein fehlender Messwert steht als „nicht gemessen“ da |
 | `faktenblaetter/` | die Faktenblätter dieser Version |
 | `lizenzen/` | die Lizenzübersicht der ausgelieferten Abhängigkeiten |
 | `update-vermerk.md` | Vorlage, in der die Behörde Bewertung je Stelle und Entscheidung festhält |
@@ -109,11 +110,17 @@ Release. Wer etwa von 0.12 auf 0.17 geht, erzeugt das Delta über den ganzen Spr
 mit Tags:
 
 ```bash
-# aus backend/
+# Delta, aus backend/
+cd backend
 ./gradlew complianceDelta -PfromRef=v0.12.0 -PtoRef=v0.17.0
+# Betriebsfolgen und Suchqualität für denselben Sprung, aus der Wurzel des Checkouts
+cd ..
+python3 .github/scripts/update_package.py operations --from v0.12.0 --to v0.17.0 \
+  --out /tmp/betrieb --delta-json backend/build/compliance/delta/manifest-delta.json
 ```
 
-Das Ergebnis liegt unter `backend/build/compliance/delta/`.
+Das Delta liegt unter `backend/build/compliance/delta/`, die Betriebsfolgen unter `/tmp/betrieb/`.
+Die Vorbereitung aller übersprungenen Versionen steht dort zusammengefasst.
 
 ## Ein Faktenblatt selbst erzeugen
 
@@ -158,10 +165,8 @@ Form der Verweise. Wie Entwickler das Manifest nachpflegen, steht in
 
 ## Was nicht gebaut ist
 
-- Betriebsfolgen (Bruch, Neuindizierung, Schemamigration, neue Ports oder Ziele) und
-  Antwortqualität im Update-Paket ([#2555](https://github.com/criew/opaa/issues/2555)). Bis dahin
-  nennen die Release-Notizen unter „Vorbereitung für Bestandsinstallationen“, was vor dem Update zu
-  tun ist.
+- Ein Messwert der Suchqualität genau für die Commits eines Release; das Update-Paket nennt die
+  Referenzwerte, die im Stand jeder Version gelten, mit ihrem Messdatum.
 - Ein Abgleich des Deltas mit der Konfiguration einer bestimmten Installation
   ([#2558](https://github.com/criew/opaa/issues/2558),
   [#2559](https://github.com/criew/opaa/issues/2559)).

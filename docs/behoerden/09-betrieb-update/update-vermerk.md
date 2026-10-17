@@ -25,11 +25,14 @@ liegt:
   Änderungen, deren Wirkung nicht im Manifest steht,
 - `faktenblaetter/`: die Fakten der Zielversion, etwa {{faktenblatt:datenfluesse}} und
   {{faktenblatt:fristen}},
-- die Release-Notizen mit den Vorbereitungsschritten für Bestandsinstallationen.
+- `betrieb/betriebsfolgen.md`: Bruch und Vorbereitung aus den Upgrade-Hinweisen aller Versionen
+  seit dem vorigen finalen Release, Neuindizierung mit Dauerschätzung, Schemamigration, neue Ports
+  und Egress-Ziele,
+- `betrieb/antwortqualitaet.md`: die Kennzahlen der Suchqualität beider Versionen mit Messdatum.
 
-Überspringt die Behörde Versionen, vergleicht das Delta im Paket nur mit dem vorigen finalen
-Release. Für den ganzen Sprung erzeugt der Betrieb das kumulierte Delta zwischen eingesetzter und
-Zielversion (Aufruf in `LIESMICH.md` des Pakets) und legt es diesem Vermerk bei.
+Überspringt die Behörde Versionen, vergleicht das Paket nur mit dem vorigen finalen Release. Für den
+ganzen Sprung erzeugt der Betrieb Delta und Betriebsfolgen zwischen eingesetzter und Zielversion
+(Aufrufe in `LIESMICH.md` des Pakets) und legt sie diesem Vermerk bei.
 
 Stufen und Bezüge im Delta sind Vorschläge; die Bewertung trifft die Behörde. Angaben in eckigen
 Klammern **[…]** ersetzt die Behörde. Eine Stelle, die nicht beteiligt ist, wird gestrichen oder mit
@@ -54,7 +57,11 @@ Klammern **[…]** ersetzt die Behörde. Eine Stelle, die nicht beteiligt ist, w
 | Änderungen mit Vorschlag Anzeige | [Anzahl] |
 | Änderungen mit Vorschlag Bagatelle | [Anzahl] |
 | Weitere gekennzeichnete Änderungen | [Pull Requests aus dem Abschnitt im Delta, oder „keine“] |
-| Vorbereitung für Bestandsinstallationen | [aus den Release-Notizen, oder „keine“] |
+| Vorbereitung für Bestandsinstallationen | [aus `betrieb/betriebsfolgen.md`, Abschnitt „Bruch und Vorbereitung“, oder „keine“] |
+| Neuindizierung, Nachzug, Neueinbettung | [aus `betrieb/betriebsfolgen.md`, mit Dauerschätzung, oder „keine“] |
+| Schemamigration und Sicherung | [Anzahl der Changesets; Sicherung erstellt am TT.MM.JJJJ] |
+| Neue Ports und Egress-Ziele | [aus `betrieb/betriebsfolgen.md`; Freigaben beantragt am TT.MM.JJJJ, oder „keine“] |
+| Antwortqualität | [Kennzahlen beider Versionen aus `betrieb/antwortqualitaet.md`, oder „nicht gemessen“] |
 | Abweichende Einstellungen der Installation | [Voreinstellungen, die die Installation überschrieben hat und die das Delta deshalb anders trifft] |
 
 ## Bewertung je Stelle

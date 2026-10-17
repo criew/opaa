@@ -50,10 +50,13 @@ Kommunikationsverbindungen oder Voreinstellungen ändern, und der Baustein OPS.1
 
 Jedes Release trägt am GitHub-Release ein Update-Paket mit den Faktenblättern der neuen Version,
 dem Delta zum vorigen finalen Release (je Änderung mit Hinweis, ob das Sicherheitskonzept
-fortzuschreiben ist) und der Vorlage [Update-Vermerk](../09-betrieb-update/update-vermerk.md);
-Inhalt und Prüfung beschreibt das [Release-Verfahren](../../releases.md#update-paket). Betriebsfolgen
-wie neue Ports oder Egress-Ziele enthält es noch nicht
-([#2555](https://github.com/criew/opaa/issues/2555)); bis dahin gilt Schritt 1.
+fortzuschreiben ist), den Betriebsfolgen und der Vorlage
+[Update-Vermerk](../09-betrieb-update/update-vermerk.md); Inhalt und Prüfung beschreibt das
+[Release-Verfahren](../../releases.md#update-paket). Die Betriebsfolgen (`betrieb/betriebsfolgen.md`)
+fassen die Schritte 1 und 4 für das ganze Intervall zusammen: Vorbereitung aus den Upgrade-Hinweisen,
+Schemamigration mit dem Hinweis auf die Sicherung, neue Ports im Helm-Chart und neue Egress-Ziele, je
+mit Quelle. Für das Patch- und Änderungsmanagement (OPS.1.1.3) sind sie der Beleg, was ein Update
+im Betrieb verlangt; die Release-Notizen bleiben die Quelle der einzelnen Version.
 
 ## Zielobjekte einer Installation
 
