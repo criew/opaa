@@ -40,7 +40,7 @@ für die Reihenfolge und keine Umlaute. Ein Verzeichnis entsteht mit seiner erst
 
 | Art | Herkunft | Ablage |
 |---|---|---|
-| **generiert** | aus dem Fakten-Manifest im Code erzeugt (Faktenblätter, [#2550](https://github.com/criew/opaa/issues/2550)) | **nicht eingecheckt**; erscheint als CI-Artefakt jedes Laufs auf `main` und am GitHub-Release der Version ([#2556](https://github.com/criew/opaa/issues/2556)) |
+| **generiert** | aus dem Fakten-Manifest im Code erzeugt (Faktenblätter, [#2550](https://github.com/criew/opaa/issues/2550)) | **nicht eingecheckt**; erscheint als CI-Artefakt jedes Laufs auf `main` und im Update-Paket am GitHub-Release der Version |
 | **redaktionell** | von Hand geschrieben | eingecheckt in diesem Ordner |
 
 Jedes Dokument in diesem Ordner außer dieser README ist redaktionell. Generierte Faktenblätter tragen
@@ -64,10 +64,14 @@ beschreibt, steht im Blatt unter „Noch nicht erfasst“, statt zu fehlen.
 
 **Wo sie liegen:** Für `main` als Artefakt `compliance-faktenblaetter` des letzten Laufs des
 Workflows CI auf `main` (GitHub, Reiter „Actions“, Lauf öffnen, Abschnitt „Artifacts“), für ein
-Release am GitHub-Release der Version ([#2556](https://github.com/criew/opaa/issues/2556)). Lokal
-erzeugt sie `./gradlew complianceDocs` (aus `backend/`) unter `backend/build/compliance/faktenblaetter/`.
+Release im Update-Paket `opaa-update-paket-X.Y.Z.tar.gz` am GitHub-Release der Version, unter
+`faktenblaetter/` ([Update-Paket](../releases.md#update-paket)). Dort liegen auch das Delta zum
+vorigen Release und die Vorlage
+[Update-Vermerk](09-betrieb-update/update-vermerk.md). Lokal erzeugt sie `./gradlew complianceDocs`
+(aus `backend/`) unter `backend/build/compliance/faktenblaetter/`.
 
 **Kopf:** `gilt-fuer` (OPAA-Version, außerhalb eines Release `0.0.0-dev`), `commit`, `erzeugt-am`
+(im Update-Paket das Datum des Commits)
 und `erzeugung: generiert`; unter dem Titel der Hinweis „Fakten aus dem Code; rechtliche Bewertung
 bleibt bei der Behörde.“
 

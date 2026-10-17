@@ -1,0 +1,355 @@
+"""Self-check for update_package.py, the update package of the release run (docs/releases.md).
+
+Only a release tag runs the package job, and no pull request does, so a wrong previous release, a
+non-repeatable archive or a cache in the release job would surface at a release at the earliest.
+These cases run the previous-release rule against a local repository, assemble a package from
+stand-in inputs and check the release job of publish-images.yml as text.
+"""
+
+import gzip
+import hashlib
+import importlib.util
+import os
+import re
+import subprocess
+import sys
+import tarfile
+from pathlib import Path
+
+import pytest
+
+HERE = Path(__file__).resolve().parent
+SCRIPT = HERE / "update_package.py"
+WORKFLOW = HERE.parent / "workflows" / "publish-images.yml"
+RELEASE_NOTES = HERE.parents[1] / "deploy" / "helm" / "ci" / "release-notes.sh"
+
+spec = importlib.util.spec_from_file_location("update_package", SCRIPT)
+update_package = importlib.util.module_from_spec(spec)
+sys.modules["update_package"] = update_package
+spec.loader.exec_module(update_package)
+
+
+def git(cwd: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.org", *args],
+        cwd=cwd, check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
+def commit(repo: Path, message: str) -> str:
+    git(repo, "commit", "-q", "--allow-empty", "-m", message)
+    return git(repo, "rev-parse", "HEAD")
+
+
+@pytest.fixture
+def repo(tmp_path: Path) -> Path:
+    """main: c1 (v0.1.0-rc.1) - c2 (v0.1.0) - c3 (v0.1.1) - c4 (v0.2.0-rc.1); a side branch from
+    c2 carries v0.1.5, which main never contains."""
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    c1 = commit(work, "c1")
+    git(work, "tag", "v0.1.0-rc.1", c1)
+    c2 = commit(work, "c2")
+    git(work, "tag", "-a", "-m", "OPAA v0.1.0", "v0.1.0", c2)
+    git(work, "checkout", "-q", "-b", "side")
+    git(work, "tag", "v0.1.5", commit(work, "side"))
+    git(work, "checkout", "-q", "main")
+    git(work, "tag", "v0.1.1", commit(work, "c3"))
+    git(work, "tag", "v0.2.0-rc.1", commit(work, "c4"))
+    git(work, "tag", "not-a-release", "HEAD")
+    git(work, "tag", "v0.2", "HEAD")
+    return work
+
+
+def previous(repo: Path, tag: str, at: str | None = None) -> str | None:
+    return update_package.previous_final_tag(repo, tag, at or tag)
+
+
+def test_a_pre_release_compares_with_the_last_final_release_not_with_a_pre_release(repo: Path) -> None:
+    assert previous(repo, "v0.2.0-rc.1") == "v0.1.1"
+
+
+def test_a_final_release_on_the_commit_of_its_candidate_compares_with_the_last_final_release(repo: Path) -> None:
+    git(repo, "tag", "v0.2.0", "v0.2.0-rc.1")
+
+    assert previous(repo, "v0.2.0") == "v0.1.1"
+
+
+def test_a_patch_release_without_code_change_compares_with_the_release_on_the_same_commit(repo: Path) -> None:
+    git(repo, "tag", "v0.1.2", "v0.1.1")
+
+    assert previous(repo, "v0.1.2") == "v0.1.1"
+
+
+def test_the_first_final_release_has_no_previous_one(repo: Path) -> None:
+    assert previous(repo, "v0.1.0") is None
+    assert previous(repo, "v0.1.0-rc.1") is None
+
+
+def test_a_tag_outside_the_history_of_the_release_never_counts(repo: Path) -> None:
+    assert previous(repo, "v0.1.1") == "v0.1.0"
+
+
+def test_a_tag_of_the_same_or_a_higher_version_never_counts(repo: Path) -> None:
+    git(repo, "tag", "v1.0.0", "v0.1.0-rc.1")
+
+    assert previous(repo, "v0.2.0-rc.1") == "v0.1.1"
+
+
+def test_a_trial_names_the_commit_its_tag_does_not_exist_for(repo: Path) -> None:
+    assert previous(repo, "v0.3.0", "main") == "v0.1.1"
+
+
+@pytest.mark.parametrize("tag", ["v0.2", "0.2.0", "v0.2.0-", "release"])
+def test_a_tag_that_is_no_release_version_is_refused(repo: Path, tag: str) -> None:
+    with pytest.raises(update_package.PackageError, match="no release tag"):
+        previous(repo, tag, "main")
+
+
+def test_an_unknown_commit_is_refused(repo: Path) -> None:
+    with pytest.raises(update_package.PackageError, match="unknown commit"):
+        previous(repo, "v0.3.0", "--output=/tmp/x")
+
+
+def test_the_command_prints_the_previous_release_or_nothing(repo: Path) -> None:
+    def cli(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, str(SCRIPT), "previous", *args],
+                              cwd=repo, capture_output=True, text=True)
+
+    assert cli("--tag", "v0.2.0-rc.1").stdout == "v0.1.1\n"
+    first = cli("--tag", "v0.1.0")
+    assert (first.returncode, first.stdout) == (0, "")
+    assert cli("--tag", "v0.2").returncode == 1
+
+
+def test_without_a_previous_release_the_delta_starts_at_the_oldest_root_commit(tmp_path: Path) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    oldest = commit(work, "first root")
+    git(work, "checkout", "-q", "--orphan", "other")
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.org",
+         "commit", "-q", "--allow-empty", "-m", "second root"],
+        cwd=work, check=True, env={**os.environ, "GIT_COMMITTER_DATE": "2030-01-01T00:00:00Z"},
+    )
+    git(work, "checkout", "-q", "main")
+    git(work, "merge", "-q", "--allow-unrelated-histories", "-m", "join", "other")
+
+    assert update_package.empty_base(work, "HEAD") == oldest
+
+
+def test_a_root_commit_with_a_manifest_is_no_empty_base(tmp_path: Path) -> None:
+    work = tmp_path / "repo"
+    git(tmp_path, "init", "-q", "-b", "main", work.as_posix())
+    manifest = work / update_package.MANIFEST_PATH
+    manifest.mkdir(parents=True)
+    (manifest / "audit-log.yaml").write_text("title: x\n")
+    git(work, "add", ".")
+    commit(work, "root with manifest")
+
+    with pytest.raises(update_package.PackageError, match="already holds a manifest"):
+        update_package.empty_base(work, "HEAD")
+
+
+EPOCH = 1_790_000_000
+
+
+def release(**changes) -> "update_package.Release":
+    values = dict(version="1.2.3", tag="v1.2.3", commit="a" * 40, previous="v1.2.2",
+                  previous_commit="b" * 40, trial=False, repository="criew/opaa", epoch=EPOCH)
+    values.update(changes)
+    return update_package.Release(**values)
+
+
+@pytest.fixture
+def inputs(tmp_path: Path) -> dict:
+    sheets = tmp_path / "in" / "faktenblaetter"
+    sheets.mkdir(parents=True)
+    for name in ("datenkatalog.md", "fristen.md"):
+        (sheets / name).write_text(f"# {name}\n")
+    (sheets / "faktenblaetter.json").write_text("{}\n")
+    delta = tmp_path / "in" / "delta"
+    delta.mkdir()
+    (delta / "manifest-delta.md").write_text("# Delta\n")
+    (delta / "manifest-delta.json").write_text("{}\n")
+    licenses = [tmp_path / "in" / "lizenzen-backend.md", tmp_path / "in" / "lizenzen-frontend.md"]
+    for report in licenses:
+        report.write_text("| Paket |\n")
+    template = tmp_path / "in" / "update-vermerk.md"
+    template.write_text("# Update-Vermerk\n")
+    return dict(fact_sheets=sheets, delta=delta, licenses=licenses, template=template)
+
+
+def members(archive: Path) -> dict[str, tarfile.TarInfo]:
+    with tarfile.open(archive) as tar:
+        return {m.name: m for m in tar.getmembers()}
+
+
+def read(archive: Path, name: str) -> bytes:
+    with tarfile.open(archive) as tar:
+        return tar.extractfile(name).read()
+
+
+def test_the_package_holds_every_part_under_one_versioned_directory(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    assert archive.name == "opaa-update-paket-1.2.3.tar.gz"
+    files = sorted(n for n, m in members(archive).items() if m.isfile())
+    assert files == [
+        "opaa-update-paket-1.2.3/LIESMICH.md",
+        "opaa-update-paket-1.2.3/SHA256SUMS",
+        "opaa-update-paket-1.2.3/delta/manifest-delta.json",
+        "opaa-update-paket-1.2.3/delta/manifest-delta.md",
+        "opaa-update-paket-1.2.3/faktenblaetter/datenkatalog.md",
+        "opaa-update-paket-1.2.3/faktenblaetter/faktenblaetter.json",
+        "opaa-update-paket-1.2.3/faktenblaetter/fristen.md",
+        "opaa-update-paket-1.2.3/lizenzen/lizenzen-backend.md",
+        "opaa-update-paket-1.2.3/lizenzen/lizenzen-frontend.md",
+        "opaa-update-paket-1.2.3/update-vermerk.md",
+    ]
+
+
+def test_the_checksum_files_match_the_package(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    sums = read(archive, "opaa-update-paket-1.2.3/SHA256SUMS").decode().splitlines()
+    assert len(sums) == 9
+    for line in sums:
+        digest, path = line.split("  ")
+        assert hashlib.sha256(read(archive, f"opaa-update-paket-1.2.3/{path}")).hexdigest() == digest
+    outer = (archive.parent / "opaa-update-paket-1.2.3.tar.gz.sha256").read_text()
+    assert outer == f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {archive.name}\n"
+
+
+def test_the_same_inputs_give_the_same_bytes_whatever_their_file_times(tmp_path: Path, inputs: dict) -> None:
+    first = update_package.assemble(release(), out=tmp_path / "first", **inputs)
+    for path in inputs["fact_sheets"].iterdir():
+        os.utime(path, (1, 1))
+    second = update_package.assemble(release(), out=tmp_path / "second", **inputs)
+
+    assert first.read_bytes() == second.read_bytes()
+    with gzip.open(first) as compressed:
+        compressed.read()
+    for member in members(first).values():
+        assert (member.mtime, member.uid, member.gid, member.uname, member.gname) == (EPOCH, 0, 0, "", "")
+
+
+def test_the_readme_names_version_previous_release_and_the_verification(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "gilt-fuer: 1.2.3\ncommit: " + "a" * 40 in text
+    assert "vorgaenger: v1.2.2\n" in text
+    assert "gegenüber v1.2.2, dem vorigen finalen Release." in text
+    assert "gh attestation verify opaa-update-paket-1.2.3.tar.gz --repo criew/opaa" in text
+    assert "-PtoRef=v1.2.3" in text
+    assert "Probelauf" not in text
+
+
+def test_a_first_release_says_that_every_entry_is_new(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(previous=None), out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "vorgaenger: keiner\n" in text
+    assert "kein voriges finales Release" in text
+
+
+def test_a_trial_says_it_is_no_published_release_and_names_the_commit(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(trial=True), out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "**Probelauf:**" in text
+    assert "-PtoRef=" + "a" * 40 in text
+    assert "-PtoRef=v1.2.3" not in text
+
+
+def test_a_given_comparison_is_not_called_the_previous_final_release(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(
+        release(previous="520713d46", previous_given=True), out=tmp_path / "out", **inputs)
+
+    text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
+    assert "Änderungen gegenüber 520713d46." in text
+    assert "vorigen finalen Release" not in text
+
+
+@pytest.mark.parametrize("missing", ["delta", "fact_sheets", "template", "licenses"])
+def test_a_missing_part_fails_the_package(tmp_path: Path, inputs: dict, missing: str) -> None:
+    if missing == "delta":
+        (inputs["delta"] / "manifest-delta.json").unlink()
+    elif missing == "fact_sheets":
+        (inputs["fact_sheets"] / "faktenblaetter.json").unlink()
+    elif missing == "template":
+        inputs["template"].unlink()
+    else:
+        inputs["licenses"][1].unlink()
+
+    with pytest.raises(update_package.PackageError):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+def test_the_release_notes_name_the_package_and_its_verification(tmp_path: Path) -> None:
+    notes = subprocess.run(
+        ["bash", str(RELEASE_NOTES), "criew/opaa", "v1.2.4"],
+        cwd=RELEASE_NOTES.parents[3], capture_output=True, text=True, check=True,
+        env={**os.environ, "UPGRADE_NOTES_DIR": str(tmp_path)},
+    ).stdout
+
+    assert f"`{update_package.PREFIX}1.2.4.tar.gz`" in notes
+    assert f"gh attestation verify {update_package.PREFIX}1.2.4.tar.gz --repo criew/opaa" in notes
+    assert "./gradlew complianceDelta -PfromRef=" in notes
+
+
+def job(name: str) -> str:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    match = re.search(rf"^  {re.escape(name)}:\n(.*?)(?=^  [a-z][a-z-]*:\n|\Z)", text, re.M | re.S)
+    assert match, f"job {name} missing"
+    return match.group(1)
+
+
+def permissions(body: str) -> list[str]:
+    lines = body.split("    permissions:\n", 1)[1].splitlines()
+    granted = []
+    for line in lines:
+        if not line.startswith("      "):
+            break
+        if not line.strip().startswith("#"):
+            granted.append(line.strip())
+    return granted
+
+
+def test_the_package_job_runs_on_release_tags_without_any_cache() -> None:
+    body = job("update-package")
+
+    assert "if: startsWith(github.ref, 'refs/tags/v')" in body
+    caches = [line.strip() for line in body.splitlines() if re.search(r"cache", line) and not line.strip().startswith("#")]
+    assert caches == ["package-manager-cache: false"]
+    assert "setup-gradle" not in body and "actions/cache" not in body
+    assert "fetch-depth: 0" in body
+    assert "GRADLE_OPTS: -Dorg.gradle.daemon=false" in body
+    query = body.index("gh pr list")
+    assert query < body.index("setup-java") and query < body.index("./gradlew")
+    assert query < body.index("pnpm install")
+
+
+def test_a_labelled_list_that_reaches_the_limit_fails_the_run() -> None:
+    body = job("update-package")
+    step = body[body.index("name: Gekennzeichnete Pull Requests abfragen"):]
+    step = step[: step.index("\n      - ")]
+
+    assert '--limit "$LIMIT"' in step
+    assert "LIMIT: 1000" in step
+    assert re.search(r"if \(\(count >= LIMIT\)\); then\n.*\n\s+exit 1", step)
+    assert permissions(body) == ["contents: read", "pull-requests: read"]
+
+
+def test_publication_waits_for_the_package_and_the_release_carries_it() -> None:
+    assert re.search(r"needs: \[prepare, build, update-package\]", job("publish"))
+    assert "needs.update-package.result" in job("publish")
+    attestation = job("update-package-attestation")
+    assert permissions(attestation) == ["id-token: write", "attestations: write"]
+    assert "subject-path:" in attestation
+    release_job = job("release")
+    assert "persist-credentials: false" in release_job
+    assert "GH_TOKEN: ${{ github.token }}" in release_job
+    assert "update-package-attestation" in release_job
+    assert "update-package/" in release_job

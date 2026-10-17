@@ -15,7 +15,8 @@ automatisch geprüft wird, damit sie stimmen. Es gehört zum Teil Betrieb des
 > erzeugen](#ein-faktenblatt-selbst-erzeugen)) und gibt ihr `datenfluesse` und `fristen`. Sie
 > sieht darin jedes Ziel mit den übermittelten Daten und jede Frist mit ihrem
 > Konfigurationsschlüssel, ohne den Code lesen zu müssen. Ein späteres Update, das daran etwas
-> ändert, steht in den Release-Notizen unter „Datenrelevante Änderungen“.
+> ändert, steht in den Release-Notizen unter „Datenrelevante Änderungen“ und im Delta seines
+> Update-Pakets.
 
 ## Was OPAA automatisch nachweist
 
@@ -45,26 +46,74 @@ flowchart LR
     W --- MF[Fakten-<br/>Manifest]
     MF --> FB[Faktenblätter]
     FB --> BU[Unterlagen<br/>der Behörde]
+    MF --> UP[Update-<br/>Paket]
     PR[Kennzeichnung<br/>am PR] --> RN[Release-<br/>Notizen]
+    PR --> UP
 ```
 
 Die Wächter halten Code und Manifest gleich; ein Pull Request mit roten Wächtern wird nicht
 gemergt. Aus dem Manifest entstehen die Faktenblätter, die Unterlagen der Behörde verweisen auf
 sie. Die Kennzeichnung am Pull Request führt jede
-datenrelevante Änderung in die Release-Notizen.
+datenrelevante Änderung in die Release-Notizen. Aus beiden entsteht zu jedem Release das
+Update-Paket.
 
 ## Wo die Faktenblätter liegen
 
-Die Faktenblätter sind nicht eingecheckt, sondern werden bei jedem CI-Lauf auf `main` neu erzeugt.
-Sie liegen als Artefakt `compliance-faktenblaetter` am letzten Lauf des Workflows „CI“ auf `main`:
-auf GitHub im Reiter „Actions“ den Lauf öffnen, Abschnitt „Artifacts“. Das Artefakt enthält die
-Blätter als Markdown und `faktenblaetter.json` mit allen Inhalten für Werkzeuge.
+Die Faktenblätter sind nicht eingecheckt, sondern werden neu erzeugt:
+
+- **Für ein Release** im [Update-Paket](#das-update-paket-eines-release) am GitHub-Release der
+  Version, Verzeichnis `faktenblaetter/`. Die Blätter tragen die Version des Release.
+- **Für den Entwicklungsstand `main`** bei jedem CI-Lauf auf `main`, als Artefakt
+  `compliance-faktenblaetter` am letzten Lauf des Workflows „CI“: auf GitHub im Reiter „Actions“ den
+  Lauf öffnen, Abschnitt „Artifacts“.
+
+Beide enthalten die Blätter als Markdown und `faktenblaetter.json` mit allen Inhalten für Werkzeuge.
 
 Jedes Blatt nennt in seinem Kopf, wofür es gilt: die OPAA-Version, den Commit, das
-Erzeugungsdatum und `erzeugung: generiert`. Die Blätter aus der CI tragen immer die Version
-`0.0.0-dev`; welchen Stand sie beschreiben, bestimmt der Commit. Unter dem Titel steht
+Erzeugungsdatum und `erzeugung: generiert`. Im Update-Paket ist das Erzeugungsdatum das Datum des
+Commits, sodass ein erneut erzeugtes Paket gleich ausfällt. Die Blätter aus der CI auf `main` tragen
+immer die Version `0.0.0-dev`; welchen Stand sie beschreiben, bestimmt der Commit. Unter dem Titel steht
 „Fakten aus dem Code; rechtliche Bewertung bleibt bei der Behörde.“ Jeder Eintrag hat einen festen
 Anker aus seiner Kennung, sodass eine Unterlage auf genau eine Zeile verweisen kann.
+
+## Das Update-Paket eines Release
+
+Jedes Release, auch ein Vorab-Release, trägt am GitHub-Release ein Update-Paket
+`opaa-update-paket-<Version>.tar.gz` mit einer Prüfsummendatei. Es ist für die Stellen gedacht, die
+ein Update verantworten, ohne den Code zu lesen:
+
+| Teil | Inhalt |
+|---|---|
+| `LIESMICH.md` | Version, Commit, Vergleichsstand, Prüfbefehle |
+| `delta/` | Was sich an den Fakten seit dem vorigen finalen Release geändert hat, je Änderung vorher und nachher, mit Stufenvorschlag (Bagatelle, Anzeige, Zustimmung) und dem Hinweis, ob Verzeichnis der Verarbeitungstätigkeiten, Datenschutz-Folgenabschätzung oder Sicherheitskonzept betroffen sind; dazu die als datenrelevant gekennzeichneten Änderungen, deren Wirkung nicht im Manifest steht |
+| `faktenblaetter/` | die Faktenblätter dieser Version |
+| `lizenzen/` | die Lizenzübersicht der ausgelieferten Abhängigkeiten |
+| `update-vermerk.md` | Vorlage, in der die Behörde Bewertung je Stelle und Entscheidung festhält |
+| `SHA256SUMS` | Prüfsummen aller Dateien |
+
+Vor dem ersten finalen Release gibt es keinen Vergleichsstand; dann erscheint im Delta jeder
+Eintrag als neu. Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.
+
+Das Paket ist attestiert wie die Images. Die Herkunft prüft:
+
+```bash
+gh release download v<Version> --repo criew/opaa --pattern 'opaa-update-paket-*'
+gh attestation verify opaa-update-paket-<Version>.tar.gz --repo criew/opaa
+```
+
+Der Release-Lauf erzeugt das Paket nur, wenn der Wächter (siehe [Was bei jeder Änderung geprüft
+wird](#was-bei-jeder-änderung-geprüft-wird)) besteht; sonst erscheint das Release nicht.
+
+**Mehrere Versionen überspringen.** Das Delta im Paket vergleicht nur mit dem vorigen finalen
+Release. Wer etwa von 0.12 auf 0.17 geht, erzeugt das Delta über den ganzen Sprung aus dem Quellcode
+mit Tags:
+
+```bash
+# aus backend/
+./gradlew complianceDelta -PfromRef=v0.12.0 -PtoRef=v0.17.0
+```
+
+Das Ergebnis liegt unter `backend/build/compliance/delta/`.
 
 ## Ein Faktenblatt selbst erzeugen
 
@@ -90,7 +139,7 @@ Code und Beschreibung auseinanderlaufen.
 | **Wächter im Backend-Build** | bei jedem Build, in der CI jedes Pull Requests, der Backend-Code berührt, und auf `main` | Zu jeder Tabelle und Spalte der Datenbank, jedem Protokollereignis, jeder Rolle und Fähigkeit, jedem System-Prompt, jeder Verbindung nach außen und jeder Einstellung mit Datenwirkung gibt es einen Eintrag im Manifest, und umgekehrt. Ein geänderter Prompt-Text oder Standardwert scheitert, bis der Eintrag bewusst nachgezogen ist. Auch die Voreinstellungen des Helm-Charts werden gegen das Manifest gehalten |
 | **Kennzeichnung `data-impact`** | an jedem Pull Request (Prüfung „Datenwirkung“) | Die Beschreibung jedes Pull Requests fragt ab, ob er personenbezogene Daten, Sichtbarkeit, Auswertungen, Fristen, Datenflüsse, Voreinstellungen, Standardmodelle, System-Prompts oder die KI-Einstufung ändert. Trifft etwas zu, trägt er das Label `data-impact` und einen Satz in Alltagssprache. Ändert er Dateien, in denen Datenwirkung typischerweise entsteht, ohne Label und ohne die Angabe „Keine Wirkung“, schlägt die Prüfung fehl. Solche Änderungen erscheinen in den Release-Notizen als erste Rubrik „Datenrelevante Änderungen“ |
 | **Verweise der Behördenunterlagen** | bei jeder Änderung an den Unterlagen und am Manifest | Jeder Verweis einer Vorlage auf ein Faktenblatt trifft ein vorhandenes Blatt und einen vorhandenen Eintrag darin |
-| **Lizenzprüfung** | an Pull Requests, die Abhängigkeiten berühren, und bei jedem Stand auf `main` | Jede ausgelieferte Abhängigkeit steht unter einer freigegebenen Lizenz oder auf einer begründeten Ausnahmeliste. Die Lizenzübersicht liegt als Artefakt `license-report-backend` bzw. `license-report-frontend` am CI-Lauf |
+| **Lizenzprüfung** | an Pull Requests, die Abhängigkeiten berühren, und bei jedem Stand auf `main` | Jede ausgelieferte Abhängigkeit steht unter einer freigegebenen Lizenz oder auf einer begründeten Ausnahmeliste. Die Lizenzübersicht liegt als Artefakt `license-report-backend` bzw. `license-report-frontend` am CI-Lauf und im Update-Paket jedes Release |
 | **Wöchentliche Drift-Routine** | einmal je Woche, nach dem Merge | Eine nur lesende Prüfroutine sieht die Änderungen der Woche auf `main` durch: ob ein Pull Request mit Datenwirkung ohne Kennzeichnung blieb, ob ein Eintrag im Manifest sachlich nicht mehr stimmt, ob sich Verhalten ohne Schemaänderung geändert hat und ob eine Vorlage einen geänderten Wert abschreibt. Ihre Befunde gehen an den Maintainer |
 
 Die Prüfungen ergänzen sich: Der Wächter stellt sicher, **dass** es einen Eintrag gibt, nicht, ob
@@ -109,8 +158,13 @@ Form der Verweise. Wie Entwickler das Manifest nachpflegen, steht in
 
 ## Was nicht gebaut ist
 
-- Ein Update-Paket am GitHub-Release jeder Version mit ihren Faktenblättern, dem Delta zum
-  vorigen Release und der Lizenzübersicht, attestiert wie die Images
-  ([#2556](https://github.com/criew/opaa/issues/2556)). Bis dahin erzeugt der Betrieb die Blätter
-  einer Version selbst aus deren Quellcode und gibt die Version mit `-PopaaVersion` an.
+- Betriebsfolgen (Bruch, Neuindizierung, Schemamigration, neue Ports oder Ziele) und
+  Antwortqualität im Update-Paket ([#2555](https://github.com/criew/opaa/issues/2555)). Bis dahin
+  nennen die Release-Notizen unter „Vorbereitung für Bestandsinstallationen“, was vor dem Update zu
+  tun ist.
+- Ein Abgleich des Deltas mit der Konfiguration einer bestimmten Installation
+  ([#2558](https://github.com/criew/opaa/issues/2558),
+  [#2559](https://github.com/criew/opaa/issues/2559)).
+- Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
+  ([#2557](https://github.com/criew/opaa/issues/2557)).
 

@@ -3,7 +3,8 @@
 # namespace is created with the Pod Security labels for restricted before helm install, never by
 # --create-namespace. The preparation of existing installations comes from
 # docs/upgrade-notes/X.Y.Z[-<pre>].md of the tagged commit; a release X.Y.0 needs the file, for
-# any other a missing file means no preparation.
+# any other a missing file means no preparation. The update package the release carries is named
+# like update_package.py names it.
 set -euo pipefail
 
 if (($# != 2)); then
@@ -66,4 +67,8 @@ EOF
 printf '%s\n\n' "$preparation"
 cat <<EOF
 Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rückweg](${handbook}/kubernetes.md#aktualisierung-und-rückweg), für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](${handbook}/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen). Wer Versionen überspringt, prüft die Vorbereitung jedes übersprungenen Release.
+
+**Update-Paket für Behörden**
+
+Am Release hängt \`opaa-update-paket-${version}.tar.gz\` mit Prüfsummendatei: die Faktenblätter dieser Version, die Änderungen der Fakten seit dem vorigen finalen Release mit Stufenvorschlag, die Lizenzübersicht und die Vorlage für den Update-Vermerk. Die Herkunft prüft \`gh attestation verify opaa-update-paket-${version}.tar.gz --repo ${repository}\`. Das Delta für ein anderes Versionspaar erzeugt \`./gradlew complianceDelta -PfromRef=<älteres Tag> -PtoRef=${tag}\` aus \`backend/\` eines Checkouts mit Tags.
 EOF

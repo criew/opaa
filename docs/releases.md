@@ -14,7 +14,8 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 | `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand für `linux/amd64` und `linux/arm64` (ein Manifest-Index je Image), **nie überschrieben** |
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
-| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle und die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) |
+| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket |
+| `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Lizenzübersicht, Vorlage Update-Vermerk; **attestiert** |
 
 Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
 ([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
@@ -22,6 +23,14 @@ und neben dem Chart in GHCR. Prüfen lässt sie sich mit:
 
 ```bash
 gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
+```
+
+Das Update-Paket trägt ebenso eine signierte Provenance-Attestierung, abgelegt bei GitHub. Geprüft
+wird die heruntergeladene Datei:
+
+```bash
+gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-update-paket-*'
+gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa
 ```
 
 Installiert wird der Chart ohne Checkout des Repositories, in der Reihenfolge des Handbuchs
@@ -108,9 +117,10 @@ standardmäßig ausgeschaltet; sie werden sichtbar gemacht.
   zusätzlich im Release zeigen will, ergänzt ihn nach dem Lauf mit `gh release edit`.
 
 Die Pfadliste fängt nur, was an bekannten Stellen geschieht; eine neue Auswertung im Frontend etwa
-trifft sie nicht. Dafür bleibt das Ankreuzen im PR maßgeblich. Die Kennzeichnung bleibt auch
-bestehen, wenn das Update-Paket das Delta aus dem Manifest erzeugt (#2554), weil nicht jede Wirkung
-im Manifest steht, etwa eine neue Auswertung bestehender Daten in der Oberfläche.
+trifft sie nicht. Dafür bleibt das Ankreuzen im PR maßgeblich. Die Kennzeichnung steht neben dem
+Delta des [Update-Pakets](#update-paket), weil nicht jede Wirkung im Manifest steht, etwa eine neue
+Auswertung bestehender Daten in der Oberfläche; das Delta führt die gekennzeichneten PRs deshalb
+in einem eigenen Abschnitt.
 
 ## Schutzregeln im Workflow
 
@@ -140,6 +150,14 @@ Bevor gebaut wird, bricht der Lauf im Job `prepare` ab, wenn:
   existiert, muss die Prüfung im Workflow angepasst werden; das zeigt der Vorab-Release (siehe
   unten).
 
+Bevor ein Tag gesetzt wird, bricht der Lauf außerdem ab, wenn das **Fakten-Manifest unvollständig**
+ist oder sich das [Update-Paket](#update-paket) nicht erzeugen lässt. Der Job `update-package` führt
+dafür den Vollständigkeitswächter aus (`ComplianceManifestTest`, `ConfigurationSettingsTest`,
+`FactSheetReferenceTest` und `ModularArchitectureTest`, der jeden ausgehenden Client an einen
+Datenfluss bindet), parallel zu den
+Image-Builds; `publish` setzt erst Tags, wenn er gelungen ist. Gepusht ist dann höchstens ein Digest
+ohne Tag, also nichts veröffentlicht.
+
 Das Tag-Format steht an einer Stelle, `deploy/helm/ci/release-version.sh`; die Prüfung der Images
 und das Packen des Charts rufen es beide auf. Ebenso gibt es eine einzige Existenzprüfung für
 Images und Chart, `deploy/helm/ci/oci-published.sh`. Sie fragt die Registry-API direkt und wertet
@@ -153,8 +171,9 @@ den Basis-Images und den Paketquellen. Die Abwägung und das verbleibende Risiko
 in [renovate.md](renovate.md#sicherheitsmodell-des-gha-caches).
 
 Der Lauf ist in Jobs gestaffelt: erst die Prüfungen (`prepare`), dann die Images (`build` je Image
-und Architektur, `publish` je Image), dann der Chart, dann seine Attestierung, zuletzt das
-GitHub-Release. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
+und Architektur, `publish` je Image) und daneben das Update-Paket (`update-package`, seine
+Attestierung in `update-package-attestation`), dann der Chart, dann seine Attestierung, zuletzt das
+GitHub-Release mit dem Update-Paket als Anhang. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
 den Lauf rot. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
 GitHub-Release kündigt nichts an, was fehlt. Wie die Images für zwei Architekturen entstehen,
 beschreibt [Mehrere Architekturen](#mehrere-architekturen).
@@ -341,6 +360,77 @@ Regeln:
   Änderungen unter `docs/upgrade-notes/`) prüft, dass jede Datei nach einer Release-Version benannt,
   nicht leer und kein symbolischer Link ist, ihre Codeblöcke schließt und dass die verlinkten
   Überschriften im Handbuch existieren.
+
+## Update-Paket
+
+Zu jedem Release, auch zu einem Vorab-Release, erzeugt der Job `update-package` das Update-Paket,
+mit dem eine Behörde ein Update gegenüber Datenschutz, Personalvertretung und
+Informationssicherheit verantwortet ([Spezifikation](features/behoerdenunterlagen.md#das-update-paket)).
+Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur auf. Das Archiv
+`opaa-update-paket-X.Y.Z.tar.gz` enthält unter `opaa-update-paket-X.Y.Z/`:
+
+| Datei | Inhalt |
+|---|---|
+| `LIESMICH.md` | Version, Commit, Vergleichsstand, Prüfbefehle, was noch fehlt |
+| `faktenblaetter/` | die Faktenblätter der Version mit `faktenblaetter.json` (`./gradlew complianceDocs -PopaaVersion=X.Y.Z`) |
+| `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
+| `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
+| `update-vermerk.md` | Vorlage aus `docs/behoerden/09-betrieb-update/` |
+| `SHA256SUMS` | Prüfsummen aller Dateien |
+
+Daneben liegt `opaa-update-paket-X.Y.Z.tar.gz.sha256`. Der Job `update-package-attestation`
+attestiert das Archiv (`actions/attest`, Prüfbefehl unter [Was ein Release erzeugt](#was-ein-release-erzeugt)),
+der Job `release` hängt beide Dateien an das GitHub-Release.
+
+**Vorgänger.** Verglichen wird mit dem höchsten finalen Tag `vA.B.C` unter der eigenen Version, das
+der getaggte Commit enthält. Vorab-Tags zählen nie, auch nicht für ein Vorab-Release; ein
+Patch-Release ohne Codeänderung vergleicht mit dem Release auf demselben Commit, sein Delta ist
+leer. Gibt es kein finales Tag davor (das erste finale Release), vergleicht das Delta mit dem
+ältesten Wurzel-Commit, der kein Manifest hat: Jeder Eintrag erscheint als neu, und
+`LIESMICH.md` und der Kopf des Deltas sagen das. Welcher Vorgänger bei mehreren Supportlinien gilt,
+entscheidet #2575; bis dahin gilt diese Regel.
+
+**Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`) und Zeitstempel im Archiv
+sind die Commit-Zeit, Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt
+dieselben Dateien und dieselben Zeilen in `SHA256SUMS`, mit einer Ausnahme: Der Abschnitt
+„Weitere gekennzeichnete Änderungen“ im Delta folgt dem Stand des Labels `data-impact` zum
+Zeitpunkt des Laufs; wird ein Label zwischen zwei Läufen gesetzt oder entfernt, unterscheidet sich
+das Delta. Die Bytes des Archivs hängen zusätzlich von der zlib-Version des Runners ab. Ein
+wiederholter Job `update-package` erzeugt das Archiv neu, eine wiederholte Attestierung attestiert
+das dann hochgeladene. Die PR-Liste fragt der Job mit einem Limit von 1000 ab; erreicht sie es,
+bricht er ab, statt eine abgeschnittene Liste zu verwenden.
+
+**Anhängen ist nicht atomar.** `gh release create` mit Anhängen legt das Release zuerst als
+Entwurf an, lädt dann die Dateien hoch und veröffentlicht erst danach. Scheitert der Upload, bleibt
+ein Entwurf ohne Anhänge, und eine Wiederholung des Jobs `release` scheitert daran, dass es das
+Release schon gibt. Vor *Re-run failed jobs* deshalb den Entwurf löschen; das Tag bleibt stehen:
+
+```bash
+gh release delete vX.Y.Z --repo criew/opaa --yes   # ohne --cleanup-tag
+```
+
+**Ohne Cache.** Wie die Image-Builds eines Release liest und schreibt `update-package` keinen
+Cache: kein `setup-gradle`, kein Cache von pnpm oder `setup-node`. Gradle und pnpm laden ihre
+Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. Rechte: nur Lesen des Repositorys und
+der PRs; das OIDC-Token für die Attestierung hält nur der eigene Job, in dem weder Gradle noch pnpm
+läuft. `.github/scripts/test_update_package.py` prüft beides am Workflow.
+
+**Probelauf ohne Release.** Dasselbe Paket entsteht lokal oder in einer eigenen CI für den
+ausgecheckten Commit; gibt es das Tag nicht, kennzeichnet `LIESMICH.md` den Lauf als Probelauf.
+Gebraucht werden Java, `pnpm install` in `frontend/` und die Historie mit Tags:
+
+```bash
+gh pr list --state merged --label data-impact --limit 1000 --json number,title,url >/tmp/prs.json
+python3 .github/scripts/update_package.py build --tag v0.3.0 --out /tmp/paket \
+  --labelled-prs /tmp/prs.json [--previous <tag oder commit>]
+python3 .github/scripts/update_package.py previous --tag v0.3.0 --commit HEAD   # nur den Vorgänger
+```
+
+Ohne `--labelled-prs` sagt das Delta, dass die gekennzeichneten PRs nicht abgefragt wurden.
+
+**Erweiterungen.** Betriebsfolgen und Antwortqualität (#2555) kommen als weitere Verzeichnisse in
+`assemble` hinzu und erscheinen in der Tabelle von `LIESMICH.md`; das Offline-Bündel (#2557) nimmt das
+Archiv aus dem Artefakt `update-package` des Laufs, statt es neu zu erzeugen.
 
 ## Versionsnummern
 
