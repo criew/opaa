@@ -10,6 +10,7 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ProcessStart;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
@@ -57,6 +59,8 @@ class IndexingJobRecoveryIntegrationTest {
   @Autowired private IndexingJobRecoveryScheduler recoveryScheduler;
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+  @Autowired private ProcessStart processStart;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private User devAdmin;
 
@@ -109,8 +113,21 @@ class IndexingJobRecoveryIntegrationTest {
     return library;
   }
 
-  /** Simulates a row left behind by a process that crashed mid-run - no backing task exists. */
+  /**
+   * Simulates a row left behind by a process that crashed mid-run - no backing task exists, and it
+   * was started before this process was.
+   */
   private IndexingJob seedOrphanedRunningJob(UUID libraryId) {
+    IndexingJob job = seedRunningJob(libraryId);
+    jdbcTemplate.update(
+        "UPDATE indexing_jobs SET started_at = ? WHERE id = ?",
+        java.sql.Timestamp.from(processStart.instant().minus(Duration.ofHours(1))),
+        job.getId());
+    return job;
+  }
+
+  /** A run this process started, stamped now - after the process start. */
+  private IndexingJob seedRunningJob(UUID libraryId) {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
     job.setOrganizationId(Organization.DEFAULT_ID);
@@ -161,6 +178,26 @@ class IndexingJobRecoveryIntegrationTest {
                         indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
                             JobStatus.RUNNING, library.getId(), Organization.DEFAULT_ID))
                     .isFalse());
+  }
+
+  /**
+   * The web server and the schedulers already start runs before the startup recovery fires; such a
+   * run has a live task and must stay RUNNING, or its library would count as free while it works.
+   */
+  @Test
+  void theStartupRecoveryLeavesARunThisProcessStartedRunning() {
+    KnowledgeLibrary orphanedLibrary = createFilesystemLibraryWithEditorGrant();
+    KnowledgeLibrary liveLibrary = createFilesystemLibraryWithEditorGrant();
+    IndexingJob orphaned = seedOrphanedRunningJob(orphanedLibrary.getId());
+    IndexingJob live = seedRunningJob(liveLibrary.getId());
+
+    recoveryScheduler.recoverOnStartup();
+
+    assertThat(indexingJobRepository.findById(orphaned.getId()).orElseThrow().getStatus())
+        .isEqualTo(JobStatus.FAILED);
+    assertThat(indexingJobRepository.findById(live.getId()).orElseThrow().getStatus())
+        .as("A run started after the process start belongs to this process")
+        .isEqualTo(JobStatus.RUNNING);
   }
 
   /**

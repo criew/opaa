@@ -389,7 +389,7 @@ public class IndexingJobService {
    * @return the number of rows recovered
    */
   @Transactional
-  public int recoverJobsOrphanedByRestart() {
+  public int recoverJobsOrphanedByRestart(Instant processStart) {
     return indexingJobRepository.failAllRunningJobs(RESTART_ABORTED_MESSAGE, Instant.now(clock));
   }
 

@@ -442,7 +442,7 @@ class IndexingJobServiceTest {
   void recoverJobsOrphanedByRestartFailsEveryRunningRowWithARestartMessage() {
     when(indexingJobRepository.failAllRunningJobs(anyString(), any(Instant.class))).thenReturn(3);
 
-    int recovered = service.recoverJobsOrphanedByRestart();
+    int recovered = service.recoverJobsOrphanedByRestart(Instant.parse("2026-10-17T08:00:00Z"));
 
     assertThat(recovered).isEqualTo(3);
     verify(indexingJobRepository)

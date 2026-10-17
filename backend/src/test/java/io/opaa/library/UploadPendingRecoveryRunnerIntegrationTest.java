@@ -125,6 +125,33 @@ class UploadPendingRecoveryRunnerIntegrationTest {
         .isEqualTo(DocumentStatus.PENDING);
   }
 
+  /**
+   * The cutoff is the start of the process, not an age: an upload accepted seconds before the
+   * restart is as orphaned as an old one, and one accepted by this process after its start is still
+   * being worked on.
+   */
+  @Test
+  void failsAPendingUploadCreatedJustBeforeTheProcessStartedButNotOneCreatedAfter() {
+    Instant processStarted = Instant.now().minus(10, ChronoUnit.SECONDS);
+    UUID beforeStartId =
+        savePendingDocument("beforeStart.pdf", processStarted.minus(10, ChronoUnit.SECONDS));
+    UUID afterStartId =
+        savePendingDocument("afterStart.pdf", processStarted.plus(5, ChronoUnit.SECONDS));
+
+    runner.recover(processStarted);
+
+    Document beforeStart = documentRepository.findById(beforeStartId).orElseThrow();
+    assertThat(beforeStart.getStatus())
+        .as("An upload the previous process accepted just before it ended has no task left")
+        .isEqualTo(DocumentStatus.FAILED);
+    assertThat(beforeStart.getErrorMessage()).isEqualTo(UploadPendingRecoveryRunner.FAILURE_REASON);
+
+    Document afterStart = documentRepository.findById(afterStartId).orElseThrow();
+    assertThat(afterStart.getStatus())
+        .as("An upload this process accepted after its start is still in flight")
+        .isEqualTo(DocumentStatus.PENDING);
+  }
+
   private UUID savePendingDocument(String fileName, Instant createdAt) {
     return savePendingDocument(fileName, createdAt, SourceType.UPLOAD);
   }

@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.common.ProcessStart;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalStore;
@@ -41,16 +42,19 @@ public class UploadPendingRecoveryRunner implements ApplicationRunner {
   private final UploadProperties uploadProperties;
   private final UploadedOriginalStore uploadedOriginalStore;
   private final Clock clock;
+  private final ProcessStart processStart;
 
   public UploadPendingRecoveryRunner(
       DocumentRepository documentRepository,
       UploadProperties uploadProperties,
       UploadedOriginalStore uploadedOriginalStore,
-      Clock clock) {
+      Clock clock,
+      ProcessStart processStart) {
     this.documentRepository = documentRepository;
     this.uploadProperties = uploadProperties;
     this.uploadedOriginalStore = uploadedOriginalStore;
     this.clock = clock;
+    this.processStart = processStart;
   }
 
   /**
@@ -60,6 +64,10 @@ public class UploadPendingRecoveryRunner implements ApplicationRunner {
    */
   @Override
   public void run(ApplicationArguments args) {
+    recover(processStart.instant());
+  }
+
+  void recover(Instant processStarted) {
     Instant threshold =
         Instant.now(clock)
             .minus(Duration.ofMinutes(uploadProperties.pendingRecoveryThresholdMinutes()));

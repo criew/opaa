@@ -1,5 +1,6 @@
 package io.opaa.indexing.job;
 
+import io.opaa.common.ProcessStart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -24,11 +25,15 @@ public class IndexingJobRecoveryScheduler {
 
   private final IndexingJobService indexingJobService;
   private final RunRecoverySettings properties;
+  private final ProcessStart processStart;
 
   public IndexingJobRecoveryScheduler(
-      IndexingJobService indexingJobService, RunRecoverySettings properties) {
+      IndexingJobService indexingJobService,
+      RunRecoverySettings properties,
+      ProcessStart processStart) {
     this.indexingJobService = indexingJobService;
     this.properties = properties;
+    this.processStart = processStart;
   }
 
   /**
@@ -39,7 +44,7 @@ public class IndexingJobRecoveryScheduler {
    */
   @EventListener(ApplicationReadyEvent.class)
   public void recoverOnStartup() {
-    int recovered = indexingJobService.recoverJobsOrphanedByRestart();
+    int recovered = indexingJobService.recoverJobsOrphanedByRestart(processStart.instant());
     if (recovered > 0) {
       log.warn(
           "Recovered {} indexing job(s) left RUNNING by a previous application run - each is now"
