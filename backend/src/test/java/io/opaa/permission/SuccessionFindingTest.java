@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.SuccessionAddressee;
 import io.opaa.api.types.SuccessionObjectType;
+import io.opaa.api.types.SuccessionOwnerType;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,30 @@ class SuccessionFindingTest {
                     SuccessionAddressee.SPACE_ADMINS,
                     null,
                     List.of(),
-                    0))
+                    0,
+                    null,
+                    null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  /** The group is named exactly when a group owns the asset - a person is never identified. */
+  @Test
+  void theOwningGroupIsSetExactlyForAGroupOwner() {
+    SuccessionFinding finding =
+        SuccessionFinding.ofAsset(
+            AssetType.of("KNOWLEDGE_LIBRARY"),
+            UUID.randomUUID(),
+            "Bauakten",
+            SuccessionAddressee.SYSTEM_ADMINISTRATION);
+    UUID groupId = UUID.randomUUID();
+
+    assertThat(finding.withOwner(SuccessionOwnerType.GROUP, groupId).ownerGroupId())
+        .isEqualTo(groupId);
+    assertThat(finding.withOwner(SuccessionOwnerType.USER, null).ownerType())
+        .isEqualTo(SuccessionOwnerType.USER);
+    assertThatThrownBy(() -> finding.withOwner(SuccessionOwnerType.GROUP, null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> finding.withOwner(SuccessionOwnerType.USER, groupId))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }
