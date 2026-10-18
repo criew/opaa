@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-17</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Samstag, 17. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-16.html" rel="prev" title="Freitag, 16. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/39052019319" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">85</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+21</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">15</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">18</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2552">#2552</a> feat(release): Update-Paket je Release — kumuliertes Delta, Betriebsfolgen, Attestierung, Offline-Bündel, Instanzbezug</span>
+<span class="epic-progress">6 / 9 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 67%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2556">#2556</a></span>Update-Paket je Release erzeugt, angehängt und attestiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2555">#2555</a></span>Betriebsfolgen und Antwortqualität im Update-Paket dokumentiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2894">#2894</a></span>Platzhalter im Update-Paket aufgelöst, Vergleichsstand lesbar benannt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2895">#2895</a></span>Anlassbezogene Klärungen in Auskunft über Datenerhebung erfasst</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2896">#2896</a></span>fix(release): Platzhalter im Update-Paket auflösen und Vergleichsstand lesbar benennen (+551/−51, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2893">#2893</a></span>feat(compliance): Auskunft über die Datenerhebung und Konfigurationsexport der Instanz (+2935/−21, 43 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2892">#2892</a></span>feat(release): Betriebsfolgen und Antwortqualität im Update-Paket (+1070/−40, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2885">#2885</a></span>ci(release): Update-Paket je Release erzeugen, anhängen und attestieren (+1178/−59, 16 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1928">#1928</a> feat: UI-Redesign der Admin-Seiten</span>
+<span class="epic-progress">7 / 8 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 88%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2506">#2506</a></span>Begriff Fremdzugang produktweit durch Externe KI-Werkzeuge ersetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2340">#2340</a></span>Betriebsliste kennt Eigentümertyp, Objekte von Verzeichnisgruppen korrekt übergeben</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2915">#2915</a></span>fix(succession): Betriebsliste nennt den Eigentümertyp, Objekte einer Verzeichnisgruppe mit der Gruppe als Quelle übergeben (+438/−25, 18 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2914">#2914</a></span>refactor(frontend): Begriff „Fremdzugang“ produktweit durch „Externe KI-Werkzeuge“ ersetzen (+261/−251, 71 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2570">#2570</a> docs(agents): Behördenunterlagen in der Agentenorganisation verankern</span>
+<span class="epic-progress">5 / 5 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2574">#2574</a></span>Release-Ablauf um Update-Paket und Behördenkontakt ergänzt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2886">#2886</a></span>docs(release): Release-Ablauf um Delta und Behördenkontakt ergänzen (+68/−21, 4 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2560">#2560</a> docs(behoerden): Behördenunterlagen — redaktionelle Vorlagen entlang der Behördenreise</span>
+<span class="epic-progress">7 / 10 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 70%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2564">#2564</a></span>Herstellerneutrale Vergabebausteine und EVB-IT-Hinweise 2026 dokumentiert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2891">#2891</a></span>docs(behoerden): Herstellerneutrale Vergabebausteine und EVB-IT-Hinweise (+1128/−24, 14 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Mehrere Sicherheitslücken in Frontend, Backend und CI-Workflows geschlossen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2889">#2889</a></span>Images von main melden Commit-Hash als Build-Metadatum</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2887">#2887</a></span>E2E-Test Mehrere Chats prüft Chats per ID statt per Zählung</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2883">#2883</a></span>Assistenten-Fixtures warten auf gerenderten Assistenten</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2917">#2917</a></span>fix(frontend): Quell-Links nur mit http(s)-Schema rendern (+197/−14, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2916">#2916</a></span>fix(backend): Start-Recovery am Prozessstart statt an Alter messen (+206/−110, 30 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2890">#2890</a></span>feat(release): Images von main melden 0.0.0-dev+&lt;Commit&gt; (+62/−30, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2888">#2888</a></span>test(e2e): Szenario „Mehrere Chats“ prüft die Chats per ID statt per Zählung (+17/−10, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2883">#2883</a></span>test(e2e): Assistenten-Fixtures warten auf den gerenderten Assistenten (+12/−2, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2882">#2882</a></span>chore(deps): renovate/renovate docker tag to v44.156.0 (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2881">#2881</a></span>chore(deps): npm (non-major) aktualisieren (+157/−156, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2880">#2880</a></span>chore(deps): rustfs/rustfs docker tag to v1.0.2 (+4/−4, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2879">#2879</a></span>chore(deps): org.apache.tika:tika-core auf v3.3.3 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2878">#2878</a></span>chore(deps): ollama/ollama docker tag to v0.40.6 (+4/−4, 3 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-18 um 06:54 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-17T00:00:00 bis 2026-10-17T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

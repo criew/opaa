@@ -5,8 +5,31 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-17T04:48:31Z</updated>
+  <updated>2026-10-18T04:54:41Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 17. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-17.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-17.html</id>
+    <updated>2026-10-18T04:54:41Z</updated>
+    <summary type="text">feat(release): Update-Paket je Release — kumuliertes Delta, Betriebsfolgen, Attestierung, Offline-Bündel, Instanzbezug:
+— Update-Paket je Release erzeugt, angehängt und attestiert
+— Betriebsfolgen und Antwortqualität im Update-Paket dokumentiert
+— Platzhalter im Update-Paket aufgelöst, Vergleichsstand lesbar benannt
+— Anlassbezogene Klärungen in Auskunft über Datenerhebung erfasst
+feat: UI-Redesign der Admin-Seiten:
+— Begriff Fremdzugang produktweit durch Externe KI-Werkzeuge ersetzt
+— Betriebsliste kennt Eigentümertyp, Objekte von Verzeichnisgruppen korrekt übergeben
+docs(agents): Behördenunterlagen in der Agentenorganisation verankern:
+— Release-Ablauf um Update-Paket und Behördenkontakt ergänzt
+docs(behoerden): Behördenunterlagen — redaktionelle Vorlagen entlang der Behördenreise:
+— Herstellerneutrale Vergabebausteine und EVB-IT-Hinweise 2026 dokumentiert
+Sonstiges:
+— Mehrere Sicherheitslücken in Frontend, Backend und CI-Workflows geschlossen
+— Images von main melden Commit-Hash als Build-Metadatum
+— E2E-Test Mehrere Chats prüft Chats per ID statt per Zählung
+— Assistenten-Fixtures warten auf gerenderten Assistenten</summary>
+  </entry>
   <entry>
     <title>Tagesreport Freitag, 16. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-16.html"/>
@@ -861,19 +884,5 @@ Sonstiges:
     <updated>2026-08-30T05:38:58Z</updated>
     <summary type="text">Sonstiges:
 — ollama/ollama Docker-Image auf v0.33.2 aktualisiert</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Freitag, 28. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-28.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-28.html</id>
-    <updated>2026-08-29T07:16:01Z</updated>
-    <summary type="text">feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem:
-— Barrierefreiheits-Audit nach Design-Migration abgeschlossen
-— Prüfprotokoll des Barrierefreiheits-Audits dokumentiert
-Sonstiges:
-— Markdown-Überschriften in Chat-Antworten normalisiert
-— Fremdhost-Tests portabel für macOS gemacht
-— Barrierefreiheits-Audit-Befunde behoben: Fokus, Überschriftenebenen, Kontrast, Screenreader
-— Renovate-Infrastruktur stabilisiert: Auto-Merge, Lockfile-Schutz, Major-Aussetzungen</summary>
   </entry>
 </feed>
