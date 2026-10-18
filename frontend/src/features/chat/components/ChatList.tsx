@@ -93,7 +93,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   const deleteChatFromList = useChatListStore((s) => s.deleteChatFromList)
   const setChatPinned = useChatListStore((s) => s.setChatPinned)
   const setChatArchived = useChatListStore((s) => s.setChatArchived)
-  // An archived space accepts no new chats - the "Neuer Chat" button is
+  // An archived space accepts no new chats - the "Neu" button is
   // disabled rather than hidden, so it stays a stable click target and the reason is explained via
   // its tooltip instead of the button silently vanishing.
   const isArchived = useSpaceStore((s) => s.spaces.find((space) => space.id === spaceId)?.archived)
@@ -483,7 +483,8 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
               <Button
                 variant="text"
                 size="small"
-                aria-label="Neuer Chat"
+                // Starts with the visible "Neu" (WCAG 2.5.3), so a voice command can say it.
+                aria-label="Neu: Chat beginnen"
                 startIcon={<AddIcon sx={{ fontSize: 13 }} />}
                 onClick={handleNewChat}
                 disabled={Boolean(isArchived)}
