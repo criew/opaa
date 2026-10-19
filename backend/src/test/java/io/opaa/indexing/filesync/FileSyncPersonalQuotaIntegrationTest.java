@@ -29,8 +29,10 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.knowledge.LibraryProperties;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.PersonalStorageQuota;
+import io.opaa.knowledge.QuotaVerdict;
 import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
@@ -41,6 +43,9 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,6 +83,7 @@ class FileSyncPersonalQuotaIntegrationTest {
   @Autowired private TransactionTemplate transactionTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private LibraryProperties libraryProperties;
 
   private UUID ownerId;
   private KnowledgeLibrary library;
@@ -187,6 +193,56 @@ class FileSyncPersonalQuotaIntegrationTest {
     assertThat(after.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(after.getChunkCount()).isPositive();
     assertThat(storedPaths()).hasSize(2);
+  }
+
+  /**
+   * ADR-0053, Entscheidung 10: two intakes of the same owner on two backend instances at once admit
+   * at most what the quota holds. Instance B is a second quota service against the same database;
+   * each intake checks and stores under its hold, and both start together.
+   */
+  @Test
+  void twoInstancesTakingInTheSameOwnersFilesAtOnceNeverExceedTheQuota() throws Exception {
+    LibraryStorageQuotaService instanceB = secondInstance();
+    CountDownLatch start = new CountDownLatch(1);
+
+    CompletableFuture<QuotaVerdict> onA =
+        CompletableFuture.supplyAsync(() -> intakeOf(quotaService, "a.txt", start));
+    CompletableFuture<QuotaVerdict> onB =
+        CompletableFuture.supplyAsync(() -> intakeOf(instanceB, "b.txt", start));
+    start.countDown();
+
+    List<QuotaVerdict> verdicts =
+        List.of(onA.get(30, TimeUnit.SECONDS), onB.get(30, TimeUnit.SECONDS));
+    assertThat(verdicts)
+        .containsExactlyInAnyOrder(QuotaVerdict.WITHIN, QuotaVerdict.PERSON_EXHAUSTED);
+    assertThat(personalQuota.usageOf(ownerId)).isLessThanOrEqualTo(QUOTA);
+  }
+
+  /** One intake of 600 bytes: the check and the stored row under the hold, held a moment longer. */
+  private QuotaVerdict intakeOf(
+      LibraryStorageQuotaService instance, String fileName, CountDownLatch start) {
+    try {
+      start.await();
+      try (LibraryStorageQuotaService.IntakeHold hold = instance.holdIntake(library)) {
+        QuotaVerdict verdict = instance.verdictFor(library, 600);
+        if (verdict == QuotaVerdict.WITHIN) {
+          Document document = new Document(fileName, "/" + fileName, "text/plain", 600L, TYPE);
+          document.setLibraryId(library.getId());
+          document.setOrganizationId(library.getOrganizationId());
+          documentRepository.save(document);
+        }
+        Thread.sleep(500);
+        return verdict;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(e);
+    }
+  }
+
+  /** A second backend process: the same database and beans, its own quota service. */
+  private LibraryStorageQuotaService secondInstance() {
+    return new LibraryStorageQuotaService(documentRepository, libraryProperties, personalQuota);
   }
 
   /** A listed size past the owner's quota is rejected before the download, as after it. */

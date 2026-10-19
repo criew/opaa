@@ -16,6 +16,7 @@ import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PermissionTransferScope;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
+import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -43,6 +44,7 @@ import io.opaa.space.SpaceMembershipRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
@@ -53,6 +55,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The transfer of rights from one subject to another against the real, versioned schema (#1834,
@@ -84,6 +87,20 @@ class PermissionTransferIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
+
+  // What a second backend instance shares with this one: the beans behind the service, not it.
+  @Autowired private PermissionTransferRepository transferRepository;
+  @Autowired private PermissionTransferObjectRepository transferObjectRepository;
+  @Autowired private GroupSubjectDirectory groupDirectory;
+  @Autowired private GroupSpaceMembershipDirectory spaceMembershipDirectory;
+  @Autowired private GroupStewardshipDirectory stewardshipDirectory;
+  @Autowired private List<AssetOwnershipDirectory> assetOwnershipDirectories;
+  @Autowired private PermissionHistoryClock historyClock;
+  @Autowired private Clock clock;
+  @Autowired private AssetAccessService assetAccessService;
+  @Autowired private AuditEventRecorder auditEventRecorder;
+  @Autowired private SuccessionCaseCloser successionCases;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -593,6 +610,46 @@ class PermissionTransferIntegrationTest {
         .isInstanceOf(ConflictException.class);
   }
 
+  /**
+   * ADR-0053, Entscheidung 10: the confirmation may reach another backend instance than the
+   * preview. Instance B is a second service against the same database; what it shares with A is the
+   * database and the signing key, not A's memory.
+   */
+  @Test
+  void aPreviewShownOnOneInstanceIsConfirmedOnAnother() {
+    UUID source = group(organizationA, "Referat 50");
+    UUID target = group(organizationA, "Referat 52");
+    UUID library = libraryOwnedBy(organizationA, admin.id());
+    grantGroup(library, source, AssetRole.VIEWER, null);
+    PermissionTransferOrder order =
+        order(source, target, EnumSet.of(PermissionTransferScope.ASSET_GRANTS));
+    var previewId = transferService.preview(order, admin).previewId();
+
+    PermissionTransferService instanceB = secondInstance();
+    PermissionTransfer transfer =
+        transactionTemplate.execute(status -> instanceB.transfer(order, true, previewId, admin));
+
+    assertThat(transfer.counts().assetGrants()).isEqualTo(1);
+    assertThat(roleOfGroup(library, target)).isEqualTo(AssetRole.VIEWER);
+    assertThat(grantRepository.existsBySubjectGroupId(source)).isFalse();
+  }
+
+  /** A preview carries out one transfer: confirming it again finds the state it showed gone. */
+  @Test
+  void aConfirmedPreviewCannotBeConfirmedASecondTime() {
+    UUID source = group(organizationA, "Referat 50");
+    UUID target = group(organizationA, "Referat 52");
+    UUID library = libraryOwnedBy(organizationA, admin.id());
+    grantGroup(library, source, AssetRole.VIEWER, null);
+    PermissionTransferOrder order =
+        order(source, target, EnumSet.of(PermissionTransferScope.ASSET_GRANTS));
+    var previewId = transferService.preview(order, admin).previewId();
+    transferService.transfer(order, true, previewId, admin);
+
+    assertThatThrownBy(() -> transferService.transfer(order, true, previewId, admin))
+        .isInstanceOf(ConflictException.class);
+  }
+
   /** What the preview showed must still stand - otherwise it is presented again, as a plan is. */
   @Test
   void refusesAnExecutionWhenTheStateChangedSinceThePreview() {
@@ -912,6 +969,26 @@ class PermissionTransferIntegrationTest {
   private PermissionTransfer execute(PermissionTransferOrder order, CurrentUser caller) {
     UUID previewId = transferService.preview(order, caller).previewId();
     return transferService.transfer(order, true, previewId, caller);
+  }
+
+  /** A second backend process: the same database and beans, its own service instance. */
+  private PermissionTransferService secondInstance() {
+    return new PermissionTransferService(
+        transferRepository,
+        transferObjectRepository,
+        grantRepository,
+        capabilityGrantRepository,
+        groupDirectory,
+        spaceMembershipDirectory,
+        stewardshipDirectory,
+        assetOwnershipDirectories,
+        permissionHistoryService,
+        historyClock,
+        clock,
+        assetAccessService,
+        userRepository,
+        auditEventRecorder,
+        successionCases);
   }
 
   private Set<PermissionTransferScope> everything() {
