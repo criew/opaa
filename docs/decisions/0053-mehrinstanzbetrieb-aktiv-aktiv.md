@@ -1,0 +1,394 @@
+# ADR-0053: Mehrinstanzbetrieb — Aktiv/Aktiv in Stufen, koordiniert über Postgres
+
+## Status
+
+Akzeptiert · zuletzt geändert 2026-10-19 · löst [ADR-0021](0021-single-instance-betrieb.md) mit dem
+Abschluss von #1292 ab · ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
+
+## Kontext
+
+ADR-0021 legt OPAA auf genau einen Backend-Prozess fest und führt die Stellen, die diese Annahme
+tragen, im Register [backend/docs/prozesslokaler-zustand.md](../../backend/docs/prozesslokaler-zustand.md).
+Hochverfügbarkeit und ein Update ohne Ausfall verlangen mehrere Instanzen gegen eine Datenbank.
+Schon ein Rolling Update lässt kurz zwei Versionen nebeneinander laufen. Die Analyse in #1292
+(Inventar vom 17.09., Aktiv/Aktiv-Analyse vom 14.10. mit den Bauteilen B1–B9, Abgleich vom 19.10.)
+zeigt, dass dann drei Bereiche brechen:
+
+- **Sicherheit:** Anspruchszuordnung der Anbieter, Schalter der lokalen Konten, Rechte-Caches,
+  Abmeldung und Sitzungswiderruf wirken nur auf der Instanz, die die Änderung annimmt. Eine fremde
+  Instanz schreibt Systemrollen nach der alten Zuordnung zurück.
+- **Indexierung und geplante Läufe:** Jeder Cron feuert auf jeder Instanz, Erinnerungsmails und
+  Audit-Einträge entstehen doppelt. Die Start-Recovery gegen `ProcessStart` macht fremde Läufe zu
+  Zombies, die neben einem zweiten Lauf derselben Bibliothek weiterarbeiten.
+- **Rolling Updates:** `DROP COLUMN`, verengte `CHECK`s, `DROP NOT NULL` und neue Enum-Werte, auch
+  solche aus `opaa-api` ganz ohne Changeset, machen die noch laufende alte Version funktionsunfähig.
+  Liquibase und `initialize-schema` laufen beim Start jedes Pods.
+
+Dazu kommen: Budgets und Anzeigen gelten je Prozess, Mails warten in einer Warteschlange im
+Speicher, Uhr und Zeitzone jeder Instanz gehen in instanzübergreifende Vergleiche ein, und weder der
+Helm-Chart noch Compose sind auf mehrere Instanzen zugeschnitten. An anderen Stellen koordiniert OPAA
+bereits über die Datenbank (ADR-0021 Entscheidung 3). Diese Stellen tragen schon heute über
+Instanzgrenzen.
+
+## Entscheidung
+
+### 1. Zielbild Aktiv/Aktiv, geliefert in Stufen
+
+Mehrere gleichrangige Backend-Instanzen bedienen gleichzeitig Anfragen und Hintergrundarbeit, ohne
+Sitzungsaffinität (ADR-0021 Entscheidung 4). Die erste nutzbare Stufe heißt „zwei Instanzen, Update
+ohne Ausfall“; ihre Grenze steht unter Konsequenzen. Eine zweite Stufe macht Budgets und Anzeigen
+installationsweit (Entscheidung 12). Die Instanzzahl ist eine feste Größe der Bereitstellung, ein
+automatisches Skalieren des Backends ist nicht vorgesehen.
+
+Aktiv/Passiv spart wenig. Ein Rolling Update lässt auch dort zwei Versionen gegen dieselbe Datenbank
+laufen und braucht Expand/Contract (13), den Migrationsschritt (14) und den Laufbesitz (8) ebenso.
+Dazu käme eine Leader-Election mit Übernahme, und die passive Instanz müsste beim Übernehmen
+dieselben Caches, Läufe und Uhren richtig behandeln, nur seltener und damit schlechter erprobt.
+
+### 2. Koordination nur über Postgres
+
+Sperren, Signale, Zähler, Warteschlangen und die gemeinsame Zeitquelle liegen in der
+Anwendungsdatenbank: Advisory-Locks, bedingte `UPDATE`s, `SELECT … FOR UPDATE SKIP LOCKED`,
+Unique-Indizes und `LISTEN`/`NOTIFY`. Keine neue Infrastruktur wie Redis, ein Message-Broker oder
+Kubernetes-Leases. Eine solche Komponente braucht den Nachweis, dass Postgres für eine benannte Last
+nicht reicht, und eine eigene Entscheidung.
+
+Postgres ist in jeder Installation vorhanden, gesichert und überwacht. Jede weitere Komponente wäre
+für den Betrieb einer Behörde eine weitere Pflicht und nähme dem Compose-Weg seine Einfachheit. Die
+Last (wenige Instanzen, Signale im Sekundenbereich) liegt weit unter dem, was Postgres trägt.
+
+### 3. Instanzregister mit Heartbeat
+
+Jede Instanz trägt sich beim Start in eine Registertabelle ein: Kennung (neu je Prozessstart; Pod-
+oder Hostname geht nur zur Anzeige mit), Version, Startzeit, Konfigurationsabdruck (Entscheidung 4)
+und Heartbeat. Der Heartbeat wird alle 15 s nach Datenbankuhr geschrieben. Eine Instanz ohne
+Heartbeat seit 120 s gilt als tot. Beide Werte sind konfigurierbar, die Frist beträgt mindestens das
+Vierfache des Abstands. Beim geordneten Stopp meldet sich eine Instanz ab und gilt sofort als tot.
+Kann sie ihren Heartbeat nicht innerhalb der Frist schreiben, geht sie von ihrer Ablösung aus: Ihre
+Läufe enden kooperativ (Entscheidung 8). Tote Zeilen bleiben eine Woche zur Anzeige und werden dann
+gelöscht. Umsetzung: #2945.
+
+Die Frist wiegt Recovery-Tempo gegen Fehlalarme ab: Acht verpasste Schläge überdauern eine GC-Pause
+oder einen kurzen Datenbankaussetzer, ein ausgefallener Pod gibt seine Läufe nach zwei Minuten frei.
+
+### 4. Konfigurationsabdruck und zulässige Abweichungen
+
+Der Abdruck umfasst jeden `opaa.*`-Schlüssel mit `@DataImpact`, also die maschinelle Liste aus dem
+Fakten-Manifest (ADR-0052 Entscheidung 9). Neue datenwirksame Schlüssel gehen damit von selbst ein.
+Dazu kommen die als installationsweit gekennzeichneten technischen Werte: `OPAA_AUTH_JWT_SECRET`,
+`OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY`, die Embedding-Identität (Modell,
+Basis-URL, Dimension), Chunking, Auth-Profil, `OPAA_DB_SCHEMA`, Originalablage samt Bucket bzw. Pfad,
+Allowlists, Proxy-Vertrauensliste, `opaa.public-base-url`, die Feature-Flags und die Zeitzone der
+JVM. Jeder übrige `opaa.*`-Schlüssel ist ausdrücklich als „je Instanz zulässig“ gekennzeichnet
+(Zeitgrenzen, Pool-Größen); ein Strukturtest erzwingt die Einordnung wie `ConfigurationSettingsTest`.
+Gespeichert wird je Schlüssel ein Hash, bei Geheimnissen ein HMAC, nie der Wert.
+
+Regeln beim Start, serialisiert über einen Advisory-Lock auf das Register:
+
+- Weicht ein Wert von dem einer lebenden Instanz ab, verweigert die neue Instanz den Start und nennt
+  die Schlüssel.
+- Verglichen wird die Schnittmenge der Schlüssel, die beide Versionen kennen.
+- Die Version darf abweichen, aber nur im Rolling-Update-Fenster. Jede Version nennt die älteste
+  Vorgängerversion, neben der sie laufen darf: Vorgabe ist das unmittelbar vorige Release, an einer
+  Versionsgrenze ohne Rolling Update (Entscheidung 13) die Version selbst. Wer außerhalb des Fensters
+  liegt, ob älter oder neuer, startet nicht.
+- Einen Abdruckwert ändert nur ein Neustart aller Instanzen, nie ein Rolling Update; ein Rolling
+  Update mit geändertem Wert bleibt am ersten neuen Pod stehen, ohne Ausfall. Ändert ein Release die
+  Vorgabe eines Abdruckwerts, ist es eine Versionsgrenze ohne Rolling Update.
+
+Die Auskunft über die Datenerhebung (ADR-0052 Entscheidung 11) gibt den gemeinsamen Abdruck aus und
+weist eine Abweichung aus. Umsetzung: #2945.
+
+Ein abweichender Wert zeigt sich sonst nur als sporadischer Fehler je nach getroffener Instanz: 401
+bei abweichendem Secret, unlesbare Geheimnisse, Neueinbettung im Wechsel, Löschung nach der kürzesten
+Frist. Der Schnitt über die Schnittmenge lässt neue Schlüssel zu, ohne dass jedes Release eine
+Versionsgrenze wird.
+
+### 5. Invalidierungsbus über `LISTEN`/`NOTIFY`
+
+Ein Cache, der nur über ein prozessinternes Ereignis verworfen wird oder dessen TTL eine Rechte- oder
+Sicherheitslücke offen ließe, ist an einen Bus über Postgres angebunden:
+
+- **Senden** mit `pg_notify` in der Transaktion der Änderung. Postgres stellt die Nachricht erst mit
+  dem Commit zu, bei einem Rollback nie. Die Nutzlast nennt Cache und Schlüssel; was nicht in eine
+  Nachricht passt, wird „alles verwerfen“.
+- **Empfangen** auf jeder Instanz, auch der sendenden, über eine eigene Verbindung außerhalb des
+  Hikari-Pools. Die Ereignisse nach Commit bleiben für die sendende Instanz bestehen; eine
+  Invalidierung ist idempotent.
+- **Abriss:** Die Hörverbindung wird alle 5 s geprüft. Nach einem Abriss oder einer fehlgeschlagenen
+  Prüfung verwirft die Instanz alle angebundenen Caches vollständig und liest an ihnen vorbei aus der
+  Datenbank, bis `LISTEN` wieder steht; dann verwirft sie ein zweites Mal.
+- **Angebunden** werden die Caches aus dem Register, die sicherheitsrelevanten zuerst
+  (`OidcProviderRegistry`, `GroupMembershipResolver`, `AssetAccessService`,
+  `MetadataFilterOptionsCache`). Neue Regel in `backend/AGENTS.md`: Ein ereignisgesteuerter Cache ohne
+  TTL braucht die Anbindung.
+
+Die Hörverbindung braucht eine direkte Verbindung oder Session-Pooling; Transaction-Pooling
+(PgBouncer) trägt `LISTEN` nicht. Umsetzung: #2946.
+
+Nachrichten während eines Abrisses sind unwiederbringlich verloren. Ein Nachholen bräuchte ein
+eigenes Protokoll. Das vollständige Verwerfen ist einfach, und die Lücke ist auf den Prüfabstand
+begrenzt. Kurze TTLs statt eines Busses ließen die Lücke für die ganze TTL offen.
+
+### 6. Widerruf ohne Negativ-Cache und ohne Zeitvergleich
+
+- Die Denylist der lokalen Zugangstokens (`LocalTokenRevocationService`) cacht nur noch „widerrufen“.
+  „Nicht widerrufen“ wird bei jeder Prüfung aus `local_revoked_tokens` gelesen.
+- Der Sitzungswiderruf (Passwortwechsel, Sperre, Admin-Reset, Ausschalten der lokalen Konten,
+  Wiederverwendungserkennung) erhöht einen Zähler je Konto. Das Token trägt den Zählerstand als Claim,
+  die Prüfung verlangt Gleichheit. `iat` wird nicht mehr gegen einen Cutoff aus einer anderen Uhr
+  verglichen.
+
+Umsetzung: #2946. Ein Negativ-Cache ist auf jeder Instanz außer der widerrufenden falsch, und zwar für
+die volle Token-Lebensdauer. Ein Zeitvergleich über zwei Hosts scheitert schon an einer Sekunde
+Drift; ein Zähler kennt keine Uhr.
+
+### 7. Geplante Läufe: ShedLock und Merker mit Datenbankzusage
+
+- **Sperre je Lauf:** Jede `@Scheduled`-Methode trägt eine ShedLock-Sperre (`@SchedulerLock`,
+  `JdbcTemplateLockProvider` mit `usingDbTime()`); die Sperrtabelle legt ein Changeset nach ADR-0034
+  an, die Version steht in `backend/gradle/libs.versions.toml`. `lockAtLeastFor` liegt über der
+  größten erwarteten Uhrabweichung und unter dem Abstand des Laufs, damit eine Fälligkeit genau
+  einmal läuft, auch wenn eine zweite Instanz Sekunden später tickt. `lockAtMostFor` ist nur das Netz
+  für eine tote Instanz. Ein Strukturtest verlangt die Sperre an jeder `@Scheduled`-Methode.
+- **Merker:** Korrektheit hängt nicht an der Sperre. Jede nach außen sichtbare Wirkung eines Laufs
+  (Mail, Benachrichtigung, Audit, Rechte- und Sichtbarkeitshistorie) steht hinter einem Merker mit
+  Datenbankzusage: bedingtes `UPDATE … WHERE <merker> IS NULL` mit Prüfung der Zeilenzahl oder
+  Auswahl mit `FOR UPDATE SKIP LOCKED` (Vorbild `ConnectionExpiryWatch`, `PendingConsentSweep`).
+  Mails gehen in derselben Transaktion in die Outbox (Entscheidung 11).
+- **Bibliothekszeitplan:** Die Fälligkeit wird je Bibliothek per bedingtem `UPDATE` in der Datenbank
+  verbucht, nicht in `lastTickAt`.
+- **Sondierung der Modellrollen** (Rerank, Transkription) nur auf der Instanz, die ihre Sperre hält;
+  das Ergebnis liegt in der Datenbank (Entscheidung 12).
+
+Umsetzung: #2947.
+
+ShedLock statt eines eigenen `pg_try_advisory_lock`: Ein Advisory-Lock schließt nur Überlappung aus,
+nicht Wiederholung. Ein kurzer Lauf, der endet, bevor die zweite Instanz tickt, liefe ein zweites
+Mal, genau der Fehler von `LibraryIndexingScheduler`. Die Sperre je Fälligkeit braucht ein
+gespeichertes „gesperrt bis“ nach Datenbankuhr; eine Session-Sperre hielte zudem eine
+Pool-Verbindung für die ganze Laufdauer. ShedLock ist genau diese Tabelle, Apache-2.0, in Version 7
+für Spring Framework 7 und Spring Boot 4 gepflegt. Weil ShedLock allein bei einem Lauf über
+`lockAtMostFor` nicht hält, tragen die Merker die Zusage.
+
+### 8. Laufbesitz und Recovery über Heartbeats
+
+- **Besitz:** Jeder `RUNNING`-Indexierungslauf, jeder `PENDING`-Upload und der Worker der
+  Neueinbettung trägt die Kennung der besitzenden Instanz.
+- **Recovery** fragt „lebt die Besitzerin?“. Aufgegeben wird nur, was einer Instanz mit abgelaufenem
+  Heartbeat (Entscheidung 3) oder einer abgemeldeten gehört. `ProcessStart` entfällt als Kriterium,
+  „nicht meiner“ ebenso: Ein ersetzter Pod hat eine neue Kennung, die Zeilen des alten fänden sich
+  nie. Der Sweep läuft periodisch unter der Sperre aus Entscheidung 7 und einmal beim Start. Die
+  Frist für hängende Läufe einer lebenden Instanz (`staleJobTimeout`) bleibt daneben bestehen.
+- **Schreiben unter Besitz:** Fortschritt, Abschluss und `source_sync_state` schreiben bedingt
+  (`… WHERE status = 'RUNNING'` und Besitzerin bzw. Version), nie `findById` + `save`. Bei jedem
+  Fortschritt prüft der Lauf seinen Status und endet kooperativ, wenn er aufgegeben oder abgebrochen
+  wurde.
+- **Arbeitsdateien** liegen in einem Unterverzeichnis je Instanz; ein Sweep räumt das eigene und die
+  toter Instanzen.
+- **Neueinbettung:** Start, Abbruch und Besitz über die Zeile in `embedding_index`. Die DDL des
+  Startabgleichs (`EmbeddingIndexReconciler`) läuft nur unter einem Advisory-Lock und nur, wenn alle
+  lebenden Instanzen dieselbe Embedding-Identität melden, was Entscheidung 4 ohnehin erzwingt.
+- **Wartungsläufe** (Metadaten-Bestandslauf, Kontextpräfix- und Pipeline-Nachlauf, Schemaänderung)
+  bleiben ohne Exklusivsperre: Sie sind je Aufruf idempotent und wiederaufnehmbar, ein Doppelstart
+  kostet nur Modellaufrufe, wie schon im Einzelbetrieb bei zwei Personen.
+
+Umsetzung: #2948. Ein Kriterium aus Prozessstart oder Instanzkennung kann nicht unterscheiden, ob
+eine fremde Instanz noch arbeitet; nur ihr Heartbeat weiß das. Die bedingten Schreibzugriffe machen
+einen Zombie unschädlich, falls er die Frist doch überlebt.
+
+### 9. Datenbankuhr für instanzübergreifende Vergleiche
+
+Ein Zeitpunkt, den eine andere Instanz liest und vergleicht, stammt aus der Datenbankuhr. Ein
+Zeitpunkt, den nur dieser Prozess vergleicht, stammt aus der `Clock`-Bean.
+
+- **Datenbankuhr**, wo möglich im Statement selbst (`clock_timestamp()`, `now()`): Heartbeats und
+  ihre Fristen (3, 8), Fälligkeiten (Bibliothekszeitplan, `DirectorySyncScheduler`), Sperren
+  (`usingDbTime`), Outbox (11), Zählerfenster (12) und `AuditLogEntry.recordedAt`.
+  `PermissionHistoryClock` bekommt die Datenbankuhr samt datenbankseitiger Monotonie nach ADR-0032
+  Entscheidung 3.
+- **`Clock`-Bean** (Wanduhr der JVM): Zeitgrenzen und Dauern im Prozess, TTLs prozesslokaler Caches,
+  Fenster der Budgets je Instanz, der Ablauf von Tokens (`exp` mit Toleranz), Protokolle und
+  Anzeigen. Die Naht für die Datenbankuhr ist eine eigene, benannte Bean neben der `Clock`; die
+  Ratsche gegen `Instant.now()` (ADR-0051 Entscheidung 6) bleibt.
+- **Kalendergrenzen** (Crons, Jahres- und Quartalsgrenzen, Erinnerungsfenster, Warntage) folgen der
+  Zeitzone der JVM. Sie gehört zum Abdruck (4); Compose und Helm setzen `TZ` ausdrücklich.
+
+Umsetzung: #2945. Wanduhren zweier Hosts driften trotz NTP um Millisekunden bis Sekunden, ein
+Vergleich über Instanzen ist so gut wie die schlechteste Uhr. Die Datenbank ist die eine Uhr, die
+alle sehen; für Lokales kostete sie einen Roundtrip ohne Gewinn.
+
+### 10. Zustand aus dem Speicher in die Datenbank
+
+- **Gesprächsfenster:** Bei einem gespeicherten Chat liest jede Runde das Fenster aus
+  `chat_messages`; der Gesprächsspeicher ist dort keine Quelle mehr. Ephemere Gespräche ohne
+  gespeicherten Chat bleiben bewusst instanzgebunden, ein Instanzwechsel kostet ihren Kontext. Sie zu
+  speichern, schüfe Gesprächsdaten, die die Person nicht gespeichert hat.
+- **Vorschau der Rechteübertragung:** zustandslos als HMAC-signierte Vorschau-Kennung über Aufrufer,
+  Signatur, Fingerabdruck und Ablauf, Schlüssel aus `LocalAuthKeyService`. Eine Wiederholung nach der
+  Ausführung scheitert am geänderten Fingerabdruck.
+- **Persönliches Speicherkontingent:** `pg_advisory_xact_lock` je Eigentümerin in der Transaktion,
+  die prüft und das Dokument schreibt.
+- **Push-Eingang:** Stapel je Bibliothek in einer Tabelle, entprellt über Zeitstempel der
+  Datenbankuhr. Genau eine Instanz holt einen fälligen Stapel ab (`FOR UPDATE SKIP LOCKED`);
+  Schlüssel überleben Instanzwechsel und Neustart.
+- **Widerrufe beim Anbieter** (`GrantRevocations`): Warteschlange in der Datenbank nach demselben
+  Muster, damit ein Pod-Tausch keinen Widerruf einer Notabschaltung verliert.
+
+Umsetzung: #2949. Die signierte Vorschau braucht anders als eine Tabelle nach dem Vorbild
+`directory_sync_pending_plans` weder Aufräumlauf noch neue Daten.
+
+### 11. Mail-Outbox
+
+- Jede Mail, auf deren Ergebnis niemand in derselben Anfrage wartet (Selbstbedienung über
+  `MailDispatchExecutor`, Anmeldehinweise, Erinnerungen und Ablaufmails der geplanten Läufe), wird in
+  der fachlichen Transaktion in eine Outbox-Tabelle geschrieben; ein Rollback verwirft sie mit.
+- Zugestellt wird von einem Worker auf jeder Instanz. Er übernimmt fällige Zeilen mit
+  `FOR UPDATE SKIP LOCKED` und einer Frist nach Datenbankuhr und wiederholt mit wachsendem Abstand bis
+  zu einer Höchstzahl, danach scheitert die Zeile mit maskiertem Grund.
+- Zusage: höchstens ein Zustellversuch gleichzeitig, mindestens eine Zustellung. Ein Absturz zwischen
+  der Annahme durch den Mailserver und dem Vermerk kann eine Mail ein zweites Mal senden; eine stabile
+  `Message-ID` je Zeile macht das erkennbar.
+- Empfänger und Inhalt liegen mit dem Einstellungsschlüssel verschlüsselt (`SettingsEncryptor`), weil
+  Links Einmal-Geheimnisse tragen. Die Zeile wird nach der Zustellung oder dem endgültigen Scheitern
+  gelöscht; das Fakten-Manifest führt die Tabelle.
+- Synchron bleiben Mails, deren Ergebnis die anfragende Person sofort sieht: die Testmail der
+  Verwaltung und die Zustellung mit Ausweichweg (`MailDeliveryPath`), bei der ein Fehlschlag den Link
+  anzeigt.
+
+Umsetzung: #2949. Mit Rolling Updates wird der Stopp zum Routinevorgang, und eine Warteschlange im
+Speicher verlöre dabei regelmäßig Reset- und Einladungslinks. Genau-einmal-Zustellung gibt SMTP nicht
+her; „mindestens einmal“ ist die ehrliche Zusage.
+
+### 12. Installationsweite Budgets
+
+| Budget | Entscheidung |
+|---|---|
+| Globale Deckel `opaa.rate-limit.*.global-max-requests` (auch `local-auth`) | Zählerzeile je Grenze und Zeitfenster nach Datenbankuhr, ein Upsert je gezählter Anfrage |
+| Abflussalarm `ExternalAccessMassRetrievalAlarm` (kanalweites Fenster) | Zählerzeile je Kanal und Fenster, ohne Token- oder Personenbezug |
+| Grenzen je Client, Adresse oder Konto (`max-requests`, `LocalAuthRateLimiter`) | je Instanz, durch N geteilt |
+| Kontingent je Zugangstoken (`ExternalAccessQuota`) | je Instanz, durch N geteilt |
+| Pools `embeddingTaskExecutor`, `modelExtractionTaskExecutor` | je Instanz, durch N geteilt |
+| `TranscriptionModelRole.slots`, `AttachmentExtractionLimiter` | je Instanz, durch N geteilt |
+| Pools `indexingTaskExecutor`, `uploadTaskExecutor`, Chat-Titel und Gesprächsnotiz | je Instanz, ohne Teilung |
+| Rate-Limit-Behandlung der Quellsysteme | je Lauf, unverändert |
+
+„Durch N geteilt“ heißt: Handbuch, Compose und Helm nennen die Formel, der Wert je Instanz ist das
+Budget der Installation durch die Zahl der Instanzen. Bis zur Umsetzung gilt das für jedes Budget
+der Tabelle. Zustand der Modellrollen und Statusanzeigen kommen aus der Datenbank oder sind in der
+Oberfläche als „je Instanz“ gekennzeichnet; die Kostenvorschau rechnet mit dem Durchsatz der
+Installation. Umsetzung: #2950.
+
+Zählerzeilen nur, wo die absolute Zahl die Zusage ist (Kostendeckel, Frühwarnung gegen
+Credential-Stuffing, Abflussalarm) und es wenige Schlüssel gibt. Das Kontingent je Token bleibt
+bewusst im Speicher: Ein persistierter Zähler wäre ein Nutzungsdatum über eine Person. Die Pools
+schützen eigene Endpunkte und den eigenen Speicher; ein Datenbank-Slot je Einbettungsaufruf kostete
+mehr, als er schützt. Läufe und Uploads skalieren bewusst mit N, das ist der Sinn mehrerer Instanzen.
+
+### 13. Migrationen nach Expand/Contract über zwei Releases
+
+Jede Schemaänderung, die die Vorgängerversion bräche, verteilt sich auf zwei Releases. Release n
+erweitert nur: neue Tabellen, Spalten nullable oder mit bleibendem Default, zusätzliche erlaubte
+Werte. Release n+1 zieht frühestens zusammen (`DROP`, `RENAME`, `SET NOT NULL`, `DROP DEFAULT`,
+verengte `CHECK`s), in ausdrücklich gekennzeichneten Contract-Changesets. Ein neuer Wert eines
+persistierten Enums ist eine Erweiterung, auch ohne Changeset (`opaa-api`): Er wird erst
+geschrieben, wenn die Vorgängerversion ihn lesen kann. Ein sicherheitsrelevanter neuer Zustand wird
+in der Datenbank durchgesetzt (Trigger oder Constraint, Vorbild `assets.owner_only`), damit die alte
+Version ihn nicht umgeht. Eine Baseline-Zusammenfassung oder ein unvermeidbarer Bruch ist eine
+ausgewiesene „Versionsgrenze ohne Rolling Update“ (Entscheidung 4). Ein Wächter vergleicht den
+Katalog vor und nach jedem Changeset; ein Verzeichnis der persistierten Enums verlangt für einen
+neuen Wert den Erweiterungsschritt. Regel, Wächter, `lock_timeout` je Changeset und die Bewertung
+der Altlasten: [backend/docs/liquibase.md](../../backend/docs/liquibase.md) (#2944).
+
+Die Regel gilt sofort für jedes neue Changeset, unabhängig vom Rest des Umbaus. Ein Rolling Update
+wird erst freigegeben, wenn sie mindestens ein Release gegolten hat.
+
+### 14. Migration als eigener Schritt
+
+Das Backend-Image hat einen Startmodus, der nur Liquibase ausführt und endet. Bei mehr als einer
+Instanz migriert nur dieser Schritt, die Anwendungsinstanzen laufen mit
+`SPRING_LIQUIBASE_ENABLED=false`. `vector_store` legt Liquibase an, `initialize-schema` von pgvector
+ist aus. Eine einzelne Instanz darf weiter beim Start migrieren (ADR-0042 Entscheidung 2). Einmalige
+Startaktionen (Seeds, `OPAA_LOCAL_ADMIN_RESET`) laufen unter einem Advisory-Lock genau einmal je
+Anforderung, ein Passwort erscheint erst nach dem Commit im Log. Umsetzung: #2944, Einbindung in Helm
+und Compose: #2951.
+
+Ein abgeschossener Pod hinterlässt sonst einen hängenden `DATABASECHANGELOGLOCK`, die Startup-Probe
+müsste die Migrationsdauer abdecken, und zwei gleichzeitige Kaltstarts liefern sich DDL-Rennen.
+
+### 15. Betriebsmodell für Compose und Kubernetes
+
+**Update-Reihenfolge, beide Wege:** Erst der Migrationsschritt der neuen Version, die gegenüber der
+Vorgängerin nur erweitert (13). Dann die Instanzen einzeln ersetzen, die nächste erst nach
+bestandener Readiness der neuen. Ein Rückweg auf die Vorgängerversion bleibt im
+Rolling-Update-Fenster möglich, über eine Versionsgrenze ohne Rolling Update nur über die
+Datenbanksicherung.
+
+**Kubernetes (Helm-Chart, ADR-0042):**
+
+- `backend.replicas` größer 1 rendert nur mit aktivem Migrations-Job und gemeinsamer Originalablage
+  (`s3` oder PVC mit `ReadWriteMany`); sonst bricht das Rendern mit Meldung ab.
+- Strategie `RollingUpdate` (`maxUnavailable: 0`, `maxSurge: 1`) ab zwei Replikaten, `Recreate`
+  bleibt für eins. PodDisruptionBudget ab zwei Replikaten, `lifecycle.preStop.sleep` (das Image hat
+  keine Shell), `terminationGracePeriodSeconds` mindestens Read-Timeout des Frontends plus `preStop`.
+- Hikari-Poolgröße als Wert mit der Grenze `(replicas + maxSurge) × Pool + Migration ≤
+  max_connections`. `/tmp` bleibt `emptyDir` je Pod, die Alarme gelten je Pod statt über alle
+  summiert. Einen Abdruckwert ändert `Recreate` bzw. Skalieren auf null (4).
+
+**Docker Compose:**
+
+- Kein Rolling Update. Eine Mehrinstanz-Variante mit Migrationsdienst und zwei benannten Diensten
+  `backend-a` und `backend-b`, je mit eigenem `/tmp`, ohne Host-Portbindung, mit Healthcheck auf die
+  Readiness ohne Shell. Originalablage `s3` oder ein gemeinsames Bind-Mount auf demselben Host.
+- Update: Migrationsdienst, dann `backend-a` ersetzen und auf „healthy“ warten, dann `backend-b`.
+- nginx löst den Backend-Namen zur Laufzeit auf (`resolver`), damit ein neuer Container ohne
+  nginx-Neustart erreichbar ist. `docker compose --scale` ist nicht der Weg: Es teilt das benannte
+  `/tmp`-Volume und scheitert an der festen Portbindung.
+
+Der Einzelinstanzbetrieb bleibt auf beiden Wegen unverändert. Umsetzung: #2951, Nachweis mit zwei
+Instanzen und Handbuch: #2952.
+
+## Konsequenzen
+
+**Einfacher:** Eine Installation übersteht den Ausfall einer Instanz und ein Update ohne Unterbrechung.
+Alle Koordination liegt an einer Stelle, die ohnehin gesichert wird. Abweichende Konfiguration
+scheitert beim Start statt als sporadischer Fehler. Ein Rückweg auf die Vorgängerversion ist im
+Rolling-Update-Fenster ohne Datenbanksicherung möglich.
+
+**Schwieriger:** Jede Schemaänderung kostet zwei Releases. Jeder neue Cache, jeder neue geplante
+Lauf und jede neue Startaktion muss sich an Bus, Sperre oder Register binden; die Strukturtests aus
+den Entscheidungen 4 und 7 und die Regel aus Entscheidung 5 halten das fest. Eine Änderung an einem
+Abdruckwert verlangt einen Neustart aller Instanzen. ShedLock ist eine neue Abhängigkeit.
+
+**Restrisiken:** Nach einem Abriss der Hörverbindung kann ein Cache bis zum Prüfabstand veraltet
+sein. Ein Absturz während der Zustellung kann eine Mail doppelt senden. Ephemere Gespräche verlieren
+bei einem Instanzwechsel ihren Kontext. Bis zur zweiten Stufe gelten die Budgets nur über die Formel,
+nicht durch eine Zählung.
+
+**Liefergrenze der ersten nutzbaren Stufe „zwei Instanzen, Update ohne Ausfall“:** die Entscheidungen
+2 bis 9, 13 bis 15, aus Entscheidung 10 das Gesprächsfenster und Entscheidung 11 (#2944 bis #2948,
+#2951, #2952 und die genannten Teile von #2949). Ohne das Gesprächsfenster verlöre bei abwechselnder
+Verteilung jeder gespeicherte Chat jede zweite Runde aus dem Kontext. Die zweite Stufe bringt den Rest
+von Entscheidung 10 und Entscheidung 12 (#2949, #2950). Bis sie geliefert ist, scheitert eine
+Rechteübertragung über zwei Instanzen geschlossen mit 409, das persönliche Kontingent kann um einen
+Aufnahmeschritt je Instanz überschritten werden, und ein Rolling Update kostet offene Push-Stapel
+Aktualität bis zum nächsten Abgleich. Bis die erste Stufe vollständig geliefert ist, verweigert der
+Chart mehr als ein Replikat, und ADR-0021 gilt weiter.
+
+## Verworfene Alternativen
+
+- Aktiv/Passiv mit Leader-Election — spart wenig, siehe Entscheidung 1.
+- Redis, Message-Broker oder Kubernetes-Leases zur Koordination — zusätzliche Betriebspflicht ohne Lastnachweis (Entscheidung 2).
+- Eigener `pg_try_advisory_lock` je Lauf statt ShedLock — schließt Wiederholung nicht aus, siehe Entscheidung 7.
+- Sticky Sessions — verdecken nur Gesprächsspeicher und Vorschau, nicht Caches, Läufe und Uhren, und fallen beim Pod-Tausch ohnehin weg.
+- Recovery nur eigener Zeilen nach Instanzkennung — ein ersetzter Pod hat eine neue Kennung (Entscheidung 8).
+- Kurze TTLs statt eines Invalidierungsbusses — lassen die Rechtelücke für die TTL offen (Entscheidung 5).
+- Zählerzeilen für alle Budgets — für Pools teurer als der Schutz, für das Token-Kontingent ein neues Nutzungsdatum (Entscheidung 12).
+- Vorschau der Rechteübertragung als Tabelle — braucht Aufräumlauf und neue Daten (Entscheidung 10).
+
+## Offen
+
+- Ob die datenbankseitige Monotonie der Rechtehistorie je Objekt oder installationsweit gilt, gemessen
+  an der Zusage für Kombinationszustände (ADR-0032 Entscheidung 2): #2945.
+- Horizontale Skalierung der Indexierung über eine Auftragswarteschlange in der Datenbank statt der
+  Übergabe an den Executor der tickenden Instanz; erst nach der ersten Stufe und bei Bedarf.

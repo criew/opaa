@@ -199,6 +199,8 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
     Regeln, Prüfinstanzen und akzeptierte Abweichungen
   - [0052](./decisions/0052-compliance-manifest.md) — Compliance-Manifest: Ablage, Schema,
     Fristen und Prüfsummen der System-Prompts
+  - [0053](./decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) — Mehrinstanzbetrieb: Aktiv/Aktiv in
+    Stufen, koordiniert über Postgres; Nachfolger von ADR-0021
 
 ### Demo und Vorführung
 

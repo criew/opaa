@@ -2,7 +2,8 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14
+Akzeptiert · zuletzt geändert 2026-10-19 · gilt bis zum Abschluss von #1292; wird durch
+[ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) abgelöst
 
 ## Kontext
 
@@ -23,14 +24,15 @@ OPAA läuft bis auf Weiteres als genau ein Backend-Prozess je Installation. Proz
 (In-Memory-Caches, `@Scheduled`-Zustand, Warteschlangen, Semaphoren, Zähler, der Monotonie-Zeitgeber
 der Rechtehistorie, die Annahme „die eine laufende Instanz“ in Recovery-Routinen, die knotenlokale
 Upload-Ablage) ist unter dieser Annahme korrekt und braucht keine verteilte Koordination. Das ist
-keine Entscheidung, Multi-Instanz-Betrieb zu bauen; die fällt eigenständig, sobald ein Bedarf
-(Hochverfügbarkeit, horizontale Skalierung) entsteht.
+keine Entscheidung gegen den Multi-Instanz-Betrieb; dessen Bauart legt ADR-0053 fest, und bis
+#1292 abgeschlossen ist, gilt diese Annahme weiter.
 
 ### 2. Register in `backend/docs/`, Verweis in der Javadoc
 
 Jede Stelle, die diese Annahme trägt, steht im Register
-[backend/docs/prozesslokaler-zustand.md](../../backend/docs/prozesslokaler-zustand.md). Wer eine neue
-einführt, trägt sie dort ein und nennt „(ADR-0021)“ in der Javadoc. Das ist keine Hürde für die Umsetzung:
+[backend/docs/prozesslokaler-zustand.md](../../backend/docs/prozesslokaler-zustand.md), zusammen mit
+dem Sub-Issue von #1292, das sie umbaut. Wer eine neue einführt, trägt sie dort ein und nennt
+„(ADR-0021)“ in der Javadoc. Das ist keine Hürde für die Umsetzung:
 Prozesslokal bleibt die richtige, einfachste Lösung; die Eintragung macht nur sichtbar, was ein
 späterer Umbau prüfen muss, statt dass die Liste erneut durch Code-Archäologie entsteht.
 
@@ -68,9 +70,11 @@ Umbau hat eine vollständige Startliste.
 ohne Umbau der registrierten Stellen nicht möglich. Die Pflege des Registers ist manuell, durch
 Review und Entscheidung 2.
 
-**Restrisiken:** Werden dennoch zwei Instanzen gestartet, failt der Start der einen die laufenden
-Jobs der anderen, Rechteänderungen wirken auf der anderen Instanz erst nach TTL oder Neustart, und
-Uploads sind nur auf dem Knoten lesbar, der sie annahm.
+**Restrisiken:** Werden dennoch zwei Instanzen gestartet, setzt der Start der einen die Läufe der
+anderen auf `FAILED`, die vor ihm begonnen haben; sie arbeiten als Zombies weiter, während ein
+zweiter Lauf derselben Bibliothek starten kann. Rechteänderungen wirken auf der anderen Instanz erst
+nach TTL oder Neustart, Konfigurationsänderungen erst nach Neustart, und mit der Ablage im
+Dateisystem sind Uploads nur auf dem Knoten lesbar, der sie annahm.
 
 ## Verworfene Alternativen
 
@@ -81,9 +85,4 @@ Uploads sind nur auf dem Knoten lesbar, der sie annahm.
 
 ## Offen
 
-- Umbaurichtung je Kategorie, als Einordnung, keine Planung: Instanzkennung an `RUNNING`-Zeilen und
-  heartbeat-basierte Recovery, die dann beide Seiten aus der Datenbankuhr liest, weil die Wanduhren
-  zweier Hosts driften; Invalidierungssignal über Prozessgrenzen (naheliegend Postgres
-  `LISTEN`/`NOTIFY`) für ereignisgesteuerte Caches, die keinen TTL haben; gemeinsamer Zähler für
-  Rate-Limits und Kontingente; Datenbankuhr für `PermissionHistoryClock` (ADR-0032, #1517); geteiltes
-  Volume oder Objektspeicher für Uploads; Entprellung des Push-Pfads in der Datenbank.
+- Der Umbau zum Mehrinstanzbetrieb nach ADR-0053 (#1292).
