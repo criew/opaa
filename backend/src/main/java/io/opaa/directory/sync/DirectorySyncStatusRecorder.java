@@ -9,11 +9,10 @@ import org.springframework.stereotype.Service;
 
 /**
  * Persists the outcome of a directory synchronisation run. Called only from {@link
- * DirectorySyncService}, which is itself not transactional and calls this only after {@link
- * DirectorySyncPlanExecutor#planAndApply}/{@code planOnly} has already returned successfully - so
- * there is never an ambient transaction to consider here, and a failed apply (its transaction
- * rolled back) never reaches this class at all, so no {@code APPLIED} is recorded for a run that
- * did not apply.
+ * DirectorySyncService}, which is itself not transactional and calls this only once {@link
+ * DirectorySyncPlanExecutor}'s transaction has ended - so there is never an ambient transaction to
+ * consider here. A failed apply arrives here only as {@code FAILED}, after its transaction rolled
+ * back, so no {@code APPLIED} is recorded for a run that did not apply.
  */
 @Service
 public class DirectorySyncStatusRecorder {
