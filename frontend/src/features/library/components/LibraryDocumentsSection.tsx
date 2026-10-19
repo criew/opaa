@@ -99,6 +99,7 @@ export default function LibraryDocumentsSection({
   const deleteError = useDocumentStore((s) => s.deleteError)
   const folderError = useDocumentStore((s) => s.folderError)
   const folderNotFoundMessage = useDocumentStore((s) => s.folderNotFoundMessage)
+  const pollingStoppedMessage = useDocumentStore((s) => s.pollingStoppedMessage)
   const isUploading = useDocumentStore((s) => s.isUploading)
   const loadDocuments = useDocumentStore((s) => s.loadDocuments)
   const uploadNewDocument = useDocumentStore((s) => s.uploadNewDocument)
@@ -683,6 +684,21 @@ export default function LibraryDocumentsSection({
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+      {pollingStoppedMessage && (
+        // Polite rather than assertive: the list itself still shows its last loaded state.
+        <Alert
+          severity="warning"
+          role="status"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => void loadDocuments(libraryId, {})}>
+              Aktualisieren
+            </Button>
+          }
+        >
+          {pollingStoppedMessage}
         </Alert>
       )}
 
