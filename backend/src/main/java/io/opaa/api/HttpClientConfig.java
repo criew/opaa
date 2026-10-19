@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.net.http.HttpClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.restclient.RestClientCustomizer;
@@ -17,6 +18,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
  *
  * @see <a href="https://github.com/spring-projects/spring-ai/issues/2042">Spring AI #2042</a>
  */
+@PerInstance("HTTP version of the outbound clients of this process")
 @NoDataImpact("HTTP version of outgoing clients")
 @DataFlowCarrier
 @Configuration

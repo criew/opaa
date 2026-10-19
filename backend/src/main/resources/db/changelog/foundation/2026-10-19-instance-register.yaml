@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: foundation-2026-10-19-instance-register
+      author: opaa
+      comment: "The instance register (ADR-0053, Entscheidung 3): one row per process start with version, heartbeat by the database clock and the digests of the configuration fingerprint, plus the one HMAC key the digests are taken under. Additive: two new tables."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE backend_instances (
+                  id uuid NOT NULL,
+                  host_name text NOT NULL,
+                  version text NOT NULL,
+                  oldest_compatible_version text NOT NULL,
+                  started_at timestamp with time zone NOT NULL,
+                  heartbeat_at timestamp with time zone NOT NULL,
+                  stopped_at timestamp with time zone,
+                  fingerprint jsonb NOT NULL,
+                  fingerprint_hash text NOT NULL,
+                  CONSTRAINT backend_instances_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_backend_instances_fingerprint_object CHECK (jsonb_typeof(fingerprint) = 'object')
+              );
+              CREATE TABLE backend_instance_fingerprint_key (
+                  id integer NOT NULL,
+                  hmac_key bytea NOT NULL,
+                  created_at timestamp with time zone NOT NULL,
+                  CONSTRAINT backend_instance_fingerprint_key_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_backend_instance_fingerprint_key_singleton CHECK (id = 1),
+                  CONSTRAINT chk_backend_instance_fingerprint_key_length CHECK (octet_length(hmac_key) = 32)
+              );

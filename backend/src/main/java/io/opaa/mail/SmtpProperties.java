@@ -1,6 +1,7 @@
 package io.opaa.mail;
 
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -18,6 +19,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param readTimeout how long the server may take to answer a command
  * @param writeTimeout how long writing the message body may take
  */
+@PerInstance("SMTP timeouts of this process")
 @NoDataImpact("timeouts")
 @ConfigurationProperties(prefix = "opaa.mail")
 public record SmtpProperties(

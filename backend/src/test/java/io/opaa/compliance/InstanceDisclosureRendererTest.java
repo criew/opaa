@@ -10,6 +10,7 @@ import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
 import io.opaa.compliance.InstanceDisclosure.ProtocolField;
 import io.opaa.compliance.InstanceDisclosure.QueryPath;
+import io.opaa.compliance.InstanceDisclosure.RunningInstance;
 import io.opaa.compliance.InstanceDisclosure.SettingValue;
 import java.time.Instant;
 import java.util.List;
@@ -41,7 +42,8 @@ class InstanceDisclosureRendererTest {
                   true,
                   Instant.parse("2026-10-01T10:00:00Z"),
                   "12 bis 120 Monate",
-                  "Aufbewahrungsfrist des Protokolls"),
+                  "Aufbewahrungsfrist des Protokolls",
+                  true),
               new SettingValue(
                   "configuration",
                   "opaa.rerank.enabled",
@@ -51,12 +53,27 @@ class InstanceDisclosureRendererTest {
                   false,
                   null,
                   null,
-                  "Ob a|b")),
+                  "Ob a|b",
+                  true),
+              new SettingValue(
+                  "configuration",
+                  "opaa.transcription.enabled",
+                  SettingSource.PROPERTY,
+                  "false",
+                  null,
+                  false,
+                  null,
+                  null,
+                  "Ob Sprache",
+                  false)),
           List.of(
               new DataFlowState("source-web", DataFlowGroup.CONNECTOR, "Webserver", true),
               new DataFlowState("model-endpoint", DataFlowGroup.MODEL, "Formular", null)),
           List.of(new ConnectorUsage("HTTP_DIRECTORY", 1, 0)),
           List.of(new ModelProvider("CHAT", "Hausmodell", "https://llm.example/v1", "llama", true)),
+          List.of(
+              new RunningInstance("1.4.0", Instant.parse("2026-10-16T06:00:00Z")),
+              new RunningInstance("1.5.0", Instant.parse("2026-10-17T07:30:00Z"))),
           new Protocol(
               List.of(
                   new ProtocolField(
@@ -89,6 +106,18 @@ class InstanceDisclosureRendererTest {
         .contains(
             "| `audit_retention_settings.retention_months` | `36` | `24` | 2026-10-01T10:00:00Z |")
         .doesNotContain("opaa.rerank.enabled");
+  }
+
+  @Test
+  void namesTheRunningInstancesAndASettingThatDiffersBetweenThem() {
+    String markdown = InstanceDisclosureRenderer.render(DISCLOSURE);
+
+    assertThat(markdown)
+        .contains("## Laufende Instanzen")
+        .contains("| `1.4.0` | 2026-10-16T06:00:00Z |")
+        .contains("| `1.5.0` | 2026-10-17T07:30:00Z |")
+        .contains(
+            "| `opaa.transcription.enabled` | PROPERTY | `false` | abweichend zwischen Instanzen |");
   }
 
   @Test
@@ -135,6 +164,7 @@ class InstanceDisclosureRendererTest {
             List.of(),
             List.of(
                 new ModelProvider("CHAT", "![x](https://tracker.example/p.png)", null, "m", true)),
+            List.of(),
             DISCLOSURE.protocol());
 
     String markdown = InstanceDisclosureRenderer.render(withImage);

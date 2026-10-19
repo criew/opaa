@@ -1,5 +1,6 @@
 package io.opaa.account;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -13,6 +14,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxAttempts failed attempts that lock the account (default 5)
  * @param duration how long the lock lasts (default 15 minutes)
  */
+@InstallationWide
 @NoDataImpact("a protection limit against guessing")
 @ConfigurationProperties(prefix = "opaa.auth.local.lockout")
 public record LocalLockoutProperties(

@@ -3,6 +3,7 @@ package io.opaa.indexing.source.web;
 import static io.opaa.common.PropertyDefaults.notNegativeOr;
 
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -30,6 +31,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     Tika's POIFS container detection, past which an OLE2 entry would be rejected after a full
  *     transfer anyway. {@code 0} falls back to the default; a negative value is rejected outright.
  */
+@PerInstance("budgets and bounds of a run on this process")
 @NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.crawl")
 public record CrawlProperties(int maxDepth, int maxEntries, long maxFileSizeBytes) {

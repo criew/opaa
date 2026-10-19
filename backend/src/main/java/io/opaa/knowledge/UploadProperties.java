@@ -3,7 +3,9 @@ package io.opaa.knowledge;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.compliance.DataImpact;
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -37,10 +39,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     still legitimately in flight is never mistaken for an orphan. A report may raise it per call,
  *     never lower it.
  */
+@PerInstance("upload limits and pools of this process")
 @NoDataImpact("sizes and pools of uploads")
 @ConfigurationProperties(prefix = "opaa.upload")
 public record UploadProperties(
-    String storagePath,
+    @InstallationWide String storagePath,
     @DataImpact String store,
     long maxFileSize,
     ThreadPool threadPool,

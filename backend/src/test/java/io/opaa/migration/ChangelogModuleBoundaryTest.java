@@ -50,7 +50,13 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
    */
   static final Map<String, Module> TABLE_MODULES =
       tables(
-          Map.entry(FOUNDATION, List.of("organizations", "outbound_proxy_settings")),
+          Map.entry(
+              FOUNDATION,
+              List.of(
+                  "organizations",
+                  "outbound_proxy_settings",
+                  "backend_instances",
+                  "backend_instance_fingerprint_key")),
           Map.entry(
               IDENTITY,
               List.of(

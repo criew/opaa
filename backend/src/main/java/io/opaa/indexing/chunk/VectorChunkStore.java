@@ -1,6 +1,7 @@
 package io.opaa.indexing.chunk;
 
 import io.opaa.compliance.DataFlow;
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.chunk.ChunkMetadataKeys;
@@ -50,6 +51,7 @@ import org.springframework.stereotype.Component;
  * deleting from {@code afterCommit} cannot reliably start a fresh one, and each delete is a single
  * atomic statement, idempotent if only one of the two ever runs.
  */
+@InstallationWide
 @NoDataImpact("input limit of the embedding endpoint")
 @DataFlow("embedding-model")
 @Component
