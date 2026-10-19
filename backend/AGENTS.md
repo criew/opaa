@@ -138,6 +138,15 @@ Herleitung und Prüfungen: [docs/liquibase.md](docs/liquibase.md).
   auf neuer Tabelle) kommt ohne eigenen Test aus; alles andere braucht einen Delta-Test unter `io.opaa.migration`
   (`AbstractMigrationTest`). Im Zweifel ist es nicht additiv.
 - Jede neue Tabelle und Spalte braucht einen Eintrag im Fakten-Manifest, siehe nächster Abschnitt.
+- **Rolling Update, Expand/Contract über zwei Releases:** Kein Changeset bricht die Vorgängerversion,
+  die beim Update weiterläuft. Entfernen, Umbenennen, `NOT NULL` ohne bleibenden Default,
+  `DROP NOT NULL`, `DROP DEFAULT`, ein engerer Typ oder `CHECK` kommen erst im Folgerelease, wenn die
+  Vorgängerversion den Teil nicht mehr nutzt, als Changeset mit `labels: contract`
+  (`RollingUpdateGuardTest`). Baselines nur an ausgewiesenen Versionsgrenzen ohne Rolling Update.
+- Jedes Changeset beginnt mit `SET LOCAL lock_timeout = '5s';` (`ChangesetLockTimeoutTest`).
+- Ein neuer Wert eines persistierten Enums steht zuerst unter `pending` in
+  `src/test/resources/db/persisted-enums.yaml` und wird erst ab dem Release nach dem geschrieben, das
+  ihn ausliefert (`PersistedEnumRegistryTest`).
 
 ## Fakten-Manifest
 

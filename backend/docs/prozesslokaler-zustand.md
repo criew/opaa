@@ -7,8 +7,9 @@ Start-Aktion), trägt sie hier ein und nennt „(ADR-0021)“ in der Javadoc (Re
 [backend/AGENTS.md](../AGENTS.md#prozesslokaler-zustand-adr-0021)). Was bereits über die
 Datenbank koordiniert (Advisory-Locks in `UserRepository`, `GroupRepository`, `AssetGrantRepository`
 und `DirectorySyncRunLock`; `uk_indexing_jobs_library_running`; `SELECT … FOR UPDATE` der
-Aufbewahrungs- und Löschläufe; Seed-Marker; OAuth-`state` in `connection_authorizations`), steht
-hier nicht: Es trüge auch über Instanzen.
+Aufbewahrungs- und Löschläufe; Seed-Marker und die Start-Seeds unter der Advisory-Sperre `209`;
+OAuth-`state` in `connection_authorizations`; die Migration unter der Liquibase-Sperre), steht hier
+nicht: Es trüge auch über Instanzen.
 
 | Art | Fundstelle | Bei mehreren Instanzen |
 |---|---|---|
