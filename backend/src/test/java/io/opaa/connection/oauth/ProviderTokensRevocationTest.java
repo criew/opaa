@@ -55,11 +55,7 @@ class ProviderTokensRevocationTest {
   void anExpiredAccessTokenIsRenewedBeforeTheBearerRevocation() {
     OAuthClient.Grant grant = consent(bearer());
 
-    tokens
-        .revocation(
-            profile,
-            new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)))
-        .run();
+    revoke(new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)));
 
     assertThat(server.requests("refresh_token")).hasSize(1);
     assertThat(server.revocations())
@@ -75,11 +71,7 @@ class ProviderTokensRevocationTest {
   void anAccessTokenAboutToExpireIsRenewedAsWell() {
     OAuthClient.Grant grant = consent(bearer());
 
-    tokens
-        .revocation(
-            profile,
-            new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.plusSeconds(30)))
-        .run();
+    revoke(new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.plusSeconds(30)));
 
     assertThat(server.requests("refresh_token")).hasSize(1);
     assertThat(server.revocations().getFirst().authorization())
@@ -90,12 +82,8 @@ class ProviderTokensRevocationTest {
   void aValidAccessTokenIsSentAsItIs() {
     OAuthClient.Grant grant = consent(bearer());
 
-    tokens
-        .revocation(
-            profile,
-            new StoredTokens(
-                grant.refreshToken(), grant.accessToken(), NOW.plus(Duration.ofHours(1))))
-        .run();
+    revoke(
+        new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.plus(Duration.ofHours(1))));
 
     assertThat(server.requests("refresh_token")).isEmpty();
     assertThat(server.revocations().getFirst().authorization())
@@ -107,11 +95,7 @@ class ProviderTokensRevocationTest {
     OAuthClient.Grant grant = consent(bearer());
     server.rejectWith(400, "invalid_grant");
 
-    tokens
-        .revocation(
-            profile,
-            new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)))
-        .run();
+    revoke(new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)));
 
     assertThat(server.requests("refresh_token")).hasSize(1);
     assertThat(server.revocations()).isEmpty();
@@ -122,11 +106,7 @@ class ProviderTokensRevocationTest {
     OAuthClient.Grant grant = consent(bearer());
     server.unreachable(true);
 
-    tokens
-        .revocation(
-            profile,
-            new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)))
-        .run();
+    revoke(new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)));
 
     assertThat(server.requests("refresh_token")).hasSize(1);
     assertThat(server.revocations())
@@ -140,9 +120,7 @@ class ProviderTokensRevocationTest {
   void anExpiredAccessTokenWithoutRefreshTokenIsSentAsItIs() {
     OAuthClient.Grant grant = consent(bearer());
 
-    tokens
-        .revocation(profile, new StoredTokens(null, grant.accessToken(), NOW.minusSeconds(60)))
-        .run();
+    revoke(new StoredTokens(null, grant.accessToken(), NOW.minusSeconds(60)));
 
     assertThat(server.requests("refresh_token")).isEmpty();
     assertThat(server.revocations())
@@ -157,17 +135,54 @@ class ProviderTokensRevocationTest {
     OAuthClient.Grant grant =
         consent(new Revocation.Rfc7009(new Endpoint.Fixed(server.revocationEndpoint())));
 
-    tokens
-        .revocation(
-            profile,
-            new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)))
-        .run();
+    revoke(new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)));
 
     assertThat(server.requests("refresh_token")).isEmpty();
     assertThat(server.revocations())
         .singleElement()
         .satisfies(
             request -> assertThat(request.form()).containsEntry("token", grant.refreshToken()));
+  }
+
+  /**
+   * The order is taken from the registration as it stands at the discard and carries everything: a
+   * profile removed before the revocation runs no longer matters.
+   */
+  @Test
+  void anOrderRevokesWithTheRegistrationItWasTakenFromAfterTheProfileIsGone() {
+    OAuthClient.Grant grant =
+        consent(new Revocation.Rfc7009(new Endpoint.Fixed(server.revocationEndpoint())));
+    String order =
+        tokens.revocation(
+            profile,
+            new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)));
+    when(registrations.registrationOf(profile)).thenThrow(new IllegalStateException("gone"));
+
+    tokens.revoke(order);
+
+    assertThat(server.revocations())
+        .singleElement()
+        .satisfies(
+            request -> {
+              assertThat(request.form()).containsEntry("token", grant.refreshToken());
+              assertThat(request.authorization())
+                  .startsWith("Basic ")
+                  .as("the client secret of the registration as it stood");
+            });
+    assertThat(order).as("an order is stored encrypted, never shown").contains("client-geheimnis");
+    assertThat(RevocationOrder.parse(order).toString()).doesNotContain("client-geheimnis");
+  }
+
+  @Test
+  void anUnreadableOrderRevokesNothing() {
+    tokens.revoke("kein auftrag");
+
+    assertThat(server.revocations()).isEmpty();
+  }
+
+  /** The order of {@code stored} under {@link #profile}, carried out at once. */
+  private void revoke(StoredTokens stored) {
+    tokens.revoke(tokens.revocation(profile, stored));
   }
 
   private Revocation bearer() {
