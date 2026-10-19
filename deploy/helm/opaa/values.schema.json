@@ -1165,8 +1165,8 @@
         },
         "cspConnectSrcExtra": {
           "type": "string",
-          "pattern": "^[^;\"'{}$\\\\\\x00-\\x1f\\x7f]*$",
-          "description": "Origins for connect-src, space-separated; spliced into the nginx configuration, so no quotes, semicolons, braces or $"
+          "pattern": "^ *(((([Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://)?(\\*\\.)?[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*(:([0-9]{1,5}|\\*))?(/[A-Za-z0-9._~%!&()*+=:@/-]*)?|([Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):|\\*)( +((([Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?)://)?(\\*\\.)?[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*(:([0-9]{1,5}|\\*))?(/[A-Za-z0-9._~%!&()*+=:@/-]*)?|([Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):|\\*))*)? *$",
+          "description": "Sources for connect-src, space-separated, each [scheme://][*.]host[:port|:*][/path] with scheme http, https, ws or wss, a scheme such as https: or *; the same rule the image checks at start, since the value is spliced into the nginx configuration"
         },
         "backendReadTimeout": {
           "type": "string",
