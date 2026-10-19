@@ -12,13 +12,13 @@ tomcat = "11.0.27"
 # both affected by CVE-2026-19032, CVE-2026-68497, CVE-2026-83557, CVE-2026-89407,
 # CVE-2026-89425, CVE-2026-91776 and CVE-2026-91777. Remove these entries, their [libraries]
 # entries and the override once Spring Boot pins jackson-bom >= 3.1.7 and jackson-2-bom >= 2.21.7.
-jackson3 = "3.1.7"
-jackson2 = "2.21.7"
+jackson3 = "3.2.3"
+jackson2 = "2.22.4"
 # Jackson 2 line of the Gradle build plugins: they resolve 2.22.x on the buildscript classpath,
 # which the dependencyManagement override above does not reach (see buildscript in build.gradle.kts).
 # 2.22.0-2.22.2 are affected by CVE-2026-89407 and CVE-2026-89425; remove this entry, its
 # [libraries] entry and the buildscript platforms once every plugin resolves jackson >= 2.22.3.
-jackson2-buildscript = "2.22.3"
+jackson2-buildscript = "2.22.4"
 spotless = "8.10.4"
 caffeine = "3.3.1"
 openapi-generator = "7.26.0"

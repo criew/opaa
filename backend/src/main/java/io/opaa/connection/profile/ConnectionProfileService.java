@@ -36,7 +36,6 @@ import java.net.URISyntaxException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -192,8 +191,16 @@ public class ConnectionProfileService {
   /** Whether the client secret of {@code profile} expires within the warning period. */
   public boolean secretExpiresSoon(ConnectionProfile profile) {
     LocalDate expiresOn = profile.getClientSecretExpiresOn();
-    LocalDate today = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC);
-    return expiresOn != null && !expiresOn.isAfter(today.plusDays(SECRET_EXPIRY_WARNING_DAYS));
+    return expiresOn != null && !expiresOn.isAfter(lastSecretWarningDay(clock));
+  }
+
+  /**
+   * The last expiry date of a client secret within the warning period, counted from today in the
+   * zone of {@code clock} - the server's - so the flag here and the reminder of the expiry watch
+   * turn on the same day.
+   */
+  public static LocalDate lastSecretWarningDay(Clock clock) {
+    return LocalDate.now(clock).plusDays(SECRET_EXPIRY_WARNING_DAYS);
   }
 
   @Transactional

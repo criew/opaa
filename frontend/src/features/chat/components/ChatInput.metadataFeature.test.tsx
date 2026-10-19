@@ -62,7 +62,9 @@ describe('ChatInput without metadata', () => {
 
     expect(screen.queryByTestId('metadata-filter-chip-document-type')).not.toBeInTheDocument()
     expect(screen.queryByTestId('metadata-filter-chip-document-date')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Metadatenfilter setzen' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Filter für Metadaten setzen' }),
+    ).not.toBeInTheDocument()
   })
 
   it('asks the server for no filter options', async () => {

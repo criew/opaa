@@ -26,8 +26,8 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client 
 - **`LocalAuthKeyService` leitet alle Schlüssel des lokalen Ausstellers per HKDF aus
   `OPAA_AUTH_JWT_SECRET` ab**, je Zweck ein eigenes Label. Eine Rotation beendet alle lokalen
   Sitzungen, offenen Links und Zugangstokens zugleich.
-- **Ratenbegrenzung:** `RateLimitService`: Gleitfenster je Geltungsbereich, gedeckelter Schlüsselraum, jenseits
-  des Deckels offen. Ein Wildcard-Bereich in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` wird in jedem Profil abgewiesen.
+- **Ratenbegrenzung:** `RateLimitService`: Gleitfenster, Schlüsselraum gedeckelt (jenseits offen), Wildcard-Proxy-CIDR
+  verweigert den Start. Unangemeldete geben außer an der Anmeldung ihre Marken zurück; Segmente zählen nur als UUID.
 - **`TargetAddressValidator` kann DNS-Rebinding nicht ausschließen** — eine akzeptierte Grenze.
 - **Feature-Flags sind ohne Angabe an;** `@ConditionalOnFeature` an Blatt-Beans und rein bedingten Teilgraphen.
 - **`OutboundProxySelector` ist der Proxy-Standard der JVM:** nur `http`/`https` über den Proxy,

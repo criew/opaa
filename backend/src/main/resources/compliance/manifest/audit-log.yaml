@@ -318,8 +318,11 @@ auditEvents:
     trigger: Ein Verzeichnisabgleich bewirkt eine einzelne Rechteänderung
     details: Je Änderung ein Eintrag, verbunden über correlation_ref
   - id: DIRECTORY_SYNC_RUN_COMPLETED
-    trigger: Ein Verzeichnislauf endet (Kopfeintrag mit Ergebnis)
-    details: Oberhalb der Schwelle mit bestätigender Person und Anlass in reason
+    trigger: Ein Verzeichnislauf endet (Kopfeintrag mit Ergebnis), auch wenn er mit einem Fehler abbricht
+    details: >-
+      Oberhalb der Schwelle mit bestätigender Person und Anlass in reason; ein nicht erreichbares
+      Verzeichnis und ein abgebrochener Lauf mit Ergebnis FAILURE und fester Meldung, ohne die
+      Fehlerursache
   - id: DIRECTORY_SYNC_PLAN_DISCARDED
     trigger: Ein vorgelegter Abgleichsplan oberhalb der Schwelle wird verworfen
   - id: DIRECTORY_SYNC_REPORT_READ

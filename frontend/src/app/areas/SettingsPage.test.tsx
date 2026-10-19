@@ -69,7 +69,7 @@ describe('SettingsPage', () => {
 
     expect(screen.getByRole('group', { name: 'Farbschema' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Dunkles Farbschema' }))
+    await user.click(screen.getByRole('button', { name: 'Dunkel' }))
 
     expect(useUiStore.getState().themeMode).toBe('dark')
 

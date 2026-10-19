@@ -212,15 +212,16 @@ export default function SettingsPage() {
                   }}
                   aria-label="Farbschema"
                 >
-                  <ToggleButton value="light" aria-label="Helles Farbschema">
+                  {/* Named by their visible text (WCAG 2.5.3); the group supplies "Farbschema". */}
+                  <ToggleButton value="light">
                     <LightModeIcon sx={{ mr: 1 }} fontSize="small" />
                     Hell
                   </ToggleButton>
-                  <ToggleButton value="system" aria-label="Systemvorgabe">
+                  <ToggleButton value="system">
                     <SettingsBrightnessIcon sx={{ mr: 1 }} fontSize="small" />
                     System
                   </ToggleButton>
-                  <ToggleButton value="dark" aria-label="Dunkles Farbschema">
+                  <ToggleButton value="dark">
                     <DarkModeIcon sx={{ mr: 1 }} fontSize="small" />
                     Dunkel
                   </ToggleButton>

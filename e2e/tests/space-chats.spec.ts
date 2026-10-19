@@ -303,7 +303,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(main.getByText(questionChat1)).toBeVisible()
     const chat1Url = page.url()
 
-    // "Neuer Chat" in the sidebar starts a second, independent chat in the same space rather than
+    // "Neu" in the sidebar starts a second, independent chat in the same space rather than
     // reusing chat 1 - the in-app path, deliberately not another entry via `/chat`. Referencing a
     // library replaces its default @Space-Wissen chip outright.
     await startAnotherChatViaSidebar(page)

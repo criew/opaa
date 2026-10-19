@@ -20,7 +20,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     const user = userEvent.setup()
     renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
 
     expect(await screen.findByText('Dokumentart bei 93 % der Dokumente vorhanden')).toBeVisible()
     // The choices are the values occurring in the scope, with their counts.
@@ -44,14 +44,14 @@ describe('MetadataFilterPopover (#1070)', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
     expect(await screen.findByRole('checkbox', { name: 'Vermerk (6)' })).toBeChecked()
     await user.click(screen.getByRole('checkbox', { name: 'Dienstanweisung (12)' }))
     await user.click(screen.getByRole('button', { name: 'Anwenden' }))
 
     expect(onChange).toHaveBeenCalledWith({ documentTypes: ['DIENSTANWEISUNG', 'VERMERK'] })
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
     await user.click(await screen.findByRole('button', { name: 'Filter entfernen' }))
     expect(onChange).toHaveBeenLastCalledWith(null)
   })
@@ -73,7 +73,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     const onChange = vi.fn()
     renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={onChange} />)
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
     expect(
       await screen.findByText(/Datum\/Stand bei 90 % der Dokumente vorhanden/),
     ).toBeInTheDocument()
@@ -113,7 +113,7 @@ describe('MetadataFilterPopover (#1070)', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
     expect(await screen.findByTestId('filter-field-not-offered')).toHaveTextContent(
       'Die bereits gesetzte Bedingung bleibt wirksam',
     )
@@ -147,7 +147,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     const user = userEvent.setup()
     renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Anwenden' })).toBeDisabled()
@@ -180,7 +180,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     const onChange = vi.fn()
     renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={onChange} />)
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
     expect(await screen.findByText('Absender bei 3 von 40 Dokumenten vorhanden')).toBeVisible()
     await user.click(screen.getByRole('checkbox', { name: 'mueller@stadt.de (2)' }))
     await user.click(screen.getByRole('button', { name: 'Anwenden' }))
@@ -196,7 +196,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     const onChange = vi.fn()
     renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={onChange} />)
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
     await user.type(await screen.findByLabelText('Absender genau'), 'neu@stadt.de')
     await user.click(screen.getByRole('button', { name: 'Anwenden' }))
 
@@ -267,7 +267,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     const onChange = vi.fn()
     renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={onChange} />)
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
     expect(await screen.findByText('Fassung · Satzungen')).toBeVisible()
     expect(screen.getByText('Projektstand · Projekte')).toBeVisible()
 
@@ -289,7 +289,7 @@ describe('MetadataFilterPopover (#1070)', () => {
     const onChange = vi.fn()
     renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={onChange} />)
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
     await user.type(await screen.findByLabelText('Kennung'), 'AZ-42')
     await user.click(screen.getByRole('button', { name: 'Anwenden' }))
 
@@ -311,7 +311,7 @@ describe('MetadataFilterPopover (#1070)', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(screen.getByRole('button', { name: 'Filter für Metadaten setzen' }))
     await user.click(await screen.findByRole('checkbox', { name: 'Fassung 2026 (4)' }))
     await user.click(screen.getByRole('button', { name: 'Anwenden' }))
 

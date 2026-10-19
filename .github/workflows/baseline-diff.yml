@@ -30,6 +30,7 @@ jobs:
           # Für `git show origin/main:...` unten wird main's Version der Baseline-Datei gebraucht,
           # die ein flacher Checkout (Default fetch-depth: 1, nur der PR-Kopf) nicht auflösen kann.
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Baseline-Dateien von main laden
         run: |
@@ -57,13 +58,15 @@ jobs:
           done < build/baseline-files.txt
 
       - name: Baseline-Absenkung gegenüber main prüfen
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           python3 eval/baseline/diff_baseline.py \
             --main-dir build/main-baseline \
             --pr-dir eval/baseline \
             --output build/baseline-diff-vs-main.md \
             --main-ref main \
-            --pr-ref "${{ github.head_ref }}"
+            --pr-ref "$HEAD_REF"
 
       - name: Diff-Tabelle der Job-Zusammenfassung hinzufügen
         run: cat build/baseline-diff-vs-main.md >> "$GITHUB_STEP_SUMMARY"

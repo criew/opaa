@@ -8,6 +8,7 @@ const outcomeLabels: Record<DirectorySyncOutcome, string> = {
   ABORTED_THRESHOLD: 'Über der Schwelle abgebrochen',
   ABORTED_EMPTY_RESULT: 'Abgebrochen: leeres Ergebnis',
   UNREACHABLE: 'Verzeichnis nicht erreichbar',
+  FAILED: 'Abgleich fehlgeschlagen',
 }
 
 const outcomeTones: Record<DirectorySyncOutcome, StatusTone> = {
@@ -17,6 +18,7 @@ const outcomeTones: Record<DirectorySyncOutcome, StatusTone> = {
   ABORTED_THRESHOLD: 'warning',
   ABORTED_EMPTY_RESULT: 'error',
   UNREACHABLE: 'error',
+  FAILED: 'error',
 }
 
 export function outcomeLabel(outcome: DirectorySyncOutcome | null | undefined): string {
@@ -25,6 +27,11 @@ export function outcomeLabel(outcome: DirectorySyncOutcome | null | undefined): 
 
 export function outcomeTone(outcome: DirectorySyncOutcome | null | undefined): StatusTone {
   return outcome ? outcomeTones[outcome] : 'neutral'
+}
+
+/** Whether a run with this outcome measured a change fraction; an unreachable or failed one did not. */
+export function measuresChanges(outcome: DirectorySyncOutcome | null | undefined): boolean {
+  return outcome !== 'UNREACHABLE' && outcome !== 'FAILED'
 }
 
 /**
