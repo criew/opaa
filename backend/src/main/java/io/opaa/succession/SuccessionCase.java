@@ -17,6 +17,10 @@ import java.util.UUID;
  * The record behind one entry of the operational list (ADR-0036 Entscheidung 6) - <b>not the
  * state</b>: it carries when the state was first seen and when it ended, and nothing else. The
  * state itself stays derived, so no path can forget to clear it.
+ *
+ * <p>After the insert a record is only written through the conditional updates of {@link
+ * SuccessionCaseRepository}: a sighting or close that loaded the record before a concurrent close
+ * committed must not write the whole row back and reopen it.
  */
 @Entity
 @Table(name = "succession_cases")
@@ -79,21 +83,6 @@ public class SuccessionCase {
   @PrePersist
   void onCreate() {
     this.createdAt = Instant.now();
-  }
-
-  /** The run saw the state again - the age keeps running from {@link #firstSeenAt}. */
-  void seenAt(Instant at) {
-    this.lastSeenAt = at;
-  }
-
-  /**
-   * The state is over. {@code endedBy} is the person whose action ended it where that is known - a
-   * transfer names itself; a state that simply ceased to hold (a group has an active member again)
-   * is closed by the run and names nobody.
-   */
-  void close(Instant at, UUID endedBy) {
-    this.closedAt = at;
-    this.closedByUserId = endedBy;
   }
 
   public UUID getId() {
