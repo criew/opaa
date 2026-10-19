@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-09 · beantwortet die offene Frage nach der Helm-Lieferung aus
+Akzeptiert · zuletzt geändert 2026-10-19 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
 Epic #1439 und [deployment-infrastructure.md](../features/deployment-infrastructure.md)
 
 ## Kontext
@@ -36,7 +36,8 @@ Der Chart setzt ADR-0021 technisch durch: `backend.replicas` größer 1 bricht d
 Job), eine Startup-Probe gibt der Migration Zeit. Ein `helm rollback` über eine Schemaänderung hinweg
 ist kein Rückweg; zurück geht es über die Datenbanksicherung. Das Spring-Profil ist fest `oidc`; `dev`
 wird nicht angeboten (ADR-0005). Die Werte sind so geschnitten, dass #1292 sie auf mehrere Replikate
-erweitern kann, ohne Neuinstallation.
+erweitern kann, ohne Neuinstallation; die Bedingungen dafür (Migrations-Job, `RollingUpdate`, PDB,
+gemeinsame Originalablage) legt ADR-0053 Entscheidung 15 fest.
 
 ### 3. Externe Dienste werden angebunden, nicht ausgeliefert
 
@@ -143,7 +144,7 @@ jüngste Release ab. Was die Oberfläche verwaltet, ist nicht deklarativ.
 
 - Fremder PostgreSQL-Sub-Chart — kein verlässlicher freier Bezugsweg mehr.
 - Zufallsschlüssel bei `helm install` — gehen bei `helm template`, GitOps und Neuinstallation verloren.
-- Migration in Helm-Hook oder Job — siehe Entscheidung 2.
+- Migration in Helm-Hook oder Job bei einer Instanz — siehe Entscheidung 2; bei mehreren ADR-0053 Entscheidung 14.
 - Getrennte Chart-Versionierung — Zuordnungstabelle, die Betreiber pflegen müssten.
 
 ## Offen
