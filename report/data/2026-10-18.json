@@ -1,0 +1,499 @@
+{
+  "repo": "criew/opaa",
+  "date": "2026-10-18",
+  "generated_at": "2026-10-19T07:03:42.991476+02:00",
+  "timezone": "Europe/Berlin",
+  "timezone_fallback": false,
+  "window_start": "2026-10-18T00:00:00+02:00",
+  "window_end": "2026-10-18T23:59:59+02:00",
+  "closed_issues": [
+    {
+      "number": 2941,
+      "title": "fix(frontend): Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3, axe label-content-name-mismatch)",
+      "url": "https://github.com/criew/opaa/issues/2941",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S",
+        "e2e"
+      ],
+      "body": "## Beobachtung\n\nSeit #2881 (Renovate: `@axe-core/playwright` 4.13 → 4.14) ist die E2E-Suite auf `main` deterministisch rot (Alarm-Issue #2898). Alle Szenarien mit Barrierefreiheitsprüfung scheitern an derselben Regel:\n\n```\n[serious] label-content-name-mismatch: Elements must have their visible text as part of their accessible name\n```\n\naxe 4.14 prüft die Regel ab jetzt als *serious*. Sie greift bei Bedienelementen mit `aria-label`/`aria-labelledby`: Die Wörter des sichtbaren Texts müssen zusammenhängend im zugänglichen Namen stehen (WCAG 2.5.3 „Label in Name“). Wer per Sprachsteuerung „Klick Hell“ sagt, trifft sonst den Knopf „Helles Farbschema“ nicht.\n\n## Betroffene Elemente\n\n| sichtbar | zugänglicher Name | Datei |\n|---|---|---|\n| Badge „0“ (ausgeblendet, aber im DOM) | Benachrichtigungen, keine ungelesenen | `NotificationBell.tsx` (in jedem Seitenkopf) |\n| Neu | Neuer Chat | `ChatList.tsx` |\n| Hell / System / Dunkel | Helles Farbschema / Systemvorgabe / Dunkles Farbschema | `SettingsPage.tsx` |\n| Filter | Metadatenfilter setzen | `MetadataFilterPopover.tsx` |\n| @Space-Wissen nutzen | Wieder das Wissen des Space durchsuchen | `ChatInput.tsx` |\n| Monogramm, Anbietername, Host | Anmelden bei <Anbieter> | `LoginPage.tsx` |\n\n## Lösung\n\nDie Namen enthalten den sichtbaren Text, oder der Name kommt aus dem Inhalt. Die Regel wird weder abgeschaltet noch axe zurückgestellt.\n\n## Abnahmekriterien\n\n- [ ] axe 4.14 meldet keine `label-content-name-mismatch` mehr\n- [ ] E2E-Suite auf `main` wieder grün, #2898 schließt sich",
+      "closes": []
+    },
+    {
+      "number": 2898,
+      "title": "ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)",
+      "url": "https://github.com/criew/opaa/issues/2898",
+      "author": "github-actions[bot]",
+      "labels": [
+        "bug",
+        "e2e"
+      ],
+      "body": "<!-- e2e-alert -->\n\n**Die E2E-Suite auf `main` ist fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/39042731427 (Auslöser: push)\n\nFehlgeschlagene Szenarien:\n\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Anmeldeseite` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Anmeldeseite\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Anmeldeseite mit zwei Anbietern` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Anmeldeseite mit zwei Anbietern\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Chat in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Chat (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Space-Seite` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Seite\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Seite „Chats“ in beiden Farbschemata und beiden Reitern` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Seite Chats, Reiter Aktiv (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Spaces-Übersicht in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Spaces-Übersicht (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Space-Einstellungen: Mitgliederliste mit Zeilenmenü in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Mitglieder (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Kachelauswahl: Typwahl und Quellart in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Typwahl (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Wissens-Assistent: Schritt Quelle einrichten mit Zugangswahl in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Quelle (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Katalog in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Katalog (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Detailseite einer Prompt-Bibliothek mit allen Reitern` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Prompt-Bibliothek, Reiter Prompts\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Space-Assistent: Inhalte als Kachelauswahl in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Inhalte (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Benutzer in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (Konten, helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Gruppen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (Gruppen)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Branding` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (Branding)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Suche & Indexierung in allen Reitern` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (Suche & Indexierung, Überblick)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: E-Mail in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (E-Mail, SMTP-Zugang, helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Anbindungen in allen Reitern und beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Anbindungen, Zugänge (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Benutzer-Einstellungen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Benutzer-Einstellungen\":\n- `space-chats.spec.ts › Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (#529) › 7. Chatliste ordnen: Anheften und Gruppe „Angeheftet“ nach Neuladen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Seitenleiste mit angeheftetem Chat\":\n- `space-content.spec.ts › Space-Einstellungen: Reiter „Inhalte“ › Häkchen per Tastatur ordnet sofort zu, Abhaken lässt sich rückgängig machen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Einstellungen, Inhalte (helles Farbschema)\":\n- `space-members.spec.ts › Einstellungen lesend für ein Mitglied, Mitglieder nur als Zählung` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Einstellungen eines Mitglieds: Mitglieder\":\n- `space-members.spec.ts › Space-Anlage und Mitglieder (#2131) › Assistent: Person und Gruppe aufnehmen, Zusammenfassung prüfen, Space anlegen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Assistent: Zusammenfassung\":\n\nArtefakte des Laufs: `playwright-report`, `playwright-traces`, `docker-compose-logs`.\n\nDie Suite läuft nicht mehr bei Pull Requests (#1226); dieses Issue ist der Weg, auf dem ein Fehlschlag repariert wird. Es wird automatisch geschlossen, sobald ein Lauf wieder grün ist.",
+      "closes": []
+    }
+  ],
+  "opened_issues": [
+    {
+      "number": 2941,
+      "title": "fix(frontend): Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3, axe label-content-name-mismatch)",
+      "url": "https://github.com/criew/opaa/issues/2941",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S",
+        "e2e"
+      ],
+      "body": "## Beobachtung\n\nSeit #2881 (Renovate: `@axe-core/playwright` 4.13 → 4.14) ist die E2E-Suite auf `main` deterministisch rot (Alarm-Issue #2898). Alle Szenarien mit Barrierefreiheitsprüfung scheitern an derselben Regel:\n\n```\n[serious] label-content-name-mismatch: Elements must have their visible text as part of their accessible name\n```\n\naxe 4.14 prüft die Regel ab jetzt als *serious*. Sie greift bei Bedienelementen mit `aria-label`/`aria-labelledby`: Die Wörter des sichtbaren Texts müssen zusammenhängend im zugänglichen Namen stehen (WCAG 2.5.3 „Label in Name“). Wer per Sprachsteuerung „Klick Hell“ sagt, trifft sonst den Knopf „Helles Farbschema“ nicht.\n\n## Betroffene Elemente\n\n| sichtbar | zugänglicher Name | Datei |\n|---|---|---|\n| Badge „0“ (ausgeblendet, aber im DOM) | Benachrichtigungen, keine ungelesenen | `NotificationBell.tsx` (in jedem Seitenkopf) |\n| Neu | Neuer Chat | `ChatList.tsx` |\n| Hell / System / Dunkel | Helles Farbschema / Systemvorgabe / Dunkles Farbschema | `SettingsPage.tsx` |\n| Filter | Metadatenfilter setzen | `MetadataFilterPopover.tsx` |\n| @Space-Wissen nutzen | Wieder das Wissen des Space durchsuchen | `ChatInput.tsx` |\n| Monogramm, Anbietername, Host | Anmelden bei <Anbieter> | `LoginPage.tsx` |\n\n## Lösung\n\nDie Namen enthalten den sichtbaren Text, oder der Name kommt aus dem Inhalt. Die Regel wird weder abgeschaltet noch axe zurückgestellt.\n\n## Abnahmekriterien\n\n- [ ] axe 4.14 meldet keine `label-content-name-mismatch` mehr\n- [ ] E2E-Suite auf `main` wieder grün, #2898 schließt sich",
+      "closes": []
+    }
+  ],
+  "merged_pull_requests": [
+    {
+      "number": 2942,
+      "title": "fix(frontend): Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3)",
+      "url": "https://github.com/criew/opaa/pull/2942",
+      "author": "criew",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S",
+        "e2e"
+      ],
+      "body": "## Zusammenfassung\n\nSeit #2881 (Renovate: `@axe-core/playwright` 4.13 → 4.14) ist die E2E-Suite auf `main` deterministisch rot (#2898). Alle Barrierefreiheitsprüfungen scheitern an `[serious] label-content-name-mismatch`.\n\nDie Regel greift, wenn ein Bedienelement ein `aria-label` oder `aria-labelledby` trägt. Die Wörter seines **auf dem Bildschirm sichtbaren** Texts müssen dann zusammenhängend im zugänglichen Namen stehen (WCAG 2.5.3 „Label in Name“). Text in Klammern zählt dabei nicht mit. Ein Name aus dem Inhalt ist nie betroffen.\n\n| Element | vorher | jetzt |\n|---|---|---|\n| Glocke (`NotificationBell`) | im DOM ein verstecktes Badge „0“, Name „…, keine ungelesenen“ | Badge nur bei Ungelesenem; der Name nennt die Badge-Zahl, auch „99+“ |\n| „Neu“ (`ChatList`) | „Neuer Chat“ | „Neu: Chat beginnen“ |\n| Hell / System / Dunkel (`SettingsPage`) | „Helles Farbschema“ … | kein eigenes `aria-label`, die Gruppe heißt „Farbschema“ |\n| „Filter“ (`MetadataFilterPopover`) | „Metadatenfilter setzen“ | „Filter für Metadaten setzen“ |\n| „@Space-Wissen nutzen“ (`ChatInput`) | „Wieder das Wissen des Space durchsuchen“ | Name aus dem Inhalt, die Erklärung steht als `title` (Beschreibung) |\n| Anmelde-Kachel (`LoginPage`) | „Anmelden bei X“ ohne Host und ohne „Zuletzt verwendet“ | Name aus dem Inhalt mit verborgenem Präfix: „Anmelden bei X host · Zuletzt verwendet“ |\n\nDie Regel wird weder abgeschaltet noch axe zurückgestellt. Unit- und E2E-Tests mit den alten Namen sind nachgezogen, Negativprüfungen eingeschlossen.\n\n## Zugehörige Issues\n\nCloses #2941\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Wirkung auf Daten und Behördenunterlagen\n\n- [ ] Neue oder geänderte personenbezogene Daten oder Protokollereignisse\n- [ ] Neue Sichtbarkeit: Daten werden für weitere Rollen oder Personen sichtbar\n- [ ] Neue Auswertung oder neuer Export, auch von bereits gespeicherten Daten\n- [ ] Geänderte Aufbewahrungs- oder Löschfrist\n- [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)\n- [ ] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt\n- [ ] Geänderte KI-Einstufung (Zweck oder Einsatzbereich im Sinne der KI-Verordnung)\n- [x] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen\n\n## Checkliste\n\n- [x] Tests bestehen lokal: Frontend `format:check`, `lint`, `test` (252 Dateien / 3750 Tests), `build`; E2E-`typecheck`; `check_code_comments.sh`. Backend unberührt.\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [x] Dokumentation aktualisiert (falls zutreffend): Das Handbuch nennt keine dieser Knopfbezeichnungen\n- [x] Handbuch ausdrücklich nicht betroffen\n- [x] Helm-Chart und Compose-Setup ausdrücklich nicht betroffen\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft (darum geht es hier)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\nAuf `origin/main` (2392af10): Frontend mit `VITE_ENABLE_MOCKS=true`, temporäre Playwright-Spec (nicht committet) mit `AxeBuilder.withRules(['label-content-name-mismatch'])` (axe 4.14) auf `/chat` und `/settings`.\n\n**Ohne Fix (rot):**\n```\n/chat [\n \"<button … aria-label=\\\"Benachrichtigungen, keine ungelesenen\\\" aria-haspopup=\\\"menu\\\">\",\n \"<button … aria-label=\\\"Neuer Chat\\\">\",\n \"<button … aria-haspopup=\\\"dialog\\\" aria-expanded=\\\"false\\\" aria-label=\\\"Metadatenfilter setzen\\\">\"\n]\n/settings [\n \"<button … aria-label=\\\"Benachrichtigungen, keine ungelesenen\\\" aria-haspopup=\\\"menu\\\">\",\n \"<button … value=\\\"light\\\" aria-pressed=\\\"false\\\" aria-label=\\\"Helles Farbschema\\\">\",\n \"<button … value=\\\"system\\\" aria-pressed=\\\"true\\\" aria-label=\\\"Systemvorgabe\\\">\",\n \"<button … value=\\\"dark\\\" aria-pressed=\\\"false\\\" aria-label=\\\"Dunkles Farbschema\\\">\"\n]\n```\n**Mit Fix (grün):** `/chat []`, `/settings []`.\n\n**Volle E2E-Suite auf diesem Branch** (Commit 7d21b594, alle Barrierefreiheitsszenarien eingeschlossen, auch beide Anmeldeseiten): https://github.com/criew/opaa/actions/runs/39115465651, Ergebnis `success`.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01WZxHz46RSBdBCStss1NoZW",
+      "closes": [
+        2941
+      ],
+      "additions": 117,
+      "deletions": 58,
+      "changed_files": 19
+    },
+    {
+      "number": 2936,
+      "title": "chore(deps): jackson monorepo aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/2936",
+      "author": "bigpuritz",
+      "labels": [
+        "backend",
+        "dependencies"
+      ],
+      "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [com.fasterxml.jackson:jackson-bom](https://redirect.github.com/FasterXML/jackson-bom) | dependencies | patch | `2.22.3` → `2.22.4` |\n| [com.fasterxml.jackson:jackson-bom](https://redirect.github.com/FasterXML/jackson-bom) | dependencies | minor | `2.21.7` → `2.22.4` |\n| [tools.jackson:jackson-bom](https://redirect.github.com/FasterXML/jackson-bom) | dependencies | minor | `3.1.7` → `3.2.3` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Enabled.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n👻 **Immortal**: This PR will be recreated if closed unmerged. Get [config help](https://redirect.github.com/renovatebot/renovate/discussions) if that's undesired.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xNTYuMCIsInVwZGF0ZWRJblZlciI6IjQ0LjE1Ni4wIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJiYWNrZW5kIiwiZGVwZW5kZW5jaWVzIl19-->",
+      "closes": [],
+      "additions": 3,
+      "deletions": 3,
+      "changed_files": 1
+    }
+  ],
+  "open_pull_requests": [
+    {
+      "number": 2940,
+      "title": "chore(deps): renovate/renovate docker tag to v44.161.2",
+      "url": "https://github.com/criew/opaa/pull/2940",
+      "author": "bigpuritz",
+      "labels": [
+        "ci",
+        "dependencies"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2939,
+      "title": "chore(deps): eslint auf v10.13.0 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/2939",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "dependencies"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2938,
+      "title": "chore(deps): actions/setup-java action auf v6.1.0 aktualisieren",
+      "url": "https://github.com/criew/opaa/pull/2938",
+      "author": "bigpuritz",
+      "labels": [
+        "ci",
+        "dependencies"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2937,
+      "title": "chore(deps): rustfs/rustfs docker tag to v1.0.3",
+      "url": "https://github.com/criew/opaa/pull/2937",
+      "author": "bigpuritz",
+      "labels": [
+        "ci",
+        "dependencies"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2935,
+      "title": "refactor(library): LibraryDocumentsSection nach Verantwortung aufteilen",
+      "url": "https://github.com/criew/opaa/pull/2935",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "size:M"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2934,
+      "title": "refactor(search-admin): SearchIndexingAdminPage in Bereiche aufteilen",
+      "url": "https://github.com/criew/opaa/pull/2934",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "size:S"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2933,
+      "title": "refactor(library): LibraryCreatePage in Schritte und Quellartwahl aufteilen",
+      "url": "https://github.com/criew/opaa/pull/2933",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "size:M"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2932,
+      "title": "fix(library): Einzelner Abruffehler zeigt den Indexierungslauf nicht mehr als fehlgeschlagen",
+      "url": "https://github.com/criew/opaa/pull/2932",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2931,
+      "title": "refactor(library): LibraryMetadataFieldsSection in Dialoge und Teilkomponenten aufteilen",
+      "url": "https://github.com/criew/opaa/pull/2931",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "size:M"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2930,
+      "title": "refactor(library): LibraryDetailPage in Bereiche und Teilkomponenten aufteilen",
+      "url": "https://github.com/criew/opaa/pull/2930",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "size:M"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2929,
+      "title": "fix(directory): Gescheiterten Verzeichnisabgleich als Status festhalten und anzeigen",
+      "url": "https://github.com/criew/opaa/pull/2929",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "documentation",
+        "backend",
+        "frontend",
+        "data-impact"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2928,
+      "title": "refactor(chat): ChatInput in Chip-Leiste, Hooks und Texthelfer aufteilen",
+      "url": "https://github.com/criew/opaa/pull/2928",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "size:M"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2927,
+      "title": "fix(library): Dokumentliste verwirft überholte Antworten und behält den Filter beim Polling",
+      "url": "https://github.com/criew/opaa/pull/2927",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "frontend",
+        "size:S"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2926,
+      "title": "refactor(chat): chatStore nach Verantwortung aufteilen",
+      "url": "https://github.com/criew/opaa/pull/2926",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "size:M"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2925,
+      "title": "fix(externalaccess): Suchumfang eines Zugriffstokens fail-closed statt über Thread-Local",
+      "url": "https://github.com/criew/opaa/pull/2925",
+      "author": "bigpuritz",
+      "labels": [
+        "backend",
+        "size:S",
+        "security"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2924,
+      "title": "fix(succession): Parallel geschlossenen Nachfolgefall nicht wieder öffnen",
+      "url": "https://github.com/criew/opaa/pull/2924",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2923,
+      "title": "fix(connection): Ablaufkennzeichen des Client-Secrets in Serverzeit rechnen",
+      "url": "https://github.com/criew/opaa/pull/2923",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "backend",
+        "size:S"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2922,
+      "title": "fix(frontend): nginx härten – X-Forwarded-Header leeren, Permissions-Policy, CSP-Zusatz prüfen",
+      "url": "https://github.com/criew/opaa/pull/2922",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "documentation",
+        "frontend",
+        "size:S",
+        "ci",
+        "security"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2921,
+      "title": "refactor(session): authStore nach Anmeldeflüssen aufteilen",
+      "url": "https://github.com/criew/opaa/pull/2921",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "size:M",
+        "auth"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2920,
+      "title": "ci: Workflows härten – Kontextwerte über env, minimale Token-Rechte, pytest pinnen",
+      "url": "https://github.com/criew/opaa/pull/2920",
+      "author": "bigpuritz",
+      "labels": [
+        "size:S",
+        "ci",
+        "security"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2919,
+      "title": "build(frontend): max-lines als ESLint-Warnung einführen",
+      "url": "https://github.com/criew/opaa/pull/2919",
+      "author": "bigpuritz",
+      "labels": [
+        "frontend",
+        "size:S",
+        "ci"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2918,
+      "title": "fix(ratelimit): Globale Deckel nur mit angemeldeten Anfragen belasten, Pfadsegment als UUID prüfen",
+      "url": "https://github.com/criew/opaa/pull/2918",
+      "author": "bigpuritz",
+      "labels": [
+        "bug",
+        "backend",
+        "security"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 2897,
+      "title": "feat(compliance): Anlassbezogene Klärungen im Berichtszeitraum in der Auskunft über die Datenerhebung",
+      "url": "https://github.com/criew/opaa/pull/2897",
+      "author": "criew",
+      "labels": [
+        "enhancement",
+        "backend",
+        "security",
+        "data-impact"
+      ],
+      "body": "",
+      "closes": []
+    },
+    {
+      "number": 161,
+      "title": "docs: plugin architecture deep dive for all three variants",
+      "url": "https://github.com/criew/opaa/pull/161",
+      "author": "bigpuritz",
+      "labels": [
+        "documentation",
+        "enhancement",
+        "backend"
+      ],
+      "body": "",
+      "closes": []
+    }
+  ],
+  "open_issues_total": 84,
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/criew/opaa/actions/runs/39116557056",
+    "title": "fix(frontend): Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3) (#2…",
+    "finished_at": "2026-10-18T09:55:48Z"
+  },
+  "highlights": {
+    "sonstiges": [
+      {
+        "nummer": 2941,
+        "text": "Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3) behoben"
+      },
+      {
+        "nummer": 2936,
+        "text": "Jackson-Abhängigkeiten aktualisiert"
+      }
+    ]
+  },
+  "epics": [],
+  "ohne_epic": {
+    "opened": [
+      {
+        "number": 2941,
+        "title": "fix(frontend): Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3, axe label-content-name-mismatch)",
+        "url": "https://github.com/criew/opaa/issues/2941",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "frontend",
+          "size:S",
+          "e2e"
+        ],
+        "body": "## Beobachtung\n\nSeit #2881 (Renovate: `@axe-core/playwright` 4.13 → 4.14) ist die E2E-Suite auf `main` deterministisch rot (Alarm-Issue #2898). Alle Szenarien mit Barrierefreiheitsprüfung scheitern an derselben Regel:\n\n```\n[serious] label-content-name-mismatch: Elements must have their visible text as part of their accessible name\n```\n\naxe 4.14 prüft die Regel ab jetzt als *serious*. Sie greift bei Bedienelementen mit `aria-label`/`aria-labelledby`: Die Wörter des sichtbaren Texts müssen zusammenhängend im zugänglichen Namen stehen (WCAG 2.5.3 „Label in Name“). Wer per Sprachsteuerung „Klick Hell“ sagt, trifft sonst den Knopf „Helles Farbschema“ nicht.\n\n## Betroffene Elemente\n\n| sichtbar | zugänglicher Name | Datei |\n|---|---|---|\n| Badge „0“ (ausgeblendet, aber im DOM) | Benachrichtigungen, keine ungelesenen | `NotificationBell.tsx` (in jedem Seitenkopf) |\n| Neu | Neuer Chat | `ChatList.tsx` |\n| Hell / System / Dunkel | Helles Farbschema / Systemvorgabe / Dunkles Farbschema | `SettingsPage.tsx` |\n| Filter | Metadatenfilter setzen | `MetadataFilterPopover.tsx` |\n| @Space-Wissen nutzen | Wieder das Wissen des Space durchsuchen | `ChatInput.tsx` |\n| Monogramm, Anbietername, Host | Anmelden bei <Anbieter> | `LoginPage.tsx` |\n\n## Lösung\n\nDie Namen enthalten den sichtbaren Text, oder der Name kommt aus dem Inhalt. Die Regel wird weder abgeschaltet noch axe zurückgestellt.\n\n## Abnahmekriterien\n\n- [ ] axe 4.14 meldet keine `label-content-name-mismatch` mehr\n- [ ] E2E-Suite auf `main` wieder grün, #2898 schließt sich",
+        "closes": []
+      }
+    ],
+    "closed": [
+      {
+        "number": 2941,
+        "title": "fix(frontend): Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3, axe label-content-name-mismatch)",
+        "url": "https://github.com/criew/opaa/issues/2941",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "frontend",
+          "size:S",
+          "e2e"
+        ],
+        "body": "## Beobachtung\n\nSeit #2881 (Renovate: `@axe-core/playwright` 4.13 → 4.14) ist die E2E-Suite auf `main` deterministisch rot (Alarm-Issue #2898). Alle Szenarien mit Barrierefreiheitsprüfung scheitern an derselben Regel:\n\n```\n[serious] label-content-name-mismatch: Elements must have their visible text as part of their accessible name\n```\n\naxe 4.14 prüft die Regel ab jetzt als *serious*. Sie greift bei Bedienelementen mit `aria-label`/`aria-labelledby`: Die Wörter des sichtbaren Texts müssen zusammenhängend im zugänglichen Namen stehen (WCAG 2.5.3 „Label in Name“). Wer per Sprachsteuerung „Klick Hell“ sagt, trifft sonst den Knopf „Helles Farbschema“ nicht.\n\n## Betroffene Elemente\n\n| sichtbar | zugänglicher Name | Datei |\n|---|---|---|\n| Badge „0“ (ausgeblendet, aber im DOM) | Benachrichtigungen, keine ungelesenen | `NotificationBell.tsx` (in jedem Seitenkopf) |\n| Neu | Neuer Chat | `ChatList.tsx` |\n| Hell / System / Dunkel | Helles Farbschema / Systemvorgabe / Dunkles Farbschema | `SettingsPage.tsx` |\n| Filter | Metadatenfilter setzen | `MetadataFilterPopover.tsx` |\n| @Space-Wissen nutzen | Wieder das Wissen des Space durchsuchen | `ChatInput.tsx` |\n| Monogramm, Anbietername, Host | Anmelden bei <Anbieter> | `LoginPage.tsx` |\n\n## Lösung\n\nDie Namen enthalten den sichtbaren Text, oder der Name kommt aus dem Inhalt. Die Regel wird weder abgeschaltet noch axe zurückgestellt.\n\n## Abnahmekriterien\n\n- [ ] axe 4.14 meldet keine `label-content-name-mismatch` mehr\n- [ ] E2E-Suite auf `main` wieder grün, #2898 schließt sich",
+        "closes": []
+      },
+      {
+        "number": 2898,
+        "title": "ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)",
+        "url": "https://github.com/criew/opaa/issues/2898",
+        "author": "github-actions[bot]",
+        "labels": [
+          "bug",
+          "e2e"
+        ],
+        "body": "<!-- e2e-alert -->\n\n**Die E2E-Suite auf `main` ist fehlgeschlagen.**\n\nWorkflow-Lauf: https://github.com/criew/opaa/actions/runs/39042731427 (Auslöser: push)\n\nFehlgeschlagene Szenarien:\n\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Anmeldeseite` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Anmeldeseite\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Anmeldeseite mit zwei Anbietern` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Anmeldeseite mit zwei Anbietern\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Chat in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Chat (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Space-Seite` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Seite\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Seite „Chats“ in beiden Farbschemata und beiden Reitern` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Seite Chats, Reiter Aktiv (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Spaces-Übersicht in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Spaces-Übersicht (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Space-Einstellungen: Mitgliederliste mit Zeilenmenü in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Mitglieder (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Kachelauswahl: Typwahl und Quellart in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Typwahl (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Wissens-Assistent: Schritt Quelle einrichten mit Zugangswahl in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Quelle (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Katalog in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Katalog (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Detailseite einer Prompt-Bibliothek mit allen Reitern` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Prompt-Bibliothek, Reiter Prompts\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Space-Assistent: Inhalte als Kachelauswahl in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Inhalte (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Benutzer in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (Konten, helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Gruppen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (Gruppen)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Branding` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (Branding)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Suche & Indexierung in allen Reitern` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (Suche & Indexierung, Überblick)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: E-Mail in beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Verwaltungsbereich (E-Mail, SMTP-Zugang, helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Verwaltungsbereich: Anbindungen in allen Reitern und beiden Farbschemata` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Anbindungen, Zugänge (helles Farbschema)\":\n- `accessibility.spec.ts › Barrierefreiheit (axe-core, #586) › Benutzer-Einstellungen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Benutzer-Einstellungen\":\n- `space-chats.spec.ts › Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (#529) › 7. Chatliste ordnen: Anheften und Gruppe „Angeheftet“ nach Neuladen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Seitenleiste mit angeheftetem Chat\":\n- `space-content.spec.ts › Space-Einstellungen: Reiter „Inhalte“ › Häkchen per Tastatur ordnet sofort zu, Abhaken lässt sich rückgängig machen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Einstellungen, Inhalte (helles Farbschema)\":\n- `space-members.spec.ts › Einstellungen lesend für ein Mitglied, Mitglieder nur als Zählung` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Einstellungen eines Mitglieds: Mitglieder\":\n- `space-members.spec.ts › Space-Anlage und Mitglieder (#2131) › Assistent: Person und Gruppe aufnehmen, Zusammenfassung prüfen, Space anlegen` — Error: Barrierefreiheits-Verstöße (serious/critical) auf \"Space-Assistent: Zusammenfassung\":\n\nArtefakte des Laufs: `playwright-report`, `playwright-traces`, `docker-compose-logs`.\n\nDie Suite läuft nicht mehr bei Pull Requests (#1226); dieses Issue ist der Weg, auf dem ein Fehlschlag repariert wird. Es wird automatisch geschlossen, sobald ein Lauf wieder grün ist.",
+        "closes": []
+      }
+    ],
+    "merged": [
+      {
+        "number": 2942,
+        "title": "fix(frontend): Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3)",
+        "url": "https://github.com/criew/opaa/pull/2942",
+        "author": "criew",
+        "labels": [
+          "bug",
+          "frontend",
+          "size:S",
+          "e2e"
+        ],
+        "body": "## Zusammenfassung\n\nSeit #2881 (Renovate: `@axe-core/playwright` 4.13 → 4.14) ist die E2E-Suite auf `main` deterministisch rot (#2898). Alle Barrierefreiheitsprüfungen scheitern an `[serious] label-content-name-mismatch`.\n\nDie Regel greift, wenn ein Bedienelement ein `aria-label` oder `aria-labelledby` trägt. Die Wörter seines **auf dem Bildschirm sichtbaren** Texts müssen dann zusammenhängend im zugänglichen Namen stehen (WCAG 2.5.3 „Label in Name“). Text in Klammern zählt dabei nicht mit. Ein Name aus dem Inhalt ist nie betroffen.\n\n| Element | vorher | jetzt |\n|---|---|---|\n| Glocke (`NotificationBell`) | im DOM ein verstecktes Badge „0“, Name „…, keine ungelesenen“ | Badge nur bei Ungelesenem; der Name nennt die Badge-Zahl, auch „99+“ |\n| „Neu“ (`ChatList`) | „Neuer Chat“ | „Neu: Chat beginnen“ |\n| Hell / System / Dunkel (`SettingsPage`) | „Helles Farbschema“ … | kein eigenes `aria-label`, die Gruppe heißt „Farbschema“ |\n| „Filter“ (`MetadataFilterPopover`) | „Metadatenfilter setzen“ | „Filter für Metadaten setzen“ |\n| „@Space-Wissen nutzen“ (`ChatInput`) | „Wieder das Wissen des Space durchsuchen“ | Name aus dem Inhalt, die Erklärung steht als `title` (Beschreibung) |\n| Anmelde-Kachel (`LoginPage`) | „Anmelden bei X“ ohne Host und ohne „Zuletzt verwendet“ | Name aus dem Inhalt mit verborgenem Präfix: „Anmelden bei X host · Zuletzt verwendet“ |\n\nDie Regel wird weder abgeschaltet noch axe zurückgestellt. Unit- und E2E-Tests mit den alten Namen sind nachgezogen, Negativprüfungen eingeschlossen.\n\n## Zugehörige Issues\n\nCloses #2941\n\n## Art der Änderung\n\n- [x] Bugfix\n- [ ] Neues Feature\n- [ ] Dokumentation\n- [ ] Refactoring\n- [ ] CI/Build\n\n## Wirkung auf Daten und Behördenunterlagen\n\n- [ ] Neue oder geänderte personenbezogene Daten oder Protokollereignisse\n- [ ] Neue Sichtbarkeit: Daten werden für weitere Rollen oder Personen sichtbar\n- [ ] Neue Auswertung oder neuer Export, auch von bereits gespeicherten Daten\n- [ ] Geänderte Aufbewahrungs- oder Löschfrist\n- [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)\n- [ ] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt\n- [ ] Geänderte KI-Einstufung (Zweck oder Einsatzbereich im Sinne der KI-Verordnung)\n- [x] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen\n\n## Checkliste\n\n- [x] Tests bestehen lokal: Frontend `format:check`, `lint`, `test` (252 Dateien / 3750 Tests), `build`; E2E-`typecheck`; `check_code_comments.sh`. Backend unberührt.\n- [x] Bei Bugfix: Reproduktionsnachweis erbracht (siehe unten)\n- [x] Dokumentation aktualisiert (falls zutreffend): Das Handbuch nennt keine dieser Knopfbezeichnungen\n- [x] Handbuch ausdrücklich nicht betroffen\n- [x] Helm-Chart und Compose-Setup ausdrücklich nicht betroffen\n- [x] Barrierefreiheit nach `docs/design/accessibility.md` geprüft (darum geht es hier)\n- [x] Keine Secrets oder Anmeldeinformationen committet\n- [x] Commit-Nachrichten folgen Conventional Commits\n- [x] CLA unterzeichnet\n\n### Reproduktionsnachweis\n\nAuf `origin/main` (2392af10): Frontend mit `VITE_ENABLE_MOCKS=true`, temporäre Playwright-Spec (nicht committet) mit `AxeBuilder.withRules(['label-content-name-mismatch'])` (axe 4.14) auf `/chat` und `/settings`.\n\n**Ohne Fix (rot):**\n```\n/chat [\n \"<button … aria-label=\\\"Benachrichtigungen, keine ungelesenen\\\" aria-haspopup=\\\"menu\\\">\",\n \"<button … aria-label=\\\"Neuer Chat\\\">\",\n \"<button … aria-haspopup=\\\"dialog\\\" aria-expanded=\\\"false\\\" aria-label=\\\"Metadatenfilter setzen\\\">\"\n]\n/settings [\n \"<button … aria-label=\\\"Benachrichtigungen, keine ungelesenen\\\" aria-haspopup=\\\"menu\\\">\",\n \"<button … value=\\\"light\\\" aria-pressed=\\\"false\\\" aria-label=\\\"Helles Farbschema\\\">\",\n \"<button … value=\\\"system\\\" aria-pressed=\\\"true\\\" aria-label=\\\"Systemvorgabe\\\">\",\n \"<button … value=\\\"dark\\\" aria-pressed=\\\"false\\\" aria-label=\\\"Dunkles Farbschema\\\">\"\n]\n```\n**Mit Fix (grün):** `/chat []`, `/settings []`.\n\n**Volle E2E-Suite auf diesem Branch** (Commit 7d21b594, alle Barrierefreiheitsszenarien eingeschlossen, auch beide Anmeldeseiten): https://github.com/criew/opaa/actions/runs/39115465651, Ergebnis `success`.\n\n## KI-Agenten-Offenlegung\n\n- [ ] Dieser PR wurde von einem Menschen verfasst\n- [x] Dieser PR wurde von einem KI-Agenten verfasst (angeben: Claude Code)\n- [ ] Dieser PR wurde von Mensch + KI-Agent gemeinsam verfasst\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nhttps://claude.ai/code/session_01WZxHz46RSBdBCStss1NoZW",
+        "closes": [
+          2941
+        ],
+        "additions": 117,
+        "deletions": 58,
+        "changed_files": 19
+      },
+      {
+        "number": 2936,
+        "title": "chore(deps): jackson monorepo aktualisieren",
+        "url": "https://github.com/criew/opaa/pull/2936",
+        "author": "bigpuritz",
+        "labels": [
+          "backend",
+          "dependencies"
+        ],
+        "body": "Automatisches Abhängigkeits-Update durch Renovate (#751, siehe docs/renovate.md) — Prüfung und Merge folgen dem normalen Weg.\n\nThis PR contains the following updates:\n\n| Package | Type | Update | Change |\n|---|---|---|---|\n| [com.fasterxml.jackson:jackson-bom](https://redirect.github.com/FasterXML/jackson-bom) | dependencies | patch | `2.22.3` → `2.22.4` |\n| [com.fasterxml.jackson:jackson-bom](https://redirect.github.com/FasterXML/jackson-bom) | dependencies | minor | `2.21.7` → `2.22.4` |\n| [tools.jackson:jackson-bom](https://redirect.github.com/FasterXML/jackson-bom) | dependencies | minor | `3.1.7` → `3.2.3` |\n\n---\n\n### Configuration\n\n📅 **Schedule**: (in timezone Europe/Berlin)\n\n- Branch creation\n  - At any time (no schedule defined)\n- Automerge\n  - At any time (no schedule defined)\n\n🚦 **Automerge**: Enabled.\n\n♻ **Rebasing**: Whenever PR is behind base branch, or you tick the rebase/retry checkbox.\n\n👻 **Immortal**: This PR will be recreated if closed unmerged. Get [config help](https://redirect.github.com/renovatebot/renovate/discussions) if that's undesired.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR has been generated by [Mend Renovate CLI](https://redirect.github.com/renovatebot/renovate).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0NC4xNTYuMCIsInVwZGF0ZWRJblZlciI6IjQ0LjE1Ni4wIiwidGFyZ2V0QnJhbmNoIjoibWFpbiIsImxhYmVscyI6WyJiYWNrZW5kIiwiZGVwZW5kZW5jaWVzIl19-->",
+        "closes": [],
+        "additions": 3,
+        "deletions": 3,
+        "changed_files": 1
+      }
+    ]
+  }
+}

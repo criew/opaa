@@ -5,8 +5,17 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-18T04:54:41Z</updated>
+  <updated>2026-10-19T05:03:42Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 18. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-18.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-18.html</id>
+    <updated>2026-10-19T05:03:42Z</updated>
+    <summary type="text">Sonstiges:
+— Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3) behoben
+— Jackson-Abhängigkeiten aktualisiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 17. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-17.html"/>
@@ -876,13 +885,5 @@ Sonstiges:
 — Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten recherchiert
 — Meilenstein-1-Übergabe finalisiert
 — Meilenstein-1-Bericht mit Delta konsolidiert und gemergt</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Samstag, 29. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-29.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-29.html</id>
-    <updated>2026-08-30T05:38:58Z</updated>
-    <summary type="text">Sonstiges:
-— ollama/ollama Docker-Image auf v0.33.2 aktualisiert</summary>
   </entry>
 </feed>
