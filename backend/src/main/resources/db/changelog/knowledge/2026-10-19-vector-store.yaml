@@ -1,0 +1,43 @@
+databaseChangeLog:
+  # The shape of the vector table as spring.ai.vectorstore.pgvector configures it; the application
+  # passes its configuration as changelog parameters (io.opaa.config.VectorStoreChangelogParameters),
+  # these values apply only where no one does, as in the migration tests.
+  - property:
+      name: opaa_vector_store_dimensions
+      value: "1024"
+  - property:
+      name: opaa_vector_store_index_type
+      value: "hnsw"
+  - property:
+      name: opaa_vector_store_distance_ops
+      value: "vector_cosine_ops"
+  - changeSet:
+      id: knowledge-2026-10-19-vector-store
+      author: opaa
+      comment: "The vector table, its vector index and its two expression indexes, created by the migration instead of by Spring AI at every application start. Leaves a table that Spring AI created earlier as it is. Runs again when the configured dimension, index type or distance changes its text; the reconciliation of the embedding index adapts an existing table."
+      runOnChange: true
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+
+              CREATE TABLE IF NOT EXISTS vector_store (
+                  id uuid DEFAULT gen_random_uuid() NOT NULL,
+                  content text,
+                  metadata json,
+                  embedding vector(${opaa_vector_store_dimensions}),
+                  CONSTRAINT vector_store_pkey PRIMARY KEY (id)
+              );
+
+              CREATE INDEX IF NOT EXISTS idx_vector_store_library_id ON vector_store USING btree (((metadata ->> 'library_id'::text)));
+              CREATE INDEX IF NOT EXISTS idx_vector_store_document_id ON vector_store USING btree (((metadata ->> 'document_id'::text)));
+
+              -- The name and shape PgVectorStore gives the vector index; none for index type none.
+              DO $$
+              BEGIN
+                IF '${opaa_vector_store_index_type}' <> 'none' THEN
+                  EXECUTE 'CREATE INDEX IF NOT EXISTS spring_ai_vector_index ON vector_store'
+                      || ' USING ${opaa_vector_store_index_type} (embedding ${opaa_vector_store_distance_ops})';
+                END IF;
+              END $$;

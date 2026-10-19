@@ -132,7 +132,9 @@ spring:
           completion: false
     vectorstore:
       pgvector:
-        initialize-schema: true
+        # vector_store and its indexes come from the Liquibase changelog
+        # (knowledge/2026-10-19-vector-store.yaml), so no instance runs DDL for it at start-up.
+        initialize-schema: false
         # Must equal opaa.database.schema (io.opaa.config.DatabaseSchemaGuard).
         schema-name: ${opaa.database.schema}
         index-type: hnsw
