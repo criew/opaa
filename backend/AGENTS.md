@@ -94,7 +94,8 @@ Modulübergreifendes (Modulgrenzen, Liquibase) steht hier, nicht in der Datei de
 OPAA läuft als genau ein Backend-Prozess je Installation
 ([ADR-0021](../docs/decisions/0021-single-instance-betrieb.md)). Wer eine neue prozesslokale Stelle einführt (Cache,
 `@Scheduled`, Executor, Semaphore, Zähler, Start-Aktion), trägt sie in das Register
-[docs/prozesslokaler-zustand.md](docs/prozesslokaler-zustand.md) ein und nennt „(ADR-0021)“ in der Javadoc.
+[docs/prozesslokaler-zustand.md](docs/prozesslokaler-zustand.md) ein, ordnet sie dort dem Umbau nach
+[ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) zu und nennt „(ADR-0021)“ in der Javadoc.
 
 ## Scheduler
 
