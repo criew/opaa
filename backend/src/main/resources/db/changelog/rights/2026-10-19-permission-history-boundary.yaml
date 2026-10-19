@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: rights-2026-10-19-permission-history-boundary
+      author: opaa
+      comment: "The interval boundaries of the permission history come from the database clock, strictly increasing across every instance of the installation (ADR-0032, Entscheidung 3; ADR-0053, Entscheidung 9). The sequence holds the last boundary in microseconds since the epoch and starts above every boundary already recorded. Additive: a new sequence and a new function."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE SEQUENCE permission_history_boundary_seq AS bigint MINVALUE 0 START WITH 0 NO CYCLE;
+
+              DO $$
+              DECLARE
+                history text;
+                latest timestamp with time zone;
+                boundary timestamp with time zone;
+              BEGIN
+                FOREACH history IN ARRAY ARRAY['asset_grant_history', 'group_membership_history',
+                    'capability_grant_history', 'asset_visibility_history', 'asset_ownership_history',
+                    'account_state_history', 'space_membership_history'] LOOP
+                  IF to_regclass(history) IS NOT NULL THEN
+                    EXECUTE format('SELECT greatest(max(valid_from), max(valid_to)) FROM %I', history)
+                        INTO latest;
+                    boundary := greatest(boundary, latest);
+                  END IF;
+                END LOOP;
+                IF boundary IS NOT NULL THEN
+                  PERFORM setval('permission_history_boundary_seq',
+                      floor(extract(epoch FROM boundary) * 1000000)::bigint);
+                END IF;
+              END $$;
+
+              CREATE FUNCTION permission_history_next_boundary() RETURNS timestamp with time zone
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              DECLARE
+                reading bigint;
+                boundary bigint;
+              BEGIN
+                PERFORM pg_advisory_lock(230, 0);
+                BEGIN
+                  reading := floor(extract(epoch FROM clock_timestamp()) * 1000000)::bigint;
+                  boundary := nextval('permission_history_boundary_seq');
+                  IF boundary < reading THEN
+                    boundary := setval('permission_history_boundary_seq', reading);
+                  END IF;
+                EXCEPTION WHEN OTHERS OR query_canceled THEN
+                  PERFORM pg_advisory_unlock(230, 0);
+                  RAISE;
+                END;
+                PERFORM pg_advisory_unlock(230, 0);
+                RETURN timestamp with time zone 'epoch' + boundary * interval '1 microsecond';
+              END; $$;

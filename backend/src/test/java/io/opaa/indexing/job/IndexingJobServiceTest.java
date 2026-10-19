@@ -20,6 +20,7 @@ import io.opaa.common.ConflictException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -35,13 +36,18 @@ import org.springframework.dao.QueryTimeoutException;
 @ExtendWith(MockitoExtension.class)
 class IndexingJobServiceTest {
 
+  /** The database clock of these tests, which the host clock need not agree with. */
+  private static final Instant DATABASE_NOW = Instant.parse("2026-10-19T08:00:00Z");
+
   @Mock private IndexingJobRepository indexingJobRepository;
   @Mock private AssetRepository assetRepository;
   private IndexingJobService service;
 
   @BeforeEach
   void setUp() {
-    service = new IndexingJobService(indexingJobRepository, assetRepository, Clock.systemUTC());
+    service =
+        new IndexingJobService(
+            indexingJobRepository, assetRepository, Clock.systemUTC(), Instant::now);
   }
 
   @Test
@@ -467,6 +473,38 @@ class IndexingJobServiceTest {
             eq("Indizierungslauf abgebrochen: verwaister Lauf (Zeitüberschreitung)"),
             any(Instant.class),
             any(Instant.class));
+  }
+
+  @Test
+  void aStaleHeartbeatIsJudgedByTheDatabaseClockNotByTheHostClock() {
+    // regression guard for ADR-0053, Entscheidung 9: a host clock ten minutes ahead must not move
+    // the cutoff, or another instance's healthy run would count as hanging.
+    IndexingJobService aheadOfTheDatabase =
+        new IndexingJobService(
+            indexingJobRepository,
+            assetRepository,
+            Clock.fixed(DATABASE_NOW.plus(Duration.ofMinutes(10)), ZoneOffset.UTC),
+            () -> DATABASE_NOW);
+
+    aheadOfTheDatabase.recoverStaleJobs(Duration.ofHours(4));
+
+    verify(indexingJobRepository)
+        .failStaleRunningJobs(
+            anyString(), eq(DATABASE_NOW.minus(Duration.ofHours(4))), eq(DATABASE_NOW));
+  }
+
+  @Test
+  void theProgressHeartbeatIsStampedByTheDatabaseClock() {
+    UUID jobId = UUID.randomUUID();
+    IndexingJob job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobRepository.findById(jobId)).thenReturn(Optional.of(job));
+    IndexingJobService onTheDatabaseClock =
+        new IndexingJobService(
+            indexingJobRepository, assetRepository, Clock.systemUTC(), () -> DATABASE_NOW);
+
+    onTheDatabaseClock.updateProgress(jobId, 1, 0, 0, 1);
+
+    assertThat(job.getLastProgressAt()).isEqualTo(DATABASE_NOW);
   }
 
   @Test
