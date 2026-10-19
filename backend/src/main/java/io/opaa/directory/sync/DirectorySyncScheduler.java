@@ -33,7 +33,9 @@ import org.springframework.stereotype.Component;
  * time is not caught up: the next tick simply finds the provider due again.
  *
  * <p>A failed run never switches its own schedule off, and one provider's failure never keeps the
- * others from running: each provider is ticked inside its own {@code try}.
+ * others from running: each provider is ticked inside its own {@code try}. A failed run counts as a
+ * run: {@link DirectorySyncService} records it as {@code FAILED}, so the next one waits for the
+ * interval too.
  */
 @Component
 @ConditionalOnProperty(

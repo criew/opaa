@@ -192,6 +192,12 @@ Je Bibliothek läuft **höchstens ein Lauf**. Ein einzelnes Dokument, das nicht 
 kann, bricht den Lauf nicht ab; es wird gezählt, protokolliert und übersprungen. „Fehlgeschlagen"
 heißt, dass der Lauf als Ganzes nicht zu Ende kam.
 
+Während ein Lauf läuft, fragt die Detailansicht seinen Stand regelmäßig ab. Ein einzelner
+Abruffehler, etwa während eines Updates, ändert die Anzeige nicht. Die Seite fragt danach in
+wachsenden Abständen erneut. Scheitern mehrere Abrufe in Folge, zeigt sie „Status unbekannt" mit
+„Erneut versuchen", nie „Fehlgeschlagen": Der Lauf selbst kann weiterlaufen. Bricht ebenso das
+automatische Aktualisieren der Dokumentliste ab, zeigt die Liste einen Hinweis mit „Aktualisieren".
+
 Ein Lauf kann abgeschlossen und trotzdem **unvollständig** sein: wenn er sein Anfragebudget
 verbraucht hat oder ein Dokument am Speicherkontingent abgelehnt wurde. Er endet dann geordnet, und
 der nächste Lauf setzt fort; ein unvollständiger Lauf entfernt nichts wegen Abwesenheit. Wie die

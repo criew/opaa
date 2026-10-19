@@ -162,7 +162,7 @@ describe('Sidebar', () => {
   it('renders New Chat button for the default space', async () => {
     renderSidebarAtRoute('/chat')
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /neuer chat/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Neu: Chat beginnen' })).toBeInTheDocument()
     })
   })
 
@@ -170,7 +170,7 @@ describe('Sidebar', () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
-    await user.click(await screen.findByRole('button', { name: /neuer chat/i }))
+    await user.click(await screen.findByRole('button', { name: 'Neu: Chat beginnen' }))
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
@@ -290,7 +290,7 @@ describe('Sidebar', () => {
   })
 
   // An archived space rejects new chats server-side (ChatService) and ChatList disables its
-  // "Neuer Chat" button, so it must land on its overview rather than on a draft whose first
+  // "Neu" button, so it must land on its overview rather than on a draft whose first
   // message would fail.
   it('sends an archived space chosen in the switcher to its overview instead', async () => {
     useSpaceStore.setState({

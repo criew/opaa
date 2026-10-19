@@ -452,9 +452,9 @@ class DirectorySyncPlanExecutor {
     return switch (outcome) {
       case APPLIED, DRY_RUN -> AuditOutcome.SUCCESS;
       case PENDING_CONFIRMATION, ABORTED_THRESHOLD, ABORTED_EMPTY_RESULT -> AuditOutcome.FAILURE;
-      case UNREACHABLE ->
+      case UNREACHABLE, FAILED ->
           throw new IllegalStateException(
-              "UNREACHABLE is handled by DirectorySyncService before this class ever runs");
+              outcome + " is recorded by DirectorySyncService, never by this class");
     };
   }
 

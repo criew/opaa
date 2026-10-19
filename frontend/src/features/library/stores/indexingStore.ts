@@ -4,6 +4,7 @@ import type {
   IndexingRunMode,
   IndexingRunResponse,
   IndexingStatus,
+  IndexingStatusResponse,
 } from '@/shared/api/types'
 import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../api/indexingApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
@@ -11,6 +12,12 @@ import { sourceRegistration } from '../components/sources/registry'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 
 const POLL_INTERVAL_MS = 2000
+
+// Consecutive failed status fetches after which polling gives up and the run is shown as
+// "Status unbekannt". Between failures the delay doubles from POLL_INTERVAL_MS up to
+// MAX_POLL_BACKOFF_MS, so a short outage (deployment, token refresh) is ridden out.
+export const MAX_CONSECUTIVE_STATUS_FAILURES = 5
+const MAX_POLL_BACKOFF_MS = 30_000
 
 // The exact German text DocumentIndexingService#executorFor
 // sends for an UPLOAD library (no run type at all, 409) - matched here so triggerIndexing can show
@@ -57,6 +64,9 @@ interface IndexingRunState {
   unlistedScopeKeys: string[]
   // The category the newest run ended under, e.g. QUOTA_EXHAUSTED; null while it has none.
   failureCategory: string | null
+  // Polling gave up after MAX_CONSECUTIVE_STATUS_FAILURES failed fetches. The last known status
+  // is kept as is - a failed fetch says nothing about the run itself.
+  statusUnknown: boolean
 }
 
 export const IDLE_RUN_STATE: IndexingRunState = {
@@ -72,6 +82,7 @@ export const IDLE_RUN_STATE: IndexingRunState = {
   sourceType: null,
   unlistedScopeKeys: [],
   failureCategory: null,
+  statusUnknown: false,
 }
 
 interface IndexingState {
@@ -90,11 +101,19 @@ interface IndexingState {
   loadStatus: (libraryId: string, sourceType: SourceTypeKey) => Promise<void>
   loadRunHistory: (libraryId: string) => Promise<void>
   stopPolling: (libraryId: string) => void
+  // Resumes polling after it gave up, starting with an immediate fetch.
+  retryStatusPolling: (libraryId: string) => void
   closeSnackbar: () => void
   reset: () => void
 }
 
-const pollIntervalIds: Record<string, ReturnType<typeof setInterval>> = {}
+// One entry per library while it is polled. A tick schedules its successor only while its own
+// entry is still the current one, so stopPolling also ends a tick that is still in flight.
+interface PollHandle {
+  timeoutId: ReturnType<typeof setTimeout> | null
+  consecutiveFailures: number
+}
+const pollHandles: Record<string, PollHandle> = {}
 
 /**
  * Formats a completed run's counts for the completion snackbar. Which wording is used is
@@ -187,6 +206,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           timestamp: response.timestamp,
           sourceType,
           failureCategory: response.failureCategory ?? null,
+          statusUnknown: false,
         },
         set,
         get,
@@ -248,18 +268,24 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
   },
 
   stopPolling: (libraryId: string) => {
-    const intervalId = pollIntervalIds[libraryId]
-    if (intervalId) {
-      clearInterval(intervalId)
-      delete pollIntervalIds[libraryId]
+    const handle = pollHandles[libraryId]
+    if (handle) {
+      if (handle.timeoutId) clearTimeout(handle.timeoutId)
+      delete pollHandles[libraryId]
     }
     setRun(libraryId, { isPolling: false }, set, get)
+  },
+
+  retryStatusPolling: (libraryId: string) => {
+    get().stopPolling(libraryId)
+    setRun(libraryId, { statusUnknown: false }, set, get)
+    startPolling(libraryId, set, get, 0)
   },
 
   closeSnackbar: () => set((s) => ({ snackbar: { ...s.snackbar, open: false } })),
 
   reset: () => {
-    Object.keys(pollIntervalIds).forEach((libraryId) => get().stopPolling(libraryId))
+    Object.keys(pollHandles).forEach((libraryId) => get().stopPolling(libraryId))
     set({
       runsByLibrary: {},
       // runHistoryByLibrary caches the previous user's last 10 runs per library; left in place it
@@ -276,72 +302,94 @@ function startPolling(
   libraryId: string,
   set: (partial: Partial<IndexingState>) => void,
   get: () => IndexingState,
+  firstDelayMs: number = POLL_INTERVAL_MS,
 ) {
-  if (pollIntervalIds[libraryId]) return
+  if (pollHandles[libraryId]) return
+  const handle: PollHandle = { timeoutId: null, consecutiveFailures: 0 }
+  pollHandles[libraryId] = handle
   setRun(libraryId, { isPolling: true }, set, get)
+  scheduleTick(libraryId, handle, firstDelayMs, set, get)
+}
 
-  pollIntervalIds[libraryId] = setInterval(async () => {
-    // This tick's token in the session epoch, captured before the await below. clearInterval
-    // (see stopPolling, called by reset()) only stops *future* ticks - a tick already in flight
-    // when reset() runs would otherwise still call setRun() once its own await resolves, writing a
-    // run status back into runsByLibrary right after reset() just emptied it.
-    const sessionEpoch = currentSessionEpoch()
-    try {
-      const response = await getIndexingStatus(libraryId)
-      if (isStaleSessionEpoch(sessionEpoch)) return
-      // The run entry already carries sourceType, set by triggerIndexing/loadStatus before
-      // polling ever starts - polling itself never learns it anew.
-      const isRssFeed = Boolean(
-        sourceRegistration(get().runsByLibrary[libraryId]?.sourceType)?.runCountsEntries,
-      )
-      setRun(
-        libraryId,
-        {
-          status: response.status,
-          documentCount: response.documentCount,
-          totalDocuments: response.totalDocuments,
-          documentsSkipped: response.documentsSkipped,
-          documentsFailed: response.documentsFailed,
-          documentsIndexedTotal: response.documentsIndexedTotal,
-          message: response.message,
-          timestamp: response.timestamp,
-          unlistedScopeKeys: response.unlistedScopeKeys ?? [],
-          failureCategory: response.failureCategory ?? null,
-        },
-        set,
-        get,
-      )
+function scheduleTick(
+  libraryId: string,
+  handle: PollHandle,
+  delayMs: number,
+  set: (partial: Partial<IndexingState>) => void,
+  get: () => IndexingState,
+) {
+  handle.timeoutId = setTimeout(() => void runPollTick(libraryId, handle, set, get), delayMs)
+}
 
-      if (response.status === 'COMPLETED' || response.status === 'FAILED') {
-        get().stopPolling(libraryId)
-        void get().loadRunHistory(libraryId)
-        set({
-          snackbar: {
-            open: true,
-            message:
-              response.status === 'COMPLETED'
-                ? formatCompletionMessage(response, isRssFeed)
-                : (response.message ?? 'Indizierung fehlgeschlagen'),
-            severity: response.status === 'COMPLETED' ? 'success' : 'error',
-          },
-        })
-      }
-    } catch {
-      if (isStaleSessionEpoch(sessionEpoch)) return
+function backoffDelayMs(consecutiveFailures: number): number {
+  return Math.min(POLL_INTERVAL_MS * 2 ** consecutiveFailures, MAX_POLL_BACKOFF_MS)
+}
+
+async function runPollTick(
+  libraryId: string,
+  handle: PollHandle,
+  set: (partial: Partial<IndexingState>) => void,
+  get: () => IndexingState,
+) {
+  // This tick's token in the session epoch, captured before the await below. stopPolling (called
+  // by reset()) only cancels the *pending* timeout - a tick already in flight when reset() runs
+  // would otherwise still call setRun() once its own await resolves, writing a run status back
+  // into runsByLibrary right after reset() just emptied it.
+  const sessionEpoch = currentSessionEpoch()
+  const isCurrent = () => !isStaleSessionEpoch(sessionEpoch) && pollHandles[libraryId] === handle
+  let response: IndexingStatusResponse
+  try {
+    response = await getIndexingStatus(libraryId)
+  } catch {
+    if (!isCurrent()) return
+    handle.consecutiveFailures += 1
+    if (handle.consecutiveFailures >= MAX_CONSECUTIVE_STATUS_FAILURES) {
       get().stopPolling(libraryId)
-      setRun(
-        libraryId,
-        { status: 'FAILED', message: 'Indizierungsstatus konnte nicht abgerufen werden' },
-        set,
-        get,
-      )
-      set({
-        snackbar: {
-          open: true,
-          message: 'Indizierungsstatus konnte nicht abgerufen werden',
-          severity: 'error',
-        },
-      })
+      setRun(libraryId, { statusUnknown: true }, set, get)
+      return
     }
-  }, POLL_INTERVAL_MS)
+    scheduleTick(libraryId, handle, backoffDelayMs(handle.consecutiveFailures), set, get)
+    return
+  }
+  if (!isCurrent()) return
+  handle.consecutiveFailures = 0
+  // The run entry already carries sourceType, set by triggerIndexing/loadStatus before
+  // polling ever starts - polling itself never learns it anew.
+  const isRssFeed = Boolean(
+    sourceRegistration(get().runsByLibrary[libraryId]?.sourceType)?.runCountsEntries,
+  )
+  setRun(
+    libraryId,
+    {
+      status: response.status,
+      documentCount: response.documentCount,
+      totalDocuments: response.totalDocuments,
+      documentsSkipped: response.documentsSkipped,
+      documentsFailed: response.documentsFailed,
+      documentsIndexedTotal: response.documentsIndexedTotal,
+      message: response.message,
+      timestamp: response.timestamp,
+      unlistedScopeKeys: response.unlistedScopeKeys ?? [],
+      failureCategory: response.failureCategory ?? null,
+    },
+    set,
+    get,
+  )
+
+  if (response.status !== 'COMPLETED' && response.status !== 'FAILED') {
+    scheduleTick(libraryId, handle, POLL_INTERVAL_MS, set, get)
+    return
+  }
+  get().stopPolling(libraryId)
+  void get().loadRunHistory(libraryId)
+  set({
+    snackbar: {
+      open: true,
+      message:
+        response.status === 'COMPLETED'
+          ? formatCompletionMessage(response, isRssFeed)
+          : (response.message ?? 'Indizierung fehlgeschlagen'),
+      severity: response.status === 'COMPLETED' ? 'success' : 'error',
+    },
+  })
 }

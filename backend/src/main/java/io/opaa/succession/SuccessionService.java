@@ -217,8 +217,7 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
     for (SuccessionCase open :
         cases.findByKindAndObjectIdAndClosedAtIsNull(SuccessionKind.OPEN_SUCCESSION, objectId)) {
       if (!isOpen(open.getObjectType(), objectId)) {
-        open.close(clock.instant(), endedByUserId);
-        cases.save(open);
+        cases.closeIfOpen(open.getId(), clock.instant(), endedByUserId);
       }
     }
   }

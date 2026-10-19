@@ -41,6 +41,33 @@ if [ "$VALID" != true ]; then
   exit 1
 fi
 
+# Spliced into the Content-Security-Policy of every response the same way; a ";" would append
+# directives, a quote or "$" break the nginx configuration. Each space-separated entry is a CSP
+# source of the http/https/ws/wss family: [scheme://][*.]host[:port|:*][/path], a scheme such as
+# "https:", or "*". Keywords such as 'self' need quotes and are therefore not accepted.
+SOURCE='(((https?|wss?)://)?(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:([0-9]{1,5}|\*))?(/[a-z0-9._~%!&()*+=:@/-]*)?|(https?|wss?):|\*)'
+INVALID_SOURCE=""
+case "$OPAA_CSP_CONNECT_SRC_EXTRA" in
+  *"$NEWLINE"*) INVALID_SOURCE="(line break)" ;;
+  *)
+    # Entries are separated by spaces only; a tab stays part of an entry and fails the check.
+    set -f
+    SAVED_IFS=$IFS
+    IFS=' '
+    for CSP_SOURCE in $OPAA_CSP_CONNECT_SRC_EXTRA; do
+      if ! printf '%s' "$CSP_SOURCE" | grep -Eiqx "$SOURCE"; then
+        INVALID_SOURCE="$CSP_SOURCE"
+        break
+      fi
+    done
+    IFS=$SAVED_IFS
+    set +f ;;
+esac
+if [ -n "$INVALID_SOURCE" ]; then
+  echo "$ME: ERROR: OPAA_CSP_CONNECT_SRC_EXTRA must be a space-separated list of sources such as https://login.example.org, got '$OPAA_CSP_CONNECT_SRC_EXTRA', invalid entry: '$INVALID_SOURCE'" >&2
+  exit 1
+fi
+
 mkdir -p "$NGINX_ENVSUBST_OUTPUT_DIR"
 
 # nginx.conf includes /tmp/nginx/listen.d/*.conf in its server block. The IPv6 listen is only
