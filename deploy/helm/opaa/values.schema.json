@@ -985,6 +985,10 @@
         "javaToolOptions": {
           "type": "string"
         },
+        "timeZone": {
+          "type": "string",
+          "minLength": 1
+        },
         "resources": {
           "type": "object"
         },

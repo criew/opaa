@@ -126,6 +126,8 @@ spec:
             # rather than the ConfigMap, because env takes precedence over every envFrom source.
             - name: SPRING_PROFILES_ACTIVE
               value: oidc
+            - name: TZ
+              value: {{ .Values.backend.timeZone | quote }}
             {{- with include "opaa.backend.javaToolOptions" . }}
             - name: JAVA_TOOL_OPTIONS
               value: {{ . | quote }}

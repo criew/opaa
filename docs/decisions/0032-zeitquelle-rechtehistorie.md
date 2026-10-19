@@ -1,8 +1,8 @@
-# ADR-0032: Zeitquelle der Rechtehistorie — prozesslokale, streng monotone Uhr
+# ADR-0032: Zeitquelle der Rechtehistorie — streng monotone Uhr der Datenbank
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-09-20
+Akzeptiert · zuletzt geändert 2026-10-19 · ergänzt durch ADR-0053 Entscheidung 9
 
 ## Kontext
 
@@ -22,15 +22,15 @@ Festlegung mit Folgen für einen Mehrinstanzbetrieb.
 
 ### 1. Alle Intervallgrenzen stammen aus `PermissionHistoryClock`
 
-Eine prozesslokale, streng monotone Zeitquelle, nicht die Wanduhr der JVM oder der Datenbank.
-Vertrag: Jeder Aufruf (`nextBoundary()`) liefert einen Wert echt größer als der vorige; eine
-Wanduhr-Lesung, die nicht größer ist als die zuletzt ausgegebene Grenze (grober Tick,
-Rückwärtssprung), wird durch „letzte Grenze plus eine Mikrosekunde" ersetzt. Die Auflösung ist auf
-Mikrosekunden abgeschnitten, bevor die Monotonie geprüft wird, weil `timestamptz` Mikrosekunden
-speichert. Der Wert bleibt ein Wanduhr-Zeitpunkt mit begrenzter Genauigkeit: Innerhalb eines Ticks
-läuft die Quelle um Mikrosekunden voraus und fällt auf die Wanduhr zurück, sobald sie wieder größer
-ist; nach einem Rückwärtssprung um Δ beträgt der Vorlauf Δ, bis die Wanduhr die letzte Grenze
-überschritten hat. Alle Schreiber der Historientabellen beziehen ihre Grenzen aus dieser einen
+Eine streng monotone Zeitquelle in der Datenbank (`permission_history_next_boundary()`), nicht die
+Wanduhr der JVM und nicht `clock_timestamp()` allein. Vertrag: Jeder Aufruf (`nextBoundary()`)
+liefert einen Wert echt größer als jede zuvor vergebene Grenze der Installation; eine Lesung der
+Datenbankuhr, die nicht größer ist als die zuletzt vergebene Grenze (grober Tick, Rückwärtssprung),
+wird durch „letzte Grenze plus eine Mikrosekunde" ersetzt. Gerechnet wird in Mikrosekunden, weil
+`timestamptz` Mikrosekunden speichert. Der Wert bleibt ein Uhrzeitpunkt mit begrenzter Genauigkeit:
+Innerhalb einer Mikrosekunde läuft die Quelle voraus und fällt auf die Datenbankuhr zurück, sobald
+sie wieder größer ist; nach einem Rückwärtssprung um Δ beträgt der Vorlauf Δ, bis die Uhr die letzte
+Grenze überschritten hat. Alle Schreiber der Historientabellen beziehen ihre Grenzen aus dieser einen
 Quelle: `PermissionHistoryService` (Grants, Gruppenmitgliedschaften, Fähigkeiten),
 `AssetVisibilityHistoryService`, `AssetOwnershipHistoryService`, `AccountStateHistoryService`,
 `SpaceMembershipHistoryService` und `PermissionTransferService`.
@@ -49,35 +49,38 @@ Rekonstruierbarkeit auch für Kombinationszustände aus mehreren Tabellen. Die Z
 ab #1497; vorher entstandene leere Intervalle bleiben stehen (keine Bestandsnachzüge), und das
 Javadoc und die Spezifikation datieren sie deshalb ausdrücklich.
 
-### 3. Prozesslokale Monotonie genügt, solange ADR-0021 gilt
+### 3. Die Monotonie sichert die Datenbank, installationsweit
 
-`PermissionHistoryClock` ist als Fundstelle in ADR-0021 eingetragen. Ein Multi-Instanz-Umbau muss
-die Quelle ersetzen — durch die Datenbankuhr samt datenbankseitiger Monotonie-Sicherung —, nicht
-durch eine weitere prozesslokale Variable; die Umstellung trifft eine Klasse, weil alle Schreiber
-durch sie laufen.
+Eine Sequenz hält die zuletzt vergebene Grenze aller Historientabellen, in Mikrosekunden seit der
+Epoche; die Vergabe ist über einen Advisory-Lock serialisiert, der nur für diese eine Anweisung
+gehalten wird, nicht für die Transaktion. Damit gilt die Zusage über alle Instanzen einer
+Installation (ADR-0053 Entscheidung 9), und die globale Ordnung aus Entscheidung 2 bleibt erhalten.
+Beim Einspielen startet die Sequenz über der größten schon gespeicherten Grenze. Der Wert wird
+weiterhin in der JVM gebraucht (lückenlose Verkettung), deshalb holt `PermissionHistoryClock` ihn
+mit einer eigenen Abfrage auf der Verbindung der laufenden Transaktion.
 
 ## Konsequenzen
 
 - **Einfacher:** Ein Zustand, den ein Objekt innehatte, ist zu einem Stichtag rekonstruierbar,
-  unabhängig von der Uhr des Wirtssystems. Deterministisch testbar mit einer stehenden Wanduhr. Kein
-  zusätzliches Statement je historisierter Änderung.
+  unabhängig von der Uhr des Wirtssystems und der Zahl der Instanzen. Deterministisch testbar, indem
+  die Sequenz vor die Datenbankuhr gesetzt wird.
+- **Teurer:** Eine zusätzliche, kurze Anweisung je vergebener Grenze.
 - **Schwieriger / in Kauf genommen:** Ein Zeitstempel kann der Wanduhr vorauslaufen — normal um
   Mikrosekunden (Tests nehmen einen Stichtag „nach der Änderung" aus derselben Quelle), nach einem
   Rückwärtssprung um bis zu Δ: Die Historie sagt dann die Reihenfolge korrekt, den Zeitpunkt zu
-  spät. Ein Betreiber hält Δ mit NTP-`slew` klein.
-- **Restrisiko:** Die Invariante ist nicht datenbankseitig abgesichert; ein Migrationsskript oder
-  eine Handkorrektur per SQL könnte sie verletzen. Der Maintainer hat die Absicherung (#1517,
-  `EXCLUDE`-Constraint je Objekt mit `btree_gist`) als zu exotisch verworfen; neu zu bewerten beim
-  Multiinstanzbetrieb (#1292), wo sie Ersatz statt Ergänzung wäre.
+  spät. Ein Betreiber hält Δ auf dem Datenbankserver mit NTP-`slew` klein.
+- **Restrisiko:** Die Invariante der Tabellen selbst ist nicht durch ein Constraint abgesichert; ein
+  Migrationsskript oder eine Handkorrektur per SQL, die eine Grenze an der Quelle vorbei schreibt,
+  könnte sie verletzen. Die Absicherung je Objekt (#1517, `EXCLUDE`-Constraint mit `btree_gist`) ist
+  als zu exotisch verworfen.
 
 ## Verworfene Alternativen
 
 - `clock_timestamp()` für sich genommen — keine strenge Monotonie, Rückwärtssprünge möglich; „fast immer richtig" ist für eine nachweisrelevante Tabelle nicht genug.
-- `clock_timestamp()` plus datenbankseitige Sicherung — **vertagt, nicht verworfen**: tragfähig und der Weg für den Mehrinstanzbetrieb, heute ohne Abnehmer (Schemaänderung an der Tabelle, deren Beweiskraft verteidigt wird; Sicherung formuliert die Fachlogik ein zweites Mal; Bestand verletzt die Invariante; Uhr-Tick nicht erzwingbar testbar). Der zweite Gewinn, Schutz gegen Schreiber an der Anwendung vorbei, bräuchte den Uhrwechsel nicht und ist mit #1517 bewusst nicht genommen.
+- Prozesslokale Monotonie in der JVM — gilt nur für einen Prozess; zwei Instanzen erzeugen für dasselbe Objekt leere oder verschränkte Intervalle.
+- Monotonie je Objekt aus der jeweiligen Historientabelle — gäbe die globale Ordnung über Objekte und Tabellen auf, auf der die Kombinationszustände beruhen (Entscheidung 2), und formulierte die Fachlogik je Tabelle ein zweites Mal.
+- Sperre auf einer Zeile statt Advisory-Lock — hielte die Vergabe bis zum Ende jeder Transaktion an und machte langlaufende Abgleiche zum Engpass aller Rechteänderungen.
 - Wert im `INSERT` erzeugen (Default oder Trigger) — die lückenlose Verkettung braucht den Wert in der JVM für das `UPDATE` der Vorgängerzeile.
 - Grenze nur bei Gleichheit anheben — prüft gegen den gelesenen statt den vergebenen Wert, verteilt die Korrektheit über alle Aufrufstellen.
 - Nichts tun („kürzer als ein Tick muss nicht rekonstruierbar sein") — eine Nachweiszusage, die von der Wirtsplattform abhängt, ist keine.
 
-## Offen
-
-- Wechsel auf die Datenbankuhr samt datenbankseitiger Sicherung, sobald ADR-0021 fällt (#1292).
