@@ -33,6 +33,10 @@ Controller und Mapper der Fachmodule liegen in deren `web`-Paketen („Web-Schic
   SQLState 0A000 lässt den Pool die Verbindung schließen, und Liquibase meldet danach nur „Connection
   is closed". Fehlende Rechte (42501) kommen dagegen lesbar an und bleiben der Migration überlassen,
   sonst würden verwaltete Dienste mit eigener Verwaltungsrolle abgewiesen.
+- **`OPAA_MODE=migrate`** (`config.DatabaseMigrationMode`) startet statt der Anwendung nur
+  Datenquelle, die Wächter vor Liquibase, `VectorStoreChangelogParameters` und Liquibase und endet
+  mit Exit-Code 0; `OpaaApplication#main` entscheidet vor jedem Kontext. Hinzukommendes gehört nur
+  dorthin, wenn die Migration es braucht (`backend/docs/liquibase.md`, „Migration als eigener Schritt“).
 - **`TrustStoreBuilder`** ist ein Hauptprogramm ohne Spring, das der Init-Container des Helm-Charts
   über `PropertiesLauncher` startet (`extraCACertificates`): Laufzeit-CAs plus alle PEM-Zertifikate
   in einen frischen Truststore.
