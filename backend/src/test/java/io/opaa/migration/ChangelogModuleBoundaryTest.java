@@ -107,6 +107,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "indexing_run_events",
                   "source_sync_state",
                   "source_sync_revisits",
+                  "source_event_batches",
                   "source_sync_presence",
                   "chunk_full_text",
                   "embedding_index",

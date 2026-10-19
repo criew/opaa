@@ -75,6 +75,7 @@ public class S3EventService implements S3PushReceiver {
             executor.refreshObjects(jobId, library, keys, dropped);
           }
         };
+    intake.register(target);
   }
 
   /**

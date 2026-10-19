@@ -72,6 +72,9 @@ class ConfluenceWebhookServiceTest {
     service =
         new ConfluenceWebhookService(
             libraryRepository, executor, intake, JsonMapper.builder().build());
+    // the target is registered once, at creation, so any instance drains this connector's batches
+    org.mockito.Mockito.verify(intake).register(org.mockito.ArgumentMatchers.any());
+    org.mockito.Mockito.clearInvocations(intake);
   }
 
   private static byte[] body(String... pageIds) {
