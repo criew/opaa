@@ -1,7 +1,11 @@
 package io.opaa.ratelimit;
 
+import static io.opaa.ratelimit.RateLimitFilter.Counting.AUTHENTICATED;
+import static io.opaa.ratelimit.RateLimitFilter.Counting.AUTHENTICATED_BY_HANDLER;
+
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.observability.RateLimitMetrics;
+import io.opaa.ratelimit.RateLimitFilter.Counting;
 import io.opaa.ratelimit.RateLimitFilter.Rule;
 import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
@@ -14,6 +18,7 @@ import java.util.function.Predicate;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -63,6 +68,24 @@ public class RateLimitConfiguration {
     return new RateLimitMetrics(meterRegistry);
   }
 
+  /**
+   * Marks requests the security chain authenticated, for {@link RateLimitFilter}; ordered directly
+   * behind the chain, whatever order the chain is given.
+   */
+  @Bean
+  @ConditionalOnProperty(
+      name = "opaa.rate-limit.enabled",
+      havingValue = "true",
+      matchIfMissing = true)
+  FilterRegistrationBean<AuthenticatedRequestMarkerFilter> authenticatedRequestMarkerRegistration(
+      ObjectProvider<SecurityFilterProperties> securityFilter) {
+    var registration = new FilterRegistrationBean<>(new AuthenticatedRequestMarkerFilter());
+    registration.addUrlPatterns("/api/*");
+    registration.setOrder(
+        securityFilter.getIfAvailable(SecurityFilterProperties::new).getOrder() + 1);
+    return registration;
+  }
+
   @Bean
   @ConditionalOnProperty(
       name = "opaa.rate-limit.enabled",
@@ -95,16 +118,24 @@ public class RateLimitConfiguration {
     String documentContentPattern = "^/api/v1/documents/[^/]+/content$";
     // The push intake is the only POST under /api/v1 reachable without a session. The capture
     // group keys the per-IP limiter by library, like the indexing trigger: one source notifying
-    // several libraries is several senders, not one.
+    // several libraries is several senders, not one. Pushes that do not authenticate count per
+    // address, whichever library they name (Counting.AUTHENTICATED_BY_HANDLER).
     String webhookPattern = "^/api/v1/libraries/([^/]+)/push$";
 
+    // These endpoints sit behind the sign-in (the push intake behind its secret): only requests
+    // that authenticated keep their token of the global ceiling.
     List<Rule> rules = new ArrayList<>();
-    rules.add(rule("query", "^/api/v1/query", properties.query()));
-    rules.add(rule("indexing", indexingTriggerPattern, properties.indexing()));
-    rules.add(rule("source-test", sourceTestPattern, properties.sourceTest()));
-    rules.add(rule("document-content", documentContentPattern, properties.documentContent()));
-    rules.add(rule("webhook", webhookPattern, properties.webhook()));
-    rules.add(rule("chat-search", CHAT_SEARCH_PATTERN, properties.chatSearch()));
+    rules.add(rule("query", "^/api/v1/query", properties.query(), AUTHENTICATED));
+    rules.add(rule("indexing", indexingTriggerPattern, properties.indexing(), AUTHENTICATED));
+    rules.add(rule("source-test", sourceTestPattern, properties.sourceTest(), AUTHENTICATED));
+    rules.add(
+        rule(
+            "document-content",
+            documentContentPattern,
+            properties.documentContent(),
+            AUTHENTICATED));
+    rules.add(rule("webhook", webhookPattern, properties.webhook(), AUTHENTICATED_BY_HANDLER));
+    rules.add(rule("chat-search", CHAT_SEARCH_PATTERN, properties.chatSearch(), AUTHENTICATED));
     LocalAuthLimits localAuth = properties.localAuth();
     rules.add(rule("local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
     rules.add(rule("local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
@@ -136,12 +167,13 @@ public class RateLimitConfiguration {
     return registration;
   }
 
-  private static Rule rule(String name, String pattern, EndpointLimit limit) {
+  private static Rule rule(String name, String pattern, EndpointLimit limit, Counting counting) {
     return new Rule(
         name,
         pattern,
         new RateLimitService(limit.maxRequests(), limit.windowSeconds()),
-        new RateLimitService(limit.globalMaxRequests(), limit.windowSeconds()));
+        new RateLimitService(limit.globalMaxRequests(), limit.windowSeconds()),
+        counting);
   }
 
   private static Rule rule(String name, String pattern, LocalAuthLimit limit) {

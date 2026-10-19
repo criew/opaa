@@ -6,6 +6,7 @@ import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { useEffect } from 'react'
@@ -53,8 +54,10 @@ interface ProviderChoiceProps {
 /**
  * One sign-in tile, one line high: monogram, the provider's name, its host as the line a
  * person recognises it by. Five of them stand under each other without scrolling, instead of a
- * dropdown. The action stays in the accessible name, not in the
- * visible label - the section above already says that this is how one signs in here.
+ * dropdown. The accessible name is the visible text with the action in front, hidden on screen
+ * ("Anmelden bei Verzeichnisdienst sso.example.org"): it contains every visible word, so a voice
+ * command can say what it sees (WCAG 2.5.3), and the section above already says that this is how
+ * one signs in here.
  */
 function ProviderChoice({
   provider,
@@ -65,19 +68,13 @@ function ProviderChoice({
   disabled,
   onChoose,
 }: ProviderChoiceProps) {
-  const label =
-    isSigningIn && isSuggested ? 'Anmeldung läuft …' : `Anmelden bei ${provider.displayName}`
-  const lastUsedHintId = `login-${provider.id}-last-used`
+  const signingIn = isSigningIn && isSuggested
   return (
     <Button
       variant={emphasised ? 'contained' : 'outlined'}
       fullWidth
       onClick={onChoose}
       disabled={disabled}
-      // The host line is recognition, not part of the action - the accessible name stays the
-      // plain verb phrase, which is also what a voice command has to be able to say.
-      aria-label={label}
-      aria-describedby={showsLastUsed ? lastUsedHintId : undefined}
       sx={{
         justifyContent: 'flex-start',
         textAlign: 'left',
@@ -102,8 +99,17 @@ function ProviderChoice({
           component="span"
           sx={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap' }}
         >
-          {isSigningIn && isSuggested ? 'Anmeldung läuft …' : provider.displayName}
-        </Box>
+          {signingIn ? (
+            'Anmeldung läuft …'
+          ) : (
+            <>
+              <Box component="span" sx={visuallyHidden}>
+                Anmelden bei
+              </Box>{' '}
+              {provider.displayName}
+            </>
+          )}
+        </Box>{' '}
         <Box
           component="span"
           sx={{
@@ -123,7 +129,7 @@ function ProviderChoice({
           {showsLastUsed && (
             <>
               {' · '}
-              <Box component="span" id={lastUsedHintId} sx={{ fontFamily: fontFamily.sans }}>
+              <Box component="span" sx={{ fontFamily: fontFamily.sans }}>
                 Zuletzt verwendet
               </Box>
             </>

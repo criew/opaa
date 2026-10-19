@@ -330,6 +330,11 @@ Compose-Stapel oder der Ingress-Controller des Clusters. Für ihn gilt:
   Backend den Header auswertet, steht unter [Vertraute Proxys](#vertraute-proxys-und-client-adresse).
   Der nginx im Frontend-Container hängt die Kette an (`$proxy_add_x_forwarded_for`) und verwirft
   `Forwarded`, weil das Backend diesen Header sonst vorziehen würde.
+- **Host, Port und Pfad nicht über Header verändern.** Der nginx im Frontend-Container verwirft
+  `X-Forwarded-Host`, `X-Forwarded-Port` und `X-Forwarded-Prefix`, auch wenn der Proxy sie setzt; das
+  Backend sieht den `Host`-Header ohne Port. Liegt die öffentliche Adresse auf einem anderen als dem
+  Standardport, gehört sie deshalb in `OPAA_CORS_ALLOWED_ORIGINS`. OPAA läuft nur im Wurzelpfad
+  seiner Adresse, nicht unter einem Unterpfad.
 - **`/`, `/api/` und `/mcp` an das Frontend reichen.** `/mcp` ist der Zugriffsweg der
   [externen KI-Werkzeuge](fremdzugaenge.md); fehlt er, beantwortet die Auslieferung den Aufruf mit ihrer
   Startseite, und der Client meldet eine unverständliche Antwort. Antworten auf `/mcp` nicht
@@ -352,16 +357,22 @@ Compose-Stapel oder der Ingress-Controller des Clusters. Für ihn gilt:
 ### Sicherheits-Header und `Strict-Transport-Security`
 
 Der nginx im Frontend-Container setzt `Content-Security-Policy`, `X-Content-Type-Options`,
-`X-Frame-Options` und `Referrer-Policy` auf jede Antwort, auch auf Fehlerantworten, und verrät seine
-Version nicht. Die Content-Security-Policy erzwingt, dass die Oberfläche alle Skripte, Stile,
-Schriften und Icons selbst ausliefert und zur Laufzeit kein CDN lädt; Verbindungen gehen nur an die
-eigene Herkunft. Zwei Ausnahmen: `style-src` erlaubt Inline-Stile, weil die Oberflächenbibliothek
+`X-Frame-Options`, `Referrer-Policy` und `Permissions-Policy` auf jede Antwort, auch auf
+Fehlerantworten, und verrät seine Version nicht. Die Content-Security-Policy erzwingt, dass die
+Oberfläche alle Skripte, Stile, Schriften und Icons selbst ausliefert und zur Laufzeit kein CDN lädt;
+Verbindungen gehen nur an die eigene Herkunft. Zwei Ausnahmen: `style-src` erlaubt Inline-Stile, weil die Oberflächenbibliothek
 Stile zur Laufzeit einfügt, und `connect-src` lässt die Origins zu, die in
 `OPAA_CSP_CONNECT_SRC_EXTRA` stehen — gebraucht für einen Identitätsanbieter auf fremdem Origin
 ([Authentifizierung](authentifizierung.md#content-security-policy-und-ein-anbieter-auf-fremdem-origin)).
+Jeder Eintrag dort ist eine Quelle mit dem Schema `http`, `https`, `ws` oder `wss`: ein Origin wie
+`https://login.example.org`, ein Host ohne Schema, auch mit Platzhalter `*.`, Port oder Pfad, ein
+Schema wie `https:` oder `*`. Mehrere Einträge trennt je ein Leerzeichen. Ein anderer Wert, etwa ein
+Schlüsselwort wie `'self'`, ein `;` oder ein Zeilenumbruch, bricht den Start mit einer Meldung im
+Protokoll ab.
 `object-src 'none'` ist gesetzt, weil die Anwendung keine `<object>`- oder `<embed>`-Inhalte
-einbettet. Die Backend-eigenen Kopien dieser Header entfernt nginx, damit jede Antwort sie nur
-einmal trägt.
+einbettet. `Permissions-Policy` sperrt Kamera und Standort und gibt das Mikrofon nur der eigenen
+Herkunft frei, für die Spracheingabe im Chat. Die Backend-eigenen Kopien dieser Header entfernt
+nginx, damit jede Antwort sie nur einmal trägt.
 `Strict-Transport-Security` gehört an den äußeren Proxy (siehe oben).
 
 ## Ausgangsproxy

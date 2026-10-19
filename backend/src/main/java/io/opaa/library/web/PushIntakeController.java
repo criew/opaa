@@ -2,6 +2,7 @@ package io.opaa.library.web;
 
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.library.PushIntakeService;
+import io.opaa.ratelimit.RateLimitAuthentication;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +38,8 @@ public class PushIntakeController {
   @ResponseStatus(HttpStatus.ACCEPTED)
   public void receive(@PathVariable UUID libraryId, HttpServletRequest request) throws IOException {
     pushIntakeService.accept(libraryId, readBounded(request), name -> joinedHeader(request, name));
+    // reached only when the push authenticated; anything refused earlier counts per address
+    RateLimitAuthentication.markAuthenticatedByHandler(request);
   }
 
   /**

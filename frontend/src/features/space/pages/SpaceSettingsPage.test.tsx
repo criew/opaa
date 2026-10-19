@@ -386,7 +386,7 @@ describe('SpaceSettingsPage', () => {
     setSpaceState(teamSpace)
     renderTab('general')
 
-    expect(screen.queryByRole('button', { name: /neuer chat/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Neu: Chat beginnen' })).not.toBeInTheDocument()
     expect(screen.queryByText('Chats')).not.toBeInTheDocument()
   })
 

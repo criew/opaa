@@ -292,7 +292,7 @@ describe('ChatInput', () => {
     expect(screen.getByTestId('metadata-filter-chip-document-date')).toHaveTextContent(
       'Datum: 01.01.2024 – 31.12.2024',
     )
-    expect(screen.getByRole('button', { name: 'Metadatenfilter setzen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Filter für Metadaten setzen' })).toBeInTheDocument()
 
     // A chip's delete action is reachable by keyboard on the focused, labelled chip - the same
     // way the library chips are removed in the tests above.
@@ -335,7 +335,9 @@ describe('ChatInput', () => {
   it('offers no filter for the empty scope', () => {
     useChatStore.setState({ scope: 'none', referencedLibraryIds: [] })
     render(<ChatInput onSend={vi.fn()} />)
-    expect(screen.queryByRole('button', { name: 'Metadatenfilter setzen' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Filter für Metadaten setzen' }),
+    ).not.toBeInTheDocument()
   })
 
   // The hard boundary: a library the person may read, but which is not associated with the space,
@@ -666,9 +668,8 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={vi.fn()} />)
 
       expect(screen.getByText('Antwortet ohne Dokumente.')).toBeInTheDocument()
-      const backButton = screen.getByRole('button', {
-        name: 'Wieder das Wissen des Space durchsuchen',
-      })
+      const backButton = screen.getByRole('button', { name: '@Space-Wissen nutzen' })
+      expect(backButton).toHaveAccessibleDescription('Wieder das Wissen des Space durchsuchen')
 
       await user.click(backButton)
 

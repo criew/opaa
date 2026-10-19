@@ -1,4 +1,8 @@
-import type { DirectorySyncStatusResponse, OidcProviderResponse } from '@/shared/api/types'
+import type {
+  DirectorySyncOutcome,
+  DirectorySyncStatusResponse,
+  OidcProviderResponse,
+} from '@/shared/api/types'
 import type { StatusTone } from '@/shared/ui/StatusLine'
 import { ageSinceLabel, countLabel } from '@/features/principal'
 
@@ -28,6 +32,13 @@ export interface OverviewEntry {
   status: DirectorySyncStatusResponse | undefined
   attention: Attention | null
 }
+
+/** Outcomes after which the last known state stays in force although a run was due. */
+const FAILED_OUTCOMES: ReadonlySet<DirectorySyncOutcome> = new Set([
+  'UNREACHABLE',
+  'ABORTED_EMPTY_RESULT',
+  'FAILED',
+])
 
 const MINUTES_PER_HOUR = 60
 const MINUTES_PER_DAY = 1440
@@ -76,7 +87,7 @@ export function attentionOf(
     }
   }
   if (!provider.directorySyncEnabled || !provider.enabled) return null
-  if (status?.lastOutcome === 'UNREACHABLE' || status?.lastOutcome === 'ABORTED_EMPTY_RESULT') {
+  if (status?.lastOutcome && FAILED_OUTCOMES.has(status.lastOutcome)) {
     return {
       tone: 'error',
       label: 'Letzter Lauf gescheitert',

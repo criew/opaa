@@ -7,6 +7,7 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 import jsxA11yX from 'eslint-plugin-jsx-a11y-x'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import themeBoundaries from './eslint/boundaries.js'
+import { MOCK_GLOBS, TEST_INFRA } from './eslint/themes.js'
 
 export default defineConfig([
   globalIgnores(['dist', 'public/mockServiceWorker.js']),
@@ -25,6 +26,19 @@ export default defineConfig([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+  },
+  // Production files stay below 800 lines (counting every line); a warning, so lint still passes.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/**/*.test.{ts,tsx}',
+      `${TEST_INFRA}/**`,
+      'src/shared/api/generated/**',
+      ...MOCK_GLOBS,
+    ],
+    rules: {
+      'max-lines': ['warn', { max: 800, skipBlankLines: false, skipComments: false }],
     },
   },
   // Theme boundaries; rules in frontend/AGENTS.md.

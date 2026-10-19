@@ -6,7 +6,7 @@
 # e2e/ scripts (*.ts, *.mjs, *.js), of the Gradle build scripts (*.gradle.kts in backend/ and
 # opaa-api/) and of
 # renovate.json5; '#' lines of application*.yml, of e2e/*.yml|yaml|env, every shell script (*.sh),
-# docker-compose*.yml, .env*.example, the Dockerfiles, backend/gradle/*.toml, frontend/nginx.conf
+# docker-compose*.yml, .env*.example, the Dockerfiles, backend/gradle/*.toml, frontend/nginx*.conf
 # and demo/*.conf; '#' lines and docstrings of the Python scripts under eval/, demo/ and
 # backend/src/test/resources/; '#' lines and '//' lines of inline scripts in the workflows
 # (.github/workflows/*.yml); every line of the OpenAPI fragments, whose summaries and descriptions
@@ -149,7 +149,7 @@ lines() {
     'opaa-api/*.gradle.kts' 'renovate.json5'
   hash_comments 'backend/src/main/resources/application*.yml' 'e2e/*.yml' 'e2e/*.yaml' 'e2e/*.env' \
     '*.sh' 'docker-compose*.yml' '.env*.example' '*Dockerfile' 'backend/gradle/*.toml' \
-    'frontend/nginx.conf' 'demo/*.conf'
+    'frontend/nginx*.conf' 'demo/*.conf'
   python_comments 'eval/*.py' 'demo/*.py' 'backend/src/test/resources/*.py'
   git ls-files -z -- '.github/workflows/*.yml' | xargs -0 -r grep -nHP '^\s*(#|//)' || true
   git ls-files -z -- 'opaa-api/src/main/openapi/*.yaml' | xargs -0 -r grep -nH '' || true

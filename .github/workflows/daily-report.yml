@@ -35,12 +35,15 @@ jobs:
         with:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false
+          persist-credentials: false
 
       - name: Veröffentlichte Seite auschecken
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: gh-pages
           path: site
+          # The last step pushes the report to gh-pages from this checkout.
+          persist-credentials: true
         continue-on-error: true
 
       - name: Seitenverzeichnis vorbereiten
@@ -66,22 +69,26 @@ jobs:
           # Ziel des Links auf die laufende Instanz. Nicht gesetzt bedeutet die
           # Vorgabe aus dem Skript, siehe DEFAULT_TEST_URL.
           OPAA_REPORT_TEST_URL: ${{ vars.OPAA_REPORT_TEST_URL }}
+          REPORT_DATE: ${{ inputs.date }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: |
           python .github/scripts/daily_report.py \
-            --repo "${{ github.repository }}" \
-            --date "${{ inputs.date }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --date "$REPORT_DATE" \
             --output site/report \
-            --site-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/report"
+            --site-url "https://$GITHUB_REPOSITORY_OWNER.github.io/$REPOSITORY_NAME/report"
 
       - name: Auslieferung ohne Jekyll sicherstellen
         run: touch site/.nojekyll
 
       - name: Seite veröffentlichen
         working-directory: site
+        env:
+          PUSH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ ! -d .git ]; then
             git init -q
-            git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+            git remote add origin "https://x-access-token:$PUSH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
