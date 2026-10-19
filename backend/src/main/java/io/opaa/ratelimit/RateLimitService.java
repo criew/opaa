@@ -70,7 +70,25 @@ public class RateLimitService {
         return Decision.reject((waitMillis + 999) / 1000);
       }
       timestamps.addLast(now);
-      return Decision.allow();
+      return Decision.allowAt(now);
+    }
+  }
+
+  /**
+   * Gives back the request {@code granted} counted for {@code key} - for a request that, once
+   * answered, turns out not to belong to this scope. Only that request's own entry is removed; one
+   * that has already left the window, a refusal and an unknown key change nothing.
+   */
+  public void release(String key, Decision granted) {
+    if (!granted.allowed()) {
+      return;
+    }
+    Deque<Long> timestamps = requestLog.getIfPresent(key);
+    if (timestamps == null) {
+      return;
+    }
+    synchronized (timestamps) {
+      timestamps.removeLastOccurrence(granted.acquiredAtMillis());
     }
   }
 
@@ -82,16 +100,21 @@ public class RateLimitService {
   }
 
   /**
-   * The answer of {@link #tryAcquire}: allowed, or refused with the seconds to wait (at least one).
+   * The answer of {@link #tryAcquire}: allowed, with the instant the request was counted at, or
+   * refused with the seconds to wait (at least one).
    */
-  public record Decision(boolean allowed, long retryAfterSeconds) {
+  public record Decision(boolean allowed, long retryAfterSeconds, long acquiredAtMillis) {
 
     public static Decision allow() {
-      return new Decision(true, 0);
+      return allowAt(0);
+    }
+
+    static Decision allowAt(long acquiredAtMillis) {
+      return new Decision(true, 0, acquiredAtMillis);
     }
 
     public static Decision reject(long retryAfterSeconds) {
-      return new Decision(false, Math.max(1, retryAfterSeconds));
+      return new Decision(false, Math.max(1, retryAfterSeconds), 0);
     }
   }
 }
