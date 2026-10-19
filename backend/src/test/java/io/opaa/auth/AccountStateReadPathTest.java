@@ -54,7 +54,13 @@ class AccountStateReadPathTest {
     assertThat(repositoryBeans)
         .as("the repository bean is what the dependency graph below is read from")
         .hasSize(1);
-    assertThat(beanFactory.getDependentBeans(repositoryBeans[0]))
+    assertThat(
+            Arrays.stream(beanFactory.getDependentBeans(repositoryBeans[0]))
+                // Spring registers a test class that autowires the repository as a dependent too,
+                // under its own class name and without a bean definition. Those are not production
+                // read paths, and which of them are present depends on the order the suite ran in.
+                .filter(beanFactory::containsBeanDefinition)
+                .toList())
         .as(
             "a further bean holding AccountStateHistoryRepository is a second read path on the"
                 + " account state history - ADR-0036, Entscheidung 8 allows exactly one")
