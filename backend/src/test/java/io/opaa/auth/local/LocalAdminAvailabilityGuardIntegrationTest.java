@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.LockReason;
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.AccountStateHistoryCause;
+import io.opaa.auth.AccountStateHistoryRepository;
+import io.opaa.auth.AccountStateService;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -20,6 +23,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -57,6 +61,8 @@ class LocalAdminAvailabilityGuardIntegrationTest {
   @Autowired private OrganizationRepository organizations;
   @Autowired private PasswordEncoder passwordEncoder;
   @Autowired private AuthProperties authProperties;
+  @Autowired private AccountStateService accountState;
+  @Autowired private AccountStateHistoryRepository accountStateHistory;
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private JdbcTemplate jdbc;
 
@@ -75,6 +81,9 @@ class LocalAdminAvailabilityGuardIntegrationTest {
   @AfterEach
   void tearDown() {
     jdbc.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
+    if (!created.isEmpty()) {
+      accountStateHistory.deleteByUserIdIn(created.stream().map(User::getId).toList());
+    }
     for (User user : created) {
       credentials.deleteById(user.getId());
       users.deleteById(user.getId());
@@ -166,6 +175,51 @@ class LocalAdminAvailabilityGuardIntegrationTest {
     lockedOutRow.recordLockoutUntil(Instant.now().minusSeconds(1), Instant.now().minusSeconds(2));
     credentials.save(lockedOutRow);
     assertThat(guard.countLoginCapableSystemAdmins(organizationId)).isEqualTo(4);
+  }
+
+  /**
+   * #1818: an account the directory run has blocked cannot sign in, whatever its provider says - so
+   * it is no longer one of the administrators this guard is counting. The protection of the last
+   * login-capable administrator would otherwise be satisfied by an account nobody can use.
+   */
+  @Test
+  void aBlockedAdministratorDoesNotCountAsLoginCapable() {
+    User blocked = oidcAdmin(ENABLED_ISSUER);
+    assertThat(guard.countLoginCapableSystemAdmins(organizationId)).isEqualTo(1);
+
+    accountState.apply(
+        blocked,
+        AccountStateHistoryCause.DIRECTORY_DISABLED,
+        null,
+        null,
+        UUID.randomUUID().toString());
+
+    assertThat(guard.countLoginCapableSystemAdmins(organizationId)).isZero();
+    assertThatThrownBy(
+            () ->
+                inTransaction(
+                    () -> guard.requireAnotherLoginCapableAdmin(organizationId, UUID.randomUUID())))
+        .isInstanceOf(ConflictException.class);
+  }
+
+  /**
+   * The question a directory run asks before it takes the way in from an administrator: how many
+   * would remain if it blocked this set (#1818, ADR-0036 Entscheidung 6, Schutzregel 2).
+   */
+  @Test
+  void theCountExcludingASetIsWhatARunAsksBeforeBlocking() {
+    User first = oidcAdmin(ENABLED_ISSUER);
+    User second = oidcAdmin(ENABLED_ISSUER);
+
+    inTransaction(
+        () -> {
+          assertThat(guard.countLoginCapableAdminsExcluding(organizationId, Set.of(first.getId())))
+              .isEqualTo(1);
+          assertThat(
+                  guard.countLoginCapableAdminsExcluding(
+                      organizationId, Set.of(first.getId(), second.getId())))
+              .isZero();
+        });
   }
 
   @Test

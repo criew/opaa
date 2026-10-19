@@ -11,6 +11,7 @@ import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AccountAccessEndedEvent;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
@@ -355,11 +356,11 @@ public class LocalUserService {
       }
     }
     // In this transaction, so the lock and the end of every other merkmal of the account commit
-    // together - see LocalAccountAccessEndedEvent.
+    // together - see AccountAccessEndedEvent.
     events.publishEvent(
         actor != null
-            ? LocalAccountAccessEndedEvent.by(user, actor.id())
-            : LocalAccountAccessEndedEvent.bySystem(user, systemActor));
+            ? AccountAccessEndedEvent.by(user, actor.id())
+            : AccountAccessEndedEvent.bySystem(user, systemActor));
   }
 
   @Transactional
@@ -547,6 +548,9 @@ public class LocalUserService {
     }
     if (counts.getAssetOwnershipHistory() > 0) {
       blockers.add("asset_ownership_history");
+    }
+    if (counts.getAccountStateHistory() > 0) {
+      blockers.add("account_state_history");
     }
     return blockers;
   }

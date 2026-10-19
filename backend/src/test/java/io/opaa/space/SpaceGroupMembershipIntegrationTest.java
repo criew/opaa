@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SpaceVisibility;
+import io.opaa.auth.AccountStateHistoryCause;
+import io.opaa.auth.AccountStateService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -51,6 +53,7 @@ class SpaceGroupMembershipIntegrationTest {
   @Autowired private GroupService groupService;
   @Autowired private GroupRepository groupRepository;
   @Autowired private GroupMembershipResolver groupMembershipResolver;
+  @Autowired private AccountStateService accountState;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
@@ -76,6 +79,7 @@ class SpaceGroupMembershipIntegrationTest {
         List.of(
             "space_memberships",
             "space_membership_history",
+            "account_state_history",
             "asset_ownership_history",
             "group_membership_history",
             "group_memberships",
@@ -295,6 +299,43 @@ class SpaceGroupMembershipIntegrationTest {
             accessPolicy.hasCapableAdminAfter(afterEmptying, rowOfUser(afterEmptying, owner), null))
         .as("a group without an active account no longer counts as the space's ADMIN")
         .isFalse();
+  }
+
+  /**
+   * <b>The guard #1815 built and #1818 activates.</b> Until an account could be blocked, the
+   * owner's own membership row always qualified as a capable {@code ADMIN}, so {@code
+   * requireCapableAdminRemains} was unreachable through the API - the two explicit owner guards
+   * refused every case that would have triggered it. A blocked owner is the first case that reaches
+   * it: the space still has an owner row, but that row cannot act any more, so the one remaining
+   * {@code ADMIN} member may not be removed.
+   */
+  @Test
+  void removingTheLastAdminMemberIsRefusedOnceTheOwnersAccountIsBlocked() {
+    UUID owner = createUser(organizationA);
+    UUID admin = createUser(organizationA);
+    Space space = createSpace(owner);
+    spaceService.addMember(
+        space.getId(),
+        PermissionSubject.user(admin, organizationA),
+        SpaceRole.ADMIN,
+        currentUserOf(owner));
+    UUID adminMembership = membershipIdOfUser(space.getId(), admin);
+    accountState.apply(
+        userRepository.findById(owner).orElseThrow(),
+        AccountStateHistoryCause.DIRECTORY_ABSENT,
+        null,
+        null,
+        UUID.randomUUID().toString());
+
+    assertThatThrownBy(
+            () -> spaceService.removeMember(space.getId(), adminMembership, currentUserOf(owner)))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("letztes handlungsfähiges ADMIN-Mitglied");
+    assertThat(
+            accessPolicy.hasCapableAdmin(
+                spaceRepository.findByIdWithMemberships(space.getId()).orElseThrow()))
+        .as("the space still has a capable ADMIN as long as the second member is there")
+        .isTrue();
   }
 
   /**

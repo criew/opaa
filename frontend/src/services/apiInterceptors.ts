@@ -29,6 +29,7 @@ export const SESSION_ENDING_MARKERS = [
   'local_accounts_disabled',
   'account_locked',
   'account_expired',
+  'account_blocked',
   'session_revoked',
   'account_not_active',
   'unknown_account',

@@ -271,13 +271,21 @@ class KeycloakDirectorySyncTest {
   // ---------------------------------------------------------------------------------------
 
   /**
-   * Reads the directory through the productive client and lets the run work on exactly that answer
-   * - the snapshot when there is one, the refusal when the productive client reports the directory
-   * as unreachable. See the class Javadoc for why the pass-through exists.
+   * Reads the directory through the productive client and lets the run work on the group half of
+   * that answer - or the refusal, when the productive client reports the directory as unreachable.
+   * See the class Javadoc for why the pass-through exists.
+   *
+   * <p><b>The account half is deliberately not forwarded.</b> This class provisions an acting
+   * administrator whose subject the realm does not know, so an authoritative account list would
+   * block it on every run - a scenario about #1818, not about the acceptance criteria of #1817 this
+   * class covers. That the real API reports the accounts, and that every group member is among
+   * them, is asserted in {@code KeycloakDirectoryConnectorRealmTest}; what a run does with them is
+   * covered by {@code DirectorySyncAccountStateIntegrationTest}.
    */
   private SyncReport runAgainstKeycloak() {
     try {
-      DirectorySnapshot snapshot = providerDirectoryClient.fetchGroups(ORGANIZATION_ID, providerId);
+      DirectorySnapshot snapshot =
+          providerDirectoryClient.fetchDirectory(ORGANIZATION_ID, providerId);
       directoryClient.respondWithFor(providerId, snapshot.groups().toArray(DirectoryGroup[]::new));
     } catch (DirectoryUnavailableException e) {
       directoryClient.failWith(e.getMessage());

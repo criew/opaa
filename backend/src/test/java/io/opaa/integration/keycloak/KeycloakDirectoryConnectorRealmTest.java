@@ -3,6 +3,7 @@ package io.opaa.integration.keycloak;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.group.sync.DirectoryAccount;
 import io.opaa.group.sync.DirectoryGroup;
 import io.opaa.group.sync.DirectorySnapshot;
 import io.opaa.group.sync.DirectoryUnavailableException;
@@ -36,13 +37,13 @@ class KeycloakDirectoryConnectorRealmTest {
     return new KeycloakDirectoryConnector(
         HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build(),
         new KeycloakDirectoryProperties(
-            pageSize, 5000, 20000, Duration.ofSeconds(5), Duration.ofSeconds(30)),
+            pageSize, 5000, 20000, 50000, Duration.ofSeconds(5), Duration.ofSeconds(30)),
         Clock.systemUTC());
   }
 
   private static DirectorySnapshot fetch(int pageSize) throws DirectoryUnavailableException {
     return connector(pageSize)
-        .fetchGroups(
+        .fetchDirectory(
             KeycloakRealmAddress.of(keycloak.issuerUri(), null),
             KeycloakFixture.DIRECTORY_CLIENT_ID,
             KeycloakFixture.DIRECTORY_CLIENT_SECRET);
@@ -86,6 +87,30 @@ class KeycloakDirectoryConnectorRealmTest {
     assertThat(groupOf(snapshot, keycloak.externGroupId()).memberSubjects()).isEmpty();
   }
 
+  /**
+   * #1818 against the real API: the realm's accounts arrive from the same reading as the groups,
+   * with the {@code enabled} flag the run takes the account state from - and every member of a
+   * group is among them, which is what makes "not reported means departed" a safe rule.
+   */
+  @Test
+  void theRealmsAccountsArriveWithTheirEnabledFlag() throws Exception {
+    DirectorySnapshot snapshot = fetch(100);
+
+    assertThat(snapshot.reportsAccounts()).isTrue();
+    assertThat(snapshot.accounts())
+        .extracting(DirectoryAccount::subject)
+        .contains(keycloak.user1Id(), keycloak.user2Id(), keycloak.user3Id());
+    assertThat(snapshot.accounts())
+        .filteredOn(account -> account.subject().equals(keycloak.user1Id()))
+        .extracting(DirectoryAccount::enabled)
+        .containsExactly(true);
+    assertThat(
+            snapshot.groups().stream().flatMap(group -> group.memberSubjects().stream()).toList())
+        .as("every member of a group is one of the realm's accounts")
+        .allMatch(
+            subject -> snapshot.accounts().stream().anyMatch(a -> a.subject().equals(subject)));
+  }
+
   /** A page size below the number of top-level groups must not truncate the directory. */
   @Test
   void aPageSizeBelowTheNumberOfGroupsStillReadsThemAll() throws Exception {
@@ -123,7 +148,7 @@ class KeycloakDirectoryConnectorRealmTest {
     assertThatThrownBy(
             () ->
                 connector(100)
-                    .fetchGroups(
+                    .fetchDirectory(
                         KeycloakRealmAddress.of(keycloak.issuerUri(), null),
                         KeycloakFixture.DIRECTORY_CLIENT_ID,
                         "falsch"))
@@ -137,7 +162,7 @@ class KeycloakDirectoryConnectorRealmTest {
     assertThatThrownBy(
             () ->
                 connector(100)
-                    .fetchGroups(
+                    .fetchDirectory(
                         KeycloakRealmAddress.of(keycloak.issuerUri(), null),
                         KeycloakFixture.POWERLESS_CLIENT_ID,
                         KeycloakFixture.POWERLESS_CLIENT_SECRET))
@@ -164,7 +189,7 @@ class KeycloakDirectoryConnectorRealmTest {
     assertThatThrownBy(
             () ->
                 connector(100)
-                    .fetchGroups(
+                    .fetchDirectory(
                         KeycloakRealmAddress.of(keycloak.baseUrl() + "/realms/gibt-es-nicht", null),
                         KeycloakFixture.DIRECTORY_CLIENT_ID,
                         KeycloakFixture.DIRECTORY_CLIENT_SECRET))

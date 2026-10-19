@@ -6,10 +6,14 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
+import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AccountStateHistoryCause;
+import io.opaa.auth.AccountStateService;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.auth.local.LocalAdminAvailabilityGuard;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
@@ -18,6 +22,7 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -85,8 +90,15 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * of the order the directory reports groups in and applies to existing groups too, not only newly
  * created ones (review of PR #297).
  *
+ * <p><b>Account states ({@link #planAccountStates}).</b> A snapshot that reports accounts is
+ * authoritative for the accounts of this provider's issuer: one the directory reports as disabled,
+ * and one it no longer reports at all, are both blocked; one it reports as usable again is
+ * reactivated (#1818, ADR-0036 Entscheidung 3). Rights, memberships and ownership are untouched by
+ * either direction - a block ends the way in, not what the person was allowed, which is what makes
+ * it reversible without a break in the history.
+ *
  * <p><b>Plausibility threshold ({@link #buildPlan}):</b> {@code changedFraction} is the worse of
- * two independent measures, each checked against the same configured threshold.
+ * three independent measures, each checked against the same configured threshold.
  *
  * <p>The first, membership-based measure has a denominator and numerator that both range over
  * exactly the same population of groups - every group this run actually touches
@@ -109,6 +121,15 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * single legitimate dissolution in a small organisation - the normal case for a pilot, not the
  * mass-outage case this measure targets - would otherwise abort every run indefinitely, with no
  * per-run override available (a second regression review of PR #297 found and measured).
+ *
+ * <p>The third measure is the fraction of this provider's usable accounts the run would block
+ * (#1818): "Kontosperren unterliegen derselben Schwelle und demselben Bestätigungsweg wie
+ * Mitgliedschaftsentzüge" (ADR-0036, Entscheidung 3). It carries the same kind of floor the group
+ * measure does ({@link #MIN_ACCOUNTS_FOR_ACCOUNT_MEASURE}, {@link #MIN_BLOCKS_FOR_ACCOUNT_MEASURE})
+ * and for a stronger reason: {@code access-control.md} promises that a departure ends the access
+ * "ohne Ticket, ohne Handgriff und ohne Bedingung". Without a floor the single, routine departure
+ * in a three-person pilot would be 33% and wait for a person every time - which both breaks that
+ * promise and trains whoever confirms to wave the mass case through as well.
  */
 @Service
 class DirectorySyncPlanExecutor {
@@ -124,6 +145,14 @@ class DirectorySyncPlanExecutor {
   private static final int MIN_DISSOLUTIONS_FOR_GROUP_MEASURE = 5;
 
   /**
+   * The same floor for the account measure (#1818) - see the class Javadoc for why a routine
+   * departure must not wait for a confirmation.
+   */
+  private static final int MIN_ACCOUNTS_FOR_ACCOUNT_MEASURE = 10;
+
+  private static final int MIN_BLOCKS_FOR_ACCOUNT_MEASURE = 5;
+
+  /**
    * The fixed, non-pseudonymised actor label #392's audit entries for this class use - "a sync run
    * has no acting user" (see {@link PermissionHistoryService}'s class Javadoc), so there is no
    * person's identity to protect behind a pseudonym here.
@@ -137,6 +166,8 @@ class DirectorySyncPlanExecutor {
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final DirectorySyncPendingPlanRepository pendingPlanRepository;
+  private final AccountStateService accountStateService;
+  private final LocalAdminAvailabilityGuard adminGuard;
 
   DirectorySyncPlanExecutor(
       GroupRepository groupRepository,
@@ -145,7 +176,9 @@ class DirectorySyncPlanExecutor {
       DirectorySyncProperties properties,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
-      DirectorySyncPendingPlanRepository pendingPlanRepository) {
+      DirectorySyncPendingPlanRepository pendingPlanRepository,
+      AccountStateService accountStateService,
+      LocalAdminAvailabilityGuard adminGuard) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
     this.membershipResolver = membershipResolver;
@@ -153,6 +186,8 @@ class DirectorySyncPlanExecutor {
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.pendingPlanRepository = pendingPlanRepository;
+    this.accountStateService = accountStateService;
+    this.adminGuard = adminGuard;
   }
 
   // #392 code review, finding 1: this can no longer be readOnly - handle() -> finish() now writes
@@ -248,6 +283,10 @@ class DirectorySyncPlanExecutor {
     List<Group> tokenGroups =
         groupRepository.findByOrganizationIdAndProviderIdAndKind(
             organizationId, target.providerId(), GroupKind.IDENTITY_PROVIDER);
+    List<User> providerAccounts =
+        snapshot.reportsAccounts()
+            ? userRepository.findByOrganizationIdAndIssuer(organizationId, target.issuer())
+            : List.of();
 
     if (snapshot.groups().isEmpty() && !existingOrgUnits.isEmpty()) {
       String message =
@@ -271,8 +310,44 @@ class DirectorySyncPlanExecutor {
           null);
     }
 
+    // The empty-result protection of #1818, the account half of the one above and equally a hard
+    // abort: a connector that answers with zero accounts while this provider has some is reporting
+    // a failure, not a directory everybody left - and "das darf niemand wegklicken" (ADR-0036,
+    // Entscheidung 3, Festlegung 1). Nothing at all is applied, groups included: the two lists
+    // come from one reading, so an implausible half discredits the whole of it.
+    if (snapshot.reportsAccounts()
+        && snapshot.accounts().isEmpty()
+        && !providerAccounts.isEmpty()) {
+      String message =
+          "Das Verzeichnis hat eine leere Kontenliste geliefert, obwohl "
+              + providerAccounts.size()
+              + " Konto/Konten dieses Anbieters bekannt sind. Der Lauf wurde ohne Änderungen"
+              + " abgebrochen.";
+      log.warn(
+          "Directory sync: directory returned an empty account list for organization {} while {}"
+              + " accounts of provider {} exist - aborting without changes",
+          organizationId,
+          providerAccounts.size(),
+          target.providerId());
+      return finish(
+          target,
+          correlationRef,
+          now,
+          DirectorySyncOutcome.ABORTED_EMPTY_RESULT,
+          message,
+          emptyPlan(),
+          null,
+          null);
+    }
+
     SyncPlan plan =
-        buildPlan(organizationId, target.issuer(), snapshot, existingOrgUnits, tokenGroups);
+        buildPlan(
+            organizationId,
+            target.issuer(),
+            snapshot,
+            existingOrgUnits,
+            tokenGroups,
+            providerAccounts);
 
     if (mode != Mode.CONFIRM && plan.changedFraction() > properties.changeThresholdFraction()) {
       String changedPercent = formatPercent(plan.changedFraction());
@@ -353,7 +428,7 @@ class DirectorySyncPlanExecutor {
       }
     }
 
-    applyPlan(target, now, plan, correlationRef);
+    applyPlan(target, now, plan, correlationRef, actorUserId);
     if (mode == Mode.CONFIRM) {
       pendingPlanRepository.delete(pending);
     }
@@ -491,7 +566,8 @@ class DirectorySyncPlanExecutor {
       String issuer,
       DirectorySnapshot snapshot,
       List<Group> existingOrgUnits,
-      List<Group> tokenGroups) {
+      List<Group> tokenGroups,
+      List<User> providerAccounts) {
     Map<String, Group> existingByExternalId = new HashMap<>();
     for (Group group : existingOrgUnits) {
       if (group.getExternalId() != null) {
@@ -629,7 +705,12 @@ class DirectorySyncPlanExecutor {
         groupMeasureApplies && activeGroupCount > 0
             ? (double) dissolutions.size() / activeGroupCount
             : 0.0;
-    double changedFraction = Math.max(membershipChangedFraction, groupDissolutionFraction);
+
+    AccountStatePlan accountPlan = planAccountStates(organizationId, snapshot, providerAccounts);
+    double changedFraction =
+        Math.max(
+            Math.max(membershipChangedFraction, groupDissolutionFraction),
+            accountPlan.blockedFraction());
 
     return new SyncPlan(
         existingOrgUnits,
@@ -640,6 +721,9 @@ class DirectorySyncPlanExecutor {
         reactivations,
         membershipChanges,
         dissolutions,
+        accountPlan.blocks(),
+        accountPlan.reactivations(),
+        accountPlan.protectedAdmins(),
         membershipsAdded,
         membershipsRemoved,
         membershipsAtRisk,
@@ -647,6 +731,91 @@ class DirectorySyncPlanExecutor {
         existingMembershipCount,
         activeGroupCount,
         changedFraction);
+  }
+
+  /**
+   * The account half of the diff (#1818). The directory's account list is authoritative for the
+   * accounts of this provider's issuer: reported and disabled, or not reported at all, both mean
+   * blocked - access-control.md treats a departure and a lock there as the same event. Reported and
+   * usable means active, so a block lifted in the directory is lifted here on the next run, which
+   * is what "rückholbar" means in practice (Personalrat C2).
+   *
+   * <p><b>The last login-capable system administrator is never blocked by a run</b> (ADR-0036,
+   * Entscheidung 6, Schutzregel 2). The decision is taken by the one existing guard, not by a
+   * second rule of this class: the administrators among the planned blocks are offered to {@link
+   * LocalAdminAvailabilityGuard} one at a time, in a stable order, each against the blocks already
+   * accepted - so exactly one stays, and the rest of the run is applied rather than refused. A
+   * refusal would be the wrong answer here anyway: a run is not a request somebody can retry
+   * differently.
+   */
+  private AccountStatePlan planAccountStates(
+      UUID organizationId, DirectorySnapshot snapshot, List<User> providerAccounts) {
+    if (!snapshot.reportsAccounts() || providerAccounts.isEmpty()) {
+      return AccountStatePlan.empty();
+    }
+    Map<String, Boolean> enabledBySubject = new HashMap<>();
+    for (DirectoryAccount account : snapshot.accounts()) {
+      enabledBySubject.put(account.subject(), account.enabled());
+    }
+    Set<UUID> blockedNow =
+        accountStateService.blockedAmong(providerAccounts.stream().map(User::getId).toList());
+
+    List<PlannedAccountStateChange> candidates = new ArrayList<>();
+    List<PlannedAccountStateChange> reactivations = new ArrayList<>();
+    int usableAccounts = 0;
+    for (User account : providerAccounts) {
+      boolean blocked = blockedNow.contains(account.getId());
+      if (!blocked) {
+        usableAccounts++;
+      }
+      Boolean enabled = enabledBySubject.get(account.getSubject());
+      AccountStateHistoryCause cause =
+          enabled == null
+              ? AccountStateHistoryCause.DIRECTORY_ABSENT
+              : (enabled
+                  ? AccountStateHistoryCause.DIRECTORY_REACTIVATED
+                  : AccountStateHistoryCause.DIRECTORY_DISABLED);
+      if (cause == AccountStateHistoryCause.DIRECTORY_REACTIVATED) {
+        if (blocked) {
+          reactivations.add(new PlannedAccountStateChange(account, cause));
+        }
+        continue;
+      }
+      if (!blocked) {
+        candidates.add(new PlannedAccountStateChange(account, cause));
+      }
+    }
+    // Stable order, so two runs over the same directory reading protect the same administrator -
+    // otherwise the fingerprint of a confirmed plan would depend on the row order of a query.
+    candidates.sort(Comparator.comparing(change -> change.user().getId()));
+
+    List<PlannedAccountStateChange> blocks = new ArrayList<>();
+    List<PlannedAccountStateChange> protectedAdmins = new ArrayList<>();
+    Set<UUID> accepted = new HashSet<>();
+    for (PlannedAccountStateChange candidate : candidates) {
+      if (candidate.user().getSystemRole() == SystemRole.SYSTEM_ADMIN) {
+        Set<UUID> wouldBeBlocked = new HashSet<>(accepted);
+        wouldBeBlocked.add(candidate.user().getId());
+        if (adminGuard.countLoginCapableAdminsExcluding(organizationId, wouldBeBlocked) == 0) {
+          protectedAdmins.add(candidate);
+          log.warn(
+              "Directory sync: account {} would be blocked but is the last login-capable system"
+                  + " administrator of organization {} - left active",
+              candidate.user().getId(),
+              organizationId);
+          continue;
+        }
+      }
+      accepted.add(candidate.user().getId());
+      blocks.add(candidate);
+    }
+
+    boolean accountMeasureApplies =
+        usableAccounts >= MIN_ACCOUNTS_FOR_ACCOUNT_MEASURE
+            || blocks.size() >= MIN_BLOCKS_FOR_ACCOUNT_MEASURE;
+    double blockedFraction =
+        accountMeasureApplies && usableAccounts > 0 ? (double) blocks.size() / usableAccounts : 0.0;
+    return new AccountStatePlan(blocks, reactivations, protectedAdmins, blockedFraction);
   }
 
   private ResolvedMembers resolveMembers(UUID organizationId, String issuer, Set<String> subjects) {
@@ -682,15 +851,19 @@ class DirectorySyncPlanExecutor {
   }
 
   private ResolvedUserRef toResolvedUserRef(User user) {
-    String displayName = user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
-    return new ResolvedUserRef(user.getId(), displayName);
+    return new ResolvedUserRef(user.getId(), displayNameOf(user));
+  }
+
+  private static String displayNameOf(User user) {
+    return user.getDisplayName() != null ? user.getDisplayName() : user.getEmail();
   }
 
   // ---------------------------------------------------------------------------------------
   // Applying the plan
   // ---------------------------------------------------------------------------------------
 
-  private void applyPlan(SyncTarget target, Instant now, SyncPlan plan, UUID correlationRef) {
+  private void applyPlan(
+      SyncTarget target, Instant now, SyncPlan plan, UUID correlationRef, UUID actorUserId) {
     UUID organizationId = target.organizationId();
     Set<UUID> affectedUserIds = new HashSet<>();
     List<Group> createdGroups = new ArrayList<>();
@@ -869,6 +1042,18 @@ class DirectorySyncPlanExecutor {
       groupRepository.saveAll(touched);
     }
 
+    // Account states last: a block must not stop the group half of the same run, and the guard of
+    // the last login-capable administrator has already taken every block out of the plan that it
+    // refuses (see planAccountStates) - what arrives here is applied, never re-decided.
+    for (PlannedAccountStateChange change : plan.accountBlocks()) {
+      accountStateService.apply(
+          change.user(), change.cause(), providerId, actorUserId, correlationRef.toString());
+    }
+    for (PlannedAccountStateChange change : plan.accountReactivations()) {
+      accountStateService.apply(
+          change.user(), change.cause(), providerId, actorUserId, correlationRef.toString());
+    }
+
     resolveAndApplyParentLinks(plan, createdGroups);
 
     if (!affectedUserIds.isEmpty()) {
@@ -994,6 +1179,9 @@ class DirectorySyncPlanExecutor {
         toDissolutionChanges(plan.dissolutions()),
         toUnmaintainedChanges(plan.tokenGroups()),
         toMembershipChanges(plan),
+        toAccountRefs(plan.accountBlocks()),
+        toAccountRefs(plan.accountReactivations()),
+        toAccountRefs(plan.protectedAdmins()),
         plan.membershipsAdded(),
         plan.membershipsRemoved(),
         plan.unresolvedMemberCount(),
@@ -1004,8 +1192,8 @@ class DirectorySyncPlanExecutor {
 
   static SyncPlan emptyPlan() {
     return new SyncPlan(
-        List.of(), List.of(), Map.of(), List.of(), List.of(), List.of(), List.of(), List.of(), 0, 0,
-        0, 0, 0, 0, 0.0);
+        List.of(), List.of(), Map.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+        List.of(), List.of(), List.of(), 0, 0, 0, 0, 0, 0, 0.0);
   }
 
   private List<GroupChange> toChanges(List<PlannedCreate> creates) {
@@ -1098,6 +1286,12 @@ class DirectorySyncPlanExecutor {
     return result;
   }
 
+  private List<UserRef> toAccountRefs(List<PlannedAccountStateChange> changes) {
+    return changes.stream()
+        .map(change -> new UserRef(change.user().getId(), displayNameOf(change.user())))
+        .toList();
+  }
+
   private List<UserRef> toUserRefs(Set<ResolvedUserRef> users) {
     return users.stream().map(u -> new UserRef(u.id(), u.displayName())).toList();
   }
@@ -1149,6 +1343,24 @@ class DirectorySyncPlanExecutor {
   /** {@code memberCount} captured at plan time, for the reason {@link PlannedRename} states. */
   private record PlannedDissolution(Group group, int memberCount) {}
 
+  /** One account whose state this run would change, with the cause that names why. */
+  private record PlannedAccountStateChange(User user, AccountStateHistoryCause cause) {}
+
+  /**
+   * @param blockedFraction the share of this provider's usable accounts the run would block - the
+   *     third measure of {@code changedFraction}; see the class Javadoc for why it has no floor.
+   */
+  private record AccountStatePlan(
+      List<PlannedAccountStateChange> blocks,
+      List<PlannedAccountStateChange> reactivations,
+      List<PlannedAccountStateChange> protectedAdmins,
+      double blockedFraction) {
+
+    static AccountStatePlan empty() {
+      return new AccountStatePlan(List.of(), List.of(), List.of(), 0.0);
+    }
+  }
+
   private record SyncPlan(
       List<Group> existingOrgUnits,
       List<Group> tokenGroups,
@@ -1158,6 +1370,9 @@ class DirectorySyncPlanExecutor {
       List<PlannedReactivation> reactivations,
       List<PlannedMembershipChange> membershipChanges,
       List<PlannedDissolution> dissolutions,
+      List<PlannedAccountStateChange> accountBlocks,
+      List<PlannedAccountStateChange> accountReactivations,
+      List<PlannedAccountStateChange> protectedAdmins,
       int membershipsAdded,
       int membershipsRemoved,
       int membershipsAtRisk,

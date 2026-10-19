@@ -101,7 +101,19 @@ public enum AuditEventType {
    * one. Written under the identity-provider system actor.
    */
   SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED,
+  /**
+   * An account lost its way in without being deleted - since #1818 the block a directory run
+   * applies because the directory reports the account as disabled or no longer reports it at all.
+   * {@code after} names the cause and the provider whose run decided it; rights, memberships and
+   * ownership are untouched by it.
+   */
   ACCOUNT_DEACTIVATED,
+  /**
+   * The reversal of {@link #ACCOUNT_DEACTIVATED}: the directory reports the account as usable
+   * again. A block that can be taken back has to be provable in both directions, or "rückholbar" is
+   * a claim without a record (ADR-0036, Entscheidung 3).
+   */
+  ACCOUNT_REACTIVATED,
   ACCOUNT_REAUTHENTICATION_FORCED,
   API_TOKEN_ISSUED,
   API_TOKEN_REVOKED,

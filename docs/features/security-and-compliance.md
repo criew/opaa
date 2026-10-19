@@ -175,9 +175,12 @@ ersten Stufe nicht geschrieben.
 **Konten, Rollen und Verzeichnisabgleich**
 
 - Erteilung und Entzug der System-Admin-Rolle
-- Deaktivierung eines Kontos, erzwungene Neuanmeldung, Ausstellung, Widerruf und
+- Deaktivierung eines Kontos und ihre **Rücknahme**, erzwungene Neuanmeldung, Ausstellung, Widerruf und
   **Außerkrafttreten** von API-Tokens (mit Anlass: abgelaufen, Kontenlebenszyklus) — ein Zugang, der
-  ohne Eintrag endet, ist dieselbe Lücke wie einer, der ohne Eintrag beginnt
+  ohne Eintrag endet, ist dieselbe Lücke wie einer, der ohne Eintrag beginnt. Die Rücknahme gehört
+  dazu, seit der Verzeichnisabgleich Kontosperren setzt (#1818, [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
+  Entscheidung 3): Eine Sperre, die zurückgenommen werden kann, ist ohne Eintrag für die Rücknahme
+  nicht nachweisbar rückholbar
 - **Lokale Konten** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md), Epic #1529): Anlage
   und Einladung (mit Zustellweg: Mail zugestellt, Mail gescheitert, Link angezeigt),
   Selbstregistrierung, Änderung von
@@ -262,7 +265,10 @@ Anlass und der Angabe, ob die Person selbst oder die Systemverwaltung widerrufen
 Anbieteridentität — alle drei mit der
 Token-Kennung statt des frei formulierten Tokennamens, und die **Nutzung** eines Tokens erzeugt
 keinen Eintrag) und — seit #1833 — die Aufbewahrungshöchstdauer der Rechtehistorie
-(`PERMISSION_HISTORY_RETENTION_CHANGED` mit Vorher/Nachher der Monatszahl). Die Anfrage
+(`PERMISSION_HISTORY_RETENTION_CHANGED` mit Vorher/Nachher der Monatszahl) und — seit #1818 — die
+Kontosperre aus dem Verzeichnisabgleich und ihre Rücknahme (`ACCOUNT_DEACTIVATED` und
+`ACCOUNT_REACTIVATED`, je Konto, mit Anlass und Anbieter in `after` und über `correlation_ref` mit
+dem Kopfeintrag des Laufs verbunden; die betroffene Person ist das Pseudonym, nie ihre Adresse). Die Anfrage
 „Passwort vergessen" ändert keinen Zustand; die Bestätigung der eigenen Adresse ist eine Handlung
 der Person am eigenen Konto und nach ADR-0033, Entscheidung 13, kein Verwaltungsakt — beide
 erzeugen kein Ereignis. Noch **nicht** verdrahtet — weil
@@ -270,7 +276,7 @@ die jeweilige Funktion selbst noch fehlt, nicht weil sie ausgenommen wäre: Abla
 Grant-Befristung (kein Scheduler; der Ablauf eines Zugangstokens hat mit #1718 einen), Aussetzen
 von Grants durch eine gesenkte Freigabe-Obergrenze, Bereitstellung einer
 Bibliothek in einem Space, Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge
-offen", Deaktivierung eines Kontos, erzwungene Neuanmeldung, die übrigen Systemeinstellungen
+offen", erzwungene Neuanmeldung, die übrigen Systemeinstellungen
 (Governance außer der Aufbewahrungshöchstdauer der Rechtehistorie, Protokollkonfiguration,
 Modellvorgaben, Freigabe-Obergrenze konnektor-gespeister
 Bibliotheken) und die Fremdzugangsfreigabe einer Wissensbibliothek. Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
@@ -620,8 +626,9 @@ der Vektorsuche ist, existiert kein abgelehnter Zugriff, den man protokollieren 
 Chunks werden nie geladen. Was es gibt, ist der Nachweis über die **Rechtehistorie** — und er ist der
 stärkere, weil er den Zustand belegt und nicht das Ausbleiben eines Ereignisses.
 
-**Umsetzungsstand (#238, #1813):** Grants, Gruppenmitgliedschaften, die Reichweitenfelder einer
-Bibliothek und die installationsweiten Fähigkeiten (ADR-0036, Entscheidung 5) sind als Intervalle mit
+**Umsetzungsstand (#238, #1813, #1815, #1818):** Grants, Gruppenmitgliedschaften, die
+Reichweitenfelder einer Bibliothek, die installationsweiten Fähigkeiten (ADR-0036, Entscheidung 5),
+Space-Mitgliedschaft und Eigentum sowie der **Kontozustand** sind als Intervalle mit
 auslösendem Vorgang historisiert, einschließlich eines Backfills für den
 Altbestand (Ursache `BACKFILL`, `valid_from` aus dem jeweiligen Erstellungszeitpunkt der Fachzeile) —
 ohne ihn wäre die Rekonstruktion für jeden Stichtag vor der Migration und für jedes seither unveränderte
@@ -699,6 +706,16 @@ seither geändert wurde, und ein Space, dessen Verantwortung längst übertragen
 ein Intervall, das den heutigen Zustand rückwirkend bis zur Anlage behauptet — eine Aussage, die
 falsch wäre und nicht nur unvollständig. Der Backfill setzt deshalb `valid_from` auf den
 Migrationszeitpunkt: Für die Zeit davor behauptet er nichts.
+
+**Der Kontozustand beginnt mit seiner ersten Änderung**, nicht mit dem Konto (#1818). `account_state_history`
+bekommt bewusst **keinen Bestandseintrag**: Ein offenes Intervall je Konto machte über die
+`RESTRICT`-Personenspalte jedes Konto der Installation dauerhaft unlöschbar — auch das nie benutzte,
+das `access-control.md` ausdrücklich als löschbar zusagt. Ein Konto ohne Zeile war nie gesperrt; die
+Stichtagsfrage „war dieses Konto am Tag Y nutzbar" beantwortet die Abwesenheit einer sperrenden Zeile
+zusammen mit `users.created_at`. Die Tabelle ist zugleich der **Speicher des gegenwärtigen Zustands** —
+gesperrt ist das Konto mit einem offenen sperrenden Intervall —, weshalb der Zustand von seinem Beleg
+nicht abweichen kann und die Aufbewahrungslöschung ihn nicht erreicht: Sie rührt offene Intervalle nie
+an.
 
 **Zwei Bestände bleiben außerdem ganz ohne Historie**, und beide sind benannt statt verschwiegen:
 

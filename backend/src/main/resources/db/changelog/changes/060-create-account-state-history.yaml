@@ -1,0 +1,77 @@
+databaseChangeLog:
+  - changeSet:
+      id: 060-create-account-state-history
+      author: opaa
+      comment: >-
+        Die Rechtehistorie des Kontozustands (#1818, ADR-0036 Entscheidung 8): halboffene
+        Intervalle [valid_from, valid_to) je Konto mit dem Zustand ACTIVE oder BLOCKED. Sie ist
+        zugleich der SPEICHER DES GEGENWAERTIGEN ZUSTANDS - es gibt keine Statusspalte an users.
+        Gesperrt ist genau das Konto, dessen offenes Intervall BLOCKED traegt; ein Konto ohne
+        Zeile war nie gesperrt. Damit kann der Zustand nicht von der Historie abweichen, und das
+        Muster "abgeleiteter Zustand statt status-Spalte" aus ADR-0033 Entscheidung 3 bleibt
+        gewahrt. Die Aufbewahrungsloeschung ruehrt offene Intervalle nie an (sie loescht nur
+        geschlossene mit valid_to < cutoff), der gegenwaertige Zustand ist also nicht
+        wegloeschbar.
+        .
+        KEIN BESTANDSEINTRAG, und das ist keine Auslassung. asset_ownership_history (052) und
+        space_membership_history (044) tragen einen, weil dort jede vorhandene Zeile ein
+        bestehendes Recht belegt. Hier waere der Bestandseintrag eine offene ACTIVE-Zeile FUER
+        JEDES KONTO - und user_id ist ON DELETE RESTRICT. Kein Konto der Installation waere je
+        wieder loeschbar, auch ein nie benutztes nicht, obwohl access-control.md genau dieses
+        eine als loeschbar zusagt. Die Kette beginnt deshalb mit der ersten Zustandsaenderung
+        eines Kontos; fuer die Zeit davor behauptet die Tabelle nichts, und "war dieses Konto am
+        Tag Y nutzbar" beantwortet die Abwesenheit einer BLOCKED-Zeile zusammen mit
+        users.created_at.
+        .
+        ADR-0016 gibt die Spaltenregel vor: Personenspalte RESTRICT (user_id - das Konto, ueber
+        das die Zeile Auskunft gibt), Akteur SET NULL (er traegt keine Aussage ueber ein Recht).
+        Eine Objektspalte gibt es nicht; das Objekt IST die Person. provider_id traegt ebenfalls
+        keinen Fremdschluessel, aus demselben Grund wie die Objektspalten der uebrigen
+        Historientabellen: Die Zeile ueberlebt den Anbieter, dessen Abgleich sie verursacht hat.
+        .
+        chk_account_state_history_cause_matches_state haelt fest, dass der Anlass zum Zustand
+        passt - eine reaktivierende Zeile mit dem Zustand BLOCKED waere ein Beleg, der das
+        Gegenteil dessen sagt, was geschehen ist.
+        .
+        uk_account_state_history_open ist der Waechter gegen eine verschraenkte Kette aus zwei
+        nebenlaeufigen Transaktionen; die Zeitquelle (PermissionHistoryClock) ordnet nur die
+        Grenzen, nicht die Commits. Nulllange Zeilen entstehen hier nicht: Anders als bei einer
+        Mitgliedschaft endet ein Kontozustand nie ersatzlos - auf jedes geschlossene Intervall
+        folgt unmittelbar das naechste, und dessen eigener Anlass traegt den Akteur.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE account_state_history (
+                  id uuid NOT NULL,
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  state character varying(20) NOT NULL,
+                  cause character varying(30) NOT NULL,
+                  provider_id uuid,
+                  actor_user_id uuid,
+                  valid_from timestamp with time zone NOT NULL,
+                  valid_to timestamp with time zone,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT chk_account_state_history_state CHECK ((state IN ('ACTIVE', 'BLOCKED'))),
+                  CONSTRAINT chk_account_state_history_cause CHECK ((cause IN ('DIRECTORY_DISABLED', 'DIRECTORY_ABSENT', 'DIRECTORY_REACTIVATED'))),
+                  CONSTRAINT chk_account_state_history_cause_matches_state CHECK (((((cause)::text = 'DIRECTORY_REACTIVATED'::text) AND ((state)::text = 'ACTIVE'::text)) OR (((cause)::text IN ('DIRECTORY_DISABLED', 'DIRECTORY_ABSENT')) AND ((state)::text = 'BLOCKED'::text))))
+              );
+
+              ALTER TABLE ONLY account_state_history
+                  ADD CONSTRAINT account_state_history_pkey PRIMARY KEY (id);
+
+              CREATE INDEX idx_account_state_history_user_organization ON account_state_history USING btree (user_id, organization_id, valid_from);
+
+              CREATE UNIQUE INDEX uk_account_state_history_open ON account_state_history USING btree (user_id) WHERE (valid_to IS NULL);
+
+              ALTER TABLE ONLY account_state_history
+                  ADD CONSTRAINT fk_account_state_history_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE RESTRICT;
+
+              ALTER TABLE ONLY account_state_history
+                  ADD CONSTRAINT fk_account_state_history_actor_user_organization FOREIGN KEY (actor_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE SET NULL (actor_user_id);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE account_state_history;

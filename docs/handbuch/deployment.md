@@ -1220,10 +1220,11 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_WINDOW_SECONDS` | `900` | nicht gesetzt (Anwendungs-Default gilt) | Fenster der Übergabegrenze in Sekunden |
 | **Verzeichnis-Synchronisation (Gruppen)** | | | |
 | `OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED` | `true` | nicht gesetzt (Anwendungs-Default gilt) | Ob der Minutentakt existiert, der einen fälligen Anbieter abgleicht. Das Intervall selbst ist eine Einstellung der Anbieterzeile; dieser Schalter entscheidet nur, ob überhaupt getaktet wird. Auf `false` gehen Läufe ausschließlich von Hand |
-| `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `0.3` | nicht gesetzt (Anwendungs-Default gilt) | Plausibilitätsschwelle: Würde ein Synchronisationslauf mehr als diesen Anteil der bestehenden Gruppenmitgliedschaften entfernen, wird er **nicht angewendet, sondern der Systemverwaltung zur Bestätigung vorgelegt** (Ergebnis `PENDING_CONFIRMATION`, siehe [Verzeichnisabgleich je Anbieter](#verzeichnisabgleich-je-anbieter)) — Schutz vor einer fehlkonfigurierten Verzeichnisquelle, die scheinbar fast alle Mitgliedschaften löscht, ohne eine echte Reorganisation dauerhaft zu blockieren. Gemessen ausschließlich an Entfernungen, nicht an Hinzufügungen. Muss echt größer als `0` und höchstens `1` sein — ein ungültiger Wert lässt den Start fehlschlagen, statt sich stillschweigend zu lockern |
+| `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | `0.3` | nicht gesetzt (Anwendungs-Default gilt) | Plausibilitätsschwelle: Würde ein Synchronisationslauf mehr als diesen Anteil der bestehenden Gruppenmitgliedschaften entfernen — oder der nutzbaren Konten des Anbieters sperren —, wird er **nicht angewendet, sondern der Systemverwaltung zur Bestätigung vorgelegt** (Ergebnis `PENDING_CONFIRMATION`, siehe [Verzeichnisabgleich je Anbieter](#verzeichnisabgleich-je-anbieter)) — Schutz vor einer fehlkonfigurierten Verzeichnisquelle, die scheinbar fast alle Mitgliedschaften löscht, ohne eine echte Reorganisation dauerhaft zu blockieren. Gemessen ausschließlich an Entfernungen, nicht an Hinzufügungen. Muss echt größer als `0` und höchstens `1` sein — ein ungültiger Wert lässt den Start fehlschlagen, statt sich stillschweigend zu lockern |
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_PAGE_SIZE` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Seitengröße (`first`/`max`) jeder Anfrage an die Keycloak Admin API. Betrifft nur die Zahl der Aufrufe, nicht das Ergebnis |
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` | `5000` | nicht gesetzt (Anwendungs-Default gilt) | Obergrenze für die Zahl der Gruppen, die ein Lauf liest. Wird sie erreicht, **bricht der Lauf ab** (Ergebnis `UNREACHABLE`), statt eine abgeschnittene Liste anzuwenden — eine abgeschnittene Liste sieht aus wie eine Reorganisation, die alles Weitere aufgelöst hat |
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_MEMBERS_PER_GROUP` | `20000` | nicht gesetzt (Anwendungs-Default gilt) | Dieselbe Grenze je Gruppe, aus demselben Grund |
+| `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_ACCOUNTS` | `50000` | nicht gesetzt (Anwendungs-Default gilt) | Dieselbe Grenze für die Kontenliste des Realms. Eine abgeschnittene Kontenliste sähe aus wie ein Realm, aus dem alle Übrigen ausgeschieden sind — der Lauf bricht ab, statt sie anzuwenden |
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_CONNECT_TIMEOUT` | `5s` | nicht gesetzt (Anwendungs-Default gilt) | Verbindungszeitgrenze zur Admin API |
 | `OPAA_DIRECTORY_SYNC_KEYCLOAK_REQUEST_TIMEOUT` | `30s` | nicht gesetzt (Anwendungs-Default gilt) | Zeitgrenze je Einzelanfrage an die Admin API |
 | **Authentifizierung** | | | |
@@ -1709,7 +1710,27 @@ Geschaltet wird er je Anbieterzeile (`PUT /api/v1/admin/oidc-providers/{id}/dire
 
 **Zeitplan.** Ein Lauf startet ohne Zutun, sobald der letzte Lauf des Anbieters mindestens ein Intervall zurückliegt; ein Anbieter, der noch nie gelaufen ist, ist sofort fällig. Ein verpasster Zeitpunkt wird nicht nachgeholt — der nächste Takt findet den Anbieter wieder fällig. Der Takt selbst lässt sich mit `OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED=false` ganz abschalten; das Intervall bleibt dann eine Einstellung ohne Wirkung, und Läufe gehen nur noch von Hand.
 
-**Die vier Schutzmechaniken.** Der Trockenlauf (`…/directory-sync/dry-run`) rechnet den Unterschied aus, ohne etwas zu schreiben. Ein **leeres Abgleichergebnis** bei vorhandenen Verzeichnisgruppen bricht hart ab (`ABORTED_EMPTY_RESULT`) — „die Quelle hat nicht geantwortet, wie sie soll" darf niemand wegklicken. Ein **unerreichbares Verzeichnis** lässt den letzten bekannten Stand in Kraft (`UNREACHABLE`). Und ein Lauf, der mehr als die **Plausibilitätsschwelle** (`OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION`, Vorgabewert in der [Variablentabelle](#alle-umgebungsvariablen)) an Mitgliedschaften entziehen oder Gruppen auflösen würde, schreibt nichts und legt seinen Plan zur Bestätigung vor.
+**Die vier Schutzmechaniken.** Der Trockenlauf (`…/directory-sync/dry-run`) rechnet den Unterschied aus, ohne etwas zu schreiben. Ein **leeres Abgleichergebnis** bei vorhandenen Verzeichnisgruppen bricht hart ab (`ABORTED_EMPTY_RESULT`) — „die Quelle hat nicht geantwortet, wie sie soll" darf niemand wegklicken; dasselbe gilt für eine **leere Kontenliste** bei vorhandenen Konten dieses Anbieters. Ein **unerreichbares Verzeichnis** lässt den letzten bekannten Stand in Kraft (`UNREACHABLE`). Und ein Lauf, der mehr als die **Plausibilitätsschwelle** (`OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION`, Vorgabewert in der [Variablentabelle](#alle-umgebungsvariablen)) an Mitgliedschaften entziehen, Gruppen auflösen **oder Konten sperren** würde, schreibt nichts und legt seinen Plan zur Bestätigung vor.
+
+**Kontostatus aus dem Verzeichnis.** Meldet der Konnektor eine Kontenliste, ist das Verzeichnis auch für den **Kontozustand** führend — für die Konten genau dieses Anbieters:
+
+| Was das Verzeichnis meldet | Was in OPAA geschieht |
+|---|---|
+| Konto gesperrt (`enabled = false`) | Der Zugang wird gesperrt |
+| Konto gar nicht mehr gemeldet (im Verzeichnis gelöscht) | Der Zugang wird gesperrt — Ausscheiden und Sperre sind derselbe Vorgang |
+| Konto wieder nutzbar gemeldet | Die Sperre wird zurückgenommen |
+| Konto im Verzeichnis, aber in OPAA unbekannt | nichts — der Abgleich legt keine Konten an |
+
+Was eine Sperre bewirkt und was sie **nicht** bewirkt:
+
+- **Der Zugang endet sofort**, auch mit einem noch gültigen Token des Anbieters: Die nächste Anfrage wird mit 401 abgewiesen, und die Oberfläche nennt der Person Grund und Ansprechstelle statt einer blanken Abweisung. Persönliche **Zugangstokens** des Kontos treten im selben Zug außer Kraft (Anlass `ACCOUNT_LIFECYCLE`).
+- **Rechte, Mitgliedschaften und Eigentum bleiben unangetastet.** Genau das macht die Sperre rückholbar: Meldet das Verzeichnis das Konto wieder, ist mit dem nächsten Lauf alles wieder da — ohne Lücke im Nachweis.
+- **Gruppen, die nur noch gesperrte Konten erreichen, gelten als nicht handlungsfähig**; Spaces, deren Verantwortliche sämtlich gesperrt sind, erscheinen als „Nachfolge offen".
+- **Der letzte anmeldefähige Systemverwalter wird nie gesperrt.** Der Lauf lässt dieses eine Konto aktiv, weist es im Differenzbericht gesondert aus und wendet alles Übrige an. Ohne diese Regel könnte ein Verzeichnisfehler die Installation unbedienbar machen.
+- **Der Differenzbericht nennt die betroffenen Konten namentlich**, nicht nur ihre Zahl — vor dem Anwenden und in jedem ausstehenden Plan.
+- **Die einzelne Abmeldung wartet auf niemanden.** Die Schwelle greift für Kontosperren erst, wenn der Anbieter mindestens **zehn** nutzbare Konten hat oder ein Lauf mindestens **fünf** davon sperren würde. Darunter ist jede Sperre eine routinemäßige Änderung und wird angewendet — sonst wartete im Drei-Personen-Haus jedes Ausscheiden auf eine Bestätigung, und die Zusage „ohne Ticket, ohne Handgriff und ohne Bedingung" wäre keine mehr. Die Schwelle ist für den Massenfall da.
+- **Jede Sperre und jede Rücknahme ist ein Protokollereignis** (`ACCOUNT_DEACTIVATED` bzw. `ACCOUNT_REACTIVATED`), und der Kontozustand wird als Rechtehistorie geführt: „War dieses Konto am Stichtag nutzbar" bleibt beantwortbar, solange die [Aufbewahrungshöchstdauer der Rechtehistorie](suche.md#84-wie-lange-die-rechtehistorie-liegt) reicht. Eine zweite Ansicht „Verlauf" am einzelnen Konto gibt es bewusst nicht.
+- **Lokale Konten sind davon nicht betroffen**; sie haben ihren eigenen Lebenszyklus (siehe [benutzerverwaltung.md](benutzerverwaltung.md)).
 
 **Der Bestätigungsweg.** Ein solcher Lauf endet mit dem Ergebnis `PENDING_CONFIRMATION` und hinterlässt einen **ausstehenden Plan**:
 
@@ -1727,7 +1748,7 @@ Geschaltet wird er je Anbieterzeile (`PUT /api/v1/admin/oidc-providers/{id}/dire
 
 #### Keycloak als Verzeichnis
 
-**Was OPAA liest.** Der Lauf meldet sich mit einem Dienstkonto an der Admin API an und liest den kompletten Gruppenbaum des Realms samt seiner Mitgliedschaften (`GET /admin/realms/{realm}/groups`, `…/groups/{id}/children`, `…/groups/{id}/members`, jeweils seitenweise). Jede Keycloak-Gruppe wird zu einer Organisationseinheit in OPAA:
+**Was OPAA liest.** Der Lauf meldet sich mit einem Dienstkonto an der Admin API an und liest den kompletten Gruppenbaum des Realms samt seiner Mitgliedschaften sowie die komplette Kontenliste des Realms (`GET /admin/realms/{realm}/groups`, `…/groups/{id}/children`, `…/groups/{id}/members`, `…/users`, jeweils seitenweise). Gruppen und Konten stammen aus **einer** Lesung: Zwei Abrufe wären zwei Zeitpunkte, und ein bestätigter Plan könnte dann eine Sperre anwenden, die nicht zu der gezeigten Gruppenlesung gehörte. Die Rollenanforderung an das Dienstkonto ändert sich dadurch nicht — `view-users` deckt Mitgliederlisten und Kontenliste gleichermaßen ab. Jede Keycloak-Gruppe wird zu einer Organisationseinheit in OPAA:
 
 | Keycloak | OPAA |
 |---|---|
@@ -1736,6 +1757,7 @@ Geschaltet wird er je Anbieterzeile (`PUT /api/v1/admin/oidc-providers/{id}/dire
 | Gruppenpfad (`/Haus/Referat 50`) | Herkunftspfad; nur zur Anzeige, unterscheidet gleichnamige Untergruppen |
 | übergeordnete Gruppe | übergeordnete Einheit (nur Anzeige und Gliederung — **Mitgliedschaft vererbt nicht**) |
 | Benutzer-ID eines Mitglieds | `sub` des Kontos in OPAA, aufgelöst unter dem Issuer **dieses** Anbieters |
+| `enabled` je Benutzer (`…/users`) | Kontozustand in OPAA — gesperrt oder nutzbar |
 
 **Warum Keycloak zuerst.** Die Keycloak-Benutzer-ID *ist* der `sub` der Tokens, die dieselbe Instanz ausstellt. Die Identität eines Mitglieds fällt damit ohne Abbildungsregel mit dem Konto in OPAA zusammen. Der Realm wird aus der **Issuer-URI der Anbieterzeile abgeleitet** (`https://kc.example/realms/haus` → Realm `haus`) und ist bewusst nicht getrennt einstellbar: So kann ein Lauf strukturell nur den Realm lesen, aus dem die Tokens dieses Anbieters stammen. Ist die Issuer-URI keine Keycloak-Realm-Adresse, lehnt OPAA das Hinterlegen mit 400 ab.
 
@@ -1773,8 +1795,8 @@ Ein erfolgreicher Test antwortet z. B. „Verzeichnis erreichbar: Realm „haus"
 **Grenzen des Konnektors.**
 
 - **Ein Realm je Anbieter** — der aus der Issuer-URI. Zwei Realms sind zwei Anbieterzeilen.
-- **Nur Gruppen und Mitgliedschaften.** Kontosperren aus dem Verzeichnis sind ein eigener Schritt.
-- **Obergrenzen.** Mehr als `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` Gruppen oder `…_MAX_MEMBERS_PER_GROUP` direkte Mitglieder je Gruppe lassen den Lauf abbrechen (`UNREACHABLE`), statt eine abgeschnittene Liste anzuwenden. Die Werte sind für Verwaltungsrealms reichlich bemessen; wer sie erreicht, hebt sie bewusst an.
+- **Gruppen, Mitgliedschaften und Kontozustand.** Weitere Verzeichnisfelder (Funktionsbezeichnung, Organisationseinheit als Attribut) liest der Konnektor nicht.
+- **Obergrenzen.** Mehr als `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` Gruppen, `…_MAX_MEMBERS_PER_GROUP` direkte Mitglieder je Gruppe oder `…_MAX_ACCOUNTS` Konten lassen den Lauf abbrechen (`UNREACHABLE`), statt eine abgeschnittene Liste anzuwenden — eine abgeschnittene Kontenliste sähe aus wie ein Realm, aus dem alle Übrigen ausgeschieden sind. Die Werte sind für Verwaltungsrealms reichlich bemessen; wer sie erreicht, hebt sie bewusst an.
 - **Keine anderen Verzeichnistypen.** LDAP und Microsoft Graph folgen als eigene Konnektoren. In vielen Häusern ist Keycloak ohnehin die Vermittlungsschicht vor Active Directory: Seine LDAP-Mapper importieren die AD-Gruppen, und OPAA liest sie dann aus Keycloak.
 
 #### Vor dem Update auf die Gruppenherkunft (einmalig)

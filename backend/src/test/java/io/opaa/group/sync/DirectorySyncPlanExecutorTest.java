@@ -40,7 +40,9 @@ class DirectorySyncPlanExecutorTest {
           new DirectorySyncProperties(0.3, true),
           mock(PermissionHistoryService.class),
           mock(AuditEventRecorder.class),
-          pendingPlanRepository);
+          pendingPlanRepository,
+          mock(io.opaa.auth.AccountStateService.class),
+          mock(io.opaa.auth.local.LocalAdminAvailabilityGuard.class));
 
   private final UUID organizationId = UUID.randomUUID();
   private final UUID providerId = UUID.randomUUID();
@@ -69,8 +71,8 @@ class DirectorySyncPlanExecutorTest {
             Instant.now(),
             new DirectorySnapshot(
                 Instant.now(),
-                List.of(
-                    new DirectoryGroup("dir-1", "Referat 12", null, null, Set.of("member-1")))));
+                List.of(new DirectoryGroup("dir-1", "Referat 12", null, null, Set.of("member-1"))),
+                null));
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.DRY_RUN);
     verify(groupRepository)
@@ -110,7 +112,8 @@ class DirectorySyncPlanExecutorTest {
             Instant.now(),
             new DirectorySnapshot(
                 Instant.now(),
-                List.of(new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of()))));
+                List.of(new DirectoryGroup("dir-1", "Referat 50", null, null, Set.of())),
+                null));
 
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(report.unmaintainedTokenGroups())

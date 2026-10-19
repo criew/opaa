@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 /**
  * Directory synchronisation as a rights event (#237, #1816): the public entry point and the
  * boundary to an actual directory. Deliberately holds no {@code @Transactional} annotation anywhere
- * in this class - {@link DirectoryClient#fetchGroups} runs here, outside any transaction of the
+ * in this class - {@link DirectoryClient#fetchDirectory} runs here, outside any transaction of the
  * application's transaction manager, so a slow or failing real directory connector never holds a
  * work transaction open for the duration of a network call (review of PR #297). The transactional
  * plan computation and, if applicable, application live in {@link DirectorySyncPlanExecutor}, a
@@ -284,7 +284,7 @@ public class DirectorySyncService {
     Instant now = Instant.now();
     DirectorySnapshot snapshot;
     try {
-      snapshot = directoryClient.fetchGroups(target.organizationId(), target.providerId());
+      snapshot = directoryClient.fetchDirectory(target.organizationId(), target.providerId());
     } catch (DirectoryUnavailableException e) {
       return recordUnreachable(target, now, e);
     }
@@ -328,6 +328,9 @@ public class DirectorySyncService {
     return new SyncReport(
         DirectorySyncOutcome.UNREACHABLE,
         now,
+        List.of(),
+        List.of(),
+        List.of(),
         List.of(),
         List.of(),
         List.of(),

@@ -30,6 +30,9 @@ import org.junit.jupiter.api.Test;
 class DirectorySyncResponseMapperTest {
 
   private static final UUID PROVIDER_ID = UUID.randomUUID();
+  private static final UUID BLOCKED = UUID.randomUUID();
+  private static final UUID REACTIVATED = UUID.randomUUID();
+  private static final UUID PROTECTED = UUID.randomUUID();
 
   @Test
   void toReportResponseCopiesEveryFieldAndTheUnresolvedMemberCount() {
@@ -48,6 +51,9 @@ class DirectorySyncResponseMapperTest {
                     "Referat 1",
                     List.of(new UserRef(UUID.randomUUID(), "Ada Lovelace")),
                     List.of())),
+            List.of(new UserRef(BLOCKED, "Erika Mustermann")),
+            List.of(new UserRef(REACTIVATED, "Grace Hopper")),
+            List.of(new UserRef(PROTECTED, "Notanker")),
             3,
             1,
             2,
@@ -80,6 +86,12 @@ class DirectorySyncResponseMapperTest {
     assertThat(membershipChange.getAdded()).hasSize(1);
     assertThat(membershipChange.getAdded().get(0).getDisplayName()).isEqualTo("Ada Lovelace");
     assertThat(membershipChange.getRemoved()).isEmpty();
+
+    // #1818: the report names the people, not only their number
+    assertThat(response.getAccountsBlocked()).extracting("userId").containsExactly(BLOCKED);
+    assertThat(response.getAccountsBlocked().get(0).getDisplayName()).isEqualTo("Erika Mustermann");
+    assertThat(response.getAccountsReactivated()).extracting("userId").containsExactly(REACTIVATED);
+    assertThat(response.getAccountsProtected()).extracting("userId").containsExactly(PROTECTED);
   }
 
   @Test
@@ -93,6 +105,9 @@ class DirectorySyncResponseMapperTest {
     assertThat(response.getGroupsDissolved()).isEmpty();
     assertThat(response.getUnmaintainedTokenGroups()).isEmpty();
     assertThat(response.getMembershipChanges()).isEmpty();
+    assertThat(response.getAccountsBlocked()).isEmpty();
+    assertThat(response.getAccountsReactivated()).isEmpty();
+    assertThat(response.getAccountsProtected()).isEmpty();
   }
 
   /**
@@ -209,6 +224,9 @@ class DirectorySyncResponseMapperTest {
         List.of(),
         List.of(),
         List.of(),
+        List.of(),
+        List.of(),
+        List.of(),
         0,
         0,
         0,
@@ -221,6 +239,9 @@ class DirectorySyncResponseMapperTest {
     return new SyncReport(
         outcome,
         Instant.now(),
+        List.of(),
+        List.of(),
+        List.of(),
         List.of(),
         List.of(),
         List.of(),

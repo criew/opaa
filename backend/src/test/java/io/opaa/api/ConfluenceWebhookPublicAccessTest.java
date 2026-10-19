@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.auth.AccountStateService;
 import io.opaa.auth.OidcSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
@@ -56,6 +57,10 @@ class ConfluenceWebhookPublicAccessTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private ConfluenceWebhookService webhookService;
   @MockitoBean private UserService userService;
+
+  // #1818: the production chain refuses a blocked account in UserProvisioningFilter; this
+  // slice scans no service package, so the state answers "not blocked" for every account here.
+  @MockitoBean private AccountStateService accountState;
 
   @MockitoBean
   private AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver;

@@ -76,6 +76,12 @@ const SESSION_END_MESSAGES: Record<string, string> = {
   account_not_active:
     'Ihr Konto ist derzeit nicht anmeldefähig. Bitte wenden Sie sich an die Systemverwaltung.',
   account_locked: 'Ihr Konto ist gesperrt. Bitte wenden Sie sich an die Systemverwaltung.',
+  account_blocked: 'Ihr Zugang ist gesperrt. Bitte wenden Sie sich an die Systemverwaltung.',
+  // ADR-0036, Entscheidung 3 (Personalrat C3): Grund und Ansprechstelle, nicht nur eine
+  // Abweisung - die Person soll wissen, dass nicht OPAA, sondern das Verzeichnis ihrer
+  // Organisation die Ursache ist, und wen sie ansprechen kann.
+  'account_blocked:directory':
+    'Ihr Zugang wurde beim Abgleich mit dem Verzeichnis Ihrer Organisation gesperrt: Ihr Konto ist dort gesperrt oder wird dort nicht mehr geführt. Ihre Berechtigungen bleiben erhalten. Bitte wenden Sie sich an die Systemverwaltung.',
   'account_locked:admin':
     'Ihr Konto wurde von der Systemverwaltung gesperrt. Bitte wenden Sie sich an die Systemverwaltung.',
   'account_locked:failed_logins':

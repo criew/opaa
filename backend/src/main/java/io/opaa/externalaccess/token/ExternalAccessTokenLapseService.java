@@ -73,7 +73,7 @@ public class ExternalAccessTokenLapseService {
   /**
    * Ends every still-active token of a person whose access itself ended - a locked account, a
    * redeemed handover. Joins the caller's transaction on purpose: the lock and the end of the
-   * tokens commit together (see {@code LocalAccountAccessEndedEvent}).
+   * tokens commit together (see {@code AccountAccessEndedEvent}).
    *
    * @return how many tokens stopped working
    */

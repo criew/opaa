@@ -35,6 +35,7 @@ class DirectoryConnectorConfigurationTest {
               "opaa.directory-sync.keycloak.page-size=100",
               "opaa.directory-sync.keycloak.max-groups=5000",
               "opaa.directory-sync.keycloak.max-members-per-group=20000",
+              "opaa.directory-sync.keycloak.max-accounts=50000",
               "opaa.directory-sync.keycloak.connect-timeout=5s",
               "opaa.directory-sync.keycloak.request-timeout=30s");
 

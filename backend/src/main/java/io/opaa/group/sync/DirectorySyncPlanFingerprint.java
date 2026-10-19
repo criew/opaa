@@ -15,12 +15,13 @@ import java.util.Map;
  *
  * <p>It covers exactly the changes a plan proposes, each in a canonical, order-independent form:
  * groups created, renamed, dissolved and reactivated, the parent unit and the path the directory
- * reports for each of them, and per group which user is added or removed. Reactivation, hierarchy
- * and path change no membership and are therefore not in the report, but a run applies them - a
- * print blind to them would let a confirmation write something nobody was shown. It deliberately
- * covers neither the moment the plan was computed nor its message or outcome - two runs minutes
- * apart that would do the identical thing are the same plan, and re-presenting them for a differing
- * timestamp would make confirmation impossible in practice.
+ * reports for each of them, per group which user is added or removed, and which account the run
+ * would block or reactivate (#1818). Reactivation, hierarchy and path change no membership and are
+ * therefore not in the report, but a run applies them - a print blind to them would let a
+ * confirmation write something nobody was shown, and the same holds for an account block. It
+ * deliberately covers neither the moment the plan was computed nor its message or outcome - two
+ * runs minutes apart that would do the identical thing are the same plan, and re-presenting them
+ * for a differing timestamp would make confirmation impossible in practice.
  */
 final class DirectorySyncPlanFingerprint {
 
@@ -52,6 +53,17 @@ final class DirectorySyncPlanFingerprint {
     }
     for (GroupChange change : report.groupsDissolved()) {
       lines.add(line("dissolve", change.externalId()));
+    }
+    for (UserRef blocked : report.accountsBlocked()) {
+      lines.add(line("block", blocked.id().toString()));
+    }
+    for (UserRef reactivated : report.accountsReactivated()) {
+      lines.add(line("unblock", reactivated.id().toString()));
+    }
+    // The protected administrator is part of the print too: the same directory reading with one
+    // more administrator left is a different plan - it would block this one.
+    for (UserRef protectedAccount : report.accountsProtected()) {
+      lines.add(line("protected", protectedAccount.id().toString()));
     }
     for (MembershipChange change : report.membershipChanges()) {
       for (UserRef added : change.added()) {

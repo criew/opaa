@@ -54,6 +54,7 @@ public class OidcSecurityConfig {
           PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, LOCAL_LOGOUT));
 
   private final UserService userService;
+  private final AccountStateService accountState;
   private final AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver;
   private final ObjectProvider<PasswordChangeRequiredFilter> passwordChangeRequiredFilter;
   private final ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows;
@@ -68,11 +69,13 @@ public class OidcSecurityConfig {
    */
   public OidcSecurityConfig(
       UserService userService,
+      AccountStateService accountState,
       AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver,
       ObjectProvider<PasswordChangeRequiredFilter> passwordChangeRequiredFilter,
       ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows,
       JsonMapper jsonMapper) {
     this.userService = userService;
+    this.accountState = accountState;
     this.oidcAuthenticationManagerResolver = oidcAuthenticationManagerResolver;
     this.passwordChangeRequiredFilter = passwordChangeRequiredFilter;
     this.selfServiceFlows = selfServiceFlows;
@@ -187,7 +190,8 @@ public class OidcSecurityConfig {
         .oauth2ResourceServer(
             oauth2 -> oauth2.authenticationManagerResolver(oidcAuthenticationManagerResolver))
         .addFilterAfter(
-            new UserProvisioningFilter(userService), BearerTokenAuthenticationFilter.class);
+            new UserProvisioningFilter(userService, accountState),
+            BearerTokenAuthenticationFilter.class);
     // ADR-0033, Entscheidung 8: after authorization, so it sees the authenticated local token and
     // answers 403 PASSWORD_CHANGE_REQUIRED outside /api/v1/auth/local/ while pcr is set.
     PasswordChangeRequiredFilter pcrFilter = passwordChangeRequiredFilter.getIfAvailable();

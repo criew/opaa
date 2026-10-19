@@ -1,6 +1,6 @@
 package io.opaa.externalaccess.token;
 
-import io.opaa.auth.local.LocalAccountAccessEndedEvent;
+import io.opaa.auth.AccountAccessEndedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -33,7 +33,7 @@ public class ExternalAccessTokenAccountLifecycleListener {
   }
 
   @EventListener
-  public void onAccessEnded(LocalAccountAccessEndedEvent event) {
+  public void onAccessEnded(AccountAccessEndedEvent event) {
     int ended = lapses.endTokensOfAccount(event.user(), event.actorUserId());
     if (ended > 0) {
       log.info(
