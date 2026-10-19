@@ -18,6 +18,9 @@ import org.springframework.scheduling.concurrent.ExecutorConfigurationSupport;
  * server, the schedulers and the task executors start, writes its heartbeat on a thread of its own,
  * and signs off after all of them have stopped. A refused registration fails the start.
  *
+ * <p>Every registration gets a new identity: a stopped instance has signed off and stays dead, so a
+ * context started again (a paused test context, for one) joins as a new instance.
+ *
  * <p>The heartbeat thread is per instance by design (ADR-0021): every instance reports itself. It
  * is not the shared scheduler thread, so a long {@code @Scheduled} tick cannot make a live instance
  * look dead.
@@ -29,7 +32,6 @@ public class CurrentInstance implements SmartLifecycle {
 
   private static final Logger log = LoggerFactory.getLogger(CurrentInstance.class);
 
-  private final UUID id = UUID.randomUUID();
   private final InstanceRegistry registry;
   private final ConfigurationFingerprintReader reader;
   private final InstanceVersion version;
@@ -38,6 +40,7 @@ public class CurrentInstance implements SmartLifecycle {
   private final Duration deadAfter;
   private final AtomicBoolean lost = new AtomicBoolean();
 
+  private volatile UUID id;
   private volatile ScheduledExecutorService heartbeats;
   private volatile long lastHeartbeatNanos;
 
@@ -55,9 +58,17 @@ public class CurrentInstance implements SmartLifecycle {
     this.deadAfter = properties.deadAfter();
   }
 
-  /** The identity of this process start in the register. */
+  /**
+   * The identity of this instance in the register.
+   *
+   * @throws IllegalStateException before the instance has registered
+   */
   public UUID id() {
-    return id;
+    UUID current = id;
+    if (current == null) {
+      throw new IllegalStateException("this instance has not registered yet");
+    }
+    return current;
   }
 
   /**
@@ -72,7 +83,10 @@ public class CurrentInstance implements SmartLifecycle {
 
   @Override
   public void start() {
-    registry.register(id, hostName, version, reader.read());
+    UUID registered = UUID.randomUUID();
+    registry.register(registered, hostName, version, reader.read());
+    id = registered;
+    lost.set(false);
     lastHeartbeatNanos = System.nanoTime();
     ScheduledExecutorService executor =
         Executors.newSingleThreadScheduledExecutor(
@@ -88,7 +102,7 @@ public class CurrentInstance implements SmartLifecycle {
         registry.instances().stream().filter(RegisteredInstance::alive).toList();
     log.info(
         "Registered instance {} on {} (version {}); live instances: {}",
-        id,
+        registered,
         hostName,
         version.version(),
         live.stream()
