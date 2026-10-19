@@ -44,6 +44,32 @@ Das SMTP-Passwort schützt `OPAA_SETTINGS_ENCRYPTION_KEY`, derselbe Schlüssel w
 der Chat-Modelle ([Schlüssel und Geheimnisse](betrieb.md#schlüssel-und-geheimnisse)).
 Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.
 
+## Zustellung über die Warteschlange
+
+OPAA verschickt auf zwei Wegen:
+
+- **Sofort, mit Ergebnis an der Aktion:** die Testnachricht sowie Einladung, Zurücksetzen durch die
+  Verwaltung und Übergabelink. Schlägt der Versand fehl, zeigt die Oberfläche den Link zur
+  Weitergabe.
+- **Über die Warteschlange:** alle übrigen Mails — „Passwort vergessen", Bestätigung der
+  Selbstregistrierung, Sperre und Entsperrung, abgeschlossene Übergabe, Benutzung des
+  Notanker-Kontos, Erinnerungen und Ablaufhinweise. Die Mail wird zusammen mit dem Vorgang
+  gespeichert, den sie ankündigt, und erst nach dessen Abschluss verschickt; scheitert der Vorgang,
+  entfällt auch die Mail.
+
+Die Warteschlange liegt in der Datenbank, Empfänger und Inhalt verschlüsselt mit
+`OPAA_SETTINGS_ENCRYPTION_KEY`. Ohne gültigen Schlüssel geht keine Mail in die Warteschlange; das
+Anwendungsprotokoll nennt den Grund. Eine wartende Mail übersteht einen Neustart des Backends, und
+bei mehreren Backend-Instanzen stellt jede zu, eine Mail aber immer nur eine zur selben Zeit.
+
+- **Wiederholung:** Lehnt der Mailserver ab oder ist er nicht erreichbar, versucht OPAA es erneut,
+  zuerst nach einer Minute, dann mit jeweils doppeltem Abstand bis höchstens einer Stunde, insgesamt
+  achtmal (rund zwei Stunden). Danach wird die Mail verworfen.
+- **Versand ausgeschaltet:** Solange der Versand aus ist, kommt keine neue Mail in die Warteschlange,
+  und wartende Mails bleiben liegen, bis er wieder eingeschaltet ist.
+- **Doppelte Zustellung:** Bricht ein Backend genau zwischen der Annahme durch den Mailserver und dem
+  Vermerk ab, kann eine Mail ein zweites Mal ankommen. Beide tragen dieselbe `Message-ID`.
+
 ## Vorlagen
 
 Vierzehn Vorlagen werden mit deutschem Text ausgeliefert: Einladung, Passwort vergessen,
@@ -79,7 +105,8 @@ Nachweisprotokoll.
 ## Fehlerbilder
 
 Der Zustand des Versands steht an drei Stellen: als „letzter erfolgreicher Versand" und „letzter
-Fehler" auf der Einstellungsseite, als Ergebnis unmittelbar an der auslösenden Aktion, und als
+Fehler" auf der Einstellungsseite — auch für Mails aus der Warteschlange —, als Ergebnis unmittelbar
+an der auslösenden Aktion (nur beim sofortigen Versand), und als
 eigene Gruppe `GET /actuator/health/mail` — dort nur der Zustand, ohne Einzelheiten: `UP` nach einem
 erfolgreichen Versand, `DOWN`, wenn der letzte Versuch fehlschlug, `UNKNOWN` ohne eingerichteten
 Versand oder vor dem ersten Versuch. Bewusst **nicht** im Gesamtstatus unter `/actuator/health` —
@@ -96,4 +123,6 @@ steht im Anwendungsprotokoll, dort ohne die Empfängeradresse.
 | Meldung zu STARTTLS | Der Server bietet STARTTLS nicht an; OPAA bricht ab, statt unverschlüsselt fortzufahren | Beim Mailserver TLS einrichten, oder — nur im vertrauenswürdigen Netz — Verschlüsselung `NONE` wählen |
 | „535" oder Authentifizierungsfehler | Benutzername oder Passwort falsch | Zugangsdaten neu eintragen; das Feld `***` lässt das gespeicherte Passwort unverändert, zum Ersetzen den neuen Wert eintragen |
 | Passwort lässt sich nicht speichern | Verschlüsselungsschlüssel fehlt oder ist ungültig | `OPAA_SETTINGS_ENCRYPTION_KEY` setzen |
+| Testnachricht kommt an, „Passwort vergessen" oder Erinnerungen nicht | Ohne Verschlüsselungsschlüssel geht keine Mail in die Warteschlange; das Protokoll meldet „Mailversand abgebrochen" mit dem Schlüssel als Grund | `OPAA_SETTINGS_ENCRYPTION_KEY` setzen |
+| Mail aus der Warteschlange kommt verspätet an | Der Mailserver war beim ersten Versuch nicht erreichbar oder hat abgelehnt; die Wiederholung läuft | „Letzter Fehler" auf der Einstellungsseite prüfen; nach acht Versuchen meldet das Protokoll die Mail als verworfen (Vorlage, gekürzte Empfängeradresse, Grund) |
 | Nachrichten kommen an, Links führen ins Leere | `OPAA_PUBLIC_BASE_URL` zeigt auf eine Adresse, die Nutzende nicht erreichen | Variable auf die tatsächlich genutzte Adresse setzen und Backend neu starten |

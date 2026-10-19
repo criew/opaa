@@ -257,7 +257,7 @@ class ExternalAccessSwitchedOffIntegrationTest {
     UUID longGone = insertToken(freshValue(), clock.instant().minus(Duration.ofDays(2)));
     UUID adminId =
         users.findBySubjectAndIssuer("dev-admin", "opaa-dev").map(User::getId).orElseThrow();
-    LocalMailbox mailbox = new LocalMailbox(mailSettings, adminId);
+    LocalMailbox mailbox = new LocalMailbox(mailSettings, jdbc, adminId);
     mailbox.start();
     try {
       maintenance.runOnce();

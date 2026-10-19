@@ -67,6 +67,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "branding_settings",
                   "mail_settings",
                   "mail_templates",
+                  "mail_outbox",
                   "notifications",
                   "audit_log",
                   "audit_actor_pseudonyms",

@@ -31,9 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
  * each: the registration that creates a {@code users} row of the local issuer together with its
  * {@code local_credentials} row (the invariant {@link LocalUserService} keeps for the
  * administration), the confirmation of the address, and the issue of a self-requested reset link.
- * No mail here - {@link LocalSelfServiceService} sends after the commit. Registration is audited
- * under the system process {@code local-auth} with the account as a pseudonym and never with the
- * address or the name.
+ * The link mail goes to the outbox in the same transaction, so it leaves after the commit and only
+ * with it (ADR-0053, Entscheidung 11). Registration is audited under the system process {@code
+ * local-auth} with the account as a pseudonym and never with the address or the name.
  */
 @Service
 public class LocalSelfServiceAccountService {
@@ -63,6 +63,7 @@ public class LocalSelfServiceAccountService {
   private final LocalAuthSettingsRepository settings;
   private final LocalActionTokenService actionTokens;
   private final AuditEventRecorder audit;
+  private final LocalAccountMailer mailer;
   private final Clock clock;
 
   public LocalSelfServiceAccountService(
@@ -71,12 +72,14 @@ public class LocalSelfServiceAccountService {
       LocalAuthSettingsRepository settings,
       LocalActionTokenService actionTokens,
       AuditEventRecorder audit,
+      LocalAccountMailer mailer,
       Clock clock) {
     this.users = users;
     this.credentials = credentials;
     this.settings = settings;
     this.actionTokens = actionTokens;
     this.audit = audit;
+    this.mailer = mailer;
     this.clock = clock;
   }
 
@@ -90,14 +93,18 @@ public class LocalSelfServiceAccountService {
    * verification link (the older one is voided) and nothing else - neither the hash nor the name
    * are replaced, or a second registration could plant a password the first person then confirms.
    * The personal space is not provisioned here: the first sign-in after the confirmation creates it
-   * on the path every sign-in takes, so an unconfirmed registration leaves no space behind.
+   * on the path every sign-in takes, so an unconfirmed registration leaves no space behind. Both
+   * outcomes that issue a link queue its verification mail.
    */
   @Transactional
   public Registered register(String email, String displayName, String passwordHash) {
     Instant now = clock.instant();
     Optional<User> existing = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email);
     if (existing.isPresent()) {
-      return pendingRegistration(existing.get(), now).orElseThrow(LocalUserService::addressTaken);
+      Registered again =
+          pendingRegistration(existing.get(), now).orElseThrow(LocalUserService::addressTaken);
+      mailer.sendRegistrationVerification(again.user(), again.verification());
+      return again;
     }
     User user = User.localAccount(email, displayName);
     user.setOrganizationId(Organization.DEFAULT_ID);
@@ -121,6 +128,7 @@ public class LocalSelfServiceAccountService {
             .after(Map.of("expiresAt", expiresAt.toString()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
+    mailer.sendRegistrationVerification(user, verification);
     return new Registered(user, row, verification);
   }
 
@@ -176,7 +184,8 @@ public class LocalSelfServiceAccountService {
    * A fresh {@code RESET_PASSWORD} link ({@code reset_token_ttl_minutes}; it voids older ones) for
    * the local account under {@code email} - only for an {@code ACTIVE} account or one in a
    * failed-login lockout (ADR-0033, Entscheidung 9); every other state and an unknown address yield
-   * empty. Nothing else changes: sessions end when the link is redeemed, not when it is asked for.
+   * empty. The reset mail is queued with the link. Nothing else changes: sessions end when the link
+   * is redeemed, not when it is asked for.
    */
   @Transactional
   public Optional<ResetLink> issueResetLinkFor(String email) {
@@ -194,6 +203,7 @@ public class LocalSelfServiceAccountService {
             user.get().getId(),
             ActionTokenPurpose.RESET_PASSWORD,
             Duration.ofMinutes(policy().resetTokenTtlMinutes()));
+    mailer.sendPasswordReset(user.get(), token);
     return Optional.of(new ResetLink(user.get(), token));
   }
 

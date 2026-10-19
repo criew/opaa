@@ -15,9 +15,11 @@ import jakarta.mail.internet.MimeMultipart;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.ServerSocket;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * An in-JVM SMTP server (GreenMail) wired into the application's mail settings, for integration
@@ -29,13 +31,38 @@ public final class LocalMailbox {
 
   private static final Pattern TOKEN_IN_LINK = Pattern.compile("token=([A-Za-z0-9_-]+)");
 
+  private static final Duration DRAIN_TIMEOUT = Duration.ofSeconds(15);
+
   private final MailSettingsService mailSettings;
+  private final JdbcTemplate jdbc;
   private final UUID actorId;
   private GreenMail greenMail;
 
-  public LocalMailbox(MailSettingsService mailSettings, UUID actorId) {
+  public LocalMailbox(MailSettingsService mailSettings, JdbcTemplate jdbc, UUID actorId) {
     this.mailSettings = mailSettings;
+    this.jdbc = jdbc;
     this.actorId = actorId;
+  }
+
+  /**
+   * Returns once the mail outbox is empty or after a bounded wait. Test classes of one database run
+   * one after the other, so what waits there is the running class's; whatever is still there
+   * afterwards is reported by the leftover guard, not here.
+   */
+  public static void awaitOutboxDrained(JdbcTemplate jdbc) {
+    long deadline = System.nanoTime() + DRAIN_TIMEOUT.toNanos();
+    while (System.nanoTime() < deadline) {
+      Long waiting = jdbc.queryForObject("SELECT count(*) FROM mail_outbox", Long.class);
+      if (waiting == null || waiting == 0) {
+        return;
+      }
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException interrupted) {
+        Thread.currentThread().interrupt();
+        return;
+      }
+    }
   }
 
   public void start() {
@@ -45,8 +72,13 @@ public final class LocalMailbox {
     configure(true);
   }
 
+  /**
+   * Waits until the outbox holds nothing more for this mailbox, then switches SMTP off: a mail a
+   * test queued but did not wait for would otherwise reach the next class's mailbox.
+   */
   public void stop() {
     if (greenMail != null) {
+      awaitOutboxDrained(jdbc);
       greenMail.stop();
     }
     configure(false);

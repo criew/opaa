@@ -17,10 +17,17 @@ import org.springframework.stereotype.Component;
 
 /**
  * Every mail the local account management sends to a person or an administrator (ADR-0033,
- * Entscheidung 11: kein stiller Eingriff). Not transactional and never called inside a transaction
- * - {@link MailService#send} is synchronous with SMTP timeouts, so a send follows the commit of the
- * act it announces. A link mail answers with its {@link LinkDelivery}: sent, failed with the link
- * for hand-over, or - SMTP off or no public base URL - the link displayed without an attempt.
+ * Entscheidung 11: kein stiller Eingriff). Two kinds (ADR-0053, Entscheidung 11):
+ *
+ * <ul>
+ *   <li>A link mail with a fallback - invitation, administrative reset, handover - is sent
+ *       synchronously with SMTP timeouts and never inside a transaction, so it follows the commit
+ *       of the act it announces. It answers with its {@link LinkDelivery}: sent, failed with the
+ *       link for hand-over, or - SMTP off or no public base URL - the link displayed without an
+ *       attempt.
+ *   <li>Every other mail nobody waits for goes to the outbox via {@link MailService#enqueue}, in
+ *       the caller's transaction when there is one, and leaves after its commit.
+ * </ul>
  */
 @DataFlow("mail")
 @Component
@@ -66,7 +73,7 @@ public class LocalAccountMailer {
    * the account already belongs to the provider identity, and the link only points at the sign-in.
    */
   public void sendHandedOver(User user) {
-    send(
+    queue(
         MailTemplateKey.ACCOUNT_HANDED_OVER,
         user,
         Map.of(
@@ -78,8 +85,8 @@ public class LocalAccountMailer {
    * The self-service reset link. No link fallback: the flow exists only with a public base URL, and
    * its caller must never learn whether a mail left (ADR-0033, Entscheidung 11).
    */
-  public SendResult sendPasswordReset(User user, IssuedActionToken token) {
-    return send(
+  public void sendPasswordReset(User user, IssuedActionToken token) {
+    queue(
         MailTemplateKey.PASSWORD_RESET,
         user,
         Map.of(
@@ -90,8 +97,8 @@ public class LocalAccountMailer {
   }
 
   /** The verification link of a self-registration; no link fallback, as above. */
-  public SendResult sendRegistrationVerification(User user, IssuedActionToken token) {
-    return send(
+  public void sendRegistrationVerification(User user, IssuedActionToken token) {
+    queue(
         MailTemplateKey.REGISTRATION_VERIFICATION,
         user,
         Map.of(
@@ -105,21 +112,21 @@ public class LocalAccountMailer {
    * {@code reason} is the sentence for the person; {@code null} means the administrative default.
    */
   public void sendLocked(User user, String reason) {
-    send(
+    queue(
         MailTemplateKey.ACCOUNT_LOCKED,
         user,
         Map.of("reason", reason == null || reason.isBlank() ? LOCK_REASON_ADMIN : reason.trim()));
   }
 
   public void sendLockedForInactivity(User user, int inactiveDays) {
-    send(
+    queue(
         MailTemplateKey.ACCOUNT_LOCKED,
         user,
         Map.of("reason", LOCK_REASON_INACTIVITY.formatted(inactiveDays)));
   }
 
   public void sendUnlocked(User user) {
-    send(
+    queue(
         MailTemplateKey.ACCOUNT_UNLOCKED,
         user,
         Map.of(
@@ -128,14 +135,14 @@ public class LocalAccountMailer {
   }
 
   public void sendExpiring(User user, Instant expiresAt) {
-    send(MailTemplateKey.ACCOUNT_EXPIRING, user, Map.of("expiresAtHuman", on(expiresAt)));
+    queue(MailTemplateKey.ACCOUNT_EXPIRING, user, Map.of("expiresAtHuman", on(expiresAt)));
   }
 
   /**
    * The review reminder to one system administrator: a count and the link to the list, no names.
    */
   public void sendReviewReminder(User admin, long count) {
-    send(
+    queue(
         MailTemplateKey.ADMIN_REVIEW_REMINDER,
         admin,
         Map.of(
@@ -166,9 +173,17 @@ public class LocalAccountMailer {
   }
 
   private SendResult send(MailTemplateKey key, User user, Map<String, Object> variables) {
+    return mail.send(key, Locale.GERMAN, user.getEmail(), withDisplayName(user, variables));
+  }
+
+  private void queue(MailTemplateKey key, User user, Map<String, Object> variables) {
+    mail.enqueue(key, Locale.GERMAN, user.getEmail(), withDisplayName(user, variables));
+  }
+
+  private static Map<String, Object> withDisplayName(User user, Map<String, Object> variables) {
     Map<String, Object> all = new java.util.HashMap<>(variables);
     all.put("displayName", user.getDisplayName() == null ? "" : user.getDisplayName());
-    return mail.send(key, Locale.GERMAN, user.getEmail(), all);
+    return all;
   }
 
   /** "bis 12.09.2026, 14:00 Uhr" - fills "Der Link ist {{expiresAtHuman}} gültig". */
