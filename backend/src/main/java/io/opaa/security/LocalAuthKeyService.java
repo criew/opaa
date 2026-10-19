@@ -14,15 +14,16 @@ import javax.crypto.spec.SecretKeySpec;
 /**
  * The keys of the local token issuer (ADR-0033, Entscheidung 6), all derived from {@code
  * OPAA_AUTH_JWT_SECRET} with HKDF-SHA256 and one purpose label each, so the access-token signature,
- * the refresh-token lookup, the action-token lookup and the external-access token lookup never
- * share a key - and a rotation of the one secret changes all four at once, ending every local
- * session, every open link and every personal access token. Constructed by {@code
- * LocalAuthConfiguration}; without a secret (only possible in the {@code dev} profile, where the
- * startup guard is inert) every derivation fails with the same message the guard would have given.
+ * the refresh-token lookup, the action-token lookup, the external-access token lookup and the
+ * signature of a permission-transfer preview never share a key - and a rotation of the one secret
+ * changes all of them at once, ending every local session, every open link, every personal access
+ * token and every open preview. Constructed by {@code LocalAuthConfiguration}; without a secret
+ * (only possible in the {@code dev} profile, where the startup guard is inert) every derivation
+ * fails with the same message the guard would have given.
  */
 public final class LocalAuthKeyService {
 
-  /** The four purposes, each with the HKDF {@code info} label its ADR names. */
+  /** The purposes, each with the HKDF {@code info} label its ADR names. */
   public enum Purpose {
     ACCESS_TOKEN("opaa:jwt:access-token"),
     REFRESH_TOKEN_LOOKUP("opaa:jwt:refresh-token-lookup"),
@@ -32,7 +33,12 @@ public final class LocalAuthKeyService {
      * fourth purpose under the same mechanism, not a second Bauart. A rotation of the one secret
      * therefore invalidates every access token at once, as it already ends every local session.
      */
-    EXTERNAL_ACCESS_TOKEN_LOOKUP("opaa:jwt:external-access-token-lookup");
+    EXTERNAL_ACCESS_TOKEN_LOOKUP("opaa:jwt:external-access-token-lookup"),
+    /**
+     * The signature of a permission-transfer preview (ADR-0053, Entscheidung 10): any instance can
+     * check a preview another one showed, without the preview being stored anywhere.
+     */
+    PERMISSION_TRANSFER_PREVIEW("opaa:jwt:permission-transfer-preview");
 
     private final String info;
 

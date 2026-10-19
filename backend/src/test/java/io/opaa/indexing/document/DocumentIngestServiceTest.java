@@ -1234,7 +1234,8 @@ class DocumentIngestServiceTest {
               new LibraryStorageQuotaService(
                   documentRepository,
                   new LibraryProperties(1000, 0),
-                  Mockito.mock(PersonalStorageQuota.class)));
+                  Mockito.mock(PersonalStorageQuota.class),
+                  Mockito.mock(org.springframework.transaction.PlatformTransactionManager.class)));
       Path file = fileNamed("replace-under-quota.txt", "x".repeat(950));
       when(checksumService.computeSha256(file)).thenReturn("new-checksum");
       Document existing = existingIndexed(file, "old-checksum", 900L);

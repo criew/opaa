@@ -101,6 +101,7 @@ class PermissionTransferIntegrationTest {
   @Autowired private AssetAccessService assetAccessService;
   @Autowired private AuditEventRecorder auditEventRecorder;
   @Autowired private SuccessionCaseCloser successionCases;
+  @Autowired private PermissionTransferPreviewToken previewTokens;
 
   private UUID organizationA;
   private UUID organizationB;
@@ -594,16 +595,17 @@ class PermissionTransferIntegrationTest {
     assertThatThrownBy(() -> transferService.transfer(order, true, null, admin))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("keine gültige Vorschau");
-    assertThatThrownBy(() -> transferService.transfer(order, true, UUID.randomUUID(), admin))
+    assertThatThrownBy(
+            () -> transferService.transfer(order, true, UUID.randomUUID().toString(), admin))
         .isInstanceOf(ConflictException.class);
 
-    UUID previewOfAnotherOrder =
+    String previewOfAnotherOrder =
         transferService.preview(order(source, other, everything()), admin).previewId();
     assertThatThrownBy(() -> transferService.transfer(order, true, previewOfAnotherOrder, admin))
         .as("a preview is bound to the subjects and the scope it was taken for")
         .isInstanceOf(ConflictException.class);
 
-    UUID foreignPreview = transferService.preview(order, admin).previewId();
+    String foreignPreview = transferService.preview(order, admin).previewId();
     CurrentUser otherAdmin = user(organizationA, SystemRole.SYSTEM_ADMIN);
     assertThatThrownBy(() -> transferService.transfer(order, true, foreignPreview, otherAdmin))
         .as("a preview belongs to the caller it was shown to")
@@ -658,7 +660,7 @@ class PermissionTransferIntegrationTest {
     UUID library = libraryOwnedBy(organizationA, admin.id());
     PermissionTransferOrder order =
         order(source, target, EnumSet.of(PermissionTransferScope.ASSET_GRANTS));
-    UUID previewId = transferService.preview(order, admin).previewId();
+    String previewId = transferService.preview(order, admin).previewId();
 
     grantGroup(library, source, AssetRole.VIEWER, null);
 
@@ -798,7 +800,7 @@ class PermissionTransferIntegrationTest {
     UUID source = group(organizationA, "Referat 50");
     UUID target = group(organizationA, "Referat 52");
     PermissionTransferOrder order = order(source, target, everything());
-    UUID previewId = transferService.preview(order, admin).previewId();
+    String previewId = transferService.preview(order, admin).previewId();
 
     assertThatThrownBy(() -> transferService.transfer(order, false, previewId, admin))
         .isInstanceOf(ValidationException.class)
@@ -888,7 +890,8 @@ class PermissionTransferIntegrationTest {
         .as("the figure is named before anybody confirms anything")
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("über der Grenze");
-    assertThatThrownBy(() -> transferService.transfer(order, true, UUID.randomUUID(), admin))
+    assertThatThrownBy(
+            () -> transferService.transfer(order, true, UUID.randomUUID().toString(), admin))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("über der Grenze");
   }
@@ -967,7 +970,7 @@ class PermissionTransferIntegrationTest {
 
   /** Preview first, then execute - the one path production takes, and the only one that works. */
   private PermissionTransfer execute(PermissionTransferOrder order, CurrentUser caller) {
-    UUID previewId = transferService.preview(order, caller).previewId();
+    String previewId = transferService.preview(order, caller).previewId();
     return transferService.transfer(order, true, previewId, caller);
   }
 
@@ -988,7 +991,8 @@ class PermissionTransferIntegrationTest {
         assetAccessService,
         userRepository,
         auditEventRecorder,
-        successionCases);
+        successionCases,
+        previewTokens);
   }
 
   private Set<PermissionTransferScope> everything() {

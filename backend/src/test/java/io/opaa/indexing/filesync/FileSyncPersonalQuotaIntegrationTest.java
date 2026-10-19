@@ -51,6 +51,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -84,6 +85,7 @@ class FileSyncPersonalQuotaIntegrationTest {
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private LibraryProperties libraryProperties;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID ownerId;
   private KnowledgeLibrary library;
@@ -242,7 +244,8 @@ class FileSyncPersonalQuotaIntegrationTest {
 
   /** A second backend process: the same database and beans, its own quota service. */
   private LibraryStorageQuotaService secondInstance() {
-    return new LibraryStorageQuotaService(documentRepository, libraryProperties, personalQuota);
+    return new LibraryStorageQuotaService(
+        documentRepository, libraryProperties, personalQuota, transactionManager);
   }
 
   /** A listed size past the owner's quota is rejected before the download, as after it. */

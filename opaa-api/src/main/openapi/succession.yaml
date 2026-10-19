@@ -260,8 +260,8 @@ components:
           example: true
         previewId:
           type: string
-          format: uuid
-          description: The id of the preview this confirmation answers.
+          maxLength: 1024
+          description: The id of the preview this confirmation answers, exactly as the preview returned it.
 
     PermissionTransferCountsResponse:
       type: object
@@ -308,14 +308,14 @@ components:
       properties:
         previewId:
           type: string
-          format: uuid
+          maxLength: 1024
           description: >
-            What the execution has to show. The transfer runs only against a preview that was
-            taken, belongs to the same caller and still describes the same rows - compared by a
-            print over the affected rows, so a role changed in between is caught although the
-            figures stay the same. Otherwise it is refused with 409 and the caller previews again.
-            Valid for 30 minutes and held in the running process (ADR-0021), so a restart means one
-            more preview.
+            What the execution has to show, an opaque signed value. The transfer runs only against
+            a preview that was taken, belongs to the same caller and still describes the same rows -
+            compared by a print over the affected rows, so a role changed in between is caught
+            although the figures stay the same, and a preview already carried out is refused.
+            Otherwise it is refused with 409 and the caller previews again. Valid for 30 minutes on
+            every instance; nothing about it is stored (ADR-0053, Entscheidung 10).
         sourceType:
           $ref: "#/components/schemas/PermissionSubjectType"
         sourceId:
