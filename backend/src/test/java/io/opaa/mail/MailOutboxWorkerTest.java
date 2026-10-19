@@ -29,7 +29,13 @@ class MailOutboxWorkerTest {
   private final MailService mail = mock(MailService.class);
   private final MailSenderProvider senderProvider = mock(MailSenderProvider.class);
   private final MailOutboxWorker worker =
-      new MailOutboxWorker(outbox, mail, senderProvider, new ConcurrentTaskScheduler(), LEASE);
+      new MailOutboxWorker(
+          outbox,
+          mail,
+          senderProvider,
+          new ConcurrentTaskScheduler(),
+          java.time.Clock.systemUTC(),
+          LEASE);
 
   @Test
   void theRetryDelayDoublesFromOneMinuteUpToOneHour() {

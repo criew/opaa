@@ -5,6 +5,7 @@ import io.opaa.mail.MailOutbox.Batch;
 import io.opaa.mail.MailOutbox.Claimed;
 import io.opaa.mail.MailOutbox.Unreadable;
 import jakarta.annotation.PreDestroy;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -50,6 +51,7 @@ public class MailOutboxWorker {
   private final MailService mail;
   private final MailSenderProvider senderProvider;
   private final TaskScheduler scheduler;
+  private final Clock clock;
   private final Duration lease;
   private final AtomicBoolean runRequested = new AtomicBoolean();
   private volatile boolean stopping;
@@ -60,8 +62,9 @@ public class MailOutboxWorker {
       MailService mail,
       MailSenderProvider senderProvider,
       @Qualifier(MailOutboxConfiguration.SCHEDULER) TaskScheduler scheduler,
+      Clock clock,
       SmtpProperties smtp) {
-    this(outbox, mail, senderProvider, scheduler, leaseFor(smtp));
+    this(outbox, mail, senderProvider, scheduler, clock, leaseFor(smtp));
   }
 
   MailOutboxWorker(
@@ -69,11 +72,13 @@ public class MailOutboxWorker {
       MailService mail,
       MailSenderProvider senderProvider,
       TaskScheduler scheduler,
+      Clock clock,
       Duration lease) {
     this.outbox = outbox;
     this.mail = mail;
     this.senderProvider = senderProvider;
     this.scheduler = scheduler;
+    this.clock = clock;
     this.lease = lease;
   }
 
@@ -121,7 +126,7 @@ public class MailOutboxWorker {
             runRequested.set(false);
             deliverDue();
           },
-          Instant.now());
+          Instant.now(clock));
     } catch (TaskRejectedException shuttingDown) {
       runRequested.set(false);
     }

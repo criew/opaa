@@ -245,7 +245,12 @@ class MailOutboxIntegrationTest {
 
   private MailOutboxWorker workerOfAnotherInstance() {
     return new MailOutboxWorker(
-        outbox, mailService, senderProvider, new ConcurrentTaskScheduler(), SHORT_LEASE);
+        outbox,
+        mailService,
+        senderProvider,
+        new ConcurrentTaskScheduler(),
+        java.time.Clock.systemUTC(),
+        SHORT_LEASE);
   }
 
   private static void awaitThenDeliver(CountDownLatch start, MailOutboxWorker worker) {
