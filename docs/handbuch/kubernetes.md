@@ -792,7 +792,9 @@ Die Einträge folgen der Syntax von Content Security Policy Level 3: ein Origin,
 gilt der Standardport des Schemas. Ein Pfad im Eintrag schränkt die Quelle ein:
 `https://login.example.org/realms/opaa` erlaubt weder das Discovery-Dokument noch den
 `token_endpoint`, `https://login.example.org/realms/opaa/` nur das Discovery-Dokument, denn der
-`token_endpoint` liegt meist unter einem anderen Pfad. Deshalb nur Origins eintragen.
+`token_endpoint` liegt meist unter einem anderen Pfad. Deshalb nur Origins eintragen. Erlaubt sind
+die Schemata `http`, `https`, `ws` und `wss`; einen anderen Eintrag, etwa ein Schlüsselwort wie
+`'self'`, lehnt der Chart ab, und das Image bricht damit den Start ab.
 
 Nach denselben Regeln prüft die Ausgabe von `helm install` und `helm upgrade` den Eintrag gegen
 `bootstrap.oidc.issuerUri`:

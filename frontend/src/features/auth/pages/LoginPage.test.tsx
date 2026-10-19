@@ -303,8 +303,8 @@ describe('LoginPage', () => {
 
       const buttons = screen.getAllByRole('button', { name: /anmelden bei/i })
       expect(buttons).toHaveLength(2)
-      expect(buttons[0]).toHaveAccessibleName('Anmelden bei Verzeichnisdienst')
-      expect(buttons[1]).toHaveAccessibleName('Anmelden bei Partnerportal')
+      expect(buttons[0]).toHaveAccessibleName(/^Anmelden bei Verzeichnisdienst /)
+      expect(buttons[1]).toHaveAccessibleName(/^Anmelden bei Partnerportal /)
       // the host of the issuer is the line a person recognises their provider by
       expect(screen.getByText('idp.example.test')).toBeInTheDocument()
       expect(screen.getByText('partner.example.test')).toBeInTheDocument()
@@ -346,7 +346,9 @@ describe('LoginPage', () => {
         { withNotificationHost: false },
       )
 
-      await userEvent.click(screen.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }))
+      await userEvent.click(
+        screen.getByRole('button', { name: /^Anmelden bei Verzeichnisdienst / }),
+      )
       expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', {
         returnTo: '/spaces/s-1/chats/c-1?q=1#m-2',
       })
@@ -360,7 +362,9 @@ describe('LoginPage', () => {
         initialRoute: '/login?from=%2Fspaces%2Fs-1%2Fchats%2Fc-1',
         withNotificationHost: false,
       })
-      await userEvent.click(screen.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }))
+      await userEvent.click(
+        screen.getByRole('button', { name: /^Anmelden bei Verzeichnisdienst / }),
+      )
       expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', { returnTo: '/spaces/s-1/chats/c-1' })
       unmount()
 
@@ -369,7 +373,9 @@ describe('LoginPage', () => {
         initialRoute: '/login?from=%2F%2Fevil.example',
         withNotificationHost: false,
       })
-      await userEvent.click(screen.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }))
+      await userEvent.click(
+        screen.getByRole('button', { name: /^Anmelden bei Verzeichnisdienst / }),
+      )
       expect(loginOidc).toHaveBeenLastCalledWith('p-opaa', { returnTo: '/chat' })
     })
 

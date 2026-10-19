@@ -112,8 +112,7 @@ public class SuccessionDetectionService {
                   now));
           opened++;
         } else {
-          open.seenAt(now);
-          cases.save(open);
+          cases.markSeenIfOpen(open.getId(), now);
         }
       }
     }
@@ -125,9 +124,7 @@ public class SuccessionDetectionService {
         // Nobody is named: the state simply stopped holding - a group has an active member again,
         // an object was deleted. Where a person's action ended it, that action closes the case
         // itself and names them (SuccessionService#closeFor).
-        open.close(now, null);
-        cases.save(open);
-        closed++;
+        closed += cases.closeIfOpen(open.getId(), now, null);
       }
     }
     return new SuccessionDetectionRun(opened, closed);

@@ -79,8 +79,13 @@ expect_refusal "ADR-0021" --set backend.replicas=2
 expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE' --set 'backend.extraEnv[0].value=dev'
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
 expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
-# CSP keywords such as 'self' are quoted; quotes would break the nginx configuration.
+# CSP keywords such as 'self' are quoted; quotes would break the nginx configuration. The schema
+# admits what frontend/docker-entrypoint.d/05-opaa-runtime.sh admits at start, nothing else.
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra='self' https://login.example.org"
+expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=https://login.example.org; script-src *"
+expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=data: blob:"
+expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=ftp://files.example.org"
+expect_refusal "cspConnectSrcExtra" --set-string 'frontend.cspConnectSrcExtra=https://$host'
 
 # On the first start the image's entrypoint runs a temporary server for initdb that answers on the
 # socket only; a readiness probe over the socket reports ready while the service refuses TCP.
@@ -393,7 +398,6 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
   csp_case warn "$issuer" "https://login.example.org:8443"
   csp_case warn "https://login.example.org:8443/realms/opaa" "login.example.org"
   csp_case warn "$issuer" "https://login.example.org.evil.example"
-  csp_case warn "$issuer" "data: blob:"
   # Without a scheme, an https page admits https only; a bare word is a host name, not a keyword.
   csp_case warn "http://login.example.org/realms/opaa" "login.example.org"
   csp_case warn "$issuer" "self"

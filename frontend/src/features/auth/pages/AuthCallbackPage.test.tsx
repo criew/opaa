@@ -204,7 +204,7 @@ describe('AuthCallbackPage', () => {
     )
 
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Anmelden bei Verzeichnisdienst' }),
+      await screen.findByRole('button', { name: /^Anmelden bei Verzeichnisdienst / }),
     )
     expect(loginOidc).toHaveBeenCalledWith('p-opaa', { returnTo: '/spaces/s-1/chats/c-1' })
   })

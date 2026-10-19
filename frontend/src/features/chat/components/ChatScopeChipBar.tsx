@@ -154,7 +154,8 @@ export default function ChatScopeChipBar({
             variant="outlined"
             onClick={scopeLocked ? undefined : onSetScopeAll}
             disabled={scopeLocked}
-            aria-label="Wieder das Wissen des Space durchsuchen"
+            // Named by its visible label (WCAG 2.5.3); what it does is the description.
+            title="Wieder das Wissen des Space durchsuchen"
           />
         </>
       )}

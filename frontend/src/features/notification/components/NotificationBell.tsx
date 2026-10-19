@@ -13,6 +13,9 @@ import { notificationTarget } from './notificationTarget'
 import { getNotifications, markNotificationRead } from '../api/notificationApi'
 import { useAuthStore } from '@/shared/session/authStore'
 
+/** Highest count the badge spells out; beyond it, it shows "99+". */
+const BADGE_MAX = 99
+
 function formatCreatedAt(value: string): string {
   return new Date(value).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 }
@@ -74,17 +77,23 @@ export default function NotificationBell() {
     <>
       <IconButton
         onClick={(event) => void handleOpen(event)}
+        // The badge text is the button's only visible text, so the name carries it word for word
+        // (WCAG 2.5.3): "99+" beyond the badge's maximum, nothing at all while there is no unread.
         aria-label={
           unreadCount > 0
-            ? `Benachrichtigungen, ${unreadCount} ungelesen`
+            ? `Benachrichtigungen, ${unreadCount > BADGE_MAX ? `${BADGE_MAX}+` : unreadCount} ungelesen`
             : 'Benachrichtigungen, keine ungelesenen'
         }
         aria-haspopup="menu"
         aria-expanded={anchorEl ? 'true' : undefined}
       >
-        <Badge badgeContent={unreadCount} color="error">
+        {unreadCount > 0 ? (
+          <Badge badgeContent={unreadCount} max={BADGE_MAX} color="error">
+            <NotificationsIcon />
+          </Badge>
+        ) : (
           <NotificationsIcon />
-        </Badge>
+        )}
       </IconButton>
       <Menu
         anchorEl={anchorEl}

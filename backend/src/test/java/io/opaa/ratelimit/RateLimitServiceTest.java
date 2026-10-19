@@ -87,4 +87,43 @@ class RateLimitServiceTest {
     assertThat(service.tryAcquire("k").allowed()).isFalse();
     assertThat(service.tryAcquire("other").allowed()).isTrue();
   }
+
+  @Test
+  void aReleasedRequestFreesItsPlaceInTheWindowOfItsKeyOnly() {
+    var service = new RateLimitService(1, 60);
+    Decision granted = service.tryAcquire("k");
+    assertThat(granted.allowed()).isTrue();
+    assertThat(service.tryAcquire("other").allowed()).isTrue();
+
+    service.release("k", granted);
+    service.release("never-seen", granted);
+
+    assertThat(service.tryAcquire("k").allowed()).isTrue();
+    assertThat(service.tryAcquire("other").allowed()).isFalse();
+    assertThat(service.trackedKeys()).isEqualTo(2);
+  }
+
+  @Test
+  void aRequestThatOutlivedTheWindowGivesBackNothingThatIsNotItsOwn() throws InterruptedException {
+    // regression guard: releasing "the newest entry" would remove a later request's place
+    var service = new RateLimitService(1, 1);
+    Decision longRunning = service.tryAcquire("k");
+    Thread.sleep(1100);
+    assertThat(service.tryAcquire("k").allowed()).isTrue();
+
+    service.release("k", longRunning);
+
+    assertThat(service.tryAcquire("k").allowed()).isFalse();
+  }
+
+  @Test
+  void aRefusalHasNothingToGiveBack() {
+    var service = new RateLimitService(1, 60);
+    assertThat(service.tryAcquire("k").allowed()).isTrue();
+    Decision refused = service.tryAcquire("k");
+
+    service.release("k", refused);
+
+    assertThat(service.tryAcquire("k").allowed()).isFalse();
+  }
 }

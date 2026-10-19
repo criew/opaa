@@ -1,0 +1,2 @@
+# Python tools of the CI jobs that test .github/scripts and demo/seed; Renovate maintains the pin.
+pytest==9.1.1
