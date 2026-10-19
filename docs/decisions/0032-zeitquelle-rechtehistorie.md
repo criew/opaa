@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-19 · ergänzt durch ADR-0053 Entscheidung 9
+Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt durch ADR-0053 Entscheidung 9
 
 ## Kontext
 

@@ -6,9 +6,9 @@ nach [ADR-0053](../../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) abg
 Dieses Register führt jede Stelle, die die Annahme „ein Prozess“ trägt, und in der Spalte „Umbau“ das
 Sub-Issue von #1292, das sie umbaut, mit der zuständigen Entscheidung von ADR-0053 („E5“ = Entscheidung 5).
 „Hingenommen“ heißt: Die Stelle bleibt, das Handbuch nennt die Folge (#2952). „Erledigt“ heißt: Der
-Umbau ist geliefert, die Zeile beschreibt den Stand danach und entfällt mit dem Abschluss von #1292. Wer eine neue Stelle
-einführt (Cache, `@Scheduled`, Executor, Semaphore, Zähler, Start-Aktion), trägt sie hier mit Umbau ein und
-nennt „(ADR-0021)“ in der Javadoc (Regel in [backend/AGENTS.md](../AGENTS.md#prozesslokaler-zustand-adr-0021)).
+Umbau ist geliefert, die Zeile beschreibt den Stand danach und entfällt mit dem Abschluss von #1292.
+Wer eine neue Stelle einführt (Cache, `@Scheduled`, Executor, Semaphore, Zähler, Start-Aktion), trägt
+sie hier mit Umbau ein und nennt „(ADR-0021)“ in der Javadoc (Regel in [backend/AGENTS.md](../AGENTS.md#prozesslokaler-zustand-adr-0021)).
 
 Nicht im Register steht, was schon über die Datenbank koordiniert und keinen Umbau braucht: die
 Advisory-Locks in `UserRepository`, `GroupRepository`, `AssetGrantRepository` und `DirectorySyncRunLock`;

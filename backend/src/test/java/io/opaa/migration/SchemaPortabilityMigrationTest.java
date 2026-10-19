@@ -101,6 +101,7 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
         .containsExactlyInAnyOrder(
             "asset_grants_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "assets_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "permission_history_next_boundary search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "audit_incident_scope_grants_pseudonymize_person search_path=pg_catalog, "
                 + SCHEMA
                 + ", pg_temp",

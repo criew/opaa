@@ -6,6 +6,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: |
+              SET LOCAL lock_timeout = '5s';
               CREATE TABLE backend_instances (
                   id uuid NOT NULL,
                   host_name text NOT NULL,

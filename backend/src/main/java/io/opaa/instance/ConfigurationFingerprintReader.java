@@ -33,13 +33,9 @@ class ConfigurationFingerprintReader {
   private final List<FingerprintKey> keys;
 
   ConfigurationFingerprintReader(Environment environment, Clock clock) {
-    this(environment, clock, FingerprintKeys.delivered());
-  }
-
-  ConfigurationFingerprintReader(Environment environment, Clock clock, List<FingerprintKey> keys) {
     this.environment = environment;
     this.clock = clock;
-    this.keys = List.copyOf(keys);
+    this.keys = FingerprintKeys.delivered();
   }
 
   /** Every value of the fingerprint, sorted by key. */

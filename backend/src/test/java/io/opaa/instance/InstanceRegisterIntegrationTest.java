@@ -99,6 +99,25 @@ class InstanceRegisterIntegrationTest {
   }
 
   @Test
+  void anInstanceStartedAgainAfterAStopJoinsUnderANewIdentity() {
+    secondInstance(Map.of(), clock)
+        .run(
+            context -> {
+              CurrentInstance instance = context.getBean(CurrentInstance.class);
+              UUID first = instance.id();
+              ownRows.add(first);
+
+              instance.stop();
+              instance.start();
+              ownRows.add(instance.id());
+
+              assertThat(instance.id()).isNotEqualTo(first);
+              assertThat(registry.isAlive(first)).isFalse();
+              assertThat(registry.isAlive(instance.id())).isTrue();
+            });
+  }
+
+  @Test
   void aSecondInstanceWithAnotherJwtSecretDoesNotStartAndTheRefusalNamesOnlyTheKey() {
     String otherSecret = "another-secret-of-the-second-instance-0123456789";
 

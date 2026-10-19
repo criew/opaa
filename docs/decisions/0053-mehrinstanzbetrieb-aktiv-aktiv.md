@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-19 · löst [ADR-0021](0021-single-instance-betrieb.md) mit dem
+Akzeptiert · zuletzt geändert 2026-10-20 · löst [ADR-0021](0021-single-instance-betrieb.md) mit dem
 Abschluss von #1292 ab · ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
 
 ## Kontext

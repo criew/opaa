@@ -109,11 +109,12 @@ eine Instanz mit geändertem Wert den Start, und der nächste Startversuch danac
 
 ### Zeitzone
 
-Die Zeitzone setzen `.env.docker.example` (`TZ`) und der Helm-Chart (`backend.timeZone`) ausdrücklich,
-Vorgabe ist UTC. An ihr hängen die Uhrzeiten der nächtlichen und monatlichen Löschläufe, des Zeitplans einer
-Wissensbibliothek und des Feststellungslaufs der Nachfolge, die Tages-, Monats- und Jahresgrenzen der
-Fristen, etwa das Jahresende, zu dem anlassbezogene Klärungen gelöscht werden, die Erinnerungen vor
-einem Ablauf und die Datumsangaben in Mails. Sie gehört zum Konfigurationsabdruck.
+Die Zeitzone setzen `.env.docker.example` (`TZ`) und der Helm-Chart (`backend.timeZone`)
+ausdrücklich, Vorgabe ist UTC. An ihr hängen die Uhrzeiten der nächtlichen und monatlichen
+Löschläufe, des Zeitplans einer Wissensbibliothek und des Feststellungslaufs der Nachfolge, die
+Tages-, Monats- und Jahresgrenzen der Fristen, etwa das Jahresende, zu dem anlassbezogene Klärungen
+gelöscht werden, die Erinnerungen vor einem Ablauf und die Datumsangaben in Mails. Sie gehört zum
+Konfigurationsabdruck.
 
 ## Eine Organisation
 
