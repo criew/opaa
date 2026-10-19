@@ -1,6 +1,7 @@
 package io.opaa.directory.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * Stubs the shared {@code DirectorySyncStatusRecorder} spy of {@link
@@ -104,6 +106,22 @@ class DirectorySyncServiceStatusFailureTest {
     UUID id = userRepository.save(user).getId();
     createdUserIds.add(id);
     return id;
+  }
+
+  /** The status write of a failed run failing too must not replace the run's own cause. */
+  @Test
+  void aStatusWriteFailureAfterAFailedApplyKeepsTheApplysOwnCause() {
+    directoryClient.respondWith(
+        new DirectoryGroup(DIRECTORY_GUID, "x".repeat(300), null, null, Set.of()));
+
+    assertThatThrownBy(() -> directorySyncService.run(organizationId, syncProvider.getId()))
+        .isInstanceOf(DataIntegrityViolationException.class)
+        .satisfies(
+            thrown ->
+                assertThat(thrown.getSuppressed())
+                    .anySatisfy(
+                        suppressed ->
+                            assertThat(suppressed).hasMessage("simulated status write failure")));
   }
 
   @Test

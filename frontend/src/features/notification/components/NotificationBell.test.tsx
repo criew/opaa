@@ -80,6 +80,37 @@ describe('NotificationBell (#203)', () => {
     })
   })
 
+  // regression guard for WCAG 2.5.3: the badge's text is the button's only visible text, so the
+  // name carries it word for word and there is no hidden "0" when nothing is unread.
+  it.each([
+    [0, 'Benachrichtigungen, keine ungelesenen', null],
+    [3, 'Benachrichtigungen, 3 ungelesen', '3'],
+    [120, 'Benachrichtigungen, 99+ ungelesen', '99+'],
+  ])('names the bell after its badge for %i unread', async (unread, name, badgeText) => {
+    setMockAuthState()
+    server.use(
+      http.get('/api/v1/notifications', () =>
+        HttpResponse.json(
+          Array.from({ length: unread }, (_, i) => ({
+            id: `n${i}`,
+            type: 'ASSET_ASSOCIATED_TO_MIXED_SPACE',
+            title: `Meldung ${i}`,
+            readAt: null,
+            createdAt: '2026-03-01T10:00:00Z',
+          })),
+        ),
+      ),
+    )
+    renderWithProviders(<NotificationBell />, { withRouter: true })
+
+    const bell = await screen.findByRole('button', { name })
+    if (badgeText === null) {
+      expect(bell).toHaveTextContent(/^$/)
+    } else {
+      expect(bell).toHaveTextContent(badgeText)
+    }
+  })
+
   it.each([
     ['CONNECTION_EXPIRED', 'Verbindung abgelaufen: Zugang „Nextcloud intern“'],
     ['CONNECTION_ENDED', 'Verbindung getrennt: Zugang „Nextcloud intern“'],

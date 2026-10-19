@@ -241,7 +241,17 @@
     // Nebenfunde der Erkennung: die Seed-/Generator-Requirements der Demo und frontend/.nvmrc
     {
       matchManagers: ['pip_requirements'],
+      matchFileNames: ['demo/**'],
       addLabels: ['demo'],
+    },
+    // Das pytest der Skript- und Seed-Tests in der CI. Die Jobs, die es installieren
+    // (report-script, seed-script, Datenwirkung), sind keine Required Checks; ein Bump mergt deshalb
+    // nicht automatisch, sondern wartet auf ihr Ergebnis im PR.
+    {
+      matchManagers: ['pip_requirements'],
+      matchFileNames: ['.github/requirements-ci.txt'],
+      addLabels: ['ci'],
+      automerge: false,
     },
     {
       matchManagers: ['nvm'],
@@ -368,8 +378,8 @@
     },
     // Ein neuer SHA bei unveränderter Version heißt: Der Tag wurde umgehängt. Genau das ist der
     // Angriff, gegen den die Pins schützen. Renovate legt dafür erst nach Freigabe in der
-    // Abhängigkeits-Übersicht einen Branch an, denn cve-scan.yml und dependency-graph.yml laufen
-    // schon im PR mit Schreibrechten.
+    // Abhängigkeits-Übersicht einen Branch an, denn cve-scan.yml läuft schon im PR mit
+    // Schreibrecht (security-events: write).
     {
       matchManagers: ['github-actions'],
       matchUpdateTypes: ['digest'],

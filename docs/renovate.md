@@ -23,6 +23,7 @@ jederzeit auch lokal ausführen (unten).
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
+| pytest der CI-Jobs `report-script`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`); ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
 | Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) | `custom.regex` | `ci` |
 
@@ -34,9 +35,9 @@ sieht eine Version ohne `module` überhaupt nicht. Der Pin bekäme dann nie eine
 bliebe auf dem Stand stehen, auf den ihn die damalige CVE gehoben hat. Deshalb steht zu jedem
 solchen Pin ein `[libraries]`-Eintrag mit `version.ref`, den der Override über `libs.*` verwendet.
 
-Achtung bei den Demo-Requirements: Für Änderungen ausschließlich unter `demo/` läuft derzeit
-**kein** CI-Job (die Pfadfilter in `ci.yml` kennen `demo/` nicht) — solche Update-PRs vor dem
-Merge lokal gegen `demo/seed/seed.py` bzw. den Generator prüfen.
+Achtung bei den Demo-Requirements: Ein Update von `demo/seed/requirements.txt` übt der Job
+`seed-script` in `ci.yml` aus, für `demo/generator/requirements.txt` läuft **kein** CI-Job. Solche
+Update-PRs vor dem Merge lokal gegen den Generator prüfen.
 
 Regeln in [`renovate.json5`](../renovate.json5) (kommentiert): deutsche Commit-/PR-Texte im
 Stil `chore(deps): <Paket> auf <Version> aktualisieren`, Labels (unten), höchstens fünf
@@ -157,9 +158,9 @@ Workflows, ohne Dateiliste:
 - **`minimumReleaseAge: '3 days'`.** Ein neues Release wird frühestens drei Tage nach seinem
   Zeitstempel vorgeschlagen; bis dahin steht es als „Pending“ in der Abhängigkeits-Übersicht, und
   Renovate legt keinen Branch an (`internalChecksFilter` steht auf der Vorgabe `strict`). Ohne
-  Branch gibt es auch keinen PR-Lauf. Das ist wichtig, weil `cve-scan.yml` und
-  `dependency-graph.yml` auch bei `pull_request` laufen, und zwar in der Fassung des PRs mit ihren
-  Schreibrechten. Ein späteres `automerge: false` käme dafür zu spät.
+  Branch gibt es auch keinen PR-Lauf. Das ist wichtig, weil `cve-scan.yml` auch bei
+  `pull_request` läuft, und zwar in der Fassung des PRs mit seinem Schreibrecht
+  (`security-events: write`). Ein späteres `automerge: false` käme dafür zu spät.
   **Der Schutz ist nur teilweise:** Der Zeitstempel der Datasource `github-tags` ist das
   Commit-Datum (leichtgewichtiger Tag) bzw. das Tagger-Datum (annotierter Tag), angehoben auf das
   Datum eines GitHub-Releases, falls es eins gibt und es später liegt. Commit- und Tagger-Datum

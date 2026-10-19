@@ -223,7 +223,8 @@ export default function MetadataFilterPopover({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? popoverId : undefined}
-        aria-label="Metadatenfilter setzen"
+        // Contains the visible "Filter" word for word (WCAG 2.5.3).
+        aria-label="Filter für Metadaten setzen"
         sx={{ textTransform: 'none', fontSize: 12, py: 0.25 }}
       >
         Filter
