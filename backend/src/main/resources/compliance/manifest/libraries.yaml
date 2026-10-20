@@ -14,6 +14,8 @@ data:
           - source_type
           - schedule_enabled
           - schedule_cron
+          - schedule_booked_at
+          - schedule_booked_cron
           - diagnostics_locked
           - source_webhook_secret
           - core_context_prefix_document_type
@@ -273,3 +275,4 @@ nonPersonalTables:
     - fingerprint
     - fingerprint_hash
   backend_instance_fingerprint_key: [id, hmac_key, created_at]
+  shedlock: [name, lock_until, locked_at, locked_by]

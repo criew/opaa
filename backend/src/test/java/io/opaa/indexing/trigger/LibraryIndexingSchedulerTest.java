@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.common.ConflictException;
+import io.opaa.common.DatabaseClock;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
@@ -21,16 +22,16 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.SourceTypes;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * {@link LibraryIndexingScheduler}'s own responsibility is narrow - decide which libraries are due
@@ -55,14 +56,24 @@ class LibraryIndexingSchedulerTest {
     indexingService = mock(DocumentIndexingService.class);
     indexingJobService = mock(IndexingJobService.class);
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
-    Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-    scheduler =
-        new LibraryIndexingScheduler(
-            libraryRepository,
-            indexingService,
-            indexingJobService,
-            indexingRunEventRepository,
-            clock);
+    when(libraryRepository.bookScheduledRun(any(), any(), any())).thenReturn(1);
+    scheduler = schedulerAt(() -> NOW);
+  }
+
+  private LibraryIndexingScheduler schedulerAt(DatabaseClock databaseClock) {
+    return new LibraryIndexingScheduler(
+        libraryRepository,
+        indexingService,
+        indexingJobService,
+        indexingRunEventRepository,
+        databaseClock,
+        Clock.fixed(NOW, ZoneOffset.UTC));
+  }
+
+  /** The library as a tick of some instance left it after booking {@code bookedAt}. */
+  private static void booked(KnowledgeLibrary library, Instant bookedAt) {
+    ReflectionTestUtils.setField(library, "scheduleBookedAt", bookedAt);
+    ReflectionTestUtils.setField(library, "scheduleBookedCron", library.getScheduleCron());
   }
 
   private KnowledgeLibrary dueLibrary() {
@@ -142,14 +153,7 @@ class LibraryIndexingSchedulerTest {
   void doesNotTriggerALibraryThatIsNotDueYet() {
     KnowledgeLibrary library = dueLibrary();
     // The stored schedule fires at 03:00; a tick at 02:59 must not treat it as due.
-    Clock oneMinuteEarly = Clock.fixed(NOW.minusSeconds(60), ZoneOffset.UTC);
-    scheduler =
-        new LibraryIndexingScheduler(
-            libraryRepository,
-            indexingService,
-            indexingJobService,
-            indexingRunEventRepository,
-            oneMinuteEarly);
+    scheduler = schedulerAt(() -> NOW.minusSeconds(60));
     when(libraryRepository.findByScheduleEnabledTrue()).thenReturn(List.of(library));
 
     scheduler.triggerDueLibraries();
@@ -175,23 +179,13 @@ class LibraryIndexingSchedulerTest {
     verify(indexingService, never()).triggerScheduledIndexing(defective);
   }
 
-  // Verpasste Termine werden ausgelassen, nicht nachgeholt - a fresh
-  // scheduler (simulating a restart) only ever looks one tick-interval into the past on its first
-  // tick, never further back, however long the library's due time actually lies in the past.
+  // A schedule never booked under its current cron - just set or just changed - looks back one tick
+  // interval only, so it does not fire for a due time that lay before it was set.
   @Test
-  void aFreshTickAfterARestartDoesNotCatchUpADueTimeFromLongBeforeItStarted() {
+  void aScheduleNeverBookedDoesNotCatchUpADueTimeFromBeforeTheLastTickInterval() {
     KnowledgeLibrary library = dueLibrary();
-    // Due at 03:00, but this fresh scheduler's very first tick only starts at 03:05 - five
-    // minutes after the due time, well outside the single tick-interval look-back a first tick
-    // gets.
-    Clock fiveMinutesLate = Clock.fixed(NOW.plusSeconds(5 * 60), ZoneOffset.UTC);
-    scheduler =
-        new LibraryIndexingScheduler(
-            libraryRepository,
-            indexingService,
-            indexingJobService,
-            indexingRunEventRepository,
-            fiveMinutesLate);
+    // Due at 03:00; the tick at 03:05 is five minutes after it, outside the one tick interval.
+    scheduler = schedulerAt(() -> NOW.plusSeconds(5 * 60));
     when(libraryRepository.findByScheduleEnabledTrue()).thenReturn(List.of(library));
 
     scheduler.triggerDueLibraries();
@@ -199,67 +193,65 @@ class LibraryIndexingSchedulerTest {
     verify(indexingService, never()).triggerScheduledIndexing(any());
   }
 
-  // A fixed "now minus 60s" window can develop a gap between two ticks
-  // that fired more than 60 seconds apart (a slow previous tick, scheduler thread contention) -
-  // tracking the previous tick's own `now` as the next window's start closes that gap instead.
-  // Here the due time (NOW, 03:00:00) lies 90s before the first tick and 65s before the second -
-  // a plain "now minus 60s" window on the second tick alone would start at 03:00:05, strictly
-  // after the due time, and miss it; continuing from the first tick's own `now` (02:58:30)
-  // still covers it.
+  // A tick that comes late - the scheduler thread held up by another run, or a minute in which no
+  // instance got to tick - still books the due time of a schedule that was booked before: the
+  // look-back reaches CATCH_UP behind the database clock, not just one tick interval.
   @Test
-  void aDelayedSecondTickStillCatchesADueTimeThatANaiveFixedWindowWouldHaveMissed() {
+  void aLateTickStillBooksTheMissedDueTimeOfAScheduleBookedBefore() {
     KnowledgeLibrary library = dueLibrary();
+    booked(library, NOW.minus(Duration.ofDays(1)));
     when(libraryRepository.findByScheduleEnabledTrue()).thenReturn(List.of(library));
-    AtomicReference<Instant> now = new AtomicReference<>(NOW.minusSeconds(90));
-    scheduler =
-        new LibraryIndexingScheduler(
-            libraryRepository,
-            indexingService,
-            indexingJobService,
-            indexingRunEventRepository,
-            new MutableClock(now, ZoneOffset.UTC));
     when(indexingJobService.isJobRunning(library.getId(), library.getOrganizationId()))
         .thenReturn(false);
+    scheduler = schedulerAt(() -> NOW.plusSeconds(5 * 60));
 
-    // First tick, 90s before the due time - establishes lastTickAt, nothing due yet.
-    scheduler.triggerDueLibraries();
-    verify(indexingService, never()).triggerScheduledIndexing(any());
-
-    // Second tick, 105s later (45s of jitter beyond the nominal 60s interval) - now 65s past the
-    // due time. A fresh "now minus 60s" window would start after the due time and miss it; the
-    // window continuing from the first tick's own `now` still reaches back far enough.
-    now.set(NOW.plusSeconds(65));
     scheduler.triggerDueLibraries();
 
+    verify(libraryRepository).bookScheduledRun(library.getId(), library.getScheduleCron(), NOW);
     verify(indexingService, times(1)).triggerScheduledIndexing(library);
   }
 
-  /**
-   * A {@link Clock} whose {@link #instant()} reflects a caller-mutated reference, for tests that
-   * need to advance time between two calls to the scheduler without waiting in real time.
-   */
-  private static final class MutableClock extends Clock {
-    private final AtomicReference<Instant> now;
-    private final ZoneId zone;
+  // A late tick never reaches further back than CATCH_UP: a due time missed for longer is skipped.
+  @Test
+  void aTickLaterThanTheCatchUpDoesNotBookTheMissedDueTime() {
+    KnowledgeLibrary library = dueLibrary();
+    booked(library, NOW.minus(Duration.ofDays(1)));
+    when(libraryRepository.findByScheduleEnabledTrue()).thenReturn(List.of(library));
+    scheduler = schedulerAt(() -> NOW.plus(LibraryIndexingScheduler.CATCH_UP).plusSeconds(1));
 
-    MutableClock(AtomicReference<Instant> now, ZoneId zone) {
-      this.now = now;
-      this.zone = zone;
-    }
+    scheduler.triggerDueLibraries();
 
-    @Override
-    public ZoneId getZone() {
-      return zone;
-    }
+    verify(libraryRepository, never()).bookScheduledRun(any(), any(), any());
+    verify(indexingService, never()).triggerScheduledIndexing(any());
+  }
 
-    @Override
-    public Clock withZone(ZoneId zone) {
-      return new MutableClock(now, zone);
-    }
+  // A due time another instance already booked is not triggered again: the booking, not the tick,
+  // decides, so a short run starts once per due time however many instances tick.
+  @Test
+  void aDueTimeAnotherInstanceAlreadyBookedIsNotTriggeredAgain() {
+    KnowledgeLibrary library = dueLibrary();
+    when(libraryRepository.findByScheduleEnabledTrue()).thenReturn(List.of(library));
+    when(libraryRepository.bookScheduledRun(library.getId(), library.getScheduleCron(), NOW))
+        .thenReturn(0);
 
-    @Override
-    public Instant instant() {
-      return now.get();
-    }
+    scheduler.triggerDueLibraries();
+
+    verify(indexingService, never()).triggerScheduledIndexing(any());
+    verify(indexingJobService, never()).isJobRunning(any(), any());
+    verify(indexingRunEventRepository, never()).save(any());
+  }
+
+  // The window starts after the last booking, so a booked due time is not even offered again.
+  @Test
+  void aDueTimeThisLibraryAlreadyBookedIsNotOfferedAgain() {
+    KnowledgeLibrary library = dueLibrary();
+    booked(library, NOW);
+    when(libraryRepository.findByScheduleEnabledTrue()).thenReturn(List.of(library));
+    scheduler = schedulerAt(() -> NOW.plusSeconds(30));
+
+    scheduler.triggerDueLibraries();
+
+    verify(libraryRepository, never()).bookScheduledRun(any(), any(), any());
+    verify(indexingService, never()).triggerScheduledIndexing(any());
   }
 }

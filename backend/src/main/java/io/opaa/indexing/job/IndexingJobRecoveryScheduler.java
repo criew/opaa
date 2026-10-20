@@ -1,6 +1,7 @@
 package io.opaa.indexing.job;
 
 import io.opaa.common.ProcessStart;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -59,6 +60,10 @@ public class IndexingJobRecoveryScheduler {
    * not to matter for load.
    */
   @Scheduled(fixedDelay = 15 * 60 * 1000L)
+  @SchedulerLock(
+      name = "indexing-job-stale-recovery",
+      lockAtLeastFor = "PT14M",
+      lockAtMostFor = "PT30M")
   public void recoverStaleRunningJobs() {
     int recovered = indexingJobService.recoverStaleJobs(properties.staleJobTimeout());
     if (recovered > 0) {

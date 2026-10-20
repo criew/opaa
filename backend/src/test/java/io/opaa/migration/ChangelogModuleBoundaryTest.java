@@ -56,7 +56,8 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "organizations",
                   "outbound_proxy_settings",
                   "backend_instances",
-                  "backend_instance_fingerprint_key")),
+                  "backend_instance_fingerprint_key",
+                  "shedlock")),
           Map.entry(
               IDENTITY,
               List.of(

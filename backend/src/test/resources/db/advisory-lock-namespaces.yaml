@@ -1,0 +1,53 @@
+# Every namespace of a Postgres advisory lock (the first key of pg_advisory_xact_lock(int, int) and
+# its relatives) with the files that take it, relative to backend/src/main. A new lock takes the next
+# free number, and that number goes here first: in-flight branches reserve theirs under reserved
+# and move them to namespaces when they land. A number never comes back once used: retired lists
+# the ones no code takes any more. Rules: backend/AGENTS.md, "Advisory-Locks"; checked by
+# AdvisoryLockNamespaceTest.
+
+namespaces:
+  - number: 202
+    purpose: grant mutations of one asset (last-owner guard)
+    owners: [java/io/opaa/permission/AssetGrantRepository.java]
+  - number: 203
+    purpose: role changes of one account from token and manual assignment
+    owners: [java/io/opaa/auth/UserRepository.java]
+  - number: 204
+    purpose: groups of one identity provider created at first sign-in
+    owners: [java/io/opaa/group/GroupRepository.java]
+  - number: 205
+    purpose: one directory run per identity provider
+    owners: [java/io/opaa/directory/sync/DirectorySyncRunLock.java]
+  - number: 207
+    purpose: OAuth authorisation starts of one person and profile
+    owners: [java/io/opaa/connection/oauth/ConnectionAuthorizationRepository.java]
+  - number: 208
+    purpose: the writers of one document's vector rows
+    owners: [java/io/opaa/indexing/chunk/VectorStoreWriter.java]
+  - number: 211
+    purpose: the start-up seeds, one instance at a time
+    owners:
+      - java/io/opaa/account/LocalAdminSeedMarkerRepository.java
+      - java/io/opaa/auth/OidcProviderSeedMarkerRepository.java
+      - java/io/opaa/llm/LlmModelSeedMarkerRepository.java
+  - number: 230
+    purpose: the boundaries of the permission history, installation-wide monotonic
+    owners: [resources/db/changelog/rights/2026-10-19-permission-history-boundary.yaml]
+  - number: 231
+    purpose: registration in the instance register
+    owners: [java/io/opaa/instance/InstanceRegistry.java]
+
+reserved:
+  - number: 209
+    claimedBy: "PR #2957 (personal storage quota)"
+    owners: [java/io/opaa/knowledge/DocumentRepository.java]
+  - number: 210
+    claimedBy: "PR #2958 (source event batches)"
+    owners: [java/io/opaa/indexing/run/SourceEventBatches.java]
+  - number: 212
+    claimedBy: "#2946 (invalidation bus, denylist, session counter)"
+    owners: []
+
+retired:
+  - number: 206
+    purpose: submissions of connection profile requests, removed with the requests

@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibrary, UUID> {
 
@@ -141,6 +142,24 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
    * so this needs no additional {@code sourceType} filter.
    */
   List<KnowledgeLibrary> findByScheduleEnabledTrue();
+
+  /**
+   * Books the due time {@code due} of the schedule {@code cron} for the library, unless an earlier
+   * tick - of this or another instance - already booked it or a later one: one due time, one run. A
+   * booking under another cron counts as none, so a changed schedule starts afresh.
+   *
+   * @return whether this call booked it
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      value =
+          "update knowledge_libraries set schedule_booked_at = :due, schedule_booked_cron = :cron"
+              + " where id = :id and schedule_enabled and schedule_cron = :cron"
+              + " and (schedule_booked_at is null or schedule_booked_cron is distinct from :cron"
+              + " or schedule_booked_at < :due)",
+      nativeQuery = true)
+  int bookScheduledRun(@Param("id") UUID id, @Param("cron") String cron, @Param("due") Instant due);
 
   /**
    * How many shared libraries of one organization are diagnosegesperrt - counted over the whole
