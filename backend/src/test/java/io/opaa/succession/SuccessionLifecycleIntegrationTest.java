@@ -741,7 +741,7 @@ class SuccessionLifecycleIntegrationTest {
                 PermissionTransferScope.ASSET_GRANTS,
                 PermissionTransferScope.SPACE_MEMBERSHIPS,
                 PermissionTransferScope.CAPABILITIES));
-    UUID previewId = transferService.preview(fromTheGroup, admin).previewId();
+    String previewId = transferService.preview(fromTheGroup, admin).previewId();
     transferService.transfer(fromTheGroup, true, previewId, admin);
 
     assertThat(libraries.findById(library).orElseThrow().getOwnerGroupId())

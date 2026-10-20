@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
+Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
 (Entscheidungen 3, 5, 9 und 12) und [ADR-0025](0025-mehrere-oidc-anbieter.md)
 
 ## Kontext
@@ -86,20 +86,23 @@ Anbieter oder `invalid_client` ändert keinen Zustand. Nach einem `401` der Quel
 nie (`refreshTokensStayInTheTokenStore`); kein Wert zeigt ein Token in `toString`, Antworten, Logs
 und Protokolle enthalten weder Token noch Code, Verifier, `state` oder Secret.
 
-### 5. Widerruf nach dem Commit über einen begrenzten Pool
+### 5. Widerruf nach dem Commit über eine Warteschlange in der Datenbank
 
 Verwurfspfade (`discard`, `discardAllUnder`, Ersatz beim Neuverbinden) lesen die Token-Zeilen mit
 `PESSIMISTIC_WRITE`, nehmen in der Transaktion einen Schnappschuss (Registrierung, wie sie gerade
-steht) und übergeben die Widerrufe in `afterCommit` als **einen** Eintrag an
-`connection.token.GrantRevocations`; ein Rollback übergibt nichts. Deshalb verwirft
+steht, mit aufgelösten Endpunkten, Client-Daten und Tokens: `SecretIssuer#revocation`) und
+schreiben ihn je Grant verschlüsselt in `connection_grant_revocations`
+(`connection.token.GrantRevocations`); ein Rollback verwirft die Zeilen mit. Deshalb verwirft
 `ConnectionProfileService` bei Adress- oder Registrierungswechsel und Notabschaltung vor der Änderung
-und vor dem Löschen des Secrets (`lockForChange`). Der Pool: `THREADS` (2) und `QUEUE_CAPACITY`
-(1000 Einträge je Verwurf, nicht je Grant); ein Eintrag widerruft seine Grants nacheinander mit je
-eigenem Zeitlimit, ein Fehler bricht die übrigen nicht ab; ist die Warteschlange voll, wird der
-Eintrag mit einer WARN-Zeile verworfen, der Aufrufer blockiert nie. Beim Herunterfahren
-`SHUTDOWN_GRACE` (2 s), dann werden Reste verworfen (prozesslokal, ADR-0021). `BearerPost`
-erneuert ein abgelaufenes oder bald ablaufendes Zugriffstoken vorher mit dem Refresh-Token und
-schickt das frische. Nicht über den Pool läuft nur der Widerruf eines frischen Grants, den der
+und vor dem Löschen des Secrets (`lockForChange`). Widerrufen wird nach dem Commit auf einem eigenen
+Scheduler mit `THREADS` (2) Threads je Instanz, angestoßen durch den Commit und alle 30 s: Ein Lauf
+übernimmt eine fällige Zeile mit `FOR UPDATE SKIP LOCKED` und einer Frist nach Datenbankuhr,
+widerruft sie einmal mit eigenem Zeitlimit und löscht sie, auch wenn der Anbieter ablehnt; ein
+Fehler bricht die übrigen nicht ab, der Aufrufer blockiert nie. Stoppt eine Instanz mitten im
+Widerruf, übernimmt nach Ablauf der Frist irgendeine Instanz die Zeile (ADR-0053, Entscheidung 10);
+nach drei unterbrochenen Versuchen wird sie mit WARN-Zeile verworfen. `BearerPost` erneuert ein
+abgelaufenes oder bald ablaufendes Zugriffstoken vorher mit dem Refresh-Token und schickt das
+frische. Nicht über den Pool läuft nur der Widerruf eines frischen Grants, den der
 Abschluss nicht ablegen kann (`ConnectionAuthorizationService#complete`, direkt nach dem Rollback);
 ArchUnit `grantsAreRevokedOnlyAfterTheCommit`.
 
@@ -176,8 +179,8 @@ Endpunkte und sehen nie ein Token.
 **Schwieriger:** Jede Änderung an Verwurf oder Erneuerung muss die Sperrreihenfolge und das
 Widerrufsfenster beachten; Tests brauchen Fake-Autorisierungsserver, teils über TLS.
 
-**Restrisiken:** Ein Widerruf geht verloren, wenn die Warteschlange voll ist, der Prozess vorher
-endet oder der Anbieter nicht erreichbar ist; das einzige Signal ist die WARN-Zeile, der Grant
+**Restrisiken:** Ein Widerruf geht verloren, wenn der Anbieter nicht erreichbar ist oder ablehnt;
+das einzige Signal ist die WARN-Zeile, der Grant
 bleibt beim Anbieter gültig (Refresh-Tokens etwa von Dropbox laufen nicht ab) — Gegenmaßnahme ist
 ein neues Client-Secret beim Anbieter. Die Warteschlange ist eine für alle Zugänge: Ein toter
 Anbieter mit 1000 Grants hält einen Thread rund 1000 × 15 s; Trennen und Neuverbinden einer Person,

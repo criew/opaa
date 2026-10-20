@@ -828,7 +828,9 @@ Berechtigungen weiterhin einzeln.
 7 Objekten, Mitglied in 2 Spaces, Eigentum an 3 Objekten"). Danach die ausdrückliche **Bestätigung**,
 gegen dieselbe Lage, die die Vorschau gezeigt hat: Hat sich an den betroffenen Zeilen inzwischen
 etwas geändert oder ist die Vorschau zu alt, wird nichts angewendet, und OPAA verlangt eine neue
-Vorschau. Beides steht im Nachweisprotokoll — **auch eine Vorschau, die niemand ausführt**: Sie
+Vorschau. Eine ausgeführte Vorschau lässt sich nicht ein zweites Mal bestätigen. Gespeichert wird
+die Vorschau nirgends: Die Bestätigung gilt auch nach einem Neustart des Backends und auf einer
+anderen Backend-Instanz. Beides steht im Nachweisprotokoll — **auch eine Vorschau, die niemand ausführt**: Sie
 liest alles, was eine Gruppe oder eine Person hält.
 
 **Das Ziel muss wirksam sein** — nicht aufgelöst, sein Anbieter eingeschaltet. **Leer sein darf es:**

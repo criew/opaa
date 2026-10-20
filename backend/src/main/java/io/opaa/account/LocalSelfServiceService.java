@@ -26,10 +26,10 @@ import org.springframework.stereotype.Service;
  * account work (lookup, account, mail) to the {@link MailDispatchExecutor} and answer after {@link
  * #RESPONSE_FLOOR}, so the response time is the same constant in every outcome; a registration
  * hashes on the request thread first - in every outcome, so the clear-text password never sits in a
- * queue - and synchronous lookups or SMTP would let the time betray the account. Deliberately not
+ * queue - and synchronous lookups would let the time betray the account. Deliberately not
  * {@code @Transactional}: the account writes are one transaction each in {@link
- * LocalSelfServiceAccountService} and {@link LocalPasswordService}, run on the executor's thread,
- * and the send follows their commit.
+ * LocalSelfServiceAccountService} and {@link LocalPasswordService}, run on the executor's thread;
+ * the link mail goes to the outbox in that transaction and leaves after its commit.
  */
 @Service
 public class LocalSelfServiceService implements LocalSelfServiceAvailability {
@@ -47,7 +47,6 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
 
   private final LocalSelfServiceAccountService accounts;
   private final LocalPasswordService passwords;
-  private final LocalAccountMailer mailer;
   private final LocalAuthSettingsRepository settings;
   private final OidcProviderRegistry registry;
   private final PublicBaseUrl publicBaseUrl;
@@ -59,7 +58,6 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
   public LocalSelfServiceService(
       LocalSelfServiceAccountService accounts,
       LocalPasswordService passwords,
-      LocalAccountMailer mailer,
       LocalAuthSettingsRepository settings,
       OidcProviderRegistry registry,
       PublicBaseUrl publicBaseUrl,
@@ -69,7 +67,6 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
     this(
         accounts,
         passwords,
-        mailer,
         settings,
         registry,
         publicBaseUrl,
@@ -81,7 +78,6 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
   LocalSelfServiceService(
       LocalSelfServiceAccountService accounts,
       LocalPasswordService passwords,
-      LocalAccountMailer mailer,
       LocalAuthSettingsRepository settings,
       OidcProviderRegistry registry,
       PublicBaseUrl publicBaseUrl,
@@ -90,7 +86,6 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
       Executor executor) {
     this.accounts = accounts;
     this.passwords = passwords;
-    this.mailer = mailer;
     this.settings = settings;
     this.registry = registry;
     this.publicBaseUrl = publicBaseUrl;
@@ -148,11 +143,7 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
   public void requestPasswordReset(String email) {
     String address = LocalUserService.requireAddress(email);
     long deadline = System.nanoTime() + RESPONSE_FLOOR.toNanos();
-    executor.execute(
-        () ->
-            accounts
-                .issueResetLinkFor(address)
-                .ifPresent(link -> mailer.sendPasswordReset(link.user(), link.token())));
+    executor.execute(() -> accounts.issueResetLinkFor(address));
     holdUntil(deadline);
   }
 
@@ -189,7 +180,6 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
     log.info(
         "Self-registration issued a verification link for local account {}",
         registered.user().getId());
-    mailer.sendRegistrationVerification(registered.user(), registered.verification());
   }
 
   private boolean linksPossible() {

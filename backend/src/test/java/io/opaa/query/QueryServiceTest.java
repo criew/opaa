@@ -1065,7 +1065,6 @@ class QueryServiceTest {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
     when(chatService.spaceHasLibraryAssociations(
@@ -1096,7 +1095,6 @@ class QueryServiceTest {
           new Chat(UUID.randomUUID(), currentUserId, organizationId, null, useKnowledge, Set.of());
       UUID chatId = chat.getId();
       when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-      when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
       when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
       when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
       when(chatService.spaceHasLibraryAssociations(
@@ -1151,7 +1149,6 @@ class QueryServiceTest {
     Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, false, Set.of());
     UUID chatId = chat.getId();
     when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
-    when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
     when(chatService.spaceHasLibraryAssociations(
@@ -1372,10 +1369,9 @@ class QueryServiceTest {
 
   /**
    * #525 acceptance criterion: "Folgefragen im selben Chat nutzen den persistierten Verlauf als
-   * Kontext". Simulates a cold in-memory cache (the very first {@code chatMemory.get} call in this
-   * test returns empty, as it would after a restart or eviction) with history nonetheless available
-   * from the persisted store - and asserts the search query is enriched from that persisted
-   * history, not left as the plain question.
+   * Kontext". The window of a persisted chat is replaced from the persisted store on every turn,
+   * whatever the in-memory cache held - the search query is enriched from that persisted history,
+   * not left as the plain question.
    */
   @Test
   void queryEnrichesSearchFromPersistedHistoryOnAColdConversationCache() {
@@ -1388,9 +1384,8 @@ class QueryServiceTest {
         List.of(
             new UserMessage("Was sind meine Ausgaben bei Apple?"),
             new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR."));
-    // First call (the seeding check) sees a cold cache; the second call (inside
-    // buildSearchQuery) sees it warmed by the seeding this test asserts happened.
-    when(chatMemory.get(conversationKey)).thenReturn(List.of(), persistedHistory);
+    // The read inside the retrieval sees the window the reload below wrote.
+    when(chatMemory.get(conversationKey)).thenReturn(persistedHistory);
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(persistedHistory);
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
@@ -1403,7 +1398,9 @@ class QueryServiceTest {
     queryService.query(
         "Mach daraus eine tabellarische Auflistung", chatId, caller, true, List.of());
 
-    verify(chatMemory).add(conversationKey, persistedHistory);
+    org.mockito.InOrder reload = org.mockito.Mockito.inOrder(chatMemory);
+    reload.verify(chatMemory).clear(conversationKey);
+    reload.verify(chatMemory).add(conversationKey, persistedHistory);
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
     verify(vectorChunkSearch).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery())

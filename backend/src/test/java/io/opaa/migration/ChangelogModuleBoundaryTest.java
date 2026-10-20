@@ -73,6 +73,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "branding_settings",
                   "mail_settings",
                   "mail_templates",
+                  "mail_outbox",
                   "notifications",
                   "audit_log",
                   "audit_actor_pseudonyms",
@@ -142,7 +143,8 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "connected_accounts",
                   "connection_tokens",
                   "connection_person_states",
-                  "connection_authorizations")),
+                  "connection_authorizations",
+                  "connection_grant_revocations")),
           Map.entry(
               WORKSPACE,
               List.of(

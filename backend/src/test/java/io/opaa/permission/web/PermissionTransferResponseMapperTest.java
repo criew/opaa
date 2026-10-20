@@ -101,7 +101,7 @@ class PermissionTransferResponseMapperTest {
   private PermissionTransferPreview preview(
       PermissionTransferCounts counts, int grantedAssets, int spaces) {
     return new PermissionTransferPreview(
-        UUID.randomUUID(),
+        "vorschau-kennung",
         new PermissionSubject(PermissionSubjectType.GROUP, SOURCE, ORGANIZATION),
         "Referat 50",
         new PermissionSubject(PermissionSubjectType.GROUP, TARGET, ORGANIZATION),

@@ -4,7 +4,6 @@ import io.opaa.auth.User;
 import io.opaa.compliance.DataFlow;
 import io.opaa.mail.MailService;
 import io.opaa.mail.MailTemplateKey;
-import io.opaa.mail.SendResult;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -36,8 +35,9 @@ public class ExternalAccessTokenMailer {
     this.clock = clock;
   }
 
-  public SendResult sendExpiring(User owner, String tokenName, Instant expiresAt) {
-    return mail.send(
+  /** Queued to the mail outbox, in the caller's transaction when there is one. */
+  public void sendExpiring(User owner, String tokenName, Instant expiresAt) {
+    mail.enqueue(
         MailTemplateKey.EXTERNAL_ACCESS_TOKEN_EXPIRING,
         Locale.GERMAN,
         owner.getEmail(),

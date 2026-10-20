@@ -67,7 +67,7 @@ public class ProviderTokens implements SecretIssuer {
   }
 
   @Override
-  public Runnable revocation(UUID profileId, StoredTokens tokens) {
+  public String revocation(UUID profileId, StoredTokens tokens) {
     ClientRegistration registration;
     try {
       registration = registrations.registrationOf(profileId);
@@ -79,15 +79,32 @@ public class ProviderTokens implements SecretIssuer {
         || auth.revocation().endpoint() == null) {
       return null;
     }
-    if (auth.revocation() instanceof Revocation.BearerPost) {
-      return () -> {
-        String access = bearerFor(registration, auth, tokens);
-        if (access != null) {
-          client.revoke(registration, auth, tokens.refreshToken(), access);
-        }
-      };
+    try {
+      return RevocationOrder.of(registration, auth, tokens).toText();
+    } catch (SourceCredentialsException e) {
+      log.warn("No revocation for a token of profile {}: {}", profileId, e.getMessage());
+      return null;
     }
-    return () -> client.revoke(registration, auth, tokens.refreshToken(), tokens.accessToken());
+  }
+
+  @Override
+  public void revoke(String order) {
+    RevocationOrder parsed = RevocationOrder.parse(order);
+    if (parsed == null) {
+      log.warn("An unreadable revocation order was dropped");
+      return;
+    }
+    ClientRegistration registration = parsed.registration();
+    OAuthAuth auth = (OAuthAuth) registration.signIn();
+    StoredTokens tokens = parsed.tokens();
+    if (auth.revocation() instanceof Revocation.BearerPost) {
+      String access = bearerFor(registration, auth, tokens);
+      if (access != null) {
+        client.revoke(registration, auth, tokens.refreshToken(), access);
+      }
+      return;
+    }
+    client.revoke(registration, auth, tokens.refreshToken(), tokens.accessToken());
   }
 
   /**

@@ -24,11 +24,19 @@ public interface SecretIssuer {
   Issued renew(UUID profileId, String refreshToken, String issuedFor);
 
   /**
-   * What revokes {@code tokens} at the provider, with the registration of {@code profileId} as it
-   * stands now, to run once after the discard committed, off any transaction; {@code null} where
-   * the provider offers no revocation. It never throws.
+   * The order that revokes {@code tokens} at the provider, with the registration of {@code
+   * profileId} as it stands now: self-contained text that {@link #revoke} carries out on any
+   * instance, once the discard committed and off any transaction. It holds the tokens and the
+   * client secret and is stored only encrypted. {@code null} where the provider offers no
+   * revocation; it never throws.
    */
-  Runnable revocation(UUID profileId, StoredTokens tokens);
+  String revocation(UUID profileId, StoredTokens tokens);
+
+  /**
+   * Carries out an order of {@link #revocation} at its provider - never within a transaction. A
+   * failure is logged without any token and never thrown; an unreadable order revokes nothing.
+   */
+  void revoke(String order);
 
   /**
    * An access token valid now from the own sign-in of the profile {@code profileId} - client

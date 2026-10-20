@@ -438,7 +438,7 @@ Wegen:
 | `OPAA_AUTH_JWT_SECRET` | `jwtSecret` | ja | Wurzelgeheimnis der lokalen Anmeldung, mindestens 32 Zeichen, erzeugt mit `openssl rand -base64 48` |
 | `OPAA_DB_PASSWORD` | `databasePassword` | ja | Passwort des Datenbankkontos |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | `credentialsEncryptionKey` | ja | Base64 von 32 Zufallsbytes, erzeugt mit `openssl rand -base64 32`; verschlüsselt Zugangsdaten von Quellen und Verbindungen |
-| `OPAA_SETTINGS_ENCRYPTION_KEY` | `settingsEncryptionKey` | ja | wie oben; verschlüsselt Modellschlüssel und das Passwort des Mailservers |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | `settingsEncryptionKey` | ja | wie oben; verschlüsselt Modellschlüssel, das Passwort des Mailservers und wartende E-Mails |
 | `OPAA_UPLOAD_S3_ACCESS_KEY` | `s3AccessKey` | bei `uploads.store: s3` | Zugangsschlüssel des Objektspeichers |
 | `OPAA_UPLOAD_S3_SECRET_KEY` | `s3SecretKey` | bei `uploads.store: s3` | Geheimschlüssel des Objektspeichers |
 | `OPAA_OPENAI_EMBEDDING_API_KEY` | `embeddingApiKey` | nein | Schlüssel des Einbettungs-Endpunkts |
