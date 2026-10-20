@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.openai.errors.OpenAIIoException;
 import com.sun.net.httpserver.HttpServer;
-import io.opaa.instance.PostgresInvalidationBus;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ServiceUnavailableException;
+import io.opaa.instance.PostgresInvalidationBus;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.LlmModelCatalogFixtures;

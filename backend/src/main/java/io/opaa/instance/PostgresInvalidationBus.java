@@ -1,7 +1,6 @@
 package io.opaa.instance;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -9,7 +8,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -20,6 +18,7 @@ import java.util.regex.Pattern;
 import javax.sql.DataSource;
 import org.postgresql.PGConnection;
 import org.postgresql.PGNotification;
+import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -97,25 +96,21 @@ public class PostgresInvalidationBus implements InvalidationBus, SmartLifecycle 
   }
 
   /**
-   * Opens connections with the address and credentials the pool uses, under {@code
-   * applicationName}; a read on it gives up after three check intervals, so a silent network
-   * failure surfaces at the next check instead of blocking the listener.
+   * Opens connections to the application's own database with the address and credentials the pool
+   * uses, under {@code applicationName}; a read on it gives up after three check intervals, so a
+   * silent network failure surfaces at the next check instead of blocking the listener.
    */
   public static ConnectionOpener opener(
       String jdbcUrl, String username, String password, String applicationName) {
     return () -> {
-      Properties properties = new Properties();
-      if (username != null) {
-        properties.setProperty("user", username);
-      }
-      if (password != null) {
-        properties.setProperty("password", password);
-      }
-      properties.setProperty("ApplicationName", applicationName);
-      properties.setProperty("tcpKeepAlive", "true");
-      properties.setProperty(
-          "socketTimeout", Long.toString(CHECK_INTERVAL.multipliedBy(3).toSeconds()));
-      return DriverManager.getConnection(jdbcUrl, properties);
+      PGSimpleDataSource database = new PGSimpleDataSource();
+      database.setURL(jdbcUrl);
+      database.setUser(username);
+      database.setPassword(password);
+      database.setApplicationName(applicationName);
+      database.setTcpKeepAlive(true);
+      database.setSocketTimeout((int) CHECK_INTERVAL.multipliedBy(3).toSeconds());
+      return database.getConnection();
     };
   }
 

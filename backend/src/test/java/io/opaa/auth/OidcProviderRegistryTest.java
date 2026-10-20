@@ -82,9 +82,7 @@ class OidcProviderRegistryTest {
             return now.get();
           }
         };
-    registry =
-        new OidcProviderRegistry(
-            repository, decoderFactory, addressPolicy, clock, bus);
+    registry = new OidcProviderRegistry(repository, decoderFactory, addressPolicy, clock, bus);
   }
 
   @Test

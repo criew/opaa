@@ -24,10 +24,10 @@ import org.springframework.stereotype.Component;
  * primary-key lookup each - the derived state and the session generation, which the token's {@value
  * LocalAccessTokenService#SESSION_GENERATION_CLAIM} must equal; ADR-0053, Entscheidung 6). A token
  * without that claim was minted by the previous version during a rolling update and is held against
- * {@code password_invalidated_before} instead, until #2959 removes that path. Fail closed: only an account {@link
- * LocalAccountAccess#isLoginCapable login-capable} right now passes. Every refusal is a {@link
- * LocalTokenRejection} naming its reason; a token whose subject has no local account is refused
- * rather than provisioned.
+ * {@code password_invalidated_before} instead, until #2959 removes that path. Fail closed: only an
+ * account {@link LocalAccountAccess#isLoginCapable login-capable} right now passes. Every refusal
+ * is a {@link LocalTokenRejection} naming its reason; a token whose subject has no local account is
+ * refused rather than provisioned.
  *
  * <p>The switch is read first because while it is off it is the effective reason a regular local
  * token is refused (ADR-0033, Entscheidung 4): the switch-off also revokes the running sessions, so
