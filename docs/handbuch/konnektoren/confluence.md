@@ -136,7 +136,9 @@ TLS; der vorgelagerte Proxy muss `X-Forwarded-For` setzen
 
 **Was eine Nachricht auslöst.** OPAA liest nur Seitenkennungen; was mit der Seite geschah, sagt der
 Abruf. Nachrichten werden je Bibliothek gesammelt (`opaa.indexing.events.debounce`) und in **einem**
-kurzen Lauf geholt; mehr als `max-pending-keys` Seiten ergeben einen gewöhnlichen Lauf. Läuft gerade
+kurzen Lauf geholt; mehr als `max-pending-keys` Seiten ergeben einen gewöhnlichen Lauf. Gesammelt
+wird in der Datenbank: Ein Neustart verliert keine Nachricht, und bei mehreren Backend-Instanzen
+holt genau eine den Stapel. Läuft gerade
 ein Lauf, wartet der Stapel bis zu `max-deferrals` Sammelzeiten und wird dann verworfen — der
 nächste Lauf deckt dieselben Seiten ab. Der Anker bewegt sich durch einen Webhook-Lauf nicht. Jede
 nicht authentifizierte Anfrage erhält `401`, ein Körper über 256 KiB `413`; der Eingang ist je

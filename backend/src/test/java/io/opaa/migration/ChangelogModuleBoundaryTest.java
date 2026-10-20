@@ -115,6 +115,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "indexing_run_events",
                   "source_sync_state",
                   "source_sync_revisits",
+                  "source_event_batches",
                   "source_sync_presence",
                   "chunk_full_text",
                   "embedding_index",
@@ -145,7 +146,8 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "connected_accounts",
                   "connection_tokens",
                   "connection_person_states",
-                  "connection_authorizations")),
+                  "connection_authorizations",
+                  "connection_grant_revocations")),
           Map.entry(
               WORKSPACE,
               List.of(

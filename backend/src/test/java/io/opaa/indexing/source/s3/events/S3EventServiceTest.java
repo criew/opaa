@@ -77,6 +77,9 @@ class S3EventServiceTest {
     libraryId = UUID.randomUUID();
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     service = new S3EventService(executor, intake, JsonMapper.builder().build());
+    // the target is registered once, at creation, so any instance drains this connector's batches
+    org.mockito.Mockito.verify(intake).register(org.mockito.ArgumentMatchers.any());
+    org.mockito.Mockito.clearInvocations(intake);
   }
 
   /** The way the shared push intake calls in: the library loaded, its stored settings beside it. */

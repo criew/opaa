@@ -24,6 +24,12 @@ namespaces:
   - number: 208
     purpose: the writers of one document's vector rows
     owners: [java/io/opaa/indexing/chunk/VectorStoreWriter.java]
+  - number: 209
+    purpose: intake of one owner against the personal storage quota
+    owners: [java/io/opaa/knowledge/DocumentRepository.java]
+  - number: 210
+    purpose: the push batches of one library
+    owners: [java/io/opaa/indexing/run/SourceEventBatches.java]
   - number: 211
     purpose: the start-up seeds, one instance at a time
     owners:
@@ -38,12 +44,6 @@ namespaces:
     owners: [java/io/opaa/instance/InstanceRegistry.java]
 
 reserved:
-  - number: 209
-    claimedBy: "PR #2957 (personal storage quota)"
-    owners: [java/io/opaa/knowledge/DocumentRepository.java]
-  - number: 210
-    claimedBy: "PR #2958 (source event batches)"
-    owners: [java/io/opaa/indexing/run/SourceEventBatches.java]
   - number: 212
     claimedBy: "#2946 (invalidation bus, denylist, session counter)"
     owners: []

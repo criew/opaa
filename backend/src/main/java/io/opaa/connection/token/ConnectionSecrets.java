@@ -40,8 +40,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionException;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
@@ -813,10 +811,11 @@ public class ConnectionSecrets {
   }
 
   /**
-   * Hands the revocation of the OAuth grants among {@code held} to {@link GrantRevocations} once
-   * the caller's transaction committed - with the registration as it stands now, so a caller
-   * discards before it changes the registration -, at once without a transaction. A rolled back
-   * discard revokes nothing, and no revocation runs on the caller's thread or holds its connection.
+   * Queues the revocation of the OAuth grants among {@code held} in {@link GrantRevocations}, in
+   * the caller's transaction - with the registration as it stands now, so a caller discards before
+   * it changes the registration. They run once that transaction committed, at once without one; a
+   * rolled back discard revokes nothing, and no revocation runs on the caller's thread or holds its
+   * connection.
    */
   private void revokeAfterCommit(List<ConnectionToken> held) {
     List<GrantRevocations.Grant> grants = new ArrayList<>();
@@ -827,25 +826,12 @@ public class ConnectionSecrets {
       SecretIssuer.StoredTokens stored =
           new SecretIssuer.StoredTokens(
               decryptQuietly(token), decryptAccess(token), token.getAccessTokenExpiresAt());
-      Runnable revocation = issuer().revocation(token.getProfileId(), stored);
-      if (revocation != null) {
-        grants.add(new GrantRevocations.Grant(token.getProfileId(), revocation));
+      String order = issuer().revocation(token.getProfileId(), stored);
+      if (order != null) {
+        grants.add(new GrantRevocations.Grant(token.getProfileId(), order));
       }
     }
-    if (grants.isEmpty()) {
-      return;
-    }
-    if (TransactionSynchronizationManager.isSynchronizationActive()) {
-      TransactionSynchronizationManager.registerSynchronization(
-          new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-              revocations.submit(grants);
-            }
-          });
-    } else {
-      revocations.submit(grants);
-    }
+    revocations.submit(grants);
   }
 
   /** The stored secret of {@code token}, {@code null} for an unreadable one. */
