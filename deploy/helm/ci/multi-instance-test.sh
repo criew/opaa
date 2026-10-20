@@ -38,8 +38,18 @@ forward_cleanup() {
   : >"$pid_file"
 }
 
-delete_namespaces() {
+# The backend pods first, while the evaluation database still answers: a pod whose database is gone
+# before it is spends its whole stop window on refused connections.
+uninstall() {
+  if kubectl -n "$NAMESPACE" get deployment "$RELEASE-backend" >/dev/null 2>&1; then
+    kubectl -n "$NAMESPACE" scale deployment "$RELEASE-backend" --replicas=0
+    kubectl -n "$NAMESPACE" wait --for=delete pod -l app.kubernetes.io/component=backend --timeout=5m || true
+  fi
   helm uninstall "$RELEASE" --namespace "$NAMESPACE" --wait --timeout 5m >/dev/null 2>&1 || true
+}
+
+delete_namespaces() {
+  uninstall
   kubectl delete namespace "$NAMESPACE" "$TEST_NAMESPACE" --ignore-not-found --wait=true --timeout=5m
 }
 
@@ -78,7 +88,7 @@ fixtures() {
       aws s3 mb s3://opaa-originals && aws s3 mb s3://corpus && mkdir -p /tmp/corpus &&
       for i in $(seq -w 1 "$CORPUS_SIZE"); do
         printf "Vermerk %s zur Erprobung mit zwei Instanzen, HALTEMARKE.\n\nDieser Text steht in Dokument %s und wird von genau einer Instanz eingelesen.\n" "$i" "$i" >"/tmp/corpus/vermerk-$i.txt"
-      done && aws s3 sync /tmp/corpus s3://corpus/ && aws s3 ls s3://corpus/ | wc -l'
+      done && aws s3 sync --only-show-errors /tmp/corpus s3://corpus/ && aws s3 ls s3://corpus/ | wc -l'
   forward svc/mailpit 18026:8025 "$TEST_NAMESPACE"
   forward svc/ai-stub 18090:8089 "$TEST_NAMESPACE"
 }
@@ -107,7 +117,7 @@ scenarios() { # spec-filter...
       "--set", `backend.image.repository=${br}`, "--set", `backend.image.tag=${bt}`,
       "--set", `frontend.image.repository=${fr}`, "--set", `frontend.image.tag=${ft}`,
       "--wait", "--wait-for-jobs", "--timeout", "15m"]));
-  ' "$CHART_DIR" "$NAMESPACE" "$VALUES" "$NEXT_BACKEND" "$NEXT_FRONTEND")"
+  ' "$(realpath "$CHART_DIR")" "$NAMESPACE" "$(realpath "$VALUES")" "$NEXT_BACKEND" "$NEXT_FRONTEND")"
   (
     cd e2e
     E2E_MULTI_PLATFORM=kind \
@@ -154,6 +164,6 @@ for phase in $PHASES; do
       --tail=-1 --prefix >"$repo_root/e2e/kind-multi-instance-$phase.log" 2>&1 || true
     exit 1
   fi
-  helm uninstall "$RELEASE" --namespace "$NAMESPACE" --wait --timeout 5m
+  uninstall
   kubectl delete namespace "$NAMESPACE" --wait=true --timeout=5m
 done

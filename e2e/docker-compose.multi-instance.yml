@@ -108,7 +108,7 @@ services:
       "mkdir -p /tmp/corpus && for i in $$(seq -w 1 $$CORPUS_SIZE); do
       printf 'Vermerk %s zur Erprobung mit zwei Instanzen, HALTEMARKE.\n\nDieser Text steht in
       Dokument %s und wird von genau einer Instanz eingelesen.\n' $$i $$i > /tmp/corpus/vermerk-$$i.txt; done &&
-      (aws s3 mb s3://corpus || true) && aws s3 sync --delete /tmp/corpus s3://corpus/ &&
+      (aws s3 mb s3://corpus || true) && aws s3 sync --only-show-errors --delete /tmp/corpus s3://corpus/ &&
       aws s3 ls s3://corpus/ | wc -l"
     depends_on:
       upload-store:
