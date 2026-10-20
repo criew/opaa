@@ -77,7 +77,8 @@ expect_refusal() {
 echo "--- guards"
 # More than one backend pod, or a rolling update, needs the migration job and shared originals
 # (ADR-0053, Entscheidung 15); a rolling update keeps chat answers alive over the pod's stop.
-shared=(--set backend.migration.enabled=true --set-json 'uploads.persistence.accessModes=["ReadWriteMany"]')
+# --set with an index rather than --set-json, which Helm 3.8 does not know.
+shared=(--set backend.migration.enabled=true --set 'uploads.persistence.accessModes[0]=ReadWriteMany')
 expect_refusal "set backend.migration.enabled" --set backend.replicas=2
 expect_refusal "set backend.migration.enabled" --set backend.updateStrategy=RollingUpdate
 expect_refusal "ReadWriteMany" --set backend.replicas=2 --set backend.migration.enabled=true
