@@ -12,7 +12,7 @@ databaseChangeLog:
 
               CREATE FUNCTION local_credentials_session_generation() RETURNS trigger
                   LANGUAGE plpgsql
-                  SET search_path TO 'pg_catalog', 'pg_temp'
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
                   AS $$
               BEGIN
                 IF NEW.session_generation < OLD.session_generation THEN

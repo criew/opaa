@@ -122,7 +122,9 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
             "opaa_diagnostic_context_delete_expired_partitions search_path=pg_catalog, "
                 + SCHEMA
                 + ", pg_temp",
-            "organizations_seed_capability_grants search_path=pg_catalog, " + SCHEMA + ", pg_temp");
+            "organizations_seed_capability_grants search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "notify_cache_invalidation search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "local_credentials_session_generation search_path=pg_catalog, " + SCHEMA + ", pg_temp");
   }
 
   /** Reads the unqualified retention settings table through the pinned search_path. */

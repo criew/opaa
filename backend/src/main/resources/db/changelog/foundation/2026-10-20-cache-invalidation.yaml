@@ -12,7 +12,7 @@ databaseChangeLog:
               -- change of the cache (status columns written on every use); row triggers only.
               CREATE FUNCTION notify_cache_invalidation() RETURNS trigger
                   LANGUAGE plpgsql
-                  SET search_path TO 'pg_catalog', 'pg_temp'
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
                   AS $$
               BEGIN
                 IF TG_LEVEL = 'ROW' AND TG_OP = 'UPDATE' AND TG_NARGS > 1
