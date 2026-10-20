@@ -139,9 +139,13 @@ done
 echo "backend ready after $(($(date +%s) - start))s: $readiness"
 
 # The Compose health check: a class beside the jar, run without a shell inside the container.
-docker exec "$backend" /opt/java/openjdk/bin/java -cp /app/probe io.opaa.config.HealthProbe ||
+docker exec "$backend" /opt/java/openjdk/bin/java -cp /app/probe HealthProbe ||
   fail "the health probe of the image does not report the ready backend as healthy"
-echo "health probe: healthy"
+if docker exec "$backend" /opt/java/openjdk/bin/java -cp /app/probe HealthProbe \
+  http://127.0.0.1:1/actuator/health/readiness 2>/dev/null; then
+  fail "the health probe of the image reports an address nobody listens on as healthy"
+fi
+echo "health probe: healthy, and unhealthy without an answer"
 
 if [[ -n "$expect_version" ]]; then
   start_line="$(docker logs "$backend" 2>&1 | grep -m 1 'Starting OpaaApplication' || true)"

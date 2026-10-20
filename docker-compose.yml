@@ -57,12 +57,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # Readiness without a shell (io.opaa.config.HealthProbe, a class beside the jar): healthy once
+    # Readiness without a shell (backend/docker/HealthProbe.java, beside the jar): healthy once
     # /actuator/health/readiness answers 200. The start period covers the schema migration of a
     # first start; the frontend waits for "healthy".
     healthcheck:
       test: ["CMD", "/opt/java/openjdk/bin/java", "-XX:TieredStopAtLevel=1", "-XX:+UseSerialGC",
-        "-Xmx32m", "-cp", "/app/probe", "io.opaa.config.HealthProbe"]
+        "-Xmx32m", "-cp", "/app/probe", "HealthProbe"]
       interval: 10s
       timeout: 5s
       retries: 3

@@ -35,9 +35,7 @@ Controller und Mapper der Fachmodule liegen in deren `web`-Paketen („Web-Schic
   sonst würden verwaltete Dienste mit eigener Verwaltungsrolle abgewiesen.
 - **`TrustStoreBuilder`** ist ein Hauptprogramm ohne Spring, das der Init-Container des Helm-Charts
   über `PropertiesLauncher` startet (`extraCACertificates`): Laufzeit-CAs plus alle PEM-Zertifikate
-  in einen frischen Truststore. **`HealthProbe`** prüft für den Compose-Healthcheck die Bereitschaft;
-  `backend/Dockerfile` kopiert die Klasse aus dem Jar, sie nutzt nur `java.base` und keine inneren
-  Klassen.
+  in einen frischen Truststore.
 - **Reihenfolge für einen neuen Endpunkt:** OpenAPI-Fragment, generierte DTOs, Enum-Mappings,
   Frontend-Typen, API-Funktion, MSW-Handler (`agents/roles/developer.md`, „Repository-Praxis").
 
