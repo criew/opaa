@@ -10,8 +10,13 @@
 #   docker compose -f docker-compose.yml -f docker-compose.multi.yml build   # or pull
 #   docker compose -f docker-compose.yml -f docker-compose.multi.yml run --rm backend-migrate
 #   docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d --no-deps --wait backend-a
+#   sleep 15
 #   docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d --no-deps --wait backend-b
 #   docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d --no-deps --wait frontend
+#
+# The pause lets the frontend's nginx take backend-a back into its rotation before backend-b stops: a
+# frontend image without max_fails=0 (docker-entrypoint.d/05-opaa-runtime.sh) parks a peer that
+# refused connections while it started for ten seconds.
 #
 # Originals: the object store (OPAA_UPLOAD_STORE=s3, e.g. the profile upload-s3) is recommended; the
 # shared bind mount ./uploads works only because every instance runs on this host.

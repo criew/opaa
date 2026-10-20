@@ -90,7 +90,9 @@ mkdir -p "$NGINX_ENVSUBST_OUTPUT_DIR"
 
 # nginx.conf includes /tmp/nginx/upstream.d/*.conf in its upstream block. With a resolver nginx
 # looks the name up again every 5 s and starts even while it does not resolve yet; an address
-# literal needs no lookup.
+# literal needs no lookup. max_fails=0 keeps a peer that refused a connection in the rotation: a
+# replaced backend container keeps its address while it starts, and a peer parked for that would
+# leave no live peer once the other instance stops; the request moves on to the next peer anyway.
 UPSTREAM_DIR=/tmp/nginx/upstream.d
 mkdir -p "$UPSTREAM_DIR"
 UPSTREAM_HOST="${OPAA_BACKEND_UPSTREAM%:*}"
@@ -99,11 +101,11 @@ case "$OPAA_BACKEND_UPSTREAM" in
 esac
 if [ -n "$OPAA_BACKEND_RESOLVER" ] \
   && ! printf '%s' "$UPSTREAM_HOST" | grep -Eqx '[0-9.]+|\[.*\]'; then
-  printf 'resolver %s valid=5s;\nresolver_timeout 5s;\nserver %s resolve;\n' \
+  printf 'resolver %s valid=5s;\nresolver_timeout 5s;\nserver %s resolve max_fails=0;\n' \
     "$OPAA_BACKEND_RESOLVER" "$OPAA_BACKEND_UPSTREAM" > "$UPSTREAM_DIR/backend.conf"
   echo "$ME: info: resolving $OPAA_BACKEND_UPSTREAM at runtime through $OPAA_BACKEND_RESOLVER"
 else
-  printf 'server %s;\n' "$OPAA_BACKEND_UPSTREAM" > "$UPSTREAM_DIR/backend.conf"
+  printf 'server %s max_fails=0;\n' "$OPAA_BACKEND_UPSTREAM" > "$UPSTREAM_DIR/backend.conf"
 fi
 
 # nginx.conf includes /tmp/nginx/listen.d/*.conf in its server block. The IPv6 listen is only
