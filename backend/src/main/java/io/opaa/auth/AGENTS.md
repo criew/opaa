@@ -28,8 +28,8 @@ Branding, Mailversand und Benachrichtigungen.
   `AuditEventRecorder`), gelesen nur über `AuditQueryService`. `AuditLogRepository` ist
   package-private. Das Anwendungskonto hat auf `audit_log` nur `INSERT` und `SELECT`; entfernt wird
   nur eine vollständig abgelaufene Monatspartition.
-- **Ein Sendeweg:** `MailService` ist der einzige Einstieg für alles, was Mail verschickt, und
-  meldet das Ergebnis, statt zu werfen. Neue Anlässe bringen Vorlagen und Variablen mit, keinen zweiten Weg.
+- **Ein Sendeweg:** `MailService` meldet das Ergebnis, statt zu werfen; neue Anlässe bringen Vorlagen, keinen
+  zweiten Weg. Ohne Wartenden geht die Mail per `enqueue` in der fachlichen Transaktion in die Outbox (ADR-0053).
 - **Branding** ändert nur `BrandingSettingsService`; SVG wird abgelehnt, nicht bereinigt
   (`BrandingImageValidator`).
 - **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`,

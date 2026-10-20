@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -79,6 +80,7 @@ class LocalAuthJourneyIntegrationTest {
   @Autowired private LocalRefreshTokenRepository refreshTokens;
   @Autowired private UserRepository users;
   @Autowired private MailSettingsService mailSettings;
+  @Autowired private JdbcTemplate jdbc;
 
   private LocalAccountFixtures fixtures;
   private LocalAccount bootstrapAdmin;
@@ -121,7 +123,7 @@ class LocalAuthJourneyIntegrationTest {
   void theWholeJourneyFromTheBootstrapAdminToALockedInvitedAccountComposes() throws Exception {
     // The in-JVM SMTP server is started here, not in setUp: stopping it writes mail_settings as the
     // bootstrap administrator, and the other test of this class deletes that account.
-    LocalMailbox mailbox = new LocalMailbox(mailSettings, bootstrapAdmin.id());
+    LocalMailbox mailbox = new LocalMailbox(mailSettings, jdbc, bootstrapAdmin.id());
     mailbox.start();
     try {
       journey(mailbox);

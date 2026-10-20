@@ -4,16 +4,33 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.chat.ChatNoteExtractionService;
+import io.opaa.chat.ChatNoteService;
 import io.opaa.chat.ChatSource;
+import io.opaa.chat.SearchScopeResolver;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.metadata.MetadataFilterValidator;
+import io.opaa.observability.QueryMetrics;
+import io.opaa.prompt.PromptService;
+import io.opaa.query.answer.AnswerGenerationService;
+import io.opaa.query.answer.CaffeineChatMemoryRepository;
+import io.opaa.query.citation.ChatSourceAssembler;
+import io.opaa.query.citation.CitationParser;
+import io.opaa.query.citation.CitationValidator;
+import io.opaa.retrieval.KnowledgeRetrieval;
+import io.opaa.retrieval.RetrievalContextFactory;
+import io.opaa.retrieval.context.NeighborChunkExpansion;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.test.OpaaMockedChatModelIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
@@ -61,6 +79,21 @@ class QueryIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ChatMemory chatMemory;
   @Autowired private ChunkEmbeddingLookup chunkEmbeddingLookup;
+
+  // What a second backend instance shares with this one: everything but its process memory.
+  @Autowired private KnowledgeRetrieval knowledgeRetrieval;
+  @Autowired private RetrievalContextFactory retrievalContextFactory;
+  @Autowired private SearchScopeResolver searchScopeResolver;
+  @Autowired private ChatSourceAssembler chatSourceAssembler;
+  @Autowired private CitationParser citationParser;
+  @Autowired private CitationValidator citationValidator;
+  @Autowired private LibraryAccessService libraryAccessService;
+  @Autowired private ChatNoteService chatNoteService;
+  @Autowired private ChatNoteExtractionService chatNoteExtractionService;
+  @Autowired private QueryMetrics queryMetrics;
+  @Autowired private MetadataFilterValidator metadataFilterValidator;
+  @Autowired private PromptService promptService;
+  @Autowired private NeighborChunkExpansion neighborChunkExpansion;
 
   private UUID userId;
   private UUID libraryId;
@@ -839,6 +872,74 @@ class QueryIntegrationTest {
     assertThat(firstQuestionInPrompt)
         .as("the second prompt must include the first question, rehydrated from chat_messages")
         .isTrue();
+  }
+
+  /**
+   * ADR-0053 Entscheidung 10: a persisted chat whose turns alternate between two backend instances
+   * A, B, A keeps its whole conversation. Instance B is a second {@link QueryService} with its own
+   * conversation memory against the same database; A's memory is warm from the first turn, so only
+   * reading the window from {@code chat_messages} on every turn brings B's turn into A's prompt.
+   */
+  @Test
+  void aChatAlternatingBetweenTwoInstancesKeepsEveryTurnInTheWindow() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+    QueryService instanceB = secondInstance();
+
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort A1")))));
+    queryService.query("Erste Frage nach Äpfeln", chatId, asCaller(userId), true, List.of());
+
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort B2")))));
+    instanceB.query("Zweite Frage nach Birnen", chatId, asCaller(userId), true, List.of());
+
+    ArgumentCaptor<Prompt> promptCaptor = ArgumentCaptor.forClass(Prompt.class);
+    when(chatModel.call(promptCaptor.capture()))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort A3")))));
+    queryService.query("Dritte Frage", chatId, asCaller(userId), true, List.of());
+
+    List<String> answerPromptTexts =
+        promptCaptor.getAllValues().stream()
+            .filter(prompt -> prompt.getContents().contains("ZITIERREGELN"))
+            .flatMap(prompt -> prompt.getInstructions().stream())
+            .map(message -> message.getText() == null ? "" : message.getText())
+            .toList();
+    assertThat(answerPromptTexts)
+        .as("instance A's third prompt carries the turn instance B answered")
+        .anyMatch(text -> text.contains("Zweite Frage nach Birnen"))
+        .anyMatch(text -> text.contains("Antwort B2"))
+        .anyMatch(text -> text.contains("Erste Frage nach Äpfeln"));
+    assertThat(answerPromptTexts.stream().filter(text -> text.contains("Erste Frage")).count())
+        .as("the first turn appears once, not once from memory and once from the database")
+        .isEqualTo(1);
+  }
+
+  /** A second backend process: the same database and beans, its own conversation memory. */
+  private QueryService secondInstance() {
+    ChatMemory memoryOfB =
+        MessageWindowChatMemory.builder()
+            .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
+            .maxMessages(retrievalContextFactory.queryProperties().conversationWindowMessages())
+            .build();
+    return new QueryService(
+        knowledgeRetrieval,
+        retrievalContextFactory,
+        searchScopeResolver,
+        chatSourceAssembler,
+        new AnswerGenerationService(activeChatModelResolver, memoryOfB),
+        memoryOfB,
+        citationParser,
+        citationValidator,
+        libraryAccessService,
+        chatService,
+        chatNoteService,
+        chatNoteExtractionService,
+        queryMetrics,
+        metadataFilterValidator,
+        promptService,
+        Optional.empty(),
+        neighborChunkExpansion);
   }
 
   /**

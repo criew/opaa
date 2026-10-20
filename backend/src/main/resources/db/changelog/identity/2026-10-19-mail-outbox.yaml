@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: identity-2026-10-19-mail-outbox
+      author: opaa
+      comment: "Mail nobody waits for in the same request is written to an outbox in the transaction of the act it announces and delivered by a worker on any instance; recipient and content are encrypted because links carry one-time secrets."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE mail_outbox (
+                  id uuid NOT NULL,
+                  template_key character varying(100) NOT NULL,
+                  recipient_ciphertext text NOT NULL,
+                  subject_ciphertext text NOT NULL,
+                  body_plain_ciphertext text NOT NULL,
+                  body_html_ciphertext text,
+                  attempts integer DEFAULT 0 NOT NULL,
+                  next_attempt_at timestamp with time zone DEFAULT now() NOT NULL,
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  last_failure_reason character varying(1000),
+                  CONSTRAINT mail_outbox_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_mail_outbox_attempts CHECK ((attempts >= 0))
+              );
+
+              CREATE INDEX idx_mail_outbox_next_attempt_at ON mail_outbox (next_attempt_at);

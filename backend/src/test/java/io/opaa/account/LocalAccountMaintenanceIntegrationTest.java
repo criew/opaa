@@ -24,6 +24,7 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
+import io.opaa.test.LocalMailbox;
 import io.opaa.test.OpaaIntegrationTest;
 import jakarta.mail.Part;
 import jakarta.mail.internet.MimeMessage;
@@ -96,6 +97,7 @@ class LocalAccountMaintenanceIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    LocalMailbox.awaitOutboxDrained(jdbc);
     greenMail.stop();
     mailSettings.updateSettings(
         Organization.DEFAULT_ID,
@@ -206,6 +208,8 @@ class LocalAccountMaintenanceIntegrationTest {
 
     expiryReminder.run(now);
     adminReminder.run(now);
+    // delivery is asynchronous: every queued reminder has left before the mailbox is read
+    LocalMailbox.awaitOutboxDrained(jdbc);
 
     assertThat(greenMail.waitForIncomingEmail(10_000, 2)).isTrue();
     List<String> recipients =
@@ -235,6 +239,7 @@ class LocalAccountMaintenanceIntegrationTest {
     // the next day's run lies outside the window: no second reminder
     expiryReminder.run(now.plus(Duration.ofDays(1)));
     adminReminder.run(now.plus(Duration.ofDays(1)));
+    LocalMailbox.awaitOutboxDrained(jdbc);
     Thread.sleep(300);
     assertThat(greenMail.getReceivedMessages()).hasSize(afterFirstRun);
   }
@@ -250,10 +255,12 @@ class LocalAccountMaintenanceIntegrationTest {
     expiresAt(limited, quarterStart.plus(Duration.ofDays(30)));
 
     adminReminder.run(quarterStart.plus(Duration.ofDays(1)));
+    LocalMailbox.awaitOutboxDrained(jdbc);
     Thread.sleep(300);
     assertThat(greenMail.getReceivedMessages()).isEmpty();
 
     adminReminder.run(quarterStart);
+    LocalMailbox.awaitOutboxDrained(jdbc);
 
     assertThat(greenMail.waitForIncomingEmail(10_000, 1)).isTrue();
     MimeMessage mail =

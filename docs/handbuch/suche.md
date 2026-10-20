@@ -76,11 +76,13 @@ Zwei Eigenschaften des Fensters sind betrieblich wichtig:
   behält die gültigen Marken; er ist die Grundlage für Fußnoten, Textanker und Belegfenster
   (Abschnitt 7). Ohne Marke im Verlauf kann das Modell keine Marke für ein Dokument wiederholen, das
   in dieser Runde gar nicht im Kontext ist.
-- **Ein Neustart ändert nichts an der Aufbereitung.** Nach einem Neustart oder wenn der
-  prozessinterne Zwischenspeicher abgelaufen ist, wird das Fenster aus den letzten 20 gespeicherten
-  Nachrichten desselben Chats neu gebildet, durch dieselbe Marken-Entfernung — derselbe Chat schickt
-  denselben Prompt wie davor. Eine Ausnahme betrifft nicht die Aufbereitung, sondern den Bestand:
-  Liefert eine Runde keinen Antworttext (Modellfehler, oder eine Antwort, die nur aus Marken
+- **Das Fenster eines gespeicherten Chats kommt aus der Datenbank.** Vor jeder Frage wird es aus
+  den letzten 20 gespeicherten Nachrichten des Chats gebildet, durch dieselbe Marken-Entfernung —
+  gleich, ob die vorige Frage eine andere Backend-Instanz beantwortet hat oder dazwischen ein
+  Neustart lag; derselbe Chat schickt denselben Prompt. Eine Frage ohne gespeicherten Chat (nur über
+  die API) hält ihr Fenster nur im Speicher der Instanz, die sie beantwortet: Ein Neustart oder ein
+  Wechsel der Instanz beginnt dieses Gespräch neu. Eine Ausnahme betrifft nicht die Aufbereitung,
+  sondern den Bestand: Liefert eine Runde keinen Antworttext (Modellfehler, oder eine Antwort, die nur aus Marken
   bestand), fehlt sie im laufenden Fenster wie im nachgeladenen gleichermaßen.
 
 Beide Breiten sind Konfigurationswerte (Abschnitt 10.3); in einer Verwaltungsoberfläche erscheinen
@@ -1218,7 +1220,7 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | `max-chunks-per-document` | 1 | Auffüllziel der Dokument-Vervollständigung (1 bis 10): bis zu so vielen Chunks füllt sie jedes schon vertretene Dokument aus dem Kandidatenpool auf. Keine Obergrenze, die Endauswahl kann mehr Chunks eines Dokuments enthalten. 1 schaltet die Vervollständigung ab, den Zusammenhang liefern dann die Nachbar-Chunks. Ein höherer Wert gibt Plätze der Endauswahl an weitere Chunks schon vertretener Dokumente und verdrängt dafür andere Treffer |
 | `neighbor-chunks.radius` | 1 | Nachbar-Chunks je Seite, die jeder Chunk der Endauswahl in den Prompt mitbringt (0 bis 3); 0 schaltet das Nachladen ab (Abschnitt 6) |
 | `neighbor-chunks.max-added-characters` | 40000 | Zeichen, die alle Nachbarn einer Antwort zusammen höchstens hinzufügen (0 bis 1.000.000); kostet entsprechend Eingabetokens je Frage |
-| `conversation-window-messages` | 20 | Breite des Gesprächsfensters in Nachrichten (2 bis 100, gerade) — was die Antwort sieht und was bei kaltem Zwischenspeicher nachgeladen wird |
+| `conversation-window-messages` | 20 | Breite des Gesprächsfensters in Nachrichten (2 bis 100, gerade) — was die Antwort sieht und was vor jeder Frage eines gespeicherten Chats aus der Datenbank gelesen wird |
 | `search-window-turns` | 2 | Runden des Gesprächsfensters, die die Teilfragen-Zerlegung sieht (0 bis `conversation-window-messages` ÷ 2); 0 heißt „nur die Frage" |
 | `metadata-filter.*` | 0,90 / 0,75 / 0,75 / 5m | Füllstandsschwellen für Dokumentart, Datum und Bibliotheksfelder, Cache der Filteroptionen |
 | `pipeline.disabled-stages` | leer | ganze Stufen aus der Kette nehmen; nur für Entwicklung und Messung, der Suchbereich ist nicht abschaltbar |
