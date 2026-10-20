@@ -1,7 +1,5 @@
 package io.opaa.indexing.maintenance;
 
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -21,6 +19,7 @@ import io.opaa.indexing.chunk.VectorIndexSchema;
 import io.opaa.indexing.chunk.VectorIndexSchema.ChunkCounts;
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceRegistry;
+import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
@@ -42,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;

@@ -17,8 +17,8 @@ import org.springframework.stereotype.Component;
  * <p>A run is given up once the instance that owns it is dead by the instance register, at startup
  * and every {@value #DEAD_OWNER_SWEEP_MILLIS} ms after (ADR-0053, Entscheidung 8); another
  * instance's live run stays. {@link #recoverStaleRunningJobs()} additionally covers a run of a live
- * instance whose task was dropped or that hangs. Each sweep runs on one instance at a time under its
- * scheduler lock and is idempotent.
+ * instance whose task was dropped or that hangs. Each sweep runs on one instance at a time under
+ * its scheduler lock and is idempotent.
  */
 @Component
 public class IndexingJobRecoveryScheduler {

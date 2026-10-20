@@ -25,6 +25,7 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.ScheduledRunLockRelease;
 import io.opaa.test.SecondInstance;
 import io.opaa.test.SourceTypes;
 import java.nio.file.Path;
@@ -122,8 +123,10 @@ class IndexingJobRecoveryIntegrationTest {
 
     secondInstance();
     recoveryScheduler.recoverOnStartup();
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
     recoveryScheduler.recoverRunsOfDeadInstances();
     uploadRecovery.run(new DefaultApplicationArguments());
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
     uploadRecovery.recoverUploadsOfDeadInstances();
 
     assertThat(statusOf(run)).isEqualTo(JobStatus.RUNNING);
@@ -147,7 +150,10 @@ class IndexingJobRecoveryIntegrationTest {
     IndexingJob zombie = seedRunningJob(library.getId(), failing.id(), Duration.ofMinutes(5));
     UUID upload = seedPendingUpload(library.getId(), failing.id(), Duration.ofMinutes(5));
 
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
+
     recoveryScheduler.recoverRunsOfDeadInstances();
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
     uploadRecovery.recoverUploadsOfDeadInstances();
     assertThat(statusOf(zombie)).isEqualTo(JobStatus.RUNNING);
     assertThat(statusOfDocument(upload)).isEqualTo(DocumentStatus.PENDING);
@@ -156,7 +162,9 @@ class IndexingJobRecoveryIntegrationTest {
         .andExpect(status().isConflict());
 
     failing.fail();
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
     recoveryScheduler.recoverRunsOfDeadInstances();
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
     uploadRecovery.recoverUploadsOfDeadInstances();
 
     IndexingJob recovered = indexingJobRepository.findById(zombie.getId()).orElseThrow();
@@ -181,6 +189,7 @@ class IndexingJobRecoveryIntegrationTest {
 
     stopping.close();
     secondInstances.remove(stopping);
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
     recoveryScheduler.recoverRunsOfDeadInstances();
 
     assertThat(statusOf(run)).isEqualTo(JobStatus.FAILED);
@@ -191,6 +200,8 @@ class IndexingJobRecoveryIntegrationTest {
   void aRunWithoutOwnerIsGivenUpAtTheStartOnly() {
     KnowledgeLibrary library = createFilesystemLibraryWithEditorGrant();
     IndexingJob run = seedRunningJob(library.getId(), null, Duration.ofMinutes(1));
+
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
 
     recoveryScheduler.recoverRunsOfDeadInstances();
     assertThat(statusOf(run)).isEqualTo(JobStatus.RUNNING);
