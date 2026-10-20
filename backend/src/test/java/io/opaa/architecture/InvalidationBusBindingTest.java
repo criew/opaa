@@ -41,9 +41,6 @@ class InvalidationBusBindingTest {
               "io.opaa.indexing.maintenance.EmbeddingReindexService",
               "the state of this instance's own run, not a copy (ADR-0053, Entscheidung 8)"),
           Map.entry(
-              "io.opaa.permission.PermissionTransferService",
-              "previews shown by this instance, not a copy (ADR-0053, Entscheidung 10)"),
-          Map.entry(
               "io.opaa.mail.MailOutboxWorker",
               "a stop flag of this instance's worker; the outbox itself is the table"),
           Map.entry(

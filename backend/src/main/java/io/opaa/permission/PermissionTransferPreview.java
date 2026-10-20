@@ -2,7 +2,6 @@ package io.opaa.permission;
 
 import io.opaa.api.types.PermissionTransferScope;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * What a transfer would move, shown before it is carried out - mandatory, and itself an audit event
@@ -14,10 +13,11 @@ import java.util.UUID;
  * 7 Bibliotheken").
  *
  * <p>{@code previewId} is what the execution has to show: the transfer runs only against a preview
- * that was taken, still stands and belongs to the same caller.
+ * that was taken, still stands and belongs to the same caller. It is signed rather than stored
+ * ({@link PermissionTransferPreviewToken}), so any instance can check it.
  */
 public record PermissionTransferPreview(
-    UUID previewId,
+    String previewId,
     PermissionSubject source,
     String sourceLabel,
     PermissionSubject target,
