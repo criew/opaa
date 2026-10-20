@@ -57,6 +57,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Readiness without a shell (io.opaa.config.HealthProbe, a class beside the jar): healthy once
+    # /actuator/health/readiness answers 200. The start period covers the schema migration of a
+    # first start; the frontend waits for "healthy".
+    healthcheck:
+      test: ["CMD", "/opt/java/openjdk/bin/java", "-XX:TieredStopAtLevel=1", "-XX:+UseSerialGC",
+        "-Xmx32m", "-cp", "/app/probe", "io.opaa.config.HealthProbe"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
+      start_interval: 2s
     # Docker kills a container that has not stopped within this period. Kept above
     # OPAA_SHUTDOWN_TIMEOUT - which is a window per shutdown phase, not a budget for the whole stop
     # - so the graceful shutdown runs its course instead of being cut short by SIGKILL.
@@ -83,8 +94,13 @@ services:
     networks:
       default:
         ipv4_address: ${OPAA_COMPOSE_FRONTEND_ADDRESS:-172.28.0.10}
+    # Docker's own DNS server: nginx resolves the backend name again at runtime, so a recreated or
+    # added backend container is reached without restarting the frontend.
+    environment:
+      OPAA_BACKEND_RESOLVER: 127.0.0.11
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     # The same restrictions the Helm chart applies (ADR-0042): the image must start with a read-only
     # root filesystem and no capabilities, writing only below /tmp.
     read_only: true
