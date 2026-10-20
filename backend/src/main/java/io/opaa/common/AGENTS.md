@@ -43,7 +43,7 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client,
 - [ADR-0047](../../../../../../../docs/decisions/0047-sharepoint-konnektor.md) (Entscheidung 1): Graph-Client in `io.opaa.msgraph`
 - [ADR-0050](../../../../../../../docs/decisions/0050-ausgangsproxy-und-zertifikatspruefung.md): Ausgangsproxy, Zertifikatsprüfung
 - [ADR-0052](../../../../../../../docs/decisions/0052-compliance-manifest.md): Compliance-Manifest; Fundstellen nur als Namen, kein Import nach oben
-- [ADR-0053](../../../../../../../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) (Entscheidungen 3, 4, 9): Instanzregister, Abdruck, Datenbankuhr
+- [ADR-0053](../../../../../../../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) (Entscheidungen 3, 4, 5, 9): Instanzregister, Abdruck, Invalidierungsbus (`InvalidationSubscriber`), Datenbankuhr
 
 ## Verweise
 
