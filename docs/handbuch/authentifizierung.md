@@ -592,8 +592,11 @@ das Notanker-Konto gelöscht oder sein Passwort verloren:
 OPAA_LOCAL_ADMIN_RESET=force
 ```
 
-Setzen, Backend neu starten, **danach wieder entfernen** — jeder weitere Start mit gesetztem Wert setzt
-das Konto erneut zurück. Der Start stellt einmalig einen anmeldefähigen lokalen Systemverwalter her:
+Setzen, Backend neu starten, **danach wieder entfernen**. Der Wert wirkt einmal je Setzen: Genau ein
+Start setzt zurück, auch wenn mehrere Instanzen gleichzeitig oder nacheinander mit ihm starten; jeder
+weitere Start mit gesetztem Wert lässt das Konto unverändert und vermerkt das im Protokoll. Erst ein
+Start ohne den Wert gibt einen neuen Reset frei. Der Start stellt einen anmeldefähigen lokalen
+Systemverwalter her:
 Das Notanker-Konto wird entsperrt, ein Ablaufdatum entfernt, die Rolle wiederhergestellt, ein neues
 Einmalpasswort gesetzt (im Protokoll oder aus `OPAA_INITIAL_ADMIN_PASSWORD`) und alle seine Sitzungen
 beendet. Wurde das Konto gelöscht, legt der Start es mit der konfigurierten Adresse neu an. Der

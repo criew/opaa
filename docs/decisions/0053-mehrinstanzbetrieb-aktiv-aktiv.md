@@ -295,8 +295,10 @@ persistierten Enums ist eine Erweiterung, auch ohne Changeset (`opaa-api`): Er w
 geschrieben, wenn die Vorgängerversion ihn lesen kann. Ein sicherheitsrelevanter neuer Zustand wird
 in der Datenbank durchgesetzt (Trigger oder Constraint, Vorbild `assets.owner_only`), damit die alte
 Version ihn nicht umgeht. Eine Baseline-Zusammenfassung oder ein unvermeidbarer Bruch ist eine
-ausgewiesene „Versionsgrenze ohne Rolling Update“ (Entscheidung 4). Ein Wächter prüft die Regel
-maschinell. Regel, Wächter, `lock_timeout` je Changeset und die Bewertung der Altlasten: #2944.
+ausgewiesene „Versionsgrenze ohne Rolling Update“ (Entscheidung 4). Ein Wächter vergleicht den
+Katalog vor und nach jedem Changeset; ein Verzeichnis der persistierten Enums verlangt für einen
+neuen Wert den Erweiterungsschritt. Regel, Wächter, `lock_timeout` je Changeset und die Bewertung
+der Altlasten: [backend/docs/liquibase.md](../../backend/docs/liquibase.md) (#2944).
 
 Die Regel gilt sofort für jedes neue Changeset, unabhängig vom Rest des Umbaus. Ein Rolling Update
 wird erst freigegeben, wenn sie mindestens ein Release gegolten hat.
@@ -388,7 +390,5 @@ Chart mehr als ein Replikat, und ADR-0021 gilt weiter.
 
 - Ob die datenbankseitige Monotonie der Rechtehistorie je Objekt oder installationsweit gilt, gemessen
   an der Zusage für Kombinationszustände (ADR-0032 Entscheidung 2): #2945.
-- Die Bauart des Migrationswächters (Prüfung der Changesets oder Validierung gegen die Entities des
-  Vorgänger-Tags): #2944.
 - Horizontale Skalierung der Indexierung über eine Auftragswarteschlange in der Datenbank statt der
   Übergabe an den Executor der tickenden Instanz; erst nach der ersten Stufe und bei Bedarf.

@@ -2,6 +2,7 @@ package io.opaa;
 
 import io.opaa.common.ClockConfiguration;
 import io.opaa.common.PublicBaseUrlProperties;
+import io.opaa.config.DatabaseMigrationMode;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.SettingsEncryptionProperties;
@@ -31,7 +32,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class OpaaApplication {
 
+  /** Serves, or with {@code OPAA_MODE=migrate} only migrates the database and ends. */
   public static void main(String[] args) {
+    if (DatabaseMigrationMode.requested(args)) {
+      System.exit(DatabaseMigrationMode.run(args));
+    }
     SpringApplication.run(OpaaApplication.class, args);
   }
 }

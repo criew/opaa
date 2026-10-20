@@ -130,8 +130,8 @@ class ExternalAccessSwitchedOffIntegrationTest {
         ownerId);
     jdbc.update("DELETE FROM external_access_tokens WHERE user_id = ?", ownerId);
     jdbc.update("DELETE FROM audit_log WHERE object_id = ?", libraryId.toString());
-    // Not OwnLibraryFixtures: it also clears vector_store, which this signature never creates
-    // (initialize-schema=false); the library here has no documents and no chunks.
+    // Not OwnLibraryFixtures: it also clears vector_store, which other classes of this signature
+    // drop; the library here has no documents and no chunks.
     jdbc.update("DELETE FROM asset_visibility_history WHERE asset_id = ?", libraryId);
     jdbc.update(
         "DELETE FROM asset_ownership_history WHERE asset_type = 'KNOWLEDGE_LIBRARY'"

@@ -39,14 +39,6 @@ public final class ChangelogSchema {
   /** The master changelog on the classpath. */
   public static final String MASTER = "db/changelog/db.changelog-master.yaml";
 
-  /**
-   * Tables of the delivered schema no changelog creates, with their columns: Spring AI's {@code
-   * PgVectorStore} creates {@code vector_store} at start-up; {@code ChangelogSchemaParityTest}
-   * holds the columns against the table it creates.
-   */
-  public static final Map<String, List<String>> TABLES_OUTSIDE_THE_CHANGELOG =
-      Map.of("vector_store", List.of("id", "content", "metadata", "embedding"));
-
   private static final int FLAGS = Pattern.CASE_INSENSITIVE | Pattern.DOTALL;
 
   private static final String IDENT = "(?:\"(?:[^\"]|\"\")+\"|[A-Za-z_][A-Za-z0-9_$]*)";
