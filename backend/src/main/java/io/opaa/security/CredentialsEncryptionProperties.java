@@ -1,5 +1,6 @@
 package io.opaa.security;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -16,6 +17,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     CredentialsEncryptor} raises {@link CredentialsEncryptionKeyMissingException} rather than
  *     starting, or writing anything, without one.
  */
+@InstallationWide(secret = true)
 @NoDataImpact("an encryption key without default")
 @ConfigurationProperties(prefix = "opaa.security.credentials")
 public record CredentialsEncryptionProperties(String encryptionKey) {}

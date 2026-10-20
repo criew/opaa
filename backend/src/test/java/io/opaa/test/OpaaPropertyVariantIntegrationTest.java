@@ -15,8 +15,8 @@ import org.springframework.test.context.TestPropertySource;
  * <p><b>Why these cannot be canonical:</b> {@code ProviderConfigurationTest} asserts the canonical
  * signature's embedding base URL, so the override below must not reach it; and the classes of the
  * embedding index drop and recreate {@code vector_store} with a deliberately wrong dimension, which
- * no other class may see in its database - with {@code initialize-schema=false} nothing puts the
- * table back.
+ * no other class may see in its database - after the migration at the context's start nothing puts
+ * the table back.
  *
  * <p>The external-access feature rides along switched off (ADR-0044): whether {@code /mcp} and the
  * channel's routes are absent can only be seen in a context started without them, and the classes

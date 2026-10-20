@@ -604,6 +604,14 @@ Behebung unter [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betri
 
 `docker compose up -d <service>` statt `restart` verwenden; `restart` behält die alte Umgebung.
 
+### Das Backend startet nicht und meldet `refuses to start`
+
+Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut
+Instanzregister noch läuft. Im Einzelbetrieb ist das der eigene Vorgänger, wenn er hart beendet wurde
+(Exit-Code `137`) und sich nicht abmelden konnte. Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als
+beendet; danach `docker compose up -d backend` erneut ausführen (siehe
+[Instanzregister](betrieb.md#instanzregister)).
+
 ### Der Container meldet `137`
 
 `docker inspect --format '{{.State.OOMKilled}}' <container>` zeigt, ob die Speichergrenze der Grund

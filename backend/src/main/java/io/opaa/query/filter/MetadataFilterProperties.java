@@ -1,6 +1,7 @@
 package io.opaa.query.filter;
 
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -25,6 +26,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param optionsCacheTtl how long a person's filter options stay cached before they are recomputed
  *     over the current bestand - a rights change discards them earlier.
  */
+@PerInstance("search tuning of this process")
 @NoDataImpact("thresholds of the filter offer")
 @ConfigurationProperties(prefix = "opaa.query.metadata-filter")
 public record MetadataFilterProperties(

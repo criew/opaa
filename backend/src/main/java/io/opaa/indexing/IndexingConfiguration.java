@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.asset.AssetRepository;
+import io.opaa.common.DatabaseClock;
 import io.opaa.common.FeatureFlags;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.SupportedDocumentFormats;
@@ -79,8 +80,11 @@ public class IndexingConfiguration {
 
   @Bean
   IndexingJobService indexingJobService(
-      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository, Clock clock) {
-    return new IndexingJobService(indexingJobRepository, assetRepository, clock);
+      IndexingJobRepository indexingJobRepository,
+      AssetRepository assetRepository,
+      Clock clock,
+      DatabaseClock databaseClock) {
+    return new IndexingJobService(indexingJobRepository, assetRepository, clock, databaseClock);
   }
 
   @Bean

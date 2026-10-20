@@ -4,6 +4,7 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.api.types.RetrievalStageName;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
@@ -67,6 +68,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param fusion how {@link RetrievalStageName#RANK_FUSION} fuses the candidate lists, see {@link
  *     Fusion}.
  */
+@PerInstance("search tuning of this process")
 @NoDataImpact("search quality; the answer uses only what the person may read")
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(

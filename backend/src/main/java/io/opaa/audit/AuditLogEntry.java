@@ -23,16 +23,14 @@ import org.springframework.data.domain.Persistable;
  * constructor. That is only the application-level half of "nur anfügend"; the binding half is a
  * database privilege restriction on the underlying table.
  *
- * <p>{@code recordedAt} is set here; {@code audit_log.recorded_at} has no database-level {@code
- * DEFAULT} precisely so this is the single source of the timestamp. This class implements {@link
- * Persistable} with {@link #isNew()} always {@code true}: without it, Spring Data JPA treats an
- * entity whose {@code @Id} is already assigned (as it always is here - {@code eventId} is generated
- * in the constructor, not by the database) as not-new and routes {@code save} through {@code
- * EntityManager#merge} instead of {@code #persist}. {@code merge} operates on a *copy* of the
- * entity, leaving the instance the caller passed to {@link AuditLogService#record} detached with
- * {@code recordedAt} still {@code null}; forcing {@code persist} mutates this exact instance in
- * place instead, so the {@code @PrePersist} callback below sets {@code recordedAt} on the object
- * the caller still holds.
+ * <p>{@code recordedAt} is stamped once by {@link AuditLogService#record} from the database clock;
+ * {@code audit_log.recorded_at} has no database-level {@code DEFAULT} precisely so that is the
+ * single source of the timestamp, and {@code @PrePersist} refuses an entry without it. This class
+ * implements {@link Persistable} with {@link #isNew()} always {@code true}: without it, Spring Data
+ * JPA treats an entity whose {@code @Id} is already assigned (as it always is here - {@code
+ * eventId} is generated in the constructor, not by the database) as not-new and routes {@code save}
+ * through {@code EntityManager#merge} instead of {@code #persist}, which operates on a copy and
+ * leaves the instance the caller passed to {@link AuditLogService#record} detached.
  *
  * <p>{@code before}/{@code after} deliberately hold pre-serialized JSON text rather than a
  * structured type: the specification requires them "eng begrenzt auf das rechtlich Erhebliche", not
@@ -206,10 +204,19 @@ public class AuditLogEntry implements Persistable<UUID> {
         correlationRef);
   }
 
+  /** Sets the moment of recording, once; an entry is never re-stamped. */
+  void stampRecordedAt(Instant recordedAt) {
+    if (this.recordedAt != null) {
+      throw new IllegalStateException("audit entry " + eventId + " is already stamped");
+    }
+    this.recordedAt = recordedAt;
+  }
+
   @PrePersist
   void onCreate() {
     if (recordedAt == null) {
-      recordedAt = Instant.now();
+      throw new IllegalStateException(
+          "audit entry " + eventId + " has no recordedAt - record it through AuditLogService");
     }
   }
 

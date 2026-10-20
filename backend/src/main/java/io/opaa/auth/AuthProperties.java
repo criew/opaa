@@ -1,6 +1,8 @@
 package io.opaa.auth;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -14,9 +16,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param initialAdminEmail the address that becomes system administrator on its first sign-in and
  *     of the local bootstrap administrator
  */
+@PerInstance("seed and development values of this process")
 @NoDataImpact("authentication mode and bootstrap of the first identity provider")
 @ConfigurationProperties(prefix = "opaa.auth")
-public record AuthProperties(String mode, OidcAuth oidc, DevAuth dev, String initialAdminEmail) {
+public record AuthProperties(
+    @InstallationWide String mode, OidcAuth oidc, DevAuth dev, String initialAdminEmail) {
 
   public AuthProperties {
     if (mode == null || mode.isBlank()) {
@@ -43,6 +47,7 @@ public record AuthProperties(String mode, OidcAuth oidc, DevAuth dev, String ini
    * @param jwkSetUri the key set of the first provider, when it is not discovered from the issuer
    * @param bootstrap {@code force} restores the environment provider once at start-up
    */
+  @InstallationWide
   public record OidcAuth(
       String authority,
       String clientId,
@@ -72,6 +77,7 @@ public record AuthProperties(String mode, OidcAuth oidc, DevAuth dev, String ini
    * @param enabled whether addresses of identity providers are checked against internal networks
    * @param allowlist hosts of further identity providers that may resolve to internal addresses
    */
+  @InstallationWide
   public record TargetValidation(
       @NoDataImpact("SSRF hardening of identity provider addresses") Boolean enabled,
       List<String> allowlist) {

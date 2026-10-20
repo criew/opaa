@@ -132,7 +132,9 @@ spring:
           completion: false
     vectorstore:
       pgvector:
-        initialize-schema: true
+        # vector_store and its indexes come from the Liquibase changelog
+        # (knowledge/2026-10-19-vector-store.yaml), so no instance runs DDL for it at start-up.
+        initialize-schema: false
         # Must equal opaa.database.schema (io.opaa.config.DatabaseSchemaGuard).
         schema-name: ${opaa.database.schema}
         index-type: hnsw
@@ -736,6 +738,12 @@ opaa:
       max-accounts: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_ACCOUNTS:50000}
       connect-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_CONNECT_TIMEOUT:5s}
       request-timeout: ${OPAA_DIRECTORY_SYNC_KEYCLOAK_REQUEST_TIMEOUT:30s}
+  instance:
+    # The instance register (ADR-0053, Entscheidung 3): every instance writes its heartbeat at this
+    # interval by the database clock and counts as dead after dead-after without one. dead-after is
+    # at least four intervals (io.opaa.instance.InstanceProperties) and the same on every instance.
+    heartbeat-interval: ${OPAA_INSTANCE_HEARTBEAT_INTERVAL:15s}
+    dead-after: ${OPAA_INSTANCE_DEAD_AFTER:120s}
   security:
     credentials:
       # AES-256 key (Base64, 32 raw bytes) for encrypting knowledge_libraries.source_credentials at

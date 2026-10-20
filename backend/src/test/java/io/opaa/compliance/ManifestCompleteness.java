@@ -31,16 +31,9 @@ final class ManifestCompleteness {
 
   private ManifestCompleteness() {}
 
-  /** The tables of the delivered schema: the changelog's and those created outside it. */
+  /** The tables of the delivered schema, all of them created by the changelog. */
   static Map<String, Table> deliveredSchema() {
-    Map<String, Table> schema = new LinkedHashMap<>(ChangelogSchema.read());
-    ChangelogSchema.TABLES_OUTSIDE_THE_CHANGELOG.forEach(
-        (name, columns) -> {
-          Map<String, String> sources = new LinkedHashMap<>();
-          columns.forEach(column -> sources.put(column, "Spring AI PgVectorStore"));
-          schema.put(name, new Table(name, "Spring AI PgVectorStore", sources));
-        });
-    return schema;
+    return new LinkedHashMap<>(ChangelogSchema.read());
   }
 
   /** The gaps as one failure message, closed by the pointer to the convention. */
