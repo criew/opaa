@@ -24,7 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
  * entry to exactly one per token - and it is therefore also what would hide a lost entry forever: a
  * row that carries the marker is never looked at again. Both writes are consequently one
  * transaction per token, opened with {@link Propagation#REQUIRES_NEW} so a single failing token
- * rolls back only itself and the daily run continues with the next one.
+ * rolls back only itself and the daily run continues with the next one. The marker is read under
+ * the row lock, so a second run - on another instance - waits and then finds it set.
  */
 @Service
 public class ExternalAccessTokenLapseService {
@@ -56,7 +57,7 @@ public class ExternalAccessTokenLapseService {
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public boolean recordLapse(UUID tokenId, Instant now) {
-    ExternalAccessToken token = tokens.findById(tokenId).orElse(null);
+    ExternalAccessToken token = tokens.findForLapse(tokenId).orElse(null);
     if (token == null || token.getLapseRecordedAt() != null) {
       return false;
     }

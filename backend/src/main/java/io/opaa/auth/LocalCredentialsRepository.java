@@ -1,11 +1,13 @@
 package io.opaa.auth;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -26,6 +28,11 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
 
   /** The one bootstrap account ({@code ux_local_credentials_single_bootstrap}), if it exists. */
   Optional<LocalCredentials> findByBootstrapTrue();
+
+  /** The row of {@code userId}, locked until the caller's transaction ends. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT c FROM LocalCredentials c WHERE c.userId = :userId")
+  Optional<LocalCredentials> findForUpdate(@Param("userId") UUID userId);
 
   /** The accounts expiring in {@code [from, to)} - the expiry reminder's window. */
   List<LocalCredentials> findByExpiresAtGreaterThanEqualAndExpiresAtLessThan(

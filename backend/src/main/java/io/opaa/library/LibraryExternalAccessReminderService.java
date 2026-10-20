@@ -1,7 +1,6 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.ExternalAccessState;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.PublicBaseUrl;
@@ -87,9 +86,7 @@ public class LibraryExternalAccessReminderService {
     Instant now = clock.instant();
     Instant until = now.plus(Duration.ofDays(properties.reminderLeadDays()));
     List<KnowledgeLibrary> due =
-        libraryRepository
-            .findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtBetween(
-                ExternalAccessState.ACTIVE, now, until);
+        libraryRepository.findAllById(libraryRepository.lockExternalAccessReminderDue(now, until));
     List<Runnable> sends = new ArrayList<>();
     for (KnowledgeLibrary library : due) {
       library.markExternalAccessReminderSent(now);

@@ -1,5 +1,6 @@
 package io.opaa.externalaccess.token;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -7,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,6 +23,14 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
   Optional<ExternalAccessToken> findByIdAndUserId(UUID id, UUID userId);
 
   List<ExternalAccessToken> findByUserIdAndRevokedAtIsNull(UUID userId);
+
+  /**
+   * The token, its row locked until the caller's transaction ends - so that of two runs recording
+   * its lapse, the second reads the marker the first committed.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT t FROM ExternalAccessToken t WHERE t.id = :id")
+  Optional<ExternalAccessToken> findForLapse(@Param("id") UUID id);
 
   /**
    * The unfiltered Bestandsliste, soonest expiry first. The order is fixed and there is no ordering

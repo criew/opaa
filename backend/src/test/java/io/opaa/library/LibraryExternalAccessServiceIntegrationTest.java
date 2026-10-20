@@ -39,6 +39,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The Freigabe einer Bibliothek für Fremdzugänge against a real Postgres with the versioned
@@ -70,6 +72,7 @@ class LibraryExternalAccessServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private FeatureFlags featureFlags;
 
   private UUID organizationId;
@@ -341,8 +344,15 @@ class LibraryExternalAccessServiceIntegrationTest {
    * would split the Spring context (AGENTS.md, "Spring-Testkontexte").
    */
   private LibraryExternalAccessExpiryService expiryServiceAt(Instant now) {
+    TransactionTemplate transactions = new TransactionTemplate(transactionManager);
+    // In a transaction like the bean's @Transactional: the run locks the rows it selects.
     return new LibraryExternalAccessExpiryService(
-        libraryRepository, visibilityHistoryService, auditEventRecorder, () -> now);
+        libraryRepository, visibilityHistoryService, auditEventRecorder, () -> now) {
+      @Override
+      public int runOnce() {
+        return transactions.execute(status -> super.runOnce());
+      }
+    };
   }
 
   /** The release service with its clock moved - same reasoning as {@link #expiryServiceAt}. */

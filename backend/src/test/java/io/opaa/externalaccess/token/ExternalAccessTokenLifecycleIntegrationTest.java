@@ -37,8 +37,10 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The three daily steps of the access tokens: the reminder before an expiry, the Ausserkrafttreten
@@ -53,6 +55,7 @@ class ExternalAccessTokenLifecycleIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private UserRepository users;
   @Autowired private KnowledgeLibraryService libraryService;
@@ -184,12 +187,15 @@ class ExternalAccessTokenLifecycleIntegrationTest {
         new ExternalAccessTokenLapseStep(
             tokens,
             new ExternalAccessTokenLapseService(tokens, users, audit, clock) {
+              // In its own transaction like the bean's REQUIRES_NEW: the token row is locked.
               @Override
               public boolean recordLapse(UUID tokenId, Instant now) {
                 if (tokenId.equals(stubborn.getId())) {
                   throw new IllegalStateException("the audit write failed");
                 }
-                return super.recordLapse(tokenId, now);
+                return Boolean.TRUE.equals(
+                    new TransactionTemplate(transactionManager)
+                        .execute(status -> super.recordLapse(tokenId, now)));
               }
             });
 
