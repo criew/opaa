@@ -7,12 +7,16 @@ import io.opaa.api.types.MailEncryption;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.ValidationException;
+import io.opaa.instance.InvalidationBus;
+import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.security.SettingsEncryptor;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,13 +33,19 @@ import org.springframework.util.StringUtils;
  *
  * <p>{@link #snapshot()} answers from memory, so sending opens no transaction; it is rebuilt on
  * first use and on every {@link MailSettingsChangedEvent} <em>after</em> its transaction committed,
- * which is what makes a change effective without a restart. Process-local, per ADR-0021.
+ * which is what makes a change effective without a restart. Bound to the {@link InvalidationBus}
+ * (ADR-0053, Entscheidung 5): a change of the settings on any instance drops it on every instance,
+ * and while the bus does not listen every read builds it from the row. The send status is not part
+ * of it and not announced.
  *
  * <p>The password is stored encrypted by {@link SettingsEncryptor}, answered as {@link
  * #PASSWORD_MASK} and never part of the audit payload, which records only whether one is set.
  */
 @Service
-public class MailSettingsService {
+public class MailSettingsService implements InvalidationSubscriber {
+
+  /** The topic the trigger on {@code mail_settings} announces. */
+  public static final String INVALIDATION_TOPIC = "mail-settings";
 
   /**
    * What the API answers instead of the stored password, and what a caller sends back to say
@@ -64,19 +74,23 @@ public class MailSettingsService {
   private final SettingsEncryptor settingsEncryptor;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
+  private final InvalidationBus bus;
 
   private final AtomicReference<MailSettingsSnapshot> snapshot = new AtomicReference<>();
+  private final AtomicLong snapshotGeneration = new AtomicLong();
   private final AtomicReference<MailSendStatus> status = new AtomicReference<>();
 
   public MailSettingsService(
       MailSettingsRepository repository,
       SettingsEncryptor settingsEncryptor,
       AuditEventRecorder auditEventRecorder,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      InvalidationBus bus) {
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
+    this.bus = bus;
   }
 
   /** The stored row, for the administration API. Never carries a decrypted password. */
@@ -92,6 +106,9 @@ public class MailSettingsService {
    * silently unauthenticated connection.
    */
   public MailSettingsSnapshot snapshot() {
+    if (!bus.isListening()) {
+      return toSnapshot(requireRow());
+    }
     MailSettingsSnapshot current = snapshot.get();
     if (current == null) {
       current = rebuildSnapshot();
@@ -193,6 +210,18 @@ public class MailSettingsService {
     rebuildSnapshot();
   }
 
+  @Override
+  public Set<String> invalidationTopics() {
+    return Set.of(INVALIDATION_TOPIC);
+  }
+
+  /** The next read rebuilds the snapshot, and with it the transport. */
+  @Override
+  public void invalidateAll() {
+    snapshotGeneration.incrementAndGet();
+    snapshot.set(null);
+  }
+
   /**
    * Drops both process-local caches so the next read rebuilds them from the database. For tests
    * that share this bean across classes: the send status is not reset by any write to the row, so
@@ -204,9 +233,14 @@ public class MailSettingsService {
     status.set(null);
   }
 
+  /** A rebuild that a drop overtook is returned but not kept: it may have read the old row. */
   private MailSettingsSnapshot rebuildSnapshot() {
+    long before = snapshotGeneration.get();
     MailSettingsSnapshot rebuilt = toSnapshot(requireRow());
     snapshot.set(rebuilt);
+    if (snapshotGeneration.get() != before) {
+      snapshot.compareAndSet(rebuilt, null);
+    }
     return rebuilt;
   }
 

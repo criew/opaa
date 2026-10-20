@@ -119,6 +119,42 @@ class LocalTokenValidatorTest {
     assertThat(LocalTokenRevocationService.cutoffFor(invalidation)).isEqualTo(NOW.plusSeconds(1));
   }
 
+  // regression guard for ADR-0053, Entscheidung 6: no clock of any host decides a revocation
+  @Test
+  void aTokenOfAnEarlierSessionGenerationIsRefusedHoweverLateItsIat() {
+    Jwt minted = token(user.getId(), NOW.plusSeconds(5), row.getSessionGeneration());
+    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(NOW), NOW);
+
+    assertThat(validator.rejectionFor(minted))
+        .contains(new LocalTokenRejection(LocalTokenMarkers.SESSION_REVOKED, null));
+  }
+
+  @Test
+  void aTokenOfTheCurrentSessionGenerationPassesHoweverEarlyItsIat() {
+    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(NOW), NOW);
+
+    Jwt minted = token(user.getId(), NOW.minusSeconds(5), row.getSessionGeneration());
+
+    assertThat(validator.rejectionFor(minted)).isEmpty();
+  }
+
+  @Test
+  void aSessionGenerationThatIsNoWholeNumberIsAMalformedToken() {
+    Jwt jwt =
+        Jwt.withTokenValue("t")
+            .header("alg", "HS256")
+            .issuer(LocalIssuer.URN)
+            .subject(user.getId().toString())
+            .jti(UUID.randomUUID().toString())
+            .issuedAt(NOW)
+            .expiresAt(NOW.plus(Duration.ofMinutes(15)))
+            .claim(LocalAccessTokenService.SESSION_GENERATION_CLAIM, "0")
+            .build();
+
+    assertThat(validator.rejectionFor(jwt))
+        .contains(new LocalTokenRejection(LocalTokenMarkers.MALFORMED_TOKEN, null));
+  }
+
   @Test
   void anAccountThatIsNotActiveIsRefusedEvenWhenNeitherLockedNorExpired() {
     LocalCredentials invited = new LocalCredentials(user.getId(), "Einladung", NOW);
@@ -299,6 +335,20 @@ class LocalTokenValidatorTest {
         .contains(new LocalTokenRejection(LocalTokenMarkers.MALFORMED_TOKEN, null));
   }
 
+  /** A token as this version mints it, with the session generation it was minted under. */
+  private static Jwt token(UUID subject, Instant issuedAt, long sessionGeneration) {
+    return Jwt.withTokenValue("t")
+        .header("alg", "HS256")
+        .issuer(LocalIssuer.URN)
+        .subject(subject.toString())
+        .jti(UUID.randomUUID().toString())
+        .issuedAt(issuedAt)
+        .expiresAt(issuedAt.plus(Duration.ofMinutes(15)))
+        .claim(LocalAccessTokenService.SESSION_GENERATION_CLAIM, sessionGeneration)
+        .build();
+  }
+
+  /** A token as the previous version mints it, without a session generation. */
   private static Jwt token(UUID subject, Instant issuedAt) {
     return Jwt.withTokenValue("t")
         .header("alg", "HS256")
