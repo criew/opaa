@@ -16,6 +16,7 @@ import io.opaa.group.GroupService;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.instance.PostgresInvalidationBus;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -32,6 +33,7 @@ import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -76,6 +78,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private PostgresInvalidationBus invalidationBus;
 
   private KnowledgeLibrary libraryA;
   private KnowledgeLibrary libraryB;
@@ -107,6 +110,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
     indexed(libraryA, "2024-03-12_Dienstanweisung_Nutzung.pdf");
     indexed(libraryA, "Unterlage.pdf");
     indexed(libraryB, "2026-01-05_Vermerk_Nutzung.pdf");
+    settle();
   }
 
   @Test
@@ -253,6 +257,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
             null,
             admin.id()));
     accessService.invalidateLibrary(libraryB.getId());
+    settle();
     Set<UUID> scopeBefore = Set.of(libraryA.getId());
     optionsService.optionsFor(onlyA, null, spaceId, true, List.of());
     assertThat(cache.contains(onlyA.id(), scopeBefore)).isTrue();
@@ -330,6 +335,14 @@ class MetadataFilterOptionsServiceIntegrationTest {
             + " LIKE 'metadata-options-%')");
     jdbcTemplate.update("DELETE FROM assets WHERE name LIKE 'Optionen-%'");
     jdbcTemplate.update("DELETE FROM users WHERE subject LIKE 'metadata-options-%'");
+  }
+
+  /**
+   * Waits until the invalidation bus delivered the announcements of the rights just written: they
+   * empty this cache a moment after the commit, and a check of what it holds must come after that.
+   */
+  private void settle() {
+    assertThat(invalidationBus.awaitDelivery(Duration.ofSeconds(10))).isTrue();
   }
 
   private CurrentUser user(String name, SystemRole role) {
