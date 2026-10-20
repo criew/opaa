@@ -72,12 +72,14 @@ Frontend, Backend und Modelle lassen sich jederzeit neu starten.
 
 ## Genau eine Backend-Instanz
 
-OPAA läuft mit **genau einem Backend-Prozess**. Zeitpläne der Indexierung und des
-Verzeichnisabgleichs, der Wiederanlauf abgebrochener Läufe, Zwischenspeicher und Thread-Pools sind an
-diesen Prozess gebunden; zwei Instanzen gegen dieselbe Datenbank würden Läufe
-doppelt starten und sich gegenseitig für abgebrochen halten. Skalierung ist deshalb eine Frage der
-Hardware dieser einen Instanz, Hochverfügbarkeit des Backends gibt es nicht. Eine Aktualisierung ist
-eine kurze Unterbrechung: Die alte Instanz endet, bevor die neue startet.
+Freigegeben ist OPAA mit **genau einem Backend-Prozess**. Mehrere Instanzen gegen dieselbe
+Datenbank sind vorbereitet: Sie stimmen sich über das Instanzregister und die Sperren der geplanten
+Läufe ab (unten), und Compose-Stapel und Helm-Chart bringen je eine Mehrinstanz-Variante mit
+([Docker Compose](docker-compose.md#mehrere-backend-instanzen),
+[Kubernetes](kubernetes.md#mehrere-backend-instanzen)). Der Nachweis mit zwei Instanzen steht aus
+(#2952). Bis dahin ist Skalierung eine Frage der Hardware der einen Instanz, Hochverfügbarkeit des
+Backends gibt es nicht, und eine Aktualisierung ist eine kurze Unterbrechung: Die alte Instanz endet,
+bevor die neue startet.
 
 Das Frontend hält keinen Zustand und darf mehrfach laufen.
 
@@ -332,6 +334,9 @@ Status (`{"status":"UP"}` bzw. `DOWN`); die Aufschlüsselung sieht nur ein angem
 Jede **andere** Gruppe verlangt ein gültiges Zugangstoken, weil zwei von ihnen bei jedem Abruf einen
 echten Modellaufruf bzw. eine echte Ähnlichkeitssuche auslösen.
 
+Der Compose-Stapel prüft die Bereitschaft im Container mit einem kleinen Java-Programm des
+Images, weil das Image keine Shell hat ([Docker Compose](docker-compose.md#services)).
+
 > **Die Bereitschaft zieht eine Datenbankverbindung.** Nicht nur ein Ausfall der Datenbank lässt die
 > Probe `DOWN` melden, sondern auch ein erschöpfter Verbindungspool. Eine Instanz, die unter Last
 > alle Verbindungen in langen Chat-Anfragen hält, kann sich so selbst aus der Rotation nehmen. Bei
@@ -368,6 +373,10 @@ geordnet zu erneuern: aus der Rotation nehmen, auslaufen lassen, stoppen.
 - **Die Stopp-Frist der Plattform** muss länger sein, sonst endet der Prozess abrupt: unter Compose
   `OPAA_STOP_GRACE_PERIOD`, unter Kubernetes `backend.terminationGracePeriodSeconds`, das der Chart
   größer als das Zeitfenster verlangt.
+- **Beim Austausch einzelner Instanzen** übernimmt eine andere Instanz die neuen Anfragen. Damit eine
+  lange Chat-Antwort den Austausch übersteht, reicht das Zeitfenster bis zum Lese-Timeout des
+  Frontends (`OPAA_BACKEND_READ_TIMEOUT`); der Helm-Chart stellt es bei einem Rolling Update selbst so
+  ein ([Kubernetes](kubernetes.md#mehrere-backend-instanzen)).
 
 ## Netzwerkzugang
 
@@ -648,7 +657,8 @@ das Backend neu. Im Grundsatz:
 3. **Vorbereitung erledigen**, dann die Images tauschen. Backend und Frontend bekommen dieselbe
    Version.
 4. **Beim Start** wendet das Backend die noch fehlenden Schemaänderungen an, nur vorwärts. Bereitschaft
-   und Protokoll zeigen, ob der Start gelungen ist.
+   und Protokoll zeigen, ob der Start gelungen ist. Mit mehreren Instanzen migriert ein eigener
+   Schritt vorher, danach werden die Instanzen einzeln ersetzt.
 5. **Prüfen:** Version unter `/actuator/info`, eine Frage im Chat, auf der Seite „Suche & Indexierung"
    ein ausstehender Nachzug.
 

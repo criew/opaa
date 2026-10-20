@@ -167,9 +167,14 @@ startet statt der Anwendung nur Datenquelle, die Startwächter vor Liquibase (`D
 und endet mit Exit-Code 0 (`io.opaa.config.DatabaseMigrationMode`). Liquibase läuft dort auch bei
 `SPRING_LIQUIBASE_ENABLED=false`, damit Migrationsschritt und Instanzen dieselben Variablen teilen
 können. Instanzen starten danach mit `SPRING_LIQUIBASE_ENABLED=false`. Ohne den Modus migriert jeder
-Start wie bisher; Compose und Helm binden den Modus mit #2951 ein. `InstanceStartTest` startet das
-Backend als eigene Prozesse: Migrationsmodus mit Exit-Code 0, danach eine Instanz ohne Migration,
-und zwei gleichzeitige Kaltstarts gegen eine leere Datenbank.
+Start wie bisher. `OPAA_MODE=await-migration` startet nur die Datenquelle, liest den Changelog
+aus dem Klassenpfad und wartet, bis `databasechangelog` jedes Changeset verzeichnet (Datei, ID,
+Autor), ohne zu schreiben; ein Changeset mit `onFail: CONTINUE` zählt nicht, weil es erst ein
+späterer Lauf nachholt. Der Helm-Chart startet die Migration als Job und diesen Modus als
+Init-Container jedes Backend-Pods, `docker-compose.multi.yml` den Migrationsdienst `backend-migrate`.
+`InstanceStartTest` startet das Backend als eigene Prozesse: Migrationsmodus mit Exit-Code 0, der
+Wartemodus endet erst danach, eine Instanz ohne Migration startet, und zwei gleichzeitige Kaltstarts
+gegen eine leere Datenbank.
 
 Gleichzeitig startende Instanzen seeden unter einer Advisory-Sperre (Namensraum `211`) nacheinander;
 ein Passwort erscheint erst nach dem Commit seiner Transaktion im Log. `OPAA_LOCAL_ADMIN_RESET=force`

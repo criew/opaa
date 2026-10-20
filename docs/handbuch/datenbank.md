@@ -114,15 +114,23 @@ Voraussetzungen:
 ## Migration als eigener Schritt
 
 Ohne weitere Angabe migriert jede Instanz die Datenbank beim Start, bevor sie Anfragen annimmt;
-Docker Compose und das Helm-Chart arbeiten so. Wer die Migration vom Start der Instanzen trennen
-will, etwa damit kein Instanzstart eine Migration abbricht oder eine hängende Liquibase-Sperre
-hinterlässt:
+Docker Compose und das Helm-Chart arbeiten mit einer Instanz so. Mit mehreren Instanzen trennen
+beide die Migration vom Start der Instanzen, damit kein Instanzstart eine Migration abbricht oder
+eine hängende Liquibase-Sperre hinterlässt: der Dienst `backend-migrate` der Mehrinstanz-Variante
+([Docker Compose](docker-compose.md#mehrere-backend-instanzen)) und der Migrations-Job des Charts
+([Kubernetes](kubernetes.md#mehrere-backend-instanzen)). Von Hand:
 
 1. Das Backend-Image einmal mit `OPAA_MODE=migrate` und denselben Datenbankwerten starten. Es wendet
    die Migrationen an, legt die Vektortabelle an und endet mit Exit-Code 0. Jeder andere Exit-Code
    heißt: Die Migration ist gescheitert, die Instanzen bleiben auf dem alten Stand.
 2. Die Instanzen mit `SPRING_LIQUIBASE_ENABLED=false` starten. Sie migrieren nicht und warten nicht
    auf die Liquibase-Sperre.
+
+Wer die Reihenfolge nicht selbst abwarten kann, stellt jeder Instanz das Backend-Image mit
+`OPAA_MODE=await-migration` voran, wie es der Chart als Init-Container tut. Es liest nur, wartet,
+bis die Datenbank jede Migration seiner Version enthält, und endet dann mit Exit-Code 0; bis dahin
+nennt es im Protokoll alle 5 s, wie viele Migrationen noch fehlen. Ist die Datenbank nicht
+erreichbar, wartet es weiter.
 
 Eine Migration wartet höchstens fünf Sekunden auf die Sperre einer Tabelle und bricht dann ab, statt
 die Anfragen aller Instanzen hinter sich aufzustauen; der abgebrochene Lauf lässt sich wiederholen.
@@ -132,6 +140,17 @@ nacheinander an, nie doppelt.
 **Update auf `v0.1.0`:** Von einem Vorabstand (`v0.1.0-rc.1` bis `rc.4`) aus ist es kein Rolling
 Update. Vorher alle Instanzen anhalten; die Migrationen dieser Stände entfernen Spalten und Tabellen,
 die eine noch laufende ältere Instanz braucht.
+
+### Verbindungen bei mehreren Instanzen
+
+Jede Instanz öffnet bis zu `OPAA_DB_POOL_SIZE` Verbindungen in ihrem Pool und dazu eine dauerhafte
+Verbindung, über die sie Änderungen der anderen Instanzen erfährt. Der Migrationsschritt braucht zwei.
+PostgreSQL muss also für
+
+(Instanzen + 1) × (`OPAA_DB_POOL_SIZE` + 1) + 2
+
+Verbindungen Platz haben, zusätzlich zu allem anderen auf demselben Server. Die 1 neben den
+Instanzen ist die, die ein Rolling Update startet, bevor es eine alte beendet.
 
 ## Volltextsuche (lexikalischer Suchpfad)
 
