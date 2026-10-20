@@ -175,6 +175,27 @@ data:
     accessPaths: [UI, API, DATABASE]
     deletion: Überschrieben bei der nächsten Änderung
     evaluations: keine
+  - id: mail-outbox
+    title: Warteschlange ausgehender E-Mails
+    purpose: >-
+      Zustellung von E-Mails, auf deren Ergebnis niemand in derselben Anfrage wartet (Kennwort vergessen,
+      Selbstregistrierung, Sperre, Erinnerungen), auch über Neustart und Instanzwechsel hinweg
+    personalReference: IDENTIFIABLE
+    tables:
+      - name: mail_outbox
+        personalColumns:
+          [recipient_ciphertext, subject_ciphertext, body_plain_ciphertext, body_html_ciphertext, created_at]
+        nonPersonalColumns: [id, template_key, attempts, next_attempt_at, last_failure_reason]
+    storage: Anwendungsdatenbank, Empfänger und Inhalt verschlüsselt mit dem Einstellungsschlüssel
+    retention:
+      rule: >-
+        Bis zur Zustellung, längstens bis zum letzten von acht Zustellversuchen (rund zwei Stunden); bei
+        ausgeschaltetem Versand bis zum Wiedereinschalten
+      settings: []
+    visibility: [niemand über die Oberfläche]
+    accessPaths: [DATABASE]
+    deletion: Nach der Zustellung oder dem letzten Fehlversuch gelöscht
+    evaluations: keine
   - id: notifications
     title: Benachrichtigungen
     purpose: Hinweise an eine Person über Ereignisse an ihren Objekten

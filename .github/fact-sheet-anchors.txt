@@ -31,6 +31,7 @@ datenkatalog#indexing-runs
 datenkatalog#library-settings
 datenkatalog#local-credentials
 datenkatalog#local-sessions-and-links
+datenkatalog#mail-outbox
 datenkatalog#notifications
 datenkatalog#original-storage
 datenkatalog#permission-history

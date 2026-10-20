@@ -45,6 +45,7 @@ import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
+import io.opaa.test.LocalMailbox;
 import io.opaa.test.OpaaLocalAuthLinkTest;
 import io.opaa.test.ProviderFixtures;
 import jakarta.mail.Part;
@@ -146,6 +147,7 @@ class LocalUserAdminIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    LocalMailbox.awaitOutboxDrained(jdbc);
     greenMail.stop();
     configureSmtp(false);
     MailTestSupport.resetCaches(mailSettings);

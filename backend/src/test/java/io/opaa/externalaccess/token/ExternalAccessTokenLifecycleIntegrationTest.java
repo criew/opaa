@@ -17,7 +17,6 @@ import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
-import io.opaa.mail.SendResult;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import java.sql.Timestamp;
@@ -312,9 +311,8 @@ class ExternalAccessTokenLifecycleIntegrationTest {
     }
 
     @Override
-    public SendResult sendExpiring(User owner, String tokenName, Instant expiresAt) {
+    public void sendExpiring(User owner, String tokenName, Instant expiresAt) {
       reminded.add(tokenName);
-      return new SendResult.Sent(owner.getEmail());
     }
   }
 
