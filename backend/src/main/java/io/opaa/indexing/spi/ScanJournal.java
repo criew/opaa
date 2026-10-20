@@ -1,5 +1,7 @@
 package io.opaa.indexing.spi;
 
+import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.job.RunAbandonedException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -15,12 +17,17 @@ import org.springframework.transaction.annotation.Transactional;
  * Where a file sync keeps what outlasts its run: the sync state with the round's progress, the
  * presence the round has seen and the revisits of documents deleted by hand. A state and the
  * presence written with it are committed together or not at all, and a state deleted while a run
- * held it is never written again.
+ * held it is never written again. Every write names the job of the writing run and happens only
+ * while that job is {@code RUNNING}, its row locked against the recovery until the write commits: a
+ * run another instance took over cannot overwrite the state of the run that followed it (ADR-0053,
+ * Entscheidung 8).
  */
 public class ScanJournal {
 
   /** At most this many values per statement, well below the bind-parameter limit of the driver. */
   public static final int BATCH = 1000;
+
+  private static final String RUNNING = JobStatus.RUNNING.name();
 
   static final String DISCARDED_MESSAGE =
       "Die Quelle der Bibliothek wurde während des Laufs geändert; der Lauf endet ohne Änderung"
@@ -42,9 +49,10 @@ public class ScanJournal {
     return repository.findByLibraryId(libraryId);
   }
 
-  /** Saves {@code state}; continue with the returned instance. */
+  /** Saves {@code state} for the run of {@code jobId}; continue with the returned instance. */
   @Transactional
-  public SourceSyncState save(SourceSyncState state) {
+  public SourceSyncState save(UUID jobId, SourceSyncState state) {
+    requireHeld(jobId);
     requireRow(state);
     return repository.save(state);
   }
@@ -55,7 +63,12 @@ public class ScanJournal {
    */
   @Transactional
   public SourceSyncState save(
-      SourceSyncState state, UUID scanId, UUID libraryId, Collection<String> presentPaths) {
+      UUID jobId,
+      SourceSyncState state,
+      UUID scanId,
+      UUID libraryId,
+      Collection<String> presentPaths) {
+    requireHeld(jobId);
     requireRow(state);
     SourceSyncState saved = repository.save(state);
     if (!presentPaths.isEmpty()) {
@@ -71,7 +84,8 @@ public class ScanJournal {
    */
   @Transactional
   public void recordPresence(
-      UUID stateId, UUID scanId, UUID libraryId, Collection<String> presentPaths) {
+      UUID jobId, UUID stateId, UUID scanId, UUID libraryId, Collection<String> presentPaths) {
+    requireHeld(jobId);
     if (repository.lockById(stateId).isPresent()) {
       insertPresence(stateId, scanId, libraryId, presentPaths);
     }
@@ -86,7 +100,8 @@ public class ScanJournal {
 
   /** Saves {@code state} after its round ended and drops the presence of every round. */
   @Transactional
-  public SourceSyncState saveEnded(SourceSyncState state) {
+  public SourceSyncState saveEnded(UUID jobId, SourceSyncState state) {
+    requireHeld(jobId);
     requireRow(state);
     SourceSyncState saved = repository.save(state);
     repository.flush();
@@ -124,6 +139,20 @@ public class ScanJournal {
     for (List<UUID> batch : batches(ids)) {
       repository.deleteRevisits(batch);
     }
+  }
+
+  /**
+   * The job of the writing run is still {@code RUNNING}, its row share-locked until the caller's
+   * transaction ends; a job without a row is not this journal's to judge.
+   */
+  private void requireHeld(UUID jobId) {
+    repository
+        .lockJobStatus(jobId)
+        .filter(status -> !RUNNING.equals(status))
+        .ifPresent(
+            status -> {
+              throw new RunAbandonedException(jobId, "its job is " + status);
+            });
   }
 
   /**

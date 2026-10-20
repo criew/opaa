@@ -5,6 +5,9 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
+import io.opaa.instance.BusBoundCache;
+import io.opaa.instance.InvalidationBus;
+import io.opaa.instance.InvalidationSubscriber;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -33,7 +36,8 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>{@link #effectiveRole} is a single-asset lookup on the hot path of every CRUD request and
  *       is cached per asset, invalidated after commit whenever a grant on that asset changes -
- *       mirroring {@link GroupMembershipResolver}'s cache and invalidation pattern.
+ *       mirroring {@link GroupMembershipResolver}'s cache and invalidation pattern, and emptied on
+ *       every instance when {@code asset_grants} changes anywhere (ADR-0053, Entscheidung 5).
  *   <li>{@link #readableAssetIds}, backing the permission-aware vector search filter, is
  *       deliberately <b>not</b> cached: it is a single indexed query per source, so a revoked grant
  *       takes effect on the very next query without depending on a second cache-invalidation path
@@ -46,19 +50,20 @@ import org.springframework.stereotype.Component;
  * (ADR-0036, Entscheidung 1).
  */
 @Component
-public class AssetAccessService {
+public class AssetAccessService implements InvalidationSubscriber {
 
   private final AssetGrantRepository grantRepository;
   private final GroupMembershipResolver membershipResolver;
   private final GroupSubjectDirectory groupDirectory;
   private final Clock clock;
-  private final Cache<AssetKey, List<AssetGrant>> grantsByAsset;
+  private final BusBoundCache<AssetKey, List<AssetGrant>> grantsByAsset;
 
   public AssetAccessService(
       AssetGrantRepository grantRepository,
       GroupMembershipResolver membershipResolver,
       GroupSubjectDirectory groupDirectory,
-      Clock clock) {
+      Clock clock,
+      InvalidationBus bus) {
     this.grantRepository = grantRepository;
     this.membershipResolver = membershipResolver;
     this.groupDirectory = groupDirectory;
@@ -67,8 +72,19 @@ public class AssetAccessService {
     // access a moment too long between a completed transaction's invalidation and the next read,
     // never too little - invalidateAsset below, called post-commit, is the primary correctness
     // mechanism. Time-based expiry is a safety net only.
-    this.grantsByAsset =
+    Cache<AssetKey, List<AssetGrant>> cache =
         Caffeine.newBuilder().maximumSize(50_000).expireAfterWrite(Duration.ofMinutes(10)).build();
+    this.grantsByAsset = new BusBoundCache<>(cache, bus);
+  }
+
+  @Override
+  public Set<String> invalidationTopics() {
+    return Set.of(GroupMembershipResolver.RIGHTS_TOPIC);
+  }
+
+  @Override
+  public void invalidateAll() {
+    grantsByAsset.invalidateAll();
   }
 
   /** The cache key: an asset id alone is not unique across asset types. */

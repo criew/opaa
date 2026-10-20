@@ -277,7 +277,9 @@ nicht mit der eingestellten Grenze.
    Die Seite zeigt den Fortschritt; Chunks privater Bibliotheken zählt sie nur mit, wenn genug
    Personen solche führen (Mindestgruppengröße). „Neueinbettung abbrechen" hält den Lauf nach dem aktuellen
    Dokument an, das bereits Eingebettete bleibt erhalten, und „Neueinbettung fortsetzen" macht dort
-   weiter. Ein Neustart während des Laufs setzt ihn von selbst fort.
+   weiter. Ein Neustart während des Laufs setzt ihn von selbst fort; endet die Instanz, die ihn
+   ausführt, übernimmt ihn die nächste Instanz, die startet oder bereits läuft. Abbrechen und
+   Fortsetzen wirken gleich, welche Instanz die Seite beantwortet.
 4. **Abschluss.** Haben alle Chunks einen neuen Vektor, stellt OPAA die Vektorablage um, bei einer
    anderen Dimension samt Index, und die Vektorsuche läuft wieder. Start, Abbruch und Ende stehen im
    Revisionsprotokoll.

@@ -82,14 +82,16 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
 
   /**
    * The mass revocation of several accounts in one statement (switching the local account
-   * management off, ADR-0033 Entscheidung 4): every access token of {@code userIds} issued before
-   * {@code cutoff} becomes invalid. Bypasses the optimistic {@code version}, as every bulk update
-   * does; returns the number of rows written.
+   * management off, ADR-0033 Entscheidung 4): the session generation of every account in {@code
+   * userIds} goes up, and {@code cutoff} is set for tokens without it. Bypasses the optimistic
+   * {@code version}, as every bulk update does - a stale entity written afterwards cannot lower the
+   * generation, the trigger on the table keeps it; returns the number of rows written.
    */
   @Transactional
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
-      "UPDATE LocalCredentials c SET c.passwordInvalidatedBefore = :cutoff, c.updatedAt = :now"
+      "UPDATE LocalCredentials c SET c.passwordInvalidatedBefore = :cutoff,"
+          + " c.sessionGeneration = c.sessionGeneration + 1, c.updatedAt = :now"
           + " WHERE c.userId IN :userIds")
   int invalidateSessionsIssuedBefore(
       @Param("userIds") Collection<UUID> userIds,

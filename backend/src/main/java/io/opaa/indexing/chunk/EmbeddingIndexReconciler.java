@@ -3,6 +3,7 @@ package io.opaa.indexing.chunk;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord.Run;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord.RunStatus;
 import io.opaa.indexing.chunk.EmbeddingIndexState.Snapshot;
+import io.opaa.instance.CurrentInstance;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
 import java.time.Clock;
@@ -10,13 +11,21 @@ import java.time.Instant;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Compares the configured embedding model with the one the vector index was built with, once all
- * beans exist (so after Liquibase and after {@code PgVectorStore} created its table) and before the
- * application serves requests. Never refuses the start and never starts a run.
+ * Compares the configured embedding model with the one the vector index was built with, at the
+ * start right after this instance was admitted to the instance register and before it serves
+ * requests or runs a task. Never refuses the start and never starts a run.
+ *
+ * <p>Several instances share the vector table (ADR-0053, Entscheidung 8): the comparison runs in
+ * one transaction under {@link VectorIndexSchema#lockSchemaChanges}, and only an instance of the
+ * newest live version changes the table or the record. An older one, such as a pod of the previous
+ * version restarting during a rolling update, takes the index as recorded. The register admits no
+ * instance whose embedding identity differs from a live one's (Entscheidung 4).
  *
  * <p>A mismatch in model or size marks the index stale and prepares an empty target column of the
  * configured size, unless one for exactly this model already exists. An empty table is resized in
@@ -24,7 +33,7 @@ import org.springframework.stereotype.Component;
  * Going back to the model of the index drops the target column.
  */
 @Component
-public class EmbeddingIndexReconciler implements SmartInitializingSingleton {
+public class EmbeddingIndexReconciler implements SmartLifecycle {
 
   private static final Logger log = LoggerFactory.getLogger(EmbeddingIndexReconciler.class);
 
@@ -39,23 +48,46 @@ public class EmbeddingIndexReconciler implements SmartInitializingSingleton {
   private final VectorIndexSchema schema;
   private final EmbeddingInfoService embeddingInfoService;
   private final Clock clock;
+  private final CurrentInstance currentInstance;
+  private final TransactionTemplate transactions;
+  private volatile boolean running;
 
   public EmbeddingIndexReconciler(
       EmbeddingIndexState state,
       EmbeddingIndexStore store,
       VectorIndexSchema schema,
       EmbeddingInfoService embeddingInfoService,
-      Clock clock) {
+      Clock clock,
+      CurrentInstance currentInstance,
+      PlatformTransactionManager transactionManager) {
     this.state = state;
     this.store = store;
     this.schema = schema;
     this.embeddingInfoService = embeddingInfoService;
     this.clock = clock;
+    this.currentInstance = currentInstance;
+    this.transactions = new TransactionTemplate(transactionManager);
   }
 
   @Override
-  public void afterSingletonsInstantiated() {
+  public void start() {
     reconcile();
+    running = true;
+  }
+
+  @Override
+  public void stop() {
+    running = false;
+  }
+
+  @Override
+  public boolean isRunning() {
+    return running;
+  }
+
+  @Override
+  public int getPhase() {
+    return CurrentInstance.REGISTERED_PHASE;
   }
 
   public void reconcile() {
@@ -64,9 +96,30 @@ public class EmbeddingIndexReconciler implements SmartInitializingSingleton {
         new EmbeddingIdentity(info.model(), info.baseUrl(), info.dimensions());
     state.exclusively(
         () -> {
-          state.replace(reconcile(configured));
+          state.replace(
+              transactions.execute(
+                  status -> {
+                    schema.lockSchemaChanges();
+                    return currentInstance.runsNewestVersion()
+                        ? reconcile(configured)
+                        : asRecorded(configured);
+                  }));
           return null;
         });
+  }
+
+  /**
+   * The index as the record of the newest version describes it, without any change; an index nobody
+   * recorded yet counts as built with the configured model.
+   */
+  private Snapshot asRecorded(EmbeddingIdentity configured) {
+    log.info(
+        "A newer version runs next to this instance; the vector index is taken as recorded,"
+            + " without reconciling it");
+    return store
+        .load()
+        .map(record -> new Snapshot(record.current(), configured, record.target()))
+        .orElse(new Snapshot(configured, configured, null));
   }
 
   private Snapshot reconcile(EmbeddingIdentity configured) {

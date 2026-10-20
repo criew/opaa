@@ -8,6 +8,7 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.job.RunAbandonedException;
 import io.opaa.indexing.registry.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.IndexingRunProgress;
@@ -49,16 +50,18 @@ import org.springframework.dao.DataIntegrityViolationException;
  * and ends the job exactly once - completed, or failed with a German message.
  *
  * <p>A body ends its run early by throwing {@link IndexingRunFailedException} with the message the
- * job should carry. A {@link RequestBudgetExhaustedException} ends the run as truncated - noted
- * with the body's {@link IndexingRun#budgetContinuation continuation}, never failed. A run that
- * rejected an item at a storage quota (its library's or its owner's) goes on to its end and is
- * completed as incomplete with the category {@link RunFailureCategory#QUOTA_EXHAUSTED}. An {@link
- * InterruptedException} fails the run as interrupted, a {@link SourceConnectionBlockedException}
- * from {@link IndexingRun#credentials} with the block's notice, a {@link
- * SourceCredentialsRejectedException} with its message after telling the port, a {@link
- * LibraryErasureRequestedException} once the library is being erased, a {@link
- * DataIntegrityViolationException} as "library deleted during the run" (the only way a foreign key
- * to the library can break mid-run), any other exception with its own message.
+ * job should carry. A {@link RunAbandonedException} - the run no longer holds its job - ends it
+ * without any further write, before anything is reconciled. A {@link
+ * RequestBudgetExhaustedException} ends the run as truncated - noted with the body's {@link
+ * IndexingRun#budgetContinuation continuation}, never failed. A run that rejected an item at a
+ * storage quota (its library's or its owner's) goes on to its end and is completed as incomplete
+ * with the category {@link RunFailureCategory#QUOTA_EXHAUSTED}. An {@link InterruptedException}
+ * fails the run as interrupted, a {@link SourceConnectionBlockedException} from {@link
+ * IndexingRun#credentials} with the block's notice, a {@link SourceCredentialsRejectedException}
+ * with its message after telling the port, a {@link LibraryErasureRequestedException} once the
+ * library is being erased, a {@link DataIntegrityViolationException} as "library deleted during the
+ * run" (the only way a foreign key to the library can break mid-run), any other exception with its
+ * own message.
  */
 public class IndexingRunTemplate {
 
@@ -269,6 +272,13 @@ public class IndexingRunTemplate {
       if (policy == VanishedDocumentPolicy.REMOVE_ON_ABSENCE) {
         finishCompleteListing(run, executor, listing);
       }
+    } catch (RunAbandonedException e) {
+      log.warn(
+          "Indexing run {} for library {} ends without further writes: {}",
+          jobId,
+          library.getId(),
+          e.getMessage());
+      return;
     } catch (RequestBudgetExhaustedException e) {
       log.info(
           "Indexing run {} for library {} ended at its bound: {}",
@@ -459,6 +469,8 @@ public class IndexingRunTemplate {
    */
   private void finishCompleteListing(
       IndexingRun run, SourceIndexingExecutor executor, ListingOutcome listing) {
+    // a run given up meanwhile must not remove what the run after it listed
+    indexingJobService.requireHeld(run.jobId());
     if ((listing instanceof ListingOutcome.Complete
             || listing instanceof ListingOutcome.CompleteExcept)
         && !run.settingsUnchanged()) {

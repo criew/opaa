@@ -12,13 +12,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The two layers of access-token revocation (ADR-0033, Entscheidung 7): a {@code jti} denylist for
- * single tokens (sign-out), fronted by a Caffeine cache that forgets an entry when the token would
- * have expired anyway, and {@code password_invalidated_before} for everything at once. The cutoff
- * is the start of the <em>next</em> whole second, because a token's {@code iat} has no finer
- * resolution: every token minted up to and including the current second is invalid, and the fresh
- * token {@code change-password} hands out in the same breath is minted with {@code iat} at the
- * cutoff ({@link LocalAccessTokenService#issue(io.opaa.auth.User, boolean, Instant)}).
+ * The two layers of access-token revocation (ADR-0033, Entscheidung 7; ADR-0053, Entscheidung 6): a
+ * {@code jti} denylist for single tokens (sign-out) and the session generation of the account for
+ * everything at once.
+ *
+ * <p>The denylist caches only "revoked", until the token would have expired anyway; "not revoked"
+ * is read from {@code local_revoked_tokens} on every check (a primary-key lookup), so a sign-out on
+ * any instance is refused on every instance from the next request on.
+ *
+ * <p>Ending every session raises {@code session_generation}, which a token carries as {@link
+ * LocalAccessTokenService#SESSION_GENERATION_CLAIM}; no clock of any host takes part. Beside it the
+ * cutoff {@code password_invalidated_before} is still written, the start of the <em>next</em> whole
+ * second: the previous version, running next to this one during a rolling update, refuses by it,
+ * and so does this version for a token the previous one minted without the claim.
  */
 @Service
 public class LocalTokenRevocationService {
@@ -45,7 +51,7 @@ public class LocalTokenRevocationService {
             .build();
   }
 
-  /** Denylists one access token until it would have expired anyway. */
+  /** Denylists one access token until it would have expired anyway; effective on every instance. */
   @Transactional
   public void revokeAccessToken(String jti, UUID userId, Instant expiresAt) {
     String hash = LocalAuthKeyService.jtiHash(jti);
@@ -57,13 +63,20 @@ public class LocalTokenRevocationService {
 
   public boolean isDenylisted(String jti) {
     String hash = LocalAuthKeyService.jtiHash(jti);
-    return Boolean.TRUE.equals(denylisted.get(hash, denylist::existsById));
+    if (denylisted.getIfPresent(hash) != null) {
+      return true;
+    }
+    if (!denylist.existsById(hash)) {
+      return false;
+    }
+    denylisted.put(hash, Boolean.TRUE);
+    return true;
   }
 
   /**
-   * Invalidates every access token of the account issued up to the current second (see the class
-   * Javadoc); returns the cutoff a replacement token must not be issued before. A no-op for an
-   * account without local credentials.
+   * Ends every session of the account: raises its session generation and sets the cutoff (see the
+   * class Javadoc); returns the cutoff a replacement token must not be issued before. A no-op for
+   * an account without local credentials.
    */
   @Transactional
   public Instant invalidateSessionsIssuedBefore(UUID userId) {
@@ -79,7 +92,10 @@ public class LocalTokenRevocationService {
     return cutoff;
   }
 
-  /** Whether a token issued at {@code issuedAt} falls under a stored cutoff. */
+  /**
+   * Whether a token issued at {@code issuedAt} falls under a stored cutoff - only for a token
+   * without the session generation claim, minted by the previous version during a rolling update.
+   */
   static boolean issuedBefore(Instant issuedAt, Instant cutoff) {
     return cutoff != null && issuedAt.isBefore(cutoff);
   }

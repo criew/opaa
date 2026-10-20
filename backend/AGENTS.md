@@ -100,6 +100,13 @@ OPAA läuft als genau ein Backend-Prozess je Installation
 [docs/prozesslokaler-zustand.md](docs/prozesslokaler-zustand.md) ein, ordnet sie dort dem Umbau nach
 [ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) zu und nennt „(ADR-0021)“ in der Javadoc.
 
+**Ein ereignisgesteuerter Cache ohne TTL hängt am Invalidierungsbus**, ebenso einer, dessen TTL eine Rechte- oder
+Sicherheitslücke offen ließe (ADR-0053, Entscheidung 5): Er implementiert `io.opaa.instance.InvalidationSubscriber`,
+ein Caffeine-Cache geht über `BusBoundCache`. Liegt die Quelle in einer Tabelle, meldet ein Trigger
+`notify_cache_invalidation('<topic>')` im Changeset ihres Moduls jede Änderung; ein Ereignis ohne eigene Tabelle
+meldet `InvalidationBus#publish` in der Transaktion (`BEFORE_COMMIT`), nie mit Personenbezug in der Nutzlast.
+`InvalidationBusBindingTest` erzwingt die Anbindung; eine Ausnahme steht dort mit Grund.
+
 ## Scheduler
 
 Der Default-`TaskScheduler` hinter `@EnableScheduling` hat einen Thread für alle `@Scheduled`-Methoden. Eine

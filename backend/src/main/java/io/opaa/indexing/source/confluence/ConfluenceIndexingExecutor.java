@@ -13,10 +13,10 @@ import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
+import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceCredentialsRejectedException;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.indexing.spi.SourceSyncState;
-import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.indexing.spi.VanishedDocumentPolicy;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -81,7 +81,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private final ConfluenceProperties properties;
   private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
-  private final SourceSyncStateRepository syncStateRepository;
+  private final ScanJournal journal;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
   private final ConfluenceAttachmentIndexing attachments;
@@ -92,14 +92,14 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       DocumentIngestService documentIngestService,
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
-      SourceSyncStateRepository syncStateRepository,
+      ScanJournal journal,
       Clock clock,
       IndexingRunTemplate runTemplate) {
     this.clientFactory = clientFactory;
     this.properties = properties;
     this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
-    this.syncStateRepository = syncStateRepository;
+    this.journal = journal;
     this.clock = clock;
     this.runTemplate = runTemplate;
     this.attachments = new ConfluenceAttachmentIndexing(attachmentIndexer, documentRepository);
@@ -133,8 +133,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     Integer ownDays = ConfluenceSourceSettings.stored(settings).fullSyncIntervalDays();
     Duration fullSyncInterval =
         ownDays != null ? Duration.ofDays(ownDays) : properties.fullSyncInterval();
-    return syncStateRepository
-        .findByLibraryId(library.getId())
+    return journal
+        .find(library.getId())
         .filter(state -> !state.isFullSyncDue(fullSyncInterval, clock.instant()))
         .map(state -> IndexingRunMode.INCREMENTAL)
         .orElse(IndexingRunMode.FULL);
@@ -223,16 +223,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private ListingOutcome fullSync(ConfluenceRun run, Instant startedAt)
       throws ConfluenceAccessException, InterruptedException {
     UUID libraryId = run.library.getId();
-    SourceSyncState state =
-        syncStateRepository
-            .findByLibraryId(libraryId)
-            .orElseGet(() -> new SourceSyncState(libraryId));
+    SourceSyncState state = journal.load(libraryId);
     run.frame.adopt(state);
     List<ConfluenceSpaceSelection> spaces =
         orderForResumption(run.frame.settings().connectorSettings(), state);
     run.resumed = state.isFullSyncInterrupted();
     state.beginFullSync(run.frame.jobId());
-    state = syncStateRepository.save(state);
+    state = journal.save(run.frame.jobId(), state);
 
     for (ConfluenceSpaceSelection space : spaces) {
       String key = space.getSpaceKey();
@@ -268,7 +265,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         state = heldAtQuota(run, state);
       }
       state.markScopeCompleted(key);
-      state = syncStateRepository.save(state);
+      state = journal.save(run.frame.jobId(), state);
     }
 
     if (!run.listingComplete) {
@@ -285,7 +282,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         reconciled -> {
           if (reconciled) {
             completedState.completeFullSync(clock.instant(), startedAt);
-            syncStateRepository.save(completedState);
+            journal.save(run.frame.jobId(), completedState);
           } else {
             run.events.record(
                 IndexingEventCategory.ERROR,
@@ -306,7 +303,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       return state;
     }
     state.holdFullSyncAtQuota();
-    return syncStateRepository.save(state);
+    return journal.save(run.frame.jobId(), state);
   }
 
   /**
@@ -318,9 +315,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private ListingOutcome incrementalSync(ConfluenceRun run, Instant startedAt)
       throws ConfluenceAccessException, InterruptedException {
     UUID libraryId = run.library.getId();
-    Optional<SourceSyncState> found = syncStateRepository.findByLibraryId(libraryId);
+    Optional<SourceSyncState> found = journal.find(libraryId);
     if (found.isPresent() && run.frame.adopt(found.get())) {
-      syncStateRepository.save(found.get());
+      journal.save(run.frame.jobId(), found.get());
       return ListingOutcome.partial();
     }
     SourceSyncState state =
@@ -345,7 +342,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     }
     if (run.progress.failedCount() == 0 && !run.progress.quotaReached()) {
       state.advanceIncrementalAnchor(startedAt);
-      syncStateRepository.save(state);
+      journal.save(run.frame.jobId(), state);
     } else {
       log.info(
           "Not advancing the Confluence anchor for library {} - this run failed or rejected at"

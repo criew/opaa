@@ -31,6 +31,7 @@ import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.confluence.ConfluenceTestSettings;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.RunFailureCategory;
+import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -106,7 +107,7 @@ class ConfluenceDataCenterFullSyncTest {
                 new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
                 ProductionDocumentFormats.supportedFormats()),
             documentRepository,
-            syncStateRepository,
+            new ScanJournal(syncStateRepository),
             Clock.systemUTC(),
             new IndexingRunTemplate(
                 indexingJobService,

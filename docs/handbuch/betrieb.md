@@ -91,6 +91,12 @@ gilt als beendet. Ob eine Instanz noch lebt, entscheidet die Uhr der Datenbank, 
 Rechners. Beendete Einträge bleiben eine Woche sichtbar. Das Protokoll nennt beim Start die eigene
 Kennung und alle laufenden Instanzen.
 
+Indexierungsläufe, Uploads in Verarbeitung und die Neueinbettung gehören der Instanz, die sie
+angenommen hat. Erst wenn diese laut Register beendet ist, gibt eine andere Instanz sie auf oder
+übernimmt die Neueinbettung, beim Start und danach minütlich; nie, weil eine andere Instanz startet.
+Kann eine Instanz ihr Lebenszeichen länger als `OPAA_INSTANCE_DEAD_AFTER` nicht schreiben, beenden
+sich ihre Läufe selbst, weil eine andere sie inzwischen übernommen haben kann.
+
 Der **Konfigurationsabdruck** umfasst die Werte, die auf allen Instanzen einer Installation gleich
 sein müssen: jede Einstellung mit Datenwirkung, die Geheimnisse `OPAA_AUTH_JWT_SECRET`,
 `OPAA_CREDENTIALS_ENCRYPTION_KEY` und `OPAA_SETTINGS_ENCRYPTION_KEY`, Modell, Adresse und Dimension

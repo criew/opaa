@@ -36,6 +36,9 @@ namespaces:
       - java/io/opaa/account/LocalAdminSeedMarkerRepository.java
       - java/io/opaa/auth/OidcProviderSeedMarkerRepository.java
       - java/io/opaa/llm/LlmModelSeedMarkerRepository.java
+  - number: 213
+    purpose: reconciling and switching the vector index schema, one instance at a time
+    owners: [java/io/opaa/indexing/chunk/VectorIndexSchema.java]
   - number: 230
     purpose: the boundaries of the permission history, installation-wide monotonic
     owners: [resources/db/changelog/rights/2026-10-19-permission-history-boundary.yaml]
@@ -43,10 +46,7 @@ namespaces:
     purpose: registration in the instance register
     owners: [java/io/opaa/instance/InstanceRegistry.java]
 
-reserved:
-  - number: 212
-    claimedBy: "#2946 (invalidation bus, denylist, session counter)"
-    owners: []
+reserved: []
 
 retired:
   - number: 206

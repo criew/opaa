@@ -9,6 +9,7 @@ import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.RunSecretContract;
+import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -174,7 +175,7 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
                 new AttachmentProperties(5, 0, 0),
                 ProductionDocumentFormats.supportedFormats()),
             documentRepository,
-            syncState,
+            new ScanJournal(syncState),
             Clock.fixed(NOW, java.time.ZoneOffset.UTC),
             template)
         .execute(jobId, library, runMode());

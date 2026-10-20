@@ -115,10 +115,11 @@ public interface UploadedOriginalStore {
 
   /**
    * Runs once at startup ({@code UploadPendingRecoveryRunner}) - after the web server is already
-   * accepting requests, so an implementation must only touch what predates this process: a killed
-   * process has no {@code finally}, so whatever it left behind - working files, local copies - is
-   * removed here, and a store that cannot be reached is reported without failing the start
-   * (ADR-0030, Entscheidung 7 and 9). Nothing to do for a store whose working file is the original.
+   * accepting requests, and next to other instances that may be working: an implementation only
+   * touches what an instance that is dead left behind. A killed process has no {@code finally}, so
+   * its working files and local copies are removed here, and a store that cannot be reached is
+   * reported without failing the start (ADR-0030, Entscheidung 7 and 9; ADR-0053, Entscheidung 8).
+   * Nothing to do for a store whose working file is the original.
    */
   default void recoverAfterRestart() {}
 

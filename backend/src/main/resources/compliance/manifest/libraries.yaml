@@ -73,6 +73,7 @@ data:
           - context_prefix_eligible
           - model_extraction_version
           - keyword_extraction_version
+          - processing_instance_id
       - name: chunk_full_text
         personalColumns: [content_tsv]
         nonPersonalColumns: [chunk_id, document_id, library_id, content_tsv_version]
@@ -171,6 +172,7 @@ data:
           - bytes_downloaded
           - unreadable_scope_count
           - failure_category
+          - owner_instance_id
       - name: embedding_index
         personalColumns: [run_started_by]
         nonPersonalColumns:
@@ -187,6 +189,7 @@ data:
           - run_finished_at
           - run_message
           - updated_at
+          - run_owner_instance_id
     storage: Anwendungsdatenbank
     retention:
       rule: Ohne eigene Löschfrist; mit der Bibliothek

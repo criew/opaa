@@ -2,6 +2,7 @@ package io.opaa.mail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
@@ -16,11 +17,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * #1536, ADR-0033 Entscheidung 10: {@link MailSettingsService} against a real Postgres with the
@@ -40,6 +45,8 @@ class MailSettingsServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private MailSettingsRepository mailSettingsRepository;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID organizationId;
   private UUID userId;
@@ -281,6 +288,44 @@ class MailSettingsServiceIntegrationTest {
     assertThat(mailSettingsService.currentSettings().getLastFailureReason()).hasSize(500);
   }
 
+  /**
+   * Regression guard: the outcome of a send wrote the whole row back as it had read it, so settings
+   * saved while the send was being recorded were silently replaced by the ones before. The save
+   * holds the row while the outcome waits for it; once the save commits, its settings stay and the
+   * outcome still lands.
+   */
+  @Test
+  void aSendOutcomeRecordedWhileSettingsAreSavedLeavesTheSavedSettingsStanding() throws Exception {
+    mailSettingsService.updateSettings(organizationId, userId, configured("geheimesKennwort"));
+    Instant sentAt = Instant.parse("2026-10-20T08:00:00Z");
+    CompletableFuture<Void> outcome = new CompletableFuture<>();
+
+    new TransactionTemplate(transactionManager)
+        .executeWithoutResult(
+            save -> {
+              mailSettingsService.updateSettings(
+                  organizationId, userId, configuredWithHost("smtp.neu.example"));
+              mailSettingsRepository.flush();
+              CompletableFuture.runAsync(
+                  () -> {
+                    try {
+                      mailSettingsService.recordSendOutcome(sentAt, null);
+                      outcome.complete(null);
+                    } catch (RuntimeException e) {
+                      outcome.completeExceptionally(e);
+                    }
+                  });
+              await()
+                  .atMost(10, TimeUnit.SECONDS)
+                  .until(() -> sessionsWaitingToUpdate("mail_settings") > 0);
+            });
+    outcome.get(10, TimeUnit.SECONDS);
+
+    MailSettings stored = mailSettingsService.currentSettings();
+    assertThat(stored.getHost()).isEqualTo("smtp.neu.example");
+    assertThat(stored.getLastSuccessAt()).isEqualTo(sentAt);
+  }
+
   /** A PUT that changes nothing writes no audit entry - like {@code reset}. */
   @Test
   void writesNoAuditEntryForAPutThatChangesNothing() {
@@ -312,6 +357,28 @@ class MailSettingsServiceIntegrationTest {
         MailEncryption.NONE,
         "opaa@intern.example",
         "OPAA");
+  }
+
+  private static MailSettingsUpdate configuredWithHost(String host) {
+    return new MailSettingsUpdate(
+        true,
+        host,
+        2525,
+        "kennung",
+        MailSettingsService.PASSWORD_MASK,
+        MailEncryption.NONE,
+        "opaa@intern.example",
+        "OPAA");
+  }
+
+  private long sessionsWaitingToUpdate(String table) {
+    Long count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'"
+                + " AND query ILIKE ?",
+            Long.class,
+            "%update " + table + "%");
+    return count == null ? 0 : count;
   }
 
   private static MailSettingsUpdate disabled() {

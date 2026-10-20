@@ -1,11 +1,13 @@
 package io.opaa.indexing.job;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -123,26 +125,79 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
   List<IndexingJob> findTop2ByLibraryIdAndOrganizationIdAndTriggeredByOrderByStartedAtDesc(
       UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy);
 
+  /** The distinct owners of the {@link JobStatus#RUNNING} rows that name one. */
+  @Query(
+      "select distinct j.ownerInstanceId from IndexingJob j where j.status ="
+          + " io.opaa.indexing.job.JobStatus.RUNNING and j.ownerInstanceId is not null")
+  List<UUID> findOwnersOfRunningJobs();
+
   /**
-   * Fails every {@link JobStatus#RUNNING} row started before {@code startedBefore}, the start of
-   * this process: no task of this process can be behind such a row, and leaving it {@code RUNNING}
-   * would lock its library out of every future trigger with no way to resolve it from the UI. A row
-   * started later is a live run of this process and stays. A bulk {@code UPDATE}, so one statement
-   * covers every library's stuck row.
+   * Fails every {@link JobStatus#RUNNING} row of the instance {@code owner}, which the caller found
+   * dead: no task is behind such a row any more, and leaving it {@code RUNNING} would lock its
+   * library out of every future trigger. A bulk {@code UPDATE}, one statement for every library.
    *
-   * @return the number of rows recovered, purely for logging - the caller does not otherwise act on
-   *     it
+   * @return the number of rows recovered, for logging
    */
   @Modifying
   @Transactional
   @Query(
       "update IndexingJob j set j.status = io.opaa.indexing.job.JobStatus.FAILED, j.errorMessage ="
           + " :errorMessage, j.completedAt = :completedAt where j.status ="
-          + " io.opaa.indexing.job.JobStatus.RUNNING and j.startedAt < :startedBefore")
-  int failRunningJobsStartedBefore(
+          + " io.opaa.indexing.job.JobStatus.RUNNING and j.ownerInstanceId = :owner")
+  int failRunningJobsOwnedBy(
+      @Param("owner") UUID owner,
       @Param("errorMessage") String errorMessage,
-      @Param("startedBefore") Instant startedBefore,
       @Param("completedAt") Instant completedAt);
+
+  /**
+   * Fails every {@link JobStatus#RUNNING} row that names no owner, written before owners were
+   * recorded.
+   *
+   * @return the number of rows recovered, for logging
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update IndexingJob j set j.status = io.opaa.indexing.job.JobStatus.FAILED, j.errorMessage ="
+          + " :errorMessage, j.completedAt = :completedAt where j.status ="
+          + " io.opaa.indexing.job.JobStatus.RUNNING and j.ownerInstanceId is null")
+  int failRunningJobsWithoutOwner(
+      @Param("errorMessage") String errorMessage, @Param("completedAt") Instant completedAt);
+
+  /**
+   * Writes the counters and the heartbeat of {@code id} only while it is {@link JobStatus#RUNNING}.
+   * A {@code findById} + {@code save} would write back the status it read and so turn a run the
+   * recovery failed meanwhile back into a running one.
+   *
+   * @return the number of rows updated - 0 when the row is not {@code RUNNING} or does not exist
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update IndexingJob j set j.documentsProcessed = :documentsProcessed, j.documentsFailed ="
+          + " :documentsFailed, j.documentsSkipped = :documentsSkipped, j.documentsIndexedTotal ="
+          + " :documentsIndexedTotal, j.lastProgressAt = :lastProgressAt where j.id = :id and"
+          + " j.status = io.opaa.indexing.job.JobStatus.RUNNING")
+  int updateProgressIfRunning(
+      @Param("id") UUID id,
+      @Param("documentsProcessed") int documentsProcessed,
+      @Param("documentsFailed") int documentsFailed,
+      @Param("documentsSkipped") int documentsSkipped,
+      @Param("documentsIndexedTotal") int documentsIndexedTotal,
+      @Param("lastProgressAt") Instant lastProgressAt);
+
+  /** Sets the total of {@code id} only while it is {@link JobStatus#RUNNING}. */
+  @Modifying
+  @Transactional
+  @Query(
+      "update IndexingJob j set j.documentsTotal = :documentsTotal where j.id = :id and j.status ="
+          + " io.opaa.indexing.job.JobStatus.RUNNING")
+  int setTotalIfRunning(@Param("id") UUID id, @Param("documentsTotal") int documentsTotal);
+
+  /** {@code id} with its row locked until the caller's transaction ends. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select j from IndexingJob j where j.id = :id")
+  Optional<IndexingJob> findByIdForUpdate(@Param("id") UUID id);
 
   /**
    * Fails every {@link JobStatus#RUNNING} row whose {@link IndexingJob#getLastProgressAt()}
