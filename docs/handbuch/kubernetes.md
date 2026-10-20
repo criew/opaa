@@ -679,6 +679,7 @@ und mit dem Migrations-Job `SPRING_LIQUIBASE_ENABLED=false` in den Backend-Pods.
 | `frontend.image.repository` | `ghcr.io/criew/opaa-frontend` | — | Image |
 | `frontend.image.tag`, `.digest`, `.pullPolicy` | leer (Version des Charts), leer, `IfNotPresent` | — | wie beim Backend |
 | `frontend.replicas` | `1` | — | Zahl der Frontend-Pods; mehr als einer ist zulässig |
+| `frontend.preStopSleepSeconds` | `5` | — | so lange nimmt ein Frontend-Pod, der enden soll, noch Anfragen an, bis Kubernetes ihn aus dem Service genommen hat; `0` lässt die Pause weg |
 | `frontend.backendReadTimeout` | leer (Vorgabe des Images, `600s`) | `OPAA_BACKEND_READ_TIMEOUT` | wie lange der Frontend-nginx auf die Antwort des Backends wartet, für `/api/` und `/mcp`; Zahl mit Einheit `s`, `m` oder `h`. Mit `rerank.timeout` zusammen anheben; Controller oder Gateway davor brauchen mindestens denselben Wert |
 | `frontend.cspConnectSrcExtra` | leer | `OPAA_CSP_CONNECT_SRC_EXTRA` | weitere Quellen für `connect-src`, durch Leerzeichen getrennt; Pflicht, wenn der Issuer eines Identitätsanbieters oder sein `token_endpoint` auf einem anderen Origin liegt als `publicBaseUrl`, siehe [Identitätsanbieter](#identitätsanbieter) |
 | `frontend.resources` | 50m CPU und 64Mi angefordert, 256Mi Grenze | — | Ressourcen |
@@ -1156,8 +1157,8 @@ Zur Unterbrechung gehört auch das Laden des neuen Backend-Images, einige hunder
 es erst, wenn der alte Pod beendet ist, und je nach Anbindung an die Registry ist der Download der
 größte Teil der Unterbrechung. Kürzer wird sie, wenn das Image vorher auf allen Knoten liegt, auf
 denen das Backend laufen kann, etwa mit `crictl pull` oder einem DaemonSet, das das Image vorab zieht.
-Die Oberfläche lädt in dieser Zeit weiter, bis auf einen Aussetzer von wenigen Sekunden beim Wechsel
-des Frontend-Pods. Anfragen an `/api/` beantwortet das Frontend mit `502`, weil es `/api/` an das noch
+Die Oberfläche lädt in dieser Zeit weiter; der Frontend-Pod wechselt ohne Aussetzer
+(`frontend.preStopSleepSeconds`). Anfragen an `/api/` beantwortet das Frontend mit `502`, weil es `/api/` an das noch
 nicht bereite Backend weiterreicht.
 
 Der alte Backend-Pod endet mit dem Exit-Code `143` und steht in `kubectl get pods` kurz als `Error`.
