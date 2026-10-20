@@ -41,6 +41,8 @@ class InstanceStartTest extends AbstractMigrationTest {
 
   private final List<Instance> instances = Collections.synchronizedList(new ArrayList<>());
 
+  private Path uploads;
+
   @Override
   protected List<String> baseFixtureChangelogs() {
     return List.of("db/changelog/test-empty.yaml");
@@ -107,7 +109,11 @@ class InstanceStartTest extends AbstractMigrationTest {
   }
 
   private Instance start(String name, Map<String, String> environment) throws IOException {
-    Path uploads = Files.createTempDirectory("opaa-instance-" + name);
+    // One original store for every instance: the store path is installation-wide, so an instance
+    // with another path refuses to start (instance register, ADR-0053).
+    if (uploads == null) {
+      uploads = Files.createTempDirectory("opaa-instances-uploads");
+    }
     List<String> command =
         new ArrayList<>(
             List.of(
