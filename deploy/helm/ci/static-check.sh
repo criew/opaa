@@ -119,10 +119,11 @@ expect_not_rendered() {
     exit 1
   fi
 }
-for expected in "type: Recreate" "terminationGracePeriodSeconds: 75" 'OPAA_SHUTDOWN_TIMEOUT: "60s"'; do
+for expected in "type: Recreate" "terminationGracePeriodSeconds: 75" 'OPAA_SHUTDOWN_TIMEOUT: "60s"' \
+  "seconds: 5"; do
   expect_rendered minimal "$expected"
 done
-for unexpected in "kind: Job" "kind: PodDisruptionBudget" "preStop:" "SPRING_LIQUIBASE_ENABLED" \
+for unexpected in "kind: Job" "kind: PodDisruptionBudget" "seconds: 10" "SPRING_LIQUIBASE_ENABLED" \
   "await-migration" "type: RollingUpdate"; do
   expect_not_rendered minimal "$unexpected"
 done
@@ -160,7 +161,7 @@ helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/minimal-values.yaml" --s
   "${shared[@]}" --set backend.updateStrategy=Recreate >"$work_dir/recreate.yaml"
 expect_rendered recreate "type: Recreate"
 expect_rendered recreate "kind: PodDisruptionBudget"
-expect_not_rendered recreate "preStop:"
+expect_not_rendered recreate "seconds: 10"
 echo "two pods with a ReadWriteMany claim and Recreate render as expected"
 
 # On the first start the image's entrypoint runs a temporary server for initdb that answers on the
