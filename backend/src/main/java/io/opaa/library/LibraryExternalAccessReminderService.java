@@ -37,9 +37,8 @@ import org.springframework.transaction.annotation.Transactional;
  * transaction that queues the mail to the outbox ({@link MailService#enqueue}), and it is cleared
  * by every change of the release, so a renewed release earns a fresh reminder. The releases are
  * selected under a row lock, so a run on another instance at the same moment waits and then finds
- * the marker set. The mail leaves
- * after the commit and only with it - a rolled-back run sends nothing - and its delivery retries
- * are the outbox's; the run itself is not repeated the next day.
+ * the marker set. The mail leaves after the commit and only with it - a rolled-back run sends
+ * nothing - and its delivery retries are the outbox's; the run itself is not repeated the next day.
  */
 @DataFlow("mail")
 @Service
