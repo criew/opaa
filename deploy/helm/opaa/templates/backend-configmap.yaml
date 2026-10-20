@@ -89,6 +89,10 @@ data:
   {{- with .Values.mail.writeTimeout }}
   OPAA_MAIL_WRITE_TIMEOUT: {{ . | quote }}
   {{- end }}
+  {{- $pods := max 1 (int .Values.backend.replicas) }}
+  {{- range $variable, $budget := .Values.backend.installationBudgets }}
+  {{ $variable }}: {{ max 1 (div (int $budget) $pods) | quote }}
+  {{- end }}
   {{- range $name, $flag := .Values.features }}
   OPAA_FEATURES_{{ $name | snakecase | upper }}_ENABLED: {{ $flag.enabled | quote }}
   {{- end }}

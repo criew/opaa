@@ -137,7 +137,13 @@ message names the rule no matter which object Helm renders first.
 {{- if and $rolling (lt $shutdown $readTimeout) }}
 {{- fail (printf "backend.shutdownTimeoutSeconds (%d) is shorter than the frontend's read timeout (%ds, frontend.backendReadTimeout): a rolling update would cut off chat answers still in progress on the replaced pod. Raise it, or leave it empty to follow the read timeout." $shutdown $readTimeout) }}
 {{- end }}
+{{- if and .Values.transcription.maxConcurrent (hasKey .Values.backend.installationBudgets "OPAA_TRANSCRIPTION_MAX_CONCURRENT") }}
+{{- fail "transcription.maxConcurrent and backend.installationBudgets.OPAA_TRANSCRIPTION_MAX_CONCURRENT set the same variable; keep one: the budget of the installation, which the chart divides by the pods, or the value per pod." }}
+{{- end }}
 {{- range .Values.backend.extraEnv }}
+{{- if hasKey $.Values.backend.installationBudgets .name }}
+{{- fail (printf "backend.extraEnv sets %s, which backend.installationBudgets already derives per pod; keep one of the two." .name) }}
+{{- end }}
 {{- if has .name (list "SPRING_PROFILES_ACTIVE" "SPRING_PROFILES_INCLUDE" "SPRING_PROFILES_DEFAULT") }}
 {{- fail (printf "backend.extraEnv must not set %s: the chart runs the production profile oidc only, the dev profile authenticates every request without a credential (ADR-0005)." .name) }}
 {{- end }}

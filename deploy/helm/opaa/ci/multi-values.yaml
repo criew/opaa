@@ -44,6 +44,10 @@ backend:
   migration:
     enabled: true
   databasePoolSize: 8
+  installationBudgets:
+    OPAA_INDEXING_EMBEDDING_CONCURRENCY: 6
+    OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: 21
+    OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT: 1
   topologySpreadConstraints:
     - maxSkew: 1
       topologyKey: kubernetes.io/hostname

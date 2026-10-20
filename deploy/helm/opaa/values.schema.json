@@ -988,6 +988,37 @@
           "minimum": 1,
           "description": "Connections of the database pool per pod (OPAA_DB_POOL_SIZE); null keeps 10"
         },
+        "installationBudgets": {
+          "type": "object",
+          "description": "Budgets of the whole installation for limits that count per pod; each variable is set to the budget divided by replicas, rounded down, at least 1 (ADR-0053, Entscheidung 12)",
+          "propertyNames": {
+            "enum": [
+              "OPAA_INDEXING_EMBEDDING_CONCURRENCY",
+              "OPAA_TRANSCRIPTION_MAX_CONCURRENT",
+              "OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT",
+              "OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_REGISTER_MAX_REQUESTS_PER_ADDRESS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_FORGOT_PASSWORD_MAX_REQUESTS_PER_ADDRESS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_VERIFY_EMAIL_MAX_REQUESTS",
+              "OPAA_RATE_LIMIT_LOCAL_AUTH_HANDOVER_MAX_REQUESTS"
+            ]
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
         "shutdownTimeoutSeconds": {
           "type": [
             "integer",

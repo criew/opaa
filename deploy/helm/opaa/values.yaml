@@ -285,9 +285,19 @@ backend:
   # every pod sees: uploads.store s3, or uploads.persistence.accessModes [ReadWriteMany]; otherwise
   # the rendering aborts (ADR-0053, Entscheidung 15). The global rate-limit ceilings
   # (OPAA_RATE_LIMIT_*_GLOBAL_MAX_REQUESTS) count for the installation; every other budget (rate
-  # limits per client, embedding concurrency, transcription and attachment slots) counts per pod:
-  # set it to the installation's budget divided by replicas (ADR-0053, Entscheidung 12).
+  # limits per client, embedding concurrency, transcription and attachment slots) counts per pod,
+  # see installationBudgets.
   replicas: 1
+
+  # Budgets of the whole installation for the limits that count per pod (ADR-0053, Entscheidung 12):
+  # the chart sets each variable to the budget divided by replicas, rounded down, at least 1, so the
+  # pods together allow the budget. Keys are the variables, e.g.
+  #   OPAA_INDEXING_EMBEDDING_CONCURRENCY: 6
+  #   OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: 20
+  # The schema lists the admitted variables. Empty: each pod keeps the application default, the
+  # installation allows replicas times as much. Not together with transcription.maxConcurrent or
+  # the same variable in extraEnv.
+  installationBudgets: {}
 
   # How a change of the pod template reaches the pods. Empty: Recreate for one pod - the old one
   # ends before the new one starts, a short interruption - and RollingUpdate (maxUnavailable 0,
