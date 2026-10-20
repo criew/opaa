@@ -1,0 +1,105 @@
+# Fixtures for RollingUpdateGuardTest: after the setup, every changeSet breaks the release that
+# still runs while it is applied. Applied in order to an empty schema.
+databaseChangeLog:
+  - changeSet:
+      id: setup
+      author: opaa
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE guard_fixture (
+                  id uuid PRIMARY KEY,
+                  legacy text,
+                  dynamic text,
+                  renamed text,
+                  optional text,
+                  required text NOT NULL,
+                  defaulted text DEFAULT 'x',
+                  narrow character varying(100),
+                  state character varying(10),
+                  plain text,
+                  CONSTRAINT chk_guard_fixture_state CHECK (state IN ('A', 'B'))
+              );
+              CREATE TABLE guard_fixture_doomed (id integer PRIMARY KEY);
+              CREATE TABLE guard_fixture_old_name (id integer PRIMARY KEY);
+  - changeSet:
+      id: drop-column
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture DROP COLUMN legacy;
+  - changeSet:
+      id: drop-table
+      author: opaa
+      changes:
+        - sql:
+            sql: DROP TABLE guard_fixture_doomed;
+  - changeSet:
+      id: rename-column
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture RENAME COLUMN renamed TO renamed_now;
+  - changeSet:
+      id: rename-table
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture_old_name RENAME TO guard_fixture_new_name;
+  - changeSet:
+      id: drop-column-in-do-block
+      author: opaa
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DO $$
+              BEGIN
+                EXECUTE 'ALTER TABLE guard_fixture DROP ' || 'COLUMN dynamic';
+              END $$;
+  - changeSet:
+      id: set-not-null
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture ALTER COLUMN optional SET NOT NULL;
+  - changeSet:
+      id: add-not-null-column
+      author: opaa
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE guard_fixture ADD COLUMN owner text NOT NULL DEFAULT 'person';
+              ALTER TABLE guard_fixture ALTER COLUMN owner DROP DEFAULT;
+  - changeSet:
+      id: drop-not-null
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture ALTER COLUMN required DROP NOT NULL;
+  - changeSet:
+      id: drop-default
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture ALTER COLUMN defaulted DROP DEFAULT;
+  - changeSet:
+      id: narrow-type
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture ALTER COLUMN narrow TYPE character varying(50);
+  - changeSet:
+      id: restrict-check
+      author: opaa
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE guard_fixture DROP CONSTRAINT chk_guard_fixture_state;
+              ALTER TABLE guard_fixture ADD CONSTRAINT chk_guard_fixture_state CHECK (state IN ('A'));
+  - changeSet:
+      id: check-on-existing-column
+      author: opaa
+      changes:
+        - sql:
+            sql: ALTER TABLE guard_fixture ADD CONSTRAINT chk_guard_fixture_plain CHECK (plain <> '');

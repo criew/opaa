@@ -12,8 +12,10 @@ sie hier mit Umbau ein und nennt „(ADR-0021)“ in der Javadoc (Regel in [back
 
 Nicht im Register steht, was schon über die Datenbank koordiniert und keinen Umbau braucht: die
 Advisory-Locks in `UserRepository`, `GroupRepository`, `AssetGrantRepository` und `DirectorySyncRunLock`;
-`uk_indexing_jobs_library_running` als Sperre gegen überlappende Läufe; Seed-Marker (`OidcProviderSeedRunner`,
-`LlmModelSeedRunner`, `LocalAdminSeeder` ohne Reset); OAuth-`state` in `connection_authorizations`; die
+`uk_indexing_jobs_library_running` als Sperre gegen überlappende Läufe; Seed-Marker und die Start-Seeds
+unter der Advisory-Sperre `211` (`OidcProviderSeedRunner`, `LlmModelSeedRunner`, `LocalAdminSeeder` samt
+`OPAA_LOCAL_ADMIN_RESET`); die Migrationsregeln aus [liquibase.md](liquibase.md) (Expand/Contract,
+Verzeichnis der persistierten Enums, `lock_timeout`, `vector_store` aus Liquibase); OAuth-`state` in `connection_authorizations`; die
 bedingten `UPDATE`s von Refresh-Rotation, Action-Tokens und Fehlversuch-Sperre; Werte je Aufruf oder Lauf
 (`FileSync.downloadPool`, `LlmModelDiscoverer`, `SourceRequestMeter`, die virtuellen Threads von
 `TranscriptionClient` und `RerankClient`). Ein `@Scheduled`-Lauf steht dagegen immer hier, auch wenn er
@@ -62,11 +64,9 @@ zweiter Prozess schreibt gleichzeitig.
 
 | Art | Fundstelle | Bei mehreren Instanzen | Umbau |
 |---|---|---|---|
-| Neue Enum-Werte ohne Changeset | Enums aus `opaa-api` (`io.opaa.api.types`), per `@Enumerated(STRING)` in `varchar`-Spalten ohne `CHECK` gespeichert, etwa `DirectorySyncOutcome.FAILED` und `AuditEventType.DATA_COLLECTION_DISCLOSURE_EXPORTED`; ebenso die Enums der Fachpakete (`NotificationType`, `ChatStatus`, `IndexingEventCategory` …) | Schreibt die neue Version einen neuen Wert, scheitert die alte beim Lesen der Zeile, etwa an der ganzen Benachrichtigungsliste oder einer Audit-Abfrage; ein Wächter, der nur Changesets prüft, sieht das nicht | #2944 (E13) |
-| Contract-Changesets | `DROP COLUMN`/`DROP TABLE` seit der Baseline, `connection_log.owner_kind` `NOT NULL` ohne bleibenden Default, verengter `CHECK` (`VISIBILITY_CHANGED`), `DROP NOT NULL` (`temperature`, `identity-2026-10-15-incident-scope-retention`) | Die alte Version scheitert ab der Migration beim Lesen oder dereferenziert `null` | #2944 (E13) |
-| Sicherheitsrelevanter Zustand nur im Code | `groups.deactivated`, gefiltert erst in `GroupMembershipRepository` | Auf einer alten Instanz wirkt eine deaktivierte Gruppe weiter | #2944 (E13), #2946 |
-| Migration beim Start jedes Pods | Liquibase im Anwendungsstart, `spring.ai.vectorstore.pgvector.initialize-schema: true` | Ein abgeschossener Pod hinterlässt einen hängenden `DATABASECHANGELOGLOCK`; zwei gleichzeitige Kaltstarts liefern sich DDL-Rennen | #2944 (E14) |
-| Einmalige Startaktion bei jedem Start | `LocalAdminSeeder` mit `OPAA_LOCAL_ADMIN_RESET=force` (Passwort vor dem Commit im Log) | Jede Instanz setzt das Notanker-Passwort neu; zwei gleichzeitige Resets scheitern an `@Version` und brechen den Start ab; beim Erst-Seed steht das ungültige Passwort der unterlegenen Instanz im Log | #2944 (E14) |
+| Brüche vor der Versionsgrenze `v0.1.0` | `DROP COLUMN`/`DROP TABLE` seit der Baseline, `connection_log.owner_kind` `NOT NULL` ohne bleibenden Default, verengter `CHECK` (`VISIBILITY_CHANGED`), `DROP NOT NULL` (`temperature`, `identity-2026-10-15-incident-scope-retention`); bewertet in `RollingUpdateBoundary` | Die alte Version scheitert ab der Migration beim Lesen oder dereferenziert `null` | hingenommen: Update auf `v0.1.0` ohne Rolling Update (E13) |
+| Sicherheitsrelevanter Zustand nur im Code | `groups.deactivated`, gefiltert erst in `GroupMembershipRepository` | Auf einer alten Instanz wirkt eine deaktivierte Gruppe weiter | #2946 (E13) |
+| Migration beim Start jedes Pods | Liquibase im Anwendungsstart von Compose und Helm, die den Migrationsmodus `OPAA_MODE=migrate` noch nicht nutzen | Ein abgeschossener Pod hinterlässt einen hängenden `DATABASECHANGELOGLOCK` | #2951 (E14) |
 | Laufzustand ohne Besitzbindung | `IndexingJobService#updateProgress` (`findById` + `save`, `IndexingJob` ohne `@Version`), `SourceSyncState` (ohne `@Version`) | Ein Heartbeat setzt einen gerade aufgegebenen Lauf auf `RUNNING` zurück; zwei Läufe überschreiben sich `source_sync_state`, `prune()` des Zombies entfernt Ordner des neuen Laufs | #2948 (E8) |
 | Verlorenes Update | `MailSettingsService#recordSendOutcome` gegen `updateSettings` (`MailSettings` ohne `@Version`) | Eine Sendung überschreibt gerade gespeicherte SMTP-Einstellungen mit den alten Werten, selten auch im Einzelbetrieb | #2948 |
 | Prüfen-dann-Schreiben, bewusst unscharf | `LibraryStorageQuotaService#wouldExceedQuota` (Kontingent der Bibliothek), `LibraryMetadataFieldService` (Sortiernummer aus der Zahl der Felder), letzter Steward in `GroupService`, letzter aktiver Anbieter in `OidcProviderService` | Schon bei nebenläufigen Anfragen auf einer Instanz unscharf; mehrere Instanzen machen es häufiger, nicht anders | hingenommen |

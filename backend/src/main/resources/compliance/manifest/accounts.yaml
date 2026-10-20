@@ -232,7 +232,7 @@ nonPersonalTables:
     - directory_sync_interval_minutes
   oidc_provider_seed_marker: [id, seeded_at]
   oidc_provider_removals: [issuer_uri_normalized, removed_at]
-  local_admin_seed_marker: [id, seeded_at]
+  local_admin_seed_marker: [id, seeded_at, forced_reset_at]
   branding_settings:
     - id
     - product_name

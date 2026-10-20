@@ -98,6 +98,7 @@ class LlmModelSeeder {
   @Transactional
   void seedIfNeeded() {
     warnAboutLeftoverLegacyVariables();
+    markerRepository.lockStartupSeeds();
     if (markerRepository.seedAlreadyAttempted()) {
       return;
     }

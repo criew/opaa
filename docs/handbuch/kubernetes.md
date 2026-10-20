@@ -835,7 +835,8 @@ Einbettungs-Endpunkt ist dagegen ein Bereitstellungswert: Nach einem Wechsel des
 **Notfallzugang.** Kommt niemand mehr herein, stellt `OPAA_LOCAL_ADMIN_RESET=force` beim nächsten
 Start einen anmeldefähigen lokalen Systemverwalter her (siehe
 [Notfallprozedur: wieder hereinkommen](authentifizierung.md#notfallprozedur-wieder-hereinkommen)). Die
-Variable wirkt bei **jedem** Start, solange sie gesetzt ist, und gehört deshalb nicht in die
+Variable wirkt einmal je Setzen: Genau ein Start setzt zurück, weitere Starts mit ihr lassen das Konto
+unverändert, bis ein Start ohne sie einen neuen Reset freigibt. Sie gehört deshalb nicht in die
 Werte-Datei. Einmalig setzen und nach dem Neustart entfernen:
 
 ```bash

@@ -151,21 +151,17 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
   }
 
   @Test
-  void buildsTheVectorStoreIndexesInTheTargetSchemaOnceTheTableExists() throws Exception {
-    try (Statement statement = connection.createStatement()) {
-      statement.execute(
-          "CREATE TABLE vector_store (id uuid PRIMARY KEY, content text, metadata jsonb,"
-              + " embedding vector(3))");
-    }
-
-    applyMasterChangelog();
-
+  void createsTheVectorStoreWithItsIndexesInTheTargetSchema() throws Exception {
     assertThat(
             strings(
                 "SELECT indexname FROM pg_indexes WHERE schemaname = '"
                     + SCHEMA
-                    + "' AND tablename = 'vector_store' AND indexname LIKE 'idx_%'"))
-        .containsExactlyInAnyOrder("idx_vector_store_library_id", "idx_vector_store_document_id");
+                    + "' AND tablename = 'vector_store'"))
+        .containsExactlyInAnyOrder(
+            "vector_store_pkey",
+            "spring_ai_vector_index",
+            "idx_vector_store_library_id",
+            "idx_vector_store_document_id");
   }
 
   @Test
