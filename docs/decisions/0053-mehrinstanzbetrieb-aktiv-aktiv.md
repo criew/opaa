@@ -383,7 +383,7 @@ Datenbanksicherung.
   ihn neu; er hat eine eigene NetworkPolicy, die Erprobungsdatenbank lässt ihn ein.
 - Strategie `RollingUpdate` (`maxUnavailable: 0`, `maxSurge: 1`) ab zwei Replikaten, `Recreate`
   bleibt wählbar und ist die Vorgabe für eins. PodDisruptionBudget (`maxUnavailable: 1`) ab zwei
-  Replikaten, `lifecycle.preStop.sleep` (das Image hat keine Shell), `OPAA_SHUTDOWN_TIMEOUT`
+  Replikaten, `lifecycle.preStop.sleep` (das Image hat keine Shell; das Frontend bekommt dieselbe Pause), `OPAA_SHUTDOWN_TIMEOUT`
   mindestens Read-Timeout des Frontends, `terminationGracePeriodSeconds` darüber plus `preStop`.
 - Hikari-Poolgröße als Wert mit der Grenze `(replicas + maxSurge) × (Pool + 1) + Migration ≤
   max_connections`; die 1 ist die Hörverbindung des Busses (Entscheidung 5), die Migration braucht
@@ -397,8 +397,10 @@ Datenbanksicherung.
   je mit eigenem `/tmp`, ohne Host-Portbindung. Jedes Backend hat einen Healthcheck auf die
   Readiness ohne Shell (eine Java-Klasse neben dem Jar), das Frontend wartet auf „healthy“.
   Originalablage `s3` oder ein gemeinsames Bind-Mount auf demselben Host.
-- Update: Migrationsdienst, dann `backend-a` ersetzen und auf „healthy“ warten, dann `backend-b`,
-  zuletzt das Frontend. Dessen Austausch ist der einzige Moment ohne Ziel: Für einige Sekunden lehnt
+- Update: Migrationsdienst, dann `backend-a` ersetzen und auf „healthy“ warten, nach einer Pause von
+  15 s `backend-b`, zuletzt das Frontend. nginx lässt eine Instanz, die beim Start Verbindungen
+  ablehnt, in der Verteilung (`max_fails=0`); die Pause gilt für ein Frontend der Vorgängerversion
+  ohne diese Einstellung. Dessen Austausch ist der einzige Moment ohne Ziel: Für einige Sekunden lehnt
   der Host-Port Verbindungen ab, beantwortet aber keine Anfrage mit einem Fehler.
 - nginx löst den Backend-Namen zur Laufzeit auf (`upstream` mit `resolve` und dem DNS-Server von
   Docker): Jede Adresse des Alias ist ein Ziel, ein neuer Container ist ohne nginx-Neustart
