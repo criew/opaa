@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.account.AccountActivityService;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.test.TestInvalidationBus;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -34,7 +35,8 @@ class GroupMembershipResolverTest {
             userRepository,
             accountActivity,
             new org.springframework.beans.factory.support.StaticListableBeanFactory()
-                .getBeanProvider(GroupMembershipChangeListener.class));
+                .getBeanProvider(GroupMembershipChangeListener.class),
+            TestInvalidationBus.listening());
   }
 
   @Test

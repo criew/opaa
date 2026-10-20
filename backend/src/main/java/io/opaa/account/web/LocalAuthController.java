@@ -186,15 +186,9 @@ public class LocalAuthController {
         .body(tokenResponse(user, changed));
   }
 
-  /**
-   * Every token is minted no earlier than the account's {@code password_invalidated_before}: a
-   * sign-in or a password change in the very second of a revocation would otherwise hand out a
-   * token the validator refuses.
-   */
+  /** The token carries the account's current session generation; see the issuing service. */
   private LocalTokenResponse tokenResponse(User user, LocalCredentials row) {
-    IssuedAccessToken token =
-        accessTokens.issue(
-            user, row.isPasswordChangeRequired(), row.getPasswordInvalidatedBefore());
+    IssuedAccessToken token = accessTokens.issue(user, row);
     LocalTokenResponse response =
         new LocalTokenResponse(
             token.value(), token.expiresInSeconds(), row.isPasswordChangeRequired());

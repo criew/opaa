@@ -50,6 +50,14 @@ public class LocalCredentials {
   @Column(name = "password_invalidated_before")
   private Instant passwordInvalidatedBefore;
 
+  /**
+   * Raised by every end of all sessions; an access token is valid only with the generation it was
+   * minted with (ADR-0053, Entscheidung 6). A trigger never lets it fall and raises it when only
+   * the cutoff changes.
+   */
+  @Column(name = "session_generation", nullable = false)
+  private long sessionGeneration;
+
   @Column(name = "locked_at")
   private Instant lockedAt;
 
@@ -154,9 +162,13 @@ public class LocalCredentials {
     touch(now);
   }
 
-  /** Every token issued before {@code cutoff} becomes invalid - the mass revocation. */
+  /**
+   * Ends every session - the mass revocation: the session generation goes up, so every token minted
+   * before becomes invalid, and {@code cutoff} is kept for tokens without the generation.
+   */
   public void invalidateSessionsIssuedBefore(Instant cutoff, Instant now) {
     this.passwordInvalidatedBefore = Objects.requireNonNull(cutoff, "cutoff");
+    this.sessionGeneration++;
     touch(now);
   }
 
@@ -237,6 +249,10 @@ public class LocalCredentials {
 
   public Instant getPasswordInvalidatedBefore() {
     return passwordInvalidatedBefore;
+  }
+
+  public long getSessionGeneration() {
+    return sessionGeneration;
   }
 
   public Instant getLockedAt() {

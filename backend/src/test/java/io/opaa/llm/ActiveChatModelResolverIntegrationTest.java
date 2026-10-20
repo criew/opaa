@@ -8,6 +8,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ServiceUnavailableException;
+import io.opaa.instance.PostgresInvalidationBus;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.LlmModelCatalogFixtures;
@@ -64,6 +65,7 @@ class ActiveChatModelResolverIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private LlmModelCatalogFixtures llmModelCatalogFixtures;
+  @Autowired private PostgresInvalidationBus invalidationBus;
 
   /** The catalogue content that is none of this test method's business - see the class Javadoc. */
   private List<Map<String, Object>> foreignModels;
@@ -80,6 +82,7 @@ class ActiveChatModelResolverIntegrationTest {
   @BeforeEach
   void setUp() throws IOException {
     foreignModels = llmModelCatalogFixtures.takeOverCatalog();
+    settle();
     // Emptying the catalogue bypasses LlmModelService, so no ActiveChatModelChangedEvent fires -
     // without this, the resolver would keep serving whatever client an earlier test method (sharing
     // this class's Spring context) built.
@@ -141,6 +144,7 @@ class ActiveChatModelResolverIntegrationTest {
               "http://127.0.0.1:" + silentServer.getAddress().getPort() + "/v1",
               "model-silent");
       llmModelService.activateModel(organizationId, userId, silent.getId());
+      settle();
       ChatClient client = resolver.resolveChatClient(Duration.ofMillis(700));
 
       long startedAt = System.nanoTime();
@@ -163,6 +167,7 @@ class ActiveChatModelResolverIntegrationTest {
   void resolvesTheChatClientOfTheActiveModel() {
     LlmModel modelA = createModel("Modell A", baseUrlA, "model-a");
     llmModelService.activateModel(organizationId, userId, modelA.getId());
+    settle();
 
     ChatClient chatClient = resolver.resolveChatClient();
     ChatResponse response = chatClient.prompt().user("Hallo").call().chatResponse();
@@ -225,6 +230,7 @@ class ActiveChatModelResolverIntegrationTest {
               "http://127.0.0.1:" + recordedServer.getAddress().getPort() + "/v1",
               modelName);
       llmModelService.activateModel(organizationId, userId, recordedModel.getId());
+      settle();
 
       for (ChatClient client :
           List.of(
@@ -244,6 +250,7 @@ class ActiveChatModelResolverIntegrationTest {
   void repeatedResolutionWithoutAChangeReusesTheCachedClient() {
     LlmModel modelA = createModel("Modell A", baseUrlA, "model-a");
     llmModelService.activateModel(organizationId, userId, modelA.getId());
+    settle();
 
     resolver.resolveChatClient();
     int afterFirstCall = resolver.builtClientCount();
@@ -258,11 +265,13 @@ class ActiveChatModelResolverIntegrationTest {
   void activatingADifferentModelInvalidatesTheCachedClientOnTheNextResolution() {
     LlmModel modelA = createModel("Modell A", baseUrlA, "model-a");
     llmModelService.activateModel(organizationId, userId, modelA.getId());
+    settle();
     resolver.resolveChatClient();
     assertThat(resolver.builtClientCount()).isEqualTo(1);
 
     LlmModel modelB = createModel("Modell B", baseUrlB, "model-b");
     llmModelService.activateModel(organizationId, userId, modelB.getId());
+    settle();
 
     ChatClient chatClient = resolver.resolveChatClient();
     ChatResponse response = chatClient.prompt().user("Hallo").call().chatResponse();
@@ -276,6 +285,7 @@ class ActiveChatModelResolverIntegrationTest {
   void updatingTheActiveModelInvalidatesTheCachedClientOnTheNextResolution() {
     LlmModel modelA = createModel("Modell A", baseUrlA, "model-a");
     llmModelService.activateModel(organizationId, userId, modelA.getId());
+    settle();
     resolver.resolveChatClient();
     assertThat(resolver.builtClientCount()).isEqualTo(1);
 
@@ -289,6 +299,8 @@ class ActiveChatModelResolverIntegrationTest {
         new BigDecimal("0.70"),
         2000,
         null);
+
+    settle();
 
     ChatClient chatClient = resolver.resolveChatClient();
     ChatResponse response = chatClient.prompt().user("Hallo").call().chatResponse();
@@ -315,6 +327,7 @@ class ActiveChatModelResolverIntegrationTest {
   void resolvedDescriptionNamesTheActiveModelsBaseUrlAndIdentifier() {
     LlmModel modelA = createModel("Modell A", baseUrlA, "model-a");
     llmModelService.activateModel(organizationId, userId, modelA.getId());
+    settle();
 
     ActiveChatModelDescription description = resolver.resolveDescription();
 
@@ -347,6 +360,7 @@ class ActiveChatModelResolverIntegrationTest {
               2000,
               "sk-test-secret");
       llmModelService.activateModel(organizationId, userId, modelC.getId());
+      settle();
 
       ChatClient chatClient = resolver.resolveChatClient();
       ChatResponse response = chatClient.prompt().user("Hallo").call().chatResponse();
@@ -428,6 +442,7 @@ class ActiveChatModelResolverIntegrationTest {
               2000,
               null);
       llmModelService.activateModel(organizationId, userId, model.getId());
+      settle();
 
       resolver.resolveChatClient().prompt().user("Hallo").call().chatResponse();
 
@@ -459,6 +474,7 @@ class ActiveChatModelResolverIntegrationTest {
   void anUnreachableActiveModelFailsWithoutFallingBackToAnotherModel() {
     LlmModel modelA = createModel("Modell A", baseUrlA, "model-a");
     llmModelService.activateModel(organizationId, userId, modelA.getId());
+    settle();
     ChatClient chatClient = resolver.resolveChatClient();
     serverA.stop(0);
 
@@ -479,6 +495,7 @@ class ActiveChatModelResolverIntegrationTest {
   void aBuildInFlightWhenTheActiveModelChangesDoesNotOverwriteTheInvalidation() throws Exception {
     LlmModel modelA = createModel("Modell A", baseUrlA, "model-a");
     llmModelService.activateModel(organizationId, userId, modelA.getId());
+    settle();
     resolver.resolveChatClient();
     resolver.resetForTest(); // clears the cache/counter only - model A stays active in the database
 
@@ -504,6 +521,7 @@ class ActiveChatModelResolverIntegrationTest {
       // (now superseded) model A would overwrite the cache this activation just cleared.
       LlmModel modelB = createModel("Modell B", baseUrlB, "model-b");
       llmModelService.activateModel(organizationId, userId, modelB.getId());
+      settle();
 
       releaseBuild.countDown();
       assertThat(inFlightBuild.get(5, TimeUnit.SECONDS)).isNotNull();
@@ -523,6 +541,15 @@ class ActiveChatModelResolverIntegrationTest {
     assertThat(resolver.builtClientCount()).isEqualTo(1);
     assertThat(serverBTouched.get()).isTrue();
     assertThat(response.getResult().getOutput().getText()).isEqualTo("Antwort von Modell B");
+  }
+
+  /**
+   * Waits until the invalidation bus has delivered the announcement of every change committed so
+   * far: it drops the cached client a moment after the change, and a count taken before that would
+   * see one build more.
+   */
+  private void settle() {
+    assertThat(invalidationBus.awaitDelivery(Duration.ofSeconds(10))).isTrue();
   }
 
   private LlmModel createModel(String displayName, String baseUrl, String modelIdentifier) {

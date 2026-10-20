@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-20-cache-invalidation
+      author: opaa
+      comment: "Binds the chat model and the state of the vector index to the invalidation bus (ADR-0053, Entscheidung 5): a change of the models and a change of the index identity or its re-embedding target is announced at commit. The progress of a re-embedding run is no change of the index."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TRIGGER trg_llm_models_invalidation
+                  AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON llm_models
+                  FOR EACH STATEMENT EXECUTE FUNCTION notify_cache_invalidation('chat-model');
+              CREATE TRIGGER trg_embedding_index_invalidation
+                  AFTER INSERT OR UPDATE OR DELETE ON embedding_index
+                  FOR EACH ROW EXECUTE FUNCTION notify_cache_invalidation(
+                      'embedding-index', 'run_status', 'run_started_at', 'run_started_by',
+                      'run_organization_id', 'run_finished_at', 'run_message', 'updated_at');

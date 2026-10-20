@@ -3,9 +3,12 @@ package io.opaa.llm;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
 import io.opaa.compliance.DataFlow;
+import io.opaa.instance.InvalidationBus;
+import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.security.SettingsEncryptor;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,13 +30,18 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * application's {@link ObservationRegistry} and {@link MeterRegistry}, so chat metrics stay
  * visible.
  *
- * <p>The client is cached until {@link ActiveChatModelChangedEvent} arrives after commit. {@link
+ * <p>The client is cached until {@link ActiveChatModelChangedEvent} arrives after commit, or until
+ * the {@link InvalidationBus} announces a change of {@code llm_models} on any instance (ADR-0053,
+ * Entscheidung 5); while the bus does not listen, every call builds a client of its own. {@link
  * #generation} guarantees that a build running across an invalidation is returned but never cached.
  * The decrypted access key lives only inside the built client.
  */
 @DataFlow("chat-model")
 @Component
-public class ActiveChatModelResolver {
+public class ActiveChatModelResolver implements InvalidationSubscriber {
+
+  /** The topic the trigger on {@code llm_models} announces. */
+  public static final String INVALIDATION_TOPIC = "chat-model";
 
   private static final Logger log = LoggerFactory.getLogger(ActiveChatModelResolver.class);
 
@@ -41,6 +49,7 @@ public class ActiveChatModelResolver {
   private final SettingsEncryptor settingsEncryptor;
   private final ObjectProvider<ObservationRegistry> observationRegistryProvider;
   private final ObjectProvider<MeterRegistry> meterRegistryProvider;
+  private final InvalidationBus bus;
   private final AtomicReference<Resolved> cache = new AtomicReference<>();
 
   /**
@@ -70,11 +79,13 @@ public class ActiveChatModelResolver {
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
       ObjectProvider<ObservationRegistry> observationRegistryProvider,
-      ObjectProvider<MeterRegistry> meterRegistryProvider) {
+      ObjectProvider<MeterRegistry> meterRegistryProvider,
+      InvalidationBus bus) {
     this.repository = repository;
     this.settingsEncryptor = settingsEncryptor;
     this.observationRegistryProvider = observationRegistryProvider;
     this.meterRegistryProvider = meterRegistryProvider;
+    this.bus = bus;
   }
 
   /**
@@ -105,6 +116,9 @@ public class ActiveChatModelResolver {
    * @throws NoActiveChatModelException when {@code llm_models} has no active row
    */
   public ChatClient resolveChatClient(Duration requestTimeout) {
+    if (!bus.isListening()) {
+      return newChatClient(activeModel(), requestTimeout);
+    }
     TimedResolved cached = timedCache.get();
     if (cached != null && cached.timeout().equals(requestTimeout)) {
       return cached.chatClient();
@@ -113,6 +127,9 @@ public class ActiveChatModelResolver {
   }
 
   private Resolved resolve() {
+    if (!bus.isListening()) {
+      return new Resolved(newChatClient(activeModel(), null));
+    }
     Resolved cached = cache.get();
     if (cached != null) {
       return cached;
@@ -130,14 +147,7 @@ public class ActiveChatModelResolver {
     long generationAtStart = generation.get();
     LlmModel model = activeModel();
     testRaceWindowHook.run();
-    ObservationRegistry observationRegistry =
-        observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
-    OpenAiChatModel chatModel = chatModelBuilder(model, observationRegistry, null).build();
-    ChatClient chatClient =
-        ChatClient.builder(
-                new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
-            .build();
-    Resolved resolved = new Resolved(chatClient);
+    Resolved resolved = new Resolved(newChatClient(model, null));
     // Only cache the result if nothing invalidated the cache while this build was running.
     if (generation.get() == generationAtStart) {
       cache.set(resolved);
@@ -162,16 +172,8 @@ public class ActiveChatModelResolver {
     }
     long generationAtStart = generation.get();
     LlmModel model = activeModel();
-    ObservationRegistry observationRegistry =
-        observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
-    OpenAiChatModel chatModel =
-        chatModelBuilder(model, observationRegistry, requestTimeout).build();
     TimedResolved resolved =
-        new TimedResolved(
-            requestTimeout,
-            ChatClient.builder(
-                    new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
-                .build());
+        new TimedResolved(requestTimeout, newChatClient(model, requestTimeout));
     // The same commit rule as buildAndCache: a build whose generation changed underneath it is
     // handed to its own caller but never cached.
     if (generation.get() == generationAtStart) {
@@ -183,6 +185,17 @@ public class ActiveChatModelResolver {
           model.getBaseUrl());
     }
     return resolved;
+  }
+
+  /** A client for {@code model}; {@code requestTimeout} may be {@code null} for none. */
+  private ChatClient newChatClient(LlmModel model, Duration requestTimeout) {
+    ObservationRegistry observationRegistry =
+        observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
+    OpenAiChatModel chatModel =
+        chatModelBuilder(model, observationRegistry, requestTimeout).build();
+    return ChatClient.builder(
+            new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
+        .build();
   }
 
   /**
@@ -235,6 +248,16 @@ public class ActiveChatModelResolver {
    */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   void onActiveModelChanged(ActiveChatModelChangedEvent event) {
+    invalidateAll();
+  }
+
+  @Override
+  public Set<String> invalidationTopics() {
+    return Set.of(INVALIDATION_TOPIC);
+  }
+
+  @Override
+  public void invalidateAll() {
     generation.incrementAndGet();
     cache.set(null);
     timedCache.set(null);

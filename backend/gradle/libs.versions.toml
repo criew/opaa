@@ -231,7 +231,7 @@ spring-ai = [
     "spring-ai-retry",
     "spring-ai-starter-mcp-server-webmvc",
 ]
-runtime = ["micrometer-registry-prometheus", "postgresql"]
+runtime = ["micrometer-registry-prometheus"]
 aws-sdk = ["aws-sdk-s3", "aws-sdk-apache5-client"]
 test-deps = [
     "spring-boot-starter-test",

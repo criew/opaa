@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: identity-2026-10-20-cache-invalidation
+      author: opaa
+      comment: "Binds the caches of the identity tables to the invalidation bus (ADR-0053, Entscheidung 5): every change of the providers - decoders, claim mapping, the switch of the local accounts - and of the mail settings is announced at commit, from whichever instance or version writes it. The send status of the mail settings is no change of the settings."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TRIGGER trg_oidc_providers_invalidation
+                  AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON oidc_providers
+                  FOR EACH STATEMENT EXECUTE FUNCTION notify_cache_invalidation('oidc-providers');
+              CREATE TRIGGER trg_mail_settings_invalidation
+                  AFTER INSERT OR UPDATE OR DELETE ON mail_settings
+                  FOR EACH ROW EXECUTE FUNCTION notify_cache_invalidation(
+                      'mail-settings', 'last_success_at', 'last_failure_at', 'last_failure_reason',
+                      'updated_at', 'updated_by');

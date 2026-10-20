@@ -113,8 +113,11 @@ Ein Cache, der nur über ein prozessinternes Ereignis verworfen wird oder dessen
 Sicherheitslücke offen ließe, ist an einen Bus über Postgres angebunden:
 
 - **Senden** mit `pg_notify` in der Transaktion der Änderung. Postgres stellt die Nachricht erst mit
-  dem Commit zu, bei einem Rollback nie. Die Nutzlast nennt Cache und Schlüssel; was nicht in eine
-  Nachricht passt, wird „alles verwerfen“.
+  dem Commit zu, bei einem Rollback nie, und fasst gleiche Nachrichten einer Transaktion zusammen.
+  Steht die Quelle eines Caches in einer Tabelle, sendet ein Trigger der Tabelle
+  (`notify_cache_invalidation`), damit jeder Schreibweg und jede Version meldet; Spalten, die nur
+  einen Status tragen, kann er ausnehmen. Ein Ereignis ohne eigene Tabelle meldet die Anwendung. Die
+  Nutzlast nennt nur den Cache, nie eine Person oder eine Zeile; der Empfänger verwirft alles.
 - **Empfangen** auf jeder Instanz, auch der sendenden, über eine eigene Verbindung außerhalb des
   Hikari-Pools. Die Ereignisse nach Commit bleiben für die sendende Instanz bestehen; eine
   Invalidierung ist idempotent.
@@ -127,7 +130,10 @@ Sicherheitslücke offen ließe, ist an einen Bus über Postgres angebunden:
   TTL braucht die Anbindung.
 
 Die Hörverbindung braucht eine direkte Verbindung oder Session-Pooling; Transaction-Pooling
-(PgBouncer) trägt `LISTEN` nicht. Umsetzung: #2946.
+(PgBouncer) trägt `LISTEN` nicht. Im Rolling-Update-Fenster hört die Vorgängerversion den Bus
+nicht: Ihre Caches folgen einer Änderung erst nach ihrer TTL, die Anbieter-Registry erst mit dem
+Ersatz der Instanz; ihre eigenen Änderungen erreichen die neuen Instanzen über die Trigger.
+Umsetzung: #2946.
 
 Nachrichten während eines Abrisses sind unwiederbringlich verloren. Ein Nachholen bräuchte ein
 eigenes Protokoll. Das vollständige Verwerfen ist einfach, und die Lücke ist auf den Prüfabstand
@@ -141,6 +147,11 @@ begrenzt. Kurze TTLs statt eines Busses ließen die Lücke für die ganze TTL of
   Wiederverwendungserkennung) erhöht einen Zähler je Konto. Das Token trägt den Zählerstand als Claim,
   die Prüfung verlangt Gleichheit. `iat` wird nicht mehr gegen einen Cutoff aus einer anderen Uhr
   verglichen.
+- **Rolling-Update-Fenster:** Die Vorgängerversion kennt den Claim nicht. Die neue Version schreibt
+  den Cutoff weiter mit, damit die Vorgängerversion widerruft, und prüft ein Token ohne Claim, das
+  nur die Vorgängerversion ausstellt, weiter gegen den Cutoff. Schreibt die Vorgängerversion nur den
+  Cutoff, erhöht ein Trigger den Zähler; er lässt ihn nie sinken. Das Folgerelease lehnt ein Token
+  ohne Claim ab.
 
 Umsetzung: #2946. Ein Negativ-Cache ist auf jeder Instanz außer der widerrufenden falsch, und zwar für
 die volle Token-Lebensdauer. Ein Zeitvergleich über zwei Hosts scheitert schon an einer Sekunde
@@ -340,9 +351,10 @@ Datenbanksicherung.
 - Strategie `RollingUpdate` (`maxUnavailable: 0`, `maxSurge: 1`) ab zwei Replikaten, `Recreate`
   bleibt für eins. PodDisruptionBudget ab zwei Replikaten, `lifecycle.preStop.sleep` (das Image hat
   keine Shell), `terminationGracePeriodSeconds` mindestens Read-Timeout des Frontends plus `preStop`.
-- Hikari-Poolgröße als Wert mit der Grenze `(replicas + maxSurge) × Pool + Migration ≤
-  max_connections`. `/tmp` bleibt `emptyDir` je Pod, die Alarme gelten je Pod statt über alle
-  summiert. Einen Abdruckwert ändert `Recreate` bzw. Skalieren auf null (4).
+- Hikari-Poolgröße als Wert mit der Grenze `(replicas + maxSurge) × (Pool + 1) + Migration ≤
+  max_connections`; die 1 ist die Hörverbindung des Busses (Entscheidung 5). `/tmp` bleibt
+  `emptyDir` je Pod, die Alarme gelten je Pod statt über alle summiert. Einen Abdruckwert ändert
+  `Recreate` bzw. Skalieren auf null (4).
 
 **Docker Compose:**
 
