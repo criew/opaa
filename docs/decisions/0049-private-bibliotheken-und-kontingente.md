@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
+Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt [ADR-0041](0041-verbindungen-als-eigenes-modul.md)
 (Entscheidungen 4, 6 und 9), [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0045](0045-gemeinsamer-datei-abgleich.md) (Entscheidung 9)
 
@@ -85,7 +85,8 @@ Besitzerin (`PersonalStorageQuota#usageOf`). Grenze: ein hausweiter Wert in
 `private_storage_quota_settings` (`0` = unbegrenzt), ohne Zeile die Start-Property
 `opaa.library.private-storage-quota-bytes`; setzen darf nur die Systemverwaltung
 (`PRIVATE_STORAGE_QUOTA_CHANGED`). Prüfung und Speichern laufen unter
-`LibraryStorageQuotaService#holdIntake`, einer Sperre je Besitzerin im Prozess (ADR-0021); gezählt
+`LibraryStorageQuotaService#holdIntake`, einer Advisory-Sperre je Besitzerin in der Transaktion, die
+prüft und schreibt (ADR-0053 Entscheidung 10); gezählt
 wird, was gespeichert ist. Kein Verwaltungspfad zum Verbrauch einer Person: `usageOf` rufen nur
 `LibraryStorageQuotaService` und der Selbstauskunfts-Controller (`personalUsageIsReadOnlyByItsOwner`,
 `PERSONAL_USAGE_READERS`); die Übersicht der Verwaltung rechnet je Zugang in SQL über Personen und
@@ -133,8 +134,7 @@ Nachzählung der Löschung ist exakt und rollt bei jedem Rest zurück.
 ihrer Quellen entfallen; Sicherungen enthalten eine vor der Löschung gesicherte Bibliothek weiter.
 Bibliotheken Dritter (Tika, PDFBox, POI, JDK-HTTP-Client) und Fehlermeldungen der Datenbank
 (`Failing row contains …`) loggen unterhalb von OPAA und sind nicht geprüft; `GlobalExceptionHandler`
-kennt die Bibliothek nicht. Mit einer zweiten Instanz entfiele die Garantie von `holdIntake`
-(ADR-0021). Solange etwas am Kontingent fehlt, liest jeder Lauf dasselbe Fenster erneut und endet
+kennt die Bibliothek nicht. Solange etwas am Kontingent fehlt, liest jeder Lauf dasselbe Fenster erneut und endet
 mit `QUOTA_EXHAUSTED`.
 
 ## Verworfene Alternativen

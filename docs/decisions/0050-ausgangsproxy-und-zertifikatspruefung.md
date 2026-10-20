@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ersetzt die Proxy- und TLS-Felder aus
+Akzeptiert · zuletzt geändert 2026-10-20 · ersetzt die Proxy- und TLS-Felder aus
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) (Entscheidung 3a), [ADR-0023](0023-confluence-konnektor.md)
 und [ADR-0027](0027-s3-konnektor.md)
 
@@ -37,7 +37,7 @@ direkt.
 
 Singleton `outbound_proxy_settings` (foundation, `OutboundProxySetting`); der Selector liest den
 Stand beim Start und nach jedem Commit einer Änderung neu, synchronisiert, ein Rollback leitet nie
-um (prozesslokaler Zustand, ADR-0021). `GET/PUT /api/v1/admin/outbound-proxy` nur für die
+um (am Invalidierungsbus jeder Instanz, ADR-0053 Entscheidung 5). `GET/PUT /api/v1/admin/outbound-proxy` nur für die
 Systemverwaltung (`OutboundProxyAdministration` in connections), jede Änderung ist
 `OUTBOUND_PROXY_CHANGED` mit Vorher und Nachher. Keine Proxy-Authentifizierung: Der JDK sperrt
 Basic für `CONNECT`, und jede Client-Familie bräuchte einen eigenen Authenticator. Ausnahmeliste

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -299,7 +299,8 @@ läuft weiter auf `dev`, der lokale Anmeldeweg hat sein eigenes E2E-Ziel (`e2e/l
 Demo-Stack meldet sich im Seed als Notanker an und vergibt die Rolle über die reguläre Rollen-API;
 Profilname `oidc` bleibt; kein getrennter API-Origin; die Übersicht der eigenen Sitzungen ist nicht
 gebaut; Mails nur `de` (Spalte `locale` vorbereitet). Die prozesslokalen Fundstellen (lokaler Decoder,
-`jti`-Denylist, Rate-Limit-Buckets, `MailSenderProvider`-Cache, Scheduler) führt ADR-0021; der
+`jti`-Denylist, Rate-Limit-Buckets, `MailSenderProvider`-Cache, Scheduler) führt das Register nach
+ADR-0053 Entscheidung 16; der
 Mail-Sender ergänzt ADR-0019.
 
 ## Stakeholder-Zusagen
