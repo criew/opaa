@@ -35,7 +35,8 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
    * DirectorySyncRunLock#DIRECTORY_SYNC_RUN_LOCK_NAMESPACE}), 207 ({@code
    * ConnectionAuthorizationRepository#AUTHORIZATION_START_LOCK_NAMESPACE}), 208 ({@code
    * VectorStoreWriter#DOCUMENT_CHUNK_LOCK_NAMESPACE}), 211 (the start-up seeds, {@code
-   * LocalAdminSeedMarkerRepository#lockStartupSeeds}).
+   * LocalAdminSeedMarkerRepository#lockStartupSeeds}), 213 ({@code
+   * VectorIndexSchema#SCHEMA_LOCK_NAMESPACE}).
    */
   int ASSET_GRANT_MUTATION_LOCK_NAMESPACE = 202;
 

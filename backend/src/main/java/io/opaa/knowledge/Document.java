@@ -83,6 +83,14 @@ public class Document {
   private UUID uploadedByUserId;
 
   /**
+   * The instance that processes this upload while it is {@code PENDING} (ADR-0053, Entscheidung 8);
+   * the upload recovery fails a pending upload only once this instance counts as dead. {@code null}
+   * for every other row and for one written before it was recorded.
+   */
+  @Column(name = "processing_instance_id")
+  private UUID processingInstanceId;
+
+  /**
    * For an attachment discovered on an RSS entry's detail page, the entry's own {@link #filePath}
    * (its detail page URL) - the trace back to the entry the origin document is found on. {@code
    * null} for every other document, including the RSS entry's own row and every {@code
@@ -332,6 +340,14 @@ public class Document {
 
   public void setUploadedByUserId(UUID uploadedByUserId) {
     this.uploadedByUserId = uploadedByUserId;
+  }
+
+  public UUID getProcessingInstanceId() {
+    return processingInstanceId;
+  }
+
+  public void setProcessingInstanceId(UUID processingInstanceId) {
+    this.processingInstanceId = processingInstanceId;
   }
 
   public String getSourceEntryUrl() {

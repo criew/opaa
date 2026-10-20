@@ -1,12 +1,11 @@
 package io.opaa.indexing.job;
 
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.common.ProcessStart;
 import io.opaa.indexing.IndexingProperties;
 import java.time.Duration;
-import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,33 +13,42 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * {@link IndexingJobRecoveryScheduler} only wires {@link IndexingJobService}'s two recovery methods
- * to the right trigger (application startup vs. a periodic sweep) - the actual recovery logic
- * (which rows get failed, with what message) is {@link IndexingJobServiceTest}'s responsibility.
+ * {@link IndexingJobRecoveryScheduler} only wires {@link IndexingJobService}'s recovery methods to
+ * the right trigger (application startup vs. a periodic sweep) - the actual recovery logic (which
+ * rows get failed, with what message) is {@link IndexingJobServiceTest}'s responsibility.
  */
 @ExtendWith(MockitoExtension.class)
 class IndexingJobRecoverySchedulerTest {
 
   @Mock private IndexingJobService indexingJobService;
 
-  private static final ProcessStart PROCESS_START =
-      new ProcessStart(Instant.parse("2026-10-17T08:00:00Z"));
-
   private IndexingJobRecoveryScheduler scheduler;
 
   @BeforeEach
   void setUp() {
     var properties = new IndexingProperties(1000, 0, 50, null, Duration.ofHours(4), null, 0);
-    scheduler = new IndexingJobRecoveryScheduler(indexingJobService, properties, PROCESS_START);
+    scheduler = new IndexingJobRecoveryScheduler(indexingJobService, properties);
   }
 
   @Test
-  void recoverOnStartupDelegatesToTheRestartRecoveryWithTheProcessStart() {
-    when(indexingJobService.recoverJobsOrphanedByRestart(PROCESS_START.instant())).thenReturn(1);
+  void recoverOnStartupGivesUpTheRunsOfDeadInstancesAndThoseWithoutOwner() {
+    when(indexingJobService.recoverJobsWithoutOwner()).thenReturn(1);
+    when(indexingJobService.recoverJobsOfDeadInstances()).thenReturn(1);
 
     scheduler.recoverOnStartup();
 
-    verify(indexingJobService).recoverJobsOrphanedByRestart(PROCESS_START.instant());
+    verify(indexingJobService).recoverJobsWithoutOwner();
+    verify(indexingJobService).recoverJobsOfDeadInstances();
+  }
+
+  @Test
+  void thePeriodicSweepGivesUpOnlyTheRunsOfDeadInstances() {
+    when(indexingJobService.recoverJobsOfDeadInstances()).thenReturn(1);
+
+    scheduler.recoverRunsOfDeadInstances();
+
+    verify(indexingJobService).recoverJobsOfDeadInstances();
+    verify(indexingJobService, never()).recoverJobsWithoutOwner();
   }
 
   @Test

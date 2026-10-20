@@ -23,6 +23,13 @@ public interface SourceSyncStateRepository extends JpaRepository<SourceSyncState
   Optional<UUID> lockById(@Param("id") UUID id);
 
   /**
+   * The status of the indexing job {@code jobId}, its row share-locked for the caller's
+   * transaction: a recovery that fails the job waits until the caller's write has committed.
+   */
+  @Query(value = "SELECT status FROM indexing_jobs WHERE id = :jobId FOR SHARE", nativeQuery = true)
+  Optional<String> lockJobStatus(@Param("jobId") UUID jobId);
+
+  /**
    * Called by {@code KnowledgeLibraryService} when a library's address or selection changes:
    * without a state the next run is a full one from scratch, which is what a changed selection
    * needs (ADR-0023, Entscheidung 4; ADR-0027, Entscheidung 3). The ON DELETE CASCADE only covers

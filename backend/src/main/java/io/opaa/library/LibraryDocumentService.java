@@ -27,6 +27,7 @@ import io.opaa.indexing.spi.ServedOriginals;
 import io.opaa.indexing.spi.SourceConnectionBlockedException;
 import io.opaa.indexing.spi.SourceCredentialsException;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
+import io.opaa.instance.CurrentInstance;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.DocumentRepository;
@@ -108,6 +109,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   private final AssetRepository assetRepository;
   private final SourceConnectionResolver connectionResolver;
   private final SourceSyncStateRepository syncStateRepository;
+  private final CurrentInstance currentInstance;
 
   /** One transaction per document for {@link #deleteDocuments} - see its contract. */
   private final TransactionTemplate transactionTemplate;
@@ -135,6 +137,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       PlatformTransactionManager transactionManager,
       SourceConnectionResolver connectionResolver,
       SourceSyncStateRepository syncStateRepository,
+      CurrentInstance currentInstance,
       Clock clock) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
@@ -156,6 +159,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.connectionResolver = connectionResolver;
     this.syncStateRepository = syncStateRepository;
+    this.currentInstance = currentInstance;
     this.clock = clock;
   }
 
@@ -277,6 +281,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       // race against uk_documents_library_checksum is meant to be settled - before any embedding
       // work starts, not after, even though the embedding work itself runs off this thread.
       document.setChecksum(checksum);
+      document.setProcessingInstanceId(currentInstance.id());
       document = documentRepository.save(document);
 
       // The row is committed: a failure from here on marks it FAILED instead of reaching the outer

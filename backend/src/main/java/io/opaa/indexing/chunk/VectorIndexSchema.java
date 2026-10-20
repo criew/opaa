@@ -1,6 +1,7 @@
 package io.opaa.indexing.chunk;
 
 import io.opaa.knowledge.VectorTable;
+import java.util.function.BooleanSupplier;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgIndexType;
@@ -21,6 +22,12 @@ public class VectorIndexSchema {
 
   /** How long the switch waits for a table lock before it gives up and can be retried. */
   static final String SWITCH_LOCK_TIMEOUT = "10s";
+
+  /**
+   * The advisory lock namespace of the DDL on the embedding columns; the second key is always 0.
+   * The startup reconciliation and the switch of every instance hold it for their transaction.
+   */
+  public static final int SCHEMA_LOCK_NAMESPACE = 213;
 
   private static final String TARGET_INDEX_NAME = "embedding_next_vector_index";
 
@@ -152,37 +159,58 @@ public class VectorIndexSchema {
   }
 
   /**
-   * Makes the target column the embedding column in one transaction: the old column and its index
-   * go, the target column and its index take their names. Fails rather than waits when a table lock
-   * is not granted within {@value #SWITCH_LOCK_TIMEOUT}; nothing has changed then.
+   * Holds {@link #SCHEMA_LOCK_NAMESPACE} until the caller's transaction ends, so no other instance
+   * changes the embedding columns meanwhile. Called inside a transaction only.
+   */
+  public void lockSchemaChanges() {
+    jdbcTemplate.query("SELECT pg_advisory_xact_lock(?, 0)", rs -> null, SCHEMA_LOCK_NAMESPACE);
+  }
+
+  /**
+   * Makes the target column the embedding column in one transaction, under {@link
+   * #lockSchemaChanges}: the old column and its index go, the target column and its index take
+   * their names. Nothing changes when {@code stillWanted}, asked under the lock, says no. Fails
+   * rather than waits when a table lock is not granted within {@value #SWITCH_LOCK_TIMEOUT};
+   * nothing has changed then.
    *
    * @param afterSwitch runs in the same transaction, after the columns were switched
+   * @return whether the columns were switched
    */
-  public void switchToTarget(Runnable afterSwitch) {
-    transactionTemplate.executeWithoutResult(
-        status -> {
-          jdbcTemplate.execute("SET LOCAL lock_timeout = '" + SWITCH_LOCK_TIMEOUT + "'");
-          jdbcTemplate.execute(
-              "ALTER TABLE "
-                  + table.qualifiedName()
-                  + " DROP COLUMN "
-                  + EmbeddingIndexState.EMBEDDING_COLUMN);
-          jdbcTemplate.execute(
-              "ALTER TABLE "
-                  + table.qualifiedName()
-                  + " RENAME COLUMN "
-                  + EmbeddingIndexState.TARGET_COLUMN
-                  + " TO "
-                  + EmbeddingIndexState.EMBEDDING_COLUMN);
-          if (indexType != PgIndexType.NONE) {
-            jdbcTemplate.execute(
-                "ALTER INDEX IF EXISTS "
-                    + qualified(TARGET_INDEX_NAME)
-                    + " RENAME TO "
-                    + vectorIndexName());
-          }
-          afterSwitch.run();
-        });
+  public boolean switchToTarget(BooleanSupplier stillWanted, Runnable afterSwitch) {
+    return Boolean.TRUE.equals(
+        transactionTemplate.execute(
+            status -> {
+              jdbcTemplate.execute("SET LOCAL lock_timeout = '" + SWITCH_LOCK_TIMEOUT + "'");
+              lockSchemaChanges();
+              if (!stillWanted.getAsBoolean()) {
+                return false;
+              }
+              switchColumns(afterSwitch);
+              return true;
+            }));
+  }
+
+  private void switchColumns(Runnable afterSwitch) {
+    jdbcTemplate.execute(
+        "ALTER TABLE "
+            + table.qualifiedName()
+            + " DROP COLUMN "
+            + EmbeddingIndexState.EMBEDDING_COLUMN);
+    jdbcTemplate.execute(
+        "ALTER TABLE "
+            + table.qualifiedName()
+            + " RENAME COLUMN "
+            + EmbeddingIndexState.TARGET_COLUMN
+            + " TO "
+            + EmbeddingIndexState.EMBEDDING_COLUMN);
+    if (indexType != PgIndexType.NONE) {
+      jdbcTemplate.execute(
+          "ALTER INDEX IF EXISTS "
+              + qualified(TARGET_INDEX_NAME)
+              + " RENAME TO "
+              + vectorIndexName());
+    }
+    afterSwitch.run();
   }
 
   /** A completed build of an earlier attempt is kept; a half-built one is not valid. */

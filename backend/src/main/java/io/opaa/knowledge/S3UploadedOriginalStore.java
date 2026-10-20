@@ -49,11 +49,12 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * filesystem adapter writes - that keeps the migration between the two a prefix replacement
  * (Entscheidung 5).
  *
- * <p>Accepting writes a working file under {@code tempDirectory}; only {@link
- * AcceptedUpload#store()} puts it into the bucket, so an upload the checks between the two reject
- * never costs a {@code PutObject}. A caller that needs a local file gets a copy that is removed on
- * every exit of its action. Serving streams the object body without a local copy, which is why HTTP
- * range requests are not available for these originals (Entscheidung 6).
+ * <p>Accepting writes a working file under {@code tempDirectory}, in the subdirectory of this
+ * instance ({@link WorkingDirectoryOwner}); only {@link AcceptedUpload#store()} puts it into the
+ * bucket, so an upload the checks between the two reject never costs a {@code PutObject}. A caller
+ * that needs a local file gets a copy that is removed on every exit of its action. Serving streams
+ * the object body without a local copy, which is why HTTP range requests are not available for
+ * these originals (Entscheidung 6).
  *
  * <p>Resolving a locator is the key prefix of the organization and library plus {@code HeadObject}:
  * a locator in another bucket, under another organization's or another library's prefix, or one
@@ -90,6 +91,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   private final String bucket;
   private final String keyPrefix;
   private final Path tempDirectory;
+  private final WorkingDirectoryOwner owner;
   private final String endpoint;
   private final int listPageSize;
   private final S3FailureTranslator translator;
@@ -97,13 +99,19 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   private final S3Client s3;
 
   public S3UploadedOriginalStore(UploadS3Properties properties) {
+    this(properties, WorkingDirectoryOwner.standalone());
+  }
+
+  /** Working files go below the subdirectory of {@code owner}'s instance. */
+  public S3UploadedOriginalStore(UploadS3Properties properties, WorkingDirectoryOwner owner) {
     this(
         properties,
         UploadS3TargetPolicy.of(properties),
         REQUEST_TIMEOUT,
         MAX_RETRIES,
         RETRY_BACKOFF,
-        LIST_PAGE_SIZE);
+        LIST_PAGE_SIZE,
+        owner);
   }
 
   /**
@@ -117,10 +125,29 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
       int maxRetries,
       Duration retryBackoff,
       int listPageSize) {
+    this(
+        properties,
+        targetPolicy,
+        requestTimeout,
+        maxRetries,
+        retryBackoff,
+        listPageSize,
+        WorkingDirectoryOwner.standalone());
+  }
+
+  S3UploadedOriginalStore(
+      UploadS3Properties properties,
+      S3RequestGuard.TargetPolicy targetPolicy,
+      Duration requestTimeout,
+      int maxRetries,
+      Duration retryBackoff,
+      int listPageSize,
+      WorkingDirectoryOwner owner) {
     properties.requireComplete();
     this.bucket = properties.bucket();
     this.keyPrefix = properties.keyPrefix();
     this.tempDirectory = properties.tempDirectory();
+    this.owner = owner;
     this.endpoint = properties.endpointUri().toString();
     this.listPageSize = listPageSize;
     this.translator =
@@ -354,10 +381,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   }
 
   /**
-   * Removes every working file and local copy a killed process left under {@code tempDirectory} -
-   * recognised by {@link #TEMP_FILE_PREFIX} and by being older than this process, nothing else
-   * there is touched - and reports, without failing the start, whether the store answers (ADR-0030,
-   * Entscheidung 7 and 9).
+   * Removes every working file and local copy a killed instance left under {@code tempDirectory} -
+   * recognised by {@link #TEMP_FILE_PREFIX} and by lying in the subdirectory of a dead instance, or
+   * directly below it and older than this process, nothing else there is touched - and reports,
+   * without failing the start, whether the store answers (ADR-0030, Entscheidung 7 and 9).
    */
   @Override
   public void recoverAfterRestart() {
@@ -436,9 +463,9 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   }
 
   /**
-   * Only a file older than this process is abandoned: the web server already accepts requests when
-   * the startup runners fire, so a working file of an upload in flight right now is younger than
-   * the process and must survive the sweep.
+   * A subdirectory belongs to a live instance as long as the register says so; its working files
+   * stay, whatever their age. A file directly below {@code tempDirectory} was written before
+   * working files moved into subdirectories and is abandoned once it is older than this process.
    */
   private void sweepTempDirectory() {
     if (!Files.isDirectory(tempDirectory)) {
@@ -449,15 +476,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
     int removed = 0;
     try (Stream<Path> entries = Files.list(tempDirectory)) {
       for (Path entry : entries.toList()) {
-        if (entry.getFileName().toString().startsWith(TEMP_FILE_PREFIX)
-            && Files.isRegularFile(entry)
-            && isOlderThan(entry, processStart)) {
-          try {
-            Files.deleteIfExists(entry);
-            removed++;
-          } catch (IOException e) {
-            log.warn("Could not remove abandoned upload temp file {}", entry, e);
-          }
+        if (Files.isDirectory(entry)) {
+          removed += sweepInstanceDirectory(entry);
+        } else if (isWorkingFile(entry) && isOlderThan(entry, processStart)) {
+          removed += deleteWorkingFile(entry);
         }
       }
     } catch (IOException e) {
@@ -466,6 +488,48 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
     if (removed > 0) {
       log.warn(
           "Removed {} abandoned upload temp file(s) from {} on startup", removed, tempDirectory);
+    }
+  }
+
+  /** The working files of a dead instance's subdirectory, and the directory once it is empty. */
+  private int sweepInstanceDirectory(Path directory) throws IOException {
+    UUID instance;
+    try {
+      instance = UUID.fromString(directory.getFileName().toString());
+    } catch (IllegalArgumentException e) {
+      return 0;
+    }
+    if (owner.alive().test(instance)) {
+      return 0;
+    }
+    int removed = 0;
+    try (Stream<Path> entries = Files.list(directory)) {
+      for (Path entry : entries.toList()) {
+        if (isWorkingFile(entry)) {
+          removed += deleteWorkingFile(entry);
+        }
+      }
+    }
+    try {
+      Files.deleteIfExists(directory);
+    } catch (IOException e) {
+      log.debug("Kept the upload temp directory {}: {}", directory, e.getMessage());
+    }
+    return removed;
+  }
+
+  private static boolean isWorkingFile(Path entry) {
+    return entry.getFileName().toString().startsWith(TEMP_FILE_PREFIX)
+        && Files.isRegularFile(entry);
+  }
+
+  private static int deleteWorkingFile(Path entry) {
+    try {
+      Files.deleteIfExists(entry);
+      return 1;
+    } catch (IOException e) {
+      log.warn("Could not remove abandoned upload temp file {}", entry, e);
+      return 0;
     }
   }
 
@@ -533,8 +597,9 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   }
 
   private Path createTempFile(String suffix) throws IOException {
-    Files.createDirectories(tempDirectory);
-    return Files.createTempFile(tempDirectory, TEMP_FILE_PREFIX, suffix);
+    Path own = tempDirectory.resolve(owner.instance().get().toString());
+    Files.createDirectories(own);
+    return Files.createTempFile(own, TEMP_FILE_PREFIX, suffix);
   }
 
   /** The key's own extension for the copy's name, so format routing by suffix keeps working. */

@@ -40,6 +40,7 @@ import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.run.SyncStateBasis;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.RunFailureCategory;
+import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
@@ -270,7 +271,7 @@ class ConfluenceIndexingExecutorTest {
             documentIngestService,
             attachmentIndexer(),
             documentRepository,
-            syncStateRepository,
+            new ScanJournal(syncStateRepository),
             testClock(),
             runTemplate());
   }
@@ -1010,7 +1011,7 @@ class ConfluenceIndexingExecutorTest {
             documentIngestService,
             attachmentIndexer(),
             documentRepository,
-            syncStateRepository,
+            new ScanJournal(syncStateRepository),
             Clock.fixed(NOW, ZoneOffset.UTC),
             runTemplate());
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
@@ -1191,7 +1192,7 @@ class ConfluenceIndexingExecutorTest {
             documentIngestService,
             attachmentIndexer(),
             documentRepository,
-            syncStateRepository,
+            new ScanJournal(syncStateRepository),
             testClock(),
             runTemplate());
     UUID second = UUID.randomUUID();
@@ -1449,7 +1450,7 @@ class ConfluenceIndexingExecutorTest {
             documentIngestService,
             attachmentIndexer(),
             documentRepository,
-            syncStateRepository,
+            new ScanJournal(syncStateRepository),
             Clock.fixed(NOW, ZoneOffset.UTC),
             runTemplate());
     UUID second = UUID.randomUUID();

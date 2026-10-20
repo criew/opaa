@@ -1,9 +1,16 @@
 package io.opaa.indexing.chunk;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.Collections;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +34,7 @@ class EmbeddingIndexReconcilerIntegrationTest {
   @Autowired private EmbeddingIndexStore store;
   @Autowired private VectorIndexSchema schema;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private DataSource dataSource;
 
   @BeforeEach
   @AfterEach
@@ -140,6 +148,73 @@ class EmbeddingIndexReconcilerIntegrationTest {
     reconciler.reconcile();
 
     assertThat(state.isStale()).isFalse();
+  }
+
+  /**
+   * Ein alter Pod löscht {@code embedding_next} nicht: next to a live instance of a newer version,
+   * the reconciliation takes the index as recorded, even where its own comparison would drop the
+   * target column.
+   */
+  @Test
+  void anInstanceOfAnOlderVersionNextToANewerOneChangesNoColumn() {
+    createVectorStore(1536);
+    insertChunk(1536);
+    recordIndexModel("text-embedding-3-small", 1536);
+    reconciler.reconcile();
+    jdbcTemplate.update("UPDATE embedding_index SET model = ?", CONFIGURED_MODEL);
+    UUID newer = liveInstanceOfVersion("99.0.0");
+    try {
+      reconciler.reconcile();
+
+      assertThat(schema.columnDimensions(EmbeddingIndexState.TARGET_COLUMN)).isEqualTo(1536);
+      assertThat(state.snapshot().target()).isNotNull();
+    } finally {
+      jdbcTemplate.update("DELETE FROM backend_instances WHERE id = ?", newer);
+    }
+
+    reconciler.reconcile();
+
+    assertThat(schema.columnDimensions(EmbeddingIndexState.TARGET_COLUMN))
+        .as("without the newer instance, this one is the newest and reconciles")
+        .isNull();
+  }
+
+  /** Two instances never change the embedding columns at the same time. */
+  @Test
+  void theReconciliationWaitsForTheSchemaLockAnotherInstanceHolds() throws Exception {
+    createVectorStore(1536);
+    try (Connection other = dataSource.getConnection()) {
+      other.setAutoCommit(false);
+      try (Statement statement = other.createStatement()) {
+        statement.execute(
+            "SELECT pg_advisory_xact_lock(" + VectorIndexSchema.SCHEMA_LOCK_NAMESPACE + ", 0)");
+      }
+      CompletableFuture<Void> reconciliation = CompletableFuture.runAsync(reconciler::reconcile);
+      await()
+          .atMost(10, TimeUnit.SECONDS)
+          .until(
+              () ->
+                  jdbcTemplate.queryForObject(
+                          "SELECT count(*) FROM pg_stat_activity WHERE wait_event = 'advisory'",
+                          Long.class)
+                      > 0);
+      assertThat(reconciliation).isNotDone();
+
+      other.commit();
+      reconciliation.get(10, TimeUnit.SECONDS);
+    }
+  }
+
+  private UUID liveInstanceOfVersion(String version) {
+    UUID id = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO backend_instances (id, host_name, version, oldest_compatible_version,"
+            + " started_at, heartbeat_at, fingerprint, fingerprint_hash) VALUES (?, 'fixture', ?,"
+            + " ?, clock_timestamp(), clock_timestamp(), '{}', 'x')",
+        id,
+        version,
+        version);
+    return id;
   }
 
   private void recordIndexModel(String model, int dimensions) {

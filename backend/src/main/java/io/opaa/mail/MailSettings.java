@@ -21,7 +21,10 @@ import java.util.UUID;
  *
  * <p>The three status fields are the durable record of whether mail actually works. They are
  * written by {@link MailService} after every attempt and shown on the settings page - a {@code
- * Failed} that only reaches the log of a container nobody reads is not visible at all.
+ * Failed} that only reaches the log of a container nobody reads is not visible at all. Only {@link
+ * MailSettingsRepository#recordSuccess} and {@link MailSettingsRepository#recordFailure} write
+ * them; a save of this entity leaves them alone, and the outcome of a send leaves the settings
+ * alone, so neither write takes back the other.
  */
 @Entity
 @Table(name = "mail_settings")
@@ -60,13 +63,17 @@ public class MailSettings {
   @Column(name = "from_name", length = 120)
   private String fromName;
 
-  @Column(name = "last_success_at")
+  @Column(name = "last_success_at", insertable = false, updatable = false)
   private Instant lastSuccessAt;
 
-  @Column(name = "last_failure_at")
+  @Column(name = "last_failure_at", insertable = false, updatable = false)
   private Instant lastFailureAt;
 
-  @Column(name = "last_failure_reason", length = MAX_FAILURE_REASON_LENGTH)
+  @Column(
+      name = "last_failure_reason",
+      length = MAX_FAILURE_REASON_LENGTH,
+      insertable = false,
+      updatable = false)
   private String lastFailureReason;
 
   @Column(name = "updated_at", nullable = false)
@@ -163,22 +170,8 @@ public class MailSettings {
     this.updatedAt = Instant.now();
   }
 
-  /**
-   * Records a successful send. The failure fields are deliberately kept: "zuletzt erfolgreich" and
-   * "zuletzt fehlgeschlagen" answer different questions, and clearing the older one would hide that
-   * mail is failing intermittently.
-   */
-  void recordSuccess(Instant at) {
-    this.lastSuccessAt = at;
-  }
-
-  /** Records a failed send with its cause, truncated to what the column holds. */
-  void recordFailure(Instant at, String reason) {
-    this.lastFailureAt = at;
-    this.lastFailureReason = truncate(reason);
-  }
-
-  private static String truncate(String reason) {
+  /** {@code reason} truncated to what the column holds. */
+  static String truncate(String reason) {
     if (reason == null) {
       return null;
     }
