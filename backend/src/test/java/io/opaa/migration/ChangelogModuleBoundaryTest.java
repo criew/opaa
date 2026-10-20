@@ -66,6 +66,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "oidc_provider_seed_marker",
                   "oidc_provider_removals",
                   "local_credentials",
+                  "admin_review_reminders",
                   "local_refresh_tokens",
                   "local_revoked_tokens",
                   "local_action_tokens",

@@ -46,6 +46,7 @@ data:
           - failed_login_attempts
           - lockout_until
           - expires_at
+          - expiry_reminded_for
           - email_verified_at
           - created_reason
         nonPersonalColumns:
@@ -209,6 +210,7 @@ data:
       - Kurze Frist im Betrieb festlegen; Konto-Kennung statt Adresse
 nonPersonalTables:
   organizations: [id, name, created_at]
+  admin_review_reminders: [organization_id, reminded_on]
   oidc_providers:
     - id
     - display_name

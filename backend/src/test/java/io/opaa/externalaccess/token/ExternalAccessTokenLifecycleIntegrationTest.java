@@ -277,7 +277,8 @@ class ExternalAccessTokenLifecycleIntegrationTest {
     ExternalAccessToken inSeven = store("In sieben Tagen", noonOn(now, 7, zone));
     RecordingMailer recording = new RecordingMailer();
     ExternalAccessTokenExpiryReminderStep step =
-        new ExternalAccessTokenExpiryReminderStep(tokens, users, recording, settings, zone);
+        new ExternalAccessTokenExpiryReminderStep(
+            tokens, users, recording, settings, new TransactionTemplate(transactionManager), zone);
 
     step.run(now);
 
@@ -294,7 +295,9 @@ class ExternalAccessTokenLifecycleIntegrationTest {
     setChannelEnabled(false);
     RecordingMailer recording = new RecordingMailer();
 
-    new ExternalAccessTokenExpiryReminderStep(tokens, users, recording, settings, zone).run(now);
+    new ExternalAccessTokenExpiryReminderStep(
+            tokens, users, recording, settings, new TransactionTemplate(transactionManager), zone)
+        .run(now);
 
     assertThat(recording.reminded).isEmpty();
   }

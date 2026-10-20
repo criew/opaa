@@ -39,6 +39,22 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
       Instant from, Instant to);
 
   /**
+   * Claims the reminder of the expiry {@code expiresAt} for the account: true for exactly one call
+   * per expiry, whichever instance makes it, and again after the expiry has been moved. The column
+   * is not mapped, so saving a stale entity never undoes the claim.
+   *
+   * @return 1 when this call claimed it
+   */
+  @Transactional
+  @Modifying
+  @Query(
+      value =
+          "UPDATE local_credentials SET expiry_reminded_for = :expiresAt WHERE user_id = :userId"
+              + " AND expires_at = :expiresAt AND expiry_reminded_for IS DISTINCT FROM :expiresAt",
+      nativeQuery = true)
+  int claimExpiryReminder(@Param("userId") UUID userId, @Param("expiresAt") Instant expiresAt);
+
+  /**
    * Counts one failed sign-in atomically in the database ({@code n = n + 1}, ADR-0033 Entscheidung
    * 9) - never read-increment-write on a possibly stale entity, so concurrent failures never lose a
    * count. Returns the number of rows updated (0 when the user has no local credentials); the

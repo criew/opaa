@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAccessToken, UUID> {
 
@@ -84,6 +85,22 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
           + " AND t.expiresAt >= :from AND t.expiresAt < :to")
   List<ExternalAccessToken> findExpiringBetween(
       @Param("from") Instant from, @Param("to") Instant to);
+
+  /**
+   * Claims the reminder {@code leadDays} before the token's expiry: true for exactly one call per
+   * lead time, whichever instance makes it, and never for a longer lead time after a shorter one.
+   * The column is not mapped, so saving a stale entity never undoes the claim.
+   *
+   * @return 1 when this call claimed it
+   */
+  @Transactional
+  @Modifying
+  @Query(
+      value =
+          "UPDATE external_access_tokens SET expiry_reminded_days = :leadDays WHERE id = :id"
+              + " AND (expiry_reminded_days IS NULL OR expiry_reminded_days > :leadDays)",
+      nativeQuery = true)
+  int claimExpiryReminder(@Param("id") UUID id, @Param("leadDays") int leadDays);
 
   /**
    * Removes dead rows whose retention has run out. Bounded by {@code lapseRecordedAt} rather than
