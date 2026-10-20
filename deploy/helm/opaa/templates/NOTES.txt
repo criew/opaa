@@ -50,12 +50,13 @@ STARTWERTE WIRKEN NUR BEIM ERSTEN START
   helm rollback auf die Vorgängerversion ist deshalb ein Rückweg; über ein Release, das sich als
   Versionsgrenze ohne Rolling Update ausweist, nur die Datenbanksicherung. Einen Wert des
   Konfigurationsabdrucks ändert nur backend.updateStrategy: Recreate. Budgets wie Rate-Limits und
-  Pools gelten je Pod.
+  Pools gelten je Pod; backend.installationBudgets teilt das Budget der Installation auf die Pods.
 {{- else if gt (int .Values.backend.replicas) 1 }}
 
 {{ int .Values.backend.replicas }} BACKEND-PODS, STRATEGIE RECREATE
   Ein Upgrade beendet alle Pods, bevor die neuen starten, und unterbricht den Betrieb kurz. So
-  ändert sich ein Wert des Konfigurationsabdrucks. Budgets wie Rate-Limits und Pools gelten je Pod.
+  ändert sich ein Wert des Konfigurationsabdrucks. Budgets wie Rate-Limits und Pools gelten je Pod;
+  backend.installationBudgets teilt das Budget der Installation auf die Pods.
 {{- else }}
 
 GENAU EINE BACKEND-INSTANZ

@@ -40,16 +40,17 @@ flowchart LR
     R -.-> S
 ```
 
-Technisch läuft alles in **einem Backend-Prozess** gegen **eine PostgreSQL-Datenbank**; nach außen
-ruft das Backend nur die konfigurierten Modelle und die Quellen. Drei Eigenschaften prägen den
+Technisch läuft alles in **einem oder mehreren gleichrangigen Backend-Prozessen** gegen **eine
+PostgreSQL-Datenbank**; nach außen ruft das Backend nur die konfigurierten Modelle und die Quellen. Drei Eigenschaften prägen den
 Betrieb:
 
 - **Die Datenbank ist die einzige Wahrheit.** Dokumente, Chunks samt Vektoren, Volltext,
   Metadaten, Protokolle, Chats: alles liegt in PostgreSQL. Daneben steht genau ein zweiter Bestand:
   die Originale der hochgeladenen Dokumente. Eine Sicherung umfasst deshalb beides — die Datenbank
   und die [Originalablage](originalablage.md).
-- **Genau eine Backend-Instanz.** Zeitpläne, Wiederanlauf und Thread-Pools sind prozesslokal.
-  Skalierung ist eine Frage der Hardware dieser einen Instanz.
+- **Instanzen stimmen sich über die Datenbank ab.** Eine Instanz genügt; mehrere teilen sich
+  Anfragen, Läufe und Zeitpläne, überstehen den Ausfall einer von ihnen und lassen sich nacheinander
+  aktualisieren, ohne dass die Oberfläche ausfällt. Eine weitere Infrastruktur brauchen sie nicht.
 - **Rechte wirken in der Suche, nicht dahinter.** Jede Suchabfrage trägt den Filter auf die
   lesbaren Bibliotheken in sich; ein fremder Chunk wird nie geladen. Es gibt keinen
   Administrator-Durchgriff.
@@ -61,7 +62,7 @@ Seite nur dort, wo ein Begriff von dort gebraucht wird. Berechtigungen und die K
 Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweisen dürfen.
 
 - **Betrieb**
-  - [Betriebsübersicht](betrieb.md) — Bausteine und ihr Zusammenspiel, eine Backend-Instanz, Images,
+  - [Betriebsübersicht](betrieb.md) — Bausteine und ihr Zusammenspiel, eine oder mehrere Backend-Instanzen, Images,
     Bereitschaft, Härtung, Schlüssel, Sicherung, Aktualisierung, Logs und Metriken, Fehlerbehebung
     - [Docker Compose](docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
       Objektspeicher und Mailpit im Stapel, Aktualisierung

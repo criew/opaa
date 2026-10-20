@@ -549,7 +549,7 @@ Sperre, nicht arbeitsrechtliche, disziplinarische oder leistungsbezogene Fragen.
 **Sicherheitsereignis** und steht **nicht** im Nachweisprotokoll; dorthin gelangt allein die daraus
 folgende Sperre.
 
-Der Zähler des Alarms überlebt keinen Neustart des Backends.
+Der Zähler des Alarms liegt in der Datenbank und überdauert den Neustart einer Instanz.
 
 ## 11. Was protokolliert wird — und was nicht
 

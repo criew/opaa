@@ -15,21 +15,19 @@ Kapitel verweist an der jeweiligen Stelle dorthin.
 
 ## Kubernetes oder Compose
 
-Beide Wege führen zur selben Anwendung mit denselben Grenzen. Insbesondere gilt unter Kubernetes
-dieselbe Grundannahme wie im Compose-Betrieb: **freigegeben ist genau eine Backend-Instanz**
-([Genau eine Backend-Instanz](betrieb.md#genau-eine-backend-instanz)). In der Vorgabe setzt der
-Chart das so um:
+Beide Wege führen zur selben Anwendung mit denselben Grenzen
+([Eine oder mehrere Backend-Instanzen](betrieb.md#eine-oder-mehrere-backend-instanzen)). In der
+Vorgabe läuft der Chart mit einer Backend-Instanz:
 
-- Das Backend-Deployment hat ein Replikat; `backend.replicas: 0` hält das Backend an. Mehr Replikate
-  rendert der Chart nur unter den Voraussetzungen unter
-  [Mehrere Backend-Instanzen](#mehrere-backend-instanzen), sonst bricht das Rendern mit einer Meldung ab.
+- Das Backend-Deployment hat ein Replikat; `backend.replicas: 0` hält das Backend an. Mehrere
+  Replikate für Hochverfügbarkeit und eine Aktualisierung ohne Ausfall beschreibt
+  [Mehrere Backend-Instanzen](#mehrere-backend-instanzen).
 - Die Strategie ist `Recreate`. Bei einer Aktualisierung endet der alte Pod, bevor der neue startet;
-  zwei Fassungen laufen nie gleichzeitig gegen dieselbe Datenbank. Eine Aktualisierung ist deshalb
-  eine **kurze Unterbrechung**.
+  sie ist mit einem Pod deshalb eine **kurze Unterbrechung**.
 - Das Frontend hält keinen Zustand und darf mehrfach laufen (`frontend.replicas`).
 
-Kubernetes bringt damit in der Vorgabe keine Hochverfügbarkeit des Backends. Es bringt die vorhandene Plattform des
-Hauses: Eingang und Zertifikate, Geheimnisverwaltung, Überwachung, Netztrennung und GitOps.
+Kubernetes bringt außerdem die vorhandene Plattform des Hauses: Eingang und Zertifikate,
+Geheimnisverwaltung, Überwachung, Netztrennung und GitOps.
 
 | Thema | Compose ([Docker Compose](docker-compose.md)) | Kubernetes (dieses Kapitel) |
 |---|---|---|
@@ -78,9 +76,6 @@ flowchart LR
 
 ### Mehrere Backend-Instanzen
 
-> **Vorbereitet, noch nicht freigegeben.** Der Nachweis mit zwei Instanzen steht aus (#2952); bis
-> dahin gilt [Genau eine Backend-Instanz](betrieb.md#genau-eine-backend-instanz).
-
 Mehrere Backend-Pods gegen dieselbe Datenbank erlauben eine Aktualisierung ohne Unterbrechung und
 überstehen den Ausfall eines Pods. Der Chart rendert `backend.replicas` größer 1 nur zusammen mit dem
 Migrations-Job und einer Originalablage, die jeder Pod sieht:
@@ -122,9 +117,18 @@ Damit ändert sich:
 - **Datenbankverbindungen.** `backend.databasePoolSize` gilt je Pod; die Grenze für
   `max_connections` nennt [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
 - **Grenzen je Pod.** Die Gesamtgrenzen der Rate-Limits (`…_GLOBAL_MAX_REQUESTS`) zählen alle Pods
-  gemeinsam. Die übrigen Rate-Limits und die Thread-Pools gelten je Pod; ein Wert, der für die ganze
-  Installation gemeint ist, wird durch die Zahl der Pods geteilt (siehe
+  gemeinsam. Die übrigen Rate-Limits und die Thread-Pools gelten je Pod (siehe
   [„Grenzen und Anzeigen mit mehreren Instanzen“](betrieb.md#grenzen-und-anzeigen-mit-mehreren-instanzen)).
+  `backend.installationBudgets` nimmt das Budget der ganzen Installation je Variable und setzt jedem
+  Pod seinen Teil, abgerundet und mindestens 1; ändert sich `backend.replicas`, rechnet der Chart neu:
+
+  ```yaml
+  backend:
+    replicas: 2
+    installationBudgets:
+      OPAA_INDEXING_EMBEDDING_CONCURRENCY: 6     # je Pod 3
+      OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: 20     # je Pod 10
+  ```
 - **Alarme je Pod.** Fehlende Metriken, voller Heap und hängende Indexierung melden sich, sobald ein
   einzelner Pod betroffen ist ([Alarme](#alarme)).
 
@@ -643,6 +647,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `backend.migration.activeDeadlineSeconds` | leer | — | Höchstdauer des Migrations-Jobs in Sekunden; leer: keine |
 | `backend.migration.resources` | 250m CPU und 384Mi angefordert, 768Mi Grenze | — | Ressourcen des Jobs und des wartenden Init-Containers jedes Backend-Pods |
 | `backend.databasePoolSize` | leer (Vorgabe der Anwendung, `10`) | `OPAA_DB_POOL_SIZE` | Verbindungen im Datenbank-Pool je Pod ([Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen)) |
+| `backend.installationBudgets` | leer | die genannten Variablen | Budget der Installation je Grenze, die je Pod gilt: Rate-Limits je Client (`OPAA_RATE_LIMIT_*_MAX_REQUESTS`, `…_PER_ADDRESS`), `OPAA_INDEXING_EMBEDDING_CONCURRENCY`, `OPAA_TRANSCRIPTION_MAX_CONCURRENT`, `OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT`; jeder Pod bekommt das Budget durch `backend.replicas`, abgerundet, mindestens 1. Leer: jeder Pod behält die Vorgabe der Anwendung. Nicht zusammen mit `transcription.maxConcurrent` oder derselben Variable in `extraEnv` |
 | `backend.managementPort` | `8081` | `MANAGEMENT_SERVER_PORT` | Port für Proben und Metriken, getrennt von der API |
 | `backend.logFormat` | leer (Text) | `LOGGING_STRUCTURED_FORMAT_CONSOLE` | `ecs`, `logstash` oder `gelf` für JSON-Protokolle |
 | `backend.shutdownTimeoutSeconds` | leer: `60` mit `Recreate`, mit `RollingUpdate` das Lese-Timeout des Frontends | `OPAA_SHUTDOWN_TIMEOUT` | Zeit, die ein Stopp laufenden Anfragen lässt, je Stopp-Phase; mit `RollingUpdate` mindestens das Lese-Timeout des Frontends, sonst bricht das Rendern ab |
@@ -1206,7 +1211,13 @@ Aktualisierung ohne Unterbrechung:
 ```bash
 kubectl -n opaa get jobs                       # der neue Job steht auf Complete
 kubectl -n opaa rollout status deploy/opaa-backend --timeout=15m
+kubectl -n opaa logs -l app.kubernetes.io/component=backend --tail=-1 | grep 'Starting OpaaApplication'
+helm test opaa -n opaa
 ```
+
+Die Startzeilen aller Pods nennen danach die neue Version. Weicht ein Wert des
+Konfigurationsabdrucks ab, verweigert der erste neue Pod den Start; der Rollout bleibt stehen, und die
+alten Pods antworten weiter, bis der Wert korrigiert ist.
 
 Scheitert die Migration, bleibt der neue Pod im Init-Container stehen, und die alten Pods antworten
 weiter. Das Protokoll des Jobs nennt den Grund (`kubectl -n opaa logs job/<Name>`). Nach der
@@ -1353,7 +1364,7 @@ kubectl apply -f opaa-uploads-kopie.yaml
 kubectl -n opaa wait --for=condition=Ready pod/opaa-uploads-kopie --timeout=5m
 kubectl -n opaa exec opaa-uploads-kopie -- tar -C /uploads -cf - . > opaa-uploads.tar
 kubectl -n opaa delete pod opaa-uploads-kopie
-kubectl -n opaa scale deploy/opaa-backend --replicas=1
+kubectl -n opaa scale deploy/opaa-backend --replicas=<Zahl>   # backend.replicas der Werte-Datei
 ```
 
 **Zurückspielen in derselben Installation.** Dieselben Schritte bis zum bereiten Kopier-Pod; dann
@@ -1577,6 +1588,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Backend-Pod bleibt im Zustand `Init`, der Init-Container `await-migration` meldet `Waiting for the migration step` | Der Migrations-Job läuft noch oder ist gescheitert. `kubectl -n opaa get jobs` und `kubectl -n opaa logs job/<Name>` zeigen, welches; einen gescheiterten Job nach der Behebung löschen und `helm upgrade` wiederholen (siehe [Ablauf mit mehreren Backend-Pods](#ablauf-mit-mehreren-backend-pods)) |
 | Backend-Pod bleibt mit der Erprobungsdatenbank im Zustand `Init` | Die Erprobungsdatenbank nimmt keine Verbindungen an, etwa weil ihr Volume nicht bereitgestellt wird. Den Grund zeigt `kubectl -n opaa describe pod opaa-postgresql-0`; `kubectl -n opaa logs deploy/opaa-backend -c wait-for-database` bestätigt nur, auf welches Ziel und welchen Port gewartet wird |
 | Backend-Pod bleibt nach einer Knotenwartung im Zustand `Pending`, das Ereignis nennt `didn't match PersistentVolume's node affinity` | Die Originalablage liegt auf einem knotengebundenen Volume, und dessen Knoten ist gesperrt oder fort. Nach einer Wartung hilft `kubectl uncordon` auf diesen Knoten; ist er dauerhaft ausgefallen, hilft nur die Abhilfe unter [Originalablage](#originalablage), Netzspeicher oder Objektspeicher, mit den Originalen aus der Sicherung |
+| Anfragen enden nach 30 Sekunden mit `500`, das Protokoll nennt `Connection is not available, request timed out` | Der Datenbank-Pool des Pods ist erschöpft. `backend.databasePoolSize` anheben und die Grenze für `max_connections` prüfen ([Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen)) |
 | Backend startet wiederholt neu, das Protokoll zeigt eine laufende Migration | Die Migration braucht länger, als die Startup-Probe erlaubt. `backend.startupProbe.failureThreshold` anheben |
 | Backend wird nie bereit, das Protokoll zeigt `Waiting for changelog lock` | Ein früherer Start wurde mitten in der Migration beendet, etwa von der Startup-Probe, und die Sperre in `databasechangeloglock` ist stehen geblieben. Backend anhalten (`kubectl -n opaa scale deploy/opaa-backend --replicas=0`), in der Datenbank `UPDATE databasechangeloglock SET locked = false, lockgranted = null, lockedby = null WHERE id = 1;` ausführen, mit einem eigenen Schema vorangestellt, und das Backend wieder auf eine Instanz setzen. Vorher die Startup-Probe großzügiger stellen, sonst wiederholt sich der Abbruch |
 | `APPLICATION FAILED TO START` mit dem Hinweis auf pgvector | pgvector ist auf dem Datenbankserver nicht installiert (siehe [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql)) |
@@ -1621,8 +1633,6 @@ curl -s http://localhost:8081/actuator/health/readiness
 
 ## Was nicht gebaut ist
 
-- **Die Freigabe mehrerer Backend-Instanzen.** Der Chart rendert sie, der Nachweis mit zwei Instanzen
-  steht aus (#2952).
 - **Automatisches Skalieren des Backends.** Die Zahl der Pods ist ein fester Wert.
 - **Ein Operator, eine Kustomize-Basis oder plattformspezifische Pakete** wie OpenShift-Templates.
 - **Eine produktive Datenbank im Release.** Die Erprobungsdatenbank ersetzt keinen Datenbankbetrieb.
