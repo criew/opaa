@@ -48,6 +48,7 @@ data:
           - expires_at
           - email_verified_at
           - created_reason
+          - session_generation
         nonPersonalColumns:
           - password_change_required
           - password_change_reason
@@ -69,7 +70,9 @@ data:
     deletion: Mit dem Konto
     evaluations: >-
       Keine; der Fehlversuchszähler wird weder ausgegeben noch historisiert und geht bei Erfolg auf
-      null
+      null. Die Sitzungsgeneration zählt, wie oft alle Sitzungen des Kontos beendet wurden
+      (Passwortwechsel, Sperre, Rücksetzung, erkannte Wiederverwendung, Ausschalten der lokalen
+      Konten); sie wird nicht ausgegeben und nur auf Gleichheit mit dem Zugangstoken geprüft
   - id: local-sessions-and-links
     title: Sitzungen, Einladungs- und Rücksetzlinks lokaler Konten
     purpose: Sitzungsverlängerung, Widerruf, Einladung, Passwortrücksetzung, Kontoübergabe

@@ -2,6 +2,8 @@ package io.opaa.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.types.PasswordChangeReason;
+import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.organization.Organization;
@@ -48,7 +50,7 @@ class LocalAccessTokenServiceTest {
   void mintsAnHs256TokenWithExactlyTheAdrsClaims() {
     User user = localUser("erika.muster@stadt.example", "Erika Muster");
 
-    LocalAccessTokenService.IssuedAccessToken issued = service.issue(user, false);
+    LocalAccessTokenService.IssuedAccessToken issued = service.issue(user, credentials(user));
 
     Jwt jwt = decode(issued.value());
     assertThat(jwt.getHeaders()).containsEntry("alg", "HS256");
@@ -62,7 +64,9 @@ class LocalAccessTokenServiceTest {
     assertThat(jwt.getClaimAsString("email")).isEqualTo("erika.muster@stadt.example");
     assertThat(jwt.getClaimAsString("name")).isEqualTo("Erika Muster");
     assertThat(jwt.getClaimAsBoolean(LocalAccessTokenService.PCR_CLAIM)).isFalse();
-    assertThat(jwt.getClaims()).doesNotContainKeys("role", "roles", "azp", "aud");
+    assertThat(jwt.getClaims())
+        .containsEntry(LocalAccessTokenService.SESSION_GENERATION_CLAIM, 0L)
+        .doesNotContainKeys("role", "roles", "azp", "aud");
     assertThat(issued.issuedAt()).isEqualTo(NOW);
     assertThat(issued.expiresAt()).isEqualTo(NOW.plus(Duration.ofMinutes(15)));
     assertThat(issued.expiresInSeconds()).isEqualTo(900L);
@@ -70,7 +74,11 @@ class LocalAccessTokenServiceTest {
 
   @Test
   void carriesTheForcedPasswordChangeAsPcr() {
-    Jwt jwt = decode(service.issue(localUser("a@stadt.example", "A"), true).value());
+    User user = localUser("a@stadt.example", "A");
+    LocalCredentials row = credentials(user);
+    row.requirePasswordChange(PasswordChangeReason.INITIAL, NOW);
+
+    Jwt jwt = decode(service.issue(user, row).value());
 
     assertThat(jwt.getClaimAsBoolean(LocalAccessTokenService.PCR_CLAIM)).isTrue();
   }
@@ -80,9 +88,13 @@ class LocalAccessTokenServiceTest {
     User user = localUser("a@stadt.example", "A");
     Instant cutoff = NOW.plusSeconds(1);
 
-    LocalAccessTokenService.IssuedAccessToken replacement = service.issue(user, false, cutoff);
-    LocalAccessTokenService.IssuedAccessToken past =
-        service.issue(user, false, NOW.minusSeconds(5));
+    LocalCredentials revoked = credentials(user);
+    revoked.invalidateSessionsIssuedBefore(cutoff, NOW);
+    LocalCredentials revokedEarlier = credentials(user);
+    revokedEarlier.invalidateSessionsIssuedBefore(NOW.minusSeconds(5), NOW);
+
+    LocalAccessTokenService.IssuedAccessToken replacement = service.issue(user, revoked);
+    LocalAccessTokenService.IssuedAccessToken past = service.issue(user, revokedEarlier);
 
     assertThat(replacement.issuedAt()).isEqualTo(cutoff);
     assertThat(replacement.expiresAt()).isEqualTo(cutoff.plus(Duration.ofMinutes(15)));
@@ -92,10 +104,27 @@ class LocalAccessTokenServiceTest {
   }
 
   @Test
+  void carriesTheSessionGenerationOfTheAccount() {
+    User user = localUser("a@stadt.example", "A");
+    LocalCredentials row = credentials(user);
+    row.invalidateSessionsIssuedBefore(NOW, NOW);
+    row.invalidateSessionsIssuedBefore(NOW, NOW);
+
+    Jwt jwt = decode(service.issue(user, row).value());
+
+    assertThat(jwt.getClaims()).containsEntry(LocalAccessTokenService.SESSION_GENERATION_CLAIM, 2L);
+  }
+
+  @Test
   void everyTokenGetsItsOwnJti() {
     User user = localUser("a@stadt.example", "A");
 
-    assertThat(service.issue(user, false).jti()).isNotEqualTo(service.issue(user, false).jti());
+    assertThat(service.issue(user, credentials(user)).jti())
+        .isNotEqualTo(service.issue(user, credentials(user)).jti());
+  }
+
+  private static LocalCredentials credentials(User user) {
+    return new LocalCredentials(user.getId(), "Test", NOW);
   }
 
   private Jwt decode(String token) {
