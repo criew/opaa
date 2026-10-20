@@ -11,10 +11,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.MailEncryption;
+import io.opaa.common.DatabaseClock;
 import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -50,6 +52,7 @@ class MailServiceTest {
   @Mock private MailOutbox outbox;
   @Mock private ApplicationEventPublisher events;
   @Spy private Clock clock = Clock.systemUTC();
+  @Mock private DatabaseClock databaseClock;
 
   @InjectMocks private MailService mailService;
 
@@ -117,6 +120,21 @@ class MailServiceTest {
     assertThat(result).isInstanceOf(SendResult.Failed.class);
     assertThat(result.reasonOrNull()).contains("OPAA_SETTINGS_ENCRYPTION_KEY");
     verify(settingsService, never()).recordSendOutcome(any(), any());
+  }
+
+  /**
+   * The send status is compared across instances - whichever sent last wrote it - so its time comes
+   * from the database, not from the host of the sending instance (ADR-0053, Entscheidung 9).
+   */
+  @Test
+  void recordsTheSendOutcomeAtTheTimeOfTheDatabase() {
+    stubConfiguredSender();
+    Instant databaseTime = Instant.parse("2031-01-01T00:00:00Z");
+    when(databaseClock.now()).thenReturn(databaseTime);
+
+    send(MailTemplateKey.TEST_MAIL);
+
+    verify(settingsService).recordSendOutcome(eq(databaseTime), isNull());
   }
 
   /** A status write that fails must not turn a sent mail into a failed one. */
