@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -74,7 +75,10 @@ public class PostgresInvalidationBus implements InvalidationBus, SmartLifecycle 
   private final Map<String, CountDownLatch> barriers = new ConcurrentHashMap<>();
   private final Object lifecycle = new Object();
 
-  private volatile List<InvalidationSubscriber> subscribers = List.of();
+  /** Each subscriber with the topics it named at start; one naming none is not bound. */
+  private record Binding(InvalidationSubscriber subscriber, Set<String> topics) {}
+
+  private volatile List<Binding> bindings = List.of();
   private volatile boolean running;
   private volatile boolean listening;
   private volatile boolean lossReported;
@@ -167,7 +171,13 @@ public class PostgresInvalidationBus implements InvalidationBus, SmartLifecycle 
       if (running) {
         return;
       }
-      subscribers = subscriberProvider.orderedStream().toList();
+      bindings =
+          subscriberProvider
+              .orderedStream()
+              .map(subscriber -> new Binding(subscriber, subscriber.invalidationTopics()))
+              .filter(binding -> binding.topics() != null && !binding.topics().isEmpty())
+              .map(binding -> new Binding(binding.subscriber(), Set.copyOf(binding.topics())))
+              .toList();
       dispatcher =
           Executors.newSingleThreadExecutor(
               runnable -> {
@@ -316,16 +326,16 @@ public class PostgresInvalidationBus implements InvalidationBus, SmartLifecycle 
     }
     submit(
         () -> {
-          for (InvalidationSubscriber subscriber : subscribers) {
-            if (subscriber.invalidationTopics().contains(payload)) {
-              invalidate(subscriber);
+          for (Binding binding : bindings) {
+            if (binding.topics().contains(payload)) {
+              invalidate(binding.subscriber());
             }
           }
         });
   }
 
   private void dropAll() {
-    submit(() -> subscribers.forEach(PostgresInvalidationBus::invalidate));
+    submit(() -> bindings.forEach(binding -> invalidate(binding.subscriber())));
   }
 
   private void submit(Runnable task) {

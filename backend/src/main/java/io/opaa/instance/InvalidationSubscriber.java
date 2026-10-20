@@ -8,7 +8,10 @@ import java.util.Set;
  */
 public interface InvalidationSubscriber {
 
-  /** The topics whose announcement makes everything this cache holds stale. */
+  /**
+   * The topics whose announcement makes everything this cache holds stale; read once when the bus
+   * starts. A subscriber that names none is not bound.
+   */
   Set<String> invalidationTopics();
 
   /**

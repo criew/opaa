@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,12 +40,14 @@ class PostgresInvalidationBusIntegrationTest {
   @Autowired private TransactionTemplate transactions;
 
   private final Recording recording = new Recording();
+  private final AtomicInteger unboundDrops = new AtomicInteger();
   private PostgresInvalidationBus busOfB;
 
   @BeforeEach
   void startInstanceB() {
     StaticListableBeanFactory beans = new StaticListableBeanFactory();
     beans.addBean("recording", recording);
+    beans.addBean("unbound", new Unbound());
     busOfB =
         new PostgresInvalidationBus(
             jdbc,
@@ -114,11 +117,26 @@ class PostgresInvalidationBusIntegrationTest {
                     .containsSubsequence(
                         Recording.DROPPED_WHILE_DEAF, Recording.DROPPED_LISTENING));
     assertThat(busOfB.isListening()).isTrue();
+    assertThat(unboundDrops).as("a subscriber that names no topic is not bound").hasValue(0);
 
     recording.clear();
     busOfA.publish(TOPIC);
     assertThat(busOfB.awaitDelivery(DELIVERY)).isTrue();
     assertThat(recording.events()).containsExactly(Recording.DROPPED_LISTENING);
+  }
+
+  /** Names no topic, as a test double of a subscriber does; the bus must never call it. */
+  private final class Unbound implements InvalidationSubscriber {
+
+    @Override
+    public Set<String> invalidationTopics() {
+      return null;
+    }
+
+    @Override
+    public void invalidateAll() {
+      unboundDrops.incrementAndGet();
+    }
   }
 
   /**
