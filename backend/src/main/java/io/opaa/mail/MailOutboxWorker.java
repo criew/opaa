@@ -21,7 +21,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Delivers the mail outbox (ADR-0053, Entscheidung 11) - on every instance, on its own scheduler
- * thread (ADR-0021: one worker per process; the instances coordinate through the row claim in
+ * thread (ADR-0053: one worker per process; the instances coordinate through the row claim in
  * {@link MailOutbox}, not through a lock on this run).
  *
  * <p>Promise: at most one delivery attempt of a row at a time, at least one delivery. A worker

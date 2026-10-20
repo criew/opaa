@@ -267,7 +267,7 @@ class CapabilityServiceIntegrationTest {
   }
 
   /**
-   * The promise of ADR-0036, Entscheidung 5 that ADR-0021 carries: the capability is read per call,
+   * The promise of ADR-0036, Entscheidung 5, on every instance (ADR-0053): the capability is read per call,
    * so a withdrawal reaches the very next request of a session that is already running.
    */
   @Test

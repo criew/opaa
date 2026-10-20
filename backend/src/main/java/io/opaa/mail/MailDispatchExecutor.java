@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * account exists. The work is database-only - the link mail goes to the outbox in its transaction
  * (ADR-0053, Entscheidung 11) - so the queue drains in milliseconds; a task that finds the queue
  * full is dropped with a WARN line (no address, no template). Shut down with the context; queued
- * tasks get a few seconds to finish (ADR-0021: the queue is this process's).
+ * tasks get a few seconds to finish (ADR-0053: the queue is this process's).
  */
 @Component
 public class MailDispatchExecutor implements Executor {

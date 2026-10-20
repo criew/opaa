@@ -473,7 +473,7 @@ public class KnowledgeLibrary extends Asset {
    * Whether a Fremdzugang may reach this library at {@code at}. The Befristung takes effect the
    * moment it passes, not when {@code LibraryExternalAccessExpiryService} gets round to writing it
    * down: that run is a Nachtrag for the protocol and the history, never the condition of the
-   * effect - a single instance (ADR-0021) can be down for days, and the release must not outlive
+   * effect - an installation can be down for days, and the release must not outlive
    * its end for that long.
    */
   public boolean isExternalAccessActive(Instant at) {

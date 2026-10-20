@@ -253,7 +253,7 @@ bewusste Weg, von Hand aufzuräumen.
   Merkmalen. Es gibt keine Protokollereignisart für das Löschen eines Chats, und es kommt keine dazu.
 - **Protokoll:** nur das Umlegen des Schalters (Ereignis `SPACE_CHANGED` mit `chatAutoCleanup` vor
   und nach der Änderung, handelnde Person, Zeitpunkt; beim Anlegen im Ereignis `SPACE_CREATED`). Der
-  tägliche Lauf (03:50 Uhr, Single-Instance nach ADR-0021) schreibt nur Gesamtzahlen ins
+  tägliche Lauf (03:50 Uhr, auf einer Instanz unter der Sperre nach ADR-0053) schreibt nur Gesamtzahlen ins
   Anwendungslog, keinen Chat, keinen Space, keine Person.
 
 **Verhältnis zur persönlichen Ablage.** Der Automatismus schreibt dieselbe persönliche

@@ -92,13 +92,14 @@ Modulübergreifendes (Modulgrenzen, Liquibase) steht hier, nicht in der Datei de
 | retrieval | `retrieval/AGENTS.md` | app | `api/AGENTS.md` |
 | connections | `connection/AGENTS.md` | | |
 
-## Prozesslokaler Zustand (ADR-0021)
+## Prozesslokaler Zustand (ADR-0053)
 
-OPAA läuft als genau ein Backend-Prozess je Installation
-([ADR-0021](../docs/decisions/0021-single-instance-betrieb.md)). Wer eine neue prozesslokale Stelle einführt (Cache,
-`@Scheduled`, Executor, Semaphore, Zähler, Start-Aktion), trägt sie in das Register
-[docs/prozesslokaler-zustand.md](docs/prozesslokaler-zustand.md) ein, ordnet sie dort dem Umbau nach
-[ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) zu und nennt „(ADR-0021)“ in der Javadoc.
+OPAA läuft mit einer oder mehreren gleichrangigen Backend-Instanzen gegen eine Datenbank
+([ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md)). Wer eine neue prozesslokale Stelle einführt
+(Cache, `@Scheduled`, Executor, Semaphore, Zähler, Start-Aktion), trägt sie mit ihrer Einordnung (Bus, Sperre,
+Datenbank, je Instanz, hingenommen) in das Register [docs/prozesslokaler-zustand.md](docs/prozesslokaler-zustand.md) ein
+und nennt „(ADR-0053)“ in der Javadoc (Entscheidung 16). Den Betrieb mit zwei Instanzen prüfen die Szenarien unter
+`e2e/multi-instance/` ([docs/entwicklung/build-und-ci.md](../docs/entwicklung/build-und-ci.md#zwei-instanzen-suite)).
 
 **Ein ereignisgesteuerter Cache ohne TTL hängt am Invalidierungsbus**, ebenso einer, dessen TTL eine Rechte- oder
 Sicherheitslücke offen ließe (ADR-0053, Entscheidung 5): Er implementiert `io.opaa.instance.InvalidationSubscriber`,

@@ -1287,8 +1287,8 @@ components:
           type: integer
           format: int64
           description: >
-            Documents the most recent Nachlauf call for this library could not advance - a
-            process-lifetime figure (ADR-0021), 0 before the first call.
+            Documents the most recent Nachlauf call for this library could not advance, kept in the
+            database for every instance (ADR-0053); 0 before the first call.
         complete:
           type: boolean
           description: True when pendingDocuments is 0.
@@ -1586,9 +1586,9 @@ components:
           type: integer
           format: int64
           description: >
-            Documents the most recent metadata-backfill call for this library could not advance.
-            A process-lifetime figure (ADR-0021, single instance): it resets on restart and is 0
-            before the first call.
+            Documents the most recent metadata-backfill call for this library could not advance,
+            kept in the database for every instance and over a restart (ADR-0053); 0 before the
+            first call.
         complete:
           type: boolean
           description: True when pendingDocuments is 0.
@@ -1800,8 +1800,8 @@ components:
           type: integer
           format: int64
           description: >-
-            Documents the most recent Charge could not advance - a process-lifetime figure
-            (ADR-0021), 0 before the first call.
+            Documents the most recent Charge could not advance, kept in the database for every
+            instance (ADR-0053); 0 before the first call.
 
     SearchStatusResponse:
       type: object

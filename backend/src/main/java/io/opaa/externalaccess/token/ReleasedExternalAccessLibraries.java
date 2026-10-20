@@ -14,8 +14,8 @@ import org.springframework.stereotype.Component;
  * itself, read per call.
  *
  * <p>{@link KnowledgeLibrary#isExternalAccessActive} is the one reader - it treats a Befristung
- * that has passed as gone the moment it passes, not when the daily run writes it down. A single
- * instance (ADR-0021) may be down for days, and a release must not outlive its end for that long.
+ * that has passed as gone the moment it passes, not when the daily run writes it down. An
+ * installation may be down for days, and a release must not outlive its end for that long.
  */
 @Component
 class ReleasedExternalAccessLibraries implements ExternalAccessLibraryRelease {

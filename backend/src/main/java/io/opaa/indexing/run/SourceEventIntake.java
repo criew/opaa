@@ -36,7 +36,7 @@ import org.springframework.stereotype.Service;
  *
  * <p>The batches live in the database (ADR-0053, Entscheidung 10): every instance drains due
  * batches of the source types whose connectors registered here, every {@link #POLL_MILLIS} ms on
- * {@code sourceEventScheduler} (ADR-0021: one drain thread per process); a claim makes exactly one
+ * {@code sourceEventScheduler} (ADR-0053: one drain thread per process); a claim makes exactly one
  * instance take a batch, and no key is lost to a change of instance or a restart.
  */
 @Service

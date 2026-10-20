@@ -64,7 +64,7 @@ import org.springframework.stereotype.Service;
  * embedding_index} (ADR-0053, Entscheidung 8): any instance may cancel it there, and the worker of
  * the owner stops after its current document. A run whose owner is dead is taken over by the next
  * instance that looks, at its start or every {@value #TAKE_OVER_SWEEP_MILLIS} ms after; the worker
- * itself is held in the process (ADR-0021).
+ * itself is held in the process (ADR-0053).
  */
 @Service
 public class EmbeddingReindexService {
