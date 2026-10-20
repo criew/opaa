@@ -207,7 +207,7 @@ public class LocalUserService {
     if (creation.systemRole() != null && creation.systemRole() != SystemRole.USER) {
       user = userService.updateRole(user.getId(), creation.systemRole(), actor);
     }
-    // the personal space, on the same path every sign-in takes (after the commit)
+    // the personal space, written in this transaction (PersonalSpaceProvisioner)
     events.publishEvent(UserProvisionedEvent.withoutTokenGroups(user, true));
     return new CreatedAccount(user, row, invitation, initialPassword);
   }
