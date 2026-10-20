@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-20
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -31,7 +31,7 @@ Kapitel anzupassen.
 
 | Nr. | Annahme | Folge, wenn sie nicht zutrifft |
 |---|---|---|
-| A1 | OPAA läuft mit **genau einer Backend-Instanz**; es gibt keine Hochverfügbarkeit des Backends ([Genau eine Backend-Instanz](../../handbuch/betrieb.md#genau-eine-backend-instanz)) | — (eine zweite Instanz wird nicht unterstützt) |
+| A1 | OPAA läuft mit **[einer / zwei oder mehr] Backend-Instanzen** gegen eine Datenbank; mit einer gibt es keine Hochverfügbarkeit des Backends ([Eine oder mehrere Backend-Instanzen](../../handbuch/betrieb.md#eine-oder-mehrere-backend-instanzen)) | Mit mehreren Instanzen antworten bei S1 die übrigen weiter, und S7 lässt sich vor dem Ersatz der letzten alten Instanz ohne Sicherung zurücknehmen; die Datenbank bleibt der einzige gemeinsame Baustein |
 | A2 | Die **Datenbank ist die einzige Wahrheit.** Vektorindex, Volltextindex, Rechte, Chats und Nachweisprotokoll liegen in ihr und werden mit ihrer Sicherung gesichert; der Index braucht keine eigene Sicherung | — |
 | A3 | Die **Originale hochgeladener Dokumente** liegen nur in der Originalablage und sind ohne deren Sicherung verloren. Inhalte angebundener Quellen lassen sich dort erneut beziehen | Ohne Sicherung der Originalablage ist jeder Upload seit Inbetriebnahme gefährdet |
 | A4 | Gesichert wird nach dem Handbuch: **erst die Datenbank, dann die Originale**; wiederhergestellt umgekehrt ([Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung)) | Datenbankzeilen ohne Original, „Original öffnen“ scheitert |
@@ -68,7 +68,7 @@ ist als der der Datenbank.
 
 | Nr. | Szenario | Wirkung | Wiederanlauf | Datenverlust |
 |---|---|---|---|---|
-| S1 | Backend fällt aus oder hängt | Dienst steht; die Oberfläche lädt, Anfragen scheitern | Neustart; unter Kubernetes über die Lebendigkeitsprobe von selbst ([Bereitschaft und Lebendigkeit](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit)). Abgebrochene Indexierungsläufe werden beim Start erkannt | keiner |
+| S1 | Backend fällt aus oder hängt | Mit einer Instanz steht der Dienst; die Oberfläche lädt, Anfragen scheitern. Mit mehreren antworten die übrigen Instanzen | Neustart; unter Kubernetes über die Lebendigkeitsprobe von selbst ([Bereitschaft und Lebendigkeit](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit)). Läufe der ausgefallenen Instanz gibt eine andere oder der Neustart auf, sie lassen sich wiederholen | keiner |
 | S2 | Datenbank nicht erreichbar, Daten unversehrt | Dienst steht, die Bereitschaftsprobe meldet `DOWN` | Datenbank wiederherstellen, Backend arbeitet danach weiter | keiner |
 | S3 | Datenbank verloren oder beschädigt | Dienst steht | Wiederherstellung aus der Sicherung mit Nacharbeit, siehe [Wiederherstellung](#wiederherstellung) | alles seit der letzten Sicherung: Uploads, Chats, Rechteänderungen, Protokolleinträge |
 | S4 | Originalablage verloren | Suche und Antworten laufen weiter, „Original öffnen“ und neue Uploads scheitern | Originale aus der Sicherung zurückspielen; ist sie älter als die Datenbank, fehlen die Originale der Zwischenzeit und sind erneut hochzuladen | Originale seit der letzten Sicherung der Ablage |
