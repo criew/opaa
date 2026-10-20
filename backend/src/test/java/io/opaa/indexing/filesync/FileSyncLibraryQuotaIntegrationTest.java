@@ -149,7 +149,9 @@ class FileSyncLibraryQuotaIntegrationTest {
                   stored, ownerId, Map.of("name", stored.getName(), "sourceType", TYPE.toString()));
               return stored;
             });
-    quota = new AdjustableQuota(documentRepository, personalQuota);
+    quota =
+        new AdjustableQuota(
+            documentRepository, personalQuota, transactionTemplate.getTransactionManager());
     AttachmentIndexer[] attachmentIndexer = new AttachmentIndexer[1];
     @SuppressWarnings("unchecked")
     ObjectProvider<AttachmentIndexer> provider = mock(ObjectProvider.class);
@@ -267,8 +269,11 @@ class FileSyncLibraryQuotaIntegrationTest {
     private long quotaBytes;
     private Runnable afterNextIntake;
 
-    AdjustableQuota(DocumentRepository documentRepository, PersonalStorageQuota personalQuota) {
-      super(documentRepository, new LibraryProperties(0, 0), personalQuota);
+    AdjustableQuota(
+        DocumentRepository documentRepository,
+        PersonalStorageQuota personalQuota,
+        org.springframework.transaction.PlatformTransactionManager transactionManager) {
+      super(documentRepository, new LibraryProperties(0, 0), personalQuota, transactionManager);
     }
 
     @Override

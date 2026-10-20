@@ -199,7 +199,7 @@ class InactiveAssetTypeIntegrationTest {
             PermissionSubjectType.GROUP,
             target,
             EnumSet.of(PermissionTransferScope.OWNERSHIP, PermissionTransferScope.ASSET_GRANTS));
-    UUID previewId = transferService.preview(order, admin).previewId();
+    String previewId = transferService.preview(order, admin).previewId();
     transferService.transfer(order, true, previewId, admin);
 
     assertThat(assetRepository.findById(asset).orElseThrow().getOwnerGroupId()).isEqualTo(target);
@@ -222,7 +222,7 @@ class InactiveAssetTypeIntegrationTest {
             PermissionSubjectType.USER,
             successor,
             EnumSet.of(PermissionTransferScope.OWNERSHIP));
-    UUID previewId = transferService.preview(order, admin).previewId();
+    String previewId = transferService.preview(order, admin).previewId();
     transferService.transfer(order, true, previewId, admin);
 
     assertThat(assetRepository.findById(asset).orElseThrow().getOwnerUserId()).isEqualTo(successor);

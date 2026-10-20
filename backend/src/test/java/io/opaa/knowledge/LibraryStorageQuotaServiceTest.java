@@ -1,27 +1,35 @@
 package io.opaa.knowledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.knowledge.LibraryStorageQuotaService.IntakeHold;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 /** Unit tests for {@link LibraryStorageQuotaService}. */
 class LibraryStorageQuotaServiceTest {
 
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
   private final PersonalStorageQuota personalQuota = mock(PersonalStorageQuota.class);
+  private final PlatformTransactionManager transactionManager =
+      mock(PlatformTransactionManager.class);
   private final UUID libraryId = UUID.randomUUID();
 
   private LibraryStorageQuotaService service(long quotaBytes) {
     LibraryProperties properties = new LibraryProperties(quotaBytes, 0);
-    return new LibraryStorageQuotaService(documentRepository, properties, personalQuota);
+    return new LibraryStorageQuotaService(
+        documentRepository, properties, personalQuota, transactionManager);
   }
 
   private static KnowledgeLibrary privateLibraryOf(UUID owner) {
@@ -98,40 +106,50 @@ class LibraryStorageQuotaServiceTest {
   }
 
   /**
-   * Two private libraries of one owner take turns; another owner and a shared library do not wait.
+   * The hold of a private library is a transaction that takes the owner's database lock before
+   * anything is checked, and commits on close; that it serializes two instances is proved against
+   * Postgres in {@code FileSyncPersonalQuotaIntegrationTest}.
    */
   @Test
-  void theIntakeOfOneOwnersPrivateLibrariesIsSerialized() throws Exception {
+  void thePrivateIntakeHoldsTheOwnersDatabaseLockForOneTransaction() {
     UUID owner = UUID.randomUUID();
-    LibraryStorageQuotaService quotaService = service(0);
-    KnowledgeLibrary first = privateLibraryOf(owner);
-    KnowledgeLibrary second = privateLibraryOf(owner);
+    SimpleTransactionStatus status = new SimpleTransactionStatus();
+    when(transactionManager.getTransaction(any())).thenReturn(status);
 
-    IntakeHold held = quotaService.holdIntake(first);
-    CompletableFuture<Void> sameOwner =
-        CompletableFuture.runAsync(() -> quotaService.holdIntake(second).close());
-    CompletableFuture.runAsync(() -> quotaService.holdIntake(sharedLibraryOf(owner)).close())
-        .get(5, TimeUnit.SECONDS);
-    UUID other = otherOwnerOnAnotherStripe(owner);
-    CompletableFuture.runAsync(() -> quotaService.holdIntake(privateLibraryOf(other)).close())
-        .get(5, TimeUnit.SECONDS);
+    IntakeHold hold = service(0).holdIntake(privateLibraryOf(owner));
+    hold.close();
 
-    try {
-      sameOwner.get(200, TimeUnit.MILLISECONDS);
-      throw new AssertionError("the second library of the same owner did not wait");
-    } catch (TimeoutException expected) {
-      // still waiting for the first hold
-    }
-    held.close();
-    sameOwner.get(5, TimeUnit.SECONDS);
+    InOrder order = inOrder(transactionManager, documentRepository);
+    order
+        .verify(transactionManager)
+        .getTransaction(
+            org.mockito.ArgumentMatchers.argThat(
+                definition ->
+                    definition.getPropagationBehavior()
+                        == TransactionDefinition.PROPAGATION_REQUIRED));
+    order.verify(documentRepository).lockPersonalIntake(owner);
+    order.verify(transactionManager).commit(status);
   }
 
-  private static UUID otherOwnerOnAnotherStripe(UUID owner) {
-    UUID other = UUID.randomUUID();
-    while (Math.floorMod(other.hashCode(), 64) == Math.floorMod(owner.hashCode(), 64)) {
-      other = UUID.randomUUID();
-    }
-    return other;
+  /** A write under the hold that marked the transaction rollback-only is not committed. */
+  @Test
+  void aHoldWhoseTransactionWasMarkedRollbackOnlyRollsBack() {
+    SimpleTransactionStatus status = new SimpleTransactionStatus();
+    when(transactionManager.getTransaction(any())).thenReturn(status);
+
+    IntakeHold hold = service(0).holdIntake(privateLibraryOf(UUID.randomUUID()));
+    status.setRollbackOnly();
+    hold.close();
+
+    verify(transactionManager).rollback(status);
+    verify(transactionManager, never()).commit(any());
+  }
+
+  @Test
+  void aSharedLibraryHoldsNothing() {
+    service(0).holdIntake(sharedLibraryOf(UUID.randomUUID())).close();
+
+    verifyNoInteractions(transactionManager, documentRepository);
   }
 
   @Test
