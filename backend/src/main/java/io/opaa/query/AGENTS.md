@@ -15,11 +15,10 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
   `POST /api/v1/query` nutzt. Den Suchbereich löst der Aufrufer über `chat.SearchScopeResolver`
   auf. `search` nennt aus `retrieval` nur den Einstieg und dessen `RetrievalPipelineResult` und
   greift weder auf den Vector Store noch auf `query.answer` zu.
-- **`searchadmin` ändert keine Fachdaten.** Es schreibt nur Protokolleinträge: einen
-  Diagnoselauf mit Rechteprofil ins Revisionsprotokoll, „Sicht als" über
-  `io.opaa.diagnosticaccess` ins Diagnoseprotokoll. Es liest das Erklärungsprotokoll der
-  Pipeline, statt ihre Entscheidungen nachzubauen; die Diagnose fährt dieselbe Retrieval wie der
-  Chat, Reranking eingeschlossen.
+- **`searchadmin` ändert keine Fachdaten.** Es schreibt nur Protokolleinträge (Diagnoselauf mit Rechteprofil ins
+  Revisionsprotokoll, „Sicht als" ins Diagnoseprotokoll) und teilt die Proben der Statusseite (`search_status_probes`).
+  Es liest das Erklärungsprotokoll der Pipeline, statt ihre Entscheidungen nachzubauen; die Diagnose fährt
+  dieselbe Retrieval wie der Chat, Reranking eingeschlossen.
 - **Kein Transaktionsrahmen um den Modellaufruf:** `QueryService#query` trägt kein
   `@Transactional`, `ChatService#appendTurn` läuft mit `NOT_SUPPORTED`, und nur
   `ChatMessageWriter#writeTurnOnce` öffnet eine Transaktion. Sonst hält der Schreibweg eine

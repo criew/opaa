@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: foundation-2026-10-20-installation-counters
+      author: opaa
+      comment: "The counters of the installation-wide budgets (ADR-0053, Entscheidung 12): one row per counted limit and window length, holding the current and the previous fixed window by the database clock, from which every instance estimates the sliding window alike; quiet_until is the cooldown of an alert raised from the count. No personal reference: the key names a limit or a channel, never a client, token or person. Additive: a new table."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE installation_counters (
+                  counter_key character varying(100) NOT NULL,
+                  window_seconds integer NOT NULL,
+                  window_start timestamp with time zone NOT NULL,
+                  current_count integer NOT NULL,
+                  previous_count integer NOT NULL,
+                  counted_at timestamp with time zone NOT NULL,
+                  quiet_until timestamp with time zone,
+                  CONSTRAINT installation_counters_pkey PRIMARY KEY (counter_key, window_seconds),
+                  CONSTRAINT ck_installation_counters_window CHECK (window_seconds > 0)
+              );

@@ -184,6 +184,24 @@ describe('OidcProviderManagementPage', () => {
     expect(within(zeile).getByText('Discovery-Dokument: Antwort mit HTTP 503.')).toBeInTheDocument()
   })
 
+  /**
+   * Each backend instance builds the token decoder itself (ADR-0053, Entscheidung 12), so the list
+   * marks the reachability as the state of the instance that answered; a disabled provider is
+   * disabled on every instance and carries no such mark.
+   */
+  it('marks the reachability of a provider as the state of this instance', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+    const reachable = await screen.findByRole('row', { name: /Verzeichnisdienst/ })
+    const unreachable = screen.getByRole('row', { name: /Partnerportal/ })
+
+    expect(within(reachable).getByText(/auf dieser Instanz/)).toBeInTheDocument()
+    expect(within(unreachable).getByText(/auf dieser Instanz/)).toBeInTheDocument()
+    const legend = screen.getByRole('region', { name: 'Status verstehen' })
+    expect(within(legend).getByText(/gelten für die Backend-Instanz/)).toBeInTheDocument()
+  })
+
   it('creates a provider through the dialog without any secret field', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()

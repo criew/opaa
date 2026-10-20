@@ -13,6 +13,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -68,8 +69,8 @@ class MailSettingsServiceIntegrationTest {
     jdbcTemplate.update(
         "UPDATE mail_settings SET last_success_at = NULL, last_failure_at = NULL,"
             + " last_failure_reason = NULL WHERE id = 1");
-    // The process-local caches survive every write to the row and are shared with every other
-    // class in this context - without this a provoked failure leaks into the next test.
+    // The process-local snapshot survives every raw write to the row and is shared with every other
+    // class in this context.
     mailSettingsService.resetCaches();
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteById(userId);
@@ -262,7 +263,7 @@ class MailSettingsServiceIntegrationTest {
   }
 
   @Test
-  void writesTheSendStatusToTheRowAndToTheInMemoryStatus() {
+  void writesTheSendStatusToTheRowAndReadsItBack() {
     Instant failedAt = Instant.parse("2026-09-11T08:00:00Z");
     Instant succeededAt = Instant.parse("2026-09-11T09:00:00Z");
 
@@ -279,6 +280,24 @@ class MailSettingsServiceIntegrationTest {
     assertThat(status.lastSuccessAt()).isEqualTo(succeededAt);
     assertThat(mailSettingsService.currentSettings().getLastFailureReason())
         .isEqualTo("Connection refused");
+  }
+
+  /**
+   * The send status another instance wrote is the one this instance reports (ADR-0053, Entscheidung
+   * 12): a failure recorded there turns this instance's mail health DOWN without a send of its own.
+   */
+  @Test
+  void theSendStatusAnotherInstanceRecordedIsTheOneThisInstanceReports() {
+    assertThat(mailSettingsService.status().lastAttemptFailed()).isFalse();
+
+    // what the instance that sent writes, bypassing everything this instance holds in memory
+    jdbcTemplate.update(
+        "UPDATE mail_settings SET last_failure_at = ?, last_failure_reason = ? WHERE id = 1",
+        Timestamp.from(Instant.parse("2026-10-20T08:00:00Z")),
+        "Connection refused");
+
+    assertThat(mailSettingsService.status().lastAttemptFailed()).isTrue();
+    assertThat(mailSettingsService.status().lastFailureReason()).isEqualTo("Connection refused");
   }
 
   @Test

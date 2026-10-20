@@ -126,6 +126,34 @@ zusätzlich einen Vermerk in der Datenbank und entsteht deshalb auch dann nur ei
 länger dauert als seine Sperre. Fällt eine Instanz mitten im Lauf aus, gibt die Sperre den Lauf
 spätestens nach seiner Höchstdauer wieder frei.
 
+### Grenzen und Anzeigen mit mehreren Instanzen
+
+Manche Grenzen zählt die Datenbank für die ganze Installation, gleich welche Instanz eine Anfrage
+erreicht: die Gesamtgrenzen der Rate-Limits (`OPAA_RATE_LIMIT_*_GLOBAL_MAX_REQUESTS`, auch die der
+lokalen Anmeldung) und der Abflussalarm der externen KI-Werkzeuge. Zwei Instanzen lassen zusammen
+also genau so viele Anfragen durch wie eine; den Alarm meldet genau eine von ihnen.
+
+Die übrigen Grenzen hält jede Instanz für sich. Ihr Wert ist deshalb **die Grenze der Installation
+geteilt durch die Zahl der Instanzen**: Sollen etwa alle zusammen höchstens vier Aufnahmen
+gleichzeitig transkribieren, erhält bei zwei Instanzen jede `OPAA_TRANSCRIPTION_MAX_CONCURRENT=2`.
+Das betrifft die Rate-Limits je Client-Adresse, Konto oder E-Mail-Adresse
+(`OPAA_RATE_LIMIT_*_MAX_REQUESTS`, `…_MAX_REQUESTS_PER_ADDRESS`), die gleichzeitigen Einbettungen
+(`OPAA_INDEXING_EMBEDDING_CONCURRENCY`), die Transkriptionen und die Nachextraktionen von Anhängen
+(`OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT`). Das Kontingent je Zugangstoken in der
+Oberfläche bleibt die Grenze der Installation; jede Instanz gewährt davon ihren Anteil, geteilt durch
+die Zahl der laufenden Instanzen im Register. Läufe, Uploads, Chat-Titel und Gesprächsnotizen
+verteilen sich dagegen bewusst ungeteilt auf alle Instanzen: Dafür gibt es mehrere. Die Modellaufrufe
+der Metadatenextraktion folgen den Pools der Läufe und Uploads und wachsen ebenso mit jeder Instanz.
+
+Was die Verwaltung anzeigt, ist auf jeder Instanz gleich: der Zustand von Reranking und
+Spracheingabe, die Erreichbarkeit von Chat- und Einbettungsmodell auf der Seite „Suche & Indexierung“,
+was ein Bestands- oder Nachlauf zuletzt übersprungen hat, die geschätzte Dauer einer Neueinbettung
+und der Sendestatus der Mail (`/actuator/health/mail`). Die Instanz, die einen Endpunkt prüft oder
+aufruft, legt sein Ergebnis in der Datenbank ab; dieselbe Frage wird deshalb auf jeder Instanz gleich
+umsortiert oder nicht. **Je Instanz** bleiben der Status eines Anmeldeanbieters in der
+Anbieterverwaltung, den die Oberfläche als „auf dieser Instanz“ kennzeichnet, und die Metriken unter
+`/actuator/prometheus`, etwa die Zahl laufender Gespräche: Prometheus fragt jede Instanz ab.
+
 ### Zeitzone
 
 Die Zeitzone setzen `.env.docker.example` (`TZ`) und der Helm-Chart (`backend.timeZone`)

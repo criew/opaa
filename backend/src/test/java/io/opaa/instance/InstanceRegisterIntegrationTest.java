@@ -98,6 +98,24 @@ class InstanceRegisterIntegrationTest {
     assertThat(registry.isAlive(currentInstance.id())).isTrue();
   }
 
+  /** What an instance divides a budget of the installation by (ADR-0053, Entscheidung 12). */
+  @Test
+  void theLiveCountGrowsWithASecondInstanceAndShrinksWhenItStops() {
+    int before = registry.liveCount();
+    int[] during = new int[1];
+
+    secondInstance(Map.of(), clock)
+        .run(
+            context -> {
+              ownRows.add(context.getBean(CurrentInstance.class).id());
+              during[0] = registry.liveCount();
+            });
+
+    assertThat(before).isPositive();
+    assertThat(during[0]).isEqualTo(before + 1);
+    assertThat(registry.liveCount()).isEqualTo(before);
+  }
+
   @Test
   void anInstanceStartedAgainAfterAStopJoinsUnderANewIdentity() {
     secondInstance(Map.of(), clock)

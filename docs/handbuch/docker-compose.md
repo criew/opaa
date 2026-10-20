@@ -291,8 +291,10 @@ skalierten Container teilten sich ein `/tmp`.
   Rechner laufen; Instanzen auf mehreren Rechnern brauchen den Objektspeicher.
 - **Konfiguration:** Beide Instanzen lesen dieselbe `.env.docker` und haben damit denselben
   [Konfigurationsabdruck](betrieb.md#instanzregister).
-- **Grenzen je Instanz:** Rate-Limits, Kontingente und Thread-Pools gelten je Instanz. Ein Wert, der
-  für die ganze Installation gemeint ist, wird durch die Zahl der Instanzen geteilt.
+- **Grenzen je Instanz:** Die Gesamtgrenzen der Rate-Limits (`…_GLOBAL_MAX_REQUESTS`) zählen beide
+  Instanzen gemeinsam. Die übrigen Rate-Limits und die Thread-Pools gelten je Instanz; ein Wert, der
+  für die ganze Installation gemeint ist, wird durch die Zahl der Instanzen geteilt (siehe
+  [„Grenzen und Anzeigen mit mehreren Instanzen“](betrieb.md#grenzen-und-anzeigen-mit-mehreren-instanzen)).
 - **Datenbankverbindungen:** Die Grenze nennt
   [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
 - **Vertraute Proxys:** Die feste Adresse des Frontend-Containers in

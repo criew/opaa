@@ -13,8 +13,11 @@ import java.util.Deque;
  * grow memory without bound. The cap fails open: beyond it the least valuable keys are forgotten
  * and their next request counts as the first of a fresh window - which is why the cap is far above
  * any legitimate client count and why the login endpoint carries a global ceiling as well.
+ *
+ * <p>The window lives in this process (ADR-0021): with N instances each holds its own, so a budget
+ * per key is configured as the installation's budget divided by N (ADR-0053, Entscheidung 12).
  */
-public class RateLimitService {
+public class RateLimitService implements RequestLimiter {
 
   /** Upper bound on the keys held per limiter, against high-cardinality key spaces. */
   static final long MAX_TRACKED_KEYS = 100_000;
@@ -59,6 +62,7 @@ public class RateLimitService {
    * the seconds until the oldest request leaves the window - the {@code Retry-After} a client
    * should honour.
    */
+  @Override
   public Decision tryAcquire(String key) {
     long now = System.currentTimeMillis();
     Deque<Long> timestamps = requestLog.get(key, k -> new ArrayDeque<>());
@@ -79,6 +83,7 @@ public class RateLimitService {
    * answered, turns out not to belong to this scope. Only that request's own entry is removed; one
    * that has already left the window, a refusal and an unknown key change nothing.
    */
+  @Override
   public void release(String key, Decision granted) {
     if (!granted.allowed()) {
       return;

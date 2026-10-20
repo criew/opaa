@@ -10,8 +10,8 @@ import java.util.UUID;
  *
  * @param pendingDocuments documents whose prefix stamp was cleared by a change to their own prefix,
  *     plus the bestand that never carried one
- * @param lastSkippedDocuments what the most recent Nachlauf call for this library could not advance
- *     - a process-lifetime figure (ADR-0021), 0 before the first call
+ * @param lastSkippedDocuments what the most recent Nachlauf call for this library could not
+ *     advance, on whichever instance it ran; 0 before the first call
  */
 public record ContextPrefixRerunProgress(
     UUID libraryId,

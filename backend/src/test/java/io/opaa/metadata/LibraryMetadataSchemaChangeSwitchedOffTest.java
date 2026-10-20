@@ -8,6 +8,7 @@ import io.opaa.common.Feature;
 import io.opaa.common.TestFeatureFlags;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryMaintenanceSkips;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
@@ -39,7 +40,8 @@ class LibraryMetadataSchemaChangeSwitchedOffTest {
             mock(ApplicationEventPublisher.class),
             jdbcTemplate,
             mock(PlatformTransactionManager.class),
-            TestFeatureFlags.without(Feature.METADATA));
+            TestFeatureFlags.without(Feature.METADATA),
+            mock(LibraryMaintenanceSkips.class));
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID());
 

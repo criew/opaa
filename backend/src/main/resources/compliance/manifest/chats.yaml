@@ -38,6 +38,7 @@ data:
     notes:
       - Fragen und Antworten können Inhalte aus Fachverfahren und Personendaten Dritter enthalten
 nonPersonalTables:
+  search_status_probes: [role, condition, base_url, model, detail, observed_at]
   chat_library_references: [chat_id, library_id, organization_id]
   prompt_libraries: [id, asset_type, organization_id]
   prompts:

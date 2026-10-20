@@ -351,7 +351,9 @@ Ausfall kostet die Sortierung, nie die Antwort.
 > zurückliegt. Ein gehosteter Dienst rechnet jede dieser Prüfungen ab, auch wenn niemand eine Frage
 > stellt. Bei einem bezahlten Endpunkt den Abstand deshalb groß wählen, etwa `24h`: Jede Frage mit
 > Reranking zählt ohnehin als Prüfung, und ein nicht erreichbarer Endpunkt wird unabhängig vom
-> Abstand etwa eine Minute nach dem letzten Fehlschlag erneut geprüft.
+> Abstand etwa eine Minute nach dem letzten Fehlschlag erneut geprüft. Bei mehreren Instanzen prüft
+> nur eine, und alle entscheiden auf demselben Zustand: Was eine Instanz am Endpunkt beobachtet,
+> gilt für jede Frage auf jeder Instanz.
 
 > **Zeitgrenzen mit anheben.** `OPAA_RERANK_TIMEOUT` bindet nur den Rerank-Aufruf, nicht die Anfrage
 > als Ganzes: Eine Suche mit CPU-Reranker kann minutenlang warten, und die übrigen Modellaufrufe kommen

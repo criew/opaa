@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: assistant-2026-10-20-search-status-probes
+      author: opaa
+      comment: "The reachability probes of the chat and the embedding role on the search status page (ADR-0053, Entscheidung 12): one result per role, shared by every instance for a short time, so the page shows the same state whichever instance answers it. Additive: a new table."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE search_status_probes (
+                  role character varying(32) NOT NULL,
+                  condition character varying(32) NOT NULL,
+                  base_url text,
+                  model text,
+                  detail text NOT NULL,
+                  observed_at timestamp with time zone NOT NULL,
+                  CONSTRAINT search_status_probes_pkey PRIMARY KEY (role)
+              );

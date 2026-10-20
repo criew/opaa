@@ -3,9 +3,9 @@ package io.opaa.mail;
 import java.time.Instant;
 
 /**
- * When mail last worked and when it last did not (ADR-0033 Entscheidung 10). Held in memory by
- * {@link MailSettingsService} alongside the stored row so {@link MailHealthIndicator} answers
- * without a query per scrape; the durable copy in {@code mail_settings} is what survives a restart.
+ * When mail last worked and when it last did not (ADR-0033 Entscheidung 10), as stored in {@code
+ * mail_settings} by whichever instance sent last; {@link MailSettingsService#status()} reads it
+ * from the row on every call.
  *
  * @param lastSuccessAt when a message was last handed to the SMTP server, {@code null} if never
  * @param lastFailureAt when an attempt last failed, {@code null} if never

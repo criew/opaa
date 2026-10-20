@@ -23,8 +23,8 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client,
   `SettingsEncryptor` (verwaltete Einstellungen, `OPAA_SETTINGS_ENCRYPTION_KEY`); geprüft erst beim ersten Gebrauch.
 - **`LocalAuthKeyService` leitet alle Schlüssel des lokalen Ausstellers per HKDF aus `OPAA_AUTH_JWT_SECRET` ab**, je
   Zweck ein eigenes Label. Eine Rotation beendet alle lokalen Sitzungen, offenen Links und Zugangstokens zugleich.
-- **Ratenbegrenzung:** `RateLimitService`: Gleitfenster, Schlüsselraum gedeckelt (jenseits offen), Wildcard-Proxy-CIDR
-  verweigert den Start. Unangemeldete geben außer an der Anmeldung ihre Marken zurück; Segmente zählen nur als UUID.
+- **Ratenbegrenzung:** Gleitfenster je Instanz (`RateLimitService`), globale Deckel in der DB (`InstallationCounters`);
+  Wildcard-Proxy-CIDR verweigert den Start. Unangemeldete geben außer beim Anmelden Marken zurück; Segmente nur UUIDs.
 - **`TargetAddressValidator` kann DNS-Rebinding nicht ausschließen** (akzeptiert). **Feature-Flags sind ohne Angabe
   an;** `@ConditionalOnFeature` an Blatt-Beans und rein bedingten Teilgraphen.
 - **Zwei Uhren:** Was eine andere Instanz vergleicht, aus `DatabaseClock` oder `clock_timestamp()`, sonst `Clock`. Ein

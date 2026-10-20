@@ -284,26 +284,43 @@ her; „mindestens einmal“ ist die ehrliche Zusage.
 
 | Budget | Entscheidung |
 |---|---|
-| Globale Deckel `opaa.rate-limit.*.global-max-requests` (auch `local-auth`) | Zählerzeile je Grenze und Zeitfenster nach Datenbankuhr, ein Upsert je gezählter Anfrage |
-| Abflussalarm `ExternalAccessMassRetrievalAlarm` (kanalweites Fenster) | Zählerzeile je Kanal und Fenster, ohne Token- oder Personenbezug |
+| Globale Deckel `opaa.rate-limit.*.global-max-requests` (auch `local-auth`) | Zählerzeile je Grenze und Fensterlänge nach Datenbankuhr, ein Upsert je gezählter Anfrage |
+| Abflussalarm `ExternalAccessMassRetrievalAlarm` (kanalweites Fenster) | Zählerzeile des Kanals, ohne Token- oder Personenbezug; die Sperrfrist nach einem Alarm steht in derselben Zeile |
 | Grenzen je Client, Adresse oder Konto (`max-requests`, `LocalAuthRateLimiter`) | je Instanz, durch N geteilt |
-| Kontingent je Zugangstoken (`ExternalAccessQuota`) | je Instanz, durch N geteilt |
-| Pools `embeddingTaskExecutor`, `modelExtractionTaskExecutor` | je Instanz, durch N geteilt |
+| Kontingent je Zugangstoken (`ExternalAccessQuota`) | je Instanz; der Wert der Einstellung geteilt durch die lebenden Instanzen im Register, aufgerundet |
+| Pool `embeddingTaskExecutor` | je Instanz, durch N geteilt |
 | `TranscriptionModelRole.slots`, `AttachmentExtractionLimiter` | je Instanz, durch N geteilt |
-| Pools `indexingTaskExecutor`, `uploadTaskExecutor`, Chat-Titel und Gesprächsnotiz | je Instanz, ohne Teilung |
+| Pools `indexingTaskExecutor`, `uploadTaskExecutor`, Chat-Titel und Gesprächsnotiz; `modelExtractionTaskExecutor` folgt den Pools der Läufe und Uploads | je Instanz, ohne Teilung |
 | Rate-Limit-Behandlung der Quellsysteme | je Lauf, unverändert |
 
+Eine Zählerzeile (`installation_counters`) hält das laufende und das vorige feste Fenster; das
+gleitende Fenster schätzt jede Instanz gleich, indem sie das vorige Fenster mit seinem Anteil am
+gleitenden gewichtet. Der Upsert prüft die Grenze in derselben Anweisung, unter der Sperre der
+Zeile. Ist der Zähler nicht erreichbar, lässt der Deckel die Anfrage durch und schreibt eine Warnung.
+
 „Durch N geteilt“ heißt: Handbuch, Compose und Helm nennen die Formel, der Wert je Instanz ist das
-Budget der Installation durch die Zahl der Instanzen. Bis zur Umsetzung gilt das für jedes Budget
-der Tabelle. Zustand der Modellrollen und Statusanzeigen kommen aus der Datenbank oder sind in der
-Oberfläche als „je Instanz“ gekennzeichnet; die Kostenvorschau rechnet mit dem Durchsatz der
-Installation. Umsetzung: #2950.
+Budget der Installation durch die Zahl der Instanzen. Das Kontingent je Token ist eine Einstellung
+der Oberfläche ohne Wert je Instanz; deshalb teilt die Instanz selbst.
+
+Der Zustand der Modellrollen Rerank und Transkription liegt in der Datenbank
+(`model_role_observations`): Die Instanz mit der Sondierungssperre (7) und jede, die den Endpunkt
+aufruft, schreibt einen geänderten Zustand, jede Instanz hält ihn am Invalidierungsbus (5) und
+entscheidet auf ihm über die Umsortierung. Ein erfolgreicher Aufruf verlängert die Beobachtung
+höchstens einmal je Minute, bei kürzerem Prüfabstand je halbem Abstand. Aus der Datenbank kommen auch die Erreichbarkeit von Chat- und
+Einbettungsmodell auf der Statusseite (`search_status_probes`, geteilt für die Frist der Probe),
+die übersprungenen Dokumente der Wartungsläufe (`library_maintenance_skips`), der Sendestatus der
+Mail und der Durchsatz der Kostenvorschau (`embedding_rate_measurements`, je Embedding-Modell
+summiert über alle Instanzen). Je Instanz und in der Oberfläche so gekennzeichnet bleibt der Status
+eines Anmeldeanbieters, weil jede Instanz ihren Token-Decoder selbst baut; Micrometer-Metriken wie
+`opaa.conversations.active` gelten je Pod. Umsetzung: #2950.
 
 Zählerzeilen nur, wo die absolute Zahl die Zusage ist (Kostendeckel, Frühwarnung gegen
 Credential-Stuffing, Abflussalarm) und es wenige Schlüssel gibt. Das Kontingent je Token bleibt
 bewusst im Speicher: Ein persistierter Zähler wäre ein Nutzungsdatum über eine Person. Die Pools
 schützen eigene Endpunkte und den eigenen Speicher; ein Datenbank-Slot je Einbettungsaufruf kostete
-mehr, als er schützt. Läufe und Uploads skalieren bewusst mit N, das ist der Sinn mehrerer Instanzen.
+mehr, als er schützt. Läufe und Uploads skalieren bewusst mit N, das ist der Sinn mehrerer Instanzen;
+die Modellextraktion ist an ihre Threads gebunden und wächst mit ihnen. Feste Fenster mit Gewichtung
+statt eines Zeitstempels je Anfrage halten die Zeile klein und die Prüfung in einer Anweisung.
 
 ### 13. Migrationen nach Expand/Contract über zwei Releases
 
@@ -398,8 +415,8 @@ Abdruckwert verlangt einen Neustart aller Instanzen. ShedLock ist eine neue Abh�
 
 **Restrisiken:** Nach einem Abriss der Hörverbindung kann ein Cache bis zum Prüfabstand veraltet
 sein. Ein Absturz während der Zustellung kann eine Mail doppelt senden. Ephemere Gespräche verlieren
-bei einem Instanzwechsel ihren Kontext. Bis zur zweiten Stufe gelten die Budgets nur über die Formel,
-nicht durch eine Zählung.
+bei einem Instanzwechsel ihren Kontext. Die Budgets je Instanz gelten nur über die Formel, nicht durch
+eine Zählung; eine ungleiche Verteilung der Anfragen lässt sie früher greifen.
 
 **Liefergrenze der ersten nutzbaren Stufe „zwei Instanzen, Update ohne Ausfall“:** die Entscheidungen
 2 bis 9, 13 bis 15, aus Entscheidung 10 das Gesprächsfenster und Entscheidung 11 (#2944 bis #2948,

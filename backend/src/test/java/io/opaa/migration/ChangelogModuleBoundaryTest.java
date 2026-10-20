@@ -57,7 +57,8 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "outbound_proxy_settings",
                   "backend_instances",
                   "backend_instance_fingerprint_key",
-                  "shedlock")),
+                  "shedlock",
+                  "installation_counters")),
           Map.entry(
               IDENTITY,
               List.of(
@@ -133,7 +134,10 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "llm_models",
                   "llm_model_seed_marker",
                   "private_storage_quota_settings",
-                  "vector_store")),
+                  "vector_store",
+                  "model_role_observations",
+                  "library_maintenance_skips",
+                  "embedding_rate_measurements")),
           Map.entry(CONNECTORS, List.of("rss_feed_state")),
           Map.entry(
               CONNECTIONS,
@@ -161,6 +165,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
           Map.entry(
               ASSISTANT,
               List.of(
+                  "search_status_probes",
                   "chats",
                   "chat_messages",
                   "chat_library_references",

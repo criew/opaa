@@ -283,3 +283,15 @@ nonPersonalTables:
     - fingerprint_hash
   backend_instance_fingerprint_key: [id, hmac_key, created_at]
   shedlock: [name, lock_until, locked_at, locked_by]
+  installation_counters:
+    - counter_key
+    - window_seconds
+    - window_start
+    - current_count
+    - previous_count
+    - counted_at
+    - quiet_until
+  model_role_observations:
+    [role, base_url, model, reachable, timed_out, diagnostic, observed_at]
+  library_maintenance_skips: [library_id, maintenance, skipped_documents, recorded_at]
+  embedding_rate_measurements: [embedding_model, measured_chunks, measured_nanos, updated_at]
