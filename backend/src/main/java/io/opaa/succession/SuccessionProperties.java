@@ -4,6 +4,7 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -15,6 +16,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param detectionCron when the detection run looks - hourly by default. It writes only the
  *     timestamps: without a named, regular run "age" would mean "since somebody last looked"
  */
+@PerInstance("when this process looks for open successions")
 @NoDataImpact("the detection schedule")
 @ConfigurationProperties(prefix = "opaa.succession")
 public record SuccessionProperties(@DataImpact int agingThresholdMonths, String detectionCron) {

@@ -305,6 +305,10 @@ backend:
   # (-XX:StartFlightRecording=filename=/tmp/opaa.jfr). Targets belong below /tmp, the only writable
   # path besides the storage.
   javaToolOptions: ""
+  # Time zone of the backend (TZ): crons, day, month and year boundaries of deadlines and the dates
+  # in mails follow it. Part of the configuration fingerprint, the same on every instance (ADR-0053,
+  # Entscheidung 9).
+  timeZone: UTC
 
   # Recommendation of docs/handbuch/betrieb.md ("Speicher und Container-Grenzen").
   resources:

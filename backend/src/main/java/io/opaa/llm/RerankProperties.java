@@ -4,6 +4,7 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -43,6 +44,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     billed by a paid endpoint; a real call resets the interval. At least {@value
  *     #MIN_PROBE_INTERVAL_SECONDS} seconds, anything shorter fails the start.
  */
+@PerInstance("credentials, timeouts and probing of this process")
 @NoDataImpact("credentials, timeouts and probing of the rerank role")
 @ConfigurationProperties(prefix = "opaa.rerank")
 public record RerankProperties(

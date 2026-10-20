@@ -1,6 +1,7 @@
 package io.opaa.mcp;
 
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -29,6 +30,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     {@code fetch}, not the answer.
  * @param excerptCharacters the length of the excerpt around the found place, per hit.
  */
+@PerInstance("bounds of the MCP answers of this process")
 @NoDataImpact("result sizes and protocol versions of the MCP server")
 @ConfigurationProperties(prefix = "opaa.mcp")
 public record McpProperties(

@@ -92,3 +92,4 @@ backend/src/main/java/io/opaa/query/spike/**/*.java
 backend/src/main/java/**/*Retention*.java
 backend/src/main/java/**/*Cleanup*.java
 backend/src/main/java/io/opaa/diagnosticaccess/**/*.java
+backend/src/main/java/io/opaa/instance/InstanceRegistry.java

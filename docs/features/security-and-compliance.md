@@ -834,7 +834,9 @@ belegbaren Historie" für die Zeit vor dem Backfill gilt. Ohne diese Zusage hint
 der kürzer bestand als die Uhr fortschreitet, ein leeres Intervall, und ein leeres Intervall enthält
 keinen Stichtag: Die Rekonstruktion antwortete für diesen Zeitraum „kein Zugriff", obwohl Zugriff
 bestand. Die Grenzen stammen deshalb aus einer streng monotonen Quelle mit Mikrosekunden-Auflösung
-statt unmittelbar aus der Systemuhr. Lückenlos bleiben die Intervalle dabei: Das Schließen eines
+statt unmittelbar aus der Systemuhr: aus der Uhr der Datenbank, installationsweit monoton über alle
+Instanzen und alle Historientabellen ([ADR-0053](../decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md),
+Entscheidung 9). Lückenlos bleiben die Intervalle dabei: Das Schließen eines
 Intervalls und das Öffnen des folgenden teilen sich einen Grenzwert. Zeilen der Länge null gibt es
 weiterhin, aber ausschließlich als **Ereignismarkierung** für einen Widerruf oder eine Löschung — sie
 halten den auslösenden Vorgang fest und werden von der Rekonstruktion nie als Zustand ausgewählt.

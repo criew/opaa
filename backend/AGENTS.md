@@ -13,6 +13,9 @@ Abhängigkeiten stehen dort in `[libraries]`, verwandte in `[bundles]` (`spring-
 
 Services lesen die Zeit über die `Clock`-Bean aus `io.opaa.common.ClockConfiguration` (`Instant.now(clock)`), damit
 Fristen testbar sind; Entities setzen ihre Zeitstempel (`createdAt` u. ä.) selbst im Konstruktor oder `@PrePersist`.
+Ein Zeitpunkt, den eine andere Instanz liest und vergleicht (Heartbeat, Fälligkeit, Reihenfolge im Audit), stammt aus
+der Datenbankuhr: `clock_timestamp()` im Statement oder `io.opaa.common.DatabaseClock`
+([ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 9).
 
 ## API & DTO-Konvention (Fortsetzung)
 
@@ -35,7 +38,7 @@ Das Backend ist ein Gradle-Modul, gegliedert in logische Module. Die Definitione
 
 | Modul | Pakete (`io.opaa.*`) | darf nutzen (`ALLOWED_MODULE_EDGES`, alle nach unten) |
 |---|---|---|
-| foundation | common, compliance, observability, organization, outbound, security, ratelimit, sourceaccess, s3, msgraph | — |
+| foundation | common, compliance, observability, instance, organization, outbound, security, ratelimit, sourceaccess, s3, msgraph | — |
 | format | format | foundation |
 | identity | audit, branding, mail, auth, account, notification | foundation |
 | rights | permission, asset, group, directory, succession | foundation, identity |
@@ -139,6 +142,15 @@ Herleitung und Prüfungen: [docs/liquibase.md](docs/liquibase.md).
   auf neuer Tabelle) kommt ohne eigenen Test aus; alles andere braucht einen Delta-Test unter `io.opaa.migration`
   (`AbstractMigrationTest`). Im Zweifel ist es nicht additiv.
 - Jede neue Tabelle und Spalte braucht einen Eintrag im Fakten-Manifest, siehe nächster Abschnitt.
+- **Rolling Update, Expand/Contract über zwei Releases:** Kein Changeset bricht die Vorgängerversion,
+  die beim Update weiterläuft. Entfernen, Umbenennen, `NOT NULL` ohne bleibenden Default,
+  `DROP NOT NULL`, `DROP DEFAULT`, ein engerer Typ oder `CHECK` kommen erst im Folgerelease, wenn die
+  Vorgängerversion den Teil nicht mehr nutzt, als Changeset mit `labels: contract`
+  (`RollingUpdateGuardTest`). Baselines nur an ausgewiesenen Versionsgrenzen ohne Rolling Update.
+- Jedes Changeset beginnt mit `SET LOCAL lock_timeout = '5s';` (`ChangesetLockTimeoutTest`).
+- Ein neuer Wert eines persistierten Enums steht zuerst unter `pending` in
+  `src/test/resources/db/persisted-enums.yaml` und wird erst ab dem Release nach dem geschrieben, das
+  ihn ausliefert (`PersistedEnumRegistryTest`).
 
 ## Fakten-Manifest
 
@@ -152,4 +164,7 @@ ein Eintrag in `src/main/resources/META-INF/additional-spring-configuration-meta
 oder `@NoDataImpact("Grund")` an der Komponente oder pauschal am Typ; Schalter, Modelle, Adressen, Fristen und
 Zeitspannen an der Komponente. Ein datenwirksamer Schlüssel steht mit seinem Standardwert aus `application.yml`
 unter `settings`.
-`ConfigurationSettingsTest` prüft das samt Helm-Chart (ADR-0052, Entscheidung 9).
+`ConfigurationSettingsTest` prüft das samt Helm-Chart (ADR-0052, Entscheidung 9). Jeder Schlüssel ohne `@DataImpact`
+trägt außerdem `@InstallationWide` (Teil des Konfigurationsabdrucks, auf allen Instanzen gleich) oder
+`@PerInstance("Grund")`; das prüft `FingerprintKeysTest`
+([ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 4).

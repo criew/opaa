@@ -3,6 +3,7 @@ package io.opaa.indexing.job;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.asset.AssetRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.DatabaseClock;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -42,12 +43,21 @@ public class IndexingJobService {
   private final IndexingJobRepository indexingJobRepository;
   private final AssetRepository assetRepository;
   private final Clock clock;
+  private final DatabaseClock databaseClock;
 
+  /**
+   * {@code databaseClock} stamps the progress heartbeat {@code lastProgressAt} and judges it stale:
+   * another instance may read and compare it (ADR-0053, Entscheidung 9).
+   */
   public IndexingJobService(
-      IndexingJobRepository indexingJobRepository, AssetRepository assetRepository, Clock clock) {
+      IndexingJobRepository indexingJobRepository,
+      AssetRepository assetRepository,
+      Clock clock,
+      DatabaseClock databaseClock) {
     this.indexingJobRepository = indexingJobRepository;
     this.assetRepository = assetRepository;
     this.clock = clock;
+    this.databaseClock = databaseClock;
   }
 
   /**
@@ -76,6 +86,7 @@ public class IndexingJobService {
     job.setOrganizationId(organizationId);
     job.setTriggeredBy(triggeredBy);
     job.setRunMode(runMode);
+    job.setLastProgressAt(databaseClock.now());
     IndexingJob saved;
     try {
       saved = indexingJobRepository.saveAndFlush(job);
@@ -240,7 +251,7 @@ public class IndexingJobService {
     job.setDocumentsFailed(documentsFailed);
     job.setDocumentsSkipped(documentsSkipped);
     job.setDocumentsIndexedTotal(documentsIndexedTotal);
-    job.setLastProgressAt(Instant.now(clock));
+    job.setLastProgressAt(databaseClock.now());
     indexingJobRepository.save(job);
   }
 
@@ -406,8 +417,8 @@ public class IndexingJobService {
    */
   @Transactional
   public int recoverStaleJobs(Duration staleAfter) {
-    Instant cutoff = Instant.now(clock).minus(staleAfter);
+    Instant now = databaseClock.now();
     return indexingJobRepository.failStaleRunningJobs(
-        STALE_RUN_MESSAGE, cutoff, Instant.now(clock));
+        STALE_RUN_MESSAGE, now.minus(staleAfter), now);
   }
 }

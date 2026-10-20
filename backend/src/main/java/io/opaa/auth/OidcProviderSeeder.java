@@ -90,6 +90,7 @@ public class OidcProviderSeeder {
     if (!OIDC_MODE.equals(authProperties.mode())) {
       return;
     }
+    markerRepository.lockStartupSeeds();
     AuthProperties.OidcAuth oidc = authProperties.oidc();
     if (oidc.isBootstrapForced()) {
       forceBootstrap(oidc);

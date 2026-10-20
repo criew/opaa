@@ -194,6 +194,11 @@ abstract class AbstractMigrationTest {
     currentDatabaseName = null;
   }
 
+  /** The JDBC URL of this test's freshly cloned database, for a process of its own. */
+  protected String currentDatabaseUrl() {
+    return jdbcUrlFor(currentDatabaseName);
+  }
+
   /** A connection to this test's freshly cloned database, as the container's bootstrap account. */
   protected Connection connect() throws SQLException {
     return connect(POSTGRES.getUsername(), POSTGRES.getPassword());

@@ -5,6 +5,7 @@ import static java.util.Objects.requireNonNullElse;
 
 import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -29,6 +30,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param downloadConcurrency downloads in flight per run; default 2
  * @param fullSyncInterval the instance-wide rhythm of the full sync; default 1 day
  */
+@PerInstance("budgets and bounds of a run on this process")
 @NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.sharepoint")
 public record SharePointProperties(

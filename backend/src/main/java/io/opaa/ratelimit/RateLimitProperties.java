@@ -1,6 +1,8 @@
 package io.opaa.ratelimit;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
@@ -35,11 +37,12 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  * @param localAuth the limits of the local sign-in and its self-service endpoints (ADR-0033,
  *     Entscheidung 9); every absent value is the ADR's default
  */
+@PerInstance("budgets of this process (ADR-0053, Entscheidung 12)")
 @NoDataImpact("request limits")
 @ConfigurationProperties(prefix = "opaa.rate-limit")
 public record RateLimitProperties(
     @NoDataImpact("a protection switch; it keeps no data") boolean enabled,
-    List<String> trustedProxyCidrs,
+    @InstallationWide List<String> trustedProxyCidrs,
     EndpointLimit query,
     EndpointLimit indexing,
     EndpointLimit sourceTest,

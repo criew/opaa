@@ -3,6 +3,7 @@ package io.opaa.indexing.run;
 import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -22,6 +23,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     notification reported, so a drop costs freshness, never correctness. Default 120 (ten minutes
  *     at the default debounce); zero or negative falls back to it.
  */
+@PerInstance("debouncing of change events on this process")
 @NoDataImpact("timing of the event intake")
 @ConfigurationProperties(prefix = "opaa.indexing.events")
 public record SourceEventProperties(

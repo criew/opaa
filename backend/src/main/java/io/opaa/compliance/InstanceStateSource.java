@@ -2,9 +2,11 @@ package io.opaa.compliance;
 
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
+import io.opaa.compliance.InstanceDisclosure.RunningInstance;
 import io.opaa.compliance.InstanceDisclosure.StoredValue;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -39,6 +41,19 @@ public interface InstanceStateSource {
 
   /** The model endpoints the module configures. */
   default List<ModelProvider> modelProviders() {
+    return List.of();
+  }
+
+  /**
+   * The keys of {@code PROPERTY} settings whose value is not the same on all running instances of
+   * the installation (ADR-0053, Entscheidung 4); the same answer whichever instance asks.
+   */
+  default Set<String> settingsDifferingBetweenInstances() {
+    return Set.of();
+  }
+
+  /** The running instances of the installation, as far as the module knows them. */
+  default List<RunningInstance> runningInstances() {
     return List.of();
   }
 }
