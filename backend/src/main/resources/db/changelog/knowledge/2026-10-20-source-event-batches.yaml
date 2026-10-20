@@ -7,6 +7,7 @@ databaseChangeLog:
         - sql:
             splitStatements: false
             sql: |
+              SET LOCAL lock_timeout = '5s';
               CREATE TABLE source_event_batches (
                   id uuid NOT NULL,
                   library_id uuid NOT NULL,
