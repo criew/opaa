@@ -15,7 +15,6 @@ import io.opaa.common.DatabaseClock;
 import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
@@ -26,7 +25,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mail.MailSendException;
@@ -51,7 +49,6 @@ class MailServiceTest {
   @Mock private JavaMailSender sender;
   @Mock private MailOutbox outbox;
   @Mock private ApplicationEventPublisher events;
-  @Spy private Clock clock = Clock.systemUTC();
   @Mock private DatabaseClock databaseClock;
 
   @InjectMocks private MailService mailService;

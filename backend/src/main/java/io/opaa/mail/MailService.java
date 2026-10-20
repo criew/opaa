@@ -1,13 +1,12 @@
 package io.opaa.mail;
 
+import io.opaa.common.DatabaseClock;
 import io.opaa.compliance.DataFlowCarrier;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
 import java.io.UnsupportedEncodingException;
-import java.time.Clock;
-import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -53,7 +52,7 @@ public class MailService {
   private final MailSettingsService settingsService;
   private final MailOutbox outbox;
   private final ApplicationEventPublisher events;
-  private final Clock clock;
+  private final DatabaseClock databaseClock;
 
   public MailService(
       MailSenderProvider senderProvider,
@@ -61,13 +60,13 @@ public class MailService {
       MailSettingsService settingsService,
       MailOutbox outbox,
       ApplicationEventPublisher events,
-      Clock clock) {
+      DatabaseClock databaseClock) {
     this.senderProvider = senderProvider;
     this.templates = templates;
     this.settingsService = settingsService;
     this.outbox = outbox;
     this.events = events;
-    this.clock = clock;
+    this.databaseClock = databaseClock;
   }
 
   /**
@@ -257,7 +256,7 @@ public class MailService {
   /** A status write must never turn into the failure of the send it is describing. */
   private void recordOutcome(String failureReason) {
     try {
-      settingsService.recordSendOutcome(Instant.now(clock), failureReason);
+      settingsService.recordSendOutcome(databaseClock.now(), failureReason);
     } catch (RuntimeException e) {
       log.warn("Versandstatus konnte nicht fortgeschrieben werden: {}", e.getMessage());
     }
