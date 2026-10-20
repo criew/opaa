@@ -5,10 +5,14 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.asset.AssetChanged;
 import io.opaa.asset.AssetGrantChanged;
+import io.opaa.instance.BusBoundCache;
+import io.opaa.instance.InvalidationBus;
+import io.opaa.instance.InvalidationSubscriber;
 import io.opaa.library.LibraryChanged;
 import io.opaa.library.PrivateLibraryErased;
 import io.opaa.metadata.LibraryMetadataSchemaChanged;
 import io.opaa.permission.GroupMembershipChangeListener;
+import io.opaa.permission.GroupMembershipResolver;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
@@ -26,19 +30,34 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * themselves react to. Time-based expiry is the bound on staleness of the bestand itself (new
  * documents, corrected values), not the correctness mechanism for rights.
  *
- * <p>Process-local like {@code GroupMembershipResolver}'s cache (ADR-0021).
+ * <p>Bound to the {@link InvalidationBus} (ADR-0053, Entscheidung 5): a rights change on any
+ * instance empties it on every instance through the triggers of the rights tables, and the events
+ * without a table of their own (schema, asset, release, erasure) are announced from the transaction
+ * that publishes them. While the bus does not listen, it is read past.
  */
 @Component
-public class MetadataFilterOptionsCache implements GroupMembershipChangeListener {
+public class MetadataFilterOptionsCache
+    implements GroupMembershipChangeListener, InvalidationSubscriber {
 
-  private final Cache<Key, MetadataFilterOptions> options;
+  /** The topic of the changes this cache announces itself. */
+  public static final String INVALIDATION_TOPIC = "metadata-filter-options";
 
-  public MetadataFilterOptionsCache(MetadataFilterProperties properties) {
-    this.options =
+  private final BusBoundCache<Key, MetadataFilterOptions> options;
+  private final InvalidationBus bus;
+
+  public MetadataFilterOptionsCache(MetadataFilterProperties properties, InvalidationBus bus) {
+    Cache<Key, MetadataFilterOptions> cache =
         Caffeine.newBuilder()
             .maximumSize(10_000)
             .expireAfterWrite(properties.optionsCacheTtl())
             .build();
+    this.options = new BusBoundCache<>(cache, bus);
+    this.bus = bus;
+  }
+
+  @Override
+  public Set<String> invalidationTopics() {
+    return Set.of(GroupMembershipResolver.RIGHTS_TOPIC, INVALIDATION_TOPIC);
   }
 
   /** The cached options for this person and scope, computed via {@code loader} on a miss. */
@@ -61,8 +80,26 @@ public class MetadataFilterOptionsCache implements GroupMembershipChangeListener
     options.asMap().keySet().removeIf(key -> ids.contains(key.userId()));
   }
 
+  @Override
   public void invalidateAll() {
     options.invalidateAll();
+  }
+
+  /**
+   * Announces the events below to every instance, inside the publishing transaction: delivered with
+   * its commit, never after a rollback.
+   */
+  @TransactionalEventListener(
+      classes = {
+        LibraryMetadataSchemaChanged.class,
+        AssetChanged.class,
+        LibraryChanged.class,
+        PrivateLibraryErased.class
+      },
+      phase = TransactionPhase.BEFORE_COMMIT,
+      fallbackExecution = true)
+  public void announce(Object event) {
+    bus.publish(INVALIDATION_TOPIC);
   }
 
   /**

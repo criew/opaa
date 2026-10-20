@@ -1,11 +1,14 @@
 package io.opaa.outbound;
 
+import io.opaa.instance.InvalidationBus;
+import io.opaa.instance.InvalidationSubscriber;
 import jakarta.annotation.PostConstruct;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,10 +18,15 @@ import org.springframework.transaction.event.TransactionalEventListener;
 /**
  * The stored outbound proxy and the routing of {@link OutboundProxySelector}. The selector takes
  * the stored value at startup and every change only after its transaction committed, so a rolled
- * back change never routes a connection.
+ * back change never routes a connection. Bound to the {@link InvalidationBus} (ADR-0053,
+ * Entscheidung 5): a change on any instance re-reads the row on every instance; while the bus does
+ * not listen, the row is re-read at every check of the bus instead of per connection.
  */
 @Service
-public class OutboundProxy {
+public class OutboundProxy implements InvalidationSubscriber {
+
+  /** The topic the trigger on {@code outbound_proxy_settings} announces. */
+  public static final String INVALIDATION_TOPIC = "outbound-proxy";
 
   /**
    * The stored values.
@@ -90,6 +98,16 @@ public class OutboundProxy {
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onChanged(Changed changed) {
+    reload();
+  }
+
+  @Override
+  public Set<String> invalidationTopics() {
+    return Set.of(INVALIDATION_TOPIC);
+  }
+
+  @Override
+  public void invalidateAll() {
     reload();
   }
 

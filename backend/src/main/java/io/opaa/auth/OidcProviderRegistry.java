@@ -1,5 +1,7 @@
 package io.opaa.auth;
 
+import io.opaa.instance.InvalidationBus;
+import io.opaa.instance.InvalidationSubscriber;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -8,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,8 +41,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * after OPAA in the Compose stack) is logged and skipped so the remaining providers stay reachable;
  * it is kept as {@link Failure} and rebuilt on the next token of its issuer once {@link
  * #RETRY_INTERVAL} passed - at most once per interval, however many request threads carry that
- * issuer - so it does not stay out until the next restart. Process-local without distributed
- * invalidation, per ADR-0021.
+ * issuer - so it does not stay out until the next restart.
+ *
+ * <p>Bound to the {@link InvalidationBus} (ADR-0053, Entscheidung 5): a change of {@code
+ * oidc_providers} on any instance marks the set stale, and the next lookup rebuilds it; while the
+ * bus does not listen, every lookup rebuilds it from the rows. So a provider disabled, a claim
+ * mapping changed or the local accounts switched off on another instance take effect here without a
+ * restart.
  *
  * <p>The {@code LOCAL} row (ADR-0033, Entscheidung 4) is read from the same enabled rows but gets
  * no decoder from the factory - the local issuer's decoder is fixed and registered next to this
@@ -47,7 +55,11 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * contributes is its {@code enabled} flag, {@link #localAccountsEnabled()}, the management switch
  * the token validator and the login consult without a query of their own.
  */
-public class OidcProviderRegistry implements AuthenticationManagerResolver<String> {
+public class OidcProviderRegistry
+    implements AuthenticationManagerResolver<String>, InvalidationSubscriber {
+
+  /** The topic the trigger on {@code oidc_providers} announces. */
+  public static final String INVALIDATION_TOPIC = "oidc-providers";
 
   private static final Logger log = LoggerFactory.getLogger(OidcProviderRegistry.class);
 
@@ -65,8 +77,11 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
   private final OidcJwtDecoderFactory decoderFactory;
   private final OidcAddressPolicy addressPolicy;
   private final Clock clock;
+  private final InvalidationBus bus;
   private final Object lock = new Object();
   private volatile Map<String, Entry> entries;
+  private volatile boolean stale;
+  private volatile String lastSummary;
   private volatile Map<String, Failure> failures = Map.of();
   private volatile boolean localAccountsEnabled;
 
@@ -74,16 +89,29 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
       OidcProviderRepository repository,
       OidcJwtDecoderFactory decoderFactory,
       OidcAddressPolicy addressPolicy,
-      Clock clock) {
+      Clock clock,
+      InvalidationBus bus) {
     this.repository = repository;
     this.decoderFactory = decoderFactory;
     this.addressPolicy = addressPolicy;
     this.clock = clock;
+    this.bus = bus;
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onProvidersChanged(OidcProvidersChangedEvent event) {
     refresh();
+  }
+
+  @Override
+  public Set<String> invalidationTopics() {
+    return Set.of(INVALIDATION_TOPIC);
+  }
+
+  /** Marks the set stale; the next lookup rebuilds it, reusing every unchanged decoder. */
+  @Override
+  public void invalidateAll() {
+    stale = true;
   }
 
   /**
@@ -93,6 +121,8 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
    */
   public void refresh() {
     synchronized (lock) {
+      // cleared before the read: a change announced while it runs marks the result stale again
+      stale = false;
       Map<String, Entry> previous = entries == null ? Map.of() : entries;
       Map<String, Entry> built = new LinkedHashMap<>();
       Map<String, Failure> failed = new LinkedHashMap<>();
@@ -124,11 +154,17 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
       entries = Collections.unmodifiableMap(built);
       failures = Collections.unmodifiableMap(failed);
       localAccountsEnabled = localEnabled;
-      log.info(
-          "OIDC provider registry refreshed: {} ready, {} unavailable, local accounts {}",
-          built.size(),
-          failed.size(),
-          localEnabled ? "enabled" : "disabled");
+      String summary =
+          String.format(
+              "%s ready, %s unavailable, local accounts %s",
+              built.keySet(), failed.keySet(), localEnabled ? "enabled" : "disabled");
+      // a rebuild without the bus happens per lookup; only a changed result is news
+      if (summary.equals(lastSummary)) {
+        log.debug("OIDC provider registry refreshed: {}", summary);
+      } else {
+        log.info("OIDC provider registry refreshed: {}", summary);
+      }
+      lastSummary = summary;
     }
   }
 
@@ -243,7 +279,7 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
 
   private Map<String, Entry> loaded() {
     Map<String, Entry> current = entries;
-    if (current == null) {
+    if (current == null || stale || !bus.isListening()) {
       refresh();
       current = entries;
     }

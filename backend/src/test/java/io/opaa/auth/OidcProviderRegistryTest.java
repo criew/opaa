@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.common.ValidationException;
 import io.opaa.test.ProviderFixtures;
+import io.opaa.test.TestInvalidationBus;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -50,6 +51,7 @@ class OidcProviderRegistryTest {
   private final JwtDecoder decoderA = mock(JwtDecoder.class);
   private final JwtDecoder decoderB = mock(JwtDecoder.class);
   private final AtomicReference<Instant> now = new AtomicReference<>(START);
+  private final TestInvalidationBus bus = TestInvalidationBus.listening();
 
   private OidcProvider enabledA;
   private OidcProvider enabledB;
@@ -80,7 +82,35 @@ class OidcProviderRegistryTest {
             return now.get();
           }
         };
-    registry = new OidcProviderRegistry(repository, decoderFactory, addressPolicy, clock);
+    registry =
+        new OidcProviderRegistry(
+            repository, decoderFactory, addressPolicy, clock, bus);
+  }
+
+  @Test
+  void anAnnouncementOfTheBusRebuildsOnTheNextLookupAndKeepsTheUnchangedDecoders() {
+    registry.refresh();
+    when(repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
+        .thenReturn(List.of(enabledA));
+    assertThat(registry.findEnabledByIssuer("https://idp.example/realms/b")).contains(enabledB);
+
+    registry.invalidateAll();
+
+    assertThat(registry.findEnabledByIssuer("https://idp.example/realms/b")).isEmpty();
+    assertThat(registry.findEnabledByIssuer("https://idp.example/realms/a")).contains(enabledA);
+    verify(decoderFactory, times(1)).create(enabledA);
+  }
+
+  @Test
+  void whileTheBusDoesNotListenEveryLookupReadsTheRows() {
+    registry.refresh();
+    bus.setListening(false);
+    when(repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
+        .thenReturn(List.of(enabledA));
+
+    assertThat(registry.findEnabledByIssuer("https://idp.example/realms/b")).isEmpty();
+    assertThat(registry.localAccountsEnabled()).isFalse();
+    verify(repository, times(3)).findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc();
   }
 
   private static void assertUnknownIssuer(AuthenticationManager manager) {
