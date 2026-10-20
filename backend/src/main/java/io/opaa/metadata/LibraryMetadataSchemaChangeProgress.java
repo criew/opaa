@@ -8,8 +8,8 @@ import java.util.UUID;
  * document keeps a value the schema still lists until its turn comes, and the search stays
  * available throughout.
  *
- * @param lastSkippedDocuments what the most recent Charge could not advance - a process-lifetime
- *     figure (ADR-0021), 0 before the first call
+ * @param lastSkippedDocuments what the most recent Charge could not advance, on whichever instance
+ *     it ran; 0 before the first call
  */
 public record LibraryMetadataSchemaChangeProgress(
     UUID libraryId, long pendingChanges, long pendingDocuments, long lastSkippedDocuments) {

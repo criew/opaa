@@ -34,7 +34,6 @@ import io.opaa.retrieval.RetrievalPipelineProperties;
 import jakarta.annotation.PreDestroy;
 import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -73,9 +72,10 @@ import org.springframework.stereotype.Service;
  * bound every page load costs one chat and one embedding round trip per administrator, per
  * navigation and per StrictMode double mount, and an unresponsive embedding endpoint holds the
  * request thread for as long as it likes - the Spring AI client this service borrows carries no
- * timeout of our own making. A probe pair is therefore reused process-wide for {@link
- * #PROBE_CACHE_TTL}, and the embedding probe is bounded by {@link #EMBEDDING_PROBE_TIMEOUT} so both
- * roles report an unresponsive endpoint the same way.
+ * timeout of our own making. A probe result is therefore shared by every instance for {@link
+ * #PROBE_CACHE_TTL} ({@link SearchStatusProbeResults}, ADR-0053, Entscheidung 12), so the page
+ * shows the same state whichever instance answers it, and the embedding probe is bounded by {@link
+ * #EMBEDDING_PROBE_TIMEOUT} so both roles report an unresponsive endpoint the same way.
  */
 @DataFlow("embedding-model")
 @Service
@@ -86,7 +86,7 @@ public class SearchStatusService {
   /** Sent to the embedding endpoint purely to see whether it answers. */
   private static final String REACHABILITY_PROBE_TEXT = "Erreichbarkeitspruefung";
 
-  /** How long one probe pair answers every caller. Short enough to still be a live status. */
+  /** How long one probe result answers every caller. Short enough to still be a live status. */
   static final Duration PROBE_CACHE_TTL = Duration.ofSeconds(45);
 
   /** The same bound {@link LlmModelConnectionTester} puts on the chat probe. */
@@ -109,8 +109,8 @@ public class SearchStatusService {
   private final RetrievalPipelineProperties pipelineProperties;
   private final PersonThreshold threshold;
   private final PrivateLibraryDeletionRun deletionRun;
-  private final Clock clock;
   private final EmbeddingIndexState embeddingIndexState;
+  private final SearchStatusProbeResults probeResults;
 
   /**
    * Daemon threads: a probe hanging on an unresponsive endpoint must not keep the JVM from shutting
@@ -130,10 +130,9 @@ public class SearchStatusService {
           });
 
   private final Object probeLock = new Object();
-  private volatile ProbedRoles probedRoles;
 
-  /** The two network-probed roles together with the instant their shared result goes stale. */
-  private record ProbedRoles(ModelRoleStatus chat, ModelRoleStatus embedding, Instant expiresAt) {}
+  /** The two network-probed roles. */
+  private record ProbedRoles(ModelRoleStatus chat, ModelRoleStatus embedding) {}
 
   /**
    * A probed role and whether the result says anything about the endpoint. A result caused by the
@@ -175,15 +174,16 @@ public class SearchStatusService {
         queryProperties,
         pipelineProperties,
         threshold,
-        clock,
         null,
         new EmbeddingIndexState(),
-        TranscriptionRoleStatus::disabled);
+        TranscriptionRoleStatus::disabled,
+        new ProcessLocalSearchStatusProbeResults(clock));
   }
 
   /**
    * {@code deletionRun}, when given, tells how many private libraries are due to be erased; {@code
-   * embeddingIndexState} whether the vector path is suspended.
+   * embeddingIndexState} whether the vector path is suspended; {@code probeResults} shares the
+   * probes of chat and embedding role.
    */
   @Autowired
   public SearchStatusService(
@@ -202,11 +202,12 @@ public class SearchStatusService {
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
       PersonThreshold threshold,
-      Clock clock,
       PrivateLibraryDeletionRun deletionRun,
       EmbeddingIndexState embeddingIndexState,
-      TranscriptionRoleStatusProvider transcriptionRoleStatusProvider) {
+      TranscriptionRoleStatusProvider transcriptionRoleStatusProvider,
+      SearchStatusProbeResults probeResults) {
     this.transcriptionRoleStatusProvider = transcriptionRoleStatusProvider;
+    this.probeResults = probeResults;
     this.deletionRun = deletionRun;
     this.embeddingIndexState = embeddingIndexState;
     this.threshold = threshold;
@@ -224,7 +225,6 @@ public class SearchStatusService {
     this.schemaChangeService = schemaChangeService;
     this.queryProperties = queryProperties;
     this.pipelineProperties = pipelineProperties;
-    this.clock = clock;
   }
 
   @PreDestroy
@@ -284,42 +284,46 @@ public class SearchStatusService {
   }
 
   /**
-   * Chat and embedding come from the cached probe pair; the rerank and transcription roles are read
-   * fresh because their provider contracts forbid a network round trip to begin with.
+   * Chat and embedding come from the shared probe results; the rerank and transcription roles are
+   * read fresh because their provider contracts forbid a network round trip to begin with.
    */
   private List<ModelRoleStatus> modelRoles() {
     ProbedRoles probed = currentProbes();
     return List.of(probed.chat(), probed.embedding(), rerankRole(), transcriptionRole());
   }
 
-  /** Drops the shared probe pair; the next status probes again. */
+  /** Drops the shared probe results; the next status probes again. */
   void forgetProbes() {
-    probedRoles = null;
+    probeResults.forget();
   }
 
   /**
-   * One probe pair per {@link #PROBE_CACHE_TTL}, however many administrators look at the page at
-   * once: the refresh runs under a lock, so concurrent callers wait for the running probe instead
-   * of starting their own.
+   * The results shared within {@link #PROBE_CACHE_TTL}, probing only the roles without one. On this
+   * instance the probes run under a lock, so concurrent callers wait for the running probe instead
+   * of starting their own; across instances the first shared result wins.
    */
   private ProbedRoles currentProbes() {
-    ProbedRoles cached = probedRoles;
-    if (cached != null && clock.instant().isBefore(cached.expiresAt())) {
-      return cached;
+    Optional<ModelRoleStatus> chat = probeResults.fresh(ModelRole.CHAT, PROBE_CACHE_TTL);
+    Optional<ModelRoleStatus> embedding = probeResults.fresh(ModelRole.EMBEDDING, PROBE_CACHE_TTL);
+    if (chat.isPresent() && embedding.isPresent()) {
+      return new ProbedRoles(chat.get(), embedding.get());
     }
     synchronized (probeLock) {
-      ProbedRoles current = probedRoles;
-      if (current != null && clock.instant().isBefore(current.expiresAt())) {
-        return current;
-      }
-      ModelRoleStatus chat = chatRole();
-      ProbeOutcome embedding = embeddingRole();
-      ProbedRoles refreshed =
-          new ProbedRoles(chat, embedding.status(), clock.instant().plus(PROBE_CACHE_TTL));
-      if (embedding.cacheable()) {
-        probedRoles = refreshed;
-      }
-      return refreshed;
+      ModelRoleStatus sharedChat =
+          probeResults
+              .fresh(ModelRole.CHAT, PROBE_CACHE_TTL)
+              .orElseGet(() -> probeResults.share(chatRole(), PROBE_CACHE_TTL));
+      ModelRoleStatus sharedEmbedding =
+          probeResults
+              .fresh(ModelRole.EMBEDDING, PROBE_CACHE_TTL)
+              .orElseGet(
+                  () -> {
+                    ProbeOutcome probed = embeddingRole();
+                    return probed.cacheable()
+                        ? probeResults.share(probed.status(), PROBE_CACHE_TTL)
+                        : probed.status();
+                  });
+      return new ProbedRoles(sharedChat, sharedEmbedding);
     }
   }
 

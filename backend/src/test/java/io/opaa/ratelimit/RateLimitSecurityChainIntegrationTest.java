@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -25,8 +26,9 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * keep their tokens is decided by whether the security chain (or, for the push intake, its handler)
  * authenticated them - never by the status code. Limits from {@link OpaaLocalAuthRateLimitTest}:
  * indexing one per client and library and five globally, query three globally, webhook three per
- * client and four globally, all per minute. Every test uses its own addresses; the limiters live as
- * long as the shared context.
+ * client and four globally, all per minute. Every test uses its own addresses; the limiters per
+ * client live as long as the shared context, the global ceilings in {@code installation_counters},
+ * whose rows of these rules every test resets.
  */
 @OpaaLocalAuthRateLimitTest
 class RateLimitSecurityChainIntegrationTest {
@@ -41,6 +43,7 @@ class RateLimitSecurityChainIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private LocalAccountFixtures fixtures;
 
@@ -49,11 +52,22 @@ class RateLimitSecurityChainIntegrationTest {
     fixtures = fixturesFactory.create();
     fixtures.cleanUp();
     fixtures.localProvider(true);
+    resetGlobalCeilings();
   }
 
   @AfterEach
   void tearDown() {
     fixtures.cleanUp();
+    resetGlobalCeilings();
+  }
+
+  /** No other class drives these rules with ceilings this small. */
+  private void resetGlobalCeilings() {
+    jdbcTemplate.update(
+        "DELETE FROM installation_counters WHERE counter_key IN (?, ?, ?)",
+        InstallationRateLimit.KEY_PREFIX + "indexing",
+        InstallationRateLimit.KEY_PREFIX + "query",
+        InstallationRateLimit.KEY_PREFIX + "webhook");
   }
 
   @Test

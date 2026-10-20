@@ -16,6 +16,7 @@ import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryMaintenanceSkips;
 import io.opaa.knowledge.VectorTable;
 import io.opaa.metadata.DocumentChunkMetadata;
 import io.opaa.metadata.DocumentMetadataService;
@@ -52,7 +53,8 @@ class ContextPrefixRerunServiceTest {
           TestFeatureFlags.allOn(),
           mock(PlatformTransactionManager.class),
           new io.opaa.observability.IndexingMetrics(
-              new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
+              new io.micrometer.core.instrument.simple.SimpleMeterRegistry()),
+          mock(LibraryMaintenanceSkips.class));
 
   @Test
   @SuppressWarnings("unchecked")

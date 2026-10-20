@@ -11,6 +11,8 @@ import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.LibraryMaintenanceSkips;
+import io.opaa.knowledge.LibraryMaintenanceSkips.Maintenance;
 import io.opaa.knowledge.VectorTable;
 import io.opaa.metadata.ChunkContextPrefix;
 import io.opaa.metadata.ContextPrefixBacklog;
@@ -24,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,8 +65,8 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
   private final IndexingMetrics metrics;
   private final TransactionTemplate transactionTemplate;
 
-  /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
-  private final Map<UUID, Integer> lastSkippedByLibrary = new ConcurrentHashMap<>();
+  /** Skipped count of the most recent call per library, shared by every instance. */
+  private final LibraryMaintenanceSkips skips;
 
   public ContextPrefixRerunService(
       JdbcTemplate jdbcTemplate,
@@ -77,8 +78,10 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
       VectorTable vectorTable,
       FeatureFlags featureFlags,
       PlatformTransactionManager transactionManager,
-      IndexingMetrics metrics) {
+      IndexingMetrics metrics,
+      LibraryMaintenanceSkips skips) {
     this.featureFlags = featureFlags;
+    this.skips = skips;
     this.metrics = metrics;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.jdbcTemplate = jdbcTemplate;
@@ -119,11 +122,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
             (limit, offset) -> selectPendingDocuments(library.getId(), limit, offset),
             this::advance);
     int skipped = counts.get(Advance.SKIPPED);
-    if (skipped == 0) {
-      lastSkippedByLibrary.remove(library.getId());
-    } else {
-      lastSkippedByLibrary.put(library.getId(), skipped);
-    }
+    skips.record(Maintenance.CONTEXT_PREFIX_RERUN, library.getId(), skipped);
     return new ContextPrefixRerunResult(counts.get(Advance.PROCESSED), skipped);
   }
 
@@ -303,6 +302,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
       return Map.of();
     }
     Map<UUID, ContextPrefixRerunProgress> byLibrary = new HashMap<>();
+    Map<UUID, Long> skipped = skips.skippedFor(Maintenance.CONTEXT_PREFIX_RERUN, libraryIds);
     List<Object> parameters = new ArrayList<>();
     parameters.add(DocumentStatus.INDEXED.name());
     parameters.addAll(libraryIds);
@@ -319,11 +319,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
           byLibrary.put(
               libraryId,
               new ContextPrefixRerunProgress(
-                  libraryId,
-                  total,
-                  total - pending,
-                  pending,
-                  lastSkippedByLibrary.getOrDefault(libraryId, 0)));
+                  libraryId, total, total - pending, pending, skipped.getOrDefault(libraryId, 0L)));
         },
         parameters.toArray());
     return byLibrary;

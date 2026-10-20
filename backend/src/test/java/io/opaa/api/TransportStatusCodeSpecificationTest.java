@@ -16,6 +16,7 @@ import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
 import io.opaa.ratelimit.SelfServiceEndpointAvailability;
 import io.opaa.security.TrustedProxyClientIpResolver;
+import io.opaa.test.InMemoryInstallationCounters;
 import io.opaa.test.JavaSources;
 import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -366,7 +367,8 @@ class TransportStatusCodeSpecificationTest {
             new TrustedProxyClientIpResolver(List.of()),
             new RateLimitMetrics(new SimpleMeterRegistry()),
             JsonMapper.builder().build(),
-            servedSelfService())
+            servedSelfService(),
+            new InMemoryInstallationCounters())
         .getFilter();
   }
 

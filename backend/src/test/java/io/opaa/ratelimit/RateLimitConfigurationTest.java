@@ -11,6 +11,7 @@ import io.opaa.ratelimit.RateLimitProperties.EndpointLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimit;
 import io.opaa.ratelimit.RateLimitProperties.LocalAuthLimits;
 import io.opaa.security.TrustedProxyClientIpResolver;
+import io.opaa.test.InMemoryInstallationCounters;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -260,7 +261,8 @@ class RateLimitConfigurationTest {
             new TrustedProxyClientIpResolver(List.of()),
             new RateLimitMetrics(new SimpleMeterRegistry()),
             JsonMapper.builder().build(),
-            availability())
+            availability(),
+            new InMemoryInstallationCounters())
         .getFilter();
   }
 

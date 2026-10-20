@@ -15,10 +15,10 @@ import org.postgresql.PGConnection;
 import org.postgresql.PGNotification;
 
 /**
- * The four {@code *-2026-10-20-cache-invalidation.yaml} changesets: a change of a cached table is
- * announced on {@code opaa_invalidation} with the topic of its cache - at commit, never after a
- * rollback, once per transaction - and a change of only the status columns of a row trigger is none
- * (ADR-0053, Entscheidung 5).
+ * The four {@code *-2026-10-20-cache-invalidation.yaml} changesets and the tables bound to the bus
+ * after them: a change of a cached table is announced on {@code opaa_invalidation} with the topic
+ * of its cache - at commit, never after a rollback, once per transaction - and a change of only the
+ * status columns of a row trigger is none (ADR-0053, Entscheidung 5).
  */
 class CacheInvalidationTriggerMigrationTest extends AbstractBaselineTest {
 
@@ -26,7 +26,8 @@ class CacheInvalidationTriggerMigrationTest extends AbstractBaselineTest {
     "db/changelog/foundation/2026-10-20-cache-invalidation.yaml",
     "db/changelog/identity/2026-10-20-cache-invalidation.yaml",
     "db/changelog/rights/2026-10-20-cache-invalidation.yaml",
-    "db/changelog/knowledge/2026-10-20-cache-invalidation.yaml"
+    "db/changelog/knowledge/2026-10-20-cache-invalidation.yaml",
+    "db/changelog/knowledge/2026-10-20-model-role-observations.yaml"
   };
 
   private Connection listener;
@@ -122,6 +123,24 @@ class CacheInvalidationTriggerMigrationTest extends AbstractBaselineTest {
     execute("UPDATE groups SET name = 'Dritte' WHERE id = '" + group + "'");
     connection.rollback();
     assertThat(received()).as("nothing after a rollback").isEmpty();
+  }
+
+  /**
+   * A new state of a probed model role is announced; a probe that only renews the time of the
+   * observation is not (ADR-0053, Entscheidung 12).
+   */
+  @Test
+  void aNewModelRoleStateIsAnnouncedAndARenewedObservationIsNot() throws Exception {
+    execute(
+        "INSERT INTO model_role_observations (role, base_url, model, reachable, timed_out,"
+            + " observed_at) VALUES ('RERANK', 'http://rerank', 'm', true, false, now())");
+    assertThat(received()).containsExactly("model-role-observations");
+
+    execute("UPDATE model_role_observations SET observed_at = now() + interval '1 minute'");
+    assertThat(received()).isEmpty();
+
+    execute("UPDATE model_role_observations SET reachable = false, diagnostic = 'refused'");
+    assertThat(received()).containsExactly("model-role-observations");
   }
 
   /** What arrived on the listening connection within a short wait. */

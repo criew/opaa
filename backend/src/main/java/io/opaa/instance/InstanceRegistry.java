@@ -144,6 +144,19 @@ public class InstanceRegistry {
     return Boolean.TRUE.equals(alive);
   }
 
+  /**
+   * How many instances are alive by the database clock, at least one: the caller is one of them,
+   * even before its first heartbeat lands or after the register lost its row.
+   */
+  public int liveCount() {
+    Integer live =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM backend_instances WHERE " + ALIVE,
+            Integer.class,
+            seconds(deadAfter));
+    return live == null ? 1 : Math.max(1, live);
+  }
+
   /** The fingerprints of the live instances, by instance. */
   SortedMap<UUID, ConfigurationFingerprint> liveFingerprints() {
     SortedMap<UUID, ConfigurationFingerprint> fingerprints = new TreeMap<>();

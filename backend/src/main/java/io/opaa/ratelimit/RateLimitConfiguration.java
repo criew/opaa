@@ -33,6 +33,9 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p>The two switchable self-service rules ask {@link SelfServiceEndpointAvailability} whether
  * their endpoint is served at all.
+ *
+ * <p>The global ceilings count for the whole installation in {@link InstallationCounters}, the
+ * budgets per client per instance (ADR-0053, Entscheidung 12).
  */
 @Configuration
 @EnableConfigurationProperties(RateLimitProperties.class)
@@ -96,7 +99,8 @@ public class RateLimitConfiguration {
       TrustedProxyClientIpResolver clientIpResolver,
       RateLimitMetrics metrics,
       JsonMapper jsonMapper,
-      ObjectProvider<SelfServiceEndpointAvailability> selfServiceFlows) {
+      ObjectProvider<SelfServiceEndpointAvailability> selfServiceFlows,
+      InstallationCounters counters) {
     // The per-library indexing trigger (POST /api/v1/libraries/{libraryId}/indexing) carries a
     // variable path segment, so its rule is a regex rather than a plain prefix - see
     // RateLimitFilter.Rule's Javadoc. The trailing $ deliberately excludes the sibling status
@@ -125,25 +129,31 @@ public class RateLimitConfiguration {
     // These endpoints sit behind the sign-in (the push intake behind its secret): only requests
     // that authenticated keep their token of the global ceiling.
     List<Rule> rules = new ArrayList<>();
-    rules.add(rule("query", "^/api/v1/query", properties.query(), AUTHENTICATED));
-    rules.add(rule("indexing", indexingTriggerPattern, properties.indexing(), AUTHENTICATED));
-    rules.add(rule("source-test", sourceTestPattern, properties.sourceTest(), AUTHENTICATED));
+    rules.add(rule(counters, "query", "^/api/v1/query", properties.query(), AUTHENTICATED));
+    rules.add(
+        rule(counters, "indexing", indexingTriggerPattern, properties.indexing(), AUTHENTICATED));
+    rules.add(
+        rule(counters, "source-test", sourceTestPattern, properties.sourceTest(), AUTHENTICATED));
     rules.add(
         rule(
+            counters,
             "document-content",
             documentContentPattern,
             properties.documentContent(),
             AUTHENTICATED));
-    rules.add(rule("webhook", webhookPattern, properties.webhook(), AUTHENTICATED_BY_HANDLER));
-    rules.add(rule("chat-search", CHAT_SEARCH_PATTERN, properties.chatSearch(), AUTHENTICATED));
+    rules.add(
+        rule(counters, "webhook", webhookPattern, properties.webhook(), AUTHENTICATED_BY_HANDLER));
+    rules.add(
+        rule(counters, "chat-search", CHAT_SEARCH_PATTERN, properties.chatSearch(), AUTHENTICATED));
     LocalAuthLimits localAuth = properties.localAuth();
-    rules.add(rule("local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
-    rules.add(rule("local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
+    rules.add(rule(counters, "local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
+    rules.add(rule(counters, "local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
     // A switched-off flow is answered exactly like an unknown route, which has no budget - counting
     // these two while they are off would answer 429 where the unknown route answers 401. Resolved
     // per request, never at wiring time: the flows read their switches from the database.
     rules.add(
         rule(
+            counters,
             "local-auth-register",
             LOCAL_REGISTER_PATTERN,
             localAuth.register(),
@@ -151,13 +161,24 @@ public class RateLimitConfiguration {
                 selfServiceFlows, SelfServiceEndpointAvailability::isSelfRegistrationAvailable)));
     rules.add(
         rule(
+            counters,
             "local-auth-forgot-password",
             LOCAL_FORGOT_PASSWORD_PATTERN,
             localAuth.forgotPassword(),
             served(selfServiceFlows, SelfServiceEndpointAvailability::isPasswordResetAvailable)));
-    rules.add(rule("local-auth-set-password", LOCAL_SET_PASSWORD_PATTERN, localAuth.setPassword()));
-    rules.add(rule("local-auth-verify-email", LOCAL_VERIFY_EMAIL_PATTERN, localAuth.verifyEmail()));
-    rules.add(rule("local-auth-handover", LOCAL_HANDOVER_PATTERN, localAuth.handover()));
+    rules.add(
+        rule(
+            counters,
+            "local-auth-set-password",
+            LOCAL_SET_PASSWORD_PATTERN,
+            localAuth.setPassword()));
+    rules.add(
+        rule(
+            counters,
+            "local-auth-verify-email",
+            LOCAL_VERIFY_EMAIL_PATTERN,
+            localAuth.verifyEmail()));
+    rules.add(rule(counters, "local-auth-handover", LOCAL_HANDOVER_PATTERN, localAuth.handover()));
 
     var registration =
         new FilterRegistrationBean<>(
@@ -167,27 +188,38 @@ public class RateLimitConfiguration {
     return registration;
   }
 
-  private static Rule rule(String name, String pattern, EndpointLimit limit, Counting counting) {
+  private static Rule rule(
+      InstallationCounters counters,
+      String name,
+      String pattern,
+      EndpointLimit limit,
+      Counting counting) {
     return new Rule(
         name,
         pattern,
         new RateLimitService(limit.maxRequests(), limit.windowSeconds()),
-        new RateLimitService(limit.globalMaxRequests(), limit.windowSeconds()),
+        new InstallationRateLimit(counters, name, limit.globalMaxRequests(), limit.windowSeconds()),
         counting);
   }
 
-  private static Rule rule(String name, String pattern, LocalAuthLimit limit) {
-    return rule(name, pattern, limit, RateLimitFilter.ALWAYS_SERVED);
+  private static Rule rule(
+      InstallationCounters counters, String name, String pattern, LocalAuthLimit limit) {
+    return rule(counters, name, pattern, limit, RateLimitFilter.ALWAYS_SERVED);
   }
 
   private static Rule rule(
-      String name, String pattern, LocalAuthLimit limit, BooleanSupplier served) {
+      InstallationCounters counters,
+      String name,
+      String pattern,
+      LocalAuthLimit limit,
+      BooleanSupplier served) {
     return new Rule(
         name,
         pattern,
         new RateLimitService(limit.maxRequests(), limit.windowSeconds()),
         limit.hasGlobalLimit()
-            ? new RateLimitService(limit.globalMaxRequests(), limit.windowSeconds())
+            ? new InstallationRateLimit(
+                counters, name, limit.globalMaxRequests(), limit.windowSeconds())
             : null,
         served);
   }

@@ -712,6 +712,11 @@ Werkzeugbeschreibungen je Token entstehen. Der Abflussalarm zählt es nicht mit:
 Bestände, die das Haus verlassen, und eine Liste von Namen, die das Token ohnehin sehen darf, ist
 kein Abruf.
 
+Das Kontingent ist das der Installation. Laufen mehrere Backend-Instanzen, zählt jede für sich im
+Speicher und gewährt ihren Anteil: den eingestellten Wert geteilt durch die Zahl der laufenden
+Instanzen, aufgerundet. Ein gemeinsamer Zähler in der Datenbank wäre genau das Nutzungsdatum je
+Token, das dieser Kanal nicht entstehen lässt (ADR-0053, Entscheidung 12).
+
 Der Vorgabewert ist bewusst konservativ; die Systemverwaltung kann ihn anheben. Ein überschrittenes
 Kontingent führt zu einer klaren Ablehnung, nicht zu einer langsamen Antwort. Ein Kontingent ist
 **keine Nutzungsstatistik**: Es zählt in einem gleitenden Fenster und wird nicht historisiert, nicht
@@ -731,8 +736,9 @@ was nicht:
 - **Eine Meldung an die Systemverwaltung bei Überschreitung**, mit dem Zeitfenster und der
   Token-Kennung — dazu ein Eintrag im technischen Anwendungslog mit kurzer Frist und ohne
   Auswertungsoberfläche, der zusätzlich Schwelle und gemessenen Wert trägt. Kein Verlauf, keine
-  Zeitreihe, keine Kurve, kein Bericht — die Zählung selbst lebt im Speicher und ist nach dem
-  Fenster weg. Eine Beruhigungsfrist verhindert, dass ein anhaltender Vorgang in eine Ereignisreihe
+  Zeitreihe, keine Kurve, kein Bericht — die Zählung ist eine einzige Zählerzeile des Kanals in der
+  Datenbank, die alle Instanzen gemeinsam zählen (laufende und vorige Stunde, ohne Token oder
+  Person), und ist nach dem Fenster weg. Eine Beruhigungsfrist verhindert, dass ein anhaltender Vorgang in eine Ereignisreihe
   zerfällt, die faktisch ein Verlauf wäre.
 - **Die Meldung wird höchstens 14 Tage aufbewahrt**, gelesen oder nicht, und dann gelöscht. Eine
   Meldung, die niemand lesen kann, ist keine; eine Meldung, die stehen bleibt, ist nach

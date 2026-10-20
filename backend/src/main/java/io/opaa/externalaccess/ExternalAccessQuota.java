@@ -3,12 +3,15 @@ package io.opaa.externalaccess;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.common.TooManyRequestsException;
+import io.opaa.instance.InstanceRegistry;
 import io.opaa.search.AccessTokenQuota;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.UUID;
+import java.util.function.IntSupplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,9 +27,14 @@ import org.springframework.stereotype.Component;
  * <p>Three things this deliberately is not. It is <b>not a protection against mass retrieval</b> -
  * a conservative 60 requests an hour still amount to six figures over a token's maximum lifetime;
  * it is a load brake, and the specification says so rather than claiming more. It is <b>no usage
- * statistic</b>: the window lives in memory only (ADR-0021, single instance), is never persisted,
- * never evaluated per person and never displayed. And a refusal writes <b>no entry anywhere</b> -
- * on a token it would be a behavioural datum about a person.
+ * statistic</b>: the window lives in memory only (ADR-0021), is never persisted, never evaluated
+ * per person and never displayed. And a refusal writes <b>no entry anywhere</b> - on a token it
+ * would be a behavioural datum about a person.
+ *
+ * <p><b>With several instances each holds its own window</b> (ADR-0053, Entscheidung 12): the
+ * setting is the installation's quota, and each instance grants its share of it - the setting
+ * divided by the number of live instances in the register, rounded up. The count of live instances
+ * is read at most every {@link #LIVE_COUNT_REFRESH}.
  */
 @Component
 public class ExternalAccessQuota implements AccessTokenQuota {
@@ -36,13 +44,29 @@ public class ExternalAccessQuota implements AccessTokenQuota {
   /** Upper bound on tracked tokens; beyond it the least valuable window is forgotten. */
   private static final long MAX_TRACKED_TOKENS = 50_000;
 
+  /** How long the number of live instances is reused before it is read again. */
+  static final Duration LIVE_COUNT_REFRESH = Duration.ofSeconds(30);
+
   private final ExternalAccessSettingsService settings;
   private final Clock clock;
+  private final IntSupplier liveInstances;
   private final Cache<UUID, Deque<Long>> windows;
+  private volatile LiveCount liveCount;
 
-  public ExternalAccessQuota(ExternalAccessSettingsService settings, Clock clock) {
+  /** A number of live instances and when it was read, by this process's clock. */
+  private record LiveCount(int instances, long readAtMillis) {}
+
+  @Autowired
+  public ExternalAccessQuota(
+      ExternalAccessSettingsService settings, Clock clock, InstanceRegistry registry) {
+    this(settings, clock, registry::liveCount);
+  }
+
+  ExternalAccessQuota(
+      ExternalAccessSettingsService settings, Clock clock, IntSupplier liveInstances) {
     this.settings = settings;
     this.clock = clock;
+    this.liveInstances = liveInstances;
     this.windows =
         Caffeine.newBuilder()
             // Twice the window, so timestamps still inside it survive an idle stretch.
@@ -62,8 +86,8 @@ public class ExternalAccessQuota implements AccessTokenQuota {
     if (accessTokenId == null) {
       return;
     }
-    int limit = settings.current().values().tokenRateLimitPerHour();
     long now = clock.millis();
+    int limit = shareOf(settings.current().values().tokenRateLimitPerHour(), now);
     Deque<Long> window = windows.get(accessTokenId, key -> new ArrayDeque<>());
     synchronized (window) {
       long cutoff = now - WINDOW.toMillis();
@@ -78,6 +102,18 @@ public class ExternalAccessQuota implements AccessTokenQuota {
       }
       window.addLast(now);
     }
+  }
+
+  /** This instance's share of the installation's quota {@code limit}, at least one request. */
+  private int shareOf(int limit, long now) {
+    LiveCount current = liveCount;
+    if (current == null
+        || now < current.readAtMillis()
+        || now - current.readAtMillis() >= LIVE_COUNT_REFRESH.toMillis()) {
+      current = new LiveCount(Math.max(1, liveInstances.getAsInt()), now);
+      liveCount = current;
+    }
+    return Math.max(1, (limit + current.instances() - 1) / current.instances());
   }
 
   /** Forgets every window - for a test, and for nothing else. */

@@ -529,10 +529,12 @@ anstellen: Ein konservativer Stundenwert ergibt über die Höchstlaufzeit eines 
 sechsstellig viele Abrufe. Was in einer Nacht nicht geht, geht in Monaten. Ein überschrittenes
 Kontingent führt zu einer klaren Ablehnung mit Wartehinweis, nicht zu einer langsamen Antwort. Der
 Zähler läuft nur im Arbeitsspeicher, wird nicht historisiert, nicht je Person ausgewertet und nicht
-angezeigt; eine Ablehnung erzeugt **keinen** Eintrag.
+angezeigt; eine Ablehnung erzeugt **keinen** Eintrag. Bei mehreren Backend-Instanzen zählt jede
+selbst und gewährt den eingestellten Wert geteilt durch die Zahl der laufenden Instanzen.
 
-**Der Abflussalarm** zählt die Abrufe des **ganzen Kanals** in einem gleitenden Stundenfenster,
-ebenfalls nur im Arbeitsspeicher. Wird die Schwelle überschritten, entsteht **eine** Meldung an die
+**Der Abflussalarm** zählt die Abrufe des **ganzen Kanals** in einem gleitenden Stundenfenster, in
+einem einzigen Zähler in der Datenbank ohne Token oder Person, den alle Instanzen gemeinsam führen.
+Wird die Schwelle überschritten, entsteht **eine** Meldung an die
 Systemverwaltung mit Zeitfenster und Token-Kennung, dazu eine Warnzeile im Anwendungslog; danach
 schweigt der Alarm für eine Beruhigungsfrist, damit ein anhaltender Vorgang nicht in eine
 Meldungsreihe zerfällt, die faktisch ein Verlauf wäre. Die Meldung wird nach einer festen Frist

@@ -2,25 +2,41 @@ package io.opaa.metadata;
 
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.compliance.PerInstance;
+import io.opaa.metadata.EmbeddingRateMeasurements.Totals;
+import jakarta.annotation.PreDestroy;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
 /**
  * How long embedding one chunk takes on this installation - the rate behind "4.812 Chunks, rund 40
  * Minuten" (metadata-schema.md, "Der Reindex-Preis, ehrlich ausgewiesen"). Contract: the measured
- * mean of the embedding calls this process has actually made once {@link #MIN_MEASURED_CHUNKS} of
- * them exist, the configured {@code opaa.indexing.embedding-rate-estimate} before that - a fresh
- * installation must still be able to name a number. Process-lifetime state (ADR-0021).
+ * mean of the embedding calls every instance of the installation has actually made with the
+ * configured model once {@link #MIN_MEASURED_CHUNKS} of them exist, the configured {@code
+ * opaa.indexing.embedding-rate-estimate} before that - a fresh installation must still be able to
+ * name a number.
+ *
+ * <p>The measurements are summed in {@link EmbeddingRateMeasurements} (ADR-0053, Entscheidung 12),
+ * so every instance names the same duration. This process adds its own in portions of {@link
+ * #FLUSH_CHUNKS} chunks and counts what it has not added yet into its own estimate.
  */
-@PerInstance("an estimate shown by this process")
+@PerInstance("the fallback until the installation has measured enough calls")
 @NoDataImpact("a cost estimate")
 @Component
 public class EmbeddingRateEstimator {
 
   /** Below this many measured chunks a mean says more about warm-up than about throughput. */
   static final long MIN_MEASURED_CHUNKS = 20;
+
+  /** How many measured chunks this process collects before it adds them to the shared sum. */
+  static final long FLUSH_CHUNKS = 20;
+
+  private static final Logger log = LoggerFactory.getLogger(EmbeddingRateEstimator.class);
 
   /** Where the rate a given estimate used came from. */
   public enum RateSource {
@@ -29,8 +45,13 @@ public class EmbeddingRateEstimator {
   }
 
   private final double configuredChunksPerSecond;
-  private final AtomicLong measuredChunks = new AtomicLong();
-  private final AtomicLong measuredNanos = new AtomicLong();
+  private final EmbeddingRateMeasurements shared;
+
+  /** Measured here and not yet added to {@link #shared}; guarded by {@link #pendingLock}. */
+  private final Object pendingLock = new Object();
+
+  private long pendingChunks;
+  private long pendingNanos;
 
   /**
    * Embedding calls currently in flight, and how many have ever started. Only a call that was alone
@@ -42,10 +63,18 @@ public class EmbeddingRateEstimator {
 
   private final AtomicLong starts = new AtomicLong();
 
+  /** An estimator whose measurements stay in this process - for a context without a database. */
+  public EmbeddingRateEstimator(double configuredChunksPerSecond) {
+    this(configuredChunksPerSecond, new ProcessLocalEmbeddingRateMeasurements());
+  }
+
+  @Autowired
   public EmbeddingRateEstimator(
-      @Value("${opaa.indexing.embedding-rate-estimate:4.0}") double configuredChunksPerSecond) {
+      @Value("${opaa.indexing.embedding-rate-estimate:4.0}") double configuredChunksPerSecond,
+      EmbeddingRateMeasurements shared) {
     this.configuredChunksPerSecond =
         configuredChunksPerSecond > 0 ? configuredChunksPerSecond : 4.0;
+    this.shared = shared;
   }
 
   /**
@@ -70,23 +99,79 @@ public class EmbeddingRateEstimator {
     if (!ranAlone || chunks <= 0 || nanos <= 0) {
       return;
     }
-    measuredChunks.addAndGet(chunks);
-    measuredNanos.addAndGet(nanos);
+    long flushChunks;
+    long flushNanos;
+    synchronized (pendingLock) {
+      pendingChunks += chunks;
+      pendingNanos += nanos;
+      if (pendingChunks < FLUSH_CHUNKS) {
+        return;
+      }
+      flushChunks = pendingChunks;
+      flushNanos = pendingNanos;
+      pendingChunks = 0;
+      pendingNanos = 0;
+    }
+    flush(flushChunks, flushNanos);
   }
 
   public RateSource rateSource() {
-    return measuredChunks.get() >= MIN_MEASURED_CHUNKS
-        ? RateSource.MEASURED
-        : RateSource.CONFIGURED;
+    return measured().chunks() >= MIN_MEASURED_CHUNKS ? RateSource.MEASURED : RateSource.CONFIGURED;
   }
 
   /** Seconds per chunk at the current rate; never zero, so an estimate is never falsely instant. */
   public double secondsPerChunk() {
-    long chunks = measuredChunks.get();
-    if (chunks >= MIN_MEASURED_CHUNKS) {
-      return measuredNanos.get() / 1_000_000_000.0 / chunks;
+    Totals measured = measured();
+    if (measured.chunks() >= MIN_MEASURED_CHUNKS) {
+      return measured.nanos() / 1_000_000_000.0 / measured.chunks();
     }
     return 1.0 / configuredChunksPerSecond;
+  }
+
+  /** Adds this process's measurements to the shared sum before it stops. */
+  @PreDestroy
+  void flushPending() {
+    long flushChunks;
+    long flushNanos;
+    synchronized (pendingLock) {
+      flushChunks = pendingChunks;
+      flushNanos = pendingNanos;
+      pendingChunks = 0;
+      pendingNanos = 0;
+    }
+    if (flushChunks > 0) {
+      flush(flushChunks, flushNanos);
+    }
+  }
+
+  /** The shared sum plus what this process has not added yet. */
+  private Totals measured() {
+    Totals sum;
+    try {
+      sum = shared.totals();
+    } catch (DataAccessException e) {
+      log.debug("Shared embedding measurements unreadable: {}", e.getMessage());
+      sum = Totals.NONE;
+    }
+    synchronized (pendingLock) {
+      return sum.plus(pendingChunks, pendingNanos);
+    }
+  }
+
+  /**
+   * Adds a portion to the shared sum; one that cannot be added goes back to the pending part, so a
+   * measurement is never lost to a database hiccup and an embedding call never fails because of it.
+   */
+  private void flush(long chunks, long nanos) {
+    try {
+      shared.add(chunks, nanos);
+    } catch (DataAccessException e) {
+      log.debug("Shared embedding measurements not updated: {}", e.getMessage());
+      synchronized (pendingLock) {
+        pendingChunks += chunks;
+        pendingNanos += nanos;
+      }
+    }
   }
 
   /** The expected runtime of {@code chunks} embedding calls, rounded up to a full second. */

@@ -24,12 +24,13 @@ class ExternalAccessQuotaTest {
   private ExternalAccessSettingsService settings;
   private MovableClock clock;
   private ExternalAccessQuota quota;
+  private int liveInstances = 1;
 
   @BeforeEach
   void setUp() {
     settings = mock(ExternalAccessSettingsService.class);
     clock = new MovableClock(START);
-    quota = new ExternalAccessQuota(settings, clock);
+    quota = new ExternalAccessQuota(settings, clock, () -> liveInstances);
     limitPerHour(3);
   }
 
@@ -95,6 +96,31 @@ class ExternalAccessQuotaTest {
     limitPerHour(10);
 
     assertThatCode(() -> quota.requireWithinQuota(token)).doesNotThrowAnyException();
+  }
+
+  /**
+   * With two live instances each grants half of the installation's quota, rounded up: six an hour
+   * for the installation are three on this instance.
+   */
+  @Test
+  void eachOfTwoLiveInstancesGrantsHalfOfTheQuota() {
+    liveInstances = 2;
+    limitPerHour(6);
+    UUID token = UUID.randomUUID();
+    for (int i = 0; i < 3; i++) {
+      quota.requireWithinQuota(token);
+    }
+
+    assertThatThrownBy(() -> quota.requireWithinQuota(token))
+        .isInstanceOf(TooManyRequestsException.class);
+  }
+
+  @Test
+  void aQuotaBelowTheNumberOfInstancesStillGrantsOneRequestPerInstance() {
+    liveInstances = 3;
+    limitPerHour(1);
+
+    assertThatCode(() -> quota.requireWithinQuota(UUID.randomUUID())).doesNotThrowAnyException();
   }
 
   /** A clock a test moves by hand; {@link Clock#millis()} is all the quota reads. */

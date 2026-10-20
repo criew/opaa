@@ -36,7 +36,8 @@ import org.springframework.util.StringUtils;
  * which is what makes a change effective without a restart. Bound to the {@link InvalidationBus}
  * (ADR-0053, Entscheidung 5): a change of the settings on any instance drops it on every instance,
  * and while the bus does not listen every read builds it from the row. The send status is not part
- * of it and not announced.
+ * of it: it is read from the row on every call, so every instance reports the outcome of the last
+ * attempt of any instance (ADR-0053, Entscheidung 12).
  *
  * <p>The password is stored encrypted by {@link SettingsEncryptor}, answered as {@link
  * #PASSWORD_MASK} and never part of the audit payload, which records only whether one is set.
@@ -78,7 +79,6 @@ public class MailSettingsService implements InvalidationSubscriber {
 
   private final AtomicReference<MailSettingsSnapshot> snapshot = new AtomicReference<>();
   private final AtomicLong snapshotGeneration = new AtomicLong();
-  private final AtomicReference<MailSendStatus> status = new AtomicReference<>();
 
   public MailSettingsService(
       MailSettingsRepository repository,
@@ -116,13 +116,15 @@ public class MailSettingsService implements InvalidationSubscriber {
     return current;
   }
 
-  /** When mail last worked and when it last did not; read by {@link MailHealthIndicator}. */
+  /**
+   * When mail last worked and when it last did not, on whichever instance it was sent; read by
+   * {@link MailHealthIndicator}. One read of the single settings row per call.
+   */
+  @Transactional(readOnly = true)
   public MailSendStatus status() {
-    MailSendStatus current = status.get();
-    if (current == null) {
-      current = rebuildStatus();
-    }
-    return current;
+    MailSettings settings = requireRow();
+    return new MailSendStatus(
+        settings.getLastSuccessAt(), settings.getLastFailureAt(), settings.getLastFailureReason());
   }
 
   /**
@@ -170,8 +172,7 @@ public class MailSettingsService implements InvalidationSubscriber {
   }
 
   /**
-   * Writes the outcome of a send attempt to the stored row and to the in-memory status; called by
-   * {@link MailService} only.
+   * Writes the outcome of a send attempt to the stored row; called by {@link MailService} only.
    *
    * <p><b>Its own short transaction</b> ({@code REQUIRES_NEW}): joining the caller's would hold a
    * lock on the single {@code mail_settings} row for the rest of a business transaction - every
@@ -198,12 +199,6 @@ public class MailSettingsService implements InvalidationSubscriber {
     } else {
       repository.recordFailure(at, MailSettings.truncate(failureReason));
     }
-    MailSettings settings = requireRow();
-    status.set(
-        new MailSendStatus(
-            settings.getLastSuccessAt(),
-            settings.getLastFailureAt(),
-            settings.getLastFailureReason()));
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -224,14 +219,12 @@ public class MailSettingsService implements InvalidationSubscriber {
   }
 
   /**
-   * Drops both process-local caches so the next read rebuilds them from the database. For tests
-   * that share this bean across classes: the send status is not reset by any write to the row, so
-   * without this a test that provoked a failure leaks that state into the next one. Tests outside
-   * this package reach it through {@code io.opaa.mail.MailTestSupport}.
+   * Drops the process-local snapshot so the next read rebuilds it from the database. For tests that
+   * share this bean across classes. Tests outside this package reach it through {@code
+   * io.opaa.mail.MailTestSupport}.
    */
   void resetCaches() {
     snapshot.set(null);
-    status.set(null);
   }
 
   /** A rebuild that a drop overtook is returned but not kept: it may have read the old row. */
@@ -242,17 +235,6 @@ public class MailSettingsService implements InvalidationSubscriber {
     if (snapshotGeneration.get() != before) {
       snapshot.compareAndSet(rebuilt, null);
     }
-    return rebuilt;
-  }
-
-  private MailSendStatus rebuildStatus() {
-    MailSettings settings = requireRow();
-    MailSendStatus rebuilt =
-        new MailSendStatus(
-            settings.getLastSuccessAt(),
-            settings.getLastFailureAt(),
-            settings.getLastFailureReason());
-    status.set(rebuilt);
     return rebuilt;
   }
 

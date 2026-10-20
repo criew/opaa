@@ -95,8 +95,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
    * capture group (as the per-library indexing rule does), it captures a library id: a well-formed
    * UUID, in any letter case, is appended to the client key ({@code clientKey + ":" + libraryId});
    * anything else counts under the client key alone, so made-up segments buy no fresh budget. The
-   * global limiter always uses one fixed key. {@code global} may be {@code null} for a rule without
-   * a global ceiling.
+   * global limiter always uses one fixed key; in production it counts for the whole installation
+   * ({@link InstallationRateLimit}), the per-client one per instance. {@code global} may be {@code
+   * null} for a rule without a global ceiling.
    *
    * <p>{@code served} answers, per request, whether the endpoint behind the rule exists at all
    * right now; it is {@link #ALWAYS_SERVED} for every rule whose endpoint cannot be switched off. A
@@ -109,21 +110,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
   public record Rule(
       String name,
       String pathPattern,
-      RateLimitService perClient,
-      RateLimitService global,
+      RequestLimiter perClient,
+      RequestLimiter global,
       BooleanSupplier served,
       Counting counting) {
 
-    public Rule(
-        String name, String pathPattern, RateLimitService perClient, RateLimitService global) {
+    public Rule(String name, String pathPattern, RequestLimiter perClient, RequestLimiter global) {
       this(name, pathPattern, perClient, global, ALWAYS_SERVED, Counting.EVERY_REQUEST);
     }
 
     public Rule(
         String name,
         String pathPattern,
-        RateLimitService perClient,
-        RateLimitService global,
+        RequestLimiter perClient,
+        RequestLimiter global,
         BooleanSupplier served) {
       this(name, pathPattern, perClient, global, served, Counting.EVERY_REQUEST);
     }
@@ -131,8 +131,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public Rule(
         String name,
         String pathPattern,
-        RateLimitService perClient,
-        RateLimitService global,
+        RequestLimiter perClient,
+        RequestLimiter global,
         Counting counting) {
       this(name, pathPattern, perClient, global, ALWAYS_SERVED, counting);
     }
@@ -141,8 +141,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
   private record CompiledRule(
       String name,
       Pattern path,
-      RateLimitService perClient,
-      RateLimitService global,
+      RequestLimiter perClient,
+      RequestLimiter global,
       BooleanSupplier served,
       Counting counting) {}
 
