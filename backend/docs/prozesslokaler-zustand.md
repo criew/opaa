@@ -12,7 +12,7 @@ nennt „(ADR-0021)“ in der Javadoc (Regel in [backend/AGENTS.md](../AGENTS.md
 Nicht im Register steht, was schon über die Datenbank koordiniert und keinen Umbau braucht: die
 Advisory-Locks in `UserRepository`, `GroupRepository`, `AssetGrantRepository` und `DirectorySyncRunLock`;
 `uk_indexing_jobs_library_running` als Sperre gegen überlappende Läufe; Seed-Marker und die Start-Seeds
-unter der Advisory-Sperre `209` (`OidcProviderSeedRunner`, `LlmModelSeedRunner`, `LocalAdminSeeder` samt
+unter der Advisory-Sperre `211` (`OidcProviderSeedRunner`, `LlmModelSeedRunner`, `LocalAdminSeeder` samt
 `OPAA_LOCAL_ADMIN_RESET`); die Migrationsregeln aus [liquibase.md](liquibase.md) (Expand/Contract,
 Verzeichnis der persistierten Enums, `lock_timeout`, `vector_store` aus Liquibase); OAuth-`state` in `connection_authorizations`; die
 bedingten `UPDATE`s von Refresh-Rotation, Action-Tokens und Fehlversuch-Sperre; Werte je Aufruf oder Lauf

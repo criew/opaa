@@ -171,7 +171,7 @@ Start wie bisher; Compose und Helm binden den Modus mit #2951 ein. `InstanceStar
 Backend als eigene Prozesse: Migrationsmodus mit Exit-Code 0, danach eine Instanz ohne Migration,
 und zwei gleichzeitige Kaltstarts gegen eine leere Datenbank.
 
-Gleichzeitig startende Instanzen seeden unter einer Advisory-Sperre (Namensraum `209`) nacheinander;
+Gleichzeitig startende Instanzen seeden unter einer Advisory-Sperre (Namensraum `211`) nacheinander;
 ein Passwort erscheint erst nach dem Commit seiner Transaktion im Log. `OPAA_LOCAL_ADMIN_RESET=force`
 wirkt einmal je Setzen: Der Reset steht in `local_admin_seed_marker.forced_reset_at`, erst ein Start
 ohne die Variable löscht den Vermerk.
