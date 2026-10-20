@@ -1,0 +1,132 @@
+# Stand-ins of the two-instance test on kind (multi-instance-test.sh), in the namespace multi-test:
+# the object store of the originals and of the corpus bucket, the chat/embedding stub of the E2E
+# suite (its server.mjs comes from the ConfigMap ai-stub, created by the script) and the mail
+# catcher. Test values only; nothing here is a real secret.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: objectstore
+  namespace: multi-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: objectstore }
+  template:
+    metadata:
+      labels: { app: objectstore }
+    spec:
+      containers:
+        - name: rustfs
+          image: rustfs/rustfs:1.0.3
+          env:
+            - { name: RUSTFS_ACCESS_KEY, value: opaa-kind }
+            - { name: RUSTFS_SECRET_KEY, value: opaa-kind-secret }
+            - { name: RUSTFS_VOLUMES, value: /data }
+          ports:
+            - containerPort: 9000
+          readinessProbe:
+            httpGet: { path: /health, port: 9000 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: data, mountPath: /data }
+          resources:
+            limits: { memory: 512Mi }
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: objectstore
+  namespace: multi-test
+spec:
+  selector: { app: objectstore }
+  ports:
+    - port: 9000
+      targetPort: 9000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-stub
+  namespace: multi-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: ai-stub }
+  template:
+    metadata:
+      labels: { app: ai-stub }
+    spec:
+      containers:
+        - name: ai-stub
+          image: node:24-alpine
+          command: ["node", "/app/server.mjs"]
+          env:
+            - { name: PORT, value: "8089" }
+            - { name: EMBEDDING_DIMENSIONS, value: "1024" }
+          ports:
+            - containerPort: 8089
+          readinessProbe:
+            httpGet: { path: /health, port: 8089 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: app, mountPath: /app }
+          resources:
+            limits: { memory: 256Mi }
+      volumes:
+        - name: app
+          configMap:
+            name: ai-stub
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-stub
+  namespace: multi-test
+spec:
+  selector: { app: ai-stub }
+  ports:
+    - port: 8089
+      targetPort: 8089
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+  namespace: multi-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mailpit }
+  template:
+    metadata:
+      labels: { app: mailpit }
+    spec:
+      containers:
+        - name: mailpit
+          image: axllent/mailpit:v1.31.6
+          env:
+            - { name: MP_MAX_MESSAGES, value: "5000" }
+            - { name: MP_SMTP_AUTH_ACCEPT_ANY, value: "1" }
+            - { name: MP_SMTP_AUTH_ALLOW_INSECURE, value: "1" }
+          ports:
+            - containerPort: 1025
+            - containerPort: 8025
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8025 }
+            periodSeconds: 2
+          resources:
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+  namespace: multi-test
+spec:
+  selector: { app: mailpit }
+  ports:
+    - { name: smtp, port: 1025, targetPort: 1025 }
+    - { name: web, port: 8025, targetPort: 8025 }

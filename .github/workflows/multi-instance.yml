@@ -1,0 +1,180 @@
+name: Zwei Instanzen
+
+# The scenarios of e2e/multi-instance/ (ADR-0053): two backend instances against one database,
+# under Docker Compose (docker-compose.multi.yml) and on kind (the chart with backend.replicas 2),
+# each with a cold start of the current version and a rolling update from the previous one
+# (e2e/scripts/previous-version.mjs) under load. Several minutes of image builds and two
+# installations per platform, so not on every pull request and no required check: nightly, on
+# demand, and on a pull request labelled "multi-instance-suite" - the pattern of the other suites.
+on:
+  schedule:
+    # After the helm suite (6:25 UTC), so that the container suites do not share a runner.
+    - cron: '50 6 * * *'
+  workflow_dispatch:
+    inputs:
+      previous_ref:
+        description: Commit oder Tag der Vorgängerversion (leer = Regel aus previous-version.mjs)
+        required: false
+        default: ''
+  # No branches filter: stacked pull requests must be able to run it per label as well.
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}-${{ github.event.label.name || 'none' }}
+  cancel-in-progress: true
+
+env:
+  # renovate: datasource=github-releases depName=kubernetes-sigs/kind
+  KIND_VERSION: v0.33.0
+  # Newest supported Kubernetes version (ADR-0042, Entscheidung 8), as in helm-chart.yml.
+  KIND_NODE_IMAGE: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+
+jobs:
+  suite:
+    name: Zwei Instanzen (${{ matrix.platform }})
+    if: github.event_name != 'pull_request' || github.event.label.name == 'multi-instance-suite'
+    runs-on: ubuntu-latest
+    # Four image builds, two installations, a scheduled run waited for and a rolling update.
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [compose, kind]
+    steps:
+      # The full history: the previous version is a commit of main a day before the base.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Vorgängerversion bestimmen
+        id: previous
+        env:
+          E2E_MULTI_PREVIOUS_REF: ${{ inputs.previous_ref }}
+        run: |
+          sha="$(node e2e/scripts/previous-version.mjs)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short=${sha:0:7}" >> "$GITHUB_OUTPUT"
+          echo "Vorgängerversion: $(git log -1 --format='%h %ci %s' "$sha")" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.previous.outputs.sha }}
+          path: previous
+          persist-credentials: false
+
+      - name: Kurzform des Commits
+        id: head
+        run: echo "short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Versions with the commit, so that the scenario sees the instances change version.
+      - name: Backend-Image bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          tags: opaa-ci/backend:ci
+          build-args: OPAA_VERSION=0.0.0-dev+${{ steps.head.outputs.short }}
+          load: true
+          cache-from: type=gha,scope=multi-instance-backend
+          cache-to: type=gha,mode=max,scope=multi-instance-backend
+
+      - name: Frontend-Image bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: frontend/Dockerfile
+          tags: opaa-ci/frontend:ci
+          load: true
+          cache-from: type=gha,scope=multi-instance-frontend
+          cache-to: type=gha,mode=max,scope=multi-instance-frontend
+
+      - name: Backend-Image der Vorgängerversion bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: previous
+          file: previous/backend/Dockerfile
+          tags: opaa-ci/backend:previous
+          build-args: OPAA_VERSION=0.0.0-dev+${{ steps.previous.outputs.short }}
+          load: true
+          cache-from: type=gha,scope=multi-instance-backend-previous
+          cache-to: type=gha,mode=max,scope=multi-instance-backend-previous
+
+      - name: Frontend-Image der Vorgängerversion bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: previous
+          file: previous/frontend/Dockerfile
+          tags: opaa-ci/frontend:previous
+          load: true
+          cache-from: type=gha,scope=multi-instance-frontend-previous
+          cache-to: type=gha,mode=max,scope=multi-instance-frontend-previous
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: e2e/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: e2e/pnpm-lock.yaml
+
+      # No browser: the scenarios talk to the API and drive the platform.
+      - name: E2E-Abhängigkeiten installieren und typprüfen
+        working-directory: e2e
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run typecheck
+
+      - name: Szenarien unter Docker Compose
+        if: matrix.platform == 'compose'
+        working-directory: e2e
+        env:
+          E2E_MULTI_BACKEND_IMAGE: opaa-ci/backend:ci
+          E2E_MULTI_FRONTEND_IMAGE: opaa-ci/frontend:ci
+          E2E_MULTI_PREVIOUS_BACKEND_IMAGE: opaa-ci/backend:previous
+          E2E_MULTI_PREVIOUS_FRONTEND_IMAGE: opaa-ci/frontend:previous
+          E2E_EXPECT_VERSION_CHANGE: 'true'
+        run: pnpm run test:multi-instance
+
+      - uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
+        if: matrix.platform == 'kind'
+        with:
+          version: ${{ env.KIND_VERSION }}
+          node_image: ${{ env.KIND_NODE_IMAGE }}
+
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        if: matrix.platform == 'kind'
+        with:
+          # renovate: datasource=github-releases depName=helm/helm
+          version: v4.3.1
+
+      - name: Szenarien auf kind
+        if: matrix.platform == 'kind'
+        env:
+          E2E_EXPECT_VERSION_CHANGE: 'true'
+        run: |
+          kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci \
+            opaa-ci/backend:previous opaa-ci/frontend:previous --name chart-testing
+          deploy/helm/ci/multi-instance-test.sh
+
+      # if: !cancelled(): a job that runs into timeout-minutes counts as cancelled, not failed.
+      - name: Bericht und Protokolle hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: multi-instance-${{ matrix.platform }}
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/docker-compose.multi-instance-*.log
+            e2e/kind-multi-instance-*.log
+          if-no-files-found: ignore
+          retention-days: 14

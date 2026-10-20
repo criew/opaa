@@ -1,0 +1,75 @@
+# Value set of the two-instance test on kind (multi-instance-test.sh, ADR-0053): two backend pods
+# with the migration job, the chart's evaluation database, originals and the corpus in the object
+# store of multi-test, ai-stub as chat and embedding model, the bootstrap administrator with a fixed
+# password. The image tags are set by the script; the secrets are throwaway test values.
+publicBaseUrl: http://localhost:18180
+evaluationDatabase:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+embedding:
+  baseUrl: http://ai-stub.multi-test.svc.cluster.local:8089
+  model: bge-m3
+  dimensions: 1024
+bootstrap:
+  initialAdmin:
+    email: systemverwaltung@opaa.example
+  chatModel:
+    baseUrl: http://ai-stub.multi-test.svc.cluster.local:8089
+    model: qwen2.5:3b
+uploads:
+  store: s3
+  s3:
+    endpoint: http://objectstore.multi-test.svc.cluster.local:9000
+    bucket: opaa-originals
+targetValidation:
+  indexingAllowlist:
+    - objectstore.multi-test.svc.cluster.local
+  identityProviderAllowlist:
+    - ai-stub.multi-test.svc.cluster.local
+secrets:
+  jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
+  databasePassword: ci-only-password
+  credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
+  settingsEncryptionKey: CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+  s3AccessKey: opaa-kind
+  s3SecretKey: opaa-kind-secret
+  initialAdminPassword: E2eMehrinstanzKonto!2026
+backend:
+  image:
+    repository: opaa-ci/backend
+    tag: ci
+    pullPolicy: Never
+  replicas: 2
+  migration:
+    enabled: true
+  # Small, so that the load scenario reaches it.
+  databasePoolSize: 5
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1280Mi
+  # The scenarios sign in over plain HTTP, all from the same client address, and one access token
+  # outlasts the rolling update.
+  extraEnv:
+    - { name: OPAA_AUTH_LOCAL_COOKIE_SECURE, value: "false" }
+    - { name: OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL, value: 30m }
+    - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS, value: "1000" }
+    - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_GLOBAL_MAX_REQUESTS, value: "2000" }
+    - { name: OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS, value: "200" }
+    - { name: OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS, value: "50" }
+    - { name: OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS, value: "100" }
+# A Prometheus in the cluster may scrape every backend pod (alerts per pod, ADR-0053).
+metrics:
+  podAnnotations: true
+frontend:
+  image:
+    repository: opaa-ci/frontend
+    tag: ci
+    pullPolicy: Never
