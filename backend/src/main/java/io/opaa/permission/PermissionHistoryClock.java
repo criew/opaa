@@ -1,49 +1,40 @@
 package io.opaa.permission;
 
 import java.time.Instant;
-import java.time.InstantSource;
-import java.time.temporal.ChronoUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.time.OffsetDateTime;
+import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.stereotype.Component;
 
 /**
  * Strictly monotonic source of the interval boundaries every permission-history writer records
- * ({@link PermissionHistoryService} and {@code AssetVisibilityHistoryService}, which share this one
- * bean so the contract holds across all three history tables): every call returns an instant
- * strictly greater than the one returned before, at the microsecond resolution {@code timestamptz}
- * stores - so two boundaries that differ here still differ once read back from the database. A
- * wall-clock reading that is not greater than the last boundary is replaced by that boundary plus
- * one microsecond.
+ * ({@link PermissionHistoryService}, {@code AssetVisibilityHistoryService} and the others share
+ * this one bean, so the contract holds across all history tables): every call returns an instant
+ * strictly greater than every boundary issued before it, by any instance of the installation, at
+ * the microsecond resolution {@code timestamptz} stores.
  *
- * <p>Monotonicity is unconditional, absolute accuracy is not. Within one coarse clock tick the
- * result runs one microsecond per call ahead of the wall clock and is caught up by the next tick.
- * After the wall clock jumps <i>backwards</i> by some delta (NTP step, VM snapshot restore), the
- * lead is that whole delta from the very next call on, and stays until the wall clock has passed
- * the last boundary again - for that span the recorded instants lie in the future and cluster
- * around the pre-jump value. ADR-0032 carries this as a known consequence.
- *
- * <p>Monotonicity holds per process, which is what ADR-0021 (single instance) allows; ADR-0032
- * records the decision and what a multi-instance setup would need instead.
+ * <p>The database issues the boundary ({@code permission_history_next_boundary()}, ADR-0032,
+ * Entscheidung 3): its clock, not the host's, raised to one microsecond above the last boundary
+ * when it does not exceed it. One sequence holds that last boundary for the whole installation, so
+ * boundaries of different objects are globally ordered too, and a host clock that runs ahead or
+ * behind has no say. Within one microsecond, and after the database clock steps back, a boundary
+ * runs ahead of the database clock until it catches up.
  */
 @Component
 public class PermissionHistoryClock {
 
-  private final InstantSource wallClock;
-  private final AtomicReference<Instant> lastBoundary = new AtomicReference<>(Instant.EPOCH);
+  private final JdbcOperations jdbc;
 
-  /**
-   * A standing or stepping wall clock is the only way to exercise "two changes within one clock
-   * tick" without a wait or a retry loop.
-   */
-  public PermissionHistoryClock(InstantSource wallClock) {
-    this.wallClock = wallClock;
+  public PermissionHistoryClock(JdbcOperations jdbc) {
+    this.jdbc = jdbc;
   }
 
+  /** The next boundary, on the connection of the surrounding transaction if there is one. */
   public Instant nextBoundary() {
-    return lastBoundary.updateAndGet(
-        previous -> {
-          Instant reading = wallClock.instant().truncatedTo(ChronoUnit.MICROS);
-          return reading.isAfter(previous) ? reading : previous.plus(1, ChronoUnit.MICROS);
-        });
+    OffsetDateTime boundary =
+        jdbc.queryForObject("SELECT permission_history_next_boundary()", OffsetDateTime.class);
+    if (boundary == null) {
+      throw new IllegalStateException("permission_history_next_boundary() returned no boundary");
+    }
+    return boundary.toInstant();
   }
 }

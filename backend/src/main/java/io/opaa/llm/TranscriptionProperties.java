@@ -4,6 +4,7 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -24,6 +25,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param maxConcurrent how many recordings the whole installation passes on at the same time; each
  *     one is held in memory until its call ends.
  */
+@PerInstance("credentials, limits and timeouts of this process")
 @NoDataImpact("credentials, bounds and timeouts of the transcription role")
 @ConfigurationProperties(prefix = "opaa.transcription")
 public record TranscriptionProperties(

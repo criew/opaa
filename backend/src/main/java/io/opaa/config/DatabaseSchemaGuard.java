@@ -1,5 +1,6 @@
 package io.opaa.config;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
 import java.util.Objects;
 import java.util.Set;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
  * DEFINER functions' pinned {@code search_path} and into native SQL naming {@code vector_store}.
  * Runs as a {@link BeanFactoryPostProcessor} so the check precedes the data source and Liquibase.
  */
+@InstallationWide
 @NoDataImpact("the database schema name")
 @Component
 public class DatabaseSchemaGuard implements BeanFactoryPostProcessor, EnvironmentAware {

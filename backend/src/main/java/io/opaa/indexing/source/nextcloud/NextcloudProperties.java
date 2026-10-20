@@ -5,6 +5,7 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.compliance.DataImpact;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -22,6 +23,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param fullDescentInterval how long remembered folder ETags may spare a listing before a full
  *     sync lists every folder again
  */
+@PerInstance("budgets and bounds of a run on this process")
 @NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.nextcloud")
 public record NextcloudProperties(

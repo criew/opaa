@@ -574,6 +574,12 @@ Ab `1.0.0` steigt bei einem Bruch die Hauptversion.
 Schemaänderungen laufen immer vorwärts. Zurück auf eine ältere Version geht es nur über die
 Datenbanksicherung, unabhängig davon, ob die Version als Bruch gezählt wird.
 
+**Versionsfenster für Rolling Updates.** `backend/src/main/resources/instance/rolling-update.properties`
+nennt in `oldest-compatible-version` die älteste Version, neben der der Bau laufen darf
+([ADR-0053](decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 4). Leer heißt: nur neben
+sich selbst. Das Release trägt dort das unmittelbar vorige Release ein; an einer Versionsgrenze ohne
+Rolling Update bleibt es leer.
+
 Releases entstehen nur von Commits auf `main`. Eine ältere Linie wird nicht nachgepflegt. Daraus
 folgen zwei Arten von Patch-Release:
 

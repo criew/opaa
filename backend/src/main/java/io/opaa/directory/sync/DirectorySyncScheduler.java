@@ -3,8 +3,8 @@ package io.opaa.directory.sync;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.DatabaseClock;
 import io.opaa.organization.Organization;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -28,9 +28,11 @@ import org.springframework.stereotype.Component;
  * free again before the directory answers. No leader election: {@link DirectorySyncRunLock} already
  * makes a concurrent trigger safe, and ADR-0021 assumes one backend process.
  *
- * <p>Due means "the last run is at least one interval ago". A provider that has never run is due at
- * once, which is what makes switching the run on take effect without a further handle. A missed due
- * time is not caught up: the next tick simply finds the provider due again.
+ * <p>Due means "the last run is at least one interval ago", by the database clock that also stamps
+ * the last run (ADR-0053, Entscheidung 9), so a host clock running ahead does not make a provider
+ * due early. A provider that has never run is due at once, which is what makes switching the run on
+ * take effect without a further handle. A missed due time is not caught up: the next tick simply
+ * finds the provider due again.
  *
  * <p>A failed run never switches its own schedule off, and one provider's failure never keeps the
  * others from running: each provider is ticked inside its own {@code try}. A failed run counts as a
@@ -50,19 +52,19 @@ public class DirectorySyncScheduler {
   private final DirectorySyncStatusRepository statusRepository;
   private final DirectorySyncService directorySyncService;
   private final Executor executor;
-  private final Clock clock;
+  private final DatabaseClock databaseClock;
 
   public DirectorySyncScheduler(
       OidcProviderRepository providerRepository,
       DirectorySyncStatusRepository statusRepository,
       DirectorySyncService directorySyncService,
       @Qualifier("directorySyncExecutor") Executor executor,
-      Clock clock) {
+      DatabaseClock databaseClock) {
     this.providerRepository = providerRepository;
     this.statusRepository = statusRepository;
     this.directorySyncService = directorySyncService;
     this.executor = executor;
-    this.clock = clock;
+    this.databaseClock = databaseClock;
   }
 
   /**
@@ -72,7 +74,7 @@ public class DirectorySyncScheduler {
    */
   @Scheduled(cron = "0 * * * * *")
   public void triggerDueProviders() {
-    Instant now = Instant.now(clock);
+    Instant now = databaseClock.now();
     for (OidcProvider provider :
         providerRepository
             .findByDirectorySyncEnabledTrueAndEnabledTrueOrderBySortOrderAscDisplayNameAsc()) {

@@ -13,6 +13,9 @@ Abhängigkeiten stehen dort in `[libraries]`, verwandte in `[bundles]` (`spring-
 
 Services lesen die Zeit über die `Clock`-Bean aus `io.opaa.common.ClockConfiguration` (`Instant.now(clock)`), damit
 Fristen testbar sind; Entities setzen ihre Zeitstempel (`createdAt` u. ä.) selbst im Konstruktor oder `@PrePersist`.
+Ein Zeitpunkt, den eine andere Instanz liest und vergleicht (Heartbeat, Fälligkeit, Reihenfolge im Audit), stammt aus
+der Datenbankuhr: `clock_timestamp()` im Statement oder `io.opaa.common.DatabaseClock`
+([ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 9).
 
 ## API & DTO-Konvention (Fortsetzung)
 
@@ -35,7 +38,7 @@ Das Backend ist ein Gradle-Modul, gegliedert in logische Module. Die Definitione
 
 | Modul | Pakete (`io.opaa.*`) | darf nutzen (`ALLOWED_MODULE_EDGES`, alle nach unten) |
 |---|---|---|
-| foundation | common, compliance, observability, organization, outbound, security, ratelimit, sourceaccess, s3, msgraph | — |
+| foundation | common, compliance, observability, instance, organization, outbound, security, ratelimit, sourceaccess, s3, msgraph | — |
 | format | format | foundation |
 | identity | audit, branding, mail, auth, account, notification | foundation |
 | rights | permission, asset, group, directory, succession | foundation, identity |
@@ -161,4 +164,7 @@ ein Eintrag in `src/main/resources/META-INF/additional-spring-configuration-meta
 oder `@NoDataImpact("Grund")` an der Komponente oder pauschal am Typ; Schalter, Modelle, Adressen, Fristen und
 Zeitspannen an der Komponente. Ein datenwirksamer Schlüssel steht mit seinem Standardwert aus `application.yml`
 unter `settings`.
-`ConfigurationSettingsTest` prüft das samt Helm-Chart (ADR-0052, Entscheidung 9).
+`ConfigurationSettingsTest` prüft das samt Helm-Chart (ADR-0052, Entscheidung 9). Jeder Schlüssel ohne `@DataImpact`
+trägt außerdem `@InstallationWide` (Teil des Konfigurationsabdrucks, auf allen Instanzen gleich) oder
+`@PerInstance("Grund")`; das prüft `FingerprintKeysTest`
+([ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 4).

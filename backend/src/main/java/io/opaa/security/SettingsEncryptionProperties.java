@@ -1,5 +1,6 @@
 package io.opaa.security;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -15,6 +16,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     OPAA_CREDENTIALS_ENCRYPTION_KEY}: the two protect different kinds of secret with no reason to
  *     share a key or a rotation schedule.
  */
+@InstallationWide(secret = true)
 @NoDataImpact("an encryption key without default")
 @ConfigurationProperties(prefix = "opaa.security.settings")
 public record SettingsEncryptionProperties(String encryptionKey) {}

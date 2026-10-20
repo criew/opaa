@@ -81,6 +81,41 @@ eine kurze Unterbrechung: Die alte Instanz endet, bevor die neue startet.
 
 Das Frontend hält keinen Zustand und darf mehrfach laufen.
 
+### Instanzregister
+
+Jede Backend-Instanz trägt sich beim Start in ein Register in der Datenbank ein: mit einer Kennung,
+die bei jedem Start neu entsteht, dem Namen des Rechners oder Pods, der Version und ihrem
+Konfigurationsabdruck. Danach meldet sie sich in kurzen Abständen (`OPAA_INSTANCE_HEARTBEAT_INTERVAL`).
+Eine Instanz, die sich länger als `OPAA_INSTANCE_DEAD_AFTER` nicht meldet oder geordnet beendet wurde,
+gilt als beendet. Ob eine Instanz noch lebt, entscheidet die Uhr der Datenbank, nicht die des
+Rechners. Beendete Einträge bleiben eine Woche sichtbar. Das Protokoll nennt beim Start die eigene
+Kennung und alle laufenden Instanzen.
+
+Der **Konfigurationsabdruck** umfasst die Werte, die auf allen Instanzen einer Installation gleich
+sein müssen: jede Einstellung mit Datenwirkung, die Geheimnisse `OPAA_AUTH_JWT_SECRET`,
+`OPAA_CREDENTIALS_ENCRYPTION_KEY` und `OPAA_SETTINGS_ENCRYPTION_KEY`, Modell, Adresse und Dimension
+der Einbettung, die Teilung in Chunks, das Anmeldeprofil, `OPAA_DB_SCHEMA`, die Originalablage, die
+Freigabelisten der Zielprüfung, die vertrauten Proxys, `OPAA_PUBLIC_BASE_URL`, die Funktionsschalter
+und die Zeitzone. Gespeichert wird je Wert nur ein Prüfwert, nie der Wert selbst. Weicht ein Wert von
+dem einer laufenden Instanz ab, **verweigert die neue Instanz den Start** und nennt im Protokoll die
+abweichenden Schlüssel, bei einem Geheimnis nur den Namen. Eine abweichende Version wird nur
+akzeptiert, wenn die neuere Version die ältere ausdrücklich neben sich zulässt; bis zum ersten
+Release mit dieser Zusage läuft nur dieselbe Version nebeneinander.
+
+Einen Wert des Abdrucks ändert deshalb nur ein Neustart aller Instanzen: erst alle beenden, dann mit
+dem neuen Wert starten. Eine geordnet beendete Instanz meldet sich sofort ab. Wurde sie hart beendet,
+etwa mit `SIGKILL`, gilt sie erst nach `OPAA_INSTANCE_DEAD_AFTER` als beendet; bis dahin verweigert
+eine Instanz mit geändertem Wert den Start, und der nächste Startversuch danach gelingt.
+
+### Zeitzone
+
+Die Zeitzone setzen `.env.docker.example` (`TZ`) und der Helm-Chart (`backend.timeZone`)
+ausdrücklich, Vorgabe ist UTC. An ihr hängen die Uhrzeiten der nächtlichen und monatlichen
+Löschläufe, des Zeitplans einer Wissensbibliothek und des Feststellungslaufs der Nachfolge, die
+Tages-, Monats- und Jahresgrenzen der Fristen, etwa das Jahresende, zu dem anlassbezogene Klärungen
+gelöscht werden, die Erinnerungen vor einem Ablauf und die Datumsangaben in Mails. Sie gehört zum
+Konfigurationsabdruck.
+
 ## Eine Organisation
 
 Eine Installation wird mit **genau einer** Organisation ausgeliefert; es gibt keinen Verwaltungspfad,
@@ -161,7 +196,8 @@ Shell, keine Coreutils, kein `curl`/`wget`, keinen Paketmanager. Daraus folgt:
   verwenden; er fragt `GET /actuator/health/readiness` von außen ab
   ([Bereitschaft und Lebendigkeit](#bereitschaft-und-lebendigkeit)).
 - **Zeitzone:** UTC, solange `TZ` nicht gesetzt ist. `TZ=Europe/Berlin` wirkt wie gewohnt; die
-  Zeitzonendatenbank steckt in der Java-Laufzeit.
+  Zeitzonendatenbank steckt in der Java-Laufzeit. Was an ihr hängt, steht unter
+  [Zeitzone](#zeitzone).
 - **Zertifikate:** Der Truststore ist der `cacerts` der Java-Laufzeit mit den öffentlichen CAs. Eine
   interne CA kommt in eine **Kopie** dieses Truststores, nie in einen leeren, neuen Store — der
   ersetzte sonst alle öffentlichen CAs, und HTTPS zu Modellanbietern, S3 und Identitätsanbietern
@@ -744,6 +780,7 @@ Thread- und Heap-Dumps, Dateien aus dem Container und Netzwerkdiagnose stehen je
 |---|---|
 | Der Start bricht ab und nennt eine Variable | [Konfiguration](konfiguration.md); bei `OPAA_AUTH_JWT_SECRET` [Authentifizierung](authentifizierung.md#das-backend-startet-nicht-und-nennt-opaa_auth_jwt_secret) |
 | Der Start bricht mit einem Hinweis auf pgvector, Schema oder Migration ab | [Datenbank](datenbank.md) |
+| Der Start bricht mit `refuses to start` ab und nennt eine laufende Instanz | Abweichender Wert oder abweichende Version; Werte angleichen oder alle Instanzen neu starten ([Instanzregister](#instanzregister)) |
 | Die Bereitschaft meldet `DOWN` | Datenbank erreichbar? Verbindungspool erschöpft? ([Bereitschaft und Lebendigkeit](#bereitschaft-und-lebendigkeit)) |
 | Indexierung oder Chat schlagen fehl, alles andere läuft | [Modelle](modelle.md#fehlerbilder) |
 | Niemand kommt herein, kein Einmalpasswort, Anmeldung mit `429` | [Authentifizierung](authentifizierung.md#fehlerbehebung) |

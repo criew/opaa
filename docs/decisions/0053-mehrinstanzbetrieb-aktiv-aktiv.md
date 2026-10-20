@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-19 · löst [ADR-0021](0021-single-instance-betrieb.md) mit dem
+Akzeptiert · zuletzt geändert 2026-10-20 · löst [ADR-0021](0021-single-instance-betrieb.md) mit dem
 Abschluss von #1292 ab · ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
 
 ## Kontext
@@ -79,9 +79,11 @@ Dazu kommen die als installationsweit gekennzeichneten technischen Werte: `OPAA_
 `OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY`, die Embedding-Identität (Modell,
 Basis-URL, Dimension), Chunking, Auth-Profil, `OPAA_DB_SCHEMA`, Originalablage samt Bucket bzw. Pfad,
 Allowlists, Proxy-Vertrauensliste, `opaa.public-base-url`, die Feature-Flags und die Zeitzone der
-JVM. Jeder übrige `opaa.*`-Schlüssel ist ausdrücklich als „je Instanz zulässig“ gekennzeichnet
-(Zeitgrenzen, Pool-Größen); ein Strukturtest erzwingt die Einordnung wie `ConfigurationSettingsTest`.
-Gespeichert wird je Schlüssel ein Hash, bei Geheimnissen ein HMAC, nie der Wert.
+JVM. Gekennzeichnet sind sie mit `@InstallationWide`, jeder übrige `opaa.*`-Schlüssel mit
+`@PerInstance` als „je Instanz zulässig“ (Zeitgrenzen, Pool-Größen); `FingerprintKeysTest` erzwingt die
+Einordnung wie `ConfigurationSettingsTest`. Gespeichert wird je Schlüssel ein HMAC unter einem
+Schlüssel, den die erste Instanz im Register anlegt, nie der Wert; die Meldung nennt bei einem
+Geheimnis nur den Schlüssel.
 
 Regeln beim Start, serialisiert über einen Advisory-Lock auf das Register:
 
@@ -89,9 +91,10 @@ Regeln beim Start, serialisiert über einen Advisory-Lock auf das Register:
   die Schlüssel.
 - Verglichen wird die Schnittmenge der Schlüssel, die beide Versionen kennen.
 - Die Version darf abweichen, aber nur im Rolling-Update-Fenster. Jede Version nennt die älteste
-  Vorgängerversion, neben der sie laufen darf: Vorgabe ist das unmittelbar vorige Release, an einer
-  Versionsgrenze ohne Rolling Update (Entscheidung 13) die Version selbst. Wer außerhalb des Fensters
-  liegt, ob älter oder neuer, startet nicht.
+  Vorgängerversion, neben der sie laufen darf (`instance/rolling-update.properties`, vom Release
+  gesetzt): Vorgabe ist das unmittelbar vorige Release, an einer Versionsgrenze ohne Rolling Update
+  (Entscheidung 13) die Version selbst. Wer außerhalb des Fensters liegt, ob älter oder neuer,
+  startet nicht.
 - Einen Abdruckwert ändert nur ein Neustart aller Instanzen, nie ein Rolling Update; ein Rolling
   Update mit geändertem Wert bleibt am ersten neuen Pod stehen, ohne Ausfall. Ändert ein Release die
   Vorgabe eines Abdruckwerts, ist es eine Versionsgrenze ohne Rolling Update.
@@ -206,7 +209,8 @@ Zeitpunkt, den nur dieser Prozess vergleicht, stammt aus der `Clock`-Bean.
   ihre Fristen (3, 8), Fälligkeiten (Bibliothekszeitplan, `DirectorySyncScheduler`), Sperren
   (`usingDbTime`), Outbox (11), Zählerfenster (12) und `AuditLogEntry.recordedAt`.
   `PermissionHistoryClock` bekommt die Datenbankuhr samt datenbankseitiger Monotonie nach ADR-0032
-  Entscheidung 3.
+  Entscheidung 3, **installationsweit**: Eine Sequenz hält die zuletzt vergebene Grenze aller
+  Historientabellen, jede neue Grenze liegt über jeder zuvor vergebenen, gleich für welches Objekt.
 - **`Clock`-Bean** (Wanduhr der JVM): Zeitgrenzen und Dauern im Prozess, TTLs prozesslokaler Caches,
   Fenster der Budgets je Instanz, der Ablauf von Tokens (`exp` mit Toleranz), Protokolle und
   Anzeigen. Die Naht für die Datenbankuhr ist eine eigene, benannte Bean neben der `Clock`; die
@@ -216,7 +220,12 @@ Zeitpunkt, den nur dieser Prozess vergleicht, stammt aus der `Clock`-Bean.
 
 Umsetzung: #2945. Wanduhren zweier Hosts driften trotz NTP um Millisekunden bis Sekunden, ein
 Vergleich über Instanzen ist so gut wie die schlechteste Uhr. Die Datenbank ist die eine Uhr, die
-alle sehen; für Lokales kostete sie einen Roundtrip ohne Gewinn.
+alle sehen; für Lokales kostete sie einen Roundtrip ohne Gewinn. Die Monotonie gilt installationsweit,
+weil ADR-0032 Entscheidung 2 die Rekonstruktion von Kombinationszuständen aus mehreren Tabellen auf
+die globale Ordnung aller Grenzen stützt; je Objekt fielen zwei Änderungen an verschiedenen Objekten
+in dieselbe Mikrosekunde oder nach einem Rücksprung der Datenbankuhr in vertauschte Reihenfolge. Sie
+kostet eine kurze, über einen Advisory-Lock serialisierte Vergabe je Grenze, keine Sperre für die
+Dauer der Transaktion.
 
 ### 10. Zustand aus dem Speicher in die Datenbank
 
@@ -388,7 +397,5 @@ Chart mehr als ein Replikat, und ADR-0021 gilt weiter.
 
 ## Offen
 
-- Ob die datenbankseitige Monotonie der Rechtehistorie je Objekt oder installationsweit gilt, gemessen
-  an der Zusage für Kombinationszustände (ADR-0032 Entscheidung 2): #2945.
 - Horizontale Skalierung der Indexierung über eine Auftragswarteschlange in der Datenbank statt der
   Übergabe an den Executor der tickenden Instanz; erst nach der ersten Stufe und bei Bedarf.

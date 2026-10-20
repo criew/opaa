@@ -9,6 +9,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.DatabaseClock;
 import io.opaa.common.NotFoundException;
 import java.time.Clock;
 import java.time.Instant;
@@ -90,6 +91,7 @@ public class DirectorySyncService {
   private final AuditEventRecorder auditEventRecorder;
   private final DirectorySyncRunLock runLock;
   private final Clock clock;
+  private final DatabaseClock databaseClock;
 
   public DirectorySyncService(
       DirectoryClient directoryClient,
@@ -101,7 +103,8 @@ public class DirectorySyncService {
       DirectorySyncProperties properties,
       AuditEventRecorder auditEventRecorder,
       DirectorySyncRunLock runLock,
-      Clock clock) {
+      Clock clock,
+      DatabaseClock databaseClock) {
     this.directoryClient = directoryClient;
     this.planExecutor = planExecutor;
     this.statusRecorder = statusRecorder;
@@ -112,6 +115,7 @@ public class DirectorySyncService {
     this.auditEventRecorder = auditEventRecorder;
     this.runLock = runLock;
     this.clock = clock;
+    this.databaseClock = databaseClock;
   }
 
   /**
@@ -290,28 +294,30 @@ public class DirectorySyncService {
    * never reaches {@link DirectorySyncPlanExecutor} at all, and a failed run leaves nothing of the
    * executor's behind, so the header entry of both is written here. No ambient transaction is open
    * here (this class deliberately holds none - see the class Javadoc), so each write commits on its
-   * own, and a failure is recorded only after the executor's transaction has rolled back.
+   * own, and a failure is recorded only after the executor's transaction has rolled back. The run's
+   * start is recorded by the database clock: the schedule of every instance compares against it.
    */
   private SyncReport execute(
       SyncTarget target, BiFunction<DirectorySnapshot, Instant, SyncReport> plan) {
     Instant now = Instant.now(clock);
+    Instant runAt = databaseClock.now();
     DirectorySnapshot snapshot;
     try {
       snapshot = directoryClient.fetchSnapshot(target.organizationId(), target.providerId());
     } catch (DirectoryUnavailableException e) {
-      return recordUnreachable(target, now, e);
+      return recordUnreachable(target, now, runAt, e);
     } catch (RuntimeException e) {
-      recordFailed(target, now, e);
+      recordFailed(target, runAt, e);
       throw e;
     }
     SyncReport report;
     try {
       report = plan.apply(snapshot, now);
     } catch (RuntimeException e) {
-      recordFailed(target, now, e);
+      recordFailed(target, runAt, e);
       throw e;
     }
-    recordStatusSafely(target, now, report.outcome(), report.message(), report.changedFraction());
+    recordStatusSafely(target, runAt, report.outcome(), report.message(), report.changedFraction());
     return report;
   }
 
@@ -322,8 +328,8 @@ public class DirectorySyncService {
    * cause}, which is logged there; neither the status nor the audit entry names it. A failure of
    * either write is logged and attached to {@code cause} rather than replacing it.
    */
-  private void recordFailed(SyncTarget target, Instant now, RuntimeException cause) {
-    recordStatusSafely(target, now, DirectorySyncOutcome.FAILED, FAILED_MESSAGE, 0.0)
+  private void recordFailed(SyncTarget target, Instant runAt, RuntimeException cause) {
+    recordStatusSafely(target, runAt, DirectorySyncOutcome.FAILED, FAILED_MESSAGE, 0.0)
         .ifPresent(cause::addSuppressed);
     try {
       recordFailureEntry(target, DirectorySyncOutcome.FAILED, FAILED_MESSAGE);
@@ -359,14 +365,14 @@ public class DirectorySyncService {
   }
 
   private SyncReport recordUnreachable(
-      SyncTarget target, Instant now, DirectoryUnavailableException cause) {
+      SyncTarget target, Instant now, Instant runAt, DirectoryUnavailableException cause) {
     String message = "Verzeichnis nicht erreichbar. Der letzte bekannte Stand bleibt in Kraft.";
     log.warn(
         "Directory sync: directory unreachable for provider {} of organization {}: {}",
         target.providerId(),
         target.organizationId(),
         cause.getMessage());
-    recordStatusSafely(target, now, DirectorySyncOutcome.UNREACHABLE, message, 0.0);
+    recordStatusSafely(target, runAt, DirectorySyncOutcome.UNREACHABLE, message, 0.0);
     recordFailureEntry(target, DirectorySyncOutcome.UNREACHABLE, message);
     return new SyncReport(
         DirectorySyncOutcome.UNREACHABLE,
@@ -398,13 +404,13 @@ public class DirectorySyncService {
    */
   private Optional<RuntimeException> recordStatusSafely(
       SyncTarget target,
-      Instant now,
+      Instant runAt,
       DirectorySyncOutcome outcome,
       String message,
       double changedFraction) {
     try {
       statusRecorder.record(
-          target.organizationId(), target.providerId(), now, outcome, message, changedFraction);
+          target.organizationId(), target.providerId(), runAt, outcome, message, changedFraction);
       return Optional.empty();
     } catch (RuntimeException e) {
       log.error(

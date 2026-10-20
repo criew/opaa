@@ -1,5 +1,6 @@
 package io.opaa.common;
 
+import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -12,6 +13,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     every mail at a site of their choosing from one compromised administrator session. Empty by
  *     default - a deployment that has not set it simply has no flows that depend on a link.
  */
+@InstallationWide
 @ConfigurationProperties(prefix = "opaa")
 public record PublicBaseUrlProperties(
     @NoDataImpact("own address for links in mail; no default") String publicBaseUrl) {}

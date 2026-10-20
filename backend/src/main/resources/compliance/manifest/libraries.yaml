@@ -262,3 +262,14 @@ nonPersonalTables:
   private_storage_quota_settings: [id, quota_bytes, updated_at]
   rss_feed_state: [id, feed_url, etag, last_modified, updated_at, library_id]
   outbound_proxy_settings: [id, proxy_host, proxy_port, no_proxy, updated_at]
+  backend_instances:
+    - id
+    - host_name
+    - version
+    - oldest_compatible_version
+    - started_at
+    - heartbeat_at
+    - stopped_at
+    - fingerprint
+    - fingerprint_hash
+  backend_instance_fingerprint_key: [id, hmac_key, created_at]
