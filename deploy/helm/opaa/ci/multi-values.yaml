@@ -1,0 +1,50 @@
+# Two backend pods (ADR-0053): migration job, originals in the object store, spread over nodes, with
+# the evaluation database, extraCACertificates and the egress policies, so the job runs the same
+# init containers and gets its own network policy. The secrets are throwaway test values.
+publicBaseUrl: https://opaa.example.org
+evaluationDatabase:
+  enabled: true
+embedding:
+  baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
+  model: bge-m3
+  dimensions: 1024
+bootstrap:
+  initialAdmin:
+    email: it-postfach@example.org
+  chatModel:
+    baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
+    model: qwen2.5:3b
+secrets:
+  jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
+  databasePassword: ci-only-password
+  credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
+  settingsEncryptionKey: CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+  s3AccessKey: ci-only-access-key
+  s3SecretKey: ci-only-secret-key
+uploads:
+  store: s3
+  s3:
+    endpoint: http://objectstore.storage.svc.cluster.local:9000
+    bucket: opaa-originals
+extraCACertificates:
+  configMap: internal-ca
+networkPolicy:
+  egress:
+    enabled: true
+    backendRules:
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: storage
+        ports:
+          - port: 9000
+            protocol: TCP
+backend:
+  replicas: 2
+  migration:
+    enabled: true
+  databasePoolSize: 8
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway

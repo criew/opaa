@@ -75,7 +75,21 @@ expect_refusal() {
 }
 
 echo "--- guards"
-expect_refusal "ADR-0021" --set backend.replicas=2
+# More than one backend pod, or a rolling update, needs the migration job and shared originals
+# (ADR-0053, Entscheidung 15); a rolling update keeps chat answers alive over the pod's stop.
+shared=(--set backend.migration.enabled=true --set-json 'uploads.persistence.accessModes=["ReadWriteMany"]')
+expect_refusal "set backend.migration.enabled" --set backend.replicas=2
+expect_refusal "set backend.migration.enabled" --set backend.updateStrategy=RollingUpdate
+expect_refusal "ReadWriteMany" --set backend.replicas=2 --set backend.migration.enabled=true
+expect_refusal "ReadWriteMany" --set backend.updateStrategy=RollingUpdate --set backend.migration.enabled=true
+expect_refusal "shorter than the frontend's read timeout" --set backend.replicas=2 "${shared[@]}" \
+  --set backend.shutdownTimeoutSeconds=60
+expect_refusal "shorter than the frontend's read timeout" --set backend.replicas=2 "${shared[@]}" \
+  --set frontend.backendReadTimeout=15m --set backend.shutdownTimeoutSeconds=600
+expect_refusal "plus the preStop pause (10)" --set backend.replicas=2 "${shared[@]}" \
+  --set backend.terminationGracePeriodSeconds=610
+expect_refusal "must be greater than backend.shutdownTimeoutSeconds (60)" \
+  --set backend.terminationGracePeriodSeconds=60
 expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE' --set 'backend.extraEnv[0].value=dev'
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
 expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
@@ -86,6 +100,58 @@ expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=ht
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=data: blob:"
 expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra=ftp://files.example.org"
 expect_refusal "cspConnectSrcExtra" --set-string 'frontend.cspConnectSrcExtra=https://$host'
+
+# One backend pod renders as before, without migration job, budget or preStop pause; several pods
+# render pod by pod with all three (ADR-0053, Entscheidung 15).
+echo "--- one and several backend pods"
+expect_rendered() {
+  local file="$1" expected="$2"
+  if ! grep -qF -- "$expected" "$work_dir/$file.yaml"; then
+    echo "Value set $file does not render '$expected'." >&2
+    exit 1
+  fi
+}
+expect_not_rendered() {
+  local file="$1" unexpected="$2"
+  if grep -qF -- "$unexpected" "$work_dir/$file.yaml"; then
+    echo "Value set $file renders '$unexpected', which only several backend pods need." >&2
+    exit 1
+  fi
+}
+for expected in "type: Recreate" "terminationGracePeriodSeconds: 75" 'OPAA_SHUTDOWN_TIMEOUT: "60s"'; do
+  expect_rendered minimal "$expected"
+done
+for unexpected in "kind: Job" "kind: PodDisruptionBudget" "preStop:" "SPRING_LIQUIBASE_ENABLED" \
+  "await-migration" "type: RollingUpdate"; do
+  expect_not_rendered minimal "$unexpected"
+done
+for expected in "type: RollingUpdate" "maxUnavailable: 0" "maxSurge: 1" "kind: PodDisruptionBudget" \
+  "kind: Job" "- name: await-migration" 'value: "await-migration"' 'value: "migrate"' \
+  "name: SPRING_LIQUIBASE_ENABLED" "seconds: 10" "terminationGracePeriodSeconds: 625" \
+  'OPAA_SHUTDOWN_TIMEOUT: "600s"' 'OPAA_DB_POOL_SIZE: "8"' "name: opaa-migration-egress" \
+  "app.kubernetes.io/component: migration" "topologyKey: kubernetes.io/hostname"; do
+  expect_rendered multi "$expected"
+done
+echo "one pod renders Recreate alone, two pods render rolling update, budget, preStop and job"
+# The job's name follows image and configuration: unchanged values keep it, a new image renews it.
+job_name() {
+  helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/multi-values.yaml" "$@" \
+    --show-only templates/backend-migration-job.yaml | sed -n 's/^  name: //p'
+}
+first="$(job_name)"
+if [[ "$first" != "$(job_name)" || "$first" == "$(job_name --set backend.image.tag=1.2.3)" ||
+  ${#first} -gt 63 ]]; then
+  echo "The migration job must keep its name for the same values and change it with the image: $first" >&2
+  exit 1
+fi
+echo "migration job $first renewed with the image as expected"
+# A claim with ReadWriteMany serves several pods as well, and Recreate stays choosable for them.
+helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/minimal-values.yaml" --set backend.replicas=2 \
+  "${shared[@]}" --set backend.updateStrategy=Recreate >"$work_dir/recreate.yaml"
+expect_rendered recreate "type: Recreate"
+expect_rendered recreate "kind: PodDisruptionBudget"
+expect_not_rendered recreate "preStop:"
+echo "two pods with a ReadWriteMany claim and Recreate render as expected"
 
 # On the first start the image's entrypoint runs a temporary server for initdb that answers on the
 # socket only; a readiness probe over the socket reports ready while the service refuses TCP.
@@ -315,6 +381,11 @@ notes_case "an installation" "OPAA ist installiert" "OPAA ist aktualisiert"
 notes_case "an installation" "Der erste Start migriert" "Der Start migriert"
 notes_case "an upgrade" "OPAA ist aktualisiert" "OPAA ist installiert" --is-upgrade
 notes_case "an upgrade" "Der Start migriert" "Der erste Start migriert" --is-upgrade
+notes_case "one pod" "GENAU EINE BACKEND-INSTANZ" "POD FÜR POD"
+notes_case "two pods" "2 BACKEND-PODS, AKTUALISIERUNG POD FÜR POD" "GENAU EINE BACKEND-INSTANZ" \
+  --set backend.replicas=2 "${shared[@]}"
+notes_case "an upgrade of two pods" "werden danach ersetzt, die alten antworten bis dahin" \
+  "Der Start migriert" --set backend.replicas=2 "${shared[@]}" --is-upgrade
 
 # The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
 # renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.
