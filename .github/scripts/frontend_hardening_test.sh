@@ -23,7 +23,8 @@ frontend="opaa-hardening-frontend-$suffix"
 probe="opaa-hardening-probe-$suffix"
 
 cleanup() {
-  docker rm -f "$frontend" "$echo_upstream" "$probe" >/dev/null 2>&1 || true
+  docker rm -f "$frontend" "$echo_upstream" "$echo_upstream-a" "$echo_upstream-b" "$probe" \
+    >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -181,7 +182,6 @@ named_upstream() {
     -c 'mkdir -p /tmp/nginx/conf.d && printf "%s\n" "$ECHO_CONF" > /tmp/nginx/conf.d/echo.conf && exec nginx -g "daemon off;"' \
     >/dev/null
 }
-trap 'cleanup; docker rm -f "$echo_upstream-a" "$echo_upstream-b" >/dev/null 2>&1 || true' EXIT
 probe_port="$(docker port "$probe" 8080/tcp | head -n 1 | sed 's/.*://')"
 answers() {
   for _ in $(seq 1 12); do
