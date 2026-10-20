@@ -283,8 +283,10 @@ backend:
 
   # Number of backend pods; 0 stops the backend. More than 1 needs migration.enabled and originals
   # every pod sees: uploads.store s3, or uploads.persistence.accessModes [ReadWriteMany]; otherwise
-  # the rendering aborts (ADR-0053, Entscheidung 15). Budgets per instance (rate limits, pools)
-  # count per pod: an installation-wide budget is the per-pod value times replicas.
+  # the rendering aborts (ADR-0053, Entscheidung 15). The global rate-limit ceilings
+  # (OPAA_RATE_LIMIT_*_GLOBAL_MAX_REQUESTS) count for the installation; every other budget (rate
+  # limits per client, embedding concurrency, transcription and attachment slots) counts per pod:
+  # set it to the installation's budget divided by replicas (ADR-0053, Entscheidung 12).
   replicas: 1
 
   # How a change of the pod template reaches the pods. Empty: Recreate for one pod - the old one

@@ -121,8 +121,10 @@ Damit ändert sich:
   die Pods über Knoten oder Zonen.
 - **Datenbankverbindungen.** `backend.databasePoolSize` gilt je Pod; die Grenze für
   `max_connections` nennt [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
-- **Grenzen je Pod.** Rate-Limits, Kontingente und Thread-Pools gelten je Pod. Ein Wert, der für die
-  ganze Installation gemeint ist, wird durch die Zahl der Pods geteilt.
+- **Grenzen je Pod.** Die Gesamtgrenzen der Rate-Limits (`…_GLOBAL_MAX_REQUESTS`) zählen alle Pods
+  gemeinsam. Die übrigen Rate-Limits und die Thread-Pools gelten je Pod; ein Wert, der für die ganze
+  Installation gemeint ist, wird durch die Zahl der Pods geteilt (siehe
+  [„Grenzen und Anzeigen mit mehreren Instanzen“](betrieb.md#grenzen-und-anzeigen-mit-mehreren-instanzen)).
 - **Alarme je Pod.** Fehlende Metriken, voller Heap und hängende Indexierung melden sich, sobald ein
   einzelner Pod betroffen ist ([Alarme](#alarme)).
 
