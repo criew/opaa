@@ -22,7 +22,12 @@ import { notify } from '@/shared/stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import ProviderMonogram from '@/shared/ui/ProviderMonogram'
 import { PROVIDER_CONFLICT_MESSAGES } from './oidcProviderConflicts'
-import { PROVIDER_STATE_LABEL, providerState } from './oidcProviderState'
+import {
+  PER_INSTANCE_NOTE,
+  PROVIDER_STATE_LABEL,
+  isPerInstance,
+  providerState,
+} from './oidcProviderState'
 import ProviderRowMenu from './ProviderRowMenu'
 import ProviderStateDot from './ProviderStateDot'
 
@@ -157,6 +162,11 @@ function ProviderCard({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75, fontSize: 12.5 }}>
         <ProviderStateDot state={state} />
         <Box component="span">{PROVIDER_STATE_LABEL[state]}</Box>
+        {isPerInstance(state) && (
+          <Box component="span" sx={{ color: 'text.secondary' }}>
+            · {PER_INSTANCE_NOTE}
+          </Box>
+        )}
         {provider.isDefault && (
           <Chip
             label="Standard"
@@ -317,6 +327,11 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75 }}>
                     <ProviderStateDot state={state} />
                     <Box component="span">{PROVIDER_STATE_LABEL[state]}</Box>
+                    {isPerInstance(state) && (
+                      <Box component="span" sx={{ color: 'text.secondary', fontSize: 12 }}>
+                        · {PER_INSTANCE_NOTE}
+                      </Box>
+                    )}
                   </Box>
                   {/* Why it is unreachable - the provider's answer, verbatim. „Nicht
                        erreichbar" alone does not say whether the address is wrong or the service

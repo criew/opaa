@@ -13,7 +13,7 @@ import { copyToClipboard } from '@/shared/utils/clipboard'
 import { fontFamily, radius } from '@/shared/theme/tokens'
 import SectionHead from '@/shared/ui/SectionHead'
 import ProviderStateDot from './ProviderStateDot'
-import { PROVIDER_STATE_LABEL, type ProviderState } from './oidcProviderState'
+import { PER_INSTANCE_NOTE, PROVIDER_STATE_LABEL, type ProviderState } from './oidcProviderState'
 
 const eyebrowSx = {
   fontFamily: fontFamily.mono,
@@ -233,6 +233,11 @@ export default function OidcProviderSetupInstructions() {
           ))}
         </Box>
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.5, mt: 2 }}>
+          „Erreichbar“ und „Nicht erreichbar“ gelten für die Backend-Instanz, die diese Seite
+          geladen hat: Laufen mehrere, lädt jede die Schlüssel selbst, und die Liste kennzeichnet
+          den Status als „{PER_INSTANCE_NOTE}“.
+        </Typography>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', lineHeight: 1.5, mt: 1 }}>
           Der Verbindungstest im Formular prüft Discovery-Dokument und JWK-Set vor dem Speichern.
           Ist die Issuer-URI vom Backend aus nicht erreichbar, prüft er das JWK-Set über die
           Backend-seitige Adresse und sagt das.
