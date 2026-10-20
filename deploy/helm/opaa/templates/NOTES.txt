@@ -18,7 +18,11 @@ Erreichbar unter {{ .Values.publicBaseUrl }}
 {{- end }}
 {{- end }}
 
-{{ if .Release.IsUpgrade -}}
+{{ if .Values.backend.migration.enabled -}}
+Der Migrations-Job migriert das Datenbankschema auf den Stand dieser Version; die Backend-Pods
+warten darauf und {{ if .Release.IsUpgrade }}werden danach ersetzt, die alten antworten bis dahin{{ else }}starten danach{{ end }}:
+  kubectl -n {{ .Release.Namespace }} wait --for=condition=complete job/{{ include "opaa.migration.jobName" . }} --timeout=15m
+{{- else if .Release.IsUpgrade -}}
 Der Start migriert das Datenbankschema auf den Stand dieser Version; das Backend ist erst danach
 bereit, bis dahin antwortet OPAA nicht:
 {{- else -}}
@@ -28,8 +32,8 @@ Der erste Start migriert das Datenbankschema; das Backend ist erst danach bereit
 
 Anmeldung als Systemverwaltung: {{ .Values.bootstrap.initialAdmin.email }}
 {{- if and .Release.IsInstall (not .Values.secrets.existingSecret) (not .Values.secrets.initialAdminPassword) }}
-  Das Einmalpasswort steht einmalig im Protokoll des ersten Starts:
-    kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "opaa.backend.fullname" . }} | grep -A5 NOTANKER
+  Das Einmalpasswort steht einmalig im Protokoll des ersten Starts eines Backend-Pods:
+    kubectl -n {{ .Release.Namespace }} logs -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=backend --tail=-1 | grep -A5 NOTANKER
 {{- end }}
 
 STARTWERTE WIRKEN NUR BEIM ERSTEN START
@@ -38,10 +42,27 @@ STARTWERTE WIRKEN NUR BEIM ERSTEN START
   laufenden Installation nichts. Mailserver, weitere Identitätsanbieter und Modelle werden in der
   Oberfläche eingerichtet.
 
+{{- if include "opaa.backend.rolling" . }}
+
+{{ int .Values.backend.replicas }} BACKEND-POD{{ if gt (int .Values.backend.replicas) 1 }}S{{ end }}, AKTUALISIERUNG POD FÜR POD
+  Ein Upgrade ersetzt die Pods einzeln (RollingUpdate), der nächste erst, wenn der neue bereit ist.
+  Vorher erweitert der Migrations-Job das Schema so, dass die Vorgängerversion weiterläuft.
+  helm rollback auf die Vorgängerversion ist deshalb ein Rückweg; über ein Release, das sich als
+  Versionsgrenze ohne Rolling Update ausweist, nur die Datenbanksicherung. Einen Wert des
+  Konfigurationsabdrucks ändert nur backend.updateStrategy: Recreate. Budgets wie Rate-Limits und
+  Pools gelten je Pod.
+{{- else if gt (int .Values.backend.replicas) 1 }}
+
+{{ int .Values.backend.replicas }} BACKEND-PODS, STRATEGIE RECREATE
+  Ein Upgrade beendet alle Pods, bevor die neuen starten, und unterbricht den Betrieb kurz. So
+  ändert sich ein Wert des Konfigurationsabdrucks. Budgets wie Rate-Limits und Pools gelten je Pod.
+{{- else }}
+
 GENAU EINE BACKEND-INSTANZ
-  Das Backend läuft als ein Pod mit Strategie Recreate (ADR-0021). Ein Upgrade unterbricht den
-  Betrieb kurz. helm rollback ist über eine Schemaänderung hinweg kein Rückweg - zurück geht es nur
-  über die Datenbanksicherung.
+  Das Backend läuft als ein Pod mit Strategie Recreate. Ein Upgrade unterbricht den Betrieb kurz.
+  helm rollback ist über eine Schemaänderung hinweg kein Rückweg - zurück geht es nur über die
+  Datenbanksicherung.
+{{- end }}
 
 {{- if and (not .Values.secrets.existingSecret) }}
 

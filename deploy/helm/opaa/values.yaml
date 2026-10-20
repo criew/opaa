@@ -1,6 +1,6 @@
-# Values of the OPAA chart. The chart runs exactly one backend instance (ADR-0021) next to the
-# frontend; PostgreSQL with pgvector, the model endpoints and an identity provider are operated
-# outside of it and only connected (ADR-0042).
+# Values of the OPAA chart. The chart runs the backend, one instance by default or several under the
+# conditions of backend.replicas (ADR-0053), next to the frontend; PostgreSQL with pgvector, the
+# model endpoints and an identity provider are operated outside of it and only connected (ADR-0042).
 #
 # Three kinds of configuration (ADR-0042, Entscheidung 3):
 #   - deployment values, read on every start: everything outside of "bootstrap"
@@ -178,7 +178,8 @@ targetValidation:
 uploads:
   # s3 (recommended): an S3-compatible object store; the access keys come from the secret (keys
   # OPAA_UPLOAD_S3_ACCESS_KEY, OPAA_UPLOAD_S3_SECRET_KEY).
-  # persistentVolumeClaim: a volume mounted at /app/uploads (ReadWriteOnce suffices).
+  # persistentVolumeClaim: a volume mounted at /app/uploads (ReadWriteOnce suffices for one backend
+  # pod; more than one, or backend.updateStrategy RollingUpdate, need ReadWriteMany).
   store: s3
   s3:
     # Required, e.g. https://s3.example.org; for AWS https://s3.<region>.amazonaws.com with
@@ -191,7 +192,7 @@ uploads:
     # Prefix of every object key, e.g. opaa/
     keyPrefix: ""
   persistence:
-    # Use an existing claim instead of creating one.
+    # Use an existing claim instead of creating one; accessModes below then names its access modes.
     existingClaim: ""
     size: 20Gi
     storageClassName: ""
@@ -280,9 +281,44 @@ backend:
     digest: ""
     pullPolicy: IfNotPresent
 
-  # Exactly one instance (ADR-0021); 0 stops the backend, more than 1 aborts the rendering. Kept as
-  # a value so that a future multi-instance release (#1292) does not change the values layout.
+  # Number of backend pods; 0 stops the backend. More than 1 needs migration.enabled and originals
+  # every pod sees: uploads.store s3, or uploads.persistence.accessModes [ReadWriteMany]; otherwise
+  # the rendering aborts (ADR-0053, Entscheidung 15). Budgets per instance (rate limits, pools)
+  # count per pod: an installation-wide budget is the per-pod value times replicas.
   replicas: 1
+
+  # How a change of the pod template reaches the pods. Empty: Recreate for one pod - the old one
+  # ends before the new one starts, a short interruption - and RollingUpdate (maxUnavailable 0,
+  # maxSurge 1) for more. RollingUpdate on one pod needs the same as more than one pod. Recreate
+  # with several pods is the way to change a value of the configuration fingerprint, which every
+  # pod must share (ADR-0053, Entscheidung 4).
+  updateStrategy: ""
+
+  # The schema migration as a job of its own (OPAA_MODE=migrate) before the pods; required for more
+  # than one pod and for RollingUpdate. The pods then start with SPRING_LIQUIBASE_ENABLED=false and
+  # wait in an init container (OPAA_MODE=await-migration) until the database holds every changeset
+  # of their version. Off: every pod migrates on its start.
+  migration:
+    enabled: false
+    # Retries of a failed migration; a failed job holds the new pods back, the old ones keep serving.
+    backoffLimit: 2
+    # Upper bound of the job in seconds; null: none.
+    activeDeadlineSeconds: null
+    # Of the job's container and of the waiting init container of every backend pod.
+    resources:
+      requests:
+        cpu: 250m
+        memory: 384Mi
+      limits:
+        memory: 768Mi
+
+  # Connections of the database pool of each pod (OPAA_DB_POOL_SIZE); null keeps the application
+  # default (10). PostgreSQL must allow
+  #   (replicas + 1) x (databasePoolSize + 1) + 2 <= max_connections
+  # minus the connections of everything else on the server: the 1 added to replicas is the pod a
+  # RollingUpdate starts before it ends an old one (maxSurge), the 1 added to the pool each pod's
+  # connection of the invalidation bus outside the pool, the 2 the migration job.
+  databasePoolSize: null
 
   # Port of the actuator endpoints - probes and metrics (MANAGEMENT_SERVER_PORT). Kept apart from the
   # API port, so that a scraper let in by the network policy reaches no API path.
@@ -293,9 +329,16 @@ backend:
   logFormat: ""
 
   # How long a stop lets accepted HTTP requests finish (OPAA_SHUTDOWN_TIMEOUT), per shutdown phase.
-  shutdownTimeoutSeconds: 60
-  # Must lie above shutdownTimeoutSeconds, otherwise the kubelet cuts the graceful shutdown short.
-  terminationGracePeriodSeconds: 75
+  # null: 60 with Recreate; with RollingUpdate the frontend's read timeout
+  # (frontend.backendReadTimeout), so a chat answer in progress survives the replacement of its pod.
+  # With RollingUpdate a smaller value aborts the rendering.
+  shutdownTimeoutSeconds: null
+  # Must lie above shutdownTimeoutSeconds plus preStopSleepSeconds, otherwise the kubelet cuts the
+  # graceful shutdown short. null: both plus 15 seconds.
+  terminationGracePeriodSeconds: null
+  # With RollingUpdate a stopping pod keeps serving this long (lifecycle.preStop.sleep) while the
+  # endpoints drop it, before it refuses new connections. Not rendered with Recreate.
+  preStopSleepSeconds: 10
 
   # Share of the container memory limit the JVM may use as heap (-XX:MaxRAMPercentage, set through
   # JAVA_TOOL_OPTIONS). The rest of the limit belongs to classes, compiled code, threads and buffers.
@@ -356,7 +399,14 @@ backend:
   podLabels: {}
   nodeSelector: {}
   tolerations: []
+  # e.g. a podAntiAffinity that keeps two backend pods off one node.
   affinity: {}
+  # Spreads several backend pods over nodes or zones; a constraint without labelSelector gets the
+  # backend's pod labels, e.g.
+  #   - maxSkew: 1
+  #     topologyKey: kubernetes.io/hostname
+  #     whenUnsatisfiable: ScheduleAnyway
+  topologySpreadConstraints: []
   # Further environment variables, e.g. an OPAA_* setting the values do not cover yet.
   extraEnv: []
   extraEnvFrom: []

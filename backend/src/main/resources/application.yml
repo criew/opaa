@@ -70,8 +70,9 @@ spring:
       # time, and SpaceService.ensureDefaultSpaceForNewUser skips a redundant existence check (see
       # its Javadoc and UserServiceConcurrentDistinctUserLoginIntegrationTest, which exercises
       # exactly this scenario at this pool size). Raising this number was considered and rejected as
-      # treating the symptom, not the cause.
-      maximum-pool-size: 10
+      # treating the symptom, not the cause. The pool belongs to one instance; several instances
+      # need max_connections for all their pools, see docs/handbuch/datenbank.md.
+      maximum-pool-size: ${OPAA_DB_POOL_SIZE:10}
       # Every unqualified name - Liquibase DDL, JPA entities, native queries - resolves through this
       # search_path (ADR-0034). public stays behind the application schema only so an extension
       # installed there beforehand (vector) remains resolvable; nothing of OPAA's own lands in it.

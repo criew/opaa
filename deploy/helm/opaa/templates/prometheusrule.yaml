@@ -31,19 +31,22 @@ spec:
               bereit. Anmeldung und Suche sind nicht verfügbar. Protokoll des Pods und
               /actuator/health/readiness prüfen (Datenbank erreichbar?).
         - alert: OpaaBackendMetricsMissing
-          # Silent while the backend is stopped on purpose (replicas 0); without kube-state-metrics the
-          # unless never matches and the alert keeps working.
+          # Fewer pods scraped than the deployment wants, so a single silent pod of several alerts.
+          # Without kube-state-metrics only the second part works: no pod scraped at all. Silent while
+          # the backend is stopped on purpose (replicas 0).
           expr: >-
-            absent(up{ {{- $scrape }}} == 1)
-            unless on() ({{ $replicas }} == 0)
+            (count(up{ {{- $scrape }}} == 1) or on() vector(0)) < on() max({{ $replicas }})
+            or
+            (absent(up{ {{- $scrape }}} == 1) unless on() ({{ $replicas }} == 0))
           for: 10m
           labels:
             severity: warning
           annotations:
             summary: Keine Metriken vom OPAA-Backend
             description: >-
-              Prometheus erreicht /actuator/prometheus des Backends {{ $deployment }} seit zehn
-              Minuten nicht. Pod, ServiceMonitor und die NetworkPolicy (metrics.scrapeFrom) prüfen.
+              Prometheus erreicht /actuator/prometheus von mindestens einem Pod des Backends
+              {{ $deployment }} seit zehn Minuten nicht. Pods, ServiceMonitor und die
+              NetworkPolicy (metrics.scrapeFrom) prüfen.
         - alert: OpaaHighErrorRate
           # Needs a minimum of requests, so that two failures on a quiet night do not alert.
           expr: >-
@@ -63,25 +66,27 @@ spec:
               enden seit zehn Minuten mit einem Status 5xx. Häufige Ursache: ein nicht erreichbares
               Modell. Protokoll des Pods prüfen.
         - alert: OpaaIndexingStalled
-          # A run active through the whole window - already at its start, so a young series after a
-          # pod start does not count as a full window - and no document processed in it.
+          # Per pod, since a run belongs to the pod that runs it: active through the whole window -
+          # already at its start, so a young series after a pod start does not count as a full
+          # window - and no document processed in it on that pod.
           expr: >-
-            max(min_over_time(executor_active_threads{ {{- $scrape }}, name="indexingTaskExecutor"}[{{ $rule.indexingStallMinutes }}m])) > 0
-            and on() max(executor_active_threads{ {{- $scrape }}, name="indexingTaskExecutor"} offset {{ $rule.indexingStallMinutes }}m) > 0
-            and on() sum(increase(opaa_indexing_documents_total{ {{- $scrape }}}[{{ $rule.indexingStallMinutes }}m])) == 0
+            max by (pod) (min_over_time(executor_active_threads{ {{- $scrape }}, name="indexingTaskExecutor"}[{{ $rule.indexingStallMinutes }}m])) > 0
+            and on(pod) max by (pod) (executor_active_threads{ {{- $scrape }}, name="indexingTaskExecutor"} offset {{ $rule.indexingStallMinutes }}m) > 0
+            and on(pod) sum by (pod) (increase(opaa_indexing_documents_total{ {{- $scrape }}}[{{ $rule.indexingStallMinutes }}m])) == 0
           for: 5m
           labels:
             severity: warning
           annotations:
             summary: Indexierung ohne Fortschritt
             description: >-
-              Ein Indexierungslauf in {{ $deployment }} ist aktiv, hat aber seit
+              Ein Indexierungslauf im Pod {{ "{{" }} $labels.pod {{ "}}" }} von {{ $deployment }} ist aktiv, hat aber seit
               {{ $rule.indexingStallMinutes }} Minuten kein Dokument verarbeitet. Laufstatus der
               Bibliothek und Erreichbarkeit von Quelle und Embedding-Modell prüfen.
         - alert: OpaaHeapUsageHigh
+          # Per pod: the heap of one pod fills up regardless of the others.
           expr: >-
-            sum(jvm_memory_used_bytes{ {{- $scrape }}, area="heap"})
-            / sum(jvm_memory_max_bytes{ {{- $scrape }}, area="heap"})
+            sum by (pod) (jvm_memory_used_bytes{ {{- $scrape }}, area="heap"})
+            / sum by (pod) (jvm_memory_max_bytes{ {{- $scrape }}, area="heap"})
             > {{ $rule.heapUsageThreshold }}
           for: 15m
           labels:
@@ -89,7 +94,7 @@ spec:
           annotations:
             summary: Heap des OPAA-Backends fast voll
             description: >-
-              Das Backend {{ $deployment }} nutzt seit 15 Minuten mehr als
+              Der Pod {{ "{{" }} $labels.pod {{ "}}" }} von {{ $deployment }} nutzt seit 15 Minuten mehr als
               {{ mulf $rule.heapUsageThreshold 100 }} % seines Heaps. Speichergrenze
               (backend.resources.limits.memory) oder backend.maxRamPercentage anheben.
 {{- end }}

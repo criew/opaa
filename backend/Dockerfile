@@ -13,6 +13,10 @@ WORKDIR /app
 COPY backend/src/ backend/src/
 COPY opaa-api/src/ opaa-api/src/
 WORKDIR /app/backend
+# The container health check of the Compose stack: a class of its own outside the application,
+# compiled against java.base alone, so a check starts a small JVM without the application.
+COPY backend/docker/HealthProbe.java docker/
+RUN "$JAVA_HOME/bin/javac" --release 21 -d /app/probe docker/HealthProbe.java
 # Version the backend reports (start line, /actuator/info). A release build passes the version of
 # its tag, a main build 0.0.0-dev+<commit>; left empty, Gradle keeps its development placeholder. Declared after the dependency layer
 # so that changing it does not invalidate the downloaded dependencies.
@@ -76,6 +80,7 @@ ENV OPAA_UPLOAD_STORAGE_PATH=/app/uploads
 ARG OPAA_COMMIT=
 ENV OPAA_BUILD_COMMIT=${OPAA_COMMIT}
 COPY --from=build /app/backend/build/libs/*.jar app.jar
+COPY --from=build /app/probe/HealthProbe.class /app/probe/HealthProbe.class
 # The process needs no privilege of its own: it binds 8080 (above 1024) and writes to /app/uploads,
 # to /tmp (1777 in the base, java.io.tmpdir) and to whatever temp directory the operator configures.
 # Everything else it reads, so the root filesystem may be mounted read-only once /tmp (and

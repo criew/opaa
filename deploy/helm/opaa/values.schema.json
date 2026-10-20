@@ -946,10 +946,53 @@
         "replicas": {
           "type": "integer",
           "minimum": 0,
-          "description": "1, or 0 to stop the backend; more than one instance is refused (ADR-0021)"
+          "description": "Number of backend pods, 0 stops the backend; more than 1 needs backend.migration.enabled and originals every pod sees (ADR-0053)"
+        },
+        "updateStrategy": {
+          "type": "string",
+          "enum": [
+            "",
+            "Recreate",
+            "RollingUpdate"
+          ],
+          "description": "Empty: Recreate for one pod, RollingUpdate for more"
+        },
+        "migration": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "backoffLimit": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "activeDeadlineSeconds": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "resources": {
+              "type": "object"
+            }
+          }
+        },
+        "databasePoolSize": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Connections of the database pool per pod (OPAA_DB_POOL_SIZE); null keeps 10"
         },
         "shutdownTimeoutSeconds": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 1
         },
         "managementPort": {
@@ -971,8 +1014,16 @@
           ]
         },
         "terminationGracePeriodSeconds": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 1
+        },
+        "preStopSleepSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 120
         },
         "maxRamPercentage": {
           "type": [
@@ -1119,6 +1170,17 @@
         },
         "affinity": {
           "type": "object"
+        },
+        "topologySpreadConstraints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "maxSkew",
+              "topologyKey",
+              "whenUnsatisfiable"
+            ]
+          }
         },
         "extraEnv": {
           "type": "array"

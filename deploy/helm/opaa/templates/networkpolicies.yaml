@@ -80,6 +80,11 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "backend") | nindent 14 }}
+        {{- if .Values.backend.migration.enabled }}
+        - podSelector:
+            matchLabels:
+              {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "migration") | nindent 14 }}
+        {{- end }}
       ports:
         - port: postgresql
           protocol: TCP
@@ -134,4 +139,36 @@ spec:
     {{- with .Values.networkPolicy.egress.backendRules }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+{{- if .Values.backend.migration.enabled }}
+---
+# The migration job reaches DNS, the evaluation database and the backend's rules, which name the
+# database; it accepts no connections.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "opaa.fullname" . }}-migration-egress
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "migration") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "migration") | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    {{- toYaml .Values.networkPolicy.egress.dns | nindent 4 }}
+    {{- if .Values.evaluationDatabase.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "evaluation-database") | nindent 14 }}
+      ports:
+        - port: postgresql
+          protocol: TCP
+    {{- end }}
+    {{- with .Values.networkPolicy.egress.backendRules }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
 {{- end }}

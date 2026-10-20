@@ -1,7 +1,8 @@
 # OPAA Helm-Chart
 
-Betrieb von OPAA unter Kubernetes: genau eine Backend-Instanz ([ADR-0021](../../../docs/decisions/0021-single-instance-betrieb.md))
-und das Frontend. Grundlage ist [ADR-0042](../../../docs/decisions/0042-kubernetes-lieferung-mit-helm.md).
+Betrieb von OPAA unter Kubernetes: das Backend mit einer Instanz oder, unter den Voraussetzungen von
+[ADR-0053](../../../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), mit mehreren, und das
+Frontend. Grundlage ist [ADR-0042](../../../docs/decisions/0042-kubernetes-lieferung-mit-helm.md).
 
 PostgreSQL mit pgvector, Modell-Endpunkte und gegebenenfalls ein Identitätsanbieter werden angebunden,
 nicht mitgeliefert.
@@ -100,14 +101,52 @@ legt das Datenbankschema an; erst danach meldet sich das Backend bereit.
 
 ## Was der Chart festlegt
 
-- **Eine Instanz, Strategie `Recreate`.** Ein Upgrade unterbricht den Betrieb kurz. Die
+- **Eine Instanz, Strategie `Recreate`, als Vorgabe.** Ein Upgrade unterbricht den Betrieb kurz. Die
   Schemamigration läuft beim Start des Backends, die Startup-Probe gibt ihr bis zu zehn Minuten.
+  Mehrere Instanzen beschreibt [Mehrere Backend-Instanzen](#mehrere-backend-instanzen).
 - **Pod Security Standard `restricted`.** Alle Pods laufen ohne Root, mit nur lesbarem
   Root-Dateisystem und ohne Token des ServiceAccounts.
 - **Betriebsmodus `oidc`.** Ohne Identitätsanbieter melden sich Personen lokal an
   ([ADR-0033](../../../docs/decisions/0033-lokale-benutzerverwaltung.md)).
 - **Startwerte wirken nur beim ersten Start.** `bootstrap.*` wird einmal in die Datenbank übernommen,
   danach führt die Oberfläche.
+
+## Mehrere Backend-Instanzen
+
+`backend.replicas` größer 1 rendert nur mit Migrations-Job und einer Originalablage, die jeder Pod
+sieht; sonst bricht `helm template` mit einer Meldung ab:
+
+```yaml
+backend:
+  replicas: 2
+  migration:
+    enabled: true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+uploads:
+  store: s3            # oder persistentVolumeClaim mit accessModes: [ReadWriteMany]
+```
+
+Der Chart setzt dann:
+
+- **Migrations-Job** `<Release>-migrate-<Prüfsumme>` mit `OPAA_MODE=migrate`, neu bei jedem Upgrade
+  mit neuem Image oder neuer Konfiguration. Die Backend-Pods laufen mit
+  `SPRING_LIQUIBASE_ENABLED=false` und warten in einem Init-Container (`OPAA_MODE=await-migration`),
+  bis das Schema ihrer Version vollständig ist. Mit `networkPolicy.egress.enabled` bekommt der Job
+  eine eigene Ausgangs-Policy, die Erprobungsdatenbank lässt ihn ein.
+- **Strategie `RollingUpdate`** mit `maxUnavailable: 0` und `maxSurge: 1`; `backend.updateStrategy:
+  Recreate` bleibt wählbar und ist der Weg, einen Wert des Konfigurationsabdrucks zu ändern.
+- **PodDisruptionBudget** mit `maxUnavailable: 1` ab zwei Replikaten.
+- **Zeiten:** `lifecycle.preStop.sleep` über `backend.preStopSleepSeconds`;
+  `backend.shutdownTimeoutSeconds` folgt dem Lese-Timeout des Frontends, die Stopp-Frist liegt
+  darüber.
+- **Verbindungen:** `backend.databasePoolSize` je Pod; `values.yaml` nennt die Grenze für
+  `max_connections`.
+
+Rate-Limits, Kontingente und Thread-Pools gelten je Pod. Das Handbuch, Kapitel „Kubernetes“,
+beschreibt Ablauf, Rückweg und Alarme je Pod.
 
 ## Netz und Client-Adresse
 
@@ -164,7 +203,7 @@ helm test opaa -n opaa
 ```
 
 `helm template` bricht ab, wenn das Schema oder eine Regel des Charts die Werte ablehnt, etwa
-`backend.replicas: 2`. `helm lint` eignet sich dafür nicht: Es meldet die Regeln des Charts nur als
+`backend.replicas: 2` ohne Migrations-Job. `helm lint` eignet sich dafür nicht: Es meldet die Regeln des Charts nur als
 `[INFO]` und endet trotzdem erfolgreich.
 
 `helm test` ruft `/api/health` über den Frontend-Service ab und prüft damit die Kette

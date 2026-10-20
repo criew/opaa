@@ -80,6 +80,13 @@ Wie der erste Systemverwalter hereinkommt, steht unter
 | upload-store | 8095 (API), 8096 (Konsole unter `/rustfs/console/`) | 9000, 9001 | Objektspeicher der Originalablage (nur `upload-s3`-Profil; an `127.0.0.1` gebunden) |
 | upload-store-init | —    | —               | einmaliger Init-Schritt, legt den Bucket der Originalablage an (nur `upload-s3`-Profil) |
 | mailpit | 1025 (SMTP), 8025 (Weboberfläche) | 1025, 8025 | Mailserver, der alles annimmt und nichts zustellt (nur `mail`-Profil) |
+| backend-migrate | —   | —               | einmaliger Migrationsschritt (nur [Mehrinstanz-Variante](#mehrere-backend-instanzen)) |
+| backend-a, backend-b | — | 8080           | zwei Backend-Instanzen statt `backend` (nur Mehrinstanz-Variante) |
+
+Das Backend meldet seinen Zustand über einen Healthcheck auf die
+[Bereitschaft](betrieb.md#bereitschaft-und-lebendigkeit); `docker compose ps` zeigt ihn als
+`healthy`, und das Frontend startet erst danach. Der Frontend-nginx löst den Namen `backend` zur
+Laufzeit auf (`OPAA_BACKEND_RESOLVER`): Ein neu erstelltes Backend erreicht er ohne eigenen Neustart.
 
 Die Profile `demo` (Demo-Instanz „Stadt Rheinfurt" mit eigenen Quellen) und `oidc` (gebündeltes
 Keycloak) ergänzen weitere Dienste. Alle Befehle dieses Kapitels sprechen den **Servicenamen** an
@@ -259,6 +266,68 @@ docker compose --profile mail up -d mailpit
 Die abgefangenen Nachrichten liegen unter `http://localhost:8025`. Unter „Administration → E-Mail →
 SMTP-Zugang" einzutragen: Server `mailpit`, Port `1025`, Verschlüsselung `NONE`, keine Zugangsdaten
 ([E-Mail-Versand](e-mail.md)).
+
+## Mehrere Backend-Instanzen
+
+> **Vorbereitet, noch nicht freigegeben.** Der Nachweis mit zwei Instanzen steht aus (#2952); bis
+> dahin gilt [Genau eine Backend-Instanz](betrieb.md#genau-eine-backend-instanz).
+
+`docker-compose.multi.yml` ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner. Jeder
+Befehl für diesen Stapel nennt beide Dateien:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d
+```
+
+Statt `backend` laufen dann `backend-migrate`, das die Datenbank migriert und endet, und die
+Instanzen `backend-a` und `backend-b`. Sie starten erst nach dem Migrationsschritt, migrieren selbst
+nicht und haben je ein eigenes `/tmp`, aber keinen Host-Port. Beide tragen im Compose-Netz den Namen
+`backend`; der Frontend-nginx verteilt die Anfragen auf beide und weicht auf die andere aus, wenn eine
+keine Verbindung annimmt. `docker compose --scale` ist nicht der Weg zu einer weiteren Instanz: Die
+skalierten Container teilten sich ein `/tmp`.
+
+- **Originale:** Empfohlen ist der Objektspeicher (`OPAA_UPLOAD_STORE=s3`, etwa mit dem Profil
+  `upload-s3`). Das gemeinsame Verzeichnis `uploads/` genügt, weil alle Instanzen auf diesem einen
+  Rechner laufen; Instanzen auf mehreren Rechnern brauchen den Objektspeicher.
+- **Konfiguration:** Beide Instanzen lesen dieselbe `.env.docker` und haben damit denselben
+  [Konfigurationsabdruck](betrieb.md#instanzregister).
+- **Grenzen je Instanz:** Rate-Limits, Kontingente und Thread-Pools gelten je Instanz. Ein Wert, der
+  für die ganze Installation gemeint ist, wird durch die Zahl der Instanzen geteilt.
+- **Datenbankverbindungen:** Die Grenze nennt
+  [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
+- **Vertraute Proxys:** Die feste Adresse des Frontend-Containers in
+  `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` genügt, solange genau ein Frontend-Container vor den Instanzen
+  steht. Ein zweiter Frontend-Container braucht eine eigene feste Adresse im Compose-Netz und einen
+  eigenen Eintrag; mit `docker compose --scale frontend` bekämen die Container Adressen, die sich nicht
+  einzeln vertrauen lassen. Ein weiterer Proxy davor kommt hinzu wie unter
+  [Vertraute Proxys](betrieb.md#vertraute-proxys-und-client-adresse) beschrieben.
+
+### Update ohne Ausfall
+
+Compose ersetzt Container nicht nacheinander von selbst. Die Reihenfolge, eine Instanz nach der
+anderen, jeweils bis sie `healthy` ist:
+
+```bash
+F="-f docker-compose.yml -f docker-compose.multi.yml"
+docker compose $F pull                              # oder build
+docker compose $F run --rm backend-migrate          # Migration der neuen Version
+docker compose $F up -d --no-deps --wait backend-a  # wartet, bis backend-a healthy ist
+docker compose $F up -d --no-deps --wait backend-b
+docker compose $F up -d --no-deps --wait frontend
+```
+
+1. **Migration zuerst.** Sie erweitert das Schema nur, die laufenden Instanzen der alten Version
+   arbeiten weiter. Endet `run` nicht mit Exit-Code 0, hier aufhören: Die alten Instanzen laufen
+   unverändert.
+2. **Dann `backend-a`.** Während Compose den Container ersetzt, beantwortet `backend-b` alle Anfragen;
+   laufende Anfragen von `backend-a` enden geordnet ([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
+3. **Dann `backend-b`**, erst wenn `backend-a` wieder `healthy` ist; `--wait` wartet darauf.
+4. **Das Frontend zuletzt.** Es ist ein einzelner Container, sein Austausch ist ein Aussetzer von
+   wenigen Sekunden.
+
+Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, oder ändert sich ein Wert
+des Konfigurationsabdrucks, werden zuerst beide Instanzen angehalten
+(`docker compose $F stop backend-a backend-b`), dann folgen Migration und Start wie oben.
 
 ## Nicht-root-Betrieb des Backend-Containers
 
@@ -476,7 +545,8 @@ docker compose up -d         # Container mit den neuen Images neu erstellen
 docker image prune -f        # optional: verdrängte Images aufräumen
 ```
 
-`up -d` ersetzt nur die Container, deren Image sich geändert hat. `docker compose restart` genügt
+`up -d` ersetzt nur die Container, deren Image sich geändert hat. Mit der Mehrinstanz-Variante gilt
+die Reihenfolge unter [Update ohne Ausfall](#update-ohne-ausfall). `docker compose restart` genügt
 **nicht**: Es startet den vorhandenen Container samt altem Image. Zustand danach:
 
 ```bash

@@ -3,7 +3,8 @@
 # stands in as upstream and answers every request with the forwarding headers it received. Passes
 # when client-supplied Forwarded/X-Forwarded-Host/-Port/-Prefix reach the upstream on none of the
 # proxy paths, every response carries the Permissions-Policy, and the start refuses an invalid
-# OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy.
+# OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy, and with
+# OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
 #
 #   .github/scripts/frontend_hardening_test.sh <frontend image>
 set -euo pipefail
@@ -22,7 +23,8 @@ frontend="opaa-hardening-frontend-$suffix"
 probe="opaa-hardening-probe-$suffix"
 
 cleanup() {
-  docker rm -f "$frontend" "$echo_upstream" "$probe" >/dev/null 2>&1 || true
+  docker rm -f "$frontend" "$echo_upstream" "$echo_upstream-a" "$echo_upstream-b" "$probe" \
+    >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -154,6 +156,55 @@ for value in "" "https://login.example.org" "http://localhost:8180" \
     echo "accepted as expected: '$value'"
   fi
 done
+
+echo "--- OPAA_BACKEND_RESOLVER"
+for value in "backend" "127.0.0.11;" "127.0.0.11 valid=1s" "127.0.0.11${newline}server evil:80"; do
+  docker rm -f "$probe" >/dev/null 2>&1 || true
+  start_frontend "$probe" -e OPAA_BACKEND_UPSTREAM=echo:8080 -e "OPAA_BACKEND_RESOLVER=$value"
+  sleep 3
+  if [[ "$(docker container inspect --format '{{.State.Running}}' "$probe")" == true ]]; then
+    fail "start accepted OPAA_BACKEND_RESOLVER='$value'"
+  elif docker logs "$probe" 2>&1 | grep -q 'ERROR: OPAA_BACKEND_RESOLVER must be'; then
+    echo "refused as expected: '$value'"
+  else
+    fail "start failed for OPAA_BACKEND_RESOLVER='$value' without naming the variable"
+  fi
+done
+
+# With the Docker resolver every container behind one name is a peer, one started after nginx
+# included, and a removed one drops out within the re-resolution interval of 5 s.
+docker rm -f "$probe" >/dev/null 2>&1 || true
+start_frontend "$probe" -e OPAA_BACKEND_UPSTREAM=named:8080 -e OPAA_BACKEND_RESOLVER=127.0.0.11
+named_upstream() {
+  docker run -d --name "$echo_upstream-$1" --network "$network" --network-alias named \
+    -e ECHO_CONF="server { listen 8080; location / { return 200 \"upstream=$1\n\"; } }" \
+    --entrypoint sh "$image" \
+    -c 'mkdir -p /tmp/nginx/conf.d && printf "%s\n" "$ECHO_CONF" > /tmp/nginx/conf.d/echo.conf && exec nginx -g "daemon off;"' \
+    >/dev/null
+}
+probe_port="$(docker port "$probe" 8080/tcp | head -n 1 | sed 's/.*://')"
+answers() {
+  for _ in $(seq 1 12); do
+    curl -fsS --max-time 10 "http://127.0.0.1:$probe_port/api/v1/health" 2>/dev/null || echo failed
+  done | sort -u | tr '\n' ' '
+}
+named_upstream a
+named_upstream b
+sleep 7
+seen="$(answers)"
+if [[ "$seen" == "upstream=a upstream=b " ]]; then
+  echo "both containers behind one name answer: $seen"
+else
+  fail "requests through a resolved name reached '${seen:-nothing}', expected upstream=a and upstream=b"
+fi
+docker rm -f "$echo_upstream-a" >/dev/null
+sleep 7
+seen="$(answers)"
+if [[ "$seen" == "upstream=b " ]]; then
+  echo "a removed container drops out without a restart of nginx: $seen"
+else
+  fail "after removing one container the requests reached '${seen:-nothing}', expected upstream=b only"
+fi
 
 if ((failures > 0)); then
   echo "$failures hardening check(s) failed." >&2

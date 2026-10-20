@@ -32,10 +32,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class OpaaApplication {
 
-  /** Serves, or with {@code OPAA_MODE=migrate} only migrates the database and ends. */
+  /**
+   * Serves, or with {@code OPAA_MODE=migrate} only migrates the database and ends, or with {@code
+   * OPAA_MODE=await-migration} only waits for that migration and ends.
+   */
   public static void main(String[] args) {
-    if (DatabaseMigrationMode.requested(args)) {
-      System.exit(DatabaseMigrationMode.run(args));
+    DatabaseMigrationMode.Mode mode = DatabaseMigrationMode.mode(args);
+    if (mode != DatabaseMigrationMode.Mode.SERVE) {
+      System.exit(DatabaseMigrationMode.run(mode, args));
     }
     SpringApplication.run(OpaaApplication.class, args);
   }
