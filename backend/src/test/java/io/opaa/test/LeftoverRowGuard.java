@@ -43,7 +43,9 @@ final class LeftoverRowGuard extends AbstractTestExecutionListener {
           "oidc_providers",
           // a deletion time left behind starts the deletion period of the next class's accounts
           // of that issuer at it
-          "oidc_provider_removals");
+          "oidc_provider_removals",
+          // a mail left waiting is delivered into the next class's mailbox once it turns SMTP on
+          "mail_outbox");
 
   private static final String STARTING_COUNTS = LeftoverRowGuard.class.getName() + ".counts";
   private static final String IDLE_GATE = LeftoverRowGuard.class.getName() + ".idleGate";

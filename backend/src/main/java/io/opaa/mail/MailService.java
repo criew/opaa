@@ -12,8 +12,10 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -30,8 +32,11 @@ import org.springframework.util.StringUtils;
  * <p><b>No address reaches a log line, {@code last_failure_reason} or an API response:</b> every
  * cause passes {@link MailRecipients#maskAddresses} first.
  *
- * <p>Sending is synchronous and bounded by the {@link SmtpProperties} timeouts - no outbox, no
- * retry; a message with an HTML part goes out as {@code multipart/alternative}.
+ * <p>Two ways out (ADR-0053, Entscheidung 11). {@link #send} is synchronous and bounded by the
+ * {@link SmtpProperties} timeouts, without retry - for the mail whose outcome the person asking
+ * sees at once. {@link #enqueue} writes the mail to the outbox in the caller's transaction; {@link
+ * MailOutboxWorker} delivers it after the commit, with retries, on any instance. A message with an
+ * HTML part goes out as {@code multipart/alternative}.
  */
 @DataFlowCarrier
 @Service
@@ -46,17 +51,89 @@ public class MailService {
   private final MailSenderProvider senderProvider;
   private final MailTemplateService templates;
   private final MailSettingsService settingsService;
+  private final MailOutbox outbox;
+  private final ApplicationEventPublisher events;
   private final Clock clock;
 
   public MailService(
       MailSenderProvider senderProvider,
       MailTemplateService templates,
       MailSettingsService settingsService,
+      MailOutbox outbox,
+      ApplicationEventPublisher events,
       Clock clock) {
     this.senderProvider = senderProvider;
     this.templates = templates;
     this.settingsService = settingsService;
+    this.outbox = outbox;
+    this.events = events;
     this.clock = clock;
+  }
+
+  /**
+   * Renders {@code key} for {@code locale} with {@code variables} and writes it to the outbox for
+   * {@code recipient}, in the caller's transaction when there is one: a rollback discards it with
+   * the act it announced, and nothing leaves before the commit. Returns whether the mail was
+   * queued; a missing recipient, mail switched off, an unrenderable template or a missing settings
+   * key queue nothing and are logged like a refused {@link #send}. A failing insert propagates - it
+   * belongs to the caller's transaction.
+   */
+  public boolean enqueue(
+      MailTemplateKey key, Locale locale, String recipient, Map<String, Object> variables) {
+    if (!StringUtils.hasText(recipient)) {
+      abort(key, recipient, "Keine Empfängeradresse vorhanden");
+      return false;
+    }
+    try {
+      if (!senderProvider.isEnabled()) {
+        return false;
+      }
+    } catch (RuntimeException unreadableSettings) {
+      abort(key, recipient, causeOf(unreadableSettings));
+      return false;
+    }
+    RenderedMail mail;
+    try {
+      mail = templates.render(key, MailTemplateService.localeTag(locale), variables);
+    } catch (RuntimeException e) {
+      abort(key, recipient, "Die Vorlage konnte nicht gefüllt werden: " + e.getMessage());
+      return false;
+    }
+    UUID id;
+    try {
+      id = outbox.insert(key, recipient, mail);
+    } catch (IllegalStateException unreadableKey) {
+      abort(key, recipient, unreadableKey.getMessage());
+      return false;
+    }
+    events.publishEvent(new MailQueuedEvent(id));
+    return true;
+  }
+
+  /**
+   * One delivery attempt of a claimed outbox row, under the row's stable {@code Message-ID}. Never
+   * throws; a refusal of the mail server is recorded like one of {@link #send}.
+   */
+  SendResult deliver(MailOutbox.Claimed claimed) {
+    MailSenderProvider.Transport transport;
+    try {
+      transport = senderProvider.current();
+    } catch (RuntimeException e) {
+      return abort(claimed.key(), claimed.recipient(), causeOf(e));
+    }
+    if (transport == null) {
+      return new SendResult.Skipped(NOT_CONFIGURED);
+    }
+    try {
+      MimeMessage message =
+          compose(transport.sender(), transport.settings(), claimed.recipient(), claimed.mail());
+      message.setHeader("Message-ID", claimed.messageId());
+      transport.sender().send(message);
+    } catch (Exception e) {
+      return transportFailed(claimed.key(), claimed.recipient(), causeOf(e));
+    }
+    recordOutcome(null);
+    return new SendResult.Sent(claimed.recipient());
   }
 
   /**

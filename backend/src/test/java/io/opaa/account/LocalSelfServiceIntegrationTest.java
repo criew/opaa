@@ -110,7 +110,7 @@ class LocalSelfServiceIntegrationTest {
     fixtures.localProvider(true);
     admin = fixtures.activeAdmin("verwaltung-" + UUID.randomUUID() + "@" + DOMAIN);
     adminBearer = bearer(login(admin.email(), LocalAccountFixtures.PASSWORD, 200));
-    mailbox = new LocalMailbox(mailSettings, admin.id());
+    mailbox = new LocalMailbox(mailSettings, jdbc, admin.id());
     mailbox.start();
     replaceSettings(Values.defaults());
   }
