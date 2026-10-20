@@ -16,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
+  /** The first key of {@link #lockPersonalIntake}; see {@code AssetGrantRepository} for others. */
+  int PERSONAL_INTAKE_LOCK_NAMESPACE = 209;
+
   /**
    * Document identity is scoped to {@code (library_id, file_path)}, enforced by {@code
    * uk_documents_library_path}: the same path or URL indexed into two different libraries is two
@@ -364,6 +367,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       "select coalesce(sum(coalesce(d.fileSize, 0)), 0) from Document d, KnowledgeLibrary l"
           + " where d.libraryId = l.id and l.ownerOnly = true and l.ownerUserId = :ownerUserId")
   long sumFileSizeOfPrivateLibrariesOwnedBy(@Param("ownerUserId") UUID ownerUserId);
+
+  /**
+   * Serializes the intake into the private libraries of {@code ownerUserId} until the end of the
+   * transaction, across every instance: the personal quota is a sum over rows the intake itself
+   * writes, so its check holds only when no second intake of the same owner checks in between.
+   */
+  @Query(
+      value =
+          "SELECT 1 FROM (SELECT pg_advisory_xact_lock("
+              + PERSONAL_INTAKE_LOCK_NAMESPACE
+              + ", hashtext(CAST(:ownerUserId AS text)))) acquired",
+      nativeQuery = true)
+  int lockPersonalIntake(@Param("ownerUserId") UUID ownerUserId);
 
   /**
    * The bytes the private libraries of one organization occupy together - a sum over persons, for

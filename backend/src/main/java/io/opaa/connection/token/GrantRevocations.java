@@ -1,153 +1,253 @@
 package io.opaa.connection.token;
 
+import io.opaa.security.CredentialsEncryptor;
 import jakarta.annotation.PreDestroy;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskRejectedException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The bounded pool on which discarded OAuth grants are revoked at their provider, never on the
- * thread that discarded them. One entry is one discard handed over after its commit (one call of
- * {@code ConnectionSecrets#revokeAfterCommit}): it revokes its grants one after the other, each
- * bounded by its own call's time limit ({@code OAuthClient}), and a failing grant does not stop the
- * rest. The queue bounds discards, not grants, so an emergency shutdown of thousands of grants is
- * one entry; its memory is the snapshot the discard already held (two tokens and a registration, a
- * few KiB per grant), and {@link #QUEUE_CAPACITY} entries of single grants stay within a few MiB.
- * An entry that finds the queue full is dropped with a WARN line and the caller goes on. The queue
- * lives in this process (ADR-0021): on shutdown what runs is interrupted after a short grace period
- * and what waits is dropped, with the number of grants logged.
+ * The queue of discarded OAuth grants still to be revoked at their provider (ADR-0053, Entscheidung
+ * 10): a row of {@code connection_grant_revocations} per grant, written in the transaction of the
+ * discard and carrying the encrypted {@link SecretIssuer#revocation} order. A rolled back discard
+ * leaves no row; a committed one survives a stop of the instance and is revoked by any instance.
+ *
+ * <p>Revocations run on {@link GrantRevocationsConfiguration#SCHEDULER}, never on the thread that
+ * discarded, after the commit and every {@link #POLL_SECONDS} seconds. A run claims one due row at
+ * a time with {@code FOR UPDATE SKIP LOCKED} for {@link #lease} on the database clock, revokes it
+ * once and deletes it, whether the provider took it or not - a refused revocation is not retried. A
+ * row whose claim lapsed because its instance stopped mid-revocation is taken again; one taken
+ * {@link #MAX_ATTEMPTS} times is dropped with a WARN line.
  */
 @Component
 public class GrantRevocations {
 
-  static final int THREADS = 2;
-  static final int QUEUE_CAPACITY = 1000;
-  static final Duration SHUTDOWN_GRACE = Duration.ofSeconds(2);
+  static final int THREADS = GrantRevocationsConfiguration.THREADS;
+  static final int MAX_ATTEMPTS = 3;
+  static final long POLL_SECONDS = 30;
+  static final Duration LEASE = Duration.ofMinutes(5);
 
   private static final Logger log = LoggerFactory.getLogger(GrantRevocations.class);
 
-  /** One grant to revoke: what revokes it, and the profile it was issued under, for the log. */
-  public record Grant(UUID profileId, Runnable revocation) {}
-
-  private final ThreadPoolExecutor executor;
-  private final Duration shutdownGrace;
-  private final AtomicInteger outstanding = new AtomicInteger();
-
-  GrantRevocations() {
-    this(THREADS, QUEUE_CAPACITY, SHUTDOWN_GRACE);
+  /** One grant to revoke: the profile it was issued under, for the log, and its order. */
+  public record Grant(UUID profileId, String order) {
+    @Override
+    public String toString() {
+      return "Grant[profileId=" + profileId + "]";
+    }
   }
 
-  GrantRevocations(int threads, int queueCapacity, Duration shutdownGrace) {
-    AtomicInteger numbers = new AtomicInteger();
-    this.executor =
-        new ThreadPoolExecutor(
-            threads,
-            threads,
-            0,
-            TimeUnit.MILLISECONDS,
-            new ArrayBlockingQueue<>(queueCapacity),
-            runnable -> {
-              Thread thread = new Thread(runnable, "oauth-revocation-" + numbers.incrementAndGet());
-              thread.setDaemon(true);
-              return thread;
-            },
-            (runnable, pool) -> dropped((Commit) runnable, pool));
-    this.shutdownGrace = shutdownGrace;
+  private final JdbcTemplate jdbc;
+  private final CredentialsEncryptor encryptor;
+  private final ObjectProvider<SecretIssuer> issuers;
+  private final TaskScheduler scheduler;
+  private final TransactionTemplate committedView;
+  private final Clock clock;
+  private final Duration lease;
+  private final AtomicInteger running = new AtomicInteger();
+  private volatile boolean stopping;
+
+  @Autowired
+  GrantRevocations(
+      JdbcTemplate jdbc,
+      CredentialsEncryptor encryptor,
+      ObjectProvider<SecretIssuer> issuers,
+      @Qualifier(GrantRevocationsConfiguration.SCHEDULER) TaskScheduler scheduler,
+      PlatformTransactionManager transactionManager,
+      Clock clock) {
+    this(jdbc, encryptor, issuers, scheduler, transactionManager, clock, LEASE);
+  }
+
+  /** The queue as another instance runs it, with its own claim {@code lease}. */
+  public GrantRevocations(
+      JdbcTemplate jdbc,
+      CredentialsEncryptor encryptor,
+      ObjectProvider<SecretIssuer> issuers,
+      TaskScheduler scheduler,
+      PlatformTransactionManager transactionManager,
+      Clock clock,
+      Duration lease) {
+    this.jdbc = jdbc;
+    this.encryptor = encryptor;
+    this.issuers = issuers;
+    this.scheduler = scheduler;
+    this.committedView = new TransactionTemplate(transactionManager);
+    this.committedView.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.committedView.setReadOnly(true);
+    this.clock = clock;
+    this.lease = lease;
   }
 
   /**
-   * Hands the revocations of one commit to the pool as one entry and returns at once; a full queue
-   * or a stopped pool drops it with a WARN line. A revocation must not throw; if it does, the
-   * failure is logged and the next grant of the commit is revoked.
+   * Writes the revocations of one discard to the queue, in the caller's transaction when there is
+   * one, and starts their run once it committed - at once without a transaction.
    */
   public void submit(List<Grant> grants) {
     if (grants.isEmpty()) {
       return;
     }
-    outstanding.incrementAndGet();
-    executor.execute(new Commit(List.copyOf(grants)));
+    for (Grant grant : grants) {
+      jdbc.update(
+          "INSERT INTO connection_grant_revocations (id, profile_id, order_ciphertext)"
+              + " VALUES (?, ?, ?)",
+          UUID.randomUUID(),
+          grant.profileId(),
+          encryptor.encrypt(grant.order()));
+    }
+    int runs = Math.min(grants.size(), THREADS);
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+              requestRuns(runs);
+            }
+          });
+    } else {
+      requestRuns(runs);
+    }
   }
 
-  /** Whether no commit is waiting or running - for tests and diagnostics. */
+  /**
+   * Whether no revocation runs here and none waits in the committed queue - for tests and
+   * diagnostics; a row of a transaction not yet committed does not count.
+   */
   public boolean idle() {
-    return outstanding.get() == 0;
+    if (running.get() > 0) {
+      return false;
+    }
+    Long waiting =
+        committedView.execute(
+            status ->
+                jdbc.queryForObject(
+                    "SELECT count(*) FROM connection_grant_revocations", Long.class));
+    return waiting == null || waiting == 0;
+  }
+
+  @Scheduled(
+      fixedDelay = POLL_SECONDS,
+      initialDelay = POLL_SECONDS,
+      timeUnit = TimeUnit.SECONDS,
+      scheduler = GrantRevocationsConfiguration.SCHEDULER)
+  public void poll() {
+    revokeDue();
+  }
+
+  /** Revokes every due row on the calling thread, one claim at a time, until none is due. */
+  public void revokeDue() {
+    running.incrementAndGet();
+    try {
+      Optional<Claimed> claimed;
+      while (!stopping && (claimed = claimNext()).isPresent()) {
+        revoke(claimed.get());
+      }
+    } catch (RuntimeException e) {
+      log.warn(
+          "OAuth revocation run stopped with {}; the remaining revocations wait for the next run",
+          e.getClass().getSimpleName());
+    } finally {
+      running.decrementAndGet();
+    }
+  }
+
+  private void requestRuns(int runs) {
+    for (int i = 0; i < runs && !stopping; i++) {
+      try {
+        scheduler.schedule(this::revokeDue, Instant.now(clock));
+      } catch (TaskRejectedException shuttingDown) {
+        return;
+      }
+    }
+  }
+
+  private record Claimed(UUID id, UUID profileId, String orderCiphertext, int attempts) {}
+
+  private Optional<Claimed> claimNext() {
+    List<Claimed> rows =
+        jdbc.query(
+            "UPDATE connection_grant_revocations SET attempts = attempts + 1,"
+                + " next_attempt_at = now() + make_interval(secs => ?)"
+                + " WHERE id IN (SELECT id FROM connection_grant_revocations"
+                + " WHERE next_attempt_at <= now() ORDER BY next_attempt_at, created_at LIMIT 1"
+                + " FOR UPDATE SKIP LOCKED)"
+                + " RETURNING id, profile_id, order_ciphertext, attempts",
+            GrantRevocations::claimed,
+            (double) lease.toMillis() / 1000.0);
+    return rows.stream().findFirst();
+  }
+
+  private void revoke(Claimed row) {
+    try {
+      if (row.attempts() > MAX_ATTEMPTS) {
+        log.warn(
+            "An OAuth revocation under profile {} was dropped after {} interrupted attempts; that"
+                + " grant stays valid at its provider",
+            row.profileId(),
+            row.attempts() - 1);
+        return;
+      }
+      String order;
+      try {
+        order = encryptor.decrypt(row.orderCiphertext());
+      } catch (RuntimeException unreadable) {
+        log.warn(
+            "An OAuth revocation under profile {} was dropped: its order cannot be decrypted ({});"
+                + " that grant stays valid at its provider",
+            row.profileId(),
+            unreadable.getClass().getSimpleName());
+        return;
+      }
+      issuer().revoke(order);
+    } catch (RuntimeException e) {
+      log.warn(
+          "OAuth revocation for a grant of profile {} failed ({})",
+          row.profileId(),
+          e.getClass().getSimpleName());
+    } finally {
+      jdbc.update("DELETE FROM connection_grant_revocations WHERE id = ?", row.id());
+    }
+  }
+
+  private SecretIssuer issuer() {
+    SecretIssuer issuer = issuers.getIfAvailable();
+    if (issuer == null) {
+      throw new IllegalStateException("A revocation needs a SecretIssuer, and none is registered");
+    }
+    return issuer;
+  }
+
+  private static Claimed claimed(ResultSet rs, int rowNum) throws SQLException {
+    return new Claimed(
+        rs.getObject("id", UUID.class),
+        rs.getObject("profile_id", UUID.class),
+        rs.getString("order_ciphertext"),
+        rs.getInt("attempts"));
   }
 
   @PreDestroy
-  void shutdown() {
-    executor.shutdown();
-    try {
-      if (executor.awaitTermination(shutdownGrace.toMillis(), TimeUnit.MILLISECONDS)) {
-        return;
-      }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-    }
-    List<Runnable> waiting = executor.shutdownNow();
-    outstanding.addAndGet(-waiting.size());
-    int grants = waiting.stream().mapToInt(commit -> ((Commit) commit).grants.size()).sum();
-    if (grants > 0) {
-      log.warn(
-          "OAuth revocation pool stopped: {} revocation(s) still waiting were dropped; those"
-              + " grants stay valid at their provider",
-          grants);
-    }
-  }
-
-  private void dropped(Commit commit, ThreadPoolExecutor pool) {
-    outstanding.decrementAndGet();
-    log.warn(
-        "{} OAuth revocation(s) under profile(s) {} dropped ({}); those grants stay valid at their"
-            + " provider",
-        commit.grants.size(),
-        commit.grants.stream().map(Grant::profileId).distinct().toList(),
-        pool.isShutdown()
-            ? "the pool is stopped"
-            : "queue full, " + pool.getQueue().size() + " commits waiting");
-  }
-
-  private final class Commit implements Runnable {
-
-    private final List<Grant> grants;
-
-    Commit(List<Grant> grants) {
-      this.grants = grants;
-    }
-
-    @Override
-    public void run() {
-      try {
-        for (int i = 0; i < grants.size(); i++) {
-          if (Thread.currentThread().isInterrupted()) {
-            log.warn(
-                "OAuth revocation pool stopped: {} revocation(s) of a running commit were"
-                    + " dropped; those grants stay valid at their provider",
-                grants.size() - i);
-            return;
-          }
-          revoke(grants.get(i));
-        }
-      } finally {
-        outstanding.decrementAndGet();
-      }
-    }
-
-    private void revoke(Grant grant) {
-      try {
-        grant.revocation().run();
-      } catch (RuntimeException e) {
-        log.warn(
-            "OAuth revocation for a grant of profile {} failed ({})",
-            grant.profileId(),
-            e.getClass().getSimpleName());
-      }
-    }
+  public void stop() {
+    stopping = true;
   }
 }

@@ -57,6 +57,9 @@ data:
           - responsible_type
           - ended_cause
           - ended_at
+      - name: connection_grant_revocations
+        personalColumns: [order_ciphertext, created_at]
+        nonPersonalColumns: [id, profile_id, attempts, next_attempt_at]
     storage: Anwendungsdatenbank; Geheimnisse verschlüsselt
     retention:
       rule: >-
@@ -67,7 +70,8 @@ data:
     deletion: >-
       Trennung durch die Person, Profillöschung, Notabschaltung. Eine eigene Verbindung verhindert
       die Löschung des Kontos; offene Freigaben und Autorisierungen enden mit dem Konto, an
-      Bibliotheksverbindungen wird die zustimmende Person geleert
+      Bibliotheksverbindungen wird die zustimmende Person geleert. Ein Widerrufsauftrag für den Anbieter
+      bleibt verschlüsselt bis zu seinem Widerruf, in der Regel Sekunden, und wird dann gelöscht
     evaluations: Gezählte, maskierte Übersicht abgelaufener Verbindungen je Profil
   - id: connection-person-states
     title: Ruhezustand der Verbindungen einer Person
