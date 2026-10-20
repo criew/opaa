@@ -2,9 +2,11 @@ package io.opaa.llm;
 
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
+import io.opaa.instance.ScheduledRunLocks;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -116,7 +118,11 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
       fixedDelay = PROBE_INTERVAL_MILLIS,
       initialDelay = PROBE_INTERVAL_MILLIS,
       scheduler = "transcriptionProbeScheduler")
-  void probePeriodically() {
+  @SchedulerLock(
+      name = "transcription-role-probe",
+      lockAtLeastFor = "PT50S",
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
+  public void probePeriodically() {
     refresh();
   }
 

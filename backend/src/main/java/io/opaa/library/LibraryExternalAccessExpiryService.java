@@ -36,7 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
  * leaves a release in effect past its own end. What this run adds is the recorded fact.
  *
  * <p>Idempotent: a release already out of effect is not selected, so a second run in the same
- * minute writes nothing. The Anlass is the Fristablauf.
+ * minute writes nothing - also on another instance at the same moment, because the run selects
+ * under a row lock. The Anlass is the Fristablauf.
  */
 @Service
 public class LibraryExternalAccessExpiryService {
@@ -69,8 +70,7 @@ public class LibraryExternalAccessExpiryService {
   public int runOnce() {
     Instant now = clock.instant();
     List<KnowledgeLibrary> due =
-        libraryRepository.findByExternalAccessStateAndExternalAccessExpiresAtLessThanEqual(
-            ExternalAccessState.ACTIVE, now);
+        libraryRepository.findAllById(libraryRepository.lockExpiredExternalAccess(now));
     for (KnowledgeLibrary library : due) {
       Instant ranTo = library.getExternalAccessExpiresAt();
       library.expireExternalAccess();

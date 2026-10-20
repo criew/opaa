@@ -1,6 +1,7 @@
 package io.opaa.indexing.trigger;
 
 import io.opaa.common.ConflictException;
+import io.opaa.common.DatabaseClock;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
@@ -8,13 +9,16 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.LibraryScheduleCodec;
+import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,13 +27,19 @@ import org.springframework.stereotype.Component;
 /**
  * Triggers a due connector library's indexing run on the schedule stored on the library itself. A
  * periodic tick, not a per-library registered trigger, so nothing has to be kept in sync when a
- * schedule changes or the application restarts. No leader election: {@code
- * uk_indexing_jobs_library_running} already makes a concurrent trigger safe, and ADR-0021 assumes
- * one backend process.
+ * schedule changes or the application restarts.
  *
- * <p>A failed run never disables its schedule, and a missed due time is skipped rather than caught
- * up. {@link #lastTickAt} closes the in-process gap a window anchored purely on "now minus 60s"
- * would leave between two ticks more than 60s apart.
+ * <p><b>One due time, one run, whichever instance ticks</b> (ADR-0053, Entscheidung 7): the tick
+ * books the due time on the library with a conditional {@code UPDATE} ({@link
+ * KnowledgeLibraryRepository#bookScheduledRun}) and only the booking call triggers. {@code
+ * uk_indexing_jobs_library_running} still keeps two runs of one library from overlapping; the
+ * booking keeps a short run from starting again for the same due time.
+ *
+ * <p>The tick looks back {@link #CATCH_UP} from the database clock for a schedule it booked before,
+ * so a tick that comes late - a scheduler thread held up by another run, a minute without any tick
+ * - still books the due time it would have missed; a due time older than that is skipped, not
+ * caught up. A schedule never booked under its current cron looks back one {@link #TICK_INTERVAL}
+ * only, so a schedule just set does not fire for a due time that lay before it was set.
  */
 @Component
 public class LibraryIndexingScheduler {
@@ -40,50 +50,53 @@ public class LibraryIndexingScheduler {
       "Geplanter Lauf übersprungen: Indizierung läuft bereits";
 
   /** Matches the {@code @Scheduled(cron = "0 * * * * *")} tick interval below. */
-  private static final long TICK_INTERVAL_SECONDS = 60;
+  static final Duration TICK_INTERVAL = Duration.ofMinutes(1);
+
+  /** How far back a tick books a missed due time of a schedule booked before. */
+  static final Duration CATCH_UP = Duration.ofMinutes(15);
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final DocumentIndexingService indexingService;
   private final IndexingJobService indexingJobService;
   private final IndexingRunEventRepository indexingRunEventRepository;
-  private final Clock clock;
-
-  /**
-   * The {@code now} of the previous successful tick, {@code null} before the first tick since
-   * application start. An {@link AtomicReference} purely for safe publication across the scheduler
-   * thread - {@code @Scheduled} methods on the default single-threaded {@code TaskScheduler} never
-   * run concurrently, so only visibility is needed, not compare-and-set.
-   */
-  private final AtomicReference<Instant> lastTickAt = new AtomicReference<>();
+  private final DatabaseClock databaseClock;
+  private final ZoneId zone;
 
   public LibraryIndexingScheduler(
       KnowledgeLibraryRepository libraryRepository,
       DocumentIndexingService indexingService,
       IndexingJobService indexingJobService,
       IndexingRunEventRepository indexingRunEventRepository,
+      DatabaseClock databaseClock,
       Clock clock) {
     this.libraryRepository = libraryRepository;
     this.indexingService = indexingService;
     this.indexingJobService = indexingJobService;
     this.indexingRunEventRepository = indexingRunEventRepository;
-    this.clock = clock;
+    this.databaseClock = databaseClock;
+    this.zone = clock.getZone();
   }
 
   /**
-   * Runs at the top of every minute, the finest grain any intervalstufe needs, in the injected
-   * {@link Clock}'s zone. A library is due when its stored cron expression has a fire time between
-   * the previous tick and now (see {@link #determineWindowStart} and {@link #isDueNow}). The cron
-   * parse runs inside the per-library {@code try/catch}, so one undecodable expression cannot abort
-   * the tick and leave every other due library untouched.
+   * Runs at the top of every minute, the finest grain any intervalstufe needs; the cron of a
+   * library is read in the zone of the {@link Clock}, which every instance shares. The evaluation
+   * runs inside the per-library {@code try/catch}, so one undecodable expression cannot abort the
+   * tick and leave every other due library untouched.
    */
   @Scheduled(cron = "0 * * * * *")
+  @SchedulerLock(
+      name = "library-indexing-schedule",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_MINUTE,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
   public void triggerDueLibraries() {
     List<KnowledgeLibrary> scheduled = libraryRepository.findByScheduleEnabledTrue();
-    Instant now = clock.instant();
-    Instant windowStart = determineWindowStart(now);
+    Instant now = databaseClock.now();
     for (KnowledgeLibrary library : scheduled) {
       try {
-        if (!isDueNow(library.getScheduleCron(), windowStart, now)) {
+        Instant due = dueTime(library, now);
+        if (due == null
+            || libraryRepository.bookScheduledRun(library.getId(), library.getScheduleCron(), due)
+                == 0) {
           continue;
         }
         triggerOrRecordSkip(library);
@@ -94,26 +107,30 @@ public class LibraryIndexingScheduler {
             e);
       }
     }
-    lastTickAt.set(now);
   }
 
   /**
-   * The start of the window {@link #isDueNow} checks a schedule against: the previous tick's {@code
-   * now} when known, so consecutive windows are contiguous however late a tick fired. Falls back to
-   * exactly one {@link #TICK_INTERVAL_SECONDS} before {@code now} on the first tick after a start -
-   * deliberately not further back, since missed due times are skipped, not caught up.
+   * The latest fire time of the library's cron in the look-back window up to {@code now}, or {@code
+   * null} when there is none or it is already booked.
    */
-  private Instant determineWindowStart(Instant now) {
-    Instant previous = lastTickAt.get();
-    return previous != null ? previous : now.minusSeconds(TICK_INTERVAL_SECONDS);
-  }
-
-  private boolean isDueNow(String cron, Instant windowStart, Instant now) {
+  private Instant dueTime(KnowledgeLibrary library, Instant now) {
+    String cron = library.getScheduleCron();
     if (cron == null) {
-      return false;
+      return null;
     }
-    Instant next = LibraryScheduleCodec.nextRunAt(cron, windowStart, clock.getZone());
-    return next != null && !next.isAfter(now);
+    Instant booked =
+        cron.equals(library.getScheduleBookedCron()) ? library.getScheduleBookedAt() : null;
+    Instant windowStart = now.minus(booked == null ? TICK_INTERVAL : CATCH_UP);
+    if (booked != null && booked.isAfter(windowStart)) {
+      windowStart = booked;
+    }
+    Instant due = null;
+    Instant next = LibraryScheduleCodec.nextRunAt(cron, windowStart, zone);
+    while (next != null && !next.isAfter(now)) {
+      due = next;
+      next = LibraryScheduleCodec.nextRunAt(cron, next, zone);
+    }
+    return due;
   }
 
   private void triggerOrRecordSkip(KnowledgeLibrary library) {
@@ -125,7 +142,7 @@ public class LibraryIndexingScheduler {
       indexingService.triggerScheduledIndexing(library);
     } catch (ConflictException e) {
       // TOCTOU: the pre-check above and startJob's own insert are two separate statements - a
-      // run could have started between them (another backend instance racing the same tick).
+      // manual or pushed run could have started between them.
       recordSkipEvent(library);
     } catch (Exception e) {
       log.error("Scheduled indexing trigger for library {} failed", library.getId(), e);

@@ -115,6 +115,23 @@ hängt, an einen eigenen Executor (`DirectorySyncScheduler` → `directorySyncEx
 einen eigenen Scheduler weiter (`PrivateLibraryDeletionSchedule`, Probes der Modellrollen). Kurze DB-Läufe (einzelne
 `DELETE`s, Partition-Drops, Batches) bleiben auf dem Tick.
 
+Jede `@Scheduled`-Methode ist `public` und trägt `@SchedulerLock` mit eigenem Namen und den Fristen aus
+`io.opaa.instance.ScheduledRunLocks` ([ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md),
+Entscheidung 7); was auf jeder Instanz laufen muss, steht begründet in
+`ScheduledRunLockStructureTest.RUNS_ON_EVERY_INSTANCE`. Die Sperre verhindert nur den Doppellauf, nicht seine Folgen:
+Jede Mail, Benachrichtigung und jeder Audit- oder Historieneintrag eines Laufs steht zusätzlich hinter einem Merker mit
+Datenbankzusage (bedingtes `UPDATE … WHERE <merker> IS NULL` oder Auswahl unter Zeilensperre). Bei einer vererbten
+Entity (`KnowledgeLibrary`) sperrt Hibernate nachgelagert und liefert den Zustand vor der Sperre; dort zuerst die IDs
+nativ mit `FOR UPDATE` sperren, dann laden. `TwoInstanceRace` prüft das im Test.
+
+## Advisory-Locks
+
+Jeder Namensraum (erster Schlüssel von `pg_advisory_xact_lock(int, int)` und Verwandten) steht im Verzeichnis
+`src/test/resources/db/advisory-lock-namespaces.yaml`, mit den Dateien, die ihn nehmen. Ein neuer Lock nimmt die
+nächste freie Nummer und trägt sie dort ein, ein offener Branch reserviert sie unter `reserved`; eine Nummer wird nie
+wieder vergeben. Der Namensraum steht als Literal oder als `int …LOCK_NAMESPACE`-Konstante in der Datei des Locks;
+`AdvisoryLockNamespaceTest` prüft Code und Changesets.
+
 ## Spring-Testkontexte
 
 Jeder Test, der einen Anwendungskontext startet, trägt genau eine Meta-Annotation aus `io.opaa.test`

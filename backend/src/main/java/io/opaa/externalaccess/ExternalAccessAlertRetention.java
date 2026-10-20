@@ -1,10 +1,12 @@
 package io.opaa.externalaccess;
 
 import io.opaa.api.types.NotificationType;
+import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.notification.NotificationService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -40,6 +42,10 @@ public class ExternalAccessAlertRetention {
 
   /** Hourly, so an alert is never kept materially longer than {@link #RETENTION}. */
   @Scheduled(cron = "0 20 * * * *")
+  @SchedulerLock(
+      name = "external-access-alert-retention",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_HOURLY,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
   public void deleteExpiredAlerts() {
     Instant cutoff = clock.instant().minus(RETENTION);
     int deleted =

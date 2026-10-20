@@ -27,16 +27,10 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
   List<AssetGrant> findByAssetTypeAndAssetIdIn(AssetType assetType, Set<UUID> assetIds);
 
   /**
-   * A namespace for {@link #lockAssetGrantsForMutation}'s Postgres advisory locks, arbitrary but
-   * fixed and documented so a future, unrelated advisory lock elsewhere in the codebase can pick a
-   * different one instead of colliding. Namespaces in use: 202 (this), 203 ({@code
-   * UserRepository#TOKEN_ROLE_CHANGE_LOCK_NAMESPACE}), 204 ({@code
-   * GroupRepository#IDENTITY_PROVIDER_GROUP_LOCK_NAMESPACE}), 205 ({@code
-   * DirectorySyncRunLock#DIRECTORY_SYNC_RUN_LOCK_NAMESPACE}), 207 ({@code
-   * ConnectionAuthorizationRepository#AUTHORIZATION_START_LOCK_NAMESPACE}), 208 ({@code
-   * VectorStoreWriter#DOCUMENT_CHUNK_LOCK_NAMESPACE}), 211 (the start-up seeds, {@code
-   * LocalAdminSeedMarkerRepository#lockStartupSeeds}), 213 ({@code
-   * VectorIndexSchema#SCHEMA_LOCK_NAMESPACE}).
+   * A namespace for {@link #lockAssetGrantsForMutation}'s Postgres advisory locks. Every namespace
+   * in use - this one and those of the other locks - stands in the directory {@code
+   * src/test/resources/db/advisory-lock-namespaces.yaml}, which {@code AdvisoryLockNamespaceTest}
+   * holds against every lock call of the main code and the changesets.
    */
   int ASSET_GRANT_MUTATION_LOCK_NAMESPACE = 202;
 

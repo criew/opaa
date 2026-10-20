@@ -18,6 +18,7 @@ import io.opaa.permission.AssetGrantHistoryRepository;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.ScheduledRunLockRelease;
 import io.opaa.test.SourceTypes;
 import java.time.Duration;
 import java.time.Instant;
@@ -152,6 +153,8 @@ class UploadPendingRecoveryRunnerIntegrationTest {
     UUID other = registerInstance(Duration.ZERO);
     UUID upload = savePendingDocument("acceptedByOther.pdf", Instant.now(), other);
 
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
+
     runner.recoverUploadsOfDeadInstances();
     assertThat(statusOf(upload)).isEqualTo(DocumentStatus.PENDING);
 
@@ -159,6 +162,7 @@ class UploadPendingRecoveryRunnerIntegrationTest {
         "UPDATE backend_instances SET heartbeat_at = clock_timestamp() - interval '10 minutes'"
             + " WHERE id = ?",
         other);
+    ScheduledRunLockRelease.releaseAll(jdbcTemplate);
     runner.recoverUploadsOfDeadInstances();
 
     assertThat(statusOf(upload)).isEqualTo(DocumentStatus.FAILED);

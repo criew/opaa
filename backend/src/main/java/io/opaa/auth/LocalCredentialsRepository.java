@@ -1,11 +1,13 @@
 package io.opaa.auth;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,9 +29,30 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
   /** The one bootstrap account ({@code ux_local_credentials_single_bootstrap}), if it exists. */
   Optional<LocalCredentials> findByBootstrapTrue();
 
+  /** The row of {@code userId}, locked until the caller's transaction ends. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT c FROM LocalCredentials c WHERE c.userId = :userId")
+  Optional<LocalCredentials> findForUpdate(@Param("userId") UUID userId);
+
   /** The accounts expiring in {@code [from, to)} - the expiry reminder's window. */
   List<LocalCredentials> findByExpiresAtGreaterThanEqualAndExpiresAtLessThan(
       Instant from, Instant to);
+
+  /**
+   * Claims the reminder of the expiry {@code expiresAt} for the account: true for exactly one call
+   * per expiry, whichever instance makes it, and again after the expiry has been moved. The column
+   * is not mapped, so saving a stale entity never undoes the claim.
+   *
+   * @return 1 when this call claimed it
+   */
+  @Transactional
+  @Modifying
+  @Query(
+      value =
+          "UPDATE local_credentials SET expiry_reminded_for = :expiresAt WHERE user_id = :userId"
+              + " AND expires_at = :expiresAt AND expiry_reminded_for IS DISTINCT FROM :expiresAt",
+      nativeQuery = true)
+  int claimExpiryReminder(@Param("userId") UUID userId, @Param("expiresAt") Instant expiresAt);
 
   /**
    * Counts one failed sign-in atomically in the database ({@code n = n + 1}, ADR-0033 Entscheidung

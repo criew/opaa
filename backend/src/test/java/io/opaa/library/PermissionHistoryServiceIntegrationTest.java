@@ -84,6 +84,8 @@ import org.junit.jupiter.api.TestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -139,6 +141,7 @@ class PermissionHistoryServiceIntegrationTest {
   @Autowired private TokenGroupSynchronizer synchronizer;
   @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private ApplicationContext applicationContext;
 
   private static final String TOKEN_GROUP_NAME = "Fachbereich 3";
@@ -749,8 +752,15 @@ class PermissionHistoryServiceIntegrationTest {
    * split the Spring context (AGENTS.md, "Spring-Testkontexte").
    */
   private LibraryExternalAccessExpiryService expiryServiceAt(Instant now) {
+    TransactionTemplate transactions = new TransactionTemplate(transactionManager);
+    // In a transaction like the bean's @Transactional: the run locks the rows it selects.
     return new LibraryExternalAccessExpiryService(
-        libraryRepository, visibilityHistoryService, auditEventRecorder, () -> now);
+        libraryRepository, visibilityHistoryService, auditEventRecorder, () -> now) {
+      @Override
+      public int runOnce() {
+        return transactions.execute(status -> super.runOnce());
+      }
+    };
   }
 
   /**

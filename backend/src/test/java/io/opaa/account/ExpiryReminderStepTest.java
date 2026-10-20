@@ -25,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionOperations;
 
 /**
  * The reminder window is the calendar day fourteen days after the run's day in the run's zone -
@@ -69,6 +70,7 @@ class ExpiryReminderStepTest {
             window.from(), window.to()))
         .thenReturn(List.of(firstRow, secondRow));
     when(users.findAllById(any())).thenReturn(List.of(first, second));
+    when(credentials.claimExpiryReminder(any(), any())).thenReturn(1);
     doAnswer(
             invocation -> {
               Thread.sleep(120);
@@ -80,7 +82,14 @@ class ExpiryReminderStepTest {
     logs.start();
     ((Logger) LoggerFactory.getLogger(ExpiryReminderStep.class)).addAppender(logs);
 
-    new ExpiryReminderStep(credentials, users, mailer, BERLIN, Duration.ofMillis(50)).run(run);
+    new ExpiryReminderStep(
+            credentials,
+            users,
+            mailer,
+            TransactionOperations.withoutTransaction(),
+            BERLIN,
+            Duration.ofMillis(50))
+        .run(run);
 
     verify(mailer).sendExpiring(first, firstRow.getExpiresAt());
     verify(mailer, never()).sendExpiring(eq(second), any());

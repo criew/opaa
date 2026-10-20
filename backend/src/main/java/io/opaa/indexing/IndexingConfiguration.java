@@ -456,12 +456,14 @@ public class IndexingConfiguration {
       DocumentIndexingService documentIndexingService,
       IndexingJobService indexingJobService,
       IndexingRunEventRepository indexingRunEventRepository,
+      DatabaseClock databaseClock,
       Clock clock) {
     return new LibraryIndexingScheduler(
         libraryRepository,
         documentIndexingService,
         indexingJobService,
         indexingRunEventRepository,
+        databaseClock,
         clock);
   }
 }

@@ -1,5 +1,7 @@
 package io.opaa.diagnosticaccess;
 
+import io.opaa.instance.ScheduledRunLocks;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +22,10 @@ public class DiagnosticContextRetentionScheduler {
   }
 
   @Scheduled(cron = "0 30 3 1 * *")
+  @SchedulerLock(
+      name = "diagnostic-context-retention",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
   public void deleteExpiredDiagnosticContextPartitions() {
     deletionService.runOnce();
   }

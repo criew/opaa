@@ -113,6 +113,17 @@ dem neuen Wert starten. Eine geordnet beendete Instanz meldet sich sofort ab. Wu
 etwa mit `SIGKILL`, gilt sie erst nach `OPAA_INSTANCE_DEAD_AFTER` als beendet; bis dahin verweigert
 eine Instanz mit geändertem Wert den Start, und der nächste Startversuch danach gelingt.
 
+### Geplante Läufe
+
+Jede Instanz kennt dieselben geplanten Läufe: Löschläufe, Erinnerungen, Abgleiche, den Zeitplan der
+Wissensbibliotheken und die Prüfung der Modellrollen. Vor dem Start nimmt ein Lauf eine Sperre in
+der Datenbank (Tabelle `shedlock`, gemessen mit der Uhr der Datenbank); findet eine Instanz sie
+belegt, lässt sie den Termin aus. So läuft jeder Termin auf einer Instanz. Was ein Lauf nach außen
+bewirkt, also Mails, Benachrichtigungen und Einträge in Protokoll und Sichtbarkeitshistorie, trägt
+zusätzlich einen Vermerk in der Datenbank und entsteht deshalb auch dann nur einmal, wenn ein Lauf
+länger dauert als seine Sperre. Fällt eine Instanz mitten im Lauf aus, gibt die Sperre den Lauf
+spätestens nach seiner Höchstdauer wieder frei.
+
 ### Zeitzone
 
 Die Zeitzone setzen `.env.docker.example` (`TZ`) und der Helm-Chart (`backend.timeZone`)

@@ -1,5 +1,7 @@
 package io.opaa.succession;
 
+import io.opaa.instance.ScheduledRunLocks;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +23,10 @@ public class SuccessionScheduler {
   }
 
   @Scheduled(cron = "${opaa.succession.detection-cron:0 5 * * * *}")
+  @SchedulerLock(
+      name = "succession-detection",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_MINUTE,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
   public void detectOpenSuccessions() {
     detectionService.runOnce();
   }
@@ -30,6 +36,10 @@ public class SuccessionScheduler {
    * 8) - half an hour after it, so the two passes never share a transaction window.
    */
   @Scheduled(cron = "0 30 3 1 * *")
+  @SchedulerLock(
+      name = "succession-case-retention",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_DAILY,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_NIGHTLY)
   public void deleteExpiredSuccessionCases() {
     retentionService.runOnce();
   }

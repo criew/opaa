@@ -42,6 +42,7 @@ import io.opaa.searchadmin.SearchStatusService;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
 import io.opaa.test.OpaaTestDirectory;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.ScheduledRunLockRelease;
 import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -333,12 +334,14 @@ class EmbeddingReindexIntegrationTest {
     try {
       b.service().start(ownerId, Organization.DEFAULT_ID);
       assertThat(b.entered().await(10, TimeUnit.SECONDS)).isTrue();
+      ScheduledRunLockRelease.releaseAll(jdbcTemplate);
       reindexService.takeOverOrphanedRun();
       assertThat(store.runOwner()).as("B is alive: its run stays its own").contains(b.id());
 
       b.fail();
       b.release().countDown();
       await().atMost(RUN_TIMEOUT).until(() -> !b.service().progress().running());
+      ScheduledRunLockRelease.releaseAll(jdbcTemplate);
       reindexService.takeOverOrphanedRun();
       awaitTheRun();
 
