@@ -1,0 +1,39 @@
+{{- if .Values.backend.migration.enabled }}
+{{- include "opaa.validate" . }}
+{{- $migration := .Values.backend.migration }}
+# The schema migration as a step of its own (OPAA_MODE=migrate, ADR-0053, Entscheidung 14). A plain
+# resource, no hook: it starts together with the backend pods, which wait for it in their init
+# container, and it reaches the evaluation database of the same release once that accepts
+# connections. Its name follows image and configuration, so an upgrade with either runs it anew.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "opaa.migration.jobName" . }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "migration") | nindent 4 }}
+spec:
+  backoffLimit: {{ $migration.backoffLimit }}
+  {{- with $migration.activeDeadlineSeconds }}
+  activeDeadlineSeconds: {{ . }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "migration") | nindent 8 }}
+    spec:
+      {{- include "opaa.podSpecCommon" (dict "root" . "component" (dict "nodeSelector" .Values.backend.nodeSelector "tolerations" .Values.backend.tolerations)) | nindent 6 }}
+      restartPolicy: Never
+      {{- with include "opaa.backend.prepareContainers" . }}
+      initContainers:
+        {{- . | trim | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- include "opaa.backend.databaseStep" (dict "root" . "name" "migrate" "mode" "migrate") | trim | nindent 8 }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+        {{- with include "opaa.backend.truststoreVolumes" . }}
+        {{- . | trim | nindent 8 }}
+        {{- end }}
+{{- end }}

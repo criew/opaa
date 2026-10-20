@@ -16,18 +16,19 @@ Kapitel verweist an der jeweiligen Stelle dorthin.
 ## Kubernetes oder Compose
 
 Beide Wege führen zur selben Anwendung mit denselben Grenzen. Insbesondere gilt unter Kubernetes
-dieselbe Grundannahme wie im Compose-Betrieb: **genau eine Backend-Instanz.** Zeitpläne, Caches und
-der Wiederanlauf abgebrochener Läufe sind an den einen Prozess gebunden. Der Chart setzt das
-durch:
+dieselbe Grundannahme wie im Compose-Betrieb: **freigegeben ist genau eine Backend-Instanz**
+([Genau eine Backend-Instanz](betrieb.md#genau-eine-backend-instanz)). In der Vorgabe setzt der
+Chart das so um:
 
-- Das Backend-Deployment hat ein Replikat. `backend.replicas` lässt `1` und `0` (angehalten) zu; ein
-  größerer Wert bricht das Rendern mit einer Meldung ab.
+- Das Backend-Deployment hat ein Replikat; `backend.replicas: 0` hält das Backend an. Mehr Replikate
+  rendert der Chart nur unter den Voraussetzungen unter
+  [Mehrere Backend-Instanzen](#mehrere-backend-instanzen), sonst bricht das Rendern mit einer Meldung ab.
 - Die Strategie ist `Recreate`. Bei einer Aktualisierung endet der alte Pod, bevor der neue startet;
   zwei Fassungen laufen nie gleichzeitig gegen dieselbe Datenbank. Eine Aktualisierung ist deshalb
   eine **kurze Unterbrechung**.
 - Das Frontend hält keinen Zustand und darf mehrfach laufen (`frontend.replicas`).
 
-Kubernetes bringt damit keine Hochverfügbarkeit des Backends. Es bringt die vorhandene Plattform des
+Kubernetes bringt damit in der Vorgabe keine Hochverfügbarkeit des Backends. Es bringt die vorhandene Plattform des
 Hauses: Eingang und Zertifikate, Geheimnisverwaltung, Überwachung, Netztrennung und GitOps.
 
 | Thema | Compose ([Docker Compose](docker-compose.md)) | Kubernetes (dieses Kapitel) |
@@ -52,6 +53,8 @@ Was der Chart anlegt, mit dem Release-Namen `opaa`:
 | ServiceAccount | `opaa` | `serviceAccount.create` |
 | Secret | `opaa` | ohne `secrets.existingSecret` |
 | PersistentVolumeClaim | `opaa-uploads` | Originalablage auf einem Volume ohne `existingClaim` |
+| Job | `opaa-migrate-<Prüfsumme>` | `backend.migration.enabled` |
+| PodDisruptionBudget | `opaa-backend` | ab zwei Backend-Replikaten |
 | StatefulSet, Service | `opaa-postgresql` | `evaluationDatabase.enabled` |
 | NetworkPolicies | `opaa-backend-ingress` und weitere | siehe [NetworkPolicies](#networkpolicies) |
 | Ingress oder HTTPRoute | `opaa` | `ingress.enabled` bzw. `httpRoute.enabled` |
@@ -72,6 +75,60 @@ flowchart LR
     BE --> I[Identitäts-<br/>anbieter]
     P[Prometheus] -.->|Management-Port| BE
 ```
+
+### Mehrere Backend-Instanzen
+
+> **Vorbereitet, noch nicht freigegeben.** Der Nachweis mit zwei Instanzen steht aus (#2952); bis
+> dahin gilt [Genau eine Backend-Instanz](betrieb.md#genau-eine-backend-instanz).
+
+Mehrere Backend-Pods gegen dieselbe Datenbank erlauben eine Aktualisierung ohne Unterbrechung und
+überstehen den Ausfall eines Pods. Der Chart rendert `backend.replicas` größer 1 nur zusammen mit dem
+Migrations-Job und einer Originalablage, die jeder Pod sieht:
+
+```yaml
+backend:
+  replicas: 2
+  migration:
+    enabled: true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+uploads:
+  store: s3              # oder persistentVolumeClaim mit accessModes: [ReadWriteMany]
+```
+
+Damit ändert sich:
+
+- **Migration als Job.** Der Job `opaa-migrate-<Prüfsumme>` migriert die Datenbank
+  ([Migration als eigener Schritt](datenbank.md#migration-als-eigener-schritt)). Sein Name folgt Image
+  und Konfiguration; ein Upgrade mit neuem Image oder neuer Konfiguration startet ihn neu, ein Upgrade
+  ohne beides nicht. Die Backend-Pods migrieren nicht selbst und warten im Init-Container
+  `await-migration`, bis die Datenbank jede Migration ihrer Version enthält. Mit der
+  Erprobungsdatenbank wartet der Job zuerst auf sie; die Eingangs-Policy der Erprobungsdatenbank lässt
+  ihn ein, und mit `networkPolicy.egress.enabled` bekommt er eine eigene Ausgangs-Policy mit DNS und
+  `networkPolicy.egress.backendRules`.
+- **Pod für Pod.** Die Strategie wird `RollingUpdate`: Ein neuer Pod startet, bevor ein alter endet,
+  und der nächste folgt erst, wenn der neue bereit ist. `backend.updateStrategy: Recreate` bleibt
+  wählbar, etwa um einen Wert des [Konfigurationsabdrucks](betrieb.md#instanzregister) zu ändern, den
+  alle Pods teilen müssen.
+- **Austausch ohne Abbruch.** Ein Pod, der enden soll, nimmt über `backend.preStopSleepSeconds` noch
+  Anfragen an, bis Kubernetes ihn aus dem Service genommen hat. Das Zeitfenster für laufende Anfragen
+  (`backend.shutdownTimeoutSeconds`) folgt ohne eigenen Wert dem Lese-Timeout des Frontends, damit
+  eine lange Chat-Antwort den Austausch übersteht; ein kleinerer Wert bricht das Rendern ab.
+- **Wartung der Knoten.** Ein PodDisruptionBudget lässt immer nur einen Backend-Pod gleichzeitig
+  räumen. `backend.topologySpreadConstraints` oder eine Anti-Affinität in `backend.affinity` verteilt
+  die Pods über Knoten oder Zonen.
+- **Datenbankverbindungen.** `backend.databasePoolSize` gilt je Pod; die Grenze für
+  `max_connections` nennt [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
+- **Grenzen je Pod.** Rate-Limits, Kontingente und Thread-Pools gelten je Pod. Ein Wert, der für die
+  ganze Installation gemeint ist, wird durch die Zahl der Pods geteilt.
+- **Alarme je Pod.** Fehlende Metriken, voller Heap und hängende Indexierung melden sich, sobald ein
+  einzelner Pod betroffen ist ([Alarme](#alarme)).
+
+Weitere Voraussetzungen: Volumes aus `filesystemSources` müssen sich in mehrere Pods einhängen lassen,
+etwa per NFS oder mit `ReadOnlyMany`. Befehle mit `deploy/opaa-backend` sprechen einen beliebigen Pod
+an; alle Pods erreicht `-l app.kubernetes.io/component=backend`, für Protokolle mit `--tail=-1`.
 
 ## Voraussetzungen
 
@@ -577,11 +634,18 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `backend.image.tag` | leer (Version des Charts) | — | Tag; für eine Release-Installation leer lassen |
 | `backend.image.digest` | leer | — | heftet das Image an einen Digest; hat Vorrang vor dem Tag |
 | `backend.image.pullPolicy` | `IfNotPresent` | — | Pull-Verhalten |
-| `backend.replicas` | `1` | — | `1` oder `0` (angehalten); mehr wird abgelehnt |
+| `backend.replicas` | `1` | — | Zahl der Backend-Pods, `0` hält das Backend an; mehr als `1` nur mit `backend.migration.enabled` und einer Originalablage, die jeder Pod sieht ([Mehrere Backend-Instanzen](#mehrere-backend-instanzen)) |
+| `backend.updateStrategy` | leer | — | `Recreate` oder `RollingUpdate`; leer wählt `Recreate` für einen Pod und `RollingUpdate` (`maxUnavailable: 0`, `maxSurge: 1`) für mehr. `RollingUpdate` verlangt dasselbe wie mehrere Pods |
+| `backend.migration.enabled` | `false` | `OPAA_MODE`, `SPRING_LIQUIBASE_ENABLED` | Migration als eigener Job vor den Pods; die Pods laufen dann ohne eigene Migration und warten im Init-Container auf sie |
+| `backend.migration.backoffLimit` | `2` | — | Wiederholungen eines gescheiterten Migrations-Jobs |
+| `backend.migration.activeDeadlineSeconds` | leer | — | Höchstdauer des Migrations-Jobs in Sekunden; leer: keine |
+| `backend.migration.resources` | 250m CPU und 384Mi angefordert, 768Mi Grenze | — | Ressourcen des Jobs und des wartenden Init-Containers jedes Backend-Pods |
+| `backend.databasePoolSize` | leer (Vorgabe der Anwendung, `10`) | `OPAA_DB_POOL_SIZE` | Verbindungen im Datenbank-Pool je Pod ([Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen)) |
 | `backend.managementPort` | `8081` | `MANAGEMENT_SERVER_PORT` | Port für Proben und Metriken, getrennt von der API |
 | `backend.logFormat` | leer (Text) | `LOGGING_STRUCTURED_FORMAT_CONSOLE` | `ecs`, `logstash` oder `gelf` für JSON-Protokolle |
-| `backend.shutdownTimeoutSeconds` | `60` | `OPAA_SHUTDOWN_TIMEOUT` | Zeit, die ein Stopp laufenden Anfragen lässt, je Stopp-Phase |
-| `backend.terminationGracePeriodSeconds` | `75` | — | muss größer sein als `shutdownTimeoutSeconds`, sonst bricht das Rendern ab |
+| `backend.shutdownTimeoutSeconds` | leer: `60` mit `Recreate`, mit `RollingUpdate` das Lese-Timeout des Frontends | `OPAA_SHUTDOWN_TIMEOUT` | Zeit, die ein Stopp laufenden Anfragen lässt, je Stopp-Phase; mit `RollingUpdate` mindestens das Lese-Timeout des Frontends, sonst bricht das Rendern ab |
+| `backend.terminationGracePeriodSeconds` | leer: `shutdownTimeoutSeconds` plus die Pause vor dem Stopp plus `15` | — | muss größer sein als `shutdownTimeoutSeconds` plus `preStopSleepSeconds`, sonst bricht das Rendern ab |
+| `backend.preStopSleepSeconds` | `10` | — | nur mit `RollingUpdate`: so lange nimmt ein Pod, der enden soll, noch Anfragen an, bis Kubernetes ihn aus dem Service genommen hat |
 | `backend.maxRamPercentage` | `70` | `JAVA_TOOL_OPTIONS` | Heap-Anteil an der Speichergrenze; wirkt nur mit `resources.limits.memory` |
 | `backend.javaToolOptions` | leer | `JAVA_TOOL_OPTIONS` | weitere JVM-Optionen; Dateiziele gehören unter `/tmp` |
 | `backend.timeZone` | `UTC` | `TZ` | Zeitzone der geplanten Läufe, Fristgrenzen und Datumsangaben in Mails ([Betrieb](betrieb.md#zeitzone)); Teil des Konfigurationsabdrucks |
@@ -592,12 +656,14 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `backend.readinessProbe` | alle `10` s, Zeitgrenze `5` s, `3` Fehlversuche | — | Bereitschaft; je Probe außerdem `initialDelaySeconds` und `successThreshold` |
 | `backend.tmp.sizeLimit`, `.medium` | `2Gi`, leer | — | `emptyDir` unter `/tmp`; `Memory` macht daraus ein tmpfs, das gegen die Speichergrenze zählt |
 | `backend.service.port` | `8080` | — | Port des Backend-Service |
-| `backend.podAnnotations`, `.podLabels`, `.nodeSelector`, `.tolerations`, `.affinity` | leer | — | Planung und Kennzeichnung des Pods |
+| `backend.podAnnotations`, `.podLabels`, `.nodeSelector`, `.tolerations`, `.affinity` | leer | — | Planung und Kennzeichnung des Pods; `nodeSelector` und `tolerations` gelten auch für den Migrations-Job |
+| `backend.topologySpreadConstraints` | leer | — | Verteilung mehrerer Backend-Pods über Knoten oder Zonen; ein Eintrag ohne `labelSelector` bekommt die Labels der Backend-Pods |
 | `backend.extraEnv`, `.extraEnvFrom` | leer | beliebige | weitere Variablen, etwa eine `OPAA_*`-Einstellung ohne eigenen Wert; `SPRING_PROFILES_*` und `JAVA_TOOL_OPTIONS` lehnt der Chart in `extraEnv` ab. Den Inhalt einer Quelle aus `extraEnvFrom` prüft er nicht; dort gehören sie ebenso wenig hin |
 | `backend.extraVolumes`, `.extraVolumeMounts` | leer | — | weitere Volumes |
 
 Fest gesetzt und nicht über Werte änderbar sind `SPRING_PROFILES_ACTIVE=oidc`,
-`OPAA_SERVER_ADDRESS=0.0.0.0` und bei der Ablage auf einem Volume `OPAA_UPLOAD_STORAGE_PATH=/app/uploads`.
+`OPAA_SERVER_ADDRESS=0.0.0.0`, bei der Ablage auf einem Volume `OPAA_UPLOAD_STORAGE_PATH=/app/uploads`
+und mit dem Migrations-Job `SPRING_LIQUIBASE_ENABLED=false` in den Backend-Pods.
 
 ### Frontend
 
@@ -678,7 +744,9 @@ legt zunächst eine Arbeitsdatei unter `/tmp` an; `backend.tmp.sizeLimit` muss m
 Uploads fassen.
 
 **Volume** (`uploads.store: persistentVolumeClaim`). Der Chart legt einen Claim an oder verwendet
-`uploads.persistence.existingClaim`. `ReadWriteOnce` genügt, weil genau ein Backend-Pod schreibt. Das
+`uploads.persistence.existingClaim`. `ReadWriteOnce` genügt für einen Backend-Pod; mehrere Pods
+und `RollingUpdate` brauchen `ReadWriteMany` in `uploads.persistence.accessModes`, bei einem
+vorhandenen Claim mit dessen Zugriffsmodi. Das
 Backend-Image läuft unter der Kennung und Gruppe `65532`; ist das Volume dafür nicht beschreibbar,
 endet der erste Upload mit einem Fehler. `uploads.persistence.fsGroup: 65532` macht es beschreibbar.
 Plattformen, die Kennungen selbst zuweisen, setzen dort ihre eigene Gruppe oder lassen den Wert leer.
@@ -694,10 +762,10 @@ Zustand `Pending`, und OPAA antwortet nicht, bis der Knoten zurück ist. Soll da
 wechseln können, gehört die Originalablage auf eine StorageClass mit Netzspeicher oder in den
 Objektspeicher. Dasselbe gilt für das Volume der Erprobungsdatenbank.
 
-Auch mit Netzspeicher unterbricht eine Knotenwartung OPAA so lange, bis der Pod auf einem anderen
-Knoten bereit ist. Das folgt aus der einen Backend-Instanz (siehe
-[Kubernetes oder Compose](#kubernetes-oder-compose)); ein PodDisruptionBudget änderte daran nichts,
-es hielte die Wartung des Knotens nur an.
+Auch mit Netzspeicher unterbricht eine Knotenwartung OPAA mit einer Backend-Instanz so lange, bis
+der Pod auf einem anderen Knoten bereit ist (siehe [Kubernetes oder Compose](#kubernetes-oder-compose)).
+Mit mehreren Pods auf verschiedenen Knoten antworten die übrigen weiter
+([Mehrere Backend-Instanzen](#mehrere-backend-instanzen)).
 
 Wie eine laufende Installation vom Volume auf den Objektspeicher wechselt, steht unter
 [Eine laufende Installation auf den Objektspeicher umstellen](originalablage.md#eine-laufende-installation-auf-den-objektspeicher-umstellen).
@@ -842,11 +910,14 @@ Werte-Datei. Einmalig setzen und nach dem Neustart entfernen:
 ```bash
 kubectl -n opaa set env deploy/opaa-backend OPAA_LOCAL_ADMIN_RESET=force
 kubectl -n opaa rollout status deploy/opaa-backend --timeout=15m
-kubectl -n opaa logs deploy/opaa-backend | grep -A5 NOTANKER
+kubectl -n opaa logs -l app.kubernetes.io/component=backend --tail=-1 | grep -A5 NOTANKER
 kubectl -n opaa set env deploy/opaa-backend OPAA_LOCAL_ADMIN_RESET-
 ```
 
-Die letzte Zeile entfernt die Variable und startet das Backend erneut. Ein späteres `helm upgrade`
+Die letzte Zeile entfernt die Variable und startet das Backend erneut. `set env` ändert die
+Pod-Vorlage und damit alle Backend-Pods; mit mehreren Pods setzt trotzdem nur einer das Konto zurück,
+und nur in seinem Protokoll steht das Einmalpasswort. Die dritte Zeile liest deshalb die Protokolle
+aller Backend-Pods. Ein späteres `helm upgrade`
 entfernt eine so gesetzte Variable nicht zuverlässig, deshalb gehört die letzte Zeile immer dazu. Wo
 ein GitOps-Werkzeug Abweichungen sofort zurücksetzt, geht derselbe Weg über einen befristeten Eintrag
 in `backend.extraEnv`, der nach dem Neustart wieder entfernt wird.
@@ -1069,7 +1140,7 @@ Proben und Metriken laufen über den Management-Port (siehe
    Chart-Version …“ und nennen die neue Revision; der [Rückweg](#rückweg) führt auf die Revision
    davor.
 
-Wegen der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt laufende Anfragen bis
+Mit einem Backend-Pod und der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt laufende Anfragen bis
 `backend.shutdownTimeoutSeconds` auslaufen; laufende Indexierungen brechen ab und werden beim nächsten
 Start als abgebrochen erkannt (siehe [Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
 Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet OPAA nicht.
@@ -1119,12 +1190,37 @@ Hinweise zum Aufruf:
 Ob die Aktualisierung den Index berührt, steht unter
 [Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht).
 
+### Ablauf mit mehreren Backend-Pods
+
+Mit [mehreren Backend-Instanzen](#mehrere-backend-instanzen) ist derselbe `helm upgrade` eine
+Aktualisierung ohne Unterbrechung:
+
+1. Der neue Migrations-Job erweitert das Schema. Die alten Pods arbeiten weiter; ein Release ändert das
+   Schema nur so, dass die Vorgängerversion daneben läuft.
+2. Ein neuer Pod startet, wartet im Init-Container auf das Ende der Migration und meldet sich bereit.
+3. Erst dann endet ein alter Pod: Er nimmt für `backend.preStopSleepSeconds` noch Anfragen an, lässt
+   laufende auslaufen und endet. Danach folgt der nächste.
+
+```bash
+kubectl -n opaa get jobs                       # der neue Job steht auf Complete
+kubectl -n opaa rollout status deploy/opaa-backend --timeout=15m
+```
+
+Scheitert die Migration, bleibt der neue Pod im Init-Container stehen, und die alten Pods antworten
+weiter. Das Protokoll des Jobs nennt den Grund (`kubectl -n opaa logs job/<Name>`). Nach der
+Behebung den gescheiterten Job löschen (`kubectl -n opaa delete job <Name>`) und `helm upgrade`
+wiederholen. Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, gehört
+`--set backend.updateStrategy=Recreate` an diesen einen Aufruf; ebenso, wenn sich ein Wert des
+Konfigurationsabdrucks ändert.
+
 ### Rückweg
 
 Liquibase migriert das Schema beim Start und **nur vorwärts**. `helm rollback` stellt Manifeste und
 Images der alten Revision wieder her, nicht die Datenbank. Eine ältere Fassung auf einem neueren Schema
 wird nicht unterstützt. **Der verlässliche Rückweg auf eine ältere Version ist deshalb die
-Datenbanksicherung von vor dem Upgrade.**
+Datenbanksicherung von vor dem Upgrade.** Mit mehreren Backend-Pods ist `helm rollback` auf die
+unmittelbar vorige Version dagegen vorgesehen, solange das neue Release keine Versionsgrenze ohne
+Rolling Update ist: Sein Schema hat die Vorgängerversion nur erweitert.
 
 Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `databasechangelog`.
 Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:
@@ -1169,8 +1265,8 @@ Rücksicherung, wenn die Sicherung von einer Installation stammt, die nur einmal
   3. `OPAA_AUTH_JWT_SECRET` im Secret durch einen neuen Wert ersetzen, **bevor** das Backend auf der
      zurückgespielten Datenbank startet. Die beiden Verschlüsselungsschlüssel bleiben unverändert.
   4. `helm rollback opaa <Revision> -n opaa` auf die Revision vor dem Upgrade.
-  5. Prüfen, dass das Backend wieder mit einer Instanz läuft (`kubectl -n opaa get deploy`), sonst
-     `kubectl -n opaa scale deploy/opaa-backend --replicas=1`.
+  5. Prüfen, dass das Backend wieder mit der gewohnten Zahl von Pods läuft
+     (`kubectl -n opaa get deploy`), sonst `kubectl -n opaa scale deploy/opaa-backend --replicas=<Zahl>`.
   6. Die übrige [Nacharbeit nach einer Rücksicherung der Datenbank](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
      erledigen: die Sperren und Rücksetzungen der Zwischenzeit erneut vornehmen.
 
@@ -1397,7 +1493,9 @@ Welche Metriken das Backend liefert, steht unter
 
 ### Alarme
 
-`metrics.prometheusRule.enabled` legt eine `PrometheusRule` mit fünf Alarmen an. Sie setzt den
+`metrics.prometheusRule.enabled` legt eine `PrometheusRule` mit fünf Alarmen an. Mit mehreren
+Backend-Pods melden fehlende Metriken, voller Heap und hängende Indexierung schon einen einzelnen Pod;
+die beiden letzten nennen ihn im Label `pod`. Sie setzt den
 ServiceMonitor voraus, weil die Alarme die Metriken über dessen Labels auswählen.
 `metrics.prometheusRule.labels` trägt die Labels, nach denen der Prometheus Regeln auswählt; bei
 kube-prometheus-stack wieder `release: <Release-Name>`.
@@ -1405,10 +1503,10 @@ kube-prometheus-stack wieder `release: <Release-Name>`.
 | Alarm | Schwere | Löst aus, wenn | Erste Prüfung |
 |---|---|---|---|
 | `OpaaBackendNotReady` | critical | das Backend zehn Minuten lang weniger bereite Pods hat als gewünscht | Protokoll des Pods; ist die Datenbank erreichbar? |
-| `OpaaBackendMetricsMissing` | warning | Prometheus das Backend zehn Minuten lang nicht abfragen kann | Pod, `ServiceMonitor`, `metrics.scrapeFrom` |
+| `OpaaBackendMetricsMissing` | warning | Prometheus zehn Minuten lang weniger Backend-Pods abfragen kann, als das Deployment haben will; ohne kube-state-metrics erst, wenn es keinen erreicht | Pods, `ServiceMonitor`, `metrics.scrapeFrom` |
 | `OpaaHighErrorRate` | warning | der Anteil der Antworten mit Status 5xx zehn Minuten lang über der Schwelle liegt, bei einer Mindestzahl von Anfragen | Protokoll; oft ein nicht erreichbares Modell |
-| `OpaaIndexingStalled` | warning | die ganze Frist über ein Indexierungslauf aktiv war, aber kein Dokument verarbeitet wurde | Laufstatus der Bibliothek, Quelle, Embedding-Modell |
-| `OpaaHeapUsageHigh` | warning | der Heap 15 Minuten lang über der Schwelle belegt ist | Speichergrenze oder Heap-Anteil anheben |
+| `OpaaIndexingStalled` | warning | in einem Pod die ganze Frist über ein Indexierungslauf aktiv war, aber kein Dokument verarbeitet wurde | Laufstatus der Bibliothek, Quelle, Embedding-Modell |
+| `OpaaHeapUsageHigh` | warning | der Heap eines Pods 15 Minuten lang über der Schwelle belegt ist | Speichergrenze oder Heap-Anteil anheben |
 
 | Wert | Vorgabe | Wirkung |
 |---|---|---|
@@ -1470,10 +1568,11 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Bild | Wahrscheinliche Ursache |
 |---|---|
 | `helm install` bricht mit einer Meldung des Schemas ab | Ein Pflichtwert fehlt oder hat eine unzulässige Form, etwa ein Platzhalter in `secrets.jwtSecret` oder ein Schlüssel, der kein Base64 von 32 Bytes ist. Die Meldung nennt den Wert |
-| `helm install` bricht mit einer Meldung des Charts ab | Eine unzulässige Kombination: `backend.replicas` größer 1, `trustedProxyCidrs` ohne beide Eingangs-Policies, `database.host` zusammen mit der Erprobungsdatenbank, `ingress.enabled` ohne `ingress.host`, `httpRoute.enabled` ohne `parentRefs`, `prometheusRule` ohne `serviceMonitor`, `terminationGracePeriodSeconds` nicht größer als `shutdownTimeoutSeconds`, `SPRING_PROFILES_*` oder `JAVA_TOOL_OPTIONS` in `backend.extraEnv`, ein doppelter oder reservierter Pfad in `filesystemSources`. Die Meldung nennt die Regel |
+| `helm install` bricht mit einer Meldung des Charts ab | Eine unzulässige Kombination: `backend.replicas` größer 1 oder `RollingUpdate` ohne Migrations-Job oder ohne Originalablage, die jeder Pod sieht, mit `RollingUpdate` ein `shutdownTimeoutSeconds` unter dem Lese-Timeout des Frontends, `trustedProxyCidrs` ohne beide Eingangs-Policies, `database.host` zusammen mit der Erprobungsdatenbank, `ingress.enabled` ohne `ingress.host`, `httpRoute.enabled` ohne `parentRefs`, `prometheusRule` ohne `serviceMonitor`, `terminationGracePeriodSeconds` nicht größer als `shutdownTimeoutSeconds` plus `preStopSleepSeconds`, `SPRING_PROFILES_*` oder `JAVA_TOOL_OPTIONS` in `backend.extraEnv`, ein doppelter oder reservierter Pfad in `filesystemSources`. Die Meldung nennt die Regel |
 | Pod im Zustand `CreateContainerConfigError` | Dem vorhandenen Secret fehlt ein Pflichtschlüssel; `kubectl describe pod` nennt ihn |
 | `ImagePullBackOff` mit dem Tag `0.0.0-dev` | Installation aus dem Repository ohne `backend.image.tag` und `frontend.image.tag` |
 | Pod wird vom Namespace abgewiesen | Die Erprobungsdatenbank unter einer Plattform, die Kennungen selbst zuweist; oder ein eigener Wert in `podSecurityContext`, der `restricted` verletzt |
+| Backend-Pod bleibt im Zustand `Init`, der Init-Container `await-migration` meldet `Waiting for the migration step` | Der Migrations-Job läuft noch oder ist gescheitert. `kubectl -n opaa get jobs` und `kubectl -n opaa logs job/<Name>` zeigen, welches; einen gescheiterten Job nach der Behebung löschen und `helm upgrade` wiederholen (siehe [Ablauf mit mehreren Backend-Pods](#ablauf-mit-mehreren-backend-pods)) |
 | Backend-Pod bleibt mit der Erprobungsdatenbank im Zustand `Init` | Die Erprobungsdatenbank nimmt keine Verbindungen an, etwa weil ihr Volume nicht bereitgestellt wird. Den Grund zeigt `kubectl -n opaa describe pod opaa-postgresql-0`; `kubectl -n opaa logs deploy/opaa-backend -c wait-for-database` bestätigt nur, auf welches Ziel und welchen Port gewartet wird |
 | Backend-Pod bleibt nach einer Knotenwartung im Zustand `Pending`, das Ereignis nennt `didn't match PersistentVolume's node affinity` | Die Originalablage liegt auf einem knotengebundenen Volume, und dessen Knoten ist gesperrt oder fort. Nach einer Wartung hilft `kubectl uncordon` auf diesen Knoten; ist er dauerhaft ausgefallen, hilft nur die Abhilfe unter [Originalablage](#originalablage), Netzspeicher oder Objektspeicher, mit den Originalen aus der Sicherung |
 | Backend startet wiederholt neu, das Protokoll zeigt eine laufende Migration | Die Migration braucht länger, als die Startup-Probe erlaubt. `backend.startupProbe.failureThreshold` anheben |
@@ -1505,7 +1604,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 |---|---|
 | Uploads größerer Dateien antworten `413` | Die Größengrenze des Controllers ist kleiner als die des Frontend-nginx; ingress-nginx braucht dafür `nginx.ingress.kubernetes.io/proxy-body-size` |
 | Verbindungen von MCP-Werkzeugen brechen ab oder liefern nichts | Der Controller puffert die Antwort oder bricht sie zu früh ab, siehe [Eingang](#eingang) |
-| Während einer Aktualisierung antwortet OPAA mit `502` oder `503` | Erwartet: Bei der Strategie `Recreate` gibt es kurz keinen bereiten Backend-Pod |
+| Während einer Aktualisierung antwortet OPAA mit `502` oder `503` | Mit der Strategie `Recreate` erwartet: Es gibt kurz keinen bereiten Backend-Pod. Mit `RollingUpdate` nicht erwartet; dann prüfen, ob der Controller davor die Verbindung früher abbricht als `frontend.backendReadTimeout` oder ob `backend.preStopSleepSeconds` auf `0` steht |
 | Die Anmeldegrenze trifft das ganze Haus, `429` mit `Retry-After` | `trustedProxyCidrs` ist leer oder enthält die Adresse des Controllers nicht; alle teilen sich einen Zähler |
 | Der Diagnose-Endpunkt zeigt als `clientAddress` die Adresse des Controllers oder eines Knotens | Der Controller sieht die Adresse des Clients nicht, etwa ohne `externalTrafficPolicy: Local`, oder seine Adresse fehlt in `trustedProxyCidrs` |
 
@@ -1520,8 +1619,8 @@ curl -s http://localhost:8081/actuator/health/readiness
 
 ## Was nicht gebaut ist
 
-- **Mehrere Backend-Instanzen und eine Aktualisierung ohne Unterbrechung.** Der Chart betreibt genau
-  eine Instanz; die Werte sind so geschnitten, dass sie später ohne Neuinstallation erweitert werden
-  können (#1292).
+- **Die Freigabe mehrerer Backend-Instanzen.** Der Chart rendert sie, der Nachweis mit zwei Instanzen
+  steht aus (#2952).
+- **Automatisches Skalieren des Backends.** Die Zahl der Pods ist ein fester Wert.
 - **Ein Operator, eine Kustomize-Basis oder plattformspezifische Pakete** wie OpenShift-Templates.
 - **Eine produktive Datenbank im Release.** Die Erprobungsdatenbank ersetzt keinen Datenbankbetrieb.

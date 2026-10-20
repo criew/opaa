@@ -164,7 +164,7 @@ Vor dem **ersten Push eines PRs** müssen lokal bestehen: Backend-Formatierung, 
 - `frontend/AGENTS.md` — Gliederung des Frontends (`src/app/`, `src/shared/`, `src/features/<thema>/`, `src/test/`), die per ESLint geprüften Themengrenzen ohne Ausnahmen und Ablauf eines Umzugs-PRs; **vor jeder Änderung unter `frontend/src/` lesen**
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer (`renderWithProviders`, `setMockAuthState`); MSW-Server der Tests in `frontend/src/test/server.ts`, Handler-Sammelstelle in `frontend/src/app/mocks/handlers.ts`
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
-- `deploy/helm/opaa/` — Helm-Chart für den Kubernetes-Betrieb (Single-Instance), siehe [ADR-0042](docs/decisions/0042-kubernetes-lieferung-mit-helm.md); eine betriebsrelevante Änderung zieht ihn im selben PR nach
+- `deploy/helm/opaa/` — Helm-Chart für den Kubernetes-Betrieb (eine Backend-Instanz als Vorgabe, mehrere unter den Voraussetzungen von [ADR-0053](docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 15), siehe [ADR-0042](docs/decisions/0042-kubernetes-lieferung-mit-helm.md); eine betriebsrelevante Änderung zieht ihn im selben PR nach
 - `docs/renovate.md` — selbst betriebene Abhängigkeits-Updates (Renovate); Regeln in `renovate.json5`
 - `docs/releases.md` — Release-Verfahren: Versions-Tags `vX.Y.Z`, unveränderliche Release-Images, Versionszählung, Patch-Releases für Sicherheitsupdates
 - `docs/sbom.md` — Software Bill of Materials: Image-Attestierungen und CycloneDX-CI-Artefakte; Lizenzprüfung der Abhängigkeiten gegen `.github/licenses/`

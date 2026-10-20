@@ -26,11 +26,11 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The application as separate processes against one database, the way a rolling update starts it:
- * the migration mode migrates and ends with exit code 0, an instance without migration starts on
- * the migrated database, and two instances that cold-start together against an empty database both
- * start - with the emergency account reset exactly once and only a working password in their logs.
- * Real processes rather than contexts in this JVM: each brings its own heap, its own exit code and
- * its own connections, as two pods do.
+ * the migration mode migrates and ends with exit code 0, the await mode ends only after it, an
+ * instance without migration starts on the migrated database, and two instances that cold-start
+ * together against an empty database both start - with the emergency account reset exactly once and
+ * only a working password in their logs. Real processes rather than contexts in this JVM: each
+ * brings its own heap, its own exit code and its own connections, as two pods do.
  */
 class InstanceStartTest extends AbstractMigrationTest {
 
@@ -76,6 +76,27 @@ class InstanceStartTest extends AbstractMigrationTest {
 
     assertThat(instance.started().get(START_SECONDS, TimeUnit.SECONDS)).as(instance.log()).isTrue();
     assertThat(count("SELECT count(*) FROM databasechangelog")).isEqualTo(applied);
+  }
+
+  @Test
+  void theAwaitModeWaitsWithoutWritingAndEndsOnceTheMigrationModeHasMigrated() throws Exception {
+    Instance waiting = start("await", Map.of("OPAA_MODE", "await-migration"));
+
+    assertThat(logReaches(waiting, "Waiting for the migration step")).as(waiting.log()).isTrue();
+    assertThat(waiting.process().isAlive()).as(waiting.log()).isTrue();
+    assertThat(count("SELECT count(*) FROM databasechangelog"))
+        .as("waiting writes nothing")
+        .isZero();
+
+    Instance migration = start("migration", Map.of("OPAA_MODE", "migrate"));
+
+    assertThat(migration.process().waitFor(START_SECONDS, TimeUnit.SECONDS)).isTrue();
+    assertThat(migration.process().exitValue()).as(migration.log()).isZero();
+    assertThat(waiting.process().waitFor(START_SECONDS, TimeUnit.SECONDS))
+        .as(waiting.log())
+        .isTrue();
+    assertThat(waiting.process().exitValue()).as(waiting.log()).isZero();
+    assertThat(waiting.log()).contains("The database holds all").doesNotContain(STARTED);
   }
 
   // regression guard for #2944: concurrent cold starts raced in Spring AI's vector table DDL, and
@@ -168,6 +189,17 @@ class InstanceStartTest extends AbstractMigrationTest {
     Instance instance = new Instance(process, log, started);
     instances.add(instance);
     return instance;
+  }
+
+  private static boolean logReaches(Instance instance, String text) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(START_SECONDS);
+    while (System.nanoTime() < deadline && instance.process().isAlive()) {
+      if (instance.log().contains(text)) {
+        return true;
+      }
+      Thread.sleep(200);
+    }
+    return instance.log().contains(text);
   }
 
   private long count(String sql) throws SQLException {

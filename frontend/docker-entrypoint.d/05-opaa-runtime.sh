@@ -6,7 +6,7 @@ set -eu
 
 ME=$(basename "$0")
 
-# The value is spliced verbatim into proxy_pass by envsubst; anything beyond host[:port] could
+# The value becomes the server line of the upstream block; anything beyond host[:port] could
 # inject nginx directives. Hostnames may contain "_" (Docker container names), ports run 1-65535.
 # grep matches line by line, so a line break is rejected separately.
 NEWLINE='
@@ -68,7 +68,43 @@ if [ -n "$INVALID_SOURCE" ]; then
   exit 1
 fi
 
+# Spliced into the resolver directive: space-separated DNS servers, IPv4 or [IPv6], each with an
+# optional port. Empty resolves OPAA_BACKEND_UPSTREAM once at start.
+OPAA_BACKEND_RESOLVER="${OPAA_BACKEND_RESOLVER:-}"
+ADDRESS='([0-9]{1,3}(\.[0-9]{1,3}){3}|\[[0-9A-Fa-f:.]+\])(:[1-9][0-9]{0,4})?'
+case "$OPAA_BACKEND_RESOLVER" in
+  "") VALID=true ;;
+  *"$NEWLINE"*) VALID=false ;;
+  *) if printf '%s' "$OPAA_BACKEND_RESOLVER" | grep -Eqx "$ADDRESS( +$ADDRESS)*"; then
+    VALID=true
+  else
+    VALID=false
+  fi ;;
+esac
+if [ "$VALID" != true ]; then
+  echo "$ME: ERROR: OPAA_BACKEND_RESOLVER must be empty or name DNS servers as address[:port], e.g. 127.0.0.11, got '$OPAA_BACKEND_RESOLVER'" >&2
+  exit 1
+fi
+
 mkdir -p "$NGINX_ENVSUBST_OUTPUT_DIR"
+
+# nginx.conf includes /tmp/nginx/upstream.d/*.conf in its upstream block. With a resolver nginx
+# looks the name up again every 5 s and starts even while it does not resolve yet; an address
+# literal needs no lookup.
+UPSTREAM_DIR=/tmp/nginx/upstream.d
+mkdir -p "$UPSTREAM_DIR"
+UPSTREAM_HOST="${OPAA_BACKEND_UPSTREAM%:*}"
+case "$OPAA_BACKEND_UPSTREAM" in
+  \[*) UPSTREAM_HOST="${OPAA_BACKEND_UPSTREAM%]*}]" ;;
+esac
+if [ -n "$OPAA_BACKEND_RESOLVER" ] \
+  && ! printf '%s' "$UPSTREAM_HOST" | grep -Eqx '[0-9.]+|\[.*\]'; then
+  printf 'resolver %s valid=5s;\nresolver_timeout 5s;\nserver %s resolve;\n' \
+    "$OPAA_BACKEND_RESOLVER" "$OPAA_BACKEND_UPSTREAM" > "$UPSTREAM_DIR/backend.conf"
+  echo "$ME: info: resolving $OPAA_BACKEND_UPSTREAM at runtime through $OPAA_BACKEND_RESOLVER"
+else
+  printf 'server %s;\n' "$OPAA_BACKEND_UPSTREAM" > "$UPSTREAM_DIR/backend.conf"
+fi
 
 # nginx.conf includes /tmp/nginx/listen.d/*.conf in its server block. The IPv6 listen is only
 # written where the kernel offers IPv6 - the same /proc/net/if_inet6 check the base image uses -

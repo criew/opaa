@@ -330,11 +330,18 @@ Instanz migriert nur dieser Schritt, die Anwendungsinstanzen laufen mit
 `SPRING_LIQUIBASE_ENABLED=false`. `vector_store` legt Liquibase an, `initialize-schema` von pgvector
 ist aus. Eine einzelne Instanz darf weiter beim Start migrieren (ADR-0042 Entscheidung 2). Einmalige
 Startaktionen (Seeds, `OPAA_LOCAL_ADMIN_RESET`) laufen unter einem Advisory-Lock genau einmal je
-Anforderung, ein Passwort erscheint erst nach dem Commit im Log. Umsetzung: #2944, Einbindung in Helm
-und Compose: #2951.
+Anforderung, ein Passwort erscheint erst nach dem Commit im Log. Ein zweiter Startmodus
+`await-migration` wartet nur lesend, bis die Datenbank jedes Changeset seiner Version verzeichnet
+(ausgenommen solche, die eine Vorbedingung mit `onFail: CONTINUE` auf einen späteren Lauf schiebt),
+und endet dann. Helm startet die Migration als Job ohne Hook, die Pods warten in einem Init-Container
+mit diesem Modus; unter Compose hängen die Instanzen per `service_completed_successfully` am
+Migrationsdienst. Umsetzung: #2944, #2951.
 
 Ein abgeschossener Pod hinterlässt sonst einen hängenden `DATABASECHANGELOGLOCK`, die Startup-Probe
-müsste die Migrationsdauer abdecken, und zwei gleichzeitige Kaltstarts liefern sich DDL-Rennen.
+müsste die Migrationsdauer abdecken, und zwei gleichzeitige Kaltstarts liefern sich DDL-Rennen. Ein
+Helm-Hook vor dem Upgrade fände bei der Installation weder das Secret noch die Erprobungsdatenbank des
+Releases vor und bände GitOps-Werkzeuge an Hooks; der Wartemodus ordnet Job und Pods ohne Zugriff auf
+die Kubernetes-API.
 
 ### 15. Betriebsmodell für Compose und Kubernetes
 
@@ -346,25 +353,33 @@ Datenbanksicherung.
 
 **Kubernetes (Helm-Chart, ADR-0042):**
 
-- `backend.replicas` größer 1 rendert nur mit aktivem Migrations-Job und gemeinsamer Originalablage
-  (`s3` oder PVC mit `ReadWriteMany`); sonst bricht das Rendern mit Meldung ab.
+- `backend.replicas` größer 1 und `RollingUpdate` rendern nur mit aktivem Migrations-Job und
+  gemeinsamer Originalablage (`s3` oder PVC mit `ReadWriteMany`); sonst bricht das Rendern mit
+  Meldung ab. Der Name des Jobs folgt Image und Konfiguration, ein Upgrade mit neuem Stand startet
+  ihn neu; er hat eine eigene NetworkPolicy, die Erprobungsdatenbank lässt ihn ein.
 - Strategie `RollingUpdate` (`maxUnavailable: 0`, `maxSurge: 1`) ab zwei Replikaten, `Recreate`
-  bleibt für eins. PodDisruptionBudget ab zwei Replikaten, `lifecycle.preStop.sleep` (das Image hat
-  keine Shell), `terminationGracePeriodSeconds` mindestens Read-Timeout des Frontends plus `preStop`.
+  bleibt wählbar und ist die Vorgabe für eins. PodDisruptionBudget (`maxUnavailable: 1`) ab zwei
+  Replikaten, `lifecycle.preStop.sleep` (das Image hat keine Shell), `OPAA_SHUTDOWN_TIMEOUT`
+  mindestens Read-Timeout des Frontends, `terminationGracePeriodSeconds` darüber plus `preStop`.
 - Hikari-Poolgröße als Wert mit der Grenze `(replicas + maxSurge) × (Pool + 1) + Migration ≤
-  max_connections`; die 1 ist die Hörverbindung des Busses (Entscheidung 5). `/tmp` bleibt
-  `emptyDir` je Pod, die Alarme gelten je Pod statt über alle summiert. Einen Abdruckwert ändert
-  `Recreate` bzw. Skalieren auf null (4).
+  max_connections`; die 1 ist die Hörverbindung des Busses (Entscheidung 5), die Migration braucht
+  zwei. `/tmp` bleibt `emptyDir` je Pod, die Alarme zu Scrape, Heap und Indexierung gelten je Pod
+  statt über alle summiert. Einen Abdruckwert ändert `Recreate` bzw. Skalieren auf null (4).
 
 **Docker Compose:**
 
-- Kein Rolling Update. Eine Mehrinstanz-Variante mit Migrationsdienst und zwei benannten Diensten
-  `backend-a` und `backend-b`, je mit eigenem `/tmp`, ohne Host-Portbindung, mit Healthcheck auf die
-  Readiness ohne Shell. Originalablage `s3` oder ein gemeinsames Bind-Mount auf demselben Host.
+- Kein Rolling Update. Eine Mehrinstanz-Variante (`docker-compose.multi.yml`) mit Migrationsdienst
+  und zwei benannten Diensten `backend-a` und `backend-b` unter dem gemeinsamen Netzalias `backend`,
+  je mit eigenem `/tmp`, ohne Host-Portbindung. Jedes Backend hat einen Healthcheck auf die
+  Readiness ohne Shell (eine Java-Klasse neben dem Jar), das Frontend wartet auf „healthy“.
+  Originalablage `s3` oder ein gemeinsames Bind-Mount auf demselben Host.
 - Update: Migrationsdienst, dann `backend-a` ersetzen und auf „healthy“ warten, dann `backend-b`.
-- nginx löst den Backend-Namen zur Laufzeit auf (`resolver`), damit ein neuer Container ohne
-  nginx-Neustart erreichbar ist. `docker compose --scale` ist nicht der Weg: Es teilt das benannte
-  `/tmp`-Volume und scheitert an der festen Portbindung.
+- nginx löst den Backend-Namen zur Laufzeit auf (`upstream` mit `resolve` und dem DNS-Server von
+  Docker): Jede Adresse des Alias ist ein Ziel, ein neuer Container ist ohne nginx-Neustart
+  erreichbar, und die URI-Ersetzung von `/api/` bleibt erhalten. `docker compose --scale` ist nicht
+  der Weg: Es teilt das benannte `/tmp`-Volume und scheitert an der festen Portbindung.
+- Die feste Frontend-Adresse in der Proxy-Vertrauensliste trägt nur einen Frontend-Container; jeder
+  weitere braucht eine eigene feste Adresse und einen eigenen Eintrag.
 
 Der Einzelinstanzbetrieb bleibt auf beiden Wegen unverändert. Umsetzung: #2951, Nachweis mit zwei
 Instanzen und Handbuch: #2952.
@@ -393,8 +408,9 @@ Verteilung jeder gespeicherte Chat jede zweite Runde aus dem Kontext. Die zweite
 von Entscheidung 10 und Entscheidung 12 (#2949, #2950). Bis sie geliefert ist, scheitert eine
 Rechteübertragung über zwei Instanzen geschlossen mit 409, das persönliche Kontingent kann um einen
 Aufnahmeschritt je Instanz überschritten werden, und ein Rolling Update kostet offene Push-Stapel
-Aktualität bis zum nächsten Abgleich. Bis die erste Stufe vollständig geliefert ist, verweigert der
-Chart mehr als ein Replikat, und ADR-0021 gilt weiter.
+Aktualität bis zum nächsten Abgleich. Bis die erste Stufe mit dem Nachweis zweier Instanzen (#2952)
+vollständig geliefert ist, gilt ADR-0021 weiter; Chart und Compose bieten mehrere Instanzen nur unter
+den Voraussetzungen von Entscheidung 15 an.
 
 ## Verworfene Alternativen
 

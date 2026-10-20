@@ -120,6 +120,7 @@ jobs:
             images:
               - '.dockerignore'
               - 'backend/Dockerfile'
+              - 'backend/docker/**'
               - 'backend/build.gradle.kts'
               - 'backend/settings.gradle.kts'
               - 'backend/gradle.properties'

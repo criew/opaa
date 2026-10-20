@@ -1,0 +1,96 @@
+# Multi-instance variant of the Compose stack (ADR-0053, Entscheidung 15): a migration step and two
+# backend instances behind the frontend's nginx, all on this one host. Used together with the base
+# file, never alone:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d
+#
+# Update without downtime, one instance after the other (docs/handbuch/docker-compose.md,
+# "Mehrere Backend-Instanzen"):
+#
+#   docker compose -f docker-compose.yml -f docker-compose.multi.yml build   # or pull
+#   docker compose -f docker-compose.yml -f docker-compose.multi.yml run --rm backend-migrate
+#   docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d --no-deps --wait backend-a
+#   docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d --no-deps --wait backend-b
+#   docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d --no-deps --wait frontend
+#
+# Originals: the object store (OPAA_UPLOAD_STORE=s3, e.g. the profile upload-s3) is recommended; the
+# shared bind mount ./uploads works only because every instance runs on this host.
+services:
+  # The single backend of the base file migrates on every start; here it is not started.
+  backend:
+    profiles:
+      - single-instance
+
+  # Applies the schema of this version and exits with 0; the instances start only afterwards.
+  backend-migrate:
+    extends:
+      file: docker-compose.yml
+      service: backend
+    environment:
+      OPAA_MODE: migrate
+    ports: !reset []
+    volumes: !override
+      - opaa-backend-migrate-tmp:/tmp
+    healthcheck:
+      disable: true
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # Both instances share the network alias "backend": the frontend's nginx resolves it at runtime
+  # and spreads the requests over every container behind it. Each has its own /tmp and no host
+  # port; they start without migrating.
+  backend-a:
+    extends:
+      file: docker-compose.yml
+      service: backend
+    environment:
+      SPRING_LIQUIBASE_ENABLED: "false"
+    ports: !reset []
+    volumes: !override
+      - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
+      - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads
+      - opaa-backend-a-tmp:/tmp
+    networks:
+      default:
+        aliases:
+          - backend
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      backend-migrate:
+        condition: service_completed_successfully
+
+  backend-b:
+    extends:
+      file: docker-compose.yml
+      service: backend
+    environment:
+      SPRING_LIQUIBASE_ENABLED: "false"
+    ports: !reset []
+    volumes: !override
+      - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
+      - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads
+      - opaa-backend-b-tmp:/tmp
+    networks:
+      default:
+        aliases:
+          - backend
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      backend-migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    depends_on: !override
+      backend-a:
+        condition: service_healthy
+      backend-b:
+        condition: service_healthy
+
+volumes:
+  opaa-backend-migrate-tmp:
+  opaa-backend-a-tmp:
+  opaa-backend-b-tmp:

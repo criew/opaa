@@ -12,11 +12,14 @@ data:
   {{- with .Values.backend.logFormat }}
   LOGGING_STRUCTURED_FORMAT_CONSOLE: {{ . | quote }}
   {{- end }}
-  OPAA_SHUTDOWN_TIMEOUT: {{ printf "%vs" .Values.backend.shutdownTimeoutSeconds | quote }}
+  OPAA_SHUTDOWN_TIMEOUT: {{ printf "%ss" (include "opaa.backend.shutdownTimeoutSeconds" .) | quote }}
   OPAA_PUBLIC_BASE_URL: {{ $publicBaseUrl | quote }}
   OPAA_CORS_ALLOWED_ORIGINS: {{ $publicBaseUrl | quote }}
   OPAA_DB_URL: {{ include "opaa.databaseUrl" . | quote }}
   OPAA_DB_USERNAME: {{ .Values.database.username | quote }}
+  {{- with .Values.backend.databasePoolSize }}
+  OPAA_DB_POOL_SIZE: {{ . | quote }}
+  {{- end }}
   {{- with .Values.database.schema }}
   OPAA_DB_SCHEMA: {{ . | quote }}
   {{- end }}

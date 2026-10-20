@@ -56,6 +56,7 @@ Der Chart liegt unter `deploy/helm/opaa/` ([ADR-0042](../decisions/0042-kubernet
 helm template opaa . -f ci/minimal-values.yaml   # bricht bei Abbruchregeln ab; helm lint meldet
                                                 # sie nur als INFO und endet mit Exit 0
 helm template opaa . -f ci/full-values.yaml
+helm template opaa . -f ci/multi-values.yaml    # zwei Backend-Pods mit Migrations-Job (ADR-0053)
 
 # Chart-CI (aus dem Repository-Wurzelverzeichnis; Workflow .github/workflows/helm-chart.yml)
 deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesatz unter
@@ -126,14 +127,17 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 
 ```bash
 # Image-Rauchtest (aus dem Repo-Wurzelverzeichnis): beide Images für die Architektur des
-# Docker-Hosts bauen und gehärtet starten: zuerst das Backend-Image mit OPAA_MODE=migrate (muss
-# mit Exit-Code 0 enden), dann das Backend ohne Migration gegen pgvector bis Readiness UP, Frontend
-# davor bis /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
+# Docker-Hosts bauen und gehärtet starten: zuerst das Backend-Image mit OPAA_MODE=migrate und
+# danach mit OPAA_MODE=await-migration (beide müssen mit Exit-Code 0 enden), dann das Backend ohne
+# Migration gegen pgvector bis Readiness UP samt Healthcheck des Images, Frontend davor bis
+# /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
 docker build -t opaa-smoke/backend -f backend/Dockerfile .
 docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend
 # Härtung des Frontend-nginx ohne Backend: ein Echo statt des Backends belegt, dass vom Client
 # gesetzte Forwarded/X-Forwarded-Host/-Port/-Prefix nicht ankommen; dazu Permissions-Policy auf
-# jeder Antwort und die Startprüfung von OPAA_CSP_CONNECT_SRC_EXTRA; in CI im selben Job
+# jeder Antwort, die Startprüfung von OPAA_CSP_CONNECT_SRC_EXTRA und mit OPAA_BACKEND_RESOLVER
+# die Auflösung zur Laufzeit: zwei Container hinter einem Namen bekommen beide Anfragen, ein
+# entfernter fällt ohne Neustart heraus; in CI im selben Job
 .github/scripts/frontend_hardening_test.sh opaa-smoke/frontend
 ```
