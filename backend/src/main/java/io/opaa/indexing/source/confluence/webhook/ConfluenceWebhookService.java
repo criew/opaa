@@ -73,6 +73,7 @@ public class ConfluenceWebhookService implements ConfluencePushReceiver {
             executor.refreshPages(jobId, library, keys);
           }
         };
+    intake.register(target);
   }
 
   /**
