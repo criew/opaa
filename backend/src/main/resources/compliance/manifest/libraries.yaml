@@ -102,6 +102,10 @@ data:
       - name: source_sync_revisits
         personalColumns: [hierarchy_path, container_key]
         nonPersonalColumns: [id, sync_state_id, created_at]
+      - name: source_event_batches
+        personalColumns: [keys]
+        nonPersonalColumns:
+          [id, library_id, source_type, dropped, overflowed, deferrals, due_at, claimed_until, created_at]
     storage: >-
       Anwendungsdatenbank (Textabschnitte, Volltext- und Vektorindex); Originale in der
       Originalablage
