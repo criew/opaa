@@ -39,6 +39,15 @@ e2e/
     tests/*.spec.ts
   local-auth.env             Environment für den local-auth-Stack (Betriebsmodus oidc ohne Keycloak)
   docker-compose.local-auth.yml  Compose-Overlay: Mail-Fänger, öffentliche Basis-URL, weitere Grenzen
+  multi-instance/                Zwei-Instanzen-Szenarien (ADR-0053, siehe unten) - eigene
+    playwright.config.ts         Konfiguration, ohne Browser
+    tests/*.spec.ts
+    load.mjs                     Lastgenerator des Rolling Updates, läuft im Netz der Plattform
+  multi-instance.env         Environment des Zwei-Instanzen-Stacks
+  docker-compose.multi-instance.yml  Compose-Overlay auf docker-compose.multi.yml: Images, Ports der
+                                 Instanzen, ai-stub, mailpit, Korpus im Objektspeicher
+  scripts/multi-instance.mjs     Lebenszyklus des Ziels "multi-instance"
+  scripts/previous-version.mjs   bestimmt die Vorgängerversion des Rolling Updates
 ```
 
 Neue Szenarien kommen als weitere `*.spec.ts`-Dateien unter `tests/`; neue wiederverwendbare
@@ -771,6 +780,33 @@ davor läuft.
 `.github/workflows/local-auth-e2e.yml` fährt den Lauf nächtlich und auf Zuruf
 (`workflow_dispatch`), dazu an einem Pull Request über das Label `local-auth-suite` — kein Required
 Check, Muster der Confluence-Suite (#1171).
+
+## Zwei Instanzen (#2952)
+
+Ein viertes Ziel, ohne Browser: zwei Backend-Instanzen gegen eine Datenbank
+([ADR-0053](../docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md)). Szenarien, Phasen und die
+Bestimmung der Vorgängerversion stehen in
+[docs/entwicklung/build-und-ci.md](../docs/entwicklung/build-und-ci.md#zwei-instanzen-suite).
+
+```bash
+cd e2e
+pnpm install
+pnpm run test:multi-instance
+```
+
+`pnpm run test:multi-instance` (→ `scripts/run-e2e.mjs --target multi-instance`) startet
+`docker-compose.yml` mit `docker-compose.multi.yml` und `docker-compose.multi-instance.yml` als
+Projekt `opaa-multi`, also genau die Mehrinstanz-Variante des Handbuchs mit Migrationsschritt,
+`backend-a` und `backend-b`. Die Szenarien sprechen jede Instanz über einen eigenen Host-Port an und
+führen Neustart, Rolling Update und Last über `fixtures/multiInstance.ts`, das dieselben Szenarien
+auch auf kind treibt (`deploy/helm/ci/multi-instance-test.sh`). Der Betriebsmodus ist `oidc` ohne
+Keycloak wie im Ziel `local-auth`; ai-stub hält auf Zuruf die Einbettungen eines Laufs zurück
+(`POST /control/embedding-hold`), damit Szenario 04 eine Instanz neu starten kann, während die
+andere mitten in einem Lauf steht. Jede Anmeldung des Notanker-Kontos legt eine Mail an jede weitere
+Systemverwaltung in die Outbox; die Szenarien 03 und 05 zählen darüber die Mails.
+
+`.github/workflows/multi-instance.yml` fährt das Ziel nächtlich, auf Zuruf und an einem Pull Request
+über das Label `multi-instance-suite`, je einmal unter Compose und auf kind; kein Required Check.
 
 ## CI
 

@@ -1,0 +1,115 @@
+# Overlay applied only by scripts/run-e2e.mjs --target multi-instance, on top of docker-compose.yml
+# and docker-compose.multi.yml (`--profile upload-s3 --profile mail`): the two-instance variant of the
+# handbook (migration step, backend-a, backend-b behind the frontend's nginx) with the stand-ins the
+# scenarios need. Images come from OPAA_MULTI_BACKEND_IMAGE and OPAA_MULTI_FRONTEND_IMAGE, so the
+# rolling-update scenario can start the previous version and replace it instance by instance with
+# the same commands as docker-compose.multi.yml names.
+
+x-embedding-dimensions: &embedding-dimensions "1536"
+
+# What every backend container of this stack shares beyond e2e/multi-instance.env: values that
+# depend on the host ports run-e2e.mjs chooses, and the raised limits (all scenario requests of one
+# instance come from the same client address).
+x-backend-environment: &backend-environment
+  OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions
+  OPAA_CORS_ALLOWED_ORIGINS: http://localhost:${OPAA_FRONTEND_PORT}
+  OPAA_PUBLIC_BASE_URL: http://localhost:${OPAA_FRONTEND_PORT}
+  OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_MAX_REQUESTS: "1000"
+  OPAA_RATE_LIMIT_LOCAL_AUTH_LOGIN_GLOBAL_MAX_REQUESTS: "2000"
+  OPAA_RATE_LIMIT_LOCAL_AUTH_CHANGE_PASSWORD_MAX_REQUESTS: "200"
+  OPAA_RATE_LIMIT_LOCAL_AUTH_SET_PASSWORD_MAX_REQUESTS: "200"
+  OPAA_RATE_LIMIT_LOCAL_AUTH_REFRESH_MAX_REQUESTS: "200"
+  OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS: "50"
+  OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS: "100"
+
+services:
+  backend-migrate:
+    image: ${OPAA_MULTI_BACKEND_IMAGE:?OPAA_MULTI_BACKEND_IMAGE names the backend image}
+    pull_policy: never
+    environment: *backend-environment
+
+  backend-a:
+    image: ${OPAA_MULTI_BACKEND_IMAGE:?OPAA_MULTI_BACKEND_IMAGE names the backend image}
+    pull_policy: never
+    environment: *backend-environment
+    # Loopback only: the scenarios speak to each instance directly to tell them apart.
+    ports: !override
+      - "127.0.0.1:${OPAA_BACKEND_A_PORT:-18183}:8080"
+    depends_on:
+      ai-stub:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      upload-store-init:
+        condition: service_completed_successfully
+      corpus-init:
+        condition: service_completed_successfully
+
+  backend-b:
+    image: ${OPAA_MULTI_BACKEND_IMAGE:?OPAA_MULTI_BACKEND_IMAGE names the backend image}
+    pull_policy: never
+    environment: *backend-environment
+    ports: !override
+      - "127.0.0.1:${OPAA_BACKEND_B_PORT:-18184}:8080"
+    depends_on:
+      ai-stub:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+      upload-store-init:
+        condition: service_completed_successfully
+      corpus-init:
+        condition: service_completed_successfully
+
+  frontend:
+    image: ${OPAA_MULTI_FRONTEND_IMAGE:?OPAA_MULTI_FRONTEND_IMAGE names the frontend image}
+    pull_policy: never
+
+  # Chat and embedding stand-in (e2e/ai-stub/server.mjs). The scenarios hold its embedding answers
+  # back through the published port to keep a run of one instance in flight.
+  ai-stub:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/ai-stub:/app:ro
+    command: ["node", "server.mjs"]
+    ports:
+      - "127.0.0.1:${OPAA_AI_STUB_PORT:-18090}:8089"
+    environment:
+      PORT: "8089"
+      EMBEDDING_DIMENSIONS: *embedding-dimensions
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8089/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  mailpit:
+    ports:
+      - "127.0.0.1:${OPAA_MAILPIT_SMTP_PORT:-11026}:1025"
+      - "127.0.0.1:${OPAA_MAILPIT_WEB_PORT:-18026}:8025"
+    environment:
+      MP_MAX_MESSAGES: 5000
+
+  # The source of the S3 library the scenarios index: OPAA_MULTI_CORPUS_SIZE text objects in the
+  # bucket "corpus" of the upload store. Same image and pattern as upload-store-init.
+  corpus-init:
+    image: amazon/aws-cli:2.38.1
+    environment:
+      AWS_ACCESS_KEY_ID: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
+      AWS_SECRET_ACCESS_KEY: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://upload-store:9000
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      CORPUS_SIZE: ${OPAA_MULTI_CORPUS_SIZE:-40}
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      "mkdir -p /tmp/corpus && for i in $$(seq -w 1 $$CORPUS_SIZE); do
+      printf 'Vermerk %s zur Erprobung mit zwei Instanzen, HALTEMARKE.\n\nDieser Text steht in
+      Dokument %s und wird von genau einer Instanz eingelesen.\n' $$i $$i > /tmp/corpus/vermerk-$$i.txt; done &&
+      (aws s3 mb s3://corpus || true) && aws s3 sync --delete /tmp/corpus s3://corpus/ &&
+      aws s3 ls s3://corpus/ | wc -l"
+    depends_on:
+      upload-store:
+        condition: service_healthy
