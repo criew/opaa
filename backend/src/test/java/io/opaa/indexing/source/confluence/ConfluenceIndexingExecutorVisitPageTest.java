@@ -31,6 +31,7 @@ import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor.PageVisitPolicy;
 import io.opaa.indexing.spi.IndexingRunProgress;
+import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.indexing.spi.Secret;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
@@ -147,7 +148,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             documentIngestService,
             mock(AttachmentIndexer.class),
             documentRepository,
-            mock(SourceSyncStateRepository.class),
+            new ScanJournal(mock(SourceSyncStateRepository.class)),
             Clock.systemUTC(),
             mock(IndexingRunTemplate.class));
   }

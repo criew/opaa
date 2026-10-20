@@ -420,10 +420,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("indexedAt") Instant indexedAt);
 
   /**
-   * Backs {@code UploadPendingRecoveryRunner}: every {@code PENDING} upload created before {@code
-   * createdBefore}, the start of this process, is stuck for good - the process that would have
-   * finished it is gone. A bulk {@code UPDATE}, for the same reason as {@link #deleteByLibraryId},
-   * scoped to {@code UPLOAD}: a connector run's transient {@code PENDING} row belongs to {@code
+   * The distinct instances processing a {@code PENDING} row - backs {@code
+   * UploadPendingRecoveryRunner}, which fails the uploads of those that are dead.
+   */
+  @Query(
+      "select distinct d.processingInstanceId from Document d where d.status ="
+          + " io.opaa.api.types.DocumentStatus.PENDING and d.processingInstanceId is not null")
+  List<UUID> findInstancesProcessingPendingRows();
+
+  /**
+   * Backs {@code UploadPendingRecoveryRunner}: every {@code PENDING} upload of the instance {@code
+   * instanceId}, which the caller found dead, is stuck for good - the task that would have finished
+   * it is gone. A bulk {@code UPDATE}, for the same reason as {@link #deleteByLibraryId}, scoped to
+   * {@code UPLOAD}: a connector run's transient {@code PENDING} row belongs to {@code
    * indexing_jobs}' own recovery.
    *
    * @return the number of rows transitioned to {@code FAILED}
@@ -433,14 +442,33 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Query(
       "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
           + " :errorMessage where d.status = io.opaa.api.types.DocumentStatus.PENDING and"
-          + " d.sourceType = :sourceType and d.createdAt < :createdBefore")
-  int failPendingOfTypeCreatedBefore(
+          + " d.sourceType = :sourceType and d.processingInstanceId = :instanceId")
+  int failPendingOfTypeProcessedBy(
       @Param("sourceType") SourceType sourceType,
-      @Param("errorMessage") String errorMessage,
-      @Param("createdBefore") Instant createdBefore);
+      @Param("instanceId") UUID instanceId,
+      @Param("errorMessage") String errorMessage);
 
-  default int failPendingUploadsCreatedBefore(String errorMessage, Instant createdBefore) {
-    return failPendingOfTypeCreatedBefore(SourceType.UPLOAD, errorMessage, createdBefore);
+  default int failPendingUploadsProcessedBy(UUID instanceId, String errorMessage) {
+    return failPendingOfTypeProcessedBy(SourceType.UPLOAD, instanceId, errorMessage);
+  }
+
+  /**
+   * Every {@code PENDING} upload that names no processing instance, written before it was recorded
+   * - the same contract as {@link #failPendingUploadsProcessedBy}.
+   *
+   * @return the number of rows transitioned to {@code FAILED}
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage where d.status = io.opaa.api.types.DocumentStatus.PENDING and"
+          + " d.sourceType = :sourceType and d.processingInstanceId is null")
+  int failPendingOfTypeWithoutInstance(
+      @Param("sourceType") SourceType sourceType, @Param("errorMessage") String errorMessage);
+
+  default int failPendingUploadsWithoutInstance(String errorMessage) {
+    return failPendingOfTypeWithoutInstance(SourceType.UPLOAD, errorMessage);
   }
 
   /**

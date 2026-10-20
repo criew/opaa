@@ -301,6 +301,7 @@ class LibraryDocumentServiceTest {
         NO_OP_TRANSACTION_MANAGER,
         new LibrarySourceConnectionResolver(),
         mock(SourceSyncStateRepository.class),
+        mock(io.opaa.instance.CurrentInstance.class),
         Clock.systemUTC());
   }
 
@@ -1736,6 +1737,7 @@ class LibraryDocumentServiceTest {
             NO_OP_TRANSACTION_MANAGER,
             new LibrarySourceConnectionResolver(),
             mock(SourceSyncStateRepository.class),
+            mock(io.opaa.instance.CurrentInstance.class),
             Clock.systemUTC());
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);

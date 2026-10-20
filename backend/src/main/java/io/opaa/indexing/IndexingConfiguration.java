@@ -36,6 +36,8 @@ import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.indexing.trigger.LibraryIndexingScheduler;
+import io.opaa.instance.CurrentInstance;
+import io.opaa.instance.InstanceRegistry;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -83,8 +85,16 @@ public class IndexingConfiguration {
       IndexingJobRepository indexingJobRepository,
       AssetRepository assetRepository,
       Clock clock,
-      DatabaseClock databaseClock) {
-    return new IndexingJobService(indexingJobRepository, assetRepository, clock, databaseClock);
+      DatabaseClock databaseClock,
+      CurrentInstance currentInstance,
+      InstanceRegistry instanceRegistry) {
+    return new IndexingJobService(
+        indexingJobRepository,
+        assetRepository,
+        clock,
+        databaseClock,
+        currentInstance,
+        instanceRegistry);
   }
 
   @Bean

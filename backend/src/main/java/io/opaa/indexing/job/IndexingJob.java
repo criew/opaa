@@ -94,6 +94,14 @@ public class IndexingJob {
   private UUID organizationId;
 
   /**
+   * The instance that runs this job (ADR-0053, Entscheidung 8), set once at {@code
+   * IndexingJobService#startJob}; the recovery fails a running job only once this instance counts
+   * as dead. {@code null} on a row written before owners were recorded.
+   */
+  @Column(name = "owner_instance_id", updatable = false)
+  private UUID ownerInstanceId;
+
+  /**
    * Who started this run - {@link JobTriggerSource#MANUAL} unless {@link
    * io.opaa.indexing.job.IndexingJobService#startJob(java.util.UUID, java.util.UUID,
    * JobTriggerSource, io.opaa.api.types.IndexingRunMode)} was called with {@link
@@ -285,6 +293,14 @@ public class IndexingJob {
 
   public void setOrganizationId(UUID organizationId) {
     this.organizationId = organizationId;
+  }
+
+  public UUID getOwnerInstanceId() {
+    return ownerInstanceId;
+  }
+
+  public void setOwnerInstanceId(UUID ownerInstanceId) {
+    this.ownerInstanceId = ownerInstanceId;
   }
 
   public JobTriggerSource getTriggeredBy() {

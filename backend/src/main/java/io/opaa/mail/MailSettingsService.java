@@ -171,16 +171,17 @@ public class MailSettingsService {
    * its status is lost - {@link MailService} swallows that and logs a warning, the caller still
    * gets its {@code Sent}; fails the outer one, the status row keeps an attempt whose business
    * transaction rolled back, which is correct, because the mail did go out.
+   *
+   * <p>Only the status columns are written, so settings saved at the same time stay as saved.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordSendOutcome(Instant at, String failureReason) {
-    MailSettings settings = requireRow();
     if (failureReason == null) {
-      settings.recordSuccess(at);
+      repository.recordSuccess(at);
     } else {
-      settings.recordFailure(at, failureReason);
+      repository.recordFailure(at, MailSettings.truncate(failureReason));
     }
-    repository.save(settings);
+    MailSettings settings = requireRow();
     status.set(
         new MailSendStatus(
             settings.getLastSuccessAt(),

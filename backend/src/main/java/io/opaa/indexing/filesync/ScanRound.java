@@ -427,7 +427,7 @@ final class ScanRound {
    */
   void abandon() {
     state.discardScan();
-    state = journal.saveEnded(state);
+    state = journal.saveEnded(frame.jobId(), state);
   }
 
   /**
@@ -459,7 +459,7 @@ final class ScanRound {
     }
     state.rememberSubtrees(memory.remembered(open));
     state.completeFullSync(clock.instant());
-    state = journal.saveEnded(state);
+    state = journal.saveEnded(frame.jobId(), state);
     List<UUID> consumed = new ArrayList<>();
     seen.values().forEach(consumed::addAll);
     revisits.consume(consumed);
@@ -491,7 +491,8 @@ final class ScanRound {
             memory.carriedMarkers(),
             memory.unsettledFolders(),
             proof.name()));
-    state = journal.save(state, scanId, frame.library().getId(), newPresence(withheld));
+    state =
+        journal.save(frame.jobId(), state, scanId, frame.library().getId(), newPresence(withheld));
   }
 
   /**
@@ -508,7 +509,11 @@ final class ScanRound {
       return;
     }
     journal.recordPresence(
-        state.getId(), progress.scanId(), frame.library().getId(), frame.currentPaths());
+        frame.jobId(),
+        state.getId(),
+        progress.scanId(),
+        frame.library().getId(),
+        frame.currentPaths());
   }
 
   /**

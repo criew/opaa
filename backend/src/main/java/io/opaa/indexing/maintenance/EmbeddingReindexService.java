@@ -17,6 +17,8 @@ import io.opaa.indexing.chunk.EmbeddingIndexStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorIndexSchema;
 import io.opaa.indexing.chunk.VectorIndexSchema.ChunkCounts;
+import io.opaa.instance.CurrentInstance;
+import io.opaa.instance.InstanceRegistry;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
@@ -45,6 +47,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
@@ -55,8 +58,11 @@ import org.springframework.stereotype.Service;
  * column becomes the embedding column and the vector search resumes.
  *
  * <p>Progress is what the target column holds, so a stop - cancelled, failed or the process ended -
- * loses nothing. A run the process left {@code RUNNING} resumes after the next start (ADR-0021: one
- * process, so no other one can be working on it).
+ * loses nothing. The run belongs to the instance that started or took it over, recorded in {@code
+ * embedding_index} (ADR-0053, Entscheidung 8): any instance may cancel it there, and the worker of
+ * the owner stops after its current document. A run whose owner is dead is taken over by the next
+ * instance that looks, at its start or every {@value #TAKE_OVER_SWEEP_MILLIS} ms after; the worker
+ * itself is held in the process (ADR-0021).
  */
 @Service
 public class EmbeddingReindexService {
@@ -87,6 +93,9 @@ public class EmbeddingReindexService {
   static final String CANCELLED_MESSAGE =
       "Von der Systemverwaltung abgebrochen. Bereits neu eingebettete Abschnitte bleiben erhalten.";
 
+  /** How often a run of a dead instance is looked for, well below {@code dead-after}. */
+  static final long TAKE_OVER_SWEEP_MILLIS = 60_000L;
+
   private final EmbeddingIndexState state;
   private final EmbeddingIndexStore store;
   private final VectorIndexSchema schema;
@@ -99,6 +108,8 @@ public class EmbeddingReindexService {
   private final PersonThreshold personThreshold;
   private final String vectorStoreTable;
   private final Clock clock;
+  private final CurrentInstance currentInstance;
+  private final InstanceRegistry instanceRegistry;
 
   private final ExecutorService executor =
       Executors.newSingleThreadExecutor(
@@ -125,7 +136,11 @@ public class EmbeddingReindexService {
       KnowledgeLibraryRepository libraryRepository,
       PersonThreshold personThreshold,
       VectorTable vectorTable,
-      Clock clock) {
+      Clock clock,
+      CurrentInstance currentInstance,
+      InstanceRegistry instanceRegistry) {
+    this.currentInstance = currentInstance;
+    this.instanceRegistry = instanceRegistry;
     this.state = state;
     this.store = store;
     this.schema = schema;
@@ -142,10 +157,11 @@ public class EmbeddingReindexService {
 
   /** Read while the columns cannot be switched, so the counts belong to the reported state. */
   public EmbeddingReindexProgress progress() {
-    boolean running = active.get();
+    boolean working = active.get();
     return state.withStableColumns(
         snapshot -> {
           Run run = store.load().map(EmbeddingIndexRecord::run).orElse(Run.NONE);
+          boolean running = working || (run.running() && ownerAlive());
           boolean stale = snapshot != null && snapshot.stale();
           boolean privateCounted =
               personThreshold.discloses(libraryRepository.countAllPrivateLibraryOwners());
@@ -175,9 +191,9 @@ public class EmbeddingReindexService {
 
   /**
    * Starts or resumes the re-embedding as {@code userId} of {@code organizationId}, the
-   * organization its audit events are recorded in.
+   * organization its audit events are recorded in, as a run of this instance.
    *
-   * @throws ConflictException when the index is not stale or a run is already working
+   * @throws ConflictException when the index is not stale or a live instance is working on a run
    */
   public synchronized EmbeddingReindexProgress start(UUID userId, UUID organizationId) {
     if (!state.isStale()) {
@@ -185,42 +201,86 @@ public class EmbeddingReindexService {
           "Der Vektorindex entspricht dem konfigurierten Embedding-Modell; es gibt nichts neu"
               + " einzubetten.");
     }
-    if (active.get()) {
+    EmbeddingIndexRecord record = requireRecord();
+    Optional<UUID> owner = store.runOwner();
+    if (active.get() || (record.run().running() && owner.map(this::isAlive).orElse(false))) {
       throw new ConflictException("Die Neueinbettung läuft bereits.");
     }
-    EmbeddingIndexRecord record = requireRecord();
-    store.save(
-        record.withRun(
-            new Run(RunStatus.RUNNING, Instant.now(clock), userId, organizationId, null, null)));
+    Run run = new Run(RunStatus.RUNNING, Instant.now(clock), userId, organizationId, null, null);
+    if (!store.startRun(run, currentInstance.id(), record.run().status(), owner.orElse(null))) {
+      throw new ConflictException("Die Neueinbettung läuft bereits.");
+    }
     submit();
     return progress();
   }
 
   /**
-   * Stops the running re-embedding after the document it is working on. What it embedded stays.
+   * Stops the running re-embedding after the document it is working on, whichever instance runs it.
+   * What it embedded stays.
    *
    * @throws ConflictException when no run is going on
    */
   public synchronized EmbeddingReindexProgress cancel() {
-    EmbeddingIndexRecord record = requireRecord();
-    if (!record.run().running()) {
+    if (!store.endRun(null, RunStatus.CANCELLED, Instant.now(clock), CANCELLED_MESSAGE)) {
       throw new ConflictException("Es läuft keine Neueinbettung.");
     }
     stopRequested = true;
-    store.save(
-        record.withRun(
-            record.run().ended(RunStatus.CANCELLED, Instant.now(clock), CANCELLED_MESSAGE)));
     return progress();
   }
 
-  /** Resumes a run the previous process left {@code RUNNING}. */
+  /**
+   * Takes over a run left {@code RUNNING} by an instance that is gone, the last process included.
+   */
   @EventListener(ApplicationReadyEvent.class)
-  public synchronized void resumeAfterRestart() {
+  public void resumeAfterRestart() {
+    takeOverOrphanedRun();
+  }
+
+  /**
+   * Takes over the running run when its owner is dead or none is recorded, and works on it here. A
+   * dead instance stays dead, and the takeover is conditional on the owner it read, so of several
+   * instances looking at once one takes over.
+   */
+  @Scheduled(fixedDelay = TAKE_OVER_SWEEP_MILLIS, initialDelay = TAKE_OVER_SWEEP_MILLIS)
+  public synchronized void takeOverOrphanedRun() {
+    if (active.get() || !state.isStale()) {
+      return;
+    }
     Optional<EmbeddingIndexRecord> record = store.load();
-    if (record.isPresent() && record.get().run().running() && state.isStale() && !active.get()) {
-      log.info("Resuming the re-embedding of the vector index left running by the last process");
+    if (record.isEmpty() || !record.get().run().running()) {
+      return;
+    }
+    Optional<UUID> owner = store.runOwner();
+    if (owner.isPresent() && isAlive(owner.get())) {
+      return;
+    }
+    if (store.takeOverRun(currentInstance.id(), owner.orElse(null))) {
+      log.info(
+          "Taking over the re-embedding of the vector index left running by instance {}",
+          owner.map(UUID::toString).orElse("(none recorded)"));
       submit();
     }
+  }
+
+  private boolean ownerAlive() {
+    return store.runOwner().map(this::isAlive).orElse(false);
+  }
+
+  /** This instance counts as alive while its heartbeat is current, whatever the register says. */
+  private boolean isAlive(UUID instance) {
+    return instance.equals(currentInstance.id())
+        ? currentInstance.heartbeatCurrent()
+        : instanceRegistry.isAlive(instance);
+  }
+
+  /**
+   * Whether this instance still works on the run: nobody cancelled or ended it, nobody took it
+   * over, and this instance has not lost its heartbeat.
+   */
+  private boolean stillOwned() {
+    return !stopRequested
+        && currentInstance.heartbeatCurrent()
+        && store.ownsRunningRun(currentInstance.id());
   }
 
   /** Stops the worker with the process; the run stays {@code RUNNING} and resumes on next start. */
@@ -257,7 +317,7 @@ public class EmbeddingReindexService {
                 Step.STOPPED,
                 (limit, offset) -> pendingDocuments(failed, limit),
                 documentId -> reembed(documentId, failed, consecutiveFailures));
-        if (stopRequested) {
+        if (!stillOwned()) {
           return;
         }
         if (consecutiveFailures[0] >= MAX_CONSECUTIVE_FAILURES) {
@@ -300,7 +360,7 @@ public class EmbeddingReindexService {
    * counting.
    */
   Step reembed(UUID documentId, Set<UUID> failed, int[] consecutiveFailures) {
-    if (stopRequested || consecutiveFailures[0] >= MAX_CONSECUTIVE_FAILURES) {
+    if (consecutiveFailures[0] >= MAX_CONSECUTIVE_FAILURES || !stillOwned()) {
       return Step.STOPPED;
     }
     Optional<Document> document = documentRepository.findById(documentId);
@@ -381,11 +441,14 @@ public class EmbeddingReindexService {
     return state.exclusively(this::switchIfStillRunning);
   }
 
-  /** {@code false} when the run was cancelled meanwhile; nothing is switched then. */
+  /**
+   * {@code false} when the run was cancelled, ended or taken over meanwhile; nothing is switched
+   * then. Whether this instance still owns the run is asked again under the lock of the switch.
+   */
   private boolean switchIfStillRunning() {
     EmbeddingIndexRecord record = requireRecord();
     Snapshot snapshot = state.snapshot();
-    if (stopRequested || !record.run().running() || snapshot == null || !snapshot.stale()) {
+    if (!stillOwned() || !record.run().running() || snapshot == null || !snapshot.stale()) {
       return false;
     }
     EmbeddingIdentity target = snapshot.target();
@@ -393,13 +456,18 @@ public class EmbeddingReindexService {
     if (remaining > 0) {
       throw new IllegalStateException(remaining + " chunk(s) still lack a target vector");
     }
-    schema.switchToTarget(
-        () ->
-            store.save(
-                new EmbeddingIndexRecord(
-                    target,
-                    null,
-                    record.run().ended(RunStatus.COMPLETED, Instant.now(clock), null))));
+    boolean switched =
+        schema.switchToTarget(
+            () -> store.lockRunningRunOf(currentInstance.id()),
+            () ->
+                store.save(
+                    new EmbeddingIndexRecord(
+                        target,
+                        null,
+                        record.run().ended(RunStatus.COMPLETED, Instant.now(clock), null))));
+    if (!switched) {
+      return false;
+    }
     state.replace(new Snapshot(target, snapshot.configured(), null));
     log.info(
         "The vector index now holds vectors of embedding model {} ({} dimensions); the vector"
@@ -409,14 +477,11 @@ public class EmbeddingReindexService {
     return true;
   }
 
-  /** Ends the run with {@code status} unless it was cancelled meanwhile. */
+  /** Ends the run with {@code status} unless it was cancelled, ended or taken over meanwhile. */
   private synchronized void end(RunStatus status, String message) {
-    EmbeddingIndexRecord record = requireRecord();
-    if (!record.run().running()) {
-      return;
+    if (store.endRun(currentInstance.id(), status, Instant.now(clock), message)) {
+      recordCompletion(AuditOutcome.FAILURE, message);
     }
-    store.save(record.withRun(record.run().ended(status, Instant.now(clock), message)));
-    recordCompletion(AuditOutcome.FAILURE, message);
   }
 
   private void recordCompletion(AuditOutcome outcome, String reason) {

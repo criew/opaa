@@ -415,7 +415,7 @@ public final class FileSync implements AutoCloseable {
       }
     } finally {
       forgetChangedContainers(reader.changedContainers());
-      state = journal.save(state);
+      state = journal.save(frame.jobId(), state);
       ScanRound.confirm(journal, state, frame, store.absenceProof());
       recordSummaries();
     }

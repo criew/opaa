@@ -30,6 +30,13 @@ public class CurrentInstance implements SmartLifecycle {
   /** Before every executor and the web server on start, after all of them on stop. */
   static final int PHASE = ExecutorConfigurationSupport.DEFAULT_PHASE - 1024;
 
+  /**
+   * The lifecycle phase right after this one: a component started in it finds this instance
+   * registered, and so admitted next to the live ones, and still runs before the executors and the
+   * web server.
+   */
+  public static final int REGISTERED_PHASE = PHASE + 1;
+
   private static final Logger log = LoggerFactory.getLogger(CurrentInstance.class);
 
   private final InstanceRegistry registry;
@@ -79,6 +86,16 @@ public class CurrentInstance implements SmartLifecycle {
     return isRunning()
         && !lost.get()
         && System.nanoTime() - lastHeartbeatNanos < deadAfter.toNanos();
+  }
+
+  /**
+   * Whether no live instance runs a newer version than this one. During a rolling update only an
+   * instance of the newest version changes the schema of what all of them share.
+   */
+  public boolean runsNewestVersion() {
+    return registry.instances().stream()
+        .filter(RegisteredInstance::alive)
+        .noneMatch(instance -> InstanceVersion.compare(instance.version(), version.version()) > 0);
   }
 
   @Override
