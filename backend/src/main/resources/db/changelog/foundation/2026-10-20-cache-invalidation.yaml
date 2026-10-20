@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: foundation-2026-10-20-cache-invalidation
+      author: opaa
+      comment: "The sending half of the invalidation bus (ADR-0053, Entscheidung 5): one trigger function that announces a change of a cached table on the channel opaa_invalidation, delivered at commit and never on rollback; the payload is the topic of the cache, never row data. Bound here to the outbound proxy setting."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              -- TG_ARGV[0] is the topic. Further arguments name columns whose change alone is no
+              -- change of the cache (status columns written on every use); row triggers only.
+              CREATE FUNCTION notify_cache_invalidation() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', 'pg_temp'
+                  AS $$
+              BEGIN
+                IF TG_LEVEL = 'ROW' AND TG_OP = 'UPDATE' AND TG_NARGS > 1
+                    AND (to_jsonb(OLD) - TG_ARGV[1:TG_NARGS - 1])
+                        = (to_jsonb(NEW) - TG_ARGV[1:TG_NARGS - 1]) THEN
+                  RETURN NULL;
+                END IF;
+                PERFORM pg_notify('opaa_invalidation', TG_ARGV[0]);
+                RETURN NULL;
+              END; $$;
+
+              CREATE TRIGGER trg_outbound_proxy_settings_invalidation
+                  AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON outbound_proxy_settings
+                  FOR EACH STATEMENT EXECUTE FUNCTION notify_cache_invalidation('outbound-proxy');

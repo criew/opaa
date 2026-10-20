@@ -2,6 +2,7 @@ package io.opaa.test;
 
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.connection.token.GrantRevocations;
+import io.opaa.instance.PostgresInvalidationBus;
 import java.time.Duration;
 import org.awaitility.Awaitility;
 import org.mockito.Mockito;
@@ -21,14 +22,22 @@ import org.springframework.test.context.support.AbstractTestExecutionListener;
  * of its own.
  *
  * <p>It also waits until every OAuth revocation an earlier method handed over has run, so none
- * reaches the shared fake authorization server after the next method reset it.
+ * reaches the shared fake authorization server after the next method reset it, and until every
+ * announcement of the invalidation bus an earlier method caused has reached the caches, so none
+ * drops a cache in the middle of the next method.
  */
 final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
 
   private static final Duration REVOCATIONS_IDLE_TIMEOUT = Duration.ofSeconds(60);
 
+  private static final Duration BUS_DELIVERY_TIMEOUT = Duration.ofSeconds(10);
+
   @Override
   public void beforeTestMethod(TestContext testContext) {
+    testContext
+        .getApplicationContext()
+        .getBean(PostgresInvalidationBus.class)
+        .awaitDelivery(BUS_DELIVERY_TIMEOUT);
     Mockito.reset(testContext.getApplicationContext().getBean(ChatModel.class));
     testContext.getApplicationContext().getBean(FakeDirectoryClient.class).reset();
     if (testContext.getApplicationContext().getBean(EmbeddingModel.class)
