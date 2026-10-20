@@ -5,8 +5,21 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-19T05:03:42Z</updated>
+  <updated>2026-10-20T05:06:09Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Montag, 19. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-19.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-19.html</id>
+    <updated>2026-10-20T05:06:09Z</updated>
+    <summary type="text">feat: Multiinstanzbetrieb des Backends:
+— Multiinstanzbetrieb als Nachfolger von ADR-0021 entschieden
+— Zehn Tickets für Instanzregister, Migrationen, Cron-Synchronisation, Zustandspersistenz und Indexierungslauf-Verwaltung angelegt
+Sonstiges:
+— Zehn Code-Review-Befunde aus main-Stand c942d22b3 behoben: Dateigröße, Client-Secret-Zeitzone, Nachfolgefall-Race-Condition, Token-Suchumfang, Indexierungsfehler-Anzeige, Dokumentlisten-Reihenfolge, nginx-Härtung, Workflow-Härtung, Verzeichnisabgleich-Status, Rate-Limit-Zählung
+— Frontend-Dateien nach Verantwortung aufgeteilt: ChatInput, ChatStore, AuthStore, LibraryDetailPage, LibraryMetadataFieldsSection, LibraryCreatePage, SearchIndexingAdminPage, LibraryDocumentsSection
+— Abhängigkeiten aktualisiert: Renovate, ESLint, actions/setup-java, rustfs</summary>
+  </entry>
   <entry>
     <title>Tagesreport Sonntag, 18. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-18.html"/>
@@ -874,16 +887,5 @@ Sonstiges:
 — SBOM-Erzeugung und CVE-Erkennung implementiert
 — Externer Ollama-Endpunkt für Retrieval-Harness unterstützt
 — Feature-Spezifikationen für Retrieval und Ingestion konsolidiert</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Sonntag, 30. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-30.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-30.html</id>
-    <updated>2026-08-31T05:53:52Z</updated>
-    <summary type="text">Sonstiges:
-— Retrieval-Strategien für OPAA recherchiert und dokumentiert
-— Agent-Loop, Frameworks und Laufzeitumgebung für Phase-2-Agenten recherchiert
-— Meilenstein-1-Übergabe finalisiert
-— Meilenstein-1-Bericht mit Delta konsolidiert und gemergt</summary>
   </entry>
 </feed>

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-19</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Montag, 19. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-18.html" rel="prev" title="Sonntag, 18. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/39321585851" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">83</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+10</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">11</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">23</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1292">#1292</a> feat: Multiinstanzbetrieb des Backends</span>
+<span class="epic-progress">3 / 12 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 25%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2943">#2943</a></span>Multiinstanzbetrieb als Nachfolger von ADR-0021 entschieden</li><li>Zehn Tickets für Instanzregister, Migrationen, Cron-Synchronisation, Zustandspersistenz und Indexierungslauf-Verwaltung angelegt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2953">#2953</a></span>docs(adr): Mehrinstanzbetrieb entscheiden und ADR-0021 ablösen (+481/−47, 6 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Zehn Code-Review-Befunde aus main-Stand c942d22b3 behoben: Dateigröße, Client-Secret-Zeitzone, Nachfolgefall-Race-Condition, Token-Suchumfang, Indexierungsfehler-Anzeige, Dokumentlisten-Reihenfolge, nginx-Härtung, Workflow-Härtung, Verzeichnisabgleich-Status, Rate-Limit-Zählung</li><li>Frontend-Dateien nach Verantwortung aufgeteilt: ChatInput, ChatStore, AuthStore, LibraryDetailPage, LibraryMetadataFieldsSection, LibraryCreatePage, SearchIndexingAdminPage, LibraryDocumentsSection</li><li>Abhängigkeiten aktualisiert: Renovate, ESLint, actions/setup-java, rustfs</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2940">#2940</a></span>chore(deps): renovate/renovate docker tag to v44.161.2 (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2939">#2939</a></span>chore(deps): eslint auf v10.13.0 aktualisieren (+57/−57, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2938">#2938</a></span>chore(deps): actions/setup-java action auf v6.1.0 aktualisieren (+12/−12, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2937">#2937</a></span>chore(deps): rustfs/rustfs docker tag to v1.0.3 (+4/−4, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2935">#2935</a></span>refactor(library): LibraryDocumentsSection nach Verantwortung aufteilen (+1116/−752, 14 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2934">#2934</a></span>refactor(search-admin): SearchIndexingAdminPage in Bereiche aufteilen (+833/−763, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2933">#2933</a></span>refactor(library): LibraryCreatePage in Schritte und Quellartwahl aufteilen (+576/−330, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2932">#2932</a></span>fix(library): Einzelner Abruffehler zeigt den Indexierungslauf nicht mehr als fehlgeschlagen (+396/−104, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2931">#2931</a></span>refactor(library): LibraryMetadataFieldsSection in Dialoge und Teilkomponenten aufteilen (+760/−604, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2930">#2930</a></span>refactor(library): LibraryDetailPage in Bereiche und Teilkomponenten aufteilen (+753/−508, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2929">#2929</a></span>fix(directory): Gescheiterten Verzeichnisabgleich als Status festhalten und anzeigen (+351/−68, 18 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2928">#2928</a></span>refactor(chat): ChatInput in Chip-Leiste, Hooks und Texthelfer aufteilen (+690/−446, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2927">#2927</a></span>fix(frontend): Dokumentliste verwirft überholte Antworten; Abruffehler zeigen den Lauf nicht mehr als fehlgeschlagen (+619/−156, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2926">#2926</a></span>refactor(chat): chatStore nach Verantwortung aufteilen (+848/−734, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2925">#2925</a></span>fix(externalaccess): Suchumfang eines Zugriffstokens fail-closed statt über Thread-Local (+220/−59, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2924">#2924</a></span>fix(succession): Parallel geschlossenen Nachfolgefall nicht wieder öffnen (+272/−22, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2923">#2923</a></span>fix(connection): Ablaufkennzeichen des Client-Secrets in Serverzeit rechnen (+124/−5, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2922">#2922</a></span>fix(frontend): nginx härten – X-Forwarded-Header leeren, Permissions-Policy, CSP-Zusatz prüfen (+275/−55, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2921">#2921</a></span>refactor(session): authStore nach Anmeldeflüssen aufteilen (+1116/−962, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2920">#2920</a></span>ci: Workflows härten – Kontextwerte über env, minimale Token-Rechte, pytest pinnen (+502/−31, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2919">#2919</a></span>build(frontend): max-lines als ESLint-Warnung einführen (+14/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2918">#2918</a></span>fix(ratelimit): Globale Deckel nur mit angemeldeten Anfragen belasten, Pfadsegment als UUID prüfen (+796/−84, 17 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-20 um 07:06 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-19T00:00:00 bis 2026-10-19T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
