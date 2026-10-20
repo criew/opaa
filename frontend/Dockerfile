@@ -50,6 +50,9 @@ ENV OPAA_CSP_CONNECT_SRC_EXTRA=""
 ENV OPAA_DEMO_MODE="false"
 # Where /api/ and /mcp are forwarded to, as host[:port]; validated at start by 05-opaa-runtime.sh.
 ENV OPAA_BACKEND_UPSTREAM="backend:8080"
+# DNS servers that resolve OPAA_BACKEND_UPSTREAM again at runtime (127.0.0.11 under Docker); empty
+# resolves it once at start, enough for a Kubernetes service. Validated by 05-opaa-runtime.sh.
+ENV OPAA_BACKEND_RESOLVER=""
 # How long nginx waits for the backend's answer on /api/ and /mcp; validated by 05-opaa-runtime.sh.
 ENV OPAA_BACKEND_READ_TIMEOUT="600s"
 # Numeric, so Kubernetes can verify runAsNonRoot without a runAsUser override.

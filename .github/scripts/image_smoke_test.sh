@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Smoke test of the two OPAA images on the architecture of the Docker host: starts PostgreSQL with
 # pgvector, migrates it with the backend image in its migration mode (OPAA_MODE=migrate, which must
-# end with exit code 0), then the backend without migration, hardened as in production (read-only
-# root, /tmp and /app/uploads as tmpfs, no capabilities, profile "oidc"), and the frontend hardened
-# the same way in front of it. Passes when the backend reports readiness UP, /api/health answers
-# through the frontend's nginx and the frontend serves index.html. Model endpoints do not exist;
-# readiness does not depend on them.
+# end with exit code 0, as must the wait for it), then the backend without migration, hardened as
+# in production (read-only root, /tmp and /app/uploads as tmpfs, no capabilities, profile "oidc"),
+# and the frontend hardened the same way in front of it. Passes when the backend reports readiness
+# UP, its health probe agrees, /api/health answers through the frontend's nginx and the frontend
+# serves index.html. Model endpoints do not exist; readiness does not depend on them.
 #
 #   .github/scripts/image_smoke_test.sh <backend image> <frontend image>
 #
@@ -110,6 +110,14 @@ migration_log="$(docker logs "$migration" 2>&1)"
   fail "the migration mode did not end as the migration alone"
 echo "migration mode: exit code 0"
 
+# The wait for the migration step, which an instance's init container runs: on the migrated
+# database it reads the changelog out of the jar and ends at once with exit code 0.
+docker run --rm --network "$network" "${hardening[@]}" "${backend_environment[@]}" \
+  -e OPAA_MODE=await-migration "$backend_image" >/dev/null 2>&1 &&
+  await_exit=0 || await_exit=$?
+[[ "$await_exit" == 0 ]] || fail "the await-migration mode ended with exit code $await_exit on the migrated database"
+echo "await-migration mode: exit code 0"
+
 docker run -d --name "$backend" --network "$network" --network-alias backend \
   "${hardening[@]}" "${backend_environment[@]}" -e SPRING_LIQUIBASE_ENABLED=false \
   -p 127.0.0.1::8080 "$backend_image" >/dev/null
@@ -129,6 +137,11 @@ while (($(date +%s) - start < ready_timeout)); do
 done
 [[ "$readiness" == *'"status":"UP"'* ]] || fail "backend not ready within ${ready_timeout}s: ${readiness:-no answer}"
 echo "backend ready after $(($(date +%s) - start))s: $readiness"
+
+# The Compose health check: a class beside the jar, run without a shell inside the container.
+docker exec "$backend" /opt/java/openjdk/bin/java -cp /app/probe io.opaa.config.HealthProbe ||
+  fail "the health probe of the image does not report the ready backend as healthy"
+echo "health probe: healthy"
 
 if [[ -n "$expect_version" ]]; then
   start_line="$(docker logs "$backend" 2>&1 | grep -m 1 'Starting OpaaApplication' || true)"
