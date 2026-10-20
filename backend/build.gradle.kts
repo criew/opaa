@@ -153,6 +153,7 @@ dependencies {
         exclude(group = "software.amazon.awssdk", module = "url-connection-client")
     }
     implementation(libs.smbj)
+    implementation(libs.bundles.shedlock)
     runtimeOnly(libs.bundles.runtime)
     "configurationProcessor"(libs.spring.boot.configuration.processor)
     "configMetadataImplementation"(libs.bundles.spring.boot)

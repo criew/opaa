@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -141,12 +142,21 @@ public class DirectorySyncService {
   }
 
   /**
-   * The schedule's entry point: the caller has already established that this provider is enabled
-   * and due, so the state checks of {@link #run} would only repeat its own query. A second run
-   * already in flight is not an error here - the tick simply skips it.
+   * The schedule's entry point: the caller has already established that this provider is enabled,
+   * so the state checks of {@link #run} would only repeat its own query. Whether it is still due is
+   * asked again under the run lock: a run of another instance that finished in between has stamped
+   * its last run by then, and this one is skipped instead of repeated.
+   *
+   * @return the report, or {@code null} when the provider was no longer due under the lock
    */
-  SyncReport runScheduled(SyncTarget target) {
-    return runExclusivelyApplying(target);
+  SyncReport runScheduled(SyncTarget target, BooleanSupplier stillDue) {
+    return runLock.runExclusively(
+        target.providerId(),
+        () ->
+            stillDue.getAsBoolean()
+                ? execute(
+                    target, (snapshot, now) -> planExecutor.planAndApply(target, now, snapshot))
+                : null);
   }
 
   private SyncReport runExclusivelyApplying(SyncTarget target) {

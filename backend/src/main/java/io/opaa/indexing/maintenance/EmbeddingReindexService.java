@@ -19,6 +19,7 @@ import io.opaa.indexing.chunk.VectorIndexSchema;
 import io.opaa.indexing.chunk.VectorIndexSchema.ChunkCounts;
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceRegistry;
+import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
@@ -40,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -242,6 +244,10 @@ public class EmbeddingReindexService {
    * instances looking at once one takes over.
    */
   @Scheduled(fixedDelay = TAKE_OVER_SWEEP_MILLIS, initialDelay = TAKE_OVER_SWEEP_MILLIS)
+  @SchedulerLock(
+      name = "embedding-reindex-takeover",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_MINUTE,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
   public synchronized void takeOverOrphanedRun() {
     if (active.get() || !state.isStale()) {
       return;

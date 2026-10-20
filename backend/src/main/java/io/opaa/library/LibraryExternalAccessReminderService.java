@@ -1,7 +1,6 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetOwnerType;
-import io.opaa.api.types.ExternalAccessState;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.PublicBaseUrl;
@@ -36,9 +35,10 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Sends at most one mail per release: {@code external_access_reminder_sent_at} is written in the
  * transaction that queues the mail to the outbox ({@link MailService#enqueue}), and it is cleared
- * by every change of the release, so a renewed release earns a fresh reminder. The mail leaves
- * after the commit and only with it - a rolled-back run sends nothing - and its delivery retries
- * are the outbox's; the run itself is not repeated the next day.
+ * by every change of the release, so a renewed release earns a fresh reminder. The releases are
+ * selected under a row lock, so a run on another instance at the same moment waits and then finds
+ * the marker set. The mail leaves after the commit and only with it - a rolled-back run sends
+ * nothing - and its delivery retries are the outbox's; the run itself is not repeated the next day.
  */
 @DataFlow("mail")
 @Service
@@ -83,9 +83,7 @@ public class LibraryExternalAccessReminderService {
     Instant now = clock.instant();
     Instant until = now.plus(Duration.ofDays(properties.reminderLeadDays()));
     List<KnowledgeLibrary> due =
-        libraryRepository
-            .findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtBetween(
-                ExternalAccessState.ACTIVE, now, until);
+        libraryRepository.findAllById(libraryRepository.lockExternalAccessReminderDue(now, until));
     int queued = 0;
     for (KnowledgeLibrary library : due) {
       library.markExternalAccessReminderSent(now);

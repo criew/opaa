@@ -324,17 +324,26 @@ public class LocalUserService {
   /**
    * The lock of the daily run (ADR-0033, Entscheidung 9), under the {@code local-auth} system
    * actor. A {@link ConflictException} means the account is the last login-capable system
-   * administrator and stays untouched.
+   * administrator and stays untouched. The state is read again under the row lock: an account a run
+   * of another instance locked a moment earlier is left alone.
+   *
+   * @return whether this call locked the account
    */
   @Transactional
-  public void lockForInactivity(UUID userId) {
+  public boolean lockForInactivity(UUID userId) {
     User user = users.findById(userId).orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
     LocalCredentials row =
-        credentials.findById(userId).orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
+        credentials
+            .findForUpdate(userId)
+            .orElseThrow(() -> new NotFoundException(NOT_FOUND_MESSAGE));
+    if (row.state(clock.instant()) != LocalAccountState.ACTIVE) {
+      return false;
+    }
     if (user.getSystemRole() == SystemRole.SYSTEM_ADMIN) {
       adminGuard.requireAnotherLoginCapableAdmin(user.getOrganizationId(), userId);
     }
     applyLock(user, row, LockReason.INACTIVITY, null, LocalRefreshTokenService.SYSTEM_ACTOR);
+    return true;
   }
 
   private void applyLock(

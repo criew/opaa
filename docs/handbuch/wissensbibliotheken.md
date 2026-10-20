@@ -164,8 +164,11 @@ Reiter „Quelle", beim Anlegen im Assistenten.
 
 Die Uhrzeit gilt in der Zeitzone des Servers. Drei Regeln:
 
-- **Verpasste Termine werden nicht nachgeholt.** War das Backend zum Termin nicht in Betrieb,
-  läuft die Bibliothek erst zum nächsten Termin. Nach einer längeren Wartung lässt sich manuell
+- **Jeder Termin läuft einmal, verpasste nur kurz nachgeholt.** Auch mit mehreren
+  Backend-Instanzen startet ein Termin genau einen Lauf. Kommt der Anstoß verspätet, etwa nach einem
+  kurzen Neustart, startet der Lauf noch bis 15 Minuten nach dem Termin; war das Backend länger
+  nicht in Betrieb, läuft die Bibliothek erst zum nächsten Termin. Ein neuer oder geänderter
+  Zeitplan beginnt mit seinem nächsten Termin. Nach einer längeren Wartung lässt sich manuell
   anstoßen.
 - **Läuft noch ein Lauf, entsteht kein zweiter.** Der laufende vermerkt „Geplanter Lauf
   übersprungen: Indizierung läuft bereits". Ein Erstlauf, der länger dauert als das Intervall,

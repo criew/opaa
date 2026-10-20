@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibrary, UUID> {
 
@@ -143,6 +144,24 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   List<KnowledgeLibrary> findByScheduleEnabledTrue();
 
   /**
+   * Books the due time {@code due} of the schedule {@code cron} for the library, unless an earlier
+   * tick - of this or another instance - already booked it or a later one: one due time, one run. A
+   * booking under another cron counts as none, so a changed schedule starts afresh.
+   *
+   * @return whether this call booked it
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      value =
+          "update knowledge_libraries set schedule_booked_at = :due, schedule_booked_cron = :cron"
+              + " where id = :id and schedule_enabled and schedule_cron = :cron"
+              + " and (schedule_booked_at is null or schedule_booked_cron is distinct from :cron"
+              + " or schedule_booked_at < :due)",
+      nativeQuery = true)
+  int bookScheduledRun(@Param("id") UUID id, @Param("cron") String cron, @Param("due") Instant due);
+
+  /**
    * How many shared libraries of one organization are diagnosegesperrt - counted over the whole
    * bestand, never intersected with anyone's read rights. A private library never enters a foreign
    * context, so it is not counted.
@@ -159,20 +178,34 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   /**
    * Every library whose release is still {@code ACTIVE} although its expiry has passed, across all
    * organizations - the one query of the daily expiry run, served by {@code
-   * idx_knowledge_libraries_external_access_expiry}.
+   * idx_knowledge_libraries_external_access_expiry}. The rows stay locked until the caller's
+   * transaction ends: of two runs, the second waits and Postgres reads the condition again on what
+   * the first committed, so a release taken out of effect is not offered twice. Ids, not entities:
+   * loaded afterwards, the entities show the state after the lock.
    */
-  List<KnowledgeLibrary> findByExternalAccessStateAndExternalAccessExpiresAtLessThanEqual(
-      ExternalAccessState state, Instant cutoff);
+  @Query(
+      value =
+          "select id from knowledge_libraries where external_access_state = 'ACTIVE'"
+              + " and external_access_expires_at <= :cutoff order by id for update",
+      nativeQuery = true)
+  List<UUID> lockExpiredExternalAccess(@Param("cutoff") Instant cutoff);
 
   /**
    * Every library whose release is {@code ACTIVE}, has not been reminded about yet and expires
    * inside the reminder window - bounded on both sides: the open end keeps the daily run from
    * mailing every day of the window, the lower end keeps it from announcing a Befristung that has
-   * already passed, which the run before it has just taken out of effect.
+   * already passed, which the run before it has just taken out of effect. Locked like {@link
+   * #lockExpiredExternalAccess}, so a release one run has reminded about is not offered to a
+   * second.
    */
-  List<KnowledgeLibrary>
-      findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAndExternalAccessExpiresAtBetween(
-          ExternalAccessState state, Instant after, Instant until);
+  @Query(
+      value =
+          "select id from knowledge_libraries where external_access_state = 'ACTIVE'"
+              + " and external_access_reminder_sent_at is null"
+              + " and external_access_expires_at between :after and :until order by id for update",
+      nativeQuery = true)
+  List<UUID> lockExternalAccessReminderDue(
+      @Param("after") Instant after, @Param("until") Instant until);
 
   /**
    * Erases the stored credential ciphertext, independent of what the entity attribute currently

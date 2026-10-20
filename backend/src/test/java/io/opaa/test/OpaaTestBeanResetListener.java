@@ -8,6 +8,7 @@ import org.awaitility.Awaitility;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 
@@ -24,7 +25,8 @@ import org.springframework.test.context.support.AbstractTestExecutionListener;
  * <p>It also waits until every OAuth revocation an earlier method handed over has run, so none
  * reaches the shared fake authorization server after the next method reset it, and until every
  * announcement of the invalidation bus an earlier method caused has reached the caches, so none
- * drops a cache in the middle of the next method.
+ * drops a cache in the middle of the next method. Every scheduler lock an earlier method left is
+ * freed, so a locked {@code @Scheduled} method a test calls runs regardless of the class before.
  */
 final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
 
@@ -45,6 +47,8 @@ final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
       embeddingModel.reset();
     }
     testContext.getApplicationContext().getBean(TestAssetType.class).switchOn();
+    ScheduledRunLockRelease.releaseAll(
+        testContext.getApplicationContext().getBean(JdbcTemplate.class));
     GrantRevocations revocations =
         testContext.getApplicationContext().getBean(GrantRevocations.class);
     if (!revocations.idle()) {

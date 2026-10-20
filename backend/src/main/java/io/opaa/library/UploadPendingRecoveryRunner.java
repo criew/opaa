@@ -1,9 +1,11 @@
 package io.opaa.library;
 
 import io.opaa.instance.InstanceRegistry;
+import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.UploadedOriginalStore;
 import java.util.UUID;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -23,8 +25,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>An upload is failed once the instance processing it is dead by the instance register, however
  * young the upload (ADR-0053, Entscheidung 8): at startup, and every {@value #SWEEP_MILLIS} ms
- * after on every instance (ADR-0021). The uploads of a live instance stay, whenever it accepted
- * them.
+ * after on one instance at a time under its scheduler lock. The uploads of a live instance stay,
+ * whenever it accepted them.
  */
 @Component
 public class UploadPendingRecoveryRunner implements ApplicationRunner {
@@ -70,6 +72,10 @@ public class UploadPendingRecoveryRunner implements ApplicationRunner {
    * wait for the next start of any instance, the tick touches the database only.
    */
   @Scheduled(fixedDelay = SWEEP_MILLIS, initialDelay = SWEEP_MILLIS)
+  @SchedulerLock(
+      name = "upload-dead-owner-recovery",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_MINUTE,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
   public void recoverUploadsOfDeadInstances() {
     report(failUploadsOfDeadInstances());
   }

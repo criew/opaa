@@ -4,11 +4,13 @@ import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.DatabaseClock;
+import io.opaa.instance.ScheduledRunLocks;
 import io.opaa.organization.Organization;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.Executor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,8 +27,10 @@ import org.springframework.stereotype.Component;
  * has to be kept in sync when an interval changes or the application restarts - the same shape
  * {@code LibraryIndexingScheduler} uses. The tick only decides which providers are due; each run
  * itself goes to {@code directorySyncExecutor}, so the scheduler thread the other ticks share is
- * free again before the directory answers. No leader election: {@link DirectorySyncRunLock} already
- * makes a concurrent trigger safe, and ADR-0021 assumes one backend process.
+ * free again before the directory answers. One instance ticks per minute under the scheduled-run
+ * lock (ADR-0053, Entscheidung 7); {@link DirectorySyncRunLock} keeps two runs of one provider
+ * apart, and the run asks again under that lock whether the provider is still due, so a run that
+ * another instance finished a moment earlier is not repeated.
  *
  * <p>Due means "the last run is at least one interval ago", by the database clock that also stamps
  * the last run (ADR-0053, Entscheidung 9), so a host clock running ahead does not make a provider
@@ -73,6 +77,10 @@ public class DirectorySyncScheduler {
    * considered: a disabled provider's run pauses (ADR-0036, Entscheidung 2).
    */
   @Scheduled(cron = "0 * * * * *")
+  @SchedulerLock(
+      name = "directory-sync-schedule",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_MINUTE,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
   public void triggerDueProviders() {
     Instant now = databaseClock.now();
     for (OidcProvider provider :
@@ -92,7 +100,8 @@ public class DirectorySyncScheduler {
   private void run(OidcProvider provider) {
     try {
       directorySyncService.runScheduled(
-          DirectorySyncService.toTarget(Organization.DEFAULT_ID, provider));
+          DirectorySyncService.toTarget(Organization.DEFAULT_ID, provider),
+          () -> isDue(provider, databaseClock.now()));
     } catch (ConflictException alreadyRunning) {
       log.debug(
           "Directory sync: scheduled tick skipped provider {} - a run is already in flight",

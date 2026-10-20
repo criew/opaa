@@ -123,7 +123,7 @@ der eine Zählung gewachsen ist — nur sie, nicht jede folgende.
 
 **Installationsweite Einstellungszeilen** (`branding_settings`, `audit_retention_settings`,
 `diagnostic_context_retention_settings`, `local_auth_settings`, `mail_settings`, `mail_templates`,
-die Seed-Marker) haben keine eigene ID, auf die eine Klasse ihr Aufräumen eingrenzen könnte.
+die Seed-Marker, die Tagesmerker der Erinnerung zur Kontenprüfung in `admin_review_reminders`) haben keine eigene ID, auf die eine Klasse ihr Aufräumen eingrenzen könnte.
 `SeededRowRestorer` sichert sie zu Beginn jeder Klasse und stellt sie nach jeder Testmethode wieder
 her, nach deren `@AfterEach` — auch wenn dort eine Aufräumanweisung geworfen hat. Eine weitere
 solche Tabelle gehört in seine Liste. **Trägt die Tabelle auch Zeilen, die eine Testklasse selbst

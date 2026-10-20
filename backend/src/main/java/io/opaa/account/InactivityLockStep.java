@@ -93,7 +93,9 @@ public class InactivityLockStep implements LocalAccountMaintenanceStep {
         break;
       }
       try {
-        accounts.lockForInactivity(user.getId());
+        if (!accounts.lockForInactivity(user.getId())) {
+          continue;
+        }
       } catch (ConflictException lastAdministrator) {
         log.warn(
             "Local account {} has been inactive for more than {} days but is the last"

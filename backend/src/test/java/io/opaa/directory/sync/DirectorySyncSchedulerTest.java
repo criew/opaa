@@ -70,7 +70,7 @@ class DirectorySyncSchedulerTest {
               return null;
             })
         .when(directorySyncService)
-        .runScheduled(any());
+        .runScheduled(any(), any());
 
     scheduler.triggerDueProviders();
 

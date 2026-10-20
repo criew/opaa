@@ -1,5 +1,7 @@
 package io.opaa.indexing.job;
 
+import io.opaa.instance.ScheduledRunLocks;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -15,8 +17,8 @@ import org.springframework.stereotype.Component;
  * <p>A run is given up once the instance that owns it is dead by the instance register, at startup
  * and every {@value #DEAD_OWNER_SWEEP_MILLIS} ms after (ADR-0053, Entscheidung 8); another
  * instance's live run stays. {@link #recoverStaleRunningJobs()} additionally covers a run of a live
- * instance whose task was dropped or that hangs. Both sweeps run on every instance (ADR-0021) and
- * are idempotent.
+ * instance whose task was dropped or that hangs. Each sweep runs on one instance at a time under
+ * its scheduler lock and is idempotent.
  */
 @Component
 public class IndexingJobRecoveryScheduler {
@@ -54,6 +56,10 @@ public class IndexingJobRecoveryScheduler {
 
   /** Gives up the runs of instances that died since, without waiting for a restart. */
   @Scheduled(fixedDelay = DEAD_OWNER_SWEEP_MILLIS, initialDelay = DEAD_OWNER_SWEEP_MILLIS)
+  @SchedulerLock(
+      name = "indexing-job-dead-owner-recovery",
+      lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_MINUTE,
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
   public void recoverRunsOfDeadInstances() {
     int recovered = indexingJobService.recoverJobsOfDeadInstances();
     if (recovered > 0) {
@@ -70,6 +76,10 @@ public class IndexingJobRecoveryScheduler {
    * RunRecoverySettings#staleJobTimeout()}, infrequent enough not to matter for load.
    */
   @Scheduled(fixedDelay = 15 * 60 * 1000L)
+  @SchedulerLock(
+      name = "indexing-job-stale-recovery",
+      lockAtLeastFor = "PT14M",
+      lockAtMostFor = "PT30M")
   public void recoverStaleRunningJobs() {
     int recovered = indexingJobService.recoverStaleJobs(properties.staleJobTimeout());
     if (recovered > 0) {

@@ -332,11 +332,8 @@ public final class ModularArchitecture {
           "knowledge.KnowledgeLibraryRepository#findPrivateIdsByOrganizationId",
           "knowledge.KnowledgeLibraryRepository#findPrivateIdsByOwnerUserIdIn",
           "knowledge.KnowledgeLibraryRepository#findIdsByErasureRequested",
-          "knowledge.KnowledgeLibraryRepository"
-              + "#findByExternalAccessStateAndExternalAccessExpiresAtLessThanEqual",
-          "knowledge.KnowledgeLibraryRepository"
-              + "#findByExternalAccessStateAndExternalAccessReminderSentAtIsNullAnd"
-              + "ExternalAccessExpiresAtBetween");
+          "knowledge.KnowledgeLibraryRepository#lockExpiredExternalAccess",
+          "knowledge.KnowledgeLibraryRepository#lockExternalAccessReminderDue");
 
   /**
    * The system processes that may enumerate private libraries, relative to the root: each one shows

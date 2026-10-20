@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: external-2026-10-20-token-expiry-reminder-marker
+      author: opaa
+      comment: "The shortest lead time in days an access token was reminded of before its expiry (ADR-0053, Entscheidung 7): a conditional UPDATE claims each reminder, so it goes out once however many instances run the daily step. Additive: a nullable column without default."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              ALTER TABLE external_access_tokens ADD COLUMN expiry_reminded_days integer;

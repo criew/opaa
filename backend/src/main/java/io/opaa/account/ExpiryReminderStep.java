@@ -20,15 +20,20 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The reminder to the person fourteen days before an expiry (ADR-0033, Entscheidung 11): every
  * {@code ACTIVE} local account whose expiry falls on the calendar day fourteen days after the day
  * of the run - in the zone of the run, so a daylight-saving change neither doubles nor skips a day
- * - gets {@code ACCOUNT_EXPIRING}. Sent once because each expiry lies on exactly one calendar day;
- * a day on which the run did not happen is a reminder not sent, not one sent twice. The system
- * administrators are told by {@link AdminReviewReminderStep}, which merges the count with the
- * quarterly review. Locked, expired and still invited accounts get no reminder.
+ * - gets {@code ACCOUNT_EXPIRING}. Sent once because each expiry lies on exactly one calendar day
+ * and the reminder is claimed in {@code local_credentials.expiry_reminded_for} in the transaction
+ * that queues the mail, so a second run - on another instance - finds it claimed; a day on which
+ * the run did not happen is a reminder not sent, not one sent twice. The system administrators are
+ * told by {@link AdminReviewReminderStep}, which merges the count with the quarterly review.
+ * Locked, expired and still invited accounts get no reminder.
  *
  * <p>The run is bounded by time, not by a number of mails: the daily run holds the one scheduler
  * thread for the whole synchronous send, so after {@link #TIME_BUDGET} since the step began it
@@ -48,6 +53,7 @@ public class ExpiryReminderStep implements LocalAccountMaintenanceStep {
   private final LocalCredentialsRepository credentials;
   private final UserRepository users;
   private final LocalAccountMailer mailer;
+  private final TransactionOperations transactions;
   private final ZoneId zone;
   private final Duration budget;
 
@@ -56,19 +62,28 @@ public class ExpiryReminderStep implements LocalAccountMaintenanceStep {
       LocalCredentialsRepository credentials,
       UserRepository users,
       LocalAccountMailer mailer,
+      PlatformTransactionManager transactionManager,
       Clock clock) {
-    this(credentials, users, mailer, clock.getZone(), TIME_BUDGET);
+    this(
+        credentials,
+        users,
+        mailer,
+        new TransactionTemplate(transactionManager),
+        clock.getZone(),
+        TIME_BUDGET);
   }
 
   ExpiryReminderStep(
       LocalCredentialsRepository credentials,
       UserRepository users,
       LocalAccountMailer mailer,
+      TransactionOperations transactions,
       ZoneId zone,
       Duration budget) {
     this.credentials = credentials;
     this.users = users;
     this.mailer = mailer;
+    this.transactions = transactions;
     this.zone = zone;
     this.budget = budget;
   }
@@ -131,8 +146,9 @@ public class ExpiryReminderStep implements LocalAccountMaintenanceStep {
             LEAD_DAYS);
         break;
       }
-      mailer.sendExpiring(user, row.getExpiresAt());
-      sent++;
+      if (remindOnce(user, row.getExpiresAt())) {
+        sent++;
+      }
     }
     log.info(
         "Expiry reminder: {} local account(s) expire in {} days, {} reminded, {} not",
@@ -140,5 +156,18 @@ public class ExpiryReminderStep implements LocalAccountMaintenanceStep {
         LEAD_DAYS,
         sent,
         skipped);
+  }
+
+  /** Claims the reminder and queues the mail in one transaction; false when already claimed. */
+  private boolean remindOnce(User user, Instant expiresAt) {
+    return Boolean.TRUE.equals(
+        transactions.execute(
+            status -> {
+              if (credentials.claimExpiryReminder(user.getId(), expiresAt) == 0) {
+                return false;
+              }
+              mailer.sendExpiring(user, expiresAt);
+              return true;
+            }));
   }
 }

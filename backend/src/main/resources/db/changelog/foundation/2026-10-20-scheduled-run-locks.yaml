@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: foundation-2026-10-20-scheduled-run-locks
+      author: opaa
+      comment: "The lock table of the scheduled runs (ADR-0053, Entscheidung 7), in the shape ShedLock's JDBC provider reads and writes: one row per run, the times in UTC by the database clock. Additive: a new table."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE shedlock (
+                  name character varying(64) NOT NULL,
+                  lock_until timestamp without time zone NOT NULL,
+                  locked_at timestamp without time zone NOT NULL,
+                  locked_by character varying(255) NOT NULL,
+                  CONSTRAINT shedlock_pkey PRIMARY KEY (name)
+              );

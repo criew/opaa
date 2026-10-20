@@ -1,11 +1,13 @@
 package io.opaa.llm;
 
+import io.opaa.instance.ScheduledRunLocks;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -121,7 +123,11 @@ public class RerankModelRole implements RerankRoleStatusProvider {
       fixedDelay = TICK_MILLIS,
       initialDelay = TICK_MILLIS,
       scheduler = "rerankProbeScheduler")
-  void probePeriodically() {
+  @SchedulerLock(
+      name = "rerank-role-probe",
+      lockAtLeastFor = "PT4S",
+      lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
+  public void probePeriodically() {
     if (!properties.enabled() || baseUrlRejected || !properties.bound()) {
       return;
     }
