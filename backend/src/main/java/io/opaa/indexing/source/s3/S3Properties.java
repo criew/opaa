@@ -6,6 +6,7 @@ import static io.opaa.common.PropertyDefaults.requireNotNegative;
 import static java.util.Objects.requireNonNullElse;
 
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.nio.file.Path;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -40,6 +41,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     goes on - a bound on the load put on the store, not a throughput target. Default {@link
  *     #DEFAULT_DOWNLOAD_CONCURRENCY}; {@code 0} falls back to it, {@code 1} downloads serially.
  */
+@PerInstance("budgets and bounds of a run on this process")
 @NoDataImpact("technical bounds, budgets and timeouts")
 @ConfigurationProperties(prefix = "opaa.indexing.s3")
 public record S3Properties(

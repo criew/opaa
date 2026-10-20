@@ -25,6 +25,13 @@ public class LocalAdminSeedMarker {
   @Column(name = "seeded_at", nullable = false)
   private Instant seededAt;
 
+  /**
+   * When {@code OPAA_LOCAL_ADMIN_RESET=force} was last carried out; cleared by the first start
+   * without it. While set, a further start with the variable resets nothing.
+   */
+  @Column(name = "forced_reset_at")
+  private Instant forcedResetAt;
+
   protected LocalAdminSeedMarker() {}
 
   public LocalAdminSeedMarker(Instant seededAt) {
@@ -38,5 +45,17 @@ public class LocalAdminSeedMarker {
 
   public Instant getSeededAt() {
     return seededAt;
+  }
+
+  public boolean forcedResetDone() {
+    return forcedResetAt != null;
+  }
+
+  public void markForcedReset(Instant at) {
+    this.forcedResetAt = at;
+  }
+
+  public void clearForcedReset() {
+    this.forcedResetAt = null;
   }
 }

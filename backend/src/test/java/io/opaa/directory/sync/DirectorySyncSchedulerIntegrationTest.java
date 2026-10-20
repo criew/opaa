@@ -8,12 +8,12 @@ import io.opaa.api.types.GroupKind;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
+import io.opaa.common.DatabaseClock;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.FakeDirectoryClient;
 import io.opaa.test.OpaaIntegrationTest;
-import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +40,7 @@ class DirectorySyncSchedulerIntegrationTest {
   @Autowired private GroupRepository groupRepository;
   @Autowired private FakeDirectoryClient directoryClient;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private DatabaseClock databaseClock;
 
   private static final UUID ORGANIZATION_ID = Organization.DEFAULT_ID;
 
@@ -58,7 +59,7 @@ class DirectorySyncSchedulerIntegrationTest {
             statusRepository,
             directorySyncService,
             Runnable::run,
-            Clock.systemUTC());
+            databaseClock);
     directoryClient.respondWith();
   }
 
@@ -103,7 +104,7 @@ class DirectorySyncSchedulerIntegrationTest {
   void aProviderWhoseLastRunIsNewerThanItsIntervalIsNotDueYet() {
     OidcProvider provider = createProvider(true, true, 360);
     DirectorySyncStatus status = new DirectorySyncStatus(ORGANIZATION_ID, provider.getId());
-    Instant lastRun = Instant.now().minusSeconds(60);
+    Instant lastRun = databaseClock.now().minusSeconds(60);
     status.recordRun(lastRun, DirectorySyncOutcome.APPLIED, "Voriger Lauf", 0.0);
     statusRepository.save(status);
     directoryClient.respondWithFor(
@@ -126,7 +127,7 @@ class DirectorySyncSchedulerIntegrationTest {
   void aProviderWhoseIntervalHasElapsedRunsAgain() {
     OidcProvider provider = createProvider(true, true, 5);
     DirectorySyncStatus status = new DirectorySyncStatus(ORGANIZATION_ID, provider.getId());
-    Instant lastRun = Instant.now().minusSeconds(600);
+    Instant lastRun = databaseClock.now().minusSeconds(600);
     status.recordRun(lastRun, DirectorySyncOutcome.APPLIED, "Voriger Lauf", 0.0);
     statusRepository.save(status);
     directoryClient.respondWithFor(

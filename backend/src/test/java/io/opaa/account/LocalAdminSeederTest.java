@@ -404,7 +404,10 @@ class LocalAdminSeederTest {
 
   @Test
   void theForcedResetRecreatesADeletedBootstrapAccountWithTheConfiguredAddress() {
+    Instant seededAt = Instant.parse("2026-09-01T08:00:00Z");
     when(marker.seedAlreadyAttempted()).thenReturn(true);
+    when(marker.findById(LocalAdminSeedMarker.SINGLETON_ID))
+        .thenReturn(Optional.of(new LocalAdminSeedMarker(seededAt)));
     when(credentials.findByBootstrapTrue()).thenReturn(Optional.empty());
 
     Outcome outcome = seeder("oidc", EMAIL, "", "FORCE").seedIfNeeded();
@@ -419,7 +422,12 @@ class LocalAdminSeederTest {
     assertThat(creds.getValue().isBootstrap()).isTrue();
     assertThat(creds.getValue().state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
     verify(providers).save(any(OidcProvider.class));
-    verify(marker, never()).save(any());
+    // the existing marker records the reset, so a further start with the variable resets nothing
+    ArgumentCaptor<LocalAdminSeedMarker> recorded =
+        ArgumentCaptor.forClass(LocalAdminSeedMarker.class);
+    verify(marker).save(recorded.capture());
+    assertThat(recorded.getValue().getSeededAt()).isEqualTo(seededAt);
+    assertThat(recorded.getValue().forcedResetDone()).isTrue();
   }
 
   @Test

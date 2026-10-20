@@ -28,10 +28,16 @@ import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthSeedTest;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
@@ -277,11 +283,72 @@ class LocalAdminSeederIntegrationTest {
         .andExpect(jsonPath("$.passwordChangeRequired").value(true));
 
     users.delete(bootstrapUser());
+    // a start without OPAA_LOCAL_ADMIN_RESET gives the next forced restart free
+    assertThat(seeder.seedIfNeeded()).isEqualTo(Outcome.SKIPPED);
     logs.list.clear();
     assertThat(seeder.restoreBootstrapAdmin()).isEqualTo(Outcome.RESET);
     assertThat(bootstrapUser().getEmail()).isEqualTo(EMAIL);
     assertThat(bootstrapUser().getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
     login(EMAIL, passwordFromLogs(), null).andExpect(status().isOk());
+  }
+
+  /**
+   * Two instances starting together with {@code OPAA_LOCAL_ADMIN_RESET=force}: exactly one resets
+   * the account, the other finds the reset done; neither fails on the row the other changed, and
+   * the one password in the log is the one that signs in.
+   */
+  // regression guard for #2944: concurrent resets failed on @Version and logged a dead password
+  @Test
+  void twoInstancesResettingAtOnceResetTheAccountExactlyOnce() throws Exception {
+    seedFreshAndReadPassword();
+    logs.list.clear();
+    CyclicBarrier together = new CyclicBarrier(2);
+    ExecutorService instances = Executors.newFixedThreadPool(2);
+    List<String> outcomes = new ArrayList<>();
+    try {
+      List<Future<Outcome>> resets = new ArrayList<>();
+      for (int i = 0; i < 2; i++) {
+        resets.add(
+            instances.submit(
+                () -> {
+                  together.await();
+                  return seeder.restoreBootstrapAdmin();
+                }));
+      }
+      for (Future<Outcome> reset : resets) {
+        outcomes.add(reset.get(60, TimeUnit.SECONDS).name());
+      }
+    } finally {
+      instances.shutdownNow();
+    }
+
+    assertThat(outcomes).containsExactlyInAnyOrder("RESET", "RESET_ALREADY_DONE");
+    assertThat(auditTypes()).containsOnlyOnce("LOCAL_ADMIN_RESET");
+    List<String> printed =
+        logs.list.stream()
+            .map(ILoggingEvent::getFormattedMessage)
+            .filter(message -> PASSWORD_LINE.matcher(message).find())
+            .toList();
+    assertThat(printed).hasSize(1);
+    login(EMAIL, passwordFromLogs(), null).andExpect(status().isOk());
+  }
+
+  @Test
+  void aFurtherStartWithTheVariableResetsNothingUntilAStartWithoutIt() throws Exception {
+    seedFreshAndReadPassword();
+    logs.list.clear();
+    assertThat(seeder.restoreBootstrapAdmin()).isEqualTo(Outcome.RESET);
+    String password = passwordFromLogs();
+    logs.list.clear();
+
+    assertThat(seeder.restoreBootstrapAdmin().name()).isEqualTo("RESET_ALREADY_DONE");
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .noneMatch(message -> PASSWORD_LINE.matcher(message).find());
+    login(EMAIL, password, null).andExpect(status().isOk());
+
+    assertThat(seeder.seedIfNeeded()).isEqualTo(Outcome.SKIPPED);
+    assertThat(seeder.restoreBootstrapAdmin()).isEqualTo(Outcome.RESET);
+    assertThat(auditTypes()).filteredOn("LOCAL_ADMIN_RESET"::equals).hasSize(2);
   }
 
   @Test

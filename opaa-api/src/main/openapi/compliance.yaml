@@ -4,7 +4,7 @@ tags:
   - name: compliance
     description: >-
       Data collection disclosure of the installation: the compliance fact manifest of the running
-      version joined with the effective values of this instance (ADR-0052).
+      version joined with the effective values of the installation (ADR-0052, ADR-0053).
 paths:
   /api/v1/admin/compliance/data-collection-disclosure:
     get:
@@ -16,8 +16,9 @@ paths:
         included, writes an audit event DATA_COLLECTION_DISCLOSURE_EXPORTED.
       description: >-
         The fact manifest of the running version in the form of `manifest` in faktenblaetter.json,
-        so the delta tooling reads both the same way, plus the effective values of this instance:
-        every setting of the manifest with its effective value and the time of its last change,
+        so the delta tooling reads both the same way, plus the effective values of the
+        installation, the same whichever instance answers: every setting of the manifest with its
+        effective value, whether all running instances hold it alike, and the time of its last change,
         whether each outbound data flow currently happens, the connector types in use and the
         configured model providers. A configuration value is exported only when the manifest names
         its key as a setting; addresses lose user information, query and fragment.
@@ -80,7 +81,7 @@ components:
 
     DisclosureInstanceState:
       type: object
-      required: [settings, dataFlows, connectorTypes, modelProviders]
+      required: [settings, dataFlows, connectorTypes, modelProviders, instances]
       properties:
         settings:
           type: array
@@ -98,11 +99,29 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DisclosureModelProvider"
+        instances:
+          type: array
+          description: >-
+            The running instances of the installation according to the instance register, the
+            answering one included (ADR-0053).
+          items:
+            $ref: "#/components/schemas/DisclosureRunningInstance"
+
+    DisclosureRunningInstance:
+      type: object
+      required: [version, startedAt]
+      properties:
+        version:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+          description: When the instance joined the installation, by the database clock.
 
     DisclosureSetting:
       type: object
-      description: One setting of the manifest with its effective value in this instance.
-      required: [key, area, source, defaultValue, deviates, effect]
+      description: One setting of the manifest with its effective value in the installation.
+      required: [key, area, source, defaultValue, deviates, effect, sameOnAllInstances]
       properties:
         key:
           type: string
@@ -116,7 +135,14 @@ components:
         effectiveValue:
           type: string
           nullable: true
-          description: Absent when this instance could not determine the value.
+          description: >-
+            Absent when the value could not be determined or differs between the running
+            instances.
+        sameOnAllInstances:
+          type: boolean
+          description: >-
+            Whether every running instance holds the same value; false only for a PROPERTY setting
+            whose value differs between running instances, which then has no effectiveValue.
         deviates:
           type: boolean
           description: Whether the effective value differs from the delivered default.

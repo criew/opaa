@@ -2,10 +2,12 @@ package io.opaa.compliance;
 
 import io.opaa.compliance.ComplianceManifest.DataFlowEntry;
 import io.opaa.compliance.ComplianceManifest.SettingEntry;
+import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
+import io.opaa.compliance.InstanceDisclosure.RunningInstance;
 import io.opaa.compliance.InstanceDisclosure.SettingValue;
 import io.opaa.compliance.InstanceDisclosure.StoredValue;
 import java.net.URI;
@@ -15,16 +17,16 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.bind.Bindable;
-import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
@@ -39,9 +41,16 @@ import org.springframework.stereotype.Component;
  * Entscheidung 9). Every value that leaves additionally passes {@link #exportable(String)}, so an
  * address loses user information, query and fragment wherever it comes from.
  *
+ * <p><b>The installation, not the answering instance.</b> A {@code PROPERTY} setting shows the
+ * value of this instance only where every running instance holds the same one, which the startup
+ * check of the instance register enforces for every key of the manifest (ADR-0053, Entscheidung 4).
+ * A key whose value differs between running instances shows no value and says so, so whichever
+ * instance answers, the disclosure is the same.
+ *
  * <p>The manifest is read on every call, not held: the export is rare, and a held copy would be
  * process-local state without need.
  */
+@PerInstance("the commit of this image, new with every release")
 @NoDataImpact("the commit the image was built from, named in the disclosure")
 @Component
 public class InstanceDisclosureAssembler {
@@ -106,6 +115,7 @@ public class InstanceDisclosureAssembler {
         dataFlows(manifest, organizationId),
         connectorUsage(organizationId),
         modelProviders(),
+        runningInstances(),
         protocol);
   }
 
@@ -153,15 +163,20 @@ public class InstanceDisclosureAssembler {
 
   private List<SettingValue> settings(ComplianceManifest manifest) {
     Map<String, StoredValue> stored = new HashMap<>();
+    Set<String> differing = new HashSet<>();
     for (InstanceStateSource source : sources) {
       stored.putAll(source.storedSettings());
+      differing.addAll(source.settingsDifferingBetweenInstances());
     }
     List<SettingValue> values = new ArrayList<>();
     for (SettingEntry entry : manifest.settings()) {
       String effective;
       Instant changedAt = null;
+      boolean sameOnAllInstances =
+          entry.source() != SettingSource.PROPERTY || !differing.contains(entry.key());
       switch (entry.source()) {
-        case PROPERTY -> effective = property(entry.key());
+        case PROPERTY ->
+            effective = sameOnAllInstances ? PropertyValues.read(environment, entry.key()) : null;
         case DATABASE -> {
           StoredValue value = stored.get(entry.key());
           effective = value == null ? null : value.value();
@@ -181,21 +196,19 @@ public class InstanceDisclosureAssembler {
               exported != null && !sameValue(exported, exportable(entry.defaultValue())),
               changedAt,
               entry.range(),
-              entry.effect()));
+              entry.effect(),
+              sameOnAllInstances));
     }
     return values;
   }
 
-  /** The value of {@code key}, also when it is bound as an indexed list; {@code null} if unset. */
-  private String property(String key) {
-    String value = environment.getProperty(key);
-    if (value != null) {
-      return value;
-    }
-    return Binder.get(environment)
-        .bind(key, Bindable.listOf(String.class))
-        .map(list -> String.join(",", list))
-        .orElse(null);
+  private List<RunningInstance> runningInstances() {
+    return sources.stream()
+        .flatMap(source -> source.runningInstances().stream())
+        .sorted(
+            Comparator.comparing(RunningInstance::startedAt)
+                .thenComparing(RunningInstance::version))
+        .toList();
   }
 
   private static boolean sameValue(String effective, String delivered) {

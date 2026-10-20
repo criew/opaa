@@ -45,12 +45,18 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
 
   /**
    * Every table of the schema and its module - the module whose package holds its entity, and whose
-   * changelog directory creates it. {@code vector_store} is created by Spring AI, not Liquibase; it
-   * belongs to knowledge, whose changelog indexes it.
+   * changelog directory creates it. {@code vector_store} belongs to knowledge, whose changelog
+   * creates and indexes it; Spring AI only reads and writes it.
    */
   static final Map<String, Module> TABLE_MODULES =
       tables(
-          Map.entry(FOUNDATION, List.of("organizations", "outbound_proxy_settings")),
+          Map.entry(
+              FOUNDATION,
+              List.of(
+                  "organizations",
+                  "outbound_proxy_settings",
+                  "backend_instances",
+                  "backend_instance_fingerprint_key")),
           Map.entry(
               IDENTITY,
               List.of(
@@ -184,12 +190,15 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
   }
 
   /**
-   * Starts from a {@code vector_store} as Spring AI leaves it, so the knowledge module's guarded
-   * index changeSets run and are judged too.
+   * Starts from a {@code vector_store} as Spring AI left it on an older installation, so the
+   * knowledge module's guarded index changeSets run and are judged too.
    */
   @Test
   void everyModuleDirectoryKeepsToItsModule() throws Exception {
-    execute("CREATE TABLE vector_store (id uuid PRIMARY KEY, content text, metadata jsonb)");
+    execute("CREATE EXTENSION IF NOT EXISTS vector");
+    execute(
+        "CREATE TABLE vector_store (id uuid PRIMARY KEY, content text, metadata json,"
+            + " embedding vector(1024))");
     ModuleBoundaryCheck check = new ModuleBoundaryCheck(connection, TABLE_MODULES);
 
     for (Map.Entry<String, List<String>> module : filesPerModuleDirectory().entrySet()) {

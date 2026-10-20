@@ -7,6 +7,7 @@ import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
+import io.opaa.compliance.InstanceDisclosure.RunningInstance;
 import io.opaa.compliance.InstanceDisclosure.SettingValue;
 import io.opaa.compliance.InstanceDisclosure.StoredValue;
 import java.time.Clock;
@@ -14,6 +15,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
@@ -70,6 +72,49 @@ class InstanceDisclosureAssemblerTest {
     assertThat(retention.defaultValue()).isEqualTo("36");
     assertThat(retention.effectiveValue()).isEqualTo("24");
     assertThat(retention.changedAt()).isEqualTo(Instant.parse("2026-10-01T10:00:00Z"));
+  }
+
+  @Test
+  void theDisclosureIsTheSameWhicheverInstanceAnswers() {
+    // regression guard for ADR-0053, Entscheidung 4: two pods whose environments differ in a key of
+    // the manifest give one disclosure, built from the register both see, not from the pod asked.
+    InstanceStateSource register =
+        new InstanceStateSource() {
+          @Override
+          public Set<String> settingsDifferingBetweenInstances() {
+            return Set.of("opaa.rerank.enabled");
+          }
+
+          @Override
+          public List<RunningInstance> runningInstances() {
+            return List.of(
+                new RunningInstance("1.5.0", NOW.minusSeconds(60)),
+                new RunningInstance("1.4.0", NOW.minusSeconds(3600)));
+          }
+        };
+    MockEnvironment podA =
+        new MockEnvironment()
+            .withProperty("opaa.rerank.enabled", "true")
+            .withProperty("opaa.transcription.enabled", "true");
+    MockEnvironment podB =
+        new MockEnvironment()
+            .withProperty("opaa.rerank.enabled", "false")
+            .withProperty("opaa.transcription.enabled", "true");
+
+    InstanceDisclosure fromA =
+        assembler(podA, List.of(register)).assemble(MANIFEST, PROTOCOL, ORGANIZATION);
+    InstanceDisclosure fromB =
+        assembler(podB, List.of(register)).assemble(MANIFEST, PROTOCOL, ORGANIZATION);
+
+    assertThat(fromA.settings()).isEqualTo(fromB.settings());
+    assertThat(fromA.instances()).isEqualTo(fromB.instances());
+    SettingValue differing = setting(fromA, "opaa.rerank.enabled");
+    assertThat(differing.sameOnAllInstances()).isFalse();
+    assertThat(differing.effectiveValue()).isNull();
+    assertThat(setting(fromA, "opaa.transcription.enabled").effectiveValue()).isEqualTo("true");
+    assertThat(fromA.instances())
+        .extracting(RunningInstance::version)
+        .containsExactly("1.4.0", "1.5.0");
   }
 
   @Test

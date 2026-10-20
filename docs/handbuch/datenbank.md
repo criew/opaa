@@ -16,7 +16,7 @@ stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen
 - **pgvector 0.8.0 oder neuer.** Das Image `pgvector/pgvector:pg18` bringt eine passende Fassung mit;
   bei einer älteren Erweiterung bricht der Start mit einer Meldung ab. Wer die Datenbank selbst
   betreibt und pgvector aktualisiert, führt danach `ALTER EXTENSION vector UPDATE;` aus.
-- **Die Vektortabelle** entsteht beim ersten Start, wenn sie fehlt, mit der Dimension aus
+- **Die Vektortabelle** legt die Migration an, wenn sie fehlt, mit der Dimension aus
   `OPAA_PGVECTOR_DIMENSIONS`. Nach einem Wechsel des Embedding-Modells stellt die Neueinbettung sie
   auf die neue Dimension um ([Modelle](modelle.md#modell-wechseln)).
 - **Eine neue PostgreSQL-Hauptversion** (etwa ein Image-Tag `pg18` → höher) ist ein eigener
@@ -102,6 +102,28 @@ Voraussetzungen:
   getrennte PostgreSQL-Instanzen.
 - Die `psql`-Beispiele dieses Handbuchs lösen Tabellen über den Standard-Suchpfad auf. Bei einem
   eigenen Schema wird es vorangestellt, etwa `PGOPTIONS='-c search_path=opaa' psql …`.
+
+## Migration als eigener Schritt
+
+Ohne weitere Angabe migriert jede Instanz die Datenbank beim Start, bevor sie Anfragen annimmt;
+Docker Compose und das Helm-Chart arbeiten so. Wer die Migration vom Start der Instanzen trennen
+will, etwa damit kein Instanzstart eine Migration abbricht oder eine hängende Liquibase-Sperre
+hinterlässt:
+
+1. Das Backend-Image einmal mit `OPAA_MODE=migrate` und denselben Datenbankwerten starten. Es wendet
+   die Migrationen an, legt die Vektortabelle an und endet mit Exit-Code 0. Jeder andere Exit-Code
+   heißt: Die Migration ist gescheitert, die Instanzen bleiben auf dem alten Stand.
+2. Die Instanzen mit `SPRING_LIQUIBASE_ENABLED=false` starten. Sie migrieren nicht und warten nicht
+   auf die Liquibase-Sperre.
+
+Eine Migration wartet höchstens fünf Sekunden auf die Sperre einer Tabelle und bricht dann ab, statt
+die Anfragen aller Instanzen hinter sich aufzustauen; der abgebrochene Lauf lässt sich wiederholen.
+Mehrere Instanzen, die gleichzeitig starten, legen das Notanker-Konto und die übrigen Startwerte
+nacheinander an, nie doppelt.
+
+**Update auf `v0.1.0`:** Von einem Vorabstand (`v0.1.0-rc.1` bis `rc.4`) aus ist es kein Rolling
+Update. Vorher alle Instanzen anhalten; die Migrationen dieser Stände entfernen Spalten und Tabellen,
+die eine noch laufende ältere Instanz braucht.
 
 ## Volltextsuche (lexikalischer Suchpfad)
 

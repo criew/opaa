@@ -63,7 +63,6 @@ import io.opaa.test.SourceTypes;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Instant;
-import java.time.InstantSource;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -435,11 +434,10 @@ class PermissionHistoryServiceIntegrationTest {
 
   @Test
   void twoReleaseChangesWithinOneClockTickStayReconstructableAtAnInstantBetweenThem() {
-    // regression guard for #1497: the wall clock stands still for both changes - deterministically,
-    // without a wait or a retry loop - which is exactly what a coarse clock tick does to two
-    // changes that follow each other closely. Taking the boundaries straight from the wall clock
-    // gave the organization-wide state validFrom == validTo, an interval no asOf can satisfy, so
-    // the reconstruction reported "no access" for a period in which access existed.
+    // regression guard for #1497: two changes that follow each other closely - well within one
+    // coarse clock tick - must not give the organization-wide state validFrom == validTo, an
+    // interval no asOf can satisfy, so the reconstruction reported "no access" for a period in
+    // which access existed. The standing clock itself is PermissionHistoryBoundaryMigrationTest.
     // Recording through a locally built service replaces LibraryExternalAccessService ->
     // PermissionHistoryListener; it therefore says nothing about how many boundaries that
     // production path consumes per change - the tests above cover that.
@@ -447,26 +445,18 @@ class PermissionHistoryServiceIntegrationTest {
     UUID otherUser = createUser();
     UUID libraryId = createLibrary(owner);
 
-    Instant standstill =
-        visibilityHistoryRepository
-            .findByAssetTypeAndAssetIdAndValidToIsNull(KnowledgeLibrary.ASSET_TYPE, libraryId)
-            .orElseThrow()
-            .getValidFrom()
-            .plus(1, ChronoUnit.MICROS);
-    PermissionHistoryClock standingClock =
-        new PermissionHistoryClock(InstantSource.fixed(standstill));
-    AssetVisibilityHistoryService serviceOnAStandingClock =
-        new AssetVisibilityHistoryService(visibilityHistoryRepository, standingClock);
+    AssetVisibilityHistoryService recordingService =
+        new AssetVisibilityHistoryService(visibilityHistoryRepository, historyClock);
 
     KnowledgeLibrary library = libraryRepository.findById(libraryId).orElseThrow();
-    Instant expiresAt = standstill.plus(30, ChronoUnit.DAYS);
-    serviceOnAStandingClock.recordExternalAccessChanged(
+    Instant expiresAt = Instant.now().plus(30, ChronoUnit.DAYS);
+    recordingService.recordExternalAccessChanged(
         library,
         ExternalAccessState.ACTIVE,
         expiresAt,
         AssetVisibilityHistoryCause.EXTERNAL_ACCESS_CHANGED,
         owner);
-    serviceOnAStandingClock.recordExternalAccessChanged(
+    recordingService.recordExternalAccessChanged(
         library,
         ExternalAccessState.WITHDRAWN,
         expiresAt,

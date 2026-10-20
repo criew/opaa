@@ -126,8 +126,9 @@ pnpm test                               # Stack via Docker Compose starten, Suit
 
 ```bash
 # Image-Rauchtest (aus dem Repo-Wurzelverzeichnis): beide Images für die Architektur des
-# Docker-Hosts bauen und gehärtet starten, Backend gegen pgvector bis Readiness UP, Frontend davor
-# bis /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
+# Docker-Hosts bauen und gehärtet starten: zuerst das Backend-Image mit OPAA_MODE=migrate (muss
+# mit Exit-Code 0 enden), dann das Backend ohne Migration gegen pgvector bis Readiness UP, Frontend
+# davor bis /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
 docker build -t opaa-smoke/backend -f backend/Dockerfile .
 docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend

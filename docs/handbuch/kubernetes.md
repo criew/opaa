@@ -584,6 +584,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `backend.terminationGracePeriodSeconds` | `75` | — | muss größer sein als `shutdownTimeoutSeconds`, sonst bricht das Rendern ab |
 | `backend.maxRamPercentage` | `70` | `JAVA_TOOL_OPTIONS` | Heap-Anteil an der Speichergrenze; wirkt nur mit `resources.limits.memory` |
 | `backend.javaToolOptions` | leer | `JAVA_TOOL_OPTIONS` | weitere JVM-Optionen; Dateiziele gehören unter `/tmp` |
+| `backend.timeZone` | `UTC` | `TZ` | Zeitzone der geplanten Läufe, Fristgrenzen und Datumsangaben in Mails ([Betrieb](betrieb.md#zeitzone)); Teil des Konfigurationsabdrucks |
 | `backend.resources` | 500m CPU und 1Gi angefordert, 2Gi Grenze | — | siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen) |
 | `backend.initResources` | 50m CPU und 128Mi angefordert, 256Mi Grenze | — | Init-Container des Backends: der Truststore mit `extraCACertificates` und das Warten auf die Erprobungsdatenbank |
 | `backend.startupProbe` | alle `10` s, Zeitgrenze `5` s, `60` Fehlversuche | — | gibt dem ersten Start und der Migration Zeit (`periodSeconds` mal `failureThreshold`) |
@@ -834,7 +835,8 @@ Einbettungs-Endpunkt ist dagegen ein Bereitstellungswert: Nach einem Wechsel des
 **Notfallzugang.** Kommt niemand mehr herein, stellt `OPAA_LOCAL_ADMIN_RESET=force` beim nächsten
 Start einen anmeldefähigen lokalen Systemverwalter her (siehe
 [Notfallprozedur: wieder hereinkommen](authentifizierung.md#notfallprozedur-wieder-hereinkommen)). Die
-Variable wirkt bei **jedem** Start, solange sie gesetzt ist, und gehört deshalb nicht in die
+Variable wirkt einmal je Setzen: Genau ein Start setzt zurück, weitere Starts mit ihr lassen das Konto
+unverändert, bis ein Start ohne sie einen neuen Reset freigibt. Sie gehört deshalb nicht in die
 Werte-Datei. Einmalig setzen und nach dem Neustart entfernen:
 
 ```bash
@@ -1480,6 +1482,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Migration bricht mit `permission denied to create extension "vector"` oder `permission denied to grant role` ab | Die Vorbereitung der Datenbank fehlt, siehe derselbe Abschnitt |
 | Backend erreicht die Datenbank nicht | Mit Egress-Policies fehlt die Regel zur Datenbank; sonst Hostname, Port oder `database.sslMode`. Bei `verify-*` und einer hauseigenen CA fehlt `extraCACertificates` |
 | Backend startet nicht und nennt `OPAA_AUTH_JWT_SECRET` | Das Geheimnis im vorhandenen Secret ist zu kurz oder ein Platzhalter |
+| Backend startet nicht, das Protokoll nennt `refuses to start` und eine laufende Instanz | Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut Instanzregister noch läuft. Meist ist es der eigene Vorgänger, der hart beendet wurde und sich nicht abmelden konnte: Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als beendet, danach startet der neue Pod beim nächsten Versuch (siehe [Instanzregister](betrieb.md#instanzregister)) |
 | Pod im Zustand `OOMKilled` | Die Speichergrenze ist zu klein; `backend.resources.limits.memory` anheben, nicht den Heap-Anteil (siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)) |
 | Pod verdrängt, das Ereignis nennt `ephemeral-storage` | `/tmp` ist über `backend.tmp.sizeLimit` gewachsen, etwa bei vielen großen Uploads |
 | `helm test` schlägt fehl | Das Backend ist nicht bereit, oder eine eigene Änderung an den NetworkPolicies trennt Frontend und Backend |

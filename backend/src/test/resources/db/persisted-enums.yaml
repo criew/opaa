@@ -1,0 +1,406 @@
+# Every persisted enum (a field of an entity, embeddable or mapped superclass under io.opaa) with
+# the fields that store it, the assessment why an unknown value is not read with a fallback, the
+# values the previous release reads (readable) and the values this release knows but writes nowhere
+# yet (pending). A new value goes to pending first and is written from the release after the one
+# that ships it. Rules: backend/docs/liquibase.md, "Enum-Werte"; checked by PersistedEnumRegistryTest.
+
+io.opaa.account.ActionTokenPurpose:
+  attributes: [LocalActionToken.purpose]
+  assessment: SECURITY
+  readable: [HANDOVER, RESET_PASSWORD, SET_PASSWORD, VERIFY_EMAIL]
+  pending: []
+io.opaa.account.RevocationReason:
+  attributes: [LocalRefreshToken.revocationReason]
+  assessment: SECURITY
+  readable: [
+    ACCOUNT_LOCKED, ADMIN, ADMIN_RESET, HANDED_OVER, LOGOUT, PASSWORD_CHANGED, REUSE_DETECTED,
+    ROTATED
+  ]
+  pending: []
+io.opaa.api.types.ActorKind:
+  attributes: [AuditLogEntry.actorKind]
+  assessment: AUDIT
+  readable: [SERVICE_ACCOUNT, SYSTEM_PROCESS, USER]
+  pending: []
+io.opaa.api.types.AssetGrantSubjectType:
+  attributes: [AssetGrant.subjectType, AssetGrantHistory.subjectType]
+  assessment: SECURITY
+  readable: [ALL_ACCOUNTS, GROUP, USER]
+  pending: []
+io.opaa.api.types.AssetOrigin:
+  attributes: [Asset.origin]
+  assessment: STATE
+  readable: [BUILT_IN, LOCAL]
+  pending: []
+io.opaa.api.types.AssetOwnerType:
+  attributes: [Asset.ownerType]
+  assessment: SECURITY
+  readable: [GROUP, USER]
+  pending: []
+io.opaa.api.types.AssetRole:
+  attributes: [AssetGrant.role, AssetGrantHistory.role]
+  assessment: SECURITY
+  readable: [EDITOR, MANAGER, OWNER, VIEWER]
+  pending: []
+io.opaa.api.types.AuditEventType:
+  attributes: [AuditLogEntry.eventType]
+  assessment: AUDIT
+  readable: [
+    ACCOUNT_DEACTIVATED, ACCOUNT_REAUTHENTICATION_FORCED, API_TOKEN_EXPIRED, API_TOKEN_ISSUED,
+    API_TOKEN_REVOKED, ASSET_DETACHED_FROM_SPACE, ASSET_EXTERNAL_ACCESS_CHANGED,
+    ASSET_EXTERNAL_ACCESS_EXPIRED, ASSET_GRANT_CHANGED, ASSET_GRANT_EXPIRED, ASSET_GRANT_GRANTED,
+    ASSET_GRANT_REVOKED, ASSET_OWNERSHIP_CLAIMED, ASSET_OWNER_CHANGED, ASSET_SHARED_TO_SPACE,
+    ASSET_SUCCESSION_OPENED, ASSET_VISIBILITY_CHANGED, AUDITOR_ROLE_GRANTED, AUDITOR_ROLE_REVOKED,
+    AUDIT_LOG_ACCESSED, AUDIT_LOG_CONFIGURATION_CHANGED, BRANDING_SETTINGS_CHANGED,
+    CAPABILITY_GRANTED, CAPABILITY_REVOKED, CONNECTION_LOG_ACCESSED,
+    CONNECTION_LOG_RETENTION_CHANGED, CONNECTION_PROFILE_CHANGED, CONNECTION_PROFILE_CREATED,
+    CONNECTION_PROFILE_DELETED, CONNECTION_PROFILE_DISCONNECTED,
+    CONNECTION_PROFILE_REQUEST_RESOLVED, CONNECTION_PROFILE_SIGN_IN_TESTED,
+    CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED, CONNECTOR_LOCKED, CONNECTOR_PROFILE_OPTIONAL,
+    CONNECTOR_PROFILE_REQUIRED, CONNECTOR_UNLOCKED, DATA_COLLECTION_DISCLOSURE_EXPORTED,
+    DIAGNOSTIC_CONTEXT_RETENTION_CHANGED, DIAGNOSTIC_IMPERSONATION_GRANTED,
+    DIAGNOSTIC_IMPERSONATION_REVOKED, DIRECTORY_ACCOUNT_LOCKED, DIRECTORY_ACCOUNT_UNLOCKED,
+    DIRECTORY_SYNC_CHANGE_APPLIED, DIRECTORY_SYNC_PLAN_DISCARDED, DIRECTORY_SYNC_REPORT_READ,
+    DIRECTORY_SYNC_RUN_COMPLETED, DOCUMENT_METADATA_CHANGED, EMBEDDING_REINDEX_CANCELLED,
+    EMBEDDING_REINDEX_COMPLETED, EMBEDDING_REINDEX_STARTED, EXTERNAL_ACCESS_SETTINGS_CHANGED,
+    GOVERNANCE_SETTINGS_CHANGED, GROUP_CHANGED, GROUP_CREATED, GROUP_DEACTIVATED, GROUP_DELETED,
+    GROUP_MEMBERS_READ, GROUP_MEMBER_ADDED, GROUP_MEMBER_REMOVED, GROUP_PROTECTION_CHANGED,
+    GROUP_REACTIVATED, GROUP_RELEASE_CHANGED, GROUP_STEWARD_APPOINTED, GROUP_STEWARD_DISMISSED,
+    INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED, INDEXING_METADATA_BACKFILL_TRIGGERED,
+    INDEXING_PIPELINE_REINDEX_TRIGGERED, LIBRARY_CHANGED, LIBRARY_CREATED, LIBRARY_DELETED,
+    LIBRARY_DETACHED_FROM_SPACE, LIBRARY_DIAGNOSTICS_LOCK_CHANGED, LIBRARY_SHARED_TO_SPACE,
+    LIBRARY_SOURCE_UPDATED, LLM_MODEL_ACTIVATED, LLM_MODEL_CHANGED, LLM_MODEL_CREATED,
+    LLM_MODEL_DEACTIVATED, LLM_MODEL_DELETED, LOCAL_ACCOUNTS_DISABLED, LOCAL_ACCOUNTS_ENABLED,
+    LOCAL_ACCOUNTS_SETTINGS_CHANGED, LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS, LOCAL_ADMIN_RESET,
+    LOCAL_ADMIN_SEEDED, LOCAL_BOOTSTRAP_ACCOUNT_LOGIN, LOCAL_PASSWORD_CHANGED, LOCAL_PASSWORD_SET,
+    LOCAL_SESSION_REVOKED, LOCAL_USER_CHANGED, LOCAL_USER_CREATED, LOCAL_USER_DELETED,
+    LOCAL_USER_HANDED_OVER, LOCAL_USER_HANDOVER_REQUESTED, LOCAL_USER_INVITED, LOCAL_USER_LOCKED,
+    LOCAL_USER_PASSWORD_GENERATED, LOCAL_USER_PASSWORD_RESET_REQUESTED, LOCAL_USER_REGISTERED,
+    LOCAL_USER_UNLOCKED, MAIL_SETTINGS_CHANGED, MAIL_TEMPLATE_CHANGED, MAIL_TEMPLATE_RESET,
+    MAIL_TEST_SENT, MODEL_POLICY_CHANGED, OIDC_PROVIDER_CHANGED, OIDC_PROVIDER_CREATED,
+    OIDC_PROVIDER_DELETED, OIDC_PROVIDER_DISABLED, OIDC_PROVIDER_ENABLED, OUTBOUND_PROXY_CHANGED,
+    PERMISSION_HISTORY_ACCESSED, PERMISSION_HISTORY_RETENTION_CHANGED, PERMISSION_TRANSFER_EXECUTED,
+    PERMISSION_TRANSFER_PREVIEWED, PRIVATE_LIBRARY_ERASED, PRIVATE_STORAGE_QUOTA_CHANGED,
+    PROMPT_CHANGED, PROMPT_CREATED, PROMPT_DELETED, PROMPT_LIBRARY_CHANGED, PROMPT_LIBRARY_CREATED,
+    PROMPT_LIBRARY_DELETED, SEARCH_DIAGNOSIS_PROFILE_RUN, SPACE_ARCHIVED, SPACE_CHANGED,
+    SPACE_CREATED, SPACE_DELETED, SPACE_MEMBER_ADDED, SPACE_MEMBER_REMOVED,
+    SPACE_MEMBER_ROLE_CHANGED, SYSTEM_ADMIN_ROLE_GRANTED, SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED,
+    SYSTEM_ADMIN_ROLE_REVOKED, UPLOAD_ORPHAN_ORIGINALS_DELETED
+  ]
+  pending: []
+io.opaa.api.types.AuditIncidentScopePurpose:
+  attributes: [AuditIncidentScopeGrant.purpose]
+  assessment: SECURITY
+  readable: [
+    DATA_BREACH_INVESTIGATION, EXTERNAL_AUDIT_OR_INSPECTION, SECURITY_INCIDENT,
+    UNAUTHORIZED_ACCESS_SUSPICION
+  ]
+  pending: []
+io.opaa.api.types.AuditIncidentScopeStatus:
+  attributes: [AuditIncidentScopeGrant.status]
+  assessment: SECURITY
+  readable: [APPROVED, PENDING]
+  pending: []
+io.opaa.api.types.AuditObjectType:
+  attributes: [AuditLogEntry.objectType, Notification.objectType]
+  assessment: AUDIT
+  readable: [
+    API_TOKEN, ASSET_GRANT, AUDIT_LOG, DIRECTORY_SYNC_RUN, GROUP, KNOWLEDGE_LIBRARY, PROMPT,
+    PROMPT_LIBRARY, SPACE, SYSTEM_SETTING, USER_ACCOUNT
+  ]
+  pending: []
+io.opaa.api.types.AuditOutcome:
+  attributes: [AuditLogEntry.outcome]
+  assessment: AUDIT
+  readable: [DENIED, FAILURE, SUCCESS]
+  pending: []
+io.opaa.api.types.AuditSubjectKind:
+  attributes: [AuditLogEntry.subjectKind]
+  assessment: AUDIT
+  readable: [GROUP, USER]
+  pending: []
+io.opaa.api.types.Capability:
+  attributes: [CapabilityGrant.capability, CapabilityGrantHistory.capability]
+  assessment: SECURITY
+  readable: [
+    CREATE_CONNECTOR_LIBRARY, CREATE_INTERNAL_GROUP, CREATE_LIBRARY, CREATE_PROMPT_LIBRARY,
+    CREATE_SPACE
+  ]
+  pending: []
+io.opaa.api.types.CapabilitySubjectType:
+  attributes: [CapabilityGrant.subjectType, CapabilityGrantHistory.subjectType]
+  assessment: SECURITY
+  readable: [ALL_ACCOUNTS, GROUP, USER]
+  pending: []
+io.opaa.api.types.ChatNoteItemKind:
+  attributes: [ChatNoteItem.kind]
+  assessment: STATE
+  readable: [ANTWORTFORM, RAHMEN]
+  pending: []
+io.opaa.api.types.ChatRole:
+  attributes: [ChatMessage.role]
+  assessment: STATE
+  readable: [ASSISTANT, USER]
+  pending: []
+io.opaa.api.types.ChatStatus:
+  attributes: [Chat.status]
+  assessment: STATE
+  readable: [PRIVATE]
+  pending: []
+io.opaa.api.types.ColorScheme:
+  attributes: [BrandingSettings.defaultColorScheme]
+  assessment: STATE
+  readable: [DARK, LIGHT, SYSTEM]
+  pending: []
+io.opaa.api.types.ConnectedAccountState:
+  attributes: [ConnectedAccount.state]
+  assessment: SECURITY
+  readable: [CONNECTED, DISCONNECTED, EXPIRED]
+  pending: []
+io.opaa.api.types.ConnectionAuthMethod:
+  attributes: [ConnectionProfile.authMethod]
+  assessment: SECURITY
+  readable: [CLIENT_CREDENTIALS, NONE, OAUTH, PERSONAL_SECRET, SERVICE_ACCOUNT_KEY]
+  pending: []
+io.opaa.api.types.ConnectionAuthorizationPurpose:
+  attributes: [ConnectionAuthorization.purpose]
+  assessment: SECURITY
+  readable: [ACCOUNT, LIBRARY_NEW, LIBRARY_RECONNECT]
+  pending: []
+io.opaa.api.types.ConnectionEndCause:
+  attributes: [ConnectedAccount.endedCause, ConnectionLogEntry.cause, LibraryConnection.endedCause]
+  assessment: AUDIT
+  readable: [
+    ACCOUNT_DEACTIVATED, ADDRESS_CHANGED, EMERGENCY, LIBRARY_DELETED, PROFILE_CHANGED,
+    PROFILE_DELETED, PROVIDER_REJECTED, REGISTRATION_CHANGED, SECRET_EXPIRED, SELF
+  ]
+  pending: []
+io.opaa.api.types.ConnectionLogEventType:
+  attributes: [ConnectionLogEntry.eventType]
+  assessment: AUDIT
+  readable: [CONNECTED, DELETED, DISCONNECTED, EMERGENCY_DISCONNECTED, EXPIRED, RECONNECTED]
+  pending: []
+io.opaa.api.types.ConnectionLogOwnerKind:
+  attributes: [ConnectionLogEntry.ownerKind]
+  assessment: AUDIT
+  readable: [LIBRARY, PERSON, PROFILE]
+  pending: []
+io.opaa.api.types.ConnectionOwnership:
+  attributes: [ConnectionProfile.ownership]
+  assessment: SECURITY
+  readable: [BOTH, LIBRARY, PERSON]
+  pending: []
+io.opaa.api.types.DatePrecision:
+  attributes: [DocumentMetadataValue.datePrecision]
+  assessment: STATE
+  readable: [DAY, MONTH, YEAR]
+  pending: []
+io.opaa.api.types.DiagnosticTargetKind:
+  attributes: [DiagnosticContextLogEntry.targetKind]
+  assessment: AUDIT
+  readable: [PERMISSION_PROFILE, USER]
+  pending: []
+io.opaa.api.types.DirectoryConnectorType:
+  attributes: [DirectoryConnector.connectorType]
+  assessment: STATE
+  readable: [KEYCLOAK]
+  pending: []
+io.opaa.api.types.DirectorySyncOutcome:
+  attributes: [DirectorySyncStatus.lastOutcome]
+  assessment: STATE
+  readable: [
+    ABORTED_EMPTY_RESULT, ABORTED_THRESHOLD, APPLIED, DRY_RUN, FAILED, PENDING_CONFIRMATION,
+    UNREACHABLE
+  ]
+  pending: []
+io.opaa.api.types.DocumentStatus:
+  attributes: [Document.status]
+  assessment: STATE
+  readable: [FAILED, INDEXED, PENDING]
+  pending: []
+io.opaa.api.types.ExternalAccessState:
+  attributes: [AssetVisibilityHistory.externalAccessState, KnowledgeLibrary.externalAccessState]
+  assessment: SECURITY
+  readable: [ACTIVE, EXPIRED, NEVER_SET, SUSPENDED, WITHDRAWN]
+  pending: []
+io.opaa.api.types.GroupKind:
+  attributes: [Group.kind]
+  assessment: SECURITY
+  readable: [AD_HOC, IDENTITY_PROVIDER, ORG_UNIT]
+  pending: []
+io.opaa.api.types.IndexingRunMode:
+  attributes: [IndexingJob.runMode]
+  assessment: STATE
+  readable: [EVENT, FULL, INCREMENTAL]
+  pending: []
+io.opaa.api.types.LibraryMetadataFieldType:
+  attributes: [LibraryMetadataField.type]
+  assessment: STATE
+  readable: [DATE, PATTERN, SELECT]
+  pending: []
+io.opaa.api.types.LibraryMetadataSchemaChangeKind:
+  attributes: [LibraryMetadataSchemaChange.kind]
+  assessment: STATE
+  readable: [FIELD_DELETION, VALUE_REMAP]
+  pending: []
+io.opaa.api.types.LockReason:
+  attributes: [LocalCredentials.lockedReason]
+  assessment: SECURITY
+  readable: [ADMIN, FAILED_LOGINS, INACTIVITY]
+  pending: []
+io.opaa.api.types.MailEncryption:
+  attributes: [MailSettings.encryption]
+  assessment: STATE
+  readable: [NONE, SSL, STARTTLS]
+  pending: []
+io.opaa.api.types.MetadataOrigin:
+  attributes: [DocumentMetadataValue.origin]
+  assessment: STATE
+  readable: [DERIVED, DETERMINISTIC, MANUAL]
+  pending: []
+io.opaa.api.types.NotificationType:
+  attributes: [Notification.type]
+  assessment: STATE
+  readable: [
+    ASSET_ASSOCIATED_TO_MIXED_SPACE, CONNECTION_ENDED, CONNECTION_EXPIRED, CONNECTION_EXPIRING,
+    CONNECTION_PROFILE_SECRET_EXPIRING, EXTERNAL_ACCESS_MASS_RETRIEVAL, GROUP_MEMBER_ADDED,
+    GROUP_MEMBER_REMOVED, PRIVATE_LIBRARY_RELEASED, SOURCE_CONNECTION_ENDED,
+    SOURCE_CONNECTION_EXPIRED, SOURCE_CONNECTION_EXPIRING, SOURCE_FULL_SYNC_FORCED
+  ]
+  pending: []
+io.opaa.api.types.OwnAddressStock:
+  attributes: [ConnectorTypePolicy.ownAddressStock]
+  assessment: SECURITY
+  readable: [LOCKED, RUNS]
+  pending: []
+io.opaa.api.types.PasswordChangeReason:
+  attributes: [LocalCredentials.passwordChangeReason]
+  assessment: SECURITY
+  readable: [ADMIN_RESET, INITIAL, SECURITY]
+  pending: []
+io.opaa.api.types.PermissionSubjectType:
+  attributes: [AssetOwnershipHistory.ownerType, PermissionTransfer.sourceType, PermissionTransfer.targetType, SpaceMembership.subjectType, SpaceMembershipHistory.subjectType]
+  assessment: SECURITY
+  readable: [GROUP, USER]
+  pending: []
+io.opaa.api.types.ProviderType:
+  attributes: [OidcProvider.providerType]
+  assessment: SECURITY
+  readable: [LOCAL, OIDC]
+  pending: []
+io.opaa.api.types.SpaceRole:
+  attributes: [SpaceMembership.role, SpaceMembershipHistory.role]
+  assessment: SECURITY
+  readable: [ADMIN, CURATOR, MEMBER]
+  pending: []
+io.opaa.api.types.SuccessionKind:
+  attributes: [SuccessionCase.kind]
+  assessment: STATE
+  readable: [GRANTS_WITHOUT_RECIPIENT, GROUP_WITHOUT_EFFECT, OPEN_SUCCESSION]
+  pending: []
+io.opaa.api.types.SuccessionObjectType:
+  attributes: [SuccessionCase.objectType]
+  assessment: STATE
+  readable: [ASSET, GROUP, SPACE]
+  pending: []
+io.opaa.api.types.SystemRole:
+  attributes: [User.systemRole]
+  assessment: SECURITY
+  readable: [AUDITOR, SYSTEM_ADMIN, USER]
+  pending: []
+io.opaa.asset.AssetVisibilityHistoryCause:
+  attributes: [AssetVisibilityHistory.cause]
+  assessment: AUDIT
+  readable: [ASSET_DELETED, BACKFILL, CREATED, EXTERNAL_ACCESS_CHANGED, EXTERNAL_ACCESS_EXPIRED]
+  pending: []
+io.opaa.chat.TitleSource:
+  attributes: [Chat.titleSource]
+  assessment: STATE
+  readable: [CUSTOM, GENERATED]
+  pending: []
+io.opaa.connection.profile.LibraryConnection$ResponsibleType:
+  attributes: [ConnectionAuthorization.responsibleType, LibraryConnection.responsibleType]
+  assessment: SECURITY
+  readable: [GROUP, USER]
+  pending: []
+io.opaa.connection.profile.ProfileKind:
+  attributes: [ConnectionProfile.kind]
+  assessment: SECURITY
+  readable: [CONNECTOR, MCP_SERVER]
+  pending: []
+io.opaa.connection.token.ConnectionToken$Kind:
+  attributes: [ConnectionToken.kind]
+  assessment: SECURITY
+  readable: [OAUTH, PERSONAL_SECRET]
+  pending: []
+io.opaa.externalaccess.token.ExternalAccessTokenRevocationReason:
+  attributes: [ExternalAccessToken.revocationReason]
+  assessment: SECURITY
+  readable: [ACCOUNT_LIFECYCLE, ADMIN, EXPIRED, OWNER]
+  pending: []
+io.opaa.indexing.job.IndexingEventCategory:
+  attributes: [IndexingRunEvent.category]
+  assessment: AUDIT
+  readable: [
+    ALLOWLIST, BUDGET_EXHAUSTED, ERROR, FORMAT_MISMATCH, RATE_LIMITED, REJECTED, REMOVED,
+    SCHEDULE_SKIPPED, SUMMARY, UNREACHABLE, UNSUPPORTED_FORMAT
+  ]
+  pending: []
+io.opaa.indexing.job.JobStatus:
+  attributes: [IndexingJob.status]
+  assessment: STATE
+  readable: [COMPLETED, FAILED, RUNNING]
+  pending: []
+io.opaa.indexing.job.JobTriggerSource:
+  attributes: [IndexingJob.triggeredBy]
+  assessment: STATE
+  readable: [MANUAL, SCHEDULED, WEBHOOK]
+  pending: []
+io.opaa.knowledge.ErasureCause:
+  attributes: [KnowledgeLibrary.erasureCause]
+  assessment: STATE
+  readable: [DELETION_PERIOD_EXPIRED, OWNER_REQUEST]
+  pending: []
+io.opaa.metadata.MetadataValueState:
+  attributes: [DocumentMetadataValue.state]
+  assessment: STATE
+  readable: [NOT_DETERMINABLE, SET]
+  pending: []
+io.opaa.permission.AccountState:
+  attributes: [AccountStateHistory.state]
+  assessment: AUDIT
+  readable: [ACTIVE, LOCKED]
+  pending: []
+io.opaa.permission.AccountStateHistoryCause:
+  attributes: [AccountStateHistory.cause]
+  assessment: AUDIT
+  readable: [ACCOUNT_CREATED, DIRECTORY_LOCKED, DIRECTORY_UNLOCKED]
+  pending: []
+io.opaa.permission.AssetGrantHistoryCause:
+  attributes: [AssetGrantHistory.cause]
+  assessment: AUDIT
+  readable: [ASSET_DELETED, BACKFILL, GRANTED, REVOKED, ROLE_CHANGED, TRANSFERRED_IN, TRANSFERRED_OUT]
+  pending: []
+io.opaa.permission.AssetOwnershipHistoryCause:
+  attributes: [AssetOwnershipHistory.cause]
+  assessment: AUDIT
+  readable: [ASSET_DELETED, BACKFILL, CREATED, TRANSFERRED]
+  pending: []
+io.opaa.permission.CapabilityGrantHistoryCause:
+  attributes: [CapabilityGrantHistory.cause]
+  assessment: AUDIT
+  readable: [DELIVERED, GRANTED, REVOKED, TRANSFERRED_IN, TRANSFERRED_OUT]
+  pending: []
+io.opaa.permission.GroupMembershipHistoryCause:
+  attributes: [GroupMembershipHistory.cause]
+  assessment: AUDIT
+  readable: [
+    ADDED, BACKFILL, DIRECTORY_SYNC_ADDED, DIRECTORY_SYNC_REMOVED, GROUP_DEACTIVATED, GROUP_DELETED,
+    GROUP_REACTIVATED, IDENTITY_PROVIDER_ADDED, IDENTITY_PROVIDER_REMOVED, REMOVED
+  ]
+  pending: []
+io.opaa.space.SpaceMembershipHistoryCause:
+  attributes: [SpaceMembershipHistory.cause]
+  assessment: AUDIT
+  readable: [ADDED, BACKFILL, REMOVED, ROLE_CHANGED, SPACE_DELETED, TRANSFERRED_IN, TRANSFERRED_OUT]
+  pending: []
