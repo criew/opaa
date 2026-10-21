@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
+Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
 
 ## Kontext
 
@@ -107,7 +107,9 @@ laufen über denselben Suchweg mit derselben Rechteprüfung; was sie durchsuchen
 Zuordnung des Space, im Fremdzugang die Auswahl des Tokens** — der Fremdzugang bleibt bewusst ohne
 Space. Der Kanal erbt die Last des vollen Suchwegs je Aufruf, daher das Kontingent je Token
 (`ExternalAccessQuota`, gleitendes Stundenfenster im Arbeitsspeicher jeder Instanz, die den Wert
-der Einstellung durch die lebenden Instanzen teilt) und der Abflussalarm
+der Einstellung durch die lebenden Instanzen teilt; auf den REST-Lesewegen zählt ein Tokenaufruf
+dazu gegen die Grenze je Token und die Gesamtgrenze der Suche, nicht gegen die seiner Netzadresse,
+weil hinter einem gemeinsamen Ausgang sonst ein Skript alle anderen aussperrt) und der Abflussalarm
 (`ExternalAccessMassRetrievalAlarm`, ein Zähler des ganzen Kanals in der Datenbank, Meldung mit
 Token-Kennung und Fenster, aber ohne Messwerte, nach `ExternalAccessAlertRetention` gelöscht); beide
 nach ADR-0053 Entscheidung 12. `spring.ai.mcp.server.request-timeout` wirkt nur sitzungsbehaftet; ein Deckel

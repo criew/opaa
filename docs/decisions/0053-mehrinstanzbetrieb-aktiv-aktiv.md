@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+Akzeptiert · zuletzt geändert 2026-10-21 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
 ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
 
 ## Kontext
@@ -292,7 +292,7 @@ her; „mindestens einmal“ ist die ehrliche Zusage.
 |---|---|
 | Globale Deckel `opaa.rate-limit.*.global-max-requests` (auch `local-auth`) | Zählerzeile je Grenze und Fensterlänge nach Datenbankuhr, ein Upsert je gezählter Anfrage |
 | Abflussalarm `ExternalAccessMassRetrievalAlarm` (kanalweites Fenster) | Zählerzeile des Kanals, ohne Token- oder Personenbezug; die Sperrfrist nach einem Alarm steht in derselben Zeile |
-| Grenzen je Client, Adresse oder Konto (`max-requests`, `LocalAuthRateLimiter`) | je Instanz, durch N geteilt |
+| Grenzen je Client, Adresse oder Konto (`max-requests`, `max-requests-per-account`, `LocalAuthRateLimiter`) | je Instanz, durch N geteilt |
 | Kontingent je Zugangstoken (`ExternalAccessQuota`) | je Instanz; der Wert der Einstellung geteilt durch die lebenden Instanzen im Register, aufgerundet |
 | Pool `embeddingTaskExecutor` | je Instanz, durch N geteilt |
 | `TranscriptionModelRole.slots`, `AttachmentExtractionLimiter` | je Instanz, durch N geteilt |

@@ -1181,8 +1181,24 @@ ihre Frage vom Einbettungsmodell umrechnen; ohne Grenze könnte ein Skript in ei
 beliebig viele Modellaufrufe auslösen. Ein Werkzeug sucht typischerweise einmal und ruft dann
 einige Treffer ab, deshalb zählen beide zusammen: Ein anderer Treffer schafft kein neues
 Kontingent. Die Auflistung der durchsuchbaren Bibliotheken zählt nicht mit. Auch hier zählen nur
-angemeldete Anfragen; ein Zugangstoken unterliegt zusätzlich seinem Kontingent
-([Externe KI-Werkzeuge](fremdzugaenge.md)).
+angemeldete Anfragen.
+
+Fragen, Chatsuche und Suche haben außerdem je eine Grenze **je Konto**, gleich von welcher Adresse
+die Anfragen kommen. Wer seine Adresse wechselt, bekommt damit kein neues Kontingent, und ein
+einzelnes Konto kann die gemeinsame Grenze aller nicht allein aufbrauchen. Eine Anfrage, die an der
+Grenze ihres Kontos scheitert, zählt weder für ihre Adresse noch für die gemeinsame Grenze.
+
+Ein **Zugangstoken** eines externen KI-Werkzeugs zählt bei der Suche für sich, getrennt vom Konto
+seiner Person, und gegen die gemeinsame Grenze, aber nicht gegen die Grenze seiner Adresse. Für ihn
+gilt sein eigenes Kontingent ([Externe KI-Werkzeuge](fremdzugaenge.md)); ein Skript, das sein
+Kontingent ausgeschöpft hat, sperrt so nicht alle anderen hinter derselben Adresse aus.
+
+**Viele Personen hinter einer Adresse.** Hinter einem gemeinsamen Ausgang des Behördennetzes (NAT)
+oder einem Proxy teilen sich alle die Grenze je Adresse. Steht der Proxy vor dem Backend, muss
+`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` ihn nennen, sonst zählen alle Anfragen unter der Adresse des
+Proxys in einem einzigen Zähler ([Betrieb](betrieb.md#vertraute-proxys-und-client-adresse)). Reicht
+die Grenze je Adresse für einen NAT-Ausgang nicht, wird sie angehoben; die Grenze je Konto hält den
+einzelnen Menschen weiter im Rahmen.
 
 ### 10.2 Metriken und Log
 
@@ -1252,6 +1268,7 @@ mit Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvar
 | `max-requests` | 60 | Chatsuchen je IP-Adresse und Fenster, über alle Spaces zusammen (`OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS`) |
 | `window-seconds` | 60 | Länge des Fensters in Sekunden (`OPAA_RATE_LIMIT_CHAT_SEARCH_WINDOW_SECONDS`) |
 | `global-max-requests` | 1200 | Chatsuchen über alle Adressen je Fenster (`OPAA_RATE_LIMIT_CHAT_SEARCH_GLOBAL_MAX_REQUESTS`) |
+| `max-requests-per-account` | 60 | Chatsuchen je Konto und Fenster, gleich von welcher Adresse (`OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS_PER_ACCOUNT`) |
 
 Die Ratenbegrenzung der Suche ohne Antwort und des Trefferabrufs (Abschnitt 10.1) steht unter
 `opaa.rate-limit.search.*`:
@@ -1261,6 +1278,7 @@ Die Ratenbegrenzung der Suche ohne Antwort und des Trefferabrufs (Abschnitt 10.1
 | `max-requests` | 30 | Suchen und Trefferabrufe zusammen je IP-Adresse und Fenster (`OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS`) |
 | `window-seconds` | 60 | Länge des Fensters in Sekunden (`OPAA_RATE_LIMIT_SEARCH_WINDOW_SECONDS`) |
 | `global-max-requests` | 300 | Suchen und Trefferabrufe über alle Adressen je Fenster (`OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS`) |
+| `max-requests-per-account` | 30 | Suchen und Trefferabrufe je Konto und je Zugangstoken, gleich von welcher Adresse (`OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT`) |
 
 Ein einziger Wert der Gesprächsnotiz ist einstellbar, und er steht unter einem eigenen Präfix, weil
 die Notiz Chatinhalt ist und kein Suchparameter:
