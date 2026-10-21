@@ -218,5 +218,10 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
     public String quotaKey() {
       return tokenId.toString();
     }
+
+    @Override
+    public String ownerKey() {
+      return userId.toString();
+    }
   }
 }

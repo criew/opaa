@@ -11,4 +11,7 @@ public interface OwnQuotaAuthentication {
 
   /** Identifies the credential, stable for its lifetime; never its secret value. */
   String quotaKey();
+
+  /** Identifies the person the credential belongs to; all her credentials share one budget. */
+  String ownerKey();
 }

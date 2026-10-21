@@ -12,6 +12,7 @@ import io.opaa.security.TrustedProxyClientIpResolver;
 import io.opaa.test.InMemoryInstallationCounters;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -40,7 +41,7 @@ class RateLimitAccountBudgetTest {
 
   private static final String SEARCH = "/api/v1/search";
   private static final String QUERY = "/api/v1/query";
-  private static final EndpointLimit WIDE = new EndpointLimit(1000, 60, 1000, null);
+  private static final EndpointLimit WIDE = new EndpointLimit(1000, 60, 1000, 0);
 
   private SimpleMeterRegistry meterRegistry;
 
@@ -119,15 +120,83 @@ class RateLimitAccountBudgetTest {
     assertThat(answer(filter, SEARCH, "203.0.113.20", token).getStatus()).isEqualTo(200);
     assertThat(answer(filter, SEARCH, "203.0.113.20", token).getStatus()).isEqualTo(429);
     assertThat(rejected("search", "token")).isEqualTo(1.0);
+  }
+
+  @Test
+  void allTokensOfOnePersonShareOneBudget() throws Exception {
+    Filter filter = filterWithSearch(new EndpointLimit(1000, 60, 1000, 2));
+    UUID person = UUID.randomUUID();
+
     assertThat(
-            answer(filter, SEARCH, "203.0.113.20", accessToken(person, UUID.randomUUID()))
+            answer(filter, SEARCH, "203.0.113.21", accessToken(person, UUID.randomUUID()))
+                .getStatus())
+        .isEqualTo(200);
+    assertThat(
+            answer(filter, SEARCH, "203.0.113.22", accessToken(person, UUID.randomUUID()))
+                .getStatus())
+        .isEqualTo(200);
+    // a third token of the same person buys nothing
+    assertThat(
+            answer(filter, SEARCH, "203.0.113.23", accessToken(person, UUID.randomUUID()))
+                .getStatus())
+        .isEqualTo(429);
+    assertThat(rejected("search", "token")).isEqualTo(1.0);
+    // another person's token is not affected
+    assertThat(
+            answer(
+                    filter,
+                    SEARCH,
+                    "203.0.113.23",
+                    accessToken(UUID.randomUUID(), UUID.randomUUID()))
                 .getStatus())
         .isEqualTo(200);
   }
 
   @Test
+  void aTokenRefusedByThePersonBudgetGivesBackItsOwnToken() throws Exception {
+    Filter filter = filterWithSearch(new EndpointLimit(1000, 60, 1000, 1));
+    UUID person = UUID.randomUUID();
+    Authentication spent = accessToken(person, UUID.randomUUID());
+    Authentication second = accessToken(person, UUID.randomUUID());
+    answer(filter, SEARCH, "203.0.113.24", spent);
+    for (int attempt = 0; attempt < 3; attempt++) {
+      assertThat(answer(filter, SEARCH, "203.0.113.24", second).getStatus()).isEqualTo(429);
+    }
+
+    // refused by the person's budget only: the token's own budget of one was given back each time
+    assertThat(rejected("search", "token")).isEqualTo(3.0);
+  }
+
+  @Test
+  void aRequestALaterLimitRefusesGivesBackItsGlobalToken() throws Exception {
+    // the hour quota of an access token refuses in the service, behind the filter
+    Filter filter = filterWithSearch(new EndpointLimit(1000, 60, 2, 0));
+    Authentication exhausted = accessToken(UUID.randomUUID(), UUID.randomUUID());
+    for (int attempt = 0; attempt < 4; attempt++) {
+      assertThat(refusedLater(filter, SEARCH, "203.0.113.25", exhausted).getStatus())
+          .isEqualTo(429);
+    }
+
+    assertThat(answer(filter, SEARCH, "203.0.113.26", account("anna")).getStatus()).isEqualTo(200);
+    assertThat(answer(filter, SEARCH, "203.0.113.27", account("bert")).getStatus()).isEqualTo(200);
+    assertThat(answer(filter, SEARCH, "203.0.113.28", account("carla")).getStatus()).isEqualTo(429);
+  }
+
+  @Test
+  void issuerAndSubjectAreKeyedWithoutAmbiguity() throws Exception {
+    Filter filter = filterWithSearch(new EndpointLimit(1000, 60, 1000, 1));
+    answer(filter, SEARCH, "203.0.113.50", jwt("https://idp.example|x", "y"));
+    answer(filter, SEARCH, "203.0.113.50", jwt(null, "z"));
+
+    assertThat(
+            answer(filter, SEARCH, "203.0.113.50", jwt("https://idp.example", "x|y")).getStatus())
+        .isEqualTo(200);
+    assertThat(answer(filter, SEARCH, "203.0.113.50", jwt("null", "z")).getStatus()).isEqualTo(200);
+  }
+
+  @Test
   void accessTokenRequestsSpendNoBudgetOfTheirAddressButTheGlobalCeiling() throws Exception {
-    Filter filter = filterWithSearch(new EndpointLimit(1, 60, 4, null));
+    Filter filter = filterWithSearch(new EndpointLimit(1, 60, 4, 0));
     String sharedAddress = "203.0.113.30";
     for (int request = 0; request < 3; request++) {
       Authentication token = accessToken(UUID.randomUUID(), UUID.randomUUID());
@@ -158,7 +227,7 @@ class RateLimitAccountBudgetTest {
 
   @Test
   void aRuleWithoutABudgetPerAccountCountsByAddressOnly() throws Exception {
-    Filter filter = filterWithSearch(new EndpointLimit(1000, 60, 1000, null));
+    Filter filter = filterWithSearch(new EndpointLimit(1000, 60, 1000, 0));
     Authentication anna = account("anna");
 
     for (int address = 1; address <= 20; address++) {
@@ -207,6 +276,35 @@ class RateLimitAccountBudgetTest {
     return response;
   }
 
+  /**
+   * As {@link #answer}, for a request a limit behind the filter refuses: its handler marks it and
+   * answers {@code 429}, the way {@code GlobalExceptionHandler} does.
+   */
+  private static MockHttpServletResponse refusedLater(
+      Filter filter, String path, String client, Authentication authentication) throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", path);
+    request.setRemoteAddr(client);
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    FilterChain securityChainEnd =
+        (req, res) -> {
+          SecurityContextHolder.getContext().setAuthentication(authentication);
+          try {
+            new AuthenticatedRequestMarkerFilter()
+                .doFilter(
+                    req,
+                    res,
+                    (r, s) -> {
+                      RateLimitAuthentication.markRefusedByLaterLimit((HttpServletRequest) r);
+                      ((HttpServletResponse) s).setStatus(429);
+                    });
+          } finally {
+            SecurityContextHolder.clearContext();
+          }
+        };
+    filter.doFilter(request, response, securityChainEnd);
+    return response;
+  }
+
   private double rejected(String limit, String scope) {
     var counter =
         meterRegistry
@@ -222,9 +320,11 @@ class RateLimitAccountBudgetTest {
   }
 
   private static Authentication jwt(String issuer, String subject) {
-    Jwt token =
-        Jwt.withTokenValue("t").header("alg", "none").claim("iss", issuer).subject(subject).build();
-    return new JwtAuthenticationToken(token, List.of());
+    Jwt.Builder token = Jwt.withTokenValue("t").header("alg", "none").subject(subject);
+    if (issuer != null) {
+      token.claim("iss", issuer);
+    }
+    return new JwtAuthenticationToken(token.build(), List.of());
   }
 
   private static Authentication accessToken(UUID person, UUID token) {
@@ -258,6 +358,11 @@ class RateLimitAccountBudgetTest {
     @Override
     public String quotaKey() {
       return token.toString();
+    }
+
+    @Override
+    public String ownerKey() {
+      return person.toString();
     }
   }
 

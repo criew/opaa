@@ -124,15 +124,16 @@ public record RateLimitProperties(
    * @param windowSeconds sliding window duration in seconds. Must be at least 1.
    * @param globalMaxRequests maximum requests across all IPs within the window; only requests that
    *     authenticated count ({@code RateLimitFilter.Counting}). Must be at least 1.
-   * @param maxRequestsPerAccount maximum requests per signed-in account, and per access token apart
-   *     from its account, within the window, whatever address they come from; {@code null} for
-   *     none. Checked once the security chain authenticated the request. Must be at least 1.
+   * @param maxRequestsPerAccount maximum requests per signed-in account, per access token and per
+   *     person over all her access tokens within the window, whatever address they come from;
+   *     {@code 0} for none. Primitive on purpose: an empty value fails the binding at start-up
+   *     instead of switching the limit off.
    */
   public record EndpointLimit(
-      int maxRequests, int windowSeconds, int globalMaxRequests, Integer maxRequestsPerAccount) {
+      int maxRequests, int windowSeconds, int globalMaxRequests, int maxRequestsPerAccount) {
 
     public EndpointLimit(int maxRequests, int windowSeconds, int globalMaxRequests) {
-      this(maxRequests, windowSeconds, globalMaxRequests, null);
+      this(maxRequests, windowSeconds, globalMaxRequests, 0);
     }
 
     @ConstructorBinding
@@ -148,14 +149,14 @@ public record RateLimitProperties(
         throw new IllegalArgumentException(
             "globalMaxRequests must be at least 1, got " + globalMaxRequests);
       }
-      if (maxRequestsPerAccount != null && maxRequestsPerAccount < 1) {
+      if (maxRequestsPerAccount < 0) {
         throw new IllegalArgumentException(
-            "maxRequestsPerAccount must be at least 1, got " + maxRequestsPerAccount);
+            "maxRequestsPerAccount must not be negative, got " + maxRequestsPerAccount);
       }
     }
 
     public boolean hasAccountLimit() {
-      return maxRequestsPerAccount != null;
+      return maxRequestsPerAccount > 0;
     }
   }
 

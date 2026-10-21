@@ -37,7 +37,8 @@ import org.springframework.test.web.servlet.MockMvc;
  * has a budget of its own, apart from the one of its account, and spends none of the budget of its
  * address - behind one address a script whose token quota is used up would otherwise lock out
  * everyone else there. Limits from {@link OpaaLocalAuthRateLimitTest}: search three per client,
- * four per account or token and five globally, per minute. The addresses are this class's own.
+ * four per account and four for all tokens of one person together, five globally, per minute. The
+ * addresses are this class's own.
  */
 @OpaaLocalAuthRateLimitTest
 class ExternalAccessTokenRateLimitIntegrationTest {
@@ -60,6 +61,7 @@ class ExternalAccessTokenRateLimitIntegrationTest {
   private LocalAccount anna;
   private UUID libraryId;
   private String tokenValue;
+  private User administrator;
 
   @BeforeEach
   void setUp() {
@@ -67,8 +69,8 @@ class ExternalAccessTokenRateLimitIntegrationTest {
     fixtures.cleanUp();
     fixtures.localProvider(true);
     resetSearchCeiling();
-    LocalAccount administrator = fixtures.activeAdmin("rate-admin-" + UUID.randomUUID() + "@x.de");
-    openChannel(administrator.user());
+    administrator = fixtures.activeAdmin("rate-admin-" + UUID.randomUUID() + "@x.de").user();
+    openChannel(settings.current().values().tokenRateLimitPerHour());
     anna = fixtures.activeUser("rate-token-" + UUID.randomUUID() + "@stadt.example");
     CurrentUser annaAsCaller = callerOf(anna.user());
     libraryId =
@@ -90,15 +92,18 @@ class ExternalAccessTokenRateLimitIntegrationTest {
             .getId();
     libraryRelease.setExternalAccess(
         annaAsCaller, libraryId, true, clock.instant().plus(Duration.ofDays(60)));
-    tokenValue =
-        tokenService
-            .issue(
-                anna.id(),
-                anna.user().getOrganizationId(),
-                "Skript",
-                List.of(libraryId),
-                clock.instant().plus(Duration.ofDays(30)))
-            .rawValue();
+    tokenValue = issueToken("Skript");
+  }
+
+  private String issueToken(String name) {
+    return tokenService
+        .issue(
+            anna.id(),
+            anna.user().getOrganizationId(),
+            name,
+            List.of(libraryId),
+            clock.instant().plus(Duration.ofDays(30)))
+        .rawValue();
   }
 
   @AfterEach
@@ -125,14 +130,49 @@ class ExternalAccessTokenRateLimitIntegrationTest {
     assertThat(fetch("Bearer " + tokenValue)).isEqualTo(429);
   }
 
+  @Test
+  void allTokensOfOnePersonShareOneBudget() throws Exception {
+    String secondToken = "Bearer " + issueToken("Zweites Skript");
+    for (int request = 0; request < 2; request++) {
+      assertThat(fetch("Bearer " + tokenValue)).isEqualTo(404);
+      assertThat(fetch(secondToken)).isEqualTo(404);
+    }
+
+    // the fifth request of the person: refused by her budget, not by the ceiling of five
+    assertThat(fetch(secondToken)).isEqualTo(429);
+    assertThat(fetch(signIn("192.0.2.14"), "192.0.2.15")).isNotEqualTo(429);
+  }
+
+  @Test
+  void requestsTheTokenQuotaRefusesGiveBackTheirShareOfTheCeiling() throws Exception {
+    openChannel(1);
+    assertThat(fetch("Bearer " + tokenValue)).isEqualTo(404);
+    for (int request = 0; request < 3; request++) {
+      assertThat(fetch("Bearer " + tokenValue)).isEqualTo(429);
+    }
+
+    // one search of the ceiling of five is spent; four are left for the account
+    String session = signIn("192.0.2.16");
+    for (int request = 0; request < 4; request++) {
+      String client = request < 2 ? "192.0.2.17" : "192.0.2.18";
+      assertThat(fetch(session, client))
+          .as("search %d of the account", request + 1)
+          .isNotEqualTo(429);
+    }
+  }
+
   private int fetch(String authorization) throws Exception {
+    return fetch(authorization, SHARED_ADDRESS);
+  }
+
+  private int fetch(String authorization, String client) throws Exception {
     return mockMvc
         .perform(
             get("/api/v1/search/hits/" + UUID.randomUUID())
                 .header(HttpHeaders.AUTHORIZATION, authorization)
                 .with(
                     request -> {
-                      request.setRemoteAddr(SHARED_ADDRESS);
+                      request.setRemoteAddr(client);
                       return request;
                     }))
         .andReturn()
@@ -164,14 +204,14 @@ class ExternalAccessTokenRateLimitIntegrationTest {
     return "Bearer " + JsonPath.read(body, "$.accessToken");
   }
 
-  private void openChannel(User administrator) {
+  private void openChannel(int tokenRequestsPerHour) {
     ExternalAccessSettings.Values values = settings.current().values();
     settings.update(
         callerOf(administrator),
         new ExternalAccessSettingsService.Update(
             true,
             values.tokenMaxLifetimeDays(),
-            values.tokenRateLimitPerHour(),
+            tokenRequestsPerHour,
             List.of(CHANNEL_NETWORK),
             values.massRetrievalAlertThreshold(),
             values.serverInstructions()));

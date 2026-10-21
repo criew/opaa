@@ -395,11 +395,6 @@ class RateLimitFilterTest {
     verify(loginLimiter).tryAcquire(anyString());
   }
 
-  /**
-   * A rule whose endpoint is switched off is matched but not counted. A switched-off self-service
-   * flow is answered exactly like an unknown route, and an unknown route has no budget - counting
-   * it would answer 429 where the unknown route answers 401.
-   */
   @Test
   void aRequestRefusedByTheGlobalCeilingGivesBackItsClientToken() throws Exception {
     var global = mock(RateLimitService.class);
@@ -418,6 +413,11 @@ class RateLimitFilterTest {
     assertThat(retried.getStatus()).isEqualTo(200);
   }
 
+  /**
+   * A rule whose endpoint is switched off is matched but not counted. A switched-off self-service
+   * flow is answered exactly like an unknown route, and an unknown route has no budget - counting
+   * it would answer 429 where the unknown route answers 401.
+   */
   @Test
   void aRuleWhoseEndpointIsNotServedIsMatchedButNotCounted() throws Exception {
     var registerLimiter = mock(RateLimitService.class);
