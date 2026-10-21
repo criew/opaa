@@ -187,7 +187,8 @@ Konten").
   zählen Abfrage, Chatsuche und Suche je Client-Adresse, je Konto (`max-requests-per-account`,
   geprüft hinter der Sicherheitskette; ein Zugangstoken je Token und zugleich je Person über alle
   ihre Tokens) und global; eine Abweisung je Konto gibt die übrigen Marken zurück, ein Zugangstoken
-  seine Adressmarke, eine spätere `429` (Token-Kontingent) die globale.
+  seine Adressmarke; jede `429` einer späteren Grenze, die vor der eigentlichen Arbeit abweist
+  (Token-Kontingent, Belegt-Meldung der Anhangsauswertung), gibt die globale zurück.
 - **Kontosperre** nach 5 Fehlversuchen für 15 Minuten, auditiert
   (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`); der einzelne Fehlversuch steht nur im Anwendungslog
   (Konto-Kennung, nie die Adresse), dessen Aufbewahrung Betriebskonfiguration ist. Ein eingelöster

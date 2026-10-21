@@ -615,7 +615,8 @@ opaa:
     # max-requests-per-account (query, chat-search, search) counts per signed-in account, per access
     # token and per person over all her access tokens, whatever address they use; checked behind the
     # security chain, 0 switches it off, an empty value fails the start. An access token gives back
-    # its address token; a request its quota refuses gives back its global token.
+    # its address token; any 429 of a later limit that refuses before the actual work (the token
+    # quota, the busy answer of the attachment extraction) gives back the global token.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
