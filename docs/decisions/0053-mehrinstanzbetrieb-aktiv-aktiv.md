@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-21 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+Akzeptiert · zuletzt geändert 2026-10-22 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
 ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
 
 ## Kontext
@@ -412,6 +412,12 @@ Datenbanksicherung.
   Zwischenzeit geändert, vergibt nginx kein weiteres Ziel mehr; eine Anfrage, die noch kein Backend
   erreicht hat, beginnt dann einmal neu auf der aktuellen Liste (`/api/` und `/mcp`, nicht das
   Diktat ohne Request-Puffer).
+- Eine Anfrage, die ein Backend angenommen hat, geht nur bei `GET`, `HEAD` und `OPTIONS` an ein
+  zweites, wenn die Verbindung abreißt oder die Antwort ausbleibt. Alle anderen Methoden laufen
+  höchstens einmal: `POST` und `PATCH` schließt nginx selbst aus, `PUT` und `DELETE` nimmt ein
+  interner Pfad ohne nächstes Ziel; dort beginnt nur eine Anfrage ohne Verbindung neu, bis zu
+  dreimal. Ein Backend kann eine Änderung ausgeführt haben, ohne zu antworten; eine zweite
+  Ausführung wäre nicht für jeden Endpunkt folgenlos.
 - Die feste Frontend-Adresse in der Proxy-Vertrauensliste trägt nur einen Frontend-Container; jeder
   weitere braucht eine eigene feste Adresse und einen eigenen Eintrag.
 

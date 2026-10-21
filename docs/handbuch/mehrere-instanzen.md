@@ -103,13 +103,13 @@ Das Frontend reicht eine Anfrage an eine Instanz weiter. Nimmt diese keine Verbi
 sie gerade gestoppt wird, versucht es die Anfrage erneut, bei einer anderen Instanz. Was danach
 geschieht, hängt von der Art der Anfrage ab:
 
-- **Anlegen, Fragen und Teiländerungen** (`POST`, `PATCH`), etwa eine Frage im Chat, schickt das
-  Frontend nach dem Senden nie ein zweites Mal los.
-- **Lesende Anfragen, Ändern und Löschen** (`GET`, `PUT`, `DELETE`) kann das Frontend unter Docker
-  Compose nach einem Verbindungsabbruch an die andere Instanz geben, ebenso wenn die Antwort länger
-  ausbleibt als `OPAA_BACKEND_READ_TIMEOUT`. Eine lange laufende Änderung oder Löschung kann so ein
-  zweites Mal ausgeführt werden. Unter Kubernetes erreicht das Frontend die Pods über einen Service
-  und gibt eine Anfrage, die einen Pod erreicht hat, nicht weiter.
+- **Anlegen, Fragen, Ändern und Löschen** (`POST`, `PATCH`, `PUT`, `DELETE`), etwa eine Frage im
+  Chat, schickt das Frontend nach dem Senden nie ein zweites Mal los. Reißt die Verbindung ab oder
+  bleibt die Antwort länger aus als `OPAA_BACKEND_READ_TIMEOUT`, endet die Anfrage mit einem Fehler,
+  auch wenn die Instanz sie noch ausgeführt hat.
+- **Lesende Anfragen** (`GET`, `HEAD`) kann das Frontend unter Docker Compose in diesen Fällen an die
+  andere Instanz geben. Unter Kubernetes erreicht das Frontend die Pods über einen Service und gibt
+  eine Anfrage, die einen Pod erreicht hat, nicht weiter.
 
 ## Abstimmung nur über die Datenbank
 
@@ -493,7 +493,7 @@ Die Rechnung steht unter [Verbindungen bei mehreren Instanzen](datenbank.md#verb
 | Konfiguration ändern | Werte des Konfigurationsabdrucks ändert nur ein Neustart aller Instanzen, kein Update im Wechsel |
 | Schemaänderungen | Sie verteilen sich auf zwei Releases; ein unvermeidbarer Bruch wird als Versionsgrenze ohne Rolling Update angekündigt |
 | Ein Frontend-Container unter Compose | Beim Austausch des Frontends lehnt der Port kurz Verbindungen ab, beantwortet aber keine Anfrage mit einem Fehler. Ein zweiter Frontend-Container braucht eine eigene feste Adresse und einen eigenen Eintrag unter den vertrauten Proxys |
-| Wiederholte Änderung unter Compose | Eine lange Änderung oder Löschung kann nach einem Abbruch ein zweites Mal ausgeführt werden ([Das Gesamtbild](#das-gesamtbild)) |
+| Fehler trotz ausgeführter Änderung | Bricht eine Instanz während einer Änderung oder Löschung ab oder antwortet sie nicht binnen `OPAA_BACKEND_READ_TIMEOUT`, meldet die Oberfläche einen Fehler, obwohl die Änderung ausgeführt sein kann. Das Frontend schickt sie keiner zweiten Instanz; vor einem neuen Versuch den Stand ansehen ([Das Gesamtbild](#das-gesamtbild)) |
 | Versionsfenster | Bis zum ersten Release, das seine Vorgängerversion zulässt, laufen nur Stände derselben Version nebeneinander |
 
 ## Begriffe
