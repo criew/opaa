@@ -612,10 +612,10 @@ opaa:
     # query to search: max-requests per client, global-max-requests across all clients; past
     # either the answer is 429. Both count only requests the security chain authenticated (the push
     # intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
-    # max-requests-per-account (query, chat-search, search) counts per signed-in account and per
-    # access token apart from its account, whatever address they use; it is checked behind the
-    # security chain, and a request refused there gives back its other tokens. An access token
-    # spends no budget of its address, only the global ceiling and its own quota.
+    # max-requests-per-account (query, chat-search, search) counts per signed-in account, per access
+    # token and per person over all her access tokens, whatever address they use; checked behind the
+    # security chain, 0 switches it off, an empty value fails the start. An access token gives back
+    # its address token; a request its quota refuses gives back its global token.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}

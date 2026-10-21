@@ -12,12 +12,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Registered directly behind the security chain: a request reaches it only after the chain let it
- * through, and it marks the request for {@link RateLimitFilter} when the chain authenticated it -
- * an anonymous principal does not count. A request the firewall or the chain refused never gets
- * here and so stays unmarked. Before marking it checks the budget per account the request's rule
- * may carry; a request refused there is answered {@code 429} and stays unmarked, so it gives back
- * the tokens it took before the chain.
+ * Directly behind the security chain: checks the budget per account of the request's rule, then
+ * marks an authenticated request for {@link RateLimitFilter}. A request refused here or by the
+ * chain stays unmarked and so gives back what it took before the chain.
  */
 class AuthenticatedRequestMarkerFilter extends OncePerRequestFilter {
 

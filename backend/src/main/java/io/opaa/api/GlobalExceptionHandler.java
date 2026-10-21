@@ -18,7 +18,9 @@ import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.UploadProperties;
+import io.opaa.ratelimit.RateLimitAuthentication;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
@@ -366,7 +368,9 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(TooManyRequestsException.class)
-  public ResponseEntity<ErrorResponse> handleTooManyRequestsException(TooManyRequestsException ex) {
+  public ResponseEntity<ErrorResponse> handleTooManyRequestsException(
+      TooManyRequestsException ex, HttpServletRequest request) {
+    RateLimitAuthentication.markRefusedByLaterLimit(request);
     ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS);
     if (ex.retryAfterSeconds() > 0) {
       response.header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds()));

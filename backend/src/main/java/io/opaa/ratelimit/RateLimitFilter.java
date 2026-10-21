@@ -72,15 +72,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     EVERY_REQUEST,
 
     /**
-     * Behind the sign-in: a request the security chain did not authenticate - refused by the
-     * firewall or the chain - gives its client and its global token back. Strangers neither use up
-     * the ceiling shared by everyone signed in nor the budget of a person whose token just expired.
-     * Attempts with invalid credentials are thereby not bounded per address, as on every other
-     * endpoint: a budget checked before the chain would refuse signed-in people behind the same
-     * address too. Behind the chain the rule's budget per account is checked; a request refused
-     * there gives its client and global token back as well. A request authenticated by a credential
-     * with its own quota ({@link OwnQuotaAuthentication}) gives back its client token and keeps
-     * only the global one.
+     * Behind the sign-in: a request that is not authenticated, or refused by the budget per account
+     * behind the chain, gives back its client and global token; one authenticated by an access
+     * token ({@link OwnQuotaAuthentication}) its client token; one a later limit refused ({@link
+     * RateLimitAuthentication#markRefusedByLaterLimit}) its global token. Rationale: ADR-0033, 9.
      */
     AUTHENTICATED,
 
@@ -176,6 +171,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     /** Takes the account's token, or answers {@code 429} and returns {@code false}. */
     boolean admit(Authentication authentication, HttpServletResponse response) throws IOException;
   }
+
+  private static final String OWNER_PREFIX = "owner:";
 
   static final String ACCOUNT_ADMISSION_ATTRIBUTE =
       RateLimitFilter.class.getName() + ".ACCOUNT_ADMISSION";
@@ -305,7 +302,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
   private boolean admitAccount(
       CompiledRule rule, Authentication authentication, HttpServletResponse response, String path)
       throws IOException {
-    Decision decision = rule.perAccount().tryAcquire(accountKey(authentication));
+    String key = accountKey(authentication);
+    Decision decision = rule.perAccount().tryAcquire(key);
+    if (decision.allowed() && authentication instanceof OwnQuotaAuthentication ownQuota) {
+      Decision person = rule.perAccount().tryAcquire(OWNER_PREFIX + ownQuota.ownerKey());
+      if (!person.allowed()) {
+        rule.perAccount().release(key, decision);
+        decision = person;
+      }
+    }
     if (decision.allowed()) {
       return true;
     }
@@ -328,18 +333,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   /**
-   * The key of the budget per account: an access token by itself, apart from its account; a JWT by
-   * issuer and subject, so the same subject of two sign-in providers is two accounts.
+   * The key of the budget per account: an access token by itself, a JWT by issuer and subject - the
+   * issuer length-prefixed, so no subject can pose as another issuer's - anything else by name. All
+   * tokens of one person draw on a second key besides, under {@link #OWNER_PREFIX}.
    */
   static String accountKey(Authentication authentication) {
     if (authentication instanceof OwnQuotaAuthentication ownQuota) {
       return "token:" + ownQuota.quotaKey();
     }
     if (authentication instanceof JwtAuthenticationToken jwt) {
-      return "account:"
-          + jwt.getToken().getClaimAsString(JwtClaimNames.ISS)
-          + "|"
-          + jwt.getToken().getSubject();
+      String issuer = jwt.getToken().getClaimAsString(JwtClaimNames.ISS);
+      return issuer == null
+          ? "jwt-without-issuer:" + jwt.getToken().getSubject()
+          : "jwt:" + issuer.length() + ":" + issuer + ":" + jwt.getToken().getSubject();
     }
     return "account:" + authentication.getName();
   }
@@ -365,9 +371,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (!RateLimitAuthentication.isMarked(request, RateLimitAuthentication.SESSION_ATTRIBUTE)) {
           rule.perClient().release(admission.key(), admission.keyGrant());
           releaseGlobal(admission);
-        } else if (RateLimitAuthentication.isMarked(
-            request, RateLimitAuthentication.OWN_QUOTA_ATTRIBUTE)) {
-          rule.perClient().release(admission.key(), admission.keyGrant());
+        } else {
+          if (RateLimitAuthentication.isMarked(
+              request, RateLimitAuthentication.OWN_QUOTA_ATTRIBUTE)) {
+            rule.perClient().release(admission.key(), admission.keyGrant());
+          }
+          if (RateLimitAuthentication.isMarked(
+              request, RateLimitAuthentication.REFUSED_LATER_ATTRIBUTE)) {
+            releaseGlobal(admission);
+          }
         }
       }
       case AUTHENTICATED_BY_HANDLER -> {
