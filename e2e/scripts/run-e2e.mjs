@@ -17,6 +17,7 @@
 //   node scripts/run-e2e.mjs                       # default target "e2e" (pnpm test)
 //   node scripts/run-e2e.mjs --target demo         # demo-profile smoke test (pnpm run test:demo-smoke)
 //   node scripts/run-e2e.mjs --target local-auth   # local sign-in (pnpm run test:local-auth)
+//   node scripts/run-e2e.mjs --target multi-instance  # two backend instances, see multi-instance.mjs
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, docs/features/demo-instance.md) with ai-stub standing in
 // for the chat/embedding provider, seeds it with `demo/seed/seed.py
@@ -62,11 +63,20 @@ if (targetFlagIndex !== -1) {
     rawArgs.splice(targetFlagIndex, 2)
   }
 }
-if (target !== 'e2e' && target !== 'demo' && target !== 'local-auth') {
-  console.error(`Unbekanntes --target "${target}" (erwartet: "e2e", "demo" oder "local-auth")`)
+if (!['e2e', 'demo', 'local-auth', 'multi-instance'].includes(target)) {
+  console.error(
+    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth" oder "multi-instance")`,
+  )
   process.exit(1)
 }
 const extraTestArgs = rawArgs
+
+// The "multi-instance" target (ADR-0053) has a lifecycle of its own - two phases, two versions of
+// the images, the Compose variant with two backend instances - and lives in multi-instance.mjs.
+if (target === 'multi-instance') {
+  const { runMultiInstance } = await import('./multi-instance.mjs')
+  process.exit(await runMultiInstance({ repoRoot, e2eDir, extraTestArgs }))
+}
 const isDemo = target === 'demo'
 const isLocalAuth = target === 'local-auth'
 

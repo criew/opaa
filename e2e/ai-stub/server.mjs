@@ -37,6 +37,35 @@ const DIMENSIONS = process.env.EMBEDDING_DIMENSIONS
   ? Number(process.env.EMBEDDING_DIMENSIONS)
   : 1536
 
+// --- Holding embeddings (two-instance target, e2e/multi-instance/) -----------------------------
+//
+// POST /control/embedding-hold {"marker": "...", "hold": true} holds back every embedding request
+// whose input contains the marker until the same call with "hold": false, at most HOLD_LIMIT_MS.
+// A scenario uses it to keep an indexing run or an upload of one instance in flight while it
+// restarts the other one; requests without the marker (a start-up probe, other scenarios) pass.
+const HOLD_LIMIT_MS = 150_000
+let holdMarker = null
+let releaseHeld = []
+
+function holdsInput(inputs) {
+  return (
+    holdMarker !== null &&
+    inputs.some((input) => typeof input === 'string' && input.includes(holdMarker))
+  )
+}
+
+function waitForRelease() {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, HOLD_LIMIT_MS)
+    releaseHeld.push(() => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
+}
+
+let heldCount = 0
+
 const CITATION_PATTERN = /【source:\s*([a-zA-Z0-9-]+)#(\d+)\s*\|\s*(.+?)】/g
 
 // io.opaa.query.AnswerGenerationService's SYSTEM_PROMPT includes one fixed, hardcoded citation as
@@ -150,9 +179,33 @@ const server = createServer(async (req, res) => {
       return
     }
 
+    if (req.method === 'POST' && matchesEndpoint(req.url, '/control/embedding-hold')) {
+      const body = JSON.parse(await readBody(req))
+      if (body.hold === true && typeof body.marker === 'string' && body.marker !== '') {
+        holdMarker = body.marker
+        heldCount = 0
+      } else {
+        holdMarker = null
+        const waiting = releaseHeld
+        releaseHeld = []
+        waiting.forEach((release) => release())
+      }
+      sendJson(res, 200, { marker: holdMarker, held: heldCount })
+      return
+    }
+
+    if (req.method === 'GET' && matchesEndpoint(req.url, '/control/embedding-hold')) {
+      sendJson(res, 200, { marker: holdMarker, held: heldCount, waiting: releaseHeld.length })
+      return
+    }
+
     if (req.method === 'POST' && matchesEndpoint(req.url, '/embeddings')) {
       const body = JSON.parse(await readBody(req))
       const inputs = Array.isArray(body.input) ? body.input : [body.input]
+      if (holdsInput(inputs)) {
+        heldCount += 1
+        await waitForRelease()
+      }
       const data = inputs.map((_, index) => ({
         object: 'embedding',
         index,

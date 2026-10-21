@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
@@ -36,28 +35,21 @@ class PersonalSpaceProvisioner {
   @Order(UserProvisionedEvent.PERSONAL_SPACE_ORDER)
   @EventListener
   void onUserProvisioned(UserProvisionedEvent event) {
-    ensureAfterCommit(event.user().getId(), event.user().getOrganizationId(), event.createdHere());
+    provision(event.user().getId(), event.user().getOrganizationId(), event.createdHere());
   }
 
   /**
-   * {@link SpaceService#ensureDefaultSpace} inserts on its own connection and therefore needs the
-   * {@code users} row committed. The publisher holds no transaction (see {@code
-   * UserService#findOrCreateUser}), so the immediate branch is the production path; the
-   * synchronization branch is the fallback for a publisher that ever does hold one, which must
-   * defer rather than silently skip the provisioning.
+   * A sign-in publishes outside any transaction (see {@code UserService#findOrCreateUser}); {@link
+   * SpaceService#ensureDefaultSpace} then inserts on its own connection. A publisher that holds a
+   * transaction - the administration creating an account - gets the space in that transaction
+   * instead: a failure there fails the creation and leaves nothing half done.
    */
-  private void ensureAfterCommit(UUID userId, UUID organizationId, boolean createdHere) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      ensurePersonalSpace(userId, organizationId, createdHere);
+  private void provision(UUID userId, UUID organizationId, boolean createdHere) {
+    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+      spaceService.ensureDefaultSpaceInCurrentTransaction(userId, organizationId);
       return;
     }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            ensurePersonalSpace(userId, organizationId, createdHere);
-          }
-        });
+    ensurePersonalSpace(userId, organizationId, createdHere);
   }
 
   /**

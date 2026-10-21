@@ -119,10 +119,11 @@ expect_not_rendered() {
     exit 1
   fi
 }
-for expected in "type: Recreate" "terminationGracePeriodSeconds: 75" 'OPAA_SHUTDOWN_TIMEOUT: "60s"'; do
+for expected in "type: Recreate" "terminationGracePeriodSeconds: 75" 'OPAA_SHUTDOWN_TIMEOUT: "60s"' \
+  "seconds: 5"; do
   expect_rendered minimal "$expected"
 done
-for unexpected in "kind: Job" "kind: PodDisruptionBudget" "preStop:" "SPRING_LIQUIBASE_ENABLED" \
+for unexpected in "kind: Job" "kind: PodDisruptionBudget" "seconds: 10" "SPRING_LIQUIBASE_ENABLED" \
   "await-migration" "type: RollingUpdate"; do
   expect_not_rendered minimal "$unexpected"
 done
@@ -130,9 +131,18 @@ for expected in "type: RollingUpdate" "maxUnavailable: 0" "maxSurge: 1" "kind: P
   "kind: Job" "- name: await-migration" 'value: "await-migration"' 'value: "migrate"' \
   "name: SPRING_LIQUIBASE_ENABLED" "seconds: 10" "terminationGracePeriodSeconds: 625" \
   'OPAA_SHUTDOWN_TIMEOUT: "600s"' 'OPAA_DB_POOL_SIZE: "8"' "name: opaa-migration-egress" \
-  "app.kubernetes.io/component: migration" "topologyKey: kubernetes.io/hostname"; do
+  "app.kubernetes.io/component: migration" "topologyKey: kubernetes.io/hostname" \
+  'OPAA_INDEXING_EMBEDDING_CONCURRENCY: "3"' 'OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: "10"' \
+  'OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT: "1"'; do
   expect_rendered multi "$expected"
 done
+# The budget of the installation divided by the pods (ADR-0053, Entscheidung 12): only once.
+expect_refusal "OPAA_UNKNOWN_LIMIT" --set backend.installationBudgets.OPAA_UNKNOWN_LIMIT=4
+expect_refusal "OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS" --set backend.installationBudgets.OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS=0
+expect_refusal "keep one" --set backend.installationBudgets.OPAA_TRANSCRIPTION_MAX_CONCURRENT=4 \
+  --set-string transcription.maxConcurrent=2
+expect_refusal "keep one of the two" --set backend.installationBudgets.OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS=4 \
+  --set 'backend.extraEnv[0].name=OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS' --set 'backend.extraEnv[0].value=9'
 echo "one pod renders Recreate alone, two pods render rolling update, budget, preStop and job"
 # The job's name follows image and configuration: unchanged values keep it, a new image renews it.
 job_name() {
@@ -151,7 +161,7 @@ helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/minimal-values.yaml" --s
   "${shared[@]}" --set backend.updateStrategy=Recreate >"$work_dir/recreate.yaml"
 expect_rendered recreate "type: Recreate"
 expect_rendered recreate "kind: PodDisruptionBudget"
-expect_not_rendered recreate "preStop:"
+expect_not_rendered recreate "seconds: 10"
 echo "two pods with a ReadWriteMany claim and Recreate render as expected"
 
 # On the first start the image's entrypoint runs a temporary server for initdb that answers on the
