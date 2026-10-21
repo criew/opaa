@@ -70,6 +70,7 @@ class PointInTimeAccessIntegrationTest {
   private UUID ordinaryUserId;
   private UUID libraryId;
   private final List<UUID> createdUserIds = new ArrayList<>();
+  private final List<UUID> ownProviderIds = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
@@ -112,6 +113,8 @@ class PointInTimeAccessIntegrationTest {
         "DELETE FROM audit_actor_pseudonyms WHERE organization_id = ?", organizationId);
     userRepository.deleteAllById(createdUserIds);
     providerRepository.deleteById(providerId);
+    ownProviderIds.forEach(providerRepository::deleteById);
+    ownProviderIds.clear();
     organizationRepository.deleteById(organizationId);
     createdUserIds.clear();
   }
@@ -447,8 +450,8 @@ class PointInTimeAccessIntegrationTest {
             tuple(AccessBasis.OWNERSHIP, successorId, SpaceRole.ADMIN, transferredAt, null));
     assertThat(result.sourcesNotCovered())
         .as(
-            "ownership is on record now; the account state only for directory locks; a capability"
-                + " never opens a content")
+            "ownership is on record now; the account state only from its complete history on; a"
+                + " capability never opens a content")
         .containsExactly(AccessAsOfSource.SYSTEM_ROLE, AccessAsOfSource.ACCOUNT_STATE);
   }
 
@@ -598,6 +601,91 @@ class PointInTimeAccessIntegrationTest {
         .filteredOn(entry -> entry.basis() == AccessBasis.DIRECT_GRANT)
         .extracting(AccessAsOfEntry::validFrom, AccessAsOfEntry::validTo)
         .containsExactlyInAnyOrder(tuple(FROM, lockedAt), tuple(unlockedAt, null));
+  }
+
+  /**
+   * A failed-login lockout ends by itself: its interval stays open until the next change of the
+   * account, but cuts the access only up to the end it carries.
+   */
+  @Test
+  void aLoginLockoutCutsTheAccessOnlyUntilItEndsByItself() {
+    Instant lockedAt = FROM.plus(Duration.ofDays(5));
+    Instant lockoutEnds = lockedAt.plus(Duration.ofMinutes(15));
+    userGrantHistory(ordinaryUserId, AssetRole.VIEWER, FROM, null);
+    jdbcTemplate.update(
+        "INSERT INTO account_state_history (id, user_id, organization_id, state, cause,"
+            + " valid_from, valid_to, locked_until, created_at)"
+            + " VALUES (?, ?, ?, 'LOCKED', 'LOGIN_LOCKOUT', ?, NULL, ?, now())",
+        UUID.randomUUID(),
+        ordinaryUserId,
+        organizationId,
+        java.sql.Timestamp.from(lockedAt),
+        java.sql.Timestamp.from(lockoutEnds));
+
+    AccessAsOfResult result = readers(FROM, TO);
+
+    assertThat(result.entries())
+        .filteredOn(entry -> entry.basis() == AccessBasis.DIRECT_GRANT)
+        .extracting(AccessAsOfEntry::validFrom, AccessAsOfEntry::validTo)
+        .containsExactlyInAnyOrder(tuple(FROM, lockedAt), tuple(lockoutEnds, null));
+  }
+
+  /**
+   * Every way an account becomes unusable is on record from the introduction of the complete
+   * account-state history on: a window after it names the system role alone as uncovered, a window
+   * reaching before it still names the account state.
+   */
+  @Test
+  void theAccountStateIsCoveredForAWindowAfterItsHistoryBecameComplete() {
+    Instant now = databaseNow();
+
+    assertThat(readers(now, now.plus(Duration.ofDays(1))).sourcesNotCovered())
+        .containsExactly(AccessAsOfSource.SYSTEM_ROLE);
+    assertThat(readers(FROM, TO).sourcesNotCovered())
+        .as("before the history became complete, a local lock or a provider left no interval")
+        .containsExactly(AccessAsOfSource.SYSTEM_ROLE, AccessAsOfSource.ACCOUNT_STATE);
+  }
+
+  /**
+   * Switching off a sign-in provider - here by a plain write to its row, the way any version of the
+   * application or a hand correction would - ends the access of its accounts in the answer.
+   */
+  @Test
+  void aSwitchedOffProviderEndsTheAccessOfItsAccounts() {
+    String issuer = "https://idp.example/stichtag-it/" + UUID.randomUUID();
+    UUID ownProviderId =
+        providerRepository
+            .save(ProviderFixtures.provider("Anbieter Stichtag", issuer, true, false))
+            .getId();
+    ownProviderIds.add(ownProviderId);
+    User person = new User("stichtag-" + UUID.randomUUID(), issuer, null, "Anbieterkonto");
+    person.setOrganizationId(organizationId);
+    UUID personId = userRepository.save(person).getId();
+    createdUserIds.add(personId);
+    Instant start = databaseNow();
+    userGrantHistory(personId, AssetRole.VIEWER, start, null);
+
+    jdbcTemplate.update("UPDATE oidc_providers SET enabled = false WHERE id = ?", ownProviderId);
+
+    Instant lockedAt =
+        jdbcTemplate
+            .queryForObject(
+                "SELECT valid_from FROM account_state_history WHERE user_id = ?"
+                    + " AND valid_to IS NULL AND state = 'LOCKED' AND cause = 'PROVIDER_DISABLED'",
+                java.sql.Timestamp.class,
+                personId)
+            .toInstant();
+    AccessAsOfResult result = readers(start, start.plus(Duration.ofDays(1)));
+    assertThat(result.entries())
+        .filteredOn(entry -> personId.equals(entry.userId()))
+        .extracting(AccessAsOfEntry::validFrom, AccessAsOfEntry::validTo)
+        .containsExactly(tuple(start, lockedAt));
+  }
+
+  private Instant databaseNow() {
+    return jdbcTemplate
+        .queryForObject("SELECT clock_timestamp()", java.sql.Timestamp.class)
+        .toInstant();
   }
 
   private AccessAsOfResult spaceReaders(UUID spaceId) {
