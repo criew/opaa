@@ -30,7 +30,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <p>One transaction per organization, opened by a {@link TransactionTemplate} rather than by
  * {@code @Transactional}: the loop calls the pass on the same bean, where an annotation would never
  * reach a proxy. An organization whose pass fails is logged and left untouched - the following ones
- * still run. Single process by ADR-0021, so no lock beyond that.
+ * still run. One pass at a time across instances, under the scheduler lock (ADR-0053), so no lock
+ * beyond that.
  */
 @Service
 public class SuccessionDetectionService {

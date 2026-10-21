@@ -80,8 +80,8 @@ public class RerankClient {
 
   /**
    * Which spelling the configured endpoint speaks, learned from the first successful call. One
-   * installation has one rerank role (ADR-0021, single instance), so one remembered value is
-   * enough; a changed endpoint costs one further negotiation, not a wrong request forever.
+   * installation has one rerank role, so one remembered value per instance is enough (ADR-0053); a
+   * changed endpoint costs one further negotiation, not a wrong request forever.
    */
   private final AtomicReference<Dialect> dialect = new AtomicReference<>();
 

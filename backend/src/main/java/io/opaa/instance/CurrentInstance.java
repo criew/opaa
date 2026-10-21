@@ -21,7 +21,7 @@ import org.springframework.scheduling.concurrent.ExecutorConfigurationSupport;
  * <p>Every registration gets a new identity: a stopped instance has signed off and stays dead, so a
  * context started again (a paused test context, for one) joins as a new instance.
  *
- * <p>The heartbeat thread is per instance by design (ADR-0021): every instance reports itself. It
+ * <p>The heartbeat thread is per instance by design (ADR-0053): every instance reports itself. It
  * is not the shared scheduler thread, so a long {@code @Scheduled} tick cannot make a live instance
  * look dead.
  */

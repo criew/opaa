@@ -145,8 +145,9 @@ Der Chart setzt dann:
 - **Verbindungen:** `backend.databasePoolSize` je Pod; `values.yaml` nennt die Grenze für
   `max_connections`.
 
-Rate-Limits, Kontingente und Thread-Pools gelten je Pod. Das Handbuch, Kapitel „Kubernetes“,
-beschreibt Ablauf, Rückweg und Alarme je Pod.
+Rate-Limits, Kontingente und Thread-Pools gelten je Pod. `backend.installationBudgets` nimmt je
+Variable das Budget der ganzen Installation und setzt jedem Pod seinen Teil. Das Handbuch, Kapitel
+„Kubernetes“, beschreibt Ablauf, Rückweg und Alarme je Pod.
 
 ## Netz und Client-Adresse
 

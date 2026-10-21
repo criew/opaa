@@ -896,7 +896,7 @@ ebenso die Verarbeitungseinheit (Neu-Zerlegen dort, `reextractFromFile` hier).
 (die Obermenge der Laufauswahl), davon **wartend auf den nächsten Konnektorlauf** (entfernte
 Dokumente mit geleerten Änderungsmarkern — der Grund, warum „ausstehend" nach einem vollständigen
 Lauf über 0 bleiben kann, ohne dass ein weiterer Aufruf etwas daran ändert),
-zuletzt übersprungen (Zähler des letzten Aufrufs, prozesslebenslang — ADR-0021, Single-Instance),
+zuletzt übersprungen (Zähler des letzten Aufrufs, in der Datenbank für alle Instanzen — ADR-0053),
 `complete` und den **Füllgrad je Kernfeld** (Dokumente mit Wert, absolut und anteilig, deutsches
 Label). Der Füllgrad wird bei jeder Abfrage aus `document_metadata_values` gebildet, nie
 vorberechnet; im Verwaltungskontext ist die Organisation der Rechtekontext (Beschluss 1 des

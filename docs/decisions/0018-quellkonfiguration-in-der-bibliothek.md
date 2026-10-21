@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-12 · ergänzt durch ADR-0023, ADR-0027, ADR-0036 (Entscheidung 6), ADR-0038, ADR-0039, ADR-0041
+Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt durch ADR-0023, ADR-0027, ADR-0036 (Entscheidung 6), ADR-0038, ADR-0039, ADR-0041
 
 ## Kontext
 
@@ -83,11 +83,12 @@ täglich um HH:MM, wöchentlich am Wochentag um HH:MM), intern als Cron-Ausdruck
 `knowledge_libraries.schedule_cron`. `LibraryIndexingScheduler` prüft minütlich die fälligen
 Bibliotheken und löst den gewöhnlichen Anstoß aus; einen Doppelstart verhindert die Datenbanksperre
 `uk_indexing_jobs_library_running`, ein Tick auf eine laufende Bibliothek wird als
-`SCHEDULE_SKIPPED` im Laufprotokoll vermerkt. Das Fälligkeitsfenster reicht vom Ende des vorigen Ticks
-bis jetzt (`lastTickAt`); nach einem Prozessneustart blickt der erste Tick nur ein Intervall zurück,
-verpasste Termine werden ausgelassen, nicht gebündelt nachgeholt. Fehlgeschlagene geplante Läufe
-deaktivieren den Zeitplan nicht; zwei aufeinanderfolgende Fehlschläge zeigt die Detailansicht
-(`lastScheduledRunsFailed`). Vorrangregeln und Leader-Election gibt es nicht (ADR-0021).
+`SCHEDULE_SKIPPED` im Laufprotokoll vermerkt. Jede Fälligkeit bucht ein bedingtes `UPDATE` auf der
+Bibliothek (`schedule_booked_at`, Datenbankuhr); nur der buchende Tick löst aus, gleich welche
+Instanz tickt (ADR-0053 Entscheidung 7). Ein verspäteter Tick holt eine Fälligkeit der letzten
+15 Minuten nach, ältere werden ausgelassen, nicht gebündelt nachgeholt; ein neu gesetzter Zeitplan
+blickt nur ein Intervall zurück. Fehlgeschlagene geplante Läufe deaktivieren den Zeitplan nicht; zwei
+aufeinanderfolgende Fehlschläge zeigt die Detailansicht (`lastScheduledRunsFailed`).
 
 ## Konsequenzen
 

@@ -57,7 +57,7 @@ das Faktenblatt `datenfluesse` (siehe [Nachvollziehbarkeit](nachvollziehbarkeit.
 | Baustein | Aufgabe | Pflicht | Kapitel |
 |---|---|---|---|
 | Frontend | liefert die Oberfläche aus und reicht `/api/` und `/mcp` an das Backend weiter; hält keinen Zustand | ja | [Frontend-Laufzeitimage](#frontend-laufzeitimage) |
-| Backend | die Anwendung: Suche, Antwort, Indexierung, Rechte, Verwaltung | ja, genau eine Instanz | [Backend-Laufzeitimage](#backend-laufzeitimage) |
+| Backend | die Anwendung: Suche, Antwort, Indexierung, Rechte, Verwaltung | ja, eine oder mehrere Instanzen | [Backend-Laufzeitimage](#backend-laufzeitimage) |
 | PostgreSQL mit pgvector | die einzige Wahrheit: Dokumente, Chunks samt Vektoren, Volltext, Metadaten, Rechte, Chats, Protokolle | ja | [Datenbank](datenbank.md) |
 | Originalablage | die Originale hochgeladener Dokumente, in einem Verzeichnis, auf einem Netzlaufwerk oder in einem Objektspeicher | ja, sobald hochgeladen wird | [Originalablage](originalablage.md) |
 | Modelle | Chat, Einbettung und optional Reranking und Transkription über openai-kompatible Endpunkte, im Haus oder außerhalb | Chat und Einbettung | [Modelle](modelle.md) |
@@ -70,16 +70,31 @@ Gesichert werden muss nur, was einen Zustand hält: die Datenbank, die Originala
 Geheimnisse der Konfiguration ([Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)).
 Frontend, Backend und Modelle lassen sich jederzeit neu starten.
 
-## Genau eine Backend-Instanz
+## Eine oder mehrere Backend-Instanzen
 
-Freigegeben ist OPAA mit **genau einem Backend-Prozess**. Mehrere Instanzen gegen dieselbe
-Datenbank sind vorbereitet: Sie stimmen sich über das Instanzregister und die Sperren der geplanten
-Läufe ab (unten), und Compose-Stapel und Helm-Chart bringen je eine Mehrinstanz-Variante mit
-([Docker Compose](docker-compose.md#mehrere-backend-instanzen),
-[Kubernetes](kubernetes.md#mehrere-backend-instanzen)). Der Nachweis mit zwei Instanzen steht aus
-(#2952). Bis dahin ist Skalierung eine Frage der Hardware der einen Instanz, Hochverfügbarkeit des
-Backends gibt es nicht, und eine Aktualisierung ist eine kurze Unterbrechung: Die alte Instanz endet,
-bevor die neue startet.
+OPAA läuft mit **einer oder mehreren gleichrangigen Backend-Instanzen** gegen dieselbe Datenbank.
+Jede Instanz beantwortet jede Anfrage; eine Bindung einer Sitzung an eine Instanz braucht es nicht.
+
+| | Eine Instanz | Mehrere Instanzen |
+|---|---|---|
+| Vorgabe | Compose-Stapel und Helm-Chart | `docker-compose.multi.yml` bzw. `backend.replicas` ab 2 |
+| Schemaänderung | beim Start der Instanz | in einem eigenen Migrationsschritt vor den Instanzen |
+| Aktualisierung | kurze Unterbrechung: die alte Instanz endet, bevor die neue startet | ohne Ausfall: eine Instanz nach der anderen |
+| Ausfall einer Instanz | Dienst steht bis zum Neustart | die übrigen Instanzen antworten weiter |
+| Originalablage | Verzeichnis, Netzlaufwerk oder Objektspeicher | Objektspeicher oder eine Ablage, die jede Instanz beschreiben kann |
+
+Die Instanzen stimmen sich ausschließlich über die Datenbank ab: über das Instanzregister, die
+Sperren der geplanten Läufe, gemeinsame Zähler und Benachrichtigungen bei jeder Änderung (die
+Abschnitte unten). Eine Änderung an Rechten, Anmeldeanbietern oder Sitzungen, die eine Instanz
+annimmt, gilt auf allen anderen mit deren nächster Anfrage. Ein Gespräch ohne gespeicherten Chat
+merkt sich seinen Verlauf nur auf der Instanz, die es führt; beantwortet eine andere Instanz die
+nächste Frage, fehlt ihr der bisherige Verlauf. Gespeicherte Chats lesen ihren Verlauf auf jeder
+Instanz aus der Datenbank.
+
+Die Einrichtung je Betriebsweg steht unter
+[Docker Compose](docker-compose.md#mehrere-backend-instanzen) und
+[Kubernetes](kubernetes.md#mehrere-backend-instanzen). Mehr Instanzen bedeuten mehr
+Datenbankverbindungen ([Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen)).
 
 Das Frontend hält keinen Zustand und darf mehrfach laufen.
 
@@ -107,8 +122,9 @@ Freigabelisten der Zielprüfung, die vertrauten Proxys, `OPAA_PUBLIC_BASE_URL`, 
 und die Zeitzone. Gespeichert wird je Wert nur ein Prüfwert, nie der Wert selbst. Weicht ein Wert von
 dem einer laufenden Instanz ab, **verweigert die neue Instanz den Start** und nennt im Protokoll die
 abweichenden Schlüssel, bei einem Geheimnis nur den Namen. Eine abweichende Version wird nur
-akzeptiert, wenn die neuere Version die ältere ausdrücklich neben sich zulässt; bis zum ersten
-Release mit dieser Zusage läuft nur dieselbe Version nebeneinander.
+akzeptiert, wenn die neuere Version die ältere ausdrücklich neben sich zulässt; welche das ist, sagen
+die Notizen jedes Release. Bis zum ersten Release mit dieser Zusage läuft nur dieselbe Version
+nebeneinander.
 
 Einen Wert des Abdrucks ändert deshalb nur ein Neustart aller Instanzen: erst alle beenden, dann mit
 dem neuen Wert starten. Eine geordnet beendete Instanz meldet sich sofort ab. Wurde sie hart beendet,
@@ -139,7 +155,10 @@ gleichzeitig transkribieren, erhält bei zwei Instanzen jede `OPAA_TRANSCRIPTION
 Das betrifft die Rate-Limits je Client-Adresse, Konto oder E-Mail-Adresse
 (`OPAA_RATE_LIMIT_*_MAX_REQUESTS`, `…_MAX_REQUESTS_PER_ADDRESS`), die gleichzeitigen Einbettungen
 (`OPAA_INDEXING_EMBEDDING_CONCURRENCY`), die Transkriptionen und die Nachextraktionen von Anhängen
-(`OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT`). Das Kontingent je Zugangstoken in der
+(`OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT`). Unter Compose trägt man den geteilten Wert
+selbst in `.env.docker` ein; der Helm-Chart rechnet ihn aus dem Budget der Installation
+(`backend.installationBudgets`, [Kubernetes](kubernetes.md#mehrere-backend-instanzen)). Das
+Kontingent je Zugangstoken in der
 Oberfläche bleibt die Grenze der Installation; jede Instanz gewährt davon ihren Anteil, geteilt durch
 die Zahl der laufenden Instanzen im Register. Läufe, Uploads, Chat-Titel und Gesprächsnotizen
 verteilen sich dagegen bewusst ungeteilt auf alle Instanzen: Dafür gibt es mehrere. Die Modellaufrufe
@@ -389,18 +408,27 @@ stehen in eigenen Gruppen:
 
 Ein Stopp bricht laufende HTTP-Anfragen nicht ab: Das Backend nimmt keine neuen Verbindungen mehr an
 und lässt die angenommenen Anfragen zu Ende laufen, höchstens so lange, wie `OPAA_SHUTDOWN_TIMEOUT`
-erlaubt. Zusammen mit den Proben ist das die Voraussetzung, eine Instanz hinter einem Lastverteiler
-geordnet zu erneuern: aus der Rotation nehmen, auslaufen lassen, stoppen.
+erlaubt. Danach meldet es sich im Instanzregister ab. Zusammen mit den Proben ist das die
+Voraussetzung, eine Instanz hinter einem Lastverteiler geordnet zu erneuern: aus der Rotation nehmen,
+auslaufen lassen, stoppen.
 
 - **Hintergrundläufe teilen dieses Zeitfenster nicht.** Ein laufender Indexierungs- oder
-  Upload-Vorgang wird beim Stopp sofort abgebrochen, beim nächsten Start als abgebrochen erkannt und
-  kann wiederholt werden. Ein großer Lauf kann einen Neustart nicht hinhalten.
+  Upload-Vorgang der stoppenden Instanz wird sofort abgebrochen. Mit einer Instanz erkennt der
+  nächste Start ihn als abgebrochen; mit mehreren gibt ihn eine andere Instanz binnen einer Minute
+  auf, weil sich die stoppende abgemeldet hat. Wiederholen lässt er sich in beiden Fällen. Läufe und
+  Uploads anderer Instanzen berührt der Stopp nicht. Ein großer Lauf kann einen Neustart nicht
+  hinhalten.
+- **Mails gehen nicht verloren.** Was das Backend zu versenden hat, liegt bis zur Zustellung in der
+  Datenbank; eine andere oder die neu gestartete Instanz stellt es zu. Verloren geht nur eine Anfrage
+  „Passwort vergessen“ oder eine Selbstregistrierung, deren Bearbeitung beim Stopp noch wartet; sie
+  ist nach wenigen Millisekunden erledigt, und wer keine Mail bekommt, fragt erneut.
 - **Chat-Titel und Gesprächsnotiz** bekommen ein eigenes, kurzes und fest eingebautes Zeitfenster,
   weil beide nie nachgeholt werden. Ein langsamer Aufruf wird trotzdem abgebrochen. Das Fenster kommt
   zu dem der Anfragen hinzu: `OPAA_SHUTDOWN_TIMEOUT` gilt je Stopp-Phase, nicht für den ganzen Stopp.
 - **Die Stopp-Frist der Plattform** muss länger sein, sonst endet der Prozess abrupt: unter Compose
   `OPAA_STOP_GRACE_PERIOD`, unter Kubernetes `backend.terminationGracePeriodSeconds`, das der Chart
-  größer als das Zeitfenster verlangt.
+  größer als das Zeitfenster verlangt. Ein abrupt beendeter Prozess meldet sich nicht ab; seine Läufe
+  gibt eine andere Instanz erst nach `OPAA_INSTANCE_DEAD_AFTER` auf.
 - **Beim Austausch einzelner Instanzen** übernimmt eine andere Instanz die neuen Anfragen. Damit eine
   lange Chat-Antwort den Austausch übersteht, reicht das Zeitfenster bis zum Lese-Timeout des
   Frontends (`OPAA_BACKEND_READ_TIMEOUT`); der Helm-Chart stellt es bei einem Rolling Update selbst so

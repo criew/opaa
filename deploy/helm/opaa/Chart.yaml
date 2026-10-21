@@ -1,6 +1,6 @@
 apiVersion: v2
 name: opaa
-description: OPAA (Open Project AI Assistant) - Single-Instance-Betrieb unter Kubernetes
+description: OPAA (Open Project AI Assistant) unter Kubernetes, mit einer oder mehreren Backend-Instanzen
 type: application
 # Placeholder between two releases; the release pipeline sets both values when packaging
 # (helm package --version X.Y.Z --app-version X.Y.Z), see ADR-0042, Entscheidung 7.

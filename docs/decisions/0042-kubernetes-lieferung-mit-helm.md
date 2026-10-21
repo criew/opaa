@@ -31,8 +31,8 @@ jüngste Version.
 
 ### 2. Umfang: eine Backend-Instanz als Vorgabe, Aktualisierung mit kurzer Unterbrechung
 
-In der Vorgabe setzt der Chart ADR-0021 um: ein Replikat, Strategie `Recreate`, Liquibase migriert
-beim Start des Backends (kein Hook, kein Job), eine Startup-Probe gibt der Migration Zeit. Ein
+In der Vorgabe läuft der Chart mit einem Replikat: Strategie `Recreate`, Liquibase migriert beim
+Start des Backends (kein Hook, kein Job), eine Startup-Probe gibt der Migration Zeit. Ein
 `helm rollback` über eine Schemaänderung hinweg ist dann kein Rückweg; zurück geht es über die
 Datenbanksicherung. Das Spring-Profil ist fest `oidc`; `dev` wird nicht angeboten (ADR-0005).
 `backend.replicas` größer 1 rendert nur unter den Bedingungen von ADR-0053 Entscheidung 15
@@ -131,7 +131,7 @@ werden weder geprüft noch durch Rücksichten im Template gestützt.
 ## Konsequenzen
 
 **Einfacher:** Installation mit einem Befehl gegen einen geprüften Stand; die Voraussetzungen von
-ADR-0021 und ADR-0053 werden beim Rendern geprüft; versionierte Images nützen auch Compose; GitOps-Werkzeuge nutzen den Chart unverändert
+ADR-0053 werden beim Rendern geprüft; versionierte Images nützen auch Compose; GitOps-Werkzeuge nutzen den Chart unverändert
 (keine Zufallswerte, nur `helm test` als Hook).
 
 **Schwieriger:** Der Chart muss mit jeder betriebsrelevanten Änderung mitgepflegt werden. Eine

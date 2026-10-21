@@ -28,7 +28,7 @@ Client-ID, entschlüsseltes Secret bzw. Schlüssel, Mandant, Scopes, deklarierte
 Konto, Ressourcen-Indikator), und nur `connection.oauth` darf den Wert halten (ArchUnit
 `theProfileRegistrationLeavesOnlyToTheSignIn`). `ProfileSignIn` holt Client-Credentials über
 `OAuthClient` (`ClientCredentialsGrant`), den Dienstkonto-Schlüssel signiert `ServiceAccountTokens`
-im Kern (ADR-0040, Entscheidung 2); das Token bleibt im Prozess bis kurz vor Ablauf (ADR-0021).
+im Kern (ADR-0040, Entscheidung 2); das Token bleibt im Prozess jeder Instanz bis kurz vor Ablauf (ADR-0053 Entscheidung 16).
 Weist der Token-Endpunkt die Registrierung ab (`invalid_client`, beim Schlüssel auch
 `invalid_grant`), setzt `ProfileRegistrations` `sign_in_rejected_at` in eigener Transaktion; alle
 Bibliotheken des Zugangs tragen `EXPIRED`, bis ein neues Secret, eine neue Registrierung oder

@@ -515,14 +515,17 @@ flowchart LR
 - Für einen Anhang, der nur in der Quelle erreichbar ist, wird die ganze Kette seiner
   Elterndokumente vorgemerkt.
 
-### 7.3 Genau eine Backend-Instanz
+### 7.3 Mehrere Backend-Instanzen
 
-Die Aufnahmestrecke setzt eine **einzelne Backend-Instanz** voraus: Zeitplan, Wiederanlauf,
-Thread-Pools und Fortschrittsmeldung leben im Prozess. Läufe und Uploads gehören der Instanz, die sie
-angenommen hat, und werden erst aufgegeben, wenn diese beendet ist („Wiederanlauf nach Störungen").
-Skalieren heißt, dieser einen Instanz mehr Hardware zu geben. Die Aufnahmestrecke braucht keine
-eigene Worker-Komponente; alles, was sie erzeugt — Dokumente, Chunks samt Vektoren, Volltext,
-Protokolle —, liegt in PostgreSQL, und eine Sicherung der Datenbank ist eine Sicherung des Index.
+Die Aufnahmestrecke läuft auf jeder Backend-Instanz. Ein Lauf oder Upload gehört der Instanz, die
+ihn angenommen hat, und wird erst aufgegeben, wenn diese beendet ist („Wiederanlauf nach
+Störungen"); der Neustart einer anderen Instanz berührt ihn nicht. Einen Termin des Zeitplans löst
+genau eine Instanz aus. Die Thread-Pools gelten je Instanz: Mehr Instanzen nehmen mehr Läufe und
+Uploads gleichzeitig an, die Pools der Einbettung teilen ihr Budget durch die Zahl der Instanzen
+([Grenzen und Anzeigen mit mehreren Instanzen](betrieb.md#grenzen-und-anzeigen-mit-mehreren-instanzen)).
+Die Aufnahmestrecke braucht keine eigene Worker-Komponente; alles, was sie erzeugt — Dokumente,
+Chunks samt Vektoren, Volltext, Protokolle —, liegt in PostgreSQL, und eine Sicherung der Datenbank
+ist eine Sicherung des Index.
 
 ### 7.4 Nebenläufigkeit
 

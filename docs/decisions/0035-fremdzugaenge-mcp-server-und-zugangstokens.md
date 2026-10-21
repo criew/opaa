@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0005, ADR-0021, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
+Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
 
 ## Kontext
 
@@ -106,10 +106,11 @@ Tests, die jeden Faktor einzeln entziehen. Seit ADR-0039 lautet die Gleichheitsz
 laufen über denselben Suchweg mit derselben Rechteprüfung; was sie durchsuchen, bestimmt im Chat die
 Zuordnung des Space, im Fremdzugang die Auswahl des Tokens** — der Fremdzugang bleibt bewusst ohne
 Space. Der Kanal erbt die Last des vollen Suchwegs je Aufruf, daher das Kontingent je Token
-(`ExternalAccessQuota`, gleitendes Stundenfenster im Arbeitsspeicher) und der Abflussalarm
-(`ExternalAccessMassRetrievalAlarm`, Zählfenster im Arbeitsspeicher, Meldung mit Token-Kennung und
-Fenster, aber ohne Messwerte, nach `ExternalAccessAlertRetention` gelöscht) — zwei Einträge in der
-Liste aus ADR-0021. `spring.ai.mcp.server.request-timeout` wirkt nur sitzungsbehaftet; ein Deckel
+(`ExternalAccessQuota`, gleitendes Stundenfenster im Arbeitsspeicher jeder Instanz, die den Wert
+der Einstellung durch die lebenden Instanzen teilt) und der Abflussalarm
+(`ExternalAccessMassRetrievalAlarm`, ein Zähler des ganzen Kanals in der Datenbank, Meldung mit
+Token-Kennung und Fenster, aber ohne Messwerte, nach `ExternalAccessAlertRetention` gelöscht); beide
+nach ADR-0053 Entscheidung 12. `spring.ai.mcp.server.request-timeout` wirkt nur sitzungsbehaftet; ein Deckel
 gehört auf die HTTP-Ebene oder in den Domain-Dienst.
 
 ### 6. Der Fassungswechsel der MCP-Spezifikation ist geplant, nicht abgewartet

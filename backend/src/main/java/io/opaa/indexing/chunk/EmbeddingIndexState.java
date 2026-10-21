@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 
 /**
- * Whether the vector index matches the configured embedding model, held in the process (ADR-0021).
+ * Whether the vector index matches the configured embedding model, held in the process (ADR-0053).
  * While it does not ({@link #isStale()}), the vector search is suspended and every chunk write puts
  * its vector into {@link #TARGET_COLUMN} instead of {@link #EMBEDDING_COLUMN}.
  *

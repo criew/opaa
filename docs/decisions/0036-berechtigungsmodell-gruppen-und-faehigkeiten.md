@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-11 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
+Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) und
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) · ersetzt Entscheidung 6 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) · präzisiert ADR-0016 (Entscheidung 8),
@@ -172,8 +172,9 @@ Bewusst keine Fähigkeit: Reichweitenentscheidungen am Objekt („organisationsw
   Systemrolle — ein „Bibliotheksverwalter" ist eine Gruppe mit Fähigkeiten.
 - **Durchsetzung:** im Service (`SpaceService#createSpace`, `KnowledgeLibraryService#createLibrary`,
   `GroupService#createGroup`), `403` mit Grund, in der Spezifikation als eigene Entscheidung der Operation
-  deklariert. Entzug wirkt ohne Neuanmeldung — die Zusage trägt nur unter
-  [ADR-0021](0021-single-instance-betrieb.md). `GET /api/v1/me/capabilities` (`MyCapabilitiesResponse`)
+  deklariert. Entzug wirkt ohne Neuanmeldung, auf jeder Instanz: Die Fähigkeit wird je
+  Aufruf gelesen, die Gruppenmitgliedschaft dahinter hängt am Invalidierungsbus
+  ([ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) Entscheidung 5). `GET /api/v1/me/capabilities` (`MyCapabilitiesResponse`)
   liefert die eigenen Fähigkeiten, damit die Oberfläche erklärt statt versteckt; die
   Verwaltungsübersicht zeigt je Fähigkeit
   den Stand als Klartextzeile. Vergabe und Entzug sind Governance-Ereignisse
@@ -446,7 +447,8 @@ zwischen „Freigabe zurücknehmen" (Rechte bleiben wirksam) und „übertragen 
 5. **Wer:** Verantwortliche und Systemverwaltung (`PUT /api/v1/groups/{id}/deactivation`); sonst
    `404`. Anbietergruppen sind nicht deaktivierbar (`400`).
 6. **Sofortige Wirkung:** Cache-Invalidierung nach Commit für alle Mitglieder und Benachrichtigung jedes
-   `GroupMembershipChangeListener`; trägt wie Entscheidung 5 nur unter ADR-0021.
+   `GroupMembershipChangeListener`; der Trigger auf `groups` leert die Rechte-Caches jeder Instanz mit
+   dem Commit (ADR-0053 Entscheidung 5).
 7. **Keine Frist, keine Wiedervorlage.**
 8. **Audit:** `GROUP_DEACTIVATED`/`GROUP_REACTIVATED` mit bezifferten Folgen, nie mit Namen.
 9. **Rechtehistorie:** Das Deaktivieren schließt jedes offene Mitgliedschaftsintervall in
@@ -521,7 +523,8 @@ Nachfolge- und Übertragungsvorgänge sind Verwaltungsobjekte, die erklärt werd
 
 **Restrisiken:** Der Vorgabeweg Token hat keine Schutzmechanik; das Produkt macht die Folge sichtbar,
 beseitigt sie nicht. Die Mindestgruppengröße in der Subjekt-Auswahl ist kein Schutz mehr (Entscheidung
-9). Die Zusagen „Entzug wirkt sofort" tragen nur unter ADR-0021.
+9). Die Zusagen „Entzug wirkt sofort" erreichen eine Vorgängerversion im Rolling-Update-Fenster
+erst nach der Lebensdauer ihrer Caches (ADR-0053 Entscheidung 5).
 
 ## Verworfene Alternativen
 

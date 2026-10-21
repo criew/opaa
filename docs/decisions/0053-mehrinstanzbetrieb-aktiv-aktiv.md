@@ -2,8 +2,8 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · löst [ADR-0021](0021-single-instance-betrieb.md) mit dem
-Abschluss von #1292 ab · ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
+Akzeptiert · zuletzt geändert 2026-10-20 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
 
 ## Kontext
 
@@ -35,10 +35,13 @@ Instanzgrenzen.
 ### 1. Zielbild Aktiv/Aktiv, geliefert in Stufen
 
 Mehrere gleichrangige Backend-Instanzen bedienen gleichzeitig Anfragen und Hintergrundarbeit, ohne
-Sitzungsaffinität (ADR-0021 Entscheidung 4). Die erste nutzbare Stufe heißt „zwei Instanzen, Update
-ohne Ausfall“; ihre Grenze steht unter Konsequenzen. Eine zweite Stufe macht Budgets und Anzeigen
-installationsweit (Entscheidung 12). Die Instanzzahl ist eine feste Größe der Bereitstellung, ein
-automatisches Skalieren des Backends ist nicht vorgesehen.
+Sitzungsaffinität: Alle Sicherheitskonfigurationen sind zustandslos (`STATELESS`), der CSRF-Schutz
+der lokalen Anmeldung liegt in einem Cookie, und es gibt keinen SSE-, Streaming- oder
+WebSocket-Endpunkt; jede Instanz beantwortet jede Anfrage. Die erste nutzbare Stufe heißt „zwei
+Instanzen, Update ohne Ausfall“; ihre Grenze steht unter Konsequenzen. Eine zweite Stufe macht
+Budgets und Anzeigen installationsweit (Entscheidung 12). Die Instanzzahl ist eine feste Größe der
+Bereitstellung, ein automatisches Skalieren des Backends ist nicht vorgesehen. Eine einzelne Instanz
+bleibt die Vorgabe beider Betriebswege.
 
 Aktiv/Passiv spart wenig. Ein Rolling Update lässt auch dort zwei Versionen gegen dieselbe Datenbank
 laufen und braucht Expand/Contract (13), den Migrationsschritt (14) und den Laufbesitz (8) ebenso.
@@ -49,9 +52,12 @@ dieselben Caches, Läufe und Uhren richtig behandeln, nur seltener und damit sch
 
 Sperren, Signale, Zähler, Warteschlangen und die gemeinsame Zeitquelle liegen in der
 Anwendungsdatenbank: Advisory-Locks, bedingte `UPDATE`s, `SELECT … FOR UPDATE SKIP LOCKED`,
-Unique-Indizes und `LISTEN`/`NOTIFY`. Keine neue Infrastruktur wie Redis, ein Message-Broker oder
-Kubernetes-Leases. Eine solche Komponente braucht den Nachweis, dass Postgres für eine benannte Last
-nicht reicht, und eine eigene Entscheidung.
+Unique-Indizes und `LISTEN`/`NOTIFY`. Vorbild sind die Stellen, die zwei Läufe schon immer über die
+Datenbank gegeneinander sperren: `DirectorySyncRunLock`, `UserRepository#lockRoleChanges`,
+`uk_indexing_jobs_library_running`, `uk_chat_messages_chat_sequence`, `SELECT … FOR UPDATE` in
+Aufbewahrungs- und Löschläufen und Seed-Marker. Keine neue Infrastruktur wie Redis, ein
+Message-Broker oder Kubernetes-Leases. Eine solche Komponente braucht den Nachweis, dass Postgres
+für eine benannte Last nicht reicht, und eine eigene Entscheidung.
 
 Postgres ist in jeder Installation vorhanden, gesichert und überwacht. Jede weitere Komponente wäre
 für den Betrieb einer Behörde eine weitere Pflicht und nähme dem Compose-Weg seine Einfachheit. Die
@@ -298,9 +304,10 @@ gleitende Fenster schätzt jede Instanz gleich, indem sie das vorige Fenster mit
 gleitenden gewichtet. Der Upsert prüft die Grenze in derselben Anweisung, unter der Sperre der
 Zeile. Ist der Zähler nicht erreichbar, lässt der Deckel die Anfrage durch und schreibt eine Warnung.
 
-„Durch N geteilt“ heißt: Handbuch, Compose und Helm nennen die Formel, der Wert je Instanz ist das
-Budget der Installation durch die Zahl der Instanzen. Das Kontingent je Token ist eine Einstellung
-der Oberfläche ohne Wert je Instanz; deshalb teilt die Instanz selbst.
+„Durch N geteilt“ heißt: Der Wert je Instanz ist das Budget der Installation durch die Zahl der
+Instanzen. Handbuch und Compose nennen die Formel, der Helm-Chart rechnet sie aus einem Budget der
+Installation je Variable (`backend.installationBudgets`). Das Kontingent je Token ist eine
+Einstellung der Oberfläche ohne Wert je Instanz; deshalb teilt die Instanz selbst.
 
 Der Zustand der Modellrollen Rerank und Transkription liegt in der Datenbank
 (`model_role_observations`): Die Instanz mit der Sondierungssperre (7) und jede, die den Endpunkt
@@ -376,7 +383,7 @@ Datenbanksicherung.
   ihn neu; er hat eine eigene NetworkPolicy, die Erprobungsdatenbank lässt ihn ein.
 - Strategie `RollingUpdate` (`maxUnavailable: 0`, `maxSurge: 1`) ab zwei Replikaten, `Recreate`
   bleibt wählbar und ist die Vorgabe für eins. PodDisruptionBudget (`maxUnavailable: 1`) ab zwei
-  Replikaten, `lifecycle.preStop.sleep` (das Image hat keine Shell), `OPAA_SHUTDOWN_TIMEOUT`
+  Replikaten, `lifecycle.preStop.sleep` (das Image hat keine Shell; das Frontend bekommt dieselbe Pause), `OPAA_SHUTDOWN_TIMEOUT`
   mindestens Read-Timeout des Frontends, `terminationGracePeriodSeconds` darüber plus `preStop`.
 - Hikari-Poolgröße als Wert mit der Grenze `(replicas + maxSurge) × (Pool + 1) + Migration ≤
   max_connections`; die 1 ist die Hörverbindung des Busses (Entscheidung 5), die Migration braucht
@@ -390,7 +397,11 @@ Datenbanksicherung.
   je mit eigenem `/tmp`, ohne Host-Portbindung. Jedes Backend hat einen Healthcheck auf die
   Readiness ohne Shell (eine Java-Klasse neben dem Jar), das Frontend wartet auf „healthy“.
   Originalablage `s3` oder ein gemeinsames Bind-Mount auf demselben Host.
-- Update: Migrationsdienst, dann `backend-a` ersetzen und auf „healthy“ warten, dann `backend-b`.
+- Update: Migrationsdienst, dann `backend-a` ersetzen und auf „healthy“ warten, nach einer Pause von
+  15 s `backend-b`, zuletzt das Frontend. nginx lässt eine Instanz, die beim Start Verbindungen
+  ablehnt, in der Verteilung (`max_fails=0`); die Pause gilt für ein Frontend der Vorgängerversion
+  ohne diese Einstellung. Dessen Austausch ist der einzige Moment ohne Ziel: Für einige Sekunden lehnt
+  der Host-Port Verbindungen ab, beantwortet aber keine Anfrage mit einem Fehler.
 - nginx löst den Backend-Namen zur Laufzeit auf (`upstream` mit `resolve` und dem DNS-Server von
   Docker): Jede Adresse des Alias ist ein Ziel, ein neuer Container ist ohne nginx-Neustart
   erreichbar, und die URI-Ersetzung von `/api/` bleibt erhalten. `docker compose --scale` ist nicht
@@ -398,8 +409,22 @@ Datenbanksicherung.
 - Die feste Frontend-Adresse in der Proxy-Vertrauensliste trägt nur einen Frontend-Container; jeder
   weitere braucht eine eigene feste Adresse und einen eigenen Eintrag.
 
-Der Einzelinstanzbetrieb bleibt auf beiden Wegen unverändert. Umsetzung: #2951, Nachweis mit zwei
-Instanzen und Handbuch: #2952.
+Der Einzelinstanzbetrieb bleibt auf beiden Wegen unverändert. Umsetzung: #2951. Den Betrieb mit zwei
+Instanzen belegen die Szenarien unter `e2e/multi-instance/` auf beiden Wegen, einschließlich des
+Rolling Updates von der Vorgängerversion unter Last (#2952).
+
+### 16. Register des prozesslokalen Zustands
+
+Jede Stelle, die Zustand im Prozess hält (Cache, `@Scheduled`, Executor, Semaphore, Zähler,
+Startaktion), steht im Register
+[backend/docs/prozesslokaler-zustand.md](../../backend/docs/prozesslokaler-zustand.md) mit ihrer
+Einordnung: am Invalidierungsbus (5), unter einer Sperre oder einem Merker (7), in der Datenbank,
+gewollt je Instanz mit der Formel aus 12, oder hingenommen mit der Folge, die das Handbuch nennt. Wer
+eine neue Stelle einführt, trägt sie dort ein und nennt „(ADR-0053)“ in der Javadoc.
+
+Das Register war die Startliste dieses Umbaus und bleibt der Ort, an dem eine neue Stelle sichtbar
+wird, bevor sie zwischen zwei Instanzen auseinanderläuft; die Strukturtests aus 4, 5 und 7 fangen nur,
+was sie kennen.
 
 ## Konsequenzen
 
@@ -422,12 +447,8 @@ eine Zählung; eine ungleiche Verteilung der Anfragen lässt sie früher greifen
 2 bis 9, 13 bis 15, aus Entscheidung 10 das Gesprächsfenster und Entscheidung 11 (#2944 bis #2948,
 #2951, #2952 und die genannten Teile von #2949). Ohne das Gesprächsfenster verlöre bei abwechselnder
 Verteilung jeder gespeicherte Chat jede zweite Runde aus dem Kontext. Die zweite Stufe bringt den Rest
-von Entscheidung 10 und Entscheidung 12 (#2949, #2950). Bis sie geliefert ist, scheitert eine
-Rechteübertragung über zwei Instanzen geschlossen mit 409, das persönliche Kontingent kann um einen
-Aufnahmeschritt je Instanz überschritten werden, und ein Rolling Update kostet offene Push-Stapel
-Aktualität bis zum nächsten Abgleich. Bis die erste Stufe mit dem Nachweis zweier Instanzen (#2952)
-vollständig geliefert ist, gilt ADR-0021 weiter; Chart und Compose bieten mehrere Instanzen nur unter
-den Voraussetzungen von Entscheidung 15 an.
+von Entscheidung 10 und Entscheidung 12 (#2949, #2950). Chart und Compose bieten mehrere Instanzen nur
+unter den Voraussetzungen von Entscheidung 15 an.
 
 ## Verworfene Alternativen
 

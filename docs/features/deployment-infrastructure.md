@@ -84,12 +84,12 @@ woanders steht.
 
 Das Projekt liefert dafür einen Helm-Chart; jedes Release veröffentlicht ihn neben den Images in
 GHCR ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md), Epic #2346); den
-Betrieb damit beschreibt [kubernetes.md](../handbuch/kubernetes.md). Er
-bildet zunächst die Single-Instance-Stufe nach
-[ADR-0021](../decisions/0021-single-instance-betrieb.md) ab: eine Backend-Instanz, Aktualisierung mit
-kurzer Unterbrechung, Datenbank extern, Anmeldung über einen externen Identitätsanbieter oder die
-lokale Benutzerverwaltung.
-Mehrere Instanzen und rollierende Aktualisierung kommen erst mit dem Multiinstanzbetrieb.
+Betrieb damit beschreibt [kubernetes.md](../handbuch/kubernetes.md). In der Vorgabe läuft eine
+Backend-Instanz mit Aktualisierung in kurzer Unterbrechung, Datenbank extern, Anmeldung über einen
+externen Identitätsanbieter oder die lokale Benutzerverwaltung. Mehrere Instanzen mit rollierender
+Aktualisierung ohne Ausfall bringt der Multiinstanzbetrieb
+([ADR-0053](../decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md)), unter Kubernetes über
+`backend.replicas` und unter Compose über `docker-compose.multi.yml`.
 
 ### Bare-Metal
 

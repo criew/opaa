@@ -6,7 +6,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
- * The threads of {@link GrantRevocations} (ADR-0021: one pool per process; the instances share the
+ * The threads of {@link GrantRevocations} (ADR-0053: one pool per process; the instances share the
  * queue in the database): a revocation is a call to a provider and does not belong on the
  * application's single shared scheduler thread. On shutdown a revocation in flight gets {@link
  * #SHUTDOWN_GRACE_SECONDS} to finish; one cut off stays in the queue for any instance.

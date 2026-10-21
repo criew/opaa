@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-17
+stand: 2026-10-20
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -66,7 +66,7 @@ diese Zielobjekte:
 
 | Zielobjekt | Art | Schutzbedarf bestimmt durch | Hinweis |
 |---|---|---|---|
-| Anwendung OPAA (Backend und Frontend) | Anwendung | die Dokumente der angebundenen Bibliotheken und die Chats | genau eine Backend-Instanz, keine Hochverfügbarkeit ([Betriebsübersicht](../../handbuch/betrieb.md#genau-eine-backend-instanz)) |
+| Anwendung OPAA (Backend und Frontend) | Anwendung | die Dokumente der angebundenen Bibliotheken und die Chats | eine oder mehrere Backend-Instanzen; Hochverfügbarkeit des Backends nur mit mehreren, die Datenbank bleibt der gemeinsame Baustein ([Betriebsübersicht](../../handbuch/betrieb.md#eine-oder-mehrere-backend-instanzen)) |
 | Datenbank (PostgreSQL mit pgvector) | Anwendung, Datenhaltung | wie die Anwendung; enthält auch den Vektorindex, die Volltextsuche und das Nachweisprotokoll | die einzige Wahrheit der Installation |
 | Originalablage | Datenhaltung | die hochgeladenen Originale | Verzeichnis, Netzlaufwerk oder Objektspeicher ([Originalablage](../../handbuch/originalablage.md)) |
 | Modelldienste (Chat, Einbettung, optional Reranking und Transkription) | Anwendung oder Dienst eines Dritten | alles, was an das Modell geht: Fragen, Textausschnitte der Dokumente | im Haus betrieben oder extern; der Weg steht in {{faktenblatt:datenfluesse}} |

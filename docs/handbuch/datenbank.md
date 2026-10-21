@@ -152,6 +152,10 @@ PostgreSQL muss also für
 Verbindungen Platz haben, zusätzlich zu allem anderen auf demselben Server. Die 1 neben den
 Instanzen ist die, die ein Rolling Update startet, bevor es eine alte beendet.
 
+Mehr öffnet eine Instanz auch unter Last nicht: Sind alle Verbindungen ihres Pools belegt, warten
+weitere Anfragen auf eine freie, höchstens 30 Sekunden, und enden danach mit einem Fehler. Wie viele
+Verbindungen eine Instanz wirklich hält, zeigt `pg_stat_activity`, gruppiert nach `client_addr`.
+
 ## Volltextsuche (lexikalischer Suchpfad)
 
 Neben der Vektorsuche läuft eine klassische Volltextsuche direkt in PostgreSQL, mit der

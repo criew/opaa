@@ -14,7 +14,7 @@ import java.util.Deque;
  * and their next request counts as the first of a fresh window - which is why the cap is far above
  * any legitimate client count and why the login endpoint carries a global ceiling as well.
  *
- * <p>The window lives in this process (ADR-0021): with N instances each holds its own, so a budget
+ * <p>The window lives in this process (ADR-0053): with N instances each holds its own, so a budget
  * per key is configured as the installation's budget divided by N (ADR-0053, Entscheidung 12).
  */
 public class RateLimitService implements RequestLimiter {

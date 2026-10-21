@@ -38,7 +38,7 @@ import org.springframework.jdbc.core.JdbcOperations;
  * past themselves. The listening connection needs a direct connection or session pooling; a
  * transaction-pooling proxy does not carry {@code LISTEN}.
  *
- * <p>Per instance by design (ADR-0021): every instance hears the bus itself.
+ * <p>Per instance by design (ADR-0053): every instance hears the bus itself.
  */
 public class PostgresInvalidationBus implements InvalidationBus, SmartLifecycle {
 

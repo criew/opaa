@@ -430,7 +430,7 @@ public class QueryService {
    * {@link AnswerGenerationService#generateAnswer} see the history without either reading the
    * database directly. {@code chat_messages} is the only source: a turn another backend instance
    * answered is in the window even when this process still holds an older one. An ephemeral
-   * conversation has nothing persisted and keeps its process-local window (ADR-0021).
+   * conversation has nothing persisted and keeps its process-local window (ADR-0053).
    *
    * <p>This is the <b>second entrance into the conversation window</b>; it normalizes through the
    * same {@link ConversationWindowMessages} the first one uses, which is what makes the same chat

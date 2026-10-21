@@ -269,10 +269,9 @@ SMTP-Zugang" einzutragen: Server `mailpit`, Port `1025`, Verschlüsselung `NONE`
 
 ## Mehrere Backend-Instanzen
 
-> **Vorbereitet, noch nicht freigegeben.** Der Nachweis mit zwei Instanzen steht aus (#2952); bis
-> dahin gilt [Genau eine Backend-Instanz](betrieb.md#genau-eine-backend-instanz).
-
-`docker-compose.multi.yml` ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner. Jeder
+`docker-compose.multi.yml` ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner: Fällt
+eine aus, antwortet die andere, und ein Update geht ohne Ausfall der Instanzen
+([Eine oder mehrere Backend-Instanzen](betrieb.md#eine-oder-mehrere-backend-instanzen)). Jeder
 Befehl für diesen Stapel nennt beide Dateien:
 
 ```bash
@@ -293,7 +292,8 @@ skalierten Container teilten sich ein `/tmp`.
   [Konfigurationsabdruck](betrieb.md#instanzregister).
 - **Grenzen je Instanz:** Die Gesamtgrenzen der Rate-Limits (`…_GLOBAL_MAX_REQUESTS`) zählen beide
   Instanzen gemeinsam. Die übrigen Rate-Limits und die Thread-Pools gelten je Instanz; ein Wert, der
-  für die ganze Installation gemeint ist, wird durch die Zahl der Instanzen geteilt (siehe
+  für die ganze Installation gemeint ist, steht in `.env.docker` durch die Zahl der Instanzen geteilt,
+  etwa `OPAA_INDEXING_EMBEDDING_CONCURRENCY=3` für zusammen sechs gleichzeitige Einbettungen (siehe
   [„Grenzen und Anzeigen mit mehreren Instanzen“](betrieb.md#grenzen-und-anzeigen-mit-mehreren-instanzen)).
 - **Datenbankverbindungen:** Die Grenze nennt
   [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
@@ -314,6 +314,7 @@ F="-f docker-compose.yml -f docker-compose.multi.yml"
 docker compose $F pull                              # oder build
 docker compose $F run --rm backend-migrate          # Migration der neuen Version
 docker compose $F up -d --no-deps --wait backend-a  # wartet, bis backend-a healthy ist
+sleep 15
 docker compose $F up -d --no-deps --wait backend-b
 docker compose $F up -d --no-deps --wait frontend
 ```
@@ -323,9 +324,16 @@ docker compose $F up -d --no-deps --wait frontend
    unverändert.
 2. **Dann `backend-a`.** Während Compose den Container ersetzt, beantwortet `backend-b` alle Anfragen;
    laufende Anfragen von `backend-a` enden geordnet ([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
-3. **Dann `backend-b`**, erst wenn `backend-a` wieder `healthy` ist; `--wait` wartet darauf.
-4. **Das Frontend zuletzt.** Es ist ein einzelner Container, sein Austausch ist ein Aussetzer von
-   wenigen Sekunden.
+3. **Dann `backend-b`**, erst wenn `backend-a` wieder `healthy` ist und eine kurze Pause vergangen
+   ist; `--wait` wartet auf das eine, `sleep 15` sorgt für das andere. Der Frontend-nginx nimmt eine
+   Instanz, die beim Start kurz keine Verbindung annahm, erst danach sicher wieder in die Verteilung;
+   ohne die Pause können für einige Sekunden Anfragen mit `502` scheitern.
+4. **Das Frontend zuletzt.** Es ist ein einzelner Container. Während Compose ihn ersetzt, lehnt der
+   Port etwa eine Sekunde lang Verbindungen ab; keine Anfrage wird mit einem Fehler beantwortet, und
+   die Oberfläche lädt danach weiter.
+
+Während des Updates laufen kurz alte und neue Version nebeneinander gegen dieselbe Datenbank. Mails,
+Läufe und Uploads gehen dabei nicht verloren ([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
 
 Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, oder ändert sich ein Wert
 des Konfigurationsabdrucks, werden zuerst beide Instanzen angehalten

@@ -27,7 +27,7 @@ import org.springframework.stereotype.Component;
  * <p>Three things this deliberately is not. It is <b>not a protection against mass retrieval</b> -
  * a conservative 60 requests an hour still amount to six figures over a token's maximum lifetime;
  * it is a load brake, and the specification says so rather than claiming more. It is <b>no usage
- * statistic</b>: the window lives in memory only (ADR-0021), is never persisted, never evaluated
+ * statistic</b>: the window lives in memory only (ADR-0053), is never persisted, never evaluated
  * per person and never displayed. And a refusal writes <b>no entry anywhere</b> - on a token it
  * would be a behavioural datum about a person.
  *

@@ -73,7 +73,7 @@ public class MetadataBackfillService {
   /**
    * The library of the call in flight. The batch loop hands {@link #advance} only a document id,
    * and re-reading the library per document would be one query per document for a value that is
-   * constant for the whole call; single-instance, single-threaded per call (ADR-0021).
+   * constant for the whole call; a call runs on one thread of one instance (ADR-0053).
    */
   private final ThreadLocal<KnowledgeLibrary> currentLibrary = new ThreadLocal<>();
 

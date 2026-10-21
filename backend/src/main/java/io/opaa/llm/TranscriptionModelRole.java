@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
  *
  * <p>The last known state is the installation's ({@link ModelRoleObservations}, ADR-0053,
  * Entscheidung 12): the instance holding the probe lock probes, every instance shows the microphone
- * on that state. The slots are this process's (ADR-0021): with N instances the installation holds N
+ * on that state. The slots are this process's (ADR-0053): with N instances the installation holds N
  * times {@link TranscriptionProperties#maxConcurrent()}, so it is configured as the installation's
  * budget divided by N.
  */

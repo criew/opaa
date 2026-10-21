@@ -195,8 +195,8 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 ablöst.
   `GET /api/v1/me/capabilities` liefert der Oberfläche die eigenen Fähigkeiten, damit sie das schon vor
   dem Versuch sagen kann.
 - **Der Entzug wirkt ohne Neuanmeldung.** Die Fähigkeit wird je Anfrage aus der Datenbank ausgewertet.
-  Diese Zusage trägt, weil [ADR-0021](../decisions/0021-single-instance-betrieb.md) einen einzigen
-  Prozess voraussetzt; fällt diese Annahme, fällt die Zusage mit.
+  Die Zusage gilt auf jeder Instanz: Die Gruppenmitgliedschaft dahinter hängt am Invalidierungsbus
+  ([ADR-0053](../decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 5).
 - **Vergabe und Entzug sind Governance-Ereignisse** (`CAPABILITY_GRANTED`/`CAPABILITY_REVOKED`) und
   bekommen zusätzlich ein Intervall in `capability_grant_history` — die Stichtagsauskunft „wer durfte
   am 3. März Konnektorbibliotheken anlegen" ist damit innerhalb der Aufbewahrungshöchstdauer

@@ -814,8 +814,8 @@ Wissensbibliothek für externe KI-Werkzeuge ist gebaut und liegt in `asset_visib
 (`ASSET_EXTERNAL_ACCESS_CHANGED`, `ASSET_EXTERNAL_ACCESS_EXPIRED`) und öffnen je ein neues Intervall;
 der Ablauflauf schreibt ohne handelnde Person, unter einem Systemakteur. Die
 Befristung **wirkt im Augenblick ihres Ablaufs**, nicht erst mit dem nächtlichen Lauf: Der Lauf
-trägt Protokoll und Historie nach, er ist nicht die Bedingung der Wirkung — bei einer Instanz
-(ADR-0021) wäre er das sonst tagelang. Der Stichtag „war diese
+trägt Protokoll und Historie nach, er ist nicht die Bedingung der Wirkung — fiele die
+Installation aus, wäre er das sonst tagelang. Der Stichtag „war diese
 Bibliothek freigegeben?" wird aus der Historie allein beantwortet
 (`AssetVisibilityHistoryService#externalAccessActiveAsOf`), also auch nach der monatsweisen Löschung des
 Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`), wird aber weiterhin
