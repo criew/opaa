@@ -102,8 +102,8 @@ Das Frontend reicht eine Anfrage an eine Instanz weiter. Nimmt diese keine Verbi
 sie gerade gestoppt wird, versucht es die Anfrage erneut, bei einer anderen Instanz. Was danach
 geschieht, hängt von der Art der Anfrage ab:
 
-- **Anlegen, Fragen und Teiländerungen** (`POST`, `PATCH`), etwa eine Frage im Chat, schickt das Frontend nach dem
-  Senden nie ein zweites Mal los.
+- **Anlegen, Fragen und Teiländerungen** (`POST`, `PATCH`), etwa eine Frage im Chat, schickt das
+  Frontend nach dem Senden nie ein zweites Mal los.
 - **Lesende Anfragen, Ändern und Löschen** (`GET`, `PUT`, `DELETE`) kann das Frontend unter Docker
   Compose nach einem Verbindungsabbruch an die andere Instanz geben, ebenso wenn die Antwort länger
   ausbleibt als `OPAA_BACKEND_READ_TIMEOUT`. Eine lange laufende Änderung oder Löschung kann so ein
