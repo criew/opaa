@@ -407,7 +407,7 @@ Datenbanksicherung.
   erreichbar, und die URI-Ersetzung von `/api/` bleibt erhalten. `docker compose --scale` ist nicht
   der Weg: Es teilt das benannte `/tmp`-Volume und scheitert an der festen Portbindung.
 - Die Adresse eines gestoppten Containers bleibt bis zur nächsten Auflösung ein Ziel, eine Verbindung
-  dorthin läuft ins Leere. nginx gibt deshalb nach 2 s Verbindungsaufbau auf
+  dorthin läuft ins Leere. nginx gibt deshalb nach 4 s Verbindungsaufbau auf
   (`proxy_connect_timeout`) und versucht das nächste Ziel. Hat die Auflösung die Zielliste in der
   Zwischenzeit geändert, vergibt nginx kein weiteres Ziel mehr; eine Anfrage, die noch kein Backend
   erreicht hat, beginnt dann einmal neu auf der aktuellen Liste (`/api/` und `/mcp`, nicht das

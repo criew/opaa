@@ -283,10 +283,11 @@ Instanzen `backend-a` und `backend-b`. Sie starten erst nach dem Migrationsschri
 nicht und haben je ein eigenes `/tmp`, aber keinen Host-Port. Beide tragen im Compose-Netz den Namen
 `backend`; der Frontend-nginx verteilt die Anfragen auf beide und weicht auf die andere aus, wenn eine
 keine Verbindung annimmt. Das gilt auch für eine gerade gestoppte Instanz, die nginx noch einige
-Sekunden lang in der Verteilung führt: Kommt dort binnen 2 s keine Verbindung zustande, geht die
-Anfrage an die andere. Solange eine Instanz läuft, endet so keine Anfrage mit einem Fehler; nur eine
-Diktataufnahme, die genau in diesem Moment hochgeladen wird, kann scheitern und ist dann neu
-aufzunehmen.
+Sekunden lang in der Verteilung führt: Kommt dort binnen 4 s keine Verbindung zustande, geht die
+Anfrage an die andere. Eine Anfrage, die noch keine Instanz erreicht hat, endet so nicht mit einem
+Fehler, solange eine Instanz läuft; nur eine Diktataufnahme, die genau in diesem Moment hochgeladen
+wird, kann scheitern und ist dann neu aufzunehmen. Laufende Anfragen der stoppenden Instanz enden
+wie unter [Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren) beschrieben.
 `docker compose --scale` ist nicht der Weg zu einer weiteren Instanz: Die skalierten Container
 teilten sich ein `/tmp`.
 

@@ -214,7 +214,8 @@ fi
 
 echo "--- one of two containers stops under load"
 # A full nginx configuration with njs: the stub answers with its name, the URI it received and the
-# length of the request body; /api/v1/slow after 4 s, /mcp/stream as five events over 4 s.
+# length of the request body; /api/v1/slow after 4 s, /mcp/stream as five events over 4 s. Every
+# request it receives is logged with its X-Test-Request header.
 stub_conf='load_module /etc/nginx/modules/ngx_http_js_module.so;
 env STUB_NAME;
 pid /tmp/stub.pid;
@@ -227,6 +228,8 @@ http {
     uwsgi_temp_path /tmp/stub-uwsgi;
     scgi_temp_path /tmp/stub-scgi;
     js_import stub from /tmp/stub.js;
+    log_format hits "HIT $request_method $http_x_test_request";
+    access_log /dev/stdout hits;
     server {
         listen 8080;
         client_max_body_size 64m;
@@ -328,44 +331,51 @@ for upload in "/api/v1/documents upload 41943040" "/api/v1/transcriptions dictat
 done
 
 # Each worker cycles through a GET with escapes, a POST with a body on /api/ and one on /mcp, and
-# logs "<status> <seconds> <body as expected?> <request>" per request.
+# logs "<status> <seconds> <body as expected?> <id> <request>" per request; the id travels in the
+# X-Test-Request header, so the stubs' logs show how often each request arrived.
 head -c 65536 /dev/zero | tr '\0' x >"$workdir/form"
 failover_worker() {
-  local log="$1" until="$2" i=0 result answer verdict request expected
+  local log="$1" until="$2" i=0 result answer verdict request expected id
   while (($(date +%s) < until)); do
+    id="$(basename "$log")-$i"
     case $((i % 3)) in
       0)
         request="GET /api/v1/a%20b?x=%2F"
         expected="uri=/api/v1/a%20b?x=%2F len=0"
-        result="$(fetch "$log.body" "$failover_base/api/v1/a%20b?x=%2F")"
+        result="$(fetch "$log.body" -H "X-Test-Request: $id" "$failover_base/api/v1/a%20b?x=%2F")"
         ;;
       1)
         request="POST /api/v1/form"
         expected="uri=/api/v1/form len=65536"
-        result="$(fetch "$log.body" -X POST --data-binary @"$workdir/form" "$failover_base/api/v1/form")"
+        result="$(fetch "$log.body" -X POST -H "X-Test-Request: $id" --data-binary @"$workdir/form" \
+          "$failover_base/api/v1/form")"
         ;;
       *)
         request="POST /mcp"
         expected="uri=/mcp len=2"
-        result="$(fetch "$log.body" -X POST -H 'Content-Type: application/json' --data-binary '{}' \
-          "$failover_base/mcp")"
+        result="$(fetch "$log.body" -X POST -H "X-Test-Request: $id" \
+          -H 'Content-Type: application/json' --data-binary '{}' "$failover_base/mcp")"
         ;;
     esac
     answer="$(cat "$log.body" 2>/dev/null || true)"
     verdict=wrong-body
     [[ "$answer" == *" $expected" ]] && verdict=ok
     read -r code _ total <<<"$result"
-    echo "${code:-000} ${total:-0} $verdict $request" >>"$log"
+    echo "${code:-000} ${total:-0} $verdict $id $request" >>"$log"
     i=$((i + 1))
   done
 }
-max_seconds=8
+# The frontend's proxy_connect_timeout: a request that met the stopped container's address waits
+# this long, so the slowest request shows whether the stop window was hit at all.
+connect_timeout=4
+max_seconds=10
 until=$(($(date +%s) + 12))
 for worker in $(seq 1 8); do
   failover_worker "$workdir/worker-$worker" "$until" &
 done
 sleep 3
-docker stop -t 2 "$stub-b" >/dev/null
+# QUIT, the image's stop signal, named here: nginx finishes requests in flight before it exits.
+docker stop --signal QUIT -t 10 "$stub-b" >/dev/null
 wait
 results="$(cat "$workdir"/worker-?)"
 total_requests="$(wc -l <<<"$results" | tr -d ' ')"
@@ -373,10 +383,26 @@ bad="$(awk -v max="$max_seconds" '$1 != 200 || $3 != "ok" || $2 + 0 > max' <<<"$
 if [[ -z "$bad" ]]; then
   slowest="$(awk '$2 + 0 > m { m = $2 + 0 } END { print m }' <<<"$results")"
   echo "all $total_requests requests answered while one container stopped, slowest after $slowest s"
+  if ! at_least "$slowest" "$((connect_timeout - 1)).5"; then
+    fail "stop window not hit: no request waited for the connect timeout of $connect_timeout s"
+  fi
 else
   fail "$(wc -l <<<"$bad" | tr -d ' ') of $total_requests requests while one container stopped failed or took longer than $max_seconds s:
 $(head -n 10 <<<"$bad")"
   docker logs --tail 10 "$probe" >&2 2>&1 || true
+fi
+# Each POST reached a backend exactly once: no request is sent again once a backend has it.
+arrivals="$( (docker logs "$stub-a" 2>/dev/null; docker logs "$stub-b" 2>/dev/null) |
+  awk '$1 == "HIT" && $2 == "POST" && $3 != "-" { print $3 }' | sort | uniq -c)"
+posts="$(awk '$1 == 200 && $5 == "POST" { print $4 }' <<<"$results" | sort)"
+not_once="$(awk 'NR == FNR { seen[$2] = $1; next } seen[$1] != 1 { print $1 " arrived " (seen[$1] + 0) " times" }' \
+  <(echo "$arrivals") <(echo "$posts"))"
+twice="$(awk '$1 > 1 { print $2 " arrived " $1 " times" }' <<<"$arrivals")"
+if [[ -z "$not_once$twice" ]]; then
+  echo "each of $(wc -l <<<"$posts" | tr -d ' ') answered POST requests reached a backend exactly once"
+else
+  fail "POST requests did not reach a backend exactly once:
+$(printf '%s\n%s\n' "$not_once" "$twice" | sed '/^$/d' | head -n 10)"
 fi
 
 if ((failures > 0)); then
