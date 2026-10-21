@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
+Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) und
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) · ersetzt Entscheidung 6 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) · präzisiert ADR-0016 (Entscheidung 8),
@@ -268,23 +268,32 @@ Protokollfrist gelöscht; eine Historienzeile sagt, *in welchem Zeitraum* ein Re
 | Space-Mitgliedschaft (Person oder Gruppe, mit Rolle) | `space_membership_history` | ja |
 | Eigentum an Asset und Space | `asset_ownership_history` (Objekttyp `ASSET` oder `SPACE`) | ja |
 | Fähigkeit | `capability_grant_history` | ja, Governance-Ereignis |
-| Kontozustand (aktiv/gesperrt) | `account_state_history` | ja |
+| Kontozustand (nutzbar/nicht nutzbar, mit Ursache) | `account_state_history` | ja |
 | Verantwortliche interner Gruppen, Vollmachten, Nachfolgevorgänge | keine — Betriebsrechte der Gegenwart | ja |
 | Systemrolle | zugesagt, **nicht gebaut** (Offen); bis dahin nur Audit | ja |
 
-Alle Historientabellen tragen `valid_from`/`valid_to` nach ADR-0016: Subjektspalten `RESTRICT`,
-Objektspalten ohne Fremdschlüssel. **Die Personenspalten bleiben `RESTRICT` und werden nicht ab
+Alle Historientabellen tragen `valid_from`/`valid_to` nach ADR-0016: Subjektspalten `RESTRICT`
+(außer am Kontozustand, siehe unten), Objektspalten ohne Fremdschlüssel. **Die Personenspalten bleiben `RESTRICT` und werden nicht ab
 Schreibzeitpunkt pseudonymisiert** — die Pseudonymisierung ist Voraussetzung des Personen-Einstiegs und
 der Kontolöschung, nicht des Schreibens, weil eine fehlende Auswertungsfunktion auffällt, eine
 Schreibblockade unter Termindruck aber per Ausnahme fällt. Damit sind die beiden offenen Folgefragen
 aus ADR-0016 beantwortet: Namensschnappschuss ja (unter der Höchstdauer), Pseudonymisierung ab
 Schreibzeitpunkt nein.
 
-- **Kontozustand:** Die Kette eines Kontos beginnt mit seiner ersten Zustandsänderung; ein nie
-  gesperrtes Konto hat keine Zeile. Die Kontenmenge zum Stichtag ist `users` (angelegt vor dem
-  Stichtag), korrigiert um diese Intervalle — eine leere Tabelle heißt „niemand war je gesperrt". Ein
-  offenes Intervall je Konto machte über `RESTRICT` jedes Konto unlöschbar. Keinen zweiten Lesepfad
-  („Verlauf" am Konto).
+- **Kontozustand:** Historisiert ist jeder Zustand, in dem `AccountUsability` ein Konto nicht
+  nutzbar nennt, mit eigener Ursache: Verzeichnissperre, Sperre durch Verwaltung oder wegen
+  Inaktivität, Anmeldesperre bis zu ihrem Ende (`locked_until`), Ablauf, offene Einladung,
+  abgeschaltete lokale Kontenverwaltung, abgeschalteter oder gelöschter Anbieter. Es schreibt die
+  Datenbank: Trigger auf `users`, `local_credentials` und `oidc_providers` werten die Regel nach
+  jeder Änderung neu aus (`account_state_reconcile`), in deren Transaktion, gleich welche Version oder
+  welcher Weg schreibt (ADR-0053, Entscheidung 13); einen ohne Schreibzugriff erreichten Ablauf hält
+  ein minütlicher Lauf fest. Die Kette eines Kontos beginnt mit seiner ersten Zustandsänderung; ein
+  nie gesperrtes Konto hat keine Zeile. Die Kontenmenge zum Stichtag ist `users` (angelegt vor dem
+  Stichtag), korrigiert um diese Intervalle. Vollständig ist das ab der Einführung
+  (`account_state_complete_since`); ein früheres Fenster nennt den Kontozustand als nicht abgedeckt.
+  Für sich nennen die Intervalle keinen Zugang — jeder Zeitraum, den sie kürzen, steht in einer
+  Historie mit `RESTRICT` —, deshalb gehen sie mit dem Konto (`ON DELETE CASCADE`). Keinen zweiten
+  Lesepfad („Verlauf" am Konto).
 - **Stichtagsauskunft** (`PointInTimeAccessService`, Rolle `AUDITOR`): **Objekt-Einstieg**
   (`GET /api/v1/audit/access-as-of`: „wer durfte Objekt Z am 3. März lesen") ohne weitere Vollmacht, aber
   mit verpflichtendem, begrenztem Zeitfenster und Seitenobergrenze — eine zu weite Anfrage wird
@@ -548,7 +557,9 @@ erst nach der Lebensdauer ihrer Caches (ADR-0053 Entscheidung 5).
   Space" (strukturell null) (7).
 - Historie ohne Höchstdauer, beim alten Historienstand bleiben, Pseudonymisierung ab Schreibzeitpunkt
   oder als Schreibvoraussetzung, zweiter Lesepfad am Konto, Sammelabfragen, zu weite Abfrage
-  zurechtstutzen (8).
+  zurechtstutzen, Kontozustand je Schreibweg im Anwendungscode schreiben (ein vergessener Weg, eine
+  ältere Version oder eine Handkorrektur ließe eine Lücke), Kontozustand mit `RESTRICT` (machte jedes
+  einmal gesperrte Konto unlöschbar) (8).
 - Opt-out-Sichtbarkeit (Schutz hinge am Setzen), Durchsetzung nur in der Auswahlliste (Kosmetik),
   A1/A3 im Wortlaut, Zustimmungspflicht bei Gruppenzuwachs, Maskierung des Abgleichsberichts (9).
 - Keine Übertragungsoperation (endet im `UPDATE` auf der Datenbank), Sonderfall je Anlass, Person als

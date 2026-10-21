@@ -1159,8 +1159,10 @@ gar nicht mehr meldet**, wird beim nächsten Lauf gesperrt. Dabei gilt:
   Laufs. Zusätzlich wird der **Kontozustand historisiert** (aktiv/gesperrt mit `valid_from`/`valid_to`):
   Sie belegt beide Zeitpunkte lückenlos und trägt die Stichtagsauskunft, wenn die Protokollfrist
   abgelaufen ist. Die Kette eines Kontos beginnt mit seiner ersten Zustandsänderung und reicht ab da
-  bis zu seiner Anlage zurück; ein nie gesperrtes Konto war seit seiner Anlage aktiv. Einen zweiten
-  Lesepfad — einen „Verlauf" am Konto in der Benutzerverwaltung — gibt es bewusst nicht.
+  bis zu seiner Anlage zurück; ein nie gesperrtes Konto war seit seiner Anlage aktiv. Dieselbe Kette
+  hält jeden anderen Grund fest, aus dem ein Konto nicht nutzbar ist (lokale Sperre, Ablauf,
+  Anmeldesperre, Einladung, abgeschalteter Anbieter; [Der Lesepfad](./security-and-compliance.md#der-lesepfad-stichtagsauskunft-1822)).
+  Einen zweiten Lesepfad — einen „Verlauf" am Konto in der Benutzerverwaltung — gibt es bewusst nicht.
 
 ### Gruppensynchronisation ist ein Rechteereignis
 
