@@ -768,10 +768,12 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
   - **Geschrieben wird in der Datenbank.** Trigger auf `users`, `local_credentials` und
     `oidc_providers` werten die Regel von `AccountUsability` nach jeder Änderung neu aus, die sie
     ändern kann (`account_state_reconcile`), in der Transaktion der Änderung, unter einer Sperre je
-    Konto (die `users`-Zeile, `FOR NO KEY UPDATE`: eine Zeilensperre belegt anders als eine
-    Advisory-Sperre keinen Eintrag der gemeinsamen Sperrtabelle, sodass Migration und
-    Anbieterschalter über beliebig viele Konten in eine Transaktion passen) und mit den Grenzen der
-    Uhr aus ADR-0032. So hält jeder Schreibweg den Übergang fest,
+    Konto (`FOR NO KEY UPDATE` auf der `local_credentials`-Zeile eines lokalen Kontos, sonst auf
+    der `users`-Zeile: eine Zeilensperre belegt anders als eine Advisory-Sperre keinen Eintrag der
+    gemeinsamen Sperrtabelle, sodass Migration und Anbieterschalter über beliebig viele Konten in
+    eine Transaktion passen; und weil die Anwendung `users` vor `local_credentials` schreibt, greift
+    eine Änderung der Zugangsdaten nie nach `users` und kann so nicht gegen sie laufen) und mit den
+    Grenzen der Uhr aus ADR-0032. So hält jeder Schreibweg den Übergang fest,
     gleich auf welcher Instanz und von welcher Version er kommt, auch eine Handkorrektur per SQL. Nur
     ein Ablauf tritt ohne Schreibzugriff ein; ihn hält `AccountStateExpirySweep` minütlich fest, mit
     einer Grenze nicht vor dem Ablaufdatum, höchstens 500 Konten je Lauf. Bis dahin nennt die
@@ -784,7 +786,8 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
     zählen), nur Anbieter vom Typ `OIDC`. `AccountStateParityIntegrationTest` hält beide über eine
     Matrix von Kontozuständen gegeneinander, samt der Ursache je Zustand; zwei Anbieterzeilen
     desselben Ausstellers (nur per SQL möglich, die Verwaltung trimmt) entscheidet wie in Java die
-    letzte nach Sortierung und Anzeigename. Zwei Grenzen: Ein Konto ohne Anbieter seines
+    letzte nach Sortierung und Anzeigename (bei gleicher Sortierung und gleichem Namen die
+    Kennung, wo Java keine feste Reihenfolge hat). Zwei Grenzen: Ein Konto ohne Anbieter seines
     Ausstellers gilt als nicht nutzbar, auch im Modus `dev`, dessen Aussteller die Datenbank nicht
     kennt (dort nennt `AccountUsability` es nutzbar; `dev` ist kein Betriebsmodus). Und den Ablauf
     vergleicht die Datenbank mit ihrer eigenen Uhr, die Anwendung mit der Uhr ihres

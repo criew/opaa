@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: rights-2026-10-21-account-state-complete
       author: opaa
-      comment: "Every way an account becomes unusable or usable again writes its interval into account_state_history (ADR-0036, Entscheidung 8): triggers on users, local_credentials and oidc_providers re-evaluate the rule of AccountUsability in the database, in the transaction of the change and from the boundary clock of ADR-0032, whichever version or path writes. A failed-login lockout is deliberately left out: short, self-ending and caused by whoever types the address. An expiry reached by time is recorded by account_state_record_reached_expiries. Each account is re-evaluated under the lock of its users row, which takes no lock table entry, so a switch or a migration over any number of accounts fits one transaction. The intervals go with a deleted account: alone they name no access. Every account unusable at the introduction gets an open LOCKED interval from it on; the introduction is kept as account_state_complete_since. Expand only: a nullable column, a cause list with more values, a foreign key that cascades."
+      comment: "Every way an account becomes unusable or usable again writes its interval into account_state_history (ADR-0036, Entscheidung 8): triggers on users, local_credentials and oidc_providers re-evaluate the rule of AccountUsability in the database, in the transaction of the change and from the boundary clock of ADR-0032, whichever version or path writes. A failed-login lockout is deliberately left out: short, self-ending and caused by whoever types the address. An expiry reached by time is recorded by account_state_record_reached_expiries. Each account is re-evaluated under a row lock (its credentials row if local, its users row otherwise), which takes no lock table entry, so a switch or a migration over any number of accounts fits one transaction. The intervals go with a deleted account: alone they name no access. Every account unusable at the introduction gets an open LOCKED interval from it on; the introduction is kept as account_state_complete_since. Expand only: a nullable column, a cause list with more values, a foreign key that cascades."
       changes:
         - sql:
             splitStatements: false
@@ -51,13 +51,21 @@ databaseChangeLog:
                 open_state text;
                 boundary timestamp with time zone;
               BEGIN
-                -- the row lock serialises every re-evaluation of the account until commit and,
-                -- unlike an advisory lock, takes no entry of the shared lock table
-                SELECT id, organization_id, issuer, system_role, directory_locked_at, created_at
-                    INTO account FROM users WHERE id = p_user_id FOR NO KEY UPDATE;
+                -- A row lock serialises every re-evaluation of the account until commit and, unlike
+                -- an advisory lock, takes no entry of the shared lock table. A local account locks
+                -- its credentials row, any other its users row: the application writes users before
+                -- local_credentials, and a change of the credentials must not reach for users.
+                SELECT issuer INTO account FROM users WHERE id = p_user_id;
                 IF NOT FOUND THEN
                   RETURN;
                 END IF;
+                IF account.issuer = 'urn:opaa:local' THEN
+                  PERFORM 1 FROM local_credentials WHERE user_id = p_user_id FOR NO KEY UPDATE;
+                ELSE
+                  PERFORM 1 FROM users WHERE id = p_user_id FOR NO KEY UPDATE;
+                END IF;
+                SELECT id, organization_id, issuer, system_role, directory_locked_at, created_at
+                    INTO account FROM users WHERE id = p_user_id;
                 evaluated_at := clock_timestamp();
 
                 IF account.directory_locked_at IS NOT NULL THEN
@@ -95,7 +103,8 @@ databaseChangeLog:
                   END IF;
                 ELSE
                   issuer_key := account_state_issuer_key(account.issuer);
-                  -- of two rows of one issuer the last in AccountUsability's order decides
+                  -- of two rows of one issuer the last in AccountUsability's order decides; on equal
+                  -- sort number and name the id, where Java has no fixed order (by hand only)
                   SELECT enabled INTO provider_enabled FROM oidc_providers
                       WHERE provider_type = 'OIDC' AND account_state_issuer_key(issuer_uri) = issuer_key
                       ORDER BY sort_order DESC, display_name DESC, id DESC LIMIT 1;
