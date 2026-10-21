@@ -74,7 +74,8 @@ Frontend, Backend und Modelle lassen sich jederzeit neu starten.
 
 OPAA läuft mit **einer oder mehreren gleichrangigen Backend-Instanzen** gegen dieselbe Datenbank;
 eine Instanz ist die Vorgabe beider Betriebswege. Mehrere Instanzen überstehen den Ausfall einer von
-ihnen und lassen sich nacheinander aktualisieren, ohne dass der Dienst ausfällt. Jede Instanz
+ihnen und lassen sich innerhalb des Versionsfensters nacheinander aktualisieren, ohne dass der Dienst
+ausfällt. Jede Instanz
 beantwortet jede Anfrage, und sie stimmen sich ausschließlich über die Datenbank ab. Wie das
 funktioniert, was auf allen Instanzen gleich eingestellt sein muss und welche Grenzen je Instanz
 gelten, erklärt [Mehrere Backend-Instanzen](mehrere-instanzen.md); die Einrichtung steht unter
@@ -634,8 +635,9 @@ das Backend neu. Im Grundsatz:
    ein ausstehender Nachzug.
 
 Einen Rückweg auf eine ältere Version gibt es nur über die Sicherung: Schemaänderungen werden nicht
-zurückgenommen. Mit mehreren Instanzen ist der Rückweg auf die unmittelbar vorige Version innerhalb
-des Versionsfensters ohne Rücksicherung vorgesehen ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)). Die Befehle stehen unter
+zurückgenommen. Mit mehreren Instanzen geht es ohne Rücksicherung zurück, wenn die neue Version die
+vorige in ihrem Versionsfenster zulässt; bis zum ersten Release mit dieser Zusage gibt es das nicht
+([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)). Die Befehle stehen unter
 [Docker Compose](docker-compose.md#aktualisierung-auf-einen-neuen-stand) und
 [Kubernetes](kubernetes.md#aktualisierung-und-rückweg).
 

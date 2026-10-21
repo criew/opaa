@@ -13,15 +13,13 @@ die [Betriebsübersicht](betrieb.md).
 > Nacht fällt ein Knoten aus und nimmt eine Instanz mit. Die andere beantwortet die Fragen weiter,
 > der nächtliche Löschlauf läuft trotzdem genau einmal, und den Indexierungslauf, den die
 > ausgefallene Instanz gerade ausführte, gibt die verbliebene nach kurzer Zeit frei; er lässt sich
-> am Morgen wiederholen. Das nächste Update spielt der Betrieb tagsüber ein, Instanz für Instanz,
-> ohne dass jemand im Chat etwas davon merkt.
+> am Morgen wiederholen. Ein Update spielt der Betrieb Instanz für Instanz ein, wenn die neue
+> Version die laufende neben sich zulässt; sonst hält er beide Instanzen kurz an.
 
 ## Worum es geht
 
-Mit einer Instanz ist das Backend ein einziger Prozess. Fällt er aus oder startet er für ein Update
-neu, ist OPAA so lange nicht erreichbar. Mit mehreren Instanzen laufen zwei oder mehr gleichrangige
-Backend-Prozesse gleichzeitig gegen dieselbe Datenbank, und **jede Instanz beantwortet jede
-Anfrage**.
+Mit mehreren Instanzen laufen zwei oder mehr gleichrangige Backend-Prozesse gleichzeitig gegen
+dieselbe Datenbank, und **jede Instanz beantwortet jede Anfrage**.
 
 ```mermaid
 flowchart LR
@@ -43,8 +41,8 @@ antwortet die andere Instanz weiter, und ein Update tauscht die Instanzen nachei
 Was man davon hat:
 
 - **Ausfallsicherheit:** Fällt eine Instanz aus, beantworten die übrigen die Anfragen weiter.
-- **Update ohne Ausfall:** Eine neue Version wird Instanz für Instanz eingespielt; OPAA bleibt
-  dabei erreichbar ([Update ohne Ausfall](#update-ohne-ausfall)).
+- **Update ohne Ausfall:** Eine neue Version wird Instanz für Instanz eingespielt, soweit sie die
+  laufende neben sich zulässt; OPAA bleibt dabei erreichbar ([Update ohne Ausfall](#update-ohne-ausfall)).
 - **Mehr Arbeit gleichzeitig:** Indexierungsläufe und Uploads verteilen sich auf mehr Prozesse.
 
 Was es bewusst nicht ist:
@@ -54,8 +52,10 @@ Was es bewusst nicht ist:
 - **Kein Aktiv/Passiv.** Es gibt keine Reserve-Instanz, die nur im Notfall einspringt. Alle
   Instanzen arbeiten gleichzeitig; eine Reserve müsste beim Umschalten dieselben Aufgaben lösen,
   nur seltener erprobt.
-- **Keine Pflicht.** Eine Instanz bleibt die Vorgabe beider Betriebswege. Wer sie nutzt, muss
-  nichts davon beachten, was dieses Kapitel beschreibt.
+- **Keine Pflicht.** Eine Instanz bleibt die Vorgabe beider Betriebswege. Auch sie trägt sich ins
+  [Instanzregister](#das-instanzregister) ein und prüft ihren Konfigurationsabdruck. Bemerkbar wird
+  das nur nach einem harten Abbruch: Startet sie danach mit einem geänderten Wert des Abdrucks, wartet
+  der Start, bis die Frist der abgebrochenen Instanz abgelaufen ist.
 
 Eine Person ist an keine Instanz gebunden. Anmeldung und Sitzung stecken in Tokens und Cookies,
 nicht im Speicher einer Instanz; gespeicherte Chats lesen ihren Verlauf auf jeder Instanz aus der
@@ -65,7 +65,7 @@ Datenbank.
 |---|---|---|
 | Vorgabe | Compose-Stapel und Helm-Chart | `docker-compose.multi.yml` bzw. `backend.replicas` ab 2 |
 | Schemaänderung | beim Start der Instanz | in einem eigenen Migrationsschritt vor den Instanzen |
-| Aktualisierung | kurze Unterbrechung: die alte Instanz endet, bevor die neue startet | ohne Ausfall: eine Instanz nach der anderen |
+| Aktualisierung | kurze Unterbrechung: die alte Instanz endet, bevor die neue startet | ohne Ausfall, eine Instanz nach der anderen, soweit das [Versionsfenster](#gleiche-konfiguration-der-konfigurationsabdruck) es zulässt |
 | Ausfall einer Instanz | Dienst steht bis zum Neustart | die übrigen Instanzen antworten weiter |
 | Originalablage | Verzeichnis, Netzlaufwerk oder Objektspeicher | Objektspeicher oder eine Ablage, die jede Instanz beschreiben kann |
 
@@ -99,10 +99,16 @@ flowchart LR
 | Umsysteme | Identitätsanbieter, Mailserver, Quellen und Modelle; jede Instanz spricht sie selbst an |
 
 Das Frontend reicht eine Anfrage an eine Instanz weiter. Nimmt diese keine Verbindung an, etwa weil
-sie gerade gestoppt wird, versucht es eine andere. Eine Anfrage, die eine Instanz schon erreicht hat,
-schickt es nicht neu los, wenn sie etwas verändert; so wird nichts doppelt ausgeführt. Wie lange das
-Frontend auf eine Verbindung wartet, steht unter
-[Docker Compose](docker-compose.md#mehrere-backend-instanzen).
+sie gerade gestoppt wird, versucht es die Anfrage erneut, bei einer anderen Instanz. Was danach
+geschieht, hängt von der Art der Anfrage ab:
+
+- **Anlegen, Fragen und Teiländerungen** (`POST`, `PATCH`), etwa eine Frage im Chat, schickt das Frontend nach dem
+  Senden nie ein zweites Mal los.
+- **Lesende Anfragen, Ändern und Löschen** (`GET`, `PUT`, `DELETE`) kann das Frontend unter Docker
+  Compose nach einem Verbindungsabbruch an die andere Instanz geben, ebenso wenn die Antwort länger
+  ausbleibt als `OPAA_BACKEND_READ_TIMEOUT`. Eine lange laufende Änderung oder Löschung kann so ein
+  zweites Mal ausgeführt werden. Unter Kubernetes erreicht das Frontend die Pods über einen Service
+  und gibt eine Anfrage, die einen Pod erreicht hat, nicht weiter.
 
 ## Abstimmung nur über die Datenbank
 
@@ -129,7 +135,7 @@ Jedes dieser Werkzeuge hat einen eigenen Abschnitt in diesem Kapitel. Was sie zu
 | Ein Recht wird auf Instanz A entzogen; Instanz B kennt das noch nicht. | Die Änderung meldet sich über die Datenbank, und jede Instanz verwirft ihren Zwischenspeicher ([Änderungen erreichen jede Instanz](#änderungen-erreichen-jede-instanz)). |
 | Der nächtliche Lauf startet auf jeder Instanz, Erinnerungsmails gehen doppelt hinaus. | Eine Sperre lässt nur eine Instanz laufen, und jede Mail steht hinter einem Vermerk „schon erledigt“ ([Geplante Läufe laufen genau einmal](#geplante-läufe-laufen-genau-einmal)). |
 | Eine neu gestartete Instanz hält die Läufe der anderen für liegengeblieben und bricht sie ab. | Aufgegeben wird nur, was einer Instanz gehört, die nachweislich nicht mehr läuft ([Wenn eine Instanz ausfällt](#wenn-eine-instanz-ausfällt)). |
-| Mails warten im Speicher und gehen bei einem Neustart verloren. | Mails stehen in der Datenbank, bis sie zugestellt sind ([Mails ohne Verlust](#mails-ohne-verlust)). |
+| Mails warten im Speicher und gehen bei einem Neustart verloren. | Mails stehen in der Datenbank, bis sie zugestellt sind, mit einer Ausnahme ([Mails ohne Verlust](#mails-ohne-verlust)). |
 | Zwei Rechner haben leicht verschiedene Uhrzeiten. | Für alles, was Instanzen miteinander vergleichen, zählt die Uhr der Datenbank ([Eine Uhr für alle](#eine-uhr-für-alle)). |
 | Jede Instanz zählt ihre eigenen Anfragen; zwei Instanzen lassen doppelt so viele durch. | Die Gesamtgrenzen zählt die Datenbank für alle ([Grenzen und Budgets](#grenzen-und-budgets)). |
 
@@ -199,15 +205,18 @@ Zeit; zwei, die gleichzeitig starten, prüfen nacheinander.
 - Modell, Adresse und Dimension der Einbettung und die Teilung in Chunks
 - das Anmeldeprofil, `OPAA_DB_SCHEMA` und die Originalablage
 - die Freigabelisten der Zielprüfung, die vertrauten Proxys und `OPAA_PUBLIC_BASE_URL`
-- die Funktionsschalter, die Zeitzone ([Zeitzone](betrieb.md#zeitzone)) und `OPAA_INSTANCE_DEAD_AFTER`
+- die Funktionsschalter, die Zeitzone und `OPAA_INSTANCE_DEAD_AFTER`
 
 **Je Instanz abweichen dürfen** technische Werte ohne Wirkung auf Daten: Zeitgrenzen, die Größe von
 Verbindungs- und Thread-Pools, der Abstand des Herzschlags.
 
-**Die Version** darf nur während eines Updates abweichen. Jede Version nennt die älteste Version,
-neben der sie laufen darf; in der Regel ist das die unmittelbar vorige, und die Notizen des Release
-sagen es. An einer Versionsgrenze ohne Rolling Update läuft nur dieselbe Version nebeneinander. Eine
-Instanz außerhalb dieses Fensters startet nicht, ob sie älter ist oder neuer.
+**Die Version** darf nur während eines Updates abweichen, und nur innerhalb des
+**Versionsfensters**: Jede Version nennt die älteste Version, neben der sie laufen darf. Ein Release
+trägt dort sein unmittelbar voriges Release ein, an einer Versionsgrenze ohne Rolling Update nur
+sich selbst; die Notizen des Release sagen es. Eine Instanz außerhalb des Fensters startet nicht, ob
+sie älter ist oder neuer. **Bis zum ersten Release mit dieser Zusage läuft nur dieselbe Version
+nebeneinander.** Images des Stands `main` tragen alle dieselbe Entwicklungsversion und gelten dabei
+als gleich.
 
 Einen Wert des Abdrucks ändert deshalb **nur ein Neustart aller Instanzen**: erst alle beenden, dann
 mit dem neuen Wert starten. Ein Update, das zugleich einen solchen Wert ändert, bleibt an der ersten
@@ -238,10 +247,13 @@ Sitzungen gilt so auf jeder Instanz mit deren nächster Anfrage.
 - **Wenn die Verbindung reißt:** Jede Instanz prüft ihre Hörverbindung alle fünf Sekunden. Ist sie
   unterbrochen, verwirft die Instanz vorsorglich alle betroffenen Zwischenspeicher und liest direkt
   aus der Datenbank, bis die Verbindung wieder steht. Meldungen aus der Zeit des Abrisses gehen
-  verloren; ein Zwischenspeicher kann deshalb höchstens bis zur nächsten Prüfung veraltet sein.
-- **Abmelden und Sperren wirken überall.** Wird eine lokale Sitzung widerrufen, durch einen
-  Passwortwechsel, eine Sperre oder die Abmeldung, zählt OPAA einen Zähler am Konto hoch. Ein Token
-  mit altem Zählerstand gilt auf jeder Instanz als ungültig. Dafür braucht es keinen Vergleich von
+  verloren; ein Zwischenspeicher kann deshalb veraltet sein, bis die Instanz den Abriss bemerkt, in
+  der Regel binnen Sekunden.
+- **Abmelden und Sperren wirken überall.** Bei der Abmeldung einer lokalen Sitzung kommt ihr Token
+  auf eine Sperrliste in der Datenbank, die jede Instanz bei jeder Anfrage liest. Einen Passwortwechsel,
+  eine Sperre, das Zurücksetzen durch die Verwaltung, das Ausschalten der lokalen Konten und ein
+  erkannter wiederverwendeter Token beantwortet OPAA, indem es einen Zähler am Konto hochzählt; ein
+  Token mit altem Zählerstand gilt auf jeder Instanz als ungültig. Beides braucht keinen Vergleich von
   Uhrzeiten zwischen Rechnern.
 - **Voraussetzung an die Datenbank:** Die Hörverbindung braucht eine direkte Verbindung oder einen
   Verbindungs-Proxy im Sitzungsmodus; im Transaktionsmodus kommt sie nicht zustande
@@ -336,7 +348,12 @@ Jede Instanz stellt zu, eine einzelne Mail aber immer nur eine zur selben Zeit. 
 eine Instanz während der Zustellung, übernimmt eine andere die Mail. Die Zusage ist deshalb **jede
 Mail kommt mindestens einmal an**: Bricht eine Instanz genau zwischen der Annahme durch den
 Mailserver und dem Vermerk ab, kann eine Mail ein zweites Mal ankommen, erkennbar an derselben
-Kennung der Nachricht. Wiederholungen, Verschlüsselung und die Mails, die OPAA sofort versendet,
+Kennung der Nachricht.
+
+Eine Ausnahme sind „Passwort vergessen“ und die Selbstregistrierung: Ihre Bearbeitung samt Mail
+wartet zunächst im Speicher der Instanz, nur Millisekunden lang. Stoppt die Instanz genau dann, geht
+die Anfrage verloren, und wer keine Mail bekommt, fragt erneut (Betriebsübersicht, „Sanftes
+Herunterfahren“). Wiederholungen, Verschlüsselung und die Mails, die OPAA sofort versendet,
 beschreibt [E-Mail-Versand](e-mail.md#zustellung-über-die-warteschlange).
 
 ## Grenzen und Budgets
@@ -360,7 +377,7 @@ flowchart LR
 **Für die Installation** zählt die Datenbank, gleich welche Instanz eine Anfrage erreicht: die
 Gesamtgrenzen der Rate-Limits (`OPAA_RATE_LIMIT_*_GLOBAL_MAX_REQUESTS`, auch die der lokalen
 Anmeldung) und der Abflussalarm der [externen KI-Werkzeuge](fremdzugaenge.md). Zwei Instanzen lassen
-zusammen also genau so viele Anfragen durch wie eine; den Alarm meldet genau eine von ihnen.
+zusammen also genauso viele Anfragen durch wie eine; den Alarm meldet genau eine von ihnen.
 
 **Je Instanz** zählen alle übrigen Grenzen. Ihr Wert ist deshalb **die Grenze der Installation
 geteilt durch die Zahl der Instanzen**: Sollen alle zusammen höchstens sechs Einbettungen
@@ -402,7 +419,6 @@ Datenbank.
 flowchart LR
     M[1. Migration<br/>erweitert<br/>das Schema] --> A[2. Instanz A<br/>ersetzen]
     A --> B[3. Instanz B<br/>ersetzen]
-    B --> F[4. Frontend<br/>ersetzen]
 ```
 
 1. **Migration zuerst.** Ein eigener Schritt bringt das Schema auf den Stand der neuen Version und
@@ -411,7 +427,15 @@ flowchart LR
 2. **Dann eine Instanz nach der anderen.** Eine neue Instanz startet, und die nächste alte endet erst,
    wenn die neue bereit ist. Laufende Anfragen der stoppenden Instanz enden geordnet; neue Anfragen
    gehen an die andere.
-3. **Das Frontend zuletzt.**
+
+Das Frontend ersetzt unter Docker Compose ein eigener, letzter Schritt; unter Kubernetes tauscht
+`helm upgrade` es gleichzeitig mit den Backend-Pods aus.
+
+So geht ein Update nur innerhalb des Versionsfensters. Lässt die neue Version die laufende nicht
+neben sich zu, verweigert die erste neue Instanz den Start, und die alten antworten weiter; dann
+werden alle Instanzen angehalten wie an einer Versionsgrenze (unten). Bis zum ersten Release, das
+seine Vorgängerversion zulässt, gilt das für jeden Wechsel zwischen Releases; Instanz für Instanz
+geht es heute zwischen Images des Stands `main`.
 
 Die Befehle stehen unter [Docker Compose](docker-compose.md#update-ohne-ausfall) und
 [Kubernetes](kubernetes.md#ablauf-mit-mehreren-backend-pods).
@@ -431,10 +455,12 @@ verschärft. Lässt sich ein Bruch nicht vermeiden, ist das Release eine **Versi
 Update**, und seine Notizen sagen das. Dann werden alle Instanzen angehalten, die Datenbank migriert
 und die Instanzen neu gestartet, mit kurzer Unterbrechung wie bei einer Instanz.
 
-**Rückweg.** Innerhalb des Versionsfensters ist auch der Rückweg auf die Vorgängerversion ohne
-Rücksicherung vorgesehen: Das Schema wurde nur erweitert, und die Vorgängerversion läuft darauf.
-Über eine Versionsgrenze hinweg führt der Rückweg nur über die Sicherung von vor dem Update
-([Aktualisierung](betrieb.md#aktualisierung)).
+**Rückweg.** Lässt die neue Version die vorige in ihrem Versionsfenster zu, geht es ohne
+Rücksicherung zurück: Das Schema wurde nur erweitert, die vorige Version läuft darauf und startet
+auch neben Instanzen der neuen, also auch dann, wenn schon alle Instanzen ersetzt sind. Zeigt die
+vorige Version danach Fehler, bleibt die Sicherung von vor dem Update der Rückfall. Bis zum ersten
+Release mit dieser Zusage und über eine Versionsgrenze hinweg führt der Rückweg nur über diese
+Sicherung.
 
 ## Docker Compose und Kubernetes
 
@@ -444,9 +470,9 @@ bleibt eine Instanz die Vorgabe.
 | | Docker Compose | Kubernetes |
 |---|---|---|
 | Einschalten | `docker-compose.multi.yml` neben `docker-compose.yml`, bei jedem Befehl | `backend.replicas` größer als 1 |
-| Rechner | alle Instanzen auf einem Rechner | Pods über Knoten oder Zonen verteilt |
+| Rechner | alle Instanzen auf einem Rechner | Pods auf beliebigen Knoten; über Knoten oder Zonen verteilt nur mit `backend.topologySpreadConstraints` oder einer Anti-Affinität |
 | Migration | Dienst `backend-migrate`; die Instanzen starten erst danach | ein Job; die Pods warten, bis die Migration durch ist |
-| Update | von Hand in der Reihenfolge oben | `helm upgrade` tauscht die Pods selbst nacheinander aus |
+| Update | von Hand in der Reihenfolge oben, das Frontend zuletzt | `helm upgrade` tauscht die Backend-Pods selbst nacheinander aus, das Frontend gleichzeitig |
 | Originale | Objektspeicher empfohlen; das gemeinsame Verzeichnis genügt, weil alles auf einem Rechner läuft | Objektspeicher oder ein Volume, das alle Pods beschreiben können; sonst verweigert der Chart |
 | Grenzen je Instanz | geteilten Wert in `.env.docker` eintragen | der Chart teilt `backend.installationBudgets` auf die Pods |
 | Nicht verwenden | `docker compose --scale` | automatisches Skalieren des Backends |
@@ -460,12 +486,14 @@ Die Rechnung steht unter [Verbindungen bei mehreren Instanzen](datenbank.md#verb
 | Eigenheit | Was das praktisch heißt |
 |---|---|
 | Gespräche ohne gespeicherten Chat | Ihr Verlauf liegt nur auf der Instanz, die sie führt. Beantwortet eine andere Instanz die nächste Frage, fehlt ihr der bisherige Verlauf. Gespeicherte Chats lesen ihn auf jeder Instanz aus der Datenbank |
-| Mail im Ausnahmefall doppelt | Bricht eine Instanz genau während der Zustellung ab, kann eine Mail zweimal ankommen; verloren geht keine |
-| Kurz veralteter Zwischenspeicher | Reißt die Hörverbindung, kann ein Zwischenspeicher bis zur nächsten Prüfung veraltet sein; danach verwirft die Instanz ihn ganz |
+| Mail im Ausnahmefall doppelt | Bricht eine Instanz genau während der Zustellung ab, kann eine Mail zweimal ankommen. Verloren gehen kann nur eine Anfrage „Passwort vergessen“ oder eine Selbstregistrierung, die beim Stopp noch im Speicher wartet |
+| Kurz veralteter Zwischenspeicher | Reißt die Hörverbindung, kann ein Zwischenspeicher veraltet sein, bis die Instanz den Abriss bemerkt, in der Regel binnen Sekunden; danach verwirft sie ihn ganz |
 | Grenzen je Instanz sind eine Rechnung | Sie gelten über „Grenze der Installation geteilt durch die Zahl der Instanzen“, nicht durch eine gemeinsame Zählung. Verteilen sich die Anfragen ungleich, greift die Grenze auf einer Instanz früher |
 | Konfiguration ändern | Werte des Konfigurationsabdrucks ändert nur ein Neustart aller Instanzen, kein Update im Wechsel |
 | Schemaänderungen | Sie verteilen sich auf zwei Releases; ein unvermeidbarer Bruch wird als Versionsgrenze ohne Rolling Update angekündigt |
-| Ein Frontend-Container unter Compose | Beim Austausch des Frontends lehnt der Port kurz Verbindungen ab, beantwortet aber keine Anfrage mit einem Fehler. Ein zweiter Frontend-Container braucht eine eigene feste Adresse und einen eigenen Eintrag unter den vertrauten Proxys ([Docker Compose](docker-compose.md#mehrere-backend-instanzen)) |
+| Ein Frontend-Container unter Compose | Beim Austausch des Frontends lehnt der Port kurz Verbindungen ab, beantwortet aber keine Anfrage mit einem Fehler. Ein zweiter Frontend-Container braucht eine eigene feste Adresse und einen eigenen Eintrag unter den vertrauten Proxys |
+| Wiederholte Änderung unter Compose | Eine lange Änderung oder Löschung kann nach einem Abbruch ein zweites Mal ausgeführt werden ([Das Gesamtbild](#das-gesamtbild)) |
+| Versionsfenster | Bis zum ersten Release, das seine Vorgängerversion zulässt, laufen nur Stände derselben Version nebeneinander |
 
 ## Begriffe
 
@@ -492,7 +520,7 @@ Die Werte und Vorgaben stehen in der [Konfiguration](konfiguration.md).
 | `OPAA_MODE` | `migrate` für den eigenen Migrationsschritt ([Migration als eigener Schritt](datenbank.md#migration-als-eigener-schritt)) |
 | `SPRING_LIQUIBASE_ENABLED` | `false` lässt eine Instanz ohne Migration starten |
 | `OPAA_DB_POOL_SIZE` | Verbindungen im Pool einer Instanz |
-| `OPAA_SHUTDOWN_TIMEOUT` | Zeitfenster für laufende Anfragen beim Stopp ([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)) |
+| `OPAA_SHUTDOWN_TIMEOUT` | Zeitfenster für laufende Anfragen beim Stopp |
 | `TZ` | Zeitzone; Teil des Konfigurationsabdrucks |
 
 ## Weiterführende Kapitel

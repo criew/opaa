@@ -342,8 +342,9 @@ Während des Updates laufen kurz alte und neue Version nebeneinander gegen diese
 Läufe und Uploads der stoppenden Instanz lassen sich wiederholen
 ([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
 
-Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, oder ändert sich ein Wert
-des Konfigurationsabdrucks, werden zuerst beide Instanzen angehalten
+Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, lässt die neue Version die
+laufende nicht in ihrem [Versionsfenster](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)
+zu, oder ändert sich ein Wert des Konfigurationsabdrucks, werden zuerst beide Instanzen angehalten
 (`docker compose $F stop backend-a backend-b`), dann folgen Migration und Start wie oben.
 
 ## Nicht-root-Betrieb des Backend-Containers

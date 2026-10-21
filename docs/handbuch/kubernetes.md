@@ -1217,24 +1217,26 @@ helm test opaa -n opaa
 ```
 
 Die Startzeilen aller Pods nennen danach die neue Version. Weicht ein Wert des
-Konfigurationsabdrucks ab, verweigert der erste neue Pod den Start; der Rollout bleibt stehen, und die
-alten Pods antworten weiter, bis der Wert korrigiert ist.
+Konfigurationsabdrucks ab oder lässt die neue Version die laufende nicht in ihrem Versionsfenster zu,
+verweigert der erste neue Pod den Start; der Rollout bleibt stehen, und die alten Pods antworten
+weiter.
 
 Scheitert die Migration, bleibt der neue Pod im Init-Container stehen, und die alten Pods antworten
 weiter. Das Protokoll des Jobs nennt den Grund (`kubectl -n opaa logs job/<Name>`). Nach der
 Behebung den gescheiterten Job löschen (`kubectl -n opaa delete job <Name>`) und `helm upgrade`
-wiederholen. Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, gehört
-`--set backend.updateStrategy=Recreate` an diesen einen Aufruf; ebenso, wenn sich ein Wert des
-Konfigurationsabdrucks ändert.
+wiederholen. Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update oder lässt
+die neue Version die laufende nicht zu, gehört `--set backend.updateStrategy=Recreate` an diesen
+einen Aufruf; ebenso, wenn sich ein Wert des Konfigurationsabdrucks ändert.
 
 ### Rückweg
 
 Liquibase migriert das Schema beim Start und **nur vorwärts**. `helm rollback` stellt Manifeste und
-Images der alten Revision wieder her, nicht die Datenbank. Eine ältere Fassung auf einem neueren Schema
-wird nicht unterstützt. **Der verlässliche Rückweg auf eine ältere Version ist deshalb die
-Datenbanksicherung von vor dem Upgrade.** Mit mehreren Backend-Pods ist `helm rollback` auf die
-unmittelbar vorige Version dagegen vorgesehen, solange das neue Release keine Versionsgrenze ohne
-Rolling Update ist: Sein Schema hat die Vorgängerversion nur erweitert.
+Images der alten Revision wieder her, nicht die Datenbank. **Der verlässliche Rückweg auf eine
+ältere Version ist deshalb die Datenbanksicherung von vor dem Upgrade.** Ohne sie geht es mit
+`helm rollback` nur zurück, wenn die neue Version die vorige in ihrem Versionsfenster zulässt: Dann
+hat ihr Schema die vorige Version nur erweitert, und deren Pods starten neben den neuen. Bis zum
+ersten Release mit dieser Zusage und über eine Versionsgrenze ohne Rolling Update gibt es das nicht
+([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
 
 Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `databasechangelog`.
 Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:
