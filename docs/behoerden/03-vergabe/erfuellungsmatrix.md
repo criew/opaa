@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-20
+stand: 2026-10-22
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -80,7 +80,7 @@ ein Nachweis inhaltlich noch trägt, prüft die Durchsicht zu `naechste-durchsic
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
 | B-01 | ja | [Bausteine](../../handbuch/betrieb.md#bausteine) | Handbuch |
-| B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall | [Kubernetes-Installation](../../handbuch/kubernetes.md#installation), [Docker Compose](../../handbuch/docker-compose.md#schnellstart), [Eine oder mehrere Backend-Instanzen](../../handbuch/betrieb.md#eine-oder-mehrere-backend-instanzen), [Zwei-Instanzen-Suite](../../entwicklung/build-und-ci.md#zwei-instanzen-suite) | Handbuch, Test |
+| B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall, soweit die neue Version die laufende neben sich zulässt | [Kubernetes-Installation](../../handbuch/kubernetes.md#installation), [Docker Compose](../../handbuch/docker-compose.md#schnellstart), [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md), [Zwei-Instanzen-Suite](../../entwicklung/build-und-ci.md#zwei-instanzen-suite) | Handbuch, Test |
 | B-03 | ja | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung), [Automatisierte Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md#automatisierte-probe-im-projekt) | Handbuch, Test |
 | B-04 | ja | [Versionsnummern](../../releases.md#versionsnummern), [Vorbereitung für Bestandsinstallationen](../../releases.md#vorbereitung-für-bestandsinstallationen) | Projektunterlage |
 | B-05 | ja | [Bereitschaft und Lebendigkeit](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit), [Betriebsüberwachung](../../handbuch/kubernetes.md#betriebsüberwachung) | Handbuch |
@@ -104,7 +104,7 @@ ein Nachweis inhaltlich noch trägt, prüft die Durchsicht zu `naechste-durchsic
 | Nr. | Erfüllung | Grundlage aus dem Projekt | Art |
 |---|---|---|---|
 | L-01 | Dienstleister | [Kubernetes-Installation](../../handbuch/kubernetes.md#installation), [Authentifizierung](../../handbuch/authentifizierung.md), [Konnektoren](../../handbuch/konnektoren/README.md) | Handbuch |
-| L-02 | Dienstleister | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md), [Eine oder mehrere Backend-Instanzen](../../handbuch/betrieb.md#eine-oder-mehrere-backend-instanzen) | Projektunterlage, Handbuch |
+| L-02 | Dienstleister | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md), [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md) | Projektunterlage, Handbuch |
 | L-03 | Dienstleister | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen), [Update-Paket](../../releases.md#update-paket); Supportzeiträume sind offen ([EVB-IT-Hinweise](evb-it-hinweise.md#programmstände-sbom-und-supportzeiträume)) | Projektunterlage |
 | L-04 | Dienstleister; das Projekt sagt keine Reaktionszeiten zu | [Ablauf bei Sicherheitslücken](../../../SECURITY.md#ablauf) | Projektunterlage |
 | L-05 | Dienstleister | [Handbuch](../../handbuch/README.md) | Handbuch |

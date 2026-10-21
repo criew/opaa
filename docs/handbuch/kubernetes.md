@@ -16,7 +16,7 @@ Kapitel verweist an der jeweiligen Stelle dorthin.
 ## Kubernetes oder Compose
 
 Beide Wege führen zur selben Anwendung mit denselben Grenzen
-([Eine oder mehrere Backend-Instanzen](betrieb.md#eine-oder-mehrere-backend-instanzen)). In der
+([Mehrere Backend-Instanzen](mehrere-instanzen.md#docker-compose-und-kubernetes)). In der
 Vorgabe läuft der Chart mit einer Backend-Instanz:
 
 - Das Backend-Deployment hat ein Replikat; `backend.replicas: 0` hält das Backend an. Mehrere
@@ -77,7 +77,8 @@ flowchart LR
 ### Mehrere Backend-Instanzen
 
 Mehrere Backend-Pods gegen dieselbe Datenbank erlauben eine Aktualisierung ohne Unterbrechung und
-überstehen den Ausfall eines Pods. Der Chart rendert `backend.replicas` größer 1 nur zusammen mit dem
+überstehen den Ausfall eines Pods; wie sie zusammenarbeiten, erklärt
+[Mehrere Backend-Instanzen](mehrere-instanzen.md). Der Chart rendert `backend.replicas` größer 1 nur zusammen mit dem
 Migrations-Job und einer Originalablage, die jeder Pod sieht:
 
 ```yaml
@@ -105,7 +106,7 @@ Damit ändert sich:
   `networkPolicy.egress.backendRules`.
 - **Pod für Pod.** Die Strategie wird `RollingUpdate`: Ein neuer Pod startet, bevor ein alter endet,
   und der nächste folgt erst, wenn der neue bereit ist. `backend.updateStrategy: Recreate` bleibt
-  wählbar, etwa um einen Wert des [Konfigurationsabdrucks](betrieb.md#instanzregister) zu ändern, den
+  wählbar, etwa um einen Wert des [Konfigurationsabdrucks](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck) zu ändern, den
   alle Pods teilen müssen.
 - **Austausch ohne Abbruch.** Ein Pod, der enden soll, nimmt über `backend.preStopSleepSeconds` noch
   Anfragen an, bis Kubernetes ihn aus dem Service genommen hat. Das Zeitfenster für laufende Anfragen
@@ -116,9 +117,8 @@ Damit ändert sich:
   die Pods über Knoten oder Zonen.
 - **Datenbankverbindungen.** `backend.databasePoolSize` gilt je Pod; die Grenze für
   `max_connections` nennt [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
-- **Grenzen je Pod.** Die Gesamtgrenzen der Rate-Limits (`…_GLOBAL_MAX_REQUESTS`) zählen alle Pods
-  gemeinsam. Die übrigen Rate-Limits und die Thread-Pools gelten je Pod (siehe
-  [„Grenzen und Anzeigen mit mehreren Instanzen“](betrieb.md#grenzen-und-anzeigen-mit-mehreren-instanzen)).
+- **Grenzen je Pod.** Welche Grenzen je Pod gelten, steht unter
+  [Grenzen und Budgets](mehrere-instanzen.md#grenzen-und-budgets).
   `backend.installationBudgets` nimmt das Budget der ganzen Installation je Variable und setzt jedem
   Pod seinen Teil, abgerundet und mindestens 1; ändert sich `backend.replicas`, rechnet der Chart neu:
 
@@ -1133,7 +1133,8 @@ Proben und Metriken laufen über den Management-Port (siehe
    Versionen überspringt, prüft diesen Abschnitt bei jedem übersprungenen Release.
 2. **Datenbank sichern**, danach die Originale (siehe
    [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Ohne diese Sicherung gibt es
-   nach einer Schemaänderung keinen Rückweg.
+   nach einer Schemaänderung keinen Rückweg, außer die neue Version lässt die vorige in ihrem
+   Versionsfenster zu ([Rückweg](#rückweg)).
 3. **Schemastand notieren:** die Zahl der Zeilen in `databasechangelog` (siehe
    [Rückweg](#rückweg)).
 4. **Aktualisieren**, mit derselben Werte-Datei wie bei der Installation:
@@ -1217,24 +1218,26 @@ helm test opaa -n opaa
 ```
 
 Die Startzeilen aller Pods nennen danach die neue Version. Weicht ein Wert des
-Konfigurationsabdrucks ab, verweigert der erste neue Pod den Start; der Rollout bleibt stehen, und die
-alten Pods antworten weiter, bis der Wert korrigiert ist.
+Konfigurationsabdrucks ab oder lässt die neue Version die laufende nicht in ihrem Versionsfenster zu,
+verweigert der erste neue Pod den Start; der Rollout bleibt stehen, und die alten Pods antworten
+weiter.
 
 Scheitert die Migration, bleibt der neue Pod im Init-Container stehen, und die alten Pods antworten
 weiter. Das Protokoll des Jobs nennt den Grund (`kubectl -n opaa logs job/<Name>`). Nach der
 Behebung den gescheiterten Job löschen (`kubectl -n opaa delete job <Name>`) und `helm upgrade`
-wiederholen. Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, gehört
-`--set backend.updateStrategy=Recreate` an diesen einen Aufruf; ebenso, wenn sich ein Wert des
-Konfigurationsabdrucks ändert.
+wiederholen. Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update oder lässt
+die neue Version die laufende nicht zu, gehört `--set backend.updateStrategy=Recreate` an diesen
+einen Aufruf; ebenso, wenn sich ein Wert des Konfigurationsabdrucks ändert.
 
 ### Rückweg
 
 Liquibase migriert das Schema beim Start und **nur vorwärts**. `helm rollback` stellt Manifeste und
-Images der alten Revision wieder her, nicht die Datenbank. Eine ältere Fassung auf einem neueren Schema
-wird nicht unterstützt. **Der verlässliche Rückweg auf eine ältere Version ist deshalb die
-Datenbanksicherung von vor dem Upgrade.** Mit mehreren Backend-Pods ist `helm rollback` auf die
-unmittelbar vorige Version dagegen vorgesehen, solange das neue Release keine Versionsgrenze ohne
-Rolling Update ist: Sein Schema hat die Vorgängerversion nur erweitert.
+Images der alten Revision wieder her, nicht die Datenbank. **Der verlässliche Rückweg auf eine
+ältere Version ist deshalb die Datenbanksicherung von vor dem Upgrade.** Ohne sie geht es mit
+`helm rollback` nur zurück, wenn die neue Version die vorige in ihrem Versionsfenster zulässt: Dann
+hat ihr Schema die vorige Version nur erweitert, und deren Pods starten neben den neuen. Bis zum
+ersten Release mit dieser Zusage und über eine Versionsgrenze ohne Rolling Update gibt es das nicht
+([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
 
 Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `databasechangelog`.
 Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:
@@ -1270,8 +1273,8 @@ Rücksicherung, wenn die Sicherung von einer Installation stammt, die nur einmal
   helm rollback opaa <Revision> -n opaa
   ```
 
-- **Größere Zahl:** Das Schema ist migriert. Zurück geht es ausschließlich über die Sicherung von vor
-  dem Upgrade:
+- **Größere Zahl:** Das Schema ist migriert. Zurück geht es über die Sicherung von vor dem Upgrade,
+  außer die neue Version lässt die vorige in ihrem Versionsfenster zu (oben):
 
   1. Backend anhalten: `kubectl -n opaa scale deploy/opaa-backend --replicas=0`
   2. Die Datenbank aus der Sicherung wiederherstellen, auf eine leere Datenbank. Bei der
@@ -1596,7 +1599,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Migration bricht mit `permission denied to create extension "vector"` oder `permission denied to grant role` ab | Die Vorbereitung der Datenbank fehlt, siehe derselbe Abschnitt |
 | Backend erreicht die Datenbank nicht | Mit Egress-Policies fehlt die Regel zur Datenbank; sonst Hostname, Port oder `database.sslMode`. Bei `verify-*` und einer hauseigenen CA fehlt `extraCACertificates` |
 | Backend startet nicht und nennt `OPAA_AUTH_JWT_SECRET` | Das Geheimnis im vorhandenen Secret ist zu kurz oder ein Platzhalter |
-| Backend startet nicht, das Protokoll nennt `refuses to start` und eine laufende Instanz | Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut Instanzregister noch läuft. Meist ist es der eigene Vorgänger, der hart beendet wurde und sich nicht abmelden konnte: Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als beendet, danach startet der neue Pod beim nächsten Versuch (siehe [Instanzregister](betrieb.md#instanzregister)) |
+| Backend startet nicht, das Protokoll nennt `refuses to start` und eine laufende Instanz | Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut Instanzregister noch läuft. Meist ist es der eigene Vorgänger, der hart beendet wurde und sich nicht abmelden konnte: Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als beendet, danach startet der neue Pod beim nächsten Versuch (siehe [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)) |
 | Pod im Zustand `OOMKilled` | Die Speichergrenze ist zu klein; `backend.resources.limits.memory` anheben, nicht den Heap-Anteil (siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)) |
 | Pod verdrängt, das Ereignis nennt `ephemeral-storage` | `/tmp` ist über `backend.tmp.sizeLimit` gewachsen, etwa bei vielen großen Uploads |
 | `helm test` schlägt fehl | Das Backend ist nicht bereit, oder eine eigene Änderung an den NetworkPolicies trennt Frontend und Backend |
