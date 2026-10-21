@@ -46,6 +46,7 @@ import org.springframework.test.context.TestPropertySource;
       "opaa.rate-limit.webhook.max-requests=3",
       "opaa.rate-limit.webhook.global-max-requests=4",
       "opaa.rate-limit.search.max-requests=3",
+      "opaa.rate-limit.search.max-requests-per-account=4",
       "opaa.rate-limit.search.global-max-requests=5"
     })
 public @interface OpaaLocalAuthRateLimitTest {}

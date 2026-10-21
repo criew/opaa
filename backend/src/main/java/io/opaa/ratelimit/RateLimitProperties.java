@@ -5,6 +5,7 @@ import io.opaa.compliance.NoDataImpact;
 import io.opaa.compliance.PerInstance;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
 
 /**
@@ -123,9 +124,18 @@ public record RateLimitProperties(
    * @param windowSeconds sliding window duration in seconds. Must be at least 1.
    * @param globalMaxRequests maximum requests across all IPs within the window; only requests that
    *     authenticated count ({@code RateLimitFilter.Counting}). Must be at least 1.
+   * @param maxRequestsPerAccount maximum requests per signed-in account, and per access token apart
+   *     from its account, within the window, whatever address they come from; {@code null} for
+   *     none. Checked once the security chain authenticated the request. Must be at least 1.
    */
-  public record EndpointLimit(int maxRequests, int windowSeconds, int globalMaxRequests) {
+  public record EndpointLimit(
+      int maxRequests, int windowSeconds, int globalMaxRequests, Integer maxRequestsPerAccount) {
 
+    public EndpointLimit(int maxRequests, int windowSeconds, int globalMaxRequests) {
+      this(maxRequests, windowSeconds, globalMaxRequests, null);
+    }
+
+    @ConstructorBinding
     public EndpointLimit {
       if (maxRequests < 1) {
         throw new IllegalArgumentException("maxRequests must be at least 1, got " + maxRequests);
@@ -138,6 +148,14 @@ public record RateLimitProperties(
         throw new IllegalArgumentException(
             "globalMaxRequests must be at least 1, got " + globalMaxRequests);
       }
+      if (maxRequestsPerAccount != null && maxRequestsPerAccount < 1) {
+        throw new IllegalArgumentException(
+            "maxRequestsPerAccount must be at least 1, got " + maxRequestsPerAccount);
+      }
+    }
+
+    public boolean hasAccountLimit() {
+      return maxRequestsPerAccount != null;
     }
   }
 

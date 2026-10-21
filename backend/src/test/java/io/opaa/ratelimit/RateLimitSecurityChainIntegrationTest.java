@@ -31,9 +31,10 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * keep their tokens is decided by whether the security chain (or, for the push intake, its handler)
  * authenticated them - never by the status code. Limits from {@link OpaaLocalAuthRateLimitTest}:
  * indexing one per client and library and five globally, query three globally, webhook three per
- * client and four globally, search three per client and five globally, all per minute. Every test
- * uses its own addresses; the limiters per client live as long as the shared context, the global
- * ceilings in {@code installation_counters}, whose rows of these rules every test resets.
+ * client and four globally, search three per client, four per account and five globally, all per
+ * minute. Every test uses its own addresses; the limiters per client live as long as the shared
+ * context, the global ceilings in {@code installation_counters}, whose rows of these rules every
+ * test resets.
  */
 @OpaaLocalAuthRateLimitTest
 class RateLimitSecurityChainIntegrationTest {
@@ -43,6 +44,7 @@ class RateLimitSecurityChainIntegrationTest {
   private static final int WEBHOOK_PER_CLIENT = 3;
   private static final int GLOBAL_WEBHOOK_CEILING = 4;
   private static final int SEARCH_PER_CLIENT = 3;
+  private static final int SEARCH_PER_ACCOUNT = 4;
   private static final int GLOBAL_SEARCH_CEILING = 5;
 
   /** One byte above the push intake's body bound, which it refuses before any secret check. */
@@ -200,16 +202,49 @@ class RateLimitSecurityChainIntegrationTest {
 
   @Test
   void theSearchCeilingCountsSignedInSearchesOfAllClients() throws Exception {
-    String bearer = signIn("198.51.100.120");
+    // one account per address, so that no budget per account answers before the ceiling
     for (int client = 1; client <= GLOBAL_SEARCH_CEILING; client++) {
       int status =
-          searchOrFetch(bearer, "198.51.100." + (120 + client), client % 2 == 0)
+          searchOrFetch(
+                  signIn("198.51.100." + (140 + client)),
+                  "198.51.100." + (120 + client),
+                  client % 2 == 0)
               .andReturn()
               .getResponse()
               .getStatus();
       assertThat(status).isNotEqualTo(429);
     }
-    searchOrFetch(bearer, "198.51.100.130", true).andExpect(status().isTooManyRequests());
+    searchOrFetch(signIn("198.51.100.150"), "198.51.100.130", true)
+        .andExpect(status().isTooManyRequests());
+  }
+
+  @Test
+  void anAccountRotatingItsAddressesIsRefusedPerAccountAndGivesBackTheCeiling() throws Exception {
+    String anna = signIn("198.51.100.160");
+    for (int address = 1; address <= SEARCH_PER_ACCOUNT; address++) {
+      int status =
+          searchOrFetch(anna, "198.51.100." + (160 + address), address % 2 == 0)
+              .andReturn()
+              .getResponse()
+              .getStatus();
+      assertThat(status).isNotEqualTo(429);
+    }
+
+    searchOrFetch(anna, "198.51.100.170", true)
+        .andExpect(status().isTooManyRequests())
+        .andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+        .andExpect(jsonPath("$.error").value(RateLimitFilter.RATE_LIMIT_MESSAGE));
+
+    // the refused request took nothing from the ceiling: exactly one search is left in it, and it
+    // belongs to another account
+    int bert =
+        searchOrFetch(signIn("198.51.100.171"), "198.51.100.172", true)
+            .andReturn()
+            .getResponse()
+            .getStatus();
+    assertThat(bert).isNotEqualTo(429);
+    searchOrFetch(signIn("198.51.100.173"), "198.51.100.174", true)
+        .andExpect(status().isTooManyRequests());
   }
 
   /**

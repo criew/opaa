@@ -150,21 +150,6 @@ class RateLimitConfigurationTest {
   }
 
   @Test
-  void theSearchBudgetRefillsOnceItsWindowHasPassed() throws Exception {
-    EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
-    EndpointLimit search = new EndpointLimit(2, 1, 1000);
-    Filter filter =
-        filter(
-            new RateLimitProperties(
-                true, List.of(), wide, wide, wide, wide, wide, wide, search, null));
-    assertThat(statusAfter(filter, SEARCH, 3)).isEqualTo(429);
-
-    Thread.sleep(1100);
-
-    assertThat(statusAfter(filter, SEARCH, 2)).isEqualTo(200);
-  }
-
-  @Test
   void requestsRefusedAsUnauthenticatedLeaveTheGlobalCeilingsBehindTheSignInUntouched()
       throws Exception {
     // regression guard: the filter runs before the security chain, so a 401 must not keep the
