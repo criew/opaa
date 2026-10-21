@@ -612,10 +612,15 @@ opaa:
     # query to search: max-requests per client, global-max-requests across all clients; past
     # either the answer is 429. Both count only requests the security chain authenticated (the push
     # intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
+    # max-requests-per-account (query, chat-search, search) counts per signed-in account and per
+    # access token apart from its account, whatever address they use; it is checked behind the
+    # security chain, and a request refused there gives back its other tokens. An access token
+    # spends no budget of its address, only the global ceiling and its own quota.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_QUERY_GLOBAL_MAX_REQUESTS:100}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS_PER_ACCOUNT:10}
     indexing:
       max-requests: ${OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS:1}
       window-seconds: ${OPAA_RATE_LIMIT_INDEXING_WINDOW_SECONDS:60}
@@ -654,6 +659,7 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS:60}
       window-seconds: ${OPAA_RATE_LIMIT_CHAT_SEARCH_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_GLOBAL_MAX_REQUESTS:1200}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS_PER_ACCOUNT:60}
     # POST /api/v1/search embeds every question with the configured model, GET
     # /api/v1/search/hits/{hitId} reads stored chunks; one budget for both, so fetching other hits
     # buys no fresh searches. Sized for a tool that runs one search and fetches a few of its hits;
@@ -662,6 +668,7 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS:30}
       window-seconds: ${OPAA_RATE_LIMIT_SEARCH_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS:300}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT:30}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
     # register, forgot-password, set-password and verify-email are keyed by client address in
     # RateLimitFilter; change-password by the authenticated account, register and forgot-password

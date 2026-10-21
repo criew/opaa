@@ -207,7 +207,11 @@ public class RateLimitConfiguration {
         pattern,
         new RateLimitService(limit.maxRequests(), limit.windowSeconds()),
         new InstallationRateLimit(counters, name, limit.globalMaxRequests(), limit.windowSeconds()),
-        counting);
+        RateLimitFilter.ALWAYS_SERVED,
+        counting,
+        limit.hasAccountLimit()
+            ? new RateLimitService(limit.maxRequestsPerAccount(), limit.windowSeconds())
+            : null);
   }
 
   private static Rule rule(

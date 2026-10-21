@@ -12,6 +12,7 @@ public final class RateLimitAuthentication {
 
   static final String SESSION_ATTRIBUTE = RateLimitAuthentication.class.getName() + ".SESSION";
   static final String HANDLER_ATTRIBUTE = RateLimitAuthentication.class.getName() + ".HANDLER";
+  static final String OWN_QUOTA_ATTRIBUTE = RateLimitAuthentication.class.getName() + ".OWN_QUOTA";
 
   private RateLimitAuthentication() {}
 
@@ -26,6 +27,13 @@ public final class RateLimitAuthentication {
    */
   public static void markAuthenticatedBySession(HttpServletRequest request) {
     request.setAttribute(SESSION_ATTRIBUTE, Boolean.TRUE);
+  }
+
+  /**
+   * Marks {@code request} as authenticated by a credential with its own quota (an access token).
+   */
+  static void markOwnQuota(HttpServletRequest request) {
+    request.setAttribute(OWN_QUOTA_ATTRIBUTE, Boolean.TRUE);
   }
 
   static boolean isMarked(HttpServletRequest request, String attribute) {

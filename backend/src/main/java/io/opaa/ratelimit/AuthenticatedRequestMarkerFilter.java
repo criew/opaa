@@ -15,7 +15,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Registered directly behind the security chain: a request reaches it only after the chain let it
  * through, and it marks the request for {@link RateLimitFilter} when the chain authenticated it -
  * an anonymous principal does not count. A request the firewall or the chain refused never gets
- * here and so stays unmarked.
+ * here and so stays unmarked. Before marking it checks the budget per account the request's rule
+ * may carry; a request refused there is answered {@code 429} and stays unmarked, so it gives back
+ * the tokens it took before the chain.
  */
 class AuthenticatedRequestMarkerFilter extends OncePerRequestFilter {
 
@@ -27,7 +29,13 @@ class AuthenticatedRequestMarkerFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (trustResolver.isAuthenticated(authentication)) {
+      if (!RateLimitFilter.admitAccount(request, response, authentication)) {
+        return;
+      }
       RateLimitAuthentication.markAuthenticatedBySession(request);
+      if (authentication instanceof OwnQuotaAuthentication) {
+        RateLimitAuthentication.markOwnQuota(request);
+      }
     }
     filterChain.doFilter(request, response);
   }

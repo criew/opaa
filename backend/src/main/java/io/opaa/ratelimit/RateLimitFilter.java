@@ -24,6 +24,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.UrlPathHelper;
 import tools.jackson.databind.json.JsonMapper;
@@ -74,7 +77,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * the ceiling shared by everyone signed in nor the budget of a person whose token just expired.
      * Attempts with invalid credentials are thereby not bounded per address, as on every other
      * endpoint: a budget checked before the chain would refuse signed-in people behind the same
-     * address too.
+     * address too. Behind the chain the rule's budget per account is checked; a request refused
+     * there gives its client and global token back as well. A request authenticated by a credential
+     * with its own quota ({@link OwnQuotaAuthentication}) gives back its client token and keeps
+     * only the global one.
      */
     AUTHENTICATED,
 
@@ -105,6 +111,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
    * answered exactly like an unknown route, and an unknown route has no budget - a 429 here against
    * a 401 there would be the one difference a probe would find.
    *
+   * <p>{@code perAccount} may be {@code null}; otherwise, for a rule counting {@link
+   * Counting#AUTHENTICATED}, it is keyed by the account the security chain authenticated, or by the
+   * access token apart from its account, and checked behind the chain by {@link
+   * AuthenticatedRequestMarkerFilter} - whatever address the request came from.
+   *
    * @param name the stable label of the rule in logs and metrics
    */
   public record Rule(
@@ -113,7 +124,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
       RequestLimiter perClient,
       RequestLimiter global,
       BooleanSupplier served,
-      Counting counting) {
+      Counting counting,
+      RequestLimiter perAccount) {
+
+    public Rule(
+        String name,
+        String pathPattern,
+        RequestLimiter perClient,
+        RequestLimiter global,
+        BooleanSupplier served,
+        Counting counting) {
+      this(name, pathPattern, perClient, global, served, counting, null);
+    }
 
     public Rule(String name, String pathPattern, RequestLimiter perClient, RequestLimiter global) {
       this(name, pathPattern, perClient, global, ALWAYS_SERVED, Counting.EVERY_REQUEST);
@@ -144,7 +166,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
       RequestLimiter perClient,
       RequestLimiter global,
       BooleanSupplier served,
-      Counting counting) {}
+      Counting counting,
+      RequestLimiter perAccount) {}
+
+  /** The check of the account budget a request owes once the security chain authenticated it. */
+  @FunctionalInterface
+  interface AccountAdmission {
+
+    /** Takes the account's token, or answers {@code 429} and returns {@code false}. */
+    boolean admit(Authentication authentication, HttpServletResponse response) throws IOException;
+  }
+
+  static final String ACCOUNT_ADMISSION_ATTRIBUTE =
+      RateLimitFilter.class.getName() + ".ACCOUNT_ADMISSION";
 
   /**
    * The tokens an admitted request took, each with the grant that identifies it, so that its answer
@@ -179,7 +213,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         rule.perClient(),
                         rule.global(),
                         rule.served(),
-                        rule.counting()))
+                        rule.counting(),
+                        rule.perAccount()))
             .toList();
     this.clientIpResolver = clientIpResolver;
     this.metrics = metrics;
@@ -243,6 +278,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     if (rule.global() != null) {
       global = rule.global().tryAcquire(GLOBAL_KEY);
       if (!global.allowed()) {
+        rule.perClient().release(key, keyGrant);
+        if (address != null) {
+          rule.perClient().release(client, address);
+        }
         metrics.recordRejected(rule.name(), "global");
         log.warn(
             "Global rate limit {} exceeded on {} (request from {})", rule.name(), path, client);
@@ -250,7 +289,59 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return null;
       }
     }
+    if (rule.perAccount() != null && rule.counting() == Counting.AUTHENTICATED) {
+      request.setAttribute(
+          ACCOUNT_ADMISSION_ATTRIBUTE,
+          (AccountAdmission)
+              (authentication, answer) -> admitAccount(rule, authentication, answer, path));
+    }
     return new Admission(rule, key, keyGrant, client, address, global);
+  }
+
+  /**
+   * The budget per account, keyed by {@link #accountKey}. The log line names neither account nor
+   * token: over time it would be a per-person usage record.
+   */
+  private boolean admitAccount(
+      CompiledRule rule, Authentication authentication, HttpServletResponse response, String path)
+      throws IOException {
+    Decision decision = rule.perAccount().tryAcquire(accountKey(authentication));
+    if (decision.allowed()) {
+      return true;
+    }
+    String scope = authentication instanceof OwnQuotaAuthentication ? "token" : "account";
+    metrics.recordRejected(rule.name(), scope);
+    log.info("Rate limit {} per {} exceeded on {}", rule.name(), scope, path);
+    writeRateLimitResponse(response, decision.retryAfterSeconds());
+    return false;
+  }
+
+  /**
+   * Runs the account check {@link #admit} left on {@code request}, if any; {@code true} when the
+   * request may go on.
+   */
+  static boolean admitAccount(
+      HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+      throws IOException {
+    Object admission = request.getAttribute(ACCOUNT_ADMISSION_ATTRIBUTE);
+    return !(admission instanceof AccountAdmission check) || check.admit(authentication, response);
+  }
+
+  /**
+   * The key of the budget per account: an access token by itself, apart from its account; a JWT by
+   * issuer and subject, so the same subject of two sign-in providers is two accounts.
+   */
+  static String accountKey(Authentication authentication) {
+    if (authentication instanceof OwnQuotaAuthentication ownQuota) {
+      return "token:" + ownQuota.quotaKey();
+    }
+    if (authentication instanceof JwtAuthenticationToken jwt) {
+      return "account:"
+          + jwt.getToken().getClaimAsString(JwtClaimNames.ISS)
+          + "|"
+          + jwt.getToken().getSubject();
+    }
+    return "account:" + authentication.getName();
   }
 
   private Decision acquireForClient(
@@ -274,6 +365,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (!RateLimitAuthentication.isMarked(request, RateLimitAuthentication.SESSION_ATTRIBUTE)) {
           rule.perClient().release(admission.key(), admission.keyGrant());
           releaseGlobal(admission);
+        } else if (RateLimitAuthentication.isMarked(
+            request, RateLimitAuthentication.OWN_QUOTA_ATTRIBUTE)) {
+          rule.perClient().release(admission.key(), admission.keyGrant());
         }
       }
       case AUTHENTICATED_BY_HANDLER -> {
