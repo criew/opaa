@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-20
+stand: 2026-10-22
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -31,7 +31,7 @@ Kapitel anzupassen.
 
 | Nr. | Annahme | Folge, wenn sie nicht zutrifft |
 |---|---|---|
-| A1 | OPAA läuft mit **[einer / zwei oder mehr] Backend-Instanzen** gegen eine Datenbank; mit einer gibt es keine Hochverfügbarkeit des Backends ([Eine oder mehrere Backend-Instanzen](../../handbuch/betrieb.md#eine-oder-mehrere-backend-instanzen)) | Mit mehreren Instanzen antworten bei S1 die übrigen weiter, und S7 lässt sich vor dem Ersatz der letzten alten Instanz ohne Sicherung zurücknehmen; die Datenbank bleibt der einzige gemeinsame Baustein |
+| A1 | OPAA läuft mit **[einer / zwei oder mehr] Backend-Instanzen** gegen eine Datenbank; mit einer gibt es keine Hochverfügbarkeit des Backends ([Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md)) | Mit mehreren Instanzen antworten bei S1 die übrigen weiter; die Datenbank bleibt der einzige gemeinsame Baustein. S7 lässt sich ohne Sicherung nur zurücknehmen, wenn die neue Version die vorige in ihrem Versionsfenster zulässt |
 | A2 | Die **Datenbank ist die einzige Wahrheit.** Vektorindex, Volltextindex, Rechte, Chats und Nachweisprotokoll liegen in ihr und werden mit ihrer Sicherung gesichert; der Index braucht keine eigene Sicherung | — |
 | A3 | Die **Originale hochgeladener Dokumente** liegen nur in der Originalablage und sind ohne deren Sicherung verloren. Inhalte angebundener Quellen lassen sich dort erneut beziehen | Ohne Sicherung der Originalablage ist jeder Upload seit Inbetriebnahme gefährdet |
 | A4 | Gesichert wird nach dem Handbuch: **erst die Datenbank, dann die Originale**; wiederhergestellt umgekehrt ([Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung)) | Datenbankzeilen ohne Original, „Original öffnen“ scheitert |
@@ -74,7 +74,7 @@ ist als der der Datenbank.
 | S4 | Originalablage verloren | Suche und Antworten laufen weiter, „Original öffnen“ und neue Uploads scheitern | Originale aus der Sicherung zurückspielen; ist sie älter als die Datenbank, fehlen die Originale der Zwischenzeit und sind erneut hochzuladen | Originale seit der letzten Sicherung der Ablage |
 | S5 | Installation vollständig verloren (Host oder Cluster) | Dienst steht | Neuaufbau nach [Wiederherstellung auf einem neuen Cluster](../../handbuch/kubernetes.md#sicherung-und-wiederherstellung) bzw. [Docker Compose](../../handbuch/docker-compose.md#sicherung-und-wiederherstellung) | wie S3 und S4 |
 | S6 | Verschlüsselungsschlüssel verloren | Gespeicherte Zugangsdaten unlesbar; Läufe von Quellen mit Anmeldung scheitern | Zugangsdaten an Bibliotheken, Zugängen und Modellen neu eintragen ([Zugangsdaten-Verschlüsselung](../../handbuch/betrieb.md#zugangsdaten-verschlüsselung)) | nur die Zugangsdaten |
-| S7 | Update fehlgeschlagen | Dienst steht oder läuft fehlerhaft | Rückweg nur über die Sicherung von vor dem Update ([Aktualisierung und Rückweg](../../handbuch/kubernetes.md#aktualisierung-und-rückweg)) | alles seit dieser Sicherung |
+| S7 | Update fehlgeschlagen | Dienst steht oder läuft fehlerhaft | Rückweg über die Sicherung von vor dem Update; ohne sie nur, wenn die neue Version die vorige in ihrem Versionsfenster zulässt ([Aktualisierung und Rückweg](../../handbuch/kubernetes.md#aktualisierung-und-rückweg), [Update ohne Ausfall](../../handbuch/mehrere-instanzen.md#update-ohne-ausfall)) | über die Sicherung alles seit dieser Sicherung, über das Versionsfenster keiner |
 | S8 | Identitätsanbieter fällt aus | Anmeldung über ihn unmöglich; lokale Konten melden sich weiter an | Ausfall beim Identitätsanbieter beheben; kommt niemand mehr herein: [Notfallprozedur](../../handbuch/authentifizierung.md#notfallprozedur-wieder-hereinkommen) | keiner |
 | S9 | Modellanbieter fällt aus | siehe [Ausfall des Modellanbieters](#ausfall-des-modellanbieters) | | keiner |
 | S10 | Verdacht auf Kompromittierung | nach Vorfallbehandlung des Hauses | Neuaufbau aus den Images der Version und einer Sicherung von vor dem Vorfall; alle Geheimnisse wechseln, gespeicherte Zugangsdaten danach neu eintragen (S6); Meldepflichten prüfen ([NIS2](../06-informationssicherheit/nis2-bundesverwaltung.md)) | je nach Sicherung |

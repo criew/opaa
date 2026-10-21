@@ -67,6 +67,9 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
     - [Docker Compose](docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
       Objektspeicher und Mailpit im Stapel, Aktualisierung
     - [Kubernetes](kubernetes.md) — Betrieb mit dem Helm-Chart
+    - [Mehrere Backend-Instanzen](mehrere-instanzen.md) — wie mehrere Instanzen zusammenarbeiten:
+      Abstimmung über die Datenbank, Instanzregister, Konfigurationsabdruck, Grenzen je Instanz,
+      Update ohne Ausfall
     - [Datenbank](datenbank.md) — PostgreSQL und pgvector, eigenes Schema, Volltextindex
     - [Originalablage](originalablage.md) — wo die Originale der Uploads liegen, Sicherung, Umstellung
     - [E-Mail-Versand](e-mail.md) — Mailserver, Vorlagen, Fehlerbilder
@@ -119,6 +122,7 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
 | Dokumente fehlen oder sind veraltet | [Wissensbibliotheken](wissensbibliotheken.md): „Protokoll und Fehler" → Laufprotokoll der Bibliothek → Kapitel des Formats |
 | Eine Antwort ist schlecht | [Suche](suche.md): „Diagnose" und „Typische Befunde" → je nach Befund [Wissensbibliotheken](wissensbibliotheken.md) oder [Metadaten](metadaten.md) |
 | Ein Update steht an | [Betriebsübersicht](betrieb.md): „Aktualisierung" → [Docker Compose](docker-compose.md) bzw. [Kubernetes](kubernetes.md): „Aktualisierung …" |
+| Mehrere Backend-Instanzen planen oder einrichten | [Mehrere Backend-Instanzen](mehrere-instanzen.md) → [Docker Compose](docker-compose.md) bzw. [Kubernetes](kubernetes.md): „Mehrere Backend-Instanzen" → [Datenbank](datenbank.md): „Verbindungen bei mehreren Instanzen" |
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) → [Spaces](spaces.md) |
 | Ein externes KI-Werkzeug anschließen | [Externe KI-Werkzeuge](fremdzugaenge.md) |
 | Postfächer anbinden wollen | [Berechtigungen](berechtigungen.md): „Prüfliste vor einem Postfach-Konnektor" → [Private Bibliotheken](private-bibliotheken.md) |

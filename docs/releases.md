@@ -571,14 +571,17 @@ Ab `1.0.0` steigt bei einem Bruch die Hauptversion.
 - eine inkompatible Änderung an `/api/v1` oder am MCP-Endpunkt,
 - eine Migration, die eine Neuindizierung oder einen Neuaufbau verlangt.
 
-Schemaänderungen laufen immer vorwärts. Zurück auf eine ältere Version geht es nur über die
-Datenbanksicherung, unabhängig davon, ob die Version als Bruch gezählt wird.
+Schemaänderungen laufen immer vorwärts. Zurück auf eine ältere Version geht es über die
+Datenbanksicherung, unabhängig davon, ob die Version als Bruch gezählt wird. Ohne Sicherung geht es
+nur zurück, wenn die neue Version die vorige in ihrem Versionsfenster zulässt (unten): Ihr Schema hat
+die vorige nur erweitert.
 
 **Versionsfenster für Rolling Updates.** `backend/src/main/resources/instance/rolling-update.properties`
 nennt in `oldest-compatible-version` die älteste Version, neben der der Bau laufen darf
 ([ADR-0053](decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 4). Leer heißt: nur neben
 sich selbst. Das Release trägt dort das unmittelbar vorige Release ein; an einer Versionsgrenze ohne
-Rolling Update bleibt es leer.
+Rolling Update bleibt es leer. Bis zum ersten Release, das den Wert setzt, laufen nur Stände derselben
+Version nebeneinander ([Handbuch, Update ohne Ausfall](handbuch/mehrere-instanzen.md#update-ohne-ausfall)).
 
 Releases entstehen nur von Commits auf `main`. Eine ältere Linie wird nicht nachgepflegt. Daraus
 folgen zwei Arten von Patch-Release:
