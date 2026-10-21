@@ -513,12 +513,17 @@ Transport ihn ab, und die Abweisung sieht nach einem Tokenproblem aus.
 ## 10. Kontingent und Abflussalarm
 
 Ein Skript stellt in einer Minute mehr Anfragen als ein Mensch an einem Tag. Deshalb hat der Kanal
-ein **Kontingent je Token** — zusätzlich zu den Grenzen je Netzadresse, nicht an ihrer Stelle: Hinter
-einem gemeinsamen Ausgangspunkt im Behördennetz teilen sich alle dieselbe Adresse, und eine Grenze je
-Adresse träfe die Falschen.
+ein **Kontingent je Token** — an Stelle der Grenze je Netzadresse: Hinter einem gemeinsamen
+Ausgangspunkt im Behördennetz teilen sich alle dieselbe Adresse, und eine Grenze je Adresse träfe die
+Falschen. Ein Tokenaufruf an Suche und Trefferabruf gibt deshalb seinen Platz in der Grenze seiner
+Adresse zurück und zählt gegen die Grenze je Token, die aller Tokens seiner Person und die gemeinsame
+Grenze der Suche ([Suche](suche.md#101-ratenbegrenzung)); weist das Kontingent ihn ab, gibt er auch
+seinen Platz in der gemeinsamen Grenze zurück. Die Grenze je Adresse wird geprüft, bevor das Backend den Aufrufer kennt. Ist sie hinter einem
+NAT-Ausgang schon ausgeschöpft, wird auch ein Tokenaufruf von dort abgewiesen; die Entlastung gilt nur
+für Aufrufe, die durch die Grenze je Adresse kommen: Sie geben ihren Platz dort sofort zurück.
 
-**Am MCP-Endpunkt ist das Kontingent die einzige Bremse.** Die Anfragegrenze je Netzadresse gilt für
-die Pfade unter `/api/`; `/mcp` liegt außerhalb davon. Deshalb zählt dort **jeder** Aufruf gegen das
+**Am MCP-Endpunkt ist das Kontingent die einzige Bremse.** Die Grenzen der Suche gelten für die Pfade
+unter `/api/`; `/mcp` liegt außerhalb davon. Deshalb zählt dort **jeder** Aufruf gegen das
 Kontingent des Tokens — auch das Abrufen der Werkzeugliste, mit der sich ein Client verbindet. Sonst
 gäbe es am MCP-Endpunkt einen ungezählten und damit unbegrenzten Weg. In den **Abflussalarm** geht
 die Werkzeugliste dagegen **nicht** ein: Der Alarm beobachtet Bestände, die das Haus verlassen, und
@@ -624,7 +629,7 @@ Verhalten. Diese Antworten unterscheiden die Fälle:
 | `503` am MCP-Endpunkt | Der Kanal ist **aus**, das vorgelegte Token wäre sonst gültig. Diese Antwort trennt „Kanal zu" von „falscher Pfad" und von „Proxy kaputt"; sie nennt die Ursache im Feld `reason` |
 | `401` | Das Token selbst wird abgewiesen. Der Grund steht im Kopf `WWW-Authenticate` als `error_description`; am MCP-Endpunkt zusätzlich im Feld `reason` der Antwort |
 | `403` | Token gültig, aber der angesprochene Pfad gehört nicht zu den drei Lesewegen (Abschnitt 8) |
-| `429` | Das Kontingent des Tokens ist erschöpft (Abschnitt 10) — an den REST-Lesewegen |
+| `429` | Das Kontingent des Tokens ist erschöpft (Abschnitt 10) — an den REST-Lesewegen; bei Suche und Trefferabruf auch die Grenze je Token oder die gemeinsame Grenze der Suche ([Suche](suche.md#101-ratenbegrenzung)) |
 | `405` | Ein `GET` auf `/mcp` **mit gültigem Token bei offenem Kanal**. Der Endpunkt nimmt `POST` entgegen. Ein Browseraufruf trägt kein Token und sieht diese Antwort nie — er endet bei `404` bzw. `401` und ist deshalb kein Funktionstest |
 
 Bei geschlossenem Kanal antworten die REST-Lesewege mit `401` und der Ursache `channel_closed`;
@@ -647,7 +652,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | `404` am MCP-Endpunkt | Kanal aus **und** kein brauchbares Token — oder die falsche Adresse — oder ein Aufruf ganz ohne `Authorization`-Kopf | Zuerst mit einem gültigen Token wiederholen: Kommt dann `503`, ist der Schalter zu; kommt `401`, liegt es am Token; bleibt es bei `404`, ist die Adresse falsch |
 | Ein bestimmter Bestand fehlt in `list_libraries` und in den Treffern, alles andere geht | Einer der vier Faktoren der effektiven Sicht fehlt: Lesezugriff entzogen, **Freigabe zurückgenommen**, **Freigabe erloschen** (Fristablauf) oder Freigabe ausgesetzt. Eine fehlende Bibliothek erzeugt bewusst **keine** Fehlermeldung | Erst Lesezugriff der Person prüfen, dann *Administration → Anbindungen → Externe KI-Werkzeuge*, Abschnitt „Freigegebene Bibliotheken“. Nach einer erneuten Freigabe lebt die Auswahl in bestehenden Tokens **nicht** wieder auf — es braucht ein neues Token |
 | Die Bibliothek ist im Token als **ausgesetzt** markiert | Die Freigabe wurde zurückgenommen oder ist erloschen | Freigabe erneuern lassen, dann ein **neues** Token erzeugen |
-| `429` mit Wartehinweis (REST) — oder am MCP-Endpunkt eine Fehlerantwort mit dem Code `-32000` bzw. ein Werkzeugergebnis mit dem Wort „Kontingent" | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife. **Am MCP-Endpunkt ist das keine `429`**: Die Ablehnung kommt als Protokollfehler bzw. als Fehlerergebnis des Werkzeugs zurück, damit das fremde Modell damit umgehen kann. Schon das Verbinden zählt (Abschnitt 10) — ein Client, der sich in Schleife neu verbindet, kann das Kontingent allein damit ausschöpfen | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
+| `429` mit Wartehinweis (REST) — oder am MCP-Endpunkt eine Fehlerantwort mit dem Code `-32000` bzw. ein Werkzeugergebnis mit dem Wort „Kontingent" | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife. An Suche und Trefferabruf kann es auch die Grenze je Token oder aller Tokens der Person (`OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT`), die Grenze der Netzadresse, solange sie vor der Anmeldung schon voll ist (`scope=client`), oder die gemeinsame Grenze der Suche sein (`OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS`, [Suche](suche.md#101-ratenbegrenzung)): Das Kontingent nennt eine Wartezeit von bis zu einer Stunde, diese Grenzen von höchstens einer Minute; die Metrik `opaa.rate_limit.rejected` zählt sie mit `limit=search` und `scope=token` bzw. `scope=global`. **Am MCP-Endpunkt ist das keine `429`**: Die Ablehnung kommt als Protokollfehler bzw. als Fehlerergebnis des Werkzeugs zurück, damit das fremde Modell damit umgehen kann. Schon das Verbinden zählt (Abschnitt 10) — ein Client, der sich in Schleife neu verbindet, kann das Kontingent allein damit ausschöpfen | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
 | `403` bei einem Aufruf, der bis gestern lief | Ein Proxy hängt der Adresse etwas an (`/mcp;x=1`); solche Pfade weist die Anwendung ab, bevor sie den Endpunkt erreichen | Proxy-Regel bereinigen. Eine prozentkodierte Schreibweise (`/%6Dcp`) ist dagegen unschädlich — sie wird wie `/mcp` behandelt |
 | Der Client meldet „MCP server failed" o. ä., **alle** externen KI-Werkzeuge des Hauses zugleich | **Fassungsbruch** nach einem Client- oder Server-Update — siehe unten |
 | Die Antwort ist **HTML** statt JSON — etwa eine Seite der Anwendung oder `405` mit HTML-Rumpf | Ein vorgelagerter Reverse-Proxy reicht `/mcp` nicht an OPAA durch, sondern beantwortet den Pfad mit der Auslieferung der Oberfläche. Der Endpunkt selbst antwortet immer als JSON | Die Proxy-Regel um `/mcp` ergänzen — sie muss den Pfad genauso weiterreichen wie `/` ([Deployment](betrieb.md#netzwerkzugang)) |

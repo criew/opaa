@@ -395,6 +395,24 @@ class RateLimitFilterTest {
     verify(loginLimiter).tryAcquire(anyString());
   }
 
+  @Test
+  void aRequestRefusedByTheGlobalCeilingGivesBackItsClientToken() throws Exception {
+    var global = mock(RateLimitService.class);
+    when(global.tryAcquire(anyString())).thenReturn(REJECTED, ALLOWED);
+    var budgetOfOne =
+        filter(List.of(), List.of(new Rule("query", QUERY, new RateLimitService(1, 60), global)));
+
+    var refused = new MockHttpServletResponse();
+    budgetOfOne.doFilter(
+        new MockHttpServletRequest("POST", "/api/v1/query"), refused, new MockFilterChain());
+    var retried = new MockHttpServletResponse();
+    budgetOfOne.doFilter(
+        new MockHttpServletRequest("POST", "/api/v1/query"), retried, new MockFilterChain());
+
+    assertThat(refused.getStatus()).isEqualTo(429);
+    assertThat(retried.getStatus()).isEqualTo(200);
+  }
+
   /**
    * A rule whose endpoint is switched off is matched but not counted. A switched-off self-service
    * flow is answered exactly like an unknown route, and an unknown route has no budget - counting

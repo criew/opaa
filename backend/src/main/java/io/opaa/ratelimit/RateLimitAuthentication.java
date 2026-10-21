@@ -12,6 +12,9 @@ public final class RateLimitAuthentication {
 
   static final String SESSION_ATTRIBUTE = RateLimitAuthentication.class.getName() + ".SESSION";
   static final String HANDLER_ATTRIBUTE = RateLimitAuthentication.class.getName() + ".HANDLER";
+  static final String OWN_QUOTA_ATTRIBUTE = RateLimitAuthentication.class.getName() + ".OWN_QUOTA";
+  static final String REFUSED_LATER_ATTRIBUTE =
+      RateLimitAuthentication.class.getName() + ".REFUSED_LATER";
 
   private RateLimitAuthentication() {}
 
@@ -26,6 +29,21 @@ public final class RateLimitAuthentication {
    */
   public static void markAuthenticatedBySession(HttpServletRequest request) {
     request.setAttribute(SESSION_ATTRIBUTE, Boolean.TRUE);
+  }
+
+  /**
+   * Marks {@code request} as authenticated by a credential with its own quota (an access token).
+   */
+  static void markOwnQuota(HttpServletRequest request) {
+    request.setAttribute(OWN_QUOTA_ATTRIBUTE, Boolean.TRUE);
+  }
+
+  /**
+   * Marks {@code request} as refused with {@code 429} by a limit behind the filter, such as the
+   * hour quota of an access token: it did no work and gives back its token of the global ceiling.
+   */
+  public static void markRefusedByLaterLimit(HttpServletRequest request) {
+    request.setAttribute(REFUSED_LATER_ATTRIBUTE, Boolean.TRUE);
   }
 
   static boolean isMarked(HttpServletRequest request, String attribute) {

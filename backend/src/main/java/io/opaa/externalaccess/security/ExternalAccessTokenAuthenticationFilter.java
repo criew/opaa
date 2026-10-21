@@ -8,6 +8,7 @@ import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator.Result;
 import io.opaa.externalaccess.token.ExternalAccessTokenRejection;
 import io.opaa.externalaccess.token.ExternalAccessTokenService;
 import io.opaa.externalaccess.token.ExternalAccessTokenValues;
+import io.opaa.ratelimit.OwnQuotaAuthentication;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -180,8 +181,13 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
             Instant.now(clock).toString()));
   }
 
-  /** The authentication an access-token call carries: the person, the token, one authority. */
-  static final class ExternalAccessTokenAuthentication extends AbstractAuthenticationToken {
+  /**
+   * The authentication an access-token call carries: the person, the token, one authority. The
+   * token has a quota of its own, so the rate limits count it apart from its account and spend no
+   * budget of its address.
+   */
+  static final class ExternalAccessTokenAuthentication extends AbstractAuthenticationToken
+      implements OwnQuotaAuthentication {
 
     private final UUID userId;
     private final transient UUID tokenId;
@@ -206,6 +212,16 @@ public class ExternalAccessTokenAuthenticationFilter extends OncePerRequestFilte
 
     UUID tokenId() {
       return tokenId;
+    }
+
+    @Override
+    public String quotaKey() {
+      return tokenId.toString();
+    }
+
+    @Override
+    public String ownerKey() {
+      return userId.toString();
     }
   }
 }

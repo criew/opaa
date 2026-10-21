@@ -28,6 +28,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -383,7 +384,8 @@ class GlobalExceptionHandlerTest {
         handler.handleTooManyRequestsException(
             new io.opaa.common.TooManyRequestsException(
                 "Es werden gerade zu viele Anhänge geöffnet."
-                    + " Bitte versuchen Sie es in einem Moment erneut."));
+                    + " Bitte versuchen Sie es in einem Moment erneut."),
+            new MockHttpServletRequest());
     assertEquals(429, response.getStatusCode().value());
     ErrorResponse body = response.getBody();
     assertNotNull(body);

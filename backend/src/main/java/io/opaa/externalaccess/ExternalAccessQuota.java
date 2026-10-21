@@ -19,10 +19,10 @@ import org.springframework.stereotype.Component;
  * Abflussalarm"): a sliding hour window per token, its size read from the channel settings on every
  * call so a raised limit takes effect without a restart.
  *
- * <p>It comes <b>in addition to</b> the limits per client address and per installation that {@code
- * io.opaa.ratelimit.RateLimitFilter} applies, not in their place: behind a shared egress point in
- * an authority's network everyone shares one address, and a limit per address would hit the wrong
- * people.
+ * <p>It stands <b>in place of</b> the limit per client address: behind a shared egress point
+ * everyone shares one address, so {@code io.opaa.ratelimit.RateLimitFilter} gives back a token
+ * call's address token and counts it per token, per person and per installation instead. A refusal
+ * here gives back the installation's token too ({@code GlobalExceptionHandler}).
  *
  * <p>Three things this deliberately is not. It is <b>not a protection against mass retrieval</b> -
  * a conservative 60 requests an hour still amount to six figures over a token's maximum lifetime;

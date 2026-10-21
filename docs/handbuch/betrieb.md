@@ -153,7 +153,7 @@ Die übrigen Grenzen hält jede Instanz für sich. Ihr Wert ist deshalb **die Gr
 geteilt durch die Zahl der Instanzen**: Sollen etwa alle zusammen höchstens vier Aufnahmen
 gleichzeitig transkribieren, erhält bei zwei Instanzen jede `OPAA_TRANSCRIPTION_MAX_CONCURRENT=2`.
 Das betrifft die Rate-Limits je Client-Adresse, Konto oder E-Mail-Adresse
-(`OPAA_RATE_LIMIT_*_MAX_REQUESTS`, `…_MAX_REQUESTS_PER_ADDRESS`), die gleichzeitigen Einbettungen
+(`OPAA_RATE_LIMIT_*_MAX_REQUESTS`, `…_MAX_REQUESTS_PER_ADDRESS`, `…_MAX_REQUESTS_PER_ACCOUNT`), die gleichzeitigen Einbettungen
 (`OPAA_INDEXING_EMBEDDING_CONCURRENCY`), die Transkriptionen und die Nachextraktionen von Anhängen
 (`OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT`). Unter Compose trägt man den geteilten Wert
 selbst in `.env.docker` ein; der Helm-Chart rechnet ihn aus dem Budget der Installation
@@ -568,8 +568,11 @@ und der nginx des Frontend-Containers ist bereits einer —, ist die Verbindungs
 vorlegen dürfen; **Pflicht, sobald ein Proxy vor dem Backend steht**.
 
 - **Ohne Wert** (die Vorgabe) wird der Header ignoriert. Dann teilen alle Clients einen Zähler: Die
-  Anmeldegrenze gilt für das ganze Haus, und die Netzbeschränkung sieht nur den Proxy. Der Start
-  schreibt in diesem Fall eine Warnung mit genau dieser Folge ins Log.
+  Anmeldegrenze und die Grenzen von Fragen, Chatsuche und Suche je Adresse gelten für das ganze
+  Haus, und die Netzbeschränkung sieht nur den Proxy. Der Start schreibt in diesem Fall eine Warnung
+  mit genau dieser Folge ins Log. Dasselbe gilt für viele Personen hinter einem gemeinsamen
+  NAT-Ausgang; dort hält die Grenze je Konto den Einzelnen im Rahmen
+  ([Suche](suche.md#101-ratenbegrenzung)).
 - **So eng wie möglich.** Unter Compose ist der Wert die feste Adresse des Frontend-Containers als
   `/32`, nicht das ganze Compose-Netz: Dessen Gateway-Adresse spricht jeder Prozess des Hosts und
   jeder Container, und wer sie vertraut, macht jeden davon zu einem Proxy, der `X-Forwarded-For`

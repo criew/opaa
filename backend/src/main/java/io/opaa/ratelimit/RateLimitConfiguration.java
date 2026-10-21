@@ -61,6 +61,13 @@ public class RateLimitConfiguration {
   /** Keyed by the client alone: one bucket for all spaces, so switching spaces buys no budget. */
   static final String CHAT_SEARCH_PATTERN = "^/api/v1/spaces/[^/]+/chats/search$";
 
+  /**
+   * The search and the fetch of one of its hits share one bucket per client, keyed by the client
+   * alone: another hit id buys no fresh budget. The listing of searchable libraries, the
+   * availability and the filter options next to it stay outside.
+   */
+  static final String SEARCH_PATTERN = "^/api/v1/search(?:/hits/[^/]+)?$";
+
   @Bean
   TrustedProxyClientIpResolver clientIpResolver(RateLimitProperties properties) {
     return new TrustedProxyClientIpResolver(properties.trustedProxyCidrs());
@@ -145,6 +152,7 @@ public class RateLimitConfiguration {
         rule(counters, "webhook", webhookPattern, properties.webhook(), AUTHENTICATED_BY_HANDLER));
     rules.add(
         rule(counters, "chat-search", CHAT_SEARCH_PATTERN, properties.chatSearch(), AUTHENTICATED));
+    rules.add(rule(counters, "search", SEARCH_PATTERN, properties.search(), AUTHENTICATED));
     LocalAuthLimits localAuth = properties.localAuth();
     rules.add(rule(counters, "local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
     rules.add(rule(counters, "local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
@@ -199,7 +207,11 @@ public class RateLimitConfiguration {
         pattern,
         new RateLimitService(limit.maxRequests(), limit.windowSeconds()),
         new InstallationRateLimit(counters, name, limit.globalMaxRequests(), limit.windowSeconds()),
-        counting);
+        RateLimitFilter.ALWAYS_SERVED,
+        counting,
+        limit.hasAccountLimit()
+            ? new RateLimitService(limit.maxRequestsPerAccount(), limit.windowSeconds())
+            : null);
   }
 
   private static Rule rule(

@@ -692,7 +692,9 @@ Merkmal:  Authorization: Bearer opaa_pat_…
 ## Kontingente und der Abflussalarm
 
 Ein Skript stellt in einer Minute mehr Anfragen als ein Mensch an einem Tag. Der Zugriff externer KI-Werkzeuge bekommt
-deshalb ein **Kontingent je Token** — nicht nur je Netzadresse, wie es die bestehenden Grenzen tun.
+deshalb ein **Kontingent je Token** — an Stelle der Grenze je Netzadresse: Ein Tokenaufruf gibt seinen
+Platz in der Grenze seiner Adresse zurück, sobald er als Token erkannt ist, und zählt gegen die Grenzen
+je Token und je Person (alle Tokens zusammen) sowie die gemeinsame Grenze der Suche.
 Der Grund steht schon in [user-frontends.md](./user-frontends.md#authentifizierung-und-zugang): Hinter
 einem gemeinsamen Ausgangspunkt im Behördennetz teilen sich alle dieselbe Adresse; ein Kontingent je
 Adresse trifft dann die Falschen.
