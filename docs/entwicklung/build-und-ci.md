@@ -190,6 +190,8 @@ docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 # gesetzte Forwarded/X-Forwarded-Host/-Port/-Prefix nicht ankommen; dazu Permissions-Policy auf
 # jeder Antwort, die Startprüfung von OPAA_CSP_CONNECT_SRC_EXTRA und mit OPAA_BACKEND_RESOLVER
 # die Auflösung zur Laufzeit: zwei Container hinter einem Namen bekommen beide Anfragen, ein
-# entfernter fällt ohne Neustart heraus; in CI im selben Job
+# entfernter fällt ohne Neustart heraus. Stoppt einer unter parallelen Anfragen, beantwortet der
+# andere jede binnen weniger Sekunden, ohne 5xx; langsame und gestreamte Antworten sowie Uploads
+# bis zu den Grenzen kommen unverändert an. In CI im selben Job
 .github/scripts/frontend_hardening_test.sh opaa-smoke/frontend
 ```
