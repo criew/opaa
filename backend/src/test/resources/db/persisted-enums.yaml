@@ -371,10 +371,16 @@ io.opaa.permission.AccountState:
   assessment: AUDIT
   readable: [ACTIVE, LOCKED]
   pending: []
+# All but ACCOUNT_CREATED and the two DIRECTORY_ values are new in v0.1.0, the version boundary
+# without rolling update: no earlier release runs beside it (backend/docs/liquibase.md).
 io.opaa.permission.AccountStateHistoryCause:
   attributes: [AccountStateHistory.cause]
   assessment: AUDIT
-  readable: [ACCOUNT_CREATED, DIRECTORY_LOCKED, DIRECTORY_UNLOCKED]
+  readable: [
+    ACCOUNT_CREATED, ACCOUNT_REACTIVATED, ADMIN_LOCKED, DIRECTORY_LOCKED, DIRECTORY_UNLOCKED,
+    INACTIVITY_LOCKED, LOCAL_ACCOUNTS_DISABLED, LOCAL_EXPIRED, LOCAL_INVITED, LOGIN_LOCKOUT,
+    PROVIDER_DISABLED, PROVIDER_REMOVED
+  ]
   pending: []
 io.opaa.permission.AssetGrantHistoryCause:
   attributes: [AssetGrantHistory.cause]

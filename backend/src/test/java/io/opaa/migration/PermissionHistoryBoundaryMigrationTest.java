@@ -33,9 +33,13 @@ class PermissionHistoryBoundaryMigrationTest extends AbstractBaselineTest {
   private static final String FILE =
       "db/changelog/rights/2026-10-19-permission-history-boundary.yaml";
 
+  /** Takes its boundaries from this file's function, so it cannot be applied without it. */
+  private static final String DEPENDENT =
+      "db/changelog/rights/2026-10-21-account-state-complete.yaml";
+
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(FILE);
+    return MasterChangelog.filesExcept(FILE, DEPENDENT);
   }
 
   @Test

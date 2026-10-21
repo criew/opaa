@@ -85,6 +85,26 @@ class UnlockedPiecesTest {
             tuple(day(22), null));
   }
 
+  /** A lockout still open in the history ends at the instant it carries. */
+  @Test
+  void aLockoutEndsByItselfAtItsLockedUntil() {
+    AccountStateHistory lockout = lock(day(5), null);
+    when(lockout.getLockedUntil()).thenReturn(day(6));
+
+    assertThat(pieces(entry(FROM, null), List.of(lockout)))
+        .containsExactly(tuple(FROM, day(5)), tuple(day(6), null));
+  }
+
+  /** A lockout lifted before its end - closed in the history - ends where it was closed. */
+  @Test
+  void aLockoutLiftedEarlyEndsWhereItWasClosed() {
+    AccountStateHistory lockout = lock(day(5), day(5).plus(Duration.ofHours(2)));
+    when(lockout.getLockedUntil()).thenReturn(day(6));
+
+    assertThat(pieces(entry(FROM, null), List.of(lockout)))
+        .containsExactly(tuple(FROM, day(5)), tuple(day(5).plus(Duration.ofHours(2)), null));
+  }
+
   private static List<Tuple> pieces(AccessAsOfEntry entry, List<AccountStateHistory> locks) {
     return PointInTimeAccessService.unlockedPieces(entry, locks, TO).stream()
         .map(piece -> tuple(piece.validFrom(), piece.validTo()))

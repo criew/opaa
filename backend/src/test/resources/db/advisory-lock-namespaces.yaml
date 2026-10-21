@@ -45,6 +45,9 @@ namespaces:
   - number: 231
     purpose: registration in the instance register
     owners: [java/io/opaa/instance/InstanceRegistry.java]
+  - number: 232
+    purpose: re-evaluating the account-state history of one account
+    owners: [resources/db/changelog/rights/2026-10-21-account-state-complete.yaml]
 
 reserved: []
 

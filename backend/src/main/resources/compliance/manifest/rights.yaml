@@ -276,7 +276,8 @@ nonPersonalTables:
     - client_secret
     - created_at
     - updated_at
-  permission_history_retention_settings: [id, retention_months, last_cutoff, updated_at]
+  permission_history_retention_settings:
+    [id, retention_months, last_cutoff, updated_at, account_state_complete_since]
   permission_transfer_objects: [id, transfer_id, organization_id, asset_type, asset_id, created_at]
 settings:
   - key: permission_history_retention_settings.retention_months

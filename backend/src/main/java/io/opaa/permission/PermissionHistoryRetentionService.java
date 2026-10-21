@@ -62,6 +62,16 @@ public class PermissionHistoryRetentionService {
     return Optional.ofNullable(settingsRow().getLastCutoff());
   }
 
+  /**
+   * Since when every way an account became unusable is on record in the account-state history;
+   * empty if the installation does not know. Like {@link #retentionCutoff} a boundary of what an
+   * Auskunft can state, so without an actor.
+   */
+  @Transactional(readOnly = true)
+  public Optional<Instant> accountStateCompleteSince() {
+    return Optional.ofNullable(settingsRow().getAccountStateCompleteSince());
+  }
+
   @Transactional(readOnly = true)
   public PermissionHistoryRetentionSettings read(CurrentUser actor) {
     actor.requireSystemAdmin(ADMIN_ONLY);

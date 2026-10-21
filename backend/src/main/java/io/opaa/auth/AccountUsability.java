@@ -19,6 +19,10 @@ import org.springframework.stereotype.Component;
  * switch of the local management, every other one by the provider of its issuer. Absence never
  * deactivates: a local lock for inactivity rests, and inactivity without a lock counts only where a
  * caller asks for it with a threshold.
+ *
+ * <p>The database function {@code account_state_reconcile} applies the same rule to write the
+ * account-state history; a change here changes it there too ({@code
+ * AccountStateHistoryWritePathsIntegrationTest} holds both against each other).
  */
 @Component
 public class AccountUsability {
