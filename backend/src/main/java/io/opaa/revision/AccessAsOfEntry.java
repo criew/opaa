@@ -27,6 +27,12 @@ public record AccessAsOfEntry(
     Instant validFrom,
     Instant validTo) {
 
+  /** The same access on the same basis, for a part of its period. */
+  AccessAsOfEntry during(Instant from, Instant to) {
+    return new AccessAsOfEntry(
+        basis, userId, userName, groupId, groupName, assetRole, spaceRole, from, to);
+  }
+
   AccessAsOfEntry withUserName(String resolvedName) {
     return new AccessAsOfEntry(
         basis, userId, resolvedName, groupId, groupName, assetRole, spaceRole, validFrom, validTo);

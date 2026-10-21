@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.types.AccessAsOfObjectType;
+import io.opaa.api.types.AccessAsOfSource;
 import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
@@ -91,6 +92,13 @@ class PointInTimeAccessIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    jdbcTemplate.update(
+        "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM account_state_history WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM space_membership_history WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update("DELETE FROM spaces WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
         "DELETE FROM asset_grant_history WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
@@ -409,6 +417,279 @@ class PointInTimeAccessIntegrationTest {
         .hasMessageContaining("enger");
 
     assertThat(retrievalEvents()).as("the refusal is itself an entry").hasSize(1);
+  }
+
+  /**
+   * A space owner ranks as ADMIN whether or not a membership row says so ({@code
+   * SpaceAccessPolicy#effectiveRole}), so the answer names the owner from the ownership history -
+   * each owner for exactly the part of the window they held the space, across a transfer.
+   */
+  @Test
+  void aSpaceOwnerIsNamedForTheTimeTheyHeldTheSpaceAcrossATransfer() {
+    UUID spaceId = space();
+    UUID successorId = user("Nachfolge");
+    Instant transferredAt = FROM.plus(Duration.ofDays(10));
+    ownershipHistory(
+        "SPACE", spaceId, ordinaryUserId, null, FROM.minus(Duration.ofDays(30)), transferredAt);
+    ownershipHistory("SPACE", spaceId, successorId, null, transferredAt, null);
+
+    AccessAsOfResult result = spaceReaders(spaceId);
+
+    assertThat(result.entries())
+        .extracting(
+            AccessAsOfEntry::basis,
+            AccessAsOfEntry::userId,
+            AccessAsOfEntry::spaceRole,
+            AccessAsOfEntry::validFrom,
+            AccessAsOfEntry::validTo)
+        .containsExactlyInAnyOrder(
+            tuple(AccessBasis.OWNERSHIP, ordinaryUserId, SpaceRole.ADMIN, FROM, transferredAt),
+            tuple(AccessBasis.OWNERSHIP, successorId, SpaceRole.ADMIN, transferredAt, null));
+    assertThat(result.sourcesNotCovered())
+        .as(
+            "ownership is on record now; the account state only for directory locks; a capability"
+                + " never opens a content")
+        .containsExactly(AccessAsOfSource.SYSTEM_ROLE, AccessAsOfSource.ACCOUNT_STATE);
+  }
+
+  /**
+   * A library's owner reads through the grant ownership comes with - OWNER for a person, MANAGER
+   * for an owning group - never through ownership itself ({@code
+   * AssetAuthorization#requireContentRole}). The answer names the owning group's members and the
+   * new owner through those grants, and an ownership interval adds no reader of its own: once the
+   * group's grant ended it no longer reaches its members, owner or not.
+   */
+  @Test
+  void aLibraryOwnerAndTheOwningGroupAreNamedThroughTheGrantsOwnershipComesWith() {
+    UUID groupId = group("Referat 12");
+    UUID successorId = user("Neue Eigentümerin");
+    Instant transferredAt = FROM.plus(Duration.ofDays(10));
+    Instant groupGrantEnd = FROM.plus(Duration.ofDays(5));
+    ownershipHistory(
+        "KNOWLEDGE_LIBRARY",
+        libraryId,
+        null,
+        groupId,
+        FROM.minus(Duration.ofDays(30)),
+        transferredAt);
+    ownershipHistory("KNOWLEDGE_LIBRARY", libraryId, successorId, null, transferredAt, null);
+    grantHistory(groupId, AssetRole.MANAGER, FROM.minus(Duration.ofDays(30)), groupGrantEnd);
+    membershipHistory(groupId, ordinaryUserId, FROM.minus(Duration.ofDays(30)), null);
+    userGrantHistory(successorId, AssetRole.OWNER, transferredAt, null);
+
+    AccessAsOfResult result = readers(FROM, TO);
+
+    assertThat(result.entries())
+        .extracting(
+            AccessAsOfEntry::basis,
+            AccessAsOfEntry::userId,
+            AccessAsOfEntry::assetRole,
+            AccessAsOfEntry::validFrom,
+            AccessAsOfEntry::validTo)
+        .containsExactlyInAnyOrder(
+            tuple(AccessBasis.GROUP_GRANT, ordinaryUserId, AssetRole.MANAGER, FROM, groupGrantEnd),
+            tuple(AccessBasis.DIRECT_GRANT, successorId, AssetRole.OWNER, transferredAt, null));
+  }
+
+  /**
+   * A locked account exercises no right (ADR-0036 Entscheidung 8): a lock inside the window cuts
+   * the access in two, and a lock spanning the whole window removes the person from the answer -
+   * whichever way of the formula reached them.
+   */
+  @Test
+  void aLockedAccountIsNoReaderOfALibraryWhileTheLockHolds() {
+    UUID groupId = group("Referat 7");
+    UUID lockedThroughoutId = user("Gesperrt");
+    Instant lockedAt = FROM.plus(Duration.ofDays(5));
+    Instant unlockedAt = FROM.plus(Duration.ofDays(10));
+    userGrantHistory(ordinaryUserId, AssetRole.VIEWER, FROM, null);
+    accountLock(ordinaryUserId, lockedAt, unlockedAt);
+    grantHistory(groupId, AssetRole.VIEWER, FROM, null);
+    membershipHistory(groupId, lockedThroughoutId, FROM, null);
+    accountLock(lockedThroughoutId, FROM.minus(Duration.ofDays(1)), null);
+
+    AccessAsOfResult result = readers(FROM, TO);
+
+    assertThat(result.entries())
+        .extracting(
+            AccessAsOfEntry::basis,
+            AccessAsOfEntry::userId,
+            AccessAsOfEntry::validFrom,
+            AccessAsOfEntry::validTo)
+        .containsExactlyInAnyOrder(
+            tuple(AccessBasis.DIRECT_GRANT, ordinaryUserId, FROM, lockedAt),
+            tuple(AccessBasis.DIRECT_GRANT, ordinaryUserId, unlockedAt, null));
+    assertThat(result.sourcesNotCovered())
+        .containsExactly(AccessAsOfSource.SYSTEM_ROLE, AccessAsOfSource.ACCOUNT_STATE);
+  }
+
+  /** The space counterpart: membership and ownership alike end where the lock begins. */
+  @Test
+  void aLockedAccountIsNoMemberOfASpaceWhileTheLockHolds() {
+    UUID spaceId = space();
+    Instant lockedAt = FROM.plus(Duration.ofDays(5));
+    spaceMembershipHistory(spaceId, ordinaryUserId, null, SpaceRole.MEMBER, FROM, null);
+    ownershipHistory("SPACE", spaceId, ordinaryUserId, null, FROM, null);
+    accountLock(ordinaryUserId, lockedAt, null);
+
+    AccessAsOfResult result = spaceReaders(spaceId);
+
+    assertThat(result.entries())
+        .extracting(
+            AccessAsOfEntry::basis,
+            AccessAsOfEntry::userId,
+            AccessAsOfEntry::validFrom,
+            AccessAsOfEntry::validTo)
+        .containsExactlyInAnyOrder(
+            tuple(AccessBasis.DIRECT_MEMBERSHIP, ordinaryUserId, FROM, lockedAt),
+            tuple(AccessBasis.OWNERSHIP, ordinaryUserId, FROM, lockedAt));
+  }
+
+  /**
+   * A personal space is created without an ownership interval, and its owner can be neither changed
+   * nor removed while it exists - the answer names that owner from the creation on.
+   */
+  @Test
+  void aPersonalSpaceNamesItsOwnerFromItsCreation() {
+    Instant createdAt = FROM.plus(Duration.ofDays(3));
+    UUID spaceId = personalSpace(createdAt);
+    spaceMembershipHistory(spaceId, auditorId, null, SpaceRole.MEMBER, FROM, null);
+
+    AccessAsOfResult result = spaceReaders(spaceId);
+
+    assertThat(result.entries())
+        .extracting(
+            AccessAsOfEntry::basis,
+            AccessAsOfEntry::userId,
+            AccessAsOfEntry::spaceRole,
+            AccessAsOfEntry::validFrom,
+            AccessAsOfEntry::validTo)
+        .containsExactlyInAnyOrder(
+            tuple(AccessBasis.DIRECT_MEMBERSHIP, auditorId, SpaceRole.MEMBER, FROM, null),
+            tuple(AccessBasis.OWNERSHIP, ordinaryUserId, SpaceRole.ADMIN, createdAt, null));
+  }
+
+  /** A personal space created after the window names no owner for it. */
+  @Test
+  void aPersonalSpaceCreatedAfterTheWindowNamesNoOwner() {
+    UUID spaceId = personalSpace(TO.plus(Duration.ofDays(1)));
+
+    assertThat(spaceReaders(spaceId).entries()).isEmpty();
+  }
+
+  /**
+   * The history as the directory synchronisation writes it - ACTIVE, LOCKED, ACTIVE again: only the
+   * LOCKED interval cuts. A lock in another organization cannot arise, the history's foreign key
+   * ties an interval to the account's own organization.
+   */
+  @Test
+  void onlyTheLockedPartOfAnAccountStateChainCutsTheAccess() {
+    Instant lockedAt = FROM.plus(Duration.ofDays(5));
+    Instant unlockedAt = FROM.plus(Duration.ofDays(10));
+    userGrantHistory(ordinaryUserId, AssetRole.VIEWER, FROM, null);
+    accountState(ordinaryUserId, "ACTIVE", FROM.minus(Duration.ofDays(30)), lockedAt);
+    accountState(ordinaryUserId, "LOCKED", lockedAt, unlockedAt);
+    accountState(ordinaryUserId, "ACTIVE", unlockedAt, null);
+
+    AccessAsOfResult result = readers(FROM, TO);
+
+    assertThat(result.entries())
+        .filteredOn(entry -> ordinaryUserId.equals(entry.userId()))
+        .filteredOn(entry -> entry.basis() == AccessBasis.DIRECT_GRANT)
+        .extracting(AccessAsOfEntry::validFrom, AccessAsOfEntry::validTo)
+        .containsExactlyInAnyOrder(tuple(FROM, lockedAt), tuple(unlockedAt, null));
+  }
+
+  private AccessAsOfResult spaceReaders(UUID spaceId) {
+    return service.readersOf(
+        organizationId,
+        auditorId,
+        "Beschwerde 4711",
+        AccessAsOfObjectType.SPACE,
+        spaceId,
+        FROM,
+        TO,
+        0,
+        50);
+  }
+
+  /** Writes an ownership interval directly - see grantHistory for why. */
+  private void ownershipHistory(
+      String assetType,
+      UUID assetId,
+      UUID ownerUserId,
+      UUID ownerGroupId,
+      Instant validFrom,
+      Instant validTo) {
+    jdbcTemplate.update(
+        "INSERT INTO asset_ownership_history (id, asset_type, asset_id, organization_id,"
+            + " owner_type, owner_user_id, owner_group_id, cause, valid_from, valid_to,"
+            + " created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'TRANSFERRED', ?, ?, now())",
+        UUID.randomUUID(),
+        assetType,
+        assetId,
+        organizationId,
+        ownerUserId != null ? "USER" : "GROUP",
+        ownerUserId,
+        ownerGroupId,
+        java.sql.Timestamp.from(validFrom),
+        validTo == null ? null : java.sql.Timestamp.from(validTo));
+  }
+
+  /** Writes a grant interval naming one person on the test library - see grantHistory. */
+  private void userGrantHistory(UUID userId, AssetRole role, Instant validFrom, Instant validTo) {
+    jdbcTemplate.update(
+        "INSERT INTO asset_grant_history (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, cause, valid_from, valid_to, created_at)"
+            + " VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?, ?, 'GRANTED', ?, ?, now())",
+        UUID.randomUUID(),
+        libraryId,
+        organizationId,
+        userId,
+        role.name(),
+        java.sql.Timestamp.from(validFrom),
+        validTo == null ? null : java.sql.Timestamp.from(validTo));
+  }
+
+  /** Writes one LOCKED interval of an account - see grantHistory. */
+  private void accountLock(UUID userId, Instant validFrom, Instant validTo) {
+    jdbcTemplate.update(
+        "INSERT INTO account_state_history (id, user_id, organization_id, state, cause,"
+            + " valid_from, valid_to, created_at) VALUES (?, ?, ?, 'LOCKED', 'DIRECTORY_LOCKED',"
+            + " ?, ?, now())",
+        UUID.randomUUID(),
+        userId,
+        organizationId,
+        java.sql.Timestamp.from(validFrom),
+        validTo == null ? null : java.sql.Timestamp.from(validTo));
+  }
+
+  /** Writes one account-state interval of any state - see grantHistory. */
+  private void accountState(UUID userId, String state, Instant validFrom, Instant validTo) {
+    jdbcTemplate.update(
+        "INSERT INTO account_state_history (id, user_id, organization_id, state, cause,"
+            + " valid_from, valid_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, now())",
+        UUID.randomUUID(),
+        userId,
+        organizationId,
+        state,
+        "LOCKED".equals(state) ? "DIRECTORY_LOCKED" : "DIRECTORY_UNLOCKED",
+        java.sql.Timestamp.from(validFrom),
+        validTo == null ? null : java.sql.Timestamp.from(validTo));
+  }
+
+  private UUID personalSpace(Instant createdAt) {
+    UUID spaceId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO spaces (id, name, owner_id, created_at, updated_at,"
+            + " organization_id, is_default, archived)"
+            + " VALUES (?, 'Privater Bereich', ?, ?, ?, ?, true, false)",
+        spaceId,
+        ordinaryUserId,
+        java.sql.Timestamp.from(createdAt),
+        java.sql.Timestamp.from(createdAt),
+        organizationId);
+    return spaceId;
   }
 
   private UUID space() {

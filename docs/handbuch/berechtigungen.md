@@ -696,11 +696,16 @@ lesen?" Fünf Schutzregeln gehören dazu:
   abgewiesene eingeschlossen.
 - **Die Antwort sagt, wo sie nichts sagen kann.** Liegt das Fenster vor der Aufbewahrungsgrenze,
   weist die Auskunft das aus: Dort heißt leer „nicht mehr vorgehalten", nicht „kein Zugriff".
-  Ebenso nennt jede Antwort die vier Rechtequellen, die sie **nicht** abdeckt: Systemrolle,
-  Eigentum, Anlegerechte und Kontozustand. Die Systemrolle wiegt am schwersten — eine
-  Systemverwaltung verwaltet jedes Arbeitsmittel ihrer Organisation, ohne dass ein Zeitraum das belegt.
-  Zusammengerechnet werden heute Berechtigungen, Gruppenmitgliedschaften, Reichweitenfelder und
-  Space-Mitgliedschaften.
+  Ebenso nennt jede Antwort die Rechtequellen, die sie **nicht** oder nicht vollständig abdeckt: die
+  Systemrolle — eine Systemverwaltung verwaltet jedes Arbeitsmittel ihrer Organisation, ohne dass ein
+  Zeitraum das belegt — und den Kontozustand außerhalb des Verzeichnisabgleichs (Sperre oder Ablauf
+  eines lokalen Kontos, abgeschalteter Anmeldeanbieter). Zusammengerechnet werden Berechtigungen,
+  Gruppenmitgliedschaften, Reichweitenfelder, Space-Mitgliedschaften, Eigentum und Kontozustand. Wer
+  einen Space verantwortet, erscheint für diese Zeit mit „Eigentum“ und der Rolle `ADMIN`, bei einem
+  persönlichen Space ab seiner Anlage; bei einem Arbeitsmittel liest die Eigentümerin über die
+  Berechtigung, die das Eigentum mitbringt, und erscheint mit dieser. Ein Zeitraum, in dem ein Konto
+  durch den Verzeichnisabgleich gesperrt war, zählt nicht als Zugang. Anlegerechte
+  erscheinen nie: Sie öffnen keinen Inhalt.
 - **Es gibt keinen Personen-Einstieg.** „Worauf hatte Person X am 3. März Zugriff" ist nicht
   gebaut und bleibt es, bis die Pseudonymisierung der Historie vorliegt (#391/#395).
 

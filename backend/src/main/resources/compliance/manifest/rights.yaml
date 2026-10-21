@@ -114,7 +114,9 @@ data:
     visibility: [AUDITOR über die Stichtagsauskunft je Objekt]
     accessPaths: [UI, API, DATABASE]
     deletion: Retention-Lauf der Rechtehistorie
-    evaluations: Stichtagsauskunft je Bibliothek oder Space; jeder Abruf wird protokolliert
+    evaluations: >-
+      Stichtagsauskunft je Bibliothek oder Space, mit Person, Grundlage (auch Eigentum eines Space)
+      und Zeitraum; jeder Abruf wird protokolliert
   - id: groups
     title: Gruppenmitgliedschaften und Verantwortliche
     purpose: Rechtevergabe an Gruppen, Verantwortung für interne Gruppen

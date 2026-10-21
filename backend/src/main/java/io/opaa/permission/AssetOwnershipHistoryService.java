@@ -1,8 +1,11 @@
 package io.opaa.permission;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Records the ownership history of an asset as half-open intervals (ADR-0036 Entscheidung 8): "who
@@ -119,6 +122,18 @@ public class AssetOwnershipHistoryService {
             now);
     marker.close(now);
     repository.save(marker);
+  }
+
+  /**
+   * Every ownership interval of one asset overlapping {@code [from, to)} - read by the
+   * Stichtagsauskunft (ADR-0036 Entscheidung 8), scoped to {@code organizationId}. What is no
+   * longer on record after the retention period is simply absent.
+   */
+  @Transactional(readOnly = true)
+  public List<AssetOwnershipHistory> ownershipIntervalsBetween(
+      AssetType assetType, UUID assetId, UUID organizationId, Instant from, Instant to, int limit) {
+    return repository.findAssetIntervalsOverlapping(
+        assetType, assetId, organizationId, from, to, PageRequest.ofSize(limit));
   }
 
   /**
