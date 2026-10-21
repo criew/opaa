@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+Akzeptiert · zuletzt geändert 2026-10-21 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
 ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
 
 ## Kontext
@@ -406,6 +406,12 @@ Datenbanksicherung.
   Docker): Jede Adresse des Alias ist ein Ziel, ein neuer Container ist ohne nginx-Neustart
   erreichbar, und die URI-Ersetzung von `/api/` bleibt erhalten. `docker compose --scale` ist nicht
   der Weg: Es teilt das benannte `/tmp`-Volume und scheitert an der festen Portbindung.
+- Die Adresse eines gestoppten Containers bleibt bis zur nächsten Auflösung ein Ziel, eine Verbindung
+  dorthin läuft ins Leere. nginx gibt deshalb nach 4 s Verbindungsaufbau auf
+  (`proxy_connect_timeout`) und versucht das nächste Ziel. Hat die Auflösung die Zielliste in der
+  Zwischenzeit geändert, vergibt nginx kein weiteres Ziel mehr; eine Anfrage, die noch kein Backend
+  erreicht hat, beginnt dann einmal neu auf der aktuellen Liste (`/api/` und `/mcp`, nicht das
+  Diktat ohne Request-Puffer).
 - Die feste Frontend-Adresse in der Proxy-Vertrauensliste trägt nur einen Frontend-Container; jeder
   weitere braucht eine eigene feste Adresse und einen eigenen Eintrag.
 

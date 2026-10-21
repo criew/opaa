@@ -5,6 +5,9 @@
 # proxy paths, every response carries the Permissions-Policy, and the start refuses an invalid
 # OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy, and with
 # OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
+# Under parallel requests one of two containers behind the name stops: every request is answered
+# by the other, with its body and URI intact, within a few seconds. A slow answer, a streamed /mcp
+# answer and uploads up to the size limits pass unchanged.
 #
 #   .github/scripts/frontend_hardening_test.sh <frontend image>
 set -euo pipefail
@@ -21,11 +24,14 @@ network="opaa-hardening-$suffix"
 echo_upstream="opaa-hardening-echo-$suffix"
 frontend="opaa-hardening-frontend-$suffix"
 probe="opaa-hardening-probe-$suffix"
+stub="opaa-hardening-stub-$suffix"
+workdir="$(mktemp -d)"
 
 cleanup() {
   docker rm -f "$frontend" "$echo_upstream" "$echo_upstream-a" "$echo_upstream-b" "$probe" \
-    >/dev/null 2>&1 || true
+    "$stub-a" "$stub-b" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
+  rm -rf "$workdir"
 }
 trap cleanup EXIT
 
@@ -204,6 +210,199 @@ if [[ "$seen" == "upstream=b " ]]; then
   echo "a removed container drops out without a restart of nginx: $seen"
 else
   fail "after removing one container the requests reached '${seen:-nothing}', expected upstream=b only"
+fi
+
+echo "--- one of two containers stops under load"
+# A full nginx configuration with njs: the stub answers with its name, the URI it received and the
+# length of the request body; /api/v1/slow after 4 s, /mcp/stream as five events over 4 s. Every
+# request it receives is logged with its X-Test-Request header.
+stub_conf='load_module /etc/nginx/modules/ngx_http_js_module.so;
+env STUB_NAME;
+pid /tmp/stub.pid;
+error_log stderr warn;
+events {}
+http {
+    client_body_temp_path /tmp/stub-body;
+    proxy_temp_path /tmp/stub-proxy;
+    fastcgi_temp_path /tmp/stub-fastcgi;
+    uwsgi_temp_path /tmp/stub-uwsgi;
+    scgi_temp_path /tmp/stub-scgi;
+    js_import stub from /tmp/stub.js;
+    log_format hits "HIT $request_method $http_x_test_request";
+    access_log /dev/stdout hits;
+    server {
+        listen 8080;
+        client_max_body_size 64m;
+        client_body_buffer_size 64m;
+        client_body_in_single_buffer on;
+        postpone_output 0;
+        location / {
+            js_content stub.handle;
+        }
+    }
+}'
+stub_js='function handle(r) {
+    if (r.uri === "/api/v1/slow") {
+        setTimeout(function () { r.return(200, "slow\n"); }, 4000);
+        return;
+    }
+    if (r.uri === "/mcp/stream") {
+        var n = 0;
+        r.status = 200;
+        r.headersOut["Content-Type"] = "text/event-stream";
+        r.sendHeader();
+        var tick = function () {
+            r.send("data: " + n + "\n\n");
+            n++;
+            if (n < 5) {
+                setTimeout(tick, 1000);
+            } else {
+                r.finish();
+            }
+        };
+        tick();
+        return;
+    }
+    var body = r.requestBuffer;
+    r.return(200, "upstream=" + process.env.STUB_NAME + " uri=" + r.variables.request_uri
+        + " len=" + (body ? body.length : 0) + "\n");
+}
+export default { handle };'
+failover_stub() {
+  docker run -d --name "$stub-$1" --network "$network" --network-alias failover \
+    -e STUB_NAME="$1" -e STUB_CONF="$stub_conf" -e STUB_JS="$stub_js" --entrypoint sh "$image" \
+    -c 'printf "%s\n" "$STUB_CONF" > /tmp/stub.conf && printf "%s\n" "$STUB_JS" > /tmp/stub.js && exec nginx -c /tmp/stub.conf -g "daemon off;"' \
+    >/dev/null
+}
+failover_stub a
+failover_stub b
+docker rm -f "$probe" >/dev/null 2>&1 || true
+start_frontend "$probe" -e OPAA_BACKEND_UPSTREAM=failover:8080 -e OPAA_BACKEND_RESOLVER=127.0.0.11
+probe_port="$(docker port "$probe" 8080/tcp | head -n 1 | sed 's/.*://')"
+failover_base="http://127.0.0.1:$probe_port"
+seen=""
+for _ in $(seq 1 20); do
+  seen="$(for _ in $(seq 1 6); do
+    curl -fsS --max-time 5 "$failover_base/api/v1/health" 2>/dev/null | cut -d ' ' -f 1 || true
+  done | sort -u | tr '\n' ' ')"
+  [[ "$seen" == "upstream=a upstream=b " ]] && break
+  sleep 1
+done
+[[ "$seen" == "upstream=a upstream=b " ]] ||
+  fail "both stub containers should answer before the stop, seen: '${seen:-nothing}'"
+
+# Prints "<status> <seconds to first byte> <seconds in total>" and leaves the body in $1.
+fetch() {
+  local body="$1"
+  shift
+  rm -f "$body"
+  curl -sS --max-time 30 -o "$body" -w '%{http_code} %{time_starttransfer} %{time_total}' "$@" \
+    2>/dev/null || true
+}
+# Whether $1 >= $2 as decimal numbers.
+at_least() {
+  awk -v a="$1" -v b="$2" 'BEGIN { exit !(a >= b) }'
+}
+
+read -r code _ total <<<"$(fetch "$workdir/slow" "$failover_base/api/v1/slow")"
+if [[ "$code" == 200 && "$(cat "$workdir/slow" 2>/dev/null)" == slow ]] && at_least "$total" 3.5; then
+  echo "an answer after 4 s passes /api/: $total s"
+else
+  fail "the 4 s answer on /api/ ended with ${code:-no status} after ${total:-?} s"
+fi
+read -r code first total <<<"$(fetch "$workdir/stream" -N "$failover_base/mcp/stream")"
+if [[ "$code" == 200 && "$(grep -c '^data: ' "$workdir/stream" 2>/dev/null)" == 5 ]] &&
+  at_least 1.5 "$first" && at_least "$total" 3.5; then
+  echo "a stream on /mcp arrives event by event: first byte after $first s, end after $total s"
+else
+  fail "the stream on /mcp ended with ${code:-no status}, first byte after ${first:-?} s, end after ${total:-?} s"
+fi
+head -c 41943040 /dev/zero >"$workdir/upload"
+head -c 10485760 /dev/zero >"$workdir/dictation"
+for upload in "/api/v1/documents upload 41943040" "/api/v1/transcriptions dictation 10485760"; do
+  read -r path file size <<<"$upload"
+  read -r code _ total <<<"$(fetch "$workdir/answer" -X POST --data-binary @"$workdir/$file" \
+    -H 'Content-Type: application/octet-stream' "$failover_base$path")"
+  if [[ "$code" == 200 && "$(cat "$workdir/answer" 2>/dev/null)" == *" uri=$path len=$size" ]]; then
+    echo "an upload of $size bytes reaches the backend through $path"
+  else
+    fail "the upload of $size bytes through $path ended with ${code:-no status}: $(cat "$workdir/answer" 2>/dev/null)"
+  fi
+done
+
+# Each worker cycles through a GET with escapes, a POST with a body on /api/ and one on /mcp, and
+# logs "<status> <seconds> <body as expected?> <id> <request>" per request; the id travels in the
+# X-Test-Request header, so the stubs' logs show how often each request arrived.
+head -c 65536 /dev/zero | tr '\0' x >"$workdir/form"
+failover_worker() {
+  local log="$1" until="$2" i=0 result answer verdict request expected id
+  while (($(date +%s) < until)); do
+    id="$(basename "$log")-$i"
+    case $((i % 3)) in
+      0)
+        request="GET /api/v1/a%20b?x=%2F"
+        expected="uri=/api/v1/a%20b?x=%2F len=0"
+        result="$(fetch "$log.body" -H "X-Test-Request: $id" "$failover_base/api/v1/a%20b?x=%2F")"
+        ;;
+      1)
+        request="POST /api/v1/form"
+        expected="uri=/api/v1/form len=65536"
+        result="$(fetch "$log.body" -X POST -H "X-Test-Request: $id" --data-binary @"$workdir/form" \
+          "$failover_base/api/v1/form")"
+        ;;
+      *)
+        request="POST /mcp"
+        expected="uri=/mcp len=2"
+        result="$(fetch "$log.body" -X POST -H "X-Test-Request: $id" \
+          -H 'Content-Type: application/json' --data-binary '{}' "$failover_base/mcp")"
+        ;;
+    esac
+    answer="$(cat "$log.body" 2>/dev/null || true)"
+    verdict=wrong-body
+    [[ "$answer" == *" $expected" ]] && verdict=ok
+    read -r code _ total <<<"$result"
+    echo "${code:-000} ${total:-0} $verdict $id $request" >>"$log"
+    i=$((i + 1))
+  done
+}
+# The frontend's proxy_connect_timeout: a request that met the stopped container's address waits
+# this long, so the slowest request shows whether the stop window was hit at all.
+connect_timeout=4
+max_seconds=10
+until=$(($(date +%s) + 12))
+for worker in $(seq 1 8); do
+  failover_worker "$workdir/worker-$worker" "$until" &
+done
+sleep 3
+# QUIT, the image's stop signal, named here: nginx finishes requests in flight before it exits.
+docker stop --signal QUIT -t 10 "$stub-b" >/dev/null
+wait
+results="$(cat "$workdir"/worker-?)"
+total_requests="$(wc -l <<<"$results" | tr -d ' ')"
+bad="$(awk -v max="$max_seconds" '$1 != 200 || $3 != "ok" || $2 + 0 > max' <<<"$results")"
+if [[ -z "$bad" ]]; then
+  slowest="$(awk '$2 + 0 > m { m = $2 + 0 } END { print m }' <<<"$results")"
+  echo "all $total_requests requests answered while one container stopped, slowest after $slowest s"
+  if ! at_least "$slowest" "$((connect_timeout - 1)).5"; then
+    fail "stop window not hit: no request waited for the connect timeout of $connect_timeout s"
+  fi
+else
+  fail "$(wc -l <<<"$bad" | tr -d ' ') of $total_requests requests while one container stopped failed or took longer than $max_seconds s:
+$(head -n 10 <<<"$bad")"
+  docker logs --tail 10 "$probe" >&2 2>&1 || true
+fi
+# Each POST reached a backend exactly once: no request is sent again once a backend has it.
+arrivals="$( (docker logs "$stub-a" 2>/dev/null; docker logs "$stub-b" 2>/dev/null) |
+  awk '$1 == "HIT" && $2 == "POST" && $3 != "-" { print $3 }' | sort | uniq -c)"
+posts="$(awk '$1 == 200 && $5 == "POST" { print $4 }' <<<"$results" | sort)"
+not_once="$(awk 'NR == FNR { seen[$2] = $1; next } seen[$1] != 1 { print $1 " arrived " (seen[$1] + 0) " times" }' \
+  <(echo "$arrivals") <(echo "$posts"))"
+twice="$(awk '$1 > 1 { print $2 " arrived " $1 " times" }' <<<"$arrivals")"
+if [[ -z "$not_once$twice" ]]; then
+  echo "each of $(wc -l <<<"$posts" | tr -d ' ') answered POST requests reached a backend exactly once"
+else
+  fail "POST requests did not reach a backend exactly once:
+$(printf '%s\n%s\n' "$not_once" "$twice" | sed '/^$/d' | head -n 10)"
 fi
 
 if ((failures > 0)); then

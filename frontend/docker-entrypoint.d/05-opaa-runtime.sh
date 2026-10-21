@@ -90,9 +90,11 @@ mkdir -p "$NGINX_ENVSUBST_OUTPUT_DIR"
 
 # nginx.conf includes /tmp/nginx/upstream.d/*.conf in its upstream block. With a resolver nginx
 # looks the name up again every 5 s and starts even while it does not resolve yet; an address
-# literal needs no lookup. max_fails=0 keeps a peer that refused a connection in the rotation: a
-# replaced backend container keeps its address while it starts, and a peer parked for that would
-# leave no live peer once the other instance stops; the request moves on to the next peer anyway.
+# literal needs no lookup. Until then the address of a stopped container stays a peer whose
+# connections time out (proxy_connect_timeout and @opaa_backend_reconnect in nginx.conf move such a
+# request on). max_fails=0 keeps a peer whose connection failed in the rotation: a replaced backend
+# container keeps its address while it starts, and a peer parked for that would leave no live peer
+# once the other instance stops; the request moves on to the next peer anyway.
 UPSTREAM_DIR=/tmp/nginx/upstream.d
 mkdir -p "$UPSTREAM_DIR"
 UPSTREAM_HOST="${OPAA_BACKEND_UPSTREAM%:*}"
