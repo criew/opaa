@@ -609,7 +609,7 @@ opaa:
     # profile warns about at start-up. Serves the rate limits and OPAA_LOCAL_ADMIN_ALLOWED_CIDRS
     # alike; a wildcard (0.0.0.0/0, ::/0) refuses the start.
     trusted-proxy-cidrs: ${OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
-    # query to chat-search: max-requests per client, global-max-requests across all clients; past
+    # query to search: max-requests per client, global-max-requests across all clients; past
     # either the answer is 429. Both count only requests the security chain authenticated (the push
     # intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
     query:
@@ -654,6 +654,14 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS:60}
       window-seconds: ${OPAA_RATE_LIMIT_CHAT_SEARCH_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_CHAT_SEARCH_GLOBAL_MAX_REQUESTS:1200}
+    # POST /api/v1/search embeds every question with the configured model, GET
+    # /api/v1/search/hits/{hitId} reads stored chunks; one budget for both, so fetching other hits
+    # buys no fresh searches. Sized for a tool that runs one search and fetches a few of its hits;
+    # an access token is bounded by its own quota on top.
+    search:
+      max-requests: ${OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS:30}
+      window-seconds: ${OPAA_RATE_LIMIT_SEARCH_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS:300}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
     # register, forgot-password, set-password and verify-email are keyed by client address in
     # RateLimitFilter; change-password by the authenticated account, register and forgot-password

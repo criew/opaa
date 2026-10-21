@@ -34,6 +34,9 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  * @param chatSearch per-endpoint limits for the chat search ({@code POST
  *     /api/v1/spaces/{spaceId}/chats/search}) - its own budget, because the search runs while the
  *     person types and would exhaust the query budget within seconds
+ * @param search per-endpoint limits for the search without an answer ({@code POST /api/v1/search})
+ *     and the fetch of a hit ({@code GET /api/v1/search/hits/{hitId}}), one budget for both: every
+ *     search embeds its question with the configured model, every fetch reads stored chunks
  * @param localAuth the limits of the local sign-in and its self-service endpoints (ADR-0033,
  *     Entscheidung 9); every absent value is the ADR's default
  */
@@ -49,6 +52,7 @@ public record RateLimitProperties(
     EndpointLimit documentContent,
     EndpointLimit webhook,
     EndpointLimit chatSearch,
+    EndpointLimit search,
     LocalAuthLimits localAuth) {
 
   public static final String TRUSTED_PROXY_CIDRS_VARIABLE = "OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS";
