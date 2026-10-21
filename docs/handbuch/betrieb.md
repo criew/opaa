@@ -358,7 +358,8 @@ ein, die ein Kubernetes-Cluster mit Pod Security Standard `restricted` verlangt:
   des Backends wartet, für `/api/` und `/mcp` gleichermaßen. Eine Chat-Antwort kommt erst, wenn Suche,
   Reranking und Modellaufruf fertig sind, und kann Minuten brauchen; antwortet das Backend nicht
   rechtzeitig, endet die Anfrage mit `504`. Ein Wert ohne Einheit `s`, `m` oder `h` bricht den Start
-  ab.
+  ab. Für den Verbindungsaufbau gilt dagegen fest 2 s: Kommt keine Verbindung zustande, versucht nginx
+  das nächste Ziel, etwa die andere von [mehreren Backend-Instanzen](docker-compose.md#mehrere-backend-instanzen).
 - **Uploadgröße:** nginx nimmt Anfragen bis 52 MB an, etwas mehr als die Grenze des Backends
   (`OPAA_UPLOAD_MAX_FILE_SIZE`), weil nginx die ganze Multipart-Anfrage misst. Der Wert steht fest in
   der nginx-Konfiguration des Images; wer die Grenze des Backends anhebt, hebt ihn dort mit an,

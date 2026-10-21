@@ -282,8 +282,13 @@ Statt `backend` laufen dann `backend-migrate`, das die Datenbank migriert und en
 Instanzen `backend-a` und `backend-b`. Sie starten erst nach dem Migrationsschritt, migrieren selbst
 nicht und haben je ein eigenes `/tmp`, aber keinen Host-Port. Beide tragen im Compose-Netz den Namen
 `backend`; der Frontend-nginx verteilt die Anfragen auf beide und weicht auf die andere aus, wenn eine
-keine Verbindung annimmt. `docker compose --scale` ist nicht der Weg zu einer weiteren Instanz: Die
-skalierten Container teilten sich ein `/tmp`.
+keine Verbindung annimmt. Das gilt auch für eine gerade gestoppte Instanz, die nginx noch einige
+Sekunden lang in der Verteilung führt: Kommt dort binnen 2 s keine Verbindung zustande, geht die
+Anfrage an die andere. Solange eine Instanz läuft, endet so keine Anfrage mit einem Fehler; nur eine
+Diktataufnahme, die genau in diesem Moment hochgeladen wird, kann scheitern und ist dann neu
+aufzunehmen.
+`docker compose --scale` ist nicht der Weg zu einer weiteren Instanz: Die skalierten Container
+teilten sich ein `/tmp`.
 
 - **Originale:** Empfohlen ist der Objektspeicher (`OPAA_UPLOAD_STORE=s3`, etwa mit dem Profil
   `upload-s3`). Das gemeinsame Verzeichnis `uploads/` genügt, weil alle Instanzen auf diesem einen
