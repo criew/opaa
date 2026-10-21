@@ -5,8 +5,21 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-20T05:06:09Z</updated>
+  <updated>2026-10-21T05:07:21Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Dienstag, 20. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-20.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-20.html</id>
+    <updated>2026-10-21T05:07:21Z</updated>
+    <summary type="text">feat: Multiinstanzbetrieb des Backends:
+— Mehrere Backend-Instanzen unter Helm und Docker Compose lauffähig
+— Budgets und Statusanzeigen installationsweit umgesetzt
+— Prozesslokale Zustände in Datenbank migriert: Gesprächsfenster, Transfer-Vorschau, Kontingent, Mail-Outbox, Push-Eingang
+— Instanzregister, Heartbeats, Datenbankuhr, Invalidierungsbus, ShedLock und Laufbesitz implementiert
+Sonstiges:
+— E2E-Suite auf main fehlgeschlagen und behoben</summary>
+  </entry>
   <entry>
     <title>Tagesreport Montag, 19. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-19.html"/>
@@ -865,27 +878,5 @@ Sonstiges:
 — Format-Pipelines und Quellen-Achse in Unterpackages gegliedert
 — Bestand auf tika-fallback v1 selektiv nachziehbar gemacht
 — Relevanzwert für rein lexikalisch gefundene Fundstellen korrigiert</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Montag, 31. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-31.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-31.html</id>
-    <updated>2026-09-01T05:27:36Z</updated>
-    <summary type="text">feat(eval): Suchqualitäts-Benchmark — Konfigurationsvergleiche und Verwaltungs-Evaldomäne:
-— Pipeline-Messpfad, Variantenmechanik und Verwaltungs-Evaldomäne implementiert
-— Baseline für city-landmarks-Lauf noch ausstehend
-feat(indexing): Metadatenschema für Wissensbibliotheken:
-— Kernfelder, Bibliotheksfelder und Metadatenextraktion geplant
-— Modellgestützte Extraktion und Schlagworte vorgesehen
-feat(indexing): Ingestion-Pipelines je Dokumenttyp:
-— Dokumenttyp-spezifische Pipelines und strukturbewusstes Chunking geplant
-— Docling-PoC für layoutbewusste Konvertierung vorgesehen
-feat(retrieval): Hybride Suche mit Reranking:
-— Hybride Suche mit Volltextpfad und Reranking geplant
-— Reranking als konfigurierbare Modellrolle vorgesehen
-Sonstiges:
-— SBOM-Erzeugung und CVE-Erkennung implementiert
-— Externer Ollama-Endpunkt für Retrieval-Harness unterstützt
-— Feature-Spezifikationen für Retrieval und Ingestion konsolidiert</summary>
   </entry>
 </feed>
