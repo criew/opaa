@@ -229,7 +229,7 @@ Ein hängender Lauf würde seine Bibliothek dauerhaft blockieren. Zwei Aufräume
   Ausfall der ausführenden Instanz abgebrochen" beendet: beim Start des Backends und danach
   minütlich. Eine geordnet beendete Instanz gilt sofort als beendet, eine abgestürzte erst, wenn ihr
   Lebenszeichen länger als `OPAA_INSTANCE_DEAD_AFTER` ausbleibt
-  ([Instanzregister](betrieb.md#instanzregister)). Läufe einer laufenden Instanz bleiben, gleich wann
+  ([Das Instanzregister](mehrere-instanzen.md#das-instanzregister)). Läufe einer laufenden Instanz bleiben, gleich wann
   sie begonnen haben.
 - **Regelmäßig** werden Läufe beendet, die länger als eine Frist (`stale-job-timeout`) keinen
   Fortschritt gemeldet haben. Maßgeblich ist der letzte Fortschritt, nicht der Start: Ein großer
@@ -522,7 +522,7 @@ ihn angenommen hat, und wird erst aufgegeben, wenn diese beendet ist („Wiedera
 Störungen"); der Neustart einer anderen Instanz berührt ihn nicht. Einen Termin des Zeitplans löst
 genau eine Instanz aus. Die Thread-Pools gelten je Instanz: Mehr Instanzen nehmen mehr Läufe und
 Uploads gleichzeitig an, die Pools der Einbettung teilen ihr Budget durch die Zahl der Instanzen
-([Grenzen und Anzeigen mit mehreren Instanzen](betrieb.md#grenzen-und-anzeigen-mit-mehreren-instanzen)).
+([Grenzen und Budgets](mehrere-instanzen.md#grenzen-und-budgets)).
 Die Aufnahmestrecke braucht keine eigene Worker-Komponente; alles, was sie erzeugt — Dokumente,
 Chunks samt Vektoren, Volltext, Protokolle —, liegt in PostgreSQL, und eine Sicherung der Datenbank
 ist eine Sicherung des Index.

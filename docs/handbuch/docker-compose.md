@@ -270,9 +270,9 @@ SMTP-Zugang" einzutragen: Server `mailpit`, Port `1025`, Verschlüsselung `NONE`
 ## Mehrere Backend-Instanzen
 
 `docker-compose.multi.yml` ergänzt den Stapel um zwei Backend-Instanzen auf demselben Rechner: Fällt
-eine aus, antwortet die andere, und ein Update geht ohne Ausfall der Instanzen
-([Eine oder mehrere Backend-Instanzen](betrieb.md#eine-oder-mehrere-backend-instanzen)). Jeder
-Befehl für diesen Stapel nennt beide Dateien:
+eine aus, antwortet die andere, und ein Update geht ohne Ausfall der Instanzen. Wie die Instanzen
+zusammenarbeiten, erklärt [Mehrere Backend-Instanzen](mehrere-instanzen.md). Jeder Befehl für diesen
+Stapel nennt beide Dateien:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d
@@ -295,12 +295,11 @@ teilten sich ein `/tmp`.
   `upload-s3`). Das gemeinsame Verzeichnis `uploads/` genügt, weil alle Instanzen auf diesem einen
   Rechner laufen; Instanzen auf mehreren Rechnern brauchen den Objektspeicher.
 - **Konfiguration:** Beide Instanzen lesen dieselbe `.env.docker` und haben damit denselben
-  [Konfigurationsabdruck](betrieb.md#instanzregister).
-- **Grenzen je Instanz:** Die Gesamtgrenzen der Rate-Limits (`…_GLOBAL_MAX_REQUESTS`) zählen beide
-  Instanzen gemeinsam. Die übrigen Rate-Limits und die Thread-Pools gelten je Instanz; ein Wert, der
-  für die ganze Installation gemeint ist, steht in `.env.docker` durch die Zahl der Instanzen geteilt,
-  etwa `OPAA_INDEXING_EMBEDDING_CONCURRENCY=3` für zusammen sechs gleichzeitige Einbettungen (siehe
-  [„Grenzen und Anzeigen mit mehreren Instanzen“](betrieb.md#grenzen-und-anzeigen-mit-mehreren-instanzen)).
+  [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck).
+- **Grenzen je Instanz:** Ein Wert, der für die ganze Installation gemeint ist, steht in
+  `.env.docker` durch die Zahl der Instanzen geteilt, etwa `OPAA_INDEXING_EMBEDDING_CONCURRENCY=3`
+  für zusammen sechs gleichzeitige Einbettungen. Welche Grenzen das betrifft, steht unter
+  [Grenzen und Budgets](mehrere-instanzen.md#grenzen-und-budgets).
 - **Datenbankverbindungen:** Die Grenze nennt
   [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
 - **Vertraute Proxys:** Die feste Adresse des Frontend-Containers in
@@ -338,8 +337,10 @@ docker compose $F up -d --no-deps --wait frontend
    Port etwa eine Sekunde lang Verbindungen ab; keine Anfrage wird mit einem Fehler beantwortet, und
    die Oberfläche lädt danach weiter.
 
-Während des Updates laufen kurz alte und neue Version nebeneinander gegen dieselbe Datenbank. Mails,
-Läufe und Uploads gehen dabei nicht verloren ([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
+Während des Updates laufen kurz alte und neue Version nebeneinander gegen dieselbe Datenbank
+([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)). Mails gehen dabei nicht verloren,
+Läufe und Uploads der stoppenden Instanz lassen sich wiederholen
+([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
 
 Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, oder ändert sich ein Wert
 des Konfigurationsabdrucks, werden zuerst beide Instanzen angehalten
@@ -696,7 +697,7 @@ Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab
 Instanzregister noch läuft. Im Einzelbetrieb ist das der eigene Vorgänger, wenn er hart beendet wurde
 (Exit-Code `137`) und sich nicht abmelden konnte. Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als
 beendet; danach `docker compose up -d backend` erneut ausführen (siehe
-[Instanzregister](betrieb.md#instanzregister)).
+[Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)).
 
 ### Der Container meldet `137`
 

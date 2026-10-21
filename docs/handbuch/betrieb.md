@@ -72,115 +72,25 @@ Frontend, Backend und Modelle lassen sich jederzeit neu starten.
 
 ## Eine oder mehrere Backend-Instanzen
 
-OPAA läuft mit **einer oder mehreren gleichrangigen Backend-Instanzen** gegen dieselbe Datenbank.
-Jede Instanz beantwortet jede Anfrage; eine Bindung einer Sitzung an eine Instanz braucht es nicht.
-
-| | Eine Instanz | Mehrere Instanzen |
-|---|---|---|
-| Vorgabe | Compose-Stapel und Helm-Chart | `docker-compose.multi.yml` bzw. `backend.replicas` ab 2 |
-| Schemaänderung | beim Start der Instanz | in einem eigenen Migrationsschritt vor den Instanzen |
-| Aktualisierung | kurze Unterbrechung: die alte Instanz endet, bevor die neue startet | ohne Ausfall: eine Instanz nach der anderen |
-| Ausfall einer Instanz | Dienst steht bis zum Neustart | die übrigen Instanzen antworten weiter |
-| Originalablage | Verzeichnis, Netzlaufwerk oder Objektspeicher | Objektspeicher oder eine Ablage, die jede Instanz beschreiben kann |
-
-Die Instanzen stimmen sich ausschließlich über die Datenbank ab: über das Instanzregister, die
-Sperren der geplanten Läufe, gemeinsame Zähler und Benachrichtigungen bei jeder Änderung (die
-Abschnitte unten). Eine Änderung an Rechten, Anmeldeanbietern oder Sitzungen, die eine Instanz
-annimmt, gilt auf allen anderen mit deren nächster Anfrage. Ein Gespräch ohne gespeicherten Chat
-merkt sich seinen Verlauf nur auf der Instanz, die es führt; beantwortet eine andere Instanz die
-nächste Frage, fehlt ihr der bisherige Verlauf. Gespeicherte Chats lesen ihren Verlauf auf jeder
-Instanz aus der Datenbank.
-
-Die Einrichtung je Betriebsweg steht unter
+OPAA läuft mit **einer oder mehreren gleichrangigen Backend-Instanzen** gegen dieselbe Datenbank;
+eine Instanz ist die Vorgabe beider Betriebswege. Mehrere Instanzen überstehen den Ausfall einer von
+ihnen und lassen sich nacheinander aktualisieren, ohne dass der Dienst ausfällt. Jede Instanz
+beantwortet jede Anfrage, und sie stimmen sich ausschließlich über die Datenbank ab. Wie das
+funktioniert, was auf allen Instanzen gleich eingestellt sein muss und welche Grenzen je Instanz
+gelten, erklärt [Mehrere Backend-Instanzen](mehrere-instanzen.md); die Einrichtung steht unter
 [Docker Compose](docker-compose.md#mehrere-backend-instanzen) und
-[Kubernetes](kubernetes.md#mehrere-backend-instanzen). Mehr Instanzen bedeuten mehr
-Datenbankverbindungen ([Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen)).
+[Kubernetes](kubernetes.md#mehrere-backend-instanzen).
 
 Das Frontend hält keinen Zustand und darf mehrfach laufen.
 
-### Instanzregister
-
-Jede Backend-Instanz trägt sich beim Start in ein Register in der Datenbank ein: mit einer Kennung,
-die bei jedem Start neu entsteht, dem Namen des Rechners oder Pods, der Version und ihrem
-Konfigurationsabdruck. Danach meldet sie sich in kurzen Abständen (`OPAA_INSTANCE_HEARTBEAT_INTERVAL`).
-Eine Instanz, die sich länger als `OPAA_INSTANCE_DEAD_AFTER` nicht meldet oder geordnet beendet wurde,
-gilt als beendet. Ob eine Instanz noch lebt, entscheidet die Uhr der Datenbank, nicht die des
-Rechners. Beendete Einträge bleiben eine Woche sichtbar. Das Protokoll nennt beim Start die eigene
-Kennung und alle laufenden Instanzen.
-
-Indexierungsläufe, Uploads in Verarbeitung und die Neueinbettung gehören der Instanz, die sie
-angenommen hat. Erst wenn diese laut Register beendet ist, gibt eine andere Instanz sie auf oder
-übernimmt die Neueinbettung, beim Start und danach minütlich; nie, weil eine andere Instanz startet.
-Kann eine Instanz ihr Lebenszeichen länger als `OPAA_INSTANCE_DEAD_AFTER` nicht schreiben, beenden
-sich ihre Läufe selbst, weil eine andere sie inzwischen übernommen haben kann.
-
-Der **Konfigurationsabdruck** umfasst die Werte, die auf allen Instanzen einer Installation gleich
-sein müssen: jede Einstellung mit Datenwirkung, die Geheimnisse `OPAA_AUTH_JWT_SECRET`,
-`OPAA_CREDENTIALS_ENCRYPTION_KEY` und `OPAA_SETTINGS_ENCRYPTION_KEY`, Modell, Adresse und Dimension
-der Einbettung, die Teilung in Chunks, das Anmeldeprofil, `OPAA_DB_SCHEMA`, die Originalablage, die
-Freigabelisten der Zielprüfung, die vertrauten Proxys, `OPAA_PUBLIC_BASE_URL`, die Funktionsschalter
-und die Zeitzone. Gespeichert wird je Wert nur ein Prüfwert, nie der Wert selbst. Weicht ein Wert von
-dem einer laufenden Instanz ab, **verweigert die neue Instanz den Start** und nennt im Protokoll die
-abweichenden Schlüssel, bei einem Geheimnis nur den Namen. Eine abweichende Version wird nur
-akzeptiert, wenn die neuere Version die ältere ausdrücklich neben sich zulässt; welche das ist, sagen
-die Notizen jedes Release. Bis zum ersten Release mit dieser Zusage läuft nur dieselbe Version
-nebeneinander.
-
-Einen Wert des Abdrucks ändert deshalb nur ein Neustart aller Instanzen: erst alle beenden, dann mit
-dem neuen Wert starten. Eine geordnet beendete Instanz meldet sich sofort ab. Wurde sie hart beendet,
-etwa mit `SIGKILL`, gilt sie erst nach `OPAA_INSTANCE_DEAD_AFTER` als beendet; bis dahin verweigert
-eine Instanz mit geändertem Wert den Start, und der nächste Startversuch danach gelingt.
-
-### Geplante Läufe
-
-Jede Instanz kennt dieselben geplanten Läufe: Löschläufe, Erinnerungen, Abgleiche, den Zeitplan der
-Wissensbibliotheken und die Prüfung der Modellrollen. Vor dem Start nimmt ein Lauf eine Sperre in
-der Datenbank (Tabelle `shedlock`, gemessen mit der Uhr der Datenbank); findet eine Instanz sie
-belegt, lässt sie den Termin aus. So läuft jeder Termin auf einer Instanz. Was ein Lauf nach außen
-bewirkt, also Mails, Benachrichtigungen und Einträge in Protokoll und Sichtbarkeitshistorie, trägt
-zusätzlich einen Vermerk in der Datenbank und entsteht deshalb auch dann nur einmal, wenn ein Lauf
-länger dauert als seine Sperre. Fällt eine Instanz mitten im Lauf aus, gibt die Sperre den Lauf
-spätestens nach seiner Höchstdauer wieder frei.
-
-### Grenzen und Anzeigen mit mehreren Instanzen
-
-Manche Grenzen zählt die Datenbank für die ganze Installation, gleich welche Instanz eine Anfrage
-erreicht: die Gesamtgrenzen der Rate-Limits (`OPAA_RATE_LIMIT_*_GLOBAL_MAX_REQUESTS`, auch die der
-lokalen Anmeldung) und der Abflussalarm der externen KI-Werkzeuge. Zwei Instanzen lassen zusammen
-also genau so viele Anfragen durch wie eine; den Alarm meldet genau eine von ihnen.
-
-Die übrigen Grenzen hält jede Instanz für sich. Ihr Wert ist deshalb **die Grenze der Installation
-geteilt durch die Zahl der Instanzen**: Sollen etwa alle zusammen höchstens vier Aufnahmen
-gleichzeitig transkribieren, erhält bei zwei Instanzen jede `OPAA_TRANSCRIPTION_MAX_CONCURRENT=2`.
-Das betrifft die Rate-Limits je Client-Adresse, Konto oder E-Mail-Adresse
-(`OPAA_RATE_LIMIT_*_MAX_REQUESTS`, `…_MAX_REQUESTS_PER_ADDRESS`, `…_MAX_REQUESTS_PER_ACCOUNT`), die gleichzeitigen Einbettungen
-(`OPAA_INDEXING_EMBEDDING_CONCURRENCY`), die Transkriptionen und die Nachextraktionen von Anhängen
-(`OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT`). Unter Compose trägt man den geteilten Wert
-selbst in `.env.docker` ein; der Helm-Chart rechnet ihn aus dem Budget der Installation
-(`backend.installationBudgets`, [Kubernetes](kubernetes.md#mehrere-backend-instanzen)). Das
-Kontingent je Zugangstoken in der
-Oberfläche bleibt die Grenze der Installation; jede Instanz gewährt davon ihren Anteil, geteilt durch
-die Zahl der laufenden Instanzen im Register. Läufe, Uploads, Chat-Titel und Gesprächsnotizen
-verteilen sich dagegen bewusst ungeteilt auf alle Instanzen: Dafür gibt es mehrere. Die Modellaufrufe
-der Metadatenextraktion folgen den Pools der Läufe und Uploads und wachsen ebenso mit jeder Instanz.
-
-Was die Verwaltung anzeigt, ist auf jeder Instanz gleich: der Zustand von Reranking und
-Spracheingabe, die Erreichbarkeit von Chat- und Einbettungsmodell auf der Seite „Suche & Indexierung“,
-was ein Bestands- oder Nachlauf zuletzt übersprungen hat, die geschätzte Dauer einer Neueinbettung
-und der Sendestatus der Mail (`/actuator/health/mail`). Die Instanz, die einen Endpunkt prüft oder
-aufruft, legt sein Ergebnis in der Datenbank ab; dieselbe Frage wird deshalb auf jeder Instanz gleich
-umsortiert oder nicht. **Je Instanz** bleiben der Status eines Anmeldeanbieters in der
-Anbieterverwaltung, den die Oberfläche als „auf dieser Instanz“ kennzeichnet, und die Metriken unter
-`/actuator/prometheus`, etwa die Zahl laufender Gespräche: Prometheus fragt jede Instanz ab.
-
-### Zeitzone
+## Zeitzone
 
 Die Zeitzone setzen `.env.docker.example` (`TZ`) und der Helm-Chart (`backend.timeZone`)
 ausdrücklich, Vorgabe ist UTC. An ihr hängen die Uhrzeiten der nächtlichen und monatlichen
 Löschläufe, des Zeitplans einer Wissensbibliothek und des Feststellungslaufs der Nachfolge, die
 Tages-, Monats- und Jahresgrenzen der Fristen, etwa das Jahresende, zu dem anlassbezogene Klärungen
-gelöscht werden, die Erinnerungen vor einem Ablauf und die Datumsangaben in Mails. Sie gehört zum
-Konfigurationsabdruck.
+gelöscht werden, die Erinnerungen vor einem Ablauf und die Datumsangaben in Mails. Mit mehreren
+Instanzen ist sie auf allen gleich ([Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)).
 
 ## Eine Organisation
 
@@ -718,12 +628,14 @@ das Backend neu. Im Grundsatz:
    Version.
 4. **Beim Start** wendet das Backend die noch fehlenden Schemaänderungen an, nur vorwärts. Bereitschaft
    und Protokoll zeigen, ob der Start gelungen ist. Mit mehreren Instanzen migriert ein eigener
-   Schritt vorher, danach werden die Instanzen einzeln ersetzt.
+   Schritt vorher, danach werden die Instanzen einzeln ersetzt
+   ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
 5. **Prüfen:** Version unter `/actuator/info`, eine Frage im Chat, auf der Seite „Suche & Indexierung"
    ein ausstehender Nachzug.
 
 Einen Rückweg auf eine ältere Version gibt es nur über die Sicherung: Schemaänderungen werden nicht
-zurückgenommen. Die Befehle stehen unter
+zurückgenommen. Mit mehreren Instanzen ist der Rückweg auf die unmittelbar vorige Version innerhalb
+des Versionsfensters ohne Rücksicherung vorgesehen ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)). Die Befehle stehen unter
 [Docker Compose](docker-compose.md#aktualisierung-auf-einen-neuen-stand) und
 [Kubernetes](kubernetes.md#aktualisierung-und-rückweg).
 
@@ -867,7 +779,7 @@ Thread- und Heap-Dumps, Dateien aus dem Container und Netzwerkdiagnose stehen je
 |---|---|
 | Der Start bricht ab und nennt eine Variable | [Konfiguration](konfiguration.md); bei `OPAA_AUTH_JWT_SECRET` [Authentifizierung](authentifizierung.md#das-backend-startet-nicht-und-nennt-opaa_auth_jwt_secret) |
 | Der Start bricht mit einem Hinweis auf pgvector, Schema oder Migration ab | [Datenbank](datenbank.md) |
-| Der Start bricht mit `refuses to start` ab und nennt eine laufende Instanz | Abweichender Wert oder abweichende Version; Werte angleichen oder alle Instanzen neu starten ([Instanzregister](#instanzregister)) |
+| Der Start bricht mit `refuses to start` ab und nennt eine laufende Instanz | Abweichender Wert oder abweichende Version; Werte angleichen oder alle Instanzen neu starten ([Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)) |
 | Die Bereitschaft meldet `DOWN` | Datenbank erreichbar? Verbindungspool erschöpft? ([Bereitschaft und Lebendigkeit](#bereitschaft-und-lebendigkeit)) |
 | Indexierung oder Chat schlagen fehl, alles andere läuft | [Modelle](modelle.md#fehlerbilder) |
 | Niemand kommt herein, kein Einmalpasswort, Anmeldung mit `429` | [Authentifizierung](authentifizierung.md#fehlerbehebung) |
@@ -880,6 +792,7 @@ Thread- und Heap-Dumps, Dateien aus dem Container und Netzwerkdiagnose stehen je
 ## Weiterführende Kapitel
 
 - [Docker Compose](docker-compose.md) und [Kubernetes](kubernetes.md) — die beiden Betriebswege
+- [Mehrere Backend-Instanzen](mehrere-instanzen.md) — wie mehrere Instanzen zusammenarbeiten
 - [Datenbank](datenbank.md), [Originalablage](originalablage.md), [E-Mail-Versand](e-mail.md) — die
   Bausteine mit eigenen Abläufen
 - [Konfiguration](konfiguration.md), [Modelle](modelle.md), [Authentifizierung](authentifizierung.md)

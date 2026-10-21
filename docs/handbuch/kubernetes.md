@@ -16,7 +16,7 @@ Kapitel verweist an der jeweiligen Stelle dorthin.
 ## Kubernetes oder Compose
 
 Beide Wege führen zur selben Anwendung mit denselben Grenzen
-([Eine oder mehrere Backend-Instanzen](betrieb.md#eine-oder-mehrere-backend-instanzen)). In der
+([Mehrere Backend-Instanzen](mehrere-instanzen.md#docker-compose-und-kubernetes)). In der
 Vorgabe läuft der Chart mit einer Backend-Instanz:
 
 - Das Backend-Deployment hat ein Replikat; `backend.replicas: 0` hält das Backend an. Mehrere
@@ -77,7 +77,8 @@ flowchart LR
 ### Mehrere Backend-Instanzen
 
 Mehrere Backend-Pods gegen dieselbe Datenbank erlauben eine Aktualisierung ohne Unterbrechung und
-überstehen den Ausfall eines Pods. Der Chart rendert `backend.replicas` größer 1 nur zusammen mit dem
+überstehen den Ausfall eines Pods; wie sie zusammenarbeiten, erklärt
+[Mehrere Backend-Instanzen](mehrere-instanzen.md). Der Chart rendert `backend.replicas` größer 1 nur zusammen mit dem
 Migrations-Job und einer Originalablage, die jeder Pod sieht:
 
 ```yaml
@@ -105,7 +106,7 @@ Damit ändert sich:
   `networkPolicy.egress.backendRules`.
 - **Pod für Pod.** Die Strategie wird `RollingUpdate`: Ein neuer Pod startet, bevor ein alter endet,
   und der nächste folgt erst, wenn der neue bereit ist. `backend.updateStrategy: Recreate` bleibt
-  wählbar, etwa um einen Wert des [Konfigurationsabdrucks](betrieb.md#instanzregister) zu ändern, den
+  wählbar, etwa um einen Wert des [Konfigurationsabdrucks](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck) zu ändern, den
   alle Pods teilen müssen.
 - **Austausch ohne Abbruch.** Ein Pod, der enden soll, nimmt über `backend.preStopSleepSeconds` noch
   Anfragen an, bis Kubernetes ihn aus dem Service genommen hat. Das Zeitfenster für laufende Anfragen
@@ -116,9 +117,8 @@ Damit ändert sich:
   die Pods über Knoten oder Zonen.
 - **Datenbankverbindungen.** `backend.databasePoolSize` gilt je Pod; die Grenze für
   `max_connections` nennt [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
-- **Grenzen je Pod.** Die Gesamtgrenzen der Rate-Limits (`…_GLOBAL_MAX_REQUESTS`) zählen alle Pods
-  gemeinsam. Die übrigen Rate-Limits und die Thread-Pools gelten je Pod (siehe
-  [„Grenzen und Anzeigen mit mehreren Instanzen“](betrieb.md#grenzen-und-anzeigen-mit-mehreren-instanzen)).
+- **Grenzen je Pod.** Welche Grenzen je Pod gelten, steht unter
+  [Grenzen und Budgets](mehrere-instanzen.md#grenzen-und-budgets).
   `backend.installationBudgets` nimmt das Budget der ganzen Installation je Variable und setzt jedem
   Pod seinen Teil, abgerundet und mindestens 1; ändert sich `backend.replicas`, rechnet der Chart neu:
 
@@ -1596,7 +1596,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Migration bricht mit `permission denied to create extension "vector"` oder `permission denied to grant role` ab | Die Vorbereitung der Datenbank fehlt, siehe derselbe Abschnitt |
 | Backend erreicht die Datenbank nicht | Mit Egress-Policies fehlt die Regel zur Datenbank; sonst Hostname, Port oder `database.sslMode`. Bei `verify-*` und einer hauseigenen CA fehlt `extraCACertificates` |
 | Backend startet nicht und nennt `OPAA_AUTH_JWT_SECRET` | Das Geheimnis im vorhandenen Secret ist zu kurz oder ein Platzhalter |
-| Backend startet nicht, das Protokoll nennt `refuses to start` und eine laufende Instanz | Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut Instanzregister noch läuft. Meist ist es der eigene Vorgänger, der hart beendet wurde und sich nicht abmelden konnte: Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als beendet, danach startet der neue Pod beim nächsten Versuch (siehe [Instanzregister](betrieb.md#instanzregister)) |
+| Backend startet nicht, das Protokoll nennt `refuses to start` und eine laufende Instanz | Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut Instanzregister noch läuft. Meist ist es der eigene Vorgänger, der hart beendet wurde und sich nicht abmelden konnte: Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als beendet, danach startet der neue Pod beim nächsten Versuch (siehe [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)) |
 | Pod im Zustand `OOMKilled` | Die Speichergrenze ist zu klein; `backend.resources.limits.memory` anheben, nicht den Heap-Anteil (siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)) |
 | Pod verdrängt, das Ereignis nennt `ephemeral-storage` | `/tmp` ist über `backend.tmp.sizeLimit` gewachsen, etwa bei vielen großen Uploads |
 | `helm test` schlägt fehl | Das Backend ist nicht bereit, oder eine eigene Änderung an den NetworkPolicies trennt Frontend und Backend |
