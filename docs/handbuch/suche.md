@@ -1175,6 +1175,15 @@ Tipp-Pause, Enter sucht sofort —, und die Grenze der Fragen wäre dafür nach 
 erschöpft. Gezählt wird je Adresse über alle Spaces zusammen; ein Wechsel des Space schafft kein
 neues Kontingent.
 
+Die Suche ohne Antwort und der Abruf eines Treffers (Abschnitt 7.1) teilen sich eine **eigene**
+Grenze unter `opaa.rate-limit.search.*`, je IP-Adresse und über alle Adressen. Jede Suche lässt
+ihre Frage vom Einbettungsmodell umrechnen; ohne Grenze könnte ein Skript in einer Schleife
+beliebig viele Modellaufrufe auslösen. Ein Werkzeug sucht typischerweise einmal und ruft dann
+einige Treffer ab, deshalb zählen beide zusammen: Ein anderer Treffer schafft kein neues
+Kontingent. Die Auflistung der durchsuchbaren Bibliotheken zählt nicht mit. Auch hier zählen nur
+angemeldete Anfragen; ein Zugangstoken unterliegt zusätzlich seinem Kontingent
+([Externe KI-Werkzeuge](fremdzugaenge.md)).
+
 ### 10.2 Metriken und Log
 
 | Metrik | Bedeutung |
@@ -1243,6 +1252,15 @@ mit Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvar
 | `max-requests` | 60 | Chatsuchen je IP-Adresse und Fenster, über alle Spaces zusammen (`OPAA_RATE_LIMIT_CHAT_SEARCH_MAX_REQUESTS`) |
 | `window-seconds` | 60 | Länge des Fensters in Sekunden (`OPAA_RATE_LIMIT_CHAT_SEARCH_WINDOW_SECONDS`) |
 | `global-max-requests` | 1200 | Chatsuchen über alle Adressen je Fenster (`OPAA_RATE_LIMIT_CHAT_SEARCH_GLOBAL_MAX_REQUESTS`) |
+
+Die Ratenbegrenzung der Suche ohne Antwort und des Trefferabrufs (Abschnitt 10.1) steht unter
+`opaa.rate-limit.search.*`:
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `max-requests` | 30 | Suchen und Trefferabrufe zusammen je IP-Adresse und Fenster (`OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS`) |
+| `window-seconds` | 60 | Länge des Fensters in Sekunden (`OPAA_RATE_LIMIT_SEARCH_WINDOW_SECONDS`) |
+| `global-max-requests` | 300 | Suchen und Trefferabrufe über alle Adressen je Fenster (`OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS`) |
 
 Ein einziger Wert der Gesprächsnotiz ist einstellbar, und er steht unter einem eigenen Präfix, weil
 die Notiz Chatinhalt ist und kein Suchparameter:

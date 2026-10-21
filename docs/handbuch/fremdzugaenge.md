@@ -624,7 +624,7 @@ Verhalten. Diese Antworten unterscheiden die Fälle:
 | `503` am MCP-Endpunkt | Der Kanal ist **aus**, das vorgelegte Token wäre sonst gültig. Diese Antwort trennt „Kanal zu" von „falscher Pfad" und von „Proxy kaputt"; sie nennt die Ursache im Feld `reason` |
 | `401` | Das Token selbst wird abgewiesen. Der Grund steht im Kopf `WWW-Authenticate` als `error_description`; am MCP-Endpunkt zusätzlich im Feld `reason` der Antwort |
 | `403` | Token gültig, aber der angesprochene Pfad gehört nicht zu den drei Lesewegen (Abschnitt 8) |
-| `429` | Das Kontingent des Tokens ist erschöpft (Abschnitt 10) — an den REST-Lesewegen |
+| `429` | Das Kontingent des Tokens ist erschöpft (Abschnitt 10) — an den REST-Lesewegen; bei Suche und Trefferabruf auch die Grenze je Netzadresse ([Suche](suche.md#101-ratenbegrenzung)) |
 | `405` | Ein `GET` auf `/mcp` **mit gültigem Token bei offenem Kanal**. Der Endpunkt nimmt `POST` entgegen. Ein Browseraufruf trägt kein Token und sieht diese Antwort nie — er endet bei `404` bzw. `401` und ist deshalb kein Funktionstest |
 
 Bei geschlossenem Kanal antworten die REST-Lesewege mit `401` und der Ursache `channel_closed`;
