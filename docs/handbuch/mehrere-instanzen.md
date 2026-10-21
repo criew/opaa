@@ -54,8 +54,9 @@ Was es bewusst nicht ist:
   nur seltener erprobt.
 - **Keine Pflicht.** Eine Instanz bleibt die Vorgabe beider Betriebswege. Auch sie trägt sich ins
   [Instanzregister](#das-instanzregister) ein und prüft ihren Konfigurationsabdruck. Bemerkbar wird
-  das nur nach einem harten Abbruch: Startet sie danach mit einem geänderten Wert des Abdrucks, wartet
-  der Start, bis die Frist der abgebrochenen Instanz abgelaufen ist.
+  das nur nach einem harten Abbruch: Startet sie danach mit einem geänderten Wert des Abdrucks oder
+  als neue Version, verweigert sie den Start, bis die Frist der abgebrochenen Instanz abgelaufen ist;
+  danach gelingt der nächste Startversuch.
 
 Eine Person ist an keine Instanz gebunden. Anmeldung und Sitzung stecken in Tokens und Cookies,
 nicht im Speicher einer Instanz; gespeicherte Chats lesen ihren Verlauf auf jeder Instanz aus der
@@ -215,8 +216,9 @@ Verbindungs- und Thread-Pools, der Abstand des Herzschlags.
 trägt dort sein unmittelbar voriges Release ein, an einer Versionsgrenze ohne Rolling Update nur
 sich selbst; die Notizen des Release sagen es. Eine Instanz außerhalb des Fensters startet nicht, ob
 sie älter ist oder neuer. **Bis zum ersten Release mit dieser Zusage läuft nur dieselbe Version
-nebeneinander.** Images des Stands `main` tragen alle dieselbe Entwicklungsversion und gelten dabei
-als gleich.
+nebeneinander.** Images des Stands `main` tragen alle dieselbe Entwicklungsversion: Zwischen ihnen
+prüft das Fenster nichts, sie gelten als gleich. Ob sie nebeneinander laufen, sichert nur ihr
+Abstand, nicht OPAA.
 
 Einen Wert des Abdrucks ändert deshalb **nur ein Neustart aller Instanzen**: erst alle beenden, dann
 mit dem neuen Wert starten. Ein Update, das zugleich einen solchen Wert ändert, bleibt an der ersten
@@ -434,8 +436,7 @@ Das Frontend ersetzt unter Docker Compose ein eigener, letzter Schritt; unter Ku
 So geht ein Update nur innerhalb des Versionsfensters. Lässt die neue Version die laufende nicht
 neben sich zu, verweigert die erste neue Instanz den Start, und die alten antworten weiter; dann
 werden alle Instanzen angehalten wie an einer Versionsgrenze (unten). Bis zum ersten Release, das
-seine Vorgängerversion zulässt, gilt das für jeden Wechsel zwischen Releases; Instanz für Instanz
-geht es heute zwischen Images des Stands `main`.
+seine Vorgängerversion zulässt, gilt das für jeden Wechsel zwischen Releases.
 
 Die Befehle stehen unter [Docker Compose](docker-compose.md#update-ohne-ausfall) und
 [Kubernetes](kubernetes.md#ablauf-mit-mehreren-backend-pods).

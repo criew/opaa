@@ -1133,7 +1133,8 @@ Proben und Metriken laufen über den Management-Port (siehe
    Versionen überspringt, prüft diesen Abschnitt bei jedem übersprungenen Release.
 2. **Datenbank sichern**, danach die Originale (siehe
    [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Ohne diese Sicherung gibt es
-   nach einer Schemaänderung keinen Rückweg.
+   nach einer Schemaänderung keinen Rückweg, außer die neue Version lässt die vorige in ihrem
+   Versionsfenster zu ([Rückweg](#rückweg)).
 3. **Schemastand notieren:** die Zahl der Zeilen in `databasechangelog` (siehe
    [Rückweg](#rückweg)).
 4. **Aktualisieren**, mit derselben Werte-Datei wie bei der Installation:
@@ -1272,8 +1273,8 @@ Rücksicherung, wenn die Sicherung von einer Installation stammt, die nur einmal
   helm rollback opaa <Revision> -n opaa
   ```
 
-- **Größere Zahl:** Das Schema ist migriert. Zurück geht es ausschließlich über die Sicherung von vor
-  dem Upgrade:
+- **Größere Zahl:** Das Schema ist migriert. Zurück geht es über die Sicherung von vor dem Upgrade,
+  außer die neue Version lässt die vorige in ihrem Versionsfenster zu (oben):
 
   1. Backend anhalten: `kubectl -n opaa scale deploy/opaa-backend --replicas=0`
   2. Die Datenbank aus der Sicherung wiederherstellen, auf eine leere Datenbank. Bei der

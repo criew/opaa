@@ -573,8 +573,8 @@ Ab `1.0.0` steigt bei einem Bruch die Hauptversion.
 
 Schemaänderungen laufen immer vorwärts. Zurück auf eine ältere Version geht es über die
 Datenbanksicherung, unabhängig davon, ob die Version als Bruch gezählt wird. Ohne Sicherung geht es
-nur zurück auf eine Version, die die neuere in ihrem Versionsfenster zulässt (unten): Deren Schema hat
-die ältere nur erweitert.
+nur zurück, wenn die neue Version die vorige in ihrem Versionsfenster zulässt (unten): Ihr Schema hat
+die vorige nur erweitert.
 
 **Versionsfenster für Rolling Updates.** `backend/src/main/resources/instance/rolling-update.properties`
 nennt in `oldest-compatible-version` die älteste Version, neben der der Bau laufen darf
