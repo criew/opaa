@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
  *
  * <p>The database function {@code account_state_reconcile} applies the same rule to write the
  * account-state history; a change here changes it there too ({@code
- * AccountStateHistoryWritePathsIntegrationTest} holds both against each other).
+ * AccountStateParityIntegrationTest} holds both against each other).
  */
 @Component
 public class AccountUsability {

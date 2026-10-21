@@ -18,7 +18,8 @@ import org.junit.jupiter.api.Test;
  * switched-off local management, an account of a switched-off or deleted provider - gets an open
  * {@code LOCKED} interval from the introduction on, and nothing before it, because the history
  * cannot tell since when. The introduction is recorded as the start of the complete account-state
- * history. A usable account, and one of an issuer no provider ever had, gets no row.
+ * history. A usable account gets no row; one of an issuer without any provider counts as unusable,
+ * as {@code AccountUsability} has it outside the dev mode.
  */
 class AccountStateCompleteMigrationTest extends AbstractBaselineTest {
 
@@ -81,7 +82,7 @@ class AccountStateCompleteMigrationTest extends AbstractBaselineTest {
     assertThat(intervalsOf(usable)).isEmpty();
     assertThat(intervalsOf(lockoutOver)).isEmpty();
     assertThat(intervalsOf(ofEnabled)).isEmpty();
-    assertThat(intervalsOf(ofUnknownIssuer)).isEmpty();
+    assertThat(intervalsOf(ofUnknownIssuer)).containsExactly("LOCKED PROVIDER_REMOVED open");
     assertThat(
             longOf(
                 "SELECT count(*) FROM account_state_history WHERE valid_from < '"

@@ -764,9 +764,16 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
     ein Ablauf tritt ohne Schreibzugriff ein; ihn hält `AccountStateExpirySweep` minütlich fest, mit
     einer Grenze nicht vor dem Ablaufdatum. Bis dahin nennt die Auskunft das Konto noch: Sie
     überschätzt den Kreis um höchstens diesen Takt, sie verschweigt niemanden.
-  - **Ein Konto unbekannten Ausstellers** — einer, den nie ein Anbieter führte, im Betrieb nur der
-    Aussteller des Modus `dev` — gilt als nutzbar; `AccountUsability` nennt es außerhalb von `dev`
-    unnutzbar. Auch das überschätzt nur.
+  - **Dieselbe Regel wie `AccountUsability`, Bedingung für Bedingung:** Reihenfolge der Gründe,
+    Ausnahme der Systemverwaltung, Vergleich des Ausstellers nach `OidcIssuerUris#normalize`
+    (Steuerzeichen und Leerzeichen am Rand, abschließende Schrägstriche; Groß- und Kleinschreibung
+    zählen), nur Anbieter vom Typ `OIDC`. `AccountStateParityIntegrationTest` hält beide über eine
+    Matrix von Kontozuständen gegeneinander. Zwei Grenzen: Ein Konto ohne Anbieter seines
+    Ausstellers gilt als nicht nutzbar, auch im Modus `dev`, dessen Aussteller die Datenbank nicht
+    kennt (dort nennt `AccountUsability` es nutzbar; `dev` ist kein Betriebsmodus). Und Ablauf und
+    Anmeldesperre vergleicht die Datenbank mit ihrer eigenen Uhr, die Anwendung mit der Uhr ihres
+    Hosts: Genau an der Grenze weichen beide um den Uhrversatz ab (mit NTP Millisekunden); ein
+    Ablauf, den die Datenbank noch nicht sieht, holt der minütliche Lauf nach.
   - **Vollständig ab der Einführung.** Die Migration hält den Zeitpunkt fest
     (`permission_history_retention_settings.account_state_complete_since`) und öffnet für jedes
     Konto, das dann nicht nutzbar ist, ein Intervall ab diesem Zeitpunkt. Seit wann es das schon war,

@@ -28,8 +28,15 @@ databaseChangeLog:
               ALTER TABLE permission_history_retention_settings
                   ADD COLUMN account_state_complete_since timestamp with time zone;
 
+              CREATE FUNCTION account_state_issuer_key(issuer text) RETURNS text
+                  LANGUAGE sql IMMUTABLE
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+                SELECT rtrim(regexp_replace(issuer, '^[\x01-\x20]+|[\x01-\x20]+$', '', 'g'), '/')
+              $$;
+
               CREATE FUNCTION account_state_reconcile(p_user_id uuid, p_reactivation_cause text,
-                      p_new_account boolean, p_removed_issuer text) RETURNS void
+                      p_new_account boolean) RETURNS void
                   LANGUAGE plpgsql
                   SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
                   AS $$
@@ -66,7 +73,7 @@ databaseChangeLog:
                          email_verified_at IS NOT NULL AS verified
                       INTO credentials FROM local_credentials WHERE user_id = p_user_id;
                   IF NOT FOUND THEN
-                    -- only inside a handover, which changes the issuer in the same transaction
+                    -- LocalCredentials: a local account always has its row; nothing to evaluate
                     RETURN;
                   END IF;
                   IF credentials.expires_at IS NOT NULL AND credentials.expires_at <= evaluated_at THEN
@@ -94,20 +101,20 @@ databaseChangeLog:
                     END IF;
                   END IF;
                 ELSE
-                  issuer_key := rtrim(btrim(account.issuer), '/');
+                  issuer_key := account_state_issuer_key(account.issuer);
                   SELECT enabled INTO provider_enabled FROM oidc_providers
-                      WHERE provider_type = 'OIDC' AND rtrim(btrim(issuer_uri), '/') = issuer_key;
+                      WHERE provider_type = 'OIDC' AND account_state_issuer_key(issuer_uri) = issuer_key;
                   IF FOUND THEN
                     IF NOT provider_enabled THEN
                       target_locked := true;
                       target_cause := 'PROVIDER_DISABLED';
                     END IF;
-                  ELSIF issuer_key = p_removed_issuer OR EXISTS (
-                      SELECT 1 FROM oidc_provider_removals WHERE issuer_uri_normalized = issuer_key) THEN
+                  ELSE
+                    -- no provider of this issuer: deleted, or never there; only the dev mode's
+                    -- issuer, unknown to the database, is usable without one in AccountUsability
                     target_locked := true;
                     target_cause := 'PROVIDER_REMOVED';
                   END IF;
-                  -- an issuer no provider ever had (the dev mode's) counts as usable
                 END IF;
 
                 SELECT id, state, locked_until INTO open_id, open_state, open_until
@@ -146,7 +153,7 @@ databaseChangeLog:
                   AS $$
               BEGIN
                 PERFORM account_state_reconcile(NEW.user_id, 'ACCOUNT_REACTIVATED',
-                    TG_OP = 'INSERT', NULL);
+                    TG_OP = 'INSERT');
                 RETURN NULL;
               END; $$;
 
@@ -173,7 +180,7 @@ databaseChangeLog:
                 PERFORM account_state_reconcile(NEW.id,
                     CASE WHEN OLD.directory_locked_at IS NOT NULL AND NEW.directory_locked_at IS NULL
                          THEN 'DIRECTORY_UNLOCKED' ELSE 'ACCOUNT_REACTIVATED' END,
-                    false, NULL);
+                    false);
                 RETURN NULL;
               END; $$;
 
@@ -200,25 +207,24 @@ databaseChangeLog:
                   IF OLD.provider_type = 'LOCAL' THEN
                     touches_local := true;
                   ELSE
-                    old_key := rtrim(btrim(OLD.issuer_uri), '/');
+                    old_key := account_state_issuer_key(OLD.issuer_uri);
                   END IF;
                 END IF;
                 IF TG_OP <> 'DELETE' THEN
                   IF NEW.provider_type = 'LOCAL' THEN
                     touches_local := true;
                   ELSE
-                    new_key := rtrim(btrim(NEW.issuer_uri), '/');
+                    new_key := account_state_issuer_key(NEW.issuer_uri);
                   END IF;
                 END IF;
                 FOR affected IN
                   SELECT id FROM users
                    WHERE (touches_local AND issuer = 'urn:opaa:local')
                       OR (issuer <> 'urn:opaa:local'
-                          AND rtrim(btrim(issuer), '/') IN (old_key, new_key))
+                          AND account_state_issuer_key(issuer) IN (old_key, new_key))
                    ORDER BY id
                 LOOP
-                  PERFORM account_state_reconcile(affected, 'ACCOUNT_REACTIVATED', false,
-                      CASE WHEN old_key IS DISTINCT FROM new_key THEN old_key END);
+                  PERFORM account_state_reconcile(affected, 'ACCOUNT_REACTIVATED', false);
                 END LOOP;
                 RETURN NULL;
               END; $$;
@@ -254,7 +260,7 @@ databaseChangeLog:
                    ORDER BY c.user_id
                    LIMIT p_limit
                 LOOP
-                  PERFORM account_state_reconcile(affected, 'ACCOUNT_REACTIVATED', false, NULL);
+                  PERFORM account_state_reconcile(affected, 'ACCOUNT_REACTIVATED', false);
                   recorded := recorded + 1;
                 END LOOP;
                 RETURN recorded;
@@ -268,6 +274,6 @@ databaseChangeLog:
                 existing uuid;
               BEGIN
                 FOR existing IN SELECT id FROM users ORDER BY id LOOP
-                  PERFORM account_state_reconcile(existing, 'ACCOUNT_REACTIVATED', true, NULL);
+                  PERFORM account_state_reconcile(existing, 'ACCOUNT_REACTIVATED', true);
                 END LOOP;
               END $$;
