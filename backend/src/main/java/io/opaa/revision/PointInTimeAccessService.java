@@ -6,6 +6,7 @@ import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.PermissionSubjectType;
+import io.opaa.api.types.SpaceRole;
 import io.opaa.audit.AuditAccessGate;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
@@ -13,7 +14,11 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.permission.AccountStateHistory;
+import io.opaa.permission.AccountStateHistoryService;
 import io.opaa.permission.AssetGrantHistory;
+import io.opaa.permission.AssetOwnershipHistory;
+import io.opaa.permission.AssetOwnershipHistoryService;
 import io.opaa.permission.GroupMembershipHistory;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.PermissionHistoryRetentionService;
@@ -46,6 +51,10 @@ import org.springframework.stereotype.Service;
  * the answer instead of being left to the reader - the retention cutoff and the sources not yet
  * historised ({@link AccessAsOfResult#sourcesNotCovered()}).
  *
+ * <p><b>Every access period ends where the account was locked</b> ({@code account_state_history}):
+ * a locked account exercises no right, whichever way reached it. The organization-wide way names
+ * nobody and is therefore not cut.
+ *
  * <p><b>The bounds limit the work, not only the output</b> (see {@link #MAX_SOURCE_INTERVALS} and
  * {@link #MAX_COMPOSED_ENTRIES}): a page of 50 must not cost the composition of a whole
  * department's memberships, and a request that would is refused rather than trimmed - the same line
@@ -66,21 +75,20 @@ public class PointInTimeAccessService {
 
   /**
    * The sources ADR-0036, Entscheidung 8 lists that carry no history yet - named in every answer so
-   * an empty result is not read as "nobody had access". The system role matters most: {@code
+   * an empty result is not read as "nobody had access". Only the system role is left: {@code
    * LibraryAccessService#effectiveRole} hands a system administrator {@code OWNER} on every library
-   * of their organization, and no interval records that.
+   * of their organization, and no interval records that. A capability is no source at all - it
+   * opens an Anlegepfad, never a content (ADR-0036, Entscheidung 5).
    */
   private static final List<AccessAsOfSource> SOURCES_NOT_COVERED =
-      List.of(
-          AccessAsOfSource.SYSTEM_ROLE,
-          AccessAsOfSource.OWNERSHIP,
-          AccessAsOfSource.CAPABILITY,
-          AccessAsOfSource.ACCOUNT_STATE);
+      List.of(AccessAsOfSource.SYSTEM_ROLE);
 
   private final AuditAccessGate gate;
   private final AuditEventRecorder eventRecorder;
   private final PermissionHistoryService permissionHistory;
   private final SpaceMembershipHistoryService spaceMembershipHistory;
+  private final AssetOwnershipHistoryService ownershipHistory;
+  private final AccountStateHistoryService accountStateHistory;
   private final PermissionHistoryRetentionService retentionService;
   private final GroupSubjectDirectory groupDirectory;
   private final UserRepository userRepository;
@@ -92,6 +100,8 @@ public class PointInTimeAccessService {
       AuditEventRecorder eventRecorder,
       PermissionHistoryService permissionHistory,
       SpaceMembershipHistoryService spaceMembershipHistory,
+      AssetOwnershipHistoryService ownershipHistory,
+      AccountStateHistoryService accountStateHistory,
       PermissionHistoryRetentionService retentionService,
       GroupSubjectDirectory groupDirectory,
       UserRepository userRepository,
@@ -101,6 +111,8 @@ public class PointInTimeAccessService {
     this.eventRecorder = eventRecorder;
     this.permissionHistory = permissionHistory;
     this.spaceMembershipHistory = spaceMembershipHistory;
+    this.ownershipHistory = ownershipHistory;
+    this.accountStateHistory = accountStateHistory;
     this.retentionService = retentionService;
     this.groupDirectory = groupDirectory;
     this.userRepository = userRepository;
@@ -146,10 +158,11 @@ public class PointInTimeAccessService {
         () -> {
           gate.validateTimeRange(from, to);
           requirePagingBounds(page, size);
-          List<AccessAsOfEntry> entries =
+          List<AccessAsOfEntry> composed =
               objectType == AccessAsOfObjectType.KNOWLEDGE_LIBRARY
                   ? libraryReaders(organizationId, objectId, from, to)
                   : spaceMembers(organizationId, objectId, from, to);
+          List<AccessAsOfEntry> entries = withoutLockedPeriods(organizationId, composed, from, to);
           return page(organizationId, objectType, objectId, from, to, entries, page, size);
         });
   }
@@ -161,6 +174,11 @@ public class PointInTimeAccessService {
    * the question read one source; the composition mirrors {@code
    * PermissionHistoryService#readableAssetIdsAsOf}, and it is scoped to {@code organizationId} - a
    * foreign object answers like an unknown one.
+   *
+   * <p>Ownership is no way of its own here: a library's owner reads through the grant ownership
+   * comes with ({@code OWNER} for a person, {@code MANAGER} for an owning group), never through
+   * ownership itself ({@code AssetAuthorization#requireContentRole}), so those grants already name
+   * the owner and the owning group's members.
    */
   private List<AccessAsOfEntry> libraryReaders(
       UUID organizationId, UUID libraryId, Instant from, Instant to) {
@@ -255,7 +273,9 @@ public class PointInTimeAccessService {
   }
 
   /**
-   * The space counterpart: memberships of a person and of a group, the latter resolved likewise.
+   * The space counterpart: memberships of a person and of a group, the latter resolved likewise,
+   * and ownership - the owner ranks as {@code ADMIN} with or without a membership row ({@code
+   * SpaceAccessPolicy#effectiveRole}).
    */
   private List<AccessAsOfEntry> spaceMembers(
       UUID organizationId, UUID spaceId, Instant from, Instant to) {
@@ -323,7 +343,108 @@ public class PointInTimeAccessService {
                 openEnded(memberTo, to)));
       }
     }
+    addSpaceOwners(entries, organizationId, spaceId, from, to);
     return entries;
+  }
+
+  /**
+   * One {@link AccessBasis#OWNERSHIP} entry per ownership interval. A space owner is always a
+   * person ({@code Space#getOwnerId}); an interval naming a group cannot arise and would name
+   * nobody.
+   */
+  private void addSpaceOwners(
+      List<AccessAsOfEntry> entries, UUID organizationId, UUID spaceId, Instant from, Instant to) {
+    List<AssetOwnershipHistory> ownerships =
+        capped(
+            ownershipHistory.ownershipIntervalsBetween(
+                Space.ASSET_TYPE, spaceId, organizationId, from, to, MAX_SOURCE_INTERVALS + 1),
+            "Eigentum");
+    for (AssetOwnershipHistory ownership : ownerships) {
+      Instant start = max(ownership.getValidFrom(), from);
+      Instant end = min(ownership.getValidTo(), to);
+      if (ownership.getOwnerType() != PermissionSubjectType.USER || !start.isBefore(end)) {
+        continue;
+      }
+      add(
+          entries,
+          new AccessAsOfEntry(
+              AccessBasis.OWNERSHIP,
+              ownership.getOwnerUserId(),
+              null,
+              null,
+              null,
+              null,
+              SpaceRole.ADMIN,
+              start,
+              openEnded(end, to)));
+    }
+  }
+
+  /**
+   * Cuts every entry naming a person by that person's locked intervals - a lock inside an access
+   * period splits it, a lock covering it removes it. One query for all persons of the answer.
+   */
+  private List<AccessAsOfEntry> withoutLockedPeriods(
+      UUID organizationId, List<AccessAsOfEntry> entries, Instant from, Instant to) {
+    Set<UUID> userIds = new HashSet<>();
+    for (AccessAsOfEntry entry : entries) {
+      if (entry.userId() != null) {
+        userIds.add(entry.userId());
+      }
+    }
+    List<AccountStateHistory> locks =
+        capped(
+            accountStateHistory.lockedIntervalsBetween(
+                userIds, organizationId, from, to, MAX_SOURCE_INTERVALS + 1),
+            "Kontosperren");
+    if (locks.isEmpty()) {
+      return entries;
+    }
+    Map<UUID, List<AccountStateHistory>> locksByUser = new HashMap<>();
+    for (AccountStateHistory lock : locks) {
+      locksByUser.computeIfAbsent(lock.getUserId(), id -> new ArrayList<>()).add(lock);
+    }
+    locksByUser
+        .values()
+        .forEach(
+            userLocks -> userLocks.sort(Comparator.comparing(AccountStateHistory::getValidFrom)));
+    List<AccessAsOfEntry> unlocked = new ArrayList<>();
+    for (AccessAsOfEntry entry : entries) {
+      List<AccountStateHistory> userLocks =
+          entry.userId() == null ? List.of() : locksByUser.getOrDefault(entry.userId(), List.of());
+      for (AccessAsOfEntry piece : unlockedPieces(entry, userLocks, to)) {
+        add(unlocked, piece);
+      }
+    }
+    return unlocked;
+  }
+
+  /** The parts of {@code entry} outside {@code locks}, which are sorted by their start. */
+  private static List<AccessAsOfEntry> unlockedPieces(
+      AccessAsOfEntry entry, List<AccountStateHistory> locks, Instant to) {
+    if (locks.isEmpty()) {
+      return List.of(entry);
+    }
+    Instant end = entry.validTo() == null ? to : entry.validTo();
+    Instant cursor = entry.validFrom();
+    List<AccessAsOfEntry> pieces = new ArrayList<>();
+    for (AccountStateHistory lock : locks) {
+      Instant lockEnd = lock.getValidTo() == null ? end : lock.getValidTo();
+      if (!lock.getValidFrom().isBefore(end) || !cursor.isBefore(end)) {
+        break;
+      }
+      if (!lockEnd.isAfter(cursor)) {
+        continue;
+      }
+      if (cursor.isBefore(lock.getValidFrom())) {
+        pieces.add(entry.during(cursor, openEnded(lock.getValidFrom(), to)));
+      }
+      cursor = max(cursor, lockEnd);
+    }
+    if (cursor.isBefore(end)) {
+      pieces.add(entry.during(cursor, openEnded(end, to)));
+    }
+    return pieces;
   }
 
   /**

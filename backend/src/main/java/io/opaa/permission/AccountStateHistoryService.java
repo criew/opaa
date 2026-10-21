@@ -1,8 +1,12 @@
 package io.opaa.permission;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Records the state of an account as half-open intervals (ADR-0036 Entscheidung 8): "was this
@@ -71,6 +75,19 @@ public class AccountStateHistoryService {
             AccountState.ACTIVE,
             AccountStateHistoryCause.DIRECTORY_UNLOCKED,
             now));
+  }
+
+  /**
+   * The locked intervals of {@code userIds} overlapping {@code [from, to)} - the one reading path
+   * of this history, the Stichtagsauskunft (ADR-0036 Entscheidung 8). Empty input, empty answer.
+   */
+  @Transactional(readOnly = true)
+  public List<AccountStateHistory> lockedIntervalsBetween(
+      Collection<UUID> userIds, UUID organizationId, Instant from, Instant to, int limit) {
+    return userIds.isEmpty()
+        ? List.of()
+        : repository.findLockedIntervalsOverlapping(
+            userIds, organizationId, from, to, PageRequest.ofSize(limit));
   }
 
   /**

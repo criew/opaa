@@ -122,7 +122,9 @@ data:
     visibility: [AUDITOR über die Stichtagsauskunft]
     accessPaths: [UI, API, DATABASE]
     deletion: Retention-Lauf der Rechtehistorie
-    evaluations: Stichtagsauskunft je Objekt, keine Zeitreihe je Person
+    evaluations: >-
+      Stichtagsauskunft je Objekt: Sperrzeiten einer dort genannten Person kürzen ihre
+      Zugriffszeiträume und sind an der Lücke ablesbar; keine Zeitreihe je Person
   - id: settings-editors
     title: Bearbeitungsvermerke verwalteter Einstellungen
     purpose: Wer eine verwaltete Einstellung zuletzt geändert hat

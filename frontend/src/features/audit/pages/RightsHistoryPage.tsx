@@ -35,9 +35,6 @@ const BASIS_LABELS: Record<AccessBasis, string> = {
 
 const SOURCE_LABELS: Record<AccessAsOfSource, string> = {
   SYSTEM_ROLE: 'Systemrolle (eine Systemverwaltung erreicht jede Bibliothek ihrer Organisation)',
-  OWNERSHIP: 'Eigentum an Bibliothek oder Space',
-  CAPABILITY: 'Anlegerechte',
-  ACCOUNT_STATE: 'Kontozustand (aktiv oder gesperrt)',
 }
 
 function formatInstant(value: string | null | undefined, fallback: string): string {

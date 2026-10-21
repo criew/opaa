@@ -19,7 +19,7 @@ const answer: AccessAsOfPage = {
   to: '2026-03-31T00:00:00Z',
   retentionCutoff: '2023-04-01T00:00:00Z',
   beyondRetention: false,
-  sourcesNotCovered: ['SYSTEM_ROLE', 'OWNERSHIP', 'CAPABILITY', 'ACCOUNT_STATE'],
+  sourcesNotCovered: ['SYSTEM_ROLE'],
   entries: [
     {
       basis: 'GROUP_GRANT',

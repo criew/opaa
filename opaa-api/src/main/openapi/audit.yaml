@@ -159,9 +159,12 @@ paths:
         400 and the advice to narrow the window - a trimmed answer would look complete.
 
         The answer carries retentionCutoff/beyondRetention and sourcesNotCovered, so neither the
-        retention gap nor the sources without a history (system role, ownership, capability,
-        account state) read as "nobody had access". Every call writes a PERMISSION_HISTORY_ACCESSED
-        entry, the rejected attempt included.
+        retention gap nor the source without a history (the system role) reads as "nobody had
+        access". A space names its owner (basis OWNERSHIP, role ADMIN) for the period of the
+        ownership; a library names its owner through the grant ownership comes with. Every access
+        period ends where the account was locked (account-state history); the organization-wide
+        way names nobody and is not cut. Every call writes a PERMISSION_HISTORY_ACCESSED entry, the
+        rejected attempt included.
       parameters:
         - name: objectType
           in: query
@@ -698,11 +701,12 @@ components:
       type: string
       description: >
         A rights source of the Stichtagsauskunft that carries no history yet (ADR-0036,
-        Entscheidung 8 lists eight sources; four are historised today). SYSTEM_ROLE matters most:
-        a system administrator reaches every library of their organization through effectiveRole,
-        and no interval records that - an empty answer is therefore never a proof that nobody had
-        access.
-      enum: [SYSTEM_ROLE, OWNERSHIP, CAPABILITY, ACCOUNT_STATE]
+        Entscheidung 8). Only SYSTEM_ROLE is left: a system administrator reaches every library of
+        their organization through effectiveRole, and no interval records that - an empty answer
+        is therefore never a proof that nobody had access. Ownership and account state are
+        historised and part of the answer; a capability is no source, it opens an Anlegepfad, never
+        a content (ADR-0036, Entscheidung 5).
+      enum: [SYSTEM_ROLE]
       example: SYSTEM_ROLE
 
     AccessAsOfEntry:
