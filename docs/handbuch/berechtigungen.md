@@ -707,9 +707,11 @@ lesen?" Fünf Schutzregeln gehören dazu:
   Anlegerechte erscheinen nie: Sie öffnen keinen Inhalt.
 - **Ein Zeitraum, in dem ein Konto nicht nutzbar war, zählt nicht als Zugang.** Das gilt für jeden
   Grund: Sperre durch den Verzeichnisabgleich, durch die Benutzerverwaltung oder wegen Inaktivität,
-  die Anmeldesperre nach Fehlversuchen bis zu ihrem Ende, ein abgelaufenes Konto, eine noch nicht
-  angenommene Einladung, die abgeschaltete lokale Kontenverwaltung (für Konten ohne
-  Systemverwaltung) und ein abgeschalteter oder gelöschter Anmeldeanbieter. Ein Ablauf, der ohne
+  ein abgelaufenes Konto, eine noch nicht angenommene Einladung, die abgeschaltete lokale
+  Kontenverwaltung (für Konten ohne Systemverwaltung) und ein abgeschalteter oder gelöschter
+  Anmeldeanbieter. Ausgenommen ist die kurze Sperre nach mehreren falschen Passwörtern: Sie endet
+  von selbst, kann von jedem ausgelöst werden und wird nicht festgehalten — während ihr nennt die
+  Auskunft die Person weiter. Ein Ablauf, der ohne
   Zutun eintritt, wird spätestens nach etwa einer Minute festgehalten; bis dahin nennt die Auskunft
   das Konto noch, sie kürzt nie zu viel. Vollständig ist dieser Nachweis erst ab dem Update, das ihn
   eingeführt hat: Für die Zeit davor kennt OPAA nur die Sperren aus dem Verzeichnisabgleich, und

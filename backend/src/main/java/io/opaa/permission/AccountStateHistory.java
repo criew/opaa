@@ -12,9 +12,8 @@ import java.util.UUID;
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one period an account was {@link
  * AccountState#ACTIVE} or {@link AccountState#LOCKED} (ADR-0036 Entscheidung 8). {@code validTo ==
- * null} means the account is in that state right now. A {@code LOCKED} interval with {@link
- * #getLockedUntil()} ends by itself at that instant even while it is still open - a failed-login
- * lockout - and the account is usable from then on until the next interval.
+ * null} means the account is in that state right now. A failed-login lockout leaves no interval: it
+ * is short, ends by itself and is caused by whoever types the address.
  *
  * <p>Written and closed only by the database ({@code account_state_reconcile}, triggered by every
  * change of {@code users}, {@code local_credentials} and {@code oidc_providers} that can change
@@ -47,9 +46,6 @@ public class AccountStateHistory {
   @Column(name = "valid_to")
   private Instant validTo;
 
-  @Column(name = "locked_until")
-  private Instant lockedUntil;
-
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -81,11 +77,6 @@ public class AccountStateHistory {
 
   public Instant getValidTo() {
     return validTo;
-  }
-
-  /** The end a lockout reaches by itself; {@code null} for every other interval. */
-  public Instant getLockedUntil() {
-    return lockedUntil;
   }
 
   public Instant getCreatedAt() {

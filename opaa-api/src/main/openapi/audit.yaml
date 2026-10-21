@@ -164,10 +164,11 @@ paths:
         owner (basis OWNERSHIP, role ADMIN) for the period of the ownership, a personal space from
         its creation on; a library names its owner through the grant ownership comes with. Every
         access period ends where the account became unusable (account-state history: a lock by the
-        directory, the administration or for inactivity, a failed-login lockout up to its end, an
-        expiry, an open invitation, the switched-off local account management, a switched-off or
-        deleted sign-in provider); the organization-wide way names nobody and is not cut. Every
-        call writes a PERMISSION_HISTORY_ACCESSED entry, the rejected attempt included.
+        directory, the administration or for inactivity, an expiry, an open invitation, the
+        switched-off local account management, a switched-off or deleted sign-in provider; a
+        failed-login lockout is not recorded and cuts nothing, at most its duration too much); the
+        organization-wide way names nobody and is not cut. Every call writes a
+        PERMISSION_HISTORY_ACCESSED entry, the rejected attempt included.
       parameters:
         - name: objectType
           in: query

@@ -1161,7 +1161,7 @@ gar nicht mehr meldet**, wird beim nächsten Lauf gesperrt. Dabei gilt:
   abgelaufen ist. Die Kette eines Kontos beginnt mit seiner ersten Zustandsänderung und reicht ab da
   bis zu seiner Anlage zurück; ein nie gesperrtes Konto war seit seiner Anlage aktiv. Dieselbe Kette
   hält jeden anderen Grund fest, aus dem ein Konto nicht nutzbar ist (lokale Sperre, Ablauf,
-  Anmeldesperre, Einladung, abgeschalteter Anbieter; [Der Lesepfad](./security-and-compliance.md#der-lesepfad-stichtagsauskunft-1822)).
+  Einladung, abgeschalteter Anbieter; bewusst nicht die Anmeldesperre nach Fehlversuchen; [Der Lesepfad](./security-and-compliance.md#der-lesepfad-stichtagsauskunft-1822)).
   Einen zweiten Lesepfad — einen „Verlauf" am Konto in der Benutzerverwaltung — gibt es bewusst nicht.
 
 ### Gruppensynchronisation ist ein Rechteereignis

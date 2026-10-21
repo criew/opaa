@@ -21,8 +21,8 @@ import org.springframework.stereotype.Component;
  * caller asks for it with a threshold.
  *
  * <p>The database function {@code account_state_reconcile} applies the same rule to write the
- * account-state history; a change here changes it there too ({@code
- * AccountStateParityIntegrationTest} holds both against each other).
+ * account-state history, a failed-login lockout and the dev mode's issuer aside; a change here
+ * changes it there too ({@code AccountStateParityIntegrationTest} holds both against each other).
  */
 @Component
 public class AccountUsability {

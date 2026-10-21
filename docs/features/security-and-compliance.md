@@ -751,27 +751,43 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
   Freigabe an „Alle Konten" nennt niemanden und wird nicht gekürzt. Historisiert ist jeder Zustand,
   in dem `AccountUsability` ein Konto nicht nutzbar nennt, mit eigener Ursache
   (`AccountStateHistoryCause`): Sperre aus dem Verzeichnisabgleich, Sperre eines lokalen Kontos
-  durch die Verwaltung oder wegen Inaktivität, Anmeldesperre nach Fehlversuchen (mit dem Ende, das
-  sie von selbst erreicht, `locked_until`), Ablauf, offene Einladung oder unbestätigte Adresse,
+  durch die Verwaltung oder wegen Inaktivität, Ablauf, offene Einladung oder unbestätigte Adresse,
   abgeschaltete lokale Kontenverwaltung für Konten ohne Systemverwaltung, abgeschalteter und
   gelöschter Anmeldeanbieter — für einen Anbieter alle seine Konten. Wieder nutzbar wird ein Konto
   mit `DIRECTORY_UNLOCKED` oder `ACCOUNT_REACTIVATED`.
+  - **Die Anmeldesperre nach Fehlversuchen bleibt bewusst draußen.** Sie ist kurz, endet von selbst
+    und wird von jedem ausgelöst, der die Adresse kennt. Als Intervall hielte sie fest, wann jemand
+    sein Passwort mehrfach falsch eingab — was der Fehlversuchszähler gerade nicht tut (siehe oben
+    „Fehlgeschlagene Anmeldungen“) —, und ein Fremder könnte mit wenigen Versuchen je Viertelstunde
+    die Historie einer Person so füllen, dass jede Auskunft über sie an der Obergrenze von 2000
+    Intervallen scheitert. Die Auskunft nennt eine Person deshalb auch während einer Anmeldesperre:
+    Sie überschätzt den Kreis um höchstens deren Dauer und verschweigt niemanden. Dasselbe hält
+    `ConnectionLifecycleReconciler` für die Verbindungen (eine Anmeldesperre lässt sie unberührt).
+  - **Nicht-lokale Konten** entstehen nur bei einer Anmeldung über einen aktiven Anbieter und sind
+    damit bei ihrer Anlage nutzbar; deshalb braucht `users` keinen Trigger beim Einfügen.
   - **Geschrieben wird in der Datenbank.** Trigger auf `users`, `local_credentials` und
     `oidc_providers` werten die Regel von `AccountUsability` nach jeder Änderung neu aus, die sie
     ändern kann (`account_state_reconcile`), in der Transaktion der Änderung, unter einer Sperre je
-    Konto und mit den Grenzen der Uhr aus ADR-0032. So hält jeder Schreibweg den Übergang fest,
+    Konto (die `users`-Zeile, `FOR NO KEY UPDATE`: eine Zeilensperre belegt anders als eine
+    Advisory-Sperre keinen Eintrag der gemeinsamen Sperrtabelle, sodass Migration und
+    Anbieterschalter über beliebig viele Konten in eine Transaktion passen) und mit den Grenzen der
+    Uhr aus ADR-0032. So hält jeder Schreibweg den Übergang fest,
     gleich auf welcher Instanz und von welcher Version er kommt, auch eine Handkorrektur per SQL. Nur
     ein Ablauf tritt ohne Schreibzugriff ein; ihn hält `AccountStateExpirySweep` minütlich fest, mit
-    einer Grenze nicht vor dem Ablaufdatum. Bis dahin nennt die Auskunft das Konto noch: Sie
-    überschätzt den Kreis um höchstens diesen Takt, sie verschweigt niemanden.
+    einer Grenze nicht vor dem Ablaufdatum, höchstens 500 Konten je Lauf. Bis dahin nennt die
+    Auskunft das Konto noch: Sie überschätzt den Kreis um diesen Takt, bei einem Massenablauf von
+    mehr als 500 Konten zur selben Zeit um je eine Minute mehr je 500 Konten, und verschweigt
+    niemanden.
   - **Dieselbe Regel wie `AccountUsability`, Bedingung für Bedingung:** Reihenfolge der Gründe,
     Ausnahme der Systemverwaltung, Vergleich des Ausstellers nach `OidcIssuerUris#normalize`
     (Steuerzeichen und Leerzeichen am Rand, abschließende Schrägstriche; Groß- und Kleinschreibung
     zählen), nur Anbieter vom Typ `OIDC`. `AccountStateParityIntegrationTest` hält beide über eine
-    Matrix von Kontozuständen gegeneinander. Zwei Grenzen: Ein Konto ohne Anbieter seines
+    Matrix von Kontozuständen gegeneinander, samt der Ursache je Zustand; zwei Anbieterzeilen
+    desselben Ausstellers (nur per SQL möglich, die Verwaltung trimmt) entscheidet wie in Java die
+    letzte nach Sortierung und Anzeigename. Zwei Grenzen: Ein Konto ohne Anbieter seines
     Ausstellers gilt als nicht nutzbar, auch im Modus `dev`, dessen Aussteller die Datenbank nicht
-    kennt (dort nennt `AccountUsability` es nutzbar; `dev` ist kein Betriebsmodus). Und Ablauf und
-    Anmeldesperre vergleicht die Datenbank mit ihrer eigenen Uhr, die Anwendung mit der Uhr ihres
+    kennt (dort nennt `AccountUsability` es nutzbar; `dev` ist kein Betriebsmodus). Und den Ablauf
+    vergleicht die Datenbank mit ihrer eigenen Uhr, die Anwendung mit der Uhr ihres
     Hosts: Genau an der Grenze weichen beide um den Uhrversatz ab (mit NTP Millisekunden); ein
     Ablauf, den die Datenbank noch nicht sieht, holt der minütliche Lauf nach.
   - **Vollständig ab der Einführung.** Die Migration hält den Zeitpunkt fest

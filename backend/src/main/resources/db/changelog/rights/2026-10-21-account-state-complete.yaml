@@ -2,19 +2,17 @@ databaseChangeLog:
   - changeSet:
       id: rights-2026-10-21-account-state-complete
       author: opaa
-      comment: "Every way an account becomes unusable or usable again writes its interval into account_state_history (ADR-0036, Entscheidung 8): triggers on users, local_credentials and oidc_providers re-evaluate the rule of AccountUsability in the database, in the transaction of the change and from the boundary clock of ADR-0032, whichever version or path writes. A lockout carries the end it reaches by itself (locked_until); an expiry reached by time is recorded by account_state_record_reached_expiries. The intervals go with a deleted account: alone they name no access. Every account unusable at the introduction gets an open LOCKED interval from it on; the introduction is kept as account_state_complete_since. Expand only: a nullable column each, a cause list with more values, a foreign key that cascades."
+      comment: "Every way an account becomes unusable or usable again writes its interval into account_state_history (ADR-0036, Entscheidung 8): triggers on users, local_credentials and oidc_providers re-evaluate the rule of AccountUsability in the database, in the transaction of the change and from the boundary clock of ADR-0032, whichever version or path writes. A failed-login lockout is deliberately left out: short, self-ending and caused by whoever types the address. An expiry reached by time is recorded by account_state_record_reached_expiries. Each account is re-evaluated under the lock of its users row, which takes no lock table entry, so a switch or a migration over any number of accounts fits one transaction. The intervals go with a deleted account: alone they name no access. Every account unusable at the introduction gets an open LOCKED interval from it on; the introduction is kept as account_state_complete_since. Expand only: a nullable column, a cause list with more values, a foreign key that cascades."
       changes:
         - sql:
             splitStatements: false
             sql: |
               SET LOCAL lock_timeout = '5s';
 
-              ALTER TABLE account_state_history ADD COLUMN locked_until timestamp with time zone;
-
               ALTER TABLE account_state_history DROP CONSTRAINT chk_account_state_history_cause;
               ALTER TABLE account_state_history ADD CONSTRAINT chk_account_state_history_cause
                   CHECK ((cause IN ('ACCOUNT_CREATED', 'DIRECTORY_LOCKED', 'DIRECTORY_UNLOCKED',
-                      'ADMIN_LOCKED', 'INACTIVITY_LOCKED', 'LOGIN_LOCKOUT', 'LOCAL_EXPIRED',
+                      'ADMIN_LOCKED', 'INACTIVITY_LOCKED', 'LOCAL_EXPIRED',
                       'LOCAL_INVITED', 'LOCAL_ACCOUNTS_DISABLED', 'PROVIDER_DISABLED',
                       'PROVIDER_REMOVED', 'ACCOUNT_REACTIVATED')));
 
@@ -49,16 +47,14 @@ databaseChangeLog:
                 evaluated_at timestamp with time zone;
                 target_locked boolean := false;
                 target_cause text;
-                target_until timestamp with time zone;
                 open_id uuid;
                 open_state text;
-                open_until timestamp with time zone;
-                open_locked boolean := false;
                 boundary timestamp with time zone;
               BEGIN
-                PERFORM pg_advisory_xact_lock(232, hashtext(p_user_id::text));
+                -- the row lock serialises every re-evaluation of the account until commit and,
+                -- unlike an advisory lock, takes no entry of the shared lock table
                 SELECT id, organization_id, issuer, system_role, directory_locked_at, created_at
-                    INTO account FROM users WHERE id = p_user_id;
+                    INTO account FROM users WHERE id = p_user_id FOR NO KEY UPDATE;
                 IF NOT FOUND THEN
                   RETURN;
                 END IF;
@@ -68,7 +64,7 @@ databaseChangeLog:
                   target_locked := true;
                   target_cause := 'DIRECTORY_LOCKED';
                 ELSIF account.issuer = 'urn:opaa:local' THEN
-                  SELECT expires_at, locked_at, locked_reason, lockout_until,
+                  SELECT expires_at, locked_at, locked_reason,
                          password_hash IS NOT NULL AS has_password,
                          email_verified_at IS NOT NULL AS verified
                       INTO credentials FROM local_credentials WHERE user_id = p_user_id;
@@ -76,14 +72,11 @@ databaseChangeLog:
                     -- LocalCredentials: a local account always has its row; nothing to evaluate
                     RETURN;
                   END IF;
+                  -- a failed-login lockout is passed over: the rule calls the account LOCKED_OUT, the
+                  -- history records the reasons behind it, if any
                   IF credentials.expires_at IS NOT NULL AND credentials.expires_at <= evaluated_at THEN
                     target_locked := true;
                     target_cause := 'LOCAL_EXPIRED';
-                  ELSIF credentials.locked_reason = 'FAILED_LOGINS'
-                      AND credentials.lockout_until > evaluated_at THEN
-                    target_locked := true;
-                    target_cause := 'LOGIN_LOCKOUT';
-                    target_until := credentials.lockout_until;
                   ELSIF credentials.locked_reason IS DISTINCT FROM 'FAILED_LOGINS'
                       AND credentials.locked_at IS NOT NULL THEN
                     target_locked := true;
@@ -102,30 +95,27 @@ databaseChangeLog:
                   END IF;
                 ELSE
                   issuer_key := account_state_issuer_key(account.issuer);
+                  -- of two rows of one issuer the last in AccountUsability's order decides
                   SELECT enabled INTO provider_enabled FROM oidc_providers
-                      WHERE provider_type = 'OIDC' AND account_state_issuer_key(issuer_uri) = issuer_key;
+                      WHERE provider_type = 'OIDC' AND account_state_issuer_key(issuer_uri) = issuer_key
+                      ORDER BY sort_order DESC, display_name DESC, id DESC LIMIT 1;
                   IF FOUND THEN
                     IF NOT provider_enabled THEN
                       target_locked := true;
                       target_cause := 'PROVIDER_DISABLED';
                     END IF;
                   ELSE
-                    -- no provider of this issuer: deleted, or never there; only the dev mode's
-                    -- issuer, unknown to the database, is usable without one in AccountUsability
+                    -- no provider of this issuer, deleted or never there. AccountUsability lets the
+                    -- dev mode's issuer pass without one; the database cannot know it and counts it
+                    -- unusable - the dev mode is no operating mode
                     target_locked := true;
                     target_cause := 'PROVIDER_REMOVED';
                   END IF;
                 END IF;
 
-                SELECT id, state, locked_until INTO open_id, open_state, open_until
+                SELECT id, state INTO open_id, open_state
                     FROM account_state_history WHERE user_id = p_user_id AND valid_to IS NULL;
-                IF open_id IS NOT NULL AND open_state = 'LOCKED' THEN
-                  open_locked := open_until IS NULL OR open_until > evaluated_at;
-                END IF;
-                IF NOT target_locked AND NOT open_locked THEN
-                  RETURN;
-                END IF;
-                IF target_locked AND open_locked AND open_until IS NOT DISTINCT FROM target_until THEN
+                IF target_locked = (open_state IS NOT DISTINCT FROM 'LOCKED') THEN
                   RETURN;
                 END IF;
 
@@ -140,11 +130,11 @@ databaseChangeLog:
                       clock_timestamp());
                 END IF;
                 INSERT INTO account_state_history (id, user_id, organization_id, state, cause,
-                    valid_from, locked_until, created_at)
+                    valid_from, created_at)
                 VALUES (gen_random_uuid(), p_user_id, account.organization_id,
                     CASE WHEN target_locked THEN 'LOCKED' ELSE 'ACTIVE' END,
                     CASE WHEN target_locked THEN target_cause ELSE p_reactivation_cause END,
-                    boundary, target_until, clock_timestamp());
+                    boundary, clock_timestamp());
               END; $$;
 
               CREATE FUNCTION account_state_on_credentials_change() RETURNS trigger
@@ -167,7 +157,6 @@ databaseChangeLog:
                   WHEN (OLD.expires_at IS DISTINCT FROM NEW.expires_at
                       OR OLD.locked_at IS DISTINCT FROM NEW.locked_at
                       OR OLD.locked_reason IS DISTINCT FROM NEW.locked_reason
-                      OR OLD.lockout_until IS DISTINCT FROM NEW.lockout_until
                       OR (OLD.password_hash IS NULL) <> (NEW.password_hash IS NULL)
                       OR (OLD.email_verified_at IS NULL) <> (NEW.email_verified_at IS NULL))
                   EXECUTE FUNCTION account_state_on_credentials_change();
@@ -255,8 +244,7 @@ databaseChangeLog:
                      AND c.expires_at <= clock_timestamp()
                      AND NOT EXISTS (
                          SELECT 1 FROM account_state_history h
-                          WHERE h.user_id = c.user_id AND h.valid_to IS NULL AND h.state = 'LOCKED'
-                            AND (h.locked_until IS NULL OR h.locked_until > clock_timestamp()))
+                          WHERE h.user_id = c.user_id AND h.valid_to IS NULL AND h.state = 'LOCKED')
                    ORDER BY c.user_id
                    LIMIT p_limit
                 LOOP
@@ -266,9 +254,6 @@ databaseChangeLog:
                 RETURN recorded;
               END; $$;
 
-              UPDATE permission_history_retention_settings
-                  SET account_state_complete_since = permission_history_next_boundary();
-
               DO $$
               DECLARE
                 existing uuid;
@@ -277,3 +262,6 @@ databaseChangeLog:
                   PERFORM account_state_reconcile(existing, 'ACCOUNT_REACTIVATED', true);
                 END LOOP;
               END $$;
+
+              UPDATE permission_history_retention_settings
+                  SET account_state_complete_since = permission_history_next_boundary();

@@ -31,16 +31,14 @@ public interface AccountStateHistoryRepository
   int deleteClosedIntervalsEndingBefore(@Param("cutoff") Instant cutoff);
 
   /**
-   * The {@link AccountState#LOCKED} intervals of {@code userIds} that overlap {@code [from, to)}, a
-   * lockout up to the end it reached by itself. Asked with the persons an answer already names,
-   * never for an organization as a whole.
+   * The {@link AccountState#LOCKED} intervals of {@code userIds} that overlap {@code [from, to)}.
+   * Asked with the persons an answer already names, never for an organization as a whole.
    */
   @Query(
       "select h from AccountStateHistory h "
           + "where h.userId in :userIds and h.organizationId = :organizationId "
           + "and h.state = io.opaa.permission.AccountState.LOCKED "
           + "and h.validFrom < :to and (h.validTo is null or h.validTo > :from) "
-          + "and (h.lockedUntil is null or h.lockedUntil > :from) "
           + "and (h.validTo is null or h.validTo > h.validFrom)")
   List<AccountStateHistory> findLockedIntervalsOverlapping(
       @Param("userIds") Collection<UUID> userIds,

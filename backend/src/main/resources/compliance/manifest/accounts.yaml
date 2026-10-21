@@ -111,13 +111,13 @@ data:
     title: Kontozustandshistorie
     purpose: >-
       Nachweis, wann ein Konto nutzbar war und wann nicht (Rechtehistorie): Sperre durch den
-      Verzeichnisabgleich, durch die Verwaltung oder wegen Inaktivität, Anmeldesperre nach
-      Fehlversuchen samt ihrem Ende, Ablauf, offene Einladung, abgeschaltete lokale
+      Verzeichnisabgleich, durch die Verwaltung oder wegen Inaktivität, Ablauf, offene
+      Einladung, abgeschaltete lokale
       Kontenverwaltung, abgeschalteter oder gelöschter Anmeldeanbieter
     personalReference: EMPLOYEE
     tables:
       - name: account_state_history
-        personalColumns: [user_id, state, cause, valid_from, valid_to, locked_until]
+        personalColumns: [user_id, state, cause, valid_from, valid_to]
         nonPersonalColumns: [id, organization_id, created_at]
     storage: Anwendungsdatenbank
     retention:
@@ -131,8 +131,9 @@ data:
     evaluations: >-
       Stichtagsauskunft je Objekt: Zeiten, in denen eine dort genannte Person ihr Konto nicht
       nutzen konnte, kürzen ihre Zugriffszeiträume und sind an der Lücke ablesbar; über die
-      Datenbank auch der Grund (Sperre, Fehlversuche, Ablauf, Anbieter) und damit, wann jemand
-      sein Passwort mehrfach falsch eingab; keine Zeitreihe je Person in der Oberfläche
+      Datenbank auch der Grund (Sperre, Ablauf, Einladung, Anbieter); Anmeldesperren nach
+      Fehlversuchen werden bewusst nicht festgehalten; keine Zeitreihe je Person in der
+      Oberfläche
   - id: settings-editors
     title: Bearbeitungsvermerke verwalteter Einstellungen
     purpose: Wer eine verwaltete Einstellung zuletzt geändert hat

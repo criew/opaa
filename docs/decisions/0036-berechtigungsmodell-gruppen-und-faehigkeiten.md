@@ -282,8 +282,10 @@ Schreibzeitpunkt nein.
 
 - **Kontozustand:** Historisiert ist jeder Zustand, in dem `AccountUsability` ein Konto nicht
   nutzbar nennt, mit eigener Ursache: Verzeichnissperre, Sperre durch Verwaltung oder wegen
-  Inaktivität, Anmeldesperre bis zu ihrem Ende (`locked_until`), Ablauf, offene Einladung,
-  abgeschaltete lokale Kontenverwaltung, abgeschalteter oder gelöschter Anbieter. Es schreibt die
+  Inaktivität, Ablauf, offene Einladung, abgeschaltete lokale Kontenverwaltung, abgeschalteter oder
+  gelöschter Anbieter. Die Anmeldesperre nach Fehlversuchen nicht: kurz, von Dritten auslösbar, als
+  Intervall ein Verlauf falscher Passwörter und ein Hebel gegen die Obergrenze der Auskunft; sie
+  überschätzt nur um ihre Dauer. Es schreibt die
   Datenbank: Trigger auf `users`, `local_credentials` und `oidc_providers` werten die Regel nach
   jeder Änderung neu aus (`account_state_reconcile`), in deren Transaktion, gleich welche Version oder
   welcher Weg schreibt (ADR-0053, Entscheidung 13); einen ohne Schreibzugriff erreichten Ablauf hält
@@ -559,7 +561,8 @@ erst nach der Lebensdauer ihrer Caches (ADR-0053 Entscheidung 5).
   oder als Schreibvoraussetzung, zweiter Lesepfad am Konto, Sammelabfragen, zu weite Abfrage
   zurechtstutzen, Kontozustand je Schreibweg im Anwendungscode schreiben (ein vergessener Weg, eine
   ältere Version oder eine Handkorrektur ließe eine Lücke), Kontozustand mit `RESTRICT` (machte jedes
-  einmal gesperrte Konto unlöschbar) (8).
+  einmal gesperrte Konto unlöschbar), Anmeldesperren als Intervalle, Advisory-Sperre je Konto (erschöpft
+  bei Massenwegen die Sperrtabelle) (8).
 - Opt-out-Sichtbarkeit (Schutz hinge am Setzen), Durchsetzung nur in der Auswahlliste (Kosmetik),
   A1/A3 im Wortlaut, Zustimmungspflicht bei Gruppenzuwachs, Maskierung des Abgleichsberichts (9).
 - Keine Übertragungsoperation (endet im `UPDATE` auf der Datenbank), Sonderfall je Anlass, Person als

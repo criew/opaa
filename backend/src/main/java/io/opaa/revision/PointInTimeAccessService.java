@@ -52,11 +52,11 @@ import org.springframework.stereotype.Service;
  * historised ({@link AccessAsOfResult#sourcesNotCovered()}).
  *
  * <p><b>Every access period ends where the account became unusable</b> ({@code
- * account_state_history}): a locked, expired, locked-out or not yet activated account, or one
- * behind a switched-off provider, exercises no right, whichever way reached it. The
- * organization-wide way names nobody and is therefore not cut. The history is complete only from
- * its introduction on; a window reaching before it names the account state among the sources not
- * covered.
+ * account_state_history}): a locked, expired or not yet activated account, or one behind a
+ * switched-off provider, exercises no right, whichever way reached it. A failed-login lockout is
+ * not on record and cuts nothing, at most its duration too much. The organization-wide way names
+ * nobody and is therefore not cut. The history is complete only from its introduction on; a window
+ * reaching before it names the account state among the sources not covered.
  *
  * <p><b>The bounds limit the work, not only the output</b> (see {@link #MAX_SOURCE_INTERVALS} and
  * {@link #MAX_COMPOSED_ENTRIES}): a page of 50 must not cost the composition of a whole
@@ -423,8 +423,7 @@ public class PointInTimeAccessService {
 
   /**
    * Cuts every entry naming a person by that person's locked intervals - a lock inside an access
-   * period splits it, a lock covering it removes it, a lockout up to the end it reached by itself.
-   * One query for all persons of the answer.
+   * period splits it, a lock covering it removes it. One query for all persons of the answer.
    */
   private List<AccessAsOfEntry> withoutLockedPeriods(
       UUID organizationId, List<AccessAsOfEntry> entries, Instant from, Instant to) {
@@ -461,10 +460,7 @@ public class PointInTimeAccessService {
     return unlocked;
   }
 
-  /**
-   * The parts of {@code entry} outside {@code locks}, which are sorted by their start; a lock ends
-   * at its {@code validTo} or its {@code lockedUntil}, whichever comes first.
-   */
+  /** The parts of {@code entry} outside {@code locks}, which are sorted by their start. */
   static List<AccessAsOfEntry> unlockedPieces(
       AccessAsOfEntry entry, List<AccountStateHistory> locks, Instant to) {
     if (locks.isEmpty()) {
@@ -474,8 +470,7 @@ public class PointInTimeAccessService {
     Instant cursor = entry.validFrom();
     List<AccessAsOfEntry> pieces = new ArrayList<>();
     for (AccountStateHistory lock : locks) {
-      Instant recordedEnd = min(lock.getValidTo(), lock.getLockedUntil());
-      Instant lockEnd = recordedEnd == null ? end : recordedEnd;
+      Instant lockEnd = lock.getValidTo() == null ? end : lock.getValidTo();
       if (!lock.getValidFrom().isBefore(end) || !cursor.isBefore(end)) {
         break;
       }

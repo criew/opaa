@@ -22,8 +22,6 @@ public enum AccountStateHistoryCause {
   ADMIN_LOCKED,
   /** A local account locked for inactivity. */
   INACTIVITY_LOCKED,
-  /** A local account locked after failed sign-ins; the interval carries the end it reaches. */
-  LOGIN_LOCKOUT,
   /** A local account past its expiry date. */
   LOCAL_EXPIRED,
   /** A local account whose invitation or address confirmation is not completed yet. */
