@@ -184,9 +184,10 @@ Konten").
 - **Ratenbegrenzung** (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`) je Client-Adresse; Passwortwechsel je Konto;
   Registrierung und „Passwort vergessen“ zusätzlich je E-Mail-Adresse; Login, Registrierung und
   „Passwort vergessen“ global, mit `WARN` und Metrik beim Überschreiten. Hinter der Anmeldung
-  zählen Abfrage, Chatsuche und Suche je Client-Adresse, je Konto (Zugangstoken getrennt von ihrem
-  Konto, `max-requests-per-account`, geprüft hinter der Sicherheitskette) und global; eine Abweisung
-  je Konto gibt die übrigen Marken zurück, ein Zugangstoken verbraucht kein Budget seiner Adresse.
+  zählen Abfrage, Chatsuche und Suche je Client-Adresse, je Konto (`max-requests-per-account`,
+  geprüft hinter der Sicherheitskette; ein Zugangstoken je Token und zugleich je Person über alle
+  ihre Tokens) und global; eine Abweisung je Konto gibt die übrigen Marken zurück, ein Zugangstoken
+  seine Adressmarke, eine spätere `429` (Token-Kontingent) die globale.
 - **Kontosperre** nach 5 Fehlversuchen für 15 Minuten, auditiert
   (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`); der einzelne Fehlversuch steht nur im Anwendungslog
   (Konto-Kennung, nie die Adresse), dessen Aufbewahrung Betriebskonfiguration ist. Ein eingelöster

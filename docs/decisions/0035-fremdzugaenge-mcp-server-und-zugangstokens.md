@@ -108,8 +108,9 @@ Zuordnung des Space, im Fremdzugang die Auswahl des Tokens** — der Fremdzugang
 Space. Der Kanal erbt die Last des vollen Suchwegs je Aufruf, daher das Kontingent je Token
 (`ExternalAccessQuota`, gleitendes Stundenfenster im Arbeitsspeicher jeder Instanz, die den Wert
 der Einstellung durch die lebenden Instanzen teilt; auf den REST-Lesewegen zählt ein Tokenaufruf
-dazu gegen die Grenze je Token und die Gesamtgrenze der Suche, nicht gegen die seiner Netzadresse,
-weil hinter einem gemeinsamen Ausgang sonst ein Skript alle anderen aussperrt) und der Abflussalarm
+dazu gegen die Grenzen je Token und je Person (alle ihre Tokens) und die Gesamtgrenze der Suche,
+nicht gegen die seiner Netzadresse, weil hinter einem gemeinsamen Ausgang sonst ein Skript alle
+anderen aussperrt; eine Abweisung durch das Kontingent gibt die Gesamtmarke zurück) und der Abflussalarm
 (`ExternalAccessMassRetrievalAlarm`, ein Zähler des ganzen Kanals in der Datenbank, Meldung mit
 Token-Kennung und Fenster, aber ohne Messwerte, nach `ExternalAccessAlertRetention` gelöscht); beide
 nach ADR-0053 Entscheidung 12. `spring.ai.mcp.server.request-timeout` wirkt nur sitzungsbehaftet; ein Deckel

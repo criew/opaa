@@ -1184,14 +1184,22 @@ Kontingent. Die Auflistung der durchsuchbaren Bibliotheken zählt nicht mit. Auc
 angemeldete Anfragen.
 
 Fragen, Chatsuche und Suche haben außerdem je eine Grenze **je Konto**, gleich von welcher Adresse
-die Anfragen kommen. Wer seine Adresse wechselt, bekommt damit kein neues Kontingent, und ein
-einzelnes Konto kann die gemeinsame Grenze aller nicht allein aufbrauchen. Eine Anfrage, die an der
-Grenze ihres Kontos scheitert, zählt weder für ihre Adresse noch für die gemeinsame Grenze.
+die Anfragen kommen. Wer seine Adresse wechselt, bekommt damit kein neues Kontingent. Eine Anfrage,
+die an der Grenze ihres Kontos scheitert, zählt weder für ihre Adresse noch für die gemeinsame
+Grenze.
 
-Ein **Zugangstoken** eines externen KI-Werkzeugs zählt bei der Suche für sich, getrennt vom Konto
-seiner Person, und gegen die gemeinsame Grenze, aber nicht gegen die Grenze seiner Adresse. Für ihn
-gilt sein eigenes Kontingent ([Externe KI-Werkzeuge](fremdzugaenge.md)); ein Skript, das sein
-Kontingent ausgeschöpft hat, sperrt so nicht alle anderen hinter derselben Adresse aus.
+Ein **Zugangstoken** eines externen KI-Werkzeugs zählt bei der Suche gegen zwei Grenzen derselben
+Höhe: die des Tokens und die **aller Tokens seiner Person zusammen**. Wer sich weitere Tokens
+ausstellt, bekommt also kein weiteres Kontingent. Die Anmeldung im Browser zählt getrennt davon. Eine
+Person belastet die gemeinsame Grenze damit höchstens mit dem Doppelten ihrer Grenze je Konto, gleich
+wie viele Adressen und Tokens sie nutzt. Ein Tokenaufruf zählt gegen die gemeinsame Grenze, aber
+nicht gegen die Grenze seiner Adresse; dafür gilt sein eigenes Stundenkontingent
+([Externe KI-Werkzeuge](fremdzugaenge.md)). Ein Aufruf, den dieses Kontingent abweist, gibt seinen
+Platz in der gemeinsamen Grenze zurück. Ein Skript mit ausgeschöpftem Kontingent belastet sie also
+nicht weiter und sperrt nicht die anderen hinter derselben Adresse aus.
+Die Grenze je Adresse wird geprüft, bevor das Backend den Aufrufer kennt. Ist sie hinter einem
+NAT-Ausgang schon ausgeschöpft, wird auch ein Tokenaufruf von dort abgewiesen; die Entlastung gilt nur
+für Aufrufe, die durch die Grenze je Adresse kommen: Sie geben ihren Platz dort sofort zurück.
 
 **Viele Personen hinter einer Adresse.** Hinter einem gemeinsamen Ausgang des Behördennetzes (NAT)
 oder einem Proxy teilen sich alle die Grenze je Adresse. Steht der Proxy vor dem Backend, muss
@@ -1278,7 +1286,7 @@ Die Ratenbegrenzung der Suche ohne Antwort und des Trefferabrufs (Abschnitt 10.1
 | `max-requests` | 30 | Suchen und Trefferabrufe zusammen je IP-Adresse und Fenster (`OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS`) |
 | `window-seconds` | 60 | Länge des Fensters in Sekunden (`OPAA_RATE_LIMIT_SEARCH_WINDOW_SECONDS`) |
 | `global-max-requests` | 300 | Suchen und Trefferabrufe über alle Adressen je Fenster (`OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS`) |
-| `max-requests-per-account` | 30 | Suchen und Trefferabrufe je Konto und je Zugangstoken, gleich von welcher Adresse (`OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT`) |
+| `max-requests-per-account` | 30 | Suchen und Trefferabrufe je Konto, je Zugangstoken und je Person über alle ihre Zugangstokens, gleich von welcher Adresse; 0 schaltet die Grenze ab, ein leerer Wert lässt den Start fehlschlagen (`OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT`) |
 
 Ein einziger Wert der Gesprächsnotiz ist einstellbar, und er steht unter einem eigenen Präfix, weil
 die Notiz Chatinhalt ist und kein Suchparameter:
