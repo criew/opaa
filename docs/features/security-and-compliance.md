@@ -726,17 +726,20 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
   Freispruch.
 - **Und sie nennt die Quellenlücke** (`sourcesNotCovered`). [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
   Entscheidung 8 führt die Quellen; in die Auskunft gehen Asset-Grants, Gruppenmitgliedschaft,
-  Reichweite, Space-Mitgliedschaft, Eigentum und Kontozustand ein. **Nicht** nachgewiesen ist allein
-  die **Systemrolle**: `LibraryAccessService#effectiveRole` gibt einer Systemverwaltung auf jeder
-  Bibliothek ihrer Organisation `OWNER`, und kein Intervall hält das fest. Die Auskunft schreibt
-  deshalb nie „niemand hatte Zugriff", sondern nennt die Quelle, über die sie nichts sagen kann; die
-  Ansicht zeigt sie mit. Eine **Fähigkeit** ist keine Quelle dieser Frage: Sie öffnet einen
+  Reichweite, Space-Mitgliedschaft, Eigentum und Kontozustand ein. **Nicht** nachgewiesen sind die
+  **Systemrolle** — `LibraryAccessService#effectiveRole` gibt einer Systemverwaltung auf jeder
+  Bibliothek ihrer Organisation `OWNER`, und kein Intervall hält das fest — und der **Kontozustand**
+  außerhalb des Verzeichnisabgleichs (siehe unten). Die Auskunft schreibt deshalb nie „niemand hatte
+  Zugriff", sondern nennt die Quellen, über die sie nichts oder nicht alles sagen kann; die Ansicht
+  zeigt sie mit. Eine **Fähigkeit** ist keine Quelle dieser Frage: Sie öffnet einen
   Anlegepfad, nie einen Inhalt (ADR-0036, Entscheidung 5), und erscheint deshalb weder als
   Zugangsgrundlage noch als Lücke.
 - **Eigentum.** Wer einen Space verantwortet, hat dort mindestens die Rolle `ADMIN`, mit oder ohne
   eigene Mitgliedschaft (`SpaceAccessPolicy#effectiveRole`); die Auskunft nennt jede Eigentümerin
   aus `asset_ownership_history` mit Grundlage `OWNERSHIP` für genau die Zeit ihres Eigentums, über
-  eine Übertragung hinweg. An einer Bibliothek begründet Eigentum dagegen keinen eigenen Lesezugang:
+  eine Übertragung hinweg. Ein persönlicher Space entsteht ohne Eigentumsintervall; seine Eigentümerin
+  lässt sich weder ändern noch entfernen, solange er besteht, und erscheint deshalb ab seiner Anlage
+  aus dem Datensatz des Space. An einer Bibliothek begründet Eigentum dagegen keinen eigenen Lesezugang:
   Gelesen wird nach der Formel (`AssetAuthorization#requireContentRole`), und das Eigentum bringt
   seine Berechtigung mit — `OWNER` für eine Person, `MANAGER` für eine Eigentümergruppe. Diese
   Grants stehen in `asset_grant_history`; Eigentümerin und Mitglieder der Eigentümergruppe
@@ -747,7 +750,8 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
   an „Alle Konten" nennt niemanden und wird nicht gekürzt. Historisiert ist heute die Sperre aus
   dem Verzeichnisabgleich; andere Zustände, in denen ein Konto nicht nutzbar ist (Sperre eines
   lokalen Kontos, Ablauf, deaktivierter Anbieter), führen keine Intervalle — die Auskunft nennt
-  solche Konten deshalb weiter als Leser, sie überschätzt den Kreis und verschweigt niemanden.
+  solche Konten deshalb weiter als Leser, sie überschätzt den Kreis und verschweigt niemanden. Darum
+  steht der Kontozustand weiter unter den nicht abgedeckten Quellen.
 - **Die Grenzen begrenzen die Arbeit, nicht nur die Ausgabe.** Trägt eine Quelle im gewählten
   Fenster mehr als 2000 Intervalle bei, oder umfasste die zusammengesetzte Antwort mehr als 5000
   Zugriffszeiträume, wird die Abfrage **abgelehnt** mit der Bitte, das Fenster enger zu fassen —

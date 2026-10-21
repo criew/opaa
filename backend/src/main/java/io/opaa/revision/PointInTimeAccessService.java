@@ -53,7 +53,8 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>Every access period ends where the account was locked</b> ({@code account_state_history}):
  * a locked account exercises no right, whichever way reached it. The organization-wide way names
- * nobody and is therefore not cut.
+ * nobody and is therefore not cut. The history records the locks of the directory synchronisation
+ * only, so the account state stays among the sources not covered.
  *
  * <p><b>The bounds limit the work, not only the output</b> (see {@link #MAX_SOURCE_INTERVALS} and
  * {@link #MAX_COMPOSED_ENTRIES}): a page of 50 must not cost the composition of a whole
@@ -75,13 +76,15 @@ public class PointInTimeAccessService {
 
   /**
    * The sources ADR-0036, Entscheidung 8 lists that carry no history yet - named in every answer so
-   * an empty result is not read as "nobody had access". Only the system role is left: {@code
+   * an empty result is not read as "nobody had access". The system role: {@code
    * LibraryAccessService#effectiveRole} hands a system administrator {@code OWNER} on every library
-   * of their organization, and no interval records that. A capability is no source at all - it
-   * opens an Anlegepfad, never a content (ADR-0036, Entscheidung 5).
+   * of their organization, and no interval records that. The account state in part: a local
+   * account's lock or expiry and a switched-off sign-in provider leave no interval, so such an
+   * account still reads as a reader. A capability is no source at all - it opens an Anlegepfad,
+   * never a content (ADR-0036, Entscheidung 5).
    */
   private static final List<AccessAsOfSource> SOURCES_NOT_COVERED =
-      List.of(AccessAsOfSource.SYSTEM_ROLE);
+      List.of(AccessAsOfSource.SYSTEM_ROLE, AccessAsOfSource.ACCOUNT_STATE);
 
   private final AuditAccessGate gate;
   private final AuditEventRecorder eventRecorder;
@@ -343,16 +346,45 @@ public class PointInTimeAccessService {
                 openEnded(memberTo, to)));
       }
     }
-    addSpaceOwners(entries, organizationId, spaceId, from, to);
+    if (!addSpaceOwners(entries, organizationId, spaceId, from, to)) {
+      addPersonalSpaceOwner(entries, organizationId, spaceId, from, to);
+    }
     return entries;
   }
 
   /**
-   * One {@link AccessBasis#OWNERSHIP} entry per ownership interval. A space owner is always a
-   * person ({@code Space#getOwnerId}); an interval naming a group cannot arise and would name
-   * nobody.
+   * The owner of a personal space, which is created without an ownership interval. Its owner can be
+   * neither changed nor removed while the space exists, so the space row itself is the record: the
+   * owner ranks as {@code ADMIN} from the creation on.
    */
-  private void addSpaceOwners(
+  private void addPersonalSpaceOwner(
+      List<AccessAsOfEntry> entries, UUID organizationId, UUID spaceId, Instant from, Instant to) {
+    spaceRepository
+        .findById(spaceId)
+        .filter(space -> space.isDefault() && organizationId.equals(space.getOrganizationId()))
+        .filter(space -> space.getCreatedAt().isBefore(to))
+        .ifPresent(
+            space ->
+                add(
+                    entries,
+                    new AccessAsOfEntry(
+                        AccessBasis.OWNERSHIP,
+                        space.getOwnerId(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        SpaceRole.ADMIN,
+                        max(space.getCreatedAt(), from),
+                        null)));
+  }
+
+  /**
+   * One {@link AccessBasis#OWNERSHIP} entry per ownership interval, and whether the history holds
+   * any for the window. A space owner is always a person ({@code Space#getOwnerId}); an interval
+   * naming a group cannot arise and would name nobody.
+   */
+  private boolean addSpaceOwners(
       List<AccessAsOfEntry> entries, UUID organizationId, UUID spaceId, Instant from, Instant to) {
     List<AssetOwnershipHistory> ownerships =
         capped(
@@ -378,6 +410,7 @@ public class PointInTimeAccessService {
               start,
               openEnded(end, to)));
     }
+    return !ownerships.isEmpty();
   }
 
   /**
@@ -420,7 +453,7 @@ public class PointInTimeAccessService {
   }
 
   /** The parts of {@code entry} outside {@code locks}, which are sorted by their start. */
-  private static List<AccessAsOfEntry> unlockedPieces(
+  static List<AccessAsOfEntry> unlockedPieces(
       AccessAsOfEntry entry, List<AccountStateHistory> locks, Instant to) {
     if (locks.isEmpty()) {
       return List.of(entry);

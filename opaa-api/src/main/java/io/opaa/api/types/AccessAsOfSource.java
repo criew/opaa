@@ -8,5 +8,12 @@ package io.opaa.api.types;
 public enum AccessAsOfSource {
 
   /** A system administrator reaches every library of their organization, unrecorded. */
-  SYSTEM_ROLE
+  SYSTEM_ROLE,
+
+  /**
+   * The account states the history does not record: a local account's lock or expiry, a
+   * switched-off sign-in provider. Locks of the directory synchronisation are recorded and cut the
+   * periods.
+   */
+  ACCOUNT_STATE
 }

@@ -159,12 +159,13 @@ paths:
         400 and the advice to narrow the window - a trimmed answer would look complete.
 
         The answer carries retentionCutoff/beyondRetention and sourcesNotCovered, so neither the
-        retention gap nor the source without a history (the system role) reads as "nobody had
-        access". A space names its owner (basis OWNERSHIP, role ADMIN) for the period of the
-        ownership; a library names its owner through the grant ownership comes with. Every access
-        period ends where the account was locked (account-state history); the organization-wide
-        way names nobody and is not cut. Every call writes a PERMISSION_HISTORY_ACCESSED entry, the
-        rejected attempt included.
+        retention gap nor the sources without a full history (the system role, the account states
+        other than a directory lock) read as "nobody had access". A space names its owner (basis
+        OWNERSHIP, role ADMIN) for the period of the ownership, a personal space from its creation
+        on; a library names its owner through the grant ownership comes with. Every access period
+        ends where the account was locked by the directory synchronisation (account-state
+        history); the organization-wide way names nobody and is not cut. Every call writes a
+        PERMISSION_HISTORY_ACCESSED entry, the rejected attempt included.
       parameters:
         - name: objectType
           in: query
@@ -700,13 +701,14 @@ components:
     AccessAsOfSource:
       type: string
       description: >
-        A rights source of the Stichtagsauskunft that carries no history yet (ADR-0036,
-        Entscheidung 8). Only SYSTEM_ROLE is left: a system administrator reaches every library of
-        their organization through effectiveRole, and no interval records that - an empty answer
-        is therefore never a proof that nobody had access. Ownership and account state are
-        historised and part of the answer; a capability is no source, it opens an Anlegepfad, never
-        a content (ADR-0036, Entscheidung 5).
-      enum: [SYSTEM_ROLE]
+        A rights source of the Stichtagsauskunft that carries no full history (ADR-0036,
+        Entscheidung 8). SYSTEM_ROLE: a system administrator reaches every library of their
+        organization through effectiveRole, and no interval records that. ACCOUNT_STATE: only the
+        locks of the directory synchronisation are recorded; a local account's lock or expiry and
+        a switched-off sign-in provider are not, so such an account still reads as a reader. An
+        empty answer is therefore never a proof that nobody had access. A capability is no source,
+        it opens an Anlegepfad, never a content (ADR-0036, Entscheidung 5).
+      enum: [SYSTEM_ROLE, ACCOUNT_STATE]
       example: SYSTEM_ROLE
 
     AccessAsOfEntry:

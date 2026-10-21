@@ -13,9 +13,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Two read paths only: the open interval the writer itself needs, and the locked intervals the
- * Stichtagsauskunft cuts its access periods by. ADR-0036, Entscheidung 8 rules out a second reading
- * path on the account-state history ("kein Verlauf am Konto neben der Stichtagsauskunft").
+ * The Stichtagsauskunft is the only reading path (ADR-0036, Entscheidung 8 - "kein Verlauf am Konto
+ * neben der Stichtagsauskunft"); the open-interval lookup serves the writer. {@code
+ * HistoryReadPathTest} keeps it that way.
  */
 public interface AccountStateHistoryRepository
     extends JpaRepository<AccountStateHistory, UUID>, PermissionHistorySweeper {
