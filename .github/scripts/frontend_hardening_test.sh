@@ -87,7 +87,8 @@ echo "--- forwarding headers"
 forged=(-H 'Forwarded: for=192.0.2.1;host=evil.example;proto=https'
   -H 'X-Forwarded-Host: evil.example' -H 'X-Forwarded-Port: 8443' -H 'X-Forwarded-Prefix: /evil')
 clean='forwarded=[] host=[] port=[] prefix=[]'
-for request in "GET /api/v1/health" "POST /api/v1/transcriptions" "POST /mcp"; do
+for request in "GET /api/v1/health" "PUT /api/v1/health" "POST /api/v1/transcriptions" "POST /mcp" \
+  "DELETE /mcp"; do
   method="${request% *}"
   path="${request#* }"
   received="$(curl -sS --max-time 10 -X "$method" "${forged[@]}" "$base$path" || true)"
