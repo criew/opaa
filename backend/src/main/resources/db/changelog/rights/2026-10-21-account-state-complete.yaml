@@ -232,7 +232,9 @@ databaseChangeLog:
                   FOR EACH ROW
                   WHEN (OLD.enabled IS DISTINCT FROM NEW.enabled
                       OR OLD.issuer_uri IS DISTINCT FROM NEW.issuer_uri
-                      OR OLD.provider_type IS DISTINCT FROM NEW.provider_type)
+                      OR OLD.provider_type IS DISTINCT FROM NEW.provider_type
+                      OR OLD.sort_order IS DISTINCT FROM NEW.sort_order
+                      OR OLD.display_name IS DISTINCT FROM NEW.display_name)
                   EXECUTE FUNCTION account_state_on_provider_change();
 
               CREATE TRIGGER trg_oidc_providers_account_state_presence

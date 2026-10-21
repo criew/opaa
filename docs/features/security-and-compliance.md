@@ -773,7 +773,12 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
     gemeinsamen Sperrtabelle, sodass Migration und Anbieterschalter über beliebig viele Konten in
     eine Transaktion passen; und weil die Anwendung `users` vor `local_credentials` schreibt, greift
     eine Änderung der Zugangsdaten nie nach `users` und kann so nicht gegen sie laufen) und mit den
-    Grenzen der Uhr aus ADR-0032. So hält jeder Schreibweg den Übergang fest,
+    Grenzen der Uhr aus ADR-0032. Jede Neubewertung desselben Kontos wartet auf diese eine Sperre,
+    bis die andere Transaktion festgeschrieben ist, und liest danach neu; die zuletzt
+    festschreibende sieht damit beide Änderungen, und die Grenzen eines Kontos steigen in der
+    Reihenfolge der Festschreibung. Höchstens ein offenes Intervall je Konto erzwingt
+    `uk_account_state_history_open`. Restrisiko wie bei ADR-0032: Wer als Eigentümer der Tabellen
+    Trigger abschaltet, `TRUNCATE` ausführt oder die Historie per SQL ändert, umgeht das. So hält jeder Schreibweg den Übergang fest,
     gleich auf welcher Instanz und von welcher Version er kommt, auch eine Handkorrektur per SQL. Nur
     ein Ablauf tritt ohne Schreibzugriff ein; ihn hält `AccountStateExpirySweep` minütlich fest, mit
     einer Grenze nicht vor dem Ablaufdatum, höchstens 500 Konten je Lauf. Bis dahin nennt die
