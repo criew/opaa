@@ -8,9 +8,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.account.LocalUserCreation;
 import io.opaa.account.LocalUserService;
 import io.opaa.account.LocalUserUpdate;
+import io.opaa.api.types.LockReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AccountUsability;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.User;
@@ -179,28 +181,30 @@ class AccountStateHistoryWritePathsIntegrationTest {
     assertThat(chainOf(user.id())).as("a second sweep records nothing again").hasSize(2);
   }
 
-  /** The lockout ends by itself: its interval carries the end it reaches without any write. */
+  /**
+   * A failed-login lockout ends by itself and is caused by whoever types the address: it leaves no
+   * interval, however often it recurs - neither a trail of failed passwords nor a history that
+   * outgrows the Stichtagsauskunft's bound. The auskunft names the person during it.
+   */
   @Test
-  void aLoginLockoutIsRecordedWithTheEndItReachesByItself() throws Exception {
+  void loginLockoutsLeaveNoIntervalHoweverOftenTheyRecur() throws Exception {
     LocalAccount user = fixtures.activeUser(address());
 
-    for (int i = 0; i < 5; i++) {
-      login(user.email(), "falsches-passwort");
+    for (int cycle = 0; cycle < 3; cycle++) {
+      for (int i = 0; i < 5; i++) {
+        login(user.email(), "falsches-passwort");
+      }
+      LocalCredentials lockedOut = credentials.findById(user.id()).orElseThrow();
+      assertThat(lockedOut.getLockedReason()).isEqualTo(LockReason.FAILED_LOGINS);
+      assertThat(usability.stateOf(users.findById(user.id()).orElseThrow()))
+          .isEqualTo(AccountUsability.State.LOCKED_OUT);
+      // the lockout runs out without any write; a past end stands in for the elapsed time
+      Instant lockedAt = Instant.now().minus(Duration.ofMinutes(20));
+      lockedOut.lock(LockReason.FAILED_LOGINS, lockedAt, lockedAt.plus(Duration.ofMinutes(15)));
+      fixtures.save(lockedOut);
     }
 
-    Instant lockoutUntil = credentials.findById(user.id()).orElseThrow().getLockoutUntil();
-    assertThat(lockoutUntil).isNotNull();
-    Interval open = openInterval(user.id());
-    assertThat(open.state()).isEqualTo("LOCKED");
-    assertThat(open.cause()).isEqualTo("LOGIN_LOCKOUT");
-    assertThat(
-            jdbc.queryForObject(
-                "SELECT locked_until FROM account_state_history"
-                    + " WHERE user_id = ? AND valid_to IS NULL",
-                Timestamp.class,
-                user.id()))
-        .isEqualTo(Timestamp.from(lockoutUntil));
-    assertAgreesWithTheUsabilityRule(user.id());
+    assertThat(chainOf(user.id())).isEmpty();
   }
 
   @Test

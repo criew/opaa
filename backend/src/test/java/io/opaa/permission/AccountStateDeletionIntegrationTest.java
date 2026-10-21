@@ -12,6 +12,7 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,5 +80,44 @@ class AccountStateDeletionIntegrationTest {
                 Long.class,
                 reader.id()))
         .isEqualTo(1L);
+  }
+
+  /**
+   * The guarantee above holds only while every other history that names a person refuses the
+   * deletion: a new history table whose person column cascades or sets null would let an account go
+   * while its access periods stay - and without its locks.
+   */
+  @Test
+  void everyHistoryButTheAccountStateRefusesTheDeletionOfThePersonItNames() {
+    List<String> deleteRules =
+        jdbc.queryForList(
+            "SELECT child.relname || '.' || col.attname || ' ' || fk.confdeltype::text"
+                + " FROM pg_constraint fk"
+                + " JOIN pg_class child ON child.oid = fk.conrelid"
+                + " JOIN pg_class parent ON parent.oid = fk.confrelid"
+                + " JOIN LATERAL unnest(fk.conkey) AS k(attnum) ON true"
+                + " JOIN pg_attribute col ON col.attrelid = fk.conrelid AND col.attnum = k.attnum"
+                + " WHERE fk.contype = 'f' AND parent.relname = 'users'"
+                + " AND child.relname LIKE '%\\_history' AND col.attname <> 'organization_id'"
+                + " AND child.relnamespace = to_regnamespace(current_schema())",
+            String.class);
+
+    assertThat(deleteRules)
+        .contains(
+            "asset_grant_history.subject_user_id r",
+            "group_membership_history.user_id r",
+            "space_membership_history.subject_user_id r",
+            "asset_ownership_history.owner_user_id r",
+            "account_state_history.user_id c");
+    assertThat(deleteRules)
+        .allSatisfy(
+            rule ->
+                assertThat(
+                        rule.endsWith(" r")
+                            || rule.endsWith(" a")
+                            || rule.equals("account_state_history.user_id c")
+                            || (rule.contains(".actor_user_id ") && rule.endsWith(" n")))
+                    .as("%s: a person column of a history refuses the deletion", rule)
+                    .isTrue());
   }
 }

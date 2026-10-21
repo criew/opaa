@@ -604,33 +604,6 @@ class PointInTimeAccessIntegrationTest {
   }
 
   /**
-   * A failed-login lockout ends by itself: its interval stays open until the next change of the
-   * account, but cuts the access only up to the end it carries.
-   */
-  @Test
-  void aLoginLockoutCutsTheAccessOnlyUntilItEndsByItself() {
-    Instant lockedAt = FROM.plus(Duration.ofDays(5));
-    Instant lockoutEnds = lockedAt.plus(Duration.ofMinutes(15));
-    userGrantHistory(ordinaryUserId, AssetRole.VIEWER, FROM, null);
-    jdbcTemplate.update(
-        "INSERT INTO account_state_history (id, user_id, organization_id, state, cause,"
-            + " valid_from, valid_to, locked_until, created_at)"
-            + " VALUES (?, ?, ?, 'LOCKED', 'LOGIN_LOCKOUT', ?, NULL, ?, now())",
-        UUID.randomUUID(),
-        ordinaryUserId,
-        organizationId,
-        java.sql.Timestamp.from(lockedAt),
-        java.sql.Timestamp.from(lockoutEnds));
-
-    AccessAsOfResult result = readers(FROM, TO);
-
-    assertThat(result.entries())
-        .filteredOn(entry -> entry.basis() == AccessBasis.DIRECT_GRANT)
-        .extracting(AccessAsOfEntry::validFrom, AccessAsOfEntry::validTo)
-        .containsExactlyInAnyOrder(tuple(FROM, lockedAt), tuple(lockoutEnds, null));
-  }
-
-  /**
    * Every way an account becomes unusable is on record from the introduction of the complete
    * account-state history on: a window after it names the system role alone as uncovered, a window
    * reaching before it still names the account state.

@@ -70,12 +70,12 @@ class AccountStateCompleteMigrationTest extends AbstractBaselineTest {
 
     Instant completeSince =
         instantOf("SELECT account_state_complete_since FROM permission_history_retention_settings");
-    assertThat(completeSince).isAfterOrEqualTo(before);
+    assertThat(completeSince).isAfter(before);
     assertThat(intervalsOf(locked)).containsExactly("LOCKED ADMIN_LOCKED open");
     assertThat(intervalsOf(inactive)).containsExactly("LOCKED INACTIVITY_LOCKED open");
     assertThat(intervalsOf(expired)).containsExactly("LOCKED LOCAL_EXPIRED open");
     assertThat(intervalsOf(invited)).containsExactly("LOCKED LOCAL_INVITED open");
-    assertThat(intervalsOf(lockedOut)).containsExactly("LOCKED LOGIN_LOCKOUT open");
+    assertThat(intervalsOf(lockedOut)).as("a lockout leaves no interval").isEmpty();
     assertThat(intervalsOf(ofDisabled)).containsExactly("LOCKED PROVIDER_DISABLED open");
     assertThat(intervalsOf(ofRemoved)).containsExactly("LOCKED PROVIDER_REMOVED open");
     assertThat(intervalsOf(directoryLocked)).containsExactly("LOCKED DIRECTORY_LOCKED open");
@@ -86,16 +86,50 @@ class AccountStateCompleteMigrationTest extends AbstractBaselineTest {
     assertThat(
             longOf(
                 "SELECT count(*) FROM account_state_history WHERE valid_from < '"
+                    + before
+                    + "' OR valid_from > '"
                     + completeSince
                     + "'"))
-        .as("nothing is claimed for the time before the introduction")
+        .as(
+            "nothing is claimed before the introduction, and every interval it opened starts no"
+                + " later than the mark, so a window from the mark on is fully covered")
         .isZero();
-    assertThat(
-            instantOf(
-                "SELECT locked_until FROM account_state_history WHERE user_id = '"
-                    + lockedOut
-                    + "'"))
-        .isAfter(completeSince);
+  }
+
+  /**
+   * Re-evaluating an account holds no lock of its own in the lock table until the transaction ends:
+   * one migration and one switch of a provider reach tens of thousands of accounts, and the shared
+   * lock table (max_locks_per_transaction x max_connections) would run out for every session.
+   */
+  @Test
+  void aMigrationOverTwentyThousandAccountsNeedsNoLockPerAccount() throws Exception {
+    String issuer = "https://idp.example/realms/" + UUID.randomUUID();
+    UUID provider = insertProvider(issuer, false);
+    execute("UPDATE oidc_providers SET enabled = false WHERE id = '" + provider + "'");
+    execute(
+        "INSERT INTO users (id, subject, issuer, system_role, organization_id)"
+            + " SELECT g.id, g.id::text, '"
+            + issuer
+            + "', 'USER', '"
+            + SEEDED_ORGANIZATION_ID
+            + "' FROM (SELECT gen_random_uuid() AS id FROM generate_series(1, 20000)) g");
+
+    applyChangelog(connection, FILE);
+
+    assertThat(countWhere("account_state_history", "cause = 'PROVIDER_DISABLED'"))
+        .isEqualTo(20000L);
+    connection.setAutoCommit(false);
+    try {
+      execute("UPDATE oidc_providers SET enabled = true WHERE id = '" + provider + "'");
+      assertThat(longOf("SELECT count(*) FROM pg_locks WHERE pid = pg_backend_pid()"))
+          .as("lock table entries of the switch that reactivated 20000 accounts")
+          .isLessThan(100L);
+      assertThat(countWhere("account_state_history", "cause = 'ACCOUNT_REACTIVATED'"))
+          .isEqualTo(20000L);
+    } finally {
+      connection.rollback();
+      connection.setAutoCommit(true);
+    }
   }
 
   @Test
