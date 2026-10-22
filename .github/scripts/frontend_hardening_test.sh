@@ -9,7 +9,8 @@
 # by the other, with its body and URI intact, within a few seconds. A slow answer, a streamed /mcp
 # answer and uploads up to the size limits pass unchanged. A request other than GET and HEAD that a
 # backend has received is never sent to a second one, neither when that backend closes the
-# connection without an answer nor when the answer outlasts OPAA_BACKEND_READ_TIMEOUT.
+# connection without an answer nor when the answer outlasts OPAA_BACKEND_READ_TIMEOUT; next to an
+# address that refuses connections it is still answered.
 #
 #   .github/scripts/frontend_hardening_test.sh <frontend image>
 set -euo pipefail
@@ -31,7 +32,7 @@ workdir="$(mktemp -d)"
 
 cleanup() {
   docker rm -f "$frontend" "$echo_upstream" "$echo_upstream-a" "$echo_upstream-b" "$probe" \
-    "$stub-a" "$stub-b" >/dev/null 2>&1 || true
+    "$stub-a" "$stub-b" "$stub-c" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
   rm -rf "$workdir"
 }
@@ -218,8 +219,8 @@ fi
 echo "--- one of two containers stops under load"
 # A full nginx configuration with njs: the stub answers with its name, the URI it received and the
 # length of the request body; /api/v1/slow after 4 s, /mcp/stream as five events over 4 s, and
-# /api/v1/drop and /mcp/drop close the connection without an answer. Every request it receives is logged with
-# its X-Test-Request header.
+# /api/v1/drop and /mcp/drop close the connection without an answer. Every request it receives is
+# logged with its X-Test-Request header.
 stub_conf='load_module /etc/nginx/modules/ngx_http_js_module.so;
 env STUB_NAME;
 pid /tmp/stub.pid;
@@ -337,16 +338,15 @@ for upload in "/api/v1/documents upload 41943040" "/api/v1/transcriptions dictat
   fi
 done
 
-# Each worker cycles through a GET with escapes, a POST with a body on /api/ and one on /mcp, a PUT
-# with a body and a DELETE, and logs "<status> <seconds> <body as expected?> <id> <request>" per
-# request; the id travels in the X-Test-Request header, so the stubs' logs show how often each
-# request arrived.
+# Each worker cycles through a GET with escapes, a POST with a body on /api/ and one on /mcp, and
+# logs "<status> <seconds> <body as expected?> <id> <request>" per request; the id travels in the
+# X-Test-Request header, so the stubs' logs show how often each request arrived.
 head -c 65536 /dev/zero | tr '\0' x >"$workdir/form"
 failover_worker() {
   local log="$1" until="$2" i=0 result answer verdict request expected id
   while (($(date +%s) < until)); do
     id="$(basename "$log")-$i"
-    case $((i % 5)) in
+    case $((i % 3)) in
       0)
         request="GET /api/v1/a%20b?x=%2F"
         expected="uri=/api/v1/a%20b?x=%2F len=0"
@@ -358,23 +358,11 @@ failover_worker() {
         result="$(fetch "$log.body" -X POST -H "X-Test-Request: $id" --data-binary @"$workdir/form" \
           "$failover_base/api/v1/form")"
         ;;
-      2)
+      *)
         request="POST /mcp"
         expected="uri=/mcp len=2"
         result="$(fetch "$log.body" -X POST -H "X-Test-Request: $id" \
           -H 'Content-Type: application/json' --data-binary '{}' "$failover_base/mcp")"
-        ;;
-      3)
-        request="PUT /api/v1/item"
-        expected="uri=/api/v1/item len=65536"
-        result="$(fetch "$log.body" -X PUT -H "X-Test-Request: $id" --data-binary @"$workdir/form" \
-          "$failover_base/api/v1/item")"
-        ;;
-      *)
-        request="DELETE /api/v1/a%20b"
-        expected="uri=/api/v1/a%20b len=0"
-        result="$(fetch "$log.body" -X DELETE -H "X-Test-Request: $id" \
-          "$failover_base/api/v1/a%20b")"
         ;;
     esac
     answer="$(cat "$log.body" 2>/dev/null || true)"
@@ -411,18 +399,17 @@ else
 $(head -n 10 <<<"$bad")"
   docker logs --tail 10 "$probe" >&2 2>&1 || true
 fi
-# Each POST, PUT and DELETE reached a backend exactly once: none is sent again once a backend has
-# it.
+# Each POST reached a backend exactly once: no request is sent again once a backend has it.
 arrivals="$( (docker logs "$stub-a" 2>/dev/null; docker logs "$stub-b" 2>/dev/null) |
-  awk '$1 == "HIT" && $2 ~ /^(POST|PUT|DELETE)$/ && $3 != "-" { print $3 }' | sort | uniq -c)"
-changes="$(awk '$1 == 200 && $5 ~ /^(POST|PUT|DELETE)$/ { print $4 }' <<<"$results" | sort)"
+  awk '$1 == "HIT" && $2 == "POST" && $3 != "-" { print $3 }' | sort | uniq -c)"
+posts="$(awk '$1 == 200 && $5 == "POST" { print $4 }' <<<"$results" | sort)"
 not_once="$(awk 'NR == FNR { seen[$2] = $1; next } seen[$1] != 1 { print $1 " arrived " (seen[$1] + 0) " times" }' \
-  <(echo "$arrivals") <(echo "$changes"))"
+  <(echo "$arrivals") <(echo "$posts"))"
 twice="$(awk '$1 > 1 { print $2 " arrived " $1 " times" }' <<<"$arrivals")"
 if [[ -z "$not_once$twice" ]]; then
-  echo "each of $(wc -l <<<"$changes" | tr -d ' ') answered POST, PUT and DELETE requests reached a backend exactly once"
+  echo "each of $(wc -l <<<"$posts" | tr -d ' ') answered POST requests reached a backend exactly once"
 else
-  fail "POST, PUT and DELETE requests did not reach a backend exactly once:
+  fail "POST requests did not reach a backend exactly once:
 $(printf '%s\n%s\n' "$not_once" "$twice" | sed '/^$/d' | head -n 10)"
 fi
 
@@ -474,6 +461,37 @@ while read -r method path expected code id; do
     fail "$method $path ended with $code (expected $expected) after reaching a backend $arrived times, expected once"
   fi
 done <<<"$once_results"
+
+# A third address behind the name refuses every connection: a PUT or DELETE that meets it has not
+# reached a backend and must still be answered, by one of the stubs and exactly once.
+docker run -d --name "$stub-c" --network "$network" --network-alias failover --entrypoint sleep \
+  "$image" 600 >/dev/null
+sleep 7
+refused_results=""
+for i in $(seq 1 12); do
+  for method in PUT DELETE; do
+    id="refused-$method-$i"
+    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X "$method" \
+      -H "X-Test-Request: $id" --data-binary '{}' "$once_base/api/v1/item" 2>/dev/null || true)"
+    refused_results+="$method ${code:-000} $id"$'\n'
+  done
+done
+hits="$( (docker logs "$stub-a" 2>/dev/null; docker logs "$stub-b" 2>/dev/null) |
+  awk '$1 == "HIT" && $3 ~ /^refused-/ { print $3 }' | sort | uniq -c)"
+refusals="$(docker logs "$probe" 2>&1 | grep -c 'connect() failed (111' || true)"
+refused_bad="$(while read -r method code id; do
+  [[ -n "$method" ]] || continue
+  arrived="$(awk -v id="$id" '$2 == id { print $1 }' <<<"$hits")"
+  [[ "$code" == 200 && "${arrived:-0}" == 1 ]] || echo "$id ended with $code after ${arrived:-0} arrivals"
+done <<<"$refused_results")"
+if [[ -n "$refused_bad" ]]; then
+  fail "PUT and DELETE next to a refusing address were not answered exactly once:
+$(head -n 10 <<<"$refused_bad")"
+elif ((refusals == 0)); then
+  fail "no PUT or DELETE met the refusing address"
+else
+  echo "24 PUT and DELETE requests next to a refusing address answered, each by one backend ($refusals refused attempts)"
+fi
 
 if ((failures > 0)); then
   echo "$failures hardening check(s) failed." >&2
