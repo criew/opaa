@@ -107,8 +107,8 @@ geschieht, hängt von der Art der Anfrage ab:
   Chat, schickt das Frontend nach dem Senden nie ein zweites Mal los. Reißt die Verbindung ab oder
   bleibt die Antwort länger aus als `OPAA_BACKEND_READ_TIMEOUT`, endet die Anfrage mit einem Fehler,
   auch wenn die Instanz sie noch ausgeführt hat.
-- **Lesende Anfragen** (`GET`, `HEAD`) kann das Frontend unter Docker Compose in diesen Fällen an die
-  andere Instanz geben. Unter Kubernetes erreicht das Frontend die Pods über einen Service und gibt
+- **Lesende Anfragen** (`GET`, `HEAD`, `OPTIONS`) kann das Frontend unter Docker Compose in diesen
+  Fällen an die andere Instanz geben. Unter Kubernetes erreicht das Frontend die Pods über einen Service und gibt
   eine Anfrage, die einen Pod erreicht hat, nicht weiter.
 
 ## Abstimmung nur über die Datenbank

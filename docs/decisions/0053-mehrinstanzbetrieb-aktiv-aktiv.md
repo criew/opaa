@@ -416,8 +416,10 @@ Datenbanksicherung.
   zweites, wenn die Verbindung abreißt oder die Antwort ausbleibt. Alle anderen Methoden laufen
   höchstens einmal: `POST` und `PATCH` schließt nginx selbst aus, `PUT` und `DELETE` nimmt ein
   interner Pfad ohne nächstes Ziel; dort beginnt nur eine Anfrage ohne Verbindung neu, bis zu
-  dreimal, und ein gescheitertes Ziel setzt eine Sekunde aus, damit der Neustart ein anderes trifft. Ein Backend kann eine Änderung ausgeführt haben, ohne zu antworten; eine zweite
-  Ausführung wäre nicht für jeden Endpunkt folgenlos.
+  dreimal. Ein gescheitertes Ziel setzt dort eine Sekunde aus, damit der Neustart ein anderes
+  trifft; setzen alle aus, nehmen dieselben Adressen als Reserve die Anfrage. Ein Backend kann eine
+  Änderung ausgeführt haben, ohne zu antworten; eine zweite Ausführung wäre nicht für jeden
+  Endpunkt folgenlos.
 - Die feste Frontend-Adresse in der Proxy-Vertrauensliste trägt nur einen Frontend-Container; jeder
   weitere braucht eine eigene feste Adresse und einen eigenen Eintrag.
 
