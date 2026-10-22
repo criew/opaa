@@ -287,7 +287,11 @@ Sekunden lang in der Verteilung führt: Kommt dort binnen 4 s keine Verbindung z
 Anfrage an die andere. Eine Anfrage, die noch keine Instanz erreicht hat, endet so nicht mit einem
 Fehler, solange eine Instanz läuft; nur eine Diktataufnahme, die genau in diesem Moment hochgeladen
 wird, kann scheitern und ist dann neu aufzunehmen. Laufende Anfragen der stoppenden Instanz enden
-wie unter [Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren) beschrieben.
+wie unter [Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren) beschrieben. Hat eine Instanz
+die Verbindung angenommen, gibt nginx nur eine lesende Anfrage (`GET`, `HEAD`, `OPTIONS`) an die
+andere weiter, wenn die Verbindung abreißt oder die Antwort länger als `OPAA_BACKEND_READ_TIMEOUT`
+ausbleibt; jede andere, auch Ändern und Löschen, endet dann mit einem Fehler und läuft nie ein
+zweites Mal ([Das Gesamtbild](mehrere-instanzen.md#das-gesamtbild)).
 `docker compose --scale` ist nicht der Weg zu einer weiteren Instanz: Die skalierten Container
 teilten sich ein `/tmp`.
 
