@@ -698,14 +698,25 @@ lesen?" Fünf Schutzregeln gehören dazu:
   weist die Auskunft das aus: Dort heißt leer „nicht mehr vorgehalten", nicht „kein Zugriff".
   Ebenso nennt jede Antwort die Rechtequellen, die sie **nicht** oder nicht vollständig abdeckt: die
   Systemrolle — eine Systemverwaltung verwaltet jedes Arbeitsmittel ihrer Organisation, ohne dass ein
-  Zeitraum das belegt — und den Kontozustand außerhalb des Verzeichnisabgleichs (Sperre oder Ablauf
-  eines lokalen Kontos, abgeschalteter Anmeldeanbieter). Zusammengerechnet werden Berechtigungen,
-  Gruppenmitgliedschaften, Reichweitenfelder, Space-Mitgliedschaften, Eigentum und Kontozustand. Wer
-  einen Space verantwortet, erscheint für diese Zeit mit „Eigentum“ und der Rolle `ADMIN`, bei einem
-  persönlichen Space ab seiner Anlage; bei einem Arbeitsmittel liest die Eigentümerin über die
-  Berechtigung, die das Eigentum mitbringt, und erscheint mit dieser. Ein Zeitraum, in dem ein Konto
-  durch den Verzeichnisabgleich gesperrt war, zählt nicht als Zugang. Anlegerechte
-  erscheinen nie: Sie öffnen keinen Inhalt.
+  Zeitraum das belegt — und, wenn das Fenster vor dem Update auf die vollständige
+  Kontozustandshistorie beginnt, den Kontozustand (siehe unten). Zusammengerechnet werden
+  Berechtigungen, Gruppenmitgliedschaften, Reichweitenfelder, Space-Mitgliedschaften, Eigentum und
+  Kontozustand. Wer einen Space verantwortet, erscheint für diese Zeit mit „Eigentum“ und der Rolle
+  `ADMIN`, bei einem persönlichen Space ab seiner Anlage; bei einem Arbeitsmittel liest die
+  Eigentümerin über die Berechtigung, die das Eigentum mitbringt, und erscheint mit dieser.
+  Anlegerechte erscheinen nie: Sie öffnen keinen Inhalt.
+- **Ein Zeitraum, in dem ein Konto nicht nutzbar war, zählt nicht als Zugang.** Das gilt für jeden
+  Grund: Sperre durch den Verzeichnisabgleich, durch die Benutzerverwaltung oder wegen Inaktivität,
+  ein abgelaufenes Konto, eine noch nicht angenommene Einladung, die abgeschaltete lokale
+  Kontenverwaltung (für Konten ohne Systemverwaltung) und ein abgeschalteter oder gelöschter
+  Anmeldeanbieter. Ausgenommen ist die kurze Sperre nach mehreren falschen Passwörtern: Sie endet
+  von selbst, kann von jedem ausgelöst werden und wird nicht festgehalten — während ihr nennt die
+  Auskunft die Person weiter. Ein Ablauf, der ohne
+  Zutun eintritt, wird spätestens nach etwa einer Minute festgehalten; bis dahin nennt die Auskunft
+  das Konto noch, sie kürzt nie zu viel. Vollständig ist dieser Nachweis erst ab dem Update, das ihn
+  eingeführt hat: Für die Zeit davor kennt OPAA nur die Sperren aus dem Verzeichnisabgleich, und
+  ein Konto, das zum Update schon gesperrt war, gilt erst ab dem Update als gesperrt. Ein Fenster,
+  das davor beginnt, nennt den Kontozustand deshalb unter den nicht abgedeckten Quellen.
 - **Es gibt keinen Personen-Einstieg.** „Worauf hatte Person X am 3. März Zugriff" ist nicht
   gebaut und bleibt es, bis die Pseudonymisierung der Historie vorliegt (#391/#395).
 

@@ -17,7 +17,6 @@ import io.opaa.auth.UserRepository.DirectoryAccountState;
 import io.opaa.group.Group;
 import io.opaa.group.GroupMembership;
 import io.opaa.group.GroupRepository;
-import io.opaa.permission.AccountStateHistoryService;
 import io.opaa.permission.GroupMembershipHistoryCause;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
@@ -85,7 +84,6 @@ class DirectorySyncPlanExecutor {
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final DirectorySyncPendingPlanRepository pendingPlanRepository;
-  private final AccountStateHistoryService accountStateHistoryService;
   private final LocalAdminAvailabilityGuard adminGuard;
   private final ApplicationEventPublisher eventPublisher;
 
@@ -97,7 +95,6 @@ class DirectorySyncPlanExecutor {
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
       DirectorySyncPendingPlanRepository pendingPlanRepository,
-      AccountStateHistoryService accountStateHistoryService,
       LocalAdminAvailabilityGuard adminGuard,
       ApplicationEventPublisher eventPublisher) {
     this.groupRepository = groupRepository;
@@ -107,7 +104,6 @@ class DirectorySyncPlanExecutor {
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.pendingPlanRepository = pendingPlanRepository;
-    this.accountStateHistoryService = accountStateHistoryService;
     this.adminGuard = adminGuard;
     this.eventPublisher = eventPublisher;
   }
@@ -929,7 +925,8 @@ class DirectorySyncPlanExecutor {
 
   /**
    * Applies the account half of the plan: the lock takes the access away, the unlock gives it back,
-   * each with its interval in the account-state history and its own audit entry.
+   * each with its own audit entry; the interval in the account-state history follows from the
+   * changed {@code directory_locked_at} in the database.
    *
    * <p>A lock is never refused for open succession (ADR-0036, Entscheidung 6); its {@code
    * LocalAccountAccessEndedEvent} lapses the access tokens in the same transaction (ADR-0035). Only
@@ -940,8 +937,6 @@ class DirectorySyncPlanExecutor {
     for (User account : entitiesOf(plan.accountLocks())) {
       account.lockFromDirectory(now);
       userRepository.save(account);
-      accountStateHistoryService.recordLocked(
-          account.getId(), account.getOrganizationId(), account.getCreatedAt());
       recordAccountStateChange(
           target, correlationRef, account, AuditEventType.DIRECTORY_ACCOUNT_LOCKED);
       log.info(
@@ -954,7 +949,6 @@ class DirectorySyncPlanExecutor {
     for (User account : entitiesOf(plan.accountUnlocks())) {
       account.unlockFromDirectory();
       userRepository.save(account);
-      accountStateHistoryService.recordUnlocked(account.getId(), account.getOrganizationId());
       recordAccountStateChange(
           target, correlationRef, account, AuditEventType.DIRECTORY_ACCOUNT_UNLOCKED);
       log.info(

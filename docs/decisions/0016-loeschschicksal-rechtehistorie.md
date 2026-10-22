@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt durch ADR-0036 (Entscheidung 8) und ADR-0039 (Entscheidung 3)
+Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt durch ADR-0036 (Entscheidung 8) und ADR-0039 (Entscheidung 3)
 
 ## Kontext
 
@@ -35,12 +35,14 @@ Objekt.
 
 Die Subjektspalten bleiben echte Fremdschlüssel auf `users` mit `ON DELETE RESTRICT`:
 `asset_grant_history.subject_user_id`, `group_membership_history.user_id`,
-`asset_ownership_history.owner_user_id`, `capability_grant_history.subject_user_id`,
-`space_membership_history.subject_user_id` und `account_state_history.user_id`. Die Kontolöschung
-(`LocalUserService#delete`) prüft dieselben Tabellen vorab und lehnt mit `409` ab, solange das Konto
-in Rechte- oder Nachweisbeständen referenziert ist; die Anleitung lautet „sperren statt löschen“.
-`RESTRICT` ist die Übergangslösung bis zu einer Pseudonymisierung des Personenbezugs, die die Historie
-selbst unangetastet lässt; eine Kaskade ist für diese Tabellen ausgeschlossen.
+`asset_ownership_history.owner_user_id`, `capability_grant_history.subject_user_id` und
+`space_membership_history.subject_user_id`. Die Kontolöschung (`LocalUserService#delete`) prüft
+dieselben Tabellen vorab und lehnt mit `409` ab, solange das Konto in Rechte- oder Nachweisbeständen
+referenziert ist; die Anleitung lautet „sperren statt löschen“. `RESTRICT` ist die Übergangslösung bis
+zu einer Pseudonymisierung des Personenbezugs, die die Historie selbst unangetastet lässt; eine
+Kaskade ist für diese Tabellen ausgeschlossen. `account_state_history.user_id` steht dagegen auf `ON
+DELETE CASCADE`: Ein Zustandsintervall nennt für sich keinen Zugang, es kürzt nur Zeiträume, die in
+einer der Tabellen oben stehen und die Löschung schon verweigern (ADR-0036, Entscheidung 8).
 
 ### 3. Akteur: `ON DELETE SET NULL`
 

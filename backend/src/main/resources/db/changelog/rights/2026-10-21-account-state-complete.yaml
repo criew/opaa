@@ -1,0 +1,292 @@
+databaseChangeLog:
+  - changeSet:
+      id: rights-2026-10-21-account-state-complete
+      author: opaa
+      comment: "Every way an account becomes unusable or usable again writes its interval into account_state_history (ADR-0036, Entscheidung 8): triggers on users, local_credentials and oidc_providers re-evaluate the rule of AccountUsability in the database, in the transaction of the change and from the boundary clock of ADR-0032, whichever version or path writes. A failed-login lockout is deliberately left out: short, self-ending and caused by whoever types the address. An expiry reached by time is recorded by account_state_record_reached_expiries. Each account is re-evaluated under row locks (its credentials row; for an account that is not local its users row before it), which take no lock table entry, so a switch or a migration over any number of accounts fits one transaction. The intervals go with a deleted account: alone they name no access. Every account unusable at the introduction gets an open LOCKED interval from it on; the introduction is kept as account_state_complete_since. Expand only: a nullable column, a cause list with more values, a foreign key that cascades."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+
+              ALTER TABLE account_state_history DROP CONSTRAINT chk_account_state_history_cause;
+              ALTER TABLE account_state_history ADD CONSTRAINT chk_account_state_history_cause
+                  CHECK ((cause IN ('ACCOUNT_CREATED', 'DIRECTORY_LOCKED', 'DIRECTORY_UNLOCKED',
+                      'ADMIN_LOCKED', 'INACTIVITY_LOCKED', 'LOCAL_EXPIRED',
+                      'LOCAL_INVITED', 'LOCAL_ACCOUNTS_DISABLED', 'PROVIDER_DISABLED',
+                      'PROVIDER_REMOVED', 'ACCOUNT_REACTIVATED')));
+
+              ALTER TABLE account_state_history
+                  DROP CONSTRAINT fk_account_state_history_user_organization;
+              ALTER TABLE account_state_history
+                  ADD CONSTRAINT fk_account_state_history_user_organization
+                  FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id)
+                  ON DELETE CASCADE;
+
+              ALTER TABLE permission_history_retention_settings
+                  ADD COLUMN account_state_complete_since timestamp with time zone;
+
+              CREATE FUNCTION account_state_issuer_key(issuer text) RETURNS text
+                  LANGUAGE sql IMMUTABLE
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+                SELECT rtrim(regexp_replace(issuer, '^[\x01-\x20]+|[\x01-\x20]+$', '', 'g'), '/')
+              $$;
+
+              CREATE FUNCTION account_state_reconcile(p_user_id uuid, p_reactivation_cause text,
+                      p_new_account boolean) RETURNS void
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              DECLARE
+                account record;
+                credentials record;
+                provider_enabled boolean;
+                local_enabled boolean;
+                issuer_key text;
+                evaluated_at timestamp with time zone;
+                target_locked boolean := false;
+                target_cause text;
+                open_id uuid;
+                open_state text;
+                boundary timestamp with time zone;
+                locked_as_local boolean;
+              BEGIN
+                -- Row locks serialise every re-evaluation of the account until commit and, unlike an
+                -- advisory lock, take no entry of the shared lock table. Every re-evaluation holds
+                -- the credentials row, if there is one: a local account that one alone, so that a
+                -- change of the credentials never reaches for users; any other account users first,
+                -- then the credentials, the order the application writes them in. A handover changes
+                -- the issuer and deletes the credentials in one transaction; whoever waited for it
+                -- reads the issuer again and locks as the account now is.
+                FOR attempt IN 1..3 LOOP
+                  SELECT issuer INTO account FROM users WHERE id = p_user_id;
+                  IF NOT FOUND THEN
+                    RETURN;
+                  END IF;
+                  locked_as_local := account.issuer = 'urn:opaa:local';
+                  IF NOT locked_as_local THEN
+                    PERFORM 1 FROM users WHERE id = p_user_id FOR NO KEY UPDATE;
+                  END IF;
+                  PERFORM 1 FROM local_credentials WHERE user_id = p_user_id FOR NO KEY UPDATE;
+                  SELECT id, organization_id, issuer, system_role, directory_locked_at, created_at
+                      INTO account FROM users WHERE id = p_user_id;
+                  IF NOT FOUND THEN
+                    RETURN;
+                  END IF;
+                  EXIT WHEN (account.issuer = 'urn:opaa:local') = locked_as_local;
+                END LOOP;
+                IF (account.issuer = 'urn:opaa:local') <> locked_as_local THEN
+                  RAISE EXCEPTION 'account % kept changing its issuer during its re-evaluation',
+                      p_user_id;
+                END IF;
+                evaluated_at := clock_timestamp();
+
+                IF account.directory_locked_at IS NOT NULL THEN
+                  target_locked := true;
+                  target_cause := 'DIRECTORY_LOCKED';
+                ELSIF account.issuer = 'urn:opaa:local' THEN
+                  SELECT expires_at, locked_at, locked_reason,
+                         password_hash IS NOT NULL AS has_password,
+                         email_verified_at IS NOT NULL AS verified
+                      INTO credentials FROM local_credentials WHERE user_id = p_user_id;
+                  IF NOT FOUND THEN
+                    -- LocalCredentials: a local account always has its row; nothing to evaluate
+                    RETURN;
+                  END IF;
+                  -- a failed-login lockout is passed over: the rule calls the account LOCKED_OUT, the
+                  -- history records the reasons behind it, if any
+                  IF credentials.expires_at IS NOT NULL AND credentials.expires_at <= evaluated_at THEN
+                    target_locked := true;
+                    target_cause := 'LOCAL_EXPIRED';
+                  ELSIF credentials.locked_reason IS DISTINCT FROM 'FAILED_LOGINS'
+                      AND credentials.locked_at IS NOT NULL THEN
+                    target_locked := true;
+                    target_cause := CASE WHEN credentials.locked_reason = 'INACTIVITY'
+                                         THEN 'INACTIVITY_LOCKED' ELSE 'ADMIN_LOCKED' END;
+                  ELSIF NOT credentials.has_password OR NOT credentials.verified THEN
+                    target_locked := true;
+                    target_cause := 'LOCAL_INVITED';
+                  ELSIF account.system_role <> 'SYSTEM_ADMIN' THEN
+                    SELECT bool_or(enabled) INTO local_enabled
+                        FROM oidc_providers WHERE provider_type = 'LOCAL';
+                    IF NOT coalesce(local_enabled, false) THEN
+                      target_locked := true;
+                      target_cause := 'LOCAL_ACCOUNTS_DISABLED';
+                    END IF;
+                  END IF;
+                ELSE
+                  issuer_key := account_state_issuer_key(account.issuer);
+                  -- of two rows of one issuer the last in AccountUsability's order decides; on equal
+                  -- sort number and name the id, where Java has no fixed order (by hand only)
+                  SELECT enabled INTO provider_enabled FROM oidc_providers
+                      WHERE provider_type = 'OIDC' AND account_state_issuer_key(issuer_uri) = issuer_key
+                      ORDER BY sort_order DESC, display_name DESC, id DESC LIMIT 1;
+                  IF FOUND THEN
+                    IF NOT provider_enabled THEN
+                      target_locked := true;
+                      target_cause := 'PROVIDER_DISABLED';
+                    END IF;
+                  ELSE
+                    -- no provider of this issuer, deleted or never there. AccountUsability lets the
+                    -- dev mode's issuer pass without one; the database cannot know it and counts it
+                    -- unusable - the dev mode is no operating mode
+                    target_locked := true;
+                    target_cause := 'PROVIDER_REMOVED';
+                  END IF;
+                END IF;
+
+                SELECT id, state INTO open_id, open_state
+                    FROM account_state_history WHERE user_id = p_user_id AND valid_to IS NULL;
+                IF target_locked = (open_state IS NOT DISTINCT FROM 'LOCKED') THEN
+                  RETURN;
+                END IF;
+
+                boundary := permission_history_next_boundary();
+                IF open_id IS NOT NULL THEN
+                  UPDATE account_state_history SET valid_to = boundary WHERE id = open_id;
+                ELSIF NOT p_new_account THEN
+                  INSERT INTO account_state_history (id, user_id, organization_id, state, cause,
+                      valid_from, valid_to, created_at)
+                  VALUES (gen_random_uuid(), p_user_id, account.organization_id, 'ACTIVE',
+                      'ACCOUNT_CREATED', least(account.created_at, boundary), boundary,
+                      clock_timestamp());
+                END IF;
+                INSERT INTO account_state_history (id, user_id, organization_id, state, cause,
+                    valid_from, created_at)
+                VALUES (gen_random_uuid(), p_user_id, account.organization_id,
+                    CASE WHEN target_locked THEN 'LOCKED' ELSE 'ACTIVE' END,
+                    CASE WHEN target_locked THEN target_cause ELSE p_reactivation_cause END,
+                    boundary, clock_timestamp());
+              END; $$;
+
+              CREATE FUNCTION account_state_on_credentials_change() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              BEGIN
+                PERFORM account_state_reconcile(NEW.user_id, 'ACCOUNT_REACTIVATED',
+                    TG_OP = 'INSERT');
+                RETURN NULL;
+              END; $$;
+
+              CREATE TRIGGER trg_local_credentials_account_state_insert
+                  AFTER INSERT ON local_credentials
+                  FOR EACH ROW EXECUTE FUNCTION account_state_on_credentials_change();
+
+              CREATE TRIGGER trg_local_credentials_account_state_update
+                  AFTER UPDATE ON local_credentials
+                  FOR EACH ROW
+                  WHEN (OLD.expires_at IS DISTINCT FROM NEW.expires_at
+                      OR OLD.locked_at IS DISTINCT FROM NEW.locked_at
+                      OR OLD.locked_reason IS DISTINCT FROM NEW.locked_reason
+                      OR (OLD.password_hash IS NULL) <> (NEW.password_hash IS NULL)
+                      OR (OLD.email_verified_at IS NULL) <> (NEW.email_verified_at IS NULL))
+                  EXECUTE FUNCTION account_state_on_credentials_change();
+
+              CREATE FUNCTION account_state_on_user_change() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              BEGIN
+                PERFORM account_state_reconcile(NEW.id,
+                    CASE WHEN OLD.directory_locked_at IS NOT NULL AND NEW.directory_locked_at IS NULL
+                         THEN 'DIRECTORY_UNLOCKED' ELSE 'ACCOUNT_REACTIVATED' END,
+                    false);
+                RETURN NULL;
+              END; $$;
+
+              CREATE TRIGGER trg_users_account_state
+                  AFTER UPDATE ON users
+                  FOR EACH ROW
+                  WHEN (OLD.directory_locked_at IS DISTINCT FROM NEW.directory_locked_at
+                      OR OLD.issuer IS DISTINCT FROM NEW.issuer
+                      OR (OLD.system_role IS DISTINCT FROM NEW.system_role
+                          AND NEW.issuer = 'urn:opaa:local'))
+                  EXECUTE FUNCTION account_state_on_user_change();
+
+              CREATE FUNCTION account_state_on_provider_change() RETURNS trigger
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              DECLARE
+                affected uuid;
+                old_key text;
+                new_key text;
+                touches_local boolean := false;
+              BEGIN
+                IF TG_OP <> 'INSERT' THEN
+                  IF OLD.provider_type = 'LOCAL' THEN
+                    touches_local := true;
+                  ELSE
+                    old_key := account_state_issuer_key(OLD.issuer_uri);
+                  END IF;
+                END IF;
+                IF TG_OP <> 'DELETE' THEN
+                  IF NEW.provider_type = 'LOCAL' THEN
+                    touches_local := true;
+                  ELSE
+                    new_key := account_state_issuer_key(NEW.issuer_uri);
+                  END IF;
+                END IF;
+                FOR affected IN
+                  SELECT id FROM users
+                   WHERE (touches_local AND issuer = 'urn:opaa:local')
+                      OR (issuer <> 'urn:opaa:local'
+                          AND account_state_issuer_key(issuer) IN (old_key, new_key))
+                   ORDER BY id
+                LOOP
+                  PERFORM account_state_reconcile(affected, 'ACCOUNT_REACTIVATED', false);
+                END LOOP;
+                RETURN NULL;
+              END; $$;
+
+              CREATE TRIGGER trg_oidc_providers_account_state_change
+                  AFTER UPDATE ON oidc_providers
+                  FOR EACH ROW
+                  WHEN (OLD.enabled IS DISTINCT FROM NEW.enabled
+                      OR OLD.issuer_uri IS DISTINCT FROM NEW.issuer_uri
+                      OR OLD.provider_type IS DISTINCT FROM NEW.provider_type
+                      OR OLD.sort_order IS DISTINCT FROM NEW.sort_order
+                      OR OLD.display_name IS DISTINCT FROM NEW.display_name)
+                  EXECUTE FUNCTION account_state_on_provider_change();
+
+              CREATE TRIGGER trg_oidc_providers_account_state_presence
+                  AFTER INSERT OR DELETE ON oidc_providers
+                  FOR EACH ROW EXECUTE FUNCTION account_state_on_provider_change();
+
+              CREATE FUNCTION account_state_record_reached_expiries(p_limit integer) RETURNS integer
+                  LANGUAGE plpgsql
+                  SET search_path TO 'pg_catalog', '${database.defaultSchemaName}', 'pg_temp'
+                  AS $$
+              DECLARE
+                affected uuid;
+                recorded integer := 0;
+              BEGIN
+                FOR affected IN
+                  SELECT c.user_id FROM local_credentials c JOIN users u ON u.id = c.user_id
+                   WHERE u.issuer = 'urn:opaa:local'
+                     AND c.expires_at <= clock_timestamp()
+                     AND NOT EXISTS (
+                         SELECT 1 FROM account_state_history h
+                          WHERE h.user_id = c.user_id AND h.valid_to IS NULL AND h.state = 'LOCKED')
+                   ORDER BY c.user_id
+                   LIMIT p_limit
+                LOOP
+                  PERFORM account_state_reconcile(affected, 'ACCOUNT_REACTIVATED', false);
+                  recorded := recorded + 1;
+                END LOOP;
+                RETURN recorded;
+              END; $$;
+
+              DO $$
+              DECLARE
+                existing uuid;
+              BEGIN
+                FOR existing IN SELECT id FROM users ORDER BY id LOOP
+                  PERFORM account_state_reconcile(existing, 'ACCOUNT_REACTIVATED', true);
+                END LOOP;
+              END $$;
+
+              UPDATE permission_history_retention_settings
+                  SET account_state_complete_since = permission_history_next_boundary();

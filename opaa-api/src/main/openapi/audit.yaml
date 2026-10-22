@@ -159,12 +159,15 @@ paths:
         400 and the advice to narrow the window - a trimmed answer would look complete.
 
         The answer carries retentionCutoff/beyondRetention and sourcesNotCovered, so neither the
-        retention gap nor the sources without a full history (the system role, the account states
-        other than a directory lock) read as "nobody had access". A space names its owner (basis
-        OWNERSHIP, role ADMIN) for the period of the ownership, a personal space from its creation
-        on; a library names its owner through the grant ownership comes with. Every access period
-        ends where the account was locked by the directory synchronisation (account-state
-        history); the organization-wide way names nobody and is not cut. Every call writes a
+        retention gap nor the sources without a full history (the system role; the account state
+        for a window before its complete history) read as "nobody had access". A space names its
+        owner (basis OWNERSHIP, role ADMIN) for the period of the ownership, a personal space from
+        its creation on; a library names its owner through the grant ownership comes with. Every
+        access period ends where the account became unusable (account-state history: a lock by the
+        directory, the administration or for inactivity, an expiry, an open invitation, the
+        switched-off local account management, a switched-off or deleted sign-in provider; a
+        failed-login lockout is not recorded and cuts nothing, at most its duration too much); the
+        organization-wide way names nobody and is not cut. Every call writes a
         PERMISSION_HISTORY_ACCESSED entry, the rejected attempt included.
       parameters:
         - name: objectType
@@ -701,13 +704,15 @@ components:
     AccessAsOfSource:
       type: string
       description: >
-        A rights source of the Stichtagsauskunft that carries no full history (ADR-0036,
-        Entscheidung 8). SYSTEM_ROLE: a system administrator reaches every library of their
-        organization through effectiveRole, and no interval records that. ACCOUNT_STATE: only the
-        locks of the directory synchronisation are recorded; a local account's lock or expiry and
-        a switched-off sign-in provider are not, so such an account still reads as a reader. An
-        empty answer is therefore never a proof that nobody had access. A capability is no source,
-        it opens an Anlegepfad, never a content (ADR-0036, Entscheidung 5).
+        A rights source of the Stichtagsauskunft without a full history for the requested window
+        (ADR-0036, Entscheidung 8). SYSTEM_ROLE, in every answer: a system administrator reaches
+        every library of their organization through effectiveRole, and no interval records that.
+        ACCOUNT_STATE, for a window that begins before the account-state history became complete:
+        until then only the locks of the directory synchronisation were recorded, not a local
+        account's lock or expiry or a switched-off sign-in provider, so such an account may still
+        read as a reader there. An empty answer is therefore never a proof that nobody had access.
+        A capability is no source, it opens an Anlegepfad, never a content (ADR-0036,
+        Entscheidung 5).
       enum: [SYSTEM_ROLE, ACCOUNT_STATE]
       example: SYSTEM_ROLE
 
@@ -799,9 +804,10 @@ components:
         sourcesNotCovered:
           type: array
           description: >
-            The rights sources this answer cannot cover because they carry no history yet. A client
-            has to show them: without SYSTEM_ROLE named, "no entry" reads as "nobody had access",
-            although a system administrator could read every library of the organization all along.
+            The rights sources this answer cannot cover because they carry no history for the
+            window. A client has to show them: without SYSTEM_ROLE named, "no entry" reads as
+            "nobody had access", although a system administrator could read every library of the
+            organization all along.
           items:
             $ref: "#/components/schemas/AccessAsOfSource"
         entries:

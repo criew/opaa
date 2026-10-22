@@ -36,7 +36,7 @@ const BASIS_LABELS: Record<AccessBasis, string> = {
 const SOURCE_LABELS: Record<AccessAsOfSource, string> = {
   SYSTEM_ROLE: 'Systemrolle (eine Systemverwaltung erreicht jede Bibliothek ihrer Organisation)',
   ACCOUNT_STATE:
-    'Kontozustand außerhalb des Verzeichnisabgleichs (Sperre oder Ablauf eines lokalen Kontos, abgeschalteter Anmeldeanbieter)',
+    'Kontozustand vor Einführung seines vollständigen Nachweises (bis dahin nur Sperren aus dem Verzeichnisabgleich, nicht Sperre oder Ablauf eines lokalen Kontos oder ein abgeschalteter Anmeldeanbieter)',
 }
 
 function formatInstant(value: string | null | undefined, fallback: string): string {

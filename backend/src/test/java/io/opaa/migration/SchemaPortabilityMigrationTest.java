@@ -102,6 +102,12 @@ class SchemaPortabilityMigrationTest extends AbstractMigrationTest {
             "asset_grants_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "assets_guard_owner_only search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "permission_history_next_boundary search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_issuer_key search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_reconcile search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_on_credentials_change search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_on_user_change search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_on_provider_change search_path=pg_catalog, " + SCHEMA + ", pg_temp",
+            "account_state_record_reached_expiries search_path=pg_catalog, " + SCHEMA + ", pg_temp",
             "audit_incident_scope_grants_pseudonymize_person search_path=pg_catalog, "
                 + SCHEMA
                 + ", pg_temp",

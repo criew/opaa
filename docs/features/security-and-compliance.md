@@ -678,7 +678,8 @@ und zwar in die gefährliche Richtung.
 
 **Die Aufbewahrung der Historie folgt derselben Logik wie das Protokoll: Sie unterliegt einer
 Höchstdauer mit erzwungenen Grenzen.** Der **Personenbezug** folgt dieser Logik dagegen **nicht**:
-Die Subjekt- und Akteursspalten der Historientabellen verweisen mit `RESTRICT` auf `users` und sind
+Die Subjekt- und Akteursspalten der Historientabellen verweisen mit `RESTRICT` auf `users` (die
+Kontozustandshistorie ausgenommen, siehe „Der Lesepfad" unten) und sind
 **nicht** ab dem Schreibzeitpunkt pseudonymisiert
 ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Entscheidung 8).
 Begrenzt wird der Auswertungspfad stattdessen an der Leseseite — Höchstdauer, Vier-Augen-Vollmacht
@@ -726,12 +727,12 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
   Freispruch.
 - **Und sie nennt die Quellenlücke** (`sourcesNotCovered`). [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
   Entscheidung 8 führt die Quellen; in die Auskunft gehen Asset-Grants, Gruppenmitgliedschaft,
-  Reichweite, Space-Mitgliedschaft, Eigentum und Kontozustand ein. **Nicht** nachgewiesen sind die
+  Reichweite, Space-Mitgliedschaft, Eigentum und Kontozustand ein. **Nicht** nachgewiesen ist die
   **Systemrolle** — `LibraryAccessService#effectiveRole` gibt einer Systemverwaltung auf jeder
-  Bibliothek ihrer Organisation `OWNER`, und kein Intervall hält das fest — und der **Kontozustand**
-  außerhalb des Verzeichnisabgleichs (siehe unten). Die Auskunft schreibt deshalb nie „niemand hatte
-  Zugriff", sondern nennt die Quellen, über die sie nichts oder nicht alles sagen kann; die Ansicht
-  zeigt sie mit. Eine **Fähigkeit** ist keine Quelle dieser Frage: Sie öffnet einen
+  Bibliothek ihrer Organisation `OWNER`, und kein Intervall hält das fest — und, für ein Fenster vor
+  der Einführung der vollständigen Kontozustandshistorie, der **Kontozustand** (siehe unten). Die
+  Auskunft schreibt deshalb nie „niemand hatte Zugriff", sondern nennt die Quellen, über die sie
+  nichts oder nicht alles sagen kann; die Ansicht zeigt sie mit. Eine **Fähigkeit** ist keine Quelle dieser Frage: Sie öffnet einen
   Anlegepfad, nie einen Inhalt (ADR-0036, Entscheidung 5), und erscheint deshalb weder als
   Zugangsgrundlage noch als Lücke.
 - **Eigentum.** Wer einen Space verantwortet, hat dort mindestens die Rolle `ADMIN`, mit oder ohne
@@ -744,14 +745,80 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
   seine Berechtigung mit — `OWNER` für eine Person, `MANAGER` für eine Eigentümergruppe. Diese
   Grants stehen in `asset_grant_history`; Eigentümerin und Mitglieder der Eigentümergruppe
   erscheinen über sie, solange sie gelten.
-- **Kontozustand.** Ein Zeitraum, in dem ein Konto laut `account_state_history` gesperrt war, zählt
-  nicht als Zugang: Eine Sperre im Fenster teilt einen Zugriffszeitraum, eine Sperre über das ganze
-  Fenster nimmt die Person aus der Antwort, gleich über welchen Weg sie erreicht wurde. Die Freigabe
-  an „Alle Konten" nennt niemanden und wird nicht gekürzt. Historisiert ist heute die Sperre aus
-  dem Verzeichnisabgleich; andere Zustände, in denen ein Konto nicht nutzbar ist (Sperre eines
-  lokalen Kontos, Ablauf, deaktivierter Anbieter), führen keine Intervalle — die Auskunft nennt
-  solche Konten deshalb weiter als Leser, sie überschätzt den Kreis und verschweigt niemanden. Darum
-  steht der Kontozustand weiter unter den nicht abgedeckten Quellen.
+- **Kontozustand.** Ein Zeitraum, in dem ein Konto laut `account_state_history` nicht nutzbar war,
+  zählt nicht als Zugang: Eine Sperre im Fenster teilt einen Zugriffszeitraum, eine Sperre über das
+  ganze Fenster nimmt die Person aus der Antwort, gleich über welchen Weg sie erreicht wurde. Die
+  Freigabe an „Alle Konten" nennt niemanden und wird nicht gekürzt. Historisiert ist jeder Zustand,
+  in dem `AccountUsability` ein Konto nicht nutzbar nennt, mit eigener Ursache
+  (`AccountStateHistoryCause`): Sperre aus dem Verzeichnisabgleich, Sperre eines lokalen Kontos
+  durch die Verwaltung oder wegen Inaktivität, Ablauf, offene Einladung oder unbestätigte Adresse,
+  abgeschaltete lokale Kontenverwaltung für Konten ohne Systemverwaltung, abgeschalteter und
+  gelöschter Anmeldeanbieter — für einen Anbieter alle seine Konten. Wieder nutzbar wird ein Konto
+  mit `DIRECTORY_UNLOCKED` oder `ACCOUNT_REACTIVATED`.
+  - **Die Anmeldesperre nach Fehlversuchen bleibt bewusst draußen.** Sie ist kurz, endet von selbst
+    und wird von jedem ausgelöst, der die Adresse kennt. Als Intervall hielte sie fest, wann jemand
+    sein Passwort mehrfach falsch eingab — was der Fehlversuchszähler gerade nicht tut (siehe oben
+    „Fehlgeschlagene Anmeldungen“) —, und ein Fremder könnte mit wenigen Versuchen je Viertelstunde
+    die Historie einer Person so füllen, dass jede Auskunft über sie an der Obergrenze von 2000
+    Intervallen scheitert. Die Auskunft nennt eine Person deshalb auch während einer Anmeldesperre:
+    Sie überschätzt den Kreis um höchstens deren Dauer und verschweigt niemanden. Dasselbe hält
+    `ConnectionLifecycleReconciler` für die Verbindungen (eine Anmeldesperre lässt sie unberührt).
+  - **Nicht-lokale Konten** entstehen nur bei einer Anmeldung über einen aktiven Anbieter und sind
+    damit bei ihrer Anlage nutzbar; deshalb braucht `users` keinen Trigger beim Einfügen.
+  - **Geschrieben wird in der Datenbank.** Trigger auf `users`, `local_credentials` und
+    `oidc_providers` werten die Regel von `AccountUsability` nach jeder Änderung neu aus, die sie
+    ändern kann (`account_state_reconcile`), in der Transaktion der Änderung, unter einer Sperre je
+    Konto (`FOR NO KEY UPDATE`: jede Neubewertung sperrt die `local_credentials`-Zeile, sofern es
+    sie gibt, ein nicht lokales Konto vorher seine `users`-Zeile — dieselbe Reihenfolge, in der die
+    Anwendung schreibt; eine Änderung der Zugangsdaten eines lokalen Kontos greift nie nach `users`.
+    Eine Zeilensperre belegt anders als eine Advisory-Sperre keinen Eintrag der gemeinsamen
+    Sperrtabelle, sodass Migration und Anbieterschalter über beliebig viele Konten in eine
+    Transaktion passen; der Schalter der lokalen Konten sperrt die Zugangsdaten vorab in der
+    Reihenfolge der Kennung, wie der Ablauf-Lauf) und mit den Grenzen der Uhr aus ADR-0032. Jede
+    Neubewertung desselben Kontos wartet auf die gemeinsame Zugangsdaten-Sperre, bis die andere
+    Transaktion festgeschrieben ist, und liest danach neu; die zuletzt festschreibende sieht damit
+    beide Änderungen, und die Grenzen eines Kontos steigen in der Reihenfolge der Festschreibung.
+    Auch eine Übergabe an einen Anbieter, die den Aussteller ändert und die Zugangsdaten löscht,
+    ist so mit einer gleichzeitigen Sperre geordnet; wer auf sie gewartet hat, liest den Aussteller
+    neu und bewertet das Konto als Anbieterkonto. Verbleibend: Eine Übergabe ändert mit Aussteller und
+    Subjekt einen eindeutigen Schlüssel von `users` und sperrt die Zeile dafür `FOR UPDATE`; das
+    Schreiben einer Historienzeile prüft ihren Fremdschlüssel mit `FOR KEY SHARE` auf derselben
+    Zeile. Hält eine andere Transaktion die Zugangsdaten schon, bevor sie die Historie schreibt,
+    können beide deadlocken: von der Sperre der Zugangsdaten bis zum Schreiben der Historie, beim
+    Schalten der lokalen Konten über die ganze Transaktion. Dieselbe Klasse betrifft die Löschung
+    eines Kontos gegen eine gleichzeitige Änderung seiner Zugangsdaten. In allen Fällen bricht
+    Postgres eine der Transaktionen vollständig ab; eine falsche Kette entsteht nicht (#2979 sperrt
+    in der Übergabe künftig vorab). Höchstens ein offenes Intervall je Konto erzwingt
+    `uk_account_state_history_open`. Restrisiko wie bei ADR-0032: Wer als Eigentümer der Tabellen
+    Trigger abschaltet, `TRUNCATE` ausführt oder die Historie per SQL ändert, umgeht das. So hält jeder Schreibweg den Übergang fest, gleich auf welcher Instanz und von welcher Version er kommt, auch eine Handkorrektur per SQL. Nur
+    ein Ablauf tritt ohne Schreibzugriff ein; ihn hält `AccountStateExpirySweep` minütlich fest, mit
+    einer Grenze nicht vor dem Ablaufdatum, höchstens 500 Konten je Lauf. Bis dahin nennt die
+    Auskunft das Konto noch: Sie überschätzt den Kreis um diesen Takt, bei einem Massenablauf von
+    mehr als 500 Konten zur selben Zeit um je eine Minute mehr je 500 Konten, und verschweigt
+    niemanden.
+  - **Dieselbe Regel wie `AccountUsability`, Bedingung für Bedingung:** Reihenfolge der Gründe,
+    Ausnahme der Systemverwaltung, Vergleich des Ausstellers nach `OidcIssuerUris#normalize`
+    (Steuerzeichen und Leerzeichen am Rand, abschließende Schrägstriche; Groß- und Kleinschreibung
+    zählen), nur Anbieter vom Typ `OIDC`. `AccountStateParityIntegrationTest` hält beide über eine
+    Matrix von Kontozuständen gegeneinander, samt der Ursache je Zustand; zwei Anbieterzeilen
+    desselben Ausstellers (nur per SQL möglich, die Verwaltung trimmt) entscheidet wie in Java die
+    letzte nach Sortierung und Anzeigename (bei gleicher Sortierung und gleichem Namen die
+    Kennung, wo Java keine feste Reihenfolge hat). Zwei Grenzen: Ein Konto ohne Anbieter seines
+    Ausstellers gilt als nicht nutzbar, auch im Modus `dev`, dessen Aussteller die Datenbank nicht
+    kennt (dort nennt `AccountUsability` es nutzbar; `dev` ist kein Betriebsmodus). Und den Ablauf
+    vergleicht die Datenbank mit ihrer eigenen Uhr, die Anwendung mit der Uhr ihres
+    Hosts: Genau an der Grenze weichen beide um den Uhrversatz ab (mit NTP Millisekunden); ein
+    Ablauf, den die Datenbank noch nicht sieht, holt der minütliche Lauf nach.
+  - **Vollständig ab der Einführung.** Die Migration hält den Zeitpunkt fest
+    (`permission_history_retention_settings.account_state_complete_since`) und öffnet für jedes
+    Konto, das dann nicht nutzbar ist, ein Intervall ab diesem Zeitpunkt. Seit wann es das schon war,
+    ist nicht rekonstruierbar; vorher kennt die Historie nur die Verzeichnissperren. Ein Fenster,
+    das vor der Einführung beginnt, nennt den Kontozustand deshalb unter den nicht abgedeckten
+    Quellen, ein späteres nur noch die Systemrolle.
+  - **Die Intervalle gehen mit dem Konto.** Für sich nennen sie keinen Zugang: Jeder Zeitraum, den
+    sie kürzen könnten, steht in einer anderen Historie, deren Personenspalte die Löschung weiter
+    verweigert (ADR-0016). Deshalb verweist `account_state_history.user_id` mit `ON DELETE CASCADE`
+    auf `users`, und ein einmal gesperrtes, abgelaufenes oder nur eingeladenes Konto bleibt löschbar.
 - **Die Grenzen begrenzen die Arbeit, nicht nur die Ausgabe.** Trägt eine Quelle im gewählten
   Fenster mehr als 2000 Intervalle bei, oder umfasste die zusammengesetzte Antwort mehr als 5000
   Zugriffszeiträume, wird die Abfrage **abgelehnt** mit der Bitte, das Fenster enger zu fassen —
