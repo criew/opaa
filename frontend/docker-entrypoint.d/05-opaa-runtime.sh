@@ -95,20 +95,30 @@ mkdir -p "$NGINX_ENVSUBST_OUTPUT_DIR"
 # request on). max_fails=0 keeps a peer whose connection failed in the rotation: a replaced backend
 # container keeps its address while it starts, and a peer parked for that would leave no live peer
 # once the other instance stops; a request without a connection moves on to another peer anyway.
+# /tmp/nginx/upstream-once.d/*.conf holds the same addresses for /_opaa_once/, which tries one peer
+# per start: there a failed peer sits out for a second (max_fails=1), so the next start reaches
+# another one. nginx never parks a name that resolves to a single address.
 UPSTREAM_DIR=/tmp/nginx/upstream.d
-mkdir -p "$UPSTREAM_DIR"
+UPSTREAM_ONCE_DIR=/tmp/nginx/upstream-once.d
+mkdir -p "$UPSTREAM_DIR" "$UPSTREAM_ONCE_DIR"
 UPSTREAM_HOST="${OPAA_BACKEND_UPSTREAM%:*}"
 case "$OPAA_BACKEND_UPSTREAM" in
   \[*) UPSTREAM_HOST="${OPAA_BACKEND_UPSTREAM%]*}]" ;;
 esac
 if [ -n "$OPAA_BACKEND_RESOLVER" ] \
   && ! printf '%s' "$UPSTREAM_HOST" | grep -Eqx '[0-9.]+|\[.*\]'; then
-  printf 'resolver %s valid=5s;\nresolver_timeout 5s;\nserver %s resolve max_fails=0;\n' \
-    "$OPAA_BACKEND_RESOLVER" "$OPAA_BACKEND_UPSTREAM" > "$UPSTREAM_DIR/backend.conf"
+  RESOLVE='resolve '
+  printf 'resolver %s valid=5s;\nresolver_timeout 5s;\n' "$OPAA_BACKEND_RESOLVER" \
+    | tee "$UPSTREAM_DIR/backend.conf" > "$UPSTREAM_ONCE_DIR/backend.conf"
   echo "$ME: info: resolving $OPAA_BACKEND_UPSTREAM at runtime through $OPAA_BACKEND_RESOLVER"
 else
-  printf 'server %s max_fails=0;\n' "$OPAA_BACKEND_UPSTREAM" > "$UPSTREAM_DIR/backend.conf"
+  RESOLVE=''
+  : > "$UPSTREAM_DIR/backend.conf"
+  : > "$UPSTREAM_ONCE_DIR/backend.conf"
 fi
+printf 'server %s %smax_fails=0;\n' "$OPAA_BACKEND_UPSTREAM" "$RESOLVE" >> "$UPSTREAM_DIR/backend.conf"
+printf 'server %s %smax_fails=1 fail_timeout=1s;\n' "$OPAA_BACKEND_UPSTREAM" "$RESOLVE" \
+  >> "$UPSTREAM_ONCE_DIR/backend.conf"
 
 # nginx.conf includes /tmp/nginx/listen.d/*.conf in its server block. The IPv6 listen is only
 # written where the kernel offers IPv6 - the same /proc/net/if_inet6 check the base image uses -
