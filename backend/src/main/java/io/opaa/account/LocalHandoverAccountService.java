@@ -210,7 +210,7 @@ public class LocalHandoverAccountService {
       throw new ConflictException(PROVIDER_MISMATCH_MESSAGE, PROVIDER_MISMATCH);
     }
     User user = localAccount(token.getUserId());
-    LocalCredentials row = redeemableCredentials(user.getId());
+    LocalCredentials row = lockedRedeemableCredentials(user.getId());
     if (row.isBootstrap()) {
       throw new ConflictException(BOOTSTRAP_MESSAGE, LocalCredentials.BOOTSTRAP_ACCOUNT);
     }
@@ -282,6 +282,21 @@ public class LocalHandoverAccountService {
     Instant now = clock.instant();
     return credentials
         .findById(userId)
+        .filter(row -> LocalAccountAccess.mayRedeemLink(row, now))
+        .orElseThrow(LocalActionTokenService::invalidToken);
+  }
+
+  /**
+   * {@link #redeemableCredentials}, but under the row lock and before the identity is rewritten: a
+   * lock, an inactivity lock or an expiry that commits while the redemption runs is read here and
+   * refuses it, rather than being deleted with the row. The credentials are locked before the
+   * {@code users} key changes, the order in which a lock of the account and its state history take
+   * the two rows.
+   */
+  private LocalCredentials lockedRedeemableCredentials(UUID userId) {
+    Instant now = clock.instant();
+    return credentials
+        .findForUpdate(userId)
         .filter(row -> LocalAccountAccess.mayRedeemLink(row, now))
         .orElseThrow(LocalActionTokenService::invalidToken);
   }
