@@ -32,7 +32,7 @@ workdir="$(mktemp -d)"
 
 cleanup() {
   docker rm -f "$frontend" "$echo_upstream" "$echo_upstream-a" "$echo_upstream-b" "$probe" \
-    "$stub-a" "$stub-b" "$stub-c" >/dev/null 2>&1 || true
+    "$stub-a" "$stub-b" "$stub-c" "$stub-d" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
   rm -rf "$workdir"
 }
@@ -462,35 +462,97 @@ while read -r method path expected code id; do
   fi
 done <<<"$once_results"
 
-# A third address behind the name refuses every connection: a PUT or DELETE that meets it has not
-# reached a backend and must still be answered, by one of the stubs and exactly once.
-docker run -d --name "$stub-c" --network "$network" --network-alias failover --entrypoint sleep \
-  "$image" 600 >/dev/null
-sleep 7
-refused_results=""
-for i in $(seq 1 12); do
+# Prints the status of one request to $once_base; extra arguments go to curl.
+once_status() {
+  curl -sS -o "$workdir/once-body" -w '%{http_code}' --max-time 30 "$@" 2>/dev/null || echo 000
+}
+
+# Failures after acceptance on both stubs, as any caller can provoke them, leave no backend out:
+# the next PUT and DELETE are answered at once.
+once_status -X PUT "$once_base/api/v1/drop" >/dev/null
+once_status -X PUT "$once_base/api/v1/drop" >/dev/null
+after_drops=""
+for method in PUT DELETE PUT DELETE; do
+  after_drops+="$method $(once_status -X "$method" --data-binary '{}' "$once_base/api/v1/item") "
+done
+if [[ "$after_drops" == "PUT 200 DELETE 200 PUT 200 DELETE 200 " ]]; then
+  echo "after failures on both stubs PUT and DELETE are still answered: $after_drops"
+else
+  fail "after failures on both stubs PUT and DELETE ended with: $after_drops"
+fi
+
+# PUT and DELETE on /mcp arrive decoded and re-escaped, with merged slashes.
+for check in "/mcp%3Bx /mcp;x" "/mcp// /mcp/" "/mcp;x=1 /mcp;x=1"; do
+  read -r sent expected <<<"$check"
+  code="$(once_status -X DELETE "$once_base$sent")"
+  if [[ "$code" == 200 && "$(cat "$workdir/once-body")" == *" uri=$expected len=0" ]]; then
+    echo "DELETE $sent reaches the backend as $expected"
+  else
+    fail "DELETE $sent ended with $code: $(cat "$workdir/once-body" 2>/dev/null)"
+  fi
+done
+
+# A PUT or DELETE keeps the body limit of the path it came from, also without a declared length.
+head -c 2097152 /dev/zero >"$workdir/two-mib"
+head -c 12582912 /dev/zero >"$workdir/twelve-mib"
+for check in "/mcp two-mib" "/api/v1/transcriptions twelve-mib"; do
+  read -r path file <<<"$check"
   for method in PUT DELETE; do
-    id="refused-$method-$i"
-    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X "$method" \
-      -H "X-Test-Request: $id" --data-binary '{}' "$once_base/api/v1/item" 2>/dev/null || true)"
-    refused_results+="$method ${code:-000} $id"$'\n'
+    code="$(once_status -X "$method" -H 'Transfer-Encoding: chunked' \
+      --data-binary @"$workdir/$file" "$once_base$path")"
+    if [[ "$code" == 413 ]]; then
+      echo "a chunked $method of $file on $path is refused with 413"
+    else
+      fail "a chunked $method of $file on $path ended with $code, expected 413"
+    fi
   done
 done
+
+# Behind the name one stub answers and two addresses refuse every connection. Under parallel PUT
+# and DELETE a restarted request must not meet the refusing ones again and again: every one is
+# answered, exactly once.
+docker stop "$stub-b" >/dev/null
+for refusing in c d; do
+  docker run -d --name "$stub-$refusing" --network "$network" --network-alias failover \
+    --entrypoint sleep "$image" 600 >/dev/null
+done
+# Two re-resolutions, so the peer lists no longer change while the requests run. Then a few
+# requests one after another: a stub that failed in the checks above sits out until a request it
+# answers clears that failure, and must not sit out while the parallel requests start.
+sleep 12
+for _ in $(seq 1 6); do
+  once_status -X PUT --data-binary '{}' "$once_base/api/v1/item" >/dev/null
+done
+sleep 1
+refused_worker() {
+  local log="$1" until="$2" i=0 method id
+  while (($(date +%s) < until)); do
+    method=PUT
+    ((i % 2)) && method=DELETE
+    id="refused-$(basename "$log")-$i"
+    echo "$method $(once_status -X "$method" -H "X-Test-Request: $id" --data-binary '{}' \
+      "$once_base/api/v1/item") $id" >>"$log"
+    i=$((i + 1))
+  done
+}
+until=$(($(date +%s) + 8))
+for worker in $(seq 1 8); do
+  refused_worker "$workdir/refused-$worker" "$until" &
+done
+wait
+refused_results="$(cat "$workdir"/refused-?)"
 hits="$( (docker logs "$stub-a" 2>/dev/null; docker logs "$stub-b" 2>/dev/null) |
   awk '$1 == "HIT" && $3 ~ /^refused-/ { print $3 }' | sort | uniq -c)"
 refusals="$(docker logs "$probe" 2>&1 | grep -c 'connect() failed (111' || true)"
-refused_bad="$(while read -r method code id; do
-  [[ -n "$method" ]] || continue
-  arrived="$(awk -v id="$id" '$2 == id { print $1 }' <<<"$hits")"
-  [[ "$code" == 200 && "${arrived:-0}" == 1 ]] || echo "$id ended with $code after ${arrived:-0} arrivals"
-done <<<"$refused_results")"
+refused_bad="$(awk 'NR == FNR { seen[$2] = $1; next } $2 != 200 || seen[$3] != 1 { print $3 " ended with " $2 " after " (seen[$3] + 0) " arrivals" }' \
+  <(echo "$hits") <(echo "$refused_results"))"
 if [[ -n "$refused_bad" ]]; then
-  fail "PUT and DELETE next to a refusing address were not answered exactly once:
+  fail "$(wc -l <<<"$refused_bad" | tr -d ' ') of $(wc -l <<<"$refused_results" | tr -d ' ') PUT and DELETE next to a refusing address were not answered exactly once:
 $(head -n 10 <<<"$refused_bad")"
 elif ((refusals == 0)); then
   fail "no PUT or DELETE met the refusing address"
 else
-  echo "24 PUT and DELETE requests next to a refusing address answered, each by one backend ($refusals refused attempts)"
+  echo "$(wc -l <<<"$refused_results" | tr -d ' ') parallel PUT and DELETE next to a refusing address answered, each by one backend ($refusals refused attempts)"
 fi
 
 if ((failures > 0)); then
