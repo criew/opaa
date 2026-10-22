@@ -780,10 +780,15 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
     beide Änderungen, und die Grenzen eines Kontos steigen in der Reihenfolge der Festschreibung.
     Auch eine Übergabe an einen Anbieter, die den Aussteller ändert und die Zugangsdaten löscht,
     ist so mit einer gleichzeitigen Sperre geordnet; wer auf sie gewartet hat, liest den Aussteller
-    neu und bewertet das Konto als Anbieterkonto. Verbleibend: In einem schmalen Fenster kann eine
-    Übergabe gegen eine gleichzeitige Änderung der Zugangsdaten deadlocken (die Schlüsseländerung
-    an `users` gegen die Fremdschlüsselprüfung beim Schreiben der Historie); Postgres bricht dann
-    eine der beiden ab, eine falsche Kette entsteht nicht. Höchstens ein offenes Intervall je Konto erzwingt
+    neu und bewertet das Konto als Anbieterkonto. Verbleibend: Eine Übergabe ändert mit Aussteller und
+    Subjekt einen eindeutigen Schlüssel von `users` und sperrt die Zeile dafür `FOR UPDATE`; das
+    Schreiben einer Historienzeile prüft ihren Fremdschlüssel mit `FOR KEY SHARE` auf derselben
+    Zeile. Hält eine andere Transaktion die Zugangsdaten schon, bevor sie die Historie schreibt,
+    können beide deadlocken: von der Sperre der Zugangsdaten bis zum Schreiben der Historie, beim
+    Schalten der lokalen Konten über die ganze Transaktion. Dieselbe Klasse betrifft die Löschung
+    eines Kontos gegen eine gleichzeitige Änderung seiner Zugangsdaten. In allen Fällen bricht
+    Postgres eine der Transaktionen vollständig ab; eine falsche Kette entsteht nicht (#2979 sperrt
+    in der Übergabe künftig vorab). Höchstens ein offenes Intervall je Konto erzwingt
     `uk_account_state_history_open`. Restrisiko wie bei ADR-0032: Wer als Eigentümer der Tabellen
     Trigger abschaltet, `TRUNCATE` ausführt oder die Historie per SQL ändert, umgeht das. So hält jeder Schreibweg den Übergang fest, gleich auf welcher Instanz und von welcher Version er kommt, auch eine Handkorrektur per SQL. Nur
     ein Ablauf tritt ohne Schreibzugriff ein; ihn hält `AccountStateExpirySweep` minütlich fest, mit

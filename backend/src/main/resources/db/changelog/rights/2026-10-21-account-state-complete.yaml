@@ -76,6 +76,10 @@ databaseChangeLog:
                   END IF;
                   EXIT WHEN (account.issuer = 'urn:opaa:local') = locked_as_local;
                 END LOOP;
+                IF (account.issuer = 'urn:opaa:local') <> locked_as_local THEN
+                  RAISE EXCEPTION 'account % kept changing its issuer during its re-evaluation',
+                      p_user_id;
+                END IF;
                 evaluated_at := clock_timestamp();
 
                 IF account.directory_locked_at IS NOT NULL THEN

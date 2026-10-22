@@ -35,16 +35,19 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
   Optional<LocalCredentials> findForUpdate(@Param("userId") UUID userId);
 
   /**
-   * Locks the rows of {@code userIds} in the order of their id, the order the account-state history
-   * locks them in (ADR-0036, Entscheidung 8): a mass update after it waits for nobody holding a row
+   * Locks the rows of every local account, system administrators included, in the order of their id
+   * - the order in which the account-state history re-evaluates them when the switch of the local
+   * management changes (ADR-0036, Entscheidung 8). The switch then waits for nobody holding a row
    * it already has, so it cannot deadlock against the expiry run.
    */
   @Query(
       value =
-          "SELECT user_id FROM local_credentials WHERE user_id IN (:userIds) ORDER BY user_id"
-              + " FOR NO KEY UPDATE",
+          "SELECT c.user_id FROM local_credentials c JOIN users u ON u.id = c.user_id"
+              + " WHERE u.issuer = '"
+              + LocalIssuer.URN
+              + "' ORDER BY c.user_id FOR NO KEY UPDATE OF c",
       nativeQuery = true)
-  List<UUID> lockInIdOrder(@Param("userIds") Collection<UUID> userIds);
+  List<UUID> lockLocalAccountsInIdOrder();
 
   /** The accounts expiring in {@code [from, to)} - the expiry reminder's window. */
   List<LocalCredentials> findByExpiresAtGreaterThanEqualAndExpiresAtLessThan(
