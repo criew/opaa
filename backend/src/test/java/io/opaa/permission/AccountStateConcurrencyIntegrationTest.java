@@ -135,7 +135,8 @@ class AccountStateConcurrencyIntegrationTest {
           threads.submit(
               () -> {
                 try (PreparedStatement statement =
-                    sweep.prepareStatement("SELECT account_state_record_reached_expiries(100)")) {
+                    sweep.prepareStatement(
+                        "SELECT account_state_record_reached_expiries(1000000)")) {
                   statement.executeQuery().close();
                 } catch (SQLException e) {
                   throw new IllegalStateException(e);
@@ -175,7 +176,114 @@ class AccountStateConcurrencyIntegrationTest {
     assertAgreesWithTheRule(account);
   }
 
+  /**
+   * A handover to a provider writes the issuer and then deletes the credentials; an administrator
+   * locks the same account at the same time. Whichever comes first, the account ends a usable
+   * account of the provider, and the history must not keep the local lock open.
+   */
+  @Test
+  void aHandoverAndALockOfTheSameAccountLeaveNoLocalLockBehind_handoverFirst() throws Exception {
+    Handover handover = handover();
+    try (Connection handing = dataSource.getConnection();
+        Connection locking = dataSource.getConnection();
+        ExecutorService threads = Executors.newSingleThreadExecutor()) {
+      handing.setAutoCommit(false);
+      locking.setAutoCommit(false);
+      int lockingPid = backendPid(locking);
+      handOver(handing, handover);
+      Future<?> lock = threads.submit(() -> lockByAdministration(locking, handover.account()));
+      awaitDoneOrWaiting(lock, lockingPid);
+      if (lock.isDone()) {
+        lock.get();
+        locking.commit();
+      }
+      update(handing, "DELETE FROM local_credentials WHERE user_id = ?", handover.account());
+      handing.commit();
+      lock.get(WAIT.toSeconds(), TimeUnit.SECONDS);
+      locking.commit();
+    }
+
+    assertThat(openCause(handover.account())).isNull();
+    assertAgreesWithTheRule(handover.account());
+  }
+
+  @Test
+  void aHandoverAndALockOfTheSameAccountLeaveNoLocalLockBehind_lockFirst() throws Exception {
+    Handover handover = handover();
+    try (Connection handing = dataSource.getConnection();
+        Connection locking = dataSource.getConnection();
+        ExecutorService threads = Executors.newSingleThreadExecutor()) {
+      handing.setAutoCommit(false);
+      locking.setAutoCommit(false);
+      int handingPid = backendPid(handing);
+      lockByAdministration(locking, handover.account());
+      Future<?> handOver =
+          threads.submit(
+              () -> {
+                handOver(handing, handover);
+                return update(
+                    handing, "DELETE FROM local_credentials WHERE user_id = ?", handover.account());
+              });
+      awaitWaitingOnALock(handOver, handingPid);
+      locking.commit();
+      handOver.get(WAIT.toSeconds(), TimeUnit.SECONDS);
+      handing.commit();
+    }
+
+    assertThat(openCause(handover.account())).isNull();
+    assertAgreesWithTheRule(handover.account());
+  }
+
   // ---- helpers
+
+  record Handover(UUID account, String issuer) {}
+
+  private Handover handover() {
+    String issuer = PREFIX + UUID.randomUUID();
+    provider("Übernahme", issuer, true, 0);
+    LocalAccount user = fixtures.activeUser("uebergabe-" + UUID.randomUUID() + "@stadt.example");
+    accounts.add(user.id());
+    return new Handover(user.id(), issuer);
+  }
+
+  private static Void handOver(Connection connection, Handover handover) {
+    try (PreparedStatement statement =
+        connection.prepareStatement("UPDATE users SET issuer = ?, subject = ? WHERE id = ?")) {
+      statement.setString(1, handover.issuer());
+      statement.setString(2, "sub-" + handover.account());
+      statement.setObject(3, handover.account());
+      statement.executeUpdate();
+      return null;
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private static Void lockByAdministration(Connection connection, UUID account) {
+    return update(
+        connection,
+        "UPDATE local_credentials SET locked_at = now(), locked_reason = 'ADMIN'"
+            + " WHERE user_id = ?",
+        account);
+  }
+
+  /** Until the statement has finished or its backend waits on a lock. */
+  private void awaitDoneOrWaiting(Future<?> statement, int pid) {
+    Instant deadline = Instant.now().plus(WAIT);
+    while (!statement.isDone() && Instant.now().isBefore(deadline)) {
+      Boolean waiting =
+          jdbc.queryForObject(
+              "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE pid = ?"
+                  + " AND wait_event_type = 'Lock')",
+              Boolean.class,
+              pid);
+      if (Boolean.TRUE.equals(waiting)) {
+        return;
+      }
+      Thread.onSpinWait();
+    }
+    assertThat(statement.isDone()).as("the statement neither finished nor waited").isTrue();
+  }
 
   private UUID provider(String name, String issuer, boolean enabled, int sortOrder) {
     UUID id = UUID.randomUUID();

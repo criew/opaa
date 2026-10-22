@@ -126,7 +126,7 @@ class AccountStateLockOrderIntegrationTest {
       }
       Thread.onSpinWait();
     }
-    assertThat(statement.isDone() || Instant.now().isBefore(deadline)).isTrue();
+    assertThat(statement.isDone()).as("the statement neither finished nor waited").isTrue();
   }
 
   private static int backendPid(Connection connection) throws SQLException {
