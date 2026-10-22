@@ -17,7 +17,6 @@ import io.opaa.auth.UserRepository;
 import io.opaa.auth.UserRepository.DirectoryAccountState;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
-import io.opaa.permission.AccountStateHistoryService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.PermissionHistoryService;
 import java.time.Instant;
@@ -49,7 +48,6 @@ class DirectorySyncPlanExecutorTest {
           mock(PermissionHistoryService.class),
           auditEventRecorder,
           pendingPlanRepository,
-          mock(AccountStateHistoryService.class),
           adminGuard,
           mock(ApplicationEventPublisher.class));
 

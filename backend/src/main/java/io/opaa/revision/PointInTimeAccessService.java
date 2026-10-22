@@ -51,10 +51,12 @@ import org.springframework.stereotype.Service;
  * the answer instead of being left to the reader - the retention cutoff and the sources not yet
  * historised ({@link AccessAsOfResult#sourcesNotCovered()}).
  *
- * <p><b>Every access period ends where the account was locked</b> ({@code account_state_history}):
- * a locked account exercises no right, whichever way reached it. The organization-wide way names
- * nobody and is therefore not cut. The history records the locks of the directory synchronisation
- * only, so the account state stays among the sources not covered.
+ * <p><b>Every access period ends where the account became unusable</b> ({@code
+ * account_state_history}): a locked, expired or not yet activated account, or one behind a
+ * switched-off provider, exercises no right, whichever way reached it. A failed-login lockout is
+ * not on record and cuts nothing, at most its duration too much. The organization-wide way names
+ * nobody and is therefore not cut. The history is complete only from its introduction on; a window
+ * reaching before it names the account state among the sources not covered.
  *
  * <p><b>The bounds limit the work, not only the output</b> (see {@link #MAX_SOURCE_INTERVALS} and
  * {@link #MAX_COMPOSED_ENTRIES}): a page of 50 must not cost the composition of a whole
@@ -75,15 +77,21 @@ public class PointInTimeAccessService {
   static final int MAX_COMPOSED_ENTRIES = 5_000;
 
   /**
-   * The sources ADR-0036, Entscheidung 8 lists that carry no history yet - named in every answer so
-   * an empty result is not read as "nobody had access". The system role: {@code
-   * LibraryAccessService#effectiveRole} hands a system administrator {@code OWNER} on every library
-   * of their organization, and no interval records that. The account state in part: a local
-   * account's lock or expiry and a switched-off sign-in provider leave no interval, so such an
-   * account still reads as a reader. A capability is no source at all - it opens an Anlegepfad,
-   * never a content (ADR-0036, Entscheidung 5).
+   * The system role carries no history - {@code LibraryAccessService#effectiveRole} hands a system
+   * administrator {@code OWNER} on every library of their organization, and no interval records
+   * that - so every answer names it, and an empty result is not read as "nobody had access". A
+   * capability is no source at all - it opens an Anlegepfad, never a content (ADR-0036,
+   * Entscheidung 5).
    */
-  private static final List<AccessAsOfSource> SOURCES_NOT_COVERED =
+  private static final List<AccessAsOfSource> ALWAYS_NOT_COVERED =
+      List.of(AccessAsOfSource.SYSTEM_ROLE);
+
+  /**
+   * Before the complete account-state history, only the directory's locks left an interval: a local
+   * lock, an expiry or a switched-off provider did not, so such an account still read as a reader
+   * there.
+   */
+  private static final List<AccessAsOfSource> BEFORE_COMPLETE_ACCOUNT_STATE =
       List.of(AccessAsOfSource.SYSTEM_ROLE, AccessAsOfSource.ACCOUNT_STATE);
 
   private final AuditAccessGate gate;
@@ -512,12 +520,22 @@ public class PointInTimeAccessService {
         to,
         cutoff,
         cutoff != null && from.isBefore(cutoff),
-        SOURCES_NOT_COVERED,
+        sourcesNotCovered(from),
         pageEntries,
         page,
         safeSize,
         entries.size(),
         (int) Math.ceil((double) entries.size() / safeSize));
+  }
+
+  /** The account state counts as covered only for a window inside its complete history. */
+  private List<AccessAsOfSource> sourcesNotCovered(Instant from) {
+    return retentionService
+            .accountStateCompleteSince()
+            .filter(completeSince -> !from.isBefore(completeSince))
+            .isPresent()
+        ? ALWAYS_NOT_COVERED
+        : BEFORE_COMPLETE_ACCOUNT_STATE;
   }
 
   /** Adds one entry, refusing rather than trimming once the answer would leave its bound. */

@@ -2,7 +2,9 @@
 # the fields that store it, the assessment why an unknown value is not read with a fallback, the
 # values the previous release reads (readable) and the values this release knows but writes nowhere
 # yet (pending). A new value goes to pending first and is written from the release after the one
-# that ships it. Rules: backend/docs/liquibase.md, "Enum-Werte"; checked by PersistedEnumRegistryTest.
+# that ships it; until the version boundary v0.1.0 ships, a new value may stand under readable at
+# once, because no earlier release runs beside v0.1.0. Rules: backend/docs/liquibase.md,
+# "Enum-Werte"; checked by PersistedEnumRegistryTest.
 
 io.opaa.account.ActionTokenPurpose:
   attributes: [LocalActionToken.purpose]
@@ -371,10 +373,15 @@ io.opaa.permission.AccountState:
   assessment: AUDIT
   readable: [ACTIVE, LOCKED]
   pending: []
+# All but ACCOUNT_CREATED and the two DIRECTORY_ values are new in v0.1.0 (see the head).
 io.opaa.permission.AccountStateHistoryCause:
   attributes: [AccountStateHistory.cause]
   assessment: AUDIT
-  readable: [ACCOUNT_CREATED, DIRECTORY_LOCKED, DIRECTORY_UNLOCKED]
+  readable: [
+    ACCOUNT_CREATED, ACCOUNT_REACTIVATED, ADMIN_LOCKED, DIRECTORY_LOCKED, DIRECTORY_UNLOCKED,
+    INACTIVITY_LOCKED, LOCAL_ACCOUNTS_DISABLED, LOCAL_EXPIRED, LOCAL_INVITED, PROVIDER_DISABLED,
+    PROVIDER_REMOVED
+  ]
   pending: []
 io.opaa.permission.AssetGrantHistoryCause:
   attributes: [AssetGrantHistory.cause]

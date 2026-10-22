@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt durch ADR-0053 Entscheidung 9
+Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt durch ADR-0053 Entscheidung 9
 
 ## Kontext
 
@@ -32,8 +32,9 @@ Innerhalb einer Mikrosekunde läuft die Quelle voraus und fällt auf die Datenba
 sie wieder größer ist; nach einem Rückwärtssprung um Δ beträgt der Vorlauf Δ, bis die Uhr die letzte
 Grenze überschritten hat. Alle Schreiber der Historientabellen beziehen ihre Grenzen aus dieser einen
 Quelle: `PermissionHistoryService` (Grants, Gruppenmitgliedschaften, Fähigkeiten),
-`AssetVisibilityHistoryService`, `AssetOwnershipHistoryService`, `AccountStateHistoryService`,
-`SpaceMembershipHistoryService` und `PermissionTransferService`.
+`AssetVisibilityHistoryService`, `AssetOwnershipHistoryService`, `SpaceMembershipHistoryService`,
+`PermissionTransferService` und die Datenbankfunktion `account_state_reconcile`, die die
+Kontozustandshistorie ganz in der Datenbank schließt und öffnet.
 
 ### 2. Die Invariante der Tabellen
 
@@ -80,7 +81,7 @@ mit einer eigenen Abfrage auf der Verbindung der laufenden Transaktion.
 - Prozesslokale Monotonie in der JVM — gilt nur für einen Prozess; zwei Instanzen erzeugen für dasselbe Objekt leere oder verschränkte Intervalle.
 - Monotonie je Objekt aus der jeweiligen Historientabelle — gäbe die globale Ordnung über Objekte und Tabellen auf, auf der die Kombinationszustände beruhen (Entscheidung 2), und formulierte die Fachlogik je Tabelle ein zweites Mal.
 - Sperre auf einer Zeile statt Advisory-Lock — hielte die Vergabe bis zum Ende jeder Transaktion an und machte langlaufende Abgleiche zum Engpass aller Rechteänderungen.
-- Wert im `INSERT` erzeugen (Default oder Trigger) — die lückenlose Verkettung braucht den Wert in der JVM für das `UPDATE` der Vorgängerzeile.
+- Wert im `INSERT` erzeugen (Default oder Trigger) — ein Schreiber in der JVM braucht den Wert dort für das `UPDATE` der Vorgängerzeile; schließt und öffnet die Datenbank selbst, nimmt sie ihn aus derselben Quelle.
 - Grenze nur bei Gleichheit anheben — prüft gegen den gelesenen statt den vergebenen Wert, verteilt die Korrektheit über alle Aufrufstellen.
 - Nichts tun („kürzer als ein Tick muss nicht rekonstruierbar sein") — eine Nachweiszusage, die von der Wirtsplattform abhängt, ist keine.
 

@@ -140,6 +140,12 @@ in keiner der beiden Listen steht. Der Ablauf eines neuen Werts:
    scheitern.
 2. **Release N+1:** Wert nach `readable` verschieben und schreiben. Die laufende Version N kennt ihn.
 
+**Bis zur Versionsgrenze `v0.1.0`** darf ein neuer Wert sofort unter `readable` stehen und
+geschrieben werden: Auf `v0.1.0` wird nur mit angehaltenen Instanzen aktualisiert
+([Versionsgrenzen ohne Rolling Update](#versionsgrenzen-ohne-rolling-update)), keine frühere Version
+läuft daneben. Das gilt nur, solange `v0.1.0` noch nicht erschienen ist; ab dann für jeden neuen Wert
+der Weg über `pending`.
+
 Ein neu persistiertes Enum (eine neue Spalte) steht sofort ganz unter `readable`: Die
 Vorgängerversion kennt die Spalte nicht. Ein entfernter Wert ist ein Contract: Zuerst schreibt ein
 Changeset die Zeilen um, dann verlässt der Wert Enum und Verzeichnis.

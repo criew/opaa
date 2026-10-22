@@ -109,7 +109,11 @@ data:
     evaluations: keine
   - id: account-state-history
     title: Kontozustandshistorie
-    purpose: Nachweis, wann ein Konto gesperrt oder aktiv war (Rechtehistorie)
+    purpose: >-
+      Nachweis, wann ein Konto nutzbar war und wann nicht (Rechtehistorie): Sperre durch den
+      Verzeichnisabgleich, durch die Verwaltung oder wegen Inaktivität, Ablauf, offene
+      Einladung, abgeschaltete lokale
+      Kontenverwaltung, abgeschalteter oder gelöschter Anmeldeanbieter
     personalReference: EMPLOYEE
     tables:
       - name: account_state_history
@@ -117,14 +121,19 @@ data:
         nonPersonalColumns: [id, organization_id, created_at]
     storage: Anwendungsdatenbank
     retention:
-      rule: Höchstdauer der Rechtehistorie, Voreinstellung 36 Monate nach Ende des Intervalls
+      rule: >-
+        Höchstdauer der Rechtehistorie, Voreinstellung 36 Monate nach Ende des Intervalls; die
+        Zeiträume eines gelöschten Kontos gehen mit ihm
       settings: [permission_history_retention_settings.retention_months]
     visibility: [AUDITOR über die Stichtagsauskunft]
     accessPaths: [UI, API, DATABASE]
-    deletion: Retention-Lauf der Rechtehistorie
+    deletion: Retention-Lauf der Rechtehistorie; mit dem Konto
     evaluations: >-
-      Stichtagsauskunft je Objekt: Sperrzeiten einer dort genannten Person kürzen ihre
-      Zugriffszeiträume und sind an der Lücke ablesbar; keine Zeitreihe je Person
+      Stichtagsauskunft je Objekt: Zeiten, in denen eine dort genannte Person ihr Konto nicht
+      nutzen konnte, kürzen ihre Zugriffszeiträume und sind an der Lücke ablesbar; über die
+      Datenbank auch der Grund (Sperre, Ablauf, Einladung, Anbieter); Anmeldesperren nach
+      Fehlversuchen werden bewusst nicht festgehalten; keine Zeitreihe je Person in der
+      Oberfläche
   - id: settings-editors
     title: Bearbeitungsvermerke verwalteter Einstellungen
     purpose: Wer eine verwaltete Einstellung zuletzt geändert hat

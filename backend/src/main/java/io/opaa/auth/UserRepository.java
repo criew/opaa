@@ -180,8 +180,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               + "   AS space_membership_history,"
               + " (SELECT count(*) FROM asset_ownership_history WHERE owner_user_id = :id)"
               + "   AS asset_ownership_history,"
-              + " (SELECT count(*) FROM account_state_history WHERE user_id = :id)"
-              + "   AS account_state_history,"
               + " (SELECT count(*) FROM connected_accounts WHERE user_id = :id)"
               + "   AS connected_accounts",
       nativeQuery = true)
@@ -214,8 +212,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long getSpaceMembershipHistory();
 
     long getAssetOwnershipHistory();
-
-    long getAccountStateHistory();
 
     long getConnectedAccounts();
   }

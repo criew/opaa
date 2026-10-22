@@ -14,8 +14,9 @@ import java.time.Instant;
  * docs/features/security-and-compliance.md puts the history under the same logic as the protocol.
  *
  * <p>This is a second axis next to ADR-0016, not a replacement for it: the history still outlives
- * the deletion of the <em>object</em> it describes (library, group, grant) and the deletion of an
- * account. Only time removes a row.
+ * the deletion of the <em>object</em> it describes (library, group, grant), and its person columns
+ * refuse the deletion of an account. Only time removes a row - and an account's own state intervals
+ * go with the account, because alone they name no access.
  *
  * <p>{@code lastCutoff} carries the progress of {@link PermissionHistoryRetentionDeletionService},
  * not a configured value: the latest cutoff any pass has deleted by. It is a <b>high-water mark</b>
@@ -23,6 +24,10 @@ import java.time.Instant;
  * own cutoff - what is deleted does not come back. It is therefore also the boundary of what the
  * Stichtag reconstruction can still answer, which is why {@link
  * PermissionHistoryRetentionService#retentionCutoff()} hands it out without a rights check.
+ *
+ * <p>{@code accountStateCompleteSince} is the introduction of the complete account-state history:
+ * from then on every way an account became unusable left an interval; before it only the
+ * directory's locks did. Written once by its migration.
  *
  * <p>Read-only end to end - every field is {@code insertable = false, updatable = false} and there
  * is no setter, so the two write paths of {@link PermissionHistoryRetentionSettingsRepository} stay
@@ -56,6 +61,9 @@ public class PermissionHistoryRetentionSettings {
   @Column(name = "updated_at", insertable = false, updatable = false)
   private Instant updatedAt;
 
+  @Column(name = "account_state_complete_since", insertable = false, updatable = false)
+  private Instant accountStateCompleteSince;
+
   protected PermissionHistoryRetentionSettings() {}
 
   public Integer getId() {
@@ -72,5 +80,9 @@ public class PermissionHistoryRetentionSettings {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public Instant getAccountStateCompleteSince() {
+    return accountStateCompleteSince;
   }
 }

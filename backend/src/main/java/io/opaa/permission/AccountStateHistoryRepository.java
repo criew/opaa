@@ -3,7 +3,6 @@ package io.opaa.permission;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,8 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The Stichtagsauskunft is the only reading path (ADR-0036, Entscheidung 8 - "kein Verlauf am Konto
- * neben der Stichtagsauskunft"); the open-interval lookup serves the writer. {@code
- * HistoryReadPathTest} keeps it that way.
+ * neben der Stichtagsauskunft"); the database writes the rows. {@code HistoryReadPathTest} keeps it
+ * that way.
  */
 public interface AccountStateHistoryRepository
     extends JpaRepository<AccountStateHistory, UUID>, PermissionHistorySweeper {
@@ -30,8 +29,6 @@ public interface AccountStateHistoryRepository
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("delete from AccountStateHistory h where h.validTo is not null and h.validTo < :cutoff")
   int deleteClosedIntervalsEndingBefore(@Param("cutoff") Instant cutoff);
-
-  Optional<AccountStateHistory> findByUserIdAndValidToIsNull(UUID userId);
 
   /**
    * The {@link AccountState#LOCKED} intervals of {@code userIds} that overlap {@code [from, to)}.
@@ -50,10 +47,14 @@ public interface AccountStateHistoryRepository
       @Param("to") Instant to,
       Pageable page);
 
+  /** The database function behind {@link AccountStateHistoryService#recordReachedExpiries}. */
+  @Query(value = "SELECT account_state_record_reached_expiries(:limit)", nativeQuery = true)
+  int recordReachedExpiries(@Param("limit") int limit);
+
   /**
-   * Test-only cleanup helper - {@code user_id} is {@code ON DELETE RESTRICT}; see {@link
-   * AssetGrantHistoryRepository#deleteBySubjectUserIdIn} for the full reasoning and for why
-   * {@code @Transactional} is required on a derived delete declared here.
+   * Test-only cleanup helper for rows a test wrote itself; see {@link
+   * AssetGrantHistoryRepository#deleteBySubjectUserIdIn} for why {@code @Transactional} is required
+   * on a derived delete declared here.
    */
   @Transactional
   void deleteByUserIdIn(Collection<UUID> userIds);

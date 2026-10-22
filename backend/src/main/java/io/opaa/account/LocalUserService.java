@@ -488,10 +488,11 @@ public class LocalUserService {
    * (ADR-0033, Entscheidung 11) - in practice one that was never used; every other one is locked,
    * not deleted. What the account holds elsewhere - the diagnostic impersonation grants it issued,
    * its personal space - is ended by the listeners of {@link LocalAccountDeletionEvent} inside this
-   * transaction; credentials, tokens, memberships and the pseudonym mapping follow by the schema's
-   * cascades, and a grant of the anlassbezogene Klärung keeps the person as a pseudonym once it is
-   * no longer open or usable - before that it refuses the deletion. The refusal names the blocking
-   * tables in the log only - the response says "referenced", nothing more.
+   * transaction; credentials, tokens, memberships, the account's own state intervals and the
+   * pseudonym mapping follow by the schema's cascades, and a grant of the anlassbezogene Klärung
+   * keeps the person as a pseudonym once it is no longer open or usable - before that it refuses
+   * the deletion. The refusal names the blocking tables in the log only - the response says
+   * "referenced", nothing more.
    */
   @Transactional
   public void delete(CurrentUser actor, UUID userId) {
@@ -567,9 +568,6 @@ public class LocalUserService {
     }
     if (counts.getAssetOwnershipHistory() > 0) {
       blockers.add("asset_ownership_history");
-    }
-    if (counts.getAccountStateHistory() > 0) {
-      blockers.add("account_state_history");
     }
     if (counts.getConnectedAccounts() > 0) {
       blockers.add("connected_accounts");
