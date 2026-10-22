@@ -768,18 +768,24 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
   - **Geschrieben wird in der Datenbank.** Trigger auf `users`, `local_credentials` und
     `oidc_providers` werten die Regel von `AccountUsability` nach jeder Änderung neu aus, die sie
     ändern kann (`account_state_reconcile`), in der Transaktion der Änderung, unter einer Sperre je
-    Konto (`FOR NO KEY UPDATE` auf der `local_credentials`-Zeile eines lokalen Kontos, sonst auf
-    der `users`-Zeile: eine Zeilensperre belegt anders als eine Advisory-Sperre keinen Eintrag der
-    gemeinsamen Sperrtabelle, sodass Migration und Anbieterschalter über beliebig viele Konten in
-    eine Transaktion passen; und weil die Anwendung `users` vor `local_credentials` schreibt, greift
-    eine Änderung der Zugangsdaten nie nach `users` und kann so nicht gegen sie laufen) und mit den
-    Grenzen der Uhr aus ADR-0032. Jede Neubewertung desselben Kontos wartet auf diese eine Sperre,
-    bis die andere Transaktion festgeschrieben ist, und liest danach neu; die zuletzt
-    festschreibende sieht damit beide Änderungen, und die Grenzen eines Kontos steigen in der
-    Reihenfolge der Festschreibung. Höchstens ein offenes Intervall je Konto erzwingt
+    Konto (`FOR NO KEY UPDATE`: jede Neubewertung sperrt die `local_credentials`-Zeile, sofern es
+    sie gibt, ein nicht lokales Konto vorher seine `users`-Zeile — dieselbe Reihenfolge, in der die
+    Anwendung schreibt; eine Änderung der Zugangsdaten eines lokalen Kontos greift nie nach `users`.
+    Eine Zeilensperre belegt anders als eine Advisory-Sperre keinen Eintrag der gemeinsamen
+    Sperrtabelle, sodass Migration und Anbieterschalter über beliebig viele Konten in eine
+    Transaktion passen; der Schalter der lokalen Konten sperrt die Zugangsdaten vorab in der
+    Reihenfolge der Kennung, wie der Ablauf-Lauf) und mit den Grenzen der Uhr aus ADR-0032. Jede
+    Neubewertung desselben Kontos wartet auf die gemeinsame Zugangsdaten-Sperre, bis die andere
+    Transaktion festgeschrieben ist, und liest danach neu; die zuletzt festschreibende sieht damit
+    beide Änderungen, und die Grenzen eines Kontos steigen in der Reihenfolge der Festschreibung.
+    Auch eine Übergabe an einen Anbieter, die den Aussteller ändert und die Zugangsdaten löscht,
+    ist so mit einer gleichzeitigen Sperre geordnet; wer auf sie gewartet hat, liest den Aussteller
+    neu und bewertet das Konto als Anbieterkonto. Verbleibend: In einem schmalen Fenster kann eine
+    Übergabe gegen eine gleichzeitige Änderung der Zugangsdaten deadlocken (die Schlüsseländerung
+    an `users` gegen die Fremdschlüsselprüfung beim Schreiben der Historie); Postgres bricht dann
+    eine der beiden ab, eine falsche Kette entsteht nicht. Höchstens ein offenes Intervall je Konto erzwingt
     `uk_account_state_history_open`. Restrisiko wie bei ADR-0032: Wer als Eigentümer der Tabellen
-    Trigger abschaltet, `TRUNCATE` ausführt oder die Historie per SQL ändert, umgeht das. So hält jeder Schreibweg den Übergang fest,
-    gleich auf welcher Instanz und von welcher Version er kommt, auch eine Handkorrektur per SQL. Nur
+    Trigger abschaltet, `TRUNCATE` ausführt oder die Historie per SQL ändert, umgeht das. So hält jeder Schreibweg den Übergang fest, gleich auf welcher Instanz und von welcher Version er kommt, auch eine Handkorrektur per SQL. Nur
     ein Ablauf tritt ohne Schreibzugriff ein; ihn hält `AccountStateExpirySweep` minütlich fest, mit
     einer Grenze nicht vor dem Ablaufdatum, höchstens 500 Konten je Lauf. Bis dahin nennt die
     Auskunft das Konto noch: Sie überschätzt den Kreis um diesen Takt, bei einem Massenablauf von

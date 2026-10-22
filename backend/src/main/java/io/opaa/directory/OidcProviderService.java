@@ -608,6 +608,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
     }
     Map<UUID, User> byId = new HashMap<>();
     regular.forEach(user -> byId.put(user.getId(), user));
+    credentials.lockInIdOrder(byId.keySet());
     credentials.invalidateSessionsIssuedBefore(
         byId.keySet(), LocalTokenRevocationService.cutoffFor(now), now);
     List<UUID> withSessions = refreshTokens.findUserIdsWithActiveTokens(byId.keySet(), now);
