@@ -53,6 +53,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | M-02 | ja | {{faktenblatt:datenfluesse}}; der Wächter lässt den Build scheitern, wenn eine Verbindung nach außen keinen Eintrag hat ([Was bei jeder Änderung geprüft wird](../../handbuch/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird)) | Faktenblatt, Test |
 | M-03 | teilweise; die Ziele sind je Version beschrieben und die Modelle im Haus betreibbar, ein Betrieb ganz ohne Internet ist im Projekt nicht als Probe belegt | {{faktenblatt:datenfluesse}}, [OpenAI-kompatible Server](../../handbuch/modelle.md#vllm--openai-kompatible-server) | Faktenblatt, Handbuch |
 | M-04 | ja | [Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy) | Handbuch, Konfiguration |
+| M-05 | ja; OPAA ruft den eingetragenen Endpunkt jedes Modells direkt auf, ohne Dienst des Projekts dazwischen | [LLM-Anbieter](../../handbuch/modelle.md#llm-anbieter), {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
 
 ## D · Datenschutz und Nachvollziehbarkeit
 

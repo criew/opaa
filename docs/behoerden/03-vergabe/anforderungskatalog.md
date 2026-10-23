@@ -56,6 +56,7 @@ die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmat
 | M-02 | Für jede Version liegt eine vollständige Liste der Verbindungen nach außen vor: Ziel, übermittelte Daten, Anlass, Abschaltbarkeit. | Kann | Liste der Datenflüsse |
 | M-03 | Lässt sich ohne Verbindung ins Internet betreiben, wenn alle Modelle im Haus laufen. | Kann | Beschreibung |
 | M-04 | Leitet ausgehende Verbindungen auf Wunsch ausschließlich über einen Ausgangsproxy der Behörde. | Kann | Konfigurationsbeschreibung |
+| M-05 | Ruft die Modelle direkt über ihre Schnittstelle auf; dafür ist kein Vermittlungsdienst, Proxy oder Konto beim Anbieter der Software nötig. | Muss | Beschreibung der Modellanbindung |
 
 ## D · Datenschutz und Nachvollziehbarkeit
 
