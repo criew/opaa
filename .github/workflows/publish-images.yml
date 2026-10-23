@@ -261,7 +261,8 @@ jobs:
 
   # The update package for authorities (docs/releases.md, "Update-Paket"): runs the completeness
   # guard of the compliance manifest, then update_package.py builds fact sheets, delta to the
-  # previous final release, license overview and the templates for authorities into one archive.
+  # previous final release, license overview, the CycloneDX SBOMs of backend and frontend and the
+  # templates for authorities into one archive; the SBOMs also lie beside it for the release.
   # publish waits for this job, so an incomplete manifest stops a release before any tag is set. Like the
   # image builds of a release it takes nothing from a cache: no Gradle, pnpm or gha cache.
   update-package:
@@ -331,6 +332,12 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
+      # cdxgen for the frontend SBOM, every package fixed by its lockfile; no install scripts and
+      # no optional platform binaries, which the pnpm scan does not use. Same install as sbom.yml.
+      - name: cdxgen installieren
+        working-directory: .github/tools/cdxgen
+        run: pnpm install --frozen-lockfile --ignore-scripts --no-optional
+
       - name: Update-Paket erzeugen
         env:
           TAG: ${{ github.ref_name }}
@@ -350,9 +357,9 @@ jobs:
           # "Re-run failed jobs" builds the same files again under the same name.
           overwrite: true
 
-  # Signed SLSA provenance for the archive, stored with GitHub, so `gh attestation verify` ties the
-  # asset of the release to this workflow and commit. Kept apart from update-package, so no step
-  # that runs Gradle or pnpm ever holds the OIDC token.
+  # Signed SLSA provenance for the archive and the SBOMs beside it, stored with GitHub, so
+  # `gh attestation verify` ties each asset of the release to this workflow and commit. Kept apart
+  # from update-package, so no step that runs Gradle or pnpm ever holds the OIDC token.
   update-package-attestation:
     needs: update-package
     runs-on: ubuntu-latest
@@ -368,7 +375,9 @@ jobs:
 
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: ${{ runner.temp }}/update-package/*.tar.gz
+          subject-path: |
+            ${{ runner.temp }}/update-package/*.tar.gz
+            ${{ runner.temp }}/update-package/*.cdx.json
 
   # Joins the platform digests of one image into a manifest index and gives the index the tags -
   # the first moment a tag of this run appears. Each platform's SBOM and provenance attestation
@@ -610,7 +619,8 @@ jobs:
   # The GitHub release follows images, chart and update package, so its notes never announce an
   # artifact that failed to publish. Notes are generated from the merged PRs, grouped by
   # .github/release.yml; the fixed part with images, chart, installation and update package comes
-  # from deploy/helm/ci/release-notes.sh. The attested archive and its .sha256 file become assets.
+  # from deploy/helm/ci/release-notes.sh. The attested archive with its .sha256 file and the attested
+  # SBOMs become assets.
   release:
     needs: [publish, chart, chart-attestation, update-package-attestation]
     if: startsWith(github.ref, 'refs/tags/v')

@@ -11,10 +11,12 @@ the version of --tag among the tags reachable from --commit (default: the tag). 
 never count; it prints nothing before the first final release.
 
 `build` describes the checked-out commit. If the tag exists it must point there; otherwise the run
-is a trial and the package says so. It renders fact sheets and manifest delta with Gradle, checks
-the licenses of backend and frontend (frontend/node_modules must be installed) and writes
-opaa-update-paket-<version>.tar.gz with its .sha256 file into --out. Without a previous final
-release the delta starts from the oldest root commit, which has no manifest. Fact sheet
+is a trial and the package says so. It renders fact sheets, manifest delta and backend SBOM with
+Gradle and the frontend SBOM with cdxgen, checks the licenses of backend and frontend (the
+node_modules of frontend/ and .github/tools/cdxgen/ must be installed) and writes
+opaa-update-paket-<version>.tar.gz with its .sha256 file and both SBOMs into --out; the package
+holds the SBOMs under sbom/. Without a previous final release the delta starts from the oldest root
+commit, which has no manifest.
 The templates of docs/behoerden/ go to vorlagen/, the update note also to the top. In them, fact
 sheet placeholders become links to faktenblaetter/ and links out of the package point to the tag
 (of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
@@ -47,6 +49,7 @@ import sys
 import tarfile
 import tempfile
 import urllib.parse
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -63,6 +66,12 @@ FACT_SHEETS = Path("backend/build/compliance/faktenblaetter")
 DELTA = Path("backend/build/compliance/delta")
 DELTA_FILES = ("manifest-delta.md", "manifest-delta.json")
 CYCLONEDX = Path("backend/build/reports/cyclonedx/application.cdx.json")
+# cdxgen as installed from its own lockfile (CDXGEN_INSTALL in that directory); sbom.yml for main
+# installs and calls it the same way, test_update_package.py holds both equal.
+CDXGEN_TOOL = Path(".github/tools/cdxgen")
+CDXGEN = CDXGEN_TOOL / "node_modules" / ".bin" / "cdxgen"
+CDXGEN_INSTALL = "pnpm install --frozen-lockfile --ignore-scripts --no-optional"
+SBOM_DIR = "sbom/"
 DEFAULT_REPOSITORY = "criew/opaa"
 PREFIX = "opaa-update-paket-"
 NOTICE = "> Fakten aus dem Code; rechtliche Bewertung bleibt bei der Behörde."
@@ -754,6 +763,9 @@ def readme(release: Release) -> str:
         " Messdatum; fehlende Werte stehen als „nicht gemessen“ da |",
         "| `faktenblaetter/` | die Faktenblätter dieser Version und `faktenblaetter.json` |",
         "| `lizenzen/` | Lizenzübersicht der ausgelieferten Abhängigkeiten von Backend und Frontend |",
+        f"| `{SBOM_DIR}` | Stücklisten (SBOM, CycloneDX) der ausgelieferten Abhängigkeiten,"
+        f" `{sbom_name('backend', release)}` und `{sbom_name('frontend', release)}`;"
+        " dieselben Dateien hängen am GitHub-Release |",
         "| `update-vermerk.md` | Vorlage für den Update-Vermerk der Behörde |",
         "| `vorlagen/` | alle Vorlagen für Behörden mit ihren Ordnerübersichten; Faktenblatt-Verweise"
         " führen auf `faktenblaetter/`, Verweise ins Repository auf den Stand dieser Version |",
@@ -938,19 +950,52 @@ def templates_of(templates: Path) -> list[Path]:
                   if p.is_file() and not (p.parent == templates and p.name in AUTHOR_RULES))
 
 
+def sbom_name(part: str, release: Release) -> str:
+    return f"opaa-{part}-{release.version}.cdx.json"
+
+
+def pinned_sbom(source: Path, part: str, release: Release) -> bytes:
+    """The CycloneDX SBOM `source` of `part` with time and serial number of the release instead of
+    the generator run and without the generator's annotations, which name the day of the run (cdxgen
+    adds a summary); so the same commit yields the same file. The described component carries the
+    release version, also in its purl; its bom-ref stays. Anything else fails the run."""
+    try:
+        bom = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise PackageError(f"{part} SBOM {source} is unreadable: {error}") from error
+    if not isinstance(bom, dict) or bom.get("bomFormat") != "CycloneDX" or not bom.get("components"):
+        raise PackageError(f"{part} SBOM {source} is no CycloneDX SBOM with components")
+    identity = f"https://github.com/{release.repository}/commit/{release.commit}#{sbom_name(part, release)}"
+    bom["serialNumber"] = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, identity)}"
+    bom.pop("annotations", None)
+    if not isinstance(bom.get("metadata"), dict):
+        bom["metadata"] = {}
+    bom["metadata"]["timestamp"] = datetime.datetime.fromtimestamp(
+        release.epoch, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    component = bom["metadata"].get("component")
+    if isinstance(component, dict):
+        written = component.get("version")
+        purl = component.get("purl")
+        if written and isinstance(purl, str) and f"@{written}" in purl:
+            component["purl"] = purl.replace(f"@{written}", f"@{release.version}", 1)
+        component["version"] = release.version
+    return (json.dumps(bom, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
 def assemble(
     release: Release,
     fact_sheets: Path,
     delta: Path,
     operations: Path,
     licenses: list[Path],
+    sboms: dict[str, Path],
     templates: Path,
     out: Path,
 ) -> Path:
-    """Writes <name>.tar.gz and <name>.tar.gz.sha256 into `out`; returns the archive. `templates`
-    is docs/behoerden/ of the checkout the release is built from. Placeholders and links are
-    resolved in template text only, never in text from elsewhere such as pull request titles or
-    upgrade notes."""
+    """Writes <name>.tar.gz, <name>.tar.gz.sha256 and the SBOMs, by part such as "backend", into
+    `out`; returns the archive. `templates` is docs/behoerden/ of the checkout the release is built
+    from. Placeholders and links are resolved in template text only, never in text from elsewhere
+    such as pull request titles or upgrade notes."""
     name = PREFIX + release.version
     files: dict[str, bytes] = {"LIESMICH.md": readme(release).encode()}
     sheets = sorted(p for p in fact_sheets.glob("*") if p.is_file()) if fact_sheets.is_dir() else []
@@ -970,6 +1015,10 @@ def assemble(
         if not report.is_file():
             raise PackageError(f"license overview {report} is missing")
         files[f"lizenzen/{report.name}"] = report.read_bytes()
+    loose = {sbom_name(part, release): pinned_sbom(source, part, release)
+             for part, source in sorted(sboms.items())}
+    for file, content in loose.items():
+        files[SBOM_DIR + file] = content
     checkout = templates.parents[1]
     prefix = templates.relative_to(checkout).as_posix() + "/"
     sources = {prefix + p.relative_to(templates).as_posix(): p for p in templates_of(templates)}
@@ -987,6 +1036,8 @@ def assemble(
     ).encode()
 
     out.mkdir(parents=True, exist_ok=True)
+    for file, content in loose.items():
+        (out / file).write_bytes(content)
     archive = out / f"{name}.tar.gz"
     with open(archive, "wb") as raw, gzip.GzipFile(
         filename="", mode="wb", fileobj=raw, mtime=release.epoch, compresslevel=9
@@ -1023,7 +1074,15 @@ def gradle_command(version: str, day: str, from_ref: str, to_ref: str, repositor
     return gradle
 
 
-def build(args: argparse.Namespace) -> Path:
+def frontend_sbom_command(target: Path) -> list[str]:
+    """The cdxgen run in frontend/ for the SBOM of what ships: the pnpm lockfile without
+    devDependencies (docs/sbom.md)."""
+    return [str(ROOT / CDXGEN), "-t", "pnpm", "--no-babel", "--required-only",
+            "--project-name", "opaa-frontend", "-o", str(target), "."]
+
+
+def build(args: argparse.Namespace) -> list[Path]:
+    """Builds the package; returns archive, its .sha256 file and the SBOMs beside it."""
     version = release_version(args.tag)
     if version is None:
         raise PackageError(f"{args.tag} is no release tag vX.Y.Z or vX.Y.Z-<pre> (docs/releases.md)")
@@ -1055,10 +1114,26 @@ def build(args: argparse.Namespace) -> Path:
     day = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).date().isoformat()
     gradle = gradle_command(version, day, previous or from_commit, args.tag if tag_commit else head,
                             args.repository, args.labelled_prs)
-    run(gradle, ROOT / "backend", stdout=None)
+    if not (ROOT / CDXGEN).exists():
+        raise PackageError(f"{CDXGEN} is missing; run `{CDXGEN_INSTALL}` in {CDXGEN_TOOL}")
 
     with tempfile.TemporaryDirectory() as work:
         reports = Path(work)
+        frontend_sbom = reports / "frontend.cdx.json"
+        # cdxgen reads only the lockfile and node_modules, so it runs while Gradle builds.
+        with open(reports / "cdxgen.log", "w+", encoding="utf-8") as log:
+            cdxgen = subprocess.Popen(frontend_sbom_command(frontend_sbom), cwd=ROOT / "frontend",
+                                      stdout=log, stderr=subprocess.STDOUT)
+            try:
+                run(gradle, ROOT / "backend", stdout=None)
+            except BaseException:
+                cdxgen.kill()
+                raise
+            finally:
+                code = cdxgen.wait()
+            if code != 0:
+                log.seek(0)
+                raise PackageError(f"{' '.join(cdxgen.args)} failed ({code}): {log.read().strip()}")
         pnpm = reports / "pnpm-licenses.json"
         pnpm.write_text(run(["pnpm", "licenses", "list", "--prod", "--json"], ROOT / "frontend"),
                         encoding="utf-8")
@@ -1083,9 +1158,12 @@ def build(args: argparse.Namespace) -> Path:
             ),
             operations_dir,
         )
-        return assemble(release, fact_sheets=ROOT / FACT_SHEETS, delta=ROOT / DELTA,
-                        operations=operations_dir, licenses=[backend, frontend], templates=TEMPLATES,
-                        out=Path(args.out))
+        sboms = {"backend": ROOT / CYCLONEDX, "frontend": frontend_sbom}
+        archive = assemble(release, fact_sheets=ROOT / FACT_SHEETS, delta=ROOT / DELTA,
+                           operations=operations_dir, licenses=[backend, frontend], sboms=sboms,
+                           templates=TEMPLATES, out=Path(args.out))
+        return [archive, archive.with_name(archive.name + ".sha256"),
+                *(archive.with_name(sbom_name(part, release)) for part in sorted(sboms))]
 
 
 def main(argv: list[str]) -> int:
@@ -1124,9 +1202,8 @@ def main(argv: list[str]) -> int:
             for written in write_operations(operations(repo, *sides, delta_json), Path(args.out)):
                 print(written)
         else:
-            archive = build(args)
-            print(archive)
-            print(f"{archive}.sha256")
+            for written in build(args):
+                print(written)
     except PackageError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
