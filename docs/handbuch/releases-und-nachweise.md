@@ -75,13 +75,17 @@ gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
 
 ## Das Update-Paket
 
-Am GitHub-Release jeder Version, auch eines Vorab-Release, hängt `opaa-update-paket-X.Y.Z.tar.gz`.
-Es ist für die Stellen gedacht, die ein Update verantworten, ohne den Code zu lesen: die
-Faktenblätter der Version, die Änderungen der Fakten seit dem vorigen finalen Release mit
-Stufenvorschlag, die Folgen für den Betrieb, die Lizenzübersicht der Abhängigkeiten, die Vorlage
-für den Update-Vermerk und unter `vorlagen/` alle Behördenvorlagen, deren Verweise auf die
-Faktenblätter im Paket führen. Die Teile im Einzelnen und wie man ein Delta über mehrere Versionen
-erzeugt, beschreibt [Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release).
+Jedes Release, auch ein Vorab-Release, hat das Update-Paket `opaa-update-paket-X.Y.Z.tar.gz`.
+Es richtet sich an alle, die ein Update verantworten, ohne den Code zu lesen, und enthält:
+
+- die Faktenblätter der Version
+- die Änderungen seit dem vorigen Release mit Stufenvorschlag
+- die Folgen für den Betrieb
+- die Lizenzübersicht
+- die Vorlage für den Update-Vermerk
+- unter `vorlagen/` alle Behördenvorlagen, verlinkt mit den Faktenblättern
+
+Einzelheiten: [Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release).
 
 Das Paket trägt eine signierte Herkunftsattestierung, und `SHA256SUMS` im Paket nennt die
 Prüfsumme jeder Datei. Herunterladen und prüfen:
