@@ -40,7 +40,8 @@
 > Konfigurationsexport der Instanz (#2558, #2559) und das Offline-Bündel (#2557); außerdem der
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
 > (#2562, #2563, #2566) und die
-> Supportlinien (#2575). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> Bau der Supportlinien aus [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md)
+> (#3017–#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -106,7 +107,7 @@ Ende angefügt, damit die bestehenden Verweise gültig bleiben.
 | # | Beschluss | Wirkung in dieser Spezifikation |
 |---|---|---|
 | 1 | **Kein „standardmäßig aus“** für neue Funktionen. Änderungen mit Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen werden stattdessen in den Release-Notizen und im Update-Paket sichtbar | [Update-Paket](#das-update-paket), [Automatisierung](#automatisierung-und-drift-erkennung); der Vorschlag R1 steht unter [Offene Fragen](#offene-fragen--zukünftige-erweiterungen) als abgelehnt |
-| 2 | **Sicherheitsupdates für bestimmte Versionen mit festem Supportzeitraum** sind gewollt; die Ausgestaltung prüft #2575 | [Dienstvereinbarung](#das-modell-der-dienstvereinbarung), Abschnitt Sicherheitsupdates |
+| 2 | **Sicherheitsupdates für bestimmte Versionen mit festem Supportzeitraum** sind gewollt; ausgestaltet in [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md): das Juni-Release als LTS-Linie, jedes andere bis einen Monat nach dem Nachfolger, Patch-Releases ohne neue Funktion | [Dienstvereinbarung](#das-modell-der-dienstvereinbarung), Abschnitt Sicherheitsupdates |
 | 3 | **Kein rechtlicher Prüfer.** Redaktionelle Vorlagen tragen den Hinweis „Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.“ | [Kopfvermerk und Haftungshinweis](#kopfvermerk-und-haftungshinweis) |
 | 4 | **Keine Aussage zur Codeentstehung durch KI-Agenten** in den Markterkundungsunterlagen. Auf ausdrückliche Nachfrage lautet die Antwort: hauptsächlich KI-generiert und menschlich kuratiert | [Behördenreise](#die-behördenreise), Phase 1 |
 | 5 | **Ablage als Markdown in `docs/behoerden/`**, nicht im Handbuch, kein eigener Branch (Ordner und Konventionen: #2545) | [Erzeugungsarten und Ablage](#erzeugungsarten-und-ablage) |
@@ -467,8 +468,10 @@ Delta über drei Versionen ist damit gleich der Zusammenfassung der Einzeldeltas
 **(gebaut, #2556)** Am Release wird das Delta zum vorigen finalen Release erzeugt, bei
 Vorab-Releases ebenso: zum höchsten finalen Tag unter der eigenen Version, das der getaggte Commit
 enthält. Vor dem ersten finalen Release vergleicht es mit einem Stand ohne Manifest, jeder Eintrag
-erscheint als neu. Welches Release bei mehreren Supportlinien als Vorgänger gilt, folgt aus der
-Entscheidung in #2575; bis dahin gilt diese Regel.
+erscheint als neu. Die Regel trägt auch mehrere [Supportlinien](../releases.md#supportlinien): Ein
+Patch-Release vergleicht so mit dem vorigen Release seiner Linie. **(Zielbild, #3020)** Ein
+LTS-Release bekommt zusätzlich das Delta zur vorigen LTS-Linie
+([ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5).
 
 **(gebaut, #2554)** Erzeugt wird das Delta aus `backend/` ohne Netz
 ([ADR-0052, Entscheidung 10](../decisions/0052-compliance-manifest.md#10-delta-zwischen-zwei-versionen)):
@@ -604,8 +607,11 @@ passenden Vorschlag, und die neue Fassung der Anlagen ersetzt die alte erst nach
 
 **Sicherheitsupdates (Beschluss 2).** Kritische Sicherheitsupdates werden sofort eingespielt, mit
 nachträglicher Unterrichtung des Personalrats. Das trägt nur, wenn sie keine neuen Funktionen
-enthalten — deshalb verweist die Vereinbarung auf die Supportlinien mit festem Zeitraum aus #2575. Heute entsteht ein Patch-Release mit
-Codeänderung nur, solange `main` keine neue Funktion trägt ([releases.md](../releases.md#versionsnummern)).
+enthalten — deshalb verweist die Vereinbarung auf die
+[Supportlinien](../releases.md#supportlinien) mit festem Zeitraum: Patch-Releases einer Linie
+bringen keine neue Funktion. Bis die Wartungsbranches gebaut sind (#3017), entsteht ein
+Patch-Release mit Codeänderung nur, solange `main` keine neue Funktion trägt
+([releases.md](../releases.md#versionsnummern)).
 
 **Informationsmappe für den Personalrat.** Rollensicht, Beispiele möglicher und ausgeschlossener
 Auswertungen, Datenfluss zum Modellanbieter, Wirkung des Abschaltens einzelner Funktionen, Glossar,
@@ -666,7 +672,7 @@ Normtext geprüft. Die vollständige Tabelle mit Quellen steht im ersten Komment
 - **[public-sector.md](./public-sector.md)** — Barrierefreiheit (Erklärung zur Barrierefreiheit,
   #2569) und Revisionssicherheit (Anbietungspflicht an das Archiv im Löschkonzept, #2565)
 - **[releases.md](../releases.md)** — Release-Workflow, Attestierung, Upgrade-Hinweise als Quelle der
-  Betriebsfolgen, Supportlinien nach #2575
+  Betriebsfolgen, Supportlinien nach ADR-0054
 - **[sbom.md](../sbom.md)**, **[cve-scanning.md](../cve-scanning.md)** — Nachweise, auf die
   Vergabe- und Sicherheitsvorlagen verweisen
 - **[search-quality-evaluation.md](./search-quality-evaluation.md)** — Quelle der Antwortqualität im
@@ -684,8 +690,9 @@ Normtext geprüft. Die vollständige Tabelle mit Quellen steht im ersten Komment
   dem ersten Konzeptentwurf ausgeschaltet ausgeliefert werden. Stattdessen werden sie in
   Release-Notizen und Update-Paket sichtbar. Offen bleibt die Folge für die Dienstvereinbarung: Reicht
   die Abschaltbarkeit in der Konfiguration, wenn ein Release eine beteiligungspflichtige Funktion
-  sofort aktiv mitbringt, oder braucht es dafür die Supportlinien aus #2575? Klärung gemeinsam mit
-  #2566 und #2575.
+  sofort aktiv mitbringt, oder genügt es, dass die Supportlinien aus ADR-0054 Sicherheitsupdates
+  ohne neue Funktionen liefern und Funktionsreleases planbar zweimal im Jahr kommen? Klärung mit
+  #2566.
 - **Unternehmen** (zurückgestellt, Beschluss 6): Unterlagen für Betriebsrat (§ 87 Abs. 1 Nr. 6
   BetrVG), ISO 27001, NIS2 für Unternehmen und die CRA-Herstellerrolle folgen in einem eigenen
   Vorhaben.
