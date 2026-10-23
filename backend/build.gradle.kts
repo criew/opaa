@@ -392,6 +392,17 @@ registerEvalDomain(
     conversationBaselineTestClass = "io.opaa.eval.VerwaltungConversationBaselineRegressionTest",
 )
 
+// Prompt-injection test set (eval/corpus/prompt-injection): asks every prepared case through the
+// production answer path and reports the attack success rate. Measures only, no baseline and no
+// gate. Needs Docker, not part of build/check.
+registerEvalHarnessTask(
+    "evaluatePromptInjection",
+    "Runs the prompt-injection test set against the configured chat model and writes " +
+        "build/eval-reports/prompt-injection.{json,md}. Needs Docker. Not part of build/check.",
+    "io.opaa.eval.PromptInjectionEvaluationHarnessTest",
+    emptyMap(),
+)
+
 // Fast, Docker-free unit tests for the pure metric math (RetrievalMetrics, MetricsAggregate,
 // CorpusManifest, BaselineComparator — see their Javadoc). Lives in the evalTest source set (not
 // `main`/`test`) so the classes under test never ship in the production jar, but still runs as part
@@ -413,6 +424,7 @@ tasks.register<Test>("evalUnitTest") {
     useJUnitPlatform()
     filter {
         excludeTestsMatching("*RetrievalEvaluationHarnessTest")
+        excludeTestsMatching("*PromptInjectionEvaluationHarnessTest")
         excludeTestsMatching("*BaselineRegressionTest")
     }
 }
