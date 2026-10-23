@@ -79,7 +79,7 @@ Es richtet sich an alle, die ein Update verantworten, ohne den Code zu lesen, un
 - die Faktenblätter der Version
 - die Änderungen seit dem vorigen Release mit Stufenvorschlag
 - die Folgen für den Betrieb
-- die Lizenzübersicht
+- die Lizenzübersicht und die SBOMs je Ökosystem
 - die Vorlage für den Update-Vermerk
 - unter `vorlagen/` alle Behördenvorlagen, verlinkt mit den Faktenblättern
 
@@ -97,12 +97,13 @@ liefert sie auf zwei Wegen:
   eine Provenance (Quell-Commit und Bauparameter). Die SBOM umfasst auch die
   Betriebssystempakete des Basis-Images. Abrufen lassen sich beide mit `docker buildx imagetools
   inspect`; die Befehle stehen unter [Images und Versionen](images-und-laufzeit.md#images-und-versionen).
-- **Je Ökosystem.** Zu jedem Stand von `main` erzeugt die CI je eine CycloneDX-SBOM der
-  ausgelieferten Laufzeit-Abhängigkeiten von Backend und Frontend, ohne Test- und Build-Werkzeuge.
-  Sie liegen 90 Tage als Artefakt am Lauf, nicht am GitHub-Release.
+- **Je Ökosystem.** Zu jedem Release entsteht je eine CycloneDX-SBOM der ausgelieferten
+  Laufzeit-Abhängigkeiten von Backend und Frontend, ohne Test- und Build-Werkzeuge. Sie hängen als
+  `opaa-backend-X.Y.Z.cdx.json` und `opaa-frontend-X.Y.Z.cdx.json` am GitHub-Release und liegen im
+  Update-Paket unter `sbom/`, beide mit Provenance.
 
-Für eine Release-Version ist deshalb die SBOM am Image der Nachweis. Eine Provenance mit
-Signatur, prüfbar mit `gh attestation verify`, liegt am Chart und am Update-Paket.
+Eine Provenance mit Signatur, prüfbar mit `gh attestation verify`, liegt außerdem am Chart und am
+Update-Paket.
 
 ## Schwachstellen
 
