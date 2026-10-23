@@ -34,8 +34,7 @@ ist die Behörde; die oder der Datenschutzbeauftragte (DSB) berät.
   Zugangstokens ([Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md#5-zugangstokens-aus-sicht-der-person)).
 
 Nicht in der Selbstauskunft sind Daten über die Person in Dokumenten, Inhalte anlassbezogener
-Klärungen über sie, das technische Log und Sicherungen beim Betrieb sowie Begründungen von
-Verwaltungs- und Prüfhandeln. Das stellt bei einem Antrag weiterhin die Behörde zusammen.
+Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weiterhin die Behörde zusammen.
 
 ## Aufgaben der Behörde
 
@@ -69,17 +68,14 @@ Antwort am:           [Datum]          durch: [ ]
 
 ## Gut zu wissen
 
-- **Die Selbstauskunft ersetzt keinen Antrag.** Sie ist ein Angebot an die Person, nicht die
-  förmliche Bearbeitung eines Auskunftsantrags. Ein Antrag auf anderem Weg wird bearbeitet wie
-  bisher. Niemand darf verlangen, dass die Person ihre Auskunft vorlegt; das sagt auch die
-  Oberfläche.
-- **Notabschaltung:** Die Systemverwaltung kann die Selbstauskunft abschalten
-  ({{faktenblatt:voreinstellungen#self-disclosure-settings-enabled}}). Die Oberfläche verweist dann auf den Antrag bei der Behörde;
-  Anträge sind dann ganz auf dem Weg oben zu bearbeiten.
-- **Protokoll der Selbstauskunft:** Start und Ende jedes Downloads stehen im Protokoll, ohne Inhalt
+- **Die Selbstauskunft ersetzt keinen Antrag.** Ein Antrag auf anderem Weg wird bearbeitet wie
+  bisher; niemand darf verlangen, dass die Person ihre Auskunft vorlegt.
+- **Notabschaltung** ({{faktenblatt:voreinstellungen#self-disclosure-settings-enabled}}): Die
+  Oberfläche verweist dann auf den Antrag bei der Behörde.
+- **Protokoll:** Start und Ende jedes Downloads stehen ohne Inhalt im Protokoll
   ({{faktenblatt:protokollereignisse#self-disclosure-export-started}},
-  {{faktenblatt:protokollereignisse#self-disclosure-export-finished}}). Die eigenen Protokolleinträge,
-  ohne Pseudonyme und Begründungen, erhält die Person mit ihrer Selbstauskunft.
+  {{faktenblatt:protokollereignisse#self-disclosure-export-finished}}); die eigenen Einträge erhält
+  die Person mit ihrer Selbstauskunft.
 - **Konten lassen sich oft nur sperren.** Ein benutztes Konto ist meist nicht löschbar, weil
   Nachweiseinträge darauf verweisen. Dann bleibt der Personenbezug im Protokoll bestehen; die Behörde
   berücksichtigt das bei der Antwort auf ein Löschbegehren.
