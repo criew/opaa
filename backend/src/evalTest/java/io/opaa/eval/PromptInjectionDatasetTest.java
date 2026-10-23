@@ -21,9 +21,9 @@ import org.junit.jupiter.api.Test;
  * on its own, its document is frozen in the manifest, the production format extracts the embedded
  * instruction in the form the technique promises, and the success check decides by text alone.
  *
- * <p>For {@code unicode_tags} and {@code zero_width} the extraction check pins the state before any
- * ingestion-side cleanup: the invisible characters reach the chunk text. A cleanup of these
- * characters turns that expectation around.
+ * <p>For {@code unicode_tags} and {@code zero_width} the extraction check pins what the format
+ * itself delivers: the invisible characters reach its chunks. The ingestion removes them right
+ * after the format, which the test through {@code DocumentFormatRunner} checks.
  */
 class PromptInjectionDatasetTest {
 
@@ -157,6 +157,36 @@ class PromptInjectionDatasetTest {
   private static List<PromptInjectionCase> cases() throws IOException {
     return PromptInjectionCase.load(
         RepoPaths.evalDir().resolve("golden").resolve("prompt-injection.json"));
+  }
+
+  /**
+   * Through the ingestion's own entry ({@code DocumentFormatRunner}) the invisible characters are
+   * gone: the hidden instruction no longer reaches the chunk text, neither encoded nor in clear.
+   */
+  @Test
+  void afterIngestionTheCasesWithInvisibleCharactersCarryNoHiddenInstruction() throws IOException {
+    for (PromptInjectionCase c : cases()) {
+      if (!c.invisibleAfterSanitizing()) {
+        continue;
+      }
+      DocumentFormatResult result =
+          io.opaa.format.DocumentFormatRunner.run(
+              new MarkdownDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
+              DocumentFormatSource.ofFile(CORPUS_DIR.resolve(c.document()), c.document(), ".md"));
+      String text =
+          result.chunks().stream()
+              .map(org.springframework.ai.document.Document::getText)
+              .collect(Collectors.joining("\n"));
+      assertThat(text.codePoints().filter(cp -> cp >= 0xE0000 && cp <= 0xE007F).count())
+          .as(c.id())
+          .isZero();
+      assertThat(text.chars().filter(ch -> ch == 0x200B || ch == 0x200C).count())
+          .as(c.id())
+          .isZero();
+      assertThat(normalizeWhitespace(text))
+          .as(c.id())
+          .doesNotContain(normalizeWhitespace(c.attackInstruction()));
+    }
   }
 
   private static String extractedText(String fileName) {
