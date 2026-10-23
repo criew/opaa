@@ -484,19 +484,22 @@ Anker innerhalb einer Datei und externe Links bleiben unverändert. Platzhalter 
 Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage oder dem
 Handbuch stammt, etwa Titel von Pull Requests im Delta oder Upgrade-Hinweise in den
 Betriebsfolgen. Neue Vorlagen, Kapitel und Ordner unter `docs/behoerden/` und `docs/handbuch/`
-kommen ohne Änderung am Skript ins Paket.
+kommen ohne Änderung am Skript ins Paket. Der Link
+des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository des Laufs
+(`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
+auf `main`.
 
-**HTML-Fassung.** Danach erzeugt `.github/scripts/package_html.py` mit markdown-it-py (gepinnt in
-`.github/requirements-ci.txt`) zu jeder Markdown-Datei des Pakets eine HTML-Seite daneben, dazu
+**HTML-Fassung.** Danach erzeugt `.github/scripts/package_html.py` mit markdown-it-py (mit
+allen Abhängigkeiten per Hash gepinnt in `.github/requirements-release.txt`, nur als Wheel installiert) zu jeder Markdown-Datei des Pakets eine HTML-Seite daneben, dazu
 `index.html` mit allen Teilen und `style.css` (helles und dunkles Farbschema). Überschriften tragen
 Anker in der Schreibweise von GitHub, `<a id>` bleiben erhalten, ein Front-Matter-Kopf erscheint als
 kleiner Kasten. Links auf Markdown-Dateien führen auf deren HTML-Seite, Links auf einen Ordner auf
 seine `README`. Die Seiten laden nichts aus dem Internet; Mermaid-Diagramme stehen als Code da. Ein
 relativer Link der HTML-Fassung, dessen Datei oder Anker fehlt, bricht den Lauf ab. Prüfsummen und
-Attestierung decken die HTML-Dateien wie alle anderen ab. Der Link
-des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository des Laufs
-(`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
-auf `main`.
+Attestierung decken die HTML-Dateien wie alle anderen ab. Jeder PR prüft
+dieselben Verweise vorab: Der Job `changes` der CI ruft `update_package.py links` auf, ohne
+Faktenblätter und ohne Pfadfilter, sodass ein umbenannter Anker im Handbuch nicht erst das Release
+anhält.
 
 **Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`), Zeitstempel der SBOMs und
 im Archiv sind die Commit-Zeit, die Seriennummern der SBOMs aus Repository, Commit und Dateiname
@@ -530,7 +533,8 @@ läuft. `.github/scripts/test_update_package.py` prüft beides am Workflow.
 ausgecheckten Commit; gibt es das Tag nicht, kennzeichnet `LIESMICH.md` den Lauf als Probelauf.
 Gebraucht werden Java, `pnpm install` in `frontend/`,
 `pnpm install --frozen-lockfile --ignore-scripts --no-optional` in `.github/tools/cdxgen/`,
-`pip install -r .github/requirements-ci.txt` und die Historie mit Tags:
+`pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt`
+und die Historie mit Tags:
 
 ```bash
 gh pr list --state merged --label data-impact --limit 1000 --json number,title,url >/tmp/prs.json

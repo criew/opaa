@@ -208,10 +208,13 @@ def index(heading: str, notice: str | None, titles: dict[str, str], files, names
     return page("index.html", heading, "\n".join(body) + "\n", names)
 
 
-def render(files: dict[str, bytes], heading: str, notice: str | None = None) -> dict[str, bytes]:
+def render(files: dict[str, bytes], heading: str, notice: str | None = None,
+           pending: tuple[str, ...] = ()) -> dict[str, bytes]:
     """The HTML files for the package `files` (path to content): one page beside each Markdown file,
-    index.html with `heading` and `notice`, and style.css."""
-    names = set(files) | {html_path(p) for p in files if p.endswith(".md")} | {"index.html", "style.css"}
+    index.html with `heading` and `notice`, and style.css. `pending` names files the package gets
+    after rendering, such as SHA256SUMS; links and the start page treat them as present."""
+    names = (set(files) | set(pending) | {html_path(p) for p in files if p.endswith(".md")}
+             | {"index.html", "style.css"})
     folders = directories(files)
     site: dict[str, bytes] = {}
     titles: dict[str, str] = {}
@@ -220,7 +223,7 @@ def render(files: dict[str, bytes], heading: str, notice: str | None = None) -> 
         site[html_path(path)] = text.encode("utf-8")
     if "LIESMICH.md" in titles:
         titles["LIESMICH.md"] = "LIESMICH: Inhalt und Prüfung des Pakets"
-    site["index.html"] = index(heading, notice, titles, set(files), names).encode("utf-8")
+    site["index.html"] = index(heading, notice, titles, set(files) | set(pending), names).encode("utf-8")
     site["style.css"] = CSS.encode("utf-8")
     return site
 

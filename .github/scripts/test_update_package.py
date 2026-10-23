@@ -740,16 +740,56 @@ def test_the_readme_names_the_handbook_and_the_html_start_page(tmp_path: Path, i
     assert "| [`handbuch/`](handbuch/README.md) |" in text
 
 
-def test_the_package_job_installs_the_pinned_python_tools() -> None:
-    body = job("update-package")
-    requirements = (HERE.parent / "requirements-ci.txt").read_text(encoding="utf-8")
+RELEASE_INSTALL = "pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt"
 
-    assert re.search(r"^markdown-it-py==\d+\.\d+\.\d+$", requirements, re.M)
-    assert re.search(r"^mdurl==\d+\.\d+\.\d+$", requirements, re.M)
+
+def test_the_package_job_installs_only_hash_pinned_wheels() -> None:
+    body = job("update-package")
+    requirements = (HERE.parent / "requirements-release.txt").read_text(encoding="utf-8")
+    entries = [e for e in requirements.replace("\\\n", " ").splitlines() if e and not e.startswith("#")]
+
+    assert sorted(e.split("==", 1)[0] for e in entries) == ["markdown-it-py", "mdurl"]
+    for entry in entries:
+        assert re.fullmatch(r"[a-z-]+==\d+(\.\d+)+( +--hash=sha256:[0-9a-f]{64})+", entry), entry
     assert "actions/setup-python@" in body
-    install = body.index("pip install -r .github/requirements-ci.txt")
-    assert install < body.index("update_package.py build")
-    assert body.index("gh pr list") < install
+    assert "requirements-ci.txt" not in body and "pytest" not in body
+    install = body.index(RELEASE_INSTALL)
+    assert body.index("gh pr list") < install < body.index("update_package.py build")
+
+
+def ci_job(name: str) -> str:
+    text = (HERE.parent / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    match = re.search(rf"^  {re.escape(name)}:\n(.*?)(?=^  [a-z][a-z-]*:\n|\Z)", text, re.M | re.S)
+    assert match, f"job {name} missing"
+    return match.group(1)
+
+
+def test_every_pull_request_checks_the_links_the_package_would_refuse() -> None:
+    body = ci_job("changes")
+    step = body[body.index("update_package.py links") - 400:body.index("update_package.py links")]
+
+    assert RELEASE_INSTALL in body
+    assert body.index(RELEASE_INSTALL) < body.index("update_package.py links")
+    assert "if:" not in step.rsplit("- name:", 1)[1]
+    assert RELEASE_INSTALL in ci_job("report-script")
+
+
+def test_the_link_check_finds_what_would_stop_the_package(inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n\n[Handbuch](../../handbuch/betrieb.md#ports)\n")
+    assert update_package.check_links(inputs["templates"], inputs["handbook"]) == []
+
+    put_handbook(inputs, "betrieb/kapitel.md", "# Kapitel\n\n[Ziel](../betrieb.md#gibt-es-nicht)\n")
+    assert update_package.check_links(inputs["templates"], inputs["handbook"]) == [
+        "handbuch/betrieb/kapitel.html: ../betrieb.html#gibt-es-nicht"]
+
+    put_handbook(inputs, "betrieb/kapitel.md", "# Kapitel\n\n[Ziel](gibt-es-nicht.md)\n")
+    assert "handbuch/betrieb/kapitel.md" in update_package.check_links(inputs["templates"], inputs["handbook"])[0]
+
+
+def test_the_start_page_of_the_package_links_the_checksums(tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    assert '<a href="SHA256SUMS">SHA256SUMS</a>' in read(archive, "opaa-update-paket-1.2.3/index.html").decode()
 
 
 def test_the_delta_is_rendered_for_the_given_repository() -> None:

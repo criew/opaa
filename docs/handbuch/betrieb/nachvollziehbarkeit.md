@@ -248,7 +248,8 @@ Unterlagen erstellt, etwa zum Datenschutz, zur Informationssicherheit oder zur K
 geordnet nach den Schritten von der Entscheidung bis zum Update. Die Vorlagen schreiben keine Werte
 ab, sondern verweisen auf das Faktenblatt der eingesetzten Version. Deshalb veralten sie nicht mit
 jedem Release. Gelesen werden sie im Update-Paket dieser Version, wo jeder Verweis ein Link ist; die
-Übersicht dort, `docs/behoerden/README.md`, erklärt Aufbau, Kopfvermerk und woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
+Übersicht `docs/behoerden/README.md` (im Paket `vorlagen/README.md`) erklärt Aufbau, Kopfvermerk und
+woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
 `backend/docs/compliance-manifest.md`.
 
 ## Was nicht gebaut ist

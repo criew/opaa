@@ -5,6 +5,7 @@
     update_package.py build --tag <vX.Y.Z[-pre]> --out <dir> [--previous <ref>]
                             [--labelled-prs <file>] [--repository <owner/name>]
     update_package.py operations --from <ref> [--to <ref>] --out <dir> [--delta-json <file>]
+    update_package.py links
 
 `previous` prints the final release tag vX.Y.Z the package compares with: the highest one below
 the version of --tag among the tags reachable from --commit (default: the tag). Pre-release tags
@@ -33,8 +34,12 @@ data flows come from the manifest delta (--delta-json, as `./gradlew complianceD
 and are reported as not determined without it. A delta of other commits or a missing --delta-json
 file fails the run. `build` writes the same files for its interval into the package.
 
-Exit codes: 0 success, 1 failure, 2 usage. Standard library only, except `build`, which needs
-markdown-it-py for the HTML version (.github/requirements-ci.txt).
+`links` checks the links of docs/behoerden/ and docs/handbuch/ as the package and its HTML version
+would hold them, without fact sheets, and prints every link that would fail `build`; CI runs it on
+every pull request.
+
+Exit codes: 0 success, 1 failure, 2 usage. Standard library only, except `build` and `links`, which
+need markdown-it-py for the HTML version (.github/requirements-release.txt).
 """
 
 from __future__ import annotations
@@ -996,6 +1001,49 @@ def pinned_sbom(source: Path, part: str, release: Release) -> bytes:
     return (json.dumps(bom, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
+def documents(templates: Path, handbook: Path, repository: str, ref: str,
+              sheets: dict[str, str] | None) -> dict[str, bytes]:
+    """Templates under vorlagen/, the update note at the top and the handbook under handbuch/, by
+    package path, with links rewritten (relative_links) and, given the text of each fact sheet by
+    name in `sheets`, placeholders resolved; without `sheets` placeholders stay as written. Both
+    directories lie two levels below the checkout."""
+    checkout = templates.parents[1]
+    sources: dict[str, Path] = {}
+    packaged: dict[str, str] = {}
+    for directory, target in ((templates, TEMPLATE_DIR), (handbook, HANDBOOK_DIR)):
+        prefix = directory.relative_to(checkout).as_posix() + "/"
+        for file in markdown_of(directory):
+            source = prefix + file.relative_to(directory).as_posix()
+            sources[source], packaged[source] = file, target + source[len(prefix):]
+    note = templates.relative_to(checkout).as_posix() + "/" + UPDATE_NOTE
+    if note not in sources:
+        raise PackageError(f"update note template {templates / UPDATE_NOTE} is missing")
+    if HANDBOOK_DIR + "README.md" not in packaged.values():
+        raise PackageError(f"handbook {handbook / 'README.md'} is missing")
+    links = Links(checkout, packaged, repository, ref)
+    files: dict[str, bytes] = {}
+    for source, path in [*packaged.items(), (note, "update-vermerk.md")]:
+        text = sources[source].read_bytes().decode("utf-8")
+        rendered = (render_template(text, source, path, sheets, links)
+                    if sheets is not None and not path.startswith(HANDBOOK_DIR)
+                    else outside_code(text, relative_links(source, path, links)))
+        files[path] = rendered.encode("utf-8")
+    return files
+
+
+def check_links(templates: Path, handbook: Path) -> list[str]:
+    """What would stop the package for links of templates and handbook: a relative link to nothing
+    in the checkout, or a link of the HTML version to a missing file or anchor. Needs no fact
+    sheets, so a pull request can run it; placeholders are left to check_behoerden_headers.sh."""
+    from package_html import broken_links, render
+
+    try:
+        files = documents(templates, handbook, DEFAULT_REPOSITORY, "HEAD", None)
+    except PackageError as error:
+        return [str(error)]
+    return broken_links({**files, **render(files, "Linkprüfung")})
+
+
 def assemble(
     release: Release,
     fact_sheets: Path,
@@ -1037,31 +1085,15 @@ def assemble(
              for part, source in sorted(sboms.items())}
     for file, content in loose.items():
         files[SBOM_DIR + file] = content
-    checkout = templates.parents[1]
-    sources: dict[str, Path] = {}
-    packaged: dict[str, str] = {}
-    for directory, target in ((templates, TEMPLATE_DIR), (handbook, HANDBOOK_DIR)):
-        prefix = directory.relative_to(checkout).as_posix() + "/"
-        for file in markdown_of(directory):
-            source = prefix + file.relative_to(directory).as_posix()
-            sources[source], packaged[source] = file, target + source[len(prefix):]
-    note = templates.relative_to(checkout).as_posix() + "/" + UPDATE_NOTE
-    if note not in sources:
-        raise PackageError(f"update note template {templates / UPDATE_NOTE} is missing")
-    if HANDBOOK_DIR + "README.md" not in packaged.values():
-        raise PackageError(f"handbook {handbook / 'README.md'} is missing")
-    links = Links(checkout, packaged, release.repository, release.commit if release.trial else release.tag)
     sheets = {path[len("faktenblaetter/"):-3]: content.decode("utf-8") for path, content in files.items()
               if path.startswith("faktenblaetter/") and path.endswith(".md")}
-    for source, path in [*packaged.items(), (note, "update-vermerk.md")]:
-        text = sources[source].read_bytes().decode("utf-8")
-        rendered = (outside_code(text, relative_links(source, path, links)) if path.startswith(HANDBOOK_DIR)
-                    else render_template(text, source, path, sheets, links))
-        files[path] = rendered.encode("utf-8")
-    files.update(render(files, f"Update-Paket OPAA {release.version}",
-                        f"Probelauf: kein veröffentlichtes Release, Commit {release.commit}"
-                        if release.trial else None))
-    broken = broken_links(files)
+    files.update(documents(templates, handbook, release.repository,
+                           release.commit if release.trial else release.tag, sheets))
+    site = render(files, f"Update-Paket OPAA {release.version}",
+                  f"Probelauf: kein veröffentlichtes Release, Commit {release.commit}" if release.trial else None,
+                  pending=("SHA256SUMS",))
+    files.update(site)
+    broken = broken_links({**files, "SHA256SUMS": b""})
     if broken:
         raise PackageError("links of the HTML version lead nowhere: " + "; ".join(broken))
     files["SHA256SUMS"] = "".join(
@@ -1216,6 +1248,7 @@ def main(argv: list[str]) -> int:
     consequences.add_argument("--to", dest="to_ref", default="HEAD")
     consequences.add_argument("--out", required=True)
     consequences.add_argument("--delta-json")
+    commands.add_parser("links")
     args = parser.parse_args(argv)
     try:
         if args.command == "previous":
@@ -1223,6 +1256,14 @@ def main(argv: list[str]) -> int:
             found = previous_final_tag(repo, args.tag, args.commit or args.tag)
             if found:
                 print(found)
+        elif args.command == "links":
+            broken = check_links(TEMPLATES, HANDBOOK)
+            for problem in broken:
+                print(problem)
+            if broken:
+                return 1
+            print(f"links of {TEMPLATES.relative_to(ROOT).as_posix()} and"
+                  f" {HANDBOOK.relative_to(ROOT).as_posix()} resolve in the package")
         elif args.command == "operations":
             repo = Path(git(Path.cwd(), "rev-parse", "--show-toplevel"))
             sides = []

@@ -144,11 +144,12 @@ jobs:
             # manager. data-impact-paths.txt belongs here because test_check_data_impact.py checks
             # that each of its patterns still matches a tracked file, .github/licenses/** because
             # test_check_licenses.py loads the policy files. requirements-ci.txt pins the pytest this
-            # job and seed-script install and the markdown-it-py of update_package.py, so a Renovate
-            # bump of it runs both.
+            # job and seed-script install, so a Renovate bump of it runs both; requirements-release.txt
+            # the packages of update_package.py, which this job tests.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
+              - '.github/requirements-release.txt'
               - '.github/data-impact-paths.txt'
               - '.github/licenses/**'
               - '.github/workflows/ci.yml'
@@ -246,6 +247,19 @@ jobs:
       # Runs on every event: link targets lie all over the repository, a path filter would miss them.
       - name: Kopfvermerk der Behördenunterlagen prüfen
         run: .github/scripts/check_behoerden_headers.sh
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      - name: Python-Pakete des Update-Pakets installieren
+        run: pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt
+
+      # The links of docs/behoerden and docs/handbuch as the update package and its HTML version
+      # hold them; a link the release run would refuse fails here instead of stopping a release.
+      # Unfiltered for the same reason as the check above.
+      - name: Verweise von Vorlagen und Handbuch im Update-Paket prüfen
+        run: python .github/scripts/update_package.py links
 
       # Comments in every tree listed in the script header carry no review protocol, no history
       # anchored at an issue and no bare origin marker (AGENTS.md, "Code-Kommentare").
@@ -516,6 +530,9 @@ jobs:
 
       - name: Install pytest
         run: pip install -r .github/requirements-ci.txt
+
+      - name: Install the packages of the update package
+        run: pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt
 
       # Der Tagesreport läuft nur nachts; ein Fehler fiele sonst erst dann auf.
       # Die Selbstprobe des Corepack-Guards liegt daneben, weil dessen CI-Lauf nur
