@@ -35,6 +35,17 @@ def test_every_markdown_file_gets_a_page_beside_it_and_the_package_a_start_page(
     assert 'id="faktenblaetter"' in start
 
 
+def test_the_start_page_lists_every_file_of_the_package_once() -> None:
+    start = site({"LIESMICH.md": "# Update-Paket\n", "faktenblaetter/fristen.md": "# Fristen\n",
+                  "faktenblaetter/faktenblaetter.json": "{}\n", "delta/manifest-delta.md": "# Delta\n",
+                  "sbom/opaa-backend-1.2.3.cdx.json": "{}\n"})["index.html"]
+    main = start.split("<main>", 1)[1]
+
+    targets = re.findall(r'href="([^"]+)"', main)
+    assert sorted(targets) == ["LIESMICH.html", "delta/manifest-delta.html", "faktenblaetter/faktenblaetter.json",
+                               "faktenblaetter/fristen.html", "sbom/opaa-backend-1.2.3.cdx.json"]
+
+
 def test_headings_carry_the_anchors_github_gives_them() -> None:
     text = ("# Löschkonzept\n\n## Wo die Faktenblätter liegen\n\n## Provenance und Software-Stückliste\n\n"
             "## 3. Die Konnektoren im Überblick\n\n## `opaa.audit` und *mehr*: [Link](x.md)\n\n"

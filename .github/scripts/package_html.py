@@ -174,8 +174,9 @@ def convert(path: str, text: str, files, folders: set[str]) -> tuple[str, str]:
     return page(html_path(path), title, rendered, files), title
 
 
-def index(heading: str, notice: str | None, titles: dict[str, str], files) -> str:
-    """The start page: every part of the package by group, each HTML page by its title."""
+def index(heading: str, notice: str | None, titles: dict[str, str], files, names) -> str:
+    """The start page: every file of the package `files` by group, a Markdown file as its HTML page
+    with its title; `names` holds every path of the finished package."""
 
     def link(path: str, label: str | None = None) -> str:
         target = html_path(path) if path.endswith(".md") else path
@@ -189,12 +190,12 @@ def index(heading: str, notice: str | None, titles: dict[str, str], files) -> st
 
     groups = [
         ("unterlagen", "Unterlagen für Behörden",
-         [p for p in ("vorlagen/README.md", "update-vermerk.md") if p in files]),
+         [p for p in ("LIESMICH.md", "vorlagen/README.md", "update-vermerk.md") if p in files]),
         ("handbuch", "Handbuch", [p for p in ("handbuch/README.md", "handbuch/glossar.md") if p in files]),
         ("faktenblaetter", "Faktenblätter", under("faktenblaetter/")),
         ("aenderungen", "Änderungen und Betrieb", under("delta/") + under("betrieb/")),
         ("nachweise", "Nachweise", under("lizenzen/") + under("sbom/")
-         + [p for p in ("SHA256SUMS", "LIESMICH.md") if p in files]),
+         + [p for p in ("SHA256SUMS",) if p in files]),
     ]
     body = [f"<h1>{html.escape(heading)}</h1>"]
     if notice:
@@ -204,7 +205,7 @@ def index(heading: str, notice: str | None, titles: dict[str, str], files) -> st
     for anchor, title, paths in groups:
         if paths:
             body.append(f'<h2 id="{anchor}">{html.escape(title)}</h2>\n<ul>{items(paths)}</ul>')
-    return page("index.html", heading, "\n".join(body) + "\n", files)
+    return page("index.html", heading, "\n".join(body) + "\n", names)
 
 
 def render(files: dict[str, bytes], heading: str, notice: str | None = None) -> dict[str, bytes]:
@@ -217,7 +218,9 @@ def render(files: dict[str, bytes], heading: str, notice: str | None = None) -> 
     for path in sorted(p for p in files if p.endswith(".md")):
         text, titles[path] = convert(path, files[path].decode("utf-8"), names, folders)
         site[html_path(path)] = text.encode("utf-8")
-    site["index.html"] = index(heading, notice, titles, names).encode("utf-8")
+    if "LIESMICH.md" in titles:
+        titles["LIESMICH.md"] = "LIESMICH: Inhalt und Prüfung des Pakets"
+    site["index.html"] = index(heading, notice, titles, set(files), names).encode("utf-8")
     site["style.css"] = CSS.encode("utf-8")
     return site
 
