@@ -20,7 +20,7 @@ data:
             content_tsv: Abgeleiteter Suchindex desselben Inhalts
           note: >-
             Aus sources gehen nur Dokumenttitel, Bibliothek und Seite der Fundstellen heraus, nie
-            ihre Textausschnitte (Dokumentinhalt)
+            ihre Textausschnitte, Überschriften oder Blattnamen (Dokumentinhalt)
       - name: chat_note_items
         personalColumns: [text]
         nonPersonalColumns: [id, chat_id, organization_id, position, kind, created_at]
@@ -77,7 +77,7 @@ data:
       rule: Bis die Verwaltung die Löschung fortsetzt oder das Konto gelöscht wird
       settings: []
     visibility: [SYSTEM_ADMIN in der Einzelansicht des Kontos]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Durch die Systemverwaltung („Löschung fortsetzen“) oder mit dem Konto
     evaluations: >-
       Ob und seit wann die Löschung für ein Konto angehalten ist; ohne Begründung. Keine Liste,

@@ -15,8 +15,9 @@ naechste-durchsicht: 2027-04-23
 
 Der Update-Vermerk hält fest, wie die Behörde ein Update von OPAA bewertet und entschieden hat. Er
 gehört zu den Unterlagen der Installation, neben Verzeichnis von Verarbeitungstätigkeiten (VVT),
-Datenschutz-Folgenabschätzung (DSFA), Sicherheitskonzept und Dienstvereinbarung. Grundlage ist das
-Update-Paket der Zielversion.
+Datenschutz-Folgenabschätzung (DSFA), Sicherheitskonzept und
+[Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md). Grundlage ist das Update-Paket der
+Zielversion.
 
 ## Was OPAA liefert
 

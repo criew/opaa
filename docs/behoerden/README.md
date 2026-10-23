@@ -29,12 +29,12 @@ Titel, für wen sie gilt. Bei Mischformen klärt das die Rechtsabteilung.
 
 | Verzeichnis | Phase |
 |---|---|
-| `00-entscheidung/` | Entscheidung der Hausleitung (folgt) |
-| `01-markterkundung/` | Markterkundung (folgt) |
+| `00-entscheidung/` | [Entscheidung der Hausleitung](00-entscheidung/README.md) |
+| `01-markterkundung/` | [Markterkundung](01-markterkundung/README.md) |
 | `02-pilot-teststellung/` | Pilot und Teststellung (folgt) |
 | `03-vergabe/` | [Vergabe](03-vergabe/README.md) |
 | `04-datenschutz/` | [Datenschutz](04-datenschutz/README.md) |
-| `05-mitbestimmung/` | Mitbestimmung (folgt) |
+| `05-mitbestimmung/` | [Mitbestimmung](05-mitbestimmung/README.md) |
 | `06-informationssicherheit/` | [Informationssicherheit, Cyber Resilience Act](06-informationssicherheit/README.md) |
 | `07-ki-verordnung/` | [KI-Verordnung](07-ki-verordnung/README.md) |
 | `08-nutzung/` | [Barrierefreiheit und Nutzungsrichtlinie](08-nutzung/README.md) |

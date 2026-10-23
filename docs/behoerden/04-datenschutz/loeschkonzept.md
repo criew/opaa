@@ -78,7 +78,8 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
 
 ## Gut zu wissen
 
-- Die Fristwahl ist meist auch Gegenstand der Dienstvereinbarung mit dem Personalrat.
+- Die Fristwahl ist meist auch Gegenstand der [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) mit
+  dem Personalrat.
 - Gelöschte Daten bleiben in Sicherungen, bis diese ablaufen. Wird eine Sicherung eingespielt, löscht
   die nächste Nacht die Chats gesperrter Konten erneut; sollen sie zurück, wird das Konto nach dem
   Einspielen und vor dem nächsten nächtlichen Lauf entsperrt oder die Löschung angehalten.
