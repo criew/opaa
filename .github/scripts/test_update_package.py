@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -200,7 +201,7 @@ def inputs(tmp_path: Path) -> dict:
 def put_template(inputs: dict, path: str, text: str) -> None:
     target = inputs["templates"] / path
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding="utf-8")
+    target.write_bytes(text.encode("utf-8"))
 
 
 def members(archive: Path) -> dict[str, tarfile.TarInfo]:
@@ -421,9 +422,11 @@ def test_an_upgrade_note_with_a_placeholder_stays_as_written(tmp_path: Path, inp
 
 
 def relative_targets(files: dict[str, str]) -> list[tuple[str, str]]:
-    """(file, target path) of every link in the package that has no scheme and is no bare anchor."""
+    """(file, target path) of every link outside code in the package that has no scheme and is no
+    bare anchor; code here means the plain ``` blocks and single-backtick spans of these cases."""
     found = []
     for path, text in files.items():
+        text = re.sub(r"`[^`\n]*`", "", re.sub(r"```.*?```", "", text, flags=re.DOTALL))
         for target in re.findall(r"\]\(<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\)|^ {0,3}\[[^\]]+\]:\s*(\S+)",
                                  text, re.MULTILINE):
             target = next(t for t in target if t).split("#", 1)[0]
@@ -550,11 +553,11 @@ def test_no_relative_link_in_the_package_points_nowhere(tmp_path: Path, inputs: 
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
     files = package_markdown(archive)
-    directories = {os.path.dirname(p) for p in files}
+    directories = {posixpath.dirname(p) for p in files}
     targets = relative_targets(files)
     assert ("vorlagen/04-datenschutz/loeschkonzept.md", "../README.md") in targets
     for path, target in targets:
-        resolved = os.path.normpath(os.path.join(os.path.dirname(path), target)).replace(os.sep, "/")
+        resolved = posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
         assert resolved in files or resolved in directories, (path, target)
 
 
@@ -701,7 +704,7 @@ BASELINE = "eval/baseline/"
 def put(repo: Path, path: str, text: str) -> None:
     target = repo / path
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding="utf-8")
+    target.write_bytes(text.encode("utf-8"))
 
 
 def snapshot(repo: Path, message: str) -> str:
