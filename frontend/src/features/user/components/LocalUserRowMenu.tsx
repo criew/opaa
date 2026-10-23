@@ -25,8 +25,9 @@ import { localUserErrorMessage } from './localUserLabels'
 export const LOCK_CONSEQUENCE =
   'Das Konto kann sich nicht mehr anmelden, und alle laufenden Sitzungen enden sofort. Die Person ' +
   'wird per E-Mail darüber unterrichtet. Etwaige verbundene Konten enden, ihre Zugangsdaten werden ' +
-  'gelöscht, und für etwaige private Bibliotheken beginnt die Löschfrist. Die übrigen Inhalte und ' +
-  'Rechte des Kontos bleiben erhalten.'
+  'gelöscht, und für etwaige private Bibliotheken beginnt die Löschfrist, ebenso für die Chats ' +
+  '(Datum unter „Bearbeiten"), sofern der Betrieb das nicht abgeschaltet hat. Die übrigen ' +
+  'Inhalte und Rechte des Kontos bleiben erhalten.'
 
 export const RESET_CONSEQUENCE =
   'Alle Sitzungen des Kontos enden, und die Person erhält einen einmaligen Rücksetzlink per ' +
@@ -78,7 +79,8 @@ interface LocalUserRowMenuProps {
  * The menu closes before the overlay opens: two stacked layers with their own
  * focus trap could otherwise be left neither with the keyboard nor with a screen reader.
  *
- * „Entsperren" appears only on a locked account (otherwise 409 `NOT_LOCKED`), „Löschen" is
+ * „Entsperren" appears only on a locked account (otherwise 409 `NOT_LOCKED`), „Sperren" on every
+ * account not yet locked by the administration (otherwise 409 `ALREADY_LOCKED`), „Löschen" is
  * subordinate below a divider: locking is the regular path (ADR-0033, Entscheidung 11).
  */
 export default function LocalUserRowMenu({
@@ -200,6 +202,9 @@ export default function LocalUserRowMenu({
     }, 'Das Konto konnte nicht gelöscht werden.')
   }
 
+  // A lock for inactivity or failed sign-ins can be turned into one by the administration, which
+  // alone starts the deletion period of the chats.
+  const lockedByAdministration = user.status === 'LOCKED' && user.lockedReason === 'ADMIN'
   const lockDisabled = isSelf || user.bootstrap
   const handoverDisabled = user.bootstrap
   const passwordDisabled = user.bootstrap
@@ -241,14 +246,15 @@ export default function LocalUserRowMenu({
           </ListItemIcon>
           Bearbeiten
         </MenuItem>
-        {user.status === 'LOCKED' ? (
+        {user.status === 'LOCKED' && (
           <MenuItem onClick={unlock}>
             <ListItemIcon>
               <LockOpenOutlinedIcon fontSize="small" />
             </ListItemIcon>
             Entsperren
           </MenuItem>
-        ) : (
+        )}
+        {lockedByAdministration ? null : (
           <MenuItem
             onClick={() => void lock()}
             disabled={lockDisabled}

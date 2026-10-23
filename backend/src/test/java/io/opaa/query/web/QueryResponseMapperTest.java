@@ -53,6 +53,7 @@ class QueryResponseMapperTest {
     QueryResponse response = QueryResponseMapper.toResponse(result);
 
     assertThat(response.getAnswer()).isEqualTo("Die Antwort");
+    assertThat(response.getGeneratedByAi()).isTrue();
     assertThat(response.getChatId()).isEqualTo(chatId);
     assertThat(response.getChatTitle()).isEqualTo("Rückstellung für Altlastensanierung");
     assertThat(response.getNoteItems()).hasSize(1);

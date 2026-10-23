@@ -2,6 +2,7 @@ import type { QueryResponse } from '@/shared/api/types'
 
 export const mockQueryResponses: QueryResponse[] = [
   {
+    generatedByAi: true,
     answer:
       'Das Projekt nutzt eine modulare Monolith-Architektur mit drei Hauptmodulen: ' +
       'api, indexing und query【source: doc-arch#0 | architecture-overview.md】. Das Modul api ' +
@@ -141,6 +142,7 @@ export const mockQueryResponses: QueryResponse[] = [
     chatId: 'mock-conv-1',
   },
   {
+    generatedByAi: true,
     answer:
       'Für einen neuen REST-Endpunkt legen Sie im Modul api eine Controller-Klasse mit der ' +
       'Annotation @RestController an【source: doc-contrib#1 | contributing-guide.md】. Request- ' +
@@ -177,6 +179,7 @@ export const mockQueryResponses: QueryResponse[] = [
     chatId: 'mock-conv-2',
   },
   {
+    generatedByAi: true,
     answer:
       'Die Deployment-Pipeline orchestriert alle Dienste über Docker ' +
       'Compose【source: doc-compose#0 | docker-compose.yml】. PostgreSQL mit pgvector speichert ' +

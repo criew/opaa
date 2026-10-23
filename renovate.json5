@@ -254,12 +254,13 @@
       matchFileNames: ['demo/**'],
       addLabels: ['demo'],
     },
-    // Das pytest der Skript- und Seed-Tests in der CI. Die Jobs, die es installieren
-    // (report-script, seed-script, Datenwirkung), sind keine Required Checks; ein Bump mergt deshalb
-    // nicht automatisch, sondern wartet auf ihr Ergebnis im PR.
+    // pytest der Skript- und Seed-Tests in der CI und die Pakete des Update-Pakets
+    // (requirements-release.txt, mit Hashes, die der Manager beim Bump mitzieht). report-script,
+    // seed-script und Datenwirkung sind keine Required Checks; ein Bump mergt deshalb nicht
+    // automatisch, sondern wartet auf ihr Ergebnis im PR.
     {
       matchManagers: ['pip_requirements'],
-      matchFileNames: ['.github/requirements-ci.txt'],
+      matchFileNames: ['.github/requirements-ci.txt', '.github/requirements-release.txt'],
       addLabels: ['ci'],
       automerge: false,
     },

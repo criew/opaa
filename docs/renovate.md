@@ -24,7 +24,7 @@ jederzeit auch lokal ausführen (unten).
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
-| pytest der CI-Jobs `report-script`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`); ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
+| pytest und PyYAML der CI-Jobs `report-script`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`) und die Pakete des Update-Pakets, markdown-it-py mit mdurl (`.github/requirements-release.txt`, je Version mit `--hash`; Renovate erneuert die Hashes beim Bump, die Jobs installieren mit `--require-hashes`); ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
 | Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) | `custom.regex` | `ci` |
 
@@ -168,6 +168,7 @@ Zugriffsregeln laut GitHub-Dokumentation („Dependency caching reference“, Ab
 | Lauf | darf lesen | darf schreiben |
 |---|---|---|
 | `push`, `schedule`, `workflow_dispatch` auf `main` | Cache von `main` | Cache von `main` |
+| `push` auf einen Wartungsbranch `release/X.Y` (`ci.yml`) und manueller E2E-Lauf dort (`gh workflow run e2e.yml --ref release/X.Y`, schreibt `type=gha`) | Cache des Branches, `main` | Cache des Branches; lesen dürfen ihn nur er selbst und PRs gegen ihn, kein Release-Tag |
 | `pull_request`, auch aus einem Fork | eigener Merge-Ref, Basis-Branch, `main` | nur den eigenen Merge-Ref; sichtbar nur für erneute Läufe desselben PRs |
 | `pull_request_target`, `issue_comment`, `workflow_run` auf `main` (hier `cla.yml`) | Cache von `main` | nichts, solange der Workflow kein schreibendes `cache-mode` setzt; keiner tut das |
 | Release-Tag `vX.Y.Z` | eigener Tag, `main` | eigener Tag; kein anderer Tag sieht ihn |
@@ -189,7 +190,8 @@ Daraus folgt:
 Deshalb gilt zusätzlich zu den Pins:
 
 - **Releases bauen ohne gha-Cache.** `publish-images.yml` setzt `cache-from` und `cache-to` nur
-  bei Läufen, die nicht von einem Tag kommen. Ein Release-Image entsteht damit nur aus Checkout,
+  bei Läufen, die nicht von einem Tag kommen; das gilt auch für Tags auf einem Wartungsbranch, und
+  auf dem Branch selbst baut der Workflow nicht. Ein Release-Image entsteht damit nur aus Checkout,
   Basis-Images und Paketquellen, unabhängig davon, was ein Job auf `main` in den Cache gelegt
   hat. `test_publish_images_cache.py` hält die Bedingung fest. Gemessen an den ersten Läufen mit
   den Scopes je Architektur, die keinen Cache-Treffer hatten (#2411, Läufe 37980307632 und

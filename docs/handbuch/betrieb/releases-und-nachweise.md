@@ -66,11 +66,13 @@ Liegt die Korrektur im Basis-Image, entsteht das Patch-Release aus demselben Cod
 das Tag `X.Y` verwendet, erhält ein Patch-Release mit dem nächsten Pull; wer `X.Y.Z` pinnt, wechselt
 bewusst.
 
-**Heute nur die jüngste Linie.** Patch-Releases für ältere Linien sind
-[noch nicht gebaut](#was-nicht-gebaut-ist). Bis dahin bekommt nur die jüngste Linie Patch-Releases,
-und eine Korrektur im Code nur, solange `main` seit ihrem letzten Release keine neue Funktion trägt;
-sonst erscheint sie mit dem nächsten Funktionsrelease. Eine ältere Linie bekommt keine Korrektur.
-Bis zum zweiten finalen Release gibt es ohnehin nur eine Linie.
+**Wartungsbranches.** Jede Linie wird auf einem eigenen Wartungsbranch gepflegt, die jüngste
+ebenso wie ältere. Eine Korrektur im Code kommt zuerst in den laufenden Entwicklungsstand `main`
+und von dort auf jede unterstützte Linie, die sie betrifft. Jedes Patch-Release entsteht auf dem
+Wartungsbranch seiner Linie; ein Patch-Release aus `main` lehnt der Release-Lauf ab. So enthält
+ein Patch-Release nie Funktionen einer neueren Linie. Ältere Linien gibt es ab dem zweiten finalen
+Release. Der nächtliche Scan prüft
+ältere Linien [noch nicht](#was-nicht-gebaut-ist).
 
 ## Was ein Release liefert
 
@@ -81,6 +83,7 @@ Zu jeder Version gehören:
 | GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z` und `ghcr.io/criew/opaa-frontend:X.Y.Z` für `linux/amd64` und `linux/arm64`, je mit SBOM und Provenance |
 | GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signierter Provenance |
 | GitHub-Release `OPAA vX.Y.Z` | die Release-Notizen und das Update-Paket mit Prüfsummendatei |
+| GitHub-Release `OPAA vX.Y.Z` | das Offline-Bündel für Netze ohne Internetzugang, attestiert ([Installation ohne Internetzugang](images-und-laufzeit.md#installation-ohne-internetzugang)) |
 
 Die **Release-Notizen** enthalten:
 
@@ -107,6 +110,10 @@ Es richtet sich an alle, die ein Update verantworten, ohne den Code zu lesen, un
 - die Lizenzübersicht und die SBOMs je Ökosystem
 - die Vorlage für den Update-Vermerk
 - unter `vorlagen/` alle Behördenvorlagen, verlinkt mit den Faktenblättern
+- unter `handbuch/` dieses Handbuch im Stand der Version
+
+Neben jeder Markdown-Datei liegt dieselbe Seite als HTML; `index.html` öffnet das ganze Paket im
+Browser, ohne Internetzugang.
 
 Aufbau im Einzelnen, Prüfung der Provenance und Delta über mehrere Versionen:
 [Das Update-Paket eines Release](nachvollziehbarkeit.md#das-update-paket-eines-release).
@@ -153,8 +160,6 @@ Update-Paket.
 
 ## Was nicht gebaut ist
 
-- Patch-Releases für ältere Linien über eigene Wartungsbranches; bis dahin bekommt nur die
-  jüngste Linie Korrekturen ([#3017](https://github.com/criew/opaa/issues/3017)).
 - Der Schwachstellen-Scan aller unterstützten Linien; heute prüft er nur das jüngste Release
   ([#3018](https://github.com/criew/opaa/issues/3018)).
 - Im Update-Paket eines LTS das Delta zur vorigen LTS-Linie; heute enthält es das Delta zum vorigen

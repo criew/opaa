@@ -10,7 +10,8 @@ name: Datenwirkung
 # checked before it entered the queue.
 on:
   pull_request:
-    branches: [main]
+    # A required check on the maintenance branches release/X.Y as on main.
+    branches: [main, 'release/**']
     types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   merge_group:
 

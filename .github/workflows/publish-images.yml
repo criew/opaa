@@ -47,9 +47,19 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The release guard below needs main's history to tell whether the tag lies on it.
+          # The release guard below needs the history of main and of every release/X.Y branch.
           fetch-depth: ${{ startsWith(github.ref, 'refs/tags/') && '0' || '1' }}
           persist-credentials: false
+
+      # A maintenance branch publishes only through a tag on it (docs/releases.md, "Backport"); a
+      # dispatch there would otherwise push sha-<commit> images of the line.
+      - name: Lauf auf Wartungsbranch ablehnen
+        if: startsWith(github.ref, 'refs/heads/release/')
+        env:
+          REF: ${{ github.ref_name }}
+        run: |
+          echo "::error::$REF ist ein Wartungsbranch; er veröffentlicht nur über ein Tag vX.Y.Z (docs/releases.md)"
+          exit 1
 
       # Lower case like the names metadata-action derives: a push by digest takes the name verbatim,
       # and an OCI repository name has no upper case.
@@ -80,10 +90,9 @@ jobs:
             echo "::error::Tag $TAG ist keine Version vX.Y.Z bzw. vX.Y.Z-<vorab> (docs/releases.md)"
             exit 1
           fi
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::Tag $TAG zeigt auf einen Commit, der nicht auf main liegt (docs/releases.md)"
-            exit 1
-          fi
+          # main or release/X.Y of exactly the tag's line; the script names the error.
+          branch=$(.github/scripts/release_origin.sh "$TAG" "$GITHUB_SHA")
+          echo "$TAG liegt auf $branch"
           # The release job builds the same notes only after the images are out; fail before.
           if ! deploy/helm/ci/release-notes.sh "$GITHUB_REPOSITORY" "$TAG" >/dev/null; then
             echo "::error::Release-Notizen für $TAG lassen sich nicht erzeugen, siehe Meldung oben (docs/releases.md)"
@@ -120,9 +129,10 @@ jobs:
           # tags move to the new digest together, so sha-<commit> is always the newest build of that
           # commit and never diverges from :main. A release build leaves sha-<commit> alone for the
           # same reason. The digest stays the stable identity of a build.
-          # On a release tag: X.Y.Z (immutable, see the guard above) and X.Y (moves with each patch
-          # release); a pre-release only gets its full version. No "latest": whoever does not pin a
-          # version follows main.
+          # On a release tag: X.Y.Z (immutable, see the guard above) and X.Y, derived from the tag
+          # itself and so moving only within its line, on main and on release/X.Y alike; a
+          # pre-release only gets its full version. No "latest": whoever does not pin a version
+          # follows main.
           tags: |
             type=raw,value=main,enable={{is_default_branch}}
             type=sha,format=long,enable=${{ github.ref_type != 'tag' }}
@@ -261,8 +271,9 @@ jobs:
 
   # The update package for authorities (docs/releases.md, "Update-Paket"): runs the completeness
   # guard of the compliance manifest, then update_package.py builds fact sheets, delta to the
-  # previous final release, license overview, the CycloneDX SBOMs of backend and frontend and the
-  # templates for authorities into one archive; the SBOMs also lie beside it for the release.
+  # previous final release, license overview, the CycloneDX SBOMs of backend and frontend, the
+  # templates for authorities and the handbook, each also as HTML, into one archive; the SBOMs also
+  # lie beside it for the release.
   # publish waits for this job, so an incomplete manifest stops a release before any tag is set. Like the
   # image builds of a release it takes nothing from a cache: no Gradle, pnpm or gha cache.
   update-package:
@@ -315,6 +326,16 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      # markdown-it-py renders the HTML version of the package: wheels only, every package with
+      # its dependencies pinned by hash, nothing resolved at install time.
+      - name: Python-Pakete des Update-Pakets installieren
+        run: |
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt
 
       # The same guard as in every backend test run: manifest against schema, audit events, roles,
       # prompts, data flows and configuration keys, and the placeholder targets of docs/behoerden/.
@@ -616,21 +637,40 @@ jobs:
           push-to-registry: true
           create-storage-record: false
 
-  # The GitHub release follows images, chart and update package, so its notes never announce an
-  # artifact that failed to publish. Notes are generated from the merged PRs, grouped by
+  # The offline bundle (docs/releases.md, "Offline-Bündel"): the published images of both
+  # architectures as OCI archives, chart, update package, SBOMs, their attestations and SHA256SUMS,
+  # attested as a whole. Pulled back from GHCR, so it holds exactly what was published.
+  offline-bundle:
+    needs: [prepare, chart-attestation, update-package-attestation]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/offline-bundle.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      update-package-from-run: true
+
+  # The GitHub release follows images, chart, update package and offline bundle, so its notes never
+  # announce an artifact that failed to publish. Notes are generated from the merged PRs, grouped by
   # .github/release.yml; the fixed part with images, chart, installation and update package comes
-  # from deploy/helm/ci/release-notes.sh. The attested archive with its .sha256 file and the attested
-  # SBOMs become assets.
+  # from deploy/helm/ci/release-notes.sh. The attested archive with its .sha256 file, the attested
+  # SBOMs and the offline bundle with its .sha256 file and Sigstore bundle become assets.
   release:
-    needs: [publish, chart, chart-attestation, update-package-attestation]
+    needs: [publish, chart, chart-attestation, update-package-attestation, offline-bundle]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The offline bundle is several hundred megabytes to upload.
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # release_line_info.sh compares the tag with every release tag and the history below it.
+          fetch-depth: 0
           # gh reads GH_TOKEN from the step's env; the checkout keeps no token behind.
           persist-credentials: false
 
@@ -639,13 +679,25 @@ jobs:
           name: update-package
           path: ${{ runner.temp }}/update-package/
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: offline-bundle
+          path: ${{ runner.temp }}/offline-bundle/
+
       - name: GitHub-Release anlegen
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
+        # "Latest" only for the highest final release, so a patch release of an older line never
+        # takes it - and with it the nightly CVE scan target - from the newest line. The generated
+        # notes start at the previous final release the commit contains, within a line its
+        # previous patch release.
         run: |
           notes=$(deploy/helm/ci/release-notes.sh "$GH_REPO" "$TAG")
+          info=$(.github/scripts/release_line_info.sh "$TAG" "$GITHUB_SHA")
+          latest=$(sed -n 's/^latest=//p' <<<"$info")
+          previous=$(sed -n 's/^previous=//p' <<<"$info")
           flags=(--verify-tag --title "OPAA ${TAG}")
           # Without an earlier release the generated notes would span the whole history, beyond
           # what a release body may hold; the first release therefore carries the fixed text alone.
@@ -653,6 +705,12 @@ jobs:
             flags+=(--notes "$(printf '%s\n\n%s' 'Erstes Release von OPAA.' "$notes")")
           else
             flags+=(--generate-notes --notes "$notes")
+            if [[ -n "$previous" ]]; then flags+=(--notes-start-tag "$previous"); fi
           fi
-          if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); else flags+=(--latest); fi
-          gh release create "$TAG" "${flags[@]}" "$RUNNER_TEMP"/update-package/*
+          if [[ "$TAG" == *-* ]]; then
+            flags+=(--prerelease --latest=false)
+          else
+            flags+=("--latest=$latest")
+          fi
+          echo "Latest: $latest, Notizen ab: ${previous:-automatisch}"
+          gh release create "$TAG" "${flags[@]}" "$RUNNER_TEMP"/update-package/* "$RUNNER_TEMP"/offline-bundle/*

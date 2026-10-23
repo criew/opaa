@@ -45,7 +45,7 @@ data:
       rule: Solange die Bibliothek besteht
       settings: []
     visibility: [Verwaltende der Bibliothek, SYSTEM_ADMIN]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Mit der Bibliothek
     evaluations: keine
   - id: documents
@@ -153,7 +153,7 @@ data:
         deaktivierter Personen nach 30 Tagen
       settings: [opaa.connection.private-library-deletion-days]
     visibility: [Personen mit Leserecht an der Bibliothek]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Löschen des Dokuments oder der Bibliothek, Abgleich mit der Quelle, Löschung privater
       Bibliotheken
@@ -182,9 +182,10 @@ data:
     personalReference: IDENTIFIABLE
     tables:
       - name: indexing_jobs
-        personalColumns: [triggered_by]
+        personalColumns: []
         nonPersonalColumns:
           - id
+          - triggered_by
           - status
           - documents_total
           - documents_processed
@@ -213,7 +214,9 @@ data:
           - failure_category
           - owner_instance_id
         person:
-          columns: [triggered_by]
+          excluded: >-
+            Kein Weg zur Person: triggered_by hält nur die Art des Anstoßes fest (manuell, Zeitplan,
+            Webhook), nicht wer ihn gab
       - name: embedding_index
         personalColumns: [run_started_by]
         nonPersonalColumns:
@@ -238,7 +241,7 @@ data:
       rule: Ohne eigene Löschfrist; mit der Bibliothek
       settings: []
     visibility: [Verwaltende der Bibliothek, SYSTEM_ADMIN]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Mit der Bibliothek
     evaluations: keine
 nonPersonalTables:

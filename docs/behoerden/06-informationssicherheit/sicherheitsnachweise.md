@@ -34,7 +34,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
    vermerkt; das Ergebnis gehört zum [IT-Grundschutz](grundschutz-modellierung.md)-Check.
 2. **Protokolle einsammeln und aufbewahren.** OPAA schreibt das Log auf die
    Standardausgabe; ein Log-Sammler des Betriebs nimmt es dort ab.
-3. **Auswertung regeln:** Wer Protokolle wie auswerten darf, gehört in die Dienstvereinbarung.
+3. **Auswertung regeln:** Wer Protokolle wie auswerten darf, gehört in die [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md).
 4. **Updates zeitnah einspielen** und vor dem Supportende der eingesetzten Linie wechseln.
    Sicherheitskorrekturen erhalten `main` und jede unterstützte Linie
    ([unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)).
@@ -45,8 +45,8 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 - Gemeldete Lücken bearbeitet das Projekt nach bestem Bemühen, ohne zugesagte Frist. Wer eine Version
   länger festhalten muss oder Fristen braucht, vereinbart das mit einem Dienstleister.
-- Bis das Projekt Wartungsbranches betreibt, bekommt nur die jüngste Linie Korrekturen, und der
-  Schwachstellen-Scan prüft nur das jüngste Release.
+- Ältere Linien bekommen Korrekturen über eigene Wartungsbranches; der Schwachstellen-Scan prüft
+  bisher nur `main` und das jüngste Release.
 - Schreibt das Log ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
   ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 - Eine Ausleitung des Nachweisprotokolls an ein zentrales Sicherheitsmonitoring ist nicht gebaut.

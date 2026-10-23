@@ -26,10 +26,9 @@ Faktenblatt.
 
 ## Aufgaben der Behörde
 
-1. **Faktenblätter der angebotenen Version** der Prüfung beilegen, statt Werte abzuschreiben.
-2. **Nachweise öffnen,** besonders bei Muss-Anforderungen.
-3. **Lücken klären:** „teilweise“ nennt, was fehlt; das klärt die Teststellung oder der Bieter.
-4. **Zusagen des Bieters prüfen,** wo „Dienstleister“ steht: Dort liefert das Projekt nur die
+1. **Nachweise öffnen,** besonders bei Muss-Anforderungen.
+2. **Lücken klären:** „teilweise“ nennt, was fehlt; das klärt die Teststellung oder der Bieter.
+3. **Zusagen des Bieters prüfen,** wo „Dienstleister“ steht: Dort liefert das Projekt nur die
    Grundlage.
 
 ## F · Fachliche Funktion
@@ -53,7 +52,7 @@ Faktenblatt.
 |---|---|---|---|
 | M-01 | ja | [LLM-Anbieter](../../handbuch/betrieb/modelle.md#llm-anbieter), [OpenAI-kompatible Server](../../handbuch/betrieb/modelle.md#vllm--openai-kompatible-server), {{faktenblatt:voreinstellungen#ki-funktionen}} | Handbuch, Konfiguration, Faktenblatt |
 | M-02 | ja | {{faktenblatt:datenfluesse}}; der Wächter lässt den Build scheitern, wenn eine Verbindung nach außen keinen Eintrag hat ([Was bei jeder Änderung geprüft wird](../../handbuch/betrieb/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird)) | Faktenblatt, Test |
-| M-03 | teilweise; die Ziele sind je Version beschrieben und die Modelle im Haus betreibbar, ein Betrieb ganz ohne Internet ist im Projekt nicht als Probe belegt | {{faktenblatt:datenfluesse}}, [OpenAI-kompatible Server](../../handbuch/betrieb/modelle.md#vllm--openai-kompatible-server) | Faktenblatt, Handbuch |
+| M-03 | ja; ein nächtlicher Lauf in der CI des Projekts belegt Anmeldung, Aufnahme eines Textdokuments und Antwort mit Fundstelle in einem Netz ohne Weg nach außen und scheitert an jeder Namensauflösung außerhalb der Installation und jedem fremden Abruf des Browsers; Verbindungen an feste IP-Adressen erkennt er nur über das Log; Images und Modelle stellt die Behörde vorab im Haus bereit | [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet), {{faktenblatt:datenfluesse}}, [OpenAI-kompatible Server](../../handbuch/betrieb/modelle.md#vllm--openai-kompatible-server) | Handbuch, Test, Faktenblatt |
 | M-04 | ja | [Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy) | Handbuch, Konfiguration |
 | M-05 | ja; OPAA ruft den eingetragenen Endpunkt jedes Modells direkt auf, ohne Dienst des Projekts dazwischen | [LLM-Anbieter](../../handbuch/betrieb/modelle.md#llm-anbieter), {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
 
@@ -76,7 +75,7 @@ Faktenblatt.
 | S-03 | ja | [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
 | S-04 | ja | [Meldeweg](../../../SECURITY.md#meldeweg), [Ablauf](../../../SECURITY.md#ablauf) | Projektunterlage |
 | S-05 | ja | [Read-only Filesystem](../../handbuch/betrieb/images-und-laufzeit.md#read-only-filesystem), [Pod Security](../../handbuch/betrieb/kubernetes.md#pod-security) | Handbuch |
-| S-06 | ja; Supportzeiträume je Linie ab dem ersten finalen Release, Scan und Korrekturen heute für `main` und die jüngste Linie | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) | Handbuch, Test |
+| S-06 | ja; Supportzeiträume je Linie ab dem ersten finalen Release, Korrekturen für jede unterstützte Linie, Scan heute für `main` und das jüngste Release | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) | Handbuch, Test |
 
 ## B · Betrieb
 
@@ -123,11 +122,6 @@ Faktenblatt.
 - „Konfiguration“ in der Spalte „Art“ heißt: eine Einstellung der Installation.
 
 ## Zum Nachlesen
-
-**Arbeitshilfen** für die Projektleitung:
-
-- [Wo die Faktenblätter liegen](../../handbuch/betrieb/nachvollziehbarkeit.md#wo-die-faktenblätter-liegen):
-  Faktenblätter und Update-Paket einer Version finden.
 
 **Rechtsgrundlagen** für die Vergabestelle:
 

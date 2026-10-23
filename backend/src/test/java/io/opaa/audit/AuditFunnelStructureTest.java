@@ -33,7 +33,9 @@ import org.springframework.stereotype.Component;
  * {@link AuditLogEntry}, which the database permits (the application account holds {@code SELECT}
  * on {@code audit_log} - see ADR-0015; only {@code UPDATE}/{@code DELETE} are blocked at that
  * layer). Closing those paths would need bytecode-level analysis (e.g. ArchUnit's method-body
- * inspection) or a database-level read restriction, neither of which this test attempts.
+ * inspection) or a database-level read restriction, neither of which this test attempts. The one
+ * raw-SQL reader allowed, the person's own self-disclosure, is held to that role by {@link
+ * AuditLogReaderStructureTest}.
  *
  * <p>{@link #auditControllerHoldsOnlyTheQueryServiceAsItsAuditReadDependency()} makes the matching,
  * equally field/constructor-scoped claim one layer up, at the HTTP entry point: {@link

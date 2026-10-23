@@ -93,6 +93,10 @@ const audit = themePages(() => import('@/features/audit/routes'))
 export const ConnectionLogPage = audit('ConnectionLogPage')
 export const RightsHistoryPage = audit('RightsHistoryPage')
 
+export const PrivacySettingsPage = themePages(() => import('@/features/compliance/routes'))(
+  'PrivacySettingsPage',
+)
+
 export const SettingsPage = lazy(() => loadOrWait(() => import('./areas/SettingsPage')))
 export const ConnectionsAdminPage = lazy(() =>
   loadOrWait(() => import('./areas/ConnectionsAdminPage')),
