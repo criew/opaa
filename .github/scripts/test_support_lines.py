@@ -165,3 +165,182 @@ def test_only_explicit_exceptions_follow_the_disabling_rule() -> None:
         assert "matchBaseBranches" in rule
         assert "matchPackageNames" in rule
         assert "automerge: false" in rule
+
+
+# scan-targets: the release images cve-scan.yml scans besides main.
+
+
+def releases_file(tmp_path: Path, tags: list[str]) -> Path:
+    path = tmp_path / "releases.jsonl"
+    path.write_text(
+        "".join(
+            json.dumps({"tag_name": t, "prerelease": "-" in t, "draft": False}) + "\n" for t in tags
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def scan_targets(tmp_path: Path, lines: object, tags: list[str], date: str) -> subprocess.CompletedProcess:
+    return run(
+        "scan-targets",
+        "--file", write(tmp_path, lines).as_posix(),
+        "--releases", releases_file(tmp_path, tags).as_posix(),
+        "--image-prefix", "ghcr.io/criew/opaa",
+        "--date", date,
+    )
+
+
+def target_images(result: subprocess.CompletedProcess) -> list[tuple[str, str]]:
+    assert result.returncode == 0, result.stderr
+    return [(t["name"], t["image"]) for t in json.loads(result.stdout)]
+
+
+def test_scan_targets_take_the_newest_final_release_of_every_supported_line(tmp_path: Path) -> None:
+    tags = ["v0.2.0", "v0.2.1", "v0.2.10", "v0.3.0", "v0.3.1-rc.1", "v0.4.0-rc.1", "v0.3.0-rc.2"]
+
+    result = scan_targets(tmp_path, THREE_LINES[:2], tags, "2027-01-15")
+
+    assert target_images(result) == [
+        ("backend-0.2", "ghcr.io/criew/opaa-backend:0.2.10"),
+        ("frontend-0.2", "ghcr.io/criew/opaa-frontend:0.2.10"),
+        ("backend-0.3", "ghcr.io/criew/opaa-backend:0.3.0"),
+        ("frontend-0.3", "ghcr.io/criew/opaa-frontend:0.3.0"),
+    ]
+
+
+def test_scan_targets_drop_a_line_after_its_support_end(tmp_path: Path) -> None:
+    result = scan_targets(tmp_path, THREE_LINES[:2], ["v0.2.3", "v0.3.0"], "2027-02-01")
+
+    assert [name for name, _ in target_images(result)] == ["backend-0.3", "frontend-0.3"]
+
+
+def test_scan_targets_keep_the_line_of_the_highest_final_release_even_if_unlisted(
+    tmp_path: Path,
+) -> None:
+    # The list may lag behind a release; the newest line is never left unscanned.
+    result = scan_targets(tmp_path, [], ["v0.1.0", "v0.2.0", "v0.2.1"], "2027-02-01")
+
+    assert target_images(result) == [
+        ("backend-0.2", "ghcr.io/criew/opaa-backend:0.2.1"),
+        ("frontend-0.2", "ghcr.io/criew/opaa-frontend:0.2.1"),
+    ]
+
+
+def test_scan_targets_without_any_final_release_are_empty(tmp_path: Path) -> None:
+    result = scan_targets(tmp_path, [], ["v0.1.0-rc.1", "v0.1.0-rc.4"], "2027-02-01")
+
+    assert target_images(result) == []
+
+
+def test_scan_targets_warn_about_a_supported_line_without_release(tmp_path: Path) -> None:
+    lines = [{"line": "0.5", "kind": "normal", "supportEnd": None}]
+
+    result = scan_targets(tmp_path, lines, ["v0.4.0"], "2027-02-01")
+
+    assert [name for name, _ in target_images(result)] == ["backend-0.4", "frontend-0.4"]
+    assert "::warning::" in result.stderr and "0.5" in result.stderr
+
+
+def test_scan_targets_ignore_drafts_and_marked_pre_releases(tmp_path: Path) -> None:
+    path = tmp_path / "releases.jsonl"
+    path.write_text(
+        json.dumps({"tag_name": "v0.3.0", "prerelease": False, "draft": True}) + "\n"
+        + json.dumps({"tag_name": "v0.2.2", "prerelease": True, "draft": False}) + "\n"
+        + json.dumps({"tag_name": "v0.2.1", "prerelease": False, "draft": False}) + "\n",
+        encoding="utf-8",
+    )
+
+    result = run(
+        "scan-targets", "--file", write(tmp_path, []).as_posix(), "--releases", path.as_posix(),
+        "--image-prefix", "ghcr.io/criew/opaa", "--date", "2027-02-01",
+    )
+
+    assert [image for _, image in target_images(result)] == [
+        "ghcr.io/criew/opaa-backend:0.2.1",
+        "ghcr.io/criew/opaa-frontend:0.2.1",
+    ]
+
+
+# check-roadmap: the roadmap in docs/releases.md and the list cannot drift apart.
+
+ROADMAP_HEAD = """# Releases
+
+### Roadmap
+
+| Linie | Erscheint | Spring Boot | Art | Patch-Releases bis |
+|---|---|---|---|---|
+"""
+
+ROWS = (
+    "| `0.2` | 15.12.2026 | 4.2 | normal | 31.01.2027 |\n"
+    "| `0.3` | 20.06.2027 | 4.3 | LTS | 30.06.2028 |\n"
+    "| `0.4` | 15.12.2027 | 4.4 | normal | einen Monat nach dem Juni-Release 2028 |\n"
+    "| Juni-Release 2028 | 4–6 Wochen nach Spring Boot | Mai-Version 2028 | LTS | Ende des kostenlosen Supports |\n"
+)
+
+
+def check_roadmap(tmp_path: Path, lines: object, rows: str) -> subprocess.CompletedProcess:
+    doc = tmp_path / "releases.md"
+    doc.write_text(ROADMAP_HEAD + rows + "\nText danach.\n", encoding="utf-8")
+    return run(
+        "check-roadmap", "--file", write(tmp_path, lines).as_posix(), "--releases-doc", doc.as_posix()
+    )
+
+
+def test_roadmap_matching_the_list_passes(tmp_path: Path) -> None:
+    result = check_roadmap(tmp_path, THREE_LINES, ROWS)
+
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    ("lines", "rows"),
+    [
+        # A line in the list without its row.
+        (THREE_LINES, ROWS.replace("| `0.4` |", "| Dezember-Release 2027 |")),
+        # A released row without a list entry.
+        (THREE_LINES[:2], ROWS),
+        # Different support end.
+        (THREE_LINES, ROWS.replace("31.01.2027", "28.02.2027")),
+        # An open support end in the list, a date in the roadmap.
+        (THREE_LINES, ROWS.replace("einen Monat nach dem Juni-Release 2028", "15.07.2028")),
+        # Kind differs.
+        (THREE_LINES, ROWS.replace("| 4.3 | LTS |", "| 4.3 | normal |")),
+    ],
+)
+def test_roadmap_drifting_from_the_list_fails(tmp_path: Path, lines: object, rows: str) -> None:
+    result = check_roadmap(tmp_path, lines, rows)
+
+    assert result.returncode == 1
+    assert "::error::" in result.stderr
+
+
+CVE_SCAN = ROOT / ".github" / "workflows" / "cve-scan.yml"
+
+
+def test_cve_scan_takes_its_release_targets_from_the_list() -> None:
+    text = CVE_SCAN.read_text(encoding="utf-8")
+
+    assert "python3 .github/scripts/support_lines.py scan-targets" in text
+    assert "releases/latest" not in text
+
+
+def test_cve_scan_alarm_runs_when_a_single_leg_fails_but_never_clears_then() -> None:
+    # An unreachable image of one line must neither skip the alarm nor let it close unseen.
+    text = CVE_SCAN.read_text(encoding="utf-8")
+    alarm = text[text.index("  critical-alert:"):]
+
+    assert "!cancelled()" in alarm
+    assert "needs.targets.result == 'success'" in alarm
+    assert "EXPECTED_LEGS: ${{ needs.targets.outputs.legs }}" in alarm
+    assert "missing.length" in alarm
+
+
+def test_the_repository_roadmap_matches_the_list() -> None:
+    result = run(
+        "check-roadmap", "--file", LINES_FILE.as_posix(),
+        "--releases-doc", (ROOT / "docs" / "releases.md").as_posix(),
+    )
+
+    assert result.returncode == 0, result.stderr
