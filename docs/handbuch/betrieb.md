@@ -1,463 +1,254 @@
 # Betriebsübersicht
 
-Dieses Kapitel beschreibt, aus welchen Bausteinen eine OPAA-Installation besteht, wie sie
-zusammenhängen und was für jeden Betriebsweg gleich gilt: Images, Bereitschaft, Härtung, Schlüssel,
-Sicherung, Aktualisierung, Logs und Metriken. Wie OPAA mit Docker Compose oder unter Kubernetes
-läuft, beschreiben die beiden Kinder dieses Kapitels; die Bedeutung jeder Umgebungsvariable steht
-in der [Konfiguration](konfiguration.md).
-
-> **Beispiel.** Ein Landratsamt betreibt OPAA auf einer virtuellen Maschine mit Docker Compose. Vor
-> dem Frontend steht der Reverse-Proxy des Hauses mit dem Zertifikat, die Datenbank läuft im
-> Stapel, die Originale der Uploads liegen auf dem Dateiserver, Chat und Einbettung laufen über
-> einen Modellserver im Rechenzentrum, angemeldet wird über das Keycloak des Hauses. Ins Internet
-> geht das Backend nur über den Proxy des Hauses, und auch das nur für zwei Webquellen.
+Dieses Kapitel beschreibt die Bausteine einer OPAA-Installation und was für jeden Betriebsweg gleich
+gilt: Images, Probes, Härtung, Schlüssel, Sicherung, Aktualisierung, Logs und Metriken. Die
+Einrichtung beschreiben die Kinder [Docker Compose](docker-compose.md) und
+[Kubernetes](kubernetes.md), jede Umgebungsvariable die [Konfiguration](konfiguration.md).
 
 ## Bausteine
 
 ```mermaid
 flowchart LR
     B[Browser] -->|HTTPS| RP[Reverse-Proxy<br/>oder Ingress]
-    K[Fremde<br/>KI-Werkzeuge] -->|/mcp| RP
+    K[Externe<br/>KI-Werkzeuge] -->|/mcp, /api| RP
     RP --> F[Frontend<br/>nginx]
-    F -->|/api/, /mcp| BE[Backend<br/>eine Instanz]
+    F -->|/api/, /mcp| BE[Backend]
     BE --> DB[(PostgreSQL<br/>mit pgvector)]
     BE --> O[(Original-<br/>ablage)]
     BE --> SMTP[Mailserver]
-    BE -.->|Ausgangs-<br/>proxy| M
+    BE -.->|Ausgangs-<br/>proxy| M[Modell-<br/>dienste]
     BE -.-> I[Identitäts-<br/>anbieter]
-    BE -.-> QW
-    BE -.-> QC
-    BE -.-> QA
-    BE --> QS
+    BE -.-> Q[Quellen]
     B -.->|Anmeldung| I
-    subgraph M[Modelle]
-        MC[Chat]
-        ME[Embedding]
-        MR[Reranking]
-        MT[Transkription]
-    end
-    subgraph Q[Quellen]
-        QW[Webverzeichnis<br/>und Feeds]
-        QC[Wiki]
-        QA[Ablagedienste]
-        QS[SMB-Freigaben]
-    end
+    P[Monitoring] -->|Metriken| BE
 ```
 
-Gestrichelt sind die Verbindungen des Backends, die über den Ausgangsproxy gehen können, und die
-Anmeldung des Browsers beim Identitätsanbieter. Die Originalablage ist ein Verzeichnis oder ein
-Objektspeicher. Die Modelle sind die vier Modellrollen; Chat und Embedding sind Pflicht, Reranking
-und Transkription optional. Die Quellen sind nach der Art ihrer Verbindung gruppiert: Webverzeichnisse
-und Feeds, Confluence als Wiki, Ablagedienste wie S3, SharePoint oder Nextcloud über deren
-Schnittstelle und Windows-Dateifreigaben über SMB, das nie über den Ausgangsproxy geht. Ein
-Verzeichnis im Dateisystem liest das Backend lokal. Alle Quellen nennt die Übersicht der
-[Konnektoren](konnektoren/README.md); jede einzelne Verbindung nach außen mit ihren Daten listet
-das Faktenblatt `datenfluesse` (siehe [Nachvollziehbarkeit](nachvollziehbarkeit.md)).
+Gestrichelt sind die Verbindungen, die über den [Ausgangsproxy](#ausgangsproxy) gehen können, und
+die Anmeldung des Browsers beim Identitätsanbieter.
 
 | Baustein | Aufgabe | Pflicht | Kapitel |
 |---|---|---|---|
-| Frontend | liefert die Oberfläche aus und reicht `/api/` und `/mcp` an das Backend weiter; hält keinen Zustand | ja | [Frontend-Laufzeitimage](#frontend-laufzeitimage) |
-| Backend | die Anwendung: Suche, Antwort, Indexierung, Rechte, Verwaltung | ja, eine oder mehrere Instanzen | [Backend-Laufzeitimage](#backend-laufzeitimage) |
-| PostgreSQL mit pgvector | die einzige Wahrheit: Dokumente, Chunks samt Vektoren, Volltext, Metadaten, Rechte, Chats, Protokolle | ja | [Datenbank](datenbank.md) |
-| Originalablage | die Originale hochgeladener Dokumente, in einem Verzeichnis, auf einem Netzlaufwerk oder in einem Objektspeicher | ja, sobald hochgeladen wird | [Originalablage](originalablage.md) |
-| Modelle | Chat, Einbettung und optional Reranking und Transkription über openai-kompatible Endpunkte, im Haus oder außerhalb | Chat und Einbettung | [Modelle](modelle.md) |
-| Identitätsanbieter | Anmeldung über OpenID Connect; ohne ihn melden sich nur lokale Konten an | nein | [Authentifizierung](authentifizierung.md) |
-| Mailserver | Einladungen, Rücksetzlinks, Benachrichtigungen | nein | [E-Mail-Versand](e-mail.md) |
-| Quellen | Dateisysteme, Webverzeichnisse, Feeds, Confluence, Objektspeicher und weitere, angebunden über Konnektoren | nein | [Konnektoren](konnektoren/README.md) |
+| Reverse-Proxy oder Ingress | TLS, Weiterleitung an das Frontend | ja, sobald erreichbar | [Netzwerkzugang](#netzwerkzugang) |
+| Frontend | liefert die Oberfläche aus, reicht `/api/` und `/mcp` an das Backend; ohne Zustand | ja | [Frontend-Laufzeitimage](#frontend-laufzeitimage) |
+| Backend | Suche, Antwort, Indexierung, Rechte, Verwaltung | ja, eine oder mehrere Instanzen | [Backend-Laufzeitimage](#backend-laufzeitimage) |
+| PostgreSQL mit pgvector | einziger Zustand: Dokumente, Vektoren, Volltext, Rechte, Chats, Protokolle | ja | [Datenbank](datenbank.md) |
+| Originalablage | Originale der Uploads, im Dateisystem (auch Netzlaufwerk) oder in einem S3-Objektspeicher wie MinIO | ja, sobald hochgeladen wird | [Originalablage](originalablage.md) |
+| Modelldienste | je Rolle ein OpenAI-kompatibler Endpunkt: Chat und Embedding (Pflicht), Reranking und Spracherkennung (optional) | Chat und Embedding | [Modelle](modelle.md) |
+| Identitätsanbieter | Anmeldung über OpenID Connect, etwa Keycloak; ohne ihn nur lokale Konten | nein | [Authentifizierung](authentifizierung.md) |
+| Mailserver | SMTP für Einladungen, Rücksetzlinks, Benachrichtigungen | nein | [E-Mail-Versand](e-mail.md) |
+| Quellen | angebunden über Konnektoren, etwa SMB-Freigaben, Nextcloud, Google Drive, SharePoint, Confluence, Feeds … | nein | [Konnektoren](konnektoren/README.md) |
 | Ausgangsproxy | der eine Weg des Backends ins Netz, wenn das Haus einen verlangt | nein | [Ausgangsproxy](#ausgangsproxy) |
+| Externe KI-Werkzeuge | greifen über MCP oder API mit persönlichen Zugangstokens zu | nein, eigener Schalter | [Externe KI-Werkzeuge](fremdzugaenge.md) |
+| Monitoring | Prometheus liest Metriken, ein Log-Sammler die Standardausgabe | nein | [Logs und Metriken](#logs-und-metriken) |
 
-Gesichert werden muss nur, was einen Zustand hält: die Datenbank, die Originalablage und die
-Geheimnisse der Konfiguration ([Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)).
-Frontend, Backend und Modelle lassen sich jederzeit neu starten.
+Gesichert wird nur, was Zustand hält: Datenbank, Originalablage und Geheimnisse
+([Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Jede Verbindung nach außen mit
+ihren Daten listet das Faktenblatt `datenfluesse` ([Nachvollziehbarkeit](nachvollziehbarkeit.md)).
 
 ## Eine oder mehrere Backend-Instanzen
 
-OPAA läuft mit **einer oder mehreren gleichrangigen Backend-Instanzen** gegen dieselbe Datenbank;
-eine Instanz ist die Vorgabe beider Betriebswege. Mehrere Instanzen überstehen den Ausfall einer von
-ihnen und lassen sich innerhalb des Versionsfensters nacheinander aktualisieren, ohne dass der Dienst
-ausfällt. Jede Instanz
-beantwortet jede Anfrage, und sie stimmen sich ausschließlich über die Datenbank ab. Wie das
-funktioniert, was auf allen Instanzen gleich eingestellt sein muss und welche Grenzen je Instanz
-gelten, erklärt [Mehrere Backend-Instanzen](mehrere-instanzen.md); die Einrichtung steht unter
-[Docker Compose](docker-compose.md#mehrere-backend-instanzen) und
-[Kubernetes](kubernetes.md#mehrere-backend-instanzen).
-
-Das Frontend hält keinen Zustand und darf mehrfach laufen.
+Vorgabe ist eine Backend-Instanz. Mehrere gleichrangige Instanzen gegen dieselbe Datenbank überstehen
+den Ausfall einer Instanz und lassen sich nacheinander aktualisieren; sie stimmen sich nur über die
+Datenbank ab. Voraussetzungen und Grenzen: [Mehrere Backend-Instanzen](mehrere-instanzen.md).
 
 ## Zeitzone
 
-Die Zeitzone setzen `.env.docker.example` (`TZ`) und der Helm-Chart (`backend.timeZone`)
-ausdrücklich, Vorgabe ist UTC. An ihr hängen die Uhrzeiten der nächtlichen und monatlichen
-Löschläufe, des Zeitplans einer Wissensbibliothek und des Feststellungslaufs der Nachfolge, die
-Tages-, Monats- und Jahresgrenzen der Fristen, etwa das Jahresende, zu dem anlassbezogene Klärungen
-gelöscht werden, die Erinnerungen vor einem Ablauf und die Datumsangaben in Mails. Mit mehreren
-Instanzen ist sie auf allen gleich ([Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)).
+- Gesetzt über `TZ` (Compose) bzw. `backend.timeZone` (Helm); Vorgabe UTC.
+- Bestimmt die Uhrzeiten geplanter Läufe (Löschläufe, Zeitpläne der Wissensbibliotheken,
+  Feststellung der Nachfolge), Tages-, Monats- und Jahresgrenzen von Fristen, Erinnerungen und
+  Datumsangaben in Mails.
+- Mit mehreren Instanzen auf allen gleich
+  ([Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)).
 
 ## Eine Organisation
 
-Eine Installation wird mit **genau einer** Organisation ausgeliefert; es gibt keinen Verwaltungspfad,
-der eine zweite anlegt, und alle Identitätsanbieter legen Konten in dieselbe Organisation an. Die
-Mandantengrenze wird trotzdem durchgehend gehalten: Ein Objekt einer anderen Organisation ist für
-jeden Aufruf „nicht gefunden", nicht „nicht erlaubt", und die Datenbank lässt in den Verweisen
-zwischen organisationsgebundenen Objekten keine zwei Organisationen zu. Ausgenommen sind die
-Historie der Rechtevergabe, die bewusst ohne solche Verweise auskommt, damit sie das Löschen einer
-Bibliothek überdauert, und die Vektoren, die ihre Organisation nur als Metadatum tragen. Die Originalablage führt die Organisation in jedem
-Ablageort mit.
+- Eine Installation hat **genau eine** Organisation; einen Weg, eine zweite anzulegen, gibt es nicht.
+  Alle Konten, auch die aus Identitätsanbietern, gehören zu ihr.
+- Datenmodell und Prüfungen sind für mehrere Mandanten vorbereitet: Objekte tragen ihre
+  Organisation, die Datenbank verbietet Verweise zwischen Organisationen, und ein Objekt einer
+  fremden Organisation ist für jeden Aufruf „nicht gefunden“.
+- Mandantenbetrieb in einer Installation ist damit nicht gebaut; getrennte Mandanten bekommen
+  getrennte Installationen.
 
 ## Images und Versionen
 
-Die CI veröffentlicht fertige Images für Backend und Frontend; gebaut wird auf dem Zielsystem nicht.
-Es gibt zwei Arten von Ständen:
-
-- **Releases** mit fester Versionsnummer. Ein Release wird einmal gebaut und nie überschrieben.
-- **Der Entwicklungsstand `main`.** Er wird bei jedem Push auf `main` und zusätzlich wöchentlich
-  (montags) neu gebaut, damit er auch ohne Codeänderung die aktuellen Sicherheitsupdates des
-  Betriebssystems trägt.
+Die CI veröffentlicht fertige Images für `linux/amd64` und `linux/arm64`; auf dem Zielsystem wird
+nichts gebaut. Backend und Frontend laufen immer mit **derselben** Version.
 
 | Image | Tags |
 |-------|------|
 | `ghcr.io/criew/opaa-backend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
 | `ghcr.io/criew/opaa-frontend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
 
-- **Architekturen.** Jedes Release und der Stand `main` liegen für `linux/amd64` und `linux/arm64`
-  vor; Docker und Kubernetes ziehen die passende Variante, auch auf ARM-Servern und Apple-Silicon-
-  Rechnern ohne Emulation. Ältere `sha-<commit>`-Tags aus der Zeit vor den arm64-Builds gibt es nur
-  für `linux/amd64`.
-- **Welcher Stand.** `X.Y.Z` ändert seinen Inhalt nie, `X.Y` zeigt auf das jüngste Patch-Release
-  dieser Linie, ein Tag `latest` gibt es nicht. Für einen Betrieb, der Aktualisierungen plant, ist
-  eine Release-Version der empfohlene Stand. Ein Release bekommt Sicherheitsupdates des Basis-Images
-  über ein Patch-Release, nicht über den wöchentlichen Neubau: Wer `X.Y` verwendet, erhält es mit dem
-  nächsten Pull, wer `X.Y.Z` pinnt, wechselt bewusst.
-- **Backend und Frontend** laufen immer mit **derselben** Version.
-- **Einen festen Stand von `main`** pinnt man über den Digest
-  (`image: ghcr.io/criew/opaa-backend@sha256:…`), nicht über einen Tag. Auch `sha-<commit>` taugt
-  dafür nicht: Der wöchentliche Neubau verschiebt `main` und `sha-<commit>` gemeinsam auf einen
-  neuen Digest, solange der Commit der Stand von `main` ist. `sha-<commit>` beantwortet also „aus
-  welchem Commit", nicht „welches Image". Den Digest eines Stands liefert
-  `docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main`.
+- **`X.Y.Z`** ändert sich nie; **`X.Y`** zeigt auf das jüngste Patch-Release der Linie und bringt
+  Sicherheitsupdates mit dem nächsten Pull. Ein Tag `latest` gibt es nicht. Im Echtbetrieb läuft ein
+  Release ([Releases und Nachweise](releases-und-nachweise.md)).
+- **`main`** wird bei jedem Push und wöchentlich neu gebaut. Einen festen Stand pinnt nur der
+  Digest (`…/opaa-backend@sha256:…`), nicht `sha-<commit>`.
+- **Laufende Version:** `/actuator/info` (`build.version`), die Startzeile des Logs und im Frontend
+  der Dialog „Info zu …“ im Profilmenü.
+- **SBOM und Provenance** hängen je Architektur am Image:
 
-Welche Version läuft, nennen `/actuator/info` unter `build.version` und die Startzeile des
-Protokolls (`Starting OpaaApplication v<Version>`), für das Frontend der Dialog „Info zu …" im
-Profilmenü. Ein Release-Image meldet die Version seines Tags, ein Image von `main` den
-Entwicklungsstand mit dem kurzen Hash seines Commits, etwa `0.0.0-dev+3f2a9c1`.
+  ```bash
+  docker buildx imagetools inspect ghcr.io/criew/opaa-backend:<tag> --format '{{ json .SBOM }}'
+  docker buildx imagetools inspect ghcr.io/criew/opaa-backend:<tag> --format '{{ json .Provenance }}'
+  ```
 
-**SBOM und Herkunft.** Jedes Image trägt je Architektur eine SBOM- und eine Provenance-Attestierung;
-die SBOM deckt auch die Betriebssystempakete des Basis-Images ab:
-
-```bash
-docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json .SBOM }}'
-docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json .Provenance }}'
-# nur eine Architektur
-docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json (index .SBOM "linux/arm64") }}'
-```
-
-Für das Frontend entsprechend mit `opaa-frontend`. Zusätzlich legt die CI bei jedem Push auf `main`
-je eine CycloneDX-SBOM der ausgelieferten Laufzeit-Abhängigkeiten von Backend und Frontend als
-Workflow-Artefakte `sbom-backend` und `sbom-frontend` ab (90 Tage Aufbewahrung, ohne Test- und
-Build-Werkzeuge).
-
-**Update-Paket.** Am GitHub-Release jeder Version hängt neben den Release-Notizen ein attestiertes
-Update-Paket für Datenschutz, Personalvertretung und Informationssicherheit: die Faktenblätter der
-Version und die Änderungen der Fakten seit dem vorigen Release mit Stufenvorschlag. Inhalt und
-Prüfung beschreibt [Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release).
+- **Update-Paket:** Am GitHub-Release hängt ein attestiertes Paket für Datenschutz,
+  Personalvertretung und Informationssicherheit
+  ([Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release)).
 
 ## Backend-Laufzeitimage
 
-Das Backend läuft in einem bewusst minimalen Image: eine mit `jlink` erzeugte Java-21-Laufzeit auf
-einem Distroless-Basisimage. Außer der C-Bibliothek enthält es kein Betriebssystempaket — keine
-Shell, keine Coreutils, kein `curl`/`wget`, keinen Paketmanager. Daraus folgt:
+Java 21 auf einem Distroless-Image, ohne Shell, Coreutils, `curl` und Paketmanager.
 
-- **Keine Shell im Container.** `docker exec … sh` und `kubectl exec … sh` scheitern. Diagnose läuft
-  über Protokoll, Actuator und Werkzeug-Container ([Diagnose ohne Shell](#diagnose-ohne-shell)).
-- **Proben von außen.** Ein Healthcheck darf kein `CMD-SHELL` und kein `curl`/`wget` im Container
-  verwenden; er fragt `GET /actuator/health/readiness` von außen ab
-  ([Bereitschaft und Lebendigkeit](#bereitschaft-und-lebendigkeit)).
-- **Zeitzone:** UTC, solange `TZ` nicht gesetzt ist. `TZ=Europe/Berlin` wirkt wie gewohnt; die
-  Zeitzonendatenbank steckt in der Java-Laufzeit. Was an ihr hängt, steht unter
-  [Zeitzone](#zeitzone).
-- **Zertifikate:** Der Truststore ist der `cacerts` der Java-Laufzeit mit den öffentlichen CAs. Eine
-  interne CA kommt in eine **Kopie** dieses Truststores, nie in einen leeren, neuen Store — der
-  ersetzte sonst alle öffentlichen CAs, und HTTPS zu Modellanbietern, S3 und Identitätsanbietern
-  scheitert mit `PKIX path building failed`. Wie das geht, steht je Betriebsweg unter
-  [Docker Compose](docker-compose.md#eigene-interne-ca-ergänzen) und
-  [Kubernetes](kubernetes.md#eigene-zertifizierungsstelle).
-- **JVM-Optionen** (Heap-Grenzen, Debug-Agent, JFR) gehen über `JAVA_TOOL_OPTIONS`; ein eigener
-  `java`-Aufruf würde den Entrypoint überschreiben.
-- **Ohne Sonderrechte:** Der Prozess läuft als Benutzer und Gruppe `65532` und lauscht auf Port 8080.
-  Eingehängte Verzeichnisse müssen für diese Kennung zugänglich sein: die Originalablage und ein
-  eigenes Temp-Verzeichnis beschreibbar, Korpus-Verzeichnisse lesbar.
+- **Keine Shell:** `docker exec … sh` scheitert; Diagnose über Log, Actuator und Werkzeug-Container
+  ([Diagnose ohne Shell](#diagnose-ohne-shell)). Health Checks fragen von außen ab.
+- **Ohne Root:** Benutzer und Gruppe `65532`, Port 8080. Eingehängte Verzeichnisse müssen für diese
+  Kennung zugänglich sein.
+- **Zertifikate:** Eine interne CA kommt in eine **Kopie** des mitgelieferten Truststores, nie in
+  einen leeren Store — sonst scheitert HTTPS zu allen öffentlichen Diensten
+  ([Docker Compose](docker-compose.md#eigene-interne-ca-ergänzen),
+  [Kubernetes](kubernetes.md#eigene-zertifizierungsstelle)).
+- **JVM-Optionen** gehen über `JAVA_TOOL_OPTIONS`.
 
-### Nur lesbares Dateisystem
+<a id="nur-lesbares-dateisystem"></a>
 
-Das Backend schreibt an genau zwei Stellen:
+### Read-only Filesystem
 
-| Pfad | Inhalt | Nötig |
-|---|---|---|
-| `/tmp` (`java.io.tmpdir`) | Arbeitsdateien von Tomcat und Uploads, heruntergeladene Quelldateien, Arbeitskopien für den Objektspeicher, der Font-Cache von PDFBox, Laufzeitdaten der JVM | immer |
-| `/app/uploads` (`OPAA_UPLOAD_STORAGE_PATH`) | die hochgeladenen Originale | nur, solange sie im Dateisystem liegen (`OPAA_UPLOAD_STORE` nicht auf `s3`) |
+Das Backend schreibt nur unter `/tmp` (Arbeitsdateien, Uploads, heruntergeladene Quelldateien) und,
+solange die Originale im Dateisystem liegen, unter `OPAA_UPLOAD_STORAGE_PATH`. Eigene
+Temp-Verzeichnisse für S3 (`OPAA_UPLOAD_S3_TEMP_DIRECTORY`, `OPAA_INDEXING_S3_TEMP_DIRECTORY`)
+liegen unter `/tmp` oder auf einem eigenen Volume.
 
-Alles andere liest der Prozess nur; ein eigenes `OPAA_UPLOAD_S3_TEMP_DIRECTORY` oder
-`OPAA_INDEXING_S3_TEMP_DIRECTORY` kommt als dritter beschreibbarer Pfad hinzu und muss auf einem
-eingehängten Volume oder unter `/tmp` liegen. Diagnoseziele gehören immer absolut unter `/tmp`: Ein
-`jcmd … GC.heap_dump heap.hprof`, ein `JFR.dump` ohne `filename` und
-`-XX:+HeapDumpOnOutOfMemoryError` ohne `-XX:HeapDumpPath=/tmp` schreiben sonst nach `/app` und
-scheitern mit `Read-only file system`.
-
-`/tmp` liegt auf einem Datenträger, nicht im Arbeitsspeicher: Die Dateien dort erreichen die Größe
-eines Dokuments. Es fasst mehrere der größten erwarteten Dokumente gleichzeitig und, wenn einer
-vorgesehen ist, einen Heap-Dump, der so groß wird wie der Heap. Unter Docker Compose ist das ein
-benanntes Volume, das Neustarts überlebt, unter Kubernetes ein `emptyDir`, das mit dem Pod
-verschwindet. Was ein harter Abbruch dort zurücklässt,
-und jeder Heap-Dump oder JFR-Mitschnitt, kann Inhalte privater Bibliotheken enthalten, ein Heap-Dump
-zusätzlich Geheimnisse und entschlüsselte Zugangsdaten — solche Dateien werden nach der Diagnose
-entfernt.
+- `/tmp` liegt auf einem Datenträger und fasst mehrere der größten Dokumente gleichzeitig, bei
+  vorgesehenem Heap-Dump zusätzlich die Heap-Größe.
+- Heap-Dumps und JFR-Mitschnitte gehören absolut unter `/tmp`, sonst `Read-only file system`.
+- **Sicherheit:** Reste in `/tmp`, Heap-Dumps und JFR-Mitschnitte können Inhalte privater
+  Bibliotheken, Geheimnisse und entschlüsselte Zugangsdaten enthalten. Nach der Diagnose löschen.
 
 ### Speicher und Container-Grenzen
 
-Die JVM richtet ihre Heap-Grenze nach dem Speicher, den sie sieht, und nimmt ohne eigene Angabe
-**25 %** davon: ohne Container-Grenze 25 % des Host-Speichers, mit Grenze 25 % der Grenze. Mit
-Grenze bleibt so viel ungenutzt; dann wird der Anteil über `JAVA_TOOL_OPTIONS` angehoben:
+Ohne Angabe nimmt die JVM 25 % des sichtbaren Speichers als Heap. Mit Container-Limit wird der
+Anteil angehoben, ohne Limit nicht.
 
-```text
-JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70
-```
-
-Der Rest der Grenze gehört Klassen, übersetztem Code, Threads und Puffern. Ohne Container-Grenze
-wird der Anteil **nicht** angehoben, sonst konkurriert die JVM mit Datenbank und Modellbetrieb um
-den Host-Speicher.
-
-**Messwert als Ausgangspunkt.** Die E2E-Suite (Uploads, Indexierung von PDF-, Office- und
-Mail-Dateien, Chat) lief mit einer Grenze von 1,5 GiB und 75 % Heap ohne Abbruch: Spitze des
-Containers 1,0 GiB, belegter Heap höchstens rund 400 MiB, Klassen, Code und Threads zusammen rund
-420 MiB. Für den Betrieb empfohlen:
-
-| | Anforderung (`requests`) | Grenze (`limits`) | Heap-Anteil |
+| | Request | Limit | Heap-Anteil |
 |---|---|---|---|
-| Speicher | 1 GiB | 2 GiB | `-XX:MaxRAMPercentage=70` |
+| Speicher | 1 GiB | 2 GiB | `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70` |
 | CPU | 0,5 | keine | — |
 
-Die CPU-Werte sind nicht gemessen. Eine CPU-Grenze drosselt die JVM gerade beim Start und bei der
-Indexierung und wird deshalb nur gesetzt, wenn der Cluster sie verlangt. Große Bestände, sehr große
-PDF-Dateien oder viele gleichzeitige Indexierungen brauchen mehr.
-
-Ein Abbruch wegen der Grenze zeigt sich unter Kubernetes als `OOMKilled` im Status des Pods, unter
-Compose als `true` in `docker inspect --format '{{.State.OOMKilled}}' <container>`. Der Exit-Code
-`137` allein ist nicht eindeutig, er entsteht auch nach Ablauf der Stopp-Frist. Steht dort `true`,
-die Grenze anheben, nicht den Heap-Anteil.
+Große Bestände, sehr große PDF-Dateien oder viele gleichzeitige Indexierungen brauchen mehr. Ein
+OOM-Kill zeigt sich als `OOMKilled` (Kubernetes) bzw. in
+`docker inspect --format '{{.State.OOMKilled}}' <container>`; dann das Limit anheben, nicht den
+Heap-Anteil. Exit-Code `137` allein ist nicht eindeutig.
 
 ## Frontend-Laufzeitimage
 
-Das Frontend liefert die Oberfläche aus und reicht `/api/` und `/mcp` an das Backend weiter. Es läuft
-auf dem unprivilegierten nginx-Image (`nginxinc/nginx-unprivileged`) und hält die Einschränkungen
-ein, die ein Kubernetes-Cluster mit Pod Security Standard `restricted` verlangt:
+nginx (`nginxinc/nginx-unprivileged`), lauffähig unter Pod Security Standard `restricted`.
 
-- **Ohne root:** Der Prozess läuft als Benutzer `101` und lauscht auf **Port 8080**, über IPv4 und,
-  wenn der Container IPv6 hat, auch über IPv6. Ob IPv6 vorhanden ist, entscheidet der Container beim
-  Start anhand von `/proc/net/if_inet6`; fehlt die Datei, lauscht nginx nur über IPv4 und meldet das
-  im Protokoll. Eine Probe kann deshalb `localhost` verwenden.
-- **Beliebige Kennung:** Das Image läuft auch unter einer vom Cluster zugewiesenen Kennung, etwa bei
-  OpenShift, solange `/tmp` beschreibbar ist.
-- **Nur lesbares Dateisystem:** Der Container schreibt ausschließlich unter `/tmp` — die beim Start
-  erzeugte Serverkonfiguration, die PID-Datei und die Zwischenablage für Uploads und, bei langsamen
-  Clients, für große Antworten des Backends. Unter Compose läuft der Dienst mit `read_only: true`,
-  ohne Capabilities und mit `no-new-privileges`, `/tmp` ist ein `tmpfs` mit 512 MiB; unter
-  Kubernetes ist `/tmp` ein `emptyDir`. Reicht der Platz bei vielen gleichzeitigen großen Uploads nicht, wird
-  die Grenze angehoben.
-- **Backend-Ziel:** `OPAA_BACKEND_UPSTREAM` nennt Host und Port des Backends. Ein Wert, der nicht die
-  Form `host[:port]` hat (Port 1 bis 65535), bricht den Start mit einer Meldung im Protokoll ab.
-- **Wartezeit auf das Backend:** `OPAA_BACKEND_READ_TIMEOUT` bestimmt, wie lange nginx auf die Antwort
-  des Backends wartet, für `/api/` und `/mcp` gleichermaßen. Eine Chat-Antwort kommt erst, wenn Suche,
-  Reranking und Modellaufruf fertig sind, und kann Minuten brauchen; antwortet das Backend nicht
-  rechtzeitig, endet die Anfrage mit `504`. Ein Wert ohne Einheit `s`, `m` oder `h` bricht den Start
-  ab. Für den Verbindungsaufbau gilt dagegen fest 4 s: Kommt keine Verbindung zustande, versucht nginx
-  das nächste Ziel, etwa die andere von [mehreren Backend-Instanzen](docker-compose.md#mehrere-backend-instanzen).
-- **Uploadgröße:** nginx nimmt Anfragen bis 52 MB an, etwas mehr als die Grenze des Backends
-  (`OPAA_UPLOAD_MAX_FILE_SIZE`), weil nginx die ganze Multipart-Anfrage misst. Der Wert steht fest in
-  der nginx-Konfiguration des Images; wer die Grenze des Backends anhebt, hebt ihn dort mit an,
-  ebenso an jedem Proxy davor (siehe `OPAA_UPLOAD_MAX_FILE_SIZE` in der
-  [Konfiguration](konfiguration.md)).
+- **Ohne Root:** Benutzer `101`, Port 8080, auch mit beliebiger, vom Cluster vergebener Kennung.
+- **Read-only Filesystem:** schreibt nur unter `/tmp` (Konfiguration, Zwischenablage für Uploads und
+  große Antworten). Bei vielen großen Uploads gleichzeitig `/tmp` vergrößern.
+- **`OPAA_BACKEND_UPSTREAM`:** Host und Port des Backends.
+- **`OPAA_BACKEND_READ_TIMEOUT`:** wie lange nginx auf das Backend wartet. Eine Chat-Antwort kann
+  Minuten brauchen; zu kurz endet mit `504`.
+- **Uploadgröße:** fest 52 MB, knapp über der Grenze des Backends (`OPAA_UPLOAD_MAX_FILE_SIZE`). Wer
+  diese anhebt, passt das Image und jeden Proxy davor an.
+- Ungültige Werte dieser Variablen brechen den Containerstart mit einer Meldung im Log ab.
 
-## Bereitschaft und Lebendigkeit
+<a id="bereitschaft-und-lebendigkeit"></a>
 
-Für einen Container-Healthcheck oder die Probe eines Lastverteilers ist nicht der Gesamtstatus der
-richtige Pfad, sondern:
+## Readiness und Liveness
 
-| Pfad | Antwortet auf Basis von | Gedacht für |
+| Pfad | Prüft | Gedacht für |
 | --- | --- | --- |
-| `GET /actuator/health/readiness` | Prozesszustand und Datenbank | Lastverteiler-Probe, Container-Healthcheck: Darf diese Instanz Anfragen bekommen? |
-| `GET /actuator/health/liveness` | Prozesszustand | Neustart-Entscheidung: Lebt der Prozess noch? |
-| `GET /actuator/health` | alles, was nicht in einer eigenen Gruppe steht | Überblick bei der Diagnose |
+| `GET /actuator/health/readiness` | Prozess und Datenbank | Readiness-Probe, Health Check, Load Balancer |
+| `GET /actuator/health/liveness` | Prozess | Liveness-Probe (Neustart) |
+| `GET /actuator/health` | Überblick | Diagnose |
 
-Beide Proben und der Gesamtstatus sind ohne Anmeldung erreichbar und antworten dann nur mit dem
-Status (`{"status":"UP"}` bzw. `DOWN`); die Aufschlüsselung sieht nur ein angemeldeter Aufrufer.
-Jede **andere** Gruppe verlangt ein gültiges Zugangstoken, weil zwei von ihnen bei jedem Abruf einen
-echten Modellaufruf bzw. eine echte Ähnlichkeitssuche auslösen.
+- Ohne Anmeldung antworten sie nur mit `UP`/`DOWN`; Details und alle weiteren Health Groups
+  verlangen ein Zugangstoken.
+- Die Readiness braucht eine Datenbankverbindung: Auch ein erschöpfter Connection Pool meldet `DOWN`.
+  Bei knappen Pools die Probe nachsichtig konfigurieren.
+- Modelldienste stehen bewusst nicht in der Readiness; ein hängender Modellserver nimmt die Instanz
+  nicht aus der Rotation. Sie haben eigene Health Groups:
 
-Der Compose-Stapel prüft die Bereitschaft im Container mit einem kleinen Java-Programm des
-Images, weil das Image keine Shell hat ([Docker Compose](docker-compose.md#services)).
-
-> **Die Bereitschaft zieht eine Datenbankverbindung.** Nicht nur ein Ausfall der Datenbank lässt die
-> Probe `DOWN` melden, sondern auch ein erschöpfter Verbindungspool. Eine Instanz, die unter Last
-> alle Verbindungen in langen Chat-Anfragen hält, kann sich so selbst aus der Rotation nehmen. Bei
-> knapp bemessenen Pools die Probe mit einer nachsichtigen Anzahl Fehlversuche konfigurieren.
-
-Chat-Modell, Embedding-Modell, Transkription und Vektorspeicher stehen bewusst **nicht** in der Bereitschaft und
-nicht im Gesamtstatus: Jeder hängt an einem fremden Dienst, und ein hängender Modellserver darf die
-Instanz nicht aus der Rotation nehmen, während Anmeldung, Verwaltung und Dokumentenzugriff
-weiterarbeiten. Ohne Datenbank dagegen kann die Instanz nichts beantworten. Die übrigen Zustände
-stehen in eigenen Gruppen:
-
-| Gruppe | Prüft |
+| Health Group | Prüft |
 | --- | --- |
-| `GET /actuator/health/chat-model` | welches Chat-Modell aktiv ist (ohne Aufruf des Modells) |
-| `GET /actuator/health/embedding-model` | einen echten Embedding-Aufruf |
-| `GET /actuator/health/transcription-model` | den letzten bekannten Zustand der Rolle Transkription, ohne eigenen Aufruf; `UP` bei erreichbarem Dienst und bei abgeschalteter Spracheingabe, `DOWN` bei eingeschalteter, aber nicht nutzbarer Rolle |
-| `GET /actuator/health/vector-store` | eine echte Ähnlichkeitssuche |
-| `GET /actuator/health/upload-store` | den Objektspeicher der Originalablage; `UP` mit Endpunkt und Bucket oder `DOWN` mit dem Grund (nur mit `OPAA_UPLOAD_STORE=s3`) |
-| `GET /actuator/health/mail` | den letzten SMTP-Versand: `UP`, `DOWN` oder `UNKNOWN`, ohne Einzelheiten |
+| `chat-model` | welches Chat-Modell aktiv ist, ohne Aufruf |
+| `embedding-model` | einen echten Embedding-Aufruf |
+| `transcription-model` | letzten bekannten Zustand der Spracherkennung |
+| `vector-store` | eine echte Ähnlichkeitssuche |
+| `upload-store` | den S3-Objektspeicher der Originalablage |
+| `mail` | den letzten SMTP-Versand |
 
-## Sanftes Herunterfahren
+<a id="sanftes-herunterfahren"></a>
 
-Ein Stopp bricht laufende HTTP-Anfragen nicht ab: Das Backend nimmt keine neuen Verbindungen mehr an
-und lässt die angenommenen Anfragen zu Ende laufen, höchstens so lange, wie `OPAA_SHUTDOWN_TIMEOUT`
-erlaubt. Danach meldet es sich im Instanzregister ab. Zusammen mit den Proben ist das die
-Voraussetzung, eine Instanz hinter einem Lastverteiler geordnet zu erneuern: aus der Rotation nehmen,
-auslaufen lassen, stoppen.
+## Graceful Shutdown
 
-- **Hintergrundläufe teilen dieses Zeitfenster nicht.** Ein laufender Indexierungs- oder
-  Upload-Vorgang der stoppenden Instanz wird sofort abgebrochen. Mit einer Instanz erkennt der
-  nächste Start ihn als abgebrochen; mit mehreren gibt ihn eine andere Instanz binnen einer Minute
-  auf, weil sich die stoppende abgemeldet hat. Wiederholen lässt er sich in beiden Fällen. Läufe und
-  Uploads anderer Instanzen berührt der Stopp nicht. Ein großer Lauf kann einen Neustart nicht
-  hinhalten.
-- **Mails gehen nicht verloren.** Was das Backend zu versenden hat, liegt bis zur Zustellung in der
-  Datenbank; eine andere oder die neu gestartete Instanz stellt es zu. Verloren geht nur eine Anfrage
-  „Passwort vergessen“ oder eine Selbstregistrierung, deren Bearbeitung beim Stopp noch wartet; sie
-  ist nach wenigen Millisekunden erledigt, und wer keine Mail bekommt, fragt erneut.
-- **Chat-Titel und Gesprächsnotiz** bekommen ein eigenes, kurzes und fest eingebautes Zeitfenster,
-  weil beide nie nachgeholt werden. Ein langsamer Aufruf wird trotzdem abgebrochen. Das Fenster kommt
-  zu dem der Anfragen hinzu: `OPAA_SHUTDOWN_TIMEOUT` gilt je Stopp-Phase, nicht für den ganzen Stopp.
-- **Die Stopp-Frist der Plattform** muss länger sein, sonst endet der Prozess abrupt: unter Compose
-  `OPAA_STOP_GRACE_PERIOD`, unter Kubernetes `backend.terminationGracePeriodSeconds`, das der Chart
-  größer als das Zeitfenster verlangt. Ein abrupt beendeter Prozess meldet sich nicht ab; seine Läufe
-  gibt eine andere Instanz erst nach `OPAA_INSTANCE_DEAD_AFTER` auf.
-- **Beim Austausch einzelner Instanzen** übernimmt eine andere Instanz die neuen Anfragen. Damit eine
-  lange Chat-Antwort den Austausch übersteht, reicht das Zeitfenster bis zum Lese-Timeout des
-  Frontends (`OPAA_BACKEND_READ_TIMEOUT`); der Helm-Chart stellt es bei einem Rolling Update selbst so
-  ein ([Kubernetes](kubernetes.md#mehrere-backend-instanzen)).
+Beim Stopp nimmt das Backend keine neuen Verbindungen an und lässt laufende Anfragen bis
+`OPAA_SHUTDOWN_TIMEOUT` zu Ende laufen.
+
+- **Die Grace Period der Plattform muss länger sein** (`OPAA_STOP_GRACE_PERIOD` unter Compose,
+  `backend.terminationGracePeriodSeconds` unter Kubernetes), sonst endet der Prozess abrupt.
+- **Indexierungs- und Upload-Läufe** der stoppenden Instanz brechen sofort ab und lassen sich
+  wiederholen.
+- **Mails** liegen bis zur Zustellung in der Datenbank und gehen nicht verloren.
+- Bei einem Rolling Update stellt der Helm-Chart die Zeitfenster passend ein
+  ([Kubernetes](kubernetes.md#mehrere-backend-instanzen)).
 
 ## Netzwerkzugang
 
 Das Backend wird nie direkt angesprochen, sondern über das Frontend. Davor steht in jedem
-erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** — der Proxy des Hauses vor dem
-Compose-Stapel oder der Ingress-Controller des Clusters. Für ihn gilt:
+erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für ihn gilt:
 
-- **`X-Forwarded-Proto` autoritativ setzen** (`proxy_set_header X-Forwarded-Proto $scheme;`) und nie
-  vom Client durchlassen. Das Backend wertet `X-Forwarded-*` aus, damit Anfragen desselben Origins
-  hinter dem Proxy nicht als cross-origin gelten; ein gefälschtes `https` umginge sonst die
-  CORS-Prüfung. Der nginx im Frontend-Container reicht einen eingehenden Wert unverändert weiter.
-- **`X-Forwarded-For` setzen oder anhängen und ein eingehendes `Forwarded` verwerfen.** Wie das
-  Backend den Header auswertet, steht unter [Vertraute Proxys](#vertraute-proxys-und-client-adresse).
-  Der nginx im Frontend-Container hängt die Kette an (`$proxy_add_x_forwarded_for`) und verwirft
-  `Forwarded`, weil das Backend diesen Header sonst vorziehen würde.
-- **Host, Port und Pfad nicht über Header verändern.** Der nginx im Frontend-Container verwirft
-  `X-Forwarded-Host`, `X-Forwarded-Port` und `X-Forwarded-Prefix`, auch wenn der Proxy sie setzt; das
-  Backend sieht den `Host`-Header ohne Port. Liegt die öffentliche Adresse auf einem anderen als dem
-  Standardport, gehört sie deshalb in `OPAA_CORS_ALLOWED_ORIGINS`. OPAA läuft nur im Wurzelpfad
-  seiner Adresse, nicht unter einem Unterpfad.
-- **`/`, `/api/` und `/mcp` an das Frontend reichen.** `/mcp` ist der Zugriffsweg der
-  [externen KI-Werkzeuge](fremdzugaenge.md); fehlt er, beantwortet die Auslieferung den Aufruf mit ihrer
-  Startseite, und der Client meldet eine unverständliche Antwort. Antworten auf `/mcp` nicht
-  puffern: Der Kanal kann als Ereignisstrom antworten.
-- **Zeitgrenze mindestens so lang wie `OPAA_BACKEND_READ_TIMEOUT`** für `/api/` und `/mcp` (bei nginx
-  `proxy_read_timeout`, Vorgabe eine Minute) — sonst bricht der Proxy lange Chat-Antworten mit `504`
-  ab, während das Backend noch rechnet.
-- **Die Rücksprungseiten nicht protokollieren.** `/connections/callback` (Zustimmung bei einem
-  OAuth-Anbieter, siehe [Zugänge](zugaenge.md)) und `/auth/callback` (Anmeldung) sind Seiten der
-  Anwendung, keine Backend-Pfade; ihre Abfrageparameter tragen einen einmal gültigen Code. Der
-  Proxy reicht sie wie `/` an das Frontend und darf sie weder protokollieren noch verändern. Der
-  Frontend-Container schreibt sie nicht ins Zugriffsprotokoll, weder in die Anfragezeile noch in den
-  Referer der Folgeanfragen; alle übrigen Anfragen protokolliert er im Format `main` des Basis-Images.
-  Die Adresse muss genau `{OPAA_PUBLIC_BASE_URL}/connections/callback` lauten, wie in der
-  App-Registrierung beim Anbieter.
-- **`Strict-Transport-Security` setzt der äußere Proxy**, dort, wo TLS endet. Der Frontend-Container
-  spricht selbst nur `http` und setzt den Header bewusst nicht; zwei Stellen für HSTS liefen nur
-  auseinander.
+- **`X-Forwarded-Proto` selbst setzen**, nie vom Client übernehmen; ein gefälschtes `https` umginge
+  die CORS-Prüfung.
+- **`X-Forwarded-For` setzen oder anhängen, `Forwarded` verwerfen**
+  ([Vertraute Proxys](#vertraute-proxys-und-client-adresse)).
+- **`/`, `/api/` und `/mcp` an das Frontend reichen**; Antworten auf `/mcp` nicht puffern.
+- **Timeout** für `/api/` und `/mcp` mindestens `OPAA_BACKEND_READ_TIMEOUT`, sonst `504` bei langen
+  Antworten.
+- **Callback-Seiten** `/auth/callback` und `/connections/callback` tragen einmal gültige Codes:
+  weder protokollieren noch verändern.
+- OPAA läuft nur im Wurzelpfad. Eine öffentliche Adresse mit Nicht-Standardport gehört in
+  `OPAA_CORS_ALLOWED_ORIGINS`.
+- **`Strict-Transport-Security` setzt der äußere Proxy**, wo TLS endet.
 
 ### Sicherheits-Header und `Strict-Transport-Security`
 
-Der nginx im Frontend-Container setzt `Content-Security-Policy`, `X-Content-Type-Options`,
-`X-Frame-Options`, `Referrer-Policy` und `Permissions-Policy` auf jede Antwort, auch auf
-Fehlerantworten, und verrät seine Version nicht. Die Content-Security-Policy erzwingt, dass die
-Oberfläche alle Skripte, Stile, Schriften und Icons selbst ausliefert und zur Laufzeit kein CDN lädt;
-Verbindungen gehen nur an die eigene Herkunft. Zwei Ausnahmen: `style-src` erlaubt Inline-Stile, weil die Oberflächenbibliothek
-Stile zur Laufzeit einfügt, und `connect-src` lässt die Origins zu, die in
-`OPAA_CSP_CONNECT_SRC_EXTRA` stehen — gebraucht für einen Identitätsanbieter auf fremdem Origin
+Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Content-Type-Options`,
+`X-Frame-Options`, `Referrer-Policy` und `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
+Kamera und Standort gesperrt). Die CSP lässt keine fremden Skripte oder CDNs zu und Verbindungen nur
+zur eigenen Herkunft. Ein Identitätsanbieter auf fremdem Origin kommt über
+`OPAA_CSP_CONNECT_SRC_EXTRA` dazu
 ([Authentifizierung](authentifizierung.md#content-security-policy-und-ein-anbieter-auf-fremdem-origin)).
-Jeder Eintrag dort ist eine Quelle mit dem Schema `http`, `https`, `ws` oder `wss`: ein Origin wie
-`https://login.example.org`, ein Host ohne Schema, auch mit Platzhalter `*.`, Port oder Pfad, ein
-Schema wie `https:` oder `*`. Mehrere Einträge trennt je ein Leerzeichen. Ein anderer Wert, etwa ein
-Schlüsselwort wie `'self'`, ein `;` oder ein Zeilenumbruch, bricht den Start mit einer Meldung im
-Protokoll ab.
-`object-src 'none'` ist gesetzt, weil die Anwendung keine `<object>`- oder `<embed>`-Inhalte
-einbettet. `Permissions-Policy` sperrt Kamera und Standort und gibt das Mikrofon nur der eigenen
-Herkunft frei, für die Spracheingabe im Chat. Die Backend-eigenen Kopien dieser Header entfernt
-nginx, damit jede Antwort sie nur einmal trägt.
-`Strict-Transport-Security` gehört an den äußeren Proxy (siehe oben).
+HSTS setzt der Container nicht; das gehört an den äußeren Proxy.
 
 ## Ausgangsproxy
 
-Muss das Backend über einen Proxy ins Netz, trägt die Systemverwaltung ihn in der Oberfläche ein:
-**Administration → Anbindungen → Einstellungen**, Abschnitt **Ausgangsproxy**. Es gibt genau einen
-Proxy für das ganze Haus; ohne Eintrag gehen alle Verbindungen direkt hinaus. Die JVM-Eigenschaft
-`http.proxyHost` und die Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus.
+Verlangt das Haus einen Proxy, trägt die Systemverwaltung ihn unter **Administration → Anbindungen →
+Einstellungen**, Abschnitt **Ausgangsproxy** ein. Es gibt genau einen; `HTTP_PROXY`/`HTTPS_PROXY`
+und `http.proxyHost` wertet OPAA nicht aus.
 
-Welche Verbindungen das Backend nach außen aufbaut, mit Ziel, übermittelten Daten, Anlass,
-Abschaltbarkeit und zuständiger Einstellung, listet das Faktenblatt `datenfluesse` („Datenflüsse
-nach außen“). Es entsteht aus dem Code und liegt im Artefakt `compliance-faktenblaetter` des
-CI-Laufs auf `main`.
-
-- **Was über den Proxy geht:** jede HTTP(S)-Verbindung des Backends — Quellen der Bibliotheken samt
-  Weiterleitungen und Original-Abruf, OAuth- und Token-Endpunkte der Zugänge, Dienstkonto-Tokens,
-  MCP-Server, Chat-, Einbettungs-, Rerank- und Transkriptions-Endpunkte samt Verbindungstest, Discovery-Dokument und
-  Signaturschlüssel der Identitätsanbieter und der Verzeichnisabgleich. `http`-Ziele gehen als
-  gewöhnliche Proxy-Anfrage hinaus, `https`-Ziele als Tunnel (`CONNECT`).
-- **Was nie über den Proxy geht:** Ziele auf `localhost` und Loopback-Adressen, die Datenbank, der
-  Mailserver, SMB-Freigaben und der Objektspeicher der Originalablage.
-- **Format:** `http://host:port` oder `host:port`. Ein Proxy über `https`, SOCKS und eine Anmeldung
-  am Proxy werden nicht unterstützt; ein Proxy, der eine Anmeldung verlangt, weist jede Verbindung
-  ab. Er muss OPAA über die Adresse des Servers zulassen.
-- **Ausnahmeliste:** ein Eintrag je Zeile. Ein Hostname gilt für sich und alle Subdomänen
-  (`intranet.example.org` trifft auch `wiki.intranet.example.org`; ein vorangestellter `.` oder `*.`
-  bedeutet dasselbe), eine IP-Adresse für sich, ein Netzbereich wie `10.0.0.0/8` für IP-Adressen
-  darin, nie für einen Hostnamen, auch wenn er in den Bereich auflöst. Abgewiesen werden `*`, Ports
-  und Leerzeichen. Interne Ziele wie ein Modellserver im eigenen Netz gehören auf diese Liste.
-- **Ausnahmeliste und Zielprüfung sind getrennt.** Die Ausnahmeliste entscheidet nur über den Weg; ob
-  ein internes Ziel erreicht werden darf, entscheidet die [Zielprüfung](#zielprüfung-abrufe-des-servers).
-  Ein internes Ziel braucht in der Regel beides.
-- **Der Proxy bestimmt die Zieladresse.** Geprüft wird das Ziel, nie der Proxy. Ein Hostname, den der
-  Server selbst nicht auflösen kann, wird über den Proxy nicht abgelehnt, denn der Proxy löst ihn auf;
-  welche Adresse er wählt, sieht OPAA nicht. Wer interne Ziele hinter dem Proxy ausschließen muss,
-  sperrt sie am Proxy.
-- **Änderungen** gelten für jede danach aufgebaute Verbindung, ohne Neustart; eine offene,
-  wiederverwendete Verbindung läuft auf ihrem bisherigen Weg weiter, bis sie schließt. Jede Änderung
-  steht als `OUTBOUND_PROXY_CHANGED` mit altem und neuem Stand im Revisionsprotokoll.
-- **Fehlerbild:** Lehnt der Proxy einen Tunnel ab oder verlangt er eine Anmeldung (Status 407),
-  melden Verbindungstests und Läufe der Quellen, die Anmeldung an Zugängen, die Prüfung der
-  Identitätsanbieter, der Verzeichnisabgleich und die Modell-Endpunkte das mit dem Status des
-  Proxys. Ausnahme ist S3: Dort erkennt OPAA nur die 407; einen abgelehnten Tunnel meldet der
-  Konnektor als Antwort des Objektspeichers, etwa als fehlende Berechtigung bei Status 403.
-- **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen, weil auch
-  deren Signaturschlüssel über ihn geholt werden. Das lokale Konto der Systemverwaltung meldet sich
-  ohne Anbieter an und kann den Eintrag korrigieren.
+- **Über den Proxy:** jede HTTP(S)-Verbindung des Backends — Quellen, Zugänge, Modelldienste,
+  Identitätsanbieter, Verzeichnisabgleich.
+- **Nie über den Proxy:** Loopback, Datenbank, Mailserver, SMB-Freigaben, Objektspeicher der
+  Originalablage.
+- **Format:** `http://host:port` oder `host:port`. Proxy über HTTPS, SOCKS und Proxy-Anmeldung
+  werden nicht unterstützt.
+- **Ausnahmeliste:** je Zeile ein Hostname (gilt mit Subdomänen), eine IP-Adresse oder ein
+  CIDR-Bereich. Interne Ziele wie ein Modellserver im Haus gehören hierher.
+- **Ausnahmeliste ist keine Freigabe:** Ob ein internes Ziel erreicht werden darf, entscheidet die
+  [Zielprüfung](#zielprüfung-abrufe-des-servers). Hinter dem Proxy löst der Proxy die Adresse auf;
+  interne Ziele sperrt dann der Proxy.
+- Änderungen wirken ohne Neustart und stehen im Revisionsprotokoll.
+- **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen; das lokale
+  Systemverwaltungskonto meldet sich ohne Anbieter an und korrigiert den Eintrag.
 
 ## Härtung für erreichbare Deployments
 
-Eine Installation, die aus einem größeren Netz oder dem Internet erreichbar ist, braucht mehr als die
-Vorgaben, mit denen der mitgelieferte Stapel ohne Ersteinrichtung startet. Als Faustregel: Ein
-bekanntes, im Repository stehendes Zugangsdatenpaar, ein Klartext-Transportweg zu Anmeldedaten und
-ein netzweit erreichbarer administrativer Zugang sind immer zu schließen; eine Einschränkung, die nur
-die Angriffsfläche auf einem sonst vertrauenswürdigen Host verkleinert, ist eine Empfehlung.
+Ist die Installation aus einem größeren Netz oder dem Internet erreichbar, gilt:
 
 | Maßnahme | Zwingend | Wo beschrieben |
 |---|---|---|
@@ -467,207 +258,125 @@ die Angriffsfläche auf einem sonst vertrauenswürdigen Host verkleinert, ist ei
 | vertraute Proxys eintragen | ja, sobald ein Proxy vor dem Backend steht | [Vertraute Proxys](#vertraute-proxys-und-client-adresse) |
 | mitgelieferten Keycloak-Realm härten | ja, wenn er genutzt wird | [Authentifizierung](authentifizierung.md#härtung-des-mitgelieferten-keycloak) |
 | Ports nur an `127.0.0.1`, Zugangsdaten des mitgelieferten Objektspeichers ersetzen | ja für Keycloak und den Objektspeicher, sonst empfohlen | [Docker Compose](docker-compose.md#härtung-des-compose-stapels) |
-| Netztrennung, Pod Security | — | [Kubernetes](kubernetes.md#netz-und-sicherheit) |
+| Netztrennung, Pod Security | empfohlen | [Kubernetes](kubernetes.md#netz-und-sicherheit) |
 | Ziele des Servers begrenzen | Vorgabe ist eingeschaltet | [Zielprüfung](#zielprüfung-abrufe-des-servers) |
 
 ### Vertraute Proxys und Client-Adresse
 
-Das Backend zählt seine Rate-Limits je Client-Adresse und prüft an derselben Adresse die
-Netzbeschränkung lokaler Systemverwalter (`OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`). Steht ein Proxy davor —
-und der nginx des Frontend-Containers ist bereits einer —, ist die Verbindungsadresse die des Proxys.
-`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` nennt deshalb die Netze, deren Verbindungen `X-Forwarded-For`
-vorlegen dürfen; **Pflicht, sobald ein Proxy vor dem Backend steht**.
+Rate-Limits und die Netzbeschränkung lokaler Systemverwalter (`OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`)
+richten sich nach der Client-Adresse. Hinter einem Proxy — der Frontend-nginx ist schon einer — ist
+die Verbindungsadresse die des Proxys. `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` nennt die Netze, deren
+`X-Forwarded-For` zählt; **Pflicht, sobald ein Proxy vor dem Backend steht**.
 
-- **Ohne Wert** (die Vorgabe) wird der Header ignoriert. Dann teilen alle Clients einen Zähler: Die
-  Anmeldegrenze und die Grenzen von Fragen, Chatsuche und Suche je Adresse gelten für das ganze
-  Haus, und die Netzbeschränkung sieht nur den Proxy. Der Start schreibt in diesem Fall eine Warnung
-  mit genau dieser Folge ins Log. Dasselbe gilt für viele Personen hinter einem gemeinsamen
-  NAT-Ausgang; dort hält die Grenze je Konto den Einzelnen im Rahmen
-  ([Suche](suche.md#101-ratenbegrenzung)).
-- **So eng wie möglich.** Unter Compose ist der Wert die feste Adresse des Frontend-Containers als
-  `/32`, nicht das ganze Compose-Netz: Dessen Gateway-Adresse spricht jeder Prozess des Hosts und
-  jeder Container, und wer sie vertraut, macht jeden davon zu einem Proxy, der `X-Forwarded-For`
-  beliebig setzen kann. Ein weiterer Proxy auf **demselben** Host erscheint dem Container-nginx unter
-  genau dieser Gateway-Adresse und muss dann zusätzlich eingetragen werden — ein bewusster Zusatz
-  mit diesem Risiko. Ein Proxy auf einem anderen Rechner kommt mit seiner eigenen Adresse hinzu.
-  Unter Kubernetes schützen NetworkPolicies das Pod-Netz ([Kubernetes](kubernetes.md#proxy-kette-und-client-adresse)).
-  Bereiche weiter als `/8` (`0.0.0.0/0`, `::/0`) lehnt der Start ab.
-- **Von rechts gelesen.** Der Client ist der erste Eintrag der Kette, der kein vertrauter Proxy ist;
-  ein vom Client selbst mitgeschickter Anfang zählt nie, und mehrere `X-Forwarded-For`-Zeilen gelten
-  als eine Kette. Ein äußerer Proxy darf die Kette anhängen oder überschreiben, muss aber selbst in
-  der Liste stehen. Ein Client, der den Header selbst setzt, erreicht damit nichts — auch nicht an
-  den Webhook-Eingängen für Confluence und S3, die ohne Sitzung erreichbar sind.
-- **Prüfen:** Der Diagnose-Endpunkt `GET /api/v1/admin/diagnostics/client-address` zeigt, wie das
-  Backend die eigene Anfrage auflöst ([Diagnose ohne Shell](#diagnose-ohne-shell)).
+- **Ohne Wert** teilen sich alle Clients einen Zähler, und die Netzbeschränkung sieht nur den Proxy.
+  Der Start warnt im Log.
+- **So eng wie möglich:** unter Compose die feste Adresse des Frontend-Containers als `/32`, nie das
+  ganze Compose-Netz; jeder weitere Proxy mit seiner eigenen Adresse. Bereiche weiter als `/8` lehnt
+  der Start ab.
+- **Prüfen** mit `GET /api/v1/admin/diagnostics/client-address` ([Diagnose ohne Shell](#diagnose-ohne-shell)).
 
 ### Zielprüfung: Abrufe des Servers
 
-Wer eine Bibliothek mit einer Webquelle anlegt, bestimmt eine Adresse, die der Server bei jedem Lauf
-abruft — auch Ziele, die nur aus dem Netz des Servers erreichbar sind. Das ist eine Eigenschaft der
-Funktion, keine Lücke: Sie verlangt Anmeldung und mindestens Bearbeitungsrecht auf der Bibliothek,
-und das Anlegen steht bewusst jedem Berechtigten offen. Den Raum dessen, was erreichbar ist, begrenzen
-zwei Schranken, unabhängig davon, wer die Bibliothek anlegt:
+Wer eine Bibliothek mit einer Netzquelle anlegt, bestimmt Adressen, die der Server abruft — auch
+solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken begrenzen das:
 
-- **Die Pfad-Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`) für Dateisystem-Bibliotheken: Nur
-  Pfade darunter sind konfigurierbar. Eine Ablehnung nennt keine Serverpfade, sondern verweist auf die
-  Systemverwaltung.
-- **Die Zielprüfung** für jede Quelle, die der Server über das Netz abruft (Webverzeichnis, Feed,
-  Confluence, S3 und weitere), standardmäßig eingeschaltet: Loopback, Link-Local einschließlich der
-  Cloud-Metadaten-Adresse `169.254.169.254`, die privaten IPv4-Bereiche, Carrier-Grade NAT,
-  reservierte Bereiche, IPv6 Unique-Local, NAT64 und in IPv6 eingebettete IPv4-Adressen werden
-  abgelehnt. Geprüft wird die **aufgelöste** Adresse, vor dem ersten Abruf und nach jeder
-  Weiterleitung. Ein Betrieb mit internen Quellen, etwa einem Intranet, trägt deren Hostnamen in
-  `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` ein, statt die Prüfung mit
-  `OPAA_INDEXING_TARGET_VALIDATION_ENABLED=false` abzuschalten. Dieselbe Prüfung gilt mit eigenen
-  Schaltern für Identitätsanbieter und die Originalablage.
-
-Dazu kommen feste Regeln: Nur `http` und `https`; einer Weiterleitung folgt OPAA nur auf demselben
-Origin, nie auf einen fremden Host und nie von `https` auf `http` (von `http` auf `https` auf demselben
-Host schon). Das Zertifikat jeder Quelle wird geprüft; abschalten lässt sich das nicht. Einen eigenen
-Proxy trägt keine Bibliothek; alle
-Verbindungen nehmen den [Ausgangsproxy](#ausgangsproxy). Fehlermeldungen eines Laufs nennen bei einer
-abgelehnten Weiterleitung nur Schema und Host des Ziels, nie die ganze Adresse.
-
-**Grenze: DNS-Rebinding.** Die geprüfte Auflösung und die Auflösung, mit der die Verbindung
-tatsächlich aufgebaut wird, sind zwei Vorgänge; ein Resolver, der dazwischen anders antwortet, wird
-nicht erkannt. Die Zielprüfung ist Härtung gegen naheliegende Fehlgriffe und Missbrauch, keine
-Garantie. Wer das Restrisiko ausschließen muss, beschränkt die ausgehenden Verbindungen des Backends
-zusätzlich auf Netzebene, etwa mit Egress-Regeln oder einem Proxy mit Zielliste.
-
-Der Anstoß eines Laufs (`POST /api/v1/libraries/{libraryId}/indexing`) ist über den Proxy aus dem
-Netz erreichbar wie jeder API-Pfad. Er verlangt Anmeldung, Bearbeitungsrecht auf der Bibliothek und
-unterliegt einem eigenen, engen Rate-Limit (`OPAA_RATE_LIMIT_INDEXING_*`).
+- **Pfad-Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`) für Dateisystem-Bibliotheken.
+- **Zielprüfung** für jede Netzquelle, standardmäßig an: Loopback, Link-Local samt
+  `169.254.169.254`, private und reservierte Bereiche werden abgelehnt, geprüft nach der
+  DNS-Auflösung und nach jedem Redirect. Interne Quellen kommen in
+  `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter
+  und Originalablage haben eigene Schalter derselben Prüfung.
+- Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
+  werden immer geprüft.
+- **Grenze:** DNS-Rebinding wird nicht erkannt. Wer das ausschließen muss, beschränkt den Egress des
+  Backends zusätzlich auf Netzebene.
 
 ## Schlüssel und Geheimnisse
 
 | Geheimnis | Wofür | Ohne eigenen Wert | Bei Verlust oder Wechsel |
 |---|---|---|---|
-| `OPAA_AUTH_JWT_SECRET` | Wurzelgeheimnis lokal ausgestellter Tokens und der Prüfwerte von Refresh-, Einladungs-, Rücksetz- und Übergabelinks | im Betriebsmodus `oidc` bricht der Start ab (auch unter 32 Zeichen oder bei einem Platzhalter wie `change_me`) | alle lokalen Sitzungen enden, alle offenen Links verfallen, alle Zugangstokens für [externe KI-Werkzeuge](fremdzugaenge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
-| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten der Quellen, Zugänge und verbundenen Konten, Webhook-Geheimnisse, Zugang des Verzeichnisabgleichs | nur das Speichern solcher Zugangsdaten scheitert | gespeicherte Werte sind unlesbar und neu einzutragen |
-| `OPAA_SETTINGS_ENCRYPTION_KEY` | Zugangsschlüssel der Chat-Modelle, SMTP-Passwort, Empfänger und Inhalt wartender E-Mails | das Speichern solcher Werte scheitert, und Mails ohne Rückmeldung an der auslösenden Aktion gehen nicht in die [Warteschlange](e-mail.md#zustellung-über-die-warteschlange) | gespeicherte Werte sind unlesbar und neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)); wartende Mails werden verworfen |
-| `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | Konto der Datenbank | Vorgabe `opaa`/`opaa`, nur für die Entwicklung | Der mitgelieferte Datenbankcontainer legt das Konto nur beim ersten Start an; das Paar vor dem ersten Start setzen |
+| `OPAA_AUTH_JWT_SECRET` | lokal ausgestellte Tokens und Links (Refresh, Einladung, Rücksetzen) | im Modus `oidc` bricht der Start ab | alle lokalen Sitzungen, offenen Links und Zugangstokens [externer KI-Werkzeuge](fremdzugaenge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
+| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert | gespeicherte Werte unlesbar, neu einzutragen |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Chat-Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert | Werte neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)); wartende Mails verworfen |
+| `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | Datenbankkonto | Vorgabe `opaa`/`opaa`, nur Entwicklung | vor dem ersten Start setzen |
 
-Alle Geheimnisse erzeugt man zufällig (`openssl rand -base64 48` für das Signaturgeheimnis,
-`openssl rand -base64 32` für die beiden Schlüssel), legt sie außerhalb des Repositorys ab
-(Passwort-Tresor, Secret-Manager) und sichert sie getrennt von der Datenbank: Eine
-Datenbanksicherung ohne die beiden Verschlüsselungsschlüssel enthält unlesbare Zugangsdaten. Die im
-Profil `dev` hinterlegten Schlüssel sind nicht für den Betrieb gedacht. Tokens eines
-Identitätsanbieters prüft OPAA nur gegen dessen Signaturschlüssel; das Signaturgeheimnis betrifft nur
-lokale Konten.
+- Zufällig erzeugen: `openssl rand -base64 48` (Signaturgeheimnis), `openssl rand -base64 32`
+  (Schlüssel).
+- Außerhalb des Repositorys ablegen (Tresor, Secret-Manager) und **getrennt von der Datenbank
+  sichern**: Ohne die Schlüssel enthält eine Datenbanksicherung unlesbare Zugangsdaten.
+- Die Schlüssel des Profils `dev` sind nicht für den Betrieb.
 
 ### Zugangsdaten-Verschlüsselung
 
-Zugangsdaten einer Quelle — bei Webquellen etwa `benutzer:passwort` für die Basic-Anmeldung, bei
-Confluence ein Token, bei S3 ein Schlüsselpaar — liegen **verschlüsselt** in der Datenbank
-(AES-256-GCM, zufälliger Initialisierungsvektor je Wert, Präfix `enc:v1:`). Keine API-Antwort und
-kein Log enthält sie; die Oberfläche zeigt nur, ob welche hinterlegt sind.
+Zugangsdaten liegen mit AES-256-GCM verschlüsselt in der Datenbank. Keine API-Antwort und kein Log
+enthält sie.
 
-- **Kein Schlüssel nötig, solange nichts zu verschlüsseln ist.** Uploads, Dateisystem-Bibliotheken
-  und Webquellen ohne Anmeldung brauchen keinen. Erst das Anlegen oder Ändern von Zugangsdaten
-  scheitert ohne gültigen Schlüssel mit `503` und einer klaren Meldung.
-- **Lesen scheitert weich, Schreiben hart.** Lässt sich ein Wert mit dem aktuellen Schlüssel nicht
-  entschlüsseln (Schlüssel verloren oder gewechselt, Wert beschädigt), behandelt OPAA ihn als nicht
-  gesetzt und schreibt eine Warnung ohne Wert und ohne Kennung der Bibliothek ins Log; die übrigen
-  Bibliotheken bleiben lesbar. Die Oberfläche zeigt die Zugangsdaten dann als „nicht gesetzt",
-  obwohl der Geheimtext noch gespeichert ist. Ein Schreibvorgang auf Zugangsdaten scheitert dagegen
-  mit `503`, statt sie still zu verlieren.
-- **Andere Änderungen lassen den Geheimtext stehen.** Name, Zeitplan oder Metadaten einer Bibliothek
-  zu ändern schreibt den gelesenen Leerwert nicht zurück; mit dem wiedergefundenen Schlüssel sind die
-  Zugangsdaten wieder lesbar. Zwei Vorgänge löschen ihn dagegen absichtlich: ein Wechsel des Hosts der
-  Quelle ohne neue Zugangsdaten (sie gelten nur für den bisherigen Host) und der Widerruf eines
-  Webhook-Geheimnisses oder Ereignis-Tokens.
-- **Bei Schlüsselverlust** sind die verschlüsselten Werte nicht wiederherstellbar. Betroffen sind nur
-  die Zugangsdaten, nicht die Bibliothek oder ihr Bestand. Die Zugangsdaten werden an der Bibliothek
-  bzw. am Zugang neu eingetragen; bis dahin läuft ein Lauf ohne Anmeldung und scheitert, wenn die
-  Quelle eine verlangt.
-- **Ein Wechsel des Schlüssels im Bestand ist nicht vorgesehen.** Es gibt keinen Weg, vorhandene Werte
-  umzuschlüsseln; wer den Schlüssel trotzdem wechselt, trägt jeden betroffenen Wert danach neu ein.
-  Ein Wert mit `enc:`-Präfix, aber anderer Fassung als `enc:v1:` wird nie als Klartext behandelt;
-  das Lesen scheitert weich wie oben, ein Schreiben hart.
+- Ohne Schlüssel scheitert nur das Speichern von Zugangsdaten (`503`).
+- Ist ein Wert nicht entschlüsselbar, zeigt die Oberfläche „nicht gesetzt“, das Log eine Warnung;
+  andere Änderungen an der Bibliothek lassen den Geheimtext stehen.
+- **Bei Schlüsselverlust** sind die Werte verloren, nicht die Bibliothek: Zugangsdaten neu eintragen.
+- **Schlüsselwechsel** im Bestand ist nicht vorgesehen; wer wechselt, trägt alle Werte neu ein.
 
 ## Sicherung und Wiederherstellung
 
-| Bestandteil | Inhalt | Gesichert durch |
-|---|---|---|
-| Datenbank | Dokumente, Chunks samt Vektoren, Volltext, Metadaten, Konten, Rechte und Rechtehistorie, Chats, Nachweis- und Revisionsprotokoll | `pg_dump` oder die Sicherung des Datenbankbetriebs |
-| Originalablage | die Originale der Uploads | Kopie des Verzeichnisses, Snapshots, Versionierung oder Replikation des Objektspeichers |
-| Geheimnisse | vor allem `OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY`, `OPAA_AUTH_JWT_SECRET`, Datenbankkonto | Kopie außerhalb der Installation |
-| Konfiguration | `.env.docker` bzw. die Werte-Datei des Charts; sie nennt auch den Endpunkt der Originalablage, auf den die Verweise der Datenbank zeigen | Versionsverwaltung |
+| Bestandteil | Gesichert durch |
+|---|---|
+| Datenbank | `pg_dump` oder die Sicherung des Datenbankbetriebs |
+| Originalablage | Kopie, Snapshots, Versionierung oder Replikation |
+| Geheimnisse | Kopie außerhalb der Installation |
+| Konfiguration (`.env.docker` bzw. Werte-Datei) | Versionsverwaltung |
 
-Nicht zu sichern sind Container und Pods, `/tmp`, das Frontend und die heruntergeladenen Modelle.
+- **Reihenfolge:** erst Datenbank, dann Originale sichern; umgekehrt wiederherstellen
+  ([Originalablage](originalablage.md#sicherung-und-wiederherstellung)). Ein genau passender Stand
+  entsteht bei angehaltenem Backend.
+- **Vor dem Einspielen** müssen auf dem Ziel die Erweiterung `vector` und die Rolle
+  `opaa_audit_owner` existieren ([Datenbank](datenbank.md#voraussetzungen-einer-eigenen-postgresql)).
+- **Nach jeder Rücksicherung** dieselben Verschlüsselungsschlüssel, aber ein neues
+  `OPAA_AUTH_JWT_SECRET`
+  ([Nacharbeit](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)).
 
-- **Reihenfolge.** Erst die Datenbank sichern, dann die Originale; wiederherstellen umgekehrt, erst
-  die Originale, dann die Datenbank. Warum, steht unter
-  [Originalablage](originalablage.md#sicherung-und-wiederherstellung). Einen genau zusammenpassenden
-  Stand ergibt eine Sicherung bei angehaltenem Backend.
-- **Was ein `pg_dump` nicht enthält:** die Rollen der PostgreSQL-Instanz. Auf dem Ziel müssen die
-  Erweiterung `vector` und die Rolle `opaa_audit_owner` vorher existieren
-  ([Datenbank](datenbank.md#voraussetzungen-einer-eigenen-postgresql)); sonst bricht die
-  Wiederherstellung mit `role "opaa_audit_owner" does not exist` ab. Wiederhergestellt wird mit einem
-  Konto, das Eigentümer setzen darf.
-- **Dieselben Verschlüsselungsschlüssel, ein neues Signaturgeheimnis.** Nach jeder Rücksicherung der
-  Datenbank bekommt `OPAA_AUTH_JWT_SECRET` einen neuen Wert, bevor das Backend startet, und die
-  Sperren der Zwischenzeit werden erneut gesetzt
-  ([Nacharbeit nach einer Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)).
-  Ist der Zugriff externer KI-Werkzeuge eingeschaltet, kommt dessen Prüfliste dazu ([Externe KI-Werkzeuge](fremdzugaenge.md)).
-
-Die Befehle stehen je Betriebsweg unter [Docker Compose](docker-compose.md#sicherung-und-wiederherstellung)
-und [Kubernetes](kubernetes.md#sicherung-und-wiederherstellung).
+Befehle: [Docker Compose](docker-compose.md#sicherung-und-wiederherstellung),
+[Kubernetes](kubernetes.md#sicherung-und-wiederherstellung).
 
 ### Wiederherstellungsprobe
 
-Eine Sicherung, deren Wiederherstellung nie geprüft wurde, ist keine Sicherung. Die Probe zeigt, dass
-Datenbank, Index und Originale aus einer Sicherung zueinander passend zurückkommen, und misst
-Wiederherstellungszeit und Wiederherstellungspunkt. Sie folgt den Wegen dieses Abschnitts und baut
-keinen eigenen. Die Befehle für einen Testcluster stehen unter
-[Wiederherstellungsprobe auf einem Testcluster](kubernetes.md#wiederherstellungsprobe-auf-einem-testcluster);
-mit Docker Compose oder mit eigener PostgreSQL und eigenem Objektspeicher gilt derselbe Ablauf mit
-deren Werkzeugen.
+Die Probe belegt, dass Datenbank, Index und Originale aus einer Sicherung passend zurückkommen, und
+misst Wiederherstellungszeit (RTO) und Wiederherstellungspunkt (RPO). Befehle für einen Testcluster:
+[Kubernetes](kubernetes.md#wiederherstellungsprobe-auf-einem-testcluster); andere Betriebswege
+folgen demselben Ablauf.
 
-- **Auf ein leeres System.** Zurückgespielt wird in eine zweite, leere Installation, nie in die
-  laufende. Nur so zeigt sich, ob die Sicherung vollständig ist.
-- **Dieselbe Version** und dasselbe Embedding-Modell in derselben Dimension in Quelle und Ziel.
-- **Dieselben Verschlüsselungsschlüssel, ein neues Signaturgeheimnis.** Das Ziel bekommt beide
-  Verschlüsselungsschlüssel und das Datenbankpasswort der Quelle, aber ein neu erzeugtes
-  `OPAA_AUTH_JWT_SECRET`.
-- **Testbestand statt Echtdaten.** Wer mit einer Kopie echter Daten probt, behandelt Sicherung und
-  Ziel wie die Produktivdaten und löscht beides danach.
+- In eine zweite, **leere** Installation zurückspielen, nie in die laufende.
+- Dieselbe Version, dasselbe Embedding-Modell, dieselben Verschlüsselungsschlüssel und dasselbe
+  Datenbankpasswort, aber ein neues `OPAA_AUTH_JWT_SECRET`.
+- Testbestand statt Echtdaten; eine Kopie echter Daten wie Produktivdaten behandeln und danach
+  löschen.
 
-**Testbestand.** Vor der Sicherung legt die Systemverwaltung in der Quelle an:
+**Testbestand** in der Quelle:
 
 | Nr. | Objekt | Zweck |
 |---|---|---|
-| T1 | eine Upload-Bibliothek mit mindestens drei einfachen Dateien (etwa PDF, DOCX, TXT), ohne Archive und E-Mails mit Anhängen | Originale und Index; einfache Dateien haben genau ein Original je Dokument |
-| T2 | in einer dieser Dateien der Satz „Probe-Marker vor der Sicherung: [zufälliges Wort M1]“ | belegte Antwort nach der Wiederherstellung |
+| T1 | Upload-Bibliothek mit mindestens drei einfachen Dateien (etwa PDF, DOCX, TXT), ohne Archive und E-Mails mit Anhängen | Originale und Index |
+| T2 | in einer dieser Dateien der Satz „Probe-Marker vor der Sicherung: [zufälliges Wort M1]“ | belegte Antwort |
 | T3 | ein Space mit zwei Mitgliedern, T1 zugeordnet | Rechte und Mitgliedschaften |
 | T4 | eine Testperson ohne Zugriff auf T1 | Rechteprobe |
 | T5 | ein Chat mit einer Frage nach M1 | Chats |
-| T6 | ein zweiter, nicht aktiver Chat-Modell-Eintrag auf denselben Endpunkt, mit einem beliebigen Zugangsschlüssel; „Verbindung testen“ gelingt | Schlüssel der Einstellungen (P11) |
-| T7 | eine Bibliothek mit Webquelle und hinterlegten Zugangsdaten für die Basic-Anmeldung, am besten gegen eine Quelle, die sie verlangt | Schlüssel der Zugangsdaten (P12) |
+| T6 | ein zweiter, nicht aktiver Chat-Modell-Eintrag auf denselben Endpunkt mit beliebigem Zugangsschlüssel; „Verbindung testen“ gelingt | Schlüssel der Einstellungen (P11) |
+| T7 | eine Bibliothek mit Webquelle und Zugangsdaten für die Basic-Anmeldung | Schlüssel der Zugangsdaten (P12) |
 
-Nutzt die Installation weitere Bausteine, etwa eine angebundene Quelle oder den Zugriff externer
-KI-Werkzeuge, kommen sie dazu.
+**Ablauf** (Zeitpunkte fortlaufend notieren):
 
-**Ablauf.** Die Zeitpunkte `tS`, `tA` und `t0` bis `t4` werden fortlaufend in eine Datei
-geschrieben, etwa mit `echo "t0 $(date -u +%FT%TZ)" >> zeiten.txt`.
-
-1. **Ausgangsstand festhalten:** Version unter `/actuator/info` ([Diagnose ohne Shell](#diagnose-ohne-shell))
-   und Image-Digests, Embedding-Modell und Indexstatus auf der Seite „Suche & Indexierung“, Zahl
-   der Dokumente in T1. Als T4 oder Mitglied von T3 angemeldet bleiben; der Browser behält die
-   Sitzung für P10.
-2. **Sichern (`tS`):** Backend anhalten, `tS` notieren, die Zeilen aller Tabellen zählen (Abfrage
-   unten), die Datenbank sichern, eine Prüfsummenliste aller Originale erzeugen und die Originale
-   sichern, die Prüfsummen beider Sicherungsdateien festhalten, das Backend wieder starten.
+1. **Ausgangsstand:** Version, Image-Digests, Embedding-Modell, Zahl der Dokumente in T1. Als T4 oder
+   Mitglied von T3 angemeldet bleiben (für P10).
+2. **Sichern (`tS`):** Backend anhalten, Zeilen zählen (Abfrage unten), Datenbank sichern,
+   Prüfsummenliste der Originale erzeugen, Originale sichern, Backend starten.
 3. **Datenverlust erzeugen (`tA`):** in T1 eine Datei mit „Probe-Marker nach der Sicherung:
-   [zufälliges Wort M2]“ hochladen, einen Chat mit einer Frage nach M2 führen, `tA` notieren.
-4. **Wiederherstellen (ab `t0`):** das Ziel mit angehaltenem Backend aufbauen; die Originale
-   zurückspielen und dieselbe Prüfsummenliste im Ziel erzeugen (`t1`); die Datenbank zurückspielen,
-   vorher die Rolle `opaa_audit_owner` anlegen, und den Rückgabewert festhalten (`t2`); die Zeilen
-   im Ziel zählen, **bevor** das Backend startet; das Backend mit dem neuen Signaturgeheimnis
-   starten, bis die Bereitschaft `UP` meldet (`t3`); die Prüfungen P4 bis P12 durchführen (`t4`).
+   [zufälliges Wort M2]“ hochladen und einen Chat dazu führen.
+4. **Wiederherstellen (ab `t0`):** Ziel mit angehaltenem Backend aufbauen, Originale zurückspielen
+   und prüfsummen (`t1`), Rolle `opaa_audit_owner` anlegen, Datenbank zurückspielen (`t2`), Zeilen
+   **vor** dem Start zählen, Backend mit neuem Signaturgeheimnis starten bis zur Readiness (`t3`),
+   P4 bis P12 prüfen (`t4`).
 
-Die Abfrage zählt die Zeilen jeder Tabelle, ohne Tabellennamen zu kennen, und bleibt deshalb über
-Versionen gültig:
+Zeilenzählung über alle Tabellen, unabhängig von der Version:
 
 ```sql
 SELECT format('%I.%I', n.nspname, c.relname) AS tabelle,
@@ -682,114 +391,59 @@ SELECT format('%I.%I', n.nspname, c.relname) AS tabelle,
  ORDER BY 1;
 ```
 
-**Prüfkriterien:**
-
 | Nr. | Prüfung | Erwartet |
 |---|---|---|
-| P1 | `pg_restore --exit-on-error` | Rückgabewert 0, keine Fehlermeldung |
-| P2 | Zeilenzählung von Quelle und Ziel vergleichen | gleich für jede Tabelle, einschließlich Vektor- und Volltextindex und Nachweisprotokoll |
-| P3 | Prüfsummenlisten der Originale vergleichen | gleich: jedes Original ist bitgleich zurück |
-| P4 | Version nach dem Start; Zahl der Zeilen in `databasechangelog` vor und nach dem Start | Version wie in Schritt 1; die Zahl bleibt gleich. Einzige Ausnahme: War das Backend der Quelle vor der Sicherung nur ein einziges Mal gestartet, holt der erste Start des Ziels zwei Indizes auf dem Vektorindex nach, und die Zahl wächst um genau zwei ([Rückweg](kubernetes.md#rückweg)) |
-| P5 | Seite „Suche & Indexierung“; Gesundheitsgruppen `embedding-model` und `vector-store` ([Bereitschaft und Lebendigkeit](#bereitschaft-und-lebendigkeit)) | gleiches Embedding-Modell wie in Schritt 1, kein Hinweis „Index veraltet“, Vektorsuche aktiv; beide Gruppen `UP` |
-| P6 | Bericht verwaister Originale für T1 ([Originale einer vorhandenen Bibliothek](originalablage.md#originale-einer-vorhandenen-bibliothek)) | keine verwaisten Originale; so viele referenzierte Originale wie Dokumente in Schritt 1 |
-| P7 | Anmeldung, Space T3 mit seinen Mitgliedern, Frage nach M1, „Original öffnen“ an der Fundstelle | belegte Antwort mit Fundstelle in T1; das geöffnete Original hat die Prüfsumme der hochgeladenen Datei; Chat T5 ist vorhanden |
-| P8 | Testperson T4 fragt nach M1 | T1 ist für sie nicht sichtbar, die Antwort nennt keine Fundstelle aus T1 |
-| P9 | Frage nach M2, Chatliste | M2 ist nicht auffindbar, der Chat aus Schritt 3 fehlt |
-| P10 | Sitzung aus Schritt 1 im selben Browser gegen das Ziel | gilt nicht, eine neue Anmeldung ist nötig |
-| P11 | Chat-Modell T6: „Verbindung testen“ ohne neuen Schlüssel | gelingt wie in der Quelle. Dass der Schlüssel als hinterlegt angezeigt wird, genügt nicht: Die Anzeige prüft nur, ob ein Geheimtext gespeichert ist |
-| P12 | Bibliothek T7: Quelle bearbeiten, bei einer Quelle mit Anmeldung „Verbindung testen“ ohne neue Zugangsdaten | Die Zugangsdaten gelten als hinterlegt; ein unlesbarer Wert erschiene als „nicht gesetzt“ mit einer Warnung im Protokoll ([Zugangsdaten-Verschlüsselung](#zugangsdaten-verschlüsselung)). Der Verbindungstest gelingt wie in der Quelle |
+| P1 | `pg_restore --exit-on-error` | Rückgabewert 0 |
+| P2 | Zeilenzählung Quelle gegen Ziel | gleich für jede Tabelle |
+| P3 | Prüfsummenlisten der Originale | gleich |
+| P4 | Version; Zeilen in `databasechangelog` vor und nach dem Start | Version wie in Schritt 1; Zahl unverändert. Ausnahme: War die Quelle nur einmal gestartet, wächst sie um genau zwei ([Rückweg](kubernetes.md#rückweg)) |
+| P5 | Seite „Suche & Indexierung“; Health Groups `embedding-model` und `vector-store` | gleiches Embedding-Modell, kein „Index veraltet“; beide `UP` |
+| P6 | Bericht verwaister Originale für T1 ([Originalablage](originalablage.md#originale-einer-vorhandenen-bibliothek)) | keine verwaisten; so viele referenzierte Originale wie Dokumente |
+| P7 | Anmeldung, Space T3, Frage nach M1, „Original öffnen“ | belegte Antwort aus T1, Original mit gleicher Prüfsumme, Chat T5 vorhanden |
+| P8 | T4 fragt nach M1 | keine Fundstelle aus T1 |
+| P9 | Frage nach M2, Chatliste | M2 nicht auffindbar, Chat aus Schritt 3 fehlt |
+| P10 | Sitzung aus Schritt 1 gegen das Ziel | ungültig, neue Anmeldung nötig |
+| P11 | T6: „Verbindung testen“ ohne neuen Schlüssel | gelingt wie in der Quelle |
+| P12 | T7: „Verbindung testen“ ohne neue Zugangsdaten | Zugangsdaten gelten als hinterlegt, Test gelingt wie in der Quelle |
 
-P2 und P3 zeigen, dass die Sicherung vollständig zurückkam; P5 und P6, dass Index, Datenbank und
-Originale zueinander passen; P7 und P8, dass Inhalte und Rechte stimmen; P11 und P12, dass beide
-Verschlüsselungsschlüssel zur Datenbank passen.
-
-**Messung.** Die Wiederherstellungszeit der Probe ist `t4 − t0`, davon Originale `t1 − t0`,
-Datenbank `t2 − t1` und Start `t3 − t2`. Sie misst nur die technische Wiederherstellung; im Ernstfall
-kommen Erkennung, Entscheidung und gegebenenfalls Beschaffung hinzu. Der Wiederherstellungspunkt ist
-`tA − tS`, in der Probe gesetzt, im Betrieb höchstens der Abstand zweier Sicherungen; P9 belegt, dass
-alles nach `tS` fehlt. Die Laufzeiten von Datenbank und Originalen wachsen etwa linear mit ihrer
-Größe. Größe der Datenbank, Menge der Originale und Zahl der Dokumente gehören deshalb zum Ergebnis:
-Eine Probe mit dem Testbestand belegt das Verfahren, eine mit einer Kopie des Produktivbestands die
-Wiederherstellungszeit.
-
-Zeigt die Probe eine Abweichung von diesem Handbuch, ist das ein Fehler in Dokumentation oder
-Produkt. Danach werden das Ziel samt Volumes und die Sicherungsdateien des Testbestands gelöscht.
+**Messung:** RTO der Probe ist `t4 − t0`, RPO `tA − tS` (im Betrieb höchstens der Abstand zweier
+Sicherungen). Größe von Datenbank und Originalen gehört zum Ergebnis; nur eine Probe mit
+Produktivmenge belegt die echte Wiederherstellungszeit. Danach Ziel und Testsicherungen löschen.
 
 ## Aktualisierung
 
-Eine Aktualisierung tauscht die Images von Backend und Frontend gegen einen neuen Stand und startet
-das Backend neu. Im Grundsatz:
-
-1. **Die Notizen des Release lesen.** Jedes Release nennt im Abschnitt „Vorbereitung für
-   Bestandsinstallationen" die Schritte, die vor dem Update zu erledigen sind, oder sagt „Keine
-   Vorbereitung nötig". Wer Versionen überspringt, prüft diesen Abschnitt bei jedem übersprungenen
-   Release. Muss das Update mit Datenschutz oder Personalvertretung abgestimmt werden, ist das
-   [Update-Paket](#images-und-versionen) des Release die Grundlage.
+1. **Release-Notizen lesen**, Abschnitt „Vorbereitung für Bestandsinstallationen“ — bei
+   übersprungenen Versionen für jede. Für Abstimmungen mit Datenschutz oder Personalvertretung dient
+   das [Update-Paket](#images-und-versionen).
 2. **Sichern** ([Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)).
-3. **Vorbereitung erledigen**, dann die Images tauschen. Backend und Frontend bekommen dieselbe
-   Version.
-4. **Beim Start** wendet das Backend die noch fehlenden Schemaänderungen an, nur vorwärts. Bereitschaft
-   und Protokoll zeigen, ob der Start gelungen ist. Mit mehreren Instanzen migriert ein eigener
-   Schritt vorher, danach werden die Instanzen einzeln ersetzt
-   ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
-5. **Prüfen:** Version unter `/actuator/info`, eine Frage im Chat, auf der Seite „Suche & Indexierung"
-   ein ausstehender Nachzug.
+3. **Vorbereitung erledigen, Images tauschen**, Backend und Frontend auf dieselbe Version.
+4. **Start:** Das Backend migriert das Schema, nur vorwärts. Mit mehreren Instanzen:
+   [Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall).
+5. **Prüfen:** `/actuator/info`, eine Frage im Chat, „Suche & Indexierung“.
 
-Einen Rückweg auf eine ältere Version gibt es nur über die Sicherung: Schemaänderungen werden nicht
-zurückgenommen. Mit mehreren Instanzen geht es ohne Rücksicherung zurück, wenn die neue Version die
-vorige in ihrem Versionsfenster zulässt; bis zum ersten Release mit dieser Zusage gibt es das nicht
-([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)). Die Befehle stehen unter
-[Docker Compose](docker-compose.md#aktualisierung-auf-einen-neuen-stand) und
+Zurück auf eine ältere Version geht es nur über die Sicherung. Befehle:
+[Docker Compose](docker-compose.md#aktualisierung-auf-einen-neuen-stand),
 [Kubernetes](kubernetes.md#aktualisierung-und-rückweg).
 
 ### Was ein Update mit dem Index macht
 
-Kurz: Ein Update **gefährdet den Index nicht** und macht **keine Neuindizierung erforderlich**.
+Ein Update **gefährdet den Index nicht** und verlangt **keine Neuindizierung**.
 
-- **Der Index** liegt in PostgreSQL und überlebt das Neuerstellen der Container; der Korpus einer
-  Dateisystem-Bibliothek liegt auf dem Host und wird ohnehin nur gelesen.
-- **Schemaänderungen** werden beim Start nur vorwärts angewendet; keine löscht Dokument- oder
-  Vektordaten. Die Vektortabelle entsteht beim ersten Start, wenn sie fehlt, und wird bei einem
-  Update nicht verändert. Die Ausnahme ist eine zu einer neuen Baseline zusammengefasste Historie:
-  Dann ist das Update ein Neuaufsetzen, und die Notizen des Release sagen das
-  ([Docker Compose](docker-compose.md#neu-aufsetzen-statt-aktualisieren)).
-- **Ändert ein Update die Verarbeitung eines Formats oder die Bildung des Volltextindex**, bleiben die
-  betroffenen Chunks durchsuchbar, liegen aber in der älteren Fassung. Die Seite „Suche &
-  Indexierung" weist die Bibliotheken mit „Nachzug ausstehend" aus, und ein
+- Schemaänderungen löschen keine Dokument- oder Vektordaten. Ausnahme ist ein Neuaufsetzen, das die
+  Release-Notizen ankündigen ([Docker Compose](docker-compose.md#neu-aufsetzen-statt-aktualisieren)).
+- Ändert sich die Verarbeitung eines Formats, bleiben alte Chunks durchsuchbar;
+  „Suche & Indexierung“ zeigt „Nachzug ausstehend“, und ein
   [Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug) bringt sie auf den neuen Stand.
-  Ein solches Update nennen die Notizen des Release.
-- **Ändert ein Update die Vorgaben des Embedding-Modells** (Modell, Dimension, Eingabegrenze), wirken
-  sie nur dort, wo die Umgebung den Wert nicht selbst setzt. Eine solche Installation erkennt den
-  Modellwechsel beim Start und verlangt eine Neueinbettung, keine Neuindizierung
-  ([Modell wechseln](modelle.md#modell-wechseln)). Wer das bisherige Modell behält, setzt Modell,
-  Dimension und Eingabegrenze ausdrücklich ([Welches Embedding-Modell](modelle.md#welches-embedding-modell)).
+- Ändert ein Update die Vorgaben des Embedding-Modells, verlangt OPAA eine Neueinbettung
+  ([Modell wechseln](modelle.md#modell-wechseln)). Wer das bisherige Modell behält, setzt es
+  ausdrücklich ([Welches Embedding-Modell](modelle.md#welches-embedding-modell)).
 
-Eine vollständige Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image zu tun
-haben:
+Eine vollständige Neuindizierung brauchen nur: eine verworfene Datenbank und der Austausch einer
+fehlerhaften Ollama-Fassung bei langen Eingaben ([Modelle](modelle.md#embedding)).
 
-| Auslöser | Folge |
-|---|---|
-| Ollama mit dem Fehler bei langen Eingaben durch eine neuere Fassung ersetzt | Die Vektoren langer Chunks stammen aus der fehlerhaften Fassung; OPAA erkennt das nicht als Modellwechsel — vollständige Neuindizierung ([Modelle](modelle.md#embedding)) |
-| Datenbank verworfen, etwa mit `docker compose down -v` | Datenbank samt Index ist weg — vollständige Neuindizierung |
-| Wechsel der PostgreSQL-Hauptversion | ein eigener Migrationsvorgang der Datenbank, kein Image-Update ([Datenbank](datenbank.md)) |
-
-Ein Wechsel des **Chat**-Modells berührt den Index nicht. Ein Wechsel des **Embedding**-Modells oder
-von `OPAA_PGVECTOR_DIMENSIONS` braucht ebenfalls keine Neuindizierung und kein Zurücksetzen der
-Datenbank: OPAA erkennt ihn beim Start, setzt die Vektorsuche aus, und die Systemverwaltung bettet
-den vorhandenen Bestand neu ein ([Modell wechseln](modelle.md#modell-wechseln)).
-
-Eine geänderte Zielgröße der Zerlegung (`OPAA_INDEXING_CHUNK_TARGET_CHARACTERS`) braucht ebenfalls
-keine Neuindizierung. Ein erneuter Lauf überspringt unveränderte Dateien zwar weiterhin, aber der
-Versionsstand weist die mit der alten Zielgröße geschnittenen Chunks als nachzuziehen aus, und der
-[Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug), je Pipeline der Formate mit
-Struktur aufgerufen, zerlegt sie aus dem Original neu. Bis dahin bleiben sie in der alten Fassung
-durchsuchbar.
-
-> **Falle bei einer Neuindizierung:** OPAA überspringt eine Datei, deren Prüfsumme unverändert ist
-> und deren Dokument als indiziert gilt. Wer nur die Vektoren einer Bibliothek verwirft, bekommt
-> deshalb einen Lauf voller übersprungener Dateien und einen leeren Index. Für einen echten Neuaufbau
-> einer Bibliothek werden Vektoren, Dokumente und (nur bei Feeds) der Feed-Zustand gemeinsam
-> zurückgesetzt, gezielt für diese Bibliothek, danach wird sie regulär indiziert:
+> **Falle bei einer Neuindizierung:** Eine Datei mit unveränderter Prüfsumme, deren Dokument als
+> indiziert gilt, wird übersprungen. Wer nur die Vektoren verwirft, bekommt einen leeren Index. Für
+> einen Neuaufbau einer Bibliothek gemeinsam zurücksetzen, dann regulär indizieren:
 >
 > ```sql
 > DELETE FROM vector_store WHERE metadata->>'library_id' = '<library-id>';
@@ -799,103 +453,68 @@ durchsuchbar.
 
 ## Logs und Metriken
 
-**Protokoll.** Das Backend schreibt auf die Standardausgabe; Compose und Kubernetes nehmen es dort ab
-(`docker compose logs backend`, `kubectl logs`). Ohne Angabe ist es Text; mit
-`LOGGING_STRUCTURED_FORMAT_CONSOLE` (`ecs`, `logstash` oder `gelf`) wird jede Zeile ein JSON-Objekt,
-das ein Log-Sammler ohne eigenes Muster zerlegt. Wichtige Zeilen beim Start: die Version, Warnungen zu
-fehlenden vertrauten Proxys oder einem unsicheren Cookie, das Einmalpasswort des Erststarts
-([Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto)) und jede
-Startabbruch-Meldung mit dem Namen der Variable.
-
-**Was das Protokoll nicht enthält und was doch.** Geheimnisse, Zugangsdaten und Request-Bodies
-erscheinen nicht. Ordner, Dateien, Anhänge und Titel einer privaten Bibliothek schreibt OPAA selbst
-nicht ins Protokoll, auch nicht auf `DEBUG`; an ihrer Stelle steht `<private library …>` mit der
-Kennung der Bibliothek, Fehlermeldungen ihrer Läufe erscheinen nur mit Typ und Stack. Nicht abgedeckt
-sind die Ausgaben eingebundener Bibliotheken (etwa Tika, PDFBox, HTTP-Client) auf `DEBUG` oder
-`TRACE`, Fehlermeldungen der Datenbank, die Zeilenwerte nennen können, und der Eintrag „Unexpected
-error" einer unerwarteten Ausnahme. Wer das Protokoll über `INFO` hinaus öffnet, behandelt es wie
-Inhalte. Was die Besitzerin einer privaten Bibliothek wissen muss, steht im Laufprotokoll ihrer
-Bibliothek.
-
-**Protokolle in der Anwendung.** Handlungen von Personen — Rechtevergaben, Anmeldungen mit dem
-Notanker-Konto, Änderungen an Anbietern, Zugängen und Einstellungen — stehen nicht im Anwendungslog,
-sondern im Nachweis- und Revisionsprotokoll der Anwendung
-([Berechtigungen](berechtigungen.md)); Läufe der Indexierung im Laufprotokoll ihrer Bibliothek
-([Wissensbibliotheken](wissensbibliotheken.md)).
-
-**Metriken.** Das Backend liefert Metriken im Prometheus-Format unter `/actuator/prometheus`, eine
-Übersicht unter `/actuator/metrics`. Die wichtigsten:
+- **Log** auf der Standardausgabe, als Text oder mit `LOGGING_STRUCTURED_FORMAT_CONSOLE` (`ecs`,
+  `logstash`, `gelf`) als JSON. Beim Start stehen dort Version, Warnungen zur Konfiguration, das
+  Einmalpasswort des Erststarts
+  ([Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto)) und jeder
+  Startabbruch mit dem Namen der Variable.
+- **Inhalt:** Geheimnisse, Zugangsdaten und Request-Bodies erscheinen nicht, Namen aus privaten
+  Bibliotheken auch auf `DEBUG` nicht. Ausgaben eingebundener Bibliotheken auf `DEBUG`/`TRACE` und
+  Datenbankfehler können Inhalte nennen: Ein Log über `INFO` wie Inhalte behandeln.
+- **Handlungen von Personen** stehen nicht im Log, sondern im Nachweis- und Revisionsprotokoll der
+  Anwendung ([Berechtigungen](berechtigungen.md)).
+- **Metriken** im Prometheus-Format unter `/actuator/prometheus`:
 
 | Metrik | Bedeutung |
 |---|---|
-| `up` | ob Prometheus das Backend erreicht (unter Kubernetes mit dem ServiceMonitor) |
-| `http_server_requests_seconds_*` | Anfragen an das Backend nach Pfad, Methode und Status |
-| `opaa_query_duration_seconds_*`, `opaa_query_count_total` | Dauer und Anzahl der Fragen im Chat, Anzahl nach Erfolg und Fehler |
-| `opaa_query_tokens_total` | Token der Antwortaufrufe im Chat |
-| `opaa_chat_search_duration_seconds_*` | Dauer der Suche über Chats |
-| `opaa_indexing_documents_total` | verarbeitete Dokumente der Indexierung und der Uploads, nach Ergebnis (`processed`, `skipped`, `failed`) |
-| `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis: `split` (bei der Indexierung geteilt, weil der Endpunkt ihn als zu lang belegte), `cut` (bei Neueinbettung oder Präfix-Nachlauf gekürzt eingebettet, Dokument für den Nachzug vorgemerkt), `unverified` (eingebettet, aber ohne Tokenzahl vom Endpunkt; auf allen Wegen gezählt) |
-| `opaa_rate_limit_rejected_total` | von einem Rate-Limit abgewiesene Anfragen, nach Grenze (`limit`) und erschöpftem Bereich (`scope`); die globale Grenze der Anmeldung ist das Frühwarnsignal gegen verteiltes Ausprobieren gestohlener Zugangsdaten |
-| `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten nach Fehlversuchen |
-| `executor_active_threads{name="indexingTaskExecutor"}` | laufende Indexierungsläufe |
-| `hikaricp_connections_*` | Verbindungspool zur Datenbank |
+| `http_server_requests_seconds_*` | Anfragen nach Pfad, Methode, Status |
+| `opaa_query_duration_seconds_*`, `opaa_query_count_total` | Dauer und Zahl der Chat-Fragen |
+| `opaa_query_tokens_total` | Token der Antwortaufrufe |
+| `opaa_indexing_documents_total` | verarbeitete Dokumente nach Ergebnis |
+| `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modelle.md)) |
+| `opaa_rate_limit_rejected_total` | abgewiesene Anfragen; die globale Anmeldegrenze warnt vor verteiltem Ausprobieren von Zugangsdaten |
+| `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten |
+| `hikaricp_connections_*` | Connection Pool der Datenbank |
 | `jvm_memory_used_bytes`, `jvm_memory_max_bytes` | Speicher der JVM |
 
-Weitere Metriken der Suche, etwa zur Zerlegung in Teilfragen und zur Gesprächsnotiz, stehen unter
-[Suche](suche.md#102-metriken-und-log). Wie Prometheus die Metriken unter Kubernetes einsammelt und welche Alarme der Chart mitbringt, steht
-unter [Kubernetes](kubernetes.md#betriebsüberwachung).
+Weitere Metriken: [Suche](suche.md#102-metriken-und-log); Einsammeln und Alarme unter Kubernetes:
+[Betriebsüberwachung](kubernetes.md#betriebsüberwachung).
 
 ### Diagnose ohne Shell
 
-Die Actuator-Pfade des Backends beantworten die meisten Fragen ohne Zugang zum Container. Unter
-Compose erreicht man sie auf dem Backend-Port des Hosts, unter Kubernetes über den Management-Port;
-der Frontend-nginx reicht sie nicht nach außen.
+Actuator-Pfade sind nur über den Backend- bzw. Management-Port erreichbar, nicht über das Frontend:
 
 ```bash
-curl -s http://localhost:8081/actuator/info          # Version des Backends
-curl -s http://localhost:8081/actuator/health        # Zustandsübersicht
-curl -s http://localhost:8081/actuator/health/readiness   # Bereitschaft (Lastverteiler-Probe)
-curl -s http://localhost:8081/actuator/health/liveness    # Lebendigkeit des Prozesses
-curl -s http://localhost:8081/actuator/metrics       # Metriken
-curl -s http://localhost:8081/actuator/prometheus    # Prometheus-Format
-curl -s -H "Authorization: Bearer <token>" https://<host>/api/v1/admin/diagnostics/client-address   # aufgelöste Client-Adresse dieser Anfrage
+curl -s http://localhost:8081/actuator/info              # Version
+curl -s http://localhost:8081/actuator/health/readiness  # Readiness
+curl -s http://localhost:8081/actuator/prometheus        # Metriken
+curl -s -H "Authorization: Bearer <token>" https://<host>/api/v1/admin/diagnostics/client-address
 ```
 
-Wie viel `/actuator/health` zeigt, hängt von der Anmeldung ab: Ein anonymer Aufruf sieht im
-Betriebsmodus `oidc` nur `{"status":"UP"}` bzw. `DOWN`, die Aufschlüsselung braucht ein gültiges
-Zugangstoken. Im Entwicklungsmodus gilt jede Anfrage als angemeldet.
-
-Der letzte Aufruf (nur Systemverwaltung, mit dem Zugangstoken einer angemeldeten Sitzung und über
-denselben Weg wie die Browser, also durch den Proxy) zeigt, wie das Backend die Adresse **genau
-dieser** Anfrage auflöst: `remoteAddress` ist die Adresse der Verbindung (hinter einem Proxy dessen
-Adresse), `forwardedFor` der empfangene `X-Forwarded-For`-Header, `forwardedForTrusted`, ob er gezählt
-hat, und `clientAddress` die Adresse, nach der Rate-Limits und `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` diese
-Anfrage beurteilen. Steht dort die Adresse des Proxys statt die des eigenen Rechners, fehlt der Proxy
-in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS`.
-
-Thread- und Heap-Dumps, Dateien aus dem Container und Netzwerkdiagnose stehen je Betriebsweg unter
-[Docker Compose](docker-compose.md#diagnose-im-container) und [Kubernetes](kubernetes.md#fehlersuche).
+Der letzte Aufruf (Systemverwaltung, über den Proxy) zeigt, welche Client-Adresse das Backend für
+diese Anfrage ermittelt (`clientAddress`). Steht dort die Adresse des Proxys, fehlt er in
+`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS`. Dumps und Dateien aus dem Container:
+[Docker Compose](docker-compose.md#diagnose-im-container), [Kubernetes](kubernetes.md#fehlersuche).
 
 ## Fehlerbehebung
 
 | Bild | Wo weiter |
 |---|---|
-| Der Start bricht ab und nennt eine Variable | [Konfiguration](konfiguration.md); bei `OPAA_AUTH_JWT_SECRET` [Authentifizierung](authentifizierung.md#das-backend-startet-nicht-und-nennt-opaa_auth_jwt_secret) |
-| Der Start bricht mit einem Hinweis auf pgvector, Schema oder Migration ab | [Datenbank](datenbank.md) |
-| Der Start bricht mit `refuses to start` ab und nennt eine laufende Instanz | Abweichender Wert oder abweichende Version; Werte angleichen oder alle Instanzen neu starten ([Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)) |
-| Die Bereitschaft meldet `DOWN` | Datenbank erreichbar? Verbindungspool erschöpft? ([Bereitschaft und Lebendigkeit](#bereitschaft-und-lebendigkeit)) |
-| Indexierung oder Chat schlagen fehl, alles andere läuft | [Modelle](modelle.md#fehlerbilder) |
-| Niemand kommt herein, kein Einmalpasswort, Anmeldung mit `429` | [Authentifizierung](authentifizierung.md#fehlerbehebung) |
+| Start bricht ab und nennt eine Variable | [Konfiguration](konfiguration.md); bei `OPAA_AUTH_JWT_SECRET` [Authentifizierung](authentifizierung.md#das-backend-startet-nicht-und-nennt-opaa_auth_jwt_secret) |
+| Start bricht mit Hinweis auf pgvector, Schema oder Migration ab | [Datenbank](datenbank.md) |
+| Start bricht mit `refuses to start` ab | [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck) |
+| Readiness meldet `DOWN` | Datenbank, Connection Pool ([Readiness und Liveness](#readiness-und-liveness)) |
+| Indexierung oder Chat schlagen fehl | [Modelle](modelle.md#fehlerbilder) |
+| Niemand kommt herein, Anmeldung mit `429` | [Authentifizierung](authentifizierung.md#fehlerbehebung) |
 | Originale lassen sich nicht abrufen oder hochladen | [Originalablage](originalablage.md#wenn-etwas-nicht-stimmt) |
 | Mails kommen nicht an | [E-Mail-Versand](e-mail.md#fehlerbilder) |
-| Lange Antworten enden mit `504` | Zeitgrenzen von Frontend und äußerem Proxy ([Netzwerkzugang](#netzwerkzugang)) |
-| Verbindungen nach außen scheitern mit dem Status des Proxys | [Ausgangsproxy](#ausgangsproxy) |
-| Container- oder Pod-spezifische Fehlerbilder | [Docker Compose](docker-compose.md#fehlerbehebung), [Kubernetes](kubernetes.md#fehlersuche) |
+| Lange Antworten enden mit `504` | Timeouts von Frontend und Proxy ([Netzwerkzugang](#netzwerkzugang)) |
+| Verbindungen nach außen scheitern mit Proxy-Status | [Ausgangsproxy](#ausgangsproxy) |
+| Container- oder Pod-Fehlerbilder | [Docker Compose](docker-compose.md#fehlerbehebung), [Kubernetes](kubernetes.md#fehlersuche) |
 
 ## Weiterführende Kapitel
 
 - [Docker Compose](docker-compose.md) und [Kubernetes](kubernetes.md) — die beiden Betriebswege
-- [Mehrere Backend-Instanzen](mehrere-instanzen.md) — wie mehrere Instanzen zusammenarbeiten
-- [Datenbank](datenbank.md), [Originalablage](originalablage.md), [E-Mail-Versand](e-mail.md) — die
-  Bausteine mit eigenen Abläufen
+- [Mehrere Backend-Instanzen](mehrere-instanzen.md)
+- [Datenbank](datenbank.md), [Originalablage](originalablage.md), [E-Mail-Versand](e-mail.md)
 - [Konfiguration](konfiguration.md), [Modelle](modelle.md), [Authentifizierung](authentifizierung.md)
