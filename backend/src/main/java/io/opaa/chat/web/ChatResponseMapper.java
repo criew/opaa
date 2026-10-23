@@ -108,6 +108,7 @@ public final class ChatResponseMapper {
                 turn.getChatId(),
                 turn.getRole(),
                 turn.getContent(),
+                turn.getRole() == ChatRole.ASSISTANT,
                 turn.getCreatedAt())
             .sources(toSourceReferences(turn.getSources()));
     if (turn.getRole() == ChatRole.ASSISTANT) {
