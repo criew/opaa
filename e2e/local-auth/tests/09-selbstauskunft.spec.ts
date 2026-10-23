@@ -22,14 +22,9 @@ import {
 } from "../../fixtures/selfDisclosure";
 
 /**
- * Selbstauskunft mit Bestätigung der Anmeldung (test(e2e) #2994, Szenarien 1 und 2, Epic #2986).
- *
- * Nur dieses Ziel kennt ein Passwort: Im `dev`-Modus gilt jede Anfrage als frisch angemeldet. Das
- * Ticket verlangt ein `auth_time`, das höchstens fünf Minuten zurückliegt, und ein über das
- * Refresh-Cookie erneuertes Token trägt keines. Jedes Szenario lädt deshalb nach der Anmeldung die
- * Seite neu - ab dann fragt „Daten herunterladen“ nach dem Passwort, wie bei einer Person, die
- * schon länger angemeldet ist. Inhalt und Grenzen des Exports prüft tests/self-disclosure.spec.ts
- * im Ziel `e2e`.
+ * Self-disclosure behind the password confirmation. The ticket needs a recent sign-in, and a token
+ * renewed over the refresh cookie carries none - so each test loads the page afresh after signing
+ * in, and the download asks for the password.
  */
 test.describe("Selbstauskunft nach bestätigter Anmeldung", () => {
   const address = uniqueAddress("ida.brenner");
@@ -93,7 +88,7 @@ test.describe("Selbstauskunft nach bestätigter Anmeldung", () => {
     const downloads: string[] = [];
     page.on("download", (download) => downloads.push(download.suggestedFilename()));
 
-    // abgebrochen
+    // cancelled
     await page.getByRole("button", { name: DOWNLOAD_BUTTON }).click();
     const dialog = page.getByRole("dialog", { name: "Anmeldung bestätigen" });
     await expect(dialog).toBeVisible();
@@ -103,7 +98,7 @@ test.describe("Selbstauskunft nach bestätigter Anmeldung", () => {
     await dialog.getByRole("button", { name: "Abbrechen" }).click();
     await expect(dialog).toBeHidden();
 
-    // falsches Passwort
+    // wrong password
     await page.getByRole("button", { name: DOWNLOAD_BUTTON }).click();
     await expect(dialog).toBeVisible();
     await dialog.getByLabel("Ihr Passwort").fill("Falsches-Passwort-2994");

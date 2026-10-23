@@ -642,10 +642,12 @@ lassen.
   bekommt keinen durchsuchbaren Bestand, bleibt also für seinen eigentlichen Zweck unberührt.
 - `tests/self-disclosure.spec.ts` (#2994, Epic #2986) — die Selbstauskunft aus „Einstellungen →
   Meine Daten“ über den vollen Stack. `dev-user` (Person A) und `dev-outsider` (Person B) sind
-  Mitglied eines eigenen Space; A fragt dort mit Beleg aus einem zur Laufzeit erzeugten PDF, B stellt
-  eine eigene Frage. Das ZIP von A enthält `index.html`, `manifest.json`, die Kategorien Konto und
-  Chats und die Frage von A; die Fundstelle steht als „Titel · Bibliothek: … · S. 1 · zitiert“
-  darin, der Text des PDF nirgends; weder der Chat noch Name oder Adresse von B kommen vor. Ein
+  Mitglied eines eigenen Space; A fragt dort mit Belegen aus einem zur Laufzeit erzeugten PDF und
+  einem Markdown-Vermerk, B stellt eine eigene Frage. Das ZIP von A enthält `index.html`,
+  `manifest.json`, die Kategorien Konto und Chats und die Frage von A. Die Fundstellen stehen als
+  „Titel · Bibliothek: … · S. 1 · zitiert“ bzw. ohne Ort darin. Die Überschrift des Vermerks ist
+  laut Chat-API Teil der gespeicherten Fundstelle (`chunkLocations`), im ZIP steht sie nirgends,
+  ebenso wenig der Text der Dokumente; weder der Chat noch Name oder Adresse von B kommen vor. Ein
   Download, dessen Verbindung abbricht (`route.abort()` auf dem Formular-POST), wird gemeldet und
   nicht gezählt, der nächste am selben Tag gelingt. Nach einem vollständigen Download ist die
   Tagesgrenze erreicht: Die Seite nennt den nächsten möglichen Zeitpunkt, der Knopf startet nichts

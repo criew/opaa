@@ -5,7 +5,7 @@ import { expect, openAs, test } from '../fixtures/auth'
 import {
   askQuestion,
   clearSearchScope,
-  createLibraryWithDocument,
+  createLibraryWithDocuments,
   expectCitedSource,
 } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
@@ -23,26 +23,9 @@ import {
 } from '../fixtures/selfDisclosure'
 
 /**
- * Selbstauskunft aus den Einstellungen (test(e2e) #2994, Epic #2986), Szenarien 3 bis 8 und der
- * Inhalt des ZIP aus Szenario 1. Die Bestätigung der Anmeldung mit dem Passwort (Szenarien 1 und
- * 2) gibt es nur im Ziel `local-auth`: Im `dev`-Modus gilt jede Anfrage als frisch angemeldet, das
- * Ticket kommt ohne Rückfrage (local-auth/tests/09-selbstauskunft.spec.ts).
- *
- * Person A ist `dev-user`, Person B `dev-outsider`; beide sind Mitglied eines eigenen Space, in dem
- * A eine Frage mit Beleg aus einem PDF stellt und B eine eigene Frage. Abbruch, Tagesgrenze und
- * Benachrichtigung laufen unter `dev-format-pipelines`, damit die Tagesbudgets der Konten sich
- * nicht in die Quere kommen.
- *
- * Tagesgrenze und Schalter sind installationsweit. Jedes Szenario stellt über die Verwaltungs-API
- * selbst her, was es braucht (eine Grenze, die einen weiteren Download zulässt, oder genau keinen),
- * und `afterAll` setzt beide auf den Stand vor der Datei zurück. Gezählt wird je Person und
- * Kalendertag; ein zweiter Lauf am selben Tag gegen denselben Stack startet also mit Downloads
- * vom ersten, was die Szenarien über den gelesenen Stand ausgleichen.
- *
- * Nicht abgedeckt ist die Startgrenze (Tagesgrenze plus vier Starts): Ein Start zählt erst, wenn
- * der Server das Ticket einlöst, und ein Download dieses Umfangs ist vollständig geschrieben, bevor
- * ein Abbruch im Browser beim Server ankommen kann. Fünf serverseitig abgebrochene Starts lassen
- * sich deshalb nicht verlässlich herbeiführen; die Grenze prüft der Backend-Test.
+ * Self-disclosure from the own settings in dev auth mode, where every request counts as a recent
+ * sign-in. The password confirmation is covered by the local-auth target. Daily limit and switch
+ * are installation-wide: each test sets what it needs over the admin API, afterAll restores them.
  */
 
 const USER_A = 'dev-user'
@@ -55,8 +38,10 @@ const runId = Date.now().toString(36)
 const SPACE_NAME = `E2E Selbstauskunft ${runId}`
 const LIBRARY_NAME = `E2E-Selbstauskunft-${runId}`
 const PDF_NAME = `selbstauskunft-fundstelle-${runId}.pdf`
-/** Text of the PDF; the export must name the source, never this excerpt. */
-const EXCERPT = `Ausschnittsmarke ${runId} Wasserrohrbruch im Ostfluegel`
+const NOTE_NAME = `selbstauskunft-vermerk-${runId}.md`
+/** Heading of the note: it becomes the stored location of the source, never part of the export. */
+const MARKER = `Ausschnittsmarke ${runId}`
+const BODY = `Wasserrohrbruch im Ostfluegel ${runId}`
 const QUESTION_A = `Frage von A ${runId}: Was ist im Gebaeude passiert?`
 const QUESTION_B = `Frage von B ${runId}: Welche Frist gilt?`
 
@@ -81,6 +66,7 @@ interface Status {
 let spaceId: string | undefined
 let libraryId: string | undefined
 let initialSettings: Settings | undefined
+let chatIdA: string | undefined
 
 async function readSettings(): Promise<Settings> {
   const api = await apiAs('dev-admin')
@@ -148,12 +134,31 @@ async function buildPdf(): Promise<Buffer> {
   const pdf = await PDFDocument.create()
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const page = pdf.addPage([595, 842])
-  page.drawText(EXCERPT, { x: 40, y: 780, size: 12, font })
+  page.drawText(BODY, { x: 40, y: 780, size: 12, font })
   return Buffer.from(await pdf.save())
 }
 
-/** Asks one question in the open chat and waits until its answer has arrived. */
-async function askAndWait(page: Page, question: string): Promise<void> {
+/** Every location the stored sources of the chat name, as the chat API returns them. */
+async function storedLocations(devUser: string, chatId: string): Promise<string[]> {
+  const api = await apiAs(devUser)
+  try {
+    const response = await api.get(`/api/v1/chats/${chatId}`)
+    expect(response.status(), await response.text()).toBe(200)
+    const chat = (await response.json()) as {
+      messages: Array<{ sources?: Array<{ chunkLocations?: Array<{ location?: string }> }> }>
+    }
+    return chat.messages.flatMap((message) =>
+      (message.sources ?? []).flatMap((source) =>
+        (source.chunkLocations ?? []).flatMap((chunk) => (chunk.location ? [chunk.location] : [])),
+      ),
+    )
+  } finally {
+    await api.dispose()
+  }
+}
+
+/** Asks one question in the open chat, waits for its answer and returns the chat id. */
+async function askAndWait(page: Page, question: string): Promise<string> {
   const [response] = await Promise.all([
     page.waitForResponse(
       (candidate) =>
@@ -163,6 +168,7 @@ async function askAndWait(page: Page, question: string): Promise<void> {
   ])
   expect(response.status()).toBe(200)
   await expect(page.getByText('Denkt nach …')).toHaveCount(0)
+  return ((await response.json()) as { chatId: string }).chatId
 }
 
 async function openSpaceChat(page: Page): Promise<void> {
@@ -180,11 +186,22 @@ test.describe('Selbstauskunft aus den Einstellungen', () => {
 
     const pdfPath = testInfo.outputPath(PDF_NAME)
     await writeFile(pdfPath, await buildPdf())
+    const notePath = testInfo.outputPath(NOTE_NAME)
+    await writeFile(
+      notePath,
+      `# ${MARKER}
+
+${BODY}
+`,
+    )
 
     const contextA = await browser.newContext()
     const pageA = await contextA.newPage()
     await openAs(pageA, USER_A)
-    await createLibraryWithDocument(pageA, LIBRARY_NAME, pdfPath, PDF_NAME)
+    await createLibraryWithDocuments(pageA, LIBRARY_NAME, [
+      { path: pdfPath, name: PDF_NAME },
+      { path: notePath, name: NOTE_NAME },
+    ])
     libraryId = libraryIdFromCurrentUrl(pageA)
     const api = await apiAs(USER_A)
     try {
@@ -195,10 +212,11 @@ test.describe('Selbstauskunft aus den Einstellungen', () => {
     } finally {
       await api.dispose()
     }
-    // @Space-Wissen of this space holds only the one library, so the answer cites the PDF
+    // the space holds only this library, so the answer cites both of its documents
     await openSpaceChat(pageA)
-    await askAndWait(pageA, QUESTION_A)
+    chatIdA = await askAndWait(pageA, QUESTION_A)
     await expectCitedSource(pageA, PDF_NAME)
+    await expectCitedSource(pageA, NOTE_NAME)
     await contextA.close()
 
     const contextB = await browser.newContext()
@@ -211,19 +229,33 @@ test.describe('Selbstauskunft aus den Einstellungen', () => {
   })
 
   test.afterAll(async ({ request }) => {
-    if (initialSettings) {
-      await updateSettings({
-        enabled: initialSettings.enabled,
-        dailyLimit: initialSettings.dailyLimit,
-      })
+    try {
+      if (initialSettings) {
+        await updateSettings({
+          enabled: initialSettings.enabled,
+          dailyLimit: initialSettings.dailyLimit,
+        })
+      }
+    } finally {
+      try {
+        if (libraryId) await deleteLibraryCompletely(request, libraryId)
+      } finally {
+        if (spaceId) await deleteSpaceViaApi(USER_A, spaceId)
+      }
     }
-    if (libraryId) await deleteLibraryCompletely(request, libraryId)
-    if (spaceId) await deleteSpaceViaApi(USER_A, spaceId)
   })
 
   test('Szenarien 1, 3 und 4: das ZIP enthält den eigenen Chat mit Fundstelle ohne Ausschnitt, nichts von B', async ({
     regularUserPage: page,
   }) => {
+    // the stored sources do carry the heading text, so its absence below is the exporter's doing
+    const locations = await storedLocations(USER_A, chatIdA!)
+    expect(locations).toContain('S. 1')
+    expect(
+      locations.some((location) => location.includes(MARKER)),
+      locations.join(' | '),
+    ).toBe(true)
+
     await allowExactlyOneMore(USER_A)
     await openMyData(page)
     await expect(page.getByText(PERSONAL_ONLY_NOTICE)).toBeVisible()
@@ -236,22 +268,20 @@ test.describe('Selbstauskunft aus den Einstellungen', () => {
     expectExportStructure(download)
     const messages = exportedMessages(download.entries)
 
-    // Szenario 1: der vorher angelegte Chat von A steht darin
     const question = messages.find((message) => message.content === QUESTION_A)
     expect(question, 'Frage von A fehlt in chats.json').toBeDefined()
     expect(question!.role).toBe('Frage')
 
-    // Szenario 3: Titel, Bibliothek und Seite, aber kein Textausschnitt
     const answer = messages.find(
       (message) => message.chat === question!.chat && message.role === 'Antwort',
     )
     expect(answer, 'Antwort auf die Frage von A fehlt in chats.json').toBeDefined()
     expect(answer!.sources).toContain(`${PDF_NAME} · Bibliothek: ${LIBRARY_NAME} · S. 1 · zitiert`)
+    expect(answer!.sources).toContain(`${NOTE_NAME} · Bibliothek: ${LIBRARY_NAME} · zitiert`)
     const everything = allText(download.entries)
-    expect(everything).not.toContain('Ausschnittsmarke')
+    expect(everything).not.toContain(MARKER)
     expect(everything).not.toContain('Wasserrohrbruch')
 
-    // Szenario 4: weder der Chat von B im selben Space noch Name oder Adresse von B
     expect(everything).not.toContain(`Frage von B ${runId}`)
     expect(everything).not.toContain(B_NAME)
     expect(everything).not.toContain(B_ADDRESS)

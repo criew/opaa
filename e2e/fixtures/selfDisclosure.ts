@@ -3,16 +3,13 @@ import { inflateRawSync } from 'node:zlib'
 import { expect, type Page } from '@playwright/test'
 
 /**
- * Bausteine der Szenarien zur Selbstauskunft (test(e2e) #2994, Epic #2986): die Seite „Meine
- * Daten“, der Download über das versteckte Formular und das Lesen des ZIP. Geteilt zwischen dem
- * Ziel `e2e` (tests/self-disclosure.spec.ts) und dem Ziel `local-auth`
- * (local-auth/tests/09-selbstauskunft.spec.ts), das als einziges eine echte Passwortbestätigung
- * kennt.
+ * Building blocks for the self-disclosure scenarios of the e2e and local-auth targets: the page
+ * „Meine Daten“, the download through the hidden form, and reading the ZIP.
  */
 
 export const MY_DATA_PATH = '/settings/data'
 
-/** Der Hinweis gegen erzwungene Vorlage, wörtlich wie in der Spezifikation. */
+/** The notice against compelled disclosure, word for word as the specification fixes it. */
 export const PERSONAL_ONLY_NOTICE =
   'Diese Auskunft ist nur für Sie. Niemand darf verlangen, dass Sie sie vorlegen oder weitergeben.'
 
