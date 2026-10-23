@@ -253,7 +253,8 @@ jobs:
           python-version: '3.15'
 
       - name: Python-Pakete des Update-Pakets installieren
-        run: pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt
+        run: |
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt
 
       # The links of docs/behoerden and docs/handbuch as the update package and its HTML version
       # hold them; a link the release run would refuse fails here instead of stopping a release.
@@ -532,7 +533,8 @@ jobs:
         run: pip install -r .github/requirements-ci.txt
 
       - name: Install the packages of the update package
-        run: pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt
+        run: |
+          pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt
 
       # Der Tagesreport läuft nur nachts; ein Fehler fiele sonst erst dann auf.
       # Die Selbstprobe des Corepack-Guards liegt daneben, weil dessen CI-Lauf nur

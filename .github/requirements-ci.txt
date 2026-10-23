@@ -1,3 +1,4 @@
-# Python tools of the CI jobs that test .github/scripts and demo/seed; Renovate maintains the pin.
+# Python tools of the CI jobs that test .github/scripts and demo/seed; Renovate maintains the pins.
 # Jobs that also need the packages of the release job install .github/requirements-release.txt.
 pytest==9.1.1
+PyYAML==6.0.3
