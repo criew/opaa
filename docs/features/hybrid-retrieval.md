@@ -1770,6 +1770,9 @@ Nachvollziehbarkeit einzelner Befugnisausübungen. Daraus folgt:
 - Eine Auswertung „Diagnosen je Nutzer" DARF es nicht geben; ein Bezug zur Leistungs- oder
   Verhaltensbewertung ist ausgeschlossen.
 - Eine Auswertung erfolgt ausschließlich **einzelfall- und anlassbezogen**.
+- **Einzige Ausnahme:** Die [Selbstauskunft](security-and-compliance.md#selbstauskunft-stufe-1) liest
+  die Einträge, in denen die angemeldete Person selbst diagnostiziert hat oder deren Rechtekontext
+  eingenommen wurde, nur für sie selbst und ohne Gruppierung oder Zählung.
 
 **(h) Einsichtsrecht.** Jede Person MUSS jederzeit einsehen können, wann und von wem ihr Rechtekontext
 eingenommen wurde — als eigene Ansicht in der Anwendung, ohne Antragsweg und ohne Beteiligung Dritter.
