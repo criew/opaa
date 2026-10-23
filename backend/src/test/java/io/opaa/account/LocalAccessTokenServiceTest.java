@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.organization.Organization;
 import io.opaa.security.LocalAuthKeyService;
@@ -121,6 +122,27 @@ class LocalAccessTokenServiceTest {
 
     assertThat(service.issue(user, credentials(user)).jti())
         .isNotEqualTo(service.issue(user, credentials(user)).jti());
+  }
+
+  /** A refresh continues a session without a password: no time of sign-in to show for. */
+  @Test
+  void aTokenWithoutAVerifiedPasswordNamesNoSignIn() {
+    User user = localUser("a@stadt.example", "A");
+
+    Jwt jwt = decode(service.issue(user, credentials(user)).value());
+
+    assertThat(jwt.getClaims()).doesNotContainKey(RecentLoginPolicy.AUTH_TIME_CLAIM);
+  }
+
+  @Test
+  void aTokenAfterAVerifiedPasswordNamesItsIssuanceAsTheSignIn() {
+    User user = localUser("a@stadt.example", "A");
+
+    Jwt jwt = decode(service.issueForSignIn(user, credentials(user)).value());
+
+    assertThat(jwt.getClaims())
+        .containsEntry(RecentLoginPolicy.AUTH_TIME_CLAIM, NOW.getEpochSecond());
+    assertThat(jwt.getIssuedAt()).isEqualTo(NOW);
   }
 
   private static LocalCredentials credentials(User user) {

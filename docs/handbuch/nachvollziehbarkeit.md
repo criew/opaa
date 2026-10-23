@@ -28,7 +28,7 @@ Fristen laufen. Das Manifest wird wie Code geändert und geprüft. Aus ihm entst
 
 | Faktenblatt | Beantwortet |
 |---|---|
-| `datenkatalog` | Welche Daten liegen wo, mit welchem Zweck, Personenbezug, welcher Frist und Sichtbarkeit, und wie werden sie gelöscht? |
+| `datenkatalog` | Welche Daten liegen wo, mit welchem Zweck, Personenbezug, welcher Frist und Sichtbarkeit, und wie werden sie gelöscht? Über welche Angaben wird ein Eintrag einer Person zugeordnet, oder warum gehört er nicht zur Selbstauskunft? |
 | `protokollereignisse` | Was hält das Revisionsprotokoll fest, bei welchem Anlass, und wer darf es lesen? |
 | `rollensicht` | Was sieht jede Systemrolle und Fähigkeit über andere Personen? |
 | `datenfluesse` | Was verlässt die Installation, wohin, wann, und lässt es sich abschalten? Mit einem Bild aller Verbindungen nach Gruppen |

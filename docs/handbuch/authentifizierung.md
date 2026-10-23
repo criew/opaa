@@ -460,6 +460,25 @@ kcadm.sh create clients/<id-des-clients-opaa-seed>/protocol-mappers/models -r op
   -s 'config."access.token.claim"=true'
 ```
 
+## Erneute Anmeldung vor sensiblen Vorgängen
+
+OPAA kann vor einem Vorgang verlangen, dass die Person ihre Identität gerade eben bestätigt hat, damit
+ein nicht gesperrter Arbeitsplatz dafür nicht genügt. Die Bestätigung gilt für kurze Zeit
+(`OPAA_AUTH_RECENT_LOGIN_MAX_AGE` in der [Variablenliste](konfiguration.md)), danach wird wieder
+gefragt. Derzeit verlangt noch kein Vorgang der Oberfläche die erneute Anmeldung; die Kapitel der
+Vorgänge, die es tun, nennen es.
+
+- **Lokales Konto:** Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
+  der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.
+- **Konto eines Identitätsanbieters:** Die Bestätigung ist eine Anmeldung beim Anmeldedienst, die
+  OPAA auch bei bestehender Sitzung verlangt. Der Anbieter muss dafür die Anfrageparameter
+  `prompt=login` und `max_age=0` beachten und den Anmeldezeitpunkt (`auth_time`) ins Zugangstoken
+  schreiben; Keycloak tut beides mit dem mitgelieferten Client-Scope `basic`. Sonst lässt OPAA den
+  Vorgang nicht zu.
+- **Entwicklungsmodus:** Es gibt keine Anmeldung; jede Anfrage gilt als bestätigt.
+
+Die bloße Verlängerung einer Sitzung im Hintergrund zählt nicht als erneute Anmeldung.
+
 ## Erststart und Systemverwalter-Konto
 
 **Beim allerersten Start im Modus `oidc` legt OPAA sich seinen ersten Systemverwalter selbst an** —

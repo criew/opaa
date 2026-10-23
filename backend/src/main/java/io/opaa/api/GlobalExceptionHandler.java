@@ -310,14 +310,17 @@ public class GlobalExceptionHandler {
   }
 
   /**
-   * A refusal may carry a stable {@code code} the client acts on (e.g. {@code
-   * CAPABILITY_REQUIRED}).
+   * A refusal may carry a stable {@code code} the client acts on (e.g. {@code CAPABILITY_REQUIRED})
+   * and a {@code reason} qualifying it.
    */
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<ErrorResponse> handleDomainAccessDeniedException(AccessDeniedException ex) {
     ErrorResponse body = error(HttpStatus.FORBIDDEN, ex.getMessage());
     if (ex.getCode() != null) {
       body.setCode(ex.getCode());
+    }
+    if (ex.getReason() != null) {
+      body.setReason(ex.getReason());
     }
     return respond(HttpStatus.FORBIDDEN, body);
   }

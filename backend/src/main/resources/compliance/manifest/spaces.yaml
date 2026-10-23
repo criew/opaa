@@ -17,13 +17,19 @@ data:
           - is_default
           - archived
           - chat_auto_cleanup_enabled_at
+        person:
+          columns: [owner_id]
       - name: space_memberships
         personalColumns: [user_id]
         nonPersonalColumns:
           [id, space_id, role, created_at, organization_id, subject_type, group_id]
+        person:
+          columns: [user_id]
       - name: space_asset_associations
         personalColumns: [created_by_user_id]
         nonPersonalColumns: [id, space_id, asset_id, organization_id, created_at]
+        person:
+          columns: [created_by_user_id]
     storage: Anwendungsdatenbank
     retention:
       rule: Solange Space oder Mitgliedschaft besteht
@@ -51,6 +57,8 @@ data:
           - cause
           - created_at
           - transfer_id
+        person:
+          columns: [subject_user_id, actor_user_id]
     storage: Anwendungsdatenbank, nur anfügend
     retention:
       rule: Höchstdauer der Rechtehistorie
@@ -68,6 +76,9 @@ data:
         personalColumns: [holder_user_id, granted_by_user_id, revoked_by_user_id]
         nonPersonalColumns:
           [id, organization_id, scope_group_id, valid_from, valid_until, granted_at, revoked_at]
+        person:
+          columns: [holder_user_id, granted_by_user_id, revoked_by_user_id]
+          note: Wer eine von der Person erteilte Befugnis hält, erscheint nur als „andere Person“
     storage: Anwendungsdatenbank
     retention:
       rule: Ohne eigene Löschfrist
@@ -82,9 +93,24 @@ data:
     personalReference: EMPLOYEE
     tables:
       - name: diagnostic_context_log
-        personalColumns: [actor_ref, test_question, permission_snapshot, justification]
-        nonPersonalColumns:
-          [event_id, recorded_at, organization_id, target_kind, target_ref, hit_count, hit_refs]
+        personalColumns:
+          [actor_ref, target_ref, test_question, permission_snapshot, justification]
+        nonPersonalColumns: [event_id, recorded_at, organization_id, target_kind, hit_count, hit_refs]
+        person:
+          columns: [actor_ref, target_ref]
+          excludedColumns:
+            actor_ref: >-
+              Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
+            target_ref: >-
+              Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
+            justification: Begründungsfreitext, auch der eigene
+            permission_snapshot: Rechte anderer Personen
+            hit_refs: Treffer im fremden Rechtekontext
+          note: >-
+            Pseudonyme des Protokolls, der Person zugeordnet über audit_actor_pseudonyms: eigene
+            Diagnosen über actor_ref, Diagnosen im Rechtekontext der Person über target_ref bei
+            target_kind USER, dort mit „andere Person“ als Handelnden und ohne die Testfrage
+            (Freitext Dritter)
     storage: Anwendungsdatenbank
     retention:
       rule: Voreinstellung 12 Monate, einstellbar 1 bis 24 Monate

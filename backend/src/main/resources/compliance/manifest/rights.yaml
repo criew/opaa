@@ -19,6 +19,11 @@ data:
           - created_at
           - updated_at
           - owner_only
+        person:
+          columns: [owner_user_id, created_by_user_id]
+          note: >-
+            Eigene Assets mit Art und Name, eigene Prompt-Bibliotheken eingeschlossen; Inhalte der
+            Assets wie Prompt-Texte sind Sachdaten ohne Personenbezug und gehören nicht dazu
       - name: asset_grants
         personalColumns: [subject_user_id, granted_by_user_id]
         nonPersonalColumns:
@@ -32,10 +37,17 @@ data:
           - created_at
           - updated_at
           - asset_type
+        person:
+          columns: [subject_user_id, granted_by_user_id]
+          note: >-
+            Grants Dritter an fremden Assets gehören nicht dazu; andere Personen erscheinen als
+            „andere Person“
       - name: capability_grants
         personalColumns: [subject_user_id, granted_by_user_id]
         nonPersonalColumns:
           [id, organization_id, capability, subject_type, subject_group_id, created_at, scope]
+        person:
+          columns: [subject_user_id, granted_by_user_id]
     storage: Anwendungsdatenbank
     retention:
       rule: Solange das Recht besteht; danach nur in der Rechtehistorie
@@ -67,6 +79,8 @@ data:
           - created_at
           - asset_type
           - transfer_id
+        person:
+          columns: [subject_user_id, actor_user_id]
       - name: asset_ownership_history
         personalColumns: [owner_user_id, actor_user_id, valid_from, valid_to]
         nonPersonalColumns:
@@ -79,6 +93,8 @@ data:
           - cause
           - created_at
           - transfer_id
+        person:
+          columns: [owner_user_id, actor_user_id]
       - name: asset_visibility_history
         personalColumns: [actor_user_id]
         nonPersonalColumns:
@@ -92,6 +108,8 @@ data:
           - external_access_state
           - external_access_expires_at
           - asset_type
+        person:
+          columns: [actor_user_id]
       - name: capability_grant_history
         personalColumns: [subject_user_id, actor_user_id, valid_from, valid_to]
         nonPersonalColumns:
@@ -104,9 +122,13 @@ data:
           - created_at
           - transfer_id
           - scope
+        person:
+          columns: [subject_user_id, actor_user_id]
       - name: group_membership_history
         personalColumns: [user_id, actor_user_id, valid_from, valid_to]
         nonPersonalColumns: [id, group_id, organization_id, cause, created_at]
+        person:
+          columns: [user_id, actor_user_id]
     storage: Anwendungsdatenbank, nur anfügend
     retention:
       rule: Voreinstellung 36 Monate nach Ende eines Intervalls, einstellbar 12 bis 120 Monate
@@ -125,9 +147,13 @@ data:
       - name: group_memberships
         personalColumns: [user_id]
         nonPersonalColumns: [id, group_id, organization_id, created_at]
+        person:
+          columns: [user_id]
       - name: group_stewards
         personalColumns: [user_id, appointed_by_user_id]
         nonPersonalColumns: [id, group_id, organization_id, created_at]
+        person:
+          columns: [user_id, appointed_by_user_id]
     storage: Anwendungsdatenbank
     retention:
       rule: Solange die Mitgliedschaft besteht
@@ -156,6 +182,10 @@ data:
           - fingerprint
           - changed_fraction
           - memberships_removed
+        person:
+          excluded: >-
+            Arbeitsstand vor einer Bestätigung, der viele Personen nennt; die bewirkten Änderungen
+            stehen in Rechten, Historie und Protokoll
     storage: Anwendungsdatenbank
     retention:
       rule: Bis zur Bestätigung, zum Verwerfen oder zum nächsten Plan
@@ -187,6 +217,9 @@ data:
           - stewardship_count
           - performed_at
           - created_at
+        person:
+          columns: [source_user_id, target_user_id, actor_user_id]
+          note: Die Bezeichnung der jeweils anderen Seite geht nicht heraus
     storage: Anwendungsdatenbank
     retention:
       rule: Wie die Rechtehistorie, an deren Intervallen die Übertragung hängt
@@ -212,6 +245,13 @@ data:
           - closed_at
           - created_at
           - asset_type
+        person:
+          columns: [closed_by_user_id]
+          via: assets
+          note: >-
+            Der Weg über assets gilt nur für Fälle mit object_type ASSET: Fälle an Assets der Person
+            über deren Eigentum; Fälle an Spaces und Gruppen erreichen die Person nur über
+            closed_by_user_id
     storage: Anwendungsdatenbank
     retention:
       rule: Geschlossene Fälle nach der Protokollfrist
@@ -228,6 +268,8 @@ data:
       - name: asset_favorites
         personalColumns: [user_id]
         nonPersonalColumns: [asset_id, organization_id, created_at]
+        person:
+          columns: [user_id]
     storage: Anwendungsdatenbank
     retention:
       rule: Bis die Person sie entfernt oder Konto oder Asset gelöscht wird

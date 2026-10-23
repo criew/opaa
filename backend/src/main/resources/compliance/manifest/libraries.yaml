@@ -30,6 +30,16 @@ data:
           - all_accounts_grant_allowed
           - erasure_requested_at
           - erasure_cause
+        person:
+          columns: [external_access_set_by_user_id]
+          via: assets
+          excludedColumns:
+            source_credentials: Geheimnis (verschlüsselte Zugangsdaten der Quelle)
+            source_webhook_secret: Geheimnis
+          note: >-
+            Zwei Wege: die Freigabe für externe KI-Werkzeuge, die die Person gesetzt hat, und ihre
+            privaten Bibliotheken über das Eigentum am Asset der Bibliothek (assets im Datum
+            rights); die Quelladresse geht nur ohne Zugangsdaten und Abfrageteil heraus
     storage: Anwendungsdatenbank; Zugangsdaten verschlüsselt
     retention:
       rule: Solange die Bibliothek besteht
@@ -74,12 +84,30 @@ data:
           - model_extraction_version
           - keyword_extraction_version
           - processing_instance_id
+        person:
+          columns: [uploaded_by_user_id]
+          via: assets
+          excludedColumns:
+            source_container_key: Technischer Schlüssel der Quelle
+            source_entry_url: Technischer Verweis der Quelle
+            context_prefix_title: Aus dem Dokumentinhalt abgeleitet
+          note: >-
+            Nur ein Verzeichnis, nie Inhalte, auf zwei Wegen: eigene Uploads über
+            uploaded_by_user_id mit Dateiname, Datum und Bibliothek; Dokumente in privaten
+            Bibliotheken der Person, auch konnektor-gespeist, über library_id und das Eigentum am
+            Asset der Bibliothek (assets im Datum rights), zusätzlich mit file_path und
+            source_hierarchy_path. Bei Uploads in geteilte Bibliotheken bleiben Pfad und Ordner
+            draußen (Ablage der Organisation, keine Aussage über die Person)
       - name: chunk_full_text
         personalColumns: [content_tsv]
         nonPersonalColumns: [chunk_id, document_id, library_id, content_tsv_version]
+        person:
+          excluded: Dokumentinhalt (Volltextindex), keine Daten über die Person
       - name: vector_store
         personalColumns: [content, metadata]
         nonPersonalColumns: [id, embedding]
+        person:
+          excluded: Dokumentinhalt und Einbettungen, keine Daten über die Person
       - name: document_metadata_values
         personalColumns: [text_value, actor_user_id]
         nonPersonalColumns:
@@ -98,16 +126,24 @@ data:
           - updated_at
           - library_field_id
           - library_value_id
+        person:
+          excluded: Metadaten des Dokumentinhalts; Handänderungen an Metadaten stehen im Protokoll
       - name: indexing_run_events
         personalColumns: [message, reference]
         nonPersonalColumns: [id, job_id, category, created_at]
+        person:
+          excluded: Betriebsdaten des Bestands, kein Weg zur Person
       - name: source_sync_revisits
         personalColumns: [hierarchy_path, container_key]
         nonPersonalColumns: [id, sync_state_id, created_at]
+        person:
+          excluded: Betriebsdaten des Bestands, kein Weg zur Person
       - name: source_event_batches
         personalColumns: [keys]
         nonPersonalColumns:
           [id, library_id, source_type, dropped, overflowed, deferrals, due_at, claimed_until, created_at]
+        person:
+          excluded: Betriebsdaten des Bestands, kein Weg zur Person
     storage: >-
       Anwendungsdatenbank (Textabschnitte, Volltext- und Vektorindex); Originale in der
       Originalablage
@@ -129,6 +165,9 @@ data:
     purpose: Aufbewahrung des Originals für Anzeige und erneute Verarbeitung
     personalReference: IDENTIFIABLE
     tables: []
+    personExcluded: >-
+      Sachinhalte der Bibliotheken, keine Daten über die Person; eigene Uploads erscheinen im
+      Verzeichnis des Dokumentbestands
     storage: Dateisystem oder S3-kompatibler Objektspeicher des Betriebs
     retention:
       rule: Solange das Dokument besteht; verwaiste Originale entfernt die Verwaltung
@@ -173,6 +212,8 @@ data:
           - unreadable_scope_count
           - failure_category
           - owner_instance_id
+        person:
+          columns: [triggered_by]
       - name: embedding_index
         personalColumns: [run_started_by]
         nonPersonalColumns:
@@ -190,6 +231,8 @@ data:
           - run_message
           - updated_at
           - run_owner_instance_id
+        person:
+          columns: [run_started_by]
     storage: Anwendungsdatenbank
     retention:
       rule: Ohne eigene Löschfrist; mit der Bibliothek

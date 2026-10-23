@@ -18,9 +18,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * The local-auth limits that need more than the request path (ADR-0033, Entscheidung 9): the
- * password change per authenticated account, and registration and password reset per e-mail address
- * (callers ask {@link #requireAddressAllowance} before they do anything with the address). A
- * refusal is a {@link TooManyRequestsException} with the seconds to wait, which {@code
+ * password change and the confirmation of a sign-in per authenticated account (one shared budget
+ * for both password checks of a running session), and registration and password reset per e-mail
+ * address (callers ask {@link #requireAddressAllowance} before they do anything with the address).
+ * A refusal is a {@link TooManyRequestsException} with the seconds to wait, which {@code
  * GlobalExceptionHandler} turns into {@code 429} with {@code Retry-After}. Addresses are keyed by a
  * hash of their lower-cased form and never held as text; with {@code opaa.rate-limit.enabled =
  * false} nothing is refused. Depends on {@code io.opaa.api}'s limiter and properties on purpose:
@@ -71,6 +72,14 @@ public class LocalAuthRateLimiter {
       return;
     }
     refuseIfSpent(changePassword.tryAcquire(subject.toString()), CHANGE_PASSWORD_LIMIT, "subject");
+  }
+
+  /**
+   * Counts one password confirmation of a running session of {@code subject} against the budget of
+   * {@link #requireChangePasswordAllowance}; throws when it is spent.
+   */
+  public void requirePasswordConfirmationAllowance(UUID subject) {
+    requireChangePasswordAllowance(subject);
   }
 
   /**
