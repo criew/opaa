@@ -35,7 +35,7 @@ Behörde oder eines Dienstleisters.
 | Anmeldung | OIDC-Identitätsanbieter oder lokale Konten | [Authentifizierung](../../handbuch/betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) |
 | Daten | gespeicherte Daten, Fristen, Datenflüsse nach außen je Version beschrieben | {{faktenblatt:datenkatalog}}, {{faktenblatt:fristen}}, {{faktenblatt:datenfluesse}} |
 | Nachweise je Version | Faktenblätter, Update-Paket, SBOM, Provenance | [Nachvollziehbarkeit](../../handbuch/betrieb/nachvollziehbarkeit.md), [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) |
-| Releases und Support | geplant zwei Funktionsreleases im Jahr mit Supportzeiträumen je Linie, ab dem ersten finalen Release; bis Wartungsbranches gebaut sind, Patches nur für die jüngste Linie | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) |
+| Releases und Support | geplant zwei Funktionsreleases im Jahr mit Supportzeiträumen je Linie, ab dem ersten finalen Release; Patches für ältere Linien über eigene Wartungsbranches | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) |
 | Lizenz | GNU Affero General Public License v3.0, kein Lizenzentgelt | [Lizenz](lizenz.md) |
 | Barrierefreiheit | Prüfstand und bekannte Einschränkungen | [Erklärung zur Barrierefreiheit](../08-nutzung/erklaerung-barrierefreiheit.md#prüfstand) |
 

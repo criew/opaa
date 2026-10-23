@@ -10,8 +10,8 @@
 > until its end of support: two releases a year (around June and December), the June release being
 > an LTS line supported until the end of free support of its Spring Boot version (usually June 30 of
 > the following year, about 12 months); any other release is supported until one month after the
-> next release. Until maintenance branches exist (#3017), only the newest release line receives
-> patch releases; older lines get fixes only through a newer line. Fixed vulnerabilities are published as
+> next release. Each line is maintained on its branch `release/X.Y`, where fixes from `main` are
+> backported and its patch releases are tagged. Fixed vulnerabilities are published as
 > GitHub Security Advisories, with a CVE where applicable. Reports may be written in English or
 > German.
 
@@ -61,12 +61,9 @@ Sicherheitsupdates als Patch-Release erscheinen, unter
 | normale Linie (Dezember-Release, erstes finales Release) | bis einen Monat nach dem nächsten Funktionsrelease |
 | Linie nach ihrem Supportende, Vorab-Releases | nein |
 
-Eine Korrektur im Code erreicht eine ältere Linie per Backport auf ihren Wartungsbranch. Solange
-das noch nicht gebaut ist ([#3017](https://github.com/criew/opaa/issues/3017)), bekommt nur die
-jüngste Linie Patch-Releases: Sicherheitsupdates der Basis-Images als neues Tag auf dem Commit ihres
-letzten Release, eine Korrektur im Code nur, solange `main` seit diesem Release keine neue Funktion
-trägt. Eine ältere Linie bekommt bis dahin weder eine Codekorrektur noch ein Patch-Release; die
-Korrektur kommt nur mit einer neueren Linie.
+Eine Korrektur im Code erreicht eine ältere Linie per Backport auf ihren Wartungsbranch
+`release/X.Y`, ein Sicherheitsupdate nur des Basis-Images als neues Tag auf dem Commit ihres
+letzten Release ([Backport](docs/releases.md#backport)).
 
 ## Ablauf
 
