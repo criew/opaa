@@ -27,6 +27,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * exercise multiple users (including non-privileged ones) against a single running instance.
  * Without the header the configured default user is used. An unknown subject is rejected with 401
  * rather than silently falling back, so a typo in a test does not quietly run as the wrong user.
+ *
+ * <p>There is no sign-in to repeat, so every request counts as a recent one ({@code auth_time} =
+ * now) for {@link RecentLoginPolicy}.
  */
 public class DevAuthFilter extends OncePerRequestFilter {
 
@@ -68,10 +71,16 @@ public class DevAuthFilter extends OncePerRequestFilter {
             issuedAt.plus(TOKEN_VALIDITY),
             Map.of("alg", "none"),
             Map.of(
-                "sub", user.subject(),
-                "iss", devAuth.issuer(),
-                "email", user.email(),
-                "name", user.displayName()));
+                "sub",
+                user.subject(),
+                "iss",
+                devAuth.issuer(),
+                "email",
+                user.email(),
+                "name",
+                user.displayName(),
+                RecentLoginPolicy.AUTH_TIME_CLAIM,
+                issuedAt.getEpochSecond()));
     return new JwtAuthenticationToken(jwt, List.of());
   }
 }

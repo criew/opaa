@@ -15,6 +15,7 @@ import io.opaa.account.RevocationReason;
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.api.dto.LocalChangePasswordRequest;
 import io.opaa.api.dto.LocalLoginRequest;
+import io.opaa.api.dto.LocalReauthenticateRequest;
 import io.opaa.api.dto.LocalTokenResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
@@ -24,6 +25,7 @@ import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.ConflictException;
+import io.opaa.common.FieldValidationException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.security.ClientIpResolver;
 import jakarta.servlet.http.Cookie;
@@ -48,11 +50,11 @@ import org.springframework.web.util.WebUtils;
 
 /**
  * The endpoints of the local token issuer (ADR-0033, Entscheidungen 6-9): sign-in, rotation,
- * sign-out and the person's own password change under {@code /api/v1/auth/local}. Access tokens
- * travel in the body, the refresh token only as the HttpOnly cookie. Every refused sign-in is the
- * one {@link UnauthorizedException} with the one message; a refused refresh clears the cookie and
- * looks the same whether the token was unknown, expired or replayed. Exists in the {@code oidc}
- * profile only - the {@code dev} profile has no issuer.
+ * sign-out, the person's own password change and the confirmation of a sign-in under {@code
+ * /api/v1/auth/local}. Access tokens travel in the body, the refresh token only as the HttpOnly
+ * cookie. Every refused sign-in is the one {@link UnauthorizedException} with the one message; a
+ * refused refresh clears the cookie and looks the same whether the token was unknown, expired or
+ * replayed. Exists in the {@code oidc} profile only - the {@code dev} profile has no issuer.
  */
 @RestController
 @RequestMapping("/api/v1/auth/local")
@@ -62,6 +64,9 @@ public class LocalAuthController {
   static final String LOGIN_FAILED =
       "Anmeldung fehlgeschlagen. Bitte prüfen Sie E-Mail-Adresse und Passwort.";
   static final String SESSION_INVALID = "Die Sitzung ist abgelaufen oder ungültig.";
+  static final String WRONG_PASSWORD = "Das Passwort ist nicht korrekt.";
+  static final String NOT_LOCAL_REAUTHENTICATION =
+      "Die Anmeldung wird beim Anmeldedienst bestätigt, nicht mit einem Passwort in OPAA.";
 
   private final LocalLoginService loginService;
   private final LocalAccessTokenService accessTokens;
@@ -111,7 +116,7 @@ public class LocalAuthController {
     IssuedRefreshToken refresh = refreshTokens.issue(account.user());
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, cookies.issue(refresh.value(), refresh.maxAge()).toString())
-        .body(tokenResponse(account.user(), account.credentials()));
+        .body(tokenResponse(account.user(), account.credentials(), true));
   }
 
   /**
@@ -137,7 +142,7 @@ public class LocalAuthController {
         .header(
             HttpHeaders.SET_COOKIE,
             cookies.issue(rotated.token().value(), rotated.token().maxAge()).toString())
-        .body(tokenResponse(rotated.user(), row));
+        .body(tokenResponse(rotated.user(), row, false));
   }
 
   /**
@@ -183,12 +188,45 @@ public class LocalAuthController {
     IssuedRefreshToken refresh = refreshTokens.issue(user);
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, cookies.issue(refresh.value(), refresh.maxAge()).toString())
-        .body(tokenResponse(user, changed));
+        .body(tokenResponse(user, changed, true));
   }
 
-  /** The token carries the account's current session generation; see the issuing service. */
-  private LocalTokenResponse tokenResponse(User user, LocalCredentials row) {
-    IssuedAccessToken token = accessTokens.issue(user, row);
+  /**
+   * Confirms the caller's sign-in with the password for an operation marked {@code
+   * io.opaa.auth.RequiresRecentLogin}: verified like a sign-in by {@link LocalLoginService} - a
+   * wrong password is counted towards the lockout - and answered with an access token carrying a
+   * current {@code auth_time}. The refresh family stays as it is. Spends the per-account budget of
+   * the password change before the password is compared.
+   */
+  @PostMapping("/reauthenticate")
+  public LocalTokenResponse reauthenticate(
+      @Caller CurrentUser caller,
+      @Valid @RequestBody LocalReauthenticateRequest request,
+      HttpServletRequest httpRequest) {
+    rateLimiter.requirePasswordConfirmationAllowance(caller.id());
+    User user =
+        userService
+            .findBySubjectAndIssuer(caller.id().toString(), LocalIssuer.URN)
+            .orElseThrow(() -> new ConflictException(NOT_LOCAL_REAUTHENTICATION));
+    AuthenticatedLocalAccount account =
+        loginService
+            .authenticate(
+                user.getEmail(), request.getPassword(), clientIpResolver.resolve(httpRequest))
+            .filter(confirmed -> confirmed.user().getId().equals(user.getId()))
+            .orElseThrow(
+                () ->
+                    FieldValidationException.of(
+                        "password", LocalPasswordService.WRONG_PASSWORD, WRONG_PASSWORD));
+    return tokenResponse(account.user(), account.credentials(), true);
+  }
+
+  /**
+   * The token carries the account's current session generation; see the issuing service. {@code
+   * signedIn} marks a token whose password was verified in this request.
+   */
+  private LocalTokenResponse tokenResponse(User user, LocalCredentials row, boolean signedIn) {
+    IssuedAccessToken token =
+        signedIn ? accessTokens.issueForSignIn(user, row) : accessTokens.issue(user, row);
     LocalTokenResponse response =
         new LocalTokenResponse(
             token.value(), token.expiresInSeconds(), row.isPasswordChangeRequired());
