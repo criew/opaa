@@ -88,7 +88,9 @@ PRESERVED_FILES = {
     ),
 }
 
-HANDBOOK_FORMAT_CHAPTER = REPO_ROOT / "docs" / "handbuch" / "formate" / "README.md"
+HANDBOOK_FORMAT_CHAPTER = (
+    REPO_ROOT / "docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md"
+)
 _HANDBOOK_SECTION = "## Zugelassene Formate"
 _HANDBOOK_EXTENSION_ROW = re.compile(r"^\|\s*`(\.[a-z0-9]+)`\s*\|")
 # The Formatübersicht lists at least ten formats; a parse finding fewer than this read the wrong
@@ -97,10 +99,11 @@ _MINIMUM_ADMITTED_EXTENSIONS = 10
 
 
 def admitted_extensions() -> list[str]:
-    """Every extension the format overview docs/handbuch/formate/README.md admits, read from that
-    table rather than copied here - a fifteenth format must never leave SOURCE.md claiming full
-    coverage. Rows without an extension in the first column (Feed-Detailseite, Confluence-Seite)
-    are no file extension and are skipped.
+    """Every extension the format overview
+    docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md admits, read from that table
+    rather than copied here - a fifteenth format must never leave SOURCE.md claiming full coverage.
+    Rows without an extension in the first column (Feed-Detailseite, Confluence-Seite) are no file
+    extension and are skipped.
 
     Raises SystemExit when the chapter, the section or the table cannot be read: an unnoticed
     parse failure would silently turn the gap list into "nothing is missing".

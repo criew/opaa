@@ -133,8 +133,8 @@ Abfrage bleibt unprotokolliert.
 ### J · Betrieb & Deployment
 
 **[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** ·
-ergänzend **[`handbuch/betrieb.md`](./handbuch/betrieb.md)** und
-**[`handbuch/kubernetes.md`](./handbuch/kubernetes.md)**
+ergänzend **[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** und
+**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)**
 
 Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
@@ -156,21 +156,34 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 ### Handbuch — das gebaute Produkt benutzen
 
 - **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: was OPAA ist, der Kapitelbaum,
-  Lesewege nach Anlass, Glossar. Die Kapitel im Einzelnen:
-  - Betrieb: [`betrieb.md`](./handbuch/betrieb.md) (Bausteine, Härtung, Sicherung, Aktualisierung),
-    [`docker-compose.md`](./handbuch/docker-compose.md), [`kubernetes.md`](./handbuch/kubernetes.md) (Helm-Chart),
-    [`konfiguration.md`](./handbuch/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
-    [`modelle.md`](./handbuch/modelle.md), [`authentifizierung.md`](./handbuch/authentifizierung.md)
-  - Konten und Rechte: [`benutzerverwaltung.md`](./handbuch/benutzerverwaltung.md),
-    [`berechtigungen.md`](./handbuch/berechtigungen.md)
-  - Arbeiten in Spaces: [`spaces.md`](./handbuch/spaces.md), [`suche.md`](./handbuch/suche.md)
-    (Suchstrecke, Antwort, Belege, Diagnose), [`fremdzugaenge.md`](./handbuch/fremdzugaenge.md)
-  - Arbeitsmittel: [`katalog.md`](./handbuch/katalog.md),
-    [`wissensbibliotheken.md`](./handbuch/wissensbibliotheken.md) mit
-    [`konnektoren/`](./handbuch/konnektoren/README.md), [`formate/`](./handbuch/formate/README.md),
-    [`metadaten.md`](./handbuch/metadaten.md) und
-    [`private-bibliotheken.md`](./handbuch/private-bibliotheken.md);
-    [`prompt-bibliotheken.md`](./handbuch/prompt-bibliotheken.md); [`zugaenge.md`](./handbuch/zugaenge.md)
+  Lesewege nach Anlass. Die Ordner folgen dem Kapitelbaum; die Kapitel im Einzelnen:
+  - Betrieb ([`betrieb/`](handbuch/betrieb/README.md), Bausteine und Wegweiser) mit
+    [`images-und-laufzeit.md`](handbuch/betrieb/images-und-laufzeit.md),
+    [`netz-und-sicherheit.md`](handbuch/betrieb/netz-und-sicherheit.md) (Härtung),
+    [`sicherung-und-wiederherstellung.md`](handbuch/betrieb/sicherung-und-wiederherstellung.md),
+    [`aktualisierung.md`](handbuch/betrieb/aktualisierung.md),
+    [`ueberwachung-und-fehlerbehebung.md`](handbuch/betrieb/ueberwachung-und-fehlerbehebung.md),
+    [`docker-compose.md`](handbuch/betrieb/docker-compose.md),
+    [`kubernetes.md`](handbuch/betrieb/kubernetes.md) (Helm-Chart),
+    [`konfiguration.md`](handbuch/betrieb/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
+    [`modelle.md`](handbuch/betrieb/modelle.md),
+    [`authentifizierung.md`](handbuch/betrieb/authentifizierung.md)
+  - Konten und Rechte ([`konten-und-rechte/`](handbuch/konten-und-rechte/)):
+    [`benutzerverwaltung.md`](handbuch/konten-und-rechte/benutzerverwaltung.md),
+    [`berechtigungen.md`](handbuch/konten-und-rechte/berechtigungen.md)
+  - Arbeiten in Spaces ([`spaces/`](handbuch/spaces/README.md)) mit
+    [`suche.md`](handbuch/spaces/suche.md) (Suchstrecke, Antwort, Belege, Diagnose),
+    [`fremdzugaenge.md`](handbuch/spaces/fremdzugaenge.md)
+  - Arbeitsmittel ([`arbeitsmittel/`](handbuch/arbeitsmittel/)):
+    [`katalog.md`](handbuch/arbeitsmittel/katalog.md),
+    [`wissensbibliotheken/`](handbuch/arbeitsmittel/wissensbibliotheken/README.md) mit
+    [`konnektoren/`](handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md),
+    [`formate/`](handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md),
+    [`metadaten.md`](handbuch/arbeitsmittel/wissensbibliotheken/metadaten.md) und
+    [`private-bibliotheken.md`](handbuch/arbeitsmittel/wissensbibliotheken/private-bibliotheken.md);
+    [`prompt-bibliotheken.md`](handbuch/arbeitsmittel/prompt-bibliotheken.md);
+    [`zugaenge.md`](handbuch/arbeitsmittel/zugaenge.md)
+  - Nachschlagen: [`glossar.md`](handbuch/glossar.md)
   - Regeln für Schreibende: [`handbuch/AGENTS.md`](./handbuch/AGENTS.md)
 - **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen,
   CycloneDX-CI-Artefakte für Backend und Frontend und die Lizenzprüfung der Abhängigkeiten
@@ -181,10 +194,10 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 
 ### Unterlagen für Behörden
 
-- **[`behoerden/README.md`](./behoerden/README.md)** — Vorlagen und Erläuterungen entlang der
-  Behördenreise (Entscheidung, Markterkundung, Vergabe, Datenschutz, Mitbestimmung,
-  Informationssicherheit, Betrieb); Aufbau, Kopfvermerk, Haftungshinweis und Verweise auf die
-  generierten Faktenblätter
+- **[`behoerden/README.md`](./behoerden/README.md)** — Vorlagen für Behörden entlang des
+  Einführungswegs (Entscheidung, Markterkundung, Vergabe, Datenschutz, Mitbestimmung,
+  Informationssicherheit, Betrieb), geschrieben für Lesende in der Behörde; Regeln für Kopfvermerk,
+  Haftungshinweis und Faktenblatt-Platzhalter in [`behoerden/AGENTS.md`](./behoerden/AGENTS.md)
 
 ### Architekturentscheidungen
 

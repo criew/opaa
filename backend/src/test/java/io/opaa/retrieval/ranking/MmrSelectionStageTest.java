@@ -36,9 +36,9 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 
 /**
- * The MMR stage inside the pipeline it belongs to (docs/handbuch/suche.md, Stufe 6): it reorders
- * the {@code fetch-k} candidates of every list and never narrows them, so the fusion sees every
- * candidate a search returned; at {@code mmr-lambda} 1.0 it does not run at all.
+ * The MMR stage inside the pipeline it belongs to (docs/handbuch/spaces/suche.md, Stufe 6): it
+ * reorders the {@code fetch-k} candidates of every list and never narrows them, so the fusion sees
+ * every candidate a search returned; at {@code mmr-lambda} 1.0 it does not run at all.
  */
 class MmrSelectionStageTest {
 

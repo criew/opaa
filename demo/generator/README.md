@@ -74,7 +74,7 @@ Das Skript:
      seinen Bucket `rheinfurt-archiv` spiegelt (`S3`-Bibliothek, #1383, #2016). Eine Vorlage mit
      Anlagen liegt als Versandmail des Ratsinformationssystems vor (`.eml`, Vorlagentext als
      Nachrichtentext, jede Anlage ein PDF-Anhang): Im S3-Konnektor tragen nur Mail-Objekte Anhänge
-     (`docs/handbuch/konnektoren/s3.md`, Abschnitt „Anhänge"). Die Anlagen-PDFs sind deshalb keine
+     (`docs/handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/s3.md`, Abschnitt „Anhänge"). Die Anlagen-PDFs sind deshalb keine
      eigenen Dateien im Korpus und zählen nicht in `MANIFEST.sha256`; OPAA macht aus jeder ein
      eigenes Dokument mit der Mail als Elterndokument.
    - `formate/` (je ein Dokument pro unterstützter Endung): 14 Dokumente rund um Dokumentenformate,
@@ -153,7 +153,7 @@ neben dem jeweiligen Pfad in `PRESERVED_FILES` — Pfad und Herkunft können nic
 
 **Die Lückenliste pflegt sich selbst.** `render_formate_gaps` vergleicht die tatsächlich vorhandenen
 Dateien mit der Endungsliste, die `admitted_extensions()` **aus der Formatübersicht des Handbuchs
-liest** (`docs/handbuch/formate/README.md`, Abschnitt „Zugelassene Formate") statt sie ein drittes
+liest** (`docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md`, Abschnitt „Zugelassene Formate") statt sie ein drittes
 Mal zu kopieren — kommt dort eine fünfzehnte Endung dazu, erscheint sie ohne Zutun als Lücke in
 `corpus/SOURCE.md`. Lässt sich das Kapitel, der Abschnitt oder die Tabelle nicht lesen, bricht der
 Lauf ab, statt stillschweigend vollständige Abdeckung zu behaupten. Geschrieben wird dann entweder

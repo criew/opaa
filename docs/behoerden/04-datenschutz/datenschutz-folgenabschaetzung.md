@@ -1,111 +1,109 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-04-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# Baustein für die Datenschutz-Folgenabschätzung
+# Datenschutz-Folgenabschätzung (DSFA)
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-Dieser Baustein liefert den Teil einer Datenschutz-Folgenabschätzung (DSFA) nach Art. 35 DSGVO, den
-OPAA beisteuern kann: die Beschreibung der Verarbeitung, typische Risiken eines KI-Assistenten und die
-Maßnahmen, die das Produkt mitbringt. Bewertung, Abwägung und Entscheidung bleiben bei der Behörde.
-Angaben in eckigen Klammern **[…]** ergänzt sie.
+**Gilt für:** Behörden, deren Datenschutzaufsicht die oder der BfDI oder die
+Landesdatenschutzbeauftragten sind. Öffentliche Unternehmen im Wettbewerb, etwa Sparkassen, und
+kirchliche Träger folgen teils anderen Regeln.
 
-## Quellen und Prüfstand
+Eine DSFA ist eine schriftliche Risikoprüfung, die die Datenschutz-Grundverordnung vor dem Start einer
+Verarbeitung verlangt, wenn diese für die betroffenen Menschen voraussichtlich ein hohes Risiko
+birgt. Bei einem KI-Assistenten, der auch Daten über Beschäftigte speichert, ist das in der Regel der
+Fall. Verantwortlich ist die Behörde; ihre Datenschutzbeauftragte oder ihr Datenschutzbeauftragter
+(DSB) berät und nimmt Stellung.
 
-| Fundstelle | Inhalt | Herkunft |
-|---|---|---|
-| Art. 35 Abs. 1, 7 [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) | Pflicht zur DSFA bei voraussichtlich hohem Risiko; Mindestinhalt | Normtext |
-| Art. 35 Abs. 4 DSGVO | Listen der Aufsichtsbehörden, für welche Verarbeitungen eine DSFA durchzuführen ist („Muss-Listen“) | Normtext |
-| Art. 35 Abs. 11 DSGVO | Überprüfung der DSFA, zumindest wenn sich das Risiko ändert | Recherche vom 13.10.2026 |
-| § 26 [BDSG](https://www.gesetze-im-internet.de/bdsg_2018/__26.html) bzw. Landesrecht | Beschäftigtendaten | Recherche vom 13.10.2026 |
-| DSK, [Orientierungshilfe „Künstliche Intelligenz und Datenschutz“](https://www.datenschutzkonferenz-online.de/media/oh/20240506_DSK_Orientierungshilfe_KI_und_Datenschutz.pdf) (6.5.2024) | Prüfraster für Auswahl, Einführung und Nutzung von KI-Anwendungen | Recherche vom 13.10.2026 |
-| DSK, [Kurzpapiere](https://www.datenschutzkonferenz-online.de/kurzpapiere.html), Nr. 5 „Datenschutz-Folgenabschätzung“ | Ablauf einer DSFA | Muster |
+## Brauchen wir eine DSFA?
 
-Die Recherche vom 13.10.2026 steht im ersten Kommentar von Epic
-[#2542](https://github.com/criew/opaa/issues/2542).
+Maßgeblich ist die **Muss-Liste der zuständigen Aufsichtsbehörde**: für Bundesbehörden die Liste der
+oder des [BfDI](https://www.bfdi.bund.de/), für Landes- und Kommunalbehörden die Liste der
+Landesdatenschutzbeauftragten des eigenen Bundeslands, jeweils auf deren Website. Die oder der DSB
+der Behörde weiß, welche Liste gilt. Die Listen nennen KI-Verfahren und die Überwachung von Beschäftigten
+regelmäßig. Wer sich gegen eine DSFA entscheidet, schreibt die Begründung auf.
 
-## Ist eine DSFA nötig?
+## Was OPAA liefert
 
-Diese Vorlage enthält **keine eigene Schwellwertanalyse**. Maßgeblich sind:
+Die Faktenblätter der eingesetzten Version beantworten die Fragen, mit denen jede DSFA beginnt. Sie
+liegen im Update-Paket am GitHub-Release der Version.
 
-1. **Die Muss-Liste der zuständigen Aufsichtsbehörde** nach Art. 35 Abs. 4 DSGVO:
-   - **Bundesbehörden:** die Liste der oder des Bundesbeauftragten für den Datenschutz und die
-     Informationsfreiheit ([BfDI](https://www.bfdi.bund.de/)).
-   - **Landes- und Kommunalbehörden:** die Liste der oder des Landesbeauftragten für den Datenschutz
-     des jeweiligen Landes, auf deren Seiten.
-   - Die [Liste der Datenschutzkonferenz](https://www.datenschutzkonferenz-online.de/media/ah/20181017_ah_DSK_DSFA_Muss-Liste_Version_1.1_Deutsch.pdf)
-     gilt nur für den **nicht-öffentlichen Bereich**. Für Behörden ist sie höchstens eine
-     Orientierung, nicht die maßgebliche Liste.
-2. **Die DSK-Orientierungshilfe „KI und Datenschutz“** als Prüfraster für den KI-Anteil.
-
-Nach der Recherche erfassen die Muss-Listen Beschäftigtenüberwachung und KI-Verfahren regelmäßig. Wie
-viele Daten über Beschäftigte entstehen, zeigt die Spalte „Personenbezug“ im
-{{faktenblatt:datenkatalog}}. Entscheidet die Behörde gegen eine DSFA, hält sie die Begründung fest.
-
-## 1. Systematische Beschreibung der Verarbeitung
-
-| Teil | Quelle |
+| Frage der DSFA | Antwort |
 |---|---|
-| Zweck und Einsatzzweck | [Einsatzzweck der Behörde]; je Datum die Zeile „Zweck“ im {{faktenblatt:datenkatalog}} |
-| Daten und betroffene Personen | {{faktenblatt:datenkatalog}} |
-| Wer was sieht | {{faktenblatt:rollensicht}} |
-| Was protokolliert wird | {{faktenblatt:protokollereignisse}} |
-| Fristen | {{faktenblatt:fristen}} |
-| Datenflüsse nach außen | {{faktenblatt:datenfluesse#datenfluesse}} |
-| KI-Funktionen und System-Prompts | {{faktenblatt:voreinstellungen#ki-funktionen}}, {{faktenblatt:voreinstellungen#system-prompts}} |
-| Betriebsmodell, Modellanbieter, Quellen | [Angaben der Behörde], Einordnung in der [AVV-Entscheidungsmatrix](./avv-entscheidungsmatrix.md) |
-| Eingesetzte Version | [OPAA-Version] |
+| Welche Daten über wen, wozu und wie lange? | {{faktenblatt:datenkatalog}}, {{faktenblatt:fristen}} |
+| Wer sieht was? | {{faktenblatt:rollensicht}} |
+| Was wird protokolliert? | {{faktenblatt:protokollereignisse}} |
+| Welche Daten verlassen das Haus? | {{faktenblatt:datenfluesse#datenfluesse}} |
+| Was tut die KI? | {{faktenblatt:voreinstellungen#ki-funktionen}} |
 
-Die Faktenblätter beschreiben die Voreinstellung der Version. Abweichende Werte der Instanz trägt die
-Behörde ein [aus dem Konfigurationsexport, [#2558](https://github.com/criew/opaa/issues/2558)].
+Die Faktenblätter zeigen die Voreinstellungen. Was die eigene Installation anders eingestellt hat,
+zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 
-## 2. Notwendigkeit und Verhältnismäßigkeit
+## Aufgaben der Behörde
 
-[Warum der Assistent für den Zweck erforderlich ist; welche Bibliotheken und Spaces eingerichtet
-werden und warum; ob Dokumente mit besonders schutzbedürftigen Daten ausgeschlossen werden; welche
-Fristen die Behörde wählt und warum, mit Verweis auf das [Löschkonzept](./loeschkonzept.md).]
+1. **Muss-Liste prüfen** und das Ergebnis festhalten
+2. **Verarbeitung beschreiben:** Einsatzzweck, eingesetzte Version, Betrieb im eigenen Haus oder bei
+   einem Dienstleister, Modellanbieter (siehe [AVV-Entscheidungsmatrix](./avv-entscheidungsmatrix.md));
+   alles Übrige aus der Tabelle oben.
+3. **Begründen, warum der Assistent nötig ist:** welche Dokumentensammlungen angebunden werden, welche
+   bewusst nicht, welche Fristen gelten (siehe [Löschkonzept](./loeschkonzept.md)).
+4. **Risiken bewerten:** die Tabelle unten durchgehen, je Zeile Maßnahme und Bewertung eintragen,
+   eigene Risiken ergänzen.
+5. **Stellungnahme der oder des DSB einholen**, dann entscheidet die Leitung.
+6. **Bei jedem Update nachprüfen:** Das Update-Paket nennt die Änderungen, bei denen es eine
+   Überprüfung der DSFA vorschlägt.
 
-## 3. Risiken und Maßnahmen
+## Typische Risiken
 
-Die Tabelle nennt typische Risiken eines KI-Assistenten in einer Behörde. Die Spalte „Produkt“
-verweist auf das, was OPAA dazu mitbringt; ob das genügt, bewertet die Behörde. Weitere Risiken
-ergänzt sie.
+| Risiko | Was OPAA mitbringt | Was die Behörde festlegt | Bewertung |
+|---|---|---|---|
+| Kontrolle von Leistung und Verhalten der Beschäftigten | pseudonymisiertes Protokoll ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)), Einsicht nur für die Revision ({{faktenblatt:rollensicht#auditor}}) | Dienstvereinbarung, Rollenvergabe | [ ] |
+| Fragen und Antworten werden anderen bekannt | Sichtbarkeit und Löschung von Chats ({{faktenblatt:datenkatalog#chats}}) | Regeln der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) | [ ] |
+| Zu weit gefasste Rechte an Dokumenten mit Personendaten | Rechte je Bibliothek und Space mit Historie ([Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md)) | Freigabeprozess, ausgeschlossene Quellen | [ ] |
+| Daten gehen an einen externen Modellanbieter | lokale Modelle als Voreinstellung ([Modelle](../../handbuch/betrieb/modelle.md)) | Wahl des Anbieters, Vertrag, Netzregeln | [ ] |
+| Falsche Aussagen über Personen in Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/spaces/suche.md)) | Regel „Antwort ist ein Entwurf“, keine Entscheidungen über Personen | [ ] |
+| Daten bleiben länger als nötig | Fristen und Löschung je Datum ({{faktenblatt:fristen}}) | gewählte Fristen | [ ] |
+| Unbefugter Zugriff auf Datenbank oder Sicherungen | [Technische und organisatorische Maßnahmen](./technische-und-organisatorische-massnahmen.md) des Produkts | Sicherheitskonzept, Betrieb | [ ] |
 
-| Risiko | Wo es sich zeigt | Produkt | Maßnahmen der Behörde | Bewertung |
-|---|---|---|---|---|
-| Leistungs- und Verhaltenskontrolle der Beschäftigten | Zeile „Mögliche Auswertungen“ im {{faktenblatt:datenkatalog}}; {{faktenblatt:protokollereignisse}} | Pseudonymisiertes Protokoll ({{faktenblatt:datenkatalog#audit-pseudonyms}}), Lesezugriff der Revision ({{faktenblatt:rollensicht#auditor}}); [Mitbestimmungsfähigkeit](../../features/security-and-compliance.md#mitbestimmungsfähigkeit) | [Dienstvereinbarung, [#2566](https://github.com/criew/opaa/issues/2566); Rollenvergabe] | [ ] |
-| Inhalte von Fragen und Antworten werden Dritten bekannt | {{faktenblatt:datenkatalog#chats}} | Sichtbarkeit und Löschung laut Datenkatalog; Bereinigung je Space ({{faktenblatt:fristen#opaa-chat-auto-cleanup-delete-after-days}}) | [Regeln der Nutzungsrichtlinie] | [ ] |
-| Zu weit gefasste Rechte an Dokumenten mit Personendaten | {{faktenblatt:datenkatalog#documents}}, {{faktenblatt:datenkatalog#rights}} | Rechte je Arbeitsmittel, Rechtehistorie ({{faktenblatt:datenkatalog#permission-history}}); [Handbuch, Berechtigungen](../../handbuch/berechtigungen.md) | [Freigabeprozess für Bibliotheken; Ausschluss bestimmter Quellen] | [ ] |
-| Abfluss an einen externen Modellanbieter oder ein fremdes Werkzeug | {{faktenblatt:datenfluesse#datenfluesse}}; {{faktenblatt:datenkatalog#external-access-tokens}} | Voreingestellt lokale Modelle ([Handbuch, Modelle](../../handbuch/modelle.md#llm-anbieter)); externe KI-Werkzeuge mit eigenem Schalter ([Handbuch, Externe KI-Werkzeuge](../../handbuch/fremdzugaenge.md)) | [Wahl des Anbieters, AVV, Netzregeln] | [ ] |
-| Falsche oder erfundene Aussagen über Personen in Antworten | {{faktenblatt:voreinstellungen#ki-funktion-chat-answer}} | Antworten mit Fundstellen und Belegprüfung ([Handbuch, Suche](../../handbuch/suche.md#7-belege-prüfen-und-fundstellen-bilden)) | [Regel „Antwort ist Entwurf“ der Nutzungsrichtlinie; keine Entscheidungen über Personen] | [ ] |
-| Daten bleiben länger als nötig | {{faktenblatt:fristen}} | Fristen und Löschmechanismen je Datum im Datenkatalog | [gewählte Fristen, Löschkonzept] | [ ] |
-| Unbefugter Zugriff auf Datenbank, Sicherungen oder Geheimnisse | Zeile „Zugriffsweg“ im {{faktenblatt:datenkatalog}} | [TOM des Produktanteils](./technische-und-organisatorische-massnahmen.md) | [Sicherheitskonzept, Betrieb] | [ ] |
-
-## 4. Ergebnis
+## Ergebnis festhalten
 
 ```text
-DSFA für:                 [Name der Installation], OPAA-Version [Version]
-Erforderlich nach:        [Muss-Liste / eigene Prüfung], Begründung: [ ]
-Restrisiko:               [ ]
-Stellungnahme der oder des Datenschutzbeauftragten (Art. 35 Abs. 2 DSGVO): [ ]
-Entscheidung:             [ ]        durch: [ ]        am: [ ]
-Nächste Überprüfung:      spätestens beim nächsten Update-Paket mit Hinweis auf DSFA-Überprüfung
+DSFA für:            [Name der Installation], OPAA-Version [Version]
+Erforderlich nach:   [Muss-Liste / eigene Prüfung], Begründung: [ ]
+Restrisiko:          [ ]
+Stellungnahme DSB:   [ ]
+Entscheidung:        [ ]        durch: [ ]        am: [ ]
+Nächste Überprüfung: beim nächsten Update-Paket mit Hinweis auf die DSFA
 ```
 
-Bleibt nach den Maßnahmen ein hohes Risiko, prüft die Behörde die vorherige Konsultation der
-Aufsichtsbehörde (Art. 36 DSGVO, Normtext).
+## Gut zu wissen
 
-## Überprüfung bei Updates
+- Bleibt nach den Maßnahmen ein hohes Risiko, muss die Behörde vor dem Start die Aufsichtsbehörde
+  einbeziehen.
+- Der Vorschlag des Update-Pakets, die DSFA zu überprüfen, ist eine Faustregel. Ob sich das Risiko
+  tatsächlich ändert, bewertet die Behörde.
 
-Art. 35 Abs. 11 DSGVO verlangt eine Überprüfung, wenn sich das Risiko ändert. Das Update-Paket jeder
-Version nennt je Änderung, ob die DSFA zu überprüfen ist, und schlägt das bei jeder Änderung der Stufe
-„Zustimmung“ vor ([Spezifikation, Stufenregeln](../../features/behoerdenunterlagen.md#die-stufenregeln),
-im Aufbau mit [#2554](https://github.com/criew/opaa/issues/2554)). Dieser Vorschlag ist eine
-Heuristik, keine Ableitung aus der Norm; ob sich das Risiko ändert, bewertet die Behörde. Die
-Überprüfung hält sie mit Version und Datum in Abschnitt 4 fest.
+## Zum Nachlesen
+
+**Arbeitshilfen** für die Projektleitung:
+
+- [Kurzpapier Nr. 5 der Datenschutzkonferenz](https://www.datenschutzkonferenz-online.de/kurzpapiere.html):
+  wie eine DSFA abläuft, auf wenigen Seiten.
+- [Orientierungshilfe „Künstliche Intelligenz und Datenschutz“](https://www.datenschutzkonferenz-online.de/media/oh/20240506_DSK_Orientierungshilfe_KI_und_Datenschutz.pdf)
+  der Datenschutzkonferenz (6.5.2024): Fragen, die bei KI-Anwendungen zu prüfen sind.
+
+**Rechtsgrundlagen** für die oder den DSB:
+
+| Worum es geht | Fundstelle |
+|---|---|
+| Wann eine DSFA Pflicht ist und was sie enthalten muss | Art. 35 Abs. 1 und 7 [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) |
+| Muss-Listen der Aufsichtsbehörden | Art. 35 Abs. 4 DSGVO |
+| Überprüfung, wenn sich das Risiko ändert | Art. 35 Abs. 11 DSGVO |
+| Aufsichtsbehörde einbeziehen bei hohem Restrisiko | Art. 36 DSGVO |
+| Daten über Beschäftigte | § 26 [BDSG](https://www.gesetze-im-internet.de/bdsg_2018/__26.html) bzw. Landesrecht |
