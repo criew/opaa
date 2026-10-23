@@ -33,6 +33,83 @@ nichts gebaut. Backend und Frontend laufen immer mit **derselben** Version.
 - **Update-Paket:** Am GitHub-Release hängt ein attestiertes Paket für Datenschutz,
   Personalvertretung und Informationssicherheit
   ([Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release)).
+- **Offline-Bündel:** Am GitHub-Release hängt `opaa-offline-X.Y.Z.tar` für Netze ohne Zugang zu
+  GHCR ([Installation ohne Internetzugang](#installation-ohne-internetzugang)).
+
+### Installation ohne Internetzugang
+
+Erreicht das Netz der Installation GHCR nicht, kommt OPAA über das Offline-Bündel hinein. Es
+enthält alles von OPAA selbst und lässt sich hinter der Schleuse ohne Netz prüfen.
+
+| Im Bündel | Inhalt |
+|---|---|
+| `images/` | Backend und Frontend als OCI-Archiv, je für `linux/amd64` und `linux/arm64`, mit SBOM und Provenance |
+| `DIGESTS` | der Digest jedes Image, derselbe wie in GHCR |
+| `chart/` | das Helm-Chart |
+| `update-paket/` | das Update-Paket, darin dieses Handbuch |
+| `sbom/`, `attestations/` | die SBOMs und die Nachweise der Herkunft von Update-Paket, SBOMs und Chart |
+| `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Prüfsummen aller Dateien und ihr Herkunftsnachweis |
+
+Nicht im Bündel sind die Datenbank, der Modellserver, ein Identitätsanbieter und Modellgewichte.
+Sie kommen auf eigenem Weg ins Haus.
+
+**1. Vor der Schleuse**, auf einem Rechner mit Internetzugang:
+
+```bash
+gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-offline-*'
+gh attestation verify opaa-offline-X.Y.Z.tar --repo criew/opaa
+gh attestation trusted-root > trusted_root.jsonl
+```
+
+Die erste Prüfung ist optional. `trusted_root.jsonl` ist der öffentliche Vertrauensanker von
+Sigstore. Er gehört mit dem Bündel durch die Schleuse, aber nicht in das Bündel: Wer das Bündel
+fälschen könnte, könnte sonst auch den Anker fälschen.
+
+**2. Hinter der Schleuse prüfen**, ohne Netz:
+
+```bash
+sha256sum -c opaa-offline-X.Y.Z.tar.sha256
+tar -xf opaa-offline-X.Y.Z.tar
+cd opaa-offline-X.Y.Z
+gh attestation verify SHA256SUMS --bundle SHA256SUMS.sigstore.json \
+  --custom-trusted-root ../trusted_root.jsonl --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/offline-bundle.yml \
+  --source-ref refs/tags/vX.Y.Z
+sha256sum -c SHA256SUMS
+```
+
+Endet `gh attestation verify` ohne Fehler, stammt `SHA256SUMS` aus dem Release-Lauf zu `vX.Y.Z`.
+Endet danach `sha256sum -c` ohne Fehler, gilt das für jede Datei des Bündels. Ein verändertes
+Image-Archiv fällt in diesem Schritt auf. Die Befehle stehen hier und nicht nur im Bündel: Eine
+Anleitung aus dem Bündel ist vor der Prüfung so ungeprüft wie das Bündel selbst.
+
+Die Herkunft der einzelnen Bestandteile lässt sich zusätzlich prüfen, etwa die des Update-Pakets:
+
+```bash
+gh attestation verify update-paket/opaa-update-paket-X.Y.Z.tar.gz \
+  --bundle attestations/opaa-update-paket-X.Y.Z.tar.gz.jsonl \
+  --custom-trusted-root ../trusted_root.jsonl --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml \
+  --source-ref refs/tags/vX.Y.Z
+```
+
+**3. In die interne Registry einspielen.** `skopeo` übernimmt beide Architekturen und behält die
+Digests:
+
+```bash
+skopeo copy --all --preserve-digests \
+  oci-archive:images/opaa-backend-X.Y.Z.oci.tar docker://registry.intern/opaa/opaa-backend:X.Y.Z
+skopeo copy --all --preserve-digests \
+  oci-archive:images/opaa-frontend-X.Y.Z.oci.tar docker://registry.intern/opaa/opaa-frontend:X.Y.Z
+```
+
+Ohne Registry, etwa für Docker Compose auf einem Host, lädt
+`skopeo copy oci-archive:images/opaa-backend-X.Y.Z.oci.tar docker-daemon:ghcr.io/criew/opaa-backend:X.Y.Z`
+das Image der eigenen Architektur in den lokalen Docker; ebenso das Frontend.
+
+**4. Installieren:** unter Kubernetes mit dem Chart aus dem Bündel und den Image-Adressen der
+internen Registry ([Kubernetes](kubernetes.md#installation-ohne-internetzugang)), unter Docker
+Compose wie gewohnt mit den geladenen Images.
 
 ## Backend-Laufzeitimage
 

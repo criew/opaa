@@ -18,6 +18,7 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
 | GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket |
 | `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, Lizenzübersicht, SBOMs, Vorlage Update-Vermerk; **attestiert** |
+| `opaa-offline-X.Y.Z.tar` mit `….tar.sha256` und `….tar.sigstore.json`, am GitHub-Release | das [Offline-Bündel](#offline-bündel) für Netze ohne Internetzugang: Images beider Architekturen als OCI-Archive, Chart, Update-Paket, SBOMs, ihre Attestierungen und `SHA256SUMS`; **attestiert** |
 | `opaa-backend-X.Y.Z.cdx.json`, `opaa-frontend-X.Y.Z.cdx.json`, am GitHub-Release | die CycloneDX-Stücklisten (SBOM) der ausgelieferten Abhängigkeiten von Backend und Frontend aus dem Stand des Tags ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)); dieselben Dateien liegen im Update-Paket; **attestiert** |
 
 Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
@@ -599,6 +600,73 @@ auch aus einem Unterverzeichnis gestartet; relative Pfade gelten ab dem Startver
 python3 .github/scripts/update_package.py operations --from v0.12.0 --to v0.17.0 --out /tmp/betrieb \
   --delta-json backend/build/compliance/delta/manifest-delta.json
 ```
+
+## Offline-Bündel
+
+Für Netze ohne Internetzugang hängt an jedem Release, auch an einem Vorab-Release,
+`opaa-offline-X.Y.Z.tar`. Das Bündel enthält alles von OPAA selbst, was hinter einer Schleuse
+gebraucht wird, und lässt sich dort ohne Netz prüfen. Der Job `offline-bundle` ruft dafür den
+wiederverwendbaren Workflow `.github/workflows/offline-bundle.yml` auf; die Logik steht in
+`.github/scripts/offline_bundle.sh`. Das Archiv enthält unter `opaa-offline-X.Y.Z/`:
+
+| Datei | Inhalt |
+|---|---|
+| `images/opaa-backend-X.Y.Z.oci.tar`, `images/opaa-frontend-X.Y.Z.oci.tar` | die veröffentlichten Images als OCI-Archiv, je mit `linux/amd64` und `linux/arm64` und ihren SBOM- und Provenance-Manifesten; der Digest des Index ist derselbe wie in GHCR |
+| `DIGESTS` | Image-Referenz und Digest des Index je Image |
+| `chart/opaa-X.Y.Z.tgz` | das Helm-Chart aus GHCR |
+| `update-paket/` | das [Update-Paket](#update-paket) samt Handbuch der Version |
+| `sbom/` | die beiden CycloneDX-SBOMs |
+| `attestations/` | die Sigstore-Bundles der Attestierungen von Update-Paket, SBOMs und Chart, wie sie der Release-Lauf erzeugt hat (`gh attestation download`) |
+| `LIESMICH.md` | Inhalt und Kurzfassung der Prüfung |
+| `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Prüfsummen aller Dateien und die Attestierung dieser Datei |
+
+Daneben liegen `opaa-offline-X.Y.Z.tar.sha256` und `opaa-offline-X.Y.Z.tar.sigstore.json`, die
+Attestierung des Archivs.
+
+**Ablauf.** Der Job `collect` holt Images und Chart nach ihrer Veröffentlichung aus GHCR zurück
+(`skopeo copy --all --preserve-digests`) und bricht ab, wenn der Digest eines Index im Archiv von
+dem in GHCR abweicht. Das Bündel enthält also genau das Veröffentlichte. Update-Paket und SBOMs
+kommen aus dem Artefakt desselben Laufs. Der Job `attest` attestiert `SHA256SUMS`, legt das
+Sigstore-Bundle dazu, packt das Archiv und attestiert es ebenfalls. Nur dieser Job hält das
+OIDC-Token; er führt außer `tar` und `sha256sum` nichts aus. Der Job `release` hängt Archiv,
+Prüfsumme und Sigstore-Bundle an das GitHub-Release.
+
+**Ablage als Release-Asset.** Das Bündel hängt am GitHub-Release, nicht als OCI-Artefakt in
+GHCR:
+
+- Wer es herunterlädt, braucht nur `gh release download` oder den Browser, kein `oras` und keinen
+  Registry-Zugang.
+- Es liegt neben Update-Paket und SBOMs, die Behörden dort schon holen.
+- Ein Asset darf höchstens 2 GiB groß sein. Das Bündel bleibt mit rund 600 MB deutlich darunter
+  (gemessen an `v0.1.0-rc.4`). `pack` bricht oberhalb von 1,9 GiB ab; dann wäre die Ablage neu
+  zu entscheiden, etwa ein Archiv je Architektur.
+
+**Prüfung ohne Netz.** Sie steht für Betreiber im Handbuch
+([Images und Laufzeit](handbuch/betrieb/images-und-laufzeit.md#installation-ohne-internetzugang)):
+
+1. Vertrauensanker vorab holen (`gh attestation trusted-root`).
+2. `SHA256SUMS` gegen ihr Sigstore-Bundle prüfen, mit `--custom-trusted-root`.
+3. `sha256sum -c SHA256SUMS`.
+
+Schritt 2 bindet das Bündel an `offline-bundle.yml` und an das Tag `vX.Y.Z` (`--signer-workflow`,
+`--source-ref`). Die Attestierungen eines Probelaufs nennen den Ref ihres Laufs und bestehen diese
+Prüfung deshalb nie.
+
+**Probelauf.** `.github/workflows/offline-bundle-probe.yml` baut das Bündel des jüngsten Release
+zwischen zwei Releases, auf Zuruf und an einem PR über das Label `offline-bundle-suite`. Danach
+prüft der Lauf das Bündel nach dem Handbuch in einem Netz-Namespace ohne Schnittstelle außer
+Loopback (`unshare --net`), mit `offline_bundle.sh check`:
+
+- Prüfsumme und Attestierung von Archiv, `SHA256SUMS` und Update-Paket
+- Digests der Image-Archive
+- Lesbarkeit des Charts
+- zwei Manipulationen: ein geändertes Byte eines Image-Archivs scheitert an `SHA256SUMS`, eine
+  daran angepasste `SHA256SUMS` an ihrer Attestierung
+
+`.github/scripts/test_offline_bundle.py` prüft Prüfsummen, Packen, Größengrenze und die
+Verdrahtung im Release-Lauf in jedem PR.
+
+Nicht im Bündel sind Drittimages (Datenbank, Modellserver, Identitätsanbieter) und Modellgewichte.
 
 ## Versionsnummern
 
