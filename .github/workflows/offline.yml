@@ -79,10 +79,30 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run typecheck
 
+      - name: Playwright-Version ermitteln
+        id: playwright-version
+        working-directory: e2e
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Playwright-Browser zwischenspeichern
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      # The system packages of the browser come from the runner's apt mirror, which is slow at times.
       - name: Playwright-Browser installieren
         working-directory: e2e
-        timeout-minutes: 6
-        run: pnpm exec playwright install --with-deps chromium
+        timeout-minutes: 15
+        env:
+          CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+        run: |
+          if [ "$CACHE_HIT" = "true" ]; then
+            pnpm exec playwright install chromium
+          else
+            pnpm exec playwright install --with-deps chromium
+          fi
 
       - name: Ablauf ohne Internetzugang ausführen
         working-directory: e2e
