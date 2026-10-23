@@ -15,7 +15,8 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
 | GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket |
-| `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, Lizenzübersicht, Vorlage Update-Vermerk; **attestiert** |
+| `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, Lizenzübersicht, SBOMs, Vorlage Update-Vermerk; **attestiert** |
+| `opaa-backend-X.Y.Z.cdx.json`, `opaa-frontend-X.Y.Z.cdx.json`, am GitHub-Release | die CycloneDX-Stücklisten (SBOM) der ausgelieferten Abhängigkeiten von Backend und Frontend aus dem Stand des Tags ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)); dieselben Dateien liegen im Update-Paket; **attestiert** |
 
 Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
 ([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
@@ -25,12 +26,13 @@ und neben dem Chart in GHCR. Prüfen lässt sie sich mit:
 gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
 ```
 
-Das Update-Paket trägt ebenso eine signierte Provenance-Attestierung, abgelegt bei GitHub. Geprüft
-wird die heruntergeladene Datei:
+Das Update-Paket und die beiden SBOMs tragen ebenso je eine signierte Provenance-Attestierung,
+abgelegt bei GitHub. Geprüft wird die heruntergeladene Datei:
 
 ```bash
 gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-update-paket-*'
 gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa
+gh attestation verify opaa-backend-X.Y.Z.cdx.json --repo criew/opaa   # ebenso opaa-frontend-…
 ```
 
 Installiert wird der Chart ohne Checkout des Repositories, in der Reihenfolge des Handbuchs
@@ -321,10 +323,10 @@ Grenze und braucht dafür Admin-Rechte. Ablauf:
    vor dem Tag geklärt oder nach dem Lauf mit `gh release edit` als bekannt in die Release-Notizen
    aufgenommen ([Behördenkontakt vor dem Release](AGENT-ORGANIZATION.md#behördenkontakt-vor-dem-release)).
 
-   Für welche Supportlinien ein Delta entsteht, ist noch offen
-   ([#2575](https://github.com/criew/opaa/issues/2575)). Bis dahin gilt die Regel unter
-   [Update-Paket](#update-paket): ein Delta je Release, nur gegen das vorige finale Release der
-   eigenen Linie.
+   Verglichen wird nach der Regel unter [Update-Paket](#update-paket) mit dem vorigen finalen
+   Release, das der Commit enthält; bei einem Patch-Release ist das das vorige Release seiner
+   [Linie](#supportlinien). Das zusätzliche Delta eines LTS-Release zur vorigen LTS-Linie erzeugt
+   das Paket erst mit [#3020](https://github.com/criew/opaa/issues/3020).
 5. Den in Schritt 4 begutachteten Commit taggen und das Tag pushen:
 
    ```bash
@@ -433,13 +435,17 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 | `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
 | `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |
 | `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
+| `sbom/opaa-backend-X.Y.Z.cdx.json`, `sbom/opaa-frontend-X.Y.Z.cdx.json` | die [CycloneDX-SBOMs](sbom.md#ebene-2--ökosystem-sboms-cyclonedx) der ausgelieferten Abhängigkeiten, dieselben Dateien wie am GitHub-Release |
 | `vorlagen/` | alle Markdown-Dateien aus `docs/behoerden/` in derselben Ordnerstruktur, Vorlagen und Ordnerübersichten; ohne `AGENTS.md` und `CLAUDE.md` auf oberster Ebene, die Regeln für Autoren sind |
 | `update-vermerk.md` | die Vorlage aus `docs/behoerden/09-betrieb-update/` noch einmal, zum direkten Ausfüllen |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
-Daneben liegt `opaa-update-paket-X.Y.Z.tar.gz.sha256`. Der Job `update-package-attestation`
-attestiert das Archiv (`actions/attest`, Prüfbefehl unter [Was ein Release erzeugt](#was-ein-release-erzeugt)),
-der Job `release` hängt beide Dateien an das GitHub-Release.
+Daneben liegen `opaa-update-paket-X.Y.Z.tar.gz.sha256` und die beiden SBOMs. Die Backend-SBOM
+entsteht im selben Gradle-Lauf wie die Faktenblätter (`cyclonedxBom`), die Frontend-SBOM
+gleichzeitig mit cdxgen; scheitert eines davon, scheitert der Job und mit ihm das Release. Der Job
+`update-package-attestation` attestiert das Archiv und die SBOMs (`actions/attest`, Prüfbefehl
+unter [Was ein Release erzeugt](#was-ein-release-erzeugt)), der Job `release` hängt alle Dateien
+an das GitHub-Release.
 
 **Vorgänger.** Verglichen wird mit dem höchsten finalen Tag `vA.B.C` unter der eigenen Version, das
 der getaggte Commit enthält. Vorab-Tags zählen nie, auch nicht für ein Vorab-Release; ein
@@ -448,8 +454,12 @@ leer. Gibt es kein finales Tag davor (das erste finale Release), vergleicht das 
 ältesten Wurzel-Commit, der kein Manifest hat: Jeder Eintrag erscheint als neu, und
 `LIESMICH.md` und der Kopf des Deltas sagen das. Überschriften und Text nennen ihn „Stand ohne
 Fakten-Manifest (Commit `abc1234`)“, nicht mit der rohen Commit-ID; das gilt für jeden Commit ohne
-Manifest, der als Vergleich angegeben ist. Welcher Vorgänger bei mehreren Supportlinien gilt,
-entscheidet #2575; bis dahin gilt diese Regel.
+Manifest, der als Vergleich angegeben ist. Die Regel trägt auch mehrere
+[Supportlinien](#supportlinien): Ein Patch-Release auf `release/X.Y` enthält die Tags seiner Linie,
+nicht die neuerer Linien, und vergleicht so mit dem vorigen Release seiner Linie. Ein LTS-Release
+bekommt zusätzlich das Delta zum jüngsten Patch-Release der vorigen LTS-Linie
+([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md), Entscheidung 5); das baut
+[#3020](https://github.com/criew/opaa/issues/3020).
 
 **Verweise im Paket.** Das Paket ist in sich verlinkt und lässt sich offline durchklicken. In
 jeder Vorlage unter `vorlagen/` und in `update-vermerk.md` wird beim Zusammenstellen
@@ -472,8 +482,9 @@ des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository d
 (`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
 auf `main`.
 
-**Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`) und Zeitstempel im Archiv
-sind die Commit-Zeit, Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt
+**Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`), Zeitstempel der SBOMs und
+im Archiv sind die Commit-Zeit, die Seriennummern der SBOMs aus Repository, Commit und Dateiname
+abgeleitet ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)), Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt
 dieselben Dateien und dieselben Zeilen in `SHA256SUMS`, mit einer Ausnahme: Der Abschnitt
 „Weitere gekennzeichnete Änderungen“ im Delta folgt dem Stand des Labels `data-impact` zum
 Zeitpunkt des Laufs; wird ein Label zwischen zwei Läufen gesetzt oder entfernt, unterscheidet sich
@@ -493,13 +504,17 @@ gh release delete vX.Y.Z --repo criew/opaa --yes   # ohne --cleanup-tag
 
 **Ohne Cache.** Wie die Image-Builds eines Release liest und schreibt `update-package` keinen
 Cache: kein `setup-gradle`, kein Cache von pnpm oder `setup-node`. Gradle und pnpm laden ihre
-Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. Rechte: nur Lesen des Repositorys und
+Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. cdxgen für die Frontend-SBOM
+kommt samt aller transitiven Abhängigkeiten aus der Lockfile unter `.github/tools/cdxgen/`, ohne
+Installationsskripte ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)). Rechte: nur Lesen des Repositorys und
 der PRs; das OIDC-Token für die Attestierung hält nur der eigene Job, in dem weder Gradle noch pnpm
 läuft. `.github/scripts/test_update_package.py` prüft beides am Workflow.
 
 **Probelauf ohne Release.** Dasselbe Paket entsteht lokal oder in einer eigenen CI für den
 ausgecheckten Commit; gibt es das Tag nicht, kennzeichnet `LIESMICH.md` den Lauf als Probelauf.
-Gebraucht werden Java, `pnpm install` in `frontend/` und die Historie mit Tags:
+Gebraucht werden Java, `pnpm install` in `frontend/`,
+`pnpm install --frozen-lockfile --ignore-scripts --no-optional` in `.github/tools/cdxgen/` und die
+Historie mit Tags:
 
 ```bash
 gh pr list --state merged --label data-impact --limit 1000 --json number,title,url >/tmp/prs.json
@@ -596,28 +611,109 @@ sich selbst. Das Release trägt dort das unmittelbar vorige Release ein; an eine
 Rolling Update bleibt es leer. Bis zum ersten Release, das den Wert setzt, laufen nur Stände derselben
 Version nebeneinander ([Handbuch, Update ohne Ausfall](handbuch/mehrere-instanzen.md#update-ohne-ausfall)).
 
-Releases entstehen nur von Commits auf `main`. Eine ältere Linie wird nicht nachgepflegt. Daraus
-folgen zwei Arten von Patch-Release:
+Ein finales `X.Y.0` entsteht auf `main` und eröffnet eine Linie, die Patch-Releases `X.Y.Z` bis
+zu ihrem Supportende bekommt ([Supportlinien](#supportlinien)). Eine ältere Linie wird also
+nachgepflegt, solange ihr Supportzeitraum läuft, und danach nicht mehr. Es gibt zwei Arten von
+Patch-Release:
 
-- **Ohne Codeänderung:** Ein neues Tag `vX.Y.(Z+1)` auf **demselben Commit** wie das letzte Release.
-  Der neue Bau zieht die aktuellen Pakete der Basis-Images.
-- **Mit Codeänderung:** Nur, solange `main` seit dem letzten Release keine neue Funktion trägt.
-  Sonst erscheint die Korrektur mit der nächsten Version von `main`, also als `0.(Y+1).0`.
+- **Ohne Codeänderung:** Ein neues Tag `vX.Y.(Z+1)` auf **demselben Commit** wie das letzte Release
+  der Linie. Der neue Bau zieht die aktuellen Pakete der Basis-Images.
+- **Mit Codeänderung:** Die Korrektur landet zuerst auf `main` und kommt per Backport auf den
+  Wartungsbranch `release/X.Y` der Linie, das Tag auf dessen Commit. Diese Branches und die
+  Anpassung des Workflows baut [#3017](https://github.com/criew/opaa/issues/3017). Bis dahin
+  entstehen Releases nur von Commits auf `main`, Patch-Releases nur für die jüngste Linie, und eine
+  Korrektur im Code erscheint als Patch-Release nur, solange `main` seit dem letzten Release keine neue Funktion trägt; sonst mit
+  der nächsten Version von `main`, also als `0.(Y+1).0`, notfalls außerhalb des Takts.
+
+## Supportlinien
+
+Festgelegt in [ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md), orientiert an
+Spring Boot, der Basis des Backends: Es erscheint als Minor-Version im Mai und im November und
+unterstützt jede Minor-Version mindestens 12 Monate kostenlos
+([Spring Boot Wiki, Supported Versions](https://github.com/spring-projects/spring-boot/wiki/Supported-Versions);
+das Enddatum je Version nennt die [Projektseite](https://spring.io/projects/spring-boot#support)).
+
+| | Regel |
+|---|---|
+| **Takt** | zwei Funktionsreleases `X.Y.0` im Jahr, etwa Juni und Dezember, jeweils 4–6 Wochen nach Spring Boot und auf dessen neuer Minor-Version, das Juni-Release spätestens zum Supportende der laufenden LTS-Linie (im Regelfall 30.06.); dazwischen nur Patch- und Vorab-Releases |
+| **Linie** | jedes finale `X.Y.0` eröffnet die Linie `X.Y`; ihre Patch-Releases bringen Sicherheitskorrekturen und Behebungen [kritischer Fehler](#kritische-fehler), sonst nichts: keine neue Funktion, keinen [Bruch](#versionsnummern) und keine neue Minor-Version von Spring Boot |
+| **Normales Release** | Patch-Releases bis einen Monat nach dem nächsten Funktionsrelease |
+| **LTS** | das Juni-Release; Patch-Releases bis zum Ende des kostenlosen Supports seiner Spring-Boot-Minor-Version, im Regelfall der 30.06. des Folgejahres, bei einem Release im Takt also rund 12 Monate; weil das nächste LTS spätestens zu diesem Supportende erscheint, überlappen die LTS-Linien immer, aber höchstens wenige Wochen |
+| **Wechsel** | wer nur LTS betreibt, aktualisiert einmal im Jahr von LTS zu LTS. Weil die Überlappung knapp ist, erscheint das nächste LTS so früh wie möglich als Release-Kandidat (`vX.Y.0-rc.N`), sobald OPAA auf der neuen Spring-Boot-Version läuft, spätestens zwei Wochen nach deren Erscheinen; danach kommen bis zum finalen Release nur Korrekturen hinzu, und das finale Release erscheint spätestens zum Supportende der laufenden LTS-Linie. Der Kandidat trägt das vollständige Update-Paket mit dem kumulierten Delta zur laufenden LTS-Linie ([#3020](https://github.com/criew/opaa/issues/3020)); auf seiner Grundlage bereitet die Behörde den Wechsel vor und beginnt die Beteiligung, damit sie das finale Release vor dem Supportende der laufenden Linie einspielen kann |
+| **Supportende** | steht bei einem LTS mit Erscheinen fest, bei einem normalen Release mit Erscheinen seines Nachfolgers, also mindestens einen Monat vorher; es steht in der Roadmap unten und in den Release-Notizen und wird nie vorgezogen |
+
+Meist laufen zwei Linien nebeneinander, im Monat nach einem Juni-Release drei. Ein Patch-Release
+einer Linie ist damit immer ein Update ohne neue Funktion, das eine Behörde sofort einspielen kann.
+Wer neue Funktionen vor dem nächsten Funktionsrelease braucht, folgt `main`.
+
+**Was heute schon gilt und was noch gebaut wird.** Takt und Supportzeiträume gelten ab dem ersten
+finalen Release. Ein Sicherheitsupdate des Basis-Images erreicht die **jüngste** Linie schon heute
+als Patch-Release ohne Codeänderung. Für eine ältere Linie geht das noch nicht: Der Release-Lauf
+markiert jedes finale Release auf GitHub als „Latest“, und der CVE-Scan prüft das Release mit dieser
+Markierung; ein Patch-Release der älteren Linie nähme der jüngsten beides weg. Noch nicht gebaut
+sind:
+
+| Baustein | Bis dahin | Issue |
+|---|---|---|
+| Wartungsbranches `release/X.Y`, Backport, Rulesets, Release-Workflow für Tags auf diesen Branches, „Latest“ nur für das höchste finale Release | nur die jüngste Linie bekommt Patch-Releases, eine Korrektur im Code nach der Regel unter [Versionsnummern](#versionsnummern), also gegebenenfalls mit neuen Funktionen; eine ältere Linie bekommt keine Korrektur, sie kommt nur mit einer neueren Linie | [#3017](https://github.com/criew/opaa/issues/3017) |
+| CVE-Scan aller unterstützten Linien | der Scan prüft nur das jüngste Release ([cve-scanning.md](cve-scanning.md)) | [#3018](https://github.com/criew/opaa/issues/3018) |
+| Renovate auf den Wartungsbranches | Abhängigkeits-Updates nur auf `main` | [#3019](https://github.com/criew/opaa/issues/3019) |
+| Delta zur vorigen LTS-Linie im Update-Paket | nur das Delta zum vorigen finalen Release | [#3020](https://github.com/criew/opaa/issues/3020) |
+
+Bis zum zweiten finalen Release gibt es nur eine Linie; dafür reichen Scan und Renovate wie heute.
+
+### Kritische Fehler
+
+Kritisch ist ein Fehler, für den es keinen zumutbaren Workaround gibt und der
+
+- Daten verliert oder verfälscht (Dokumente, Indizes, Einstellungen, Protokoll),
+- OPAA oder eine Kernfunktion ausfallen lässt (Start, Anmeldung, Suche, Chat, Indizierung) oder
+- Rechte falsch auswertet, also Inhalte Personen zeigt, die sie nicht sehen dürfen, oder
+  Berechtigten den Zugriff verweigert.
+
+Ob ein Fehler kritisch ist, entscheidet der Maintainer und hält es am Issue fest. Die Behebung
+kommt wie eine Sicherheitskorrektur zuerst auf `main` und dann per Backport auf jede unterstützte
+Linie, die der Fehler betrifft. Alles andere erscheint mit dem nächsten Funktionsrelease.
+
+### Roadmap
+
+Geplant ist nach dem Takt von Spring Boot, nicht nach Funktionen; Versionsnummern vergibt erst das
+Release. Ob GitHub-Meilensteine die Tabelle ergänzen, klärt
+[#3021](https://github.com/criew/opaa/issues/3021).
+
+| Linie | Erscheint | Spring Boot | Art | Patch-Releases bis |
+|---|---|---|---|---|
+| erstes finales Release (aus den Kandidaten `v0.1.0-rc.N`) | vor dem ersten Release im Takt, außerhalb des Takts | 4.1 | normal | einen Monat nach dem Dezember-Release 2026 |
+| Dezember-Release 2026 | 4–6 Wochen nach Spring Boot 4.2 (November 2026) | 4.2 | normal | einen Monat nach dem Juni-Release 2027 |
+| Juni-Release 2027 | 4–6 Wochen nach der Mai-Version 2027 von Spring Boot (noch ohne vorige LTS-Linie) | Mai-Version 2027 | erstes LTS | Ende des kostenlosen Supports dieser Spring-Boot-Version, im Regelfall 30.06.2028; Datum steht mit Erscheinen fest |
+| Dezember-Release 2027 | 4–6 Wochen nach der November-Version 2027 | November-Version 2027 | normal | einen Monat nach dem Juni-Release 2028 |
+| Juni-Release 2028 | 4–6 Wochen nach der Mai-Version 2028, spätestens zum Supportende des LTS 2027 (im Regelfall 30.06.2028); Release-Kandidat spätestens zwei Wochen nach Spring Boot | Mai-Version 2028 | LTS | Ende des kostenlosen Supports dieser Spring-Boot-Version |
+
+Der Release-Kandidat jedes LTS erscheint spätestens zwei Wochen nach der Mai-Version von Spring
+Boot, also etwa Anfang Juni und damit einige Wochen vor dem Supportende der laufenden LTS-Linie
+(im Regelfall 30.06.); das finale LTS-Release folgt 4–6 Wochen nach Spring Boot, spätestens zu
+diesem Supportende.
+
+Erscheint ein Release, ersetzt es seine Zeile durch die Versionsnummer und das feste Supportende;
+eine ausgelaufene Linie bleibt mit ihrem Ende stehen.
 
 ## Sicherheitsupdates für Releases
 
 Weil Release-Images nie neu gebaut werden, tragen sie den Sicherheitsstand ihres Bautags. Der
-nächtliche CVE-Scan prüft deshalb neben `main` auch die Images des jüngsten Releases (ohne
-Vorab-Releases, siehe [cve-scanning.md](cve-scanning.md)). Daraus folgt:
+nächtliche CVE-Scan prüft deshalb neben `main` auch Release-Images (ohne Vorab-Releases, siehe
+[cve-scanning.md](cve-scanning.md)): heute die des jüngsten Release, mit
+[#3018](https://github.com/criew/opaa/issues/3018) das jüngste Patch-Release jeder unterstützten
+[Linie](#supportlinien). Für jede unterstützte Linie gilt:
 
-| Befund im jüngsten Release | Reaktion |
+| Befund in einer unterstützten Linie | Reaktion |
 |---|---|
-| `critical` mit verfügbarem Fix | Patch-Release, Frist wie in cve-scanning.md. Liegt der Fix im Basis-Image, genügt ein neues Tag auf dem Commit des Releases; liegt er in einer Abhängigkeit, kommt er mit der nächsten Version von `main` |
-| `high` mit verfügbarem Fix | mit dem nächsten Release, spätestens als Patch-Release nach der wöchentlichen Triage |
-| ohne Fix, `medium` und `low` | kein eigenes Release |
+| `critical` mit verfügbarem Fix | Patch-Release der Linie, Frist wie in cve-scanning.md. Liegt der Fix im Basis-Image, genügt ein neues Tag auf dem Commit des letzten Release der Linie; liegt er in einer Abhängigkeit oder im Code, kommt er per Backport (bis [#3017](https://github.com/criew/opaa/issues/3017) nach der Regel unter [Versionsnummern](#versionsnummern)) |
+| `high` mit verfügbarem Fix | spätestens als Patch-Release nach der wöchentlichen Triage |
+| `medium` und `low` mit verfügbarem Fix | kein eigenes Release; mit dem nächsten Patch-Release der Linie |
+| ohne verfügbaren Fix | kein Release; Triage nach [cve-scanning.md](cve-scanning.md#triage-von-image-alerts) |
 
-Solange das jüngste Release einen `critical`-Befund trägt, bleibt das Alarm-Issue des Scans offen,
-auch wenn `main` schon behoben ist. Es schließt erst mit dem Patch-Release.
+Solange ein gescanntes Release einen `critical`-Befund trägt, bleibt das Alarm-Issue des Scans
+offen, auch wenn `main` schon behoben ist. Es schließt erst mit dem Patch-Release.
 
 ## Mehrere Architekturen
 
