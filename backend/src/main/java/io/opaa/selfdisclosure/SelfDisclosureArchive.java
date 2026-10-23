@@ -42,7 +42,7 @@ final class SelfDisclosureArchive {
       DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
   private static final DateTimeFormatter LOCAL_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
-  /** Called before every record: deadline, shutdown and reservation; throws to end the export. */
+  /** Called before every record; throws when the export has been told to end. */
   @FunctionalInterface
   interface Heartbeat {
     void beat();
@@ -237,8 +237,12 @@ final class SelfDisclosureArchive {
         case Integer number -> generator.writeNumber(number);
         case Long number -> generator.writeNumber(number);
         case Short number -> generator.writeNumber(number);
+        case Byte number -> generator.writeNumber(number.intValue());
         case java.math.BigDecimal number -> generator.writeNumber(number);
+        case java.math.BigInteger number -> generator.writeNumber(number);
         case Double number -> generator.writeNumber(number);
+        case Float number -> generator.writeNumber(number);
+        case Number number -> generator.writeNumber(number.toString());
         case Instant instant -> generator.writeString(instant.toString());
         case LocalDate date -> generator.writeString(date.toString());
         case UUID id -> generator.writeString(id.toString());

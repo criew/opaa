@@ -323,8 +323,10 @@ data:
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Mit dem Konto (ON DELETE CASCADE)
     evaluations: >-
-      Keine; der letzte Export erscheint in keiner Kontenliste und keiner Schnittstelle der
-      Verwaltung, es gibt keinen Verlauf der Exportzeitpunkte
+      In der Anwendung keine: Der letzte Export erscheint in keiner Kontenliste und keiner
+      Schnittstelle der Verwaltung. Über die Datenbank je Person der Zeitpunkt des letzten
+      vollständigen Exports sowie Starts, vollständige Exporte und Ergebnis des laufenden Tages,
+      also wer sein Auskunftsrecht wann zuletzt genutzt hat; kein Verlauf der Exportzeitpunkte
     notes:
       - Zeitpunkt des letzten vollständigen Exports ist ein Verhaltensmerkmal; nur für die Person selbst
   - id: application-log

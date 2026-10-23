@@ -31,6 +31,10 @@ class SelfDisclosureOverviewRendererTest {
                   List.of(Field.of("title", "Titel", "notifications.title")))));
 
   private static String render(long records, List<OverviewRow> rows) {
+    return render(records, rows, List.of());
+  }
+
+  private static String render(long records, List<OverviewRow> rows, List<String> missing) {
     return SelfDisclosureOverviewRenderer.render(
         Instant.parse("2026-10-23T12:00:00Z"),
         ZoneId.of("Europe/Berlin"),
@@ -41,7 +45,16 @@ class SelfDisclosureOverviewRendererTest {
                 Map.of("notifications", records),
                 rows,
                 records == 0 ? null : "notifications.json")),
-        FACTS);
+        FACTS,
+        missing);
+  }
+
+  @Test
+  void namesTheCategoriesThisVersionDoesNotDeliverYetAndOnlyThen() {
+    assertThat(render(1, List.of(), List.of("Chats", "Benutzerkonten")))
+        .contains("Diese Version enthält noch nicht alle Kategorien")
+        .contains("Noch nicht enthalten: Chats, Benutzerkonten.");
+    assertThat(render(1, List.of())).doesNotContain("noch nicht alle Kategorien");
   }
 
   @Test

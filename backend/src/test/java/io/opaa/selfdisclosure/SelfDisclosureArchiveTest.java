@@ -92,6 +92,38 @@ class SelfDisclosureArchiveTest {
   }
 
   @Test
+  void writesEveryKindOfNumberThePortPromises() throws Exception {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    SelfDisclosureArchive archive = new SelfDisclosureArchive(out, ZONE, () -> {});
+    List<Number> numbers =
+        List.of(
+            (byte) 1,
+            (short) 2,
+            3,
+            4L,
+            5.5f,
+            6.25d,
+            new java.math.BigDecimal("7.125"),
+            new java.math.BigInteger("80000000000000000000"),
+            new java.util.concurrent.atomic.AtomicLong(9));
+
+    archive.category(
+        CHATS,
+        sink -> {
+          RecordWriter writer = sink.section("chats");
+          for (Number number : numbers) {
+            writer.write(Map.of("title", number));
+          }
+        });
+    archive.finish(new byte[0], new byte[0]);
+
+    assertThat(entries(out.toByteArray()).get("chats.json"))
+        .contains("\"title\":1,", "\"title\":2,", "\"title\":3,", "\"title\":4,")
+        .contains("\"title\":5.5,", "\"title\":6.25,", "\"title\":7.125,")
+        .contains("\"title\":80000000000000000000,", "\"title\":9,");
+  }
+
+  @Test
   void refusesAFieldOutsideThePositiveListAndSectionsOutOfOrder() {
     SelfDisclosureArchive archive =
         new SelfDisclosureArchive(new ByteArrayOutputStream(), ZONE, () -> {});

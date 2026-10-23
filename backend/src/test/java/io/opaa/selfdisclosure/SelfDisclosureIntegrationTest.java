@@ -23,7 +23,13 @@ import io.opaa.test.TwoInstanceRace;
 import jakarta.mail.internet.MimeMessage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.Date;
@@ -42,6 +48,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -71,6 +78,8 @@ class SelfDisclosureIntegrationTest {
   @Autowired private SelfDisclosureUsageRepository usage;
   @Autowired private MailSettingsService mailSettings;
   @Autowired private DataSource dataSource;
+
+  @LocalServerPort private int port;
 
   private UUID person;
   private UUID admin;
@@ -129,6 +138,7 @@ class SelfDisclosureIntegrationTest {
         .contains("<html lang=\"de\">")
         .contains(SelfDisclosureOverviewRenderer.NOTICE)
         .contains("sd-test &lt;b&gt;Gruppe&lt;/b&gt; &amp; mehr")
+        .contains("Diese Version enthält noch nicht alle Kategorien")
         .doesNotContain("<script");
     assertThat(entries.keySet()).noneMatch(name -> name.contains("sig") || name.contains("sha"));
 
@@ -222,7 +232,7 @@ class SelfDisclosureIntegrationTest {
   @Test
   void anAbortedDeliveryConsumesNothingAndTheStatusOffersANewAttempt() throws Exception {
     SelfDisclosureService.Run run = service.start(ticketOf("dev-user"));
-    service.stream(run, new BreakingOutputStream(40));
+    assertThat(service.stream(run, new BreakingOutputStream(40))).isFalse();
 
     mockMvc
         .perform(get(STATUS).with(dev("dev-user")))
@@ -239,6 +249,46 @@ class SelfDisclosureIntegrationTest {
             run.runId().toString());
     assertThat(after).contains("ABORTED").contains("CLIENT_DISCONNECTED").contains("sha256");
     assertThat(registry.active()).isZero();
+  }
+
+  @Test
+  void anExportEndedByTheServerBreaksTheConnectionInsteadOfEndingItCleanly() throws Exception {
+    manyNotifications();
+    String ticket = ticketOf("dev-user");
+
+    HttpResponse<InputStream> response = openDownload(ticket);
+    assertThat(response.statusCode()).isEqualTo(200);
+    try (InputStream body = response.body()) {
+      body.readNBytes(4096);
+      registry.stop();
+      assertThatThrownBy(() -> readSlowly(body)).isInstanceOf(IOException.class);
+    } finally {
+      registry.start();
+    }
+
+    assertThat(awaitFinished()).contains("\"result\":\"ABORTED\"").contains("SHUTDOWN");
+    mockMvc
+        .perform(get(STATUS).with(dev("dev-user")))
+        .andExpect(jsonPath("$.completedToday").value(0))
+        .andExpect(jsonPath("$.lastResult").value("ABORTED"))
+        .andExpect(jsonPath("$.retryPossible").value(true));
+  }
+
+  @Test
+  void aClientThatGoesAwayOverARealConnectionConsumesNothing() throws Exception {
+    manyNotifications();
+    String ticket = ticketOf("dev-user");
+
+    HttpResponse<InputStream> response = openDownload(ticket);
+    try (InputStream body = response.body()) {
+      body.readNBytes(4096);
+    }
+
+    assertThat(awaitFinished()).contains("\"result\":\"ABORTED\"").contains("CLIENT_DISCONNECTED");
+    mockMvc
+        .perform(get(STATUS).with(dev("dev-user")))
+        .andExpect(jsonPath("$.completedToday").value(0))
+        .andExpect(jsonPath("$.running").value(false));
   }
 
   @Test
@@ -351,7 +401,7 @@ class SelfDisclosureIntegrationTest {
 
     assertThat(runs).hasSize(1);
     assertThat(refusals).singleElement().isInstanceOf(NotFoundException.class);
-    service.stream(runs.getFirst(), OutputStream.nullOutputStream());
+    assertThat(service.stream(runs.getFirst(), OutputStream.nullOutputStream())).isTrue();
     assertThat(usage.find(person).orElseThrow().completedCount()).isEqualTo(1);
   }
 
@@ -443,6 +493,67 @@ class SelfDisclosureIntegrationTest {
                 .param("ticket", ticket))
         .andExpect(status().isOk())
         .andReturn();
+  }
+
+  /**
+   * Enough notifications of hardly compressible text that the ZIP outgrows every socket buffer
+   * between server and client, so the server is still writing when the test intervenes.
+   */
+  private void manyNotifications() {
+    UUID organization = users.findById(person).orElseThrow().getOrganizationId();
+    java.util.Random random = new java.util.Random(2989);
+    List<Object[]> rows = new ArrayList<>();
+    for (int i = 0; i < 12_000; i++) {
+      byte[] noise = new byte[1500];
+      random.nextBytes(noise);
+      rows.add(
+          new Object[] {
+            UUID.randomUUID(),
+            organization,
+            person,
+            "sd-test viel " + i,
+            java.util.Base64.getEncoder().encodeToString(noise)
+          });
+    }
+    jdbc.batchUpdate(
+        "INSERT INTO notifications (id, organization_id, recipient_user_id, type, title, body,"
+            + " created_at) VALUES (?, ?, ?, 'GROUP_MEMBER_ADDED', ?, ?, now())",
+        rows);
+  }
+
+  private HttpResponse<InputStream> openDownload(String ticket) throws Exception {
+    return HttpClient.newBuilder()
+        .version(HttpClient.Version.HTTP_1_1)
+        .build()
+        .send(
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + DOWNLOAD))
+                .header("Content-Type", MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                .POST(
+                    HttpRequest.BodyPublishers.ofString(
+                        "ticket=" + URLEncoder.encode(ticket, StandardCharsets.UTF_8)))
+                .build(),
+            HttpResponse.BodyHandlers.ofInputStream());
+  }
+
+  /** Reads to the end at a pace the server outruns; an orderly end returns, a broken one throws. */
+  private static void readSlowly(InputStream body) throws Exception {
+    byte[] buffer = new byte[64 * 1024];
+    while (body.read(buffer) >= 0) {
+      Thread.sleep(5);
+    }
+  }
+
+  /** The {@code after} of the end event of the person's latest export, once it is written. */
+  private String awaitFinished() throws Exception {
+    long deadline = System.nanoTime() + java.time.Duration.ofSeconds(60).toNanos();
+    while (System.nanoTime() < deadline) {
+      List<Map<String, Object>> events = eventsOf(person);
+      if (events.size() == 2) {
+        return String.valueOf(events.get(1).get("after"));
+      }
+      Thread.sleep(200);
+    }
+    throw new AssertionError("the export did not end within 60 seconds");
   }
 
   /** The two events of the person's latest export; the log keeps those of earlier methods. */

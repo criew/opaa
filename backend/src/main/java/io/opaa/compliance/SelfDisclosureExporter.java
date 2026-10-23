@@ -20,7 +20,9 @@ import java.io.IOException;
  *   <li>Another person appears as {@link SelfDisclosureLabels#OTHER_PERSON}, a system process or
  *       service account as {@link SelfDisclosureLabels#SYSTEM}, never by name, address, id or
  *       pseudonym. Justifications of administrative or audit acts never go out.
- *   <li>An {@link IOException} of the sink ends the export; the exporter does not catch it.
+ *   <li>An {@link IOException} or other exception of the sink ends the export; the exporter does
+ *       not catch it. A long read without output is allowed: the reservation is kept alive by time,
+ *       and an export told to end (deadline, shutdown) ends at its next record.
  * </ul>
  */
 public interface SelfDisclosureExporter {

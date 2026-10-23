@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -64,6 +65,25 @@ public class SelfDisclosureController {
             .toString());
     response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
     response.setHeader("X-Accel-Buffering", "no");
-    service.stream(run, response.getOutputStream());
+    if (!service.stream(run, response.getOutputStream())) {
+      throw new DownloadAborted();
+    }
+  }
+
+  /**
+   * Lets an aborted download reach the servlet container instead of {@code GlobalExceptionHandler}:
+   * the response is already committed, so the container closes the connection without the final
+   * chunk, and the browser reports the download as failed rather than complete.
+   */
+  @ExceptionHandler(DownloadAborted.class)
+  void abortConnection(DownloadAborted aborted) {
+    throw aborted;
+  }
+
+  /** The export ended before its last block; its cause is already recorded. */
+  static final class DownloadAborted extends RuntimeException {
+    DownloadAborted() {
+      super("self-disclosure download aborted", null, false, false);
+    }
   }
 }

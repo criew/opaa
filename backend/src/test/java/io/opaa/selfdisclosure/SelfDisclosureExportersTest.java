@@ -22,6 +22,9 @@ class SelfDisclosureExportersTest {
 
     assertThat(new SelfDisclosureExporters(List.of(state, notifications)).categoryIds())
         .containsExactly("notifications", "self-disclosure");
+    assertThat(new SelfDisclosureExporters(List.of(state, notifications)).missingCategoryTitles())
+        .contains("Benutzerkonten")
+        .doesNotContain("Benachrichtigungen", "Stand der Selbstauskunft");
     assertThatThrownBy(() -> new SelfDisclosureExporters(List.of(notifications, notifications)))
         .hasMessageContaining("Two self-disclosure exporters deliver category notifications");
     assertThatThrownBy(() -> new SelfDisclosureExporters(List.of(exporter("mail-outbox"))))

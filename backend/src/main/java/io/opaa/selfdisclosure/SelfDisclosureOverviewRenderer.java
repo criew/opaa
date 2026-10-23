@@ -42,7 +42,8 @@ final class SelfDisclosureOverviewRenderer {
       Instant generatedAt,
       ZoneId zone,
       List<CategoryResult> results,
-      SelfDisclosureManifestFacts facts) {
+      SelfDisclosureManifestFacts facts,
+      List<String> notYetContained) {
     StringBuilder html = new StringBuilder(64 * 1024);
     html.append("<!DOCTYPE html>\n<html lang=\"de\">\n<head>\n<meta charset=\"utf-8\">\n")
         .append("<title>Selbstauskunft</title>\n<style>")
@@ -55,6 +56,13 @@ final class SelfDisclosureOverviewRenderer {
         .append(escape(zone.getId()))
         .append("). Die Dateien <code>&lt;Kategorie&gt;.json</code> enthalten alle Datensätze")
         .append(" maschinenlesbar, Zeitpunkte dort in UTC.</p>\n");
+    if (!notYetContained.isEmpty()) {
+      html.append(
+              "<p><strong>Diese Version enthält noch nicht alle Kategorien; weitere folgen mit"
+                  + " einer späteren Version.</strong> Noch nicht enthalten: ")
+          .append(escape(String.join(", ", notYetContained)))
+          .append(".</p>\n");
+    }
 
     html.append("<h2>Ihre Daten</h2>\n");
     for (CategoryResult result : results) {

@@ -81,9 +81,6 @@ public class SelfDisclosureService {
   /** How long a client waits after a refusal for load. */
   static final long INSTANCE_LIMIT_RETRY_AFTER_SECONDS = 60;
 
-  /** How often a running export renews its reservation. */
-  static final Duration LEASE_RENEWAL = Duration.ofSeconds(30);
-
   private static final DateTimeFormatter OCCURRED_AT =
       DateTimeFormatter.ofPattern("'am' dd.MM.yyyy 'um' HH:mm 'Uhr'", Locale.GERMANY);
   private static final SecureRandom RANDOM = new SecureRandom();
@@ -275,51 +272,43 @@ public class SelfDisclosureService {
   /**
    * Streams the ZIP of {@code run} into {@code out} and ends it: counted and recorded as completed
    * once the central directory is written and flushed, otherwise recorded as aborted without
-   * consuming anything. Never throws; the slot of this instance is released in every case.
+   * consuming anything. Returns whether it was completed, so the caller can end an aborted one
+   * visibly on the connection; the slot of this instance is released in every case.
    */
-  public void stream(Run run, OutputStream out) {
+  public boolean stream(Run run, OutputStream out) {
     if (TransactionSynchronizationManager.isActualTransactionActive()) {
       registry.release();
       throw new IllegalStateException("The self-disclosure must stream outside a transaction");
     }
-    long deadline = run.startedNanos() + properties.maxDuration().toNanos();
-    long[] lastRenewal = {System.nanoTime()};
-    SelfDisclosureArchive archive =
-        new SelfDisclosureArchive(
-            out,
-            zone(),
-            () -> {
-              long now = System.nanoTime();
-              if (registry.shuttingDown()) {
-                throw new SelfDisclosureAbort(AbortCause.SHUTDOWN, "instance shuts down");
-              }
-              if (now - deadline > 0) {
-                throw new SelfDisclosureAbort(AbortCause.TIMEOUT, "max-duration exceeded");
-              }
-              if (now - lastRenewal[0] >= LEASE_RENEWAL.toNanos()) {
-                if (!usage.renew(run.accountId(), run.runId())) {
-                  throw new SelfDisclosureAbort(AbortCause.ERROR, "reservation lost");
-                }
-                lastRenewal[0] = now;
-              }
-            });
+    SelfDisclosureRunControl control =
+        registry.watch(
+            run.startedNanos() + properties.maxDuration().toNanos(),
+            () -> usage.renew(run.accountId(), run.runId()));
+    SelfDisclosureArchive archive = new SelfDisclosureArchive(out, zone(), control::check);
     SelfDisclosureSubject subject =
         new SelfDisclosureSubject(run.accountId(), run.organizationId());
     try {
       for (SelfDisclosureExporter exporter : exporters.all()) {
+        control.check();
         archive.category(exporter.category(), sink -> exporter.export(subject, sink));
       }
+      control.check();
       Instant generatedAt = clock.instant();
       archive.finish(
           manifestJson(generatedAt, archive),
           SelfDisclosureOverviewRenderer.render(
-                  generatedAt, zone(), archive.results(), exporters.facts())
+                  generatedAt,
+                  zone(),
+                  archive.results(),
+                  exporters.facts(),
+                  exporters.missingCategoryTitles())
               .getBytes(StandardCharsets.UTF_8));
       if (!usage.complete(run.accountId(), run.runId())) {
         throw new SelfDisclosureAbort(AbortCause.ERROR, "reservation lost before completion");
       }
       finish(run, archive, "COMPLETED", null);
       metrics.completed(elapsed(run), archive.bytes());
+      return true;
     } catch (Exception | Error failure) {
       AbortCause cause = causeOf(failure);
       if (cause == AbortCause.ERROR) {
@@ -335,7 +324,9 @@ public class SelfDisclosureService {
             "Could not record the abort of self-disclosure export {}", run.runId(), recording);
       }
       metrics.aborted(cause.name(), elapsed(run), archive.bytes());
+      return false;
     } finally {
+      registry.unwatch(control);
       registry.release();
     }
   }
