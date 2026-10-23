@@ -20,8 +20,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,9 +78,9 @@ public class LockedAccountChatCleanupService {
   /**
    * A start with the deletion switched off forgets the moment periods count from, so switching on
    * again starts every period anew even if no nightly run fell into the time switched off. An
-   * idempotent conditional update; any instance may run it (ADR-0053).
+   * idempotent conditional update; any instance may run it (ADR-0053). Called at start by {@link
+   * LockedAccountChatCleanupScheduler#onStart}.
    */
-  @EventListener(ApplicationReadyEvent.class)
   public void forgetCountingWhenSwitchedOff() {
     if (!properties.enabled()) {
       store.stopCounting();
