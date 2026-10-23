@@ -19,6 +19,7 @@ import { createAuthConfigActions } from './authConfigActions'
 import { createOidcSignInActions } from './oidcSignInActions'
 import { createLocalSignInActions } from './localSignInActions'
 import { createSessionEndActions } from './sessionEndActions'
+import { createRecentLoginActions } from './recentLoginActions'
 
 export { FLOW_PROVIDER_STORAGE_KEY, LAST_PROVIDER_STORAGE_KEY } from './authState'
 export type { OidcCallbackOutcome } from './authState'
@@ -70,6 +71,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     ...createOidcSignInActions(ctx),
     ...createLocalSignInActions(ctx),
     ...createSessionEndActions(ctx),
+    ...createRecentLoginActions(ctx),
   }
 })
 

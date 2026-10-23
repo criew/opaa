@@ -38,6 +38,8 @@ export const LAST_PROVIDER_STORAGE_KEY = 'opaa.oidc.lastProvider'
 export interface SignInState {
   handoverCode?: unknown
   returnTo?: unknown
+  /** The sign-in was forced to confirm a recent one (see `recentLogin.ts`). */
+  recentLogin?: unknown
 }
 
 /**
@@ -154,6 +156,18 @@ export interface AuthState {
    * in the same answer, which clears {@link AuthState.passwordChangeRequired}.
    */
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
+  /**
+   * Confirms the sign-in of the local session with its password for an operation that requires a
+   * recent one, and adopts the access token the backend mints for it. A wrong password rejects with
+   * a `FieldValidationError` and counts as a failed attempt.
+   */
+  confirmSignInWithPassword: (password: string) => Promise<void>
+  /**
+   * Confirms the sign-in of the provider session by a sign-in forced at the provider (`prompt=login`,
+   * `max_age=0`). The page leaves; the callback returns to `returnTo` and marks the return for
+   * `consumeRecentLoginReturn`. Rejects when the provider of the session is gone.
+   */
+  confirmSignInAtProvider: (returnTo: string) => Promise<void>
   logout: () => Promise<void>
   getAccessToken: () => Promise<string | null>
   // A single silent-renew attempt via the refresh token, used by the response interceptor
