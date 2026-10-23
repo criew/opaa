@@ -123,6 +123,53 @@ def test_origin_refuses_a_commit_outside_main_and_the_own_line(
     assert "::error::" in result.stderr
 
 
+def test_origin_refuses_a_patch_on_main_that_contains_a_newer_line(repo: dict) -> None:
+    # D on main contains v0.3.0: an image 0.2.1 from there would carry the functions of 0.3.
+    result = run(ORIGIN, repo["work"], "v0.2.1", repo["D"])
+
+    assert result.returncode == 1
+    assert "v0.3.0" in result.stderr
+
+
+def test_origin_refuses_a_pre_release_below_a_contained_final_release(repo: dict) -> None:
+    result = run(ORIGIN, repo["work"], "v0.3.0-rc.2", repo["D"])
+
+    assert result.returncode == 1
+    assert "::error::" in result.stderr
+
+
+def branch_off(repo: dict, branch: str, at: str) -> str:
+    """Pushes a new commit on top of <at> as origin/<branch> and returns it."""
+    work = repo["work"]
+    git(work, "switch", "-q", "-c", branch, repo[at])
+    sha = commit(work, f"{branch} only")
+    git(work, "switch", "-q", "main")
+    git(work, "push", "-q", "origin", branch)
+    git(work, "fetch", "-q", "origin")
+    return sha
+
+
+@pytest.mark.parametrize("release_tag", ["v0.5.0", "v0.5.0-rc.1"])
+def test_origin_refuses_to_open_a_line_on_a_maintenance_branch(repo: dict, release_tag: str) -> None:
+    # A line opens on main; release/X.Y only carries its patch releases.
+    sha = branch_off(repo, "release/0.5", "D")
+
+    result = run(ORIGIN, repo["work"], release_tag, sha)
+
+    assert result.returncode == 1
+    assert "::error::" in result.stderr
+
+
+def test_origin_refuses_a_patch_on_a_branch_without_the_lines_first_release(repo: dict) -> None:
+    # release/0.4 forked from main without a v0.4.0 in its history.
+    sha = branch_off(repo, "release/0.4", "D")
+
+    result = run(ORIGIN, repo["work"], "v0.4.1", sha)
+
+    assert result.returncode == 1
+    assert "v0.4.0" in result.stderr
+
+
 def test_origin_matches_the_line_exactly(repo: dict) -> None:
     work = repo["work"]
     git(work, "push", "-q", "origin", f"{repo['F']}:refs/heads/release/0.20")
