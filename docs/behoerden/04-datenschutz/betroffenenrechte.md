@@ -74,7 +74,7 @@ Antwort am:           [Datum]          durch: [ ]
   ([Löschen oder sperren](../../handbuch/konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).
   Ausnahme: Eine Freigabe für eine anlassbezogene Klärung, die die Person nennt, ordnet ihre
   Einträge bis zu deren Löschfrist weiter zu ({{faktenblatt:datenkatalog#audit-incident-scopes}}).
-  Regelt eine Dienstvereinbarung den Zugriff auf das Protokoll, gilt deren Verfahren.
+  Regelt eine [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) den Zugriff auf das Protokoll, gilt deren Verfahren.
 - **Dokumente folgen ihrer Quelle.** Wird ein Dokument dort gelöscht oder berichtigt, zieht OPAA nach
   ([Änderungen und Löschungen](../../handbuch/arbeitsmittel/wissensbibliotheken/README.md#44-änderungen-und-löschungen)).
   Antworten in bestehenden Chats, die es zitiert haben, bleiben bis zur Löschung des Chats.
