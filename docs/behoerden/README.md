@@ -54,4 +54,3 @@ Version: Auf der GitHub-Seite der Version (Releases) die Datei `opaa-update-pake
 herunterladen und entpacken. Im Ordner `vorlagen/` liegen dort alle Vorlagen, und jeder Verweis ist
 ein Link auf das passende Faktenblatt unter `faktenblaetter/`.
 
-Wer Vorlagen schreibt oder ändert, findet die Regeln in [AGENTS.md](AGENTS.md).

@@ -13,14 +13,15 @@ dem Index macht. Es gilt für jeden Betriebsweg und gehört zum Teil Betrieb des
    Bestandsinstallationen“: Er nennt die Schritte, die vor dem Update zu erledigen sind, oder sagt
    „Keine Vorbereitung nötig.“ Bei übersprungenen Versionen gilt das für jede. Für Abstimmungen mit
    Datenschutz oder Personalvertretung dient das
-   [Update-Paket](images-und-laufzeit.md#images-und-versionen).
+   [Update-Paket](releases-und-nachweise.md#das-update-paket).
 2. **Sichern** ([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)).
 3. **Vorbereitung erledigen, Images tauschen**, Backend und Frontend auf dieselbe Version.
 4. **Start:** Das Backend migriert das Schema, nur vorwärts. Mit mehreren Instanzen:
    [Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall).
 5. **Prüfen:** `/actuator/info`, eine Frage im Chat, „Suche & Indexierung“.
 
-Zurück auf eine ältere Version geht es nur über die Sicherung.
+Zurück auf eine ältere Version geht es über die Sicherung; mit mehreren Instanzen innerhalb des
+Versionsfensters auch ohne Rücksicherung ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
 
 ## Was ein Update mit dem Index macht
 

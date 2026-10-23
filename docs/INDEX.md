@@ -133,8 +133,8 @@ Abfrage bleibt unprotokolliert.
 ### J · Betrieb & Deployment
 
 **[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** ·
-ergänzend **[`handbuch/betrieb.md`](handbuch/betrieb/README.md)** und
-**[`handbuch/kubernetes.md`](handbuch/betrieb/kubernetes.md)**
+ergänzend **[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** und
+**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)**
 
 Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.

@@ -119,7 +119,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 ## Gut zu wissen
 
 - Die CI prüft bei jeder Änderung, dass Katalog und Matrix dieselben Nummern führen und jeder
-  Verweis sein Ziel trifft ([Automatische Prüfung](../AGENTS.md#automatische-prüfung)). Ob ein
+  Verweis sein Ziel trifft. Ob ein
   Nachweis inhaltlich noch trägt, prüft die regelmäßige Durchsicht.
 - „Konfiguration“ in der Spalte „Art“ heißt: eine Einstellung der Installation.
 

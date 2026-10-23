@@ -124,6 +124,8 @@ enthält sie.
 - Ohne Schlüssel scheitert nur das Speichern von Zugangsdaten (`503`).
 - Ist ein Wert nicht entschlüsselbar, zeigt die Oberfläche „nicht gesetzt“, das Log eine Warnung;
   andere Änderungen an der Bibliothek lassen den Geheimtext stehen.
+- Ändert sich die Adresse der Quelle ohne neue Zugangsdaten, verwirft OPAA die gespeicherten
+  Zugangsdaten; sie werden für die neue Adresse neu eingetragen.
 - **Bei Schlüsselverlust** sind die Werte verloren, nicht die Bibliothek: Zugangsdaten neu eintragen.
 - **Schlüsselwechsel** im Bestand ist nicht vorgesehen; wer wechselt, trägt alle Werte neu ein.
 
