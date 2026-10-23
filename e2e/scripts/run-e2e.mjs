@@ -18,6 +18,7 @@
 //   node scripts/run-e2e.mjs --target demo         # demo-profile smoke test (pnpm run test:demo-smoke)
 //   node scripts/run-e2e.mjs --target local-auth   # local sign-in (pnpm run test:local-auth)
 //   node scripts/run-e2e.mjs --target multi-instance  # two backend instances, see multi-instance.mjs
+//   node scripts/run-e2e.mjs --target offline      # stack without internet access, see offline.mjs
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
 // Keycloak login, docs/features/demo-instance.md) with ai-stub standing in
 // for the chat/embedding provider, seeds it with `demo/seed/seed.py
@@ -63,9 +64,9 @@ if (targetFlagIndex !== -1) {
     rawArgs.splice(targetFlagIndex, 2)
   }
 }
-if (!['e2e', 'demo', 'local-auth', 'multi-instance'].includes(target)) {
+if (!['e2e', 'demo', 'local-auth', 'multi-instance', 'offline'].includes(target)) {
   console.error(
-    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth" oder "multi-instance")`,
+    `Unbekanntes --target "${target}" (erwartet: "e2e", "demo", "local-auth", "multi-instance" oder "offline")`,
   )
   process.exit(1)
 }
@@ -76,6 +77,12 @@ const extraTestArgs = rawArgs
 if (target === 'multi-instance') {
   const { runMultiInstance } = await import('./multi-instance.mjs')
   process.exit(await runMultiInstance({ repoRoot, e2eDir, extraTestArgs }))
+}
+// The "offline" target runs the stack on a network without a route out; see offline.mjs.
+if (target === 'offline') {
+  prepareBindMounts()
+  const { runOffline } = await import('./offline.mjs')
+  process.exit(await runOffline({ repoRoot, e2eDir, extraTestArgs }))
 }
 const isDemo = target === 'demo'
 const isLocalAuth = target === 'local-auth'

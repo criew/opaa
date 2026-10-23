@@ -36,7 +36,7 @@ nur in den Faktenblättern der jeweiligen Version.
 |---|---|---|
 | Wo läuft die Software? | im Rechenzentrum der Behörde oder eines Dienstleisters, mit Docker Compose oder Kubernetes | [Bausteine](../../handbuch/betrieb/README.md#bausteine) |
 | Welche Modelle? | jedes Modell hinter einer OpenAI-kompatiblen Schnittstelle, auch im eigenen Haus | [Modelle](../../handbuch/betrieb/modelle.md#llm-anbieter) |
-| Betrieb ohne Internet? | Modelle im Haus betreibbar, Ziele nach außen je Version beschrieben; als Probe im Projekt nicht belegt | {{faktenblatt:datenfluesse}} |
+| Betrieb ohne Internet? | ja, wenn Images und Modelle im Haus stehen; ein nächtlicher Lauf ohne Weg nach außen belegt Anmeldung, Aufnahme eines Textdokuments und Antwort mit Fundstelle und erkennt Namensauflösungen und Browser-Abrufe nach außen, Verbindungen an feste IP-Adressen nur über das Log | [Betrieb ohne Internet](../../handbuch/betrieb/netz-und-sicherheit.md#betrieb-ohne-internet), {{faktenblatt:datenfluesse}} |
 | Ausfallsicherheit? | mehrere Backend-Instanzen; Update ohne Ausfall, soweit die neue Version es zulässt | [Mehrere Backend-Instanzen](../../handbuch/betrieb/mehrere-instanzen.md#update-ohne-ausfall) |
 | Anmeldung? | OIDC-Identitätsanbieter oder lokale Konten | [Authentifizierung](../../handbuch/betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) |
 | Anbindung anderer KI-Werkzeuge? | MCP-Server mit persönlichen Zugangstokens, abschaltbar | [Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md#8-was-ein-externes-ki-werkzeug-erreicht) |
