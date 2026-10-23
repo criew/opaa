@@ -221,6 +221,9 @@ ersten Stufe nicht geschrieben.
   Abmeldung, der routinemäßige Ablauf einer Sitzung und der einzelne Fehlversuch (siehe unten). In
   keinem dieser Ereignisse stehen E-Mail-Adressen, Namen, Anbieter-Subjects oder Freitext; die
   betroffene Person ist das Pseudonym in `subject_ref`
+- **Löschung der Chats gesperrter Konten** ([chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten),
+  #2997): je Konto und Lauf die Löschung mit Fristbeginn und Sperrgrund, nie mit Zahl, Titel, Inhalt
+  oder Space; Anhalten und Fortsetzen der Löschung je Konto durch die Systemverwaltung, ohne Begründung
 - **Jede bewirkte** Rechteänderung aus einem Verzeichnisabgleich — je Änderung, nicht je Lauf, verbunden
   über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
   der bestätigenden Person und ihrem Anlass. **Das Verwerfen** eines vorgelegten Plans ist ein
@@ -621,6 +624,13 @@ kann. Protokolliert wird allein das Umlegen des Schalters, mit altem und neuem W
 `SPACE_CHANGED`. Mit dem Teilen von Chats oder einer allgemeinen Chat-Aufbewahrung ist die Warnung
 neu zu bewerten.
 
+Die **Löschung der Chats gesperrter Konten** (#2997,
+[chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten)) ist ebenfalls keine allgemeine
+Inhaltsaufbewahrung: Sie greift nur nach einer Sperre durch die Verwaltung. Anders als die
+Bereinigung je Space schreibt sie je Konto und Lauf ein Ereignis, weil die Löschung ohne Handeln
+der Person geschieht und belegbar sein muss; es nennt weder Zahl noch Inhalt und folgt der
+allgemeinen Protokollfrist.
+
 Die Löschung eines Kontos entfernt bereits seit #391 automatisch die Pseudonymzuordnung
 (`fk_audit_actor_pseudonyms_user_organization`, `ON DELETE CASCADE`, zusammengesetzt seit Migration 047) und lässt das Protokoll selbst unverändert — das
 war keine neue Arbeit für #395, nur ein zusätzlicher Nachweis auf Anwendungsebene (siehe
@@ -647,6 +657,10 @@ danach jährlich als Nachweis, dass sich nichts stillschweigend verschoben hat.
   dem Ergebnis der automatisierten Prüfung darauf (siehe [Erfolgs-Metriken](#erfolgs-metriken))
 - ob die Netzadresse eingeschaltet ist, seit wann und mit welcher Begründung
 - Zahl und Anlasskategorien der anlassbezogenen Klärungen im Berichtszeitraum
+- das **Ereignis der Löschung von Chats gesperrter Konten** ausdrücklich: Zweck (allein der Nachweis
+  der fristgerechten Löschung), Zugriff (`AUDITOR` über dieselben Wege wie jedes Ereignis, keine
+  Zählung je Person; die Zahl gelöschter Chats steht nur gesamt im Anwendungslog) und Frist
+  (allgemeine Protokollfrist) — siehe [chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten)
 - die **Ereignisse der Selbstauskunft** ausdrücklich, weil sie zeigen, wer sein Auskunftsrecht
   wahrnimmt: Zweck (Nachweis der Erfüllung des Auskunftsrechts und Erkennung missbräuchlicher
   Abrufe), Zugriff (`AUDITOR` über die Wege nach Zeitraum, Ereignisart und Vorgang; die
@@ -1151,14 +1165,15 @@ nicht als ausgeschlossen nennt, sind Teil der Auskunft.
 | `settings-editors` | #2990 | Bereich und Zeitpunkt der Einstellungen, die die Person zuletzt geändert hat | Werte der Einstellungen (keine Daten über die Person; Absender und Zugangsname der Mail-Einstellungen gehören dem Dienstkonto) |
 | `notifications` | #2990 | Art, Objektart, Titel, Text, Eingang, gelesen | — (Texte erzeugt OPAA und nennen Objekte, keine Personen; nennt ein Typ künftig eine andere Person, geht er ohne Text heraus) |
 | `audit-log` | #2990 | Einträge, in denen die Person handelt (`actor_ref`), betroffen ist (`subject_ref`) oder Kontoobjekt ist: Zeitpunkt, Ereignisart, Objektart, Objektbezeichnung, Ergebnis, Vorher/Nachher nach Positivliste je Ereignisart, Vorgangskennung, ob ein Anlass angegeben war | Pseudonymkennungen, auch die eigene; `reason`, auch der eigene (Begründungsfreitext, siehe unten); Ereignisse einer anlassbezogenen Klärung über die Person; `object_label` an fremden Kontoobjekten |
-| `chats` | #2992 | eigene Chats (`author_id`) mit Titel, Filter, Nachrichten, Notizen, Anheften und Archiv; an Antworten die Fundstellen nur mit Dokumenttitel, Bibliothek und Seite | Textausschnitte der Fundstellen (Dokumentinhalt); `content_tsv` (abgeleiteter Suchindex) |
+| `chats` | #2992 | eigene Chats (`author_id`) mit Titel, Filter, Nachrichten, Notizen, Anheften und Archiv; je Nachricht eine Zeile mit Kennzeichnung als KI-erzeugt (`generatedByAi`); an Antworten die Fundstellen nur mit Dokumenttitel (Dateiname), heutigem Namen der Bibliothek und Seite (bzw. Folie, Zeile, Nachricht oder Teil), zitiert oder nicht | Textausschnitte der Fundstellen (Dokumentinhalt); Überschriftenpfade, Blattnamen und Folientitel des Fundorts (Text aus dem Dokument); Dokument- und Chunkkennungen, Quellverweise und Metadaten der Fundstelle; `content_tsv` (abgeleiteter Suchindex) |
+| `chat-cleanup-holds` | #2992 | ob und seit wann die Löschung der eigenen Chats nach einer Sperre angehalten ist; angehalten von „andere Person“ (nur die Verwaltung hält an) | — (eine Begründung wird nicht gespeichert; das Fortsetzen löscht die Zeile und steht im Protokoll) |
 | `connected-accounts` | #2991 | eigene verbundene Konten (Bezeichnung beim Anbieter, Zeitpunkte), von der Person verbundene Bibliotheken und Bibliotheken, für deren Einwilligung die Person verantwortlich ist (eine andere verantwortliche Person als „andere Person“) | `connection_tokens`, `connection_authorizations`, `connection_grant_revocations` (Geheimnisse und Zwischenstände eines laufenden Verbindungsaufbaus oder Widerrufs, kurzlebig) |
 | `connection-person-states` | #2991 | Ruhezustand der eigenen Verbindungen | — |
 | `connection-log` | #2991 | Einträge, in denen die Person handelt oder betroffen ist | Pseudonymkennungen |
 | `external-access-tokens` | #2991 | eigene Zugangstokens: Name, Anlage, Ablauf, letzter Nutzungstag, Widerruf mit Anlass | `token_prefix`, `token_lookup_hash` (Geheimnisbestandteile) |
 | `library-settings` | #2992 | Bibliotheken, deren Freigabe für externe KI-Werkzeuge die Person gesetzt hat, mit Zeitpunkt; private Bibliotheken der Person mit Quelladresse ohne Zugangsdaten und Abfrageteil | `source_credentials` (Geheimnis) |
-| `documents` | #2992 | **nur Verzeichnis**, zwei Wege zur Person: `documents.uploaded_by_user_id` (eigene Uploads) und `documents.library_id` → `assets.owner_user_id` des Datums `rights` bei privaten Bibliotheken (Nur-Besitzerin-Bibliothek, auch konnektor-gespeist). Enthalten: Dateiname, Datum, Bibliothek; `file_path` und `source_hierarchy_path` (Pfad, Ordner) enthalten, nur bei privaten Bibliotheken befüllt — bei Uploads in geteilte Bibliotheken bleiben sie leer, weil sie dort die Ablage der Organisation beschreiben | `context_prefix_title` (aus dem Inhalt abgeleitet); `source_container_key`, `source_entry_url` (technische Schlüssel und Verweise der Quelle); Inhalte, `chunk_full_text`, `vector_store`, `document_metadata_values` (Dokumentinhalt und Einbettungen; Handänderungen an Metadaten stehen im Protokoll); `indexing_run_events`, `source_sync_revisits`, `source_event_batches` (Betriebsdaten des Bestands, kein Weg zur Person) |
-| `indexing-runs` | #2992 | von der Person ausgelöste Indexierungs- und Neueinbettungsläufe: Bibliothek, Art, Beginn, Ende, Ergebnis | — |
+| `documents` | #2992 | **nur Verzeichnis**, zwei Wege zur Person: `documents.uploaded_by_user_id` (eigene Uploads) und `documents.library_id` → `assets.owner_user_id` des Datums `rights` bei privaten Bibliotheken (Nur-Besitzerin-Bibliothek, auch konnektor-gespeist). Enthalten: Dateiname, Datum, Bibliothek; `file_path` und `source_hierarchy_path` (Pfad, Ordner) nur bei privaten Bibliotheken — bei Uploads in geteilte Bibliotheken bleiben sie leer, weil sie dort die Ablage der Organisation beschreiben; `file_path` eines hochgeladenen Dokuments (`UPLOAD`) bleibt auch in privaten Bibliotheken leer | `file_path` bei Uploads (Speicherort des Originals in der Originalablage); `context_prefix_title` (aus dem Inhalt abgeleitet); `source_container_key`, `source_entry_url` (technische Schlüssel und Verweise der Quelle); Inhalte, `chunk_full_text`, `vector_store`, `document_metadata_values` (Dokumentinhalt und Einbettungen; Handänderungen an Metadaten stehen im Protokoll); `indexing_run_events`, `source_sync_revisits`, `source_event_batches` (Betriebsdaten des Bestands, kein Weg zur Person) |
+| `indexing-runs` | #2992 | die von der Person gestartete Neueinbettung des Index (`embedding_index`, nur der letzte Lauf): Beginn, Ende, Ergebnis | `indexing_jobs` (der Anstoß einer Indexierung wird keiner Person zugeordnet gespeichert, `triggered_by` hält nur manuell, Zeitplan oder Webhook fest); Wartungsanstöße wie die Neuverarbeitung einer Bibliothek stehen als Ereignisse im Protokoll und gehen über `audit-log` heraus |
 | `rights` | #2991 | eigene Assets mit Art und Name, **eigene Prompt-Bibliotheken eingeschlossen**; Grants an die Person und von ihr erteilte, Anlegerechte; Empfänger und Erteilende außer ihr nur als „andere Person“ bzw. Gruppenname | Grants Dritter an fremden Assets (kein Weg zur Person); Inhalte der Assets, etwa Prompt-Texte (Sachdaten ohne Personenbezug) |
 | `permission-history` | #2991 | Intervalle, in denen die Person Subjekt, Eigentümerin oder Gruppenmitglied war, und von ihr bewirkte Änderungen | — |
 | `groups` | #2991 | eigene Mitgliedschaften und Verantwortungen | — |
@@ -1167,8 +1182,8 @@ nicht als ausgeschlossen nennt, sind Teil der Auskunft.
 | `favorites` | #2991 | eigene Favoriten | — |
 | `spaces` | #2991 | eigene Spaces mit Modellanweisung, Mitgliedschaften, von der Person vorgenommene Zuordnungen | — |
 | `space-membership-history` | #2991 | Intervalle der eigenen Mitgliedschaften und von der Person bewirkte Änderungen | — |
-| `diagnostic-impersonation` | #2992 | Befugnisse „Sicht als“, die die Person hält oder erteilt hat: Bereich, Gültigkeit, Widerruf | Inhaber einer von ihr erteilten Befugnis nur als „andere Person“ |
-| `diagnostic-context-log` | #2992 | eigene Suchdiagnosen: Zeitpunkt, Zielart, Testfrage, Trefferzahl; **Diagnosen im Rechtekontext der Person** (`target_kind = USER`, `target_ref` = ihr Pseudonym): Zeitpunkt, handelnd „andere Person“, Trefferzahl | `justification`, auch die eigene (Begründungsfreitext); Testfrage einer Diagnose durch andere (Freitext Dritter); `permission_snapshot`, `hit_refs` (Rechte und Treffer anderer); `target_ref` als Kennung (Pseudonym) |
+| `diagnostic-impersonation` | #2992 | Befugnisse „Sicht als“, die die Person hält, erteilt oder widerrufen hat: Bereich, Gültigkeit, Erteilung, Widerruf | Inhaber, Erteilende und Widerrufende außer ihr nur als „andere Person“ |
+| `diagnostic-context-log` | #2992 | eigene Suchdiagnosen: Zeitpunkt, Zielart, Testfrage, Trefferzahl; **Diagnosen im Rechtekontext der Person** (`target_kind = USER`, `target_ref` = ihr Pseudonym): Zeitpunkt, handelnd „andere Person“, Trefferzahl | `justification`, auch die eigene (Begründungsfreitext); Testfrage einer Diagnose durch andere (Freitext Dritter); `permission_snapshot`, `hit_refs` (Rechte und Treffer anderer); `target_ref` als Kennung (Pseudonym). Gelesen wird nach `actor_ref` und `target_ref` mit dem Pseudonym der angemeldeten Person, ungruppiert und nie für eine andere — die einzige Ausnahme von der Zweckbindung des Diagnoseprotokolls ([Leitplanke (g)](hybrid-retrieval.md#berechtigungs-leitplanken)) |
 
 **Ganz ausgeschlossen**, mit Hinweis in der Übersicht:
 

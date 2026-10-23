@@ -221,8 +221,8 @@ Prompts: Verwalten ist nicht Lesen. Weitertippen sucht in Befehl, Titel und Besc
   Systemvariablen mit dem heutigen Datum und dem eigenen Namen.
 
 Der Text bleibt bearbeitbar. Gesendet wird er erst mit Enter oder der Senden-Schaltfläche. Ein Chip
-„Prompt: <Titel>" am Eingabefeld markiert die Herkunft und lässt sich entfernen. Im Verlauf steht
-an der Frage „Prompt: <Titel>", mit dem Titel zum Zeitpunkt des Sendens, ohne Verweis auf den
+„`Prompt: <Titel>`" am Eingabefeld markiert die Herkunft und lässt sich entfernen. Im Verlauf steht
+an der Frage „`Prompt: <Titel>`", mit dem Titel zum Zeitpunkt des Sendens, ohne Verweis auf den
 Prompt. Dieser Hinweis bleibt, wenn der Prompt später umbenannt oder gelöscht wird.
 
 Wird der Prompt nach dem Einsetzen gelöscht, das Leserecht entzogen oder die Zuordnung zum Space
@@ -266,8 +266,8 @@ Antworten zeigen soll (`OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED=false`, siehe
 - Space-Inhalte, Zählungen und die Auswahl beim Anlegen und Zuordnen enthalten keine
   Prompt-Bibliotheken; die Liste „Ohne Zuständigkeit" nennt keine.
 - Im Chat öffnet `/` keine Auswahl, und der Hinweis unter dem Eingabefeld nennt `/` nicht. Eine
-  Frage, die noch einen Prompt nennt, lehnt OPAA ab. Frühere Fragen tragen keinen Hinweis „Prompt:
-  <Titel>" mehr.
+  Frage, die noch einen Prompt nennt, lehnt OPAA ab. Frühere Fragen tragen keinen Hinweis
+  „`Prompt: <Titel>`" mehr.
 - Adressen von Prompt-Bibliotheken führen in den Katalog.
 
 Vorhandene Prompt-Bibliotheken, Prompts, Rollen, Zuordnungen und Favoriten bleiben unverändert

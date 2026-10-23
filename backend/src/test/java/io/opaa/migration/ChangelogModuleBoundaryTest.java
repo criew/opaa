@@ -173,6 +173,8 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "chat_library_references",
                   "chat_note_items",
                   "chat_personal_marks",
+                  "chat_cleanup_holds",
+                  "chat_locked_account_cleanup_state",
                   "prompt_libraries",
                   "prompts")),
           Map.entry(

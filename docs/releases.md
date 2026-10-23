@@ -542,7 +542,9 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 | `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
 | `sbom/opaa-backend-X.Y.Z.cdx.json`, `sbom/opaa-frontend-X.Y.Z.cdx.json` | die [CycloneDX-SBOMs](sbom.md#ebene-2--ökosystem-sboms-cyclonedx) der ausgelieferten Abhängigkeiten, dieselben Dateien wie am GitHub-Release |
 | `vorlagen/` | alle Markdown-Dateien aus `docs/behoerden/` in derselben Ordnerstruktur, Vorlagen und Ordnerübersichten; ohne `AGENTS.md` und `CLAUDE.md` auf oberster Ebene, die Regeln für Autoren sind |
+| `handbuch/` | alle Markdown-Dateien aus `docs/handbuch/` in derselben Ordnerstruktur, ohne `AGENTS.md` und `CLAUDE.md` auf oberster Ebene |
 | `update-vermerk.md` | die Vorlage aus `docs/behoerden/09-betrieb-update/` noch einmal, zum direkten Ausfüllen |
+| `index.html`, `style.css`, `<datei>.html` | die HTML-Fassung: neben jeder Markdown-Datei dieselbe Seite als HTML, `index.html` als Startseite |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
 Daneben liegen `opaa-update-paket-X.Y.Z.tar.gz.sha256` und die beiden SBOMs. Die Backend-SBOM
@@ -567,25 +569,40 @@ bekommt zusätzlich das Delta zum jüngsten Patch-Release der vorigen LTS-Linie
 [#3020](https://github.com/criew/opaa/issues/3020).
 
 **Verweise im Paket.** Das Paket ist in sich verlinkt und lässt sich offline durchklicken. In
-jeder Vorlage unter `vorlagen/` und in `update-vermerk.md` wird beim Zusammenstellen
+jeder Vorlage unter `vorlagen/`, in `update-vermerk.md` und in jedem Kapitel unter `handbuch/` wird
+beim Zusammenstellen
 
 - jeder Faktenblatt-Platzhalter `{{faktenblatt:<name>[#<anker>]}}` ein relativer Link auf
   `faktenblaetter/<name>.md`, passend zur Tiefe der Datei; ein Blatt oder Anker, das es im Paket
-  nicht gibt, bricht den Lauf ab,
-- ein relativer Link auf eine Datei oder einen Ordner im Paket ein relativer Link dorthin; Links
-  zwischen den Vorlagen bleiben so, wie sie geschrieben sind,
-- ein relativer Link auf alles andere im Repository, etwa Handbuch, `SECURITY.md` oder diese
+  nicht gibt, bricht den Lauf ab (nur in Vorlagen),
+- ein relativer Link auf eine Datei oder einen Ordner im Paket ein relativer Link dorthin, auch
+  zwischen Vorlagen und Handbuch; Links, die im Paket schon treffen, bleiben so, wie sie
+  geschrieben sind,
+- ein relativer Link auf alles andere im Repository, etwa `SECURITY.md`, ein ADR oder diese
   Datei, ein absoluter Link auf GitHub im Stand des Release-Tags
   (`https://github.com/<repository>/blob/vX.Y.Z/<pfad>`, bei einem Probelauf auf den Commit);
   ein Ziel, das es im Checkout nicht gibt, bricht den Lauf ab.
 
 Anker innerhalb einer Datei und externe Links bleiben unverändert. Platzhalter und Links in
-Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage stammt, etwa
-Titel von Pull Requests im Delta oder Upgrade-Hinweise in den Betriebsfolgen. Neue Vorlagen und
-Ordner unter `docs/behoerden/` kommen ohne Änderung am Skript ins Paket. Der Link
+Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage oder dem
+Handbuch stammt, etwa Titel von Pull Requests im Delta oder Upgrade-Hinweise in den
+Betriebsfolgen. Neue Vorlagen, Kapitel und Ordner unter `docs/behoerden/` und `docs/handbuch/`
+kommen ohne Änderung am Skript ins Paket. Der Link
 des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository des Laufs
 (`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
 auf `main`.
+
+**HTML-Fassung.** Danach erzeugt `.github/scripts/package_html.py` mit markdown-it-py (mit
+allen Abhängigkeiten per Hash gepinnt in `.github/requirements-release.txt`, nur als Wheel installiert) zu jeder Markdown-Datei des Pakets eine HTML-Seite daneben, dazu
+`index.html` mit allen Teilen und `style.css` (helles und dunkles Farbschema). Überschriften tragen
+Anker in der Schreibweise von GitHub, `<a id>` bleiben erhalten, ein Front-Matter-Kopf erscheint als
+kleiner Kasten. Links auf Markdown-Dateien führen auf deren HTML-Seite, Links auf einen Ordner auf
+seine `README`. Die Seiten laden nichts aus dem Internet; Mermaid-Diagramme stehen als Code da. Ein
+relativer Link der HTML-Fassung, dessen Datei oder Anker fehlt, bricht den Lauf ab. Prüfsummen und
+Attestierung decken die HTML-Dateien wie alle anderen ab. Jeder PR prüft
+dieselben Verweise vorab: Der Job `changes` der CI ruft `update_package.py links` auf, ohne
+Faktenblätter und ohne Pfadfilter, sodass ein umbenannter Anker im Handbuch nicht erst das Release
+anhält.
 
 **Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`), Zeitstempel der SBOMs und
 im Archiv sind die Commit-Zeit, die Seriennummern der SBOMs aus Repository, Commit und Dateiname
@@ -608,8 +625,8 @@ gh release delete vX.Y.Z --repo criew/opaa --yes   # ohne --cleanup-tag
 ```
 
 **Ohne Cache.** Wie die Image-Builds eines Release liest und schreibt `update-package` keinen
-Cache: kein `setup-gradle`, kein Cache von pnpm oder `setup-node`. Gradle und pnpm laden ihre
-Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. cdxgen für die Frontend-SBOM
+Cache: kein `setup-gradle`, kein Cache von pnpm, `setup-node` oder `setup-python`. Gradle, pnpm
+und pip laden ihre Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. cdxgen für die Frontend-SBOM
 kommt samt aller transitiven Abhängigkeiten aus der Lockfile unter `.github/tools/cdxgen/`, ohne
 Installationsskripte ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)). Rechte: nur Lesen des Repositorys und
 der PRs; das OIDC-Token für die Attestierung hält nur der eigene Job, in dem weder Gradle noch pnpm
@@ -618,8 +635,9 @@ läuft. `.github/scripts/test_update_package.py` prüft beides am Workflow.
 **Probelauf ohne Release.** Dasselbe Paket entsteht lokal oder in einer eigenen CI für den
 ausgecheckten Commit; gibt es das Tag nicht, kennzeichnet `LIESMICH.md` den Lauf als Probelauf.
 Gebraucht werden Java, `pnpm install` in `frontend/`,
-`pnpm install --frozen-lockfile --ignore-scripts --no-optional` in `.github/tools/cdxgen/` und die
-Historie mit Tags:
+`pnpm install --frozen-lockfile --ignore-scripts --no-optional` in `.github/tools/cdxgen/`,
+`pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt`
+und die Historie mit Tags:
 
 ```bash
 gh pr list --state merged --label data-impact --limit 1000 --json number,title,url >/tmp/prs.json

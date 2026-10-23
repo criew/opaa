@@ -467,6 +467,17 @@ public enum AuditEventType {
   /** Unlocked by an administrator. */
   LOCAL_USER_UNLOCKED,
   /**
+   * The nightly run deleted chats of an account locked by the administration once the period after
+   * the lock ran out (docs/features/chat-list.md, "Löschung der Chats gesperrter Konten"). One
+   * entry per account and run; the payload names the start of the period and the lock reason, never
+   * a count, title, content or space.
+   */
+  LOCKED_ACCOUNT_CHATS_DELETED,
+  /** An administrator held the deletion of an account's chats after a lock; no reason recorded. */
+  LOCKED_ACCOUNT_CHAT_CLEANUP_HELD,
+  /** An administrator lifted that hold. */
+  LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED,
+  /**
    * An administrator issued a password-reset link; {@code after.deliveryPath} as for the
    * invitation.
    */

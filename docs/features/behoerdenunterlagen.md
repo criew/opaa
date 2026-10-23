@@ -146,8 +146,9 @@ mit `§` oder `Art.` in der Quellentabelle steht und jede Zeile dort einen Link 
 trägt, und dass Katalog und Erfüllungsmatrix dieselben Anforderungsnummern führen; das Ziel jedes
 Links prüft sie in allen Vorlagen. Die Meldestelle für Sicherheitslücken aus Phase 1 ist
 [SECURITY.md](../../SECURITY.md) (#2561). **(gebaut, #2556)** Die Vorlage Update-Vermerk liegt in
-`docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(Zielbild)** Die übrigen
-Vorlagen der Phasen 0 bis 3 und die Mitbestimmung.
+`docs/behoerden/09-betrieb-update/` und im Update-Paket jedes Release. **(gebaut, #2566)**
+Muster-Dienstvereinbarung und Informationsmappe für den Personalrat liegen in
+`docs/behoerden/05-mitbestimmung/`. **(Zielbild)** Die übrigen Vorlagen der Phasen 0 bis 3.
 
 **Markterkundung und Codeentstehung (Beschluss 4):** Die Markterkundungsunterlagen enthalten keine
 Aussage dazu, wie der Code entstanden ist. Fragt eine Behörde ausdrücklich danach, lautet die Antwort:
@@ -443,6 +444,11 @@ Faktenblätter, die Lizenzübersicht,
 die Vorlage Update-Vermerk und `SHA256SUMS`; Aufbau, Erzeugung und Probelauf ohne Release beschreibt
 [releases.md](../releases.md#update-paket).
 
+**(gebaut, #3028)** Das Paket enthält außerdem alle Behördenvorlagen und das Handbuch der Version,
+untereinander und mit den Faktenblättern relativ verlinkt, und neben jeder Markdown-Datei eine
+HTML-Seite mit `index.html` als Startseite. So lässt es sich hinter der Schleuse ohne
+Internetzugang lesen; die Vorlagen setzen voraus, dass sie dort gelesen werden.
+
 **(gebaut, #2555)** Die Teile 3 und 4 liegen als `betrieb/betriebsfolgen.md` und
 `betrieb/antwortqualitaet.md` im Archiv, für dasselbe Intervall wie das Delta und jede Angabe mit
 Quelle. Sie stehen neben dem Delta, nicht darin: Ihre Quellen sind keine Fakten des Manifests.
@@ -586,8 +592,9 @@ beteiligungsrelevant wie eine Produktänderung. Deshalb:
 
 ## Das Modell der Dienstvereinbarung
 
-**(Zielbild, #2566)** Die Muster-Dienstvereinbarung soll nicht bei jedem Release neu verhandelt
-werden müssen und den Überwachungsumfang trotzdem nicht unbemerkt wachsen lassen. Sie hat drei Teile.
+**(gebaut, #2566)** Die Muster-Dienstvereinbarung
+([`docs/behoerden/05-mitbestimmung/dienstvereinbarung.md`](../behoerden/05-mitbestimmung/dienstvereinbarung.md))
+soll nicht bei jedem Release neu verhandelt werden müssen und den Überwachungsumfang trotzdem nicht unbemerkt wachsen lassen. Sie hat drei Teile.
 
 **Haupttext.** Zweck; Verbot der Leistungs- und Verhaltenskontrolle mit Verwertungsverbot;
 Auswertungsverbot einschließlich Datenbank- und Protokollzugriff, mit benannten Rollen und
@@ -610,7 +617,19 @@ nachträglicher Unterrichtung des Personalrats. Das trägt nur, wenn sie keine n
 enthalten — deshalb verweist die Vereinbarung auf die
 [Supportlinien](../releases.md#supportlinien) mit festem Zeitraum: Patch-Releases einer Linie
 bringen keine neue Funktion; eine Korrektur im Code kommt per
-[Backport](../releases.md#backport) auf den Wartungsbranch der Linie.
+[Backport](../releases.md#backport) auf den Wartungsbranch der Linie. Ein **Funktionsupdate** wird erst nach Abschluss
+der Stufe eingespielt, vorher nur, wenn jede Funktion der Stufe Zustimmung in der Installation
+abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update. Beim **Wechsel der
+Linie** beginnt die Beteiligung, sobald der Release-Kandidat erscheint, mit dem Delta von der
+eingesetzten Version zu ihm; früher geht es mit dem Delta zum jüngsten finalen Release dazwischen
+(bei reinem LTS-Betrieb dem Dezember-Release). Das Delta zwischen Kandidat und finalem Release wird
+erneut gestuft. Alle Deltas erzeugt der Betrieb, solange das Update-Paket nur mit dem vorigen finalen Release vergleicht. Steht eine
+Sicherheitskorrektur nur in einem Funktionsupdate bereit (etwa weil die eingesetzte Linie ausgelaufen
+ist oder sich die Korrektur nicht zurückportieren lässt), darf die Dienststellenleitung es als
+vorläufige Maßnahme sofort einspielen: Schaltbare zustimmungspflichtige Funktionen bleiben aus, eine
+nicht abschaltbare zustimmungspflichtige Änderung wird bis zur Zustimmung weder genutzt noch
+ausgewertet, der Personalrat wird unverzüglich unterrichtet und die Beteiligung nachgeholt
+(Entscheidung des Maintainers vom 23.10.2026).
 
 **Informationsmappe für den Personalrat.** Rollensicht, Beispiele möglicher und ausgeschlossener
 Auswertungen, Datenfluss zum Modellanbieter, Wirkung des Abschaltens einzelner Funktionen, Glossar,
@@ -687,11 +706,10 @@ Normtext geprüft. Die vollständige Tabelle mit Quellen steht im ersten Komment
 
 - **R1 „standardmäßig aus“** (abgelehnt, Beschluss 1): Neue Funktionen mit Datenwirkung sollten nach
   dem ersten Konzeptentwurf ausgeschaltet ausgeliefert werden. Stattdessen werden sie in
-  Release-Notizen und Update-Paket sichtbar. Offen bleibt die Folge für die Dienstvereinbarung: Reicht
-  die Abschaltbarkeit in der Konfiguration, wenn ein Release eine beteiligungspflichtige Funktion
-  sofort aktiv mitbringt, oder genügt es, dass die Supportlinien aus ADR-0054 Sicherheitsupdates
-  ohne neue Funktionen liefern und Funktionsreleases planbar zweimal im Jahr kommen? Klärung mit
-  #2566.
+  Release-Notizen und Update-Paket sichtbar. Die Folge für die Dienstvereinbarung ist mit #2566
+  geregelt: Sicherheitsupdates kommen über die Supportlinien aus ADR-0054 ohne neue Funktion, und ein
+  Funktionsupdate wartet, bis zugestimmt oder die Funktion abgeschaltet ist (siehe
+  [Das Modell der Dienstvereinbarung](#das-modell-der-dienstvereinbarung)).
 - **Unternehmen** (zurückgestellt, Beschluss 6): Unterlagen für Betriebsrat (§ 87 Abs. 1 Nr. 6
   BetrVG), ISO 27001, NIS2 für Unternehmen und die CRA-Herstellerrolle folgen in einem eigenen
   Vorhaben.

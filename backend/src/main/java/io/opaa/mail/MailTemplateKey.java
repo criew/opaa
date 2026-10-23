@@ -134,19 +134,23 @@ public enum MailTemplateKey {
       Grund: {{reason}}
 
       Bestehende Sitzungen wurden beendet. Wenden Sie sich für die Freischaltung an Ihre Systemverwaltung.
+
+      {{chatDeletionNotice}}
       """,
       """
       <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Ihr Zugang wurde gesperrt</h1>
       <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
       <p style="margin:0 0 14px;">Ihr Zugang zu <strong>{{productName}}</strong> wurde gesperrt.</p>
       <p style="margin:0 0 14px;">Grund: {{reason}}</p>
-      <p style="margin:0;font-size:13px;">Bestehende Sitzungen wurden beendet. Wenden Sie sich für die Freischaltung an Ihre Systemverwaltung.</p>
+      <p style="margin:0 0 14px;font-size:13px;">Bestehende Sitzungen wurden beendet. Wenden Sie sich für die Freischaltung an Ihre Systemverwaltung.</p>
+      <p style="margin:0;font-size:13px;">{{chatDeletionNotice}}</p>
       """,
       null,
       "Ihr Zugang zu {{productName}} wurde gesperrt.",
       "productName",
       "displayName",
-      "reason"),
+      "reason",
+      "chatDeletionNotice"),
 
   ACCOUNT_UNLOCKED(
       "Konto freigeschaltet",
@@ -385,6 +389,10 @@ public enum MailTemplateKey {
           Map.entry("actionUrl", "https://opaa.example.org/set-password?token=BEISPIEL"),
           Map.entry("expiresAtHuman", "noch 24 Stunden"),
           Map.entry("reason", "Zu viele fehlgeschlagene Anmeldeversuche"),
+          Map.entry(
+              "chatDeletionNotice",
+              "Ihre Chats werden frühestens am 23.10.2027 gelöscht, sofern die Sperre bis dahin"
+                  + " besteht."),
           Map.entry("count", "7"),
           Map.entry("occurredAtHuman", "am 11.09.2026 um 08:14 Uhr"),
           Map.entry("libraryName", "Baugenehmigungen 2024"),

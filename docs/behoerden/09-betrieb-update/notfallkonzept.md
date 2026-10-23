@@ -84,7 +84,7 @@ Zuständig (Name, Erreichbarkeit, Vertretung):
 
 - Ein **Ersatzmodell bei einem anderen Anbieter** ist ein neuer Datenfluss
   ({{faktenblatt:datenfluesse}}). Es darf erst aktiviert werden, wenn Datenschutzunterlagen und
-  Dienstvereinbarung es abdecken; sonst heißt die Vorsorge: Ausfall abwarten.
+  [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) es abdecken; sonst heißt die Vorsorge: Ausfall abwarten.
 - Ein **RPO unter dem Sicherungsintervall** verlangt eine fortlaufende Sicherung der Datenbank und
   eine versionierte oder replizierte Originalablage. Das ist Sache des Datenbank- und
   Speicherbetriebs.
