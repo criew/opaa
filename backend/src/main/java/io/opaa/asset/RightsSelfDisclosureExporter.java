@@ -132,14 +132,15 @@ public class RightsSelfDisclosureExporter implements SelfDisclosureExporter {
         "grants",
         (afterTime, afterId, limit) ->
             jdbc.query(
-                "SELECT ag.id, ag.asset_type, a.name AS asset_name, ag.subject_type,"
+                "WITH ag AS (SELECT * FROM asset_grants WHERE organization_id = ?"
+                    + " AND (subject_user_id = ? OR granted_by_user_id = ?)"
+                    + " AND (created_at, id) > (?, ?))"
+                    + " SELECT ag.id, ag.asset_type, a.name AS asset_name, ag.subject_type,"
                     + " ag.subject_user_id, g.name AS group_name, ag.role, ag.expires_at,"
-                    + " ag.granted_by_user_id, ag.created_at, ag.updated_at FROM asset_grants ag"
+                    + " ag.granted_by_user_id, ag.created_at, ag.updated_at FROM ag"
                     + " LEFT JOIN assets a ON a.id = ag.asset_id"
                     + " LEFT JOIN groups g ON g.id = ag.subject_group_id"
-                    + " WHERE ag.organization_id = ?"
-                    + " AND (ag.subject_user_id = ? OR ag.granted_by_user_id = ?)"
-                    + " AND (ag.created_at, ag.id) > (?, ?) ORDER BY ag.created_at, ag.id LIMIT ?",
+                    + " ORDER BY ag.created_at, ag.id LIMIT ?",
                 (rs, i) -> {
                   Map<String, Object> record = keyed(rs, "created_at", "id");
                   record.put("assetType", rs.getString("asset_type"));

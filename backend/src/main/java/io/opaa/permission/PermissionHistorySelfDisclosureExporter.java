@@ -150,13 +150,15 @@ public class PermissionHistorySelfDisclosureExporter implements SelfDisclosureEx
         "assetGrants",
         (afterTime, afterId, limit) ->
             jdbc.query(
-                "SELECT h.id, h.asset_type, a.name AS asset_name, h.subject_type,"
+                "WITH h AS (SELECT * FROM asset_grant_history WHERE organization_id = ?"
+                    + " AND (subject_user_id = ? OR actor_user_id = ?)"
+                    + " AND (valid_from, id) > (?, ?))"
+                    + " SELECT h.id, h.asset_type, a.name AS asset_name, h.subject_type,"
                     + " h.subject_user_id, g.name AS group_name, h.role, h.expires_at, h.cause,"
-                    + " h.actor_user_id, h.valid_from, h.valid_to FROM asset_grant_history h"
+                    + " h.actor_user_id, h.valid_from, h.valid_to FROM h"
                     + " LEFT JOIN assets a ON a.id = h.asset_id"
                     + " LEFT JOIN groups g ON g.id = h.subject_group_id"
-                    + " WHERE h.organization_id = ? AND (h.subject_user_id = ? OR h.actor_user_id = ?)"
-                    + " AND (h.valid_from, h.id) > (?, ?) ORDER BY h.valid_from, h.id LIMIT ?",
+                    + " ORDER BY h.valid_from, h.id LIMIT ?",
                 (rs, i) -> {
                   Map<String, Object> record = keyed(rs, "valid_from", "id");
                   record.put("assetType", rs.getString("asset_type"));
