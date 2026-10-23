@@ -803,7 +803,7 @@ tragen `false`). Das Feld erlaubt es Programmen, die Antworten über `POST /api/
 Chatverlauf weiterverarbeiten, die Herkunft eindeutig zu erkennen (Art. 50 KI-Verordnung). Es ist
 **keine Markierung im Antworttext**: Wird der Text kopiert oder weitergegeben, bleibt das Feld
 zurück. Ein Text-Wasserzeichen kann nur der Anbieter des Modells setzen; OPAA fügt keines hinzu. Der
-Modellname steht weiterhin nur in den Angaben zur Antwort. Suche ohne Antwort
+Modellname steht nur in den Angaben zur Antwort. Suche ohne Antwort
 (`POST /api/v1/search`) und der MCP-Server liefern nur Fundstellen und tragen das Feld nicht.
 
 ## 7. Belege prüfen und Fundstellen bilden
