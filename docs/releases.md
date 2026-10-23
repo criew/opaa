@@ -408,7 +408,9 @@ Ablauf:
    Das erste Release trägt nur einen festen Text: Ohne Vorgänger umfassten generierte Notizen die
    gesamte Historie.
 7. Bei einem finalen `vX.Y.0` den Wartungsbranch `release/X.Y` der neuen Linie anlegen
-   ([Backport](#backport), Schritt 1).
+   ([Backport](#backport), Schritt 1) und per PR auf `main` die [Liste der Linien](#liste-der-linien)
+   nachziehen: die neue Linie eintragen und beim Vorgänger, einer normalen Linie, das Supportende
+   setzen; dazu die Zeile in der Roadmap.
 
 Von Hand nachbearbeiten muss man die Notizen nur für bekannte Befunde aus Schritt 4: Was ein
 Release von Bestandsinstallationen verlangt, kommt über Schritt 3 aus dem Repository,
@@ -480,10 +482,9 @@ Issue fest. Ablauf, Beispiel Linie 0.2:
    nicht „Latest“.
 
 Ein Sicherheitsupdate nur des Basis-Images braucht keinen Backport: Ein neues Tag auf dem Commit des
-letzten Release der Linie genügt ([Versionsnummern](#versionsnummern)). Renovate pflegt die
-Wartungsbranches noch nicht ([#3019](https://github.com/criew/opaa/issues/3019)); ein
-Abhängigkeits-Update dort kommt bis dahin als Backport des Renovate-PRs von `main`, sofern er nur
-Patch-Versionen anhebt.
+letzten Release der Linie genügt ([Versionsnummern](#versionsnummern)). Patch-Updates der
+Abhängigkeiten schlägt Renovate auf jedem Wartungsbranch einer unterstützten Linie selbst vor
+([renovate.md](renovate.md#wartungsbranches)); sie brauchen keinen Backport.
 
 ## Vorbereitung für Bestandsinstallationen
 
@@ -864,7 +865,6 @@ gebaut sind:
 | Baustein | Bis dahin | Issue |
 |---|---|---|
 | CVE-Scan aller unterstützten Linien | der Scan prüft nur das jüngste Release ([cve-scanning.md](cve-scanning.md)) | [#3018](https://github.com/criew/opaa/issues/3018) |
-| Renovate auf den Wartungsbranches | Abhängigkeits-Updates nur auf `main` | [#3019](https://github.com/criew/opaa/issues/3019) |
 | Delta zur vorigen LTS-Linie im Update-Paket | nur das Delta zum vorigen finalen Release | [#3020](https://github.com/criew/opaa/issues/3020) |
 
 Bis zum zweiten finalen Release gibt es nur eine Linie; dafür reichen Scan und Renovate wie heute.
@@ -903,6 +903,26 @@ diesem Supportende.
 
 Erscheint ein Release, ersetzt es seine Zeile durch die Versionsnummer und das feste Supportende;
 eine ausgelaufene Linie bleibt mit ihrem Ende stehen.
+
+### Liste der Linien
+
+Maschinenlesbar stehen die veröffentlichten Linien in `.github/support-lines.json`, je Linie `line`
+(`X.Y`), `kind` (`lts` oder `normal`) und `supportEnd`, der letzte Tag mit Patch-Releases als
+`JJJJ-MM-TT`. Bei einer normalen Linie bleibt `supportEnd` `null`, bis ihr Nachfolger erscheint;
+dann ist es der Tag einen Monat nach dessen Erscheinen. Eine LTS-Linie trägt ihr Ende von Anfang
+an. Ausgelaufene Linien bleiben stehen. Eine Linie gilt bis einschließlich `supportEnd` als
+unterstützt; danach pflegt Renovate ihren Branch nicht mehr, ohne dass jemand `renovate.json5`
+ändert ([renovate.md](renovate.md#wartungsbranches)). Geprüft wird die Datei von
+`.github/scripts/test_support_lines.py`; gepflegt im Release-Ablauf, Schritt 7.
+
+```json
+{
+  "lines": [
+    { "line": "0.1", "kind": "normal", "supportEnd": "2027-01-31" },
+    { "line": "0.2", "kind": "normal", "supportEnd": null }
+  ]
+}
+```
 
 ## Sicherheitsupdates für Releases
 
