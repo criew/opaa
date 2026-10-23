@@ -83,8 +83,6 @@ Behörde Betrieb und Pflege tatsächlich selbst übernimmt.
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Beitrag der IHK Schwerin zum Vergabebeschleunigungsgesetz](https://www.ihk.de/schwerin/recht/aktuelles/vergabebeschleunigungsgesetz-ab-01-07-2026-7060088):
-  was sich zum 1.7.2026 bei den Wertgrenzen geändert hat.
 - [Kein Angebot eingegangen](ohne-angebot.md): Wege, wenn kein Angebot eingeht.
 
 **Rechtsgrundlagen** für die Vergabestelle:
@@ -93,7 +91,7 @@ Behörde Betrieb und Pflege tatsächlich selbst übernimmt.
 |---|---|
 | Markterkundung oberhalb der EU-Schwellenwerte | § 28 [VgV](https://www.gesetze-im-internet.de/vgv_2016/__28.html) |
 | Markterkundung unterhalb der EU-Schwellenwerte | § 20 UVgO bzw. Landesrecht; geltende Fassung zu prüfen |
-| Direktauftrag des Bundes bis 50.000 € netto seit 1.7.2026 | Vergabebeschleunigungsgesetz, BGBl. I 2026 Nr. 137 ([IHK Schwerin](https://www.ihk.de/schwerin/recht/aktuelles/vergabebeschleunigungsgesetz-ab-01-07-2026-7060088)); Normtext zu prüfen |
-| Grenze gilt nicht automatisch für Länder und Kommunen; Neufassung der UVgO bis Ende 2026 | [IHK Schwerin](https://www.ihk.de/schwerin/recht/aktuelles/vergabebeschleunigungsgesetz-ab-01-07-2026-7060088) |
+| Direktauftrag des Bundes bis 50.000 € netto seit 1.7.2026 | Vergabebeschleunigungsgesetz, BGBl. I 2026 Nr. 137; Normtext zu prüfen |
+| Grenze gilt nicht automatisch für Länder und Kommunen; Neufassung der UVgO bis Ende 2026 | Landesrecht bzw. UVgO; zu prüfen |
 | Höhe der EU-Schwellenwerte | geltende Fassung zu prüfen |
 | Optionen und Verlängerungen zählen zum Auftragswert; keine Aufteilung, um eine Grenze zu unterschreiten | Schätzungsregeln von VgV, UVgO bzw. Landesrecht; Fundstelle zu prüfen |
