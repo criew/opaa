@@ -28,6 +28,7 @@ ist die Behörde; OPAA liefert die Fristen und Löschwege des Produkts.
 | Einstellbare Fristen mit Standardwert und Wertebereich | {{faktenblatt:fristen#konfigurationsschluessel}} |
 | Löschmechanismus je Datum | Zeile „Löschmechanismus“ im {{faktenblatt:datenkatalog}} |
 | Welche Löschungen protokolliert werden | {{faktenblatt:protokollereignisse}} |
+| Frist für Chats gesperrter Konten, mit Schalter | {{faktenblatt:fristen#opaa-chat-locked-account-cleanup-delete-after-days}}, {{faktenblatt:voreinstellungen#opaa-chat-locked-account-cleanup-enabled}} |
 | Technisches Anwendungslog | {{faktenblatt:datenkatalog#application-log}} |
 
 Die Faktenblätter nennen die Voreinstellung der Version. Was die eigene Installation anders eingestellt
@@ -41,7 +42,20 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
    einschaltet; ab Werk ist es aus, im persönlichen Space entscheidet nur die Person selbst
    ([Spaces: Chats](../../handbuch/spaces/README.md#7-chats)). Die Behörde legt fest, in welchen Spaces es
    eingeschaltet wird, etwa in allen gemeinsamen Spaces.
-3. **Anlässe regeln, die OPAA nicht kennt:**
+3. **Chats gesperrter Konten regeln:** Nach einer Sperre durch die Verwaltung löscht OPAA die Chats
+   des Kontos nach einer Frist, ab Werk eingeschaltet
+   ([Was mit den Chats eines gesperrten Kontos geschieht](../../handbuch/konten-und-rechte/benutzerverwaltung.md#was-mit-den-chats-eines-gesperrten-kontos-geschieht)).
+   Die Behörde legt fest:
+   - binnen welcher Zeit nach dem Ausscheiden das Konto in OPAA gesperrt wird; die Frist beginnt nur
+     mit der Sperre durch die Verwaltung, ein schon wegen Inaktivität gesperrtes Konto sperrt die
+     Verwaltung zusätzlich;
+   - dass bloße Abwesenheit (Elternzeit, Krankheit, Abordnung) kein Anlass für diese Sperre ist;
+   - wie sie mit Konten eines Identitätsanbieters umgeht: Sie lassen sich in OPAA nicht sperren, für
+     sie greift die Frist nicht;
+   - wer das Anhalten der Löschung je Konto veranlassen darf, etwa für ein Disziplinarverfahren;
+   - dass die Person bei planbarem Ausscheiden vor der Sperre eine Selbstauskunft ziehen kann; danach
+     erreicht sie sie nicht mehr.
+4. **Anlässe regeln, die OPAA nicht kennt:**
    - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird meist gesperrt,
      nicht gelöscht ([Löschen oder sperren](../../handbuch/konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).
    - Dokumente: Sie folgen ihrer Quelle
@@ -50,11 +64,11 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
    - Anwendungslog: die Frist festlegen, wenn sie laut Faktenblatt beim Betrieb liegt.
    - Sicherungen: Aufbewahrung festlegen und wie eine Rücksicherung mit bereits gelöschten Daten
      umgeht.
-4. **Mit dem Archiv klären**, ob vor der Löschung Daten anzubieten sind, etwa das Protokoll.
+5. **Mit dem Archiv klären**, ob vor der Löschung Daten anzubieten sind, etwa das Protokoll.
    Chatverläufe sind meist nicht aktenrelevant, übernommene Ergebnisse schon; deshalb gehören sie nach
    der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md#6-ergebnisse-in-die-akte) in die Akte.
-5. **Nachweis regeln** für Löschungen außerhalb von OPAA: Sicherungen, Quellen, Anwendungslog.
-6. **Bei jedem Update nachziehen:** Das Update-Paket weist geänderte Fristen, Daten und Löschwege aus.
+6. **Nachweis regeln** für Löschungen außerhalb von OPAA: Sicherungen, Quellen, Anwendungslog.
+7. **Bei jedem Update nachziehen:** Das Update-Paket weist geänderte Fristen, Daten und Löschwege aus.
 
 ## Ergebnis festhalten
 
@@ -64,8 +78,13 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
 
 ## Gut zu wissen
 
-- Die Fristwahl ist meist auch Gegenstand der [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) mit dem Personalrat.
-- Gelöschte Daten bleiben in Sicherungen, bis diese ablaufen.
+- Die Fristwahl ist meist auch Gegenstand der [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) mit
+  dem Personalrat.
+- Gelöschte Daten bleiben in Sicherungen, bis diese ablaufen. Wird eine Sicherung eingespielt, löscht
+  die nächste Nacht die Chats gesperrter Konten erneut; sollen sie zurück, wird das Konto nach dem
+  Einspielen und vor dem nächsten nächtlichen Lauf entsperrt oder die Löschung angehalten.
+- Eine längere Frist für Chats gesperrter Konten ist eine längere Speicherdauer und damit in der Regel
+  Gegenstand der Dienstvereinbarung.
 
 ## Zum Nachlesen
 
@@ -80,4 +99,5 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
 |---|---|
 | Löschfristen im Verzeichnis von Verarbeitungstätigkeiten | Art. 30 Abs. 1 lit. f [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) |
 | Voreinstellungen begrenzen die Speicherdauer auf das Nötige | Art. 25 Abs. 2 DSGVO |
+| Löschung, auch in Sicherungen | Art. 17 DSGVO |
 | Unterlagen vor der Löschung dem Archiv anbieten | § 5 [BArchG](https://www.gesetze-im-internet.de/barchg_2017/__5.html) bzw. Landesarchivgesetz |

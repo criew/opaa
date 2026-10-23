@@ -25,7 +25,7 @@ Verantwortlich ist die Behörde; OPAA beschreibt, was das Produkt dazu beiträgt
 - **Teile einer Installation** (Zielobjekte): Anwendung, Datenbank, Originalablage, Modelldienste,
   Container-Plattform, dazu Identitätsanbieter und Quellen des Hauses
   ([Betriebsübersicht](../../handbuch/betrieb/README.md#bausteine)).
-- **Daten und Voreinstellungen** der eingesetzten Version: {{faktenblatt:datenkatalog}},
+- **Daten und Voreinstellungen:** {{faktenblatt:datenkatalog}},
   {{faktenblatt:voreinstellungen}}; Nachweise des Projekts in den
   [Sicherheitsnachweisen](sicherheitsnachweise.md).
 - **Je Release ein [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket)**, das bei jeder Änderung angibt,

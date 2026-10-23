@@ -1,6 +1,7 @@
 import type {
   LocalAccountState,
   LockReason,
+  LocalUserChatCleanupResponse,
   LocalUserResponse,
   MailDeliveryPath,
   SystemRole,
@@ -138,4 +139,28 @@ export function defaultExpiryInputValue(days: number): string {
   const date = new Date()
   date.setDate(date.getDate() + days)
   return toDateInputValue(date.toISOString())
+}
+
+/** The sentence for the state; the date never depends on chats or an open Klärung. */
+export function chatCleanupText(state: LocalUserChatCleanupResponse): string {
+  switch (state.status) {
+    case 'SCHEDULED':
+      return (
+        `Die Chats dieses Kontos werden frühestens am ${formatExpiry(state.earliestDeletionAt)} ` +
+        'gelöscht, auch angeheftete. Ein Entsperren vorher hält die Löschung auf.'
+      )
+    case 'HELD':
+      return (
+        'Die Löschung der Chats ist für dieses Konto angehalten. Nach dem Fortsetzen löscht der ' +
+        'nächste nächtliche Lauf, sobald die Frist nach einer Sperre durch die Verwaltung ' +
+        'abgelaufen ist.'
+      )
+    case 'SWITCHED_OFF':
+      return 'Die Löschung der Chats gesperrter Konten ist im Betrieb abgeschaltet.'
+    default:
+      return (
+        `Sperrt die Verwaltung dieses Konto, werden seine Chats ${state.deleteAfterDays} Tage ` +
+        'danach gelöscht. Eine Sperre wegen Inaktivität oder Fehlversuchen löst das nicht aus.'
+      )
+  }
 }

@@ -444,6 +444,11 @@ Faktenblätter, die Lizenzübersicht,
 die Vorlage Update-Vermerk und `SHA256SUMS`; Aufbau, Erzeugung und Probelauf ohne Release beschreibt
 [releases.md](../releases.md#update-paket).
 
+**(gebaut, #3028)** Das Paket enthält außerdem alle Behördenvorlagen und das Handbuch der Version,
+untereinander und mit den Faktenblättern relativ verlinkt, und neben jeder Markdown-Datei eine
+HTML-Seite mit `index.html` als Startseite. So lässt es sich hinter der Schleuse ohne
+Internetzugang lesen; die Vorlagen setzen voraus, dass sie dort gelesen werden.
+
 **(gebaut, #2555)** Die Teile 3 und 4 liegen als `betrieb/betriebsfolgen.md` und
 `betrieb/antwortqualitaet.md` im Archiv, für dasselbe Intervall wie das Delta und jede Angabe mit
 Quelle. Sie stehen neben dem Delta, nicht darin: Ihre Quellen sind keine Fakten des Manifests.

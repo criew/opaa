@@ -1,6 +1,7 @@
 import type {
   LocalAuthSettingsResponse,
   LocalAuthSettingsUpdateRequest,
+  LocalUserChatCleanupResponse,
   LocalUserCreateRequest,
   LocalUserCreatedResponse,
   LocalUserGeneratedPasswordResponse,
@@ -79,6 +80,45 @@ export async function lockLocalUser(
 export async function unlockLocalUser(id: string): Promise<LocalUserResponse> {
   try {
     const { data } = await apiClient.post<LocalUserResponse>(`/v1/admin/local-users/${id}/unlock`)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * When the chats of the account are deleted after a lock by the administration. Asked per account
+ * only: the date is deliberately no column, filter or export of the list.
+ */
+export async function getLocalUserChatCleanup(id: string): Promise<LocalUserChatCleanupResponse> {
+  try {
+    const { data } = await apiClient.get<LocalUserChatCleanupResponse>(
+      `/v1/admin/local-users/${id}/chat-cleanup`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function holdLocalUserChatCleanup(id: string): Promise<LocalUserChatCleanupResponse> {
+  try {
+    const { data } = await apiClient.put<LocalUserChatCleanupResponse>(
+      `/v1/admin/local-users/${id}/chat-cleanup/hold`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function resumeLocalUserChatCleanup(
+  id: string,
+): Promise<LocalUserChatCleanupResponse> {
+  try {
+    const { data } = await apiClient.delete<LocalUserChatCleanupResponse>(
+      `/v1/admin/local-users/${id}/chat-cleanup/hold`,
+    )
     return data
   } catch (err) {
     normalizeError(err)
