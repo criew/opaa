@@ -21,22 +21,22 @@ Projekt.
 
 ## Was OPAA liefert
 
-- **Was zu sichern ist** und in welcher Reihenfolge: [Sicherung und Wiederherstellung](../../handbuch/sicherung-und-wiederherstellung.md),
-  mit den Befehlen für [Docker Compose](../../handbuch/docker-compose.md#sicherung-und-wiederherstellung)
-  und [Kubernetes](../../handbuch/kubernetes.md#sicherung-und-wiederherstellung).
+- **Was zu sichern ist** und in welcher Reihenfolge: [Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md),
+  mit den Befehlen für [Docker Compose](../../handbuch/betrieb/docker-compose.md#sicherung-und-wiederherstellung)
+  und [Kubernetes](../../handbuch/betrieb/kubernetes.md#sicherung-und-wiederherstellung).
 - **Wie sich ein Ausfall der Modelle auswirkt** und welche Vorsorge möglich ist:
-  [Ausfall eines Modells](../../handbuch/modelle.md#ausfall-eines-modells).
+  [Ausfall eines Modells](../../handbuch/betrieb/modelle.md#ausfall-eines-modells).
 - **Wie RTO und RPO belegt werden:** [Wiederherstellungsprobe](wiederherstellungsprobe.md).
 
 | Ausfall | Wirkung | Datenverlust | Wiederanlauf |
 |---|---|---|---|
-| Backend | Mit einer Instanz steht der Dienst, mit mehreren antworten die übrigen | keiner | [Readiness und Liveness](../../handbuch/images-und-laufzeit.md#readiness-und-liveness) |
-| Datenbank verloren | Dienst steht | alles seit der letzten Sicherung | [Sicherung und Wiederherstellung](../../handbuch/sicherung-und-wiederherstellung.md) |
-| Originalablage verloren | Suche läuft, „Original öffnen“ und Uploads scheitern | Originale seit der letzten Sicherung | [Originalablage](../../handbuch/originalablage.md#sicherung-und-wiederherstellung) |
-| Verschlüsselungsschlüssel verloren | Zugangsdaten zu Quellen und Modellen unlesbar | nur diese Zugangsdaten | [Zugangsdaten-Verschlüsselung](../../handbuch/netz-und-sicherheit.md#zugangsdaten-verschlüsselung) |
-| Update fehlgeschlagen | Dienst steht oder läuft fehlerhaft | alles seit der Sicherung vor dem Update | [Aktualisierung und Rückweg](../../handbuch/kubernetes.md#aktualisierung-und-rückweg) |
-| Identitätsanbieter | Anmeldung nur noch mit lokalen Konten | keiner | [Notfallprozedur](../../handbuch/authentifizierung.md#notfallprozedur-wieder-hereinkommen) |
-| Modellanbieter | je nach Rolle, Anmeldung und Dokumente bleiben | keiner | [Ausfall eines Modells](../../handbuch/modelle.md#ausfall-eines-modells) |
+| Backend | Mit einer Instanz steht der Dienst, mit mehreren antworten die übrigen | keiner | [Readiness und Liveness](../../handbuch/betrieb/images-und-laufzeit.md#readiness-und-liveness) |
+| Datenbank verloren | Dienst steht | alles seit der letzten Sicherung | [Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md) |
+| Originalablage verloren | Suche läuft, „Original öffnen“ und Uploads scheitern | Originale seit der letzten Sicherung | [Originalablage](../../handbuch/betrieb/originalablage.md#sicherung-und-wiederherstellung) |
+| Verschlüsselungsschlüssel verloren | Zugangsdaten zu Quellen und Modellen unlesbar | nur diese Zugangsdaten | [Zugangsdaten-Verschlüsselung](../../handbuch/betrieb/netz-und-sicherheit.md#zugangsdaten-verschlüsselung) |
+| Update fehlgeschlagen | Dienst steht oder läuft fehlerhaft | alles seit der Sicherung vor dem Update | [Aktualisierung und Rückweg](../../handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg) |
+| Identitätsanbieter | Anmeldung nur noch mit lokalen Konten | keiner | [Notfallprozedur](../../handbuch/betrieb/authentifizierung.md#notfallprozedur-wieder-hereinkommen) |
+| Modellanbieter | je nach Rolle, Anmeldung und Dokumente bleiben | keiner | [Ausfall eines Modells](../../handbuch/betrieb/modelle.md#ausfall-eines-modells) |
 | Verdacht auf Kompromittierung | nach Vorfallbehandlung des Hauses | je nach Sicherung | Neuaufbau aus einer Sicherung von vor dem Vorfall, alle Geheimnisse wechseln, Meldepflichten prüfen ([NIS2](../06-informationssicherheit/nis2-bundesverwaltung.md)) |
 
 ## Aufgaben der Behörde
@@ -100,8 +100,8 @@ Zuständig (Name, Erreichbarkeit, Vertretung):
   wie ein Notfallmanagement aufgebaut wird, mit Business-Impact-Analyse.
 - [Grundschutz-Modellierung](../06-informationssicherheit/grundschutz-modellierung.md), Bausteine
   CON.3 Datensicherungskonzept und DER.4 Notfallmanagement.
-- [Sicherung und Wiederherstellung](../../handbuch/sicherung-und-wiederherstellung.md):
+- [Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md):
   was zu sichern ist, in welcher Reihenfolge zurückgespielt wird und wie die Wiederherstellung
   geprobt wird.
-- [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md): Betrieb ohne Ausfall eines
+- [Mehrere Backend-Instanzen](../../handbuch/betrieb/mehrere-instanzen.md): Betrieb ohne Ausfall eines
   einzelnen Backends und Update ohne Unterbrechung.

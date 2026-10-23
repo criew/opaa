@@ -48,7 +48,7 @@ Originale (`knowledge`) —, das Metadatenschema (`metadata`), der Weg vom Dokum
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/wissensbibliotheken.md`, `docs/handbuch/metadaten.md`
+- Handbuch: `docs/handbuch/arbeitsmittel/wissensbibliotheken/README.md`, `docs/handbuch/arbeitsmittel/wissensbibliotheken/metadaten.md`
 
 ## Tests bei Änderungen
 

@@ -43,7 +43,7 @@ liegen im Update-Paket am GitHub-Release der Version.
 | Was tut die KI? | {{faktenblatt:voreinstellungen#ki-funktionen}} |
 
 Die Faktenblätter zeigen die Voreinstellungen. Was die eigene Installation anders eingestellt hat,
-zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
+zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 
 ## Aufgaben der Behörde
 
@@ -63,11 +63,11 @@ zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.
 
 | Risiko | Was OPAA mitbringt | Was die Behörde festlegt | Bewertung |
 |---|---|---|---|
-| Kontrolle von Leistung und Verhalten der Beschäftigten | pseudonymisiertes Protokoll ([Pseudonymisierung im Protokoll](../../handbuch/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)), Einsicht nur für die Revision ({{faktenblatt:rollensicht#auditor}}) | Dienstvereinbarung, Rollenvergabe | [ ] |
+| Kontrolle von Leistung und Verhalten der Beschäftigten | pseudonymisiertes Protokoll ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)), Einsicht nur für die Revision ({{faktenblatt:rollensicht#auditor}}) | Dienstvereinbarung, Rollenvergabe | [ ] |
 | Fragen und Antworten werden anderen bekannt | Sichtbarkeit und Löschung von Chats ({{faktenblatt:datenkatalog#chats}}) | Regeln der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) | [ ] |
-| Zu weit gefasste Rechte an Dokumenten mit Personendaten | Rechte je Bibliothek und Space mit Historie ([Berechtigungen](../../handbuch/berechtigungen.md)) | Freigabeprozess, ausgeschlossene Quellen | [ ] |
-| Daten gehen an einen externen Modellanbieter | lokale Modelle als Voreinstellung ([Modelle](../../handbuch/modelle.md)) | Wahl des Anbieters, Vertrag, Netzregeln | [ ] |
-| Falsche Aussagen über Personen in Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/suche.md)) | Regel „Antwort ist ein Entwurf“, keine Entscheidungen über Personen | [ ] |
+| Zu weit gefasste Rechte an Dokumenten mit Personendaten | Rechte je Bibliothek und Space mit Historie ([Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md)) | Freigabeprozess, ausgeschlossene Quellen | [ ] |
+| Daten gehen an einen externen Modellanbieter | lokale Modelle als Voreinstellung ([Modelle](../../handbuch/betrieb/modelle.md)) | Wahl des Anbieters, Vertrag, Netzregeln | [ ] |
+| Falsche Aussagen über Personen in Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/spaces/suche.md)) | Regel „Antwort ist ein Entwurf“, keine Entscheidungen über Personen | [ ] |
 | Daten bleiben länger als nötig | Fristen und Löschung je Datum ({{faktenblatt:fristen}}) | gewählte Fristen | [ ] |
 | Unbefugter Zugriff auf Datenbank oder Sicherungen | [Technische und organisatorische Maßnahmen](./technische-und-organisatorische-massnahmen.md) des Produkts | Sicherheitskonzept, Betrieb | [ ] |
 

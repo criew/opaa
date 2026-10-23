@@ -87,14 +87,14 @@ public class CredentialsEncryptor {
       throw new CredentialsEncryptionKeyMissingException(
           "Zugangsdaten können nicht gespeichert oder gelesen werden: "
               + "opaa.security.credentials.encryption-key (OPAA_CREDENTIALS_ENCRYPTION_KEY) ist"
-              + " nicht gesetzt. Siehe docs/handbuch/netz-und-sicherheit.md.");
+              + " nicht gesetzt. Siehe docs/handbuch/betrieb/netz-und-sicherheit.md.");
     }
     try {
       return new AesGcmCipher(
           AesGcmCipher.aes256Key(
               base64Key,
               "OPAA_CREDENTIALS_ENCRYPTION_KEY",
-              "docs/handbuch/netz-und-sicherheit.md"));
+              "docs/handbuch/betrieb/netz-und-sicherheit.md"));
     } catch (InvalidKeyException e) {
       throw new CredentialsEncryptionKeyMissingException(e.getMessage(), e);
     }

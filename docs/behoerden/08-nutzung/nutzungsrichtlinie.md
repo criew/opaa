@@ -115,7 +115,7 @@ Stand: [Datum] · eingesetzte Version: [OPAA-Version]
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Handbuch, Belege prüfen und Fundstellen bilden](../../handbuch/suche.md#7-belege-prüfen-und-fundstellen-bilden):
+- [Handbuch, Belege prüfen und Fundstellen bilden](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden):
   was das Belegfenster zeigt; Grundlage für eine Einweisung.
 - [Erklärung zur Barrierefreiheit](./erklaerung-barrierefreiheit.md): Kontakt für gemeldete Barrieren.
 - [Löschkonzept](../04-datenschutz/loeschkonzept.md): Fristen und Aktenrelevanz von Chats.

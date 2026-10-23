@@ -88,7 +88,7 @@ gestrichen oder mit „nicht beteiligt“ vermerkt.
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Das Update-Paket eines Release](https://github.com/criew/opaa/blob/main/docs/handbuch/nachvollziehbarkeit.md#das-update-paket-eines-release)
+- [Das Update-Paket eines Release](https://github.com/criew/opaa/blob/main/docs/handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)
   im Handbuch: Inhalt des Pakets, Provenance-Prüfung, Delta für übersprungene Versionen.
-- [Aktualisierung](https://github.com/criew/opaa/blob/main/docs/handbuch/aktualisierung.md)
+- [Aktualisierung](https://github.com/criew/opaa/blob/main/docs/handbuch/betrieb/aktualisierung.md)
   im Handbuch: wie der Betrieb ein Update einspielt.

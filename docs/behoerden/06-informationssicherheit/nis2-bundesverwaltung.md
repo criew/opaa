@@ -28,7 +28,7 @@ erfasst ist, stellt jede Einrichtung selbst fest.
 | IT-Grundschutz | Bausteinzuordnung: [IT-Grundschutz](grundschutz-modellierung.md) |
 | Mindeststandard Protokollierung und Detektion | Anwendungs- und Nachweisprotokoll, Metriken und Alarme ([Sicherheitsnachweise](sicherheitsnachweise.md), {{faktenblatt:protokollereignisse}}); eine Ausleitung an ein Sicherheitsmonitoring ist nicht gebaut |
 | Mindeststandard externe Cloud-Dienste | ausgehende Ziele je Version ({{faktenblatt:datenfluesse}}); Modelle auch im Haus betreibbar; bei Cloud-Betrieb [C5](c5-cloud-betrieb.md) |
-| Mindeststandard TLS | TLS am vorgelagerten Proxy, Zertifikatsprüfung bei Quellen ([Netzwerkzugang](../../handbuch/netz-und-sicherheit.md#netzwerkzugang), [Zielprüfung](../../handbuch/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)) |
+| Mindeststandard TLS | TLS am vorgelagerten Proxy, Zertifikatsprüfung bei Quellen ([Netzwerkzugang](../../handbuch/betrieb/netz-und-sicherheit.md#netzwerkzugang), [Zielprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)) |
 
 Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 
@@ -39,7 +39,7 @@ Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
   [Rollenklärung zum Cyber Resilience Act](rollenklaerung-cra.md).
 - Daten fließen nur zu den Zielen, die die Installation einträgt ({{faktenblatt:datenfluesse}}).
   Ohne Internet geht es mit Modellen im Haus, auf Wunsch über einen
-  [Ausgangsproxy](../../handbuch/netz-und-sicherheit.md#ausgangsproxy).
+  [Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy).
 
 ## Aufgaben der Behörde
 

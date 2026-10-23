@@ -27,14 +27,14 @@ Datenschutzverletzung.
 
 | Schutzziel | OPAA bringt mit | Betrieb leistet, etwa |
 |---|---|---|
-| **Pseudonymisierung** | Protokoll mit Pseudonymen, Zuordnung getrennt gehalten ({{faktenblatt:datenkatalog#audit-pseudonyms}}, [Pseudonymisierung im Protokoll](../../handbuch/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)) | Datenbankzugriff beschränken, damit die Trennung hält |
-| **Verschlüsselung** | Zugangsdaten verschlüsselt gespeichert ([Schlüssel und Geheimnisse](../../handbuch/netz-und-sicherheit.md#schlüssel-und-geheimnisse)); Passwörter nur als Prüfwert | TLS am Eingang ([Netzwerkzugang](../../handbuch/netz-und-sicherheit.md#netzwerkzugang)), verschlüsselte Datenträger und Sicherungen, Schlüssel getrennt verwahren |
-| **Vertraulichkeit** | Rechte je Arbeitsmittel und Space ([Berechtigungen](../../handbuch/berechtigungen.md)), Sichtbarkeit je Rolle ({{faktenblatt:rollensicht}}), Anmeldung mit Sperren und Fristen ([Authentifizierung](../../handbuch/authentifizierung.md)) | Rollenkonzept, Anbindung an den Identitätsanbieter, Vier-Augen-Prinzip für die Revision |
+| **Pseudonymisierung** | Protokoll mit Pseudonymen, Zuordnung getrennt gehalten ({{faktenblatt:datenkatalog#audit-pseudonyms}}, [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)) | Datenbankzugriff beschränken, damit die Trennung hält |
+| **Verschlüsselung** | Zugangsdaten verschlüsselt gespeichert ([Schlüssel und Geheimnisse](../../handbuch/betrieb/netz-und-sicherheit.md#schlüssel-und-geheimnisse)); Passwörter nur als Prüfwert | TLS am Eingang ([Netzwerkzugang](../../handbuch/betrieb/netz-und-sicherheit.md#netzwerkzugang)), verschlüsselte Datenträger und Sicherungen, Schlüssel getrennt verwahren |
+| **Vertraulichkeit** | Rechte je Arbeitsmittel und Space ([Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md)), Sichtbarkeit je Rolle ({{faktenblatt:rollensicht}}), Anmeldung mit Sperren und Fristen ([Authentifizierung](../../handbuch/betrieb/authentifizierung.md)) | Rollenkonzept, Anbindung an den Identitätsanbieter, Vier-Augen-Prinzip für die Revision |
 | **Integrität** | Protokoll, an das nur angefügt wird ({{faktenblatt:protokollereignisse}}), Rechtehistorie ({{faktenblatt:datenkatalog#permission-history}}) | Datenbankrechte, Weiterleitung an ein Sicherheitsmonitoring |
-| **Verfügbarkeit** | Readiness- und Liveness-Probe ([Readiness und Liveness](../../handbuch/images-und-laufzeit.md#readiness-und-liveness)), Begrenzungen am Anmeldeweg | Überwachung, Kapazität, Ausfall des Modellanbieters einplanen |
-| **Ausgehende Verbindungen** | Zielprüfung ([Zielprüfung](../../handbuch/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)), ein Ausgangsproxy ([Ausgangsproxy](../../handbuch/netz-und-sicherheit.md#ausgangsproxy)), Datenflüsse ({{faktenblatt:datenfluesse#datenfluesse}}) | Netzregeln, Zielliste am Proxy |
-| **Wiederherstellung** | Sicherungsumfang und Reihenfolge beschrieben ([Sicherung und Wiederherstellung](../../handbuch/sicherung-und-wiederherstellung.md)) | Sicherungen durchführen, Rücksicherung regelmäßig proben |
-| **Regelmäßige Überprüfung** | Stückliste je Image ([SBOM](../../handbuch/releases-und-nachweise.md#provenance-und-software-stückliste)), [Schwachstellenerkennung](../../handbuch/releases-und-nachweise.md#schwachstellen), Meldeweg für Lücken ([SECURITY.md](../../../SECURITY.md)), Faktenblätter und Update-Paket je Version | Updates zeitnah einspielen, Update-Paket lesen, eigene Prüfungen |
+| **Verfügbarkeit** | Readiness- und Liveness-Probe ([Readiness und Liveness](../../handbuch/betrieb/images-und-laufzeit.md#readiness-und-liveness)), Begrenzungen am Anmeldeweg | Überwachung, Kapazität, Ausfall des Modellanbieters einplanen |
+| **Ausgehende Verbindungen** | Zielprüfung ([Zielprüfung](../../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)), ein Ausgangsproxy ([Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy)), Datenflüsse ({{faktenblatt:datenfluesse#datenfluesse}}) | Netzregeln, Zielliste am Proxy |
+| **Wiederherstellung** | Sicherungsumfang und Reihenfolge beschrieben ([Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md)) | Sicherungen durchführen, Rücksicherung regelmäßig proben |
+| **Regelmäßige Überprüfung** | Stückliste je Image ([SBOM](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste)), [Schwachstellenerkennung](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), Meldeweg für Lücken ([SECURITY.md](../../../SECURITY.md)), Faktenblätter und Update-Paket je Version | Updates zeitnah einspielen, Update-Paket lesen, eigene Prüfungen |
 
 ## Aufgaben der Behörde
 
@@ -51,7 +51,7 @@ Datenschutzverletzung.
 ## Gut zu wissen
 
 - Was die eigene Installation anders eingestellt hat, zeigt die
-  [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
+  [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 - Wie das Sicherheitskonzept nach IT-Grundschutz aufgebaut wird, ist nicht Teil dieser Vorlage.
 
 ## Zum Nachlesen

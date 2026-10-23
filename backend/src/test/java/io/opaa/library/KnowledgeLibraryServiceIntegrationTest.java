@@ -648,7 +648,7 @@ class KnowledgeLibraryServiceIntegrationTest {
       aCredentialThatCanNoLongerBeDecryptedIsReadAsNullInsteadOfFailingTheWholeLibraryLoadAndCanBeRepairedByRotatingIt() {
     // A lost/rotated key (or a corrupted stored value) must not turn GET /api/v1/libraries into a
     // 503 for every library that shares this key - only the affected library's sourceCredentials
-    // reads as null. The documented repair path (docs/handbuch/netz-und-sicherheit.md,
+    // reads as null. The documented repair path (docs/handbuch/betrieb/netz-und-sicherheit.md,
     // "Zugangsdaten-Verschluesselung") - setting new credentials via the update API - depends on
     // that same load succeeding first.
     UUID owner = createUser(organizationA);

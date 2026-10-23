@@ -22,11 +22,11 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 /**
- * The {@link RetrievalStageName#FULL_TEXT_SEARCH} stage (docs/handbuch/suche.md, Stufe 5): one
- * PostgreSQL full-text query per search query, each with the identical permission filter the vector
- * path applies and the identical {@link QueryProperties#fetchK}, yielding one labelled candidate
- * list per search query. Its lists enter {@link RankFusionStage} next to the vector path's,
- * deduplicated by chunk id and never by score.
+ * The {@link RetrievalStageName#FULL_TEXT_SEARCH} stage (docs/handbuch/spaces/suche.md, Stufe 5):
+ * one PostgreSQL full-text query per search query, each with the identical permission filter the
+ * vector path applies and the identical {@link QueryProperties#fetchK}, yielding one labelled
+ * candidate list per search query. Its lists enter {@link RankFusionStage} next to the vector
+ * path's, deduplicated by chunk id and never by score.
  *
  * <p>Uppercase words a list searched as ordinary words ({@link
  * FullTextSearchResult#demotedIdentifiers()}) are named in a note per list, without any count.

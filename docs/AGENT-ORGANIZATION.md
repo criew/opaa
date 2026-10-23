@@ -116,7 +116,7 @@ Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein,
 
 - **Kontext / Warum** — Link zur Vision, zum Epic oder zur Feature-Spezifikation
 - **Ziel / Ergebnis** — ein Satz, der beschreibt, was danach möglich ist
-- **Abnahmekriterien** — einzeln testbare Checkboxen; "Dokumentation aktualisiert" ist ein ständiges Kriterium für nutzerseitige oder architektonische Änderungen. Ändert das Issue sichtbares Verhalten oder Konfiguration, benennt ein Kriterium das betroffene Handbuchkapitel und den Abschnitt („`docs/handbuch/suche.md`, Stufe 8 nachgezogen") oder stellt ausdrücklich fest: „kein Handbuchkapitel betroffen"
+- **Abnahmekriterien** — einzeln testbare Checkboxen; "Dokumentation aktualisiert" ist ein ständiges Kriterium für nutzerseitige oder architektonische Änderungen. Ändert das Issue sichtbares Verhalten oder Konfiguration, benennt ein Kriterium das betroffene Handbuchkapitel und den Abschnitt („`docs/handbuch/spaces/suche.md`, Stufe 8 nachgezogen") oder stellt ausdrücklich fest: „kein Handbuchkapitel betroffen"
 - **Umfang / Außerhalb des Umfangs** — explizite Grenzen
 - **Betroffene Module** — z. B. `io.opaa.indexing`, Frontend, OpenAPI-Spezifikation (Spec-Änderungen sind ein Koordinationspunkt — siehe [ADR-0006](./decisions/0006-openapi-dto-generation.md))
 - **Abhängigkeiten** — blockierende Issues

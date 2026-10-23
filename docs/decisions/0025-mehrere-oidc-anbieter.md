@@ -39,7 +39,7 @@ OAuth-Ablauf für Quellen sind `state` und PKCE-Verifier an die angemeldete Pers
 (`ConnectionAuthorization.user_id`; ein fremder `state` wird abgewiesen). Preis: Ein neuer
 Anbieter-Origin wirkt in der CSP (`OPAA_CSP_CONNECT_SRC_EXTRA`) erst nach Frontend-Neustart, den
 weder der Verbindungstest (Backend-Sicht) noch das E2E-Szenario prüft; Client-Einrichtung:
-[Handbuch](../handbuch/authentifizierung.md#oidc-keycloak).
+[Handbuch](../handbuch/betrieb/authentifizierung.md#oidc-keycloak).
 
 ### 2. Identitätsmodell: `(issuer, subject)` bleibt der Schlüssel, der Anbieter ist über den Issuer eindeutig
 
@@ -83,7 +83,7 @@ Die Adressprüfung (`OidcAddressPolicy`) hat einen eigenen Block `opaa.auth.oidc
 damit das Abschalten der Konnektorprüfung die Anmeldung nicht mitnimmt; sie gilt beim Speichern, beim
 Registry-Aufbau, im Verbindungstest und für die `jwks_uri` der Discovery, ohne Weiterleitungen, und
 jeder Decoder trägt einen Issuer-Validator. Startmeldungen (#2396) und Betrieb:
-[Handbuch](../handbuch/authentifizierung.md#bestandsübernahme-aus-opaa_oidc_).
+[Handbuch](../handbuch/betrieb/authentifizierung.md#bestandsübernahme-aus-opaa_oidc_).
 
 ### 4. Claim-Zuordnung, Rollen, Gruppen und Organisation je Anbieter
 

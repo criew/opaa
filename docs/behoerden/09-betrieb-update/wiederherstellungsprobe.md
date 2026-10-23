@@ -22,10 +22,10 @@ Betrieb führt sie durch.
 ## Was OPAA liefert
 
 - **Das Verfahren** mit Testbestand, Ablauf, zwölf Prüfungen (P1 bis P12) und Messung:
-  [Wiederherstellungsprobe](../../handbuch/sicherung-und-wiederherstellung.md#wiederherstellungsprobe) im Handbuch, die
-  Befehle für einen Testcluster unter [Wiederherstellungsprobe auf einem Testcluster](../../handbuch/kubernetes.md#wiederherstellungsprobe-auf-einem-testcluster).
+  [Wiederherstellungsprobe](../../handbuch/betrieb/sicherung-und-wiederherstellung.md#wiederherstellungsprobe) im Handbuch, die
+  Befehle für einen Testcluster unter [Wiederherstellungsprobe auf einem Testcluster](../../handbuch/betrieb/kubernetes.md#wiederherstellungsprobe-auf-einem-testcluster).
 - <a id="automatisierte-probe-im-projekt"></a>**Eine automatisierte Probe im Projekt:** Das Projekt führt sie
-  nächtlich auf einem Testcluster aus ([Im Projekt geprüft](../../handbuch/kubernetes.md#sicherung-und-wiederherstellung)).
+  nächtlich auf einem Testcluster aus ([Im Projekt geprüft](../../handbuch/betrieb/kubernetes.md#sicherung-und-wiederherstellung)).
   Sie belegt, dass das Verfahren des Handbuchs funktioniert; P5, P7 und P8 brauchen Modelle und
   bleiben der eigenen Probe. Die Zeiten dort stammen aus einem kleinen Testbestand und sagen nichts
   über die eigene Installation.
@@ -68,5 +68,5 @@ Durchgeführt von:             [ ]        abgenommen von: [ ]        am: [ ]
 
 - [Grundschutz-Modellierung](../06-informationssicherheit/grundschutz-modellierung.md), Bausteine
   CON.3 Datensicherungskonzept und DER.4 Notfallmanagement: Dort gehört das Protokoll hin.
-- [Sicherung und Wiederherstellung](../../handbuch/sicherung-und-wiederherstellung.md):
+- [Sicherung und Wiederherstellung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md):
   was zu sichern ist und in welcher Reihenfolge zurückgespielt wird.

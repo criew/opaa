@@ -50,11 +50,11 @@ Lizenzübersicht ([Tabelle unten](#programmstände-sbom-und-supportzeiträume)).
 
 | Thema | Was OPAA liefert | Fundstelle |
 |---|---|---|
-| Programmstand | Jede Version ist unveränderlich benannt (`X.Y.Z`); Images und Chart einer Version werden nie überschrieben | [Was ein Release liefert](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert), [Versionen](../../handbuch/releases-und-nachweise.md#versionen) |
-| SBOM | Je Image und Architektur eine SBOM-Attestierung, auch für Release-Images; zusätzlich je Ökosystem eine CycloneDX-SBOM als CI-Artefakt von `main` | [Provenance und Software-Stückliste](../../handbuch/releases-und-nachweise.md#provenance-und-software-stückliste) |
-| Lizenzen der Abhängigkeiten | Lizenzübersicht im Update-Paket jeder Version | [Lizenzprüfung](../../handbuch/releases-und-nachweise.md#lizenzen), [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket) |
+| Programmstand | Jede Version ist unveränderlich benannt (`X.Y.Z`); Images und Chart einer Version werden nie überschrieben | [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert), [Versionen](../../handbuch/betrieb/releases-und-nachweise.md#versionen) |
+| SBOM | Je Image und Architektur eine SBOM-Attestierung, auch für Release-Images; zusätzlich je Ökosystem eine CycloneDX-SBOM als CI-Artefakt von `main` | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste) |
+| Lizenzen der Abhängigkeiten | Lizenzübersicht im Update-Paket jeder Version | [Lizenzprüfung](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) |
 | Sicherheitskorrekturen | nur für das jüngste Release und `main`; ältere Linien werden nicht nachgepflegt | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
-| Änderungen zwischen Programmständen | Delta der Datenwirkung zum vorigen Release | [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket), [Update-Vermerk](../09-betrieb-update/update-vermerk.md) |
+| Änderungen zwischen Programmständen | Delta der Datenwirkung zum vorigen Release | [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket), [Update-Vermerk](../09-betrieb-update/update-vermerk.md) |
 
 ## Gut zu wissen
 

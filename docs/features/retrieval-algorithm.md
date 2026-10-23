@@ -666,7 +666,7 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   (comic-characters bit-identisch, city-landmarks vollständig erholt). Details und alle drei
   Messreihen in der Beschreibung von PR [#940](https://github.com/criew/opaa/pull/940). Erfordert
   einen vollständigen Reindex jeder Bibliothek (siehe
-  [Handbuch: Was ein Update mit dem Index macht](../handbuch/aktualisierung.md#was-ein-update-mit-dem-index-macht)) - Alt-Chunks
+  [Handbuch: Was ein Update mit dem Index macht](../handbuch/betrieb/aktualisierung.md#was-ein-update-mit-dem-index-macht)) - Alt-Chunks
   ohne Präfix und Neu-Chunks mit Präfix ranken sonst inkonsistent gegeneinander.
 
 ### Bekannte offene Schwächen (aus den #912-Verifikationen)

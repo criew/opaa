@@ -5,7 +5,7 @@ Helm-Chart in GHCR mit derselben Versionsnummer und ein GitHub-Release mit der �
 Daneben gibt es weiter den beweglichen Stand `main`, der jedem Merge folgt. Wer reproduzierbar
 betreiben will, pinnt eine Version.
 
-Für Betreiber und Behörden zusammengefasst: [Handbuch, Releases und Nachweise](handbuch/releases-und-nachweise.md).
+Für Betreiber und Behörden zusammengefasst: [Handbuch, Releases und Nachweise](handbuch/betrieb/releases-und-nachweise.md).
 
 ## Was ein Release erzeugt
 
@@ -36,7 +36,7 @@ gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa
 ```
 
 Installiert wird der Chart ohne Checkout des Repositories, in der Reihenfolge des Handbuchs
-([Kubernetes, Installation](handbuch/kubernetes.md#installation)): zuerst der Namespace mit den
+([Kubernetes, Installation](handbuch/betrieb/kubernetes.md#installation)): zuerst der Namespace mit den
 Labels für Pod Security `restricted`, dann Datenbank, Geheimnisse und Werte-Datei, zuletzt der
 Chart. Was in die Werte-Datei gehört, beschreibt die [Chart-README](../deploy/helm/opaa/README.md):
 
@@ -374,8 +374,8 @@ Die Notizen jedes Release enthalten den Abschnitt **Vorbereitung für Bestandsin
 | die Datei, aber leer, als symbolischer Link oder mit einem nicht geschlossenen Codeblock (ungerade Zahl von Zeilen mit ```` ``` ````) | ebenfalls kein Release |
 
 Darunter verlinken die Notizen in beiden Fällen den Ablauf der Aktualisierung im Handbuch im Stand
-des Tags: für Kubernetes [Aktualisierung und Rückweg](handbuch/kubernetes.md#aktualisierung-und-rückweg),
-für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](handbuch/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen).
+des Tags: für Kubernetes [Aktualisierung und Rückweg](handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg),
+für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](handbuch/betrieb/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen).
 
 Die Datei nennt, was eine Bestandsinstallation **vor** dem Update erledigen muss, getrennt nach
 Kubernetes und Docker Compose, und verweist für Einzelheiten auf das Kapitel des Handbuchs. Was
@@ -596,7 +596,7 @@ nennt in `oldest-compatible-version` die älteste Version, neben der der Bau lau
 ([ADR-0053](decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 4). Leer heißt: nur neben
 sich selbst. Das Release trägt dort das unmittelbar vorige Release ein; an einer Versionsgrenze ohne
 Rolling Update bleibt es leer. Bis zum ersten Release, das den Wert setzt, laufen nur Stände derselben
-Version nebeneinander ([Handbuch, Update ohne Ausfall](handbuch/mehrere-instanzen.md#update-ohne-ausfall)).
+Version nebeneinander ([Handbuch, Update ohne Ausfall](handbuch/betrieb/mehrere-instanzen.md#update-ohne-ausfall)).
 
 Releases entstehen nur von Commits auf `main`. Eine ältere Linie wird nicht nachgepflegt. Daraus
 folgen zwei Arten von Patch-Release:

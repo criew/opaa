@@ -27,7 +27,7 @@
 > - die [Pflichten der Rollen](#verankerung-in-der-agentenorganisation) für Spezifikation (#2571),
 >   Umsetzung und Review (#2572) und die Rolle „Behördenkontakt“
 >   ([Rollenvertrag](../../agents/roles/behoerdenkontakt.md), #2573)
-> - das Handbuchkapitel [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md)
+> - das Handbuchkapitel [Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md)
 > - das [kumulierte Delta](#das-kumulierte-delta) des Manifests zwischen zwei Versionen mit
 >   Stufenvorschlag nach den [Stufenregeln](#die-stufenregeln), lokal mit
 >   `./gradlew complianceDelta` (#2554)
@@ -302,7 +302,7 @@ Die KI-Funktionen stehen mit den System-Prompts im Blatt Voreinstellungen. Erzeu
 mit `./gradlew complianceDocs`; der Job `backend-build` der CI legt sie als Artefakt
 `compliance-faktenblaetter` ab. Namen, Kopf und Anker beschreibt
 [`docs/behoerden/AGENTS.md`](../behoerden/AGENTS.md#faktenblätter), die Sicht des Betriebs das
-Handbuchkapitel [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md). Die Lizenzübersicht
+Handbuchkapitel [Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md). Die Lizenzübersicht
 entsteht getrennt davon in der Lizenzprüfung (#2551) als Artefakte `license-report-backend` und
 `license-report-frontend`.
 

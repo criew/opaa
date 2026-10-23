@@ -1712,7 +1712,7 @@ Verbindungsversuch wird als Sicherheitsereignis festgehalten, der zulässige nic
 kurzlebiges Zugangstoken, dazu ein rotierendes Refresh-Token mit einer Leerlauffrist und einer
 absoluten Höchstdauer, die keine Rotation verlängert — für lokale Systemverwalterkonten mit eigenen,
 deutlich kürzeren Werten. Die Zahlen sind organisationsweite Betriebseinstellungen und stehen in der
-Variablenliste des Handbuchs (`docs/handbuch/konfiguration.md`). Widerruf wirkt **sofort**, nicht erst mit dem Ablauf: einzeln
+Variablenliste des Handbuchs (`docs/handbuch/betrieb/konfiguration.md`). Widerruf wirkt **sofort**, nicht erst mit dem Ablauf: einzeln
 über die Sperrliste der Zugangstokens (Abmeldung), auf einen Schlag über einen Zeitstempel am Konto
 (Passwortwechsel, Sperre, Zurücksetzen, Abschalten der Verwaltung). Die Vorlage eines bereits
 rotierten Refresh-Tokens gilt als Wiederverwendung und beendet **alle** Sitzungen des Kontos. Eine

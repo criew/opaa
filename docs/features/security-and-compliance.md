@@ -1386,7 +1386,7 @@ geht als JSON und als Markdown heraus, ohne Geheimnisse, ohne personenbezogene D
 Inhalte: Ausgegeben wird nur der Wert eines Schlüssels, den das Manifest als datenwirksam führt
 (Positivliste), Adressen ohne Zugangsdaten und Abfrageteil. Abrufen darf sie nur `SYSTEM_ADMIN`;
 jeder Abruf, auch der abgewiesene, ist ein Protokollereignis `DATA_COLLECTION_DISCLOSURE_EXPORTED`.
-Abruf und Inhalt beschreibt das Handbuch unter [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
+Abruf und Inhalt beschreibt das Handbuch unter [Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
 sie ist der Eingang für das Update-Delta gegen die Instanz (#2559) und für die statischen Anlagen der
 Dienstvereinbarung ([Behördenunterlagen und Update-Paket](./behoerdenunterlagen.md#instanzbezug)).
 Die Zahl und Anlasskategorien der anlassbezogenen Klärungen im Berichtszeitraum folgen mit #2895;

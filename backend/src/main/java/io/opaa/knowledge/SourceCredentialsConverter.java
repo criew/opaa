@@ -31,12 +31,12 @@ import org.slf4j.LoggerFactory;
  * decrypted (key lost, key rotated without re-encrypting existing rows, corrupted value) must not
  * take the whole read down with a {@code 503}, since that would also break the one repair path
  * ({@code PATCH /api/v1/libraries/{id}} setting new credentials) documented in {@code
- * docs/handbuch/netz-und-sicherheit.md}, which loads the same row first. This converter therefore
- * catches {@link CredentialsEncryptionKeyMissingException} on read and treats the field as absent
- * (logs a warning with no library id - the converter is not given the owning entity's identity -
- * and, deliberately, no part of the stored or decrypted value). {@link #convertToDatabaseColumn}
- * keeps failing hard: silently dropping credentials on write would be far worse than a clear
- * {@code 503}.
+ * docs/handbuch/betrieb/netz-und-sicherheit.md}, which loads the same row first. This converter
+ * therefore catches {@link CredentialsEncryptionKeyMissingException} on read and treats the field
+ * as absent (logs a warning with no library id - the converter is not given the owning entity's
+ * identity - and, deliberately, no part of the stored or decrypted value). {@link
+ * #convertToDatabaseColumn} keeps failing hard: silently dropping credentials on write would be far
+ * worse than a clear {@code 503}.
  *
  * <p>That the field reads as absent must not make it absent: {@code KnowledgeLibrary} carries
  * {@code @DynamicUpdate} so an unrelated change to the library writes only the columns it changed,

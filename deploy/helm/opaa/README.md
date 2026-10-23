@@ -28,7 +28,7 @@ nicht für den Betrieb gedacht.
 ## Installation
 
 Die Reihenfolge entspricht dem Handbuch, Kapitel „Kubernetes“, Abschnitt „Installation“
-([`docs/handbuch/kubernetes.md`](../../../docs/handbuch/kubernetes.md#installation)), das jeden Schritt
+([`docs/handbuch/betrieb/kubernetes.md`](../../../docs/handbuch/betrieb/kubernetes.md#installation)), das jeden Schritt
 ausführlich beschreibt.
 
 **1. Namespace anlegen**, mit Pod Security Admission auf `restricted`. Der Chart läuft ohne Ausnahme

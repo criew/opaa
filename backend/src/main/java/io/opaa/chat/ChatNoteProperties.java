@@ -5,10 +5,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The one configurable value of the Gesprächsnotiz (docs/handbuch/suche.md, Abschnitt 10.3). Every
- * other quantity of the note - two points per turn, 200 characters, the display threshold of three
- * turns, the kind of a point, the model - is a fixed value with no addressee to reconfigure it
- * (docs/features/conversation-memory.md, "Konfiguration: Ebenenzuordnung").
+ * The one configurable value of the Gesprächsnotiz (docs/handbuch/spaces/suche.md, Abschnitt 10.3).
+ * Every other quantity of the note - two points per turn, 200 characters, the display threshold of
+ * three turns, the kind of a point, the model - is a fixed value with no addressee to reconfigure
+ * it (docs/features/conversation-memory.md, "Konfiguration: Ebenenzuordnung").
  *
  * <p>Under {@code opaa.chat.*} rather than {@code opaa.query.*}: the note is chat content with the
  * chat's lifecycle, not a retrieval parameter, and this package must not depend on {@code

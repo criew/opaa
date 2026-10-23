@@ -25,7 +25,7 @@ wird es nie.** Das Testat erhält der Anbieter, der OPAA betreibt.
 OPAA ist so gebaut und dokumentiert, dass ein Anbieter die Prüfung mit OPAA im Prüfumfang bestehen
 kann.
 Für Identitäten, Regelbetrieb, Kryptographie, Netz, Entwicklung, Sicherheitsvorfälle und
-Notfallvorsorge kann er das [Handbuch](../../handbuch/betrieb.md), die
+Notfallvorsorge kann er das [Handbuch](../../handbuch/betrieb/README.md), die
 [Sicherheitsnachweise](sicherheitsnachweise.md) und die Faktenblätter vorlegen, etwa
 {{faktenblatt:datenfluesse}} und {{faktenblatt:rollensicht}}. Kein Prüfbereich ist durch OPAA allein
 erfüllt.
@@ -38,7 +38,7 @@ erfüllt.
    werden; welche Modelldienste wo laufen; zugesagte Wiederherstellungszeit (RTO) und letzte Probe; wie
    die Daten bei einem Anbieterwechsel zurückkommen.
 3. **Eigene Installation verlangen:** Eine OPAA-Installation führt genau eine Organisation
-   ([Eine Organisation](../../handbuch/betrieb.md#eine-organisation)); mehrere Behörden trennt nur
+   ([Eine Organisation](../../handbuch/betrieb/README.md#eine-organisation)); mehrere Behörden trennt nur
    je eine eigene Installation.
 4. **Eigenen Anteil erfüllen:** Rechte in der Anwendung vergeben, keine Inhalte über dem vereinbarten
    Schutzbedarf anbinden ([Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md)), den

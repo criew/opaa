@@ -59,7 +59,7 @@ public class LocalAuthSecretGuard {
           "Local accounts cannot start: "
               + SecretValidator.describeRequirement(LocalAuthKeyService.SECRET_VARIABLE)
               + " The \"oidc\" profile refuses to start without it (ADR-0033); the \"dev\""
-              + " profile does not need it. See docs/handbuch/netz-und-sicherheit.md.");
+              + " profile does not need it. See docs/handbuch/betrieb/netz-und-sicherheit.md.");
     }
   }
 }

@@ -80,10 +80,10 @@ Geprüft am:            [ ]        durch: [ ]
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Handbuch, Suche](../../handbuch/suche.md): wie eine Antwort entsteht und wie man Belege prüft;
+- [Handbuch, Suche](../../handbuch/spaces/suche.md): wie eine Antwort entsteht und wie man Belege prüft;
   Grundlage für die Einweisung.
-- [Handbuch, Branding](../../handbuch/branding.md): wo der eigene Name erscheint.
-- [Update-Paket eines Release](../../handbuch/nachvollziehbarkeit.md#das-update-paket-eines-release):
+- [Handbuch, Branding](../../handbuch/betrieb/branding.md): wo der eigene Name erscheint.
+- [Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release):
   welche Änderungen ein Update meldet und mit welcher Stufe es sie zur Bewertung vorschlägt.
 
 **Rechtsgrundlagen** für Justiziariat und Datenschutz:

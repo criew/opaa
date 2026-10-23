@@ -31,7 +31,7 @@ ist die Behörde; OPAA liefert die Fristen und Löschwege des Produkts.
 | Technisches Anwendungslog | {{faktenblatt:datenkatalog#application-log}} |
 
 Die Faktenblätter nennen die Voreinstellung der Version. Was die eigene Installation anders eingestellt
-hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
+hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 
 ## Aufgaben der Behörde
 
@@ -39,13 +39,13 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbar
    mit dem Zweck begründen (Tabelle unten).
 2. **Regel für Chats festlegen:** Chats werden nur dort automatisch gelöscht, wo ein Space das
    einschaltet; ab Werk ist es aus, im persönlichen Space entscheidet nur die Person selbst
-   ([Spaces: Chats](../../handbuch/spaces.md#7-chats)). Die Behörde legt fest, in welchen Spaces es
+   ([Spaces: Chats](../../handbuch/spaces/README.md#7-chats)). Die Behörde legt fest, in welchen Spaces es
    eingeschaltet wird, etwa in allen gemeinsamen Spaces.
 3. **Anlässe regeln, die OPAA nicht kennt:**
    - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird meist gesperrt,
-     nicht gelöscht ([Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren)).
+     nicht gelöscht ([Löschen oder sperren](../../handbuch/konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).
    - Dokumente: Sie folgen ihrer Quelle
-     ([Änderungen und Löschungen](../../handbuch/wissensbibliotheken.md#44-änderungen-und-löschungen)),
+     ([Änderungen und Löschungen](../../handbuch/arbeitsmittel/wissensbibliotheken/README.md#44-änderungen-und-löschungen)),
      ihre Fristen regelt die Behörde dort; für hochgeladene Dokumente festlegen, wer sie wann prüft.
    - Anwendungslog: die Frist festlegen, wenn sie laut Faktenblatt beim Betrieb liegt.
    - Sicherungen: Aufbewahrung festlegen und wie eine Rücksicherung mit bereits gelöschten Daten

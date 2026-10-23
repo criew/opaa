@@ -34,7 +34,7 @@ Angabe, woher sie kommt.
 
 Die Faktenblätter zeigen die Voreinstellungen ({{faktenblatt:voreinstellungen#einstellungen}},
 {{faktenblatt:fristen#konfigurationsschluessel}}). Was die eigene Installation anders eingestellt hat,
-zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
+zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
 im VVT gilt der Wert der Installation.
 
 ## Aufgaben der Behörde

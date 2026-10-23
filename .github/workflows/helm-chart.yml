@@ -59,8 +59,8 @@ jobs:
               - '.github/workflows/helm-chart.yml'
               - 'docs/releases.md'
               - 'docs/upgrade-notes/**'
-              - 'docs/handbuch/kubernetes.md'
-              - 'docs/handbuch/docker-compose.md'
+              - 'docs/handbuch/betrieb/kubernetes.md'
+              - 'docs/handbuch/betrieb/docker-compose.md'
             # The chart relies on the images' contract: user, port, writable paths, entrypoint.
             install:
               - 'deploy/helm/**'
@@ -204,7 +204,7 @@ jobs:
       - name: Chart installieren und helm test ausführen
         run: deploy/helm/ci/install-test.sh
 
-      # The restore drill of docs/handbuch/sicherung-und-wiederherstellung.md
+      # The restore drill of docs/handbuch/betrieb/sicherung-und-wiederherstellung.md
       # ("Wiederherstellungsprobe"): backup with the handbook's commands, restore into a second
       # namespace, checks; results, times and sizes go to the job summary.
       - name: Wiederherstellungsprobe

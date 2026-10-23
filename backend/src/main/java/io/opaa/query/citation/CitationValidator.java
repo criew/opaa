@@ -14,11 +14,11 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 
 /**
- * Deterministic citation validation (docs/handbuch/suche.md Abschnitt 7): checks every citation a
- * model placed in an answer against the chunks actually retrieved for that answer - no second model
- * call, no LLM judgment. A citation is valid only when its document id, section (chunk index) and
- * file name all agree with one and the same retrieved chunk, so a merely well-shaped citation that
- * points at nothing this answer used is detectable rather than trusted.
+ * Deterministic citation validation (docs/handbuch/spaces/suche.md Abschnitt 7): checks every
+ * citation a model placed in an answer against the chunks actually retrieved for that answer - no
+ * second model call, no LLM judgment. A citation is valid only when its document id, section (chunk
+ * index) and file name all agree with one and the same retrieved chunk, so a merely well-shaped
+ * citation that points at nothing this answer used is detectable rather than trusted.
  *
  * <p>A citation that passes that check is additionally held against {@link CitationFactChecker}.
  * That second check can only push a citation from valid to invalid, never the other way round.

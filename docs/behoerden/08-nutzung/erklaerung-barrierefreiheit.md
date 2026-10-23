@@ -88,7 +88,7 @@ Eigene Prüfung der Behörde für ihre Installation: [ja, Datum / nein]
   automatischem axe-Test: laufender Nachweis seit dem Audit.
 - [Offene Befunde zur Barrierefreiheit](https://github.com/criew/opaa/issues?q=is%3Aissue+is%3Aopen+Barrierefreiheit):
   vor der Abgabe gegen die eingesetzte Version prüfen.
-- [Handbuch, Branding](../../handbuch/branding.md): was die Behörde an Farben und Logos festlegt.
+- [Handbuch, Branding](../../handbuch/betrieb/branding.md): was die Behörde an Farben und Logos festlegt.
 
 **Rechtsgrundlagen** für die Projektleitung und das Justiziariat:
 

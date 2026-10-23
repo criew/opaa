@@ -1,7 +1,7 @@
 # Wissensquellen und Konnektoren
 
 > **Status: Zielbild, in weiten Teilen gebaut.** Kennzeichnung siehe Lesehinweis; was gebaut ist,
-> beschreibt das Handbuch ([Konnektoren](../handbuch/konnektoren/README.md)).
+> beschreibt das Handbuch ([Konnektoren](../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md)).
 
 **Themenbereich B** der [Produktvision](../VISION.md). **Phasenlage:** Uploads und **lesende**
 Konnektoren zu Dateiablagen, Wikis, Postfächern und Vorgangssystemen gehören in **Phase 1**;
@@ -42,7 +42,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
    einem Quellsystem zieht. Beide Wege sind heute gebaut. Eine Wissensbibliothek trägt dabei **genau
    einen Quellentyp** — `UPLOAD` oder einen der zehn Konnektoren (Dateisystem, Webverzeichnis,
    RSS-Feed, Confluence, S3, Google Drive, SharePoint, Nextcloud, Dropbox, SMB; Übersicht in
-   [docs/handbuch/konnektoren/README.md](../handbuch/konnektoren/README.md), steckbar nach
+   [docs/handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md](../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md), steckbar nach
    [ADR-0038](../decisions/0038-steckbare-konnektoren.md)) —, gewählt bei ihrer Anlage aus einem Template und danach
    unveränderlich (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)).
    Die Bibliothek **ist** die Quelle; es gibt keine davon getrennte Konnektor- oder Quellen-Tabelle.
@@ -220,7 +220,7 @@ Zielprüfung mit dem Verbindungstest. Für die
 ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt für `HTTP_DIRECTORY`
 und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben
 Zielprüfung (gebaut, #267)** — konfigurierbar über `opaa.indexing.target-validation`, siehe
-[netz-und-sicherheit.md](../handbuch/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
+[netz-und-sicherheit.md](../handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
 damit er nicht als schneller interner Portscanner missbraucht werden kann. Ohne Bezug zu einer
 bestehenden Bibliothek verlangt die Quellprobe wie die beiden Auswahl-Endpunkte
 (`source-types/{sourceType}/browse`) das Anlegerecht `CREATE_CONNECTOR_LIBRARY` (gebaut, #1856,
@@ -421,7 +421,7 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
 1. Die Verzeichnisliste unter der angegebenen Adresse wird abgerufen und **rekursiv** durch die
    Unterverzeichnisse verfolgt — begrenzt durch eine maximale Rekursionstiefe und eine Obergrenze
    für die Gesamtzahl gecrawlter Einträge (`OPAA_INDEXING_CRAWL_MAX_DEPTH`,
-   `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../handbuch/konfiguration.md#alle-umgebungsvariablen)),
+   `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../handbuch/betrieb/konfiguration.md#alle-umgebungsvariablen)),
    damit ein Zyklus auf dem Zielserver (z. B. eine Symlink-Schleife) nicht zu endloser Rekursion
    führt (#836). Ein durch eines dieser Limits abgeschnittener Lauf wird als solcher protokolliert,
    nicht als Fehler behandelt. Die Verzeichnisseite selbst wird dabei nur bis zu einer festen
@@ -435,7 +435,7 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
    Dokument neu geladen und wandert dorthin.
 4. Geladen wird in einen temporären Bereich — **gedeckelt auf eine konfigurierbare Bytegrenze je
    Eintrag** (`OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES`, Vorgabe 100 MiB, siehe
-   [Umgebungsvariablen](../handbuch/konfiguration.md#alle-umgebungsvariablen)). Der Deckel greift
+   [Umgebungsvariablen](../handbuch/betrieb/konfiguration.md#alle-umgebungsvariablen)). Der Deckel greift
    während des Übertragens, nicht danach: Ein Eintrag darüber wird abgebrochen, bevor die
    überschüssigen Bytes auf der Platte landen, als Ablehnung im Protokoll des Laufs vermerkt und
    als übersprungen gezählt; der Lauf selbst geht weiter (#1236). Das gilt auch für den
@@ -610,7 +610,7 @@ Viele Häuser und Rechenzentren legen Ablagen inzwischen in S3-kompatiblen Objek
 AWS S3, MinIO, Ceph RGW, Hetzner Object Storage und weitere Dienste, die die S3-API sprechen. Der
 Dateisystem-Konnektor erreicht sie nur über einen Mount, der Webverzeichnis-Konnektor gar nicht.
 Der Quellentyp `S3` (Epic #1291, [ADR-0027](../decisions/0027-s3-konnektor.md)) liest sie direkt;
-das Betriebshandbuch dazu ist [Konnektor: S3-Objektspeicher](../handbuch/konnektoren/s3.md).
+das Betriebshandbuch dazu ist [Konnektor: S3-Objektspeicher](../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/s3.md).
 
 **Konfigurationsmodell — erstmals ein typisiertes Bündel (ADR-0027, Entscheidung 1).** Eine
 S3-Bibliothek trägt in den bestehenden Spalten, was typübergreifend Regeln hat: den Endpoint als
@@ -1070,7 +1070,7 @@ Link, dessen Segment erst nach der Dekodierung `.`, `..` oder einen Pfadtrenner 
 er wird bereits von der Unterbaum-Prüfung des Crawlers verworfen und deshalb nie angefragt, gleich ob
 es sich um einen relativen Link oder um einen bereits absoluten, gleichursprünglichen Link handelt
 (#1287, #1300, siehe
-[Konnektor-Handbuch](../handbuch/konnektoren/http-directory.md#8-grenzen-und-schutzmechanismen)). Auch
+[Konnektor-Handbuch](../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/http-directory.md#8-grenzen-und-schutzmechanismen)). Auch
 hier entstehen Ordner nur entlang tatsächlich gefundener Dateien, antworten die Folder-CRUD-Endpoints
 mit `409` und bekommt ein bereits vor #1277 indiziertes Dokument seine `folder_id` beim nächsten Lauf
 nachgetragen, ohne neu indiziert zu werden. Aufgeräumt wird nur am Ende eines **vollständigen** Laufs:

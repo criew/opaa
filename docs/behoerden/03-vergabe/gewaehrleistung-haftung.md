@@ -27,7 +27,7 @@ schließt.
 | Haftung | ausgeschlossen, soweit das anwendbare Recht es zulässt | [Lizenz](../../../LICENSE), Abschnitte 16 und 17 |
 | Reaktionszeiten auf gemeldete Sicherheitslücken | keine festen Zusagen, Bearbeitung nach bestem Bemühen | [Sicherheitsrichtlinie](../../../SECURITY.md#ablauf) |
 | Sicherheitskorrekturen | für das jüngste Release und `main` | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
-| Reaktion auf Befunde des eigenen Schwachstellenscans | Fristen nach Schwere | [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates) |
+| Reaktion auf Befunde des eigenen Schwachstellenscans | Fristen nach Schwere | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates) |
 | Pflichten nach dem Cyber Resilience Act | als Open-Source-Steward | [Rollenklärung zum CRA](../06-informationssicherheit/rollenklaerung-cra.md#die-rollen-im-überblick) |
 
 Für die Planung zählt: Gegenüber dem Projekt kann die Behörde keine Ansprüche einplanen.
@@ -51,7 +51,7 @@ dem Dienstleister legt die Behörde fest:
 
 - Übernimmt das Projekt eine Korrektur, entfällt die Pflege einer eigenen Abweichung bei jedem
   Update. Das setzt die unterzeichnete
-  [Contributor License Agreement](../../handbuch/releases-und-nachweise.md#lizenzen) voraus.
+  [Contributor License Agreement](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen) voraus.
 - Wie weit der Ausschluss nach deutschem Recht wirkt, behandelt diese Vorlage nicht.
 
 ## Zum Nachlesen
