@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/sbom.yml"
+      - ".github/tools/cdxgen/**"
 
 # Runs pnpm dlx (third-party code) and gradle plugin code; no write access needed.
 permissions:
@@ -74,13 +75,18 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # cdxgen comes from its own lockfile, without install scripts and optional platform
+      # binaries; the release run (update_package.py) installs and calls it the same way.
+      - name: Install cdxgen
+        working-directory: .github/tools/cdxgen
+        run: pnpm install --frozen-lockfile --ignore-scripts --no-optional
+
       # cdxgen reads the pnpm lockfile directly. --no-babel skips its optional
       # source-code usage analysis. --required-only limits the SBOM to what
       # ships at runtime (excludes devDependencies), matching the backend's
       # runtime-only scope - see docs/sbom.md.
-      # renovate: datasource=npm depName=@cyclonedx/cdxgen
       - name: Generate frontend SBOM
-        run: pnpm dlx @cyclonedx/cdxgen@12.8.6 -t pnpm --no-babel --required-only --project-name opaa-frontend -o bom.json .
+        run: ../.github/tools/cdxgen/node_modules/.bin/cdxgen -t pnpm --no-babel --required-only --project-name opaa-frontend -o bom.json .
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
