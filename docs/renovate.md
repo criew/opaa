@@ -68,6 +68,81 @@ Bump als PR sichtbar statt als stilles Lockfile-only-Update. Der allererste Lauf
 einmalig einen „Pin dependencies"-PR, der alle Caret-Ranges auf exakte Versionen umschreibt;
 `engines` bleibt bewusst eine Range, `packageManager` ist bereits exakt gepinnt.
 
+## Wartungsbranches
+
+Neben `main` pflegt Renovate den Wartungsbranch `release/X.Y` jeder unterstützten
+[Linie](releases.md#supportlinien) ([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md),
+Entscheidung 7), dort aber nur mit Updates, die eine Linie nach
+[Versionsnummern](releases.md#versionsnummern) tragen darf:
+
+| | `main` | `release/X.Y` |
+|---|---|---|
+| Update-Arten | alle, Majors ohne Auto-Merge | `patch`, `digest`, `pin`; `minor`, `major`, `replacement`, `rollback`, `bump` und `lockFileMaintenance` sind aus. Patch- und Minor-Versionen kommen getrennt (`separateMinorPatch`), damit eine neuere Minor-Version den Patch nicht mitnimmt |
+| Spring Boot | jede neue Version | nur Patch-Versionen der Minor-Version der Linie |
+| Basis-Images | neue Tags; der Stand des Tags kommt mit jedem Bau | Tag-Wechsel nur innerhalb der Patch-Versionen; aktuelle Pakete der Basis-Images bringt ein Patch-Release ohne Codeänderung ([Versionsnummern](releases.md#versionsnummern)) |
+| Auto-Merge | wie in den Regeln unten | dieselben Regeln: Was auf `main` automatisch mergt, mergt auch dort, sobald die Required Checks des Rulesets `release-branches` grün sind; wie auf `main` verlangt es keine Freigabe ([releases.md](releases.md#wer-ein-release-anlegt)). Majors, Minors und Ausnahmen nie |
+| Branch-Name, PR-Titel | `renovate/main-<Thema>`, Titel mit „(main)“ | `renovate/release/0.2-<Thema>`, Titel mit „(release/0.2)“ |
+
+**Welche Linien.** Die einzige Liste der Linien mit ihrem Supportende ist
+`.github/support-lines.json` (Pflege im Release-Ablauf, [releases.md](releases.md#supportlinien)).
+`renovate.yml` liest sie vor jedem Lauf mit `.github/scripts/support_lines.py base-branches` und
+übergibt `main` und `release/X.Y` jeder Linie, deren Supportende heute noch nicht überschritten
+ist, als globales `force` (`RENOVATE_FORCE='{"baseBranchPatterns":[…]}'`). Das ersetzt
+`baseBranchPatterns: ['main']` aus `renovate.json5`; ohne den Workflow, etwa im lokalen
+[Probelauf](#probelauf-ohne-schreibzugriff-dry-run), bleibt es bei `main`. Eine Linie fällt am Tag
+nach ihrem Supportende heraus, ohne dass jemand `renovate.json5` ändert; offene Update-PRs gegen
+ihren Branch schließt Renovate im nächsten Lauf wie jeden verwaisten Update-Branch
+(`pruneStaleBranches`, Vorgabe). Fehlt ein Branch noch, überspringt Renovate ihn mit einer
+Warnung im Log.
+
+**Namen.** Solange nur `main` gepflegt wird, heißen Branches und Titel wie bisher
+(`renovate/<Thema>`, ohne Zusatz). Sobald die erste Linie dazukommt, hängt Renovate den
+Basis-Branch an jeden Namen, auch an die von `main`: Offene PRs von `main` entstehen dann einmal
+unter neuem Namen neu, die alten schließt Renovate. Die Prüfung der Datenwirkung erkennt
+Renovate-PRs weiter am Präfix `renovate/`. **Abgelehnte PRs vergisst Renovate dabei:** Ob ein
+Update schon einmal abgelehnt wurde, erkennt es am geschlossenen PR mit demselben Branch-Namen und
+Titel, und beide ändern sich. Ein von Hand geschlossener PR, heute der Major-PR #1158, kommt beim
+Wechsel deshalb einmal neu; er wird erneut geschlossen oder als Regel mit `enabled: false` in
+`renovate.json5` festgehalten.
+
+**Grenzen.** `prConcurrentLimit` (fünf offene Update-PRs) gilt für alle Basis-Branches zusammen;
+Renovate kennt kein Limit je Basis-Branch. Ein Patch-Update für eine Linie kann deshalb hinter
+offenen PRs von `main` warten, bis einer davon gemergt oder geschlossen ist. Steht ein dringendes
+Update einer Linie so in der Abhängigkeits-Übersicht, legt der Maintainer es dort per Häkchen
+sofort an oder bringt es als [Backport](releases.md#backport). Die Übersicht führt die anstehenden
+Updates je Basis-Branch.
+
+**Ausnahme für Sicherheitsupdates.** Braucht eine Linie eine Sicherheitskorrektur, die es nur mit
+einer neuen Minor-Version einer Abhängigkeit gibt, und ist das kein
+[Bruch](releases.md#versionsnummern), schaltet der Maintainer sie mit einer ausdrücklichen Regel
+frei, die hinter der Sperrregel am Ende von `packageRules` steht (ADR-0054, Restrisiken):
+
+```json5
+{
+  matchBaseBranches: ['release/0.2'],
+  matchPackageNames: ['org.example:paket'],
+  matchUpdateTypes: ['minor'],
+  enabled: true,
+  automerge: false,
+}
+```
+
+**Woher der Anlass kommt.** Renovate selbst meldet einen solchen Fall nicht. Seine
+Sicherheits-PRs (`vulnerabilityAlerts`) entstehen aus den offenen Dependabot-Alerts, und die
+berechnet GitHub nur für `main`: Ist eine Lücke dort behoben, ist der Alert geschlossen, und für
+eine Linie entsteht kein Sicherheits-PR mehr. Gibt es den Fix nur als neue Minor-Version, verwirft
+ihn die Sperre ohne PR und ohne Eintrag in der Übersicht. Der Anlass kommt deshalb aus dem
+nächtlichen [CVE-Scan](cve-scanning.md) des jüngsten Patch-Release jeder Linie; er sieht, was im
+Image steckt, auch die Java-Bibliotheken des Backends, nicht aber Frontend-Bibliotheken, die im
+gebündelten JavaScript aufgehen. Diesen Scan je Linie baut erst
+[#3018](https://github.com/criew/opaa/issues/3018); bis dahin prüft er nur das jüngste Release,
+und ein Fix, den es nur als Minor-Version gibt, fällt für eine ältere Linie nicht von selbst auf.
+Die Regel wird mit dem Supportende der Linie wieder entfernt. `test_support_lines.py` liest `renovate.json5` mit Node und prüft, dass die
+Sperrregel die Update-Arten oben abdeckt, dass `separateMinorPatch` nur für die Wartungsbranches und
+vor der Sperre gilt, dass nach ihr nur solche Ausnahmen mit `matchPackageNames` und
+`automerge: false` stehen,
+dass `renovate.json5` nur `main` als Basis-Branch nennt und dass `renovate.yml` die Liste übergibt.
+
 ## Actions per Commit-SHA
 
 Alle Workflows unter `.github/workflows/` binden jede Action über den vollen Commit-SHA ein, mit

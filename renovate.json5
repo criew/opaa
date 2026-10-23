@@ -17,6 +17,13 @@
   ],
   timezone: 'Europe/Berlin',
 
+  // Basis-Branches: Der tägliche Lauf (renovate.yml) ersetzt diese Liste per globalem "force"
+  // durch main und die Wartungsbranches release/X.Y aller heute unterstützten Linien aus
+  // .github/support-lines.json; eine ausgelaufene Linie fällt dort von selbst heraus. Ohne den
+  // Workflow, etwa im lokalen Probelauf, bleibt es bei main. Mit mehr als einem Basis-Branch hängt
+  // Renovate den Branch an Branch-Namen (renovate/<branch>-…) und PR-Titel („… (release/0.2)“).
+  baseBranchPatterns: ['main'],
+
   // Commit-Autor der Update-Branches: Renovates Standard-Autor ist keinem
   // GitHub-Konto zugeordnet und fällt damit durch den CLA-Check (contributor-assistant
   // findet weder Unterschrift noch Allowlist-Treffer — "*[bot]" matcht nur echte
@@ -315,7 +322,7 @@
     // Required Checks grün sind — Brüche, die nur ein Nicht-Required-Check (e2e) oder gar kein
     // Check zeigt, rutschen bei Majors sonst unbeaufsichtigt durch. Majors bleiben als PR
     // zur menschlichen Entscheidung offen; Ablehnung durch Schließen des PRs (Renovate merkt
-    // sich das). Die folgenden enabled:false-Regeln setzen einzelne, aktuell bekannt
+    // sich das, solange Branch-Name und Titel gleich bleiben, docs/renovate.md). Die folgenden enabled:false-Regeln setzen einzelne, aktuell bekannt
     // inkompatible Majors darüber hinaus ganz aus.
     {
       matchUpdateTypes: ['major'],
@@ -452,6 +459,23 @@
     {
       matchPackageNames: ['typescript'],
       matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+    // Wartungsbranches release/X.Y (ADR-0054, Entscheidung 7), siehe baseBranchPatterns oben.
+    // Eine Linie bekommt nur patch, digest und pin, nie eine neue Minor- oder Major-Version.
+    // separateMinorPatch trennt Patch und Minor in eigene Vorschläge; ohne ihn schlägt Renovate nur
+    // die höchste Version beider zusammen vor, und gibt es eine neuere Minor-Version, verwürfe die
+    // Sperre darunter mit ihr auch den Patch. Nur hier, damit sich auf main nichts ändert.
+    {
+      matchBaseBranches: ['/^release\\/\\d+\\.\\d+$/'],
+      separateMinorPatch: true,
+    },
+    // Die Sperre steht zuletzt, damit keine spätere Regel sie aufhebt; danach folgen nur
+    // ausdrückliche Ausnahmen für Sicherheitsupdates ohne Bruch, je mit matchPackageNames und
+    // automerge: false (docs/renovate.md, test_support_lines.py).
+    {
+      matchBaseBranches: ['/^release\\/\\d+\\.\\d+$/'],
+      matchUpdateTypes: ['major', 'minor', 'replacement', 'rollback', 'bump', 'lockFileMaintenance'],
       enabled: false,
     },
   ],

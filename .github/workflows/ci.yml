@@ -148,13 +148,15 @@ jobs:
             # that each of its patterns still matches a tracked file, .github/licenses/** because
             # test_check_licenses.py loads the policy files. requirements-ci.txt pins the pytest this
             # job and seed-script install, so a Renovate bump of it runs both; requirements-release.txt
-            # the packages of update_package.py, which this job tests.
+            # the packages of update_package.py, which this job tests. support-lines.json belongs
+            # here because test_support_lines.py validates it.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
               - '.github/requirements-release.txt'
               - '.github/data-impact-paths.txt'
               - '.github/licenses/**'
+              - '.github/support-lines.json'
               - '.github/workflows/ci.yml'
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/renovate.yml'
