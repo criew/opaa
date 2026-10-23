@@ -9,8 +9,9 @@ import java.util.List;
  * The description of the audit log for the staff council ("Auszug für die Personalvertretung",
  * docs/features/security-and-compliance.md): every column of {@code audit_log} with granularity,
  * purpose and retention, the query paths {@link AuditQueryService} offers with the bounds of {@link
- * AuditAccessGate}, and the paths that deliberately do not exist. A new column of {@code audit_log}
- * or a new query path changes this list in the same change.
+ * AuditAccessGate}, the self-disclosure of the person herself ({@link
+ * AuditLogSelfDisclosureExporter}), and the paths that deliberately do not exist. A new column of
+ * {@code audit_log} or a new query path changes this list in the same change.
  */
 final class AuditProtocolDescription {
 
@@ -32,13 +33,16 @@ final class AuditProtocolDescription {
   private static final List<String> ABSENT_QUERY_PATHS =
       List.of(
           "Kein Filter nach handelnder Person, weder als Parameter noch als Spaltenfilter noch über"
-              + " eine Sortierung, außer in der freigegebenen anlassbezogenen Klärung",
+              + " eine Sortierung, außer in der freigegebenen anlassbezogenen Klärung und in der"
+              + " Selbstauskunft über die eigene Person",
           "Keine Gruppierung und keine Zählung je Person",
           "Keine Zeitreihe je Person, in keiner Auflösung",
           "Keine Freitextsuche über das Protokoll",
-          "Kein Vollabzug ohne Objekt-, Zeitraum- oder Ereignisbezug, auch nicht als Export",
-          "Keine Sicht „alle Ereignisse, bei denen Person X betroffen war“; die Ausnahme ist allein"
-              + " die freigegebene anlassbezogene Klärung im Vier-Augen-Prinzip");
+          "Kein Vollabzug ohne Objekt-, Zeitraum- oder Ereignisbezug, auch nicht als Export;"
+              + " einzige Ausnahme die Selbstauskunft, nur über die eigene Person",
+          "Keine Sicht „alle Ereignisse, bei denen Person X betroffen war“; für Dritte ist die"
+              + " Ausnahme allein die freigegebene anlassbezogene Klärung im Vier-Augen-Prinzip, für"
+              + " die Person selbst ihre Selbstauskunft");
 
   private static List<QueryPath> queryPaths() {
     String bounds =
@@ -59,12 +63,20 @@ final class AuditProtocolDescription {
             "nach Vorgang", "Alle Einträge eines technischen Vorgangs, etwa eines Laufs" + bounds),
         new QueryPath(
             "anlassbezogene Klärung",
-            "Die einzige Abfrage nach handelnder Person: alle Ereignisse der vorab festgelegten"
+            "Die einzige Abfrage nach handelnder Person durch Dritte: alle Ereignisse der vorab"
+                + " festgelegten"
                 + " Person in einem Zeitraum innerhalb des freigegebenen Zeitraums; nur mit"
                 + " Freigabe im Vier-Augen-Prinzip durch eine zweite Person, nutzbar "
                 + AuditIncidentScopeGrant.USABLE_WINDOW.toDays()
                 + " Tage ab Freigabe"
-                + bounds));
+                + bounds),
+        new QueryPath(
+            "Selbstauskunft",
+            "Nur über die angemeldete Person selbst, nie über eine andere und ohne Parameter:"
+                + " alle Ereignisse, in denen sie handelt, betroffen oder Konto als Objekt ist,"
+                + " ohne Zeit- und Seitengrenze; ohne Pseudonyme und Begründungen, andere"
+                + " Beteiligte als „andere Person“ oder „System“. Statt eines eigenen Abrufeintrags"
+                + " stehen Beginn und Ende des Exports im Protokoll"));
   }
 
   private static List<ProtocolField> fields(String retention) {

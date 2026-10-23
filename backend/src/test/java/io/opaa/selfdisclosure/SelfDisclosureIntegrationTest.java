@@ -142,7 +142,7 @@ class SelfDisclosureIntegrationTest {
         .contains("<html lang=\"de\">")
         .contains(SelfDisclosureOverviewRenderer.NOTICE)
         .contains("sd-test &lt;b&gt;Gruppe&lt;/b&gt; &amp; mehr")
-        .contains("Diese Version enthält noch nicht alle Kategorien")
+        .doesNotContain("Diese Version enthält noch nicht alle Kategorien")
         .doesNotContain("<script");
     assertThat(entries.keySet()).noneMatch(name -> name.contains("sig") || name.contains("sha"));
 
