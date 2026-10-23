@@ -85,12 +85,18 @@ data:
           note: >-
             Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id ist bei
             Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. Ereignisse einer anlassbezogenen
-            Klärung über die Person gehören nicht dazu, object_label nur an eigenen Kontoobjekten
+            Klärung über die Person gehören nicht dazu; object_label an fremden Kontoobjekten
+            entfällt, Bezeichnungen anderer Objekte (Spaces, Gruppen, Bibliotheken) bleiben
     storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
     retention:
       rule: Voreinstellung 36 Monate, einstellbar 12 bis 120 Monate
       settings: [audit_retention_settings.retention_months]
-    visibility: [AUDITOR]
+    visibility:
+      - AUDITOR
+      - >-
+        die Person selbst in ihrer Selbstauskunft: Einträge, in denen sie handelt, betroffen oder
+        Kontoobjekt ist, ohne Pseudonyme und Begründungen, andere Beteiligte als „andere Person“
+        oder „System“
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
     evaluations: >-

@@ -12,7 +12,8 @@
  * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt) plus
  * the one personenbezogene exception ({@link io.opaa.audit.AuditIncidentScopeService}, the
  * anlassbezogene Klärung under the Vier-Augen-Prinzip). {@code AuditController} exposes it,
- * restricted to {@code SystemRole.AUDITOR}.
+ * restricted to {@code SystemRole.AUDITOR}. The one read beside it is the person's own
+ * self-disclosure ({@link io.opaa.audit.AuditLogSelfDisclosureExporter}), never about anyone else.
  *
  * <p>Retention and automatic deletion sit on top of that: {@link
  * io.opaa.audit.AuditRetentionSettingsService} reads and changes the single, system-wide retention
