@@ -388,6 +388,8 @@ Ablauf:
    GitHub-Release unter *Releases*.
    Das erste Release trägt nur einen festen Text: Ohne Vorgänger umfassten generierte Notizen die
    gesamte Historie.
+7. Bei einem finalen `vX.Y.0` den Wartungsbranch `release/X.Y` der neuen Linie anlegen
+   ([Backport](#backport), Schritt 1).
 
 Von Hand nachbearbeiten muss man die Notizen nur für bekannte Befunde aus Schritt 4: Was ein
 Release von Bestandsinstallationen verlangt, kommt über Schritt 3 aus dem Repository,
@@ -416,8 +418,9 @@ Entscheidung 7). Zurückportiert werden nur Sicherheitskorrekturen und Behebunge
 [kritischer Fehler](#kritische-fehler); ob ein Fehler kritisch ist, hält der Maintainer vorher am
 Issue fest. Ablauf, Beispiel Linie 0.2:
 
-1. **Branch anlegen**, einmal je Linie, sobald der erste Backport ansteht, vom Commit des Tags
-   `vX.Y.0` (nur Admin oder Maintain, Ruleset `release-branches-create`):
+1. **Branch anlegen**, einmal je Linie, gleich nach dem Lauf des finalen `vX.Y.0` (Schritt 6
+   oben), vom Commit des Tags; nur Admin oder Maintain (Ruleset `release-branches-create`). So
+   steht der Branch für Backports bereit, bevor einer ansteht:
 
    ```bash
    git fetch origin --tags
