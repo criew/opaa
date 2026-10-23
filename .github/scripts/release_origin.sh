@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Release guard of publish-images.yml (docs/releases.md, "Schutzregeln im Workflow"): admits a tag
-# vX.Y.Z[-<pre>] only if <commit> lies on main or on release/X.Y, the branch of exactly the tag's
-# line, and prints that branch (main first). On release/X.Y only a patch (Z >= 1) of a line whose
-# vX.Y.0 the commit contains; never a commit containing a final tag at or above the version (above
-# the release itself for a final tag), which would ship a newer line's functions. Reads the tags
-# and remote-tracking refs of "origin". Exit 1 if refused, 2 if the tag is malformed or main unread.
+# Release guard of publish-images.yml (docs/releases.md, "Schutzregeln im Workflow"): a line opens
+# on main (vX.Y.0 and its pre-releases), every patch vX.Y.Z with Z >= 1 lies on release/X.Y and its
+# commit contains vX.Y.0; no commit may contain a final tag at or above the version (above the
+# release itself for a final tag). Main moves on to the next line, so a patch from there would ship
+# its functions. Prints the branch; reads the tags and remote-tracking refs of "origin".
+# Exit 1 if refused, 2 if the tag is malformed or main cannot be read.
 set -euo pipefail
 
 if (($# != 2)); then
@@ -49,22 +49,21 @@ if ! git rev-parse -q --verify "refs/remotes/origin/main" >/dev/null; then
   echo "::error::origin/main fehlt im Checkout; die Herkunft von $tag ist nicht prüfbar" >&2
   exit 2
 fi
-if on_branch main; then
-  echo main
-  exit 0
+if [[ "$base" == *.0 ]]; then
+  if on_branch main; then
+    echo main
+    exit 0
+  fi
+  echo "::error::Tag $tag eröffnet eine Linie; das geschieht nur auf main, der Commit liegt nicht darauf (docs/releases.md)" >&2
+  exit 1
 fi
 branch="release/$line"
-if git rev-parse -q --verify "refs/remotes/origin/$branch" >/dev/null && on_branch "$branch"; then
-  if [[ "$base" == *.0 ]]; then
-    echo "::error::Tag $tag eröffnet eine Linie; das geschieht auf main, $branch trägt nur Patch-Releases (docs/releases.md)" >&2
-    exit 1
-  fi
-  if ! git tag --merged "$commit" --list "v$line.0" | grep -qxF "v$line.0"; then
-    echo "::error::Tag $tag liegt auf $branch, aber der Commit enthält v$line.0 nicht; der Branch entsteht vom Commit dieses Tags (docs/releases.md)" >&2
-    exit 1
-  fi
-  echo "$branch"
-  exit 0
+if ! git rev-parse -q --verify "refs/remotes/origin/$branch" >/dev/null || ! on_branch "$branch"; then
+  echo "::error::Tag $tag ist ein Patch-Release und muss auf $branch liegen, auch für die jüngste Linie; main trägt schon die nächste Linie (docs/releases.md)" >&2
+  exit 1
 fi
-echo "::error::Tag $tag zeigt auf einen Commit, der weder auf main noch auf $branch liegt (docs/releases.md)" >&2
-exit 1
+if ! git tag --merged "$commit" --list "v$line.0" | grep -qxF "v$line.0"; then
+  echo "::error::Tag $tag liegt auf $branch, aber der Commit enthält v$line.0 nicht; der Branch entsteht vom Commit dieses Tags (docs/releases.md)" >&2
+  exit 1
+fi
+echo "$branch"

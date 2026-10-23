@@ -317,15 +317,13 @@ in der Installation abgeschaltet ist und bis zur Zustimmung abgeschaltet bleibt;
 hält das als Auflage fest. Lässt sich eine solche Funktion nicht abschalten, wartet das Update.
 
 (10) **Sicherheitsupdates:** Ein Patch-Release einer unterstützten Linie bringt keine neue Funktion;
-im Zielbild enthält es nur Sicherheitskorrekturen und Behebungen kritischer Fehler, heute alles seit
-dem letzten Release außer neuen Funktionen. [Stelle] sichtet deshalb vor dem Einspielen sein Delta. Enthält es keine Änderung der Stufe Zustimmung, wird es sofort eingespielt, und
+es enthält nur Sicherheitskorrekturen und Behebungen kritischer Fehler. [Stelle] sichtet vor dem
+Einspielen sein Delta. Enthält es keine Änderung der Stufe Zustimmung, wird es sofort eingespielt, und
 der Personalrat erhält den Update-Vermerk binnen [fünf] Arbeitstagen. Sonst gilt Absatz 9, für eine Sicherheitskorrektur Absatz 11.
 
 (11) Steht eine Sicherheitskorrektur nur in einem Funktionsupdate oder einem Patch-Release mit einer
 Änderung der Stufe Zustimmung bereit, darf die Dienststellenleitung es als vorläufige Maßnahme sofort
-einspielen. Das ist der Fall, wenn die eingesetzte Linie ausgelaufen ist oder wenn nur die jüngste
-Linie Patch-Releases bekommt und das Projekt die Korrektur deshalb mit dem nächsten Funktionsrelease
-ausliefert. Dann gilt:
+einspielen. Das ist etwa der Fall, wenn die eingesetzte Linie ausgelaufen ist. Dann gilt:
 
 1. Funktionen der Stufe Zustimmung, die sich abschalten lassen, werden abgeschaltet und bleiben es
    bis zur Zustimmung.

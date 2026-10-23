@@ -66,10 +66,12 @@ Liegt die Korrektur im Basis-Image, entsteht das Patch-Release aus demselben Cod
 das Tag `X.Y` verwendet, erhält ein Patch-Release mit dem nächsten Pull; wer `X.Y.Z` pinnt, wechselt
 bewusst.
 
-**Ältere Linien.** Jede Linie wird auf einem eigenen Wartungsbranch gepflegt. Eine Korrektur im
-Code kommt zuerst in den laufenden Entwicklungsstand und von dort auf jede unterstützte Linie, die
-sie betrifft; ein Patch-Release enthält so nie Funktionen einer neueren Linie. Praktisch greift das
-ab dem zweiten finalen Release, wenn es erstmals eine ältere Linie gibt. Der nächtliche Scan prüft
+**Wartungsbranches.** Jede Linie wird auf einem eigenen Wartungsbranch gepflegt, die jüngste
+ebenso wie ältere. Eine Korrektur im Code kommt zuerst in den laufenden Entwicklungsstand `main`
+und von dort auf jede unterstützte Linie, die sie betrifft. Jedes Patch-Release entsteht auf dem
+Wartungsbranch seiner Linie; ein Patch-Release aus `main` lehnt der Release-Lauf ab. So enthält
+ein Patch-Release nie Funktionen einer neueren Linie. Ältere Linien gibt es ab dem zweiten finalen
+Release. Der nächtliche Scan prüft
 ältere Linien [noch nicht](#was-nicht-gebaut-ist).
 
 ## Was ein Release liefert

@@ -134,15 +134,14 @@ Bevor gebaut wird, bricht der Lauf im Job `prepare` ab, wenn:
 
 - das Tag nicht die Form `vX.Y.Z` bzw. `vX.Y.Z-<vorab>` hat oder keine gültige
   [SemVer](https://semver.org/lang/de/)-Version ist, etwa `v1.0.0-rc.01` mit führender Null,
-- der getaggte Commit weder auf `main` liegt noch auf dem Wartungsbranch genau der Linie des Tags
-  (`v0.2.1` auf `release/0.2` ja, `v0.3.1` auf `release/0.2` nein; Prüfung in
-  `.github/scripts/release_origin.sh`),
+- das Tag nicht dort liegt, wo es hingehört (Prüfung in `.github/scripts/release_origin.sh`):
+  Ein Funktionsrelease `vX.Y.0` und seine Vorab-Tags liegen auf `main`. **Jedes Patch-Release**
+  `vX.Y.Z` mit `Z` ≥ 1, auch als Vorab-Tag und auch für die jüngste Linie, liegt auf dem
+  Wartungsbranch `release/X.Y` genau seiner Linie, und sein Commit enthält `vX.Y.0`. Ein Patch
+  von `main` brächte die Funktionen mit, die dort schon für die nächste Linie hinzugekommen sind.
+  `v0.2.1` auf `release/0.2` geht also, `v0.3.1` auf `release/0.2` oder auf `main` nicht,
 - der getaggte Commit schon ein höheres finales Release enthält, bei einem Vorab-Release auch das
-  finale Release derselben Version: `v0.2.1` auf einem Commit von `main`, der `v0.3.0` enthält,
-  brächte die Funktionen von 0.3 in die Linie 0.2,
-- auf `release/X.Y` ein Tag `vX.Y.0` (auch als Vorab-Tag) gesetzt wird, denn eine Linie eröffnet
-  nur `main`, oder der Commit `vX.Y.0` nicht enthält, der Branch also nicht vom Tag der Linie
-  abzweigt,
+  finale Release derselben Version,
 - `X.Y.Z` in GHCR bereits existiert, als Image oder als Chart. Das gilt auch für einen erneut
   gepushten Tag und einen manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt,
   sondern durch die nächste Patch-Version abgelöst,
@@ -232,7 +231,7 @@ Der wöchentliche Neubau (#1450) läuft nur auf `main`. Er berührt Release-Tags
 Wartungsbranch `release/X.Y` veröffentlicht nur über ein Tag: Ein Push dorthin startet den Workflow
 nicht, ein manueller Lauf auf dem Branch bricht in `prepare` ab. Er setzt also nie `main` oder
 `sha-<commit>`. Der Tag `X.Y` entsteht aus dem Git-Tag selbst und wandert deshalb nur innerhalb
-seiner Linie, gleich ob das Tag auf `main` oder auf `release/X.Y` liegt.
+seiner Linie: `vX.Y.0` setzt ihn von `main` aus, jedes Patch-Release von `release/X.Y` aus.
 
 `.github/scripts/test_release_lines.py` prüft beide Skripte dieses Abschnitts und des folgenden an
 einer Historie mit zwei Linien und hält ihren Aufruf im Workflow fest; kein PR führt die Jobs aus,
@@ -342,15 +341,15 @@ Ablauf:
    |---|---|
    | Funktionsrelease `vX.Y.0` und seine Kandidaten | `origin/main` |
    | Patch-Release mit Codeänderung (Backport) | `origin/release/X.Y`, nie `origin/main` |
-   | Patch-Release ohne Codeänderung | der Commit des vorigen Release der Linie |
+   | Patch-Release ohne Codeänderung | der Commit des vorigen Release der Linie, also `origin/release/X.Y` |
 
-   Ein Patch-Release auf einem Commit von `main`, der schon eine neuere Linie enthält, lehnt der
+   Ein Patch-Release, auch der jüngsten Linie, entsteht nie von `main`; ein Tag dort lehnt der
    Workflow ab (siehe [Schutzregeln](#schutzregeln-im-workflow)).
 
    ```bash
    git fetch origin --tags
    if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow origin; fi
-   commit=$(git rev-parse origin/main)   # Patch-Release: siehe Tabelle oben
+   commit=$(git rev-parse origin/main)   # nur vX.Y.0 und Kandidaten; Patch: origin/release/X.Y
    git switch --detach "$commit"
    prev=$(python3 .github/scripts/update_package.py previous --tag v0.3.0 --commit "$commit") \
      || { echo "Vorgänger nicht bestimmbar" >&2; exit 1; }
@@ -754,7 +753,7 @@ nachgepflegt, solange ihr Supportzeitraum läuft, und danach nicht mehr. Es gibt
 Patch-Release:
 
 - **Ohne Codeänderung:** Ein neues Tag `vX.Y.(Z+1)` auf **demselben Commit** wie das letzte Release
-  der Linie. Der neue Bau zieht die aktuellen Pakete der Basis-Images.
+  der Linie, dem Stand von `release/X.Y`. Der neue Bau zieht die aktuellen Pakete der Basis-Images.
 - **Mit Codeänderung:** Die Korrektur landet zuerst auf `main` und kommt per Backport auf den
   Wartungsbranch `release/X.Y` der Linie, das Tag auf dessen Commit ([Backport](#backport)).
 
