@@ -1,0 +1,74 @@
+# Topic "link-targets": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: link-targets
+    description: Allowed link targets in answers.
+paths:
+  /api/v1/link-targets:
+    get:
+      operationId: getLinkTargets
+      tags: [link-targets]
+      summary: >-
+        The origins a link in an answer may lead to besides the application's own origin. Readable
+        for every signed-in person, because the interface needs the list to render an answer; a
+        link to any other target is shown as text. An empty list means only the own origin.
+      responses:
+        "200":
+          description: The allowed link targets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkTargets"
+
+  /api/v1/system/link-targets:
+    put:
+      operationId: updateLinkTargets
+      tags: [link-targets]
+      summary: >-
+        Replaces the allowed link targets (system admin only). Each entry is an origin - scheme
+        https or http, host and optional port, no path, query or wildcard - stored lower-cased
+        and without its default port; duplicates collapse. Acts on every instance without a
+        restart. Every change is the audit event LINK_TARGETS_CHANGED with the list before and
+        after.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkTargetsUpdate"
+      responses:
+        "200":
+          description: The allowed link targets after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkTargets"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  schemas:
+    LinkTargets:
+      type: object
+      required: [allowedOrigins, updatedAt]
+      properties:
+        allowedOrigins:
+          type: array
+          description: Normalized origins, for example https://intranet.stadt.example.
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    LinkTargetsUpdate:
+      type: object
+      required: [allowedOrigins]
+      properties:
+        allowedOrigins:
+          type: array
+          description: The complete new list; at most 50 entries.
+          items:
+            type: string

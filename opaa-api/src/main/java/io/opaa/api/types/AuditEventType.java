@@ -591,5 +591,11 @@ public enum AuditEventType {
   SELF_DISCLOSURE_EXPORT_FINISHED,
 
   /** The system administration switched the self-disclosure or changed its daily limit. */
-  SELF_DISCLOSURE_SETTINGS_CHANGED
+  SELF_DISCLOSURE_SETTINGS_CHANGED,
+
+  /**
+   * The system administration changed the allowed link targets of answers; {@code before} and
+   * {@code after} carry the whole list of origins.
+   */
+  LINK_TARGETS_CHANGED
 }

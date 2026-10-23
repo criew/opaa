@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: identity-2026-10-23-link-targets
+      author: opaa
+      comment: "The allowed link targets of answers: one installation-wide list of origins the system admin maintains, empty by default (only the application's own origin is clickable). Purely additive: a new table with its seeded row."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE link_target_settings (
+                  id smallint DEFAULT 1 NOT NULL,
+                  allowed_origins text[] DEFAULT '{}'::text[] NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_by uuid,
+                  CONSTRAINT pk_link_target_settings PRIMARY KEY (id),
+                  CONSTRAINT chk_link_target_settings_singleton CHECK ((id = 1)),
+                  CONSTRAINT chk_link_target_settings_count CHECK ((cardinality(allowed_origins) <= 50))
+              );
+              INSERT INTO link_target_settings (id) VALUES (1);

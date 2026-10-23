@@ -46,6 +46,25 @@ Identitätsanbieter auf fremdem Origin kommt über
 ([Authentifizierung](authentifizierung.md#content-security-policy-und-ein-anbieter-auf-fremdem-origin)).
 HSTS setzt der Container nicht; das gehört an den äußeren Proxy.
 
+### Erlaubte Linkziele in Antworten
+
+Ein präpariertes Dokument kann das Chat-Modell dazu bringen, einen Link auszugeben, in dessen
+Adresse Inhalte aus Dokumenten oder dem Gesprächsverlauf stecken. Ein Klick darauf genügt, und die
+Inhalte liegen beim fremden Server. Die **erlaubten Linkziele** begrenzen das: Ein Link in einer
+Antwort ist nur zur eigenen Adresse der Anwendung und zu den eingetragenen Zielen klickbar, so
+bleiben Links ins Intranet oder auf ein Fachportal nutzbar.
+
+- **Vorgabe:** leer. Dann ist nur die eigene Adresse der Anwendung klickbar.
+- **Format:** je Eintrag ein Ursprung aus Schema, Host und optional Port, etwa
+  `https://intranet.stadt.example` oder `https://portal.stadt.example:8443`. Erlaubt sind nur `https`
+  und `http`; Pfad, Abfrage, Anker, Platzhalter wie `*` und Anmeldedaten in der Adresse werden mit
+  einer Meldung abgewiesen. Der Host wird kleingeschrieben und der Standardport weggelassen, doppelte
+  Einträge fallen zusammen. Die Zahl der Einträge ist begrenzt (höchstens 50).
+- **Wer:** Lesen darf jede angemeldete Person, weil die Oberfläche die Liste zum Darstellen braucht;
+  ändern nur die Systemverwaltung.
+- Eine Änderung wirkt ohne Neustart auf allen Instanzen und steht im Revisionsprotokoll
+  ([Nachvollziehbarkeit](nachvollziehbarkeit.md)) mit der Liste vorher und nachher.
+
 ## Härtung für erreichbare Deployments
 
 Ist die Installation aus einem größeren Netz oder dem Internet erreichbar, gilt:
