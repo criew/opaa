@@ -47,12 +47,21 @@ interface Notice {
   tone: StatusTone
 }
 
-/** Whether `now` records an attempt that began after `before` was read. */
-function startedSince(before: SelfDisclosureStatus, now: SelfDisclosureStatus): boolean {
+/**
+ * Whether `now` records an attempt that began after `before` was read. `sawRunning` covers an
+ * attempt that broke off after midnight, when the counters of the new day may equal the old ones.
+ */
+function startedSince(
+  before: SelfDisclosureStatus,
+  now: SelfDisclosureStatus,
+  sawRunning: boolean,
+): boolean {
   return (
+    sawRunning ||
     now.running ||
     now.startsToday !== before.startsToday ||
-    now.lastCompletedAt !== before.lastCompletedAt
+    now.lastCompletedAt !== before.lastCompletedAt ||
+    now.lastResult !== before.lastResult
   )
 }
 
@@ -77,6 +86,7 @@ export default function MyDataSection() {
   const phaseRef = useRef<Phase>('loading')
   const baseline = useRef<SelfDisclosureStatus | null>(null)
   const submittedAt = useRef(0)
+  const sawRunning = useRef(false)
   const polling = useRef(false)
   const stopListening = useRef<(() => void) | null>(null)
 
@@ -104,14 +114,20 @@ export default function MyDataSection() {
     [],
   )
 
+  /**
+   * Ends the watch. With `own` the status tells the outcome of this page's attempt; without it the
+   * ticket was refused, and a start the status shows belongs to another tab.
+   */
   const finish = useCallback(
-    (now: SelfDisclosureStatus | null, fallback: Notice | null) => {
+    (now: SelfDisclosureStatus | null, fallback: Notice | null, own = true) => {
       stopListening.current?.()
       stopListening.current = null
       const before = baseline.current
+      const seen = sawRunning.current
       baseline.current = null
+      sawRunning.current = false
       changePhase('idle')
-      if (now && before && startedSince(before, now)) {
+      if (own && now && before && startedSince(before, now, seen)) {
         const completed =
           now.lastResult === 'COMPLETED' && now.lastCompletedAt !== before.lastCompletedAt
         setNotice(
@@ -134,8 +150,11 @@ export default function MyDataSection() {
       const now = await load()
       const before = baseline.current
       if (!now || !before || phaseRef.current !== 'downloading') return
-      if (now.running) return
-      if (startedSince(before, now)) {
+      if (now.running) {
+        sawRunning.current = true
+        return
+      }
+      if (startedSince(before, now, sawRunning.current)) {
         finish(now, null)
       } else if (Date.now() - submittedAt.current > START_TIMEOUT_MS) {
         finish(now, { text: NOT_STARTED_MESSAGE, tone: 'error' })
@@ -148,9 +167,14 @@ export default function MyDataSection() {
   const handleRefusal = useCallback(
     async (refusal: DownloadRefusal) => {
       const now = await load()
+      // a poll may have settled the attempt meanwhile
+      if (phaseRef.current !== 'downloading') return
       const before = baseline.current
-      // a refusal after the start is the attempt breaking off before the first byte
-      if (now && before && startedSince(before, now)) {
+      // Only a 503 (or an unreadable answer) can follow a start: the attempt broke off before the
+      // first byte. Any other refusal means the ticket was not redeemed, so a start in the status
+      // belongs to another tab.
+      const mayHaveStarted = refusal.status === null || refusal.status === 503
+      if (mayHaveStarted && now && before && startedSince(before, now, sawRunning.current)) {
         if (!now.running) finish(now, null)
         return
       }
@@ -163,6 +187,7 @@ export default function MyDataSection() {
               text: refusal.status === 503 ? CAPACITY_MESSAGE : NOT_STARTED_MESSAGE,
               tone: 'error',
             },
+        false,
       )
     },
     [finish, load],
@@ -212,6 +237,7 @@ export default function MyDataSection() {
         return
       }
       baseline.current = before
+      sawRunning.current = false
       submittedAt.current = Date.now()
       stopListening.current?.()
       stopListening.current = submitSelfDisclosureDownload(ticket, (refusal) => {
@@ -323,7 +349,9 @@ export default function MyDataSection() {
             variant="contained"
             busy={busy}
             busyAnnouncement=""
-            disabled={phase === 'loading' || status === null || (blocked !== null && !busy)}
+            // unavailable, not disabled: a native disabled button drops the keyboard focus to the
+            // page when a completed download uses up the day
+            unavailable={phase === 'loading' || status === null || blocked !== null}
             onClick={() => void start(false)}
           >
             Daten herunterladen

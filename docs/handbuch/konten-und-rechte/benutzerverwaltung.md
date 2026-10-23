@@ -522,7 +522,10 @@ Grenze erreicht, nennt die Seite, ab wann der nächste Download möglich ist.
 **In der Administration** stellt die Systemverwaltung unter **Administration → Datenschutz** die
 Notabschaltung („Selbstauskunft anbieten“) und die Tagesgrenze ein. Beides wirkt ohne Neustart auf
 allen Instanzen, ein laufender Download läuft zu Ende, und jede Änderung steht im Nachweisprotokoll.
-Wann eine Person zuletzt ihre Daten heruntergeladen hat, zeigt keine Ansicht der Verwaltung.
+Wann eine Person zuletzt ihre Daten heruntergeladen hat, zeigt keine Konten- oder
+Einstellungsansicht der Verwaltung. Start und Ende jedes Downloads stehen pseudonymisiert im
+Nachweisprotokoll, das nur die Revision liest
+([Nachvollziehbarkeit](../betrieb/nachvollziehbarkeit.md#was-opaa-automatisch-nachweist)).
 
 | Einstellung | Vorgabe | Grenzen |
 |---|---|---|

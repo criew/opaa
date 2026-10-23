@@ -119,8 +119,9 @@ echo "--- framing"
 # Only the self-disclosure download may be framed, and only by the application itself.
 framing() {
   local headers
-  headers="$(curl -sS -o /dev/null -D - --max-time 10 -X "$1" "$base$2" | tr -d '' || true)"
-  printf '%s|%s' "$(grep -i '^x-frame-options:' <<<"$headers" | sed 's/^[^:]*: //' || true)"     "$(grep -i '^content-security-policy:' <<<"$headers" | grep -o "frame-ancestors [^;]*" || true)"
+  headers="$(curl -sS -o /dev/null -D - --max-time 10 -X "$1" "$base$2" | tr -d '\r' || true)"
+  printf '%s|%s' "$(grep -i '^x-frame-options:' <<<"$headers" | sed 's/^[^:]*: //' || true)" \
+    "$(grep -i '^content-security-policy:' <<<"$headers" | grep -o "frame-ancestors [^;]*" || true)"
 }
 for request in "GET /" "GET /api/v1/health" "GET /some/spa/route"; do
   got="$(framing "${request% *}" "${request#* }")"

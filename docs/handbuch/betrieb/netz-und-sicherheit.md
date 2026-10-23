@@ -19,6 +19,12 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 - **Den Download der Selbstauskunft nicht puffern** (`/api/v1/me/self-disclosure/download`): Das
   Backend zählt eine Auskunft erst, wenn ihr letzter Block abgeflossen ist. Der Frontend-Container
   leitet ohne Puffer weiter; bei ingress-nginx gehört `proxy-buffering: "off"` dazu.
+- **Die Frame-Header des Downloads nicht ersetzen:** Für `/api/v1/me/self-disclosure/download`
+  setzt der Proxy kein eigenes `X-Frame-Options` und keine eigene `Content-Security-Policy` mit
+  `frame-ancestors` und überschreibt die des Frontends nicht. Die Seite lädt den Download in einen
+  eigenen verborgenen Frame; verbietet ein Header das, bricht etwa Firefox jeden Download ab, nachdem
+  OPAA ihn schon begonnen hat. Jeder Versuch verbraucht dann einen Start und löst Benachrichtigung
+  und Mail aus, bis die Starts des Tages erschöpft sind.
 - **Timeout** für `/api/` und `/mcp` mindestens `OPAA_BACKEND_READ_TIMEOUT`, sonst `504` bei langen
   Antworten.
 - **Callback-Seiten** `/auth/callback` und `/connections/callback` tragen einmal gültige Codes:

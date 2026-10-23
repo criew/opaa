@@ -50,6 +50,10 @@ function liveRegionText() {
 
 /** The person returns to the tab; the page reads the status at once. */
 async function returnToTab() {
+  // let pending effects attach the listeners of the watch first
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
   await act(async () => {
     window.dispatchEvent(new Event('focus'))
   })
@@ -58,7 +62,7 @@ async function returnToTab() {
 async function renderReady() {
   renderWithProviders(<MyDataSection />)
   const button = await screen.findByRole('button', { name: 'Daten herunterladen' })
-  await waitFor(() => expect(button).toBeEnabled())
+  await waitFor(() => expect(button).not.toHaveAttribute('aria-disabled'))
   return button
 }
 
@@ -120,7 +124,12 @@ describe('MyDataSection', () => {
         `Ihre Daten wurden vollständig heruntergeladen. Der nächste Download ist ab ${formatMoment(TOMORROW)} möglich.`,
       ),
     )
-    expect(screen.getByRole('button', { name: 'Daten herunterladen' })).toBeDisabled()
+    // marked, not disabled: the keyboard focus stays on the button
+    const done = screen.getByRole('button', { name: 'Daten herunterladen' })
+    expect(done).toHaveAttribute('aria-disabled', 'true')
+    expect(done).toBeEnabled()
+    await user.click(done)
+    expect(submitted.tickets).toEqual(['mock-ticket'])
   })
 
   it('reports an aborted download and that a new attempt is possible', async () => {
@@ -143,7 +152,9 @@ describe('MyDataSection', () => {
         'Der Download wurde abgebrochen und nicht gezählt. Sie können es erneut versuchen.',
       ),
     )
-    expect(screen.getByRole('button', { name: 'Daten herunterladen' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Daten herunterladen' })).not.toHaveAttribute(
+      'aria-disabled',
+    )
   })
 
   it('tells an aborted last attempt on a later visit from the status alone', async () => {
@@ -174,7 +185,10 @@ describe('MyDataSection', () => {
         `Starts für heute erschöpft: Der Download wurde heute zu oft abgebrochen. Der nächste Versuch ist ab ${formatMoment(TOMORROW)} möglich.`,
       ),
     )
-    expect(screen.getByRole('button', { name: 'Daten herunterladen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Daten herunterladen' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('explains a reached daily limit at the ticket with the next possible time', async () => {
@@ -262,5 +276,72 @@ describe('MyDataSection', () => {
     ).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(submitted.tickets).toEqual([])
+  })
+
+  it('reports an abort after midnight, when the counters of the new day equal the old ones', async () => {
+    setMockSelfDisclosureStatus(
+      status({ startsToday: 0, lastResult: 'ABORTED', retryPossible: true }),
+    )
+    const user = userEvent.setup()
+    await user.click(await renderReady())
+    expect(await screen.findByText('Der Download wird gestartet …')).toBeInTheDocument()
+
+    setMockSelfDisclosureStatus(status({ running: true, startsToday: 1, remainingStarts: 4 }))
+    await returnToTab()
+    await waitFor(() => expect(liveRegionText()).toContain('Der Download läuft'))
+
+    // the next day: no start today, the last result again an abort
+    setMockSelfDisclosureStatus(
+      status({ startsToday: 0, lastResult: 'ABORTED', retryPossible: true }),
+    )
+    await returnToTab()
+
+    await waitFor(() =>
+      expect(liveRegionText()).toContain(
+        'Der Download wurde abgebrochen und nicht gezählt. Sie können es erneut versuchen.',
+      ),
+    )
+  })
+
+  it('does not report the export of another tab when its own ticket was replaced', async () => {
+    const user = userEvent.setup()
+    await user.click(await renderReady())
+    await waitFor(() => expect(submitted.refuse).not.toBeNull())
+
+    // another tab redeemed its newer ticket and is streaming
+    setMockSelfDisclosureStatus(
+      status({ running: true, startsToday: 1, remainingStarts: 4, blocked: 'RUNNING_EXPORT' }),
+    )
+    await act(async () => {
+      submitted.refuse?.({ status: 404, code: 'SELF_DISCLOSURE_TICKET_INVALID' })
+    })
+
+    await waitFor(() =>
+      expect(liveRegionText()).toContain('Gerade läuft ein Download Ihrer Daten.'),
+    )
+    expect(liveRegionText()).not.toContain('Der Download läuft')
+    expect(liveRegionText()).not.toContain('abgebrochen')
+  })
+
+  it('keeps the outcome a poll has settled when the refusal of the frame arrives later', async () => {
+    const user = userEvent.setup()
+    await user.click(await renderReady())
+    expect(await screen.findByText('Der Download wird gestartet …')).toBeInTheDocument()
+    const refuse = submitted.refuse
+
+    setMockSelfDisclosureStatus(
+      status({ startsToday: 1, remainingStarts: 4, lastResult: 'ABORTED', retryPossible: true }),
+    )
+    await returnToTab()
+    await waitFor(() => expect(liveRegionText()).toContain('Der Download wurde abgebrochen'))
+
+    await act(async () => {
+      refuse?.({ status: 503, code: null })
+      // the refusal reads the status before it decides
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    })
+
+    expect(liveRegionText()).toContain('Der Download wurde abgebrochen')
+    expect(liveRegionText()).not.toContain('Gerade laden viele Personen')
   })
 })
