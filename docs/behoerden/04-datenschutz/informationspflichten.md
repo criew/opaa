@@ -15,7 +15,7 @@ Dieser Textbaustein informiert Beschäftigte, die OPAA nutzen, nach Art. 13 DSGV
 bei der Nutzung über sie entstehen. Die Behörde passt ihn an, ersetzt die Angaben in eckigen Klammern
 **[…]** und stellt ihn vor der ersten Nutzung bereit, etwa mit der Freischaltung des Zugangs, im
 Intranet oder zusammen mit der
-[Muster-Nutzungsrichtlinie](../08-barrierefreiheit-nutzung/nutzungsrichtlinie.md).
+[Muster-Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md).
 
 Die Faktenblatt-Platzhalter im Text stehen für Inhalte der Faktenblätter der eingesetzten Version.
 Die Behörde ersetzt sie durch eine Zusammenfassung in Alltagssprache oder legt das Faktenblatt als Anlage

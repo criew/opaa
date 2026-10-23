@@ -83,7 +83,7 @@ Vor der Löschung von Unterlagen gilt die Anbietungspflicht an das zuständige A
 Landesarchivgesetz). Nach der Recherche sind Chatverläufe meist nicht aktenrelevant, übernommene
 Ergebnisse dagegen schon. Die Muster-Nutzungsrichtlinie regelt deshalb, dass übernommene Ergebnisse in
 die Akte des Vorgangs gehören
-([Nutzungsrichtlinie, Ergebnisse in die Akte](../08-barrierefreiheit-nutzung/nutzungsrichtlinie.md#6-ergebnisse-in-die-akte)).
+([Nutzungsrichtlinie, Ergebnisse in die Akte](../08-nutzung/nutzungsrichtlinie.md#6-ergebnisse-in-die-akte)).
 Ob darüber hinaus Daten aus OPAA anzubieten sind, etwa das Protokoll, klärt die Behörde mit ihrem
 Archiv, bevor die automatische Löschung greift.
 

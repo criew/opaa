@@ -1179,7 +1179,7 @@ Maßgeblich ist **C5:2026**: Die Fassung ist seit April 2026 final und für Prü
 1.6.2027 verbindlich (Recherche vom 13.10.2026 in Epic #2542). An der Abgrenzung ändert die neue
 Fassung nichts; testiert wird weiterhin der Anbieter eines Cloud-Dienstes. Für Behörden, die OPAA über
 einen solchen Anbieter beziehen, ordnet die Vorlage
-[C5:2026 für das Betriebsmodell Cloud-Anbieter](../behoerden/06-informationssicherheit/c5-2026-cloud-anbieter.md)
+[C5:2026 für das Betriebsmodell Cloud-Anbieter](../behoerden/06-informationssicherheit/c5-cloud-betrieb.md)
 die Prüfbereiche Produkt und Anbieter zu.
 
 Das Produktziel ist deshalb die **C5-Fähigkeit**: OPAA ist so gebaut und dokumentiert, dass ein Betreiber

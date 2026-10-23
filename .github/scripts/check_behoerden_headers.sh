@@ -13,7 +13,7 @@
 # sheet names of that file.
 # Every relative Markdown link in these files and the README names an existing file and, with an
 # anchor, a heading (GitHub slug) or <a id> of the target, so a renamed heading fails here.
-# Under 03-vergabe/ every document has a section "## Quellen und Prüfstand" whose table has a
+# Under 03-vergabe/ every document has a section "## Zum Nachlesen" whose table has a
 # column "Fundstelle" with a link or "zu prüfen" in each row; every citation "§"/"§§"/"Art." in
 # the text is recognised and also appears in a row of that table, and rechtsstand is not after
 # stand. The requirement catalog and the award criteria never name OPAA (any case, also in links),
@@ -34,7 +34,7 @@ FIELDS=(stand gilt-fuer erzeugung rechtsstand pruefvermerk naechste-durchsicht)
 ANCHORS=.github/fact-sheet-anchors.txt
 DATE_RE='^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
 LEGAL_DIRS=("$FOLDER/03-vergabe")
-SOURCES_HEADING='## Quellen und Prüfstand'
+SOURCES_HEADING='## Zum Nachlesen'
 NEUTRAL_FILES=("$FOLDER/03-vergabe/anforderungskatalog.md" "$FOLDER/03-vergabe/zuschlagskriterien.md")
 CATALOG="$FOLDER/03-vergabe/anforderungskatalog.md"
 MATRIX="$FOLDER/03-vergabe/erfuellungsmatrix.md"

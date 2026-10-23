@@ -26,7 +26,7 @@ schließt. Diese Seite beschreibt die Aufteilung und was die Behörde dafür aus
 | Reaktionszeiten auf gemeldete Sicherheitslücken | keine festen Zusagen, Bearbeitung nach bestem Bemühen | [Sicherheitsrichtlinie](../../../SECURITY.md#ablauf) |
 | Sicherheitskorrekturen | für das jüngste Release und `main` | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
 | Reaktion auf Befunde des eigenen Schwachstellenscans | Fristen nach Schwere | [Sicherheitsupdates für Releases](../../releases.md#sicherheitsupdates-für-releases) |
-| Pflichten nach dem Cyber Resilience Act | als Open-Source-Steward | [Rollenklärung zum CRA](../07-ki-verordnung-cra/rollenklaerung-cra.md#die-rollen-im-überblick) |
+| Pflichten nach dem Cyber Resilience Act | als Open-Source-Steward | [Rollenklärung zum CRA](../06-informationssicherheit/rollenklaerung-cra.md#die-rollen-im-überblick) |
 
 Wieweit der Ausschluss von Gewährleistung und Haftung nach deutschem Recht wirkt, ist nicht
 Gegenstand dieser Vorlage (zu prüfen). Für die Planung zählt: Die Behörde kann gegenüber dem Projekt

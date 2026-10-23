@@ -1,26 +1,36 @@
 # Unterlagen für Behörden
 
 Dieser Ordner enthält die Unterlagen, die eine Behörde für die Einführung und den Betrieb von OPAA
-braucht. Sie folgen der Behördenreise: von der Entscheidung der Hausleitung über Markterkundung,
+braucht. Sie folgen dem Einführungsweg: von der Entscheidung der Hausleitung über Markterkundung,
 Teststellung und Vergabe bis zu Einführung, Betrieb und jedem späteren Update.
 
 ## Zweck und Abgrenzung
 
+- **Eine Hilfe, kein Ersatz.** Die Vorlagen erklären kurz, worum es geht, was OPAA beisteuert und was
+  die Behörde selbst tun muss. Sie richten sich an eine Projektleitung, die im jeweiligen Fachgebiet
+  nicht zu Hause ist.
 - **Das [Handbuch](../handbuch/README.md) beschreibt das Produkt**, `docs/behoerden/` die Verfahren
   drumherum: Vorlagen, Checklisten und Erläuterungen, mit denen eine Behörde ihre eigenen Unterlagen
   erstellt (Entscheidungsvorlage, Verzeichnis von Verarbeitungstätigkeiten, Dienstvereinbarung,
   Sicherheitskonzept und andere).
-- **Zielgruppe sind Behörden.** Unternehmen (Betriebsrat, ISO 27001, NIS2 für Unternehmen) sind
-  ausdrücklich nicht Zielgruppe; Unterlagen für sie folgen später.
 - **OPAA liefert Fakten, die Behörde trifft die Wertungen.** Rechtliche Einstufungen in den Vorlagen
   sind begründete Hinweise, keine Rechtsberatung.
 
-Hintergrund und Planung: Epic [#2542](https://github.com/criew/opaa/issues/2542), Vorlagen im Epic
-[#2560](https://github.com/criew/opaa/issues/2560).
+## Was hier „Behörde“ heißt
+
+Behörde meint hier Stellen von Bund, Ländern und Kommunen sowie Körperschaften und Anstalten des
+öffentlichen Rechts, etwa ein Landratsamt, eine Hochschule oder ein Bundesamt. Unternehmen in privater
+Rechtsform sind nicht Zielgruppe; Unterlagen für sie folgen später.
+
+Die Grenze verläuft nicht in jedem Thema gleich. Eine kommunale GmbH muss etwa ausschreiben wie eine
+Behörde, hat aber einen Betriebsrat statt eines Personalrats. Öffentliche Unternehmen im Wettbewerb und
+kirchliche Träger folgen im Datenschutz teils anderen Regeln. Jede Vorlage nennt deshalb unter dem
+Titel in der Zeile **„Gilt für“**, für wen sie passt. Bei Mischformen klärt die oder der
+Datenschutzbeauftragte bzw. die Rechtsabteilung, welche Teile zutreffen.
 
 ## Aufbau
 
-Die Unterverzeichnisse folgen der Behördenreise. Verzeichnisnamen tragen eine zweistellige Nummer
+Die Unterverzeichnisse folgen dem Einführungsweg. Verzeichnisnamen tragen eine zweistellige Nummer
 für die Reihenfolge und keine Umlaute. Ein Verzeichnis entsteht mit seiner ersten Vorlage.
 
 | Verzeichnis | Phase |
@@ -31,9 +41,9 @@ für die Reihenfolge und keine Umlaute. Ein Verzeichnis entsteht mit seiner erst
 | `03-vergabe/` | Vergabe |
 | `04-datenschutz/` | Einführung: Datenschutz |
 | `05-mitbestimmung/` | Einführung: Mitbestimmung |
-| `06-informationssicherheit/` | Informationssicherheit, Betrieb, Notfall |
-| `07-ki-verordnung-cra/` | KI-Verordnung und Cyber Resilience Act |
-| `08-barrierefreiheit-nutzung/` | Barrierefreiheit und Nutzung |
+| `06-informationssicherheit/` | Informationssicherheit, Cyber Resilience Act |
+| `07-ki-verordnung/` | KI-Verordnung |
+| `08-nutzung/` | Barrierefreiheit und Nutzungsrichtlinie |
 | `09-betrieb-update/` | Betrieb und Update |
 
 ## Erzeugungsarten
@@ -124,21 +134,39 @@ Direkt nach dem Kopfvermerk und dem Titel steht wörtlich und als Zitatblock:
 Es gibt keinen rechtlichen Prüfer (Beschluss des Maintainers vom 13.10.2026). Der Hinweis wird weder
 gekürzt noch umformuliert.
 
-## Muster eines Dokuments
+## Aufbau einer Vorlage
+
+Jede Vorlage folgt demselben Aufbau, damit man sie schnell durcharbeiten kann. Muster ist die
+[Datenschutz-Folgenabschätzung](04-datenschutz/datenschutz-folgenabschaetzung.md).
+
+1. Kopfvermerk, Titel (nur der Fachbegriff, ohne „Baustein für“ oder „für OPAA“), Haftungshinweis.
+2. **Gilt für:** eine Zeile, für wen die Vorlage passt.
+3. **Einleitung** in zwei bis drei Sätzen: was das ist, wann man es braucht, wer verantwortlich ist.
+   Fachbegriffe werden beim ersten Auftreten in einem Halbsatz erklärt.
+4. **Beispiel** als Zitatblock: ein Landratsamt oder Bundesamt in wenigen Sätzen.
+5. **Was OPAA liefert:** Verweise auf Faktenblätter, Handbuch und andere Vorlagen.
+6. **Was die Behörde tun muss:** eine kurze, nummerierte Liste.
+7. Je nach Vorlage ein Block zum Ausfüllen (**Ergebnis festhalten**) und **Gut zu wissen**.
+8. **Zum Nachlesen:** zuerst Arbeitshilfen, dann die Rechtsgrundlagen als Tabelle.
+
+Der Lesetext bis „Zum Nachlesen“ bleibt kurz, als Richtwert 300 bis 500 Wörter. Paragrafen stehen
+nur im Abschnitt „Zum Nachlesen“, nicht im Lesetext. Vorlagen verweisen nicht auf Issues oder Epics.
 
 ```markdown
 ---
-stand: 2026-10-15
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-04-15
+naechste-durchsicht: 2027-04-23
 ---
 
 # Verzeichnis von Verarbeitungstätigkeiten
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
+
+**Gilt für:** alle Behörden.
 
 Die Speicherfristen stehen im {{faktenblatt:fristen}}, die personenbezogenen Daten im
 {{faktenblatt:datenkatalog}}.
@@ -186,10 +214,9 @@ Vorlage gegen den Normtext zu prüfen. Das Datum dieser Prüfung steht im Feld `
 
 ### Rechtsangaben mit Fundstelle
 
-Eine Vorlage mit Rechtsangaben führt sie im Abschnitt `## Quellen und Prüfstand` als Tabelle: je
-Aussage die Fundstelle mit Link in der Spalte „Fundstelle“ und die Herkunft (Normtext, amtliche Veröffentlichung, Fachbeitrag,
-Recherche). Eine Angabe, deren Fundstelle nicht belegt ist, trägt „zu prüfen“, statt einen Paragrafen
-zu raten. Der Prüfstand aller Angaben ist das Feld `rechtsstand` des Kopfvermerks; die Drift-Routine
+Eine Vorlage mit Rechtsangaben führt sie im Abschnitt `## Zum Nachlesen` als Tabelle mit den
+Spalten „Worum es geht“ und „Fundstelle“, die Fundstelle möglichst mit Link. Eine Angabe, deren
+Fundstelle nicht belegt ist, trägt „zu prüfen“, statt einen Paragrafen zu raten. Der Prüfstand aller Angaben ist das Feld `rechtsstand` des Kopfvermerks; die Drift-Routine
 und die Rolle „Behördenkontakt“ finden über beides, was nachzuprüfen ist.
 
 ### Herstellerneutral in der Vergabe
@@ -212,7 +239,7 @@ lässt den Lauf scheitern bei:
   Überschrift (in der Schreibweise von GitHub) und kein `<a id>` der Zieldatei trifft; eine
   umbenannte Überschrift im Handbuch fällt so auf,
 - in `03-vergabe/`:
-  - fehlendem Abschnitt `## Quellen und Prüfstand`, einer Tabelle darin ohne Spalte „Fundstelle“
+  - fehlendem Abschnitt `## Zum Nachlesen`, einer Tabelle darin ohne Spalte „Fundstelle“
     oder einer Zeile ohne Link und ohne „zu prüfen“ in dieser Spalte,
   - einem `§`, `§§` oder `Art.` im Text, das nicht die Form `§ 31 Abs. 6 VgV` hat (erlaubt sind
     zwischen Nummer und Gesetz `Abs.`, `Absatz`, `Satz`, `S.`, `Nr.`, `UAbs.`, `lit.` und `ff.`;

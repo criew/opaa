@@ -97,7 +97,7 @@ ein Nachweis inhaltlich noch trägt, prüft die Durchsicht zu `naechste-durchsic
 
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
-| N-01 | teilweise; das letzte Audit prüfte einen Entwicklungsstand, nicht eine Version | [Prüfstand der Barrierefreiheit](../08-barrierefreiheit-nutzung/erklaerung-barrierefreiheit.md#prüfstand) | Projektunterlage, Test |
+| N-01 | teilweise; das letzte Audit prüfte einen Entwicklungsstand, nicht eine Version | [Prüfstand der Barrierefreiheit](../08-nutzung/erklaerung-barrierefreiheit.md#prüfstand) | Projektunterlage, Test |
 
 ## L · Leistungen des Dienstleisters
 
@@ -110,7 +110,7 @@ ein Nachweis inhaltlich noch trägt, prüft die Durchsicht zu `naechste-durchsic
 | L-05 | Dienstleister | [Handbuch](../../handbuch/README.md) | Handbuch |
 | L-06 | Dienstleister; eine Übernahme ins Projekt setzt die unterzeichnete CLA voraus | [Lizenz](../../../LICENSE), [Contributor License Agreement](../../../CONTRIBUTING.md#contributor-license-agreement-cla) | Projektunterlage |
 | L-07 | Dienstleister | [Sicherung und Wiederherstellung](../../handbuch/kubernetes.md#sicherung-und-wiederherstellung), Speicherorte in {{faktenblatt:datenkatalog}} | Handbuch, Faktenblatt |
-| L-08 | Dienstleister | [Rollenklärung zum CRA](../07-ki-verordnung-cra/rollenklaerung-cra.md#die-rollen-im-überblick) | Projektunterlage |
+| L-08 | Dienstleister | [Rollenklärung zum CRA](../06-informationssicherheit/rollenklaerung-cra.md#die-rollen-im-überblick) | Projektunterlage |
 
 ## Quellen und Prüfstand
 

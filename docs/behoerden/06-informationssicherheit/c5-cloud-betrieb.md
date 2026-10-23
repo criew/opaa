@@ -86,7 +86,7 @@ des Anbieters wirken. Für eine Behörde, die OPAA als Cloud-Dienst bezieht, sin
 - **Rechte in der Anwendung vergeben:** Freigaben von Bibliotheken und Spaces, Rollen der
   Systemverwaltung ([Berechtigungen](../../handbuch/berechtigungen.md)).
 - **Inhalte auswählen:** keine Verschlusssachen, keine Bibliotheken über dem vereinbarten
-  Schutzbedarf ([Muster-Nutzungsrichtlinie](../08-barrierefreiheit-nutzung/nutzungsrichtlinie.md)).
+  Schutzbedarf ([Muster-Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md)).
 - **Modellanbieter festlegen**, wenn der Anbieter die Wahl lässt, und die Datenflüsse in den
   Datenschutzunterlagen abbilden ({{faktenblatt:datenfluesse}}).
 - **Identitätsanbieter des Hauses** anbinden und dessen Konten pflegen.

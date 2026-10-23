@@ -42,7 +42,7 @@ ihres Landes.
 |---|---|---|---|
 | IT-Grundschutz (BSI-Standards 200-1 bis 200-4, Kompendium) | Bundesministerien; alle, die den Grundschutz freiwillig anwenden | Bausteinzuordnung mit Produkt- und Betreiberanteil | [Grundschutz-Modellierung](grundschutz-modellierung.md) |
 | [Mindeststandard zur Protokollierung und Detektion von Cyberangriffen](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html) | jede Installation | Anwendungsprotokoll auf der Standardausgabe, optional strukturiert; Nachweisprotokoll; Metriken und Alarme. Eine eigene Ausleitung an ein Sicherheitsmonitoring ist nicht gebaut | [Protokollierung](sicherheitsnachweise.md#protokollierung), {{faktenblatt:protokollereignisse}} |
-| [Mindeststandard zur Nutzung externer Cloud-Dienste](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html) | wenn ein Modelldienst außerhalb der Einrichtung liegt oder ein Dienstleister OPAA als Cloud-Dienst betreibt | Ziele ausgehender Verbindungen sind je Version beschrieben; jeder Modell-Endpunkt ist frei wählbar, auch im Haus | {{faktenblatt:datenfluesse}}, [C5:2026](c5-2026-cloud-anbieter.md) |
+| [Mindeststandard zur Nutzung externer Cloud-Dienste](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html) | wenn ein Modelldienst außerhalb der Einrichtung liegt oder ein Dienstleister OPAA als Cloud-Dienst betreibt | Ziele ausgehender Verbindungen sind je Version beschrieben; jeder Modell-Endpunkt ist frei wählbar, auch im Haus | {{faktenblatt:datenfluesse}}, [C5:2026](c5-cloud-betrieb.md) |
 | [Mindeststandard zur Verwendung von Transport Layer Security](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html) | jede Installation | TLS wird am vorgelagerten Proxy oder Ingress abgeschlossen; das Zertifikat jeder Quelle wird geprüft | [Netzwerkzugang](../../handbuch/betrieb.md#netzwerkzugang), [Zielprüfung](../../handbuch/betrieb.md#zielprüfung-abrufe-des-servers) |
 
 Welche Mindeststandards in welcher Fassung gelten, steht auf der Übersichtsseite des BSI; die Behörde
@@ -62,7 +62,7 @@ OPAA als quelloffenes Produkt ohne Vertragspartner beantwortet das Projekt die �
 | Wie erfährt die Einrichtung von einer Lücke? | über die [Security Advisories](https://github.com/criew/opaa/security/advisories) des Projekts; ein Abonnement des Repositorys auf Sicherheitsmeldungen ist Sache der Einrichtung |
 | Wohin fließen Daten, und an welche Dritten? | nur zu den Zielen, die die Installation einträgt; die Liste je Version steht in {{faktenblatt:datenfluesse}} |
 | Kann OPAA ohne Internet betrieben werden? | Ja, mit Modelldiensten im Haus; der Weg ins Netz geht auf Wunsch nur über einen Ausgangsproxy ([Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy)) |
-| Welche Pflichten hat das Projekt nach dem Cyber Resilience Act? | [Rollenklärung zum Cyber Resilience Act](../07-ki-verordnung-cra/rollenklaerung-cra.md) |
+| Welche Pflichten hat das Projekt nach dem Cyber Resilience Act? | [Rollenklärung zum Cyber Resilience Act](rollenklaerung-cra.md) |
 
 ## Was bei der Einrichtung bleibt
 

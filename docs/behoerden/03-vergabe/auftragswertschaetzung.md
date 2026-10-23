@@ -70,7 +70,7 @@ Auftrag nur unter eine Grenze drücken soll, ist unzulässig (siehe Quellen).
 | Direktauftrag von Ländern und Kommunen | Die Grenze des Bundes gilt nicht automatisch. Maßgeblich ist das Landesrecht; die UVgO wird bis Ende 2026 neu gefasst. Diese Vorlage wird danach durchgesehen (`naechste-durchsicht`). |
 
 Zu den Möglichkeiten, wenn auf eine Ausschreibung kein Angebot eingeht, siehe
-[Wenn sich niemand bewirbt](keine-bewerbung.md).
+[Wenn sich niemand bewirbt](ohne-angebot.md).
 
 ## Quellen und Prüfstand
 

@@ -77,7 +77,7 @@ prüft die CI ([Lizenzprüfung](../../sbom.md#lizenzprüfung)).
 | Welche Versionen erhalten Sicherheitskorrekturen? | nur das jüngste Release und `main` ([Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)) |
 | Wie kommt eine Korrektur zur Behörde? | als Patch-Release ([Sicherheitsupdates für Releases](../../releases.md#sicherheitsupdates-für-releases)), veröffentlicht als [GitHub Security Advisory](https://github.com/criew/opaa/security/advisories) |
 | Wie meldet die Behörde eine Lücke? | vertraulich über den [Meldeweg](../../../SECURITY.md#meldeweg), nie in einem öffentlichen Issue |
-| Welche Pflichten hat das Projekt nach dem Cyber Resilience Act? | [Rollenklärung zum Cyber Resilience Act](../07-ki-verordnung-cra/rollenklaerung-cra.md) |
+| Welche Pflichten hat das Projekt nach dem Cyber Resilience Act? | [Rollenklärung zum Cyber Resilience Act](rollenklaerung-cra.md) |
 
 **Folge für die Behörde:** Weil nur das jüngste Release Sicherheitskorrekturen erhält, muss der
 Betrieb Updates zeitnah einspielen können. Wer eine Version länger festhalten will oder muss,
@@ -87,4 +87,4 @@ vereinbart das mit einem Dienstleister; das Projekt sagt keinen längeren Zeitra
 
 - [IT-Grundschutz-Modellierung](grundschutz-modellierung.md)
 - [NIS2 in der Bundesverwaltung](nis2-bundesverwaltung.md)
-- [C5:2026 für das Betriebsmodell Cloud-Anbieter](c5-2026-cloud-anbieter.md)
+- [C5:2026 für das Betriebsmodell Cloud-Anbieter](c5-cloud-betrieb.md)

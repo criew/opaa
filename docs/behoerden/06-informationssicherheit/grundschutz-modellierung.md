@@ -96,7 +96,7 @@ Anforderungen am laufenden System.
 | OPS.1.1.3 Patch- und Änderungsmanagement | Anwendung OPAA, Container-Plattform | unveränderliche Release-Images, Patch-Releases für Sicherheitsupdates, Release-Notizen mit Vorbereitungsschritten ([Sicherheitsupdates für Releases](../../releases.md#sicherheitsupdates-für-releases)) | Updates bewerten, testen, einspielen; siehe [Bei jedem Update fortschreiben](#bei-jedem-update-fortschreiben) |
 | OPS.1.1.5 Protokollierung | Anwendung OPAA | Anwendungsprotokoll auf der Standardausgabe, optional strukturiert; Nachweis- und Revisionsprotokoll in der Anwendung ([Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken)); Ereignisse: {{faktenblatt:protokollereignisse}} | Protokolle einsammeln, aufbewahren, auswerten; Zugriff regeln |
 | OPS.1.1.6 Software-Tests und -Freigaben | Anwendung OPAA | Tests im Projekt vor jedem Release | Abnahme jeder Version im Haus, etwa in einer Testinstanz |
-| OPS.2.2 Cloud-Nutzung | Modelldienste, Betrieb beim Dienstleister | — | nur bei externen Modelldiensten oder Betrieb in einer Cloud; siehe [C5:2026](c5-2026-cloud-anbieter.md) |
+| OPS.2.2 Cloud-Nutzung | Modelldienste, Betrieb beim Dienstleister | — | nur bei externen Modelldiensten oder Betrieb in einer Cloud; siehe [C5:2026](c5-cloud-betrieb.md) |
 | OPS.2.3 Nutzung von Outsourcing | Betrieb beim Dienstleister | — | wenn ein Dienstleister OPAA betreibt |
 | DER.1 Detektion von sicherheitsrelevanten Ereignissen | Anwendung OPAA | Metriken und Alarme ([Betriebsüberwachung](../../handbuch/kubernetes.md#betriebsüberwachung)), Frühwarnsignale bei Anmeldeversuchen ([Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken)) | Anbindung an das zentrale Sicherheitsmonitoring |
 | DER.2.1 Behandlung von Sicherheitsvorfällen | Informationsverbund | Meldeweg für Schwachstellen ([`SECURITY.md`](../../../SECURITY.md)), Security Advisories | Vorfallbehandlung des Hauses, Meldepflichten |
@@ -126,10 +126,10 @@ vor. Anhaltspunkte:
 
 - **Fachliche Richtigkeit:** OPAA nennt zu jeder Antwort die Fundstellen
   ([Suche](../../handbuch/suche.md)); die Nutzungsrichtlinie regelt, dass Antworten zu prüfen sind
-  ([Muster-Nutzungsrichtlinie](../08-barrierefreiheit-nutzung/nutzungsrichtlinie.md)).
+  ([Muster-Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md)).
 - **Vertraulichkeit gegenüber dem Modellanbieter:** Ob Inhalte das Haus verlassen, hängt allein an
   den eingetragenen Modell-Endpunkten ({{faktenblatt:datenfluesse}}).
-- **Einstufung nach der KI-Verordnung:** [Einstufungshilfe](../07-ki-verordnung-cra/einstufungshilfe-ki-verordnung.md).
+- **Einstufung nach der KI-Verordnung:** [Einstufungshilfe](../07-ki-verordnung/einstufungshilfe-ki-verordnung.md).
 - **Prüfkataloge für KI-Dienste:** [AIC4](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Kuenstliche-Intelligenz/AIC4/aic4.html)
   und der neuere BSI-Prüfkatalog A5 richten sich an Anbieter von KI-Cloud-Diensten. OPAA ist danach
   nicht geprüft; den aktuellen Stand von A5 prüft die Behörde beim BSI.
@@ -163,4 +163,4 @@ Der folgende Abschnitt kann in das Sicherheitskonzept übernommen werden.
 - [Sicherheitsnachweise des Projekts](sicherheitsnachweise.md): Härtung, Protokollierung, SBOM,
   Schwachstellen
 - [NIS2 in der Bundesverwaltung](nis2-bundesverwaltung.md)
-- [C5:2026 für das Betriebsmodell Cloud-Anbieter](c5-2026-cloud-anbieter.md)
+- [C5:2026 für das Betriebsmodell Cloud-Anbieter](c5-cloud-betrieb.md)
