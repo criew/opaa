@@ -241,7 +241,7 @@ jobs:
 
       # Every editorial document under docs/behoerden carries header block, disclaimer, only
       # fact sheet placeholders naming a target of .github/fact-sheet-anchors.txt and only
-      # relative links that resolve (docs/behoerden/README.md); new files are found by directory walk.
+      # relative links that resolve (docs/behoerden/AGENTS.md); new files are found by directory walk.
       # Runs on every event: link targets lie all over the repository, a path filter would miss them.
       - name: Kopfvermerk der Behördenunterlagen prüfen
         run: .github/scripts/check_behoerden_headers.sh
@@ -315,7 +315,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 90
 
-      # Fact sheets for authorities from the compliance manifest (docs/behoerden/README.md,
+      # Fact sheets for authorities from the compliance manifest (docs/behoerden/AGENTS.md,
       # "Faktenblätter"). Not checked in: the artifact of the latest run on main is the published
       # state of main.
       - name: Faktenblätter erzeugen

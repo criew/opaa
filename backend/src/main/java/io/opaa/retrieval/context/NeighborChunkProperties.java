@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * How far the answer prompt widens each selected chunk by its neighbours in the same document
- * (docs/handbuch/suche.md Abschnitt 10.3). An Ebene-1 value like {@code QueryProperties}.
+ * (docs/handbuch/spaces/suche.md Abschnitt 10.3). An Ebene-1 value like {@code QueryProperties}.
  *
  * @param radius how many chunks on each side of a selected chunk are loaded, {@code chunk_index ±
  *     radius}. Default {@code 1}; {@code 0} switches the expansion off. At most 3.

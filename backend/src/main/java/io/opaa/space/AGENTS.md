@@ -45,8 +45,8 @@ Protokollmodell für „Sicht als" in der Suchdiagnose (`diagnosticaccess`).
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/spaces.md`; `docs/handbuch/berechtigungen.md`, Abschnitte 12 und 14;
-  `docs/handbuch/suche.md`, Abschnitt 8
+- Handbuch: `docs/handbuch/spaces/README.md`; `docs/handbuch/konten-und-rechte/berechtigungen.md`, Abschnitte 12 und 14;
+  `docs/handbuch/spaces/suche.md`, Abschnitt 8
 - Strukturtests: `PermissionPackageBoundaryTest` (in `io.opaa.permission`)
 
 ## Tests bei Änderungen

@@ -72,12 +72,12 @@ public class SettingsEncryptor {
       throw new IllegalStateException(
           "OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt. Diese Umgebungsvariable ist"
               + " erforderlich, sobald ein Zugangsschlüssel für ein Chat-Modell verschlüsselt oder"
-              + " entschlüsselt werden soll. Siehe docs/handbuch/modelle.md.");
+              + " entschlüsselt werden soll. Siehe docs/handbuch/betrieb/modelle.md.");
     }
     try {
       return new AesGcmCipher(
           AesGcmCipher.aes256Key(
-              base64Key, "OPAA_SETTINGS_ENCRYPTION_KEY", "docs/handbuch/modelle.md"));
+              base64Key, "OPAA_SETTINGS_ENCRYPTION_KEY", "docs/handbuch/betrieb/modelle.md"));
     } catch (InvalidKeyException e) {
       throw new IllegalStateException(e.getMessage(), e);
     }

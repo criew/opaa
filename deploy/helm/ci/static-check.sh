@@ -217,10 +217,10 @@ mkdir -p "$work_dir/upgrade-notes"
 release_notes="$(UPGRADE_NOTES_DIR="$work_dir/upgrade-notes" deploy/helm/ci/release-notes.sh criew/opaa v1.2.3-rc.1)"
 for expected in "kubectl create namespace opaa" "pod-security.kubernetes.io/enforce=restricted" \
   "pod-security.kubernetes.io/warn=restricted" "--version 1.2.3-rc.1" \
-  "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#installation" \
+  "blob/v1.2.3-rc.1/docs/handbuch/betrieb/kubernetes.md#installation" \
   "**Vorbereitung für Bestandsinstallationen**" "Keine Vorbereitung nötig." \
-  "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#aktualisierung-und-rückweg" \
-  "blob/v1.2.3-rc.1/docs/handbuch/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen" \
+  "blob/v1.2.3-rc.1/docs/handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg" \
+  "blob/v1.2.3-rc.1/docs/handbuch/betrieb/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen" \
   "\`opaa-update-paket-1.2.3-rc.1.tar.gz\`" \
   "gh attestation verify opaa-update-paket-1.2.3-rc.1.tar.gz --repo criew/opaa"; do
   if [[ "$release_notes" != *"$expected"* ]]; then
@@ -247,10 +247,10 @@ heading_anchors() {
   awk '/^[[:space:]]*```/ { block = !block; next } !block && /^#+ / { sub(/^#+ +/, ""); print }' "$1" |
     jq -Rr 'gsub("Ä";"ä") | gsub("Ö";"ö") | gsub("Ü";"ü") | ascii_downcase | gsub("[^\\p{L}\\p{N} _-]";"") | gsub(" ";"-")'
 }
-links="$(grep -o 'blob/v1\.2\.3-rc\.1/docs/handbuch/[a-z0-9-]*\.md#[^)]*' <<<"$release_notes")"
+links="$(grep -o 'blob/v1\.2\.3-rc\.1/docs/handbuch/[a-z0-9/-]*\.md#[^)]*' <<<"$release_notes")"
 while read -r link; do
   file="${link%%#*}"
-  file="docs/handbuch/${file##*/}"
+  file="docs/handbuch/${file#*/docs/handbuch/}"
   heading_anchors "$file" >"$work_dir/anchors"
   if ! grep -qxF -- "${link#*#}" "$work_dir/anchors"; then
     echo "The release notes link $link, but $file has no heading with this anchor." >&2

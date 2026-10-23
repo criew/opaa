@@ -136,7 +136,7 @@ Weil es einen Server gibt, fallen bei einem Bruch alle Fremdzugänge des Hauses 
   MCP-Lebenszyklus-Richtlinie; unterschritten nur bei einer Sicherheitslücke, mit Ankündigung.
 - **d) Fassungswache:** Eine benannte Rolle (Maintainer oder Benannter) prüft vierteljährlich
   Spezifikationsstand und Abkündigungsliste, die Fassungsliste der Bibliothek und das
-  Konfigurationsformat der Client-Anleitungen im [Handbuch](../handbuch/fremdzugaenge.md); das
+  Konfigurationsformat der Client-Anleitungen im [Handbuch](../handbuch/spaces/fremdzugaenge.md); das
   Ergebnis wird festgehalten. Renovate leistet das nicht; ein Versionssprung des MCP-Starters ist
   kein gewöhnliches Update und gehört in `renovate.json5` in eine Regel ohne Auto-Merge.
 

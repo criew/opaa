@@ -30,7 +30,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  * (junrar, jmatio, jai-imageio-core, rome with jdom2): they only serve formats OPAA does not admit
  * (RAR, MATLAB, TIFF/JPEG 2000 images, RSS/Atom feeds). Every admitted format must still be
  * detected as itself and yield text through Tika's own parsing. The fixtures are the demo corpus
- * folder that holds one document per admitted format ({@code docs/handbuch/formate/README.md}).
+ * folder that holds one document per admitted format ({@code
+ * docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md}).
  */
 class TikaWithoutExcludedLibrariesTest {
 

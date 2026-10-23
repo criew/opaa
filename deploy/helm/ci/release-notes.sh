@@ -49,7 +49,7 @@ cat <<EOF
 **Helm-Chart**
 - \`oci://ghcr.io/${owner}/charts/opaa\`, Version \`${version}\`
 
-Installation wie im Handbuch, Kapitel Kubernetes, [Installation](${handbook}/kubernetes.md#installation): zuerst den Namespace mit den Labels für Pod Security \`restricted\` anlegen, dann Datenbank, Geheimnisse und Werte-Datei vorbereiten, zuletzt installieren.
+Installation wie im Handbuch, Kapitel Kubernetes, [Installation](${handbook}/betrieb/kubernetes.md#installation): zuerst den Namespace mit den Labels für Pod Security \`restricted\` anlegen, dann Datenbank, Geheimnisse und Werte-Datei vorbereiten, zuletzt installieren.
 
 \`\`\`bash
 kubectl create namespace opaa
@@ -66,7 +66,7 @@ helm install opaa oci://ghcr.io/${owner}/charts/opaa --version ${version} \\
 EOF
 printf '%s\n\n' "$preparation"
 cat <<EOF
-Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rückweg](${handbook}/kubernetes.md#aktualisierung-und-rückweg), für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](${handbook}/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen). Wer Versionen überspringt, prüft die Vorbereitung jedes übersprungenen Release.
+Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rückweg](${handbook}/betrieb/kubernetes.md#aktualisierung-und-rückweg), für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](${handbook}/betrieb/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen). Wer Versionen überspringt, prüft die Vorbereitung jedes übersprungenen Release.
 
 **Update-Paket für Behörden**
 
