@@ -72,8 +72,8 @@ gilt:
 - **Löschen ohne Eingriff ins Protokoll:** Wird ein Konto gelöscht, entfällt die Zuordnung; das
   Protokoll bleibt unverändert und ist danach keiner Person mehr zuzuordnen
   ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).
-  Ausnahme: Nennt eine anlassbezogene Klärung (Antrag oder Freigabe) die Person, bleibt die Zuordnung über
-  diese Klärung bis zu deren Löschfrist bestehen
+  Ausnahme: Nennt eine anlassbezogene Klärung (Antrag oder Freigabe) die Person, bleibt die
+  Zuordnung über diese Klärung bis zu deren Löschfrist bestehen
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)).
 
 Pseudonymisierte Daten bleiben personenbezogen, solange die Zuordnung besteht. Sie gehören deshalb
