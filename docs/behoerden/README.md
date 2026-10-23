@@ -29,8 +29,8 @@ Titel, für wen sie gilt. Bei Mischformen klärt das die Rechtsabteilung.
 
 | Verzeichnis | Phase |
 |---|---|
-| `00-entscheidung/` | Entscheidung der Hausleitung (folgt) |
-| `01-markterkundung/` | Markterkundung (folgt) |
+| `00-entscheidung/` | [Entscheidung der Hausleitung](00-entscheidung/README.md) |
+| `01-markterkundung/` | [Markterkundung](01-markterkundung/README.md) |
 | `02-pilot-teststellung/` | Pilot und Teststellung (folgt) |
 | `03-vergabe/` | [Vergabe](03-vergabe/README.md) |
 | `04-datenschutz/` | [Datenschutz](04-datenschutz/README.md) |
