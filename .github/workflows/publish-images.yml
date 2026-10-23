@@ -627,16 +627,33 @@ jobs:
           push-to-registry: true
           create-storage-record: false
 
-  # The GitHub release follows images, chart and update package, so its notes never announce an
-  # artifact that failed to publish. Notes are generated from the merged PRs, grouped by
+  # The offline bundle (docs/releases.md, "Offline-Bündel"): the published images of both
+  # architectures as OCI archives, chart, update package, SBOMs, their attestations and SHA256SUMS,
+  # attested as a whole. Pulled back from GHCR, so it holds exactly what was published.
+  offline-bundle:
+    needs: [prepare, chart-attestation, update-package-attestation]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/offline-bundle.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      update-package-from-run: true
+
+  # The GitHub release follows images, chart, update package and offline bundle, so its notes never
+  # announce an artifact that failed to publish. Notes are generated from the merged PRs, grouped by
   # .github/release.yml; the fixed part with images, chart, installation and update package comes
-  # from deploy/helm/ci/release-notes.sh. The attested archive with its .sha256 file and the attested
-  # SBOMs become assets.
+  # from deploy/helm/ci/release-notes.sh. The attested archive with its .sha256 file, the attested
+  # SBOMs and the offline bundle with its .sha256 file and Sigstore bundle become assets.
   release:
-    needs: [publish, chart, chart-attestation, update-package-attestation]
+    needs: [publish, chart, chart-attestation, update-package-attestation, offline-bundle]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The offline bundle is several hundred megabytes to upload.
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
@@ -649,6 +666,11 @@ jobs:
         with:
           name: update-package
           path: ${{ runner.temp }}/update-package/
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: offline-bundle
+          path: ${{ runner.temp }}/offline-bundle/
 
       - name: GitHub-Release anlegen
         env:
@@ -666,4 +688,4 @@ jobs:
             flags+=(--generate-notes --notes "$notes")
           fi
           if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); else flags+=(--latest); fi
-          gh release create "$TAG" "${flags[@]}" "$RUNNER_TEMP"/update-package/*
+          gh release create "$TAG" "${flags[@]}" "$RUNNER_TEMP"/update-package/* "$RUNNER_TEMP"/offline-bundle/*
