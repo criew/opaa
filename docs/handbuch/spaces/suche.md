@@ -1303,6 +1303,16 @@ Ein Wert unter der Untergrenze bricht den Start mit einer Meldung im Log ab:
 | `archive-after-days` | 90 | Tage ohne Aktivität, nach denen ein nicht angehefteter Chat archiviert wird; mindestens 90 (`OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS`) |
 | `delete-after-days` | 365 | Tage im Chat-Archiv, nach denen ein Chat gelöscht wird; mindestens 30 (`OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS`) |
 
+Die Löschung der Chats gesperrter Konten ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#was-mit-den-chats-eines-gesperrten-kontos-geschieht))
+steht unter `opaa.chat.locked-account-cleanup.*`; der Lauf ist täglich um 02:30 Uhr Serverzeit und
+löscht höchstens 5.000 Chats je Nacht, der Rest folgt in den nächsten Nächten. Eine Verlängerung der
+Frist ist eine längere Speicherfrist und gehört in die Dienstvereinbarung:
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `enabled` | `true` | Ob die Chats lokaler Konten nach der Sperre durch die Verwaltung gelöscht werden; nach dem Wiedereinschalten beginnt jede Frist neu (`OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED`) |
+| `delete-after-days` | 365 | Tage zwischen der Sperre durch die Verwaltung und der Löschung der Chats, frühestens ab der Einführung; mindestens 90, ein kleinerer Wert bricht den Start ab (`OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS`) |
+
 Alles andere an der Notiz ist ein fester Wert ohne Adressaten: zwei Punkte je Runde, 200 Zeichen je
 Punkt, die Art eines Punkts, das verwendete Modell (das systemweit aktive Chat-Modell) und die
 Tatsache, dass die Verdichtung läuft — einen Schalter dafür gibt es bewusst nicht.

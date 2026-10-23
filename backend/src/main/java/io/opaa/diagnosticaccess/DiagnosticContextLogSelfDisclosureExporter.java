@@ -1,17 +1,14 @@
 package io.opaa.diagnosticaccess;
 
+import io.opaa.common.SelfDisclosureSectionReader;
 import io.opaa.compliance.SelfDisclosureCategory;
 import io.opaa.compliance.SelfDisclosureCategory.Field;
 import io.opaa.compliance.SelfDisclosureCategory.Section;
 import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureLabels;
 import io.opaa.compliance.SelfDisclosureSink;
-import io.opaa.compliance.SelfDisclosureSink.RecordWriter;
 import io.opaa.compliance.SelfDisclosureSubject;
 import java.io.IOException;
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,16 +51,16 @@ public class DiagnosticContextLogSelfDisclosureExporter implements SelfDisclosur
                       Field.derived("actor", "Ausgeführt von", TABLE + "actor_ref"),
                       Field.of("hitCount", "Treffer", TABLE + "hit_count")))));
 
-  static final int PAGE_SIZE = 500;
-
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
+  private final SelfDisclosureSectionReader reader;
 
   public DiagnosticContextLogSelfDisclosureExporter(
       JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
     this.jdbc = jdbc;
     this.readOnly = new TransactionTemplate(transactionManager);
     this.readOnly.setReadOnly(true);
+    this.reader = new SelfDisclosureSectionReader(transactionManager);
   }
 
   @Override
@@ -123,46 +120,26 @@ public class DiagnosticContextLogSelfDisclosureExporter implements SelfDisclosur
       String pseudonym,
       RecordFiller filler)
       throws IOException {
-    RecordWriter writer = null;
-    Instant afterRecorded = Instant.EPOCH.minusSeconds(1);
-    UUID afterId = new UUID(0, 0);
-    while (true) {
-      Instant cursorTime = afterRecorded;
-      UUID cursorId = afterId;
-      List<Map<String, Object>> page =
-          readOnly.execute(
-              s ->
-                  jdbc.query(
-                      select
-                          + " AND (recorded_at, event_id) > (?, ?)"
-                          + " ORDER BY recorded_at, event_id LIMIT ?",
-                      (rs, i) -> {
-                        Map<String, Object> record = new LinkedHashMap<>();
-                        record.put("recordedAt", rs.getTimestamp("recorded_at").toInstant());
-                        filler.fill(rs, record);
-                        record.put("_id", rs.getObject("event_id", UUID.class));
-                        return record;
-                      },
-                      subject.organizationId(),
-                      pseudonym,
-                      Timestamp.from(cursorTime),
-                      cursorId,
-                      PAGE_SIZE));
-      if (page == null || page.isEmpty()) {
-        return;
-      }
-      if (writer == null) {
-        writer = sink.section(section);
-      }
-      for (Map<String, Object> record : page) {
-        afterRecorded = (Instant) record.get("recordedAt");
-        afterId = (UUID) record.remove("_id");
-        writer.write(record);
-      }
-      if (page.size() < PAGE_SIZE) {
-        return;
-      }
-    }
+    reader.copy(
+        sink,
+        section,
+        (afterTime, afterId, limit) ->
+            jdbc.query(
+                select
+                    + " AND (recorded_at, event_id) > (?, ?)"
+                    + " ORDER BY recorded_at, event_id LIMIT ?",
+                (rs, i) -> {
+                  Map<String, Object> record =
+                      SelfDisclosureSectionReader.keyed(rs, "recorded_at", "event_id");
+                  record.put("recordedAt", rs.getTimestamp("recorded_at").toInstant());
+                  filler.fill(rs, record);
+                  return record;
+                },
+                subject.organizationId(),
+                pseudonym,
+                afterTime,
+                afterId,
+                limit));
   }
 
   private static String targetKind(String kind) {

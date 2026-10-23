@@ -35,7 +35,7 @@ data:
       rule: Solange Space oder Mitgliedschaft besteht
       settings: []
     visibility: [Mitglieder des Space, SYSTEM_ADMIN]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Entfernen des Mitglieds oder Löschen des Space; mit dem Konto nur der persönliche Space, jede
       weitere Mitgliedschaft verhindert über ihre Historie die Löschung des Kontos
@@ -64,7 +64,7 @@ data:
       rule: Höchstdauer der Rechtehistorie
       settings: [permission_history_retention_settings.retention_months]
     visibility: [AUDITOR über die Stichtagsauskunft]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Retention-Lauf der Rechtehistorie
     evaluations: Stichtagsauskunft je Space
   - id: diagnostic-impersonation

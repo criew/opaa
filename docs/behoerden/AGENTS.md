@@ -153,12 +153,21 @@ Ein Verweis auf ein Faktenblatt hat immer diese Form:
 - Der Platzhalter wird nicht als Link geschrieben, weil die Faktenblätter nicht eingecheckt sind. Er
   steht für das gleichnamige Faktenblatt der Version, die die Behörde einsetzt; bei einem Release liegt
   es am GitHub-Release, für `main` im CI-Artefakt des letzten Laufs. Das Update-Paket enthält alle
-  Dateien dieses Ordners außer `AGENTS.md` und `CLAUDE.md` unter `vorlagen/`; der Release-Lauf
-  ersetzt dort jeden Platzhalter durch einen Link auf das Blatt unter `faktenblaetter/`, außer in
-  Code-Spans und Codeblöcken. Links auf Dateien außerhalb dieses Ordners zeigen im Paket auf den
-  Stand des Release-Tags. Ein relativer Link ohne Ziel lässt den Release-Lauf scheitern.
+  Dateien dieses Ordners außer `AGENTS.md` und `CLAUDE.md` unter `vorlagen/` und das Handbuch unter
+  `handbuch/`, jede Datei auch als HTML; der Release-Lauf ersetzt jeden Platzhalter durch einen Link
+  auf das Blatt unter `faktenblaetter/`, außer in Code-Spans und Codeblöcken. Links auf das Handbuch
+  führen im Paket auf `handbuch/`, Links auf andere Dateien außerhalb dieses Ordners auf den Stand
+  des Release-Tags. Ein relativer Link ohne Datei oder Anker lässt den Release-Lauf scheitern.
 - Ein neues Faktenblatt entsteht im Generator (`io.opaa.compliance.FactSheet`); im selben PR werden
   die Liste der Platzhalterziele neu erzeugt und die Namensliste hier ergänzt.
+
+### Gelesen im Update-Paket der eingesetzten Version
+
+Die Vorlagen gehen davon aus, dass sie im Update-Paket der eingesetzten Version gelesen werden. Sie
+erklären deshalb nicht, wo Faktenblätter, Handbuch oder Paket liegen, dass die Faktenblätter der
+Version beizulegen sind oder wofür ein Platzhalter steht; ein Verweis lautet schlicht „steht im
+{{faktenblatt:datenkatalog}}“. Woher das Paket kommt, erklärt nur die [README](README.md), oben mit
+dem Hinweis, dass die Fassung im Repository der Entwicklungsstand ist.
 
 ### Amtliche Muster verlinken statt nachbauen
 

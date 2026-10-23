@@ -221,6 +221,9 @@ ersten Stufe nicht geschrieben.
   Abmeldung, der routinemäßige Ablauf einer Sitzung und der einzelne Fehlversuch (siehe unten). In
   keinem dieser Ereignisse stehen E-Mail-Adressen, Namen, Anbieter-Subjects oder Freitext; die
   betroffene Person ist das Pseudonym in `subject_ref`
+- **Löschung der Chats gesperrter Konten** ([chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten),
+  #2997): je Konto und Lauf die Löschung mit Fristbeginn und Sperrgrund, nie mit Zahl, Titel, Inhalt
+  oder Space; Anhalten und Fortsetzen der Löschung je Konto durch die Systemverwaltung, ohne Begründung
 - **Jede bewirkte** Rechteänderung aus einem Verzeichnisabgleich — je Änderung, nicht je Lauf, verbunden
   über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
   der bestätigenden Person und ihrem Anlass. **Das Verwerfen** eines vorgelegten Plans ist ein
@@ -621,6 +624,13 @@ kann. Protokolliert wird allein das Umlegen des Schalters, mit altem und neuem W
 `SPACE_CHANGED`. Mit dem Teilen von Chats oder einer allgemeinen Chat-Aufbewahrung ist die Warnung
 neu zu bewerten.
 
+Die **Löschung der Chats gesperrter Konten** (#2997,
+[chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten)) ist ebenfalls keine allgemeine
+Inhaltsaufbewahrung: Sie greift nur nach einer Sperre durch die Verwaltung. Anders als die
+Bereinigung je Space schreibt sie je Konto und Lauf ein Ereignis, weil die Löschung ohne Handeln
+der Person geschieht und belegbar sein muss; es nennt weder Zahl noch Inhalt und folgt der
+allgemeinen Protokollfrist.
+
 Die Löschung eines Kontos entfernt bereits seit #391 automatisch die Pseudonymzuordnung
 (`fk_audit_actor_pseudonyms_user_organization`, `ON DELETE CASCADE`, zusammengesetzt seit Migration 047) und lässt das Protokoll selbst unverändert — das
 war keine neue Arbeit für #395, nur ein zusätzlicher Nachweis auf Anwendungsebene (siehe
@@ -647,6 +657,10 @@ danach jährlich als Nachweis, dass sich nichts stillschweigend verschoben hat.
   dem Ergebnis der automatisierten Prüfung darauf (siehe [Erfolgs-Metriken](#erfolgs-metriken))
 - ob die Netzadresse eingeschaltet ist, seit wann und mit welcher Begründung
 - Zahl und Anlasskategorien der anlassbezogenen Klärungen im Berichtszeitraum
+- das **Ereignis der Löschung von Chats gesperrter Konten** ausdrücklich: Zweck (allein der Nachweis
+  der fristgerechten Löschung), Zugriff (`AUDITOR` über dieselben Wege wie jedes Ereignis, keine
+  Zählung je Person; die Zahl gelöschter Chats steht nur gesamt im Anwendungslog) und Frist
+  (allgemeine Protokollfrist) — siehe [chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten)
 - die **Ereignisse der Selbstauskunft** ausdrücklich, weil sie zeigen, wer sein Auskunftsrecht
   wahrnimmt: Zweck (Nachweis der Erfüllung des Auskunftsrechts und Erkennung missbräuchlicher
   Abrufe), Zugriff (`AUDITOR` über die Wege nach Zeitraum, Ereignisart und Vorgang; die
@@ -1152,6 +1166,7 @@ nicht als ausgeschlossen nennt, sind Teil der Auskunft.
 | `notifications` | #2990 | Art, Objektart, Titel, Text, Eingang, gelesen | — (Texte erzeugt OPAA und nennen Objekte, keine Personen; nennt ein Typ künftig eine andere Person, geht er ohne Text heraus) |
 | `audit-log` | #2990 | Einträge, in denen die Person handelt (`actor_ref`), betroffen ist (`subject_ref`) oder Kontoobjekt ist: Zeitpunkt, Ereignisart, Objektart, Objektbezeichnung, Ergebnis, Vorher/Nachher nach Positivliste je Ereignisart, Vorgangskennung, ob ein Anlass angegeben war | Pseudonymkennungen, auch die eigene; `reason`, auch der eigene (Begründungsfreitext, siehe unten); Ereignisse einer anlassbezogenen Klärung über die Person; `object_label` an fremden Kontoobjekten |
 | `chats` | #2992 | eigene Chats (`author_id`) mit Titel, Filter, Nachrichten, Notizen, Anheften und Archiv; je Nachricht eine Zeile mit Kennzeichnung als KI-erzeugt (`generatedByAi`); an Antworten die Fundstellen nur mit Dokumenttitel (Dateiname), heutigem Namen der Bibliothek und Seite (bzw. Folie, Zeile, Nachricht oder Teil), zitiert oder nicht | Textausschnitte der Fundstellen (Dokumentinhalt); Überschriftenpfade, Blattnamen und Folientitel des Fundorts (Text aus dem Dokument); Dokument- und Chunkkennungen, Quellverweise und Metadaten der Fundstelle; `content_tsv` (abgeleiteter Suchindex) |
+| `chat-cleanup-holds` | #2992 | ob und seit wann die Löschung der eigenen Chats nach einer Sperre angehalten ist; angehalten von „andere Person“ (nur die Verwaltung hält an) | — (eine Begründung wird nicht gespeichert; das Fortsetzen löscht die Zeile und steht im Protokoll) |
 | `connected-accounts` | #2991 | eigene verbundene Konten (Bezeichnung beim Anbieter, Zeitpunkte), von der Person verbundene Bibliotheken und Bibliotheken, für deren Einwilligung die Person verantwortlich ist (eine andere verantwortliche Person als „andere Person“) | `connection_tokens`, `connection_authorizations`, `connection_grant_revocations` (Geheimnisse und Zwischenstände eines laufenden Verbindungsaufbaus oder Widerrufs, kurzlebig) |
 | `connection-person-states` | #2991 | Ruhezustand der eigenen Verbindungen | — |
 | `connection-log` | #2991 | Einträge, in denen die Person handelt oder betroffen ist | Pseudonymkennungen |

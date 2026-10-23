@@ -39,16 +39,19 @@ public class LocalUserAdminService {
   private final LocalUserService accounts;
   private final LocalHandoverAccountService handovers;
   private final LocalAccountMailer mailer;
+  private final LockedAccountChatDeletion chatDeletion;
   private final Clock clock;
 
   public LocalUserAdminService(
       LocalUserService accounts,
       LocalHandoverAccountService handovers,
       LocalAccountMailer mailer,
+      LockedAccountChatDeletion chatDeletion,
       Clock clock) {
     this.accounts = accounts;
     this.handovers = handovers;
     this.mailer = mailer;
+    this.chatDeletion = chatDeletion;
     this.clock = clock;
   }
 
@@ -98,7 +101,10 @@ public class LocalUserAdminService {
   /** {@code reason} is the sentence for the person's mail; it is never stored or audited. */
   public LocalUserOverview lock(CurrentUser actor, UUID userId, String reason) {
     LocalUserOverview locked = accounts.lock(actor, userId);
-    mailer.sendLocked(locked.user(), reason);
+    mailer.sendLocked(
+        locked.user(),
+        reason,
+        chatDeletion.earliestDeletionAt(userId, locked.credentials().getLockedAt()).orElse(null));
     return locked;
   }
 

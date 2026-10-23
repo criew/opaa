@@ -35,6 +35,8 @@ public class LocalAccountMailer {
 
   static final String LOCK_REASON_ADMIN = "Sperre durch die Systemverwaltung";
   static final String LOCK_REASON_INACTIVITY = "Keine Aktivität seit %d Tagen";
+  static final String CHAT_DELETION_NOTICE =
+      "Ihre Chats werden frühestens am %s gelöscht, sofern die Sperre bis dahin besteht.";
 
   private static final DateTimeFormatter DATE_TIME =
       DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm 'Uhr'", Locale.GERMANY);
@@ -110,19 +112,32 @@ public class LocalAccountMailer {
 
   /**
    * {@code reason} is the sentence for the person; {@code null} means the administrative default.
+   * {@code chatDeletionAt} is when the person's chats are deleted at the earliest, {@code null}
+   * where no deletion is scheduled.
    */
-  public void sendLocked(User user, String reason) {
+  public void sendLocked(User user, String reason, Instant chatDeletionAt) {
     queue(
         MailTemplateKey.ACCOUNT_LOCKED,
         user,
-        Map.of("reason", reason == null || reason.isBlank() ? LOCK_REASON_ADMIN : reason.trim()));
+        Map.of(
+            "reason",
+            reason == null || reason.isBlank() ? LOCK_REASON_ADMIN : reason.trim(),
+            "chatDeletionNotice",
+            chatDeletionNotice(chatDeletionAt)));
   }
 
+  /** A lock for inactivity is an absence and starts no deletion of the chats. */
   public void sendLockedForInactivity(User user, int inactiveDays) {
     queue(
         MailTemplateKey.ACCOUNT_LOCKED,
         user,
-        Map.of("reason", LOCK_REASON_INACTIVITY.formatted(inactiveDays)));
+        Map.of("reason", LOCK_REASON_INACTIVITY.formatted(inactiveDays), "chatDeletionNotice", ""));
+  }
+
+  String chatDeletionNotice(Instant chatDeletionAt) {
+    return chatDeletionAt == null
+        ? ""
+        : CHAT_DELETION_NOTICE.formatted(DATE.format(chatDeletionAt.atZone(clock.getZone())));
   }
 
   public void sendUnlocked(User user) {
