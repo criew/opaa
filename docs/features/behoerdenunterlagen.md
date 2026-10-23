@@ -615,9 +615,12 @@ bringen keine neue Funktion. Bis die Wartungsbranches gebaut sind (#3017), entst
 Patch-Release mit Codeänderung nur, solange `main` keine neue Funktion trägt
 ([releases.md](../releases.md#versionsnummern)). Ein **Funktionsupdate** wird erst nach Abschluss
 der Stufe eingespielt, vorher nur, wenn jede Funktion der Stufe Zustimmung in der Installation
-abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update. Den **Wechsel der
-Linie** beginnt die Beteiligung mit dem Release-Kandidaten und seinem Update-Paket; steht eine
-Sicherheitskorrektur nur in einem Funktionsupdate bereit, ist es eine vorläufige Maßnahme der
+abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update. Beim **Wechsel der
+Linie** beginnt die Beteiligung mit dem Release-Kandidaten und dem Delta von der eingesetzten Version
+zu ihm; das Delta zwischen Kandidat und finalem Release wird erneut gestuft. Beide erzeugt der
+Betrieb, solange das Update-Paket nur mit dem vorigen finalen Release vergleicht. Steht eine
+Sicherheitskorrektur nur in einem Funktionsupdate bereit (heute der Regelfall für Korrekturen im
+Code, solange nur die jüngste Linie Patch-Releases bekommt), ist es eine vorläufige Maßnahme der
 Dienststellenleitung mit derselben Abschaltauflage.
 
 **Informationsmappe für den Personalrat.** Rollensicht, Beispiele möglicher und ausgeschlossener

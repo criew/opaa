@@ -24,7 +24,8 @@ Verantwortlich ist die Dienststelle; der Personalrat stimmt zu.
 Der Mustertext unten folgt dem Aufbau bewährter IT-Rahmendienstvereinbarungen: Die Verbote stehen im
 **Haupttext**, die Fakten in **Anlagen zu einer festen Version**, und ein **Stufenmodell** regelt,
 welches Update nur angezeigt wird und welches eine neue Zustimmung braucht. So muss nicht jedes
-Release neu verhandelt werden, und keine Anlage erweitert den Überwachungsumfang unbemerkt.
+Release neu verhandelt werden, und keine Anlage erweitert den Überwachungsumfang unbemerkt. Angaben
+in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
 
 ## Was OPAA liefert
 
@@ -35,12 +36,15 @@ Release neu verhandelt werden, und keine Anlage erweitert den Überwachungsumfan
   [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)
   mit allen abweichenden Einstellungen und der Beschreibung des Protokolls (dem Auszug für die
   Personalvertretung).
-- **Zu jedem Update** ein Delta mit Stufenvorschlag nach denselben Klassen wie in Nummer 11 des
+- **Zu jedem Release** ein Delta mit Stufenvorschlag nach denselben Klassen wie in Nummer 15 des
   Mustertexts, dazu die Vorlage [Update-Vermerk](../09-betrieb-update/update-vermerk.md). Die Klassen
   stammen aus einer gemeinsamen Quelle, den
-  [Stufenregeln](../../features/behoerdenunterlagen.md#die-stufenregeln).
+  [Stufenregeln](../../features/behoerdenunterlagen.md#die-stufenregeln). Das Delta im Paket
+  vergleicht mit dem vorigen finalen Release; für einen größeren Sprung erzeugt der Betrieb es selbst
+  ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
 - **Supportlinien:** Patch-Releases bringen nur Sicherheitskorrekturen und Behebungen kritischer
-  Fehler, keine neue Funktion ([Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume)).
+  Fehler, keine neue Funktion. Heute bekommt allerdings nur die jüngste Linie Patch-Releases
+  ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)).
 - Die [Informationsmappe für den Personalrat](informationsmappe-personalrat.md) erklärt all das in
   Alltagssprache.
 
@@ -49,13 +53,13 @@ Release neu verhandelt werden, und keine Anlage erweitert den Überwachungsumfan
 1. **Version festlegen,** die eingeführt wird, und deren Update-Paket herunterladen.
 2. **Personalrat früh einbinden:** Informationsmappe übergeben, Testinstanz anbieten, schon vor einer
    Teststellung mit echten Beschäftigten.
-3. **Mustertext anpassen:** Angaben in eckigen Klammern ersetzen, Nummern streichen, die die
-   eingesetzte Version nicht betreffen, Landesrecht prüfen lassen.
+3. **Mustertext anpassen:** Angaben in eckigen Klammern ersetzen, Optionen wählen, Nummern streichen,
+   die die eingesetzte Version nicht betreffen, Landesrecht prüfen lassen.
 4. **Anlagen zusammenstellen** und jede mit Version und Commit aus dem Kopf des Faktenblatts
    beschriften.
 5. **Rollen benennen:** wer Systemverwaltung, Revision und Datenbankbetrieb wahrnimmt und wer bei
    einer anlassbezogenen Klärung freigibt.
-6. **Abschließen** und bekannt machen; danach jedes Update nach Nummer 11 behandeln.
+6. **Abschließen** und bekannt machen; danach jedes Update nach Nummer 15 behandeln.
 
 ## Mustertext
 
@@ -85,7 +89,8 @@ Nachweis von Verwaltungshandeln es erfordern. Jede andere Nutzung ist ausgeschlo
 #### 3. Freiwilligkeit
 
 [Die Nutzung ist freiwillig. / Die Nutzung ist für folgende Aufgaben vorgesehen: …] Wer
-[Name der Installation] nicht nutzt oder nur in privaten Chats arbeitet, hat dadurch keinen Nachteil.
+[Name der Installation] nicht oder wenig nutzt, hat dadurch keinen Nachteil. Vorgaben, wie oft oder
+wie viel jemand den Assistenten nutzt, gibt es nicht.
 
 #### 4. Keine Leistungs- und Verhaltenskontrolle
 
@@ -94,53 +99,107 @@ eingesetzt.
 
 (2) Erkenntnisse, die entgegen dieser Vereinbarung gewonnen wurden, dürfen für keine personelle
 Maßnahme verwendet werden, insbesondere nicht für Beurteilungen, Abmahnungen, disziplinarische oder
-arbeitsrechtliche Schritte (Verwertungsverbot).
+arbeitsrechtliche Schritte (Verwertungsverbot). Das gilt auch für Zufallsfunde aus einem zulässigen
+Zugriff, soweit sie über dessen Zweck hinausgehen.
 
-#### 5. Auswertungsverbot und Zugriff auf Datenbank und Protokoll
+#### 5. Vereinbarte Auswertungen
 
-(1) Zulässig sind nur die personenbezogenen Auswertungen, die Anlage 2 als mögliche Auswertung
-nennt, nur zu dem dort genannten Zweck und nur im Rahmen der Nummern 4 und 6. Jede weitere ist
-unzulässig.
+(1) Personenbezogene Auswertungen sind nur diese:
 
-(2) Das gilt für jeden Zugriffsweg: Oberfläche, Schnittstellen, Protokoll, direkter Zugriff auf
-Datenbank, Sicherungen, Originalablage und Log. Direkten Zugriff haben nur die in Anlage 4 benannten
+1. Prüfung von Verwaltungshandlungen durch die Revision nach Objekt, Zeitraum, Ereignisart oder
+   Vorgang,
+2. die anlassbezogene Klärung nach Nummer 8,
+3. die Kontenpflege nach Nummer 6,
+4. Statistiken, die nur zusammengefasst und erst ab der Mindestgruppengröße erscheinen,
+5. die Selbstauskunft der Person nach Nummer 11,
+6. [weitere vereinbarte Auswertung mit Zweck].
+
+(2) Anlage 2 beschreibt, was die eingesetzte Version technisch an Auswertungen erlaubt. Sie erweitert
+die Liste in Absatz 1 nicht. Eine neue technische Möglichkeit in einem Update ist eine Änderung der
+Klasse Z3 nach Nummer 15.
+
+#### 6. Kontenpflege und Inaktivität
+
+(1) Die Verwaltung sieht, welche lokalen Konten länger nicht genutzt wurden. Sie nutzt diese Anzeige
+nur, um Konten zu befristen, zu sperren oder zu löschen, nicht für Rückschlüsse auf Anwesenheit oder
+Arbeitsweise.
+
+(2) Lokale Konten werden nach [Frist, nicht kürzer als die Untergrenze der Version] ohne Anmeldung
+automatisch gesperrt. [Eine Abschaltung sieht die Version nicht vor; ein hoher Wert wirkt ähnlich.]
+Die Person kann die Entsperrung ohne Begründung verlangen.
+
+(3) Eine Sperre wegen Inaktivität ist keine Sperre durch die Verwaltung und startet keine Löschfrist.
+Bloße Abwesenheit, etwa Elternzeit, Krankheit, Abordnung oder Freistellung, ist kein Grund für eine
+Sperre durch die Verwaltung.
+
+#### 7. Zugriffswege, benannte Personen, Vier-Augen-Prinzip
+
+(1) Die Nummern 4 und 5 gelten für jeden Zugriffsweg: Oberfläche, Schnittstellen, Protokoll,
+Datenbank, Sicherungen, Originalablage, Anwendungslog, Logs von Reverse-Proxy und Konnektoren,
+Monitoring und Tracing, Anmeldedaten beim Identitätsanbieter einschließlich Anmeldezeiten und
+erneuter Anmeldung, Logs beim Modellanbieter sowie Kopien in Test- und Entwicklungssystemen.
+
+(2) Direkten Zugriff auf Datenbank, Sicherungen und Logs haben nur die in Anlage 4 benannten
 Personen, und nur für Betrieb, Sicherung und Fehlerbehebung.
 
 (3) Ein Zugriff, bei dem Inhalte oder Daten bestimmter Beschäftigter sichtbar werden können, geschieht
 im Vier-Augen-Prinzip mit einer zweiten benannten Person, wird mit Anlass, Umfang und Beteiligten
 dokumentiert und dem Personalrat [binnen … Arbeitstagen] mitgeteilt.
 
-(4) Das Protokoll wird nur nach Objekt, Zeitraum, Ereignisart oder Vorgang abgefragt. Eine Abfrage
-nach einer Person ist nur als anlassbezogene Klärung zulässig: zur Aufklärung eines
-Sicherheitsvorfalls, mit vorab festgelegter Person, Zeitraum und Zweck, freigegeben von einer zweiten
-Person der Revision. Ausgeschlossen sind arbeitsrechtliche, disziplinarische und leistungsbezogene
-Zwecke, auch bei gemischten Sachverhalten. Der Personalrat [wird vor der Freigabe unterrichtet /
-benennt ein Mitglied, das vor der Freigabe gehört wird]; die betroffene Person wird nach Abschluss
-unterrichtet, außer die Klärung richtet sich gegen Dritte.
+(4) Echte Daten werden in Test- und Entwicklungssysteme [nicht / nur anonymisiert] übernommen.
 
-(5) Die Diagnose im Rechtekontext einer Person („Sicht als“) dient nur der Behebung von Störungen
-und wird nicht zur Kontrolle der Person genutzt.
+#### 8. Anlassbezogene Klärung
 
-#### 6. Negativliste
+(1) Das Protokoll wird nach einer Person nur als anlassbezogene Klärung abgefragt, und nur zu diesen
+Zwecken: [Sicherheitsvorfall; Verdacht auf unbefugten Zugriff; Untersuchung einer
+Datenschutzverletzung; externe Prüfung oder Kontrolle]. Ausgeschlossen sind arbeitsrechtliche,
+disziplinarische und leistungsbezogene Zwecke, auch bei gemischten Sachverhalten.
+
+(2) Person, Zeitraum und Zweck werden vorab festgelegt; eine zweite Person der Revision gibt frei.
+
+(3) Der Personalrat [wird vor der Freigabe unterrichtet / benennt ein Mitglied, das vor der Freigabe
+gehört wird]. [Er kann binnen [zwei] Arbeitstagen widersprechen; der Widerspruch schiebt die
+Freigabe auf, außer bei Gefahr im Verzug.]
+
+(4) Die Ergebnisse werden nach Abschluss der Klärung [binnen … Wochen] gelöscht, soweit sie nicht für
+ein Verfahren nach Absatz 1 gebraucht werden.
+
+(5) Die betroffene Person wird nach Abschluss mit Anlass und Umfang unterrichtet. Die Unterrichtung
+wird nur zurückgestellt, solange sie den Zweck der Klärung gefährden würde, höchstens [drei Monate];
+Grund und Dauer werden dokumentiert und dem Personalrat mitgeteilt.
+
+#### 9. Diagnose im Rechtekontext einer Person
+
+„Sicht als“ zeigt der Systemverwaltung, was eine bestimmte Person sehen würde. Sie dient nur der
+Behebung von Störungen, geschieht [im Vier-Augen-Prinzip / mit Einwilligung der Person], wird mit
+Anlass dokumentiert, und die Person wird [vorher / danach] unterrichtet.
+
+#### 10. Negativliste
 
 Ausgeschlossen sind insbesondere:
 
-1. Ranglisten, Vergleiche oder Bewertungen einzelner Beschäftigter, auch als spielerisches Element,
+1. Ranglisten, Vergleiche oder Bewertungen einzelner Beschäftigter, auch als spielerisches Element
+   und auch nach der Autorschaft geteilter Inhalte,
 2. Auswertungen je Person über Nutzungshäufigkeit, Zeiten, Dauer oder Inhalte von Fragen und Chats,
-3. jede Einsicht in private Chats Dritter,
-4. Rückschlüsse auf Anwesenheit oder Arbeitsort, etwa über Netzadressen,
-5. Statistiken unterhalb der Mindestgruppengröße; sie beträgt [Wert, nicht kleiner als die
+3. Profile aus den Inhalten von Fragen, auch mit Hilfe einer KI,
+4. Auswertungen von Anmelde- und Abmeldezeiten,
+5. jede Einsicht in die Chats Dritter,
+6. Rückschlüsse auf Anwesenheit oder Arbeitsort, etwa über Netzadressen,
+7. Statistiken unterhalb der Mindestgruppengröße; sie beträgt [Wert, nicht kleiner als die
    Voreinstellung der Version, {{faktenblatt:voreinstellungen#opaa-permission-minimum-group-size}}],
-6. die Verknüpfung mit anderen Systemen über Beschäftigte, etwa Zeiterfassung oder
+8. die Verknüpfung mit anderen Systemen über Beschäftigte, etwa Zeiterfassung oder
    Personalverwaltung,
-7. Entscheidungen über Beschäftigte allein auf Grundlage einer Antwort des Assistenten,
-8. die Weitergabe von Protokoll- oder Nutzungsdaten an Vorgesetzte außerhalb einer anlassbezogenen
-   Klärung.
+9. Entscheidungen über Beschäftigte allein auf Grundlage einer Antwort des Assistenten,
+10. die Nutzung geteilter Inhalte für Beurteilungen,
+11. das Training von Modellen mit Fragen und Chats, auch beim Modellanbieter,
+12. die Weitergabe von Protokoll- oder Nutzungsdaten an Vorgesetzte außerhalb einer anlassbezogenen
+    Klärung.
 
-#### 7. Selbstauskunft
+#### 11. Selbstauskunft
 
-Diese Nummer gilt, sobald die eingesetzte Version die Selbstauskunft enthält, mit der jede Person
-die zu ihr gespeicherten Daten selbst herunterlädt.
+Diese Nummer gilt für die Selbstauskunft, mit der jede Person die zu ihr gespeicherten Daten selbst
+herunterlädt, im Umfang der Kategorien, die die eingesetzte Version ausgibt. Die Übersicht der
+Auskunft nennt die fehlenden.
 
 (1) Niemand darf verlangen, dass Beschäftigte ihre Selbstauskunft vorlegen oder weitergeben. Eine
 dennoch vorgelegte Auskunft wird nicht verwertet.
@@ -152,40 +211,42 @@ Sie stehen mit Zweck, Zugriff und Frist im Auszug für die Personalvertretung.
 (3) Niemand exportiert die Selbstauskunft für eine andere Person, weder die Verwaltung noch die
 Datenschutzstelle noch der Personalrat, auch nicht über „Sicht als“.
 
-(4) Die Notabschaltung wird nur bei einer Störung oder einem Sicherheitsvorfall genutzt; der
-Personalrat wird [unverzüglich] unterrichtet. Ein Auskunftsantrag bei der Behörde bleibt immer
-möglich.
+(4) Die Notabschaltung wird nur bei einer Störung oder einem Sicherheitsvorfall genutzt, höchstens
+für [fünf Arbeitstage]; danach wird die Selbstauskunft wieder eingeschaltet oder der Personalrat
+stimmt einer Verlängerung zu. Der Personalrat wird [unverzüglich] unterrichtet. Ein Auskunftsantrag
+bei der Behörde bleibt immer möglich.
 
 (5) Ein Export durch oder über die Datenschutzstelle wäre eine neue Änderung der Stufe Zustimmung.
 
-#### 8. Fristen und Löschung
+#### 12. Fristen und Löschung
 
-(1) Es gelten die Fristen der Anlage 3. Eine längere Frist bedarf der Zustimmung des Personalrats.
+(1) Es gelten die Fristen der Anlage 3, auch für Sicherungen. Eine längere Frist bedarf der
+Zustimmung des Personalrats.
 
 (2) Für Chats ausgeschiedener Beschäftigter gilt, sobald die eingesetzte Version ihre Löschung nach
-der Sperre kennt:
+der Sperre durch die Verwaltung kennt:
 
 1. Die Dienststelle sperrt das Konto einer ausgeschiedenen Person binnen [Frist] nach dem
    Ausscheiden. Kann ein Konto in der eingesetzten Version nicht gesperrt werden, etwa ein Konto
    eines Identitätsanbieters, gilt die Löschfrist dafür nicht; die Dienststelle regelt den Ersatz
    [Regelung].
-2. Bloße Abwesenheit, etwa Elternzeit, Krankheit, Abordnung oder Freistellung, ist kein Grund für eine
-   Sperre.
-3. Bei planbarem Ausscheiden erhält die Person vor der Sperre Gelegenheit zur Selbstauskunft; danach
-   erhält sie Auskunft über die oder den Datenschutzbeauftragten bis zum Löschdatum.
-4. Die Chats werden nach [Frist, nicht kürzer als die Untergrenze der Version] gelöscht. Eine
+2. Bei planbarem Ausscheiden erhält die Person vor der Sperre Gelegenheit zur Selbstauskunft; solange
+   diese die Chats nicht umfasst, und nach der Sperre bis zum Löschdatum erhält sie Auskunft über die
+   oder den Datenschutzbeauftragten.
+3. Die Chats werden nach [Frist, nicht kürzer als die Untergrenze der Version] gelöscht. Eine
    Verlängerung bedarf der Zustimmung des Personalrats.
-5. Die Löschung eines Kontos anhalten darf nur [Stelle] bei [Anlass, etwa einem
-   Disziplinarverfahren]; der Personalrat wird unterrichtet.
-6. Der Protokolleintrag über die Löschung dient nur deren Nachweis.
+4. Die Löschung eines Kontos wird nur [auf Antrag der betroffenen Person / auf gerichtliche oder
+   behördliche Anordnung] angehalten, nicht allein wegen eines Disziplinarverfahrens; der Personalrat
+   wird unterrichtet.
+5. Der Protokolleintrag über die Löschung dient nur deren Nachweis.
 
-#### 9. Datenflüsse nach außen
+#### 13. Datenflüsse nach außen
 
 Daten verlassen die Installation nur auf den Wegen der Anlage 5. Für das Sprachmodell gilt:
-[Betrieb im Haus / Anbieter …, Vertrag vom …]. Ein neuer Datenfluss oder ein neues Ziel bedarf der
-Zustimmung.
+[Betrieb im Haus / Anbieter …, Vertrag vom …, mit Regelung zu Logs und ohne Training]. Ein neuer
+Datenfluss oder ein neues Ziel bedarf der Zustimmung.
 
-#### 10. Rechte und Rollen
+#### 14. Rechte und Rollen
 
 (1) Wer welche Rolle hat, steht in Anlage 4. Änderungen teilt die Dienststelle dem Personalrat
 [vierteljährlich] mit.
@@ -193,32 +254,42 @@ Zustimmung.
 (2) Wer Bibliotheken verwaltet, gibt Dokumente mit Daten über Beschäftigte nur frei, soweit die
 Aufgabe es erfordert. [Ausgeschlossene Quellen, etwa Personalakten.]
 
-#### 11. Änderungen und Updates
+(3) Systemverwaltung und Revision werden vor Aufnahme ihrer Aufgabe zu dieser Vereinbarung geschult.
+
+#### 15. Änderungen und Updates
 
 (1) Die Anlagen gelten in der vereinbarten Fassung. Eine neue Fassung tritt an ihre Stelle, sobald
 das Verfahren nach dieser Nummer abgeschlossen ist. Eine Formulierung „in der jeweils gültigen
-Fassung“ gilt für keine Anlage.
+Fassung“ gilt für keine Anlage. Anlage 7 ändert sich nur mit Beteiligung des Personalrats.
 
-(2) Vor jedem Update legt die Dienststelle dem Personalrat den Update-Vermerk mit dem Delta aus dem
-Update-Paket vor. Die Stufen im Delta sind Vorschläge; maßgeblich ist die Zuordnung nach den Absätzen
-3 bis 5. **Im Zweifel gilt die Stufe Zustimmung.** Eine Änderung, die keiner Liste eindeutig
-zugeordnet werden kann, wird mit dem Vermerk vorgelegt, warum die Zuordnung offen ist.
+(2) Vor jedem Update legt die Dienststelle dem Personalrat den Update-Vermerk mit dem Delta von der
+eingesetzten zur Zielversion vor. Das Delta im Update-Paket vergleicht nur mit dem vorigen finalen
+Release; bei übersprungenen Versionen erzeugt der Betrieb das Delta über den ganzen Sprung.
 
-(3) **Bagatelle**, abschließend:
+(3) Fristen nach dieser Nummer beginnen erst, wenn die Unterlagen nach Absatz 2 vollständig vorliegen.
+Der Personalrat kann eine Frist einmal um [zehn] Arbeitstage verlängern.
+
+(4) Die Stufen im Delta sind Vorschläge; maßgeblich ist die Zuordnung nach den Absätzen 5 bis 7.
+**Im Zweifel gilt die Stufe Zustimmung.** Eine Änderung, die keiner Liste eindeutig zugeordnet werden
+kann, wird mit dem Vermerk vorgelegt, warum die Zuordnung offen ist. Ist die Zuordnung streitig, gilt
+bis zur Klärung die Stufe Zustimmung [; geklärt wird nach Nummer 17 Absatz 3].
+
+(5) **Bagatelle**, abschließend:
 
 1. redaktionelle Präzisierung eines Manifest-Eintrags ohne inhaltliche Änderung
 2. neuer Konfigurationsschlüssel mit der Markierung „ohne Datenwirkung“
 3. neue Spalte oder Tabelle ohne Personenbezug
 
-Bagatellen werden mit dem Update-Vermerk mitgeteilt; eine Beteiligung entfällt.
+Bagatellen werden mit dem Update-Vermerk mitgeteilt; eine Beteiligung entfällt. Punkt 2 beruht auf
+einer Markierung des Herstellers und wird deshalb wie eine Anzeige behandelt.
 
-(4) **Anzeige:** Änderungen ohne neue Datenwirkung, die Beschäftigte dennoch wahrnehmen: kürzere
+(6) **Anzeige:** Änderungen ohne neue Datenwirkung, die Beschäftigte dennoch wahrnehmen: kürzere
 Frist, entfallene Daten, Felder, Ereignisse oder Datenflüsse, eingeschränkte Sichtbarkeit,
 geänderter System-Prompt oder geändertes Standardmodell ohne Klasse Z1–Z7. Der Personalrat kann
 binnen [zehn] Arbeitstagen widersprechen; ohne Widerspruch gilt die Zustimmung als erteilt. Nach
-einem Widerspruch gilt Absatz 5.
+einem Widerspruch gilt Absatz 7.
 
-(5) **Zustimmung**, wenn die Änderung mindestens eine dieser Klassen erfüllt:
+(7) **Zustimmung**, wenn die Änderung mindestens eine dieser Klassen erfüllt:
 
 | Klasse | Änderung |
 |---|---|
@@ -230,54 +301,81 @@ einem Widerspruch gilt Absatz 5.
 | Z6 | geänderte KI-Einstufung |
 | Z7 | geänderte Voreinstellung mit Datenwirkung, einschließlich eines Standardmodells, das einen Datenfluss ändert |
 
-(6) Dieselben Stufen gelten für Änderungen der Dienststelle an der Installation, etwa eine längere
+Zur Klarstellung: Eine neue Rolle oder Fähigkeit und ein neuer Leser eines Protokollereignisses sind
+Z2; ein neuer Konnektor, der Daten über Beschäftigte liest, ist Z5.
+
+(8) Dieselben Stufen gelten für Änderungen der Dienststelle an der Installation, etwa eine längere
 Frist, eine neue Quelle oder ein anderer Modellanbieter. Grundlage ist der Vergleich zweier Auskünfte
 über die Datenerhebung.
 
-(7) **Funktionsupdates** werden erst eingespielt, wenn das Verfahren nach den Absätzen 3 bis 5
+(9) **Funktionsupdates** werden erst eingespielt, wenn das Verfahren nach den Absätzen 5 bis 7
 abgeschlossen ist. Vorher dürfen sie nur eingespielt werden, wenn jede Funktion der Stufe Zustimmung
 in der Installation abgeschaltet ist und bis zur Zustimmung abgeschaltet bleibt; der Update-Vermerk
 hält das als Auflage fest. Lässt sich eine solche Funktion nicht abschalten, wartet das Update.
 
-(8) **Sicherheitsupdates:** Ein Patch-Release einer unterstützten Linie bringt nur
-Sicherheitskorrekturen und Behebungen kritischer Fehler, keine neue Funktion. Es wird sofort
-eingespielt; der Personalrat erhält den Update-Vermerk binnen [fünf] Arbeitstagen. Zeigt das Delta
-dennoch eine Änderung der Stufe Zustimmung, gilt Absatz 7.
+(10) **Sicherheitsupdates:** Ein Patch-Release einer unterstützten Linie bringt nur
+Sicherheitskorrekturen und Behebungen kritischer Fehler, keine neue Funktion. [Stelle] sichtet vor dem
+Einspielen sein Delta. Enthält es keine Änderung der Stufe Zustimmung, wird es sofort eingespielt, und
+der Personalrat erhält den Update-Vermerk binnen [fünf] Arbeitstagen. Sonst gilt Absatz 9.
 
-(9) **Wechsel der Linie:** Die Dienststelle betreibt [nur LTS-Linien / auch normale Linien]. Für den
-Wechsel auf die nächste Linie beginnt die Beteiligung mit dem Release-Kandidaten und seinem
-Update-Paket, spätestens [sechs] Wochen vor dem Supportende der eingesetzten Linie. Das Delta
-zwischen Kandidat und finalem Release legt die Dienststelle nach.
+(11) Steht eine Sicherheitskorrektur nur in einem Funktionsupdate bereit, kann die
+Dienststellenleitung es als vorläufige Maßnahme einspielen. Das ist der Fall, wenn die eingesetzte
+Linie ausgelaufen ist oder wenn nur die jüngste Linie Patch-Releases bekommt und das Projekt die
+Korrektur deshalb mit dem nächsten Funktionsrelease ausliefert. Absatz 9 Satz 2 gilt; die
+Dienststelle begründet die Maßnahme und leitet das Verfahren unverzüglich ein.
 
-(10) Steht eine Sicherheitskorrektur nur in einem Funktionsupdate bereit, etwa weil die eingesetzte
-Linie ausgelaufen ist, kann die Dienststellenleitung es als vorläufige Maßnahme einspielen. Absatz 7
-Satz 2 gilt; die Dienststelle begründet die Maßnahme und leitet das Verfahren unverzüglich ein.
+(12) **Wechsel der Linie:** Die Dienststelle betreibt [nur LTS-Linien / auch normale Linien]. Für den
+Wechsel auf die nächste Linie beginnt die Beteiligung mit dem Release-Kandidaten und dem Delta von der
+eingesetzten Version zum Kandidaten, spätestens [drei Monate] vor dem Supportende der eingesetzten
+Linie. Vor dem Einspielen des finalen Release legt die Dienststelle das Delta zwischen Kandidat und
+finalem Release vor; es wird nach dieser Nummer erneut gestuft. Beide Deltas erzeugt der Betrieb nach
+Absatz 2.
 
-#### 12. Rechte des Personalrats
+#### 16. Rechte des Personalrats
 
 (1) Der Personalrat erhält:
 
-1. zu jedem Update den Update-Vermerk mit dem Update-Paket,
+1. zu jedem Update den Update-Vermerk mit dem Delta nach Nummer 15 Absatz 2,
 2. jährlich die Auskunft über die Datenerhebung mit dem Auszug für die Personalvertretung sowie die
-   Zahl der anlassbezogenen Klärungen nach Anlass, ohne Namen,
-3. auf Verlangen die Dokumentation nach Nummer 5 Absatz 3.
+   Zahl der anlassbezogenen Klärungen nach Zweck, ohne Namen,
+3. auf Verlangen die Dokumentation nach Nummer 7 Absatz 3 und Nummer 8.
 
 (2) Er kann die Einhaltung prüfen, sich das System vorführen lassen und eine Testinstanz der
-eingesetzten Version mit Testkonten nutzen. [Er kann nach Maßgabe des Personalvertretungsrechts
-sachkundige Personen hinzuziehen.]
+eingesetzten Version mit Testkonten nutzen; vor einem Wechsel der Linie läuft dort der
+Release-Kandidat.
 
-#### 13. Information der Beschäftigten
+(3) Er kann sachkundige Personen hinzuziehen; die Kosten trägt die Dienststelle.
 
-Die Dienststelle informiert die Beschäftigten vor der ersten Nutzung über diese Vereinbarung, die
+#### 17. Beschwerden, Verstöße, Streit
+
+(1) Beschäftigte können sich wegen eines Verstoßes gegen diese Vereinbarung an den Personalrat, die
+oder den Datenschutzbeauftragten oder [Stelle] wenden, ohne dass ihnen daraus ein Nachteil entsteht.
+
+(2) Bei einem Verstoß gilt das Verwertungsverbot nach Nummer 4; die Ergebnisse werden gelöscht, die
+betroffenen Personen und der Personalrat werden unterrichtet, und die Dienststelle prüft
+Konsequenzen für die Verantwortlichen.
+
+(3) Streitigkeiten klären Dienststelle und Personalrat zuerst im Gespräch, sonst [vor der
+Einigungsstelle / im Verfahren nach dem Personalvertretungsrecht].
+
+#### 18. Information, Schulung, Überprüfung
+
+(1) Die Dienststelle informiert die Beschäftigten vor der ersten Nutzung über diese Vereinbarung, die
 Datenschutzhinweise und die Nutzungsrichtlinie.
 
-#### 14. Inkrafttreten, Kündigung, Nachwirkung
+(2) Dienststelle und Personalrat überprüfen die Vereinbarung nach [zwölf] Monaten gemeinsam.
+
+#### 19. Inkrafttreten, Kündigung, Nachwirkung
 
 (1) Die Vereinbarung tritt am [Datum] in Kraft. Sie kann mit einer Frist von [drei Monaten] zum
 [Monatsende] gekündigt werden.
 
-(2) Nach einer Kündigung gilt sie bis zu einer neuen Vereinbarung fort. Die Nummern 4 bis 7 gelten
-für bereits erhobene Daten auch nach dem Ende der Vereinbarung.
+(2) Nach einer Kündigung gilt sie bis zu einer neuen Vereinbarung fort. Die Nummern 4 bis 12 und die
+Dokumentation nach Nummer 7 Absatz 3 gelten für bereits erhobene Daten auch nach dem Ende der
+Vereinbarung.
+
+(3) Ist eine Bestimmung unwirksam, bleiben die übrigen wirksam; die Parteien ersetzen sie durch eine
+Regelung, die ihrem Zweck am nächsten kommt.
 
 [Ort, Datum, Unterschriften]
 
@@ -289,9 +387,9 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 | Anlage | Inhalt | Quelle |
 |---|---|---|
 | 1 | Beschreibung der Installation: Version, Linie und Supportende, Betrieb, angebundene Quellen, Modellanbieter | Behörde |
-| 2 | gespeicherte Daten mit Zweck und möglichen Auswertungen; Protokollereignisse | {{faktenblatt:datenkatalog}}, {{faktenblatt:protokollereignisse}} der Version [X.Y.Z] |
-| 3 | Fristen und Voreinstellungen | {{faktenblatt:fristen}}, {{faktenblatt:voreinstellungen}} der Version [X.Y.Z] |
-| 4 | was jede Rolle über andere sieht; Liste der benannten Personen je Rolle, für den direkten Zugriff nach Nummer 5 und für die Freigabe anlassbezogener Klärungen | {{faktenblatt:rollensicht}} der Version [X.Y.Z]; Behörde |
+| 2 | gespeicherte Daten mit Zweck und technisch möglichen Auswertungen; Protokollereignisse | {{faktenblatt:datenkatalog}}, {{faktenblatt:protokollereignisse}} der Version [X.Y.Z] |
+| 3 | Fristen und Voreinstellungen; Aufbewahrung der Sicherungen | {{faktenblatt:fristen}}, {{faktenblatt:voreinstellungen}} der Version [X.Y.Z]; Behörde |
+| 4 | was jede Rolle über andere sieht; Liste der benannten Personen je Rolle, für den direkten Zugriff nach Nummer 7 und für die Freigabe anlassbezogener Klärungen | {{faktenblatt:rollensicht}} der Version [X.Y.Z]; Behörde |
 | 5 | Datenflüsse nach außen | {{faktenblatt:datenfluesse}} der Version [X.Y.Z] |
 | 6 | Auskunft über die Datenerhebung der Installation, mit dem Auszug für die Personalvertretung | Abruf vom [Datum] |
 | 7 | [Nutzungsrichtlinie, Datenschutzhinweise] | Behörde |
@@ -300,15 +398,24 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 
 ## Gut zu wissen
 
+- **Supportlinien heute und im Zielbild:** Im Zielbild bekommt jede unterstützte Linie
+  Patch-Releases ohne neue Funktion, und das Juni-Release ist eine LTS-Linie mit rund zwölf Monaten
+  Support. Heute bekommt nur die jüngste Linie Patch-Releases, und eine Korrektur im Code erscheint
+  nur dann als Patch-Release, wenn seit dem letzten Release keine neue Funktion hinzugekommen ist
+  ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)). Bis
+  dahin ist Nummer 15 Absatz 11 der Regelfall für Sicherheitskorrekturen im Code.
+- **Delta bei übersprungenen Versionen:** Das Delta im Update-Paket vergleicht nur mit dem vorigen
+  finalen Release, auch bei einem LTS-Release. Wer Versionen überspringt, etwa von LTS zu LTS,
+  braucht das selbst erzeugte Delta über den ganzen Sprung
+  ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
 - Ohne „standardmäßig aus“ kann ein Funktionsupdate eine zustimmungspflichtige Funktion sofort aktiv
-  mitbringen. Nummer 11 fängt das auf zwei Wegen auf: Sicherheitsupdates kommen über die
-  Supportlinien ohne neue Funktion, und ein Funktionsupdate wartet, bis zugestimmt oder die Funktion
+  mitbringen. Nummer 15 fängt das auf: Ein Funktionsupdate wartet, bis zugestimmt oder die Funktion
   abgeschaltet ist ([Funktionen abschalten](../../handbuch/betrieb/konfiguration.md#funktionen-abschalten)).
 - Das Delta misst an den Voreinstellungen. Hat die Installation eine Einstellung überschrieben,
   trifft eine Änderung sie womöglich anders; das zeigt der Vergleich mit der Auskunft über die
   Datenerhebung.
-- Den direkten Zugriff auf die Datenbank kann das Produkt nicht beschränken. Deshalb regelt ihn
-  Nummer 5 organisatorisch.
+- Den direkten Zugriff auf Datenbank, Sicherungen und Logs kann das Produkt nicht beschränken.
+  Deshalb regelt ihn Nummer 7 organisatorisch.
 
 ## Zum Nachlesen
 
@@ -319,6 +426,9 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
   Stellen.
 - [Erläuterungen zur IT-Rahmendienstvereinbarung der Universität Oldenburg](https://uol.de/fileadmin/personalrat/UEberarbeitung_2025/Dienstvereinbarungen/Erlaeuterungen_zur_IT-Rahmen-DV.pdf)
   (Stand 19.03.2026): Vorbild des Stufenmodells mit Bagatellfall, Anzeige und Zustimmung.
+- [Rahmendienstvereinbarung IT des Ministeriums für Wissenschaft, Energie, Klimaschutz und Umwelt Sachsen-Anhalt](https://mwu.sachsen-anhalt.de/api/media/MWU_HPR_DV_IT_09-2024-e3b0c442.pdf?collection=document)
+  (09/2024), mit Bezug zu KI; abrufbar auf der
+  [Seite des Hauptpersonalrats](https://mwu.sachsen-anhalt.de/ministerium/page/hauptpersonalrat).
 - [IT-Rahmendienstvereinbarung der Universität Passau](https://www.uni-passau.de/fileadmin/dokumente/beschaeftigte/Personal/Formulare_Internetseite/Dienstvereinbarungen/IT-RDV.pdf):
   weiteres Muster einer Rahmenvereinbarung.
 
@@ -333,6 +443,9 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 | Unterrichtung des Personalrats | § 66 Abs. 1 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__66.html) |
 | Zustimmungsverfahren und Fristen | § 70 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__70.html) |
 | Vorläufige Maßnahmen, etwa ein dringendes Sicherheitsupdate | § 76 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__76.html) |
+| Einigungsstelle | §§ 72 bis 75 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__72.html) |
+| Hinzuziehung Sachverständiger und Kostentragung | zu prüfen |
 | Kündigung und Nachwirkung von Dienstvereinbarungen | zu prüfen |
 | Personalvertretungsgesetz des Landes, mit eigenen Tatbeständen und Fristen | zu prüfen |
+| Vereinbarungen nach Hamburger Personalvertretungsrecht | zu prüfen |
 | Daten über Beschäftigte | § 26 [BDSG](https://www.gesetze-im-internet.de/bdsg_2018/__26.html) bzw. Landesrecht |
