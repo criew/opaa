@@ -64,7 +64,7 @@ Die Selbstauskunft hinterlässt im Nachweisprotokoll **zwei Einträge je Auskunf
 das Ende mit Ergebnis (vollständig ausgeliefert oder abgebrochen), Größe, Prüfsumme der
 ausgelieferten Daten und den enthaltenen Kategorien, nie den Inhalt. Ein Start ohne Ende heißt, dass
 die Instanz dabei endete. Abgewiesene Versuche stehen nicht im Protokoll, nur in den
-[Metriken](betrieb.md#logs-und-metriken). Ändert die Systemverwaltung Notabschaltung oder
+[Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken). Ändert die Systemverwaltung Notabschaltung oder
 Tagesgrenze, entsteht ebenfalls ein Eintrag.
 
 ## Pseudonymisierung im Protokoll

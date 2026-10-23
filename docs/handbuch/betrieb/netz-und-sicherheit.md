@@ -16,6 +16,9 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 - **`X-Forwarded-For` setzen oder anhängen, `Forwarded` verwerfen**
   ([Vertraute Proxys](#vertraute-proxys-und-client-adresse)).
 - **`/`, `/api/` und `/mcp` an das Frontend reichen**; Antworten auf `/mcp` nicht puffern.
+- **Den Download der Selbstauskunft nicht puffern** (`/api/v1/me/self-disclosure/download`): Das
+  Backend zählt eine Auskunft erst, wenn ihr letzter Block abgeflossen ist. Der Frontend-Container
+  leitet ohne Puffer weiter; bei ingress-nginx gehört `proxy-buffering: "off"` dazu.
 - **Timeout** für `/api/` und `/mcp` mindestens `OPAA_BACKEND_READ_TIMEOUT`, sonst `504` bei langen
   Antworten.
 - **Callback-Seiten** `/auth/callback` und `/connections/callback` tragen einmal gültige Codes:
