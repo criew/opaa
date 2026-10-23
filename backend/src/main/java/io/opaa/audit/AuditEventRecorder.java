@@ -114,6 +114,42 @@ public class AuditEventRecorder {
   }
 
   /**
+   * Records an act of a person on her own account that belongs to one operation: actor, subject and
+   * object ({@code USER_ACCOUNT}) are her pseudonym, {@link AuditEvent.Builder#correlationRef}
+   * links the entries of the operation (the self-disclosure's start and end). {@code event} must
+   * have been built with {@link AuditEvent.Builder#actor}, the object {@code USER_ACCOUNT} with the
+   * person's pseudonym from {@link #pseudonymFor} (as every account event) and no subject.
+   */
+  public void recordOwnAccountAction(AuditEvent event) {
+    UUID actorUserId = requireUserActor(event);
+    requireNoSubject(event, "recordOwnAccountAction");
+    String pseudonym =
+        pseudonymService.pseudonymFor(actorUserId, event.organizationId()).toString();
+    if (event.objectType() != AuditObjectType.USER_ACCOUNT
+        || !pseudonym.equals(event.objectId().toString())) {
+      throw new IllegalArgumentException(
+          "recordOwnAccountAction records the person's own account: object USER_ACCOUNT with her"
+              + " pseudonym");
+    }
+    auditLogService.record(
+        AuditLogEntry.withSubject(
+            event.organizationId(),
+            ActorKind.USER,
+            pseudonym,
+            event.eventType(),
+            AuditObjectType.USER_ACCOUNT,
+            pseudonym,
+            null,
+            AuditSubjectKind.USER,
+            pseudonym,
+            toJson(event.before()),
+            toJson(event.after()),
+            event.outcome(),
+            null,
+            event.correlationRef()));
+  }
+
+  /**
    * Records an event with no acting person - a directory synchronisation run, which {@code
    * PermissionHistoryService}'s writers already treat the same way ("a sync run has no acting
    * user"). {@link AuditEvent.Builder#actorRef} is a fixed, non-pseudonymised label identifying the

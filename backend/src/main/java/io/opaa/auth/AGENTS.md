@@ -1,6 +1,6 @@
 # Modul identity
 
-Pakete (`io.opaa.*`): auth, account, audit, branding, mail, notification. Ergänzt `backend/AGENTS.md`.
+Pakete (`io.opaa.*`): auth, account, audit, branding, mail, notification, selfdisclosure. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
@@ -8,7 +8,7 @@ Wer jemand ist und was über ihn protokolliert wird. `auth` ist der Identitätsk
 Bereitstellung aus dem Token, Registratur der Identitätsanbieter, Modus `dev`, Anmeldefähigkeit.
 `account` sind die lokalen Konten (Passwörter, lokaler Issuer, Self-Service, Übergabe, Verwaltung);
 die Filterkette und der Resolver des Modus `oidc` liegen ebenfalls dort. Dazu Revisionsprotokoll,
-Branding, Mailversand und Benachrichtigungen.
+Branding, Mailversand, Benachrichtigungen und Selbstauskunft (Kategorien über `SelfDisclosureExporter`).
 
 ## Invarianten und Stolpersteine
 
@@ -33,11 +33,10 @@ Branding, Mailversand und Benachrichtigungen.
 - **Branding** ändert nur `BrandingSettingsService`; SVG wird abgelehnt, nicht bereinigt
   (`BrandingImageValidator`).
 - **Web-Schicht:** `auth.web`, `account.web`, `audit.web`, `branding.web`, `mail.web`,
-  `notification.web`; `audit.web.AuditedAdminCall` protokolliert `IndexingAdminController` und
-  `UploadStoreAdminController`. Die Stichtagsauskunft `/api/v1/audit/access-as-of` liegt in
-  `revision.web` (workspace), `/api/v1/me` in `group.web`, die Anbieter in `directory.web` (rights).
-- **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`); unter
-  `local,dev` ist keine lokale Sitzung fahrbar.
+  `notification.web`, `selfdisclosure.web`; `audit.web.AuditedAdminCall` protokolliert
+  `IndexingAdminController` und `UploadStoreAdminController`. Die Stichtagsauskunft
+  `/api/v1/audit/access-as-of` in `revision.web`, `/api/v1/me` in `group.web`, Anbieter in `directory.web`.
+- **Lokale Anmeldung testet nur die Familie `oidc`** der Testkontexte (`@OpaaLocalAuth*`), nie `local,dev`.
 
 ## Maßgebliche ADRs
 
@@ -56,5 +55,6 @@ Branding, Mailversand und Benachrichtigungen.
 
 ```bash
 ./gradlew test --tests 'io.opaa.auth.*' --tests 'io.opaa.account.*' --tests 'io.opaa.audit.*' \
-  --tests 'io.opaa.branding.*' --tests 'io.opaa.mail.*' --tests 'io.opaa.architecture.*'
+  --tests 'io.opaa.branding.*' --tests 'io.opaa.mail.*' --tests 'io.opaa.selfdisclosure.*' \
+  --tests 'io.opaa.architecture.*'
 ```

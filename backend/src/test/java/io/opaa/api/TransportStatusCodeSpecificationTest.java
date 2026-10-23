@@ -82,8 +82,9 @@ class TransportStatusCodeSpecificationTest {
   /**
    * Budgets that are not keyed by request path, so {@link RateLimitFilter} cannot reveal them: the
    * three external-access read paths are bounded per access token by {@code ExternalAccessQuota},
-   * and the password change and the confirmation of a sign-in per authenticated account by {@code
-   * LocalAuthRateLimiter}.
+   * the password change and the confirmation of a sign-in per authenticated account by {@code
+   * LocalAuthRateLimiter}, and the ticket and the download of the self-disclosure by the daily
+   * limit and the starts per person in {@code self_disclosure_usage}.
    */
   private static final Set<String> LIMITED_WITHOUT_A_PATH_RULE =
       Set.of(
@@ -92,7 +93,9 @@ class TransportStatusCodeSpecificationTest {
           "fetchSearchHit",
           "localChangePassword",
           "localReauthenticate",
-          "startConnectionAuthorization");
+          "startConnectionAuthorization",
+          "createSelfDisclosureTicket",
+          "downloadSelfDisclosure");
 
   private static final Set<String> HTTP_METHODS =
       Set.of("get", "put", "post", "delete", "patch", "head", "options", "trace");

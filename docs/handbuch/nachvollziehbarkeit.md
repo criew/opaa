@@ -53,9 +53,21 @@ flowchart LR
 
 Die Wächter halten Code und Manifest gleich; ein Pull Request mit roten Wächtern wird nicht
 gemergt. Aus dem Manifest entstehen die Faktenblätter, die Unterlagen der Behörde verweisen auf
-sie. Die Kennzeichnung am Pull Request führt jede
-datenrelevante Änderung in die Release-Notizen. Aus beiden entsteht zu jedem Release das
-Update-Paket.
+sie. Die Kennzeichnung am Pull Request führt jede datenrelevante Änderung in die Release-Notizen.
+Aus beiden entsteht zu jedem Release das Update-Paket.
+
+Ein Wächter prüft auch die **Selbstauskunft**, mit der jede Person die zu ihr gespeicherten Daten
+herunterlädt: Für jede Kategorie, deren Ausgabe gebaut ist, muss jede Angabe, die das Manifest als
+Teil der Auskunft führt, darin vorkommen, und nichts, was es ausschließt, darf hinein. Noch sind
+nicht alle Kategorien gebaut; die Übersicht der Auskunft nennt die fehlenden (siehe [Was nicht
+gebaut ist](#was-nicht-gebaut-ist)).
+
+Die Selbstauskunft hinterlässt im Nachweisprotokoll **zwei Einträge je Auskunft**: den Start und
+das Ende mit Ergebnis (vollständig ausgeliefert oder abgebrochen), Größe, Prüfsumme der
+ausgelieferten Daten und den enthaltenen Kategorien, nie den Inhalt. Ein Start ohne Ende heißt, dass
+die Instanz dabei endete. Abgewiesene Versuche stehen nicht im Protokoll, nur in den
+[Metriken](betrieb.md#logs-und-metriken). Ändert die Systemverwaltung Notabschaltung oder
+Tagesgrenze, entsteht ebenfalls ein Eintrag.
 
 ## Wo die Faktenblätter liegen
 
@@ -223,6 +235,12 @@ Form der Verweise. Wie Entwickler das Manifest nachpflegen, steht in
   ([#2559](https://github.com/criew/opaa/issues/2559)).
 - Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
   Schnittstelle oben.
+- Die Ausgabe der meisten Kategorien der Selbstauskunft: Enthalten sind bisher die
+  Benachrichtigungen und der Stand der Selbstauskunft selbst; Konten, Protokoll, Rechte,
+  Zusammenarbeit, Chats, Bibliotheken und Diagnosen folgen
+  ([#2990](https://github.com/criew/opaa/issues/2990), [#2991](https://github.com/criew/opaa/issues/2991),
+  [#2992](https://github.com/criew/opaa/issues/2992)), ebenso die Oberfläche
+  ([#2993](https://github.com/criew/opaa/issues/2993)).
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
   ([#2557](https://github.com/criew/opaa/issues/2557)).
 

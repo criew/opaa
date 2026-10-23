@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: identity-2026-10-23-self-disclosure
+      author: opaa
+      comment: "The self-disclosure (docs/features/security-and-compliance.md, Selbstauskunft): the installation-wide emergency switch and daily limit, and one row per person with the counters of one calendar day, the last completed export, the result of the last attempt, the reservation of the running export and the hash of an open ticket - no history. Purely additive."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE self_disclosure_settings (
+                  id smallint DEFAULT 1 NOT NULL,
+                  enabled boolean DEFAULT true NOT NULL,
+                  daily_limit integer DEFAULT 1 NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_by uuid,
+                  CONSTRAINT pk_self_disclosure_settings PRIMARY KEY (id),
+                  CONSTRAINT chk_self_disclosure_settings_singleton CHECK ((id = 1)),
+                  CONSTRAINT chk_self_disclosure_settings_daily_limit CHECK (((daily_limit >= 1) AND (daily_limit <= 10)))
+              );
+              INSERT INTO self_disclosure_settings (id) VALUES (1);
+
+              CREATE TABLE self_disclosure_usage (
+                  account_id uuid NOT NULL,
+                  count_day date NOT NULL,
+                  starts_count integer DEFAULT 0 NOT NULL,
+                  completed_count integer DEFAULT 0 NOT NULL,
+                  last_completed_at timestamp with time zone,
+                  last_result character varying(16),
+                  run_id uuid,
+                  lease_until timestamp with time zone,
+                  ticket_hash bytea,
+                  ticket_expires_at timestamp with time zone,
+                  CONSTRAINT pk_self_disclosure_usage PRIMARY KEY (account_id),
+                  CONSTRAINT fk_self_disclosure_usage_account FOREIGN KEY (account_id) REFERENCES users(id) ON DELETE CASCADE,
+                  CONSTRAINT uk_self_disclosure_usage_ticket UNIQUE (ticket_hash),
+                  CONSTRAINT chk_self_disclosure_usage_last_result CHECK (((last_result)::text = ANY ((ARRAY['COMPLETED'::character varying, 'ABORTED'::character varying])::text[])))
+              );

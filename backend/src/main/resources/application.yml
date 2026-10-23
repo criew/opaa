@@ -148,6 +148,12 @@ opaa:
     # Voreinstellung und erzwungene Untergrenze: GroupSizeProperties bricht den Start bei einem
     # kleineren Wert ab.
     minimum-group-size: ${OPAA_MINIMUM_GROUP_SIZE:5}
+  # The self-disclosure of a person (io.opaa.selfdisclosure): exports streaming at once on this
+  # instance (1 to 16; above it 503) and how long one export may stream (5m to 2h). Emergency
+  # switch and daily limit live in the database (self_disclosure_settings).
+  self-disclosure:
+    max-concurrent-exports: ${OPAA_SELF_DISCLOSURE_MAX_CONCURRENT_EXPORTS:2}
+    max-duration: ${OPAA_SELF_DISCLOSURE_MAX_DURATION:30m}
   database:
     # PostgreSQL schema that holds every table of OPAA (ADR-0034). It must exist and belong to the
     # database account before the first start; validated by io.opaa.config.DatabaseSchemaGuard.
