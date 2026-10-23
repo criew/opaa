@@ -200,7 +200,7 @@ class McpTools {
     entry.put("library", hit.libraryName());
     entry.put("documentId", hit.documentId() == null ? null : hit.documentId().toString());
     entry.put("document", McpForeignContent.strip(hit.fileName()));
-    entry.put("location", hit.location());
+    entry.put("location", McpForeignContent.strip(hit.location()));
     entry.put("score", hit.relevanceScore());
     entry.put(
         "moreHits",
@@ -209,7 +209,7 @@ class McpTools {
                 further -> {
                   Map<String, Object> mapped = new LinkedHashMap<>();
                   mapped.put("id", further.hitId());
-                  mapped.put("location", further.location());
+                  mapped.put("location", McpForeignContent.strip(further.location()));
                   return mapped;
                 })
             .toList());
@@ -227,8 +227,12 @@ class McpTools {
     entry.put("library", passage.libraryName());
     entry.put("documentId", passage.documentId() == null ? null : passage.documentId().toString());
     entry.put("document", McpForeignContent.strip(passage.fileName()));
-    entry.put("location", passage.location());
-    entry.put("headingPath", passage.headingPath());
+    entry.put("location", McpForeignContent.strip(passage.location()));
+    entry.put(
+        "headingPath",
+        passage.headingPath() == null
+            ? null
+            : passage.headingPath().stream().map(McpForeignContent::strip).toList());
     entry.put("whole", passage.whole());
     entry.put("truncated", passage.truncated());
     entry.put("metadata", metadata(passage.metadata()));
@@ -251,9 +255,11 @@ class McpTools {
         .map(
             entry -> {
               Map<String, Object> mapped = new LinkedHashMap<>();
-              mapped.put("label", entry.label());
+              mapped.put("label", McpForeignContent.strip(entry.label()));
               mapped.put(
-                  "value", entry.displayValue() == null ? entry.value() : entry.displayValue());
+                  "value",
+                  McpForeignContent.strip(
+                      entry.displayValue() == null ? entry.value() : entry.displayValue()));
               return mapped;
             })
         .toList();

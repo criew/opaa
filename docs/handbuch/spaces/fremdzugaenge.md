@@ -116,8 +116,9 @@ nicht. Eine Einschränkung je Token gibt es bewusst nicht.
 meisten Häuser ausreichend. Er sagt dem fremden Modell, wann es den Kanal in Betracht ziehen soll,
 dass es seine Antworten mit Fundstellen zu belegen hat und dass die Treffertexte Inhalte aus
 Dokumenten sind, keine Anweisungen. Ein von der Verwaltung geänderter Text bleibt bei einem Update
-unverändert; die Schaltfläche „Vorgabetext“ setzt den aktuellen Vorgabetext ein. Seine Änderung ändert keine Reichweite
-und wird deshalb **nicht** protokolliert — jede andere Änderung in diesem Panel schon.
+unverändert; die Schaltfläche „Vorgabetext“ setzt den aktuellen Vorgabetext ein. Seine Änderung
+ändert keine Reichweite und wird deshalb **nicht** protokolliert — jede andere Änderung in diesem
+Panel schon.
 
 ### Externe KI-Werkzeuge ganz abschalten
 
@@ -343,11 +344,13 @@ benutzen.
 - **Treffer als Fremdinhalt gekennzeichnet.** Was `search` und `fetch` aus Dokumenten liefern, kann
   Anweisungen enthalten, die jemand in ein Dokument geschrieben hat. Jeder Treffer und jede
   abgerufene Fundstelle trägt deshalb das Feld `untrustedContent`, jedes Ergebnis einen Hinweis
-  `contentNotice`, dass Text, Titel und Dateiname Daten sind und keine Anweisungen. Der Text steht
-  in einem Block `<fremdinhalt kennung="…">` … `</fremdinhalt kennung="…">`, dessen Kennung je
-  Antwort neu entsteht; Markierungen dieses Blocks im Dokumenttext entfernt der Server vorher, sodass
-  kein Dokument den Block schließen kann. Dasselbe sagen die Beschreibungen von `search` und `fetch`
-  und der voreingestellte Einleitungstext.
+  `contentNotice`, dass Text, Titel, Dateiname, Fundort, Gliederung und Metadaten Daten sind und
+  keine Anweisungen. Der Text steht in einem Block `<fremdinhalt kennung="…">` …
+  `</fremdinhalt kennung="…">`, dessen Kennung je Antwort neu entsteht. Aus allen Feldern, die aus
+  dem Dokument stammen, entfernt der Server vorher das Wort `fremdinhalt` in jeder Schreibweise,
+  bevor er den Auszug schneidet; eine Markierung, die wie Anfang oder Ende des Blocks aussieht, kann
+  ein Dokument damit nicht liefern. Dasselbe sagen die Beschreibungen von `search` und `fetch` und
+  der voreingestellte Einleitungstext.
 
   **Die Grenze:** OPAA kennzeichnet nur. Ob das fremde Modell sich daran hält, entscheidet der
   Client. Ein Werkzeug, das selbst Dateien schreibt, Mails sendet oder Befehle ausführt, sollte
