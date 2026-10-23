@@ -1,8 +1,8 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-24
 gilt-fuer: main
 erzeugung: redaktionell
-rechtsstand: 2026-10-23
+rechtsstand: 2026-10-24
 pruefvermerk: nicht rechtlich geprüft
 naechste-durchsicht: 2027-04-23
 ---
@@ -55,7 +55,8 @@ in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
 2. **Personalrat früh einbinden:** Informationsmappe übergeben, Testinstanz anbieten, schon vor einer
    Teststellung mit echten Beschäftigten.
 3. **Mustertext anpassen:** Angaben in eckigen Klammern ersetzen, Optionen wählen, Nummern streichen,
-   die die eingesetzte Version nicht betreffen, Landesrecht prüfen lassen.
+   die die eingesetzte Version nicht betreffen, Landesrecht prüfen lassen
+   ([Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md)).
 4. **Anlagen zusammenstellen** und jede mit Version und Commit aus dem Kopf des Faktenblatts
    beschriften.
 5. **Rollen benennen:** wer Systemverwaltung, Revision und Datenbankbetrieb wahrnimmt und wer bei
@@ -456,8 +457,9 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 | Zustimmungsverfahren und Fristen | § 70 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__70.html) |
 | Vorläufige Maßnahmen, etwa ein dringendes Sicherheitsupdate | § 76 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__76.html) |
 | Einigungsstelle | §§ 72 bis 75 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__72.html) |
-| Hinzuziehung Sachverständiger und Kostentragung | zu prüfen |
-| Kündigung und Nachwirkung von Dienstvereinbarungen | zu prüfen |
-| Personalvertretungsgesetz des Landes, mit eigenen Tatbeständen und Fristen | zu prüfen |
+| Kosten der Personalratstätigkeit | § 46 Abs. 1 [BPersVG](https://www.gesetze-im-internet.de/bpersvg_2021/__46.html) |
+| Hinzuziehung Sachverständiger | zu prüfen; für die Länder [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
+| Kündigung und Nachwirkung von Dienstvereinbarungen | zu prüfen; für die Länder [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
+| Personalvertretungsgesetz des Landes, mit eigenen Tatbeständen und Fristen | [Personalvertretungsrecht der Länder](personalvertretungsrecht-der-laender.md) |
 | Vereinbarungen nach Hamburger Personalvertretungsrecht | zu prüfen |
 | Daten über Beschäftigte | § 26 [BDSG](https://www.gesetze-im-internet.de/bdsg_2018/__26.html) bzw. Landesrecht |
