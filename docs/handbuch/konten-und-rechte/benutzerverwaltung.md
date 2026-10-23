@@ -474,6 +474,67 @@ Ohne Anmeldung, wenn der Fluss eingeschaltet ist:
 
 Ein Konto eines Identitätsanbieters sieht keinen dieser Punkte; sein Passwort verwaltet der Anbieter.
 
+### Meine Daten: die Selbstauskunft
+
+Jede angemeldete Person, ob mit lokalem Konto oder über einen Identitätsanbieter, lädt unter
+**Einstellungen → Meine Daten** die zu ihr gespeicherten Daten selbst herunter. Sie erhält eine
+ZIP-Datei mit einer lesbaren Übersicht und je Kategorie einer maschinenlesbaren Datei: Konto, Chats,
+Rechte, Gruppen, Spaces, verbundene Konten, Zugangstokens, Benachrichtigungen, Protokolleinträge über
+sie und weitere. Andere Personen stehen darin nur als „andere Person“. Niemand sonst kann die
+Auskunft auslösen, auch die Systemverwaltung nicht.
+
+Nicht enthalten sind Inhalte von Dokumenten und Originaldateien (eigene Uploads erscheinen nur als
+Verzeichnis), Sicherungen, das technische Log des Betriebs, Geheimnisse wie Passwörter und Tokens,
+Begründungen von Verwaltungs- und Prüfhandeln und Inhalte anlassbezogener Klärungen über die Person;
+über Letztere gibt die oder der Datenschutzbeauftragte Auskunft. Die Selbstauskunft ersetzt nicht die
+förmliche Bearbeitung eines Auskunftsantrags; ein Antrag bei der Behörde bleibt möglich. Im Bereich
+steht wörtlich:
+
+> „Diese Auskunft ist nur für Sie. Niemand darf verlangen, dass Sie sie vorlegen oder weitergeben.“
+
+So läuft ein Download:
+
+1. „Daten herunterladen“ wählen.
+2. Die Anmeldung bestätigen: ein lokales Konto mit dem Passwort, ein Konto eines
+   Identitätsanbieters mit einer erneuten Anmeldung dort; danach kehrt die Seite zu „Meine Daten“
+   zurück und setzt den Download selbst fort
+   ([Authentifizierung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)).
+3. Der Browser speichert die Datei. Die Seite zeigt, dass der Download läuft, und danach das
+   Ergebnis. Ob die Datei vollständig ausgeliefert wurde, erfährt sie vom Server: Sie fragt den Stand
+   in kurzen Abständen ab und sofort, wenn man in den Tab zurückkehrt. Auch bei einem späteren Besuch
+   steht dort, wenn der letzte Download abgebrochen wurde.
+
+Mit jedem Start erhält die Person eine Benachrichtigung in OPAA und, wo Mail eingerichtet ist und
+das Konto eine Adresse hat, eine Mail. So fällt ein Download auf, den sie nicht selbst ausgelöst hat.
+
+Die **Tagesgrenze** legt fest, wie viele vollständige Downloads je Person und Kalendertag möglich
+sind. Ein abgebrochener Download zählt nicht, die Zahl der Starts je Tag ist aber begrenzt. Ist eine
+Grenze erreicht, nennt die Seite, ab wann der nächste Download möglich ist.
+
+| Meldung | Bedeutung |
+|---|---|
+| „Der Download wurde abgebrochen und nicht gezählt. Sie können es erneut versuchen.“ | Die Verbindung brach ab, der Browser hat den Download abgebrochen oder die Instanz wurde dabei beendet. Fehlt der zweite Satz, ist heute kein weiterer Start möglich. |
+| „Für heute ist kein weiterer Download möglich. Der nächste ist ab … möglich.“ | Die Tagesgrenze ist erreicht. |
+| „Starts für heute erschöpft: …“ | Der Download wurde heute zu oft abgebrochen; der nächste Versuch ist am nächsten Tag möglich. |
+| „Gerade laden viele Personen ihre Daten herunter. …“ | Die Instanz liefert gerade so viele Auskünfte aus, wie sie darf; nach einer Minute erneut versuchen. |
+| „Die Selbstauskunft ist in dieser Installation derzeit abgeschaltet. …“ | Die Systemverwaltung hat die Notabschaltung umgelegt; die Person kann die Auskunft bei der Behörde beantragen. |
+
+**In der Administration** stellt die Systemverwaltung unter **Administration → Datenschutz** die
+Notabschaltung („Selbstauskunft anbieten“) und die Tagesgrenze ein. Beides wirkt ohne Neustart auf
+allen Instanzen, ein laufender Download läuft zu Ende, und jede Änderung steht im Nachweisprotokoll.
+Wann eine Person zuletzt ihre Daten heruntergeladen hat, zeigt keine Konten- oder
+Einstellungsansicht der Verwaltung. Start und Ende jedes Downloads stehen pseudonymisiert im
+Nachweisprotokoll, das nur die Revision liest
+([Nachvollziehbarkeit](../betrieb/nachvollziehbarkeit.md#was-opaa-automatisch-nachweist)).
+
+| Einstellung | Vorgabe | Grenzen |
+|---|---|---|
+| Selbstauskunft anbieten (Notabschaltung) | an | an / aus |
+| Tagesgrenze | 1 vollständiger Download je Person und Tag | 1 bis 10; Starts je Tag höchstens Tagesgrenze plus 4 |
+
+Gleichzeitige Auskünfte je Instanz und Höchstdauer einer Auskunft stehen in der
+[Variablenliste](../betrieb/konfiguration.md).
+
 ## 12. Verbundene Konten
 
 Unter **Einstellungen → Verbundene Konten** hinterlegt eine Person ihre **eigenen Zugangsdaten** für

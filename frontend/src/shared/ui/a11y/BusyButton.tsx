@@ -8,23 +8,32 @@ interface BusyButtonProps extends Omit<ButtonProps, 'aria-busy'> {
   busy: boolean
   /** Announced to assistive technology when the request starts. */
   busyAnnouncement: string
+  /**
+   * Not usable right now, without a request in flight: marked and swallowed like `busy`, but not
+   * announced as busy. Unlike `disabled` it keeps the keyboard focus on the button.
+   */
+  unavailable?: boolean
 }
 
 /**
  * A button that stays focusable while its request runs: it is marked `aria-disabled` instead of
  * `disabled` (which would drop the keyboard focus), a click or key press while busy is swallowed,
- * and the busy state is announced through an always-present polite status region.
+ * and the busy state is announced through an always-present polite status region. `unavailable`
+ * marks and swallows the same way without the busy state.
  */
 export default function BusyButton({
   busy,
   busyAnnouncement,
+  unavailable = false,
   onClick,
   sx,
   children,
   ...rest
 }: BusyButtonProps) {
+  const inert = busy || unavailable
+
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
-    if (busy) {
+    if (inert) {
       event.preventDefault()
       return
     }
@@ -35,11 +44,11 @@ export default function BusyButton({
     <>
       <Button
         {...rest}
-        aria-disabled={busy || undefined}
+        aria-disabled={inert || undefined}
         aria-busy={busy || undefined}
         onClick={handleClick}
         sx={[
-          busy && {
+          inert && {
             color: 'action.disabled',
             borderColor: 'action.disabledBackground',
             cursor: 'default',

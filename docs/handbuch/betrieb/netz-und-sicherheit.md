@@ -19,6 +19,12 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 - **Den Download der Selbstauskunft nicht puffern** (`/api/v1/me/self-disclosure/download`): Das
   Backend zählt eine Auskunft erst, wenn ihr letzter Block abgeflossen ist. Der Frontend-Container
   leitet ohne Puffer weiter; bei ingress-nginx gehört `proxy-buffering: "off"` dazu.
+- **Die Frame-Header des Downloads nicht ersetzen:** Für `/api/v1/me/self-disclosure/download`
+  setzt der Proxy kein eigenes `X-Frame-Options` und keine eigene `Content-Security-Policy` mit
+  `frame-ancestors` und überschreibt die des Frontends nicht. Die Seite lädt den Download in einen
+  eigenen verborgenen Frame; verbietet ein Header das, bricht etwa Firefox jeden Download ab, nachdem
+  OPAA ihn schon begonnen hat. Jeder Versuch verbraucht dann einen Start und löst Benachrichtigung
+  und Mail aus, bis die Starts des Tages erschöpft sind.
 - **Timeout** für `/api/` und `/mcp` mindestens `OPAA_BACKEND_READ_TIMEOUT`, sonst `504` bei langen
   Antworten.
 - **Callback-Seiten** `/auth/callback` und `/connections/callback` tragen einmal gültige Codes:
@@ -32,7 +38,10 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Content-Type-Options`,
 `X-Frame-Options`, `Referrer-Policy` und `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
 Kamera und Standort gesperrt). Die CSP lässt keine fremden Skripte oder CDNs zu und Verbindungen nur
-zur eigenen Herkunft. Ein Identitätsanbieter auf fremdem Origin kommt über
+zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit einer Ausnahme: Den
+Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
+(`SAMEORIGIN` bzw. `frame-ancestors 'self'`), damit eine Ablehnung die Seite nicht ersetzt. Ein
+Identitätsanbieter auf fremdem Origin kommt über
 `OPAA_CSP_CONNECT_SRC_EXTRA` dazu
 ([Authentifizierung](authentifizierung.md#content-security-policy-und-ein-anbieter-auf-fremdem-origin)).
 HSTS setzt der Container nicht; das gehört an den äußeren Proxy.

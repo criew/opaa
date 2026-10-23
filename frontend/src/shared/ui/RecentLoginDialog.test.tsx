@@ -108,6 +108,38 @@ describe('RecentLoginDialog', () => {
       expect(status()).not.toContain(CONFIRMED_ANNOUNCEMENT)
     })
 
+    it('announces the confirmation outside the dialog only after its exit transition', async () => {
+      const user = userEvent.setup()
+      function Harness() {
+        const [open, setOpen] = useState(true)
+        return (
+          <RecentLoginDialog
+            open={open}
+            purpose={PURPOSE}
+            onConfirmed={() => setOpen(false)}
+            onClose={() => setOpen(false)}
+          />
+        )
+      }
+      renderWithProviders(<Harness />)
+      const outside = () =>
+        screen
+          .getAllByRole('status', { hidden: true })
+          .filter((region) => !region.closest('[role="dialog"]'))
+          .map((region) => region.textContent)
+          .join('')
+
+      await user.keyboard(`${mockLocalAccount.password}{Enter}`)
+
+      // still exiting: the modal keeps the page hidden, an announcement there would be lost
+      await waitFor(() => expect(useAuthStore.getState().token).toBe('mock-recent-login-token'))
+      if (screen.queryByRole('dialog', { hidden: true })) {
+        expect(outside()).not.toContain(CONFIRMED_ANNOUNCEMENT)
+      }
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() => expect(outside()).toContain(CONFIRMED_ANNOUNCEMENT))
+    })
+
     it('closes on Escape', async () => {
       const user = userEvent.setup()
       const { onClose, onConfirmed } = renderDialog()

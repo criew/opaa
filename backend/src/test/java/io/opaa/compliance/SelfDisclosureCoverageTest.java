@@ -132,10 +132,54 @@ class SelfDisclosureCoverageTest {
             Field.of("role", "Rolle", "users.system_role"),
             Field.of("locked", "Gesperrt", "users.directory_locked_at"));
 
-    assertThat(gapsAbout("accounts", Map.of("A", accounts)))
+    ComplianceManifest withoutExport = withoutExportPath(MANIFEST, "accounts");
+
+    assertThat(
+            SelfDisclosureCoverage.gaps(withoutExport, Map.of("A", accounts), Map.of()).stream()
+                .filter(gap -> gap.contains("'accounts'"))
+                .toList())
         .singleElement()
         .asString()
         .contains("add EXPORT to its accessPaths");
+  }
+
+  /** {@code manifest} with the data entry {@code id} no longer leading {@code EXPORT}. */
+  private static ComplianceManifest withoutExportPath(ComplianceManifest manifest, String id) {
+    List<ComplianceManifest.DataEntry> data =
+        manifest.data().stream()
+            .map(
+                d ->
+                    !d.id().equals(id)
+                        ? d
+                        : new ComplianceManifest.DataEntry(
+                            d.area(),
+                            d.id(),
+                            d.title(),
+                            d.purpose(),
+                            d.personalReference(),
+                            d.tables(),
+                            d.storage(),
+                            d.retention(),
+                            d.visibility(),
+                            d.accessPaths().stream()
+                                .filter(p -> p != ComplianceManifest.AccessPath.EXPORT)
+                                .toList(),
+                            d.deletion(),
+                            d.evaluations(),
+                            d.notes(),
+                            d.personExcluded()))
+            .toList();
+    return new ComplianceManifest(
+        manifest.areas(),
+        data,
+        manifest.nonPersonalTables(),
+        manifest.auditEvents(),
+        manifest.roles(),
+        manifest.capabilities(),
+        manifest.settings(),
+        manifest.prompts(),
+        manifest.dataFlows(),
+        manifest.aiFunctions());
   }
 
   @Test
