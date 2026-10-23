@@ -77,7 +77,7 @@ public class SuccessionSelfDisclosureExporter implements SelfDisclosureExporter 
         (afterTime, afterId, limit) ->
             jdbc.query(
                 "SELECT c.id, c.kind, c.object_type, c.asset_type, c.first_seen_at,"
-                    + " c.last_seen_at, c.closed_at, c.closed_by_user_id,"
+                    + " c.last_seen_at, c.closed_at, c.closed_by_user_id, c.created_at,"
                     + " CASE c.object_type WHEN 'ASSET' THEN a.name WHEN 'SPACE' THEN s.name"
                     + " WHEN 'GROUP' THEN g.name END AS object_name"
                     + " FROM succession_cases c"
