@@ -6,7 +6,12 @@
 > (*Security → Report a vulnerability*). This is the only reporting channel; there is no e-mail
 > address. We handle reported vulnerabilities on a best-effort basis and do not commit to fixed response
 > times for them.
-> Only the latest release and `main` receive security fixes. Fixed vulnerabilities are published as
+> Security fixes and fixes for critical bugs go to `main` and to every supported release line
+> until its end of support: two releases a year (around June and December), the June release being
+> an LTS line supported until the end of free support of its Spring Boot version (usually June 30 of
+> the following year, about 12 months); any other release is supported until one month after the
+> next release. Until maintenance branches exist (#3017), only the newest release line receives
+> patch releases; older lines get fixes only through a newer line. Fixed vulnerabilities are published as
 > GitHub Security Advisories, with a CVE where applicable. Reports may be written in English or
 > German.
 
@@ -39,15 +44,29 @@ tatsächlich ausnutzbar ist, meldet das trotzdem vertraulich über den Meldeweg 
 
 ## Unterstützte Versionen
 
-Sicherheitskorrekturen erhalten nur das **jüngste Release** und der bewegliche Stand **`main`**.
-Eine ältere Release-Linie wird nicht nachgepflegt; wie Sicherheitsupdates als Patch-Release
-erscheinen, steht in [docs/releases.md](docs/releases.md#sicherheitsupdates-für-releases).
+Sicherheitskorrekturen erhalten der bewegliche Stand **`main`** und jede **unterstützte
+Release-Linie** bis zu ihrem Supportende, als Patch-Release ohne neue Funktion; dieselben
+Patch-Releases bringen auch Behebungen
+[kritischer Fehler](docs/releases.md#kritische-fehler). OPAA erscheint
+zweimal im Jahr (etwa Juni und Dezember); das Juni-Release ist eine LTS-Linie
+([ADR-0054](docs/decisions/0054-release-zyklus-und-supportlinien.md)). Takt, Supportende jeder
+Linie und Roadmap stehen in [docs/releases.md](docs/releases.md#supportlinien), wie
+Sicherheitsupdates als Patch-Release erscheinen, unter
+[Sicherheitsupdates für Releases](docs/releases.md#sicherheitsupdates-für-releases).
 
 | Version | Sicherheitskorrekturen |
 |---|---|
-| jüngstes Release (ohne Vorab-Releases) | ja |
 | `main` | ja |
-| ältere Releases | nein |
+| LTS-Linie (Juni-Release) | bis zum Ende des kostenlosen Supports ihrer Spring-Boot-Version, im Regelfall 30.06. des Folgejahres, also rund 12 Monate |
+| normale Linie (Dezember-Release, erstes finales Release) | bis einen Monat nach dem nächsten Funktionsrelease |
+| Linie nach ihrem Supportende, Vorab-Releases | nein |
+
+Eine Korrektur im Code erreicht eine ältere Linie per Backport auf ihren Wartungsbranch. Solange
+das noch nicht gebaut ist ([#3017](https://github.com/criew/opaa/issues/3017)), bekommt nur die
+jüngste Linie Patch-Releases: Sicherheitsupdates der Basis-Images als neues Tag auf dem Commit ihres
+letzten Release, eine Korrektur im Code nur, solange `main` seit diesem Release keine neue Funktion
+trägt. Eine ältere Linie bekommt bis dahin weder eine Codekorrektur noch ein Patch-Release; die
+Korrektur kommt nur mit einer neueren Linie.
 
 ## Ablauf
 
@@ -61,7 +80,7 @@ CVE-Scans gelten dagegen die Reaktionszeiten nach Schwere aus
 2. **Bewertung** — Die Maintainer prüfen, ob die Lücke nachvollziehbar ist, welche Versionen sie
    betrifft und wie schwer sie wiegt. Rückfragen laufen im Advisory-Entwurf.
 3. **Behebung** — Die Korrektur entsteht vertraulich, bei Bedarf in einem privaten Fork des
-   Advisory. Für das jüngste Release folgt ein Patch-Release nach
+   Advisory. Für jede betroffene unterstützte Linie folgt ein Patch-Release nach
    [docs/releases.md](docs/releases.md#sicherheitsupdates-für-releases).
 4. **Veröffentlichung** — Mit der Korrektur wird die Lücke als
    [GitHub Security Advisory](https://github.com/criew/opaa/security/advisories) veröffentlicht,
