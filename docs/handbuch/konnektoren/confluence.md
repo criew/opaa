@@ -123,7 +123,7 @@ alte Geheimnis gilt sofort nicht mehr, und das neue muss in Confluence nachgetra
 gehen Benachrichtigungen still verloren, und nur der Vollabgleich fängt die Änderungen auf.
 „Webhook entfernen" schließt den Eingang. Der Eingang muss von Confluence aus erreichbar sein, über
 TLS; der vorgelagerte Proxy muss `X-Forwarded-For` setzen
-([Vertraute Proxys](../betrieb.md#vertraute-proxys-und-client-adresse)), sonst greift die Ratenbegrenzung je Client nicht.
+([Vertraute Proxys](../netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)), sonst greift die Ratenbegrenzung je Client nicht.
 
 - **Data Center:** Administration → Webhooks → Webhook erstellen; Adresse und Geheimnis aus OPAA.
   Confluence signiert jede Nachricht (`X-Hub-Signature`), OPAA prüft sie. Ereignisse: Seite

@@ -157,7 +157,10 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 
 - **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: was OPAA ist, der Kapitelbaum,
   Lesewege nach Anlass, Glossar. Die Kapitel im Einzelnen:
-  - Betrieb: [`betrieb.md`](./handbuch/betrieb.md) (Bausteine, Härtung, Sicherung, Aktualisierung),
+  - Betrieb: [`betrieb.md`](./handbuch/betrieb.md) (Bausteine, Wegweiser) mit
+    [`images-und-laufzeit.md`](./handbuch/images-und-laufzeit.md), [`netz-und-sicherheit.md`](./handbuch/netz-und-sicherheit.md) (Härtung),
+    [`sicherung-und-wiederherstellung.md`](./handbuch/sicherung-und-wiederherstellung.md), [`aktualisierung.md`](./handbuch/aktualisierung.md),
+    [`ueberwachung-und-fehlerbehebung.md`](./handbuch/ueberwachung-und-fehlerbehebung.md),
     [`docker-compose.md`](./handbuch/docker-compose.md), [`kubernetes.md`](./handbuch/kubernetes.md) (Helm-Chart),
     [`konfiguration.md`](./handbuch/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
     [`modelle.md`](./handbuch/modelle.md), [`authentifizierung.md`](./handbuch/authentifizierung.md)

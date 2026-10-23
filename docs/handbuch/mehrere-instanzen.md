@@ -318,7 +318,7 @@ flowchart LR
 
 Ein geordneter Stopp bricht laufende Indexierungen und Uploads der stoppenden Instanz sofort ab,
 lässt aber die Anfragen von Personen zu Ende laufen
-([Graceful Shutdown](betrieb.md#graceful-shutdown)).
+([Graceful Shutdown](images-und-laufzeit.md#graceful-shutdown)).
 
 ## Eine Uhr für alle
 

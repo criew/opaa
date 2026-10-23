@@ -4,7 +4,7 @@ PostgreSQL ist die einzige Wahrheit einer Installation: Dokumente, Chunks samt V
 Metadaten, Konten, Rechte, Chats und Protokolle liegen in einer Datenbank. Daneben steht nur die
 [Originalablage](originalablage.md). Dieses Kapitel beschreibt, was eine Datenbank für OPAA mitbringen
 muss; wie sie im Compose-Stapel läuft, steht unter [Docker Compose](docker-compose.md#datenbank-im-stapel),
-wie sie gesichert wird, unter [Sicherung und Wiederherstellung](betrieb.md#sicherung-und-wiederherstellung).
+wie sie gesichert wird, unter [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md).
 
 ## Vektorspeicher: pgvector
 

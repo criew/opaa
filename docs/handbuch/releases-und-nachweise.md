@@ -13,7 +13,7 @@ Es gibt zwei Arten von Ständen: **Releases** mit fester Versionsnummer `X.Y.Z`,
 und nie überschrieben werden, und den beweglichen Entwicklungsstand **`main`**. **Im Echtbetrieb
 läuft immer ein Release, nie `main`**: `main` ändert sich mit jedem Merge und hat kein Update-Paket; er
 dient nur zum Erproben. Welche Image-Tags es gibt und wie man einen Stand
-pinnt, steht in der [Betriebsübersicht](betrieb.md#images-und-versionen).
+pinnt, steht unter [Images und Versionen](images-und-laufzeit.md#images-und-versionen).
 
 Gezählt wird nach Semantic Versioning. Solange die Hauptversion `0` ist, steigt `Y` bei neuen
 Funktionen und bei jedem **Bruch**, `Z` bei Fehlerbehebungen und Sicherheitsupdates ohne neue
@@ -26,7 +26,7 @@ Schnittstelle oder eine Neuindizierung. Ein Patch-Release verlangt deshalb nie V
 Erproben gedacht, bekommen kein wanderndes Tag `X.Y` und keine Sicherheitsupdates.
 
 Schemaänderungen der Datenbank laufen nur vorwärts; zurück auf eine ältere Version geht es über die
-Sicherung ([Betriebsübersicht](betrieb.md#aktualisierung), Abschnitt „Aktualisierung“).
+Sicherung ([Aktualisierung](aktualisierung.md)).
 
 ## Sicherheitsupdates
 
@@ -108,7 +108,7 @@ liefert sie auf zwei Wegen:
 - **Am Image.** Jedes veröffentlichte Image, Release wie `main`, trägt je Architektur eine SBOM und
   eine Provenance (Quell-Commit und Bauparameter). Die SBOM umfasst auch die
   Betriebssystempakete des Basis-Images. Abrufen lassen sich beide mit `docker buildx imagetools
-  inspect`; die Befehle stehen in der [Betriebsübersicht](betrieb.md#images-und-versionen).
+  inspect`; die Befehle stehen unter [Images und Versionen](images-und-laufzeit.md#images-und-versionen).
 - **Je Ökosystem.** Zu jedem Stand von `main` erzeugt die CI je eine CycloneDX-SBOM der
   ausgelieferten Laufzeit-Abhängigkeiten von Backend und Frontend, ohne Test- und Build-Werkzeuge.
   Sie liegen 90 Tage als Artefakt am Lauf, nicht am GitHub-Release.
@@ -148,5 +148,6 @@ Signatur, prüfbar mit `gh attestation verify`, liegt am Chart und am Update-Pak
 
 ## Weiterführende Kapitel
 
-- [Betriebsübersicht](betrieb.md) — Images und Versionen, Aktualisierung
+- [Images und Laufzeit](images-und-laufzeit.md) — Images und Versionen
+- [Aktualisierung](aktualisierung.md) — Ablauf eines Updates
 - [Nachvollziehbarkeit](nachvollziehbarkeit.md) — Faktenblätter und Update-Paket im Einzelnen

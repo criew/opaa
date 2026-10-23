@@ -46,7 +46,7 @@ Zeichenkette und lässt das Backend mit einer Meldung abbrechen, die die Variabl
 > **Es gibt keine technische Sperre**, die einen Aufruf außerhalb festgelegter Netzbereiche
 > verhindert. Wer die Voreinstellung ändert, kann jedes erreichbare Ziel eintragen. Wer zusichern
 > muss, dass keine Daten das Haus verlassen, weist die Konfiguration nach und sichert den Netzweg
-> außerhalb von OPAA ab, etwa über Firewall-Regeln oder den [Ausgangsproxy](betrieb.md#ausgangsproxy).
+> außerhalb von OPAA ab, etwa über Firewall-Regeln oder den [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy).
 > Jede Änderung des Chat-Modells in der Oberfläche ist protokolliert und einer Person zurechenbar.
 
 Wie Ollama im Compose-Stapel oder im Cluster läuft, steht unter
@@ -167,7 +167,7 @@ und ein versehentlich verstellter Wert legte die Vektorsuche bis zur Neueinbettu
 > nach Überschriften gegliederten Abschnitten kaum einer. Betroffen ist etwa Ollama 0.6.5;
 > Ollama 0.32.15 und neuer bettet stetig ein, auch die Fassung im Compose-Stapel und im
 > Erprobungsaufbau für Kubernetes. Wer Ollama selbst betreibt, nimmt 0.32.15 oder neuer und
-> indiziert nach dem Wechsel vollständig neu ([Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht)).
+> indiziert nach dem Wechsel vollständig neu ([Was ein Update mit dem Index macht](aktualisierung.md#was-ein-update-mit-dem-index-macht)).
 
 Ein Embedding-Aufruf darf so lange dauern, wie `OPAA_OPENAI_EMBEDDING_TIMEOUT` erlaubt. Ein großes
 Modell auf einer CPU braucht für einen Stapel von Chunks leicht länger; dann bricht der Aufruf ab,
@@ -220,7 +220,7 @@ behält Fundort und Überschrift. Kürzere Chunks laufen wie bisher gesammelt un
 Aufruf. Die Einzelaufrufe laufen so parallel wie die Stapel (`OPAA_INDEXING_EMBEDDING_CONCURRENCY`);
 eine zu niedrig eingestellte Grenze kostet trotzdem viele Einzelaufrufe und teilt Chunks, die
 gepasst hätten. Jede Teilung steht im Log und in der Kennzahl
-`opaa_indexing_embedding_inputs_total` ([Logs und Metriken](betrieb.md#logs-und-metriken)).
+`opaa_indexing_embedding_inputs_total` ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 
 Typische Werte: ein unverändert gezogenes Ollama-Modell 2.048, die Embedding-Modelle von OpenAI
 8.191.
@@ -296,7 +296,7 @@ Modellwechsel. Wer vor dem Abschluss zum alten Modell zurückkehrt, verwirft die
 bereits neu eingebetteten Chunks behalten ihren alten Vektor. Nur Chunks, die in der Zwischenzeit
 neu oder mit geändertem Text indiziert wurden, haben keinen; sie findet nur die Volltextsuche, bis
 ihr Dokument erneut indiziert wird. Eine unveränderte Datei überspringt der Abgleich dabei
-([Falle bei einer Neuindizierung](betrieb.md#was-ein-update-mit-dem-index-macht)).
+([Falle bei einer Neuindizierung](aktualisierung.md#was-ein-update-mit-dem-index-macht)).
 
 **Dauer und Ressourcen.** Die Neueinbettung kostet so viele Embedding-Aufrufe wie eine
 Indexierung des Bestands, aber kein Lesen, Zerlegen oder Texterkennen. Auf einer CPU bestimmt das
@@ -358,7 +358,7 @@ Ausfall kostet die Sortierung, nie die Antwort.
 > **Timeouts mit anheben.** `OPAA_RERANK_TIMEOUT` bindet nur den Rerank-Aufruf, nicht die Anfrage
 > als Ganzes: Eine Suche mit CPU-Reranker kann minutenlang warten, und die übrigen Modellaufrufe kommen
 > hinzu. Wer `OPAA_RERANK_TIMEOUT` anhebt, hebt `OPAA_BACKEND_READ_TIMEOUT` des Frontends mit an und
-> das Timeout jedes Proxys davor ([Netzwerkzugang](betrieb.md#netzwerkzugang)). Sonst endet die
+> das Timeout jedes Proxys davor ([Netzwerkzugang](netz-und-sicherheit.md#netzwerkzugang)). Sonst endet die
 > Anfrage beim Client mit `504` oder einem Verbindungsabbruch, ohne Fehler im Backend-Log.
 
 ## Spracheingabe einschalten
@@ -387,7 +387,7 @@ Einzutragen sind `OPAA_TRANSCRIPTION_ENABLED=true`, die Basis-Adresse ohne den P
 die Modell-Kennung (`OPAA_TRANSCRIPTION_MODEL`) und, falls der Dienst ihn verlangt, der
 Zugangsschlüssel (`OPAA_TRANSCRIPTION_API_KEY`). Der Schlüssel steht nur in der Umgebung und nur im
 `Authorization`-Header der Anfrage, nie in der Datenbank, im Log oder einer Zustandsanzeige. Der
-Aufruf geht über denselben [Ausgangsproxy](betrieb.md#ausgangsproxy) und dieselben vertrauten
+Aufruf geht über denselben [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) und dieselben vertrauten
 Zertifizierungsstellen wie die übrigen Modellrollen; eine interne CA wird also wie dort ergänzt.
 
 Fehlt eine Angabe oder antwortet der Dienst nicht, steht das im Log und fortlaufend auf der Seite
@@ -493,7 +493,7 @@ OPAA_OPENAI_BASE_URL=http://your-vllm-server:8000/v1
 Ein hinterlegter Zugangsschlüssel eines Chat-Modells liegt **verschlüsselt** in der Datenbank
 (AES-256-GCM, zufälliger Initialisierungsvektor je Wert) und erscheint in keiner API-Antwort und keinem
 Log. Der Schlüssel dafür ist `OPAA_SETTINGS_ENCRYPTION_KEY`, getrennt von dem der Quellen
-([Schlüssel und Geheimnisse](betrieb.md#schlüssel-und-geheimnisse)); er schützt auch das
+([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)); er schützt auch das
 SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des Repositorys abgelegt.
 
 - **Ohne Schlüssel startet das Backend normal.** Eine Installation, die nur lokale Modelle ohne
@@ -509,7 +509,7 @@ SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des 
 ## Ausfall eines Modells
 
 Fällt ein Modell aus, arbeiten Anmeldung, Verwaltung und der Zugriff auf Dokumente weiter, weil kein
-Modell die Readiness des Backends bestimmt ([Readiness und Liveness](betrieb.md#readiness-und-liveness)).
+Modell die Readiness des Backends bestimmt ([Readiness und Liveness](images-und-laufzeit.md#readiness-und-liveness)).
 Je Rolle wirkt der Ausfall anders:
 
 | Rolle | Wirkung | Vorsorge | Wiederanlauf |
@@ -530,7 +530,7 @@ Fragen und an der Fehlerquote.
 
 Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche & Indexierung"
 (Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Health Groups
-`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](betrieb.md#readiness-und-liveness))
+`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness))
 und im Protokoll des Backends.
 
 **Meldungen des Verbindungstests:**
@@ -554,7 +554,7 @@ und im Protokoll des Backends.
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
 | Die erste Einbettung scheitert mit einem Dimensionsfehler | `OPAA_PGVECTOR_DIMENSIONS` passt nicht zum Embedding-Modell ([Embedding](#embedding)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
-| Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Timeout zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](betrieb.md#was-ein-update-mit-dem-index-macht)) |
+| Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Timeout zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](aktualisierung.md#was-ein-update-mit-dem-index-macht)) |
 | Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug)); er teilt den Chunk |
 | Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
 | Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; OPAA hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
@@ -567,7 +567,7 @@ und im Protokoll des Backends.
 | „Die Texterkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
 | Lange Fragen enden beim Client mit `504` | Timeouts von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
 | Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
-| Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](betrieb.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |
+| Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |
 
 ## Weiterführende Kapitel
 

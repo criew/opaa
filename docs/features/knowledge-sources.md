@@ -220,7 +220,7 @@ Zielprüfung mit dem Verbindungstest. Für die
 ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt für `HTTP_DIRECTORY`
 und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben
 Zielprüfung (gebaut, #267)** — konfigurierbar über `opaa.indexing.target-validation`, siehe
-[betrieb.md](../handbuch/betrieb.md#zielprüfung-abrufe-des-servers). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
+[netz-und-sicherheit.md](../handbuch/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
 damit er nicht als schneller interner Portscanner missbraucht werden kann. Ohne Bezug zu einer
 bestehenden Bibliothek verlangt die Quellprobe wie die beiden Auswahl-Endpunkte
 (`source-types/{sourceType}/browse`) das Anlegerecht `CREATE_CONNECTOR_LIBRARY` (gebaut, #1856,

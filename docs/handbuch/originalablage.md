@@ -385,7 +385,7 @@ docker compose exec postgres psql -U opaa -d opaa -c \
 
 Endpunkt, Bucket und im Störungsfall der Grund erscheinen dabei nur einem angemeldeten Aufrufer —
 in einem OIDC-Deployment antwortet ein anonymes `curl` nur mit dem Status, wie unter
-[„Diagnose ohne Shell"](betrieb.md#diagnose-ohne-shell) beschrieben.
+[„Diagnose ohne Shell"](ueberwachung-und-fehlerbehebung.md#diagnose-ohne-shell) beschrieben.
 
 Die dritte ist die eigentliche: In der Oberfläche ein Dokument öffnen und sein Original
 herunterladen — am besten eine E-Mail mit Anhang und den Anhang gleich mit, weil daran sichtbar

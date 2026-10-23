@@ -365,7 +365,7 @@ backend:
   # Entscheidung 9).
   timeZone: UTC
 
-  # Recommendation of docs/handbuch/betrieb.md ("Speicher und Container-Grenzen").
+  # Recommendation of docs/handbuch/images-und-laufzeit.md ("Speicher und Container-Grenzen").
   resources:
     requests:
       cpu: 500m

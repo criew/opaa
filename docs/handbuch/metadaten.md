@@ -406,8 +406,8 @@ Bibliothek, kein Verwaltungsrecht. Lesen genügt VIEWER.
   `DOCUMENT_METADATA_CHANGED` mit Dokument, Feld, Alt- und Neuwert, Akteur und Zeitpunkt; Objekt
   ist die Bibliothek, eine Sammelzuweisung teilt sich eine Korrelationsreferenz. Ein identischer
   Wert, der bereits steht, ist keine Änderung. Aus der Ereignisfolge einer Bibliothek lässt sich ihr
-  manueller Stand nach einer Wiederherstellung rekonstruieren; das Verfahren steht im
-  [Betriebsübersicht](betrieb.md#sicherung-und-wiederherstellung).
+  manueller Stand nach einer Wiederherstellung rekonstruieren; das Verfahren steht unter
+  [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md).
 
 Für Konnektorbibliotheken gilt dasselbe; der Wert hängt am Dokument, nicht an der Datei, und
 überlebt eine Neuaufnahme.

@@ -8,7 +8,7 @@ Chart bindet sie an.
 Dieses Kapitel beschreibt, was unter Kubernetes anders ist und welcher Wert des Charts welche
 Einstellung setzt. Was für beide Betriebswege gleich gilt — Laufzeitimages, Probes, Härtung,
 Sicherung, Logs und Metriken, was ein Update mit dem Index macht —, steht in der
-[Betriebsübersicht](betrieb.md); die Bedeutung der Umgebungsvariablen in der
+[Betriebsübersicht](betrieb.md) und ihren Kapiteln; die Bedeutung der Umgebungsvariablen in der
 [Konfiguration](konfiguration.md), Anmeldung und Erststart unter
 [Authentifizierung](authentifizierung.md), Datenbank und Originalablage in ihren Kapiteln. Dieses
 Kapitel verweist an der jeweiligen Stelle dorthin.
@@ -521,7 +521,7 @@ nennt den Schlüssel. Ein optionaler Schlüssel darf fehlen.
 **Der Chart erzeugt keine Schlüssel.** Ein bei der Installation zufällig erzeugter Schlüssel ginge mit
 `helm template`, in GitOps-Werkzeugen oder bei einer Neuinstallation verloren. Geht einer der beiden
 Verschlüsselungsschlüssel verloren, sind die damit gespeicherten Geheimnisse unlesbar (siehe
-[Zugangsdaten-Verschlüsselung](betrieb.md#zugangsdaten-verschlüsselung)). Deshalb gehört eine
+[Zugangsdaten-Verschlüsselung](netz-und-sicherheit.md#zugangsdaten-verschlüsselung)). Deshalb gehört eine
 Kopie außerhalb des Clusters zur Sicherung.
 
 **Ein geänderter Schlüssel wirkt erst nach einem Neustart.** Bei einem vorhandenen Secret startet
@@ -656,7 +656,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `backend.maxRamPercentage` | `70` | `JAVA_TOOL_OPTIONS` | Heap-Anteil am Speicher-Limit; wirkt nur mit `resources.limits.memory` |
 | `backend.javaToolOptions` | leer | `JAVA_TOOL_OPTIONS` | weitere JVM-Optionen; Dateiziele gehören unter `/tmp` |
 | `backend.timeZone` | `UTC` | `TZ` | Zeitzone der geplanten Läufe, Fristgrenzen und Datumsangaben in Mails ([Betrieb](betrieb.md#zeitzone)); Teil des Konfigurationsabdrucks |
-| `backend.resources` | 500m CPU und 1Gi angefordert, 2Gi Grenze | — | siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen) |
+| `backend.resources` | 500m CPU und 1Gi angefordert, 2Gi Grenze | — | siehe [Speicher und Container-Grenzen](images-und-laufzeit.md#speicher-und-container-grenzen) |
 | `backend.initResources` | 50m CPU und 128Mi angefordert, 256Mi Grenze | — | Init-Container des Backends: der Truststore mit `extraCACertificates` und das Warten auf die Erprobungsdatenbank |
 | `backend.startupProbe` | alle `10` s, Timeout `5` s, `60` Fehlversuche | — | gibt dem ersten Start und der Migration Zeit (`periodSeconds` mal `failureThreshold`) |
 | `backend.livenessProbe` | alle `20` s, Timeout `5` s, `3` Fehlversuche | — | Liveness |
@@ -1042,7 +1042,7 @@ kann:
   deshalb einen `podSelector`.
 
 Ob die Kette stimmt, zeigt der Diagnose-Endpunkt aus
-[Diagnose ohne Shell](betrieb.md#diagnose-ohne-shell), aufgerufen über `publicBaseUrl`: Steht unter
+[Diagnose ohne Shell](ueberwachung-und-fehlerbehebung.md#diagnose-ohne-shell), aufgerufen über `publicBaseUrl`: Steht unter
 `clientAddress` die Adresse des eigenen Rechners, ist die Kette richtig.
 
 **Leer** (Vorgabe) sieht das Backend den Frontend-Pod als Client. Die Grenzen wirken dann zu streng,
@@ -1069,7 +1069,7 @@ Ziel des Backends:
 - Mailserver
 - die Quellen der Bibliotheken und die Anbieter verbundener Konten
 
-Ist in der Oberfläche ein [Ausgangsproxy](betrieb.md#ausgangsproxy) eingetragen, gehen alle
+Ist in der Oberfläche ein [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) eingetragen, gehen alle
 HTTP(S)-Ziele über ihn: Identitätsanbieter, Modell-Endpunkte, Quellen und Anbieter brauchen dann
 keine eigene Regel mehr, sondern eine Regel zum Proxy. Eigene Regeln brauchen weiterhin die
 Datenbank, der Mailserver, SMB-Freigaben, der Objektspeicher der Originalablage und jedes Ziel auf
@@ -1115,7 +1115,7 @@ eigene, ohne dass der Chart angepasst wird. Ausnahme ist die Erprobungsdatenbank
 [Datenbank](#datenbank)).
 
 Was das Backend unter `/tmp` schreibt und wie groß das Verzeichnis sein sollte, steht unter
-[Read-only Filesystem](betrieb.md#read-only-filesystem). Überschreitet es
+[Read-only Filesystem](images-und-laufzeit.md#read-only-filesystem). Überschreitet es
 `backend.tmp.sizeLimit`, verdrängt das Kubelet den Pod. Mit `medium: Memory` zählt das Verzeichnis
 gegen das Speicher-Limit.
 
@@ -1127,10 +1127,10 @@ Probes und Metriken laufen über den Management-Port (siehe
 
 ### Ablauf
 
-1. **Vorbereitung prüfen.** Die Notizen jedes Release unter *Releases* im GitHub-Repository
-   enthalten den Abschnitt „Vorbereitung für Bestandsinstallationen“. Er nennt die Schritte, die eine
-   Bestandsinstallation vor dem Update erledigen muss, oder sagt „Keine Vorbereitung nötig.“ Wer
-   Versionen überspringt, prüft diesen Abschnitt bei jedem übersprungenen Release.
+Der allgemeine Ablauf steht unter [Aktualisierung](aktualisierung.md); unter Kubernetes:
+
+1. **Vorbereitung prüfen** nach den Release-Notizen
+   ([Ablauf eines Updates](aktualisierung.md#ablauf-eines-updates)).
 2. **Datenbank sichern**, danach die Originale (siehe
    [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Ohne diese Sicherung gibt es
    nach einer Schemaänderung keinen Rückweg, außer die neue Version lässt die vorige in ihrem
@@ -1151,7 +1151,7 @@ Probes und Metriken laufen über den Management-Port (siehe
 
 Mit einem Backend-Pod und der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt laufende Anfragen bis
 `backend.shutdownTimeoutSeconds` auslaufen; laufende Indexierungen brechen ab und werden beim nächsten
-Start als abgebrochen erkannt (siehe [Graceful Shutdown](betrieb.md#graceful-shutdown)).
+Start als abgebrochen erkannt (siehe [Graceful Shutdown](images-und-laufzeit.md#graceful-shutdown)).
 Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet OPAA nicht.
 
 Zur Unterbrechung gehört auch das Laden des neuen Backend-Images, einige hundert MB. Der Knoten lädt
@@ -1197,7 +1197,7 @@ Hinweise zum Aufruf:
   `kubectl -n opaa rollout restart deploy/opaa-backend deploy/opaa-frontend`.
 
 Ob die Aktualisierung den Index berührt, steht unter
-[Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht).
+[Was ein Update mit dem Index macht](aktualisierung.md#was-ein-update-mit-dem-index-macht).
 
 ### Ablauf mit mehreren Backend-Pods
 
@@ -1468,7 +1468,7 @@ Nacharbeit, zuerst ein neues `OPAA_AUTH_JWT_SECRET`, bevor das Backend wieder st
 
 ### Wiederherstellungsprobe auf einem Testcluster
 
-Die Befehle zur [Wiederherstellungsprobe](betrieb.md#wiederherstellungsprobe) auf einem Testcluster.
+Die Befehle zur [Wiederherstellungsprobe](sicherung-und-wiederherstellung.md#wiederherstellungsprobe) auf einem Testcluster.
 Quelle und Ziel sind zwei Namespaces mit je einem Release `opaa`, beide mit der Werte-Datei aus
 [Erprobung ohne Eingang und ohne eigene Datenbank](#erprobung-ohne-eingang-und-ohne-eigene-datenbank).
 Voraussetzung ist ein Modell-Endpunkt mit dem Chat- und dem Embedding-Modell dieser Werte-Datei.
@@ -1578,7 +1578,7 @@ sie also durch. Ist der Prometheus anders beschriftet, gehört sein Selektor nac
 Fehlen dort die passenden Labels, sieht man das am Alarm `OpaaBackendMetricsMissing`.
 
 Welche Metriken das Backend liefert, steht unter
-[Logs und Metriken](betrieb.md#logs-und-metriken).
+[Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken).
 
 ### Alarme
 
@@ -1644,7 +1644,7 @@ kubectl -n opaa get events --sort-by=.lastTimestamp
 Backend-Image hat keine Shell und kein `tar`; `kubectl exec … sh` und `kubectl cp` funktionieren
 deshalb nicht. Einen Thread-Dump schreibt
 `kubectl -n opaa exec deploy/opaa-backend -- /opt/java/openjdk/bin/jcmd 1 Thread.print`. Die
-Actuator-Pfade aus [Diagnose ohne Shell](betrieb.md#diagnose-ohne-shell) sind über eine
+Actuator-Pfade aus [Diagnose ohne Shell](ueberwachung-und-fehlerbehebung.md#diagnose-ohne-shell) sind über eine
 Portweiterleitung auf den Management-Port erreichbar:
 
 ```bash
@@ -1672,7 +1672,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Backend erreicht die Datenbank nicht | Mit Egress-Policies fehlt die Regel zur Datenbank; sonst Hostname, Port oder `database.sslMode`. Bei `verify-*` und einer hauseigenen CA fehlt `extraCACertificates` |
 | Backend startet nicht und nennt `OPAA_AUTH_JWT_SECRET` | Das Geheimnis im vorhandenen Secret ist zu kurz oder ein Platzhalter |
 | Backend startet nicht, das Protokoll nennt `refuses to start` und eine laufende Instanz | Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut Instanzregister noch läuft. Meist ist es der eigene Vorgänger, der hart beendet wurde und sich nicht abmelden konnte: Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als beendet, danach startet der neue Pod beim nächsten Versuch (siehe [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)) |
-| Pod im Zustand `OOMKilled` | Das Speicher-Limit ist zu klein; `backend.resources.limits.memory` anheben, nicht den Heap-Anteil (siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)) |
+| Pod im Zustand `OOMKilled` | Das Speicher-Limit ist zu klein; `backend.resources.limits.memory` anheben, nicht den Heap-Anteil (siehe [Speicher und Container-Grenzen](images-und-laufzeit.md#speicher-und-container-grenzen)) |
 | Pod verdrängt, das Ereignis nennt `ephemeral-storage` | `/tmp` ist über `backend.tmp.sizeLimit` gewachsen, etwa bei vielen großen Uploads |
 | `helm test` schlägt fehl | Das Backend ist nicht bereit, oder eine eigene Änderung an den NetworkPolicies trennt Frontend und Backend |
 

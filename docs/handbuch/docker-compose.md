@@ -4,8 +4,9 @@ Der Compose-Stapel des Repositorys (`docker-compose.yml`) startet OPAA auf einem
 Frontend, Backend und PostgreSQL, dazu über Compose-Profile Keycloak, Ollama, einen Objektspeicher
 und einen Mailserver zum Abfangen. Er ist für Entwicklung, Erprobung und kleine Installationen
 gedacht; seine Vorgaben sind bequem und **nicht** gehärtet. Was für jeden Betriebsweg gilt — Images,
-Probes, Härtung, Schlüssel, Sicherung —, steht in der [Betriebsübersicht](betrieb.md), die
-Bedeutung jeder Variable in der [Konfiguration](konfiguration.md).
+Probes, Härtung, Schlüssel, Sicherung, Aktualisierung —, steht in der
+[Betriebsübersicht](betrieb.md) und ihren Kapiteln, die Bedeutung jeder Variable in der
+[Konfiguration](konfiguration.md).
 
 ## Schnellstart
 
@@ -84,7 +85,7 @@ Wie der erste Systemverwalter hereinkommt, steht unter
 | backend-a, backend-b | — | 8080           | zwei Backend-Instanzen statt `backend` (nur Mehrinstanz-Variante) |
 
 Das Backend meldet seinen Zustand über einen Health Check auf die
-[Readiness](betrieb.md#readiness-und-liveness); `docker compose ps` zeigt ihn als
+[Readiness](images-und-laufzeit.md#readiness-und-liveness); `docker compose ps` zeigt ihn als
 `healthy`, und das Frontend startet erst danach. Der Frontend-nginx löst den Namen `backend` zur
 Laufzeit auf (`OPAA_BACKEND_RESOLVER`): Ein neu erstelltes Backend erreicht er ohne eigenen Neustart.
 
@@ -99,7 +100,7 @@ nur in einem.
 
 Auf einem Zielsystem, auf dem nicht gebaut werden soll, genügt eine `docker-compose.yml`, die
 `image:` statt `build:` verwendet; ein Checkout des Repositorys ist nicht nötig. Welcher Tag welchen
-Stand bedeutet, steht unter [Images und Versionen](betrieb.md#images-und-versionen).
+Stand bedeutet, steht unter [Images und Versionen](images-und-laufzeit.md#images-und-versionen).
 
 ```yaml
 services:
@@ -287,7 +288,7 @@ Sekunden lang in der Verteilung führt: Kommt dort binnen 4 s keine Verbindung z
 Anfrage an die andere. Eine Anfrage, die noch keine Instanz erreicht hat, endet so nicht mit einem
 Fehler, solange eine Instanz läuft; nur eine Diktataufnahme, die genau in diesem Moment hochgeladen
 wird, kann scheitern und ist dann neu aufzunehmen. Laufende Anfragen der stoppenden Instanz enden
-wie unter [Graceful Shutdown](betrieb.md#graceful-shutdown) beschrieben. Hat eine Instanz
+wie unter [Graceful Shutdown](images-und-laufzeit.md#graceful-shutdown) beschrieben. Hat eine Instanz
 die Verbindung angenommen, gibt nginx nur eine lesende Anfrage (`GET`, `HEAD`, `OPTIONS`) an die
 andere weiter, wenn die Verbindung abreißt oder die Antwort länger als `OPAA_BACKEND_READ_TIMEOUT`
 ausbleibt; jede andere, auch Ändern und Löschen, endet dann mit einem Fehler und läuft nie ein
@@ -311,7 +312,7 @@ teilten sich ein `/tmp`.
   steht. Ein zweiter Frontend-Container braucht eine eigene feste Adresse im Compose-Netz und einen
   eigenen Eintrag; mit `docker compose --scale frontend` bekämen die Container Adressen, die sich nicht
   einzeln vertrauen lassen. Ein weiterer Proxy davor kommt hinzu wie unter
-  [Vertraute Proxys](betrieb.md#vertraute-proxys-und-client-adresse) beschrieben.
+  [Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse) beschrieben.
 
 ### Update ohne Ausfall
 
@@ -332,7 +333,7 @@ docker compose $F up -d --no-deps --wait frontend
    arbeiten weiter. Endet `run` nicht mit Exit-Code 0, hier aufhören: Die alten Instanzen laufen
    unverändert.
 2. **Dann `backend-a`.** Während Compose den Container ersetzt, beantwortet `backend-b` alle Anfragen;
-   laufende Anfragen von `backend-a` enden geordnet ([Graceful Shutdown](betrieb.md#graceful-shutdown)).
+   laufende Anfragen von `backend-a` enden geordnet ([Graceful Shutdown](images-und-laufzeit.md#graceful-shutdown)).
 3. **Dann `backend-b`**, erst wenn `backend-a` wieder `healthy` ist und eine kurze Pause vergangen
    ist; `--wait` wartet auf das eine, `sleep 15` sorgt für das andere. Der Frontend-nginx nimmt eine
    Instanz, die beim Start kurz keine Verbindung annahm, erst danach sicher wieder in die Verteilung;
@@ -344,7 +345,7 @@ docker compose $F up -d --no-deps --wait frontend
 Während des Updates laufen kurz alte und neue Version nebeneinander gegen dieselbe Datenbank
 ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)). Mails gehen dabei nicht verloren,
 Läufe und Uploads der stoppenden Instanz lassen sich wiederholen
-([Graceful Shutdown](betrieb.md#graceful-shutdown)).
+([Graceful Shutdown](images-und-laufzeit.md#graceful-shutdown)).
 
 Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, lässt die neue Version die
 laufende nicht in ihrem [Versionsfenster](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)
@@ -414,7 +415,7 @@ bleibt beim Bind-Mount. Mit `OPAA_UPLOAD_STORE=s3` entfällt Anforderung 1.
 
 **Beschreibbare Pfade im Stapel.** Das Backend läuft mit `read_only: true` und `no-new-privileges`;
 `/tmp` ist das benannte Volume `opaa-backend-tmp` (warum, siehe
-[Read-only Filesystem](betrieb.md#read-only-filesystem)). Es überlebt `docker compose down`.
+[Read-only Filesystem](images-und-laufzeit.md#read-only-filesystem)). Es überlebt `docker compose down`.
 Was ein harter Abbruch, ein Heap-Dump oder ein JFR-Mitschnitt dort hinterlässt, wird bei angehaltenem
 Backend entfernt:
 
@@ -427,7 +428,7 @@ docker compose up -d backend
 ## Eigene interne CA ergänzen
 
 `-Djavax.net.ssl.trustStore=…` **ersetzt** den mitgelieferten Truststore, statt ihn zu ergänzen (siehe
-[Backend-Laufzeitimage](betrieb.md#backend-laufzeitimage)). Richtig ist, den mitgelieferten Store zu
+[Backend-Laufzeitimage](images-und-laufzeit.md#backend-laufzeitimage)). Richtig ist, den mitgelieferten Store zu
 kopieren, zu ergänzen und an seinen Platz zurückzumounten:
 
 ```bash
@@ -455,7 +456,7 @@ Die gemountete Kopie überdeckt den Stand des Images.
 
 ## Diagnose im Container
 
-Was die Actuator-Pfade zeigen, steht unter [Diagnose ohne Shell](betrieb.md#diagnose-ohne-shell).
+Was die Actuator-Pfade zeigen, steht unter [Diagnose ohne Shell](ueberwachung-und-fehlerbehebung.md#diagnose-ohne-shell).
 Für den Container selbst:
 
 ```bash
@@ -492,7 +493,7 @@ Werkzeug-Container in denselben Netzwerk- oder PID-Namensraum hängen (`--networ
 Die Vorgaben des Stapels (`docker-compose.yml`, `keycloak/realm-export.json`) sind für die lokale
 Entwicklung gewählt: ohne Ersteinrichtung nutzbar, mit funktionierendem Keycloak-Realm ab dem ersten
 Start. Für eine erreichbare Installation ist jede davon ein Problem. Was allgemein gilt, steht unter
-[Härtung](betrieb.md#härtung-für-erreichbare-deployments), was den mitgelieferten Keycloak betrifft,
+[Härtung](netz-und-sicherheit.md#härtung-für-erreichbare-deployments), was den mitgelieferten Keycloak betrifft,
 unter [Authentifizierung](authentifizierung.md#härtung-des-mitgelieferten-keycloak). Für den Stapel
 selbst:
 
@@ -500,7 +501,7 @@ selbst:
 |---|---|---|
 | `postgres` und `backend` binden an `127.0.0.1`, `frontend` und `keycloak` an allen Schnittstellen | Loopback schützt vor dem Netz, nicht vor anderen Prozessen und Konten desselben Hosts; über den Backend-Port ließe sich `X-Forwarded-For` am Frontend vorbei setzen. Die beiden anderen Ports sind ohne Firewall aus dem Netz erreichbar, bei `keycloak` samt Admin-Konsole | Hinter einem Reverse-Proxy alle Ports an `127.0.0.1:` binden — für `keycloak` **zwingend**, für `frontend` empfohlen. Die `ports:`-Zuordnung von `postgres` ganz entfernen; das Backend erreicht die Datenbank im Compose-Netz. Für die lokale Entwicklung bleiben die Bindungen sinnvoll |
 | Zugangsdaten des mitgelieferten Objektspeichers (`opaa-uploads`/`OpaaUploads!2026`, Profil `upload-s3`) | Die Originale aller hochgeladenen Dokumente sind mit Zugangsdaten geschützt, die im Repository stehen | **Zwingend** außerhalb einer Erprobung: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Shell-Umgebung, dieselben als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker`. Im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit Verschlüsselung ruhender Daten und Versionierung der Regelfall |
-| `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` leer | Alle Clients teilen hinter dem Frontend-nginx einen Zähler | die feste Adresse des Frontend-Containers als `/32` eintragen, wie in `.env.docker.example` ([Vertraute Proxys](betrieb.md#vertraute-proxys-und-client-adresse)) |
+| `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` leer | Alle Clients teilen hinter dem Frontend-nginx einen Zähler | die feste Adresse des Frontend-Containers als `/32` eintragen, wie in `.env.docker.example` ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)) |
 
 Eine eigene `docker-compose.prod.yml` gibt es nicht. Mehrere Maßnahmen verlangen eine Änderung am
 Realm-Export, einen Schritt nach der Ersteinrichtung oder eine externe Datenbank für Keycloak — eine
@@ -515,7 +516,7 @@ Geheimnis.
 ## Sicherung und Wiederherstellung
 
 Was zu sichern ist und in welcher Reihenfolge, steht unter
-[Sicherung und Wiederherstellung](betrieb.md#sicherung-und-wiederherstellung). Im Stapel, bei
+[Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md). Im Stapel, bei
 angehaltenem Backend (`docker compose stop backend`):
 
 ```bash
@@ -546,7 +547,7 @@ docker compose exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" --force "$POST
 **Auf einem frischen Datenbank-Volume**, etwa auf einem neuen Host, fehlt die Rolle
 `opaa_audit_owner`: Sie gehört zur PostgreSQL-Instanz, nicht zur Datenbank, steht deshalb nicht im
 Dump und entsteht sonst nur beim ersten Start des Backends. Ohne sie bricht `pg_restore` mit
-`role "opaa_audit_owner" does not exist` ab ([Sicherung und Wiederherstellung](betrieb.md#sicherung-und-wiederherstellung)).
+`role "opaa_audit_owner" does not exist` ab ([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)).
 Vor dem Einspielen deshalb einmal anlegen, mit angehaltenem Backend:
 
 ```bash
@@ -559,7 +560,9 @@ Danach `OPAA_AUTH_JWT_SECRET` in `.env.docker` ersetzen und erst dann `docker co
 
 ## Aktualisierung auf einen neuen Stand
 
-Im Verzeichnis mit der `docker-compose.yml`:
+Ablauf, Sicherung vorab und was ein Update mit dem Index macht, stehen unter
+[Aktualisierung](aktualisierung.md); hier folgen die Befehle. Im Verzeichnis mit der
+`docker-compose.yml`:
 
 ```bash
 docker compose pull          # neue Images holen
@@ -577,14 +580,11 @@ docker compose logs -f backend
 ```
 
 Der Stand `main` bekommt bei jedem Push und wöchentlich neue Images; ein `pull` bringt deshalb auch
-ohne neuen Commit einen neuen Stand mit Sicherheitsupdates ([Images und Versionen](betrieb.md#images-und-versionen)).
+ohne neuen Commit einen neuen Stand mit Sicherheitsupdates ([Images und Versionen](images-und-laufzeit.md#images-und-versionen)).
 Ein Skript, das genau diese Schritte regelmäßig ausführt, ist eine naheliegende Automatisierung; so
 läuft die öffentliche Demo-Instanz, täglich per Cron. Ein solches Skript trennt einen Schalter, der
 zusätzlich die Volumes verwirft, klar vom regulären Lauf: Das ist kein Update, sondern ein
 Neuaufsetzen mit vollständiger Neuindizierung.
-
-Was ein Update mit dem Index macht, steht unter
-[Aktualisierung](betrieb.md#was-ein-update-mit-dem-index-macht).
 
 ### Vorbereitungsschritte für Bestandsinstallationen
 
@@ -596,14 +596,14 @@ Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberfläche nicht errei
 
 1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Im Betriebsmodus `oidc` bricht der Start ohne es ab,
    ebenso bei weniger als 32 Zeichen oder einem Platzhalter. Erzeugen mit `openssl rand -base64 48`
-   ([Schlüssel und Geheimnisse](betrieb.md#schlüssel-und-geheimnisse)).
+   ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 2. **`OPAA_INITIAL_ADMIN_EMAIL` auf ein zustellbares Postfach setzen**, am besten ein
    Funktionspostfach der IT. Der frühere Vorgabewert `admin@opaa.local` wird abgelehnt; OPAA legt dann
    kein Systemverwalterkonto an und sagt das im Log
    ([Erststart](authentifizierung.md#erststart-und-systemverwalter-konto)).
 3. **`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen**, sobald ein Proxy vor dem Backend steht — und der
    nginx des Frontend-Containers ist einer. Eingetragen wird seine feste Adresse als `/32`; ohne sie
-   gilt die Anmeldegrenze für das ganze Haus ([Vertraute Proxys](betrieb.md#vertraute-proxys-und-client-adresse)).
+   gilt die Anmeldegrenze für das ganze Haus ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)).
 4. **`OPAA_PUBLIC_BASE_URL` setzen** — empfohlen, Pflicht für Einladungen per Mail und für Zugänge
    mit Anmeldeart OAuth: Sie steht in jedem Link einer Mail und bildet die Rücksprungadresse
    `{OPAA_PUBLIC_BASE_URL}/connections/callback` ([E-Mail-Versand](e-mail.md)).
@@ -707,7 +707,7 @@ beendet; danach `docker compose up -d backend` erneut ausführen (siehe
 ### Der Container meldet `137`
 
 `docker inspect --format '{{.State.OOMKilled}}' <container>` zeigt, ob ein OOM-Kill der Grund
-war ([Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)); sonst lief die
+war ([Speicher und Container-Grenzen](images-und-laufzeit.md#speicher-und-container-grenzen)); sonst lief die
 Grace Period `OPAA_STOP_GRACE_PERIOD` ab.
 
 ## Stoppen

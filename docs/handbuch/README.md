@@ -8,7 +8,7 @@ läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 
 | Rolle | Typische Aufgaben | Einstieg |
 |---|---|---|
-| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betrieb.md), dann [Docker Compose](docker-compose.md) oder [Kubernetes](kubernetes.md), [Modelle](modelle.md), [Authentifizierung](authentifizierung.md); danach [Wissensbibliotheken](wissensbibliotheken.md) und [Suche](suche.md) |
+| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betrieb.md), dann [Docker Compose](docker-compose.md) oder [Kubernetes](kubernetes.md), [Netz und Sicherheit](netz-und-sicherheit.md), [Modelle](modelle.md), [Authentifizierung](authentifizierung.md); danach [Wissensbibliotheken](wissensbibliotheken.md) und [Suche](suche.md) |
 | **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Wissensbibliotheken](wissensbibliotheken.md), die Konnektor-Kapitel, [Metadaten](metadaten.md), [Suche](suche.md) Abschnitt 8 |
 
 Nicht Zielgruppe sind Entwickler (Spezifikationen und Entscheidungen liegen im Repository unter
@@ -62,12 +62,20 @@ Seite nur dort, wo ein Begriff von dort gebraucht wird. Berechtigungen und die K
 Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweisen dürfen.
 
 - **Betrieb**
-  - [Betriebsübersicht](betrieb.md) — Bausteine und ihr Zusammenspiel, eine oder mehrere Backend-Instanzen, Images,
-    Probes, Härtung, Schlüssel, Sicherung und Wiederherstellungsprobe, Aktualisierung, Logs und
-    Metriken, Fehlerbehebung
+  - [Betriebsübersicht](betrieb.md) — Bausteine und ihr Zusammenspiel, Zeitzone, eine Organisation,
+    Wegweiser zu den Kapiteln darunter
     - [Docker Compose](docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
       Objektspeicher und Mailpit im Stapel, Aktualisierung
     - [Kubernetes](kubernetes.md) — Betrieb mit dem Helm-Chart
+    - [Images und Laufzeit](images-und-laufzeit.md) — Images und Versionen, Laufzeitimages von
+      Backend und Frontend, Speicher und Container-Grenzen, Readiness und Liveness, Graceful Shutdown
+    - [Netz und Sicherheit](netz-und-sicherheit.md) — Netzwerkzugang, Sicherheits-Header, Härtung,
+      vertraute Proxys, Zielprüfung, Ausgangsproxy, Schlüssel und Geheimnisse
+    - [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md) — was gesichert wird,
+      Zurückspielen, Wiederherstellungsprobe
+    - [Aktualisierung](aktualisierung.md) — Ablauf eines Updates, was ein Update mit dem Index macht
+    - [Überwachung und Fehlerbehebung](ueberwachung-und-fehlerbehebung.md) — Logs und Metriken,
+      Diagnose ohne Shell, Fehlerbehebung
     - [Mehrere Backend-Instanzen](mehrere-instanzen.md) — wie mehrere Instanzen zusammenarbeiten:
       Abstimmung über die Datenbank, Instanzregister, Konfigurationsabdruck, Grenzen je Instanz,
       Update ohne Ausfall
@@ -112,7 +120,7 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
 
 | Anlass | Reihenfolge |
 |---|---|
-| Erste Installation | [Betriebsübersicht](betrieb.md) → [Docker Compose](docker-compose.md): „Schnellstart" → [Authentifizierung](authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Betriebsübersicht](betrieb.md): „Härtung" → [Wissensbibliotheken](wissensbibliotheken.md) |
+| Erste Installation | [Betriebsübersicht](betrieb.md) → [Docker Compose](docker-compose.md): „Schnellstart" → [Authentifizierung](authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Netz und Sicherheit](netz-und-sicherheit.md): „Härtung für erreichbare Deployments" → [Wissensbibliotheken](wissensbibliotheken.md) |
 | Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Authentifizierung](authentifizierung.md): „Erststart und Systemverwalter-Konto" |
 | OPAA unter Kubernetes vorführen | [Kubernetes](kubernetes.md): „Erprobung mit dem Beispiel-Setup" |
 | Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [E-Mail-Versand](e-mail.md), falls Einladungen per Mail gehen |
@@ -124,19 +132,19 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
 | Eine neue Quelle anschließen | [Konnektoren](konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge](zugaenge.md) |
 | Dokumente fehlen oder sind veraltet | [Wissensbibliotheken](wissensbibliotheken.md): „Protokoll und Fehler" → Laufprotokoll der Bibliothek → Kapitel des Formats |
 | Eine Antwort ist schlecht | [Suche](suche.md): „Diagnose" und „Typische Befunde" → je nach Befund [Wissensbibliotheken](wissensbibliotheken.md) oder [Metadaten](metadaten.md) |
-| Ein Update steht an | [Betriebsübersicht](betrieb.md): „Aktualisierung" → [Docker Compose](docker-compose.md) bzw. [Kubernetes](kubernetes.md): „Aktualisierung …" |
+| Ein Update steht an | [Aktualisierung](aktualisierung.md) → [Docker Compose](docker-compose.md) bzw. [Kubernetes](kubernetes.md): „Aktualisierung …" |
 | Mehrere Backend-Instanzen planen oder einrichten | [Mehrere Backend-Instanzen](mehrere-instanzen.md) → [Docker Compose](docker-compose.md) bzw. [Kubernetes](kubernetes.md): „Mehrere Backend-Instanzen" → [Datenbank](datenbank.md): „Verbindungen bei mehreren Instanzen" |
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) → [Spaces](spaces.md) |
 | Ein externes KI-Werkzeug anschließen | [Externe KI-Werkzeuge](fremdzugaenge.md) |
 | Postfächer anbinden wollen | [Berechtigungen](berechtigungen.md): „Prüfliste vor einem Postfach-Konnektor" → [Private Bibliotheken](private-bibliotheken.md) |
 | Originalablage wählen, sichern oder umstellen | [Originalablage](originalablage.md) |
-| Sichern und wiederherstellen | [Betriebsübersicht](betrieb.md): „Sicherung und Wiederherstellung" → Kapitel des Betriebswegs → [Authentifizierung](authentifizierung.md): „Nacharbeit nach einer Rücksicherung" |
+| Sichern und wiederherstellen | [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md) → Kapitel des Betriebswegs → [Authentifizierung](authentifizierung.md): „Nacharbeit nach einer Rücksicherung" |
 | Ein Modell anbinden oder wechseln | [Modelle](modelle.md) |
 | Einen Identitätsanbieter anbinden | [Authentifizierung](authentifizierung.md): „OIDC (Keycloak)" → [Berechtigungen](berechtigungen.md): „Woher Gruppen kommen" |
 | Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](konfiguration.md): „Grenzwerte im Überblick" |
 | Datenschutz, Personalrat oder Informationssicherheit fragen, welche Daten anfallen und wohin sie gehen | [Nachvollziehbarkeit](nachvollziehbarkeit.md) |
 | Beschaffung oder Informationssicherheit fragen nach Sicherheitsupdates, SBOM, Provenance oder Lizenz | [Releases und Nachweise](releases-und-nachweise.md) |
-| Die Installation zeigt eine Störung | [Betriebsübersicht](betrieb.md): „Fehlerbehebung", „Logs und Metriken" |
+| Die Installation zeigt eine Störung | [Überwachung und Fehlerbehebung](ueberwachung-und-fehlerbehebung.md): „Fehlerbehebung", „Logs und Metriken" |
 
 ## 5. Glossar
 

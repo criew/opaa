@@ -22,7 +22,7 @@ Betrieb führt sie durch.
 ## Was OPAA liefert
 
 - **Das Verfahren** mit Testbestand, Ablauf, zwölf Prüfungen (P1 bis P12) und Messung:
-  [Wiederherstellungsprobe](../../handbuch/betrieb.md#wiederherstellungsprobe) im Handbuch, die
+  [Wiederherstellungsprobe](../../handbuch/sicherung-und-wiederherstellung.md#wiederherstellungsprobe) im Handbuch, die
   Befehle für einen Testcluster unter [Wiederherstellungsprobe auf einem Testcluster](../../handbuch/kubernetes.md#wiederherstellungsprobe-auf-einem-testcluster).
 - <a id="automatisierte-probe-im-projekt"></a>**Eine automatisierte Probe im Projekt:** Das Projekt führt sie
   nächtlich auf einem Testcluster aus ([Im Projekt geprüft](../../handbuch/kubernetes.md#sicherung-und-wiederherstellung)).
@@ -68,5 +68,5 @@ Durchgeführt von:             [ ]        abgenommen von: [ ]        am: [ ]
 
 - [Grundschutz-Modellierung](../06-informationssicherheit/grundschutz-modellierung.md), Bausteine
   CON.3 Datensicherungskonzept und DER.4 Notfallmanagement: Dort gehört das Protokoll hin.
-- [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung):
+- [Sicherung und Wiederherstellung](../../handbuch/sicherung-und-wiederherstellung.md):
   was zu sichern ist und in welcher Reihenfolge zurückgespielt wird.

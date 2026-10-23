@@ -48,7 +48,7 @@ von glibc hängt daran, dass Buildx den `FROM`-Verweis bei jedem Lauf neu auflö
   Angriffsfläche sinkt real (keine Shell, kein `wget`, `tar`, `cp`, kein Paketmanager); das Image
   ist deutlich kleiner.
 - **Schwieriger:** Kein Shell-Zugang — Diagnose über Logs, `/actuator`, `jcmd`, `docker kill -s
-  QUIT` und `docker cp` ([Betrieb](../handbuch/betrieb.md#backend-laufzeitimage)). Ein fehlendes
+  QUIT` und `docker cp` ([Backend-Laufzeitimage](../handbuch/images-und-laufzeit.md#backend-laufzeitimage)). Ein fehlendes
   jlink-Modul fällt erst zur Laufzeit auf (`ClassNotFoundException`, `ServiceConfigurationError`);
   Absicherung sind E2E- und `demo-smoke`-Suite, die bewusst nicht auf `pull_request` laufen — wer
   den Modulsatz ändert, stößt beide auf seinem Branch von Hand an. Eine neue Abhängigkeit mit

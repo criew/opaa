@@ -55,7 +55,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | M-01 | ja | [LLM-Anbieter](../../handbuch/modelle.md#llm-anbieter), [OpenAI-kompatible Server](../../handbuch/modelle.md#vllm--openai-kompatible-server), {{faktenblatt:voreinstellungen#ki-funktionen}} | Handbuch, Konfiguration, Faktenblatt |
 | M-02 | ja | {{faktenblatt:datenfluesse}}; der Wächter lässt den Build scheitern, wenn eine Verbindung nach außen keinen Eintrag hat ([Was bei jeder Änderung geprüft wird](../../handbuch/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird)) | Faktenblatt, Test |
 | M-03 | teilweise; die Ziele sind je Version beschrieben und die Modelle im Haus betreibbar, ein Betrieb ganz ohne Internet ist im Projekt nicht als Probe belegt | {{faktenblatt:datenfluesse}}, [OpenAI-kompatible Server](../../handbuch/modelle.md#vllm--openai-kompatible-server) | Faktenblatt, Handbuch |
-| M-04 | ja | [Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy) | Handbuch, Konfiguration |
+| M-04 | ja | [Ausgangsproxy](../../handbuch/netz-und-sicherheit.md#ausgangsproxy) | Handbuch, Konfiguration |
 | M-05 | ja; OPAA ruft den eingetragenen Endpunkt jedes Modells direkt auf, ohne Dienst des Projekts dazwischen | [LLM-Anbieter](../../handbuch/modelle.md#llm-anbieter), {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
 
 ## D · Datenschutz und Nachvollziehbarkeit
@@ -76,7 +76,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | S-02 | ja | [Provenance und Software-Stückliste](../../handbuch/releases-und-nachweise.md#provenance-und-software-stückliste) | Handbuch |
 | S-03 | ja | [Was ein Release liefert](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
 | S-04 | ja | [Meldeweg](../../../SECURITY.md#meldeweg), [Ablauf](../../../SECURITY.md#ablauf) | Projektunterlage |
-| S-05 | ja | [Read-only Filesystem](../../handbuch/betrieb.md#read-only-filesystem), [Pod Security](../../handbuch/kubernetes.md#pod-security) | Handbuch |
+| S-05 | ja | [Read-only Filesystem](../../handbuch/images-und-laufzeit.md#read-only-filesystem), [Pod Security](../../handbuch/kubernetes.md#pod-security) | Handbuch |
 | S-06 | ja, für `main` und das jüngste Release | [Schwachstellen](../../handbuch/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates) | Handbuch, Test |
 
 ## B · Betrieb
@@ -85,9 +85,9 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 |---|---|---|---|
 | B-01 | ja | [Bausteine](../../handbuch/betrieb.md#bausteine) | Handbuch |
 | B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall, soweit die neue Version die laufende neben sich zulässt | [Kubernetes-Installation](../../handbuch/kubernetes.md#installation), [Docker Compose](../../handbuch/docker-compose.md#schnellstart), [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md) | Handbuch |
-| B-03 | ja | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung), [Automatisierte Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md#automatisierte-probe-im-projekt) | Handbuch, Test |
+| B-03 | ja | [Sicherung und Wiederherstellung](../../handbuch/sicherung-und-wiederherstellung.md), [Automatisierte Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md#automatisierte-probe-im-projekt) | Handbuch, Test |
 | B-04 | ja | [Versionen](../../handbuch/releases-und-nachweise.md#versionen), [Vorbereitung für Bestandsinstallationen](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
-| B-05 | ja | [Readiness und Liveness](../../handbuch/betrieb.md#readiness-und-liveness), [Betriebsüberwachung](../../handbuch/kubernetes.md#betriebsüberwachung) | Handbuch |
+| B-05 | ja | [Readiness und Liveness](../../handbuch/images-und-laufzeit.md#readiness-und-liveness), [Betriebsüberwachung](../../handbuch/kubernetes.md#betriebsüberwachung) | Handbuch |
 
 ## O · Offenheit und Souveränität
 

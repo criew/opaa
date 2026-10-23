@@ -41,7 +41,7 @@ Zwei Dinge werden getrennt gehalten:
 | Absenderadresse, Absendername | Stehen als Absender in jeder Nachricht |
 
 Das SMTP-Passwort schützt `OPAA_SETTINGS_ENCRYPTION_KEY`, derselbe Schlüssel wie die Zugangsschlüssel
-der Chat-Modelle ([Schlüssel und Geheimnisse](betrieb.md#schlüssel-und-geheimnisse)).
+der Chat-Modelle ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.
 
 ## Zustellung über die Warteschlange

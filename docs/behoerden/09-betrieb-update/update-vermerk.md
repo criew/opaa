@@ -90,5 +90,5 @@ gestrichen oder mit „nicht beteiligt“ vermerkt.
 
 - [Das Update-Paket eines Release](https://github.com/criew/opaa/blob/main/docs/handbuch/nachvollziehbarkeit.md#das-update-paket-eines-release)
   im Handbuch: Inhalt des Pakets, Provenance-Prüfung, Delta für übersprungene Versionen.
-- [Aktualisierung](https://github.com/criew/opaa/blob/main/docs/handbuch/betrieb.md#aktualisierung)
+- [Aktualisierung](https://github.com/criew/opaa/blob/main/docs/handbuch/aktualisierung.md)
   im Handbuch: wie der Betrieb ein Update einspielt.

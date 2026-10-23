@@ -53,7 +53,7 @@ Summe der Antworten.
    ([Authentifizierung](../../handbuch/authentifizierung.md)), ein externer E-Mail-Dienst
    ([E-Mail-Versand](../../handbuch/e-mail.md)), externe KI-Werkzeuge, die Inhalte an eigene
    Modellanbieter weitergeben ([Externe KI-Werkzeuge](../../handbuch/fremdzugaenge.md)), oder ein
-   Ausgangsproxy eines Dritten ([Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy)).
+   Ausgangsproxy eines Dritten ([Ausgangsproxy](../../handbuch/netz-und-sicherheit.md#ausgangsproxy)).
 3. **Verträge schließen** mit dem eigenen Muster oder den Standardvertragsklauseln der EU-Kommission.
 4. **Bei jedem Update nachprüfen:** Ändert ein Update die Datenflüsse, weist das Update-Paket das aus.
 

@@ -36,29 +36,29 @@ Bausteine, zu denen das Produkt beiträgt, nach den Schichten des Kompendiums (E
 | Schicht | Baustein | Beitrag von OPAA |
 |---|---|---|
 | ORP – Organisation und Personal | ORP.4 Identitäts- und Berechtigungsmanagement | [Berechtigungen](../../handbuch/berechtigungen.md), {{faktenblatt:rollensicht}}, Zugangstokens ([Externe KI-Werkzeuge](../../handbuch/fremdzugaenge.md)) |
-| CON – Konzepte und Vorgehensweisen | CON.1 Kryptokonzept | [Schlüssel und Geheimnisse](../../handbuch/betrieb.md#schlüssel-und-geheimnisse) |
+| CON – Konzepte und Vorgehensweisen | CON.1 Kryptokonzept | [Schlüssel und Geheimnisse](../../handbuch/netz-und-sicherheit.md#schlüssel-und-geheimnisse) |
 |  | CON.2 Datenschutz | [Pseudonymisierung im Protokoll](../../handbuch/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll), [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation), Vorlagen unter [Datenschutz](../04-datenschutz/README.md) |
-|  | CON.3 Datensicherungskonzept | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung), [Originalablage sichern](../../handbuch/originalablage.md#sicherung-und-wiederherstellung), [Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md) |
+|  | CON.3 Datensicherungskonzept | [Sicherung und Wiederherstellung](../../handbuch/sicherung-und-wiederherstellung.md), [Originalablage sichern](../../handbuch/originalablage.md#sicherung-und-wiederherstellung), [Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md) |
 |  | CON.6 Löschen und Vernichten | {{faktenblatt:fristen}}, [Löschkonzept](../04-datenschutz/loeschkonzept.md), [Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren) |
 |  | CON.9 Informationsaustausch (je nach Einsatz) | externe KI-Werkzeuge: [Freigabe je Bibliothek](../../handbuch/fremdzugaenge.md#4-die-freigabe-einer-wissensbibliothek), [Kontingent und Abflussalarm](../../handbuch/fremdzugaenge.md#10-kontingent-und-abflussalarm) |
 | OPS – Betrieb | OPS.1.1.2 Ordnungsgemäße IT-Administration | [Systemverwalter-Konto beim Erststart](../../handbuch/authentifizierung.md#erststart-und-systemverwalter-konto), [Rollen](../../handbuch/benutzerverwaltung.md#7-rollen), [Notfallzugang](../../handbuch/authentifizierung.md#notfallprozedur-wieder-hereinkommen) |
 |  | OPS.1.1.3 Patch- und Änderungsmanagement | [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates), [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket) |
 |  | OPS.1.1.4 Schutz vor Schadprogrammen | nur zugelassene Formate, nach Inhalt geprüft ([Zugelassene Formate](../../handbuch/formate/README.md#zugelassene-formate)); keine eigene Virenprüfung |
-|  | OPS.1.1.5 Protokollierung | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken), {{faktenblatt:protokollereignisse}} |
-|  | OPS.1.1.6 Software-Tests und -Freigaben | [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket), [Aktualisierung und Rückweg](../../handbuch/kubernetes.md#aktualisierung-und-rückweg), [Wiederherstellungsprobe](../../handbuch/betrieb.md#wiederherstellungsprobe) |
+|  | OPS.1.1.5 Protokollierung | [Logs und Metriken](../../handbuch/ueberwachung-und-fehlerbehebung.md#logs-und-metriken), {{faktenblatt:protokollereignisse}} |
+|  | OPS.1.1.6 Software-Tests und -Freigaben | [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket), [Aktualisierung und Rückweg](../../handbuch/kubernetes.md#aktualisierung-und-rückweg), [Wiederherstellungsprobe](../../handbuch/sicherung-und-wiederherstellung.md#wiederherstellungsprobe) |
 |  | OPS.2.2 Cloud-Nutzung, OPS.2.3 Nutzung von Outsourcing | bei externem Modellanbieter oder Betrieb durch einen Dienstleister; Ziele in {{faktenblatt:datenfluesse}} |
-| DER – Detektion und Reaktion | DER.1 Detektion von sicherheitsrelevanten Ereignissen | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken); eine Ausleitung an ein zentrales Sicherheitsmonitoring ist nicht gebaut |
+| DER – Detektion und Reaktion | DER.1 Detektion von sicherheitsrelevanten Ereignissen | [Logs und Metriken](../../handbuch/ueberwachung-und-fehlerbehebung.md#logs-und-metriken); eine Ausleitung an ein zentrales Sicherheitsmonitoring ist nicht gebaut |
 |  | DER.2.1 Behandlung von Sicherheitsvorfällen | Meldeweg zum Projekt in [`SECURITY.md`](../../../SECURITY.md), [Schwachstellen](../../handbuch/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates) |
 |  | DER.4 Notfallmanagement | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md), [Notfallzugang](../../handbuch/authentifizierung.md#notfallprozedur-wieder-hereinkommen), [Ausfall einer Instanz](../../handbuch/mehrere-instanzen.md#wenn-eine-instanz-ausfällt) |
 | APP – Anwendungen | APP.2.1 Allgemeiner Verzeichnisdienst (nur mit mitgeliefertem Keycloak) | [Härtung des mitgelieferten Keycloak](../../handbuch/authentifizierung.md#härtung-des-mitgelieferten-keycloak) |
-|  | APP.3.1 Webanwendungen und Webservices | [Härtung](../../handbuch/betrieb.md#härtung-für-erreichbare-deployments) |
-|  | APP.3.2 Webserver | [Frontend-Laufzeitimage](../../handbuch/betrieb.md#frontend-laufzeitimage), [Sicherheits-Header](../../handbuch/betrieb.md#sicherheits-header-und-strict-transport-security) |
+|  | APP.3.1 Webanwendungen und Webservices | [Härtung](../../handbuch/netz-und-sicherheit.md#härtung-für-erreichbare-deployments) |
+|  | APP.3.2 Webserver | [Frontend-Laufzeitimage](../../handbuch/images-und-laufzeit.md#frontend-laufzeitimage), [Sicherheits-Header](../../handbuch/netz-und-sicherheit.md#sicherheits-header-und-strict-transport-security) |
 |  | APP.4.3 Relationale Datenbanken | [Eigene PostgreSQL](../../handbuch/datenbank.md#voraussetzungen-einer-eigenen-postgresql) |
 |  | APP.4.4 Kubernetes | [Netz und Sicherheit](../../handbuch/kubernetes.md#netz-und-sicherheit) |
 |  | APP.5.3 Allgemeiner E-Mail-Client und -Server (nur mit Mailversand) | [Einrichtung](../../handbuch/e-mail.md#einrichtung), [Zustellung über die Warteschlange](../../handbuch/e-mail.md#zustellung-über-die-warteschlange) |
 |  | APP.6 Allgemeine Software | [Provenance und Software-Stückliste](../../handbuch/releases-und-nachweise.md#provenance-und-software-stückliste), [Lizenzen](../../handbuch/releases-und-nachweise.md#lizenzen) |
-| SYS – IT-Systeme | SYS.1.6 Containerisierung | [Laufzeitimage](../../handbuch/betrieb.md#backend-laufzeitimage), [Härtung des Compose-Stapels](../../handbuch/docker-compose.md#härtung-des-compose-stapels) |
-| NET – Netze und Kommunikation | NET.1.1 Netzarchitektur und -design, NET.3.2 Firewall | Regelvorlage aus {{faktenblatt:datenfluesse}}, [Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy) |
+| SYS – IT-Systeme | SYS.1.6 Containerisierung | [Laufzeitimage](../../handbuch/images-und-laufzeit.md#backend-laufzeitimage), [Härtung des Compose-Stapels](../../handbuch/docker-compose.md#härtung-des-compose-stapels) |
+| NET – Netze und Kommunikation | NET.1.1 Netzarchitektur und -design, NET.3.2 Firewall | Regelvorlage aus {{faktenblatt:datenfluesse}}, [Ausgangsproxy](../../handbuch/netz-und-sicherheit.md#ausgangsproxy) |
 
 Allein beim Betrieb liegen unter anderem ISMS.1, ORP.1 bis ORP.3 und ORP.5, OPS.1.2.5 Fernwartung,
 DER.2.2, DER.2.3 und DER.3.1, die Bausteine für Server, Speicher und Virtualisierung (SYS.1.1, SYS.1.3,

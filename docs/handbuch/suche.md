@@ -1204,7 +1204,7 @@ für Aufrufe, die durch die Grenze je Adresse kommen: Sie geben ihren Platz dort
 **Viele Personen hinter einer Adresse.** Hinter einem gemeinsamen Ausgang des Behördennetzes (NAT)
 oder einem Proxy teilen sich alle die Grenze je Adresse. Steht der Proxy vor dem Backend, muss
 `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` ihn nennen, sonst zählen alle Anfragen unter der Adresse des
-Proxys in einem einzigen Zähler ([Betrieb](betrieb.md#vertraute-proxys-und-client-adresse)). Reicht
+Proxys in einem einzigen Zähler ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)). Reicht
 die Grenze je Adresse für einen NAT-Ausgang nicht, wird sie angehoben; die Grenze je Konto hält den
 einzelnen Menschen weiter im Rahmen.
 

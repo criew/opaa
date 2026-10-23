@@ -133,7 +133,7 @@ Herkunft und Zwang jeder einzelnen Variable:
   zwingend: Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, #267,
   standardmäßig aktiv) lehnt Compose-interne Adressen in privaten Bereichen ab — ohne diesen Eintrag
   würde jede Indizierung der beiden Demo-Webserver und des Demo-Objektspeichers `objectstore` (#1383) mit
-  „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt (siehe [`../docs/handbuch/betrieb.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb.md#zielprüfung-abrufe-des-servers)).
+  „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt (siehe [`../docs/handbuch/netz-und-sicherheit.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
   Der Eintrag steht bewusst **nicht** in `docker-compose.yml`: Der Backend-Service dort läuft immer,
   mit oder ohne `demo`-Profil, und ein dort fest eingetragener Wert würde jede eigene Belegung dieser
   Variablen aus einer Betreiber-`.env.docker` überschreiben (Vorrang von `environment:` vor
@@ -142,7 +142,7 @@ Herkunft und Zwang jeder einzelnen Variable:
 - `OPAA_CREDENTIALS_ENCRYPTION_KEY` ist seit #1383 zwingend: Die `S3`-Bibliothek „Ratsinformationen
   Stadt Rheinfurt" ist die erste Demo-Bibliothek mit Zugangsdaten (dem Root-Schlüssel des
   `objectstore`-Containers), und Zugangsdaten werden nur verschlüsselt gespeichert (#483,
-  [`../docs/handbuch/betrieb.md`, „Zugangsdaten-Verschlüsselung"](../docs/handbuch/betrieb.md#zugangsdaten-verschlüsselung)).
+  [`../docs/handbuch/netz-und-sicherheit.md`, „Zugangsdaten-Verschlüsselung"](../docs/handbuch/netz-und-sicherheit.md#zugangsdaten-verschlüsselung)).
   Ohne Schlüssel bricht der Seed beim Anlegen dieser Bibliothek mit `503` ab. Der Demo-Stack läuft
   mit `docker,oidc`, nicht mit `dev` — der nur dort hinterlegte Entwicklungsschlüssel greift also
   nicht; einen eigenen Wert mit `openssl rand -base64 32` erzeugen (der Demo-Smoke-Lauf setzt in
@@ -380,7 +380,7 @@ unten, dann das Vorführ-Drehbuch abspielen:
 ### Nutzerkonten
 
 Alle Passwörter sind offene **Demo-Werte, keine Secrets** — vor jedem erreichbaren Deployment gemäß
-[`../docs/handbuch/betrieb.md`, „Härtung für erreichbare Deployments"](../docs/handbuch/betrieb.md#härtung-für-erreichbare-deployments)
+[`../docs/handbuch/netz-und-sicherheit.md`, „Härtung für erreichbare Deployments"](../docs/handbuch/netz-und-sicherheit.md#härtung-für-erreichbare-deployments)
 zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weicht davon für
 `demo-admin` bewusst ab — siehe „Öffentliche Instanz betreiben" unten.
 
@@ -1031,7 +1031,7 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   oben dokumentierten Demo-Passwort ab; die vier Fach-Demokonten behalten dieses dokumentierte
   Passwort unverändert — sie sind für das Drehbuch vorführnotwendige `USER`-Konten ohne
   Systemrolle, ihr offenes Demo-Passwort ist ein akzeptiertes Restrisiko. Das je Konto greifende
-  Rate Limiting (siehe [„Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb.md#zielprüfung-abrufe-des-servers))
+  Rate Limiting (siehe [„Zielprüfung: Abrufe des Servers"](../docs/handbuch/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers))
   und das monatliche Ausgabenlimit in der Anthropic-Console (siehe „Modellkonfiguration der
   Instanz" unten) begrenzen, was ein Fachkonto an Last und Kosten erzeugen kann.
   **Seit #2103 besitzen und verwalten Fachkonten aber selbst Demo-Wissen** (siehe „Eigentum,
@@ -1067,7 +1067,7 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   Betreiber-Entscheidung nach dem Merge.
 - **Betriebsart:** Die Instanz läuft ausschließlich aus vorgebauten GHCR-Images
   (`ghcr.io/criew/opaa-backend:main`, `ghcr.io/criew/opaa-frontend:main`, siehe
-  [`../docs/handbuch/betrieb.md`, „Images und Versionen"](../docs/handbuch/betrieb.md#images-und-versionen)).
+  [`../docs/handbuch/images-und-laufzeit.md`, „Images und Versionen"](../docs/handbuch/images-und-laufzeit.md#images-und-versionen)).
   Auf dem Server gibt es **keinen Repository-Checkout** und keinen Build — nur eine
   `docker-compose.yml`, die `image:` statt `build:` verwendet.
 - **Daten:** Es dürfen dort **keine personenbezogenen, vertraulichen oder produktiven
@@ -1134,7 +1134,7 @@ nutzen" oben — der Korpus-Container mountet `demo/corpus/`, `demo-presse` moun
    akzeptiert, steht in der Instanz-Konfiguration
    `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example` — ohne
    diesen Eintrag lehnt die Zielprüfung (#267, siehe
-   [„Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb.md#zielprüfung-abrufe-des-servers))
+   [„Zielprüfung: Abrufe des Servers"](../docs/handbuch/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers))
    beide internen Hostnamen ab.
 4. Die Indizierung löst aus, wer mindestens `EDITOR` auf der Zielbibliothek hält (ADR-0018;
    `SYSTEM_ADMIN` ist dafür seit #478 nicht mehr erforderlich), über den **Admin-Bereich der
@@ -1222,7 +1222,7 @@ Realm-Benutzer.
 
 Der Workflow [`publish-images.yml`](../.github/workflows/publish-images.yml) baut bei jedem Push auf
 `main` neue Images (siehe
-[„Images und Versionen"](../docs/handbuch/betrieb.md#images-und-versionen)).
+[„Images und Versionen"](../docs/handbuch/images-und-laufzeit.md#images-und-versionen)).
 Auf dem Server liegt ein **Deployment-Skript**, das die aktuellen Images zieht und den Stack auf den
 neuen Stand bringt (Mechanik: [„Aktualisierung auf einen neuen Stand" in
 docker-compose.md](../docs/handbuch/docker-compose.md#aktualisierung-auf-einen-neuen-stand)). Es kennt
@@ -1253,7 +1253,7 @@ sind auf der Instanz ohnehin getrennte Anbieter.
 
 Der Indizierungsendpunkt (`POST /api/v1/libraries/{libraryId}/indexing`) ist auf der Testinstanz aus
 dem Internet erreichbar — die allgemeine Härtung dazu steht in
-[`../docs/handbuch/betrieb.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb.md#zielprüfung-abrufe-des-servers)
+[`../docs/handbuch/netz-und-sicherheit.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)
 und gilt hier unverändert. Zusätzlich zur dortigen Zielprüfung greift auf dieser Instanz das reguläre
 Rate Limiting mit einem eigenen, engen Kontingent für diesen Pfad (`OPAA_RATE_LIMIT_INDEXING_*`,
 standardmäßig eine Anfrage pro IP und Minute).
@@ -1264,7 +1264,7 @@ standardmäßig eine Anfrage pro IP und Minute).
   Bibliotheken, Formate, Quellen und Lizenzen, Rechtemodell
 - [`docs/market/demo-drehbuch.md`](../docs/market/demo-drehbuch.md) — das ausformulierte
   Vorführ-Drehbuch mit acht Fragen und acht Vorführschritten
-- [`docs/handbuch/betrieb.md`](../docs/handbuch/betrieb.md#härtung-für-erreichbare-deployments), Abschnitt „Härtung für erreichbare
+- [`docs/handbuch/netz-und-sicherheit.md`](../docs/handbuch/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), Abschnitt „Härtung für erreichbare
   Deployments" — zwingend vor jedem über `localhost` hinaus erreichbaren Rollout dieser Demo,
   einschließlich des dort separat behandelten `opaa-seed`-Clients
 - Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `pnpm run test:demo-smoke` in `e2e/`,

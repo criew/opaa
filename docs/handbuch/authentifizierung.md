@@ -111,7 +111,7 @@ Keycloak zu ändern ist, unter [Härtung des mitgelieferten Keycloak](#härtung-
 Die Oberfläche holt das Discovery-Dokument und tauscht den Code nach der Anmeldung gegen Tokens per
 `fetch` direkt aus dem Browser. Liegt einer dieser Endpunkte nicht auf dem Origin von OPAA, blockiert
 die Content-Security-Policy des Frontends den Aufruf
-([Sicherheits-Header](betrieb.md#sicherheits-header-und-strict-transport-security)), bis der Origin in
+([Sicherheits-Header](netz-und-sicherheit.md#sicherheits-header-und-strict-transport-security)), bis der Origin in
 `OPAA_CSP_CONNECT_SRC_EXTRA` steht.
 
 **Welche Origins hineingehören:** der Origin des Issuers (für `<Issuer>/.well-known/openid-configuration`)
@@ -368,7 +368,7 @@ OPAA sie aus der Issuer-URI ab. Sie durchläuft dieselbe [Adressprüfung](#besta
 wie die Issuer-URI; Redirects folgt das Backend nicht.
 
 **Das Geheimnis liegt verschlüsselt** mit `OPAA_CREDENTIALS_ENCRYPTION_KEY`; ohne diesen Schlüssel
-lässt sich kein Zugang speichern ([Schlüssel und Geheimnisse](betrieb.md#schlüssel-und-geheimnisse)).
+lässt sich kein Zugang speichern ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 Angezeigt werden nur Typ, Adresse, Realm und Client-ID. Das Geheimnis des Dienstkontos lässt sich
 jederzeit wechseln: in Keycloak neu erzeugen, in OPAA neu hinterlegen. Ist es nicht mehr
 entschlüsselbar, gilt es als nicht vorhanden; jeder Lauf meldet das Verzeichnis als unerreichbar und
@@ -397,7 +397,7 @@ an seine Stelle tritt die [Notfallprozedur](#notfallprozedur-wieder-hereinkommen
 Variable wieder entfernen.
 
 **Adressprüfung.** Jede eingetragene Issuer- und JWK-Set-Adresse durchläuft dieselbe Prüfung gegen
-private Netzbereiche wie die Quellen ([Zielprüfung](betrieb.md#zielprüfung-abrufe-des-servers)), mit
+private Netzbereiche wie die Quellen ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)), mit
 eigenen Schaltern `OPAA_OIDC_TARGET_VALIDATION_ENABLED` und `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`.
 Ein hausinterner Anbieter gehört in die Allowlist; die Adressen der Startwerte sind immer erlaubt.
 Discovery-Dokument und JWK-Set holt das Backend selbst, ohne Redirects zu folgen.
@@ -578,7 +578,7 @@ steht im Kapitel [Benutzerverwaltung](benutzerverwaltung.md). Für den Betrieb z
 Gesamtgrenze für Anmeldung, Registrierung und „Passwort vergessen" ist das Frühwarnsignal gegen
 verteiltes Ausprobieren gestohlener Zugangsdaten. Sie zählt auch Fehlversuche und gilt für alle Adressen
 zugleich: Ist sie erreicht, antwortet der Endpunkt jeder Adresse mit `429`, und das Überschreiten steht
-als Warnung im Protokoll und in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](betrieb.md#logs-und-metriken)).
+als Warnung im Protokoll und in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 Nach `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` falschen Passwörtern ist ein Konto für
 `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` gesperrt; die Anmeldung antwortet dann wie bei einem falschen
 Passwort, die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch
@@ -587,7 +587,7 @@ aufbewahrt, legt der Betrieb fest; eine kurze Frist, etwa 90 Tage, genügt der F
 das Protokoll der Fehlversuche aus der Leistungskontrolle heraus. Die Zähler je Adresse sind auf eine hohe Zahl
 gleichzeitig geführter Adressen begrenzt; darüber werden die am wenigsten genutzten vergessen und
 beginnen neu — diesen Fall fängt die Gesamtgrenze auf. Damit die Grenzen je Person wirken, muss die
-Client-Adresse stimmen ([Vertraute Proxys](betrieb.md#vertraute-proxys-und-client-adresse)).
+Client-Adresse stimmen ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)).
 
 **Nur über TLS.**
 
@@ -662,7 +662,7 @@ Anmeldung, ohne Keycloak im Prüfpfad; die Anmeldevorgänge selbst prüfen der D
 und das Ziel `local-auth` (lokale Anmeldung). Dass das Notanker-Konto in zwei Stapeln ein festes,
 öffentlich bekanntes Passwort trägt, ist genau der Grund, warum `OPAA_INITIAL_ADMIN_PASSWORD` auf einer
 erreichbaren Instanz ungesetzt bleibt. Zugangsdaten, mit denen eine Bibliothek ihre Quelle abruft,
-sind kein Konto bei OPAA ([Schlüssel und Geheimnisse](betrieb.md#zugangsdaten-verschlüsselung)).
+sind kein Konto bei OPAA ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#zugangsdaten-verschlüsselung)).
 
 ## Fehlerbehebung
 
@@ -706,7 +706,7 @@ Notfallprozedur.
 Die Grenze der Anmeldung ist erreicht. Steht ein Proxy davor und fehlt
 `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS`, **teilen alle Clients einen Zähler**, und die Grenze trifft das
 ganze Haus. Die aufgelöste Client-Adresse zeigt der Diagnose-Endpunkt
-([Diagnose ohne Shell](betrieb.md#diagnose-ohne-shell)).
+([Diagnose ohne Shell](ueberwachung-und-fehlerbehebung.md#diagnose-ohne-shell)).
 
 ### Eine Anmeldung wird abgelehnt, ohne einen Grund zu nennen
 

@@ -217,7 +217,8 @@ Mitarbeit
 └── docs/AGENT-ORGANIZATION.md — Rollen und Workflow
 
 Handbuch (docs/handbuch/) — das gebaute Produkt benutzen
-└── betrieb.md             — Betrieb: Bausteine, Docker Compose, Kubernetes, Konfiguration
+└── betrieb.md             — Betriebsübersicht: Bausteine, Wegweiser zu Compose, Kubernetes,
+                               Laufzeit, Netz und Sicherheit, Sicherung, Aktualisierung, Überwachung
 
 Demo und Vorführung
 ├── demo/README.md         — Demo-Instanz: Installation, Konten, öffentliche Instanz
