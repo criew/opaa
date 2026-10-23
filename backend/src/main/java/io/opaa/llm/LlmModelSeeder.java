@@ -121,7 +121,7 @@ class LlmModelSeeder {
           "Initiales Chat-Modell konnte nicht aus der Umgebungskonfiguration übernommen werden:"
               + " {} Variable setzen und neu starten, damit die Übernahme nachgeholt wird -"
               + " alternativ das Modell ohne Zugangsschlüssel über die Verwaltungsoberfläche"
-              + " anlegen. Siehe docs/handbuch/modelle.md. Es wurde kein Seed-Marker geschrieben.",
+              + " anlegen. Siehe docs/handbuch/betrieb/modelle.md. Es wurde kein Seed-Marker geschrieben.",
           e.getCause().getMessage());
       return;
     }
@@ -171,7 +171,7 @@ class LlmModelSeeder {
     if (!stillSet.isEmpty()) {
       log.warn(
           "Folgende Umgebungsvariablen sind seit #762 ohne Wirkung, aber noch gesetzt: {}. Siehe"
-              + " docs/handbuch/konfiguration.md, Abschnitt \"Entfallene und veraltete Variablen\".",
+              + " docs/handbuch/betrieb/konfiguration.md, Abschnitt \"Entfallene und veraltete Variablen\".",
           stillSet);
     }
   }

@@ -7,7 +7,7 @@ Epic #1439 und [deployment-infrastructure.md](../features/deployment-infrastruct
 
 ## Kontext
 
-Der einzige beschriebene Betriebsweg war der Compose-Stapel ([docker-compose.md](../handbuch/docker-compose.md)).
+Der einzige beschriebene Betriebsweg war der Compose-Stapel ([docker-compose.md](../handbuch/betrieb/docker-compose.md)).
 Häuser mit Kubernetes mussten sich Manifeste selbst erarbeiten und fanden erst im Betrieb heraus, was
 das Backend voraussetzt: genau eine Instanz ([ADR-0021](0021-single-instance-betrieb.md)), eine
 Schemamigration beim Start, beschreibbare Pfade, eine Proxy-Kette, die das Rate-Limit nicht verfälscht.

@@ -1,6 +1,6 @@
 /**
  * The query facade and its result: resolves the search scope, runs the retrieval pipeline, has the
- * answer generated and the sources assembled (docs/handbuch/suche.md, Abschnitte 2, 6 und 10). The
- * pipeline itself lives in {@code io.opaa.retrieval}.
+ * answer generated and the sources assembled (docs/handbuch/spaces/suche.md, Abschnitte 2, 6 und
+ * 10). The pipeline itself lives in {@code io.opaa.retrieval}.
  */
 package io.opaa.query;

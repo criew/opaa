@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Every Markdown file (*.md, *.markdown, any case) under docs/behoerden/ except
-# docs/behoerden/README.md follows the conventions of that README, found by directory walk, so a
-# new template is checked without any list:
+# Every Markdown file (*.md, *.markdown, any case) under docs/behoerden/ except any README.md (a
+# folder overview) and the top-level AGENTS.md and CLAUDE.md follows the conventions of
+# docs/behoerden/AGENTS.md, found by directory walk, so a new template is checked without any list:
 # - a YAML front matter block with stand, gilt-fuer, erzeugung, rechtsstand, pruefvermerk and
 #   naechste-durchsicht, each exactly once and well-formed; an overdue naechste-durchsicht is no
 #   error, the review role reports it
@@ -9,11 +9,13 @@
 # - fact sheet placeholders only in the form {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}},
 #   each naming a target of .github/fact-sheet-anchors.txt: the sheet names and anchors the
 #   generator renders, checked in and kept current by the backend test FactSheetReferenceTest
-# The name list in docs/behoerden/README.md ("`<name>` ist eines der Faktenblätter: ...") equals the
+# Every README.md is exempt from front matter and disclaimer, but its placeholders are checked as
+# well: the update package ships the folder overviews with the templates.
+# The name list in docs/behoerden/AGENTS.md ("`<name>` ist eines der Faktenblätter: ...") equals the
 # sheet names of that file.
-# Every relative Markdown link in these files and the README names an existing file and, with an
-# anchor, a heading (GitHub slug) or <a id> of the target, so a renamed heading fails here.
-# Under 03-vergabe/ every document has a section "## Quellen und Prüfstand" whose table has a
+# Every relative Markdown link in these files, every README.md and AGENTS.md names an existing file and,
+# with an anchor, a heading (GitHub slug) or <a id> of the target, so a renamed heading fails here.
+# Under 03-vergabe/ every document has a section "## Zum Nachlesen" whose table has a
 # column "Fundstelle" with a link or "zu prüfen" in each row; every citation "§"/"§§"/"Art." in
 # the text is recognised and also appears in a row of that table, and rechtsstand is not after
 # stand. The requirement catalog and the award criteria never name OPAA (any case, also in links),
@@ -29,21 +31,24 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 FOLDER=docs/behoerden
+RULES="$FOLDER/AGENTS.md"
 DISCLAIMER='> Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.'
 FIELDS=(stand gilt-fuer erzeugung rechtsstand pruefvermerk naechste-durchsicht)
 ANCHORS=.github/fact-sheet-anchors.txt
 DATE_RE='^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
 LEGAL_DIRS=("$FOLDER/03-vergabe")
-SOURCES_HEADING='## Quellen und Prüfstand'
+SOURCES_HEADING='## Zum Nachlesen'
 NEUTRAL_FILES=("$FOLDER/03-vergabe/anforderungskatalog.md" "$FOLDER/03-vergabe/zuschlagskriterien.md")
 CATALOG="$FOLDER/03-vergabe/anforderungskatalog.md"
 MATRIX="$FOLDER/03-vergabe/erfuellungsmatrix.md"
 REQUIREMENT_RE='^\| [A-Z]-[0-9]{2} \|'
 
-if [ ! -f "$FOLDER/README.md" ]; then
-  echo "::error::$FOLDER/README.md not found - the guard would pass without checking anything. Verify this script."
-  exit 1
-fi
+for required in "$FOLDER/README.md" "$RULES"; do
+  if [ ! -f "$required" ]; then
+    echo "::error::$required not found - the guard would pass without checking anything. Verify this script."
+    exit 1
+  fi
+done
 
 if [ ! -f "$ANCHORS" ]; then
   echo "::error::$ANCHORS not found - run ./gradlew complianceAnchors in backend/ and commit it."
@@ -66,22 +71,22 @@ report() {
   fi
 }
 
-# The README names exactly the sheets of the target file.
-readme_names="$(tr -d '\r' < "$FOLDER/README.md" | tr '\n' ' ' |
+# AGENTS.md names exactly the sheets of the target file.
+readme_names="$(tr -d '\r' < "$RULES" | tr '\n' ' ' |
   sed -n 's/.*`<name>` ist eines der Faktenblätter:\([^.]*\)\..*/\1/p' |
   grep -oE '`[a-z0-9-]+`' | tr -d '`' | sort | paste -sd '|' - || true)"
 expected_names="$(printf '%s\n' "$targets" | grep -v '#' | sort | paste -sd '|' - || true)"
 if [ "$readme_names" != "$expected_names" ]; then
-  report "$FOLDER/README.md" "" "the fact sheet name list (\"\`<name>\` ist eines der Faktenblätter: ...\") must name exactly ${expected_names//|/, } from $ANCHORS, found \"${readme_names//|/, }\""
+  report "$RULES" "" "the fact sheet name list (\"\`<name>\` ist eines der Faktenblätter: ...\") must name exactly ${expected_names//|/, } from $ANCHORS, found \"${readme_names//|/, }\""
 fi
-# The README's examples name real targets; its syntax descriptions (<name>, <anker>) are skipped.
+# The examples in AGENTS.md name real targets; its syntax descriptions (<name>, <anker>) are skipped.
 while IFS=: read -r line match; do
   [ -n "$line" ] || continue
   target="${match#'{{faktenblatt:'}"
   target="${target%'}}'}"
   grep -qxF -- "$target" <<<"$targets" ||
-    report "$FOLDER/README.md" "$line" "example \"$match\" names no target of $ANCHORS"
-done < <(tr -d '\r' < "$FOLDER/README.md" | grep -noE '\{\{faktenblatt:[a-z0-9-]+(#[a-z0-9-]+)?\}\}' || true)
+    report "$RULES" "$line" "example \"$match\" names no target of $ANCHORS"
+done < <(tr -d '\r' < "$RULES" | grep -noE '\{\{faktenblatt:[a-z0-9-]+(#[a-z0-9-]+)?\}\}' || true)
 
 # Stores in ANCHOR_CACHE[file] the anchors GitHub renders for a Markdown file, one per line:
 # - a slug per ATX heading (up to three spaces indent) and setext heading outside fenced code and
@@ -217,7 +222,7 @@ check_legal() {
   # $1 file, $2 content, $3 line of the header end: sources and rechtsstand of legal statements
   local file=$1 content=$2 end=$3 line message stand rechtsstand
   if ! grep -qxF -- "$SOURCES_HEADING" <<<"$content"; then
-    report "$file" "" "missing section \"$SOURCES_HEADING\": every legal statement needs its source and the rechtsstand ($FOLDER/README.md)"
+    report "$file" "" "missing section \"$SOURCES_HEADING\": every legal statement needs its source and the rechtsstand ($RULES)"
     return
   fi
   while IFS=$'\t' read -r line message; do
@@ -229,6 +234,22 @@ check_legal() {
   if [[ "$rechtsstand" > "$stand" ]]; then
     report "$file" "" "rechtsstand $rechtsstand lies after stand $stand"
   fi
+}
+
+check_placeholders() {
+  # $1 file, $2 content: fact sheet placeholders have the documented form and name a target
+  local file=$1 content=$2 line match target
+  while IFS=: read -r line match; do
+    [ -n "$line" ] || continue
+    if ! grep -Eq -- "^\{\{faktenblatt:($FACT_SHEETS)(#[a-z0-9-]+)?\}\}$" <<<"$match"; then
+      report "$file" "$line" "malformed fact sheet placeholder \"$match\": use {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}} with <name> one of ${FACT_SHEETS//|/, }"
+    else
+      target="${match#'{{faktenblatt:'}"
+      target="${target%'}}'}"
+      grep -qxF -- "$target" <<<"$targets" ||
+        report "$file" "$line" "fact sheet placeholder \"$match\" names no anchor of the rendered sheet; the targets are listed in $ANCHORS"
+    fi
+  done < <(printf '%s\n' "$content" | grep -noiE '\{\{[[:space:]]*faktenblatt[^}]*(\}\})?' || true)
 }
 
 # Requirement numbers of the first table column, one per line and occurrence, unsorted.
@@ -268,7 +289,7 @@ while IFS= read -r -d '' file; do
   # (a) header block: "---" on line 1 up to the next "---"
   end="$(awk 'NR==1{if($0!="---")exit;next} $0=="---"{print NR;exit}' <<<"$content")"
   if [ -z "$end" ]; then
-    report "$file" "1" "no header block: the file must start with a front matter block between \"---\" lines ($FOLDER/README.md)"
+    report "$file" "1" "no header block: the file must start with a front matter block between \"---\" lines ($RULES)"
   else
     header="$(printf '%s\n' "$content" | sed -n "2,$((end - 1))p")"
     for field in "${FIELDS[@]}"; do
@@ -295,24 +316,14 @@ while IFS= read -r -d '' file; do
   fi
 
   # (c) fact sheet placeholders
-  while IFS=: read -r line match; do
-    [ -n "$line" ] || continue
-    if ! grep -Eq -- "^\{\{faktenblatt:($FACT_SHEETS)(#[a-z0-9-]+)?\}\}$" <<<"$match"; then
-      report "$file" "$line" "malformed fact sheet placeholder \"$match\": use {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}} with <name> one of ${FACT_SHEETS//|/, }"
-    else
-      target="${match#'{{faktenblatt:'}"
-      target="${target%'}}'}"
-      grep -qxF -- "$target" <<<"$targets" ||
-        report "$file" "$line" "fact sheet placeholder \"$match\" names no anchor of the rendered sheet; the targets are listed in $ANCHORS"
-    fi
-  done < <(printf '%s\n' "$content" | grep -noiE '\{\{[[:space:]]*faktenblatt[^}]*(\}\})?' || true)
+  check_placeholders "$file" "$content"
 
   # (d) copied facts: warning only, the heuristic cannot tell a fact from a legitimate mention
   while IFS=: read -r line match; do
     [ -n "$line" ] || continue
     [ -z "$end" ] || [ "$line" -gt "$end" ] || continue
     warned=$((warned + 1))
-    echo "::warning file=$file,line=$line::\"$match\" looks like a value from the fact sheets: reference it via {{faktenblatt:<name>}} instead of copying it ($FOLDER/README.md)"
+    echo "::warning file=$file,line=$line::\"$match\" looks like a value from the fact sheets: reference it via {{faktenblatt:<name>}} instead of copying it ($RULES)"
   done < <(printf '%s\n' "$content" |
     awk '/^[[:space:]]*(```|~~~)/{fenced=!fenced; print ""; next} {print fenced ? "" : $0}' |
     grep -noE '\bopaa\.[a-z][a-z0-9.-]*|\b[A-Z][A-Z0-9]*(_[A-Z0-9]+)+\b' | grep -vE '_[0-9]' || true)
@@ -331,9 +342,13 @@ while IFS= read -r -d '' file; do
       report "$file" "$line" "a vendor-neutral template must not name OPAA, not even in a link; product evidence belongs in $MATRIX"
     done < <(grep -niF opaa <<<"$content" || true)
   done
-done < <(find "$FOLDER" -type f \( -iname '*.md' -o -iname '*.markdown' \) ! -path "$FOLDER/README.md" -print0 | sort -z)
+done < <(find "$FOLDER" -type f \( -iname '*.md' -o -iname '*.markdown' \) ! -name README.md ! -path "$RULES" ! -path "$FOLDER/CLAUDE.md" -print0 | sort -z)
 
-check_links "$FOLDER/README.md"
+while IFS= read -r -d "" readme; do
+  check_placeholders "$readme" "$(tr -d '\r' < "$readme")"
+  check_links "$readme"
+done < <(find "$FOLDER" -type f -name README.md -print0 | sort -z)
+check_links "$RULES"
 
 # (f) the compliance matrix answers exactly the requirements of the catalog
 if [ -f "$CATALOG" ] || [ -f "$MATRIX" ]; then
@@ -354,7 +369,7 @@ if [ -f "$CATALOG" ] || [ -f "$MATRIX" ]; then
 fi
 
 if [ "$rejected" -gt 0 ]; then
-  echo "::error::$rejected finding(s) in $checked document(s) under $FOLDER ($FOLDER/README.md)."
+  echo "::error::$rejected finding(s) in $checked document(s) under $FOLDER ($RULES)."
   exit 1
 fi
 

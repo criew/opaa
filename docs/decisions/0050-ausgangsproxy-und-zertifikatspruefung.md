@@ -78,7 +78,7 @@ ohne eigenen Trust-Manager, `S3SdkClient` ohne `TRUST_ALL_CERTIFICATES`; `Source
 `S3ClientSettings`, `UrlIndexingRequest`, `RssFeedRunContext` und die Verbindungs-Records tragen
 keinen Schalter. Der Rahmen eines Zugangs besteht nur noch aus
 Server-Adresse, Anmeldung und Vorgaben. Ein Betrieb mit eigener Zertifizierungsstelle ergänzt sie im
-Truststore der JVM (Handbuch `betrieb.md`).
+Truststore der JVM (Handbuch `images-und-laufzeit.md`).
 
 ### 6. Fehlerbild
 

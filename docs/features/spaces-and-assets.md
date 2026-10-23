@@ -1321,7 +1321,7 @@ Das Modell weicht **von beiden Mustern ab**, aber nicht in derselben Sache — e
 
 ## Gebauter Ist-Stand
 
-Stand nach Epic [#1726](https://github.com/criew/opaa/issues/1726), September 2026. Die Kapitel oben beschreiben das Zielbild; hier steht, was davon gebaut ist und was nicht. Wie es sich bedient, beschreibt das Handbuch (`docs/handbuch/katalog.md`, `docs/handbuch/spaces.md`, `docs/handbuch/berechtigungen.md`, `docs/handbuch/prompt-bibliotheken.md`).
+Stand nach Epic [#1726](https://github.com/criew/opaa/issues/1726), September 2026. Die Kapitel oben beschreiben das Zielbild; hier steht, was davon gebaut ist und was nicht. Wie es sich bedient, beschreibt das Handbuch (`docs/handbuch/arbeitsmittel/katalog.md`, `docs/handbuch/spaces/README.md`, `docs/handbuch/konten-und-rechte/berechtigungen.md`, `docs/handbuch/arbeitsmittel/prompt-bibliotheken.md`).
 
 **Mit Epic [#2070](https://github.com/criew/opaa/issues/2070) abgelöst, aber noch gebaut** ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)): Die Zuordnung als harte Grenze mit „@Space-Wissen", dem Hinweis bei leerem Space und dem `/`-Angebot nur zugeordneter Prompts ist gebaut. Das Schaufenster `listed` samt `listed_cap`, `accessible`, Historie und Audit-Ereignis ist mit #2092 entfallen. Favoriten sind gebaut (#2095): Stern an der Kachel, Filter „Favoriten“, eigene Favoriten zuerst. Die Absätze unten beschreiben diesen gebauten Stand, bis die genannten Issues ihn ablösen; Space-Assistent mit Schritt „Inhalte" und „In Space verwenden" sind gebaut.
 

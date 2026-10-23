@@ -1,100 +1,83 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-04-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# Baustein für das Löschkonzept
+# Löschkonzept
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
+**Gilt für:** Behörden, deren Datenschutzaufsicht die oder der BfDI oder die
+Landesdatenschutzbeauftragten sind.
+
 Ein Löschkonzept legt fest, wann welche Daten gelöscht werden, wer das auslöst und wie es
-nachgewiesen wird. Dieser Baustein sagt, woher die Angaben für OPAA kommen und was die Behörde selbst
-regeln muss. Fristen und Löschmechanismen stehen nicht hier, sondern in den Faktenblättern der
-eingesetzten Version. Angaben in eckigen Klammern **[…]** ergänzt die Behörde.
-
-## Quellen und Prüfstand
-
-| Fundstelle | Inhalt | Herkunft |
-|---|---|---|
-| Art. 30 Abs. 1 lit. f [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) | vorgesehene Fristen für die Löschung im Verzeichnis | Normtext |
-| Art. 25 Abs. 2 DSGVO | Voreinstellungen begrenzen die Speicherfrist auf das Erforderliche | Recherche vom 13.10.2026 |
-| § 5 [BArchG](https://www.gesetze-im-internet.de/barchg_2017/__5.html) bzw. Landesarchivgesetz | Anbietungspflicht an das zuständige Archiv vor der Löschung | Recherche vom 13.10.2026 |
-| DSK, [Kurzpapiere](https://www.datenschutzkonferenz-online.de/kurzpapiere.html), Nr. 11 „Recht auf Löschung / ‚Recht auf Vergessenwerden‘“ | Löschpflichten und Ausnahmen | Muster |
-
-Die Recherche vom 13.10.2026 steht im ersten Kommentar von Epic
-[#2542](https://github.com/criew/opaa/issues/2542).
+nachgewiesen wird. Die Fristen gehören auch ins Verzeichnis von Verarbeitungstätigkeiten. Verantwortlich
+ist die Behörde; OPAA liefert die Fristen und Löschwege des Produkts.
 
 ## Was OPAA liefert
 
 | Angabe im Löschkonzept | Quelle |
 |---|---|
 | Datenarten | Übersicht im {{faktenblatt:datenkatalog}} |
-| Frist je Datum, mit Konfiguration | {{faktenblatt:fristen#daten}} |
-| Frist der Protokollereignisse | {{faktenblatt:fristen#protokollereignisse}} |
+| Frist je Datum | {{faktenblatt:fristen#daten}} |
+| Frist der Protokolleinträge | {{faktenblatt:fristen#protokollereignisse}} |
 | Einstellbare Fristen mit Standardwert und Wertebereich | {{faktenblatt:fristen#konfigurationsschluessel}} |
 | Löschmechanismus je Datum | Zeile „Löschmechanismus“ im {{faktenblatt:datenkatalog}} |
+| Welche Löschungen protokolliert werden | {{faktenblatt:protokollereignisse}} |
 | Technisches Anwendungslog | {{faktenblatt:datenkatalog#application-log}} |
 
-Die Faktenblätter nennen die Voreinstellung der Version. Die Fristen der Instanz trägt die Behörde
-ein, wo sie abweichen [aus dem Konfigurationsexport, [#2558](https://github.com/criew/opaa/issues/2558)].
+Die Faktenblätter nennen die Voreinstellung der Version. Was die eigene Installation anders eingestellt
+hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 
-## Was die Behörde regelt
+## Aufgaben der Behörde
 
-### Fristen wählen
+1. **Fristen wählen:** je einstellbarer Frist entscheiden, ob die Voreinstellung bleibt, und die Wahl
+   mit dem Zweck begründen (Tabelle unten).
+2. **Regel für Chats festlegen:** Chats werden nur dort automatisch gelöscht, wo ein Space das
+   einschaltet; ab Werk ist es aus, im persönlichen Space entscheidet nur die Person selbst
+   ([Spaces: Chats](../../handbuch/spaces/README.md#7-chats)). Die Behörde legt fest, in welchen Spaces es
+   eingeschaltet wird, etwa in allen gemeinsamen Spaces.
+3. **Anlässe regeln, die OPAA nicht kennt:**
+   - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird meist gesperrt,
+     nicht gelöscht ([Löschen oder sperren](../../handbuch/konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).
+   - Dokumente: Sie folgen ihrer Quelle
+     ([Änderungen und Löschungen](../../handbuch/arbeitsmittel/wissensbibliotheken/README.md#44-änderungen-und-löschungen)),
+     ihre Fristen regelt die Behörde dort; für hochgeladene Dokumente festlegen, wer sie wann prüft.
+   - Anwendungslog: die Frist festlegen, wenn sie laut Faktenblatt beim Betrieb liegt.
+   - Sicherungen: Aufbewahrung festlegen und wie eine Rücksicherung mit bereits gelöschten Daten
+     umgeht.
+4. **Mit dem Archiv klären**, ob vor der Löschung Daten anzubieten sind, etwa das Protokoll.
+   Chatverläufe sind meist nicht aktenrelevant, übernommene Ergebnisse schon; deshalb gehören sie nach
+   der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md#6-ergebnisse-in-die-akte) in die Akte.
+5. **Nachweis regeln** für Löschungen außerhalb von OPAA: Sicherungen, Quellen, Anwendungslog.
+6. **Bei jedem Update nachziehen:** Das Update-Paket weist geänderte Fristen, Daten und Löschwege aus.
 
-Für jede einstellbare Frist entscheidet die Behörde, ob sie die Voreinstellung übernimmt. Die Wahl
-begründet sie mit dem Zweck; sie ist in der Regel auch Gegenstand der Dienstvereinbarung
-([#2566](https://github.com/criew/opaa/issues/2566)).
+## Ergebnis festhalten
 
-Die Liste der einstellbaren Fristen steht im {{faktenblatt:fristen#konfigurationsschluessel}}. Die
-Behörde übernimmt jede Zeile in diese Tabelle:
-
-| Frist (Faktenblatt) | Voreinstellung der Version | Wert der Instanz | Begründung |
+| Frist (Faktenblatt) | Voreinstellung der Version | Wert der Installation | Begründung |
 |---|---|---|---|
 | [ ] | [ ] | [ ] | [ ] |
 
-Die Chat-Bereinigung wirkt nur in Spaces, in denen sie eingeschaltet ist
-([Handbuch, Spaces: Chats](../../handbuch/spaces.md#7-chats)); die Behörde hält fest, in welchen.
+## Gut zu wissen
 
-### Anlässe, die OPAA nicht kennt
+- Die Fristwahl ist meist auch Gegenstand der Dienstvereinbarung mit dem Personalrat.
+- Gelöschte Daten bleiben in Sicherungen, bis diese ablaufen.
 
-- **Ausscheiden einer Person.** Ein benutztes Konto wird in der Regel gesperrt, nicht gelöscht; was
-  dabei bleibt und was endet, beschreibt das Handbuch
-  ([Benutzerverwaltung, Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren)).
-  Die Behörde legt fest, wer die Sperre auslöst und wann.
-- **Dokumente in Wissensbibliotheken.** Dokumente einer angebundenen Quelle folgen ihrer Quelle
-  ([Wissensbibliotheken, Änderungen und Löschungen](../../handbuch/wissensbibliotheken.md#44-änderungen-und-löschungen));
-  Löschfristen für sie regelt die Behörde in der Quelle. Hochgeladene Dokumente löscht, wer die
-  Bibliothek verwaltet; die Behörde legt fest, wer das wann prüft.
-- **Technisches Anwendungslog.** Was dafür gilt, steht im
-  {{faktenblatt:datenkatalog#application-log}}; liegt die Frist danach beim Betrieb, legt die Behörde
-  sie hier fest.
-- **Sicherungen.** Gelöschte Daten bleiben in Sicherungen, bis diese ablaufen. Die Behörde legt die
-  Aufbewahrung der Sicherungen fest und hält im Löschkonzept fest, wie eine Rücksicherung mit bereits
-  gelöschten Daten umgeht.
+## Zum Nachlesen
 
-### Anbietungspflicht vor der Löschung
+**Arbeitshilfen** für die Projektleitung:
 
-Vor der Löschung von Unterlagen gilt die Anbietungspflicht an das zuständige Archiv (§ 5 BArchG bzw.
-Landesarchivgesetz). Nach der Recherche sind Chatverläufe meist nicht aktenrelevant, übernommene
-Ergebnisse dagegen schon. Die Muster-Nutzungsrichtlinie regelt deshalb, dass übernommene Ergebnisse in
-die Akte des Vorgangs gehören
-([Nutzungsrichtlinie, Ergebnisse in die Akte](../08-barrierefreiheit-nutzung/nutzungsrichtlinie.md#6-ergebnisse-in-die-akte)).
-Ob darüber hinaus Daten aus OPAA anzubieten sind, etwa das Protokoll, klärt die Behörde mit ihrem
-Archiv, bevor die automatische Löschung greift.
+- [Kurzpapier Nr. 11 der Datenschutzkonferenz](https://www.datenschutzkonferenz-online.de/kurzpapiere.html)
+  „Recht auf Löschung“: Löschpflichten und ihre Ausnahmen.
 
-## Nachweis
+**Rechtsgrundlagen** für die oder den DSB:
 
-Automatische Löschläufe und Löschungen durch Personen sind je Datum im Datenkatalog beschrieben;
-welche davon protokolliert werden, steht im {{faktenblatt:protokollereignisse}}. Die Behörde legt fest,
-wie sie Löschungen außerhalb von OPAA nachweist (Sicherungen, Quellen, Anwendungslog).
-
-## Bei jedem Update
-
-Ein Update kann Fristen, Daten und Löschmechanismen ändern. Das Update-Paket weist das aus
-([Spezifikation, Update-Paket](../../features/behoerdenunterlagen.md#das-update-paket)). Die Behörde
-zieht das Löschkonzept mit der neuen Version nach.
+| Worum es geht | Fundstelle |
+|---|---|
+| Löschfristen im Verzeichnis von Verarbeitungstätigkeiten | Art. 30 Abs. 1 lit. f [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) |
+| Voreinstellungen begrenzen die Speicherdauer auf das Nötige | Art. 25 Abs. 2 DSGVO |
+| Unterlagen vor der Löschung dem Archiv anbieten | § 5 [BArchG](https://www.gesetze-im-internet.de/barchg_2017/__5.html) bzw. Landesarchivgesetz |

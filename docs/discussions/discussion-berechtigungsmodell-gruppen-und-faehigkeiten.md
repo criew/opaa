@@ -25,7 +25,7 @@ von ihrem heutigen Zuschnitt abweicht, steht das bei der jeweiligen Frage.
 **Mitgelesen (Dokumente):** `docs/features/access-control.md`, `docs/features/spaces-and-assets.md`,
 `docs/features/hybrid-retrieval.md` (Diagnosewerkzeug und Leitplanken),
 `docs/features/security-and-compliance.md`, ADR-0016, ADR-0018 (Entscheidung 6 mit Nachtrag #484),
-ADR-0025, ADR-0033, `docs/handbuch/suche.md`, die Issues #240, #797, #1150, #1349, #1442, #1726 und
+ADR-0025, ADR-0033, `docs/handbuch/spaces/suche.md`, die Issues #240, #797, #1150, #1349, #1442, #1726 und
 alle Issues des Epics.
 **Bei Widerspruch gilt der Code.** Die Spezifikationen laufen an einigen Stellen hinter dem gebauten
 Stand her (#1808 gleicht sie parallel an); die dabei gefundenen Abweichungen stehen in

@@ -37,11 +37,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The vector path against a real HNSW index (docs/handbuch/suche.md, Stufe 4): the permission
- * filter of a narrow search scope and a fetch-k above pgvector's default {@code hnsw.ef_search}
- * (40) must both still yield fetch-k candidates. Without an iterative index scan the index hands
- * out at most {@code ef_search} rows and the filter only thins them out afterwards (regression
- * guard for #2345).
+ * The vector path against a real HNSW index (docs/handbuch/spaces/suche.md, Stufe 4): the
+ * permission filter of a narrow search scope and a fetch-k above pgvector's default {@code
+ * hnsw.ef_search} (40) must both still yield fetch-k candidates. Without an iterative index scan
+ * the index hands out at most {@code ef_search} rows and the filter only thins them out afterwards
+ * (regression guard for #2345).
  *
  * <p>The suite's shared {@code vector_store} has no vector index ({@code index-type=none}), so this
  * class builds one for the duration of each method and drops it again. The search runs with {@code

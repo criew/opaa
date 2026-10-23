@@ -11,8 +11,8 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * Configuration properties of the retrieval pipeline (docs/handbuch/suche.md Abschnitt 10.3 lists
- * the operator-facing form of every value below). Ebene-1 values: overridable per environment
+ * Configuration properties of the retrieval pipeline (docs/handbuch/spaces/suche.md Abschnitt 10.3
+ * lists the operator-facing form of every value below). Ebene-1 values: overridable per environment
  * variable, absent from every administration surface.
  *
  * @param topK the number of chunks that reach the answer prompt. {@link
