@@ -435,6 +435,90 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
+  /api/v1/admin/local-users/{id}/chat-cleanup:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLocalUserChatCleanup
+      tags: [local-account]
+      summary: When the chats of a locked local account are deleted (system admin only)
+      description: >
+        The deletion of the chats of an account locked by the administration
+        (docs/features/chat-list.md, "Löschung der Chats gesperrter Konten") as the single view of
+        the account shows it. earliestDeletionAt is set for every account locked by the
+        administration and not held, whether or not it has chats, and an open anlassbezogene
+        Klärung that suspends the deletion does not change it. Only the lock by the
+        administration counts; a lock for inactivity or after failed sign-ins starts nothing. The
+        value is deliberately offered per account only - no list, filter, sort or export carries
+        it. 404 for an unknown id, an account of another organization and an OIDC account.
+      responses:
+        "200":
+          description: The deletion state of the account's chats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserChatCleanupResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/local-users/{id}/chat-cleanup/hold:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: holdLocalUserChatCleanup
+      tags: [local-account]
+      summary: Hold the deletion of a local account's chats (system admin only)
+      description: >
+        Keeps the chats of the account from the deletion after a lock until the hold is lifted,
+        for a matter outside OPAA such as a disciplinary procedure. Audited as
+        LOCKED_ACCOUNT_CHAT_CLEANUP_HELD with no reason; holding an account already held changes
+        nothing and writes no second entry. 404 as for the read.
+      responses:
+        "200":
+          description: The deletion state after the hold
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserChatCleanupResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: resumeLocalUserChatCleanup
+      tags: [local-account]
+      summary: Lift the hold on the deletion of a local account's chats (system admin only)
+      description: >
+        Audited as LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED; an account without a hold changes nothing
+        and writes no entry. A period that ran out during the hold is not extended: the next
+        nightly run deletes. 404 as for the read.
+      responses:
+        "200":
+          description: The deletion state after lifting the hold
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserChatCleanupResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/local-auth-settings:
     get:
       operationId: getLocalAuthSettings
@@ -883,3 +967,33 @@ components:
           type: integer
         inactiveDays:
           type: integer
+
+    ChatCleanupAfterLockStatus:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.ChatCleanupAfterLockStatus: SWITCHED_OFF while the operator switched the
+        deletion off, HELD while the account is held, SCHEDULED for an account locked by the
+        administration, NOT_LOCKED for every other account - including one locked for inactivity
+        or after failed sign-ins, which starts no period.
+      enum: [SWITCHED_OFF, NOT_LOCKED, SCHEDULED, HELD]
+
+    LocalUserChatCleanupResponse:
+      type: object
+      required: [status, held, deleteAfterDays]
+      properties:
+        status:
+          $ref: "#/components/schemas/ChatCleanupAfterLockStatus"
+        held:
+          type: boolean
+          description: Whether the deletion is held for this account, independent of its lock.
+        deleteAfterDays:
+          type: integer
+          description: The installation's period between the lock and the deletion, in days.
+        earliestDeletionAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            Set only with status SCHEDULED - the earliest moment the nightly run deletes the
+            chats: the later of the lock and the moment the deletion was switched on, plus the
+            period.
