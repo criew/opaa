@@ -465,8 +465,8 @@ kcadm.sh create clients/<id-des-clients-opaa-seed>/protocol-mappers/models -r op
 OPAA kann vor einem Vorgang verlangen, dass die Person ihre Identität gerade eben bestätigt hat, damit
 ein nicht gesperrter Arbeitsplatz dafür nicht genügt. Die Bestätigung gilt für kurze Zeit
 (`OPAA_AUTH_RECENT_LOGIN_MAX_AGE` in der [Variablenliste](konfiguration.md)), danach wird wieder
-gefragt. Derzeit verlangt noch kein Vorgang der Oberfläche die erneute Anmeldung; die Kapitel der
-Vorgänge, die es tun, nennen es.
+gefragt. Verlangt wird sie vor dem Download der eigenen Daten
+([Selbstauskunft](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)).
 
 - **Lokales Konto:** Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
   der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.

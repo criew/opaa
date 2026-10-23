@@ -2,7 +2,8 @@
 # Checks the hardening of the frontend image's nginx without a backend: an nginx from the same image
 # stands in as upstream and answers every request with the forwarding headers it received. Passes
 # when client-supplied Forwarded/X-Forwarded-Host/-Port/-Prefix reach the upstream on none of the
-# proxy paths, every response carries the Permissions-Policy, and the start refuses an invalid
+# proxy paths, every response carries the Permissions-Policy, only the self-disclosure download
+# may be framed (by the application itself), and the start refuses an invalid
 # OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy, and with
 # OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
 # Under parallel requests one of two containers behind the name stops: every request is answered
@@ -113,6 +114,23 @@ for path in / /index.html "$entry" /runtime-config.js /some/spa/route /api/v1/he
     fail "$path carries Permissions-Policy '${policies:-none}', expected exactly '$expected_policy'"
   fi
 done
+
+echo "--- framing"
+# Only the self-disclosure download may be framed, and only by the application itself.
+framing() {
+  local headers
+  headers="$(curl -sS -o /dev/null -D - --max-time 10 -X "$1" "$base$2" | tr -d '\r' || true)"
+  printf '%s|%s' "$(grep -i '^x-frame-options:' <<<"$headers" | sed 's/^[^:]*: //' || true)" \
+    "$(grep -i '^content-security-policy:' <<<"$headers" | grep -o "frame-ancestors [^;]*" || true)"
+}
+for request in "GET /" "GET /api/v1/health" "GET /some/spa/route"; do
+  got="$(framing "${request% *}" "${request#* }")"
+  [[ "$got" == "DENY|frame-ancestors 'none'" ]] && echo "unframeable: $request" ||
+    fail "$request carries framing '$got', expected DENY and frame-ancestors 'none'"
+done
+got="$(framing POST /api/v1/me/self-disclosure/download)"
+[[ "$got" == "SAMEORIGIN|frame-ancestors 'self'" ]] && echo "same-origin frame: download" ||
+  fail "the self-disclosure download carries framing '$got', expected SAMEORIGIN and 'self'"
 
 echo "--- OPAA_CSP_CONNECT_SRC_EXTRA"
 # Starts the image with the value and reports whether nginx came up within a few seconds.

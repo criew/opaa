@@ -68,6 +68,7 @@ zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollzieh
 | Daten gehen an einen externen Modellanbieter | lokale Modelle als Voreinstellung ([Modelle](../../handbuch/betrieb/modelle.md)) | Wahl des Anbieters, Vertrag, Netzregeln | [ ] |
 | Falsche Aussagen über Personen in Antworten | Antworten mit Fundstellen ([Suche](../../handbuch/spaces/suche.md)) | Regel „Antwort ist ein Entwurf“, keine Entscheidungen über Personen | [ ] |
 | Daten bleiben länger als nötig | Fristen und Löschung je Datum ({{faktenblatt:fristen}}) | gewählte Fristen | [ ] |
+| Beschäftigte sollen ihre Selbstauskunft vorlegen, etwa bei Vorgesetzten | Hinweis gegen die Vorlage in Oberfläche und Auskunft, keine Signatur, Download nur nach erneuter Anmeldung, Benachrichtigung bei jedem Start ([Selbstauskunft](../../handbuch/konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)) | Regel in [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) oder [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) | [ ] |
 | Unbefugter Zugriff auf Datenbank oder Sicherungen | [Technische und organisatorische Maßnahmen](./technische-und-organisatorische-massnahmen.md) des Produkts | Sicherheitskonzept, Betrieb | [ ] |
 
 ## Ergebnis festhalten

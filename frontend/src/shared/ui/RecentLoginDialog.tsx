@@ -77,6 +77,9 @@ export default function RecentLoginDialog({
   const [password, setPassword] = useState('')
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
+  // set only once the closing transition has ended: until then the modal hides the page, and with
+  // it this region, from assistive technology, so an earlier change would not be announced
+  const [announceConfirmed, setAnnounceConfirmed] = useState(false)
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
     // reset while rendering the opening, so not even one frame shows the previous request
@@ -85,6 +88,7 @@ export default function RecentLoginDialog({
       setPassword('')
       setError(null)
       setPhase('idle')
+      setAnnounceConfirmed(false)
     }
   }
   // the first control takes the focus once, when the dialog opens, never again on a re-render
@@ -156,7 +160,10 @@ export default function RecentLoginDialog({
         maxWidth="xs"
         fullWidth
         aria-labelledby="recent-login-title"
-        slotProps={{ paper: { component: 'form', onSubmit: handleSubmit } }}
+        slotProps={{
+          paper: { component: 'form', onSubmit: handleSubmit },
+          transition: { onExited: () => setAnnounceConfirmed(phase === 'confirmed') },
+        }}
       >
         <DialogTitle id="recent-login-title">Anmeldung bestätigen</DialogTitle>
         <DialogContent>
@@ -212,10 +219,10 @@ export default function RecentLoginDialog({
         </DialogActions>
       </Dialog>
       {/* The open modal hides the page from assistive technology, so the region inside it speaks
-          while it is open; this one, always present, takes over the confirmation once a caller
-          closes the dialog on it. */}
+          while it is open; this one, always present, takes over the confirmation once the dialog
+          closed on it has finished its exit transition. */}
       <Box component="span" role="status" aria-live="polite" sx={visuallyHidden}>
-        {!open && phase === 'confirmed' ? CONFIRMED_ANNOUNCEMENT : ''}
+        {!open && announceConfirmed ? CONFIRMED_ANNOUNCEMENT : ''}
       </Box>
     </>
   )

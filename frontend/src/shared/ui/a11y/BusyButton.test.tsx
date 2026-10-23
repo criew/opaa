@@ -95,4 +95,24 @@ describe('BusyButton', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Senden' }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })
+
+  it('keeps the focus while unavailable, swallows the click and announces nothing', async () => {
+    const onClick = vi.fn()
+    renderWithProviders(
+      <BusyButton busy={false} unavailable busyAnnouncement="Lädt" onClick={onClick}>
+        Laden
+      </BusyButton>,
+    )
+    const button = screen.getByRole('button', { name: 'Laden' })
+    button.focus()
+
+    await userEvent.click(button)
+
+    expect(onClick).not.toHaveBeenCalled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    expect(button).not.toHaveAttribute('aria-busy')
+    expect(button).toBeEnabled()
+    expect(button).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveTextContent('')
+  })
 })
