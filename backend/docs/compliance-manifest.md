@@ -95,6 +95,27 @@ scheitert bei einer Tabelle ohne Angabe, bei Weg und Ausschluss zugleich, bei ei
 unter `personalColumns` steht, bei `via` auf eine Tabelle ohne eigenen Weg und bei einer ausgenommenen Spalte, die die
 Tabelle nicht hat. Das Faktenblatt Datenkatalog zeigt die Angabe je Datum als „Zuordnung zur Person“.
 
+### Exporteure der Selbstauskunft
+
+Jede Kategorie hat genau einen Exporteur: eine `@Component` im Modul der Daten, die
+`io.opaa.compliance.SelfDisclosureExporter` umsetzt und ihre Kategorie als `public static final
+SelfDisclosureCategory CATEGORY` erklärt; den Vertrag (Transaktionen, Positivliste, „andere Person“,
+„System“) nennt die Javadoc des Ports. Je Feld der Positivliste stehen die Spalten `tabelle.spalte`,
+aus denen es stammt. `SelfDisclosureCoverageTest` scheitert, wenn
+
+- eine Kategorie keinen Exporteur hat und in keiner Liste unter
+  `src/test/resources/compliance/self-disclosure-pending/` steht, oder zwei hat;
+- ein Exporteur eine Kategorie nennt, die kein Datum mit Weg zur Person ist;
+- ein Feld eine unbekannte Spalte nennt, oder eine ausgeschlossene, ohne als `Field.derived` nur ja/nein
+  oder eine feste Bezeichnung auszugeben (das prüft zusätzlich die Senke zur Laufzeit);
+- eine Spalte der Auskunft (`TableRef#disclosedColumns`) außer den Spalten des Wegs von keinem Feld
+  genannt wird;
+- ein Datum mit Exporteur `EXPORT` nicht unter `accessPaths` führt.
+
+Die Listen „noch ohne Exporteur“ gibt es je Gruppe von Exporteuren (`identity.txt`,
+`rights-collaboration.txt`, `assistant-libraries.txt`); wer die Exporteure einer Gruppe baut, löscht
+ihre Datei.
+
 ## Zugriffsweg
 
 `accessPaths` nennt jeden Weg, auf dem das Datum lesbar ist: `UI` (Oberfläche), `API`, `EXPORT` und den direkten

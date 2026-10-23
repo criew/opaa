@@ -391,6 +391,8 @@ gleichzeitig ausführen, erhält bei zwei Instanzen jede die Hälfte.
 | gleichzeitige Einbettungen (`OPAA_INDEXING_EMBEDDING_CONCURRENCY`), Transkriptionen (`OPAA_TRANSCRIPTION_MAX_CONCURRENT`), Nachextraktionen von Anhängen (`OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT`) | je Instanz | ebenso teilen |
 | Stundenkontingent je Zugangstoken | je Instanz | nichts: Die Einstellung der Oberfläche bleibt die Grenze der Installation, jede Instanz gewährt davon ihren Anteil, geteilt durch die Zahl der laufenden Instanzen im Register |
 | Pools für Läufe, Uploads, Chat-Titel und Gesprächsnotizen | je Instanz | nicht teilen: Mehr Instanzen sollen mehr Arbeit tragen, dafür gibt es sie |
+| Tagesgrenze und Starts der Selbstauskunft je Person, höchstens eine laufende Auskunft je Person | für die Installation | nichts: Die Datenbank entscheidet; zwei gleichzeitige Anfragen derselben Person auf zwei Instanzen ergeben genau eine Auskunft |
+| gleichzeitige Selbstauskünfte (`OPAA_SELF_DISCLOSURE_MAX_CONCURRENT_EXPORTS`) | je Instanz | nicht teilen: Die Grenze schützt Threads und Speicher der Instanz; darüber antwortet sie mit `503`, ohne etwas zu verbrauchen |
 
 Die Modellaufrufe der Metadatenextraktion folgen den Pools der Läufe und Uploads und wachsen ebenso
 mit jeder Instanz. Warum es neben der Grenze je Adresse eine je Konto gibt und wie Zugangstokens

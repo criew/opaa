@@ -95,7 +95,20 @@ public class GlobalExceptionHandler {
    */
   private ResponseEntity<ErrorResponse> respond(
       ResponseEntity.BodyBuilder builder, ErrorResponse body) {
+    if (responseCommitted()) {
+      // A started body (a streamed download) can take no answer any more: thrown here, the
+      // original failure reaches the container, which breaks the connection rather than ending
+      // the truncated body cleanly or appending an envelope to it.
+      throw new IllegalStateException("The response is already committed: " + body.getError());
+    }
     return acceptsErrorBody() ? builder.body(body) : builder.build();
+  }
+
+  private static boolean responseCommitted() {
+    return RequestContextHolder.getRequestAttributes()
+            instanceof ServletRequestAttributes servletAttributes
+        && servletAttributes.getResponse() != null
+        && servletAttributes.getResponse().isCommitted();
   }
 
   private ResponseEntity<ErrorResponse> respond(HttpStatusCode status, ErrorResponse body) {
@@ -378,12 +391,22 @@ public class GlobalExceptionHandler {
     if (ex.retryAfterSeconds() > 0) {
       response.header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds()));
     }
-    return respond(response, error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+    ErrorResponse body = error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+    if (ex.getCode() != null) {
+      body.setCode(ex.getCode());
+    }
+    return respond(response, body);
   }
 
   @ExceptionHandler(ServiceUnavailableException.class)
   public ResponseEntity<ErrorResponse> handleServiceUnavailableException(
       ServiceUnavailableException ex) {
+    if (ex.retryAfterSeconds() > 0) {
+      return respond(
+          ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+              .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds())),
+          error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage()));
+    }
     log.error("Server error raised by application", ex);
     return respond(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
   }

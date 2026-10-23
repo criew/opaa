@@ -167,6 +167,13 @@ Die Pflicht prüft `ComplianceManifestTest`, nicht der Lader: So nennt auch dies
 einzufügendes YAML (Entscheidung 7). Das Faktenblatt Datenkatalog zeigt die Angabe je Datum, das
 Delta jede geänderte Angabe als eigene Änderung.
 
+Jede Kategorie liefert genau ein Exporteur des Ports `SelfDisclosureExporter` im Modul ihrer Daten,
+mit einer Positivliste von Feldern und den Spalten, aus denen sie stammen. `SelfDisclosureCoverageTest`
+hält beide Seiten ohne Datenbank gleich: Jede Spalte der Auskunft ist von einem Feld abgedeckt (die
+Spalten des Wegs deckt die Auswahl selbst ab), kein Feld nennt eine unbekannte oder ausgeschlossene
+Spalte, außer es sagt über sie nur ja/nein oder eine feste Bezeichnung, und ein Datum mit Exporteur
+führt `EXPORT` unter `accessPaths`.
+
 Der Weg steht an der Tabelle, weil die Tabelle die Einheit ist, an der eine neue Spalte oder Tabelle
 auffällt; eine Liste der Kategorien neben dem Manifest wüchse nicht mit.
 

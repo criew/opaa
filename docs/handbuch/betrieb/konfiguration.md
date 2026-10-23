@@ -330,6 +330,9 @@ Meldung ab, die die Variable nennt. Deshalb lässt `.env.docker.example` solche 
 | `OPAA_LOCAL_ADMIN_RESET` | — (leer) | nicht gesetzt | `force` stellt das Notanker-Konto beim Start einmalig wieder her: entsperrt, Ablauf gelöscht, `SYSTEM_ADMIN` wiederhergestellt, neues Einmalpasswort (Log bzw. `OPAA_INITIAL_ADMIN_PASSWORD`), alle Sitzungen beendet; ein gelöschtes Konto wird mit `OPAA_INITIAL_ADMIN_EMAIL` neu angelegt. Laut protokolliert und auditiert (`LOCAL_ADMIN_RESET`); danach wieder entfernen. Wirkt einmal je Setzen, auch bei mehreren Instanzen: Weitere Starts mit gesetztem Wert setzen nicht erneut zurück, erst ein Start ohne ihn gibt einen neuen Reset frei. Ersetzt `OPAA_OIDC_BOOTSTRAP=force` |
 | `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` | — (leer = keine Beschränkung) | nicht gesetzt | Kommagetrennte Adressen oder CIDR-Bereiche (IPv4 und IPv6), aus denen sich lokale `SYSTEM_ADMIN`-Konten anmelden dürfen; die Abweisung ist dieselbe wie bei einem falschen Passwort. Reguläre lokale Konten sind nicht betroffen. Nur numerische Adressen werden geprüft (kein Hostname, keine DNS-Auflösung); Link-Local-Adressen mit Zone-ID sind kein zulässiger Anmeldeursprung. Ein ungültiger Eintrag lässt den Start fehlschlagen. Geprüft wird die aufgelöste Client-Adresse — hinter einem Reverse-Proxy also die aus `X-Forwarded-For`, sofern der Proxy in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` steht; sonst die Adresse der Verbindung |
 | `OPAA_AUTH_RECENT_LOGIN_MAX_AGE` | `5m` | nicht gesetzt (Anwendungs-Default gilt) | Wie lange eine Anmeldung als frisch gilt, wenn ein Vorgang eine [erneute Anmeldung](authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen) verlangt; gemessen ab dem Anmeldezeitpunkt (`auth_time`) des Tokens. Eine Dauer von `0` oder weniger lässt den Start fehlschlagen |
+| **Selbstauskunft** | | | |
+| `OPAA_SELF_DISCLOSURE_MAX_CONCURRENT_EXPORTS` | `2` | nicht gesetzt (Anwendungs-Default gilt) | Wie viele Selbstauskünfte diese Instanz gleichzeitig ausliefert, 1 bis 16; darüber antwortet sie mit `503` und `Retry-After: 60`, ohne dass der Person etwas verbraucht wird. Gilt je Instanz, ohne Teilung durch die Zahl der Instanzen. Ein Wert außerhalb lässt den Start fehlschlagen |
+| `OPAA_SELF_DISCLOSURE_MAX_DURATION` | `30m` | nicht gesetzt (Anwendungs-Default gilt) | Wie lange eine Selbstauskunft höchstens ausgeliefert wird, 5 Minuten bis 2 Stunden; danach bricht sie ab und zählt nicht. Ein Wert außerhalb lässt den Start fehlschlagen |
 | **Lokale Konten** | | | |
 | `OPAA_AUTH_JWT_SECRET` | — (leer) außerhalb des Profils `dev`; im Profil `dev` fest hinterlegter, **ausdrücklich nicht produktionstauglicher** Wert | nicht gesetzt (auskommentiert — bewusst, siehe Kommentar in `.env.docker.example`) | Wurzelgeheimnis der lokalen Benutzerverwaltung, aus dem die Schlüssel für lokal ausgestellte Tokens und die Prüfwerte der Refresh- und Aktionslinks abgeleitet werden. **Im Profil `oidc` Pflicht: mindestens 32 Zeichen, kein Platzhalter — ohne gültigen Wert bricht der Start mit einer Meldung ab, die diese Variable nennt.** Erzeugen mit `openssl rand -base64 48`; eine Rotation beendet alle lokalen Sitzungen und entwertet alle offenen Links und alle Zugangstokens für externe KI-Werkzeuge (siehe [„Härtung für erreichbare Deployments"](netz-und-sicherheit.md#härtung-für-erreichbare-deployments)) |
 | `OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL` | `15m` | nicht gesetzt (Anwendungs-Default gilt) | Lebensdauer eines lokal ausgestellten Access-Tokens |
@@ -430,6 +433,13 @@ eigene Variable der Form `OPAA_FEATURES_<FUNKTION>_ENABLED`; die vorhandenen ste
 Unter Kubernetes setzt der Abschnitt `features` der Werte-Datei die Variablen (siehe
 [Kubernetes](kubernetes.md#funktionen)).
 
+Die **Selbstauskunft**, mit der jede Person die zu ihr gespeicherten Daten selbst herunterlädt, hat
+keinen solchen Schalter. Sie ist ab Werk an und hat stattdessen eine **Notabschaltung** in der
+Datenbank, die die Systemverwaltung über die Schnittstelle der Verwaltung umlegt: Sie wirkt ohne
+Neustart auf allen Instanzen, eine laufende Auskunft läuft zu Ende, und jede Änderung steht im
+Nachweisprotokoll. Ist sie abgeschaltet, erfährt die Person, dass sie die Auskunft bei ihrer Behörde
+beantragen kann.
+
 ## Grenzwerte im Überblick
 
 Alle Grenzen, die eine Installation einstellen kann oder kennen muss, auf einen Blick. Die Werte
@@ -454,6 +464,7 @@ feste Grenzen stehen hier mit ihrem Wert.
 | Rechte und Nachweis | Mindestgruppengröße, Alterung „Nachfolge offen", Aufbewahrung der Rechtehistorie, Löschfrist der anlassbezogenen Klärungen | `OPAA_MINIMUM_GROUP_SIZE`, `OPAA_SUCCESSION_*`, `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` (1 bis 10 Jahre); Aufbewahrung in der Oberfläche, 12 bis 120 Monate ([Berechtigungen](../konten-und-rechte/berechtigungen.md#15-konfiguration)) |
 | Verbundene Konten und Zugänge | Warnschwelle abgelaufener Konten, Inaktivität, Löschfrist privater Bibliotheken | `OPAA_CONNECTION_*` ([Zugänge](../arbeitsmittel/zugaenge.md#9-konfiguration)) |
 | Chats | Archivieren und Löschen nach Tagen | `OPAA_CHAT_AUTO_CLEANUP_*` |
+| Selbstauskunft | vollständige Auskünfte je Person und Kalendertag, Starts je Tag, gleichzeitige Auskünfte je Instanz, Dauer einer Auskunft | Tagesgrenze und Notabschaltung in der Datenbank (Vorgabe 1, Grenzen 1 bis 10); fest höchstens Tagesgrenze plus 4 Starts je Tag; `OPAA_SELF_DISCLOSURE_MAX_CONCURRENT_EXPORTS`, `OPAA_SELF_DISCLOSURE_MAX_DURATION`; darüber `429` bzw. `503` ([mehrere Instanzen](mehrere-instanzen.md#grenzen-und-budgets)) |
 | Branding | Größe und Abmessungen der Bilder | fest ([Branding](branding.md#die-drei-bilder)) |
 | Laufzeit | Wartezeit des Frontends auf das Backend, Zeitfenster beim Herunterfahren, Timeouts des Mailversands | `OPAA_BACKEND_READ_TIMEOUT`, `OPAA_SHUTDOWN_TIMEOUT`, `OPAA_MAIL_*_TIMEOUT`; `/tmp` des Frontends unter Compose fest 512 MiB |
 

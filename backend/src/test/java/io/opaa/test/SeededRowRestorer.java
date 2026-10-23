@@ -62,6 +62,7 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
               Map.entry("local_auth_settings", Ownership.WHOLE_TABLE),
               Map.entry("external_access_settings", Ownership.WHOLE_TABLE),
               Map.entry("mail_settings", Ownership.WHOLE_TABLE),
+              Map.entry("self_disclosure_settings", Ownership.WHOLE_TABLE),
               Map.entry("mail_templates", Ownership.WHOLE_TABLE),
               Map.entry("local_admin_seed_marker", Ownership.WHOLE_TABLE),
               Map.entry("admin_review_reminders", Ownership.WHOLE_TABLE),

@@ -1325,6 +1325,9 @@ verstreichen. Fünf Minuten genügen für Bestätigung und Auslösen, ohne dass 
 Arbeitsplatz lange offen bleibt. Ersetzt die frühere Entscheidung „keine erneute Anmeldung“; der
 Baustein ist #2996. Ein Einmal-Ticket für den Download des Browsers (#2989) darf nur mit frischer
 Anmeldung entstehen, gilt höchstens 60 Sekunden und genau einmal und verlängert die 5 Minuten nicht.
+Je Person gilt höchstens ein Ticket; ein neues ersetzt ein älteres. Der Browser löst es mit einem
+Formular-POST ein, das Ticket steht im Rumpf und damit in keinem Zugriffsprotokoll; Start und Grenzen
+werden beim Einlösen erneut geprüft, und erst das Einlösen zählt als Start.
 
 **Benachrichtigung bei jedem Export**, beim Beginn — so erreicht sie die Person auch, wenn der Export
 abbricht oder die Instanz dabei endet: in OPAA (Art `SELF_DISCLOSURE_STARTED`) und zusätzlich per

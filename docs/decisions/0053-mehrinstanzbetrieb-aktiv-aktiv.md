@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-22 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+Akzeptiert · zuletzt geändert 2026-10-23 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
 ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2
 
 ## Kontext
@@ -36,8 +36,11 @@ Instanzgrenzen.
 
 Mehrere gleichrangige Backend-Instanzen bedienen gleichzeitig Anfragen und Hintergrundarbeit, ohne
 Sitzungsaffinität: Alle Sicherheitskonfigurationen sind zustandslos (`STATELESS`), der CSRF-Schutz
-der lokalen Anmeldung liegt in einem Cookie, und es gibt keinen SSE-, Streaming- oder
-WebSocket-Endpunkt; jede Instanz beantwortet jede Anfrage. Die erste nutzbare Stufe heißt „zwei
+der lokalen Anmeldung liegt in einem Cookie, und es gibt keinen SSE- oder WebSocket-Endpunkt; jede
+Instanz beantwortet jede Anfrage. Gestreamt wird nur der Download der Selbstauskunft: eine Antwort
+ohne Zustand über die Anfrage hinaus, deren Reservierung mit Ablauf in der Datenbank liegt. Bricht
+ein Rolling Update sie ab, verfällt die Reservierung und nichts ist verbraucht; die Person startet
+neu. Die erste nutzbare Stufe heißt „zwei
 Instanzen, Update ohne Ausfall“; ihre Grenze steht unter Konsequenzen. Eine zweite Stufe macht
 Budgets und Anzeigen installationsweit (Entscheidung 12). Die Instanzzahl ist eine feste Größe der
 Bereitstellung, ein automatisches Skalieren des Backends ist nicht vorgesehen. Eine einzelne Instanz
@@ -298,6 +301,8 @@ her; „mindestens einmal“ ist die ehrliche Zusage.
 | `TranscriptionModelRole.slots`, `AttachmentExtractionLimiter` | je Instanz, durch N geteilt |
 | Pools `indexingTaskExecutor`, `uploadTaskExecutor`, Chat-Titel und Gesprächsnotiz; `modelExtractionTaskExecutor` folgt den Pools der Läufe und Uploads | je Instanz, ohne Teilung |
 | Rate-Limit-Behandlung der Quellsysteme | je Lauf, unverändert |
+| Tagesgrenze, Starts je Tag und laufender Export der Selbstauskunft | Zeile je Person (`self_disclosure_usage`), bedingte Anweisung nach Datenbankuhr, Reservierung mit Ablauf |
+| Gleichzeitige Exporte der Selbstauskunft (`opaa.self-disclosure.max-concurrent-exports`) | je Instanz, ohne Teilung |
 
 Eine Zählerzeile (`installation_counters`) hält das laufende und das vorige feste Fenster; das
 gleitende Fenster schätzt jede Instanz gleich, indem sie das vorige Fenster mit seinem Anteil am
@@ -322,7 +327,9 @@ eines Anmeldeanbieters, weil jede Instanz ihren Token-Decoder selbst baut; Micro
 `opaa.conversations.active` gelten je Pod. Umsetzung: #2950.
 
 Zählerzeilen nur, wo die absolute Zahl die Zusage ist (Kostendeckel, Frühwarnung gegen
-Credential-Stuffing, Abflussalarm) und es wenige Schlüssel gibt. Das Kontingent je Token bleibt
+Credential-Stuffing, Abflussalarm) und es wenige Schlüssel gibt. Die Zeile je Person der
+Selbstauskunft ist die Ausnahme, weil die Tagesgrenze der Person zugesagt ist; sie hält nur den
+laufenden Tag und das letzte Ergebnis, keinen Verlauf. Das Kontingent je Token bleibt
 bewusst im Speicher: Ein persistierter Zähler wäre ein Nutzungsdatum über eine Person. Die Pools
 schützen eigene Endpunkte und den eigenen Speicher; ein Datenbank-Slot je Einbettungsaufruf kostete
 mehr, als er schützt. Läufe und Uploads skalieren bewusst mit N, das ist der Sinn mehrerer Instanzen;

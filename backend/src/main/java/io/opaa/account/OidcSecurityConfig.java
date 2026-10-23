@@ -174,6 +174,11 @@ public class OidcSecurityConfig {
                         "/api/v1/branding/login-logo",
                         "/api/v1/branding/login-background")
                     .permitAll()
+                    // The browser downloads the self-disclosure by a native form submission, which
+                    // carries no bearer token; the one-time ticket in the body is its only
+                    // credential, issued after a recent sign-in (SelfDisclosureService).
+                    .requestMatchers(HttpMethod.POST, "/api/v1/me/self-disclosure/download")
+                    .permitAll()
                     .requestMatchers("/api/**")
                     .authenticated()
                     .anyRequest()
