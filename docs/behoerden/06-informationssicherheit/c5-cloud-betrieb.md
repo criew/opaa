@@ -23,7 +23,7 @@ wird es nie.** Das Testat erhält der Anbieter, der OPAA betreibt.
 ## Was OPAA liefert
 
 OPAA ist so gebaut und dokumentiert, dass ein Anbieter die Prüfung mit OPAA im Prüfumfang bestehen
-kann ([C5-Fähigkeit](../../features/security-and-compliance.md#c5-fähigkeit-statt-zertifizierung)).
+kann.
 Für Identitäten, Regelbetrieb, Kryptographie, Netz, Entwicklung, Sicherheitsvorfälle und
 Notfallvorsorge kann er das [Handbuch](../../handbuch/betrieb.md), die
 [Sicherheitsnachweise](sicherheitsnachweise.md) und die Faktenblätter vorlegen, etwa

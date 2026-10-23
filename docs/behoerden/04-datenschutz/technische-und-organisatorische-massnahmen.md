@@ -27,8 +27,8 @@ Datenschutzverletzung.
 
 | Schutzziel | OPAA bringt mit | Betrieb leistet, etwa |
 |---|---|---|
-| **Pseudonymisierung** | Protokoll mit Pseudonymen, Zuordnung getrennt gehalten ({{faktenblatt:datenkatalog#audit-pseudonyms}}, [Unveränderlichkeit und Löschrecht](../../features/security-and-compliance.md#unveränderlichkeit-und-löschrecht)) | Datenbankzugriff beschränken, damit die Trennung hält |
-| **Verschlüsselung** | Zugangsdaten verschlüsselt gespeichert ([Schlüssel und Geheimnisse](../../handbuch/betrieb.md#schlüssel-und-geheimnisse)); Passwörter nur als Prüfwert ([Sichere Voreinstellungen](../../features/security-and-compliance.md#sichere-voreinstellungen-und-produkthärtung)) | TLS am Eingang ([Netzwerkzugang](../../handbuch/betrieb.md#netzwerkzugang)), verschlüsselte Datenträger und Sicherungen, Schlüssel getrennt verwahren |
+| **Pseudonymisierung** | Protokoll mit Pseudonymen, Zuordnung getrennt gehalten ({{faktenblatt:datenkatalog#audit-pseudonyms}}, [Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren)) | Datenbankzugriff beschränken, damit die Trennung hält |
+| **Verschlüsselung** | Zugangsdaten verschlüsselt gespeichert ([Schlüssel und Geheimnisse](../../handbuch/betrieb.md#schlüssel-und-geheimnisse)); Passwörter nur als Prüfwert | TLS am Eingang ([Netzwerkzugang](../../handbuch/betrieb.md#netzwerkzugang)), verschlüsselte Datenträger und Sicherungen, Schlüssel getrennt verwahren |
 | **Vertraulichkeit** | Rechte je Arbeitsmittel und Space ([Berechtigungen](../../handbuch/berechtigungen.md)), Sichtbarkeit je Rolle ({{faktenblatt:rollensicht}}), Anmeldung mit Sperren und Fristen ([Authentifizierung](../../handbuch/authentifizierung.md)) | Rollenkonzept, Anbindung an den Identitätsanbieter, Vier-Augen-Prinzip für die Revision |
 | **Integrität** | Protokoll, an das nur angefügt wird ({{faktenblatt:protokollereignisse}}), Rechtehistorie ({{faktenblatt:datenkatalog#permission-history}}) | Datenbankrechte, Weiterleitung an ein Sicherheitsmonitoring |
 | **Verfügbarkeit** | Bereitschafts- und Lebendigkeitsprüfung ([Betrieb](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit)), Begrenzungen am Anmeldeweg | Überwachung, Kapazität, Ausfall des Modellanbieters einplanen |
@@ -52,9 +52,6 @@ Datenschutzverletzung.
 
 - Was die eigene Installation anders eingestellt hat, zeigt die
   [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
-- Die Grundsätze hinter den Voreinstellungen beschreibt die Spezifikation unter
-  [Sichere Voreinstellungen](../../features/security-and-compliance.md#sichere-voreinstellungen-und-produkthärtung)
-  und [Mitbestimmungsfähigkeit](../../features/security-and-compliance.md#mitbestimmungsfähigkeit).
 - Wie das Sicherheitskonzept nach IT-Grundschutz aufgebaut wird, ist nicht Teil dieser Vorlage.
 
 ## Zum Nachlesen

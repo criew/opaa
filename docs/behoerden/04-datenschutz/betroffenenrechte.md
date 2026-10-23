@@ -29,8 +29,7 @@ ist die Behörde; die oder der Datenschutzbeauftragte (DSB) berät.
   Chats ([Suche in eigenen Chats](../../handbuch/suche.md#72-suche-in-eigenen-chats)), eigene
   Zugangstokens ([Externe KI-Werkzeuge](../../handbuch/fremdzugaenge.md#5-zugangstokens-aus-sicht-der-person)).
 
-Einen gebündelten Export aller Daten einer Person gibt es noch nicht
-([Zielbild](../../features/security-and-compliance.md#export-und-auskunft)); die Behörde stellt die
+Einen gebündelten Export aller Daten einer Person gibt es noch nicht; die Behörde stellt die
 Auskunft aus den genannten Wegen zusammen.
 
 ## Aufgaben der Behörde
@@ -72,7 +71,7 @@ Antwort am:           [Datum]          durch: [ ]
   ({{faktenblatt:datenkatalog#audit-pseudonyms}}); Klarnamen sieht die Revision nur in den Grenzen
   der {{faktenblatt:rollensicht#auditor}}. Wird das Konto gelöscht, bleibt das Protokoll unverändert,
   nur der Personenbezug entfällt
-  ([Unveränderlichkeit und Löschrecht](../../features/security-and-compliance.md#unveränderlichkeit-und-löschrecht)).
+  ([Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren)).
   Ausnahme: Eine Freigabe für eine anlassbezogene Klärung, die die Person nennt, ordnet ihre
   Einträge bis zu deren Löschfrist weiter zu ({{faktenblatt:datenkatalog#audit-incident-scopes}}).
   Regelt eine Dienstvereinbarung den Zugriff auf das Protokoll, gilt deren Verfahren.

@@ -83,8 +83,8 @@ Geprüft am:            [ ]        durch: [ ]
 - [Handbuch, Suche](../../handbuch/suche.md): wie eine Antwort entsteht und wie man Belege prüft;
   Grundlage für die Einweisung.
 - [Handbuch, Branding](../../handbuch/branding.md): wo der eigene Name erscheint.
-- [Stufenregeln des Update-Pakets](../../features/behoerdenunterlagen.md#die-stufenregeln): wann ein
-  Update eine geänderte KI-Einstufung meldet.
+- [Update-Paket eines Release](../../handbuch/nachvollziehbarkeit.md#das-update-paket-eines-release):
+  welche Änderungen ein Update meldet und mit welcher Stufe es sie zur Bewertung vorschlägt.
 
 **Rechtsgrundlagen** für Justiziariat und Datenschutz:
 

@@ -90,7 +90,7 @@ Zuständig (Name, Erreichbarkeit, Vertretung):
   Speicherbetriebs.
 - Nach einer Rücksicherung sind alle Sitzungen beendet; die Nutzenden erfahren, dass Arbeit seit
   dem Wiederherstellungspunkt verloren ist. Von Hand gesetzte Metadaten gleicht der Betrieb danach
-  ab ([Manuelle Metadatenwerte nach einem Restore](../../features/deployment-infrastructure.md#manuelle-metadatenwerte-nach-einem-restore-abgleichen)).
+  ab.
 
 ## Zum Nachlesen
 
@@ -100,7 +100,8 @@ Zuständig (Name, Erreichbarkeit, Vertretung):
   wie ein Notfallmanagement aufgebaut wird, mit Business-Impact-Analyse.
 - [Grundschutz-Modellierung](../06-informationssicherheit/grundschutz-modellierung.md), Bausteine
   CON.3 Datensicherungskonzept und DER.4 Notfallmanagement.
-- [Notfallwiederherstellung](../../features/deployment-infrastructure.md#notfallwiederherstellung):
-  die Zielwerte, auf die das Produkt ausgelegt ist.
+- [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung):
+  was zu sichern ist, in welcher Reihenfolge zurückgespielt wird und wie die Wiederherstellung
+  geprobt wird.
 - [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md): Betrieb ohne Ausfall eines
   einzelnen Backends und Update ohne Unterbrechung.

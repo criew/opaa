@@ -46,9 +46,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
   länger festhalten muss oder Fristen braucht, vereinbart das mit einem Dienstleister.
 - Schreibt das Anwendungsprotokoll ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
   ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken)).
-- Eine Ausleitung des Nachweisprotokolls an ein zentrales Sicherheitsmonitoring ist
-  [beschrieben](../../features/security-and-compliance.md#anbindung-an-ein-zentrales-sicherheitsmonitoring),
-  aber nicht gebaut.
+- Eine Ausleitung des Nachweisprotokolls an ein zentrales Sicherheitsmonitoring ist nicht gebaut.
 
 ## Zum Nachlesen
 

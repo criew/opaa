@@ -43,7 +43,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | F-04 | ja | [Zugelassene Formate](../../handbuch/formate/README.md#zugelassene-formate) | Handbuch |
 | F-05 | ja | [Suchen ohne Antwort](../../handbuch/suche.md#71-suchen-ohne-antwort) | Handbuch |
 | F-06 | ja | [Spracheingabe einschalten](../../handbuch/modelle.md#spracheingabe-einschalten), [Endpunkt im Haus](../../handbuch/modelle.md#vorhandenen-endpunkt-im-haus-eintragen), {{faktenblatt:voreinstellungen#ki-funktion-speech-transcription}} | Handbuch, Konfiguration, Faktenblatt |
-| F-07 | ja | [Was ein externes KI-Werkzeug erreicht](../../handbuch/fremdzugaenge.md#8-was-ein-externes-ki-werkzeug-erreicht), [Externe KI-Werkzeuge abschalten](../../handbuch/fremdzugaenge.md#externe-ki-werkzeuge-ganz-abschalten), [OpenAPI-Spezifikation](../../../opaa-api/src/main/openapi/) | Handbuch, Konfiguration |
+| F-07 | ja | [Was ein externes KI-Werkzeug erreicht](../../handbuch/fremdzugaenge.md#8-was-ein-externes-ki-werkzeug-erreicht), [Externe KI-Werkzeuge abschalten](../../handbuch/fremdzugaenge.md#externe-ki-werkzeuge-ganz-abschalten), [Ein eigenes Werkzeug anschließen](../../handbuch/fremdzugaenge.md#ein-eigenes-werkzeug-anschließen) | Handbuch, Konfiguration |
 
 ## M · Modelle und Datenflüsse
 
@@ -80,7 +80,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
 | B-01 | ja | [Bausteine](../../handbuch/betrieb.md#bausteine) | Handbuch |
-| B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall, soweit die neue Version die laufende neben sich zulässt | [Kubernetes-Installation](../../handbuch/kubernetes.md#installation), [Docker Compose](../../handbuch/docker-compose.md#schnellstart), [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md), [Zwei-Instanzen-Suite](../../entwicklung/build-und-ci.md#zwei-instanzen-suite) | Handbuch, Test |
+| B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall, soweit die neue Version die laufende neben sich zulässt | [Kubernetes-Installation](../../handbuch/kubernetes.md#installation), [Docker Compose](../../handbuch/docker-compose.md#schnellstart), [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md) | Handbuch |
 | B-03 | ja | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung), [Automatisierte Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md#automatisierte-probe-im-projekt) | Handbuch, Test |
 | B-04 | ja | [Versionsnummern](../../releases.md#versionsnummern), [Vorbereitung für Bestandsinstallationen](../../releases.md#vorbereitung-für-bestandsinstallationen) | Projektunterlage |
 | B-05 | ja | [Bereitschaft und Lebendigkeit](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit), [Betriebsüberwachung](../../handbuch/kubernetes.md#betriebsüberwachung) | Handbuch |
