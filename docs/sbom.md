@@ -28,6 +28,8 @@ docker buildx imagetools inspect ghcr.io/criew/opaa-frontend:main --format '{{ j
 docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json (index .SBOM "linux/arm64") }}'
 ```
 
+<a id="ebene-2--ökosystem-sboms-cyclonedx-ci-artefakte"></a>
+
 ## Ebene 2 — Ökosystem-SBOMs (CycloneDX)
 
 Je Ökosystem entsteht ein CycloneDX-JSON, für `main` als CI-Artefakt, für jedes Release am
@@ -39,8 +41,9 @@ manuell via `workflow_dispatch`) und lädt sie als GitHub-Actions-Artefakte hoch
 
 **Release:** Der Job `update-package` in `.github/workflows/publish-images.yml` erzeugt sie aus dem
 Stand des Tags, mit demselben Werkzeug, derselben Version und demselben Umfang wie für `main`
-(`.github/scripts/update_package.py`; `test_update_package.py` hält den cdxgen-Aufruf gleich dem in
-`sbom.yml`). Sie hängen als `opaa-backend-X.Y.Z.cdx.json` und `opaa-frontend-X.Y.Z.cdx.json` am
+(`.github/scripts/update_package.py`; `test_update_package.py` hält Installation und Aufruf von
+cdxgen gleich denen in `sbom.yml`). Die Frontend-SBOM nennt als beschriebene Komponente die
+Release-Version statt der `0.0.0` aus `frontend/package.json`. Sie hängen als `opaa-backend-X.Y.Z.cdx.json` und `opaa-frontend-X.Y.Z.cdx.json` am
 GitHub-Release, jede mit eigener Provenance-Attestierung, und liegen unter denselben Namen in
 `sbom/` des [Update-Pakets](releases.md#update-paket), dort abgedeckt von `SHA256SUMS` und der
 Attestierung des Archivs. Zeitstempel und Seriennummer jeder SBOM legt das Release fest
@@ -64,15 +67,25 @@ Beide SBOMs sind auf das beschränkt, was tatsächlich ausgeliefert wird — kei
   `--required-only` (ohne `devDependencies` wie `eslint`/`vitest`) und erzeugt `frontend/bom.json`
   (nicht committet, siehe `.gitignore`).
 
+**cdxgen selbst** kommt aus einer eigenen Lockfile unter `.github/tools/cdxgen/`: Version und jede
+transitive Abhängigkeit stehen mit Prüfsumme in `pnpm-lock.yaml`, installiert mit
+`pnpm install --frozen-lockfile --ignore-scripts --no-optional` (keine Installationsskripte, keine
+optionalen Plattform-Binärpakete, die der pnpm-Scan nicht braucht). Ein Release-Lauf bezieht also
+keinen Werkzeugstand, den kein PR gesehen hat. Renovate pflegt Version und Lockfile, ohne
+Auto-Merge; ein solcher PR startet `sbom.yml` und probt damit den Aufruf.
+
 ## Lokal erzeugen
 
 ```bash
 # Backend (aus backend/)
 ./gradlew cyclonedxBom
 
+# cdxgen (aus .github/tools/cdxgen/)
+pnpm install --frozen-lockfile --ignore-scripts --no-optional
+
 # Frontend (aus frontend/)
 pnpm install --frozen-lockfile
-pnpm dlx @cyclonedx/cdxgen@12.8.6 -t pnpm --no-babel --required-only --project-name opaa-frontend -o bom.json .
+../.github/tools/cdxgen/node_modules/.bin/cdxgen -t pnpm --no-babel --required-only --project-name opaa-frontend -o bom.json .
 ```
 
 ## Lizenzprüfung

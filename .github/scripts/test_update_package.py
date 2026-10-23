@@ -708,16 +708,50 @@ def test_an_sbom_that_is_no_cyclonedx_bom_with_components_fails_the_package(
 
 
 def test_the_frontend_sbom_of_a_release_is_generated_like_the_one_of_main(tmp_path: Path) -> None:
-    """sbom.yml writes the SBOM of main; a release must not differ in tool, version or scope."""
+    """sbom.yml writes the SBOM of main; a release must not differ in tool, install or scope."""
     workflow = (HERE.parent / "workflows" / "sbom.yml").read_text(encoding="utf-8")
-    main = re.search(r"run: pnpm dlx (@cyclonedx/cdxgen@\S+ .*)$", workflow, re.M).group(1).split()
+    main = re.search(r"run: \.\./(\S+/cdxgen) (.*)$", workflow, re.M)
     release_command = update_package.frontend_sbom_command(tmp_path / "bom.json")
 
-    assert release_command[:2] == ["pnpm", "dlx"]
+    assert Path(release_command[0]) == update_package.ROOT / main.group(1)
+    assert Path(main.group(1)) == update_package.CDXGEN
     output = release_command.index("-o")
     assert release_command[output + 1] == str(tmp_path / "bom.json")
-    assert release_command[2:output] + release_command[output + 2:] == main[:main.index("-o")] + main[main.index("-o") + 2:]
+    arguments = main.group(2).split()
+    position = arguments.index("-o")
+    assert release_command[1:output] + release_command[output + 2:] == arguments[:position] + arguments[position + 2:]
     assert "--required-only" in release_command
+    install = f"working-directory: {update_package.CDXGEN_TOOL.as_posix()}\n        run: {update_package.CDXGEN_INSTALL}\n"
+    assert install in workflow
+    assert install in job("update-package")
+
+
+def test_cdxgen_and_everything_it_loads_are_fixed_by_a_lockfile() -> None:
+    tool = update_package.ROOT / update_package.CDXGEN_TOOL
+    manifest = json.loads((tool / "package.json").read_text(encoding="utf-8"))
+    version = manifest["dependencies"]["@cyclonedx/cdxgen"]
+
+    assert re.fullmatch(r"\d+\.\d+\.\d+", version)
+    assert manifest["packageManager"] == json.loads(
+        (update_package.ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))["packageManager"]
+    lockfile = (tool / "pnpm-lock.yaml").read_text(encoding="utf-8")
+    assert f"'@cyclonedx/cdxgen@{version}':" in lockfile
+    assert "--frozen-lockfile" in update_package.CDXGEN_INSTALL
+    assert "--ignore-scripts" in update_package.CDXGEN_INSTALL
+
+
+def test_the_frontend_sbom_describes_the_release_version(tmp_path: Path, inputs: dict) -> None:
+    root = {"name": "frontend", "version": "0.0.0", "purl": "pkg:npm/frontend@0.0.0",
+            "bom-ref": "pkg:npm/frontend@0.0.0"}
+    inputs["sboms"]["frontend"].write_text(
+        cyclonedx("pkg:npm/react@19.0.0", metadata={"component": root}), encoding="utf-8")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    component = sbom(archive, "opaa-frontend")["metadata"]["component"]
+    assert component["version"] == "1.2.3"
+    assert component["purl"] == "pkg:npm/frontend@1.2.3"
+    assert component["bom-ref"] == "pkg:npm/frontend@0.0.0"
 
 
 def test_the_release_notes_name_the_package_and_its_verification(tmp_path: Path) -> None:

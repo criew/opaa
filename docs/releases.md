@@ -500,14 +500,16 @@ gh release delete vX.Y.Z --repo criew/opaa --yes   # ohne --cleanup-tag
 
 **Ohne Cache.** Wie die Image-Builds eines Release liest und schreibt `update-package` keinen
 Cache: kein `setup-gradle`, kein Cache von pnpm oder `setup-node`. Gradle und pnpm laden ihre
-Abhängigkeiten frisch, `pnpm dlx` ebenso cdxgen in der festen Version, der Job braucht deshalb
-einige Minuten. Rechte: nur Lesen des Repositorys und
+Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. cdxgen für die Frontend-SBOM
+kommt samt aller transitiven Abhängigkeiten aus der Lockfile unter `.github/tools/cdxgen/`, ohne
+Installationsskripte ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)). Rechte: nur Lesen des Repositorys und
 der PRs; das OIDC-Token für die Attestierung hält nur der eigene Job, in dem weder Gradle noch pnpm
 läuft. `.github/scripts/test_update_package.py` prüft beides am Workflow.
 
 **Probelauf ohne Release.** Dasselbe Paket entsteht lokal oder in einer eigenen CI für den
 ausgecheckten Commit; gibt es das Tag nicht, kennzeichnet `LIESMICH.md` den Lauf als Probelauf.
-Gebraucht werden Java, `pnpm install` in `frontend/`, Netzzugang für `pnpm dlx` (cdxgen) und die
+Gebraucht werden Java, `pnpm install` in `frontend/`,
+`pnpm install --frozen-lockfile --ignore-scripts --no-optional` in `.github/tools/cdxgen/` und die
 Historie mit Tags:
 
 ```bash

@@ -12,10 +12,11 @@ never count; it prints nothing before the first final release.
 
 `build` describes the checked-out commit. If the tag exists it must point there; otherwise the run
 is a trial and the package says so. It renders fact sheets, manifest delta and backend SBOM with
-Gradle and the frontend SBOM with cdxgen, checks the licenses of backend and frontend
-(frontend/node_modules must be installed) and writes opaa-update-paket-<version>.tar.gz with its
-.sha256 file and both SBOMs into --out; the package holds the SBOMs under sbom/. Without a previous
-final release the delta starts from the oldest root commit, which has no manifest.
+Gradle and the frontend SBOM with cdxgen, checks the licenses of backend and frontend (the
+node_modules of frontend/ and .github/tools/cdxgen/ must be installed) and writes
+opaa-update-paket-<version>.tar.gz with its .sha256 file and both SBOMs into --out; the package
+holds the SBOMs under sbom/. Without a previous final release the delta starts from the oldest root
+commit, which has no manifest.
 The templates of docs/behoerden/ go to vorlagen/, the update note also to the top. In them, fact
 sheet placeholders become links to faktenblaetter/ and links out of the package point to the tag
 (of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
@@ -65,9 +66,11 @@ FACT_SHEETS = Path("backend/build/compliance/faktenblaetter")
 DELTA = Path("backend/build/compliance/delta")
 DELTA_FILES = ("manifest-delta.md", "manifest-delta.json")
 CYCLONEDX = Path("backend/build/reports/cyclonedx/application.cdx.json")
-# Same tool, version and arguments as sbom.yml for main; test_update_package.py holds them equal.
-# renovate: datasource=npm depName=@cyclonedx/cdxgen
-CDXGEN = "@cyclonedx/cdxgen@12.8.6"
+# cdxgen as installed from its own lockfile (CDXGEN_INSTALL in that directory); sbom.yml for main
+# installs and calls it the same way, test_update_package.py holds both equal.
+CDXGEN_TOOL = Path(".github/tools/cdxgen")
+CDXGEN = CDXGEN_TOOL / "node_modules" / ".bin" / "cdxgen"
+CDXGEN_INSTALL = "pnpm install --frozen-lockfile --ignore-scripts --no-optional"
 SBOM_DIR = "sbom/"
 DEFAULT_REPOSITORY = "criew/opaa"
 PREFIX = "opaa-update-paket-"
@@ -954,7 +957,8 @@ def sbom_name(part: str, release: Release) -> str:
 def pinned_sbom(source: Path, part: str, release: Release) -> bytes:
     """The CycloneDX SBOM `source` of `part` with time and serial number of the release instead of
     the generator run and without the generator's annotations, which name the day of the run (cdxgen
-    adds a summary); so the same commit yields the same file. Anything else fails the run."""
+    adds a summary); so the same commit yields the same file. The described component carries the
+    release version, also in its purl; its bom-ref stays. Anything else fails the run."""
     try:
         bom = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
@@ -968,6 +972,13 @@ def pinned_sbom(source: Path, part: str, release: Release) -> bytes:
         bom["metadata"] = {}
     bom["metadata"]["timestamp"] = datetime.datetime.fromtimestamp(
         release.epoch, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    component = bom["metadata"].get("component")
+    if isinstance(component, dict):
+        written = component.get("version")
+        purl = component.get("purl")
+        if written and isinstance(purl, str) and f"@{written}" in purl:
+            component["purl"] = purl.replace(f"@{written}", f"@{release.version}", 1)
+        component["version"] = release.version
     return (json.dumps(bom, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
@@ -1066,7 +1077,7 @@ def gradle_command(version: str, day: str, from_ref: str, to_ref: str, repositor
 def frontend_sbom_command(target: Path) -> list[str]:
     """The cdxgen run in frontend/ for the SBOM of what ships: the pnpm lockfile without
     devDependencies (docs/sbom.md)."""
-    return ["pnpm", "dlx", CDXGEN, "-t", "pnpm", "--no-babel", "--required-only",
+    return [str(ROOT / CDXGEN), "-t", "pnpm", "--no-babel", "--required-only",
             "--project-name", "opaa-frontend", "-o", str(target), "."]
 
 
@@ -1103,6 +1114,8 @@ def build(args: argparse.Namespace) -> list[Path]:
     day = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).date().isoformat()
     gradle = gradle_command(version, day, previous or from_commit, args.tag if tag_commit else head,
                             args.repository, args.labelled_prs)
+    if not (ROOT / CDXGEN).exists():
+        raise PackageError(f"{CDXGEN} is missing; run `{CDXGEN_INSTALL}` in {CDXGEN_TOOL}")
 
     with tempfile.TemporaryDirectory() as work:
         reports = Path(work)

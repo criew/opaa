@@ -332,6 +332,12 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
+      # cdxgen for the frontend SBOM, every package fixed by its lockfile; no install scripts and
+      # no optional platform binaries, which the pnpm scan does not use. Same install as sbom.yml.
+      - name: cdxgen installieren
+        working-directory: .github/tools/cdxgen
+        run: pnpm install --frozen-lockfile --ignore-scripts --no-optional
+
       - name: Update-Paket erzeugen
         env:
           TAG: ${{ github.ref_name }}

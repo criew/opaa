@@ -135,15 +135,6 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
     },
-    // Der cdxgen-Aufruf in sbom.yml (main) und in update_package.py (Release) läuft über "pnpm dlx"
-    // statt über eine Manifestdatei — für den github-actions-Manager unsichtbar.
-    {
-      customType: 'regex',
-      managerFilePatterns: ['.github/workflows/sbom.yml', '.github/scripts/update_package.py'],
-      matchStrings: [
-        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)[\\s\\S]*?cdxgen@(?<currentValue>[^\\s"]+)',
-      ],
-    },
     // Die Werkzeuge der Chart-Prüfung und das Helm der Chart-Veröffentlichung stehen
     // als Umgebungsvariable, Action-Eingabe oder Matrix-Eintrag direkt unter ihrem Kommentar. Die
     // älteste unterstützte Helm-3-Version trägt bewusst keinen Kommentar: Sie ist eine Zusage aus
@@ -225,6 +216,18 @@
       matchManagers: ['npm'],
       rebaseWhen: 'behind-base-branch',
       platformAutomerge: false,
+    },
+    // cdxgen (.github/tools/cdxgen) erzeugt die Frontend-SBOM von main und jedem Release. Kein
+    // Required Check übt den Aufruf des Release-Laufs aus, ein Update mergt deshalb nicht
+    // automatisch; eigene Gruppe, damit es den Sammel-PR der Frontend-Abhängigkeiten nicht aufhält.
+    // packageManager in derselben package.json bleibt in jenem Sammel-PR, gleich mit frontend/.
+    {
+      matchManagers: ['npm'],
+      matchDepNames: ['@cyclonedx/cdxgen'],
+      groupName: 'cdxgen',
+      automerge: false,
+      minimumReleaseAge: '1 day',
+      addLabels: ['ci'],
     },
     // helmv3 und helm-values lesen den Chart unter deploy/helm/opaa: Chart.yaml-Abhängigkeiten
     // (derzeit keine) und die Images in values.yaml mit festem Tag.
