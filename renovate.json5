@@ -322,7 +322,7 @@
     // Required Checks grün sind — Brüche, die nur ein Nicht-Required-Check (e2e) oder gar kein
     // Check zeigt, rutschen bei Majors sonst unbeaufsichtigt durch. Majors bleiben als PR
     // zur menschlichen Entscheidung offen; Ablehnung durch Schließen des PRs (Renovate merkt
-    // sich das). Die folgenden enabled:false-Regeln setzen einzelne, aktuell bekannt
+    // sich das, solange Branch-Name und Titel gleich bleiben, docs/renovate.md). Die folgenden enabled:false-Regeln setzen einzelne, aktuell bekannt
     // inkompatible Majors darüber hinaus ganz aus.
     {
       matchUpdateTypes: ['major'],
@@ -462,13 +462,20 @@
       enabled: false,
     },
     // Wartungsbranches release/X.Y (ADR-0054, Entscheidung 7), siehe baseBranchPatterns oben.
-    // Eine Linie bekommt nur patch, digest und pin, nie eine neue Minor- oder Major-Version. Die
-    // Regel steht zuletzt, damit keine spätere sie aufhebt; danach folgen nur ausdrückliche
-    // Ausnahmen für Sicherheitsupdates ohne Bruch, je mit matchPackageNames und automerge: false
-    // (docs/renovate.md, test_support_lines.py).
+    // Eine Linie bekommt nur patch, digest und pin, nie eine neue Minor- oder Major-Version.
+    // separateMinorPatch trennt Patch und Minor in eigene Vorschläge; ohne ihn schlägt Renovate nur
+    // die höchste Version beider zusammen vor, und gibt es eine neuere Minor-Version, verwürfe die
+    // Sperre darunter mit ihr auch den Patch. Nur hier, damit sich auf main nichts ändert.
     {
       matchBaseBranches: ['/^release\\/\\d+\\.\\d+$/'],
-      matchUpdateTypes: ['major', 'minor', 'replacement', 'rollback', 'bump'],
+      separateMinorPatch: true,
+    },
+    // Die Sperre steht zuletzt, damit keine spätere Regel sie aufhebt; danach folgen nur
+    // ausdrückliche Ausnahmen für Sicherheitsupdates ohne Bruch, je mit matchPackageNames und
+    // automerge: false (docs/renovate.md, test_support_lines.py).
+    {
+      matchBaseBranches: ['/^release\\/\\d+\\.\\d+$/'],
+      matchUpdateTypes: ['major', 'minor', 'replacement', 'rollback', 'bump', 'lockFileMaintenance'],
       enabled: false,
     },
   ],

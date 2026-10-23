@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-23
+Akzeptiert · zuletzt geändert 2026-10-24
 
 ## Kontext
 

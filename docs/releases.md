@@ -318,7 +318,7 @@ Schutzregel (*Settings → Branches*) dieselben Prüfungen verlangt. Beide legt 
 | Ruleset | Regeln | Ausnahme (*Bypass list*) |
 |---|---|---|
 | `release-branches-create` | *Restrict creations* | Repository-Rollen *Admin* und *Maintain* |
-| `release-branches` | *Restrict deletions*; *Block force pushes*; *Require a pull request before merging* mit *Required approvals* 1 und *Require conversation resolution before merging*; *Require status checks to pass* mit `backend`, `backend-integration`, `frontend`, `changes` (Workflow CI) und `check` (Workflow Datenwirkung), Quelle *GitHub Actions*, ohne *Require branches to be up to date*, mit *Do not require status checks on creation* (der Commit von `vX.Y.0` trägt keinen Check `check`, der nur bei PRs läuft) | Repository-Rolle *Admin*, wie bei `main` (dort *Do not allow bypassing the above settings* aus) |
+| `release-branches` | *Restrict deletions*; *Block force pushes*; *Require a pull request before merging* mit *Required approvals* 0 wie bei `main` und *Require conversation resolution before merging*; *Require status checks to pass* mit `backend`, `backend-integration`, `frontend`, `changes` (Workflow CI) und `check` (Workflow Datenwirkung), Quelle *GitHub Actions*, ohne *Require branches to be up to date*, mit *Do not require status checks on creation* (der Commit von `vX.Y.0` trägt keinen Check `check`, der nur bei PRs läuft) | Repository-Rolle *Admin*, wie bei `main` (dort *Do not allow bypassing the above settings* aus) |
 
 Ein Wartungsbranch entsteht damit nur durch einen Maintainer, und jede Änderung darauf kommt per PR
 mit denselben Required Checks wie auf `main`; `ci.yml` und `data-impact.yml` laufen dafür auch bei
@@ -408,7 +408,8 @@ Ablauf:
    Das erste Release trägt nur einen festen Text: Ohne Vorgänger umfassten generierte Notizen die
    gesamte Historie.
 7. Bei einem finalen `vX.Y.0` den Wartungsbranch `release/X.Y` der neuen Linie anlegen
-   ([Backport](#backport), Schritt 1) und per PR auf `main` die [Liste der Linien](#liste-der-linien)
+   ([Backport](#backport), Schritt 1; beim ersten Mal vorher die beiden Rulesets oben anlegen) und
+   per PR auf `main` die [Liste der Linien](#liste-der-linien)
    nachziehen: die neue Linie eintragen und beim Vorgänger, einer normalen Linie, das Supportende
    setzen; dazu die Zeile in der Roadmap.
 

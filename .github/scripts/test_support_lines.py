@@ -9,6 +9,7 @@ the validation of the file and the wiring in workflow and configuration.
 
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -20,7 +21,6 @@ SCRIPT = ROOT / ".github" / "scripts" / "support_lines.py"
 LINES_FILE = ROOT / ".github" / "support-lines.json"
 WORKFLOW = ROOT / ".github" / "workflows" / "renovate.yml"
 RENOVATE_CONFIG = ROOT / "renovate.json5"
-RELEASE_BRANCHES = "matchBaseBranches: ['/^release\\\\/\\\\d+\\\\.\\\\d+$/']"
 
 
 def run(*args: str) -> subprocess.CompletedProcess:
@@ -134,34 +134,61 @@ def test_renovate_config_names_only_main_as_base_branch() -> None:
     ]
 
 
-def package_rule_blocks() -> list[str]:
-    text = RENOVATE_CONFIG.read_text(encoding="utf-8")
-    return re.findall(r"\{[^{}]*\}", text[text.index("packageRules:"):])
+RELEASE_PATTERN = "/^release\\/\\d+\\.\\d+$/"
 
 
-def release_branch_rules() -> list[str]:
-    return [block for block in package_rule_blocks() if "matchBaseBranches" in block]
+def package_rules() -> list[dict]:
+    """packageRules of renovate.json5, read by Node: JSON5 is a JavaScript object literal."""
+    node = shutil.which("node")
+    assert node, "the check needs Node.js to read renovate.json5"
+    script = (
+        "const fs = require('fs');"
+        "const text = fs.readFileSync(process.argv[1], 'utf8');"
+        "process.stdout.write(JSON.stringify(new Function('return (' + text + '\\n)')().packageRules));"
+    )
+    result = subprocess.run(
+        [node, "-e", script, RENOVATE_CONFIG.as_posix()], capture_output=True, text=True, check=True
+    )
+    return json.loads(result.stdout)
+
+
+def disabling_index(rules: list[dict]) -> int:
+    matches = [
+        i for i, r in enumerate(rules)
+        if r.get("matchBaseBranches") == [RELEASE_PATTERN] and r.get("enabled") is False
+    ]
+    assert len(matches) == 1, "expected exactly one disabling rule for the maintenance branches"
+    return matches[0]
 
 
 def test_maintenance_branches_get_no_minor_or_major_update() -> None:
-    disabling = [rule for rule in release_branch_rules() if "enabled: false" in rule]
+    rule = package_rules()[disabling_index(package_rules())]
 
-    assert len(disabling) == 1
-    rule = disabling[0]
-    assert RELEASE_BRANCHES in rule
-    for update_type in ("major", "minor", "replacement", "rollback", "bump"):
-        assert f"'{update_type}'" in rule
-    for update_type in ("patch", "digest", "pin"):
-        assert f"'{update_type}'" not in rule
+    assert set(rule) == {"matchBaseBranches", "matchUpdateTypes", "enabled"}
+    assert set(rule["matchUpdateTypes"]) == {
+        "major", "minor", "replacement", "rollback", "bump", "lockFileMaintenance",
+    }
 
+
+def test_maintenance_branches_propose_patches_apart_from_minor_versions() -> None:
+    # Without it Renovate proposes only the highest non-major version; a newer minor one would take
+    # the patch down with it under the disabling rule.
+    rules = package_rules()
+    separating = [
+        i for i, r in enumerate(rules)
+        if r == {"matchBaseBranches": [RELEASE_PATTERN], "separateMinorPatch": True}
+    ]
+
+    assert len(separating) == 1
+    assert separating[0] < disabling_index(rules)
+    assert all("separateMinorPatch" not in r for i, r in enumerate(rules) if i != separating[0])
 
 
 def test_only_explicit_exceptions_follow_the_disabling_rule() -> None:
     # An update beyond patch versions comes only by a later rule for the maintenance branches that
     # names its packages and never merges automatically.
-    blocks = package_rule_blocks()
-    disabling = next(i for i, b in enumerate(blocks) if "matchBaseBranches" in b and "enabled: false" in b)
-    for rule in blocks[disabling + 1:]:
-        assert "matchBaseBranches" in rule
-        assert "matchPackageNames" in rule
-        assert "automerge: false" in rule
+    rules = package_rules()
+    for rule in rules[disabling_index(rules) + 1:]:
+        assert rule.get("matchBaseBranches")
+        assert rule.get("matchPackageNames")
+        assert rule.get("automerge") is False
