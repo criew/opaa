@@ -195,7 +195,8 @@ class ChatSelfDisclosureExporterIntegrationTest {
   void aLocationKeepsOnlyItsNumberedPositions() {
     assertThat(ChatSelfDisclosureExporter.pageOf("S. 2–4 · Abschn. 4.2 ‚Fristsetzung'"))
         .isEqualTo("S. 2–4");
-    assertThat(ChatSelfDisclosureExporter.pageOf("Blatt Personal · Zeilen 4–9")).isEqualTo("Zeilen 4–9");
+    assertThat(ChatSelfDisclosureExporter.pageOf("Blatt Personal · Zeilen 4–9"))
+        .isEqualTo("Zeilen 4–9");
     assertThat(ChatSelfDisclosureExporter.pageOf("Folie 3: Anhörung Frau X")).isEqualTo("Folie 3");
     assertThat(ChatSelfDisclosureExporter.pageOf("Nachricht 1 von 2 · Teil 2 von 3"))
         .isEqualTo("Nachricht 1 von 2 · Teil 2 von 3");

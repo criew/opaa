@@ -36,6 +36,12 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "chat_messages")
 public class ChatMessage {
 
+  /**
+   * The column of the prompt title, named here alone: the self-disclosure lists it as a field of
+   * its positive list and reads it through this entity, never by a query of its own.
+   */
+  public static final String USED_PROMPT_TITLE_COLUMN = "used_prompt_title";
+
   @Id private UUID id;
 
   @Column(name = "chat_id", nullable = false, updatable = false)
@@ -58,7 +64,7 @@ public class ChatMessage {
   @Column(name = "used_prompt_id", updatable = false)
   private UUID usedPromptId;
 
-  @Column(name = "used_prompt_title", updatable = false, length = 255)
+  @Column(name = USED_PROMPT_TITLE_COLUMN, updatable = false, length = 255)
   private String usedPromptTitle;
 
   @Column(name = "created_at", nullable = false, updatable = false)

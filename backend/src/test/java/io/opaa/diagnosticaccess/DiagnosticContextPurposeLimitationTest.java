@@ -45,9 +45,9 @@ import org.yaml.snakeyaml.Yaml;
  *       {@code USER} entry (covered by {@code DiagnosticAccessResponseMapperTest}).
  *   <li>The two protocol operations declare exactly the request parameters listed here.
  *   <li>The one read path outside the repository is the self-disclosure of the person herself
- *       ({@link DiagnosticContextLogSelfDisclosureExporter}): no other main source selects from
- *       the table, its only public operations are those of the port, which takes the signed-in
- *       person and nobody else, and its SQL aggregates nothing.
+ *       ({@link DiagnosticContextLogSelfDisclosureExporter}): no other main source selects from the
+ *       table, its only public operations are those of the port, which takes the signed-in person
+ *       and nobody else, and its SQL aggregates nothing.
  * </ul>
  *
  * <p><b>How much this guarantees, honestly:</b> it is a structural guard, not a proof. It cannot

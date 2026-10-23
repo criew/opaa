@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.data.domain.Limit;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -32,9 +33,10 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The category {@code chats} of the self-disclosure: the person's own chats ({@code author_id})
  * with their marks and notes, then every message as one flat record. A source of an answer goes out
- * only as document title, library and page ({@link #sourceLine}, {@link #pageOf}), built from a positive list of
- * the stored JSON, never its excerpt, chunk or document id. Chats are read in pages, the messages
- * of a chat in pages of their sequence, each page in a short read-only transaction.
+ * only as document title, library and page ({@link #sourceLine}, {@link #pageOf}), built from a
+ * positive list of the stored JSON, never its excerpt, chunk or document id. Chats are read in
+ * pages, the messages of a chat in pages of their sequence, each page in a short read-only
+ * transaction.
  */
 @Component
 public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -72,7 +74,9 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                       Field.derived("generatedByAi", "KI-erzeugt", "chat_messages.role"),
                       Field.of("content", "Text", "chat_messages.content"),
                       Field.of(
-                          "usedPrompt", "Verwendeter Prompt", "chat_messages.used_prompt_title"),
+                          "prompt",
+                          "Verwendeter Prompt",
+                          "chat_messages." + ChatMessage.USED_PROMPT_TITLE_COLUMN),
                       Field.of("createdAt", "Zeitpunkt", "chat_messages.created_at"),
                       Field.of(
                           "sources",
@@ -82,7 +86,9 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
 
   static final int CHAT_PAGE_SIZE = 200;
 
-  /** A numbered position as the formats write it: "S. 2–4", "Folie 3", "Zeilen 4–9", "Teil 1 von 2". */
+  /**
+   * A numbered position as the formats write it: "S. 2–4", "Folie 3", "Zeilen 4–9", "Teil 1 von 2".
+   */
   private static final Pattern POSITION =
       Pattern.compile("(S\\.|Folie|Zeilen?|Nachricht|Teil) \\d+(–\\d+)?( von \\d+)?");
 
@@ -90,11 +96,15 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
+  private final ChatMessageRepository messageRepository;
   private final JsonMapper json = JsonMapper.builder().build();
 
   public ChatSelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc,
+      PlatformTransactionManager transactionManager,
+      ChatMessageRepository messageRepository) {
     this.jdbc = jdbc;
+    this.messageRepository = messageRepository;
     this.readOnly = new TransactionTemplate(transactionManager);
     this.readOnly.setReadOnly(true);
   }
@@ -154,7 +164,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
     int afterSequence = Integer.MIN_VALUE;
     while (true) {
       int after = afterSequence;
-      List<Map<String, Object>> page = readOnly.execute(s -> messagePage(chat, subject, after));
+      List<Map<String, Object>> page = readOnly.execute(s -> messagePage(chat, after));
       if (page == null || page.isEmpty()) {
         return;
       }
@@ -220,7 +230,10 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
             + " AND (created_at, id) > (?, ?) ORDER BY created_at, id LIMIT ?",
         (rs, i) ->
             new ChatHead(
-                rs.getObject("id", UUID.class), rs.getString("title"), instant(rs, "created_at")),
+                rs.getObject("id", UUID.class),
+                subject.organizationId(),
+                rs.getString("title"),
+                instant(rs, "created_at")),
         subject.accountId(),
         subject.organizationId(),
         Timestamp.from(after.createdAt()),
@@ -228,28 +241,23 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
         CHAT_PAGE_SIZE);
   }
 
-  private List<Map<String, Object>> messagePage(
-      ChatHead chat, SelfDisclosureSubject subject, int afterSequence) {
+  private List<Map<String, Object>> messagePage(ChatHead chat, int afterSequence) {
     List<StoredMessage> stored =
-        jdbc.query(
-            "SELECT m.sequence, m.role, m.content, m.used_prompt_title, m.created_at,"
-                + " m.sources::text AS sources FROM chat_messages m JOIN chats c ON c.id ="
-                + " m.chat_id WHERE m.chat_id = ? AND c.author_id = ? AND c.organization_id = ?"
-                + " AND m.sequence > ? ORDER BY m.sequence LIMIT ?",
-            (rs, i) ->
-                new StoredMessage(
-                    rs.getInt("sequence"),
-                    rs.getString("role"),
-                    rs.getString("content"),
-                    rs.getString("used_prompt_title"),
-                    instant(rs, "created_at"),
-                    sourcesOf(rs.getString("sources"))),
-            chat.id(),
-            subject.accountId(),
-            subject.organizationId(),
-            afterSequence,
-            MESSAGE_PAGE_SIZE);
-    Map<UUID, String> libraries = libraryNames(stored, subject);
+        messageRepository
+            .findByChatIdAndSequenceGreaterThanOrderBySequenceAsc(
+                chat.id(), afterSequence, Limit.of(MESSAGE_PAGE_SIZE))
+            .stream()
+            .map(
+                message ->
+                    new StoredMessage(
+                        message.getSequence(),
+                        message.getRole().name(),
+                        message.getContent(),
+                        message.getUsedPrompt() == null ? null : message.getUsedPrompt().title(),
+                        message.getCreatedAt(),
+                        sourcesOf(message.getSources())))
+            .toList();
+    Map<UUID, String> libraries = libraryNames(stored, chat.organizationId());
     List<Map<String, Object>> page = new ArrayList<>(stored.size());
     for (StoredMessage message : stored) {
       boolean answer = "ASSISTANT".equals(message.role());
@@ -260,7 +268,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
       record.put("role", answer ? "Antwort" : "Frage");
       record.put("generatedByAi", answer);
       record.put("content", message.content());
-      record.put("usedPrompt", message.usedPrompt());
+      record.put("prompt", message.prompt());
       record.put("createdAt", message.createdAt());
       record.put(
           "sources",
@@ -273,8 +281,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
   }
 
   /** The current library name of every document a source of {@code messages} names. */
-  private Map<UUID, String> libraryNames(
-      List<StoredMessage> messages, SelfDisclosureSubject subject) {
+  private Map<UUID, String> libraryNames(List<StoredMessage> messages, UUID organizationId) {
     Set<UUID> documents = new LinkedHashSet<>();
     messages.forEach(
         m ->
@@ -293,7 +300,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
           names.put(rs.getObject("id", UUID.class), rs.getString("name"));
         },
         documents.toArray(UUID[]::new),
-        subject.organizationId());
+        organizationId);
     return names;
   }
 
@@ -384,13 +391,13 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
     static final ChatCursor START = new ChatCursor(Instant.EPOCH.minusSeconds(1), new UUID(0, 0));
   }
 
-  private record ChatHead(UUID id, String title, Instant createdAt) {}
+  private record ChatHead(UUID id, UUID organizationId, String title, Instant createdAt) {}
 
   private record StoredMessage(
       int sequence,
       String role,
       String content,
-      String usedPrompt,
+      String prompt,
       Instant createdAt,
       List<StoredSource> sources) {}
 
