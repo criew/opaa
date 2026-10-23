@@ -50,6 +50,18 @@ class DevAuthFilterTest {
     verify(filterChain).doFilter(any(), any());
   }
 
+  /** The dev mode has no sign-in to repeat: every request counts as a recent one. */
+  @Test
+  void everyRequestCarriesTheCurrentTimeAsItsSignIn() throws Exception {
+    long before = java.time.Instant.now().getEpochSecond();
+
+    new DevAuthFilter(DEV_AUTH)
+        .doFilter(new MockHttpServletRequest(), new MockHttpServletResponse(), filterChain);
+
+    assertThat(RecentLoginPolicy.authTimeOf(principal()).getEpochSecond())
+        .isBetween(before, java.time.Instant.now().getEpochSecond());
+  }
+
   @Test
   void authenticatesAsUserNamedInHeader() throws Exception {
     MockHttpServletRequest request = new MockHttpServletRequest();

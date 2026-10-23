@@ -82,7 +82,8 @@ class TransportStatusCodeSpecificationTest {
   /**
    * Budgets that are not keyed by request path, so {@link RateLimitFilter} cannot reveal them: the
    * three external-access read paths are bounded per access token by {@code ExternalAccessQuota},
-   * and the password change per authenticated account by {@code LocalAuthRateLimiter}.
+   * and the password change and the confirmation of a sign-in per authenticated account by {@code
+   * LocalAuthRateLimiter}.
    */
   private static final Set<String> LIMITED_WITHOUT_A_PATH_RULE =
       Set.of(
@@ -90,6 +91,7 @@ class TransportStatusCodeSpecificationTest {
           "listSearchableLibraries",
           "fetchSearchHit",
           "localChangePassword",
+          "localReauthenticate",
           "startConnectionAuthorization");
 
   private static final Set<String> HTTP_METHODS =

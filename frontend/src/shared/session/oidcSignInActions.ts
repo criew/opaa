@@ -3,6 +3,7 @@ import { getMe, UnknownIssuerError } from './authApi'
 import { PROVIDER_GONE_MESSAGE, UNKNOWN_ISSUER_MESSAGE, signInFailedMessage } from './authMessages'
 import { clearHandoverInFlight, markHandoverInFlight, setPendingHandover } from './handoverFlow'
 import { safeRedirectPath } from './safeRedirectPath'
+import { markRecentLoginReturn } from './recentLogin'
 import {
   authorizationErrorCode,
   clearSilentSignInFlow,
@@ -138,6 +139,7 @@ export function createOidcSignInActions(
           isLoading: false,
           sessionKind: 'oidc',
         })
+        if (signInState?.recentLogin === true) markRecentLoginReturn()
         const returnTo = typeof signInState?.returnTo === 'string' ? signInState.returnTo : null
         return { kind: 'session', returnTo: safeRedirectPath(returnTo) }
       } catch (err) {

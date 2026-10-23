@@ -1313,7 +1313,10 @@ nächste möglich ist, Ergebnis des letzten Versuchs und ob ein neuer Versuch m�
 
 **Erneute Anmeldung vor dem Export.** Der Export verlangt eine Anmeldung, die **höchstens 5 Minuten**
 zurückliegt, gemessen am Anmeldezeitpunkt `auth_time` des Zugangstokens gegen die Serveruhr. Ein Token
-aus einer bloßen Erneuerung (Refresh) behält den alten Anmeldezeitpunkt und genügt nicht. Lokale
+aus einer bloßen Erneuerung (Refresh) trägt keinen oder nur den alten Anmeldezeitpunkt und genügt
+nicht: Der lokale Aussteller lässt `auth_time` bei der Erneuerung weg, ein Identitätsanbieter behält
+den alten Wert. Für lokale Konten heißt das, dass schon ein Neuladen der Seite (die Sitzung wird dabei
+erneuert) vor dem Export erneut nach dem Passwort fragen lässt, auch kurz nach der Anmeldung. Lokale
 Konten bestätigen mit dem Passwort (Fehlversuche zählen auf die Fehlversuch-Sperre), Konten eines
 Identitätsanbieters über eine dort erzwungene Anmeldung (`prompt=login`, `max_age=0`); setzt der
 Anbieter keinen frischen `auth_time`, wird abgewiesen, nicht durchgelassen. Geprüft wird beim Auslösen

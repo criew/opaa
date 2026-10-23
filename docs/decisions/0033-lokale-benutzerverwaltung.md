@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-23 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -129,6 +129,9 @@ HS256-JWT mit Schlüssel per HKDF-SHA256 aus `OPAA_AUTH_JWT_SECRET`, zweckgebund
 (`LocalAuthKeyService.Purpose`: Signatur, Refresh-Lookup, Aktionstoken-Lookup, seit ADR-0035
 Zugangstoken-Lookup). Claims `jti`, `iss = urn:opaa:local`, `sub = users.id`, `iat`, `exp`
 (`opaa.auth.local.access-token-ttl`, 15 Minuten), `email`, `name`, `pcr`; keine Rolle im Token.
+`auth_time` trägt nur ein Token, für das gerade das Passwort geprüft wurde (Anmeldung,
+Passwortwechsel, `POST …/reauthenticate`), nie eines aus einer Erneuerung; daran misst
+`RecentLoginPolicy` die frische Anmeldung, die Operationen mit `@RequiresRecentLogin` verlangen.
 `LocalAuthProperties` ist `@Validated`, `@ValidSecret` verlangt mindestens 32 Zeichen und lehnt
 eine Liste bekannter Platzhalter ab; fehlt das Secret, bricht der Start im `oidc`-Profil mit einer
 Meldung ab, die Variable und Erzeugungsbefehl (`openssl rand -base64 48`) nennt
@@ -181,7 +184,9 @@ Konten").
   Vergleich nur über `matches`, bei unbekannter Kennung gegen einen Dummy-Hash; `PasswordPolicy`:
   Mindestlänge `password_min_length`, höchstens 64 Zeichen und 72 Byte, nicht die E-Mail, nicht in
   der Sperrliste; keine Komplexitätsregeln, kein periodischer Wechsel (BSI ORP.4.A8).
-- **Ratenbegrenzung** (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`) je Client-Adresse; Passwortwechsel je Konto;
+- **Ratenbegrenzung** (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`) je Client-Adresse; Passwortwechsel und
+  Bestätigung einer erneuten Anmeldung (`reauthenticate`) je Konto aus einem gemeinsamen Budget
+  (`change-password`);
   Registrierung und „Passwort vergessen“ zusätzlich je E-Mail-Adresse; Login, Registrierung und
   „Passwort vergessen“ global, mit `WARN` und Metrik beim Überschreiten. Hinter der Anmeldung
   zählen Abfrage, Chatsuche und Suche je Client-Adresse, je Konto (`max-requests-per-account`,

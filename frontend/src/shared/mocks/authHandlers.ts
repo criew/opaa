@@ -32,6 +32,28 @@ export const authHandlers = [
 
   http.post('/api/v1/auth/local/logout', () => new HttpResponse(null, { status: 204 })),
 
+  http.post('/api/v1/auth/local/reauthenticate', async ({ request }) => {
+    const body = (await request.json()) as { password?: string }
+    if (body.password !== mockLocalAccount.password) {
+      return HttpResponse.json(
+        {
+          error: 'Die Anmeldung ließ sich nicht bestätigen. Bitte prüfen Sie Ihr Passwort.',
+          status: 400,
+          timestamp: new Date().toISOString(),
+          fieldErrors: [
+            {
+              field: 'password',
+              code: 'NOT_CONFIRMED',
+              message: 'Die Anmeldung ließ sich nicht bestätigen. Bitte prüfen Sie Ihr Passwort.',
+            },
+          ],
+        },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json({ ...mockLocalTokenResponse, accessToken: 'mock-recent-login-token' })
+  }),
+
   http.post('/api/v1/auth/local/change-password', async ({ request }) => {
     const body = (await request.json()) as { currentPassword?: string; newPassword?: string }
     if (body.currentPassword !== mockLocalAccount.password) {
