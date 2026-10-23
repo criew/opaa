@@ -22,8 +22,7 @@ anbietet.
 ## Was OPAA liefert
 
 Je Baustein einen Nachweis: Handbuch, Projektunterlage, eine Prüfung in der CI des Projekts oder ein
-Faktenblatt. Ein Platzhalter wie {{faktenblatt:datenkatalog}} steht für das Blatt der angebotenen
-Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
+Faktenblatt.
 
 ## Aufgaben der Behörde
 

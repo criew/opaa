@@ -7,7 +7,7 @@ upload, web. Aus `indexing` nur `spi`, `run`, `job`, `attachment`, `document`, `
 
 Ein Konnektor holt die Elemente einer Quellart und übergibt sie dem Kern; Lauf, Protokoll und Aufnahme eines Dokuments
 gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Vertrag liegt in `indexing.spi`. Handbuch:
-`docs/handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md` und `docs/handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/*.md`.
+`docs/handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/` (`README.md` und je Konnektor ein Kapitel).
 
 ## Invarianten und Stolpersteine
 
