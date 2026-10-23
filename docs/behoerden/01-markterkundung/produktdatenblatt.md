@@ -35,13 +35,13 @@ Behörde oder eines Dienstleisters.
 | Anmeldung | OIDC-Identitätsanbieter oder lokale Konten | [Authentifizierung](../../handbuch/betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) |
 | Daten | gespeicherte Daten, Fristen, Datenflüsse nach außen je Version beschrieben | {{faktenblatt:datenkatalog}}, {{faktenblatt:fristen}}, {{faktenblatt:datenfluesse}} |
 | Nachweise je Version | Faktenblätter, Update-Paket, SBOM, Provenance | [Nachvollziehbarkeit](../../handbuch/betrieb/nachvollziehbarkeit.md), [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) |
-| Releases und Support | zwei Funktionsreleases im Jahr, Supportzeiträume je Linie | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) |
+| Releases und Support | geplant zwei Funktionsreleases im Jahr mit Supportzeiträumen je Linie, ab dem ersten finalen Release; bis Wartungsbranches gebaut sind, Patches nur für die jüngste Linie | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) |
 | Lizenz | GNU Affero General Public License v3.0, kein Lizenzentgelt | [Lizenz](lizenz.md) |
 | Barrierefreiheit | Prüfstand und bekannte Einschränkungen | [Erklärung zur Barrierefreiheit](../08-nutzung/erklaerung-barrierefreiheit.md#prüfstand) |
 
 Nicht Teil von OPAA: ein Cloud-Dienst des Projekts, Support mit zugesagten Fristen und eine
-Zertifizierung. OPAA ist darauf ausgelegt, dass ein Betreiber seine eigene Prüfung mit OPAA im
-Prüfumfang bestehen kann.
+Zertifizierung. Für die eigene Prüfung des Betreibers liefert OPAA die
+[Sicherheitsnachweise](../06-informationssicherheit/sicherheitsnachweise.md) und die Faktenblätter.
 
 ## Aufgaben der Behörde
 
@@ -57,7 +57,7 @@ Prüfumfang bestehen kann.
 
 - Das Datenblatt beschreibt die Software, nicht Leistungen eines Dienstleisters. Einführung, Betrieb
   und Support kauft die Behörde gegebenenfalls getrennt ein.
-- Eine Markterkundung darf kein verdecktes Vergabeverfahren sein, etwa nur um Preise zu ermitteln.
+- Ein Vergabeverfahren nur zur Markterkundung oder zur Kosten- oder Preisermittlung ist unzulässig.
 
 ## Zum Nachlesen
 

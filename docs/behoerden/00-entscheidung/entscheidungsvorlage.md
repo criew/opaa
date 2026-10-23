@@ -63,7 +63,7 @@ Größe der Bestände, Modellgröße, Tagessatz oder Abschreibungsdauer.
 | Daten gehen an einen externen Modellanbieter | Modelle im eigenen Haus; Ziele je Version in {{faktenblatt:datenfluesse}} | [ ] |
 | Kontrolle von Leistung und Verhalten | [pseudonymisiertes Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll), Dienstvereinbarung | [ ] |
 | Kein Hersteller mit vertraglicher Zusage | Dienstleister oder Eigenbetrieb; [Projektstatus](../01-markterkundung/projektstatus.md) | [ ] |
-| Sicherheitslücken | Patch-Releases je unterstützter Linie, [Sicherheitsnachweise](../06-informationssicherheit/sicherheitsnachweise.md) | [ ] |
+| Sicherheitslücken | Patch-Releases je unterstützter Linie, bis Wartungsbranches gebaut sind nur für die jüngste; [Sicherheitsnachweise](../06-informationssicherheit/sicherheitsnachweise.md) | [ ] |
 | Updates ändern Daten oder Voreinstellungen | [Update-Vermerk](../09-betrieb-update/update-vermerk.md) je Update | [ ] |
 | [eigenes Risiko] | [ ] | [ ] |
 
