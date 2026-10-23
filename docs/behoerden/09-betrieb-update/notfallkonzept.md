@@ -30,7 +30,7 @@ Projekt.
 
 | Ausfall | Wirkung | Datenverlust | Wiederanlauf |
 |---|---|---|---|
-| Backend | Mit einer Instanz steht der Dienst, mit mehreren antworten die übrigen | keiner | [Bereitschaft und Lebendigkeit](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit) |
+| Backend | Mit einer Instanz steht der Dienst, mit mehreren antworten die übrigen | keiner | [Readiness und Liveness](../../handbuch/betrieb.md#readiness-und-liveness) |
 | Datenbank verloren | Dienst steht | alles seit der letzten Sicherung | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung) |
 | Originalablage verloren | Suche läuft, „Original öffnen“ und Uploads scheitern | Originale seit der letzten Sicherung | [Originalablage](../../handbuch/originalablage.md#sicherung-und-wiederherstellung) |
 | Verschlüsselungsschlüssel verloren | Zugangsdaten zu Quellen und Modellen unlesbar | nur diese Zugangsdaten | [Zugangsdaten-Verschlüsselung](../../handbuch/betrieb.md#zugangsdaten-verschlüsselung) |

@@ -55,8 +55,8 @@ Zu jeder Version gehören:
 
 | Ort | Inhalt |
 |---|---|
-| GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z` und `ghcr.io/criew/opaa-frontend:X.Y.Z` für `linux/amd64` und `linux/arm64`, je mit SBOM und Herkunftsnachweis |
-| GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signiertem Herkunftsnachweis |
+| GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z` und `ghcr.io/criew/opaa-frontend:X.Y.Z` für `linux/amd64` und `linux/arm64`, je mit SBOM und Provenance |
+| GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signierter Provenance |
 | GitHub-Release `OPAA vX.Y.Z` | die Release-Notizen und das Update-Paket mit Prüfsummendatei |
 
 Die **Release-Notizen** enthalten:
@@ -67,7 +67,7 @@ Die **Release-Notizen** enthalten:
 - **Vorbereitung für Bestandsinstallationen**: was vor dem Update zu tun ist; bei übersprungenen
   Versionen für jedes übersprungene Release lesen
 
-Den Herkunftsnachweis des Charts prüft:
+Die Provenance des Charts prüft:
 
 ```bash
 gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
@@ -87,7 +87,7 @@ Es richtet sich an alle, die ein Update verantworten, ohne den Code zu lesen, un
 
 Einzelheiten: [Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release).
 
-Das Paket trägt eine signierte Herkunftsattestierung, und `SHA256SUMS` im Paket nennt die
+Das Paket trägt eine signierte Provenance-Attestierung, und `SHA256SUMS` im Paket nennt die
 Prüfsumme jeder Datei. Herunterladen und prüfen:
 
 ```bash
@@ -98,20 +98,22 @@ gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa
 Die Prüfung bestätigt, dass das Archiv im Release-Lauf des Projekts entstanden und seitdem
 unverändert ist; der Nachweis nennt den Commit, aus dem es stammt.
 
-## Herkunft und Software-Stückliste
+<a id="herkunft-und-software-stückliste"></a>
+
+## Provenance und Software-Stückliste
 
 Eine **Software-Stückliste** (SBOM) zählt auf, welche Bestandteile in einem Artefakt stecken. OPAA
 liefert sie auf zwei Wegen:
 
 - **Am Image.** Jedes veröffentlichte Image, Release wie `main`, trägt je Architektur eine SBOM und
-  einen Herkunftsnachweis (Provenance: Quell-Commit und Bauparameter). Die SBOM umfasst auch die
+  eine Provenance (Quell-Commit und Bauparameter). Die SBOM umfasst auch die
   Betriebssystempakete des Basis-Images. Abrufen lassen sich beide mit `docker buildx imagetools
   inspect`; die Befehle stehen in der [Betriebsübersicht](betrieb.md#images-und-versionen).
 - **Je Ökosystem.** Zu jedem Stand von `main` erzeugt die CI je eine CycloneDX-SBOM der
   ausgelieferten Laufzeit-Abhängigkeiten von Backend und Frontend, ohne Test- und Build-Werkzeuge.
   Sie liegen 90 Tage als Artefakt am Lauf, nicht am GitHub-Release.
 
-Für eine Release-Version ist deshalb die SBOM am Image der Nachweis. Ein Herkunftsnachweis mit
+Für eine Release-Version ist deshalb die SBOM am Image der Nachweis. Eine Provenance mit
 Signatur, prüfbar mit `gh attestation verify`, liegt am Chart und am Update-Paket.
 
 ## Schwachstellen

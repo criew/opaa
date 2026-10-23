@@ -208,8 +208,8 @@ Zeit; zwei, die gleichzeitig starten, prüfen nacheinander.
 - die Freigabelisten der Zielprüfung, die vertrauten Proxys und `OPAA_PUBLIC_BASE_URL`
 - die Funktionsschalter, die Zeitzone und `OPAA_INSTANCE_DEAD_AFTER`
 
-**Je Instanz abweichen dürfen** technische Werte ohne Wirkung auf Daten: Zeitgrenzen, die Größe von
-Verbindungs- und Thread-Pools, der Abstand des Herzschlags.
+**Je Instanz abweichen dürfen** technische Werte ohne Wirkung auf Daten: Timeouts, die Größe von
+Connection- und Thread-Pools, der Abstand des Herzschlags.
 
 **Die Version** darf nur während eines Updates abweichen, und nur innerhalb des
 **Versionsfensters**: Jede Version nennt die älteste Version, neben der sie laufen darf. Ein Release
@@ -318,7 +318,7 @@ flowchart LR
 
 Ein geordneter Stopp bricht laufende Indexierungen und Uploads der stoppenden Instanz sofort ab,
 lässt aber die Anfragen von Personen zu Ende laufen
-([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
+([Graceful Shutdown](betrieb.md#graceful-shutdown)).
 
 ## Eine Uhr für alle
 
@@ -328,7 +328,7 @@ Instanz schreibt und eine andere liest und vergleicht, nimmt OPAA deshalb die Uh
 | Uhr | Wofür |
 |---|---|
 | Uhr der Datenbank | Herzschlag und Frist, Termine und Sperren der geplanten Läufe, die Mail-Warteschlange, die Fenster der Gesamtgrenzen, Zeitpunkte im Nachweisprotokoll, die Grenzen der Rechtehistorie |
-| Uhr der Instanz | was nur diese Instanz vergleicht: eigene Zeitgrenzen, die Gültigkeit ihrer Zwischenspeicher, die Fenster der Grenzen je Instanz, der Ablauf von Tokens, die Zeitangaben im Protokoll |
+| Uhr der Instanz | was nur diese Instanz vergleicht: eigene Timeouts, die Gültigkeit ihrer Zwischenspeicher, die Fenster der Grenzen je Instanz, der Ablauf von Tokens, die Zeitangaben im Protokoll |
 | Zeitzone | Tages-, Monats- und Jahresgrenzen, die Uhrzeiten der Termine und Datumsangaben in Mails; sie gehört zum Konfigurationsabdruck und ist auf allen Instanzen gleich ([Zeitzone](betrieb.md#zeitzone)) |
 
 ## Mails ohne Verlust
@@ -478,7 +478,7 @@ bleibt eine Instanz die Vorgabe.
 | Grenzen je Instanz | geteilten Wert in `.env.docker` eintragen | der Chart teilt `backend.installationBudgets` auf die Pods |
 | Nicht verwenden | `docker compose --scale` | automatisches Skalieren des Backends |
 
-Mehr Instanzen brauchen mehr Datenbankverbindungen: Jede Instanz hält ihren Verbindungspool und dazu
+Mehr Instanzen brauchen mehr Datenbankverbindungen: Jede Instanz hält ihren Connection Pool und dazu
 die Hörverbindung für die Benachrichtigungen, und während eines Updates läuft kurz eine Instanz mehr.
 Die Rechnung steht unter [Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen).
 

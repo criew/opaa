@@ -63,7 +63,7 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
 
 - **Betrieb**
   - [Betriebsübersicht](betrieb.md) — Bausteine und ihr Zusammenspiel, eine oder mehrere Backend-Instanzen, Images,
-    Bereitschaft, Härtung, Schlüssel, Sicherung und Wiederherstellungsprobe, Aktualisierung, Logs und
+    Probes, Härtung, Schlüssel, Sicherung und Wiederherstellungsprobe, Aktualisierung, Logs und
     Metriken, Fehlerbehebung
     - [Docker Compose](docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
       Objektspeicher und Mailpit im Stapel, Aktualisierung
@@ -83,7 +83,7 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
     wo sie liegen, das Update-Paket eines Release, wie man sie erzeugt, die Auskunft über die
     Datenerhebung einer Installation, was bei jeder Änderung geprüft wird
   - [Releases und Nachweise](releases-und-nachweise.md) — Versionen, Sicherheitsupdates, was ein
-    Release liefert, Update-Paket prüfen, SBOM und Herkunft, Schwachstellen, Lizenz und CLA
+    Release liefert, Update-Paket prüfen, SBOM und Provenance, Schwachstellen, Lizenz und CLA
 - **Konten und Rechte**
   - [Benutzerverwaltung](benutzerverwaltung.md) — lokale Konten, Rollen und Anlegerechte,
     Selbstregistrierung, verbundene Konten
@@ -135,7 +135,7 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
 | Einen Identitätsanbieter anbinden | [Authentifizierung](authentifizierung.md): „OIDC (Keycloak)" → [Berechtigungen](berechtigungen.md): „Woher Gruppen kommen" |
 | Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](konfiguration.md): „Grenzwerte im Überblick" |
 | Datenschutz, Personalrat oder Informationssicherheit fragen, welche Daten anfallen und wohin sie gehen | [Nachvollziehbarkeit](nachvollziehbarkeit.md) |
-| Beschaffung oder Informationssicherheit fragen nach Sicherheitsupdates, SBOM, Herkunftsnachweis oder Lizenz | [Releases und Nachweise](releases-und-nachweise.md) |
+| Beschaffung oder Informationssicherheit fragen nach Sicherheitsupdates, SBOM, Provenance oder Lizenz | [Releases und Nachweise](releases-und-nachweise.md) |
 | Die Installation zeigt eine Störung | [Betriebsübersicht](betrieb.md): „Fehlerbehebung", „Logs und Metriken" |
 
 ## 5. Glossar

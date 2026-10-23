@@ -312,7 +312,7 @@ Chunk für das neue Modell sein darf, steht unter
 
 Lässt sich ein Dokument nicht einbetten, läuft die Neueinbettung über die übrigen weiter und endet
 „fehlgeschlagen"; das Log nennt die Dokumente. Scheitern fünf Dokumente in Folge, bricht sie gleich
-ab, weil dann eher Endpunkt oder Zeitgrenze die Ursache sind. Die Vektorsuche bleibt ausgesetzt, bis
+ab, weil dann eher Endpunkt oder Timeout die Ursache sind. Die Vektorsuche bleibt ausgesetzt, bis
 ein weiterer Start auch die fehlenden eingebettet hat.
 
 ## Reranking einschalten
@@ -355,10 +355,10 @@ Ausfall kostet die Sortierung, nie die Antwort.
 > nur eine, und alle entscheiden auf demselben Zustand: Was eine Instanz am Endpunkt beobachtet,
 > gilt für jede Frage auf jeder Instanz.
 
-> **Zeitgrenzen mit anheben.** `OPAA_RERANK_TIMEOUT` bindet nur den Rerank-Aufruf, nicht die Anfrage
+> **Timeouts mit anheben.** `OPAA_RERANK_TIMEOUT` bindet nur den Rerank-Aufruf, nicht die Anfrage
 > als Ganzes: Eine Suche mit CPU-Reranker kann minutenlang warten, und die übrigen Modellaufrufe kommen
 > hinzu. Wer `OPAA_RERANK_TIMEOUT` anhebt, hebt `OPAA_BACKEND_READ_TIMEOUT` des Frontends mit an und
-> die Zeitgrenze jedes Proxys davor ([Netzwerkzugang](betrieb.md#netzwerkzugang)). Sonst endet die
+> das Timeout jedes Proxys davor ([Netzwerkzugang](betrieb.md#netzwerkzugang)). Sonst endet die
 > Anfrage beim Client mit `504` oder einem Verbindungsabbruch, ohne Fehler im Backend-Log.
 
 ## Spracheingabe einschalten
@@ -391,7 +391,7 @@ Aufruf geht über denselben [Ausgangsproxy](betrieb.md#ausgangsproxy) und diesel
 Zertifizierungsstellen wie die übrigen Modellrollen; eine interne CA wird also wie dort ergänzt.
 
 Fehlt eine Angabe oder antwortet der Dienst nicht, steht das im Log und fortlaufend auf der Seite
-„Suche & Indexierung" (Rolle „Transkription") sowie in der Gesundheitsgruppe
+„Suche & Indexierung" (Rolle „Transkription") sowie in der Health Group
 `GET /actuator/health/transcription-model`. Der Chat zeigt das Mikrofon dann nicht; alles andere
 läuft weiter.
 
@@ -509,7 +509,7 @@ SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des 
 ## Ausfall eines Modells
 
 Fällt ein Modell aus, arbeiten Anmeldung, Verwaltung und der Zugriff auf Dokumente weiter, weil kein
-Modell die Bereitschaft des Backends bestimmt ([Bereitschaft und Lebendigkeit](betrieb.md#bereitschaft-und-lebendigkeit)).
+Modell die Readiness des Backends bestimmt ([Readiness und Liveness](betrieb.md#readiness-und-liveness)).
 Je Rolle wirkt der Ausfall anders:
 
 | Rolle | Wirkung | Vorsorge | Wiederanlauf |
@@ -522,15 +522,15 @@ Je Rolle wirkt der Ausfall anders:
 Ein Ersatzmodell bei einem anderen Anbieter schickt Fragen und Textausschnitte an einen anderen
 Empfänger; ob es aktiviert werden darf, klärt das Haus vorher mit Datenschutz und
 Personalvertretung. Erkennbar ist ein Ausfall an den Stellen unter [Fehlerbilder](#fehlerbilder),
-unter Kubernetes zusätzlich am Alarm für eine hohe Fehlerquote. Die Gesundheitsgruppe des
+unter Kubernetes zusätzlich am Alarm für eine hohe Fehlerquote. Die Health Group des
 Chat-Modells ruft das Modell nicht auf; ein Ausfall des Chat-Modells zeigt sich an scheiternden
 Fragen und an der Fehlerquote.
 
 ## Fehlerbilder
 
 Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche & Indexierung"
-(Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Gesundheitsgruppen
-`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Bereitschaft](betrieb.md#bereitschaft-und-lebendigkeit))
+(Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Health Groups
+`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](betrieb.md#readiness-und-liveness))
 und im Protokoll des Backends.
 
 **Meldungen des Verbindungstests:**
@@ -554,7 +554,7 @@ und im Protokoll des Backends.
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
 | Die erste Einbettung scheitert mit einem Dimensionsfehler | `OPAA_PGVECTOR_DIMENSIONS` passt nicht zum Embedding-Modell ([Embedding](#embedding)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
-| Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Zeitgrenze zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](betrieb.md#was-ein-update-mit-dem-index-macht)) |
+| Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Timeout zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](betrieb.md#was-ein-update-mit-dem-index-macht)) |
 | Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug)); er teilt den Chunk |
 | Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
 | Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; OPAA hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
@@ -565,7 +565,7 @@ und im Protokoll des Backends.
 | Reranking „nicht verfügbar" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking |
 | Kein Mikrofon im Chat, obwohl die Spracheingabe eingeschaltet ist | Rolle „Transkription" auf „Suche & Indexierung" prüfen: Endpunkt oder Modell fehlen, oder `GET {Basis-Adresse}/models` antwortet nicht. Der Browser muss außerdem aufnehmen dürfen; ohne HTTPS bieten Browser kein Mikrofon an |
 | „Die Texterkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
-| Lange Fragen enden beim Client mit `504` | Zeitgrenzen von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
+| Lange Fragen enden beim Client mit `504` | Timeouts von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
 | Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
 | Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](betrieb.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |
 

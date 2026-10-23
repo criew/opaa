@@ -79,7 +79,7 @@ die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmat
 | S-02 | Zu jedem ausgelieferten Artefakt liegt eine Software-Stückliste (SBOM) in einem maschinenlesbaren Standardformat (CycloneDX oder SPDX) vor. | Muss | Beispiel-SBOM |
 | S-03 | Die Herkunft der ausgelieferten Artefakte ist prüfbar (Signatur oder Provenance-Attestierung); eine veröffentlichte Version wird nie überschrieben. | Muss oder Kann, Begründung im Vergabevermerk | Prüfanleitung |
 | S-04 | Es gibt einen öffentlichen, vertraulichen Meldeweg für Sicherheitslücken; behobene Lücken werden veröffentlicht. | Muss | Sicherheitsrichtlinie |
-| S-05 | Die Anwendung läuft als Container ohne Root-Rechte und mit nur lesbarem Dateisystem. | Muss oder Kann, Begründung im Vergabevermerk | Betriebsdokumentation |
+| S-05 | Die Anwendung läuft als Container ohne Root-Rechte und mit Read-only Filesystem. | Muss oder Kann, Begründung im Vergabevermerk | Betriebsdokumentation |
 | S-06 | Die ausgelieferten Artefakte werden regelmäßig auf bekannte Schwachstellen geprüft; Reaktionszeiten je Schwere sind festgelegt. | Kann | Beschreibung des Verfahrens |
 
 ## B · Betrieb
@@ -90,7 +90,7 @@ die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmat
 | B-02 | Lässt sich mit einem versionierten Installationspaket auf [Container-Plattform der Behörde, z. B. Kubernetes oder Einzelhost mit Container-Laufzeit] installieren. | Muss | Installationsanleitung |
 | B-03 | Sicherung und Wiederherstellung aller Datenbestände sind dokumentiert; die Wiederherstellung ist erprobt. | Muss | Anleitung, Nachweis einer Probe |
 | B-04 | Jede Version ist eindeutig benannt; jede Version nennt die Schritte für Bestandsinstallationen. | Muss | Release-Beschreibung |
-| B-05 | Stellt Gesundheitsprüfungen und Metriken für die Betriebsüberwachung bereit. | Muss | Betriebsdokumentation |
+| B-05 | Stellt Health Checks und Metriken für die Betriebsüberwachung bereit. | Muss | Betriebsdokumentation |
 
 ## O · Offenheit und Souveränität
 

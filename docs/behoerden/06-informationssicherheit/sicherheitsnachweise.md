@@ -22,8 +22,8 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 | Nachweis | Was er belegt | Wo er steht |
 |---|---|---|
 | Härtung | welche Maßnahmen zwingend sind, je Betriebsweg | [Härtung](../../handbuch/betrieb.md#härtung-für-erreichbare-deployments), [Docker Compose](../../handbuch/docker-compose.md#härtung-des-compose-stapels), [Kubernetes](../../handbuch/kubernetes.md#netz-und-sicherheit), [Keycloak](../../handbuch/authentifizierung.md#härtung-des-mitgelieferten-keycloak); Voreinstellungen in {{faktenblatt:voreinstellungen}} |
-| Protokollierung | Anwendungsprotokoll, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
-| Software-Stückliste (SBOM) | woraus jedes Image besteht, Herkunftsnachweise, Lizenzprüfung | [Herkunft und Software-Stückliste](../../handbuch/releases-und-nachweise.md#herkunft-und-software-stückliste), [Was ein Release liefert](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert) |
+| Protokollierung | Log, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
+| Software-Stückliste (SBOM) | woraus jedes Image besteht, Provenance, Lizenzprüfung | [Provenance und Software-Stückliste](../../handbuch/releases-und-nachweise.md#provenance-und-software-stückliste), [Was ein Release liefert](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert) |
 | Schwachstellen | Erkennung in Abhängigkeiten und Images, Reaktionszeiten nach Schwere | [Schwachstellen](../../handbuch/releases-und-nachweise.md#schwachstellen), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
 | Sicherheitsupdates | Patch-Releases, veröffentlichte Lücken | [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
 | Pflichten des Projekts | Rolle nach dem Cyber Resilience Act | [Rollenklärung](rollenklaerung-cra.md) |
@@ -32,7 +32,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 1. **Härtungstabelle abarbeiten:** jede Zeile umgesetzt oder begründet als nicht zutreffend
    vermerkt; das Ergebnis gehört zum [IT-Grundschutz](grundschutz-modellierung.md)-Check.
-2. **Protokolle einsammeln und aufbewahren.** OPAA schreibt das Anwendungsprotokoll auf die
+2. **Protokolle einsammeln und aufbewahren.** OPAA schreibt das Log auf die
    Standardausgabe; ein Log-Sammler des Betriebs nimmt es dort ab.
 3. **Auswertung regeln:** Wer Protokolle wie auswerten darf, gehört in die Dienstvereinbarung.
 4. **Updates zeitnah einspielen.** Sicherheitskorrekturen erhalten nur das jüngste Release und `main`
@@ -44,7 +44,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 - Gemeldete Lücken bearbeitet das Projekt nach bestem Bemühen, ohne zugesagte Frist. Wer eine Version
   länger festhalten muss oder Fristen braucht, vereinbart das mit einem Dienstleister.
-- Schreibt das Anwendungsprotokoll ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
+- Schreibt das Log ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
   ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken)).
 - Eine Ausleitung des Nachweisprotokolls an ein zentrales Sicherheitsmonitoring ist nicht gebaut.
 

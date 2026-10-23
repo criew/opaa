@@ -57,7 +57,7 @@ Punkte = Höchstpunktzahl × niedrigster Preis ÷ Preis des Angebots.
 | Nr. | Unterkriterium | Bezug im Katalog |
 |---|---|---|
 | Q1 | Einführungskonzept: Ablauf, Abnahme, Mitwirkung der Behörde | L-01 |
-| Q2 | Betriebs- und Notfallkonzept: Verfügbarkeit, Wiederherstellungszeit und -punkt, Wiederherstellungsprobe | L-02 |
+| Q2 | Betriebs- und Notfallkonzept: Verfügbarkeit, Wiederherstellungszeit und -punkt (RTO, RPO), Wiederherstellungsprobe | L-02 |
 | Q3 | Pflegekonzept: Fristen für neue und für sicherheitsrelevante Versionen, Umgang mit Änderungen mit Datenwirkung | L-03, D-05 |
 | Q4 | Supportzusagen: Erreichbarkeit, Reaktionszeiten je Schwere | L-04 |
 | Q5 | Schulungskonzept und Unterlagen | L-05 |

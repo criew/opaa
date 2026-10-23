@@ -72,6 +72,11 @@ Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards 
   sich unterscheidet.
 - **Begriffe:** „Space", nie „Raum"; „Arbeitsmittel" für alles, was angelegt, geteilt und einem
   Space zugeordnet wird; Oberflächentexte wörtlich in „…".
+- **Etablierte englische Fachbegriffe** aus Betrieb und Technik werden nicht eingedeutscht:
+  Readiness und Liveness, Graceful Shutdown, Read-only Filesystem, Health Check, Load Balancer,
+  Rolling Update, Connection Pool, Timeout, Redirect, OOM-Kill, Provenance, Log, Egress. Deutsch
+  bleibt, was die Oberfläche deutsch nennt („Ausgangsproxy", „Zielprüfung", „Netzbereiche"), und
+  eingeführte Begriffe der Verwaltung wie Datenschutz oder Mitbestimmung.
 - Tabellen und Abbildungen tragen weder Nummer noch Titel; Kapitel haben kein Verzeichnis davon.
 
 ## Weitere Regeln

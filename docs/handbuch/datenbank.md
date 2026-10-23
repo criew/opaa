@@ -50,7 +50,7 @@ GRANT opaa_audit_owner TO opaa WITH ADMIN OPTION;
 Daneben muss das Konto in der Datenbank Objekte anlegen dürfen, am einfachsten als Eigentümer der
 Datenbank. Für ein eigenes Schema gelten die Regeln im folgenden Abschnitt.
 
-Neben dem Verbindungspool hält jede Instanz eine weitere, dauerhafte Verbindung (Anwendungsname
+Neben dem Connection Pool hält jede Instanz eine weitere, dauerhafte Verbindung (Anwendungsname
 `opaa-invalidation-bus`). Über sie erfährt sie Änderungen an Rechten, Anmeldeanbietern und
 Einstellungen sofort, auch wenn eine andere Instanz sie vorgenommen hat. Sie braucht eine direkte
 Verbindung oder einen Verbindungs-Proxy im Sitzungsmodus; im Transaktionsmodus (etwa PgBouncer mit

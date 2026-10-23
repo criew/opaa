@@ -51,7 +51,7 @@ flowchart LR
 
 App key und Secret gehen nur an den Token-Endpunkt von Dropbox; OPAA fragt die Zustimmung mit
 `token_access_type=offline` an und hält das Refresh-Token verschlüsselt. Das Zugriffstoken geht nur an
-die beiden API-Hosts; Weiterleitungen folgt der Konnektor nicht. Trennen, ein Neuverbinden mit anderem
+die beiden API-Hosts; Redirects folgt der Konnektor nicht. Trennen, ein Neuverbinden mit anderem
 Konto, die Notabschaltung und das Löschen des Zugangs widerrufen das Token bei Dropbox.
 
 ## 3. Quellkonfiguration
@@ -154,7 +154,7 @@ Alle Schlüssel unter `opaa.indexing.dropbox.*`.
 |---|---|---|---|
 | `page-size` | `OPAA_INDEXING_DROPBOX_PAGE_SIZE` | 2000 | Einträge je Auflistungs- und Änderungsseite; höchstens 2000 |
 | `max-file-size-bytes` | `OPAA_INDEXING_DROPBOX_MAX_FILE_SIZE_BYTES` | 52428800 (50 MiB) | Obergrenze je Download oder Export, auch für „Original öffnen" |
-| `request-timeout` | `OPAA_INDEXING_DROPBOX_REQUEST_TIMEOUT` | 30s | Zeitlimit je Anfrage |
+| `request-timeout` | `OPAA_INDEXING_DROPBOX_REQUEST_TIMEOUT` | 30s | Timeout je Anfrage |
 | `download-timeout` | `OPAA_INDEXING_DROPBOX_DOWNLOAD_TIMEOUT` | 10m | Gesamtfrist je Download oder Export |
 | `max-retries` | `OPAA_INDEXING_DROPBOX_MAX_RETRIES` | 5 | Wiederholungen einer gedrosselten Anfrage |
 | `max-retry-wait` | `OPAA_INDEXING_DROPBOX_MAX_RETRY_WAIT` | 5m | längste einzelne Wartezeit |

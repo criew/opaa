@@ -4,7 +4,7 @@ Der Compose-Stapel des Repositorys (`docker-compose.yml`) startet OPAA auf einem
 Frontend, Backend und PostgreSQL, dazu über Compose-Profile Keycloak, Ollama, einen Objektspeicher
 und einen Mailserver zum Abfangen. Er ist für Entwicklung, Erprobung und kleine Installationen
 gedacht; seine Vorgaben sind bequem und **nicht** gehärtet. Was für jeden Betriebsweg gilt — Images,
-Bereitschaft, Härtung, Schlüssel, Sicherung —, steht in der [Betriebsübersicht](betrieb.md), die
+Probes, Härtung, Schlüssel, Sicherung —, steht in der [Betriebsübersicht](betrieb.md), die
 Bedeutung jeder Variable in der [Konfiguration](konfiguration.md).
 
 ## Schnellstart
@@ -83,8 +83,8 @@ Wie der erste Systemverwalter hereinkommt, steht unter
 | backend-migrate | —   | —               | einmaliger Migrationsschritt (nur [Mehrinstanz-Variante](#mehrere-backend-instanzen)) |
 | backend-a, backend-b | — | 8080           | zwei Backend-Instanzen statt `backend` (nur Mehrinstanz-Variante) |
 
-Das Backend meldet seinen Zustand über einen Healthcheck auf die
-[Bereitschaft](betrieb.md#bereitschaft-und-lebendigkeit); `docker compose ps` zeigt ihn als
+Das Backend meldet seinen Zustand über einen Health Check auf die
+[Readiness](betrieb.md#readiness-und-liveness); `docker compose ps` zeigt ihn als
 `healthy`, und das Frontend startet erst danach. Der Frontend-nginx löst den Namen `backend` zur
 Laufzeit auf (`OPAA_BACKEND_RESOLVER`): Ein neu erstelltes Backend erreicht er ohne eigenen Neustart.
 
@@ -287,7 +287,7 @@ Sekunden lang in der Verteilung führt: Kommt dort binnen 4 s keine Verbindung z
 Anfrage an die andere. Eine Anfrage, die noch keine Instanz erreicht hat, endet so nicht mit einem
 Fehler, solange eine Instanz läuft; nur eine Diktataufnahme, die genau in diesem Moment hochgeladen
 wird, kann scheitern und ist dann neu aufzunehmen. Laufende Anfragen der stoppenden Instanz enden
-wie unter [Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren) beschrieben. Hat eine Instanz
+wie unter [Graceful Shutdown](betrieb.md#graceful-shutdown) beschrieben. Hat eine Instanz
 die Verbindung angenommen, gibt nginx nur eine lesende Anfrage (`GET`, `HEAD`, `OPTIONS`) an die
 andere weiter, wenn die Verbindung abreißt oder die Antwort länger als `OPAA_BACKEND_READ_TIMEOUT`
 ausbleibt; jede andere, auch Ändern und Löschen, endet dann mit einem Fehler und läuft nie ein
@@ -332,7 +332,7 @@ docker compose $F up -d --no-deps --wait frontend
    arbeiten weiter. Endet `run` nicht mit Exit-Code 0, hier aufhören: Die alten Instanzen laufen
    unverändert.
 2. **Dann `backend-a`.** Während Compose den Container ersetzt, beantwortet `backend-b` alle Anfragen;
-   laufende Anfragen von `backend-a` enden geordnet ([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
+   laufende Anfragen von `backend-a` enden geordnet ([Graceful Shutdown](betrieb.md#graceful-shutdown)).
 3. **Dann `backend-b`**, erst wenn `backend-a` wieder `healthy` ist und eine kurze Pause vergangen
    ist; `--wait` wartet auf das eine, `sleep 15` sorgt für das andere. Der Frontend-nginx nimmt eine
    Instanz, die beim Start kurz keine Verbindung annahm, erst danach sicher wieder in die Verteilung;
@@ -344,7 +344,7 @@ docker compose $F up -d --no-deps --wait frontend
 Während des Updates laufen kurz alte und neue Version nebeneinander gegen dieselbe Datenbank
 ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)). Mails gehen dabei nicht verloren,
 Läufe und Uploads der stoppenden Instanz lassen sich wiederholen
-([Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
+([Graceful Shutdown](betrieb.md#graceful-shutdown)).
 
 Nennen die Notizen eines Release eine Versionsgrenze ohne Rolling Update, lässt die neue Version die
 laufende nicht in ihrem [Versionsfenster](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)
@@ -414,7 +414,7 @@ bleibt beim Bind-Mount. Mit `OPAA_UPLOAD_STORE=s3` entfällt Anforderung 1.
 
 **Beschreibbare Pfade im Stapel.** Das Backend läuft mit `read_only: true` und `no-new-privileges`;
 `/tmp` ist das benannte Volume `opaa-backend-tmp` (warum, siehe
-[Nur lesbares Dateisystem](betrieb.md#nur-lesbares-dateisystem)). Es überlebt `docker compose down`.
+[Read-only Filesystem](betrieb.md#read-only-filesystem)). Es überlebt `docker compose down`.
 Was ein harter Abbruch, ein Heap-Dump oder ein JFR-Mitschnitt dort hinterlässt, wird bei angehaltenem
 Backend entfernt:
 
@@ -479,7 +479,7 @@ docker run --rm -v <projekt>_opaa-backend-tmp:/t busybox rm -f /t/heap.hprof   #
 docker kill -s QUIT <container>   # Alternative: Thread-Dump ins Log, braucht nichts im Image
 ```
 
-Der Dump liegt mit absolutem Pfad unter `/tmp`, weil das übrige Dateisystem nur lesbar ist; er
+Der Dump liegt mit absolutem Pfad unter `/tmp`, weil das übrige Dateisystem read-only ist; er
 enthält Geheimnisse und Inhalte und bleibt im Volume, bis er entfernt wird — deshalb die vierte Zeile.
 `docker exec` auf `jcmd` läuft ohne `--user` unter derselben Kennung wie der Prozess und darf sich
 deshalb an ihn hängen. `docker kill -s QUIT` beendet den Container **nicht**: Die JVM schreibt
@@ -706,9 +706,9 @@ beendet; danach `docker compose up -d backend` erneut ausführen (siehe
 
 ### Der Container meldet `137`
 
-`docker inspect --format '{{.State.OOMKilled}}' <container>` zeigt, ob die Speichergrenze der Grund
+`docker inspect --format '{{.State.OOMKilled}}' <container>` zeigt, ob ein OOM-Kill der Grund
 war ([Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)); sonst lief die
-Stopp-Frist `OPAA_STOP_GRACE_PERIOD` ab.
+Grace Period `OPAA_STOP_GRACE_PERIOD` ab.
 
 ## Stoppen
 

@@ -34,7 +34,7 @@ Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 
 - OPAA ist quelloffen, ohne Vertrag und ohne Zusage zu Verfügbarkeit oder Reaktionszeit; Zusagen gibt
   nur ein Dienstleister ([Gewährleistung und Haftung](../03-vergabe/gewaehrleistung-haftung.md)).
-- Bestandteile, Herkunftsnachweise der Images und der Umgang mit Schwachstellen stehen in den
+- Bestandteile, Provenance der Images und der Umgang mit Schwachstellen stehen in den
   [Sicherheitsnachweisen](sicherheitsnachweise.md), Pflichten des Projekts in der
   [Rollenklärung zum Cyber Resilience Act](rollenklaerung-cra.md).
 - Daten fließen nur zu den Zielen, die die Installation einträgt ({{faktenblatt:datenfluesse}}).

@@ -172,7 +172,7 @@ Alle Schlüssel unter `opaa.indexing.nextcloud.*`, Umgebungsvariablen `OPAA_INDE
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
 | `max-file-size-bytes` | 50 MiB | Obergrenze einer Datei, vor und während des Downloads |
-| `request-timeout` | 30 s | Zeitlimit je Auflistung |
+| `request-timeout` | 30 s | Timeout je Auflistung |
 | `request-budget-per-run` | 20 000 | Anfragen je Lauf |
 | `max-entries-per-run` | 1 000 000 | gelistete Dateien je Vollabgleich, auch über mehrere Läufe; darüber scheitert der Lauf |
 | `download-concurrency` | 2 | gleichzeitige Downloads je Lauf |

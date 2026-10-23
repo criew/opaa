@@ -171,7 +171,7 @@ Alle Schlüssel unter `opaa.indexing.google-drive.*`.
 |---|---|---|---|
 | `page-size` | `OPAA_INDEXING_GOOGLE_DRIVE_PAGE_SIZE` | 1000 | Einträge je Auflistungs- und Änderungsseite; höchstens 1000 |
 | `max-file-size-bytes` | `OPAA_INDEXING_GOOGLE_DRIVE_MAX_FILE_SIZE_BYTES` | 52428800 (50 MiB) | Obergrenze je Download oder Export |
-| `request-timeout` | `OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_TIMEOUT` | 30s | Zeitlimit je Anfrage |
+| `request-timeout` | `OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_TIMEOUT` | 30s | Timeout je Anfrage |
 | `download-timeout` | `OPAA_INDEXING_GOOGLE_DRIVE_DOWNLOAD_TIMEOUT` | 10m | Gesamtfrist je Download oder Export; danach folgt die Datei im nächsten Lauf |
 | `max-retries` | `OPAA_INDEXING_GOOGLE_DRIVE_MAX_RETRIES` | 5 | Wiederholungen einer gedrosselten Anfrage |
 | `retry-backoff` | `OPAA_INDEXING_GOOGLE_DRIVE_RETRY_BACKOFF` | 1s | Basis des wachsenden Abstands |

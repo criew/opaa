@@ -277,7 +277,7 @@ serverseitig nur als Hash gespeichert und ist nach der Einmalanzeige nirgends me
   keiner Ebene, auch nicht gekürzt. Das Präfix ist über Monate stabil und über die Tokentabelle einer
   Person zuzuordnen; zusammen mit Zeitstempel und Netzadresse in einem technischen Zugriffsprotokoll
   ergäbe es die minutengenaue Abfragehistorie je Person, die das Nachweisprotokoll zu Recht
-  ausschließt. **Diesen Punkt muss die Proxy- und Lastverteiler-Konfiguration der einführenden Stelle
+  ausschließt. **Diesen Punkt muss die Proxy- und Load-Balancer-Konfiguration der einführenden Stelle
   mit abdecken** — ein Reverse Proxy, der `Authorization`-Köpfe mitschreibt, hebt die Zusage auf,
   ohne dass OPAA davon erfährt.
 

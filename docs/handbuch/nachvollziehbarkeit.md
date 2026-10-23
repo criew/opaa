@@ -117,7 +117,7 @@ ein Update verantworten, ohne den Code zu lesen:
 Vor dem ersten finalen Release vergleicht das Paket mit dem „Stand ohne Fakten-Manifest“; im Delta
 erscheint deshalb jeder Eintrag als neu. Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.
 
-Das Paket ist attestiert wie die Images. Die Herkunft prüft:
+Das Paket ist attestiert wie die Images. Die Provenance prüft:
 
 ```bash
 gh release download v<Version> --repo criew/opaa --pattern 'opaa-update-paket-*'

@@ -268,7 +268,7 @@ Hand.
 ab, der nicht „Verzeichnis nicht erreichbar" ist, etwa weil die Datenbank einen gelieferten Wert
 ablehnt, schreibt er nichts; der letzte bekannte Stand
 bleibt in Kraft. Das Seitenpanel zeigt **Abgleich fehlgeschlagen** mit Zeitpunkt und Meldung, die
-Übersicht **Letzter Lauf gescheitert**. Die Ursache steht nur im Anwendungsprotokoll des Backends;
+Übersicht **Letzter Lauf gescheitert**. Die Ursache steht nur im Log des Backends;
 das Nachweisprotokoll erhält wie bei einem unerreichbaren Verzeichnis einen Kopfeintrag mit dem
 Ergebnis „fehlgeschlagen", ohne Ursache.
 
@@ -365,7 +365,7 @@ Gruppen."; ein abgewiesenes Dienstkonto nennt die beiden fehlenden Rollen. Errei
 Keycloak unter einer anderen Adresse als der Browser — im Compose-Stapel `http://keycloak:8180` statt
 `http://localhost:8180` —, gehört die Backend-Adresse in das Feld der Admin-API; ohne Angabe leitet
 OPAA sie aus der Issuer-URI ab. Sie durchläuft dieselbe [Adressprüfung](#bestandsübernahme-aus-opaa_oidc_)
-wie die Issuer-URI; Weiterleitungen folgt das Backend nicht.
+wie die Issuer-URI; Redirects folgt das Backend nicht.
 
 **Das Geheimnis liegt verschlüsselt** mit `OPAA_CREDENTIALS_ENCRYPTION_KEY`; ohne diesen Schlüssel
 lässt sich kein Zugang speichern ([Schlüssel und Geheimnisse](betrieb.md#schlüssel-und-geheimnisse)).
@@ -400,7 +400,7 @@ Variable wieder entfernen.
 private Netzbereiche wie die Quellen ([Zielprüfung](betrieb.md#zielprüfung-abrufe-des-servers)), mit
 eigenen Schaltern `OPAA_OIDC_TARGET_VALIDATION_ENABLED` und `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`.
 Ein hausinterner Anbieter gehört in die Allowlist; die Adressen der Startwerte sind immer erlaubt.
-Discovery-Dokument und JWK-Set holt das Backend selbst, ohne Weiterleitungen zu folgen.
+Discovery-Dokument und JWK-Set holt das Backend selbst, ohne Redirects zu folgen.
 
 **Tokenprüfung.** Ein Token wird nur angenommen, wenn sein `azp`-Claim die Client-ID der Anbieterzeile
 nennt, ganz fehlt, oder `aud` sie enthält; sonst antwortet das Backend mit HTTP 401 und nennt den Grund
@@ -724,7 +724,7 @@ Die Anwendung wird über `http://` ausgeliefert; die Abstimmung zwischen Tabs br
 ### Der Verzeichnisabgleich meldet „Abgleich fehlgeschlagen"
 
 Der Lauf ist mit einem Fehler abgebrochen und hat nichts geändert. Die Ursache nennt das
-Anwendungsprotokoll des Backends zum Zeitpunkt der Statuszeile, häufig ein Wert aus dem Verzeichnis,
+Log des Backends zum Zeitpunkt der Statuszeile, häufig ein Wert aus dem Verzeichnis,
 der zu lang ist, etwa ein sehr tiefer Gruppenpfad. Nach der Korrektur im Verzeichnis **Jetzt
 abgleichen** wählen; der Zeitplan versucht es sonst erst nach einem Intervall erneut
 ([Gescheiterter Lauf](#verzeichnisabgleich-je-anbieter)). Auch ein **Trockenlauf** zählt als Lauf:

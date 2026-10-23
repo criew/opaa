@@ -59,7 +59,7 @@ OPAA verschickt auf zwei Wegen:
 
 Die Warteschlange liegt in der Datenbank, Empfänger und Inhalt verschlüsselt mit
 `OPAA_SETTINGS_ENCRYPTION_KEY`. Ohne gültigen Schlüssel geht keine Mail in die Warteschlange; das
-Anwendungsprotokoll nennt den Grund. Eine wartende Mail übersteht einen Neustart des Backends, und
+Log nennt den Grund. Eine wartende Mail übersteht einen Neustart des Backends, und
 bei mehreren Backend-Instanzen stellt jede zu, eine Mail aber immer nur eine zur selben Zeit.
 
 - **Wiederholung:** Lehnt der Mailserver ab oder ist er nicht erreichbar, versucht OPAA es erneut,
@@ -110,16 +110,16 @@ an der auslösenden Aktion (nur beim sofortigen Versand), und als
 eigene Gruppe `GET /actuator/health/mail` — dort nur der Zustand, ohne Einzelheiten: `UP` nach einem
 erfolgreichen Versand, `DOWN`, wenn der letzte Versuch fehlschlug, `UNKNOWN` ohne eingerichteten
 Versand oder vor dem ersten Versuch. Bewusst **nicht** im Gesamtstatus unter `/actuator/health` —
-sonst nähme eine einzelne abgelehnte Nachricht die Instanz aus der Lastverteilung, während Chat und
+sonst nähme eine einzelne abgelehnte Nachricht die Instanz aus dem Load Balancing, während Chat und
 Suche weiterlaufen; dieselbe Aufteilung wie beim Objektspeicher der Originalablage. Die Ursache
-steht im Anwendungsprotokoll, dort ohne die Empfängeradresse.
+steht im Log, dort ohne die Empfängeradresse.
 
 | Beobachtung | Ursache | Abhilfe |
 |---|---|---|
 | Ergebnis „übersprungen" | Versand ist ausgeschaltet oder kein Server eingetragen | Einstellungen vervollständigen und einschalten |
 | Einladung zeigt nur den Link an, statt zu versenden | Kein Versand möglich — Versand aus, Versand fehlgeschlagen oder `OPAA_PUBLIC_BASE_URL` nicht gesetzt | Link weitergeben; parallel Einstellung und Umgebungsvariable prüfen |
 | „Connection refused" | Falscher Server oder Port, oder der Mailserver ist aus dem Backend-Container nicht erreichbar | Im Compose-Stapel den Servicenamen statt `localhost` verwenden; Erreichbarkeit aus dem Container prüfen |
-| Zeitüberschreitung | Mailserver antwortet nicht innerhalb der Zeitgrenzen | Erreichbarkeit prüfen; notfalls `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` anpassen |
+| Zeitüberschreitung | Mailserver antwortet nicht innerhalb der Timeouts | Erreichbarkeit prüfen; notfalls `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` anpassen |
 | Meldung zu STARTTLS | Der Server bietet STARTTLS nicht an; OPAA bricht ab, statt unverschlüsselt fortzufahren | Beim Mailserver TLS einrichten, oder — nur im vertrauenswürdigen Netz — Verschlüsselung `NONE` wählen |
 | „535" oder Authentifizierungsfehler | Benutzername oder Passwort falsch | Zugangsdaten neu eintragen; das Feld `***` lässt das gespeicherte Passwort unverändert, zum Ersetzen den neuen Wert eintragen |
 | Passwort lässt sich nicht speichern | Verschlüsselungsschlüssel fehlt oder ist ungültig | `OPAA_SETTINGS_ENCRYPTION_KEY` setzen |

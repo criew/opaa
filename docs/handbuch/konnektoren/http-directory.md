@@ -95,7 +95,7 @@ Start-Adresse ohne Dateiname und Abfrage, jedes Segment dekodiert (`Verg%C3%BCtu
 `Vergütung`). Ordner entstehen nur entlang gefundener Dateien und werden nur nach einem vollständigen
 Crawl aufgeräumt. Ein Segment, das leer ist, `.` oder `..` lautet, einen Pfadtrenner oder ein
 NUL-Byte enthält oder länger als 255 Zeichen ist, ergibt keinen Ordner; die Datei liegt dann in der
-Wurzel, mit einer Warnung im Anwendungsprotokoll. Ein Anhang liegt im Ordner seiner Mail.
+Wurzel, mit einer Warnung im Log. Ein Anhang liegt im Ordner seiner Mail.
 
 ## 7. Anhänge
 
@@ -104,13 +104,13 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 
 ## 8. Grenzen und Schutzmechanismen
 
-- **Zieladressprüfung** vor jeder Anfrage und auf jeder Weiterleitung
+- **Zieladressprüfung** vor jeder Anfrage und auf jedem Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).
 - **Im Verzeichnis bleiben.** Links auf fremde Server, gleichursprüngliche Links außerhalb des
   gerade gelesenen Verzeichnisses und Links, die mit `../` — auch prozentkodiert wie `%2E%2E/` —
   über die Start-Adresse hinausführen, werden nicht verfolgt. Jede Adresse wird nur einmal besucht.
   Sortier-Links (`?C=`), „Parent Directory", Anker, `mailto:` und `javascript:` werden ignoriert.
-- **Weiterleitungen.** Höchstens fünf; `https` auf `http` wird abgelehnt. Zugangsdaten gehen nur
+- **Redirects.** Höchstens fünf; `https` auf `http` wird abgelehnt. Zugangsdaten gehen nur
   mit, solange das Ziel auf demselben Ursprung und unterhalb der Start-Adresse bleibt; sonst wird
   ohne Zugangsdaten gefolgt. Landet eine Verzeichnisseite außerhalb des Start-Unterbaums, wird sie
   nicht ausgewertet, und der Crawl ist unvollständig. Nennt die Start-Adresse eine Datei
@@ -128,7 +128,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 | Anfragen je Lauf | `opaa.indexing.http.request-budget-per-run` | „unvollständig, wird fortgesetzt" |
 | Summe der 429-Wartezeiten je Lauf | `opaa.indexing.http.max-rate-limit-wait-per-run` | „unvollständig, wird fortgesetzt" |
 
-Zeitlimits: 30 s Verbindungsaufbau, 60 s je Verzeichnisseite, 120 s je Datei. Grenzen gegen
+Timeouts: 30 s Verbindungsaufbau, 60 s je Verzeichnisseite, 120 s je Datei. Grenzen gegen
 komprimierte Inhalte liegen in den Formaten. DNS-Rebinding bleibt eine bekannte Restlücke.
 
 ## 9. Protokoll und Fehlerbilder
@@ -138,7 +138,7 @@ komprimierte Inhalte liegen in den Formaten. DNS-Rebinding bleibt eine bekannte 
 | „Das Zertifikat des Servers wird nicht anerkannt …" | Zertifikat einer hauseigenen Zertifizierungsstelle oder auf einen anderen Namen | Zertifizierungsstelle ergänzen ([Zertifikatsprüfung](README.md#13-zertifikatsprüfung)) |
 | „Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge)" | keine Löscherkennung | Grenzen anheben oder Start-Adresse enger wählen |
 | „Mindestens ein Unterverzeichnis konnte nicht abgerufen werden, der Bestand dieses Laufs ist unvollständig" | keine Löscherkennung | Server prüfen |
-| „Verzeichnisseite wurde auf eine Adresse außerhalb der Start-URL weitergeleitet …" | Weiterleitung aus dem Unterbaum, keine Löscherkennung | Weiterleitung am Server prüfen |
+| „Verzeichnisseite wurde auf eine Adresse außerhalb der Start-URL weitergeleitet …" | Redirect aus dem Unterbaum, keine Löscherkennung | Redirect am Server prüfen |
 | „Datei überschreitet die zulässige Größe von …" | Größengrenze | Grenze anheben oder hinnehmen |
 | „Zieladresse liegt in einem gesperrten Adressbereich" | Zieladressprüfung | Hostnamen freigeben |
 | „Dateiformat wird nicht unterstützt" | Inhalt nicht zugelassen, auch eine Bot-Schutzseite statt einer Datei | erwartbar |
@@ -165,7 +165,7 @@ unterbrochen", ohne die Datei als Fehler zu zählen.
 | `opaa.indexing.http.request-budget-per-run` | `OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN` | 0 (unbegrenzt) | Anfragen je Lauf einschließlich Wiederholungen, gemeinsam mit dem Feed |
 | `opaa.indexing.http.max-rate-limit-wait-per-run` | `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN` | 15m | Summe der 429-Wartezeiten je Lauf, gemeinsam mit dem Feed |
 
-Nicht konfigurierbar: Verzeichnisseiten-Grenze, Zeitlimits, Zahl der Weiterleitungen. Zugangsdaten
+Nicht konfigurierbar: Verzeichnisseiten-Grenze, Timeouts, Zahl der Redirects. Zugangsdaten
 verschlüsselt der Schlüssel aus `OPAA_CREDENTIALS_ENCRYPTION_KEY`; die Zieladressprüfung steht in der
 [Übersicht](README.md#12-zieladressprüfung).
 

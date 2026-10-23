@@ -169,7 +169,7 @@ Alle Schlüssel unter `opaa.indexing.smb.*`, Umgebungsvariablen `OPAA_INDEXING_S
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
 | `max-file-size-bytes` | 50 MiB | Obergrenze einer Datei, vor und während des Downloads |
-| `request-timeout` | 30 s | Zeitlimit für den Verbindungsaufbau und je SMB-Nachricht |
+| `request-timeout` | 30 s | Timeout für den Verbindungsaufbau und je SMB-Nachricht |
 | `request-budget-per-run` | 100 000 | SMB-Nachrichten je Lauf; ein Download kostet mindestens vier, ein Ordner mindestens fünf |
 | `max-entries-per-run` | 1 000 000 | gelistete Dateien je Vollabgleich, auch über mehrere Läufe; darüber scheitert der Lauf |
 | `download-concurrency` | 2 | gleichzeitige Downloads je Lauf |

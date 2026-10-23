@@ -48,9 +48,9 @@ konfigurieren lassen:
   `OPAA_UPLOAD_STORE=s3` der Endpunkt, der Bucket oder ein Zugangsschlüssel, endet der Start mit
   einer Meldung, die die fehlende Variable nennt. Ist der Speicher dagegen nur gerade nicht
   erreichbar, läuft die Installation weiter: Chat, Suche und alles bereits Indizierte funktionieren
-  ohne ihn, und der Zustand erscheint in einer eigenen Gesundheitsgruppe
+  ohne ihn, und der Zustand erscheint in einer eigenen Health Group
   (`GET /actuator/health/upload-store`), bewusst nicht im Gesamtstatus — sonst nähme ein gestörter
-  Speicher die Instanz aus der Lastverteilung, obwohl sie Fragen beantworten kann. Mit
+  Speicher die Instanz aus dem Load Balancing, obwohl sie Fragen beantworten kann. Mit
   `OPAA_UPLOAD_STORE=filesystem` gibt es diese Gruppe nicht; der Endpunkt antwortet dann mit
   „nicht gefunden". Beim Start prüft die Anwendung den Speicher einmal und protokolliert eine
   Warnung, wenn er nicht benutzbar ist — ein nicht erreichbarer Endpunkt, ein fehlender Bucket und
@@ -62,7 +62,7 @@ konfigurieren lassen:
   antwortet auf dieselbe Störung gleich** („Dienst nicht verfügbar", später erneut versuchen), statt
   einen Anwendungsfehler zu melden; von dem gescheiterten Versuch bleibt weder eine Datei noch eine
   neue Dokumentzeile zurück. Woran es lag — auch ein Zugangsschlüssel ohne Schreibrecht — steht im
-  Anwendungsprotokoll; die Gesundheitsgruppe sieht nur die Leserichtung.
+  Log; die Health Group sieht nur die Leserichtung.
 - **Zwischendateien brauchen Platz, und zwar auf zwei Dateisystemen.** Jeder Upload wird zunächst
   als Arbeitsdatei abgelegt und erst danach in den Bucket geschrieben; ein Nachzug, ein
   Metadatenlauf oder das Öffnen eines Anhangs holt sich eine lokale Kopie für die Dauer der Aktion.
@@ -447,9 +447,9 @@ Drei Unterschiede zum Hinweg:
 |---|---|
 | Alle Originale antworten mit „nicht gefunden", die Suche funktioniert | Die Verweise wurden nicht umgeschrieben, oder Bucket bzw. Schlüsselpräfix in der Konfiguration passen nicht zu dem, was in den Verweisen steht. Nach einem Rückweg mit Schlüsselpräfix kommt eine dritte Ursache dazu: Die Dateien liegen dann eine Ebene zu tief, unter einem Ordner mit dem Namen des Präfixes |
 | Einzelne Originale fehlen, andere nicht | Die Kopie war unvollständig — Kopierschritt wiederholen, er überträgt nur, was fehlt |
-| Jeder Abruf antwortet mit „Dienst nicht verfügbar", die Gesundheitsgruppe steht auf `DOWN` | Der Objektspeicher ist nicht erreichbar; die Gruppe nennt den Grund |
+| Jeder Abruf antwortet mit „Dienst nicht verfügbar", die Health Group steht auf `DOWN` | Der Objektspeicher ist nicht erreichbar; die Gruppe nennt den Grund |
 | Der Start bricht mit einer Meldung über eine fehlende Variable ab | `OPAA_UPLOAD_STORE=s3` ohne Endpunkt, Bucket oder Zugangsschlüssel |
-| Die Gesundheitsgruppe antwortet mit „nicht gefunden" | Es ist der Verzeichnisweg konfiguriert; die Gruppe gibt es nur beim Objektspeicher |
-| Uploads scheitern mit „Dienst nicht verfügbar", der Speicher ist erreichbar | Der Bucket fehlt oder der Zugangsschlüssel darf nicht schreiben — die Anwendung meldet beides wie eine Störung des Speichers. Den Grund nennt das **Anwendungsprotokoll**, mit Bucket und fehlender Berechtigung (etwa `s3:PutObject`). Ein fehlender Bucket fällt auch der Gesundheitsgruppe auf (`DOWN`); ein reiner Schreibrechte-Fehler nicht — ihre Sondierung prüft nur die Leserichtung und bleibt dann auf `UP` |
+| Die Health Group antwortet mit „nicht gefunden" | Es ist der Verzeichnisweg konfiguriert; die Gruppe gibt es nur beim Objektspeicher |
+| Uploads scheitern mit „Dienst nicht verfügbar", der Speicher ist erreichbar | Der Bucket fehlt oder der Zugangsschlüssel darf nicht schreiben — die Anwendung meldet beides wie eine Störung des Speichers. Den Grund nennt das **Log**, mit Bucket und fehlender Berechtigung (etwa `s3:PutObject`). Ein fehlender Bucket fällt auch der Health Group auf (`DOWN`); ein reiner Schreibrechte-Fehler nicht — ihre Sondierung prüft nur die Leserichtung und bleibt dann auf `UP` |
 | `docker cp … /app/uploads` liefert ein leeres Verzeichnis | Die Originale liegen im Objektspeicher, nicht im Container |
 | Der Bericht über verwaiste Originale meldet den gesamten Bestand, `referencedCount` ist `0` | Zeilen und Ablage passen nicht zueinander — meist eine Umstellung, bei der die Bytes kopiert, die Verweise aber nicht umgeschrieben wurden. Nichts löschen, bevor das geklärt ist |

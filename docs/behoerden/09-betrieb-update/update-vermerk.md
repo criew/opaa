@@ -33,7 +33,7 @@ Das Update-Paket der Zielversion enthält:
 
 ## Aufgaben der Behörde
 
-1. **Paket prüfen lassen:** Prüfsumme und Herkunft, wie in `LIESMICH.md` beschrieben.
+1. **Paket prüfen lassen:** Prüfsumme und Provenance, wie in `LIESMICH.md` beschrieben.
 2. **Übersprungene Versionen beachten:** Das Paket vergleicht nur mit dem vorigen finalen Release.
    Für einen größeren Sprung erzeugt der Betrieb Delta und Betriebsfolgen zwischen eingesetzter und
    Zielversion und legt sie bei.
@@ -51,7 +51,7 @@ gestrichen oder mit „nicht beteiligt“ vermerkt.
 |---|---|
 | Eingesetzte Version / Zielversion | [X.Y.Z] / [X.Y.Z] |
 | Update-Paket | [Dateiname, Prüfsumme aus der `.sha256`-Datei] |
-| Herkunft geprüft | [ja, mit `gh attestation verify` am TT.MM.JJJJ / nein, Begründung] |
+| Provenance geprüft | [ja, mit `gh attestation verify` am TT.MM.JJJJ / nein, Begründung] |
 | Geplanter Termin | [TT.MM.JJJJ] |
 | Verglichene Versionen | [von … bis …, wie im Kopf von `manifest-delta.md`] |
 | Vorschläge im Delta | [Zustimmung: Anzahl, Klassen; Anzeige: Anzahl; Bagatelle: Anzahl] |
@@ -89,6 +89,6 @@ gestrichen oder mit „nicht beteiligt“ vermerkt.
 **Arbeitshilfen** für die Projektleitung:
 
 - [Das Update-Paket eines Release](https://github.com/criew/opaa/blob/main/docs/handbuch/nachvollziehbarkeit.md#das-update-paket-eines-release)
-  im Handbuch: Inhalt des Pakets, Herkunftsprüfung, Delta für übersprungene Versionen.
+  im Handbuch: Inhalt des Pakets, Provenance-Prüfung, Delta für übersprungene Versionen.
 - [Aktualisierung](https://github.com/criew/opaa/blob/main/docs/handbuch/betrieb.md#aktualisierung)
   im Handbuch: wie der Betrieb ein Update einspielt.

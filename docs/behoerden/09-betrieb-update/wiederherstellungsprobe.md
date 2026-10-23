@@ -34,7 +34,7 @@ Betrieb führt sie durch.
 
 1. **Probe beauftragen**, beim eigenen Betrieb oder beim Dienstleister, und den Turnus festlegen.
 2. **Echtdaten oder Testbestand entscheiden:** Nur eine Kopie des Produktivbestands belegt die
-   Wiederherstellungszeit. Sie wird dann wie Produktivdaten behandelt und danach gelöscht.
+   Wiederherstellungszeit (RTO). Sie wird dann wie Produktivdaten behandelt und danach gelöscht.
 3. **Protokoll entgegennehmen** und prüfen, ob alle Prüfungen bestanden sind.
 4. **Ergebnis ins Notfallkonzept übernehmen**, Abweichungen als Maßnahme verfolgen.
 5. **Wiederholen** nach Plan, nach jedem Update mit Vorbereitungsschritten und nach jeder Änderung am
@@ -48,8 +48,8 @@ OPAA-Version, Image-Digests:  [ ]
 Betriebsweg und Ablage:       [Compose / Kubernetes; Dateisystem / Objektspeicher]
 Bestand:                      [Testbestand / Kopie des Produktivbestands], Größe Datenbank [ ],
                               Menge der Originale [ ], Zahl der Dokumente [ ]
-Wiederherstellungszeit (Ist): [ ]   Zielwert laut Notfallkonzept: [ ]
-Wiederherstellungspunkt (Ist):[ ]   Zielwert laut Notfallkonzept: [ ]
+Wiederherstellungszeit (RTO, Ist): [ ]   Zielwert laut Notfallkonzept: [ ]
+Wiederherstellungspunkt (RPO, Ist): [ ]   Zielwert laut Notfallkonzept: [ ]
 Prüfungen P1 bis P12:         [alle bestanden / nicht bestanden: ...]
 Abweichungen, Maßnahmen:      [ ]
 Durchgeführt von:             [ ]        abgenommen von: [ ]        am: [ ]

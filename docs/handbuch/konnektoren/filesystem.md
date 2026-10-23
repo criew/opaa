@@ -110,7 +110,7 @@ Die Verzeichnisstruktur erscheint als schreibgeschützte Ordner der Bibliothek, 
 Ordner entstehen nur entlang gefundener Dateien und verschwinden am Ende eines erfolgreichen Laufs,
 sobald sie kein Dokument mehr halten. Eine verschobene Datei ist ein neues Dokument im neuen Ordner.
 Ein Verzeichnisname nur aus Leerraum oder mit Rückwärtsschrägstrich lässt sich nicht als Ordner
-darstellen; die Dateien darunter landen in der Wurzel, mit einer Warnung im Anwendungsprotokoll.
+darstellen; die Dateien darunter landen in der Wurzel, mit einer Warnung im Log.
 
 ## 7. Anhänge
 

@@ -186,7 +186,7 @@ Vollabgleich-Rhythmus stellen diesen im Zeitplan zusätzlich ein.
 stateDiagram-v2
     [*] --> RUNNING: Auslöser
     RUNNING --> COMPLETED: fertig
-    RUNNING --> FAILED: Quelle fehlt,<br/>Neustart,<br/>Zeitlimit
+    RUNNING --> FAILED: Quelle fehlt,<br/>Neustart,<br/>Timeout
     COMPLETED --> [*]
     FAILED --> [*]
 ```

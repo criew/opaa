@@ -280,7 +280,7 @@ der Ermittlung, der Geld kostet, ausfallen kann und Dokumentinhalte an ein Sprac
 **Modellgestützte Ermittlung.** Läuft nach der regelbasierten Ermittlung und nur für Felder, die
 diese leer gelassen hat — und nur für die unscharfen: Dokumentart und die Auswahlfelder der
 Bibliothek. Titel, Datum/Stand und Musterfelder werden nie gefragt. Ein Aufruf je Dokument über die
-zentrale Chat-Rolle, Zeitlimit 30 Sekunden; das Modell bekommt die Werteliste mit Codes und Labels,
+zentrale Chat-Rolle, Timeout 30 Sekunden; das Modell bekommt die Werteliste mit Codes und Labels,
 die Titelzeile und die ersten 4.000 Zeichen des Textes und antwortet je Feld mit einem Code und
 einer Konfidenz zwischen 0 und 1.
 

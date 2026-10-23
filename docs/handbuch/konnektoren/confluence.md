@@ -188,9 +188,9 @@ Eine Seite ohne Text bekommt kein eigenes Dokument; ihre Anhänge werden trotzde
 
 ## 9. Grenzen und Schutzmechanismen
 
-- **Zieladressprüfung** für Läufe, Verbindungstest und jede Weiterleitung
+- **Zieladressprüfung** für Läufe, Verbindungstest und jeden Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).
-- **Weiterleitungen:** Ein JSON-Aufruf, der die Instanz verlässt, wird abgelehnt. Einem Anhang auf
+- **Redirects:** Ein JSON-Aufruf, der die Instanz verlässt, wird abgelehnt. Einem Anhang auf
   einem fremden Medien-Host (Cloud) wird gefolgt, aber ohne Zugangsdaten.
 - **Anonyme Antworten von Data Center.** Data Center weist ein ungültiges Token nicht ab, sondern
   antwortet anonym. Deshalb prüft jeder Lauf und jeder Verbindungstest zuerst, als wer die Instanz
@@ -208,7 +208,7 @@ Eine Seite ohne Text bekommt kein eigenes Dokument; ihre Anhänge werden trotzde
 | Anfragen je Lauf | `request-budget-per-run` | „unvollständig, wird fortgesetzt" |
 | Spaces je Bibliothek | 500, fest | wird beim Anlegen abgewiesen |
 
-Zeitlimits: `request-timeout` je JSON-Anfrage, `detection-timeout` je Sonde der Editionserkennung,
+Timeouts: `request-timeout` je JSON-Anfrage, `detection-timeout` je Sonde der Editionserkennung,
 fest 30 s Verbindungsaufbau und 120 s bis zur Antwort eines Anhangs. Makros, deren Inhalt erst zur Laufzeit entsteht, fallen weg.
 
 ## 10. Protokoll und Fehlerbilder
@@ -245,8 +245,8 @@ Alle Schlüssel unter `opaa.indexing.confluence.*`, Umgebungsvariablen `OPAA_IND
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
 | `page-size` | 100 | Seitengröße jeder Auflistung; Cloud kappt bei 250, Data Center bei 200 |
-| `request-timeout` | 30s | Zeitlimit je JSON-Anfrage |
-| `detection-timeout` | 10s | Zeitlimit je Sonde der Editionserkennung |
+| `request-timeout` | 30s | Timeout je JSON-Anfrage |
+| `detection-timeout` | 10s | Timeout je Sonde der Editionserkennung |
 | `max-rate-limit-retries` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet |
 | `max-retry-after` | 2m | Obergrenze einer Wartezeit aus `Retry-After`; ohne Header fünf Sekunden |
 | `max-response-bytes` | 10485760 (10 MiB) | Obergrenze je JSON-Antwort |

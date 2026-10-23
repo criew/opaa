@@ -490,7 +490,7 @@ der zuletzt eingegebene Benutzername vorbelegt.
 „Verbinden“ bzw. „Neu verbinden“ fragt nach, sagt, dass es zum Anbieter weitergeht und was im
 Verbindungsprotokoll steht, und leitet den Tab nach der Bestätigung zum Anbieter. Dort meldet sich
 die Person an und stimmt zu; der Anbieter führt sie zur Seite „Konto verbinden“ zurück, die die
-Verbindung abschließt und auf diese Seite weiterleitet. Die Adresse der Rücksprungseite wird dabei
+Verbindung abschließt und auf diese Seite weiterleitet. Die Adresse der Callback-Seite wird dabei
 sofort bereinigt, sodass weder Code noch Kennung im Browserverlauf bleiben; ein erneutes Laden
 schließt nichts zweimal ab.
 

@@ -73,10 +73,10 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
 | S-01 | ja | [Anmeldewege im Betriebsmodus OIDC](../../handbuch/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) | Handbuch, Konfiguration |
-| S-02 | ja | [Herkunft und Software-Stückliste](../../handbuch/releases-und-nachweise.md#herkunft-und-software-stückliste) | Handbuch |
+| S-02 | ja | [Provenance und Software-Stückliste](../../handbuch/releases-und-nachweise.md#provenance-und-software-stückliste) | Handbuch |
 | S-03 | ja | [Was ein Release liefert](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
 | S-04 | ja | [Meldeweg](../../../SECURITY.md#meldeweg), [Ablauf](../../../SECURITY.md#ablauf) | Projektunterlage |
-| S-05 | ja | [Nur lesbares Dateisystem](../../handbuch/betrieb.md#nur-lesbares-dateisystem), [Pod Security](../../handbuch/kubernetes.md#pod-security) | Handbuch |
+| S-05 | ja | [Read-only Filesystem](../../handbuch/betrieb.md#read-only-filesystem), [Pod Security](../../handbuch/kubernetes.md#pod-security) | Handbuch |
 | S-06 | ja, für `main` und das jüngste Release | [Schwachstellen](../../handbuch/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates) | Handbuch, Test |
 
 ## B · Betrieb
@@ -87,7 +87,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall, soweit die neue Version die laufende neben sich zulässt | [Kubernetes-Installation](../../handbuch/kubernetes.md#installation), [Docker Compose](../../handbuch/docker-compose.md#schnellstart), [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md) | Handbuch |
 | B-03 | ja | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung), [Automatisierte Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md#automatisierte-probe-im-projekt) | Handbuch, Test |
 | B-04 | ja | [Versionen](../../handbuch/releases-und-nachweise.md#versionen), [Vorbereitung für Bestandsinstallationen](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
-| B-05 | ja | [Bereitschaft und Lebendigkeit](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit), [Betriebsüberwachung](../../handbuch/kubernetes.md#betriebsüberwachung) | Handbuch |
+| B-05 | ja | [Readiness und Liveness](../../handbuch/betrieb.md#readiness-und-liveness), [Betriebsüberwachung](../../handbuch/kubernetes.md#betriebsüberwachung) | Handbuch |
 
 ## O · Offenheit und Souveränität
 

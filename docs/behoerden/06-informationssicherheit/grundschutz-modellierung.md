@@ -56,7 +56,7 @@ Bausteine, zu denen das Produkt beiträgt, nach den Schichten des Kompendiums (E
 |  | APP.4.3 Relationale Datenbanken | [Eigene PostgreSQL](../../handbuch/datenbank.md#voraussetzungen-einer-eigenen-postgresql) |
 |  | APP.4.4 Kubernetes | [Netz und Sicherheit](../../handbuch/kubernetes.md#netz-und-sicherheit) |
 |  | APP.5.3 Allgemeiner E-Mail-Client und -Server (nur mit Mailversand) | [Einrichtung](../../handbuch/e-mail.md#einrichtung), [Zustellung über die Warteschlange](../../handbuch/e-mail.md#zustellung-über-die-warteschlange) |
-|  | APP.6 Allgemeine Software | [Herkunft und Software-Stückliste](../../handbuch/releases-und-nachweise.md#herkunft-und-software-stückliste), [Lizenzen](../../handbuch/releases-und-nachweise.md#lizenzen) |
+|  | APP.6 Allgemeine Software | [Provenance und Software-Stückliste](../../handbuch/releases-und-nachweise.md#provenance-und-software-stückliste), [Lizenzen](../../handbuch/releases-und-nachweise.md#lizenzen) |
 | SYS – IT-Systeme | SYS.1.6 Containerisierung | [Laufzeitimage](../../handbuch/betrieb.md#backend-laufzeitimage), [Härtung des Compose-Stapels](../../handbuch/docker-compose.md#härtung-des-compose-stapels) |
 | NET – Netze und Kommunikation | NET.1.1 Netzarchitektur und -design, NET.3.2 Firewall | Regelvorlage aus {{faktenblatt:datenfluesse}}, [Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy) |
 

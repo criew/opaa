@@ -101,6 +101,10 @@ Jede Vorlage folgt demselben Aufbau, damit man sie schnell durcharbeiten kann. M
 Der Lesetext bis „Zum Nachlesen“ bleibt kurz, als Richtwert 300 bis 500 Wörter. Paragrafen stehen
 nur im Abschnitt „Zum Nachlesen“, nicht im Lesetext. Vorlagen verweisen nicht auf Issues oder Epics.
 
+Etablierte englische Fachbegriffe aus Betrieb und Technik (Health Check, Timeout, Log, Provenance,
+RTO/RPO) werden nicht eingedeutscht, wie im Handbuch; deutsch bleiben Begriffe der Oberfläche und der
+Verwaltung (Datenschutz, Mitbestimmung, Wiederherstellungsprobe).
+
 Jedes Unterverzeichnis hat eine `README.md` mit einer Tabelle seiner Vorlagen (Dokument, worum es
 geht). Eine neue oder umbenannte Vorlage wird dort im selben Zug eingetragen. Die READMEs tragen
 keinen Kopfvermerk.

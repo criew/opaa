@@ -64,7 +64,7 @@ verbunden ist. Vorgaben eines Zugangs zählen mit, der Vollabgleich-Rhythmus nic
 
 Ein Konnektor, der über das Netz liest, könnte auf interne Ziele umgelenkt werden: auf die
 Metadaten-Adresse eines Cloud-Servers, auf eine Verwaltungsoberfläche im Hausnetz. Deshalb prüft
-jeder dieser Konnektoren vor jeder Verbindung und nach jeder Weiterleitung die Zieladresse.
+jeder dieser Konnektoren vor jeder Verbindung und nach jedem Redirect die Zieladresse.
 Abgelehnt werden
 
 - andere Schemata als die des Konnektors (bei den HTTP-Konnektoren alles außer `http` und `https`),

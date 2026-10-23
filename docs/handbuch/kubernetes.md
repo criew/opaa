@@ -6,7 +6,7 @@ ein Frontend. Datenbank, Modelle, Objektspeicher und Identitätsanbieter betreib
 Chart bindet sie an.
 
 Dieses Kapitel beschreibt, was unter Kubernetes anders ist und welcher Wert des Charts welche
-Einstellung setzt. Was für beide Betriebswege gleich gilt — Laufzeitimages, Bereitschaft, Härtung,
+Einstellung setzt. Was für beide Betriebswege gleich gilt — Laufzeitimages, Probes, Härtung,
 Sicherung, Logs und Metriken, was ein Update mit dem Index macht —, steht in der
 [Betriebsübersicht](betrieb.md); die Bedeutung der Umgebungsvariablen in der
 [Konfiguration](konfiguration.md), Anmeldung und Erststart unter
@@ -406,7 +406,7 @@ secrets:
 ```
 
 Erreichbar ist die Installation dann über eine Portweiterleitung auf genau die Adresse aus
-`publicBaseUrl`; eine andere Adresse lehnt das Backend als fremde Herkunft ab:
+`publicBaseUrl`; eine andere Adresse lehnt das Backend als fremden Origin ab:
 
 ```bash
 kubectl -n opaa port-forward svc/opaa-frontend 8080:80
@@ -549,13 +549,13 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 
 | Wert | Vorgabe | Setzt | Wirkung |
 |---|---|---|---|
-| `publicBaseUrl` | leer, Pflicht | `OPAA_PUBLIC_BASE_URL`, `OPAA_CORS_ALLOWED_ORIGINS` | öffentliche Adresse; Basis aller Links in Mails, der OAuth-Rücksprungadresse und der erlaubten Herkunft |
+| `publicBaseUrl` | leer, Pflicht | `OPAA_PUBLIC_BASE_URL`, `OPAA_CORS_ALLOWED_ORIGINS` | öffentliche Adresse; Basis aller Links in Mails, der OAuth-Rücksprungadresse und des erlaubten Origin |
 | `nameOverride`, `fullnameOverride` | leer | — | ersetzt `opaa` bzw. den ganzen Namensstamm der Objekte |
 | `imagePullSecrets` | leer | — | Secrets für eine eigene Registry, an allen Pods |
 | `serviceAccount.create` | `true` | — | legt einen ServiceAccount an; kein Pod hängt dessen Token ein |
 | `serviceAccount.name`, `serviceAccount.annotations` | leer | — | Name eines eigenen oder vorhandenen Kontos, Annotationen |
 | `podSecurityContext` | `runAsNonRoot`, `seccompProfile: RuntimeDefault` | — | Sicherheitskontext aller Pods (siehe [Pod Security](#pod-security)) |
-| `containerSecurityContext` | ohne Rechteausweitung, nur lesbares Root-Dateisystem, keine Capabilities | — | Sicherheitskontext aller Container |
+| `containerSecurityContext` | ohne Rechteausweitung, Read-only Root Filesystem, keine Capabilities | — | Sicherheitskontext aller Container |
 
 ### Datenbank und Erprobungsdatenbank
 
@@ -588,7 +588,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `transcription.enabled` | `false` | `OPAA_TRANSCRIPTION_ENABLED` | schaltet die Spracheingabe ein; verlangt dann `baseUrl` und `model` ([Spracheingabe einschalten](modelle.md#spracheingabe-einschalten)) |
 | `transcription.baseUrl`, `transcription.model` | leer | `OPAA_TRANSCRIPTION_BASE_URL`, `OPAA_TRANSCRIPTION_MODEL` | Transkriptionsdienst ohne den Pfad `/audio/transcriptions`, Modell |
 | `transcription.language`, `.maxAudioBytes`, `.timeout`, `.maxConcurrent` | leer (Vorgaben der Anwendung) | `OPAA_TRANSCRIPTION_LANGUAGE`, `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES`, `OPAA_TRANSCRIPTION_TIMEOUT`, `OPAA_TRANSCRIPTION_MAX_CONCURRENT` | Sprache, größte Aufnahme in Byte, Zeitbudget einer Transkription, gleichzeitige Transkriptionen der Installation. Mit eingeschalteter Spracheingabe braucht der Ingress-Controller einen Puffer für den Anfrage-Body, der eine Aufnahme im Arbeitsspeicher hält, bei ingress-nginx `nginx.ingress.kubernetes.io/client-body-buffer-size: 11m`; sonst schreibt er sie in eine temporäre Datei |
-| `mail.connectTimeout`, `.readTimeout`, `.writeTimeout` | leer (Vorgaben der Anwendung) | `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` | Zeitgrenzen der SMTP-Verbindung; den Mailserver selbst richtet die Oberfläche ein |
+| `mail.connectTimeout`, `.readTimeout`, `.writeTimeout` | leer (Vorgaben der Anwendung) | `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` | Timeouts der SMTP-Verbindung; den Mailserver selbst richtet die Oberfläche ein |
 | `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hostnamen interner Quellen, die die Adressprüfung passieren dürfen |
 | `targetValidation.identityProviderAllowlist` | leer | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | Hostnamen weiterer interner Identitätsanbieter; der Startanbieter ist immer erlaubt |
 
@@ -648,20 +648,20 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `backend.migration.resources` | 250m CPU und 384Mi angefordert, 768Mi Grenze | — | Ressourcen des Jobs und des wartenden Init-Containers jedes Backend-Pods |
 | `backend.databasePoolSize` | leer (Vorgabe der Anwendung, `10`) | `OPAA_DB_POOL_SIZE` | Verbindungen im Datenbank-Pool je Pod ([Verbindungen bei mehreren Instanzen](datenbank.md#verbindungen-bei-mehreren-instanzen)) |
 | `backend.installationBudgets` | leer | die genannten Variablen | Budget der Installation je Grenze, die je Pod gilt: Rate-Limits je Client (`OPAA_RATE_LIMIT_*_MAX_REQUESTS`, `…_PER_ADDRESS`, `…_PER_ACCOUNT`), `OPAA_INDEXING_EMBEDDING_CONCURRENCY`, `OPAA_TRANSCRIPTION_MAX_CONCURRENT`, `OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT`; jeder Pod bekommt das Budget durch `backend.replicas`, abgerundet, mindestens 1. Leer: jeder Pod behält die Vorgabe der Anwendung. Nicht zusammen mit `transcription.maxConcurrent` oder derselben Variable in `extraEnv` |
-| `backend.managementPort` | `8081` | `MANAGEMENT_SERVER_PORT` | Port für Proben und Metriken, getrennt von der API |
+| `backend.managementPort` | `8081` | `MANAGEMENT_SERVER_PORT` | Port für Probes und Metriken, getrennt von der API |
 | `backend.logFormat` | leer (Text) | `LOGGING_STRUCTURED_FORMAT_CONSOLE` | `ecs`, `logstash` oder `gelf` für JSON-Protokolle |
 | `backend.shutdownTimeoutSeconds` | leer: `60` mit `Recreate`, mit `RollingUpdate` das Lese-Timeout des Frontends | `OPAA_SHUTDOWN_TIMEOUT` | Zeit, die ein Stopp laufenden Anfragen lässt, je Stopp-Phase; mit `RollingUpdate` mindestens das Lese-Timeout des Frontends, sonst bricht das Rendern ab |
 | `backend.terminationGracePeriodSeconds` | leer: `shutdownTimeoutSeconds` plus die Pause vor dem Stopp plus `15` | — | muss größer sein als `shutdownTimeoutSeconds` plus `preStopSleepSeconds`, sonst bricht das Rendern ab |
 | `backend.preStopSleepSeconds` | `10` | — | nur mit `RollingUpdate`: so lange nimmt ein Pod, der enden soll, noch Anfragen an, bis Kubernetes ihn aus dem Service genommen hat |
-| `backend.maxRamPercentage` | `70` | `JAVA_TOOL_OPTIONS` | Heap-Anteil an der Speichergrenze; wirkt nur mit `resources.limits.memory` |
+| `backend.maxRamPercentage` | `70` | `JAVA_TOOL_OPTIONS` | Heap-Anteil am Speicher-Limit; wirkt nur mit `resources.limits.memory` |
 | `backend.javaToolOptions` | leer | `JAVA_TOOL_OPTIONS` | weitere JVM-Optionen; Dateiziele gehören unter `/tmp` |
 | `backend.timeZone` | `UTC` | `TZ` | Zeitzone der geplanten Läufe, Fristgrenzen und Datumsangaben in Mails ([Betrieb](betrieb.md#zeitzone)); Teil des Konfigurationsabdrucks |
 | `backend.resources` | 500m CPU und 1Gi angefordert, 2Gi Grenze | — | siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen) |
 | `backend.initResources` | 50m CPU und 128Mi angefordert, 256Mi Grenze | — | Init-Container des Backends: der Truststore mit `extraCACertificates` und das Warten auf die Erprobungsdatenbank |
-| `backend.startupProbe` | alle `10` s, Zeitgrenze `5` s, `60` Fehlversuche | — | gibt dem ersten Start und der Migration Zeit (`periodSeconds` mal `failureThreshold`) |
-| `backend.livenessProbe` | alle `20` s, Zeitgrenze `5` s, `3` Fehlversuche | — | Lebendigkeit |
-| `backend.readinessProbe` | alle `10` s, Zeitgrenze `5` s, `3` Fehlversuche | — | Bereitschaft; je Probe außerdem `initialDelaySeconds` und `successThreshold` |
-| `backend.tmp.sizeLimit`, `.medium` | `2Gi`, leer | — | `emptyDir` unter `/tmp`; `Memory` macht daraus ein tmpfs, das gegen die Speichergrenze zählt |
+| `backend.startupProbe` | alle `10` s, Timeout `5` s, `60` Fehlversuche | — | gibt dem ersten Start und der Migration Zeit (`periodSeconds` mal `failureThreshold`) |
+| `backend.livenessProbe` | alle `20` s, Timeout `5` s, `3` Fehlversuche | — | Liveness |
+| `backend.readinessProbe` | alle `10` s, Timeout `5` s, `3` Fehlversuche | — | Readiness; je Probe außerdem `initialDelaySeconds` und `successThreshold` |
+| `backend.tmp.sizeLimit`, `.medium` | `2Gi`, leer | — | `emptyDir` unter `/tmp`; `Memory` macht daraus ein tmpfs, das gegen das Speicher-Limit zählt |
 | `backend.service.port` | `8080` | — | Port des Backend-Service |
 | `backend.podAnnotations`, `.podLabels`, `.nodeSelector`, `.tolerations`, `.affinity` | leer | — | Planung und Kennzeichnung des Pods; `nodeSelector` und `tolerations` gelten auch für den Migrations-Job |
 | `backend.topologySpreadConstraints` | leer | — | Verteilung mehrerer Backend-Pods über Knoten oder Zonen; ein Eintrag ohne `labelSelector` bekommt die Labels der Backend-Pods |
@@ -683,7 +683,7 @@ und mit dem Migrations-Job `SPRING_LIQUIBASE_ENABLED=false` in den Backend-Pods.
 | `frontend.backendReadTimeout` | leer (Vorgabe des Images, `600s`) | `OPAA_BACKEND_READ_TIMEOUT` | wie lange der Frontend-nginx auf die Antwort des Backends wartet, für `/api/` und `/mcp`; Zahl mit Einheit `s`, `m` oder `h`. Mit `rerank.timeout` zusammen anheben; Controller oder Gateway davor brauchen mindestens denselben Wert |
 | `frontend.cspConnectSrcExtra` | leer | `OPAA_CSP_CONNECT_SRC_EXTRA` | weitere Quellen für `connect-src`, durch Leerzeichen getrennt; Pflicht, wenn der Issuer eines Identitätsanbieters oder sein `token_endpoint` auf einem anderen Origin liegt als `publicBaseUrl`, siehe [Identitätsanbieter](#identitätsanbieter) |
 | `frontend.resources` | 50m CPU und 64Mi angefordert, 256Mi Grenze | — | Ressourcen |
-| `frontend.livenessProbe`, `.readinessProbe` | alle `20` bzw. `10` s, Zeitgrenze `3` s, `3` Fehlversuche | — | Proben auf `/index.html` |
+| `frontend.livenessProbe`, `.readinessProbe` | alle `20` bzw. `10` s, Timeout `3` s, `3` Fehlversuche | — | Probes auf `/index.html` |
 | `frontend.tmp.sizeLimit`, `.medium` | `512Mi`, leer | — | `emptyDir` unter `/tmp` für die erzeugte Konfiguration und Puffer von nginx |
 | `frontend.service.type`, `.port` | `ClusterIP`, `80` | — | Service des Frontends; Ziel von Ingress und HTTPRoute |
 | `frontend.podAnnotations`, `.podLabels`, `.nodeSelector`, `.tolerations`, `.affinity` | leer | — | Planung und Kennzeichnung der Pods |
@@ -708,7 +708,7 @@ Chart selbst auf den Backend-Service.
 | `ingress.className`, `.annotations`, `.host`, `.tls` | leer | — | Klasse, Annotationen des Controllers, Hostname (Pflicht bei `enabled`), TLS-Block |
 | `httpRoute.enabled` | `false` | — | legt eine HTTPRoute der Gateway API an |
 | `httpRoute.parentRefs` | leer | — | das Gateway, an das die Route gebunden wird; Pflicht bei `enabled` |
-| `httpRoute.hostnames`, `.annotations`, `.timeouts` | leer | — | Hostnamen, Annotationen, Zeitgrenzen der Route, etwa `request: 600s`; nicht kürzer als `frontend.backendReadTimeout` |
+| `httpRoute.hostnames`, `.annotations`, `.timeouts` | leer | — | Hostnamen, Annotationen, Timeouts der Route, etwa `request: 600s`; nicht kürzer als `frontend.backendReadTimeout` |
 
 ### Metriken und Alarme
 
@@ -747,7 +747,7 @@ die Originalablage ist und wie sich beide Wege unterscheiden, steht unter
 
 **Objektspeicher** (`uploads.store: s3`, Vorgabe). Der Bucket muss vorher existieren. Der konfigurierte
 Endpunkt passiert die Adressprüfung immer, auch mit einer internen Adresse. Ist der Speicher nicht
-erreichbar, läuft OPAA weiter; der Zustand steht in der Gesundheitsgruppe `upload-store`. Jeder Upload
+erreichbar, läuft OPAA weiter; der Zustand steht in der Health Group `upload-store`. Jeder Upload
 legt zunächst eine Arbeitsdatei unter `/tmp` an; `backend.tmp.sizeLimit` muss mehrere gleichzeitige
 Uploads fassen.
 
@@ -896,7 +896,7 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 
 | Einstellung | Wo | Im Chart |
 |---|---|---|
-| Datenbank, Originalablage, Einbettung, Reranking, Proxy-Kette, CSP-Ergänzungen, Zeitgrenzen | Bereitstellungswerte | Werte; wirken bei jedem `helm upgrade` |
+| Datenbank, Originalablage, Einbettung, Reranking, Proxy-Kette, CSP-Ergänzungen, Timeouts | Bereitstellungswerte | Werte; wirken bei jedem `helm upgrade` |
 | erster Identitätsanbieter | Startwert | `bootstrap.oidc`; danach Administration → Benutzer → Anbieter |
 | erstes Chat-Modell samt Schlüssel | Startwert | `bootstrap.chatModel` und `OPAA_OPENAI_CHAT_API_KEY`; danach die Modellverwaltung ([LLM-Anbieter](modelle.md#llm-anbieter)) |
 | erster Systemverwalter | Startwert | `bootstrap.initialAdmin.email` und `OPAA_INITIAL_ADMIN_PASSWORD`; danach [Benutzerverwaltung](benutzerverwaltung.md) |
@@ -1105,7 +1105,7 @@ DNSCache kommt eine `ipBlock`-Regel für dessen Adresse hinzu. Beides wird unter
 Alle Pods des Charts laufen unter dem Pod Security Standard `restricted`, ohne Ausnahme:
 
 - ohne Root-Rechte, ohne Rechteausweitung, ohne Capabilities, mit `seccompProfile: RuntimeDefault`
-- nur lesbares Root-Dateisystem; beschreibbar ist je Pod nur ein `emptyDir` unter `/tmp`, beim
+- Read-only Root Filesystem; beschreibbar ist je Pod nur ein `emptyDir` unter `/tmp`, beim
   Backend dazu das Volume der Originalablage
 - ohne eingehängtes Token des ServiceAccounts
 
@@ -1115,12 +1115,12 @@ eigene, ohne dass der Chart angepasst wird. Ausnahme ist die Erprobungsdatenbank
 [Datenbank](#datenbank)).
 
 Was das Backend unter `/tmp` schreibt und wie groß das Verzeichnis sein sollte, steht unter
-[Nur lesbares Dateisystem](betrieb.md#nur-lesbares-dateisystem). Überschreitet es
+[Read-only Filesystem](betrieb.md#read-only-filesystem). Überschreitet es
 `backend.tmp.sizeLimit`, verdrängt das Kubelet den Pod. Mit `medium: Memory` zählt das Verzeichnis
-gegen die Speichergrenze.
+gegen das Speicher-Limit.
 
 Von außen ist kein Actuator-Pfad erreichbar: Der Frontend-nginx reicht nur `/api/` und `/mcp` weiter.
-Proben und Metriken laufen über den Management-Port (siehe
+Probes und Metriken laufen über den Management-Port (siehe
 [Betriebsüberwachung](#betriebsüberwachung)).
 
 ## Aktualisierung und Rückweg
@@ -1151,7 +1151,7 @@ Proben und Metriken laufen über den Management-Port (siehe
 
 Mit einem Backend-Pod und der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt laufende Anfragen bis
 `backend.shutdownTimeoutSeconds` auslaufen; laufende Indexierungen brechen ab und werden beim nächsten
-Start als abgebrochen erkannt (siehe [Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
+Start als abgebrochen erkannt (siehe [Graceful Shutdown](betrieb.md#graceful-shutdown)).
 Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet OPAA nicht.
 
 Zur Unterbrechung gehört auch das Laden des neuen Backend-Images, einige hundert MB. Der Knoten lädt
@@ -1526,7 +1526,7 @@ kubectl -n "$ZIEL" rollout status deploy/opaa-backend --timeout=15m
 
 **Prüfen.** Die Portweiterleitung von der Quelle auf das Ziel umstellen, unter derselben Adresse wie
 `publicBaseUrl` (`kubectl -n "$ZIEL" port-forward svc/opaa-frontend 8080:80`). P2 und P3 sind ein
-`diff` der beiden Zählungen bzw. Prüfsummenlisten. Die Gesundheitsgruppen für P5 antworten nur auf
+`diff` der beiden Zählungen bzw. Prüfsummenlisten. Die Health Groups für P5 antworten nur auf
 dem [Management-Port](#management-port) und verlangen ein gültiges Zugangstoken:
 
 ```bash
@@ -1543,7 +1543,7 @@ Grundalarme mit. Die Protokolle gehen wie bei jedem Pod auf die Standardausgabe.
 
 ### Management-Port
 
-Proben und Metriken laufen über einen eigenen Port des Backends, den **Management-Port**. Die API
+Probes und Metriken laufen über einen eigenen Port des Backends, den **Management-Port**. Die API
 bleibt auf ihrem Port. Damit kann die NetworkPolicy des Backends dem Prometheus den Management-Port
 öffnen, ohne ihm die API zu öffnen. Wer die API direkt erreicht, könnte sonst die Client-Adresse
 fälschen, aus der Rate-Limits und Anmeldesperre zählen.
@@ -1555,10 +1555,10 @@ Backend weiter.
 
 | Wert | Vorgabe | Wirkung |
 |---|---|---|
-| `backend.managementPort` | `8081` | Port von Proben und Metriken (`MANAGEMENT_SERVER_PORT`) |
+| `backend.managementPort` | `8081` | Port von Probes und Metriken (`MANAGEMENT_SERVER_PORT`) |
 | `metrics.serviceMonitor.enabled` | `false` | legt einen `ServiceMonitor` an; Prometheus fragt `/actuator/prometheus` auf dem Management-Port ab |
 | `metrics.serviceMonitor.labels` | leer | Labels, nach denen der Prometheus seine ServiceMonitors auswählt |
-| `metrics.serviceMonitor.interval`, `scrapeTimeout` | `30s`, `10s` | Abfrageintervall und Zeitgrenze |
+| `metrics.serviceMonitor.interval`, `scrapeTimeout` | `30s`, `10s` | Abfrageintervall und Timeout |
 | `metrics.podAnnotations` | `false` | setzt `prometheus.io/scrape`, `port` und `path` am Backend-Pod, für Prometheus ohne Operator |
 | `metrics.scrapeFrom` | Pods mit `app.kubernetes.io/name: prometheus` in jedem Namespace | wer den Management-Port erreichen darf, solange Metriken eingeschaltet sind |
 
@@ -1595,7 +1595,7 @@ kube-prometheus-stack wieder `release: <Release-Name>`.
 | `OpaaBackendMetricsMissing` | warning | Prometheus zehn Minuten lang weniger Backend-Pods abfragen kann, als das Deployment haben will; ohne kube-state-metrics erst, wenn es keinen erreicht | Pods, `ServiceMonitor`, `metrics.scrapeFrom` |
 | `OpaaHighErrorRate` | warning | der Anteil der Antworten mit Status 5xx zehn Minuten lang über der Schwelle liegt, bei einer Mindestzahl von Anfragen | Protokoll; oft ein nicht erreichbares Modell |
 | `OpaaIndexingStalled` | warning | in einem Pod die ganze Frist über ein Indexierungslauf aktiv war, aber kein Dokument verarbeitet wurde | Laufstatus der Bibliothek, Quelle, Embedding-Modell |
-| `OpaaHeapUsageHigh` | warning | der Heap eines Pods 15 Minuten lang über der Schwelle belegt ist | Speichergrenze oder Heap-Anteil anheben |
+| `OpaaHeapUsageHigh` | warning | der Heap eines Pods 15 Minuten lang über der Schwelle belegt ist | Speicher-Limit oder Heap-Anteil anheben |
 
 | Wert | Vorgabe | Wirkung |
 |---|---|---|
@@ -1672,7 +1672,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Backend erreicht die Datenbank nicht | Mit Egress-Policies fehlt die Regel zur Datenbank; sonst Hostname, Port oder `database.sslMode`. Bei `verify-*` und einer hauseigenen CA fehlt `extraCACertificates` |
 | Backend startet nicht und nennt `OPAA_AUTH_JWT_SECRET` | Das Geheimnis im vorhandenen Secret ist zu kurz oder ein Platzhalter |
 | Backend startet nicht, das Protokoll nennt `refuses to start` und eine laufende Instanz | Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut Instanzregister noch läuft. Meist ist es der eigene Vorgänger, der hart beendet wurde und sich nicht abmelden konnte: Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als beendet, danach startet der neue Pod beim nächsten Versuch (siehe [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)) |
-| Pod im Zustand `OOMKilled` | Die Speichergrenze ist zu klein; `backend.resources.limits.memory` anheben, nicht den Heap-Anteil (siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)) |
+| Pod im Zustand `OOMKilled` | Das Speicher-Limit ist zu klein; `backend.resources.limits.memory` anheben, nicht den Heap-Anteil (siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)) |
 | Pod verdrängt, das Ereignis nennt `ephemeral-storage` | `/tmp` ist über `backend.tmp.sizeLimit` gewachsen, etwa bei vielen großen Uploads |
 | `helm test` schlägt fehl | Das Backend ist nicht bereit, oder eine eigene Änderung an den NetworkPolicies trennt Frontend und Backend |
 
@@ -1684,7 +1684,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | „Die Anmeldung bei … konnte nicht gestartet werden“, oder nach der Anmeldung beim Anbieter eine technische Fehlermeldung auf `/auth/callback` | Die Content-Security-Policy blockiert den Issuer oder den `token_endpoint`; der Origin fehlt in `frontend.cspConnectSrcExtra`. Die Browser-Konsole nennt die blockierte Adresse, siehe [Identitätsanbieter](#identitätsanbieter) |
 | Anmeldeschleife oder Fehler beim Anbieter nach der Rückkehr | Die Weiterleitungs-URI beim Anbieter ist nicht `<publicBaseUrl>/auth/callback`, oder `publicBaseUrl` stimmt nicht mit der Adresse im Browser überein |
 | Anmeldung gelingt beim Anbieter, OPAA antwortet `401` | Der Issuer im Token ist nicht `bootstrap.oidc.issuerUri`, das Backend erreicht die Signaturschlüssel nicht (dann `bootstrap.oidc.jwkSetUri` setzen oder die Egress-Regel ergänzen), oder die Client-ID passt nicht. Den Grund nennt der Header `WWW-Authenticate` |
-| `POST`-Anfragen antworten `403` | Die Adresse im Browser ist nicht `publicBaseUrl`, und die Herkunftsprüfung lehnt ab |
+| `POST`-Anfragen antworten `403` | Die Adresse im Browser ist nicht `publicBaseUrl`, und die Origin-Prüfung lehnt ab |
 | Eine geänderte Werte-Datei ändert Anbieter, Chat-Modell oder ersten Systemverwalter nicht | So gebaut: Das sind Startwerte; Änderungen laufen über die Oberfläche |
 | Ein lokaler Systemverwalter wird aus einem bestimmten Netz abgewiesen | `localAdminAllowedCidrs` schließt das Netz aus, oder die Client-Adresse ist falsch aufgelöst (siehe unten) |
 

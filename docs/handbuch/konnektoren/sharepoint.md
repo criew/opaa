@@ -151,7 +151,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 - **Noch nicht an einem echten Mandanten bestätigt** und auf die Dokumentation von Microsoft gestützt:
   das Fehlerbild einer nicht freigegebenen Site unter `Sites.Selected` und die Site-Suche dort, die
   Meldungen von Entra bei falschem Secret oder fehlender Zustimmung, die Ziele der
-  Download-Weiterleitung, die Haltbarkeit der Fortsetzungspunkte, ob Graph die Dateien eines
+  Download-Redirects, die Haltbarkeit der Fortsetzungspunkte, ob Graph die Dateien eines
   gelöschten Ordners einzeln meldet, ausgecheckte Dateien, Entwürfe und Vertraulichkeitsbezeichnungen.
 
 ## 9. Protokoll und Fehlerbilder
@@ -193,7 +193,7 @@ Alle Schlüssel unter `opaa.indexing.sharepoint.*`.
 |---|---|---|---|
 | `page-size` | `OPAA_INDEXING_SHAREPOINT_PAGE_SIZE` | 200 | Einträge je Auflistungs- und Änderungsseite; höchstens 1000 |
 | `max-file-size-bytes` | `OPAA_INDEXING_SHAREPOINT_MAX_FILE_SIZE_BYTES` | 52428800 (50 MiB) | Obergrenze je Download, auch für „Original öffnen" |
-| `request-timeout` | `OPAA_INDEXING_SHAREPOINT_REQUEST_TIMEOUT` | 30s | Zeitlimit je Anfrage |
+| `request-timeout` | `OPAA_INDEXING_SHAREPOINT_REQUEST_TIMEOUT` | 30s | Timeout je Anfrage |
 | `download-timeout` | `OPAA_INDEXING_SHAREPOINT_DOWNLOAD_TIMEOUT` | 10m | Gesamtfrist je Download; danach folgt die Datei im nächsten Lauf |
 | `max-retries` | `OPAA_INDEXING_SHAREPOINT_MAX_RETRIES` | 5 | Wiederholungen einer gedrosselten Anfrage |
 | `max-retry-wait` | `OPAA_INDEXING_SHAREPOINT_MAX_RETRY_WAIT` | 60s | längste einzelne Wartezeit |
