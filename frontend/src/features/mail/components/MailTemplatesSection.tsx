@@ -27,6 +27,7 @@ const templatePurposes: Record<string, string> = {
   ACCOUNT_HANDED_OVER: 'Meldet die abgeschlossene Übergabe an eine Anbieteridentität.',
   BOOTSTRAP_ACCOUNT_USED: 'Meldet der Systemverwaltung die Nutzung des Notanker-Kontos.',
   ADMIN_REVIEW_REMINDER: 'Quartalsweise Wiedervorlage zur Prüfung der Zugänge.',
+  SELF_DISCLOSURE_STARTED: 'Meldet der Person den Start einer Selbstauskunft ihrer Daten.',
   TEST_MAIL: 'Die Nachricht, die „Testmail an mich senden“ verschickt.',
 }
 
