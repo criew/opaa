@@ -52,7 +52,7 @@ class EmbeddingRunSelfDisclosureExporterIntegrationTest {
         .singleElement()
         .satisfies(
             record -> {
-              assertThat(record).containsEntry("result", "COMPLETED");
+              assertThat(record).containsEntry("result", "abgeschlossen");
               assertThat(record.get("startedAt")).isNotNull();
               assertThat(record.get("finishedAt")).isNotNull();
             });

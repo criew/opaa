@@ -7,6 +7,8 @@ import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSink.RecordWriter;
 import io.opaa.compliance.SelfDisclosureSubject;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
+import io.opaa.knowledge.SourceType;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -18,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -62,10 +65,15 @@ public class LibrarySettingsSelfDisclosureExporter implements SelfDisclosureExpo
 
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
+  private final SourceConnectorRegistry connectors;
 
+  /** The registry arrives lazily - the connectors themselves sit on top of the asset shell. */
   public LibrarySettingsSelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+      JdbcTemplate jdbc,
+      PlatformTransactionManager transactionManager,
+      @Lazy SourceConnectorRegistry connectors) {
     this.jdbc = jdbc;
+    this.connectors = connectors;
     this.readOnly = new TransactionTemplate(transactionManager);
     this.readOnly.setReadOnly(true);
   }
@@ -87,7 +95,7 @@ public class LibrarySettingsSelfDisclosureExporter implements SelfDisclosureExpo
         subject,
         (rs, record) -> {
           record.put("library", rs.getString("name"));
-          record.put("state", rs.getString("external_access_state"));
+          record.put("state", accessState(rs.getString("external_access_state")));
           record.put("setAt", instant(rs, "external_access_set_at"));
           record.put("expiresAt", instant(rs, "external_access_expires_at"));
         });
@@ -102,7 +110,7 @@ public class LibrarySettingsSelfDisclosureExporter implements SelfDisclosureExpo
         (rs, record) -> {
           record.put("library", rs.getString("name"));
           record.put("createdAt", instant(rs, "created_at"));
-          record.put("sourceType", rs.getString("source_type"));
+          record.put("sourceType", sourceTypeName(rs.getString("source_type")));
           record.put("sourceUrl", withoutSecrets(rs.getString("source_url")));
           record.put("sourcePath", rs.getString("source_path"));
         });
@@ -147,6 +155,29 @@ public class LibrarySettingsSelfDisclosureExporter implements SelfDisclosureExpo
         return;
       }
     }
+  }
+
+  /** The German word for a release state as the library settings show it. */
+  static String accessState(String state) {
+    return switch (state) {
+      case "ACTIVE" -> "aktiv";
+      case "WITHDRAWN" -> "zurückgenommen";
+      case "EXPIRED" -> "abgelaufen";
+      case "SUSPENDED" -> "ausgesetzt";
+      case "NEVER_SET" -> "nie gesetzt";
+      default -> state;
+    };
+  }
+
+  /** The display name of the connector serving {@code key}, the key itself for an unknown one. */
+  private String sourceTypeName(String key) {
+    if (key == null || !SourceType.isKey(key)) {
+      return key;
+    }
+    return connectors
+        .find(SourceType.of(key))
+        .map(connector -> connector.descriptor().displayName())
+        .orElse(key);
   }
 
   /**

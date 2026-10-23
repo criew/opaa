@@ -81,7 +81,7 @@ class ChatSelfDisclosureExporterIntegrationTest {
             + EXCERPT
             + "\",\"text\":\""
             + EXCERPT
-            + "\",\"chunkLocations\":[{\"chunkIndex\":9917,\"location\":\"S. 2–4\","
+            + "\",\"chunkLocations\":[{\"chunkIndex\":9917,\"location\":\"S. 2–4 · Abschn. SD-HEADING Anhörung\","
             + "\"text\":\""
             + EXCERPT
             + "\"}],\"metadata\":[{\"fieldKey\":\"title\",\"displayValue\":\""
@@ -120,6 +120,7 @@ class ChatSelfDisclosureExporterIntegrationTest {
                 "Quelle entfernt"));
     assertThat(sink.text())
         .doesNotContain("SD-EXCERPT")
+        .doesNotContain("SD-HEADING")
         .doesNotContain(document.toString())
         .doesNotContain("9917")
         .doesNotContain("SD-URL")
@@ -187,6 +188,19 @@ class ChatSelfDisclosureExporterIntegrationTest {
         .extracting(r -> r.get("sequence"))
         .isSorted()
         .doesNotHaveDuplicates();
+  }
+
+  /** Only numbered positions leave a location; headings, sheet names and slide titles stay. */
+  @Test
+  void aLocationKeepsOnlyItsNumberedPositions() {
+    assertThat(ChatSelfDisclosureExporter.pageOf("S. 2–4 · Abschn. 4.2 ‚Fristsetzung'"))
+        .isEqualTo("S. 2–4");
+    assertThat(ChatSelfDisclosureExporter.pageOf("Blatt Personal · Zeilen 4–9")).isEqualTo("Zeilen 4–9");
+    assertThat(ChatSelfDisclosureExporter.pageOf("Folie 3: Anhörung Frau X")).isEqualTo("Folie 3");
+    assertThat(ChatSelfDisclosureExporter.pageOf("Nachricht 1 von 2 · Teil 2 von 3"))
+        .isEqualTo("Nachricht 1 von 2 · Teil 2 von 3");
+    assertThat(ChatSelfDisclosureExporter.pageOf("Abschn. Einleitung")).isNull();
+    assertThat(ChatSelfDisclosureExporter.pageOf(null)).isNull();
   }
 
   @Test

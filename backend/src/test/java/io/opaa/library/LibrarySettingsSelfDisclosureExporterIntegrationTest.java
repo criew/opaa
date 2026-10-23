@@ -79,7 +79,7 @@ class LibrarySettingsSelfDisclosureExporterIntegrationTest {
         .satisfies(
             record -> {
               assertThat(record).containsEntry("library", "Gemeinsame Bibliothek");
-              assertThat(record).containsEntry("state", "ACTIVE");
+              assertThat(record).containsEntry("state", "aktiv");
               assertThat(record.get("setAt")).isNotNull();
             });
     assertThat(sink.records("privateLibraries"))
@@ -87,7 +87,7 @@ class LibrarySettingsSelfDisclosureExporterIntegrationTest {
         .satisfies(
             record -> {
               assertThat(record).containsEntry("library", "Meine Cloud");
-              assertThat(record).containsEntry("sourceType", "NEXTCLOUD");
+              assertThat(record).containsEntry("sourceType", "Nextcloud");
               assertThat(record)
                   .containsEntry("sourceUrl", "https://cloud.example.org:8443/remote.php/dav");
               assertThat(record).containsEntry("sourcePath", "/Akten/2026");

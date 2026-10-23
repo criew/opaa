@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -30,7 +32,7 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The category {@code chats} of the self-disclosure: the person's own chats ({@code author_id})
  * with their marks and notes, then every message as one flat record. A source of an answer goes out
- * only as document title, library and location ({@link #sourceLine}), built from a positive list of
+ * only as document title, library and page ({@link #sourceLine}, {@link #pageOf}), built from a positive list of
  * the stored JSON, never its excerpt, chunk or document id. Chats are read in pages, the messages
  * of a chat in pages of their sequence, each page in a short read-only transaction.
  */
@@ -79,6 +81,11 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                           "assets.name")))));
 
   static final int CHAT_PAGE_SIZE = 200;
+
+  /** A numbered position as the formats write it: "S. 2–4", "Folie 3", "Zeilen 4–9", "Teil 1 von 2". */
+  private static final Pattern POSITION =
+      Pattern.compile("(S\\.|Folie|Zeilen?|Nachricht|Teil) \\d+(–\\d+)?( von \\d+)?");
+
   static final int MESSAGE_PAGE_SIZE = 200;
 
   private final JdbcTemplate jdbc;
@@ -307,9 +314,9 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
     for (JsonNode source : array) {
       List<String> locations = new ArrayList<>();
       for (JsonNode location : source.path("chunkLocations")) {
-        String text = location.path("location").asString(null);
-        if (text != null && !text.isBlank() && !locations.contains(text)) {
-          locations.add(text);
+        String page = pageOf(location.path("location").asString(null));
+        if (page != null && !locations.contains(page)) {
+          locations.add(page);
         }
       }
       result.add(
@@ -320,6 +327,25 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
               source.path("cited").asBoolean(false)));
     }
     return result;
+  }
+
+  /**
+   * The numbered position within {@code location} - page, slide, row, message or part - without
+   * heading paths, sheet names or slide titles, which are text of the document; {@code null} when
+   * the location names no such position.
+   */
+  static String pageOf(String location) {
+    if (location == null) {
+      return null;
+    }
+    List<String> positions = new ArrayList<>();
+    for (String part : location.split(" · ")) {
+      Matcher position = POSITION.matcher(part.strip());
+      if (position.lookingAt()) {
+        positions.add(position.group());
+      }
+    }
+    return positions.isEmpty() ? null : String.join(" · ", positions);
   }
 
   /** One source as the export shows it: title, library and location, cited or not. */

@@ -25,6 +25,11 @@ import org.springframework.data.repository.query.Param;
  *       to select rows <em>about someone</em>.
  * </ul>
  *
+ * <p>One read path lies outside this repository, on purpose: {@link
+ * DiagnosticContextLogSelfDisclosureExporter} reads by {@code actor_ref} and by {@code target_ref}
+ * for the self-disclosure, and only for the signed-in person's own pseudonym - never for anyone
+ * else. {@code DiagnosticContextPurposeLimitationTest} holds it as the single exception.
+ *
  * <p>No aggregate query of any kind is declared here - no {@code count}, no {@code group by}, no
  * {@code distinct} over {@code targetRef}. {@code DiagnosticContextPurposeLimitationTest} fails the
  * build if one is added.

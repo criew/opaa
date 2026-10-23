@@ -66,7 +66,7 @@ public class EmbeddingRunSelfDisclosureExporter implements SelfDisclosureExporte
                       Map<String, Object> record = new LinkedHashMap<>();
                       record.put("startedAt", instant(rs.getTimestamp("run_started_at")));
                       record.put("finishedAt", instant(rs.getTimestamp("run_finished_at")));
-                      record.put("result", rs.getString("run_status"));
+                      record.put("result", result(rs.getString("run_status")));
                       return record;
                     },
                     subject.accountId(),
@@ -78,6 +78,20 @@ public class EmbeddingRunSelfDisclosureExporter implements SelfDisclosureExporte
     for (Map<String, Object> run : runs) {
       writer.write(run);
     }
+  }
+
+  /** The German word for a run status. */
+  static String result(String status) {
+    if (status == null) {
+      return null;
+    }
+    return switch (status) {
+      case "RUNNING" -> "läuft";
+      case "COMPLETED" -> "abgeschlossen";
+      case "FAILED" -> "fehlgeschlagen";
+      case "CANCELLED" -> "abgebrochen";
+      default -> status;
+    };
   }
 
   private static java.time.Instant instant(Timestamp value) {

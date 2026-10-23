@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.auth.CurrentUser;
 import io.opaa.diagnosticaccess.web.DiagnosticContextLogController;
+import io.opaa.test.JavaSources;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -41,6 +44,10 @@ import org.yaml.snakeyaml.Yaml;
  *       here - it is a declared property of the schema, and only the mapper suppresses it for a
  *       {@code USER} entry (covered by {@code DiagnosticAccessResponseMapperTest}).
  *   <li>The two protocol operations declare exactly the request parameters listed here.
+ *   <li>The one read path outside the repository is the self-disclosure of the person herself
+ *       ({@link DiagnosticContextLogSelfDisclosureExporter}): no other main source selects from
+ *       the table, its only public operations are those of the port, which takes the signed-in
+ *       person and nobody else, and its SQL aggregates nothing.
  * </ul>
  *
  * <p><b>How much this guarantees, honestly:</b> it is a structural guard, not a proof. It cannot
@@ -228,6 +235,35 @@ class DiagnosticContextPurposeLimitationTest {
         (List<Map<String, Object>>) ownOperation.getOrDefault("parameters", List.of());
     assertThat(ownParameters.stream().map(parameter -> (String) parameter.get("name")))
         .containsExactlyInAnyOrder("page", "size");
+  }
+
+  @Test
+  void theOnlyReadPathBesideTheRepositoryIsTheSelfDisclosureOfThePersonHerself()
+      throws IOException {
+    String exporter = DiagnosticContextLogSelfDisclosureExporter.class.getSimpleName() + ".java";
+    List<Path> readers =
+        JavaSources.mainSources().stream()
+            .filter(
+                path ->
+                    JavaSources.readFile(path)
+                        .toLowerCase(Locale.ROOT)
+                        .contains("from diagnostic_context_log"))
+            .toList();
+    assertThat(readers)
+        .as("only the self-disclosure may select from the protocol outside the repository")
+        .extracting(path -> path.getFileName().toString())
+        .containsExactly(exporter);
+
+    String sql = JavaSources.readFile(readers.getFirst()).toLowerCase(Locale.ROOT);
+    for (String forbidden : FORBIDDEN_QUERY_FRAGMENTS) {
+      assertThat(sql).as("the self-disclosure must not aggregate").doesNotContain(forbidden);
+    }
+    assertThat(publicMethods(DiagnosticContextLogSelfDisclosureExporter.class))
+        .allSatisfy(
+            method ->
+                assertThat(method.getName())
+                    .as("the exporter offers nothing but the port, which takes the person herself")
+                    .isIn("category", "export"));
   }
 
   @SuppressWarnings("unchecked")
