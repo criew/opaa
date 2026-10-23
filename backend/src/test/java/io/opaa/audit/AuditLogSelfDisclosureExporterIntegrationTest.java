@@ -196,7 +196,8 @@ class AuditLogSelfDisclosureExporterIntegrationTest {
         null,
         null,
         "intern");
-    // a revision read naming the person other than as reader is an anlassbezogene Klärung
+    // no writer records a revision read with a subject today; the exclusion guards a future one
+    // that would name the person other than as reader (anlassbezogene Klärung)
     entry(
         now.plusMillis(2),
         "USER",

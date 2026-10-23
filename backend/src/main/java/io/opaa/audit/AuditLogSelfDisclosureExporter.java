@@ -34,10 +34,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  * <p>No pseudonym, no {@code reason} and no other person leaves: actor, subject and account object
  * go out as "Sie", "andere Person" or "System", a label of another account is dropped, {@code
- * before}/{@code after} pass {@link AuditSelfDisclosurePayload}. Read month by month, each window
- * in pages of {@link #PAGE_SIZE} with a short read-only transaction; {@code subject_ref} has no
- * index on purpose, so a window is a scan of one partition (docs/features/security-and-
- * compliance.md, "Protokoll der Selbstauskunft").
+ * before}/{@code after} pass {@link AuditSelfDisclosurePayload}. Read month by month: one scan of
+ * the window for the ids of the person's entries ({@code subject_ref} has no index on purpose,
+ * docs/features/security-and-compliance.md, "Protokoll der Selbstauskunft"), then the rows in pages
+ * of {@link #PAGE_SIZE} by primary key, each read in a short read-only transaction.
  */
 @Component
 public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
@@ -82,8 +82,7 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
   private final JdbcTemplate jdbc;
   private final TransactionTemplate readOnly;
 
-  public AuditLogSelfDisclosureExporter(
-      JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
+  AuditLogSelfDisclosureExporter(JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
     this.jdbc = jdbc;
     this.readOnly = new TransactionTemplate(transactionManager);
     this.readOnly.setReadOnly(true);
@@ -107,26 +106,19 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
     while (month.isBefore(span.end())) {
       Instant next = ZonedDateTime.ofInstant(month, ZoneOffset.UTC).plusMonths(1).toInstant();
       Window window = new Window(month, next.isBefore(span.end()) ? next : span.end());
-      Instant afterTime = Instant.EPOCH.minusSeconds(1);
-      UUID afterId = new UUID(0, 0);
-      while (true) {
-        Instant cursorTime = afterTime;
-        UUID cursorId = afterId;
-        List<Map<String, Object>> page =
-            readOnly.execute(status -> page(person, window, cursorTime, cursorId));
-        if (page == null || page.isEmpty()) {
-          break;
+      List<UUID> keys = readOnly.execute(status -> keys(person, window));
+      for (int from = 0; keys != null && from < keys.size(); from += PAGE_SIZE) {
+        UUID[] page =
+            keys.subList(from, Math.min(from + PAGE_SIZE, keys.size())).toArray(UUID[]::new);
+        List<Map<String, Object>> rows = readOnly.execute(status -> rows(person, window, page));
+        if (rows == null || rows.isEmpty()) {
+          continue;
         }
         if (writer == null) {
           writer = sink.section("entries");
         }
-        for (Map<String, Object> row : page) {
-          afterTime = (Instant) row.remove("_recordedAt");
-          afterId = (UUID) row.remove("_eventId");
+        for (Map<String, Object> row : rows) {
           writer.write(row);
-        }
-        if (page.size() < PAGE_SIZE) {
-          break;
         }
       }
       month = next;
@@ -160,33 +152,44 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
         subject.organizationId());
   }
 
-  private List<Map<String, Object>> page(
-      Person person, Window window, Instant afterTime, UUID afterId) {
+  /**
+   * The ids of the person's entries in one window, in order: the one scan of the window's
+   * partition. Only the ids are held; the rows follow page by page through the primary key.
+   */
+  private List<UUID> keys(Person person, Window window) {
     return jdbc.query(
-        "SELECT event_id, recorded_at, actor_kind, actor_ref, event_type, object_type, object_id,"
-            + " object_label, subject_kind, subject_ref, before, after, outcome, correlation_ref,"
-            + " reason IS NOT NULL AND btrim(reason) <> '' AS reason_given"
-            + " FROM audit_log"
+        "SELECT event_id FROM audit_log"
             + " WHERE organization_id = ? AND recorded_at >= ? AND recorded_at < ?"
             + " AND ((actor_kind = 'USER' AND actor_ref = ?)"
             + " OR (subject_kind = 'USER' AND subject_ref = ?)"
             + " OR (object_type = 'USER_ACCOUNT' AND object_id = ?))"
-            // the self-log of a revision read names the reader only; read by someone else, it is
-            // an entry of an anlassbezogene Klärung and stays out
+            // no writer records a revision read with a subject or account object today; should
+            // one, a read about the person by someone else belongs to an anlassbezogene Klärung
             + " AND (event_type <> 'AUDIT_LOG_ACCESSED' OR (actor_kind = 'USER' AND actor_ref = ?))"
-            + " AND (recorded_at, event_id) > (?, ?)"
-            + " ORDER BY recorded_at, event_id LIMIT ?",
-        (rs, i) -> record(rs, person),
+            + " ORDER BY recorded_at, event_id",
+        (rs, i) -> rs.getObject("event_id", UUID.class),
         person.organizationId(),
         Timestamp.from(window.from()),
         Timestamp.from(window.to()),
         person.pseudonym(),
         person.pseudonym(),
         person.pseudonym(),
-        person.pseudonym(),
-        Timestamp.from(afterTime),
-        afterId,
-        PAGE_SIZE);
+        person.pseudonym());
+  }
+
+  private List<Map<String, Object>> rows(Person person, Window window, UUID[] eventIds) {
+    return jdbc.query(
+        "SELECT event_id, recorded_at, actor_kind, actor_ref, event_type, object_type, object_id,"
+            + " object_label, subject_kind, subject_ref, before, after, outcome, correlation_ref,"
+            + " reason IS NOT NULL AND btrim(reason) <> '' AS reason_given"
+            + " FROM audit_log"
+            + " WHERE organization_id = ? AND recorded_at >= ? AND recorded_at < ?"
+            + " AND event_id = ANY (?) ORDER BY recorded_at, event_id",
+        (rs, i) -> record(rs, person),
+        person.organizationId(),
+        Timestamp.from(window.from()),
+        Timestamp.from(window.to()),
+        eventIds);
   }
 
   private static Map<String, Object> record(ResultSet rs, Person person) throws SQLException {
@@ -224,8 +227,6 @@ public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {
     record.put("outcome", rs.getString("outcome"));
     record.put("correlationRef", rs.getString("correlation_ref"));
     record.put("reasonGiven", rs.getBoolean("reason_given"));
-    record.put("_recordedAt", recordedAt);
-    record.put("_eventId", rs.getObject("event_id", UUID.class));
     return record;
   }
 

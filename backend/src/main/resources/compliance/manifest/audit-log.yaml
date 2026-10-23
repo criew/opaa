@@ -85,7 +85,8 @@ data:
           note: >-
             Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id ist bei
             Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. Ereignisse einer anlassbezogenen
-            Klärung über die Person gehören nicht dazu, object_label nur an eigenen Kontoobjekten
+            Klärung über die Person gehören nicht dazu; object_label an fremden Kontoobjekten
+            entfällt, Bezeichnungen anderer Objekte (Spaces, Gruppen, Bibliotheken) bleiben
     storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
     retention:
       rule: Voreinstellung 36 Monate, einstellbar 12 bis 120 Monate

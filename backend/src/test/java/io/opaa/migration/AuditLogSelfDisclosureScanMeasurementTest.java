@@ -3,14 +3,17 @@ package io.opaa.migration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.audit.AuditLogSelfDisclosureExporter;
+import io.opaa.audit.AuditLogSelfDisclosureExporterFactory;
 import io.opaa.compliance.SelfDisclosureSink;
 import io.opaa.compliance.SelfDisclosureSubject;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -21,10 +24,11 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /**
- * Measures the audit-log category of the self-disclosure without an index on {@code subject_ref} on
- * 10 million entries over 36 monthly partitions (docs/features/security-and-compliance.md,
- * "Protokoll der Selbstauskunft", threshold 30 s). Run by hand only, it needs minutes and several
- * GB of Docker disk: {@code ./gradlew test --tests '*AuditLogSelfDisclosureScanMeasurementTest'
+ * Measures the audit-log category of the self-disclosure without an index on {@code subject_ref}
+ * (docs/features/security-and-compliance.md, "Protokoll der Selbstauskunft", threshold 30 s): on 10
+ * million entries over 36 monthly partitions, and for a person with 50,000 entries in one month of
+ * a partition of the same size. Run by hand only, it needs minutes and several GB of Docker disk:
+ * {@code ./gradlew test --tests '*AuditLogSelfDisclosureScanMeasurementTest'
  * -Dopaa.selfdisclosure.measureAuditScan=true}. Prints data volume, run times and query plan.
  */
 @EnabledIfSystemProperty(named = "opaa.selfdisclosure.measureAuditScan", matches = "true")
@@ -41,13 +45,44 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
 
   @Test
   void theAuditLogCategoryOfOnePersonOnTenMillionEntries() throws Exception {
-    UUID person;
-    String pseudonym = UUID.randomUUID().toString();
     LocalDate firstMonth = LocalDate.now(ZoneOffset.UTC).withDayOfMonth(1).minusMonths(MONTHS - 1);
+    measure(
+        firstMonth,
+        MONTHS,
+        sql -> {
+          // every 5,000th entry is about the person, a third each as actor, subject and object
+          fill(sql, firstMonth, "now() - interval '1 minute'", ROWS, 15_000);
+        });
+  }
+
+  @Test
+  void aPersonWithFiftyThousandEntriesInOneMonth() throws Exception {
+    LocalDate month = LocalDate.now(ZoneOffset.UTC).withDayOfMonth(1).minusMonths(2);
+    String end = "timestamptz '" + month.plusMonths(1) + "' - interval '1 hour'";
+    measure(
+        month,
+        1,
+        sql -> {
+          // one partition as large as one of the 36 above, plus the person's 50,000 entries
+          fill(sql, month, end, ROWS / MONTHS, 0);
+          fill(sql, month, end, 50_000, 3);
+        });
+  }
+
+  @FunctionalInterface
+  private interface Filling {
+    void fill(Statement sql) throws SQLException;
+  }
+
+  private String pseudonym;
+
+  private void measure(LocalDate firstMonth, int months, Filling filling) throws Exception {
+    UUID person;
+    pseudonym = UUID.randomUUID().toString();
     long expected;
     try (Connection connection = connect();
         Statement sql = connection.createStatement()) {
-      for (int i = 0; i < MONTHS + 1; i++) {
+      for (int i = 0; i < months + 1; i++) {
         LocalDate from = firstMonth.plusMonths(i);
         sql.execute(
             String.format(
@@ -74,8 +109,8 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
               + "')");
       // the secondary indexes are built after the bulk insert, which takes minutes instead of an
       // hour; the final state is the same as written row by row
-      List<String> indexes = new java.util.ArrayList<>();
-      List<String> names = new java.util.ArrayList<>();
+      List<String> indexes = new ArrayList<>();
+      List<String> names = new ArrayList<>();
       try (ResultSet rs =
           sql.executeQuery(
               "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'audit_log'"
@@ -88,66 +123,32 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
       for (String name : names) {
         sql.execute("DROP INDEX " + name);
       }
-      long start = System.nanoTime();
-      // 5,000 other people; every 5,000th entry is about the person, a third each as actor,
-      // subject and account object; 40 % of all entries carry a subject, 20 % a payload
       sql.execute(
           "CREATE TEMP TABLE others AS SELECT ARRAY(SELECT gen_random_uuid()::text"
               + " FROM generate_series(1, 5000)) AS refs");
-      sql.execute(
-          "INSERT INTO audit_log (event_id, recorded_at, organization_id, actor_kind, actor_ref,"
-              + " event_type, object_type, object_id, object_label, subject_kind, subject_ref,"
-              + " before, after, outcome, reason, correlation_ref)"
-              + " SELECT gen_random_uuid(),"
-              + " timestamptz '"
-              + firstMonth
-              + "' + (i::float8 / "
-              + ROWS
-              + ") * (now() - interval '1 minute' - timestamptz '"
-              + firstMonth
-              + "'),"
-              + " '"
-              + ORG
-              + "', 'USER',"
-              + " CASE WHEN i % 15000 = 0 THEN '"
-              + pseudonym
-              + "' ELSE refs[(1 + (i * 7919) % 5000)::int] END,"
-              + " (ARRAY['SPACE_MEMBER_ADDED','GROUP_MEMBER_ADDED','ASSET_GRANT_GRANTED',"
-              + "'LIBRARY_CHANGED','LOCAL_SESSION_REVOKED'])[1 + i % 5],"
-              + " CASE WHEN i % 15000 = 10000 THEN 'USER_ACCOUNT' ELSE 'SPACE' END,"
-              + " CASE WHEN i % 15000 = 10000 THEN '"
-              + pseudonym
-              + "' ELSE md5(i::text) END,"
-              + " 'Bezeichnung ' || (i % 1000),"
-              + " CASE WHEN i % 15000 = 5000 OR i % 5 < 2 THEN 'USER' END,"
-              + " CASE WHEN i % 15000 = 5000 THEN '"
-              + pseudonym
-              + "' WHEN i % 5 < 2 THEN refs[(1 + (i * 104729) % 5000)::int]"
-              + " END,"
-              + " NULL,"
-              + " CASE WHEN i % 5 = 0 THEN '{\"role\":\"MEMBER\"}' END,"
-              + " 'SUCCESS', NULL, NULL"
-              + " FROM others, generate_series(1::bigint, "
-              + ROWS
-              + ") i");
+      long start = System.nanoTime();
+      filling.fill(sql);
       for (String definition : indexes) {
         sql.execute(definition);
       }
       sql.execute("ANALYZE audit_log");
       System.out.printf(
-          "[measure] %,d rows over %d partitions inserted in %s%n",
-          ROWS, MONTHS, Duration.ofNanos(System.nanoTime() - start));
+          "[measure] filled %d month(s) in %s%n",
+          months, Duration.ofNanos(System.nanoTime() - start));
       try (ResultSet rs =
           sql.executeQuery(
-              "SELECT count(*) FROM audit_log WHERE actor_ref = '"
+              "SELECT count(*) FILTER (WHERE actor_ref = '"
                   + pseudonym
                   + "' OR subject_ref = '"
                   + pseudonym
                   + "' OR object_id = '"
                   + pseudonym
-                  + "'")) {
+                  + "'), count(*) FROM audit_log")) {
         rs.next();
         expected = rs.getLong(1);
+        System.out.printf(
+            "[measure] %,d entries in audit_log, %,d of them about the person%n",
+            rs.getLong(2), expected);
       }
       try (ResultSet rs =
           sql.executeQuery(
@@ -155,14 +156,13 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
                   + " FROM pg_inherits WHERE inhparent = 'audit_log'::regclass")) {
         rs.next();
         System.out.printf(
-            "[measure] audit_log: %s in %d partitions (with empty future ones), %d entries about"
-                + " the person%n",
-            rs.getString(1), rs.getLong(2), expected);
+            "[measure] audit_log: %s in %d partitions (with empty future ones)%n",
+            rs.getString(1), rs.getLong(2));
       }
-      LocalDate month = firstMonth.plusMonths(MONTHS / 2);
+      LocalDate month = firstMonth.plusMonths(months / 2);
       try (ResultSet rs =
           sql.executeQuery(
-              "EXPLAIN (ANALYZE, BUFFERS) SELECT event_id, recorded_at FROM audit_log"
+              "EXPLAIN (ANALYZE, BUFFERS) SELECT event_id FROM audit_log"
                   + " WHERE organization_id = '"
                   + ORG
                   + "' AND recorded_at >= '"
@@ -175,12 +175,11 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
                   + pseudonym
                   + "') OR (object_type = 'USER_ACCOUNT' AND object_id = '"
                   + pseudonym
-                  + "')) AND (event_type <> 'AUDIT_LOG_ACCESSED' OR actor_ref = '"
+                  + "')) AND (event_type <> 'AUDIT_LOG_ACCESSED' OR (actor_kind = 'USER' AND"
+                  + " actor_ref = '"
                   + pseudonym
-                  + "') AND (recorded_at, event_id) > ('1970-01-01', '"
-                  + new UUID(0, 0)
-                  + "') ORDER BY recorded_at, event_id LIMIT 500")) {
-        System.out.println("[measure] plan of one month window:");
+                  + "')) ORDER BY recorded_at, event_id")) {
+        System.out.println("[measure] plan of the id scan of one month window:");
         while (rs.next()) {
           System.out.println("[measure]   " + rs.getString(1));
         }
@@ -191,7 +190,7 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
         new DriverManagerDataSource(
             currentDatabaseUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
     AuditLogSelfDisclosureExporter exporter =
-        new AuditLogSelfDisclosureExporter(
+        AuditLogSelfDisclosureExporterFactory.create(
             new JdbcTemplate(dataSource), new DataSourceTransactionManager(dataSource));
     for (int run = 1; run <= 3; run++) {
       AtomicLong records = new AtomicLong();
@@ -202,5 +201,72 @@ class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {
       System.out.printf("[measure] export run %d: %d records in %s%n", run, records.get(), took);
       assertThat(records.get()).isEqualTo(expected);
     }
+  }
+
+  /**
+   * Inserts {@code rows} entries spread evenly from {@code firstMonth} to {@code end}, by 5,000
+   * other people; of every {@code personEvery} entries one each names the person as actor, subject
+   * and account object (none for 0). 40 % of the others carry a subject, 20 % a payload.
+   */
+  private void fill(Statement sql, LocalDate firstMonth, String end, long rows, long personEvery)
+      throws SQLException {
+    long every = personEvery == 0 ? Long.MAX_VALUE : personEvery;
+    long asSubject = every / 3;
+    long asObject = 2 * every / 3;
+    sql.execute(
+        "INSERT INTO audit_log (event_id, recorded_at, organization_id, actor_kind, actor_ref,"
+            + " event_type, object_type, object_id, object_label, subject_kind, subject_ref,"
+            + " before, after, outcome, reason, correlation_ref)"
+            + " SELECT gen_random_uuid(),"
+            + " timestamptz '"
+            + firstMonth
+            + "' + (i::float8 / "
+            + rows
+            + ") * ("
+            + end
+            + " - timestamptz '"
+            + firstMonth
+            + "'),"
+            + " '"
+            + ORG
+            + "', 'USER',"
+            + " CASE WHEN i % "
+            + every
+            + " = 0 THEN '"
+            + pseudonym
+            + "' ELSE refs[(1 + (i * 7919) % 5000)::int] END,"
+            + " (ARRAY['SPACE_MEMBER_ADDED','GROUP_MEMBER_ADDED','ASSET_GRANT_GRANTED',"
+            + "'LIBRARY_CHANGED','LOCAL_SESSION_REVOKED'])[1 + i % 5],"
+            + " CASE WHEN i % "
+            + every
+            + " = "
+            + asObject
+            + " THEN 'USER_ACCOUNT' ELSE 'SPACE' END,"
+            + " CASE WHEN i % "
+            + every
+            + " = "
+            + asObject
+            + " THEN '"
+            + pseudonym
+            + "' ELSE md5(i::text) END,"
+            + " 'Bezeichnung ' || (i % 1000),"
+            + " CASE WHEN i % "
+            + every
+            + " = "
+            + asSubject
+            + " OR i % 5 < 2 THEN 'USER' END,"
+            + " CASE WHEN i % "
+            + every
+            + " = "
+            + asSubject
+            + " THEN '"
+            + pseudonym
+            + "' WHEN i % 5 < 2 THEN refs[(1 + (i * 104729) % 5000)::int] END,"
+            + " NULL,"
+            + " CASE WHEN i % 5 = 0 THEN '{\"role\":\"MEMBER\"}' END,"
+            + " 'SUCCESS', NULL, NULL"
+            + " FROM others, generate_series(1::bigint, "
+            + rows
+            + ") i");
   }
 }
