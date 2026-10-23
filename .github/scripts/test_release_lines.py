@@ -214,3 +214,37 @@ def test_line_info_refuses_a_malformed_tag(repo: dict) -> None:
     result = run(LINE_INFO, repo["work"], "v0.3", repo["C"])
 
     assert result.returncode == 2
+
+
+# publish-images.yml uses both scripts; no pull request runs the jobs that call them.
+
+WORKFLOW = SCRIPTS.parent / "workflows" / "publish-images.yml"
+
+
+def workflow() -> str:
+    return WORKFLOW.read_text(encoding="utf-8")
+
+
+def test_workflow_guards_the_tag_with_release_origin() -> None:
+    text = workflow()
+
+    assert '.github/scripts/release_origin.sh "$TAG" "$GITHUB_SHA"' in text
+    assert "--is-ancestor" not in text
+
+
+def test_workflow_refuses_runs_on_a_maintenance_branch() -> None:
+    text = workflow()
+
+    assert "if: startsWith(github.ref, 'refs/heads/release/')" in text
+    # Pushes stay on main: no image of a maintenance branch; the weekly rebuild runs on main.
+    assert "  push:\n    branches: [main]\n" in text
+
+
+def test_workflow_marks_only_the_highest_final_release_latest() -> None:
+    text = workflow()
+
+    assert '.github/scripts/release_line_info.sh "$TAG" "$GITHUB_SHA"' in text
+    assert 'flags+=("--latest=$latest")' in text
+    assert "flags+=(--prerelease --latest=false)" in text
+    assert '--notes-start-tag "$previous"' in text
+    assert "(--latest)" not in text

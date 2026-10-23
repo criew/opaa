@@ -106,9 +106,9 @@ Zusage des Projekts über seine Kräfte.
 drei. Der Wechsel von LTS zu LTS hat kaum Übergangszeit; eine Behörde muss ihn anhand des
 Release-Kandidaten vorbereiten, damit sie das finale Release vor dem Supportende einspielen kann. Jeder Sicherheitsfix und jede Behebung eines kritischen Fehlers im Code braucht je Linie einen Backport mit eigenem CI-Lauf; je Linie
 kommen Renovate-PRs und vier Scans pro Nacht (zwei Images, zwei Plattformen) hinzu. Release-Workflow,
-Rulesets, CVE-Scan, Renovate und Update-Paket brauchen Umbauten (#3017–#3020). Bis `release/X.Y`
-gebaut ist (#3017), bekommt nur die jüngste Linie Patch-Releases, und ein Fix im Code erscheint
-dort nur, solange `main` keine neue Funktion trägt.
+Rulesets, CVE-Scan, Renovate und Update-Paket brauchen Umbauten (#3017–#3020). Wartungsbranches,
+Backport-Ablauf, Release-Workflow und Rulesets stehen (#3017); ein Patch-Release einer älteren Linie
+wird auf GitHub nicht „Latest“, damit die jüngste Linie ihre Markierung behält.
 
 **Restrisiken:** Abhängigkeiten außerhalb der Versionsverwaltung von Spring Boot (Spring AI, Tika,
 Frontend-Bibliotheken, Basis-Images) haben eigene Supportzeiträume. Gibt es einen Fix nur mit

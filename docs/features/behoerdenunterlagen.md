@@ -41,7 +41,7 @@
 > Release-Schritt des Maintainers (#2574), die Vorlagen der Phasen 0 bis 3 und der Mitbestimmung
 > (#2562, #2563, #2566) und die
 > Bau der Supportlinien aus [ADR-0054](../decisions/0054-release-zyklus-und-supportlinien.md)
-> (#3017–#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
+> (#3018–#3020). Offen ist außerdem die Lizenz von Liquibase 5 (#2825).
 
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
@@ -609,9 +609,8 @@ passenden Vorschlag, und die neue Fassung der Anlagen ersetzt die alte erst nach
 nachträglicher Unterrichtung des Personalrats. Das trägt nur, wenn sie keine neuen Funktionen
 enthalten — deshalb verweist die Vereinbarung auf die
 [Supportlinien](../releases.md#supportlinien) mit festem Zeitraum: Patch-Releases einer Linie
-bringen keine neue Funktion. Bis die Wartungsbranches gebaut sind (#3017), entsteht ein
-Patch-Release mit Codeänderung nur, solange `main` keine neue Funktion trägt
-([releases.md](../releases.md#versionsnummern)).
+bringen keine neue Funktion; eine Korrektur im Code kommt per
+[Backport](../releases.md#backport) auf den Wartungsbranch der Linie.
 
 **Informationsmappe für den Personalrat.** Rollensicht, Beispiele möglicher und ausgeschlossener
 Auswertungen, Datenfluss zum Modellanbieter, Wirkung des Abschaltens einzelner Funktionen, Glossar,

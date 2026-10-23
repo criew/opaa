@@ -1,10 +1,13 @@
 name: CI
 
 on:
+  # The maintenance branches release/X.Y of the supported lines (docs/releases.md, "Backport") get
+  # the same required checks and post-merge run as main; the path filter below reads the files of
+  # the pull request, whatever its base.
   push:
-    branches: [main]
+    branches: [main, 'release/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'release/**']
   # Fires only if a merge queue is ever enabled for main (issue #644 kept it
   # as preparation): the queue creates a merge_group ref with the PR merged
   # onto the current queue state and waits for the required checks on it.
@@ -32,7 +35,7 @@ jobs:
   # That cuts both ways: if this job itself failed, its dependents would all
   # be skipped and read as passed — which is why `changes` is a required
   # status check too, so a filter failure blocks the merge instead.
-  # Filtering only applies to pull_request events; pushes to main and merge
+  # Filtering only applies to pull_request events; pushes to main or release/** and merge
   # queue runs always execute everything.
   changes:
     runs-on: ubuntu-latest

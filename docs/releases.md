@@ -7,14 +7,15 @@ betreiben will, pinnt eine Version.
 
 ## Was ein Release erzeugt
 
-Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publish-images.yml`:
+Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` oder des Wartungsbranches `release/X.Y` seiner
+[Linie](#supportlinien) startet `.github/workflows/publish-images.yml`:
 
 | Ergebnis | Inhalt |
 |---|---|
 | `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand für `linux/amd64` und `linux/arm64` (ein Manifest-Index je Image), **nie überschrieben** |
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
-| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket |
+| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs seit dem vorigen finalen Release, das der Commit enthält (bei einem Patch-Release das vorige Release seiner Linie), gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket; als „Latest“ markiert nur, wenn es das höchste finale Release ist (siehe [Latest](#latest-und-vergleichsstand-der-notizen)) |
 | `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, Lizenzübersicht, SBOMs, Vorlage Update-Vermerk; **attestiert** |
 | `opaa-backend-X.Y.Z.cdx.json`, `opaa-frontend-X.Y.Z.cdx.json`, am GitHub-Release | die CycloneDX-Stücklisten (SBOM) der ausgelieferten Abhängigkeiten von Backend und Frontend aus dem Stand des Tags ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)); dieselben Dateien liegen im Update-Paket; **attestiert** |
 
@@ -131,7 +132,9 @@ Bevor gebaut wird, bricht der Lauf im Job `prepare` ab, wenn:
 
 - das Tag nicht die Form `vX.Y.Z` bzw. `vX.Y.Z-<vorab>` hat oder keine gültige
   [SemVer](https://semver.org/lang/de/)-Version ist, etwa `v1.0.0-rc.01` mit führender Null,
-- der getaggte Commit nicht auf `main` liegt,
+- der getaggte Commit weder auf `main` liegt noch auf dem Wartungsbranch genau der Linie des Tags
+  (`v0.2.1` auf `release/0.2` ja, `v0.3.1` auf `release/0.2` nein; Prüfung in
+  `.github/scripts/release_origin.sh`),
 - `X.Y.Z` in GHCR bereits existiert, als Image oder als Chart. Das gilt auch für einen erneut
   gepushten Tag und einen manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt,
   sondern durch die nächste Patch-Version abgelöst,
@@ -217,7 +220,30 @@ Beispiel-Tags auf demselben Weg (`deploy/helm/ci/package-chart.sh`), ohne zu ver
 prüft dabei auch, dass der Inhaltsvergleich einen zweimal gepackten Chart annimmt und einen
 geänderten ablehnt und dass die Existenzprüfung ohne erreichbare Registry scheitert.
 
-Der wöchentliche Neubau (#1450) läuft nur auf `main`. Er berührt Release-Tags nie.
+Der wöchentliche Neubau (#1450) läuft nur auf `main`. Er berührt Release-Tags nie. Ein
+Wartungsbranch `release/X.Y` veröffentlicht nur über ein Tag: Ein Push dorthin startet den Workflow
+nicht, ein manueller Lauf auf dem Branch bricht in `prepare` ab. Er setzt also nie `main` oder
+`sha-<commit>`. Der Tag `X.Y` entsteht aus dem Git-Tag selbst und wandert deshalb nur innerhalb
+seiner Linie, gleich ob das Tag auf `main` oder auf `release/X.Y` liegt.
+
+`.github/scripts/test_release_lines.py` prüft beide Skripte dieses Abschnitts und des folgenden an
+einer Historie mit zwei Linien und hält ihren Aufruf im Workflow fest; kein PR führt die Jobs aus,
+die sie aufrufen.
+
+### Latest und Vergleichsstand der Notizen
+
+Der Job `release` bestimmt mit `.github/scripts/release_line_info.sh` zweierlei:
+
+- **„Latest“** bekommt ein Release nur, wenn kein anderes finales Tag `v*` höher ist; sonst setzt
+  der Job `--latest=false`, ein Vorab-Release ist es nie. Ein Patch-Release einer älteren Linie
+  nimmt der jüngsten Linie die Markierung also nicht weg. Darauf verlässt sich der nächtliche
+  [CVE-Scan](cve-scanning.md), der das Release mit dieser Markierung prüft.
+- **Vergleichsstand der generierten Notizen** (`--notes-start-tag`) ist das höchste finale Tag
+  unter der eigenen Version, das der getaggte Commit enthält, nach derselben Regel wie der
+  [Vorgänger des Update-Pakets](#update-paket). Ein Patch-Release auf `release/0.2` vergleicht so
+  mit dem vorigen Release der Linie 0.2, `v0.3.0` auf `main` mit `v0.2.0`, nicht mit einem jüngeren
+  `v0.2.1` vom Wartungsbranch. Gibt es kein solches Tag, wählt GitHub den Vergleichsstand selbst;
+  das erste Release überhaupt trägt nur den festen Text.
 
 ## Der Tag `main` geht nie zurück
 
@@ -266,12 +292,31 @@ zwei Tag-Rulesets des Repositorys (*Settings → Rules → Rulesets*, nur Admins
 | `release-tags-immutable` | Verschieben (auch per Force-Push) und Löschen von `refs/tags/v*` gesperrt | keine |
 
 Ein Push von `v*` durch einen Account ohne diese Rollen wird abgelehnt. Damit läuft der
-Release-Workflow auch nie aus der Workflow-Datei eines Commits außerhalb von `main`, den jemand
-ohne Maintainer-Rolle getaggt hat. Ein vorhandenes Release-Tag bleibt, wo es ist; eine fehlerhafte
+Release-Workflow auch nie aus der Workflow-Datei eines Commits außerhalb von `main` und den
+Wartungsbranches, den jemand ohne Maintainer-Rolle getaggt hat. Ein vorhandenes Release-Tag bleibt, wo es ist; eine fehlerhafte
 Version wird durch die nächste Patch-Version abgelöst. Wer die Rulesets abschwächt, ändert diese
-Grenze und braucht dafür Admin-Rechte. Ablauf:
+Grenze und braucht dafür Admin-Rechte.
 
-1. Prüfen, dass `main` grün ist, einschließlich des letzten nächtlichen E2E-Laufs.
+Die Wartungsbranches `release/X.Y` schützen zwei Branch-Rulesets genauso wie `main`, dessen
+Schutzregel (*Settings → Branches*) dieselben Prüfungen verlangt. Beide legt ein Admin unter
+*Settings → Rules → Rulesets → New branch ruleset* an, mit *Enforcement status: Active* und als
+*Target branches* dem Muster `release/*` (*Include by pattern*):
+
+| Ruleset | Regeln | Ausnahme (*Bypass list*) |
+|---|---|---|
+| `release-branches-create` | *Restrict creations* | Repository-Rollen *Admin* und *Maintain* |
+| `release-branches` | *Restrict deletions*; *Block force pushes*; *Require a pull request before merging* mit *Required approvals* 1 und *Require conversation resolution before merging*; *Require status checks to pass* mit `backend`, `backend-integration`, `frontend`, `changes` (Workflow CI) und `check` (Workflow Datenwirkung), Quelle *GitHub Actions*, ohne *Require branches to be up to date* | Repository-Rolle *Admin*, wie bei `main` (dort *Do not allow bypassing the above settings* aus) |
+
+Ein Wartungsbranch entsteht damit nur durch einen Maintainer, und jede Änderung darauf kommt per PR
+mit denselben Required Checks wie auf `main`; `ci.yml` und `data-impact.yml` laufen dafür auch bei
+PRs gegen `release/**` und bei jedem Push dorthin. Ein neuer Required Check auf `main` kommt in
+dasselbe Ruleset. Ein Branch, dessen Linie ausgelaufen ist, bleibt bestehen und geschützt.
+
+Ablauf:
+
+1. Prüfen, dass `main` grün ist, einschließlich des letzten nächtlichen E2E-Laufs. Für ein
+   Patch-Release auf `release/X.Y` gilt dasselbe für den Branch; die E2E-Suite läuft dort nur von
+   Hand (`gh workflow run e2e.yml --ref release/X.Y`), ihr Alarm-Issue meldet nur `main`.
 2. Version nach den Regeln unten bestimmen.
 3. Die Vorbereitung für Bestandsinstallationen festlegen. Bei einem finalen `vX.Y.0` und bei
    jedem Vorab-Release, das Vorbereitung verlangt, die Datei `docs/upgrade-notes/<version>.md` per
@@ -283,7 +328,8 @@ Grenze und braucht dafür Admin-Rechte. Ablauf:
 4. Den Stand aus Behördensicht lesen lassen. Das Update-Paket entsteht erst im Lauf des Tags;
    vorher werden deshalb sein Delta und die Faktenblätter lokal erzeugt, auf dem Commit, der das
    Tag bekommt, und gegen denselben Vorgänger wie das Paket (Beispiel `v0.3.0`; bei einem
-   Patch-Release ohne Codeänderung ist `commit` der Commit des vorigen Release):
+   Patch-Release ohne Codeänderung ist `commit` der Commit des vorigen Release, bei einem
+   Backport `origin/release/X.Y` statt `origin/main`):
 
    ```bash
    git fetch origin --tags
@@ -360,6 +406,60 @@ beantwortet und ob die Attestierung landet, lässt sich nur dort prüfen. Deshal
 3. **Danach** das Paket unter *Packages → charts/opaa → Package settings* auf **Public** stellen,
    wie die beiden Images. GHCR legt es privat an; bis dahin scheitert `helm install` ohne
    Anmeldung.
+
+### Backport
+
+Eine Linie wird auf `release/X.Y` gepflegt ([ADR-0054](decisions/0054-release-zyklus-und-supportlinien.md),
+Entscheidung 7). Zurückportiert werden nur Sicherheitskorrekturen und Behebungen
+[kritischer Fehler](#kritische-fehler); ob ein Fehler kritisch ist, hält der Maintainer vorher am
+Issue fest. Ablauf, Beispiel Linie 0.2:
+
+1. **Branch anlegen**, einmal je Linie, sobald der erste Backport ansteht, vom Commit des Tags
+   `vX.Y.0` (nur Admin oder Maintain, Ruleset `release-branches-create`):
+
+   ```bash
+   git fetch origin --tags
+   git push origin v0.2.0^{commit}:refs/heads/release/0.2
+   ```
+
+2. **Zuerst auf `main`.** Die Korrektur landet wie jede Änderung per PR auf `main`. Nur wo `main`
+   den betroffenen Code nicht mehr hat, entsteht sie direkt auf dem Wartungsbranch, dann per PR
+   gegen `release/X.Y` nach dem üblichen Ablauf.
+3. **Je betroffenem Branch ein Backport-PR** gegen `release/X.Y`, Branch nach der üblichen Regel
+   `feature/<issue-id>_backport-0.2`. Der Cherry-Pick nimmt den Squash-Commit des PRs von `main`;
+   `-x` hält dessen Commit in der Nachricht fest:
+
+   ```bash
+   git switch -c feature/1234_backport-0.2 origin/release/0.2
+   git cherry-pick -x <commit auf main>
+   git push -u origin HEAD
+   gh pr create --base release/0.2 --title "fix(...): ... (Backport 0.2)" --label bug
+   ```
+
+   Die PR-Beschreibung nennt den PR auf `main`, den Commit und die Einordnung des Maintainers am
+   Issue (Sicherheitskorrektur oder kritischer Fehler), übernimmt `data-impact` und den Abschnitt
+   zur Datenwirkung des Original-PRs und schließt das Issue nicht (`Refs #N`); es ist mit dem PR
+   auf `main` schon geschlossen. Der Squash-Merge übernimmt die Zeile
+   `(cherry picked from commit …)` nur, wenn sie im Text des Merges steht; maßgeblich ist der
+   Verweis in der Beschreibung.
+4. **Konflikte** löst der Backport selbst, so knapp wie möglich: kein Mitziehen weiterer Änderungen
+   von `main`. Braucht die Korrektur eine neue Funktion, eine neue Minor-Version einer
+   Abhängigkeit oder einen [Bruch](#versionsnummern), entscheidet der Maintainer nach
+   ADR-0054, Restrisiken; das steht dann in den Release-Notizen.
+5. **Tests** laufen über die Required Checks des PRs wie auf `main`. Erst der Merge bringt die
+   Korrektur auf den Branch.
+6. **Patch-Tag** auf den Commit von `release/X.Y`, nach dem Ablauf oben ab Schritt 1 mit
+   `commit=$(git rev-parse origin/release/0.2)`. Eine Datei unter `docs/upgrade-notes/` braucht ein
+   Patch-Release nicht. Das Update-Paket vergleicht mit dem vorigen Release der Linie, weil der
+   Branch nur deren Tags enthält ([Vorgänger](#update-paket)); dasselbe gilt für die
+   [Notizen](#latest-und-vergleichsstand-der-notizen). Das GitHub-Release einer älteren Linie wird
+   nicht „Latest“.
+
+Ein Sicherheitsupdate nur des Basis-Images braucht keinen Backport: Ein neues Tag auf dem Commit des
+letzten Release der Linie genügt ([Versionsnummern](#versionsnummern)). Renovate pflegt die
+Wartungsbranches noch nicht ([#3019](https://github.com/criew/opaa/issues/3019)); ein
+Abhängigkeits-Update dort kommt bis dahin als Backport des Renovate-PRs von `main`, sofern er nur
+Patch-Versionen anhebt.
 
 ## Vorbereitung für Bestandsinstallationen
 
@@ -619,11 +719,7 @@ Patch-Release:
 - **Ohne Codeänderung:** Ein neues Tag `vX.Y.(Z+1)` auf **demselben Commit** wie das letzte Release
   der Linie. Der neue Bau zieht die aktuellen Pakete der Basis-Images.
 - **Mit Codeänderung:** Die Korrektur landet zuerst auf `main` und kommt per Backport auf den
-  Wartungsbranch `release/X.Y` der Linie, das Tag auf dessen Commit. Diese Branches und die
-  Anpassung des Workflows baut [#3017](https://github.com/criew/opaa/issues/3017). Bis dahin
-  entstehen Releases nur von Commits auf `main`, Patch-Releases nur für die jüngste Linie, und eine
-  Korrektur im Code erscheint als Patch-Release nur, solange `main` seit dem letzten Release keine neue Funktion trägt; sonst mit
-  der nächsten Version von `main`, also als `0.(Y+1).0`, notfalls außerhalb des Takts.
+  Wartungsbranch `release/X.Y` der Linie, das Tag auf dessen Commit ([Backport](#backport)).
 
 ## Supportlinien
 
@@ -647,15 +743,14 @@ einer Linie ist damit immer ein Update ohne neue Funktion, das eine Behörde sof
 Wer neue Funktionen vor dem nächsten Funktionsrelease braucht, folgt `main`.
 
 **Was heute schon gilt und was noch gebaut wird.** Takt und Supportzeiträume gelten ab dem ersten
-finalen Release. Ein Sicherheitsupdate des Basis-Images erreicht die **jüngste** Linie schon heute
-als Patch-Release ohne Codeänderung. Für eine ältere Linie geht das noch nicht: Der Release-Lauf
-markiert jedes finale Release auf GitHub als „Latest“, und der CVE-Scan prüft das Release mit dieser
-Markierung; ein Patch-Release der älteren Linie nähme der jüngsten beides weg. Noch nicht gebaut
-sind:
+finalen Release. Jede unterstützte Linie bekommt Patch-Releases: ein Sicherheitsupdate des
+Basis-Images als neues Tag auf dem Commit ihres letzten Release, eine Korrektur im Code per
+[Backport](#backport) auf ihren Wartungsbranch. Ein Patch-Release einer älteren Linie wird nicht
+„Latest“, die jüngste Linie behält die Markierung und damit ihren Platz im CVE-Scan. Noch nicht
+gebaut sind:
 
 | Baustein | Bis dahin | Issue |
 |---|---|---|
-| Wartungsbranches `release/X.Y`, Backport, Rulesets, Release-Workflow für Tags auf diesen Branches, „Latest“ nur für das höchste finale Release | nur die jüngste Linie bekommt Patch-Releases, eine Korrektur im Code nach der Regel unter [Versionsnummern](#versionsnummern), also gegebenenfalls mit neuen Funktionen; eine ältere Linie bekommt keine Korrektur, sie kommt nur mit einer neueren Linie | [#3017](https://github.com/criew/opaa/issues/3017) |
 | CVE-Scan aller unterstützten Linien | der Scan prüft nur das jüngste Release ([cve-scanning.md](cve-scanning.md)) | [#3018](https://github.com/criew/opaa/issues/3018) |
 | Renovate auf den Wartungsbranches | Abhängigkeits-Updates nur auf `main` | [#3019](https://github.com/criew/opaa/issues/3019) |
 | Delta zur vorigen LTS-Linie im Update-Paket | nur das Delta zum vorigen finalen Release | [#3020](https://github.com/criew/opaa/issues/3020) |
@@ -707,7 +802,7 @@ nächtliche CVE-Scan prüft deshalb neben `main` auch Release-Images (ohne Vorab
 
 | Befund in einer unterstützten Linie | Reaktion |
 |---|---|
-| `critical` mit verfügbarem Fix | Patch-Release der Linie, Frist wie in cve-scanning.md. Liegt der Fix im Basis-Image, genügt ein neues Tag auf dem Commit des letzten Release der Linie; liegt er in einer Abhängigkeit oder im Code, kommt er per Backport (bis [#3017](https://github.com/criew/opaa/issues/3017) nach der Regel unter [Versionsnummern](#versionsnummern)) |
+| `critical` mit verfügbarem Fix | Patch-Release der Linie, Frist wie in cve-scanning.md. Liegt der Fix im Basis-Image, genügt ein neues Tag auf dem Commit des letzten Release der Linie; liegt er in einer Abhängigkeit oder im Code, kommt er per [Backport](#backport) |
 | `high` mit verfügbarem Fix | spätestens als Patch-Release nach der wöchentlichen Triage |
 | `medium` und `low` mit verfügbarem Fix | kein eigenes Release; mit dem nächsten Patch-Release der Linie |
 | ohne verfügbaren Fix | kein Release; Triage nach [cve-scanning.md](cve-scanning.md#triage-von-image-alerts) |
