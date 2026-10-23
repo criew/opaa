@@ -1,105 +1,87 @@
 ---
-stand: 2026-10-15
+stand: 2026-10-23
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
 pruefvermerk: nicht rechtlich geprüft
-naechste-durchsicht: 2027-04-15
+naechste-durchsicht: 2027-04-23
 ---
 
-# Entscheidungsmatrix zur Auftragsverarbeitung
+# Auftragsverarbeitung (AVV)
 
 > Nicht rechtlich geprüft. Kann als Vorlage dienen; die Verantwortung bleibt bei der Behörde.
 
-Diese Matrix hilft einer Behörde zu erkennen, mit wem sie für den Einsatz von OPAA einen Vertrag zur
-Auftragsverarbeitung (AVV) nach Art. 28 DSGVO braucht. Sie ordnet den Einsatz an drei Achsen ein:
-**wer betreibt**, **wo läuft das Sprachmodell** und **wo liegen die Quellen** der Wissensbibliotheken.
-Die Matrix ist eine Orientierung. Ob im Einzelfall Auftragsverarbeitung, gemeinsame Verantwortung oder
-eine eigene Verantwortung des Partners vorliegt, bewertet die Behörde.
+**Gilt für:** Behörden, deren Datenschutzaufsicht die oder der BfDI oder die
+Landesdatenschutzbeauftragten sind.
 
-Welche Daten an welches Ziel gehen, schreibt die Matrix nicht ab. Es steht im
-{{faktenblatt:datenfluesse#datenfluesse}} der eingesetzten Version.
+Verarbeitet ein Partner personenbezogene Daten im Auftrag der Behörde, etwa ein Rechenzentrum oder
+ein Modellanbieter, braucht es einen Vertrag zur Auftragsverarbeitung (AVV), der regelt, was der
+Partner mit den Daten tun darf. Diese Matrix zeigt, mit wem das beim Einsatz von OPAA der Fall sein
+kann. Ob im Einzelfall Auftragsverarbeitung oder eine andere Form der Verantwortung vorliegt,
+bewertet die Behörde mit ihrer oder ihrem Datenschutzbeauftragten (DSB).
 
-## Quellen und Prüfstand
+## Was OPAA liefert
 
-| Fundstelle | Inhalt | Herkunft |
-|---|---|---|
-| Art. 28 Abs. 1 bis 4 [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) | Auswahl des Auftragsverarbeiters, Vertrag oder anderes Rechtsinstrument, Mindestinhalt, Unterauftragsverarbeiter | Normtext; Art. 28 in der Recherche vom 13.10.2026 |
-| Art. 44 ff. DSGVO | Übermittlung in Drittländer | Normtext |
-| DSK, [Kurzpapiere](https://www.datenschutzkonferenz-online.de/kurzpapiere.html), Nr. 13 „Auftragsverarbeitung, Art. 28 DSGVO“ | Abgrenzung, auch zu Wartung und Fernzugriff | Muster |
-| EU-Kommission, [Standardvertragsklauseln nach Art. 28 Abs. 7 DSGVO](https://eur-lex.europa.eu/eli/dec_impl/2021/915/oj/deu) (Durchführungsbeschluss (EU) 2021/915) | amtliches Vertragsmuster | Muster |
-| DSK, [Orientierungshilfe „Künstliche Intelligenz und Datenschutz“](https://www.datenschutzkonferenz-online.de/media/oh/20240506_DSK_Orientierungshilfe_KI_und_Datenschutz.pdf) (6.5.2024) | Prüfpunkte für extern bezogene KI-Dienste | Recherche vom 13.10.2026 |
-
-Die Recherche vom 13.10.2026 steht im ersten Kommentar von Epic
-[#2542](https://github.com/criew/opaa/issues/2542). Ein eigenes Vertragsmuster enthält diese Vorlage
-nicht; die Behörde verwendet ihr Muster oder die Standardvertragsklauseln der Kommission.
-
-## Die drei Achsen
-
-**Betrieb**
-
-| | Bedeutung | Hinweis |
-|---|---|---|
-| **B1 selbst** | Die Behörde betreibt OPAA auf eigener Infrastruktur mit eigenem Personal. | Aus dem Betrieb selbst entsteht keine Auftragsverarbeitung. |
-| **B2 Dienstleister** | Ein IT-Dienstleister betreibt OPAA für die Behörde, etwa ein Rechenzentrum oder ein kommunaler IT-Dienstleister. | AVV mit dem Dienstleister; er erfasst Datenbank, Originalablage, Sicherungen und Logs. Grundlage ist ein Vertrag oder ein anderes Rechtsinstrument (Art. 28 Abs. 3 DSGVO). Unterauftragsverarbeiter des Dienstleisters offenlegen lassen. |
-| **B3 Wartung mit Fernzugriff** | Die Behörde betreibt selbst; ein Dritter wartet OPAA oder die Plattform und kann dabei auf Systeme mit personenbezogenen Daten zugreifen. | Ob das Auftragsverarbeitung ist, prüft die Behörde nach dem DSK-Kurzpapier Nr. 13. Zugriff nur nach Freigabe, protokolliert, auf den Wartungszweck begrenzt. |
-
-**Sprachmodell**
-
-| | Bedeutung | Hinweis |
-|---|---|---|
-| **M1 lokal** | Die Modelle laufen auf Infrastruktur der Behörde oder ihres Betriebsdienstleisters. | Kein weiterer Partner. Läuft das Modell beim Dienstleister aus B2, gehört es in dessen AVV. |
-| **M2 externe API** | Mindestens eine Modellrolle ruft einen Anbieter außerhalb des eigenen Betriebs auf. | AVV mit dem Modellanbieter. Achten auf: Verarbeitungsort und Drittlandübermittlung (Art. 44 ff. DSGVO), keine Verwendung der Eingaben für eigene Zwecke des Anbieters (etwa Training), Speicherdauer beim Anbieter, Unterauftragsverarbeiter. Jede Modellrolle einzeln betrachten ([Handbuch, Modelle](../../handbuch/modelle.md#vier-modellrollen)). |
-
-**Quellen der Wissensbibliotheken**
-
-| | Bedeutung | Hinweis |
-|---|---|---|
-| **K1 im Haus** | Alle angebundenen Quellen laufen im eigenen Netz oder beim Betriebsdienstleister. | Kein weiterer Partner aus OPAA heraus. |
-| **K2 Cloud** | Mindestens eine Quelle ist ein Cloud-Dienst ([Handbuch, Konnektoren im Überblick](../../handbuch/konnektoren/README.md#3-die-konnektoren-im-überblick)). | Der Cloud-Anbieter verarbeitet die Dokumente bereits für die Behörde, meist mit eigenem AVV. Zu prüfen ist, ob dieser Vertrag den Abruf durch OPAA über Dienstkonto, App-Registrierung oder Zugang abdeckt ([Handbuch, Zugänge](../../handbuch/zugaenge.md)). |
+Welche Daten an welches Ziel gehen, steht im {{faktenblatt:datenfluesse#datenfluesse}} der
+eingesetzten Version. Welche Modelle wofür eingesetzt werden, beschreibt das Handbuch unter
+[Modelle](../../handbuch/betrieb/modelle.md#vier-modellrollen), welche Quellen Cloud-Dienste sind, unter
+[Konnektoren im Überblick](../../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md#3-die-konnektoren-im-überblick).
 
 ## Die Matrix
 
-| # | Betrieb | Sprachmodell | Quellen | AVV nötig mit | Worauf achten |
-|---|---|---|---|---|---|
-| 1 | B1 selbst | M1 lokal | K1 im Haus | keinem Partner aus diesen Achsen | [weitere Ziele](#weitere-ziele-außerhalb-der-achsen) |
-| 2 | B1 selbst | M1 lokal | K2 Cloud | Cloud-Anbieter der Quelle (bestehender Vertrag) | K2 |
-| 3 | B1 selbst | M2 externe API | K1 im Haus | Modellanbieter | M2 |
-| 4 | B1 selbst | M2 externe API | K2 Cloud | Modellanbieter; Cloud-Anbieter der Quelle (bestehender Vertrag) | M2, K2 |
-| 5 | B2 Dienstleister | M1 lokal | K1 im Haus | Dienstleister | B2; Modellbetrieb im Vertrag |
-| 6 | B2 Dienstleister | M1 lokal | K2 Cloud | Dienstleister; Cloud-Anbieter der Quelle (bestehender Vertrag) | B2, K2 |
-| 7 | B2 Dienstleister | M2 externe API | K1 im Haus | Dienstleister; Modellanbieter, direkt oder als Unterauftragsverarbeiter des Dienstleisters | B2, M2; wer den Vertrag mit dem Modellanbieter schließt |
-| 8 | B2 Dienstleister | M2 externe API | K2 Cloud | Dienstleister; Modellanbieter; Cloud-Anbieter der Quelle (bestehender Vertrag) | B2, M2, K2 |
-| 9 | B3 Wartung | M1 lokal | K1 im Haus | Wartungsdienstleister, wenn Auftragsverarbeitung | B3 |
-| 10 | B3 Wartung | M1 lokal | K2 Cloud | Wartungsdienstleister, wenn Auftragsverarbeitung; Cloud-Anbieter der Quelle (bestehender Vertrag) | B3, K2 |
-| 11 | B3 Wartung | M2 externe API | K1 im Haus | Wartungsdienstleister, wenn Auftragsverarbeitung; Modellanbieter | B3, M2 |
-| 12 | B3 Wartung | M2 externe API | K2 Cloud | Wartungsdienstleister, wenn Auftragsverarbeitung; Modellanbieter; Cloud-Anbieter der Quelle (bestehender Vertrag) | B3, M2, K2 |
+Die Behörde ordnet ihren Einsatz an drei Fragen ein. Jede Antwort ergibt die Partner in der letzten
+Spalte; die Partner aller drei Antworten zusammen sind die AVV-Partner.
 
-Mischformen (etwa Betrieb durch einen Dienstleister und zusätzlich Wartung durch einen weiteren)
-ergeben sich als Summe der Zeilen.
+| Frage | Antwort | AVV nötig mit | Worauf achten |
+|---|---|---|---|
+| Wer betreibt? | **B1** die Behörde selbst | niemandem | — |
+| | **B2** ein IT-Dienstleister | dem Dienstleister | Vertrag deckt Datenbank, Ablage, Sicherungen und Logs ab; Unterauftragnehmer offenlegen lassen |
+| | **B3** die Behörde, ein Dritter wartet mit Fernzugriff | der Wartungsfirma, wenn es Auftragsverarbeitung ist | Zugriff nur nach Freigabe, protokolliert, auf die Wartung begrenzt |
+| Wo läuft das Sprachmodell? | **M1** im Haus oder beim Dienstleister aus B2 | niemandem weiter; bei B2 im Vertrag des Dienstleisters | — |
+| | **M2** bei einem externen Anbieter | dem Modellanbieter, direkt oder über den Dienstleister | Verarbeitungsort und Übermittlung in Länder außerhalb der EU, keine Nutzung der Eingaben etwa für Training, Speicherdauer, Unterauftragnehmer; jede Modellrolle einzeln |
+| Wo liegen die Quellen? | **K1** im eigenen Netz oder beim Dienstleister | niemandem weiter | — |
+| | **K2** mindestens eine in der Cloud | dem Cloud-Anbieter, meist schon vorhanden | deckt der Vertrag den Abruf durch OPAA ab ([Zugänge](../../handbuch/arbeitsmittel/zugaenge.md))? |
 
-## Weitere Ziele außerhalb der Achsen
+Mischformen, etwa Betrieb durch einen Dienstleister und Wartung durch einen weiteren, ergeben sich als
+Summe der Antworten.
 
-Unabhängig von der Zeile prüft die Behörde jedes weitere Ziel, an das OPAA in ihrer Instanz Daten
-sendet. Die Liste der Datenflüsse steht im {{faktenblatt:datenfluesse#datenfluesse}}. Typische
-Kandidaten, je nach Einrichtung:
+## Aufgaben der Behörde
 
-- ein Identitätsanbieter als Cloud-Dienst ([Handbuch, Authentifizierung](../../handbuch/authentifizierung.md)),
-- ein externer Dienst für den E-Mail-Versand ([Handbuch, E-Mail-Versand](../../handbuch/e-mail.md)),
-- externe KI-Werkzeuge, die Inhalte an ihre eigenen Modellanbieter weitergeben können
-  ([Handbuch, Externe KI-Werkzeuge](../../handbuch/fremdzugaenge.md)),
-- ein Ausgangsproxy eines Dritten ([Handbuch, Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy)).
+1. **Einordnen:** je Frage eine Antwort wählen und die Partner ablesen.
+2. **Weitere Ziele prüfen:** jedes Ziel aus dem Faktenblatt Datenflüsse, das die eigene Installation
+   nutzt, etwa ein Identitätsanbieter in der Cloud
+   ([Authentifizierung](../../handbuch/betrieb/authentifizierung.md)), ein externer E-Mail-Dienst
+   ([E-Mail-Versand](../../handbuch/betrieb/e-mail.md)), externe KI-Werkzeuge, die Inhalte an eigene
+   Modellanbieter weitergeben ([Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md)), oder ein
+   Ausgangsproxy eines Dritten ([Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy)).
+3. **Verträge schließen** mit dem eigenen Muster oder den Standardvertragsklauseln der EU-Kommission.
+4. **Bei jedem Update nachprüfen:** Ändert ein Update die Datenflüsse, weist das Update-Paket das aus.
 
 ## Ergebnis festhalten
 
 ```text
-Einordnung: Betrieb [B1/B2/B3] · Sprachmodell [M1/M2] · Quellen [K1/K2] → Zeile [Nr.]
-Partner mit AVV:        [Name, Gegenstand, Vertrag vom, Unterauftragsverarbeiter]
+Einordnung:             Betrieb [B1/B2/B3] · Sprachmodell [M1/M2] · Quellen [K1/K2]
+Partner mit AVV:        [Name, Gegenstand, Vertrag vom, Unterauftragnehmer]
 Drittlandübermittlung:  [keine / Anbieter, Land, Garantie]
 Weitere Ziele geprüft:  [Liste aus dem Faktenblatt Datenflüsse der Version [OPAA-Version]]
 Geprüft am:             [Datum]        durch: [ ]
 ```
 
-Ändert ein Update die Datenflüsse, weist das Update-Paket das aus
-([Spezifikation, Stufenregeln](../../features/behoerdenunterlagen.md#die-stufenregeln), Klasse Z5);
-die Behörde prüft die Einordnung dann erneut.
+## Zum Nachlesen
+
+**Arbeitshilfen** für die Projektleitung:
+
+- [Kurzpapier Nr. 13 der Datenschutzkonferenz](https://www.datenschutzkonferenz-online.de/kurzpapiere.html)
+  „Auftragsverarbeitung“: wann ein Partner Auftragsverarbeiter ist, auch bei Wartung und Fernzugriff.
+- [Standardvertragsklauseln der EU-Kommission](https://eur-lex.europa.eu/eli/dec_impl/2021/915/oj/deu):
+  amtliches Vertragsmuster für den AVV.
+- [Orientierungshilfe „Künstliche Intelligenz und Datenschutz“](https://www.datenschutzkonferenz-online.de/media/oh/20240506_DSK_Orientierungshilfe_KI_und_Datenschutz.pdf)
+  der Datenschutzkonferenz (6.5.2024): Prüfpunkte für extern bezogene KI-Dienste.
+
+**Rechtsgrundlagen** für die oder den DSB:
+
+| Worum es geht | Fundstelle |
+|---|---|
+| Auswahl des Auftragsverarbeiters, Vertrag, Mindestinhalt, Unterauftragnehmer | Art. 28 Abs. 1 bis 4 [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu) |
+| Standardvertragsklauseln | Art. 28 Abs. 7 DSGVO, [Durchführungsbeschluss (EU) 2021/915](https://eur-lex.europa.eu/eli/dec_impl/2021/915/oj/deu) |
+| Übermittlung in Drittländer | Art. 44 ff. DSGVO |

@@ -40,8 +40,8 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 
 /**
- * The relevance cutoff (docs/handbuch/suche.md, Stufe 9): it shortens the selection by score, never
- * below the minimum, never reorders, and names why it stopped.
+ * The relevance cutoff (docs/handbuch/spaces/suche.md, Stufe 9): it shortens the selection by
+ * score, never below the minimum, never reorders, and names why it stopped.
  */
 class RelevanceCutoffStageTest {
 

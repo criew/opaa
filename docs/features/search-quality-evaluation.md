@@ -492,7 +492,7 @@ Drei Folgerungen:
 - **Der CI-Harness und die Instanz betten identisch ein.** Beide verwenden `nomic-embed-text` über
   Ollama. Ein grüner Regressionslauf misst damit dieselbe Retrieval-Konfiguration, die ein Besucher
   auf `opaa.ewerlin.com` erlebt — siehe den Nachtrag im ADR.
-- **Die Instanz ist inzwischen dokumentiert.** `docs/handbuch/docker-compose.md` beschreibt sie seit #244; die
+- **Die Instanz ist inzwischen dokumentiert.** `docs/handbuch/betrieb/docker-compose.md` beschreibt sie seit #244; die
   Betriebsdetails zu Korpus-Rollout, Indizierung und Aktualisierung sind dort ergänzt.
 
 ### Zugangsmodell: account-gebunden, kein Gastzugang
@@ -550,7 +550,7 @@ Phase 1 und 2 sind der Gegenstand der jetzt erstellten Issues.
 - `docs/discussions/discussion-retrieval-strategien.md` (Abschnitt 9, GraphRAG) — die Tier-Domäne mit
   ihrer Taxonomie ist der natürliche Testfall, falls GraphRAG evaluiert wird.
 - Issues #115 und #117 — Voraussetzung für die Multi-Tenancy-Demonstration.
-- `docs/handbuch/docker-compose.md` — beschreibt die bestehende öffentliche Instanz `opaa.ewerlin.com` noch
+- `docs/handbuch/betrieb/docker-compose.md` — beschreibt die bestehende öffentliche Instanz `opaa.ewerlin.com` noch
   nicht; das ist Voraussetzung für den Korpus-Rollout.
 - `docs/AGENT-ORGANIZATION.md` — der QA Engineer ist Eigentümer der RAG-Evaluierung im laufenden
   Betrieb; dieses Feature liefert ihm das Werkzeug.

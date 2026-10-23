@@ -47,7 +47,7 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client,
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/betrieb.md`, „Härtung für erreichbare Deployments"; `docs/handbuch/konfiguration.md`
+- Handbuch: `betrieb/netz-und-sicherheit.md`, „Härtung für erreichbare Deployments"; `betrieb/konfiguration.md`
 
 ## Tests bei Änderungen
 

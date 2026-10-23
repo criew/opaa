@@ -4,7 +4,7 @@
 #
 #   docker compose -f docker-compose.yml -f docker-compose.multi.yml up -d
 #
-# Update without downtime, one instance after the other (docs/handbuch/docker-compose.md,
+# Update without downtime, one instance after the other (docs/handbuch/betrieb/docker-compose.md,
 # "Mehrere Backend-Instanzen"):
 #
 #   docker compose -f docker-compose.yml -f docker-compose.multi.yml build   # or pull

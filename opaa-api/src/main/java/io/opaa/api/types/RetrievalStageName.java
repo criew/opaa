@@ -1,7 +1,7 @@
 package io.opaa.api.types;
 
 /**
- * The named stages of the retrieval pipeline (docs/handbuch/suche.md Abschnitt 4,
+ * The named stages of the retrieval pipeline (docs/handbuch/spaces/suche.md Abschnitt 4,
  * docs/features/retrieval-algorithm.md). The constant order is documentation only - the order
  * stages actually run in is the order {@code RetrievalConfiguration#retrievalPipeline} registers
  * them in, which is the one place it is decided.

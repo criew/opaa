@@ -1389,7 +1389,7 @@ geht als JSON und als Markdown heraus, ohne Geheimnisse, ohne personenbezogene D
 Inhalte: Ausgegeben wird nur der Wert eines Schlüssels, den das Manifest als datenwirksam führt
 (Positivliste), Adressen ohne Zugangsdaten und Abfrageteil. Abrufen darf sie nur `SYSTEM_ADMIN`;
 jeder Abruf, auch der abgewiesene, ist ein Protokollereignis `DATA_COLLECTION_DISCLOSURE_EXPORTED`.
-Abruf und Inhalt beschreibt das Handbuch unter [Nachvollziehbarkeit](../handbuch/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
+Abruf und Inhalt beschreibt das Handbuch unter [Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
 sie ist der Eingang für das Update-Delta gegen die Instanz (#2559) und für die statischen Anlagen der
 Dienstvereinbarung ([Behördenunterlagen und Update-Paket](./behoerdenunterlagen.md#instanzbezug)).
 Die Zahl und Anlasskategorien der anlassbezogenen Klärungen im Berichtszeitraum folgen mit #2895;
@@ -1510,7 +1510,7 @@ Maßgeblich ist **C5:2026**: Die Fassung ist seit April 2026 final und für Prü
 1.6.2027 verbindlich (Recherche vom 13.10.2026 in Epic #2542). An der Abgrenzung ändert die neue
 Fassung nichts; testiert wird weiterhin der Anbieter eines Cloud-Dienstes. Für Behörden, die OPAA über
 einen solchen Anbieter beziehen, ordnet die Vorlage
-[C5:2026 für das Betriebsmodell Cloud-Anbieter](../behoerden/06-informationssicherheit/c5-2026-cloud-anbieter.md)
+[C5:2026 für das Betriebsmodell Cloud-Anbieter](../behoerden/06-informationssicherheit/c5-cloud-betrieb.md)
 die Prüfbereiche Produkt und Anbieter zu.
 
 Das Produktziel ist deshalb die **C5-Fähigkeit**: OPAA ist so gebaut und dokumentiert, dass ein Betreiber

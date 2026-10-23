@@ -7,7 +7,7 @@
 > (#1717), die Bibliotheksfreigabe (#1731), die Zugangstokens samt Oberfläche (#1718, #1719), der
 > Such- und Abrufweg mit Kontingent und Abflussalarm (#1720) sowie der MCP-Server (#1721);** die
 > Abschnitte „Umsetzungsstand" nennen die Einzelheiten. Das Betriebs- und Anwendungswissen dazu steht
-> im Handbuchkapitel „Externe KI-Werkzeuge" (`docs/handbuch/fremdzugaenge.md`), einschließlich der
+> im Handbuchkapitel „Externe KI-Werkzeuge" (`docs/handbuch/spaces/fremdzugaenge.md`), einschließlich der
 > Einrichtungsanleitungen je Client und der Störungssuche. Abgenommen vom Maintainer am 18.09.2026 auf der
 > Demo-Installation; Nachträge #1765 und #1766 sind enthalten.
 

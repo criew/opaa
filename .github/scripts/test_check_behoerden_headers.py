@@ -1,6 +1,7 @@
-"""Self-check for check_behoerden_headers.sh: every Markdown file under docs/behoerden/ except the
-top-level README carries the full header block, the verbatim disclaimer right after the title and
-only well-formed fact sheet placeholders; an overdue review date is no error."""
+"""Self-check for check_behoerden_headers.sh: every Markdown file under docs/behoerden/ except any
+README.md and the top-level AGENTS.md and CLAUDE.md carries the full header block and the verbatim
+disclaimer right after the title; every file, READMEs included, has only well-formed fact sheet
+placeholders; an overdue review date is no error."""
 
 import shutil
 import subprocess
@@ -35,8 +36,8 @@ ANCHORS = (
     + "".join(f"{sheet}\n" for sheet in SHEETS)
     + "protokollereignisse#anmeldung\nfristen#audit-retention\n"
 )
-README = (
-    "# Unterlagen für Behörden\n\n"
+RULES = (
+    "# Regeln für Vorlagen\n\n"
     "- `<name>` ist eines der Faktenblätter: `datenkatalog`, `protokollereignisse`,\n"
     "  `rollensicht`, `datenfluesse`, `voreinstellungen`, `fristen`.\n\n"
     "Beispiel: `{{faktenblatt:<name>#<anker>}}`, `{{faktenblatt:fristen#audit-retention}}`.\n"
@@ -58,7 +59,9 @@ def repo(tmp_path: Path) -> Path:
     subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
     folder = tmp_path / "docs" / "behoerden"
     (folder / "04-datenschutz").mkdir(parents=True)
-    (folder / "README.md").write_text(README, encoding="utf-8")
+    (folder / "README.md").write_text("# Unterlagen für Behörden\n", encoding="utf-8")
+    (folder / "AGENTS.md").write_text(RULES, encoding="utf-8")
+    (folder / "CLAUDE.md").write_text("@AGENTS.md\n", encoding="utf-8")
     (tmp_path / ".github").mkdir()
     (tmp_path / ".github" / "fact-sheet-anchors.txt").write_text(ANCHORS, encoding="utf-8")
     return tmp_path
@@ -182,18 +185,42 @@ def test_rejects_malformed_fact_sheet_placeholder(repo: Path, placeholder: str) 
 def test_checks_every_subfolder_and_reports_all_files(repo: Path) -> None:
     write(repo, document())
     (repo / "docs/behoerden/05-mitbestimmung").mkdir()
-    write(repo, "# Ohne Kopf\n", "05-mitbestimmung/README.md")
+    write(repo, "# Ohne Kopf\n", "05-mitbestimmung/vorlage.md")
     write(repo, "# Ohne Kopf\n", "ohne-kopf.md")
     result = run_check(repo)
     assert result.returncode == 1
-    assert "docs/behoerden/05-mitbestimmung/README.md" in result.stdout
+    assert "docs/behoerden/05-mitbestimmung/vorlage.md" in result.stdout
     assert "docs/behoerden/ohne-kopf.md" in result.stdout
     assert "04-datenschutz/vorlage.md" not in result.stdout
+
+
+def test_folder_overview_needs_no_header_but_valid_links(repo: Path) -> None:
+    write(repo, "# Datenschutz\n\n[DSFA](vorlage.md)\n", "04-datenschutz/README.md")
+    write(repo, document())
+    assert run_check(repo).returncode == 0
+    write(repo, "# Datenschutz\n\n[fehlt](fehlt.md)\n", "04-datenschutz/README.md")
+    assert_rejected(repo, "points to a missing file")
+
+
+def test_folder_overview_needs_valid_fact_sheet_placeholders(repo: Path) -> None:
+    readme = "04-datenschutz/README.md"
+    write(repo, "# Datenschutz\n\nFristen: {{faktenblatt:fristen#audit-retention}}.\n", readme)
+    assert run_check(repo).returncode == 0
+    write(repo, "# Datenschutz\n\nFristen: {{faktenblatt:gibtsnicht}}.\n", readme)
+    result = run_check(repo)
+    assert result.returncode == 1, result.stdout
+    assert "04-datenschutz/README.md" in result.stdout
+    assert "fact sheet placeholder" in result.stdout
 
 
 def test_rejects_missing_folder_readme(repo: Path) -> None:
     (repo / "docs/behoerden/README.md").unlink()
     assert_rejected(repo, "README.md")
+
+
+def test_rejects_missing_rules_file(repo: Path) -> None:
+    (repo / "docs/behoerden/AGENTS.md").unlink()
+    assert_rejected(repo, "AGENTS.md")
 
 
 @pytest.mark.parametrize(
@@ -269,15 +296,15 @@ def test_rejects_missing_anchor_file(repo: Path) -> None:
     assert_rejected(repo, "complianceAnchors")
 
 
-def test_rejects_readme_name_list_that_differs(repo: Path) -> None:
-    readme = repo / "docs" / "behoerden" / "README.md"
-    readme.write_text(README.replace("`fristen`", "`speicherfristen`"), encoding="utf-8")
+def test_rejects_rules_name_list_that_differs(repo: Path) -> None:
+    rules = repo / "docs" / "behoerden" / "AGENTS.md"
+    rules.write_text(RULES.replace("`fristen`", "`speicherfristen`"), encoding="utf-8")
     assert_rejected(repo, "fact sheet name list")
 
 
-def test_rejects_readme_example_with_unknown_anchor(repo: Path) -> None:
-    readme = repo / "docs" / "behoerden" / "README.md"
-    readme.write_text(README + "{{faktenblatt:rollensicht#gibt-es-nicht}}\n", encoding="utf-8")
+def test_rejects_rules_example_with_unknown_anchor(repo: Path) -> None:
+    rules = repo / "docs" / "behoerden" / "AGENTS.md"
+    rules.write_text(RULES + "{{faktenblatt:rollensicht#gibt-es-nicht}}\n", encoding="utf-8")
     assert_rejected(repo, "names no target")
 
 
@@ -375,16 +402,16 @@ def test_ignores_external_links_and_code(repo: Path) -> None:
     assert result.returncode == 0, result.stdout
 
 
-def test_checks_links_of_the_readme(repo: Path) -> None:
-    readme = repo / "docs" / "behoerden" / "README.md"
-    readme.write_text(README + "\n[fehlt](04-datenschutz/fehlt.md)\n", encoding="utf-8")
+def test_checks_links_of_the_rules_file(repo: Path) -> None:
+    rules = repo / "docs" / "behoerden" / "AGENTS.md"
+    rules.write_text(RULES + "\n[fehlt](04-datenschutz/fehlt.md)\n", encoding="utf-8")
     assert_rejected(repo, "points to a missing file")
 
 
 # Legal templates under 03-vergabe/: sources section, citations, rechtsstand, neutrality.
 
 SOURCES = (
-    "\n## Quellen und Prüfstand\n\n| Aussage | Fundstelle | Herkunft |\n|---|---|---|\n"
+    "\n## Zum Nachlesen\n\n| Aussage | Fundstelle | Herkunft |\n|---|---|---|\n"
     "| Produktneutralität | [§ 31 Abs. 6 VgV](https://www.gesetze-im-internet.de/vgv_2016/__31.html)"
     " | Normtext |\n"
 )
@@ -409,7 +436,7 @@ def test_legal_template_with_listed_citation_passes(repo: Path) -> None:
 
 def test_rejects_legal_template_without_sources_section(repo: Path) -> None:
     write_legal(repo, BODY + "\nNach § 31 Abs. 6 VgV.\n")
-    assert_rejected(repo, 'missing section "## Quellen und Prüfstand"')
+    assert_rejected(repo, 'missing section "## Zum Nachlesen"')
 
 
 def test_sources_section_is_required_only_under_vergabe(repo: Path) -> None:
@@ -530,7 +557,7 @@ def test_link_must_stand_in_the_fundstelle_column(repo: Path) -> None:
 
 
 def test_rejects_sources_table_without_fundstelle_column(repo: Path) -> None:
-    sources = "\n## Quellen und Prüfstand\n\n| Aussage | Quelle |\n|---|---|\n| X | [Y](https://example.org) |\n"
+    sources = "\n## Zum Nachlesen\n\n| Aussage | Quelle |\n|---|---|\n| X | [Y](https://example.org) |\n"
     write_legal(repo, BODY + sources)
     assert_rejected(repo, 'needs a column "Fundstelle"')
 

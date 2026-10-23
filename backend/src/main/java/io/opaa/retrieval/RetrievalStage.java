@@ -3,8 +3,8 @@ package io.opaa.retrieval;
 import io.opaa.api.types.RetrievalStageName;
 
 /**
- * One named step of the retrieval pipeline (docs/handbuch/suche.md Abschnitt 4): candidate lists
- * in, candidate lists out, plus an explanation of what happened to them.
+ * One named step of the retrieval pipeline (docs/handbuch/spaces/suche.md Abschnitt 4): candidate
+ * lists in, candidate lists out, plus an explanation of what happened to them.
  *
  * <p>Three properties are structural rather than a matter of discipline: a stage receives {@link
  * RetrievalContext} read-only and can therefore not change the permission context; it sees no more
