@@ -55,10 +55,8 @@ sie. Die Kennzeichnung am Pull Request führt jede datenrelevante Änderung in d
 Aus beiden entsteht zu jedem Release das Update-Paket.
 
 Ein Wächter prüft auch die **Selbstauskunft**, mit der jede Person die zu ihr gespeicherten Daten
-herunterlädt: Für jede Kategorie, deren Ausgabe gebaut ist, muss jede Angabe, die das Manifest als
-Teil der Auskunft führt, darin vorkommen, und nichts, was es ausschließt, darf hinein. Noch sind
-nicht alle Kategorien gebaut; die Übersicht der Auskunft nennt die fehlenden (siehe [Was nicht
-gebaut ist](#was-nicht-gebaut-ist)).
+herunterlädt: Jede Kategorie mit einem Weg zur Person hat eine Ausgabe, darin kommt jede Angabe
+vor, die das Manifest als Teil der Auskunft führt, und nichts, was es ausschließt.
 
 Die Selbstauskunft hinterlässt im Nachweisprotokoll **zwei Einträge je Auskunft**: den Start und
 das Ende mit Ergebnis (vollständig ausgeliefert oder abgebrochen), Größe, Prüfsumme der
@@ -261,8 +259,6 @@ woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
   ([#2559](https://github.com/criew/opaa/issues/2559)).
 - Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
   Schnittstelle oben.
-- Die Ausgabe von Konto und Protokoll in der Selbstauskunft
-  ([#2990](https://github.com/criew/opaa/issues/2990)); die übrigen Kategorien sind gebaut.
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
   ([#2557](https://github.com/criew/opaa/issues/2557)).
 

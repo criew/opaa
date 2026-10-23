@@ -9,8 +9,8 @@
 > Funktion.
 >
 > **Selbstauskunft (Stufe 1, Epic #2986): gebaut** — Ablauf, Grenzen, Protokoll, Oberfläche in den
-> Einstellungen („Meine Daten“) und Administration („Datenschutz“, #2993); offen ist nur die Ausgabe
-> der Kategorien von #2990 (Konto, Protokoll). Der Abschnitt
+> Einstellungen („Meine Daten“) und Administration („Datenschutz“, #2993) und die Ausgabe aller
+> Kategorien der Tabelle „Inhalt“. Der Abschnitt
 > [Selbstauskunft](#selbstauskunft-stufe-1) ist die verbindliche Vorlage für #2988–#2994 und #2996.
 > Die Oberfläche löst den Download als Formular-POST in einen verborgenen Frame aus, den nur dieser
 > Endpunkt zulässt (`X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`), und liest Ende oder
