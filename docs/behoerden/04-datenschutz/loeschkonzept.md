@@ -37,17 +37,10 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/nachvollziehbar
 
 1. **Fristen wählen:** je einstellbarer Frist entscheiden, ob die Voreinstellung bleibt, und die Wahl
    mit dem Zweck begründen (Tabelle unten).
-2. **Regel für Chats wählen:** Chats werden nur dort automatisch archiviert und gelöscht, wo ein
-   Space das einschaltet; ab Werk ist es aus, im persönlichen Space entscheidet nur die Person selbst
-   ([Spaces: Chats](../../handbuch/spaces.md#7-chats)). Die Behörde wählt und begründet eine von zwei
-   Varianten:
-   - **Ohne automatische Frist:** Chats löscht die Person selbst, wenn sie sie nicht mehr braucht.
-     Einfach und üblich bei vergleichbaren Anwendungen; der Personalrat wird aber nach einer Frist
-     fragen, weil Chats zeigen, wer wann was gefragt hat. Chats ausgeschiedener Personen bleiben
-     bestehen, solange ihr Konto nur gesperrt ist; dafür braucht es eine eigene Regel.
-   - **Mit Frist in gemeinsamen Spaces:** In allen gemeinsamen Spaces ist die Bereinigung
-     eingeschaltet, mit den Fristen der Installation. Leichter zu verantworten, weil Chats
-     Arbeitsmaterial sind und Aktenrelevantes ohnehin in die Akte gehört.
+2. **Regel für Chats festlegen:** Chats werden nur dort automatisch gelöscht, wo ein Space das
+   einschaltet; ab Werk ist es aus, im persönlichen Space entscheidet nur die Person selbst
+   ([Spaces: Chats](../../handbuch/spaces.md#7-chats)). Die Behörde legt fest, in welchen Spaces es
+   eingeschaltet wird, etwa in allen gemeinsamen Spaces.
 3. **Anlässe regeln, die OPAA nicht kennt:**
    - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird meist gesperrt,
      nicht gelöscht ([Löschen oder sperren](../../handbuch/benutzerverwaltung.md#8-löschen-oder-sperren)).
