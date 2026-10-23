@@ -356,6 +356,8 @@ final class AuditSelfDisclosurePayload {
         Set.of("result", "abortCause", "bytes", "sha256", "categories"),
         SELF_DISCLOSURE_EXPORT_FINISHED);
     put(keys, Set.of("enabled", "dailyLimit"), SELF_DISCLOSURE_SETTINGS_CHANGED);
+    put(keys, Set.of("periodStart", "lockReason"), LOCKED_ACCOUNT_CHATS_DELETED);
+    put(keys, Set.of(), LOCKED_ACCOUNT_CHAT_CLEANUP_HELD, LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED);
     return Map.copyOf(keys);
   }
 
