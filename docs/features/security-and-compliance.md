@@ -7,6 +7,9 @@
 > einer Behörde keinen Sinn. Der geordnete Entwicklungsprozess mit Stückliste und signierten Builds läuft
 > parallel und begleitend; die unabhängige Prüfung als Nachweisstufe ist eine Reifegradfrage, keine
 > Funktion.
+>
+> **Selbstauskunft (Stufe 1, Epic #2986): spezifiziert, nicht gebaut.** Der Abschnitt
+> [Selbstauskunft](#selbstauskunft-stufe-1) ist die verbindliche Vorlage für #2988–#2994 und #2996.
 
 > **Abgrenzung:** Das Rechtemodell steht in
 > [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md), Anmeldung, Kontenlebenszyklus und
@@ -239,6 +242,13 @@ ersten Stufe nicht geschrieben.
 - **Mail-Einstellungen** ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Änderung der
   SMTP-Einstellungen (ohne den Passwortwert), Änderung und Zurücksetzen einer Mail-Vorlage, ein
   ausgelöster Testversand
+- **Die Einstellungen der Selbstauskunft** (Notabschaltung, Tagesgrenze), mit Vorher/Nachher der
+  geänderten Schlüssel ([Selbstauskunft](#grenzen-und-betrieb))
+
+**Selbstauskunft**
+
+- Beginn und Ende jedes Exports der [Selbstauskunft](#protokoll-der-selbstauskunft), das Ende mit
+  Ergebnis, Größe und Prüfsumme, nie mit Inhalt. Abgewiesene Versuche schreiben nichts
 
 **Zugriff auf die Protokolldaten selbst**
 
@@ -322,7 +332,7 @@ Grant-Befristung (kein Scheduler; der Ablauf eines Zugangstokens hat mit #1718 e
 Eigentümerübernahme ohne Zuständigkeit und der Übergang in „Nachfolge offen", Deaktivierung eines
 Kontos, erzwungene Neuanmeldung und die übrigen Systemeinstellungen (Governance außer der
 Aufbewahrungshöchstdauer der Rechtehistorie, Protokollkonfiguration außer der Frist,
-Modellvorgaben). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
+Modellvorgaben) sowie die Ereignisse der Selbstauskunft (#2989). Jede dieser Lücken schließt das jeweilige Folge-Issue, sobald
 die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und ändert sich nicht.
 
 ### Was ausdrücklich nicht protokolliert wird
@@ -418,19 +428,29 @@ diesen Weg.
 - **keine Zeitreihe je Person**, in keiner Auflösung
 - **keine Freitextsuche über das Protokoll.** Sie wäre der bequemste Weg, einen Personenfilter durch die
   Hintertür herzustellen — die Pseudonymkennung ist ein Text wie jeder andere
-- **kein Vollabzug ohne Objekt-, Zeitraum- oder Ereignisbezug**, auch nicht als Export
+- **kein Vollabzug ohne Objekt-, Zeitraum- oder Ereignisbezug**, auch nicht als Export — einzige
+  Ausnahme die Selbstauskunft, nur über die eigene Person (siehe unten)
 - **keine Sicht „alle Ereignisse, bei denen Person X betroffen war"** über das Protokoll. Der berechtigte
   Bedarf dahinter — welche Rechte hatte X wann — wird über die
   [Rechtehistorie](#nachweisbarkeit-historisierung-von-rechten) beantwortet, die den Rechtestand
   abbildet und nicht das Handeln einzelner Beschäftigter
 
-**Die eine Ausnahme, und sie ist eng:** Der Personenfilter existiert genau einmal, im freigegebenen
+**Die eine Ausnahme für Dritte, und sie ist eng:** Der Personenfilter existiert genau einmal, im freigegebenen
 Vorgang der [anlassbezogenen Klärung](#2-einen-personenbezogenen-auswertungspfad-gibt-es-nicht) — im
 Vier-Augen-Prinzip unter Beteiligung der Personalvertretung, mit vorab festgelegter Person, vorab
 festgelegtem Zeitraum und dokumentiertem Zweck, die die Abfrage **technisch** begrenzen. Ohne
 freigegebenen Vorgang ist er nicht aufrufbar; mit ihm reicht er nicht weiter als die Freigabe. Der
 Zugriff erzeugt seinen eigenen Eintrag, die betroffene Person wird unterrichtet, und die Zahl der Fälle
 geht in den Jahresbericht an die Personalvertretung.
+
+**Die zweite Ausnahme gilt nur für die Person selbst: die [Selbstauskunft](#selbstauskunft-stufe-1).**
+Sie liest die Protokolleinträge, in denen die angemeldete Person handelnd, betroffen oder als
+Kontoobjekt steht, ohne Zeitgrenze und ohne Seitengrenze — ein Personeneinstieg und ein Vollabzug,
+beides sonst ausgeschlossen. Die Person ist dabei **kein Parameter**, sondern allein die Identität
+der Anfrage: Es gibt keinen Weg, die Auskunft für eine andere Person, „im Auftrag“, durch die
+Verwaltung, die Revision oder die Datenschutzstelle auszulösen. Die Pseudonymkennung verlässt OPAA
+auch dabei nicht; die Einträge nennen die Person als „Sie“. Ein Index auf `subject_ref` entsteht
+dafür nicht ([Protokoll der Selbstauskunft](#protokoll-der-selbstauskunft)).
 
 **Stand #393, technisch bereits umgesetzt:** zwei verschiedene Personen (Vier-Augen-Prinzip, auch als
 Datenbank-Constraint, nicht nur anwendungsseitig), vorab festgelegte Person/Zeitraum/Zweck, technische
@@ -593,6 +613,11 @@ war keine neue Arbeit für #395, nur ein zusätzlicher Nachweis auf Anwendungseb
 `AuditActorPseudonymServiceIntegrationTest`, zusätzlich zum bereits bestehenden Nachweis auf
 Datenbankebene in `Migration017AuditLogTest`).
 
+Die **Ereignisse der Selbstauskunft** haben keine eigene Frist: Sie folgen der allgemeinen
+Protokollfrist (Voreinstellung 3 Jahre, 1 bis 10 Jahre). Eine eigene, kürzere Frist wäre eine
+zweite Löschmechanik neben der Monatspartition, die die Ablage nicht kennt; eine längere hätte
+keinen Zweck, den die allgemeine Frist nicht schon trägt.
+
 ### Der Auszug für die Personalvertretung
 
 Der Auszug ist kein Protokollbericht, sondern die **Beschreibung des Protokolls**. Er ist ohne Anlass,
@@ -608,6 +633,11 @@ danach jährlich als Nachweis, dass sich nichts stillschweigend verschoben hat.
   dem Ergebnis der automatisierten Prüfung darauf (siehe [Erfolgs-Metriken](#erfolgs-metriken))
 - ob die Netzadresse eingeschaltet ist, seit wann und mit welcher Begründung
 - Zahl und Anlasskategorien der anlassbezogenen Klärungen im Berichtszeitraum
+- die **Ereignisse der Selbstauskunft** ausdrücklich, weil sie zeigen, wer sein Auskunftsrecht
+  wahrnimmt: Zweck (Nachweis der Erfüllung des Auskunftsrechts und Erkennung missbräuchlicher
+  Abrufe), Zugriff (nur `AUDITOR` über die Wege nach Zeitraum, Ereignisart und Vorgang; nach Objekt
+  nicht, weil das Objekt ein Konto ist; keine Zählung je Person) und Frist (allgemeine
+  Protokollfrist) — siehe [Protokoll der Selbstauskunft](#protokoll-der-selbstauskunft)
 
 **Er enthält nicht:** keine Protokollsätze, keine Namen, keine Pseudonymkennungen, keine Zahlen je Person
 oder je Organisationseinheit und keine Objektlisten. Ein Auszug, der belegen soll, dass es keine
@@ -1025,7 +1055,8 @@ Aktionstoken (`local_refresh_tokens`, `local_revoked_tokens`, `local_action_toke
 mit harter Frist (Lebensdauer begrenzt, Löschung spätestens sieben Tage nach Ablauf oder Widerruf);
 es gibt keine Oberfläche und keine Schnittstelle, die sie je Person ausgibt — die in
 [Zugangskontrolle](./access-control.md#sitzungsverwaltung) zugesagte Übersicht der **eigenen**
-Sitzungen ist die einzige vorgesehene Ausnahme und nur für die Person selbst. Die Kontenliste der
+Sitzungen und die [Selbstauskunft](#selbstauskunft-stufe-1) sind die einzigen vorgesehenen
+Ausnahmen, beide nur für die Person selbst. Die Kontenliste der
 Verwaltung zeigt Aktivität nur als Klasse („nie", „länger als 90 Tage nicht", „aktiv"), lässt sich
 nicht danach sortieren und kennt keinen Export und keinen Massenabruf. Seit dem 12.09.2026 (#1601)
 führt sie **alle Konten der Organisation**, lokale wie die der Identitätsanbieter; die
@@ -1047,6 +1078,229 @@ Drei Exporte, die auseinanderzuhalten sind, weil sie verschiedene Adressaten hab
 Die Selbstauskunft ist der einzige Weg, auf dem personenbezogene Daten gebündelt herausgehen — und sie
 geht ausschließlich an die betroffene Person, weder über eine Vertretungsfunktion noch durch einen Admin
 „im Auftrag" noch in ein fremdes Postfach.
+
+#### Selbstauskunft (Stufe 1)
+
+Jede angemeldete Person lädt die zu ihr gespeicherten Daten selbst herunter: ausgelöst in ihren
+Einstellungen („Profil und Einstellungen“, Bereich „Meine Daten“), nach erneuter Anmeldung, als
+ZIP. Grundlage sind die Entscheidungen des Maintainers vom 23.10.2026 und das Stakeholder-Review
+mit Personalrat und Betrieb (Epic #2986).
+
+**Abgrenzung zum Auskunftsantrag.** Das Werkzeug ersetzt nicht die förmliche Bearbeitung eines
+Auskunftsantrags nach Art. 15 DSGVO durch die Behörde. Ein Antrag auf anderem Weg bleibt möglich
+und wird bearbeitet wie bisher ([Betroffenenrechte](../behoerden/04-datenschutz/betroffenenrechte.md));
+Oberfläche und Übersicht sagen das.
+
+**Nur für die Person selbst, nicht delegierbar.**
+
+- Die Person ist die Identität der Anfrage, kein Parameter. Keine Ausnahme für `SYSTEM_ADMIN`,
+  `AUDITOR` oder die Datenschutzstelle; kein Export für Dritte, „im Auftrag“ oder in ein fremdes
+  Postfach.
+- Nicht über persönliche Zugangstokens externer KI-Werkzeuge erreichbar, nur mit einer Anmeldung
+  an der Oberfläche.
+- **Kein Export während einer Diagnose-Impersonation („Sicht als“).** Eine Anfrage, die einen
+  fremden Rechtekontext trägt, wird abgewiesen; die Selbstauskunft liest nie in einem anderen als
+  dem eigenen Kontext. Ein Test hält das fest.
+
+**Hinweis**, wörtlich in der Oberfläche und oben in der HTML-Übersicht:
+
+> Diese Auskunft ist nur für Sie. Niemand darf verlangen, dass Sie sie vorlegen oder weitergeben.
+
+**Keine Signatur, kein Echtheitsnachweis.** Das ZIP trägt keine Signatur, keine Prüfsummendatei
+und kein Siegel. Ein Echtheitsnachweis machte die Auskunft als Beleg verwertbar und lüde dazu ein,
+ihre Vorlage zu verlangen — genau das, was der Hinweis ausschließt. Die Prüfsumme im
+[Protokoll](#protokoll-der-selbstauskunft) belegt nur gegenüber der Revision, was ausgeliefert
+wurde; sie steht nicht im ZIP.
+
+##### Inhalt
+
+Eine **Kategorie** ist ein Datum des Fakten-Manifests (`id`) mit mindestens einer Tabelle, die einen
+Weg zur Person hat (#2988). Je Kategorie eine JSON-Datei; ausgegeben werden nur Felder einer
+**Positivliste** des Exporteurs, nie eine ganze Zeile. Geheimnisse (Passwort-Hashes, Token-Werte und
+-Hashes, verschlüsselte Zugangsdaten) stehen in keiner Positivliste. Spalten, die die Tabelle unten
+nicht als ausgeschlossen nennt, sind Teil der Auskunft.
+
+| Kategorie (`id`) | Enthalten | Ausgeschlossen, mit Grund |
+|---|---|---|
+| `accounts` | eigenes Konto: Kennung beim Anbieter, Anbieter, Adresse, Anzeigename, letzte Anmeldung, Systemrolle, Sperre durch den Verzeichnisabgleich, Anlage; Zeitpunkt des letzten Exports | — |
+| `local-credentials` | Sperre mit Grund, Ablauf, Bestätigung der Adresse, Anlagegrund, „Passwortwechsel ausstehend“ mit Anlass | `password_hash` (Geheimnis); `failed_login_attempts`, `lockout_until` (nach der erneuten Anmeldung stets zurückgesetzt, ohne Aussage); `session_generation`, `expiry_reminded_for` (technische Merker ohne Aussage über die Person) |
+| `local-sessions-and-links` | eigene Sitzungen aus `local_refresh_tokens` (Beginn, Ablauf, Widerruf mit Grund) und eigene Links aus `local_action_tokens` (Zweck, Anlage, Ablauf, Einlösung, Anlass, Anbieter) | `local_revoked_tokens` (nur Prüfwert und Ablauf eines widerrufenen Zugriffstokens; der Widerruf steht schon bei der Sitzung); alle Hashes und Familienkennungen |
+| `account-state-history` | Zeiträume, in denen das Konto nicht nutzbar war, mit Ursache | — |
+| `settings-editors` | Bereich und Zeitpunkt der Einstellungen, die die Person zuletzt geändert hat | Werte der Einstellungen (keine Daten über die Person; Absender und Zugangsname der Mail-Einstellungen gehören dem Dienstkonto) |
+| `notifications` | Art, Objektart, Titel, Text, Eingang, gelesen | — (Texte erzeugt OPAA und nennen Objekte, keine Personen; nennt ein Typ künftig eine andere Person, geht er ohne Text heraus) |
+| `audit-log` | Einträge, in denen die Person handelt (`actor_ref`), betroffen ist (`subject_ref`) oder Kontoobjekt ist: Zeitpunkt, Ereignisart, Objektart, Objektbezeichnung, Ergebnis, Vorher/Nachher nach Positivliste je Ereignisart, Vorgangskennung | Pseudonymkennungen, auch die eigene; `reason` (Freitext, kann andere Personen nennen; ausgegeben wird nur, ob ein Anlass angegeben war); Ereignisse einer anlassbezogenen Klärung über die Person; `object_label` an fremden Kontoobjekten |
+| `chats` | eigene Chats (`author_id`) mit Titel, Filter, Nachrichten, Notizen, Anheften und Archiv; an Antworten die Fundstellen nur mit Dokumenttitel, Bibliothek und Seite | Textausschnitte der Fundstellen (Dokumentinhalt); `content_tsv` (abgeleiteter Suchindex) |
+| `connected-accounts` | eigene verbundene Konten (Bezeichnung beim Anbieter, Zeitpunkte), von der Person verbundene Bibliotheken | `connection_tokens`, `connection_authorizations`, `connection_grant_revocations` (Geheimnisse und Zwischenstände eines laufenden Verbindungsaufbaus oder Widerrufs, kurzlebig) |
+| `connection-person-states` | Ruhezustand der eigenen Verbindungen | — |
+| `connection-log` | Einträge, in denen die Person handelt oder betroffen ist | Pseudonymkennungen |
+| `external-access-tokens` | eigene Zugangstokens: Name, Anlage, Ablauf, letzter Nutzungstag, Widerruf mit Anlass | `token_prefix`, `token_lookup_hash` (Geheimnisbestandteile) |
+| `library-settings` | Bibliotheken, deren Freigabe für externe KI-Werkzeuge die Person gesetzt hat, mit Zeitpunkt | `source_credentials` (Geheimnis); Quelladresse nur ohne Zugangsdaten und Abfrageteil |
+| `documents` | **nur Verzeichnis** der eigenen Uploads: Dateiname, Datum, Bibliothek | Inhalte, `chunk_full_text`, `vector_store`, `document_metadata_values` (Dokumentinhalt und Einbettungen; Handänderungen an Metadaten stehen im Protokoll), `indexing_run_events`, `source_sync_revisits`, `source_event_batches` (Betriebsdaten des Bestands, kein Weg zur Person) |
+| `indexing-runs` | von der Person ausgelöste Indexierungs- und Neueinbettungsläufe: Bibliothek, Art, Beginn, Ende, Ergebnis | — |
+| `rights` | eigene Assets (Art, Name), Grants an die Person und von ihr erteilte, Anlegerechte; Empfänger und Erteilende außer ihr nur als „andere Person“ bzw. Gruppenname | Grants Dritter an fremden Assets (kein Weg zur Person) |
+| `permission-history` | Intervalle, in denen die Person Subjekt, Eigentümerin oder Gruppenmitglied war, und von ihr bewirkte Änderungen | — |
+| `groups` | eigene Mitgliedschaften und Verantwortungen | — |
+| `permission-transfers` | Übertragungen, in denen die Person Quelle, Ziel oder handelnd war | Bezeichnungen der jeweils anderen Seite |
+| `succession` | Nachfolgefälle an Assets der Person und von ihr abgeschlossene | — |
+| `favorites` | eigene Favoriten | — |
+| `spaces` | eigene Spaces mit Modellanweisung, Mitgliedschaften, von der Person vorgenommene Zuordnungen | — |
+| `space-membership-history` | Intervalle der eigenen Mitgliedschaften und von der Person bewirkte Änderungen | — |
+| `diagnostic-impersonation` | Befugnisse „Sicht als“, die die Person hält oder erteilt hat: Bereich, Gültigkeit, Widerruf | Inhaber einer von ihr erteilten Befugnis nur als „andere Person“ |
+| `diagnostic-context-log` | eigene Suchdiagnosen im fremden Rechtekontext: Zeitpunkt, Zielart, Testfrage, Begründung, Trefferzahl | `permission_snapshot`, `hit_refs`, `target_ref` (Rechte und Treffer anderer) |
+
+**Ganz ausgeschlossen**, mit Hinweis in der Übersicht:
+
+| Datum | Grund |
+|---|---|
+| Dokumentinhalte, Einbettungen, Originaldateien (`original-storage`) | Sachinhalte der Bibliotheken, keine Daten über die Person; Uploads erscheinen nur im Verzeichnis |
+| Technisches Anwendungslog (`application-log`) | liegt beim Betrieb, nicht in OPAA; Auskunft darüber gibt die Behörde |
+| Sicherungen | Kopien derselben Bestände beim Betrieb, nicht über die Anwendung lesbar |
+| Geheimnisse (Passwort-Hashes, Tokens, verschlüsselte Zugangsdaten) | kein Auskunftswert, Ausgabe wäre ein Sicherheitsrisiko |
+| Inhalte anlassbezogener Klärungen über die Person (`audit-incident-scopes` und die zugehörigen Protokolleinträge) | die Auskunft darüber läuft über die oder den Datenschutzbeauftragten; die Übersicht sagt nur, dass es sie geben kann |
+| Pseudonymzuordnung (`audit-pseudonyms`) | die eigene Kennung machte die Auskunft zum Schlüssel ins Protokoll — wer ihre Vorlage erzwingt, hätte den ausgeschlossenen Personeneinstieg |
+| Abgleichspläne (`directory-sync`) | Arbeitsstand vor einer Bestätigung, nennt viele Personen; die bewirkten Änderungen stehen in Rechten, Historie und Protokoll |
+| Mail-Ausgang (`mail-outbox`) | Zustellpuffer von höchstens rund zwei Stunden; die Mails selbst liegen im Postfach der Person |
+| Prompt-Texte | Sachdaten ohne Personenbezug (Manifest); eigene Prompt-Bibliotheken erscheinen als Assets unter `rights` |
+
+**Andere Personen** erscheinen nie mit Namen, Adresse, Kennung oder Pseudonym — auch nicht in
+`object_label`, `reason`, Vorher/Nachher oder Bezeichnungen. Sie stehen als **„andere Person“**,
+Systemvorgänge und Dienstkonten als **„System“**, die Person selbst als **„Sie“**. Gruppen,
+Bibliotheken und Spaces erscheinen mit ihrer Bezeichnung. Freitexte, die die Person selbst
+geschrieben hat (Chats, Notizen, Modellanweisungen, Diagnosebegründungen), gehen unverändert heraus;
+Freitexte anderer nie. Ein Test je Exporteur hält fest, dass Namen und Kennungen eines zweiten
+Kontos im Export nicht vorkommen.
+
+##### Format
+
+- **ZIP**, Dateiname `opaa-selbstauskunft-<JJJJ-MM-TT>.zip`, synchron gestreamt, keine Job-Tabelle
+  und keine Zwischenablage auf dem Server.
+- `index.html`: lesbare Übersicht, eine Datei ohne Skript und ohne externe Ressourcen, `lang="de"`,
+  Hinweistext oben, je Kategorie Titel, Feldbezeichnungen und Datensätze, danach die Ausschlüsse
+  mit Grund, der Hinweis auf anlassbezogene Klärungen und die oder den DSB, die Abgrenzung zum
+  Auskunftsantrag und der Satz, dass die Kategorien nacheinander gelesen werden.
+- `manifest.json`: Erzeugungszeitpunkt, OPAA-Version, Liste der Kategorien mit Dateinamen und Zahl
+  der Datensätze. Personenbezogen ist darin nur der Erzeugungszeitpunkt.
+- `<kategorie>.json` je Kategorie mit mindestens einem Datensatz: Kategorie, Titel, Feldliste mit
+  Bezeichnungen und die Datensätze; Zeitpunkte in ISO 8601 (UTC).
+- **Kein Schnappschuss eines Zeitpunkts.** Jeder Exporteur liest in einer eigenen kurzen lesenden
+  Transaktion; eine lange Transaktion über alle Kategorien gibt es nicht. Ändert sich während des
+  Exports etwas, kann eine Kategorie den älteren, eine spätere den neueren Stand zeigen. Die
+  Übersicht sagt das.
+
+Größenordnung (Analyse an #798): typisch ein Jahr rund 25 MB JSON (5 MB gepackt), Vielnutzer bis
+rund 520 MB JSON (100 MB gepackt); über 95 % sind Chats.
+
+##### Grenzen und Betrieb
+
+**Kein Feature-Flag.** Die Selbstauskunft ist ab Werk an. Die Betriebsgrößen:
+
+| Einstellung | Ort | Voreinstellung | Wertebereich | Wirkung |
+|---|---|---|---|---|
+| Notabschaltung `self_disclosure_settings.enabled` | Datenbank | an | an / aus | ohne Neustart auf allen Instanzen; ein laufender Export läuft zu Ende |
+| Tagesgrenze `self_disclosure_settings.daily_limit` | Datenbank | 1 | 1 bis 10 | vollständige Exporte je Person und Tag |
+| `opaa.self-disclosure.max-concurrent-exports` | Konfiguration je Instanz | 2 | 1 bis 16 | gleichzeitige Exporte je Instanz |
+| `opaa.self-disclosure.max-duration` | Konfiguration | 30 Minuten | 5 Minuten bis 2 Stunden | danach bricht der Export ab |
+
+Beide Datenbankeinstellungen ändert nur `SYSTEM_ADMIN` in der Administration; jede Änderung ist das
+Protokollereignis `SELF_DISCLOSURE_SETTINGS_CHANGED` mit Vorher/Nachher der geänderten Schlüssel,
+und beide stehen im Fakten-Manifest als datenwirksame Einstellungen. Ist die Selbstauskunft
+abgeschaltet, sieht die Person statt des Auslösers:
+
+> Die Selbstauskunft ist in dieser Installation derzeit abgeschaltet. Ihr Recht auf Auskunft nach
+> Art. 15 DSGVO bleibt davon unberührt: Sie können die Auskunft bei Ihrer Behörde beantragen, in der
+> Regel über die oder den Datenschutzbeauftragten.
+
+**„Tag“** ist der Kalendertag in der Zeitzone der Installation (`TZ` des Backends, auf allen Instanzen
+gleich, ADR-0053), gemessen an der Datenbankuhr; ein Export zählt für den Tag, an dem er begann.
+Kalendertag statt gleitender 24 Stunden, weil die Person die Grenze so verstehen und vorhersehen kann
+(„morgen wieder“) und weil sie nur einen Zähler je Person und Tag braucht statt eines Verlaufs der
+Exportzeitpunkte, der ein Nutzungsprofil wäre. Die Folge — zwei Exporte kurz vor und kurz nach
+Mitternacht — ist hingenommen.
+
+**Zählweise.** Nur ein **vollständig ausgelieferter** Export verbraucht ein Kontingent; ein
+abgebrochener (Rolling Update, VPN-Abbruch, Zeitüberschreitung, Fehler) oder abgewiesener nicht.
+Vollständig ausgeliefert heißt: Der letzte Block des ZIP einschließlich Zentralverzeichnis ist ohne
+Fehler in die Antwort geschrieben und geleert. **Restunschärfe:** Geleert heißt an den Proxy und die
+TCP-Puffer übergeben, nicht beim Browser gespeichert. Bricht die Verbindung erst danach ab, zählt der
+Export, obwohl die Datei unvollständig ankam; mit `proxy_buffering off` ist das Fenster klein. Die
+Person kann dann am nächsten Tag erneut exportieren oder den Antrag bei der Behörde stellen.
+
+**Je Person höchstens ein laufender Export**, über alle Instanzen: Eine Reservierung in der Datenbank
+mit Ablauf, die der laufende Export alle 30 Sekunden verlängert; sie verfällt 2 Minuten nach der
+letzten Verlängerung. Eine verfallene Reservierung gilt als abgebrochener Export und hält nichts fest.
+Zwei gleichzeitige Anfragen derselben Person ergeben genau einen Export; die zweite erhält `429`.
+
+**Je Person gespeichert** wird nur: der Zeitpunkt des letzten vollständigen Exports („letzter
+Export“), der Zähler des laufenden Tages (überschrieben am nächsten Tag), die laufende Reservierung
+und das Ergebnis des letzten Versuchs (abgeschlossen oder abgebrochen, überschrieben beim nächsten).
+**Kein Verlauf.** Diese Felder sind im Fakten-Manifest personenbezogen geführt, erscheinen in keiner
+Kontenliste und keiner Schnittstelle der Verwaltung und sind Teil der eigenen Selbstauskunft.
+
+**Last.** Über der Obergrenze je Instanz antwortet OPAA mit `503` und `Retry-After: 60`, ohne
+Reservierung und ohne Verbrauch. Das fängt die Lastspitze bei Einführung ab. Der Export braucht eine
+eigene Proxy-Location mit `proxy_buffering off` (#2989); ADR-0053, Entscheidung 1, wird dort für die
+Streaming-Antwort fortgeschrieben — sie hat keinen Zustand über die Anfrage hinaus, ein Abbruch durch
+Rolling Update ist zulässig, weil er nichts verbraucht. Metriken ohne Personenbezug: gestartet,
+abgeschlossen, abgebrochen, abgewiesen nach Grund, Dauer, Größe, laufende Exporte je Instanz.
+
+**Status für die Person:** verfügbar oder abgeschaltet, verbleibende Exporte heute, ab wann der
+nächste möglich ist, Ergebnis des letzten Versuchs und ob ein neuer Versuch möglich ist.
+
+##### Absicherung
+
+**Erneute Anmeldung vor dem Export.** Der Export verlangt eine Anmeldung, die **höchstens 5 Minuten**
+zurückliegt, gemessen am Anmeldezeitpunkt `auth_time` des Zugangstokens gegen die Serveruhr. Ein Token
+aus einer bloßen Erneuerung (Refresh) behält den alten Anmeldezeitpunkt und genügt nicht. Lokale
+Konten bestätigen mit dem Passwort (Fehlversuche zählen auf die Fehlversuch-Sperre), Konten eines
+Identitätsanbieters über eine dort erzwungene Anmeldung (`prompt=login`, `max_age=0`); setzt der
+Anbieter keinen frischen `auth_time`, wird abgewiesen, nicht durchgelassen. Geprüft wird beim Auslösen
+des Exports; ein laufender Export wird nicht abgebrochen, wenn die 5 Minuten während der Übertragung
+verstreichen. Fünf Minuten genügen für Bestätigung und Auslösen, ohne dass ein verlassener
+Arbeitsplatz lange offen bleibt. Ersetzt die frühere Entscheidung „keine erneute Anmeldung“; der
+Baustein ist #2996. Ein Einmal-Ticket für den Download des Browsers (#2989) darf nur mit frischer
+Anmeldung entstehen, gilt höchstens 60 Sekunden und genau einmal und verlängert die 5 Minuten nicht.
+
+**Benachrichtigung bei jedem Export**, beim Beginn — so erreicht sie die Person auch, wenn der Export
+abbricht oder die Instanz dabei endet: in OPAA (Art `SELF_DISCLOSURE_STARTED`) und zusätzlich per
+E-Mail über den Mail-Ausgang, wo Mail eingerichtet ist und das Konto eine Adresse hat. Inhalt
+sinngemäß: „Am … um … wurde eine Selbstauskunft Ihrer Daten gestartet. Falls Sie das nicht waren,
+ändern Sie Ihr Passwort und wenden Sie sich an Ihre Systemverwaltung.“ Kein Inhalt der Auskunft, kein
+Link zum Download.
+
+##### Protokoll der Selbstauskunft
+
+**Zwei Ereignisse je Export**, damit ein Absturz der Instanz eine Spur hinterlässt: Ein Beginn ohne
+Ende heißt „abgebrochen mit der Instanz“.
+
+| Feld | `SELF_DISCLOSURE_EXPORT_STARTED` | `SELF_DISCLOSURE_EXPORT_FINISHED` |
+|---|---|---|
+| `actor_kind`, `actor_ref` | `USER`, Pseudonym der Person | ebenso |
+| `object_type`, `object_id` | `USER_ACCOUNT`, Pseudonym der Person (wie die übrigen Kontoereignisse) | ebenso |
+| `subject_kind`, `subject_ref` | `USER`, Pseudonym der Person | ebenso |
+| `object_label`, `before`, `reason` | leer | leer |
+| `after` | Liste der Kategorien | `result` (`COMPLETED` / `ABORTED`), `abortCause` (`CLIENT_DISCONNECTED`, `TIMEOUT`, `SHUTDOWN`, `ERROR`), `bytes` (ausgelieferte Bytes), `sha256` (über die ausgelieferten Bytes, auch bei Abbruch), Kategorien |
+| `outcome` | `SUCCESS` | `SUCCESS` bei `COMPLETED`, `FAILURE` bei `ABORTED` |
+| `correlation_ref` | Kennung des Exports | dieselbe |
+
+Kein Inhalt, keine Datensatzzahlen je Kategorie, keine Netzadresse. **Abgewiesene Versuche**
+(Tagesgrenze, Obergrenze, abgeschaltet, ohne frische Anmeldung, laufender Export) schreiben **kein**
+Ereignis: Sie ändern nichts und geben nichts heraus, und ein Eintrag je Fehlversuch wäre ein
+Verhaltensmerkmal ohne Nachweiswert; sie gehen nur in die Metriken.
+
+Die Ereignisse sind **gewöhnliche Protokollereignisse**, für die Revision sichtbar über die Wege
+nach Zeitraum, Ereignisart und Vorgang. Dafür legt sie der [Auszug für die
+Personalvertretung](#der-auszug-für-die-personalvertretung) mit Zweck, Zugriff und Frist offen
+(Entscheidung des Maintainers vom 23.10.2026 im Zielkonflikt zwischen Personalrat und Betrieb).
+Aufbewahrung: die allgemeine [Protokollfrist](#aufbewahrung).
+
+**Kein Index auf `subject_ref`.** Die Auskunft sucht die eigenen Einträge über `actor_ref` (Index der
+anlassbezogenen Klärung vorhanden), über das Kontoobjekt (Objektindex vorhanden) und über
+`subject_ref` ohne Index, also mit einem Scan über alle Partitionen der Frist. Ein Index auf
+`subject_ref` wäre genau der Personeneinstieg „alle Ereignisse, bei denen Person X betroffen war“, den
+dieses Dokument ausschließt, und machte ihn für jeden künftigen Abfrageweg billig. #2990 misst den
+Scan auf einem Bestand von 10 Millionen Protokollsätzen über 36 Monatspartitionen. **Schwelle:**
+Braucht die Protokollkategorie dort länger als 30 Sekunden, oder im Betrieb im 95. Perzentil länger
+als 30 Sekunden, wird neu entschieden — über die Abfrage, nicht stillschweigend über einen Index.
 
 Die **Auskunft über die Datenerhebung** ist gebaut (#2558): das Fakten-Manifest der eingesetzten
 Version, verbunden mit den wirksamen Werten der Instanz — jede datenwirksame Einstellung mit
@@ -1272,7 +1526,11 @@ zwischen „heute ist es aus" und „morgen ist es an, mit rückwirkend auswertb
 
 Zwei Wege bleiben notwendigerweise offen, und beide sind kein Auswertungspfad:
 
-- **Selbstauskunft** der betroffenen Person — ihr eigenes Auskunftsrecht, nicht delegierbar.
+- **Selbstauskunft** der betroffenen Person — ihr eigenes Auskunftsrecht, nicht delegierbar. Sie ist
+  die **einzige Ausnahme** zu „kein personenbezogener Auswertungspfad“ und „kein Vollabzug“, und
+  zwar nur über die eigene Person und nur für sie selbst, nie für andere; die Person ist die
+  Identität der Anfrage, kein Filter, den jemand setzen könnte
+  ([Selbstauskunft](#selbstauskunft-stufe-1)).
 - **Anlassbezogene Klärung eines Sicherheitsvorfalls** — im **Vier-Augen-Prinzip unter Beteiligung der
   Personalvertretung**, mit dokumentiertem Anlass und eigenem Protokolleintrag über den Zugriff. Ein
   Produkt ohne jede Möglichkeit, einen Vorfall aufzuklären, wäre nicht betreibbar; eines, in dem diese
@@ -1358,6 +1616,35 @@ Fristen, Schwellen und Zuständigkeiten — nicht die Frage, ob eine Überwachun
 
 ---
 
+## Wirkung auf Behördenunterlagen
+
+Erfasst ist hier die [Selbstauskunft](#selbstauskunft-stufe-1) (Epic #2986); die übrigen Teile dieses
+Dokuments sind vor Einführung des Abschnitts entstanden.
+
+- [x] Neue oder geänderte personenbezogene Daten oder Protokollereignisse — „letzter Export“,
+  Tageszähler, Reservierung und letztes Ergebnis je Person; `SELF_DISCLOSURE_EXPORT_STARTED`,
+  `SELF_DISCLOSURE_EXPORT_FINISHED`, `SELF_DISCLOSURE_SETTINGS_CHANGED`; neue Benachrichtigungsart
+  und Mail
+- [ ] Neue Sichtbarkeit: Daten werden für weitere Rollen oder Personen sichtbar
+- [x] Neue Auswertung oder neuer Export, auch von bereits gespeicherten Daten — die Selbstauskunft
+  als Vollabzug der eigenen Daten, nur für die Person selbst
+- [ ] Geänderte Aufbewahrungs- oder Löschfrist
+- [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)
+- [ ] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt
+- [ ] Geänderte KI-Einstufung (Zweck oder Einsatzbereich im Sinne der KI-Verordnung)
+- [ ] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen
+
+**Voraussichtliche Stufe:** Zustimmung (Z1, Z3); das Stakeholder-Review mit Personalrat und Betrieb
+ist erledigt (Kommentar am Epic #2986 vom 23.10.2026).
+
+**Betroffene Vorlagen in `docs/behoerden/`:** `04-datenschutz/` (Betroffenenrechte,
+Informationspflichten), das Faktenblatt Datenkatalog aus dem Fakten-Manifest und die
+Muster-Dienstvereinbarung (#2566) mit den Bedingungen des Personalrats: Vorlageverbot mit
+Verwertungsverbot, keine Auswertung der Ausübung, Offenlegung im Auszug, kein Export durch Dritte;
+eine Stufe 2 wäre eine neue mitbestimmungspflichtige Änderung.
+
+---
+
 ## Offene Fragen
 
 - **Prüfsummenverkettung der Protokolleinträge** — die naheliegende nächste Stufe des Sicherheitsgrads
@@ -1377,6 +1664,12 @@ Fristen, Schwellen und Zuständigkeiten — nicht die Frage, ob eine Überwachun
 - Ab wann und in welchem Umfang erfolgt die unabhängige Sicherheitsprüfung?
 - Wie weit reicht der Bestandsexport für einen Betreiberwechsel — Rohbestände, Assets, Konfiguration,
   Protokolldaten?
+- **Selbstauskunft Stufe 2** (Export durch oder über die Datenschutzstelle) — zurückgestellt bis zu
+  einem echten Fall. Gegenvorschlag aus der Analyse an #798: Die Datenschutzstelle stößt an, zugestellt
+  wird nur an die Person, die Stelle erhält nur einen Nachweis der Zustellung. Wäre eine neue
+  mitbestimmungspflichtige Änderung.
+- **Kategorienauswahl der Selbstauskunft** (z. B. Export ohne Chats) — nicht Teil von Stufe 1; würde
+  die Größe begrenzen, macht aber Zählweise und Vollständigkeitsaussage der Übersicht komplizierter.
 
 ---
 
