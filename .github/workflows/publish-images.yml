@@ -261,8 +261,8 @@ jobs:
 
   # The update package for authorities (docs/releases.md, "Update-Paket"): runs the completeness
   # guard of the compliance manifest, then update_package.py builds fact sheets, delta to the
-  # previous final release, license overview and update note template into one archive. publish
-  # waits for this job, so an incomplete manifest stops a release before any tag is set. Like the
+  # previous final release, license overview and the templates for authorities into one archive.
+  # publish waits for this job, so an incomplete manifest stops a release before any tag is set. Like the
   # image builds of a release it takes nothing from a cache: no Gradle, pnpm or gha cache.
   update-package:
     needs: prepare

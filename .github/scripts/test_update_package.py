@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import posixpath
 import re
 import subprocess
 import sys
@@ -176,14 +177,31 @@ def inputs(tmp_path: Path) -> dict:
     licenses = [tmp_path / "in" / "lizenzen-backend.md", tmp_path / "in" / "lizenzen-frontend.md"]
     for report in licenses:
         report.write_text("| Paket |\n")
-    template = tmp_path / "in" / "update-vermerk.md"
-    template.write_text("# Update-Vermerk\n")
+    checkout = tmp_path / "in" / "checkout"
+    templates = checkout / "docs" / "behoerden"
+    for path, text in {
+        "README.md": "# Behördenunterlagen\n\n[Update-Vermerk](09-betrieb-update/update-vermerk.md)\n",
+        "AGENTS.md": "# Regeln für Autoren\n",
+        "CLAUDE.md": "@AGENTS.md\n",
+        "09-betrieb-update/update-vermerk.md": "# Update-Vermerk\n",
+    }.items():
+        (templates / path).parent.mkdir(parents=True, exist_ok=True)
+        (templates / path).write_text(text, encoding="utf-8")
+    for path in ("SECURITY.md", "docs/releases.md", "docs/handbuch/betrieb.md"):
+        (checkout / path).parent.mkdir(parents=True, exist_ok=True)
+        (checkout / path).write_text("# x\n")
     operations = tmp_path / "in" / "betrieb"
     operations.mkdir()
     for name in update_package.OPERATIONS_FILES:
         (operations / name).write_text(f"# {name}\n")
     return dict(fact_sheets=sheets, delta=delta, operations=operations, licenses=licenses,
-                template=template)
+                templates=templates)
+
+
+def put_template(inputs: dict, path: str, text: str) -> None:
+    target = inputs["templates"] / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(text.encode("utf-8"))
 
 
 def members(archive: Path) -> dict[str, tarfile.TarInfo]:
@@ -214,14 +232,18 @@ def test_the_package_holds_every_part_under_one_versioned_directory(tmp_path: Pa
         "opaa-update-paket-1.2.3/lizenzen/lizenzen-backend.md",
         "opaa-update-paket-1.2.3/lizenzen/lizenzen-frontend.md",
         "opaa-update-paket-1.2.3/update-vermerk.md",
+        "opaa-update-paket-1.2.3/vorlagen/09-betrieb-update/update-vermerk.md",
+        "opaa-update-paket-1.2.3/vorlagen/README.md",
     ]
 
 
 def test_the_checksum_files_match_the_package(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", "# Löschkonzept\n")
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
     sums = read(archive, "opaa-update-paket-1.2.3/SHA256SUMS").decode().splitlines()
-    assert len(sums) == 11
+    assert len(sums) == 14
+    assert any(line.endswith("  vorlagen/04-datenschutz/loeschkonzept.md") for line in sums)
     for line in sums:
         digest, path = line.split("  ")
         assert hashlib.sha256(read(archive, f"opaa-update-paket-1.2.3/{path}")).hexdigest() == digest
@@ -315,7 +337,7 @@ def with_placeholders(inputs: dict, template: str, operations: str = "") -> dict
         "# Faktenblatt: Fristen\n\n| <a id=\"audit-retention\"></a>`audit` |\n")
     (inputs["fact_sheets"] / "datenkatalog.md").write_text(
         "# Faktenblatt: Datenkatalog\n\n## <a id=\"bereich-audit-log\"></a>Protokoll\n")
-    inputs["template"].write_text(template)
+    put_template(inputs, "09-betrieb-update/update-vermerk.md", template)
     if operations:
         (inputs["operations"] / "betriebsfolgen.md").write_text(operations)
     return inputs
@@ -399,6 +421,158 @@ def test_an_upgrade_note_with_a_placeholder_stays_as_written(tmp_path: Path, inp
     assert package_markdown(archive)["betrieb/betriebsfolgen.md"] == operations
 
 
+def relative_targets(files: dict[str, str]) -> list[tuple[str, str]]:
+    """(file, target path) of every link outside code in the package that has no scheme and is no
+    bare anchor; code here means the plain ``` blocks and single-backtick spans of these cases."""
+    found = []
+    for path, text in files.items():
+        text = re.sub(r"`[^`\n]*`", "", re.sub(r"```.*?```", "", text, flags=re.DOTALL))
+        for target in re.findall(r"\]\(<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\)|^ {0,3}\[[^\]]+\]:\s*(\S+)",
+                                 text, re.MULTILINE):
+            target = next(t for t in target if t).split("#", 1)[0]
+            if target and not re.match(r"[a-zA-Z][a-zA-Z0-9+.-]*:", target):
+                found.append((path, target))
+    return found
+
+
+def test_every_template_lands_under_vorlagen_with_its_folder_and_without_author_rules(
+        tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n")
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", "# Löschkonzept\n")
+    put_template(inputs, "04-datenschutz/AGENTS.md", "# Kein Autorenregelwerk dieser Ebene\n")
+    put_template(inputs, "04-datenschutz/notizen.txt", "kein Markdown\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    assert sorted(p for p in files if p.startswith("vorlagen/")) == [
+        "vorlagen/04-datenschutz/AGENTS.md",
+        "vorlagen/04-datenschutz/README.md",
+        "vorlagen/04-datenschutz/loeschkonzept.md",
+        "vorlagen/09-betrieb-update/update-vermerk.md",
+        "vorlagen/README.md",
+    ]
+    assert files["vorlagen/04-datenschutz/loeschkonzept.md"] == "# Löschkonzept\n"
+    assert files["update-vermerk.md"] == files["vorlagen/09-betrieb-update/update-vermerk.md"]
+
+
+def test_placeholders_in_every_template_link_to_the_sheets_from_its_depth(
+        tmp_path: Path, inputs: dict) -> None:
+    with_placeholders(inputs, "Frist: {{faktenblatt:fristen#audit-retention}}\n")
+    put_template(inputs, "README.md", "Daten: {{faktenblatt:datenkatalog}}, `{{faktenblatt:<name>}}`\n")
+    put_template(inputs, "04-datenschutz/loeschkonzept.md",
+                 "Siehe {{faktenblatt:datenkatalog#bereich-audit-log}}.\n\n```text\n{{faktenblatt:x}}\n```\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    assert files["vorlagen/README.md"] == (
+        "Daten: [Faktenblatt Datenkatalog](../faktenblaetter/datenkatalog.md), `{{faktenblatt:<name>}}`\n")
+    assert files["vorlagen/04-datenschutz/loeschkonzept.md"] == (
+        "Siehe [Faktenblatt Datenkatalog](../../faktenblaetter/datenkatalog.md#bereich-audit-log)."
+        "\n\n```text\n{{faktenblatt:x}}\n```\n")
+    assert ("[Faktenblatt Fristen](../../faktenblaetter/fristen.md#audit-retention)"
+            in files["vorlagen/09-betrieb-update/update-vermerk.md"])
+    assert "[Faktenblatt Fristen](faktenblaetter/fristen.md#audit-retention)" in files["update-vermerk.md"]
+
+
+def test_an_unknown_placeholder_in_any_template_fails_the_package(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", "Siehe {{faktenblatt:speicherorte}}.\n")
+
+    with pytest.raises(update_package.PackageError, match="04-datenschutz/loeschkonzept.md.*placeholder"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
+LINKS = (
+    "# Löschkonzept\n\n"
+    "Notfall: [Notfallkonzept](../09-betrieb-update/update-vermerk.md#zweck), [hier](#fristen),\n"
+    "[Übersicht](../README.md), [Ordner](./), [Nachbar](./README.md \"Titel\").\n"
+    "Betrieb: [Handbuch](../../handbuch/betrieb.md#ports) und\n"
+    "[Meldewege](../../../SECURITY.md), [Releases](<../../releases.md#update-paket>),\n"
+    "[Handbuch-Ordner](../../handbuch/), [Regeln](../AGENTS.md).\n"
+    "Extern: [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu), [Mail](mailto:a@example.org).\n"
+    "Code: `[x](../../handbuch/betrieb.md)`\n\n"
+    "```markdown\n[y](../../../SECURITY.md)\n```\n\n"
+    "[ref]: ../../handbuch/betrieb.md#ports\n"
+)
+
+
+def test_links_inside_the_templates_stay_relative_and_links_out_of_them_point_to_the_release(
+        tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n")
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", LINKS)
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    blob = "https://github.com/criew/opaa/blob/v1.2.3/"
+    assert package_markdown(archive)["vorlagen/04-datenschutz/loeschkonzept.md"] == (
+        "# Löschkonzept\n\n"
+        "Notfall: [Notfallkonzept](../09-betrieb-update/update-vermerk.md#zweck), [hier](#fristen),\n"
+        "[Übersicht](../README.md), [Ordner](./), [Nachbar](./README.md \"Titel\").\n"
+        f"Betrieb: [Handbuch]({blob}docs/handbuch/betrieb.md#ports) und\n"
+        f"[Meldewege]({blob}SECURITY.md), [Releases](<{blob}docs/releases.md#update-paket>),\n"
+        "[Handbuch-Ordner](https://github.com/criew/opaa/tree/v1.2.3/docs/handbuch),"
+        f" [Regeln]({blob}docs/behoerden/AGENTS.md).\n"
+        "Extern: [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu), [Mail](mailto:a@example.org).\n"
+        "Code: `[x](../../handbuch/betrieb.md)`\n\n"
+        "```markdown\n[y](../../../SECURITY.md)\n```\n\n"
+        f"[ref]: {blob}docs/handbuch/betrieb.md#ports\n"
+    )
+
+
+def test_links_of_the_update_note_at_the_top_of_the_package_follow_its_place(
+        tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", "# Löschkonzept\n")
+    with_placeholders(inputs, "[Löschkonzept](../04-datenschutz/loeschkonzept.md#fristen),"
+                              " [Releases](../../releases.md), [hier](#zweck)\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    assert files["update-vermerk.md"] == (
+        "[Löschkonzept](vorlagen/04-datenschutz/loeschkonzept.md#fristen),"
+        " [Releases](https://github.com/criew/opaa/blob/v1.2.3/docs/releases.md), [hier](#zweck)\n")
+    assert files["vorlagen/09-betrieb-update/update-vermerk.md"].startswith(
+        "[Löschkonzept](../04-datenschutz/loeschkonzept.md#fristen),")
+
+
+def test_a_trial_links_out_of_the_templates_to_its_commit(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "README.md", "[Meldewege](../../SECURITY.md)\n")
+
+    archive = update_package.assemble(release(trial=True), out=tmp_path / "out", **inputs)
+
+    assert package_markdown(archive)["vorlagen/README.md"] == (
+        f"[Meldewege](https://github.com/criew/opaa/blob/{'a' * 40}/SECURITY.md)\n")
+
+
+def test_no_relative_link_in_the_package_points_nowhere(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "04-datenschutz/README.md", "# Datenschutz\n")
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", LINKS)
+    with_placeholders(inputs, "[Löschkonzept](../04-datenschutz/loeschkonzept.md), {{faktenblatt:fristen}}\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_markdown(archive)
+    directories = {posixpath.dirname(p) for p in files}
+    targets = relative_targets(files)
+    assert ("vorlagen/04-datenschutz/loeschkonzept.md", "../README.md") in targets
+    for path, target in targets:
+        resolved = posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
+        assert resolved in files or resolved in directories, (path, target)
+
+
+@pytest.mark.parametrize("link", [
+    "../gibt-es-nicht.md",
+    "../../handbuch/gibt-es-nicht.md#x",
+    "../../../../ausserhalb.md",
+])
+def test_a_relative_link_to_nothing_fails_the_package(tmp_path: Path, inputs: dict, link: str) -> None:
+    put_template(inputs, "04-datenschutz/loeschkonzept.md", f"[Ziel]({link})\n")
+
+    with pytest.raises(update_package.PackageError, match="04-datenschutz/loeschkonzept.md.*link"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+
 def test_the_delta_is_rendered_for_the_given_repository() -> None:
     command = update_package.gradle_command(
         version="1.2.3", day="2026-01-01", from_ref="v1.2.2", to_ref="v1.2.3",
@@ -442,7 +616,7 @@ def test_a_missing_part_fails_the_package(tmp_path: Path, inputs: dict, missing:
     elif missing == "fact_sheets":
         (inputs["fact_sheets"] / "faktenblaetter.json").unlink()
     elif missing == "template":
-        inputs["template"].unlink()
+        (inputs["templates"] / "09-betrieb-update" / "update-vermerk.md").unlink()
     else:
         inputs["licenses"][1].unlink()
 
@@ -530,7 +704,7 @@ BASELINE = "eval/baseline/"
 def put(repo: Path, path: str, text: str) -> None:
     target = repo / path
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding="utf-8")
+    target.write_bytes(text.encode("utf-8"))
 
 
 def snapshot(repo: Path, message: str) -> str:

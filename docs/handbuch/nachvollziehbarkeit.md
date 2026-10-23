@@ -89,6 +89,7 @@ ein Update verantworten, ohne den Code zu lesen:
 | `betrieb/` | Was das Update für den Betrieb bedeutet: ob vorher etwas vorzubereiten ist, ob eine Neuindizierung (mit Dauerschätzung), ein Nachzug oder eine Neueinbettung ansteht, wie viele Schemaänderungen beim Start laufen, welche Ports und Ziele ausgehender Verbindungen neu sind; dazu die Kennzahlen der Suchqualität beider Versionen mit Messdatum. Jede Angabe nennt ihre Quelle; ein fehlender Messwert steht als „nicht gemessen“ da |
 | `faktenblaetter/` | die Faktenblätter dieser Version |
 | `lizenzen/` | die Lizenzübersicht der ausgelieferten Abhängigkeiten |
+| `vorlagen/` | alle Vorlagen für Behörden dieser Version, nach Themen geordnet; ihre Verweise auf Faktenblätter führen auf die Blätter im Paket, Verweise auf weitere Dokumentation auf deren Stand in dieser Version |
 | `update-vermerk.md` | Vorlage, in der die Behörde Bewertung je Stelle und Entscheidung festhält; ihre Verweise auf Faktenblätter führen auf die Blätter im Paket |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
