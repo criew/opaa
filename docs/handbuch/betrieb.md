@@ -369,6 +369,11 @@ Compose-Stapel oder der Ingress-Controller des Clusters. Für ihn gilt:
   [externen KI-Werkzeuge](fremdzugaenge.md); fehlt er, beantwortet die Auslieferung den Aufruf mit ihrer
   Startseite, und der Client meldet eine unverständliche Antwort. Antworten auf `/mcp` nicht
   puffern: Der Kanal kann als Ereignisstrom antworten.
+- **Den Download der Selbstauskunft nicht puffern** (`/api/v1/me/self-disclosure/download`). Das
+  Backend schreibt das ZIP, während es die Daten liest, und zählt eine Auskunft erst, wenn ihr
+  letzter Block abgeflossen ist; ein puffernder Proxy davor hielte sie zurück und ließe das Backend
+  zu früh zählen. Der Frontend-Container hat dafür eine eigene Weiterleitung ohne Puffer und ohne
+  Zwischendatei; bei ingress-nginx gehört `proxy-buffering: "off"` dazu.
 - **Zeitgrenze mindestens so lang wie `OPAA_BACKEND_READ_TIMEOUT`** für `/api/` und `/mcp` (bei nginx
   `proxy_read_timeout`, Vorgabe eine Minute) — sonst bricht der Proxy lange Chat-Antworten mit `504`
   ab, während das Backend noch rechnet.
@@ -736,6 +741,9 @@ sondern im Nachweis- und Revisionsprotokoll der Anwendung
 | `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis: `split` (bei der Indexierung geteilt, weil der Endpunkt ihn als zu lang belegte), `cut` (bei Neueinbettung oder Präfix-Nachlauf gekürzt eingebettet, Dokument für den Nachzug vorgemerkt), `unverified` (eingebettet, aber ohne Tokenzahl vom Endpunkt; auf allen Wegen gezählt) |
 | `opaa_rate_limit_rejected_total` | von einem Rate-Limit abgewiesene Anfragen, nach Grenze (`limit`) und erschöpftem Bereich (`scope`); die globale Grenze der Anmeldung ist das Frühwarnsignal gegen verteiltes Ausprobieren gestohlener Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten nach Fehlversuchen |
+| `opaa_self_disclosure_exports_total` | Selbstauskünfte nach Ergebnis (`started`, `completed`, `aborted`) und Abbruchgrund (`cause`); viele Abbrüche sind der Beobachtungspunkt für Proxy und Zeitgrenzen |
+| `opaa_self_disclosure_refused_total` | abgewiesene Selbstauskünfte nach Grund (`reason`: Tagesgrenze, Starts, laufende Auskunft, Grenze der Instanz, abgeschaltet, ohne erneute Anmeldung) |
+| `opaa_self_disclosure_duration_seconds_*`, `opaa_self_disclosure_size_bytes_*`, `opaa_self_disclosure_running` | Dauer und Größe der Selbstauskünfte, laufende Auskünfte dieser Instanz; ohne Bezug auf eine Person |
 | `executor_active_threads{name="indexingTaskExecutor"}` | laufende Indexierungsläufe |
 | `hikaricp_connections_*` | Verbindungspool zur Datenbank |
 | `jvm_memory_used_bytes`, `jvm_memory_max_bytes` | Speicher der JVM |

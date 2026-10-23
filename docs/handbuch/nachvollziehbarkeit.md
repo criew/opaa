@@ -52,7 +52,16 @@ flowchart LR
 ```
 
 Die Wächter halten Code und Manifest gleich; ein Pull Request mit roten Wächtern wird nicht
-gemergt. Aus dem Manifest entstehen die Faktenblätter, die Unterlagen der Behörde verweisen auf
+gemergt. Ein Wächter prüft auch die **Selbstauskunft**, mit der jede Person die zu ihr gespeicherten
+Daten herunterlädt: Jede Angabe, die das Manifest als Teil der Auskunft führt, muss darin
+vorkommen, und nichts, was es ausschließt, darf hinein.
+
+Die Selbstauskunft hinterlässt im Nachweisprotokoll **zwei Einträge je Auskunft**: den Start und
+das Ende mit Ergebnis (vollständig ausgeliefert oder abgebrochen), Größe, Prüfsumme der
+ausgelieferten Daten und den enthaltenen Kategorien, nie den Inhalt. Ein Start ohne Ende heißt, dass
+die Instanz dabei endete. Abgewiesene Versuche stehen nicht im Protokoll, nur in den
+[Metriken](betrieb.md#logs-und-metriken). Ändert die Systemverwaltung Notabschaltung oder
+Tagesgrenze, entsteht ebenfalls ein Eintrag. Aus dem Manifest entstehen die Faktenblätter, die Unterlagen der Behörde verweisen auf
 sie. Die Kennzeichnung am Pull Request führt jede
 datenrelevante Änderung in die Release-Notizen. Aus beiden entsteht zu jedem Release das
 Update-Paket.
