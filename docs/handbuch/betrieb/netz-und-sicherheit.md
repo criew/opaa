@@ -32,7 +32,10 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Content-Type-Options`,
 `X-Frame-Options`, `Referrer-Policy` und `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
 Kamera und Standort gesperrt). Die CSP lässt keine fremden Skripte oder CDNs zu und Verbindungen nur
-zur eigenen Herkunft. Ein Identitätsanbieter auf fremdem Origin kommt über
+zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit einer Ausnahme: Den
+Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
+(`SAMEORIGIN` bzw. `frame-ancestors 'self'`), damit eine Ablehnung die Seite nicht ersetzt. Ein
+Identitätsanbieter auf fremdem Origin kommt über
 `OPAA_CSP_CONNECT_SRC_EXTRA` dazu
 ([Authentifizierung](authentifizierung.md#content-security-policy-und-ein-anbieter-auf-fremdem-origin)).
 HSTS setzt der Container nicht; das gehört an den äußeren Proxy.

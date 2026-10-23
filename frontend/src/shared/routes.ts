@@ -16,6 +16,8 @@ export const SETTINGS_ROUTE = '/settings'
 export const OWN_TOKENS_ROUTE = '/settings/tokens'
 /** The person's own connected accounts, a tab of the settings. */
 export const CONNECTED_ACCOUNTS_ROUTE = '/settings/accounts'
+/** The person's own self-disclosure, a tab of the settings; a forced sign-in returns here. */
+export const MY_DATA_ROUTE = '/settings/data'
 /** Where a provider returns after an OAuth consent; the server names it as the redirect URI. */
 export const CONNECTION_CALLBACK_ROUTE = '/connections/callback'
 /** The administration's area „Anbindungen"; a bare path lands on its first tab. */
