@@ -112,7 +112,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | L-03 | Dienstleister | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen), [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket); Supportzeiträume sind offen ([EVB-IT-Hinweise](evb-it-hinweise.md#programmstände-sbom-und-supportzeiträume)) | Projektunterlage, Handbuch |
 | L-04 | Dienstleister; das Projekt sagt keine Reaktionszeiten zu | [Ablauf bei Sicherheitslücken](../../../SECURITY.md#ablauf) | Projektunterlage |
 | L-05 | Dienstleister | [Handbuch](../../handbuch/README.md) | Handbuch |
-| L-06 | Dienstleister; eine Übernahme ins Projekt setzt die unterzeichnete CLA voraus | [Lizenz](../../../LICENSE), [Contributor License Agreement](../../handbuch/releases-und-nachweise.md#lizenzen) | Projektunterlage, Handbuch |
+| L-06 | Dienstleister; eine Übernahme ins Projekt setzt die unterzeichnete CLA voraus, eine nur für die Behörde gepflegte Erweiterung trägt der Dienstleister bei jedem Update selbst nach | [Lizenz](../../../LICENSE), [Contributor License Agreement](../../handbuch/releases-und-nachweise.md#lizenzen) | Projektunterlage, Handbuch |
 | L-07 | Dienstleister | [Sicherung und Wiederherstellung](../../handbuch/kubernetes.md#sicherung-und-wiederherstellung), Speicherorte in {{faktenblatt:datenkatalog}} | Handbuch, Faktenblatt |
 | L-08 | Dienstleister | [Rollenklärung zum CRA](../06-informationssicherheit/rollenklaerung-cra.md#die-rollen-im-überblick) | Projektunterlage |
 

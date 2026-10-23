@@ -115,7 +115,7 @@ die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmat
 | L-03 | **Pflege:** Einspielen neuer Versionen binnen [Frist] nach Veröffentlichung, sicherheitsrelevanter Versionen binnen [kürzere Frist]; Fehleranalyse und Weitergabe an das Projekt. | Muss | Pflegekonzept |
 | L-04 | **Support:** Ansprechstelle in deutscher Sprache mit Reaktionszeiten je Schwere [Tabelle der Behörde]. | Muss | Supportkonzept |
 | L-05 | **Schulung:** Schulung für Verwaltung und für Anwenderinnen und Anwender, barrierefreie Unterlagen. | Muss | Schulungskonzept |
-| L-06 | **Anpassungen:** Erweiterungen werden unter der Lizenz der Software erstellt und dem Projekt zur Übernahme angeboten. | Kann | Eigenerklärung |
+| L-06 | **Anpassungen:** Erweiterungen werden unter der Lizenz der Software erstellt. Allgemein nützliche Erweiterungen bietet der Dienstleister dem Projekt zur Übernahme an; Erweiterungen nur für die Behörde darf er für sie allein pflegen und passt sie bei jedem Update binnen [Frist] an. | Kann | Eigenerklärung, Liste geplanter Erweiterungen |
 | L-07 | **Übergabe am Vertragsende:** Übergabe von Daten, Konfiguration und Betriebsdokumentation an die Behörde oder einen Nachfolger in [Frist]. | Muss | Exit-Konzept |
 | L-08 | **Pflichten aus dem Cyber Resilience Act:** Stellt der Dienstleister die Software kommerziell als Produkt bereit, erklärt er, wie er die Pflichten des Herstellers wahrnimmt. | Kann | Eigenerklärung |
 
