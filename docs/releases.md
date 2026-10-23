@@ -435,7 +435,8 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 | `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
 | `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |
 | `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
-| `update-vermerk.md` | Vorlage aus `docs/behoerden/09-betrieb-update/`, Faktenblatt-Platzhalter als Links auf `faktenblaetter/` |
+| `vorlagen/` | alle Markdown-Dateien aus `docs/behoerden/` in derselben Ordnerstruktur, Vorlagen und Ordnerübersichten; ohne `AGENTS.md` und `CLAUDE.md` auf oberster Ebene, die Regeln für Autoren sind |
+| `update-vermerk.md` | die Vorlage aus `docs/behoerden/09-betrieb-update/` noch einmal, zum direkten Ausfüllen |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
 Daneben liegt `opaa-update-paket-X.Y.Z.tar.gz.sha256`. Der Job `update-package-attestation`
@@ -452,11 +453,23 @@ Fakten-Manifest (Commit `abc1234`)“, nicht mit der rohen Commit-ID; das gilt f
 Manifest, der als Vergleich angegeben ist. Welcher Vorgänger bei mehreren Supportlinien gilt,
 entscheidet #2575; bis dahin gilt diese Regel.
 
-**Verweise im Paket.** Jeder Faktenblatt-Platzhalter `{{faktenblatt:<name>[#<anker>]}}` in der
-Vorlage `update-vermerk.md` wird beim Zusammenstellen ein relativer Link auf
-`faktenblaetter/<name>.md`; ein Blatt oder Anker, das es im Paket nicht gibt, bricht den Lauf ab.
-Platzhalter in Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage
-stammt, etwa Titel von Pull Requests im Delta oder Upgrade-Hinweise in den Betriebsfolgen. Der Link
+**Verweise im Paket.** Das Paket ist in sich verlinkt und lässt sich offline durchklicken. In
+jeder Vorlage unter `vorlagen/` und in `update-vermerk.md` wird beim Zusammenstellen
+
+- jeder Faktenblatt-Platzhalter `{{faktenblatt:<name>[#<anker>]}}` ein relativer Link auf
+  `faktenblaetter/<name>.md`, passend zur Tiefe der Datei; ein Blatt oder Anker, das es im Paket
+  nicht gibt, bricht den Lauf ab,
+- ein relativer Link auf eine Datei oder einen Ordner im Paket ein relativer Link dorthin; Links
+  zwischen den Vorlagen bleiben so, wie sie geschrieben sind,
+- ein relativer Link auf alles andere im Repository, etwa Handbuch, `SECURITY.md` oder diese
+  Datei, ein absoluter Link auf GitHub im Stand des Release-Tags
+  (`https://github.com/<repository>/blob/vX.Y.Z/<pfad>`, bei einem Probelauf auf den Commit);
+  ein Ziel, das es im Checkout nicht gibt, bricht den Lauf ab.
+
+Anker innerhalb einer Datei und externe Links bleiben unverändert. Platzhalter und Links in
+Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage stammt, etwa
+Titel von Pull Requests im Delta oder Upgrade-Hinweise in den Betriebsfolgen. Neue Vorlagen und
+Ordner unter `docs/behoerden/` kommen ohne Änderung am Skript ins Paket. Der Link
 des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository des Laufs
 (`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
 auf `main`.

@@ -15,9 +15,11 @@ is a trial and the package says so. It renders fact sheets and manifest delta wi
 the licenses of backend and frontend (frontend/node_modules must be installed) and writes
 opaa-update-paket-<version>.tar.gz with its .sha256 file into --out. Without a previous final
 release the delta starts from the oldest root commit, which has no manifest. Fact sheet
-placeholders in update-vermerk.md become links to faktenblaetter/, outside code; an unknown sheet
-or anchor fails the run. Links of the delta point into --repository. Dates and file metadata come from the commit, so the same commit
-yields the same files.
+The templates of docs/behoerden/ go to vorlagen/, the update note also to the top. In them, fact
+sheet placeholders become links to faktenblaetter/ and links out of the package point to the tag
+(of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
+nothing fails the run. Links of the delta point into --repository. Dates and file metadata come
+from the commit, so the same commit yields the same files.
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
 preparation, reindexing, schema migration, new ports and egress targets, answer quality. Every
@@ -44,13 +46,18 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE_VERSION = ROOT / "deploy" / "helm" / "ci" / "release-version.sh"
 CHECK_LICENSES = ROOT / ".github" / "scripts" / "check_licenses.py"
-TEMPLATE = ROOT / "docs" / "behoerden" / "09-betrieb-update" / "update-vermerk.md"
+TEMPLATES = ROOT / "docs" / "behoerden"
+UPDATE_NOTE = "09-betrieb-update/update-vermerk.md"
+TEMPLATE_DIR = "vorlagen/"
+# Rules for authors of docs/behoerden/, no template; excluded at its top level only.
+AUTHOR_RULES = ("AGENTS.md", "CLAUDE.md")
 MANIFEST_PATH = "backend/src/main/resources/compliance/manifest/"
 FACT_SHEETS = Path("backend/build/compliance/faktenblaetter")
 DELTA = Path("backend/build/compliance/delta")
@@ -74,9 +81,9 @@ LEFTOVER = re.compile(r"\{\{\s*faktenblatt[^\n]{0,40}", re.IGNORECASE)
 ANCHOR = re.compile(r'<a id="([^"]+)"></a>')
 FENCE = re.compile(r" {0,3}(`{3,}|~{3,})")
 CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.DOTALL)
-# Package files whose text comes from a template; only there placeholders are resolved, never in
-# text from elsewhere such as pull request titles or upgrade notes.
-TEMPLATED = ("update-vermerk.md",)
+INLINE_LINK = re.compile(r"(\]\(\s*)(<[^>\n]*>|[^\s()<>]+)")
+REFERENCE_LINK = re.compile(r"^( {0,3}\[[^\]\n]+\]:[ \t]*)(<[^>\n]*>|\S+)", re.MULTILINE)
+SCHEME = re.compile(r"[a-zA-Z][a-zA-Z0-9+.-]*:")
 COMMIT_ID = re.compile(r"[0-9a-f]{7,64}")
 
 
@@ -748,6 +755,8 @@ def readme(release: Release) -> str:
         "| `faktenblaetter/` | die Faktenblätter dieser Version und `faktenblaetter.json` |",
         "| `lizenzen/` | Lizenzübersicht der ausgelieferten Abhängigkeiten von Backend und Frontend |",
         "| `update-vermerk.md` | Vorlage für den Update-Vermerk der Behörde |",
+        "| `vorlagen/` | alle Vorlagen für Behörden mit ihren Ordnerübersichten; Faktenblatt-Verweise"
+        " führen auf `faktenblaetter/`, Verweise ins Repository auf den Stand dieser Version |",
         "| `SHA256SUMS` | Prüfsummen aller Dateien des Pakets |",
         "",
         "## Prüfen",
@@ -819,11 +828,8 @@ def outside_code(text: str, transform) -> str:
     return "".join(out)
 
 
-def resolve_placeholders(text: str, path: str, sheets: dict[str, str]) -> str:
-    """`text` of the package file `path` with every {{faktenblatt:<name>[#<anchor>]}} outside code
-    replaced by a link relative to `path` to faktenblaetter/<name>.md. `sheets` holds the text of
-    each sheet by name; an unknown sheet or anchor, or anything left that looks like a placeholder,
-    fails the run (docs/behoerden/AGENTS.md)."""
+def placeholder_links(path: str, sheets: dict[str, str]):
+    """The transform of prose in the package file `path` that resolve_placeholders applies."""
 
     def link(match: re.Match) -> str:
         name, anchor = match.group(1), match.group(2)
@@ -844,7 +850,92 @@ def resolve_placeholders(text: str, path: str, sheets: dict[str, str]) -> str:
                                " {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}}")
         return resolved
 
-    return outside_code(text, prose)
+    return prose
+
+
+def resolve_placeholders(text: str, path: str, sheets: dict[str, str]) -> str:
+    """`text` of the package file `path` with every {{faktenblatt:<name>[#<anchor>]}} outside code
+    replaced by a link relative to `path` to faktenblaetter/<name>.md. `sheets` holds the text of
+    each sheet by name; an unknown sheet or anchor, or anything left that looks like a placeholder,
+    fails the run (docs/behoerden/AGENTS.md)."""
+    return outside_code(text, placeholder_links(path, sheets))
+
+
+@dataclass(frozen=True)
+class Links:
+    """Where links of templates lead: `packaged` maps the repository path of every template to its
+    package path, `checkout` is the working tree they come from, `ref` the tag or commit in
+    `repository` that links to anything outside the package point to."""
+
+    checkout: Path
+    packaged: dict[str, str]
+    repository: str
+    ref: str
+
+    def directories(self) -> dict[str, str]:
+        """Repository path of every directory the package holds templates of, to its package path."""
+        found: dict[str, str] = {}
+        for source, path in self.packaged.items():
+            source, path = posixpath.dirname(source), posixpath.dirname(path)
+            while path:
+                found[source] = path
+                source, path = posixpath.dirname(source), posixpath.dirname(path)
+        return found
+
+
+def relative_links(source: str, path: str, links: Links):
+    """The transform of prose that rewrites the relative links of the template `source` for its
+    package file `path`: a target in the package stays relative, anything else in the repository
+    becomes an absolute link at `links.ref`. Anchors, external links and targets that already
+    resolve in the package stay as written; a target the checkout lacks fails the run."""
+    directories = links.directories()
+    here = posixpath.dirname(path) or "."
+
+    def rewrite(match: re.Match) -> str:
+        written = match.group(2)
+        bracketed = written.startswith("<")
+        target = written[1:-1] if bracketed else written
+        if not target or target.startswith("#") or SCHEME.match(target):
+            return match.group(0)
+        file, hash_sign, anchor = target.partition("#")
+        name = urllib.parse.unquote(file)
+        repository_path = posixpath.normpath(
+            name.lstrip("/") if name.startswith("/") else posixpath.join(posixpath.dirname(source), name))
+        if repository_path == ".." or repository_path.startswith("../"):
+            raise PackageError(f"{path}: link {target} leaves the repository")
+        packaged = links.packaged.get(repository_path) or directories.get(repository_path)
+        if packaged is not None:
+            if posixpath.normpath(posixpath.join(here, name)) == packaged:
+                return match.group(0)
+            new = posixpath.relpath(packaged, here) + ("/" if file.endswith("/") else "")
+        elif (links.checkout / repository_path).exists():
+            kind = "tree" if (links.checkout / repository_path).is_dir() else "blob"
+            new = (f"https://github.com/{links.repository}/{kind}/{links.ref}/"
+                   f"{urllib.parse.quote(repository_path)}")
+        else:
+            raise PackageError(f"{path}: link {target} points to nothing in the repository"
+                               f" ({repository_path})")
+        new += hash_sign + anchor
+        return match.group(1) + (f"<{new}>" if bracketed else new)
+
+    def prose(chunk: str) -> str:
+        return REFERENCE_LINK.sub(rewrite, INLINE_LINK.sub(rewrite, chunk))
+
+    return prose
+
+
+def render_template(text: str, source: str, path: str, sheets: dict[str, str], links: Links) -> str:
+    """The template `source` as package file `path`: links rewritten, then placeholders resolved,
+    both outside code only."""
+    resolve = placeholder_links(path, sheets)
+    rewrite = relative_links(source, path, links)
+    return outside_code(text, lambda chunk: resolve(rewrite(chunk)))
+
+
+def templates_of(templates: Path) -> list[Path]:
+    """Every Markdown file below `templates`, without the author rules at its top level."""
+    return sorted(p for p in templates.rglob("*.md")
+                  if p.is_file() and not (p.parent == templates and p.name in AUTHOR_RULES))
 
 
 def assemble(
@@ -853,10 +944,13 @@ def assemble(
     delta: Path,
     operations: Path,
     licenses: list[Path],
-    template: Path,
+    templates: Path,
     out: Path,
 ) -> Path:
-    """Writes <name>.tar.gz and <name>.tar.gz.sha256 into `out`; returns the archive."""
+    """Writes <name>.tar.gz and <name>.tar.gz.sha256 into `out`; returns the archive. `templates`
+    is docs/behoerden/ of the checkout the release is built from. Placeholders and links are
+    resolved in template text only, never in text from elsewhere such as pull request titles or
+    upgrade notes."""
     name = PREFIX + release.version
     files: dict[str, bytes] = {"LIESMICH.md": readme(release).encode()}
     sheets = sorted(p for p in fact_sheets.glob("*") if p.is_file()) if fact_sheets.is_dir() else []
@@ -876,13 +970,18 @@ def assemble(
         if not report.is_file():
             raise PackageError(f"license overview {report} is missing")
         files[f"lizenzen/{report.name}"] = report.read_bytes()
-    if not template.is_file():
-        raise PackageError(f"update note template {template} is missing")
-    files["update-vermerk.md"] = template.read_bytes()
+    checkout = templates.parents[1]
+    prefix = templates.relative_to(checkout).as_posix() + "/"
+    sources = {prefix + p.relative_to(templates).as_posix(): p for p in templates_of(templates)}
+    if prefix + UPDATE_NOTE not in sources:
+        raise PackageError(f"update note template {templates / UPDATE_NOTE} is missing")
+    packaged = {source: TEMPLATE_DIR + source[len(prefix):] for source in sources}
+    links = Links(checkout, packaged, release.repository, release.commit if release.trial else release.tag)
     sheets = {path[len("faktenblaetter/"):-3]: content.decode("utf-8") for path, content in files.items()
               if path.startswith("faktenblaetter/") and path.endswith(".md")}
-    for path in TEMPLATED:
-        files[path] = resolve_placeholders(files[path].decode("utf-8"), path, sheets).encode("utf-8")
+    for source, path in [*packaged.items(), (prefix + UPDATE_NOTE, "update-vermerk.md")]:
+        text = sources[source].read_bytes().decode("utf-8")
+        files[path] = render_template(text, source, path, sheets, links).encode("utf-8")
     files["SHA256SUMS"] = "".join(
         f"{hashlib.sha256(content).hexdigest()}  {path}\n" for path, content in sorted(files.items())
     ).encode()
@@ -985,7 +1084,7 @@ def build(args: argparse.Namespace) -> Path:
             operations_dir,
         )
         return assemble(release, fact_sheets=ROOT / FACT_SHEETS, delta=ROOT / DELTA,
-                        operations=operations_dir, licenses=[backend, frontend], template=TEMPLATE,
+                        operations=operations_dir, licenses=[backend, frontend], templates=TEMPLATES,
                         out=Path(args.out))
 
 
