@@ -76,13 +76,16 @@ data:
               Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
             subject_ref: >-
               Pseudonymkennung, auch die eigene; sie machte die Auskunft zum Schlüssel ins Protokoll
+            object_id: >-
+              Bei Kontoobjekten Pseudonymkennung, auch die eigene; sie machte die Auskunft zum
+              Schlüssel ins Protokoll
             reason: >-
               Begründungsfreitext, auch der eigene, der andere Personen nennen kann; die Auskunft
               sagt nur, ob ein Anlass angegeben war
           note: >-
-            Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id, wenn das
-            Objekt ihr Konto ist. Ereignisse einer anlassbezogenen Klärung über die Person gehören
-            nicht dazu, object_label nur an eigenen Kontoobjekten
+            Pseudonyme, der Person zugeordnet über audit_actor_pseudonyms; object_id ist bei
+            Kontoobjekten (USER_ACCOUNT) das Pseudonym der Person. Ereignisse einer anlassbezogenen
+            Klärung über die Person gehören nicht dazu, object_label nur an eigenen Kontoobjekten
     storage: Anwendungsdatenbank, Tabelle audit_log, nur anfügend (Eigentümertrennung)
     retention:
       rule: Voreinstellung 36 Monate, einstellbar 12 bis 120 Monate

@@ -160,8 +160,7 @@ zugeordnet wird: über eigene personenbezogene Spalten (`columns`), über eine T
 eines anderen Datums mit eigenem Weg (`via`) oder beides, oder sie ist mit Grund von der
 Selbstauskunft ausgeschlossen (`excluded`). Bei einem Weg ist jede personenbezogene Spalte Teil der
 Auskunft, außer sie steht mit Grund unter `excludedColumns`; eine neue Spalte zählt damit
-automatisch, und der Abgleich mit den Exporteuren der Selbstauskunft scheitert, bis sie ausgegeben
-oder ausgeschlossen ist. Ein Datum ohne Tabelle nennt den Grund in `personExcluded`. Ein Datum mit
+automatisch zur Auskunft. Ein Datum ohne Tabelle nennt den Grund in `personExcluded`. Ein Datum mit
 mindestens einer Tabelle mit Weg ist eine Kategorie der Selbstauskunft unter seiner `id`.
 
 Die Pflicht prüft `ComplianceManifestTest`, nicht der Lader: So nennt auch diese Lücke Datei und
@@ -211,4 +210,4 @@ Beschreibung schlägt es mit offener Zuordnung als Zustimmung vor (Entscheidung 
 - Ein Export in einem oberen Modul, das alle Fachpakete liest — neue Kanten über alle Module.
 - Delta nur aus zwei JSON-Fassungen — ältere Releases haben keine als Anhang.
 - Neue personenbezogene Spalten ausgeschlossen, bis sie freigegeben sind — eine vergessene Spalte
-  fehlte still in der Auskunft, statt den Abgleich scheitern zu lassen.
+  fehlte still in der Auskunft.

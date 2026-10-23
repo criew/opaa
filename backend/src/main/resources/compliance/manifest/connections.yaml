@@ -64,7 +64,10 @@ data:
           - ended_cause
           - ended_at
         person:
-          columns: [connected_by]
+          columns: [connected_by, responsible_id]
+          note: >-
+            responsible_id nur bei responsible_type USER: die für die Einwilligung der Quelle
+            verantwortliche Person; eine andere verantwortliche Person erscheint als „andere Person“
       - name: connection_grant_revocations
         personalColumns: [order_ciphertext, created_at]
         nonPersonalColumns: [id, profile_id, attempts, next_attempt_at]

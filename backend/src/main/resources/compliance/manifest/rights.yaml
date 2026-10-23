@@ -247,9 +247,11 @@ data:
           - asset_type
         person:
           columns: [closed_by_user_id]
+          via: assets
           note: >-
-            Fälle an Assets der Person erreicht die Auskunft über deren Eigentum
-            (assets.owner_user_id im Datum rights)
+            Der Weg über assets gilt nur für Fälle mit object_type ASSET: Fälle an Assets der Person
+            über deren Eigentum; Fälle an Spaces und Gruppen erreichen die Person nur über
+            closed_by_user_id
     storage: Anwendungsdatenbank
     retention:
       rule: Geschlossene Fälle nach der Protokollfrist

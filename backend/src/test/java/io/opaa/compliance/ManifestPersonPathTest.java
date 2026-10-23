@@ -88,6 +88,56 @@ class ManifestPersonPathTest {
                 + "          via: <table with columns, of this or another data entry>");
   }
 
+  @Test
+  void aViaLoopWithoutColumnsIsAGapForEachTableOfTheLoop() {
+    assertThat(gapsOf("via-loop"))
+        .extracting(gap -> gap.substring(0, gap.indexOf(". Give")))
+        .containsExactly(
+            "Table ring_a in "
+                + FILE
+                + ", data entry 'via-loop' reaches the person via 'ring_b', which leads back to"
+                + " 'ring_a' without reaching columns",
+            "Table ring_b in "
+                + FILE
+                + ", data entry 'via-loop' reaches the person via 'ring_a', which leads back to"
+                + " 'ring_b' without reaching columns");
+  }
+
+  @Test
+  void aViaToATableOfNoDataEntryIsAGap() {
+    assertThat(gapsOf("unknown-via"))
+        .containsExactly(
+            "Table comments in "
+                + FILE
+                + ", data entry 'unknown-via' reaches the person via 'missing_table', which is no"
+                + " table of a data entry. Give that table its own columns, or name a table that"
+                + " has them:\n"
+                + "        person:\n"
+                + "          via: <table with columns, of this or another data entry>");
+  }
+
+  @Test
+  void excludedColumnsOfATableExcludedAsAWholeAreAGap() {
+    assertThat(gapsOf("excluded-with-columns"))
+        .containsExactly(
+            "Table caches in "
+                + FILE
+                + ", data entry 'excluded-with-columns' is excluded as a whole; remove"
+                + " person.excludedColumns, it applies only to a table with columns or via.");
+  }
+
+  @Test
+  void aReasonAtADatumWithTablesIsAGap() {
+    assertThat(gapsOf("excluded-but-tables"))
+        .containsExactly(
+            "Data entry 'excluded-but-tables' in "
+                + FILE
+                + " has tables but sets personExcluded. Remove personExcluded and decide per"
+                + " table; a table left out of the self-disclosure says so under person:\n"
+                + "        person:\n"
+                + "          excluded: <reason, in German>");
+  }
+
   /**
    * A personal column of a table with a path is part of the disclosure unless excluded with a
    * reason, so it cannot be left undecided; an exclusion naming no column of the table is a gap.
