@@ -433,6 +433,40 @@ und Ablauf-Erinnerungen hängen sich dort ein. Aussteller, Anmelde-Endpunkte und
 der Schalter (#1537) sind profilunabhängig, damit die Oberfläche und die E2E-Suite im
 `dev`-Modus laufen — ein dort angelegtes lokales Konto kann sich mangels Aussteller nicht anmelden.
 
+### Erneute Anmeldung vor sensiblen Vorgängen (gebaut, #2996)
+
+Ein Vorgang kann eine **frische Anmeldung** verlangen; als erster und vorerst einziger tut das der
+Download der Selbstauskunft (#2989). Das Backend hält dafür keinen Zustand: Der Nachweis steht im
+Token, als Anmeldezeitpunkt `auth_time` (OIDC Core). Ein Handler mit der Annotation
+`@RequiresRecentLogin` (Methode oder ganzer Controller, `io.opaa.auth`) läuft nur, wenn `auth_time`
+höchstens `opaa.auth.recent-login.max-age` zurückliegt (Vorgabe 5 Minuten,
+`OPAA_AUTH_RECENT_LOGIN_MAX_AGE`; 60 Sekunden Uhrentoleranz in die Zukunft); sonst antwortet er mit
+`403`, Code `RECENT_LOGIN_REQUIRED` und Grund `AUTH_TIME_MISSING` oder `AUTH_TIME_TOO_OLD`
+(OpenAPI-Antwort `RecentLoginRequired` in `auth.yaml`). Ein Dienst kann dieselbe Prüfung über die
+Bean `RecentLoginPolicy` auch direkt aufrufen. Ein Token ohne `auth_time` zählt nie — ein Token aus
+einer Erneuerung, ein Zugangstoken für externe KI-Werkzeuge, ein Anbieter, der den Claim nicht
+liefert.
+
+- **Lokale Konten:** Der lokale Aussteller setzt `auth_time` nur, wenn er das Passwort für genau
+  dieses Token geprüft hat — bei der Anmeldung, beim Passwortwechsel und bei
+  `POST /api/v1/auth/local/reauthenticate` (Bearer, Passwort im Körper). Die Bestätigung prüft wie
+  eine Anmeldung: Ein falsches Passwort zählt auf die Fehlversuch-Sperre und ergibt `400` mit
+  `fieldErrors[password] = WRONG_PASSWORD`; sie teilt das Budget je Konto mit dem Passwortwechsel
+  und lässt das Refresh-Cookie unverändert. Ein durch `refresh` erneuertes Token trägt keinen
+  Anmeldezeitpunkt und besteht die Prüfung nie, auch Sekunden nach einer Anmeldung nicht.
+- **Konten eines Identitätsanbieters:** Die Oberfläche leitet zu einer erzwungenen Anmeldung beim
+  Anbieter weiter (`prompt=login`, `max_age=0`) und kehrt auf die Seite zurück, von der aus sie
+  angestoßen wurde. Ignoriert der Anbieter die Aufforderung, bleibt der alte Anmeldezeitpunkt im
+  Token, und der Vorgang wird weiter abgewiesen; die Oberfläche sagt dann, dass der Anmeldedienst
+  die erneute Anmeldung nicht bestätigt hat. Ein Anbieter-Token behält bei der Erneuerung seinen
+  `auth_time`, macht eine alte Anmeldung also nicht wieder frisch.
+- **Entwicklungsmodus:** Ohne Anmeldung gilt jede Anfrage als frisch angemeldet.
+
+In der Oberfläche steht der Baustein als `RecentLoginDialog` (`frontend/src/shared/ui/`) bereit:
+Passwortabfrage bzw. Weiterleitung, per Tastatur bedienbar, Zustandswechsel in einer
+`aria-live`-Region. Die aufrufende Seite erfährt die Rückkehr von der Anbieteranmeldung über
+`consumeRecentLoginReturn()`.
+
 ### Sitzungsführung in der Oberfläche
 
 Die Oberfläche kennt zwei Sitzungsarten. Die **lokale Sitzung**

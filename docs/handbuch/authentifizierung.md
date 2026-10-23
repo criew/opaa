@@ -460,6 +460,23 @@ kcadm.sh create clients/<id-des-clients-opaa-seed>/protocol-mappers/models -r op
   -s 'config."access.token.claim"=true'
 ```
 
+## Erneute Anmeldung vor sensiblen Vorgängen
+
+Manche Vorgänge verlangen, dass die Person gerade eben ihre Identität bestätigt hat — etwa der
+Download der eigenen Daten: Ein nicht gesperrter Arbeitsplatz soll dafür nicht genügen. OPAA fragt
+dann vor dem Vorgang nach einer **erneuten Anmeldung**; sie gilt für kurze Zeit (Vorgabe fünf
+Minuten, `OPAA_AUTH_RECENT_LOGIN_MAX_AGE` in der [Variablenliste](konfiguration.md)), danach wird
+wieder gefragt.
+
+- **Lokales Konto:** Ein Dialog fragt das Passwort ab. Ein falsches Passwort zählt wie bei der
+  Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.
+- **Konto eines Identitätsanbieters:** OPAA leitet zum Anmeldedienst weiter und verlangt dort eine
+  Anmeldung, auch wenn noch eine Sitzung besteht; danach geht es auf die Seite zurück, von der aus
+  der Vorgang angestoßen wurde.
+- **Entwicklungsmodus:** Es gibt keine Anmeldung; der Dialog fragt nur, ob es weitergehen soll.
+
+Die bloße Verlängerung einer Sitzung im Hintergrund zählt nicht als erneute Anmeldung.
+
 ## Erststart und Systemverwalter-Konto
 
 **Beim allerersten Start im Modus `oidc` legt OPAA sich seinen ersten Systemverwalter selbst an** —
@@ -715,6 +732,13 @@ Er verschiebt den nächsten geplanten Lauf um ein Intervall, ohne etwas anzuwend
 
 Das Token nennt die Client-ID der Anbieterzeile weder in `azp` noch in `aud`; der Client braucht einen
 Audience-Mapper ([Tokenprüfung](#bestandsübernahme-aus-opaa_oidc_)).
+
+### „Ihr Anmeldedienst hat die erneute Anmeldung nicht bestätigt"
+
+Der Identitätsanbieter hat nach der Weiterleitung keine neue Anmeldung verlangt oder meldet ihren
+Zeitpunkt nicht im Zugangstoken. Der Anbieter muss die Anfrageparameter `prompt=login` und
+`max_age=0` beachten und den Anmeldezeitpunkt (`auth_time`) ins Zugangstoken schreiben; Keycloak
+tut beides mit dem mitgelieferten Client-Scope `basic`. Bis dahin lässt OPAA den Vorgang nicht zu.
 
 ## Weiterführende Kapitel
 

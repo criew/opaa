@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-23 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -129,6 +129,9 @@ HS256-JWT mit Schlüssel per HKDF-SHA256 aus `OPAA_AUTH_JWT_SECRET`, zweckgebund
 (`LocalAuthKeyService.Purpose`: Signatur, Refresh-Lookup, Aktionstoken-Lookup, seit ADR-0035
 Zugangstoken-Lookup). Claims `jti`, `iss = urn:opaa:local`, `sub = users.id`, `iat`, `exp`
 (`opaa.auth.local.access-token-ttl`, 15 Minuten), `email`, `name`, `pcr`; keine Rolle im Token.
+`auth_time` trägt nur ein Token, für das gerade das Passwort geprüft wurde (Anmeldung,
+Passwortwechsel, `POST …/reauthenticate`), nie eines aus einer Erneuerung; daran misst
+`RecentLoginPolicy` die frische Anmeldung, die Operationen mit `@RequiresRecentLogin` verlangen.
 `LocalAuthProperties` ist `@Validated`, `@ValidSecret` verlangt mindestens 32 Zeichen und lehnt
 eine Liste bekannter Platzhalter ab; fehlt das Secret, bricht der Start im `oidc`-Profil mit einer
 Meldung ab, die Variable und Erzeugungsbefehl (`openssl rand -base64 48`) nennt
