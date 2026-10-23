@@ -71,8 +71,8 @@ ebenso wie ältere. Eine Korrektur im Code kommt zuerst in den laufenden Entwick
 und von dort auf jede unterstützte Linie, die sie betrifft. Jedes Patch-Release entsteht auf dem
 Wartungsbranch seiner Linie; ein Patch-Release aus `main` lehnt der Release-Lauf ab. So enthält
 ein Patch-Release nie Funktionen einer neueren Linie. Ältere Linien gibt es ab dem zweiten finalen
-Release. Der nächtliche Scan prüft
-ältere Linien [noch nicht](#was-nicht-gebaut-ist).
+Release. Der nächtliche Scan prüft das jüngste Patch-Release jeder unterstützten Linie
+([Schwachstellen](#schwachstellen)).
 
 ## Was ein Release liefert
 

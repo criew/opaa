@@ -8,6 +8,7 @@ the validation of the file and the wiring in workflow and configuration.
 """
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -371,3 +372,122 @@ def test_the_repository_roadmap_matches_the_list() -> None:
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_roadmap_check_reads_only_its_own_section(tmp_path: Path) -> None:
+    # A table with a line in its first cell further down, e.g. a backport example, is no roadmap row.
+    later = "\n### Backport\n\n| Linie | Branch |\n|---|---|\n| `0.5` | release/0.5 |\n"
+
+    result = check_roadmap(tmp_path, THREE_LINES, ROWS + later)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_roadmap_check_names_a_missing_heading(tmp_path: Path) -> None:
+    doc = tmp_path / "releases.md"
+    doc.write_text("# Releases\n\nKeine Roadmap.\n", encoding="utf-8")
+
+    result = run("check-roadmap", "--file", write(tmp_path, []).as_posix(), "--releases-doc", doc.as_posix())
+
+    assert result.returncode == 1
+    assert "::error::" in result.stderr and "### Roadmap" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+# The alarm script of cve-scan.yml, run by Node with GitHub's API stubbed.
+
+ALARM_HARNESS = r"""
+const fs = require('fs');
+const [scriptFile, stateFile] = process.argv.slice(2);
+const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+const calls = [];
+const summary = { addRaw() { return summary; }, write() { return summary; } };
+const core = {
+  summary,
+  notice: m => calls.push(['notice', m]),
+  warning: m => calls.push(['warning', m]),
+};
+const github = {
+  paginate: async () => state.issues,
+  rest: { issues: {
+    listForRepo: null,
+    createComment: async a => calls.push(['comment', a.issue_number]),
+    update: async a => calls.push(['update', a.issue_number, a.state]),
+    create: async () => calls.push(['create']),
+  } },
+};
+const context = {
+  serverUrl: 'https://github.com', runId: 1, ref: state.ref, eventName: 'schedule',
+  repo: { owner: 'criew', repo: 'opaa' },
+};
+const body = fs.readFileSync(scriptFile, 'utf8');
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+new AsyncFunction('require', 'github', 'context', 'core', body)(require, github, context, core)
+  .then(() => process.stdout.write(JSON.stringify(calls)))
+  .catch(e => { console.error(e); process.exit(1); });
+"""
+
+
+def alarm_script() -> str:
+    """The script: block of the alarm step, dedented as YAML would."""
+    lines = CVE_SCAN.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, l in enumerate(lines) if l.strip() == "- name: Alarm-Issue bei critical-Befunden")
+    head = next(i for i in range(start, len(lines)) if lines[i].strip() == "script: |")
+    indent = len(lines[head + 1]) - len(lines[head + 1].lstrip())
+    body = []
+    for line in lines[head + 1:]:
+        if line.strip() and len(line) - len(line.lstrip()) < indent:
+            break
+        body.append(line[indent:])
+    return "\n".join(body)
+
+
+REPORT = {"Metadata": {"OS": {"Family": "debian"}}, "Results": []}
+CRITICAL = {
+    "Metadata": {"OS": {"Family": "debian"}},
+    "Results": [{"Target": "x", "Vulnerabilities": [{
+        "Severity": "CRITICAL", "VulnerabilityID": "CVE-1", "PkgName": "p", "InstalledVersion": "1",
+    }]}],
+}
+OPEN_ALARM = {"number": 7, "state": "open", "body": "<!-- cve-critical-alert -->"}
+
+
+def run_alarm(tmp_path: Path, reports: dict[str, dict], legs: list[str], issues: list[dict],
+              ref: str = "refs/heads/main") -> list[list]:
+    node = shutil.which("node")
+    assert node, "the check needs Node.js"
+    (tmp_path / "critical").mkdir()
+    for leg, report in reports.items():
+        (tmp_path / "critical" / f"trivy-critical-{leg}.json").write_text(json.dumps(report), encoding="utf-8")
+    script = tmp_path / "alarm.js"
+    script.write_text(alarm_script(), encoding="utf-8")
+    harness = tmp_path / "harness.js"
+    harness.write_text(ALARM_HARNESS, encoding="utf-8")
+    state = tmp_path / "state.json"
+    state.write_text(json.dumps({"issues": issues, "ref": ref}), encoding="utf-8")
+    result = subprocess.run(
+        [node, harness.as_posix(), script.as_posix(), state.as_posix()], cwd=tmp_path,
+        capture_output=True, text=True, env={**os.environ, "EXPECTED_LEGS": json.dumps(legs)},
+    )
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
+
+
+def test_alarm_keeps_the_issue_open_while_a_leg_is_missing(tmp_path: Path) -> None:
+    calls = run_alarm(tmp_path, {"backend": REPORT}, ["backend", "backend-0.2"], [OPEN_ALARM])
+
+    assert not [c for c in calls if c[0] in ("update", "comment")]
+    assert any(c[0] == "warning" and "backend-0.2" in c[1] for c in calls)
+
+
+def test_alarm_closes_the_issue_when_every_leg_is_clean(tmp_path: Path) -> None:
+    calls = run_alarm(tmp_path, {"backend": REPORT, "backend-0.2": REPORT}, ["backend", "backend-0.2"], [OPEN_ALARM])
+
+    assert ["update", 7, "closed"] in calls
+
+
+def test_alarm_reports_findings_of_the_scanned_legs_despite_a_missing_one(tmp_path: Path) -> None:
+    calls = run_alarm(tmp_path, {"backend-0.2": CRITICAL}, ["backend", "backend-0.2"], [OPEN_ALARM])
+
+    assert ["comment", 7] in calls
+    assert not [c for c in calls if c[0] == "update"]

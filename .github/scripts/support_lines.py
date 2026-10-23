@@ -124,7 +124,11 @@ def scan_targets(lines: list[str], releases_path: Path, prefix: str) -> list[dic
 def check_roadmap(entries: list[dict], doc: Path) -> list[str]:
     """Differences between the list and the released rows (first cell `X.Y`) of the roadmap."""
     text = doc.read_text(encoding="utf-8")
-    section = text[text.index("### Roadmap"):]
+    start = re.search(r"^### Roadmap\s*$", text, re.M)
+    if not start:
+        return [f"Überschrift „### Roadmap“ fehlt in {doc.name}"]
+    end = re.search(r"^#{1,3} ", text[start.end():], re.M)
+    section = text[start.end():start.end() + end.start()] if end else text[start.end():]
     rows = {}
     for row in section.splitlines():
         cells = [cell.strip() for cell in row.strip().strip("|").split("|")]

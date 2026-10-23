@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-20 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
+Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
 Epic #1439 und [deployment-infrastructure.md](../features/deployment-infrastructure.md)
 
 ## Kontext
