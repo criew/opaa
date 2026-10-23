@@ -59,13 +59,13 @@ Zu jeder Version gehören:
 | GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signiertem Herkunftsnachweis |
 | GitHub-Release `OPAA vX.Y.Z` | die Release-Notizen und das Update-Paket mit Prüfsummendatei |
 
-Die **Release-Notizen** führen die Änderungen nach Art geordnet. Ganz oben steht die Rubrik
-„Datenrelevante Änderungen“: alles, was personenbezogene Daten, Sichtbarkeit, Auswertungen,
-Fristen, Datenflüsse, Voreinstellungen, Standardmodelle, System-Prompts oder die KI-Einstufung
-ändert. Wie diese Kennzeichnung entsteht, steht in [Nachvollziehbarkeit](nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird).
-Danach folgen die Image-Namen, die Installationsbefehle und der Abschnitt **„Vorbereitung für
-Bestandsinstallationen“**: was vor dem Update zu tun ist, oder „Keine Vorbereitung nötig.“ Wer
-Versionen überspringt, liest diesen Abschnitt bei jedem übersprungenen Release.
+Die **Release-Notizen** enthalten:
+
+- **Datenrelevante Änderungen** ganz oben ([Nachvollziehbarkeit](nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird))
+- alle übrigen Änderungen nach Art
+- Image-Namen und Installationsbefehle
+- **Vorbereitung für Bestandsinstallationen**: was vor dem Update zu tun ist; bei übersprungenen
+  Versionen für jedes übersprungene Release lesen
 
 Den Herkunftsnachweis des Charts prüft:
 
