@@ -103,6 +103,7 @@ class QueryControllerTest {
                 .content("{\"question\": \"What is OPAA?\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.answer").value("The answer"))
+        .andExpect(jsonPath("$.generatedByAi").value(true))
         .andExpect(jsonPath("$.sources[0].fileName").value("doc.md"))
         .andExpect(jsonPath("$.sources[0].relevanceScore").value(0.9))
         .andExpect(jsonPath("$.sources[0].matchCount").value(2))

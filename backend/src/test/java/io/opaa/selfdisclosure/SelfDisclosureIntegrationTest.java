@@ -125,9 +125,13 @@ class SelfDisclosureIntegrationTest {
     assertThat(download.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
     byte[] zip = download.getResponse().getContentAsByteArray();
     Map<String, String> entries = entries(zip);
-    assertThat(new ArrayList<>(entries.keySet()))
-        .containsExactly(
-            "notifications.json", "self-disclosure.json", "manifest.json", "index.html");
+    // every category with a record of the development account comes first, then manifest and
+    // overview
+    List<String> names = new ArrayList<>(entries.keySet());
+    assertThat(names).contains("notifications.json", "self-disclosure.json");
+    assertThat(names.subList(names.size() - 2, names.size()))
+        .containsExactly("manifest.json", "index.html");
+    assertThat(names.subList(0, names.size() - 2)).allMatch(name -> name.endsWith(".json"));
     assertThat(entries.get("notifications.json"))
         .contains("\"category\":\"notifications\"")
         .contains("sd-test <b>Gruppe</b> & mehr")
@@ -138,7 +142,7 @@ class SelfDisclosureIntegrationTest {
         .contains("<html lang=\"de\">")
         .contains(SelfDisclosureOverviewRenderer.NOTICE)
         .contains("sd-test &lt;b&gt;Gruppe&lt;/b&gt; &amp; mehr")
-        .contains("Diese Version enthält noch nicht alle Kategorien")
+        .doesNotContain("Diese Version enthält noch nicht alle Kategorien")
         .doesNotContain("<script");
     assertThat(entries.keySet()).noneMatch(name -> name.contains("sig") || name.contains("sha"));
 

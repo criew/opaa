@@ -1,10 +1,10 @@
 # Netz und Sicherheit
 
 Dieses Kapitel beschreibt, wie Anfragen eine Installation erreichen, was eine erreichbare
-Installation zwingend braucht, welche Ziele das Backend selbst abrufen darf und wie OPAA Schlüssel
-und Zugangsdaten schützt. Es gilt für jeden Betriebsweg und gehört zum Teil Betrieb des
-[Handbuchs](../README.md); die Bausteine einer Installation beschreibt die
-[Betriebsübersicht](README.md).
+Installation zwingend braucht, welche Ziele das Backend selbst abrufen darf, was ein Betrieb ohne
+Internet voraussetzt und wie OPAA Schlüssel und Zugangsdaten schützt. Es gilt für jeden Betriebsweg
+und gehört zum Teil Betrieb des [Handbuchs](../README.md); die Bausteine einer Installation
+beschreibt die [Betriebsübersicht](README.md).
 
 ## Netzwerkzugang
 
@@ -19,6 +19,12 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 - **Den Download der Selbstauskunft nicht puffern** (`/api/v1/me/self-disclosure/download`): Das
   Backend zählt eine Auskunft erst, wenn ihr letzter Block abgeflossen ist. Der Frontend-Container
   leitet ohne Puffer weiter; bei ingress-nginx gehört `proxy-buffering: "off"` dazu.
+- **Die Frame-Header des Downloads nicht ersetzen:** Für `/api/v1/me/self-disclosure/download`
+  setzt der Proxy kein eigenes `X-Frame-Options` und keine eigene `Content-Security-Policy` mit
+  `frame-ancestors` und überschreibt die des Frontends nicht. Die Seite lädt den Download in einen
+  eigenen verborgenen Frame; verbietet ein Header das, bricht etwa Firefox jeden Download ab, nachdem
+  OPAA ihn schon begonnen hat. Jeder Versuch verbraucht dann einen Start und löst Benachrichtigung
+  und Mail aus, bis die Starts des Tages erschöpft sind.
 - **Timeout** für `/api/` und `/mcp` mindestens `OPAA_BACKEND_READ_TIMEOUT`, sonst `504` bei langen
   Antworten.
 - **Callback-Seiten** `/auth/callback` und `/connections/callback` tragen einmal gültige Codes:
@@ -32,7 +38,10 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Content-Type-Options`,
 `X-Frame-Options`, `Referrer-Policy` und `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
 Kamera und Standort gesperrt). Die CSP lässt keine fremden Skripte oder CDNs zu und Verbindungen nur
-zur eigenen Herkunft. Ein Identitätsanbieter auf fremdem Origin kommt über
+zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit einer Ausnahme: Den
+Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
+(`SAMEORIGIN` bzw. `frame-ancestors 'self'`), damit eine Ablehnung die Seite nicht ersetzt. Ein
+Identitätsanbieter auf fremdem Origin kommt über
 `OPAA_CSP_CONNECT_SRC_EXTRA` dazu
 ([Authentifizierung](authentifizierung.md#content-security-policy-und-ein-anbieter-auf-fremdem-origin)).
 HSTS setzt der Container nicht; das gehört an den äußeren Proxy.
@@ -103,6 +112,48 @@ und `http.proxyHost` wertet OPAA nicht aus.
 - Änderungen wirken ohne Neustart und stehen im Revisionsprotokoll.
 - **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen; das lokale
   Systemverwaltungskonto meldet sich ohne Anbieter an und korrigiert den Eintrag.
+
+## Betrieb ohne Internet
+
+OPAA ist dafür gebaut, in einem Netz ohne Internetzugang zu laufen, wenn alles, was es braucht, im
+Haus steht: Anmeldung, Aufnahme von Dokumenten, Fragen mit Antwort und Fundstelle. Die Oberfläche
+lädt Schriften, Skripte und Bilder von der eigenen Installation. Die Nutzungsstatistik der
+eingebauten Bibliothek für Datenbankmigrationen (Liquibase) ist abgeschaltet. Was davon belegt ist,
+nennen Nachweis und Grenzen unten.
+
+**Voraussetzungen:**
+
+- **Images vorab bereitstellen:** Backend, Frontend und Datenbank (unter Kubernetes dazu die Images
+  des Charts) in eine interne Registry übernehmen oder auf den Hosts laden. Ein Start ohne
+  Internet darf kein Image mehr nachladen.
+- **Modelle im Haus:** Chat- und Embedding-Modell, bei Bedarf Reranking und Transkription, laufen
+  auf einem Modellserver im Netz der Installation ([Modelle](modelle.md)); seine Modellgewichte
+  werden vorab dort abgelegt.
+- **Anmeldung im Haus:** ein Identitätsanbieter im eigenen Netz oder die lokale Anmeldung
+  ([Authentifizierung](authentifizierung.md)).
+- **Quellen im Haus:** Bibliotheken lesen nur Quellen, die im Netz erreichbar sind; der Upload
+  braucht keine.
+
+**Nachweis:** Ein nächtlicher Lauf in der CI des Projekts (Workflow „Betrieb ohne Internet“) startet
+die Compose-Installation in einem Netz ohne Weg nach außen. Alle Images liegen vor dem Start bereit;
+das Modell ist ein OpenAI-kompatibler Dienst im selben Netz. Der Lauf meldet sich lokal an, legt eine
+Bibliothek an, nimmt ein Dokument auf und stellt eine Frage, deren Antwort das Dokument als
+Fundstelle nennt. Jede Namensauflösung außerhalb der Installation und jeder Abruf des Browsers von
+einer fremden Adresse lässt ihn scheitern; ein absichtlicher Abruf einer fremden Adresse belegt,
+dass diese Erkennung greift. Das Ergebnis steht mit Version und Datum in der Zusammenfassung des
+Laufs.
+
+**Grenzen des Nachweises:**
+
+- **Umfang:** die Compose-Installation mit lokaler Anmeldung und dem Upload eines Textdokuments, in
+  einem Lauf von rund einer Minute. Andere Formate, Reranking, Transkription und zeitgesteuerte
+  Aufgaben sind nicht Teil des Laufs, ebenso Konnektoren zu Quellen, Identitätsanbieter,
+  Mailversand und der Betrieb unter Kubernetes.
+- **Modelle:** Der Modelldienst ist ein Platzhalter mit festen Antworten, kein Modellserver; ob ein
+  Modellserver selbst ohne Internet startet, gehört zu dessen Betrieb.
+- **Erkennung:** Verbindungen an feste IP-Adressen ohne Namensauflösung scheitern im Netz ebenfalls.
+  Der Lauf erkennt sie aber nur, wenn das Log sie als nicht erreichbares Netz meldet; ein Fehler,
+  der nicht oder nur auf niedriger Stufe protokolliert wird, bleibt unbemerkt.
 
 ## Schlüssel und Geheimnisse
 

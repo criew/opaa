@@ -96,7 +96,13 @@ class MailTemplateServiceIntegrationTest {
         templateService.render(
             MailTemplateKey.ACCOUNT_LOCKED,
             MailTemplateService.DEFAULT_LOCALE,
-            Map.of("displayName", "Erika", "reason", "Zu viele Fehlversuche"));
+            Map.of(
+                "displayName",
+                "Erika",
+                "reason",
+                "Zu viele Fehlversuche",
+                "chatDeletionNotice",
+                ""));
     assertThat(rendered.subject()).isEqualTo("Gesperrt: OPAA");
     assertThat(rendered.bodyPlain()).isEqualTo("Hallo Erika, Grund: Zu viele Fehlversuche");
   }

@@ -1,9 +1,0 @@
-# Categories of the self-disclosure still without exporter, delivered by #2992 (assistant,
-# libraries, diagnosis). The exporter issue deletes this file; SelfDisclosureCoverageTest checks
-# it.
-chats
-library-settings
-documents
-indexing-runs
-diagnostic-impersonation
-diagnostic-context-log

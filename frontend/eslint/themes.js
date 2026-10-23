@@ -30,6 +30,7 @@ export const THEMES = [
   'search-admin',
   'audit',
   'notification',
+  'compliance',
   'auth',
 ]
 
@@ -67,6 +68,7 @@ export const ALLOWED = {
   'search-admin': ['library'],
   audit: [],
   notification: [],
+  compliance: [],
   auth: ['user'],
 }
 

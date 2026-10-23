@@ -797,6 +797,15 @@ persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte 
 (Abschnitt 2). Modell, verbrauchte Tokens und Dauer der Frage stehen an der Antwort und in den Metriken
 (Abschnitt 10.2).
 
+**Kennzeichnung als KI-erzeugt.** Jede erzeugte Antwort trägt in der Schnittstelle das Feld
+`generatedByAi` mit dem Wert `true`, im Chatverlauf ebenso jede Assistenten-Nachricht (Nutzernachrichten
+tragen `false`). Das Feld erlaubt es Programmen, die Antworten über `POST /api/v1/query` oder den
+Chatverlauf weiterverarbeiten, die Herkunft eindeutig zu erkennen (Art. 50 KI-Verordnung). Es ist
+**keine Markierung im Antworttext**: Wird der Text kopiert oder weitergegeben, bleibt das Feld
+zurück. Ein Text-Wasserzeichen kann nur der Anbieter des Modells setzen; OPAA fügt keines hinzu. Der
+Modellname steht weiterhin nur in den Angaben zur Antwort. Suche ohne Antwort
+(`POST /api/v1/search`) und der MCP-Server liefern nur Fundstellen und tragen das Feld nicht.
+
 ## 7. Belege prüfen und Fundstellen bilden
 
 Belegprüfung und Fundstellen gehen vom **Antwortkontext** aus (Abschnitt 6), also von der
@@ -1302,6 +1311,16 @@ Ein Wert unter der Untergrenze bricht den Start mit einer Meldung im Log ab:
 |---|---|---|
 | `archive-after-days` | 90 | Tage ohne Aktivität, nach denen ein nicht angehefteter Chat archiviert wird; mindestens 90 (`OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS`) |
 | `delete-after-days` | 365 | Tage im Chat-Archiv, nach denen ein Chat gelöscht wird; mindestens 30 (`OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS`) |
+
+Die Löschung der Chats gesperrter Konten ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#was-mit-den-chats-eines-gesperrten-kontos-geschieht))
+steht unter `opaa.chat.locked-account-cleanup.*`; der Lauf ist täglich um 02:30 Uhr Serverzeit und
+löscht höchstens 5.000 Chats je Nacht, der Rest folgt in den nächsten Nächten. Eine Verlängerung der
+Frist ist eine längere Speicherfrist und gehört in die Dienstvereinbarung:
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `enabled` | `true` | Ob die Chats lokaler Konten nach der Sperre durch die Verwaltung gelöscht werden; nach dem Wiedereinschalten beginnt jede Frist neu (`OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_ENABLED`) |
+| `delete-after-days` | 365 | Tage zwischen der Sperre durch die Verwaltung und der Löschung der Chats, frühestens ab der Einführung; mindestens 90, ein kleinerer Wert bricht den Start ab (`OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS`) |
 
 Alles andere an der Notiz ist ein fester Wert ohne Adressaten: zwei Punkte je Runde, 200 Zeichen je
 Punkt, die Art eines Punkts, das verwendete Modell (das systemweit aktive Chat-Modell) und die

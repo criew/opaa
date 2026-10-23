@@ -22,7 +22,7 @@ data:
       - die Person selbst
       - Mitglieder geteilter Spaces und Gruppen (Anzeigename)
       - SYSTEM_ADMIN in der Kontenverwaltung
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Durch die Systemverwaltung nur bei lokalen Konten, auf die nichts verweist (u. a. kein Chat,
       kein Besitz, keine Rechtevergabe, keine Verbindung, kein Eintrag der Rechtehistorie),
@@ -81,7 +81,7 @@ data:
         - local_auth_settings.default_expiry_days
         - local_auth_settings.inactive_days
     visibility: ["SYSTEM_ADMIN (Zustand, nie Passwort oder Zähler)", die Person selbst]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Mit dem Konto
     evaluations: >-
       Keine; der Fehlversuchszähler wird weder ausgegeben noch historisiert und geht bei Erfolg auf
@@ -131,8 +131,10 @@ data:
         - opaa.auth.local.admin-session-max-lifetime
         - local_auth_settings.invitation_token_ttl_hours
         - local_auth_settings.reset_token_ttl_minutes
-    visibility: [niemand über die Oberfläche]
-    accessPaths: [DATABASE]
+    visibility:
+      - niemand über die Oberfläche
+      - die Person selbst in ihrer Selbstauskunft (ohne Prüfwerte und Familienkennungen)
+    accessPaths: [EXPORT, DATABASE]
     deletion: Täglicher Bereinigungslauf
     evaluations: keine
   - id: account-state-history
@@ -155,8 +157,8 @@ data:
         Höchstdauer der Rechtehistorie, Voreinstellung 36 Monate nach Ende des Intervalls; die
         Zeiträume eines gelöschten Kontos gehen mit ihm
       settings: [permission_history_retention_settings.retention_months]
-    visibility: [AUDITOR über die Stichtagsauskunft]
-    accessPaths: [UI, API, DATABASE]
+    visibility: [AUDITOR über die Stichtagsauskunft, die Person selbst in ihrer Selbstauskunft]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Retention-Lauf der Rechtehistorie; mit dem Konto
     evaluations: >-
       Stichtagsauskunft je Objekt: Zeiten, in denen eine dort genannte Person ihr Konto nicht
@@ -233,8 +235,10 @@ data:
     retention:
       rule: Bis zur nächsten Änderung der Einstellung
       settings: []
-    visibility: [SYSTEM_ADMIN]
-    accessPaths: [UI, API, DATABASE]
+    visibility:
+      - SYSTEM_ADMIN
+      - die Person selbst in ihrer Selbstauskunft (Bereich und Zeitpunkt, keine Werte)
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Überschrieben bei der nächsten Änderung
     evaluations: keine
   - id: mail-outbox

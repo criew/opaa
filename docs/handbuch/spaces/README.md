@@ -31,7 +31,7 @@ nicht, und eine Einstellung zur Sichtbarkeit eines Space deshalb auch nicht.
 
 | Rolle | Darf |
 |---|---|
-| **Mitglied** | Den Space betreten, Chats anlegen und führen, geteilte Chats lesen, die bereitgestellten Arbeitsmittel sehen — gefiltert auf den eigenen Zugriff |
+| **Mitglied** | Den Space betreten, eigene Chats anlegen und führen, die bereitgestellten Arbeitsmittel sehen — gefiltert auf den eigenen Zugriff |
 | **Kurator** | Zusätzlich Arbeitsmittel bereitstellen und lösen, Inhalte ordnen |
 | **Administrator** | Zusätzlich Mitglieder und Rollen verwalten, Einstellungen setzen, geteilte Inhalte zurückziehen |
 
@@ -243,6 +243,11 @@ in einem kurzen Hinweis. Für alle Chats des Space gilt dann:
 Die Fristen sind systemweit fest und nur vom Betrieb einstellbar, mit einer Untergrenze, die keine
 Konfiguration unterschreiten kann ([Suche](suche.md), Abschnitt 10.3).
 
+**Chats gesperrter Konten.** Unabhängig von diesem Schalter löscht OPAA die Chats eines Kontos, das
+die Verwaltung gesperrt hat, nach einer eigenen Frist ab der Sperre — in jedem Space, auch im
+persönlichen, angeheftete eingeschlossen. Die Bereinigung je Space und ihre Fristen ändern daran
+nichts. Was dabei gilt, steht im Kapitel [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#was-mit-den-chats-eines-gesperrten-kontos-geschieht).
+
 Die **Chatliste** in der Seitenleiste zeigt zuerst die angehefteten Chats, darunter „Zuletzt
 verwendet" mit den 15 zuletzt genutzten. „15 weitere" blendet die nächsten ein, „Weniger" klappt
 wieder auf die ersten 15 zurück. Ein Filterfeld gibt es nicht; der Suchknopf neben
@@ -270,7 +275,7 @@ Suchbereich, mit dem die Frage gestellt wurde. Lehnt OPAA die laufende Frage ab,
 im Eingabefeld, vor dem schon geschriebenen Text.
 
 Ein per `/` eingesetzter Prompt gehört zu seinem Space: Wechselt der Chat in einen anderen Space,
-entfällt der Chip „Prompt: <Titel>", der Text bleibt stehen.
+entfällt der Chip „`Prompt: <Titel>`", der Text bleibt stehen.
 
 ## 8. Weiterführende Kapitel
 

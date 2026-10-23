@@ -63,6 +63,10 @@ Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards 
 5. „Weiterführende Kapitel" nennt nur Kinder und nächste Geschwister.
 6. Lieber Kapitel und benannte Abschnitte als Abschnittsnummern; Nummern veralten bei jeder
    Umgliederung.
+7. Das Handbuch geht als Markdown und HTML ins Update-Paket. Jeder relative Link und jeder Anker
+   muss treffen; der CI-Schritt `update_package.py links` prüft das in jedem PR, auch die Verweise
+   aus `docs/behoerden/`. Eine umbenannte Überschrift zieht deshalb alle Verweise auf sie nach.
+   Spitze Klammern im Fließtext (`<Titel>`) stehen in Backticks, sonst verschluckt sie die HTML-Fassung.
 
 ## Stil
 

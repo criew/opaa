@@ -55,10 +55,8 @@ sie. Die Kennzeichnung am Pull Request führt jede datenrelevante Änderung in d
 Aus beiden entsteht zu jedem Release das Update-Paket.
 
 Ein Wächter prüft auch die **Selbstauskunft**, mit der jede Person die zu ihr gespeicherten Daten
-herunterlädt: Für jede Kategorie, deren Ausgabe gebaut ist, muss jede Angabe, die das Manifest als
-Teil der Auskunft führt, darin vorkommen, und nichts, was es ausschließt, darf hinein. Noch sind
-nicht alle Kategorien gebaut; die Übersicht der Auskunft nennt die fehlenden (siehe [Was nicht
-gebaut ist](#was-nicht-gebaut-ist)).
+herunterlädt: Jede Kategorie mit einem Weg zur Person hat eine Ausgabe, darin kommt jede Angabe
+vor, die das Manifest als Teil der Auskunft führt, und nichts, was es ausschließt.
 
 Die Selbstauskunft hinterlässt im Nachweisprotokoll **zwei Einträge je Auskunft**: den Start und
 das Ende mit Ergebnis (vollständig ausgeliefert oder abgebrochen), Größe, Prüfsumme der
@@ -118,14 +116,16 @@ ein Update verantworten, ohne den Code zu lesen:
 
 | Teil | Inhalt |
 |---|---|
+| `index.html` | Startseite der HTML-Fassung: Neben jeder Markdown-Datei liegt dieselbe Seite als HTML, untereinander verlinkt und ohne Internetzugang lesbar |
 | `LIESMICH.md` | Version, Commit, Vergleichsstand, Prüfbefehle |
 | `delta/` | Was sich an den Fakten seit dem vorigen finalen Release geändert hat, je Änderung vorher und nachher, mit Stufenvorschlag (Bagatelle, Anzeige, Zustimmung) und dem Hinweis, ob Verzeichnis der Verarbeitungstätigkeiten, Datenschutz-Folgenabschätzung oder Sicherheitskonzept betroffen sind; dazu die als datenrelevant gekennzeichneten Änderungen, deren Wirkung nicht im Manifest steht |
 | `betrieb/` | Was das Update für den Betrieb bedeutet: ob vorher etwas vorzubereiten ist, ob eine Neuindizierung (mit Dauerschätzung), ein Nachzug oder eine Neueinbettung ansteht, wie viele Schemaänderungen beim Start laufen, welche Ports und Ziele ausgehender Verbindungen neu sind; dazu die Kennzahlen der Suchqualität beider Versionen mit Messdatum. Jede Angabe nennt ihre Quelle; ein fehlender Messwert steht als „nicht gemessen“ da |
 | `faktenblaetter/` | die Faktenblätter dieser Version |
 | `lizenzen/` | die Lizenzübersicht der ausgelieferten Abhängigkeiten |
 | `sbom/` | die CycloneDX-SBOMs von Backend und Frontend der Version |
-| `vorlagen/` | alle Vorlagen für Behörden dieser Version, nach Themen geordnet; ihre Verweise auf Faktenblätter führen auf die Blätter im Paket, Verweise auf weitere Dokumentation auf deren Stand in dieser Version |
-| `update-vermerk.md` | Vorlage, in der die Behörde Bewertung je Stelle und Entscheidung festhält; ihre Verweise auf Faktenblätter führen auf die Blätter im Paket |
+| `vorlagen/` | alle Vorlagen für Behörden dieser Version, nach Themen geordnet; ihre Verweise auf Faktenblätter und Handbuch führen auf Blätter und Kapitel im Paket, Verweise auf weitere Dokumentation auf deren Stand in dieser Version |
+| `handbuch/` | dieses Handbuch im Stand der Version; Verweise auf weitere Dokumentation führen auf deren Stand in dieser Version |
+| `update-vermerk.md` | Vorlage, in der die Behörde Bewertung je Stelle und Entscheidung festhält; ihre Verweise führen wie in `vorlagen/` ins Paket |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
 Vor dem ersten finalen Release vergleicht das Paket mit dem „Stand ohne Fakten-Manifest“; im Delta
@@ -245,8 +245,9 @@ Im Repository liegen unter `docs/behoerden/` Vorlagen, mit denen eine Behörde i
 Unterlagen erstellt, etwa zum Datenschutz, zur Informationssicherheit oder zur KI-Verordnung,
 geordnet nach den Schritten von der Entscheidung bis zum Update. Die Vorlagen schreiben keine Werte
 ab, sondern verweisen auf das Faktenblatt der eingesetzten Version. Deshalb veralten sie nicht mit
-jedem Release. Die Übersicht dort, `docs/behoerden/README.md`, erklärt Aufbau, Kopfvermerk und die
-Form der Verweise. Wie Entwickler das Manifest nachpflegen, steht in
+jedem Release. Gelesen werden sie im Update-Paket dieser Version, wo jeder Verweis ein Link ist; die
+Übersicht `docs/behoerden/README.md` (im Paket `vorlagen/README.md`) erklärt Aufbau, Kopfvermerk und
+woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
 `backend/docs/compliance-manifest.md`.
 
 ## Was nicht gebaut ist
@@ -258,12 +259,6 @@ Form der Verweise. Wie Entwickler das Manifest nachpflegen, steht in
   ([#2559](https://github.com/criew/opaa/issues/2559)).
 - Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
   Schnittstelle oben.
-- Die Ausgabe der meisten Kategorien der Selbstauskunft: Enthalten sind bisher die
-  Benachrichtigungen und der Stand der Selbstauskunft selbst; Konten, Protokoll, Rechte,
-  Zusammenarbeit, Chats, Bibliotheken und Diagnosen folgen
-  ([#2990](https://github.com/criew/opaa/issues/2990), [#2991](https://github.com/criew/opaa/issues/2991),
-  [#2992](https://github.com/criew/opaa/issues/2992)), ebenso die Oberfläche
-  ([#2993](https://github.com/criew/opaa/issues/2993)).
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
   ([#2557](https://github.com/criew/opaa/issues/2557)).
 

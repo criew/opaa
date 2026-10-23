@@ -24,13 +24,17 @@ ist die Behörde; die oder der Datenschutzbeauftragte (DSB) berät.
 - Welche Daten zu einer Person entstehen und wie man an sie kommt: {{faktenblatt:datenkatalog}},
   Zeilen „Spalten mit Personenbezug“ und „Zugriffsweg“.
 - Wer sie sieht: {{faktenblatt:rollensicht}}.
-- Was jede Person selbst einsehen kann: eigene Angaben
+- Die **Selbstauskunft**: Jede angemeldete Person lädt ihre Daten nach erneuter Anmeldung selbst als
+  ZIP herunter ([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)).
+  Was enthalten ist und was nicht, steht je Datum im {{faktenblatt:datenkatalog}}, Zeile „Zuordnung
+  zur Person“.
+- Was jede Person außerdem einsehen kann: eigene Angaben
   ([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md#11-was-nutzende-selbst-können)), eigene
   Chats ([Suche in eigenen Chats](../../handbuch/spaces/suche.md#72-suche-in-eigenen-chats)), eigene
   Zugangstokens ([Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md#5-zugangstokens-aus-sicht-der-person)).
 
-Einen gebündelten Export aller Daten einer Person gibt es noch nicht; die Behörde stellt die
-Auskunft aus den genannten Wegen zusammen.
+Nicht in der Selbstauskunft sind Daten über die Person in Dokumenten, Inhalte anlassbezogener
+Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weiterhin die Behörde zusammen.
 
 ## Aufgaben der Behörde
 
@@ -43,7 +47,7 @@ Auskunft aus den genannten Wegen zusammen.
 
 | Recht | Was die Behörde in OPAA tut |
 |---|---|
-| **Auskunft** | Daten nach dem Datenkatalog zusammenstellen |
+| **Auskunft** | auf die Selbstauskunft hinweisen; ergänzen, was sie nicht enthält; bei Bedarf alles nach dem Datenkatalog zusammenstellen |
 | **Berichtigung** | lokales Konto ändert die Systemverwaltung ([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md)), sonst im Identitätsanbieter |
 | **Löschung** | Person löscht eigene Chats; Konto löschen oder sperren ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)); Dokumente in Bibliothek oder Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
 | **Einschränkung** | Konto sperren; [Regel der Behörde für Dokumente] |
@@ -64,6 +68,14 @@ Antwort am:           [Datum]          durch: [ ]
 
 ## Gut zu wissen
 
+- **Die Selbstauskunft ersetzt keinen Antrag.** Ein Antrag auf anderem Weg wird bearbeitet wie
+  bisher; niemand darf verlangen, dass die Person ihre Auskunft vorlegt.
+- **Notabschaltung** ({{faktenblatt:voreinstellungen#self-disclosure-settings-enabled}}): Die
+  Oberfläche verweist dann auf den Antrag bei der Behörde.
+- **Protokoll:** Start und Ende jedes Downloads stehen ohne Inhalt im Protokoll
+  ({{faktenblatt:protokollereignisse#self-disclosure-export-started}},
+  {{faktenblatt:protokollereignisse#self-disclosure-export-finished}}); die eigenen Einträge erhält
+  die Person mit ihrer Selbstauskunft.
 - **Konten lassen sich oft nur sperren.** Ein benutztes Konto ist meist nicht löschbar, weil
   Nachweiseinträge darauf verweisen. Dann bleibt der Personenbezug im Protokoll bestehen; die Behörde
   berücksichtigt das bei der Antwort auf ein Löschbegehren.
@@ -74,7 +86,7 @@ Antwort am:           [Datum]          durch: [ ]
   ([Löschen oder sperren](../../handbuch/konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).
   Ausnahme: Eine Freigabe für eine anlassbezogene Klärung, die die Person nennt, ordnet ihre
   Einträge bis zu deren Löschfrist weiter zu ({{faktenblatt:datenkatalog#audit-incident-scopes}}).
-  Regelt eine Dienstvereinbarung den Zugriff auf das Protokoll, gilt deren Verfahren.
+  Regelt eine [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) den Zugriff auf das Protokoll, gilt deren Verfahren.
 - **Dokumente folgen ihrer Quelle.** Wird ein Dokument dort gelöscht oder berichtigt, zieht OPAA nach
   ([Änderungen und Löschungen](../../handbuch/arbeitsmittel/wissensbibliotheken/README.md#44-änderungen-und-löschungen)).
   Antworten in bestehenden Chats, die es zitiert haben, bleiben bis zur Löschung des Chats.

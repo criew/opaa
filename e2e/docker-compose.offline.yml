@@ -1,0 +1,92 @@
+# Overlay of the offline target (scripts/run-e2e.mjs --target offline, scripts/offline.mjs): the
+# stack of docker-compose.yml on a network without any route out, with the models as a local
+# service. Every container of the installation resolves names through egress-dns, which records
+# each name outside the stack; relay is the only way in from the host.
+
+x-embedding-dimensions: &embedding-dimensions "1536"
+# Docker's embedded DNS answers the service names and forwards every other name to this address.
+x-egress-dns: &egress-dns
+  dns:
+    - ${OPAA_OFFLINE_DNS_ADDRESS:-172.24.0.53}
+
+services:
+  postgres:
+    <<: *egress-dns
+    ports: !reset []
+
+  backend:
+    <<: *egress-dns
+    ports: !reset []
+    depends_on:
+      ai-stub:
+        condition: service_healthy
+      egress-dns:
+        condition: service_healthy
+    environment:
+      OPAA_PGVECTOR_DIMENSIONS: *embedding-dimensions
+      OPAA_CORS_ALLOWED_ORIGINS: http://localhost:${OPAA_FRONTEND_PORT}
+      OPAA_PUBLIC_BASE_URL: http://localhost:${OPAA_FRONTEND_PORT}
+
+  frontend:
+    <<: *egress-dns
+    ports: !reset []
+
+  # The chat and embedding model as a service inside the stack (OpenAI-compatible protocol).
+  ai-stub:
+    <<: *egress-dns
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/ai-stub:/app:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "8089"
+      EMBEDDING_DIMENSIONS: *embedding-dimensions
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8089/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  # Records every DNS query for a name outside the stack and answers it with NXDOMAIN; forwards
+  # nothing. Its own queries would bypass it, so it resolves nothing itself.
+  egress-dns:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/offline:/app:ro
+    command: ["node", "egress-dns.mjs"]
+    networks:
+      default:
+        ipv4_address: ${OPAA_OFFLINE_DNS_ADDRESS:-172.24.0.53}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8053/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  # Test harness, not part of the installation: forwards the host ports to the frontend and to the
+  # query log of egress-dns. Ports can only be published through a network with a route out.
+  relay:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/offline:/app:ro
+    command: ["node", "relay.mjs"]
+    environment:
+      RELAYS: 8080=frontend:8080,8053=egress-dns:8053
+    networks:
+      - default
+      - edge
+    ports:
+      - "127.0.0.1:${OPAA_FRONTEND_PORT}:8080"
+      - "127.0.0.1:${OPAA_OFFLINE_DNS_LOG_PORT:-18053}:8053"
+    depends_on:
+      frontend:
+        condition: service_started
+
+networks:
+  # No gateway: a connection to any address outside the subnet fails with "network unreachable".
+  default:
+    internal: true
+  edge: {}

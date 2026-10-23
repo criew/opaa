@@ -79,7 +79,7 @@ data:
         Bis zur Trennung; nach 90 Tagen ohne Anmeldung ruhen die Verbindungen einer Person
       settings: [opaa.connection.inactivity-threshold-days]
     visibility: [die Person selbst, SYSTEM_ADMIN (maskierte Zahlen je Profil)]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Trennung durch die Person, Profillöschung, Notabschaltung. Eine eigene Verbindung verhindert
       die Löschung des Kontos; offene Freigaben und Autorisierungen enden mit dem Konto, an
@@ -102,7 +102,7 @@ data:
         - opaa.connection.inactivity-threshold-days
         - opaa.connection.private-library-deletion-days
     visibility: [niemand über die Oberfläche]
-    accessPaths: [DATABASE]
+    accessPaths: [EXPORT, DATABASE]
     deletion: Mit dem Konto
     evaluations: keine
   - id: connection-log
@@ -135,7 +135,7 @@ data:
       rule: Voreinstellung 12 Monate, einstellbar 6 bis 24 Monate
       settings: [connection_log_retention_settings.retention_months]
     visibility: [AUDITOR]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatlicher Retention-Lauf
     evaluations: Abfrage nach Zeitraum und Filtern; jeder Abruf wird protokolliert
 nonPersonalTables:
