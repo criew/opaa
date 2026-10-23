@@ -42,9 +42,11 @@ in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
   [Stufenregeln](../../features/behoerdenunterlagen.md#die-stufenregeln). Das Delta im Paket
   vergleicht mit dem vorigen finalen Release; für einen größeren Sprung erzeugt der Betrieb es selbst
   ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
-- **Supportlinien:** Patch-Releases bringen nur Sicherheitskorrekturen und Behebungen kritischer
-  Fehler, keine neue Funktion. Heute bekommt allerdings nur die jüngste Linie Patch-Releases
-  ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)).
+- **Supportlinien:** Im Zielbild bringen Patch-Releases nur Sicherheitskorrekturen und Behebungen
+  kritischer Fehler. Heute bekommt nur die jüngste Linie Patch-Releases, und ein Patch-Release mit
+  Codeänderung enthält alles, was seit dem letzten Release dazukam, außer neuen Funktionen
+  ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)). Den
+  Schutz gibt deshalb die Sichtung des Deltas vor dem Einspielen.
 - Die [Informationsmappe für den Personalrat](informationsmappe-personalrat.md) erklärt all das in
   Alltagssprache.
 
@@ -181,8 +183,10 @@ Ausgeschlossen sind insbesondere:
 1. Ranglisten, Vergleiche oder Bewertungen einzelner Beschäftigter, auch als spielerisches Element
    und auch nach der Autorschaft geteilter Inhalte,
 2. Auswertungen je Person über Nutzungshäufigkeit, Zeiten, Dauer oder Inhalte von Fragen und Chats,
+   außer der Kontenpflege und der Sperre wegen Inaktivität nach Nummer 6,
 3. Profile aus den Inhalten von Fragen, auch mit Hilfe einer KI,
-4. Auswertungen von Anmelde- und Abmeldezeiten,
+4. Auswertungen von Anmelde- und Abmeldezeiten, außer der Kontenpflege und der Sperre wegen
+   Inaktivität nach Nummer 6,
 5. jede Einsicht in die Chats Dritter,
 6. Rückschlüsse auf Anwesenheit oder Arbeitsort, etwa über Netzadressen,
 7. Statistiken unterhalb der Mindestgruppengröße; sie beträgt [Wert, nicht kleiner als die
@@ -313,23 +317,32 @@ abgeschlossen ist. Vorher dürfen sie nur eingespielt werden, wenn jede Funktion
 in der Installation abgeschaltet ist und bis zur Zustimmung abgeschaltet bleibt; der Update-Vermerk
 hält das als Auflage fest. Lässt sich eine solche Funktion nicht abschalten, wartet das Update.
 
-(10) **Sicherheitsupdates:** Ein Patch-Release einer unterstützten Linie bringt nur
-Sicherheitskorrekturen und Behebungen kritischer Fehler, keine neue Funktion. [Stelle] sichtet vor dem
-Einspielen sein Delta. Enthält es keine Änderung der Stufe Zustimmung, wird es sofort eingespielt, und
-der Personalrat erhält den Update-Vermerk binnen [fünf] Arbeitstagen. Sonst gilt Absatz 9.
+(10) **Sicherheitsupdates:** Ein Patch-Release einer unterstützten Linie bringt keine neue Funktion;
+im Zielbild enthält es nur Sicherheitskorrekturen und Behebungen kritischer Fehler, heute alles seit
+dem letzten Release außer neuen Funktionen. [Stelle] sichtet deshalb vor dem Einspielen sein Delta. Enthält es keine Änderung der Stufe Zustimmung, wird es sofort eingespielt, und
+der Personalrat erhält den Update-Vermerk binnen [fünf] Arbeitstagen. Sonst gilt Absatz 9, für eine Sicherheitskorrektur Absatz 11.
 
-(11) Steht eine Sicherheitskorrektur nur in einem Funktionsupdate bereit, kann die
-Dienststellenleitung es als vorläufige Maßnahme einspielen. Das ist der Fall, wenn die eingesetzte
-Linie ausgelaufen ist oder wenn nur die jüngste Linie Patch-Releases bekommt und das Projekt die
-Korrektur deshalb mit dem nächsten Funktionsrelease ausliefert. Absatz 9 Satz 2 gilt; die
-Dienststelle begründet die Maßnahme und leitet das Verfahren unverzüglich ein.
+(11) Steht eine Sicherheitskorrektur nur in einem Funktionsupdate oder einem Patch-Release mit einer
+Änderung der Stufe Zustimmung bereit, darf die Dienststellenleitung es als vorläufige Maßnahme sofort
+einspielen. Das ist der Fall, wenn die eingesetzte Linie ausgelaufen ist oder wenn nur die jüngste
+Linie Patch-Releases bekommt und das Projekt die Korrektur deshalb mit dem nächsten Funktionsrelease
+ausliefert. Dann gilt:
+
+1. Funktionen der Stufe Zustimmung, die sich abschalten lassen, werden abgeschaltet und bleiben es
+   bis zur Zustimmung.
+2. Eine Änderung der Stufe Zustimmung, die sich nicht abschalten lässt, darf bis zur Zustimmung weder
+   genutzt noch ausgewertet werden; Daten, die sie erzeugt, unterliegen dem Verwertungsverbot nach
+   Nummer 4.
+3. Die Dienststelle unterrichtet den Personalrat unverzüglich, begründet die Maßnahme und holt die
+   Beteiligung nach dieser Nummer nach.
 
 (12) **Wechsel der Linie:** Die Dienststelle betreibt [nur LTS-Linien / auch normale Linien]. Für den
-Wechsel auf die nächste Linie beginnt die Beteiligung mit dem Release-Kandidaten und dem Delta von der
-eingesetzten Version zum Kandidaten, spätestens [drei Monate] vor dem Supportende der eingesetzten
-Linie. Vor dem Einspielen des finalen Release legt die Dienststelle das Delta zwischen Kandidat und
-finalem Release vor; es wird nach dieser Nummer erneut gestuft. Beide Deltas erzeugt der Betrieb nach
-Absatz 2.
+Wechsel auf die nächste Linie beginnt die Beteiligung, sobald der Release-Kandidat erscheint, mit dem
+Delta von der eingesetzten Version zum Kandidaten. [Früher beginnt sie mit dem Delta zum jüngsten
+finalen Release dazwischen; bei reinem LTS-Betrieb ist das das Dezember-Release, das den größten Teil
+der neuen Funktionen schon enthält. Dann wird beim Kandidaten nur noch der Rest gestuft.] Vor dem
+Einspielen des finalen Release legt die Dienststelle das Delta zwischen Kandidat und finalem Release
+vor; es wird nach dieser Nummer erneut gestuft. Alle Deltas erzeugt der Betrieb nach Absatz 2.
 
 #### 16. Rechte des Personalrats
 
@@ -404,6 +417,9 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
   nur dann als Patch-Release, wenn seit dem letzten Release keine neue Funktion hinzugekommen ist
   ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)). Bis
   dahin ist Nummer 15 Absatz 11 der Regelfall für Sicherheitskorrekturen im Code.
+- **Zeit für den Linienwechsel:** Der Release-Kandidat eines LTS erscheint nur wenige Wochen vor dem
+  Supportende der laufenden LTS-Linie. Wer mehr Zeit braucht, beginnt mit dem Delta zum
+  Dezember-Release (Nummer 15 Absatz 12).
 - **Delta bei übersprungenen Versionen:** Das Delta im Update-Paket vergleicht nur mit dem vorigen
   finalen Release, auch bei einem LTS-Release. Wer Versionen überspringt, etwa von LTS zu LTS,
   braucht das selbst erzeugte Delta über den ganzen Sprung

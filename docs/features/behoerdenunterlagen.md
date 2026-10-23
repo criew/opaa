@@ -616,12 +616,16 @@ Patch-Release mit Codeänderung nur, solange `main` keine neue Funktion trägt
 ([releases.md](../releases.md#versionsnummern)). Ein **Funktionsupdate** wird erst nach Abschluss
 der Stufe eingespielt, vorher nur, wenn jede Funktion der Stufe Zustimmung in der Installation
 abgeschaltet ist und bleibt; lässt sie sich nicht abschalten, wartet das Update. Beim **Wechsel der
-Linie** beginnt die Beteiligung mit dem Release-Kandidaten und dem Delta von der eingesetzten Version
-zu ihm; das Delta zwischen Kandidat und finalem Release wird erneut gestuft. Beide erzeugt der
-Betrieb, solange das Update-Paket nur mit dem vorigen finalen Release vergleicht. Steht eine
+Linie** beginnt die Beteiligung, sobald der Release-Kandidat erscheint, mit dem Delta von der
+eingesetzten Version zu ihm; früher geht es mit dem Delta zum jüngsten finalen Release dazwischen
+(bei reinem LTS-Betrieb dem Dezember-Release). Das Delta zwischen Kandidat und finalem Release wird
+erneut gestuft. Alle Deltas erzeugt der Betrieb, solange das Update-Paket nur mit dem vorigen finalen Release vergleicht. Steht eine
 Sicherheitskorrektur nur in einem Funktionsupdate bereit (heute der Regelfall für Korrekturen im
-Code, solange nur die jüngste Linie Patch-Releases bekommt), ist es eine vorläufige Maßnahme der
-Dienststellenleitung mit derselben Abschaltauflage.
+Code, solange nur die jüngste Linie Patch-Releases bekommt), darf die Dienststellenleitung es als
+vorläufige Maßnahme sofort einspielen: Schaltbare zustimmungspflichtige Funktionen bleiben aus, eine
+nicht abschaltbare zustimmungspflichtige Änderung wird bis zur Zustimmung weder genutzt noch
+ausgewertet, der Personalrat wird unverzüglich unterrichtet und die Beteiligung nachgeholt
+(Entscheidung des Maintainers vom 23.10.2026).
 
 **Informationsmappe für den Personalrat.** Rollensicht, Beispiele möglicher und ausgeschlossener
 Auswertungen, Datenfluss zum Modellanbieter, Wirkung des Abschaltens einzelner Funktionen, Glossar,
