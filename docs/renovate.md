@@ -134,9 +134,7 @@ eine Linie entsteht kein Sicherheits-PR mehr. Gibt es den Fix nur als neue Minor
 ihn die Sperre ohne PR und ohne Eintrag in der Übersicht. Der Anlass kommt deshalb aus dem
 nächtlichen [CVE-Scan](cve-scanning.md) des jüngsten Patch-Release jeder Linie; er sieht, was im
 Image steckt, auch die Java-Bibliotheken des Backends, nicht aber Frontend-Bibliotheken, die im
-gebündelten JavaScript aufgehen. Diesen Scan je Linie baut erst
-[#3018](https://github.com/criew/opaa/issues/3018); bis dahin prüft er nur das jüngste Release,
-und ein Fix, den es nur als Minor-Version gibt, fällt für eine ältere Linie nicht von selbst auf.
+gebündelten JavaScript aufgehen.
 Die Regel wird mit dem Supportende der Linie wieder entfernt. `test_support_lines.py` liest `renovate.json5` mit Node und prüft, dass die
 Sperrregel die Update-Arten oben abdeckt, dass `separateMinorPatch` nur für die Wartungsbranches und
 vor der Sperre gilt, dass nach ihr nur solche Ausnahmen mit `matchPackageNames` und

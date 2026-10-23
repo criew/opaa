@@ -140,7 +140,8 @@ Update-Paket.
 ## Schwachstellen
 
 - **Erkennen:** GitHub meldet bekannte Schwachstellen in den Bibliotheken; ein nächtlicher Scan
-  prüft die Images von `main` und des jüngsten Release.
+  prüft die Images von `main` und des jüngsten Patch-Release jeder unterstützten Linie, bis zu
+  deren Supportende.
 - **Behandeln:** Jeder Befund wird behoben oder mit Begründung zurückgestellt; wie schnell ein
   Release folgt, steht unter [Sicherheitsupdates](#sicherheitsupdates).
 - **Melden:** Lücken in OPAA vertraulich über das Private Vulnerability Reporting von GitHub
@@ -160,8 +161,6 @@ Update-Paket.
 
 ## Was nicht gebaut ist
 
-- Der Schwachstellen-Scan aller unterstützten Linien; heute prüft er nur das jüngste Release
-  ([#3018](https://github.com/criew/opaa/issues/3018)).
 - Im Update-Paket eines LTS das Delta zur vorigen LTS-Linie; heute enthält es das Delta zum vorigen
   finalen Release ([#3020](https://github.com/criew/opaa/issues/3020)).
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang

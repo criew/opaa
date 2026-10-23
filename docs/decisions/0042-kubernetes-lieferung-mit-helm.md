@@ -139,7 +139,7 @@ Aktualisierung mit einer Instanz bleibt eine Unterbrechung. Ingress, Gateway API
 müssen geprüft werden, nicht nur behauptet. PostgreSQL mit pgvector stellt der Betreiber. Ein
 Chart-Fix erzeugt ein Anwendungsrelease. Versions-Tags werden nie überschrieben; Sicherheitsupdates
 des Basis-Images erreichen ein Release nur als Patch-Release, und der CVE-Scan deckt neben `main` das
-jüngste Release ab. Was die Oberfläche verwaltet, ist nicht deklarativ.
+jüngste Patch-Release jeder unterstützten Linie ab. Was die Oberfläche verwaltet, ist nicht deklarativ.
 
 ## Verworfene Alternativen
 
