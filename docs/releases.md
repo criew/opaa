@@ -624,29 +624,16 @@ das Enddatum je Version nennt die [Projektseite](https://spring.io/projects/spri
 
 | | Regel |
 |---|---|
-| **Takt** | zwei Funktionsreleases `X.Y.0` im Jahr, etwa Juni und Dezember, jeweils 4–6 Wochen nach Spring Boot und auf dessen neuer Minor-Version; dazwischen nur Patch- und Vorab-Releases |
+| **Takt** | zwei Funktionsreleases `X.Y.0` im Jahr, etwa Juni und Dezember, jeweils 4–6 Wochen nach Spring Boot und auf dessen neuer Minor-Version, das Juni-Release spätestens zum Supportende der laufenden LTS-Linie (im Regelfall 30.06.); dazwischen nur Patch- und Vorab-Releases |
 | **Linie** | jedes finale `X.Y.0` eröffnet die Linie `X.Y`; ihre Patch-Releases bringen Sicherheitskorrekturen und Behebungen [kritischer Fehler](#kritische-fehler), sonst nichts: keine neue Funktion, keinen [Bruch](#versionsnummern) und keine neue Minor-Version von Spring Boot |
 | **Normales Release** | Patch-Releases bis einen Monat nach dem nächsten Funktionsrelease |
-| **LTS** | das Juni-Release; Patch-Releases bis zum Ende des kostenlosen Supports seiner Spring-Boot-Minor-Version, im Regelfall der 30.06. des Folgejahres, bei einem Release im Takt also rund 12 Monate; mit dem nächsten LTS überlappt die Linie höchstens wenige Wochen, am späten Ende des Takts gar nicht |
-| **Wechsel** | wer nur LTS betreibt, aktualisiert einmal im Jahr von LTS zu LTS. Weil die Überlappung knapp ist, erscheint das nächste LTS so früh wie möglich als Release-Kandidat (`vX.Y.0-rc.N`), sobald OPAA auf der neuen Spring-Boot-Version läuft, spätestens zwei Wochen nach deren Erscheinen; danach kommen bis zum finalen Release nur Korrekturen hinzu. Der Kandidat trägt das vollständige Update-Paket mit dem kumulierten Delta zur laufenden LTS-Linie ([#3020](https://github.com/criew/opaa/issues/3020)); auf seiner Grundlage bereitet die Behörde den Wechsel vor und beginnt die Beteiligung, damit sie das finale Release vor dem Supportende der laufenden Linie einspielen kann |
+| **LTS** | das Juni-Release; Patch-Releases bis zum Ende des kostenlosen Supports seiner Spring-Boot-Minor-Version, im Regelfall der 30.06. des Folgejahres, bei einem Release im Takt also rund 12 Monate; weil das nächste LTS spätestens zu diesem Supportende erscheint, überlappen die LTS-Linien immer, aber höchstens wenige Wochen |
+| **Wechsel** | wer nur LTS betreibt, aktualisiert einmal im Jahr von LTS zu LTS. Weil die Überlappung knapp ist, erscheint das nächste LTS so früh wie möglich als Release-Kandidat (`vX.Y.0-rc.N`), sobald OPAA auf der neuen Spring-Boot-Version läuft, spätestens zwei Wochen nach deren Erscheinen; danach kommen bis zum finalen Release nur Korrekturen hinzu, und das finale Release erscheint spätestens zum Supportende der laufenden LTS-Linie. Der Kandidat trägt das vollständige Update-Paket mit dem kumulierten Delta zur laufenden LTS-Linie ([#3020](https://github.com/criew/opaa/issues/3020)); auf seiner Grundlage bereitet die Behörde den Wechsel vor und beginnt die Beteiligung, damit sie das finale Release vor dem Supportende der laufenden Linie einspielen kann |
 | **Supportende** | steht bei einem LTS mit Erscheinen fest, bei einem normalen Release mit Erscheinen seines Nachfolgers, also mindestens einen Monat vorher; es steht in der Roadmap unten und in den Release-Notizen und wird nie vorgezogen |
 
 Meist laufen zwei Linien nebeneinander, im Monat nach einem Juni-Release drei. Ein Patch-Release
 einer Linie ist damit immer ein Update ohne neue Funktion, das eine Behörde sofort einspielen kann.
 Wer neue Funktionen vor dem nächsten Funktionsrelease braucht, folgt `main`.
-
-### Kritische Fehler
-
-Kritisch ist ein Fehler, für den es keinen zumutbaren Workaround gibt und der
-
-- Daten verliert oder verfälscht (Dokumente, Indizes, Einstellungen, Protokoll),
-- OPAA oder eine Kernfunktion ausfallen lässt (Start, Anmeldung, Suche, Chat, Indizierung) oder
-- Rechte falsch auswertet, also Inhalte Personen zeigt, die sie nicht sehen dürfen, oder
-  Berechtigten den Zugriff verweigert.
-
-Ob ein Fehler kritisch ist, entscheidet der Maintainer und hält es am Issue fest. Die Behebung
-kommt wie eine Sicherheitskorrektur zuerst auf `main` und dann per Backport auf jede unterstützte
-Linie, die der Fehler betrifft. Alles andere erscheint mit dem nächsten Funktionsrelease.
 
 **Was heute schon gilt und was noch gebaut wird.** Takt und Supportzeiträume gelten ab dem ersten
 finalen Release. Ein Sicherheitsupdate des Basis-Images erreicht die **jüngste** Linie schon heute
@@ -664,6 +651,19 @@ sind:
 
 Bis zum zweiten finalen Release gibt es nur eine Linie; dafür reichen Scan und Renovate wie heute.
 
+### Kritische Fehler
+
+Kritisch ist ein Fehler, für den es keinen zumutbaren Workaround gibt und der
+
+- Daten verliert oder verfälscht (Dokumente, Indizes, Einstellungen, Protokoll),
+- OPAA oder eine Kernfunktion ausfallen lässt (Start, Anmeldung, Suche, Chat, Indizierung) oder
+- Rechte falsch auswertet, also Inhalte Personen zeigt, die sie nicht sehen dürfen, oder
+  Berechtigten den Zugriff verweigert.
+
+Ob ein Fehler kritisch ist, entscheidet der Maintainer und hält es am Issue fest. Die Behebung
+kommt wie eine Sicherheitskorrektur zuerst auf `main` und dann per Backport auf jede unterstützte
+Linie, die der Fehler betrifft. Alles andere erscheint mit dem nächsten Funktionsrelease.
+
 ### Roadmap
 
 Geplant ist nach dem Takt von Spring Boot, nicht nach Funktionen; Versionsnummern vergibt erst das
@@ -674,13 +674,14 @@ Release. Ob GitHub-Meilensteine die Tabelle ergänzen, klärt
 |---|---|---|---|---|
 | erstes finales Release (aus den Kandidaten `v0.1.0-rc.N`) | vor dem ersten Release im Takt, außerhalb des Takts | 4.1 | normal | einen Monat nach dem Dezember-Release 2026 |
 | Dezember-Release 2026 | 4–6 Wochen nach Spring Boot 4.2 (November 2026) | 4.2 | normal | einen Monat nach dem Juni-Release 2027 |
-| Juni-Release 2027 | 4–6 Wochen nach der Mai-Version 2027 von Spring Boot | Mai-Version 2027 | erstes LTS | Ende des kostenlosen Supports dieser Spring-Boot-Version, im Regelfall 30.06.2028; Datum steht mit Erscheinen fest |
+| Juni-Release 2027 | 4–6 Wochen nach der Mai-Version 2027 von Spring Boot (noch ohne vorige LTS-Linie) | Mai-Version 2027 | erstes LTS | Ende des kostenlosen Supports dieser Spring-Boot-Version, im Regelfall 30.06.2028; Datum steht mit Erscheinen fest |
 | Dezember-Release 2027 | 4–6 Wochen nach der November-Version 2027 | November-Version 2027 | normal | einen Monat nach dem Juni-Release 2028 |
-| Juni-Release 2028 | 4–6 Wochen nach der Mai-Version 2028 | Mai-Version 2028 | LTS | Ende des kostenlosen Supports dieser Spring-Boot-Version |
+| Juni-Release 2028 | 4–6 Wochen nach der Mai-Version 2028, spätestens zum Supportende des LTS 2027 (im Regelfall 30.06.2028); Release-Kandidat spätestens zwei Wochen nach Spring Boot | Mai-Version 2028 | LTS | Ende des kostenlosen Supports dieser Spring-Boot-Version |
 
 Der Release-Kandidat jedes LTS erscheint spätestens zwei Wochen nach der Mai-Version von Spring
 Boot, also etwa Anfang Juni und damit einige Wochen vor dem Supportende der laufenden LTS-Linie
-(im Regelfall 30.06.); das finale LTS-Release folgt 4–6 Wochen nach Spring Boot.
+(im Regelfall 30.06.); das finale LTS-Release folgt 4–6 Wochen nach Spring Boot, spätestens zu
+diesem Supportende.
 
 Erscheint ein Release, ersetzt es seine Zeile durch die Versionsnummer und das feste Supportende;
 eine ausgelaufene Linie bleibt mit ihrem Ende stehen.

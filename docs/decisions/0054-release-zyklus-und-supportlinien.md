@@ -29,7 +29,8 @@ Maintainer und Agenten; jede zusätzlich gepflegte Linie kostet Backports, CI-L�
 ### 1. Zwei Funktionsreleases im Jahr
 
 OPAA erscheint zweimal im Jahr als finales `X.Y.0`, etwa im Juni und im Dezember, jeweils 4–6 Wochen
-nach der Minor-Version von Spring Boot und auf ihr. Neue Funktionen erscheinen nur so; dazwischen
+nach der Minor-Version von Spring Boot und auf ihr; das Juni-Release spätestens zum Supportende der
+laufenden LTS-Linie (Entscheidung 4). Neue Funktionen erscheinen nur so; dazwischen
 gibt es Patch-Releases der unterstützten Linien und Vorab-Releases. Wer neue Funktionen früher
 braucht, folgt `main`. Der Abstand zu Spring Boot lässt Zeit für die Anhebung und die Fehler der
 ersten Patch-Version, ohne den kostenlosen Support der Basis anzuknabbern.
@@ -55,17 +56,19 @@ Funktionsrelease. Der Monat ist die Übergangszeit für das Update auf den Nachf
 
 Das Juni-Release ist eine LTS-Linie. Ihr Supportende ist das Ende des kostenlosen Supports ihrer
 Spring-Boot-Minor-Version, wie es die Projektseite bei Erscheinen nennt. Im Regelfall ist das der
-30.06. des Folgejahres, bei einem Release im Takt also rund 12 Monate; mit dem nächsten LTS
-überlappt die Linie höchstens wenige Wochen, am späten Ende des Takts gar nicht; den Übergang trägt
-der frühe Release-Kandidat (Entscheidung 5). Das Datum steht bei Erscheinen fest und liegt nie
-hinter dem Spring-Support. Länger trägt keine LTS-Linie: Danach müsste das Projekt Fixes in Spring
-selbst zurückportieren oder Spring Boot in der Linie anheben, was Entscheidung 2 bricht. Juni statt Dezember ist eine Festlegung
-für die Planbarkeit; die Kopplung trüge beide.
+30.06. des Folgejahres, bei einem Release im Takt also rund 12 Monate. Das nächste LTS erscheint
+spätestens zu diesem Supportende, auch wenn die 4–6 Wochen nach Spring Boot dann noch nicht um sind;
+so überlappen die LTS-Linien immer, wenn auch höchstens wenige Wochen. Machbar ist das, weil der
+Release-Kandidat spätestens zwei Wochen nach Spring Boot erscheint (Entscheidung 5). Das Datum
+steht bei Erscheinen fest und liegt nie hinter dem Spring-Support. Länger trägt keine LTS-Linie:
+Danach müsste das Projekt Fixes in Spring selbst zurückportieren oder Spring Boot in der Linie
+anheben, was Entscheidung 2 bricht. Juni statt Dezember ist eine Festlegung für die Planbarkeit;
+die Kopplung trüge beide.
 
 ### 5. Wechsel von LTS zu LTS
 
 Wer nur LTS-Linien betreibt, aktualisiert einmal im Jahr auf das nächste Juni-Release. Weil die
-Linien sich nur knapp oder gar nicht überlappen, erscheint das nächste LTS so früh wie möglich als
+Linien sich nur knapp überlappen, erscheint das nächste LTS so früh wie möglich als
 Release-Kandidat: sobald OPAA auf der neuen Spring-Boot-Minor-Version läuft, spätestens zwei Wochen
 nach deren Erscheinen. Der Kandidat trägt das vollständige Update-Paket; auf seiner Grundlage
 beginnt die Behörde Beteiligung und Vorbereitung, das finale Release holt sie nur noch nach. Vom
@@ -110,8 +113,9 @@ dort nur, solange `main` keine neue Funktion trägt.
 **Restrisiken:** Abhängigkeiten außerhalb der Versionsverwaltung von Spring Boot (Spring AI, Tika,
 Frontend-Bibliotheken, Basis-Images) haben eigene Supportzeiträume. Gibt es einen Fix nur mit
 neuer Minor-Version, wird sie in der Linie angehoben, wenn das kein Bruch ist; sonst entscheidet der
-Maintainer im Einzelfall und nennt das in den Release-Notizen. Verspätet sich ein Juni-Release,
-verkürzt sich die Laufzeit dieser LTS-Linie und die Überlappung mit der vorigen, nicht die Grenze.
+Maintainer im Einzelfall und nennt das in den Release-Notizen. Erscheint Spring Boot spät im Mai,
+bleiben bis zum Supportende der laufenden LTS-Linie nur rund vier Wochen für das finale LTS und
+kaum Überlappung.
 
 ## Verworfene Alternativen
 
