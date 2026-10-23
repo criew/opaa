@@ -175,6 +175,46 @@ In CI läuft `.github/workflows/multi-instance.yml` je Plattform als eigener Job
 Zuruf und an einem PR über das Label `multi-instance-suite`; kein Required Check. Der Speicherbedarf
 liegt je Plattform bei etwa 4–5 GB.
 
+## Betrieb ohne Internet
+
+Das Ziel `offline` (`e2e/scripts/offline.mjs`, Szenario unter `e2e/offline/`) belegt, dass die
+Installation ohne Internetzugang arbeitet. Der Stack aus `docker-compose.yml` läuft mit
+`e2e/docker-compose.offline.yml` in einem Compose-Netz mit `internal: true`: ohne Gateway, jede
+Verbindung an eine Adresse außerhalb des Subnetzes scheitert sofort.
+
+- **Vorab bereitgestellt:** OPAA-Images werden gebaut (oder mit `E2E_SKIP_BUILD=true` übernommen),
+  Drittimages gezogen; danach startet der Stack mit `--pull never`. Das Modell ist `ai-stub` im
+  selben Netz.
+- **Ablauf:** Anmeldung des lokalen Notanker-Kontos, Bibliothek über den Assistenten, Upload,
+  Frage mit `@`-Referenz, Fundstelle im Belegfenster.
+- **Erkennung:** Jeder Container der Installation löst Namen über `egress-dns` auf
+  (`e2e/offline/egress-dns.mjs`). Dockers eingebautes DNS beantwortet die Dienstnamen selbst und
+  reicht nur fremde Namen weiter; der Wächter zeichnet sie auf und antwortet mit NXDOMAIN. Der
+  Browser-Kontext bricht jeden Abruf einer fremden Origin ab und zeichnet ihn auf. Nach dem Lauf
+  durchsucht `offline.mjs` die Container-Logs nach Verbindungsversuchen ohne Route
+  (`Network is unreachable`, `No route to host`) — der Weg einer Verbindung an eine IP-Adresse ohne
+  Namensauflösung, den der Wächter nicht sieht.
+- **Positivprobe:** Der Verbindungstest des Assistenten gegen `egress-probe.offline-check.example`
+  lässt das Backend einen fremden Namen auflösen; der Lauf scheitert, wenn der Wächter ihn nicht
+  aufzeichnet. Alle anderen Aufzeichnungen müssen leer bleiben.
+- **Zugang von außen:** nur über `relay` (`e2e/offline/relay.mjs`), das als Testgerüst in beiden
+  Netzen steht und Port 13003 an das Frontend und 18053 an das Protokoll des Wächters weiterreicht.
+- **Ergebnis:** `e2e/test-results/offline-result.json` mit Version, Datum und den Aufzeichnungen;
+  die CI schreibt es in die Zusammenfassung des Laufs.
+
+```bash
+# aus e2e/: eigenes Compose-Projekt opaa-offline, Subnetz 172.24.0.0/16, nach dem Lauf abgebaut
+pnpm install
+pnpm exec playwright install chromium   # einmalig
+pnpm run test:offline
+```
+
+**Nicht abgedeckt:** ein echter Modellserver (ob er ohne Internet startet, ist dessen Sache),
+Konnektoren zu Quellen, Identitätsanbieter, Mailversand und Kubernetes.
+
+`.github/workflows/offline.yml` fährt das Ziel nächtlich, auf Zuruf und an einem PR über das Label
+`offline-suite`; kein Required Check.
+
 ## Image-Rauchtest
 
 ```bash
