@@ -65,7 +65,8 @@ erfüllt.
 
 | Worum es geht | Fundstelle |
 |---|---|
-| C5:2026 final seit April 2026, verbindlich für Prüfzeiträume ab 1.6.2027 | Fachbeiträge: [heise](https://heise.de/-11247658), [KPMG](https://kpmg.com/de/de/themen/digital-transformation/cloud-computing/mindestanforderungen-fuer-die-sicherheit-von-cloud-diensten.html) |
-| C5 testiert Cloud-Anbieter, nicht Software | Fachbeitrag: [heise](https://heise.de/-11247658) |
+| C5:2026 final seit Ende März 2026 | [BSI, C5:2026](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Empfehlungen-nach-Angriffszielen/Cloud-Computing/Kriterienkatalog-C5/C5_2025/C5_2025_node.html) |
+| C5:2026 verbindlich für Prüfzeiträume ab 1.6.2027 | Fachbeitrag [KPMG](https://kpmg.com/de/de/themen/digital-transformation/cloud-computing/mindestanforderungen-fuer-die-sicherheit-von-cloud-diensten.html); beim BSI zu prüfen |
+| C5 testiert Cloud-Anbieter und ihre Dienste, nicht Software | [BSI, Kriterienkatalog C5](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Empfehlungen-nach-Angriffszielen/Cloud-Computing/Kriterienkatalog-C5/kriterienkatalog-c5_node.html) |
 | Nachweise des Anbieters in der Bundesverwaltung | [Mindeststandard zur Nutzung externer Cloud-Dienste](https://www.bsi.bund.de/DE/Themen/Oeffentliche-Verwaltung/Mindeststandards/Mindeststandards_node.html), am Text zu prüfen |
 | Prüfkataloge für KI-Dienste (AIC4, A5); OPAA ist danach nicht geprüft | [BSI, AIC4](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Kuenstliche-Intelligenz/AIC4/aic4.html); A5 laut Fachbeitrag [comquent](https://comquent.de/ressourcen/blog/bsi-a5-pruefkatalog-ki), Stand beim BSI zu prüfen |
