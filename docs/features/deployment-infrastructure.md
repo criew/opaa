@@ -6,7 +6,7 @@
 > Speicher-Abstraktion für Dokumente ist entschieden (siehe [Speicher-Backends](#speicher-backends)).
 >
 > Diese Spezifikation beschreibt das **Zielbild**. Die tatsächlich verfügbaren Betriebswege sind in
-> [docker-compose.md](../handbuch/docker-compose.md) (Docker Compose) und [kubernetes.md](../handbuch/kubernetes.md)
+> [docker-compose.md](../handbuch/betrieb/docker-compose.md) (Docker Compose) und [kubernetes.md](../handbuch/betrieb/kubernetes.md)
 > (Helm-Chart) beschrieben; wo beide auseinandergehen, gilt für den Betrieb heute das Handbuch.
 
 ## Motivation
@@ -61,7 +61,7 @@ kurzer Unterbrechung. Für eine Installation, deren Ausfall einen Fachbereich st
 nicht die richtige Form.
 
 Der heute tatsächlich unterstützte Weg, einschließlich Umgebungsvariablen, Aktualisierung und
-Datenhaltung, steht in [betrieb.md](../handbuch/betrieb.md) und [docker-compose.md](../handbuch/docker-compose.md).
+Datenhaltung, steht in [betrieb.md](../handbuch/betrieb/README.md) und [docker-compose.md](../handbuch/betrieb/docker-compose.md).
 
 ### Kubernetes mit Hochverfügbarkeit — große Installationen
 
@@ -84,7 +84,7 @@ woanders steht.
 
 Das Projekt liefert dafür einen Helm-Chart; jedes Release veröffentlicht ihn neben den Images in
 GHCR ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md), Epic #2346); den
-Betrieb damit beschreibt [kubernetes.md](../handbuch/kubernetes.md). In der Vorgabe läuft eine
+Betrieb damit beschreibt [kubernetes.md](../handbuch/betrieb/kubernetes.md). In der Vorgabe läuft eine
 Backend-Instanz mit Aktualisierung in kurzer Unterbrechung, Datenbank extern, Anmeldung über einen
 externen Identitätsanbieter oder die lokale Benutzerverwaltung. Mehrere Instanzen mit rollierender
 Aktualisierung ohne Ausfall bringt der Multiinstanzbetrieb
@@ -164,7 +164,7 @@ wie zuvor) oder `s3` (ein S3-kompatibler Objektspeicher, konfiguriert über `opa
 das Schlüsselschema bildet die Verzeichnisstruktur nach, damit ein Bestand mit einem rekursiven
 Kopieren wandert. Die Umstellung eines vorhandenen Bestands ist ein Betriebsvorgang (Bytes kopieren,
 Präfix in `file_path` ersetzen), kein Nachzug im Code — der Ablauf samt Rückweg steht in
-[originalablage.md](../handbuch/originalablage.md#eine-laufende-installation-auf-den-objektspeicher-umstellen).
+[originalablage.md](../handbuch/betrieb/originalablage.md#eine-laufende-installation-auf-den-objektspeicher-umstellen).
 
 Das löst den größeren Teil der Frage ohne eine Zeile Arbeit: **Ein Netzlaufwerk braucht keine
 Abstraktion.** SMB und NFS werden vom Betriebssystem eingehängt und sehen für die Anwendung aus wie
@@ -236,7 +236,7 @@ mit eigenem Volume, anders als der Korpus-Objektspeicher des Demo-Profils, der e
 bei jedem Start neu befüllt wird. Ohne das Profil existiert er nicht und der Stapel verhält sich
 unverändert. Sein Zweck ist doppelt: Er macht den Objektspeicherweg ohne fremde Infrastruktur
 erprobbar, und er ist das Ziel, gegen das die Umstellungsanleitung in
-[originalablage.md](../handbuch/originalablage.md) geschrieben und durchgespielt ist.
+[originalablage.md](../handbuch/betrieb/originalablage.md) geschrieben und durchgespielt ist.
 
 ---
 
@@ -386,10 +386,10 @@ Risiko genau des Ausfalls, den das Wartungsfenster verhindern sollte.
 Der Compose-Stapel wird aktualisiert, indem neue Abbilder bezogen und die betroffenen Container neu
 erstellt werden. Das ist eine **kurze Unterbrechung**, keine unterbrechungsfreie Umschaltung: Es gibt
 eine Instanz je Dienst, und während des Neustarts ist sie nicht erreichbar. Der genaue Ablauf und was
-er mit dem Index macht, steht in [docker-compose.md](../handbuch/docker-compose.md#aktualisierung-auf-einen-neuen-stand). Unter Kubernetes gilt
+er mit dem Index macht, steht in [docker-compose.md](../handbuch/betrieb/docker-compose.md#aktualisierung-auf-einen-neuen-stand). Unter Kubernetes gilt
 dasselbe: Der Helm-Chart ersetzt das Backend mit der Strategie `Recreate`, und der Rückweg über eine
 Schemaänderung hinweg führt über die Datenbanksicherung
-([kubernetes.md](../handbuch/kubernetes.md#aktualisierung-und-rückweg)).
+([kubernetes.md](../handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg)).
 
 ### Zielbild für große Installationen
 
@@ -458,7 +458,7 @@ Spezifikation zu Sicherheit und Nachweisführung; die endgültige Zuordnung ist 
 - **Ein vorgelagerter Zugangsweg terminiert die Verschlüsselung** und reicht an die Anwendung weiter;
   die Anwendungscontainer binden nicht selbst nach außen. Genau so läuft es heute, einschließlich der
   Bindung aller Container ausschließlich auf die lokale Adresse (siehe
-  [docker-compose.md](../handbuch/docker-compose.md#härtung-des-compose-stapels)).
+  [docker-compose.md](../handbuch/betrieb/docker-compose.md#härtung-des-compose-stapels)).
 - **Zertifikate stammen aus der Verwaltung des Betreibers** — in einer abgeschotteten Umgebung
   regelmäßig aus einer eigenen Zertifizierungsstelle des Hauses. Eine Installation, die für ihr
   Zertifikat einen Dienst im Internet braucht, ist ohne Netzanbindung nicht betreibbar.
@@ -643,7 +643,7 @@ hinterlassen kein Ereignis.
 
 ## Integrationspunkte
 
-- **[betrieb.md](../handbuch/betrieb.md)** mit [docker-compose.md](../handbuch/docker-compose.md) — der tatsächlich verfügbare Betriebsweg mit allen
+- **[betrieb.md](../handbuch/betrieb/README.md)** mit [docker-compose.md](../handbuch/betrieb/docker-compose.md) — der tatsächlich verfügbare Betriebsweg mit allen
   Umgebungsvariablen; diese Spezifikation beschreibt das Zielbild darüber hinaus
 - **[access-control.md](./access-control.md)** — Identität, Rollen und Mandantengrenze
 - **[spaces-and-assets.md](./spaces-and-assets.md)** — die Organisation als harte Trennung, auf der

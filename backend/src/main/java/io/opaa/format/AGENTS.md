@@ -48,7 +48,7 @@ samt Fundort (`format.chunk`, Tokenzählung mit jtokkit).
 ## Verweise
 
 - Feature-Spezifikation: `docs/features/ingestion-pipelines.md`
-- Handbuch: `docs/handbuch/formate/*.md` (Übersicht in `formate/README.md`)
+- Handbuch: `docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/*.md` (Übersicht in `formate/README.md`)
 
 ## Tests bei Änderungen
 

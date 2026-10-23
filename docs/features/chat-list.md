@@ -2,7 +2,7 @@
 
 > **Status: umgesetzt (Epic #1762, Phasen 2–4, 09/2026); Phase 5 nur bei gemeldetem Bedarf.**
 > Die Maintainer-Entscheidungen stehen im Abschnitt [Entscheidungen](#entscheidungen); den gebauten
-> Stand der Chatsuche beschreibt das Handbuch ([Suche](../handbuch/suche.md)).
+> Stand der Chatsuche beschreibt das Handbuch ([Suche](../handbuch/spaces/suche.md)).
 
 ## Motivation
 
@@ -53,7 +53,7 @@ Zwei Vorgänge heißen ähnlich und sind strikt zu trennen, in der Oberfläche w
 | **Archivierter Space** ([spaces-and-assets.md](./spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen)) | den ganzen Space, für alle | Space-Eigentümer, System-Admin | Space nimmt keinen neuen Inhalt an, wird aus regulären Listen ausgeblendet |
 
 Ebenso getrennt: Die **Chatsuche** findet eigene Gespräche; die **Wissenssuche** (Retrieval und der
-Such-Endpunkt ohne Generierung, siehe [Handbuch Suche](../handbuch/suche.md)) findet Dokumente.
+Such-Endpunkt ohne Generierung, siehe [Handbuch Suche](../handbuch/spaces/suche.md)) findet Dokumente.
 Die Oberfläche benennt beides verschieden — ein Feld „Suchen" ohne Zusatz in der Chatliste wäre
 missverständlich, weil der ganze Assistent „sucht".
 

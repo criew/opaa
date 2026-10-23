@@ -165,7 +165,7 @@ Behauptungen brauchen einen Beleg im Repository. Diese Zuordnung hält das Mater
 | Rechte werden zur Abfragezeit geprüft | `docs/features/spaces-and-assets.md` |
 | Assets sind teilbar und versionierbar | `docs/features/spaces-and-assets.md` |
 | Kein personenbezogener Auswertungspfad | `docs/features/spaces-and-assets.md`, Issue #239 |
-| Betrieb im eigenen Haus | `docs/features/deployment-infrastructure.md`, `docs/handbuch/betrieb.md` |
+| Betrieb im eigenen Haus | `docs/features/deployment-infrastructure.md`, `docs/handbuch/betrieb/README.md` |
 | Quelloffen unter AGPL-3.0 | `LICENSE` |
 | Suchqualität ist messbar | `docs/features/search-quality-evaluation.md` |
 

@@ -8,7 +8,7 @@ import java.util.Set;
 
 /**
  * The retrieval pipeline: a fixed, ordered sequence of named {@link RetrievalStage}s, run over one
- * {@link RetrievalContext} (docs/handbuch/suche.md Abschnitt 4).
+ * {@link RetrievalContext} (docs/handbuch/spaces/suche.md Abschnitt 4).
  *
  * <p>The order is data, not control flow: it is decided in {@code
  * RetrievalConfiguration#retrievalPipeline} alone. A stage switched off there is switched off
