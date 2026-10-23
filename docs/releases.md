@@ -15,7 +15,8 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
 | GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket |
-| `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, Lizenzübersicht, Vorlage Update-Vermerk; **attestiert** |
+| `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, Lizenzübersicht, SBOMs, Vorlage Update-Vermerk; **attestiert** |
+| `opaa-backend-X.Y.Z.cdx.json`, `opaa-frontend-X.Y.Z.cdx.json`, am GitHub-Release | die CycloneDX-Stücklisten (SBOM) der ausgelieferten Abhängigkeiten von Backend und Frontend aus dem Stand des Tags ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)); dieselben Dateien liegen im Update-Paket; **attestiert** |
 
 Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
 ([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
@@ -25,12 +26,13 @@ und neben dem Chart in GHCR. Prüfen lässt sie sich mit:
 gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
 ```
 
-Das Update-Paket trägt ebenso eine signierte Provenance-Attestierung, abgelegt bei GitHub. Geprüft
-wird die heruntergeladene Datei:
+Das Update-Paket und die beiden SBOMs tragen ebenso je eine signierte Provenance-Attestierung,
+abgelegt bei GitHub. Geprüft wird die heruntergeladene Datei:
 
 ```bash
 gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-update-paket-*'
 gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa
+gh attestation verify opaa-backend-X.Y.Z.cdx.json --repo criew/opaa   # ebenso opaa-frontend-…
 ```
 
 Installiert wird der Chart ohne Checkout des Repositories, in der Reihenfolge des Handbuchs
@@ -433,13 +435,17 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 | `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
 | `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |
 | `lizenzen/` | Lizenzübersicht von Backend und Frontend wie in der [Lizenzprüfung](sbom.md#lizenzprüfung) |
+| `sbom/opaa-backend-X.Y.Z.cdx.json`, `sbom/opaa-frontend-X.Y.Z.cdx.json` | die [CycloneDX-SBOMs](sbom.md#ebene-2--ökosystem-sboms-cyclonedx) der ausgelieferten Abhängigkeiten, dieselben Dateien wie am GitHub-Release |
 | `vorlagen/` | alle Markdown-Dateien aus `docs/behoerden/` in derselben Ordnerstruktur, Vorlagen und Ordnerübersichten; ohne `AGENTS.md` und `CLAUDE.md` auf oberster Ebene, die Regeln für Autoren sind |
 | `update-vermerk.md` | die Vorlage aus `docs/behoerden/09-betrieb-update/` noch einmal, zum direkten Ausfüllen |
 | `SHA256SUMS` | Prüfsummen aller Dateien |
 
-Daneben liegt `opaa-update-paket-X.Y.Z.tar.gz.sha256`. Der Job `update-package-attestation`
-attestiert das Archiv (`actions/attest`, Prüfbefehl unter [Was ein Release erzeugt](#was-ein-release-erzeugt)),
-der Job `release` hängt beide Dateien an das GitHub-Release.
+Daneben liegen `opaa-update-paket-X.Y.Z.tar.gz.sha256` und die beiden SBOMs. Die Backend-SBOM
+entsteht im selben Gradle-Lauf wie die Faktenblätter (`cyclonedxBom`), die Frontend-SBOM
+gleichzeitig mit cdxgen; scheitert eines davon, scheitert der Job und mit ihm das Release. Der Job
+`update-package-attestation` attestiert das Archiv und die SBOMs (`actions/attest`, Prüfbefehl
+unter [Was ein Release erzeugt](#was-ein-release-erzeugt)), der Job `release` hängt alle Dateien
+an das GitHub-Release.
 
 **Vorgänger.** Verglichen wird mit dem höchsten finalen Tag `vA.B.C` unter der eigenen Version, das
 der getaggte Commit enthält. Vorab-Tags zählen nie, auch nicht für ein Vorab-Release; ein
@@ -472,8 +478,9 @@ des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository d
 (`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
 auf `main`.
 
-**Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`) und Zeitstempel im Archiv
-sind die Commit-Zeit, Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt
+**Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`), Zeitstempel der SBOMs und
+im Archiv sind die Commit-Zeit, die Seriennummern der SBOMs aus Repository, Commit und Dateiname
+abgeleitet, Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt
 dieselben Dateien und dieselben Zeilen in `SHA256SUMS`, mit einer Ausnahme: Der Abschnitt
 „Weitere gekennzeichnete Änderungen“ im Delta folgt dem Stand des Labels `data-impact` zum
 Zeitpunkt des Laufs; wird ein Label zwischen zwei Läufen gesetzt oder entfernt, unterscheidet sich
@@ -493,13 +500,15 @@ gh release delete vX.Y.Z --repo criew/opaa --yes   # ohne --cleanup-tag
 
 **Ohne Cache.** Wie die Image-Builds eines Release liest und schreibt `update-package` keinen
 Cache: kein `setup-gradle`, kein Cache von pnpm oder `setup-node`. Gradle und pnpm laden ihre
-Abhängigkeiten frisch, der Job braucht deshalb einige Minuten. Rechte: nur Lesen des Repositorys und
+Abhängigkeiten frisch, `pnpm dlx` ebenso cdxgen in der festen Version, der Job braucht deshalb
+einige Minuten. Rechte: nur Lesen des Repositorys und
 der PRs; das OIDC-Token für die Attestierung hält nur der eigene Job, in dem weder Gradle noch pnpm
 läuft. `.github/scripts/test_update_package.py` prüft beides am Workflow.
 
 **Probelauf ohne Release.** Dasselbe Paket entsteht lokal oder in einer eigenen CI für den
 ausgecheckten Commit; gibt es das Tag nicht, kennzeichnet `LIESMICH.md` den Lauf als Probelauf.
-Gebraucht werden Java, `pnpm install` in `frontend/` und die Historie mit Tags:
+Gebraucht werden Java, `pnpm install` in `frontend/`, Netzzugang für `pnpm dlx` (cdxgen) und die
+Historie mit Tags:
 
 ```bash
 gh pr list --state merged --label data-impact --limit 1000 --json number,title,url >/tmp/prs.json

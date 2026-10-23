@@ -135,13 +135,13 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
     },
-    // Der cdxgen-Aufruf in sbom.yml läuft über "pnpm dlx" statt über eine Manifestdatei — für den
-    // github-actions-Manager unsichtbar.
+    // Der cdxgen-Aufruf in sbom.yml (main) und in update_package.py (Release) läuft über "pnpm dlx"
+    // statt über eine Manifestdatei — für den github-actions-Manager unsichtbar.
     {
       customType: 'regex',
-      managerFilePatterns: ['.github/workflows/sbom.yml'],
+      managerFilePatterns: ['.github/workflows/sbom.yml', '.github/scripts/update_package.py'],
       matchStrings: [
-        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)[\\s\\S]*?cdxgen@(?<currentValue>[^\\s]+)',
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)[\\s\\S]*?cdxgen@(?<currentValue>[^\\s"]+)',
       ],
     },
     // Die Werkzeuge der Chart-Prüfung und das Helm der Chart-Veröffentlichung stehen
