@@ -282,6 +282,10 @@ aussagekräftigste Teil der Daten über eine Person.
   oder gelöschte Anbieter und der Verzeichnisabgleich sind Sammel- oder Betriebszustände. Keiner
   davon startet die Frist. Die Positivliste ist abschließend, je ausgeschlossenem Anlass belegt ein
   Test, dass die Chats bleiben.
+- **Umwidmen einer anderen Sperre:** Ein wegen Inaktivität oder Fehlversuchen gesperrtes Konto lässt
+  sich durch die Verwaltung sperren, ohne Entsperren dazwischen und ohne Freischaltungs-Mail. Das ist
+  der Regelfall für Ausgeschiedene, deren Konto schon die Inaktivitätssperre trifft. Protokolliert
+  wie jede Sperre (`LOCAL_USER_LOCKED`); die Frist beginnt mit der Umwidmung.
 - **Konten eines Identitätsanbieters** lassen sich in OPAA nicht sperren; die Frist greift für sie
   nicht. Maßgeblich ist nur die Sperre in OPAA, eine Deaktivierung beim Anbieter zählt nicht
   (Entscheidung 5). Eine Sperre von Anbieterkonten in OPAA ist ein eigenes Thema (#3025).
@@ -289,7 +293,8 @@ aussagekräftigste Teil der Daten über eine Person.
   **90 Tage**: Eine irrtümliche Sperre muss über Urlaub und Vertretung hinweg auffallen können. Ein
   kleinerer Wert bricht den Start ab. Die wirksame Frist steht beim Start im Anwendungslog.
 - **Abschaltbar** mit `opaa.chat.locked-account-cleanup.enabled` (ab Werk an). Abgeschaltet löscht
-  nichts; nach dem Wiedereinschalten beginnt jede Frist neu.
+  nichts; schon der Start mit abgeschalteter Löschung vergisst den Zählbeginn, nach dem
+  Wiedereinschalten beginnt jede Frist neu.
 - **Fristbeginn** ist der Beginn der aktuellen, ununterbrochenen Sperre durch die Verwaltung
   (`locked_at`), **frühestens die Einführung** bzw. das letzte Einschalten
   (`chat_locked_account_cleanup_state.counting_since`, einmalig gesetzt mit der Datenbankuhr). Ein
@@ -301,8 +306,8 @@ aussagekräftigste Teil der Daten über eine Person.
   durch die Person: mit Verlauf, Gesprächsnotiz und persönlichen Merkmalen. Konto und Standard-Space
   bleiben. Unabhängig vom Schalter der Bereinigung im Space.
 - **Geteilte Chats bleiben**, bis die Bereinigung ihres Space oder eine Löschung von Hand sie
-  erfasst. Solange Chats nicht geteilt werden können, sind alle Chats einer Person privat und fallen
-  unter die Regel; kommt das Teilen, nimmt der Lauf geteilte Chats aus.
+  erfasst. Der Lauf nimmt nur Chats mit Status `PRIVATE`; solange Chats nicht geteilt werden können,
+  ist das jeder Chat.
 - **Aussetzen bei anlassbezogener Klärung** (Entscheidung 4): Solange das Konto in einem offenen
   Antrag oder einer noch nutzbaren Freigabe steht, gleich in welcher Rolle, löscht der Lauf nicht;
   dieselbe Regel wie bei der Kontolöschung. Nach dem Ende holt der nächste Lauf nach, die Aussetzung
@@ -325,7 +330,11 @@ gleichzeitig mit der Bereinigung je Space um 03:50 Uhr. Zeitpunkt „jetzt“ is
   Der Lauf ist zustandsbasiert: Bricht er ab, setzt die nächste Nacht fort.
 - **Wiederherstellung aus einer Sicherung:** Tauchen gelöschte Chats wieder auf, löscht der nächste
   Lauf sie erneut und schreibt ein neues Ereignis. Wer Chats einer zu Unrecht gesperrten Person
-  zurückholen will, entsperrt oder hält vor dem Einspielen an.
+  zurückholen will, spielt die Sicherung ein und entsperrt das Konto oder hält die Löschung an,
+  **bevor der nächste Lauf um 02:30 Uhr** beginnt: Eine vollständig eingespielte Datenbank bringt
+  auch Sperre, Anhalten und Fristbeginn auf den Stand der Sicherung zurück, ein vorher gesetzter
+  Halt ginge verloren. Alternativ startet die eingespielte Installation mit abgeschalteter
+  Löschung; dann beginnen alle Fristen neu.
 
 ### Protokoll und Anwendungslog
 

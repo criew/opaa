@@ -20,6 +20,8 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceRepository;
+import io.opaa.test.LocalAccountFixtures;
+import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.sql.Timestamp;
@@ -57,6 +59,7 @@ class LockedAccountChatCleanupIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private AuditEventRecorder audit;
   @Autowired private LocalUserService localUserService;
+  @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
@@ -413,6 +416,96 @@ class LockedAccountChatCleanupIntegrationTest {
     assertThat(deleted).isZero();
     assertThat(chatCountOf(person)).isOne();
     assertThat(deletionEventsOf(person)).isEmpty();
+  }
+
+  @Test
+  void anAccountLockedForInactivityIsLockedByTheAdministrationAndThePeriodStartsThen() {
+    UUID admin = admin();
+    UUID person = localAccount();
+    chat(space(person, true), person);
+    LocalCredentials row = credentials(person);
+    row.lock(LockReason.INACTIVITY, now.minus(DAY.multipliedBy(800)), null);
+    credentialsRepository.save(row);
+
+    localUserService.lock(actor(admin), person);
+
+    LocalCredentials locked = credentials(person);
+    assertThat(locked.getLockedReason()).isEqualTo(LockReason.ADMIN);
+    Instant lockedAt = locked.getLockedAt();
+    assertThat(lockedAt).isAfter(now.minus(DAY));
+    assertThat(eventsOf(person, "LOCAL_USER_LOCKED")).isOne();
+    assertThat(eventsOf(person, "LOCAL_USER_UNLOCKED")).isZero();
+    assertThat(cleanupService.stateOf(organizationId, person).earliestDeletionAt())
+        .isEqualTo(lockedAt.plus(DAY.multipliedBy(365)));
+
+    cleanupService.runOnce(now.plus(DAY));
+    assertThat(chatCountOf(person)).isOne();
+    cleanupService.runOnce(lockedAt.plus(DAY.multipliedBy(366)));
+    assertThat(chatCountOf(person)).isZero();
+  }
+
+  @Test
+  void aStartWithTheDeletionSwitchedOffStartsEveryPeriodAnewWithoutANightInBetween() {
+    UUID person = localAccount();
+    chat(space(person, true), person);
+    lockByAdministration(person, now.minus(DAY.multipliedBy(800)));
+
+    service(false).forgetCountingWhenSwitchedOff();
+    assertThat(store.countingSince()).isEmpty();
+
+    cleanupService.runOnce(now);
+    assertThat(chatCountOf(person)).isOne();
+    assertThat(store.countingSince()).isPresent();
+  }
+
+  @Test
+  void switchedOffLocalAccountsStartNoPeriod() {
+    UUID person = localAccount();
+    chat(space(person, true), person);
+    List<Map<String, Object>> before =
+        jdbc.queryForList("SELECT id, enabled FROM oidc_providers WHERE provider_type = 'LOCAL'");
+    LocalAccountFixtures fixtures = fixturesFactory.create();
+    io.opaa.auth.OidcProvider local = fixtures.localProvider(false);
+    try {
+      cleanupService.runOnce(now.plus(DAY.multipliedBy(1000)));
+
+      assertThat(chatCountOf(person)).isOne();
+      assertThat(cleanupService.stateOf(organizationId, person).status())
+          .isEqualTo(ChatCleanupAfterLockStatus.NOT_LOCKED);
+    } finally {
+      if (before.isEmpty()) {
+        fixtures.deleteProvider(local.getId());
+      } else {
+        fixtures.localProvider(Boolean.TRUE.equals(before.getFirst().get("enabled")));
+      }
+    }
+  }
+
+  @Test
+  void anAccountOfASwitchedOffOrRemovedProviderStartsNoPeriod() {
+    LocalAccountFixtures fixtures = fixturesFactory.create();
+    String issuer = "https://idp-" + UUID.randomUUID() + ".stadt.example/realms/x";
+    io.opaa.auth.OidcProvider provider = fixtures.oidcProvider("Abgeschaltet", issuer, "opaa");
+    try {
+      fixtures.disableProvider(provider.getId());
+      UUID disabled = providerAccount(issuer);
+      UUID removed = providerAccount("https://entfernt-" + UUID.randomUUID() + ".stadt.example");
+      chat(space(disabled, true), disabled);
+      chat(space(removed, true), removed);
+
+      cleanupService.runOnce(now.plus(DAY.multipliedBy(1000)));
+
+      assertThat(chatCountOf(disabled)).isOne();
+      assertThat(chatCountOf(removed)).isOne();
+    } finally {
+      fixtures.deleteProvider(provider.getId());
+    }
+  }
+
+  private UUID providerAccount(String issuer) {
+    User user = new User(UUID.randomUUID().toString(), issuer, "anbieter@example.com", "Anbieter");
+    user.setOrganizationId(organizationId);
+    return userRepository.save(user).getId();
   }
 
   private LockedAccountChatCleanupService service(boolean enabled) {

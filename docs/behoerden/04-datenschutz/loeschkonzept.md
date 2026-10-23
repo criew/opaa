@@ -70,7 +70,8 @@ Werk eingeschaltet; Frist, Untergrenze und Schalter stehen im
 Die Behörde hält im Löschkonzept fest:
 
 - **Wer sperrt und wann:** Die Frist beginnt nur mit der Sperre durch die Verwaltung, nicht mit
-  einer Sperre wegen Inaktivität. Die Behörde legt fest, binnen welcher Zeit nach dem Ausscheiden
+  einer Sperre wegen Inaktivität; ein schon wegen Inaktivität gesperrtes Konto sperrt die
+  Verwaltung zusätzlich. Die Behörde legt fest, binnen welcher Zeit nach dem Ausscheiden
   das Konto in OPAA gesperrt wird, und dass bloße Abwesenheit (Elternzeit, Krankheit, Abordnung)
   kein Anlass für diese Sperre ist.
 - **Konten eines Identitätsanbieters:** Sie lassen sich in OPAA nicht sperren; für sie greift die
@@ -82,8 +83,9 @@ Die Behörde hält im Löschkonzept fest:
   planbarem Ausscheiden gibt die Behörde ihr vorher Gelegenheit dazu; danach Auskunft über die oder
   den Datenschutzbeauftragten bis zum Löschdatum.
 - **Sicherungen:** Gelöschte Chats bleiben in Sicherungen bis zu deren Ablauf; wird eine Sicherung
-  eingespielt, löscht die nächste Nacht sie erneut. Die Rechtsfolge der Löschung in Sicherungen
-  (Art. 17 DSGVO) prüft die Behörde.
+  eingespielt, löscht die nächste Nacht sie erneut. Sollen sie zurück, wird nach dem Einspielen und
+  vor dem nächsten nächtlichen Lauf das Konto entsperrt oder die Löschung angehalten. Die
+  Rechtsfolge der Löschung in Sicherungen (Art. 17 DSGVO) prüft die Behörde.
 - **Verlängerung der Frist:** eine längere Speicherfrist und damit in der Regel Gegenstand der
   Dienstvereinbarung ([#2566](https://github.com/criew/opaa/issues/2566)).
 

@@ -311,7 +311,9 @@ public class LocalUserService {
           "Das Notanker-Konto der Systemverwaltung kann nicht gesperrt werden.",
           LocalCredentials.BOOTSTRAP_ACCOUNT);
     }
-    if (row.getLockedAt() != null && row.getLockedReason() != LockReason.FAILED_LOGINS) {
+    // A lock for inactivity or failed sign-ins is turned into one by the administration, from now
+    // on: only that lock starts the deletion period of the account's chats.
+    if (row.getLockedAt() != null && row.getLockedReason() == LockReason.ADMIN) {
       throw new ConflictException("Das Konto ist bereits gesperrt.", ALREADY_LOCKED);
     }
     if (current.user().getSystemRole() == SystemRole.SYSTEM_ADMIN) {

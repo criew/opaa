@@ -256,11 +256,13 @@ paths:
         Sets locked_reason ADMIN, ends every session of the account at once (access tokens
         through password_invalidated_before, refresh families as ACCOUNT_LOCKED; audited as
         LOCAL_SESSION_REVOKED only when a session was actually active), replaces a running
-        failed-login lockout and resets its counter, and tells the person by mail
-        (ACCOUNT_LOCKED with the reason). Refused with 409 for the caller's own account
+        failed-login lockout or a lock for inactivity - the lock by the administration starts
+        from now, without an unlock in between and without the ACCOUNT_UNLOCKED mail - resets the
+        failed-login counter, and tells the person by mail (ACCOUNT_LOCKED with the reason and
+        the earliest deletion of the chats). Refused with 409 for the caller's own account
         (SELF_LOCKOUT), for the bootstrap account (BOOTSTRAP_ACCOUNT), for the last
         login-capable system administrator (LAST_LOGIN_CAPABLE_ADMIN) and for an account that is
-        already locked by the administration or for inactivity (ALREADY_LOCKED).
+        already locked by the administration (ALREADY_LOCKED).
       parameters:
         - name: id
           in: path

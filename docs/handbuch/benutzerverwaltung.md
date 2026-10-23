@@ -122,7 +122,7 @@ Drei Dinge sperren ein Konto:
 
 | Anlass | Hinweis am Info-Symbol | Wer hebt sie auf | Nachricht an die Person | Chats werden nach einer Frist gelöscht |
 |---|---|---|---|---|
-| **Die Verwaltung** | Von der Verwaltung gesperrt | Die Verwaltung, über „Entsperren" | ja, mit dem frühesten Löschdatum der Chats | ja (Abschnitt „Löschen oder sperren") |
+| **Die Verwaltung** — auch über eine Sperre wegen Inaktivität oder Fehlversuchen hinweg | Von der Verwaltung gesperrt | Die Verwaltung, über „Entsperren" | ja, mit dem frühesten Löschdatum der Chats | ja (Abschnitt „Löschen oder sperren") |
 | **Fehlversuche** — mehrere falsche Passwörter in Folge | Nach mehreren falschen Passwörtern gesperrt | Sie endet nach kurzer Zeit von selbst; „Entsperren" hebt sie sofort auf; ein eingelöster Rücksetzlink ebenfalls | nein | nein |
 | **Inaktivität** — das Konto war lange nicht in Gebrauch | Wegen Inaktivität gesperrt | Die Verwaltung, über „Entsperren" | ja | nein |
 
@@ -134,7 +134,10 @@ Verwaltung als Deaktivierung: Sie beendet etwaige verbundene Konten und startet 
 Sperre wegen Inaktivität ist eine Abwesenheit; die Verbindungen ruhen nur. Die Fehlversuch-Sperre
 berührt sie nicht. Dasselbe gilt für die Chats: Nur die Sperre durch die Verwaltung startet die
 Frist, nach der sie gelöscht werden — wer in Elternzeit, krank oder abgeordnet ist, verliert sie
-nicht über eine Inaktivitätssperre.
+nicht über eine Inaktivitätssperre. Ist das Konto einer ausgeschiedenen Person schon wegen
+Inaktivität gesperrt, bietet das Zeilenmenü neben „Entsperren“ auch „Sperren“ an: Die Sperre wird
+damit zur Sperre durch die Verwaltung, ohne dass das Konto dazwischen frei wird und ohne
+Freischaltungs-Mail; die Frist beginnt dann.
 
 Die Fehlversuch-Sperre schickt **bewusst keine** Nachricht: Sie wäre sonst ein Belästigungskanal für
 jeden, der eine Adresse kennt. Sie schneidet die Selbsthilfe auch nicht ab — „Passwort vergessen"
@@ -337,9 +340,10 @@ Konto und der persönliche Space bleiben.
 - **Endgültig:** Gelöschte Chats lassen sich über die Oberfläche nicht wiederherstellen. In
   Sicherungen bleiben sie, bis diese nach dem Sicherungskonzept des Betriebs ablaufen. Wird eine
   Sicherung eingespielt, löscht die nächste Nacht wieder auftauchende Chats erneut. Wer die Chats
-  einer zu Unrecht gesperrten Person zurückholen will, geht in drei Schritten vor: das Konto
-  entsperren oder die Löschung anhalten, die Sicherung einspielen, danach prüfen, dass die Chats da
-  sind.
+  einer zu Unrecht gesperrten Person zurückholen will, geht in drei Schritten vor: die Sicherung
+  einspielen, **vor dem nächsten nächtlichen Lauf** das Konto entsperren oder die Löschung anhalten,
+  danach prüfen, dass die Chats da sind. Andersherum geht es nicht: Die Sicherung bringt auch den
+  alten Stand von Sperre und Anhalten zurück.
 - **Selbstauskunft:** Nach der Sperre kann sich die Person nicht mehr anmelden und keine
   Selbstauskunft mehr ziehen. Bei planbarem Ausscheiden gibt die Dienststelle ihr vorher Gelegenheit
   dazu.

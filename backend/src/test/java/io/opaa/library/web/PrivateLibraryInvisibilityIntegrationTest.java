@@ -223,6 +223,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listLocalUsers",
             "getLocalUserSummary",
             "getLocalUser",
+            "getLocalUserChatCleanup",
             "listLlmModels",
             "getEmbeddingInfo",
             "listOidcProviders",

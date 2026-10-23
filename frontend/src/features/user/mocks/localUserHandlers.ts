@@ -363,7 +363,7 @@ export const localUserHandlers = [
         'Das Notanker-Konto der Systemverwaltung kann nicht gesperrt werden.',
       )
     }
-    if (user.status === 'LOCKED') {
+    if (user.status === 'LOCKED' && user.lockedReason === 'ADMIN') {
       return conflict('ALREADY_LOCKED', 'Das Konto ist bereits gesperrt')
     }
     if (user.id === LAST_ADMIN_USER_ID) {

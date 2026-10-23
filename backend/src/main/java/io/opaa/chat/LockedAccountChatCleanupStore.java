@@ -73,7 +73,8 @@ class LockedAccountChatCleanupStore {
             + " FROM local_credentials lc JOIN users u ON u.id = lc.user_id"
             + " CROSS JOIN chat_locked_account_cleanup_state s WHERE "
             + DUE
-            + " AND EXISTS (SELECT 1 FROM chats c WHERE c.author_id = lc.user_id)"
+            + " AND EXISTS (SELECT 1 FROM chats c WHERE c.author_id = lc.user_id"
+            + " AND c.status = 'PRIVATE')"
             + " ORDER BY start, lc.user_id LIMIT ?",
         (rs, i) ->
             new DueAccount(
@@ -102,10 +103,15 @@ class LockedAccountChatCleanupStore {
         .isEmpty();
   }
 
-  /** Up to {@code limit} chats {@code userId} authored, locked until the end of the transaction. */
+  /**
+   * Up to {@code limit} private chats {@code userId} authored, locked until the end of the
+   * transaction. Only {@link io.opaa.api.types.ChatStatus#PRIVATE}: a chat shared in its space
+   * stays until its space's cleanup or a deletion by hand.
+   */
   List<UUID> lockChatsOf(UUID userId, int limit) {
     return jdbc.queryForList(
-        "SELECT id FROM chats WHERE author_id = ? ORDER BY id LIMIT ? FOR UPDATE",
+        "SELECT id FROM chats WHERE author_id = ? AND status = 'PRIVATE'"
+            + " ORDER BY id LIMIT ? FOR UPDATE",
         UUID.class,
         userId,
         limit);

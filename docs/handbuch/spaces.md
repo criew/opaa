@@ -31,7 +31,7 @@ nicht, und eine Einstellung zur Sichtbarkeit eines Space deshalb auch nicht.
 
 | Rolle | Darf |
 |---|---|
-| **Mitglied** | Den Space betreten, Chats anlegen und führen, geteilte Chats lesen, die bereitgestellten Arbeitsmittel sehen — gefiltert auf den eigenen Zugriff |
+| **Mitglied** | Den Space betreten, eigene Chats anlegen und führen, die bereitgestellten Arbeitsmittel sehen — gefiltert auf den eigenen Zugriff |
 | **Kurator** | Zusätzlich Arbeitsmittel bereitstellen und lösen, Inhalte ordnen |
 | **Administrator** | Zusätzlich Mitglieder und Rollen verwalten, Einstellungen setzen, geteilte Inhalte zurückziehen |
 
