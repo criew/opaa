@@ -116,18 +116,25 @@ public class BrandingSettingsService {
       UUID actorUserId,
       String productName,
       String claim,
+      String aiNotice,
       String primaryColor,
       ColorScheme defaultColorScheme) {
     String validatedProductName =
         validatedText(productName, BrandingDefaults.MAX_PRODUCT_NAME_LENGTH, "Der Produktname");
     String validatedClaim = validatedText(claim, BrandingDefaults.MAX_CLAIM_LENGTH, "Der Claim");
+    String validatedAiNotice =
+        validatedText(aiNotice, BrandingDefaults.MAX_AI_NOTICE_LENGTH, "Der KI-Hinweis");
     String validatedColor = validatedColor(primaryColor);
 
     BrandingSettings settings =
         repository.findSingleton().orElseThrow(BrandingSettingsService::missingRow);
     Map<String, Object> before = auditState(resolve(settings));
     settings.replaceSettings(
-        validatedProductName, validatedClaim, validatedColor, defaultColorScheme);
+        validatedProductName,
+        validatedClaim,
+        validatedAiNotice,
+        validatedColor,
+        defaultColorScheme);
     repository.save(settings);
 
     EffectiveBranding after = resolve(settings);
@@ -191,6 +198,7 @@ public class BrandingSettingsService {
         new BrandingSettingsView(
             settings.getProductName(),
             settings.getClaim(),
+            settings.getAiNotice(),
             settings.getPrimaryColor(),
             settings.getDefaultColorScheme(),
             logo.contentType(),
@@ -219,6 +227,7 @@ public class BrandingSettingsService {
     return new EffectiveBranding(
         Optional.ofNullable(stored.productName()).orElse(BrandingDefaults.PRODUCT_NAME),
         Optional.ofNullable(stored.claim()).orElse(BrandingDefaults.CLAIM),
+        Optional.ofNullable(stored.aiNotice()).orElse(BrandingDefaults.AI_NOTICE),
         Optional.ofNullable(stored.primaryColor()).orElse(BrandingDefaults.PRIMARY_COLOR),
         Optional.ofNullable(stored.defaultColorScheme()).orElse(BrandingDefaults.COLOR_SCHEME),
         images);
@@ -288,6 +297,7 @@ public class BrandingSettingsService {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("productName", branding.productName());
     state.put("claim", branding.claim());
+    state.put("aiNotice", branding.aiNotice());
     state.put("primaryColor", branding.primaryColor());
     state.put("defaultColorScheme", branding.defaultColorScheme().name());
     for (BrandingImageKind kind : BrandingImageKind.values()) {

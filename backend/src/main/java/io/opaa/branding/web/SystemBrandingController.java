@@ -59,6 +59,7 @@ public class SystemBrandingController {
             caller.id(),
             request.getProductName(),
             request.getClaim(),
+            request.getAiNotice(),
             request.getPrimaryColor(),
             request.getDefaultColorScheme()));
   }

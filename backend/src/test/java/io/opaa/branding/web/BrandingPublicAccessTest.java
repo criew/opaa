@@ -74,6 +74,7 @@ class BrandingPublicAccessTest {
             new EffectiveBranding(
                 BrandingDefaults.PRODUCT_NAME,
                 BrandingDefaults.CLAIM,
+                BrandingDefaults.AI_NOTICE,
                 BrandingDefaults.PRIMARY_COLOR,
                 BrandingDefaults.COLOR_SCHEME,
                 Map.of()));

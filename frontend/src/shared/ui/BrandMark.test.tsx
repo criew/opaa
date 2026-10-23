@@ -29,6 +29,7 @@ describe('BrandMark', () => {
       branding: {
         productName: 'Landesamt-Assistent',
         claim: 'Kurz und klar',
+        aiNotice: 'Hinweis der Behörde',
         primaryColor: '#7A1FA2',
         defaultColorScheme: 'LIGHT',
         logoUrl: '/api/v1/branding/logo?v=abc',
@@ -54,6 +55,7 @@ describe('BrandMark', () => {
     const branding = {
       productName: 'Landesamt-Assistent',
       claim: 'Kurz und klar',
+      aiNotice: 'Hinweis der Behörde',
       primaryColor: '#7A1FA2',
       defaultColorScheme: 'LIGHT' as const,
       logoUrl: '/api/v1/branding/logo?v=abc',
@@ -106,6 +108,7 @@ describe('BrandMark', () => {
       branding: {
         productName: 'Landesamt-Assistent',
         claim: 'Kurz und klar',
+        aiNotice: 'Hinweis der Behörde',
         primaryColor: '#7A1FA2',
         defaultColorScheme: 'LIGHT',
         logoUrl: '/api/v1/branding/logo?v=abc',

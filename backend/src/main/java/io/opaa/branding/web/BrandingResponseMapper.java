@@ -19,6 +19,7 @@ final class BrandingResponseMapper {
         new BrandingResponse(
             branding.productName(),
             branding.claim(),
+            branding.aiNotice(),
             branding.primaryColor(),
             branding.defaultColorScheme());
     branding

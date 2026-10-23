@@ -297,7 +297,7 @@ components:
         render from this response alone without knowing what a default even is. logoUrl is the
         one exception: it is absent while no logo is configured, and the client falls back to the
         bundled OPAA logo.
-      required: [productName, claim, primaryColor, defaultColorScheme]
+      required: [productName, claim, aiNotice, primaryColor, defaultColorScheme]
       properties:
         productName:
           type: string
@@ -305,6 +305,14 @@ components:
         claim:
           type: string
           example: Fragen. Belegen. Entscheiden.
+        aiNotice:
+          type: string
+          description: >
+            The authority's notice on the use of AI (Art. 50 AI Act), shown in the chat before the
+            first question and used as the note when an answer is copied. Always present: while
+            nothing is configured it is the OPAA standard text. It can be replaced but not switched
+            off.
+          example: Antworten werden von einer KI erzeugt und können Fehler enthalten.
         primaryColor:
           type: string
           description: Accent colour as a six-digit hex triplet with a leading '#'.
@@ -377,6 +385,14 @@ components:
           description: Empty or omitted means the OPAA default applies again.
           maxLength: 120
           example: Fragen. Belegen. Entscheiden.
+        aiNotice:
+          type: string
+          description: >
+            Empty or omitted means the OPAA standard text applies again - the notice can be
+            replaced but never switched off, so a cleared field restores the standard rather than
+            removing the notice. Longer than 500 characters or containing a control character is
+            rejected with 400.
+          maxLength: 500
         primaryColor:
           type: string
           description: >

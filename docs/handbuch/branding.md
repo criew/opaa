@@ -1,12 +1,30 @@
 # Branding
 
-Produktname, Claim, Akzentfarbe, Farbschema-Vorgabe und drei Bilder gehören der Installation, nicht
+Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe und drei Bilder gehören der Installation, nicht
 dem Programm. Gepflegt werden sie unter **Administration → Branding**, von einem Systemverwalter;
 gespeichert wird in der Datenbank, nicht im Dateisystem. Jede Änderung ist sofort für alle wirksam —
 ohne Neustart, ohne neues Image — und steht im Nachweisprotokoll. Ein leer gelassenes Feld bedeutet
 nicht „leer", sondern „der OPAA-Standard gilt wieder", und zwar je Feld: Wer nur ein Logo hinterlegt,
 behält den Produktnamen „OPAA". Welche Anmeldewege die Anmeldeseite zeigt und in welcher
 Reihenfolge, steht unter [Authentifizierung](authentifizierung.md#anmeldewege-im-betriebsmodus-oidc).
+
+## Hinweis zur KI-Nutzung
+
+Das Feld **Hinweis zur KI-Nutzung** enthält den Text, mit dem das Haus seinen Nutzenden sagt, dass
+Antworten von einer KI erzeugt werden (Art. 50 KI-Verordnung). Es ist **ein** Text für beide Orte,
+an denen er gebraucht wird: als Hinweis im Chat vor der ersten Frage und als Vermerk, den der
+Kopierknopf einer Antwort anfügt.
+
+Ohne eigenen Text gilt der Standard: „Antworten werden von einer KI erzeugt und können Fehler
+enthalten. Prüfen Sie wichtige Angaben anhand der Belege." Das Haus kann ihn in eigenen Worten
+ersetzen, bis zu 500 Zeichen, ohne Zeilenumbruch.
+
+Der Hinweis lässt sich **ändern, aber nicht abschalten**. Ein leeres oder nur aus Leerzeichen
+bestehendes Feld wird nicht als „kein Hinweis" gespeichert, sondern stellt den Standardtext wieder
+her; ebenso die Schaltfläche **Hinweis auf Standard zurücksetzen**. Wird der Standardtext
+unverändert gespeichert, bleibt der Hinweis „Standard" und folgt einer späteren Änderung des
+Standards. Der Text ist wie die anderen Felder ohne Anmeldung lesbar und steht im
+Nachweisprotokoll, wenn er sich ändert.
 
 ## Die drei Bilder
 
@@ -49,6 +67,9 @@ curl http://localhost:8081/api/v1/branding/logo
 curl http://localhost:8081/api/v1/branding/login-logo
 curl http://localhost:8081/api/v1/branding/login-background
 ```
+
+Das Feld `aiNotice` der Antwort enthält den wirksamen Hinweistext, auch wenn keiner hinterlegt ist
+(dann den Standard).
 
 Schreiben ist Systemverwaltern vorbehalten: `PUT /api/v1/system/branding` für die Textfelder,
 `PUT`/`DELETE` auf `/api/v1/system/branding/logo`, `/login-logo` und `/login-background` für die

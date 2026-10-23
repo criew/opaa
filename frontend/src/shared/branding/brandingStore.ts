@@ -37,6 +37,9 @@ export type BrandingImageKind = keyof typeof BRANDING_IMAGES
 export const OPAA_BRANDING: BrandingResponse = {
   productName: 'OPAA',
   claim: 'Fragen. Belegen. Entscheiden.',
+  aiNotice:
+    'Antworten werden von einer KI erzeugt und können Fehler enthalten. ' +
+    'Prüfen Sie wichtige Angaben anhand der Belege.',
   primaryColor: '#1292EE',
   defaultColorScheme: 'SYSTEM',
 }

@@ -85,6 +85,7 @@ describe('LoginPage', () => {
       branding: {
         productName: 'Landesamt-Assistent',
         claim: 'Kurz und klar',
+        aiNotice: 'Hinweis der Behörde',
         primaryColor: '#0B6FBC',
         defaultColorScheme: 'LIGHT',
         logoUrl: '/api/v1/branding/logo?v=abc123',

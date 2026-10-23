@@ -57,7 +57,7 @@ class BrandingControllerIntegrationTest {
   @AfterEach
   void resetBranding() {
     jdbcTemplate.update(
-        "UPDATE branding_settings SET product_name = NULL, claim = NULL, primary_color = NULL,"
+        "UPDATE branding_settings SET product_name = NULL, claim = NULL, ai_notice = NULL, primary_color = NULL,"
             + " default_color_scheme = NULL, logo_content = NULL, logo_content_type = NULL,"
             + " logo_version = NULL, logo_updated_at = NULL, login_logo_content = NULL,"
             + " login_logo_content_type = NULL, login_logo_version = NULL,"
@@ -73,6 +73,7 @@ class BrandingControllerIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.productName").value(BrandingDefaults.PRODUCT_NAME))
         .andExpect(jsonPath("$.claim").value(BrandingDefaults.CLAIM))
+        .andExpect(jsonPath("$.aiNotice").value(BrandingDefaults.AI_NOTICE))
         .andExpect(jsonPath("$.primaryColor").value(BrandingDefaults.PRIMARY_COLOR))
         .andExpect(jsonPath("$.defaultColorScheme").value(BrandingDefaults.COLOR_SCHEME.name()))
         .andExpect(jsonPath("$.logoUrl").doesNotExist());
@@ -104,6 +105,46 @@ class BrandingControllerIntegrationTest {
     mockMvc
         .perform(get("/api/v1/branding").with(devUser("dev-user")))
         .andExpect(jsonPath("$.productName").value(BrandingDefaults.PRODUCT_NAME));
+  }
+
+  @Test
+  void aPlainUserMayNotChangeTheAiNotice() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/system/branding")
+                .with(devUser("dev-user"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"aiNotice\":\"Kein Hinweis\"}"))
+        .andExpect(status().isForbidden());
+
+    mockMvc
+        .perform(get("/api/v1/branding").with(devUser("dev-user")))
+        .andExpect(jsonPath("$.aiNotice").value(BrandingDefaults.AI_NOTICE));
+  }
+
+  @Test
+  void anAdministratorChangesTheAiNoticeAndAnEmptyValueRestoresTheStandard() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/system/branding")
+                .with(devUser("dev-admin"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"aiNotice\":\"Antworten stammen von einer KI.\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.aiNotice").value("Antworten stammen von einer KI."));
+
+    mockMvc
+        .perform(get("/api/v1/branding").with(devUser("dev-user")))
+        .andExpect(jsonPath("$.aiNotice").value("Antworten stammen von einer KI."));
+
+    mockMvc
+        .perform(
+            put("/api/v1/system/branding")
+                .with(devUser("dev-admin"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"aiNotice\":\"\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.aiNotice").value(BrandingDefaults.AI_NOTICE));
   }
 
   @Test
