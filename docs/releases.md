@@ -610,8 +610,8 @@ Patch-Release:
 - **Mit Codeänderung:** Die Korrektur landet zuerst auf `main` und kommt per Backport auf den
   Wartungsbranch `release/X.Y` der Linie, das Tag auf dessen Commit. Diese Branches und die
   Anpassung des Workflows baut [#3017](https://github.com/criew/opaa/issues/3017). Bis dahin
-  entstehen Releases nur von Commits auf `main`, und eine Korrektur im Code erscheint als
-  Patch-Release nur, solange `main` seit dem letzten Release keine neue Funktion trägt; sonst mit
+  entstehen Releases nur von Commits auf `main`, Patch-Releases nur für die jüngste Linie, und eine
+  Korrektur im Code erscheint als Patch-Release nur, solange `main` seit dem letzten Release keine neue Funktion trägt; sonst mit
   der nächsten Version von `main`, also als `0.(Y+1).0`, notfalls außerhalb des Takts.
 
 ## Supportlinien
@@ -625,23 +625,39 @@ das Enddatum je Version nennt die [Projektseite](https://spring.io/projects/spri
 | | Regel |
 |---|---|
 | **Takt** | zwei Funktionsreleases `X.Y.0` im Jahr, etwa Juni und Dezember, jeweils 4–6 Wochen nach Spring Boot und auf dessen neuer Minor-Version; dazwischen nur Patch- und Vorab-Releases |
-| **Linie** | jedes finale `X.Y.0` eröffnet die Linie `X.Y`; ihre Patch-Releases bringen nur Sicherheitskorrekturen, keine neue Funktion, keinen [Bruch](#versionsnummern) und keine neue Minor-Version von Spring Boot. Behebungen kritischer Fehler (Datenverlust, Start scheitert) können folgen, ohne Zusage |
-| **Normales Release** | Sicherheitsupdates bis einen Monat nach dem nächsten Funktionsrelease |
-| **LTS** | das Juni-Release; Sicherheitsupdates bis zum Ende des kostenlosen Supports seiner Spring-Boot-Minor-Version, bei einem Release im Takt mindestens 12 Monate und etwa ein Monat Überlappung mit dem nächsten LTS |
-| **Wechsel** | wer nur LTS betreibt, aktualisiert einmal im Jahr von LTS zu LTS; das Update-Paket des LTS-Release bringt dafür das kumulierte Delta zur vorigen LTS-Linie mit ([#3020](https://github.com/criew/opaa/issues/3020)) |
+| **Linie** | jedes finale `X.Y.0` eröffnet die Linie `X.Y`; ihre Patch-Releases bringen Sicherheitskorrekturen und Behebungen [kritischer Fehler](#kritische-fehler), sonst nichts: keine neue Funktion, keinen [Bruch](#versionsnummern) und keine neue Minor-Version von Spring Boot |
+| **Normales Release** | Patch-Releases bis einen Monat nach dem nächsten Funktionsrelease |
+| **LTS** | das Juni-Release; Patch-Releases bis zum Ende des kostenlosen Supports seiner Spring-Boot-Minor-Version, im Regelfall der 30.06. des Folgejahres, bei einem Release im Takt also rund 12 Monate; mit dem nächsten LTS überlappt die Linie höchstens wenige Wochen, am späten Ende des Takts gar nicht |
+| **Wechsel** | wer nur LTS betreibt, aktualisiert einmal im Jahr von LTS zu LTS. Weil die Überlappung knapp ist, erscheint das nächste LTS so früh wie möglich als Release-Kandidat (`vX.Y.0-rc.N`), sobald OPAA auf der neuen Spring-Boot-Version läuft, spätestens zwei Wochen nach deren Erscheinen; danach kommen bis zum finalen Release nur Korrekturen hinzu. Der Kandidat trägt das vollständige Update-Paket mit dem kumulierten Delta zur laufenden LTS-Linie ([#3020](https://github.com/criew/opaa/issues/3020)); auf seiner Grundlage bereitet die Behörde den Wechsel vor und beginnt die Beteiligung, damit sie das finale Release vor dem Supportende der laufenden Linie einspielen kann |
 | **Supportende** | steht bei einem LTS mit Erscheinen fest, bei einem normalen Release mit Erscheinen seines Nachfolgers, also mindestens einen Monat vorher; es steht in der Roadmap unten und in den Release-Notizen und wird nie vorgezogen |
 
 Meist laufen zwei Linien nebeneinander, im Monat nach einem Juni-Release drei. Ein Patch-Release
 einer Linie ist damit immer ein Update ohne neue Funktion, das eine Behörde sofort einspielen kann.
 Wer neue Funktionen vor dem nächsten Funktionsrelease braucht, folgt `main`.
 
+### Kritische Fehler
+
+Kritisch ist ein Fehler, für den es keinen zumutbaren Workaround gibt und der
+
+- Daten verliert oder verfälscht (Dokumente, Indizes, Einstellungen, Protokoll),
+- OPAA oder eine Kernfunktion ausfallen lässt (Start, Anmeldung, Suche, Chat, Indizierung) oder
+- Rechte falsch auswertet, also Inhalte Personen zeigt, die sie nicht sehen dürfen, oder
+  Berechtigten den Zugriff verweigert.
+
+Ob ein Fehler kritisch ist, entscheidet der Maintainer und hält es am Issue fest. Die Behebung
+kommt wie eine Sicherheitskorrektur zuerst auf `main` und dann per Backport auf jede unterstützte
+Linie, die der Fehler betrifft. Alles andere erscheint mit dem nächsten Funktionsrelease.
+
 **Was heute schon gilt und was noch gebaut wird.** Takt und Supportzeiträume gelten ab dem ersten
-finalen Release. Ein Sicherheitsupdate des Basis-Images erreicht jede unterstützte Linie schon heute
-als Patch-Release ohne Codeänderung. Noch nicht gebaut sind:
+finalen Release. Ein Sicherheitsupdate des Basis-Images erreicht die **jüngste** Linie schon heute
+als Patch-Release ohne Codeänderung. Für eine ältere Linie geht das noch nicht: Der Release-Lauf
+markiert jedes finale Release auf GitHub als „Latest“, und der CVE-Scan prüft das Release mit dieser
+Markierung; ein Patch-Release der älteren Linie nähme der jüngsten beides weg. Noch nicht gebaut
+sind:
 
 | Baustein | Bis dahin | Issue |
 |---|---|---|
-| Wartungsbranches `release/X.Y`, Backport, Rulesets, Release-Workflow für Tags auf diesen Branches | eine Korrektur im Code erreicht ein Release nur nach der Regel unter [Versionsnummern](#versionsnummern), also gegebenenfalls mit neuen Funktionen | [#3017](https://github.com/criew/opaa/issues/3017) |
+| Wartungsbranches `release/X.Y`, Backport, Rulesets, Release-Workflow für Tags auf diesen Branches, „Latest“ nur für das höchste finale Release | nur die jüngste Linie bekommt Patch-Releases, eine Korrektur im Code nach der Regel unter [Versionsnummern](#versionsnummern), also gegebenenfalls mit neuen Funktionen; eine ältere Linie bekommt keine Korrektur, sie kommt nur mit einer neueren Linie | [#3017](https://github.com/criew/opaa/issues/3017) |
 | CVE-Scan aller unterstützten Linien | der Scan prüft nur das jüngste Release ([cve-scanning.md](cve-scanning.md)) | [#3018](https://github.com/criew/opaa/issues/3018) |
 | Renovate auf den Wartungsbranches | Abhängigkeits-Updates nur auf `main` | [#3019](https://github.com/criew/opaa/issues/3019) |
 | Delta zur vorigen LTS-Linie im Update-Paket | nur das Delta zum vorigen finalen Release | [#3020](https://github.com/criew/opaa/issues/3020) |
@@ -654,13 +670,17 @@ Geplant ist nach dem Takt von Spring Boot, nicht nach Funktionen; Versionsnummer
 Release. Ob GitHub-Meilensteine die Tabelle ergänzen, klärt
 [#3021](https://github.com/criew/opaa/issues/3021).
 
-| Linie | Erscheint | Spring Boot | Art | Sicherheitsupdates bis |
+| Linie | Erscheint | Spring Boot | Art | Patch-Releases bis |
 |---|---|---|---|---|
 | erstes finales Release (aus den Kandidaten `v0.1.0-rc.N`) | vor dem ersten Release im Takt, außerhalb des Takts | 4.1 | normal | einen Monat nach dem Dezember-Release 2026 |
 | Dezember-Release 2026 | 4–6 Wochen nach Spring Boot 4.2 (November 2026) | 4.2 | normal | einen Monat nach dem Juni-Release 2027 |
-| Juni-Release 2027 | 4–6 Wochen nach der Mai-Version 2027 von Spring Boot | Mai-Version 2027 | erstes LTS | Ende des kostenlosen Supports dieser Spring-Boot-Version, voraussichtlich Mitte 2028; Datum steht mit Erscheinen fest |
+| Juni-Release 2027 | 4–6 Wochen nach der Mai-Version 2027 von Spring Boot | Mai-Version 2027 | erstes LTS | Ende des kostenlosen Supports dieser Spring-Boot-Version, im Regelfall 30.06.2028; Datum steht mit Erscheinen fest |
 | Dezember-Release 2027 | 4–6 Wochen nach der November-Version 2027 | November-Version 2027 | normal | einen Monat nach dem Juni-Release 2028 |
 | Juni-Release 2028 | 4–6 Wochen nach der Mai-Version 2028 | Mai-Version 2028 | LTS | Ende des kostenlosen Supports dieser Spring-Boot-Version |
+
+Der Release-Kandidat jedes LTS erscheint spätestens zwei Wochen nach der Mai-Version von Spring
+Boot, also etwa Anfang Juni und damit einige Wochen vor dem Supportende der laufenden LTS-Linie
+(im Regelfall 30.06.); das finale LTS-Release folgt 4–6 Wochen nach Spring Boot.
 
 Erscheint ein Release, ersetzt es seine Zeile durch die Versionsnummer und das feste Supportende;
 eine ausgelaufene Linie bleibt mit ihrem Ende stehen.
@@ -677,7 +697,8 @@ nächtliche CVE-Scan prüft deshalb neben `main` auch Release-Images (ohne Vorab
 |---|---|
 | `critical` mit verfügbarem Fix | Patch-Release der Linie, Frist wie in cve-scanning.md. Liegt der Fix im Basis-Image, genügt ein neues Tag auf dem Commit des letzten Release der Linie; liegt er in einer Abhängigkeit oder im Code, kommt er per Backport (bis [#3017](https://github.com/criew/opaa/issues/3017) nach der Regel unter [Versionsnummern](#versionsnummern)) |
 | `high` mit verfügbarem Fix | spätestens als Patch-Release nach der wöchentlichen Triage |
-| ohne Fix, `medium` und `low` | kein eigenes Release; mit dem nächsten Patch-Release der Linie |
+| `medium` und `low` mit verfügbarem Fix | kein eigenes Release; mit dem nächsten Patch-Release der Linie |
+| ohne verfügbaren Fix | kein Release; Triage nach [cve-scanning.md](cve-scanning.md#triage-von-image-alerts) |
 
 Solange ein gescanntes Release einen `critical`-Befund trägt, bleibt das Alarm-Issue des Scans
 offen, auch wenn `main` schon behoben ist. Es schließt erst mit dem Patch-Release.

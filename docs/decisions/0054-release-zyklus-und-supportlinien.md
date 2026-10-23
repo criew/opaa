@@ -18,7 +18,8 @@ Technische Basis des Backends ist Spring Boot. Es erscheint zweimal im Jahr als 
 und November) und unterstützt jede Minor-Version kostenlos mindestens 12 Monate; längeren Support
 gibt es nur kommerziell ([Spring Boot Wiki, Supported Versions](https://github.com/spring-projects/spring-boot/wiki/Supported-Versions)).
 Das Ende des kostenlosen Supports jeder Minor-Version nennt die
-[Projektseite](https://spring.io/projects/spring-boot#support), für 4.1 etwa den 31.07.2027.
+[Projektseite](https://spring.io/projects/spring-boot#support): für eine im Mai erschienene Version
+den 30.06. des Folgejahres (3.1, 3.3, 3.5), für das erst im Juni erschienene 4.1 den 31.07.2027.
 Minor- und Major-Anhebungen von Drittbibliotheken kommen bei Spring Boot nur mit einer neuen
 Minor-Version, Patch-Versionen nur mit Patch-Anhebungen (ebenda). Das Team besteht aus einem
 Maintainer und Agenten; jede zusätzlich gepflegte Linie kostet Backports, CI-Läufe und Scans.
@@ -35,32 +36,42 @@ ersten Patch-Version, ohne den kostenlosen Support der Basis anzuknabbern.
 
 ### 2. Eine Supportlinie je Funktionsrelease
 
-Jedes finale `X.Y.0` eröffnet die Linie `X.Y`. Ihre Patch-Releases `X.Y.Z` bringen nur
-Sicherheitskorrekturen: im eigenen Code, in Abhängigkeiten innerhalb der Patch-Versionen und in den
-Basis-Images. Keine neue Funktion, kein Bruch nach [Versionsnummern](../releases.md#versionsnummern),
-keine neue Minor-Version von Spring Boot. Behebungen kritischer Fehler (Datenverlust, Start
-scheitert) können folgen, ohne Zusage. Damit bleibt jedes Patch-Release ein Update, das eine
-Behörde ohne Beteiligungsverfahren sofort einspielen kann.
+Jedes finale `X.Y.0` eröffnet die Linie `X.Y`. Ihre Patch-Releases `X.Y.Z` bringen
+Sicherheitskorrekturen (im eigenen Code, in Abhängigkeiten innerhalb der Patch-Versionen und in den
+Basis-Images) und Behebungen kritischer Fehler, sonst nichts: keine neue Funktion, kein Bruch nach
+[Versionsnummern](../releases.md#versionsnummern), keine neue Minor-Version von Spring Boot.
+Kritisch ist ein Fehler, der ohne zumutbaren Workaround zu Datenverlust oder verfälschten Daten,
+zum Ausfall von OPAA oder einer Kernfunktion (Anmeldung, Suche, Chat, Indizierung) oder zu einer
+falschen Auswertung von Rechten führt. Ob ein Fehler kritisch ist, entscheidet der Maintainer und
+hält es am Issue fest. Damit bleibt jedes Patch-Release ein Update, das eine Behörde ohne
+Beteiligungsverfahren sofort einspielen kann.
 
 ### 3. Normales Release: bis einen Monat nach dem Nachfolger
 
-Ein normales Release bekommt Sicherheitsupdates bis einen Monat nach dem nächsten finalen
+Ein normales Release bekommt Patch-Releases nach Entscheidung 2 bis einen Monat nach dem nächsten finalen
 Funktionsrelease. Der Monat ist die Übergangszeit für das Update auf den Nachfolger.
 
 ### 4. Das Juni-Release ist LTS
 
 Das Juni-Release ist eine LTS-Linie. Ihr Supportende ist das Ende des kostenlosen Supports ihrer
-Spring-Boot-Minor-Version, wie es die Projektseite bei Erscheinen nennt. Erscheint das Release im
-Takt, sind das mindestens 12 Monate, und die Linie überlappt etwa einen Monat mit dem nächsten LTS.
-Länger trägt keine LTS-Linie: Danach müsste das Projekt Fixes in Spring selbst zurückportieren oder
-Spring Boot in der Linie anheben, was Entscheidung 2 bricht. Juni statt Dezember ist eine Festlegung
+Spring-Boot-Minor-Version, wie es die Projektseite bei Erscheinen nennt. Im Regelfall ist das der
+30.06. des Folgejahres, bei einem Release im Takt also rund 12 Monate; mit dem nächsten LTS
+überlappt die Linie höchstens wenige Wochen, am späten Ende des Takts gar nicht; den Übergang trägt
+der frühe Release-Kandidat (Entscheidung 5). Das Datum steht bei Erscheinen fest und liegt nie
+hinter dem Spring-Support. Länger trägt keine LTS-Linie: Danach müsste das Projekt Fixes in Spring
+selbst zurückportieren oder Spring Boot in der Linie anheben, was Entscheidung 2 bricht. Juni statt Dezember ist eine Festlegung
 für die Planbarkeit; die Kopplung trüge beide.
 
 ### 5. Wechsel von LTS zu LTS
 
-Wer nur LTS-Linien betreibt, aktualisiert einmal im Jahr auf das nächste Juni-Release. Das
-Update-Paket eines LTS-Release enthält dafür zusätzlich das kumulierte Delta zum jüngsten
-Patch-Release der vorigen LTS-Linie. Das Delta zum vorigen finalen Release bleibt für alle
+Wer nur LTS-Linien betreibt, aktualisiert einmal im Jahr auf das nächste Juni-Release. Weil die
+Linien sich nur knapp oder gar nicht überlappen, erscheint das nächste LTS so früh wie möglich als
+Release-Kandidat: sobald OPAA auf der neuen Spring-Boot-Minor-Version läuft, spätestens zwei Wochen
+nach deren Erscheinen. Der Kandidat trägt das vollständige Update-Paket; auf seiner Grundlage
+beginnt die Behörde Beteiligung und Vorbereitung, das finale Release holt sie nur noch nach. Vom
+Kandidaten bis zum finalen Release kommen nur Korrekturen hinzu. Das Update-Paket eines
+LTS-Release und seiner Kandidaten enthält zusätzlich das kumulierte Delta zum jüngsten
+Patch-Release der laufenden LTS-Linie. Das Delta zum vorigen finalen Release bleibt für alle
 Releases; ein Patch-Release vergleicht so mit dem vorigen Release seiner Linie.
 
 ### 6. Supportende angekündigt, nie vorgezogen
@@ -88,12 +99,13 @@ LTS-Betreiber einmal im Jahr. Pflegeverträge, Dienstvereinbarung und Markterkun
 Zeiträume. Die Laufzeit hängt an einem öffentlich dokumentierten Datum der Basis, nicht an einer
 Zusage des Projekts über seine Kräfte.
 
-**Schwieriger:** Meist laufen zwei Linien nebeneinander, im Übergangsmonat nach einem Juni-Release
-drei. Jeder Sicherheitsfix im Code braucht je Linie einen Backport mit eigenem CI-Lauf; je Linie
+**Schwieriger:** Meist laufen zwei Linien nebeneinander, in den Wochen nach einem Juni-Release
+drei. Der Wechsel von LTS zu LTS hat kaum Übergangszeit; eine Behörde muss ihn anhand des
+Release-Kandidaten vorbereiten, damit sie das finale Release vor dem Supportende einspielen kann. Jeder Sicherheitsfix und jede Behebung eines kritischen Fehlers im Code braucht je Linie einen Backport mit eigenem CI-Lauf; je Linie
 kommen Renovate-PRs und vier Scans pro Nacht (zwei Images, zwei Plattformen) hinzu. Release-Workflow,
 Rulesets, CVE-Scan, Renovate und Update-Paket brauchen Umbauten (#3017–#3020). Bis `release/X.Y`
-gebaut ist (#3017),
-erscheint ein Fix im Code für ein Release nur, solange `main` keine neue Funktion trägt.
+gebaut ist (#3017), bekommt nur die jüngste Linie Patch-Releases, und ein Fix im Code erscheint
+dort nur, solange `main` keine neue Funktion trägt.
 
 **Restrisiken:** Abhängigkeiten außerhalb der Versionsverwaltung von Spring Boot (Spring AI, Tika,
 Frontend-Bibliotheken, Basis-Images) haben eigene Supportzeiträume. Gibt es einen Fix nur mit
@@ -106,6 +118,7 @@ verkürzt sich die Laufzeit dieser LTS-Linie und die Überlappung mit der vorige
 - Nur das jüngste Release pflegen — Sicherheitsfixes kämen mit neuen Funktionen; Beschluss 2 verlangt feste Zeiträume.
 - LTS 24 Monate mit Anhebung von Spring Boot in der Linie — bringt Minor-Anhebungen von Spring und Drittbibliotheken, also Verhaltensänderungen, in eine Linie, die sie ausschließt.
 - LTS 24 Monate auf derselben Spring-Boot-Version — verlangt nach 12 Monaten eigene Backports in Spring oder eine kommerzielle Subscription.
+- LTS 15 oder 18 Monate mit Anhebung von Spring Boot gegen Ende der Linie — schafft Übergangszeit, bringt aber dieselben Verhaltensänderungen in die Linie; die Übergangszeit entsteht stattdessen durch den frühen Release-Kandidaten.
 - Kommerzielle Verlängerung über den Spring-Support — Kosten und Vertragsbindung, die das Projekt nicht trägt; ein Dienstleister kann sie für seine Kunden abschließen.
 - Jedes Release als LTS — doppelte Zahl paralleler Linien bei gleichem Team.
 
