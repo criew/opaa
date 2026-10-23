@@ -400,7 +400,7 @@ def test_checks_links_of_the_rules_file(repo: Path) -> None:
 # Legal templates under 03-vergabe/: sources section, citations, rechtsstand, neutrality.
 
 SOURCES = (
-    "\n## Quellen und Prüfstand\n\n| Aussage | Fundstelle | Herkunft |\n|---|---|---|\n"
+    "\n## Zum Nachlesen\n\n| Aussage | Fundstelle | Herkunft |\n|---|---|---|\n"
     "| Produktneutralität | [§ 31 Abs. 6 VgV](https://www.gesetze-im-internet.de/vgv_2016/__31.html)"
     " | Normtext |\n"
 )
@@ -425,7 +425,7 @@ def test_legal_template_with_listed_citation_passes(repo: Path) -> None:
 
 def test_rejects_legal_template_without_sources_section(repo: Path) -> None:
     write_legal(repo, BODY + "\nNach § 31 Abs. 6 VgV.\n")
-    assert_rejected(repo, 'missing section "## Quellen und Prüfstand"')
+    assert_rejected(repo, 'missing section "## Zum Nachlesen"')
 
 
 def test_sources_section_is_required_only_under_vergabe(repo: Path) -> None:
@@ -546,7 +546,7 @@ def test_link_must_stand_in_the_fundstelle_column(repo: Path) -> None:
 
 
 def test_rejects_sources_table_without_fundstelle_column(repo: Path) -> None:
-    sources = "\n## Quellen und Prüfstand\n\n| Aussage | Quelle |\n|---|---|\n| X | [Y](https://example.org) |\n"
+    sources = "\n## Zum Nachlesen\n\n| Aussage | Quelle |\n|---|---|\n| X | [Y](https://example.org) |\n"
     write_legal(repo, BODY + sources)
     assert_rejected(repo, 'needs a column "Fundstelle"')
 
