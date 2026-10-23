@@ -7,17 +7,12 @@ Sicherheitsupdates bekommt und wie sich belegen lässt, woraus sie besteht und w
 Dieses Kapitel fasst zusammen, was ein Release liefert, wie man es prüft und wie das Projekt mit
 Schwachstellen und Lizenzen umgeht. Es gehört zum Teil Betrieb des [Handbuchs](README.md).
 
-> **Beispiel.** Ein IT-Dienstleister soll für ein Landratsamt auf Version 0.4.1 aktualisieren. Er
-> liest die Release-Notizen, lädt das Update-Paket herunter, prüft dessen Herkunft mit einem Befehl
-> und reicht es an Datenschutz und Informationssicherheit weiter. Die Informationssicherheit fragt,
-> ob 0.4 noch Sicherheitsupdates bekommt: Ja, solange es das jüngste Release ist; erscheint 0.5,
-> erhält nur noch 0.5 Korrekturen.
-
 ## Versionen
 
 Es gibt zwei Arten von Ständen: **Releases** mit fester Versionsnummer `X.Y.Z`, die einmal gebaut
-und nie überschrieben werden, und den beweglichen Entwicklungsstand **`main`**. Für einen geplanten
-Betrieb ist ein Release der empfohlene Stand. Welche Image-Tags es gibt und wie man einen Stand
+und nie überschrieben werden, und den beweglichen Entwicklungsstand **`main`**. **Im Echtbetrieb
+läuft immer ein Release, nie `main`**: `main` ändert sich mit jedem Merge und hat kein Update-Paket; er
+dient nur zum Erproben. Welche Image-Tags es gibt und wie man einen Stand
 pinnt, steht in der [Betriebsübersicht](betrieb.md#images-und-versionen).
 
 Gezählt wird nach Semantic Versioning. Solange die Hauptversion `0` ist, steigt `Y` bei neuen
