@@ -57,6 +57,27 @@ sie. Die Kennzeichnung am Pull Request führt jede
 datenrelevante Änderung in die Release-Notizen. Aus beiden entsteht zu jedem Release das
 Update-Paket.
 
+## Pseudonymisierung im Protokoll
+
+Das Revisionsprotokoll hält fest, wer was verwaltet hat, etwa Rechte vergeben, Einstellungen
+geändert oder Konten gesperrt. Damit es sich nicht zur Kontrolle von Leistung und Verhalten eignet,
+gilt:
+
+- **Pseudonym ab dem Schreiben:** Im Protokoll steht statt eines Namens eine Kennung. Welche Person
+  dazu gehört, liegt getrennt in einer eigenen Tabelle (`datenkatalog`, Eintrag `audit-pseudonyms`).
+- **Keine Suche nach Personen:** Die Revision fragt nur nach Objekt, Zeitraum, Ereignisart oder
+  Vorgang ab, jeweils für einen begrenzten Zeitraum
+  ([Berechtigungen](berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)).
+- **Auflösen nur im Einzelfall:** Einer Person zugeordnet wird ein Pseudonym nur über eine
+  anlassbezogene Klärung mit Begründung und Freigabe durch eine zweite Person
+  ([Berechtigungen](berechtigungen.md#10-systemrollen-und-vollmachten)).
+- **Löschen ohne Eingriff ins Protokoll:** Wird ein Konto gelöscht, entfällt nur die Zuordnung; das
+  Protokoll bleibt unverändert, ist danach aber keiner Person mehr zuzuordnen
+  ([Benutzerverwaltung](benutzerverwaltung.md#8-löschen-oder-sperren)).
+
+Pseudonymisierte Daten bleiben personenbezogen, solange die Zuordnung besteht. Sie gehören deshalb
+in Verzeichnis, Löschkonzept und Auskunft der Behörde.
+
 ## Wo die Faktenblätter liegen
 
 Die Faktenblätter sind nicht eingecheckt, sondern werden neu erzeugt:
