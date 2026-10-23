@@ -48,7 +48,8 @@ Zur **Lieferkette**, also den Fragen an ein eingesetztes Produkt:
 3. **Lieferkette bewerten:** OPAA und, falls vorhanden, Dienstleister und Modellanbieter.
 4. **Erhebliche Sicherheitsvorfälle an das BSI melden.** Die Protokolle liefern Anhaltspunkte; die
    Bewertung trifft die Einrichtung.
-5. **Updates zeitnah einspielen**, weil nur das jüngste Release Sicherheitskorrekturen erhält, und
+5. **Updates zeitnah einspielen**, vor dem Supportende der eingesetzten Linie auf die nächste
+   wechseln ([Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume)) und
    Notfallvorsorge betreiben ([Notfallkonzept](../09-betrieb-update/notfallkonzept.md)).
 
 ## Zum Nachlesen

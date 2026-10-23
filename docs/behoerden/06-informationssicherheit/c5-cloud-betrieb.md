@@ -34,8 +34,8 @@ erfüllt.
 
 1. **Testat erfragen:** Fassung, Typ 1 oder Typ 2 (Prüfung zu einem Stichtag oder über einen
    Zeitraum), Prüfzeitraum, und ob OPAA ausdrücklich im Prüfumfang liegt.
-2. **Betrieb erfragen:** eingesetzte OPAA-Version und wie schnell Sicherheitsupdates eingespielt
-   werden; welche Modelldienste wo laufen; zugesagte Wiederherstellungszeit (RTO) und letzte Probe; wie
+2. **Betrieb erfragen:** eingesetzte OPAA-Version, ob ihre Linie noch unterstützt wird
+   ([Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume)) und wie schnell Sicherheitsupdates eingespielt werden; welche Modelldienste wo laufen; zugesagte Wiederherstellungszeit (RTO) und letzte Probe; wie
    die Daten bei einem Anbieterwechsel zurückkommen.
 3. **Eigene Installation verlangen:** Eine OPAA-Installation führt genau eine Organisation
    ([Eine Organisation](../../handbuch/betrieb/README.md#eine-organisation)); mehrere Behörden trennt nur

@@ -62,8 +62,9 @@ ob eine Meldung nach dem CRA geboten ist; abgegeben wird sie vom Maintainer.
 2. **Lücken vertraulich melden** über den [Meldeweg](../../../SECURITY.md#meldeweg), nicht in einem
    öffentlichen Issue.
 3. **Updates einspielen und [Security Advisories](https://github.com/criew/opaa/security/advisories)
-   verfolgen:** Sicherheitskorrekturen erhalten nur das jüngste Release und `main`
-   ([unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)).
+   verfolgen:** Sicherheitskorrekturen erhalten `main` und jede unterstützte Linie bis zu ihrem
+   Supportende ([Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume),
+   [unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)).
 
 ## Gut zu wissen
 

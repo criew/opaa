@@ -26,26 +26,51 @@ Erproben gedacht, bekommen kein wanderndes Tag `X.Y` und keine Sicherheitsupdate
 Schemaänderungen der Datenbank laufen nur vorwärts; zurück auf eine ältere Version geht es über die
 Sicherung ([Aktualisierung](aktualisierung.md)).
 
+### Linien und Supportzeiträume
+
+OPAA erscheint zweimal im Jahr mit einem Funktionsrelease `X.Y.0`, etwa im Juni und im Dezember,
+jeweils 4–6 Wochen nach einer neuen Version von Spring Boot, der Basis des Backends. Jedes finale
+`X.Y.0` eröffnet die **Linie** `X.Y`. Ihre Patch-Releases bringen nur Sicherheitskorrekturen und
+Behebungen kritischer Fehler, keine neue Funktion und keinen Bruch; eine Behörde kann sie deshalb
+sofort einspielen. Kritisch ist ein Fehler ohne zumutbaren Workaround, der Daten verliert oder
+verfälscht, OPAA oder eine Kernfunktion ausfallen lässt oder Rechte falsch auswertet.
+
+| Linie | Patch-Releases bis |
+|---|---|
+| normale Linie (Dezember-Release) | einen Monat nach dem nächsten Funktionsrelease |
+| LTS-Linie (Juni-Release) | Ende des kostenlosen Supports ihrer Spring-Boot-Version, im Regelfall 30.06. des Folgejahres, also rund 12 Monate |
+
+Das Supportende steht in den Release-Notizen und wird nie vorgezogen; bei einer LTS-Linie steht es
+mit Erscheinen fest, bei einer normalen mit Erscheinen ihres Nachfolgers. Wer nur LTS betreibt,
+aktualisiert einmal im Jahr. Das nächste LTS erscheint spätestens zwei Wochen nach Spring Boot als
+Release-Kandidat (`X.Y.0-rc.N`) mit Update-Paket, danach kommen nur Korrekturen hinzu. Auf dieser
+Grundlage kann die Behörde die Beteiligung beginnen; das finale LTS erscheint spätestens zum
+Supportende der laufenden LTS-Linie. Die Regeln gelten ab dem ersten finalen Release, einer
+normalen Linie. Die Zusage steht auch in `SECURITY.md` im Repository.
+
 ## Sicherheitsupdates
 
-Sicherheitskorrekturen bekommen nur das **jüngste Release** (ohne Vorab-Releases) und **`main`**.
-Eine ältere Release-Linie wird nicht nachgepflegt; sobald ein neues Release erscheint, endet die
-Pflege des vorigen. Feste Supportzeiträume oder parallel gepflegte Linien sagt das Projekt nicht zu;
-ob es solche Linien geben wird, ist offen ([#2575](https://github.com/criew/opaa/issues/2575)).
+Sicherheitskorrekturen bekommen **`main`** und jede unterstützte
+[Linie](#linien-und-supportzeiträume) bis zu ihrem Supportende, Vorab-Releases nicht. Ein
+Release-Image wird nie neu gebaut und trägt deshalb den Sicherheitsstand seines Bautags. Behoben wird
+über ein **Patch-Release** der Linie:
 
-Ein Release-Image wird nie neu gebaut und trägt deshalb den Sicherheitsstand seines Bautags. Behoben
-wird über ein **Patch-Release**:
-
-| Befund im jüngsten Release | Reaktion |
+| Befund in einer unterstützten Linie | Reaktion |
 |---|---|
 | kritisch, mit verfügbarer Korrektur | Patch-Release ohne Aufschub |
-| hoch, mit verfügbarer Korrektur | mit dem nächsten Release, spätestens als Patch-Release nach der wöchentlichen Sichtung |
-| ohne Korrektur, mittel oder niedrig | kein eigenes Release |
+| hoch, mit verfügbarer Korrektur | spätestens als Patch-Release nach der wöchentlichen Sichtung |
+| mittel oder niedrig, mit verfügbarer Korrektur | mit dem nächsten Patch-Release der Linie |
+| ohne verfügbare Korrektur | kein Release; der Befund wird gesichtet |
 
-Liegt die Korrektur im Basis-Image, entsteht das Patch-Release aus demselben Code neu gebaut. Liegt
-sie in einer Abhängigkeit des Codes und trägt `main` schon neue Funktionen, erscheint sie mit der
-nächsten Version `0.(Y+1).0`. Wer das Tag `X.Y` verwendet, erhält ein Patch-Release mit dem nächsten
-Pull; wer `X.Y.Z` pinnt, wechselt bewusst.
+Liegt die Korrektur im Basis-Image, entsteht das Patch-Release aus demselben Code neu gebaut. Wer
+das Tag `X.Y` verwendet, erhält ein Patch-Release mit dem nächsten Pull; wer `X.Y.Z` pinnt, wechselt
+bewusst.
+
+**Heute nur die jüngste Linie.** Patch-Releases für ältere Linien sind
+[noch nicht gebaut](#was-nicht-gebaut-ist). Bis dahin bekommt nur die jüngste Linie Patch-Releases,
+und eine Korrektur im Code nur, solange `main` seit ihrem letzten Release keine neue Funktion trägt;
+sonst erscheint sie mit dem nächsten Funktionsrelease. Eine ältere Linie bekommt keine Korrektur.
+Bis zum zweiten finalen Release gibt es ohnehin nur eine Linie.
 
 ## Was ein Release liefert
 
@@ -128,8 +153,12 @@ Update-Paket.
 
 ## Was nicht gebaut ist
 
-- Parallel gepflegte Release-Linien mit festen Supportzeiträumen
-  ([#2575](https://github.com/criew/opaa/issues/2575)).
+- Patch-Releases für ältere Linien über eigene Wartungsbranches; bis dahin bekommt nur die
+  jüngste Linie Korrekturen ([#3017](https://github.com/criew/opaa/issues/3017)).
+- Der Schwachstellen-Scan aller unterstützten Linien; heute prüft er nur das jüngste Release
+  ([#3018](https://github.com/criew/opaa/issues/3018)).
+- Im Update-Paket eines LTS das Delta zur vorigen LTS-Linie; heute enthält es das Delta zum vorigen
+  finalen Release ([#3020](https://github.com/criew/opaa/issues/3020)).
 - Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
   ([#2557](https://github.com/criew/opaa/issues/2557)).
 

@@ -77,7 +77,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | S-03 | ja | [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
 | S-04 | ja | [Meldeweg](../../../SECURITY.md#meldeweg), [Ablauf](../../../SECURITY.md#ablauf) | Projektunterlage |
 | S-05 | ja | [Read-only Filesystem](../../handbuch/betrieb/images-und-laufzeit.md#read-only-filesystem), [Pod Security](../../handbuch/betrieb/kubernetes.md#pod-security) | Handbuch |
-| S-06 | ja, für `main` und das jüngste Release | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates) | Handbuch, Test |
+| S-06 | ja; Supportzeiträume je Linie ab dem ersten finalen Release, Scan und Korrekturen heute für `main` und die jüngste Linie | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) | Handbuch, Test |
 
 ## B · Betrieb
 
@@ -109,7 +109,7 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 |---|---|---|---|
 | L-01 | Dienstleister | [Kubernetes-Installation](../../handbuch/betrieb/kubernetes.md#installation), [Authentifizierung](../../handbuch/betrieb/authentifizierung.md), [Konnektoren](../../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md) | Handbuch |
 | L-02 | Dienstleister | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md), [Mehrere Backend-Instanzen](../../handbuch/betrieb/mehrere-instanzen.md) | Projektunterlage, Handbuch |
-| L-03 | Dienstleister | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket); Supportzeiträume sind offen ([EVB-IT-Hinweise](evb-it-hinweise.md#programmstände-sbom-und-supportzeiträume)) | Projektunterlage, Handbuch |
+| L-03 | Dienstleister; Patch-Releases einer Linie bringen keine neue Funktion, das LTS wechselt einmal im Jahr | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) | Projektunterlage, Handbuch |
 | L-04 | Dienstleister; das Projekt sagt keine Reaktionszeiten zu | [Ablauf bei Sicherheitslücken](../../../SECURITY.md#ablauf) | Projektunterlage |
 | L-05 | Dienstleister | [Handbuch](../../handbuch/README.md) | Handbuch |
 | L-06 | Dienstleister; eine Übernahme ins Projekt setzt die unterzeichnete CLA voraus, eine nur für die Behörde gepflegte Erweiterung trägt der Dienstleister bei jedem Update selbst nach | [Lizenz](../../../LICENSE), [Contributor License Agreement](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen) | Projektunterlage, Handbuch |

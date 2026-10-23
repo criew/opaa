@@ -32,8 +32,8 @@ Lizenzübersicht ([Tabelle unten](#programmstände-sbom-und-supportzeiträume)).
 2. **Support und Übergabe** im passenden Vertrag regeln, meist Service oder Pflege S (zu prüfen).
 3. **Quellcode-Angebot sichern:** Wer eine angepasste Fassung über ein Netz anbietet, muss den
    Quellcode anbieten. Ein Dienstleister sichert das zu; im Eigenbetrieb plant die Behörde es ein.
-4. **Supportzeitraum vereinbaren,** wenn ein Programmstand über das nächste Release hinaus halten
-   soll.
+4. **Supportzeitraum vereinbaren,** wenn ein Programmstand länger halten soll, als das Projekt ihn
+   pflegt; sonst rechtzeitig vor dem Supportende auf die nächste Linie wechseln.
 
 ## Zuordnung der Leistungen
 
@@ -53,13 +53,17 @@ Lizenzübersicht ([Tabelle unten](#programmstände-sbom-und-supportzeiträume)).
 | Programmstand | Jede Version ist unveränderlich benannt (`X.Y.Z`); Images und Chart einer Version werden nie überschrieben | [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert), [Versionen](../../handbuch/betrieb/releases-und-nachweise.md#versionen) |
 | SBOM | Je Image und Architektur eine SBOM-Attestierung, auch für Release-Images; zusätzlich je Release eine CycloneDX-SBOM für Backend und Frontend am GitHub-Release und im Update-Paket | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste) |
 | Lizenzen der Abhängigkeiten | Lizenzübersicht im Update-Paket jeder Version | [Lizenzprüfung](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) |
-| Sicherheitskorrekturen | nur für das jüngste Release und `main`; ältere Linien werden nicht nachgepflegt | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
+| Sicherheitskorrekturen und Behebungen kritischer Fehler | Patch-Releases ohne neue Funktion für jede unterstützte Linie: LTS-Linie (Juni-Release) rund 12 Monate, normale Linie bis einen Monat nach dem nächsten Release; Supportende in den Release-Notizen | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
 | Änderungen zwischen Programmständen | Delta der Datenwirkung zum vorigen Release | [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket), [Update-Vermerk](../09-betrieb-update/update-vermerk.md) |
 
 ## Gut zu wissen
 
-- Ob es Supportlinien mit festen Zeiträumen geben wird, hat das Projekt noch nicht entschieden. Bis
-  dahin kann eine längere Zusage nur ein Dienstleister geben.
+- Die Supportzeiträume gelten ab dem ersten finalen Release. Solange das Projekt keine
+  Wartungsbranches betreibt, bekommt nur die jüngste Linie Korrekturen; eine längere oder festere
+  Zusage kann nur ein Dienstleister geben.
+- Der Release-Kandidat des nächsten LTS erscheint mit Update-Paket einige Wochen vor dem
+  Supportende der laufenden LTS-Linie; auf seiner Grundlage kann die Beteiligung für den Wechsel
+  beginnen.
 - Das Quellcode-Angebot betrifft Erstellung und Cloud, und auch die Behörde selbst, wenn sie eine
   angepasste Fassung für ihre Beschäftigten betreibt.
 

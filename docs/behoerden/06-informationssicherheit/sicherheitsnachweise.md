@@ -25,7 +25,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 | Protokollierung | Log, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
 | Software-Stückliste (SBOM) | woraus jedes Image besteht, Provenance, Lizenzprüfung | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste), [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) |
 | Schwachstellen | Erkennung in Abhängigkeiten und Images, Reaktionszeiten nach Schwere | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
-| Sicherheitsupdates | Patch-Releases, veröffentlichte Lücken | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
+| Sicherheitsupdates | Patch-Releases je unterstützter Linie, Supportzeiträume, veröffentlichte Lücken | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
 | Pflichten des Projekts | Rolle nach dem Cyber Resilience Act | [Rollenklärung](rollenklaerung-cra.md) |
 
 ## Aufgaben der Behörde
@@ -35,7 +35,8 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 2. **Protokolle einsammeln und aufbewahren.** OPAA schreibt das Log auf die
    Standardausgabe; ein Log-Sammler des Betriebs nimmt es dort ab.
 3. **Auswertung regeln:** Wer Protokolle wie auswerten darf, gehört in die Dienstvereinbarung.
-4. **Updates zeitnah einspielen.** Sicherheitskorrekturen erhalten nur das jüngste Release und `main`
+4. **Updates zeitnah einspielen** und vor dem Supportende der eingesetzten Linie wechseln.
+   Sicherheitskorrekturen erhalten `main` und jede unterstützte Linie
    ([unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen)).
 5. **Lücken vertraulich melden** über den [Meldeweg](../../../SECURITY.md#meldeweg), nie in einem
    öffentlichen Issue.
@@ -44,6 +45,8 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 - Gemeldete Lücken bearbeitet das Projekt nach bestem Bemühen, ohne zugesagte Frist. Wer eine Version
   länger festhalten muss oder Fristen braucht, vereinbart das mit einem Dienstleister.
+- Bis das Projekt Wartungsbranches betreibt, bekommt nur die jüngste Linie Korrekturen, und der
+  Schwachstellen-Scan prüft nur das jüngste Release.
 - Schreibt das Log ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
   ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 - Eine Ausleitung des Nachweisprotokolls an ein zentrales Sicherheitsmonitoring ist nicht gebaut.

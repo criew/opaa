@@ -15,8 +15,9 @@ nichts gebaut. Backend und Frontend laufen immer mit **derselben** Version.
 | `ghcr.io/criew/opaa-backend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
 | `ghcr.io/criew/opaa-frontend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
 
-- **`X.Y.Z`** ändert sich nie; **`X.Y`** zeigt auf das jüngste Patch-Release der Linie und bringt
-  Sicherheitsupdates mit dem nächsten Pull. Ein Tag `latest` gibt es nicht. Im Echtbetrieb läuft ein
+- **`X.Y.Z`** ändert sich nie; **`X.Y`** steht für die Linie, zeigt auf ihr jüngstes Patch-Release
+  und bringt bis zu ihrem Supportende Sicherheitsupdates und Behebungen kritischer Fehler mit dem
+  nächsten Pull ([Linien und Supportzeiträume](releases-und-nachweise.md#linien-und-supportzeiträume)). Ein Tag `latest` gibt es nicht. Im Echtbetrieb läuft ein
   Release ([Releases und Nachweise](releases-und-nachweise.md)).
 - **`main`** wird bei jedem Push und wöchentlich neu gebaut. Einen festen Stand pinnt nur der
   Digest (`…/opaa-backend@sha256:…`), nicht `sha-<commit>`.

@@ -80,7 +80,7 @@ die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmat
 | S-03 | Die Herkunft der ausgelieferten Artefakte ist prüfbar (Signatur oder Provenance-Attestierung); eine veröffentlichte Version wird nie überschrieben. | Muss oder Kann, Begründung im Vergabevermerk | Prüfanleitung |
 | S-04 | Es gibt einen öffentlichen, vertraulichen Meldeweg für Sicherheitslücken; behobene Lücken werden veröffentlicht. | Muss | Sicherheitsrichtlinie |
 | S-05 | Die Anwendung läuft als Container ohne Root-Rechte und mit Read-only Filesystem. | Muss oder Kann, Begründung im Vergabevermerk | Betriebsdokumentation |
-| S-06 | Die ausgelieferten Artefakte werden regelmäßig auf bekannte Schwachstellen geprüft; Reaktionszeiten je Schwere sind festgelegt. | Kann | Beschreibung des Verfahrens |
+| S-06 | Die ausgelieferten Artefakte werden regelmäßig auf bekannte Schwachstellen geprüft; Reaktionszeiten je Schwere sind festgelegt. Für jede Version ist veröffentlicht, bis wann sie Sicherheitskorrekturen ohne neue Funktionen erhält. | Kann | Beschreibung des Verfahrens, Supportzeiträume |
 
 ## B · Betrieb
 
@@ -112,7 +112,7 @@ die Bausteine erfüllt, steht getrennt in der [Erfüllungsmatrix](erfuellungsmat
 |---|---|---|---|
 | L-01 | **Einführung:** Installation, Anbindung von Identitätsanbieter und Ablagen, Modellanbindung, Konfiguration nach den Vorgaben der Behörde, Abnahme gegen [Abnahmekriterien]. | Muss | Einführungskonzept |
 | L-02 | **Betrieb:** Betrieb der Installation mit [Verfügbarkeit], Wiederherstellungszeit [RTO] und Wiederherstellungspunkt [RPO], Sicherung und jährlicher Wiederherstellungsprobe. | Muss oder entfällt bei Eigenbetrieb | Betriebskonzept |
-| L-03 | **Pflege:** Einspielen neuer Versionen binnen [Frist] nach Veröffentlichung, sicherheitsrelevanter Versionen binnen [kürzere Frist]; Fehleranalyse und Weitergabe an das Projekt. | Muss | Pflegekonzept |
+| L-03 | **Pflege:** Einspielen neuer Versionen binnen [Frist] nach Veröffentlichung, sicherheitsrelevanter Versionen binnen [kürzere Frist]; Wechsel auf eine unterstützte Version vor dem Supportende der eingesetzten; Fehleranalyse und Weitergabe an das Projekt. | Muss | Pflegekonzept |
 | L-04 | **Support:** Ansprechstelle in deutscher Sprache mit Reaktionszeiten je Schwere [Tabelle der Behörde]. | Muss | Supportkonzept |
 | L-05 | **Schulung:** Schulung für Verwaltung und für Anwenderinnen und Anwender, barrierefreie Unterlagen. | Muss | Schulungskonzept |
 | L-06 | **Anpassungen:** Erweiterungen werden unter der Lizenz der Software erstellt. Allgemein nützliche Erweiterungen bietet der Dienstleister dem Projekt zur Übernahme an; Erweiterungen nur für die Behörde darf er für sie allein pflegen und passt sie bei jedem Update binnen [Frist] an. | Kann | Eigenerklärung, Liste geplanter Erweiterungen |
