@@ -62,6 +62,7 @@ export default function BrandingSettingsPage() {
   const [productName, setProductName] = useState(branding.productName)
   const [claim, setClaim] = useState(branding.claim)
   const [aiNotice, setAiNotice] = useState(branding.aiNotice)
+  const aiNoticeRef = useRef<HTMLTextAreaElement | null>(null)
   const [primaryColor, setPrimaryColor] = useState(branding.primaryColor)
   const [colorScheme, setColorScheme] = useState<ColorScheme>(branding.defaultColorScheme)
   // One pending file per slot; the upload happens with the rest of the form, so a single
@@ -160,7 +161,7 @@ export default function BrandingSettingsPage() {
         claim: claim.trim(),
         // The standard text is sent as "unset", so a later change to the standard reaches this
         // installation too.
-        aiNotice: aiNotice.trim() === OPAA_BRANDING.aiNotice ? '' : aiNotice.trim(),
+        aiNotice: aiNotice.trim() === branding.aiNoticeDefault ? '' : aiNotice.trim(),
         primaryColor: primaryColor.trim(),
         defaultColorScheme: colorScheme,
       })
@@ -173,6 +174,7 @@ export default function BrandingSettingsPage() {
         setPendingImages((files) => ({ ...files, [kind]: undefined }))
         clearInput(kind)
       }
+      setAiNotice(useBrandingStore.getState().branding.aiNotice)
       setSaved(true)
     } catch {
       // The store already holds the message; the alert below renders it.
@@ -263,12 +265,14 @@ export default function BrandingSettingsPage() {
             <TextField
               label="Hinweis zur KI-Nutzung"
               value={aiNotice}
-              onChange={(e) => setAiNotice(e.target.value)}
+              onChange={(e) => setAiNotice(e.target.value.replace(/[\r\n\u2028\u2029]+/g, ' '))}
+              inputRef={aiNoticeRef}
               slotProps={{ htmlInput: { maxLength: MAX_AI_NOTICE_LENGTH } }}
               helperText={
-                'Erscheint im Chat vor der ersten Frage und als Vermerk, wenn eine Antwort ' +
-                'über den Kopierknopf kopiert wird. Der Hinweis lässt sich ändern, aber nicht ' +
-                'abschalten: Ein leeres Feld stellt den Standardtext wieder her.'
+                'Vorgesehen für den Chat vor der ersten Frage und als Vermerk beim Kopieren ' +
+                'einer Antwort; die Anzeige folgt mit den nächsten Änderungen. Der Hinweis ' +
+                'lässt sich ändern, aber nicht abschalten: Ein leeres Feld stellt den ' +
+                'Standardtext wieder her. Zeilenumbrüche werden durch Leerzeichen ersetzt.'
               }
               multiline
               minRows={2}
@@ -277,8 +281,13 @@ export default function BrandingSettingsPage() {
             <Button
               size="small"
               sx={{ mt: 1 }}
-              onClick={() => setAiNotice(OPAA_BRANDING.aiNotice)}
-              disabled={isSaving || aiNotice === OPAA_BRANDING.aiNotice}
+              onClick={() => {
+                // Focus moves to the field before the button turns disabled, so keyboard focus
+                // never falls back to the document body.
+                aiNoticeRef.current?.focus()
+                setAiNotice(branding.aiNoticeDefault)
+              }}
+              disabled={isSaving || aiNotice === branding.aiNoticeDefault}
             >
               Hinweis auf Standard zurücksetzen
             </Button>
@@ -436,7 +445,7 @@ export default function BrandingSettingsPage() {
               onClick={() => {
                 setProductName('')
                 setClaim('')
-                setAiNotice(OPAA_BRANDING.aiNotice)
+                setAiNotice(branding.aiNoticeDefault)
                 setPrimaryColor('')
                 setColorScheme(OPAA_BRANDING.defaultColorScheme)
                 setPendingImages({})

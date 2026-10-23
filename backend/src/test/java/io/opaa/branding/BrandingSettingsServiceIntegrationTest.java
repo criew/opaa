@@ -109,6 +109,36 @@ class BrandingSettingsServiceIntegrationTest {
   }
 
   @Test
+  void aNoticeWithoutAVisibleCharacterCannotSwitchTheNoticeOff() {
+    for (String invisible :
+        new String[] {"\u00A0", "\u3000", "\u200B", " \u200B\u00A0 ", "\u2028"}) {
+      brandingSettingsService.updateBranding(
+          organizationId, userId, null, null, "Eigener Hinweis", null, null);
+
+      brandingSettingsService.updateBranding(
+          organizationId, userId, null, null, invisible, null, null);
+
+      assertThat(brandingSettingsService.currentBranding().aiNotice())
+          .as("value %s", invisible.codePoints().boxed().toList())
+          .isEqualTo(BrandingDefaults.AI_NOTICE);
+    }
+  }
+
+  @Test
+  void aNoticeWithALineBreakIsRejectedWithAGermanMessage() {
+    for (String text :
+        new String[] {"Zeile\nUmbruch", "Zeile\u2028Umbruch", "Zeile\u2029Umbruch"}) {
+      assertThatThrownBy(
+              () ->
+                  brandingSettingsService.updateBranding(
+                      organizationId, userId, null, null, text, null, null))
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("Hinweis zur KI-Nutzung")
+          .hasMessageContaining("Zeilenumbruch");
+    }
+  }
+
+  @Test
   void anAiNoticeBeyondTheLengthLimitIsRejected() {
     String tooLong = "x".repeat(BrandingDefaults.MAX_AI_NOTICE_LENGTH + 1);
 
@@ -117,7 +147,7 @@ class BrandingSettingsServiceIntegrationTest {
                 brandingSettingsService.updateBranding(
                     organizationId, userId, null, null, tooLong, null, null))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("KI-Hinweis");
+        .hasMessageContaining("Hinweis zur KI-Nutzung");
   }
 
   @Test

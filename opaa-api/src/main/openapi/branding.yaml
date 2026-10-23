@@ -297,7 +297,7 @@ components:
         render from this response alone without knowing what a default even is. logoUrl is the
         one exception: it is absent while no logo is configured, and the client falls back to the
         bundled OPAA logo.
-      required: [productName, claim, aiNotice, primaryColor, defaultColorScheme]
+      required: [productName, claim, aiNotice, aiNoticeDefault, primaryColor, defaultColorScheme]
       properties:
         productName:
           type: string
@@ -313,6 +313,11 @@ components:
             nothing is configured it is the OPAA standard text. It can be replaced but not switched
             off.
           example: Antworten werden von einer KI erzeugt und können Fehler enthalten.
+        aiNoticeDefault:
+          type: string
+          description: >
+            The OPAA standard text of the notice. A form compares against this value, not against
+            a copy of its own, to tell "the standard" from a customised text.
         primaryColor:
           type: string
           description: Accent colour as a six-digit hex triplet with a leading '#'.
@@ -389,9 +394,9 @@ components:
           type: string
           description: >
             Empty or omitted means the OPAA standard text applies again - the notice can be
-            replaced but never switched off, so a cleared field restores the standard rather than
-            removing the notice. Longer than 500 characters or containing a control character is
-            rejected with 400.
+            replaced but never switched off, so a cleared field - or one without a visible
+            character - restores the standard rather than removing the notice. Longer than 500
+            characters or containing a control character or line break is rejected with 400.
           maxLength: 500
         primaryColor:
           type: string

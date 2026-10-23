@@ -123,7 +123,8 @@ public class BrandingSettingsService {
         validatedText(productName, BrandingDefaults.MAX_PRODUCT_NAME_LENGTH, "Der Produktname");
     String validatedClaim = validatedText(claim, BrandingDefaults.MAX_CLAIM_LENGTH, "Der Claim");
     String validatedAiNotice =
-        validatedText(aiNotice, BrandingDefaults.MAX_AI_NOTICE_LENGTH, "Der KI-Hinweis");
+        validatedNotice(
+            aiNotice, BrandingDefaults.MAX_AI_NOTICE_LENGTH, "Der Hinweis zur KI-Nutzung");
     String validatedColor = validatedColor(primaryColor);
 
     BrandingSettings settings =
@@ -254,6 +255,42 @@ public class BrandingSettingsService {
       throw new ValidationException(fieldLabel + " darf keine Steuerzeichen enthalten");
     }
     return trimmed;
+  }
+
+  /**
+   * Like {@link #validatedText}, but a value without a single visible character - blanks, no-break
+   * and ideographic spaces, zero-width and other format characters - counts as empty ("back to the
+   * default"): the notice must not be switched off by a value that merely looks empty. Line and
+   * paragraph separators are rejected along with the control characters.
+   */
+  private String validatedNotice(String value, int maxLength, String fieldLabel) {
+    if (value == null || value.codePoints().noneMatch(BrandingSettingsService::isVisible)) {
+      return null;
+    }
+    String trimmed = value.strip();
+    if (trimmed.length() > maxLength) {
+      throw new ValidationException(
+          fieldLabel + " darf höchstens " + maxLength + " Zeichen lang sein");
+    }
+    if (trimmed.codePoints().anyMatch(BrandingSettingsService::isControlOrLineBreak)) {
+      throw new ValidationException(
+          fieldLabel + " darf keine Steuerzeichen und keinen Zeilenumbruch enthalten");
+    }
+    return trimmed;
+  }
+
+  private static boolean isVisible(int codePoint) {
+    return !Character.isWhitespace(codePoint)
+        && !Character.isSpaceChar(codePoint)
+        && !Character.isISOControl(codePoint)
+        && Character.getType(codePoint) != Character.FORMAT;
+  }
+
+  private static boolean isControlOrLineBreak(int codePoint) {
+    int type = Character.getType(codePoint);
+    return Character.isISOControl(codePoint)
+        || type == Character.LINE_SEPARATOR
+        || type == Character.PARAGRAPH_SEPARATOR;
   }
 
   private String validatedColor(String value) {

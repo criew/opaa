@@ -34,12 +34,15 @@ export type BrandingImageKind = keyof typeof BRANDING_IMAGES
  * The backend resolves the same defaults field by field, so a successful response never contains
  * a gap this has to fill. This exists for the case where there is no response at all.
  */
+const AI_NOTICE_DEFAULT =
+  'Antworten werden von einer KI erzeugt und können Fehler enthalten. ' +
+  'Prüfen Sie wichtige Angaben anhand der Belege.'
+
 export const OPAA_BRANDING: BrandingResponse = {
   productName: 'OPAA',
   claim: 'Fragen. Belegen. Entscheiden.',
-  aiNotice:
-    'Antworten werden von einer KI erzeugt und können Fehler enthalten. ' +
-    'Prüfen Sie wichtige Angaben anhand der Belege.',
+  aiNotice: AI_NOTICE_DEFAULT,
+  aiNoticeDefault: AI_NOTICE_DEFAULT,
   primaryColor: '#1292EE',
   defaultColorScheme: 'SYSTEM',
 }

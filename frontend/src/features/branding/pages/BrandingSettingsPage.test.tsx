@@ -123,6 +123,8 @@ describe('BrandingSettingsPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Hinweis auf Standard zurücksetzen' }))
     expect(field).toHaveValue(OPAA_BRANDING.aiNotice)
+    // the reset button turns disabled; keyboard focus must not fall back to the document body
+    expect(field).toHaveFocus()
     await user.click(screen.getByRole('button', { name: 'Speichern' }))
     await waitFor(() => {
       expect(useBrandingStore.getState().branding.aiNotice).toBe(OPAA_BRANDING.aiNotice)
@@ -142,6 +144,21 @@ describe('BrandingSettingsPage', () => {
       expect(screen.getByText(/gespeichert und ist sofort wirksam/i)).toBeInTheDocument()
     })
     expect(useBrandingStore.getState().branding.aiNotice).toBe(OPAA_BRANDING.aiNotice)
+    // the field shows the notice in effect, not the empty value that was sent
+    expect(screen.getByLabelText('Hinweis zur KI-Nutzung')).toHaveValue(OPAA_BRANDING.aiNotice)
+  })
+
+  it('turns a line break in the AI notice into a blank instead of a rejected request', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+
+    renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
+
+    const field = screen.getByLabelText('Hinweis zur KI-Nutzung')
+    await user.clear(field)
+    await user.type(field, 'Erste Zeile{Enter}Zweite Zeile')
+
+    expect(field).toHaveValue('Erste Zeile Zweite Zeile')
   })
 
   it('rejects a malformed colour before sending it anywhere', async () => {
@@ -291,6 +308,7 @@ describe('BrandingSettingsPage', () => {
         productName: 'Landesamt-Assistent',
         claim: 'Kurz und klar',
         aiNotice: 'Hinweis der Behörde',
+        aiNoticeDefault: 'Standardhinweis',
         primaryColor: '#0B6FBC',
         defaultColorScheme: 'DARK',
       },

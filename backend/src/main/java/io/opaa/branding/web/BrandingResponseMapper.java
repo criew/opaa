@@ -1,6 +1,7 @@
 package io.opaa.branding.web;
 
 import io.opaa.api.dto.BrandingResponse;
+import io.opaa.branding.BrandingDefaults;
 import io.opaa.branding.BrandingImageKind;
 import io.opaa.branding.EffectiveBranding;
 
@@ -20,6 +21,7 @@ final class BrandingResponseMapper {
             branding.productName(),
             branding.claim(),
             branding.aiNotice(),
+            BrandingDefaults.AI_NOTICE,
             branding.primaryColor(),
             branding.defaultColorScheme());
     branding

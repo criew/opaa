@@ -74,6 +74,7 @@ class BrandingControllerIntegrationTest {
         .andExpect(jsonPath("$.productName").value(BrandingDefaults.PRODUCT_NAME))
         .andExpect(jsonPath("$.claim").value(BrandingDefaults.CLAIM))
         .andExpect(jsonPath("$.aiNotice").value(BrandingDefaults.AI_NOTICE))
+        .andExpect(jsonPath("$.aiNoticeDefault").value(BrandingDefaults.AI_NOTICE))
         .andExpect(jsonPath("$.primaryColor").value(BrandingDefaults.PRIMARY_COLOR))
         .andExpect(jsonPath("$.defaultColorScheme").value(BrandingDefaults.COLOR_SCHEME.name()))
         .andExpect(jsonPath("$.logoUrl").doesNotExist());
@@ -131,7 +132,8 @@ class BrandingControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"aiNotice\":\"Antworten stammen von einer KI.\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.aiNotice").value("Antworten stammen von einer KI."));
+        .andExpect(jsonPath("$.aiNotice").value("Antworten stammen von einer KI."))
+        .andExpect(jsonPath("$.aiNoticeDefault").value(BrandingDefaults.AI_NOTICE));
 
     mockMvc
         .perform(get("/api/v1/branding").with(devUser("dev-user")))
