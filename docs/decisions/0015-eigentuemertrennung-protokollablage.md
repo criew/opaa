@@ -41,7 +41,7 @@ TO`, `ALTER TABLE`, `ALTER FUNCTION … OWNER TO`), danach `REVOKE opaa_audit_ow
 Das Migrationskonto braucht dafür `CREATEROLE` (dann legt die Migration die Rolle selbst an) oder eine
 vorab angelegte Rolle, an der es `ADMIN OPTION` hält, dazu `USAGE, CREATE` auf dem Schema mit
 Weitergaberecht; beide Wege lassen den Rest aus Entscheidung 3 bestehen. Die
-Betriebsanleitung steht in [datenbank.md](../handbuch/datenbank.md#voraussetzungen-einer-eigenen-postgresql).
+Betriebsanleitung steht in [datenbank.md](../handbuch/betrieb/datenbank.md#voraussetzungen-einer-eigenen-postgresql).
 Die Rolle gehört zur PostgreSQL-Instanz, nicht zur Datenbank: Eine Sicherung wird nur in eine Instanz
 zurückgespielt, in der die Rolle existiert, und zwei OPAA-Installationen mit verschiedenen Konten
 teilen sich keine Instanz.

@@ -73,7 +73,7 @@ Bytes kopieren, dann in `documents.file_path` den Pfadpräfix ersetzen (`replace
 '<alter Präfix>', 's3://mein-bucket/') WHERE source_type = 'UPLOAD'`; der Präfix ist
 installationsabhängig, etwa `/app/uploads/` im Container); Anhangzeilen wandern ohne Sonderfall mit,
 die Ersetzung ist injektiv. Kein Bestandsnachzug im Code, kein Parallel-Lesen beider Ablagen: Die
-Umstellung ist ein Wartungsfenster, dokumentiert im [Handbuch](../handbuch/originalablage.md) mit
+Umstellung ist ein Wartungsfenster, dokumentiert im [Handbuch](../handbuch/betrieb/originalablage.md) mit
 Zählabfrage davor, Stichprobe danach und Rückweg.
 
 ### 6. Herunterladen streamt, ohne Zwischendatei — und verliert dabei Bereichsanfragen

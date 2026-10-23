@@ -26,8 +26,9 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 
 /**
- * Document completion after fusion, inside the pipeline it belongs to (docs/handbuch/suche.md,
- * Stufe 9). The completion algorithm itself is {@link DocumentCompletionTest}'s subject.
+ * Document completion after fusion, inside the pipeline it belongs to
+ * (docs/handbuch/spaces/suche.md, Stufe 9). The completion algorithm itself is {@link
+ * DocumentCompletionTest}'s subject.
  */
 class DocumentCompletionStageTest {
 

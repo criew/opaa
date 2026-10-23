@@ -45,7 +45,7 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/suche.md`, `docs/handbuch/prompt-bibliotheken.md`; Evaluierung: `eval/README.md`
+- Handbuch: `handbuch/spaces/suche.md`, `handbuch/arbeitsmittel/prompt-bibliotheken.md`; Evaluierung: `eval/README.md`
 
 ## Tests bei Änderungen
 

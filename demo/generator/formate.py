@@ -1,10 +1,11 @@
 """Data and rendering for the "Formattest auf S3" library.
 
-One document per file extension OPAA admits (docs/handbuch/formate/README.md, "Zugelassene
-Formate"), so the demo can show that every supported format really is read rather than
-merely listed. Each generated document names its own format in its text, which is what makes a chat
-answer attributable to the format it came from; the content is ordinary Rheinfurt administration
-around document formats and long-term archiving, not filler.
+One document per file extension OPAA admits
+(docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md, "Zugelassene Formate"), so the
+demo can show that every supported format really is read rather than merely listed. Each generated
+document names its own format in its text, which is what makes a chat answer attributable to the
+format it came from; the content is ordinary Rheinfurt administration around document formats and
+long-term archiving, not filler.
 
 Two extensions have no writer in any pinned library and are therefore committed files rather than
 generated ones (see generator/README.md, "Formate ohne Writer", and PRESERVED_FILES in

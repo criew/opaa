@@ -30,7 +30,7 @@ Konnektor Schlüssel, Anzeigename und diese Fähigkeiten. Das Enum `DocumentSour
 ADR-0017 sind entfallen; der Kern kennt nur noch `UPLOAD` als Sonderfall.
 
 Konnektoren je in einem Unterpaket von `io.opaa.indexing.source`, ihr Vertrag in `io.opaa.indexing.spi`
-(Handbuch: `docs/handbuch/konnektoren/`):
+(Handbuch: `docs/handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/`):
 
 | Schlüssel | Paket | seit |
 |---|---|---|

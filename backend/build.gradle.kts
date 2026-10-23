@@ -707,7 +707,7 @@ tasks.named("javadoc") {
     dependsOn("testJavadoc")
 }
 
-// Fact sheets for authorities from the compliance manifest (docs/behoerden/README.md): six Markdown
+// Fact sheets for authorities from the compliance manifest (docs/behoerden/AGENTS.md): six Markdown
 // sheets and their JSON form under build/compliance/faktenblaetter/, headed with version, commit and
 // generation date. Not checked in; CI uploads them as an artifact. Never up to date, as the head
 // carries the date. -PgeneratedOn=YYYY-MM-DD fixes that date, so a release run is repeatable.
