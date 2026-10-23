@@ -83,18 +83,8 @@ Es richtet sich an alle, die ein Update verantworten, ohne den Code zu lesen, un
 - die Vorlage für den Update-Vermerk
 - unter `vorlagen/` alle Behördenvorlagen, verlinkt mit den Faktenblättern
 
-Einzelheiten: [Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release).
-
-Das Paket trägt eine signierte Provenance-Attestierung, und `SHA256SUMS` im Paket nennt die
-Prüfsumme jeder Datei. Herunterladen und prüfen:
-
-```bash
-gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-update-paket-*'
-gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa
-```
-
-Die Prüfung bestätigt, dass das Archiv im Release-Lauf des Projekts entstanden und seitdem
-unverändert ist; der Nachweis nennt den Commit, aus dem es stammt.
+Aufbau im Einzelnen, Prüfung der Provenance und Delta über mehrere Versionen:
+[Das Update-Paket eines Release](nachvollziehbarkeit.md#das-update-paket-eines-release).
 
 <a id="herkunft-und-software-stückliste"></a>
 
@@ -120,11 +110,9 @@ Signatur, prüfbar mit `gh attestation verify`, liegt am Chart und am Update-Pak
   prüft die Images von `main` und des jüngsten Release.
 - **Behandeln:** Jeder Befund wird behoben oder mit Begründung zurückgestellt; wie schnell ein
   Release folgt, steht unter [Sicherheitsupdates](#sicherheitsupdates).
-- **Melden:** Lücken in OPAA vertraulich über das [Private Vulnerability
-  Reporting](https://github.com/criew/opaa/security/advisories/new) von GitHub, nicht über
-  öffentliche Issues. Behobene Lücken erscheinen als [Security
-  Advisory](https://github.com/criew/opaa/security/advisories). Einzelheiten regelt `SECURITY.md` im
-  Repository.
+- **Melden:** Lücken in OPAA vertraulich über das Private Vulnerability Reporting von GitHub
+  (Reiter „Security“ im Repository), nicht über öffentliche Issues. Behobene Lücken erscheinen dort
+  als Security Advisory. Einzelheiten regelt `SECURITY.md` im Repository.
 
 ## Lizenzen
 

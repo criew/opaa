@@ -1,7 +1,7 @@
-"""Self-check for check_behoerden_headers.sh: every Markdown file under docs/behoerden/ except the
-top-level README, AGENTS.md and CLAUDE.md carries the full header block, the verbatim disclaimer
-right after the title and only well-formed fact sheet placeholders; an overdue review date is no
-error."""
+"""Self-check for check_behoerden_headers.sh: every Markdown file under docs/behoerden/ except any
+README.md and the top-level AGENTS.md and CLAUDE.md carries the full header block and the verbatim
+disclaimer right after the title; every file, READMEs included, has only well-formed fact sheet
+placeholders; an overdue review date is no error."""
 
 import shutil
 import subprocess
@@ -200,6 +200,17 @@ def test_folder_overview_needs_no_header_but_valid_links(repo: Path) -> None:
     assert run_check(repo).returncode == 0
     write(repo, "# Datenschutz\n\n[fehlt](fehlt.md)\n", "04-datenschutz/README.md")
     assert_rejected(repo, "points to a missing file")
+
+
+def test_folder_overview_needs_valid_fact_sheet_placeholders(repo: Path) -> None:
+    readme = "04-datenschutz/README.md"
+    write(repo, "# Datenschutz\n\nFristen: {{faktenblatt:fristen#audit-retention}}.\n", readme)
+    assert run_check(repo).returncode == 0
+    write(repo, "# Datenschutz\n\nFristen: {{faktenblatt:gibtsnicht}}.\n", readme)
+    result = run_check(repo)
+    assert result.returncode == 1, result.stdout
+    assert "04-datenschutz/README.md" in result.stdout
+    assert "fact sheet placeholder" in result.stdout
 
 
 def test_rejects_missing_folder_readme(repo: Path) -> None:

@@ -9,6 +9,8 @@
 # - fact sheet placeholders only in the form {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}},
 #   each naming a target of .github/fact-sheet-anchors.txt: the sheet names and anchors the
 #   generator renders, checked in and kept current by the backend test FactSheetReferenceTest
+# Every README.md is exempt from front matter and disclaimer, but its placeholders are checked as
+# well: the update package ships the folder overviews with the templates.
 # The name list in docs/behoerden/AGENTS.md ("`<name>` ist eines der Faktenblätter: ...") equals the
 # sheet names of that file.
 # Every relative Markdown link in these files, every README.md and AGENTS.md names an existing file and,
@@ -234,6 +236,22 @@ check_legal() {
   fi
 }
 
+check_placeholders() {
+  # $1 file, $2 content: fact sheet placeholders have the documented form and name a target
+  local file=$1 content=$2 line match target
+  while IFS=: read -r line match; do
+    [ -n "$line" ] || continue
+    if ! grep -Eq -- "^\{\{faktenblatt:($FACT_SHEETS)(#[a-z0-9-]+)?\}\}$" <<<"$match"; then
+      report "$file" "$line" "malformed fact sheet placeholder \"$match\": use {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}} with <name> one of ${FACT_SHEETS//|/, }"
+    else
+      target="${match#'{{faktenblatt:'}"
+      target="${target%'}}'}"
+      grep -qxF -- "$target" <<<"$targets" ||
+        report "$file" "$line" "fact sheet placeholder \"$match\" names no anchor of the rendered sheet; the targets are listed in $ANCHORS"
+    fi
+  done < <(printf '%s\n' "$content" | grep -noiE '\{\{[[:space:]]*faktenblatt[^}]*(\}\})?' || true)
+}
+
 # Requirement numbers of the first table column, one per line and occurrence, unsorted.
 requirement_ids() {
   [ -f "$1" ] || return 0
@@ -298,17 +316,7 @@ while IFS= read -r -d '' file; do
   fi
 
   # (c) fact sheet placeholders
-  while IFS=: read -r line match; do
-    [ -n "$line" ] || continue
-    if ! grep -Eq -- "^\{\{faktenblatt:($FACT_SHEETS)(#[a-z0-9-]+)?\}\}$" <<<"$match"; then
-      report "$file" "$line" "malformed fact sheet placeholder \"$match\": use {{faktenblatt:<name>}} or {{faktenblatt:<name>#<anchor>}} with <name> one of ${FACT_SHEETS//|/, }"
-    else
-      target="${match#'{{faktenblatt:'}"
-      target="${target%'}}'}"
-      grep -qxF -- "$target" <<<"$targets" ||
-        report "$file" "$line" "fact sheet placeholder \"$match\" names no anchor of the rendered sheet; the targets are listed in $ANCHORS"
-    fi
-  done < <(printf '%s\n' "$content" | grep -noiE '\{\{[[:space:]]*faktenblatt[^}]*(\}\})?' || true)
+  check_placeholders "$file" "$content"
 
   # (d) copied facts: warning only, the heuristic cannot tell a fact from a legitimate mention
   while IFS=: read -r line match; do
@@ -336,7 +344,10 @@ while IFS= read -r -d '' file; do
   done
 done < <(find "$FOLDER" -type f \( -iname '*.md' -o -iname '*.markdown' \) ! -name README.md ! -path "$RULES" ! -path "$FOLDER/CLAUDE.md" -print0 | sort -z)
 
-while IFS= read -r -d "" readme; do check_links "$readme"; done < <(find "$FOLDER" -type f -name README.md -print0 | sort -z)
+while IFS= read -r -d "" readme; do
+  check_placeholders "$readme" "$(tr -d '\r' < "$readme")"
+  check_links "$readme"
+done < <(find "$FOLDER" -type f -name README.md -print0 | sort -z)
 check_links "$RULES"
 
 # (f) the compliance matrix answers exactly the requirements of the catalog

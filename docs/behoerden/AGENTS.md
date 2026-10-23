@@ -191,13 +191,15 @@ der [Erfüllungsmatrix](03-vergabe/erfuellungsmatrix.md).
 
 [`.github/scripts/check_behoerden_headers.sh`](../../.github/scripts/check_behoerden_headers.sh) läuft
 in der CI bei jedem Lauf, ohne Pfadfilter, weil Linkziele im ganzen Repository liegen. Es erfasst
-jede Markdown-Datei (`.md`, `.markdown`) in diesem Ordner und allen Unterverzeichnissen außer
-`README.md`, `AGENTS.md` und `CLAUDE.md` auf oberster Ebene, ohne Dateiliste, und lässt den Lauf
-scheitern bei:
+jede Markdown-Datei (`.md`, `.markdown`) in diesem Ordner und allen Unterverzeichnissen, ohne
+Dateiliste. Jede `README.md` sowie `AGENTS.md` und `CLAUDE.md` auf oberster Ebene sind von
+Kopfvermerk und Haftungshinweis ausgenommen; Links prüft es in allen, Faktenblatt-Platzhalter auch in
+den READMEs, weil sie ins Update-Paket gehen. Der Lauf scheitert bei:
 
 - fehlendem oder unvollständigem Kopfvermerk, doppeltem Feld oder falschem Wert,
 - fehlendem oder abgewandeltem Haftungshinweis,
-- einem Faktenblatt-Platzhalter in anderer als der oben festgelegten Form,
+- einem Faktenblatt-Platzhalter in anderer als der oben festgelegten Form oder mit einem Ziel, das
+  `.github/fact-sheet-anchors.txt` nicht nennt, auch in einer README,
 - einem relativen Link, auch in README.md und dieser Datei, dessen Datei fehlt oder dessen Anker keine
   Überschrift (in der Schreibweise von GitHub) und kein `<a id>` der Zieldatei trifft; eine
   umbenannte Überschrift im Handbuch fällt so auf,

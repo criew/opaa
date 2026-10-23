@@ -194,10 +194,10 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 
 ### Unterlagen für Behörden
 
-- **[`behoerden/README.md`](./behoerden/README.md)** — Vorlagen und Erläuterungen entlang der
-  Behördenreise (Entscheidung, Markterkundung, Vergabe, Datenschutz, Mitbestimmung,
-  Informationssicherheit, Betrieb); Aufbau, Kopfvermerk, Haftungshinweis und Verweise auf die
-  generierten Faktenblätter
+- **[`behoerden/README.md`](./behoerden/README.md)** — Vorlagen für Behörden entlang des
+  Einführungswegs (Entscheidung, Markterkundung, Vergabe, Datenschutz, Mitbestimmung,
+  Informationssicherheit, Betrieb), geschrieben für Lesende in der Behörde; Regeln für Kopfvermerk,
+  Haftungshinweis und Faktenblatt-Platzhalter in [`behoerden/AGENTS.md`](./behoerden/AGENTS.md)
 
 ### Architekturentscheidungen
 
