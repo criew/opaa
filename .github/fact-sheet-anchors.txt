@@ -16,6 +16,7 @@ datenkatalog#bereich-external-access
 datenkatalog#bereich-libraries
 datenkatalog#bereich-rights
 datenkatalog#bereich-spaces
+datenkatalog#chat-cleanup-holds
 datenkatalog#chats
 datenkatalog#connected-accounts
 datenkatalog#connection-log
@@ -147,6 +148,9 @@ protokollereignisse#local-user-password-generated
 protokollereignisse#local-user-password-reset-requested
 protokollereignisse#local-user-registered
 protokollereignisse#local-user-unlocked
+protokollereignisse#locked-account-chat-cleanup-held
+protokollereignisse#locked-account-chat-cleanup-resumed
+protokollereignisse#locked-account-chats-deleted
 protokollereignisse#mail-settings-changed
 protokollereignisse#mail-template-changed
 protokollereignisse#mail-template-reset
@@ -260,6 +264,8 @@ voreinstellungen#opaa-auth-local-refresh-token-ttl
 voreinstellungen#opaa-auth-local-session-max-lifetime
 voreinstellungen#opaa-chat-auto-cleanup-archive-after-days
 voreinstellungen#opaa-chat-auto-cleanup-delete-after-days
+voreinstellungen#opaa-chat-locked-account-cleanup-delete-after-days
+voreinstellungen#opaa-chat-locked-account-cleanup-enabled
 voreinstellungen#opaa-chat-note-max-items
 voreinstellungen#opaa-connection-expired-connections-warning-threshold
 voreinstellungen#opaa-connection-inactivity-threshold-days
@@ -333,6 +339,8 @@ fristen#opaa-auth-local-refresh-token-ttl
 fristen#opaa-auth-local-session-max-lifetime
 fristen#opaa-chat-auto-cleanup-archive-after-days
 fristen#opaa-chat-auto-cleanup-delete-after-days
+fristen#opaa-chat-locked-account-cleanup-delete-after-days
+fristen#opaa-chat-locked-account-cleanup-enabled
 fristen#opaa-connection-inactivity-threshold-days
 fristen#opaa-connection-private-library-deletion-days
 fristen#permission-history-retention-settings-retention-months

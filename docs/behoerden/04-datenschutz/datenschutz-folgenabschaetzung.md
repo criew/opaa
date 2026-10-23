@@ -31,8 +31,7 @@ regelmäßig. Wer sich gegen eine DSFA entscheidet, schreibt die Begründung auf
 
 ## Was OPAA liefert
 
-Die Faktenblätter der eingesetzten Version beantworten die Fragen, mit denen jede DSFA beginnt. Sie
-liegen im Update-Paket am GitHub-Release der Version.
+Die Faktenblätter beantworten die Fragen, mit denen jede DSFA beginnt.
 
 | Frage der DSFA | Antwort |
 |---|---|
@@ -63,7 +62,7 @@ zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollzieh
 
 | Risiko | Was OPAA mitbringt | Was die Behörde festlegt | Bewertung |
 |---|---|---|---|
-| Kontrolle von Leistung und Verhalten der Beschäftigten | pseudonymisiertes Protokoll ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)), Einsicht nur für die Revision ({{faktenblatt:rollensicht#auditor}}) | Dienstvereinbarung, Rollenvergabe | [ ] |
+| Kontrolle von Leistung und Verhalten der Beschäftigten | pseudonymisiertes Protokoll ([Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)), Einsicht nur für die Revision ({{faktenblatt:rollensicht#auditor}}) | [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md), Rollenvergabe | [ ] |
 | Fragen und Antworten werden anderen bekannt | Sichtbarkeit und Löschung von Chats ({{faktenblatt:datenkatalog#chats}}) | Regeln der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md) | [ ] |
 | Zu weit gefasste Rechte an Dokumenten mit Personendaten | Rechte je Bibliothek und Space mit Historie ([Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md)) | Freigabeprozess, ausgeschlossene Quellen | [ ] |
 | Daten gehen an einen externen Modellanbieter | lokale Modelle als Voreinstellung ([Modelle](../../handbuch/betrieb/modelle.md)) | Wahl des Anbieters, Vertrag, Netzregeln | [ ] |

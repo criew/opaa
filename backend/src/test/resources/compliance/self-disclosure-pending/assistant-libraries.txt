@@ -2,6 +2,7 @@
 # libraries, diagnosis). The exporter issue deletes this file; SelfDisclosureCoverageTest checks
 # it.
 chats
+chat-cleanup-holds
 library-settings
 documents
 indexing-runs

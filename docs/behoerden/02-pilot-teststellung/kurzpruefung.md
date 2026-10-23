@@ -27,7 +27,7 @@ Version wird vor dem Start festgelegt und bleibt während der Erprobung gleich.
 
 ## Aufgaben der Behörde
 
-1. **Version festlegen** und die Faktenblätter dieser Version an alle drei Stellen geben.
+1. **Version festlegen,** die erprobt wird, und die drei Stellen beteiligen.
 2. **Je Stelle die Tabelle durchgehen** und offene Punkte vor dem Start klären.
 3. **Ergebnis festhalten** und der [Pilot-Vereinbarung](pilot-vereinbarung.md) oder der
    [Teststellungsvereinbarung](teststellungsvereinbarung.md) beilegen.
@@ -60,7 +60,7 @@ Version wird vor dem Start festgelegt und bleibt während der Erprobung gleich.
 |---|---|---|
 | Wer nimmt teil, freiwillig, wie lange? | [Pilot-Vereinbarung](pilot-vereinbarung.md) | [ ] |
 | Was wird über die Teilnehmenden protokolliert? | {{faktenblatt:protokollereignisse}}, [Pseudonymisierung](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) | [ ] |
-| Wer sieht was über andere? | {{faktenblatt:rollensicht#matrix}} | [ ] |
+| Wer sieht was über andere? | {{faktenblatt:rollensicht#matrix}}, [Informationsmappe](../05-mitbestimmung/informationsmappe-personalrat.md) | [ ] |
 | Welche Auswertungen wären möglich, welche sind ausgeschlossen? | Zeile „Mögliche Auswertungen“ im {{faktenblatt:datenkatalog}}, [Pilot-Vereinbarung](pilot-vereinbarung.md) | [ ] |
 | Was geschieht mit den Daten nach dem Ende? | [Pilot-Vereinbarung](pilot-vereinbarung.md) | [ ] |
 

@@ -120,11 +120,11 @@ Handlung; ein optionaler Satz aus dem Sperrdialog wird darin zitiert.
 
 Drei Dinge sperren ein Konto:
 
-| Anlass | Hinweis am Info-Symbol | Wer hebt sie auf | Nachricht an die Person |
-|---|---|---|---|
-| **Die Verwaltung** | Von der Verwaltung gesperrt | Die Verwaltung, über „Entsperren" | ja |
-| **Fehlversuche** — mehrere falsche Passwörter in Folge | Nach mehreren falschen Passwörtern gesperrt | Sie endet nach kurzer Zeit von selbst; „Entsperren" hebt sie sofort auf; ein eingelöster Rücksetzlink ebenfalls | nein |
-| **Inaktivität** — das Konto war lange nicht in Gebrauch | Wegen Inaktivität gesperrt | Die Verwaltung, über „Entsperren" | ja |
+| Anlass | Hinweis am Info-Symbol | Wer hebt sie auf | Nachricht an die Person | Chats werden nach einer Frist gelöscht |
+|---|---|---|---|---|
+| **Die Verwaltung** — auch über eine Sperre wegen Inaktivität oder Fehlversuchen hinweg | Von der Verwaltung gesperrt | Die Verwaltung, über „Entsperren" | ja, mit dem frühesten Löschdatum der Chats | ja (Abschnitt „Löschen oder sperren") |
+| **Fehlversuche** — mehrere falsche Passwörter in Folge | Nach mehreren falschen Passwörtern gesperrt | Sie endet nach kurzer Zeit von selbst; „Entsperren" hebt sie sofort auf; ein eingelöster Rücksetzlink ebenfalls | nein | nein |
+| **Inaktivität** — das Konto war lange nicht in Gebrauch | Wegen Inaktivität gesperrt | Die Verwaltung, über „Entsperren" | ja | nein |
 
 In der Spalte „Zustand" der Kontenliste steht in allen drei Fällen nur „Gesperrt"; den Anlass nennt
 das Info-Symbol dahinter, wenn die Maus darüber steht oder es per Tastatur angesteuert wird.
@@ -132,7 +132,12 @@ das Info-Symbol dahinter, wenn die Maus darüber steht oder es per Tastatur ange
 Für verbundene Konten und private Bibliotheken (Abschnitt 12) zählt nur die Sperre durch die
 Verwaltung als Deaktivierung: Sie beendet etwaige verbundene Konten und startet die Löschfrist. Die
 Sperre wegen Inaktivität ist eine Abwesenheit; die Verbindungen ruhen nur. Die Fehlversuch-Sperre
-berührt sie nicht.
+berührt sie nicht. Dasselbe gilt für die Chats: Nur die Sperre durch die Verwaltung startet die
+Frist, nach der sie gelöscht werden — wer in Elternzeit, krank oder abgeordnet ist, verliert sie
+nicht über eine Inaktivitätssperre. Ist das Konto einer ausgeschiedenen Person schon wegen
+Inaktivität gesperrt, bietet das Zeilenmenü neben „Entsperren“ auch „Sperren“ an: Die Sperre wird
+damit zur Sperre durch die Verwaltung, ohne dass das Konto dazwischen frei wird und ohne
+Freischaltungs-Mail; die Frist beginnt dann.
 
 Die Fehlversuch-Sperre schickt **bewusst keine** Nachricht: Sie wäre sonst ein Belästigungskanal für
 jeden, der eine Adresse kennt. Sie schneidet die Selbsthilfe auch nicht ab — „Passwort vergessen"
@@ -309,6 +314,48 @@ solange dieser Eintrag liegt — wie lange das ist, steht im Kapitel [Suche](../
 Abschnitt 8.4 („Wie lange die Rechtehistorie liegt"). Das
 ist beabsichtigt — der Nachweis, wer wann welche Rechte hatte, überlebt das Konto. Für alle diese
 Fälle ist die Sperre der vorgesehene Weg.
+
+### Was mit den Chats eines gesperrten Kontos geschieht
+
+Sperrt die Verwaltung ein lokales Konto, löscht OPAA seine Chats nach einer Frist ab der Sperre
+(`opaa.chat.locked-account-cleanup.*`, Werte im Kapitel [Suche](../spaces/suche.md), Abschnitt zur
+Chat-Bereinigung). Beispiel: Eine Sachbearbeiterin scheidet aus, ihr Konto wird gesperrt; nach Ablauf
+der Frist sind ihre Chats in allen Spaces fort, auch angeheftete und die im persönlichen Space. Das
+Konto und der persönliche Space bleiben.
+
+- **Das Löschdatum** steht im Dialog „Bearbeiten“ des Kontos unter „Chats nach der Sperre“ als
+  „frühestens am …“ — für jedes von der Verwaltung gesperrte Konto, ob es Chats hat oder nicht. In
+  der Kontenliste steht es bewusst nicht. Die Mail an die Person nennt es ebenfalls. So fällt eine
+  irrtümliche Sperre auf, bevor etwas verloren geht; **Entsperren** beendet die Frist, eine neue
+  Sperre beginnt sie von vorn.
+- **Anhalten:** „Löschung anhalten“ im selben Dialog hält die Löschung für das Konto an, etwa für ein
+  Disziplinarverfahren oder einen Rechtsstreit; „Löschung fortsetzen“ hebt das auf. Beides steht im
+  Nachweisprotokoll, ohne Begründung. Ist die Frist beim Fortsetzen abgelaufen, löscht die nächste
+  Nacht.
+- **Anlassbezogene Klärung:** Steht das Konto in einem offenen Antrag oder einer noch nutzbaren
+  Freigabe, wird nicht gelöscht; danach holt die nächste Nacht nach. Am angezeigten Datum ändert das
+  nichts.
+- **Konten eines Identitätsanbieters** lassen sich hier nicht sperren; für sie greift die Frist
+  nicht. Eine Deaktivierung nur beim Anbieter lässt die Chats unbegrenzt liegen.
+- **Endgültig:** Gelöschte Chats lassen sich über die Oberfläche nicht wiederherstellen. In
+  Sicherungen bleiben sie, bis diese nach dem Sicherungskonzept des Betriebs ablaufen. Wird eine
+  Sicherung eingespielt, löscht die nächste Nacht wieder auftauchende Chats erneut. Wer die Chats
+  einer zu Unrecht gesperrten Person zurückholen will, geht in drei Schritten vor: die Sicherung
+  einspielen, **vor dem nächsten nächtlichen Lauf** das Konto entsperren oder die Löschung anhalten,
+  danach prüfen, dass die Chats da sind. Andersherum geht es nicht: Die Sicherung bringt auch den
+  alten Stand von Sperre und Anhalten zurück.
+- **Selbstauskunft:** Nach der Sperre kann sich die Person nicht mehr anmelden und keine
+  Selbstauskunft mehr ziehen. Bei planbarem Ausscheiden gibt die Dienststelle ihr vorher Gelegenheit
+  dazu.
+- **Kontolöschung:** Sind die Chats gelöscht, hält ein Chat die Löschung des Kontos nicht mehr auf;
+  meist hält sie dann noch ein Nachweiseintrag auf (oben). Wird das Konto gelöscht, bleiben die
+  Protokolleinträge über die Löschung stehen, ohne Zuordnung zur Person.
+- **Geteilte Chats** bleiben, bis die Bereinigung ihres Space oder eine Löschung von Hand sie
+  erfasst. Teilen lassen sich Chats derzeit nicht.
+
+Abschalten kann nur der Betrieb, mit `opaa.chat.locked-account-cleanup.enabled`; nach dem
+Wiedereinschalten beginnt jede Frist neu. Bei der Einführung zählt die Frist frühestens ab dem
+Update, auch für Konten, die schon länger gesperrt sind.
 
 Das Notanker-Konto der Systemverwaltung lässt sich **weder löschen noch sperren, befristen, in der
 Rolle herabsetzen oder übergeben**, und die Verwaltung kann ihm **weder ein Passwort erzeugen noch

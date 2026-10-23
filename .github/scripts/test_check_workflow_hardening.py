@@ -12,6 +12,17 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
+
+WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
+
+
+@pytest.mark.parametrize("path", sorted(WORKFLOWS.glob("*.y*ml")), ids=lambda p: p.name)
+def test_every_workflow_is_valid_yaml(path: Path) -> None:
+    # GitHub runs no job of a workflow it cannot parse; the guard below reads workflows as text only.
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    assert isinstance(document, dict) and isinstance(document.get("jobs"), dict), path.name
 
 SCRIPT = Path(__file__).resolve().parent / "check_workflow_hardening.sh"
 BASH = shutil.which("bash") or "bash"

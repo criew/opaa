@@ -20,19 +20,19 @@ Die Behörde passt sie an und stellt sie vor der ersten Nutzung bereit.
 
 ## Was OPAA liefert
 
-Die Faktenblätter der eingesetzten Version liefern den Stoff für die Abschnitte 3 bis 7 des Textes:
-Daten und Zwecke, Protokoll, Sichtbarkeit, Empfänger, Fristen und KI-Funktionen. Die Platzhalter im
-Text verweisen auf sie.
+Die Faktenblätter liefern den Stoff für die Abschnitte 3 bis 7 des Textes: Daten und Zwecke,
+Protokoll, Sichtbarkeit, Empfänger, Fristen und KI-Funktionen. Der Text verweist an diesen Stellen
+auf sie.
 
 ## Aufgaben der Behörde
 
 1. **Angaben in eckigen Klammern ergänzen.**
-2. **Faktenblätter übersetzen:** jeden Platzhalter durch eine kurze Zusammenfassung in Alltagssprache
+2. **Faktenblätter übersetzen:** jeden Verweis durch eine kurze Zusammenfassung in Alltagssprache
    ersetzen oder das Faktenblatt als Anlage beilegen.
 3. **Eigene Festlegungen eintragen:** Empfänger nach der [AVV-Entscheidungsmatrix](./avv-entscheidungsmatrix.md),
    abweichende Fristen nach dem [Löschkonzept](./loeschkonzept.md), Verweis auf den
    [Ablauf für Betroffenenrechte](./betroffenenrechte.md) und, falls vorhanden, auf die
-   Dienstvereinbarung.
+   [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md).
 4. **Bereitstellen** vor der ersten Nutzung, etwa mit der Freischaltung, im Intranet oder zusammen mit
    der [Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md).
 5. **Bei jedem Update nachprüfen**, ob sich die Faktenblätter geändert haben.

@@ -512,6 +512,40 @@ describe('UserManagementPage', () => {
     await waitFor(() => expect(within(rowOf('T. Klein')).getByText('Aktiv')).toBeInTheDocument())
   }, 20000)
 
+  it('turns a lock for inactivity into a lock by the administration without unlocking', async () => {
+    setMockLocalUsers(
+      mockLocalUsers.map((account) =>
+        account.displayName === 'T. Klein'
+          ? { ...account, status: 'LOCKED' as const, lockedReason: 'INACTIVITY' as const }
+          : account,
+      ),
+    )
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'T. Klein')
+    expect(within(menu).getByRole('menuitem', { name: 'Entsperren' })).toBeInTheDocument()
+    await user.click(within(menu).getByRole('menuitem', { name: 'Sperren' }))
+    await user.click(
+      within(await screen.findByRole('dialog', { name: /„T\. Klein“ sperren\?/ })).getByRole(
+        'button',
+        { name: 'Sperren' },
+      ),
+    )
+
+    await waitFor(() =>
+      expect(
+        within(rowOf('T. Klein')).getByRole('img', {
+          name: 'Sperrgrund: Von der Verwaltung gesperrt',
+        }),
+      ).toBeInTheDocument(),
+    )
+    const lockedMenu = await openRowMenu(user, 'T. Klein')
+    expect(within(lockedMenu).queryByRole('menuitem', { name: 'Sperren' })).not.toBeInTheDocument()
+  }, 20000)
+
   it('offers neither locking nor deletion on the own row and none on the bootstrap account', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()

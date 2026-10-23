@@ -64,7 +64,8 @@ Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Ve
 
 - Die Faktenblätter zeigen, welche Auswertungen die Daten technisch zulassen. Die Vereinbarung
   regelt, welche davon ausgeschlossen sind.
-- Für den Regelbetrieb braucht es eine Dienstvereinbarung (Ordner `05-mitbestimmung/`).
+- Für den Regelbetrieb braucht es eine Dienstvereinbarung
+  ([Muster-Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md)).
 - Das Protokoll lässt sich nur anfügen, nicht vorzeitig einzeln löschen. Vor Ablauf seiner Frist
   entfällt es nur mit der ganzen Datenbank.
 
