@@ -36,21 +36,54 @@ data:
       rule: >-
         Unbegrenzt bis zur Löschung durch die Person; in Spaces mit eingeschalteter Bereinigung
         Archiv nach 90 Tagen ohne Aktivität und Löschung 365 Tage nach der Archivierung,
-        angeheftete Chats ausgenommen
+        angeheftete Chats ausgenommen. Unabhängig davon werden alle Chats eines lokalen Kontos
+        365 Tage nach seiner Sperre durch die Verwaltung gelöscht, auch angeheftete; die Frist
+        beginnt frühestens mit der Einführung bzw. dem Einschalten, ruht nicht, wird aber
+        ausgesetzt, solange die Verwaltung die Löschung für das Konto anhält oder das Konto in
+        einer offenen anlassbezogenen Klärung steht. Sperren wegen Inaktivität oder Fehlversuchen
+        und Konten eines Identitätsanbieters lösen sie nicht aus
       settings:
         - opaa.chat.auto-cleanup.archive-after-days
         - opaa.chat.auto-cleanup.delete-after-days
+        - opaa.chat.locked-account-cleanup.enabled
+        - opaa.chat.locked-account-cleanup.delete-after-days
     visibility: [nur die Autorin oder der Autor]
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
-      Durch die Person oder die automatische Bereinigung je Space; nicht mit dem Konto, ein
-      vorhandener Chat verhindert die Löschung des Kontos
+      Durch die Person, die automatische Bereinigung je Space oder den nächtlichen Lauf nach der
+      Sperre eines lokalen Kontos durch die Verwaltung (auf demselben Weg wie durch die Person,
+      mit Verlauf, Gesprächsnotiz und persönlichen Merkmalen; Nachweis im Protokoll ohne Zahl,
+      Titel oder Inhalt); nicht mit dem Konto, ein vorhandener Chat verhindert die Löschung des
+      Kontos
     evaluations: >-
       Chatsuche der Person über eigene Chats; keine Auswertung durch andere, Fragen werden nicht
       protokolliert
     notes:
       - Fragen und Antworten können Inhalte aus Fachverfahren und Personendaten Dritter enthalten
+  - id: chat-cleanup-holds
+    title: Angehaltene Löschung der Chats eines gesperrten Kontos
+    purpose: >-
+      Hält die Löschung der Chats eines lokalen Kontos nach dessen Sperre an, etwa für ein
+      Disziplinarverfahren außerhalb von OPAA
+    personalReference: EMPLOYEE
+    tables:
+      - name: chat_cleanup_holds
+        personalColumns: [user_id, held_at]
+        nonPersonalColumns: [organization_id]
+        person:
+          columns: [user_id]
+    storage: Anwendungsdatenbank
+    retention:
+      rule: Bis die Verwaltung die Löschung fortsetzt oder das Konto gelöscht wird
+      settings: []
+    visibility: [SYSTEM_ADMIN in der Einzelansicht des Kontos]
+    accessPaths: [UI, API, DATABASE]
+    deletion: Durch die Systemverwaltung („Löschung fortsetzen“) oder mit dem Konto
+    evaluations: >-
+      Ob und seit wann die Löschung für ein Konto angehalten ist; ohne Begründung. Keine Liste,
+      kein Filter und kein Export der angehaltenen Konten in der Oberfläche
 nonPersonalTables:
+  chat_locked_account_cleanup_state: [id, counting_since]
   search_status_probes: [role, condition, base_url, model, detail, observed_at]
   chat_library_references: [chat_id, library_id, organization_id]
   prompt_libraries: [id, asset_type, organization_id]
@@ -78,4 +111,20 @@ settings:
     defaultValue: "365"
     range: mindestens 30 Tage
     effect: Löschung von Chats in Spaces mit eingeschalteter Bereinigung
+    bearings: [DATA]
+  - key: opaa.chat.locked-account-cleanup.enabled
+    source: PROPERTY
+    defaultValue: "true"
+    range: true oder false
+    effect: >-
+      Ob die Chats lokaler Konten nach der Sperre durch die Verwaltung gelöscht werden; nach dem
+      Wiedereinschalten beginnt jede Frist neu
+    bearings: [DATA]
+  - key: opaa.chat.locked-account-cleanup.delete-after-days
+    source: PROPERTY
+    defaultValue: "365"
+    range: mindestens 90 Tage
+    effect: >-
+      Frist zwischen der Sperre eines lokalen Kontos durch die Verwaltung und der Löschung seiner
+      Chats; eine Verlängerung ist eine längere Speicherfrist und gehört in die Dienstvereinbarung
     bearings: [DATA]

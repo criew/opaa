@@ -107,6 +107,10 @@ Es richtet sich an alle, die ein Update verantworten, ohne den Code zu lesen, un
 - die Lizenzübersicht und die SBOMs je Ökosystem
 - die Vorlage für den Update-Vermerk
 - unter `vorlagen/` alle Behördenvorlagen, verlinkt mit den Faktenblättern
+- unter `handbuch/` dieses Handbuch im Stand der Version
+
+Neben jeder Markdown-Datei liegt dieselbe Seite als HTML; `index.html` öffnet das ganze Paket im
+Browser, ohne Internetzugang.
 
 Aufbau im Einzelnen, Prüfung der Provenance und Delta über mehrere Versionen:
 [Das Update-Paket eines Release](nachvollziehbarkeit.md#das-update-paket-eines-release).

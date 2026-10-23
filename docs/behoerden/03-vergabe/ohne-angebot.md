@@ -20,9 +20,9 @@ Vergabestelle nach dem für sie geltenden Recht.
 
 ## Was OPAA liefert
 
-Jedem Betreiber stehen dieselben Unterlagen offen: das [Handbuch](../../handbuch/README.md), die
-[Faktenblätter und das Update-Paket](../../handbuch/betrieb/nachvollziehbarkeit.md#wo-die-faktenblätter-liegen)
-jeder Version und diese Vorlagen. Fragen nimmt das Projekt auf [GitHub](https://github.com/criew/opaa)
+Jedem Betreiber stehen dieselben Unterlagen offen: das
+[Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) jeder Version mit
+[Handbuch](../../handbuch/README.md), Faktenblättern und diesen Vorlagen. Fragen nimmt das Projekt auf [GitHub](https://github.com/criew/opaa)
 entgegen, ohne Zusage zu Reaktionszeiten. Es bietet selbst keine Leistungen an und führt kein
 Verzeichnis von Dienstleistern.
 

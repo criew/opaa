@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: assistant-2026-10-23-locked-account-chat-cleanup
+      author: opaa
+      comment: "The deletion of the chats of local accounts locked by the administration (docs/features/chat-list.md, Löschung der Chats gesperrter Konten). chat_locked_account_cleanup_state holds the one moment from which the period may count: set at the introduction, so no lock from before reaches its period at once, emptied while the operator switches the deletion off and set again by the first run after switching on. chat_cleanup_holds keeps the accounts an administrator held, without a reason; it goes with the account. Additive: two new tables and their single seed row."
+      changes:
+        - sql:
+            sql: |
+              SET LOCAL lock_timeout = '5s';
+              CREATE TABLE chat_locked_account_cleanup_state (
+                  id smallint DEFAULT 1 NOT NULL,
+                  counting_since timestamp with time zone,
+                  CONSTRAINT chat_locked_account_cleanup_state_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_chat_locked_account_cleanup_state_single CHECK ((id = 1))
+              );
+              INSERT INTO chat_locked_account_cleanup_state (id, counting_since)
+                  VALUES (1, clock_timestamp());
+              CREATE TABLE chat_cleanup_holds (
+                  user_id uuid NOT NULL,
+                  organization_id uuid NOT NULL,
+                  held_at timestamp with time zone NOT NULL,
+                  CONSTRAINT chat_cleanup_holds_pkey PRIMARY KEY (user_id),
+                  CONSTRAINT fk_chat_cleanup_holds_user_organization FOREIGN KEY (user_id, organization_id)
+                      REFERENCES users(id, organization_id) ON DELETE CASCADE
+              );

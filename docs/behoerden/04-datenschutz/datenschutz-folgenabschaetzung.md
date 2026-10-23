@@ -31,8 +31,7 @@ regelmäßig. Wer sich gegen eine DSFA entscheidet, schreibt die Begründung auf
 
 ## Was OPAA liefert
 
-Die Faktenblätter der eingesetzten Version beantworten die Fragen, mit denen jede DSFA beginnt. Sie
-liegen im Update-Paket am GitHub-Release der Version.
+Die Faktenblätter beantworten die Fragen, mit denen jede DSFA beginnt.
 
 | Frage der DSFA | Antwort |
 |---|---|

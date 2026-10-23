@@ -125,6 +125,8 @@ class SelfDisclosureIntegrationTest {
     assertThat(download.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
     byte[] zip = download.getResponse().getContentAsByteArray();
     Map<String, String> entries = entries(zip);
+    // every category with a record of the development account comes first, then manifest and
+    // overview
     List<String> names = new ArrayList<>(entries.keySet());
     assertThat(names).contains("notifications.json", "self-disclosure.json");
     assertThat(names.subList(names.size() - 2, names.size()))
