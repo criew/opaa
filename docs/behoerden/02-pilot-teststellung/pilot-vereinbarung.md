@@ -37,7 +37,8 @@ Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Ve
 4. **Kurzprüfung abschließen** ([Kurzprüfung](kurzpruefung.md)), dann unterzeichnen.
 5. **Bei einem Update** neue Anlagen beifügen und die Personalvertretung nach der Vereinbarung
    beteiligen.
-6. **Am Ende** löschen und die Löschung nachweisen.
+6. **Am Ende** die Installation löschen und die Löschung nachweisen, etwa mit dem
+   [Löschnachweis](teststellungsvereinbarung.md#löschnachweis).
 
 ## Ergebnis festhalten
 
@@ -55,7 +56,7 @@ Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Ve
 | Bewertung des Pilots | nur zusammengefasst über alle Teilnehmenden; Befragungen freiwillig und ohne Namen |
 | Kontrollrechte | Personalvertretung erhält auf Anfrage die Auskunft über die Datenerhebung und Einsicht in die Anlagen |
 | Updates während des Pilots | nur nach [Update-Vermerk](../09-betrieb-update/update-vermerk.md); Stufe Zustimmung nur mit Zustimmung |
-| Ende und Löschung | binnen [ ] Wochen nach Ende: Konten, Chats, Protokoll und Wissensbibliotheken gelöscht; Nachweis an die Personalvertretung; gilt nicht, wenn ein Regelbetrieb nahtlos folgt und die Dienstvereinbarung das regelt |
+| Ende und Löschung | binnen [ ] Wochen nach Ende wird die ganze Installation des Pilots gelöscht: Datenbank, Originalablage, Sicherungen und Logs; Nachweis an die Personalvertretung. Bleibt die Installation stehen, etwa weil ein Regelbetrieb folgt, regelt die Dienstvereinbarung den Bestand; das Protokoll folgt dann seiner Frist nach {{faktenblatt:fristen}} |
 | Anlagen | 1–6 Faktenblätter Version [X.Y.Z]; 7 Auskunft über die Datenerhebung vom [ ]; 8 Kurzprüfung |
 | Unterzeichnet | Dienststelle: [Name, Datum]; Personalvertretung: [Name, Datum] |
 
@@ -63,8 +64,9 @@ Dienstvereinbarung für den Regelbetrieb. Ihre Anlagen beschreiben genau eine Ve
 
 - Die Faktenblätter zeigen, welche Auswertungen die Daten technisch zulassen. Die Vereinbarung
   regelt, welche davon ausgeschlossen sind.
-- Für den Regelbetrieb braucht es eine Dienstvereinbarung; die Vorlagen dazu folgen im Ordner
-  `05-mitbestimmung/`.
+- Für den Regelbetrieb braucht es eine Dienstvereinbarung (Ordner `05-mitbestimmung/`).
+- Das Protokoll lässt sich nur anfügen, nicht vorzeitig einzeln löschen. Vor Ablauf seiner Frist
+  entfällt es nur mit der ganzen Datenbank.
 
 ## Zum Nachlesen
 

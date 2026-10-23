@@ -23,8 +23,8 @@ Verantwortlich ist die Projektleitung zusammen mit dem Fachbereich.
 
 - **Erster Eindruck ohne eigene Daten:** die [Demo](../../../demo/README.md) mit fiktivem
   Verwaltungsbestand.
-- **Kennzahlen der Suchqualität je Version:** im Update-Paket unter `betrieb/antwortqualitaet.md`,
-  gemessen gegen den Testkorpus des Projekts, mit Messdatum
+- **Referenzwerte der Suchqualität:** im Update-Paket unter `betrieb/antwortqualitaet.md` die Werte,
+  die im Stand der Version gelten, gemessen gegen den Testkorpus des Projekts, mit Messdatum
   ([Update-Paket](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release),
   [Messverfahren](../../features/search-quality-evaluation.md)).
 - **Belege und Diagnose:** jede Antwort nennt ihre Fundstellen; das Diagnosewerkzeug zeigt, warum ein
@@ -51,7 +51,7 @@ Vor dem Start auszufüllen:
 ```text
 OPAA-Version:        [X.Y.Z], Commit [ ]
 Modelle:             Chat [ ], Embedding [ ], Reranking [ / aus]
-Kennzahlen Projekt:  [aus betrieb/antwortqualitaet.md der Version, Messdatum]
+Referenzwerte:       [aus betrieb/antwortqualitaet.md der Version, Messdatum]
 Bestände:            [Bibliotheken, Zahl der Dokumente, Formate]; nicht freigegeben: [ ]
 Zeitraum:            [von] bis [bis]
 Festgelegt durch:    [Name, Funktion]          am: [TT.MM.JJJJ, vor dem Start]
@@ -76,7 +76,7 @@ Festgelegt durch:    [Name, Funktion]          am: [TT.MM.JJJJ, vor dem Start]
 
 - Die Antwortqualität hängt stark an Chat- und Embedding-Modell. Ein Ergebnis gilt nur für die
   festgehaltenen Modelle.
-- Die Kennzahlen des Projekts stammen aus dessen Testkorpus; erst die eigenen Prüffragen zeigen,
+- Die Referenzwerte des Projekts stammen aus dessen Testkorpus; erst die eigenen Prüffragen zeigen,
   was OPAA für die Behörde leistet.
 
 ## Zum Nachlesen
