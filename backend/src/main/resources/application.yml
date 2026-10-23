@@ -83,6 +83,9 @@ spring:
     # Explicit so that a missing schema fails the migration instead of letting current_schema()
     # fall through to public.
     default-schema: ${opaa.database.schema}
+    # No analytics call to the library vendor, also where a context starts without
+    # OpaaApplication.main (tests).
+    analytics-enabled: false
   ai:
     # A single connection path for both functions - the OpenAI-compatible protocol. Ollama speaks it
     # too (under its own /v1 endpoint), which is why there is no separate "ollama" provider anymore

@@ -71,4 +71,8 @@ Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rück
 **Update-Paket für Behörden**
 
 Am Release hängt \`opaa-update-paket-${version}.tar.gz\` mit Prüfsummendatei: die Faktenblätter dieser Version, die Änderungen der Fakten seit dem vorigen finalen Release mit Stufenvorschlag, Betriebsfolgen und Antwortqualität für dasselbe Intervall, die Lizenzübersicht, die Stücklisten (SBOM) und die Vorlage für den Update-Vermerk. Die Herkunft prüft \`gh attestation verify opaa-update-paket-${version}.tar.gz --repo ${repository}\`. Die CycloneDX-Stücklisten der ausgelieferten Abhängigkeiten hängen zusätzlich einzeln am Release, \`opaa-backend-${version}.cdx.json\` und \`opaa-frontend-${version}.cdx.json\`, ebenso attestiert. Das Delta für ein anderes Versionspaar erzeugt \`./gradlew complianceDelta -PfromRef=<älteres Tag> -PtoRef=${tag}\` aus \`backend/\` eines Checkouts mit Tags.
+
+**Offline-Bündel**
+
+Für Netze ohne Internetzugang hängt \`opaa-offline-${version}.tar\` am Release: beide Images für \`linux/amd64\` und \`linux/arm64\` als OCI-Archive, der Chart, das Update-Paket, die Stücklisten und ihre Attestierungen, dazu \`SHA256SUMS\` mit eigener Attestierung. Prüfen und Einspielen ohne Netz: [Installation ohne Internetzugang](${handbook}/betrieb/images-und-laufzeit.md#installation-ohne-internetzugang).
 EOF
