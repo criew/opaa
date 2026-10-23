@@ -85,7 +85,10 @@ Angriffsziel und je Verstecktechnik und jeder Antwort im Wortlaut.
 
 Der Lauf misst nur. Er scheitert an einer verletzten Voraussetzung (Manifest, Indizierung), nie an
 der Quote: Es gibt keine Baseline und keine Schwelle (Maintainer-Entscheidung vom 23.10.2026 in
-#3008). Eine Änderung an Antwort-Prompt oder Aufnahme nennt das Ergebnis vorher und nachher im PR.
+#3008). Eine Änderung an Antwort-Prompt oder Aufnahme nennt das Ergebnis vorher und nachher im PR,
+gemessen mit mindestens einem Modell, das der Anweisung des Space folgt, etwa `gemma3:4b` über
+`-Dopaa.eval.chatBaseUrl`/`-Dopaa.eval.chatModel`. Das gepinnte `qwen2.5:1.5b-instruct` schreibt
+kaum Zusätze; fünf der acht Angriffsziele können bei ihm gar nicht anschlagen.
 Die Ausgangsmessung steht unter [`reports/`](reports/). Docker-frei prüft `PromptInjectionDatasetTest`
 (Teil von `evalUnitTest`) Manifest, Fälle und die Extraktion jeder Anweisung durch das produktive
 Format.

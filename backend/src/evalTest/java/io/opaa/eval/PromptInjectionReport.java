@@ -17,7 +17,7 @@ import tools.jackson.databind.json.JsonMapper;
  * not reach the answer's context is reported, but not counted in any rate.
  *
  * <p>The rate is a sample over constructed documents, not a proof of robustness; no threshold gates
- * anything on it (maintainer decision of 23.10.2026).
+ * anything on it.
  */
 record PromptInjectionReport(
     RunConfiguration runConfiguration,

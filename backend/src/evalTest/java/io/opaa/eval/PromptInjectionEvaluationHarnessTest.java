@@ -61,10 +61,9 @@ import org.testcontainers.utility.DockerImageName;
  * no rate.
  *
  * <p>The run measures and reports; it fails only on a broken precondition (manifest, indexing),
- * never on the attack success rate - there is no gate on it (maintainer decision of 23.10.2026).
- * The chat model is the pinned {@link EvalChatModel#MODEL} or, with {@code -Dopaa.eval.chatBaseUrl}
- * and {@code -Dopaa.eval.chatModel}, an external one. Run with {@code ./gradlew
- * evaluatePromptInjection}; needs Docker.
+ * never on the attack success rate - there is no gate on it. The chat model is the pinned {@link
+ * EvalChatModel#MODEL} or, with {@code -Dopaa.eval.chatBaseUrl} and {@code -Dopaa.eval.chatModel},
+ * an external one. Run with {@code ./gradlew evaluatePromptInjection}; needs Docker.
  */
 @SpringBootTest
 @ActiveProfiles("dev")
