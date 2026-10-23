@@ -58,6 +58,7 @@ import {
   LoginPage,
   MailSettingsPage,
   OidcProviderManagementPage,
+  PrivacySettingsPage,
   PromptLibraryCreatePage,
   PromptLibraryDetailPage,
   ProviderGroupWorklistPage,
@@ -92,6 +93,7 @@ const ADMIN_SECTIONS = [
   // Connection profiles, source types and external AI tools as one area with tabs.
   { label: 'Anbindungen', to: CONNECTIONS_ADMIN_ROUTE },
   { label: 'Suche & Indexierung', to: '/admin/search' },
+  { label: 'Datenschutz', to: '/admin/privacy' },
 ]
 
 /**
@@ -335,6 +337,7 @@ export default function App() {
                     element={<Navigate to="/admin/search/overview" replace />}
                   />
                   <Route path="admin/search/:tab" element={<SearchIndexingAdminPage />} />
+                  <Route path="admin/privacy" element={<PrivacySettingsPage />} />
                 </Route>
                 {/* Mockup 2c: the user settings render in the bare global frame -
                   no space column, no secondary column. */}

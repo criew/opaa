@@ -27,14 +27,16 @@ import AreaTabs from '@/shared/ui/AreaTabs'
 import { OwnExternalAccessTokensSection } from '@/features/external-access'
 import { MyGroupsSection } from '@/features/group'
 import { ConnectedAccountsSection } from '@/features/connection'
+import { MyDataSection } from '@/features/compliance'
 
-export type SettingsTab = 'general' | 'groups' | 'tokens' | 'accounts'
+export type SettingsTab = 'general' | 'groups' | 'tokens' | 'accounts' | 'data'
 
 const tabs: Array<{ value: SettingsTab; label: string }> = [
   { value: 'general', label: 'Allgemein' },
   { value: 'groups', label: 'Meine Gruppen' },
   { value: 'tokens', label: 'Zugangstokens' },
   { value: 'accounts', label: 'Verbundene Konten' },
+  { value: 'data', label: 'Meine Daten' },
 ]
 
 /** The tabs the installation offers: switched off (ADR-0044), the access tokens have none. */
@@ -57,8 +59,8 @@ function signInMethodLabel(mode: AuthMode | null): string | null {
 }
 
 /**
- * The personal settings, with the own access tokens and the groups the account is
- * responsible for as further areas.
+ * The personal settings, with the own access tokens, the groups the account is responsible for,
+ * the connected accounts and the person's own data (self-disclosure) as further areas.
  *
  * The areas are routes, so that a link to the token management lands there and a
  * reload keeps it. `/settings` without an area stays the entry point and shows „Allgemein“; a
@@ -117,6 +119,8 @@ export default function SettingsPage() {
           {(value) =>
             value === 'tokens' ? (
               <OwnExternalAccessTokensSection />
+            ) : value === 'data' ? (
+              <MyDataSection />
             ) : value === 'accounts' ? (
               <ConnectedAccountsSection />
             ) : value === 'groups' ? (

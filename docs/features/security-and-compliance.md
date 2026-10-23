@@ -8,8 +8,14 @@
 > parallel und begleitend; die unabhängige Prüfung als Nachweisstufe ist eine Reifegradfrage, keine
 > Funktion.
 >
-> **Selbstauskunft (Stufe 1, Epic #2986): spezifiziert, nicht gebaut.** Der Abschnitt
+> **Selbstauskunft (Stufe 1, Epic #2986): gebaut** — Ablauf, Grenzen, Protokoll, Oberfläche in den
+> Einstellungen („Meine Daten“) und Administration („Datenschutz“, #2993) und die Ausgabe aller
+> Kategorien der Tabelle „Inhalt“. Der Abschnitt
 > [Selbstauskunft](#selbstauskunft-stufe-1) ist die verbindliche Vorlage für #2988–#2994 und #2996.
+> Die Oberfläche löst den Download als Formular-POST in einen verborgenen Frame aus, den nur dieser
+> Endpunkt zulässt (`X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`), und liest Ende oder
+> Abbruch aus dem Status: alle paar Sekunden, solange der Tab sichtbar ist, und sofort bei der
+> Rückkehr in den Tab.
 
 > **Abgrenzung:** Das Rechtemodell steht in
 > [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md), Anmeldung, Kontenlebenszyklus und

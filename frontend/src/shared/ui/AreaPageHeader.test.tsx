@@ -19,6 +19,7 @@ const BEREICHSSEITEN = [
   'OidcProviderManagementPage.tsx',
   'MailSettingsPage.tsx',
   'SearchIndexingAdminPage.tsx',
+  'PrivacySettingsPage.tsx',
   'SettingsPage.tsx',
 ]
 
