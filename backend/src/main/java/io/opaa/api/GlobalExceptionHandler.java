@@ -95,7 +95,20 @@ public class GlobalExceptionHandler {
    */
   private ResponseEntity<ErrorResponse> respond(
       ResponseEntity.BodyBuilder builder, ErrorResponse body) {
+    if (responseCommitted()) {
+      // A started body (a streamed download) can take no answer any more: thrown here, the
+      // original failure reaches the container, which breaks the connection rather than ending
+      // the truncated body cleanly or appending an envelope to it.
+      throw new IllegalStateException("The response is already committed: " + body.getError());
+    }
     return acceptsErrorBody() ? builder.body(body) : builder.build();
+  }
+
+  private static boolean responseCommitted() {
+    return RequestContextHolder.getRequestAttributes()
+            instanceof ServletRequestAttributes servletAttributes
+        && servletAttributes.getResponse() != null
+        && servletAttributes.getResponse().isCommitted();
   }
 
   private ResponseEntity<ErrorResponse> respond(HttpStatusCode status, ErrorResponse body) {

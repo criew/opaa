@@ -4,6 +4,7 @@ import io.opaa.api.dto.SelfDisclosureStatus;
 import io.opaa.api.dto.SelfDisclosureTicket;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.selfdisclosure.SelfDisclosureService;
 import io.opaa.selfdisclosure.SelfDisclosureService.Run;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,7 +14,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -66,24 +66,17 @@ public class SelfDisclosureController {
     response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
     response.setHeader("X-Accel-Buffering", "no");
     if (!service.stream(run, response.getOutputStream())) {
-      throw new DownloadAborted();
+      // Once the ZIP has begun, GlobalExceptionHandler cannot answer any more and lets the
+      // failure reach the container, which breaks the connection instead of ending it cleanly.
+      if (!response.isCommitted()) {
+        response.reset();
+      }
+      throw new ServiceUnavailableException(ABORTED, ABORTED_RETRY_AFTER_SECONDS);
     }
   }
 
-  /**
-   * Lets an aborted download reach the servlet container instead of {@code GlobalExceptionHandler}:
-   * the response is already committed, so the container closes the connection without the final
-   * chunk, and the browser reports the download as failed rather than complete.
-   */
-  @ExceptionHandler(DownloadAborted.class)
-  void abortConnection(DownloadAborted aborted) {
-    throw aborted;
-  }
+  static final String ABORTED =
+      "Die Selbstauskunft wurde abgebrochen und nicht gezählt. Sie können sie erneut starten.";
 
-  /** The export ended before its last block; its cause is already recorded. */
-  static final class DownloadAborted extends RuntimeException {
-    DownloadAborted() {
-      super("self-disclosure download aborted", null, false, false);
-    }
-  }
+  static final long ABORTED_RETRY_AFTER_SECONDS = 60;
 }

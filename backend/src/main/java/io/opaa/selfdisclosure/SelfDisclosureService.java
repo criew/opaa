@@ -1,6 +1,7 @@
 package io.opaa.selfdisclosure;
 
 import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.NotificationType;
 import io.opaa.audit.AuditEvent;
@@ -242,6 +243,10 @@ public class SelfDisclosureService {
             .organizationId(user.getOrganizationId())
             .actor(accountId)
             .type(AuditEventType.SELF_DISCLOSURE_EXPORT_STARTED)
+            .object(
+                AuditObjectType.USER_ACCOUNT,
+                audit.pseudonymFor(accountId, user.getOrganizationId()),
+                null)
             .after(Map.of("categories", categories))
             .outcome(AuditOutcome.SUCCESS)
             .correlationRef(runId.toString())
@@ -347,6 +352,10 @@ public class SelfDisclosureService {
                     .organizationId(run.organizationId())
                     .actor(run.accountId())
                     .type(AuditEventType.SELF_DISCLOSURE_EXPORT_FINISHED)
+                    .object(
+                        AuditObjectType.USER_ACCOUNT,
+                        audit.pseudonymFor(run.accountId(), run.organizationId()),
+                        null)
                     .after(after)
                     .outcome(cause == null ? AuditOutcome.SUCCESS : AuditOutcome.FAILURE)
                     .correlationRef(run.runId().toString())

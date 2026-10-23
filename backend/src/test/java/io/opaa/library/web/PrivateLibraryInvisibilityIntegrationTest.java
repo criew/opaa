@@ -202,6 +202,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getConnectionLogRetention",
             "getDataCollectionDisclosure",
             "getDataCollectionDisclosureMarkdown",
+            "getSelfDisclosureStatus",
+            "getSelfDisclosureSettings",
             "listConnectionProfiles",
             "getConnectionProfile",
             "getConnectionProfileImpact",

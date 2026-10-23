@@ -81,7 +81,10 @@ paths:
         credential. Order of the entries: one <category>.json per category with records, then
         manifest.json, last index.html. No signature and no checksum file. Only a completely
         delivered export (central directory written and flushed) counts towards the daily limit;
-        an aborted one consumes nothing.
+        an aborted one consumes nothing, and the connection breaks instead of ending cleanly, so
+        the client does not take a truncated archive for a complete one. The 503 answers when this
+        instance streams as many exports as it may (opaa.self-disclosure.max-concurrent-exports),
+        with Retry-After 60; the ticket stays valid, nothing is reserved or consumed.
       requestBody:
         required: true
         content:
@@ -124,17 +127,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "503":
-          description: >-
-            This instance streams as many exports as it may (opaa.self-disclosure.max-concurrent-exports);
-            Retry-After 60. The ticket stays valid, nothing is reserved or consumed.
-          headers:
-            Retry-After:
-              schema:
-                type: integer
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /api/v1/admin/self-disclosure/settings:
     get:
