@@ -51,7 +51,7 @@ dem Dienstleister legt die Behörde fest:
 
 - Übernimmt das Projekt eine Korrektur, entfällt die Pflege einer eigenen Abweichung bei jedem
   Update. Das setzt die unterzeichnete
-  [Contributor License Agreement](../../handbuch/releases-und-nachweise.md#beiträge-und-contributor-license-agreement) voraus.
+  [Contributor License Agreement](../../handbuch/releases-und-nachweise.md#lizenzen) voraus.
 - Wie weit der Ausschluss nach deutschem Recht wirkt, behandelt diese Vorlage nicht.
 
 ## Zum Nachlesen

@@ -128,27 +128,14 @@ Signatur, prüfbar mit `gh attestation verify`, liegt am Chart und am Update-Pak
 
 ## Lizenzen
 
-OPAA steht unter der **GNU Affero General Public License v3.0** (Datei `LICENSE` im Repository). Der
-Funktionsumfang ist vollständig quelloffen. Wer OPAA verändert und anderen über ein Netz zur
-Nutzung bereitstellt, muss ihnen nach der Lizenz den Quellcode der veränderten Fassung anbieten.
-
-### Lizenzprüfung der Abhängigkeiten
-
-Bei jeder Änderung an den Abhängigkeiten prüft die CI die Lizenz jeder ausgelieferten Abhängigkeit
-gegen eine Freigabeliste: Lizenzen, die die Free Software Foundation als frei und mit der GPLv3
-verträglich führt. Was nicht passt, braucht eine begründete Ausnahme, die ein Maintainer freigibt;
-sonst wird die Änderung nicht übernommen. Die Lizenzübersicht von Backend und Frontend liegt im
-Update-Paket jeder Version unter `lizenzen/`. Eine rechtliche Einzelfallbewertung ersetzt die
-Prüfung nicht.
-
-### Beiträge und Contributor License Agreement
-
-Wer Änderungen ins Projekt einbringen will, etwa eine Korrektur eines Dienstleisters, unterzeichnet
-vor dem ersten Merge einmalig das Contributor License Agreement (CLA). Es räumt dem Projekt das
-Recht ein, Beiträge auch unter anderen Lizenzbedingungen weiterzugeben; darauf beruht das duale
-Lizenzmodell, in dem neben der AGPL kommerzielle Lizenzen angeboten werden. Beiträge im Namen eines
-Arbeitgebers brauchen dessen Zustimmung. Ohne unterzeichnetes CLA wird ein Beitrag nicht
-übernommen; die eigene Abweichung muss die Behörde dann bei jedem Update selbst pflegen.
+- **OPAA** steht unter der GNU Affero General Public License v3.0 (Datei `LICENSE` im Repository).
+  Wer OPAA verändert und anderen über ein Netz bereitstellt, muss den Quellcode der veränderten
+  Fassung anbieten.
+- **Abhängigkeiten:** Die CI lässt nur Lizenzen zu, die mit der GPLv3 verträglich sind, sonst eine
+  begründete Ausnahme. Die Lizenzübersicht liegt im Update-Paket unter `lizenzen/`.
+- **Beiträge:** Wer Änderungen ins Projekt einbringen will, unterzeichnet einmalig das Contributor
+  License Agreement (CLA). Ohne CLA pflegt die Behörde eine eigene Abweichung bei jedem Update
+  selbst.
 
 ## Was nicht gebaut ist
 
