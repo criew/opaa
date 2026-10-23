@@ -24,7 +24,7 @@ jederzeit auch lokal ausführen (unten).
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
-| pytest der CI-Jobs `report-script`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`); ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
+| pytest der CI-Jobs `report-script`, `seed-script` und Datenwirkung, markdown-it-py für die HTML-Fassung des Update-Pakets (`.github/requirements-ci.txt`); ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
 | Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) | `custom.regex` | `ci` |
 

@@ -144,7 +144,8 @@ jobs:
             # manager. data-impact-paths.txt belongs here because test_check_data_impact.py checks
             # that each of its patterns still matches a tracked file, .github/licenses/** because
             # test_check_licenses.py loads the policy files. requirements-ci.txt pins the pytest this
-            # job and seed-script install, so a Renovate bump of it runs both.
+            # job and seed-script install and the markdown-it-py of update_package.py, so a Renovate
+            # bump of it runs both.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'

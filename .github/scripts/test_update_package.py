@@ -197,7 +197,7 @@ def inputs(tmp_path: Path) -> dict:
         "betrieb.md": "# Betrieb\n\n## Ports\n",
     }.items():
         (handbook / path).parent.mkdir(parents=True, exist_ok=True)
-        (handbook / path).write_text(text, encoding="utf-8")
+        (handbook / path).write_bytes(text.encode("utf-8"))
     for path in ("SECURITY.md", "docs/releases.md"):
         (checkout / path).parent.mkdir(parents=True, exist_ok=True)
         (checkout / path).write_text("# x\n")

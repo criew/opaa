@@ -261,8 +261,9 @@ jobs:
 
   # The update package for authorities (docs/releases.md, "Update-Paket"): runs the completeness
   # guard of the compliance manifest, then update_package.py builds fact sheets, delta to the
-  # previous final release, license overview, the CycloneDX SBOMs of backend and frontend and the
-  # templates for authorities into one archive; the SBOMs also lie beside it for the release.
+  # previous final release, license overview, the CycloneDX SBOMs of backend and frontend, the
+  # templates for authorities and the handbook, each also as HTML, into one archive; the SBOMs also
+  # lie beside it for the release.
   # publish waits for this job, so an incomplete manifest stops a release before any tag is set. Like the
   # image builds of a release it takes nothing from a cache: no Gradle, pnpm or gha cache.
   update-package:
@@ -315,6 +316,14 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      # markdown-it-py renders the HTML version of the package; versions pinned in the file.
+      - name: Python-Werkzeuge installieren
+        run: pip install -r .github/requirements-ci.txt
 
       # The same guard as in every backend test run: manifest against schema, audit events, roles,
       # prompts, data flows and configuration keys, and the placeholder targets of docs/behoerden/.

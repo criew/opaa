@@ -17,11 +17,14 @@ node_modules of frontend/ and .github/tools/cdxgen/ must be installed) and write
 opaa-update-paket-<version>.tar.gz with its .sha256 file and both SBOMs into --out; the package
 holds the SBOMs under sbom/. Without a previous final release the delta starts from the oldest root
 commit, which has no manifest.
-The templates of docs/behoerden/ go to vorlagen/, the update note also to the top. In them, fact
-sheet placeholders become links to faktenblaetter/ and links out of the package point to the tag
-(of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
-nothing fails the run. Links of the delta point into --repository. Dates and file metadata come
-from the commit, so the same commit yields the same files.
+The templates of docs/behoerden/ go to vorlagen/, the update note also to the top, the handbook of
+docs/handbuch/ to handbuch/. In templates, fact sheet placeholders become links to faktenblaetter/;
+in templates and handbook, links into the package stay relative and links out of it point to the
+tag (of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
+nothing fails the run. Beside every Markdown file lies its HTML page, with index.html as start page
+(package_html.py); a link of the HTML version to a missing file or anchor fails the run. Links of
+the delta point into --repository. Dates and file metadata come from the commit, so the same commit
+yields the same files.
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
 preparation, reindexing, schema migration, new ports and egress targets, answer quality. Every
@@ -30,7 +33,8 @@ data flows come from the manifest delta (--delta-json, as `./gradlew complianceD
 and are reported as not determined without it. A delta of other commits or a missing --delta-json
 file fails the run. `build` writes the same files for its interval into the package.
 
-Exit codes: 0 success, 1 failure, 2 usage. Standard library only.
+Exit codes: 0 success, 1 failure, 2 usage. Standard library only, except `build`, which needs
+markdown-it-py for the HTML version (.github/requirements-ci.txt).
 """
 
 from __future__ import annotations
@@ -57,9 +61,11 @@ ROOT = Path(__file__).resolve().parents[2]
 RELEASE_VERSION = ROOT / "deploy" / "helm" / "ci" / "release-version.sh"
 CHECK_LICENSES = ROOT / ".github" / "scripts" / "check_licenses.py"
 TEMPLATES = ROOT / "docs" / "behoerden"
+HANDBOOK = ROOT / "docs" / "handbuch"
 UPDATE_NOTE = "09-betrieb-update/update-vermerk.md"
 TEMPLATE_DIR = "vorlagen/"
-# Rules for authors of docs/behoerden/, no template; excluded at its top level only.
+HANDBOOK_DIR = "handbuch/"
+# Rules for authors of docs/behoerden/ and docs/handbuch/, no content; excluded at their top level only.
 AUTHOR_RULES = ("AGENTS.md", "CLAUDE.md")
 MANIFEST_PATH = "backend/src/main/resources/compliance/manifest/"
 FACT_SHEETS = Path("backend/build/compliance/faktenblaetter")
@@ -752,8 +758,13 @@ def readme(release: Release) -> str:
     )
     lines += [
         "",
+        "Zum Lesen im Browser `index.html` öffnen: Neben jeder Markdown-Datei liegt dieselbe Seite als"
+        " HTML, alle Verweise innerhalb des Pakets funktionieren ohne Internetzugang. Die Markdown-Dateien"
+        " dienen zum Weiterbearbeiten und Vergleichen.",
+        "",
         "| Datei | Inhalt |",
         "|---|---|",
+        "| `index.html` | Startseite der HTML-Fassung |",
         "| `delta/manifest-delta.md` | Änderungen der Fakten mit Stufenvorschlag, Bezug zu VVT, DSFA"
         " und Sicherheitskonzept und den als datenrelevant gekennzeichneten Pull Requests |",
         "| `delta/manifest-delta.json` | dieselben Änderungen einzeln, für Werkzeuge |",
@@ -767,8 +778,11 @@ def readme(release: Release) -> str:
         f" `{sbom_name('backend', release)}` und `{sbom_name('frontend', release)}`;"
         " dieselben Dateien hängen am GitHub-Release |",
         "| `update-vermerk.md` | Vorlage für den Update-Vermerk der Behörde |",
-        "| `vorlagen/` | alle Vorlagen für Behörden mit ihren Ordnerübersichten; Faktenblatt-Verweise"
-        " führen auf `faktenblaetter/`, Verweise ins Repository auf den Stand dieser Version |",
+        "| [`vorlagen/`](vorlagen/README.md) | alle Vorlagen für Behörden mit ihren Ordnerübersichten;"
+        " Faktenblatt-Verweise führen auf `faktenblaetter/`, Handbuch-Verweise auf `handbuch/`, andere"
+        " Verweise ins Repository auf den Stand dieser Version |",
+        f"| [`{HANDBOOK_DIR}`]({HANDBOOK_DIR}README.md) | das Handbuch dieser Version; Verweise auf andere"
+        " Dokumentation führen auf deren Stand in dieser Version |",
         "| `SHA256SUMS` | Prüfsummen aller Dateien des Pakets |",
         "",
         "## Prüfen",
@@ -875,9 +889,9 @@ def resolve_placeholders(text: str, path: str, sheets: dict[str, str]) -> str:
 
 @dataclass(frozen=True)
 class Links:
-    """Where links of templates lead: `packaged` maps the repository path of every template to its
-    package path, `checkout` is the working tree they come from, `ref` the tag or commit in
-    `repository` that links to anything outside the package point to."""
+    """Where links of templates and handbook lead: `packaged` maps the repository path of every file
+    of both to its package path, `checkout` is the working tree they come from, `ref` the tag or
+    commit in `repository` that links to anything outside the package point to."""
 
     checkout: Path
     packaged: dict[str, str]
@@ -885,7 +899,7 @@ class Links:
     ref: str
 
     def directories(self) -> dict[str, str]:
-        """Repository path of every directory the package holds templates of, to its package path."""
+        """Repository path of every directory the package holds files of, to its package path."""
         found: dict[str, str] = {}
         for source, path in self.packaged.items():
             source, path = posixpath.dirname(source), posixpath.dirname(path)
@@ -896,7 +910,7 @@ class Links:
 
 
 def relative_links(source: str, path: str, links: Links):
-    """The transform of prose that rewrites the relative links of the template `source` for its
+    """The transform of prose that rewrites the relative links of the repository file `source` for its
     package file `path`: a target in the package stays relative, anything else in the repository
     becomes an absolute link at `links.ref`. Anchors, external links and targets that already
     resolve in the package stay as written; a target the checkout lacks fails the run."""
@@ -944,10 +958,10 @@ def render_template(text: str, source: str, path: str, sheets: dict[str, str], l
     return outside_code(text, lambda chunk: resolve(rewrite(chunk)))
 
 
-def templates_of(templates: Path) -> list[Path]:
-    """Every Markdown file below `templates`, without the author rules at its top level."""
-    return sorted(p for p in templates.rglob("*.md")
-                  if p.is_file() and not (p.parent == templates and p.name in AUTHOR_RULES))
+def markdown_of(directory: Path) -> list[Path]:
+    """Every Markdown file below `directory`, without the author rules at its top level."""
+    return sorted(p for p in directory.rglob("*.md")
+                  if p.is_file() and not (p.parent == directory and p.name in AUTHOR_RULES))
 
 
 def sbom_name(part: str, release: Release) -> str:
@@ -990,12 +1004,16 @@ def assemble(
     licenses: list[Path],
     sboms: dict[str, Path],
     templates: Path,
+    handbook: Path,
     out: Path,
 ) -> Path:
     """Writes <name>.tar.gz, <name>.tar.gz.sha256 and the SBOMs, by part such as "backend", into
-    `out`; returns the archive. `templates` is docs/behoerden/ of the checkout the release is built
-    from. Placeholders and links are resolved in template text only, never in text from elsewhere
-    such as pull request titles or upgrade notes."""
+    `out`; returns the archive. `templates` and `handbook` are docs/behoerden/ and docs/handbuch/ of
+    the checkout the release is built from. Placeholders are resolved in template text only, links
+    in template and handbook text only, never in text from elsewhere such as pull request titles or
+    upgrade notes."""
+    from package_html import broken_links, render
+
     name = PREFIX + release.version
     files: dict[str, bytes] = {"LIESMICH.md": readme(release).encode()}
     sheets = sorted(p for p in fact_sheets.glob("*") if p.is_file()) if fact_sheets.is_dir() else []
@@ -1020,17 +1038,32 @@ def assemble(
     for file, content in loose.items():
         files[SBOM_DIR + file] = content
     checkout = templates.parents[1]
-    prefix = templates.relative_to(checkout).as_posix() + "/"
-    sources = {prefix + p.relative_to(templates).as_posix(): p for p in templates_of(templates)}
-    if prefix + UPDATE_NOTE not in sources:
+    sources: dict[str, Path] = {}
+    packaged: dict[str, str] = {}
+    for directory, target in ((templates, TEMPLATE_DIR), (handbook, HANDBOOK_DIR)):
+        prefix = directory.relative_to(checkout).as_posix() + "/"
+        for file in markdown_of(directory):
+            source = prefix + file.relative_to(directory).as_posix()
+            sources[source], packaged[source] = file, target + source[len(prefix):]
+    note = templates.relative_to(checkout).as_posix() + "/" + UPDATE_NOTE
+    if note not in sources:
         raise PackageError(f"update note template {templates / UPDATE_NOTE} is missing")
-    packaged = {source: TEMPLATE_DIR + source[len(prefix):] for source in sources}
+    if HANDBOOK_DIR + "README.md" not in packaged.values():
+        raise PackageError(f"handbook {handbook / 'README.md'} is missing")
     links = Links(checkout, packaged, release.repository, release.commit if release.trial else release.tag)
     sheets = {path[len("faktenblaetter/"):-3]: content.decode("utf-8") for path, content in files.items()
               if path.startswith("faktenblaetter/") and path.endswith(".md")}
-    for source, path in [*packaged.items(), (prefix + UPDATE_NOTE, "update-vermerk.md")]:
+    for source, path in [*packaged.items(), (note, "update-vermerk.md")]:
         text = sources[source].read_bytes().decode("utf-8")
-        files[path] = render_template(text, source, path, sheets, links).encode("utf-8")
+        rendered = (outside_code(text, relative_links(source, path, links)) if path.startswith(HANDBOOK_DIR)
+                    else render_template(text, source, path, sheets, links))
+        files[path] = rendered.encode("utf-8")
+    files.update(render(files, f"Update-Paket OPAA {release.version}",
+                        f"Probelauf: kein veröffentlichtes Release, Commit {release.commit}"
+                        if release.trial else None))
+    broken = broken_links(files)
+    if broken:
+        raise PackageError("links of the HTML version lead nowhere: " + "; ".join(broken))
     files["SHA256SUMS"] = "".join(
         f"{hashlib.sha256(content).hexdigest()}  {path}\n" for path, content in sorted(files.items())
     ).encode()
@@ -1161,7 +1194,7 @@ def build(args: argparse.Namespace) -> list[Path]:
         sboms = {"backend": ROOT / CYCLONEDX, "frontend": frontend_sbom}
         archive = assemble(release, fact_sheets=ROOT / FACT_SHEETS, delta=ROOT / DELTA,
                            operations=operations_dir, licenses=[backend, frontend], sboms=sboms,
-                           templates=TEMPLATES, out=Path(args.out))
+                           templates=TEMPLATES, handbook=HANDBOOK, out=Path(args.out))
         return [archive, archive.with_name(archive.name + ".sha256"),
                 *(archive.with_name(sbom_name(part, release)) for part in sorted(sboms))]
 

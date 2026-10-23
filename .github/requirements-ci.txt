@@ -1,2 +1,6 @@
-# Python tools of the CI jobs that test .github/scripts and demo/seed; Renovate maintains the pin.
+# Python tools of the CI jobs that test .github/scripts and demo/seed and of the release job
+# update-package (markdown-it-py with its dependency mdurl renders the HTML version); Renovate
+# maintains the pins.
+markdown-it-py==4.2.0
+mdurl==0.1.2
 pytest==9.1.1
