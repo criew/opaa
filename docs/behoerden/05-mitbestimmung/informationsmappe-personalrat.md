@@ -145,7 +145,7 @@ Personalrat erfährt es danach.
 | Manifest | Beschreibung im Programmcode, aus der die Faktenblätter entstehen; Prüfungen halten sie mit dem Code gleich |
 | Update-Paket | Unterlagen zu jedem Release: Faktenblätter, Delta, Betriebsfolgen |
 | Delta | Liste der Änderungen gegenüber einer früheren Version, je Änderung mit Stufenvorschlag |
-| Linie, LTS | Versionen einer Reihe, die Sicherheitsupdates ohne neue Funktionen bekommen sollen; LTS ist die Linie mit dem längsten Support. Heute bekommt nur die jüngste Linie solche Updates |
+| Linie, LTS | Versionen einer Reihe, die Sicherheitsupdates ohne neue Funktionen bekommen sollen; LTS ist die Linie mit dem längsten Support |
 | Release-Kandidat | Vorabfassung einer Version, an der die Beteiligung beginnen kann |
 | Space | Arbeitsbereich mit Chats und den ihm zugeordneten Bibliotheken |
 | System-Prompt | feste Anweisung von OPAA an das Sprachmodell, die bei jeder Frage mitgeht |

@@ -42,11 +42,10 @@ in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
   [Stufenregeln](../../features/behoerdenunterlagen.md#die-stufenregeln). Das Delta im Paket
   vergleicht mit dem vorigen finalen Release; für einen größeren Sprung erzeugt der Betrieb es selbst
   ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
-- **Supportlinien:** Im Zielbild bringen Patch-Releases nur Sicherheitskorrekturen und Behebungen
-  kritischer Fehler. Heute bekommt nur die jüngste Linie Patch-Releases, und ein Patch-Release mit
-  Codeänderung enthält alles, was seit dem letzten Release dazukam, außer neuen Funktionen
+- **Supportlinien:** Patch-Releases bringen nur Sicherheitskorrekturen und Behebungen kritischer
+  Fehler, für ältere Linien über eigene Wartungsbranches
   ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)). Den
-  Schutz gibt deshalb die Sichtung des Deltas vor dem Einspielen.
+  Schutz gibt zusätzlich die Sichtung des Deltas vor dem Einspielen.
 - Die [Informationsmappe für den Personalrat](informationsmappe-personalrat.md) erklärt all das in
   Alltagssprache.
 
@@ -411,12 +410,11 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 
 ## Gut zu wissen
 
-- **Supportlinien heute und im Zielbild:** Im Zielbild bekommt jede unterstützte Linie
-  Patch-Releases ohne neue Funktion, und das Juni-Release ist eine LTS-Linie mit rund zwölf Monaten
-  Support. Heute bekommt nur die jüngste Linie Patch-Releases, und eine Korrektur im Code erscheint
-  nur dann als Patch-Release, wenn seit dem letzten Release keine neue Funktion hinzugekommen ist
-  ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)). Bis
-  dahin ist Nummer 15 Absatz 11 der Regelfall für Sicherheitskorrekturen im Code.
+- **Supportlinien:** Jede unterstützte Linie bekommt Patch-Releases ohne neue Funktion, ältere
+  Linien über eigene Wartungsbranches, und das Juni-Release ist eine LTS-Linie mit rund zwölf
+  Monaten Support ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)).
+  Nummer 15 Absatz 11 bleibt für den Fall, dass eine Korrektur nur in einem Funktionsupdate
+  bereitsteht, etwa nach dem Supportende der eingesetzten Linie.
 - **Zeit für den Linienwechsel:** Der Release-Kandidat eines LTS erscheint nur wenige Wochen vor dem
   Supportende der laufenden LTS-Linie. Wer mehr Zeit braucht, beginnt mit dem Delta zum
   Dezember-Release (Nummer 15 Absatz 12).

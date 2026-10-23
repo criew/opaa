@@ -26,7 +26,7 @@ schließt.
 | Gewährleistung | keine; die Software wird bereitgestellt „wie sie ist“ | [Lizenz](../../../LICENSE), Abschnitt 15 |
 | Haftung | ausgeschlossen, soweit das anwendbare Recht es zulässt | [Lizenz](../../../LICENSE), Abschnitte 16 und 17 |
 | Reaktionszeiten auf gemeldete Sicherheitslücken | keine festen Zusagen, Bearbeitung nach bestem Bemühen | [Sicherheitsrichtlinie](../../../SECURITY.md#ablauf) |
-| Sicherheitskorrekturen und Behebungen kritischer Fehler | für `main` und jede unterstützte Linie bis zu ihrem Supportende, nach bestem Bemühen; derzeit erhält nur die jüngste Linie Codekorrekturen | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
+| Sicherheitskorrekturen und Behebungen kritischer Fehler | für `main` und jede unterstützte Linie bis zu ihrem Supportende, nach bestem Bemühen | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
 | Reaktion auf Befunde des eigenen Schwachstellenscans | Fristen nach Schwere | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates) |
 | Pflichten nach dem Cyber Resilience Act | als Open-Source-Steward | [Rollenklärung zum CRA](../06-informationssicherheit/rollenklaerung-cra.md#die-rollen-im-überblick) |
 

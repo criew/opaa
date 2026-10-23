@@ -58,9 +58,9 @@ Lizenzübersicht ([Tabelle unten](#programmstände-sbom-und-supportzeiträume)).
 
 ## Gut zu wissen
 
-- Die Supportzeiträume gelten ab dem ersten finalen Release. Solange das Projekt keine
-  Wartungsbranches betreibt, bekommt nur die jüngste Linie Korrekturen; eine längere oder festere
-  Zusage kann nur ein Dienstleister geben.
+- Die Supportzeiträume gelten ab dem ersten finalen Release; ältere Linien bekommen Korrekturen
+  über eigene Wartungsbranches, nach bestem Bemühen. Eine längere oder festere Zusage kann nur ein
+  Dienstleister geben.
 - Der Release-Kandidat des nächsten LTS erscheint mit Update-Paket einige Wochen vor dem
   Supportende der laufenden LTS-Linie; auf seiner Grundlage kann die Beteiligung für den Wechsel
   beginnen.
