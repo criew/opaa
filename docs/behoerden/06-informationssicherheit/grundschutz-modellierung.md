@@ -28,7 +28,7 @@ Verantwortlich ist die Behörde; OPAA beschreibt, was das Produkt dazu beiträgt
 - **Daten und Voreinstellungen** der eingesetzten Version: {{faktenblatt:datenkatalog}},
   {{faktenblatt:voreinstellungen}}; Nachweise des Projekts in den
   [Sicherheitsnachweisen](sicherheitsnachweise.md).
-- **Je Release ein [Update-Paket](../../releases.md#update-paket)**, das bei jeder Änderung angibt,
+- **Je Release ein [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket)**, das bei jeder Änderung angibt,
   ob das Sicherheitskonzept fortzuschreiben ist.
 
 Bausteine, zu denen das Produkt beiträgt:
@@ -39,7 +39,7 @@ Bausteine, zu denen das Produkt beiträgt:
 | CON.1 Kryptokonzept | [Schlüssel und Geheimnisse](../../handbuch/betrieb.md#schlüssel-und-geheimnisse) |
 | CON.3 Datensicherungskonzept | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung) |
 | CON.6 Löschen und Vernichten | {{faktenblatt:fristen}} |
-| OPS.1.1.3 Patch- und Änderungsmanagement | [Sicherheitsupdates für Releases](../../releases.md#sicherheitsupdates-für-releases), Update-Paket |
+| OPS.1.1.3 Patch- und Änderungsmanagement | [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates), Update-Paket |
 | OPS.1.1.5 Protokollierung, DER.1 Detektion | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken) |
 | DER.2.1 Sicherheitsvorfälle | Meldeweg in [`SECURITY.md`](../../../SECURITY.md) |
 | DER.4 Notfallmanagement | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md) |
@@ -93,7 +93,7 @@ Nächste Fortschreibung: mit dem nächsten Update, spätestens [Datum]
 - [AIC4](https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Kuenstliche-Intelligenz/AIC4/aic4.html):
   Prüfkatalog des BSI für KI-Cloud-Dienste, als Ideengeber für die KI-Risikoanalyse; OPAA ist danach
   nicht geprüft, ebenso wenig nach dem neueren Prüfkatalog A5.
-- [Release-Verfahren](../../releases.md#datenwirkung-kennzeichnen): wie Release-Notizen
+- [Releases und Nachweise](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert): wie Release-Notizen
   datenrelevante Änderungen kennzeichnen.
 
 **Rechtsgrundlagen:**

@@ -34,7 +34,7 @@ Datenschutzverletzung.
 | **Verfügbarkeit** | Bereitschafts- und Lebendigkeitsprüfung ([Betrieb](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit)), Begrenzungen am Anmeldeweg | Überwachung, Kapazität, Ausfall des Modellanbieters einplanen |
 | **Ausgehende Verbindungen** | Zielprüfung ([Zielprüfung](../../handbuch/betrieb.md#zielprüfung-abrufe-des-servers)), ein Ausgangsproxy ([Ausgangsproxy](../../handbuch/betrieb.md#ausgangsproxy)), Datenflüsse ({{faktenblatt:datenfluesse#datenfluesse}}) | Netzregeln, Zielliste am Proxy |
 | **Wiederherstellung** | Sicherungsumfang und Reihenfolge beschrieben ([Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung)) | Sicherungen durchführen, Rücksicherung regelmäßig proben |
-| **Regelmäßige Überprüfung** | Stückliste je Image ([SBOM](../../sbom.md)), [CVE-Scanning](../../cve-scanning.md), Meldeweg für Lücken ([SECURITY.md](../../../SECURITY.md)), Faktenblätter und Update-Paket je Version | Updates zeitnah einspielen, Update-Paket lesen, eigene Prüfungen |
+| **Regelmäßige Überprüfung** | Stückliste je Image ([SBOM](../../handbuch/releases-und-nachweise.md#herkunft-und-software-stückliste)), [Schwachstellenerkennung](../../handbuch/releases-und-nachweise.md#schwachstellen), Meldeweg für Lücken ([SECURITY.md](../../../SECURITY.md)), Faktenblätter und Update-Paket je Version | Updates zeitnah einspielen, Update-Paket lesen, eigene Prüfungen |
 
 ## Aufgaben der Behörde
 

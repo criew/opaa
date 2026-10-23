@@ -5,6 +5,8 @@ Helm-Chart in GHCR mit derselben Versionsnummer und ein GitHub-Release mit der �
 Daneben gibt es weiter den beweglichen Stand `main`, der jedem Merge folgt. Wer reproduzierbar
 betreiben will, pinnt eine Version.
 
+Für Betreiber und Behörden zusammengefasst: [Handbuch, Releases und Nachweise](handbuch/releases-und-nachweise.md).
+
 ## Was ein Release erzeugt
 
 Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publish-images.yml`:

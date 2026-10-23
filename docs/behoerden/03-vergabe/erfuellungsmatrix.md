@@ -62,18 +62,18 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | D-02 | ja | {{faktenblatt:fristen}} | Faktenblatt, Konfiguration |
 | D-03 | ja | {{faktenblatt:protokollereignisse}}, {{faktenblatt:rollensicht#auditor}}, [TOM des Produktanteils](../04-datenschutz/technische-und-organisatorische-massnahmen.md) | Faktenblatt, Projektunterlage |
 | D-04 | ja | {{faktenblatt:rollensicht#matrix}} | Faktenblatt |
-| D-05 | ja; beim ersten finalen Release erscheint jeder Eintrag als neu | [Update-Paket](../../releases.md#update-paket), [Update-Paket eines Release](../../handbuch/nachvollziehbarkeit.md#das-update-paket-eines-release) | Projektunterlage |
+| D-05 | ja; beim ersten finalen Release erscheint jeder Eintrag als neu | [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket), [Update-Paket eines Release](../../handbuch/nachvollziehbarkeit.md#das-update-paket-eines-release) | Handbuch |
 
 ## S · Sicherheit und Lieferkette
 
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
 | S-01 | ja | [Anmeldewege im Betriebsmodus OIDC](../../handbuch/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) | Handbuch, Konfiguration |
-| S-02 | ja | [Image-Attestierungen](../../sbom.md#ebene-1--image-attestierungen), [Ökosystem-SBOMs](../../sbom.md#ebene-2--ökosystem-sboms-cyclonedx-ci-artefakte) | Projektunterlage |
-| S-03 | ja | [Was ein Release erzeugt](../../releases.md#was-ein-release-erzeugt) | Projektunterlage |
+| S-02 | ja | [Herkunft und Software-Stückliste](../../handbuch/releases-und-nachweise.md#herkunft-und-software-stückliste) | Handbuch |
+| S-03 | ja | [Was ein Release liefert](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
 | S-04 | ja | [Meldeweg](../../../SECURITY.md#meldeweg), [Ablauf](../../../SECURITY.md#ablauf) | Projektunterlage |
 | S-05 | ja | [Nur lesbares Dateisystem](../../handbuch/betrieb.md#nur-lesbares-dateisystem), [Pod Security](../../handbuch/kubernetes.md#pod-security) | Handbuch |
-| S-06 | ja, für `main` und das jüngste Release | [Image-Scan](../../cve-scanning.md#ebene-2--images-trivy-scan), [Sicherheitsupdates für Releases](../../releases.md#sicherheitsupdates-für-releases) | Projektunterlage, Test |
+| S-06 | ja, für `main` und das jüngste Release | [Schwachstellen](../../handbuch/releases-und-nachweise.md#schwachstellen), [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates) | Handbuch, Test |
 
 ## B · Betrieb
 
@@ -82,14 +82,14 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 | B-01 | ja | [Bausteine](../../handbuch/betrieb.md#bausteine) | Handbuch |
 | B-02 | ja; mit einer oder mehreren Backend-Instanzen, mit mehreren auch Aktualisierung ohne Ausfall, soweit die neue Version die laufende neben sich zulässt | [Kubernetes-Installation](../../handbuch/kubernetes.md#installation), [Docker Compose](../../handbuch/docker-compose.md#schnellstart), [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md) | Handbuch |
 | B-03 | ja | [Sicherung und Wiederherstellung](../../handbuch/betrieb.md#sicherung-und-wiederherstellung), [Automatisierte Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md#automatisierte-probe-im-projekt) | Handbuch, Test |
-| B-04 | ja | [Versionsnummern](../../releases.md#versionsnummern), [Vorbereitung für Bestandsinstallationen](../../releases.md#vorbereitung-für-bestandsinstallationen) | Projektunterlage |
+| B-04 | ja | [Versionen](../../handbuch/releases-und-nachweise.md#versionen), [Vorbereitung für Bestandsinstallationen](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert) | Handbuch |
 | B-05 | ja | [Bereitschaft und Lebendigkeit](../../handbuch/betrieb.md#bereitschaft-und-lebendigkeit), [Betriebsüberwachung](../../handbuch/kubernetes.md#betriebsüberwachung) | Handbuch |
 
 ## O · Offenheit und Souveränität
 
 | Nr. | Erfüllung | Nachweis bei OPAA | Art |
 |---|---|---|---|
-| O-01 | ja; GNU Affero General Public License v3.0 | [Lizenz](../../../LICENSE), [Lizenzprüfung der Abhängigkeiten](../../sbom.md#lizenzprüfung) | Projektunterlage, Test |
+| O-01 | ja; GNU Affero General Public License v3.0 | [Lizenz](../../../LICENSE), [Lizenzprüfung der Abhängigkeiten](../../handbuch/releases-und-nachweise.md#lizenzprüfung-der-abhängigkeiten) | Projektunterlage, Test |
 | O-02 | ja | Speicherorte in {{faktenblatt:datenkatalog}}, [Originalablage](../../handbuch/originalablage.md#die-drei-wege), [eigene Datenbank](../../handbuch/datenbank.md#voraussetzungen-einer-eigenen-postgresql) | Faktenblatt, Handbuch |
 | O-03 | ja | [Handbuch](../../handbuch/README.md) | Handbuch |
 
@@ -105,10 +105,10 @@ Version im Update-Paket ([Faktenblätter](../README.md#faktenblätter)).
 |---|---|---|---|
 | L-01 | Dienstleister | [Kubernetes-Installation](../../handbuch/kubernetes.md#installation), [Authentifizierung](../../handbuch/authentifizierung.md), [Konnektoren](../../handbuch/konnektoren/README.md) | Handbuch |
 | L-02 | Dienstleister | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md), [Mehrere Backend-Instanzen](../../handbuch/mehrere-instanzen.md) | Projektunterlage, Handbuch |
-| L-03 | Dienstleister | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen), [Update-Paket](../../releases.md#update-paket); Supportzeiträume sind offen ([EVB-IT-Hinweise](evb-it-hinweise.md#programmstände-sbom-und-supportzeiträume)) | Projektunterlage |
+| L-03 | Dienstleister | [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen), [Update-Paket](../../handbuch/releases-und-nachweise.md#das-update-paket); Supportzeiträume sind offen ([EVB-IT-Hinweise](evb-it-hinweise.md#programmstände-sbom-und-supportzeiträume)) | Projektunterlage, Handbuch |
 | L-04 | Dienstleister; das Projekt sagt keine Reaktionszeiten zu | [Ablauf bei Sicherheitslücken](../../../SECURITY.md#ablauf) | Projektunterlage |
 | L-05 | Dienstleister | [Handbuch](../../handbuch/README.md) | Handbuch |
-| L-06 | Dienstleister; eine Übernahme ins Projekt setzt die unterzeichnete CLA voraus | [Lizenz](../../../LICENSE), [Contributor License Agreement](../../../CONTRIBUTING.md#contributor-license-agreement-cla) | Projektunterlage |
+| L-06 | Dienstleister; eine Übernahme ins Projekt setzt die unterzeichnete CLA voraus | [Lizenz](../../../LICENSE), [Contributor License Agreement](../../handbuch/releases-und-nachweise.md#beiträge-und-contributor-license-agreement) | Projektunterlage, Handbuch |
 | L-07 | Dienstleister | [Sicherung und Wiederherstellung](../../handbuch/kubernetes.md#sicherung-und-wiederherstellung), Speicherorte in {{faktenblatt:datenkatalog}} | Handbuch, Faktenblatt |
 | L-08 | Dienstleister | [Rollenklärung zum CRA](../06-informationssicherheit/rollenklaerung-cra.md#die-rollen-im-überblick) | Projektunterlage |
 

@@ -23,9 +23,9 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 |---|---|---|
 | Härtung | welche Maßnahmen zwingend sind, je Betriebsweg | [Härtung](../../handbuch/betrieb.md#härtung-für-erreichbare-deployments), [Docker Compose](../../handbuch/docker-compose.md#härtung-des-compose-stapels), [Kubernetes](../../handbuch/kubernetes.md#netz-und-sicherheit), [Keycloak](../../handbuch/authentifizierung.md#härtung-des-mitgelieferten-keycloak); Voreinstellungen in {{faktenblatt:voreinstellungen}} |
 | Protokollierung | Anwendungsprotokoll, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betrieb.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
-| Software-Stückliste (SBOM) | woraus jedes Image besteht, Herkunftsnachweise, Lizenzprüfung | [SBOM](../../sbom.md), [Was ein Release erzeugt](../../releases.md#was-ein-release-erzeugt) |
-| Schwachstellen | Erkennung in Abhängigkeiten und Images, Reaktionszeiten nach Schwere | [CVE-Erkennung](../../cve-scanning.md), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
-| Sicherheitsupdates | Patch-Releases, veröffentlichte Lücken | [Sicherheitsupdates](../../releases.md#sicherheitsupdates-für-releases), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
+| Software-Stückliste (SBOM) | woraus jedes Image besteht, Herkunftsnachweise, Lizenzprüfung | [Herkunft und Software-Stückliste](../../handbuch/releases-und-nachweise.md#herkunft-und-software-stückliste), [Was ein Release liefert](../../handbuch/releases-und-nachweise.md#was-ein-release-liefert) |
+| Schwachstellen | Erkennung in Abhängigkeiten und Images, Reaktionszeiten nach Schwere | [Schwachstellen](../../handbuch/releases-und-nachweise.md#schwachstellen), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
+| Sicherheitsupdates | Patch-Releases, veröffentlichte Lücken | [Sicherheitsupdates](../../handbuch/releases-und-nachweise.md#sicherheitsupdates), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
 | Pflichten des Projekts | Rolle nach dem Cyber Resilience Act | [Rollenklärung](rollenklaerung-cra.md) |
 
 ## Aufgaben der Behörde
@@ -54,7 +54,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 - [`SECURITY.md`](../../../SECURITY.md): Meldeweg, unterstützte Versionen und Ablauf bis zur
   Veröffentlichung einer Lücke.
-- [Triage von Image-Alerts](../../cve-scanning.md#triage-von-image-alerts): wie schnell das Projekt
+- [Releases und Nachweise](../../handbuch/releases-und-nachweise.md#sicherheitsupdates): wie schnell das Projekt
   auf Befunde des eigenen Scans reagiert.
 
 **Rechtsgrundlagen:**

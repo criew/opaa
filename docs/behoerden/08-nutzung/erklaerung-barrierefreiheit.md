@@ -84,8 +84,6 @@ Eigene Prüfung der Behörde für ihre Installation: [ja, Datum / nein]
 **Arbeitshilfen** für die Projektleitung:
 
 - [BFIT-Bund](https://www.bfit-bund.de/): Mustererklärung und Erläuterungen für Bundesbehörden.
-- [Barrierefreiheits-Audit vom 28.08.2026](../../design/accessibility-audit-2026-08.md): Befunde und
-  Einschränkungen des letzten Prüfdurchgangs.
 - [Läufe der E2E-Suite](https://github.com/criew/opaa/actions/workflows/e2e.yml) mit
   automatischem axe-Test: laufender Nachweis seit dem Audit.
 - [Offene Befunde zur Barrierefreiheit](https://github.com/criew/opaa/issues?q=is%3Aissue+is%3Aopen+Barrierefreiheit):

@@ -1,0 +1,176 @@
+# Releases und Nachweise
+
+> **Entwurf.** Gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
+Wer OPAA betreibt oder beschafft, muss wissen, welche Version er einsetzt, wie lange sie
+Sicherheitsupdates bekommt und wie sich belegen lässt, woraus sie besteht und woher sie stammt.
+Dieses Kapitel fasst zusammen, was ein Release liefert, wie man es prüft und wie das Projekt mit
+Schwachstellen und Lizenzen umgeht. Es gehört zum Teil Betrieb des [Handbuchs](README.md).
+
+> **Beispiel.** Ein IT-Dienstleister soll für ein Landratsamt auf Version 0.4.1 aktualisieren. Er
+> liest die Release-Notizen, lädt das Update-Paket herunter, prüft dessen Herkunft mit einem Befehl
+> und reicht es an Datenschutz und Informationssicherheit weiter. Die Informationssicherheit fragt,
+> ob 0.4 noch Sicherheitsupdates bekommt: Ja, solange es das jüngste Release ist; erscheint 0.5,
+> erhält nur noch 0.5 Korrekturen.
+
+## Versionen
+
+Es gibt zwei Arten von Ständen: **Releases** mit fester Versionsnummer `X.Y.Z`, die einmal gebaut
+und nie überschrieben werden, und den beweglichen Entwicklungsstand **`main`**. Für einen geplanten
+Betrieb ist ein Release der empfohlene Stand. Welche Image-Tags es gibt und wie man einen Stand
+pinnt, steht in der [Betriebsübersicht](betrieb.md#images-und-versionen).
+
+Gezählt wird nach Semantic Versioning. Solange die Hauptversion `0` ist, steigt `Y` bei neuen
+Funktionen und bei jedem **Bruch**, `Z` bei Fehlerbehebungen und Sicherheitsupdates ohne neue
+Funktion. Ab `1.0.0` steigt bei einem Bruch die Hauptversion. Als Bruch gilt, was eine bestehende
+Installation zu Handarbeit zwingt: eine neue Pflichtangabe in der Konfiguration, ein
+Vorbereitungsschritt wie geänderte Ports oder Eigentumsrechte, eine inkompatible Änderung der
+Schnittstelle oder eine Neuindizierung. Ein Patch-Release verlangt deshalb nie Vorbereitung.
+
+**Vorab-Releases** tragen einen Zusatz wie `1.2.3-rc.1` (auch `alpha`, `beta`). Sie sind zum
+Erproben gedacht, bekommen kein wanderndes Tag `X.Y` und keine Sicherheitsupdates.
+
+Schemaänderungen der Datenbank laufen nur vorwärts; zurück auf eine ältere Version geht es über die
+Sicherung ([Betriebsübersicht](betrieb.md#aktualisierung), Abschnitt „Aktualisierung“).
+
+## Sicherheitsupdates
+
+Sicherheitskorrekturen bekommen nur das **jüngste Release** (ohne Vorab-Releases) und **`main`**.
+Eine ältere Release-Linie wird nicht nachgepflegt; sobald ein neues Release erscheint, endet die
+Pflege des vorigen. Feste Supportzeiträume oder parallel gepflegte Linien sagt das Projekt nicht zu;
+ob es solche Linien geben wird, ist offen ([#2575](https://github.com/criew/opaa/issues/2575)).
+
+Ein Release-Image wird nie neu gebaut und trägt deshalb den Sicherheitsstand seines Bautags. Behoben
+wird über ein **Patch-Release**:
+
+| Befund im jüngsten Release | Reaktion |
+|---|---|
+| kritisch, mit verfügbarer Korrektur | Patch-Release ohne Aufschub |
+| hoch, mit verfügbarer Korrektur | mit dem nächsten Release, spätestens als Patch-Release nach der wöchentlichen Sichtung |
+| ohne Korrektur, mittel oder niedrig | kein eigenes Release |
+
+Liegt die Korrektur im Basis-Image, entsteht das Patch-Release aus demselben Code neu gebaut. Liegt
+sie in einer Abhängigkeit des Codes und trägt `main` schon neue Funktionen, erscheint sie mit der
+nächsten Version `0.(Y+1).0`. Wer das Tag `X.Y` verwendet, erhält ein Patch-Release mit dem nächsten
+Pull; wer `X.Y.Z` pinnt, wechselt bewusst.
+
+## Was ein Release liefert
+
+Zu jeder Version gehören:
+
+| Ort | Inhalt |
+|---|---|
+| GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z` und `ghcr.io/criew/opaa-frontend:X.Y.Z` für `linux/amd64` und `linux/arm64`, je mit SBOM und Herkunftsnachweis |
+| GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signiertem Herkunftsnachweis |
+| GitHub-Release `OPAA vX.Y.Z` | die Release-Notizen und das Update-Paket mit Prüfsummendatei |
+
+Die **Release-Notizen** führen die Änderungen nach Art geordnet. Ganz oben steht die Rubrik
+„Datenrelevante Änderungen“: alles, was personenbezogene Daten, Sichtbarkeit, Auswertungen,
+Fristen, Datenflüsse, Voreinstellungen, Standardmodelle, System-Prompts oder die KI-Einstufung
+ändert. Wie diese Kennzeichnung entsteht, steht in [Nachvollziehbarkeit](nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird).
+Danach folgen die Image-Namen, die Installationsbefehle und der Abschnitt **„Vorbereitung für
+Bestandsinstallationen“**: was vor dem Update zu tun ist, oder „Keine Vorbereitung nötig.“ Wer
+Versionen überspringt, liest diesen Abschnitt bei jedem übersprungenen Release.
+
+Den Herkunftsnachweis des Charts prüft:
+
+```bash
+gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
+```
+
+## Das Update-Paket
+
+Am GitHub-Release jeder Version, auch eines Vorab-Release, hängt `opaa-update-paket-X.Y.Z.tar.gz`.
+Es ist für die Stellen gedacht, die ein Update verantworten, ohne den Code zu lesen: die
+Faktenblätter der Version, die Änderungen der Fakten seit dem vorigen finalen Release mit
+Stufenvorschlag, die Folgen für den Betrieb, die Lizenzübersicht der Abhängigkeiten, die Vorlage
+für den Update-Vermerk und unter `vorlagen/` alle Behördenvorlagen, deren Verweise auf die
+Faktenblätter im Paket führen. Die Teile im Einzelnen und wie man ein Delta über mehrere Versionen
+erzeugt, beschreibt [Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release).
+
+Das Paket trägt eine signierte Herkunftsattestierung, und `SHA256SUMS` im Paket nennt die
+Prüfsumme jeder Datei. Herunterladen und prüfen:
+
+```bash
+gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-update-paket-*'
+gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa
+```
+
+Die Prüfung bestätigt, dass das Archiv im Release-Lauf des Projekts entstanden und seitdem
+unverändert ist; der Nachweis nennt den Commit, aus dem es stammt.
+
+## Herkunft und Software-Stückliste
+
+Eine **Software-Stückliste** (SBOM) zählt auf, welche Bestandteile in einem Artefakt stecken. OPAA
+liefert sie auf zwei Wegen:
+
+- **Am Image.** Jedes veröffentlichte Image, Release wie `main`, trägt je Architektur eine SBOM und
+  einen Herkunftsnachweis (Provenance: Quell-Commit und Bauparameter). Die SBOM umfasst auch die
+  Betriebssystempakete des Basis-Images. Abrufen lassen sich beide mit `docker buildx imagetools
+  inspect`; die Befehle stehen in der [Betriebsübersicht](betrieb.md#images-und-versionen).
+- **Je Ökosystem.** Zu jedem Stand von `main` erzeugt die CI je eine CycloneDX-SBOM der
+  ausgelieferten Laufzeit-Abhängigkeiten von Backend und Frontend, ohne Test- und Build-Werkzeuge.
+  Sie liegen 90 Tage als Artefakt am Lauf, nicht am GitHub-Release.
+
+Für eine Release-Version ist deshalb die SBOM am Image der Nachweis. Ein Herkunftsnachweis mit
+Signatur, prüfbar mit `gh attestation verify`, liegt am Chart und am Update-Paket.
+
+## Schwachstellen
+
+**Erkennen.** Zwei Prüfungen suchen nach bekannten Schwachstellen (CVEs):
+
+- GitHub meldet neu bekannt werdende Schwachstellen in den Bibliotheken von Backend und Frontend.
+- Ein nächtlicher Scan prüft die Images von `main` und des jüngsten Release, für beide
+  Architekturen, einschließlich der Betriebssystempakete. Ein kritischer Befund öffnet automatisch
+  einen Alarm; betrifft er das Release, bleibt der Alarm offen, bis das Patch-Release erschienen ist.
+
+**Behandeln.** Jeder Befund wird gesichtet und endet in einem von vier Zuständen: behoben (neuer
+Bau oder angehobene Version), Komponente entfernt oder Version festgelegt, mit Begründung und
+Ablaufdatum unterdrückt, wenn es keine Korrektur gibt und die Lücke im Container nicht erreichbar
+ist, oder offen mit eigenem Folge-Issue. Die Unterdrückungen stehen mit ihrer Begründung öffentlich
+in `.trivyignore.yaml` im Repository. Wie schnell ein Release folgt, steht unter
+[Sicherheitsupdates](#sicherheitsupdates).
+
+**Melden.** Wer eine Lücke in OPAA findet, meldet sie vertraulich über das [Private Vulnerability
+Reporting](https://github.com/criew/opaa/security/advisories/new) von GitHub, nicht über
+öffentliche Issues; eine E-Mail-Adresse gibt es nicht. Gemeldete Lücken bearbeitet das Projekt nach
+bestem Bemühen, ohne feste Antwort- oder Behebungsfristen. Behobene Lücken erscheinen als [Security
+Advisory](https://github.com/criew/opaa/security/advisories), wo sinnvoll mit CVE-Kennung.
+Meldeweg, Ablauf und die Rolle des Projekts nach dem Cyber Resilience Act regelt die
+Sicherheitsrichtlinie `SECURITY.md` im Repository.
+
+## Lizenzen
+
+OPAA steht unter der **GNU Affero General Public License v3.0** (Datei `LICENSE` im Repository). Der
+Funktionsumfang ist vollständig quelloffen. Wer OPAA verändert und anderen über ein Netz zur
+Nutzung bereitstellt, muss ihnen nach der Lizenz den Quellcode der veränderten Fassung anbieten.
+
+### Lizenzprüfung der Abhängigkeiten
+
+Bei jeder Änderung an den Abhängigkeiten prüft die CI die Lizenz jeder ausgelieferten Abhängigkeit
+gegen eine Freigabeliste: Lizenzen, die die Free Software Foundation als frei und mit der GPLv3
+verträglich führt. Was nicht passt, braucht eine begründete Ausnahme, die ein Maintainer freigibt;
+sonst wird die Änderung nicht übernommen. Die Lizenzübersicht von Backend und Frontend liegt im
+Update-Paket jeder Version unter `lizenzen/`. Eine rechtliche Einzelfallbewertung ersetzt die
+Prüfung nicht.
+
+### Beiträge und Contributor License Agreement
+
+Wer Änderungen ins Projekt einbringen will, etwa eine Korrektur eines Dienstleisters, unterzeichnet
+vor dem ersten Merge einmalig das Contributor License Agreement (CLA). Es räumt dem Projekt das
+Recht ein, Beiträge auch unter anderen Lizenzbedingungen weiterzugeben; darauf beruht das duale
+Lizenzmodell, in dem neben der AGPL kommerzielle Lizenzen angeboten werden. Beiträge im Namen eines
+Arbeitgebers brauchen dessen Zustimmung. Ohne unterzeichnetes CLA wird ein Beitrag nicht
+übernommen; die eigene Abweichung muss die Behörde dann bei jedem Update selbst pflegen.
+
+## Was nicht gebaut ist
+
+- Parallel gepflegte Release-Linien mit festen Supportzeiträumen
+  ([#2575](https://github.com/criew/opaa/issues/2575)).
+- Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
+  ([#2557](https://github.com/criew/opaa/issues/2557)).
+
+## Weiterführende Kapitel
+
+- [Betriebsübersicht](betrieb.md) — Images und Versionen, Aktualisierung
+- [Nachvollziehbarkeit](nachvollziehbarkeit.md) — Faktenblätter und Update-Paket im Einzelnen

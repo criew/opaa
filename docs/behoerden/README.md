@@ -49,7 +49,7 @@ aus dem Programmcode erzeugt werden: welche Daten gespeichert werden, wer was si
 wird, welche Daten das Haus verlassen, welche Fristen und Voreinstellungen gelten. Weil sie erzeugt
 werden, stimmen sie immer mit der Version überein. Die Vorlagen nennen deshalb keine Werte selbst.
 
-Am besten liest man die Vorlagen im [Update-Paket](../releases.md#update-paket) der eingesetzten
+Am besten liest man die Vorlagen im [Update-Paket](../handbuch/releases-und-nachweise.md#das-update-paket) der eingesetzten
 Version: Auf der GitHub-Seite der Version (Releases) die Datei `opaa-update-paket-X.Y.Z.tar.gz`
 herunterladen und entpacken. Im Ordner `vorlagen/` liegen dort alle Vorlagen, und jeder Verweis ist
 ein Link auf das passende Faktenblatt unter `faktenblaetter/`.
