@@ -64,7 +64,17 @@ public class LocalAuthController {
   static final String LOGIN_FAILED =
       "Anmeldung fehlgeschlagen. Bitte prüfen Sie E-Mail-Adresse und Passwort.";
   static final String SESSION_INVALID = "Die Sitzung ist abgelaufen oder ungültig.";
-  static final String WRONG_PASSWORD = "Das Passwort ist nicht korrekt.";
+
+  /**
+   * One answer for every refused confirmation, like the sign-in's: a wrong password, but also a
+   * right one refused for the account's state or the administrators' networks.
+   */
+  static final String NOT_CONFIRMED =
+      "Die Anmeldung ließ sich nicht bestätigen. Bitte prüfen Sie Ihr Passwort.";
+
+  /** The field-error code of a refused confirmation. */
+  static final String NOT_CONFIRMED_CODE = "NOT_CONFIRMED";
+
   static final String NOT_LOCAL_REAUTHENTICATION =
       "Die Anmeldung wird beim Anmeldedienst bestätigt, nicht mit einem Passwort in OPAA.";
 
@@ -214,9 +224,7 @@ public class LocalAuthController {
                 user.getEmail(), request.getPassword(), clientIpResolver.resolve(httpRequest))
             .filter(confirmed -> confirmed.user().getId().equals(user.getId()))
             .orElseThrow(
-                () ->
-                    FieldValidationException.of(
-                        "password", LocalPasswordService.WRONG_PASSWORD, WRONG_PASSWORD));
+                () -> FieldValidationException.of("password", NOT_CONFIRMED_CODE, NOT_CONFIRMED));
     return tokenResponse(account.user(), account.credentials(), true);
   }
 

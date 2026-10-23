@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useState } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders, setMockAuthState } from '@/test/test-utils'
@@ -7,7 +8,7 @@ import { mockLocalAccount } from '../mocks/authFixtures'
 import RecentLoginDialog, {
   CONFIRMED_ANNOUNCEMENT,
   REDIRECT_ANNOUNCEMENT,
-  WRONG_PASSWORD_MESSAGE,
+  NOT_CONFIRMED_MESSAGE,
 } from './RecentLoginDialog'
 
 const PURPOSE = 'Bevor Sie Ihre Daten herunterladen, bestätigen Sie bitte Ihre Anmeldung.'
@@ -66,10 +67,45 @@ describe('RecentLoginDialog', () => {
 
       await user.keyboard('falsch-geraten{Enter}')
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(WRONG_PASSWORD_MESSAGE)
+      expect(await screen.findByRole('alert')).toHaveTextContent(NOT_CONFIRMED_MESSAGE)
       expect(onConfirmed).not.toHaveBeenCalled()
       expect(useAuthStore.getState().token).toBe('old-token')
       expect(screen.getByLabelText('Ihr Passwort')).toHaveValue('')
+    })
+
+    it('keeps the announcement when the caller closes on confirmation and starts afresh when reopened', async () => {
+      const user = userEvent.setup()
+      function Harness() {
+        const [open, setOpen] = useState(true)
+        return (
+          <>
+            <button type="button" onClick={() => setOpen(true)}>
+              Erneut öffnen
+            </button>
+            <RecentLoginDialog
+              open={open}
+              purpose={PURPOSE}
+              onConfirmed={() => setOpen(false)}
+              onClose={() => setOpen(false)}
+            />
+          </>
+        )
+      }
+      renderWithProviders(<Harness />)
+
+      await user.keyboard('falsch-geraten{Enter}')
+      expect(await screen.findByRole('alert')).toBeInTheDocument()
+      await user.type(screen.getByLabelText('Ihr Passwort'), `${mockLocalAccount.password}{Enter}`)
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(status()).toContain(CONFIRMED_ANNOUNCEMENT)
+
+      await user.click(screen.getByRole('button', { name: 'Erneut öffnen' }))
+
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByLabelText('Ihr Passwort')).toHaveValue('')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(status()).not.toContain(CONFIRMED_ANNOUNCEMENT)
     })
 
     it('closes on Escape', async () => {

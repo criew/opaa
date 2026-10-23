@@ -450,8 +450,10 @@ liefert.
 - **Lokale Konten:** Der lokale Aussteller setzt `auth_time` nur, wenn er das Passwort für genau
   dieses Token geprüft hat — bei der Anmeldung, beim Passwortwechsel und bei
   `POST /api/v1/auth/local/reauthenticate` (Bearer, Passwort im Körper). Die Bestätigung prüft wie
-  eine Anmeldung: Ein falsches Passwort zählt auf die Fehlversuch-Sperre und ergibt `400` mit
-  `fieldErrors[password] = WRONG_PASSWORD`; sie teilt das Budget je Konto mit dem Passwortwechsel
+  eine Anmeldung: Ein falsches Passwort zählt auf die Fehlversuch-Sperre. Jede Ablehnung — falsches
+  Passwort, nicht mehr anmeldefähiges Konto, lokaler Systemverwalter außerhalb der freigegebenen
+  Netze — ist dieselbe Antwort `400` mit `fieldErrors[password] = NOT_CONFIRMED` und dem Satz „Die Anmeldung ließ sich nicht bestätigen. Bitte prüfen Sie Ihr Passwort.“,
+  der nicht mehr preisgibt als die Anmeldung selbst; sie teilt das Budget je Konto mit dem Passwortwechsel
   und lässt das Refresh-Cookie unverändert. Ein durch `refresh` erneuertes Token trägt keinen
   Anmeldezeitpunkt und besteht die Prüfung nie, auch Sekunden nach einer Anmeldung nicht.
 - **Konten eines Identitätsanbieters:** Die Oberfläche leitet zu einer erzwungenen Anmeldung beim

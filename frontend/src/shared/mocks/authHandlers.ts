@@ -37,14 +37,14 @@ export const authHandlers = [
     if (body.password !== mockLocalAccount.password) {
       return HttpResponse.json(
         {
-          error: 'Das Passwort ist nicht korrekt.',
+          error: 'Die Anmeldung ließ sich nicht bestätigen. Bitte prüfen Sie Ihr Passwort.',
           status: 400,
           timestamp: new Date().toISOString(),
           fieldErrors: [
             {
               field: 'password',
-              code: 'WRONG_PASSWORD',
-              message: 'Das Passwort ist nicht korrekt.',
+              code: 'NOT_CONFIRMED',
+              message: 'Die Anmeldung ließ sich nicht bestätigen. Bitte prüfen Sie Ihr Passwort.',
             },
           ],
         },

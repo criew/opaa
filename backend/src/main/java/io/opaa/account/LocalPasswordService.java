@@ -35,8 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LocalPasswordService {
 
-  /** The field-error code of a password that does not match the account's. */
-  public static final String WRONG_PASSWORD = "WRONG_PASSWORD";
+  static final String WRONG_PASSWORD = "WRONG_PASSWORD";
 
   private final LocalCredentialsRepository credentials;
   private final UserRepository users;

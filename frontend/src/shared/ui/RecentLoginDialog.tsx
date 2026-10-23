@@ -18,7 +18,9 @@ import { apiErrorStatus } from '../api/apiErrorDetails'
 import BusyButton from './a11y/BusyButton'
 import FieldLabel from './wizard/FieldLabel'
 
-export const WRONG_PASSWORD_MESSAGE = 'Das Passwort ist nicht korrekt.'
+/** Every refusal alike, as at the sign-in: wrong password, locked account, network policy. */
+export const NOT_CONFIRMED_MESSAGE =
+  'Die Anmeldung ließ sich nicht bestätigen. Bitte prüfen Sie Ihr Passwort.'
 export const CONFIRMATION_FAILED_MESSAGE =
   'Die Anmeldung ließ sich nicht bestätigen. Bitte versuchen Sie es erneut.'
 export const CONFIRMED_ANNOUNCEMENT = 'Anmeldung bestätigt.'
@@ -28,7 +30,10 @@ interface RecentLoginDialogProps {
   open: boolean
   /** What the confirmation is for, e.g. "Bevor Sie Ihre Daten herunterladen, …". */
   purpose: string
-  /** The person confirmed; the operation that asked for it may run now. */
+  /**
+   * The person confirmed; the operation that asked for it may run now. The caller may close the
+   * dialog right away: the announcement lives outside it and stays until the next opening.
+   */
   onConfirmed: () => void
   onClose: () => void
   /**
@@ -41,7 +46,7 @@ interface RecentLoginDialogProps {
 type Phase = 'idle' | 'checking' | 'redirecting' | 'confirmed'
 
 function failureMessage(err: unknown): string {
-  if (err instanceof FieldValidationError) return WRONG_PASSWORD_MESSAGE
+  if (err instanceof FieldValidationError) return NOT_CONFIRMED_MESSAGE
   if (apiErrorStatus(err) === 429) return tooManyAttemptsMessage(retryAfterSecondsOf(err))
   // a sentence of our own (the provider of the session is gone) is shown as it is; a transport
   // failure carries an English library message and gets the general sentence
@@ -55,7 +60,8 @@ function failureMessage(err: unknown): string {
  * session asks for the password, a provider session forwards to a sign-in forced at the provider,
  * and the development mode, which has no sign-in, only asks to continue. Usable by keyboard alone
  * (the dialog holds the focus, Enter submits); every change of state is announced in a polite
- * status region, a failure as an alert.
+ * status region, a failure as an alert. Every opening starts afresh: no password, no error, no
+ * earlier announcement.
  */
 export default function RecentLoginDialog({
   open,
@@ -71,6 +77,16 @@ export default function RecentLoginDialog({
   const [password, setPassword] = useState('')
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    // reset while rendering the opening, so not even one frame shows the previous request
+    setWasOpen(open)
+    if (open) {
+      setPassword('')
+      setError(null)
+      setPhase('idle')
+    }
+  }
   // the first control takes the focus once, when the dialog opens, never again on a re-render
   const focusOnMount = useCallback((node: HTMLElement | null) => node?.focus(), [])
   const busy = phase === 'checking' || phase === 'redirecting'
@@ -133,65 +149,74 @@ export default function RecentLoginDialog({
           : ''
 
   return (
-    <Dialog
-      open={open}
-      onClose={close}
-      maxWidth="xs"
-      fullWidth
-      aria-labelledby="recent-login-title"
-      slotProps={{ paper: { component: 'form', onSubmit: handleSubmit } }}
-    >
-      <DialogTitle id="recent-login-title">Anmeldung bestätigen</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2}>
-          <Typography variant="body2">{purpose}</Typography>
-          {kind === 'local' && (
-            <Box>
-              <FieldLabel htmlFor="recent-login-password">Ihr Passwort</FieldLabel>
-              <TextField
-                id="recent-login-password"
-                type="password"
-                size="small"
-                fullWidth
-                inputRef={focusOnMount}
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                error={Boolean(error)}
-              />
+    <>
+      <Dialog
+        open={open}
+        onClose={close}
+        maxWidth="xs"
+        fullWidth
+        aria-labelledby="recent-login-title"
+        slotProps={{ paper: { component: 'form', onSubmit: handleSubmit } }}
+      >
+        <DialogTitle id="recent-login-title">Anmeldung bestätigen</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2}>
+            <Typography variant="body2">{purpose}</Typography>
+            {kind === 'local' && (
+              <Box>
+                <FieldLabel htmlFor="recent-login-password">Ihr Passwort</FieldLabel>
+                <TextField
+                  id="recent-login-password"
+                  type="password"
+                  size="small"
+                  fullWidth
+                  inputRef={focusOnMount}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  error={Boolean(error)}
+                />
+              </Box>
+            )}
+            {kind === 'provider' && (
+              <Typography variant="body2">
+                Sie werden zu Ihrem Anmeldedienst weitergeleitet und melden sich dort erneut an.
+                Danach kommen Sie hierher zurück.
+              </Typography>
+            )}
+            {kind === 'dev' && (
+              <Typography variant="body2">
+                Im Entwicklungsmodus gibt es keine Anmeldung; jede Anfrage gilt als frisch
+                angemeldet.
+              </Typography>
+            )}
+            {error && <Alert severity="error">{error}</Alert>}
+            <Box component="span" role="status" aria-live="polite" sx={visuallyHidden}>
+              {status}
             </Box>
-          )}
-          {kind === 'provider' && (
-            <Typography variant="body2">
-              Sie werden zu Ihrem Anmeldedienst weitergeleitet und melden sich dort erneut an.
-              Danach kommen Sie hierher zurück.
-            </Typography>
-          )}
-          {kind === 'dev' && (
-            <Typography variant="body2">
-              Im Entwicklungsmodus gibt es keine Anmeldung; jede Anfrage gilt als frisch angemeldet.
-            </Typography>
-          )}
-          {error && <Alert severity="error">{error}</Alert>}
-          <Box component="span" role="status" aria-live="polite" sx={visuallyHidden}>
-            {status}
-          </Box>
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={close} aria-disabled={busy || undefined}>
-          Abbrechen
-        </Button>
-        <BusyButton
-          type="submit"
-          variant="contained"
-          busy={busy}
-          busyAnnouncement=""
-          ref={kind === 'local' ? undefined : focusOnMount}
-        >
-          {kind === 'provider' ? 'Erneut anmelden' : kind === 'dev' ? 'Fortfahren' : 'Bestätigen'}
-        </BusyButton>
-      </DialogActions>
-    </Dialog>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={close} aria-disabled={busy || undefined}>
+            Abbrechen
+          </Button>
+          <BusyButton
+            type="submit"
+            variant="contained"
+            busy={busy}
+            busyAnnouncement=""
+            ref={kind === 'local' ? undefined : focusOnMount}
+          >
+            {kind === 'provider' ? 'Erneut anmelden' : kind === 'dev' ? 'Fortfahren' : 'Bestätigen'}
+          </BusyButton>
+        </DialogActions>
+      </Dialog>
+      {/* The open modal hides the page from assistive technology, so the region inside it speaks
+          while it is open; this one, always present, takes over the confirmation once a caller
+          closes the dialog on it. */}
+      <Box component="span" role="status" aria-live="polite" sx={visuallyHidden}>
+        {!open && phase === 'confirmed' ? CONFIRMED_ANNOUNCEMENT : ''}
+      </Box>
+    </>
   )
 }

@@ -156,7 +156,10 @@ class LocalReauthenticationIntegrationTest {
     reauthenticate(login, "falsches-passwort-2026")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors[0].field").value("password"))
-        .andExpect(jsonPath("$.fieldErrors[0].code").value(LocalPasswordService.WRONG_PASSWORD))
+        .andExpect(jsonPath("$.fieldErrors[0].code").value("NOT_CONFIRMED"))
+        .andExpect(
+            jsonPath("$.error")
+                .value("Die Anmeldung ließ sich nicht bestätigen. Bitte prüfen Sie Ihr Passwort."))
         .andExpect(jsonPath("$.accessToken").doesNotExist());
 
     assertThat(fixtures.credentialsOf(user).getFailedLoginAttempts()).isEqualTo(before + 1);

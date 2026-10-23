@@ -170,8 +170,10 @@ paths:
       summary: >
         Confirm the caller's own sign-in with the password before an operation that requires a
         recent sign-in (response RecentLoginRequired). Verifies the password like a sign-in - a
-        wrong one counts as a failed attempt towards the lockout, and every refusal is 400 with
-        fieldErrors[password] = WRONG_PASSWORD - and answers with a fresh access token whose
+        wrong one counts as a failed attempt towards the lockout, and every refusal (wrong
+        password, an account no longer login-capable, a local SYSTEM_ADMIN outside
+        OPAA_LOCAL_ADMIN_ALLOWED_CIDRS) is the same 400 with fieldErrors[password] = NOT_CONFIRMED
+        and a neutral message - and answers with a fresh access token whose
         auth_time is now; the refresh cookie and its family stay as they are. Shares the
         per-account budget of localChangePassword. 409 for an account of an identity provider,
         which confirms its sign-in at the provider (prompt=login, max_age=0) instead.
