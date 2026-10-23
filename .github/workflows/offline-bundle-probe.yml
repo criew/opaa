@@ -1,0 +1,109 @@
+name: Offline-Bündel (Probe)
+
+# A trial of the offline bundle (offline-bundle.yml) between releases: builds the bundle of the
+# newest existing release and verifies it as the handbook describes, in a network namespace without
+# any interface but loopback, then manipulates it. The attestations of a trial name the ref of this
+# run, never a release tag, so they never pass the verification of a release. On demand and on a
+# pull request labelled "offline-bundle-suite"; no required check.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version X.Y.Z[-<pre>] eines bestehenden Release (leer = jüngstes Release)
+        required: false
+        default: ''
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}-${{ github.event.label.name || 'none' }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'offline-bundle-suite'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Version bestimmen
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          tag="${REQUESTED:+v$REQUESTED}"
+          tag="${tag:-$(gh release list --limit 1 --json tagName --jq '.[0].tagName')}"
+          echo "version=${tag#v}" >>"$GITHUB_OUTPUT"
+          echo "Probe mit dem Release $tag" >>"$GITHUB_STEP_SUMMARY"
+
+  bundle:
+    needs: version
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/offline-bundle.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+
+  check:
+    needs: [version, bundle]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          # renovate: datasource=github-releases depName=helm/helm
+          version: v4.3.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: offline-bundle
+          path: ${{ runner.temp }}/offline-bundle
+
+      # The trust anchor comes from outside the bundle, as in the handbook.
+      - name: Vertrauensanker holen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh attestation trusted-root >"$RUNNER_TEMP/trusted_root.jsonl"
+
+      - name: Bündel ohne Netz prüfen
+        env:
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.version }}
+          BUNDLE_SOURCE_REF: ${{ github.ref }}
+        run: |
+          export BUNDLE_SIGNER_WORKFLOW="$GH_REPO/.github/workflows/offline-bundle.yml"
+          export RELEASE_SIGNER_WORKFLOW="$GH_REPO/.github/workflows/publish-images.yml"
+          export RELEASE_SOURCE_REF="refs/tags/v$VERSION"
+          ls -l "$RUNNER_TEMP/offline-bundle"
+          sudo --preserve-env env "PATH=$PATH" unshare --net -- bash -c '
+            set -euo pipefail
+            ip -brief address
+            if curl -sS --max-time 5 -o /dev/null https://github.com 2>/dev/null; then
+              echo "::error::Die Probe hat Netz"; exit 1
+            fi
+            echo "kein Netz: https://github.com ist nicht erreichbar"
+            .github/scripts/offline_bundle.sh check \
+              "$RUNNER_TEMP/offline-bundle/opaa-offline-$VERSION.tar" "$RUNNER_TEMP/trusted_root.jsonl"
+            gh attestation verify "$RUNNER_TEMP/offline-bundle/opaa-offline-$VERSION.tar" \
+              --bundle "$RUNNER_TEMP/offline-bundle/opaa-offline-$VERSION.tar.sigstore.json" \
+              --custom-trusted-root "$RUNNER_TEMP/trusted_root.jsonl" --repo "$GH_REPO" \
+              --signer-workflow "$BUNDLE_SIGNER_WORKFLOW" --source-ref "$BUNDLE_SOURCE_REF" >/dev/null
+            echo "ok   das Archiv trägt seine Attestierung"
+          '
