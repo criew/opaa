@@ -55,7 +55,7 @@ data:
     visibility:
       - Verwaltende des Assets (Freigabeliste)
       - SYSTEM_ADMIN (Rechteübersicht, Anlegerechte)
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Entzug des Rechts oder Löschen des Assets; nicht mit dem Konto, ein Recht verhindert die
       Löschung des Kontos
@@ -134,7 +134,7 @@ data:
       rule: Voreinstellung 36 Monate nach Ende eines Intervalls, einstellbar 12 bis 120 Monate
       settings: [permission_history_retention_settings.retention_months]
     visibility: [AUDITOR über die Stichtagsauskunft je Objekt]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Retention-Lauf der Rechtehistorie
     evaluations: >-
       Stichtagsauskunft je Bibliothek oder Space, mit Person, Grundlage (auch Eigentum eines Space)
@@ -161,7 +161,7 @@ data:
     visibility:
       - Verantwortliche der Gruppe
       - SYSTEM_ADMIN (Abruf der Mitgliederliste wird protokolliert)
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
       Austritt, Auflösung der Gruppe oder Verzeichnisabgleich; mit dem Konto nur, wenn es löschbar
       ist. Verantwortung und Mitgliedschaftshistorie verhindern das in der Regel; eine
@@ -225,7 +225,7 @@ data:
       rule: Wie die Rechtehistorie, an deren Intervallen die Übertragung hängt
       settings: [permission_history_retention_settings.retention_months]
     visibility: [SYSTEM_ADMIN, AUDITOR]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Retention-Lauf der Rechtehistorie
     evaluations: keine
   - id: succession
@@ -257,7 +257,7 @@ data:
       rule: Geschlossene Fälle nach der Protokollfrist
       settings: [audit_retention_settings.retention_months]
     visibility: [SYSTEM_ADMIN]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Retention-Lauf nach der Protokollfrist, nur geschlossene Fälle
     evaluations: Liste offener Nachfolgefälle
   - id: favorites
