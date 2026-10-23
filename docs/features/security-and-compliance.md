@@ -1268,8 +1268,8 @@ Fehler in die Antwort geschrieben und geleert.
 **Starts je Tag.** Unabhängig davon sind je Person und Kalendertag höchstens **Tagesgrenze + 4**
 Starts möglich (Voreinstellung 5); darüber antwortet OPAA mit `429`. Ohne diese Grenze wären Abbrüche
 unbegrenzt wiederholbar. Kein eigener Schalter: Die vier zusätzlichen Starts decken Abbrüche durch
-Rolling Update oder VPN ab, mehr braucht kein Mensch an einem Tag. Folge: Nach fünf Abbrüchen ist
-der Tag auch ohne vollständigen Export erschöpft; der Status sagt das („Starts für heute
+Rolling Update oder VPN ab, mehr braucht kein Mensch an einem Tag. Folge: Mit der Voreinstellung ist
+der Tag nach fünf Abbrüchen auch ohne vollständigen Export erschöpft; der Status sagt das („Starts für heute
 erschöpft“).
 
 **Restunschärfe in beiden Richtungen.**
