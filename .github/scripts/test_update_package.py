@@ -679,6 +679,21 @@ def test_an_sbom_carries_the_commit_time_and_a_serial_number_of_its_release(
     assert sbom(other, "opaa-backend")["serialNumber"] != backend["serialNumber"]
 
 
+def test_an_sbom_leaves_out_the_annotations_naming_the_day_of_its_generator_run(
+        tmp_path: Path, inputs: dict) -> None:
+    summary = {"bom-ref": "metadata-annotations", "timestamp": "2099-01-01T00:00:00Z",
+               "text": "This SBOM document was created on Thursday, January 1, 2099 with cdxgen."}
+    inputs["sboms"]["frontend"].write_text(
+        cyclonedx("pkg:npm/react@19.0.0", annotations=[summary]), encoding="utf-8")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    frontend = sbom(archive, "opaa-frontend")
+    assert "annotations" not in frontend
+    assert "2099" not in json.dumps(frontend)
+    assert frontend["components"][0]["purl"] == "pkg:npm/react@19.0.0"
+
+
 @pytest.mark.parametrize("content", [
     "not json",
     json.dumps({"bomFormat": "SPDX", "components": [{"name": "x"}]}),

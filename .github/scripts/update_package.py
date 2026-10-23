@@ -953,7 +953,8 @@ def sbom_name(part: str, release: Release) -> str:
 
 def pinned_sbom(source: Path, part: str, release: Release) -> bytes:
     """The CycloneDX SBOM `source` of `part` with time and serial number of the release instead of
-    the generator run, so the same commit yields the same file; anything else fails the run."""
+    the generator run and without the generator's annotations, which name the day of the run (cdxgen
+    adds a summary); so the same commit yields the same file. Anything else fails the run."""
     try:
         bom = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
@@ -962,6 +963,7 @@ def pinned_sbom(source: Path, part: str, release: Release) -> bytes:
         raise PackageError(f"{part} SBOM {source} is no CycloneDX SBOM with components")
     identity = f"https://github.com/{release.repository}/commit/{release.commit}#{sbom_name(part, release)}"
     bom["serialNumber"] = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, identity)}"
+    bom.pop("annotations", None)
     if not isinstance(bom.get("metadata"), dict):
         bom["metadata"] = {}
     bom["metadata"]["timestamp"] = datetime.datetime.fromtimestamp(

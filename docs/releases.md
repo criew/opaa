@@ -480,7 +480,7 @@ auf `main`.
 
 **Wiederholbar.** Erzeugungsdatum der Faktenblätter (`-PgeneratedOn`), Zeitstempel der SBOMs und
 im Archiv sind die Commit-Zeit, die Seriennummern der SBOMs aus Repository, Commit und Dateiname
-abgeleitet, Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt
+abgeleitet ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)), Besitzer und Rechte fest, die Reihenfolge sortiert. Derselbe Commit ergibt
 dieselben Dateien und dieselben Zeilen in `SHA256SUMS`, mit einer Ausnahme: Der Abschnitt
 „Weitere gekennzeichnete Änderungen“ im Delta folgt dem Stand des Labels `data-impact` zum
 Zeitpunkt des Laufs; wird ein Label zwischen zwei Läufen gesetzt oder entfernt, unterscheidet sich

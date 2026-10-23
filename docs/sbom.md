@@ -44,8 +44,9 @@ Stand des Tags, mit demselben Werkzeug, derselben Version und demselben Umfang w
 GitHub-Release, jede mit eigener Provenance-Attestierung, und liegen unter denselben Namen in
 `sbom/` des [Update-Pakets](releases.md#update-paket), dort abgedeckt von `SHA256SUMS` und der
 Attestierung des Archivs. Zeitstempel und Seriennummer jeder SBOM legt das Release fest
-(Commit-Zeit, aus Repository, Commit und Dateiname abgeleitete UUID), sodass ein wiederholter Lauf
-dieselben Dateien ergibt. Scheitert eine der beiden SBOMs oder enthält sie keine Komponenten,
+(Commit-Zeit, aus Repository, Commit und Dateiname abgeleitete UUID); die Zusammenfassung, die
+cdxgen als Annotation mit dem Tag des Laufs anhängt, entfällt. So ergibt ein wiederholter Lauf
+dieselben Dateien. Scheitert eine der beiden SBOMs oder enthält sie keine Komponenten,
 scheitert der Release-Lauf, bevor ein Tag gesetzt ist.
 
 ```bash
