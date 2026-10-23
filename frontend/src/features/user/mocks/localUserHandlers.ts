@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import type {
   LocalAuthSettingsUpdateRequest,
+  LocalUserChatCleanupResponse,
   LocalUserCreateRequest,
   LocalUserResponse,
   LocalUserUpdateRequest,
@@ -10,8 +11,10 @@ import {
   countsAsWithoutExpiry,
   LAST_ADMIN_USER_ID,
   MAIL_FAILING_ADDRESS_SUFFIX,
+  MOCK_CHAT_DELETION_AT,
   MOCK_SELF_USER_ID,
   OWNS_CONTENT_USER_ID,
+  mockChatCleanupHolds,
   mockLocalAuthSettings,
   mockLocalUsers,
   setMockLocalAuthSettings,
@@ -145,6 +148,21 @@ function firstOutOfRange(
     }
   }
   return null
+}
+
+/** Only a lock by the administration schedules the deletion; chats play no part in the date. */
+function chatCleanupOf(user: LocalUserResponse): LocalUserChatCleanupResponse {
+  const held = mockChatCleanupHolds.has(user.id)
+  if (held) return { status: 'HELD', held, deleteAfterDays: 365 }
+  if (user.status === 'LOCKED' && user.lockedReason === 'ADMIN') {
+    return {
+      status: 'SCHEDULED',
+      held,
+      deleteAfterDays: 365,
+      earliestDeletionAt: MOCK_CHAT_DELETION_AT,
+    }
+  }
+  return { status: 'NOT_LOCKED', held, deleteAfterDays: 365 }
 }
 
 export const localUserHandlers = [
@@ -369,6 +387,26 @@ export const localUserHandlers = [
     delete updated.lockedReason
     replace(updated)
     return HttpResponse.json(updated)
+  }),
+
+  http.get('/api/v1/admin/local-users/:id/chat-cleanup', ({ params }) => {
+    const user = find(String(params.id))
+    if (!user) return notFound()
+    return HttpResponse.json(chatCleanupOf(user))
+  }),
+
+  http.put('/api/v1/admin/local-users/:id/chat-cleanup/hold', ({ params }) => {
+    const user = find(String(params.id))
+    if (!user) return notFound()
+    mockChatCleanupHolds.add(user.id)
+    return HttpResponse.json(chatCleanupOf(user))
+  }),
+
+  http.delete('/api/v1/admin/local-users/:id/chat-cleanup/hold', ({ params }) => {
+    const user = find(String(params.id))
+    if (!user) return notFound()
+    mockChatCleanupHolds.delete(user.id)
+    return HttpResponse.json(chatCleanupOf(user))
   }),
 
   http.post('/api/v1/admin/local-users/:id/password-reset', ({ params }) => {

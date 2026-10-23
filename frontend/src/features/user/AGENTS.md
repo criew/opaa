@@ -4,6 +4,6 @@ Kontenverwaltung: Kontenliste mit Filtern, Systemrolle ändern, lokale Konten an
 
 - **Grenze:** Seiten unter `pages/` erreicht nur `app` über `routes.ts`. `index.ts` gibt `SEARCH_DEBOUNCE_MS` (Filterleiste der Gruppenverwaltung) und `SYSTEM_ROLE_LABEL` (Übergabeseite in `auth`) frei. Die lesende Kontensuche für Auswahlfelder gehört zu `principal`.
 - **Spec-Tags:** `user` (Verwaltungsteil von `opaa-api/src/main/openapi/users.yaml`) und `local-account` (`local-accounts.yaml`).
-- **Backend-Modul:** identity (Pakete `io.opaa.auth`, `io.opaa.account`).
+- **Backend-Modul:** identity (Pakete `io.opaa.auth`, `io.opaa.account`); die Unterressource `chat-cleanup` eines lokalen Kontos liegt in assistant (`io.opaa.chat.web`).
 - **Erlaubte Abhängigkeiten:** `identity-provider`, `mail`.
 - **Genutzt von:** `group`, `auth`.

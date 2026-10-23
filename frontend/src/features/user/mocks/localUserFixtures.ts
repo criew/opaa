@@ -173,3 +173,9 @@ export function setMockLocalAuthSettings(settings: LocalAuthSettingsResponse) {
 export function resetMockLocalAuthSettings() {
   mockLocalAuthSettings = initialLocalAuthSettings()
 }
+
+/** Earliest deletion of the chats of every mock account locked by the administration. */
+export const MOCK_CHAT_DELETION_AT = '2027-10-23T08:00:00Z'
+
+/** Accounts whose chat deletion is held; tests clear it themselves. */
+export const mockChatCleanupHolds = new Set<string>()
