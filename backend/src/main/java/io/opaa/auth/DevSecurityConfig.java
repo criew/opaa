@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -98,6 +99,10 @@ public class DevSecurityConfig {
                         "/api/v1/branding/logo",
                         "/api/v1/branding/login-logo",
                         "/api/v1/branding/login-background")
+                    .permitAll()
+                    // The self-disclosure download carries no bearer token; the one-time ticket in
+                    // the form body is its only credential, as under oidc.
+                    .requestMatchers(HttpMethod.POST, "/api/v1/me/self-disclosure/download")
                     .permitAll()
                     .requestMatchers("/api/**")
                     .authenticated()

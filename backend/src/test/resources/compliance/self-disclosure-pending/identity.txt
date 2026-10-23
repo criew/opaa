@@ -1,0 +1,8 @@
+# Categories of the self-disclosure still without exporter, delivered by #2990 (identity).
+# The exporter issue deletes this file; SelfDisclosureCoverageTest checks it.
+accounts
+local-credentials
+local-sessions-and-links
+account-state-history
+settings-editors
+audit-log

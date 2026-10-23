@@ -378,12 +378,22 @@ public class GlobalExceptionHandler {
     if (ex.retryAfterSeconds() > 0) {
       response.header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds()));
     }
-    return respond(response, error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+    ErrorResponse body = error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+    if (ex.getCode() != null) {
+      body.setCode(ex.getCode());
+    }
+    return respond(response, body);
   }
 
   @ExceptionHandler(ServiceUnavailableException.class)
   public ResponseEntity<ErrorResponse> handleServiceUnavailableException(
       ServiceUnavailableException ex) {
+    if (ex.retryAfterSeconds() > 0) {
+      return respond(
+          ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+              .header(HttpHeaders.RETRY_AFTER, Long.toString(ex.retryAfterSeconds())),
+          error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage()));
+    }
     log.error("Server error raised by application", ex);
     return respond(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
   }

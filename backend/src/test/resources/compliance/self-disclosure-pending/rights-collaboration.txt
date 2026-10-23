@@ -1,0 +1,15 @@
+# Categories of the self-disclosure still without exporter, delivered by #2991 (rights,
+# collaboration, connections). The exporter issue deletes this file; SelfDisclosureCoverageTest
+# checks it.
+connected-accounts
+connection-person-states
+connection-log
+external-access-tokens
+rights
+permission-history
+groups
+permission-transfers
+succession
+favorites
+spaces
+space-membership-history

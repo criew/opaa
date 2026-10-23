@@ -224,6 +224,11 @@ data:
           - version
         person:
           columns: [updated_by]
+      - name: self_disclosure_settings
+        personalColumns: [updated_by]
+        nonPersonalColumns: [id, enabled, daily_limit, updated_at]
+        person:
+          columns: [updated_by]
     storage: Anwendungsdatenbank
     retention:
       rule: Bis zur nächsten Änderung der Einstellung
@@ -274,9 +279,54 @@ data:
         14 Tage
       settings: [io.opaa.externalaccess.ExternalAccessAlertRetention#RETENTION]
     visibility: [die empfangende Person]
-    accessPaths: [UI, API, DATABASE]
+    accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Mit dem Konto (ON DELETE CASCADE), mit dem Objekt, Alarme täglich nach Frist
     evaluations: keine
+  - id: self-disclosure
+    title: Stand der Selbstauskunft
+    purpose: >-
+      Tagesgrenze und Starts der Selbstauskunft je Person durchsetzen, höchstens einen laufenden
+      Export je Person zulassen und der Person den Stand ihrer Selbstauskunft zeigen
+    personalReference: EMPLOYEE
+    tables:
+      - name: self_disclosure_usage
+        personalColumns:
+          - account_id
+          - count_day
+          - starts_count
+          - completed_count
+          - last_completed_at
+          - last_result
+          - run_id
+          - lease_until
+          - ticket_hash
+          - ticket_expires_at
+        nonPersonalColumns: []
+        person:
+          columns: [account_id]
+          excludedColumns:
+            run_id: Reservierung des laufenden Exports; betrifft immer den Export selbst, ohne Aussage
+            lease_until: >-
+              Reservierung des laufenden Exports; betrifft immer den Export selbst, ohne Aussage
+            ticket_hash: Geheimnis (Prüfwert des Einmal-Tickets für den Download)
+            ticket_expires_at: Ablauf des Einmal-Tickets; höchstens 60 Sekunden, ohne Aussage
+          note: >-
+            Eine Zeile je Person; Zähler nur des laufenden Tages, am nächsten Tag überschrieben,
+            Ergebnis nur des letzten Versuchs, kein Verlauf
+    storage: Anwendungsdatenbank
+    retention:
+      rule: >-
+        Bis zur Löschung des Kontos; Zähler und Ergebnis werden beim nächsten Export überschrieben,
+        der Ticket-Prüfwert beim Einlösen gelöscht
+      settings: []
+    visibility: [die Person selbst]
+    accessPaths: [UI, API, EXPORT, DATABASE]
+    deletion: Mit dem Konto (ON DELETE CASCADE)
+    evaluations: >-
+      Keine; der letzte Export erscheint in keiner Kontenliste und keiner Schnittstelle der
+      Verwaltung, es gibt keinen Verlauf der Exportzeitpunkte
+    notes:
+      - Zeitpunkt des letzten vollständigen Exports ist ein Verhaltensmerkmal; nur für die Person selbst
   - id: application-log
     title: Technisches Anwendungslog
     purpose: Betrieb und Fehlersuche; enthält u. a. einzelne fehlgeschlagene Anmeldungen
@@ -396,6 +446,22 @@ settings:
     range: mindestens 30 Tage
     effect: Sperre eines lokalen Kontos nach so vielen Tagen ohne Anmeldung
     bearings: [DATA, EVALUATION]
+  - key: self_disclosure_settings.enabled
+    source: DATABASE
+    defaultValue: "true"
+    range: an / aus
+    effect: >-
+      Notabschaltung der Selbstauskunft; wirkt ohne Neustart auf allen Instanzen, ein laufender
+      Export läuft zu Ende
+    bearings: [DATA, VISIBILITY]
+  - key: self_disclosure_settings.daily_limit
+    source: DATABASE
+    defaultValue: "1"
+    range: 1 bis 10
+    effect: >-
+      Vollständige Exporte der Selbstauskunft je Person und Kalendertag; Starts je Tag höchstens
+      Tagesgrenze plus vier
+    bearings: [DATA]
 roles:
   - id: USER
     seesAboutOthers: >-

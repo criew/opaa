@@ -4,8 +4,178 @@ tags:
   - name: compliance
     description: >-
       Data collection disclosure of the installation: the compliance fact manifest of the running
-      version joined with the effective values of the installation (ADR-0052, ADR-0053).
+      version joined with the effective values of the installation (ADR-0052, ADR-0053), and the
+      self-disclosure of the signed-in person (docs/features/security-and-compliance.md,
+      "Selbstauskunft").
 paths:
+  /api/v1/me/self-disclosure:
+    get:
+      operationId: getSelfDisclosureStatus
+      tags: [compliance]
+      summary: >-
+        Status of the caller's own self-disclosure: available or switched off, exports and starts
+        left today, from when the next is possible, the result of the last attempt and whether a
+        new one is possible. Days are calendar days in the time zone of the installation, by the
+        database clock.
+      responses:
+        "200":
+          description: The status of the caller's self-disclosure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfDisclosureStatus"
+        "403":
+          description: >-
+            Called with the access token of an external AI tool (code
+            SELF_DISCLOSURE_SIGN_IN_REQUIRED); the self-disclosure needs a sign-in at the interface.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/me/self-disclosure/tickets:
+    post:
+      operationId: createSelfDisclosureTicket
+      tags: [compliance]
+      summary: >-
+        Issues the one-time ticket for the caller's next export, only after a recent sign-in. The
+        ticket is valid for 60 seconds and once, does not extend the window of the sign-in, and a
+        newer one replaces an older one; only its hash is stored. The person is always the caller,
+        there is no parameter naming anyone else.
+      responses:
+        "201":
+          description: The ticket for the download
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfDisclosureTicket"
+        "403":
+          description: >-
+            No recent sign-in (code RECENT_LOGIN_REQUIRED), the self-disclosure is switched off in
+            this installation (code SELF_DISCLOSURE_DISABLED, German message naming the right of
+            access under Art. 15 GDPR), or the call carries the access token of an external AI tool
+            (code SELF_DISCLOSURE_SIGN_IN_REQUIRED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: >-
+            An export of the caller is running (code SELF_DISCLOSURE_RUNNING), the daily limit of
+            completed exports is reached (SELF_DISCLOSURE_DAILY_LIMIT) or the starts of the day are
+            exhausted (SELF_DISCLOSURE_STARTS_EXHAUSTED). Retry-After names the seconds until the
+            reservation lapses or the next day begins.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/me/self-disclosure/download:
+    post:
+      operationId: downloadSelfDisclosure
+      tags: [compliance]
+      security: []
+      summary: >-
+        Streams the self-disclosure of the ticket's holder as a ZIP, for a native form submission of
+        the browser: the ticket travels in the form body, never in the URL, and is the only
+        credential. Order of the entries: one <category>.json per category with records, then
+        manifest.json, last index.html. No signature and no checksum file. Only a completely
+        delivered export (central directory written and flushed) counts towards the daily limit;
+        an aborted one consumes nothing.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/SelfDisclosureDownloadForm"
+      responses:
+        "200":
+          description: >-
+            The ZIP, streamed; file name opaa-selbstauskunft-<YYYY-MM-DD>.zip with the date in the
+            time zone of the installation.
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "403":
+          description: The self-disclosure was switched off meanwhile (code SELF_DISCLOSURE_DISABLED).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: >-
+            Unknown, expired or already used ticket (code SELF_DISCLOSURE_TICKET_INVALID).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: >-
+            An export of the holder is running or the day is exhausted, with the same codes and
+            Retry-After as at the ticket.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: >-
+            This instance streams as many exports as it may (opaa.self-disclosure.max-concurrent-exports);
+            Retry-After 60. The ticket stays valid, nothing is reserved or consumed.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/admin/self-disclosure/settings:
+    get:
+      operationId: getSelfDisclosureSettings
+      tags: [compliance]
+      summary: The emergency switch and the daily limit of the self-disclosure (system admin only).
+      responses:
+        "200":
+          description: The settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfDisclosureSettings"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateSelfDisclosureSettings
+      tags: [compliance]
+      summary: >-
+        Changes the emergency switch or the daily limit (system admin only); acts on every instance
+        without a restart, a running export runs to its end. Every change is the audit event
+        SELF_DISCLOSURE_SETTINGS_CHANGED with before and after of the changed keys.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelfDisclosureSettingsUpdate"
+      responses:
+        "200":
+          description: The settings after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfDisclosureSettings"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+
   /api/v1/admin/compliance/data-collection-disclosure:
     get:
       operationId: getDataCollectionDisclosure
@@ -250,3 +420,105 @@ components:
           type: string
         description:
           type: string
+
+    SelfDisclosureStatus:
+      type: object
+      required:
+        [
+          enabled,
+          dailyLimit,
+          completedToday,
+          startsToday,
+          remainingExports,
+          remainingStarts,
+          running,
+          retryPossible,
+        ]
+      properties:
+        enabled:
+          type: boolean
+          description: Whether the self-disclosure is switched on in this installation.
+        dailyLimit:
+          type: integer
+          description: Completed exports per person and calendar day.
+        completedToday:
+          type: integer
+        startsToday:
+          type: integer
+        remainingExports:
+          type: integer
+        remainingStarts:
+          type: integer
+          description: Starts left today; at most the daily limit plus four per day.
+        running:
+          type: boolean
+          description: Whether an export of the caller is streaming right now.
+        blocked:
+          type: string
+          nullable: true
+          enum: [DISABLED, RUNNING_EXPORT, DAILY_LIMIT, STARTS_EXHAUSTED]
+          description: Why no export can start now; absent when one can.
+        nextPossibleAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            When an export is possible again: the lapse of the running export's reservation or the
+            start of the next day. Absent when an export is possible now or switched off.
+        lastCompletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: The last completely delivered export.
+        lastResult:
+          type: string
+          nullable: true
+          enum: [COMPLETED, ABORTED]
+          description: The result of the last ended attempt; a reservation that lapsed counts as ABORTED.
+        retryPossible:
+          type: boolean
+          description: Whether the last attempt aborted and a new one can start now.
+
+    SelfDisclosureTicket:
+      type: object
+      required: [ticket, expiresInSeconds]
+      properties:
+        ticket:
+          type: string
+          description: The one-time ticket for POST /api/v1/me/self-disclosure/download.
+        expiresInSeconds:
+          type: integer
+
+    SelfDisclosureDownloadForm:
+      type: object
+      required: [ticket]
+      properties:
+        ticket:
+          type: string
+
+    SelfDisclosureSettings:
+      type: object
+      required: [enabled, dailyLimit, updatedAt]
+      properties:
+        enabled:
+          type: boolean
+        dailyLimit:
+          type: integer
+          minimum: 1
+          maximum: 10
+        updatedAt:
+          type: string
+          format: date-time
+
+    SelfDisclosureSettingsUpdate:
+      type: object
+      description: The keys to change; an absent key stays as it is.
+      properties:
+        enabled:
+          type: boolean
+          nullable: true
+        dailyLimit:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 10
