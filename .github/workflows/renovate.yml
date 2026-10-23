@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 # Renovate authenticates exclusively with the RENOVATE_TOKEN secret (a PAT with repo +
-# workflow scope, see docs/renovate.md). The workflow's own GITHUB_TOKEN gets no rights:
+# workflow scope, see docs/renovate.md). The workflow's own GITHUB_TOKEN only reads the checkout:
 # PRs created with it would not trigger CI, and the github-actions manager could not push
 # workflow file updates.
 permissions: {}
@@ -26,9 +26,31 @@ jobs:
   renovate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      # Only the checkout of the list of supported lines below.
+      contents: read
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github/support-lines.json
+            .github/scripts/support_lines.py
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      # main and release/X.Y of every line supported today (docs/renovate.md, "Wartungsbranches");
+      # a line past its support end drops out here. Passed as global "force", which overrides the
+      # main-only baseBranchPatterns of renovate.json5.
+      - name: Basis-Branches bestimmen
+        id: branches
+        run: |
+          patterns=$(python3 .github/scripts/support_lines.py base-branches)
+          echo "Basis-Branches: $patterns"
+          printf 'force={"baseBranchPatterns":%s}\n' "$patterns" >>"$GITHUB_OUTPUT"
+
       - name: Run Renovate
         env:
+          RENOVATE_FORCE: ${{ steps.branches.outputs.force }}
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
           # The image receives the write-capable token, so it is pinned to a release and its
           # multi-arch index digest. Renovate proposes updates of both; they never merge
@@ -49,5 +71,6 @@ jobs:
             -e RENOVATE_REPOSITORIES=criew/opaa \
             -e RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper \
             -e RENOVATE_DOCKER_MAX_PAGES=10 \
+            -e RENOVATE_FORCE \
             -e LOG_LEVEL=info \
             "$IMAGE"

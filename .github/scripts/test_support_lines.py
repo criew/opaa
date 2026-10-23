@@ -115,18 +115,23 @@ def test_the_repository_file_is_valid() -> None:
     assert result.returncode == 0, result.stderr
 
 
-def test_renovate_workflow_passes_the_supported_branches() -> None:
+def test_renovate_workflow_forces_the_supported_branches() -> None:
+    # Global "force" overrides the repository config, so the list from the file wins over the
+    # main-only list in renovate.json5.
     text = WORKFLOW.read_text(encoding="utf-8")
 
     assert "python3 .github/scripts/support_lines.py base-branches" in text
-    assert "-e RENOVATE_BASE_BRANCH_PATTERNS" in text
+    assert '{"baseBranchPatterns":%s}' in text
+    assert "-e RENOVATE_FORCE" in text
 
 
-def test_renovate_config_leaves_the_base_branches_to_the_workflow() -> None:
-    # A list in renovate.json5 would override the one the workflow derives from the file.
+def test_renovate_config_names_only_main_as_base_branch() -> None:
+    # Without the workflow (local runs) Renovate stays on main; matchBaseBranches needs the key.
     text = RENOVATE_CONFIG.read_text(encoding="utf-8")
 
-    assert not re.search(r"^\s*baseBranch(Pattern)?es\s*:", text, re.M)
+    assert re.findall(r"^\s*baseBranch(?:Pattern)?e?s\s*:.*$", text, re.M) == [
+        "  baseBranchPatterns: ['main'],"
+    ]
 
 
 def package_rule_blocks() -> list[str]:
