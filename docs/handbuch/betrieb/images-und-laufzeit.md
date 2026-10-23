@@ -47,28 +47,35 @@ enthält alles von OPAA selbst und lässt sich hinter der Schleuse ohne Netz pr�
 | `DIGESTS` | der Digest jedes Image, derselbe wie in GHCR |
 | `chart/` | das Helm-Chart |
 | `update-paket/` | das Update-Paket, darin dieses Handbuch |
-| `sbom/`, `attestations/` | die SBOMs und die Nachweise der Herkunft von Update-Paket, SBOMs und Chart |
+| `sbom/`, `attestations/` | die SBOMs und die Nachweise der Herkunft von Update-Paket und SBOMs; der Nachweis des Charts bezieht sich auf den Chart in GHCR und lässt sich offline nicht gegen die Datei in `chart/` prüfen, die Datei deckt `SHA256SUMS` ab |
 | `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Prüfsummen aller Dateien und ihr Herkunftsnachweis |
 
 Nicht im Bündel sind die Datenbank, der Modellserver, ein Identitätsanbieter und Modellgewichte.
 Sie kommen auf eigenem Weg ins Haus.
 
-**1. Vor der Schleuse**, auf einem Rechner mit Internetzugang:
+**Werkzeuge hinter der Schleuse:** `gh` (die GitHub-CLI, erprobt mit Version 2.86.0), `sha256sum` und
+`tar`, zum Einspielen `skopeo` und unter Kubernetes `helm`. Sie kommen wie das Bündel durch die
+Schleuse. Die Prüfung mit `gh` braucht keine Anmeldung (`gh auth login`) und kein Netz.
+
+**1. Vor der Schleuse**, auf einem Rechner mit Internetzugang, für jedes Release neu:
 
 ```bash
 gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-offline-*'
-gh attestation verify opaa-offline-X.Y.Z.tar --repo criew/opaa
 gh attestation trusted-root > trusted_root.jsonl
 ```
 
-Die erste Prüfung ist optional. `trusted_root.jsonl` ist der öffentliche Vertrauensanker von
-Sigstore. Er gehört mit dem Bündel durch die Schleuse, aber nicht in das Bündel: Wer das Bündel
-fälschen könnte, könnte sonst auch den Anker fälschen.
+`trusted_root.jsonl` ist der öffentliche Vertrauensanker von Sigstore. Er gehört mit dem Bündel
+durch die Schleuse, aber nicht in das Bündel: Wer das Bündel fälschen könnte, könnte sonst auch den
+Anker fälschen. Ein Anker von einem früheren Release kann nach einem Schlüsselwechsel bei Sigstore
+veraltet sein; die Prüfung scheitert dann, sie wird nicht falsch.
 
-**2. Hinter der Schleuse prüfen**, ohne Netz:
+**2. Hinter der Schleuse prüfen**, ohne Netz, zuerst das Archiv, dann seinen Inhalt:
 
 ```bash
-sha256sum -c opaa-offline-X.Y.Z.tar.sha256
+gh attestation verify opaa-offline-X.Y.Z.tar --bundle opaa-offline-X.Y.Z.tar.sigstore.json \
+  --custom-trusted-root trusted_root.jsonl --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/offline-bundle.yml \
+  --source-ref refs/tags/vX.Y.Z
 tar -xf opaa-offline-X.Y.Z.tar
 cd opaa-offline-X.Y.Z
 gh attestation verify SHA256SUMS --bundle SHA256SUMS.sigstore.json \
@@ -78,12 +85,14 @@ gh attestation verify SHA256SUMS --bundle SHA256SUMS.sigstore.json \
 sha256sum -c SHA256SUMS
 ```
 
-Endet `gh attestation verify` ohne Fehler, stammt `SHA256SUMS` aus dem Release-Lauf zu `vX.Y.Z`.
-Endet danach `sha256sum -c` ohne Fehler, gilt das für jede Datei des Bündels. Ein verändertes
-Image-Archiv fällt in diesem Schritt auf. Die Befehle stehen hier und nicht nur im Bündel: Eine
-Anleitung aus dem Bündel ist vor der Prüfung so ungeprüft wie das Bündel selbst.
+Endet die erste Prüfung ohne Fehler, stammt das Archiv aus dem Release-Lauf zu `vX.Y.Z`: Auf einem
+Release-Tag erzeugt nur dieser Lauf ein Bündel, und nur das Bündel seiner eigenen Version. Die zweite
+Prüfung bindet `SHA256SUMS` ebenso an den Lauf, `sha256sum -c` danach jede dort genannte Datei; ein
+verändertes Image-Archiv fällt in diesem Schritt auf. `opaa-offline-X.Y.Z.tar.sha256` neben dem
+Archiv belegt nur eine heile Übertragung, keine Herkunft. Die Befehle stehen hier und nicht nur im
+Bündel: Eine Anleitung aus dem Bündel ist vor der Prüfung so ungeprüft wie das Bündel selbst.
 
-Die Herkunft der einzelnen Bestandteile lässt sich zusätzlich prüfen, etwa die des Update-Pakets:
+Die Herkunft des Update-Pakets und der SBOMs lässt sich zusätzlich prüfen, etwa:
 
 ```bash
 gh attestation verify update-paket/opaa-update-paket-X.Y.Z.tar.gz \

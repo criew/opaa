@@ -13,12 +13,12 @@ ungeprüft. Wer die Befehle von hier übernimmt, gleicht sie mit dem Handbuch ab
 | `chart/` | das Helm-Chart |
 | `update-paket/` | das Update-Paket der Version |
 | `sbom/` | die CycloneDX-Stücklisten von Backend und Frontend |
-| `attestations/` | die Sigstore-Bundles der Attestierungen von Update-Paket, SBOMs und Chart |
+| `attestations/` | die Sigstore-Bundles der Attestierungen von Update-Paket, SBOMs und Chart; die des Charts gilt dem Chart in der Registry |
 | `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Prüfsummen aller Dateien und ihre Attestierung |
 
 ## Prüfen
 
-Einmal auf einem Rechner mit Internetzugang den Vertrauensanker holen und mit dem Bündel
+Für jedes Release auf einem Rechner mit Internetzugang den Vertrauensanker holen und mit dem Bündel
 hineinbringen:
 
 ```bash
@@ -35,7 +35,9 @@ gh attestation verify SHA256SUMS --bundle SHA256SUMS.sigstore.json \
 sha256sum -c SHA256SUMS
 ```
 
-Beide Befehle müssen ohne Fehler enden. Danach ist jede Datei des Bündels die des Release.
+Beide Befehle müssen ohne Fehler enden. Danach ist jede in `SHA256SUMS` genannte Datei die des
+Release. Das Archiv selbst prüft das Handbuch vor dem Entpacken gegen
+`opaa-offline-@VERSION@.tar.sigstore.json`.
 
 ## Einspielen
 

@@ -178,9 +178,11 @@ in [renovate.md](renovate.md#sicherheitsmodell-des-gha-caches).
 
 Der Lauf ist in Jobs gestaffelt: erst die Prüfungen (`prepare`), dann die Images (`build` je Image
 und Architektur, `publish` je Image) und daneben das Update-Paket (`update-package`, seine
-Attestierung in `update-package-attestation`), dann der Chart, dann seine Attestierung, zuletzt das
-GitHub-Release mit dem Update-Paket als Anhang. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
-den Lauf rot. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
+Attestierung in `update-package-attestation`), dann der Chart, dann seine Attestierung, dann das
+[Offline-Bündel](#offline-bündel) (`offline-bundle`), zuletzt das GitHub-Release mit Update-Paket und
+Bündel als Anhang. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
+den Lauf rot. Ein gescheitertes Bündel hält deshalb das GitHub-Release auf, obwohl Images und Chart
+schon veröffentlicht sind. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
 GitHub-Release kündigt nichts an, was fehlt. Wie die Images für zwei Architekturen entstehen,
 beschreibt [Mehrere Architekturen](#mehrere-architekturen).
 
@@ -196,6 +198,9 @@ schon teilweise gesetzt und ist erst danach gescheitert, ist die Version vergebe
 erscheint mit der nächsten Patch-Version. Hat der Job
 `chart` den Chart schon gepusht und ist erst danach gescheitert, überspringt die Wiederholung den
 Push und liest den Digest aus der Registry, damit Attestierung und GitHub-Release folgen können.
+Scheitert `offline-bundle` an einer Störung, hilft ebenfalls *Re-run failed jobs*. Bricht `pack` an
+der Größengrenze ab, hilft keine Wiederholung, weil der Workflow am Tag fixiert ist: Die Version ist
+vergeben, das Release erscheint nach einer Korrektur auf `main` mit der nächsten Patch-Version.
 *Re-run all jobs* scheitert dagegen absichtlich an der Prüfung oben.
 
 Bevor der Job `chart` einen Digest an die Attestierung weitergibt, vergleicht er den Chart aus der
@@ -626,7 +631,7 @@ Attestierung des Archivs.
 **Ablauf.** Der Job `collect` holt Images und Chart nach ihrer Veröffentlichung aus GHCR zurück
 (`skopeo copy --all --preserve-digests`) und bricht ab, wenn der Digest eines Index im Archiv von
 dem in GHCR abweicht. Das Bündel enthält also genau das Veröffentlichte. Update-Paket und SBOMs
-kommen aus dem Artefakt desselben Laufs. Der Job `attest` attestiert `SHA256SUMS`, legt das
+kommen aus dem Artefakt desselben Laufs; fehlt eine der beiden SBOMs, bricht `collect` ab. Der Job `attest` attestiert `SHA256SUMS`, legt das
 Sigstore-Bundle dazu, packt das Archiv und attestiert es ebenfalls. Nur dieser Job hält das
 OIDC-Token; er führt außer `tar` und `sha256sum` nichts aus. Der Job `release` hängt Archiv,
 Prüfsumme und Sigstore-Bundle an das GitHub-Release.
@@ -644,13 +649,16 @@ GHCR:
 **Prüfung ohne Netz.** Sie steht für Betreiber im Handbuch
 ([Images und Laufzeit](handbuch/betrieb/images-und-laufzeit.md#installation-ohne-internetzugang)):
 
-1. Vertrauensanker vorab holen (`gh attestation trusted-root`).
-2. `SHA256SUMS` gegen ihr Sigstore-Bundle prüfen, mit `--custom-trusted-root`.
-3. `sha256sum -c SHA256SUMS`.
+1. Vertrauensanker je Release vorab holen (`gh attestation trusted-root`).
+2. Das Archiv vor dem Entpacken gegen `opaa-offline-X.Y.Z.tar.sigstore.json` prüfen, mit
+   `--custom-trusted-root`.
+3. `SHA256SUMS` gegen ihr Sigstore-Bundle prüfen, danach `sha256sum -c SHA256SUMS`.
 
-Schritt 2 bindet das Bündel an `offline-bundle.yml` und an das Tag `vX.Y.Z` (`--signer-workflow`,
-`--source-ref`). Die Attestierungen eines Probelaufs nennen den Ref ihres Laufs und bestehen diese
-Prüfung deshalb nie.
+Die Schritte 2 und 3 binden das Bündel an `offline-bundle.yml` und an das Tag `vX.Y.Z` (`--signer-workflow`,
+`--source-ref`). Diese Identität entsteht nur im Release-Lauf: Auf einem Tag-Ref bricht
+`offline-bundle.yml` ab, wenn das Tag nicht `v` plus die verlangte Version ist oder der Aufrufer nicht
+`publish-images.yml` (`GITHUB_WORKFLOW_REF`). Der Probelauf startet auf einem Tag gar nicht. Seine
+Attestierungen nennen den Ref eines Branches oder PRs und bestehen die Prüfung deshalb nicht.
 
 **Probelauf.** `.github/workflows/offline-bundle-probe.yml` baut das Bündel des jüngsten Release
 zwischen zwei Releases, auf Zuruf und an einem PR über das Label `offline-bundle-suite`. Danach

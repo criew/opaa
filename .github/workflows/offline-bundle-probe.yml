@@ -24,7 +24,8 @@ concurrency:
 
 jobs:
   version:
-    if: github.event_name != 'pull_request' || github.event.label.name == 'offline-bundle-suite'
+    # Never on a tag: there the attestations would carry the identity of a release.
+    if: github.ref_type != 'tag' && (github.event_name != 'pull_request' || github.event.label.name == 'offline-bundle-suite')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -101,9 +102,4 @@ jobs:
             echo "kein Netz: https://github.com ist nicht erreichbar"
             .github/scripts/offline_bundle.sh check \
               "$RUNNER_TEMP/offline-bundle/opaa-offline-$VERSION.tar" "$RUNNER_TEMP/trusted_root.jsonl"
-            gh attestation verify "$RUNNER_TEMP/offline-bundle/opaa-offline-$VERSION.tar" \
-              --bundle "$RUNNER_TEMP/offline-bundle/opaa-offline-$VERSION.tar.sigstore.json" \
-              --custom-trusted-root "$RUNNER_TEMP/trusted_root.jsonl" --repo "$GH_REPO" \
-              --signer-workflow "$BUNDLE_SIGNER_WORKFLOW" --source-ref "$BUNDLE_SOURCE_REF" >/dev/null
-            echo "ok   das Archiv trägt seine Attestierung"
           '

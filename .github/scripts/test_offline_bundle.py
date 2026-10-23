@@ -156,3 +156,19 @@ def test_the_release_notes_name_the_bundle_and_the_instructions(tmp_path: Path) 
 
     assert "`opaa-offline-1.2.4.tar`" in notes
     assert "images-und-laufzeit.md#installation-ohne-internetzugang" in notes
+
+
+def test_on_a_tag_only_the_release_run_of_that_tag_signs_a_bundle() -> None:
+    collect = job("offline-bundle.yml", "collect")
+    guard = collect[collect.index("name: Aufrufer prüfen"):collect.index("actions/checkout@")]
+
+    assert '"$GITHUB_REF_TYPE" == tag' in guard
+    assert '"$GITHUB_REF_NAME" != "v$VERSION"' in guard
+    assert '"$GITHUB_REPOSITORY/.github/workflows/publish-images.yml@"*' in guard
+    assert collect.index("name: Aufrufer prüfen") < collect.index("offline_bundle.sh collect")
+    assert "github.ref_type != 'tag'" in job("offline-bundle-probe.yml", "version")
+
+
+def test_a_release_run_requires_both_sboms() -> None:
+    assert "REQUIRE_SBOMS: ${{ inputs.update-package-from-run }}" in job("offline-bundle.yml", "collect")
+    assert '"${REQUIRE_SBOMS:-true}" == true' in SCRIPT.read_text(encoding="utf-8")

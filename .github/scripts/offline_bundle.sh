@@ -13,9 +13,9 @@
 #                               manipulations that must be detected
 #
 # collect reads IMAGE_PREFIX, CHART_REPOSITORY, GH_REPO and UPDATE_PACKAGE_DIR (update package and
-# SBOMs of the version). check reads GH_REPO and the expected signers: BUNDLE_SIGNER_WORKFLOW and
-# BUNDLE_SOURCE_REF for SHA256SUMS, RELEASE_SIGNER_WORKFLOW and RELEASE_SOURCE_REF for the update
-# package.
+# SBOMs of the version); a missing SBOM fails it unless REQUIRE_SBOMS is false. check reads GH_REPO
+# and the expected signers: BUNDLE_SIGNER_WORKFLOW and BUNDLE_SOURCE_REF for SHA256SUMS,
+# RELEASE_SIGNER_WORKFLOW and RELEASE_SOURCE_REF for the update package.
 set -euo pipefail
 
 # A release asset may not exceed 2 GiB; the bundle stays a margin below.
@@ -79,8 +79,16 @@ collect() {
   local package="$UPDATE_PACKAGE_DIR/opaa-update-paket-$version.tar.gz" sbom
   [[ -f "$package" ]] || { echo "$package is missing" >&2; exit 1; }
   cp "$package" "$dir/update-paket/"
-  for sbom in "$UPDATE_PACKAGE_DIR"/*-"$version".cdx.json; do
-    [[ -f "$sbom" ]] && cp "$sbom" "$dir/sbom/"
+  for name in backend frontend; do
+    sbom="$UPDATE_PACKAGE_DIR/opaa-$name-$version.cdx.json"
+    if [[ -f "$sbom" ]]; then
+      cp "$sbom" "$dir/sbom/"
+    elif [[ "${REQUIRE_SBOMS:-true}" == true ]]; then
+      echo "$sbom is missing" >&2
+      exit 1
+    else
+      echo "::warning::$(basename "$sbom") is missing; the bundle carries no SBOM for $name" >&2
+    fi
   done
 
   # The Sigstore bundles of what the release workflow attested for these files and the chart.
@@ -134,6 +142,9 @@ check() {
   work="$(mktemp -d)"
   name="$(basename "$tar" .tar)"
   (cd "$(dirname "$tar")" && sha256sum -c --quiet "$name.tar.sha256")
+  verify_attestation "$tar" "$tar.sigstore.json" "$root" \
+    "$BUNDLE_SIGNER_WORKFLOW" "$BUNDLE_SOURCE_REF"
+  echo "ok   the archive carries the attestation of $BUNDLE_SIGNER_WORKFLOW at $BUNDLE_SOURCE_REF"
   tar --force-local -C "$work" -xf "$tar"
   dir="$work/$name"
 

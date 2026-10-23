@@ -29,6 +29,23 @@ jobs:
       packages: read
       attestations: read
     steps:
+      # On a tag the attestations carry the identity the handbook verifies; only the release run of
+      # that very tag may produce them. GITHUB_WORKFLOW_REF names the calling workflow.
+      - name: Aufrufer prüfen
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            if [[ "$GITHUB_REF_NAME" != "v$VERSION" ]]; then
+              echo "::error::Auf dem Tag $GITHUB_REF_NAME entsteht nur das Bündel von v$GITHUB_REF_NAME, nicht von $VERSION"
+              exit 1
+            fi
+            if [[ "$GITHUB_WORKFLOW_REF" != "$GITHUB_REPOSITORY/.github/workflows/publish-images.yml@"* ]]; then
+              echo "::error::Auf einem Tag erzeugt nur publish-images.yml das Bündel, nicht $GITHUB_WORKFLOW_REF"
+              exit 1
+            fi
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -60,6 +77,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ inputs.version }}
           OWNER: ${{ github.repository_owner }}
+          # A release run always has both SBOMs; a trial of an older release may lack them.
+          REQUIRE_SBOMS: ${{ inputs.update-package-from-run }}
         run: |
           owner="$(tr '[:upper:]' '[:lower:]' <<<"$OWNER")"
           export IMAGE_PREFIX="ghcr.io/$owner/opaa" CHART_REPOSITORY="ghcr.io/$owner/charts"
